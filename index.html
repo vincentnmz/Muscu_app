@@ -133,8 +133,6 @@
       <div class="card-title">Connexion</div>
       <label>Login (4 chiffres)</label>
       <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
-      <label>Date de naissance</label>
-      <input type="date" id="inp-ddn">
       <div id="login-error" class="error-msg"></div>
       <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
     </div>
@@ -328,7 +326,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyFKDgd7mezmkOs_9hPD7wytkT9IUuJVG1_nsgqPcV66CAawiGz4aPSqX6RywAcFAaH/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyPnnyafjyWe4j-ZF0a0_7ixy7TcWFh-3G9PYChsPbVyIjM4FXQPnTL2cyM1o36Y-Ps/exec";
 
 let athlete = null;
 let seance = [];
@@ -340,13 +338,12 @@ let exercicesData = [];
 
 async function seConnecter() {
   const login = document.getElementById('inp-login').value.trim();
-  const ddn = document.getElementById('inp-ddn').value;
   const errEl = document.getElementById('login-error');
   errEl.textContent = '';
-  if (!login || !ddn) { errEl.textContent = 'Remplis tous les champs.'; return; }
+  if (!login) { errEl.textContent = 'Entre ton login.'; return; }
   errEl.textContent = 'Connexion...';
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=login&login=${encodeURIComponent(login)}&ddn=${encodeURIComponent(ddn)}`);
+    const res = await fetch(`${SCRIPT_URL}?action=login&login=${encodeURIComponent(login)}`);
     const data = await res.json();
     if (data.success) {
       athlete = data.athlete;
@@ -812,4 +809,3 @@ function showToast(msg, color) {
 </script>
 </body>
 </html>
-
