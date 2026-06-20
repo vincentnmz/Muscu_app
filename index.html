@@ -187,19 +187,17 @@
             <div>
               <label>Type de séance</label>
               <select id="sel-seance-id" onchange="filtrerMusclesParSeance()">
+                <option value="Full body">Full body</option>
+                <option value="Upper">Upper</option>
                 <option value="Push">Push</option>
                 <option value="Pull">Pull</option>
-                <option value="Jambe">Jambe</option>
-                <option value="Pec Epaule">Pec Epaule</option>
-                <option value="Pec Bras">Pec Bras</option>
+                <option value="Jambes complète">Jambes complète</option>
+                <option value="Jambes Quadriceps">Jambes Quadriceps</option>
+                <option value="Jambes ischio fessier">Jambes ischio fessier</option>
                 <option value="Dos Bras">Dos Bras</option>
                 <option value="Dos Epaule">Dos Epaule</option>
-                <option value="Full body">Full body</option>
-                <option value="Abdo">Abdo</option>
-                <option value="Upper">Upper</option>
-                <option value="Quadriceps">Quadriceps</option>
-                <option value="Fessier">Fessier</option>
-                <option value="Ishio Fessier">Ishio Fessier</option>
+                <option value="Pec Bras">Pec Bras</option>
+                <option value="Pec Epaule">Pec Epaule</option>
               </select>
             </div>
             </div>
@@ -449,19 +447,26 @@ async function chargerExercices() {
 }
 
 const MAPPING_SEANCE = {
-  'Push':        ['Pectoraux', 'Epaule', 'Triceps'],
-  'Pull':        ['Dos', 'Biceps'],
-  'Jambe':       ['Jambe', 'Quadriceps', 'Ishio', 'Fessier', 'Aducteur'],
-  'Quadriceps':  ['Quadriceps'],
-  'Fessier':     ['Fessier', 'Aducteur'],
-  'Ishio Fessier': ['Ishio', 'Fessier'],
-  'Pec Epaule':  ['Pectoraux', 'Epaule'],
-  'Pec Bras':    ['Pectoraux', 'Biceps', 'Triceps'],
-  'Dos Bras':    ['Dos', 'Biceps', 'Triceps'],
-  'Dos Epaule':  ['Dos', 'Epaule'],
-  'Full body':   null, // tous
-  'Upper':       ['Pectoraux', 'Dos', 'Epaule', 'Biceps', 'Triceps'],
-  'Abdo':        ['Abdo'],
+
+
+  'Full body':             null,
+  'Upper':                 ['Pectoraux', 'Dos', 'Epaule', 'Biceps', 'Triceps', 'Abdominaux'],
+  'Push':                  ['Pectoraux', 'Epaule', 'Triceps', 'Abdominaux'],
+  'Pull':                  ['Dos', 'Biceps', 'Abdominaux'],
+  'Jambes complète':       ['Jambe', 'Quadriceps', 'Ischio', 'Fessier', 'Aducteur', 'Mollets', 'Abdominaux'],
+  'Jambes Quadriceps':     ['Quadriceps', 'Jambe', 'Aducteur', 'Mollets', 'Abdominaux'],
+  'Jambes ischio fessier': ['Ischio', 'Fessier', 'Aducteur', 'Mollets', 'Abdominaux'],
+  'Dos Bras':              ['Dos', 'Biceps', 'Triceps', 'Abdominaux'],
+  'Dos Epaule':            ['Dos', 'Epaule', 'Abdominaux'],
+  'Pec Bras':              ['Pectoraux', 'Biceps', 'Triceps', 'Abdominaux'],
+  'Pec Epaule':            ['Pectoraux', 'Epaule', 'Abdominaux'],
+
+
+
+
+
+
+
 };
 
 function filtrerMusclesParSeance() {
@@ -807,3 +812,4 @@ function showToast(msg, color) {
 </script>
 </body>
 </html>
+
