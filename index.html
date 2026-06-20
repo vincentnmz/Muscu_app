@@ -167,10 +167,15 @@
       <!-- Recap séance validée -->
       <div id="recap-block" style="display:none">
         <div class="card">
-          <div class="card-title">✅ Séance enregistrée !</div>
+          <div class="card-title">🎉 Séance terminée !</div>
+          <div id="recap-seance-info" style="font-size:13px;color:var(--text-muted);margin-bottom:12px"></div>
           <div id="recap-content"></div>
         </div>
-        <button class="btn btn-accent" onclick="nouvelleSeance()">+ Nouvelle séance</button>
+        <div class="card" id="recap-programme-block" style="display:none">
+          <div class="card-title">📋 Programme vs Réalisé</div>
+          <div id="recap-programme-content"></div>
+        </div>
+        <button class="btn btn-accent" onclick="nouvelleSeance()" style="margin-top:4px">+ Nouvelle séance</button>
       </div>
 
       <!-- Saisie -->
@@ -326,7 +331,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyPnnyafjyWe4j-ZF0a0_7ixy7TcWFh-3G9PYChsPbVyIjM4FXQPnTL2cyM1o36Y-Ps/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJmo-bMSv-lRjMofrwk8iE-3D5MY2Zlue-cnfmGdUIe_yBn9B-D6EY53oTx0-gDrhE/exec";
 
 let athlete = null;
 let seance = [];
@@ -657,6 +662,17 @@ async function validerSeance() {
 function afficherRecap() {
   document.getElementById('saisie-block').style.display = 'none';
   document.getElementById('recap-block').style.display = 'block';
+
+  // Info séance
+  const dateVal = document.getElementById('inp-date').value;
+  const seanceType = document.getElementById('sel-seance-id').value;
+  const totalSeries = seance.reduce((a, e) => a + e.series.length, 0);
+  const totalVol = seance.reduce((a, e) => a + e.series.reduce((b, s) => b + s.volume, 0), 0);
+  document.getElementById('recap-seance-info').innerHTML = `
+    <span style="color:var(--accent);font-weight:700">${seanceType}</span> · ${formatDateDisplay(dateVal)} · ${totalSeries} séries · Vol total: ${totalVol}
+  `;
+
+  // Recap séance
   const recap = document.getElementById('recap-content');
   recap.innerHTML = '';
   seance.forEach(exo => {
@@ -666,11 +682,71 @@ function afficherRecap() {
     exo.series.forEach(s => {
       const p = document.createElement('div');
       p.className = 'recap-serie';
-      p.textContent = `S${s.serie} · ${s.charge}kg × ${s.reps} · RPE ${s.rpe} · Vol ${s.volume}`;
+      p.textContent = `S${s.serie} · ${s.charge}kg × ${s.reps} reps · RPE ${s.rpe} · Vol ${s.volume}`;
       div.appendChild(p);
     });
     recap.appendChild(div);
   });
+
+  // Programme vs Réalisé
+  afficherProgrammeVsRealise(seanceType);
+}
+
+function formatDateDisplay(d) {
+  if (!d) return '';
+  const parts = d.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return d;
+}
+
+async function afficherProgrammeVsRealise(seanceType) {
+  if (!athlete || !seanceType) return;
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getProgramme&athlete_id=${athlete.athlete_id}`);
+    const data = await res.json();
+    const prog = (data.programme || []).filter(p => p.seance === seanceType);
+    if (prog.length === 0) return;
+
+    document.getElementById('recap-programme-block').style.display = 'block';
+    const el = document.getElementById('recap-programme-content');
+
+    el.innerHTML = prog.map(p => {
+      // Trouver ce qui a été réalisé pour cet exercice
+      const exoRealise = seance.find(e => e.exerciceNom.toLowerCase().trim() === p.exercice.toLowerCase().trim());
+      const seriesFaites = exoRealise ? exoRealise.series.length : 0;
+      const repsMoyenne = exoRealise && exoRealise.series.length > 0
+        ? Math.round(exoRealise.series.reduce((a, s) => a + s.reps, 0) / exoRealise.series.length)
+        : 0;
+
+      const seriesOk = seriesFaites >= p.series_prevues;
+      const repsOk = repsMoyenne >= p.reps_mini;
+      const nonFait = seriesFaites === 0;
+
+      let statut, couleur;
+      if (nonFait) {
+        statut = '⚪ Non fait'; couleur = 'var(--text-muted)';
+      } else if (seriesOk && repsOk) {
+        statut = '✅ Objectif atteint'; couleur = 'var(--success)';
+      } else {
+        statut = '🔴 Insuffisant'; couleur = 'var(--danger)';
+      }
+
+      return `
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px;border-left:3px solid ${couleur}">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">${p.exercice}</div>
+          <div style="font-size:12px;color:var(--text-muted)">
+            Prévu: ${p.series_prevues} séries · ${p.reps_mini}-${p.reps_max} reps
+          </div>
+          <div style="font-size:12px;margin-top:2px">
+            Réalisé: <span style="font-weight:700">${seriesFaites} séries · ~${repsMoyenne} reps</span>
+          </div>
+          <div style="font-size:12px;color:${couleur};font-weight:700;margin-top:4px">${statut}</div>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    console.error('Erreur programme vs réalisé', e);
+  }
 }
 
 function nouvelleSeance() {
