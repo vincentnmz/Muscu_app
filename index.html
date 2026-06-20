@@ -333,7 +333,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJmo-bMSv-lRjMofrwk8iE-3D5MY2Zlue-cnfmGdUIe_yBn9B-D6EY53oTx0-gDrhE/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFsoJJHfc3YSfN1iDdmuW38361rMrfrYDCyqYI7heOc0G0fsm0kf25vdsyFW7vjF6G/exec";
 
 let athlete = null;
 let seance = [];
@@ -706,7 +706,7 @@ async function afficherProgrammeVsRealise(seanceType) {
   try {
     const res = await fetch(`${SCRIPT_URL}?action=getProgramme&athlete_id=${athlete.athlete_id}`);
     const data = await res.json();
-    const prog = (data.programme || []).filter(p => p.seance === seanceType);
+    const prog = (data.programme || []).filter(p => p.seance_id === seanceType);
     if (prog.length === 0) return;
 
     document.getElementById('recap-programme-block').style.display = 'block';
