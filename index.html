@@ -194,7 +194,7 @@
                 <option value="Upper">Upper</option>
                 <option value="Push">Push</option>
                 <option value="Pull">Pull</option>
-                <option value="Jambes complète">Jambes complète</option>
+                <option value="Jambes compléte">Jambes compléte</option>
                 <option value="Jambes Quadriceps">Jambes Quadriceps</option>
                 <option value="Jambes ischio fessier">Jambes ischio fessier</option>
                 <option value="Dos Bras">Dos Bras</option>
@@ -457,7 +457,7 @@ const MAPPING_SEANCE = {
   'Upper':                 ['Pectoraux', 'Dos', 'Epaule', 'Biceps', 'Triceps', 'Abdominaux'],
   'Push':                  ['Pectoraux', 'Epaule', 'Triceps', 'Abdominaux'],
   'Pull':                  ['Dos', 'Biceps', 'Abdominaux'],
-  'Jambes complète':       ['Jambe', 'Quadriceps', 'Ischio', 'Fessier', 'Aducteur', 'Mollets', 'Abdominaux'],
+  'Jambes compléte':       ['Jambe', 'Quadriceps', 'Ischio', 'Fessier', 'Aducteur', 'Mollets', 'Abdominaux'],
   'Jambes Quadriceps':     ['Quadriceps', 'Jambe', 'Aducteur', 'Mollets', 'Abdominaux'],
   'Jambes ischio fessier': ['Ischio', 'Fessier', 'Aducteur', 'Mollets', 'Abdominaux'],
   'Dos Bras':              ['Dos', 'Biceps', 'Triceps', 'Abdominaux'],
@@ -815,12 +815,12 @@ async function chargerProgramme() {
     if (data.programme && data.programme.length > 0) {
       const parJour = {};
       data.programme.forEach(p => {
-        if (!parJour[p.jour]) parJour[p.jour] = [];
-        parJour[p.jour].push(p);
+        if (!parJour[p.seance_id]) parJour[p.seance_id] = [];
+        parJour[p.seance_id].push(p);
       });
-      el.innerHTML = Object.entries(parJour).map(([jour, exos]) => `
+      el.innerHTML = Object.entries(parJour).map(([seance, exos]) => `
         <div class="prog-jour">
-          <div class="prog-jour-title">${jour}</div>
+          <div class="prog-jour-title">${seance}</div>
           ${exos.map(e => `<div class="prog-exo-item">· ${e.exercice} <span style="color:var(--text-muted)">(${e.series_prevues} séries · ${e.reps_mini}-${e.reps_max} reps)</span></div>`).join('')}
         </div>
       `).join('');
