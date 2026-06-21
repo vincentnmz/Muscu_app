@@ -333,6 +333,19 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// Auto-login si session existante
+window.addEventListener('load', async () => {
+  const saved = localStorage.getItem('muscu_athlete');
+  if (saved) {
+    try {
+      athlete = JSON.parse(saved);
+      await ouvrirApp();
+    } catch(e) {
+      localStorage.removeItem('muscu_athlete');
+    }
+  }
+});
+
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8FHASU3rSCMPofwedJJJNPP5k5sgx0HTcw2bPaaNIRu3SOui1TwCT6vH7-QjkmMme/exec";
 
 let athlete = null;
@@ -354,6 +367,7 @@ async function seConnecter() {
     const data = await res.json();
     if (data.success) {
       athlete = data.athlete;
+      localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
       ouvrirApp();
     } else {
       errEl.textContent = 'Login ou date de naissance incorrect.';
@@ -378,6 +392,7 @@ async function sInscrire() {
     const data = await res.json();
     if (data.success) {
       athlete = data.athlete;
+      localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
       showToast('✅ Compte créé ! Bienvenue ' + prenom);
       ouvrirApp();
     } else {
@@ -390,13 +405,13 @@ async function sInscrire() {
 
 function seDeconnecter() {
   athlete = null; seance = []; exoEnCours = null; serieNum = 1;
+  localStorage.removeItem('muscu_athlete');
   document.getElementById('view-login').classList.add('active');
   document.getElementById('view-app').classList.remove('active');
   document.getElementById('tabs-bar').style.display = 'none';
   document.getElementById('btn-logout').style.display = 'none';
   document.getElementById('header-nom').textContent = 'Muscu';
   document.getElementById('inp-login').value = '';
-  document.getElementById('inp-ddn').value = '';
   document.getElementById('login-error').textContent = '';
 }
 
