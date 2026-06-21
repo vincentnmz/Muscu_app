@@ -662,7 +662,11 @@ async function validerSeance() {
 }
 
 function afficherRecap() {
+  // Cacher TOUT le bloc saisie et ses enfants
   document.getElementById('saisie-block').style.display = 'none';
+  document.getElementById('card-series').style.display = 'none';
+  document.getElementById('btn-valider').style.display = 'none';
+  // Afficher uniquement le recap
   document.getElementById('recap-block').style.display = 'block';
 
   // Info séance
