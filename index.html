@@ -821,7 +821,14 @@ async function chargerProgramme() {
       el.innerHTML = Object.entries(parJour).map(([seance, exos]) => `
         <div class="prog-jour">
           <div class="prog-jour-title">${seance}</div>
-          ${exos.map(e => `<div class="prog-exo-item">· ${e.exercice} <span style="color:var(--text-muted)">(${e.series_prevues} séries · ${e.reps_mini}-${e.reps_max} reps)</span></div>`).join('')}
+          ${exos.map(e => `
+            <div class="prog-exo-item">
+              <span style="color:var(--text)">· ${e.exercice}</span>
+              <div style="font-size:11px;color:var(--text-muted);padding-left:10px;margin-top:2px">
+                ${e.series_prevues} séries · Rep min ${e.reps_mini} · Rep max ${e.reps_max}
+              </div>
+            </div>
+          `).join('')}
         </div>
       `).join('');
     } else {
