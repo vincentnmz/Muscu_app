@@ -326,6 +326,11 @@
         <button class="btn btn-accent" onclick="sauvegarderObjectif()">Sauvegarder</button>
       </div>
       <div class="card">
+        <div class="card-title">📅 Régularité cette semaine</div>
+        <div id="regularite-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <div class="card">
         <div class="card-title">Mon poids</div>
         <div class="row2">
           <div>
@@ -379,7 +384,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0fL0IvxMUAvroVV5ODs5mF_Vbs3MsZM-Y55aX9xiATUJhKW3jSjlS4UJ2Wruai8Da/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzl2--Sh1Wk0h5HL7kZY3qGDm7wOaY8hgu_iCkyCPFnWGxFS9j1ELFi-702V6SVOdWk/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -488,6 +493,7 @@ async function ouvrirApp() {
   peuplerMusclesLibres();
   chargerHistorique();
   chargerPoids();
+  chargerRegularite();
 }
 
 function switchTab(tab) {
@@ -1139,6 +1145,49 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   majSeriesActuel();
   window.scrollTo(0, 0);
   showToast('✅ ' + exerciceNom + ' sélectionné');
+}
+
+// ==================== RÉGULARITÉ ====================
+async function chargerRegularite() {
+  const el = document.getElementById('regularite-content');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getRegularite&athlete_id=${athlete.athlete_id}`);
+    const data = await res.json();
+    
+    const seancesFaites = data.seances_semaine || 0;
+    const seancesPrevues = data.seances_prevues || 0;
+    const manquantes = Math.max(0, seancesPrevues - seancesFaites);
+    
+    let statut, couleur;
+    if (seancesFaites >= seancesPrevues) {
+      statut = '✅ Objectif atteint !';
+      couleur = 'var(--success)';
+    } else if (seancesFaites >= seancesPrevues / 2) {
+      statut = `⚠️ Il te manque ${manquantes} séance${manquantes > 1 ? 's' : ''}`;
+      couleur = '#ff9500';
+    } else {
+      statut = `🔴 Il te manque ${manquantes} séance${manquantes > 1 ? 's' : ''}`;
+      couleur = 'var(--danger)';
+    }
+
+    // Barre de progression
+    const pct = seancesPrevues > 0 ? Math.min(100, Math.round(seancesFaites / seancesPrevues * 100)) : 0;
+
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <div style="font-size:24px;font-weight:800;color:var(--accent)">${seancesFaites}<span style="font-size:14px;color:var(--text-muted)"> / ${seancesPrevues}</span></div>
+          <div style="font-size:12px;color:var(--text-muted)">séances cette semaine</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:${couleur}">${statut}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:20px;height:8px;overflow:hidden">
+        <div style="background:${couleur};height:100%;width:${pct}%;border-radius:20px;transition:width 0.5s"></div>
+      </div>
+    `;
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Impossible de charger</div>';
+  }
 }
 
 // ==================== TIMER ====================
