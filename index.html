@@ -384,7 +384,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4A2K_Ygxh9m6Hm0BfqAWhpmwx6BDlXn-6StSfRs75hx9Qt8fN4bTTp76q8bYIISrJ/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbys3x-I2rb1S2SDxYUPIdAjSG9SWJayLTGZKKXWR1ywxFLJoV40ac1ziWzUsoHyLqpg/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -1044,7 +1044,7 @@ async function sauvegarderPoids() {
   const date = document.getElementById('inp-date-poids').value;
   if (!poids || !date) { showToast('⚠️ Remplis poids et date', '#ff4444'); return; }
   await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({action:'savePoids', athlete_id:athlete.athlete_id, poids, date}) });
+    body: JSON.stringify({action:'savePoids', athlete_id:athlete.athlete_id, athlete:athlete.nom, poids, date}) });
   showToast('✅ Poids enregistré !');
   document.getElementById('inp-poids').value = '';
   chargerPoids();
@@ -1056,8 +1056,12 @@ async function chargerPoids() {
     const res = await fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}`);
     const data = await res.json();
     if (data.poids && data.poids.length > 0) {
-      el.innerHTML = data.poids.map(p => `<div class="poids-item"><span>${p.date}</span><span class="poids-val">${p.poids} kg</span></div>`).join('');
-    } else { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune pesée</div>'; }
+      el.innerHTML = data.poids.map(p => `
+        <div class="poids-item">
+          <span>${p.date}</span>
+          <span class="poids-val">${p.poids} kg</span>
+        </div>`).join('');
+    } else { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune pesée enregistrée</div>'; }
   } catch(e) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Erreur</div>'; }
 }
 
