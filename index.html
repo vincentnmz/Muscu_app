@@ -499,23 +499,24 @@ function afficherListeSeance() {
     return;
   }
 
-  listeEl.innerHTML = programmeSeance.map((p, i) => {
+  // Stocker le programme dans un tableau global indexé pour éviter les problèmes d'apostrophes
+  listeEl.innerHTML = '';
+  programmeSeance.forEach((p, i) => {
     const perf = lastPerfData[p.exercice];
     const exoData = exercicesData.find(e => e.exercice === p.exercice);
     const increment = exoData ? exoData.increment_kg : "2.5 / 5kg";
     const dejaDone = seance.find(e => e.exerciceNom === p.exercice && e.series.length > 0);
     const seriesFaites = dejaDone ? dejaDone.series.length : 0;
     const borderColor = dejaDone ? "var(--success)" : "var(--border)";
-    const doneIcon = dejaDone ? `<span style="color:var(--success);font-weight:700">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : "";
 
     let perfHtml = "";
     let suggHtml = "";
+    let cible = p.reps_mini;
 
     if (perf) {
-      const cible = perf.max_reps < p.reps_max ? perf.max_reps + 1 : p.reps_max;
+      cible = perf.max_reps < p.reps_max ? perf.max_reps + 1 : p.reps_max;
       perfHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière fois : <strong style="color:var(--text)">${perf.last_charge}kg × ${perf.max_reps} reps</strong></div>
                   <div style="font-size:12px;color:var(--accent);margin-top:2px">🎯 Cible : ${perf.last_charge}kg × ${cible} reps</div>`;
-
       const surcharge = perf.max_reps >= p.reps_max && perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
       if (surcharge) {
         const annees = Number(athlete.annees_pratique) || 0;
@@ -530,19 +531,20 @@ function afficherListeSeance() {
       perfHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai 🆕</div>`;
     }
 
-    return `
-      <div onclick="selectionnerExoDepuisProgramme('${p.exercice.replace(/'/g,"\'")}', ${p.reps_mini}, ${p.reps_max})"
-           style="background:var(--surface);border:1px solid ${borderColor};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div style="font-size:15px;font-weight:800;flex:1">${p.exercice}</div>
-          ${doneIcon}
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}</div>
-        ${perfHtml}
-        ${suggHtml}
-        <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Appuie pour saisir</div>
-      </div>`;
-  }).join('');
+    const div = document.createElement('div');
+    div.style.cssText = `background:var(--surface);border:1px solid ${borderColor};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="font-size:15px;font-weight:800;flex:1">${p.exercice}</div>
+        ${dejaDone ? `<span style="color:var(--success);font-weight:700">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : ""}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}</div>
+      ${perfHtml}${suggHtml}
+      <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Appuie pour saisir</div>
+    `;
+    div.addEventListener('click', () => selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
+    listeEl.appendChild(div);
+  });
 }
 
 function retourListeSeance() {
