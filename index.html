@@ -504,7 +504,8 @@ function afficherListeSeance() {
   programmeSeance.forEach((p, i) => {
     const perf = lastPerfData[p.exercice];
     const exoData = exercicesData.find(e => e.exercice === p.exercice);
-    const increment = exoData ? exoData.increment_kg : "2.5 / 5kg";
+    const incrementRaw = exoData ? exoData.increment_kg : "2.5";
+    const increment = parseFloat(String(incrementRaw).replace(',','.').split('/')[0].trim()) || 2.5;
     const dejaDone = seance.find(e => e.exerciceNom === p.exercice && e.series.length > 0);
     const seriesFaites = dejaDone ? dejaDone.series.length : 0;
     const borderColor = dejaDone ? "var(--success)" : "var(--border)";
@@ -523,8 +524,8 @@ function afficherListeSeance() {
         if (annees >= 10) {
           suggHtml = `<div class="prog-suggestion" style="margin-top:6px">💪 +1 rep ou -30s repos</div>`;
         } else {
-          const nc = Math.round((perf.last_charge + parseFloat(increment)) * 4) / 4;
-          suggHtml = `<div class="prog-suggestion" style="margin-top:6px">💪 Surcharge : ${nc}kg (+${increment})</div>`;
+          const nc = Math.round((perf.last_charge + increment) * 4) / 4;
+          suggHtml = `<div class="prog-suggestion" style="margin-top:6px">💪 Surcharge : ${nc}kg (+${increment}kg)</div>`;
         }
       }
     } else {
@@ -1031,6 +1032,8 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   const exoData = exercicesData.find(e => e.exercice === exerciceNom);
   const muscle = exoData ? exoData.muscle : '';
   const exoId = exoData ? exoData.exercice_id : exerciceNom;
+  const incrementRaw2 = exoData ? exoData.increment_kg : "2.5";
+  const increment2 = parseFloat(String(incrementRaw2).replace(',','.').split('/')[0].trim()) || 2.5;
   const perf = lastPerfData[exerciceNom];
 
   // Récupérer l'exo si déjà commencé
