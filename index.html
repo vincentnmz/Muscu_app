@@ -199,6 +199,11 @@
             </div>
           </div>
 
+          <!-- Liste exercices de la séance -->
+          <div id="card-liste-seance" style="display:none">
+            <div id="liste-exercices-seance"></div>
+          </div>
+
           <!-- Exercice actuel guidé -->
           <div id="card-exo-actuel" style="display:none">
             <div class="exo-actuel-card">
@@ -488,6 +493,11 @@ async function demarrerSeance() {
 
   programmeSeance = (dataProg.programme || []).filter(p => p.seance_id === seanceId);
   lastPerfData = dataPerf.perfs || {};
+
+  console.log('seanceId:', seanceId);
+  console.log('programme total:', dataProg.programme ? dataProg.programme.length : 0);
+  console.log('programmeSeance filtré:', programmeSeance.length);
+  console.log('lastPerfData keys:', Object.keys(lastPerfData));
 
   afficherListeSeance();
 }
