@@ -74,6 +74,19 @@
   .recap-exo-name { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
   .recap-serie { font-size: 13px; padding: 3px 0; border-bottom: 1px solid var(--border); }
   .loader { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; }
+
+  /* TIMER */
+  .timer-overlay { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 2px solid var(--accent); padding: 16px 20px; z-index: 50; display: none; }
+  .timer-overlay.active { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .timer-circle-wrap { position: relative; width: 70px; height: 70px; flex-shrink: 0; }
+  .timer-circle-wrap svg { transform: rotate(-90deg); }
+  .timer-circle-bg { fill: none; stroke: var(--border); stroke-width: 5; }
+  .timer-circle-prog { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+  .timer-time { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 18px; font-weight: 800; color: var(--accent); }
+  .timer-info { flex: 1; }
+  .timer-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .timer-serie { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .timer-btn-skip { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
   .exo-actuel-card { background: rgba(200,240,0,0.05); border: 1px solid var(--accent-dim); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
   .exo-actuel-nom { font-size: 17px; font-weight: 800; color: var(--accent); }
   .exo-actuel-detail { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
@@ -342,6 +355,23 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- TIMER REPOS -->
+<div class="timer-overlay" id="timer-overlay">
+  <div class="timer-circle-wrap">
+    <svg width="70" height="70" viewBox="0 0 70 70">
+      <circle class="timer-circle-bg" cx="35" cy="35" r="30"/>
+      <circle class="timer-circle-prog" id="timer-circle" cx="35" cy="35" r="30"
+        stroke-dasharray="188.5" stroke-dashoffset="0"/>
+    </svg>
+    <div class="timer-time" id="timer-display">0</div>
+  </div>
+  <div class="timer-info">
+    <div class="timer-label">⏱️ Temps de repos</div>
+    <div class="timer-serie" id="timer-serie-info"></div>
+  </div>
+  <button class="timer-btn-skip" onclick="skipTimer()">Prêt ✓</button>
+</div>
 
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUdYc3cI_tOioZjDltHN7WUI-AOpkdumVLinBcdoWpKs5toYCYUjkUOyNAwEwStT0O/exec";
@@ -772,8 +802,13 @@ function ajouterSerie() {
   majSeriesActuel();
   document.getElementById('sel-rpe').value = '';
   document.getElementById('btn-valider').style.display = 'block';
-  // Nothing to refresh here
-  showToast(`✅ Série ${serieNum-1} ajoutée !`);
+  // Start rest timer
+  const reposVal = parseInt(repos);
+  if (reposVal > 0) {
+    startTimer(reposVal, `Série ${serieNum-1} · ${charge}kg × ${reps} reps`);
+  } else {
+    showToast(`✅ Série ${serieNum-1} ajoutée !`);
+  }
 }
 
 function majSeriesActuel() {
@@ -1077,6 +1112,70 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   majSeriesActuel();
   window.scrollTo(0, 0);
   showToast('✅ ' + exerciceNom + ' sélectionné');
+}
+
+// ==================== TIMER ====================
+let timerInterval = null;
+let timerRemaining = 0;
+const CIRCUMFERENCE = 188.5; // 2 * PI * 30
+
+function startTimer(seconds, serieInfo) {
+  if (timerInterval) clearInterval(timerInterval);
+  timerRemaining = seconds;
+  
+  const overlay = document.getElementById('timer-overlay');
+  const display = document.getElementById('timer-display');
+  const circle = document.getElementById('timer-circle');
+  const info = document.getElementById('timer-serie-info');
+  
+  if (seconds === 0) return;
+  
+  overlay.classList.add('active');
+  info.textContent = serieInfo;
+  
+  function update() {
+    display.textContent = timerRemaining;
+    const progress = timerRemaining / seconds;
+    circle.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+    
+    if (timerRemaining <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      // Vibration
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      // Son
+      playBeep();
+      overlay.classList.remove('active');
+      showToast('✅ Repos terminé, c'est parti !');
+    }
+    timerRemaining--;
+  }
+  
+  update();
+  timerInterval = setInterval(update, 1000);
+}
+
+function skipTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+  document.getElementById('timer-overlay').classList.remove('active');
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.3, 0.6].forEach(t => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.2);
+    });
+  } catch(e) {}
 }
 
 function showToast(msg, color) {
