@@ -179,6 +179,11 @@
             <div class="card-title">📋 Programme vs Réalisé</div>
             <div id="recap-programme-content"></div>
           </div>
+          <div class="card">
+            <div class="card-title">📝 Note sur la séance</div>
+            <textarea id="inp-note" placeholder="Comment tu t'es senti ? Douleurs, fatigue, ambiance..." 
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;resize:none;min-height:80px;font-family:inherit"></textarea>
+          </div>
           <button class="btn btn-accent" onclick="nouvelleSeance()">+ Nouvelle séance</button>
         </div>
 
@@ -374,7 +379,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUdYc3cI_tOioZjDltHN7WUI-AOpkdumVLinBcdoWpKs5toYCYUjkUOyNAwEwStT0O/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0fL0IvxMUAvroVV5ODs5mF_Vbs3MsZM-Y55aX9xiATUJhKW3jSjlS4UJ2Wruai8Da/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -940,7 +945,29 @@ async function afficherProgrammeVsRealise(seanceType) {
   }).join('');
 }
 
-function nouvelleSeance() {
+async function nouvelleSeance() {
+  // Sauvegarder la note si elle existe
+  const note = document.getElementById('inp-note').value.trim();
+  if (note) {
+    const dateVal = document.getElementById('inp-date').value;
+    const seanceType = document.getElementById('sel-seance-id').value;
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'saveNote',
+          date: dateVal,
+          athlete_id: athlete.athlete_id,
+          athlete: athlete.nom,
+          seance_id: seanceType,
+          note: note
+        })
+      });
+    } catch(e) { console.error('Erreur sauvegarde note', e); }
+    document.getElementById('inp-note').value = '';
+  }
+
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   programmeSeance = []; lastPerfData = {};
   document.getElementById('recap-block').style.display = 'none';
