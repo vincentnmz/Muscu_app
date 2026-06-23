@@ -52,7 +52,9 @@
   body.light-mode .dash-label { color: #999; }
   body.light-mode .prog-item { background: #f5f5f5; }
   body.light-mode .prog-exo-name { color: #111; }
-  body { background: var(--bg); color: var(--text); font-family: 'Helvetica Neue', Arial, sans-serif; min-height: 100vh; padding-bottom: 60px; }
+  body { background: var(--bg); color: var(--text); font-family: 'Helvetica Neue', Arial, sans-serif; min-height: 100vh; padding-bottom: 0; }
+  body.on-accueil { background: #f5f5f5; }
+  body.light-mode.on-accueil { background: #f5f5f5; }
   header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
   header h1 { font-size: 17px; font-weight: 700; }
   .logout-btn { font-size: 12px; color: var(--danger); cursor: pointer; background: none; border: none; padding: 4px 8px; }
@@ -493,7 +495,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8WahgHePFqjKjWLU5m2tNmrqKGvGTppxxsrWma__lce2Szu4XmtOVIbMlpG0sEnhb/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJLFl3MMjou_5F3wFa984LhRWLGXLZZZBG2YjyfeMhZAK43uWKSlp_AVhuzBqTk5rz/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -600,6 +602,7 @@ async function ouvrirApp() {
   document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('inp-date-poids').value = new Date().toISOString().split('T')[0];
   document.getElementById('main-container').classList.add('no-pad');
+  document.body.classList.add('on-accueil');
 
   if (athlete.objectif) {
     document.getElementById('obj-actuel').innerHTML = `<span class="objectif-tag">🎯 ${athlete.objectif}</span>`;
@@ -624,9 +627,11 @@ function switchTab(tab) {
   const container = document.getElementById('main-container');
   if (tab === 'accueil') {
     container.classList.add('no-pad');
+    document.body.classList.add('on-accueil');
     chargerDashboard();
   } else {
     container.classList.remove('no-pad');
+    document.body.classList.remove('on-accueil');
   }
 }
 
@@ -1324,7 +1329,7 @@ async function chargerDashboard() {
     document.getElementById('dash-semaine-msg').textContent = manque > 0 ? `⚠️ ${manque} séance${manque>1?'s':''} manquante${manque>1?'s':''}` : '✅ Objectif atteint !';
     document.getElementById('dash-semaine-msg').style.color = manque > 0 ? '#ff9500' : '#00a854';
 
-    // Poids
+    // Poids - depuis Poids_historique ou Objectif
     if (dataPoids.poids && dataPoids.poids.length > 0) {
       document.getElementById('dash-poids').textContent = dataPoids.poids[0].poids;
       if (dataPoids.poids.length > 1) {
@@ -1333,6 +1338,8 @@ async function chargerDashboard() {
         const col = diff > 0 ? '#ff9500' : '#00a854';
         document.getElementById('dash-poids-evolution').innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
       }
+    } else if (athlete.poids) {
+      document.getElementById('dash-poids').textContent = athlete.poids;
     }
 
     // Muscle en retard
