@@ -704,7 +704,7 @@ function afficherExoActuel() {
   }
 
   // Init exo en cours
-  exoEnCours = { muscle: exoData ? exoData.muscle : '', exerciceId: p.exercice, exerciceNom: p.exercice, series: [] };
+  exoEnCours = { muscle: exoData ? exoData.muscle : '', exerciceId: exoData ? exoData.exercice_id : p.exercice, exerciceNom: p.exercice, series: [] };
   seance = seance.filter(e => e.exerciceNom !== p.exercice);
   seance.push(exoEnCours);
   serieNum = 1;
