@@ -64,6 +64,7 @@
   .sub-tab { flex: 1; padding: 10px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: var(--surface2); transition: all 0.2s; }
   .sub-tab.active { background: rgba(200,240,0,0.1); color: var(--accent); }
   .container { padding: 16px 20px; max-width: 480px; margin: 0 auto; }
+  .container.no-pad { padding: 0; }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
@@ -598,6 +599,7 @@ async function ouvrirApp() {
   document.getElementById('header-nom').textContent = athlete.nom;
   document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('inp-date-poids').value = new Date().toISOString().split('T')[0];
+  document.getElementById('main-container').classList.add('no-pad');
 
   if (athlete.objectif) {
     document.getElementById('obj-actuel').innerHTML = `<span class="objectif-tag">🎯 ${athlete.objectif}</span>`;
@@ -621,10 +623,10 @@ function switchTab(tab) {
   // Dashboard prend toute la largeur sans padding
   const container = document.getElementById('main-container');
   if (tab === 'accueil') {
-    container.style.padding = '16px 16px';
+    container.classList.add('no-pad');
     chargerDashboard();
   } else {
-    container.style.padding = '16px 20px';
+    container.classList.remove('no-pad');
   }
 }
 
