@@ -12,11 +12,29 @@
     --text-muted: #888; --border: #2e2e2e; --danger: #ff4444;
     --success: #00c96e; --radius: 12px;
   }
+  body.light-mode {
+    --bg: #f5f5f5; --surface: #ffffff; --surface2: #f0f0f0;
+    --accent: #5a9e00; --accent-dim: #4a8200; --text: #111111;
+    --text-muted: #666; --border: #e0e0e0; --danger: #e53935;
+    --success: #2e7d32;
+  }
+  body.light-mode header { background: #111; }
+  body.light-mode header h1 { color: #fff; }
+  body.light-mode .tabs-bar { background: #111; border-bottom: 3px solid #c8f000; }
+  body.light-mode .tab-btn { color: #888; }
+  body.light-mode .tab-btn.active { color: #c8f000; border-bottom-color: #c8f000; }
+  body.light-mode .dash { background: #f5f5f5; }
+  body.light-mode .dash-card { background: #fff; border-color: #e0e0e0; }
+  body.light-mode .dash-next { background: #111; }
+  body.light-mode .dash-stat { background: #f0f0f0; }
+  body.light-mode .dash-big-num { color: #111; }
+  body.light-mode .dash-stat-num { color: #111; }
   body { background: var(--bg); color: var(--text); font-family: 'Helvetica Neue', Arial, sans-serif; min-height: 100vh; padding-bottom: 60px; }
   header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
   header h1 { font-size: 17px; font-weight: 700; }
   .logout-btn { font-size: 12px; color: var(--danger); cursor: pointer; background: none; border: none; padding: 4px 8px; }
   .tabs-bar { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; position: sticky; top: 49px; z-index: 9; }
+  body { overflow-x: hidden; }
   .tab-btn { flex: 1; padding: 12px 4px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: none; border-bottom: 2px solid transparent; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
   .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .sub-tabs { display: flex; gap: 0; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -76,7 +94,7 @@
   .loader { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; }
 
   /* DASHBOARD */
-  .dash { background:#f5f5f5; min-height:100vh; padding-bottom:20px; }
+  .dash { background:#f5f5f5; }
   .dash-card { background:#fff; border:1px solid #e0e0e0; border-radius:12px; padding:13px; margin-bottom:10px; }
   .dash-card-accent-orange { border-left:4px solid #f59f00; }
   .dash-card-accent-green { border-left:4px solid #00c96e; }
@@ -115,7 +133,10 @@
 
 <header>
   <h1>💪 <span id="header-nom">Muscu</span></h1>
-  <button class="logout-btn" onclick="seDeconnecter()" style="display:none" id="btn-logout">🚪 Déco</button>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button id="btn-theme" onclick="toggleTheme()" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;">☀️</button>
+    <button class="logout-btn" onclick="seDeconnecter()" style="display:none" id="btn-logout">🚪 Déco</button>
+  </div>
 </header>
 
 <div class="tabs-bar" id="tabs-bar" style="display:none">
@@ -210,7 +231,7 @@
       </div>
 
       <!-- Prochaine séance -->
-      <div class="dash-next">
+      <div class="dash-next" style="margin-bottom:0">
         <div class="dash-label" style="color:#888;">Prochaine séance</div>
         <div id="dash-next-seance">
           <div style="color:#888;font-size:13px;">Chargement...</div>
@@ -543,6 +564,13 @@ async function ouvrirApp() {
   document.getElementById('view-app').classList.add('active');
   document.getElementById('tabs-bar').style.display = 'flex';
   document.getElementById('btn-logout').style.display = 'block';
+  document.getElementById('btn-theme').style.display = 'block';
+  // Restore saved theme
+  const savedTheme = localStorage.getItem('muscu_theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
+    document.getElementById('btn-theme').textContent = '🌙';
+  }
   document.getElementById('header-nom').textContent = athlete.nom;
   document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('inp-date-poids').value = new Date().toISOString().split('T')[0];
@@ -1475,6 +1503,19 @@ function playBeep() {
       osc.stop(ctx.currentTime + t + 0.2);
     });
   } catch(e) {}
+}
+
+function toggleTheme() {
+  const btn = document.getElementById('btn-theme');
+  if (document.body.classList.contains('light-mode')) {
+    document.body.classList.remove('light-mode');
+    btn.textContent = '☀️';
+    localStorage.setItem('muscu_theme', 'dark');
+  } else {
+    document.body.classList.add('light-mode');
+    btn.textContent = '🌙';
+    localStorage.setItem('muscu_theme', 'light');
+  }
 }
 
 function showToast(msg, color) {
