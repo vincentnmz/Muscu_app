@@ -1303,8 +1303,11 @@ function renderCalendrier() {
     if (isToday) {
       d.style.cssText = 'background:var(--accent);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:#000;font-weight:700;';
     } else if (hasSeance) {
-      d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:#007a41;font-weight:700;cursor:pointer;';
+      d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:3px 2px;font-size:11px;color:#007a41;font-weight:700;cursor:pointer;';
       d.title = hasSeance;
+      // Afficher numéro jour + nom séance abrégé
+      const seanceAbrege = hasSeance.substring(0, 4);
+      d.innerHTML = `<div>${j}</div><div style="font-size:8px;color:#007a41;line-height:1;margin-top:1px;">${seanceAbrege}</div>`;
     } else if (isFutur) {
       d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border);';
     } else {
