@@ -76,7 +76,7 @@
   .loader { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; }
 
   /* DASHBOARD */
-  .dash { background:#f5f5f5; min-height:100vh; }
+  .dash { background:#f5f5f5; min-height:100vh; padding-bottom:20px; }
   .dash-card { background:#fff; border:1px solid #e0e0e0; border-radius:12px; padding:13px; margin-bottom:10px; }
   .dash-card-accent-orange { border-left:4px solid #f59f00; }
   .dash-card-accent-green { border-left:4px solid #00c96e; }
@@ -125,7 +125,7 @@
   <button class="tab-btn" onclick="switchTab('historique')">📊 Historique</button>
 </div>
 
-<div class="container">
+<div class="container" id="main-container">
 
   <!-- LOGIN -->
   <div id="view-login" class="view active">
@@ -566,7 +566,14 @@ function switchTab(tab) {
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  if (tab === 'accueil') chargerDashboard();
+  // Dashboard prend toute la largeur sans padding
+  const container = document.getElementById('main-container');
+  if (tab === 'accueil') {
+    container.style.padding = '16px 16px';
+    chargerDashboard();
+  } else {
+    container.style.padding = '16px 20px';
+  }
 }
 
 function switchSubTab(sub) {
