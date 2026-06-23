@@ -75,6 +75,22 @@
   .recap-serie { font-size: 13px; padding: 3px 0; border-bottom: 1px solid var(--border); }
   .loader { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; }
 
+  /* DASHBOARD */
+  .dash { background:#f5f5f5; min-height:100vh; }
+  .dash-card { background:#fff; border:1px solid #e0e0e0; border-radius:12px; padding:13px; margin-bottom:10px; }
+  .dash-card-accent-orange { border-left:4px solid #f59f00; }
+  .dash-card-accent-green { border-left:4px solid #00c96e; }
+  .dash-label { font-size:9px; color:#999; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:7px; }
+  .dash-big-num { font-size:24px; font-weight:800; color:#111; }
+  .dash-bar-bg { background:#e8e8e8; border-radius:20px; height:5px; margin-top:6px; }
+  .dash-bar { height:100%; border-radius:20px; }
+  .dash-badge { border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; }
+  .dash-tag { border-radius:6px; padding:2px 7px; font-size:10px; font-weight:600; }
+  .dash-stat { background:#f5f5f5; border-radius:8px; padding:8px; text-align:center; }
+  .dash-stat-num { font-size:18px; font-weight:800; color:#111; }
+  .dash-stat-label { font-size:9px; color:#999; }
+  .dash-next { background:#111; border-radius:12px; padding:13px; margin-bottom:10px; }
+
   /* TIMER */
   .timer-overlay { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 2px solid var(--accent); padding: 16px 20px; z-index: 50; display: none; }
   .timer-overlay.active { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -103,7 +119,8 @@
 </header>
 
 <div class="tabs-bar" id="tabs-bar" style="display:none">
-  <button class="tab-btn active" onclick="switchTab('seance')">🏋️ Séance</button>
+  <button class="tab-btn active" onclick="switchTab('accueil')">🏠 Accueil</button>
+  <button class="tab-btn" onclick="switchTab('seance')">🏋️ Séance</button>
   <button class="tab-btn" onclick="switchTab('objectif')">🎯 Objectif</button>
   <button class="tab-btn" onclick="switchTab('historique')">📊 Historique</button>
 </div>
@@ -156,8 +173,54 @@
   <!-- APP -->
   <div id="view-app" class="view">
 
+    <!-- ONGLET ACCUEIL -->
+    <div id="tab-accueil" class="tab-content active dash">
+
+      <!-- Semaine + Poids -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="dash-card">
+          <div class="dash-label">Semaine</div>
+          <div class="dash-big-num"><span id="dash-seances-faites">—</span><span style="font-size:12px;color:#999;font-weight:400;"> / <span id="dash-seances-prevues">—</span></span></div>
+          <div class="dash-bar-bg"><div class="dash-bar" id="dash-bar-semaine" style="background:#c8f000;width:0%"></div></div>
+          <div style="font-size:10px;color:#ff9500;margin-top:4px;" id="dash-semaine-msg"></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-label">Poids actuel</div>
+          <div class="dash-big-num"><span id="dash-poids">—</span><span style="font-size:12px;color:#999;"> kg</span></div>
+          <div style="font-size:10px;color:#00a854;margin-top:6px;" id="dash-poids-evolution"></div>
+        </div>
+      </div>
+
+      <!-- Muscle en retard -->
+      <div class="dash-card dash-card-accent-orange" id="dash-muscle-card">
+        <div class="dash-label">⚠️ Muscle en retard</div>
+        <div id="dash-muscle-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Progression -->
+      <div class="dash-card dash-card-accent-green" id="dash-prog-card">
+        <div class="dash-label">📈 Progression cette semaine</div>
+        <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Dernière séance -->
+      <div class="dash-card">
+        <div class="dash-label">Dernière séance</div>
+        <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Prochaine séance -->
+      <div class="dash-next">
+        <div class="dash-label" style="color:#888;">Prochaine séance</div>
+        <div id="dash-next-seance">
+          <div style="color:#888;font-size:13px;">Chargement...</div>
+        </div>
+      </div>
+
+    </div>
+
     <!-- ONGLET SÉANCE -->
-    <div id="tab-seance" class="tab-content active">
+    <div id="tab-seance" class="tab-content">
 
       <!-- Sous-onglets -->
       <div class="sub-tabs">
@@ -384,7 +447,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbys3x-I2rb1S2SDxYUPIdAjSG9SWJayLTGZKKXWR1ywxFLJoV40ac1ziWzUsoHyLqpg/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4eAAyyhHhhVsnzFtkFgtdhjlUVWmMaO7kY27KnSK-kFl_6zDiHD8p35PcX88EMrmW/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -494,14 +557,16 @@ async function ouvrirApp() {
   chargerHistorique();
   chargerPoids();
   chargerRegularite();
+  chargerDashboard();
 }
 
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['seance','objectif','historique'][i] === tab);
+    b.classList.toggle('active', ['accueil','seance','objectif','historique'][i] === tab);
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'accueil') chargerDashboard();
 }
 
 function switchSubTab(sub) {
@@ -640,15 +705,8 @@ function afficherExoActuel() {
   }
 
   if (indexExoProgramme >= programmeSeance.length) {
-    // Fin du programme
-    card.style.display = 'block';
-    document.getElementById('exo-actuel-nom').textContent = '✅ Programme terminé !';
-    document.getElementById('exo-actuel-detail').textContent = 'Tu peux valider ou ajouter un exercice supplémentaire';
-    document.getElementById('exo-actuel-perf').innerHTML = '';
-    document.getElementById('exo-actuel-cible').innerHTML = '';
-    document.getElementById('exo-actuel-suggestion').innerHTML = '';
-    document.getElementById('series-list-actuel').innerHTML = '';
-    document.getElementById('btn-valider').style.display = seance.length > 0 ? 'block' : 'none';
+    // Fin du programme → retour à la liste
+    retourListeSeance();
     return;
   }
 
@@ -1136,10 +1194,14 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   const increment2 = parseFloat(String(incrementRaw2).replace(',','.').split('/')[0].trim()) || 2.5;
   const perf = lastPerfData[exerciceNom];
 
-  // Récupérer l'exo si déjà commencé
+  // Récupérer l'exo si déjà commencé - on continue d'ajouter des séries
   const exoExistant = seance.find(e => e.exerciceNom === exerciceNom);
-  exoEnCours = exoExistant || { muscle, exerciceId: exoId, exerciceNom, series: [] };
-  if (!exoExistant) seance.push(exoEnCours);
+  if (exoExistant) {
+    exoEnCours = exoExistant;
+  } else {
+    exoEnCours = { muscle, exerciceId: exoId, exerciceNom, series: [] };
+    seance.push(exoEnCours);
+  }
   serieNum = exoEnCours.series.length + 1;
 
   // Mettre à jour l'affichage
@@ -1172,6 +1234,133 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   majSeriesActuel();
   window.scrollTo(0, 0);
   showToast('✅ ' + exerciceNom + ' sélectionné');
+}
+
+// ==================== DASHBOARD ====================
+async function chargerDashboard() {
+  if (!athlete) return;
+  try {
+    const [resReg, resPerf, resProg, resPoids] = await Promise.all([
+      fetch(`${SCRIPT_URL}?action=getRegularite&athlete_id=${athlete.athlete_id}`),
+      fetch(`${SCRIPT_URL}?action=getDashboard&athlete_id=${athlete.athlete_id}`),
+      fetch(`${SCRIPT_URL}?action=getProgramme&athlete_id=${athlete.athlete_id}`),
+      fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}`)
+    ]);
+
+    const dataReg = await resReg.json();
+    const dataPerf = await resPerf.json();
+    const dataProg = await resProg.json();
+    const dataPoids = await resPoids.json();
+
+    // Régularité
+    const faites = dataReg.seances_semaine || 0;
+    const prevues = dataReg.seances_prevues || 0;
+    const pct = prevues > 0 ? Math.min(100, Math.round(faites/prevues*100)) : 0;
+    document.getElementById('dash-seances-faites').textContent = faites;
+    document.getElementById('dash-seances-prevues').textContent = prevues;
+    document.getElementById('dash-bar-semaine').style.width = pct + '%';
+    const manque = Math.max(0, prevues - faites);
+    document.getElementById('dash-semaine-msg').textContent = manque > 0 ? `⚠️ ${manque} séance${manque>1?'s':''} manquante${manque>1?'s':''}` : '✅ Objectif atteint !';
+    document.getElementById('dash-semaine-msg').style.color = manque > 0 ? '#ff9500' : '#00a854';
+
+    // Poids
+    if (dataPoids.poids && dataPoids.poids.length > 0) {
+      document.getElementById('dash-poids').textContent = dataPoids.poids[0].poids;
+      if (dataPoids.poids.length > 1) {
+        const diff = (dataPoids.poids[0].poids - dataPoids.poids[1].poids).toFixed(1);
+        const sign = diff > 0 ? '▲' : '▼';
+        const col = diff > 0 ? '#ff9500' : '#00a854';
+        document.getElementById('dash-poids-evolution').innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
+      }
+    }
+
+    // Muscle en retard
+    const muscleEl = document.getElementById('dash-muscle-content');
+    if (dataPerf.muscle_retard) {
+      const m = dataPerf.muscle_retard;
+      const pctM = m.series_min > 0 ? Math.min(100, Math.round(m.series_faites/m.series_optimale*100)) : 0;
+      muscleEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-size:15px;font-weight:800;color:#111;">${m.muscle}</div>
+          <span class="dash-badge" style="background:#fff8e1;color:#b45309;border:1px solid #f59f00;">${m.series_faites} / ${m.series_optimale} séries</span>
+        </div>
+        <div class="dash-bar-bg"><div class="dash-bar" style="background:#f59f00;width:${pctM}%"></div></div>
+        <div style="font-size:10px;color:#999;margin-top:5px;">Min : ${m.series_min} · Optimal : ${m.series_optimale}</div>
+      `;
+    } else {
+      muscleEl.innerHTML = '<div style="color:#00a854;font-size:13px;font-weight:700;">✅ Tous les muscles bien entraînés !</div>';
+    }
+
+    // Progression
+    const progEl = document.getElementById('dash-prog-content');
+    if (dataPerf.progression) {
+      const p = dataPerf.progression;
+      const pctP = p.total > 0 ? Math.round(p.en_progression/p.total*100) : 0;
+      const tagsHtml = p.details.slice(0,4).map(d =>
+        `<span class="dash-tag" style="background:${d.up?'#e8f8f0':'#ffeaea'};color:${d.up?'#007a41':'#c62828'};">
+          ${d.up?'↑':'↓'} ${d.exercice}
+        </span>`
+      ).join('');
+      progEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div class="dash-big-num">${p.en_progression}<span style="font-size:12px;color:#999;font-weight:400;"> / ${p.total} exos</span></div>
+          <span class="dash-badge" style="background:#e8f8f0;color:#007a41;border:1px solid #00c96e;">+${pctP}%</span>
+        </div>
+        <div class="dash-bar-bg" style="margin-bottom:8px;"><div class="dash-bar" style="background:#00c96e;width:${pctP}%"></div></div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">${tagsHtml}</div>
+      `;
+    } else {
+      progEl.innerHTML = '<div style="color:#999;font-size:13px;">Pas encore de données de progression</div>';
+    }
+
+    // Dernière séance
+    const lastEl = document.getElementById('dash-last-seance');
+    if (dataPerf.derniere_seance) {
+      const d = dataPerf.derniere_seance;
+      lastEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div>
+            <div style="font-size:15px;font-weight:800;color:#111;">${d.seance_id}</div>
+            <div style="font-size:11px;color:#999;margin-top:2px;">${d.date}</div>
+          </div>
+          <span class="dash-badge" style="background:#e8f8f0;border:1px solid #00c96e;color:#007a41;">✅ Complète</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div class="dash-stat"><div class="dash-stat-num">${d.nb_exercices}</div><div class="dash-stat-label">exos</div></div>
+          <div class="dash-stat"><div class="dash-stat-num">${d.nb_series}</div><div class="dash-stat-label">séries</div></div>
+          <div class="dash-stat"><div class="dash-stat-num">${d.rpe_moyen}</div><div class="dash-stat-label">RPE moy.</div></div>
+        </div>
+      `;
+    } else {
+      lastEl.innerHTML = '<div style="color:#999;font-size:13px;">Aucune séance enregistrée</div>';
+    }
+
+    // Prochaine séance
+    const nextEl = document.getElementById('dash-next-seance');
+    if (dataPerf.prochaine_seance) {
+      const n = dataPerf.prochaine_seance;
+      nextEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:15px;font-weight:800;color:#fff;">${n}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">Pas encore faite cette semaine</div>
+          </div>
+          <button onclick="demarrerDepuisDashboard('${n}')" style="background:#c8f000;color:#000;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;">Démarrer</button>
+        </div>
+      `;
+    } else {
+      nextEl.innerHTML = '<div style="color:#c8f000;font-size:13px;font-weight:700;">✅ Toutes les séances faites !</div>';
+    }
+
+  } catch(e) {
+    console.error('Dashboard error:', e);
+  }
+}
+
+function demarrerDepuisDashboard(seanceId) {
+  switchTab('seance');
+  document.getElementById('sel-seance-id').value = seanceId;
+  demarrerSeance();
 }
 
 // ==================== RÉGULARITÉ ====================
