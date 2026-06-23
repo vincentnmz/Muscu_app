@@ -567,16 +567,33 @@ function afficherListeSeance() {
     let cible = p.reps_mini;
 
     if (perf) {
-      cible = perf.max_reps < p.reps_max ? perf.max_reps + 1 : p.reps_max;
-      perfHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière fois : <strong style="color:var(--text)">${perf.last_charge}kg × ${perf.max_reps} reps</strong></div>
-                  <div style="font-size:12px;color:var(--accent);margin-top:2px">🎯 Cible : ${perf.last_charge}kg × ${cible} reps</div>`;
-      const surcharge = perf.max_reps >= p.reps_max && perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
+      // Prendre le meilleur des 2 dernières séances comme référence
+      const bestReps = perf.prev_max_reps !== null 
+        ? Math.max(perf.max_reps, perf.prev_max_reps) 
+        : perf.max_reps;
+      const bestCharge = perf.prev_charge !== null
+        ? Math.max(perf.last_charge, perf.prev_charge)
+        : perf.last_charge;
+      const isDiffSeance = perf.max_reps < bestReps || perf.last_charge < bestCharge;
+
+      cible = bestReps < p.reps_max ? bestReps + 1 : p.reps_max;
+
+      perfHtml = `
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
+          Dernière fois : <strong style="color:${isDiffSeance ? 'var(--danger)' : 'var(--text)'}">${perf.last_charge}kg × ${perf.max_reps} reps</strong>
+          ${isDiffSeance ? '<span style="color:var(--text-muted)"> (séance difficile)</span>' : ''}
+        </div>
+        ${isDiffSeance ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Meilleure réf : <strong style="color:var(--text)">${bestCharge}kg × ${bestReps} reps</strong></div>` : ''}
+        <div style="font-size:12px;color:var(--accent);margin-top:2px">🎯 Cible : ${bestCharge}kg × ${cible} reps</div>
+      `;
+
+      const surcharge = bestReps >= p.reps_max && perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
       if (surcharge) {
         const annees = Number(athlete.annees_pratique) || 0;
         if (annees >= 10) {
           suggHtml = `<div class="prog-suggestion" style="margin-top:6px">💪 +1 rep ou -30s repos</div>`;
         } else {
-          const nc = Math.round((perf.last_charge + increment) * 4) / 4;
+          const nc = Math.round((bestCharge + increment) * 4) / 4;
           suggHtml = `<div class="prog-suggestion" style="margin-top:6px">💪 Surcharge : ${nc}kg (+${increment}kg)</div>`;
         }
       }
@@ -1132,11 +1149,17 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   document.getElementById('card-hors-programme').style.display = 'none';
 
   if (perf) {
+    // Meilleur des 2 dernières séances
+    const bestReps = perf.prev_max_reps !== null ? Math.max(perf.max_reps, perf.prev_max_reps) : perf.max_reps;
+    const bestCharge = perf.prev_charge !== null ? Math.max(perf.last_charge, perf.prev_charge) : perf.last_charge;
+    const isDiff = perf.max_reps < bestReps || perf.last_charge < bestCharge;
+    const cible = bestReps < repsMax ? bestReps + 1 : repsMax;
+
     document.getElementById('exo-actuel-perf').innerHTML =
-      `Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong>`;
-    const cible = perf.max_reps < repsMax ? perf.max_reps + 1 : repsMax;
-    document.getElementById('exo-actuel-cible').innerHTML = `🎯 Cible : ${perf.last_charge}kg × ${cible} reps`;
-    document.getElementById('inp-charge').value = perf.last_charge;
+      `Dernière fois : <strong style="color:${isDiff ? 'var(--danger)' : 'var(--text)'}">${perf.last_charge}kg × ${perf.max_reps} reps</strong>
+       ${isDiff ? `<br><span style="color:var(--text-muted);font-size:11px">Meilleure réf : ${bestCharge}kg × ${bestReps} reps</span>` : ''}`;
+    document.getElementById('exo-actuel-cible').innerHTML = `🎯 Cible : ${bestCharge}kg × ${cible} reps`;
+    document.getElementById('inp-charge').value = bestCharge;
     document.getElementById('inp-reps').value = cible;
   } else {
     document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
