@@ -1322,11 +1322,20 @@ function renderCalendrier() {
     if (isToday) {
       d.style.cssText = 'background:var(--accent);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:#000;font-weight:700;';
     } else if (hasSeance) {
-      d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:3px 2px;font-size:11px;color:#007a41;font-weight:700;cursor:pointer;';
+      d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:3px 1px;font-size:11px;color:#007a41;font-weight:700;cursor:pointer;';
       d.title = hasSeance;
-      // Afficher numéro jour + nom séance abrégé
-      const seanceAbrege = hasSeance.substring(0, 4);
-      d.innerHTML = `<div>${j}</div><div style="font-size:8px;color:#007a41;line-height:1;margin-top:1px;">${seanceAbrege}</div>`;
+      // Abréger intelligemment le nom de séance
+      let seanceAbrege = hasSeance;
+      if (hasSeance.includes('Pec')) seanceAbrege = 'Pec';
+      else if (hasSeance.includes('Dos')) seanceAbrege = 'Dos';
+      else if (hasSeance.includes('Jambe') || hasSeance.includes('jambe')) seanceAbrege = 'Jamb';
+      else if (hasSeance.includes('Upper')) seanceAbrege = 'Upp';
+      else if (hasSeance.includes('Push')) seanceAbrege = 'Push';
+      else if (hasSeance.includes('Pull')) seanceAbrege = 'Pull';
+      else if (hasSeance.includes('Full')) seanceAbrege = 'Full';
+      else if (hasSeance.includes('Ischio') || hasSeance.includes('ischio')) seanceAbrege = 'Isch';
+      else seanceAbrege = hasSeance.substring(0, 4);
+      d.innerHTML = `<div style="font-size:10px;">${j}</div><div style="font-size:7px;color:#007a41;line-height:1.2;font-weight:600;">${seanceAbrege}</div>`;
     } else if (isFutur) {
       d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border);';
     } else {
