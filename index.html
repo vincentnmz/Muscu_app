@@ -1242,44 +1242,38 @@ async function nouvelleSeance() {
 }
 
 // ==================== PROGRAMME COMPLET ====================
-async function afficherProgrammeComplet() {
+function afficherProgrammeComplet() {
   const el = document.getElementById('programme-complet-content');
   if (!athlete) return;
-  el.innerHTML = '<div class="loader">Chargement...</div>';
+  
+  // Utiliser les données déjà chargées
+  const prog = dernierAppData ? dernierAppData.programme || [] : [];
 
-  try {
-    const res = await fetch(`${SCRIPT_URL}?action=getProgramme&athlete_id=${athlete.athlete_id}`);
-    const dataProg = await res.json();
-    const prog = dataProg.programme || [];
-
-    if (prog.length === 0) {
-      el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucun programme défini</div>';
-      return;
-    }
-
-    // Grouper par séance
-    const parSeance = {};
-    prog.forEach(p => {
-      if (!parSeance[p.seance_id]) parSeance[p.seance_id] = [];
-      parSeance[p.seance_id].push(p);
-    });
-
-    el.innerHTML = Object.entries(parSeance).map(([seanceId, exercices]) => `
-      <div class="card" style="margin-bottom:12px">
-        <div class="card-title">${seanceId}</div>
-        ${exercices.map((p, i) => `
-          <div class="prog-item" style="margin-bottom:8px">
-            <div style="font-size:14px;font-weight:700">${p.exercice}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
-              ${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `).join('');
-  } catch(e) {
-    el.innerHTML = '<div style="color:var(--danger);font-size:13px">Erreur de chargement</div>';
+  if (prog.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucun programme défini</div>';
+    return;
   }
+
+  // Grouper par séance
+  const parSeance = {};
+  prog.forEach(p => {
+    if (!parSeance[p.seance_id]) parSeance[p.seance_id] = [];
+    parSeance[p.seance_id].push(p);
+  });
+
+  el.innerHTML = Object.entries(parSeance).map(([seanceId, exercices]) => `
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">${seanceId}</div>
+      ${exercices.map(p => `
+        <div class="prog-item" style="margin-bottom:8px">
+          <div style="font-size:14px;font-weight:700">${p.exercice}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+            ${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
 }
 
 // ==================== OBJECTIF ====================
