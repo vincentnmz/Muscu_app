@@ -1512,11 +1512,13 @@ async function chargerDashboard() {
       const pctM = m.series_min > 0 ? Math.min(100, Math.round(m.series_faites/m.series_optimale*100)) : 0;
       muscleEl.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <div style="font-size:15px;font-weight:800;color:#111;">${m.muscle}</div>
-          <span class="dash-badge" style="background:#fff8e1;color:#b45309;border:1px solid #f59f00;">${m.series_faites} / ${m.series_optimale} séries</span>
+          <div style="font-size:15px;font-weight:800;">${m.muscle}</div>
+          <span style="background:rgba(245,159,0,0.2);color:#f59f00;border:1px solid #f59f00;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;">${m.series_faites} / ${m.series_optimale} séries</span>
         </div>
-        <div class="dash-bar-bg"><div class="dash-bar" style="background:#f59f00;width:${pctM}%"></div></div>
-        <div style="font-size:10px;color:#999;margin-top:5px;">Min : ${m.series_min} · Optimal : ${m.series_optimale}</div>
+        <div style="background:var(--surface2);border-radius:20px;height:5px;margin-top:6px;margin-bottom:5px;">
+          <div style="background:#f59f00;height:100%;width:${pctM}%;border-radius:20px;"></div>
+        </div>
+        <div style="font-size:10px;opacity:0.6;">Min : ${m.series_min} · Optimal : ${m.series_optimale}</div>
       `;
     } else {
       muscleEl.innerHTML = '<div style="color:#00a854;font-size:13px;font-weight:700;">✅ Tous les muscles bien entraînés !</div>';
