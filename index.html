@@ -522,7 +522,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0TOF_vRdtEWqRw-Ri0xipwRcH4MNKuE-7bpTCCcptw9WietsOXcL15kbDPEIGo4MX/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygi-KzdDJNOA10uxTeXoLqrVWhzhmTJHuMpl9lkH_SDLwEAHbAJZZg_McOAqm_r0dM/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -638,10 +638,8 @@ async function ouvrirApp() {
 
   if (exercicesData.length === 0) await chargerExercices();
   peuplerMusclesLibres();
-  chargerHistorique();
   chargerPoids();
-  chargerRegularite();
-  chargerDashboard();
+  chargerDashboard(); // Dashboard inclut la régularité
 }
 
 function switchTab(tab) {
@@ -661,6 +659,7 @@ function switchTab(tab) {
     document.body.classList.remove('on-accueil');
   }
   if (tab === 'historique') chargerHistorique();
+  if (tab === 'objectif') chargerRegularite();
 }
 
 function switchSubTab(sub) {
@@ -793,7 +792,17 @@ function afficherExoActuel() {
     document.getElementById('exo-actuel-detail').textContent = 'Aucun programme défini pour cette séance';
     document.getElementById('exo-actuel-perf').innerHTML = '';
     document.getElementById('exo-actuel-cible').innerHTML = '';
-    document.getElementById('exo-actuel-suggestion').innerHTML = '';
+    // Suggestion surcharge
+    const strategie2 = athlete.strategie_progression || 'Progression linéaire';
+    const progExo2 = programmeSeance.find(pr => pr.exercice === exerciceNom);
+    if (progExo2) {
+      const exoData2 = exercicesData.find(e => e.exercice === exerciceNom);
+      const inc2 = exoData2 ? parseFloat(String(exoData2.increment_kg).replace(',','.').split('/')[0].trim()) || 2.5 : 2.5;
+      const msg2 = calculerSurcharge(strategie2, perf, progExo2, bestCharge, inc2);
+      document.getElementById('exo-actuel-suggestion').innerHTML = msg2 ? `<div class="prog-suggestion" style="margin-top:6px">${msg2}</div>` : '';
+    } else {
+      document.getElementById('exo-actuel-suggestion').innerHTML = '';
+    }
     toggleExoHorsProgramme(true);
     return;
   }
@@ -850,7 +859,17 @@ function afficherExoActuel() {
   } else {
     document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
     document.getElementById('exo-actuel-cible').innerHTML = `🎯 Objectif : ${p.reps_mini}-${p.reps_max} reps`;
-    document.getElementById('exo-actuel-suggestion').innerHTML = '';
+    // Suggestion surcharge
+    const strategie2 = athlete.strategie_progression || 'Progression linéaire';
+    const progExo2 = programmeSeance.find(pr => pr.exercice === exerciceNom);
+    if (progExo2) {
+      const exoData2 = exercicesData.find(e => e.exercice === exerciceNom);
+      const inc2 = exoData2 ? parseFloat(String(exoData2.increment_kg).replace(',','.').split('/')[0].trim()) || 2.5 : 2.5;
+      const msg2 = calculerSurcharge(strategie2, perf, progExo2, bestCharge, inc2);
+      document.getElementById('exo-actuel-suggestion').innerHTML = msg2 ? `<div class="prog-suggestion" style="margin-top:6px">${msg2}</div>` : '';
+    } else {
+      document.getElementById('exo-actuel-suggestion').innerHTML = '';
+    }
     document.getElementById('inp-charge').value = '';
     document.getElementById('inp-reps').value = p.reps_mini;
   }
@@ -1339,9 +1358,24 @@ function afficherProgressionExo() {
   if (!exo || !progressionData[exo]) { el.innerHTML = ''; return; }
 
   const perfs = progressionData[exo];
-  if (perfs.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune donnée</div>'; return; }
+  if (perfs.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune donnée</div>';
+    return;
+  }
+
+  // Calculer progression globale
+  const first = perfs[perfs.length - 1];
+  const last = perfs[0];
+  const diffCharge = last.charge - first.charge;
+  const diffReps = last.reps - first.reps;
+  const progGlobale = diffCharge > 0 ? `+${diffCharge}kg` : diffReps > 0 ? `+${diffReps} reps` : 'Stable';
+  const progCouleur = diffCharge > 0 || diffReps > 0 ? '#00c96e' : 'var(--text-muted)';
 
   el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px;">
+      <span style="font-size:12px;color:var(--text-muted);">Progression totale</span>
+      <span style="font-size:13px;font-weight:700;color:${progCouleur};">${progGlobale}</span>
+    </div>
     <table style="width:100%;font-size:12px;border-collapse:collapse;">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border);">
         <td style="padding:5px 0;">Date</td>
@@ -1355,19 +1389,45 @@ function afficherProgressionExo() {
         let evol = '—';
         let evolColor = 'var(--text-muted)';
         if (prev) {
-          if (p.charge > prev.charge || p.reps > prev.reps) { evol = '↑'; evolColor = '#00c96e'; }
-          else if (p.charge < prev.charge || p.reps < prev.reps) { evol = '↓'; evolColor = 'var(--danger)'; }
+          if (p.charge > prev.charge) { evol = '↑'; evolColor = '#00c96e'; }
+          else if (p.charge < prev.charge) { evol = '↓'; evolColor = 'var(--danger)'; }
+          else if (p.reps > prev.reps) { evol = '↑'; evolColor = '#c8f000'; }
+          else if (p.reps < prev.reps) { evol = '↓'; evolColor = 'var(--danger)'; }
           else { evol = '='; evolColor = 'var(--text-muted)'; }
         }
-        return `<tr style="border-bottom:1px solid var(--surface2);">
-          <td style="padding:6px 0;font-weight:700;color:var(--text);">${p.date}</td>
+        const isLast = i === 0;
+        return `<tr style="border-bottom:1px solid var(--surface2);${isLast ? 'font-weight:700;' : ''}">
+          <td style="padding:6px 0;color:var(--text);">${p.date}</td>
           <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px;">${p.seance.substring(0,8)}</td>
-          <td style="padding:6px 0;text-align:center;color:var(--text);font-weight:600;">${p.charge}kg</td>
-          <td style="padding:6px 0;text-align:center;color:var(--text);">${p.reps}</td>
+          <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'};">${p.charge}kg</td>
+          <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'};">${p.reps}</td>
           <td style="padding:6px 0;text-align:center;color:${evolColor};font-size:16px;font-weight:700;">${evol}</td>
         </tr>`;
       }).join('')}
     </table>`;
+}
+
+// Volume cible par muscle selon niveau
+const VOLUME_CIBLE = {
+  'Pectoraux':   { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Dos':         { debutant: [8,12],  intermediaire: [14,18], experimente: [18,22] },
+  'Epaule':      { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Biceps':      { debutant: [6,10],  intermediaire: [10,14], experimente: [14,20] },
+  'Triceps':     { debutant: [6,10],  intermediaire: [10,14], experimente: [12,18] },
+  'Quadriceps':  { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Ischio':      { debutant: [6,10],  intermediaire: [10,14], experimente: [12,18] },
+  'Fessier':     { debutant: [8,12],  intermediaire: [12,16], experimente: [14,20] },
+  'Mollets':     { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Abdominaux':  { debutant: [6,10],  intermediaire: [10,14], experimente: [14,20] },
+  'Jambe':       { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Aducteur':    { debutant: [6,10],  intermediaire: [10,14], experimente: [12,18] },
+};
+
+function getNiveauKey(strategie) {
+  if (!strategie) return 'intermediaire';
+  if (strategie.includes('linéaire')) return 'debutant';
+  if (strategie.includes('avancée')) return 'experimente';
+  return 'intermediaire';
 }
 
 function afficherVolumeMuscle(volumes) {
@@ -1376,22 +1436,32 @@ function afficherVolumeMuscle(volumes) {
     el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune donnée cette semaine</div>';
     return;
   }
-  el.innerHTML = volumes.map(v => {
-    const pct = v.optimal > 0 ? Math.min(100, Math.round(v.faites/v.optimal*100)) : 0;
+
+  const niveauKey = getNiveauKey(athlete ? athlete.strategie_progression : null);
+  const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
+
+  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
+  volumes.map(v => {
+    const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
+    const mini = cible[0];
+    const optimal = cible[1];
+    const faites = v.faites || 0;
+    const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
     let couleur, statut;
-    if (v.faites >= v.optimal) { couleur = '#00c96e'; statut = '✅'; }
-    else if (v.faites >= v.min) { couleur = '#c8f000'; statut = '🟡'; }
-    else if (v.faites > 0) { couleur = '#f59f00'; statut = '⚠️'; }
+    if (faites >= optimal) { couleur = '#00c96e'; statut = '✅'; }
+    else if (faites >= mini) { couleur = '#c8f000'; statut = '🟡'; }
+    else if (faites > 0) { couleur = '#f59f00'; statut = '⚠️'; }
     else { couleur = 'var(--danger)'; statut = '🔴'; }
     return `
       <div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
           <span style="font-size:12px;font-weight:700;color:var(--text);">${v.muscle}</span>
-          <span style="font-size:11px;color:${couleur};font-weight:700;">${v.faites} / ${v.optimal} ${statut}</span>
+          <span style="font-size:11px;color:${couleur};font-weight:700;">${faites} / ${optimal} séries ${statut}</span>
         </div>
         <div style="background:var(--surface2);border-radius:20px;height:6px;">
           <div style="background:${couleur};height:100%;width:${pct}%;border-radius:20px;"></div>
         </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Min : ${mini} · Optimal : ${optimal}</div>
       </div>`;
   }).join('');
 }
@@ -1575,8 +1645,8 @@ async function chargerDashboard() {
       nextEl.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-size:15px;font-weight:800;color:var(--text);">${n}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Pas encore faite cette semaine</div>
+            <div style="font-size:15px;font-weight:800;">${n}</div>
+            <div style="font-size:11px;opacity:0.7;margin-top:2px;">Prochaine dans ton programme</div>
           </div>
           <button onclick="demarrerDepuisDashboard('${n}')" style="background:#c8f000;color:#000;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;">Démarrer</button>
         </div>
@@ -1701,6 +1771,45 @@ function playBeep() {
       osc.stop(ctx.currentTime + t + 0.2);
     });
   } catch(e) {}
+}
+
+// ==================== SURCHARGE PROGRESSIVE ====================
+function calculerSurcharge(strategie, perf, programme, bestCharge, increment) {
+  if (!perf || !programme) return null;
+
+  const repsMax = programme.reps_max;
+  const repsMini = programme.reps_mini;
+  const lastReps = perf.max_reps;
+  const prevReps = perf.prev_max_reps;
+  const prev2Reps = perf.prev2_max_reps !== undefined ? perf.prev2_max_reps : null;
+  const nouvelleCharge = Math.round((bestCharge + increment) * 4) / 4;
+
+  if (strategie === 'Progression linéaire') {
+    // DÉBUTANT : dès que reps_max atteint → +charge
+    if (lastReps >= repsMax) {
+      return `💪 Débutant — Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg) → repart à ${repsMini} reps`;
+    }
+
+  } else if (strategie === 'Double progression') {
+    // INTERMÉDIAIRE : 2x au max → +1 rep / 3x au max → +charge
+    const deuxFoisAuMax = lastReps >= repsMax && prevReps !== null && prevReps >= repsMax;
+    const troisFoisAuMax = deuxFoisAuMax && prev2Reps !== null && prev2Reps >= repsMax;
+
+    if (troisFoisAuMax) {
+      return `💪 Intermédiaire — 3x au max ! Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg) → repart à ${repsMini} reps`;
+    } else if (deuxFoisAuMax) {
+      return `📈 Intermédiaire — 2x au max → <strong>+1 rep</strong> la prochaine fois (${lastReps + 1} reps)`;
+    }
+
+  } else if (strategie === 'Progression avancée') {
+    // EXPÉRIMENTÉ : +1 rep ou -30s repos
+    const auMax = lastReps >= repsMax && prevReps !== null && prevReps >= repsMax;
+    if (auMax) {
+      return `💪 Expérimenté — Choix : <strong>+1 rep</strong> (${lastReps + 1} reps) ou <strong>-30s repos</strong>`;
+    }
+  }
+
+  return null;
 }
 
 function toggleTheme() {
