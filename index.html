@@ -639,7 +639,8 @@ async function ouvrirApp() {
   if (exercicesData.length === 0) await chargerExercices();
   peuplerMusclesLibres();
   chargerPoids();
-  chargerDashboard(); // Dashboard inclut la régularité
+  chargerDashboard();
+  chargerHistorique(); // Précharger pour le calendrier
 }
 
 function switchTab(tab) {
