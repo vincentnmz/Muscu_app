@@ -522,7 +522,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygi-KzdDJNOA10uxTeXoLqrVWhzhmTJHuMpl9lkH_SDLwEAHbAJZZg_McOAqm_r0dM/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5Gper5stVB6AeRnfPFMf4pRMYL4QuIaen99aqCBTlJgTrOSLBh9E88yprDzc3oFel/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -1539,17 +1539,12 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
 async function chargerDashboard() {
   if (!athlete) return;
   try {
-    const [resReg, resPerf, resProg, resPoids] = await Promise.all([
-      fetch(`${SCRIPT_URL}?action=getRegularite&athlete_id=${athlete.athlete_id}`),
-      fetch(`${SCRIPT_URL}?action=getDashboard&athlete_id=${athlete.athlete_id}`),
-      fetch(`${SCRIPT_URL}?action=getProgramme&athlete_id=${athlete.athlete_id}`),
-      fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}`)
+    const [dataPerf, dataProg, dataPoids, dataReg] = await Promise.all([
+      fetch(`${SCRIPT_URL}?action=getDashboard&athlete_id=${athlete.athlete_id}`).then(r => r.json()),
+      fetch(`${SCRIPT_URL}?action=getProgramme&athlete_id=${athlete.athlete_id}`).then(r => r.json()),
+      fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}`).then(r => r.json()),
+      fetch(`${SCRIPT_URL}?action=getRegularite&athlete_id=${athlete.athlete_id}`).then(r => r.json())
     ]);
-
-    const dataReg = await resReg.json();
-    const dataPerf = await resPerf.json();
-    const dataProg = await resProg.json();
-    const dataPoids = await resPoids.json();
 
     // Régularité
     const faites = dataReg.seances_semaine || 0;
