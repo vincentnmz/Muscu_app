@@ -251,6 +251,12 @@
         <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
       </div>
 
+      <!-- Récupération -->
+      <div class="dash-card" id="dash-recup-card">
+        <div class="dash-label">🧠 Récupération</div>
+        <div id="dash-recup-content"><div class="loader">Chargement...</div></div>
+      </div>
+
       <!-- Prochaine séance -->
       <div class="dash-next" style="margin-bottom:0;padding:16px;">
         <div class="dash-label" style="color:#888;">Prochaine séance</div>
@@ -497,6 +503,18 @@
         <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
       </div>
 
+      <!-- TENDANCES 4-8 SEMAINES -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="card-title" style="margin:0;">📊 Tendances</div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="afficherTendances(4)" id="btn-tend-4" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;">4 sem.</button>
+            <button onclick="afficherTendances(8)" id="btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;">8 sem.</button>
+          </div>
+        </div>
+        <div id="hist-tendances-content"><div class="loader">Chargement...</div></div>
+      </div>
+
     </div>
 
   </div>
@@ -522,7 +540,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8NhfIN06QdaaQma-FGO4TIJhsEpZL5q-NcpqtHY_A1RdYVh7AcF9M4Klq2EJxkstK/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxsu6zhEssK3c_KQhgq4nyyaDAQHGrXpuLaezPtJ-ONbpEu4eS97vjNjNhz_ZifPtbO/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -1258,6 +1276,7 @@ async function chargerPoids() {
 let calDate = new Date();
 let seancesDates = {};
 let progressionData = {};
+let tendancesData = null;
 
 async function chargerHistorique() {
   try {
@@ -1279,6 +1298,10 @@ async function chargerHistorique() {
 
     // Progression data
     progressionData = data.progression_par_exo || {};
+
+    // Tendances
+    tendancesData = data.tendances || null;
+    afficherTendances(4);
 
     // Volume par muscle
     afficherVolumeMuscle(data.volume_semaine || []);
@@ -1439,6 +1462,59 @@ function getNiveauKey(strategie) {
   if (strategie.includes('linéaire')) return 'debutant';
   if (strategie.includes('avancée')) return 'experimente';
   return 'intermediaire';
+}
+
+function afficherTendances(semaines) {
+  const el = document.getElementById('hist-tendances-content');
+  if (!el) return;
+
+  // Update buttons
+  document.getElementById('btn-tend-4').style.background = semaines === 4 ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('btn-tend-4').style.color = semaines === 4 ? '#000' : 'var(--text-muted)';
+  document.getElementById('btn-tend-8').style.background = semaines === 8 ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('btn-tend-8').style.color = semaines === 8 ? '#000' : 'var(--text-muted)';
+
+  if (!tendancesData) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas assez de données</div>';
+    return;
+  }
+
+  const t = semaines === 4 ? tendancesData.s4 : tendancesData.s8;
+  if (!t) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas assez de données sur cette période</div>';
+    return;
+  }
+
+  const statutColor = t.statut === 'positif' ? '#00c96e' : t.statut === 'plateau' ? '#f59f00' : 'var(--danger)';
+  const statutLabel = t.statut === 'positif' ? '🟢 Adaptation positive' : t.statut === 'plateau' ? '⚠️ Plateau' : '🔴 Régression';
+  const statutDesc = t.statut === 'positif' ? 'Volume et charges en progression' : t.statut === 'plateau' ? 'Charges stables depuis plusieurs semaines' : 'Charges en baisse ou RPE en forte hausse';
+
+  const ligne = (label, valDebut, valFin, unite, up) => {
+    const diff = valFin - valDebut;
+    const pct = valDebut > 0 ? Math.round(diff/valDebut*100) : 0;
+    const couleur = up === null ? 'var(--text-muted)' : (up ? '#00c96e' : 'var(--danger)');
+    const signe = pct > 0 ? '+' : '';
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface2);">
+        <div>
+          <div style="font-size:12px;font-weight:700;">${label}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${valDebut}${unite} → ${valFin}${unite}</div>
+        </div>
+        <span style="background:${couleur}22;color:${couleur};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;">${signe}${pct}%</span>
+      </div>`;
+  };
+
+  el.innerHTML = `
+    ${ligne('Volume hebdo', t.volume_debut, t.volume_fin, ' séries', t.volume_fin >= t.volume_debut)}
+    ${ligne('RPE moyen', t.rpe_debut, t.rpe_fin, '', null)}
+    ${ligne('Charge moyenne S1', t.charge_debut, t.charge_fin, 'kg', t.charge_fin >= t.charge_debut)}
+    <div style="background:${statutColor}22;border-radius:8px;padding:10px 12px;margin-top:10px;display:flex;align-items:center;gap:10px;">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:${statutColor};">${statutLabel}</div>
+        <div style="font-size:11px;color:${statutColor};opacity:0.8;margin-top:2px;">${statutDesc}</div>
+      </div>
+    </div>
+  `;
 }
 
 function afficherVolumeMuscle(volumes) {
@@ -1643,6 +1719,39 @@ async function chargerDashboard() {
       `;
     } else {
       lastEl.innerHTML = '<div style="color:#999;font-size:13px;">Aucune séance enregistrée</div>';
+    }
+
+    // Récupération
+    const recupEl = document.getElementById('dash-recup-content');
+    if (dataPerf.recuperation) {
+      const r = dataPerf.recuperation;
+      const statusColor = r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : 'var(--danger)';
+      const statusLabel = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟡 Fatigue modérée' : '🔴 Fatigue élevée';
+      recupEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span style="font-size:13px;font-weight:700;color:${statusColor};">${statusLabel}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div class="dash-stat">
+            <div class="dash-stat-num" style="color:${r.rpe_color};">${r.rpe_moyen}</div>
+            <div class="dash-stat-label">RPE moy. 7j</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num" style="color:${r.charge_color};">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div>
+            <div class="dash-stat-label">Charge S1</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num" style="color:${r.volume_color};">${r.volume_evol > 0 ? '+' : ''}${r.volume_evol}%</div>
+            <div class="dash-stat-label">Volume</div>
+          </div>
+        </div>
+        <div style="border-left:3px solid ${statusColor};padding-left:10px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:3px;">Conseil</div>
+          <div style="font-size:12px;opacity:0.8;">${r.conseil}</div>
+        </div>
+      `;
+    } else {
+      recupEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas assez de données (besoin de 2 semaines)</div>';
     }
 
     // Prochaine séance
