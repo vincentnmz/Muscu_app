@@ -1324,6 +1324,7 @@ let calDate = new Date();
 let seancesDates = {};
 let progressionData = {};
 let tendancesData = null;
+let dernierAppData = null;
 
 async function chargerHistorique() {
   try {
@@ -1676,13 +1677,20 @@ async function chargerAppData() {
     const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`);
     const data = await res.json();
 
-    // Stocker les données
+    // Stocker les données globalement
+    dernierAppData = data;
     seancesDates = data.historique.dates_seances || {};
     progressionData = data.historique.progression_par_exo || {};
     tendancesData = data.historique.tendances || null;
 
     // Graphique poids
     afficherGraphiquePoids(data.poids || []);
+
+    // Objectif
+    const objActuel = document.getElementById('obj-actuel');
+    if (objActuel) objActuel.innerHTML = `<span style="background:rgba(0,201,110,0.1);border:1px solid #00c96e;color:#00c96e;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:700;">${athlete.objectif || 'Non défini'}</span>`;
+    const selObj = document.getElementById('sel-objectif');
+    if (selObj && athlete.objectif) selObj.value = athlete.objectif;
 
     // Régularité dans objectif
     const regEl = document.getElementById('regularite-content');
