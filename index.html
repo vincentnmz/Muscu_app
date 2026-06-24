@@ -1317,34 +1317,25 @@ let tendancesData = null;
 let dernierAppData = null;
 
 async function chargerHistorique() {
-  try {
-    const res = await fetch(`${SCRIPT_URL}?action=getHistoriqueComplet&athlete_id=${athlete.athlete_id}`);
-    const data = await res.json();
-    
-    // Calendrier
-    seancesDates = data.dates_seances || {};
-    renderCalendrier();
+  if (!dernierAppData) return;
+  
+  seancesDates = dernierAppData.historique.dates_seances || {};
+  progressionData = dernierAppData.historique.progression_par_exo || {};
+  tendancesData = dernierAppData.historique.tendances || null;
 
-    // Exercices pour dropdown
-    const exercices = data.exercices || [];
-    const sel = document.getElementById('sel-hist-exercice');
+  renderCalendrier();
+  afficherVolumeMuscle(dernierAppData.historique.volume_semaine || []);
+  afficherTendances(4);
+
+  const exercices = dernierAppData.historique.exercices || [];
+  const sel = document.getElementById('sel-hist-exercice');
+  if (sel) {
     sel.innerHTML = '<option value="">— Choisir un exercice —</option>';
     exercices.forEach(e => {
       const o = document.createElement('option');
       o.value = e; o.textContent = e; sel.appendChild(o);
     });
-
-    // Progression data
-    progressionData = data.progression_par_exo || {};
-
-    // Tendances
-    tendancesData = data.tendances || null;
-    afficherTendances(4);
-
-    // Volume par muscle
-    afficherVolumeMuscle(data.volume_semaine || []);
-
-  } catch(e) { console.error('Historique error:', e); }
+  }
 }
 
 function renderCalendrier() {
