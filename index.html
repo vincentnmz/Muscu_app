@@ -724,7 +724,10 @@ function switchTab(tab) {
     container.classList.remove('no-pad');
     document.body.classList.remove('on-accueil');
   }
-  if (tab === 'historique') chargerHistorique();
+  if (tab === 'historique') {
+    if (dernierAppData) chargerHistorique();
+    else chargerAppData().then(() => chargerHistorique());
+  }
 
 }
 
@@ -747,23 +750,16 @@ async function demarrerSeance() {
   document.getElementById('card-exo-actuel').style.display = 'none';
 
   const listeEl = document.getElementById('liste-exercices-seance');
-  listeEl.innerHTML = '<div class="loader">Chargement du programme...</div>';
+  listeEl.innerHTML = '<div class="loader">Chargement...</div>';
   document.getElementById('card-liste-seance').style.display = 'block';
 
-  const [resProg, resPerf] = await Promise.all([
-    fetch(`${SCRIPT_URL}?action=getProgramme&athlete_id=${athlete.athlete_id}`),
-    fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=${encodeURIComponent(seanceId)}`)
-  ]);
-  const dataProg = await resProg.json();
+  // Utiliser le programme déjà chargé + charger seulement les perfs
+  const progSource = dernierAppData ? dernierAppData.programme || [] : [];
+  programmeSeance = progSource.filter(p => p.seance_id === seanceId);
+
+  const resPerf = await fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=${encodeURIComponent(seanceId)}`);
   const dataPerf = await resPerf.json();
-
-  programmeSeance = (dataProg.programme || []).filter(p => p.seance_id === seanceId);
   lastPerfData = dataPerf.perfs || {};
-
-  console.log('seanceId:', seanceId);
-  console.log('programme total:', dataProg.programme ? dataProg.programme.length : 0);
-  console.log('programmeSeance filtré:', programmeSeance.length);
-  console.log('lastPerfData keys:', Object.keys(lastPerfData));
 
   afficherListeSeance();
 }
