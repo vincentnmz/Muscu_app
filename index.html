@@ -522,7 +522,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5Gper5stVB6AeRnfPFMf4pRMYL4QuIaen99aqCBTlJgTrOSLBh9E88yprDzc3oFel/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx-NCNUolxmnzp9YOQ0Rvel24d4LF_cKbnb447DCgfBFmLT_G4DF0oh0_zJEu0F7uPv/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -659,7 +659,7 @@ function switchTab(tab) {
     document.body.classList.remove('on-accueil');
   }
   if (tab === 'historique') chargerHistorique();
-  if (tab === 'objectif') chargerRegularite();
+
 }
 
 function switchSubTab(sub) {
@@ -1539,12 +1539,13 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
 async function chargerDashboard() {
   if (!athlete) return;
   try {
-    const [dataPerf, dataProg, dataPoids, dataReg] = await Promise.all([
+    const [dataPerf, dataProg, dataPoids] = await Promise.all([
       fetch(`${SCRIPT_URL}?action=getDashboard&athlete_id=${athlete.athlete_id}`).then(r => r.json()),
       fetch(`${SCRIPT_URL}?action=getProgramme&athlete_id=${athlete.athlete_id}`).then(r => r.json()),
-      fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}`).then(r => r.json()),
-      fetch(`${SCRIPT_URL}?action=getRegularite&athlete_id=${athlete.athlete_id}`).then(r => r.json())
+      fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}`).then(r => r.json())
     ]);
+    // Régularité incluse dans getDashboard
+    const dataReg = dataPerf.regularite || {seances_semaine: 0, seances_prevues: 0};
 
     // Régularité
     const faites = dataReg.seances_semaine || 0;
@@ -1662,47 +1663,6 @@ function demarrerDepuisDashboard(seanceId) {
 }
 
 // ==================== RÉGULARITÉ ====================
-async function chargerRegularite() {
-  const el = document.getElementById('regularite-content');
-  try {
-    const res = await fetch(`${SCRIPT_URL}?action=getRegularite&athlete_id=${athlete.athlete_id}`);
-    const data = await res.json();
-    
-    const seancesFaites = data.seances_semaine || 0;
-    const seancesPrevues = data.seances_prevues || 0;
-    const manquantes = Math.max(0, seancesPrevues - seancesFaites);
-    
-    let statut, couleur;
-    if (seancesFaites >= seancesPrevues) {
-      statut = '✅ Objectif atteint !';
-      couleur = 'var(--success)';
-    } else if (seancesFaites >= seancesPrevues / 2) {
-      statut = `⚠️ Il te manque ${manquantes} séance${manquantes > 1 ? 's' : ''}`;
-      couleur = '#ff9500';
-    } else {
-      statut = `🔴 Il te manque ${manquantes} séance${manquantes > 1 ? 's' : ''}`;
-      couleur = 'var(--danger)';
-    }
-
-    // Barre de progression
-    const pct = seancesPrevues > 0 ? Math.min(100, Math.round(seancesFaites / seancesPrevues * 100)) : 0;
-
-    el.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div>
-          <div style="font-size:24px;font-weight:800;color:var(--accent)">${seancesFaites}<span style="font-size:14px;color:var(--text-muted)"> / ${seancesPrevues}</span></div>
-          <div style="font-size:12px;color:var(--text-muted)">séances cette semaine</div>
-        </div>
-        <div style="font-size:13px;font-weight:700;color:${couleur}">${statut}</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:20px;height:8px;overflow:hidden">
-        <div style="background:${couleur};height:100%;width:${pct}%;border-radius:20px;transition:width 0.5s"></div>
-      </div>
-    `;
-  } catch(e) {
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Impossible de charger</div>';
-  }
-}
 
 // ==================== TIMER ====================
 let timerInterval = null;
