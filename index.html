@@ -2244,11 +2244,13 @@ function filtrerGraphPoids(periode) {
 function demarrerSeanceLibre() {
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   programmeSeance = []; lastPerfData = {};
-  document.getElementById('card-liste-seance').style.display = 'none';
+  // Afficher la liste pour que card-hors-programme soit visible
+  document.getElementById('card-liste-seance').style.display = 'block';
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('btn-valider').style.display = 'none';
+  // Vider la liste d'exercices
+  document.getElementById('liste-exercices-seance').innerHTML = '';
   toggleExoHorsProgramme(true);
-  peuplerMusclesLibres();
 }
 
 function terminerExercice() {
