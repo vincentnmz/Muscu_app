@@ -1384,7 +1384,14 @@ function exerciceSuivant() {
 function toggleExoHorsProgramme(forceOpen) {
   const card = document.getElementById('card-hors-programme');
   const isOpen = card.style.display !== 'none';
-  card.style.display = (forceOpen || !isOpen) ? 'block' : 'none';
+  const willOpen = forceOpen || !isOpen;
+  card.style.display = willOpen ? 'block' : 'none';
+  if (willOpen) {
+    // Scroll vers le haut de la liste
+    const listeCard = document.getElementById('card-liste-seance');
+    if (listeCard) listeCard.scrollIntoView({behavior: 'smooth', block: 'start'});
+    peuplerMusclesLibres();
+  }
 }
 
 function peuplerMusclesLibres() {
