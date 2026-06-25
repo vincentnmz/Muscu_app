@@ -326,6 +326,411 @@
                 </select>
               </div>
             </div>
+            <button class="btn btn-outline" onclick="demarrerSeanceLibre()" style="margin-top:8px;font-size:12px;">🔀 Séance libre (sans programme)</button>
+          </div>
+
+          <!-- Liste exercices de la séance -->
+          <div id="card-liste-seance" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <div class="card-title" style="margin:0;">Exercices du programme</div>
+              <button class="btn btn-outline" onclick="toggleExoHorsProgramme()" style="font-size:12px;padding:6px 12px;">🔀 Autre exercice</button>
+            </div>
+            <div id="liste-exercices-seance"></div>
+          </div>
+
+
+
+          <!-- Exercice actuel guidé -->
+          <div id="card-exo-actuel" style="display:none">
+            <div class="exo-actuel-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                  <div class="exo-actuel-nom" id="exo-actuel-nom"></div>
+                  <div class="exo-actuel-detail" id="exo-actuel-detail"></div>
+                </div>
+                <span class="badge-accent" id="badge-series-actuel">0 séries</span>
+              </div>
+              <div class="exo-actuel-perf" id="exo-actuel-perf"></div>
+              <div class="exo-actuel-cible" id="exo-actuel-cible"></div>
+              <div id="exo-actuel-suggestion"></div>
+            </div>
+
+            <!-- Séries déjà faites -->
+            <div id="series-list-actuel" style="margin-bottom:10px"></div>
+
+            <!-- Saisie série -->
+            <div class="card">
+              <div class="card-title">Ajouter une série</div>
+              <div class="row3">
+                <div>
+                  <label>Charge kg</label>
+                  <input type="number" id="inp-charge" placeholder="0" step="0.5" min="0">
+                </div>
+                <div>
+                  <label>Reps</label>
+                  <input type="number" id="inp-reps" placeholder="0" min="1">
+                </div>
+                <div>
+                  <label>RPE</label>
+                  <select id="sel-rpe">
+                    <option value="">—</option>
+                    <option value="10">10 - Échec</option>
+                    <option value="9">9 - 1 rep en réserve</option>
+                    <option value="8">8 - 2 reps en réserve</option>
+                    <option value="7">7 - 3 reps en réserve</option>
+                    <option value="6">6 - Facile</option>
+                  </select>
+                </div>
+              </div>
+              <label>Repos</label>
+              <select id="sel-repos">
+                <option value="0">0s</option>
+                <option value="30">30s</option>
+                <option value="60">60s</option>
+                <option value="90">90s</option>
+                <option value="120" selected>120s</option>
+                <option value="180">180s</option>
+                <option value="240">240s</option>
+              </select>
+              <button class="btn btn-accent" onclick="ajouterSerie()">+ Ajouter cette série</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+              <button class="btn btn-outline" onclick="retourListeSeance()">⬅️ Liste</button>
+              <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer</button>
+              <button class="btn btn-outline" onclick="toggleExoHorsProgramme()">🔀 Autre</button>
+            </div>
+
+            <!-- Exercice hors programme -->
+            TYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Séance Muscu</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #242424;
+    --accent: #c8f000; --accent-dim: #9ab800; --text: #f0f0f0;
+    --text-muted: #888; --border: #2e2e2e; --danger: #ff4444;
+    --success: #00c96e; --radius: 12px;
+  }
+
+  /* LIGHT MODE - version 1 originale */
+  body.light-mode {
+    --bg: #ffffff; --surface: #ffffff; --surface2: #f5f5f5;
+    --accent: #c8f000; --accent-dim: #9ab800; --text: #111111;
+    --text-muted: #666666; --border: #e0e0e0; --danger: #e53935;
+    --success: #2e7d32; --radius: 12px;
+  }
+  body.light-mode 
+  body.light-mode header { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
+  body.light-mode header h1 { color: #111; }
+  body.light-mode #btn-logout { color: #e53935; }
+  body.light-mode .tabs-bar { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
+  body.light-mode .tab-btn { color: #999; }
+  body.light-mode .tab-btn.active { color: #111; border-bottom-color: #c8f000; }
+  body.light-mode .card { background: #fff; border-color: #e0e0e0; }
+  body.light-mode select, body.light-mode input { background: #f5f5f5; border-color: #e0e0e0; color: #111; }
+  body.light-mode .btn-outline { border-color: #e0e0e0; color: #111; }
+  body.light-mode .serie-item { background: #f5f5f5; border-color: #e0e0e0; }
+  body.light-mode .serie-data { color: #111; }
+  body.light-mode .exo-actuel-card { background: rgba(200,240,0,0.08); }
+  body.light-mode .exo-actuel-nom { color: #111; }
+  body.light-mode .hist-item { background: #f5f5f5; }
+  body.light-mode .hist-exo { color: #111; }
+  body.light-mode .prog-item { background: #f5f5f5; }
+  body.light-mode .prog-exo-name { color: #111; }
+  body { background: var(--bg); color: var(--text); font-family: 'Helvetica Neue', Arial, sans-serif; min-height: 100vh; padding-bottom: 0; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  header h1 { font-size: 17px; font-weight: 700; }
+  .logout-btn { font-size: 12px; color: var(--danger); cursor: pointer; background: none; border: none; padding: 4px 8px; }
+  .tabs-bar { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; position: sticky; top: 49px; z-index: 9; }
+  body { overflow-x: hidden; }
+  .tab-btn { flex: 1; padding: 12px 4px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: none; border-bottom: 2px solid transparent; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .sub-tabs { display: flex; gap: 0; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .sub-tab { flex: 1; padding: 10px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: var(--surface2); transition: all 0.2s; }
+  .sub-tab.active { background: rgba(200,240,0,0.1); color: var(--accent); }
+  .container { padding: 16px 20px; max-width: 480px; margin: 0 auto; }
+  .container.no-pad { padding: 0; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px; }
+  label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  select, input[type="number"], input[type="date"], input[type="text"], input[type="password"] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 15px; padding: 10px 12px; outline: none;
+    appearance: none; -webkit-appearance: none; margin-bottom: 10px;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .btn { width: 100%; padding: 14px; border-radius: var(--radius); border: none; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; letter-spacing: 0.3px; margin-bottom: 8px; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: #000; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-success { background: var(--success); color: #000; }
+  .btn-warning { background: #ff9500; color: #000; }
+  .btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 8px; width: auto; margin-bottom: 0; cursor: pointer; border: none; font-weight: 700; }
+  .btn-danger-sm { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+  .serie-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
+  .serie-num { font-size: 11px; color: var(--accent); font-weight: 700; min-width: 30px; }
+  .serie-data { flex: 1; font-size: 14px; font-weight: 600; }
+  .serie-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .badge-accent { background: rgba(200,240,0,0.1); border: 1px solid var(--accent-dim); color: var(--accent); border-radius: 20px; padding: 3px 10px; font-size: 12px; }
+  .section-sep { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .hist-item { background: var(--surface2); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+  .hist-muscle { font-size: 11px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .hist-exo { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .hist-serie { font-size: 12px; color: var(--text-muted); padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .hist-serie:last-child { border-bottom: none; }
+  .objectif-tag { display: inline-block; background: rgba(200,240,0,0.1); border: 1px solid var(--accent-dim); color: var(--accent); border-radius: 20px; padding: 6px 14px; font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .poids-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .poids-val { font-weight: 700; color: var(--accent); }
+  .prog-item { background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; }
+  .prog-exo-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .prog-exo-detail { font-size: 11px; color: var(--text-muted); }
+  .prog-perf { font-size: 12px; color: var(--text); margin-top: 4px; }
+  .prog-cible { font-size: 12px; color: var(--accent); font-weight: 700; margin-top: 2px; }
+  .prog-suggestion { background: rgba(200,240,0,0.1); border: 1px solid var(--accent-dim); border-radius: 6px; padding: 6px 10px; margin-top: 6px; font-size: 12px; color: var(--accent); }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--success); color: #000; padding: 12px 24px; border-radius: 30px; font-weight: 700; font-size: 14px; transition: transform 0.3s ease; z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .view { display: none; }
+  .view.active { display: block; }
+  .login-logo { text-align: center; padding: 30px 0 20px; }
+  .error-msg { color: var(--danger); font-size: 13px; text-align: center; margin-top: 4px; min-height: 20px; }
+  .recap-exo { margin-bottom: 14px; }
+  .recap-exo-name { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .recap-serie { font-size: 13px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .loader { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; }
+
+  /* === DASHBOARD === */
+  .dash { background: var(--bg); padding: 16px 20px 20px; }
+  .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .dash-card-accent-orange { border-left: 4px solid #f59f00; }
+  .dash-card-accent-green { border-left: 4px solid #00c96e; }
+  .dash-next { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 0; }
+  .dash-stat { background: var(--surface2); border-radius: 8px; padding: 8px; text-align: center; }
+  .dash-stat-num { font-size: 18px; font-weight: 800; color: var(--text); }
+  .dash-stat-label { font-size: 9px; color: var(--text-muted); }
+  .dash-big-num { font-size: 28px; font-weight: 800; color: var(--text); }
+  .dash-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
+  .dash-bar-bg { background: var(--surface2); border-radius: 20px; height: 5px; margin-top: 6px; }
+  .dash-bar { height: 100%; border-radius: 20px; }
+  body.light-mode .dash { background: #f5f5f5; }
+  body.light-mode .dash-card { background: #fff; border-color: #e0e0e0; }
+  body.light-mode .dash-stat { background: #f0f0f0; }
+  body.light-mode .dash-big-num { color: #111; }
+  body.light-mode .dash-stat-num { color: #111; }
+  body.light-mode .dash-label { color: #999; }
+  body.light-mode .dash-bar-bg { background: #e0e0e0; }
+
+  /* DASHBOARD */
+
+  .dash-badge { border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; }
+  .dash-tag { border-radius:6px; padding:2px 7px; font-size:10px; font-weight:600; }
+
+
+  /* TIMER */
+  .timer-overlay { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 2px solid var(--accent); padding: 16px 20px; z-index: 50; display: none; }
+  .timer-overlay.active { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .timer-circle-wrap { position: relative; width: 70px; height: 70px; flex-shrink: 0; }
+  .timer-circle-wrap svg { transform: rotate(-90deg); }
+  .timer-circle-bg { fill: none; stroke: var(--border); stroke-width: 5; }
+  .timer-circle-prog { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+  .timer-time { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 18px; font-weight: 800; color: var(--accent); }
+  .timer-info { flex: 1; }
+  .timer-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .timer-serie { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .timer-btn-skip { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .exo-actuel-card { background: rgba(200,240,0,0.05); border: 1px solid var(--accent-dim); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+  .exo-actuel-nom { font-size: 17px; font-weight: 800; color: var(--accent); }
+  .exo-actuel-detail { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .exo-actuel-perf { font-size: 13px; margin-top: 8px; }
+  .exo-actuel-cible { font-size: 14px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .prog-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 12px 0 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💪 <span id="header-nom">Muscu</span></h1>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button id="btn-theme" onclick="toggleTheme()" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;">☀️</button>
+    <button class="logout-btn" onclick="seDeconnecter()" style="display:none" id="btn-logout">🚪 Déco</button>
+  </div>
+</header>
+
+<div class="tabs-bar" id="tabs-bar" style="display:none">
+  <button class="tab-btn active" onclick="switchTab('accueil')">🏠 Accueil</button>
+  <button class="tab-btn" onclick="switchTab('seance')">🏋️ Séance</button>
+  <button class="tab-btn" onclick="switchTab('objectif')">🎯 Objectif</button>
+  <button class="tab-btn" onclick="switchTab('historique')">📊 Historique</button>
+</div>
+
+<div class="container" id="main-container">
+
+  <!-- LOGIN -->
+  <div id="view-login" class="view active">
+    <div class="login-logo">
+      <div style="font-size:48px">💪</div>
+      <div style="font-size:22px;font-weight:800;margin-top:8px">Séance Muscu</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Connecte-toi pour commencer</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Connexion</div>
+      <label>Login (4 chiffres)</label>
+      <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
+      <div id="login-error" class="error-msg"></div>
+      <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Première fois ? Créer un compte</div>
+      <div class="row2">
+        <div>
+          <label>Prénom</label>
+          <input type="text" id="reg-prenom" placeholder="Prénom">
+        </div>
+        <div>
+          <label>Taille (cm)</label>
+          <input type="number" id="reg-taille" placeholder="175">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Login (4 chiffres)</label>
+          <input type="password" id="reg-login" maxlength="4" placeholder="••••" inputmode="numeric">
+        </div>
+        <div>
+          <label>Années de pratique</label>
+          <input type="number" id="reg-annees" placeholder="Ex: 3" min="0" max="50">
+        </div>
+      </div>
+      <label>Date de naissance</label>
+      <input type="date" id="reg-ddn">
+      <div id="reg-error" class="error-msg"></div>
+      <button class="btn btn-outline" onclick="sInscrire()">Créer mon compte</button>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="view-app" class="view">
+
+    <!-- ONGLET ACCUEIL -->
+    <div id="tab-accueil" class="tab-content active dash">
+
+      <!-- Semaine + Poids -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="dash-card">
+          <div class="dash-label">Semaine</div>
+          <div class="dash-big-num"><span id="dash-seances-faites">—</span><span style="font-size:12px;color:#999;font-weight:400;"> / <span id="dash-seances-prevues">—</span></span></div>
+          <div class="dash-bar-bg"><div class="dash-bar" id="dash-bar-semaine" style="background:#c8f000;width:0%"></div></div>
+          <div style="font-size:10px;color:#ff9500;margin-top:4px;" id="dash-semaine-msg"></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-label">Poids actuel</div>
+          <div class="dash-big-num"><span id="dash-poids">—</span><span style="font-size:12px;color:#999;"> kg</span></div>
+          <div style="font-size:10px;color:#00a854;margin-top:6px;" id="dash-poids-evolution"></div>
+        </div>
+      </div>
+
+      <!-- Muscle en retard -->
+      <div class="dash-card dash-card-accent-orange" id="dash-muscle-card" style="padding:16px;">
+        <div class="dash-label">⚠️ Muscle en retard</div>
+        <div id="dash-muscle-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Progression -->
+      <div class="dash-card dash-card-accent-green" id="dash-prog-card" style="padding:16px;">
+        <div class="dash-label">📈 Progression cette semaine</div>
+        <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Dernière séance -->
+      <div class="dash-card" style="padding:16px;">
+        <div class="dash-label">Dernière séance</div>
+        <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Récupération -->
+      <div class="dash-card" id="dash-recup-card">
+        <div class="dash-label">🧠 Récupération</div>
+        <div id="dash-recup-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Prochaine séance -->
+      <div class="dash-next" style="margin-bottom:0;padding:16px;">
+        <div class="dash-label" style="color:#888;">Prochaine séance</div>
+        <div id="dash-next-seance">
+          <div style="color:#888;font-size:13px;">Chargement...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ONGLET SÉANCE -->
+    <div id="tab-seance" class="tab-content">
+
+      <!-- Sous-onglets -->
+      <div class="sub-tabs">
+        <button class="sub-tab active" onclick="switchSubTab('saisie')">🏋️ Saisie</button>
+        <button class="sub-tab" onclick="switchSubTab('programme')">📋 Programme</button>
+      </div>
+
+      <!-- SOUS-ONGLET SAISIE -->
+      <div id="subtab-saisie">
+
+        <!-- RECAP après validation -->
+        <div id="recap-block" style="display:none">
+          <div class="card">
+            <div class="card-title">🎉 Séance terminée !</div>
+            <div id="recap-seance-info" style="font-size:13px;color:var(--text-muted);margin-bottom:12px"></div>
+            <div id="recap-content"></div>
+          </div>
+          <div class="card" id="recap-programme-block" style="display:none">
+            <div class="card-title">📋 Programme vs Réalisé</div>
+            <div id="recap-programme-content"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📝 Note sur la séance</div>
+            <textarea id="inp-note" placeholder="Comment tu t'es senti ? Douleurs, fatigue, ambiance..." 
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;resize:none;min-height:80px;font-family:inherit"></textarea>
+          </div>
+          <button class="btn btn-accent" onclick="nouvelleSeance()">+ Nouvelle séance</button>
+        </div>
+
+        <!-- SAISIE -->
+        <div id="saisie-block">
+          <!-- Choix séance -->
+          <div class="card" id="card-choix-seance">
+            <div class="card-title">Ma séance</div>
+            <div class="row2">
+              <div>
+                <label>Date</label>
+                <input type="date" id="inp-date">
+              </div>
+              <div>
+                <label>Type de séance</label>
+                <select id="sel-seance-id" onchange="demarrerSeance()">
+                  <option value="">— Choisir —</option>
+                  <option value="Full body">Full body</option>
+                  <option value="Upper">Upper</option>
+                  <option value="Push">Push</option>
+                  <option value="Pull">Pull</option>
+                  <option value="Jambes compléte">Jambes compléte</option>
+                  <option value="Jambes Quadriceps">Jambes Quadriceps</option>
+                  <option value="Jambes Ischio-fessier">Jambes Ischio-fessier</option>
+                  <option value="Dos Bras">Dos Bras</option>
+                  <option value="Dos Epaule">Dos Epaule</option>
+                  <option value="Pec Bras">Pec Bras</option>
+                  <option value="Pec Epaule">Pec Epaule</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-outline" onclick="demarrerSeanceLibre()" style="margin-top:8px;font-size:12px;">🔀 Séance libre (sans programme)</button>
           </div>
 
           <!-- Liste exercices de la séance -->
@@ -392,13 +797,10 @@
               <button class="btn btn-accent" onclick="ajouterSerie()">+ Ajouter cette série</button>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
               <button class="btn btn-outline" onclick="retourListeSeance()">⬅️ Liste</button>
-              <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer l'exo</button>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <button class="btn btn-outline" onclick="exerciceSuivant()">Suivant ➡️</button>
-              <button class="btn btn-outline" onclick="toggleExoHorsProgramme()">🔀 Autre exercice</button>
+              <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer</button>
+              <button class="btn btn-outline" onclick="toggleExoHorsProgramme()">🔀 Autre</button>
             </div>
 
             <!-- Exercice hors programme -->
@@ -2141,6 +2543,16 @@ function filtrerGraphPoids(periode) {
   });
 
   document.getElementById('graph-poids-svg').innerHTML = svg;
+}
+
+function demarrerSeanceLibre() {
+  seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
+  programmeSeance = []; lastPerfData = {};
+  document.getElementById('card-liste-seance').style.display = 'none';
+  document.getElementById('card-exo-actuel').style.display = 'none';
+  document.getElementById('btn-valider').style.display = 'none';
+  toggleExoHorsProgramme(true);
+  peuplerMusclesLibres();
 }
 
 function terminerExercice() {
