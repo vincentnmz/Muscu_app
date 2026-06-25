@@ -340,6 +340,21 @@
 
 
 
+          <!-- Exercice hors programme -->
+                    <!-- Exercice hors programme -->
+          <div id="card-hors-programme" style="display:none" class="card">
+            <div class="card-title">Choisir un autre exercice</div>
+            <label>Muscle</label>
+            <select id="sel-muscle-libre" onchange="peuplerExercicesLibres()">
+              <option value="">— Choisir —</option>
+            </select>
+            <label>Exercice</label>
+            <select id="sel-exercice-libre">
+              <option value="">— Choisir —</option>
+            </select>
+            <button class="btn btn-accent" onclick="choisirExoLibre()">Choisir cet exercice</button>
+          </div>
+
           <!-- Exercice actuel guidé -->
           <div id="card-exo-actuel" style="display:none">
             <div class="exo-actuel-card">
@@ -401,7 +416,10 @@
               <button class="btn btn-outline" onclick="toggleExoHorsProgramme()">🔀 Autre</button>
             </div>
 
-            <!-- Exercice hors programme -->
+            
+
+          <!-- Exercice hors programme -->
+          <!-- Exercice hors programme -->
             TYPE html>
 <html lang="fr">
 <head>
@@ -802,21 +820,6 @@
               <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer</button>
               <button class="btn btn-outline" onclick="toggleExoHorsProgramme()">🔀 Autre</button>
             </div>
-
-            <!-- Exercice hors programme -->
-            <div id="card-hors-programme" style="display:none" class="card">
-              <div class="card-title">Choisir un autre exercice</div>
-              <label>Muscle</label>
-              <select id="sel-muscle-libre" onchange="peuplerExercicesLibres()">
-                <option value="">— Choisir —</option>
-              </select>
-              <label>Exercice</label>
-              <select id="sel-exercice-libre">
-                <option value="">— Choisir —</option>
-              </select>
-              <button class="btn btn-accent" onclick="choisirExoLibre()">Choisir cet exercice</button>
-            </div>
-          </div>
 
           <button class="btn btn-success" id="btn-valider" style="display:none" onclick="validerSeance()">
             ✅ Valider la séance
