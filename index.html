@@ -2174,16 +2174,27 @@ async function chargerAppData() {
     const muscleEl = document.getElementById('dash-muscle-content');
     if (dash.muscle_retard) {
       const m = dash.muscle_retard;
-      const pctM = m.series_optimale > 0 ? Math.min(100, Math.round(m.series_faites/m.series_optimale*100)) : 0;
+      const moyHebdo = Math.round(m.series_faites / 4 * 10) / 10;
+      const objectifHebdo = Math.round(m.series_optimale / 4);
+      const deficit = objectifHebdo > 0 ? Math.round((1 - moyHebdo/objectifHebdo) * 100) : 0;
       muscleEl.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <div style="font-size:15px;font-weight:800;">${m.muscle}</div>
-          <span style="background:rgba(245,159,0,0.2);color:#f59f00;border:1px solid #f59f00;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;">${m.series_faites} / ${m.series_optimale} séries</span>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-size:16px;font-weight:800;">${m.muscle}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Sous-entraîné sur les 4 dernières semaines</div>
+          </div>
+          <span style="background:rgba(245,159,0,0.2);color:#f59f00;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;">-${deficit}%</span>
         </div>
-        <div style="background:var(--surface2);border-radius:20px;height:5px;margin-top:6px;margin-bottom:5px;">
-          <div style="background:#f59f00;height:100%;width:${pctM}%;border-radius:20px;"></div>
-        </div>
-        <div style="font-size:10px;opacity:0.6;">Min : ${m.series_min} · Optimal : ${m.series_optimale}</div>`;
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="dash-stat">
+            <div class="dash-stat-num" style="color:#f59f00;">${moyHebdo}</div>
+            <div class="dash-stat-label">séries/sem moy.</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num">${objectifHebdo}</div>
+            <div class="dash-stat-label">objectif/sem</div>
+          </div>
+        </div>`;
     } else {
       muscleEl.innerHTML = '<div style="color:#00c96e;font-size:13px;font-weight:700;">✅ Tous les muscles bien entraînés !</div>';
     }
