@@ -415,82 +415,7 @@
               <button class="btn btn-outline" onclick="retourListeSeance()">⬅️ Liste</button>
               <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer l'exercice</button>
             </div>
-
-            
-
-          <!-- Exercice hors programme -->
-                        <label>Muscle</label>
-              <select id="sel-muscle-libre" onchange="peuplerExercicesLibres()">
-                <option value="">— Choisir —</option>
-              </select>
-              <label>Exercice</label>
-              <select id="sel-exercice-libre">
-                <option value="">— Choisir —</option>
-              </select>
-              <button class="btn btn-accent" onclick="choisirExoLibre()">Choisir cet exercice</button>
-            </div>
-            <div id="liste-exercices-seance"></div>
           </div>
-
-          <!-- Exercice actuel guidé -->
-          <div id="card-exo-actuel" style="display:none">
-            <div class="exo-actuel-card">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                <div>
-                  <div class="exo-actuel-nom" id="exo-actuel-nom"></div>
-                  <div class="exo-actuel-detail" id="exo-actuel-detail"></div>
-                </div>
-                <span class="badge-accent" id="badge-series-actuel">0 séries</span>
-              </div>
-              <div class="exo-actuel-perf" id="exo-actuel-perf"></div>
-              <div class="exo-actuel-cible" id="exo-actuel-cible"></div>
-              <div id="exo-actuel-suggestion"></div>
-            </div>
-
-            <!-- Séries déjà faites -->
-            <div id="series-list-actuel" style="margin-bottom:10px"></div>
-
-            <!-- Saisie série -->
-            <div class="card">
-              <div class="card-title">Ajouter une série</div>
-              <div class="row3">
-                <div>
-                  <label>Charge kg</label>
-                  <input type="number" id="inp-charge" placeholder="0" step="0.5" min="0">
-                </div>
-                <div>
-                  <label>Reps</label>
-                  <input type="number" id="inp-reps" placeholder="0" min="1">
-                </div>
-                <div>
-                  <label>RPE</label>
-                  <select id="sel-rpe">
-                    <option value="">—</option>
-                    <option value="10">10 - Échec</option>
-                    <option value="9">9 - 1 rep en réserve</option>
-                    <option value="8">8 - 2 reps en réserve</option>
-                    <option value="7">7 - 3 reps en réserve</option>
-                    <option value="6">6 - Facile</option>
-                  </select>
-                </div>
-              </div>
-              <label>Repos</label>
-              <select id="sel-repos">
-                <option value="0">0s</option>
-                <option value="30">30s</option>
-                <option value="60">60s</option>
-                <option value="90">90s</option>
-                <option value="120" selected>120s</option>
-                <option value="180">180s</option>
-                <option value="240">240s</option>
-              </select>
-              <button class="btn btn-accent" onclick="ajouterSerie()">+ Ajouter cette série</button>
-            </div>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <button class="btn btn-outline" onclick="retourListeSeance()">⬅️ Liste</button>
-              <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer l'exercice</button>
-            </div>
 
         </div>
       </div>
@@ -835,6 +760,9 @@ async function demarrerSeance() {
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   document.getElementById('btn-valider').style.display = 'none';
   document.getElementById('card-exo-actuel').style.display = 'none';
+  document.getElementById('card-hors-programme').style.display = 'none';
+  document.getElementById('sel-muscle-libre').innerHTML = '<option value="">— Choisir —</option>';
+  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
 
   const listeEl = document.getElementById('liste-exercices-seance');
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
@@ -854,7 +782,7 @@ async function demarrerSeance() {
 function afficherListeSeance() {
   const listeEl = document.getElementById('liste-exercices-seance');
   if (programmeSeance.length === 0) {
-    listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun programme pour cette séance</div>';
+    afficherListeExosLibres();
     return;
   }
 
@@ -922,6 +850,68 @@ function afficherListeSeance() {
     div.addEventListener('click', () => selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
     listeEl.appendChild(div);
   });
+
+  // Exercices ajoutés en plus du programme (via "Autre exercice")
+  const exosLibres = seance.filter(e => !programmeSeance.some(p => p.exercice === e.exerciceNom));
+  exosLibres.forEach(e => ajouterCarteExoLibre(listeEl, e));
+}
+
+function ajouterCarteExoLibre(listeEl, e) {
+  const seriesFaites = e.series.length;
+  const perf = lastPerfData[e.exerciceNom];
+  const div = document.createElement('div');
+  div.style.cssText = `background:var(--surface);border:1px solid ${seriesFaites > 0 ? 'var(--success)' : 'var(--border)'};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div style="font-size:15px;font-weight:800;flex:1">${e.exerciceNom}</div>
+      ${seriesFaites > 0 ? `<span style="color:var(--success);font-weight:700">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : ""}
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${e.muscle} · Hors programme</div>
+    ${perf ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong></div>` : '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai 🆕</div>'}
+    <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Appuie pour saisir</div>
+  `;
+  div.addEventListener('click', () => selectionnerExoLibre(e.exerciceNom));
+  listeEl.appendChild(div);
+}
+
+function afficherListeExosLibres() {
+  const listeEl = document.getElementById('liste-exercices-seance');
+  listeEl.innerHTML = '';
+  if (seance.length === 0) {
+    listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Ajoute un exercice avec le bouton "🔀 Autre exercice" ci-dessus</div>';
+    return;
+  }
+  seance.forEach(e => ajouterCarteExoLibre(listeEl, e));
+}
+
+function selectionnerExoLibre(exerciceNom) {
+  const exo = seance.find(e => e.exerciceNom === exerciceNom);
+  if (!exo) return;
+  exoEnCours = exo;
+  serieNum = exo.series.length + 1;
+
+  document.getElementById('card-liste-seance').style.display = 'none';
+  document.getElementById('card-exo-actuel').style.display = 'block';
+  document.getElementById('card-hors-programme').style.display = 'none';
+
+  document.getElementById('exo-actuel-nom').textContent = exo.exerciceNom;
+  document.getElementById('exo-actuel-detail').textContent = exo.muscle + ' · Hors programme';
+  document.getElementById('exo-actuel-cible').innerHTML = '';
+  document.getElementById('exo-actuel-suggestion').innerHTML = '';
+
+  const perf = lastPerfData[exo.exerciceNom];
+  if (perf) {
+    document.getElementById('exo-actuel-perf').innerHTML = `Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong>`;
+    document.getElementById('inp-charge').value = perf.last_charge;
+    document.getElementById('inp-reps').value = perf.max_reps;
+  } else {
+    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
+    document.getElementById('inp-charge').value = '';
+    document.getElementById('inp-reps').value = '';
+  }
+
+  majSeriesActuel();
+  window.scrollTo(0, 0);
 }
 
 function retourListeSeance() {
@@ -929,123 +919,6 @@ function retourListeSeance() {
   document.getElementById('card-liste-seance').style.display = 'block';
   afficherListeSeance();
   window.scrollTo(0, 0);
-}
-
-function afficherExoActuel() {
-  const card = document.getElementById('card-exo-actuel');
-
-  if (programmeSeance.length === 0) {
-    // Pas de programme → mode libre
-    card.style.display = 'block';
-    document.getElementById('exo-actuel-nom').textContent = 'Mode libre';
-    document.getElementById('exo-actuel-detail').textContent = 'Aucun programme défini pour cette séance';
-    document.getElementById('exo-actuel-perf').innerHTML = '';
-    document.getElementById('exo-actuel-cible').innerHTML = '';
-    // Suggestion surcharge
-    const strategie2 = athlete.strategie_progression || 'Progression linéaire';
-    const progExo2 = programmeSeance.find(pr => pr.exercice === exerciceNom);
-    if (progExo2) {
-      const exoData2 = exercicesData.find(e => e.exercice === exerciceNom);
-      const inc2 = exoData2 ? parseFloat(String(exoData2.increment_kg).replace(',','.').split('/')[0].trim()) || 2.5 : 2.5;
-      const msg2 = calculerSurcharge(strategie2, perf, progExo2, bestCharge, inc2);
-      document.getElementById('exo-actuel-suggestion').innerHTML = msg2 ? `<div class="prog-suggestion" style="margin-top:6px">${msg2}</div>` : '';
-    } else {
-      document.getElementById('exo-actuel-suggestion').innerHTML = '';
-    }
-    toggleExoHorsProgramme(true);
-    return;
-  }
-
-  if (indexExoProgramme >= programmeSeance.length) {
-    // Fin du programme → retour à la liste
-    retourListeSeance();
-    return;
-  }
-
-  const p = programmeSeance[indexExoProgramme];
-  const perf = lastPerfData[p.exercice];
-  const exoData = exercicesData.find(e => e.exercice === p.exercice);
-  const increment = exoData ? exoData.increment_kg : '2.5 / 5kg';
-
-  card.style.display = 'block';
-  document.getElementById('exo-actuel-nom').textContent = p.exercice;
-  document.getElementById('exo-actuel-detail').textContent = `${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}`;
-
-  // Pré-remplir charge et reps
-  if (perf) {
-    document.getElementById('inp-charge').value = perf.last_charge;
-    const cibleReps = perf.max_reps < p.reps_max ? perf.max_reps + 1 : p.reps_max;
-    document.getElementById('inp-reps').value = cibleReps;
-
-    document.getElementById('exo-actuel-perf').innerHTML =
-      `Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong>`;
-
-    document.getElementById('exo-actuel-cible').innerHTML =
-      `🎯 Cible : ${perf.last_charge}kg × ${cibleReps} reps`;
-
-    // Suggestion surcharge
-    const surcharge = perf.max_reps >= p.reps_max && perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
-    if (surcharge) {
-      const annees = Number(athlete.annees_pratique) || 0;
-      if (annees >= 10) {
-        document.getElementById('exo-actuel-suggestion').innerHTML = `
-          <div class="prog-suggestion">
-            💪 Expérimenté — Choix :<br>
-            <strong>Option 1 :</strong> +1 rep → ${perf.last_charge}kg × ${perf.max_reps + 1} reps<br>
-            <strong>Option 2 :</strong> Réduire le repos de 30s
-          </div>`;
-      } else {
-        const nouvelleCharge = Math.round((perf.last_charge + parseFloat(increment)) * 4) / 4;
-        document.getElementById('exo-actuel-suggestion').innerHTML = `
-          <div class="prog-suggestion">
-            💪 Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}) → repart à ${p.reps_mini} reps
-          </div>`;
-        // Pré-remplir avec la nouvelle charge et reps mini
-        document.getElementById('inp-charge').value = nouvelleCharge;
-        document.getElementById('inp-reps').value = p.reps_mini;
-      }
-    }
-  } else {
-    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
-    document.getElementById('exo-actuel-cible').innerHTML = `🎯 Objectif : ${p.reps_mini}-${p.reps_max} reps`;
-    // Suggestion surcharge
-    const strategie2 = athlete.strategie_progression || 'Progression linéaire';
-    const progExo2 = programmeSeance.find(pr => pr.exercice === exerciceNom);
-    if (progExo2) {
-      const exoData2 = exercicesData.find(e => e.exercice === exerciceNom);
-      const inc2 = exoData2 ? parseFloat(String(exoData2.increment_kg).replace(',','.').split('/')[0].trim()) || 2.5 : 2.5;
-      const msg2 = calculerSurcharge(strategie2, perf, progExo2, bestCharge, inc2);
-      document.getElementById('exo-actuel-suggestion').innerHTML = msg2 ? `<div class="prog-suggestion" style="margin-top:6px">${msg2}</div>` : '';
-    } else {
-      document.getElementById('exo-actuel-suggestion').innerHTML = '';
-    }
-    document.getElementById('inp-charge').value = '';
-    document.getElementById('inp-reps').value = p.reps_mini;
-  }
-
-  // Init exo en cours
-  exoEnCours = { muscle: exoData ? exoData.muscle : '', exerciceId: exoData ? exoData.exercice_id : p.exercice, exerciceNom: p.exercice, series: [] };
-  seance = seance.filter(e => e.exerciceNom !== p.exercice);
-  seance.push(exoEnCours);
-  serieNum = 1;
-  document.getElementById('series-list-actuel').innerHTML = '';
-  document.getElementById('badge-series-actuel').textContent = '0 séries';
-  document.getElementById('sel-rpe').value = '';
-}
-
-function exerciceSuivant() {
-  if (!exoEnCours || exoEnCours.series.length === 0) {
-    showToast('⚠️ Ajoute au moins une série !', '#ff4444'); return;
-  }
-  const nb = exoEnCours.series.length;
-  const nom = exoEnCours.exerciceNom;
-  if (confirm(`✅ "${nom}" — ${nb} série${nb>1?'s':''} enregistrée${nb>1?'s':''}.\n\nPasser à l'exercice suivant ?`)) {
-    indexExoProgramme++;
-    document.getElementById('card-hors-programme').style.display = 'none';
-    afficherExoActuel();
-    document.getElementById('btn-valider').style.display = seance.reduce((a,e)=>a+e.series.length,0) > 0 ? 'block' : 'none';
-    window.scrollTo(0,0);
-  }
 }
 
 function toggleExoHorsProgramme(forceOpen) {
@@ -1088,39 +961,18 @@ function choisirExoLibre() {
   if (!val) { showToast('⚠️ Choisis un exercice', '#ff4444'); return; }
   const [exoId, exoNom] = val.split('|');
   const muscle = document.getElementById('sel-muscle-libre').value;
-  const exoData = exercicesData.find(e => e.exercice_id == exoId);
 
-  // Sauvegarder l'exo en cours si il a des séries
-  if (exoEnCours && exoEnCours.series.length > 0) {
-    // Déjà dans seance
-  }
-
-  exoEnCours = { muscle, exerciceId: exoId, exerciceNom: exoNom, series: [] };
-  seance = seance.filter(e => e.exerciceNom !== exoNom);
-  seance.push(exoEnCours);
-  serieNum = 1;
-
-  document.getElementById('exo-actuel-nom').textContent = exoNom;
-  document.getElementById('exo-actuel-detail').textContent = muscle + ' · Hors programme';
-  document.getElementById('exo-actuel-perf').innerHTML = lastPerfData[exoNom]
-    ? `Dernière fois : <strong>${lastPerfData[exoNom].last_charge}kg × ${lastPerfData[exoNom].max_reps} reps</strong>`
-    : '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
-  document.getElementById('exo-actuel-cible').innerHTML = '';
-  document.getElementById('exo-actuel-suggestion').innerHTML = '';
-  document.getElementById('series-list-actuel').innerHTML = '';
-  document.getElementById('badge-series-actuel').textContent = '0 séries';
-
-  if (lastPerfData[exoNom]) {
-    document.getElementById('inp-charge').value = lastPerfData[exoNom].last_charge;
-    document.getElementById('inp-reps').value = lastPerfData[exoNom].max_reps;
-  } else {
-    document.getElementById('inp-charge').value = '';
-    document.getElementById('inp-reps').value = '';
+  const dejaPresent = seance.find(e => e.exerciceNom === exoNom);
+  if (!dejaPresent) {
+    seance.push({ muscle, exerciceId: exoId, exerciceNom: exoNom, series: [] });
   }
 
   document.getElementById('card-hors-programme').style.display = 'none';
-  window.scrollTo(0,0);
-  showToast('Exercice changé : ' + exoNom);
+  document.getElementById('sel-muscle-libre').value = '';
+  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
+  afficherListeSeance();
+  window.scrollTo(0, 0);
+  showToast(dejaPresent ? exoNom + ' est déjà dans la séance' : '✅ ' + exoNom + ' ajouté à la séance');
 }
 
 // ==================== SAISIE SÉRIE ====================
@@ -2244,12 +2096,14 @@ function filtrerGraphPoids(periode) {
 function demarrerSeanceLibre() {
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   programmeSeance = []; lastPerfData = {};
-  // Afficher la liste pour que card-hors-programme soit visible
+  // Réinitialiser le choix de programme et le bloc "autre exercice"
+  document.getElementById('sel-seance-id').value = '';
+  document.getElementById('sel-muscle-libre').innerHTML = '<option value="">— Choisir —</option>';
+  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
   document.getElementById('card-liste-seance').style.display = 'block';
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('btn-valider').style.display = 'none';
-  // Vider la liste d'exercices
-  document.getElementById('liste-exercices-seance').innerHTML = '';
+  afficherListeExosLibres();
   toggleExoHorsProgramme(true);
 }
 
