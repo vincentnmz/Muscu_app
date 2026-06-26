@@ -34,12 +34,13 @@ jobs:
 
       - name: Merge into gh-pages
         run: |
-          if [ ! -d gh-pages/.git ]; then
-            mkdir -p gh-pages
-            cd gh-pages
-            git init -b gh-pages
-            cd ..
+          mkdir -p gh-pages
+          cd gh-pages
+          if [ ! -d .git ]; then
+            git init
           fi
+          git checkout -B gh-pages
+          cd ..
           if [ "${{ github.ref_name }}" = "main" ]; then
             cp index.html gh-pages/index.html
           else
