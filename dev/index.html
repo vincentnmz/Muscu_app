@@ -1,0 +1,2144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Séance Muscu</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #242424;
+    --accent: #c8f000; --accent-dim: #9ab800; --text: #f0f0f0;
+    --text-muted: #888; --border: #2e2e2e; --danger: #ff4444;
+    --success: #00c96e; --radius: 12px;
+  }
+
+  /* LIGHT MODE - version 1 originale */
+  body.light-mode {
+    --bg: #ffffff; --surface: #ffffff; --surface2: #f5f5f5;
+    --accent: #c8f000; --accent-dim: #9ab800; --text: #111111;
+    --text-muted: #666666; --border: #e0e0e0; --danger: #e53935;
+    --success: #2e7d32; --radius: 12px;
+  }
+  body.light-mode 
+  body.light-mode header { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
+  body.light-mode header h1 { color: #111; }
+  body.light-mode #btn-logout { color: #e53935; }
+  body.light-mode .tabs-bar { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
+  body.light-mode .tab-btn { color: #999; }
+  body.light-mode .tab-btn.active { color: #111; border-bottom-color: #c8f000; }
+  body.light-mode .card { background: #fff; border-color: #e0e0e0; }
+  body.light-mode select, body.light-mode input { background: #f5f5f5; border-color: #e0e0e0; color: #111; }
+  body.light-mode .btn-outline { border-color: #e0e0e0; color: #111; }
+  body.light-mode .serie-item { background: #f5f5f5; border-color: #e0e0e0; }
+  body.light-mode .serie-data { color: #111; }
+  body.light-mode .exo-actuel-card { background: rgba(200,240,0,0.08); }
+  body.light-mode .exo-actuel-nom { color: #111; }
+  body.light-mode .hist-item { background: #f5f5f5; }
+  body.light-mode .hist-exo { color: #111; }
+  body.light-mode .prog-item { background: #f5f5f5; }
+  body.light-mode .prog-exo-name { color: #111; }
+  body { background: var(--bg); color: var(--text); font-family: 'Helvetica Neue', Arial, sans-serif; min-height: 100vh; padding-bottom: 0; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  header h1 { font-size: 17px; font-weight: 700; }
+  .logout-btn { font-size: 12px; color: var(--danger); cursor: pointer; background: none; border: none; padding: 4px 8px; }
+  .tabs-bar { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; position: sticky; top: 49px; z-index: 9; }
+  body { overflow-x: hidden; }
+  .tab-btn { flex: 1; padding: 12px 4px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: none; border-bottom: 2px solid transparent; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .sub-tabs { display: flex; gap: 0; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .sub-tab { flex: 1; padding: 10px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: var(--surface2); transition: all 0.2s; }
+  .sub-tab.active { background: rgba(200,240,0,0.1); color: var(--accent); }
+  .container { padding: 16px 20px; max-width: 480px; margin: 0 auto; }
+  .container.no-pad { padding: 0; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px; }
+  label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  select, input[type="number"], input[type="date"], input[type="text"], input[type="password"] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 15px; padding: 10px 12px; outline: none;
+    appearance: none; -webkit-appearance: none; margin-bottom: 10px;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .btn { width: 100%; padding: 14px; border-radius: var(--radius); border: none; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; letter-spacing: 0.3px; margin-bottom: 8px; }
+  .btn:active { transform: scale(0.97); }
+  .btn-accent { background: var(--accent); color: #000; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-success { background: var(--success); color: #000; }
+  .btn-warning { background: #ff9500; color: #000; }
+  .btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 8px; width: auto; margin-bottom: 0; cursor: pointer; border: none; font-weight: 700; }
+  .btn-danger-sm { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+  .serie-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
+  .serie-num { font-size: 11px; color: var(--accent); font-weight: 700; min-width: 30px; }
+  .serie-data { flex: 1; font-size: 14px; font-weight: 600; }
+  .serie-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .badge-accent { background: rgba(200,240,0,0.1); border: 1px solid var(--accent-dim); color: var(--accent); border-radius: 20px; padding: 3px 10px; font-size: 12px; }
+  .section-sep { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .hist-item { background: var(--surface2); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+  .hist-muscle { font-size: 11px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .hist-exo { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .hist-serie { font-size: 12px; color: var(--text-muted); padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .hist-serie:last-child { border-bottom: none; }
+  .objectif-tag { display: inline-block; background: rgba(200,240,0,0.1); border: 1px solid var(--accent-dim); color: var(--accent); border-radius: 20px; padding: 6px 14px; font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .poids-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .poids-val { font-weight: 700; color: var(--accent); }
+  .prog-item { background: var(--surface2); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; }
+  .prog-exo-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .prog-exo-detail { font-size: 11px; color: var(--text-muted); }
+  .prog-perf { font-size: 12px; color: var(--text); margin-top: 4px; }
+  .prog-cible { font-size: 12px; color: var(--accent); font-weight: 700; margin-top: 2px; }
+  .prog-suggestion { background: rgba(200,240,0,0.1); border: 1px solid var(--accent-dim); border-radius: 6px; padding: 6px 10px; margin-top: 6px; font-size: 12px; color: var(--accent); }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--success); color: #000; padding: 12px 24px; border-radius: 30px; font-weight: 700; font-size: 14px; transition: transform 0.3s ease; z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .view { display: none; }
+  .view.active { display: block; }
+  .login-logo { text-align: center; padding: 30px 0 20px; }
+  .error-msg { color: var(--danger); font-size: 13px; text-align: center; margin-top: 4px; min-height: 20px; }
+  .recap-exo { margin-bottom: 14px; }
+  .recap-exo-name { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .recap-serie { font-size: 13px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .loader { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; }
+
+  /* === DASHBOARD === */
+  .dash { background: var(--bg); padding: 16px 20px 20px; }
+  .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .dash-card-accent-orange { border-left: 4px solid #f59f00; }
+  .dash-card-accent-green { border-left: 4px solid #00c96e; }
+  .dash-next { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 0; }
+  .dash-stat { background: var(--surface2); border-radius: 8px; padding: 8px; text-align: center; }
+  .dash-stat-num { font-size: 18px; font-weight: 800; color: var(--text); }
+  .dash-stat-label { font-size: 9px; color: var(--text-muted); }
+  .dash-big-num { font-size: 28px; font-weight: 800; color: var(--text); }
+  .dash-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
+  .dash-bar-bg { background: var(--surface2); border-radius: 20px; height: 5px; margin-top: 6px; }
+  .dash-bar { height: 100%; border-radius: 20px; }
+  body.light-mode .dash { background: #f5f5f5; }
+  body.light-mode .dash-card { background: #fff; border-color: #e0e0e0; }
+  body.light-mode .dash-stat { background: #f0f0f0; }
+  body.light-mode .dash-big-num { color: #111; }
+  body.light-mode .dash-stat-num { color: #111; }
+  body.light-mode .dash-label { color: #999; }
+  body.light-mode .dash-bar-bg { background: #e0e0e0; }
+
+  /* DASHBOARD */
+
+  .dash-badge { border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; }
+  .dash-tag { border-radius:6px; padding:2px 7px; font-size:10px; font-weight:600; }
+
+
+  /* TIMER */
+  .timer-overlay { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 2px solid var(--accent); padding: 16px 20px; z-index: 50; display: none; }
+  .timer-overlay.active { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .timer-circle-wrap { position: relative; width: 70px; height: 70px; flex-shrink: 0; }
+  .timer-circle-wrap svg { transform: rotate(-90deg); }
+  .timer-circle-bg { fill: none; stroke: var(--border); stroke-width: 5; }
+  .timer-circle-prog { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+  .timer-time { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 18px; font-weight: 800; color: var(--accent); }
+  .timer-info { flex: 1; }
+  .timer-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .timer-serie { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .timer-btn-skip { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .exo-actuel-card { background: rgba(200,240,0,0.05); border: 1px solid var(--accent-dim); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+  .exo-actuel-nom { font-size: 17px; font-weight: 800; color: var(--accent); }
+  .exo-actuel-detail { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .exo-actuel-perf { font-size: 13px; margin-top: 8px; }
+  .exo-actuel-cible { font-size: 14px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .prog-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 12px 0 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💪 <span id="header-nom">Muscu</span></h1>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button id="btn-theme" onclick="toggleTheme()" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;">☀️</button>
+    <button class="logout-btn" onclick="seDeconnecter()" style="display:none" id="btn-logout">🚪 Déco</button>
+  </div>
+</header>
+
+<div class="tabs-bar" id="tabs-bar" style="display:none">
+  <button class="tab-btn active" onclick="switchTab('accueil')">🏠 Accueil</button>
+  <button class="tab-btn" onclick="switchTab('seance')">🏋️ Séance</button>
+  <button class="tab-btn" onclick="switchTab('objectif')">🎯 Objectif</button>
+  <button class="tab-btn" onclick="switchTab('historique')">📊 Historique</button>
+</div>
+
+<div class="container" id="main-container">
+
+  <!-- LOGIN -->
+  <div id="view-login" class="view active">
+    <div class="login-logo">
+      <div style="font-size:48px">💪</div>
+      <div style="font-size:22px;font-weight:800;margin-top:8px">Séance Muscu</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Connecte-toi pour commencer</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Connexion</div>
+      <label>Login (4 chiffres)</label>
+      <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
+      <div id="login-error" class="error-msg"></div>
+      <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Première fois ? Créer un compte</div>
+      <div class="row2">
+        <div>
+          <label>Prénom</label>
+          <input type="text" id="reg-prenom" placeholder="Prénom">
+        </div>
+        <div>
+          <label>Taille (cm)</label>
+          <input type="number" id="reg-taille" placeholder="175">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Login (4 chiffres)</label>
+          <input type="password" id="reg-login" maxlength="4" placeholder="••••" inputmode="numeric">
+        </div>
+        <div>
+          <label>Années de pratique</label>
+          <input type="number" id="reg-annees" placeholder="Ex: 3" min="0" max="50">
+        </div>
+      </div>
+      <label>Date de naissance</label>
+      <input type="date" id="reg-ddn">
+      <div id="reg-error" class="error-msg"></div>
+      <button class="btn btn-outline" onclick="sInscrire()">Créer mon compte</button>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="view-app" class="view">
+
+    <!-- ONGLET ACCUEIL -->
+    <div id="tab-accueil" class="tab-content active dash">
+
+      <!-- Semaine + Poids -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="dash-card">
+          <div class="dash-label">Semaine</div>
+          <div class="dash-big-num"><span id="dash-seances-faites">—</span><span style="font-size:12px;color:#999;font-weight:400;"> / <span id="dash-seances-prevues">—</span></span></div>
+          <div class="dash-bar-bg"><div class="dash-bar" id="dash-bar-semaine" style="background:#c8f000;width:0%"></div></div>
+          <div style="font-size:10px;color:#ff9500;margin-top:4px;" id="dash-semaine-msg"></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-label">Poids actuel</div>
+          <div class="dash-big-num"><span id="dash-poids">—</span><span style="font-size:12px;color:#999;"> kg</span></div>
+          <div style="font-size:10px;color:#00a854;margin-top:6px;" id="dash-poids-evolution"></div>
+        </div>
+      </div>
+
+      <!-- Muscle en retard -->
+      <div class="dash-card dash-card-accent-orange" id="dash-muscle-card" style="padding:16px;">
+        <div class="dash-label">⚠️ Muscle en retard</div>
+        <div id="dash-muscle-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Progression -->
+      <div class="dash-card dash-card-accent-green" id="dash-prog-card" style="padding:16px;">
+        <div class="dash-label">📈 Progression cette semaine</div>
+        <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Dernière séance -->
+      <div class="dash-card" style="padding:16px;">
+        <div class="dash-label">Dernière séance</div>
+        <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Récupération -->
+      <div class="dash-card" id="dash-recup-card">
+        <div class="dash-label">🧠 Récupération</div>
+        <div id="dash-recup-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Prochaine séance -->
+      <div class="dash-next" style="margin-bottom:0;padding:16px;">
+        <div class="dash-label" style="color:#888;">Prochaine séance</div>
+        <div id="dash-next-seance">
+          <div style="color:#888;font-size:13px;">Chargement...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ONGLET SÉANCE -->
+    <div id="tab-seance" class="tab-content">
+
+      <!-- Sous-onglets -->
+      <div class="sub-tabs">
+        <button class="sub-tab active" onclick="switchSubTab('saisie')">🏋️ Saisie</button>
+        <button class="sub-tab" onclick="switchSubTab('programme')">📋 Programme</button>
+      </div>
+
+      <!-- SOUS-ONGLET SAISIE -->
+      <div id="subtab-saisie">
+
+        <!-- RECAP après validation -->
+        <div id="recap-block" style="display:none">
+          <div class="card">
+            <div class="card-title">🎉 Séance terminée !</div>
+            <div id="recap-seance-info" style="font-size:13px;color:var(--text-muted);margin-bottom:12px"></div>
+            <div id="recap-content"></div>
+          </div>
+          <div class="card" id="recap-programme-block" style="display:none">
+            <div class="card-title">📋 Programme vs Réalisé</div>
+            <div id="recap-programme-content"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📝 Note sur la séance</div>
+            <textarea id="inp-note" placeholder="Comment tu t'es senti ? Douleurs, fatigue, ambiance..." 
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;resize:none;min-height:80px;font-family:inherit"></textarea>
+          </div>
+          <button class="btn btn-accent" onclick="nouvelleSeance()">+ Nouvelle séance</button>
+        </div>
+
+        <!-- SAISIE -->
+        <div id="saisie-block">
+          <!-- Choix séance -->
+          <div class="card" id="card-choix-seance">
+            <div class="card-title">Ma séance</div>
+            <div class="row2">
+              <div>
+                <label>Date</label>
+                <input type="date" id="inp-date">
+              </div>
+              <div>
+                <label>Type de séance</label>
+                <select id="sel-seance-id" onchange="demarrerSeance()">
+                  <option value="">— Choisir —</option>
+                  <option value="Full body">Full body</option>
+                  <option value="Upper">Upper</option>
+                  <option value="Push">Push</option>
+                  <option value="Pull">Pull</option>
+                  <option value="Jambes compléte">Jambes compléte</option>
+                  <option value="Jambes Quadriceps">Jambes Quadriceps</option>
+                  <option value="Jambes Ischio-fessier">Jambes Ischio-fessier</option>
+                  <option value="Dos Bras">Dos Bras</option>
+                  <option value="Dos Epaule">Dos Epaule</option>
+                  <option value="Pec Bras">Pec Bras</option>
+                  <option value="Pec Epaule">Pec Epaule</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-outline" onclick="demarrerSeanceLibre()" style="margin-top:8px;font-size:12px;">🔀 Séance libre (sans programme)</button>
+          </div>
+
+          <!-- Liste exercices de la séance -->
+          <div id="card-liste-seance" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <div class="card-title" style="margin:0;">Exercices du programme</div>
+              <button class="btn btn-outline" onclick="toggleExoHorsProgramme()" style="font-size:12px;padding:6px 12px;">🔀 Autre exercice</button>
+            </div>
+            <div id="card-hors-programme" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Choisir un autre exercice</div>
+              <label>Muscle</label>
+              <select id="sel-muscle-libre" onchange="peuplerExercicesLibres()">
+                <option value="">— Choisir —</option>
+              </select>
+              <label>Exercice</label>
+              <select id="sel-exercice-libre">
+                <option value="">— Choisir —</option>
+              </select>
+              <button class="btn btn-accent" onclick="choisirExoLibre()">Choisir cet exercice</button>
+            </div>
+            <div id="liste-exercices-seance"></div>
+          </div>
+
+
+
+          <!-- Exercice hors programme -->
+                    <!-- Exercice hors programme -->
+          
+
+          <!-- Exercice actuel guidé -->
+          <div id="card-exo-actuel" style="display:none">
+            <div class="exo-actuel-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                  <div class="exo-actuel-nom" id="exo-actuel-nom"></div>
+                  <div class="exo-actuel-detail" id="exo-actuel-detail"></div>
+                </div>
+                <span class="badge-accent" id="badge-series-actuel">0 séries</span>
+              </div>
+              <div class="exo-actuel-perf" id="exo-actuel-perf"></div>
+              <div class="exo-actuel-cible" id="exo-actuel-cible"></div>
+              <div id="exo-actuel-suggestion"></div>
+            </div>
+
+            <!-- Séries déjà faites -->
+            <div id="series-list-actuel" style="margin-bottom:10px"></div>
+
+            <!-- Saisie série -->
+            <div class="card">
+              <div class="card-title">Ajouter une série</div>
+              <div class="row3">
+                <div>
+                  <label>Charge kg</label>
+                  <input type="number" id="inp-charge" placeholder="0" step="0.5" min="0">
+                </div>
+                <div>
+                  <label>Reps</label>
+                  <input type="number" id="inp-reps" placeholder="0" min="1">
+                </div>
+                <div>
+                  <label>RPE</label>
+                  <select id="sel-rpe">
+                    <option value="">—</option>
+                    <option value="10">10 - Échec</option>
+                    <option value="9">9 - 1 rep en réserve</option>
+                    <option value="8">8 - 2 reps en réserve</option>
+                    <option value="7">7 - 3 reps en réserve</option>
+                    <option value="6">6 - Facile</option>
+                  </select>
+                </div>
+              </div>
+              <label>Repos</label>
+              <select id="sel-repos">
+                <option value="0">0s</option>
+                <option value="30">30s</option>
+                <option value="60">60s</option>
+                <option value="90">90s</option>
+                <option value="120" selected>120s</option>
+                <option value="180">180s</option>
+                <option value="240">240s</option>
+              </select>
+              <button class="btn btn-accent" onclick="ajouterSerie()">+ Ajouter cette série</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <button class="btn btn-outline" onclick="retourListeSeance()">⬅️ Liste</button>
+              <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer l'exercice</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- BOUTON VALIDER SEANCE -->
+      <button class="btn btn-success" id="btn-valider" style="display:none" onclick="validerSeance()">
+        ✅ Valider la séance
+      </button>
+
+      <!-- SOUS-ONGLET PROGRAMME -->
+      <div id="subtab-programme" style="display:none">
+        <div id="programme-complet-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+    </div>
+
+<!-- ONGLET OBJECTIF -->
+    <div id="tab-objectif" class="tab-content">
+
+      <!-- Objectif -->
+      <div class="card">
+        <div class="card-title">Mon objectif</div>
+        <div id="obj-actuel" style="margin-bottom:12px"></div>
+        <label>Modifier</label>
+        <select id="sel-objectif">
+          <option value="Prise de masse">Prise de masse</option>
+          <option value="Sèche">Sèche</option>
+          <option value="Prise de masse + sèche">Prise de masse + sèche</option>
+          <option value="Maintien">Maintien</option>
+        </select>
+        <button class="btn btn-accent" onclick="sauvegarderObjectif()">Sauvegarder</button>
+      </div>
+
+      <!-- Graphique poids -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+          <div>
+            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Évolution du poids</div>
+            <div style="display:flex;align-items:baseline;gap:6px;">
+              <span style="font-size:28px;font-weight:800;color:var(--text);" id="graph-poids-actuel">—</span>
+              <span style="font-size:13px;color:var(--text-muted);">kg</span>
+              <span style="font-size:12px;font-weight:700;" id="graph-poids-evol"></span>
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;">
+            <button onclick="filtrerGraphPoids('1m')" id="gp-1m" style="background:var(--text);color:var(--bg);border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;">1M</button>
+            <button onclick="filtrerGraphPoids('3m')" id="gp-3m" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;">3M</button>
+            <button onclick="filtrerGraphPoids('all')" id="gp-all" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;">Tout</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <svg id="graph-poids-svg" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;overflow:visible;">
+            <text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Chargement...</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Saisie poids -->
+      <div class="card">
+        <div class="card-title">Enregistrer mon poids</div>
+        <div class="row2">
+          <div>
+            <label>Poids (kg)</label>
+            <input type="number" id="inp-poids" placeholder="75" step="0.1">
+          </div>
+          <div>
+            <label>Date</label>
+            <input type="date" id="inp-date-poids">
+          </div>
+        </div>
+        <button class="btn btn-outline" onclick="sauvegarderPoids()">Enregistrer</button>
+      </div>
+
+      <!-- Régularité -->
+      <div class="card">
+        <div class="card-title">📅 Régularité cette semaine</div>
+        <div id="regularite-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+    </div>
+
+    <!-- ONGLET HISTORIQUE -->
+    <div id="tab-historique" class="tab-content">
+
+      <!-- CALENDRIER -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);" id="cal-titre">Juin 2026</span>
+          <div style="display:flex;gap:12px;">
+            <span onclick="calNaviguer(-1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">◀</span>
+            <span onclick="calNaviguer(1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">▶</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:5px;">
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">L</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">M</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">M</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">J</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">V</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">S</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">D</div>
+        </div>
+        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+        <div style="display:flex;gap:12px;margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:#e8f8f0;border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Séance</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--accent);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Aujourd'hui</span></div>
+        </div>
+      </div>
+
+      <!-- PROGRESSION PAR EXERCICE -->
+      <div class="card">
+        <div class="card-title">📈 Progression par exercice</div>
+        <select id="sel-hist-exercice" onchange="afficherProgressionExo()" style="margin-bottom:10px;">
+          <option value="">— Choisir un exercice —</option>
+        </select>
+        <div id="hist-progression-content"></div>
+      </div>
+
+      <!-- VOLUME PAR MUSCLE -->
+      <div class="card">
+        <div class="card-title">💪 Volume par muscle — semaine en cours</div>
+        <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- TENDANCES 4-8 SEMAINES -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="card-title" style="margin:0;">📊 Tendances</div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="afficherTendances(4)" id="btn-tend-4" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;">4 sem.</button>
+            <button onclick="afficherTendances(8)" id="btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;">8 sem.</button>
+          </div>
+        </div>
+        <div id="hist-tendances-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+    </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- DRAWER PROGRESSION -->
+<div id="drawer-overlay" onclick="fermerDrawer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:99;"></div>
+<div id="drawer-progression" style="position:fixed;bottom:-100%;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-radius:20px 20px 0 0;z-index:100;max-height:85vh;display:flex;flex-direction:column;transition:bottom 0.3s ease;">
+  <div style="padding:12px;text-align:center;cursor:pointer;" onclick="fermerDrawer()">
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto;"></div>
+  </div>
+  <div style="padding:0 16px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);">
+    <div>
+      <div style="font-size:15px;font-weight:800;color:var(--text);">Progression cette semaine</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">vs semaine précédente · référence S1</div>
+    </div>
+    <button onclick="fermerDrawer()" style="background:var(--surface2);border:none;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--text-muted);cursor:pointer;">✕</button>
+  </div>
+  <div style="padding:10px 16px;display:flex;gap:6px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+    <button onclick="filtrerDrawer('tous')" id="fd-tous" style="background:var(--accent);color:#000;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">Tous</button>
+    <button onclick="filtrerDrawer('up')" id="fd-up" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:20px;padding:5px 12px;font-size:11px;cursor:pointer;">↑ Progression</button>
+    <button onclick="filtrerDrawer('down')" id="fd-down" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:20px;padding:5px 12px;font-size:11px;cursor:pointer;">↓ Baisse</button>
+    <button onclick="filtrerDrawer('stable')" id="fd-stable" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:20px;padding:5px 12px;font-size:11px;cursor:pointer;">= Stable</button>
+  </div>
+  <div id="drawer-liste" style="overflow-y:auto;padding:8px 16px;flex:1;"></div>
+</div>
+
+<!-- TIMER REPOS -->
+<div class="timer-overlay" id="timer-overlay">
+  <div class="timer-circle-wrap">
+    <svg width="70" height="70" viewBox="0 0 70 70">
+      <circle class="timer-circle-bg" cx="35" cy="35" r="30"/>
+      <circle class="timer-circle-prog" id="timer-circle" cx="35" cy="35" r="30"
+        stroke-dasharray="188.5" stroke-dashoffset="0"/>
+    </svg>
+    <div class="timer-time" id="timer-display">0</div>
+  </div>
+  <div class="timer-info">
+    <div class="timer-label">⏱️ Temps de repos</div>
+    <div class="timer-serie" id="timer-serie-info"></div>
+  </div>
+  <button class="timer-btn-skip" onclick="skipTimer()">Prêt ✓</button>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyi1Fq6BkstUGTm1on47GSFa5HTMCgtkODrA36gDQw0ieJh9Eb-wtocBlEfflhNvig-/exec";
+
+const MAPPING_SEANCE = {
+  'Full body':             null,
+  'Upper':                 ['Pectoraux', 'Dos', 'Epaule', 'Biceps', 'Triceps', 'Abdominaux'],
+  'Push':                  ['Pectoraux', 'Epaule', 'Triceps', 'Abdominaux'],
+  'Pull':                  ['Dos', 'Biceps', 'Abdominaux'],
+  'Jambes compléte':       ['Jambe', 'Quadriceps', 'Ischio', 'Fessier', 'Aducteur', 'Mollets', 'Abdominaux'],
+  'Jambes Quadriceps':     ['Quadriceps', 'Jambe', 'Aducteur', 'Mollets', 'Abdominaux'],
+  'Jambes Ischio-fessier': ['Ischio', 'Fessier', 'Aducteur', 'Mollets', 'Abdominaux'],
+  'Dos Bras':              ['Dos', 'Biceps', 'Triceps', 'Abdominaux'],
+  'Dos Epaule':            ['Dos', 'Epaule', 'Abdominaux'],
+  'Pec Bras':              ['Pectoraux', 'Biceps', 'Triceps', 'Abdominaux'],
+  'Pec Epaule':            ['Pectoraux', 'Epaule', 'Abdominaux'],
+};
+
+let athlete = null;
+let seance = [];
+let exoEnCours = null;
+let serieNum = 1;
+let exercicesData = [];
+let programmeSeance = [];
+let lastPerfData = {};
+let indexExoProgramme = 0;
+let historiqueData = [];
+
+// ==================== SESSION ====================
+window.addEventListener('load', async () => {
+  const saved = localStorage.getItem('muscu_athlete');
+  if (saved) {
+    try {
+      athlete = JSON.parse(saved);
+      await ouvrirApp();
+    } catch(e) { localStorage.removeItem('muscu_athlete'); }
+  }
+});
+
+// ==================== AUTH ====================
+async function seConnecter() {
+  const login = document.getElementById('inp-login').value.trim();
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!login) { errEl.textContent = 'Entre ton login.'; return; }
+  errEl.textContent = 'Connexion...';
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=login&login=${encodeURIComponent(login)}`);
+    const data = await res.json();
+    if (data.success) {
+      athlete = data.athlete;
+      localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
+      ouvrirApp();
+    } else { errEl.textContent = 'Login incorrect.'; }
+  } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
+}
+
+async function sInscrire() {
+  const prenom = document.getElementById('reg-prenom').value.trim();
+  const taille = document.getElementById('reg-taille').value.trim();
+  const login = document.getElementById('reg-login').value.trim();
+  const annees = document.getElementById('reg-annees').value.trim();
+  const ddn = document.getElementById('reg-ddn').value;
+  const errEl = document.getElementById('reg-error');
+  errEl.textContent = '';
+  if (!prenom || !login || !ddn || !taille || annees === '') { errEl.textContent = 'Remplis tous les champs.'; return; }
+  if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
+  errEl.textContent = 'Création...';
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=register&login=${encodeURIComponent(login)}&prenom=${encodeURIComponent(prenom)}&ddn=${encodeURIComponent(ddn)}&taille=${encodeURIComponent(taille)}&annees=${encodeURIComponent(annees)}`);
+    const data = await res.json();
+    if (data.success) {
+      athlete = data.athlete;
+      localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
+      showToast('✅ Bienvenue ' + prenom + ' !');
+      ouvrirApp();
+    } else { errEl.textContent = data.message || 'Ce login est déjà utilisé.'; }
+  } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
+}
+
+function seDeconnecter() {
+  athlete = null; seance = []; exoEnCours = null; serieNum = 1;
+  localStorage.removeItem('muscu_athlete');
+  document.getElementById('view-login').classList.add('active');
+  document.getElementById('view-app').classList.remove('active');
+  document.getElementById('tabs-bar').style.display = 'none';
+  document.getElementById('btn-logout').style.display = 'none';
+  document.getElementById('header-nom').textContent = 'Muscu';
+  document.getElementById('inp-login').value = '';
+  document.getElementById('login-error').textContent = '';
+}
+
+// ==================== APP ====================
+async function ouvrirApp() {
+  document.getElementById('view-login').classList.remove('active');
+  document.getElementById('view-app').classList.add('active');
+  document.getElementById('tabs-bar').style.display = 'flex';
+  document.getElementById('btn-logout').style.display = 'block';
+  document.getElementById('btn-theme').style.display = 'block';
+  // Restore saved theme
+  const savedTheme = localStorage.getItem('muscu_theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
+    document.getElementById('btn-theme').textContent = '🌙';
+  }
+  document.getElementById('header-nom').textContent = athlete.nom;
+  document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('inp-date-poids').value = new Date().toISOString().split('T')[0];
+  document.getElementById('main-container').classList.add('no-pad');
+  document.body.classList.add('on-accueil');
+
+  if (athlete.objectif) {
+    document.getElementById('obj-actuel').innerHTML = `<span class="objectif-tag">🎯 ${athlete.objectif}</span>`;
+    document.getElementById('sel-objectif').value = athlete.objectif;
+  }
+
+  if (exercicesData.length === 0) await chargerExercices();
+  peuplerMusclesLibres();
+  chargerAppData(); // Un seul appel pour tout
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['accueil','seance','objectif','historique'][i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  // Dashboard prend toute la largeur sans padding
+  const container = document.getElementById('main-container');
+  if (tab === 'accueil') {
+    container.classList.add('no-pad');
+    document.body.classList.add('on-accueil');
+    chargerDashboard();
+  } else {
+    container.classList.remove('no-pad');
+    document.body.classList.remove('on-accueil');
+  }
+  if (tab === 'historique') {
+    if (dernierAppData) chargerHistorique();
+    else chargerAppData().then(() => chargerHistorique());
+  }
+
+}
+
+function switchSubTab(sub) {
+  document.querySelectorAll('.sub-tab').forEach((b, i) => {
+    b.classList.toggle('active', ['saisie','programme'][i] === sub);
+  });
+  document.getElementById('subtab-saisie').style.display = sub === 'saisie' ? 'block' : 'none';
+  document.getElementById('subtab-programme').style.display = sub === 'programme' ? 'block' : 'none';
+  if (sub === 'programme') {
+    if (dernierAppData) afficherProgrammeComplet();
+    else chargerAppData().then(() => afficherProgrammeComplet());
+  }
+}
+
+// ==================== SÉANCE GUIDÉE ====================
+async function demarrerSeance() {
+  const seanceId = document.getElementById('sel-seance-id').value;
+  if (!seanceId) return;
+
+  seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
+  document.getElementById('btn-valider').style.display = 'none';
+  document.getElementById('card-exo-actuel').style.display = 'none';
+  document.getElementById('card-hors-programme').style.display = 'none';
+  document.getElementById('sel-muscle-libre').innerHTML = '<option value="">— Choisir —</option>';
+  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
+
+  const listeEl = document.getElementById('liste-exercices-seance');
+  listeEl.innerHTML = '<div class="loader">Chargement...</div>';
+  document.getElementById('card-liste-seance').style.display = 'block';
+
+  // Utiliser le programme déjà chargé + charger seulement les perfs
+  const progSource = dernierAppData ? dernierAppData.programme || [] : [];
+  programmeSeance = progSource.filter(p => p.seance_id === seanceId);
+
+  const resPerf = await fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=${encodeURIComponent(seanceId)}`);
+  const dataPerf = await resPerf.json();
+  lastPerfData = dataPerf.perfs || {};
+
+  afficherListeSeance();
+}
+
+function afficherListeSeance() {
+  const listeEl = document.getElementById('liste-exercices-seance');
+  if (programmeSeance.length === 0) {
+    afficherListeExosLibres();
+    return;
+  }
+
+  // Stocker le programme dans un tableau global indexé pour éviter les problèmes d'apostrophes
+  listeEl.innerHTML = '';
+  programmeSeance.forEach((p, i) => {
+    const perf = lastPerfData[p.exercice];
+    const exoData = exercicesData.find(e => e.exercice === p.exercice);
+    const incrementRaw = exoData ? exoData.increment_kg : "2.5";
+    const increment = parseFloat(String(incrementRaw).replace(',','.').split('/')[0].trim()) || 2.5;
+    const dejaDone = seance.find(e => e.exerciceNom === p.exercice && e.series.length > 0);
+    const seriesFaites = dejaDone ? dejaDone.series.length : 0;
+    const borderColor = dejaDone ? "var(--success)" : "var(--border)";
+
+    let perfHtml = "";
+    let suggHtml = "";
+    let cible = p.reps_mini;
+
+    if (perf) {
+      // Prendre le meilleur des 2 dernières séances comme référence
+      const bestReps = perf.prev_max_reps !== null 
+        ? Math.max(perf.max_reps, perf.prev_max_reps) 
+        : perf.max_reps;
+      const bestCharge = perf.prev_charge !== null
+        ? Math.max(perf.last_charge, perf.prev_charge)
+        : perf.last_charge;
+      const isDiffSeance = perf.max_reps < bestReps || perf.last_charge < bestCharge;
+
+      cible = bestReps < p.reps_max ? bestReps + 1 : p.reps_max;
+
+      perfHtml = `
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
+          Dernière fois : <strong style="color:${isDiffSeance ? 'var(--danger)' : 'var(--text)'}">${perf.last_charge}kg × ${perf.max_reps} reps</strong>
+          ${isDiffSeance ? '<span style="color:var(--text-muted)"> (séance difficile)</span>' : ''}
+        </div>
+        ${isDiffSeance ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Meilleure réf : <strong style="color:var(--text)">${bestCharge}kg × ${bestReps} reps</strong></div>` : ''}
+        <div style="font-size:12px;color:var(--accent);margin-top:2px">🎯 Cible : ${bestCharge}kg × ${cible} reps</div>
+      `;
+
+      const surcharge = bestReps >= p.reps_max && perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
+      if (surcharge) {
+        const annees = Number(athlete.annees_pratique) || 0;
+        if (annees >= 10) {
+          suggHtml = `<div class="prog-suggestion" style="margin-top:6px">💪 +1 rep ou -30s repos</div>`;
+        } else {
+          const nc = Math.round((bestCharge + increment) * 4) / 4;
+          suggHtml = `<div class="prog-suggestion" style="margin-top:6px">💪 Surcharge : ${nc}kg (+${increment}kg)</div>`;
+        }
+      }
+    } else {
+      perfHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai 🆕</div>`;
+    }
+
+    const div = document.createElement('div');
+    div.style.cssText = `background:var(--surface);border:1px solid ${borderColor};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="font-size:15px;font-weight:800;flex:1">${p.exercice}</div>
+        ${dejaDone ? `<span style="color:var(--success);font-weight:700">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : ""}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}</div>
+      ${perfHtml}${suggHtml}
+      <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Appuie pour saisir</div>
+    `;
+    div.addEventListener('click', () => selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
+    listeEl.appendChild(div);
+  });
+
+  // Exercices ajoutés en plus du programme (via "Autre exercice")
+  const exosLibres = seance.filter(e => !programmeSeance.some(p => p.exercice === e.exerciceNom));
+  exosLibres.forEach(e => ajouterCarteExoLibre(listeEl, e));
+}
+
+function ajouterCarteExoLibre(listeEl, e) {
+  const seriesFaites = e.series.length;
+  const perf = lastPerfData[e.exerciceNom];
+  const div = document.createElement('div');
+  div.style.cssText = `background:var(--surface);border:1px solid ${seriesFaites > 0 ? 'var(--success)' : 'var(--border)'};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div style="font-size:15px;font-weight:800;flex:1">${e.exerciceNom}</div>
+      ${seriesFaites > 0 ? `<span style="color:var(--success);font-weight:700">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : ""}
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${e.muscle} · Hors programme</div>
+    ${perf ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong></div>` : '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai 🆕</div>'}
+    <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Appuie pour saisir</div>
+  `;
+  div.addEventListener('click', () => selectionnerExoLibre(e.exerciceNom));
+  listeEl.appendChild(div);
+}
+
+function afficherListeExosLibres() {
+  const listeEl = document.getElementById('liste-exercices-seance');
+  listeEl.innerHTML = '';
+  if (seance.length === 0) {
+    listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Ajoute un exercice avec le bouton "🔀 Autre exercice" ci-dessus</div>';
+    return;
+  }
+  seance.forEach(e => ajouterCarteExoLibre(listeEl, e));
+}
+
+function selectionnerExoLibre(exerciceNom) {
+  const exo = seance.find(e => e.exerciceNom === exerciceNom);
+  if (!exo) return;
+  exoEnCours = exo;
+  serieNum = exo.series.length + 1;
+
+  document.getElementById('card-liste-seance').style.display = 'none';
+  document.getElementById('card-exo-actuel').style.display = 'block';
+  document.getElementById('card-hors-programme').style.display = 'none';
+
+  document.getElementById('exo-actuel-nom').textContent = exo.exerciceNom;
+  document.getElementById('exo-actuel-detail').textContent = exo.muscle + ' · Hors programme';
+  document.getElementById('exo-actuel-cible').innerHTML = '';
+  document.getElementById('exo-actuel-suggestion').innerHTML = '';
+
+  const perf = lastPerfData[exo.exerciceNom];
+  if (perf) {
+    document.getElementById('exo-actuel-perf').innerHTML = `Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong>`;
+    document.getElementById('inp-charge').value = perf.last_charge;
+    document.getElementById('inp-reps').value = perf.max_reps;
+  } else {
+    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
+    document.getElementById('inp-charge').value = '';
+    document.getElementById('inp-reps').value = '';
+  }
+
+  majSeriesActuel();
+  window.scrollTo(0, 0);
+}
+
+function retourListeSeance() {
+  document.getElementById('card-exo-actuel').style.display = 'none';
+  document.getElementById('card-liste-seance').style.display = 'block';
+  afficherListeSeance();
+  window.scrollTo(0, 0);
+}
+
+function toggleExoHorsProgramme(forceOpen) {
+  const card = document.getElementById('card-hors-programme');
+  const isOpen = card.style.display !== 'none';
+  const willOpen = forceOpen || !isOpen;
+  card.style.display = willOpen ? 'block' : 'none';
+  if (willOpen) {
+    // Scroll vers le haut de la liste
+    const listeCard = document.getElementById('card-liste-seance');
+    if (listeCard) listeCard.scrollIntoView({behavior: 'smooth', block: 'start'});
+    peuplerMusclesLibres();
+  }
+}
+
+function peuplerMusclesLibres() {
+  const muscles = [...new Set(exercicesData.map(e => e.muscle))].sort();
+  const sel = document.getElementById('sel-muscle-libre');
+  sel.innerHTML = '<option value="">— Choisir —</option>';
+  muscles.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m; sel.appendChild(o);
+  });
+}
+
+function peuplerExercicesLibres() {
+  const muscle = document.getElementById('sel-muscle-libre').value;
+  const sel = document.getElementById('sel-exercice-libre');
+  sel.innerHTML = '<option value="">— Choisir —</option>';
+  exercicesData.filter(e => e.muscle === muscle).forEach(e => {
+    const o = document.createElement('option');
+    o.value = e.exercice_id + '|' + e.exercice;
+    o.textContent = e.exercice;
+    sel.appendChild(o);
+  });
+}
+
+function choisirExoLibre() {
+  const val = document.getElementById('sel-exercice-libre').value;
+  if (!val) { showToast('⚠️ Choisis un exercice', '#ff4444'); return; }
+  const [exoId, exoNom] = val.split('|');
+  const muscle = document.getElementById('sel-muscle-libre').value;
+
+  const dejaPresent = seance.find(e => e.exerciceNom === exoNom);
+  if (!dejaPresent) {
+    seance.push({ muscle, exerciceId: exoId, exerciceNom: exoNom, series: [] });
+  }
+
+  document.getElementById('card-hors-programme').style.display = 'none';
+  document.getElementById('sel-muscle-libre').value = '';
+  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
+  afficherListeSeance();
+  window.scrollTo(0, 0);
+  showToast(dejaPresent ? exoNom + ' est déjà dans la séance' : '✅ ' + exoNom + ' ajouté à la séance');
+}
+
+// ==================== SAISIE SÉRIE ====================
+function getNumSemaine(date) {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+function ajouterSerie() {
+  const date = document.getElementById('inp-date').value;
+  const seanceId = document.getElementById('sel-seance-id').value;
+  const charge = document.getElementById('inp-charge').value;
+  const reps = document.getElementById('inp-reps').value;
+  const rpe = document.getElementById('sel-rpe').value;
+  const repos = document.getElementById('sel-repos').value;
+
+  if (!date || !seanceId || !charge || !reps || !rpe) {
+    showToast('⚠️ Remplis tous les champs !', '#ff4444'); return;
+  }
+  if (!exoEnCours) { showToast('⚠️ Choisis un exercice', '#ff4444'); return; }
+
+  const volume = parseFloat(charge) * parseInt(reps);
+  exoEnCours.series.push({
+    date, seanceId, semaine: getNumSemaine(date),
+    muscle: exoEnCours.muscle, exerciceId: exoEnCours.exerciceId, exerciceNom: exoEnCours.exerciceNom,
+    serie: serieNum, charge: parseFloat(charge), reps: parseInt(reps),
+    rpe: parseInt(rpe), repos: parseInt(repos), volume
+  });
+
+  serieNum++;
+  majSeriesActuel();
+  document.getElementById('sel-rpe').value = '';
+  document.getElementById('btn-valider').style.display = 'block';
+  // Start rest timer
+  const reposVal = parseInt(repos);
+  if (reposVal > 0) {
+    startTimer(reposVal, `Série ${serieNum-1} · ${charge}kg × ${reps} reps`);
+  } else {
+    showToast(`✅ Série ${serieNum-1} ajoutée !`);
+  }
+}
+
+function majSeriesActuel() {
+  const list = document.getElementById('series-list-actuel');
+  const total = exoEnCours.series.length;
+  document.getElementById('badge-series-actuel').textContent = `${total} série${total>1?'s':''}`;
+  list.innerHTML = exoEnCours.series.map((s, i) => `
+    <div class="serie-item">
+      <span class="serie-num">S${s.serie}</span>
+      <div class="serie-data">${s.charge}kg × ${s.reps} reps
+        <div class="serie-sub">RPE ${s.rpe} · ${s.repos}s · Vol ${s.volume}</div>
+      </div>
+      <button class="btn-sm btn-danger-sm" onclick="supprimerSerie(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function supprimerSerie(index) {
+  exoEnCours.series.splice(index, 1);
+  serieNum = exoEnCours.series.length + 1;
+  majSeriesActuel();
+  const total = seance.reduce((a,e)=>a+e.series.length,0);
+  document.getElementById('btn-valider').style.display = total > 0 ? 'block' : 'none';
+}
+
+// ==================== VALIDATION ====================
+async function validerSeance() {
+  const totalSeries = seance.reduce((a,e)=>a+e.series.length,0);
+  if (totalSeries === 0) { showToast('Aucune série !', '#ff4444'); return; }
+  
+  // Double confirmation
+  const nbExos = seance.filter(e => e.series.length > 0).length;
+  const confirme = confirm(`✅ Valider la séance ?
+
+${nbExos} exercice${nbExos>1?'s':''} · ${totalSeries} série${totalSeries>1?'s':''}
+
+Cette action est irréversible.`);
+  if (!confirme) return;
+
+  const btn = document.getElementById('btn-valider');
+  btn.textContent = '⏳ Envoi...'; btn.disabled = true;
+
+  const lignes = [];
+  seance.forEach(exo => exo.series.forEach(s => {
+    lignes.push([
+      s.date, s.semaine, s.seanceId, athlete.nom, athlete.athlete_id,
+      s.exerciceNom, s.muscle, s.exerciceId,
+      s.serie, s.charge, s.reps, s.rpe, s.repos, s.volume
+    ]);
+  }));
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveSeance', data: lignes })
+    });
+    afficherRecap();
+    showToast('🎉 Séance enregistrée !');
+  } catch(e) {
+    showToast('❌ Erreur envoi', '#ff4444');
+    btn.textContent = '✅ Valider la séance'; btn.disabled = false;
+  }
+}
+
+function afficherRecap() {
+  const saisieBlock = document.getElementById('saisie-block');
+  saisieBlock.style.display = 'none';
+  document.getElementById('recap-block').style.display = 'block';
+
+  const dateVal = document.getElementById('inp-date').value;
+  const seanceType = document.getElementById('sel-seance-id').value;
+  const totalSeries = seance.reduce((a,e)=>a+e.series.length,0);
+  const totalVol = seance.reduce((a,e)=>a+e.series.reduce((b,s)=>b+s.volume,0),0);
+  document.getElementById('recap-seance-info').innerHTML =
+    `<span style="color:var(--accent);font-weight:700">${seanceType}</span> · ${formatDateDisplay(dateVal)} · ${totalSeries} séries · Vol: ${totalVol}`;
+
+  const recap = document.getElementById('recap-content');
+  recap.innerHTML = '';
+  seance.forEach(exo => {
+    const div = document.createElement('div');
+    div.className = 'recap-exo';
+    div.innerHTML = `<div class="recap-exo-name">${exo.muscle} — ${exo.exerciceNom}</div>`;
+    const progExo = programmeSeance.find(pr => pr.exercice === exo.exerciceNom);
+    const perfExo = lastPerfData[exo.exerciceNom];
+    exo.series.forEach(s => {
+      const p = document.createElement('div');
+      p.className = 'recap-serie';
+      let couleur = 'var(--text-muted)';
+      if (progExo && perfExo) {
+        const cible = perfExo.max_reps < progExo.reps_max ? perfExo.max_reps + 1 : progExo.reps_max;
+        if (s.reps >= cible) couleur = 'var(--success)';
+        else if (s.reps < perfExo.max_reps) couleur = 'var(--danger)';
+      }
+      p.style.color = couleur;
+      p.textContent = `S${s.serie} · ${s.charge}kg × ${s.reps} reps · RPE ${s.rpe} · Vol ${s.volume}`;
+      div.appendChild(p);
+    });
+    recap.appendChild(div);
+  });
+
+  afficherProgrammeVsRealise(seanceType);
+  window.scrollTo(0,0);
+}
+
+async function afficherProgrammeVsRealise(seanceType) {
+  if (!seanceType || programmeSeance.length === 0) return;
+  document.getElementById('recap-programme-block').style.display = 'block';
+  const el = document.getElementById('recap-programme-content');
+  el.innerHTML = programmeSeance.map(p => {
+    const exoRealise = seance.find(e => e.exerciceNom === p.exercice);
+    const seriesFaites = exoRealise ? exoRealise.series.length : 0;
+    const repsMoy = exoRealise && seriesFaites > 0
+      ? Math.round(exoRealise.series.reduce((a,s)=>a+s.reps,0)/seriesFaites) : 0;
+    const seriesOk = seriesFaites >= p.series_prevues;
+    const repsOk = repsMoy >= p.reps_mini;
+    const nonFait = seriesFaites === 0;
+    let statut, couleur;
+    if (nonFait) { statut = '⚪ Non fait'; couleur = 'var(--text-muted)'; }
+    else if (seriesOk && repsOk) { statut = '✅ Objectif atteint'; couleur = 'var(--success)'; }
+    else { statut = '🔴 Insuffisant'; couleur = 'var(--danger)'; }
+    return `
+      <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px;border-left:3px solid ${couleur}">
+        <div style="font-size:13px;font-weight:700">${p.exercice}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Prévu: ${p.series_prevues} séries · ${p.reps_mini}-${p.reps_max} reps</div>
+        <div style="font-size:12px">Réalisé: <strong>${seriesFaites} séries · ~${repsMoy} reps</strong></div>
+        <div style="font-size:12px;color:${couleur};font-weight:700">${statut}</div>
+      </div>`;
+  }).join('');
+}
+
+async function nouvelleSeance() {
+  // Sauvegarder la note si elle existe
+  const note = document.getElementById('inp-note').value.trim();
+  if (note) {
+    const dateVal = document.getElementById('inp-date').value;
+    const seanceType = document.getElementById('sel-seance-id').value;
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'saveNote',
+          date: dateVal,
+          athlete_id: athlete.athlete_id,
+          athlete: athlete.nom,
+          seance_id: seanceType,
+          note: note
+        })
+      });
+    } catch(e) { console.error('Erreur sauvegarde note', e); }
+    document.getElementById('inp-note').value = '';
+  }
+
+  seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
+  programmeSeance = []; lastPerfData = {};
+  document.getElementById('recap-block').style.display = 'none';
+  document.getElementById('card-liste-seance').style.display = 'none';
+  document.getElementById('card-exo-actuel').style.display = 'none';
+  document.getElementById('card-hors-programme').style.display = 'none';
+  document.getElementById('sel-seance-id').value = '';
+  const sb = document.getElementById('saisie-block');
+  sb.style.display = 'block'; sb.style.visibility = 'visible';
+  sb.style.height = 'auto'; sb.style.overflow = 'visible';
+  document.getElementById('card-exo-actuel').style.display = 'none';
+  document.getElementById('btn-valider').style.display = 'none';
+  document.getElementById('sel-seance-id').value = '';
+  document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+  window.scrollTo(0,0);
+}
+
+// ==================== PROGRAMME COMPLET ====================
+function afficherProgrammeComplet() {
+  const el = document.getElementById('programme-complet-content');
+  if (!athlete) return;
+  
+  // Utiliser les données déjà chargées
+  const prog = dernierAppData ? dernierAppData.programme || [] : [];
+
+  if (prog.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucun programme défini</div>';
+    return;
+  }
+
+  // Grouper par séance
+  const parSeance = {};
+  prog.forEach(p => {
+    if (!parSeance[p.seance_id]) parSeance[p.seance_id] = [];
+    parSeance[p.seance_id].push(p);
+  });
+
+  el.innerHTML = Object.entries(parSeance).map(([seanceId, exercices]) => `
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">${seanceId}</div>
+      ${exercices.map(p => `
+        <div class="prog-item" style="margin-bottom:8px">
+          <div style="font-size:14px;font-weight:700">${p.exercice}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+            ${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+// ==================== OBJECTIF ====================
+async function sauvegarderObjectif() {
+  const obj = document.getElementById('sel-objectif').value;
+  await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'saveObjectif', athlete_id:athlete.athlete_id, objectif:obj}) });
+  athlete.objectif = obj;
+  localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
+  document.getElementById('obj-actuel').innerHTML = `<span class="objectif-tag">🎯 ${obj}</span>`;
+  showToast('✅ Objectif sauvegardé !');
+}
+
+async function sauvegarderPoids() {
+  const poids = document.getElementById('inp-poids').value;
+  const date = document.getElementById('inp-date-poids').value;
+  if (!poids || !date) { showToast('⚠️ Remplis poids et date', '#ff4444'); return; }
+  await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'savePoids', athlete_id:athlete.athlete_id, athlete:athlete.nom, poids, date}) });
+  showToast('✅ Poids enregistré !');
+  document.getElementById('inp-poids').value = '';
+  chargerPoids();
+}
+
+async function chargerPoids() {
+  const el = document.getElementById('hist-poids');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}`);
+    const data = await res.json();
+    if (data.poids && data.poids.length > 0) {
+      el.innerHTML = data.poids.map(p => `
+        <div class="poids-item">
+          <span>${p.date}</span>
+          <span class="poids-val">${p.poids} kg</span>
+        </div>`).join('');
+    } else { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune pesée enregistrée</div>'; }
+  } catch(e) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Erreur</div>'; }
+}
+
+// ==================== HISTORIQUE ====================
+let calDate = new Date();
+let seancesDates = {};
+let progressionData = {};
+let tendancesData = null;
+let dernierAppData = null;
+
+async function chargerHistorique() {
+  if (!dernierAppData) return;
+  
+  seancesDates = dernierAppData.historique.dates_seances || {};
+  progressionData = dernierAppData.historique.progression_par_exo || {};
+  tendancesData = dernierAppData.historique.tendances || null;
+
+  renderCalendrier();
+  afficherVolumeMuscle(dernierAppData.historique.volume_semaine || []);
+  afficherTendances(4);
+
+  const exercices = dernierAppData.historique.exercices || [];
+  const sel = document.getElementById('sel-hist-exercice');
+  if (sel) {
+    sel.innerHTML = '<option value="">— Choisir un exercice —</option>';
+    exercices.forEach(e => {
+      const o = document.createElement('option');
+      o.value = e; o.textContent = e; sel.appendChild(o);
+    });
+  }
+}
+
+function renderCalendrier() {
+  const mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const annee = calDate.getFullYear();
+  const moisIdx = calDate.getMonth();
+  document.getElementById('cal-titre').textContent = `${mois[moisIdx]} ${annee}`;
+
+  const today = new Date();
+  const premierJour = new Date(annee, moisIdx, 1);
+  const dernierJour = new Date(annee, moisIdx + 1, 0);
+  
+  // Lundi = 0
+  let debutOffset = premierJour.getDay() - 1;
+  if (debutOffset < 0) debutOffset = 6;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  // Cases vides avant
+  const prevDernier = new Date(annee, moisIdx, 0).getDate();
+  for (let i = debutOffset - 1; i >= 0; i--) {
+    const d = document.createElement('div');
+    d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border);';
+    d.textContent = prevDernier - i;
+    grid.appendChild(d);
+  }
+
+  // Jours du mois
+  for (let j = 1; j <= dernierJour.getDate(); j++) {
+    const d = document.createElement('div');
+    const dateStr = `${String(j).padStart(2,'0')}/${String(moisIdx+1).padStart(2,'0')}/${annee}`;
+    const isToday = j === today.getDate() && moisIdx === today.getMonth() && annee === today.getFullYear();
+    const hasSeance = seancesDates[dateStr];
+    const isFutur = new Date(annee, moisIdx, j) > today;
+
+    if (isToday) {
+      d.style.cssText = 'background:var(--accent);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:#000;font-weight:700;';
+    } else if (hasSeance) {
+      d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:3px 1px;font-size:11px;color:#007a41;font-weight:700;cursor:pointer;';
+      d.title = hasSeance;
+      // Abréger intelligemment le nom de séance
+      let seanceAbrege = hasSeance;
+      if (hasSeance.includes('Pec')) seanceAbrege = 'Pec';
+      else if (hasSeance.includes('Dos')) seanceAbrege = 'Dos';
+      else if (hasSeance.includes('Jambe') || hasSeance.includes('jambe')) seanceAbrege = 'Jamb';
+      else if (hasSeance.includes('Upper')) seanceAbrege = 'Upp';
+      else if (hasSeance.includes('Push')) seanceAbrege = 'Push';
+      else if (hasSeance.includes('Pull')) seanceAbrege = 'Pull';
+      else if (hasSeance.includes('Full')) seanceAbrege = 'Full';
+      else if (hasSeance.includes('Ischio') || hasSeance.includes('ischio')) seanceAbrege = 'Isch';
+      else seanceAbrege = hasSeance.substring(0, 4);
+      d.innerHTML = `<div style="font-size:10px;">${j}</div><div style="font-size:7px;color:#007a41;line-height:1.2;font-weight:600;">${seanceAbrege}</div>`;
+    } else if (isFutur) {
+      d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border);';
+      d.textContent = j;
+    } else {
+      d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--text);';
+      d.textContent = j;
+    }
+    grid.appendChild(d);
+  }
+
+  // Cases vides après
+  const total = debutOffset + dernierJour.getDate();
+  const reste = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= reste; i++) {
+    const d = document.createElement('div');
+    d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border);';
+    d.textContent = i;
+    grid.appendChild(d);
+  }
+}
+
+function calNaviguer(direction) {
+  calDate.setMonth(calDate.getMonth() + direction);
+  renderCalendrier();
+}
+
+function afficherProgressionExo() {
+  const exo = document.getElementById('sel-hist-exercice').value;
+  const el = document.getElementById('hist-progression-content');
+  if (!exo || !progressionData[exo]) { el.innerHTML = ''; return; }
+
+  const perfs = progressionData[exo];
+  if (perfs.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune donnée</div>';
+    return;
+  }
+
+  // Calculer progression globale
+  const first = perfs[perfs.length - 1];
+  const last = perfs[0];
+  const diffCharge = last.charge - first.charge;
+  const diffReps = last.reps - first.reps;
+  const progGlobale = diffCharge > 0 ? `+${diffCharge}kg` : diffReps > 0 ? `+${diffReps} reps` : 'Stable';
+  const progCouleur = diffCharge > 0 || diffReps > 0 ? '#00c96e' : 'var(--text-muted)';
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px;">
+      <span style="font-size:12px;color:var(--text-muted);">Progression totale</span>
+      <span style="font-size:13px;font-weight:700;color:${progCouleur};">${progGlobale}</span>
+    </div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse;">
+      <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border);">
+        <td style="padding:5px 0;">Date</td>
+        <td style="padding:5px 0;text-align:center;">Séance</td>
+        <td style="padding:5px 0;text-align:center;">Charge S1</td>
+        <td style="padding:5px 0;text-align:center;">Reps S1</td>
+        <td style="padding:5px 0;text-align:center;">Évol.</td>
+      </tr>
+      ${perfs.map((p, i) => {
+        const prev = perfs[i+1];
+        let evol = '—';
+        let evolColor = 'var(--text-muted)';
+        if (prev) {
+          if (p.charge > prev.charge) { evol = '↑'; evolColor = '#00c96e'; }
+          else if (p.charge < prev.charge) { evol = '↓'; evolColor = 'var(--danger)'; }
+          else if (p.reps > prev.reps) { evol = '↑'; evolColor = '#c8f000'; }
+          else if (p.reps < prev.reps) { evol = '↓'; evolColor = 'var(--danger)'; }
+          else { evol = '='; evolColor = 'var(--text-muted)'; }
+        }
+        const isLast = i === 0;
+        return `<tr style="border-bottom:1px solid var(--surface2);${isLast ? 'font-weight:700;' : ''}">
+          <td style="padding:6px 0;color:var(--text);">${p.date}</td>
+          <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px;">${p.seance.substring(0,8)}</td>
+          <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'};">${p.charge}kg</td>
+          <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'};">${p.reps}</td>
+          <td style="padding:6px 0;text-align:center;color:${evolColor};font-size:16px;font-weight:700;">${evol}</td>
+        </tr>`;
+      }).join('')}
+    </table>`;
+}
+
+// Volume cible par muscle selon niveau
+const VOLUME_CIBLE = {
+  'Pectoraux':   { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Dos':         { debutant: [8,12],  intermediaire: [14,18], experimente: [18,22] },
+  'Epaule':      { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Biceps':      { debutant: [6,10],  intermediaire: [10,14], experimente: [14,20] },
+  'Triceps':     { debutant: [6,10],  intermediaire: [10,14], experimente: [12,18] },
+  'Quadriceps':  { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Ischio':      { debutant: [6,10],  intermediaire: [10,14], experimente: [12,18] },
+  'Fessier':     { debutant: [8,12],  intermediaire: [12,16], experimente: [14,20] },
+  'Mollets':     { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Abdominaux':  { debutant: [6,10],  intermediaire: [10,14], experimente: [14,20] },
+  'Jambe':       { debutant: [8,12],  intermediaire: [12,16], experimente: [16,20] },
+  'Aducteur':    { debutant: [6,10],  intermediaire: [10,14], experimente: [12,18] },
+};
+
+function getNiveauKey(strategie) {
+  if (!strategie) return 'intermediaire';
+  if (strategie.includes('linéaire')) return 'debutant';
+  if (strategie.includes('avancée')) return 'experimente';
+  return 'intermediaire';
+}
+
+function afficherTendances(semaines) {
+  const el = document.getElementById('hist-tendances-content');
+  if (!el) return;
+
+  // Update buttons
+  document.getElementById('btn-tend-4').style.background = semaines === 4 ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('btn-tend-4').style.color = semaines === 4 ? '#000' : 'var(--text-muted)';
+  document.getElementById('btn-tend-8').style.background = semaines === 8 ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('btn-tend-8').style.color = semaines === 8 ? '#000' : 'var(--text-muted)';
+
+  if (!tendancesData) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas assez de données</div>';
+    return;
+  }
+
+  const t = semaines === 4 ? tendancesData.s4 : tendancesData.s8;
+  if (!t) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas assez de données sur cette période</div>';
+    return;
+  }
+
+  const statutColor = t.statut === 'positif' ? '#00c96e' : t.statut === 'plateau' ? '#f59f00' : 'var(--danger)';
+  const statutLabel = t.statut === 'positif' ? '🟢 Adaptation positive' : t.statut === 'plateau' ? '⚠️ Plateau' : '🔴 Régression';
+  const statutDesc = t.statut === 'positif' ? 'Volume et charges en progression' : t.statut === 'plateau' ? 'Charges stables depuis plusieurs semaines' : 'Charges en baisse ou RPE en forte hausse';
+
+  const ligne = (label, valDebut, valFin, unite, up) => {
+    const diff = valFin - valDebut;
+    const pct = valDebut > 0 ? Math.round(diff/valDebut*100) : 0;
+    const couleur = up === null ? 'var(--text-muted)' : (up ? '#00c96e' : 'var(--danger)');
+    const signe = pct > 0 ? '+' : '';
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface2);">
+        <div>
+          <div style="font-size:12px;font-weight:700;">${label}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${valDebut}${unite} → ${valFin}${unite}</div>
+        </div>
+        <span style="background:${couleur}22;color:${couleur};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;">${signe}${pct}%</span>
+      </div>`;
+  };
+
+  el.innerHTML = `
+    ${ligne('Volume hebdo', t.volume_debut, t.volume_fin, ' séries', t.volume_fin >= t.volume_debut)}
+    ${ligne('RPE moyen', t.rpe_debut, t.rpe_fin, '', null)}
+    ${ligne('Charge moyenne S1', t.charge_debut, t.charge_fin, 'kg', t.charge_fin >= t.charge_debut)}
+    <div style="background:${statutColor}22;border-radius:8px;padding:10px 12px;margin-top:10px;display:flex;align-items:center;gap:10px;">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:${statutColor};">${statutLabel}</div>
+        <div style="font-size:11px;color:${statutColor};opacity:0.8;margin-top:2px;">${statutDesc}</div>
+      </div>
+    </div>
+  `;
+}
+
+function afficherVolumeMuscle(volumes) {
+  const el = document.getElementById('hist-volume-content');
+  if (!volumes || volumes.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune donnée cette semaine</div>';
+    return;
+  }
+
+  const niveauKey = getNiveauKey(athlete ? athlete.strategie_progression : null);
+  const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
+
+  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
+  volumes.map(v => {
+    const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
+    const mini = cible[0];
+    const optimal = cible[1];
+    const faites = v.faites || 0;
+    const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
+    let couleur, statut;
+    if (faites >= optimal) { couleur = '#00c96e'; statut = '✅'; }
+    else if (faites >= mini) { couleur = '#c8f000'; statut = '🟡'; }
+    else if (faites > 0) { couleur = '#f59f00'; statut = '⚠️'; }
+    else { couleur = 'var(--danger)'; statut = '🔴'; }
+    return `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+          <span style="font-size:12px;font-weight:700;color:var(--text);">${v.muscle}</span>
+          <span style="font-size:11px;color:${couleur};font-weight:700;">${faites} / ${optimal} séries ${statut}</span>
+        </div>
+        <div style="background:var(--surface2);border-radius:20px;height:6px;">
+          <div style="background:${couleur};height:100%;width:${pct}%;border-radius:20px;"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Min : ${mini} · Optimal : ${optimal}</div>
+      </div>`;
+  }).join('');
+}
+
+// ==================== UTILS ====================
+async function chargerExercices() {
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=exercices`);
+    const data = await res.json();
+    exercicesData = data.exercices || [];
+  } catch(e) { exercicesData = []; }
+}
+
+function formatDateDisplay(d) {
+  if (!d) return '';
+  const parts = d.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return d;
+}
+
+function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
+  document.getElementById('card-liste-seance').style.display = 'none';
+  document.getElementById('card-exo-actuel').style.display = 'block';
+
+  const exoData = exercicesData.find(e => e.exercice === exerciceNom);
+  const muscle = exoData ? exoData.muscle : '';
+  const exoId = exoData ? exoData.exercice_id : exerciceNom;
+  const incrementRaw2 = exoData ? exoData.increment_kg : "2.5";
+  const increment2 = parseFloat(String(incrementRaw2).replace(',','.').split('/')[0].trim()) || 2.5;
+  const perf = lastPerfData[exerciceNom];
+
+  // Récupérer l'exo si déjà commencé - on continue d'ajouter des séries
+  const exoExistant = seance.find(e => e.exerciceNom === exerciceNom);
+  if (exoExistant) {
+    exoEnCours = exoExistant;
+  } else {
+    exoEnCours = { muscle, exerciceId: exoId, exerciceNom, series: [] };
+    seance.push(exoEnCours);
+  }
+  serieNum = exoEnCours.series.length + 1;
+
+  // Mettre à jour l'affichage
+  document.getElementById('exo-actuel-nom').textContent = exerciceNom;
+  document.getElementById('exo-actuel-detail').textContent = `${muscle} · ${repsMini}-${repsMax} reps`;
+  document.getElementById('card-exo-actuel').style.display = 'block';
+  document.getElementById('card-hors-programme').style.display = 'none';
+
+  if (perf) {
+    // Meilleur des 2 dernières séances
+    const bestReps = perf.prev_max_reps !== null ? Math.max(perf.max_reps, perf.prev_max_reps) : perf.max_reps;
+    const bestCharge = perf.prev_charge !== null ? Math.max(perf.last_charge, perf.prev_charge) : perf.last_charge;
+    const isDiff = perf.max_reps < bestReps || perf.last_charge < bestCharge;
+    const cible = bestReps < repsMax ? bestReps + 1 : repsMax;
+
+    document.getElementById('exo-actuel-perf').innerHTML =
+      `Dernière fois : <strong style="color:${isDiff ? 'var(--danger)' : 'var(--text)'}">${perf.last_charge}kg × ${perf.max_reps} reps</strong>
+       ${isDiff ? `<br><span style="color:var(--text-muted);font-size:11px">Meilleure réf : ${bestCharge}kg × ${bestReps} reps</span>` : ''}`;
+    document.getElementById('exo-actuel-cible').innerHTML = `🎯 Cible : ${bestCharge}kg × ${cible} reps`;
+    document.getElementById('inp-charge').value = bestCharge;
+    document.getElementById('inp-reps').value = cible;
+  } else {
+    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
+    document.getElementById('exo-actuel-cible').innerHTML = `🎯 Objectif : ${repsMini}-${repsMax} reps`;
+    document.getElementById('inp-charge').value = '';
+    document.getElementById('inp-reps').value = repsMini;
+  }
+
+  document.getElementById('exo-actuel-suggestion').innerHTML = '';
+  majSeriesActuel();
+  window.scrollTo(0, 0);
+  showToast('✅ ' + exerciceNom + ' sélectionné');
+}
+
+// ==================== CHARGEMENT PRINCIPAL ====================
+async function chargerAppData() {
+  if (!athlete) return;
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`);
+    const data = await res.json();
+
+    // Stocker les données globalement
+    dernierAppData = data;
+    seancesDates = data.historique.dates_seances || {};
+    progressionData = data.historique.progression_par_exo || {};
+    tendancesData = data.historique.tendances || null;
+
+    // Graphique poids
+    afficherGraphiquePoids(data.poids || []);
+
+    // Objectif
+    const objActuel = document.getElementById('obj-actuel');
+    if (objActuel) objActuel.innerHTML = `<span style="background:rgba(0,201,110,0.1);border:1px solid #00c96e;color:#00c96e;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:700;">${athlete.objectif || 'Non défini'}</span>`;
+    const selObj = document.getElementById('sel-objectif');
+    if (selObj && athlete.objectif) selObj.value = athlete.objectif;
+
+    // Régularité dans objectif
+    const regEl = document.getElementById('regularite-content');
+    if (regEl) {
+      const faites2 = data.dashboard.regularite.seances_semaine || 0;
+      const prevues2 = data.dashboard.regularite.seances_prevues || 0;
+      const manque2 = Math.max(0, prevues2 - faites2);
+      const pct2 = prevues2 > 0 ? Math.min(100, Math.round(faites2/prevues2*100)) : 0;
+      const col2 = manque2 > 0 ? '#ff9500' : '#00a854';
+      regEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:24px;font-weight:800;color:var(--text);">${faites2}<span style="font-size:13px;color:var(--text-muted);font-weight:400;"> / ${prevues2}</span></div>
+          <div style="font-size:13px;font-weight:700;color:${col2};">${manque2 > 0 ? '⚠️ '+manque2+' manquante'+(manque2>1?'s':'') : '✅ Objectif atteint !'}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:20px;height:7px;">
+          <div style="background:var(--accent);height:100%;width:${pct2}%;border-radius:20px;"></div>
+        </div>`;
+    }
+
+    // Mettre à jour le poids depuis Poids_historique
+    if (data.poids && data.poids.length > 0) {
+      const poidsEl = document.getElementById('hist-poids');
+      if (poidsEl) {
+        poidsEl.innerHTML = data.poids.map(p =>
+          `<div class="poids-item"><span>${p.date}</span><span class="poids-val">${p.poids} kg</span></div>`
+        ).join('');
+      }
+      // Dashboard poids
+      document.getElementById('dash-poids').textContent = data.poids[0].poids;
+      if (data.poids.length > 1) {
+        const diff = (data.poids[0].poids - data.poids[1].poids).toFixed(1);
+        const sign = diff > 0 ? '▲' : '▼';
+        const col = diff > 0 ? '#ff9500' : '#00a854';
+        document.getElementById('dash-poids-evolution').innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
+      }
+    } else if (athlete.poids) {
+      document.getElementById('dash-poids').textContent = athlete.poids;
+    }
+
+    // Rendre le calendrier
+    renderCalendrier();
+
+    // Volume par muscle
+    afficherVolumeMuscle(data.historique.volume_semaine || []);
+
+    // Tendances
+    afficherTendances(4);
+
+    // Exercices dropdown historique
+    const exercices = data.historique.exercices || [];
+    const sel = document.getElementById('sel-hist-exercice');
+    if (sel) {
+      sel.innerHTML = '<option value="">— Choisir un exercice —</option>';
+      exercices.forEach(e => {
+        const o = document.createElement('option');
+        o.value = e; o.textContent = e; sel.appendChild(o);
+      });
+    }
+
+    // Dashboard
+    const dash = data.dashboard;
+
+    // Régularité
+    const faites = dash.regularite.seances_semaine || 0;
+    const prevues = dash.regularite.seances_prevues || 0;
+    const pct = prevues > 0 ? Math.min(100, Math.round(faites/prevues*100)) : 0;
+    document.getElementById('dash-seances-faites').textContent = faites;
+    document.getElementById('dash-seances-prevues').textContent = prevues;
+    document.getElementById('dash-bar-semaine').style.width = pct + '%';
+    const manque = Math.max(0, prevues - faites);
+    const msgEl = document.getElementById('dash-semaine-msg');
+    msgEl.textContent = manque > 0 ? `⚠️ ${manque} séance${manque>1?'s':''} manquante${manque>1?'s':''}` : '✅ Objectif atteint !';
+    msgEl.style.color = manque > 0 ? '#ff9500' : '#00a854';
+
+    // Muscle en retard
+    const muscleEl = document.getElementById('dash-muscle-content');
+    if (dash.muscle_retard) {
+      const m = dash.muscle_retard;
+      const moyHebdo = Math.round(m.series_faites / 4 * 10) / 10;
+      const objectifHebdo = Math.round(m.series_optimale / 4);
+      const deficit = objectifHebdo > 0 ? Math.round((1 - moyHebdo/objectifHebdo) * 100) : 0;
+      muscleEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-size:16px;font-weight:800;">${m.muscle}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Sous-entraîné sur les 4 dernières semaines</div>
+          </div>
+          <span style="background:rgba(245,159,0,0.2);color:#f59f00;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;">-${deficit}%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="dash-stat">
+            <div class="dash-stat-num" style="color:#f59f00;">${moyHebdo}</div>
+            <div class="dash-stat-label">séries/sem moy.</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num">${objectifHebdo}</div>
+            <div class="dash-stat-label">objectif/sem</div>
+          </div>
+        </div>`;
+    } else {
+      muscleEl.innerHTML = '<div style="color:#00c96e;font-size:13px;font-weight:700;">✅ Tous les muscles bien entraînés !</div>';
+    }
+
+    // Progression
+    const progEl = document.getElementById('dash-prog-content');
+    if (dash.progression) {
+      const p = dash.progression;
+      const enProg = p.en_progression || 0;
+      const enBaisse = p.en_baisse || 0;
+      const lignesUp = p.details.filter(d => d.up).map(d => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px;">
+          <span style="font-size:11px;color:#00c96e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:inline-block;">${d.exercice}</span>
+          <span style="font-size:11px;color:#00c96e;white-space:nowrap;">${d.variation}</span>
+        </div>`).join('');
+      const lignesDown = p.details.filter(d => d.down && !d.up).map(d => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(255,68,68,0.1);border-radius:6px;margin-bottom:4px;">
+          <span style="font-size:11px;color:var(--danger);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:inline-block;">${d.exercice}</span>
+          <span style="font-size:11px;color:var(--danger);white-space:nowrap;">${d.variation}</span>
+        </div>`).join('');
+      progEl.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="background:rgba(0,201,110,0.1);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:#00c96e;">${enProg}</div>
+            <div style="font-size:10px;color:var(--text-muted);">en progression</div>
+          </div>
+          <div style="background:rgba(255,68,68,0.1);border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:var(--danger);">${enBaisse}</div>
+            <div style="font-size:10px;color:var(--text-muted);">en baisse</div>
+          </div>
+        </div>
+        ${enProg > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">En progression</div>${lignesUp}` : ''}
+        ${enBaisse > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">En baisse</div>${lignesDown}` : ''}
+        ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables cette semaine</div>' : ''}`;
+    } else {
+      progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas encore de données de progression</div>';
+    }
+
+    // Récupération
+    const recupEl = document.getElementById('dash-recup-content');
+    if (dash.recuperation) {
+      const r = dash.recuperation;
+      const statusColor = r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : 'var(--danger)';
+      const statusLabel = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟡 Fatigue modérée' : '🔴 Fatigue élevée';
+      recupEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span style="font-size:13px;font-weight:700;color:${statusColor};">${statusLabel}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color};">${r.rpe_moyen}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
+          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color};">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
+          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color};">${r.volume_evol > 0 ? '+' : ''}${r.volume_evol}%</div><div class="dash-stat-label">Volume</div></div>
+        </div>
+        <div style="border-left:3px solid ${statusColor};padding-left:10px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:3px;">Conseil</div>
+          <div style="font-size:12px;opacity:0.8;">${r.conseil}</div>
+        </div>`;
+    } else {
+      recupEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">Pas encore assez de données — continue à t'entraîner, le bloc se remplira après quelques semaines !</div>`;
+    }
+
+    // Dernière séance
+    const lastEl = document.getElementById('dash-last-seance');
+    if (dash.derniere_seance) {
+      const d = dash.derniere_seance;
+      lastEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div>
+            <div style="font-size:15px;font-weight:800;color:var(--text);">${d.seance_id}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${d.date}</div>
+          </div>
+          <span class="dash-badge" style="background:#e8f8f0;border:1px solid #00c96e;color:#007a41;">✅ Complète</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div class="dash-stat"><div class="dash-stat-num">${d.nb_exercices}</div><div class="dash-stat-label">exos</div></div>
+          <div class="dash-stat"><div class="dash-stat-num">${d.nb_series}</div><div class="dash-stat-label">séries</div></div>
+          <div class="dash-stat"><div class="dash-stat-num">${d.rpe_moyen}</div><div class="dash-stat-label">RPE moy.</div></div>
+        </div>`;
+    } else {
+      lastEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>';
+    }
+
+    // Prochaine séance
+    const nextEl = document.getElementById('dash-next-seance');
+    if (dash.prochaine_seance) {
+      const n = dash.prochaine_seance;
+      nextEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:15px;font-weight:800;">${n}</div>
+            <div style="font-size:11px;opacity:0.7;margin-top:2px;">Prochaine dans ton programme</div>
+          </div>
+          <button onclick="demarrerDepuisDashboard('${n}')" style="background:#c8f000;color:#000;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;">Démarrer</button>
+        </div>`;
+    } else {
+      nextEl.innerHTML = '<div style="color:#c8f000;font-size:13px;font-weight:700;">✅ Toutes les séances faites !</div>';
+    }
+
+  } catch(e) {
+    console.error('chargerAppData error:', e);
+  }
+}
+
+// Garder chargerDashboard pour le refresh de l'onglet accueil
+async function chargerDashboard() {
+  chargerAppData();
+}
+
+
+
+function demarrerDepuisDashboard(seanceId) {
+  switchTab('seance');
+  document.getElementById('sel-seance-id').value = seanceId;
+  demarrerSeance();
+}
+
+// ==================== RÉGULARITÉ ====================
+
+// ==================== TIMER ====================
+let timerInterval = null;
+let timerRemaining = 0;
+const CIRCUMFERENCE = 188.5; // 2 * PI * 30
+
+function startTimer(seconds, serieInfo) {
+  if (timerInterval) clearInterval(timerInterval);
+  timerRemaining = seconds;
+  
+  const overlay = document.getElementById('timer-overlay');
+  const display = document.getElementById('timer-display');
+  const circle = document.getElementById('timer-circle');
+  const info = document.getElementById('timer-serie-info');
+  
+  if (seconds === 0) return;
+  
+  overlay.classList.add('active');
+  info.textContent = serieInfo;
+  
+  function update() {
+    display.textContent = timerRemaining;
+    const progress = timerRemaining / seconds;
+    circle.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+    
+    if (timerRemaining <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      // Vibration
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      // Son
+      playBeep();
+      overlay.classList.remove('active');
+      showToast('✅ Repos terminé, allons-y !');
+    }
+    timerRemaining--;
+  }
+  
+  update();
+  timerInterval = setInterval(update, 1000);
+}
+
+function skipTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+  document.getElementById('timer-overlay').classList.remove('active');
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.3, 0.6].forEach(t => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.2);
+    });
+  } catch(e) {}
+}
+
+// ==================== SURCHARGE PROGRESSIVE ====================
+function calculerSurcharge(strategie, perf, programme, bestCharge, increment) {
+  if (!perf || !programme) return null;
+
+  const repsMax = programme.reps_max;
+  const repsMini = programme.reps_mini;
+  const lastReps = perf.max_reps;
+  const prevReps = perf.prev_max_reps;
+  const prev2Reps = perf.prev2_max_reps !== undefined ? perf.prev2_max_reps : null;
+  const nouvelleCharge = Math.round((bestCharge + increment) * 4) / 4;
+
+  if (strategie === 'Progression linéaire') {
+    // DÉBUTANT : dès que reps_max atteint → +charge
+    if (lastReps >= repsMax) {
+      return `💪 Débutant — Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg) → repart à ${repsMini} reps`;
+    }
+
+  } else if (strategie === 'Double progression') {
+    // INTERMÉDIAIRE : 2x au max → +1 rep / 3x au max → +charge
+    const deuxFoisAuMax = lastReps >= repsMax && prevReps !== null && prevReps >= repsMax;
+    const troisFoisAuMax = deuxFoisAuMax && prev2Reps !== null && prev2Reps >= repsMax;
+
+    if (troisFoisAuMax) {
+      return `💪 Intermédiaire — 3x au max ! Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg) → repart à ${repsMini} reps`;
+    } else if (deuxFoisAuMax) {
+      return `📈 Intermédiaire — 2x au max → <strong>+1 rep</strong> la prochaine fois (${lastReps + 1} reps)`;
+    }
+
+  } else if (strategie === 'Progression avancée') {
+    // EXPÉRIMENTÉ : +1 rep ou -30s repos
+    const auMax = lastReps >= repsMax && prevReps !== null && prevReps >= repsMax;
+    if (auMax) {
+      return `💪 Expérimenté — Choix : <strong>+1 rep</strong> (${lastReps + 1} reps) ou <strong>-30s repos</strong>`;
+    }
+  }
+
+  return null;
+}
+
+// ==================== DRAWER ====================
+let drawerData = [];
+
+function ouvrirDrawer() {
+  filtrerDrawer('tous');
+  document.getElementById('drawer-progression').style.bottom = '0';
+  document.getElementById('drawer-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function fermerDrawer() {
+  document.getElementById('drawer-progression').style.bottom = '-100%';
+  document.getElementById('drawer-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function filtrerDrawer(type) {
+  ['tous','up','down','stable'].forEach(t => {
+    const btn = document.getElementById('fd-'+t);
+    if (!btn) return;
+    btn.style.background = t === type ? 'var(--accent)' : 'var(--surface2)';
+    btn.style.color = t === type ? '#000' : 'var(--text-muted)';
+    btn.style.fontWeight = t === type ? '700' : '400';
+  });
+
+  const filtered = type === 'tous' ? drawerData
+    : type === 'up' ? drawerData.filter(d => d.up)
+    : type === 'down' ? drawerData.filter(d => d.down && !d.up)
+    : drawerData.filter(d => !d.up && !d.down);
+
+  const el = document.getElementById('drawer-liste');
+  if (filtered.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:16px 0;text-align:center;">Aucun exercice dans cette catégorie</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(d => {
+    const couleur = d.up ? '#00c96e' : d.down ? 'var(--danger)' : 'var(--text-muted)';
+    const bg = d.up ? 'rgba(0,201,110,0.1)' : d.down ? 'rgba(255,68,68,0.1)' : 'var(--surface2)';
+    const fleche = d.up ? '↑' : d.down ? '↓' : '=';
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--surface2);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;font-weight:700;color:${couleur};">${fleche}</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);">${d.exercice}</div>
+          </div>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:${couleur};background:${bg};padding:3px 10px;border-radius:20px;white-space:nowrap;">${d.variation}</span>
+      </div>`;
+  }).join('');
+}
+
+// ==================== GRAPHIQUE POIDS ====================
+let toutesLesPesees = [];
+
+function afficherGraphiquePoids(poids) {
+  toutesLesPesees = poids || [];
+  filtrerGraphPoids('1m');
+}
+
+function filtrerGraphPoids(periode) {
+  ['1m','3m','all'].forEach(p => {
+    const btn = document.getElementById('gp-'+p);
+    if (!btn) return;
+    btn.style.background = p === periode ? 'var(--text)' : 'var(--surface2)';
+    btn.style.color = p === periode ? 'var(--bg)' : 'var(--text-muted)';
+    btn.style.fontWeight = p === periode ? '700' : '400';
+  });
+
+  const maintenant = new Date();
+  let filtered = toutesLesPesees.filter(p => {
+    const parts = p.date.split('/');
+    const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+    if (periode === '1m') return d >= new Date(maintenant.getTime() - 30*24*3600*1000);
+    if (periode === '3m') return d >= new Date(maintenant.getTime() - 90*24*3600*1000);
+    return true;
+  }).reverse(); // ordre chronologique
+
+  if (filtered.length === 0) {
+    document.getElementById('graph-poids-svg').innerHTML = '<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Aucune donnée sur cette période</text>';
+    return;
+  }
+
+  // Poids actuel et évolution
+  const dernier = filtered[filtered.length - 1];
+  const premier = filtered[0];
+  document.getElementById('graph-poids-actuel').textContent = dernier.poids;
+  if (filtered.length > 1) {
+    const diff = (dernier.poids - premier.poids).toFixed(1);
+    const sign = diff > 0 ? '▲' : '▼';
+    const col = diff > 0 ? '#ff9500' : '#00a854';
+    document.getElementById('graph-poids-evol').innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
+  }
+
+  if (filtered.length < 2) {
+    document.getElementById('graph-poids-svg').innerHTML = `<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Besoin d'au moins 2 pesées</text>`;
+    return;
+  }
+
+  // Calcul du graphique
+  const poids_vals = filtered.map(p => Number(p.poids));
+  const minP = Math.min(...poids_vals) - 0.5;
+  const maxP = Math.max(...poids_vals) + 0.5;
+  const W = 320, H = 100, padL = 28, padR = 10, padT = 10, padB = 20;
+  const gW = W - padL - padR;
+  const gH = H - padT - padB;
+
+  const toX = i => padL + (i / (filtered.length - 1)) * gW;
+  const toY = v => padT + gH - ((v - minP) / (maxP - minP)) * gH;
+
+  // Grille
+  let svg = '';
+  const gridVals = [minP + (maxP-minP)*0.25, minP + (maxP-minP)*0.5, minP + (maxP-minP)*0.75];
+  gridVals.forEach(v => {
+    const y = toY(v);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>`;
+    svg += `<text x="0" y="${y+3}" font-size="7" fill="var(--text-muted)">${v.toFixed(1)}</text>`;
+  });
+
+  // Zone remplie
+  const pts = filtered.map((p,i) => `${toX(i)},${toY(Number(p.poids))}`).join(' ');
+  const lastX = toX(filtered.length-1);
+  const lastY = toY(Number(filtered[filtered.length-1].poids));
+  svg += `<path d="M ${toX(0)} ${toY(Number(filtered[0].poids))} ${filtered.slice(1).map((p,i) => `L ${toX(i+1)} ${toY(Number(p.poids))}`).join(' ')} L ${lastX} ${H-padB} L ${padL} ${H-padB} Z" fill="rgba(0,168,84,0.08)"/>`;
+
+  // Courbe
+  const pathD = filtered.map((p,i) => `${i===0?'M':'L'} ${toX(i)} ${toY(Number(p.poids))}`).join(' ');
+  svg += `<path d="${pathD}" fill="none" stroke="#00a854" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  // Points
+  filtered.forEach((p, i) => {
+    const x = toX(i), y = toY(Number(p.poids));
+    const isLast = i === filtered.length - 1;
+    svg += `<circle cx="${x}" cy="${y}" r="${isLast?5:3}" fill="${isLast?'#00a854':'var(--surface)'}" stroke="#00a854" stroke-width="2"/>`;
+  });
+
+  // Labels X (max 5)
+  const step = Math.max(1, Math.floor(filtered.length / 4));
+  filtered.forEach((p, i) => {
+    if (i % step === 0 || i === filtered.length - 1) {
+      const parts = p.date.split('/');
+      const label = `${parts[0]}/${parts[1]}`;
+      const col = i === filtered.length - 1 ? '#00a854' : 'var(--text-muted)';
+      svg += `<text x="${toX(i)}" y="${H-2}" font-size="7" fill="${col}" text-anchor="middle">${label}</text>`;
+    }
+  });
+
+  document.getElementById('graph-poids-svg').innerHTML = svg;
+}
+
+function demarrerSeanceLibre() {
+  seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
+  programmeSeance = []; lastPerfData = {};
+  // Réinitialiser le choix de programme et le bloc "autre exercice"
+  document.getElementById('sel-seance-id').value = '';
+  document.getElementById('sel-muscle-libre').innerHTML = '<option value="">— Choisir —</option>';
+  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
+  document.getElementById('card-liste-seance').style.display = 'block';
+  document.getElementById('card-exo-actuel').style.display = 'none';
+  document.getElementById('btn-valider').style.display = 'none';
+  afficherListeExosLibres();
+  toggleExoHorsProgramme(true);
+}
+
+function terminerExercice() {
+  if (!exoEnCours || exoEnCours.series.length === 0) {
+    showToast('⚠️ Ajoute au moins une série !', '#ff4444'); return;
+  }
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  document.getElementById('timer-overlay').classList.remove('active');
+  document.getElementById('card-hors-programme').style.display = 'none';
+  retourListeSeance();
+  window.scrollTo(0,0);
+  showToast(`✅ ${exoEnCours.exerciceNom} terminé !`);
+}
+
+function toggleTheme() {
+  const btn = document.getElementById('btn-theme');
+  if (document.body.classList.contains('light-mode')) {
+    document.body.classList.remove('light-mode');
+    btn.textContent = '☀️';
+    localStorage.setItem('muscu_theme', 'dark');
+  } else {
+    document.body.classList.add('light-mode');
+    btn.textContent = '🌙';
+    localStorage.setItem('muscu_theme', 'light');
+  }
+}
+
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = color || 'var(--success)';
+  t.style.color = color ? '#fff' : '#000';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
