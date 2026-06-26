@@ -323,6 +323,7 @@
                   <option value="Dos Epaule">Dos Epaule</option>
                   <option value="Pec Bras">Pec Bras</option>
                   <option value="Pec Epaule">Pec Epaule</option>
+                  <option value="Libre">Libre</option>
                 </select>
               </div>
             </div>
@@ -860,9 +861,10 @@ function ajouterCarteExoLibre(listeEl, e) {
   const seriesFaites = e.series.length;
   const perf = lastPerfData[e.exerciceNom];
   const div = document.createElement('div');
-  div.style.cssText = `background:var(--surface);border:1px solid ${seriesFaites > 0 ? 'var(--success)' : 'var(--border)'};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
+  div.style.cssText = `background:var(--surface);border:1px solid ${seriesFaites > 0 ? 'var(--success)' : 'var(--border)'};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;position:relative`;
   div.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <button class="btn-sm btn-danger-sm" style="position:absolute;top:10px;right:10px" title="Retirer cet exercice">✕</button>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-right:30px">
       <div style="font-size:15px;font-weight:800;flex:1">${e.exerciceNom}</div>
       ${seriesFaites > 0 ? `<span style="color:var(--success);font-weight:700">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : ""}
     </div>
@@ -870,8 +872,23 @@ function ajouterCarteExoLibre(listeEl, e) {
     ${perf ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong></div>` : '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai 🆕</div>'}
     <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Appuie pour saisir</div>
   `;
+  div.querySelector('.btn-danger-sm').addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    supprimerExoLibre(e.exerciceNom);
+  });
   div.addEventListener('click', () => selectionnerExoLibre(e.exerciceNom));
   listeEl.appendChild(div);
+}
+
+function supprimerExoLibre(exerciceNom) {
+  const exo = seance.find(e => e.exerciceNom === exerciceNom);
+  if (exo && exo.series.length > 0) {
+    if (!confirm(`${exerciceNom} a déjà des séries enregistrées. Le retirer effacera ces séries. Continuer ?`)) return;
+  }
+  seance = seance.filter(e => e.exerciceNom !== exerciceNom);
+  afficherListeSeance();
+  const total = seance.reduce((a,e)=>a+e.series.length,0);
+  document.getElementById('btn-valider').style.display = total > 0 ? 'block' : 'none';
 }
 
 function afficherListeExosLibres() {
@@ -2097,7 +2114,7 @@ function demarrerSeanceLibre() {
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   programmeSeance = []; lastPerfData = {};
   // Réinitialiser le choix de programme et le bloc "autre exercice"
-  document.getElementById('sel-seance-id').value = '';
+  document.getElementById('sel-seance-id').value = 'Libre';
   document.getElementById('sel-muscle-libre').innerHTML = '<option value="">— Choisir —</option>';
   document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
   document.getElementById('card-liste-seance').style.display = 'block';
