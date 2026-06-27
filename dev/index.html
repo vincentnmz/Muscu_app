@@ -1033,13 +1033,13 @@ async function ouvrirDetailAthleteCoach(a) {
   document.getElementById('cd-alertes').innerHTML = alertes.length > 0
     ? alertes.map(al => {
         const c = couleurSeverite[al.severite] || '#a3a3a3';
-        const msgEscape = al.message.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const sujet = sujetAlerte(al).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
           <div style="display:flex;align-items:flex-start;gap:8px">
             <span style="font-size:14px">⚠️</span>
             <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}</span>
           </div>
-          <button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${msgEscape}')">✍️ Répondre à l'athlète</button>
+          <button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${sujet}')">✍️ Répondre à l'athlète</button>
         </div>`;
       }).join('')
     : '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">✅ Rien à signaler</div>';
@@ -1111,7 +1111,7 @@ function renderCoachOverview(data) {
       <div style="border-left:3px solid ${sc};padding-left:10px;background:${sc}11;border-radius:0 8px 8px 0;padding:8px 10px">
         <div style="font-size:11px;font-weight:700;margin-bottom:3px;color:${sc}">💡 Suggestion auto (à valider par toi)</div>
         <div style="font-size:12px;opacity:0.85">${r.conseil}</div>
-        <button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${(r.conseil||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">✍️ En faire un conseil</button>
+        <button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${r.statut === 'mauvais' ? 'fatigue élevée' : r.statut === 'modere' ? 'fatigue modérée' : 'récupération'}')">✍️ En faire un conseil</button>
       </div>`;
   } else {
     recupEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore assez de données.</div>';
@@ -1370,6 +1370,16 @@ async function chargerCommentairesCoach(athlete_id) {
   } catch(e) {
     el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
+}
+
+function sujetAlerte(al) {
+  if (al.type === 'fatigue') return 'fatigue élevée';
+  if (al.type === 'irregularite') return 'manque de régularité';
+  if (al.type === 'stagnation') {
+    const exo = String(al.message).split(' : ')[0];
+    return exo ? ('stagnation sur ' + exo) : 'stagnation';
+  }
+  return al.type || 'point à surveiller';
 }
 
 function repondreAlerte(contexte) {
