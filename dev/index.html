@@ -1111,7 +1111,7 @@ function renderCoachOverview(data) {
       <div style="border-left:3px solid ${sc};padding-left:10px;background:${sc}11;border-radius:0 8px 8px 0;padding:8px 10px">
         <div style="font-size:11px;font-weight:700;margin-bottom:3px;color:${sc}">💡 Suggestion auto (à valider par toi)</div>
         <div style="font-size:12px;opacity:0.85">${r.conseil}</div>
-        <button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${r.statut === 'mauvais' ? 'fatigue élevée' : r.statut === 'modere' ? 'fatigue modérée' : 'récupération'}')">✍️ En faire un conseil</button>
+        <button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${r.statut === 'optimal' ? 'récupération' : r.statut === 'modere' ? 'fatigue modérée' : 'fatigue élevée'}')">✍️ En faire un conseil</button>
       </div>`;
   } else {
     recupEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore assez de données.</div>';
