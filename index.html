@@ -210,6 +210,28 @@
       <div id="reg-error" class="error-msg"></div>
       <button class="btn btn-outline" onclick="sInscrire()">Créer mon compte</button>
     </div>
+    <div style="text-align:center;margin-top:14px">
+      <a href="#" id="lien-espace-coach" onclick="toggleEspaceCoach(event)" style="font-size:13px;color:var(--text-muted)">Espace coach</a>
+    </div>
+    <div class="card" id="card-login-coach" style="display:none">
+      <div class="card-title">Connexion coach</div>
+      <label>Login coach</label>
+      <input type="password" id="inp-login-coach" placeholder="Login coach">
+      <div id="login-coach-error" class="error-msg"></div>
+      <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter (coach)</button>
+    </div>
+  </div>
+
+  <!-- VUE COACH -->
+  <div id="view-coach" class="view">
+    <div class="header">
+      <div id="header-nom-coach" style="font-weight:800">Coach</div>
+      <button class="btn-sm btn-outline" onclick="seDeconnecterCoach()">Déconnexion</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Mes athlètes</div>
+      <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
+    </div>
   </div>
 
   <!-- APP -->
@@ -638,6 +660,14 @@ let historiqueData = [];
 
 // ==================== SESSION ====================
 window.addEventListener('load', async () => {
+  const savedCoach = localStorage.getItem('muscu_coach');
+  if (savedCoach) {
+    try {
+      coach = JSON.parse(savedCoach);
+      await ouvrirEspaceCoach();
+      return;
+    } catch(e) { localStorage.removeItem('muscu_coach'); }
+  }
   const saved = localStorage.getItem('muscu_athlete');
   if (saved) {
     try {
@@ -698,6 +728,69 @@ function seDeconnecter() {
   document.getElementById('header-nom').textContent = 'Muscu';
   document.getElementById('inp-login').value = '';
   document.getElementById('login-error').textContent = '';
+}
+
+// ==================== ESPACE COACH ====================
+let coach = null;
+
+function toggleEspaceCoach(ev) {
+  ev.preventDefault();
+  const card = document.getElementById('card-login-coach');
+  card.style.display = card.style.display === 'none' ? 'block' : 'none';
+}
+
+async function seConnecterCoach() {
+  const login = document.getElementById('inp-login-coach').value.trim();
+  const errEl = document.getElementById('login-coach-error');
+  errEl.textContent = '';
+  if (!login) { errEl.textContent = 'Entre ton login coach.'; return; }
+  errEl.textContent = 'Connexion...';
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=loginCoach&login=${encodeURIComponent(login)}`);
+    const data = await res.json();
+    if (data.success) {
+      coach = data.coach;
+      localStorage.setItem('muscu_coach', JSON.stringify(coach));
+      ouvrirEspaceCoach();
+    } else { errEl.textContent = 'Login coach incorrect.'; }
+  } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
+}
+
+function seDeconnecterCoach() {
+  coach = null;
+  localStorage.removeItem('muscu_coach');
+  document.getElementById('view-coach').classList.remove('active');
+  document.getElementById('view-login').classList.add('active');
+}
+
+async function ouvrirEspaceCoach() {
+  document.getElementById('view-login').classList.remove('active');
+  document.getElementById('view-coach').classList.add('active');
+  document.getElementById('header-nom-coach').textContent = coach.nom;
+  const listeEl = document.getElementById('liste-athletes-coach');
+  listeEl.innerHTML = '<div class="loader">Chargement...</div>';
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCoachAthletes&coach_id=${encodeURIComponent(coach.coach_id)}`);
+    const data = await res.json();
+    const athletes = data.athletes || [];
+    if (athletes.length === 0) {
+      listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
+      return;
+    }
+    listeEl.innerHTML = '';
+    athletes.forEach(a => {
+      const div = document.createElement('div');
+      div.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px';
+      div.innerHTML = `
+        <div style="font-size:15px;font-weight:800">${a.nom}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière séance : ${a.derniere_seance || 'Jamais'}</div>
+        <div style="font-size:12px;color:var(--text-muted)">Séances cette semaine : ${a.seances_semaine}</div>
+      `;
+      listeEl.appendChild(div);
+    });
+  } catch(e) {
+    listeEl.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+  }
 }
 
 // ==================== APP ====================
