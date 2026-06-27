@@ -622,6 +622,17 @@ let serieNum = 1;
 let exercicesData = [];
 let programmeSeance = [];
 let lastPerfData = {};
+
+function normaliserNomExo(s) {
+  return String(s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function getPerf(nom) {
+  if (lastPerfData[nom]) return lastPerfData[nom];
+  const cible = normaliserNomExo(nom);
+  const cle = Object.keys(lastPerfData).find(k => normaliserNomExo(k) === cible);
+  return cle ? lastPerfData[cle] : null;
+}
 let indexExoProgramme = 0;
 let historiqueData = [];
 
@@ -790,7 +801,7 @@ function afficherListeSeance() {
   // Stocker le programme dans un tableau global indexé pour éviter les problèmes d'apostrophes
   listeEl.innerHTML = '';
   programmeSeance.forEach((p, i) => {
-    const perf = lastPerfData[p.exercice];
+    const perf = getPerf(p.exercice);
     const exoData = exercicesData.find(e => e.exercice === p.exercice);
     const incrementRaw = exoData ? exoData.increment_kg : "2.5";
     const increment = parseFloat(String(incrementRaw).replace(',','.').split('/')[0].trim()) || 2.5;
@@ -859,7 +870,7 @@ function afficherListeSeance() {
 
 function ajouterCarteExoLibre(listeEl, e) {
   const seriesFaites = e.series.length;
-  const perf = lastPerfData[e.exerciceNom];
+  const perf = getPerf(e.exerciceNom);
   const div = document.createElement('div');
   div.style.cssText = `background:var(--surface);border:1px solid ${seriesFaites > 0 ? 'var(--success)' : 'var(--border)'};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;position:relative`;
   div.innerHTML = `
@@ -916,7 +927,7 @@ function selectionnerExoLibre(exerciceNom) {
   document.getElementById('exo-actuel-cible').innerHTML = '';
   document.getElementById('exo-actuel-suggestion').innerHTML = '';
 
-  const perf = lastPerfData[exo.exerciceNom];
+  const perf = getPerf(exo.exerciceNom);
   if (perf) {
     document.getElementById('exo-actuel-perf').innerHTML = `Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong>`;
     document.getElementById('inp-charge').value = perf.last_charge;
@@ -1117,7 +1128,7 @@ function afficherRecap() {
     div.className = 'recap-exo';
     div.innerHTML = `<div class="recap-exo-name">${exo.muscle} — ${exo.exerciceNom}</div>`;
     const progExo = programmeSeance.find(pr => pr.exercice === exo.exerciceNom);
-    const perfExo = lastPerfData[exo.exerciceNom];
+    const perfExo = getPerf(exo.exerciceNom);
     exo.series.forEach(s => {
       const p = document.createElement('div');
       p.className = 'recap-serie';
@@ -1574,7 +1585,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   const exoId = exoData ? exoData.exercice_id : exerciceNom;
   const incrementRaw2 = exoData ? exoData.increment_kg : "2.5";
   const increment2 = parseFloat(String(incrementRaw2).replace(',','.').split('/')[0].trim()) || 2.5;
-  const perf = lastPerfData[exerciceNom];
+  const perf = getPerf(exerciceNom);
 
   // Récupérer l'exo si déjà commencé - on continue d'ajouter des séries
   const exoExistant = seance.find(e => e.exerciceNom === exerciceNom);
@@ -2110,7 +2121,7 @@ function filtrerGraphPoids(periode) {
   document.getElementById('graph-poids-svg').innerHTML = svg;
 }
 
-function demarrerSeanceLibre() {
+async function demarrerSeanceLibre() {
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   programmeSeance = []; lastPerfData = {};
   // Réinitialiser le choix de programme et le bloc "autre exercice"
@@ -2122,6 +2133,11 @@ function demarrerSeanceLibre() {
   document.getElementById('btn-valider').style.display = 'none';
   afficherListeExosLibres();
   toggleExoHorsProgramme(true);
+
+  const resPerf = await fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=Libre`);
+  const dataPerf = await resPerf.json();
+  lastPerfData = dataPerf.perfs || {};
+  afficherListeExosLibres();
 }
 
 function terminerExercice() {
