@@ -287,6 +287,13 @@
         <div class="dash-label">⚠️ Muscle en retard</div>
         <div id="cd-muscle"><div class="loader">Chargement...</div></div>
       </div>
+      <div class="dash-card" id="cd-commentaires-card" style="padding:16px">
+        <div class="dash-label">💬 Mes conseils à l'athlète</div>
+        <textarea id="cd-comment-input" placeholder="Laisse un conseil que l'athlète verra dans son app..."
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;resize:none;min-height:70px;font-family:inherit;margin-top:8px"></textarea>
+        <button class="btn btn-accent" style="margin-top:8px" onclick="envoyerCommentaireCoach()">Envoyer le conseil</button>
+        <div id="cd-commentaires-liste" style="margin-top:12px"></div>
+      </div>
     </div>
 
     <!-- ONGLET PROGRESSION -->
@@ -349,6 +356,12 @@
 
     <!-- ONGLET ACCUEIL -->
     <div id="tab-accueil" class="tab-content active dash">
+
+      <!-- Message du coach -->
+      <div class="dash-card dash-card-accent-green" id="coach-msg-card" style="padding:16px;display:none">
+        <div class="dash-label">💬 Conseils de ton coach</div>
+        <div id="coach-msg-content"></div>
+      </div>
 
       <!-- Semaine + Poids -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -1030,6 +1043,9 @@ async function ouvrirDetailAthleteCoach(a) {
   });
   document.getElementById('cd-progression-content').innerHTML = '';
   document.getElementById('cd-seances-content').innerHTML = '';
+  document.getElementById('cd-comment-input').value = '';
+  document.getElementById('cd-commentaires-liste').innerHTML = '<div class="loader">Chargement...</div>';
+  chargerCommentairesCoach(a.athlete_id);
 
   try {
     const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
@@ -1329,6 +1345,81 @@ function renderCoachSeances(data) {
       </div>`).join('');
 }
 
+// ==================== COMMENTAIRES COACH -> ATHLETE ====================
+async function chargerCommentairesCoach(athlete_id) {
+  const el = document.getElementById('cd-commentaires-liste');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(athlete_id)}`);
+    const data = await res.json();
+    const commentaires = data.commentaires || [];
+    el.innerHTML = commentaires.length === 0
+      ? '<div style="font-size:12px;color:var(--text-muted)">Aucun conseil envoyé pour le moment.</div>'
+      : commentaires.map(c => `
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+          <div style="font-size:13px;color:var(--text)">${c.message}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:4px">${c.date}${c.lu ? ' · ✅ lu' : ' · 🕓 non lu'}</div>
+        </div>`).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+  }
+}
+
+async function envoyerCommentaireCoach() {
+  const input = document.getElementById('cd-comment-input');
+  const message = input.value.trim();
+  if (!message) { showToast('⚠️ Écris un conseil', '#ff4444'); return; }
+  if (!coachAthleteCourant || !coach) return;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'saveCommentaire',
+        coach_id: coach.coach_id,
+        coach_nom: coach.nom,
+        athlete_id: coachAthleteCourant.athlete_id,
+        message: message
+      })
+    });
+    input.value = '';
+    showToast('✅ Conseil envoyé !');
+    // Recharger après un court délai (le temps que le Sheet soit à jour)
+    setTimeout(() => chargerCommentairesCoach(coachAthleteCourant.athlete_id), 800);
+  } catch(e) {
+    showToast('❌ Erreur envoi', '#ff4444');
+  }
+}
+
+// Côté athlète : afficher les messages du coach sur le tableau de bord
+async function chargerMessagesCoach() {
+  if (!athlete) return;
+  const card = document.getElementById('coach-msg-card');
+  const content = document.getElementById('coach-msg-content');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(athlete.athlete_id)}`);
+    const data = await res.json();
+    const commentaires = data.commentaires || [];
+    if (commentaires.length === 0) { card.style.display = 'none'; return; }
+    content.innerHTML = commentaires.slice(0, 5).map(c => `
+      <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-top:8px">
+        <div style="font-size:13px;color:var(--text)">${c.message}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">${c.coach_nom || 'Coach'} · ${c.date}</div>
+      </div>`).join('');
+    card.style.display = 'block';
+    // Marquer comme lus
+    const nonLus = commentaires.filter(c => !c.lu).map(c => c.id);
+    if (nonLus.length > 0) {
+      fetch(SCRIPT_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLus })
+      });
+    }
+  } catch(e) {
+    card.style.display = 'none';
+  }
+}
+
 // ==================== APP ====================
 async function ouvrirApp() {
   document.getElementById('view-login').classList.remove('active');
@@ -1356,6 +1447,7 @@ async function ouvrirApp() {
   if (exercicesData.length === 0) await chargerExercices();
   peuplerMusclesLibres();
   chargerAppData(); // Un seul appel pour tout
+  chargerMessagesCoach(); // Messages du coach
 }
 
 function switchTab(tab) {
