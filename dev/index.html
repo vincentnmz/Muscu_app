@@ -1368,8 +1368,9 @@ async function chargerCommentairesCoach(athlete_id) {
     el.innerHTML = commentaires.length === 0
       ? '<div style="font-size:12px;color:var(--text-muted)">Aucun conseil envoyé pour le moment.</div>'
       : commentaires.map(c => `
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px">
-          <div style="font-size:13px;color:var(--text);white-space:pre-wrap">${c.message}</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px;position:relative">
+          <button class="btn-sm btn-danger-sm" style="position:absolute;top:8px;right:8px" title="Supprimer ce conseil" onclick="supprimerCommentaireCoach('${c.id}')">🗑️</button>
+          <div style="font-size:13px;color:var(--text);white-space:pre-wrap;padding-right:30px">${c.message}</div>
           <div style="font-size:10px;color:var(--text-muted);margin-top:4px">${c.date}${c.lu ? ' · ✅ lu' : ' · 🕓 non lu'}</div>
         </div>`).join('');
     // Re-rendu des alertes pour afficher l'indicateur "déjà conseillé"
@@ -1456,6 +1457,21 @@ async function envoyerCommentaireCoach() {
   }
 }
 
+async function supprimerCommentaireCoach(id) {
+  if (!confirm('Supprimer ce conseil ? L\'athlète ne le verra plus.')) return;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'supprimerCommentaire', id: id })
+    });
+    showToast('🗑️ Conseil supprimé');
+    setTimeout(() => chargerCommentairesCoach(coachAthleteCourant.athlete_id), 800);
+  } catch(e) {
+    showToast('❌ Erreur suppression', '#ff4444');
+  }
+}
+
 // Côté athlète : conseils du coach (onglet dédié + badge)
 let messagesCoach = [];
 
@@ -1483,13 +1499,19 @@ function majBadgeConseils() {
   }
 }
 
+let conseilsAthleteToutAfficher = false;
+const CONSEILS_LIMITE = 10;
+
 function afficherOngletConseils() {
   const el = document.getElementById('conseils-content');
   if (messagesCoach.length === 0) {
     el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Aucun conseil de ton coach pour le moment.</div>';
     return;
   }
-  el.innerHTML = messagesCoach.map(c => {
+  // Les non-lus sont toujours visibles ; on limite le reste
+  const aAfficher = conseilsAthleteToutAfficher ? messagesCoach : messagesCoach.slice(0, CONSEILS_LIMITE);
+  const reste = messagesCoach.length - aAfficher.length;
+  el.innerHTML = aAfficher.map(c => {
     const nouveau = !c.lu;
     return `
       <div style="background:${nouveau ? 'rgba(0,201,110,0.1)' : 'var(--surface2)'};border:1px solid ${nouveau ? '#00c96e' : 'transparent'};border-radius:8px;padding:12px;margin-bottom:8px">
@@ -1497,7 +1519,12 @@ function afficherOngletConseils() {
         <div style="font-size:13px;color:var(--text);white-space:pre-wrap">${c.message}</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:6px">${c.coach_nom || 'Coach'} · ${c.date}</div>
       </div>`;
-  }).join('');
+  }).join('')
+  + (reste > 0
+      ? `<button class="btn btn-outline" style="margin-top:4px" onclick="conseilsAthleteToutAfficher=true;afficherOngletConseils()">Voir tout l'historique (${reste} de plus)</button>`
+      : (conseilsAthleteToutAfficher && messagesCoach.length > CONSEILS_LIMITE
+          ? `<button class="btn btn-outline" style="margin-top:4px" onclick="conseilsAthleteToutAfficher=false;afficherOngletConseils()">Réduire</button>`
+          : ''));
 
   // Marquer les non-lus comme lus
   const nonLus = messagesCoach.filter(c => !c.lu).map(c => c.id);
