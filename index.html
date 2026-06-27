@@ -786,13 +786,24 @@ async function ouvrirEspaceCoach() {
       return;
     }
     listeEl.innerHTML = '';
+    const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
     athletes.forEach(a => {
+      const alertes = a.alertes || [];
+      const bordureCouleur = alertes.some(al => al.severite === 'haute') ? couleurSeverite.haute
+        : alertes.some(al => al.severite === 'moyenne') ? couleurSeverite.moyenne
+        : 'var(--border)';
       const div = document.createElement('div');
-      div.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px';
+      div.style.cssText = `background:var(--surface);border:1px solid ${bordureCouleur};border-left:4px solid ${bordureCouleur};border-radius:var(--radius);padding:14px;margin-bottom:10px`;
+      const alertesHtml = alertes.length > 0
+        ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">` +
+          alertes.map(al => `<div style="font-size:12px;font-weight:600;color:${couleurSeverite[al.severite] || '#a3a3a3'}">⚠️ ${al.message}</div>`).join('') +
+          `</div>`
+        : `<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">✅ Rien à signaler</div>`;
       div.innerHTML = `
         <div style="font-size:15px;font-weight:800">${a.nom}</div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière séance : ${a.derniere_seance || 'Jamais'}</div>
         <div style="font-size:12px;color:var(--text-muted)">Séances cette semaine : ${a.seances_semaine}</div>
+        ${alertesHtml}
       `;
       listeEl.appendChild(div);
     });
