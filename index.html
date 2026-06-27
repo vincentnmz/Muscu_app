@@ -238,19 +238,104 @@
   <div id="view-coach-detail" class="view">
     <div class="header">
       <button class="btn-sm btn-outline" onclick="retourListeAthletesCoach()">⬅️ Retour</button>
-      <div id="header-nom-athlete-coach" style="font-weight:800">Athlète</div>
+      <div style="text-align:right">
+        <div id="header-nom-athlete-coach" style="font-weight:800">Athlète</div>
+        <div id="header-niveau-athlete-coach" style="font-size:11px;color:var(--text-muted)"></div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-title">Alertes</div>
-      <div id="detail-coach-alertes"><div class="loader">Chargement...</div></div>
+
+    <!-- Sous-onglets coach -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" id="cdtab-btn-overview" onclick="switchCoachDetailTab('overview')">📊 Aperçu</button>
+      <button class="sub-tab" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')">📈 Progression</button>
+      <button class="sub-tab" id="cdtab-btn-volume" onclick="switchCoachDetailTab('volume')">💪 Volume</button>
+      <button class="sub-tab" id="cdtab-btn-cal" onclick="switchCoachDetailTab('cal')">📅 Agenda</button>
     </div>
-    <div class="card">
-      <div class="card-title">Progression par exercice</div>
-      <div id="detail-coach-progression"></div>
+
+    <!-- ONGLET APERÇU -->
+    <div id="cdtab-overview">
+      <div class="dash-card" id="cd-alertes-card" style="padding:16px">
+        <div class="dash-label">🚨 Alertes</div>
+        <div id="cd-alertes"><div class="loader">Chargement...</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="dash-card">
+          <div class="dash-label">Régularité semaine</div>
+          <div class="dash-big-num"><span id="cd-reg-faites">—</span><span style="font-size:12px;color:#999;font-weight:400"> / <span id="cd-reg-prevues">—</span></span></div>
+          <div class="dash-bar-bg" style="background:var(--surface2);border-radius:20px;height:6px;margin-top:6px"><div id="cd-reg-bar" style="background:var(--accent);height:100%;width:0%;border-radius:20px"></div></div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-label">Dernière séance</div>
+          <div style="font-size:16px;font-weight:800;margin-top:4px" id="cd-derniere-date">—</div>
+          <div style="font-size:11px;color:var(--text-muted)" id="cd-derniere-nom"></div>
+        </div>
+      </div>
+      <div class="dash-card" id="cd-recup-card" style="padding:16px">
+        <div class="dash-label">🧠 Récupération</div>
+        <div id="cd-recup"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="dash-card" id="cd-prog-card" style="padding:16px">
+        <div class="dash-label">📈 Progression cette semaine</div>
+        <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="dash-card dash-card-accent-orange" id="cd-muscle-card" style="padding:16px">
+        <div class="dash-label">⚠️ Muscle en retard</div>
+        <div id="cd-muscle"><div class="loader">Chargement...</div></div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-title">Séances récentes</div>
-      <div id="detail-coach-seances"></div>
+
+    <!-- ONGLET PROGRESSION -->
+    <div id="cdtab-prog" style="display:none">
+      <div class="card">
+        <div class="card-title">📈 Progression par exercice</div>
+        <select id="cd-sel-exercice" onchange="afficherCoachProgressionExo()" style="margin-bottom:10px">
+          <option value="">— Choisir un exercice —</option>
+        </select>
+        <div id="cd-progression-content"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Tendances</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button onclick="afficherCoachTendances(4)" id="cd-btn-tend-4" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer">4 sem.</button>
+          <button onclick="afficherCoachTendances(8)" id="cd-btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">8 sem.</button>
+        </div>
+        <div id="cd-tendances-content"><div class="loader">Chargement...</div></div>
+      </div>
+    </div>
+
+    <!-- ONGLET VOLUME -->
+    <div id="cdtab-volume" style="display:none">
+      <div class="card">
+        <div class="card-title">💪 Volume par muscle — semaine en cours</div>
+        <div id="cd-volume-content"><div class="loader">Chargement...</div></div>
+      </div>
+    </div>
+
+    <!-- ONGLET AGENDA -->
+    <div id="cdtab-cal" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700;color:var(--text)" id="cd-cal-titre">Mois</span>
+          <div style="display:flex;gap:12px">
+            <span onclick="cdCalNaviguer(-1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700">◀</span>
+            <span onclick="cdCalNaviguer(1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700">▶</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:5px">
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">L</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">M</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">M</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">J</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">V</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">S</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">D</div>
+        </div>
+        <div id="cd-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Séances récentes</div>
+        <div id="cd-seances-content"></div>
+      </div>
     </div>
   </div>
 
@@ -834,65 +919,358 @@ async function ouvrirEspaceCoach() {
   }
 }
 
+// ==================== DETAIL ATHLETE (COACH) ====================
+let coachAthleteData = null;       // résultat getAppData de l'athlète sélectionné
+let coachAthleteCourant = null;    // objet athlète (depuis la liste, contient alertes/annees)
+let cdProgressionData = {};
+let cdTendancesData = null;
+let cdSeancesDates = {};
+let cdCalDate = new Date();
+
 function retourListeAthletesCoach() {
   document.getElementById('view-coach-detail').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
 }
 
+function switchCoachDetailTab(tab) {
+  ['overview','prog','volume','cal'].forEach(t => {
+    document.getElementById('cdtab-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('cdtab-btn-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+function coachNiveauKey(annees) {
+  const n = getNiveauExperience(annees); // debutant / intermediaire / avance / expert
+  if (n === 'debutant') return 'debutant';
+  if (n === 'intermediaire') return 'intermediaire';
+  return 'experimente'; // avance + expert
+}
+
 async function ouvrirDetailAthleteCoach(a) {
+  coachAthleteCourant = a;
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.add('active');
   document.getElementById('header-nom-athlete-coach').textContent = a.nom;
+  const niv = getNiveauExperience(a.annees_pratique);
+  const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv];
+  document.getElementById('header-niveau-athlete-coach').textContent =
+    `${nivLabel} · ${a.annees_pratique || 0} an${(a.annees_pratique||0)>1?'s':''}`;
+  switchCoachDetailTab('overview');
+  cdCalDate = new Date();
 
+  // Alertes (déjà disponibles dans l'objet a)
   const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
-  const alertesEl = document.getElementById('detail-coach-alertes');
   const alertes = a.alertes || [];
-  alertesEl.innerHTML = alertes.length > 0
-    ? alertes.map(al => `<div style="font-size:13px;font-weight:600;color:${couleurSeverite[al.severite] || '#a3a3a3'};margin-bottom:6px">⚠️ ${al.message}</div>`).join('')
-    : '<div style="font-size:13px;color:var(--text-muted)">✅ Rien à signaler</div>';
+  document.getElementById('cd-alertes').innerHTML = alertes.length > 0
+    ? alertes.map(al => `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:${(couleurSeverite[al.severite]||'#a3a3a3')}1a;border-radius:8px;margin-top:6px">
+        <span style="font-size:14px">⚠️</span>
+        <span style="font-size:13px;font-weight:600;color:${couleurSeverite[al.severite]||'#a3a3a3'}">${al.message}</span>
+      </div>`).join('')
+    : '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">✅ Rien à signaler</div>';
 
-  const progEl = document.getElementById('detail-coach-progression');
-  const seancesEl = document.getElementById('detail-coach-seances');
-  progEl.innerHTML = '<div class="loader">Chargement...</div>';
-  seancesEl.innerHTML = '';
+  // Reset les zones en chargement
+  ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content'].forEach(id => {
+    document.getElementById(id).innerHTML = '<div class="loader">Chargement...</div>';
+  });
+  document.getElementById('cd-progression-content').innerHTML = '';
+  document.getElementById('cd-seances-content').innerHTML = '';
 
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getCoachAthleteDetail&athlete_id=${encodeURIComponent(a.athlete_id)}`);
+    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
     const data = await res.json();
+    coachAthleteData = data;
+    cdProgressionData = data.historique ? (data.historique.progression_par_exo || {}) : {};
+    cdTendancesData = data.historique ? (data.historique.tendances || null) : null;
+    cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
-    const progression = data.progression || {};
-    const exos = Object.keys(progression);
-    progEl.innerHTML = exos.length === 0
-      ? '<div style="font-size:13px;color:var(--text-muted)">Aucune donnée</div>'
-      : exos.map(exo => {
-          const entries = progression[exo];
-          return `
-            <div style="margin-bottom:12px">
-              <div style="font-size:13px;font-weight:700;margin-bottom:4px">${exo}</div>
-              <div style="display:flex;flex-wrap:wrap;gap:6px">
-                ${entries.map(e2 => `<div style="font-size:11px;background:var(--surface2);border-radius:6px;padding:4px 8px">${e2.date} · ${e2.charge}kg × ${e2.reps}</div>`).join('')}
-              </div>
-            </div>`;
-        }).join('');
-
-    const seances = data.seances || [];
-    seancesEl.innerHTML = seances.length === 0
-      ? '<div style="font-size:13px;color:var(--text-muted)">Aucune séance</div>'
-      : seances.map(s => {
-          const exosList = Object.keys(s.exercices).map(exo => {
-            const series = s.exercices[exo];
-            const detail = series.map(se => `${se.charge}kg×${se.reps}`).join(', ');
-            return `<div style="font-size:12px;color:var(--text-muted)">${exo} : ${detail}</div>`;
-          }).join('');
-          return `
-            <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-              <div style="font-size:13px;font-weight:700">${s.date} · ${s.seanceId}</div>
-              ${exosList}
-            </div>`;
-        }).join('');
+    renderCoachOverview(data);
+    renderCoachVolume(data);
+    afficherCoachTendances(4);
+    renderCoachExerciceSelect(data);
+    renderCoachCalendrier();
+    renderCoachSeances(data);
   } catch(e) {
-    progEl.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+    document.getElementById('cd-recup').innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
+}
+
+function renderCoachOverview(data) {
+  const dash = data.dashboard || {};
+
+  // Régularité
+  const reg = dash.regularite || {};
+  const faites = reg.seances_semaine || 0;
+  const prevues = reg.seances_prevues || 0;
+  const pct = prevues > 0 ? Math.min(100, Math.round(faites/prevues*100)) : 0;
+  document.getElementById('cd-reg-faites').textContent = faites;
+  document.getElementById('cd-reg-prevues').textContent = prevues;
+  document.getElementById('cd-reg-bar').style.width = pct + '%';
+
+  // Dernière séance
+  if (dash.derniere_seance) {
+    document.getElementById('cd-derniere-date').textContent = dash.derniere_seance.date;
+    document.getElementById('cd-derniere-nom').textContent =
+      `${dash.derniere_seance.seance_id} · ${dash.derniere_seance.nb_series} séries · RPE ${dash.derniere_seance.rpe_moyen}`;
+  } else {
+    document.getElementById('cd-derniere-date').textContent = 'Jamais';
+    document.getElementById('cd-derniere-nom').textContent = '';
+  }
+
+  // Récupération
+  const recupEl = document.getElementById('cd-recup');
+  if (dash.recuperation) {
+    const r = dash.recuperation;
+    const sc = r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : 'var(--danger)';
+    const sl = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟡 Fatigue modérée' : '🔴 Fatigue élevée';
+    recupEl.innerHTML = `
+      <div style="font-size:13px;font-weight:700;color:${sc};margin:6px 0 12px">${sl}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color}">${r.rpe_moyen}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
+        <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color}">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
+        <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color}">${r.volume_evol > 0 ? '+' : ''}${r.volume_evol}%</div><div class="dash-stat-label">Volume</div></div>
+      </div>
+      <div style="border-left:3px solid ${sc};padding-left:10px">
+        <div style="font-size:12px;font-weight:700;margin-bottom:3px">Conseil</div>
+        <div style="font-size:12px;opacity:0.8">${r.conseil}</div>
+      </div>`;
+  } else {
+    recupEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore assez de données.</div>';
+  }
+
+  // Progression semaine
+  const progEl = document.getElementById('cd-prog-semaine');
+  if (dash.progression) {
+    const p = dash.progression;
+    const up = p.details.filter(d => d.up).map(d => `
+      <div style="display:flex;justify-content:space-between;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px">
+        <span style="font-size:11px;color:#00c96e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
+        <span style="font-size:11px;color:#00c96e;white-space:nowrap">${d.variation}</span></div>`).join('');
+    const down = p.details.filter(d => d.down && !d.up).map(d => `
+      <div style="display:flex;justify-content:space-between;padding:5px 8px;background:rgba(255,68,68,0.1);border-radius:6px;margin-bottom:4px">
+        <span style="font-size:11px;color:var(--danger);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
+        <span style="font-size:11px;color:var(--danger);white-space:nowrap">${d.variation}</span></div>`).join('');
+    progEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 12px">
+        <div style="background:rgba(0,201,110,0.1);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#00c96e">${p.en_progression || 0}</div>
+          <div style="font-size:10px;color:var(--text-muted)">en progression</div></div>
+        <div style="background:rgba(255,68,68,0.1);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:var(--danger)">${p.en_baisse || 0}</div>
+          <div style="font-size:10px;color:var(--text-muted)">en baisse</div></div>
+      </div>
+      ${up ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">En progression</div>${up}` : ''}
+      ${down ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin:8px 0 4px">En baisse</div>${down}` : ''}
+      ${!up && !down ? '<div style="color:var(--text-muted);font-size:13px">Charges stables cette semaine</div>' : ''}`;
+  } else {
+    progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore de données.</div>';
+  }
+
+  // Muscle en retard
+  const muscleEl = document.getElementById('cd-muscle');
+  if (dash.muscle_retard) {
+    const m = dash.muscle_retard;
+    const moyHebdo = Math.round(m.series_faites / 4 * 10) / 10;
+    const objectifHebdo = Math.round(m.series_optimale / 4);
+    const deficit = objectifHebdo > 0 ? Math.round((1 - moyHebdo/objectifHebdo) * 100) : 0;
+    muscleEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin:6px 0 10px">
+        <div><div style="font-size:16px;font-weight:800">${m.muscle}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Sous-entraîné sur 4 semaines</div></div>
+        <span style="background:rgba(245,159,0,0.2);color:#f59f00;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">-${deficit}%</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="dash-stat"><div class="dash-stat-num" style="color:#f59f00">${moyHebdo}</div><div class="dash-stat-label">séries/sem moy.</div></div>
+        <div class="dash-stat"><div class="dash-stat-num">${objectifHebdo}</div><div class="dash-stat-label">objectif/sem</div></div>
+      </div>`;
+  } else {
+    muscleEl.innerHTML = '<div style="color:#00c96e;font-size:13px;font-weight:700;margin-top:6px">✅ Tous les muscles bien entraînés !</div>';
+  }
+}
+
+function renderCoachExerciceSelect(data) {
+  const exercices = data.historique ? (data.historique.exercices || []) : [];
+  const sel = document.getElementById('cd-sel-exercice');
+  sel.innerHTML = '<option value="">— Choisir un exercice —</option>';
+  exercices.forEach(e => {
+    const o = document.createElement('option');
+    o.value = e; o.textContent = e; sel.appendChild(o);
+  });
+  document.getElementById('cd-progression-content').innerHTML =
+    '<div style="font-size:13px;color:var(--text-muted)">Choisis un exercice pour voir son évolution.</div>';
+}
+
+function afficherCoachProgressionExo() {
+  const exo = document.getElementById('cd-sel-exercice').value;
+  const el = document.getElementById('cd-progression-content');
+  if (!exo || !cdProgressionData[exo]) { el.innerHTML = ''; return; }
+  const perfs = cdProgressionData[exo];
+  if (perfs.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune donnée</div>'; return; }
+
+  const first = perfs[perfs.length - 1];
+  const last = perfs[0];
+  const diffCharge = last.charge - first.charge;
+  const diffReps = last.reps - first.reps;
+  const progGlobale = diffCharge > 0 ? `+${diffCharge}kg` : diffReps > 0 ? `+${diffReps} reps` : 'Stable';
+  const progCouleur = diffCharge > 0 || diffReps > 0 ? '#00c96e' : 'var(--text-muted)';
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px">
+      <span style="font-size:12px;color:var(--text-muted)">Progression totale</span>
+      <span style="font-size:13px;font-weight:700;color:${progCouleur}">${progGlobale}</span>
+    </div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">
+        <td style="padding:5px 0">Date</td><td style="padding:5px 0;text-align:center">Séance</td>
+        <td style="padding:5px 0;text-align:center">Charge S1</td><td style="padding:5px 0;text-align:center">Reps S1</td>
+        <td style="padding:5px 0;text-align:center">Évol.</td>
+      </tr>
+      ${perfs.map((p, i) => {
+        const prev = perfs[i+1];
+        let evol = '—', evolColor = 'var(--text-muted)';
+        if (prev) {
+          if (p.charge > prev.charge) { evol = '↑'; evolColor = '#00c96e'; }
+          else if (p.charge < prev.charge) { evol = '↓'; evolColor = 'var(--danger)'; }
+          else if (p.reps > prev.reps) { evol = '↑'; evolColor = '#c8f000'; }
+          else if (p.reps < prev.reps) { evol = '↓'; evolColor = 'var(--danger)'; }
+          else { evol = '='; }
+        }
+        const isLast = i === 0;
+        return `<tr style="border-bottom:1px solid var(--surface2);${isLast ? 'font-weight:700' : ''}">
+          <td style="padding:6px 0;color:var(--text)">${p.date}</td>
+          <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px">${(p.seance||'').substring(0,8)}</td>
+          <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'}">${p.charge}kg</td>
+          <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'}">${p.reps}</td>
+          <td style="padding:6px 0;text-align:center;color:${evolColor};font-size:16px;font-weight:700">${evol}</td>
+        </tr>`;
+      }).join('')}
+    </table>`;
+}
+
+function afficherCoachTendances(semaines) {
+  const el = document.getElementById('cd-tendances-content');
+  document.getElementById('cd-btn-tend-4').style.background = semaines === 4 ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('cd-btn-tend-4').style.color = semaines === 4 ? '#000' : 'var(--text-muted)';
+  document.getElementById('cd-btn-tend-8').style.background = semaines === 8 ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('cd-btn-tend-8').style.color = semaines === 8 ? '#000' : 'var(--text-muted)';
+
+  if (!cdTendancesData) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Pas assez de données</div>'; return; }
+  const t = semaines === 4 ? cdTendancesData.s4 : cdTendancesData.s8;
+  if (!t) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Pas assez de données sur cette période</div>'; return; }
+
+  const sc = t.statut === 'positif' ? '#00c96e' : t.statut === 'plateau' ? '#f59f00' : 'var(--danger)';
+  const sl = t.statut === 'positif' ? '🟢 Adaptation positive' : t.statut === 'plateau' ? '⚠️ Plateau' : '🔴 Régression';
+  const sd = t.statut === 'positif' ? 'Volume et charges en progression' : t.statut === 'plateau' ? 'Charges stables depuis plusieurs semaines' : 'Charges en baisse ou RPE en forte hausse';
+
+  const ligne = (label, vd, vf, unite, up) => {
+    const diff = vf - vd;
+    const pct = vd > 0 ? Math.round(diff/vd*100) : 0;
+    const c = up === null ? 'var(--text-muted)' : (up ? '#00c96e' : 'var(--danger)');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface2)">
+      <div><div style="font-size:12px;font-weight:700">${label}</div>
+      <div style="font-size:11px;color:var(--text-muted)">${vd}${unite} → ${vf}${unite}</div></div>
+      <span style="background:${c}22;color:${c};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">${pct>0?'+':''}${pct}%</span></div>`;
+  };
+  el.innerHTML = `
+    ${ligne('Volume hebdo', t.volume_debut, t.volume_fin, ' séries', t.volume_fin >= t.volume_debut)}
+    ${ligne('RPE moyen', t.rpe_debut, t.rpe_fin, '', null)}
+    ${ligne('Charge moyenne S1', t.charge_debut, t.charge_fin, 'kg', t.charge_fin >= t.charge_debut)}
+    <div style="background:${sc}22;border-radius:8px;padding:10px 12px;margin-top:10px">
+      <div style="font-size:12px;font-weight:700;color:${sc}">${sl}</div>
+      <div style="font-size:11px;color:${sc};opacity:0.8;margin-top:2px">${sd}</div>
+    </div>`;
+}
+
+function renderCoachVolume(data) {
+  const volumes = data.historique ? (data.historique.volume_semaine || []) : [];
+  const el = document.getElementById('cd-volume-content');
+  if (!volumes || volumes.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune donnée cette semaine</div>'; return;
+  }
+  const niveauKey = coachNiveauKey(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
+  const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
+  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
+    volumes.map(v => {
+      const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
+      const mini = cible[0], optimal = cible[1], faites = v.faites || 0;
+      const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
+      let couleur, statut;
+      if (faites >= optimal) { couleur = '#00c96e'; statut = '✅'; }
+      else if (faites >= mini) { couleur = '#c8f000'; statut = '🟡'; }
+      else if (faites > 0) { couleur = '#f59f00'; statut = '⚠️'; }
+      else { couleur = 'var(--danger)'; statut = '🔴'; }
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:12px;font-weight:700">${v.muscle}</span>
+          <span style="font-size:11px;color:${couleur};font-weight:700">${faites} / ${optimal} séries ${statut}</span></div>
+        <div style="background:var(--surface2);border-radius:20px;height:6px"><div style="background:${couleur};height:100%;width:${pct}%;border-radius:20px"></div></div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Min : ${mini} · Optimal : ${optimal}</div>
+      </div>`;
+    }).join('');
+}
+
+function cdCalNaviguer(direction) {
+  cdCalDate.setMonth(cdCalDate.getMonth() + direction);
+  renderCoachCalendrier();
+}
+
+function renderCoachCalendrier() {
+  const mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const annee = cdCalDate.getFullYear();
+  const moisIdx = cdCalDate.getMonth();
+  document.getElementById('cd-cal-titre').textContent = `${mois[moisIdx]} ${annee}`;
+  const today = new Date();
+  const premierJour = new Date(annee, moisIdx, 1);
+  const dernierJour = new Date(annee, moisIdx + 1, 0);
+  let debutOffset = premierJour.getDay() - 1;
+  if (debutOffset < 0) debutOffset = 6;
+  const grid = document.getElementById('cd-cal-grid');
+  grid.innerHTML = '';
+  const prevDernier = new Date(annee, moisIdx, 0).getDate();
+  for (let i = debutOffset - 1; i >= 0; i--) {
+    const d = document.createElement('div');
+    d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border)';
+    d.textContent = prevDernier - i; grid.appendChild(d);
+  }
+  for (let j = 1; j <= dernierJour.getDate(); j++) {
+    const d = document.createElement('div');
+    const dateStr = `${String(j).padStart(2,'0')}/${String(moisIdx+1).padStart(2,'0')}/${annee}`;
+    const isToday = j === today.getDate() && moisIdx === today.getMonth() && annee === today.getFullYear();
+    const hasSeance = cdSeancesDates[dateStr];
+    const isFutur = new Date(annee, moisIdx, j) > today;
+    if (isToday) {
+      d.style.cssText = 'background:var(--accent);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:#000;font-weight:700';
+      d.textContent = j;
+    } else if (hasSeance) {
+      d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:3px 1px;font-size:11px;color:#007a41;font-weight:700';
+      d.title = hasSeance;
+      d.innerHTML = `<div style="font-size:10px">${j}</div><div style="font-size:7px;color:#007a41;line-height:1.2;font-weight:600">${String(hasSeance).substring(0,4)}</div>`;
+    } else if (isFutur) {
+      d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border)';
+      d.textContent = j;
+    } else {
+      d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--text)';
+      d.textContent = j;
+    }
+    grid.appendChild(d);
+  }
+}
+
+function renderCoachSeances(data) {
+  const el = document.getElementById('cd-seances-content');
+  // Reconstruit la liste des séances à partir de progression_par_exo (pas de séances brutes dans getAppData)
+  // On utilise dates_seances pour lister les dates + type de séance
+  const dates = data.historique ? (data.historique.dates_seances || {}) : {};
+  const entries = Object.keys(dates).map(dateStr => {
+    const parts = dateStr.split('/');
+    return { date: dateStr, tri: new Date(parts[2], parts[1]-1, parts[0]).getTime(), seance: dates[dateStr] };
+  }).sort((a,b) => b.tri - a.tri).slice(0, 15);
+  el.innerHTML = entries.length === 0
+    ? '<div style="font-size:13px;color:var(--text-muted)">Aucune séance</div>'
+    : entries.map(s => `
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:700">${s.seance}</span>
+        <span style="font-size:12px;color:var(--text-muted)">${s.date}</span>
+      </div>`).join('');
 }
 
 // ==================== APP ====================
