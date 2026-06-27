@@ -1324,7 +1324,10 @@ async function nouvelleSeance() {
   sb.style.display = 'block'; sb.style.visibility = 'visible';
   sb.style.height = 'auto'; sb.style.overflow = 'visible';
   document.getElementById('card-exo-actuel').style.display = 'none';
-  document.getElementById('btn-valider').style.display = 'none';
+  const btnValider = document.getElementById('btn-valider');
+  btnValider.style.display = 'none';
+  btnValider.disabled = false;
+  btnValider.textContent = '✅ Valider la séance';
   document.getElementById('sel-seance-id').value = '';
   document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
   window.scrollTo(0,0);
