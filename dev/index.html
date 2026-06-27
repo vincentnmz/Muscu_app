@@ -1031,10 +1031,17 @@ async function ouvrirDetailAthleteCoach(a) {
   const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
   const alertes = a.alertes || [];
   document.getElementById('cd-alertes').innerHTML = alertes.length > 0
-    ? alertes.map(al => `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:${(couleurSeverite[al.severite]||'#a3a3a3')}1a;border-radius:8px;margin-top:6px">
-        <span style="font-size:14px">⚠️</span>
-        <span style="font-size:13px;font-weight:600;color:${couleurSeverite[al.severite]||'#a3a3a3'}">${al.message}</span>
-      </div>`).join('')
+    ? alertes.map(al => {
+        const c = couleurSeverite[al.severite] || '#a3a3a3';
+        const msgEscape = al.message.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <span style="font-size:14px">⚠️</span>
+            <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}</span>
+          </div>
+          <button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${msgEscape}')">✍️ Répondre à l'athlète</button>
+        </div>`;
+      }).join('')
     : '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">✅ Rien à signaler</div>';
 
   // Reset les zones en chargement
@@ -1101,9 +1108,10 @@ function renderCoachOverview(data) {
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color}">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color}">${r.volume_evol > 0 ? '+' : ''}${r.volume_evol}%</div><div class="dash-stat-label">Volume</div></div>
       </div>
-      <div style="border-left:3px solid ${sc};padding-left:10px">
-        <div style="font-size:12px;font-weight:700;margin-bottom:3px">Conseil</div>
-        <div style="font-size:12px;opacity:0.8">${r.conseil}</div>
+      <div style="border-left:3px solid ${sc};padding-left:10px;background:${sc}11;border-radius:0 8px 8px 0;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;margin-bottom:3px;color:${sc}">💡 Suggestion auto (à valider par toi)</div>
+        <div style="font-size:12px;opacity:0.85">${r.conseil}</div>
+        <button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${(r.conseil||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">✍️ En faire un conseil</button>
       </div>`;
   } else {
     recupEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore assez de données.</div>';
@@ -1362,6 +1370,16 @@ async function chargerCommentairesCoach(athlete_id) {
   } catch(e) {
     el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
+}
+
+function repondreAlerte(contexte) {
+  const input = document.getElementById('cd-comment-input');
+  const prefixe = `À propos de : ${contexte}\n\nMon conseil : `;
+  input.value = prefixe;
+  input.focus();
+  // Placer le curseur à la fin
+  input.setSelectionRange(input.value.length, input.value.length);
+  document.getElementById('cd-commentaires-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function envoyerCommentaireCoach() {
@@ -2524,14 +2542,10 @@ async function chargerAppData() {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <span style="font-size:13px;font-weight:700;color:${statusColor};">${statusLabel}</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
           <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color};">${r.rpe_moyen}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
           <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color};">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
           <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color};">${r.volume_evol > 0 ? '+' : ''}${r.volume_evol}%</div><div class="dash-stat-label">Volume</div></div>
-        </div>
-        <div style="border-left:3px solid ${statusColor};padding-left:10px;">
-          <div style="font-size:12px;font-weight:700;margin-bottom:3px;">Conseil</div>
-          <div style="font-size:12px;opacity:0.8;">${r.conseil}</div>
         </div>`;
     } else {
       recupEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">Pas encore assez de données — continue à t'entraîner, le bloc se remplira après quelques semaines !</div>`;
