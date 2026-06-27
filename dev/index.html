@@ -234,6 +234,26 @@
     </div>
   </div>
 
+  <!-- VUE DETAIL ATHLETE (COACH) -->
+  <div id="view-coach-detail" class="view">
+    <div class="header">
+      <button class="btn-sm btn-outline" onclick="retourListeAthletesCoach()">⬅️ Retour</button>
+      <div id="header-nom-athlete-coach" style="font-weight:800">Athlète</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Alertes</div>
+      <div id="detail-coach-alertes"><div class="loader">Chargement...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Progression par exercice</div>
+      <div id="detail-coach-progression"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Séances récentes</div>
+      <div id="detail-coach-seances"></div>
+    </div>
+  </div>
+
   <!-- APP -->
   <div id="view-app" class="view">
 
@@ -793,7 +813,7 @@ async function ouvrirEspaceCoach() {
         : alertes.some(al => al.severite === 'moyenne') ? couleurSeverite.moyenne
         : 'var(--border)';
       const div = document.createElement('div');
-      div.style.cssText = `background:var(--surface);border:1px solid ${bordureCouleur};border-left:4px solid ${bordureCouleur};border-radius:var(--radius);padding:14px;margin-bottom:10px`;
+      div.style.cssText = `background:var(--surface);border:1px solid ${bordureCouleur};border-left:4px solid ${bordureCouleur};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
       const alertesHtml = alertes.length > 0
         ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">` +
           alertes.map(al => `<div style="font-size:12px;font-weight:600;color:${couleurSeverite[al.severite] || '#a3a3a3'}">⚠️ ${al.message}</div>`).join('') +
@@ -804,11 +824,74 @@ async function ouvrirEspaceCoach() {
         <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière séance : ${a.derniere_seance || 'Jamais'}</div>
         <div style="font-size:12px;color:var(--text-muted)">Séances cette semaine : ${a.seances_semaine}</div>
         ${alertesHtml}
+        <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Voir le détail</div>
       `;
+      div.addEventListener('click', () => ouvrirDetailAthleteCoach(a));
       listeEl.appendChild(div);
     });
   } catch(e) {
     listeEl.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+  }
+}
+
+function retourListeAthletesCoach() {
+  document.getElementById('view-coach-detail').classList.remove('active');
+  document.getElementById('view-coach').classList.add('active');
+}
+
+async function ouvrirDetailAthleteCoach(a) {
+  document.getElementById('view-coach').classList.remove('active');
+  document.getElementById('view-coach-detail').classList.add('active');
+  document.getElementById('header-nom-athlete-coach').textContent = a.nom;
+
+  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
+  const alertesEl = document.getElementById('detail-coach-alertes');
+  const alertes = a.alertes || [];
+  alertesEl.innerHTML = alertes.length > 0
+    ? alertes.map(al => `<div style="font-size:13px;font-weight:600;color:${couleurSeverite[al.severite] || '#a3a3a3'};margin-bottom:6px">⚠️ ${al.message}</div>`).join('')
+    : '<div style="font-size:13px;color:var(--text-muted)">✅ Rien à signaler</div>';
+
+  const progEl = document.getElementById('detail-coach-progression');
+  const seancesEl = document.getElementById('detail-coach-seances');
+  progEl.innerHTML = '<div class="loader">Chargement...</div>';
+  seancesEl.innerHTML = '';
+
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCoachAthleteDetail&athlete_id=${encodeURIComponent(a.athlete_id)}`);
+    const data = await res.json();
+
+    const progression = data.progression || {};
+    const exos = Object.keys(progression);
+    progEl.innerHTML = exos.length === 0
+      ? '<div style="font-size:13px;color:var(--text-muted)">Aucune donnée</div>'
+      : exos.map(exo => {
+          const entries = progression[exo];
+          return `
+            <div style="margin-bottom:12px">
+              <div style="font-size:13px;font-weight:700;margin-bottom:4px">${exo}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                ${entries.map(e2 => `<div style="font-size:11px;background:var(--surface2);border-radius:6px;padding:4px 8px">${e2.date} · ${e2.charge}kg × ${e2.reps}</div>`).join('')}
+              </div>
+            </div>`;
+        }).join('');
+
+    const seances = data.seances || [];
+    seancesEl.innerHTML = seances.length === 0
+      ? '<div style="font-size:13px;color:var(--text-muted)">Aucune séance</div>'
+      : seances.map(s => {
+          const exosList = Object.keys(s.exercices).map(exo => {
+            const series = s.exercices[exo];
+            const detail = series.map(se => `${se.charge}kg×${se.reps}`).join(', ');
+            return `<div style="font-size:12px;color:var(--text-muted)">${exo} : ${detail}</div>`;
+          }).join('');
+          return `
+            <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+              <div style="font-size:13px;font-weight:700">${s.date} · ${s.seanceId}</div>
+              ${exosList}
+            </div>`;
+        }).join('');
+  } catch(e) {
+    progEl.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
 }
 
