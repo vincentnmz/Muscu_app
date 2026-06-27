@@ -872,6 +872,7 @@ function seDeconnecter() {
 
 // ==================== ESPACE COACH ====================
 let coach = null;
+let athletesCoach = [];
 
 function toggleEspaceCoach(ev) {
   ev.preventDefault();
@@ -917,34 +918,72 @@ async function ouvrirEspaceCoach() {
       listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
       return;
     }
-    renderCoachSurveiller(athletes);
-    listeEl.innerHTML = '';
-    const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
-    athletes.forEach(a => {
-      const alertes = a.alertes || [];
-      const bordureCouleur = alertes.some(al => al.severite === 'haute') ? couleurSeverite.haute
-        : alertes.some(al => al.severite === 'moyenne') ? couleurSeverite.moyenne
-        : 'var(--border)';
-      const div = document.createElement('div');
-      div.style.cssText = `background:var(--surface);border:1px solid ${bordureCouleur};border-left:4px solid ${bordureCouleur};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
-      const alertesHtml = alertes.length > 0
-        ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">` +
-          alertes.map(al => `<div style="font-size:12px;font-weight:600;color:${couleurSeverite[al.severite] || '#a3a3a3'}">⚠️ ${al.message}</div>`).join('') +
-          `</div>`
-        : `<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">✅ Rien à signaler</div>`;
-      div.innerHTML = `
-        <div style="font-size:15px;font-weight:800">${a.nom}</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière séance : ${a.derniere_seance || 'Jamais'}</div>
-        <div style="font-size:12px;color:var(--text-muted)">Séances cette semaine : ${a.seances_semaine}</div>
-        ${alertesHtml}
-        <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Voir le détail</div>
-      `;
-      div.addEventListener('click', () => ouvrirDetailAthleteCoach(a));
-      listeEl.appendChild(div);
-    });
+    athletesCoach = athletes;
+    renderListeAthletesCoach();
   } catch(e) {
     listeEl.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
+}
+
+function renderListeAthletesCoach() {
+  const listeEl = document.getElementById('liste-athletes-coach');
+  renderCoachSurveiller(athletesCoach);
+  listeEl.innerHTML = '';
+  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
+  athletesCoach.forEach(a => {
+    const alertes = alertesActives(a);
+    const bordureCouleur = alertes.some(al => al.severite === 'haute') ? couleurSeverite.haute
+      : alertes.some(al => al.severite === 'moyenne') ? couleurSeverite.moyenne
+      : 'var(--border)';
+    const div = document.createElement('div');
+    div.style.cssText = `background:var(--surface);border:1px solid ${bordureCouleur};border-left:4px solid ${bordureCouleur};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
+    const alertesHtml = alertes.length > 0
+      ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">` +
+        alertes.map(al => `<div style="font-size:12px;font-weight:600;color:${couleurSeverite[al.severite] || '#a3a3a3'}">⚠️ ${al.message}</div>`).join('') +
+        `</div>`
+      : `<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">✅ Rien à signaler</div>`;
+    div.innerHTML = `
+      <div style="font-size:15px;font-weight:800">${a.nom}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière séance : ${a.derniere_seance || 'Jamais'}</div>
+      <div style="font-size:12px;color:var(--text-muted)">Séances cette semaine : ${a.seances_semaine}</div>
+      ${alertesHtml}
+      <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Voir le détail</div>
+    `;
+    div.addEventListener('click', () => ouvrirDetailAthleteCoach(a));
+    listeEl.appendChild(div);
+  });
+}
+
+// ---- Alertes traitées (stockage local, remise à zéro chaque semaine) ----
+function lundiCourantISO() {
+  const d = new Date();
+  const jour = d.getDay();
+  const diff = (jour === 0 ? -6 : 1 - jour);
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d.toISOString().split('T')[0];
+}
+function getAlertesTraitees() {
+  if (!coach) return {};
+  try { return JSON.parse(localStorage.getItem('muscu_alertes_traitees_' + coach.coach_id) || '{}'); }
+  catch(e) { return {}; }
+}
+function saveAlertesTraitees(obj) {
+  if (!coach) return;
+  localStorage.setItem('muscu_alertes_traitees_' + coach.coach_id, JSON.stringify(obj));
+}
+function cleAlerte(athleteId, message) { return athleteId + '|' + message; }
+function alerteEstTraitee(athleteId, message) {
+  return getAlertesTraitees()[cleAlerte(athleteId, message)] === lundiCourantISO();
+}
+function marquerAlerteTraitee(athleteId, message) {
+  const t = getAlertesTraitees();
+  t[cleAlerte(athleteId, message)] = lundiCourantISO();
+  saveAlertesTraitees(t);
+  renderListeAthletesCoach();
+}
+function alertesActives(a) {
+  return (a.alertes || []).filter(al => !alerteEstTraitee(a.athlete_id, al.message));
 }
 
 function renderCoachSurveiller(athletes) {
@@ -953,8 +992,8 @@ function renderCoachSurveiller(athletes) {
   const content = document.getElementById('coach-surveiller-content');
   const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
 
-  // Athlètes avec au moins une alerte, triés par priorité (déjà triés par le backend)
-  const aSurveiller = athletes.filter(a => (a.alertes || []).length > 0);
+  // Athlètes avec au moins une alerte NON TRAITÉE
+  const aSurveiller = athletes.filter(a => alertesActives(a).length > 0);
 
   if (aSurveiller.length === 0) {
     card.className = 'dash-card dash-card-accent-green';
@@ -969,28 +1008,39 @@ function renderCoachSurveiller(athletes) {
   titre.textContent = `⚠️ ${nb} athlète${nb>1?'s':''} à surveiller`;
 
   content.innerHTML = aSurveiller.map((a, i) => {
-    const alertes = a.alertes;
-    // Sévérité max pour la pastille
+    const alertes = alertesActives(a);
     const sevMax = alertes.some(al => al.severite === 'haute') ? 'haute'
       : alertes.some(al => al.severite === 'moyenne') ? 'moyenne' : 'basse';
     const couleur = couleurSeverite[sevMax];
-    const raisons = alertes.map(al => al.message).join(' · ');
+    const lignesAlertes = alertes.map((al, j) => `
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <div style="flex:1;font-size:11px;color:${couleurSeverite[al.severite] || '#a3a3a3'};font-weight:600">⚠️ ${al.message}</div>
+        <button class="btn-sm btn-outline btn-traiter" data-aidx="${i}" data-jidx="${j}" style="white-space:nowrap" onclick="event.stopPropagation()">✓ Traité</button>
+      </div>`).join('');
     return `
-      <div class="coach-surv-item" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:10px;background:${couleur}1a;border-radius:8px;margin-top:8px;cursor:pointer">
-        <div style="background:${couleur};color:#fff;font-weight:800;font-size:13px;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center">${i+1}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:800">${a.nom}</div>
-          <div style="font-size:11px;color:${couleur};font-weight:600;overflow:hidden;text-overflow:ellipsis">${raisons}</div>
+      <div style="padding:10px;background:${couleur}1a;border-radius:8px;margin-top:8px">
+        <div class="coach-surv-head" data-idx="${i}" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div style="background:${couleur};color:#fff;font-weight:800;font-size:13px;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center">${i+1}</div>
+          <div style="flex:1;font-size:14px;font-weight:800">${a.nom}</div>
+          <div style="font-size:16px;color:${couleur}">›</div>
         </div>
-        <div style="font-size:16px;color:${couleur}">›</div>
+        ${lignesAlertes}
       </div>`;
   }).join('');
 
-  // Clic → ouvrir le détail de l'athlète
-  content.querySelectorAll('.coach-surv-item').forEach(el => {
+  // Clic sur l'en-tête → ouvrir le détail
+  content.querySelectorAll('.coach-surv-head').forEach(el => {
     el.addEventListener('click', () => {
       const idx = parseInt(el.getAttribute('data-idx'));
       ouvrirDetailAthleteCoach(aSurveiller[idx]);
+    });
+  });
+  // Clic sur "Traité" → masquer cette alerte pour la semaine
+  content.querySelectorAll('.btn-traiter').forEach(el => {
+    el.addEventListener('click', () => {
+      const a = aSurveiller[parseInt(el.getAttribute('data-aidx'))];
+      const al = alertesActives(a)[parseInt(el.getAttribute('data-jidx'))];
+      if (a && al) marquerAlerteTraitee(a.athlete_id, al.message);
     });
   });
 
