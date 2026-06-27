@@ -655,6 +655,14 @@ function getPerf(nom) {
   const cle = Object.keys(lastPerfData).find(k => normaliserNomExo(k) === cible);
   return cle ? lastPerfData[cle] : null;
 }
+
+function getNiveauExperience(annees) {
+  const a = Number(annees) || 0;
+  if (a <= 3) return 'debutant';
+  if (a <= 7) return 'intermediaire';
+  if (a <= 12) return 'avance';
+  return 'expert';
+}
 let indexExoProgramme = 0;
 let historiqueData = [];
 
@@ -927,10 +935,13 @@ function afficherListeSeance() {
         <div style="font-size:12px;color:var(--accent);margin-top:2px">🎯 Cible : ${bestCharge}kg × ${cible} reps</div>
       `;
 
-      const surcharge = bestReps >= p.reps_max && perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
+      const niveau = getNiveauExperience(athlete.annees_pratique);
+      const deuxSeancesAuCap = perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
+      const surcharge = niveau === 'debutant'
+        ? bestReps >= p.reps_max
+        : bestReps >= p.reps_max && deuxSeancesAuCap;
       if (surcharge) {
-        const annees = Number(athlete.annees_pratique) || 0;
-        if (annees >= 10) {
+        if (niveau === 'avance' || niveau === 'expert') {
           suggHtml = `<div class="prog-suggestion" style="margin-top:6px">💪 +1 rep ou -30s repos</div>`;
         } else {
           const nc = Math.round((bestCharge + increment) * 4) / 4;
