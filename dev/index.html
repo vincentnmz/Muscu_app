@@ -228,8 +228,13 @@
       <div id="header-nom-coach" style="font-weight:800">Coach</div>
       <button class="btn-sm btn-outline" onclick="seDeconnecterCoach()">Déconnexion</button>
     </div>
+    <!-- BANDEAU A SURVEILLER -->
+    <div id="coach-surveiller-card" class="dash-card dash-card-accent-orange" style="padding:16px;display:none">
+      <div class="dash-label" id="coach-surveiller-titre">⚠️ À surveiller</div>
+      <div id="coach-surveiller-content"></div>
+    </div>
     <div class="card">
-      <div class="card-title">Mes athlètes</div>
+      <div class="card-title">Tous mes athlètes</div>
       <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
     </div>
   </div>
@@ -890,6 +895,7 @@ async function ouvrirEspaceCoach() {
       listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
       return;
     }
+    renderCoachSurveiller(athletes);
     listeEl.innerHTML = '';
     const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
     athletes.forEach(a => {
@@ -917,6 +923,56 @@ async function ouvrirEspaceCoach() {
   } catch(e) {
     listeEl.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
+}
+
+function renderCoachSurveiller(athletes) {
+  const card = document.getElementById('coach-surveiller-card');
+  const titre = document.getElementById('coach-surveiller-titre');
+  const content = document.getElementById('coach-surveiller-content');
+  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
+
+  // Athlètes avec au moins une alerte, triés par priorité (déjà triés par le backend)
+  const aSurveiller = athletes.filter(a => (a.alertes || []).length > 0);
+
+  if (aSurveiller.length === 0) {
+    card.className = 'dash-card dash-card-accent-green';
+    titre.textContent = '✅ Tout va bien';
+    content.innerHTML = '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">Aucun athlète ne nécessite ton attention cette semaine.</div>';
+    card.style.display = 'block';
+    return;
+  }
+
+  card.className = 'dash-card dash-card-accent-orange';
+  const nb = aSurveiller.length;
+  titre.textContent = `⚠️ ${nb} athlète${nb>1?'s':''} à surveiller`;
+
+  content.innerHTML = aSurveiller.map((a, i) => {
+    const alertes = a.alertes;
+    // Sévérité max pour la pastille
+    const sevMax = alertes.some(al => al.severite === 'haute') ? 'haute'
+      : alertes.some(al => al.severite === 'moyenne') ? 'moyenne' : 'basse';
+    const couleur = couleurSeverite[sevMax];
+    const raisons = alertes.map(al => al.message).join(' · ');
+    return `
+      <div class="coach-surv-item" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:10px;background:${couleur}1a;border-radius:8px;margin-top:8px;cursor:pointer">
+        <div style="background:${couleur};color:#fff;font-weight:800;font-size:13px;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center">${i+1}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:800">${a.nom}</div>
+          <div style="font-size:11px;color:${couleur};font-weight:600;overflow:hidden;text-overflow:ellipsis">${raisons}</div>
+        </div>
+        <div style="font-size:16px;color:${couleur}">›</div>
+      </div>`;
+  }).join('');
+
+  // Clic → ouvrir le détail de l'athlète
+  content.querySelectorAll('.coach-surv-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.getAttribute('data-idx'));
+      ouvrirDetailAthleteCoach(aSurveiller[idx]);
+    });
+  });
+
+  card.style.display = 'block';
 }
 
 // ==================== DETAIL ATHLETE (COACH) ====================
