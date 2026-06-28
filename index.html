@@ -1464,7 +1464,7 @@ function renderProgrammeCoach() {
   el.innerHTML = ordre.map(seanceId => `
     <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:10px">
       <div style="font-size:13px;font-weight:700;margin-bottom:8px">${seanceId}</div>
-      <div style="display:grid;grid-template-columns:1.6fr 0.6fr 0.6fr 0.6fr 0.7fr auto;gap:4px;margin-bottom:4px">
+      <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.7fr) auto;gap:4px;margin-bottom:4px">
         <div style="font-size:10px;color:var(--text-muted);padding-left:4px">Exercice</div>
         <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Séries</div>
         <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Reps mini</div>
@@ -1473,12 +1473,12 @@ function renderProgrammeCoach() {
         <div></div>
       </div>
       ${seances[seanceId].map(l => `
-        <div style="display:grid;grid-template-columns:1.6fr 0.6fr 0.6fr 0.6fr 0.7fr auto;gap:4px;align-items:center;margin-bottom:6px">
-          <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null)" style="font-size:11px;padding:4px;width:100%">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
-          <input type="number" value="${l.series_prevues}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null)" style="font-size:11px;padding:4px;width:100%;text-align:center" title="Séries">
-          <input type="number" value="${l.reps_mini}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null)" style="font-size:11px;padding:4px;width:100%;text-align:center" title="Reps mini">
-          <input type="number" value="${l.reps_max}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null)" style="font-size:11px;padding:4px;width:100%;text-align:center" title="Reps max">
-          <input type="number" value="${l.repos_sec || ''}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value)" style="font-size:11px;padding:4px;width:100%;text-align:center" title="Repos (sec)">
+        <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.7fr) auto;gap:4px;align-items:center;margin-bottom:6px">
+          <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
+          <input type="number" value="${l.series_prevues}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Séries">
+          <input type="number" value="${l.reps_mini}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps mini">
+          <input type="number" value="${l.reps_max}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps max">
+          <input type="number" value="${l.repos_sec || ''}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Repos (sec)">
           <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer">🗑️</button>
         </div>`).join('')}
       <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')">+ Exercice</button>
