@@ -1454,18 +1454,21 @@ function renderAlertesCoach() {
   // On masque les alertes marquées "Traité" cette semaine (cohérent avec l'accueil coach)
   const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al.message));
   el.innerHTML = alertes.length > 0
-    ? alertes.map(al => {
+    ? alertes.map((al, idx) => {
         const c = couleurSeverite[al.severite] || '#a3a3a3';
         const sujetRaw = sujetAlerte(al);
         const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const fait = dejaConseille(sujetRaw);
         const msgTraite = al.message.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const explicationId = `alerte-explication-${idx}`;
         return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
           <div style="display:flex;align-items:flex-start;gap:8px">
             <span style="font-size:14px">⚠️</span>
             <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}</span>
           </div>
+          <div id="${explicationId}" style="display:none;font-size:11px;color:var(--text-muted);margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">${explicationAlerte(al)}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
             ${fait
               ? `<span style="font-size:12px;color:#00c96e;font-weight:700;align-self:center">✅ Déjà conseillé</span>
                  <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">✍️ Autre conseil</button>`
@@ -1475,6 +1478,18 @@ function renderAlertesCoach() {
         </div>`;
       }).join('')
     : '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">✅ Rien à signaler</div>';
+}
+
+function toggleExplicationAlerte(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function explicationAlerte(al) {
+  if (al.type === 'irregularite') return "Déclenchée quand aucune séance n'a été enregistrée depuis 7 jours ou plus.";
+  if (al.type === 'fatigue') return "Déclenchée quand le RPE moyen des 7 derniers jours dépasse 8,5 ET que la charge moyenne (comparée exercice par exercice) a baissé de plus de 5% par rapport aux 3 semaines précédentes.";
+  if (al.type === 'stagnation') return "Déclenchée quand un exercice n'a montré aucune progression (charge ou reps) sur un nombre de séances dépendant du palier d'expérience de l'athlète : 3 séances en débutant, 4 en intermédiaire, 6 en avancé, 8 en expert.";
+  return "Seuil de détection non documenté.";
 }
 
 function traiterAlerteDepuisDetail(message) {
