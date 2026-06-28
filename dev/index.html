@@ -2074,7 +2074,8 @@ function ajouterSerie() {
   }
   if (!exoEnCours) { showToast('⚠️ Choisis un exercice', '#ff4444'); return; }
 
-  const volume = parseFloat(charge) * parseInt(reps);
+  const chargeNum = parseFloat(charge);
+  const volume = chargeNum > 0 ? chargeNum * parseInt(reps) : parseInt(reps);
   exoEnCours.series.push({
     date, seanceId, semaine: getNumSemaine(date),
     muscle: exoEnCours.muscle, exerciceId: exoEnCours.exerciceId, exerciceNom: exoEnCours.exerciceNom,
