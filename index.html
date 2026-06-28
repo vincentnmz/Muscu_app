@@ -1245,15 +1245,25 @@ function afficherCoachProgressionExo() {
   const progGlobale = diffCharge > 0 ? `+${diffCharge}kg` : diffReps > 0 ? `+${diffReps} reps` : 'Stable';
   const progCouleur = diffCharge > 0 || diffReps > 0 ? '#00c96e' : 'var(--text-muted)';
 
+  const rm1Last = calc1RM(last.charge, last.reps);
+  const rm1First = calc1RM(first.charge, first.reps);
+  const rm1Diff = (rm1Last !== null && rm1First !== null) ? Math.round((rm1Last - rm1First) * 10) / 10 : null;
+
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px">
       <span style="font-size:12px;color:var(--text-muted)">Progression totale</span>
       <span style="font-size:13px;font-weight:700;color:${progCouleur}">${progGlobale}</span>
     </div>
+    ${rm1Last !== null ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px">
+      <span style="font-size:12px;color:var(--text-muted)">1RM estimé (Epley)</span>
+      <span style="font-size:13px;font-weight:700;color:var(--accent)">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
+    </div>` : ''}
     <table style="width:100%;font-size:12px;border-collapse:collapse">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">
         <td style="padding:5px 0">Date</td><td style="padding:5px 0;text-align:center">Séance</td>
         <td style="padding:5px 0;text-align:center">Charge S1</td><td style="padding:5px 0;text-align:center">Reps S1</td>
+        <td style="padding:5px 0;text-align:center">1RM est.</td>
         <td style="padding:5px 0;text-align:center">Évol.</td>
       </tr>
       ${perfs.map((p, i) => {
@@ -1267,11 +1277,13 @@ function afficherCoachProgressionExo() {
           else { evol = '='; }
         }
         const isLast = i === 0;
+        const rm1 = calc1RM(p.charge, p.reps);
         return `<tr style="border-bottom:1px solid var(--surface2);${isLast ? 'font-weight:700' : ''}">
           <td style="padding:6px 0;color:var(--text)">${p.date}</td>
           <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px">${(p.seance||'').substring(0,8)}</td>
           <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'}">${p.charge}kg</td>
           <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'}">${p.reps}</td>
+          <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px">${rm1 !== null ? rm1 + 'kg' : '—'}</td>
           <td style="padding:6px 0;text-align:center;color:${evolColor};font-size:16px;font-weight:700">${evol}</td>
         </tr>`;
       }).join('')}
@@ -2304,6 +2316,11 @@ function calNaviguer(direction) {
   renderCalendrier();
 }
 
+function calc1RM(charge, reps) {
+  if (!charge || !reps) return null;
+  return Math.round(charge * (1 + reps / 30) * 10) / 10;
+}
+
 function afficherProgressionExo() {
   const exo = document.getElementById('sel-hist-exercice').value;
   const el = document.getElementById('hist-progression-content');
@@ -2323,17 +2340,27 @@ function afficherProgressionExo() {
   const progGlobale = diffCharge > 0 ? `+${diffCharge}kg` : diffReps > 0 ? `+${diffReps} reps` : 'Stable';
   const progCouleur = diffCharge > 0 || diffReps > 0 ? '#00c96e' : 'var(--text-muted)';
 
+  const rm1Last = calc1RM(last.charge, last.reps);
+  const rm1First = calc1RM(first.charge, first.reps);
+  const rm1Diff = (rm1Last !== null && rm1First !== null) ? Math.round((rm1Last - rm1First) * 10) / 10 : null;
+
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px;">
       <span style="font-size:12px;color:var(--text-muted);">Progression totale</span>
       <span style="font-size:13px;font-weight:700;color:${progCouleur};">${progGlobale}</span>
     </div>
+    ${rm1Last !== null ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px;">
+      <span style="font-size:12px;color:var(--text-muted);">1RM estimé (Epley)</span>
+      <span style="font-size:13px;font-weight:700;color:var(--accent);">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px;">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
+    </div>` : ''}
     <table style="width:100%;font-size:12px;border-collapse:collapse;">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border);">
         <td style="padding:5px 0;">Date</td>
         <td style="padding:5px 0;text-align:center;">Séance</td>
         <td style="padding:5px 0;text-align:center;">Charge S1</td>
         <td style="padding:5px 0;text-align:center;">Reps S1</td>
+        <td style="padding:5px 0;text-align:center;">1RM est.</td>
         <td style="padding:5px 0;text-align:center;">Évol.</td>
       </tr>
       ${perfs.map((p, i) => {
@@ -2348,11 +2375,13 @@ function afficherProgressionExo() {
           else { evol = '='; evolColor = 'var(--text-muted)'; }
         }
         const isLast = i === 0;
+        const rm1 = calc1RM(p.charge, p.reps);
         return `<tr style="border-bottom:1px solid var(--surface2);${isLast ? 'font-weight:700;' : ''}">
           <td style="padding:6px 0;color:var(--text);">${p.date}</td>
           <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px;">${p.seance.substring(0,8)}</td>
           <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'};">${p.charge}kg</td>
           <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'};">${p.reps}</td>
+          <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px;">${rm1 !== null ? rm1 + 'kg' : '—'}</td>
           <td style="padding:6px 0;text-align:center;color:${evolColor};font-size:16px;font-weight:700;">${evol}</td>
         </tr>`;
       }).join('')}
