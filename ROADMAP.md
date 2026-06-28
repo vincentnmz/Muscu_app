@@ -65,7 +65,7 @@ L'app **assiste** le coach (constats, alertes, suggestions), elle ne le **rempla
 ## 3. Roadmap par priorité
 
 ### Phase 1 — Crédibiliser l'analyse (rapide, fort impact, peu de risque)
-1. 🔜 1RM estimé par exercice
+1. 
 2. 🔜 Explication des alertes (seuils)
 3. 🔜 Courbes graphiques de progression
 
