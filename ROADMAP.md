@@ -48,13 +48,13 @@ L'app **assiste** le coach (constats, alertes, suggestions), elle ne le **rempla
 - 🔜 **Conversation bidirectionnelle** (l'athlète peut répondre)
 
 ### 🟡 Analyse / crédibilité scientifique
-- 🔜 **1RM estimé** (formule Epley) — comparer la force réelle indépendamment des reps
-- 🔜 **Explication des alertes** (pourquoi, sur quel seuil)
+- ✅ **1RM estimé** (formule Epley) — comparer la force réelle indépendamment des reps
+- ✅ **Explication des alertes** (pourquoi, sur quel seuil)
 - 🔜 **Analyse fine par exercice** (volume, tendance RPE par exo)
 - 🔜 **Détection de deload / surmenage** sur la durée
 
 ### 🟢 Confort / expérience
-- 🔜 **Courbes graphiques** (au lieu des tableaux actuels)
+- ✅ **Courbes graphiques** (1RM, athlète + coach)
 - 🔜 **Supersets / exercices enchaînés** (commencer par le superset simple à 2 exos)
 - 🔜 **Notifications** (email coach, push)
 - 🔜 **Mode hors-ligne** (PWA, utile en salle)
@@ -65,9 +65,9 @@ L'app **assiste** le coach (constats, alertes, suggestions), elle ne le **rempla
 ## 3. Roadmap par priorité
 
 ### Phase 1 — Crédibiliser l'analyse (rapide, fort impact, peu de risque)
-1. 
-2. 🔜 Explication des alertes (seuils)
-3. 🔜 Courbes graphiques de progression
+1. ✅ 1RM estimé par exercice (formule Epley)
+2. ✅ Explication des alertes (seuils, bouton "Pourquoi ?")
+3. ✅ Courbes graphiques de progression (1RM, athlète + coach)
 
 ### Phase 2 — Donner les commandes au coach
 4. 🔜 Création / édition de programme par le coach
