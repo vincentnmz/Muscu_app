@@ -1152,7 +1152,7 @@ function renderCoachOverview(data) {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color}">${r.rpe_moyen}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color}">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
-        <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color}">${r.volume_evol > 0 ? '+' : ''}${r.volume_evol}%</div><div class="dash-stat-label">Volume</div></div>
+        <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color}">${r.volume_evol === null ? 'N/A' : (r.volume_evol > 0 ? '+' : '') + r.volume_evol + '%'}</div><div class="dash-stat-label">Volume</div></div>
       </div>
       <div style="border-left:3px solid ${sc};padding-left:10px;background:${sc}11;border-radius:0 8px 8px 0;padding:8px 10px">
         <div style="font-size:11px;font-weight:700;margin-bottom:3px;color:${sc}">💡 Suggestion auto (à valider par toi)</div>
@@ -2740,7 +2740,7 @@ async function chargerAppData() {
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
           <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color};">${r.rpe_moyen}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
           <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color};">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
-          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color};">${r.volume_evol > 0 ? '+' : ''}${r.volume_evol}%</div><div class="dash-stat-label">Volume</div></div>
+          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color};">${r.volume_evol === null ? 'N/A' : (r.volume_evol > 0 ? '+' : '') + r.volume_evol + '%'}</div><div class="dash-stat-label">Volume</div></div>
         </div>`;
     } else {
       recupEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">Pas encore assez de données — continue à t'entraîner, le bloc se remplira après quelques semaines !</div>`;
