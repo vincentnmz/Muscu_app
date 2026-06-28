@@ -1438,6 +1438,7 @@ async function chargerProgrammeCoach() {
   const el = document.getElementById('cd-programme-content');
   if (!coachAthleteCourant) return;
   el.innerHTML = '<div class="loader">Chargement...</div>';
+  if (exercicesData.length === 0) await chargerExercices();
   try {
     const res = await fetch(`${SCRIPT_URL}?action=getCoachProgramme&athlete_id=${encodeURIComponent(coachAthleteCourant.athlete_id)}`);
     const data = await res.json();
@@ -1460,35 +1461,37 @@ function renderProgrammeCoach() {
     el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Aucune séance dans le programme.</div>';
     return;
   }
-  const optionsExo = exercicesData.map(e => `<option value="${e.exercice}">${e.exercice}</option>`).join('');
   el.innerHTML = ordre.map(seanceId => `
     <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:10px">
       <div style="font-size:13px;font-weight:700;margin-bottom:8px">${seanceId}</div>
       ${seances[seanceId].map(l => `
-        <div style="display:grid;grid-template-columns:1.6fr 0.7fr 0.7fr 0.7fr auto;gap:4px;align-items:center;margin-bottom:6px">
-          <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null)" style="font-size:11px;padding:4px">${optionsExo.replace(`value="${l.exercice}"`, `value="${l.exercice}" selected`)}</select>
-          <input type="number" value="${l.series_prevues}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null)" style="font-size:11px;padding:4px;width:100%" title="Séries">
-          <input type="number" value="${l.reps_mini}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null)" style="font-size:11px;padding:4px;width:100%" title="Reps mini">
-          <input type="number" value="${l.reps_max}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value)" style="font-size:11px;padding:4px;width:100%" title="Reps max">
+        <div style="display:grid;grid-template-columns:1.6fr 0.6fr 0.6fr 0.6fr 0.7fr auto;gap:4px;align-items:center;margin-bottom:6px">
+          <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null)" style="font-size:11px;padding:4px">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
+          <input type="number" value="${l.series_prevues}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null)" style="font-size:11px;padding:4px;width:100%" title="Séries">
+          <input type="number" value="${l.reps_mini}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null)" style="font-size:11px;padding:4px;width:100%" title="Reps mini">
+          <input type="number" value="${l.reps_max}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null)" style="font-size:11px;padding:4px;width:100%" title="Reps max">
+          <input type="number" value="${l.repos_sec || ''}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value)" style="font-size:11px;padding:4px;width:100%" title="Repos (sec)">
           <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer">🗑️</button>
         </div>`).join('')}
       <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')">+ Exercice</button>
     </div>`).join('');
 }
 
-function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax) {
+function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec) {
   const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
   if (!ligne) return;
   if (exercice !== null) ligne.exercice = exercice;
   if (series !== null) ligne.series_prevues = Number(series);
   if (repsMini !== null) ligne.reps_mini = Number(repsMini);
   if (repsMax !== null) ligne.reps_max = Number(repsMax);
+  if (reposSec !== null) ligne.repos_sec = Number(reposSec);
   fetch(SCRIPT_URL, {
     method: 'POST', headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify({
       action: 'saveProgrammeLigne', row_index: rowIndex, athlete_id: coachAthleteCourant.athlete_id,
       seance_id: ligne.seance_id, exercice: ligne.exercice,
-      series_prevues: ligne.series_prevues, reps_mini: ligne.reps_mini, reps_max: ligne.reps_max
+      series_prevues: ligne.series_prevues, reps_mini: ligne.reps_mini, reps_max: ligne.reps_max,
+      repos_sec: ligne.repos_sec
     })
   });
 }
@@ -1499,7 +1502,7 @@ async function cdAjouterExercice(seanceId) {
   const body = {
     action: 'saveProgrammeLigne', athlete_id: coachAthleteCourant.athlete_id,
     athlete_nom: coachAthleteCourant.nom, seance_id: seanceId, exercice: exo.exercice,
-    series_prevues: 3, reps_mini: 8, reps_max: 12
+    series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90
   };
   await fetch(SCRIPT_URL, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
   chargerProgrammeCoach();
