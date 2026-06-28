@@ -1024,7 +1024,7 @@ function renderCoachSurveiller(athletes) {
     const couleur = couleurSeverite[sevMax];
     const lignesAlertes = alertes.map((al, j) => `
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-        <div style="flex:1;font-size:11px;color:${couleurSeverite[al.severite] || '#a3a3a3'};font-weight:600">⚠️ ${al.message}</div>
+        <div style="flex:1;font-size:11px;color:${couleurSeverite[al.severite] || '#a3a3a3'};font-weight:600">⚠️ ${al.message}${al.recurrence_semaines > 1 ? ` <span style="color:var(--text-muted);font-weight:400">(depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
         <button class="btn-sm btn-outline btn-traiter" data-aidx="${i}" data-jidx="${j}" style="white-space:nowrap" onclick="event.stopPropagation()">✓ Traité</button>
       </div>`).join('');
     return `
@@ -1578,7 +1578,7 @@ function renderAlertesCoach() {
         return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
           <div style="display:flex;align-items:flex-start;gap:8px">
             <span style="font-size:14px">⚠️</span>
-            <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}</span>
+            <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:400">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</span>
           </div>
           <div id="${explicationId}" style="display:none;font-size:11px;color:var(--text-muted);margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">${explicationAlerte(al)}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
