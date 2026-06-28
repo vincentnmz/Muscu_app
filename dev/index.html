@@ -1259,6 +1259,7 @@ function afficherCoachProgressionExo() {
       <span style="font-size:12px;color:var(--text-muted)">1RM estimé (Epley)</span>
       <span style="font-size:13px;font-weight:700;color:var(--accent)">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
     </div>` : ''}
+    <canvas id="chart-1rm-coach" style="width:100%;height:90px;display:block;margin-bottom:10px"></canvas>
     <table style="width:100%;font-size:12px;border-collapse:collapse">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">
         <td style="padding:5px 0">Date</td><td style="padding:5px 0;text-align:center">Séance</td>
@@ -1288,6 +1289,8 @@ function afficherCoachProgressionExo() {
         </tr>`;
       }).join('')}
     </table>`;
+  const chrono = perfs.slice().reverse();
+  drawLineChart('chart-1rm-coach', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)');
 }
 
 function afficherCoachTendances(semaines) {
@@ -2336,6 +2339,34 @@ function calc1RM(charge, reps) {
   return Math.round(charge * (1 + reps / 30) * 10) / 10;
 }
 
+function drawLineChart(canvasId, values, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || values.length === 0) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  if (values.length === 1) {
+    ctx.beginPath(); ctx.arc(w / 2, h / 2, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+    return;
+  }
+  const pad = 8;
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const stepX = (w - pad * 2) / (values.length - 1);
+  const toX = i => pad + i * stepX;
+  const toY = v => h - pad - ((v - min) / range) * (h - pad * 2);
+  ctx.beginPath();
+  values.forEach((v, i) => { const x = toX(i), y = toY(v); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+  values.forEach((v, i) => {
+    const x = toX(i), y = toY(v);
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  });
+}
+
 function afficherProgressionExo() {
   const exo = document.getElementById('sel-hist-exercice').value;
   const el = document.getElementById('hist-progression-content');
@@ -2369,6 +2400,7 @@ function afficherProgressionExo() {
       <span style="font-size:12px;color:var(--text-muted);">1RM estimé (Epley)</span>
       <span style="font-size:13px;font-weight:700;color:var(--accent);">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px;">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
     </div>` : ''}
+    <canvas id="chart-1rm-athlete" style="width:100%;height:90px;display:block;margin-bottom:10px"></canvas>
     <table style="width:100%;font-size:12px;border-collapse:collapse;">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border);">
         <td style="padding:5px 0;">Date</td>
@@ -2401,6 +2433,8 @@ function afficherProgressionExo() {
         </tr>`;
       }).join('')}
     </table>`;
+  const chrono = perfs.slice().reverse();
+  drawLineChart('chart-1rm-athlete', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)');
 }
 
 // Volume cible par muscle selon niveau
