@@ -1479,7 +1479,7 @@ function renderProgrammeCoach() {
           <input type="number" value="${l.reps_mini}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps mini">
           <input type="number" value="${l.reps_max}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps max">
           <input type="number" value="${l.repos_sec || ''}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Repos (sec)">
-          <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer">🗑️</button>
+          <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">🗑️</button>
         </div>`).join('')}
       <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')">+ Exercice</button>
     </div>`).join('');
