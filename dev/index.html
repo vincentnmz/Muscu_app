@@ -978,7 +978,13 @@ function seDeconnecterCoach() {
   coach = null;
   localStorage.removeItem('muscu_coach');
   document.getElementById('view-coach').classList.remove('active');
+  document.getElementById('view-coach-detail').classList.remove('active');
   document.getElementById('view-login').classList.add('active');
+  // Remettre l'écran de connexion à son état de base
+  document.getElementById('card-login-coach').style.display = 'none';
+  document.getElementById('login-coach-error').textContent = '';
+  document.getElementById('inp-login-coach').value = '';
+  switchAuthMode('login');
 }
 
 async function ouvrirEspaceCoach() {
