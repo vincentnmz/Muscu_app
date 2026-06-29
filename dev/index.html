@@ -523,6 +523,19 @@
 
         <!-- SAISIE -->
         <div id="saisie-block">
+
+          <!-- Barre de progression de la séance en cours -->
+          <div id="seance-progress" style="display:none;position:sticky;top:49px;z-index:8;background:var(--bg);padding-top:6px;margin-bottom:10px">
+            <div style="background:var(--surface);border:1px solid var(--accent-dim);border-radius:12px;padding:12px 14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <div style="font-size:15px;font-weight:800" id="seance-progress-titre">Séance</div>
+                <div style="font-size:12px;color:var(--text-muted)"><span id="seance-progress-series" style="color:var(--accent);font-weight:700">0</span> séries</div>
+              </div>
+              <div class="dash-bar-bg" style="height:6px"><div id="seance-progress-bar" style="background:var(--accent);height:100%;width:0%;border-radius:20px;transition:width 0.3s"></div></div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:6px" id="seance-progress-detail">0 / 0 exercices</div>
+            </div>
+          </div>
+
           <!-- Choix séance -->
           <div class="card" id="card-choix-seance">
             <div class="card-title">Ma séance</div>
@@ -1980,6 +1993,32 @@ async function demarrerSeance() {
   afficherListeSeance();
 }
 
+function majProgressionSeance() {
+  const el = document.getElementById('seance-progress');
+  if (!el) return;
+  const seanceId = document.getElementById('sel-seance-id').value;
+  if (!seanceId) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  document.getElementById('seance-progress-titre').textContent = seanceId === 'Libre' ? '🔀 Séance libre' : seanceId;
+
+  const exosLibres = seance.filter(e => !programmeSeance.some(p => p.exercice === e.exerciceNom));
+  const totalExos = programmeSeance.length + exosLibres.length;
+  const faitsProg = programmeSeance.filter(p => {
+    const e = seance.find(s => s.exerciceNom === p.exercice);
+    return e && e.series.length > 0;
+  }).length;
+  const faitsLibres = exosLibres.filter(e => e.series.length > 0).length;
+  const faits = faitsProg + faitsLibres;
+  const totalSeries = seance.reduce((a, e) => a + e.series.length, 0);
+
+  document.getElementById('seance-progress-series').textContent = totalSeries;
+  const fini = totalExos > 0 && faits >= totalExos;
+  document.getElementById('seance-progress-detail').textContent =
+    `${faits} / ${totalExos} exercice${totalExos > 1 ? 's' : ''}${fini ? '  ✅ Tout est fait !' : ''}`;
+  const pct = totalExos > 0 ? Math.round(faits / totalExos * 100) : 0;
+  document.getElementById('seance-progress-bar').style.width = pct + '%';
+}
+
 function afficherListeSeance() {
   const listeEl = document.getElementById('liste-exercices-seance');
   if (programmeSeance.length === 0) {
@@ -2067,6 +2106,7 @@ function afficherListeSeance() {
   // Exercices ajoutés en plus du programme (via "Autre exercice")
   const exosLibres = seance.filter(e => !programmeSeance.some(p => p.exercice === e.exerciceNom));
   exosLibres.forEach(e => ajouterCarteExoLibre(listeEl, e));
+  majProgressionSeance();
 }
 
 function ajouterCarteExoLibre(listeEl, e) {
@@ -2261,6 +2301,7 @@ function majSeriesActuel() {
       <button class="btn-sm btn-danger-sm" onclick="supprimerSerie(${i})">✕</button>
     </div>
   `).join('');
+  majProgressionSeance();
 }
 
 function supprimerSerie(index) {
@@ -2417,6 +2458,7 @@ async function nouvelleSeance() {
   btnValider.textContent = '✅ Valider la séance';
   document.getElementById('sel-seance-id').value = '';
   document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+  majProgressionSeance();
   window.scrollTo(0,0);
 }
 
