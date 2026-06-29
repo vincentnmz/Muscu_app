@@ -1592,9 +1592,9 @@ function renderProgrammeCoach() {
           <input type="number" value="${l.reps_mini}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps mini">
           <input type="number" value="${l.reps_max}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps max">
           <input type="number" value="${l.repos_sec || ''}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Repos (sec)">
-          <select onchange="if(this.value){cdAjouterPartenaire(${l.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:10px;padding:4px;width:100%;min-width:0" title="Ajouter un exercice lié">
+          <select onchange="if(this.value){cdLierExerciceParNom(${l.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:10px;padding:4px;width:100%;min-width:0" title="Lier à un exercice (ajouté à la séance si absent)">
             <option value="">+ lier...</option>
-            ${dispoAajouter.map(o => `<option value="${o.row_index}">${o.exercice}</option>`).join('')}
+            ${exercicesData.filter(e => e.exercice !== l.exercice && !partenairesActuels.some(p => p.exercice === e.exercice)).map(e => `<option value="${e.exercice}">${e.exercice}</option>`).join('')}
           </select>
           <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">🗑️</button>
         </div>${partenairesActuels.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 8px 4px">${partenairesActuels.map(p => `<span style="font-size:10px;background:${couleurGroupe(l.groupe_id)}33;color:${couleurGroupe(l.groupe_id)};border-radius:10px;padding:2px 6px;display:inline-flex;align-items:center;gap:4px">🔗 ${p.exercice}<span style="cursor:pointer;font-weight:700" onclick="cdRetirerDuGroupe(${l.row_index},'${seanceId}')" title="Retirer cette liaison">✕</span></span>`).join('')}</div>` : '<div style="margin-bottom:8px"></div>'}`;
@@ -1648,6 +1648,34 @@ function cdRetirerDuGroupe(rowIndex, seanceId) {
   ligne.groupe_id = '';
   cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, '');
   renderProgrammeCoach();
+}
+
+// Lier par nom d'exercice : si l'exercice n'est pas encore dans la séance, on l'ajoute puis on le lie.
+async function cdLierExerciceParNom(rowIndex, seanceId, exerciceNom) {
+  if (!exerciceNom) return;
+  const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
+  if (!ligne) return;
+  const groupeId = ligne.groupe_id || genGroupeId(seanceId);
+  ligne.groupe_id = groupeId;
+
+  const existant = cdProgrammeLignes.find(l => l.seance_id === seanceId && l.exercice === exerciceNom && l.row_index !== rowIndex);
+  if (existant) {
+    existant.groupe_id = groupeId;
+    cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
+    cdSauverLigne(existant.row_index, seanceId, null, null, null, null, null, groupeId);
+    renderProgrammeCoach();
+  } else {
+    // Sauver le groupe sur la ligne courante, puis créer la ligne liée
+    cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
+    const body = {
+      action: 'saveProgrammeLigne', athlete_id: coachAthleteCourant.athlete_id,
+      athlete_nom: coachAthleteCourant.nom, seance_id: seanceId, exercice: exerciceNom,
+      series_prevues: ligne.series_prevues || 3, reps_mini: ligne.reps_mini || 8,
+      reps_max: ligne.reps_max || 12, repos_sec: ligne.repos_sec || 90, groupe_id: groupeId
+    };
+    await fetch(SCRIPT_URL, { method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body) });
+    chargerProgrammeCoach();
+  }
 }
 
 async function cdAjouterExercice(seanceId) {
