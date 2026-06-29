@@ -24,9 +24,9 @@
   body.light-mode header { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
   body.light-mode header h1 { color: #111; }
   body.light-mode #btn-logout { color: #e53935; }
-  body.light-mode .tabs-bar { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
+  body.light-mode .tabs-bar { background: #ffffff; border-top: 1px solid #e0e0e0; }
   body.light-mode .tab-btn { color: #999; }
-  body.light-mode .tab-btn.active { color: #111; border-bottom-color: #c8f000; }
+  body.light-mode .tab-btn.active { color: #5f7400; }
   body.light-mode .card { background: #fff; border-color: #e0e0e0; }
   body.light-mode select, body.light-mode input { background: #f5f5f5; border-color: #e0e0e0; color: #111; }
   body.light-mode .btn-outline { border-color: #e0e0e0; color: #111; }
@@ -42,13 +42,18 @@
   header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
   header h1 { font-size: 17px; font-weight: 700; }
   .logout-btn { font-size: 12px; color: var(--danger); cursor: pointer; background: none; border: none; padding: 4px 8px; }
-  .tabs-bar { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; position: sticky; top: 49px; z-index: 9; }
   body { overflow-x: hidden; }
-  .tab-btn { flex: 1; padding: 12px 4px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: none; border-bottom: 2px solid transparent; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .sub-tabs { display: flex; gap: 0; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .sub-tab { flex: 1; padding: 10px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: var(--surface2); transition: all 0.2s; }
-  .sub-tab.active { background: rgba(200,240,0,0.1); color: var(--accent); }
+  .tabs-bar { background: var(--surface); border-top: 1px solid var(--border); display: flex; position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; z-index: 50; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 2px 7px; font-size: 10px; font-weight: 600; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: none; transition: color 0.2s; }
+  .tab-btn .tab-ico { font-size: 21px; line-height: 1; transition: transform 0.15s; }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active .tab-ico { transform: translateY(-1px); }
+  body.has-bottom-nav { padding-bottom: 64px; }
+  body.has-bottom-nav .toast { bottom: 80px; }
+  .sub-tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 2px 0; }
+  .sub-tabs::-webkit-scrollbar { display: none; }
+  .sub-tab { flex: 0 0 auto; padding: 8px 14px; font-size: 12.5px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: 1px solid var(--border); border-radius: 20px; background: var(--surface2); transition: all 0.2s; white-space: nowrap; }
+  .sub-tab.active { background: rgba(200,240,0,0.14); color: var(--accent); border-color: var(--accent-dim); }
   .container { padding: 16px 20px; max-width: 480px; margin: 0 auto; }
   .container.no-pad { padding: 0; }
   .tab-content { display: none; }
@@ -161,11 +166,11 @@
 </header>
 
 <div class="tabs-bar" id="tabs-bar" style="display:none">
-  <button class="tab-btn active" onclick="switchTab('accueil')">🏠 Accueil</button>
-  <button class="tab-btn" onclick="switchTab('seance')">🏋️ Séance</button>
-  <button class="tab-btn" onclick="switchTab('objectif')">🎯 Objectif</button>
-  <button class="tab-btn" onclick="switchTab('historique')">📊 Historique</button>
-  <button class="tab-btn" onclick="switchTab('conseils')" style="position:relative">💬 Conseils<span id="badge-conseils" style="display:none;position:absolute;top:6px;right:8px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
+  <button class="tab-btn active" onclick="switchTab('accueil')"><span class="tab-ico">🏠</span><span>Accueil</span></button>
+  <button class="tab-btn" onclick="switchTab('seance')"><span class="tab-ico">🏋️</span><span>Séance</span></button>
+  <button class="tab-btn" onclick="switchTab('objectif')"><span class="tab-ico">🎯</span><span>Objectif</span></button>
+  <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico">📊</span><span>Historique</span></button>
+  <button class="tab-btn" onclick="switchTab('conseils')" style="position:relative"><span class="tab-ico">💬</span><span>Conseils</span><span id="badge-conseils" style="display:none;position:absolute;top:2px;right:12px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
 </div>
 
 <div class="container" id="main-container">
@@ -875,6 +880,7 @@ function seDeconnecter() {
   document.getElementById('view-login').classList.add('active');
   document.getElementById('view-app').classList.remove('active');
   document.getElementById('tabs-bar').style.display = 'none';
+  document.body.classList.remove('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'none';
   document.getElementById('header-nom').textContent = 'Muscu';
   document.getElementById('inp-login').value = '';
@@ -918,6 +924,8 @@ function seDeconnecterCoach() {
 async function ouvrirEspaceCoach() {
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
+  document.body.classList.remove('has-bottom-nav');
+  document.getElementById('tabs-bar').style.display = 'none';
   document.getElementById('header-nom-coach').textContent = coach.nom;
   const listeEl = document.getElementById('liste-athletes-coach');
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
@@ -1089,6 +1097,9 @@ function switchCoachDetailTab(tab) {
     document.getElementById('cdtab-' + t).style.display = t === tab ? 'block' : 'none';
     document.getElementById('cdtab-btn-' + t).classList.toggle('active', t === tab);
   });
+  // Fait défiler la pastille active au centre (pour que Programme & co restent accessibles)
+  const btnActif = document.getElementById('cdtab-btn-' + tab);
+  if (btnActif && btnActif.scrollIntoView) btnActif.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   if (tab === 'programme') chargerProgrammeCoach();
 }
 
@@ -1801,6 +1812,7 @@ async function ouvrirApp() {
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('view-app').classList.add('active');
   document.getElementById('tabs-bar').style.display = 'flex';
+  document.body.classList.add('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'block';
   document.getElementById('btn-theme').style.display = 'block';
   // Restore saved theme
