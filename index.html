@@ -981,8 +981,10 @@ async function chargerAlertesTraitees() {
   try {
     const res = await fetch(`${SCRIPT_URL}?action=getAlertesTraitees&coach_id=${encodeURIComponent(coach.coach_id)}`);
     const data = await res.json();
+    console.log('[DEBUG alertesTraitees] reçu du serveur:', data);
     alertesTraiteesCache = data.traitees || {};
-  } catch(e) { alertesTraiteesCache = {}; }
+    console.log('[DEBUG alertesTraitees] cache final:', alertesTraiteesCache);
+  } catch(e) { console.log('[DEBUG alertesTraitees] erreur:', e); alertesTraiteesCache = {}; }
 }
 function identifiantStableAlerte(al) {
   // Le message peut contenir des valeurs dynamiques (RPE, %) qui changent à chaque recalcul.
