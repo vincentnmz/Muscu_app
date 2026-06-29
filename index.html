@@ -984,13 +984,19 @@ async function chargerAlertesTraitees() {
     alertesTraiteesCache = data.traitees || {};
   } catch(e) { alertesTraiteesCache = {}; }
 }
-function cleAlerte(athleteId, message) { return athleteId + '|' + message; }
-function alerteEstTraitee(athleteId, message) {
-  return alertesTraiteesCache[cleAlerte(athleteId, message)] === lundiCourantISO();
+function identifiantStableAlerte(al) {
+  // Le message peut contenir des valeurs dynamiques (RPE, %) qui changent à chaque recalcul.
+  // On utilise un identifiant stable : le type, + le nom de l'exercice pour les stagnations.
+  if (al.type === 'stagnation') return 'stagnation|' + al.message.split(' : aucun progrès')[0];
+  return al.type || al.message;
 }
-function marquerAlerteTraitee(athleteId, message) {
+function cleAlerte(athleteId, al) { return athleteId + '|' + identifiantStableAlerte(al); }
+function alerteEstTraitee(athleteId, al) {
+  return alertesTraiteesCache[cleAlerte(athleteId, al)] === lundiCourantISO();
+}
+function marquerAlerteTraitee(athleteId, al) {
   if (!coach) return;
-  const cle = cleAlerte(athleteId, message);
+  const cle = cleAlerte(athleteId, al);
   alertesTraiteesCache[cle] = lundiCourantISO();
   renderListeAthletesCoach();
   fetch(SCRIPT_URL, {
@@ -999,7 +1005,7 @@ function marquerAlerteTraitee(athleteId, message) {
   });
 }
 function alertesActives(a) {
-  return (a.alertes || []).filter(al => !alerteEstTraitee(a.athlete_id, al.message));
+  return (a.alertes || []).filter(al => !alerteEstTraitee(a.athlete_id, al));
 }
 
 function renderCoachSurveiller(athletes) {
@@ -1056,7 +1062,7 @@ function renderCoachSurveiller(athletes) {
     el.addEventListener('click', () => {
       const a = aSurveiller[parseInt(el.getAttribute('data-aidx'))];
       const al = alertesActives(a)[parseInt(el.getAttribute('data-jidx'))];
-      if (a && al) marquerAlerteTraitee(a.athlete_id, al.message);
+      if (a && al) marquerAlerteTraitee(a.athlete_id, al);
     });
   });
 
@@ -1610,14 +1616,13 @@ function renderAlertesCoach() {
   if (!el || !coachAthleteCourant) return;
   const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
   // On masque les alertes marquées "Traité" cette semaine (cohérent avec l'accueil coach)
-  const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al.message));
+  const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
   el.innerHTML = alertes.length > 0
     ? alertes.map((al, idx) => {
         const c = couleurSeverite[al.severite] || '#a3a3a3';
         const sujetRaw = sujetAlerte(al);
         const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const fait = dejaConseille(sujetRaw);
-        const msgTraite = al.message.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const explicationId = `alerte-explication-${idx}`;
         return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
           <div style="display:flex;align-items:flex-start;gap:8px">
@@ -1631,7 +1636,7 @@ function renderAlertesCoach() {
               ? `<span style="font-size:12px;color:#00c96e;font-weight:700;align-self:center">✅ Déjà conseillé</span>
                  <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">✍️ Autre conseil</button>`
               : `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">✍️ Répondre à l'athlète</button>`}
-            <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail('${msgTraite}')">✓ Traité</button>
+            <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>
           </div>
         </div>`;
       }).join('')
@@ -1650,9 +1655,12 @@ function explicationAlerte(al) {
   return "Seuil de détection non documenté.";
 }
 
-function traiterAlerteDepuisDetail(message) {
+function traiterAlerteDepuisDetail(idx) {
   if (!coachAthleteCourant) return;
-  marquerAlerteTraitee(coachAthleteCourant.athlete_id, message); // met à jour l'accueil
+  const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
+  const al = alertes[idx];
+  if (!al) return;
+  marquerAlerteTraitee(coachAthleteCourant.athlete_id, al); // met à jour l'accueil
   renderAlertesCoach(); // met à jour le détail
 }
 
