@@ -54,6 +54,7 @@
   .sub-tabs::-webkit-scrollbar { display: none; }
   .sub-tab { flex: 0 0 auto; padding: 8px 14px; font-size: 12.5px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: 1px solid var(--border); border-radius: 20px; background: var(--surface2); transition: all 0.2s; white-space: nowrap; }
   .sub-tab.active { background: rgba(200,240,0,0.14); color: var(--accent); border-color: var(--accent-dim); }
+  #view-coach-detail .sub-tabs { position: sticky; top: 49px; z-index: 9; background: var(--bg); margin: 0 -20px 14px; padding: 10px 20px 6px; }
   .container { padding: 16px 20px; max-width: 480px; margin: 0 auto; }
   .container.no-pad { padding: 0; }
   .tab-content { display: none; }
@@ -243,18 +244,42 @@
 
   <!-- VUE COACH -->
   <div id="view-coach" class="view">
-    <div class="header">
-      <div id="header-nom-coach" style="font-weight:800">Coach</div>
+    <div class="header" style="margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
+        <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
+      </div>
       <button class="btn-sm btn-outline" onclick="seDeconnecterCoach()">Déconnexion</button>
     </div>
-    <!-- BANDEAU A SURVEILLER -->
-    <div id="coach-surveiller-card" class="dash-card dash-card-accent-orange" style="padding:16px;display:none">
-      <div class="dash-label" id="coach-surveiller-titre">⚠️ À surveiller</div>
-      <div id="coach-surveiller-content"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Tous mes athlètes</div>
-      <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
+
+    <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
+
+    <div id="coach-home-body" style="display:none">
+      <!-- Stats rapides -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="dash-card" style="text-align:center;padding:14px">
+          <div class="dash-big-num" id="coach-stat-total">—</div>
+          <div class="dash-label" style="margin:0">Athlètes</div>
+        </div>
+        <div class="dash-card" style="text-align:center;padding:14px">
+          <div class="dash-big-num" id="coach-stat-surveiller" style="color:#f59f00">—</div>
+          <div class="dash-label" style="margin:0">À surveiller</div>
+        </div>
+      </div>
+
+      <!-- Sélecteur athlète -->
+      <div class="card">
+        <div class="card-title">📂 Ouvrir la fiche d'un athlète</div>
+        <select id="coach-select-athlete" onchange="ouvrirAthleteDepuisSelect(this.value)" style="margin-bottom:0">
+          <option value="">— Choisir un athlète —</option>
+        </select>
+      </div>
+
+      <!-- BANDEAU A SURVEILLER -->
+      <div id="coach-surveiller-card" class="dash-card dash-card-accent-orange" style="padding:16px;display:none">
+        <div class="dash-label" id="coach-surveiller-titre">⚠️ À surveiller</div>
+        <div id="coach-surveiller-content"></div>
+      </div>
     </div>
   </div>
 
@@ -970,6 +995,7 @@ async function ouvrirEspaceCoach() {
     const data = await res.json();
     const athletes = data.athletes || [];
     if (athletes.length === 0) {
+      document.getElementById('coach-home-body').style.display = 'none';
       listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
       return;
     }
@@ -981,32 +1007,29 @@ async function ouvrirEspaceCoach() {
 }
 
 function renderListeAthletesCoach() {
-  const listeEl = document.getElementById('liste-athletes-coach');
+  document.getElementById('liste-athletes-coach').innerHTML = '';
+  document.getElementById('coach-home-body').style.display = 'block';
   renderCoachSurveiller(athletesCoach);
-  listeEl.innerHTML = '';
-  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
-  athletesCoach.forEach(a => {
-    const alertes = alertesActives(a);
-    const bordureCouleur = alertes.some(al => al.severite === 'haute') ? couleurSeverite.haute
-      : alertes.some(al => al.severite === 'moyenne') ? couleurSeverite.moyenne
-      : 'var(--border)';
-    const div = document.createElement('div');
-    div.style.cssText = `background:var(--surface);border:1px solid ${bordureCouleur};border-left:4px solid ${bordureCouleur};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
-    const alertesHtml = alertes.length > 0
-      ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">` +
-        alertes.map(al => `<div style="font-size:12px;font-weight:600;color:${couleurSeverite[al.severite] || '#a3a3a3'}">⚠️ ${al.message}</div>`).join('') +
-        `</div>`
-      : `<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">✅ Rien à signaler</div>`;
-    div.innerHTML = `
-      <div style="font-size:15px;font-weight:800">${a.nom}</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière séance : ${a.derniere_seance || 'Jamais'}</div>
-      <div style="font-size:12px;color:var(--text-muted)">Séances cette semaine : ${a.seances_semaine}</div>
-      ${alertesHtml}
-      <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Voir le détail</div>
-    `;
-    div.addEventListener('click', () => ouvrirDetailAthleteCoach(a));
-    listeEl.appendChild(div);
-  });
+
+  // Stats rapides
+  document.getElementById('coach-stat-total').textContent = athletesCoach.length;
+  const nbSurv = athletesCoach.filter(a => alertesActives(a).length > 0).length;
+  document.getElementById('coach-stat-surveiller').textContent = nbSurv;
+
+  // Menu déroulant : athlètes à surveiller d'abord, puis ordre alphabétique
+  const sel = document.getElementById('coach-select-athlete');
+  const tri = athletesCoach
+    .map((a, i) => ({ a, i, nbAl: alertesActives(a).length }))
+    .sort((x, y) => (y.nbAl - x.nbAl) || String(x.a.nom).localeCompare(String(y.a.nom)));
+  sel.innerHTML = '<option value="">— Choisir un athlète —</option>' +
+    tri.map(o => `<option value="${o.i}">${o.a.nom}${o.nbAl > 0 ? '  ⚠️ ' + o.nbAl : ''}</option>`).join('');
+  sel.value = '';
+}
+
+function ouvrirAthleteDepuisSelect(idx) {
+  if (idx === '' || idx === null || idx === undefined) return;
+  const a = athletesCoach[Number(idx)];
+  if (a) ouvrirDetailAthleteCoach(a);
 }
 
 // ---- Alertes traitées (stockage local, remise à zéro chaque semaine) ----
@@ -1024,10 +1047,8 @@ async function chargerAlertesTraitees() {
   try {
     const res = await fetch(`${SCRIPT_URL}?action=getAlertesTraitees&coach_id=${encodeURIComponent(coach.coach_id)}`);
     const data = await res.json();
-    console.log('[DEBUG alertesTraitees] reçu du serveur:', data);
     alertesTraiteesCache = data.traitees || {};
-    console.log('[DEBUG alertesTraitees] cache final:', alertesTraiteesCache);
-  } catch(e) { console.log('[DEBUG alertesTraitees] erreur:', e); alertesTraiteesCache = {}; }
+  } catch(e) { alertesTraiteesCache = {}; }
 }
 function identifiantStableAlerte(al) {
   // Le message peut contenir des valeurs dynamiques (RPE, %) qui changent à chaque recalcul.
@@ -1125,6 +1146,8 @@ let cdCalDate = new Date();
 function retourListeAthletesCoach() {
   document.getElementById('view-coach-detail').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
+  const sel = document.getElementById('coach-select-athlete');
+  if (sel) sel.value = '';
 }
 
 function switchCoachDetailTab(tab) {
