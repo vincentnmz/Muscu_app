@@ -54,7 +54,8 @@
   .sub-tabs::-webkit-scrollbar { display: none; }
   .sub-tab { flex: 0 0 auto; padding: 8px 14px; font-size: 12.5px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: 1px solid var(--border); border-radius: 20px; background: var(--surface2); transition: all 0.2s; white-space: nowrap; }
   .sub-tab.active { background: rgba(200,240,0,0.14); color: var(--accent); border-color: var(--accent-dim); }
-  #view-coach-detail .sub-tabs { position: sticky; top: 49px; z-index: 9; background: var(--bg); margin: 0 -20px 14px; padding: 10px 20px 6px; }
+  #view-coach-detail .sub-tabs { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; z-index: 50; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  body.cd-nav { padding-bottom: 66px; }
   .container { padding: 16px 20px; max-width: 480px; margin: 0 auto; }
   .container.no-pad { padding: 0; }
   .tab-content { display: none; }
@@ -979,6 +980,7 @@ function seDeconnecterCoach() {
   localStorage.removeItem('muscu_coach');
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.remove('active');
+  document.body.classList.remove('cd-nav');
   document.getElementById('view-login').classList.add('active');
   // Remettre l'écran de connexion à son état de base
   document.getElementById('card-login-coach').style.display = 'none';
@@ -1152,6 +1154,7 @@ let cdCalDate = new Date();
 function retourListeAthletesCoach() {
   document.getElementById('view-coach-detail').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
+  document.body.classList.remove('cd-nav');
   const sel = document.getElementById('coach-select-athlete');
   if (sel) sel.value = '';
 }
@@ -1178,6 +1181,7 @@ async function ouvrirDetailAthleteCoach(a) {
   coachAthleteCourant = a;
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.add('active');
+  document.body.classList.add('cd-nav');
   document.getElementById('header-nom-athlete-coach').textContent = a.nom;
   const niv = getNiveauExperience(a.annees_pratique);
   const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv];
