@@ -102,6 +102,9 @@
   .view { display: none; }
   .view.active { display: block; }
   .login-logo { text-align: center; padding: 30px 0 20px; }
+  .auth-seg { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+  .auth-seg button { flex: 1; padding: 11px; border: none; background: none; color: var(--text-muted); font-size: 13px; font-weight: 700; border-radius: 9px; cursor: pointer; transition: all 0.2s; }
+  .auth-seg button.auth-seg-active { background: var(--accent); color: #000; }
   .error-msg { color: var(--danger); font-size: 13px; text-align: center; margin-top: 4px; min-height: 20px; }
   .recap-exo { margin-bottom: 14px; }
   .recap-exo-name { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
@@ -177,45 +180,55 @@
 
   <!-- LOGIN -->
   <div id="view-login" class="view active">
-    <div class="login-logo">
-      <div style="font-size:48px">💪</div>
-      <div style="font-size:22px;font-weight:800;margin-top:8px">Séance Muscu</div>
-      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Connecte-toi pour commencer</div>
+    <div class="login-logo" style="padding:42px 0 26px">
+      <div style="width:74px;height:74px;border-radius:20px;background:rgba(200,240,0,0.12);border:1px solid var(--accent-dim);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:38px">💪</div>
+      <div style="font-size:24px;font-weight:800;margin-top:14px;letter-spacing:-0.5px">Séance Muscu</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Ton carnet d'entraînement intelligent</div>
     </div>
-    <div class="card">
-      <div class="card-title">Connexion</div>
-      <label>Login (4 chiffres)</label>
-      <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
-      <div id="login-error" class="error-msg"></div>
-      <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
+
+    <div class="auth-seg">
+      <button id="authtab-login" class="auth-seg-active" onclick="switchAuthMode('login')">Se connecter</button>
+      <button id="authtab-signup" onclick="switchAuthMode('signup')">Créer un compte</button>
     </div>
-    <div class="card">
-      <div class="card-title">Première fois ? Créer un compte</div>
-      <div class="row2">
-        <div>
-          <label>Prénom</label>
-          <input type="text" id="reg-prenom" placeholder="Prénom">
-        </div>
-        <div>
-          <label>Taille (cm)</label>
-          <input type="number" id="reg-taille" placeholder="175">
-        </div>
+
+    <div id="auth-login">
+      <div class="card">
+        <label>Login (4 chiffres)</label>
+        <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
+        <div id="login-error" class="error-msg"></div>
+        <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
       </div>
-      <div class="row2">
-        <div>
-          <label>Login (4 chiffres)</label>
-          <input type="password" id="reg-login" maxlength="4" placeholder="••••" inputmode="numeric">
-        </div>
-        <div>
-          <label>Années de pratique</label>
-          <input type="number" id="reg-annees" placeholder="Ex: 3" min="0" max="50">
-        </div>
-      </div>
-      <label>Date de naissance</label>
-      <input type="date" id="reg-ddn">
-      <div id="reg-error" class="error-msg"></div>
-      <button class="btn btn-outline" onclick="sInscrire()">Créer mon compte</button>
     </div>
+
+    <div id="auth-signup" style="display:none">
+      <div class="card">
+        <div class="row2">
+          <div>
+            <label>Prénom</label>
+            <input type="text" id="reg-prenom" placeholder="Prénom">
+          </div>
+          <div>
+            <label>Taille (cm)</label>
+            <input type="number" id="reg-taille" placeholder="175">
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Login (4 chiffres)</label>
+            <input type="password" id="reg-login" maxlength="4" placeholder="••••" inputmode="numeric">
+          </div>
+          <div>
+            <label>Années de pratique</label>
+            <input type="number" id="reg-annees" placeholder="Ex: 3" min="0" max="50">
+          </div>
+        </div>
+        <label>Date de naissance</label>
+        <input type="date" id="reg-ddn">
+        <div id="reg-error" class="error-msg"></div>
+        <button class="btn btn-accent" onclick="sInscrire()">Créer mon compte</button>
+      </div>
+    </div>
+
     <div style="text-align:center;margin-top:14px">
       <a href="#" id="lien-espace-coach" onclick="toggleEspaceCoach(event)" style="font-size:13px;color:var(--text-muted)">Espace coach</a>
     </div>
@@ -294,6 +307,28 @@
       <div class="dash-card dash-card-accent-orange" id="cd-muscle-card" style="padding:16px">
         <div class="dash-label">⚠️ Muscle en retard</div>
         <div id="cd-muscle"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="dash-card" style="padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <div class="dash-label">⚖️ Évolution du poids</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
+              <span style="font-size:26px;font-weight:800;color:var(--text)" id="cd-graph-poids-actuel">—</span>
+              <span style="font-size:13px;color:var(--text-muted)">kg</span>
+              <span style="font-size:12px;font-weight:700" id="cd-graph-poids-evol"></span>
+            </div>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button onclick="cdFiltrerGraphPoids('1m')" id="cd-gp-1m" style="background:var(--text);color:var(--bg);border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer">1M</button>
+            <button onclick="cdFiltrerGraphPoids('3m')" id="cd-gp-3m" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">3M</button>
+            <button onclick="cdFiltrerGraphPoids('all')" id="cd-gp-all" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">Tout</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <svg id="cd-graph-poids-svg" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;overflow:visible">
+            <text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Chargement...</text>
+          </svg>
+        </div>
       </div>
     </div>
 
@@ -1145,6 +1180,7 @@ async function ouvrirDetailAthleteCoach(a) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    afficherGraphiquePoidsCoach(data.poids || []);
     renderCoachVolume(data);
     afficherCoachTendances(4);
     renderCoachExerciceSelect(data);
@@ -1836,6 +1872,13 @@ async function ouvrirApp() {
   peuplerMusclesLibres();
   chargerAppData(); // Un seul appel pour tout
   chargerMessagesCoach(); // Messages du coach
+}
+
+function switchAuthMode(mode) {
+  document.getElementById('auth-login').style.display = mode === 'login' ? 'block' : 'none';
+  document.getElementById('auth-signup').style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('authtab-login').classList.toggle('auth-seg-active', mode === 'login');
+  document.getElementById('authtab-signup').classList.toggle('auth-seg-active', mode === 'signup');
 }
 
 function switchTab(tab) {
@@ -3206,8 +3249,21 @@ function afficherGraphiquePoids(poids) {
 }
 
 function filtrerGraphPoids(periode) {
+  dessinerGraphPoids(toutesLesPesees, periode, { btn:'gp-', svg:'graph-poids-svg', actuel:'graph-poids-actuel', evol:'graph-poids-evol' });
+}
+
+let cdToutesLesPesees = [];
+function afficherGraphiquePoidsCoach(poids) {
+  cdToutesLesPesees = poids || [];
+  cdFiltrerGraphPoids('1m');
+}
+function cdFiltrerGraphPoids(periode) {
+  dessinerGraphPoids(cdToutesLesPesees, periode, { btn:'cd-gp-', svg:'cd-graph-poids-svg', actuel:'cd-graph-poids-actuel', evol:'cd-graph-poids-evol' });
+}
+
+function dessinerGraphPoids(pesees, periode, ids) {
   ['1m','3m','all'].forEach(p => {
-    const btn = document.getElementById('gp-'+p);
+    const btn = document.getElementById(ids.btn+p);
     if (!btn) return;
     btn.style.background = p === periode ? 'var(--text)' : 'var(--surface2)';
     btn.style.color = p === periode ? 'var(--bg)' : 'var(--text-muted)';
@@ -3215,7 +3271,7 @@ function filtrerGraphPoids(periode) {
   });
 
   const maintenant = new Date();
-  let filtered = toutesLesPesees.filter(p => {
+  let filtered = pesees.filter(p => {
     const parts = p.date.split('/');
     const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
     if (periode === '1m') return d >= new Date(maintenant.getTime() - 30*24*3600*1000);
@@ -3224,23 +3280,27 @@ function filtrerGraphPoids(periode) {
   }).reverse(); // ordre chronologique
 
   if (filtered.length === 0) {
-    document.getElementById('graph-poids-svg').innerHTML = '<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Aucune donnée sur cette période</text>';
+    document.getElementById(ids.svg).innerHTML = '<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Aucune donnée sur cette période</text>';
+    document.getElementById(ids.actuel).textContent = '—';
+    document.getElementById(ids.evol).innerHTML = '';
     return;
   }
 
   // Poids actuel et évolution
   const dernier = filtered[filtered.length - 1];
   const premier = filtered[0];
-  document.getElementById('graph-poids-actuel').textContent = dernier.poids;
+  document.getElementById(ids.actuel).textContent = dernier.poids;
   if (filtered.length > 1) {
     const diff = (dernier.poids - premier.poids).toFixed(1);
     const sign = diff > 0 ? '▲' : '▼';
     const col = diff > 0 ? '#ff9500' : '#00a854';
-    document.getElementById('graph-poids-evol').innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
+    document.getElementById(ids.evol).innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
+  } else {
+    document.getElementById(ids.evol).innerHTML = '';
   }
 
   if (filtered.length < 2) {
-    document.getElementById('graph-poids-svg').innerHTML = `<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Besoin d'au moins 2 pesées</text>`;
+    document.getElementById(ids.svg).innerHTML = `<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Besoin d'au moins 2 pesées</text>`;
     return;
   }
 
@@ -3292,7 +3352,7 @@ function filtrerGraphPoids(periode) {
     }
   });
 
-  document.getElementById('graph-poids-svg').innerHTML = svg;
+  document.getElementById(ids.svg).innerHTML = svg;
 }
 
 async function demarrerSeanceLibre() {
