@@ -921,6 +921,7 @@ async function ouvrirEspaceCoach() {
   document.getElementById('header-nom-coach').textContent = coach.nom;
   const listeEl = document.getElementById('liste-athletes-coach');
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
+  await chargerAlertesTraitees();
   try {
     const res = await fetch(`${SCRIPT_URL}?action=getCoachAthletes&coach_id=${encodeURIComponent(coach.coach_id)}`);
     const data = await res.json();
@@ -974,24 +975,28 @@ function lundiCourantISO() {
   d.setHours(0,0,0,0);
   return d.toISOString().split('T')[0];
 }
-function getAlertesTraitees() {
-  if (!coach) return {};
-  try { return JSON.parse(localStorage.getItem('muscu_alertes_traitees_' + coach.coach_id) || '{}'); }
-  catch(e) { return {}; }
-}
-function saveAlertesTraitees(obj) {
-  if (!coach) return;
-  localStorage.setItem('muscu_alertes_traitees_' + coach.coach_id, JSON.stringify(obj));
+let alertesTraiteesCache = {};
+async function chargerAlertesTraitees() {
+  if (!coach) { alertesTraiteesCache = {}; return; }
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getAlertesTraitees&coach_id=${encodeURIComponent(coach.coach_id)}`);
+    const data = await res.json();
+    alertesTraiteesCache = data.traitees || {};
+  } catch(e) { alertesTraiteesCache = {}; }
 }
 function cleAlerte(athleteId, message) { return athleteId + '|' + message; }
 function alerteEstTraitee(athleteId, message) {
-  return getAlertesTraitees()[cleAlerte(athleteId, message)] === lundiCourantISO();
+  return alertesTraiteesCache[cleAlerte(athleteId, message)] === lundiCourantISO();
 }
 function marquerAlerteTraitee(athleteId, message) {
-  const t = getAlertesTraitees();
-  t[cleAlerte(athleteId, message)] = lundiCourantISO();
-  saveAlertesTraitees(t);
+  if (!coach) return;
+  const cle = cleAlerte(athleteId, message);
+  alertesTraiteesCache[cle] = lundiCourantISO();
   renderListeAthletesCoach();
+  fetch(SCRIPT_URL, {
+    method: 'POST', headers: {'Content-Type': 'text/plain'},
+    body: JSON.stringify({ action: 'marquerAlerteTraitee', coach_id: coach.coach_id, cle, semaine: lundiCourantISO() })
+  });
 }
 function alertesActives(a) {
   return (a.alertes || []).filter(al => !alerteEstTraitee(a.athlete_id, al.message));
