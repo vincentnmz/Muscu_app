@@ -1476,19 +1476,26 @@ function renderProgrammeCoach() {
         <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Reps mini</div>
         <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Reps max</div>
         <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Repos(s)</div>
-        <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Groupe</div>
+        <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Lié à</div>
         <div></div>
       </div>
-      ${seances[seanceId].map(l => `
+      ${seances[seanceId].map(l => {
+        const autres = seances[seanceId].filter(o => o.row_index !== l.row_index);
+        const partenaireActuel = l.groupe_id ? autres.find(o => o.groupe_id === l.groupe_id) : null;
+        return `
         <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.7fr) minmax(0,0.6fr) 32px;gap:4px;align-items:center;margin-bottom:6px;${l.groupe_id ? `border-left:3px solid ${couleurGroupe(l.groupe_id)};padding-left:4px` : ''}">
           <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
           <input type="number" value="${l.series_prevues}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Séries">
           <input type="number" value="${l.reps_mini}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps mini">
           <input type="number" value="${l.reps_max}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps max">
           <input type="number" value="${l.repos_sec || ''}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Repos (sec)">
-          <input type="text" maxlength="2" value="${l.groupe_id || ''}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,this.value)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center;text-transform:uppercase" title="Groupe superset (ex: A)" placeholder="-">
+          <select onchange="cdLierExercice(${l.row_index},'${seanceId}',this.value)" style="font-size:10px;padding:4px;width:100%;min-width:0" title="Lier en superset/biset">
+            <option value="">— Aucun —</option>
+            ${autres.map(o => `<option value="${o.row_index}"${partenaireActuel && partenaireActuel.row_index === o.row_index ? ' selected' : ''}>${o.exercice}</option>`).join('')}
+          </select>
           <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">🗑️</button>
-        </div>${l.groupe_id ? `<div style="font-size:10px;color:${couleurGroupe(l.groupe_id)};margin:-4px 0 6px 4px">🔗 Superset ${l.groupe_id}</div>` : ''}`).join('')}
+        </div>${l.groupe_id ? `<div style="font-size:10px;color:${couleurGroupe(l.groupe_id)};margin:-4px 0 6px 4px">🔗 Superset avec ${autres.filter(o => o.groupe_id === l.groupe_id).map(o => o.exercice).join(', ')}</div>` : ''}`;
+      }).join('')}
       <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')">+ Exercice</button>
     </div>`).join('');
 }
@@ -1511,6 +1518,32 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
       repos_sec: ligne.repos_sec, groupe_id: ligne.groupe_id || ''
     })
   });
+}
+
+function genGroupeId(seanceId) {
+  const utilises = new Set(cdProgrammeLignes.filter(l => l.seance_id === seanceId && l.groupe_id).map(l => l.groupe_id));
+  const lettres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (const c of lettres) if (!utilises.has(c)) return c;
+  return 'G' + Math.floor(Math.random() * 100);
+}
+
+function cdLierExercice(rowIndex, seanceId, partnerRowIndexStr) {
+  const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
+  if (!ligne) return;
+  if (!partnerRowIndexStr) {
+    ligne.groupe_id = '';
+    renderProgrammeCoach();
+    cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, '');
+    return;
+  }
+  const partner = cdProgrammeLignes.find(l => l.row_index === Number(partnerRowIndexStr));
+  if (!partner) return;
+  const groupeId = partner.groupe_id || ligne.groupe_id || genGroupeId(seanceId);
+  ligne.groupe_id = groupeId;
+  partner.groupe_id = groupeId;
+  renderProgrammeCoach();
+  cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
+  cdSauverLigne(partner.row_index, seanceId, null, null, null, null, null, groupeId);
 }
 
 async function cdAjouterExercice(seanceId) {
