@@ -786,6 +786,7 @@ let serieNum = 1;
 let exercicesData = [];
 let programmeSeance = [];
 let lastPerfData = {};
+function couleurGroupe(g) { const c = ['#c8f000','#00c9ff','#ff8800','#ff44aa']; let h=0; for (let i=0;i<g.length;i++) h=(h*31+g.charCodeAt(i))%c.length; return c[h]; }
 
 function normaliserNomExo(s) {
   return String(s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -1461,7 +1462,6 @@ function renderProgrammeCoach() {
     el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Aucune séance dans le programme.</div>';
     return;
   }
-  const couleurGroupe = g => { const c = ['#c8f000','#00c9ff','#ff8800','#ff44aa']; let h=0; for (let i=0;i<g.length;i++) h=(h*31+g.charCodeAt(i))%c.length; return c[h]; };
   el.innerHTML = ordre.map(seanceId => `
     <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:10px">
       <div style="font-size:13px;font-weight:700;margin-bottom:8px">${seanceId}</div>
@@ -1901,8 +1901,11 @@ function afficherListeSeance() {
       perfHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai 🆕</div>`;
     }
 
+    const partenaires = p.groupe_id ? programmeSeance.filter(o => o !== p && o.groupe_id === p.groupe_id).map(o => o.exercice) : [];
+    const groupeStyle = p.groupe_id ? `border-left:3px solid ${couleurGroupe(p.groupe_id)};` : '';
+
     const div = document.createElement('div');
-    div.style.cssText = `background:var(--surface);border:1px solid ${borderColor};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
+    div.style.cssText = `background:var(--surface);border:1px solid ${borderColor};${groupeStyle}border-radius:var(--radius);padding:14px;margin-bottom:${p.groupe_id ? '2px' : '10px'};cursor:pointer`;
     div.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div style="font-size:15px;font-weight:800;flex:1">${p.exercice}</div>
@@ -1914,6 +1917,12 @@ function afficherListeSeance() {
     `;
     div.addEventListener('click', () => selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
     listeEl.appendChild(div);
+    if (p.groupe_id) {
+      const tag = document.createElement('div');
+      tag.style.cssText = `font-size:11px;color:${couleurGroupe(p.groupe_id)};margin:0 0 10px 4px`;
+      tag.textContent = partenaires.length > 0 ? `🔗 Superset ${p.groupe_id} · alterne avec ${partenaires.join(', ')}` : `🔗 Superset ${p.groupe_id}`;
+      listeEl.appendChild(tag);
+    }
   });
 
   // Exercices ajoutés en plus du programme (via "Autre exercice")
@@ -2704,7 +2713,9 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
 
   // Mettre à jour l'affichage
   document.getElementById('exo-actuel-nom').textContent = exerciceNom;
-  document.getElementById('exo-actuel-detail').textContent = `${muscle} · ${repsMini}-${repsMax} reps`;
+  const pProg = programmeSeance.find(p => p.exercice === exerciceNom);
+  const partenairesActuel = pProg && pProg.groupe_id ? programmeSeance.filter(o => o !== pProg && o.groupe_id === pProg.groupe_id).map(o => o.exercice) : [];
+  document.getElementById('exo-actuel-detail').innerHTML = `${muscle} · ${repsMini}-${repsMax} reps${partenairesActuel.length > 0 ? ` <span style="color:${couleurGroupe(pProg.groupe_id)}">· 🔗 Superset, alterne avec ${partenairesActuel.join(', ')}</span>` : ''}`;
   document.getElementById('card-exo-actuel').style.display = 'block';
   document.getElementById('card-hors-programme').style.display = 'none';
 
