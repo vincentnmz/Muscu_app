@@ -548,17 +548,6 @@
                 <label>Type de séance</label>
                 <select id="sel-seance-id" onchange="demarrerSeance()">
                   <option value="">— Choisir —</option>
-                  <option value="Full body">Full body</option>
-                  <option value="Upper">Upper</option>
-                  <option value="Push">Push</option>
-                  <option value="Pull">Pull</option>
-                  <option value="Jambes compléte">Jambes compléte</option>
-                  <option value="Jambes Quadriceps">Jambes Quadriceps</option>
-                  <option value="Jambes Ischio-fessier">Jambes Ischio-fessier</option>
-                  <option value="Dos Bras">Dos Bras</option>
-                  <option value="Dos Epaule">Dos Epaule</option>
-                  <option value="Pec Bras">Pec Bras</option>
-                  <option value="Pec Epaule">Pec Epaule</option>
                   <option value="Libre">Libre</option>
                 </select>
               </div>
@@ -2051,6 +2040,21 @@ function majProgressionSeance() {
   document.getElementById('seance-progress-bar').style.width = pct + '%';
 }
 
+function peuplerSeancesProgramme() {
+  const sel = document.getElementById('sel-seance-id');
+  if (!sel) return;
+  const valeurAvant = sel.value;
+  const programme = dernierAppData ? (dernierAppData.programme || []) : [];
+  // Séances distinctes du programme, dans l'ordre d'apparition
+  const seances = [];
+  programme.forEach(p => { if (p.seance_id && !seances.includes(p.seance_id)) seances.push(p.seance_id); });
+  sel.innerHTML = '<option value="">— Choisir —</option>' +
+    seances.map(s => `<option value="${s}">${s}</option>`).join('') +
+    '<option value="Libre">Libre</option>';
+  // Conserver la sélection en cours si toujours valide
+  if (valeurAvant && (seances.includes(valeurAvant) || valeurAvant === 'Libre')) sel.value = valeurAvant;
+}
+
 let scrollVersProchain = false;
 function afficherListeSeance() {
   const listeEl = document.getElementById('liste-exercices-seance');
@@ -2988,6 +2992,7 @@ async function chargerAppData() {
 
     // Stocker les données globalement
     dernierAppData = data;
+    peuplerSeancesProgramme();
     seancesDates = data.historique.dates_seances || {};
     progressionData = data.historique.progression_par_exo || {};
     tendancesData = data.historique.tendances || null;
