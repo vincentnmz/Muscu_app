@@ -614,17 +614,19 @@
             <!-- Saisie série -->
             <div class="card">
               <div class="card-title">Ajouter une série</div>
-              <div class="row3">
+              <div class="row2" style="gap:12px">
                 <div>
-                  <label>Charge kg</label>
-                  <input type="number" id="inp-charge" placeholder="0" step="0.5" min="0">
+                  <label>Charge (kg)</label>
+                  <input type="number" id="inp-charge" placeholder="0" step="0.5" min="0" inputmode="decimal" style="font-size:24px;font-weight:800;text-align:center;padding:14px 8px">
                 </div>
                 <div>
                   <label>Reps</label>
-                  <input type="number" id="inp-reps" placeholder="0" min="1">
+                  <input type="number" id="inp-reps" placeholder="0" min="1" inputmode="numeric" style="font-size:24px;font-weight:800;text-align:center;padding:14px 8px">
                 </div>
+              </div>
+              <div class="row2" style="gap:12px">
                 <div>
-                  <label>RPE</label>
+                  <label>RPE (intensité)</label>
                   <select id="sel-rpe">
                     <option value="">—</option>
                     <option value="10">10 - Échec</option>
@@ -634,18 +636,20 @@
                     <option value="6">6 - Facile</option>
                   </select>
                 </div>
+                <div>
+                  <label>Repos</label>
+                  <select id="sel-repos">
+                    <option value="0">0s</option>
+                    <option value="30">30s</option>
+                    <option value="60">60s</option>
+                    <option value="90">90s</option>
+                    <option value="120" selected>120s</option>
+                    <option value="180">180s</option>
+                    <option value="240">240s</option>
+                  </select>
+                </div>
               </div>
-              <label>Repos</label>
-              <select id="sel-repos">
-                <option value="0">0s</option>
-                <option value="30">30s</option>
-                <option value="60">60s</option>
-                <option value="90">90s</option>
-                <option value="120" selected>120s</option>
-                <option value="180">180s</option>
-                <option value="240">240s</option>
-              </select>
-              <button class="btn btn-accent" onclick="ajouterSerie()">+ Ajouter cette série</button>
+              <button class="btn btn-accent" onclick="ajouterSerie()" style="padding:16px;font-size:16px">+ Ajouter cette série</button>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
