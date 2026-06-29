@@ -1482,18 +1482,20 @@ function renderProgrammeCoach() {
       ${seances[seanceId].map(l => {
         const autres = seances[seanceId].filter(o => o.row_index !== l.row_index);
         const partenairesActuels = l.groupe_id ? autres.filter(o => o.groupe_id === l.groupe_id) : [];
+        const dispoAajouter = autres.filter(o => !partenairesActuels.some(p => p.row_index === o.row_index));
         return `
-        <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.7fr) minmax(0,0.6fr) 32px;gap:4px;align-items:center;margin-bottom:6px;${l.groupe_id ? `border-left:3px solid ${couleurGroupe(l.groupe_id)};padding-left:4px` : ''}">
+        <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.7fr) minmax(0,0.6fr) 32px;gap:4px;align-items:center;margin-bottom:2px;${l.groupe_id ? `border-left:3px solid ${couleurGroupe(l.groupe_id)};padding-left:4px` : ''}">
           <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
           <input type="number" value="${l.series_prevues}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Séries">
           <input type="number" value="${l.reps_mini}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps mini">
           <input type="number" value="${l.reps_max}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps max">
           <input type="number" value="${l.repos_sec || ''}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Repos (sec)">
-          <select multiple size="2" onchange="cdLierExercice(${l.row_index},'${seanceId}',Array.from(this.selectedOptions).map(o=>o.value))" style="font-size:10px;padding:2px;width:100%;min-width:0" title="Lier en superset/biset (Ctrl/Cmd+clic pour en choisir plusieurs)">
-            ${autres.map(o => `<option value="${o.row_index}"${partenairesActuels.some(p => p.row_index === o.row_index) ? ' selected' : ''}>${o.exercice}</option>`).join('')}
+          <select onchange="if(this.value){cdAjouterPartenaire(${l.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:10px;padding:4px;width:100%;min-width:0" title="Ajouter un exercice lié">
+            <option value="">+ lier...</option>
+            ${dispoAajouter.map(o => `<option value="${o.row_index}">${o.exercice}</option>`).join('')}
           </select>
           <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">🗑️</button>
-        </div>${l.groupe_id ? `<div style="font-size:10px;color:${couleurGroupe(l.groupe_id)};margin:-4px 0 6px 4px">🔗 Superset avec ${autres.filter(o => o.groupe_id === l.groupe_id).map(o => o.exercice).join(', ')}</div>` : ''}`;
+        </div>${partenairesActuels.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 8px 4px">${partenairesActuels.map(p => `<span style="font-size:10px;background:${couleurGroupe(l.groupe_id)}33;color:${couleurGroupe(l.groupe_id)};border-radius:10px;padding:2px 6px;display:inline-flex;align-items:center;gap:4px">🔗 ${p.exercice}<span style="cursor:pointer;font-weight:700" onclick="cdRetirerDuGroupe(${l.row_index},'${seanceId}')" title="Retirer cette liaison">✕</span></span>`).join('')}</div>` : '<div style="margin-bottom:8px"></div>'}`;
       }).join('')}
       <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')">+ Exercice</button>
     </div>`).join('');
@@ -1526,24 +1528,23 @@ function genGroupeId(seanceId) {
   return 'G' + Math.floor(Math.random() * 100);
 }
 
-function cdLierExercice(rowIndex, seanceId, partnerRowIndexStrs) {
+function cdAjouterPartenaire(rowIndex, seanceId, partnerRowIndexStr) {
+  const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
+  const partenaire = cdProgrammeLignes.find(l => l.row_index === Number(partnerRowIndexStr));
+  if (!ligne || !partenaire) return;
+  const groupeId = ligne.groupe_id || partenaire.groupe_id || genGroupeId(seanceId);
+  ligne.groupe_id = groupeId;
+  partenaire.groupe_id = groupeId;
+  cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
+  cdSauverLigne(partenaire.row_index, seanceId, null, null, null, null, null, groupeId);
+  renderProgrammeCoach();
+}
+
+function cdRetirerDuGroupe(rowIndex, seanceId) {
   const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
   if (!ligne) return;
-  if (!partnerRowIndexStrs || partnerRowIndexStrs.length === 0) {
-    ligne.groupe_id = '';
-    renderProgrammeCoach();
-    cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, '');
-    return;
-  }
-  const partenaires = partnerRowIndexStrs.map(s => cdProgrammeLignes.find(l => l.row_index === Number(s))).filter(Boolean);
-  if (partenaires.length === 0) return;
-  const groupeId = partenaires.find(p => p.groupe_id)?.groupe_id || ligne.groupe_id || genGroupeId(seanceId);
-  ligne.groupe_id = groupeId;
-  cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
-  partenaires.forEach(p => {
-    p.groupe_id = groupeId;
-    cdSauverLigne(p.row_index, seanceId, null, null, null, null, null, groupeId);
-  });
+  ligne.groupe_id = '';
+  cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, '');
   renderProgrammeCoach();
 }
 
