@@ -1600,25 +1600,33 @@ function renderCoachSeances(data) {
 function renderCoachSeancesDetail(data) {
   const el = document.getElementById('cd-seances-detail-content');
   if (!el) return;
-  const dates = data.historique ? (data.historique.dates_seances || {}) : {};
   const prog = data.historique ? (data.historique.progression_par_exo || {}) : {};
+  const datesSeances = data.historique ? (data.historique.dates_seances || {}) : {};
 
-  // Construire un index date -> exercices réalisés avec perf
-  const parDate = {};
+  // Grouper par date ISO directement depuis progression_par_exo
+  const parDateISO = {};
   Object.entries(prog).forEach(([exo, perfs]) => {
-    perfs.forEach(p => {
-      const iso = p.date; // format yyyy-mm-dd
-      if (!iso) return;
-      const parts = iso.split('-');
-      const dmy = `${parts[2]}/${parts[1]}/${parts[0]}`;
-      if (!parDate[dmy]) parDate[dmy] = [];
-      parDate[dmy].push({ exo, charge: p.charge, reps: p.reps, rpe: p.rpe });
+    (perfs || []).forEach(p => {
+      if (!p.date) return;
+      if (!parDateISO[p.date]) parDateISO[p.date] = [];
+      parDateISO[p.date].push({ exo, charge: p.charge, reps: p.reps, rpe: p.rpe });
     });
   });
 
-  const entries = Object.keys(dates).map(dateStr => {
-    const parts = dateStr.split('/');
-    return { date: dateStr, tri: new Date(parts[2], parts[1]-1, parts[0]).getTime(), seance: dates[dateStr], exos: parDate[dateStr] || [] };
+  // Construire nom séance depuis dates_seances (dd/mm/yyyy -> ISO pour lookup)
+  const nomParISO = {};
+  Object.entries(datesSeances).forEach(([dmy, nom]) => {
+    const parts = dmy.split('/');
+    if (parts.length === 3) {
+      const iso = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      nomParISO[iso] = nom;
+    }
+  });
+
+  const entries = Object.keys(parDateISO).map(iso => {
+    const parts = iso.split('-');
+    const dmy = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return { iso, date: dmy, tri: new Date(iso).getTime(), seance: nomParISO[iso] || 'Séance', exos: parDateISO[iso] };
   }).sort((a,b) => b.tri - a.tri).slice(0, 20);
 
   if (entries.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>'; return; }
