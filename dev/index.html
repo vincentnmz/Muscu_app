@@ -942,8 +942,22 @@ async function sInscrire() {
   } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
 }
 
+function arreterChronoEtReinitSeance() {
+  if (typeof timerInterval !== 'undefined' && timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  const ov = document.getElementById('timer-overlay');
+  if (ov) ov.classList.remove('active');
+  seance = []; exoEnCours = null; serieNum = 1; programmeSeance = [];
+  ['card-exo-actuel','card-liste-seance','card-hors-programme','recap-block','seance-progress'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  const sb = document.getElementById('saisie-block'); if (sb) sb.style.display = 'block';
+  const sel = document.getElementById('sel-seance-id'); if (sel) sel.value = '';
+  const bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
+}
+
 function seDeconnecter() {
-  athlete = null; seance = []; exoEnCours = null; serieNum = 1;
+  arreterChronoEtReinitSeance();
+  athlete = null;
   localStorage.removeItem('muscu_athlete');
   document.getElementById('view-login').classList.add('active');
   document.getElementById('view-app').classList.remove('active');
@@ -953,6 +967,7 @@ function seDeconnecter() {
   document.getElementById('header-nom').textContent = 'Muscu';
   document.getElementById('inp-login').value = '';
   document.getElementById('login-error').textContent = '';
+  switchTab('accueil');
 }
 
 // ==================== ESPACE COACH ====================
@@ -997,6 +1012,7 @@ function seDeconnecterCoach() {
 }
 
 async function ouvrirEspaceCoach() {
+  arreterChronoEtReinitSeance();
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
   document.body.classList.remove('has-bottom-nav');
