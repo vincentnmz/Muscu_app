@@ -463,8 +463,8 @@
       </div>
 
       <!-- Progression -->
-      <div class="dash-card dash-card-accent-green" id="dash-prog-card" style="padding:16px;">
-        <div class="dash-label">📈 Progression cette semaine</div>
+      <div class="dash-card dash-card-accent-green" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
+        <div class="dash-label">📈 Progression cette semaine <span style="float:right;font-size:11px;color:var(--accent);">Voir tout →</span></div>
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
       </div>
 
@@ -3245,7 +3245,6 @@ async function chargerAppData() {
       const enProg = p.en_progression || 0;
       const enBaisse = p.en_baisse || 0;
       drawerData = p.details || [];
-      if (progCard) { progCard.style.cursor = 'pointer'; progCard.onclick = ouvrirDrawer; }
       const lignesUp = p.details.filter(d => d.up).map(d => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px;">
           <span style="font-size:11px;color:#00c96e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:inline-block;">${d.exercice}</span>
@@ -3269,8 +3268,7 @@ async function chargerAppData() {
         </div>
         ${enProg > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">En progression</div>${lignesUp}` : ''}
         ${enBaisse > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">En baisse</div>${lignesDown}` : ''}
-        ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables cette semaine</div>' : ''}
-        <div style="margin-top:10px;text-align:right;"><span style="font-size:11px;color:var(--accent);font-weight:700;">Voir tout →</span></div>`;
+        ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables cette semaine</div>' : ''}`;
     } else {
       progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas encore de données de progression</div>';
     }
@@ -3458,7 +3456,16 @@ function calculerSurcharge(strategie, perf, programme, bestCharge, increment) {
 let drawerData = [];
 
 function ouvrirDrawer() {
-  filtrerDrawer('tous');
+  if (drawerData.length === 0) {
+    const el = document.getElementById('drawer-liste');
+    if (el) el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:16px 0;text-align:center;">Pas encore de données cette semaine</div>';
+    ['tous','up','down','stable'].forEach(t => {
+      const btn = document.getElementById('fd-'+t);
+      if (btn) { btn.style.background = t === 'tous' ? 'var(--accent)' : 'var(--surface2)'; btn.style.color = t === 'tous' ? '#000' : 'var(--text-muted)'; btn.style.fontWeight = t === 'tous' ? '700' : '400'; }
+    });
+  } else {
+    filtrerDrawer('tous');
+  }
   document.getElementById('drawer-progression').style.bottom = '0';
   document.getElementById('drawer-overlay').style.display = 'block';
   document.body.style.overflow = 'hidden';
