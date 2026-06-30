@@ -288,7 +288,7 @@
   <!-- VUE DETAIL ATHLETE (COACH) -->
   <div id="view-coach-detail" class="view">
     <div class="header">
-      <button class="btn-sm btn-outline" onclick="retourListeAthletesCoach()">⬅️ Retour</button>
+      <button class="btn-sm btn-outline" onclick="retourCoachDetail()">⬅️ Retour</button>
       <div style="text-align:right">
         <div id="header-nom-athlete-coach" style="font-weight:800">Athlète</div>
         <div id="header-niveau-athlete-coach" style="font-size:11px;color:var(--text-muted)"></div>
@@ -1181,6 +1181,17 @@ function retourListeAthletesCoach() {
   document.body.classList.remove('cd-nav');
   const sel = document.getElementById('coach-select-athlete');
   if (sel) sel.value = '';
+}
+
+// Retour contextuel : depuis un onglet -> Aperçu ; depuis l'Aperçu -> liste des athlètes
+function retourCoachDetail() {
+  const ov = document.getElementById('cdtab-overview');
+  if (ov && ov.style.display === 'none') {
+    switchCoachDetailTab('overview');
+    window.scrollTo(0, 0);
+  } else {
+    retourListeAthletesCoach();
+  }
 }
 
 function switchCoachDetailTab(tab) {
