@@ -2248,6 +2248,7 @@ function afficherListeSeance() {
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
         <div style="font-size:15px;font-weight:800;flex:1;min-width:0">${p.exercice}</div>
         ${statutPill}
+        ${dejaDone ? `<button class="btn-sm btn-danger-sm reset-exo" title="Effacer les séries faites" style="padding:4px 8px;line-height:1">🗑️</button>` : ''}
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Objectif : ${p.series_prevues} séries · ${p.reps_mini}-${p.reps_max} reps</div>
       ${perfHtml}${suggHtml}
@@ -2256,6 +2257,8 @@ function afficherListeSeance() {
     div.addEventListener('click', () => estGroupe
       ? demarrerSuperset(p.groupe_id)
       : selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
+    const rb = div.querySelector('.reset-exo');
+    if (rb) rb.addEventListener('click', (ev) => { ev.stopPropagation(); resetExoSeance(p.exercice); });
     listeEl.appendChild(div);
     if (isNext) prochainEl = div;
     if (p.groupe_id) {
@@ -2306,6 +2309,17 @@ function supprimerExoLibre(exerciceNom) {
   if (exo && exo.series.length > 0) {
     if (!confirm(`${exerciceNom} a déjà des séries enregistrées. Le retirer effacera ces séries. Continuer ?`)) return;
   }
+  seance = seance.filter(e => e.exerciceNom !== exerciceNom);
+  afficherListeSeance();
+  const total = seance.reduce((a,e)=>a+e.series.length,0);
+  document.getElementById('btn-valider').style.display = total > 0 ? 'block' : 'none';
+}
+
+// Efface les séries faites d'un exercice du programme (ex. pour corriger une erreur, ou le 2e exo d'un superset)
+function resetExoSeance(exerciceNom) {
+  const exo = seance.find(e => e.exerciceNom === exerciceNom);
+  if (!exo || exo.series.length === 0) return;
+  if (!confirm(`Effacer les ${exo.series.length} série(s) enregistrée(s) pour ${exerciceNom} ?`)) return;
   seance = seance.filter(e => e.exerciceNom !== exerciceNom);
   afficherListeSeance();
   const total = seance.reduce((a,e)=>a+e.series.length,0);
