@@ -1649,16 +1649,20 @@ function renderCoachSeancesDetail(data) {
   }).join('');
 }
 
-function computeACWR(progressionParExo) {
-  // Volume proxy par date : somme reps × charge tous exercices
-  const volumes = {};
-  Object.values(progressionParExo).forEach(perfs => {
-    (perfs || []).forEach(p => {
-      if (!p.date || !p.charge || !p.reps) return;
-      if (!volumes[p.date]) volumes[p.date] = 0;
-      volumes[p.date] += (parseFloat(p.reps) || 0) * (parseFloat(p.charge) || 0);
+function computeACWR(progressionParExo, volumeParJour) {
+  // Utilise volume_par_jour (exact, depuis Performance sheet) si dispo, sinon proxy
+  let volumes = {};
+  if (volumeParJour && Object.keys(volumeParJour).length > 0) {
+    volumes = volumeParJour;
+  } else {
+    Object.values(progressionParExo).forEach(perfs => {
+      (perfs || []).forEach(p => {
+        if (!p.date || !p.charge || !p.reps) return;
+        if (!volumes[p.date]) volumes[p.date] = 0;
+        volumes[p.date] += (parseFloat(p.reps) || 0) * (parseFloat(p.charge) || 0);
+      });
     });
-  });
+  }
   const now = new Date(); now.setHours(0,0,0,0);
   let acute = 0, chronic = 0;
   for (let i = 0; i < 28; i++) {
@@ -1671,20 +1675,22 @@ function computeACWR(progressionParExo) {
   const acuteAvg = acute / 7;
   const chronicAvg = chronic / 28;
   if (chronicAvg < 1) return null;
-  return Math.round((acuteAvg / chronicAvg) * 100) / 100;
+  return { ratio: Math.round((acuteAvg / chronicAvg) * 100) / 100, volumes, exact: !!(volumeParJour && Object.keys(volumeParJour).length > 0) };
 }
 
 function renderACWR(data) {
   const el = document.getElementById('cd-acwr-content');
   if (!el) return;
   const prog = data.historique ? (data.historique.progression_par_exo || {}) : {};
-  const ratio = computeACWR(prog);
+  const vpj = data.historique ? (data.historique.volume_par_jour || {}) : {};
+  const result = computeACWR(prog, vpj);
 
-  if (ratio === null) {
+  if (result === null) {
     el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Pas assez de données (besoin d\'au moins 4 semaines d\'historique)</div>';
     return;
   }
 
+  const { ratio, volumes, exact } = result;
   const zone = ratio < 0.8 ? { label: 'Sous-charge', color: '#00c9ff', bg: 'rgba(0,201,255,0.1)', conseil: 'Volume trop faible — augmente progressivement la charge hebdomadaire.' }
     : ratio <= 1.3 ? { label: 'Zone optimale', color: '#00c96e', bg: 'rgba(0,201,110,0.1)', conseil: 'Charge aiguë bien équilibrée par rapport à la charge chronique. Continue.' }
     : ratio <= 1.5 ? { label: 'Attention', color: '#f59f00', bg: 'rgba(245,159,0,0.1)', conseil: 'Augmentation rapide de la charge — surveille les signes de fatigue.' }
@@ -1713,13 +1719,12 @@ function renderACWR(data) {
     <div style="margin-top:10px;background:${zone.bg};border-left:3px solid ${zone.color};border-radius:0 8px 8px 0;padding:8px 10px;font-size:12px;color:var(--text);">
       💡 ${zone.conseil}
     </div>
-    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · Basé sur reps×charge. Pour un ACWR précis, le coach doit saisir le nb de séries.</div>`;
+    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · Charge aiguë 7j / charge chronique 28j · ${exact ? '✅ Données exactes (séries réelles)' : '⚠️ Proxy (données exactes non encore chargées)'}</div>`;
 
-  // Graphique volume hebdo 8 semaines
-  renderACWRChart(prog);
+  renderACWRChart(volumes);
 }
 
-function renderACWRChart(progressionParExo) {
+function renderACWRChart(volumes) {
   const el = document.getElementById('cd-acwr-chart-content');
   if (!el) return;
   const now = new Date(); now.setHours(0,0,0,0);
@@ -1729,9 +1734,7 @@ function renderACWRChart(progressionParExo) {
     for (let d = 0; d < 7; d++) {
       const dt = new Date(now); dt.setDate(dt.getDate() - w*7 - d);
       const key = dt.toISOString().split('T')[0];
-      Object.values(progressionParExo).forEach(perfs => {
-        (perfs || []).forEach(p => { if (p.date === key && p.charge && p.reps) vol += parseFloat(p.reps)*parseFloat(p.charge); });
-      });
+      vol += volumes[key] || 0;
     }
     const lundi = new Date(now); lundi.setDate(lundi.getDate() - w*7 - (now.getDay() === 0 ? 6 : now.getDay()-1));
     semaines.push({ label: `S${8-w}`, vol, lundi: lundi.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}) });
