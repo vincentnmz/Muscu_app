@@ -584,6 +584,7 @@
 
           <!-- Exercice actuel guidé -->
           <div id="card-exo-actuel" style="display:none">
+            <div id="superset-banner" style="display:none;background:var(--surface);border:1px solid var(--accent-dim);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px"></div>
             <div class="exo-actuel-card">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
                 <div>
@@ -2072,6 +2073,72 @@ function peuplerSeancesProgramme() {
   if (valeurAvant && (seances.includes(valeurAvant) || valeurAvant === 'Libre')) sel.value = valeurAvant;
 }
 
+// ===== Superset / biset guidé (alternance exercice par exercice) =====
+let enSuperset = false;
+let supersetGroupe = [];
+let supersetIdx = 0;
+let supersetTour = 1;
+let supersetTotalTours = 1;
+
+function demarrerSuperset(groupeId) {
+  supersetGroupe = programmeSeance.filter(p => p.groupe_id === groupeId);
+  if (supersetGroupe.length < 2) {
+    enSuperset = false;
+    const p = supersetGroupe[0];
+    if (p) selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max);
+    return;
+  }
+  enSuperset = true;
+  supersetIdx = 0;
+  supersetTour = 1;
+  supersetTotalTours = Number(supersetGroupe[0].series_prevues) || 1;
+  chargerExoSuperset();
+}
+
+function chargerExoSuperset() {
+  const p = supersetGroupe[supersetIdx];
+  selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max);
+  majBanniereSuperset();
+}
+
+function majBanniereSuperset() {
+  const el = document.getElementById('superset-banner');
+  if (!el) return;
+  if (!enSuperset) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const couleur = couleurGroupe(supersetGroupe[0].groupe_id);
+  const noms = supersetGroupe.map((p, i) => i === supersetIdx
+    ? `<strong style="color:${couleur}">${p.exercice}</strong>`
+    : `<span style="color:var(--text-muted)">${p.exercice}</span>`).join(' → ');
+  el.innerHTML = `<div style="font-size:13px;font-weight:800;color:${couleur}">🔗 Superset · Tour ${supersetTour}/${supersetTotalTours}</div><div style="font-size:11px;margin-top:3px">${noms}</div>`;
+}
+
+function avancerSuperset(reposVal) {
+  supersetIdx++;
+  if (supersetIdx < supersetGroupe.length) {
+    // Exercice suivant du même tour : on enchaîne, sans repos
+    chargerExoSuperset();
+    showToast('➡️ ' + supersetGroupe[supersetIdx].exercice);
+    window.scrollTo(0, 0);
+  } else {
+    // Tour terminé
+    supersetIdx = 0;
+    supersetTour++;
+    if (supersetTour > supersetTotalTours) {
+      enSuperset = false;
+      const b = document.getElementById('superset-banner'); if (b) b.style.display = 'none';
+      scrollVersProchain = true;
+      retourListeSeance();
+      showToast('✅ Superset terminé !');
+    } else {
+      chargerExoSuperset(); // premier exo du tour suivant
+      window.scrollTo(0, 0);
+      if (reposVal > 0) startTimer(reposVal, `Tour ${supersetTour - 1} terminé · repos`);
+      else showToast('Tour ' + supersetTour);
+    }
+  }
+}
+
 let scrollVersProchain = false;
 function afficherListeSeance() {
   const listeEl = document.getElementById('liste-exercices-seance');
@@ -2160,7 +2227,10 @@ function afficherListeSeance() {
       <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Objectif : ${p.series_prevues} séries · ${p.reps_mini}-${p.reps_max} reps</div>
       ${perfHtml}${suggHtml}
     `;
-    div.addEventListener('click', () => selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
+    const estGroupe = p.groupe_id && programmeSeance.filter(o => o.groupe_id === p.groupe_id).length >= 2;
+    div.addEventListener('click', () => estGroupe
+      ? demarrerSuperset(p.groupe_id)
+      : selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
     listeEl.appendChild(div);
     if (isNext) prochainEl = div;
     if (p.groupe_id) {
@@ -2258,6 +2328,9 @@ function selectionnerExoLibre(exerciceNom) {
 }
 
 function retourListeSeance() {
+  enSuperset = false;
+  const sb = document.getElementById('superset-banner');
+  if (sb) sb.style.display = 'none';
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('card-liste-seance').style.display = 'block';
   afficherListeSeance();
@@ -2353,9 +2426,11 @@ function ajouterSerie() {
   majSeriesActuel();
   document.getElementById('sel-rpe').value = '';
   document.getElementById('btn-valider').style.display = 'block';
-  // Start rest timer
   const reposVal = parseInt(repos);
-  if (reposVal > 0) {
+  if (enSuperset) {
+    // Mode superset : on enchaîne l'exercice suivant ; repos seulement à la fin du tour
+    avancerSuperset(reposVal);
+  } else if (reposVal > 0) {
     startTimer(reposVal, `Série ${serieNum-1} · ${charge}kg × ${reps} reps`);
   } else {
     showToast(`✅ Série ${serieNum-1} ajoutée !`);
