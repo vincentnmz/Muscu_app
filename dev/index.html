@@ -282,6 +282,12 @@
         <div class="dash-label" id="coach-surveiller-titre">⚠️ À surveiller</div>
         <div id="coach-surveiller-content"></div>
       </div>
+
+      <!-- VUE GLOBALE ATHLETES -->
+      <div style="margin-top:12px">
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;font-weight:700">Tous les athlètes</div>
+        <div id="coach-athletes-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+      </div>
     </div>
   </div>
 
@@ -298,9 +304,9 @@
     <!-- Sous-onglets coach -->
     <div class="sub-tabs">
       <button class="sub-tab active" id="cdtab-btn-overview" onclick="switchCoachDetailTab('overview')">📊 Aperçu</button>
+      <button class="sub-tab" id="cdtab-btn-seances" onclick="switchCoachDetailTab('seances')">📅 Séances</button>
       <button class="sub-tab" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')">📈 Progression</button>
       <button class="sub-tab" id="cdtab-btn-volume" onclick="switchCoachDetailTab('volume')">💪 Volume</button>
-      <button class="sub-tab" id="cdtab-btn-cal" onclick="switchCoachDetailTab('cal')">📅 Agenda</button>
       <button class="sub-tab" id="cdtab-btn-conseils" onclick="switchCoachDetailTab('conseils')">💬 Conseils</button>
       <button class="sub-tab" id="cdtab-btn-programme" onclick="switchCoachDetailTab('programme')">📋 Programme</button>
     </div>
@@ -310,6 +316,10 @@
       <div class="dash-card" id="cd-alertes-card" style="padding:16px">
         <div class="dash-label">🚨 Alertes</div>
         <div id="cd-alertes"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="dash-card" id="cd-acwr-card" style="padding:16px">
+        <div class="dash-label">⚡ Charge aiguë / chronique (ACWR)</div>
+        <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div class="dash-card">
@@ -356,6 +366,18 @@
             <text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Chargement...</text>
           </svg>
         </div>
+      </div>
+    </div>
+
+    <!-- ONGLET SÉANCES -->
+    <div id="cdtab-seances" style="display:none">
+      <div class="card">
+        <div class="card-title">📅 Historique des séances</div>
+        <div id="cd-seances-detail-content"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="card" id="cd-acwr-history-card">
+        <div class="card-title">⚡ Volume relatif hebdomadaire (8 semaines)</div>
+        <div id="cd-acwr-chart-content"></div>
       </div>
     </div>
 
@@ -1051,6 +1073,7 @@ function renderListeAthletesCoach() {
   document.getElementById('liste-athletes-coach').innerHTML = '';
   document.getElementById('coach-home-body').style.display = 'block';
   renderCoachSurveiller(athletesCoach);
+  renderCoachAthleteGrid(athletesCoach);
 
   // Stats rapides
   document.getElementById('coach-stat-total').textContent = athletesCoach.length;
@@ -1205,9 +1228,9 @@ function retourCoachDetail() {
 }
 
 function switchCoachDetailTab(tab) {
-  ['overview','prog','volume','cal','conseils','programme'].forEach(t => {
-    document.getElementById('cdtab-' + t).style.display = t === tab ? 'block' : 'none';
-    document.getElementById('cdtab-btn-' + t).classList.toggle('active', t === tab);
+  ['overview','seances','prog','volume','cal','conseils','programme'].forEach(t => {
+    const el = document.getElementById('cdtab-' + t); if (el) el.style.display = t === tab ? 'block' : 'none';
+    const btn = document.getElementById('cdtab-btn-' + t); if (btn) btn.classList.toggle('active', t === tab);
   });
   // Fait défiler la pastille active au centre (pour que Programme & co restent accessibles)
   const btnActif = document.getElementById('cdtab-btn-' + tab);
@@ -1244,11 +1267,13 @@ async function ouvrirDetailAthleteCoach(a) {
   renderAlertesCoach();
 
   // Reset les zones en chargement
-  ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content'].forEach(id => {
-    document.getElementById(id).innerHTML = '<div class="loader">Chargement...</div>';
+  ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.innerHTML = '<div class="loader">Chargement...</div>';
   });
   document.getElementById('cd-progression-content').innerHTML = '';
   document.getElementById('cd-seances-content').innerHTML = '';
+  document.getElementById('cd-seances-detail-content').innerHTML = '<div class="loader">Chargement...</div>';
+  document.getElementById('cd-acwr-chart-content').innerHTML = '';
   document.getElementById('cd-comment-input').value = '';
   document.getElementById('cd-commentaires-liste').innerHTML = '<div class="loader">Chargement...</div>';
   chargerCommentairesCoach(a.athlete_id);
@@ -1268,6 +1293,8 @@ async function ouvrirDetailAthleteCoach(a) {
     renderCoachExerciceSelect(data);
     renderCoachCalendrier();
     renderCoachSeances(data);
+    renderCoachSeancesDetail(data);
+    renderACWR(data);
   } catch(e) {
     document.getElementById('cd-recup').innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
@@ -1558,8 +1585,7 @@ function renderCoachCalendrier() {
 
 function renderCoachSeances(data) {
   const el = document.getElementById('cd-seances-content');
-  // Reconstruit la liste des séances à partir de progression_par_exo (pas de séances brutes dans getAppData)
-  // On utilise dates_seances pour lister les dates + type de séance
+  if (!el) return;
   const dates = data.historique ? (data.historique.dates_seances || {}) : {};
   const entries = Object.keys(dates).map(dateStr => {
     const parts = dateStr.split('/');
@@ -1572,6 +1598,186 @@ function renderCoachSeances(data) {
         <span style="font-size:13px;font-weight:700">${s.seance}</span>
         <span style="font-size:12px;color:var(--text-muted)">${s.date}</span>
       </div>`).join('');
+}
+
+function renderCoachSeancesDetail(data) {
+  const el = document.getElementById('cd-seances-detail-content');
+  if (!el) return;
+  const dates = data.historique ? (data.historique.dates_seances || {}) : {};
+  const prog = data.historique ? (data.historique.progression_par_exo || {}) : {};
+
+  // Construire un index date -> exercices réalisés avec perf
+  const parDate = {};
+  Object.entries(prog).forEach(([exo, perfs]) => {
+    perfs.forEach(p => {
+      const iso = p.date; // format yyyy-mm-dd
+      if (!iso) return;
+      const parts = iso.split('-');
+      const dmy = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      if (!parDate[dmy]) parDate[dmy] = [];
+      parDate[dmy].push({ exo, charge: p.charge, reps: p.reps, rpe: p.rpe });
+    });
+  });
+
+  const entries = Object.keys(dates).map(dateStr => {
+    const parts = dateStr.split('/');
+    return { date: dateStr, tri: new Date(parts[2], parts[1]-1, parts[0]).getTime(), seance: dates[dateStr], exos: parDate[dateStr] || [] };
+  }).sort((a,b) => b.tri - a.tri).slice(0, 20);
+
+  if (entries.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>'; return; }
+
+  el.innerHTML = entries.map(s => {
+    const exoLines = s.exos.length > 0
+      ? s.exos.map(e => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--surface2);">
+            <span style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;">${e.exo}</span>
+            <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${e.charge ? e.charge + ' kg' : '—'} × ${e.reps || '—'} reps${e.rpe ? ' · RPE ' + e.rpe : ''}</span>
+          </div>`).join('')
+      : '<div style="font-size:11px;color:var(--text-muted);padding:4px 0;">Détail non disponible</div>';
+    const nbExos = s.exos.length;
+    return `
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div>
+            <div style="font-size:14px;font-weight:800;color:var(--text);">${s.seance}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">${s.date}</div>
+          </div>
+          ${nbExos > 0 ? `<span style="background:var(--accent);color:#000;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">${nbExos} exo${nbExos>1?'s':''}</span>` : ''}
+        </div>
+        ${exoLines}
+      </div>`;
+  }).join('');
+}
+
+function computeACWR(progressionParExo) {
+  // Volume proxy par date : somme reps × charge tous exercices
+  const volumes = {};
+  Object.values(progressionParExo).forEach(perfs => {
+    (perfs || []).forEach(p => {
+      if (!p.date || !p.charge || !p.reps) return;
+      if (!volumes[p.date]) volumes[p.date] = 0;
+      volumes[p.date] += (parseFloat(p.reps) || 0) * (parseFloat(p.charge) || 0);
+    });
+  });
+  const now = new Date(); now.setHours(0,0,0,0);
+  let acute = 0, chronic = 0;
+  for (let i = 0; i < 28; i++) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    const v = volumes[key] || 0;
+    if (i < 7) acute += v;
+    chronic += v;
+  }
+  const acuteAvg = acute / 7;
+  const chronicAvg = chronic / 28;
+  if (chronicAvg < 1) return null;
+  return Math.round((acuteAvg / chronicAvg) * 100) / 100;
+}
+
+function renderACWR(data) {
+  const el = document.getElementById('cd-acwr-content');
+  if (!el) return;
+  const prog = data.historique ? (data.historique.progression_par_exo || {}) : {};
+  const ratio = computeACWR(prog);
+
+  if (ratio === null) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Pas assez de données (besoin d\'au moins 4 semaines d\'historique)</div>';
+    return;
+  }
+
+  const zone = ratio < 0.8 ? { label: 'Sous-charge', color: '#00c9ff', bg: 'rgba(0,201,255,0.1)', conseil: 'Volume trop faible — augmente progressivement la charge hebdomadaire.' }
+    : ratio <= 1.3 ? { label: 'Zone optimale', color: '#00c96e', bg: 'rgba(0,201,110,0.1)', conseil: 'Charge aiguë bien équilibrée par rapport à la charge chronique. Continue.' }
+    : ratio <= 1.5 ? { label: 'Attention', color: '#f59f00', bg: 'rgba(245,159,0,0.1)', conseil: 'Augmentation rapide de la charge — surveille les signes de fatigue.' }
+    : { label: 'Zone danger', color: 'var(--danger)', bg: 'rgba(255,68,68,0.1)', conseil: 'Charge aiguë très élevée vs chronique — risque de blessure. Réduire le volume.' };
+
+  const pct = Math.min(100, (ratio / 2) * 100);
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-top:6px;">
+      <div style="text-align:center;min-width:64px;">
+        <div style="font-size:28px;font-weight:800;color:${zone.color};">${ratio.toFixed(2)}</div>
+        <div style="font-size:10px;color:var(--text-muted);">ratio ACWR</div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:${zone.color};margin-bottom:6px;">${zone.label}</div>
+        <div style="position:relative;background:var(--surface2);border-radius:20px;height:8px;margin-bottom:4px;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${zone.color};border-radius:20px;transition:width 0.4s;"></div>
+          <div style="position:absolute;left:40%;top:-3px;width:1px;height:14px;background:#00c96e;opacity:0.5;"></div>
+          <div style="position:absolute;left:65%;top:-3px;width:1px;height:14px;background:#f59f00;opacity:0.5;"></div>
+          <div style="position:absolute;left:75%;top:-3px;width:1px;height:14px;background:var(--danger);opacity:0.5;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);">
+          <span>0</span><span style="color:#00c96e;">0.8–1.3</span><span style="color:#f59f00;">1.5</span><span>2.0+</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:10px;background:${zone.bg};border-left:3px solid ${zone.color};border-radius:0 8px 8px 0;padding:8px 10px;font-size:12px;color:var(--text);">
+      💡 ${zone.conseil}
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · Basé sur reps×charge. Pour un ACWR précis, le coach doit saisir le nb de séries.</div>`;
+
+  // Graphique volume hebdo 8 semaines
+  renderACWRChart(prog);
+}
+
+function renderACWRChart(progressionParExo) {
+  const el = document.getElementById('cd-acwr-chart-content');
+  if (!el) return;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const semaines = [];
+  for (let w = 7; w >= 0; w--) {
+    let vol = 0;
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(now); dt.setDate(dt.getDate() - w*7 - d);
+      const key = dt.toISOString().split('T')[0];
+      Object.values(progressionParExo).forEach(perfs => {
+        (perfs || []).forEach(p => { if (p.date === key && p.charge && p.reps) vol += parseFloat(p.reps)*parseFloat(p.charge); });
+      });
+    }
+    const lundi = new Date(now); lundi.setDate(lundi.getDate() - w*7 - (now.getDay() === 0 ? 6 : now.getDay()-1));
+    semaines.push({ label: `S${8-w}`, vol, lundi: lundi.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}) });
+  }
+  const max = Math.max(...semaines.map(s => s.vol), 1);
+  el.innerHTML = `
+    <div style="display:flex;align-items:flex-end;gap:4px;height:60px;margin-bottom:4px;">
+      ${semaines.map(s => {
+        const h = Math.round((s.vol / max) * 56);
+        const c = s.vol === 0 ? 'var(--surface2)' : 'var(--accent)';
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <div style="width:100%;height:${h}px;background:${c};border-radius:4px 4px 0 0;min-height:2px;"></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:4px;">
+      ${semaines.map(s => `<div style="flex:1;text-align:center;font-size:9px;color:var(--text-muted);">${s.label}</div>`).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Volume relatif (reps × charge) — 8 dernières semaines</div>`;
+}
+
+function renderCoachAthleteGrid(athletes) {
+  const grid = document.getElementById('coach-athletes-grid');
+  if (!grid) return;
+  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#aaa' };
+  const sorted = [...athletes].sort((a, b) => {
+    const na = alertesActives(a).length, nb = alertesActives(b).length;
+    return nb - na || String(a.nom).localeCompare(String(b.nom));
+  });
+  grid.innerHTML = sorted.map(a => {
+    const alertes = alertesActives(a);
+    const nb = alertes.length;
+    const sevMax = nb === 0 ? null : alertes.some(al => al.severite === 'haute') ? 'haute' : alertes.some(al => al.severite === 'moyenne') ? 'moyenne' : 'basse';
+    const niv = getNiveauExperience(a.annees_pratique);
+    const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv] || '';
+    const badgeHtml = nb > 0
+      ? `<span style="background:${couleurSeverite[sevMax]};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;">⚠️ ${nb}</span>`
+      : `<span style="background:rgba(0,201,110,0.15);color:#00c96e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;">✅ OK</span>`;
+    const idxOrig = athletes.indexOf(a);
+    return `
+      <div onclick="ouvrirAthleteDepuisSelect('${idxOrig}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;transition:border-color 0.2s;" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.nom}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;">${nivLabel}</div>
+        ${badgeHtml}
+      </div>`;
+  }).join('');
 }
 
 // ==================== PROGRAMME (CRUD COACH) ====================
