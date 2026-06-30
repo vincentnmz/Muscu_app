@@ -1621,7 +1621,7 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
   if (repsMax !== null) ligne.reps_max = Number(repsMax);
   if (reposSec !== null) ligne.repos_sec = Number(reposSec);
   if (groupeId !== null) { ligne.groupe_id = groupeId.trim().toUpperCase(); renderProgrammeCoach(); }
-  fetch(SCRIPT_URL, {
+  return fetch(SCRIPT_URL, {
     method: 'POST', headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify({
       action: 'saveProgrammeLigne', row_index: rowIndex, athlete_id: coachAthleteCourant.athlete_id,
@@ -1670,12 +1670,13 @@ async function cdLierExerciceParNom(rowIndex, seanceId, exerciceNom) {
   const existant = cdProgrammeLignes.find(l => l.seance_id === seanceId && l.exercice === exerciceNom && l.row_index !== rowIndex);
   if (existant) {
     existant.groupe_id = groupeId;
-    cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
-    cdSauverLigne(existant.row_index, seanceId, null, null, null, null, null, groupeId);
+    // On attend la persistance avant de recharger pour éviter d'écraser un changement récent
+    await cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
+    await cdSauverLigne(existant.row_index, seanceId, null, null, null, null, null, groupeId);
     renderProgrammeCoach();
   } else {
-    // Sauver le groupe sur la ligne courante, puis créer la ligne liée
-    cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
+    // Sauver d'abord la ligne courante (avec son exercice à jour) AVANT de créer la ligne liée et de recharger
+    await cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
     const body = {
       action: 'saveProgrammeLigne', athlete_id: coachAthleteCourant.athlete_id,
       athlete_nom: coachAthleteCourant.nom, seance_id: seanceId, exercice: exerciceNom,
@@ -1683,7 +1684,7 @@ async function cdLierExerciceParNom(rowIndex, seanceId, exerciceNom) {
       reps_max: ligne.reps_max || 12, repos_sec: ligne.repos_sec || 90, groupe_id: groupeId
     };
     await fetch(SCRIPT_URL, { method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body) });
-    chargerProgrammeCoach();
+    await chargerProgrammeCoach();
   }
 }
 
