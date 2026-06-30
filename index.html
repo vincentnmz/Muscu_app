@@ -3239,10 +3239,13 @@ async function chargerAppData() {
 
     // Progression
     const progEl = document.getElementById('dash-prog-content');
+    const progCard = document.getElementById('dash-prog-card');
     if (dash.progression) {
       const p = dash.progression;
       const enProg = p.en_progression || 0;
       const enBaisse = p.en_baisse || 0;
+      drawerData = p.details || [];
+      if (progCard) { progCard.style.cursor = 'pointer'; progCard.onclick = ouvrirDrawer; }
       const lignesUp = p.details.filter(d => d.up).map(d => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px;">
           <span style="font-size:11px;color:#00c96e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:inline-block;">${d.exercice}</span>
@@ -3266,7 +3269,8 @@ async function chargerAppData() {
         </div>
         ${enProg > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">En progression</div>${lignesUp}` : ''}
         ${enBaisse > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">En baisse</div>${lignesDown}` : ''}
-        ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables cette semaine</div>' : ''}`;
+        ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables cette semaine</div>' : ''}
+        <div style="margin-top:10px;text-align:right;"><span style="font-size:11px;color:var(--accent);font-weight:700;">Voir tout →</span></div>`;
     } else {
       progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas encore de données de progression</div>';
     }
@@ -3466,6 +3470,17 @@ function fermerDrawer() {
   document.body.style.overflow = '';
 }
 
+function allerProgressionExo(exo) {
+  fermerDrawer();
+  switchTab('historique');
+  setTimeout(() => {
+    const sel = document.getElementById('sel-hist-exercice');
+    if (!sel) return;
+    const opt = Array.from(sel.options).find(o => o.value === exo);
+    if (opt) { sel.value = exo; afficherProgressionExo(); sel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }, 300);
+}
+
 function filtrerDrawer(type) {
   ['tous','up','down','stable'].forEach(t => {
     const btn = document.getElementById('fd-'+t);
@@ -3490,15 +3505,19 @@ function filtrerDrawer(type) {
     const couleur = d.up ? '#00c96e' : d.down ? 'var(--danger)' : 'var(--text-muted)';
     const bg = d.up ? 'rgba(0,201,110,0.1)' : d.down ? 'rgba(255,68,68,0.1)' : 'var(--surface2)';
     const fleche = d.up ? '↑' : d.down ? '↓' : '=';
+    const exoEsc = d.exercice.replace(/'/g, "\\'");
     return `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--surface2);">
+      <div onclick="allerProgressionExo('${exoEsc}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--surface2);cursor:pointer;">
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:18px;font-weight:700;color:${couleur};">${fleche}</span>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--text);">${d.exercice}</div>
           </div>
         </div>
-        <span style="font-size:12px;font-weight:700;color:${couleur};background:${bg};padding:3px 10px;border-radius:20px;white-space:nowrap;">${d.variation}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;font-weight:700;color:${couleur};background:${bg};padding:3px 10px;border-radius:20px;white-space:nowrap;">${d.variation}</span>
+          <span style="font-size:11px;color:var(--accent);">→</span>
+        </div>
       </div>`;
   }).join('');
 }
