@@ -2208,12 +2208,11 @@ function afficherListeSeance() {
       cible = bestReps < p.reps_max ? bestReps + 1 : p.reps_max;
 
       perfHtml = `
-        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
-          Dernière fois : <strong style="color:${isDiffSeance ? 'var(--danger)' : 'var(--text)'}">${perf.last_charge}kg × ${perf.max_reps} reps</strong>
-          ${isDiffSeance ? '<span style="color:var(--text-muted)"> (séance difficile)</span>' : ''}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding:8px 12px;background:rgba(200,240,0,0.08);border:1px solid var(--accent-dim);border-radius:10px">
+          <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">🎯 Cible</span>
+          <span style="font-size:15px;font-weight:800;color:var(--accent)">${bestCharge}kg × ${cible} reps</span>
         </div>
-        ${isDiffSeance ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Meilleure réf : <strong style="color:var(--text)">${bestCharge}kg × ${bestReps} reps</strong></div>` : ''}
-        <div style="font-size:12px;color:var(--accent);margin-top:2px">🎯 Cible : ${bestCharge}kg × ${cible} reps</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Dernière fois : <strong style="color:${isDiffSeance ? 'var(--danger)' : 'var(--text)'}">${perf.last_charge}kg × ${perf.max_reps}</strong>${isDiffSeance ? ` · meilleure réf ${bestCharge}kg × ${bestReps}` : ''}</div>
       `;
 
       const niveau = getNiveauExperience(athlete.annees_pratique);
@@ -2287,14 +2286,13 @@ function ajouterCarteExoLibre(listeEl, e) {
   const div = document.createElement('div');
   div.style.cssText = `background:var(--surface);border:1px solid ${seriesFaites > 0 ? 'var(--success)' : 'var(--border)'};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;position:relative`;
   div.innerHTML = `
-    <button class="btn-sm btn-danger-sm" style="position:absolute;top:10px;right:10px" title="Retirer cet exercice">✕</button>
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-right:30px">
-      <div style="font-size:15px;font-weight:800;flex:1">${e.exerciceNom}</div>
-      ${seriesFaites > 0 ? `<span style="color:var(--success);font-weight:700">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : ""}
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div style="font-size:15px;font-weight:800;flex:1;min-width:0">${e.exerciceNom}</div>
+      ${seriesFaites > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--success);background:rgba(0,201,110,0.12);border-radius:20px;padding:3px 10px;white-space:nowrap">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : `<span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:3px 10px;white-space:nowrap">Hors prog.</span>`}
+      <button class="btn-sm btn-danger-sm" title="Retirer cet exercice" style="padding:4px 8px;line-height:1">🗑️</button>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${e.muscle} · Hors programme</div>
-    ${perf ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong></div>` : '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai 🆕</div>'}
-    <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Appuie pour saisir</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${e.muscle}</div>
+    ${perf ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Dernière fois : <strong style="color:var(--text)">${perf.last_charge}kg × ${perf.max_reps}</strong></div>` : '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Premier essai 🆕</div>'}
   `;
   div.querySelector('.btn-danger-sm').addEventListener('click', (ev) => {
     ev.stopPropagation();
