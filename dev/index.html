@@ -1001,6 +1001,7 @@ async function seConnecterCoach() {
 function seDeconnecterCoach() {
   coach = null;
   localStorage.removeItem('muscu_coach');
+  localStorage.removeItem('muscu_coach_vue');
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.remove('active');
   document.body.classList.remove('cd-nav');
@@ -1033,6 +1034,14 @@ async function ouvrirEspaceCoach() {
     }
     athletesCoach = athletes;
     renderListeAthletesCoach();
+    // Restaurer la fiche athlète consultée avant un rechargement
+    try {
+      const vue = JSON.parse(localStorage.getItem('muscu_coach_vue') || 'null');
+      if (vue && vue.athlete_id) {
+        const a = athletesCoach.find(x => String(x.athlete_id) === String(vue.athlete_id));
+        if (a) { await ouvrirDetailAthleteCoach(a); if (vue.tab) switchCoachDetailTab(vue.tab); }
+      }
+    } catch(e) {}
   } catch(e) {
     listeEl.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
@@ -1179,6 +1188,7 @@ function retourListeAthletesCoach() {
   document.getElementById('view-coach-detail').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
   document.body.classList.remove('cd-nav');
+  localStorage.removeItem('muscu_coach_vue');
   const sel = document.getElementById('coach-select-athlete');
   if (sel) sel.value = '';
 }
@@ -1202,6 +1212,10 @@ function switchCoachDetailTab(tab) {
   // Fait défiler la pastille active au centre (pour que Programme & co restent accessibles)
   const btnActif = document.getElementById('cdtab-btn-' + tab);
   if (btnActif && btnActif.scrollIntoView) btnActif.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  // Mémoriser l'onglet courant pour le restaurer après un rechargement
+  if (coachAthleteCourant) {
+    try { localStorage.setItem('muscu_coach_vue', JSON.stringify({ athlete_id: coachAthleteCourant.athlete_id, tab: tab })); } catch(e) {}
+  }
   if (tab === 'programme') chargerProgrammeCoach();
 }
 
