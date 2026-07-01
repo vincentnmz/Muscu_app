@@ -323,9 +323,23 @@
 
       <!-- VUE GLOBALE ATHLETES -->
       <div style="margin-top:12px">
-        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;font-weight:700">Tous les athlètes</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:700">Tous les athlètes</div>
+          <button onclick="ouvrirRecapAthletes()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">📊 Tableau récap</button>
+        </div>
         <div id="coach-athletes-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY TABLEAU RECAP ATHLETES -->
+  <div id="coach-recap-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow:auto;">
+    <div style="max-width:1100px;margin:0 auto;padding:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:18px;font-weight:800;">📊 Récap athlètes</div>
+        <button onclick="fermerRecapAthletes()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">✕ Fermer</button>
+      </div>
+      <div id="coach-recap-content"><div class="loader">Chargement…</div></div>
     </div>
   </div>
 
@@ -1219,10 +1233,8 @@ function renderCoachSurveiller(athletes) {
   const aSurveiller = athletes.filter(a => alertesActives(a).length > 0);
 
   if (aSurveiller.length === 0) {
-    card.className = 'dash-card dash-card-accent-green';
-    titre.textContent = '✅ Tout va bien';
-    content.innerHTML = '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">Aucun athlète ne nécessite ton attention cette semaine.</div>';
-    card.style.display = 'block';
+    // Le KPI "À surveiller: 0" suffit — on masque le bandeau pour éviter la redondance
+    card.style.display = 'none';
     return;
   }
 
@@ -1893,6 +1905,147 @@ function toggleSeanceCoach(idx) {
   const open = detail.style.display !== 'none';
   detail.style.display = open ? 'none' : 'block';
   if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+// ==================== TABLEAU RÉCAP ATHLÈTES (COACH) ====================
+function tendance1RM(prog) {
+  const epley = (c, r) => (parseFloat(c) || 0) * (1 + (parseFloat(r) || 0) / 30);
+  const deltas = [];
+  Object.values(prog || {}).forEach(perfs => {
+    if (!perfs || perfs.length < 2) return;
+    const s = perfs.filter(p => p.charge && p.reps).slice().sort((a, b) => parseChatDate(a.date) - parseChatDate(b.date));
+    if (s.length < 2) return;
+    const first = epley(s[0].charge, s[0].reps);
+    const last = epley(s[s.length - 1].charge, s[s.length - 1].reps);
+    if (first > 0) deltas.push((last - first) / first);
+  });
+  if (!deltas.length) return { pct: null };
+  return { pct: Math.round(deltas.reduce((a, b) => a + b, 0) / deltas.length * 100) };
+}
+
+function marqueurRecap(data, a) {
+  const dash = data.dashboard || {};
+  const hist = data.historique || {};
+  // Progression
+  const prog = dash.progression || {};
+  const enProg = prog.en_progression || 0, enBaisse = prog.en_baisse || 0;
+  const progC = (enBaisse === 0 && enProg > 0) ? '#00c96e' : (enProg >= enBaisse ? '#f59f00' : '#e5484d');
+  // ACWR
+  const acwr = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
+  let acwrC, acwrTxt;
+  if (!acwr || acwr.insuffisant) { acwrC = '#aaa'; acwrTxt = '—'; }
+  else if (acwr.ratio >= 0.8 && acwr.ratio <= 1.3) { acwrC = '#00c96e'; acwrTxt = acwr.ratio; }
+  else if (acwr.ratio > 1.5) { acwrC = '#e5484d'; acwrTxt = acwr.ratio; }
+  else { acwrC = '#f59f00'; acwrTxt = acwr.ratio; }
+  // Récupération
+  const r = dash.recuperation || {};
+  const recupC = !r.statut ? '#aaa' : r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : '#e5484d';
+  // Volume muscles
+  const niv = getNiveauExperience(a.annees_pratique);
+  const volSem = hist.volume_semaine || [];
+  let volC = '#aaa';
+  if (volSem.length) {
+    const cibles = VOLUME_CIBLE[niv] || {};
+    let below = false, allMav = true;
+    volSem.forEach(v => {
+      const c = cibles[v.muscle] || cibles['default'] || { mev: 10, mav: 20 };
+      if (v.series < (c.mev || 0)) below = true;
+      if (v.series < (c.mav || 0)) allMav = false;
+    });
+    volC = below ? '#e5484d' : !allMav ? '#f59f00' : '#00c96e';
+  }
+  // Dernière séance
+  const ds = (dash.derniere_seance && dash.derniere_seance.date) ? dash.derniere_seance.date : '—';
+  // Alertes
+  const nbAl = alertesActives(a).length;
+  // 1RM tendance
+  const t = tendance1RM(hist.progression_par_exo || {});
+  return { progC, acwrC, acwrTxt, recupC, volC, ds, nbAl, t1rm: t.pct };
+}
+
+async function ouvrirRecapAthletes() {
+  const ov = document.getElementById('coach-recap-overlay');
+  const el = document.getElementById('coach-recap-content');
+  ov.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  el.innerHTML = '<div class="loader">Chargement des données de chaque athlète…</div>';
+  try {
+    const results = await Promise.all((athletesCoach || []).map(async a => {
+      try {
+        const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
+        const data = await res.json();
+        return { a, m: marqueurRecap(data, a) };
+      } catch(e) { return { a, m: null }; }
+    }));
+    el.innerHTML = renderRecapTable(results);
+  } catch(e) {
+    el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+  }
+}
+
+function fermerRecapAthletes() {
+  document.getElementById('coach-recap-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function ouvrirDetailDepuisRecap(athleteId) {
+  fermerRecapAthletes();
+  const a = athletesCoach.find(x => String(x.athlete_id) === String(athleteId));
+  if (a) ouvrirDetailAthleteCoach(a);
+}
+
+function renderRecapTable(results) {
+  const dot = c => `<span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:${c};box-shadow:0 0 4px ${c}66;"></span>`;
+  const sorted = results.slice().sort((x, y) => {
+    const nx = x.m ? x.m.nbAl : 0, ny = y.m ? y.m.nbAl : 0;
+    return (ny - nx) || String(x.a.nom).localeCompare(String(y.a.nom));
+  });
+  const t1rmCell = pct => {
+    if (pct === null || pct === undefined) return '<span style="color:var(--text-muted)">—</span>';
+    if (pct >= 2) return `<span style="color:#00c96e;font-weight:700">↗ +${pct}%</span>`;
+    if (pct <= -2) return `<span style="color:#e5484d;font-weight:700">↘ ${pct}%</span>`;
+    return `<span style="color:var(--text-muted)">→ ${pct}%</span>`;
+  };
+  const th = t => `<th style="text-align:center;padding:10px 8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);font-weight:700;white-space:nowrap;">${t}</th>`;
+  const rows = sorted.map(({ a, m }) => {
+    if (!m) return `<tr style="border-top:1px solid var(--border);"><td style="padding:12px 8px;font-weight:800;">${a.nom}</td><td colspan="8" style="color:var(--text-muted);font-size:12px;">Données indisponibles</td></tr>`;
+    const niv = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[getNiveauExperience(a.annees_pratique)] || '';
+    const alBadge = m.nbAl > 0
+      ? `<span style="background:#e5484d;color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;">${m.nbAl}</span>`
+      : `<span style="color:#00c96e;font-weight:700;">✓</span>`;
+    return `
+      <tr onclick="ouvrirDetailDepuisRecap('${a.athlete_id}')" style="border-top:1px solid var(--border);cursor:pointer;" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+        <td style="padding:12px 10px;min-width:120px;">
+          <div style="font-weight:800;font-size:14px;">${a.nom}</div>
+          <div style="font-size:10px;color:var(--text-muted);">${niv}</div>
+        </td>
+        <td style="text-align:center;">${dot(m.progC)}</td>
+        <td style="text-align:center;"><div>${dot(m.acwrC)}</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${m.acwrTxt}</div></td>
+        <td style="text-align:center;">${dot(m.recupC)}</td>
+        <td style="text-align:center;">${dot(m.volC)}</td>
+        <td style="text-align:center;font-size:12px;white-space:nowrap;">${m.ds}</td>
+        <td style="text-align:center;">${alBadge}</td>
+        <td style="text-align:center;font-size:12px;white-space:nowrap;">${t1rmCell(m.t1rm)}</td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:12px;">
+      <table style="width:100%;border-collapse:collapse;min-width:640px;">
+        <thead><tr style="background:var(--surface2);">
+          <th style="text-align:left;padding:10px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);font-weight:700;">Athlète</th>
+          ${th('Progression')}${th('ACWR')}${th('Récup.')}${th('Volume')}${th('Dern. séance')}${th('Alertes')}${th('1RM tendance')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:14px;">
+      <span>${dot('#00c96e')} OK</span>
+      <span>${dot('#f59f00')} À surveiller</span>
+      <span>${dot('#e5484d')} Alerte</span>
+      <span>${dot('#aaa')} Données insuffisantes</span>
+      <span style="margin-left:auto;">Clique une ligne pour ouvrir le détail</span>
+    </div>`;
 }
 
 function computeACWR(progressionParExo, volumeParJour) {
