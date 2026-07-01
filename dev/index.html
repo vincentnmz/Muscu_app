@@ -171,15 +171,15 @@
   /* ============ BUREAU : dashboard coach (>= 1024px) ============ */
   @media (min-width: 1024px) {
     body.coach-active #main-container {
-      max-width: 1500px; display: flex; align-items: flex-start; gap: 28px; padding: 24px;
+      max-width: none; display: flex; align-items: flex-start; gap: 28px; padding: 24px 32px;
     }
     /* Détail = contenu principal + colonne droite (rail) */
     body.coach-active #cd-body { display: flex; align-items: flex-start; gap: 24px; }
     body.coach-active #cd-main { flex: 1 1 auto; min-width: 0; }
-    body.coach-active #cd-rail { flex: 0 0 270px; position: sticky; top: 78px; display: block !important; }
+    body.coach-active #cd-rail { flex: 0 0 340px; position: sticky; top: 78px; display: block !important; }
     /* Sidebar : liste des athlètes, toujours visible */
     body.coach-active #view-coach.view {
-      display: block !important; flex: 0 0 340px; width: 340px;
+      display: block !important; flex: 0 0 400px; width: 400px;
       position: sticky; top: 78px; max-height: calc(100vh - 100px); overflow-y: auto;
       padding-right: 4px;
     }
@@ -199,6 +199,7 @@
     /* Placeholder quand aucun athlète n'est sélectionné */
     body.coach-active:not(.athlete-selected) #coach-detail-empty { display: block !important; }
     body.coach-active:not(.athlete-selected) #view-coach-detail > .header,
+    body.coach-active:not(.athlete-selected) #view-coach-detail > .sub-tabs,
     body.coach-active:not(.athlete-selected) #view-coach-detail > #cd-body { display: none !important; }
     /* Grilles internes plus aérées sur large écran */
     body.coach-active #cd-indicateurs > div { gap: 10px; }
@@ -362,8 +363,6 @@
       </div>
     </div>
 
-    <div id="cd-body">
-    <div id="cd-main">
     <!-- Sous-onglets coach -->
     <div class="sub-tabs">
       <button class="sub-tab active" id="cdtab-btn-overview" onclick="switchCoachDetailTab('overview')">📊 Aperçu</button>
@@ -373,6 +372,9 @@
       <button class="sub-tab" id="cdtab-btn-conseils" onclick="ouvrirConversationCoach()" style="position:relative">💬 Conversation<span id="badge-conseils-coach" style="display:none;position:absolute;top:2px;right:6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;"></span></button>
       <button class="sub-tab" id="cdtab-btn-programme" onclick="switchCoachDetailTab('programme')">📋 Programme</button>
     </div>
+
+    <div id="cd-body">
+    <div id="cd-main">
 
     <!-- ONGLET APERÇU -->
     <div id="cdtab-overview">
