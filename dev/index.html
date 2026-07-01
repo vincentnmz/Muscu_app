@@ -1605,7 +1605,7 @@ function renderCoachIndicateurs(data) {
   const hist = data.historique || {};
   const acwr = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
   let acwrColor, acwrLabel;
-  if (!acwr) { acwrColor = '#aaa'; acwrLabel = 'Insuffisant'; }
+  if (!acwr || acwr.insuffisant) { acwrColor = '#aaa'; acwrLabel = 'Insuffisant'; }
   else if (acwr.ratio >= 0.8 && acwr.ratio <= 1.3) { acwrColor = '#00c96e'; acwrLabel = `ACWR ${acwr.ratio}`; }
   else if (acwr.ratio > 1.5) { acwrColor = '#e5484d'; acwrLabel = `ACWR ${acwr.ratio}`; }
   else { acwrColor = '#f59f00'; acwrLabel = `ACWR ${acwr.ratio}`; }
@@ -1905,18 +1905,43 @@ function computeACWR(progressionParExo, volumeParJour) {
     });
   }
   const now = new Date(); now.setHours(0,0,0,0);
+  const jour = 86400000;
+
+  // Première séance connue (pour ne pas diluer la charge chronique avec des jours "avant le début")
+  let premierTs = null;
+  Object.keys(volumes).forEach(k => {
+    if (!volumes[k]) return;
+    const p = k.split('-');
+    if (p.length !== 3) return;
+    const ts = new Date(+p[0], +p[1] - 1, +p[2]).getTime();
+    if (premierTs === null || ts < premierTs) premierTs = ts;
+  });
+  if (premierTs === null) return null;
+
+  const joursDepuisDebut = Math.floor((now.getTime() - premierTs) / jour) + 1;
+  // Il faut assez d'historique pour un ACWR fiable (Gabbett : ~4 semaines)
+  if (joursDepuisDebut < 14) return { insuffisant: true, joursDepuisDebut };
+
+  const chronicDays = Math.min(28, joursDepuisDebut);
+  const acuteDays = Math.min(7, joursDepuisDebut);
+
   let acute = 0, chronic = 0;
-  for (let i = 0; i < 28; i++) {
+  for (let i = 0; i < chronicDays; i++) {
     const d = new Date(now); d.setDate(d.getDate() - i);
     const key = d.toISOString().split('T')[0];
     const v = volumes[key] || 0;
-    if (i < 7) acute += v;
+    if (i < acuteDays) acute += v;
     chronic += v;
   }
-  const acuteAvg = acute / 7;
-  const chronicAvg = chronic / 28;
+  const acuteAvg = acute / acuteDays;
+  const chronicAvg = chronic / chronicDays;
   if (chronicAvg < 1) return null;
-  return { ratio: Math.round((acuteAvg / chronicAvg) * 100) / 100, volumes, exact: !!(volumeParJour && Object.keys(volumeParJour).length > 0) };
+  return {
+    ratio: Math.round((acuteAvg / chronicAvg) * 100) / 100,
+    volumes,
+    exact: !!(volumeParJour && Object.keys(volumeParJour).length > 0),
+    chronicDays
+  };
 }
 
 function renderACWR(data) {
@@ -1930,8 +1955,13 @@ function renderACWR(data) {
     el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Pas assez de données (besoin d\'au moins 4 semaines d\'historique)</div>';
     return;
   }
+  if (result.insuffisant) {
+    el.innerHTML = `<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">⏳ ACWR en construction — ${result.joursDepuisDebut} jour${result.joursDepuisDebut>1?'s':''} d'historique. Fiable à partir de ~4 semaines de séances régulières.</div>`;
+    return;
+  }
 
-  const { ratio, volumes, exact } = result;
+  const { ratio, volumes, exact, chronicDays } = result;
+  const partiel = chronicDays < 28;
   const zone = ratio < 0.8 ? { label: 'Sous-charge', color: '#00c9ff', bg: 'rgba(0,201,255,0.1)', conseil: 'Volume trop faible — augmente progressivement la charge hebdomadaire.' }
     : ratio <= 1.3 ? { label: 'Zone optimale', color: '#00c96e', bg: 'rgba(0,201,110,0.1)', conseil: 'Charge aiguë bien équilibrée par rapport à la charge chronique. Continue.' }
     : ratio <= 1.5 ? { label: 'Attention', color: '#f59f00', bg: 'rgba(245,159,0,0.1)', conseil: 'Augmentation rapide de la charge — surveille les signes de fatigue.' }
@@ -1960,7 +1990,7 @@ function renderACWR(data) {
     <div style="margin-top:10px;background:${zone.bg};border-left:3px solid ${zone.color};border-radius:0 8px 8px 0;padding:8px 10px;font-size:12px;color:var(--text);">
       💡 ${zone.conseil}
     </div>
-    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · Charge aiguë 7j / charge chronique 28j · ${exact ? '✅ Données exactes (séries réelles)' : '⚠️ Proxy (données exactes non encore chargées)'}</div>`;
+    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · Charge aiguë 7j / charge chronique ${chronicDays}j${partiel ? ' (historique partiel)' : ''} · ${exact ? '✅ Données exactes (séries réelles)' : '⚠️ Proxy (données exactes non encore chargées)'}</div>`;
 
   renderACWRChart(volumes);
 }
