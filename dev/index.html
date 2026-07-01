@@ -2019,41 +2019,79 @@ function renderProgrammeCoach() {
       <input type="number" value="${val}" placeholder="${ph}" onchange="${handlerArgs}" style="font-size:15px;padding:9px 8px;width:100%;min-width:0;text-align:center;margin-bottom:0">
     </div>`;
 
-  el.innerHTML = ordre.map(seanceId => `
+  // Champs éditables d'un exercice (sélecteur + séries/reps/repos). extraBtn = bouton optionnel (délier).
+  const champsExo = (l, seanceId, extraBtn) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null,null)" style="font-size:14px;padding:9px 10px;flex:1;min-width:0;margin-bottom:0;font-weight:700">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
+      ${extraBtn || ''}
+      <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${champNum(l.series_prevues, '3', `cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null,null)`, 'Séries')}
+      ${champNum(l.reps_mini, '8', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null,null)`, 'Reps min')}
+      ${champNum(l.reps_max, '12', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)`, 'Reps max')}
+      ${champNum(l.repos_sec || '', '90', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)`, 'Repos (s)')}
+    </div>`;
+
+  // Dropdown pour lier un exercice (ajoute au superset ancré sur ligneAncre)
+  const selLier = (ligneAncre, seanceId, exclus) => `
+    <select onchange="if(this.value){cdLierExerciceParNom(${ligneAncre.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:13px;padding:8px 10px;width:auto;min-width:150px;margin-bottom:0;margin-top:10px" title="Lier à un exercice (superset)">
+      <option value="">🔗 Lier un exercice…</option>
+      ${exercicesData.filter(e => !exclus.includes(e.exercice)).map(e => `<option value="${e.exercice}">${e.exercice}</option>`).join('')}
+    </select>`;
+
+  el.innerHTML = ordre.map(seanceId => {
+    // Regrouper les exercices en unités : soit seuls, soit en superset (même groupe_id)
+    const lignes = seances[seanceId];
+    const unites = [];
+    const groupesVus = {};
+    lignes.forEach(l => {
+      if (l.groupe_id) {
+        if (groupesVus[l.groupe_id]) return; // déjà traité via le premier membre
+        groupesVus[l.groupe_id] = true;
+        const membres = lignes.filter(o => o.groupe_id === l.groupe_id);
+        unites.push({ type: 'groupe', groupeId: l.groupe_id, membres });
+      } else {
+        unites.push({ type: 'single', ligne: l });
+      }
+    });
+
+    const cartes = unites.map(u => {
+      if (u.type === 'single') {
+        const l = u.ligne;
+        return `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
+          ${champsExo(l, seanceId)}
+          ${selLier(l, seanceId, [l.exercice])}
+        </div>`;
+      }
+      // Superset : une seule carte avec tous les membres empilés
+      const coul = couleurGroupe(u.groupeId);
+      const nomsMembres = u.membres.map(m => m.exercice);
+      return `
+        <div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${coul};border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
+          <div style="font-size:11px;font-weight:800;color:${coul};margin-bottom:10px;letter-spacing:0.5px">🔗 SUPERSET · ${u.membres.length} exercices enchaînés</div>
+          ${u.membres.map((m, i) => `
+            ${i > 0 ? `<div style="text-align:center;color:${coul};font-size:16px;font-weight:800;margin:-2px 0 6px">↓</div>` : ''}
+            <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px">
+              ${champsExo(m, seanceId, `<button onclick="cdRetirerDuGroupe(${m.row_index},'${seanceId}')" title="Retirer du superset" style="background:${coul}22;border:1px solid ${coul};color:${coul};border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;font-size:12px;flex-shrink:0;font-weight:700">🔗✕</button>`)}
+            </div>`).join('')}
+          ${selLier(u.membres[0], seanceId, nomsMembres)}
+        </div>`;
+    }).join('');
+
+    return `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:0;margin-bottom:16px;overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(200,240,0,0.08);border-bottom:1px solid var(--border)">
-        <div style="font-size:15px;font-weight:800;color:var(--accent)">📋 ${seanceId}</div>
-        <span style="font-size:11px;color:var(--text-muted);font-weight:600">${seances[seanceId].length} exo${seances[seanceId].length>1?'s':''}</span>
+        <div style="font-size:15px;font-weight:800;color:var(--text)">📋 ${seanceId}</div>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:600">${lignes.length} exo${lignes.length>1?'s':''}</span>
       </div>
       <div style="padding:12px 14px">
-      ${seances[seanceId].map(l => {
-        const autres = seances[seanceId].filter(o => o.row_index !== l.row_index);
-        const partenairesActuels = l.groupe_id ? autres.filter(o => o.groupe_id === l.groupe_id) : [];
-        const coul = l.groupe_id ? couleurGroupe(l.groupe_id) : null;
-        return `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25);${coul ? `border-left:4px solid ${coul}` : ''}">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null,null)" style="font-size:14px;padding:9px 10px;flex:1;min-width:0;margin-bottom:0;font-weight:700">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
-            <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${champNum(l.series_prevues, '3', `cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null,null)`, 'Séries')}
-            ${champNum(l.reps_mini, '8', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null,null)`, 'Reps min')}
-            ${champNum(l.reps_max, '12', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)`, 'Reps max')}
-            ${champNum(l.repos_sec || '', '90', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)`, 'Repos (s)')}
-          </div>
-          <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <select onchange="if(this.value){cdLierExerciceParNom(${l.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:13px;padding:8px 10px;width:auto;min-width:130px;margin-bottom:0" title="Lier à un exercice (superset)">
-              <option value="">🔗 Lier à…</option>
-              ${exercicesData.filter(e => e.exercice !== l.exercice && !partenairesActuels.some(p => p.exercice === e.exercice)).map(e => `<option value="${e.exercice}">${e.exercice}</option>`).join('')}
-            </select>
-            ${partenairesActuels.map(p => `<span style="font-size:12px;background:${coul}33;color:${coul};border-radius:12px;padding:4px 10px;display:inline-flex;align-items:center;gap:6px">🔗 ${p.exercice}<span style="cursor:pointer;font-weight:800" onclick="cdRetirerDuGroupe(${l.row_index},'${seanceId}')" title="Retirer cette liaison">✕</span></span>`).join('')}
-          </div>
-        </div>`;
-      }).join('')}
-      <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')" style="width:100%">+ Ajouter un exercice</button>
+        ${cartes}
+        <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')" style="width:100%">+ Ajouter un exercice</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec, groupeId) {
