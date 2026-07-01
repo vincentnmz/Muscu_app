@@ -1627,15 +1627,20 @@ function renderCoachIndicateurs(data) {
     else { volColor = '#00c96e'; volLabel = 'Volume OK'; }
   }
 
-  // 4. Régularité
+  // 4. Régularité — évaluée au prorata des jours écoulés dans la semaine
   const reg = dash.regularite || {};
   const faites = reg.seances_semaine || 0;
   const prevues = reg.seances_prevues || 0;
   let regColor, regLabel;
   if (prevues === 0) { regColor = '#aaa'; regLabel = 'N/A'; }
-  else if (faites >= prevues) { regColor = '#00c96e'; regLabel = 'Régulier'; }
-  else if (faites >= prevues - 1) { regColor = '#f59f00'; regLabel = `${faites}/${prevues}`; }
-  else { regColor = '#e5484d'; regLabel = `${faites}/${prevues}`; }
+  else {
+    const jourSemaine = (new Date().getDay() + 6) % 7 + 1; // lundi=1 ... dimanche=7
+    const attenduActuel = prevues * (jourSemaine / 7);     // séances attendues à ce stade de la semaine
+    if (faites >= prevues) { regColor = '#00c96e'; regLabel = 'Objectif atteint'; }
+    else if (faites >= attenduActuel - 0.5) { regColor = '#00c96e'; regLabel = `${faites}/${prevues} · dans le rythme`; }
+    else if (faites >= attenduActuel - 1.5) { regColor = '#f59f00'; regLabel = `${faites}/${prevues} · léger retard`; }
+    else { regColor = '#e5484d'; regLabel = `${faites}/${prevues} · en retard`; }
+  }
 
   // 5. Récupération
   const recup = dash.recuperation || {};
