@@ -1071,7 +1071,7 @@ async function ouvrirEspaceCoach() {
       const vue = JSON.parse(localStorage.getItem('muscu_coach_vue') || 'null');
       if (vue && vue.athlete_id) {
         const a = athletesCoach.find(x => String(x.athlete_id) === String(vue.athlete_id));
-        if (a) { await ouvrirDetailAthleteCoach(a); if (vue.tab) switchCoachDetailTab(vue.tab); }
+        if (a) { await ouvrirDetailAthleteCoach(a, vue.tab); }
       }
     } catch(e) {}
   } catch(e) {
@@ -1242,6 +1242,8 @@ function switchCoachDetailTab(tab) {
     const el = document.getElementById('cdtab-' + t); if (el) el.style.display = t === tab ? 'block' : 'none';
     const btn = document.getElementById('cdtab-btn-' + t); if (btn) btn.classList.toggle('active', t === tab);
   });
+  // Repart en haut du contenu à chaque changement d'onglet (évite les sauts de scroll)
+  window.scrollTo(0, 0);
   // Fait défiler la pastille active au centre (pour que Programme & co restent accessibles)
   const btnActif = document.getElementById('cdtab-btn-' + tab);
   if (btnActif && btnActif.scrollIntoView) btnActif.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
@@ -1259,7 +1261,7 @@ function coachNiveauKey(annees) {
   return 'experimente'; // avance + expert
 }
 
-async function ouvrirDetailAthleteCoach(a) {
+async function ouvrirDetailAthleteCoach(a, initialTab) {
   coachAthleteCourant = a;
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.add('active');
@@ -1269,7 +1271,7 @@ async function ouvrirDetailAthleteCoach(a) {
   const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv];
   document.getElementById('header-niveau-athlete-coach').textContent =
     `${nivLabel} · ${a.annees_pratique || 0} an${(a.annees_pratique||0)>1?'s':''}`;
-  switchCoachDetailTab('overview');
+  switchCoachDetailTab(initialTab || 'overview');
   cdCalDate = new Date();
 
   // Alertes (déjà disponibles dans l'objet a) - reset des conseils avant chargement
@@ -2077,6 +2079,27 @@ async function cdSupprimerLigne(rowIndex) {
 // ==================== CHAT COACH <-> ATHLETE ====================
 let commentairesAthleteActuel = [];
 
+function formatChatDate(d) {
+  if (!d) return '';
+  // Déjà au format dd/MM/yyyy (éventuellement avec heure) -> on garde
+  if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(d)) return d;
+  // Format ISO (2026-07-01T08:52:00.000Z) ou autre -> on convertit
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const p = n => String(n).padStart(2, '0');
+  return `${p(dt.getDate())}/${p(dt.getMonth() + 1)}/${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+}
+
+function parseChatDate(d) {
+  if (!d) return 0;
+  if (typeof d === 'string') {
+    const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+    if (m) return new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)).getTime();
+  }
+  const t = new Date(d).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
 function renderBullesChat(commentaires, elId, isCoach) {
   const el = document.getElementById(elId);
   if (!el) return;
@@ -2084,6 +2107,7 @@ function renderBullesChat(commentaires, elId, isCoach) {
     el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px;">Aucun message pour le moment.</div>';
     return;
   }
+  commentaires = [...commentaires].sort((a, b) => parseChatDate(a.date) - parseChatDate(b.date));
   el.innerHTML = commentaires.map(c => {
     const isMine = isCoach ? (c.auteur !== 'athlete') : (c.auteur === 'athlete');
     const align = isMine ? 'flex-end' : 'flex-start';
@@ -2095,7 +2119,7 @@ function renderBullesChat(commentaires, elId, isCoach) {
     const lu = (isCoach && !isMine && !c.lu) ? '<span style="font-size:9px;color:#f59f00;"> · non lu</span>' : '';
     return `<div style="display:flex;flex-direction:column;align-items:${align};max-width:85%;">
       <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13px;white-space:pre-wrap;line-height:1.4;">${c.message}</div>
-      <div style="font-size:9px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:2px;">${c.date}${lu}${deleteBtn}</div>
+      <div style="font-size:9px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:2px;">${formatChatDate(c.date)}${lu}${deleteBtn}</div>
     </div>`;
   }).join('');
   el.scrollTop = el.scrollHeight;
