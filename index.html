@@ -1372,7 +1372,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderCoachExerciceSelect(data);
     renderCoachCalendrier();
     renderCoachSeances(data);
-    renderCoachSeancesDetail(data);
+    chargerSeancesDetailCoach(a.athlete_id, data);
     renderACWR(data);
   } catch(e) {
     document.getElementById('cd-recup').innerHTML = '<div class="error-msg">Erreur de chargement</div>';
@@ -1797,24 +1797,39 @@ function renderCoachSeancesDetail(data) {
 
   if (entries.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>'; return; }
 
-  el.innerHTML = entries.map((s, idx) => {
-    // Regrouper les séries par exercice (dans l'ordre d'apparition)
-    const parExo = {};
-    const ordreExo = [];
-    s.exos.forEach(e => {
-      if (!parExo[e.exo]) { parExo[e.exo] = []; ordreExo.push(e.exo); }
-      parExo[e.exo].push(e);
-    });
+  el.innerHTML = seancesCardsHTML(entries);
+}
+
+// Rendu commun : entries = [{date, seance, exos:[{exo, series:[{charge,reps,rpe}]}]}]
+// (accepte aussi l'ancien format exos:[{exo,charge,reps,rpe}] -> regroupé ici)
+function seancesCardsHTML(entries) {
+  if (!entries || entries.length === 0) {
+    return '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>';
+  }
+  return entries.map((s, idx) => {
+    // Normaliser en exercices -> séries
+    let ordreExo, parExo;
+    if (s.exos.length && s.exos[0] && Array.isArray(s.exos[0].series)) {
+      // Déjà groupé (endpoint getSeancesDetail)
+      ordreExo = s.exos.map(x => x.exo);
+      parExo = {}; s.exos.forEach(x => { parExo[x.exo] = x.series; });
+    } else {
+      // Ancien format plat : une entrée par perf
+      parExo = {}; ordreExo = [];
+      s.exos.forEach(e => {
+        if (!parExo[e.exo]) { parExo[e.exo] = []; ordreExo.push(e.exo); }
+        parExo[e.exo].push(e);
+      });
+    }
     const nbExos = ordreExo.length;
-    let nbSeries = 0;
-    s.exos.forEach(() => nbSeries++);
+    const nbSeries = ordreExo.reduce((n, exo) => n + parExo[exo].length, 0);
 
     const exoBlocks = nbExos > 0
       ? ordreExo.map(exo => {
           const series = parExo[exo];
           const seriesLignes = series.map((e, i) => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
-              <span style="font-size:11px;color:var(--accent);font-weight:700;min-width:52px;">Série ${i + 1}</span>
+              <span style="font-size:11px;color:var(--accent);font-weight:700;min-width:52px;">Série ${e.serie || (i + 1)}</span>
               <span style="font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;">${e.charge ? e.charge + ' kg' : '—'} × ${e.reps || '—'} reps${e.rpe ? ` <span style="color:var(--text-muted);font-weight:400;">· RPE ${e.rpe}</span>` : ''}</span>
             </div>`).join('');
           return `
@@ -1845,6 +1860,25 @@ function renderCoachSeancesDetail(data) {
         </div>
       </div>`;
   }).join('');
+}
+
+// Charge le détail complet des séries depuis l'endpoint (repli sur progression_par_exo)
+async function chargerSeancesDetailCoach(athlete_id, dataFallback) {
+  const el = document.getElementById('cd-seances-detail-content');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getSeancesDetail&athlete_id=${encodeURIComponent(athlete_id)}`);
+    const data = await res.json();
+    const seances = (data && data.seances) || [];
+    if (seances.length === 0) { renderCoachSeancesDetail(dataFallback); return; }
+    const tri = dmy => { const p = String(dmy).split('/'); return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]).getTime() : 0; };
+    const entries = seances
+      .map(s => ({ date: s.date, seance: s.seance_id || 'Séance', exos: s.exos || [], tri: tri(s.date) }))
+      .sort((a, b) => b.tri - a.tri)
+      .slice(0, 20);
+    if (el) el.innerHTML = seancesCardsHTML(entries);
+  } catch(e) {
+    renderCoachSeancesDetail(dataFallback);
+  }
 }
 
 function toggleSeanceCoach(idx) {
