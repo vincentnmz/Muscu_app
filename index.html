@@ -304,12 +304,17 @@
       <button class="sub-tab" id="cdtab-btn-seances" onclick="switchCoachDetailTab('seances')">📅 Séances</button>
       <button class="sub-tab" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')">📈 Progression</button>
       <button class="sub-tab" id="cdtab-btn-volume" onclick="switchCoachDetailTab('volume')">💪 Volume</button>
-      <button class="sub-tab" id="cdtab-btn-conseils" onclick="switchCoachDetailTab('conseils')">💬 Conseils</button>
+      <button class="sub-tab" id="cdtab-btn-conseils" onclick="switchCoachDetailTab('conseils');majBadgeConseilsCoach(0)" style="position:relative">💬 Conversation<span id="badge-conseils-coach" style="display:none;position:absolute;top:2px;right:6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;"></span></button>
       <button class="sub-tab" id="cdtab-btn-programme" onclick="switchCoachDetailTab('programme')">📋 Programme</button>
     </div>
 
     <!-- ONGLET APERÇU -->
     <div id="cdtab-overview">
+      <!-- TABLEAU DE BORD INDICATEURS -->
+      <div class="dash-card" style="padding:16px;margin-bottom:10px;">
+        <div class="dash-label" style="margin-bottom:10px;">🚦 Tableau de bord</div>
+        <div id="cd-indicateurs"><div class="loader">Chargement...</div></div>
+      </div>
       <div class="dash-card" id="cd-alertes-card" style="padding:16px">
         <div class="dash-label">🚨 Alertes</div>
         <div id="cd-alertes"><div class="loader">Chargement...</div></div>
@@ -380,13 +385,15 @@
 
     <!-- ONGLET CONSEILS -->
     <div id="cdtab-conseils" style="display:none">
-      <div class="card" id="cd-commentaires-card">
-        <div class="card-title">💬 Mes conseils à l'athlète</div>
-        <textarea id="cd-comment-input" placeholder="Laisse un conseil que l'athlète verra dans son app..."
-          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;resize:none;min-height:70px;font-family:inherit"></textarea>
-        <button class="btn btn-accent" style="margin-top:8px" onclick="envoyerCommentaireCoach()">Envoyer le conseil</button>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:14px;text-transform:uppercase;letter-spacing:0.5px">Conseils envoyés</div>
-        <div id="cd-commentaires-liste" style="margin-top:8px"></div>
+      <div class="card" id="cd-commentaires-card" style="padding:0;overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;">💬 Conversation</div>
+        <div id="cd-commentaires-liste" style="max-height:55vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
+        <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="cd-comment-input" placeholder="Message à l'athlète…"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;resize:none;min-height:40px;max-height:100px;font-family:inherit;line-height:1.4;"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerCommentaireCoach();}"></textarea>
+          <button onclick="envoyerCommentaireCoach()" style="background:var(--accent);border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:18px;flex-shrink:0;">➤</button>
+        </div>
       </div>
     </div>
 
@@ -806,9 +813,15 @@
 
     <!-- ONGLET CONSEILS -->
     <div id="tab-conseils" class="tab-content">
-      <div class="card">
-        <div class="card-title">💬 Conseils de ton coach</div>
-        <div id="conseils-content"><div class="loader">Chargement...</div></div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;">💬 Conversation avec ton coach</div>
+        <div id="conseils-content" style="max-height:60vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
+        <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="athlete-chat-input" placeholder="Répondre à ton coach…"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;resize:none;min-height:40px;max-height:100px;font-family:inherit;line-height:1.4;"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerMessageAthleteCoach();}"></textarea>
+          <button onclick="envoyerMessageAthleteCoach()" style="background:var(--accent);border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:18px;flex-shrink:0;">➤</button>
+        </div>
       </div>
     </div>
 
@@ -1264,6 +1277,7 @@ async function ouvrirDetailAthleteCoach(a) {
   renderAlertesCoach();
 
   // Reset les zones en chargement
+  const indEl = document.getElementById('cd-indicateurs'); if (indEl) indEl.innerHTML = '<div class="loader">Chargement...</div>';
   ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content'].forEach(id => {
     const el = document.getElementById(id); if (el) el.innerHTML = '<div class="loader">Chargement...</div>';
   });
@@ -1284,6 +1298,7 @@ async function ouvrirDetailAthleteCoach(a) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    renderCoachIndicateurs(data);
     afficherGraphiquePoidsCoach(data.poids || []);
     renderCoachVolume(data);
     afficherCoachTendances(4);
@@ -1503,6 +1518,82 @@ function afficherCoachTendances(semaines) {
       <div style="font-size:12px;font-weight:700;color:${sc}">${sl}</div>
       <div style="font-size:11px;color:${sc};opacity:0.8;margin-top:2px">${sd}</div>
     </div>`;
+}
+
+function renderCoachIndicateurs(data) {
+  const el = document.getElementById('cd-indicateurs');
+  if (!el) return;
+  const dash = data.dashboard || {};
+
+  // 1. Progression
+  const prog = dash.progression || {};
+  const enProg = prog.en_progression || 0;
+  const enBaisse = prog.en_baisse || 0;
+  let progColor, progLabel;
+  if (enBaisse === 0 && enProg > 0) { progColor = '#00c96e'; progLabel = 'Progression'; }
+  else if (enProg >= enBaisse) { progColor = '#f59f00'; progLabel = 'Stable'; }
+  else { progColor = '#e5484d'; progLabel = 'Régression'; }
+
+  // 2. ACWR
+  const hist = data.historique || {};
+  const acwr = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
+  let acwrColor, acwrLabel;
+  if (!acwr) { acwrColor = '#aaa'; acwrLabel = 'Insuffisant'; }
+  else if (acwr.ratio >= 0.8 && acwr.ratio <= 1.3) { acwrColor = '#00c96e'; acwrLabel = `ACWR ${acwr.ratio}`; }
+  else if (acwr.ratio > 1.5) { acwrColor = '#e5484d'; acwrLabel = `ACWR ${acwr.ratio}`; }
+  else { acwrColor = '#f59f00'; acwrLabel = `ACWR ${acwr.ratio}`; }
+
+  // 3. Volume muscles
+  const niv = getNiveauExperience(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
+  const volSem = hist.volume_semaine || [];
+  let volColor = '#aaa', volLabel = 'N/A';
+  if (volSem.length > 0) {
+    const cibles = VOLUME_CIBLE[niv] || {};
+    let belowMev = false, aboveMav = true;
+    volSem.forEach(v => {
+      const cible = cibles[v.muscle] || cibles['default'] || { mev: 10, mav: 20 };
+      if (v.series < (cible.mev || 0)) belowMev = true;
+      if (v.series < (cible.mav || 0)) aboveMav = false;
+    });
+    if (belowMev) { volColor = '#e5484d'; volLabel = 'Sous MEV'; }
+    else if (!aboveMav) { volColor = '#f59f00'; volLabel = 'Sous MAV'; }
+    else { volColor = '#00c96e'; volLabel = 'Volume OK'; }
+  }
+
+  // 4. Régularité
+  const reg = dash.regularite || {};
+  const faites = reg.seances_semaine || 0;
+  const prevues = reg.seances_prevues || 0;
+  let regColor, regLabel;
+  if (prevues === 0) { regColor = '#aaa'; regLabel = 'N/A'; }
+  else if (faites >= prevues) { regColor = '#00c96e'; regLabel = 'Régulier'; }
+  else if (faites >= prevues - 1) { regColor = '#f59f00'; regLabel = `${faites}/${prevues}`; }
+  else { regColor = '#e5484d'; regLabel = `${faites}/${prevues}`; }
+
+  // 5. Récupération
+  const recup = dash.recuperation || {};
+  let recupColor, recupLabel;
+  if (!recup.statut) { recupColor = '#aaa'; recupLabel = 'N/A'; }
+  else if (recup.statut === 'optimal') { recupColor = '#00c96e'; recupLabel = 'Récup OK'; }
+  else if (recup.statut === 'modere') { recupColor = '#f59f00'; recupLabel = 'Modérée'; }
+  else { recupColor = '#e5484d'; recupLabel = 'Fatigue'; }
+
+  const indicateurs = [
+    { label: 'Progression', color: progColor, val: progLabel },
+    { label: 'ACWR', color: acwrColor, val: acwrLabel },
+    { label: 'Volume', color: volColor, val: volLabel },
+    { label: 'Régularité', color: regColor, val: regLabel },
+    { label: 'Récupération', color: recupColor, val: recupLabel },
+  ];
+
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center;">
+    ${indicateurs.map(ind => `
+      <div>
+        <div style="width:14px;height:14px;border-radius:50%;background:${ind.color};margin:0 auto 4px;box-shadow:0 0 6px ${ind.color}55;"></div>
+        <div style="font-size:9px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">${ind.label}</div>
+        <div style="font-size:10px;color:${ind.color};font-weight:700;margin-top:2px;">${ind.val}</div>
+      </div>`).join('')}
+  </div>`;
 }
 
 function renderCoachVolume(data) {
@@ -1797,15 +1888,21 @@ function renderCoachAthleteGrid(athletes) {
     const sevMax = nb === 0 ? null : alertes.some(al => al.severite === 'haute') ? 'haute' : alertes.some(al => al.severite === 'moyenne') ? 'moyenne' : 'basse';
     const niv = getNiveauExperience(a.annees_pratique);
     const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv] || '';
-    const badgeHtml = nb > 0
-      ? `<span style="background:${couleurSeverite[sevMax]};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;">⚠️ ${nb}</span>`
-      : `<span style="background:rgba(0,201,110,0.15);color:#00c96e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;">✅ OK</span>`;
+    const types = alertes.map(al => al.type || '');
+    const dotProg = types.some(t => t === 'stagnation' || t === 'regression') ? '#e5484d' : '#00c96e';
+    const dotRecup = types.some(t => t === 'fatigue' || t === 'surcharge') ? (types.some(t => t === 'surcharge') ? '#e5484d' : '#f59f00') : '#00c96e';
+    const dotReg = types.some(t => t === 'irregularite') ? '#f59f00' : '#00c96e';
+    const dotsHtml = `<div style="display:flex;gap:5px;align-items:center;margin-top:8px;">
+      <div title="Progression" style="width:9px;height:9px;border-radius:50%;background:${dotProg};box-shadow:0 0 4px ${dotProg}66;flex-shrink:0;"></div>
+      <div title="Récupération" style="width:9px;height:9px;border-radius:50%;background:${dotRecup};box-shadow:0 0 4px ${dotRecup}66;flex-shrink:0;"></div>
+      <div title="Régularité" style="width:9px;height:9px;border-radius:50%;background:${dotReg};box-shadow:0 0 4px ${dotReg}66;flex-shrink:0;"></div>
+    </div>`;
     const idxOrig = athletes.indexOf(a);
     return `
       <div onclick="ouvrirAthleteDepuisSelect('${idxOrig}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;transition:border-color 0.2s;" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border)'">
         <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.nom}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;">${nivLabel}</div>
-        ${badgeHtml}
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">${nivLabel}</div>
+        ${dotsHtml}
       </div>`;
   }).join('');
 }
@@ -1977,8 +2074,41 @@ async function cdSupprimerLigne(rowIndex) {
   chargerProgrammeCoach();
 }
 
-// ==================== COMMENTAIRES COACH -> ATHLETE ====================
-let commentairesAthleteActuel = []; // conseils déjà envoyés à l'athlète en cours
+// ==================== CHAT COACH <-> ATHLETE ====================
+let commentairesAthleteActuel = [];
+
+function renderBullesChat(commentaires, elId, isCoach) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (commentaires.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px;">Aucun message pour le moment.</div>';
+    return;
+  }
+  el.innerHTML = commentaires.map(c => {
+    const isMine = isCoach ? (c.auteur !== 'athlete') : (c.auteur === 'athlete');
+    const align = isMine ? 'flex-end' : 'flex-start';
+    const bg = isMine ? 'var(--accent)' : 'var(--surface2)';
+    const color = isMine ? '#000' : 'var(--text)';
+    const radius = isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px';
+    const deleteBtn = (isCoach && isMine)
+      ? `<button onclick="supprimerCommentaireCoach('${c.id}')" title="Supprimer" style="background:none;border:none;cursor:pointer;font-size:12px;opacity:0.5;padding:0 0 0 4px;">🗑️</button>` : '';
+    const lu = (isCoach && !isMine && !c.lu) ? '<span style="font-size:9px;color:#f59f00;"> · non lu</span>' : '';
+    return `<div style="display:flex;flex-direction:column;align-items:${align};max-width:85%;">
+      <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13px;white-space:pre-wrap;line-height:1.4;">${c.message}</div>
+      <div style="font-size:9px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:2px;">${c.date}${lu}${deleteBtn}</div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function majBadgeConseilsCoach(forceZero) {
+  const badge = document.getElementById('badge-conseils-coach');
+  if (!badge) return;
+  if (forceZero === 0) { badge.style.display = 'none'; return; }
+  const nonLus = commentairesAthleteActuel.filter(c => c.auteur === 'athlete' && !c.lu).length;
+  badge.textContent = nonLus;
+  badge.style.display = nonLus > 0 ? 'block' : 'none';
+}
 
 async function chargerCommentairesCoach(athlete_id) {
   const el = document.getElementById('cd-commentaires-liste');
@@ -1987,18 +2117,11 @@ async function chargerCommentairesCoach(athlete_id) {
     const data = await res.json();
     const commentaires = data.commentaires || [];
     commentairesAthleteActuel = commentaires;
-    el.innerHTML = commentaires.length === 0
-      ? '<div style="font-size:12px;color:var(--text-muted)">Aucun conseil envoyé pour le moment.</div>'
-      : commentaires.map(c => `
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px;position:relative">
-          <button class="btn-sm btn-danger-sm" style="position:absolute;top:8px;right:8px" title="Supprimer ce conseil" onclick="supprimerCommentaireCoach('${c.id}')">🗑️</button>
-          <div style="font-size:13px;color:var(--text);white-space:pre-wrap;padding-right:30px">${c.message}</div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:4px">${c.date}${c.lu ? ' · ✅ lu' : ' · 🕓 non lu'}</div>
-        </div>`).join('');
-    // Re-rendu des alertes pour afficher l'indicateur "déjà conseillé"
+    renderBullesChat(commentaires, 'cd-commentaires-liste', true);
+    majBadgeConseilsCoach();
     renderAlertesCoach();
   } catch(e) {
-    el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+    if (el) el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
 }
 
@@ -2084,7 +2207,7 @@ function repondreAlerte(contexte) {
 async function envoyerCommentaireCoach() {
   const input = document.getElementById('cd-comment-input');
   const message = input.value.trim();
-  if (!message) { showToast('⚠️ Écris un conseil', '#ff4444'); return; }
+  if (!message) { showToast('⚠️ Écris un message', '#ff4444'); return; }
   if (!coachAthleteCourant || !coach) return;
   try {
     await fetch(SCRIPT_URL, {
@@ -2094,14 +2217,41 @@ async function envoyerCommentaireCoach() {
         action: 'saveCommentaire',
         coach_id: coach.coach_id,
         coach_nom: coach.nom,
+        auteur: 'coach',
+        auteur_nom: coach.nom,
         athlete_id: coachAthleteCourant.athlete_id,
         message: message
       })
     });
     input.value = '';
-    showToast('✅ Conseil envoyé !');
-    // Recharger après un court délai (le temps que le Sheet soit à jour)
+    showToast('✅ Message envoyé !');
     setTimeout(() => chargerCommentairesCoach(coachAthleteCourant.athlete_id), 800);
+  } catch(e) {
+    showToast('❌ Erreur envoi', '#ff4444');
+  }
+}
+
+async function envoyerMessageAthleteCoach() {
+  const input = document.getElementById('athlete-chat-input');
+  if (!input) return;
+  const message = input.value.trim();
+  if (!message) { showToast('⚠️ Écris un message', '#ff4444'); return; }
+  if (!athlete) return;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'saveCommentaire',
+        auteur: 'athlete',
+        auteur_nom: athlete.prenom || athlete.nom || 'Athlète',
+        athlete_id: athlete.athlete_id,
+        message: message
+      })
+    });
+    input.value = '';
+    showToast('✅ Message envoyé !');
+    setTimeout(() => chargerMessagesCoach(), 800);
   } catch(e) {
     showToast('❌ Erreur envoi', '#ff4444');
   }
@@ -2140,7 +2290,7 @@ async function chargerMessagesCoach() {
 function majBadgeConseils() {
   const badge = document.getElementById('badge-conseils');
   if (!badge) return;
-  const nonLus = messagesCoach.filter(c => !c.lu).length;
+  const nonLus = messagesCoach.filter(c => !c.lu && c.auteur !== 'athlete').length;
   if (nonLus > 0) {
     badge.textContent = nonLus;
     badge.style.display = 'block';
@@ -2149,43 +2299,18 @@ function majBadgeConseils() {
   }
 }
 
-let conseilsAthleteToutAfficher = false;
-const CONSEILS_LIMITE = 10;
-
 function afficherOngletConseils() {
-  const el = document.getElementById('conseils-content');
-  if (messagesCoach.length === 0) {
-    el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Aucun conseil de ton coach pour le moment.</div>';
-    return;
-  }
-  // Les non-lus sont toujours visibles ; on limite le reste
-  const aAfficher = conseilsAthleteToutAfficher ? messagesCoach : messagesCoach.slice(0, CONSEILS_LIMITE);
-  const reste = messagesCoach.length - aAfficher.length;
-  el.innerHTML = aAfficher.map(c => {
-    const nouveau = !c.lu;
-    return `
-      <div style="background:${nouveau ? 'rgba(0,201,110,0.1)' : 'var(--surface2)'};border:1px solid ${nouveau ? '#00c96e' : 'transparent'};border-radius:8px;padding:12px;margin-bottom:8px">
-        ${nouveau ? '<div style="font-size:10px;font-weight:800;color:#00c96e;margin-bottom:4px">● NOUVEAU</div>' : ''}
-        <div style="font-size:13px;color:var(--text);white-space:pre-wrap">${c.message}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:6px">${c.coach_nom || 'Coach'} · ${c.date}</div>
-      </div>`;
-  }).join('')
-  + (reste > 0
-      ? `<button class="btn btn-outline" style="margin-top:4px" onclick="conseilsAthleteToutAfficher=true;afficherOngletConseils()">Voir tout l'historique (${reste} de plus)</button>`
-      : (conseilsAthleteToutAfficher && messagesCoach.length > CONSEILS_LIMITE
-          ? `<button class="btn btn-outline" style="margin-top:4px" onclick="conseilsAthleteToutAfficher=false;afficherOngletConseils()">Réduire</button>`
-          : ''));
+  renderBullesChat(messagesCoach, 'conseils-content', false);
 
-  // Marquer les non-lus comme lus
-  const nonLus = messagesCoach.filter(c => !c.lu).map(c => c.id);
-  if (nonLus.length > 0) {
+  // Badge non-lus des messages du coach uniquement
+  const nonLusCoach = messagesCoach.filter(c => !c.lu && c.auteur !== 'athlete').map(c => c.id);
+  if (nonLusCoach.length > 0) {
     fetch(SCRIPT_URL, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLus })
+      body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLusCoach })
     });
-    // Marquer localement comme lus + retirer le badge
-    messagesCoach.forEach(c => c.lu = true);
+    messagesCoach.forEach(c => { if (nonLusCoach.includes(c.id)) c.lu = true; });
     majBadgeConseils();
   }
 }
