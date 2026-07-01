@@ -2013,37 +2013,44 @@ function renderProgrammeCoach() {
     el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Aucune séance dans le programme.</div>';
     return;
   }
+  const champNum = (val, ph, handlerArgs, label) => `
+    <div style="flex:1;min-width:64px">
+      <label style="font-size:9px;color:var(--text-muted);margin-bottom:3px;display:block;text-transform:none;letter-spacing:0">${label}</label>
+      <input type="number" value="${val}" placeholder="${ph}" onchange="${handlerArgs}" style="font-size:15px;padding:9px 8px;width:100%;min-width:0;text-align:center;margin-bottom:0">
+    </div>`;
+
   el.innerHTML = ordre.map(seanceId => `
-    <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:8px">${seanceId}</div>
-      <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.7fr) minmax(0,0.6fr) 32px;gap:4px;margin-bottom:4px">
-        <div style="font-size:10px;color:var(--text-muted);padding-left:4px">Exercice</div>
-        <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Séries</div>
-        <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Reps mini</div>
-        <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Reps max</div>
-        <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Repos(s)</div>
-        <div style="font-size:10px;color:var(--text-muted);padding-left:4px;text-align:center">Lié à</div>
-        <div></div>
+    <div class="card" style="background:var(--surface2);padding:14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:15px;font-weight:800">${seanceId}</div>
+        <span style="font-size:11px;color:var(--text-muted)">${seances[seanceId].length} exo${seances[seanceId].length>1?'s':''}</span>
       </div>
       ${seances[seanceId].map(l => {
         const autres = seances[seanceId].filter(o => o.row_index !== l.row_index);
         const partenairesActuels = l.groupe_id ? autres.filter(o => o.groupe_id === l.groupe_id) : [];
-        const dispoAajouter = autres.filter(o => !partenairesActuels.some(p => p.row_index === o.row_index));
+        const coul = l.groupe_id ? couleurGroupe(l.groupe_id) : null;
         return `
-        <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.6fr) minmax(0,0.7fr) minmax(0,0.6fr) 32px;gap:4px;align-items:center;margin-bottom:2px;${l.groupe_id ? `border-left:3px solid ${couleurGroupe(l.groupe_id)};padding-left:4px` : ''}">
-          <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
-          <input type="number" value="${l.series_prevues}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Séries">
-          <input type="number" value="${l.reps_mini}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps mini">
-          <input type="number" value="${l.reps_max}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Reps max">
-          <input type="number" value="${l.repos_sec || ''}" onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)" style="font-size:11px;padding:4px;width:100%;min-width:0;text-align:center" title="Repos (sec)">
-          <select onchange="if(this.value){cdLierExerciceParNom(${l.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:10px;padding:4px;width:100%;min-width:0" title="Lier à un exercice (ajouté à la séance si absent)">
-            <option value="">+ lier...</option>
-            ${exercicesData.filter(e => e.exercice !== l.exercice && !partenairesActuels.some(p => p.exercice === e.exercice)).map(e => `<option value="${e.exercice}">${e.exercice}</option>`).join('')}
-          </select>
-          <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">🗑️</button>
-        </div>${partenairesActuels.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 8px 4px">${partenairesActuels.map(p => `<span style="font-size:10px;background:${couleurGroupe(l.groupe_id)}33;color:${couleurGroupe(l.groupe_id)};border-radius:10px;padding:2px 6px;display:inline-flex;align-items:center;gap:4px">🔗 ${p.exercice}<span style="cursor:pointer;font-weight:700" onclick="cdRetirerDuGroupe(${l.row_index},'${seanceId}')" title="Retirer cette liaison">✕</span></span>`).join('')}</div>` : '<div style="margin-bottom:8px"></div>'}`;
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;${coul ? `border-left:4px solid ${coul}` : ''}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null,null)" style="font-size:14px;padding:9px 10px;flex:1;min-width:0;margin-bottom:0;font-weight:700">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
+            <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${champNum(l.series_prevues, '3', `cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null,null)`, 'Séries')}
+            ${champNum(l.reps_mini, '8', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null,null)`, 'Reps min')}
+            ${champNum(l.reps_max, '12', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)`, 'Reps max')}
+            ${champNum(l.repos_sec || '', '90', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)`, 'Repos (s)')}
+          </div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <select onchange="if(this.value){cdLierExerciceParNom(${l.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:13px;padding:8px 10px;width:auto;min-width:130px;margin-bottom:0" title="Lier à un exercice (superset)">
+              <option value="">🔗 Lier à…</option>
+              ${exercicesData.filter(e => e.exercice !== l.exercice && !partenairesActuels.some(p => p.exercice === e.exercice)).map(e => `<option value="${e.exercice}">${e.exercice}</option>`).join('')}
+            </select>
+            ${partenairesActuels.map(p => `<span style="font-size:12px;background:${coul}33;color:${coul};border-radius:12px;padding:4px 10px;display:inline-flex;align-items:center;gap:6px">🔗 ${p.exercice}<span style="cursor:pointer;font-weight:800" onclick="cdRetirerDuGroupe(${l.row_index},'${seanceId}')" title="Retirer cette liaison">✕</span></span>`).join('')}
+          </div>
+        </div>`;
       }).join('')}
-      <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')">+ Exercice</button>
+      <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')" style="width:100%">+ Ajouter un exercice</button>
     </div>`).join('');
 }
 
