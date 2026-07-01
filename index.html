@@ -159,6 +159,47 @@
   .exo-actuel-perf { font-size: 13px; margin-top: 8px; }
   .exo-actuel-cible { font-size: 14px; font-weight: 700; color: var(--accent); margin-top: 4px; }
   .prog-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 12px 0 6px; }
+
+  /* ===================== TABLETTE (>= 768px) ===================== */
+  @media (min-width: 768px) {
+    .container { max-width: 720px; }
+    .tabs-bar { max-width: 720px; }
+    #view-coach-detail .sub-tabs { max-width: 720px; }
+    #coach-athletes-grid { grid-template-columns: 1fr 1fr 1fr !important; }
+  }
+
+  /* ============ BUREAU : dashboard coach (>= 1024px) ============ */
+  @media (min-width: 1024px) {
+    body.coach-active #main-container {
+      max-width: 1240px; display: flex; align-items: flex-start; gap: 28px; padding: 24px;
+    }
+    /* Sidebar : liste des athlètes, toujours visible */
+    body.coach-active #view-coach.view {
+      display: block !important; flex: 0 0 340px; width: 340px;
+      position: sticky; top: 78px; max-height: calc(100vh - 100px); overflow-y: auto;
+      padding-right: 4px;
+    }
+    body.coach-active #view-coach #coach-athletes-grid { grid-template-columns: 1fr !important; }
+    /* Zone détail : toujours visible à droite */
+    body.coach-active #view-coach-detail.view {
+      display: block !important; flex: 1 1 auto; min-width: 0;
+    }
+    /* Sous-onglets : barre horizontale en haut du panneau (plus de barre fixe en bas) */
+    body.coach-active #view-coach-detail .sub-tabs {
+      position: static; max-width: none; margin: 0 0 18px; border-top: none;
+      background: none; padding: 0; z-index: auto; flex-wrap: wrap;
+    }
+    body.coach-active.cd-nav { padding-bottom: 0; }
+    /* Bouton retour inutile en mode dashboard */
+    body.coach-active #view-coach-detail > .header .btn-outline { display: none; }
+    /* Placeholder quand aucun athlète n'est sélectionné */
+    body.coach-active:not(.athlete-selected) #coach-detail-empty { display: block !important; }
+    body.coach-active:not(.athlete-selected) #view-coach-detail > .header,
+    body.coach-active:not(.athlete-selected) #view-coach-detail > .sub-tabs,
+    body.coach-active:not(.athlete-selected) #view-coach-detail > [id^="cdtab-"] { display: none !important; }
+    /* Grilles internes plus aérées sur large écran */
+    body.coach-active #cd-indicateurs > div { gap: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -290,6 +331,12 @@
 
   <!-- VUE DETAIL ATHLETE (COACH) -->
   <div id="view-coach-detail" class="view">
+    <!-- Placeholder desktop : aucun athlète sélectionné -->
+    <div id="coach-detail-empty" style="display:none;text-align:center;color:var(--text-muted);padding:90px 20px;">
+      <div style="font-size:44px;margin-bottom:14px;">👈</div>
+      <div style="font-size:16px;font-weight:800;color:var(--text);">Sélectionne un athlète</div>
+      <div style="font-size:13px;margin-top:6px;">Choisis un athlète dans la liste pour afficher son suivi.</div>
+    </div>
     <div class="header">
       <button class="btn-sm btn-outline" onclick="retourCoachDetail()">⬅️ Retour</button>
       <div style="text-align:right">
@@ -1034,6 +1081,8 @@ function seDeconnecterCoach() {
   coach = null;
   localStorage.removeItem('muscu_coach');
   localStorage.removeItem('muscu_coach_vue');
+  document.body.classList.remove('coach-active');
+  document.body.classList.remove('athlete-selected');
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.remove('active');
   document.body.classList.remove('cd-nav');
@@ -1047,6 +1096,7 @@ function seDeconnecterCoach() {
 
 async function ouvrirEspaceCoach() {
   arreterChronoEtReinitSeance();
+  document.body.classList.add('coach-active');
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
   document.body.classList.remove('has-bottom-nav');
@@ -1221,6 +1271,8 @@ function retourListeAthletesCoach() {
   document.getElementById('view-coach-detail').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
   document.body.classList.remove('cd-nav');
+  document.body.classList.remove('athlete-selected');
+  coachAthleteCourant = null;
   localStorage.removeItem('muscu_coach_vue');
   const sel = document.getElementById('coach-select-athlete');
   if (sel) sel.value = '';
@@ -1266,6 +1318,8 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.add('active');
   document.body.classList.add('cd-nav');
+  document.body.classList.add('athlete-selected');
+  surlignerAthleteSidebar(a.athlete_id);
   document.getElementById('header-nom-athlete-coach').textContent = a.nom;
   const niv = getNiveauExperience(a.annees_pratique);
   const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv];
@@ -1900,13 +1954,22 @@ function renderCoachAthleteGrid(athletes) {
       <div title="Régularité" style="width:9px;height:9px;border-radius:50%;background:${dotReg};box-shadow:0 0 4px ${dotReg}66;flex-shrink:0;"></div>
     </div>`;
     const idxOrig = athletes.indexOf(a);
+    const estActif = coachAthleteCourant && String(coachAthleteCourant.athlete_id) === String(a.athlete_id);
     return `
-      <div onclick="ouvrirAthleteDepuisSelect('${idxOrig}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;transition:border-color 0.2s;" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div class="coach-athlete-card${estActif ? ' actif' : ''}" data-athlete-id="${a.athlete_id}" onclick="ouvrirAthleteDepuisSelect('${idxOrig}')" style="background:var(--surface);border:1px solid ${estActif ? 'var(--accent)' : 'var(--border)'};border-radius:12px;padding:12px;cursor:pointer;transition:border-color 0.2s;" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor=this.classList.contains('actif')?'var(--accent)':'var(--border)'">
         <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.nom}</div>
         <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">${nivLabel}</div>
         ${dotsHtml}
       </div>`;
   }).join('');
+}
+
+function surlignerAthleteSidebar(athleteId) {
+  document.querySelectorAll('.coach-athlete-card').forEach(c => {
+    const actif = String(c.getAttribute('data-athlete-id')) === String(athleteId);
+    c.classList.toggle('actif', actif);
+    c.style.borderColor = actif ? 'var(--accent)' : 'var(--border)';
+  });
 }
 
 // ==================== PROGRAMME (CRUD COACH) ====================
