@@ -1609,9 +1609,10 @@ function renderCoachIndicateurs(data) {
   const enProg = prog.en_progression || 0;
   const enBaisse = prog.en_baisse || 0;
   let progColor, progLabel;
-  if (enBaisse === 0 && enProg > 0) { progColor = '#00c96e'; progLabel = 'Progression'; }
-  else if (enProg >= enBaisse) { progColor = '#f59f00'; progLabel = 'Stable'; }
-  else { progColor = '#e5484d'; progLabel = 'Régression'; }
+  if (enProg === 0 && enBaisse === 0) { progColor = '#aaa'; progLabel = 'N/A'; }
+  else if (enProg > enBaisse) { progColor = '#00c96e'; progLabel = `Progression (${enProg}↑/${enBaisse}↓)`; }
+  else if (enProg === enBaisse) { progColor = '#f59f00'; progLabel = `Stable (${enProg}↑/${enBaisse}↓)`; }
+  else { progColor = '#e5484d'; progLabel = `Régression (${enProg}↑/${enBaisse}↓)`; }
 
   // 2. ACWR
   const hist = data.historique || {};
@@ -1929,7 +1930,9 @@ function marqueurRecap(data, a) {
   // Progression
   const prog = dash.progression || {};
   const enProg = prog.en_progression || 0, enBaisse = prog.en_baisse || 0;
-  const progC = (enBaisse === 0 && enProg > 0) ? '#00c96e' : (enProg >= enBaisse ? '#f59f00' : '#e5484d');
+  const progC = (enProg === 0 && enBaisse === 0) ? '#aaa'
+    : (enProg > enBaisse) ? '#00c96e'
+    : (enProg === enBaisse) ? '#f59f00' : '#e5484d';
   // ACWR
   const acwr = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
   let acwrC, acwrTxt;
