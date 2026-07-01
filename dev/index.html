@@ -351,7 +351,7 @@
       <button class="sub-tab" id="cdtab-btn-seances" onclick="switchCoachDetailTab('seances')">📅 Séances</button>
       <button class="sub-tab" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')">📈 Progression</button>
       <button class="sub-tab" id="cdtab-btn-volume" onclick="switchCoachDetailTab('volume')">💪 Volume</button>
-      <button class="sub-tab" id="cdtab-btn-conseils" onclick="switchCoachDetailTab('conseils');majBadgeConseilsCoach(0)" style="position:relative">💬 Conversation<span id="badge-conseils-coach" style="display:none;position:absolute;top:2px;right:6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;"></span></button>
+      <button class="sub-tab" id="cdtab-btn-conseils" onclick="ouvrirConversationCoach()" style="position:relative">💬 Conversation<span id="badge-conseils-coach" style="display:none;position:absolute;top:2px;right:6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;"></span></button>
       <button class="sub-tab" id="cdtab-btn-programme" onclick="switchCoachDetailTab('programme')">📋 Programme</button>
     </div>
 
@@ -1083,6 +1083,7 @@ function seDeconnecterCoach() {
   localStorage.removeItem('muscu_coach_vue');
   document.body.classList.remove('coach-active');
   document.body.classList.remove('athlete-selected');
+  document.getElementById('btn-theme').style.display = 'none';
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.remove('active');
   document.body.classList.remove('cd-nav');
@@ -1101,6 +1102,16 @@ async function ouvrirEspaceCoach() {
   document.getElementById('view-coach').classList.add('active');
   document.body.classList.remove('has-bottom-nav');
   document.getElementById('tabs-bar').style.display = 'none';
+  // Thème clair/sombre disponible aussi côté coach
+  const btnTheme = document.getElementById('btn-theme');
+  btnTheme.style.display = 'block';
+  if (localStorage.getItem('muscu_theme') === 'light') {
+    document.body.classList.add('light-mode');
+    btnTheme.textContent = '🌙';
+  } else {
+    document.body.classList.remove('light-mode');
+    btnTheme.textContent = '☀️';
+  }
   document.getElementById('header-nom-coach').textContent = coach.nom;
   const listeEl = document.getElementById('liste-athletes-coach');
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
@@ -2179,7 +2190,7 @@ function renderBullesChat(commentaires, elId, isCoach) {
     const radius = isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px';
     const deleteBtn = (isCoach && isMine)
       ? `<button onclick="supprimerCommentaireCoach('${c.id}')" title="Supprimer" style="background:none;border:none;cursor:pointer;font-size:12px;opacity:0.5;padding:0 0 0 4px;">🗑️</button>` : '';
-    const lu = (isCoach && !isMine && !c.lu) ? '<span style="font-size:9px;color:#f59f00;"> · non lu</span>' : '';
+    const lu = (isCoach && !isMine && !estLu(c, 'muscu_lu_coach')) ? '<span style="font-size:9px;color:#f59f00;"> · non lu</span>' : '';
     return `<div style="display:flex;flex-direction:column;align-items:${align};max-width:85%;">
       <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13px;white-space:pre-wrap;line-height:1.4;">${c.message}</div>
       <div style="font-size:9px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:2px;">${formatChatDate(c.date)}${lu}${deleteBtn}</div>
@@ -2188,13 +2199,43 @@ function renderBullesChat(commentaires, elId, isCoach) {
   el.scrollTop = el.scrollHeight;
 }
 
+// Suivi local des messages lus (persiste même si le marquage serveur échoue)
+function getLusLocaux(key) {
+  try { return new Set(JSON.parse(localStorage.getItem(key) || '[]').map(String)); }
+  catch(e) { return new Set(); }
+}
+function ajouterLusLocaux(key, ids) {
+  const set = getLusLocaux(key);
+  ids.forEach(id => set.add(String(id)));
+  try { localStorage.setItem(key, JSON.stringify([...set])); } catch(e) {}
+}
+function estLu(c, key) {
+  return c.lu === true || c.lu === 'TRUE' || getLusLocaux(key).has(String(c.id));
+}
+
 function majBadgeConseilsCoach(forceZero) {
   const badge = document.getElementById('badge-conseils-coach');
   if (!badge) return;
   if (forceZero === 0) { badge.style.display = 'none'; return; }
-  const nonLus = commentairesAthleteActuel.filter(c => c.auteur === 'athlete' && !c.lu).length;
+  const nonLus = commentairesAthleteActuel.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
   badge.textContent = nonLus;
   badge.style.display = nonLus > 0 ? 'block' : 'none';
+}
+
+// Ouvre la conversation côté coach et marque les messages de l'athlète comme lus
+function ouvrirConversationCoach() {
+  switchCoachDetailTab('conseils');
+  const nonLus = commentairesAthleteActuel.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).map(c => c.id);
+  if (nonLus.length > 0) {
+    ajouterLusLocaux('muscu_lu_coach', nonLus);
+    fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLus })
+    });
+    commentairesAthleteActuel.forEach(c => { if (nonLus.includes(c.id)) c.lu = true; });
+  }
+  majBadgeConseilsCoach(0);
 }
 
 async function chargerCommentairesCoach(athlete_id) {
@@ -2377,7 +2418,7 @@ async function chargerMessagesCoach() {
 function majBadgeConseils() {
   const badge = document.getElementById('badge-conseils');
   if (!badge) return;
-  const nonLus = messagesCoach.filter(c => !c.lu && c.auteur !== 'athlete').length;
+  const nonLus = messagesCoach.filter(c => c.auteur !== 'athlete' && !estLu(c, 'muscu_lu_athlete')).length;
   if (nonLus > 0) {
     badge.textContent = nonLus;
     badge.style.display = 'block';
@@ -2389,9 +2430,10 @@ function majBadgeConseils() {
 function afficherOngletConseils() {
   renderBullesChat(messagesCoach, 'conseils-content', false);
 
-  // Badge non-lus des messages du coach uniquement
-  const nonLusCoach = messagesCoach.filter(c => !c.lu && c.auteur !== 'athlete').map(c => c.id);
+  // Marquer les messages du coach comme lus (local + serveur)
+  const nonLusCoach = messagesCoach.filter(c => c.auteur !== 'athlete' && !estLu(c, 'muscu_lu_athlete')).map(c => c.id);
   if (nonLusCoach.length > 0) {
+    ajouterLusLocaux('muscu_lu_athlete', nonLusCoach);
     fetch(SCRIPT_URL, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
