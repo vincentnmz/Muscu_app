@@ -1798,14 +1798,36 @@ function renderCoachSeancesDetail(data) {
   if (entries.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>'; return; }
 
   el.innerHTML = entries.map((s, idx) => {
-    const nbExos = s.exos.length;
-    const exoLines = s.exos.length > 0
-      ? s.exos.map(e => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-            <span style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;">${e.exo}</span>
-            <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${e.charge ? e.charge + ' kg' : '—'} × ${e.reps || '—'} reps${e.rpe ? ' · RPE ' + e.rpe : ''}</span>
-          </div>`).join('')
+    // Regrouper les séries par exercice (dans l'ordre d'apparition)
+    const parExo = {};
+    const ordreExo = [];
+    s.exos.forEach(e => {
+      if (!parExo[e.exo]) { parExo[e.exo] = []; ordreExo.push(e.exo); }
+      parExo[e.exo].push(e);
+    });
+    const nbExos = ordreExo.length;
+    let nbSeries = 0;
+    s.exos.forEach(() => nbSeries++);
+
+    const exoBlocks = nbExos > 0
+      ? ordreExo.map(exo => {
+          const series = parExo[exo];
+          const seriesLignes = series.map((e, i) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+              <span style="font-size:11px;color:var(--accent);font-weight:700;min-width:52px;">Série ${i + 1}</span>
+              <span style="font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;">${e.charge ? e.charge + ' kg' : '—'} × ${e.reps || '—'} reps${e.rpe ? ` <span style="color:var(--text-muted);font-weight:400;">· RPE ${e.rpe}</span>` : ''}</span>
+            </div>`).join('');
+          return `
+            <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+              <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:4px;display:flex;justify-content:space-between;">
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%;">${exo}</span>
+                <span style="font-size:10px;color:var(--text-muted);font-weight:600;">${series.length} série${series.length>1?'s':''}</span>
+              </div>
+              ${seriesLignes}
+            </div>`;
+        }).join('')
       : '<div style="font-size:11px;color:var(--text-muted);padding:6px 0;">Pas de détail disponible (données antérieures)</div>';
+
     return `
       <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">
         <div onclick="toggleSeanceCoach(${idx})" style="display:flex;justify-content:space-between;align-items:center;padding:12px;cursor:pointer;background:var(--surface);">
@@ -1814,12 +1836,12 @@ function renderCoachSeancesDetail(data) {
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${s.date}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
-            ${nbExos > 0 ? `<span style="background:rgba(200,240,0,0.15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">${nbExos} exo${nbExos>1?'s':''}</span>` : ''}
+            ${nbExos > 0 ? `<span style="background:rgba(200,240,0,0.15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">${nbExos} exo${nbExos>1?'s':''} · ${nbSeries} série${nbSeries>1?'s':''}</span>` : ''}
             <span id="seance-arrow-${idx}" style="font-size:14px;color:var(--text-muted);transition:transform 0.2s;">›</span>
           </div>
         </div>
-        <div id="seance-detail-${idx}" style="display:none;padding:0 12px 12px;">
-          ${exoLines}
+        <div id="seance-detail-${idx}" style="display:none;padding:10px 12px 12px;">
+          ${exoBlocks}
         </div>
       </div>`;
   }).join('');
