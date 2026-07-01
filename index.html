@@ -1603,30 +1603,38 @@ function renderCoachSeancesDetail(data) {
   const prog = data.historique ? (data.historique.progression_par_exo || {}) : {};
   const datesSeances = data.historique ? (data.historique.dates_seances || {}) : {};
 
-  // Grouper par date ISO directement depuis progression_par_exo
-  const parDateISO = {};
+  // Convertit n'importe quel format date en {dmy: dd/mm/yyyy, iso: yyyy-mm-dd}
+  function normDate(d) {
+    if (!d) return null;
+    if (d.includes('-') && d.split('-').length === 3) {
+      const p = d.split('-');
+      return { iso: d, dmy: `${p[2]}/${p[1]}/${p[0]}` };
+    }
+    if (d.includes('/') && d.split('/').length === 3) {
+      const p = d.split('/');
+      return { dmy: d, iso: `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` };
+    }
+    return null;
+  }
+
+  // Grouper par dmy (dd/mm/yyyy) depuis progression_par_exo
+  const parDate = {};
   Object.entries(prog).forEach(([exo, perfs]) => {
     (perfs || []).forEach(p => {
-      if (!p.date) return;
-      if (!parDateISO[p.date]) parDateISO[p.date] = [];
-      parDateISO[p.date].push({ exo, charge: p.charge, reps: p.reps, rpe: p.rpe });
+      const nd = normDate(p.date);
+      if (!nd) return;
+      if (!parDate[nd.dmy]) parDate[nd.dmy] = { iso: nd.iso, exos: [] };
+      parDate[nd.dmy].exos.push({ exo, charge: p.charge, reps: p.reps, rpe: p.rpe });
     });
   });
 
-  // Construire nom séance depuis dates_seances (dd/mm/yyyy -> ISO pour lookup)
-  const nomParISO = {};
-  Object.entries(datesSeances).forEach(([dmy, nom]) => {
-    const parts = dmy.split('/');
-    if (parts.length === 3) {
-      const iso = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-      nomParISO[iso] = nom;
-    }
-  });
+  // Nom séance depuis dates_seances (clé dd/mm/yyyy)
+  const nomParDmy = {};
+  Object.entries(datesSeances).forEach(([dmy, nom]) => { nomParDmy[dmy] = nom; });
 
-  const entries = Object.keys(parDateISO).map(iso => {
-    const parts = iso.split('-');
-    const dmy = `${parts[2]}/${parts[1]}/${parts[0]}`;
-    return { iso, date: dmy, tri: new Date(iso).getTime(), seance: nomParISO[iso] || 'Séance', exos: parDateISO[iso] };
+  const entries = Object.keys(parDate).map(dmy => {
+    const { iso, exos } = parDate[dmy];
+    return { iso, date: dmy, tri: new Date(iso).getTime(), seance: nomParDmy[dmy] || 'Séance', exos };
   }).sort((a,b) => b.tri - a.tri).slice(0, 20);
 
   if (entries.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>'; return; }
