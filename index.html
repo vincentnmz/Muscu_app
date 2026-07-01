@@ -24,9 +24,9 @@
   body.light-mode header { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
   body.light-mode header h1 { color: #111; }
   body.light-mode #btn-logout { color: #e53935; }
-  body.light-mode .tabs-bar { background: #ffffff; border-bottom: 1px solid #e0e0e0; }
+  body.light-mode .tabs-bar { background: #ffffff; border-top: 1px solid #e0e0e0; }
   body.light-mode .tab-btn { color: #999; }
-  body.light-mode .tab-btn.active { color: #111; border-bottom-color: #c8f000; }
+  body.light-mode .tab-btn.active { color: #5f7400; }
   body.light-mode .card { background: #fff; border-color: #e0e0e0; }
   body.light-mode select, body.light-mode input { background: #f5f5f5; border-color: #e0e0e0; color: #111; }
   body.light-mode .btn-outline { border-color: #e0e0e0; color: #111; }
@@ -42,13 +42,21 @@
   header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
   header h1 { font-size: 17px; font-weight: 700; }
   .logout-btn { font-size: 12px; color: var(--danger); cursor: pointer; background: none; border: none; padding: 4px 8px; }
-  .tabs-bar { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; position: sticky; top: 49px; z-index: 9; }
   body { overflow-x: hidden; }
-  .tab-btn { flex: 1; padding: 12px 4px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: none; border-bottom: 2px solid transparent; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .sub-tabs { display: flex; gap: 0; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .sub-tab { flex: 1; padding: 10px; font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: var(--surface2); transition: all 0.2s; }
-  .sub-tab.active { background: rgba(200,240,0,0.1); color: var(--accent); }
+  .tabs-bar { background: var(--surface); border-top: 1px solid var(--border); display: flex; position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; z-index: 50; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 2px 7px; font-size: 10px; font-weight: 600; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: none; transition: color 0.2s; }
+  .tab-btn .tab-ico { font-size: 21px; line-height: 1; transition: transform 0.15s; }
+  .tab-btn .tab-ico svg { width: 23px; height: 23px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active .tab-ico { transform: translateY(-1px); }
+  body.has-bottom-nav { padding-bottom: 64px; }
+  body.has-bottom-nav .toast { bottom: 84px; }
+  .sub-tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 2px 0; }
+  .sub-tabs::-webkit-scrollbar { display: none; }
+  .sub-tab { flex: 0 0 auto; padding: 8px 14px; font-size: 12.5px; font-weight: 700; text-align: center; cursor: pointer; color: var(--text-muted); border: 1px solid var(--border); border-radius: 20px; background: var(--surface2); transition: all 0.2s; white-space: nowrap; }
+  .sub-tab.active { background: rgba(200,240,0,0.14); color: var(--accent); border-color: var(--accent-dim); }
+  #view-coach-detail .sub-tabs { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; z-index: 50; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  body.cd-nav { padding-bottom: 66px; }
   .container { padding: 16px 20px; max-width: 480px; margin: 0 auto; }
   .container.no-pad { padding: 0; }
   .tab-content { display: none; }
@@ -92,11 +100,14 @@
   .prog-perf { font-size: 12px; color: var(--text); margin-top: 4px; }
   .prog-cible { font-size: 12px; color: var(--accent); font-weight: 700; margin-top: 2px; }
   .prog-suggestion { background: rgba(200,240,0,0.1); border: 1px solid var(--accent-dim); border-radius: 6px; padding: 6px 10px; margin-top: 6px; font-size: 12px; color: var(--accent); }
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--success); color: #000; padding: 12px 24px; border-radius: 30px; font-weight: 700; font-size: 14px; transition: transform 0.3s ease; z-index: 100; white-space: nowrap; }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); opacity: 0; visibility: hidden; background: var(--success); color: #000; padding: 12px 24px; border-radius: 30px; font-weight: 700; font-size: 14px; transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease; z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
   .view { display: none; }
   .view.active { display: block; }
   .login-logo { text-align: center; padding: 30px 0 20px; }
+  .auth-seg { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+  .auth-seg button { flex: 1; padding: 11px; border: none; background: none; color: var(--text-muted); font-size: 13px; font-weight: 700; border-radius: 9px; cursor: pointer; transition: all 0.2s; }
+  .auth-seg button.auth-seg-active { background: var(--accent); color: #000; }
   .error-msg { color: var(--danger); font-size: 13px; text-align: center; margin-top: 4px; min-height: 20px; }
   .recap-exo { margin-bottom: 14px; }
   .recap-exo-name { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
@@ -148,6 +159,47 @@
   .exo-actuel-perf { font-size: 13px; margin-top: 8px; }
   .exo-actuel-cible { font-size: 14px; font-weight: 700; color: var(--accent); margin-top: 4px; }
   .prog-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 12px 0 6px; }
+
+  /* ===================== TABLETTE (>= 768px) ===================== */
+  @media (min-width: 768px) {
+    .container { max-width: 720px; }
+    .tabs-bar { max-width: 720px; }
+    #view-coach-detail .sub-tabs { max-width: 720px; }
+    #coach-athletes-grid { grid-template-columns: 1fr 1fr 1fr !important; }
+  }
+
+  /* ============ BUREAU : dashboard coach (>= 1024px) ============ */
+  @media (min-width: 1024px) {
+    body.coach-active #main-container {
+      max-width: 1240px; display: flex; align-items: flex-start; gap: 28px; padding: 24px;
+    }
+    /* Sidebar : liste des athlètes, toujours visible */
+    body.coach-active #view-coach.view {
+      display: block !important; flex: 0 0 340px; width: 340px;
+      position: sticky; top: 78px; max-height: calc(100vh - 100px); overflow-y: auto;
+      padding-right: 4px;
+    }
+    body.coach-active #view-coach #coach-athletes-grid { grid-template-columns: 1fr !important; }
+    /* Zone détail : toujours visible à droite */
+    body.coach-active #view-coach-detail.view {
+      display: block !important; flex: 1 1 auto; min-width: 0;
+    }
+    /* Sous-onglets : barre horizontale en haut du panneau (plus de barre fixe en bas) */
+    body.coach-active #view-coach-detail .sub-tabs {
+      position: static; max-width: none; margin: 0 0 18px; border-top: none;
+      background: none; padding: 0; z-index: auto; flex-wrap: wrap;
+    }
+    body.coach-active.cd-nav { padding-bottom: 0; }
+    /* Bouton retour inutile en mode dashboard */
+    body.coach-active #view-coach-detail > .header .btn-outline { display: none; }
+    /* Placeholder quand aucun athlète n'est sélectionné */
+    body.coach-active:not(.athlete-selected) #coach-detail-empty { display: block !important; }
+    body.coach-active:not(.athlete-selected) #view-coach-detail > .header,
+    body.coach-active:not(.athlete-selected) #view-coach-detail > .sub-tabs,
+    body.coach-active:not(.athlete-selected) #view-coach-detail > [id^="cdtab-"] { display: none !important; }
+    /* Grilles internes plus aérées sur large écran */
+    body.coach-active #cd-indicateurs > div { gap: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -161,54 +213,298 @@
 </header>
 
 <div class="tabs-bar" id="tabs-bar" style="display:none">
-  <button class="tab-btn active" onclick="switchTab('accueil')">🏠 Accueil</button>
-  <button class="tab-btn" onclick="switchTab('seance')">🏋️ Séance</button>
-  <button class="tab-btn" onclick="switchTab('objectif')">🎯 Objectif</button>
-  <button class="tab-btn" onclick="switchTab('historique')">📊 Historique</button>
+  <button class="tab-btn active" onclick="switchTab('accueil')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.4"/></svg></span><span>Accueil</span></button>
+  <button class="tab-btn" onclick="switchTab('objectif')"><span class="tab-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg></span><span>Objectif</span></button>
+  <button class="tab-btn" onclick="switchTab('seance')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M6.5 6v12M3.5 8.5v7M17.5 6v12M20.5 8.5v7M6.5 12h11"/></svg></span><span>Séance</span></button>
+  <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M6 21v-7M12 21V5M18 21v-10"/></svg></span><span>Historique</span></button>
+  <button class="tab-btn" onclick="switchTab('conseils')" style="position:relative"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.5A8 8 0 1 1 21 11.5z"/></svg></span><span>Conseils</span><span id="badge-conseils" style="display:none;position:absolute;top:2px;right:12px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
 </div>
 
 <div class="container" id="main-container">
 
   <!-- LOGIN -->
   <div id="view-login" class="view active">
-    <div class="login-logo">
-      <div style="font-size:48px">💪</div>
-      <div style="font-size:22px;font-weight:800;margin-top:8px">Séance Muscu</div>
-      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Connecte-toi pour commencer</div>
+    <div class="login-logo" style="padding:42px 0 26px">
+      <div style="width:74px;height:74px;border-radius:20px;background:rgba(200,240,0,0.12);border:1px solid var(--accent-dim);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:38px">💪</div>
+      <div style="font-size:24px;font-weight:800;margin-top:14px;letter-spacing:-0.5px">Séance Muscu</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Ton carnet d'entraînement intelligent</div>
     </div>
-    <div class="card">
-      <div class="card-title">Connexion</div>
-      <label>Login (4 chiffres)</label>
-      <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
-      <div id="login-error" class="error-msg"></div>
-      <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
+
+    <div class="auth-seg">
+      <button id="authtab-login" class="auth-seg-active" onclick="switchAuthMode('login')">Se connecter</button>
+      <button id="authtab-signup" onclick="switchAuthMode('signup')">Créer un compte</button>
     </div>
-    <div class="card">
-      <div class="card-title">Première fois ? Créer un compte</div>
-      <div class="row2">
-        <div>
-          <label>Prénom</label>
-          <input type="text" id="reg-prenom" placeholder="Prénom">
+
+    <div id="auth-login">
+      <div class="card">
+        <label>Login (4 chiffres)</label>
+        <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
+        <div id="login-error" class="error-msg"></div>
+        <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
+      </div>
+    </div>
+
+    <div id="auth-signup" style="display:none">
+      <div class="card">
+        <div class="row2">
+          <div>
+            <label>Prénom</label>
+            <input type="text" id="reg-prenom" placeholder="Prénom">
+          </div>
+          <div>
+            <label>Taille (cm)</label>
+            <input type="number" id="reg-taille" placeholder="175">
+          </div>
         </div>
-        <div>
-          <label>Taille (cm)</label>
-          <input type="number" id="reg-taille" placeholder="175">
+        <div class="row2">
+          <div>
+            <label>Login (4 chiffres)</label>
+            <input type="password" id="reg-login" maxlength="4" placeholder="••••" inputmode="numeric">
+          </div>
+          <div>
+            <label>Années de pratique</label>
+            <input type="number" id="reg-annees" placeholder="Ex: 3" min="0" max="50">
+          </div>
+        </div>
+        <label>Date de naissance</label>
+        <input type="date" id="reg-ddn">
+        <div id="reg-error" class="error-msg"></div>
+        <button class="btn btn-accent" onclick="sInscrire()">Créer mon compte</button>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:14px">
+      <a href="#" id="lien-espace-coach" onclick="toggleEspaceCoach(event)" style="font-size:13px;color:var(--text-muted)">Espace coach</a>
+    </div>
+    <div class="card" id="card-login-coach" style="display:none">
+      <div class="card-title">Connexion coach</div>
+      <label>Login coach</label>
+      <input type="password" id="inp-login-coach" placeholder="Login coach">
+      <div id="login-coach-error" class="error-msg"></div>
+      <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter (coach)</button>
+    </div>
+  </div>
+
+  <!-- VUE COACH -->
+  <div id="view-coach" class="view">
+    <div class="header" style="margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
+        <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
+      </div>
+      <button class="btn-sm btn-outline" onclick="seDeconnecterCoach()">Déconnexion</button>
+    </div>
+
+    <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
+
+    <div id="coach-home-body" style="display:none">
+      <!-- Stats rapides -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="dash-card" style="text-align:center;padding:14px">
+          <div class="dash-big-num" id="coach-stat-total">—</div>
+          <div class="dash-label" style="margin:0">Athlètes</div>
+        </div>
+        <div class="dash-card" style="text-align:center;padding:14px">
+          <div class="dash-big-num" id="coach-stat-surveiller" style="color:#f59f00">—</div>
+          <div class="dash-label" style="margin:0">À surveiller</div>
         </div>
       </div>
-      <div class="row2">
-        <div>
-          <label>Login (4 chiffres)</label>
-          <input type="password" id="reg-login" maxlength="4" placeholder="••••" inputmode="numeric">
+
+      <!-- select caché conservé pour compatibilité JS -->
+      <select id="coach-select-athlete" style="display:none">
+        <option value="">—</option>
+      </select>
+
+      <!-- BANDEAU A SURVEILLER -->
+      <div id="coach-surveiller-card" class="dash-card dash-card-accent-orange" style="padding:16px;display:none">
+        <div class="dash-label" id="coach-surveiller-titre">⚠️ À surveiller</div>
+        <div id="coach-surveiller-content"></div>
+      </div>
+
+      <!-- VUE GLOBALE ATHLETES -->
+      <div style="margin-top:12px">
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;font-weight:700">Tous les athlètes</div>
+        <div id="coach-athletes-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VUE DETAIL ATHLETE (COACH) -->
+  <div id="view-coach-detail" class="view">
+    <!-- Placeholder desktop : aucun athlète sélectionné -->
+    <div id="coach-detail-empty" style="display:none;text-align:center;color:var(--text-muted);padding:90px 20px;">
+      <div style="font-size:44px;margin-bottom:14px;">👈</div>
+      <div style="font-size:16px;font-weight:800;color:var(--text);">Sélectionne un athlète</div>
+      <div style="font-size:13px;margin-top:6px;">Choisis un athlète dans la liste pour afficher son suivi.</div>
+    </div>
+    <div class="header">
+      <button class="btn-sm btn-outline" onclick="retourCoachDetail()">⬅️ Retour</button>
+      <div style="text-align:right">
+        <div id="header-nom-athlete-coach" style="font-weight:800">Athlète</div>
+        <div id="header-niveau-athlete-coach" style="font-size:11px;color:var(--text-muted)"></div>
+      </div>
+    </div>
+
+    <!-- Sous-onglets coach -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" id="cdtab-btn-overview" onclick="switchCoachDetailTab('overview')">📊 Aperçu</button>
+      <button class="sub-tab" id="cdtab-btn-seances" onclick="switchCoachDetailTab('seances')">📅 Séances</button>
+      <button class="sub-tab" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')">📈 Progression</button>
+      <button class="sub-tab" id="cdtab-btn-volume" onclick="switchCoachDetailTab('volume')">💪 Volume</button>
+      <button class="sub-tab" id="cdtab-btn-conseils" onclick="ouvrirConversationCoach()" style="position:relative">💬 Conversation<span id="badge-conseils-coach" style="display:none;position:absolute;top:2px;right:6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;"></span></button>
+      <button class="sub-tab" id="cdtab-btn-programme" onclick="switchCoachDetailTab('programme')">📋 Programme</button>
+    </div>
+
+    <!-- ONGLET APERÇU -->
+    <div id="cdtab-overview">
+      <!-- TABLEAU DE BORD INDICATEURS -->
+      <div class="dash-card" style="padding:16px;margin-bottom:10px;">
+        <div class="dash-label" style="margin-bottom:10px;">🚦 Tableau de bord</div>
+        <div id="cd-indicateurs"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="dash-card" id="cd-alertes-card" style="padding:16px">
+        <div class="dash-label">🚨 Alertes</div>
+        <div id="cd-alertes"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="dash-card" id="cd-acwr-card" style="padding:16px">
+        <div class="dash-label">⚡ Charge aiguë / chronique (ACWR)</div>
+        <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="dash-card">
+          <div class="dash-label">Régularité semaine</div>
+          <div class="dash-big-num"><span id="cd-reg-faites">—</span><span style="font-size:12px;color:#999;font-weight:400"> / <span id="cd-reg-prevues">—</span></span></div>
+          <div class="dash-bar-bg" style="background:var(--surface2);border-radius:20px;height:6px;margin-top:6px"><div id="cd-reg-bar" style="background:var(--accent);height:100%;width:0%;border-radius:20px"></div></div>
         </div>
-        <div>
-          <label>Années de pratique</label>
-          <input type="number" id="reg-annees" placeholder="Ex: 3" min="0" max="50">
+        <div class="dash-card">
+          <div class="dash-label">Dernière séance</div>
+          <div style="font-size:16px;font-weight:800;margin-top:4px" id="cd-derniere-date">—</div>
+          <div style="font-size:11px;color:var(--text-muted)" id="cd-derniere-nom"></div>
         </div>
       </div>
-      <label>Date de naissance</label>
-      <input type="date" id="reg-ddn">
-      <div id="reg-error" class="error-msg"></div>
-      <button class="btn btn-outline" onclick="sInscrire()">Créer mon compte</button>
+      <div class="dash-card" id="cd-recup-card" style="padding:16px">
+        <div class="dash-label">🧠 Récupération</div>
+        <div id="cd-recup"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="dash-card" id="cd-prog-card" style="padding:16px">
+        <div class="dash-label">📈 Progression cette semaine</div>
+        <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="dash-card dash-card-accent-orange" id="cd-muscle-card" style="padding:16px">
+        <div class="dash-label">⚠️ Muscle en retard</div>
+        <div id="cd-muscle"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="dash-card" style="padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <div class="dash-label">⚖️ Évolution du poids</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
+              <span style="font-size:26px;font-weight:800;color:var(--text)" id="cd-graph-poids-actuel">—</span>
+              <span style="font-size:13px;color:var(--text-muted)">kg</span>
+              <span style="font-size:12px;font-weight:700" id="cd-graph-poids-evol"></span>
+            </div>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button onclick="cdFiltrerGraphPoids('1m')" id="cd-gp-1m" style="background:var(--text);color:var(--bg);border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer">1M</button>
+            <button onclick="cdFiltrerGraphPoids('3m')" id="cd-gp-3m" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">3M</button>
+            <button onclick="cdFiltrerGraphPoids('all')" id="cd-gp-all" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">Tout</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <svg id="cd-graph-poids-svg" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;overflow:visible">
+            <text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Chargement...</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ONGLET SÉANCES -->
+    <div id="cdtab-seances" style="display:none">
+      <div class="card">
+        <div class="card-title">📅 Historique des séances</div>
+        <div id="cd-seances-detail-content"><div class="loader">Chargement...</div></div>
+      </div>
+      <div class="card" id="cd-acwr-history-card">
+        <div class="card-title">⚡ Volume relatif hebdomadaire (8 semaines)</div>
+        <div id="cd-acwr-chart-content"></div>
+      </div>
+    </div>
+
+    <!-- ONGLET CONSEILS -->
+    <div id="cdtab-conseils" style="display:none">
+      <div class="card" id="cd-commentaires-card" style="padding:0;overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;">💬 Conversation</div>
+        <div id="cd-commentaires-liste" style="max-height:55vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
+        <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="cd-comment-input" placeholder="Message à l'athlète…"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;resize:none;min-height:40px;max-height:100px;font-family:inherit;line-height:1.4;"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerCommentaireCoach();}"></textarea>
+          <button onclick="envoyerCommentaireCoach()" style="background:var(--accent);border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:18px;flex-shrink:0;">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ONGLET PROGRESSION -->
+    <div id="cdtab-prog" style="display:none">
+      <div class="card">
+        <div class="card-title">📈 Progression par exercice</div>
+        <select id="cd-sel-exercice" onchange="afficherCoachProgressionExo()" style="margin-bottom:10px">
+          <option value="">— Choisir un exercice —</option>
+        </select>
+        <div id="cd-progression-content"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Tendances</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button onclick="afficherCoachTendances(4)" id="cd-btn-tend-4" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer">4 sem.</button>
+          <button onclick="afficherCoachTendances(8)" id="cd-btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">8 sem.</button>
+        </div>
+        <div id="cd-tendances-content"><div class="loader">Chargement...</div></div>
+      </div>
+    </div>
+
+    <!-- ONGLET VOLUME -->
+    <div id="cdtab-volume" style="display:none">
+      <div class="card">
+        <div class="card-title">💪 Volume par muscle — semaine en cours</div>
+        <div id="cd-volume-content"><div class="loader">Chargement...</div></div>
+      </div>
+    </div>
+
+    <!-- ONGLET AGENDA -->
+    <div id="cdtab-cal" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700;color:var(--text)" id="cd-cal-titre">Mois</span>
+          <div style="display:flex;gap:12px">
+            <span onclick="cdCalNaviguer(-1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700">◀</span>
+            <span onclick="cdCalNaviguer(1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700">▶</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:5px">
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">L</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">M</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">M</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">J</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">V</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">S</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px">D</div>
+        </div>
+        <div id="cd-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Séances récentes</div>
+        <div id="cd-seances-content"></div>
+      </div>
+    </div>
+
+    <!-- ONGLET PROGRAMME -->
+    <div id="cdtab-programme" style="display:none">
+      <div class="card">
+        <div class="card-title">📋 Programme</div>
+        <div id="cd-programme-content"><div class="loader">Chargement...</div></div>
+        <button class="btn btn-outline" style="margin-top:10px" onclick="cdAjouterSeance()">+ Nouvelle séance</button>
+      </div>
     </div>
   </div>
 
@@ -240,8 +536,8 @@
       </div>
 
       <!-- Progression -->
-      <div class="dash-card dash-card-accent-green" id="dash-prog-card" style="padding:16px;">
-        <div class="dash-label">📈 Progression cette semaine</div>
+      <div class="dash-card dash-card-accent-green" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
+        <div class="dash-label">📈 Progression cette semaine <span style="float:right;font-size:11px;color:var(--accent);">Voir tout →</span></div>
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
       </div>
 
@@ -300,6 +596,19 @@
 
         <!-- SAISIE -->
         <div id="saisie-block">
+
+          <!-- Barre de progression de la séance en cours -->
+          <div id="seance-progress" style="display:none;position:sticky;top:49px;z-index:8;background:var(--bg);padding-top:6px;margin-bottom:10px">
+            <div style="background:var(--surface);border:1px solid var(--accent-dim);border-radius:12px;padding:12px 14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <div style="font-size:15px;font-weight:800" id="seance-progress-titre">Séance</div>
+                <div style="font-size:12px;color:var(--text-muted)"><span id="seance-progress-series" style="color:var(--accent);font-weight:700">0</span> séries</div>
+              </div>
+              <div class="dash-bar-bg" style="height:6px"><div id="seance-progress-bar" style="background:var(--accent);height:100%;width:0%;border-radius:20px;transition:width 0.3s"></div></div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:6px" id="seance-progress-detail">0 / 0 exercices</div>
+            </div>
+          </div>
+
           <!-- Choix séance -->
           <div class="card" id="card-choix-seance">
             <div class="card-title">Ma séance</div>
@@ -312,17 +621,7 @@
                 <label>Type de séance</label>
                 <select id="sel-seance-id" onchange="demarrerSeance()">
                   <option value="">— Choisir —</option>
-                  <option value="Full body">Full body</option>
-                  <option value="Upper">Upper</option>
-                  <option value="Push">Push</option>
-                  <option value="Pull">Pull</option>
-                  <option value="Jambes compléte">Jambes compléte</option>
-                  <option value="Jambes Quadriceps">Jambes Quadriceps</option>
-                  <option value="Jambes Ischio-fessier">Jambes Ischio-fessier</option>
-                  <option value="Dos Bras">Dos Bras</option>
-                  <option value="Dos Epaule">Dos Epaule</option>
-                  <option value="Pec Bras">Pec Bras</option>
-                  <option value="Pec Epaule">Pec Epaule</option>
+                  <option value="Libre">Libre</option>
                 </select>
               </div>
             </div>
@@ -358,6 +657,7 @@
 
           <!-- Exercice actuel guidé -->
           <div id="card-exo-actuel" style="display:none">
+            <div id="superset-banner" style="display:none;background:var(--surface);border:1px solid var(--accent-dim);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px"></div>
             <div class="exo-actuel-card">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
                 <div>
@@ -377,17 +677,19 @@
             <!-- Saisie série -->
             <div class="card">
               <div class="card-title">Ajouter une série</div>
-              <div class="row3">
+              <div class="row2" style="gap:12px">
                 <div>
-                  <label>Charge kg</label>
-                  <input type="number" id="inp-charge" placeholder="0" step="0.5" min="0">
+                  <label>Charge (kg)</label>
+                  <input type="number" id="inp-charge" placeholder="0" step="0.5" min="0" inputmode="decimal" style="font-size:24px;font-weight:800;text-align:center;padding:14px 8px">
                 </div>
                 <div>
                   <label>Reps</label>
-                  <input type="number" id="inp-reps" placeholder="0" min="1">
+                  <input type="number" id="inp-reps" placeholder="0" min="1" inputmode="numeric" style="font-size:24px;font-weight:800;text-align:center;padding:14px 8px">
                 </div>
+              </div>
+              <div class="row2" style="gap:12px">
                 <div>
-                  <label>RPE</label>
+                  <label>RPE (intensité)</label>
                   <select id="sel-rpe">
                     <option value="">—</option>
                     <option value="10">10 - Échec</option>
@@ -397,100 +699,27 @@
                     <option value="6">6 - Facile</option>
                   </select>
                 </div>
+                <div>
+                  <label>Repos</label>
+                  <select id="sel-repos">
+                    <option value="0">0s</option>
+                    <option value="30">30s</option>
+                    <option value="60">60s</option>
+                    <option value="90">90s</option>
+                    <option value="120" selected>120s</option>
+                    <option value="180">180s</option>
+                    <option value="240">240s</option>
+                  </select>
+                </div>
               </div>
-              <label>Repos</label>
-              <select id="sel-repos">
-                <option value="0">0s</option>
-                <option value="30">30s</option>
-                <option value="60">60s</option>
-                <option value="90">90s</option>
-                <option value="120" selected>120s</option>
-                <option value="180">180s</option>
-                <option value="240">240s</option>
-              </select>
-              <button class="btn btn-accent" onclick="ajouterSerie()">+ Ajouter cette série</button>
+              <button class="btn btn-accent" onclick="ajouterSerie()" style="padding:16px;font-size:16px">+ Ajouter cette série</button>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
               <button class="btn btn-outline" onclick="retourListeSeance()">⬅️ Liste</button>
               <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer l'exercice</button>
             </div>
-
-            
-
-          <!-- Exercice hors programme -->
-                        <label>Muscle</label>
-              <select id="sel-muscle-libre" onchange="peuplerExercicesLibres()">
-                <option value="">— Choisir —</option>
-              </select>
-              <label>Exercice</label>
-              <select id="sel-exercice-libre">
-                <option value="">— Choisir —</option>
-              </select>
-              <button class="btn btn-accent" onclick="choisirExoLibre()">Choisir cet exercice</button>
-            </div>
-            <div id="liste-exercices-seance"></div>
           </div>
-
-          <!-- Exercice actuel guidé -->
-          <div id="card-exo-actuel" style="display:none">
-            <div class="exo-actuel-card">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                <div>
-                  <div class="exo-actuel-nom" id="exo-actuel-nom"></div>
-                  <div class="exo-actuel-detail" id="exo-actuel-detail"></div>
-                </div>
-                <span class="badge-accent" id="badge-series-actuel">0 séries</span>
-              </div>
-              <div class="exo-actuel-perf" id="exo-actuel-perf"></div>
-              <div class="exo-actuel-cible" id="exo-actuel-cible"></div>
-              <div id="exo-actuel-suggestion"></div>
-            </div>
-
-            <!-- Séries déjà faites -->
-            <div id="series-list-actuel" style="margin-bottom:10px"></div>
-
-            <!-- Saisie série -->
-            <div class="card">
-              <div class="card-title">Ajouter une série</div>
-              <div class="row3">
-                <div>
-                  <label>Charge kg</label>
-                  <input type="number" id="inp-charge" placeholder="0" step="0.5" min="0">
-                </div>
-                <div>
-                  <label>Reps</label>
-                  <input type="number" id="inp-reps" placeholder="0" min="1">
-                </div>
-                <div>
-                  <label>RPE</label>
-                  <select id="sel-rpe">
-                    <option value="">—</option>
-                    <option value="10">10 - Échec</option>
-                    <option value="9">9 - 1 rep en réserve</option>
-                    <option value="8">8 - 2 reps en réserve</option>
-                    <option value="7">7 - 3 reps en réserve</option>
-                    <option value="6">6 - Facile</option>
-                  </select>
-                </div>
-              </div>
-              <label>Repos</label>
-              <select id="sel-repos">
-                <option value="0">0s</option>
-                <option value="30">30s</option>
-                <option value="60">60s</option>
-                <option value="90">90s</option>
-                <option value="120" selected>120s</option>
-                <option value="180">180s</option>
-                <option value="240">240s</option>
-              </select>
-              <button class="btn btn-accent" onclick="ajouterSerie()">+ Ajouter cette série</button>
-            </div>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <button class="btn btn-outline" onclick="retourListeSeance()">⬅️ Liste</button>
-              <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer l'exercice</button>
-            </div>
 
         </div>
       </div>
@@ -629,6 +858,20 @@
 
     </div>
 
+    <!-- ONGLET CONSEILS -->
+    <div id="tab-conseils" class="tab-content">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;">💬 Conversation avec ton coach</div>
+        <div id="conseils-content" style="max-height:60vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
+        <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="athlete-chat-input" placeholder="Répondre à ton coach…"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;resize:none;min-height:40px;max-height:100px;font-family:inherit;line-height:1.4;"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerMessageAthleteCoach();}"></textarea>
+          <button onclick="envoyerMessageAthleteCoach()" style="background:var(--accent);border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:18px;flex-shrink:0;">➤</button>
+        </div>
+      </div>
+    </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -673,7 +916,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyi1Fq6BkstUGTm1on47GSFa5HTMCgtkODrA36gDQw0ieJh9Eb-wtocBlEfflhNvig-/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEj4SEA0wzmXcPWECRGCURsSTIbIMu81sFktWtQM86E2-3zgR7LCz-G9sqz2mLHUcQ/exec";
 
 const MAPPING_SEANCE = {
   'Full body':             null,
@@ -696,11 +939,39 @@ let serieNum = 1;
 let exercicesData = [];
 let programmeSeance = [];
 let lastPerfData = {};
+function couleurGroupe(g) { const c = ['#c8f000','#00c9ff','#ff8800','#ff44aa']; let h=0; for (let i=0;i<g.length;i++) h=(h*31+g.charCodeAt(i))%c.length; return c[h]; }
+
+function normaliserNomExo(s) {
+  return String(s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function getPerf(nom) {
+  if (lastPerfData[nom]) return lastPerfData[nom];
+  const cible = normaliserNomExo(nom);
+  const cle = Object.keys(lastPerfData).find(k => normaliserNomExo(k) === cible);
+  return cle ? lastPerfData[cle] : null;
+}
+
+function getNiveauExperience(annees) {
+  const a = Number(annees) || 0;
+  if (a <= 3) return 'debutant';
+  if (a <= 7) return 'intermediaire';
+  if (a <= 12) return 'avance';
+  return 'expert';
+}
 let indexExoProgramme = 0;
 let historiqueData = [];
 
 // ==================== SESSION ====================
 window.addEventListener('load', async () => {
+  const savedCoach = localStorage.getItem('muscu_coach');
+  if (savedCoach) {
+    try {
+      coach = JSON.parse(savedCoach);
+      await ouvrirEspaceCoach();
+      return;
+    } catch(e) { localStorage.removeItem('muscu_coach'); }
+  }
   const saved = localStorage.getItem('muscu_athlete');
   if (saved) {
     try {
@@ -751,16 +1022,1473 @@ async function sInscrire() {
   } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
 }
 
+function arreterChronoEtReinitSeance() {
+  if (typeof timerInterval !== 'undefined' && timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  const ov = document.getElementById('timer-overlay');
+  if (ov) ov.classList.remove('active');
+  seance = []; exoEnCours = null; serieNum = 1; programmeSeance = [];
+  ['card-exo-actuel','card-liste-seance','card-hors-programme','recap-block','seance-progress'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  const sb = document.getElementById('saisie-block'); if (sb) sb.style.display = 'block';
+  const sel = document.getElementById('sel-seance-id'); if (sel) sel.value = '';
+  const bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
+}
+
 function seDeconnecter() {
-  athlete = null; seance = []; exoEnCours = null; serieNum = 1;
+  arreterChronoEtReinitSeance();
+  athlete = null;
   localStorage.removeItem('muscu_athlete');
   document.getElementById('view-login').classList.add('active');
   document.getElementById('view-app').classList.remove('active');
   document.getElementById('tabs-bar').style.display = 'none';
+  document.body.classList.remove('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'none';
   document.getElementById('header-nom').textContent = 'Muscu';
   document.getElementById('inp-login').value = '';
   document.getElementById('login-error').textContent = '';
+  switchTab('accueil');
+}
+
+// ==================== ESPACE COACH ====================
+let coach = null;
+let athletesCoach = [];
+
+function toggleEspaceCoach(ev) {
+  ev.preventDefault();
+  const card = document.getElementById('card-login-coach');
+  card.style.display = card.style.display === 'none' ? 'block' : 'none';
+}
+
+async function seConnecterCoach() {
+  const login = document.getElementById('inp-login-coach').value.trim();
+  const errEl = document.getElementById('login-coach-error');
+  errEl.textContent = '';
+  if (!login) { errEl.textContent = 'Entre ton login coach.'; return; }
+  errEl.textContent = 'Connexion...';
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=loginCoach&login=${encodeURIComponent(login)}`);
+    const data = await res.json();
+    if (data.success) {
+      coach = data.coach;
+      localStorage.setItem('muscu_coach', JSON.stringify(coach));
+      ouvrirEspaceCoach();
+    } else { errEl.textContent = 'Login coach incorrect.'; }
+  } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
+}
+
+function seDeconnecterCoach() {
+  coach = null;
+  localStorage.removeItem('muscu_coach');
+  localStorage.removeItem('muscu_coach_vue');
+  document.body.classList.remove('coach-active');
+  document.body.classList.remove('athlete-selected');
+  document.getElementById('btn-theme').style.display = 'none';
+  document.getElementById('view-coach').classList.remove('active');
+  document.getElementById('view-coach-detail').classList.remove('active');
+  document.body.classList.remove('cd-nav');
+  document.getElementById('view-login').classList.add('active');
+  // Remettre l'écran de connexion à son état de base
+  document.getElementById('card-login-coach').style.display = 'none';
+  document.getElementById('login-coach-error').textContent = '';
+  document.getElementById('inp-login-coach').value = '';
+  switchAuthMode('login');
+}
+
+async function ouvrirEspaceCoach() {
+  arreterChronoEtReinitSeance();
+  document.body.classList.add('coach-active');
+  document.getElementById('view-login').classList.remove('active');
+  document.getElementById('view-coach').classList.add('active');
+  document.body.classList.remove('has-bottom-nav');
+  document.getElementById('tabs-bar').style.display = 'none';
+  // Thème clair/sombre disponible aussi côté coach
+  const btnTheme = document.getElementById('btn-theme');
+  btnTheme.style.display = 'block';
+  if (localStorage.getItem('muscu_theme') === 'light') {
+    document.body.classList.add('light-mode');
+    btnTheme.textContent = '🌙';
+  } else {
+    document.body.classList.remove('light-mode');
+    btnTheme.textContent = '☀️';
+  }
+  document.getElementById('header-nom-coach').textContent = coach.nom;
+  const listeEl = document.getElementById('liste-athletes-coach');
+  listeEl.innerHTML = '<div class="loader">Chargement...</div>';
+  await chargerAlertesTraitees();
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCoachAthletes&coach_id=${encodeURIComponent(coach.coach_id)}`);
+    const data = await res.json();
+    const athletes = data.athletes || [];
+    if (athletes.length === 0) {
+      document.getElementById('coach-home-body').style.display = 'none';
+      listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
+      return;
+    }
+    athletesCoach = athletes;
+    renderListeAthletesCoach();
+    // Restaurer la fiche athlète consultée avant un rechargement
+    try {
+      const vue = JSON.parse(localStorage.getItem('muscu_coach_vue') || 'null');
+      if (vue && vue.athlete_id) {
+        const a = athletesCoach.find(x => String(x.athlete_id) === String(vue.athlete_id));
+        if (a) { await ouvrirDetailAthleteCoach(a, vue.tab); }
+      }
+    } catch(e) {}
+  } catch(e) {
+    listeEl.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+  }
+}
+
+function renderListeAthletesCoach() {
+  document.getElementById('liste-athletes-coach').innerHTML = '';
+  document.getElementById('coach-home-body').style.display = 'block';
+  renderCoachSurveiller(athletesCoach);
+  renderCoachAthleteGrid(athletesCoach);
+
+  // Stats rapides
+  document.getElementById('coach-stat-total').textContent = athletesCoach.length;
+  const nbSurv = athletesCoach.filter(a => alertesActives(a).length > 0).length;
+  document.getElementById('coach-stat-surveiller').textContent = nbSurv;
+
+  // Menu déroulant : athlètes à surveiller d'abord, puis ordre alphabétique
+  const sel = document.getElementById('coach-select-athlete');
+  const tri = athletesCoach
+    .map((a, i) => ({ a, i, nbAl: alertesActives(a).length }))
+    .sort((x, y) => (y.nbAl - x.nbAl) || String(x.a.nom).localeCompare(String(y.a.nom)));
+  sel.innerHTML = '<option value="">— Choisir un athlète —</option>' +
+    tri.map(o => `<option value="${o.i}">${o.a.nom}${o.nbAl > 0 ? '  ⚠️ ' + o.nbAl : ''}</option>`).join('');
+  sel.value = '';
+}
+
+function ouvrirAthleteDepuisSelect(idx) {
+  if (idx === '' || idx === null || idx === undefined) return;
+  const a = athletesCoach[Number(idx)];
+  if (a) ouvrirDetailAthleteCoach(a);
+}
+
+// ---- Alertes traitées (stockage local, remise à zéro chaque semaine) ----
+function lundiCourantISO() {
+  const d = new Date();
+  const jour = d.getDay();
+  const diff = (jour === 0 ? -6 : 1 - jour);
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d.toISOString().split('T')[0];
+}
+let alertesTraiteesCache = {};
+async function chargerAlertesTraitees() {
+  if (!coach) { alertesTraiteesCache = {}; return; }
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getAlertesTraitees&coach_id=${encodeURIComponent(coach.coach_id)}`);
+    const data = await res.json();
+    alertesTraiteesCache = data.traitees || {};
+  } catch(e) { alertesTraiteesCache = {}; }
+}
+function identifiantStableAlerte(al) {
+  // Le message peut contenir des valeurs dynamiques (RPE, %) qui changent à chaque recalcul.
+  // On utilise un identifiant stable : le type, + le nom de l'exercice pour les stagnations.
+  if (al.type === 'stagnation') return 'stagnation|' + al.message.split(' : aucun progrès')[0];
+  return al.type || al.message;
+}
+function cleAlerte(athleteId, al) { return athleteId + '|' + identifiantStableAlerte(al); }
+function alerteEstTraitee(athleteId, al) {
+  return alertesTraiteesCache[cleAlerte(athleteId, al)] === lundiCourantISO();
+}
+function marquerAlerteTraitee(athleteId, al) {
+  if (!coach) return;
+  const cle = cleAlerte(athleteId, al);
+  alertesTraiteesCache[cle] = lundiCourantISO();
+  renderListeAthletesCoach();
+  fetch(SCRIPT_URL, {
+    method: 'POST', headers: {'Content-Type': 'text/plain'},
+    body: JSON.stringify({ action: 'marquerAlerteTraitee', coach_id: coach.coach_id, cle, semaine: lundiCourantISO() })
+  });
+}
+function alertesActives(a) {
+  return (a.alertes || []).filter(al => !alerteEstTraitee(a.athlete_id, al));
+}
+
+function renderCoachSurveiller(athletes) {
+  const card = document.getElementById('coach-surveiller-card');
+  const titre = document.getElementById('coach-surveiller-titre');
+  const content = document.getElementById('coach-surveiller-content');
+  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
+
+  // Athlètes avec au moins une alerte NON TRAITÉE
+  const aSurveiller = athletes.filter(a => alertesActives(a).length > 0);
+
+  if (aSurveiller.length === 0) {
+    card.className = 'dash-card dash-card-accent-green';
+    titre.textContent = '✅ Tout va bien';
+    content.innerHTML = '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">Aucun athlète ne nécessite ton attention cette semaine.</div>';
+    card.style.display = 'block';
+    return;
+  }
+
+  card.className = 'dash-card dash-card-accent-orange';
+  const nb = aSurveiller.length;
+  titre.textContent = `⚠️ ${nb} athlète${nb>1?'s':''} à surveiller`;
+
+  content.innerHTML = aSurveiller.map((a, i) => {
+    const alertes = alertesActives(a);
+    const sevMax = alertes.some(al => al.severite === 'haute') ? 'haute'
+      : alertes.some(al => al.severite === 'moyenne') ? 'moyenne' : 'basse';
+    const couleur = couleurSeverite[sevMax];
+    const lignesAlertes = alertes.map((al, j) => `
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <div style="flex:1;font-size:11px;color:${couleurSeverite[al.severite] || '#a3a3a3'};font-weight:600">⚠️ ${al.message}${al.recurrence_semaines > 1 ? ` <span style="color:var(--text-muted);font-weight:400">(depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
+        <button class="btn-sm btn-outline btn-traiter" data-aidx="${i}" data-jidx="${j}" style="white-space:nowrap" onclick="event.stopPropagation()">✓ Traité</button>
+      </div>`).join('');
+    return `
+      <div style="padding:10px;background:${couleur}1a;border-radius:8px;margin-top:8px">
+        <div class="coach-surv-head" data-idx="${i}" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div style="background:${couleur};color:#fff;font-weight:800;font-size:13px;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center">${i+1}</div>
+          <div style="flex:1;font-size:14px;font-weight:800">${a.nom}</div>
+          <div style="font-size:16px;color:${couleur}">›</div>
+        </div>
+        ${lignesAlertes}
+      </div>`;
+  }).join('');
+
+  // Clic sur l'en-tête → ouvrir le détail
+  content.querySelectorAll('.coach-surv-head').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.getAttribute('data-idx'));
+      ouvrirDetailAthleteCoach(aSurveiller[idx]);
+    });
+  });
+  // Clic sur "Traité" → masquer cette alerte pour la semaine
+  content.querySelectorAll('.btn-traiter').forEach(el => {
+    el.addEventListener('click', () => {
+      const a = aSurveiller[parseInt(el.getAttribute('data-aidx'))];
+      const al = alertesActives(a)[parseInt(el.getAttribute('data-jidx'))];
+      if (a && al) marquerAlerteTraitee(a.athlete_id, al);
+    });
+  });
+
+  card.style.display = 'block';
+}
+
+// ==================== DETAIL ATHLETE (COACH) ====================
+let coachAthleteData = null;       // résultat getAppData de l'athlète sélectionné
+let coachAthleteCourant = null;    // objet athlète (depuis la liste, contient alertes/annees)
+let cdProgressionData = {};
+let cdTendancesData = null;
+let cdSeancesDates = {};
+let cdCalDate = new Date();
+
+function retourListeAthletesCoach() {
+  document.getElementById('view-coach-detail').classList.remove('active');
+  document.getElementById('view-coach').classList.add('active');
+  document.body.classList.remove('cd-nav');
+  document.body.classList.remove('athlete-selected');
+  coachAthleteCourant = null;
+  localStorage.removeItem('muscu_coach_vue');
+  const sel = document.getElementById('coach-select-athlete');
+  if (sel) sel.value = '';
+}
+
+// Retour contextuel : depuis un onglet -> Aperçu ; depuis l'Aperçu -> liste des athlètes
+function retourCoachDetail() {
+  const ov = document.getElementById('cdtab-overview');
+  if (ov && ov.style.display === 'none') {
+    switchCoachDetailTab('overview');
+    window.scrollTo(0, 0);
+  } else {
+    retourListeAthletesCoach();
+  }
+}
+
+function switchCoachDetailTab(tab) {
+  ['overview','seances','prog','volume','cal','conseils','programme'].forEach(t => {
+    const el = document.getElementById('cdtab-' + t); if (el) el.style.display = t === tab ? 'block' : 'none';
+    const btn = document.getElementById('cdtab-btn-' + t); if (btn) btn.classList.toggle('active', t === tab);
+  });
+  // Repart en haut du contenu à chaque changement d'onglet (évite les sauts de scroll)
+  window.scrollTo(0, 0);
+  // Fait défiler la pastille active au centre (pour que Programme & co restent accessibles)
+  const btnActif = document.getElementById('cdtab-btn-' + tab);
+  if (btnActif && btnActif.scrollIntoView) btnActif.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  // Mémoriser l'onglet courant pour le restaurer après un rechargement
+  if (coachAthleteCourant) {
+    try { localStorage.setItem('muscu_coach_vue', JSON.stringify({ athlete_id: coachAthleteCourant.athlete_id, tab: tab })); } catch(e) {}
+  }
+  if (tab === 'programme') chargerProgrammeCoach();
+}
+
+function coachNiveauKey(annees) {
+  const n = getNiveauExperience(annees); // debutant / intermediaire / avance / expert
+  if (n === 'debutant') return 'debutant';
+  if (n === 'intermediaire') return 'intermediaire';
+  return 'experimente'; // avance + expert
+}
+
+async function ouvrirDetailAthleteCoach(a, initialTab) {
+  coachAthleteCourant = a;
+  document.getElementById('view-coach').classList.remove('active');
+  document.getElementById('view-coach-detail').classList.add('active');
+  document.body.classList.add('cd-nav');
+  document.body.classList.add('athlete-selected');
+  surlignerAthleteSidebar(a.athlete_id);
+  document.getElementById('header-nom-athlete-coach').textContent = a.nom;
+  const niv = getNiveauExperience(a.annees_pratique);
+  const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv];
+  document.getElementById('header-niveau-athlete-coach').textContent =
+    `${nivLabel} · ${a.annees_pratique || 0} an${(a.annees_pratique||0)>1?'s':''}`;
+  switchCoachDetailTab(initialTab || 'overview');
+  cdCalDate = new Date();
+
+  // Alertes (déjà disponibles dans l'objet a) - reset des conseils avant chargement
+  commentairesAthleteActuel = [];
+  renderAlertesCoach();
+
+  // Reset les zones en chargement
+  const indEl = document.getElementById('cd-indicateurs'); if (indEl) indEl.innerHTML = '<div class="loader">Chargement...</div>';
+  ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.innerHTML = '<div class="loader">Chargement...</div>';
+  });
+  document.getElementById('cd-progression-content').innerHTML = '';
+  document.getElementById('cd-seances-content').innerHTML = '';
+  document.getElementById('cd-seances-detail-content').innerHTML = '<div class="loader">Chargement...</div>';
+  document.getElementById('cd-acwr-chart-content').innerHTML = '';
+  document.getElementById('cd-comment-input').value = '';
+  document.getElementById('cd-commentaires-liste').innerHTML = '<div class="loader">Chargement...</div>';
+  chargerCommentairesCoach(a.athlete_id);
+
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
+    const data = await res.json();
+    coachAthleteData = data;
+    cdProgressionData = data.historique ? (data.historique.progression_par_exo || {}) : {};
+    cdTendancesData = data.historique ? (data.historique.tendances || null) : null;
+    cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
+
+    renderCoachOverview(data);
+    renderCoachIndicateurs(data);
+    afficherGraphiquePoidsCoach(data.poids || []);
+    renderCoachVolume(data);
+    afficherCoachTendances(4);
+    renderCoachExerciceSelect(data);
+    renderCoachCalendrier();
+    renderCoachSeances(data);
+    renderCoachSeancesDetail(data);
+    renderACWR(data);
+  } catch(e) {
+    document.getElementById('cd-recup').innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+  }
+}
+
+function renderCoachOverview(data) {
+  const dash = data.dashboard || {};
+
+  // Régularité
+  const reg = dash.regularite || {};
+  const faites = reg.seances_semaine || 0;
+  const prevues = reg.seances_prevues || 0;
+  const pct = prevues > 0 ? Math.min(100, Math.round(faites/prevues*100)) : 0;
+  document.getElementById('cd-reg-faites').textContent = faites;
+  document.getElementById('cd-reg-prevues').textContent = prevues;
+  document.getElementById('cd-reg-bar').style.width = pct + '%';
+
+  // Dernière séance
+  if (dash.derniere_seance) {
+    document.getElementById('cd-derniere-date').textContent = dash.derniere_seance.date;
+    document.getElementById('cd-derniere-nom').textContent =
+      `${dash.derniere_seance.seance_id} · ${dash.derniere_seance.nb_series} séries · RPE ${dash.derniere_seance.rpe_moyen}`;
+  } else {
+    document.getElementById('cd-derniere-date').textContent = 'Jamais';
+    document.getElementById('cd-derniere-nom').textContent = '';
+  }
+
+  // Récupération
+  const recupEl = document.getElementById('cd-recup');
+  if (dash.recuperation) {
+    const r = dash.recuperation;
+    const sc = r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : 'var(--danger)';
+    const sl = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟡 Fatigue modérée' : '🔴 Fatigue élevée';
+    recupEl.innerHTML = `
+      <div style="font-size:13px;font-weight:700;color:${sc};margin:6px 0 12px">${sl}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color}">${r.rpe_moyen}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
+        <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color}">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
+        <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color};font-size:14px">${r.volume_moyenne_prec === null ? 'N/A' : r.volume_semaine + ' / ' + r.volume_moyenne_prec}</div><div class="dash-stat-label">Volume (vs moy. 3 sem.)</div></div>
+      </div>
+      <div style="border-left:3px solid ${sc};padding-left:10px;background:${sc}11;border-radius:0 8px 8px 0;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;margin-bottom:3px;color:${sc}">💡 Suggestion auto (à valider par toi)</div>
+        <div style="font-size:12px;opacity:0.85">${r.conseil}</div>
+        ${(() => {
+          const sujetR = r.statut === 'optimal' ? 'récupération' : r.statut === 'modere' ? 'fatigue modérée' : 'fatigue élevée';
+          return dejaConseille(sujetR)
+            ? `<div style="margin-top:8px;font-size:12px;color:#00c96e;font-weight:700">✅ Déjà conseillé</div>
+               <button class="btn-sm btn-outline" style="margin-top:6px" onclick="repondreAlerte('${sujetR}')">✍️ Ajouter un autre conseil</button>`
+            : `<button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${sujetR}')">✍️ En faire un conseil</button>`;
+        })()}
+      </div>`;
+  } else {
+    recupEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore assez de données.</div>';
+  }
+
+  // Progression semaine
+  const progEl = document.getElementById('cd-prog-semaine');
+  if (dash.progression) {
+    const p = dash.progression;
+    const up = p.details.filter(d => d.up).map(d => `
+      <div style="display:flex;justify-content:space-between;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px">
+        <span style="font-size:11px;color:#00c96e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
+        <span style="font-size:11px;color:#00c96e;white-space:nowrap">${d.variation}</span></div>`).join('');
+    const down = p.details.filter(d => d.down && !d.up).map(d => `
+      <div style="display:flex;justify-content:space-between;padding:5px 8px;background:rgba(255,68,68,0.1);border-radius:6px;margin-bottom:4px">
+        <span style="font-size:11px;color:var(--danger);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
+        <span style="font-size:11px;color:var(--danger);white-space:nowrap">${d.variation}</span></div>`).join('');
+    progEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 12px">
+        <div style="background:rgba(0,201,110,0.1);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#00c96e">${p.en_progression || 0}</div>
+          <div style="font-size:10px;color:var(--text-muted)">en progression</div></div>
+        <div style="background:rgba(255,68,68,0.1);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:var(--danger)">${p.en_baisse || 0}</div>
+          <div style="font-size:10px;color:var(--text-muted)">en baisse</div></div>
+      </div>
+      ${up ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">En progression</div>${up}` : ''}
+      ${down ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin:8px 0 4px">En baisse</div>${down}` : ''}
+      ${!up && !down ? '<div style="color:var(--text-muted);font-size:13px">Charges stables cette semaine</div>' : ''}`;
+  } else {
+    progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore de données.</div>';
+  }
+
+  // Muscle en retard
+  const muscleEl = document.getElementById('cd-muscle');
+  if (dash.muscle_retard) {
+    const m = dash.muscle_retard;
+    const moyHebdo = Math.round(m.series_faites / 4 * 10) / 10;
+    const objectifHebdo = Math.round(m.series_optimale / 4);
+    const deficit = objectifHebdo > 0 ? Math.round((1 - moyHebdo/objectifHebdo) * 100) : 0;
+    muscleEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin:6px 0 10px">
+        <div><div style="font-size:16px;font-weight:800">${m.muscle}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Sous-entraîné sur 4 semaines</div></div>
+        <span style="background:rgba(245,159,0,0.2);color:#f59f00;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">-${deficit}%</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="dash-stat"><div class="dash-stat-num" style="color:#f59f00">${moyHebdo}</div><div class="dash-stat-label">séries/sem moy.</div></div>
+        <div class="dash-stat"><div class="dash-stat-num">${objectifHebdo}</div><div class="dash-stat-label">objectif/sem</div></div>
+      </div>`;
+  } else {
+    muscleEl.innerHTML = '<div style="color:#00c96e;font-size:13px;font-weight:700;margin-top:6px">✅ Tous les muscles bien entraînés !</div>';
+  }
+}
+
+function renderCoachExerciceSelect(data) {
+  const exercices = data.historique ? (data.historique.exercices || []) : [];
+  const sel = document.getElementById('cd-sel-exercice');
+  sel.innerHTML = '<option value="">— Choisir un exercice —</option>';
+  exercices.forEach(e => {
+    const o = document.createElement('option');
+    o.value = e; o.textContent = e; sel.appendChild(o);
+  });
+  document.getElementById('cd-progression-content').innerHTML =
+    '<div style="font-size:13px;color:var(--text-muted)">Choisis un exercice pour voir son évolution.</div>';
+}
+
+function afficherCoachProgressionExo() {
+  const exo = document.getElementById('cd-sel-exercice').value;
+  const el = document.getElementById('cd-progression-content');
+  if (!exo || !cdProgressionData[exo]) { el.innerHTML = ''; return; }
+  const perfs = cdProgressionData[exo];
+  if (perfs.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune donnée</div>'; return; }
+
+  const first = perfs[perfs.length - 1];
+  const last = perfs[0];
+  const diffCharge = last.charge - first.charge;
+  const diffReps = last.reps - first.reps;
+  const progGlobale = diffCharge > 0 ? `+${diffCharge}kg` : diffReps > 0 ? `+${diffReps} reps` : 'Stable';
+  const progCouleur = diffCharge > 0 || diffReps > 0 ? '#00c96e' : 'var(--text-muted)';
+
+  const rm1Last = calc1RM(last.charge, last.reps);
+  const rm1First = calc1RM(first.charge, first.reps);
+  const rm1Diff = (rm1Last !== null && rm1First !== null) ? Math.round((rm1Last - rm1First) * 10) / 10 : null;
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px">
+      <span style="font-size:12px;color:var(--text-muted)">Progression totale</span>
+      <span style="font-size:13px;font-weight:700;color:${progCouleur}">${progGlobale}</span>
+    </div>
+    ${rm1Last !== null ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px">
+      <span style="font-size:12px;color:var(--text-muted)">1RM estimé (Epley)</span>
+      <span style="font-size:13px;font-weight:700;color:var(--accent)">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
+    </div>` : ''}
+    <canvas id="chart-1rm-coach" style="width:100%;height:90px;display:block;margin-bottom:10px"></canvas>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">
+        <td style="padding:5px 0">Date</td><td style="padding:5px 0;text-align:center">Séance</td>
+        <td style="padding:5px 0;text-align:center">Charge S1</td><td style="padding:5px 0;text-align:center">Reps S1</td>
+        <td style="padding:5px 0;text-align:center">1RM est.</td>
+        <td style="padding:5px 0;text-align:center">Évol.</td>
+      </tr>
+      ${perfs.map((p, i) => {
+        const prev = perfs[i+1];
+        let evol = '—', evolColor = 'var(--text-muted)';
+        if (prev) {
+          if (p.charge > prev.charge) { evol = '↑'; evolColor = '#00c96e'; }
+          else if (p.charge < prev.charge) { evol = '↓'; evolColor = 'var(--danger)'; }
+          else if (p.reps > prev.reps) { evol = '↑'; evolColor = '#c8f000'; }
+          else if (p.reps < prev.reps) { evol = '↓'; evolColor = 'var(--danger)'; }
+          else { evol = '='; }
+        }
+        const isLast = i === 0;
+        const rm1 = calc1RM(p.charge, p.reps);
+        return `<tr style="border-bottom:1px solid var(--surface2);${isLast ? 'font-weight:700' : ''}">
+          <td style="padding:6px 0;color:var(--text)">${p.date}</td>
+          <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px">${(p.seance||'').substring(0,8)}</td>
+          <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'}">${p.charge}kg</td>
+          <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'}">${p.reps}</td>
+          <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px">${rm1 !== null ? rm1 + 'kg' : '—'}</td>
+          <td style="padding:6px 0;text-align:center;color:${evolColor};font-size:16px;font-weight:700">${evol}</td>
+        </tr>`;
+      }).join('')}
+    </table>`;
+  const chrono = perfs.slice().reverse();
+  drawLineChart('chart-1rm-coach', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)');
+}
+
+function afficherCoachTendances(semaines) {
+  const el = document.getElementById('cd-tendances-content');
+  document.getElementById('cd-btn-tend-4').style.background = semaines === 4 ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('cd-btn-tend-4').style.color = semaines === 4 ? '#000' : 'var(--text-muted)';
+  document.getElementById('cd-btn-tend-8').style.background = semaines === 8 ? 'var(--accent)' : 'var(--surface2)';
+  document.getElementById('cd-btn-tend-8').style.color = semaines === 8 ? '#000' : 'var(--text-muted)';
+
+  if (!cdTendancesData) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Pas assez de données</div>'; return; }
+  const t = semaines === 4 ? cdTendancesData.s4 : cdTendancesData.s8;
+  if (!t) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Pas assez de données sur cette période</div>'; return; }
+
+  const sc = t.statut === 'positif' ? '#00c96e' : t.statut === 'plateau' ? '#f59f00' : 'var(--danger)';
+  const sl = t.statut === 'positif' ? '🟢 Adaptation positive' : t.statut === 'plateau' ? '⚠️ Plateau' : '🔴 Régression';
+  const sd = t.statut === 'positif' ? 'Volume et charges en progression' : t.statut === 'plateau' ? 'Charges stables depuis plusieurs semaines' : 'Charges en baisse ou RPE en forte hausse';
+
+  const ligne = (label, vd, vf, unite, up) => {
+    const diff = vf - vd;
+    const pct = vd > 0 ? Math.round(diff/vd*100) : 0;
+    const c = up === null ? 'var(--text-muted)' : (up ? '#00c96e' : 'var(--danger)');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface2)">
+      <div><div style="font-size:12px;font-weight:700">${label}</div>
+      <div style="font-size:11px;color:var(--text-muted)">${vd}${unite} → ${vf}${unite}</div></div>
+      <span style="background:${c}22;color:${c};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">${pct>0?'+':''}${pct}%</span></div>`;
+  };
+  el.innerHTML = `
+    ${ligne('Volume hebdo', t.volume_debut, t.volume_fin, ' séries', t.volume_fin >= t.volume_debut)}
+    ${ligne('RPE moyen', t.rpe_debut, t.rpe_fin, '', null)}
+    ${ligne('Charge moyenne S1', t.charge_debut, t.charge_fin, 'kg', t.charge_fin >= t.charge_debut)}
+    <div style="background:${sc}22;border-radius:8px;padding:10px 12px;margin-top:10px">
+      <div style="font-size:12px;font-weight:700;color:${sc}">${sl}</div>
+      <div style="font-size:11px;color:${sc};opacity:0.8;margin-top:2px">${sd}</div>
+    </div>`;
+}
+
+function renderCoachIndicateurs(data) {
+  const el = document.getElementById('cd-indicateurs');
+  if (!el) return;
+  const dash = data.dashboard || {};
+
+  // 1. Progression
+  const prog = dash.progression || {};
+  const enProg = prog.en_progression || 0;
+  const enBaisse = prog.en_baisse || 0;
+  let progColor, progLabel;
+  if (enBaisse === 0 && enProg > 0) { progColor = '#00c96e'; progLabel = 'Progression'; }
+  else if (enProg >= enBaisse) { progColor = '#f59f00'; progLabel = 'Stable'; }
+  else { progColor = '#e5484d'; progLabel = 'Régression'; }
+
+  // 2. ACWR
+  const hist = data.historique || {};
+  const acwr = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
+  let acwrColor, acwrLabel;
+  if (!acwr) { acwrColor = '#aaa'; acwrLabel = 'Insuffisant'; }
+  else if (acwr.ratio >= 0.8 && acwr.ratio <= 1.3) { acwrColor = '#00c96e'; acwrLabel = `ACWR ${acwr.ratio}`; }
+  else if (acwr.ratio > 1.5) { acwrColor = '#e5484d'; acwrLabel = `ACWR ${acwr.ratio}`; }
+  else { acwrColor = '#f59f00'; acwrLabel = `ACWR ${acwr.ratio}`; }
+
+  // 3. Volume muscles
+  const niv = getNiveauExperience(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
+  const volSem = hist.volume_semaine || [];
+  let volColor = '#aaa', volLabel = 'N/A';
+  if (volSem.length > 0) {
+    const cibles = VOLUME_CIBLE[niv] || {};
+    let belowMev = false, aboveMav = true;
+    volSem.forEach(v => {
+      const cible = cibles[v.muscle] || cibles['default'] || { mev: 10, mav: 20 };
+      if (v.series < (cible.mev || 0)) belowMev = true;
+      if (v.series < (cible.mav || 0)) aboveMav = false;
+    });
+    if (belowMev) { volColor = '#e5484d'; volLabel = 'Sous MEV'; }
+    else if (!aboveMav) { volColor = '#f59f00'; volLabel = 'Sous MAV'; }
+    else { volColor = '#00c96e'; volLabel = 'Volume OK'; }
+  }
+
+  // 4. Régularité
+  const reg = dash.regularite || {};
+  const faites = reg.seances_semaine || 0;
+  const prevues = reg.seances_prevues || 0;
+  let regColor, regLabel;
+  if (prevues === 0) { regColor = '#aaa'; regLabel = 'N/A'; }
+  else if (faites >= prevues) { regColor = '#00c96e'; regLabel = 'Régulier'; }
+  else if (faites >= prevues - 1) { regColor = '#f59f00'; regLabel = `${faites}/${prevues}`; }
+  else { regColor = '#e5484d'; regLabel = `${faites}/${prevues}`; }
+
+  // 5. Récupération
+  const recup = dash.recuperation || {};
+  let recupColor, recupLabel;
+  if (!recup.statut) { recupColor = '#aaa'; recupLabel = 'N/A'; }
+  else if (recup.statut === 'optimal') { recupColor = '#00c96e'; recupLabel = 'Récup OK'; }
+  else if (recup.statut === 'modere') { recupColor = '#f59f00'; recupLabel = 'Modérée'; }
+  else { recupColor = '#e5484d'; recupLabel = 'Fatigue'; }
+
+  const indicateurs = [
+    { label: 'Progression', color: progColor, val: progLabel },
+    { label: 'ACWR', color: acwrColor, val: acwrLabel },
+    { label: 'Volume', color: volColor, val: volLabel },
+    { label: 'Régularité', color: regColor, val: regLabel },
+    { label: 'Récupération', color: recupColor, val: recupLabel },
+  ];
+
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center;">
+    ${indicateurs.map(ind => `
+      <div>
+        <div style="width:14px;height:14px;border-radius:50%;background:${ind.color};margin:0 auto 4px;box-shadow:0 0 6px ${ind.color}55;"></div>
+        <div style="font-size:9px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">${ind.label}</div>
+        <div style="font-size:10px;color:${ind.color};font-weight:700;margin-top:2px;">${ind.val}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderCoachVolume(data) {
+  const volumes = data.historique ? (data.historique.volume_semaine || []) : [];
+  const el = document.getElementById('cd-volume-content');
+  if (!volumes || volumes.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune donnée cette semaine</div>'; return;
+  }
+  const niveauKey = coachNiveauKey(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
+  const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
+  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
+    volumes.map(v => {
+      const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
+      const mini = cible[0], optimal = cible[1], faites = v.faites || 0;
+      const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
+      let couleur, statut;
+      if (faites >= optimal) { couleur = '#00c96e'; statut = '✅'; }
+      else if (faites >= mini) { couleur = '#c8f000'; statut = '🟡'; }
+      else if (faites > 0) { couleur = '#f59f00'; statut = '⚠️'; }
+      else { couleur = 'var(--danger)'; statut = '🔴'; }
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:12px;font-weight:700">${v.muscle}</span>
+          <span style="font-size:11px;color:${couleur};font-weight:700">${faites} / ${optimal} séries ${statut}</span></div>
+        <div style="background:var(--surface2);border-radius:20px;height:6px"><div style="background:${couleur};height:100%;width:${pct}%;border-radius:20px"></div></div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Min : ${mini} · Optimal : ${optimal}</div>
+      </div>`;
+    }).join('');
+}
+
+function cdCalNaviguer(direction) {
+  cdCalDate.setMonth(cdCalDate.getMonth() + direction);
+  renderCoachCalendrier();
+}
+
+function renderCoachCalendrier() {
+  const mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const annee = cdCalDate.getFullYear();
+  const moisIdx = cdCalDate.getMonth();
+  document.getElementById('cd-cal-titre').textContent = `${mois[moisIdx]} ${annee}`;
+  const today = new Date();
+  const premierJour = new Date(annee, moisIdx, 1);
+  const dernierJour = new Date(annee, moisIdx + 1, 0);
+  let debutOffset = premierJour.getDay() - 1;
+  if (debutOffset < 0) debutOffset = 6;
+  const grid = document.getElementById('cd-cal-grid');
+  grid.innerHTML = '';
+  const prevDernier = new Date(annee, moisIdx, 0).getDate();
+  for (let i = debutOffset - 1; i >= 0; i--) {
+    const d = document.createElement('div');
+    d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border)';
+    d.textContent = prevDernier - i; grid.appendChild(d);
+  }
+  for (let j = 1; j <= dernierJour.getDate(); j++) {
+    const d = document.createElement('div');
+    const dateStr = `${String(j).padStart(2,'0')}/${String(moisIdx+1).padStart(2,'0')}/${annee}`;
+    const isToday = j === today.getDate() && moisIdx === today.getMonth() && annee === today.getFullYear();
+    const hasSeance = cdSeancesDates[dateStr];
+    const isFutur = new Date(annee, moisIdx, j) > today;
+    if (isToday) {
+      d.style.cssText = 'background:var(--accent);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:#000;font-weight:700';
+      d.textContent = j;
+    } else if (hasSeance) {
+      d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:3px 1px;font-size:11px;color:#007a41;font-weight:700';
+      d.title = hasSeance;
+      d.innerHTML = `<div style="font-size:10px">${j}</div><div style="font-size:7px;color:#007a41;line-height:1.2;font-weight:600">${String(hasSeance).substring(0,4)}</div>`;
+    } else if (isFutur) {
+      d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border)';
+      d.textContent = j;
+    } else {
+      d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--text)';
+      d.textContent = j;
+    }
+    grid.appendChild(d);
+  }
+}
+
+function renderCoachSeances(data) {
+  const el = document.getElementById('cd-seances-content');
+  if (!el) return;
+  const dates = data.historique ? (data.historique.dates_seances || {}) : {};
+  const entries = Object.keys(dates).map(dateStr => {
+    const parts = dateStr.split('/');
+    return { date: dateStr, tri: new Date(parts[2], parts[1]-1, parts[0]).getTime(), seance: dates[dateStr] };
+  }).sort((a,b) => b.tri - a.tri).slice(0, 15);
+  el.innerHTML = entries.length === 0
+    ? '<div style="font-size:13px;color:var(--text-muted)">Aucune séance</div>'
+    : entries.map(s => `
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:700">${s.seance}</span>
+        <span style="font-size:12px;color:var(--text-muted)">${s.date}</span>
+      </div>`).join('');
+}
+
+function renderCoachSeancesDetail(data) {
+  const el = document.getElementById('cd-seances-detail-content');
+  if (!el) return;
+  const prog = data.historique ? (data.historique.progression_par_exo || {}) : {};
+  const datesSeances = data.historique ? (data.historique.dates_seances || {}) : {};
+
+  // Convertit n'importe quel format date en {dmy: dd/mm/yyyy, iso: yyyy-mm-dd}
+  function normDate(d) {
+    if (!d) return null;
+    if (d.includes('-') && d.split('-').length === 3) {
+      const p = d.split('-');
+      return { iso: d, dmy: `${p[2]}/${p[1]}/${p[0]}` };
+    }
+    if (d.includes('/') && d.split('/').length === 3) {
+      const p = d.split('/');
+      return { dmy: d, iso: `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` };
+    }
+    return null;
+  }
+
+  // Grouper par dmy (dd/mm/yyyy) depuis progression_par_exo
+  const parDate = {};
+  Object.entries(prog).forEach(([exo, perfs]) => {
+    (perfs || []).forEach(p => {
+      const nd = normDate(p.date);
+      if (!nd) return;
+      if (!parDate[nd.dmy]) parDate[nd.dmy] = { iso: nd.iso, exos: [] };
+      parDate[nd.dmy].exos.push({ exo, charge: p.charge, reps: p.reps, rpe: p.rpe });
+    });
+  });
+
+  // Nom séance depuis dates_seances (clé dd/mm/yyyy)
+  const nomParDmy = {};
+  Object.entries(datesSeances).forEach(([dmy, nom]) => { nomParDmy[dmy] = nom; });
+
+  const entries = Object.keys(parDate).map(dmy => {
+    const { iso, exos } = parDate[dmy];
+    return { iso, date: dmy, tri: new Date(iso).getTime(), seance: nomParDmy[dmy] || 'Séance', exos };
+  }).sort((a,b) => b.tri - a.tri).slice(0, 20);
+
+  if (entries.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>'; return; }
+
+  el.innerHTML = entries.map((s, idx) => {
+    const nbExos = s.exos.length;
+    const exoLines = s.exos.length > 0
+      ? s.exos.map(e => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%;">${e.exo}</span>
+            <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${e.charge ? e.charge + ' kg' : '—'} × ${e.reps || '—'} reps${e.rpe ? ' · RPE ' + e.rpe : ''}</span>
+          </div>`).join('')
+      : '<div style="font-size:11px;color:var(--text-muted);padding:6px 0;">Pas de détail disponible (données antérieures)</div>';
+    return `
+      <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">
+        <div onclick="toggleSeanceCoach(${idx})" style="display:flex;justify-content:space-between;align-items:center;padding:12px;cursor:pointer;background:var(--surface);">
+          <div>
+            <div style="font-size:13px;font-weight:800;color:var(--text);">${s.seance}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${s.date}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${nbExos > 0 ? `<span style="background:rgba(200,240,0,0.15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">${nbExos} exo${nbExos>1?'s':''}</span>` : ''}
+            <span id="seance-arrow-${idx}" style="font-size:14px;color:var(--text-muted);transition:transform 0.2s;">›</span>
+          </div>
+        </div>
+        <div id="seance-detail-${idx}" style="display:none;padding:0 12px 12px;">
+          ${exoLines}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleSeanceCoach(idx) {
+  const detail = document.getElementById('seance-detail-' + idx);
+  const arrow = document.getElementById('seance-arrow-' + idx);
+  if (!detail) return;
+  const open = detail.style.display !== 'none';
+  detail.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+function computeACWR(progressionParExo, volumeParJour) {
+  // Utilise volume_par_jour (exact, depuis Performance sheet) si dispo, sinon proxy
+  let volumes = {};
+  if (volumeParJour && Object.keys(volumeParJour).length > 0) {
+    volumes = volumeParJour;
+  } else {
+    Object.values(progressionParExo).forEach(perfs => {
+      (perfs || []).forEach(p => {
+        if (!p.date || !p.charge || !p.reps) return;
+        if (!volumes[p.date]) volumes[p.date] = 0;
+        volumes[p.date] += (parseFloat(p.reps) || 0) * (parseFloat(p.charge) || 0);
+      });
+    });
+  }
+  const now = new Date(); now.setHours(0,0,0,0);
+  let acute = 0, chronic = 0;
+  for (let i = 0; i < 28; i++) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    const v = volumes[key] || 0;
+    if (i < 7) acute += v;
+    chronic += v;
+  }
+  const acuteAvg = acute / 7;
+  const chronicAvg = chronic / 28;
+  if (chronicAvg < 1) return null;
+  return { ratio: Math.round((acuteAvg / chronicAvg) * 100) / 100, volumes, exact: !!(volumeParJour && Object.keys(volumeParJour).length > 0) };
+}
+
+function renderACWR(data) {
+  const el = document.getElementById('cd-acwr-content');
+  if (!el) return;
+  const prog = data.historique ? (data.historique.progression_par_exo || {}) : {};
+  const vpj = data.historique ? (data.historique.volume_par_jour || {}) : {};
+  const result = computeACWR(prog, vpj);
+
+  if (result === null) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Pas assez de données (besoin d\'au moins 4 semaines d\'historique)</div>';
+    return;
+  }
+
+  const { ratio, volumes, exact } = result;
+  const zone = ratio < 0.8 ? { label: 'Sous-charge', color: '#00c9ff', bg: 'rgba(0,201,255,0.1)', conseil: 'Volume trop faible — augmente progressivement la charge hebdomadaire.' }
+    : ratio <= 1.3 ? { label: 'Zone optimale', color: '#00c96e', bg: 'rgba(0,201,110,0.1)', conseil: 'Charge aiguë bien équilibrée par rapport à la charge chronique. Continue.' }
+    : ratio <= 1.5 ? { label: 'Attention', color: '#f59f00', bg: 'rgba(245,159,0,0.1)', conseil: 'Augmentation rapide de la charge — surveille les signes de fatigue.' }
+    : { label: 'Zone danger', color: 'var(--danger)', bg: 'rgba(255,68,68,0.1)', conseil: 'Charge aiguë très élevée vs chronique — risque de blessure. Réduire le volume.' };
+
+  const pct = Math.min(100, (ratio / 2) * 100);
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-top:6px;">
+      <div style="text-align:center;min-width:64px;">
+        <div style="font-size:28px;font-weight:800;color:${zone.color};">${ratio.toFixed(2)}</div>
+        <div style="font-size:10px;color:var(--text-muted);">ratio ACWR</div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:${zone.color};margin-bottom:6px;">${zone.label}</div>
+        <div style="position:relative;background:var(--surface2);border-radius:20px;height:8px;margin-bottom:4px;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:${zone.color};border-radius:20px;transition:width 0.4s;"></div>
+          <div style="position:absolute;left:40%;top:-3px;width:1px;height:14px;background:#00c96e;opacity:0.5;"></div>
+          <div style="position:absolute;left:65%;top:-3px;width:1px;height:14px;background:#f59f00;opacity:0.5;"></div>
+          <div style="position:absolute;left:75%;top:-3px;width:1px;height:14px;background:var(--danger);opacity:0.5;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);">
+          <span>0</span><span style="color:#00c96e;">0.8–1.3</span><span style="color:#f59f00;">1.5</span><span>2.0+</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:10px;background:${zone.bg};border-left:3px solid ${zone.color};border-radius:0 8px 8px 0;padding:8px 10px;font-size:12px;color:var(--text);">
+      💡 ${zone.conseil}
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · Charge aiguë 7j / charge chronique 28j · ${exact ? '✅ Données exactes (séries réelles)' : '⚠️ Proxy (données exactes non encore chargées)'}</div>`;
+
+  renderACWRChart(volumes);
+}
+
+function renderACWRChart(volumes) {
+  const el = document.getElementById('cd-acwr-chart-content');
+  if (!el) return;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const semaines = [];
+  for (let w = 7; w >= 0; w--) {
+    let vol = 0;
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(now); dt.setDate(dt.getDate() - w*7 - d);
+      const key = dt.toISOString().split('T')[0];
+      vol += volumes[key] || 0;
+    }
+    const lundi = new Date(now); lundi.setDate(lundi.getDate() - w*7 - (now.getDay() === 0 ? 6 : now.getDay()-1));
+    semaines.push({ label: `S${8-w}`, vol, lundi: lundi.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}) });
+  }
+  const max = Math.max(...semaines.map(s => s.vol), 1);
+  el.innerHTML = `
+    <div style="display:flex;align-items:flex-end;gap:4px;height:60px;margin-bottom:4px;">
+      ${semaines.map(s => {
+        const h = Math.round((s.vol / max) * 56);
+        const c = s.vol === 0 ? 'var(--surface2)' : 'var(--accent)';
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <div style="width:100%;height:${h}px;background:${c};border-radius:4px 4px 0 0;min-height:2px;"></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:4px;">
+      ${semaines.map(s => `<div style="flex:1;text-align:center;font-size:9px;color:var(--text-muted);">${s.label}</div>`).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Volume relatif (reps × charge) — 8 dernières semaines</div>`;
+}
+
+function renderCoachAthleteGrid(athletes) {
+  const grid = document.getElementById('coach-athletes-grid');
+  if (!grid) return;
+  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#aaa' };
+  const sorted = [...athletes].sort((a, b) => {
+    const na = alertesActives(a).length, nb = alertesActives(b).length;
+    return nb - na || String(a.nom).localeCompare(String(b.nom));
+  });
+  grid.innerHTML = sorted.map(a => {
+    const alertes = alertesActives(a);
+    const nb = alertes.length;
+    const sevMax = nb === 0 ? null : alertes.some(al => al.severite === 'haute') ? 'haute' : alertes.some(al => al.severite === 'moyenne') ? 'moyenne' : 'basse';
+    const niv = getNiveauExperience(a.annees_pratique);
+    const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv] || '';
+    const types = alertes.map(al => al.type || '');
+    const dotProg = types.some(t => t === 'stagnation' || t === 'regression') ? '#e5484d' : '#00c96e';
+    const dotRecup = types.some(t => t === 'fatigue' || t === 'surcharge') ? (types.some(t => t === 'surcharge') ? '#e5484d' : '#f59f00') : '#00c96e';
+    const dotReg = types.some(t => t === 'irregularite') ? '#f59f00' : '#00c96e';
+    const dotsHtml = `<div style="display:flex;gap:5px;align-items:center;margin-top:8px;">
+      <div title="Progression" style="width:9px;height:9px;border-radius:50%;background:${dotProg};box-shadow:0 0 4px ${dotProg}66;flex-shrink:0;"></div>
+      <div title="Récupération" style="width:9px;height:9px;border-radius:50%;background:${dotRecup};box-shadow:0 0 4px ${dotRecup}66;flex-shrink:0;"></div>
+      <div title="Régularité" style="width:9px;height:9px;border-radius:50%;background:${dotReg};box-shadow:0 0 4px ${dotReg}66;flex-shrink:0;"></div>
+    </div>`;
+    const idxOrig = athletes.indexOf(a);
+    const estActif = coachAthleteCourant && String(coachAthleteCourant.athlete_id) === String(a.athlete_id);
+    return `
+      <div class="coach-athlete-card${estActif ? ' actif' : ''}" data-athlete-id="${a.athlete_id}" onclick="ouvrirAthleteDepuisSelect('${idxOrig}')" style="background:var(--surface);border:1px solid ${estActif ? 'var(--accent)' : 'var(--border)'};border-radius:12px;padding:12px;cursor:pointer;transition:border-color 0.2s;" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor=this.classList.contains('actif')?'var(--accent)':'var(--border)'">
+        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.nom}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">${nivLabel}</div>
+        ${dotsHtml}
+      </div>`;
+  }).join('');
+}
+
+function surlignerAthleteSidebar(athleteId) {
+  document.querySelectorAll('.coach-athlete-card').forEach(c => {
+    const actif = String(c.getAttribute('data-athlete-id')) === String(athleteId);
+    c.classList.toggle('actif', actif);
+    c.style.borderColor = actif ? 'var(--accent)' : 'var(--border)';
+  });
+}
+
+// ==================== PROGRAMME (CRUD COACH) ====================
+let cdProgrammeLignes = [];
+
+async function chargerProgrammeCoach() {
+  const el = document.getElementById('cd-programme-content');
+  if (!coachAthleteCourant) return;
+  el.innerHTML = '<div class="loader">Chargement...</div>';
+  if (exercicesData.length === 0) await chargerExercices();
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCoachProgramme&athlete_id=${encodeURIComponent(coachAthleteCourant.athlete_id)}`);
+    const data = await res.json();
+    cdProgrammeLignes = data.lignes || [];
+    renderProgrammeCoach();
+  } catch(e) {
+    el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+  }
+}
+
+function renderProgrammeCoach() {
+  const el = document.getElementById('cd-programme-content');
+  const seances = {};
+  const ordre = [];
+  cdProgrammeLignes.forEach(l => {
+    if (!seances[l.seance_id]) { seances[l.seance_id] = []; ordre.push(l.seance_id); }
+    seances[l.seance_id].push(l);
+  });
+  if (ordre.length === 0) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Aucune séance dans le programme.</div>';
+    return;
+  }
+  const champNum = (val, ph, handlerArgs, label) => `
+    <div style="flex:1;min-width:64px">
+      <label style="font-size:9px;color:var(--text-muted);margin-bottom:3px;display:block;text-transform:none;letter-spacing:0">${label}</label>
+      <input type="number" value="${val}" placeholder="${ph}" onchange="${handlerArgs}" style="font-size:15px;padding:9px 8px;width:100%;min-width:0;text-align:center;margin-bottom:0">
+    </div>`;
+
+  // Champs éditables d'un exercice (sélecteur + séries/reps/repos). extraBtn = bouton optionnel (délier).
+  const champsExo = (l, seanceId, extraBtn) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null,null)" style="font-size:14px;padding:9px 10px;flex:1;min-width:0;margin-bottom:0;font-weight:700">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
+      ${extraBtn || ''}
+      <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${champNum(l.series_prevues, '3', `cdSauverLigne(${l.row_index},'${seanceId}',null,this.value,null,null,null,null)`, 'Séries')}
+      ${champNum(l.reps_mini, '8', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null,null)`, 'Reps min')}
+      ${champNum(l.reps_max, '12', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)`, 'Reps max')}
+      ${champNum(l.repos_sec || '', '90', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)`, 'Repos (s)')}
+    </div>`;
+
+  // Dropdown pour lier un exercice (ajoute au superset ancré sur ligneAncre)
+  const selLier = (ligneAncre, seanceId, exclus) => `
+    <select onchange="if(this.value){cdLierExerciceParNom(${ligneAncre.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:13px;padding:8px 10px;width:auto;min-width:150px;margin-bottom:0;margin-top:10px" title="Lier à un exercice (superset)">
+      <option value="">🔗 Lier un exercice…</option>
+      ${exercicesData.filter(e => !exclus.includes(e.exercice)).map(e => `<option value="${e.exercice}">${e.exercice}</option>`).join('')}
+    </select>`;
+
+  el.innerHTML = ordre.map(seanceId => {
+    // Regrouper les exercices en unités : soit seuls, soit en superset (même groupe_id)
+    const lignes = seances[seanceId];
+    const unites = [];
+    const groupesVus = {};
+    lignes.forEach(l => {
+      if (l.groupe_id) {
+        if (groupesVus[l.groupe_id]) return; // déjà traité via le premier membre
+        groupesVus[l.groupe_id] = true;
+        const membres = lignes.filter(o => o.groupe_id === l.groupe_id);
+        unites.push({ type: 'groupe', groupeId: l.groupe_id, membres });
+      } else {
+        unites.push({ type: 'single', ligne: l });
+      }
+    });
+
+    const cartes = unites.map(u => {
+      if (u.type === 'single') {
+        const l = u.ligne;
+        return `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
+          ${champsExo(l, seanceId)}
+          ${selLier(l, seanceId, [l.exercice])}
+        </div>`;
+      }
+      // Superset : une seule carte avec tous les membres empilés
+      const coul = couleurGroupe(u.groupeId);
+      const nomsMembres = u.membres.map(m => m.exercice);
+      return `
+        <div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${coul};border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
+          <div style="font-size:11px;font-weight:800;color:${coul};margin-bottom:10px;letter-spacing:0.5px">🔗 SUPERSET · ${u.membres.length} exercices enchaînés</div>
+          ${u.membres.map((m, i) => `
+            ${i > 0 ? `<div style="text-align:center;color:${coul};font-size:16px;font-weight:800;margin:-2px 0 6px">↓</div>` : ''}
+            <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px">
+              ${champsExo(m, seanceId, `<button onclick="cdRetirerDuGroupe(${m.row_index},'${seanceId}')" title="Retirer du superset" style="background:${coul}22;border:1px solid ${coul};color:${coul};border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;font-size:12px;flex-shrink:0;font-weight:700">🔗✕</button>`)}
+            </div>`).join('')}
+          ${selLier(u.membres[0], seanceId, nomsMembres)}
+        </div>`;
+    }).join('');
+
+    return `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:0;margin-bottom:16px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(200,240,0,0.08);border-bottom:1px solid var(--border)">
+        <div style="font-size:15px;font-weight:800;color:var(--text)">📋 ${seanceId}</div>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:600">${lignes.length} exo${lignes.length>1?'s':''}</span>
+      </div>
+      <div style="padding:12px 14px">
+        ${cartes}
+        <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')" style="width:100%">+ Ajouter un exercice</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec, groupeId) {
+  const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
+  if (!ligne) return;
+  if (exercice !== null) ligne.exercice = exercice;
+  if (series !== null) ligne.series_prevues = Number(series);
+  if (repsMini !== null) ligne.reps_mini = Number(repsMini);
+  if (repsMax !== null) ligne.reps_max = Number(repsMax);
+  if (reposSec !== null) ligne.repos_sec = Number(reposSec);
+  if (groupeId !== null) { ligne.groupe_id = groupeId.trim().toUpperCase(); renderProgrammeCoach(); }
+  return fetch(SCRIPT_URL, {
+    method: 'POST', headers: {'Content-Type': 'text/plain'},
+    body: JSON.stringify({
+      action: 'saveProgrammeLigne', row_index: rowIndex, athlete_id: coachAthleteCourant.athlete_id,
+      seance_id: ligne.seance_id, exercice: ligne.exercice,
+      series_prevues: ligne.series_prevues, reps_mini: ligne.reps_mini, reps_max: ligne.reps_max,
+      repos_sec: ligne.repos_sec, groupe_id: ligne.groupe_id || ''
+    })
+  });
+}
+
+function genGroupeId(seanceId) {
+  const utilises = new Set(cdProgrammeLignes.filter(l => l.seance_id === seanceId && l.groupe_id).map(l => l.groupe_id));
+  const lettres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (const c of lettres) if (!utilises.has(c)) return c;
+  return 'G' + Math.floor(Math.random() * 100);
+}
+
+function cdAjouterPartenaire(rowIndex, seanceId, partnerRowIndexStr) {
+  const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
+  const partenaire = cdProgrammeLignes.find(l => l.row_index === Number(partnerRowIndexStr));
+  if (!ligne || !partenaire) return;
+  const groupeId = ligne.groupe_id || partenaire.groupe_id || genGroupeId(seanceId);
+  ligne.groupe_id = groupeId;
+  partenaire.groupe_id = groupeId;
+  cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
+  cdSauverLigne(partenaire.row_index, seanceId, null, null, null, null, null, groupeId);
+  renderProgrammeCoach();
+}
+
+function cdRetirerDuGroupe(rowIndex, seanceId) {
+  const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
+  if (!ligne) return;
+  ligne.groupe_id = '';
+  cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, '');
+  renderProgrammeCoach();
+}
+
+// Lier par nom d'exercice : si l'exercice n'est pas encore dans la séance, on l'ajoute puis on le lie.
+async function cdLierExerciceParNom(rowIndex, seanceId, exerciceNom) {
+  if (!exerciceNom) return;
+  const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
+  if (!ligne) return;
+  const groupeId = ligne.groupe_id || genGroupeId(seanceId);
+  ligne.groupe_id = groupeId;
+
+  const existant = cdProgrammeLignes.find(l => l.seance_id === seanceId && l.exercice === exerciceNom && l.row_index !== rowIndex);
+  if (existant) {
+    existant.groupe_id = groupeId;
+    // On attend la persistance avant de recharger pour éviter d'écraser un changement récent
+    await cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
+    await cdSauverLigne(existant.row_index, seanceId, null, null, null, null, null, groupeId);
+    renderProgrammeCoach();
+  } else {
+    // Sauver d'abord la ligne courante (avec son exercice à jour) AVANT de créer la ligne liée et de recharger
+    await cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
+    const body = {
+      action: 'saveProgrammeLigne', athlete_id: coachAthleteCourant.athlete_id,
+      athlete_nom: coachAthleteCourant.nom, seance_id: seanceId, exercice: exerciceNom,
+      series_prevues: ligne.series_prevues || 3, reps_mini: ligne.reps_mini || 8,
+      reps_max: ligne.reps_max || 12, repos_sec: ligne.repos_sec || 90, groupe_id: groupeId
+    };
+    await fetch(SCRIPT_URL, { method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body) });
+    await chargerProgrammeCoach();
+  }
+}
+
+async function cdAjouterExercice(seanceId) {
+  if (exercicesData.length === 0) return;
+  const exo = exercicesData[0];
+  const body = {
+    action: 'saveProgrammeLigne', athlete_id: coachAthleteCourant.athlete_id,
+    athlete_nom: coachAthleteCourant.nom, seance_id: seanceId, exercice: exo.exercice,
+    series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: ''
+  };
+  await fetch(SCRIPT_URL, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
+  chargerProgrammeCoach();
+}
+
+async function cdAjouterSeance() {
+  const nom = prompt('Nom de la nouvelle séance (ex: Push, Pull, Jambes...)');
+  if (!nom) return;
+  await cdAjouterExercice(nom);
+}
+
+async function cdSupprimerLigne(rowIndex) {
+  if (!confirm('Supprimer cet exercice du programme ?')) return;
+  await fetch(SCRIPT_URL, {
+    method: 'POST', headers: {'Content-Type': 'text/plain'},
+    body: JSON.stringify({action: 'supprimerProgrammeLigne', row_index: rowIndex, athlete_id: coachAthleteCourant.athlete_id})
+  });
+  chargerProgrammeCoach();
+}
+
+// ==================== CHAT COACH <-> ATHLETE ====================
+let commentairesAthleteActuel = [];
+
+function formatChatDate(d) {
+  if (!d) return '';
+  // Déjà au format dd/MM/yyyy (éventuellement avec heure) -> on garde
+  if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(d)) return d;
+  // Format ISO (2026-07-01T08:52:00.000Z) ou autre -> on convertit
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const p = n => String(n).padStart(2, '0');
+  return `${p(dt.getDate())}/${p(dt.getMonth() + 1)}/${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+}
+
+function parseChatDate(d) {
+  if (!d) return 0;
+  if (typeof d === 'string') {
+    const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+    if (m) return new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)).getTime();
+  }
+  const t = new Date(d).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+function renderBullesChat(commentaires, elId, isCoach) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (commentaires.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px;">Aucun message pour le moment.</div>';
+    return;
+  }
+  commentaires = [...commentaires].sort((a, b) => parseChatDate(a.date) - parseChatDate(b.date));
+  el.innerHTML = commentaires.map(c => {
+    const isMine = isCoach ? (c.auteur !== 'athlete') : (c.auteur === 'athlete');
+    const align = isMine ? 'flex-end' : 'flex-start';
+    const bg = isMine ? 'var(--accent)' : 'var(--surface2)';
+    const color = isMine ? '#000' : 'var(--text)';
+    const radius = isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px';
+    const deleteBtn = (isCoach && isMine)
+      ? `<button onclick="supprimerCommentaireCoach('${c.id}')" title="Supprimer" style="background:none;border:none;cursor:pointer;font-size:12px;opacity:0.5;padding:0 0 0 4px;">🗑️</button>` : '';
+    const lu = (isCoach && !isMine && !estLu(c, 'muscu_lu_coach')) ? '<span style="font-size:9px;color:#f59f00;"> · non lu</span>' : '';
+    return `<div style="display:flex;flex-direction:column;align-items:${align};max-width:85%;">
+      <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13px;white-space:pre-wrap;line-height:1.4;">${c.message}</div>
+      <div style="font-size:9px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:2px;">${formatChatDate(c.date)}${lu}${deleteBtn}</div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+// Suivi local des messages lus (persiste même si le marquage serveur échoue)
+function getLusLocaux(key) {
+  try { return new Set(JSON.parse(localStorage.getItem(key) || '[]').map(String)); }
+  catch(e) { return new Set(); }
+}
+function ajouterLusLocaux(key, ids) {
+  const set = getLusLocaux(key);
+  ids.forEach(id => set.add(String(id)));
+  try { localStorage.setItem(key, JSON.stringify([...set])); } catch(e) {}
+}
+function estLu(c, key) {
+  return c.lu === true || c.lu === 'TRUE' || getLusLocaux(key).has(String(c.id));
+}
+
+function majBadgeConseilsCoach(forceZero) {
+  const badge = document.getElementById('badge-conseils-coach');
+  if (!badge) return;
+  if (forceZero === 0) { badge.style.display = 'none'; return; }
+  const nonLus = commentairesAthleteActuel.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
+  badge.textContent = nonLus;
+  badge.style.display = nonLus > 0 ? 'block' : 'none';
+}
+
+// Ouvre la conversation côté coach et marque les messages de l'athlète comme lus
+function ouvrirConversationCoach() {
+  switchCoachDetailTab('conseils');
+  const nonLus = commentairesAthleteActuel.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).map(c => c.id);
+  if (nonLus.length > 0) {
+    ajouterLusLocaux('muscu_lu_coach', nonLus);
+    fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLus })
+    });
+    commentairesAthleteActuel.forEach(c => { if (nonLus.includes(c.id)) c.lu = true; });
+  }
+  majBadgeConseilsCoach(0);
+}
+
+async function chargerCommentairesCoach(athlete_id) {
+  const el = document.getElementById('cd-commentaires-liste');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(athlete_id)}`);
+    const data = await res.json();
+    const commentaires = data.commentaires || [];
+    commentairesAthleteActuel = commentaires;
+    renderBullesChat(commentaires, 'cd-commentaires-liste', true);
+    majBadgeConseilsCoach();
+    renderAlertesCoach();
+  } catch(e) {
+    if (el) el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+  }
+}
+
+function dejaConseille(sujet) {
+  const cible = ('À propos de : ' + sujet).toLowerCase();
+  return commentairesAthleteActuel.some(c => String(c.message).toLowerCase().includes(cible));
+}
+
+function renderAlertesCoach() {
+  const el = document.getElementById('cd-alertes');
+  if (!el || !coachAthleteCourant) return;
+  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
+  // On masque les alertes marquées "Traité" cette semaine (cohérent avec l'accueil coach)
+  const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
+  el.innerHTML = alertes.length > 0
+    ? alertes.map((al, idx) => {
+        const c = couleurSeverite[al.severite] || '#a3a3a3';
+        const sujetRaw = sujetAlerte(al);
+        const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const fait = dejaConseille(sujetRaw);
+        const explicationId = `alerte-explication-${idx}`;
+        return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <span style="font-size:14px">⚠️</span>
+            <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:400">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</span>
+          </div>
+          <div id="${explicationId}" style="display:none;font-size:11px;color:var(--text-muted);margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">${explicationAlerte(al)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
+            ${fait
+              ? `<span style="font-size:12px;color:#00c96e;font-weight:700;align-self:center">✅ Déjà conseillé</span>
+                 <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">✍️ Autre conseil</button>`
+              : `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">✍️ Répondre à l'athlète</button>`}
+            <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">✅ Rien à signaler</div>';
+}
+
+function toggleExplicationAlerte(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function explicationAlerte(al) {
+  if (al.type === 'irregularite') return "Déclenchée quand aucune séance n'a été enregistrée depuis 7 jours ou plus.";
+  if (al.type === 'fatigue') return "Déclenchée quand le RPE moyen des 7 derniers jours dépasse 8,5 ET que la charge moyenne (comparée exercice par exercice) a baissé de plus de 5% par rapport aux 3 semaines précédentes.";
+  if (al.type === 'stagnation') return "Déclenchée quand un exercice n'a montré aucune progression (charge ou reps) sur un nombre de séances dépendant du palier d'expérience de l'athlète : 3 séances en débutant, 4 en intermédiaire, 6 en avancé, 8 en expert.";
+  return "Seuil de détection non documenté.";
+}
+
+function traiterAlerteDepuisDetail(idx) {
+  if (!coachAthleteCourant) return;
+  const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
+  const al = alertes[idx];
+  if (!al) return;
+  marquerAlerteTraitee(coachAthleteCourant.athlete_id, al); // met à jour l'accueil
+  renderAlertesCoach(); // met à jour le détail
+}
+
+function sujetAlerte(al) {
+  if (al.type === 'fatigue') return 'fatigue élevée';
+  if (al.type === 'irregularite') return 'manque de régularité';
+  if (al.type === 'stagnation') {
+    const exo = String(al.message).split(' : ')[0];
+    return exo ? ('stagnation sur ' + exo) : 'stagnation';
+  }
+  return al.type || 'point à surveiller';
+}
+
+function repondreAlerte(contexte) {
+  switchCoachDetailTab('conseils');
+  const input = document.getElementById('cd-comment-input');
+  const prefixe = `À propos de : ${contexte}\n\nMon conseil : `;
+  input.value = prefixe;
+  input.focus();
+  // Placer le curseur à la fin
+  input.setSelectionRange(input.value.length, input.value.length);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function envoyerCommentaireCoach() {
+  const input = document.getElementById('cd-comment-input');
+  const message = input.value.trim();
+  if (!message) { showToast('⚠️ Écris un message', '#ff4444'); return; }
+  if (!coachAthleteCourant || !coach) return;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'saveCommentaire',
+        coach_id: coach.coach_id,
+        coach_nom: coach.nom,
+        auteur: 'coach',
+        auteur_nom: coach.nom,
+        athlete_id: coachAthleteCourant.athlete_id,
+        message: message
+      })
+    });
+    input.value = '';
+    showToast('✅ Message envoyé !');
+    setTimeout(() => chargerCommentairesCoach(coachAthleteCourant.athlete_id), 800);
+  } catch(e) {
+    showToast('❌ Erreur envoi', '#ff4444');
+  }
+}
+
+async function envoyerMessageAthleteCoach() {
+  const input = document.getElementById('athlete-chat-input');
+  if (!input) return;
+  const message = input.value.trim();
+  if (!message) { showToast('⚠️ Écris un message', '#ff4444'); return; }
+  if (!athlete) return;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'saveCommentaire',
+        auteur: 'athlete',
+        auteur_nom: athlete.prenom || athlete.nom || 'Athlète',
+        athlete_id: athlete.athlete_id,
+        message: message
+      })
+    });
+    input.value = '';
+    showToast('✅ Message envoyé !');
+    setTimeout(() => chargerMessagesCoach(), 800);
+  } catch(e) {
+    showToast('❌ Erreur envoi', '#ff4444');
+  }
+}
+
+async function supprimerCommentaireCoach(id) {
+  if (!confirm('Supprimer ce conseil ? L\'athlète ne le verra plus.')) return;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'supprimerCommentaire', id: id })
+    });
+    showToast('🗑️ Conseil supprimé');
+    setTimeout(() => chargerCommentairesCoach(coachAthleteCourant.athlete_id), 800);
+  } catch(e) {
+    showToast('❌ Erreur suppression', '#ff4444');
+  }
+}
+
+// Côté athlète : conseils du coach (onglet dédié + badge)
+let messagesCoach = [];
+
+async function chargerMessagesCoach() {
+  if (!athlete) return;
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(athlete.athlete_id)}`);
+    const data = await res.json();
+    messagesCoach = data.commentaires || [];
+  } catch(e) {
+    messagesCoach = [];
+  }
+  majBadgeConseils();
+}
+
+function majBadgeConseils() {
+  const badge = document.getElementById('badge-conseils');
+  if (!badge) return;
+  const nonLus = messagesCoach.filter(c => c.auteur !== 'athlete' && !estLu(c, 'muscu_lu_athlete')).length;
+  if (nonLus > 0) {
+    badge.textContent = nonLus;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function afficherOngletConseils() {
+  renderBullesChat(messagesCoach, 'conseils-content', false);
+
+  // Marquer les messages du coach comme lus (local + serveur)
+  const nonLusCoach = messagesCoach.filter(c => c.auteur !== 'athlete' && !estLu(c, 'muscu_lu_athlete')).map(c => c.id);
+  if (nonLusCoach.length > 0) {
+    ajouterLusLocaux('muscu_lu_athlete', nonLusCoach);
+    fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLusCoach })
+    });
+    messagesCoach.forEach(c => { if (nonLusCoach.includes(c.id)) c.lu = true; });
+    majBadgeConseils();
+  }
 }
 
 // ==================== APP ====================
@@ -768,6 +2496,7 @@ async function ouvrirApp() {
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('view-app').classList.add('active');
   document.getElementById('tabs-bar').style.display = 'flex';
+  document.body.classList.add('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'block';
   document.getElementById('btn-theme').style.display = 'block';
   // Restore saved theme
@@ -790,11 +2519,19 @@ async function ouvrirApp() {
   if (exercicesData.length === 0) await chargerExercices();
   peuplerMusclesLibres();
   chargerAppData(); // Un seul appel pour tout
+  chargerMessagesCoach(); // Messages du coach
+}
+
+function switchAuthMode(mode) {
+  document.getElementById('auth-login').style.display = mode === 'login' ? 'block' : 'none';
+  document.getElementById('auth-signup').style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('authtab-login').classList.toggle('auth-seg-active', mode === 'login');
+  document.getElementById('authtab-signup').classList.toggle('auth-seg-active', mode === 'signup');
 }
 
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['accueil','seance','objectif','historique'][i] === tab);
+    b.classList.toggle('active', ['accueil','objectif','seance','historique','conseils'][i] === tab);
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
@@ -811,6 +2548,9 @@ function switchTab(tab) {
   if (tab === 'historique') {
     if (dernierAppData) chargerHistorique();
     else chargerAppData().then(() => chargerHistorique());
+  }
+  if (tab === 'conseils') {
+    afficherOngletConseils();
   }
 
 }
@@ -835,6 +2575,9 @@ async function demarrerSeance() {
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   document.getElementById('btn-valider').style.display = 'none';
   document.getElementById('card-exo-actuel').style.display = 'none';
+  document.getElementById('card-hors-programme').style.display = 'none';
+  document.getElementById('sel-muscle-libre').innerHTML = '<option value="">— Choisir —</option>';
+  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
 
   const listeEl = document.getElementById('liste-exercices-seance');
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
@@ -851,23 +2594,139 @@ async function demarrerSeance() {
   afficherListeSeance();
 }
 
+function majProgressionSeance() {
+  const el = document.getElementById('seance-progress');
+  if (!el) return;
+  const seanceId = document.getElementById('sel-seance-id').value;
+  if (!seanceId) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  document.getElementById('seance-progress-titre').textContent = seanceId === 'Libre' ? '🔀 Séance libre' : seanceId;
+
+  const exosLibres = seance.filter(e => !programmeSeance.some(p => p.exercice === e.exerciceNom));
+  const totalExos = programmeSeance.length + exosLibres.length;
+  const faitsProg = programmeSeance.filter(p => {
+    const e = seance.find(s => s.exerciceNom === p.exercice);
+    return e && e.series.length > 0;
+  }).length;
+  const faitsLibres = exosLibres.filter(e => e.series.length > 0).length;
+  const faits = faitsProg + faitsLibres;
+  const totalSeries = seance.reduce((a, e) => a + e.series.length, 0);
+
+  document.getElementById('seance-progress-series').textContent = totalSeries;
+  const fini = totalExos > 0 && faits >= totalExos;
+  document.getElementById('seance-progress-detail').textContent =
+    `${faits} / ${totalExos} exercice${totalExos > 1 ? 's' : ''}${fini ? '  ✅ Tout est fait !' : ''}`;
+  const pct = totalExos > 0 ? Math.round(faits / totalExos * 100) : 0;
+  document.getElementById('seance-progress-bar').style.width = pct + '%';
+}
+
+function peuplerSeancesProgramme() {
+  const sel = document.getElementById('sel-seance-id');
+  if (!sel) return;
+  const valeurAvant = sel.value;
+  const programme = dernierAppData ? (dernierAppData.programme || []) : [];
+  // Séances distinctes du programme, dans l'ordre d'apparition
+  const seances = [];
+  programme.forEach(p => { if (p.seance_id && !seances.includes(p.seance_id)) seances.push(p.seance_id); });
+  sel.innerHTML = '<option value="">— Choisir —</option>' +
+    seances.map(s => `<option value="${s}">${s}</option>`).join('') +
+    '<option value="Libre">Libre</option>';
+  // Conserver la sélection en cours si toujours valide
+  if (valeurAvant && (seances.includes(valeurAvant) || valeurAvant === 'Libre')) sel.value = valeurAvant;
+}
+
+// ===== Superset / biset guidé (alternance exercice par exercice) =====
+let enSuperset = false;
+let supersetGroupe = [];
+let supersetIdx = 0;
+let supersetTour = 1;
+let supersetTotalTours = 1;
+
+function demarrerSuperset(groupeId) {
+  supersetGroupe = programmeSeance.filter(p => p.groupe_id === groupeId);
+  if (supersetGroupe.length < 2) {
+    enSuperset = false;
+    const p = supersetGroupe[0];
+    if (p) selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max);
+    return;
+  }
+  enSuperset = true;
+  supersetIdx = 0;
+  supersetTour = 1;
+  supersetTotalTours = Number(supersetGroupe[0].series_prevues) || 1;
+  chargerExoSuperset();
+}
+
+function chargerExoSuperset() {
+  const p = supersetGroupe[supersetIdx];
+  selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max);
+  majBanniereSuperset();
+}
+
+function majBanniereSuperset() {
+  const el = document.getElementById('superset-banner');
+  if (!el) return;
+  if (!enSuperset) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const couleur = couleurGroupe(supersetGroupe[0].groupe_id);
+  const noms = supersetGroupe.map((p, i) => i === supersetIdx
+    ? `<strong style="color:${couleur}">${p.exercice}</strong>`
+    : `<span style="color:var(--text-muted)">${p.exercice}</span>`).join(' → ');
+  el.innerHTML = `<div style="font-size:13px;font-weight:800;color:${couleur}">🔗 Superset · Tour ${supersetTour}/${supersetTotalTours}</div><div style="font-size:11px;margin-top:3px">${noms}</div>`;
+}
+
+function avancerSuperset(reposVal) {
+  supersetIdx++;
+  if (supersetIdx < supersetGroupe.length) {
+    // Exercice suivant du même tour : on enchaîne, sans repos
+    chargerExoSuperset();
+    showToast('➡️ ' + supersetGroupe[supersetIdx].exercice);
+    window.scrollTo(0, 0);
+  } else {
+    // Tour terminé
+    supersetIdx = 0;
+    supersetTour++;
+    if (supersetTour > supersetTotalTours) {
+      enSuperset = false;
+      const b = document.getElementById('superset-banner'); if (b) b.style.display = 'none';
+      scrollVersProchain = true;
+      retourListeSeance();
+      showToast('✅ Superset terminé !');
+    } else {
+      chargerExoSuperset(); // premier exo du tour suivant
+      window.scrollTo(0, 0);
+      if (reposVal > 0) startTimer(reposVal, `Tour ${supersetTour - 1} terminé · repos`);
+      else showToast('Tour ' + supersetTour);
+    }
+  }
+}
+
+let scrollVersProchain = false;
 function afficherListeSeance() {
   const listeEl = document.getElementById('liste-exercices-seance');
   if (programmeSeance.length === 0) {
-    listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun programme pour cette séance</div>';
+    afficherListeExosLibres();
     return;
   }
+
+  // Index du prochain exercice à faire (premier sans série enregistrée)
+  const prochainIdx = programmeSeance.findIndex(p => {
+    const e = seance.find(s => s.exerciceNom === p.exercice);
+    return !(e && e.series.length > 0);
+  });
+  let prochainEl = null;
 
   // Stocker le programme dans un tableau global indexé pour éviter les problèmes d'apostrophes
   listeEl.innerHTML = '';
   programmeSeance.forEach((p, i) => {
-    const perf = lastPerfData[p.exercice];
+    const isNext = i === prochainIdx;
+    const perf = getPerf(p.exercice);
     const exoData = exercicesData.find(e => e.exercice === p.exercice);
     const incrementRaw = exoData ? exoData.increment_kg : "2.5";
     const increment = parseFloat(String(incrementRaw).replace(',','.').split('/')[0].trim()) || 2.5;
     const dejaDone = seance.find(e => e.exerciceNom === p.exercice && e.series.length > 0);
     const seriesFaites = dejaDone ? dejaDone.series.length : 0;
-    const borderColor = dejaDone ? "var(--success)" : "var(--border)";
+    const borderColor = dejaDone ? "var(--success)" : isNext ? "var(--accent)" : "var(--border)";
 
     let perfHtml = "";
     let suggHtml = "";
@@ -886,18 +2745,20 @@ function afficherListeSeance() {
       cible = bestReps < p.reps_max ? bestReps + 1 : p.reps_max;
 
       perfHtml = `
-        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
-          Dernière fois : <strong style="color:${isDiffSeance ? 'var(--danger)' : 'var(--text)'}">${perf.last_charge}kg × ${perf.max_reps} reps</strong>
-          ${isDiffSeance ? '<span style="color:var(--text-muted)"> (séance difficile)</span>' : ''}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding:8px 12px;background:rgba(200,240,0,0.08);border:1px solid var(--accent-dim);border-radius:10px">
+          <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">🎯 Cible</span>
+          <span style="font-size:15px;font-weight:800;color:var(--accent)">${bestCharge}kg × ${cible} reps</span>
         </div>
-        ${isDiffSeance ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Meilleure réf : <strong style="color:var(--text)">${bestCharge}kg × ${bestReps} reps</strong></div>` : ''}
-        <div style="font-size:12px;color:var(--accent);margin-top:2px">🎯 Cible : ${bestCharge}kg × ${cible} reps</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Dernière fois : <strong style="color:${isDiffSeance ? 'var(--danger)' : 'var(--text)'}">${perf.last_charge}kg × ${perf.max_reps}</strong>${isDiffSeance ? ` · meilleure réf ${bestCharge}kg × ${bestReps}` : ''}</div>
       `;
 
-      const surcharge = bestReps >= p.reps_max && perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
+      const niveau = getNiveauExperience(athlete.annees_pratique);
+      const deuxSeancesAuCap = perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
+      const surcharge = niveau === 'debutant'
+        ? bestReps >= p.reps_max
+        : bestReps >= p.reps_max && deuxSeancesAuCap;
       if (surcharge) {
-        const annees = Number(athlete.annees_pratique) || 0;
-        if (annees >= 10) {
+        if (niveau === 'avance' || niveau === 'expert') {
           suggHtml = `<div class="prog-suggestion" style="margin-top:6px">💪 +1 rep ou -30s repos</div>`;
         } else {
           const nc = Math.round((bestCharge + increment) * 4) / 4;
@@ -908,144 +2769,146 @@ function afficherListeSeance() {
       perfHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai 🆕</div>`;
     }
 
+    const partenaires = p.groupe_id ? programmeSeance.filter(o => o !== p && o.groupe_id === p.groupe_id).map(o => o.exercice) : [];
+    const groupeStyle = p.groupe_id ? `border-left:3px solid ${couleurGroupe(p.groupe_id)};` : '';
+
+    const statutPill = dejaDone
+      ? `<span style="font-size:11px;font-weight:700;color:var(--success);background:rgba(0,201,110,0.12);border-radius:20px;padding:3px 10px;white-space:nowrap">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>`
+      : isNext
+        ? `<span style="font-size:11px;font-weight:800;color:#000;background:var(--accent);border-radius:20px;padding:3px 10px;white-space:nowrap">👉 À faire</span>`
+        : `<span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:3px 10px;white-space:nowrap">${p.series_prevues} séries</span>`;
+
     const div = document.createElement('div');
-    div.style.cssText = `background:var(--surface);border:1px solid ${borderColor};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer`;
+    div.style.cssText = `background:var(--surface);border:${isNext ? '2px' : '1px'} solid ${borderColor};${groupeStyle}border-radius:var(--radius);padding:14px;margin-bottom:${p.groupe_id ? '2px' : '10px'};cursor:pointer`;
     div.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="font-size:15px;font-weight:800;flex:1">${p.exercice}</div>
-        ${dejaDone ? `<span style="color:var(--success);font-weight:700">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : ""}
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:15px;font-weight:800;flex:1;min-width:0">${p.exercice}</div>
+        ${statutPill}
+        ${dejaDone ? `<button class="btn-sm btn-danger-sm reset-exo" title="Effacer les séries faites" style="padding:4px 8px;line-height:1">🗑️</button>` : ''}
       </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Objectif : ${p.series_prevues} séries · ${p.reps_mini}-${p.reps_max} reps</div>
       ${perfHtml}${suggHtml}
-      <div style="font-size:11px;color:var(--accent);margin-top:8px">👆 Appuie pour saisir</div>
     `;
-    div.addEventListener('click', () => selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
+    const estGroupe = p.groupe_id && programmeSeance.filter(o => o.groupe_id === p.groupe_id).length >= 2;
+    div.addEventListener('click', () => estGroupe
+      ? demarrerSuperset(p.groupe_id)
+      : selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
+    const rb = div.querySelector('.reset-exo');
+    if (rb) rb.addEventListener('click', (ev) => { ev.stopPropagation(); resetExoSeance(p.exercice); });
     listeEl.appendChild(div);
+    if (isNext) prochainEl = div;
+    if (p.groupe_id) {
+      const tag = document.createElement('div');
+      tag.style.cssText = `font-size:11px;color:${couleurGroupe(p.groupe_id)};margin:0 0 10px 4px`;
+      tag.textContent = partenaires.length > 0 ? `🔗 Superset ${p.groupe_id} · alterne avec ${partenaires.join(', ')}` : `🔗 Superset ${p.groupe_id}`;
+      listeEl.appendChild(tag);
+    }
   });
+
+  // Exercices ajoutés en plus du programme (via "Autre exercice")
+  const exosLibres = seance.filter(e => !programmeSeance.some(p => p.exercice === e.exerciceNom));
+  exosLibres.forEach(e => ajouterCarteExoLibre(listeEl, e));
+  majProgressionSeance();
+
+  // Après avoir terminé un exercice, on amène l'athlète au prochain à faire
+  if (scrollVersProchain && prochainEl) {
+    setTimeout(() => prochainEl.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+  }
+  scrollVersProchain = false;
+}
+
+function ajouterCarteExoLibre(listeEl, e) {
+  const seriesFaites = e.series.length;
+  const perf = getPerf(e.exerciceNom);
+  const div = document.createElement('div');
+  div.style.cssText = `background:var(--surface);border:1px solid ${seriesFaites > 0 ? 'var(--success)' : 'var(--border)'};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;position:relative`;
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div style="font-size:15px;font-weight:800;flex:1;min-width:0">${e.exerciceNom}</div>
+      ${seriesFaites > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--success);background:rgba(0,201,110,0.12);border-radius:20px;padding:3px 10px;white-space:nowrap">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : `<span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:3px 10px;white-space:nowrap">Hors prog.</span>`}
+      <button class="btn-sm btn-danger-sm" title="Retirer cet exercice" style="padding:4px 8px;line-height:1">🗑️</button>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${e.muscle}</div>
+    ${perf ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Dernière fois : <strong style="color:var(--text)">${perf.last_charge}kg × ${perf.max_reps}</strong></div>` : '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Premier essai 🆕</div>'}
+  `;
+  div.querySelector('.btn-danger-sm').addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    supprimerExoLibre(e.exerciceNom);
+  });
+  div.addEventListener('click', () => selectionnerExoLibre(e.exerciceNom));
+  listeEl.appendChild(div);
+}
+
+function supprimerExoLibre(exerciceNom) {
+  const exo = seance.find(e => e.exerciceNom === exerciceNom);
+  if (exo && exo.series.length > 0) {
+    if (!confirm(`${exerciceNom} a déjà des séries enregistrées. Le retirer effacera ces séries. Continuer ?`)) return;
+  }
+  seance = seance.filter(e => e.exerciceNom !== exerciceNom);
+  afficherListeSeance();
+  const total = seance.reduce((a,e)=>a+e.series.length,0);
+  document.getElementById('btn-valider').style.display = total > 0 ? 'block' : 'none';
+}
+
+// Efface les séries faites d'un exercice du programme (ex. pour corriger une erreur, ou le 2e exo d'un superset)
+function resetExoSeance(exerciceNom) {
+  const exo = seance.find(e => e.exerciceNom === exerciceNom);
+  if (!exo || exo.series.length === 0) return;
+  if (!confirm(`Effacer les ${exo.series.length} série(s) enregistrée(s) pour ${exerciceNom} ?`)) return;
+  seance = seance.filter(e => e.exerciceNom !== exerciceNom);
+  afficherListeSeance();
+  const total = seance.reduce((a,e)=>a+e.series.length,0);
+  document.getElementById('btn-valider').style.display = total > 0 ? 'block' : 'none';
+}
+
+function afficherListeExosLibres() {
+  const listeEl = document.getElementById('liste-exercices-seance');
+  listeEl.innerHTML = '';
+  if (seance.length === 0) {
+    listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Ajoute un exercice avec le bouton "🔀 Autre exercice" ci-dessus</div>';
+    return;
+  }
+  seance.forEach(e => ajouterCarteExoLibre(listeEl, e));
+}
+
+function selectionnerExoLibre(exerciceNom) {
+  const exo = seance.find(e => e.exerciceNom === exerciceNom);
+  if (!exo) return;
+  exoEnCours = exo;
+  serieNum = exo.series.length + 1;
+
+  document.getElementById('card-liste-seance').style.display = 'none';
+  document.getElementById('card-exo-actuel').style.display = 'block';
+  document.getElementById('card-hors-programme').style.display = 'none';
+
+  document.getElementById('exo-actuel-nom').textContent = exo.exerciceNom;
+  document.getElementById('exo-actuel-detail').textContent = exo.muscle + ' · Hors programme';
+  document.getElementById('exo-actuel-cible').innerHTML = '';
+  document.getElementById('exo-actuel-suggestion').innerHTML = '';
+
+  const perf = getPerf(exo.exerciceNom);
+  if (perf) {
+    document.getElementById('exo-actuel-perf').innerHTML = `Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong>`;
+    document.getElementById('inp-charge').value = perf.last_charge;
+    document.getElementById('inp-reps').value = perf.max_reps;
+  } else {
+    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
+    document.getElementById('inp-charge').value = '';
+    document.getElementById('inp-reps').value = '';
+  }
+
+  majSeriesActuel();
+  window.scrollTo(0, 0);
 }
 
 function retourListeSeance() {
+  enSuperset = false;
+  const sb = document.getElementById('superset-banner');
+  if (sb) sb.style.display = 'none';
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('card-liste-seance').style.display = 'block';
   afficherListeSeance();
   window.scrollTo(0, 0);
-}
-
-function afficherExoActuel() {
-  const card = document.getElementById('card-exo-actuel');
-
-  if (programmeSeance.length === 0) {
-    // Pas de programme → mode libre
-    card.style.display = 'block';
-    document.getElementById('exo-actuel-nom').textContent = 'Mode libre';
-    document.getElementById('exo-actuel-detail').textContent = 'Aucun programme défini pour cette séance';
-    document.getElementById('exo-actuel-perf').innerHTML = '';
-    document.getElementById('exo-actuel-cible').innerHTML = '';
-    // Suggestion surcharge
-    const strategie2 = athlete.strategie_progression || 'Progression linéaire';
-    const progExo2 = programmeSeance.find(pr => pr.exercice === exerciceNom);
-    if (progExo2) {
-      const exoData2 = exercicesData.find(e => e.exercice === exerciceNom);
-      const inc2 = exoData2 ? parseFloat(String(exoData2.increment_kg).replace(',','.').split('/')[0].trim()) || 2.5 : 2.5;
-      const msg2 = calculerSurcharge(strategie2, perf, progExo2, bestCharge, inc2);
-      document.getElementById('exo-actuel-suggestion').innerHTML = msg2 ? `<div class="prog-suggestion" style="margin-top:6px">${msg2}</div>` : '';
-    } else {
-      document.getElementById('exo-actuel-suggestion').innerHTML = '';
-    }
-    toggleExoHorsProgramme(true);
-    return;
-  }
-
-  if (indexExoProgramme >= programmeSeance.length) {
-    // Fin du programme → retour à la liste
-    retourListeSeance();
-    return;
-  }
-
-  const p = programmeSeance[indexExoProgramme];
-  const perf = lastPerfData[p.exercice];
-  const exoData = exercicesData.find(e => e.exercice === p.exercice);
-  const increment = exoData ? exoData.increment_kg : '2.5 / 5kg';
-
-  card.style.display = 'block';
-  document.getElementById('exo-actuel-nom').textContent = p.exercice;
-  document.getElementById('exo-actuel-detail').textContent = `${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}`;
-
-  // Pré-remplir charge et reps
-  if (perf) {
-    document.getElementById('inp-charge').value = perf.last_charge;
-    const cibleReps = perf.max_reps < p.reps_max ? perf.max_reps + 1 : p.reps_max;
-    document.getElementById('inp-reps').value = cibleReps;
-
-    document.getElementById('exo-actuel-perf').innerHTML =
-      `Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong>`;
-
-    document.getElementById('exo-actuel-cible').innerHTML =
-      `🎯 Cible : ${perf.last_charge}kg × ${cibleReps} reps`;
-
-    // Suggestion surcharge
-    const surcharge = perf.max_reps >= p.reps_max && perf.prev_max_reps !== null && perf.prev_max_reps >= p.reps_max;
-    if (surcharge) {
-      const annees = Number(athlete.annees_pratique) || 0;
-      if (annees >= 10) {
-        document.getElementById('exo-actuel-suggestion').innerHTML = `
-          <div class="prog-suggestion">
-            💪 Expérimenté — Choix :<br>
-            <strong>Option 1 :</strong> +1 rep → ${perf.last_charge}kg × ${perf.max_reps + 1} reps<br>
-            <strong>Option 2 :</strong> Réduire le repos de 30s
-          </div>`;
-      } else {
-        const nouvelleCharge = Math.round((perf.last_charge + parseFloat(increment)) * 4) / 4;
-        document.getElementById('exo-actuel-suggestion').innerHTML = `
-          <div class="prog-suggestion">
-            💪 Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}) → repart à ${p.reps_mini} reps
-          </div>`;
-        // Pré-remplir avec la nouvelle charge et reps mini
-        document.getElementById('inp-charge').value = nouvelleCharge;
-        document.getElementById('inp-reps').value = p.reps_mini;
-      }
-    }
-  } else {
-    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
-    document.getElementById('exo-actuel-cible').innerHTML = `🎯 Objectif : ${p.reps_mini}-${p.reps_max} reps`;
-    // Suggestion surcharge
-    const strategie2 = athlete.strategie_progression || 'Progression linéaire';
-    const progExo2 = programmeSeance.find(pr => pr.exercice === exerciceNom);
-    if (progExo2) {
-      const exoData2 = exercicesData.find(e => e.exercice === exerciceNom);
-      const inc2 = exoData2 ? parseFloat(String(exoData2.increment_kg).replace(',','.').split('/')[0].trim()) || 2.5 : 2.5;
-      const msg2 = calculerSurcharge(strategie2, perf, progExo2, bestCharge, inc2);
-      document.getElementById('exo-actuel-suggestion').innerHTML = msg2 ? `<div class="prog-suggestion" style="margin-top:6px">${msg2}</div>` : '';
-    } else {
-      document.getElementById('exo-actuel-suggestion').innerHTML = '';
-    }
-    document.getElementById('inp-charge').value = '';
-    document.getElementById('inp-reps').value = p.reps_mini;
-  }
-
-  // Init exo en cours
-  exoEnCours = { muscle: exoData ? exoData.muscle : '', exerciceId: exoData ? exoData.exercice_id : p.exercice, exerciceNom: p.exercice, series: [] };
-  seance = seance.filter(e => e.exerciceNom !== p.exercice);
-  seance.push(exoEnCours);
-  serieNum = 1;
-  document.getElementById('series-list-actuel').innerHTML = '';
-  document.getElementById('badge-series-actuel').textContent = '0 séries';
-  document.getElementById('sel-rpe').value = '';
-}
-
-function exerciceSuivant() {
-  if (!exoEnCours || exoEnCours.series.length === 0) {
-    showToast('⚠️ Ajoute au moins une série !', '#ff4444'); return;
-  }
-  const nb = exoEnCours.series.length;
-  const nom = exoEnCours.exerciceNom;
-  if (confirm(`✅ "${nom}" — ${nb} série${nb>1?'s':''} enregistrée${nb>1?'s':''}.\n\nPasser à l'exercice suivant ?`)) {
-    indexExoProgramme++;
-    document.getElementById('card-hors-programme').style.display = 'none';
-    afficherExoActuel();
-    document.getElementById('btn-valider').style.display = seance.reduce((a,e)=>a+e.series.length,0) > 0 ? 'block' : 'none';
-    window.scrollTo(0,0);
-  }
 }
 
 function toggleExoHorsProgramme(forceOpen) {
@@ -1088,39 +2951,18 @@ function choisirExoLibre() {
   if (!val) { showToast('⚠️ Choisis un exercice', '#ff4444'); return; }
   const [exoId, exoNom] = val.split('|');
   const muscle = document.getElementById('sel-muscle-libre').value;
-  const exoData = exercicesData.find(e => e.exercice_id == exoId);
 
-  // Sauvegarder l'exo en cours si il a des séries
-  if (exoEnCours && exoEnCours.series.length > 0) {
-    // Déjà dans seance
-  }
-
-  exoEnCours = { muscle, exerciceId: exoId, exerciceNom: exoNom, series: [] };
-  seance = seance.filter(e => e.exerciceNom !== exoNom);
-  seance.push(exoEnCours);
-  serieNum = 1;
-
-  document.getElementById('exo-actuel-nom').textContent = exoNom;
-  document.getElementById('exo-actuel-detail').textContent = muscle + ' · Hors programme';
-  document.getElementById('exo-actuel-perf').innerHTML = lastPerfData[exoNom]
-    ? `Dernière fois : <strong>${lastPerfData[exoNom].last_charge}kg × ${lastPerfData[exoNom].max_reps} reps</strong>`
-    : '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
-  document.getElementById('exo-actuel-cible').innerHTML = '';
-  document.getElementById('exo-actuel-suggestion').innerHTML = '';
-  document.getElementById('series-list-actuel').innerHTML = '';
-  document.getElementById('badge-series-actuel').textContent = '0 séries';
-
-  if (lastPerfData[exoNom]) {
-    document.getElementById('inp-charge').value = lastPerfData[exoNom].last_charge;
-    document.getElementById('inp-reps').value = lastPerfData[exoNom].max_reps;
-  } else {
-    document.getElementById('inp-charge').value = '';
-    document.getElementById('inp-reps').value = '';
+  const dejaPresent = seance.find(e => e.exerciceNom === exoNom);
+  if (!dejaPresent) {
+    seance.push({ muscle, exerciceId: exoId, exerciceNom: exoNom, series: [] });
   }
 
   document.getElementById('card-hors-programme').style.display = 'none';
-  window.scrollTo(0,0);
-  showToast('Exercice changé : ' + exoNom);
+  document.getElementById('sel-muscle-libre').value = '';
+  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
+  afficherListeSeance();
+  window.scrollTo(0, 0);
+  showToast(dejaPresent ? exoNom + ' est déjà dans la séance' : '✅ ' + exoNom + ' ajouté à la séance');
 }
 
 // ==================== SAISIE SÉRIE ====================
@@ -1145,7 +2987,8 @@ function ajouterSerie() {
   }
   if (!exoEnCours) { showToast('⚠️ Choisis un exercice', '#ff4444'); return; }
 
-  const volume = parseFloat(charge) * parseInt(reps);
+  const chargeNum = parseFloat(charge);
+  const volume = chargeNum > 0 ? chargeNum * parseInt(reps) : parseInt(reps);
   exoEnCours.series.push({
     date, seanceId, semaine: getNumSemaine(date),
     muscle: exoEnCours.muscle, exerciceId: exoEnCours.exerciceId, exerciceNom: exoEnCours.exerciceNom,
@@ -1157,9 +3000,11 @@ function ajouterSerie() {
   majSeriesActuel();
   document.getElementById('sel-rpe').value = '';
   document.getElementById('btn-valider').style.display = 'block';
-  // Start rest timer
   const reposVal = parseInt(repos);
-  if (reposVal > 0) {
+  if (enSuperset) {
+    // Mode superset : on enchaîne l'exercice suivant ; repos seulement à la fin du tour
+    avancerSuperset(reposVal);
+  } else if (reposVal > 0) {
     startTimer(reposVal, `Série ${serieNum-1} · ${charge}kg × ${reps} reps`);
   } else {
     showToast(`✅ Série ${serieNum-1} ajoutée !`);
@@ -1179,6 +3024,7 @@ function majSeriesActuel() {
       <button class="btn-sm btn-danger-sm" onclick="supprimerSerie(${i})">✕</button>
     </div>
   `).join('');
+  majProgressionSeance();
 }
 
 function supprimerSerie(index) {
@@ -1248,7 +3094,7 @@ function afficherRecap() {
     div.className = 'recap-exo';
     div.innerHTML = `<div class="recap-exo-name">${exo.muscle} — ${exo.exerciceNom}</div>`;
     const progExo = programmeSeance.find(pr => pr.exercice === exo.exerciceNom);
-    const perfExo = lastPerfData[exo.exerciceNom];
+    const perfExo = getPerf(exo.exerciceNom);
     exo.series.forEach(s => {
       const p = document.createElement('div');
       p.className = 'recap-serie';
@@ -1329,9 +3175,13 @@ async function nouvelleSeance() {
   sb.style.display = 'block'; sb.style.visibility = 'visible';
   sb.style.height = 'auto'; sb.style.overflow = 'visible';
   document.getElementById('card-exo-actuel').style.display = 'none';
-  document.getElementById('btn-valider').style.display = 'none';
+  const btnValider = document.getElementById('btn-valider');
+  btnValider.style.display = 'none';
+  btnValider.disabled = false;
+  btnValider.textContent = '✅ Valider la séance';
   document.getElementById('sel-seance-id').value = '';
   document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+  majProgressionSeance();
   window.scrollTo(0,0);
 }
 
@@ -1513,6 +3363,39 @@ function calNaviguer(direction) {
   renderCalendrier();
 }
 
+function calc1RM(charge, reps) {
+  if (!charge || !reps) return null;
+  return Math.round(charge * (1 + reps / 30) * 10) / 10;
+}
+
+function drawLineChart(canvasId, values, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || values.length === 0) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  if (values.length === 1) {
+    ctx.beginPath(); ctx.arc(w / 2, h / 2, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+    return;
+  }
+  const pad = 8;
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const stepX = (w - pad * 2) / (values.length - 1);
+  const toX = i => pad + i * stepX;
+  const toY = v => h - pad - ((v - min) / range) * (h - pad * 2);
+  ctx.beginPath();
+  values.forEach((v, i) => { const x = toX(i), y = toY(v); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+  values.forEach((v, i) => {
+    const x = toX(i), y = toY(v);
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  });
+}
+
 function afficherProgressionExo() {
   const exo = document.getElementById('sel-hist-exercice').value;
   const el = document.getElementById('hist-progression-content');
@@ -1532,17 +3415,28 @@ function afficherProgressionExo() {
   const progGlobale = diffCharge > 0 ? `+${diffCharge}kg` : diffReps > 0 ? `+${diffReps} reps` : 'Stable';
   const progCouleur = diffCharge > 0 || diffReps > 0 ? '#00c96e' : 'var(--text-muted)';
 
+  const rm1Last = calc1RM(last.charge, last.reps);
+  const rm1First = calc1RM(first.charge, first.reps);
+  const rm1Diff = (rm1Last !== null && rm1First !== null) ? Math.round((rm1Last - rm1First) * 10) / 10 : null;
+
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px;">
       <span style="font-size:12px;color:var(--text-muted);">Progression totale</span>
       <span style="font-size:13px;font-weight:700;color:${progCouleur};">${progGlobale}</span>
     </div>
+    ${rm1Last !== null ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px;">
+      <span style="font-size:12px;color:var(--text-muted);">1RM estimé (Epley)</span>
+      <span style="font-size:13px;font-weight:700;color:var(--accent);">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px;">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
+    </div>` : ''}
+    <canvas id="chart-1rm-athlete" style="width:100%;height:90px;display:block;margin-bottom:10px"></canvas>
     <table style="width:100%;font-size:12px;border-collapse:collapse;">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border);">
         <td style="padding:5px 0;">Date</td>
         <td style="padding:5px 0;text-align:center;">Séance</td>
         <td style="padding:5px 0;text-align:center;">Charge S1</td>
         <td style="padding:5px 0;text-align:center;">Reps S1</td>
+        <td style="padding:5px 0;text-align:center;">1RM est.</td>
         <td style="padding:5px 0;text-align:center;">Évol.</td>
       </tr>
       ${perfs.map((p, i) => {
@@ -1557,15 +3451,19 @@ function afficherProgressionExo() {
           else { evol = '='; evolColor = 'var(--text-muted)'; }
         }
         const isLast = i === 0;
+        const rm1 = calc1RM(p.charge, p.reps);
         return `<tr style="border-bottom:1px solid var(--surface2);${isLast ? 'font-weight:700;' : ''}">
           <td style="padding:6px 0;color:var(--text);">${p.date}</td>
           <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px;">${p.seance.substring(0,8)}</td>
           <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'};">${p.charge}kg</td>
           <td style="padding:6px 0;text-align:center;color:${isLast ? 'var(--accent)' : 'var(--text)'};">${p.reps}</td>
+          <td style="padding:6px 0;text-align:center;color:var(--text-muted);font-size:11px;">${rm1 !== null ? rm1 + 'kg' : '—'}</td>
           <td style="padding:6px 0;text-align:center;color:${evolColor};font-size:16px;font-weight:700;">${evol}</td>
         </tr>`;
       }).join('')}
     </table>`;
+  const chrono = perfs.slice().reverse();
+  drawLineChart('chart-1rm-athlete', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)');
 }
 
 // Volume cible par muscle selon niveau
@@ -1705,7 +3603,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   const exoId = exoData ? exoData.exercice_id : exerciceNom;
   const incrementRaw2 = exoData ? exoData.increment_kg : "2.5";
   const increment2 = parseFloat(String(incrementRaw2).replace(',','.').split('/')[0].trim()) || 2.5;
-  const perf = lastPerfData[exerciceNom];
+  const perf = getPerf(exerciceNom);
 
   // Récupérer l'exo si déjà commencé - on continue d'ajouter des séries
   const exoExistant = seance.find(e => e.exerciceNom === exerciceNom);
@@ -1719,7 +3617,9 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
 
   // Mettre à jour l'affichage
   document.getElementById('exo-actuel-nom').textContent = exerciceNom;
-  document.getElementById('exo-actuel-detail').textContent = `${muscle} · ${repsMini}-${repsMax} reps`;
+  const pProg = programmeSeance.find(p => p.exercice === exerciceNom);
+  const partenairesActuel = pProg && pProg.groupe_id ? programmeSeance.filter(o => o !== pProg && o.groupe_id === pProg.groupe_id).map(o => o.exercice) : [];
+  document.getElementById('exo-actuel-detail').innerHTML = `${muscle} · ${repsMini}-${repsMax} reps${partenairesActuel.length > 0 ? ` <span style="color:${couleurGroupe(pProg.groupe_id)}">· 🔗 Superset, alterne avec ${partenairesActuel.join(', ')}</span>` : ''}`;
   document.getElementById('card-exo-actuel').style.display = 'block';
   document.getElementById('card-hors-programme').style.display = 'none';
 
@@ -1758,6 +3658,7 @@ async function chargerAppData() {
 
     // Stocker les données globalement
     dernierAppData = data;
+    peuplerSeancesProgramme();
     seancesDates = data.historique.dates_seances || {};
     progressionData = data.historique.progression_par_exo || {};
     tendancesData = data.historique.tendances || null;
@@ -1875,10 +3776,12 @@ async function chargerAppData() {
 
     // Progression
     const progEl = document.getElementById('dash-prog-content');
+    const progCard = document.getElementById('dash-prog-card');
     if (dash.progression) {
       const p = dash.progression;
       const enProg = p.en_progression || 0;
       const enBaisse = p.en_baisse || 0;
+      drawerData = p.details || [];
       const lignesUp = p.details.filter(d => d.up).map(d => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px;">
           <span style="font-size:11px;color:#00c96e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:inline-block;">${d.exercice}</span>
@@ -1917,14 +3820,10 @@ async function chargerAppData() {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <span style="font-size:13px;font-weight:700;color:${statusColor};">${statusLabel}</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
           <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color};">${r.rpe_moyen}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
           <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color};">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
-          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color};">${r.volume_evol > 0 ? '+' : ''}${r.volume_evol}%</div><div class="dash-stat-label">Volume</div></div>
-        </div>
-        <div style="border-left:3px solid ${statusColor};padding-left:10px;">
-          <div style="font-size:12px;font-weight:700;margin-bottom:3px;">Conseil</div>
-          <div style="font-size:12px;opacity:0.8;">${r.conseil}</div>
+          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color};font-size:14px">${r.volume_moyenne_prec === null ? 'N/A' : r.volume_semaine + ' / ' + r.volume_moyenne_prec}</div><div class="dash-stat-label">Volume (vs moy. 3 sem.)</div></div>
         </div>`;
     } else {
       recupEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">Pas encore assez de données — continue à t'entraîner, le bloc se remplira après quelques semaines !</div>`;
@@ -2094,7 +3993,16 @@ function calculerSurcharge(strategie, perf, programme, bestCharge, increment) {
 let drawerData = [];
 
 function ouvrirDrawer() {
-  filtrerDrawer('tous');
+  if (drawerData.length === 0) {
+    const el = document.getElementById('drawer-liste');
+    if (el) el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:16px 0;text-align:center;">Pas encore de données cette semaine</div>';
+    ['tous','up','down','stable'].forEach(t => {
+      const btn = document.getElementById('fd-'+t);
+      if (btn) { btn.style.background = t === 'tous' ? 'var(--accent)' : 'var(--surface2)'; btn.style.color = t === 'tous' ? '#000' : 'var(--text-muted)'; btn.style.fontWeight = t === 'tous' ? '700' : '400'; }
+    });
+  } else {
+    filtrerDrawer('tous');
+  }
   document.getElementById('drawer-progression').style.bottom = '0';
   document.getElementById('drawer-overlay').style.display = 'block';
   document.body.style.overflow = 'hidden';
@@ -2104,6 +4012,17 @@ function fermerDrawer() {
   document.getElementById('drawer-progression').style.bottom = '-100%';
   document.getElementById('drawer-overlay').style.display = 'none';
   document.body.style.overflow = '';
+}
+
+function allerProgressionExo(exo) {
+  fermerDrawer();
+  switchTab('historique');
+  setTimeout(() => {
+    const sel = document.getElementById('sel-hist-exercice');
+    if (!sel) return;
+    const opt = Array.from(sel.options).find(o => o.value === exo);
+    if (opt) { sel.value = exo; afficherProgressionExo(); sel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }, 300);
 }
 
 function filtrerDrawer(type) {
@@ -2130,15 +4049,19 @@ function filtrerDrawer(type) {
     const couleur = d.up ? '#00c96e' : d.down ? 'var(--danger)' : 'var(--text-muted)';
     const bg = d.up ? 'rgba(0,201,110,0.1)' : d.down ? 'rgba(255,68,68,0.1)' : 'var(--surface2)';
     const fleche = d.up ? '↑' : d.down ? '↓' : '=';
+    const exoEsc = d.exercice.replace(/'/g, "\\'");
     return `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--surface2);">
+      <div onclick="allerProgressionExo('${exoEsc}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--surface2);cursor:pointer;">
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:18px;font-weight:700;color:${couleur};">${fleche}</span>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--text);">${d.exercice}</div>
           </div>
         </div>
-        <span style="font-size:12px;font-weight:700;color:${couleur};background:${bg};padding:3px 10px;border-radius:20px;white-space:nowrap;">${d.variation}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;font-weight:700;color:${couleur};background:${bg};padding:3px 10px;border-radius:20px;white-space:nowrap;">${d.variation}</span>
+          <span style="font-size:11px;color:var(--accent);">→</span>
+        </div>
       </div>`;
   }).join('');
 }
@@ -2152,8 +4075,21 @@ function afficherGraphiquePoids(poids) {
 }
 
 function filtrerGraphPoids(periode) {
+  dessinerGraphPoids(toutesLesPesees, periode, { btn:'gp-', svg:'graph-poids-svg', actuel:'graph-poids-actuel', evol:'graph-poids-evol' });
+}
+
+let cdToutesLesPesees = [];
+function afficherGraphiquePoidsCoach(poids) {
+  cdToutesLesPesees = poids || [];
+  cdFiltrerGraphPoids('1m');
+}
+function cdFiltrerGraphPoids(periode) {
+  dessinerGraphPoids(cdToutesLesPesees, periode, { btn:'cd-gp-', svg:'cd-graph-poids-svg', actuel:'cd-graph-poids-actuel', evol:'cd-graph-poids-evol' });
+}
+
+function dessinerGraphPoids(pesees, periode, ids) {
   ['1m','3m','all'].forEach(p => {
-    const btn = document.getElementById('gp-'+p);
+    const btn = document.getElementById(ids.btn+p);
     if (!btn) return;
     btn.style.background = p === periode ? 'var(--text)' : 'var(--surface2)';
     btn.style.color = p === periode ? 'var(--bg)' : 'var(--text-muted)';
@@ -2161,7 +4097,7 @@ function filtrerGraphPoids(periode) {
   });
 
   const maintenant = new Date();
-  let filtered = toutesLesPesees.filter(p => {
+  let filtered = pesees.filter(p => {
     const parts = p.date.split('/');
     const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
     if (periode === '1m') return d >= new Date(maintenant.getTime() - 30*24*3600*1000);
@@ -2170,23 +4106,27 @@ function filtrerGraphPoids(periode) {
   }).reverse(); // ordre chronologique
 
   if (filtered.length === 0) {
-    document.getElementById('graph-poids-svg').innerHTML = '<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Aucune donnée sur cette période</text>';
+    document.getElementById(ids.svg).innerHTML = '<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Aucune donnée sur cette période</text>';
+    document.getElementById(ids.actuel).textContent = '—';
+    document.getElementById(ids.evol).innerHTML = '';
     return;
   }
 
   // Poids actuel et évolution
   const dernier = filtered[filtered.length - 1];
   const premier = filtered[0];
-  document.getElementById('graph-poids-actuel').textContent = dernier.poids;
+  document.getElementById(ids.actuel).textContent = dernier.poids;
   if (filtered.length > 1) {
     const diff = (dernier.poids - premier.poids).toFixed(1);
     const sign = diff > 0 ? '▲' : '▼';
     const col = diff > 0 ? '#ff9500' : '#00a854';
-    document.getElementById('graph-poids-evol').innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
+    document.getElementById(ids.evol).innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
+  } else {
+    document.getElementById(ids.evol).innerHTML = '';
   }
 
   if (filtered.length < 2) {
-    document.getElementById('graph-poids-svg').innerHTML = `<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Besoin d'au moins 2 pesées</text>`;
+    document.getElementById(ids.svg).innerHTML = `<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Besoin d'au moins 2 pesées</text>`;
     return;
   }
 
@@ -2238,19 +4178,26 @@ function filtrerGraphPoids(periode) {
     }
   });
 
-  document.getElementById('graph-poids-svg').innerHTML = svg;
+  document.getElementById(ids.svg).innerHTML = svg;
 }
 
-function demarrerSeanceLibre() {
+async function demarrerSeanceLibre() {
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   programmeSeance = []; lastPerfData = {};
-  // Afficher la liste pour que card-hors-programme soit visible
+  // Réinitialiser le choix de programme et le bloc "autre exercice"
+  document.getElementById('sel-seance-id').value = 'Libre';
+  document.getElementById('sel-muscle-libre').innerHTML = '<option value="">— Choisir —</option>';
+  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
   document.getElementById('card-liste-seance').style.display = 'block';
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('btn-valider').style.display = 'none';
-  // Vider la liste d'exercices
-  document.getElementById('liste-exercices-seance').innerHTML = '';
+  afficherListeExosLibres();
   toggleExoHorsProgramme(true);
+
+  const resPerf = await fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=Libre`);
+  const dataPerf = await resPerf.json();
+  lastPerfData = dataPerf.perfs || {};
+  afficherListeExosLibres();
 }
 
 function terminerExercice() {
@@ -2260,9 +4207,10 @@ function terminerExercice() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   document.getElementById('timer-overlay').classList.remove('active');
   document.getElementById('card-hors-programme').style.display = 'none';
+  const nomFini = exoEnCours.exerciceNom;
+  scrollVersProchain = true;
   retourListeSeance();
-  window.scrollTo(0,0);
-  showToast(`✅ ${exoEnCours.exerciceNom} terminé !`);
+  showToast(`✅ ${nomFini} terminé !`);
 }
 
 function toggleTheme() {
