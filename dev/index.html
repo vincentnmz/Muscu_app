@@ -2020,17 +2020,18 @@ function renderProgrammeCoach() {
     </div>`;
 
   el.innerHTML = ordre.map(seanceId => `
-    <div class="card" style="background:var(--surface2);padding:14px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:15px;font-weight:800">${seanceId}</div>
-        <span style="font-size:11px;color:var(--text-muted)">${seances[seanceId].length} exo${seances[seanceId].length>1?'s':''}</span>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:0;margin-bottom:16px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(200,240,0,0.08);border-bottom:1px solid var(--border)">
+        <div style="font-size:15px;font-weight:800;color:var(--accent)">📋 ${seanceId}</div>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:600">${seances[seanceId].length} exo${seances[seanceId].length>1?'s':''}</span>
       </div>
+      <div style="padding:12px 14px">
       ${seances[seanceId].map(l => {
         const autres = seances[seanceId].filter(o => o.row_index !== l.row_index);
         const partenairesActuels = l.groupe_id ? autres.filter(o => o.groupe_id === l.groupe_id) : [];
         const coul = l.groupe_id ? couleurGroupe(l.groupe_id) : null;
         return `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;${coul ? `border-left:4px solid ${coul}` : ''}">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25);${coul ? `border-left:4px solid ${coul}` : ''}">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
             <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',this.value,null,null,null,null,null)" style="font-size:14px;padding:9px 10px;flex:1;min-width:0;margin-bottom:0;font-weight:700">${exercicesData.map(e => `<option value="${e.exercice}"${e.exercice === l.exercice ? ' selected' : ''}>${e.exercice}</option>`).join('')}</select>
             <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
@@ -2051,6 +2052,7 @@ function renderProgrammeCoach() {
         </div>`;
       }).join('')}
       <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')" style="width:100%">+ Ajouter un exercice</button>
+      </div>
     </div>`).join('');
 }
 
