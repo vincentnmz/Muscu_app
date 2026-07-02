@@ -179,41 +179,25 @@
     #coach-athletes-grid { grid-template-columns: 1fr 1fr 1fr !important; }
   }
 
-  /* ============ BUREAU : dashboard coach (>= 1024px) ============ */
+  /* ============ BUREAU coach (>= 1024px) ============ */
   @media (min-width: 1024px) {
-    body.coach-active #main-container {
-      max-width: none; display: flex; align-items: flex-start; gap: 24px; padding: 24px 32px;
-    }
-    /* Colonnes en proportions : gauche 1/4 · centre 2/4 · droite 1/4 */
+    body.coach-active #main-container { max-width: 1500px; padding: 24px 32px; }
+
+    /* ACCUEIL (aucun athlète sélectionné) : tableau de synthèse pleine largeur */
+    body.coach-active:not(.athlete-selected) #view-coach-detail.view { display: none !important; }
+
+    /* DÉTAIL (athlète sélectionné) : centre 2/3 + rail droit 1/3 */
+    body.coach-active.athlete-selected #view-coach.view { display: none !important; }
     body.coach-active #cd-body { display: flex; align-items: flex-start; gap: 24px; }
-    body.coach-active #cd-main { flex: 2 1 0; min-width: 0; }        /* 2/4 */
-    body.coach-active #cd-rail { flex: 1 1 0; min-width: 0; position: sticky; top: 78px; display: block !important; } /* 1/4 (dans le détail) */
-    /* Le détail (centre+droite) occupe 3/4, la sidebar 1/4 */
-    body.coach-active #view-coach.view {
-      display: block !important; flex: 1 1 0; min-width: 0;          /* 1/4 */
-      position: sticky; top: 78px; max-height: calc(100vh - 100px); overflow-y: auto;
-      padding-right: 4px;
-    }
-    body.coach-active #view-coach #coach-athletes-grid { grid-template-columns: 1fr !important; }
-    /* Zone détail (centre + droite) : 3/4, toujours visible */
-    body.coach-active #view-coach-detail.view {
-      display: block !important; flex: 3 1 0; min-width: 0;          /* 3/4 */
-    }
-    /* Sous-onglets : barre horizontale en haut du panneau (plus de barre fixe en bas) */
+    body.coach-active #cd-main { flex: 2 1 0; min-width: 0; }
+    body.coach-active #cd-rail { flex: 1 1 0; min-width: 0; position: sticky; top: 78px; display: block !important; }
+    /* Sous-onglets : barre horizontale en haut (plus de barre fixe en bas) */
     body.coach-active #view-coach-detail .sub-tabs {
       position: static; max-width: none; margin: 0 0 18px; border-top: none;
       background: none; border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 0; z-index: auto;
     }
     body.coach-active #view-coach-detail .sub-tab { font-size: 10.5px; padding: 9px 4px; }
     body.coach-active.cd-nav { padding-bottom: 0; }
-    /* Bouton retour inutile en mode dashboard */
-    body.coach-active #view-coach-detail > .header .btn-outline { display: none; }
-    /* Placeholder quand aucun athlète n'est sélectionné */
-    body.coach-active:not(.athlete-selected) #coach-detail-empty { display: block !important; }
-    body.coach-active:not(.athlete-selected) #view-coach-detail > .header,
-    body.coach-active:not(.athlete-selected) #view-coach-detail > .sub-tabs,
-    body.coach-active:not(.athlete-selected) #view-coach-detail > #cd-body { display: none !important; }
-    /* Grilles internes plus aérées sur large écran */
     body.coach-active #cd-indicateurs > div { gap: 10px; }
   }
 </style>
@@ -314,15 +298,19 @@
     <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
 
     <div id="coach-home-body" style="display:none">
-      <!-- Stats rapides -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-        <div class="dash-card" style="text-align:center;padding:14px">
+      <!-- KPIs -->
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="dash-card" style="text-align:center;padding:14px 20px;flex:1;min-width:100px">
           <div class="dash-big-num" id="coach-stat-total">—</div>
           <div class="dash-label" style="margin:0">Athlètes</div>
         </div>
-        <div class="dash-card" style="text-align:center;padding:14px">
-          <div class="dash-big-num" id="coach-stat-surveiller" style="color:#f59f00">—</div>
+        <div class="dash-card" style="text-align:center;padding:14px 20px;flex:1;min-width:100px">
+          <div class="dash-big-num" id="coach-stat-surveiller" style="color:#f5a623">—</div>
           <div class="dash-label" style="margin:0">À surveiller</div>
+        </div>
+        <div class="dash-card" style="text-align:center;padding:14px 20px;flex:1;min-width:100px">
+          <div class="dash-big-num" id="coach-stat-action" style="color:#e5484d">—</div>
+          <div class="dash-label" style="margin:0">Intervention</div>
         </div>
       </div>
 
@@ -331,31 +319,15 @@
         <option value="">—</option>
       </select>
 
-      <!-- BANDEAU A SURVEILLER -->
-      <div id="coach-surveiller-card" class="dash-card dash-card-accent-orange" style="padding:16px;display:none">
-        <div class="dash-label" id="coach-surveiller-titre">⚠️ À surveiller</div>
-        <div id="coach-surveiller-content"></div>
-      </div>
+      <!-- TABLEAU DE SYNTHÈSE -->
+      <div id="coach-synthese"><div class="loader">Chargement...</div></div>
 
-      <!-- VUE GLOBALE ATHLETES -->
-      <div style="margin-top:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
-          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:700">Tous les athlètes</div>
-          <button onclick="ouvrirRecapAthletes()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">📊 Tableau récap</button>
-        </div>
-        <div id="coach-athletes-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+      <!-- Légende -->
+      <div style="margin-top:14px;font-size:11px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap;">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00c96e;margin-right:5px;"></span>Optimal — progression +, ACWR normal, pas d'alerte</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f5a623;margin-right:5px;"></span>À surveiller — stagnation, volume inhabituel, récup moyenne</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e5484d;margin-right:5px;"></span>Intervention — fatigue, baisse perf, absence</span>
       </div>
-    </div>
-  </div>
-
-  <!-- OVERLAY TABLEAU RECAP ATHLETES -->
-  <div id="coach-recap-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow:auto;">
-    <div style="max-width:1100px;margin:0 auto;padding:18px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:18px;font-weight:800;">📊 Récap athlètes</div>
-        <button onclick="fermerRecapAthletes()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">✕ Fermer</button>
-      </div>
-      <div id="coach-recap-content"><div class="loader">Chargement…</div></div>
     </div>
   </div>
 
@@ -1180,22 +1152,108 @@ async function ouvrirEspaceCoach() {
 function renderListeAthletesCoach() {
   document.getElementById('liste-athletes-coach').innerHTML = '';
   document.getElementById('coach-home-body').style.display = 'block';
-  renderCoachSurveiller(athletesCoach);
-  renderCoachAthleteGrid(athletesCoach);
+  renderCoachSynthese(athletesCoach);
 
-  // Stats rapides
+  // KPIs
+  const stats = athletesCoach.map(a => statutAthlete(a));
   document.getElementById('coach-stat-total').textContent = athletesCoach.length;
-  const nbSurv = athletesCoach.filter(a => alertesActives(a).length > 0).length;
-  document.getElementById('coach-stat-surveiller').textContent = nbSurv;
+  document.getElementById('coach-stat-surveiller').textContent = stats.filter(s => s.rank >= 1).length;
+  document.getElementById('coach-stat-action').textContent = stats.filter(s => s.rank === 2).length;
 
-  // Menu déroulant : athlètes à surveiller d'abord, puis ordre alphabétique
+  // select caché (compatibilité)
   const sel = document.getElementById('coach-select-athlete');
-  const tri = athletesCoach
-    .map((a, i) => ({ a, i, nbAl: alertesActives(a).length }))
-    .sort((x, y) => (y.nbAl - x.nbAl) || String(x.a.nom).localeCompare(String(y.a.nom)));
-  sel.innerHTML = '<option value="">— Choisir un athlète —</option>' +
-    tri.map(o => `<option value="${o.i}">${o.a.nom}${o.nbAl > 0 ? '  ⚠️ ' + o.nbAl : ''}</option>`).join('');
-  sel.value = '';
+  if (sel) {
+    sel.innerHTML = '<option value="">—</option>' +
+      athletesCoach.map((a, i) => `<option value="${i}">${a.nom}</option>`).join('');
+    sel.value = '';
+  }
+}
+
+// Statut global synthétique d'un athlète (à partir des alertes + marqueurs serveur si dispo)
+function statutAthlete(a) {
+  const alertes = alertesActives(a);
+  const types = alertes.map(al => al.type || '');
+  const hasHaute = alertes.some(al => al.severite === 'haute');
+  const acwr = (typeof a.acwr === 'number') ? a.acwr : null;
+  const acwrDanger = acwr !== null && acwr > 1.5;
+  const acwrWarn = acwr !== null && (acwr < 0.8 || acwr > 1.3);
+  const tendNeg = a.tendance === 'negative';
+  const interTypes = ['fatigue', 'surcharge', 'irregularite'];
+  if (hasHaute || types.some(t => interTypes.includes(t)) || acwrDanger)
+    return { rank: 2, color: '#e5484d', label: 'Action' };
+  if (alertes.length > 0 || acwrWarn || tendNeg)
+    return { rank: 1, color: '#f5a623', label: 'Surveillance' };
+  return { rank: 0, color: '#00c96e', label: 'Optimal' };
+}
+
+function joursDepuis(dateVal) {
+  if (!dateVal) return '—';
+  const ts = parseChatDate(dateVal);
+  if (!ts) return String(dateVal);
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const d = new Date(ts); d.setHours(0, 0, 0, 0);
+  const j = Math.round((now - d) / 86400000);
+  if (j <= 0) return "aujourd'hui";
+  if (j === 1) return 'hier';
+  return `il y a ${j} j`;
+}
+
+function labelAlerteCourt(a) {
+  const alertes = alertesActives(a);
+  if (alertes.length === 0) return null;
+  const map = { fatigue: 'Fatigue', surcharge: 'Surcharge', irregularite: 'Absence', stagnation: 'Stagnation', regression: 'Régression' };
+  const principale = alertes.find(al => al.severite === 'haute') || alertes[0];
+  return map[principale.type] || (principale.type || 'Alerte');
+}
+
+function renderCoachSynthese(athletes) {
+  const el = document.getElementById('coach-synthese');
+  if (!el) return;
+  if (!athletes || athletes.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
+    return;
+  }
+  const rows = athletes.map((a, i) => ({ a, i, s: statutAthlete(a) }))
+    .sort((x, y) => (y.s.rank - x.s.rank) || String(x.a.nom).localeCompare(String(y.a.nom)));
+
+  const niveauLabel = n => ({ debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' }[n] || '');
+  const progCell = a => {
+    if (typeof a.progression_pct !== 'number') return '<span style="color:var(--text-muted)">—</span>';
+    const p = a.progression_pct;
+    if (p >= 2) return `<span style="color:#00c96e;font-weight:700">↑ +${p}%</span>`;
+    if (p <= -2) return `<span style="color:#e5484d;font-weight:700">↓ ${p}%</span>`;
+    return `<span style="color:var(--text-muted)">→ Stable</span>`;
+  };
+  const acwrCell = a => (typeof a.acwr === 'number')
+    ? `ACWR <b>${a.acwr.toFixed(2)}</b>` : '<span style="color:var(--text-muted)">—</span>';
+  const ds = a => {
+    const v = (a.derniere_seance && a.derniere_seance.date) ? a.derniere_seance.date : a.derniere_seance;
+    return joursDepuis(v);
+  };
+  const th = t => `<th style="text-align:left;padding:11px 14px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;white-space:nowrap;">${t}</th>`;
+
+  el.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;min-width:640px;">
+        <thead><tr>${th('Athlète')}${th('État')}${th('Charge')}${th('Progression')}${th('Alerte')}${th('Dernière séance')}</tr></thead>
+        <tbody>
+        ${rows.map(({ a, i, s }) => {
+          const al = labelAlerteCourt(a);
+          const alCell = al ? `<span style="font-size:12px;color:${s.color};font-weight:600">${al}</span>` : '<span style="color:var(--text-muted)">—</span>';
+          return `<tr onclick="ouvrirAthleteDepuisSelect('${i}')" style="cursor:pointer;border-top:1px solid var(--border);" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+            <td style="padding:13px 14px;"><div style="font-weight:800;">${a.nom}</div><div style="font-size:11px;color:var(--text-muted);">${niveauLabel(getNiveauExperience(a.annees_pratique))}</div></td>
+            <td style="padding:13px 14px;font-weight:700;color:${s.color};white-space:nowrap;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${s.color};margin-right:8px;vertical-align:middle;"></span>${s.label}</td>
+            <td style="padding:13px 14px;white-space:nowrap;">${acwrCell(a)}</td>
+            <td style="padding:13px 14px;white-space:nowrap;">${progCell(a)}</td>
+            <td style="padding:13px 14px;">${alCell}</td>
+            <td style="padding:13px 14px;color:var(--text-muted);font-size:13px;white-space:nowrap;">${ds(a)}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>`;
 }
 
 function ouvrirAthleteDepuisSelect(idx) {
