@@ -1153,13 +1153,8 @@ async function ouvrirEspaceCoach() {
 function renderListeAthletesCoach() {
   document.getElementById('liste-athletes-coach').innerHTML = '';
   document.getElementById('coach-home-body').style.display = 'block';
-  renderCoachSynthese(athletesCoach);
-
-  // KPIs
-  const stats = athletesCoach.map(a => statutAthlete(a));
   document.getElementById('coach-stat-total').textContent = athletesCoach.length;
-  document.getElementById('coach-stat-surveiller').textContent = stats.filter(s => s.rank >= 1).length;
-  document.getElementById('coach-stat-action').textContent = stats.filter(s => s.rank === 2).length;
+  renderCoachSynthese(athletesCoach); // async : charge getAppData par athlète, remplit table + KPIs
 
   // select caché (compatibilité)
   const sel = document.getElementById('coach-select-athlete');
@@ -1168,23 +1163,6 @@ function renderListeAthletesCoach() {
       athletesCoach.map((a, i) => `<option value="${i}">${a.nom}</option>`).join('');
     sel.value = '';
   }
-}
-
-// Statut global synthétique d'un athlète (à partir des alertes + marqueurs serveur si dispo)
-function statutAthlete(a) {
-  const alertes = alertesActives(a);
-  const types = alertes.map(al => al.type || '');
-  const hasHaute = alertes.some(al => al.severite === 'haute');
-  const acwr = (typeof a.acwr === 'number') ? a.acwr : null;
-  const acwrDanger = acwr !== null && acwr > 1.5;
-  const acwrWarn = acwr !== null && (acwr < 0.8 || acwr > 1.3);
-  const interTypes = ['fatigue', 'surcharge', 'irregularite'];
-  // Action = alerte grave / ACWR danger. Surveillance = autre alerte ou ACWR limite. Sinon Optimal.
-  if (hasHaute || types.some(t => interTypes.includes(t)) || acwrDanger)
-    return { rank: 2, color: '#e5484d', label: 'Action' };
-  if (alertes.length > 0 || acwrWarn)
-    return { rank: 1, color: '#f5a623', label: 'Surveillance' };
-  return { rank: 0, color: '#00c96e', label: 'Optimal' };
 }
 
 function joursDepuis(dateVal) {
@@ -1207,48 +1185,62 @@ function labelAlerteCourt(a) {
   return map[principale.type] || (principale.type || 'Alerte');
 }
 
-function renderCoachSynthese(athletes) {
+async function renderCoachSynthese(athletes) {
   const el = document.getElementById('coach-synthese');
   if (!el) return;
   if (!athletes || athletes.length === 0) {
     el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
     return;
   }
-  const rows = athletes.map((a, i) => ({ a, i, s: statutAthlete(a) }))
-    .sort((x, y) => (y.s.rank - x.s.rank) || String(x.a.nom).localeCompare(String(y.a.nom)));
+  el.innerHTML = '<div class="loader">Analyse des athlètes…</div>';
+
+  // Charge les données de chaque athlète (mêmes calculs que la page détail)
+  const datas = await Promise.all(athletes.map(async a => {
+    try { const r = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`); return await r.json(); }
+    catch(e) { return null; }
+  }));
+
+  const enrich = athletes.map((a, i) => ({
+    a, i, m: datas[i] ? computeMarqueursCoach(datas[i], a) : null
+  }));
+  enrich.sort((x, y) => {
+    const rx = x.m ? x.m.statut.rank : -1, ry = y.m ? y.m.statut.rank : -1;
+    return (ry - rx) || String(x.a.nom).localeCompare(String(y.a.nom));
+  });
+
+  // KPIs
+  document.getElementById('coach-stat-surveiller').textContent = enrich.filter(e => e.m && e.m.statut.rank >= 1).length;
+  document.getElementById('coach-stat-action').textContent = enrich.filter(e => e.m && e.m.statut.rank === 2).length;
 
   const niveauLabel = n => ({ debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' }[n] || '');
-  const progCell = a => {
-    if (typeof a.progression_pct !== 'number') return '<span style="color:var(--text-muted)">—</span>';
-    const p = a.progression_pct;
-    if (p >= 2) return `<span style="color:#00c96e;font-weight:700">↑ +${p}%</span>`;
-    if (p <= -2) return `<span style="color:#e5484d;font-weight:700">↓ ${p}%</span>`;
-    return `<span style="color:var(--text-muted)">→ Stable</span>`;
-  };
-  const acwrCell = a => (typeof a.acwr === 'number')
-    ? `ACWR <b>${a.acwr.toFixed(2)}</b>` : '<span style="color:var(--text-muted)">—</span>';
-  const ds = a => {
-    const v = (a.derniere_seance && a.derniere_seance.date) ? a.derniere_seance.date : a.derniere_seance;
-    return joursDepuis(v);
-  };
+  const dot = c => `<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c};box-shadow:0 0 4px ${c}66;"></span>`;
   const th = t => `<th style="text-align:left;padding:11px 14px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;white-space:nowrap;">${t}</th>`;
+  const thc = t => `<th style="text-align:center;padding:11px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);font-weight:700;white-space:nowrap;">${t}</th>`;
+  const na = '<span style="color:var(--text-muted)">—</span>';
 
   el.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
       <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;min-width:640px;">
-        <thead><tr>${th('Athlète')}${th('État')}${th('Charge')}${th('Progression')}${th('Alerte')}${th('Dernière séance')}</tr></thead>
+      <table style="width:100%;border-collapse:collapse;min-width:820px;">
+        <thead><tr>${th('Athlète')}${th('État')}${th('Charge')}${th('Progression')}${thc('Récup')}${thc('Volume')}${thc('Régularité')}${th('Alerte')}${th('Dernière séance')}</tr></thead>
         <tbody>
-        ${rows.map(({ a, i, s }) => {
+        ${enrich.map(({ a, i, m }) => {
+          const s = m ? m.statut : { color: '#aaa', label: '—' };
           const al = labelAlerteCourt(a);
-          const alCell = al ? `<span style="font-size:12px;color:${s.color};font-weight:600">${al}</span>` : '<span style="color:var(--text-muted)">—</span>';
+          const alCell = al ? `<span style="font-size:12px;color:${s.color};font-weight:600">${al}</span>` : na;
+          const acwrCell = (m && m.acwrRatio !== null) ? `ACWR <b>${m.acwrRatio.toFixed(2)}</b>` : na;
+          const progCell = m ? `<span style="color:${m.progColor};font-weight:700">${m.progLabel}</span>` : na;
+          const dsCell = m && m.derniere ? joursDepuis(m.derniere.date) : na;
           return `<tr onclick="ouvrirAthleteDepuisSelect('${i}')" style="cursor:pointer;border-top:1px solid var(--border);" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
             <td style="padding:13px 14px;"><div style="font-weight:800;">${a.nom}</div><div style="font-size:11px;color:var(--text-muted);">${niveauLabel(getNiveauExperience(a.annees_pratique))}</div></td>
             <td style="padding:13px 14px;font-weight:700;color:${s.color};white-space:nowrap;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${s.color};margin-right:8px;vertical-align:middle;"></span>${s.label}</td>
-            <td style="padding:13px 14px;white-space:nowrap;">${acwrCell(a)}</td>
-            <td style="padding:13px 14px;white-space:nowrap;">${progCell(a)}</td>
+            <td style="padding:13px 14px;white-space:nowrap;">${acwrCell}</td>
+            <td style="padding:13px 14px;white-space:nowrap;">${progCell}</td>
+            <td style="padding:13px 8px;text-align:center;">${m ? dot(m.recupColor) : na}</td>
+            <td style="padding:13px 8px;text-align:center;">${m ? dot(m.volColor) : na}</td>
+            <td style="padding:13px 8px;text-align:center;">${m ? dot(m.regColor) : na}</td>
             <td style="padding:13px 14px;">${alCell}</td>
-            <td style="padding:13px 14px;color:var(--text-muted);font-size:13px;white-space:nowrap;">${ds(a)}</td>
+            <td style="padding:13px 14px;color:var(--text-muted);font-size:13px;white-space:nowrap;">${dsCell}</td>
           </tr>`;
         }).join('')}
         </tbody>
@@ -1690,32 +1682,36 @@ function afficherCoachTendances(semaines) {
     </div>`;
 }
 
-function renderCoachIndicateurs(data) {
-  const el = document.getElementById('cd-indicateurs');
-  if (!el) return;
+// Calcul commun des 5 marqueurs (utilisé par les feux du détail ET le tableau accueil)
+// -> garantit des chiffres identiques partout. `a` = objet athlète (annees_pratique + alertes)
+function computeMarqueursCoach(data, a) {
   const dash = data.dashboard || {};
+  const hist = data.historique || {};
+  const annees = a ? a.annees_pratique : 0;
 
-  // 1. Progression
+  // 1. Progression (comptes hausse/baisse de la semaine)
   const prog = dash.progression || {};
-  const enProg = prog.en_progression || 0;
-  const enBaisse = prog.en_baisse || 0;
+  const enProg = prog.en_progression || 0, enBaisse = prog.en_baisse || 0;
   let progColor, progLabel;
   if (enProg === 0 && enBaisse === 0) { progColor = '#aaa'; progLabel = 'N/A'; }
-  else if (enProg > enBaisse) { progColor = '#00c96e'; progLabel = `Progression (${enProg}↑/${enBaisse}↓)`; }
-  else if (enProg === enBaisse) { progColor = '#f59f00'; progLabel = `Stable (${enProg}↑/${enBaisse}↓)`; }
-  else { progColor = '#e5484d'; progLabel = `Régression (${enProg}↑/${enBaisse}↓)`; }
+  else if (enProg > enBaisse) { progColor = '#00c96e'; progLabel = `${enProg}↑/${enBaisse}↓`; }
+  else if (enProg === enBaisse) { progColor = '#f59f00'; progLabel = `${enProg}↑/${enBaisse}↓`; }
+  else { progColor = '#e5484d'; progLabel = `${enProg}↑/${enBaisse}↓`; }
 
   // 2. ACWR
-  const hist = data.historique || {};
   const acwr = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
-  let acwrColor, acwrLabel;
-  if (!acwr || acwr.insuffisant) { acwrColor = '#aaa'; acwrLabel = 'Insuffisant'; }
-  else if (acwr.ratio >= 0.8 && acwr.ratio <= 1.3) { acwrColor = '#00c96e'; acwrLabel = `ACWR ${acwr.ratio}`; }
-  else if (acwr.ratio > 1.5) { acwrColor = '#e5484d'; acwrLabel = `ACWR ${acwr.ratio}`; }
-  else { acwrColor = '#f59f00'; acwrLabel = `ACWR ${acwr.ratio}`; }
+  let acwrColor, acwrLabel, acwrRatio = null;
+  if (!acwr || acwr.insuffisant) { acwrColor = '#aaa'; acwrLabel = '—'; }
+  else {
+    acwrRatio = acwr.ratio;
+    if (acwr.ratio >= 0.8 && acwr.ratio <= 1.3) acwrColor = '#00c96e';
+    else if (acwr.ratio > 1.5) acwrColor = '#e5484d';
+    else acwrColor = '#f59f00';
+    acwrLabel = `ACWR ${acwr.ratio}`;
+  }
 
   // 3. Volume muscles
-  const niv = getNiveauExperience(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
+  const niv = getNiveauExperience(annees);
   const volSem = hist.volume_semaine || [];
   let volColor = '#aaa', volLabel = 'N/A';
   if (volSem.length > 0) {
@@ -1731,19 +1727,19 @@ function renderCoachIndicateurs(data) {
     else { volColor = '#00c96e'; volLabel = 'Volume OK'; }
   }
 
-  // 4. Régularité — évaluée au prorata des jours écoulés dans la semaine
+  // 4. Régularité (prorata des jours écoulés)
   const reg = dash.regularite || {};
   const faites = reg.seances_semaine || 0;
   const prevues = reg.seances_prevues || 0;
   let regColor, regLabel;
   if (prevues === 0) { regColor = '#aaa'; regLabel = 'N/A'; }
   else {
-    const jourSemaine = (new Date().getDay() + 6) % 7 + 1; // lundi=1 ... dimanche=7
-    const attenduActuel = prevues * (jourSemaine / 7);     // séances attendues à ce stade de la semaine
-    if (faites >= prevues) { regColor = '#00c96e'; regLabel = 'Objectif atteint'; }
-    else if (faites >= attenduActuel - 0.5) { regColor = '#00c96e'; regLabel = `${faites}/${prevues} · dans le rythme`; }
-    else if (faites >= attenduActuel - 1.5) { regColor = '#f59f00'; regLabel = `${faites}/${prevues} · léger retard`; }
-    else { regColor = '#e5484d'; regLabel = `${faites}/${prevues} · en retard`; }
+    const jourSemaine = (new Date().getDay() + 6) % 7 + 1;
+    const attenduActuel = prevues * (jourSemaine / 7);
+    if (faites >= prevues) { regColor = '#00c96e'; regLabel = `${faites}/${prevues}`; }
+    else if (faites >= attenduActuel - 0.5) { regColor = '#00c96e'; regLabel = `${faites}/${prevues}`; }
+    else if (faites >= attenduActuel - 1.5) { regColor = '#f59f00'; regLabel = `${faites}/${prevues}`; }
+    else { regColor = '#e5484d'; regLabel = `${faites}/${prevues}`; }
   }
 
   // 5. Récupération
@@ -1754,14 +1750,34 @@ function renderCoachIndicateurs(data) {
   else if (recup.statut === 'modere') { recupColor = '#f59f00'; recupLabel = 'Modérée'; }
   else { recupColor = '#e5484d'; recupLabel = 'Fatigue'; }
 
-  const indicateurs = [
-    { label: 'Progression', color: progColor, val: progLabel },
-    { label: 'ACWR', color: acwrColor, val: acwrLabel },
-    { label: 'Volume', color: volColor, val: volLabel },
-    { label: 'Régularité', color: regColor, val: regLabel },
-    { label: 'Récupération', color: recupColor, val: recupLabel },
-  ];
+  // Statut global : pire des marqueurs + alertes
+  const couleurs = [progColor, acwrColor, volColor, regColor, recupColor];
+  const alertes = a ? alertesActives(a) : [];
+  const interTypes = ['fatigue', 'surcharge', 'irregularite'];
+  const alerteGrave = alertes.some(al => al.severite === 'haute' || interTypes.includes(al.type));
+  let statut;
+  if (couleurs.includes('#e5484d') || alerteGrave) statut = { rank: 2, color: '#e5484d', label: 'Action' };
+  else if (couleurs.includes('#f59f00') || alertes.length > 0) statut = { rank: 1, color: '#f5a623', label: 'Surveillance' };
+  else statut = { rank: 0, color: '#00c96e', label: 'Optimal' };
 
+  return {
+    progColor, progLabel, acwrColor, acwrLabel, acwrRatio,
+    volColor, volLabel, regColor, regLabel, recupColor, recupLabel, statut,
+    derniere: dash.derniere_seance || null
+  };
+}
+
+function renderCoachIndicateurs(data) {
+  const el = document.getElementById('cd-indicateurs');
+  if (!el) return;
+  const m = computeMarqueursCoach(data, coachAthleteCourant);
+  const indicateurs = [
+    { label: 'Progression', color: m.progColor, val: m.progLabel },
+    { label: 'ACWR', color: m.acwrColor, val: m.acwrLabel },
+    { label: 'Volume', color: m.volColor, val: m.volLabel },
+    { label: 'Régularité', color: m.regColor, val: m.regLabel },
+    { label: 'Récupération', color: m.recupColor, val: m.recupLabel },
+  ];
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center;">
     ${indicateurs.map(ind => `
       <div>
