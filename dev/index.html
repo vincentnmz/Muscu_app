@@ -1200,9 +1200,12 @@ async function renderCoachSynthese(athletes) {
     catch(e) { return null; }
   }));
 
-  const enrich = athletes.map((a, i) => ({
-    a, i, m: datas[i] ? computeMarqueursCoach(datas[i], a) : null
-  }));
+  const enrich = athletes.map((a, i) => {
+    let m = null;
+    try { if (datas[i]) m = computeMarqueursCoach(datas[i], a); }
+    catch (err) { console.error('Marqueurs KO pour', a.nom, err); }
+    return { a, i, m };
+  });
   enrich.sort((x, y) => {
     const rx = x.m ? x.m.statut.rank : -1, ry = y.m ? y.m.statut.rank : -1;
     return (ry - rx) || String(x.a.nom).localeCompare(String(y.a.nom));
