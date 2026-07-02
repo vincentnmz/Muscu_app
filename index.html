@@ -1081,6 +1081,7 @@ async function seConnecterCoach() {
     if (data.success) {
       coach = data.coach;
       localStorage.setItem('muscu_coach', JSON.stringify(coach));
+      localStorage.removeItem('muscu_coach_vue'); // login -> on atterrit sur l'accueil (tableau), pas sur un athlète
       ouvrirEspaceCoach();
     } else { errEl.textContent = 'Login coach incorrect.'; }
   } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
@@ -1177,11 +1178,11 @@ function statutAthlete(a) {
   const acwr = (typeof a.acwr === 'number') ? a.acwr : null;
   const acwrDanger = acwr !== null && acwr > 1.5;
   const acwrWarn = acwr !== null && (acwr < 0.8 || acwr > 1.3);
-  const tendNeg = a.tendance === 'negative';
   const interTypes = ['fatigue', 'surcharge', 'irregularite'];
+  // Action = alerte grave / ACWR danger. Surveillance = autre alerte ou ACWR limite. Sinon Optimal.
   if (hasHaute || types.some(t => interTypes.includes(t)) || acwrDanger)
     return { rank: 2, color: '#e5484d', label: 'Action' };
-  if (alertes.length > 0 || acwrWarn || tendNeg)
+  if (alertes.length > 0 || acwrWarn)
     return { rank: 1, color: '#f5a623', label: 'Surveillance' };
   return { rank: 0, color: '#00c96e', label: 'Optimal' };
 }
