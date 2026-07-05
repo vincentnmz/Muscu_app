@@ -296,7 +296,10 @@
         <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
         <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
       </div>
-      <button class="btn-sm btn-outline" onclick="seDeconnecterCoach()">Déconnexion</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button onclick="ouvrirModalLierAthlete()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;">+ Athlète</button>
+        <button class="btn-sm btn-outline" onclick="seDeconnecterCoach()">Déconnexion</button>
+      </div>
     </div>
 
     <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
@@ -1155,7 +1158,7 @@ async function ouvrirEspaceCoach() {
     const athletes = data.athletes || [];
     if (athletes.length === 0) {
       document.getElementById('coach-home-body').style.display = 'none';
-      listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div>';
+      listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte.</div><div style="padding:0 12px 12px"><button onclick="ouvrirModalLierAthlete()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">+ Lier un athlète</button></div>';
       return;
     }
     athletesCoach = athletes;
