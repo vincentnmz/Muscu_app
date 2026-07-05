@@ -660,10 +660,16 @@
 
       <!-- Prochaine séance -->
       <div class="dash-next" style="padding:16px;">
-        <div class="dash-label" style="color:#888;">Prochaine séance</div>
+        <div class="dash-label">Prochaine séance</div>
         <div id="dash-next-seance">
-          <div style="color:#888;font-size:13px;">Chargement...</div>
+          <div style="color:var(--text-muted);font-size:13px;">Chargement...</div>
         </div>
+      </div>
+
+      <!-- Records personnels -->
+      <div class="dash-card" id="dash-records-card" style="padding:16px;display:none;">
+        <div class="dash-label"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels <span style="margin-left:auto;font-size:9px;color:var(--text-muted);font-weight:600;">1RM estimé</span></div>
+        <div id="dash-records"></div>
       </div>
 
       <!-- Récupération -->
@@ -682,6 +688,12 @@
       <div class="dash-card dash-card-accent-green" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
         <div class="dash-label"><svg class="ico"><use href="#i-trending"/></svg>Progression cette semaine <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap;">Voir tout →</span></div>
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Activité (heatmap) -->
+      <div class="dash-card" id="dash-activite-card" style="padding:16px;display:none;">
+        <div class="dash-label"><svg class="ico"><use href="#i-calendar"/></svg>Activité <span style="margin-left:auto;font-size:9px;color:var(--text-muted);font-weight:600;">12 dernières semaines</span></div>
+        <div id="dash-activite"></div>
       </div>
 
       <!-- Dernière séance -->
@@ -3891,6 +3903,73 @@ function calc1RM(charge, reps) {
   return Math.round(charge * (1 + reps / 30) * 10) / 10;
 }
 
+// ===== Dashboard data-viz : records perso + heatmap d'activité =====
+function renderDashboardRecords(hist) {
+  const card = document.getElementById('dash-records-card');
+  const el = document.getElementById('dash-records');
+  if (!card || !el) return;
+  const prog = (hist && hist.progression_par_exo) || {};
+  const records = [];
+  Object.keys(prog).forEach(exo => {
+    let best = null;
+    (prog[exo] || []).forEach(p => {
+      const rm = calc1RM(p.charge, p.reps);
+      if (rm !== null && (!best || rm > best.rm)) best = { rm, charge: p.charge, reps: p.reps, date: p.date };
+    });
+    if (best) records.push(Object.assign({ exo }, best));
+  });
+  if (records.length === 0) { card.style.display = 'none'; return; }
+  records.sort((a, b) => b.rm - a.rm);
+  card.style.display = '';
+  el.innerHTML = records.slice(0, 5).map((r, i, arr) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i < arr.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
+      <div style="width:22px;height:22px;border-radius:50%;background:var(--accent-a12);color:var(--accent);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.exo}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${r.charge}kg × ${r.reps} · ${r.date}</div>
+      </div>
+      <div style="font-size:16px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;flex-shrink:0;">${r.rm}<span style="font-size:10px;color:var(--text-muted);font-weight:600;">kg</span></div>
+    </div>`).join('');
+}
+
+function renderDashboardActivite(hist) {
+  const card = document.getElementById('dash-activite-card');
+  const el = document.getElementById('dash-activite');
+  if (!card || !el) return;
+  const dates = (hist && hist.dates_seances) || {};
+  const isoLocal = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const trained = new Set();
+  Object.keys(dates).forEach(k => {
+    const parts = String(k).split('/');
+    if (parts.length === 3) trained.add(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+  });
+  if (trained.size === 0) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const WEEKS = 12;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dow = (today.getDay() + 6) % 7; // 0 = lundi
+  const start = new Date(today); start.setDate(today.getDate() - dow - (WEEKS - 1) * 7);
+  let cols = '';
+  for (let w = 0; w < WEEKS; w++) {
+    let cells = '';
+    for (let d = 0; d < 7; d++) {
+      const cur = new Date(start); cur.setDate(start.getDate() + w * 7 + d);
+      const iso = isoLocal(cur);
+      const bg = cur > today ? 'transparent' : trained.has(iso) ? 'var(--accent)' : 'var(--surface2)';
+      cells += `<div title="${iso}" style="width:13px;height:13px;border-radius:3px;background:${bg};"></div>`;
+    }
+    cols += `<div style="display:grid;grid-template-rows:repeat(7,13px);gap:3px;">${cells}</div>`;
+  }
+  el.innerHTML = `
+    <div style="display:flex;gap:3px;overflow-x:auto;padding-bottom:2px;">${cols}</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10px;color:var(--text-muted);">
+      <div style="width:11px;height:11px;border-radius:3px;background:var(--surface2);"></div>
+      <span>Repos</span>
+      <div style="width:11px;height:11px;border-radius:3px;background:var(--accent);margin-left:6px;"></div>
+      <span>Séance</span>
+    </div>`;
+}
+
 function drawLineChart(canvasId, values, color) {
   const canvas = document.getElementById(canvasId);
   if (!canvas || values.length === 0) return;
@@ -4184,6 +4263,10 @@ async function chargerAppData() {
     seancesDates = data.historique.dates_seances || {};
     progressionData = data.historique.progression_par_exo || {};
     tendancesData = data.historique.tendances || null;
+
+    // Data-viz dashboard : records perso + heatmap d'activité
+    renderDashboardRecords(data.historique);
+    renderDashboardActivite(data.historique);
 
     // Graphique poids
     afficherGraphiquePoids(data.poids || []);
