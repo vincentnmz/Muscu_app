@@ -165,6 +165,7 @@
   .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
   .view { display: none; }
   .view.active { display: block; }
+  #view-login { max-width: 420px; margin: 0 auto; }
   .login-logo { text-align: center; padding: 30px 0 20px; }
   .auth-seg { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
   .auth-seg button { flex: 1; padding: 11px; border: none; background: none; color: var(--text-muted); font-size: 13px; font-weight: 700; border-radius: 9px; cursor: pointer; transition: all 0.2s; }
@@ -679,7 +680,7 @@
 
       <!-- Progression -->
       <div class="dash-card dash-card-accent-green" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
-        <div class="dash-label"><svg class="ico"><use href="#i-trending"/></svg>Progression cette semaine <span style="float:right;font-size:11px;color:var(--accent);">Voir tout →</span></div>
+        <div class="dash-label"><svg class="ico"><use href="#i-trending"/></svg>Progression cette semaine <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap;">Voir tout →</span></div>
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
       </div>
 
