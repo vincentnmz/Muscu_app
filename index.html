@@ -1786,7 +1786,7 @@ function afficherCoachProgressionExo() {
       <span style="font-size:12px;color:var(--text-muted)">1RM estimé (Epley)</span>
       <span style="font-size:13px;font-weight:700;color:var(--accent)">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
     </div>` : ''}
-    <canvas id="chart-1rm-coach" style="width:100%;height:90px;display:block;margin-bottom:10px"></canvas>
+    <canvas id="chart-1rm-coach" style="width:100%;height:108px;display:block;margin-bottom:10px"></canvas>
     <table style="width:100%;font-size:12px;border-collapse:collapse">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">
         <td style="padding:5px 0">Date</td><td style="padding:5px 0;text-align:center">Séance</td>
@@ -1817,7 +1817,7 @@ function afficherCoachProgressionExo() {
       }).join('')}
     </table>`;
   const chrono = perfs.slice().reverse();
-  drawLineChart('chart-1rm-coach', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)');
+  drawLineChart('chart-1rm-coach', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)', { unit: 'kg', xLabels: [chrono[0] && chrono[0].date, chrono[chrono.length-1] && chrono[chrono.length-1].date] });
 }
 
 function afficherCoachTendances(semaines) {
@@ -3987,48 +3987,68 @@ function _hexA(hex, a) {
   const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
   return `rgba(${r},${g},${b},${a})`;
 }
-function drawLineChart(canvasId, values, color) {
+function drawLineChart(canvasId, values, color, opts) {
   const canvas = document.getElementById(canvasId);
   if (!canvas || !values || values.length === 0) return;
+  opts = opts || {};
   color = _cssColor(color);
+  const muted = _cssColor('var(--text-muted)');
+  const gridC = _cssColor('var(--border)');
+  const unit = opts.unit || '';
+  const xLabels = opts.xLabels || null;
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth, h = canvas.clientHeight;
   canvas.width = w * dpr; canvas.height = h * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const padX = 10, padTop = 14, padBot = 12;
-  if (values.length === 1) {
-    ctx.beginPath(); ctx.arc(w / 2, h / 2, 4, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
-    return;
-  }
+  const padL = 40, padR = 12, padTop = 14, padBot = xLabels ? 20 : 12;
   const min = Math.min(...values), max = Math.max(...values);
   const range = max - min || 1;
-  const stepX = (w - padX * 2) / (values.length - 1);
-  const pts = values.map((v, i) => ({ x: padX + i * stepX, y: padTop + (1 - (v - min) / range) * (h - padTop - padBot) }));
-  // Chemin lissé (Catmull-Rom -> Bézier)
-  const trace = () => {
-    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-      ctx.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y);
-    }
-  };
-  // Aire dégradée sous la courbe
-  const grad = ctx.createLinearGradient(0, padTop, 0, h);
-  grad.addColorStop(0, _hexA(color, 0.30));
-  grad.addColorStop(1, _hexA(color, 0));
-  trace();
-  ctx.lineTo(pts[pts.length - 1].x, h); ctx.lineTo(pts[0].x, h); ctx.closePath();
-  ctx.fillStyle = grad; ctx.fill();
-  // Ligne
-  trace();
-  ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
-  // Point final mis en valeur (halo)
-  const last = pts[pts.length - 1];
-  ctx.beginPath(); ctx.arc(last.x, last.y, 7, 0, Math.PI * 2); ctx.fillStyle = _hexA(color, 0.22); ctx.fill();
-  ctx.beginPath(); ctx.arc(last.x, last.y, 4, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
-  ctx.beginPath(); ctx.arc(last.x, last.y, 4, 0, Math.PI * 2); ctx.strokeStyle = _cssColor('var(--surface)'); ctx.lineWidth = 1.5; ctx.stroke();
+  const plotW = w - padL - padR, plotH = h - padTop - padBot;
+  const baseY = padTop + plotH;
+  const toX = i => padL + (values.length === 1 ? plotW / 2 : i * plotW / (values.length - 1));
+  const toY = v => padTop + (1 - (v - min) / range) * plotH;
+  ctx.font = '10px Inter, "Helvetica Neue", sans-serif';
+  // Grille horizontale + valeurs Y (max / milieu / min)
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+  [max, (max + min) / 2, min].forEach(val => {
+    const y = toY(val);
+    ctx.strokeStyle = gridC; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = muted; ctx.fillText(Math.round(val) + unit, padL - 6, y);
+  });
+  const pts = values.map((v, i) => ({ x: toX(i), y: toY(v) }));
+  if (values.length === 1) {
+    ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 4, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  } else {
+    const trace = () => {
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+        ctx.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y);
+      }
+    };
+    const grad = ctx.createLinearGradient(0, padTop, 0, baseY);
+    grad.addColorStop(0, _hexA(color, 0.30));
+    grad.addColorStop(1, _hexA(color, 0));
+    trace();
+    ctx.lineTo(pts[pts.length - 1].x, baseY); ctx.lineTo(pts[0].x, baseY); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+    trace();
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+    const last = pts[pts.length - 1];
+    ctx.beginPath(); ctx.arc(last.x, last.y, 7, 0, Math.PI * 2); ctx.fillStyle = _hexA(color, 0.22); ctx.fill();
+    ctx.beginPath(); ctx.arc(last.x, last.y, 4, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+    ctx.beginPath(); ctx.arc(last.x, last.y, 4, 0, Math.PI * 2); ctx.strokeStyle = _cssColor('var(--surface)'); ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  // Dates aux extrémités (axe X)
+  if (xLabels && xLabels.length) {
+    ctx.fillStyle = muted; ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left'; ctx.fillText(xLabels[0], padL, h - 5);
+    if (xLabels.length > 1) { ctx.textAlign = 'right'; ctx.fillText(xLabels[xLabels.length - 1], w - padR, h - 5); }
+  }
 }
 
 function afficherProgressionExo() {
@@ -4064,7 +4084,7 @@ function afficherProgressionExo() {
       <span style="font-size:12px;color:var(--text-muted);">1RM estimé (Epley)</span>
       <span style="font-size:13px;font-weight:700;color:var(--accent);">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px;">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
     </div>` : ''}
-    <canvas id="chart-1rm-athlete" style="width:100%;height:90px;display:block;margin-bottom:10px"></canvas>
+    <canvas id="chart-1rm-athlete" style="width:100%;height:108px;display:block;margin-bottom:10px"></canvas>
     <table style="width:100%;font-size:12px;border-collapse:collapse;">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border);">
         <td style="padding:5px 0;">Date</td>
@@ -4098,7 +4118,7 @@ function afficherProgressionExo() {
       }).join('')}
     </table>`;
   const chrono = perfs.slice().reverse();
-  drawLineChart('chart-1rm-athlete', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)');
+  drawLineChart('chart-1rm-athlete', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)', { unit: 'kg', xLabels: [chrono[0] && chrono[0].date, chrono[chrono.length-1] && chrono[chrono.length-1].date] });
 }
 
 // Volume cible par muscle selon niveau
