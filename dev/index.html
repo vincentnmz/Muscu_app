@@ -239,6 +239,8 @@
       <div class="card">
         <label>Login (4 chiffres)</label>
         <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
+        <label>Mot de passe</label>
+        <input type="password" id="inp-password" placeholder="Mot de passe">
         <div id="login-error" class="error-msg"></div>
         <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
       </div>
@@ -280,6 +282,8 @@
       <div class="card-title">Connexion coach</div>
       <label>Login coach</label>
       <input type="password" id="inp-login-coach" placeholder="Login coach">
+      <label>Mot de passe</label>
+      <input type="password" id="inp-password-coach" placeholder="Mot de passe">
       <div id="login-coach-error" class="error-msg"></div>
       <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter (coach)</button>
     </div>
@@ -993,18 +997,20 @@ window.addEventListener('load', async () => {
 // ==================== AUTH ====================
 async function seConnecter() {
   const login = document.getElementById('inp-login').value.trim();
+  const password = document.getElementById('inp-password').value;
   const errEl = document.getElementById('login-error');
   errEl.textContent = '';
   if (!login) { errEl.textContent = 'Entre ton login.'; return; }
+  if (!password) { errEl.textContent = 'Entre ton mot de passe.'; return; }
   errEl.textContent = 'Connexion...';
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=login&login=${encodeURIComponent(login)}`);
+    const res = await fetch(`${SCRIPT_URL}?action=login&login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}`);
     const data = await res.json();
     if (data.success) {
       athlete = data.athlete;
       localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
       ouvrirApp();
-    } else { errEl.textContent = 'Login incorrect.'; }
+    } else { errEl.textContent = data.error || 'Login ou mot de passe incorrect.'; }
   } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
 }
 
@@ -1071,19 +1077,21 @@ function toggleEspaceCoach(ev) {
 
 async function seConnecterCoach() {
   const login = document.getElementById('inp-login-coach').value.trim();
+  const password = document.getElementById('inp-password-coach').value;
   const errEl = document.getElementById('login-coach-error');
   errEl.textContent = '';
   if (!login) { errEl.textContent = 'Entre ton login coach.'; return; }
+  if (!password) { errEl.textContent = 'Entre ton mot de passe.'; return; }
   errEl.textContent = 'Connexion...';
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=loginCoach&login=${encodeURIComponent(login)}`);
+    const res = await fetch(`${SCRIPT_URL}?action=loginCoach&login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}`);
     const data = await res.json();
     if (data.success) {
       coach = data.coach;
       localStorage.setItem('muscu_coach', JSON.stringify(coach));
-      localStorage.removeItem('muscu_coach_vue'); // login -> on atterrit sur l'accueil (tableau), pas sur un athlète
+      localStorage.removeItem('muscu_coach_vue');
       ouvrirEspaceCoach();
-    } else { errEl.textContent = 'Login coach incorrect.'; }
+    } else { errEl.textContent = data.error || 'Login ou mot de passe incorrect.'; }
   } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
 }
 
