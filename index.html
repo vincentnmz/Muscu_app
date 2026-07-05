@@ -1584,7 +1584,7 @@ function renderCoachOverview(data) {
   if (dash.recuperation) {
     const r = dash.recuperation;
     const sc = r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : 'var(--danger)';
-    const sl = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟡 Fatigue modérée' : '🔴 Fatigue élevée';
+    const sl = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟠 Fatigue modérée' : '🔴 Fatigue élevée';
     recupEl.innerHTML = `
       <div style="font-size:13px;font-weight:700;color:${sc};margin:6px 0 12px">${sl}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
@@ -1810,9 +1810,9 @@ function computeMarqueursCoach(data, a) {
       if (faites < mev) belowMev = true;
       if (faites < mav) aboveMav = false;
     });
-    if (belowMev) { volColor = '#f59f00'; volLabel = 'Sous MEV'; }
-    else if (!aboveMav) { volColor = 'var(--caution)'; volLabel = 'Sous MAV'; }
-    else { volColor = '#00c96e'; volLabel = 'Volume OK'; }
+    if (belowMev) { volColor = 'var(--bad)'; volLabel = 'Sous MEV'; }
+    else if (!aboveMav) { volColor = 'var(--warn)'; volLabel = 'Sous MAV'; }
+    else { volColor = 'var(--good)'; volLabel = 'Volume OK'; }
   }
 
   // 4. Régularité (prorata des jours écoulés)
@@ -1890,10 +1890,9 @@ function renderCoachVolume(data) {
       const mini = cible[0], optimal = cible[1], faites = v.faites || 0;
       const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
       let couleur, statut;
-      if (faites >= optimal) { couleur = '#00c96e'; statut = '✅'; }
-      else if (faites >= mini) { couleur = 'var(--caution)'; statut = '🟡'; }
-      else if (faites > 0) { couleur = '#f59f00'; statut = '⚠️'; }
-      else { couleur = 'var(--danger)'; statut = '🔴'; }
+      if (faites >= optimal) { couleur = 'var(--good)'; statut = '✅'; }
+      else if (faites > 0) { couleur = 'var(--warn)'; statut = '🟠'; }
+      else { couleur = 'var(--bad)'; statut = '🔴'; }
       return `<div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;margin-bottom:3px">
           <span style="font-size:12px;font-weight:700">${v.muscle}</span>
@@ -2155,7 +2154,7 @@ function marqueurRecap(data, a) {
       if (faites < mev) below = true;
       if (faites < mav) allMav = false;
     });
-    volC = below ? 'var(--warn)' : !allMav ? 'var(--caution)' : 'var(--good)';
+    volC = below ? 'var(--bad)' : !allMav ? 'var(--warn)' : 'var(--good)';
   }
   // Dernière séance
   const ds = (dash.derniere_seance && dash.derniere_seance.date) ? dash.derniere_seance.date : '—';
@@ -4007,10 +4006,9 @@ function afficherVolumeMuscle(volumes) {
     const faites = v.faites || 0;
     const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
     let couleur, statut;
-    if (faites >= optimal) { couleur = '#00c96e'; statut = '✅'; }
-    else if (faites >= mini) { couleur = 'var(--caution)'; statut = '🟡'; }
-    else if (faites > 0) { couleur = '#f59f00'; statut = '⚠️'; }
-    else { couleur = 'var(--danger)'; statut = '🔴'; }
+    if (faites >= optimal) { couleur = 'var(--good)'; statut = '✅'; }
+    else if (faites > 0) { couleur = 'var(--warn)'; statut = '🟠'; }
+    else { couleur = 'var(--bad)'; statut = '🔴'; }
     return `
       <div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
@@ -4262,7 +4260,7 @@ async function chargerAppData() {
     if (dash.recuperation) {
       const r = dash.recuperation;
       const statusColor = r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : 'var(--danger)';
-      const statusLabel = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟡 Fatigue modérée' : '🔴 Fatigue élevée';
+      const statusLabel = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟠 Fatigue modérée' : '🔴 Fatigue élevée';
       recupEl.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <span style="font-size:13px;font-weight:700;color:${statusColor};">${statusLabel}</span>
