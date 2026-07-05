@@ -499,8 +499,8 @@
         <div class="dash-label"><svg class="ico"><use href="#i-trending"/></svg>Progression cette semaine</div>
         <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="dash-card dash-card-accent-orange" id="cd-muscle-card" style="padding:16px">
-        <div class="dash-label"><svg class="ico"><use href="#i-alert"/></svg>Muscle en retard</div>
+      <div class="dash-card dash-card-accent-orange" id="cd-muscle-card" style="padding:16px" onclick="switchCoachDetailTab('volume')" title="Voir le volume par muscle">
+        <div class="dash-label"><svg class="ico"><use href="#i-alert"/></svg>Muscle en retard <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;">Voir le volume →</span></div>
         <div id="cd-muscle"><div class="loader">Chargement...</div></div>
       </div>
       <div class="dash-card" id="cd-records-card" style="padding:16px;display:none">
@@ -663,8 +663,8 @@
             <div style="font-size:10px;margin-top:5px;font-weight:600;" id="dash-semaine-msg"></div>
           </div>
         </div>
-        <div class="dash-card">
-          <div class="dash-label">Poids actuel</div>
+        <div class="dash-card" onclick="switchTab('objectif')" title="Voir l'évolution du poids">
+          <div class="dash-label">Poids actuel <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;">→</span></div>
           <div class="dash-big-num"><span id="dash-poids">—</span><span style="font-size:12px;color:var(--text-muted);"> kg</span></div>
           <div style="font-size:11px;color:var(--good);margin-top:6px;font-weight:600;" id="dash-poids-evolution"></div>
         </div>
@@ -691,8 +691,8 @@
       </div>
 
       <!-- Muscle en retard -->
-      <div class="dash-card dash-card-accent-orange" id="dash-muscle-card" style="padding:16px;">
-        <div class="dash-label"><svg class="ico"><use href="#i-alert"/></svg>Muscle en retard</div>
+      <div class="dash-card dash-card-accent-orange" id="dash-muscle-card" style="padding:16px;" onclick="allerVersVolumeAthlete()" title="Voir le volume par muscle">
+        <div class="dash-label"><svg class="ico"><use href="#i-alert"/></svg>Muscle en retard <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;">Voir le volume →</span></div>
         <div id="dash-muscle-content"><div class="loader">Chargement...</div></div>
       </div>
 
@@ -3165,6 +3165,16 @@ function switchTab(tab) {
     afficherOngletConseils();
   }
 
+}
+
+// Depuis le dashboard athlète : ouvre l'Historique et défile jusqu'au volume par muscle
+function allerVersVolumeAthlete() {
+  switchTab('historique');
+  setTimeout(() => {
+    const el = document.getElementById('hist-volume-content');
+    const card = el && el.closest('.card');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 120);
 }
 
 function switchSubTab(sub) {
