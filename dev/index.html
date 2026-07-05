@@ -4112,6 +4112,10 @@ function afficherProgressionExo() {
       <span style="font-size:12px;color:var(--text-muted);">1RM estimé (Epley)</span>
       <span style="font-size:13px;font-weight:700;color:var(--accent);">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px;">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
     </div>` : ''}
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <button id="pce-charge" onclick="dessinerProgChartExo('charge')" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">Charge</button>
+      <button id="pce-1rm" onclick="dessinerProgChartExo('1rm')" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">1RM est.</button>
+    </div>
     <canvas id="chart-1rm-athlete" style="width:100%;height:108px;display:block;margin-bottom:10px"></canvas>
     <table style="width:100%;font-size:12px;border-collapse:collapse;">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border);">
@@ -4145,8 +4149,21 @@ function afficherProgressionExo() {
         </tr>`;
       }).join('')}
     </table>`;
-  const chrono = perfs.slice().reverse();
-  drawLineChart('chart-1rm-athlete', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)', { unit: 'kg', xLabels: [chrono[0] && chrono[0].date, chrono[chrono.length-1] && chrono[chrono.length-1].date] });
+  progExoChrono = perfs.slice().reverse();
+  dessinerProgChartExo('charge');
+}
+
+// Trace le graphique de progression selon le mode choisi (charge réelle ou 1RM estimé)
+let progExoChrono = null;
+function dessinerProgChartExo(mode) {
+  if (!progExoChrono || !progExoChrono.length) return;
+  const c = progExoChrono;
+  const vals = c.map(p => mode === '1rm' ? calc1RM(p.charge, p.reps) : p.charge).filter(v => v !== null && v !== undefined);
+  drawLineChart('chart-1rm-athlete', vals, 'var(--accent)', { unit: 'kg', xLabels: [c[0] && c[0].date, c[c.length - 1] && c[c.length - 1].date] });
+  [['pce-charge', 'charge'], ['pce-1rm', '1rm']].forEach(([id, mo]) => {
+    const btn = document.getElementById(id);
+    if (btn) { const on = mo === mode; btn.style.background = on ? 'var(--accent)' : 'var(--surface2)'; btn.style.color = on ? 'var(--on-accent)' : 'var(--text-muted)'; }
+  });
 }
 
 // Volume cible par muscle selon niveau
