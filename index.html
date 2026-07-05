@@ -177,17 +177,25 @@
 
   /* === DASHBOARD === */
   .dash { background: var(--bg); padding: 16px 20px 20px; }
-  .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow-sm); }
-  .dash-card-accent-orange { border-left: 4px solid #f59f00; }
-  .dash-card-accent-green { border-left: 4px solid #00c96e; }
-  .dash-next { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 0; }
-  .dash-stat { background: var(--surface2); border-radius: 8px; padding: 8px; text-align: center; }
-  .dash-stat-num { font-size: 18px; font-weight: 800; color: var(--text); }
-  .dash-stat-label { font-size: 9px; color: var(--text-muted); }
-  .dash-big-num { font-size: 28px; font-weight: 800; color: var(--text); }
-  .dash-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
-  .dash-bar-bg { background: var(--surface2); border-radius: 20px; height: 5px; margin-top: 6px; }
-  .dash-bar { height: 100%; border-radius: 20px; }
+  .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow-sm); transition: box-shadow 0.18s, transform 0.18s, border-color 0.18s; }
+  .dash-card[onclick] { cursor: pointer; }
+  .dash-card[onclick]:hover { box-shadow: var(--shadow); transform: translateY(-1px); border-color: var(--accent-dim); }
+  .dash-card-accent-orange { border-left: 3px solid var(--warn); }
+  .dash-card-accent-green { border-left: 3px solid var(--good); }
+  .dash-next { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 0; }
+  .dash-stat { background: var(--surface2); border-radius: var(--radius-sm); padding: 9px 8px; text-align: center; }
+  .dash-stat-num { font-size: 18px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+  .dash-stat-label { font-size: 9.5px; color: var(--text-muted); font-weight: 500; }
+  .dash-big-num { font-size: 30px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .dash-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; font-weight: 700; margin-bottom: 7px; display: flex; align-items: center; }
+  .dash-bar-bg { background: var(--surface2); border-radius: 20px; height: 6px; margin-top: 8px; overflow: hidden; }
+  .dash-bar { height: 100%; border-radius: 20px; transition: width 0.5s cubic-bezier(.2,.8,.2,1); }
+  /* Anneau de progression réutilisable */
+  .ring-wrap { position: relative; width: 60px; height: 60px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); display: block; }
+  .ring-bg { fill: none; stroke: var(--surface2); stroke-width: 6; }
+  .ring-fg { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 0.6s cubic-bezier(.2,.8,.2,1); }
+  .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
   body.light-mode .dash { background: #f5f5f5; }
   body.light-mode .dash-card { background: #fff; border-color: #e0e0e0; }
   body.light-mode .dash-stat { background: #f0f0f0; }
@@ -628,16 +636,24 @@
 
       <!-- Semaine + Poids -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <div class="dash-card">
-          <div class="dash-label">Semaine</div>
-          <div class="dash-big-num"><span id="dash-seances-faites">—</span><span style="font-size:12px;color:#999;font-weight:400;"> / <span id="dash-seances-prevues">—</span></span></div>
-          <div class="dash-bar-bg"><div class="dash-bar" id="dash-bar-semaine" style="background:var(--accent);width:0%"></div></div>
-          <div style="font-size:10px;color:#ff9500;margin-top:4px;" id="dash-semaine-msg"></div>
+        <div class="dash-card" style="display:flex;align-items:center;gap:13px;">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 60 60" width="60" height="60">
+              <circle class="ring-bg" cx="30" cy="30" r="26"/>
+              <circle class="ring-fg" id="dash-ring-semaine" cx="30" cy="30" r="26" stroke-dasharray="163.4" stroke-dashoffset="163.4"/>
+            </svg>
+            <div class="ring-label"><span id="dash-seances-faites">—</span></div>
+          </div>
+          <div style="min-width:0;flex:1;">
+            <div class="dash-label" style="margin-bottom:3px;">Semaine</div>
+            <div style="font-size:12px;color:var(--text-muted);font-weight:600;">sur <span id="dash-seances-prevues">—</span> prévues</div>
+            <div style="font-size:10px;margin-top:5px;font-weight:600;" id="dash-semaine-msg"></div>
+          </div>
         </div>
         <div class="dash-card">
           <div class="dash-label">Poids actuel</div>
-          <div class="dash-big-num"><span id="dash-poids">—</span><span style="font-size:12px;color:#999;"> kg</span></div>
-          <div style="font-size:10px;color:#00a854;margin-top:6px;" id="dash-poids-evolution"></div>
+          <div class="dash-big-num"><span id="dash-poids">—</span><span style="font-size:12px;color:var(--text-muted);"> kg</span></div>
+          <div style="font-size:11px;color:var(--good);margin-top:6px;font-weight:600;" id="dash-poids-evolution"></div>
         </div>
       </div>
 
@@ -1812,13 +1828,13 @@ function afficherCoachTendances(semaines) {
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface2)">
       <div><div style="font-size:12px;font-weight:700">${label}</div>
       <div style="font-size:11px;color:var(--text-muted)">${vd}${unite} → ${vf}${unite}</div></div>
-      <span style="background:${c}22;color:${c};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">${pct>0?'+':''}${pct}%</span></div>`;
+      <span style="background:${c}1a;color:${c};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">${pct>0?'+':''}${pct}%</span></div>`;
   };
   el.innerHTML = `
     ${ligne('Volume hebdo', t.volume_debut, t.volume_fin, ' séries', t.volume_fin >= t.volume_debut)}
     ${ligne('RPE moyen', t.rpe_debut, t.rpe_fin, '', null)}
     ${ligne('Charge moyenne S1', t.charge_debut, t.charge_fin, 'kg', t.charge_fin >= t.charge_debut)}
-    <div style="background:${sc}22;border-radius:8px;padding:10px 12px;margin-top:10px">
+    <div style="background:${sc}1a;border-radius:8px;padding:10px 12px;margin-top:10px">
       <div style="font-size:12px;font-weight:700;color:${sc}">${sl}</div>
       <div style="font-size:11px;color:${sc};opacity:0.8;margin-top:2px">${sd}</div>
     </div>`;
@@ -2579,7 +2595,7 @@ function renderProgrammeCoach() {
           ${u.membres.map((m, i) => `
             ${i > 0 ? `<div style="text-align:center;color:${coul};font-size:16px;font-weight:800;margin:-2px 0 6px">↓</div>` : ''}
             <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px">
-              ${champsExo(m, seanceId, `<button onclick="cdRetirerDuGroupe(${m.row_index},'${seanceId}')" title="Retirer du superset" style="background:${coul}22;border:1px solid ${coul};color:${coul};border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;font-size:12px;flex-shrink:0;font-weight:700">✕</button>`)}
+              ${champsExo(m, seanceId, `<button onclick="cdRetirerDuGroupe(${m.row_index},'${seanceId}')" title="Retirer du superset" style="background:${coul}1a;border:1px solid ${coul};color:${coul};border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;font-size:12px;flex-shrink:0;font-weight:700">✕</button>`)}
             </div>`).join('')}
           ${selLier(u.membres[0], seanceId, nomsMembres)}
         </div>`;
@@ -4030,7 +4046,7 @@ function afficherTendances(semaines) {
           <div style="font-size:12px;font-weight:700;">${label}</div>
           <div style="font-size:11px;color:var(--text-muted);">${valDebut}${unite} → ${valFin}${unite}</div>
         </div>
-        <span style="background:${couleur}22;color:${couleur};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;">${signe}${pct}%</span>
+        <span style="background:${couleur}1a;color:${couleur};border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;">${signe}${pct}%</span>
       </div>`;
   };
 
@@ -4038,7 +4054,7 @@ function afficherTendances(semaines) {
     ${ligne('Volume hebdo', t.volume_debut, t.volume_fin, ' séries', t.volume_fin >= t.volume_debut)}
     ${ligne('RPE moyen', t.rpe_debut, t.rpe_fin, '', null)}
     ${ligne('Charge moyenne S1', t.charge_debut, t.charge_fin, 'kg', t.charge_fin >= t.charge_debut)}
-    <div style="background:${statutColor}22;border-radius:8px;padding:10px 12px;margin-top:10px;display:flex;align-items:center;gap:10px;">
+    <div style="background:${statutColor}1a;border-radius:8px;padding:10px 12px;margin-top:10px;display:flex;align-items:center;gap:10px;">
       <div>
         <div style="font-size:12px;font-weight:700;color:${statutColor};">${statutLabel}</div>
         <div style="font-size:11px;color:${statutColor};opacity:0.8;margin-top:2px;">${statutDesc}</div>
@@ -4243,11 +4259,16 @@ async function chargerAppData() {
     const pct = prevues > 0 ? Math.min(100, Math.round(faites/prevues*100)) : 0;
     document.getElementById('dash-seances-faites').textContent = faites;
     document.getElementById('dash-seances-prevues').textContent = prevues;
-    document.getElementById('dash-bar-semaine').style.width = pct + '%';
+    const _ringC = 163.4;
+    const _ring = document.getElementById('dash-ring-semaine');
+    if (_ring) {
+      _ring.style.strokeDashoffset = (_ringC * (1 - pct / 100)).toFixed(1);
+      _ring.style.stroke = pct >= 100 ? 'var(--good)' : 'var(--accent)';
+    }
     const manque = Math.max(0, prevues - faites);
     const msgEl = document.getElementById('dash-semaine-msg');
-    msgEl.textContent = manque > 0 ? `⚠️ ${manque} séance${manque>1?'s':''} manquante${manque>1?'s':''}` : '✅ Objectif atteint !';
-    msgEl.style.color = manque > 0 ? '#ff9500' : '#00a854';
+    msgEl.textContent = manque > 0 ? `${manque} séance${manque>1?'s':''} manquante${manque>1?'s':''}` : 'Objectif atteint';
+    msgEl.style.color = manque > 0 ? 'var(--warn)' : 'var(--good)';
 
     // Muscle en retard
     const muscleEl = document.getElementById('dash-muscle-content');
