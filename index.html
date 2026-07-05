@@ -1771,17 +1771,20 @@ function computeMarqueursCoach(data, a) {
   const niveauKey = niv === 'debutant' ? 'debutant' : niv === 'intermediaire' ? 'intermediaire' : 'experimente';
   const volSem = hist.volume_semaine || [];
   let volColor = '#aaa', volLabel = 'N/A';
-  if (volSem.length > 0) {
+  const volTrained = volSem.filter(v => (v.faites || 0) > 0);
+  if (volTrained.length === 0 && volSem.length > 0) {
+    volColor = '#e5484d'; volLabel = 'Aucune séance';
+  } else if (volTrained.length > 0) {
     let belowMev = false, aboveMav = true;
-    volSem.forEach(v => {
+    volTrained.forEach(v => {
       const cibleArr = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
       const mev = cibleArr[0] || 0, mav = cibleArr[1] || 0;
       const faites = v.faites || 0;
       if (faites < mev) belowMev = true;
       if (faites < mav) aboveMav = false;
     });
-    if (belowMev) { volColor = '#e5484d'; volLabel = 'Sous MEV'; }
-    else if (!aboveMav) { volColor = '#f59f00'; volLabel = 'Sous MAV'; }
+    if (belowMev) { volColor = '#f59f00'; volLabel = 'Sous MEV'; }
+    else if (!aboveMav) { volColor = '#c8f000'; volLabel = 'Sous MAV'; }
     else { volColor = '#00c96e'; volLabel = 'Volume OK'; }
   }
 
@@ -2113,16 +2116,19 @@ function marqueurRecap(data, a) {
   const niveauKeyV = niv === 'debutant' ? 'debutant' : niv === 'intermediaire' ? 'intermediaire' : 'experimente';
   const volSem = hist.volume_semaine || [];
   let volC = '#aaa';
-  if (volSem.length) {
+  const volTrainedV = volSem.filter(v => (v.faites || 0) > 0);
+  if (volTrainedV.length === 0 && volSem.length > 0) {
+    volC = '#e5484d';
+  } else if (volTrainedV.length > 0) {
     let below = false, allMav = true;
-    volSem.forEach(v => {
+    volTrainedV.forEach(v => {
       const cArr = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKeyV] : [10, 14];
       const mev = cArr[0] || 0, mav = cArr[1] || 0;
       const faites = v.faites || 0;
       if (faites < mev) below = true;
       if (faites < mav) allMav = false;
     });
-    volC = below ? '#e5484d' : !allMav ? '#f59f00' : '#00c96e';
+    volC = below ? '#f59f00' : !allMav ? '#c8f000' : '#00c96e';
   }
   // Dernière séance
   const ds = (dash.derniere_seance && dash.derniere_seance.date) ? dash.derniere_seance.date : '—';
