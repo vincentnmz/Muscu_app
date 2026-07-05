@@ -327,10 +327,25 @@
       <div id="coach-synthese"><div class="loader">Chargement...</div></div>
 
       <!-- Légende -->
-      <div style="margin-top:14px;font-size:11px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="margin-top:14px;font-size:11px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
         <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00c96e;margin-right:5px;"></span>Optimal — progression +, ACWR normal, pas d'alerte</span>
         <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f5a623;margin-right:5px;"></span>À surveiller — stagnation, volume inhabituel, récup moyenne</span>
         <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e5484d;margin-right:5px;"></span>Intervention — fatigue, baisse perf, absence</span>
+        <button onclick="ouvrirModalLierAthlete()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">+ Lier un athlète</button>
+      </div>
+    </div>
+
+    <!-- MODAL LIER UN ATHLÈTE -->
+    <div id="modal-lier-athlete" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;">
+      <div class="card" style="width:90%;max-width:360px;padding:20px;">
+        <div class="card-title">Lier un athlète</div>
+        <label>Login de l'athlète (4 chiffres)</label>
+        <input type="password" id="inp-lier-login" maxlength="4" placeholder="••••" inputmode="numeric">
+        <div id="lier-error" class="error-msg"></div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button class="btn" style="flex:1;background:var(--surface2);color:var(--text-muted);" onclick="fermerModalLierAthlete()">Annuler</button>
+          <button class="btn btn-accent" style="flex:1;" onclick="lierAthlete()">Lier</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1156,6 +1171,34 @@ async function ouvrirEspaceCoach() {
   } catch(e) {
     listeEl.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
+}
+
+function ouvrirModalLierAthlete() {
+  document.getElementById('inp-lier-login').value = '';
+  document.getElementById('lier-error').textContent = '';
+  document.getElementById('modal-lier-athlete').style.display = 'flex';
+}
+
+function fermerModalLierAthlete() {
+  document.getElementById('modal-lier-athlete').style.display = 'none';
+}
+
+async function lierAthlete() {
+  const loginAth = document.getElementById('inp-lier-login').value.trim();
+  const errEl = document.getElementById('lier-error');
+  errEl.textContent = '';
+  if (!loginAth) { errEl.textContent = 'Entre le login de l\'athlète.'; return; }
+  errEl.textContent = 'Liaison en cours...';
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=lierAthlete&login_athlete=${encodeURIComponent(loginAth)}&coach_id=${encodeURIComponent(coach.coach_id)}`);
+    const data = await res.json();
+    if (data.success) {
+      fermerModalLierAthlete();
+      await chargerAthletesCoach();
+    } else {
+      errEl.textContent = data.error || 'Athlète introuvable.';
+    }
+  } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
 }
 
 function renderListeAthletesCoach() {
