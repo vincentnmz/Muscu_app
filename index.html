@@ -2467,16 +2467,18 @@ function computeACWR(progressionParExo, volumeParJour) {
   if (premierTs === null) return null;
 
   const joursDepuisDebut = Math.floor((now.getTime() - premierTs) / jour) + 1;
-  // Il faut assez d'historique pour un ACWR fiable (Gabbett : ~4 semaines)
-  if (joursDepuisDebut < 14) return { insuffisant: true, joursDepuisDebut };
+  // Il faut ~4 semaines d'historique pour un ACWR fiable (Gabbett) : sinon la charge
+  // chronique est calculée sur trop peu de jours et un pic isolé fausse le ratio.
+  if (joursDepuisDebut < 28) return { insuffisant: true, joursDepuisDebut };
 
   const chronicDays = Math.min(28, joursDepuisDebut);
   const acuteDays = Math.min(7, joursDepuisDebut);
 
+  const isoLocal = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   let acute = 0, chronic = 0;
   for (let i = 0; i < chronicDays; i++) {
     const d = new Date(now); d.setDate(d.getDate() - i);
-    const key = d.toISOString().split('T')[0];
+    const key = isoLocal(d); // clés volume_par_jour en heure locale (toISOString décalait d'un jour)
     const v = volumes[key] || 0;
     if (i < acuteDays) acute += v;
     chronic += v;
