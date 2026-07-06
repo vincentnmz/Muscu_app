@@ -105,7 +105,7 @@
   #view-coach-detail .sub-tab .cd-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
   /* Onglets coach en icônes seules — le nom de l'onglet est reporté dans le titre du header (le badge conserve son id, on ne le masque pas) */
   #view-coach-detail .sub-tab > span:not(.cd-ico):not([id]) { display: none; }
-  #view-coach-detail .sub-tab { padding: 10px 3px; }
+  #view-coach-detail .sub-tab { padding: 12px 3px; justify-content: center; }
   #view-coach-detail .sub-tab.active { background: none; color: var(--text-muted); }
   #view-coach-detail .sub-tab.cc1.active { color: var(--accent); border-bottom-color: var(--accent); }
   #view-coach-detail .sub-tab.cc2.active,
@@ -447,8 +447,9 @@
         <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <button id="btn-theme-coach" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-sun"/></svg></button>
-        <button class="logout-btn" onclick="seDeconnecterCoach()"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
+        <button onclick="ouvrirModalLierAthlete()" style="background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;"><svg class="ico ico-btn"><use href="#i-plus"/></svg>Lier</button>
+        <button id="btn-theme-coach" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 9px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-sun"/></svg></button>
+        <button class="logout-btn" onclick="seDeconnecterCoach()"><svg class="ico ico-btn"><use href="#i-logout"/></svg></button>
       </div>
     </div>
 
@@ -468,20 +469,8 @@
         <option value="">—</option>
       </select>
 
-      <!-- TABLEAU DE SYNTHÈSE -->
+      <!-- Bloc prioritaire + liste d'athlètes -->
       <div id="coach-synthese"><div class="loader">Chargement...</div></div>
-
-      <!-- Légende -->
-      <div style="margin-top:14px;font-size:11px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
-        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--good);margin-right:5px;"></span>Optimal — progression +, ACWR normal, pas d'alerte</span>
-        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--warn);margin-right:5px;"></span>À surveiller — stagnation, volume inhabituel, récup moyenne</span>
-        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bad);margin-right:5px;"></span>Intervention — fatigue, baisse perf, absence</span>
-      </div>
-
-      <!-- Lier un athlète : bouton centré, mis en avant -->
-      <div style="display:flex;justify-content:center;margin-top:22px;">
-        <button class="btn btn-outline" onclick="ouvrirModalLierAthlete()" style="width:auto;padding:12px 24px;margin:0;"><svg class="ico ico-btn"><use href="#i-link"/></svg>Lier un athlète</button>
-      </div>
     </div>
 
     <!-- MODAL LIER UN ATHLÈTE -->
@@ -511,9 +500,8 @@
       <button class="btn-sm btn-outline" onclick="retourCoachDetail()" style="flex-shrink:0;padding:8px 10px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>
       <div id="cd-avatar" style="width:44px;height:44px;border-radius:13px;background:var(--accent-a12);color:var(--accent-strong);font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">–</div>
       <div style="flex:1;min-width:0;text-align:left;">
-        <div id="cd-tab-title" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);font-weight:800;line-height:1;">Aperçu</div>
-        <h1 id="header-nom-athlete-coach" style="font-weight:800;font-size:19px;line-height:1.15;margin:2px 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Athlète</h1>
-        <div id="header-niveau-athlete-coach" style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <h1 id="cd-tab-title" style="font-weight:800;font-size:23px;line-height:1.1;margin:0 0 2px;letter-spacing:-.4px;">Aperçu</h1>
+        <div style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span id="header-nom-athlete-coach" style="font-weight:700;color:var(--text);">Athlète</span><span id="header-niveau-athlete-coach"></span></div>
       </div>
     </div>
 
@@ -521,9 +509,9 @@
     <div class="sub-tabs">
       <button class="sub-tab cc1 active" id="cdtab-btn-overview" onclick="switchCoachDetailTab('overview')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.4"/></svg></span><span>Aperçu</span></button>
       <button class="sub-tab cc2" id="cdtab-btn-seances" onclick="switchCoachDetailTab('seances')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M6.5 6v12M3.5 8.5v7M17.5 6v12M20.5 8.5v7M6.5 12h11"/></svg></span><span>Séances</span></button>
-      <button class="sub-tab cc3" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span><span>Progression</span></button>
+      <button class="sub-tab cc3" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span><span>Progrès</span></button>
       <button class="sub-tab cc4" id="cdtab-btn-volume" onclick="switchCoachDetailTab('volume')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M7 21v-6M12 21v-11M17 21v-9"/></svg></span><span>Volume</span></button>
-      <button class="sub-tab cc5" id="cdtab-btn-conseils" onclick="ouvrirConversationCoach()" style="position:relative"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.5A8 8 0 1 1 21 11.5z"/></svg></span><span>Conversation</span><span id="badge-conseils-coach" style="display:none;position:absolute;top:2px;right:6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;"></span></button>
+      <button class="sub-tab cc5" id="cdtab-btn-conseils" onclick="ouvrirConversationCoach()" style="position:relative"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.5A8 8 0 1 1 21 11.5z"/></svg></span><span>Messages</span><span id="badge-conseils-coach" style="display:none;position:absolute;top:2px;right:6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;"></span></button>
       <button class="sub-tab cc6" id="cdtab-btn-programme" onclick="switchCoachDetailTab('programme')"><span class="cd-ico"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><span>Programme</span></button>
     </div>
 
@@ -1464,7 +1452,17 @@ async function renderCoachSynthese(athletes) {
     let m = null;
     try { if (datas[i]) m = computeMarqueursCoach(datas[i], a); }
     catch (err) { console.error('Marqueurs KO pour', a.nom, err); }
-    return { a, i, m };
+    // Données pour les marqueurs de carte + mini-courbe
+    const d = datas[i] || {};
+    const rec = d.dashboard && d.dashboard.recuperation ? d.dashboard.recuperation : null;
+    const rpe = rec ? rec.rpe_moyen : null;
+    const seancesSem = d.dashboard && d.dashboard.regularite ? d.dashboard.regularite.seances_semaine : null;
+    let spark = [];
+    if (d.historique && d.historique.volume_par_jour) {
+      spark = Object.keys(d.historique.volume_par_jour).sort()
+        .map(k => Number(d.historique.volume_par_jour[k])).filter(v => !isNaN(v)).slice(-8);
+    }
+    return { a, i, m, rpe, seancesSem, spark };
   });
   enrich.sort((x, y) => {
     const rx = x.m ? x.m.statut.rank : -1, ry = y.m ? y.m.statut.rank : -1;
@@ -1484,30 +1482,61 @@ async function renderCoachSynthese(athletes) {
   const absEl = document.getElementById('coach-stat-absents');
   if (absEl) { absEl.textContent = absents; absEl.style.color = absents > 0 ? 'var(--warn)' : 'var(--good)'; }
 
-  const niveauLabel = n => ({ debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' }[n] || '');
   const initiales = nom => (nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+  // Mini-courbe de forme (tonnage des dernières séances)
+  const miniSpark = (pts, color) => {
+    if (!pts || pts.length < 2) return '<div style="width:56px;flex-shrink:0;"></div>';
+    const W=56,H=26,min=Math.min(...pts),max=Math.max(...pts),span=(max-min)||1;
+    const x=k=>(k/(pts.length-1))*W, y=v=>H-3-((v-min)/span)*(H-6);
+    const d=pts.map((v,k)=>`${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(' L');
+    return `<svg width="56" height="26" viewBox="0 0 ${W} ${H}" style="flex-shrink:0;"><path d="M${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  };
 
-  el.innerHTML = enrich.map(({ a, i, m }) => {
-    const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
-    const al = labelAlerteCourt(a);
+  // Détermine la raison de priorité d'un athlète
+  const infoPrio = (e) => {
+    const { a, m } = e;
     const dsAge = (m && m.derniere) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
-    const dsAbsent = dsAge > 7;
-    const dsTxt = m && m.derniere ? joursDepuis(m.derniere.date) : 'jamais';
-    // Métadonnées : dernière séance + progression + alerte éventuelle
+    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color:'var(--warn)' };
+    const al = labelAlerteCourt(a);
+    if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2)?'var(--v2-bad)':'var(--warn)' };
+    if (m && m.statut.rank===2) return { icon:'⚠', txt:'Intervention conseillée', color:'var(--v2-bad)' };
+    return null;
+  };
+
+  // ---- Bloc « À traiter en priorité » ----
+  const prioritaires = enrich.map(e => ({ e, p: infoPrio(e) })).filter(x => x.p);
+  let prioHtml = '';
+  if (prioritaires.length) {
+    prioHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-bell"/></svg>À traiter en priorité</div></div>` +
+      prioritaires.map(({ e, p }) => `
+        <div onclick="ouvrirAthleteDepuisSelect('${e.i}')" style="display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:${p.color}14;border:1px solid ${p.color}44;">
+          <div style="width:34px;height:34px;border-radius:10px;background:${p.color}22;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${p.icon}</div>
+          <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">${e.a.nom}</div><div style="font-size:11.5px;color:var(--text-muted);">${p.txt}</div></div>
+          <span style="color:var(--text-muted);font-size:18px;">›</span>
+        </div>`).join('');
+  }
+
+  // ---- Liste complète ----
+  const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes athlètes</div></div>` +
+    enrich.map(({ a, i, m, rpe, seancesSem, spark }) => {
+    const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
+    // Marqueurs : séances/sem + RPE + progression
     const meta = [];
-    meta.push(`<span style="${dsAbsent ? 'color:var(--warn);font-weight:700;' : ''}">${dsAbsent ? '⚠ ' : ''}${dsTxt}</span>`);
+    if (seancesSem != null) meta.push(`<span><b style="color:var(--text);">${seancesSem}</b> séance${seancesSem>1?'s':''}/sem</span>`);
+    if (rpe != null) meta.push(`<span>RPE <b style="color:var(--text);">${rpe}</b></span>`);
     if (m && m.progLabel) meta.push(`<span style="color:${m.progColor};font-weight:700;">${m.progLabel}</span>`);
-    const alLine = al ? `<div style="font-size:11.5px;color:${s.color};font-weight:600;margin-top:3px;">${al}</div>` : '';
-    return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:9px;cursor:pointer;transition:border-color .15s,transform .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
+    return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:9px;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
       <div style="width:44px;height:44px;border-radius:13px;background:${s.color}22;color:${s.color};font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initiales(a.nom)}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nom}</div>
         <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;gap:9px;flex-wrap:wrap;">${meta.join('<span style="opacity:.4">·</span>')}</div>
-        ${alLine}
       </div>
+      ${miniSpark(spark, s.color)}
       <span style="display:inline-flex;align-items:center;gap:6px;background:${s.color}1a;color:${s.color};padding:5px 11px;border-radius:var(--radius-pill);font-size:11.5px;font-weight:800;white-space:nowrap;flex-shrink:0;"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};"></span>${s.label}</span>
     </div>`;
   }).join('');
+
+  el.innerHTML = prioHtml + listeHtml;
 }
 
 function ouvrirAthleteDepuisSelect(idx) {
@@ -1700,7 +1729,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   if (a.objectif) bits.push(a.objectif);
   bits.push(`${a.annees_pratique || 0} an${(a.annees_pratique||0)>1?'s':''}`);
   if (a.poids) bits.push(`${a.poids} kg`);
-  document.getElementById('header-niveau-athlete-coach').textContent = bits.join(' · ');
+  document.getElementById('header-niveau-athlete-coach').textContent = ' · ' + bits.join(' · ');
   switchCoachDetailTab(initialTab || 'overview');
   cdCalDate = new Date();
 
