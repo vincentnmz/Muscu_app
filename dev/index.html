@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Séance Muscu</title>
+<title>Novalyz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -320,7 +320,7 @@
 </defs></svg>
 
 <header>
-  <h1><svg class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use href="#i-dumbbell"/></svg><span id="header-nom">Muscu</span></h1>
+  <h1><svg class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use href="#i-dumbbell"/></svg><span id="header-nom">Novalyz</span></h1>
   <div style="display:flex;align-items:center;gap:10px;">
     <button id="btn-theme" onclick="toggleTheme()" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-sun"/></svg></button>
     <button class="logout-btn" onclick="seDeconnecter()" style="display:none" id="btn-logout"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
@@ -339,29 +339,8 @@
 
   <!-- LOGIN -->
   <div id="view-login" class="view active">
-    <div class="login-logo" style="padding:42px 0 26px">
-      <div style="width:112px;height:112px;margin:0 auto;">
-        <svg viewBox="0 0 120 120" width="112" height="112" aria-label="Novalyz" role="img" xmlns="http://www.w3.org/2000/svg">
-          <!-- Badge hexagonal -->
-          <path d="M60 4 106 30v52L60 116 14 82V30z" fill="var(--accent-a12)" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/>
-          <!-- Coach (gauche, blanc) : tête + buste + tablette -->
-          <g fill="var(--text)">
-            <circle cx="45" cy="42" r="8"/>
-            <path d="M33 84c0-10 5-18 12-18s12 8 12 18z"/>
-            <rect x="30" y="58" width="15" height="11" rx="2" transform="rotate(-12 37 63)"/>
-          </g>
-          <!-- Athlète (droite, bleu) : tête + buste + haltère -->
-          <g fill="var(--accent)">
-            <circle cx="76" cy="42" r="8"/>
-            <path d="M63 84c0-10 5-18 12-18s12 8 12 18z"/>
-            <rect x="74" y="56" width="20" height="4" rx="2"/>
-            <rect x="72" y="52" width="4" height="12" rx="1.5"/>
-            <rect x="92" y="52" width="4" height="12" rx="1.5"/>
-          </g>
-        </svg>
-      </div>
-      <div style="font-size:26px;font-weight:800;margin-top:12px;letter-spacing:2px">NOVALYZ</div>
-      <div style="font-size:11px;color:var(--accent);margin-top:5px;letter-spacing:2px;text-transform:uppercase;font-weight:700">Analyze · Plan · Perform</div>
+    <div class="login-logo" style="padding:34px 0 22px">
+      <img src="logo%20novalyz.png" alt="Novalyz — Analyze · Plan · Perform" style="display:block;width:240px;max-width:80%;height:auto;margin:0 auto;border-radius:18px">
     </div>
 
     <div class="auth-seg">
@@ -1253,7 +1232,7 @@ function seDeconnecter() {
   document.getElementById('tabs-bar').style.display = 'none';
   document.body.classList.remove('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'none';
-  document.getElementById('header-nom').textContent = 'Muscu';
+  document.getElementById('header-nom').textContent = 'Novalyz';
   document.getElementById('inp-login').value = '';
   document.getElementById('inp-password').value = '';
   document.getElementById('login-error').textContent = '';
