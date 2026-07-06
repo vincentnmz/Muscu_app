@@ -223,6 +223,43 @@
   body.light-mode .dash-label { color: #999; }
   body.light-mode .dash-bar-bg { background: #e0e0e0; }
 
+  /* ===== v2 — langage visuel unifié (dashboard athlète & coach) ===== */
+  :root{ --good-a:rgba(0,201,110,.14); --warn-a:rgba(245,159,0,.14); --bad-a:rgba(240,80,90,.14); --v2-bad:#f0505a; }
+  body.light-mode{ --good-a:rgba(0,168,84,.12); --warn-a:rgba(217,130,0,.12); --bad-a:rgba(229,72,77,.10); }
+  .v2-hero{ background:radial-gradient(120% 90% at 100% 0%, var(--accent-a12), transparent 60%), var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px; margin-bottom:12px; }
+  .v2-hero-top{ display:flex; align-items:center; gap:15px; }
+  .v2-hi{ font-size:13px; color:var(--text-muted); font-weight:600; }
+  .v2-name{ font-size:21px; font-weight:800; letter-spacing:-.4px; margin-top:1px; }
+  .v2-week{ display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; background:var(--surface2); }
+  .v2-cta{ margin-top:14px; }
+  .v2-cta .dc-inner{ display:flex; align-items:center; gap:12px; background:var(--accent); border-radius:13px; padding:12px 14px; }
+  .v2-cta .dc-ico{ width:38px; height:38px; border-radius:11px; background:rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#fff; }
+  .v2-cta .dc-txt{ flex:1; min-width:0; }
+  .v2-cta .dc-k{ font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:rgba(255,255,255,.8); font-weight:700; }
+  .v2-cta .dc-v{ font-size:16px; font-weight:800; color:#fff; margin-top:1px; }
+  .v2-cta .dc-btn{ background:rgba(255,255,255,.2); color:#fff; border:none; border-radius:9px; padding:8px 14px; font-size:12px; font-weight:800; cursor:pointer; flex-shrink:0; }
+  .v2-kpis{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-bottom:12px; }
+  .v2-kpi{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 11px; }
+  .v2-kpi .kv{ font-size:20px; font-weight:800; line-height:1; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
+  .v2-kpi .kk{ font-size:10px; color:var(--text-muted); font-weight:600; margin-top:5px; line-height:1.25; }
+  .v2-sec{ display:flex; align-items:center; justify-content:space-between; margin:2px 2px 9px; }
+  .v2-sec .st{ display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; letter-spacing:.02em; }
+  .v2-sec .st .ico{ width:15px; height:15px; color:var(--accent); }
+  .v2-sec .more{ font-size:11px; font-weight:700; color:var(--accent); }
+  .v2-vrow{ display:flex; align-items:center; gap:10px; margin-top:11px; }
+  .v2-vrow:first-child{ margin-top:2px; }
+  .v2-vrow .vn{ width:76px; font-size:12px; font-weight:600; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .v2-vtrack{ flex:1; height:9px; background:var(--surface2); border-radius:5px; position:relative; overflow:hidden; }
+  .v2-vfill{ position:absolute; left:0; top:0; bottom:0; border-radius:5px; }
+  .v2-vrow .vv{ width:52px; text-align:right; font-size:11px; font-weight:700; color:var(--text-muted); flex-shrink:0; font-variant-numeric:tabular-nums; }
+  .v2-legend{ display:flex; gap:14px; margin-top:13px; padding-top:11px; border-top:1px solid var(--border); }
+  .v2-legend span{ font-size:10.5px; color:var(--text-muted); font-weight:600; display:flex; align-items:center; gap:5px; }
+  .v2-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .v2-pgrid{ display:flex; gap:9px; }
+  .v2-pstat{ flex:1; border-radius:12px; padding:11px 12px; display:flex; align-items:center; gap:10px; }
+  .v2-pstat .pn{ font-size:22px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+  .v2-pstat .pk{ font-size:10.5px; color:var(--text-muted); font-weight:600; line-height:1.2; }
+
   /* DASHBOARD */
 
   .dash-badge { border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; }
@@ -419,23 +456,11 @@
 
     <div id="coach-home-body" style="display:none">
       <!-- KPIs -->
-      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-        <div class="dash-card" style="text-align:center;padding:14px 16px;flex:1;min-width:90px">
-          <div class="dash-big-num" id="coach-stat-total">—</div>
-          <div class="dash-label" style="margin:0;justify-content:center">Athlètes</div>
-        </div>
-        <div class="dash-card" style="text-align:center;padding:14px 16px;flex:1;min-width:90px">
-          <div class="dash-big-num" id="coach-stat-surveiller" style="color:var(--warn)">—</div>
-          <div class="dash-label" style="margin:0;justify-content:center">À surveiller</div>
-        </div>
-        <div class="dash-card" style="text-align:center;padding:14px 16px;flex:1;min-width:90px">
-          <div class="dash-big-num" id="coach-stat-action" style="color:var(--bad)">—</div>
-          <div class="dash-label" style="margin:0;justify-content:center">Intervention</div>
-        </div>
-        <div class="dash-card" style="text-align:center;padding:14px 16px;flex:1;min-width:90px">
-          <div class="dash-big-num" id="coach-stat-absents" style="color:var(--text-muted)">—</div>
-          <div class="dash-label" style="margin:0;justify-content:center">Absents 7j+</div>
-        </div>
+      <div class="v2-kpis" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+        <div class="v2-kpi"><div class="kv" id="coach-stat-total">—</div><div class="kk">Athlètes</div></div>
+        <div class="v2-kpi"><div class="kv" id="coach-stat-surveiller" style="color:var(--warn)">—</div><div class="kk">À surveiller</div></div>
+        <div class="v2-kpi"><div class="kv" id="coach-stat-action" style="color:var(--bad)">—</div><div class="kk">Intervention</div></div>
+        <div class="v2-kpi"><div class="kv" id="coach-stat-absents" style="color:var(--text-muted)">—</div><div class="kk">Absents 7j+</div></div>
       </div>
 
       <!-- select caché conservé pour compatibilité JS -->
@@ -482,11 +507,13 @@
       <div style="font-size:16px;font-weight:800;color:var(--text);">Sélectionne un athlète</div>
       <div style="font-size:13px;margin-top:6px;">Choisis un athlète dans la liste pour afficher son suivi.</div>
     </div>
-    <div class="header" style="display:flex;align-items:center;gap:12px;">
-      <button class="btn-sm btn-outline" onclick="retourCoachDetail()" style="flex-shrink:0;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg>Retour</button>
+    <div class="header" style="display:flex;align-items:center;gap:11px;">
+      <button class="btn-sm btn-outline" onclick="retourCoachDetail()" style="flex-shrink:0;padding:8px 10px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>
+      <div id="cd-avatar" style="width:44px;height:44px;border-radius:13px;background:var(--accent-a12);color:var(--accent-strong);font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">–</div>
       <div style="flex:1;min-width:0;text-align:left;">
-        <h1 id="cd-tab-title" style="font-weight:800;font-size:19px;line-height:1.15;margin:0;">Aperçu</h1>
-        <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span id="header-nom-athlete-coach">Athlète</span><span id="header-niveau-athlete-coach"></span></div>
+        <div id="cd-tab-title" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);font-weight:800;line-height:1;">Aperçu</div>
+        <h1 id="header-nom-athlete-coach" style="font-weight:800;font-size:19px;line-height:1.15;margin:2px 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Athlète</h1>
+        <div id="header-niveau-athlete-coach" style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
       </div>
     </div>
 
@@ -505,57 +532,76 @@
 
     <!-- ONGLET APERÇU -->
     <div id="cdtab-overview">
-      <!-- TABLEAU DE BORD INDICATEURS -->
-      <div class="dash-card" style="padding:16px;margin-bottom:10px;">
-        <div class="dash-label" style="margin-bottom:10px;"><svg class="ico"><use href="#i-gauge"/></svg>Tableau de bord</div>
-        <div id="cd-indicateurs"><div class="loader">Chargement...</div></div>
-      </div>
+      <!-- Alertes (priorité en haut) -->
       <div class="dash-card" id="cd-alertes-card" style="padding:16px">
         <div class="dash-label"><svg class="ico"><use href="#i-bell"/></svg>Alertes</div>
         <div id="cd-alertes"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="dash-card" id="cd-acwr-card" style="padding:16px">
-        <div class="dash-label"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique (ACWR)</div>
-        <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
+
+      <!-- Tableau de bord (indicateurs de la semaine) -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Cette semaine</div></div>
+      <div class="dash-card" style="padding:16px;">
+        <div id="cd-indicateurs"><div class="loader">Chargement...</div></div>
       </div>
+
+      <!-- État de forme -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</div></div>
       <div class="dash-card" id="cd-recup-card" style="padding:16px">
-        <div class="dash-label"><svg class="ico"><use href="#i-activity"/></svg>Récupération</div>
         <div id="cd-recup"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="dash-card" id="cd-prog-card" style="padding:16px" onclick="switchCoachDetailTab('prog')" title="Voir la progression détaillée">
-        <div class="dash-label"><svg class="ico"><use href="#i-trending"/></svg>Progression cette semaine <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap;">Voir tout →</span></div>
-        <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
+
+      <!-- ACWR -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</div></div>
+      <div class="dash-card" id="cd-acwr-card" style="padding:16px">
+        <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="dash-card dash-card-accent-orange" id="cd-muscle-card" style="padding:16px" onclick="switchCoachDetailTab('volume')" title="Voir le volume par muscle">
-        <div class="dash-label"><svg class="ico"><use href="#i-alert"/></svg>Muscle en retard <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap;">Voir tout →</span></div>
+
+      <!-- Volume par muscle → onglet Volume -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div><div class="more" onclick="switchCoachDetailTab('volume')" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="dash-card" id="cd-muscle-card" style="padding:16px" onclick="switchCoachDetailTab('volume')" title="Voir le volume par muscle">
         <div id="cd-muscle"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="dash-card" id="cd-records-card" style="padding:16px;display:none">
-        <div class="dash-label"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels <span style="margin-left:auto;font-size:9px;color:var(--text-muted);font-weight:600;">meilleure charge</span></div>
-        <div id="cd-records"></div>
+
+      <!-- Progression 7 jours (cliquable → détail) -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</div><div class="more" onclick="switchCoachDetailTab('prog')" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="dash-card" id="cd-prog-card" style="padding:16px" onclick="switchCoachDetailTab('prog')" title="Voir la progression détaillée">
+        <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="dash-card dash-card-accent-orange" id="cd-regression-card" style="padding:16px;display:none">
+
+      <!-- Exercices en régression (si présent) -->
+      <div class="dash-card" id="cd-regression-card" style="padding:16px;display:none">
         <div class="dash-label"><svg class="ico"><use href="#i-alert"/></svg>Exercices en régression</div>
         <div id="cd-regression"></div>
+      </div>
+
+      <!-- Records de l'athlète (en bas) -->
+      <div class="v2-sec" id="cd-records-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records de l'athlète</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
+      <div class="dash-card" id="cd-records-card" style="padding:16px;display:none">
+        <div id="cd-records"></div>
       </div>
     </div>
 
     <!-- ONGLET SÉANCES -->
     <div id="cdtab-seances" style="display:none">
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Historique des séances</div></div>
       <div class="card">
-        <div class="card-title"><svg class="ico"><use href="#i-calendar"/></svg>Historique des séances</div>
         <div id="cd-seances-detail-content"><div class="loader">Chargement...</div></div>
       </div>
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Volume relatif hebdo · 8 sem.</div></div>
       <div class="card" id="cd-acwr-history-card">
-        <div class="card-title"><svg class="ico"><use href="#i-zap"/></svg>Volume relatif hebdomadaire (8 semaines)</div>
         <div id="cd-acwr-chart-content"></div>
       </div>
     </div>
 
     <!-- ONGLET CONSEILS -->
     <div id="cdtab-conseils" style="display:none">
+
+      <!-- Alertes de la semaine (traitées / à traiter) -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-bell"/></svg>Alertes de la semaine</div></div>
+      <div class="dash-card" id="cd-conv-alertes" style="padding:14px;"><div class="loader">Chargement...</div></div>
+
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation</div></div>
       <div class="card" id="cd-commentaires-card" style="padding:0;overflow:hidden;">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;"><svg class="ico"><use href="#i-message"/></svg>Conversation</div>
         <div id="cd-commentaires-liste" style="max-height:55vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
         <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
           <textarea id="cd-comment-input" placeholder="Message à l'athlète…"
@@ -568,36 +614,39 @@
 
     <!-- ONGLET PROGRESSION -->
     <div id="cdtab-prog" style="display:none">
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div></div>
       <div class="card">
-        <div class="card-title"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div>
         <select id="cd-sel-exercice" onchange="afficherCoachProgressionExo()" style="margin-bottom:10px">
           <option value="">— Choisir un exercice —</option>
         </select>
         <div id="cd-progression-content"></div>
       </div>
-      <div class="card">
-        <div class="card-title"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</div>
-        <div style="display:flex;gap:6px;margin-bottom:12px">
-          <button onclick="afficherCoachTendances(4)" id="cd-btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer">4 sem.</button>
-          <button onclick="afficherCoachTendances(8)" id="cd-btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">8 sem.</button>
+      <div class="v2-sec">
+        <div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="afficherCoachTendances(4)" id="cd-btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer">4 sem.</button>
+          <button onclick="afficherCoachTendances(8)" id="cd-btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer">8 sem.</button>
         </div>
+      </div>
+      <div class="card">
         <div id="cd-tendances-content"><div class="loader">Chargement...</div></div>
       </div>
     </div>
 
     <!-- ONGLET VOLUME -->
     <div id="cdtab-volume" style="display:none">
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle · semaine</div></div>
       <div class="card">
-        <div class="card-title"><svg class="ico"><use href="#i-dumbbell"/></svg>Volume par muscle — semaine en cours</div>
         <div id="cd-volume-content"><div class="loader">Chargement...</div></div>
       </div>
     </div>
 
     <!-- ONGLET AGENDA -->
     <div id="cdtab-cal" style="display:none">
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</div></div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span style="font-size:13px;font-weight:700;color:var(--text)" id="cd-cal-titre">Mois</span>
+          <span style="font-size:14px;font-weight:800;color:var(--text)" id="cd-cal-titre">Mois</span>
           <div style="display:flex;gap:12px">
             <span onclick="cdCalNaviguer(-1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700">◀</span>
             <span onclick="cdCalNaviguer(1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700">▶</span>
@@ -614,16 +663,16 @@
         </div>
         <div id="cd-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
       </div>
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Séances récentes</div></div>
       <div class="card">
-        <div class="card-title"><svg class="ico"><use href="#i-clipboard"/></svg>Séances récentes</div>
         <div id="cd-seances-content"></div>
       </div>
     </div>
 
     <!-- ONGLET PROGRAMME -->
     <div id="cdtab-programme" style="display:none">
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Programme</div></div>
       <div class="card">
-        <div class="card-title"><svg class="ico"><use href="#i-clipboard"/></svg>Programme</div>
         <div id="cd-programme-content"><div class="loader">Chargement...</div></div>
         <button class="btn btn-outline" style="margin-top:10px" onclick="cdAjouterSeance()">+ Nouvelle séance</button>
       </div>
@@ -674,70 +723,72 @@
     <!-- ONGLET ACCUEIL -->
     <div id="tab-accueil" class="tab-content active dash">
 
-      <!-- Semaine + Poids -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <div class="dash-card" style="display:flex;align-items:center;gap:13px;">
-          <div class="ring-wrap">
-            <svg viewBox="0 0 60 60" width="60" height="60">
+      <!-- HERO : semaine + salut + prochaine séance -->
+      <div class="v2-hero">
+        <div class="v2-hero-top">
+          <div class="ring-wrap" style="width:72px;height:72px;">
+            <svg viewBox="0 0 60 60" width="72" height="72">
               <circle class="ring-bg" cx="30" cy="30" r="26"/>
               <circle class="ring-fg" id="dash-ring-semaine" cx="30" cy="30" r="26" stroke-dasharray="163.4" stroke-dashoffset="163.4"/>
             </svg>
-            <div class="ring-label"><span id="dash-seances-faites">—</span></div>
+            <div class="ring-label" style="font-size:22px;">
+              <span id="dash-seances-faites">—</span>
+              <span style="font-size:9px;color:var(--text-muted);font-weight:700;margin-top:1px;">/ <span id="dash-seances-prevues">—</span> séances</span>
+            </div>
           </div>
           <div style="min-width:0;flex:1;">
-            <div class="dash-label" style="margin-bottom:3px;">Semaine</div>
-            <div style="font-size:12px;color:var(--text-muted);font-weight:600;">sur <span id="dash-seances-prevues">—</span> prévues</div>
-            <div style="font-size:10px;margin-top:5px;font-weight:600;" id="dash-semaine-msg"></div>
+            <div class="v2-hi">Bonjour 👋</div>
+            <div class="v2-name" id="dash-hero-name">Athlète</div>
+            <div class="v2-week" id="dash-semaine-msg"></div>
           </div>
         </div>
-        <div class="dash-card" onclick="switchTab('objectif')" title="Voir l'évolution du poids">
-          <div class="dash-label">Poids actuel <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap;">Voir tout →</span></div>
-          <div class="dash-big-num"><span id="dash-poids">—</span><span style="font-size:12px;color:var(--text-muted);"> kg</span></div>
-          <div style="font-size:11px;color:var(--good);margin-top:6px;font-weight:600;" id="dash-poids-evolution"></div>
+        <div class="v2-cta" id="dash-next-seance">
+          <div style="color:var(--text-muted);font-size:13px;padding:8px 2px;">Chargement...</div>
         </div>
       </div>
 
-      <!-- Prochaine séance -->
-      <div class="dash-next" style="padding:16px;">
-        <div class="dash-label">Prochaine séance</div>
-        <div id="dash-next-seance">
-          <div style="color:var(--text-muted);font-size:13px;">Chargement...</div>
+      <!-- KPI ROW (rempli si récupération dispo) -->
+      <div class="v2-kpis" id="dash-kpis" style="display:none;"></div>
+
+      <!-- Poids -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Poids corporel</div><div class="more" onclick="switchTab('objectif')" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="dash-card" onclick="switchTab('objectif')" title="Voir l'évolution du poids" style="padding:16px;">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">
+          <div>
+            <div class="dash-big-num" style="font-size:32px;"><span id="dash-poids">—</span><span style="font-size:14px;color:var(--text-muted);"> kg</span></div>
+            <div style="font-size:12px;margin-top:6px;font-weight:700;" id="dash-poids-evolution"></div>
+          </div>
+          <div id="dash-poids-spark" style="flex:1;max-width:190px;"></div>
         </div>
       </div>
 
-      <!-- Records personnels -->
-      <div class="dash-card" id="dash-records-card" style="padding:16px;display:none;">
-        <div class="dash-label"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels <span style="margin-left:auto;font-size:9px;color:var(--text-muted);font-weight:600;">meilleure charge</span></div>
-        <div id="dash-records"></div>
-      </div>
-
-      <!-- Récupération -->
-      <div class="dash-card" id="dash-recup-card">
-        <div class="dash-label"><svg class="ico"><use href="#i-activity"/></svg>Récupération</div>
+      <!-- État de forme (récupération) -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</div></div>
+      <div class="dash-card" id="dash-recup-card" style="padding:16px;">
         <div id="dash-recup-content"><div class="loader">Chargement...</div></div>
       </div>
 
-      <!-- Muscle en retard -->
-      <div class="dash-card dash-card-accent-orange" id="dash-muscle-card" style="padding:16px;" onclick="allerVersVolumeAthlete()" title="Voir le volume par muscle">
-        <div class="dash-label"><svg class="ico"><use href="#i-alert"/></svg>Muscle en retard <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap;">Voir tout →</span></div>
+      <!-- Volume par muscle (→ onglet Volume) -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div><div class="more" onclick="allerVersVolumeAthlete()" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="dash-card" id="dash-muscle-card" style="padding:16px;" onclick="allerVersVolumeAthlete()" title="Voir le volume par muscle">
         <div id="dash-muscle-content"><div class="loader">Chargement...</div></div>
       </div>
 
-      <!-- Progression -->
-      <div class="dash-card dash-card-accent-green" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
-        <div class="dash-label"><svg class="ico"><use href="#i-trending"/></svg>Progression cette semaine <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap;">Voir tout →</span></div>
+      <!-- Progression (7j glissants → détail) -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</div><div class="more" onclick="ouvrirDrawer()" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="dash-card" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
       </div>
 
-      <!-- Activité (heatmap) -->
-      <div class="dash-card" id="dash-activite-card" style="padding:16px;display:none;">
-        <div class="dash-label"><svg class="ico"><use href="#i-calendar"/></svg>Activité <span style="margin-left:auto;font-size:9px;color:var(--text-muted);font-weight:600;">12 dernières semaines</span></div>
-        <div id="dash-activite"></div>
+      <!-- Records personnels (en bas) -->
+      <div class="v2-sec" id="dash-records-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
+      <div class="dash-card" id="dash-records-card" style="padding:16px;display:none;">
+        <div id="dash-records"></div>
       </div>
 
       <!-- Dernière séance -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-dumbbell"/></svg>Dernière séance</div></div>
       <div class="dash-card" style="padding:16px;margin-bottom:0;">
-        <div class="dash-label">Dernière séance</div>
         <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
       </div>
 
@@ -924,8 +975,8 @@
     <div id="tab-objectif" class="tab-content">
 
       <!-- Objectif -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-target"/></svg>Mon objectif</div></div>
       <div class="card">
-        <div class="card-title">Mon objectif</div>
         <div id="obj-actuel" style="margin-bottom:12px"></div>
         <label>Modifier</label>
         <select id="sel-objectif">
@@ -938,20 +989,18 @@
       </div>
 
       <!-- Graphique poids -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Évolution du poids</div></div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-          <div>
-            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Évolution du poids</div>
-            <div style="display:flex;align-items:baseline;gap:6px;">
-              <span style="font-size:28px;font-weight:800;color:var(--text);" id="graph-poids-actuel">—</span>
-              <span style="font-size:13px;color:var(--text-muted);">kg</span>
-              <span style="font-size:12px;font-weight:700;" id="graph-poids-evol"></span>
-            </div>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span style="font-size:30px;font-weight:800;color:var(--text);" id="graph-poids-actuel">—</span>
+            <span style="font-size:14px;color:var(--text-muted);">kg</span>
+            <span style="font-size:12px;font-weight:700;" id="graph-poids-evol"></span>
           </div>
           <div style="display:flex;gap:4px;">
-            <button onclick="filtrerGraphPoids('1m')" id="gp-1m" style="background:var(--text);color:var(--bg);border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;">1M</button>
-            <button onclick="filtrerGraphPoids('3m')" id="gp-3m" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;">3M</button>
-            <button onclick="filtrerGraphPoids('all')" id="gp-all" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;">Tout</button>
+            <button onclick="filtrerGraphPoids('1m')" id="gp-1m" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">1M</button>
+            <button onclick="filtrerGraphPoids('3m')" id="gp-3m" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer;">3M</button>
+            <button onclick="filtrerGraphPoids('all')" id="gp-all" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer;">Tout</button>
           </div>
         </div>
         <div style="overflow-x:auto;">
@@ -962,8 +1011,8 @@
       </div>
 
       <!-- Saisie poids -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-plus"/></svg>Enregistrer mon poids</div></div>
       <div class="card">
-        <div class="card-title">Enregistrer mon poids</div>
         <div class="row2">
           <div>
             <label>Poids (kg)</label>
@@ -978,8 +1027,8 @@
       </div>
 
       <!-- Régularité -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité cette semaine</div></div>
       <div class="card">
-        <div class="card-title"><svg class="ico"><use href="#i-calendar"/></svg>Régularité cette semaine</div>
         <div id="regularite-content"><div class="loader">Chargement...</div></div>
       </div>
 
@@ -989,9 +1038,10 @@
     <div id="tab-historique" class="tab-content">
 
       <!-- CALENDRIER -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</div></div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <span style="font-size:13px;font-weight:700;color:var(--text);" id="cal-titre">Juin 2026</span>
+          <span style="font-size:14px;font-weight:800;color:var(--text);" id="cal-titre">Juin 2026</span>
           <div style="display:flex;gap:12px;">
             <span onclick="calNaviguer(-1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">◀</span>
             <span onclick="calNaviguer(1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">▶</span>
@@ -1014,8 +1064,8 @@
       </div>
 
       <!-- PROGRESSION PAR EXERCICE -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div></div>
       <div class="card">
-        <div class="card-title"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div>
         <select id="sel-hist-exercice" onchange="afficherProgressionExo()" style="margin-bottom:10px;">
           <option value="">— Choisir un exercice —</option>
         </select>
@@ -1023,20 +1073,20 @@
       </div>
 
       <!-- VOLUME PAR MUSCLE -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle · semaine</div></div>
       <div class="card">
-        <div class="card-title"><svg class="ico"><use href="#i-dumbbell"/></svg>Volume par muscle — semaine en cours</div>
         <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- TENDANCES 4-8 SEMAINES -->
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <div class="card-title" style="margin:0;"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</div>
-          <div style="display:flex;gap:6px;">
-            <button onclick="afficherTendances(4)" id="btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;">4 sem.</button>
-            <button onclick="afficherTendances(8)" id="btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;">8 sem.</button>
-          </div>
+      <div class="v2-sec">
+        <div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="afficherTendances(4)" id="btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">4 sem.</button>
+          <button onclick="afficherTendances(8)" id="btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer;">8 sem.</button>
         </div>
+      </div>
+      <div class="card">
         <div id="hist-tendances-content"><div class="loader">Chargement...</div></div>
       </div>
 
@@ -1044,8 +1094,8 @@
 
     <!-- ONGLET CONSEILS -->
     <div id="tab-conseils" class="tab-content">
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation avec ton coach</div></div>
       <div class="card" style="padding:0;overflow:hidden;">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;"><svg class="ico"><use href="#i-message"/></svg>Conversation avec ton coach</div>
         <div id="conseils-content" style="max-height:60vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
         <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
           <textarea id="athlete-chat-input" placeholder="Répondre à ton coach…"
@@ -1435,43 +1485,29 @@ async function renderCoachSynthese(athletes) {
   if (absEl) { absEl.textContent = absents; absEl.style.color = absents > 0 ? 'var(--warn)' : 'var(--good)'; }
 
   const niveauLabel = n => ({ debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' }[n] || '');
-  const dot = c => `<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c};box-shadow:0 0 5px ${c}66;"></span>`;
-  const th = (t, c) => `<th style="text-align:${c||'left'};padding:11px 14px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);font-weight:700;white-space:nowrap;background:var(--surface2);position:sticky;top:0;">${t}</th>`;
-  const thc = t => th(t, 'center');
-  const na = '<span style="color:var(--text-muted)">—</span>';
+  const initiales = nom => (nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
 
-  el.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);">
-      <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;min-width:820px;">
-        <thead><tr>${th('Athlète')}${th('État')}${th('Charge')}${th('Progression')}${thc('Récup')}${thc('Volume')}${thc('Régularité')}${th('Alerte')}${th('Dernière séance')}</tr></thead>
-        <tbody>
-        ${enrich.map(({ a, i, m }) => {
-          const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
-          const stripe = s.rank >= 1 ? s.color : 'transparent';
-          const al = labelAlerteCourt(a);
-          const alCell = al ? `<span style="font-size:12px;color:${s.color};font-weight:600">${al}</span>` : na;
-          const acwrCell = (m && m.acwrRatio !== null) ? `ACWR <b>${m.acwrRatio.toFixed(2)}</b>` : na;
-          const progCell = m ? `<span style="color:${m.progColor};font-weight:700">${m.progLabel}</span>` : na;
-          const dsAge = (m && m.derniere) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
-          const dsAbsent = dsAge > 7;
-          const dsCell = m && m.derniere ? joursDepuis(m.derniere.date) : na;
-          return `<tr onclick="ouvrirAthleteDepuisSelect('${i}')" style="cursor:pointer;border-top:1px solid var(--border);transition:background .12s;" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
-            <td style="padding:13px 14px;border-left:3px solid ${stripe};"><div style="font-weight:800;">${a.nom}</div><div style="font-size:11px;color:var(--text-muted);">${niveauLabel(getNiveauExperience(a.annees_pratique))}</div></td>
-            <td style="padding:13px 14px;white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:7px;background:${s.color}1a;color:${s.color};padding:4px 11px 4px 9px;border-radius:var(--radius-pill);font-size:12px;font-weight:700;"><span style="width:8px;height:8px;border-radius:50%;background:${s.color};"></span>${s.label}</span></td>
-            <td style="padding:13px 14px;white-space:nowrap;">${acwrCell}</td>
-            <td style="padding:13px 14px;white-space:nowrap;">${progCell}</td>
-            <td style="padding:13px 8px;text-align:center;">${m ? dot(m.recupColor) : na}</td>
-            <td style="padding:13px 8px;text-align:center;">${m ? dot(m.volColor) : na}</td>
-            <td style="padding:13px 8px;text-align:center;">${m ? dot(m.regColor) : na}</td>
-            <td style="padding:13px 14px;">${alCell}</td>
-            <td style="padding:13px 14px;font-size:13px;white-space:nowrap;color:${dsAbsent ? 'var(--warn)' : 'var(--text-muted)'};font-weight:${dsAbsent ? '700' : '400'};">${dsAbsent && m && m.derniere ? '⚠ ' : ''}${dsCell}</td>
-          </tr>`;
-        }).join('')}
-        </tbody>
-      </table>
+  el.innerHTML = enrich.map(({ a, i, m }) => {
+    const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
+    const al = labelAlerteCourt(a);
+    const dsAge = (m && m.derniere) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
+    const dsAbsent = dsAge > 7;
+    const dsTxt = m && m.derniere ? joursDepuis(m.derniere.date) : 'jamais';
+    // Métadonnées : dernière séance + progression + alerte éventuelle
+    const meta = [];
+    meta.push(`<span style="${dsAbsent ? 'color:var(--warn);font-weight:700;' : ''}">${dsAbsent ? '⚠ ' : ''}${dsTxt}</span>`);
+    if (m && m.progLabel) meta.push(`<span style="color:${m.progColor};font-weight:700;">${m.progLabel}</span>`);
+    const alLine = al ? `<div style="font-size:11.5px;color:${s.color};font-weight:600;margin-top:3px;">${al}</div>` : '';
+    return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:9px;cursor:pointer;transition:border-color .15s,transform .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div style="width:44px;height:44px;border-radius:13px;background:${s.color}22;color:${s.color};font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initiales(a.nom)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nom}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;gap:9px;flex-wrap:wrap;">${meta.join('<span style="opacity:.4">·</span>')}</div>
+        ${alLine}
       </div>
+      <span style="display:inline-flex;align-items:center;gap:6px;background:${s.color}1a;color:${s.color};padding:5px 11px;border-radius:var(--radius-pill);font-size:11.5px;font-weight:800;white-space:nowrap;flex-shrink:0;"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};"></span>${s.label}</span>
     </div>`;
+  }).join('');
 }
 
 function ouvrirAthleteDepuisSelect(idx) {
@@ -1655,10 +1691,16 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   document.body.classList.add('athlete-selected');
   surlignerAthleteSidebar(a.athlete_id);
   document.getElementById('header-nom-athlete-coach').textContent = a.nom;
+  // Avatar : initiales
+  const avEl = document.getElementById('cd-avatar');
+  if (avEl) avEl.textContent = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
   const niv = getNiveauExperience(a.annees_pratique);
   const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv];
-  document.getElementById('header-niveau-athlete-coach').textContent =
-    `${nivLabel} · ${a.annees_pratique || 0} an${(a.annees_pratique||0)>1?'s':''}`;
+  const bits = [nivLabel];
+  if (a.objectif) bits.push(a.objectif);
+  bits.push(`${a.annees_pratique || 0} an${(a.annees_pratique||0)>1?'s':''}`);
+  if (a.poids) bits.push(`${a.poids} kg`);
+  document.getElementById('header-niveau-athlete-coach').textContent = bits.join(' · ');
   switchCoachDetailTab(initialTab || 'overview');
   cdCalDate = new Date();
 
@@ -1708,11 +1750,12 @@ function renderCoachRecordsEtRegression(hist) {
   const prog = (hist && hist.progression_par_exo) || {};
   // --- Records (meilleure charge réelle, pas le 1RM) ---
   const rCard = document.getElementById('cd-records-card'), rEl = document.getElementById('cd-records');
+  const rSec = document.getElementById('cd-records-sec');
   const records = calculerRecords(hist);
   if (rCard && rEl) {
-    if (records.length === 0) { rCard.style.display = 'none'; }
+    if (records.length === 0) { rCard.style.display = 'none'; if (rSec) rSec.style.display = 'none'; }
     else {
-      rCard.style.display = '';
+      rCard.style.display = ''; if (rSec) rSec.style.display = 'flex';
       rEl.innerHTML = records.slice(0, 5).map((r, i, arr) => `
         <div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i < arr.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
           <div style="width:22px;height:22px;border-radius:50%;background:var(--accent-a12);color:var(--accent);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</div>
@@ -1759,6 +1802,12 @@ function renderCoachRecordsEtRegression(hist) {
 function renderCoachOverview(data) {
   const dash = data.dashboard || {};
 
+  // Enrichir le sous-titre en-tête avec le poids réel (si connu)
+  if (data.poids && data.poids.length && coachAthleteCourant) {
+    const sub = document.getElementById('header-niveau-athlete-coach');
+    if (sub && !/kg/.test(sub.textContent)) sub.textContent = sub.textContent + ` · ${data.poids[0].poids} kg`;
+  }
+
   // Régularité
   const reg = dash.regularite || {};
   const faites = reg.seances_semaine || 0;
@@ -1782,16 +1831,20 @@ function renderCoachOverview(data) {
   const recupEl = document.getElementById('cd-recup');
   if (dash.recuperation) {
     const r = dash.recuperation;
-    const sc = r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : 'var(--danger)';
-    const sl = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟠 Fatigue modérée' : '🔴 Fatigue élevée';
+    const sc = r.statut === 'optimal' ? 'var(--good)' : r.statut === 'modere' ? 'var(--warn)' : 'var(--v2-bad)';
+    const se = r.statut === 'optimal' ? '💪' : r.statut === 'modere' ? '😮‍💨' : '🥵';
+    const sl = r.statut === 'optimal' ? 'Bien récupéré' : r.statut === 'modere' ? 'Fatigue modérée' : 'Fatigue élevée';
     recupEl.innerHTML = `
-      <div style="font-size:13px;font-weight:700;color:${sc};margin:6px 0 12px">${sl}</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:46px;height:46px;border-radius:13px;background:${sc}22;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0">${se}</div>
+        <div style="font-size:16px;font-weight:800;color:${sc}">${sl}</div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color}">${r.rpe_moyen}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color}">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color};font-size:14px">${r.volume_moyenne_prec === null ? 'N/A' : r.volume_semaine + ' / ' + r.volume_moyenne_prec}</div><div class="dash-stat-label">Volume (vs moy. 3 sem.)</div></div>
       </div>
-      <div style="border-left:3px solid ${sc};padding-left:10px;background:${sc}11;border-radius:0 8px 8px 0;padding:8px 10px">
+      <div style="border-left:3px solid ${sc};background:var(--surface2);border-radius:0 10px 10px 0;padding:9px 11px">
         <div style="font-size:11px;font-weight:700;margin-bottom:3px;color:${sc}">${ic('lightbulb')} Suggestion auto (à valider par toi)</div>
         <div style="font-size:12px;opacity:0.85">${r.conseil}</div>
         ${(() => {
@@ -1819,41 +1872,19 @@ function renderCoachOverview(data) {
         <span style="font-size:11px;color:var(--danger);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
         <span style="font-size:11px;color:var(--danger);white-space:nowrap">${d.variation}</span></div>`).join('');
     progEl.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 12px">
-        <div style="background:rgba(0,201,110,0.1);border-radius:8px;padding:10px;text-align:center">
-          <div style="font-size:22px;font-weight:800;color:#00c96e">${p.en_progression || 0}</div>
-          <div style="font-size:10px;color:var(--text-muted)">en progression</div></div>
-        <div style="background:rgba(255,68,68,0.1);border-radius:8px;padding:10px;text-align:center">
-          <div style="font-size:22px;font-weight:800;color:var(--danger)">${p.en_baisse || 0}</div>
-          <div style="font-size:10px;color:var(--text-muted)">en baisse</div></div>
+      <div class="v2-pgrid" style="margin-bottom:${(up||down)?'12px':'0'}">
+        <div class="v2-pstat" style="background:var(--good-a)"><div class="pn" style="color:var(--good)">${p.en_progression || 0}</div><div class="pk">exercices<br>en progression</div></div>
+        <div class="v2-pstat" style="background:var(--bad-a)"><div class="pn" style="color:var(--v2-bad)">${p.en_baisse || 0}</div><div class="pk">exercices<br>en baisse</div></div>
       </div>
       ${up ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">En progression</div>${up}` : ''}
       ${down ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin:8px 0 4px">En baisse</div>${down}` : ''}
-      ${!up && !down ? '<div style="color:var(--text-muted);font-size:13px">Charges stables cette semaine</div>' : ''}`;
+      ${!up && !down ? '<div style="color:var(--text-muted);font-size:13px">Charges stables sur les 7 derniers jours</div>' : ''}`;
   } else {
     progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore de données.</div>';
   }
 
-  // Muscle en retard
-  const muscleEl = document.getElementById('cd-muscle');
-  if (dash.muscle_retard) {
-    const m = dash.muscle_retard;
-    const moyHebdo = Math.round(m.series_faites / 4 * 10) / 10;
-    const objectifHebdo = Math.round(m.series_optimale / 4);
-    const deficit = objectifHebdo > 0 ? Math.round((1 - moyHebdo/objectifHebdo) * 100) : 0;
-    muscleEl.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin:6px 0 10px">
-        <div><div style="font-size:16px;font-weight:800">${m.muscle}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Sous-entraîné sur 4 semaines</div></div>
-        <span style="background:rgba(245,159,0,0.2);color:#f59f00;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">-${deficit}%</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="dash-stat"><div class="dash-stat-num" style="color:#f59f00">${moyHebdo}</div><div class="dash-stat-label">séries/sem moy.</div></div>
-        <div class="dash-stat"><div class="dash-stat-num">${objectifHebdo}</div><div class="dash-stat-label">objectif/sem</div></div>
-      </div>`;
-  } else {
-    muscleEl.innerHTML = '<div style="color:#00c96e;font-size:13px;font-weight:700;margin-top:6px">✅ Tous les muscles bien entraînés !</div>';
-  }
+  // Volume par muscle — barres v2
+  renderDashVolumeBars(data.historique ? (data.historique.volume_semaine || []) : [], 'cd-muscle');
 }
 
 function renderCoachExerciceSelect(data) {
@@ -2081,12 +2112,14 @@ function renderCoachIndicateurs(data) {
     { label: 'Régularité', color: m.regColor, val: m.regLabel },
     { label: 'Récupération', color: m.recupColor, val: m.recupLabel },
   ];
-  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center;">
+  el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;">
     ${indicateurs.map(ind => `
-      <div>
-        <div style="width:14px;height:14px;border-radius:50%;background:${ind.color};margin:0 auto 4px;box-shadow:0 0 6px ${ind.color}55;"></div>
-        <div style="font-size:9px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">${ind.label}</div>
-        <div style="font-size:10px;color:${ind.color};font-weight:700;margin-top:2px;">${ind.val}</div>
+      <div class="v2-kpi" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="v2-dot" style="background:${ind.color};box-shadow:0 0 6px ${ind.color}55;"></span>
+          <span style="font-size:9.5px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;">${ind.label}</span>
+        </div>
+        <div style="font-size:14px;color:${ind.color};font-weight:800;line-height:1;">${ind.val}</div>
       </div>`).join('')}
   </div>`;
 }
@@ -2099,23 +2132,15 @@ function renderCoachVolume(data) {
   }
   const niveauKey = coachNiveauKey(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
   const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
-  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
-    volumes.map(v => {
+  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:12px">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
+    volumes.slice().sort((a,b)=>(b.faites||0)-(a.faites||0)).map(v => {
       const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
-      const mini = cible[0], optimal = cible[1], faites = v.faites || 0;
+      const optimal = cible[1], faites = v.faites || 0;
       const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
-      let couleur, statut;
-      if (faites >= optimal) { couleur = 'var(--good)'; statut = '✅'; }
-      else if (faites > 0) { couleur = 'var(--warn)'; statut = '🟠'; }
-      else { couleur = 'var(--bad)'; statut = '🔴'; }
-      return `<div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-          <span style="font-size:12px;font-weight:700">${v.muscle}</span>
-          <span style="font-size:11px;color:${couleur};font-weight:700">${faites} / ${optimal} séries ${statut}</span></div>
-        <div style="background:var(--surface2);border-radius:20px;height:6px"><div style="background:${couleur};height:100%;width:${pct}%;border-radius:20px"></div></div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Min : ${mini} · Optimal : ${optimal}</div>
-      </div>`;
-    }).join('');
+      const couleur = faites >= optimal ? 'var(--good)' : faites > 0 ? 'var(--warn)' : 'var(--v2-bad)';
+      return `<div class="v2-vrow"><div class="vn">${v.muscle}</div><div class="v2-vtrack"><div class="v2-vfill" style="width:${Math.max(pct,4)}%;background:${couleur};"></div></div><div class="vv">${faites}/${optimal}</div></div>`;
+    }).join('') +
+    `<div class="v2-legend"><span><span class="v2-dot" style="background:var(--good)"></span>Optimal</span><span><span class="v2-dot" style="background:var(--warn)"></span>Sous la cible</span><span><span class="v2-dot" style="background:var(--v2-bad)"></span>En retard</span></div>`;
 }
 
 function cdCalNaviguer(direction) {
@@ -2943,8 +2968,35 @@ function majBadgeConseilsCoach(forceZero) {
 }
 
 // Ouvre la conversation côté coach et marque les messages de l'athlète comme lus
+function renderConversationAlertes() {
+  const el = document.getElementById('cd-conv-alertes');
+  if (!el) return;
+  const a = coachAthleteCourant;
+  const alertes = a ? alertesActives(a) : [];
+  if (!alertes.length) {
+    el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;color:var(--good);font-size:13px;font-weight:700;">✅ Aucune alerte cette semaine</div>';
+    return;
+  }
+  const traitees = alertes.filter(al => alerteEstTraitee(a.athlete_id, al));
+  const aTraiter = alertes.filter(al => !alerteEstTraitee(a.athlete_id, al));
+  const row = (al, done) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);">
+      <span style="width:26px;height:26px;border-radius:8px;background:${done?'var(--good-a)':'var(--warn-a)'};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">${done?'✅':'⚠'}</span>
+      <div style="flex:1;min-width:0;font-size:12.5px;font-weight:600;">${al.message || labelAlerteCourt(a) || 'Alerte'}</div>
+      <span style="font-size:10.5px;font-weight:800;color:${done?'var(--good)':'var(--warn)'};white-space:nowrap;">${done?'Traitée':'À traiter'}</span>
+    </div>`;
+  el.innerHTML =
+    `<div style="display:flex;gap:9px;margin-bottom:4px;">
+       <div class="v2-pstat" style="background:var(--good-a);padding:9px 11px;"><div class="pn" style="color:var(--good);font-size:18px;">${traitees.length}</div><div class="pk">traitée${traitees.length>1?'s':''}</div></div>
+       <div class="v2-pstat" style="background:var(--warn-a);padding:9px 11px;"><div class="pn" style="color:var(--warn);font-size:18px;">${aTraiter.length}</div><div class="pk">à traiter</div></div>
+     </div>
+     ${aTraiter.map(al => row(al, false)).join('')}
+     ${traitees.map(al => row(al, true)).join('')}`;
+}
+
 function ouvrirConversationCoach() {
   switchCoachDetailTab('conseils');
+  renderConversationAlertes();
   const nonLus = commentairesAthleteActuel.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).map(c => c.id);
   if (nonLus.length > 0) {
     ajouterLusLocaux('muscu_lu_coach', nonLus);
@@ -4126,13 +4178,52 @@ function calc1RM(charge, reps) {
 }
 
 // ===== Dashboard data-viz : records perso + heatmap d'activité =====
+// Sparkline poids (SVG inline) — data.poids est trié du plus récent au plus ancien
+function renderPoidsSpark(poids) {
+  const el = document.getElementById('dash-poids-spark');
+  if (!el) return;
+  const pts = (poids || []).map(p => parseFloat(p.poids)).filter(v => !isNaN(v)).reverse();
+  if (pts.length < 2) { el.innerHTML = ''; return; }
+  const W = 190, H = 60, min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
+  const x = i => (i / (pts.length - 1)) * W;
+  const y = v => H - 6 - ((v - min) / span) * (H - 14);
+  const line = pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' L');
+  const lastX = x(pts.length - 1).toFixed(1), lastY = y(pts[pts.length - 1]).toFixed(1);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="60" preserveAspectRatio="none">
+    <defs><linearGradient id="wgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".26"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    <path d="M${line} L${lastX},${H} L0,${H} Z" fill="url(#wgrad)"/>
+    <path d="M${line}" fill="none" stroke="var(--accent-strong)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${lastX}" cy="${lastY}" r="3.4" fill="var(--accent-strong)" stroke="var(--surface)" stroke-width="2"/>
+  </svg>`;
+}
+
+// Barres de volume par muscle (accueil athlète & aperçu coach) — réutilise VOLUME_CIBLE
+function renderDashVolumeBars(volumes, targetId) {
+  const el = document.getElementById(targetId || 'dash-muscle-content');
+  if (!el) return;
+  if (!volumes || volumes.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune donnée cette semaine — enregistre une séance !</div>';
+    return;
+  }
+  const niveauKey = getNiveauKey(athlete ? athlete.strategie_progression : null);
+  const rows = volumes.slice().sort((a,b) => (b.faites||0)-(a.faites||0)).map(v => {
+    const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10,14];
+    const optimal = cible[1], faites = v.faites || 0;
+    const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
+    const col = faites >= optimal ? 'var(--good)' : faites > 0 ? 'var(--warn)' : 'var(--v2-bad)';
+    return `<div class="v2-vrow"><div class="vn">${v.muscle}</div><div class="v2-vtrack"><div class="v2-vfill" style="width:${Math.max(pct,4)}%;background:${col};"></div></div><div class="vv">${faites}/${optimal}</div></div>`;
+  }).join('');
+  el.innerHTML = rows + `<div class="v2-legend"><span><span class="v2-dot" style="background:var(--good)"></span>Optimal</span><span><span class="v2-dot" style="background:var(--warn)"></span>Sous la cible</span><span><span class="v2-dot" style="background:var(--v2-bad)"></span>En retard</span></div>`;
+}
+
 function renderDashboardRecords(hist) {
   const card = document.getElementById('dash-records-card');
   const el = document.getElementById('dash-records');
+  const sec = document.getElementById('dash-records-sec');
   if (!card || !el) return;
   const records = calculerRecords(hist);
-  if (records.length === 0) { card.style.display = 'none'; return; }
-  card.style.display = '';
+  if (records.length === 0) { card.style.display = 'none'; if (sec) sec.style.display = 'none'; return; }
+  card.style.display = ''; if (sec) sec.style.display = 'flex';
   el.innerHTML = records.slice(0, 5).map((r, i, arr) => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i < arr.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
       <div style="width:22px;height:22px;border-radius:50%;background:var(--accent-a12);color:var(--accent);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</div>
@@ -4173,8 +4264,9 @@ function renderDashboardActivite(hist) {
     const parts = String(k).split('/');
     if (parts.length === 3) trained.add(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
   });
-  if (trained.size === 0) { card.style.display = 'none'; return; }
-  card.style.display = '';
+  const secA = document.getElementById('dash-activite-sec');
+  if (trained.size === 0) { card.style.display = 'none'; if (secA) secA.style.display = 'none'; return; }
+  card.style.display = ''; if (secA) secA.style.display = 'flex';
   // Intensité par tonnage du jour (volume_par_jour est déjà en ISO yyyy-mm-dd)
   const volMap = (hist && hist.volume_par_jour) || {};
   let maxVol = 0; Object.keys(volMap).forEach(k => { if (volMap[k] > maxVol) maxVol = volMap[k]; });
@@ -4480,29 +4572,16 @@ function afficherVolumeMuscle(volumes) {
   const niveauKey = getNiveauKey(athlete ? athlete.strategie_progression : null);
   const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
 
-  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
-  volumes.map(v => {
+  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:12px;">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
+  volumes.slice().sort((a,b)=>(b.faites||0)-(a.faites||0)).map(v => {
     const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
-    const mini = cible[0];
     const optimal = cible[1];
     const faites = v.faites || 0;
     const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
-    let couleur, statut;
-    if (faites >= optimal) { couleur = 'var(--good)'; statut = '✅'; }
-    else if (faites > 0) { couleur = 'var(--warn)'; statut = '🟠'; }
-    else { couleur = 'var(--bad)'; statut = '🔴'; }
-    return `
-      <div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-          <span style="font-size:12px;font-weight:700;color:var(--text);">${v.muscle}</span>
-          <span style="font-size:11px;color:${couleur};font-weight:700;">${faites} / ${optimal} séries ${statut}</span>
-        </div>
-        <div style="background:var(--surface2);border-radius:20px;height:6px;">
-          <div style="background:${couleur};height:100%;width:${pct}%;border-radius:20px;"></div>
-        </div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Min : ${mini} · Optimal : ${optimal}</div>
-      </div>`;
-  }).join('');
+    const couleur = faites >= optimal ? 'var(--good)' : faites > 0 ? 'var(--warn)' : 'var(--v2-bad)';
+    return `<div class="v2-vrow"><div class="vn">${v.muscle}</div><div class="v2-vtrack"><div class="v2-vfill" style="width:${Math.max(pct,4)}%;background:${couleur};"></div></div><div class="vv">${faites}/${optimal}</div></div>`;
+  }).join('') +
+  `<div class="v2-legend"><span><span class="v2-dot" style="background:var(--good)"></span>Optimal</span><span><span class="v2-dot" style="background:var(--warn)"></span>Sous la cible</span><span><span class="v2-dot" style="background:var(--v2-bad)"></span>En retard</span></div>`;
 }
 
 // ==================== UTILS ====================
@@ -4634,12 +4713,16 @@ async function chargerAppData() {
       if (data.poids.length > 1) {
         const diff = (data.poids[0].poids - data.poids[1].poids).toFixed(1);
         const sign = diff > 0 ? '▲' : '▼';
-        const col = diff > 0 ? '#ff9500' : '#00a854';
-        document.getElementById('dash-poids-evolution').innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)}kg</span>`;
+        const col = diff > 0 ? 'var(--warn)' : 'var(--good)';
+        document.getElementById('dash-poids-evolution').innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)} kg</span> <span style="color:var(--text-muted);font-weight:600;">· ${data.poids.length} mesures</span>`;
       }
+      renderPoidsSpark(data.poids);
     } else if (athlete.poids) {
       document.getElementById('dash-poids').textContent = athlete.poids;
     }
+    // Nom dans le hero
+    const heroName = document.getElementById('dash-hero-name');
+    if (heroName && athlete && athlete.nom) heroName.textContent = athlete.nom;
 
     // Rendre le calendrier
     renderCalendrier();
@@ -4681,34 +4764,8 @@ async function chargerAppData() {
     msgEl.textContent = manque > 0 ? `${manque} séance${manque>1?'s':''} manquante${manque>1?'s':''}` : 'Objectif atteint';
     msgEl.style.color = manque > 0 ? 'var(--warn)' : 'var(--good)';
 
-    // Muscle en retard
-    const muscleEl = document.getElementById('dash-muscle-content');
-    if (dash.muscle_retard) {
-      const m = dash.muscle_retard;
-      const moyHebdo = Math.round(m.series_faites / 4 * 10) / 10;
-      const objectifHebdo = Math.round(m.series_optimale / 4);
-      const deficit = objectifHebdo > 0 ? Math.round((1 - moyHebdo/objectifHebdo) * 100) : 0;
-      muscleEl.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-          <div>
-            <div style="font-size:16px;font-weight:800;">${m.muscle}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Sous-entraîné sur les 4 dernières semaines</div>
-          </div>
-          <span style="background:rgba(245,159,0,0.2);color:#f59f00;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;">-${deficit}%</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div class="dash-stat">
-            <div class="dash-stat-num" style="color:#f59f00;">${moyHebdo}</div>
-            <div class="dash-stat-label">séries/sem moy.</div>
-          </div>
-          <div class="dash-stat">
-            <div class="dash-stat-num">${objectifHebdo}</div>
-            <div class="dash-stat-label">objectif/sem</div>
-          </div>
-        </div>`;
-    } else {
-      muscleEl.innerHTML = '<div style="color:#00c96e;font-size:13px;font-weight:700;">✅ Tous les muscles bien entraînés !</div>';
-    }
+    // Volume par muscle — barres v2
+    renderDashVolumeBars(data.historique.volume_semaine || []);
 
     // Progression
     const progEl = document.getElementById('dash-prog-content');
@@ -4729,39 +4786,44 @@ async function chargerAppData() {
           <span style="font-size:11px;color:var(--danger);white-space:nowrap;">${d.variation}</span>
         </div>`).join('');
       progEl.innerHTML = `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-          <div style="background:rgba(0,201,110,0.1);border-radius:8px;padding:10px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#00c96e;">${enProg}</div>
-            <div style="font-size:10px;color:var(--text-muted);">en progression</div>
-          </div>
-          <div style="background:rgba(255,68,68,0.1);border-radius:8px;padding:10px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:var(--danger);">${enBaisse}</div>
-            <div style="font-size:10px;color:var(--text-muted);">en baisse</div>
-          </div>
+        <div class="v2-pgrid" style="margin-bottom:${(enProg||enBaisse)?'12px':'0'};">
+          <div class="v2-pstat" style="background:var(--good-a);"><div class="pn" style="color:var(--good);">${enProg}</div><div class="pk">exercices<br>en progression</div></div>
+          <div class="v2-pstat" style="background:var(--bad-a);"><div class="pn" style="color:var(--v2-bad);">${enBaisse}</div><div class="pk">exercices<br>en baisse</div></div>
         </div>
         ${enProg > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">En progression</div>${lignesUp}` : ''}
         ${enBaisse > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">En baisse</div>${lignesDown}` : ''}
-        ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables cette semaine</div>' : ''}`;
+        ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables sur les 7 derniers jours</div>' : ''}`;
     } else {
       progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas encore de données de progression</div>';
     }
 
-    // Récupération
+    // Récupération : KPI row (RPE / charge / volume) + carte d'état
     const recupEl = document.getElementById('dash-recup-content');
+    const kpisEl = document.getElementById('dash-kpis');
     if (dash.recuperation) {
       const r = dash.recuperation;
-      const statusColor = r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : 'var(--danger)';
-      const statusLabel = r.statut === 'optimal' ? '🟢 Bien récupéré' : r.statut === 'modere' ? '🟠 Fatigue modérée' : '🔴 Fatigue élevée';
+      const statusColor = r.statut === 'optimal' ? 'var(--good)' : r.statut === 'modere' ? 'var(--warn)' : 'var(--v2-bad)';
+      const statusEmoji = r.statut === 'optimal' ? '💪' : r.statut === 'modere' ? '😮‍💨' : '🥵';
+      const statusLabel = r.statut === 'optimal' ? 'Bien récupéré' : r.statut === 'modere' ? 'Fatigue modérée' : 'Fatigue élevée';
+      const statusDesc = r.statut === 'optimal' ? 'Charge et RPE maîtrisés, tu peux pousser.' : r.statut === 'modere' ? 'Surveille ta récup, garde une marge.' : 'Repos conseillé, réduis l\'intensité.';
+      const volTxt = r.volume_moyenne_prec === null ? 'N/A' : r.volume_semaine + ' / ' + r.volume_moyenne_prec;
+      if (kpisEl) {
+        kpisEl.style.display = 'grid';
+        kpisEl.innerHTML = `
+          <div class="v2-kpi"><div class="kv" style="color:${r.rpe_color};">${r.rpe_moyen}</div><div class="kk">RPE moyen · 7j</div></div>
+          <div class="v2-kpi"><div class="kv" style="color:${r.charge_color};">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="kk">Charge vs S-1</div></div>
+          <div class="v2-kpi"><div class="kv" style="color:${r.volume_color};font-size:16px;">${volTxt}</div><div class="kk">Volume vs moy. 3 sem.</div></div>`;
+      }
       recupEl.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <span style="font-size:13px;font-weight:700;color:${statusColor};">${statusLabel}</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color};">${r.rpe_moyen}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
-          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color};">${r.charge_evol > 0 ? '+' : ''}${r.charge_evol}%</div><div class="dash-stat-label">Charge S1</div></div>
-          <div class="dash-stat"><div class="dash-stat-num" style="color:${r.volume_color};font-size:14px">${r.volume_moyenne_prec === null ? 'N/A' : r.volume_semaine + ' / ' + r.volume_moyenne_prec}</div><div class="dash-stat-label">Volume (vs moy. 3 sem.)</div></div>
+        <div style="display:flex;align-items:center;gap:13px;">
+          <div style="width:50px;height:50px;border-radius:14px;background:${statusColor}22;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;">${statusEmoji}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:16px;font-weight:800;color:${statusColor};">${statusLabel}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${statusDesc}</div>
+          </div>
         </div>`;
     } else {
+      if (kpisEl) kpisEl.style.display = 'none';
       recupEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">Pas encore assez de données — continue à t'entraîner, le bloc se remplira après quelques semaines !</div>`;
     }
 
@@ -4786,20 +4848,18 @@ async function chargerAppData() {
       lastEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>';
     }
 
-    // Prochaine séance
+    // Prochaine séance — CTA v2
     const nextEl = document.getElementById('dash-next-seance');
     if (dash.prochaine_seance) {
       const n = dash.prochaine_seance;
       nextEl.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:15px;font-weight:800;">${n}</div>
-            <div style="font-size:11px;opacity:0.7;margin-top:2px;">Prochaine dans ton programme</div>
-          </div>
-          <button onclick="demarrerDepuisDashboard('${n}')" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;">Démarrer</button>
+        <div class="dc-inner" onclick="demarrerDepuisDashboard('${n}')" style="cursor:pointer;">
+          <div class="dc-ico"><svg class="ico ico-btn"><use href="#i-dumbbell"/></svg></div>
+          <div class="dc-txt"><div class="dc-k">Prochaine séance</div><div class="dc-v">${n}</div></div>
+          <button class="dc-btn" onclick="event.stopPropagation();demarrerDepuisDashboard('${n}')">Démarrer</button>
         </div>`;
     } else {
-      nextEl.innerHTML = '<div style="color:var(--success);font-size:13px;font-weight:700;">✅ Toutes les séances faites !</div>';
+      nextEl.innerHTML = '<div class="dc-inner" style="background:var(--good);"><div class="dc-ico">✅</div><div class="dc-txt"><div class="dc-v">Toutes les séances faites !</div></div></div>';
     }
 
   } catch(e) {
