@@ -84,9 +84,11 @@
   .logout-btn { font-size: 12px; color: var(--danger); cursor: pointer; background: none; border: none; padding: 4px 8px; }
   body { overflow-x: hidden; }
   .tabs-bar { background: var(--surface); border-top: 1px solid var(--border); display: flex; position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; z-index: 50; padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 2px 7px; font-size: 10px; font-weight: 600; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: none; transition: color 0.2s; }
+  .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 13px 2px; font-size: 10px; font-weight: 600; text-align: center; cursor: pointer; color: var(--text-muted); border: none; background: none; transition: color 0.2s; }
+  /* Bottom nav : icônes seules (le nom de l'onglet est reporté dans le H1) */
+  .tab-btn > span:not(.tab-ico):not([id]) { display: none; }
   .tab-btn .tab-ico { font-size: 21px; line-height: 1; transition: transform 0.15s; }
-  .tab-btn .tab-ico svg { width: 23px; height: 23px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .tab-btn .tab-ico svg { width: 25px; height: 25px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .tab-btn.active { color: var(--accent); }
   .tab-btn.active .tab-ico { transform: translateY(-1px); }
   body.has-bottom-nav { padding-bottom: 64px; }
@@ -384,12 +386,12 @@
 
   <!-- VUE COACH -->
   <div id="view-coach" class="view">
-    <div class="header" style="margin-bottom:14px">
+    <div class="header" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
       <div>
         <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
         <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
       </div>
-      <button class="btn-sm btn-outline" onclick="seDeconnecterCoach()">Déconnexion</button>
+      <button class="logout-btn" onclick="seDeconnecterCoach()"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
     </div>
 
     <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
@@ -425,10 +427,14 @@
 
       <!-- Légende -->
       <div style="margin-top:14px;font-size:11px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
-        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00c96e;margin-right:5px;"></span>Optimal — progression +, ACWR normal, pas d'alerte</span>
-        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f5a623;margin-right:5px;"></span>À surveiller — stagnation, volume inhabituel, récup moyenne</span>
-        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e5484d;margin-right:5px;"></span>Intervention — fatigue, baisse perf, absence</span>
-        <button onclick="ouvrirModalLierAthlete()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">+ Lier un athlète</button>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--good);margin-right:5px;"></span>Optimal — progression +, ACWR normal, pas d'alerte</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--warn);margin-right:5px;"></span>À surveiller — stagnation, volume inhabituel, récup moyenne</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bad);margin-right:5px;"></span>Intervention — fatigue, baisse perf, absence</span>
+      </div>
+
+      <!-- Lier un athlète : bouton centré, mis en avant -->
+      <div style="display:flex;justify-content:center;margin-top:22px;">
+        <button class="btn btn-outline" onclick="ouvrirModalLierAthlete()" style="width:auto;padding:12px 24px;margin:0;"><svg class="ico ico-btn"><use href="#i-link"/></svg>Lier un athlète</button>
       </div>
     </div>
 
@@ -495,8 +501,8 @@
         <div class="dash-label"><svg class="ico"><use href="#i-activity"/></svg>Récupération</div>
         <div id="cd-recup"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="dash-card" id="cd-prog-card" style="padding:16px">
-        <div class="dash-label"><svg class="ico"><use href="#i-trending"/></svg>Progression cette semaine</div>
+      <div class="dash-card" id="cd-prog-card" style="padding:16px" onclick="switchCoachDetailTab('prog')" title="Voir la progression détaillée">
+        <div class="dash-label"><svg class="ico"><use href="#i-trending"/></svg>Progression cette semaine <span style="margin-left:auto;font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap;">Voir tout →</span></div>
         <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
       </div>
       <div class="dash-card dash-card-accent-orange" id="cd-muscle-card" style="padding:16px" onclick="switchCoachDetailTab('volume')" title="Voir le volume par muscle">
@@ -784,7 +790,7 @@
           <!-- Liste exercices de la séance -->
           <div id="card-liste-seance" style="display:none">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <div class="card-title" style="margin:0;">Exercices du programme</div>
+              <div class="card-title" style="margin:0;" id="titre-liste-seance">Exercices du programme</div>
               <button class="btn btn-outline" onclick="toggleExoHorsProgramme()" style="font-size:12px;padding:6px 12px;"><svg class="ico ico-btn"><use href="#i-shuffle"/></svg>Autre exercice</button>
             </div>
             <div id="card-hors-programme" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;">
@@ -1094,7 +1100,7 @@ let serieNum = 1;
 let exercicesData = [];
 let programmeSeance = [];
 let lastPerfData = {};
-function couleurGroupe(g) { const c = ['#c8f000','#00c9ff','#ff8800','#ff44aa']; let h=0; for (let i=0;i<g.length;i++) h=(h*31+g.charCodeAt(i))%c.length; return c[h]; }
+function couleurGroupe(g) { const c = ['#f59f00','#a855f7','#ec4899','#14b8a6']; let h=0; for (let i=0;i<g.length;i++) h=(h*31+g.charCodeAt(i))%c.length; return c[h]; }
 
 function normaliserNomExo(s) {
   return String(s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -1863,6 +1869,10 @@ function afficherCoachProgressionExo() {
       <span style="font-size:12px;color:var(--text-muted)">1RM estimé (Epley)</span>
       <span style="font-size:13px;font-weight:700;color:var(--accent)">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
     </div>` : ''}
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <button id="cd-pce-charge" onclick="dessinerCoachProgChart('charge')" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">Charge</button>
+      <button id="cd-pce-1rm" onclick="dessinerCoachProgChart('1rm')" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">1RM est.</button>
+    </div>
     <canvas id="chart-1rm-coach" style="width:100%;height:108px;display:block;margin-bottom:10px"></canvas>
     <table style="width:100%;font-size:12px;border-collapse:collapse">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">
@@ -1893,8 +1903,20 @@ function afficherCoachProgressionExo() {
         </tr>`;
       }).join('')}
     </table>`;
-  const chrono = perfs.slice().reverse();
-  drawLineChart('chart-1rm-coach', chrono.map(p => calc1RM(p.charge, p.reps)).filter(v => v !== null), 'var(--accent)', { unit: 'kg', xLabels: [chrono[0] && chrono[0].date, chrono[chrono.length-1] && chrono[chrono.length-1].date] });
+  cdProgExoChrono = perfs.slice().reverse();
+  dessinerCoachProgChart('charge');
+}
+
+let cdProgExoChrono = null;
+function dessinerCoachProgChart(mode) {
+  if (!cdProgExoChrono || !cdProgExoChrono.length) return;
+  const c = cdProgExoChrono;
+  const vals = c.map(p => mode === '1rm' ? calc1RM(p.charge, p.reps) : p.charge).filter(v => v !== null && v !== undefined);
+  drawLineChart('chart-1rm-coach', vals, 'var(--accent)', { unit: 'kg', xLabels: [c[0] && c[0].date, c[c.length - 1] && c[c.length - 1].date] });
+  [['cd-pce-charge', 'charge'], ['cd-pce-1rm', '1rm']].forEach(([id, mo]) => {
+    const btn = document.getElementById(id);
+    if (btn) { const on = mo === mode; btn.style.background = on ? 'var(--accent)' : 'var(--surface2)'; btn.style.color = on ? 'var(--on-accent)' : 'var(--text-muted)'; }
+  });
 }
 
 function afficherCoachTendances(semaines) {
@@ -2524,33 +2546,43 @@ function renderACWR(data) {
 function renderACWRChart(volumes) {
   const el = document.getElementById('cd-acwr-chart-content');
   if (!el) return;
-  const now = new Date(); now.setHours(0,0,0,0);
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const semaines = [];
   for (let w = 7; w >= 0; w--) {
     let vol = 0;
     for (let d = 0; d < 7; d++) {
-      const dt = new Date(now); dt.setDate(dt.getDate() - w*7 - d);
-      const key = dt.toISOString().split('T')[0];
-      vol += volumes[key] || 0;
+      const dt = new Date(now); dt.setDate(dt.getDate() - w * 7 - d);
+      vol += volumes[iso(dt)] || 0;
     }
-    const lundi = new Date(now); lundi.setDate(lundi.getDate() - w*7 - (now.getDay() === 0 ? 6 : now.getDay()-1));
-    semaines.push({ label: `S${8-w}`, vol, lundi: lundi.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'}) });
+    const lundi = new Date(now); lundi.setDate(lundi.getDate() - w * 7 - ((now.getDay() + 6) % 7));
+    semaines.push({ vol, date: lundi.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) });
   }
   const max = Math.max(...semaines.map(s => s.vol), 1);
+  const fmt = v => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k' : String(Math.round(v));
+  const H = 120, plot = H - 20;
+  const avg = semaines.reduce((a, s) => a + s.vol, 0) / (semaines.filter(s => s.vol > 0).length || 1);
   el.innerHTML = `
-    <div style="display:flex;align-items:flex-end;gap:4px;height:60px;margin-bottom:4px;">
-      ${semaines.map(s => {
-        const h = Math.round((s.vol / max) * 56);
-        const c = s.vol === 0 ? 'var(--surface2)' : 'var(--accent)';
-        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
-          <div style="width:100%;height:${h}px;background:${c};border-radius:4px 4px 0 0;min-height:2px;"></div>
-        </div>`;
-      }).join('')}
+    <div style="position:relative;height:${H}px;">
+      <div style="position:absolute;left:0;right:0;bottom:${Math.round((avg / max) * plot) + 0}px;border-top:1px dashed var(--border);"></div>
+      <div style="position:absolute;left:0;bottom:${Math.round((avg / max) * plot) + 2}px;font-size:9px;color:var(--text-muted);background:var(--surface);padding:0 3px;">moy. ${fmt(avg)}</div>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:${H}px;">
+        ${semaines.map((s, i) => {
+          const h = s.vol === 0 ? 3 : Math.max(4, Math.round((s.vol / max) * plot));
+          const isLast = i === semaines.length - 1;
+          const op = s.vol === 0 ? '1' : isLast ? '1' : '0.45';
+          const bg = s.vol === 0 ? 'var(--surface2)' : 'var(--accent)';
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;min-width:0;">
+            <div style="font-size:9px;font-weight:700;color:${isLast ? 'var(--accent)' : 'var(--text-muted)'};font-variant-numeric:tabular-nums;line-height:1;">${s.vol ? fmt(s.vol) : ''}</div>
+            <div title="Semaine du ${s.date} · ${Math.round(s.vol)} kg soulevés" style="width:100%;height:${h}px;background:${bg};opacity:${op};border-radius:5px 5px 0 0;"></div>
+          </div>`;
+        }).join('')}
+      </div>
     </div>
-    <div style="display:flex;gap:4px;">
-      ${semaines.map(s => `<div style="flex:1;text-align:center;font-size:9px;color:var(--text-muted);">${s.label}</div>`).join('')}
+    <div style="display:flex;gap:6px;margin-top:5px;">
+      ${semaines.map((s, i) => `<div style="flex:1;text-align:center;font-size:9px;color:var(--text-muted);${i % 2 ? 'opacity:0.45;' : ''}">${s.date}</div>`).join('')}
     </div>
-    <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Volume relatif (reps × charge) — 8 dernières semaines</div>`;
+    <div style="font-size:10px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Tonnage hebdomadaire (charge × reps), semaine du lundi indiqué. Barre pleine = semaine en cours ; pointillés = moyenne sur 8 semaines.</div>`;
 }
 
 function renderCoachAthleteGrid(athletes) {
@@ -3117,7 +3149,7 @@ async function ouvrirApp() {
     document.body.classList.add('light-mode');
     document.getElementById('btn-theme').innerHTML = ic('moon');
   }
-  document.getElementById('header-nom').textContent = athlete.nom;
+  document.getElementById('header-nom').textContent = 'Accueil';
   document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('inp-date-poids').value = new Date().toISOString().split('T')[0];
   document.getElementById('main-container').classList.add('no-pad');
@@ -3141,10 +3173,13 @@ function switchAuthMode(mode) {
   document.getElementById('authtab-signup').classList.toggle('auth-seg-active', mode === 'signup');
 }
 
+const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Séance', historique: 'Historique', conseils: 'Conseils' };
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
     b.classList.toggle('active', ['accueil','objectif','seance','historique','conseils'][i] === tab);
   });
+  const hdr = document.getElementById('header-nom');
+  if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   // Dashboard prend toute la largeur sans padding
@@ -3222,7 +3257,10 @@ function majProgressionSeance() {
   const seanceId = document.getElementById('sel-seance-id').value;
   if (!seanceId) { el.style.display = 'none'; return; }
   el.style.display = 'block';
-  document.getElementById('seance-progress-titre').textContent = seanceId === 'Libre' ? '🔀 Séance libre' : seanceId;
+  const estLibre = seanceId === 'Libre' || programmeSeance.length === 0;
+  document.getElementById('seance-progress-titre').textContent = estLibre ? 'Séance libre' : seanceId;
+  const titreListe = document.getElementById('titre-liste-seance');
+  if (titreListe) titreListe.textContent = estLibre ? 'Séance libre' : 'Programme · ' + seanceId;
 
   const exosLibres = seance.filter(e => !programmeSeance.some(p => p.exercice === e.exerciceNom));
   const totalExos = programmeSeance.length + exosLibres.length;
@@ -3388,16 +3426,16 @@ function afficherListeSeance() {
         }
       }
     } else {
-      perfHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai 🆕</div>`;
+      perfHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Premier essai</div>`;
     }
 
     const partenaires = p.groupe_id ? programmeSeance.filter(o => o !== p && o.groupe_id === p.groupe_id).map(o => o.exercice) : [];
     const groupeStyle = p.groupe_id ? `border-left:3px solid ${couleurGroupe(p.groupe_id)};` : '';
 
     const statutPill = dejaDone
-      ? `<span style="font-size:11px;font-weight:700;color:var(--success);background:rgba(0,201,110,0.12);border-radius:20px;padding:3px 10px;white-space:nowrap">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>`
+      ? `<span style="font-size:11px;font-weight:700;color:var(--success);background:rgba(0,201,110,0.12);border-radius:20px;padding:3px 10px;white-space:nowrap">${seriesFaites} série${seriesFaites>1?"s":""}</span>`
       : isNext
-        ? `<span style="font-size:11px;font-weight:800;color:var(--on-accent);background:var(--accent);border-radius:20px;padding:3px 10px;white-space:nowrap">👉 À faire</span>`
+        ? `<span style="font-size:11px;font-weight:800;color:var(--on-accent);background:var(--accent);border-radius:20px;padding:3px 10px;white-space:nowrap">À faire</span>`
         : `<span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:3px 10px;white-space:nowrap">${p.series_prevues} séries</span>`;
 
     const div = document.createElement('div');
@@ -3422,7 +3460,7 @@ function afficherListeSeance() {
     if (p.groupe_id) {
       const tag = document.createElement('div');
       tag.style.cssText = `font-size:11px;color:${couleurGroupe(p.groupe_id)};margin:0 0 10px 4px`;
-      tag.textContent = partenaires.length > 0 ? `🔗 Superset ${p.groupe_id} · alterne avec ${partenaires.join(', ')}` : `🔗 Superset ${p.groupe_id}`;
+      tag.textContent = partenaires.length > 0 ? `Superset ${p.groupe_id} · alterne avec ${partenaires.join(', ')}` : `Superset ${p.groupe_id}`;
       listeEl.appendChild(tag);
     }
   });
@@ -3447,11 +3485,11 @@ function ajouterCarteExoLibre(listeEl, e) {
   div.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       <div style="font-size:15px;font-weight:800;flex:1;min-width:0">${e.exerciceNom}</div>
-      ${seriesFaites > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--success);background:rgba(0,201,110,0.12);border-radius:20px;padding:3px 10px;white-space:nowrap">✅ ${seriesFaites} série${seriesFaites>1?"s":""}</span>` : `<span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:3px 10px;white-space:nowrap">Hors prog.</span>`}
+      ${seriesFaites > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--success);background:rgba(0,201,110,0.12);border-radius:20px;padding:3px 10px;white-space:nowrap">${seriesFaites} série${seriesFaites>1?"s":""}</span>` : `<span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:3px 10px;white-space:nowrap">Hors prog.</span>`}
       <button class="btn-sm btn-danger-sm" title="Retirer cet exercice" style="padding:4px 8px;line-height:1"><svg class="ico"><use href="#i-trash"/></svg></button>
     </div>
     <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${e.muscle}</div>
-    ${perf ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Dernière fois : <strong style="color:var(--text)">${perf.last_charge}kg × ${perf.max_reps}</strong></div>` : '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Premier essai 🆕</div>'}
+    ${perf ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Dernière fois : <strong style="color:var(--text)">${perf.last_charge}kg × ${perf.max_reps}</strong></div>` : '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Premier essai</div>'}
   `;
   div.querySelector('.btn-danger-sm').addEventListener('click', (ev) => {
     ev.stopPropagation();
@@ -3487,7 +3525,7 @@ function afficherListeExosLibres() {
   const listeEl = document.getElementById('liste-exercices-seance');
   listeEl.innerHTML = '';
   if (seance.length === 0) {
-    listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Ajoute un exercice avec le bouton "🔀 Autre exercice" ci-dessus</div>';
+    listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Ajoute un exercice avec le bouton « Autre exercice » ci-dessus</div>';
     return;
   }
   seance.forEach(e => ajouterCarteExoLibre(listeEl, e));
@@ -3514,7 +3552,7 @@ function selectionnerExoLibre(exerciceNom) {
     document.getElementById('inp-charge').value = perf.last_charge;
     document.getElementById('inp-reps').value = perf.max_reps;
   } else {
-    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
+    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai</span>';
     document.getElementById('inp-charge').value = '';
     document.getElementById('inp-reps').value = '';
   }
@@ -4411,7 +4449,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   document.getElementById('exo-actuel-nom').textContent = exerciceNom;
   const pProg = programmeSeance.find(p => p.exercice === exerciceNom);
   const partenairesActuel = pProg && pProg.groupe_id ? programmeSeance.filter(o => o !== pProg && o.groupe_id === pProg.groupe_id).map(o => o.exercice) : [];
-  document.getElementById('exo-actuel-detail').innerHTML = `${muscle} · ${repsMini}-${repsMax} reps${partenairesActuel.length > 0 ? ` <span style="color:${couleurGroupe(pProg.groupe_id)}">· 🔗 Superset, alterne avec ${partenairesActuel.join(', ')}</span>` : ''}`;
+  document.getElementById('exo-actuel-detail').innerHTML = `${muscle} · ${repsMini}-${repsMax} reps${partenairesActuel.length > 0 ? ` <span style="color:${couleurGroupe(pProg.groupe_id)}">· Superset, alterne avec ${partenairesActuel.join(', ')}</span>` : ''}`;
   document.getElementById('card-exo-actuel').style.display = 'block';
   document.getElementById('card-hors-programme').style.display = 'none';
 
@@ -4429,7 +4467,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
     document.getElementById('inp-charge').value = bestCharge;
     document.getElementById('inp-reps').value = cible;
   } else {
-    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai 🆕</span>';
+    document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai</span>';
     document.getElementById('exo-actuel-cible').innerHTML = `${ic('target')} Objectif : ${repsMini}-${repsMax} reps`;
     document.getElementById('inp-charge').value = '';
     document.getElementById('inp-reps').value = repsMini;
@@ -4995,10 +5033,12 @@ async function demarrerSeanceLibre() {
   afficherListeExosLibres();
   toggleExoHorsProgramme(true);
 
+  majProgressionSeance();
   const resPerf = await fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=Libre`);
   const dataPerf = await resPerf.json();
   lastPerfData = dataPerf.perfs || {};
   afficherListeExosLibres();
+  majProgressionSeance();
 }
 
 function terminerExercice() {
