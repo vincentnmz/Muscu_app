@@ -277,6 +277,10 @@
     body.coach-active.cd-nav { padding-bottom: 0; }
     body.coach-active #cd-indicateurs > div { gap: 10px; }
   }
+
+  /* En mode coach, l'en-tête global (« Accueil ») est redondant :
+     les vues coach ont leur propre en-tête. On le masque partout. */
+  body.coach-active > header { display: none; }
 </style>
 </head>
 <body>
@@ -336,9 +340,28 @@
   <!-- LOGIN -->
   <div id="view-login" class="view active">
     <div class="login-logo" style="padding:42px 0 26px">
-      <div style="width:74px;height:74px;border-radius:20px;background:var(--accent-a12);border:1px solid var(--accent-dim);display:flex;align-items:center;justify-content:center;margin:0 auto;color:var(--accent)"><svg class="ico ico-lg"><use href="#i-dumbbell"/></svg></div>
-      <div style="font-size:24px;font-weight:800;margin-top:14px;letter-spacing:-0.5px">Séance Muscu</div>
-      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Ton carnet d'entraînement intelligent</div>
+      <div style="width:112px;height:112px;margin:0 auto;">
+        <svg viewBox="0 0 120 120" width="112" height="112" aria-label="Novalyz" role="img" xmlns="http://www.w3.org/2000/svg">
+          <!-- Badge hexagonal -->
+          <path d="M60 4 106 30v52L60 116 14 82V30z" fill="var(--accent-a12)" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/>
+          <!-- Coach (gauche, blanc) : tête + buste + tablette -->
+          <g fill="var(--text)">
+            <circle cx="45" cy="42" r="8"/>
+            <path d="M33 84c0-10 5-18 12-18s12 8 12 18z"/>
+            <rect x="30" y="58" width="15" height="11" rx="2" transform="rotate(-12 37 63)"/>
+          </g>
+          <!-- Athlète (droite, bleu) : tête + buste + haltère -->
+          <g fill="var(--accent)">
+            <circle cx="76" cy="42" r="8"/>
+            <path d="M63 84c0-10 5-18 12-18s12 8 12 18z"/>
+            <rect x="74" y="56" width="20" height="4" rx="2"/>
+            <rect x="72" y="52" width="4" height="12" rx="1.5"/>
+            <rect x="92" y="52" width="4" height="12" rx="1.5"/>
+          </g>
+        </svg>
+      </div>
+      <div style="font-size:26px;font-weight:800;margin-top:12px;letter-spacing:2px">NOVALYZ</div>
+      <div style="font-size:11px;color:var(--accent);margin-top:5px;letter-spacing:2px;text-transform:uppercase;font-weight:700">Analyze · Plan · Perform</div>
     </div>
 
     <div class="auth-seg">
@@ -407,7 +430,10 @@
         <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
         <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
       </div>
-      <button class="logout-btn" onclick="seDeconnecterCoach()"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="btn-theme-coach" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-sun"/></svg></button>
+        <button class="logout-btn" onclick="seDeconnecterCoach()"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
+      </div>
     </div>
 
     <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
@@ -479,8 +505,8 @@
     </div>
     <div class="header" style="display:flex;align-items:center;gap:12px;">
       <button class="btn-sm btn-outline" onclick="retourCoachDetail()" style="flex-shrink:0;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg>Retour</button>
-      <div style="flex:1;min-width:0;text-align:right;">
-        <div id="cd-tab-title" style="font-weight:800;font-size:17px;line-height:1.15;">Aperçu</div>
+      <div style="flex:1;min-width:0;text-align:left;">
+        <h1 id="cd-tab-title" style="font-weight:800;font-size:19px;line-height:1.15;margin:0;">Aperçu</h1>
         <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span id="header-nom-athlete-coach">Athlète</span><span id="header-niveau-athlete-coach"></span></div>
       </div>
     </div>
@@ -1293,13 +1319,12 @@ async function ouvrirEspaceCoach() {
   // Thème clair/sombre disponible aussi côté coach
   const btnTheme = document.getElementById('btn-theme');
   btnTheme.style.display = 'block';
-  if (localStorage.getItem('muscu_theme') === 'light') {
-    document.body.classList.add('light-mode');
-    btnTheme.innerHTML = ic('moon');
-  } else {
-    document.body.classList.remove('light-mode');
-    btnTheme.innerHTML = ic('sun');
-  }
+  const coachLight = localStorage.getItem('muscu_theme') === 'light';
+  document.body.classList.toggle('light-mode', coachLight);
+  const coachThemeIcon = ic(coachLight ? 'moon' : 'sun');
+  btnTheme.innerHTML = coachThemeIcon;
+  const btnThemeCoach = document.getElementById('btn-theme-coach');
+  if (btnThemeCoach) btnThemeCoach.innerHTML = coachThemeIcon;
   document.getElementById('header-nom-coach').textContent = coach.nom;
   const listeEl = document.getElementById('liste-athletes-coach');
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
@@ -5147,16 +5172,14 @@ function terminerExercice() {
 }
 
 function toggleTheme() {
-  const btn = document.getElementById('btn-theme');
-  if (document.body.classList.contains('light-mode')) {
-    document.body.classList.remove('light-mode');
-    btn.innerHTML = ic('sun');
-    localStorage.setItem('muscu_theme', 'dark');
-  } else {
-    document.body.classList.add('light-mode');
-    btn.innerHTML = ic('moon');
-    localStorage.setItem('muscu_theme', 'light');
-  }
+  const light = !document.body.classList.contains('light-mode');
+  document.body.classList.toggle('light-mode', light);
+  localStorage.setItem('muscu_theme', light ? 'light' : 'dark');
+  const icon = ic(light ? 'moon' : 'sun');
+  ['btn-theme', 'btn-theme-coach'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.innerHTML = icon;
+  });
 }
 
 function showToast(msg, color) {
