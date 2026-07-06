@@ -102,7 +102,10 @@
   /* Onglets coach : icône SVG au-dessus du label, actif souligné dans sa couleur (V2) */
   #view-coach-detail .sub-tab { flex: 1 1 0; flex-direction: column; align-items: center; gap: 3px; padding: 7px 3px; font-size: 9.5px; border: none; border-bottom: 2px solid transparent; background: none; border-radius: 0; min-width: 0; white-space: nowrap; color: var(--text-muted); }
   #view-coach-detail .sub-tab .cd-ico { line-height: 1; }
-  #view-coach-detail .sub-tab .cd-ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  #view-coach-detail .sub-tab .cd-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  /* Onglets coach en icônes seules — le nom de l'onglet est reporté dans le titre du header (le badge conserve son id, on ne le masque pas) */
+  #view-coach-detail .sub-tab > span:not(.cd-ico):not([id]) { display: none; }
+  #view-coach-detail .sub-tab { padding: 10px 3px; }
   #view-coach-detail .sub-tab.active { background: none; color: var(--text-muted); }
   #view-coach-detail .sub-tab.cc1.active { color: var(--accent); border-bottom-color: var(--accent); }
   #view-coach-detail .sub-tab.cc2.active,
@@ -461,11 +464,11 @@
       <div style="font-size:16px;font-weight:800;color:var(--text);">Sélectionne un athlète</div>
       <div style="font-size:13px;margin-top:6px;">Choisis un athlète dans la liste pour afficher son suivi.</div>
     </div>
-    <div class="header">
-      <button class="btn-sm btn-outline" onclick="retourCoachDetail()"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg>Retour</button>
-      <div style="text-align:right">
-        <div id="header-nom-athlete-coach" style="font-weight:800">Athlète</div>
-        <div id="header-niveau-athlete-coach" style="font-size:11px;color:var(--text-muted)"></div>
+    <div class="header" style="display:flex;align-items:center;gap:12px;">
+      <button class="btn-sm btn-outline" onclick="retourCoachDetail()" style="flex-shrink:0;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg>Retour</button>
+      <div style="flex:1;min-width:0;text-align:right;">
+        <div id="cd-tab-title" style="font-weight:800;font-size:17px;line-height:1.15;">Aperçu</div>
+        <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span id="header-nom-athlete-coach">Athlète</span><span id="header-niveau-athlete-coach"></span></div>
       </div>
     </div>
 
@@ -1587,11 +1590,14 @@ function retourCoachDetail() {
   }
 }
 
+const CD_TAB_LABELS = { overview: 'Aperçu', seances: 'Séances', prog: 'Progression', volume: 'Volume', cal: 'Agenda', conseils: 'Conversation', programme: 'Programme' };
 function switchCoachDetailTab(tab) {
   ['overview','seances','prog','volume','cal','conseils','programme'].forEach(t => {
     const el = document.getElementById('cdtab-' + t); if (el) el.style.display = t === tab ? 'block' : 'none';
     const btn = document.getElementById('cdtab-btn-' + t); if (btn) btn.classList.toggle('active', t === tab);
   });
+  const ttl = document.getElementById('cd-tab-title');
+  if (ttl && CD_TAB_LABELS[tab]) ttl.textContent = CD_TAB_LABELS[tab];
   // Repart en haut du contenu à chaque changement d'onglet (évite les sauts de scroll)
   window.scrollTo(0, 0);
   // Fait défiler la pastille active au centre (pour que Programme & co restent accessibles)
