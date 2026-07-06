@@ -181,6 +181,19 @@
   .recap-serie { font-size: 13px; padding: 3px 0; border-bottom: 1px solid var(--border); }
   .loader { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; }
 
+  /* === Saisie de série (steppers + chips) === */
+  .saisie-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px; }
+  .stepper-row { display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .stepper-btn { width: 46px; height: 60px; border: none; background: none; color: var(--accent); font-size: 26px; font-weight: 700; cursor: pointer; flex-shrink: 0; -webkit-appearance: none; }
+  .stepper-btn:active { background: var(--accent-a12); }
+  .stepper-num { flex: 1; min-width: 0; width: 100%; text-align: center; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; border: none !important; background: none !important; color: var(--text); padding: 0 !important; margin: 0 !important; box-shadow: none !important; }
+  .stepper-num::-webkit-outer-spin-button, .stepper-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .stepper-num[type=number] { -moz-appearance: textfield; }
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .saisie-chip { flex: 1; min-width: 42px; text-align: center; padding: 10px 4px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.12s; }
+  .saisie-chip.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .btn-flag { background: var(--surface2); border: 1px solid var(--border); color: var(--warn); font-size: 13px; font-weight: 700; border-radius: 10px; padding: 10px 12px; width: 100%; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 10px; }
+
   /* === DASHBOARD === */
   .dash { background: var(--bg); padding: 16px 20px 20px; }
   .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow-sm); transition: box-shadow 0.18s, transform 0.18s, border-color 0.18s; }
@@ -797,16 +810,9 @@
               <button class="btn btn-outline" onclick="toggleExoHorsProgramme()" style="font-size:12px;padding:6px 12px;"><svg class="ico ico-btn"><use href="#i-shuffle"/></svg>Autre exercice</button>
             </div>
             <div id="card-hors-programme" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;">
-              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Choisir un autre exercice</div>
-              <label>Muscle</label>
-              <select id="sel-muscle-libre" onchange="peuplerExercicesLibres()">
-                <option value="">— Choisir —</option>
-              </select>
-              <label>Exercice</label>
-              <select id="sel-exercice-libre">
-                <option value="">— Choisir —</option>
-              </select>
-              <button class="btn btn-accent" onclick="choisirExoLibre()">Choisir cet exercice</button>
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Choisir un exercice</div>
+              <input type="text" id="rech-exo" placeholder="Rechercher (nom ou muscle)…" oninput="filtrerExosLibres()" autocomplete="off" style="margin-bottom:0;">
+              <div id="liste-exos-libres" style="max-height:300px;overflow-y:auto;margin-top:8px;-webkit-overflow-scrolling:touch;"></div>
             </div>
             <div id="liste-exercices-seance"></div>
           </div>
@@ -839,45 +845,56 @@
             <!-- Saisie série -->
             <div class="card">
               <div class="card-title">Ajouter une série</div>
-              <div class="row2" style="gap:12px">
-                <div>
-                  <label>Charge (kg)</label>
-                  <input type="number" id="inp-charge" placeholder="0" step="0.5" min="0" inputmode="decimal" style="font-size:24px;font-weight:800;text-align:center;padding:14px 8px">
+              <div style="display:flex;gap:12px">
+                <div style="flex:1;min-width:0">
+                  <div class="saisie-lbl">Charge (kg)</div>
+                  <div class="stepper-row">
+                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',-2.5)">−</button>
+                    <input type="number" id="inp-charge" class="stepper-num" placeholder="0" step="0.5" min="0" inputmode="decimal">
+                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',2.5)">+</button>
+                  </div>
                 </div>
-                <div>
-                  <label>Reps</label>
-                  <input type="number" id="inp-reps" placeholder="0" min="1" inputmode="numeric" style="font-size:24px;font-weight:800;text-align:center;padding:14px 8px">
-                </div>
-              </div>
-              <div class="row2" style="gap:12px">
-                <div>
-                  <label>RPE (intensité)</label>
-                  <select id="sel-rpe">
-                    <option value="">—</option>
-                    <option value="10">10 - Échec</option>
-                    <option value="9">9 - 1 rep en réserve</option>
-                    <option value="8">8 - 2 reps en réserve</option>
-                    <option value="7">7 - 3 reps en réserve</option>
-                    <option value="6">6 - Facile</option>
-                  </select>
-                </div>
-                <div>
-                  <label>Repos</label>
-                  <select id="sel-repos">
-                    <option value="0">0s</option>
-                    <option value="30">30s</option>
-                    <option value="60">60s</option>
-                    <option value="90">90s</option>
-                    <option value="120" selected>120s</option>
-                    <option value="180">180s</option>
-                    <option value="240">240s</option>
-                  </select>
+                <div style="flex:1;min-width:0">
+                  <div class="saisie-lbl">Reps</div>
+                  <div class="stepper-row">
+                    <button type="button" class="stepper-btn" onclick="stepValue('inp-reps',-1)">−</button>
+                    <input type="number" id="inp-reps" class="stepper-num" placeholder="0" min="1" inputmode="numeric">
+                    <button type="button" class="stepper-btn" onclick="stepValue('inp-reps',1)">+</button>
+                  </div>
                 </div>
               </div>
-              <button class="btn btn-accent" onclick="ajouterSerie()" style="padding:16px;font-size:16px">+ Ajouter cette série</button>
+
+              <div class="saisie-lbl" style="margin-top:14px">RPE (intensité)</div>
+              <div class="chip-row" id="rpe-chips">
+                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'6')">6</button>
+                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'7')">7</button>
+                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'8')">8</button>
+                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'9')">9</button>
+                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'10')">10</button>
+              </div>
+              <input type="hidden" id="sel-rpe" value="">
+
+              <div class="saisie-lbl" style="margin-top:14px">Repos</div>
+              <div class="chip-row" id="repos-chips">
+                <button type="button" class="saisie-chip" onclick="pickChip('repos',this,'60')">60s</button>
+                <button type="button" class="saisie-chip" onclick="pickChip('repos',this,'90')">90s</button>
+                <button type="button" class="saisie-chip on" onclick="pickChip('repos',this,'120')">120s</button>
+                <button type="button" class="saisie-chip" onclick="pickChip('repos',this,'180')">180s</button>
+              </div>
+              <input type="hidden" id="sel-repos" value="120">
+
+              <button class="btn btn-accent" onclick="ajouterSerie()" style="padding:16px;font-size:16px;margin-top:14px">+ Ajouter cette série</button>
+              <button class="btn btn-outline" onclick="repeterDerniereSerie()" style="font-size:14px;padding:12px;margin-top:0"><svg class="ico ico-btn"><use href="#i-shuffle"/></svg>Répéter la dernière série</button>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <!-- Signaler une gêne / douleur → remonte au coach -->
+            <button class="btn-flag" onclick="toggleGene()"><svg class="ico"><use href="#i-alert"/></svg>Signaler une gêne / douleur</button>
+            <div id="gene-form" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+              <textarea id="gene-input" placeholder="Ex : douleur à l'épaule droite sur cet exercice…" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px;outline:none;resize:none;min-height:60px;font-family:inherit"></textarea>
+              <button class="btn btn-accent" onclick="signalerGene()" style="margin-top:8px;font-size:14px;padding:11px">Envoyer au coach</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;margin-top:10px">
               <button class="btn btn-outline" onclick="retourListeSeance()"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg>Liste</button>
               <button class="btn btn-accent" onclick="terminerExercice()">✅ Terminer l'exercice</button>
             </div>
@@ -3169,7 +3186,7 @@ async function ouvrirApp() {
   }
 
   if (exercicesData.length === 0) await chargerExercices();
-  peuplerMusclesLibres();
+  const _re1=document.getElementById('rech-exo'); if(_re1)_re1.value=''; remplirListeExosLibres('');
   chargerAppData(); // Un seul appel pour tout
   chargerMessagesCoach(); // Messages du coach
 }
@@ -3241,8 +3258,7 @@ async function demarrerSeance() {
   document.getElementById('btn-valider').style.display = 'none';
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('card-hors-programme').style.display = 'none';
-  document.getElementById('sel-muscle-libre').innerHTML = '<option value="">— Choisir —</option>';
-  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
+  { const _r=document.getElementById('rech-exo'); if(_r)_r.value=''; }
 
   const listeEl = document.getElementById('liste-exercices-seance');
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
@@ -3588,49 +3604,47 @@ function toggleExoHorsProgramme(forceOpen) {
     // Scroll vers le haut de la liste
     const listeCard = document.getElementById('card-liste-seance');
     if (listeCard) listeCard.scrollIntoView({behavior: 'smooth', block: 'start'});
-    peuplerMusclesLibres();
+    const _re1=document.getElementById('rech-exo'); if(_re1)_re1.value=''; remplirListeExosLibres('');
   }
 }
 
-function peuplerMusclesLibres() {
-  const muscles = [...new Set(exercicesData.map(e => e.muscle))].sort();
-  const sel = document.getElementById('sel-muscle-libre');
-  sel.innerHTML = '<option value="">— Choisir —</option>';
-  muscles.forEach(m => {
-    const o = document.createElement('option');
-    o.value = m; o.textContent = m; sel.appendChild(o);
-  });
+// Recherche d'exercice (remplace le double menu muscle→exercice)
+function _norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+function remplirListeExosLibres(filtre) {
+  const el = document.getElementById('liste-exos-libres');
+  if (!el) return;
+  const f = _norm(filtre);
+  const dejaNoms = seance.map(e => e.exerciceNom);
+  const items = exercicesData
+    .filter(e => !f || _norm(e.exercice).includes(f) || _norm(e.muscle).includes(f))
+    .sort((a, b) => String(a.muscle).localeCompare(String(b.muscle)) || String(a.exercice).localeCompare(String(b.exercice)));
+  if (items.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:10px;text-align:center">Aucun exercice trouvé</div>'; return; }
+  el.innerHTML = items.slice(0, 60).map(e => {
+    const deja = dejaNoms.includes(e.exercice);
+    const id = (e.exercice_id != null ? e.exercice_id : '') + '|' + e.exercice + '|' + (e.muscle || '');
+    return `<button type="button" onclick="choisirExoDirect(this.dataset.v)" data-v="${id.replace(/"/g, '&quot;')}" style="width:100%;text-align:left;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:6px;cursor:pointer;">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.exercice}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${e.muscle || ''}</div>
+      </div>
+      ${deja ? '<span style="font-size:10px;font-weight:700;color:var(--good)">déjà ajouté</span>' : '<span style="color:var(--accent);font-size:20px;font-weight:700">+</span>'}
+    </button>`;
+  }).join('');
 }
-
-function peuplerExercicesLibres() {
-  const muscle = document.getElementById('sel-muscle-libre').value;
-  const sel = document.getElementById('sel-exercice-libre');
-  sel.innerHTML = '<option value="">— Choisir —</option>';
-  exercicesData.filter(e => e.muscle === muscle).forEach(e => {
-    const o = document.createElement('option');
-    o.value = e.exercice_id + '|' + e.exercice;
-    o.textContent = e.exercice;
-    sel.appendChild(o);
-  });
+function filtrerExosLibres() {
+  const inp = document.getElementById('rech-exo');
+  remplirListeExosLibres(inp ? inp.value : '');
 }
-
-function choisirExoLibre() {
-  const val = document.getElementById('sel-exercice-libre').value;
-  if (!val) { showToast('⚠️ Choisis un exercice', '#ff4444'); return; }
-  const [exoId, exoNom] = val.split('|');
-  const muscle = document.getElementById('sel-muscle-libre').value;
-
+function choisirExoDirect(val) {
+  const parts = String(val).split('|');
+  const exoId = parts[0], exoNom = parts[1], muscle = parts[2] || '';
   const dejaPresent = seance.find(e => e.exerciceNom === exoNom);
-  if (!dejaPresent) {
-    seance.push({ muscle, exerciceId: exoId, exerciceNom: exoNom, series: [] });
-  }
-
+  if (!dejaPresent) seance.push({ muscle, exerciceId: exoId, exerciceNom: exoNom, series: [] });
   document.getElementById('card-hors-programme').style.display = 'none';
-  document.getElementById('sel-muscle-libre').value = '';
-  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
+  const inp = document.getElementById('rech-exo'); if (inp) inp.value = '';
   afficherListeSeance();
   window.scrollTo(0, 0);
-  showToast(dejaPresent ? exoNom + ' est déjà dans la séance' : '✅ ' + exoNom + ' ajouté à la séance');
+  showToast(dejaPresent ? exoNom + ' est déjà dans la séance' : '✅ ' + exoNom + ' ajouté');
 }
 
 // ==================== SAISIE SÉRIE ====================
@@ -3640,6 +3654,76 @@ function getNumSemaine(date) {
   d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
   const week1 = new Date(d.getFullYear(), 0, 4);
   return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+// ===== Saisie rapide : steppers + chips =====
+function stepValue(id, delta) {
+  const el = document.getElementById(id);
+  let v = parseFloat(el.value) || 0;
+  v = Math.max(0, Math.round((v + delta) * 100) / 100);
+  el.value = v;
+}
+function pickChip(grp, el, val) {
+  document.querySelectorAll('#' + grp + '-chips .saisie-chip').forEach(c => c.classList.remove('on'));
+  if (el) el.classList.add('on');
+  const h = document.getElementById(grp === 'rpe' ? 'sel-rpe' : 'sel-repos');
+  if (h) h.value = val;
+}
+function setChipByVal(grp, val) {
+  let found = false;
+  document.querySelectorAll('#' + grp + '-chips .saisie-chip').forEach(c => {
+    const on = String(c.textContent).replace('s', '') === String(val);
+    c.classList.toggle('on', on);
+    if (on) found = true;
+  });
+  const h = document.getElementById(grp === 'rpe' ? 'sel-rpe' : 'sel-repos');
+  if (h) h.value = found ? String(val) : (grp === 'rpe' ? '' : '120');
+}
+function resetRpeChip() {
+  document.querySelectorAll('#rpe-chips .saisie-chip').forEach(c => c.classList.remove('on'));
+  const h = document.getElementById('sel-rpe'); if (h) h.value = '';
+}
+function repeterDerniereSerie() {
+  if (!exoEnCours || !exoEnCours.series.length) { showToast('Aucune série à répéter'); return; }
+  const s = exoEnCours.series[exoEnCours.series.length - 1];
+  document.getElementById('inp-charge').value = s.charge;
+  document.getElementById('inp-reps').value = s.reps;
+  setChipByVal('rpe', s.rpe);
+  setChipByVal('repos', s.repos);
+  ajouterSerie();
+}
+function dupliquerSerie(index) {
+  if (!exoEnCours) return;
+  const s = exoEnCours.series[index];
+  if (!s) return;
+  document.getElementById('inp-charge').value = s.charge;
+  document.getElementById('inp-reps').value = s.reps;
+  setChipByVal('rpe', s.rpe);
+  setChipByVal('repos', s.repos);
+  ajouterSerie();
+}
+
+function toggleGene() {
+  const f = document.getElementById('gene-form');
+  if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+async function signalerGene() {
+  const input = document.getElementById('gene-input');
+  const txt = (input.value || '').trim();
+  if (!txt) { showToast('Décris la gêne', '#ff4444'); return; }
+  if (!athlete) return;
+  const exo = exoEnCours ? exoEnCours.exerciceNom : '';
+  const message = '🚩 Gêne/douleur' + (exo ? ' — ' + exo : '') + ' : ' + txt;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveCommentaire', auteur: 'athlete', auteur_nom: (athlete.prenom || athlete.nom || 'Athlète'), athlete_id: athlete.athlete_id, message: message })
+    });
+    input.value = '';
+    document.getElementById('gene-form').style.display = 'none';
+    showToast('Signalé au coach ✓');
+  } catch (e) { showToast('Erreur envoi', '#ff4444'); }
 }
 
 function ajouterSerie() {
@@ -3666,7 +3750,7 @@ function ajouterSerie() {
 
   serieNum++;
   majSeriesActuel();
-  document.getElementById('sel-rpe').value = '';
+  resetRpeChip();
   document.getElementById('btn-valider').style.display = 'block';
   const reposVal = parseInt(repos);
   if (enSuperset) {
@@ -3689,6 +3773,7 @@ function majSeriesActuel() {
       <div class="serie-data">${s.charge}kg × ${s.reps} reps
         <div class="serie-sub">RPE ${s.rpe} · ${s.repos}s · Vol ${s.volume}</div>
       </div>
+      <button class="btn-sm" onclick="dupliquerSerie(${i})" title="Dupliquer" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:6px 9px;margin-right:4px">⧉</button>
       <button class="btn-sm btn-danger-sm" onclick="supprimerSerie(${i})">✕</button>
     </div>
   `).join('');
@@ -5033,8 +5118,7 @@ async function demarrerSeanceLibre() {
   programmeSeance = []; lastPerfData = {};
   // Réinitialiser le choix de programme et le bloc "autre exercice"
   document.getElementById('sel-seance-id').value = 'Libre';
-  document.getElementById('sel-muscle-libre').innerHTML = '<option value="">— Choisir —</option>';
-  document.getElementById('sel-exercice-libre').innerHTML = '<option value="">— Choisir —</option>';
+  { const _r=document.getElementById('rech-exo'); if(_r)_r.value=''; }
   document.getElementById('card-liste-seance').style.display = 'block';
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('btn-valider').style.display = 'none';
