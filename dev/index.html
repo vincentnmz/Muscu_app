@@ -422,6 +422,10 @@
         <input type="date" id="reg-ddn">
         <label>Mot de passe</label>
         <input type="password" id="reg-password" placeholder="Choisis un mot de passe" autocomplete="new-password">
+        <label style="display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:12px;color:var(--text-muted);font-weight:500;line-height:1.4;cursor:pointer;text-transform:none;letter-spacing:0;">
+          <input type="checkbox" id="reg-consent" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;accent-color:var(--accent);">
+          <span>J'accepte que mes données (dont les données de santé : poids, ressenti, douleurs) soient traitées pour le suivi sportif. <a href="#" onclick="ouvrirConfidentialite(event)" style="color:var(--accent);font-weight:600;">Politique de confidentialité</a></span>
+        </label>
         <div id="reg-error" class="error-msg"></div>
         <button class="btn btn-accent" onclick="sInscrire()">Créer mon compte</button>
       </div>
@@ -452,9 +456,37 @@
         <input type="text" id="reg-coach-login" placeholder="Choisis un identifiant" autocomplete="username">
         <label>Mot de passe</label>
         <input type="password" id="reg-coach-password" placeholder="Choisis un mot de passe" autocomplete="new-password">
+        <label style="display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:12px;color:var(--text-muted);font-weight:500;line-height:1.4;cursor:pointer;text-transform:none;letter-spacing:0;">
+          <input type="checkbox" id="reg-coach-consent" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;accent-color:var(--accent);">
+          <span>J'accepte de traiter les données de mes athlètes (dont données de santé) dans le respect de la <a href="#" onclick="ouvrirConfidentialite(event)" style="color:var(--accent);font-weight:600;">politique de confidentialité</a>.</span>
+        </label>
         <div id="reg-coach-error" class="error-msg"></div>
         <button class="btn btn-accent" onclick="sInscrireCoach()">Créer mon compte coach</button>
       </div>
+    </div>
+
+    <div style="text-align:center;margin-top:18px;">
+      <a href="#" onclick="ouvrirConfidentialite(event)" style="font-size:12px;color:var(--text-muted);">Politique de confidentialité &amp; mentions légales</a>
+    </div>
+  </div>
+
+  <!-- MODAL Confidentialité / RGPD -->
+  <div id="modal-confidentialite" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:16px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;padding:22px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:17px;font-weight:800;">Confidentialité &amp; données</div>
+        <button onclick="fermerConfidentialite()" style="background:var(--surface2);border:none;color:var(--text);border-radius:8px;width:30px;height:30px;font-size:16px;cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:13px;line-height:1.6;color:var(--text-muted);">
+        <p style="margin-bottom:12px;"><strong style="color:var(--text);">Responsable du traitement.</strong> Novalyz, contact : <a href="mailto:portefaixvincent@gmail.com" style="color:var(--accent);">portefaixvincent@gmail.com</a>.</p>
+        <p style="margin-bottom:12px;"><strong style="color:var(--text);">Données collectées.</strong> Identité (prénom, nom), identifiant, date de naissance, taille ; données d'entraînement (séances, charges, répétitions, RPE) ; <strong style="color:var(--text);">données de santé</strong> : poids, ressenti de fatigue, douleurs/gênes signalées.</p>
+        <p style="margin-bottom:12px;"><strong style="color:var(--text);">Finalité.</strong> Assurer le suivi de la performance sportive et le lien avec ton coach. Aucune donnée n'est vendue ni utilisée à des fins publicitaires.</p>
+        <p style="margin-bottom:12px;"><strong style="color:var(--text);">Base légale.</strong> Ton consentement explicite (données de santé), recueilli à l'inscription.</p>
+        <p style="margin-bottom:12px;"><strong style="color:var(--text);">Destinataires.</strong> Toi, ton coach lié, et l'hébergeur technique (Google — stockage sécurisé).</p>
+        <p style="margin-bottom:12px;"><strong style="color:var(--text);">Durée de conservation.</strong> Tant que ton compte est actif. Supprimées sous 30 jours après la suppression du compte.</p>
+        <p style="margin-bottom:0;"><strong style="color:var(--text);">Tes droits (RGPD).</strong> Accès, rectification, effacement, portabilité, retrait du consentement. Tu peux supprimer ton compte et toutes tes données depuis l'application, ou nous écrire à l'adresse ci-dessus.</p>
+      </div>
+      <button class="btn btn-accent" onclick="fermerConfidentialite()" style="margin-top:16px;">J'ai compris</button>
     </div>
   </div>
 
@@ -1043,6 +1075,14 @@
         <div id="regularite-content"><div class="loader">Chargement...</div></div>
       </div>
 
+      <!-- Confidentialité & compte -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-alert"/></svg>Mon compte</div></div>
+      <div class="card">
+        <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:14px;">Politique de confidentialité &amp; mes droits</a>
+        <button onclick="supprimerMonCompte()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte et mes données</button>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Action irréversible : toutes tes données (séances, poids, notes) seront effacées.</div>
+      </div>
+
     </div>
 
     <!-- ONGLET HISTORIQUE -->
@@ -1273,6 +1313,7 @@ async function sInscrire() {
   if (!prenom || !login || !ddn || !taille || annees === '') { errEl.textContent = 'Remplis tous les champs.'; return; }
   if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
+  if (!document.getElementById('reg-consent').checked) { errEl.textContent = 'Tu dois accepter la politique de confidentialité.'; return; }
   errEl.textContent = 'Création...';
   try {
     // Inscription en POST (données + mot de passe dans le corps, pas dans l'URL)
@@ -1302,6 +1343,27 @@ function arreterChronoEtReinitSeance() {
   const sb = document.getElementById('saisie-block'); if (sb) sb.style.display = 'block';
   const sel = document.getElementById('sel-seance-id'); if (sel) sel.value = '';
   const bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
+}
+
+async function supprimerMonCompte() {
+  if (!athlete || !athlete.athlete_id) return;
+  if (!confirm('Supprimer définitivement ton compte et TOUTES tes données ? Cette action est irréversible.')) return;
+  if (!confirm('Dernière confirmation : es-tu vraiment sûr ?')) return;
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'supprimerCompte', athlete_id: athlete.athlete_id })
+    });
+    const data = await res.json();
+    if (data.success) {
+      localStorage.removeItem('muscu_athlete');
+      showToast('Compte supprimé.');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      showToast('Erreur : ' + (data.error || 'suppression impossible'), 'var(--danger)');
+    }
+  } catch(e) { showToast('Erreur réseau.', 'var(--danger)'); }
 }
 
 function seDeconnecter() {
@@ -3333,6 +3395,9 @@ function switchAuthMode(mode) {
   document.getElementById('authtab-signup').classList.toggle('auth-seg-active', mode === 'signup');
 }
 
+function ouvrirConfidentialite(ev) { if (ev) ev.preventDefault(); document.getElementById('modal-confidentialite').style.display = 'flex'; }
+function fermerConfidentialite() { document.getElementById('modal-confidentialite').style.display = 'none'; }
+
 function switchCoachAuthMode(mode) {
   document.getElementById('coach-auth-login').style.display = mode === 'login' ? 'block' : 'none';
   document.getElementById('coach-auth-signup').style.display = mode === 'signup' ? 'block' : 'none';
@@ -3348,6 +3413,7 @@ async function sInscrireCoach() {
   errEl.textContent = '';
   if (!nom || !login) { errEl.textContent = 'Remplis tous les champs.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
+  if (!document.getElementById('reg-coach-consent').checked) { errEl.textContent = 'Tu dois accepter la politique de confidentialité.'; return; }
   errEl.textContent = 'Création...';
   try {
     const res = await fetch(SCRIPT_URL, {
