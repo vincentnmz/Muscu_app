@@ -420,6 +420,8 @@
         </div>
         <label>Date de naissance</label>
         <input type="date" id="reg-ddn">
+        <label>Mot de passe</label>
+        <input type="password" id="reg-password" placeholder="Choisis un mot de passe" autocomplete="new-password">
         <div id="reg-error" class="error-msg"></div>
         <button class="btn btn-accent" onclick="sInscrire()">Créer mon compte</button>
       </div>
@@ -428,14 +430,31 @@
     <div style="text-align:center;margin-top:14px">
       <a href="#" id="lien-espace-coach" onclick="toggleEspaceCoach(event)" style="font-size:13px;color:var(--text-muted)">Espace coach</a>
     </div>
-    <div class="card" id="card-login-coach" style="display:none">
-      <div class="card-title">Connexion coach</div>
-      <label>Login coach</label>
-      <input type="password" id="inp-login-coach" placeholder="Login coach">
-      <label>Mot de passe</label>
-      <input type="password" id="inp-password-coach" placeholder="Mot de passe">
-      <div id="login-coach-error" class="error-msg"></div>
-      <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter (coach)</button>
+    <div id="card-login-coach" style="display:none">
+      <div class="auth-seg" style="margin-bottom:12px;">
+        <button id="coachtab-login" class="auth-seg-active" onclick="switchCoachAuthMode('login')">Se connecter</button>
+        <button id="coachtab-signup" onclick="switchCoachAuthMode('signup')">Créer un compte</button>
+      </div>
+      <div class="card" id="coach-auth-login">
+        <div class="card-title">Connexion coach</div>
+        <label>Login coach</label>
+        <input type="password" id="inp-login-coach" placeholder="Login coach">
+        <label>Mot de passe</label>
+        <input type="password" id="inp-password-coach" placeholder="Mot de passe">
+        <div id="login-coach-error" class="error-msg"></div>
+        <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter (coach)</button>
+      </div>
+      <div class="card" id="coach-auth-signup" style="display:none">
+        <div class="card-title">Créer un compte coach</div>
+        <label>Nom</label>
+        <input type="text" id="reg-coach-nom" placeholder="Ton nom">
+        <label>Login coach</label>
+        <input type="text" id="reg-coach-login" placeholder="Choisis un identifiant" autocomplete="username">
+        <label>Mot de passe</label>
+        <input type="password" id="reg-coach-password" placeholder="Choisis un mot de passe" autocomplete="new-password">
+        <div id="reg-coach-error" class="error-msg"></div>
+        <button class="btn btn-accent" onclick="sInscrireCoach()">Créer mon compte coach</button>
+      </div>
     </div>
   </div>
 
@@ -1142,6 +1161,14 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEj4SEA0wzmXcPWECRG
 // Helper icône SVG (famille unique, style Lucide) pour les contenus générés en JS
 function ic(name, cls) { return '<svg class="ico' + (cls ? ' ' + cls : '') + '"><use href="#i-' + name + '"/></svg>'; }
 
+// Échappe le HTML des contenus fournis par l'utilisateur (anti-XSS) avant injection via innerHTML.
+function escapeHtml(v) {
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const MAPPING_SEANCE = {
   'Full body':             null,
   'Upper':                 ['Pectoraux', 'Dos', 'Epaule', 'Biceps', 'Triceps', 'Abdominaux'],
@@ -1215,7 +1242,12 @@ async function seConnecter() {
   if (!password) { errEl.textContent = 'Entre ton mot de passe.'; return; }
   errEl.textContent = 'Connexion...';
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=login&login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}`);
+    // Identifiants dans le CORPS (POST), plus dans l'URL. text/plain = requête simple (pas de préflight CORS).
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'login', login, password })
+    });
     const data = await res.json();
     if (data.success) {
       athlete = data.athlete;
@@ -1231,13 +1263,20 @@ async function sInscrire() {
   const login = document.getElementById('reg-login').value.trim();
   const annees = document.getElementById('reg-annees').value.trim();
   const ddn = document.getElementById('reg-ddn').value;
+  const password = document.getElementById('reg-password').value;
   const errEl = document.getElementById('reg-error');
   errEl.textContent = '';
   if (!prenom || !login || !ddn || !taille || annees === '') { errEl.textContent = 'Remplis tous les champs.'; return; }
   if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
+  if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
   errEl.textContent = 'Création...';
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=register&login=${encodeURIComponent(login)}&prenom=${encodeURIComponent(prenom)}&ddn=${encodeURIComponent(ddn)}&taille=${encodeURIComponent(taille)}&annees=${encodeURIComponent(annees)}`);
+    // Inscription en POST (données + mot de passe dans le corps, pas dans l'URL)
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, annees, password })
+    });
     const data = await res.json();
     if (data.success) {
       athlete = data.athlete;
@@ -1297,7 +1336,12 @@ async function seConnecterCoach() {
   if (!password) { errEl.textContent = 'Entre ton mot de passe.'; return; }
   errEl.textContent = 'Connexion...';
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=loginCoach&login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}`);
+    // Identifiants dans le CORPS (POST), plus dans l'URL.
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'loginCoach', login, password })
+    });
     const data = await res.json();
     if (data.success) {
       coach = data.coach;
@@ -1511,7 +1555,7 @@ async function renderCoachSynthese(athletes) {
       prioritaires.map(({ e, p }) => `
         <div onclick="ouvrirAthleteDepuisSelect('${e.i}')" style="display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:${p.color}14;border:1px solid ${p.color}44;">
           <div style="width:34px;height:34px;border-radius:10px;background:${p.color}22;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${p.icon}</div>
-          <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">${e.a.nom}</div><div style="font-size:11.5px;color:var(--text-muted);">${p.txt}</div></div>
+          <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div><div style="font-size:11.5px;color:var(--text-muted);">${p.txt}</div></div>
           <span style="color:var(--text-muted);font-size:18px;">›</span>
         </div>`).join('');
   }
@@ -1528,7 +1572,7 @@ async function renderCoachSynthese(athletes) {
     return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:9px;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
       <div style="width:44px;height:44px;border-radius:13px;background:${s.color}22;color:${s.color};font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initiales(a.nom)}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nom}</div>
+        <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</div>
         <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;gap:9px;flex-wrap:wrap;">${meta.join('<span style="opacity:.4">·</span>')}</div>
       </div>
       ${miniSpark(spark, s.color)}
@@ -2966,7 +3010,7 @@ function renderBullesChat(commentaires, elId, isCoach) {
       ? `<button onclick="supprimerCommentaireCoach('${c.id}')" title="Supprimer" style="background:none;border:none;cursor:pointer;font-size:12px;opacity:0.5;padding:0 0 0 4px;"><svg class="ico"><use href="#i-trash"/></svg></button>` : '';
     const lu = (isCoach && !isMine && !estLu(c, 'muscu_lu_coach')) ? '<span style="font-size:9px;color:#f59f00;"> · non lu</span>' : '';
     return `<div style="display:flex;flex-direction:column;align-items:${align};max-width:85%;">
-      <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13px;white-space:pre-wrap;line-height:1.4;">${c.message}</div>
+      <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13px;white-space:pre-wrap;line-height:1.4;">${escapeHtml(c.message)}</div>
       <div style="font-size:9px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:2px;">${formatChatDate(c.date)}${lu}${deleteBtn}</div>
     </div>`;
   }).join('');
@@ -3281,6 +3325,38 @@ function switchAuthMode(mode) {
   document.getElementById('auth-signup').style.display = mode === 'signup' ? 'block' : 'none';
   document.getElementById('authtab-login').classList.toggle('auth-seg-active', mode === 'login');
   document.getElementById('authtab-signup').classList.toggle('auth-seg-active', mode === 'signup');
+}
+
+function switchCoachAuthMode(mode) {
+  document.getElementById('coach-auth-login').style.display = mode === 'login' ? 'block' : 'none';
+  document.getElementById('coach-auth-signup').style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('coachtab-login').classList.toggle('auth-seg-active', mode === 'login');
+  document.getElementById('coachtab-signup').classList.toggle('auth-seg-active', mode === 'signup');
+}
+
+async function sInscrireCoach() {
+  const nom = document.getElementById('reg-coach-nom').value.trim();
+  const login = document.getElementById('reg-coach-login').value.trim();
+  const password = document.getElementById('reg-coach-password').value;
+  const errEl = document.getElementById('reg-coach-error');
+  errEl.textContent = '';
+  if (!nom || !login) { errEl.textContent = 'Remplis tous les champs.'; return; }
+  if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
+  errEl.textContent = 'Création...';
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'registerCoach', nom, login, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      coach = data.coach;
+      localStorage.setItem('muscu_coach', JSON.stringify(coach));
+      localStorage.removeItem('muscu_coach_vue');
+      ouvrirEspaceCoach();
+    } else { errEl.textContent = data.error || data.message || 'Cet identifiant coach est déjà utilisé.'; }
+  } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
 }
 
 const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Séance', historique: 'Historique', conseils: 'Conseils' };
