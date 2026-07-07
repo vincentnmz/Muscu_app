@@ -465,11 +465,15 @@
         <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
         <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button onclick="ouvrirModalLierAthlete()" style="background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;"><svg class="ico ico-btn"><use href="#i-plus"/></svg>Lier</button>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
         <button id="btn-theme-coach" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 9px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-sun"/></svg></button>
-        <button class="logout-btn" onclick="seDeconnecterCoach()"><svg class="ico ico-btn"><use href="#i-logout"/></svg></button>
+        <button class="logout-btn" onclick="seDeconnecterCoach()" style="white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déconnexion</button>
       </div>
+    </div>
+
+    <!-- Lier un athlète : bouton centré -->
+    <div style="display:flex;justify-content:center;margin-bottom:16px;">
+      <button onclick="ouvrirModalLierAthlete()" style="background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px 22px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-plus"/></svg>Lier un athlète</button>
     </div>
 
     <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
@@ -1540,10 +1544,12 @@ async function renderCoachSynthese(athletes) {
   const infoPrio = (e) => {
     const { a, m } = e;
     const dsAge = (m && m.derniere) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
-    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color:'var(--warn)' };
+    // Couleurs en HEX (nécessaire pour l'ajout d'alpha ${color}14 — un var() ne le permet pas)
+    const WARN = '#f59f00', BAD = '#f0505a';
+    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color: WARN };
     const al = labelAlerteCourt(a);
-    if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2)?'var(--v2-bad)':'var(--warn)' };
-    if (m && m.statut.rank===2) return { icon:'⚠', txt:'Intervention conseillée', color:'var(--v2-bad)' };
+    if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? BAD : WARN };
+    if (m && m.statut.rank===2) return { icon:'⚠', txt:'Intervention conseillée', color: BAD };
     return null;
   };
 
