@@ -2371,18 +2371,20 @@ function computeMarqueursCoach(data, a) {
   const acwrBackend = dash.acwr || null;
   if (acwrBackend != null) {
     acwrRatio = acwrBackend;
-    if (acwrBackend >= 0.8 && acwrBackend <= 1.3) acwrColor = '#00c96e';
-    else if (acwrBackend > 1.5) acwrColor = '#e5484d';
-    else acwrColor = '#f59f00';
+    if (acwrBackend >= 0.8 && acwrBackend <= 1.3) { acwrColor = '#00c96e'; }
+    else if (acwrBackend > 1.5) { acwrColor = '#e5484d'; }
+    else if (acwrBackend > 1.3) { acwrColor = '#f59f00'; }  // 1.3–1.5 : charge modérée-élevée
+    else { acwrColor = '#4da6ff'; }  // < 0.8 : sous-charge (bleu distinct du rouge/orange)
     acwrLabel = `ACWR ${acwrBackend}`;
   } else {
     const acwr = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
     if (!acwr || acwr.insuffisant) { acwrColor = '#aaa'; acwrLabel = '—'; }
     else {
       acwrRatio = acwr.ratio;
-      if (acwr.ratio >= 0.8 && acwr.ratio <= 1.3) acwrColor = '#00c96e';
-      else if (acwr.ratio > 1.5) acwrColor = '#e5484d';
-      else acwrColor = '#f59f00';
+      if (acwr.ratio >= 0.8 && acwr.ratio <= 1.3) { acwrColor = '#00c96e'; }
+      else if (acwr.ratio > 1.5) { acwrColor = '#e5484d'; }
+      else if (acwr.ratio > 1.3) { acwrColor = '#f59f00'; }
+      else { acwrColor = '#4da6ff'; }  // < 0.8 : sous-charge
       acwrLabel = `ACWR ${acwr.ratio}`;
     }
   }
@@ -3395,7 +3397,8 @@ function renderAlertesCoach(data) {
     if (m.recupColor === '#e5484d') synthAlertes.push({ msg: `Fatigue élevée — ${m.recupLabel}`, color: '#e5484d' });
     else if (m.recupColor === '#f59f00') synthAlertes.push({ msg: `Récupération modérée — ${m.recupLabel}`, color: '#f59f00' });
     if (m.acwrColor === '#e5484d') synthAlertes.push({ msg: `Surcharge aiguë — ${m.acwrLabel}`, color: '#e5484d' });
-    else if (m.acwrColor === '#f59f00') synthAlertes.push({ msg: `Charge élevée — ${m.acwrLabel}`, color: '#f59f00' });
+    else if (m.acwrColor === '#f59f00') synthAlertes.push({ msg: `Charge modérée-élevée — ${m.acwrLabel}`, color: '#f59f00' });
+    else if (m.acwrColor === '#4da6ff') synthAlertes.push({ msg: `Sous-charge — ${m.acwrLabel}`, color: '#4da6ff' });
     if (m.regColor === '#e5484d') synthAlertes.push({ msg: `Régularité insuffisante — ${m.regLabel}`, color: '#e5484d' });
   }
 
