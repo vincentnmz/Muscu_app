@@ -804,8 +804,14 @@
         </div>
       </div>
 
-      <!-- KPI ROW (rempli si récupération dispo) -->
+      <!-- KPI ROW — RECENT_ENGINE + COMPARISON_ENGINE -->
       <div class="v2-kpis" id="dash-kpis" style="display:none;"></div>
+
+      <!-- Stats carrière — GLOBAL_ENGINE -->
+      <div class="v2-sec" id="dash-global-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">GLOBAL_ENGINE</div></div>
+      <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
+        <div id="dash-global-content"></div>
+      </div>
 
       <!-- Poids -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Poids corporel</div><div class="more" onclick="switchTab('objectif')" style="cursor:pointer;">Voir tout →</div></div>
@@ -5059,13 +5065,23 @@ async function chargerAppData() {
       });
     }
 
-    // Dashboard
-    const dash = data.dashboard;
+    // =========================================================================
+    // DASHBOARD — lecture directe des 3 moteurs
+    // =========================================================================
+    const dash       = data.dashboard;
+    const recent     = data.recent     || {};   // RECENT_ENGINE
+    const globalEng  = data.global     || {};   // GLOBAL_ENGINE
+    const comparison = data.comparison || {};   // COMPARISON_ENGINE
 
-    // Régularité
-    const faites = dash.regularite.seances_j7 != null ? dash.regularite.seances_j7 : (dash.regularite.seances_semaine || 0);
-    const prevues = dash.regularite.seances_prevues || 0;
-    const pct = prevues > 0 ? Math.min(100, Math.round(faites/prevues*100)) : 0;
+    const j7  = recent.j7  || {};
+    const j28 = recent.j28 || {};
+    const cmp7  = comparison.j7_vs_j7prec  || {};
+    const cmp28 = comparison.j28_vs_j28prec || {};
+
+    // ── RECENT_ENGINE : Régularité (fenêtre 7j glissants) ────────────────────
+    const faites = j7.seances != null ? j7.seances : (dash.regularite ? (dash.regularite.seances_j7 || dash.regularite.seances_semaine || 0) : 0);
+    const prevues = dash.regularite ? (dash.regularite.seances_prevues || 0) : 0;
+    const pct = prevues > 0 ? Math.min(100, Math.round(faites / prevues * 100)) : 0;
     document.getElementById('dash-seances-faites').textContent = faites;
     document.getElementById('dash-seances-prevues').textContent = prevues;
     const _ringC = 163.4;
@@ -5079,80 +5095,123 @@ async function chargerAppData() {
     msgEl.textContent = manque > 0 ? `${manque} séance${manque>1?'s':''} manquante${manque>1?'s':''}` : 'Objectif atteint';
     msgEl.style.color = manque > 0 ? 'var(--warn)' : 'var(--good)';
 
-    // Volume par muscle — barres v2
+    // ── Volume par muscle — barres (volume_semaine = calendrier, conservé pour affichage) ──
     renderDashVolumeBars(data.historique.volume_semaine || []);
 
-    // Progression
+    // ── COMPARISON_ENGINE : Progression des charges (j7 vs j7prec) ───────────
     const progEl = document.getElementById('dash-prog-content');
-    const progCard = document.getElementById('dash-prog-card');
-    if (dash.progression) {
-      const p = dash.progression;
-      const enProg = p.en_progression || 0;
-      const enBaisse = p.en_baisse || 0;
-      drawerData = p.details || [];
-      const lignesUp = p.details.filter(d => d.up).map(d => `
+    const chargeDetails = cmp7.charge_details || (dash.progression ? dash.progression.details : null) || [];
+    const enProg   = chargeDetails.filter(d => d.up).length;
+    const enBaisse = chargeDetails.filter(d => d.down && !d.up).length;
+    drawerData = chargeDetails;
+    if (chargeDetails.length > 0) {
+      const lignesUp   = chargeDetails.filter(d => d.up).map(d => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px;">
           <span style="font-size:11px;color:#00c96e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:inline-block;">${d.exercice}</span>
           <span style="font-size:11px;color:#00c96e;white-space:nowrap;">${d.variation}</span>
         </div>`).join('');
-      const lignesDown = p.details.filter(d => d.down && !d.up).map(d => `
+      const lignesDown = chargeDetails.filter(d => d.down && !d.up).map(d => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(255,68,68,0.1);border-radius:6px;margin-bottom:4px;">
           <span style="font-size:11px;color:var(--danger);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:inline-block;">${d.exercice}</span>
           <span style="font-size:11px;color:var(--danger);white-space:nowrap;">${d.variation}</span>
         </div>`).join('');
       progEl.innerHTML = `
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;opacity:.7;">COMPARISON_ENGINE · 7j vs 7j précédents</div>
         <div class="v2-pgrid" style="margin-bottom:${(enProg||enBaisse)?'12px':'0'};">
-          <div class="v2-pstat" style="background:var(--good-a);"><div class="pn" style="color:var(--good);">${enProg}</div><div class="pk">exercices<br>en progression</div></div>
+          <div class="v2-pstat" style="background:var(--good-a);"><div class="pn" style="color:var(--good);">${enProg}</div><div class="pk">exercices<br>en hausse</div></div>
           <div class="v2-pstat" style="background:var(--bad-a);"><div class="pn" style="color:var(--v2-bad);">${enBaisse}</div><div class="pk">exercices<br>en baisse</div></div>
         </div>
-        ${enProg > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">En progression</div>${lignesUp}` : ''}
+        ${enProg   > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">En progression</div>${lignesUp}` : ''}
         ${enBaisse > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;">En baisse</div>${lignesDown}` : ''}
-        ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables sur les 7 derniers jours</div>' : ''}`;
+        ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables · 7 derniers jours</div>' : ''}`;
     } else {
-      progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Pas encore de données de progression</div>';
+      progEl.innerHTML = `
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;opacity:.7;">COMPARISON_ENGINE · 7j vs 7j précédents</div>
+        <div style="color:var(--text-muted);font-size:13px;">Pas encore assez de séances pour comparer — il faut au moins une séance dans les 7j précédents.</div>`;
     }
 
-    // Récupération : KPI row (RPE / charge / volume) + carte d'état
+    // ── RECENT_ENGINE + COMPARISON_ENGINE : KPI row ───────────────────────────
     const recupEl = document.getElementById('dash-recup-content');
-    const kpisEl = document.getElementById('dash-kpis');
-    const recupData = buildRecupFromData(data) || dash.recuperation || null;
-    if (recupData) {
-      const r = recupData;
-      const statusColor = r.statut === 'optimal' ? 'var(--good)' : r.statut === 'modere' ? 'var(--warn)' : 'var(--v2-bad)';
-      const statusEmoji = r.statut === 'optimal' ? '💪' : r.statut === 'modere' ? '😮‍💨' : '🥵';
-      const statusLabel = r.statut === 'optimal' ? 'Bien récupéré' : r.statut === 'modere' ? 'Fatigue modérée' : 'Fatigue élevée';
-      const statusDesc = r.statut === 'optimal' ? 'Charge et RPE maîtrisés, tu peux pousser.' : r.statut === 'modere' ? 'Surveille ta récup, garde une marge.' : 'Repos conseillé, réduis l\'intensité.';
-      const tonnageVal = dash.tonnage ? (dash.tonnage.j7 != null ? dash.tonnage.j7 : dash.tonnage.semaine) : null;
-      const tonnageEvol = dash.tonnage ? (dash.tonnage.evol_pct != null ? dash.tonnage.evol_pct : dash.tonnage.evol) : null;
-      if (kpisEl) {
-        kpisEl.style.display = 'grid';
-        kpisEl.style.gridTemplateColumns = '1fr 1fr 1fr 1fr';
-        kpisEl.innerHTML = `
-          <div class="v2-kpi"><div class="kv" style="color:${r.rpe_color};">${r.rpe_moyen !== null ? r.rpe_moyen : '—'}</div><div class="kk">RPE moyen · 7j</div></div>
-          <div class="v2-kpi">
-            <div class="kv" style="color:${tonnageVal != null ? (tonnageEvol >= 0 ? '#00c96e' : '#f59f00') : '#aaa'};">${tonnageVal != null ? tonnageVal + 't' : '—'}</div>
-            <div class="kk">Tonnage · 7j${tonnageEvol != null ? ' <span style="font-size:10px;opacity:.7">' + (tonnageEvol > 0 ? '▲+' : '▼') + tonnageEvol + '%</span>' : ''}</div>
-          </div>
-          <div class="v2-kpi" style="cursor:pointer" onclick="switchTab('records')" title="Voir les records">
-            <div class="kv" style="color:#f5a524;">🔥 ${dash.streak ? dash.streak.semaines : 0}</div>
-            <div class="kk">Sem. d'affilée</div>
-          </div>
-          <div class="v2-kpi" style="cursor:pointer" onclick="switchTab('records')" title="Voir les records">
-            <div class="kv" style="color:#00c96e;">⚡ ${dash.records_mois > 0 ? dash.records_mois : '—'}</div>
-            <div class="kk">Records · 30j</div>
-          </div>`;
-      }
+    const kpisEl  = document.getElementById('dash-kpis');
+
+    // Récupération : statut depuis RECENT_ENGINE (RPE 7j)
+    const rpe7      = j7.rpe_moyen != null ? j7.rpe_moyen : null;
+    const rpeColor  = rpe7 == null ? '#aaa' : rpe7 > 8.5 ? '#e5484d' : rpe7 > 7.5 ? '#f59f00' : '#00c96e';
+    const recupStatut = rpe7 == null ? null : rpe7 > 8.5 ? 'eleve' : rpe7 > 7.5 ? 'modere' : 'optimal';
+    const recupEmoji  = recupStatut === 'eleve' ? '🥵' : recupStatut === 'modere' ? '😮‍💨' : '💪';
+    const recupLabel  = recupStatut === 'eleve' ? 'Fatigue élevée' : recupStatut === 'modere' ? 'Fatigue modérée' : 'Bien récupéré';
+    const recupDesc   = recupStatut === 'eleve' ? 'Repos conseillé, réduis l\'intensité.' : recupStatut === 'modere' ? 'Surveille ta récup, garde une marge.' : 'Charge et RPE maîtrisés, tu peux pousser.';
+    const recupColor  = recupStatut === 'eleve' ? 'var(--v2-bad)' : recupStatut === 'modere' ? 'var(--warn)' : 'var(--good)';
+
+    // Tonnage 7j depuis RECENT_ENGINE + évolution depuis COMPARISON_ENGINE
+    const tonnageJ7   = j7.tonnage != null ? j7.tonnage : null;
+    const tonnageEvol = cmp7.tonnage ? cmp7.tonnage.evol_pct : null;
+    const tonnageColor = tonnageEvol == null ? '#aaa' : tonnageEvol >= 0 ? '#00c96e' : '#f59f00';
+
+    // Records 30j depuis GLOBAL_ENGINE
+    const records30 = globalEng.records_30j != null ? globalEng.records_30j : (dash.records_mois || 0);
+
+    // ACWR depuis RECENT_ENGINE (via dashboard.acwr)
+    const acwrVal   = dash.acwr != null ? dash.acwr : null;
+
+    if (kpisEl) {
+      kpisEl.style.display = 'grid';
+      kpisEl.style.gridTemplateColumns = '1fr 1fr 1fr 1fr';
+      kpisEl.innerHTML = `
+        <div class="v2-kpi">
+          <div class="kv" style="color:${rpeColor};">${rpe7 != null ? rpe7 : '—'}</div>
+          <div class="kk">RPE · 7j</div>
+        </div>
+        <div class="v2-kpi">
+          <div class="kv" style="color:${tonnageColor};">${tonnageJ7 != null ? tonnageJ7 + 't' : '—'}</div>
+          <div class="kk">Tonnage · 7j${tonnageEvol != null ? ' <span style="font-size:10px;opacity:.7">' + (tonnageEvol > 0 ? '▲+' : '▼') + tonnageEvol + '%</span>' : ''}</div>
+        </div>
+        <div class="v2-kpi">
+          <div class="kv" style="color:${acwrVal == null ? '#aaa' : acwrVal >= 0.8 && acwrVal <= 1.3 ? '#00c96e' : acwrVal > 1.5 ? '#e5484d' : '#f59f00'};">${acwrVal != null ? acwrVal : '—'}</div>
+          <div class="kk">ACWR · 28j</div>
+        </div>
+        <div class="v2-kpi" style="cursor:pointer" onclick="switchTab('records')" title="Voir les records">
+          <div class="kv" style="color:#00c96e;">⚡ ${records30 > 0 ? records30 : '—'}</div>
+          <div class="kk">Records · 30j</div>
+        </div>`;
+    }
+
+    if (recupStatut) {
       recupEl.innerHTML = `
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;opacity:.7;">RECENT_ENGINE · RPE moyen 7j glissants</div>
         <div style="display:flex;align-items:center;gap:13px;">
-          <div style="width:50px;height:50px;border-radius:14px;background:${statusColor}22;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;">${statusEmoji}</div>
+          <div style="width:50px;height:50px;border-radius:14px;background:${recupColor}22;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;">${recupEmoji}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:16px;font-weight:800;color:${statusColor};">${statusLabel}</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${statusDesc}</div>
+            <div style="font-size:16px;font-weight:800;color:${recupColor};">${recupLabel}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${recupDesc}</div>
           </div>
         </div>`;
     } else {
-      if (kpisEl) kpisEl.style.display = 'none';
-      recupEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">Pas encore assez de données — continue à t'entraîner, le bloc se remplira après quelques semaines !</div>`;
+      recupEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">Pas encore assez de données — continue à t'entraîner !</div>`;
+    }
+
+    // ── GLOBAL_ENGINE : Stats carrière ────────────────────────────────────────
+    const globalCardEl = document.getElementById('dash-global-card');
+    const globalSecEl  = document.getElementById('dash-global-sec');
+    if (globalEng.total_seances > 0 && globalCardEl) {
+      globalSecEl.style.display = '';
+      globalCardEl.style.display = '';
+      const tonnageTotalT = globalEng.tonnage_total_kg ? (Math.round(globalEng.tonnage_total_kg / 100) / 10) + 't' : '—';
+      document.getElementById('dash-global-content').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div class="dash-stat">
+            <div class="dash-stat-num" style="color:var(--accent);">${globalEng.total_seances}</div>
+            <div class="dash-stat-label">séances</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num" style="color:var(--accent);">${globalEng.total_series || '—'}</div>
+            <div class="dash-stat-label">séries totales</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num" style="color:var(--accent);">${tonnageTotalT}</div>
+            <div class="dash-stat-label">tonnage total</div>
+          </div>
+        </div>`;
     }
 
     // Dernière séance
