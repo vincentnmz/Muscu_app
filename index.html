@@ -1572,7 +1572,9 @@ async function renderCoachSynthese(athletes) {
       spark = Object.keys(d.historique.volume_par_jour).sort()
         .map(k => Number(d.historique.volume_par_jour[k])).filter(v => !isNaN(v)).slice(-8);
     }
-    return { a, i, m, rpe, seancesSem, spark };
+    const tonnage = d.dashboard && d.dashboard.tonnage ? d.dashboard.tonnage : null;
+    const streak = d.dashboard && d.dashboard.streak ? d.dashboard.streak.semaines : null;
+    return { a, i, m, rpe, seancesSem, spark, tonnage, streak };
   });
   enrich.sort((x, y) => {
     const rx = x.m ? x.m.statut.rank : -1, ry = y.m ? y.m.statut.rank : -1;
@@ -1630,13 +1632,19 @@ async function renderCoachSynthese(athletes) {
 
   // ---- Liste complète ----
   const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes athlètes</div></div>` +
-    enrich.map(({ a, i, m, rpe, seancesSem, spark }) => {
+    enrich.map(({ a, i, m, rpe, seancesSem, spark, tonnage, streak }) => {
     const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
-    // Marqueurs : séances/sem + RPE + progression
     const meta = [];
     if (seancesSem != null) meta.push(`<span><b style="color:var(--text);">${seancesSem}</b> séance${seancesSem>1?'s':''}/sem</span>`);
     if (rpe != null) meta.push(`<span>RPE <b style="color:var(--text);">${rpe}</b></span>`);
-    if (m && m.progLabel) meta.push(`<span style="color:${m.progColor};font-weight:700;">${m.progLabel}</span>`);
+    if (tonnage && tonnage.semaine > 0) {
+      const tc = tonnage.evol != null ? (tonnage.evol >= 0 ? '#00c96e' : '#f59f00') : 'var(--text)';
+      const tarr = tonnage.evol != null ? ` ${tonnage.evol >= 0 ? '▲' : '▼'}${Math.abs(tonnage.evol)}%` : '';
+      meta.push(`<span>Tonnage <b style="color:${tc};">${tonnage.semaine}t${tarr}</b></span>`);
+    }
+    if (streak != null && streak > 0) meta.push(`<span>🔥 <b style="color:#f5a524;">${streak} sem.</b></span>`);
+    if (m && m.volLabel && m.volLabel !== 'N/A') meta.push(`<span style="color:${m.volColor};font-weight:700;">${m.volLabel}</span>`);
+    if (m && m.progLabel && m.progLabel !== 'N/A') meta.push(`<span style="color:${m.progColor};font-weight:700;">${m.progLabel}</span>`);
     return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:9px;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
       <div style="width:44px;height:44px;border-radius:13px;background:${s.color}22;color:${s.color};font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initiales(a.nom)}</div>
       <div style="flex:1;min-width:0;">
@@ -1873,6 +1881,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderCoachOverview(data);
     renderCoachRecordsEtRegression(data.historique);
     renderCoachIndicateurs(data);
+    renderAlertesCoach(data);
     afficherGraphiquePoidsCoach(data.poids || []);
     renderCoachVolume(data);
     afficherCoachTendances(4);
@@ -3171,36 +3180,58 @@ function dejaConseille(sujet) {
   return commentairesAthleteActuel.some(c => String(c.message).toLowerCase().includes(cible));
 }
 
-function renderAlertesCoach() {
+function renderAlertesCoach(data) {
   const el = document.getElementById('cd-alertes');
   if (!el || !coachAthleteCourant) return;
   const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
-  // On masque les alertes marquées "Traité" cette semaine (cohérent avec l'accueil coach)
   const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
-  el.innerHTML = alertes.length > 0
-    ? alertes.map((al, idx) => {
-        const c = couleurSeverite[al.severite] || '#a3a3a3';
-        const sujetRaw = sujetAlerte(al);
-        const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        const fait = dejaConseille(sujetRaw);
-        const explicationId = `alerte-explication-${idx}`;
-        return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
-          <div style="display:flex;align-items:flex-start;gap:8px">
-            <span style="font-size:14px">⚠️</span>
-            <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:400">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</span>
-          </div>
-          <div id="${explicationId}" style="display:none;font-size:11px;color:var(--text-muted);margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">${explicationAlerte(al)}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-            <button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
-            ${fait
-              ? `<span style="font-size:12px;color:#00c96e;font-weight:700;align-self:center">✅ Déjà conseillé</span>
-                 <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Autre conseil</button>`
-              : `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>`}
-            <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>
-          </div>
-        </div>`;
-      }).join('')
-    : '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">✅ Rien à signaler</div>';
+
+  // Synthèse depuis les marqueurs calculés (volume manque, progression en baisse, récup, ACWR)
+  const synthAlertes = [];
+  const d = data || coachAthleteData;
+  if (d) {
+    const m = computeMarqueursCoach(d, coachAthleteCourant);
+    if (m.volColor === '#e5484d' || m.volColor === 'var(--bad)') synthAlertes.push({ msg: `Volume insuffisant — ${m.volLabel}`, color: '#e5484d' });
+    else if (m.volColor === '#f59f00' || m.volColor === 'var(--warn)') synthAlertes.push({ msg: `Volume faible — ${m.volLabel}`, color: '#f59f00' });
+    if (m.progColor === '#e5484d') synthAlertes.push({ msg: `Progression en baisse — ${m.progLabel}`, color: '#e5484d' });
+    if (m.recupColor === '#e5484d') synthAlertes.push({ msg: `Fatigue élevée — ${m.recupLabel}`, color: '#e5484d' });
+    else if (m.recupColor === '#f59f00') synthAlertes.push({ msg: `Récupération modérée — ${m.recupLabel}`, color: '#f59f00' });
+    if (m.acwrColor === '#e5484d') synthAlertes.push({ msg: `Surcharge aiguë — ${m.acwrLabel}`, color: '#e5484d' });
+    else if (m.acwrColor === '#f59f00') synthAlertes.push({ msg: `Charge élevée — ${m.acwrLabel}`, color: '#f59f00' });
+    if (m.regColor === '#e5484d') synthAlertes.push({ msg: `Régularité insuffisante — ${m.regLabel}`, color: '#e5484d' });
+  }
+
+  const alertesHtml = alertes.map((al, idx) => {
+    const c = couleurSeverite[al.severite] || '#a3a3a3';
+    const sujetRaw = sujetAlerte(al);
+    const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const fait = dejaConseille(sujetRaw);
+    const explicationId = `alerte-explication-${idx}`;
+    return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <span style="font-size:14px">⚠️</span>
+        <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:400">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</span>
+      </div>
+      <div id="${explicationId}" style="display:none;font-size:11px;color:var(--text-muted);margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">${explicationAlerte(al)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
+        ${fait
+          ? `<span style="font-size:12px;color:#00c96e;font-weight:700;align-self:center">✅ Déjà conseillé</span>
+             <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Autre conseil</button>`
+          : `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>`}
+        <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const synthHtml = synthAlertes.map(s => `
+    <div style="padding:8px 10px;background:${s.color}1a;border-radius:8px;margin-top:6px;display:flex;align-items:flex-start;gap:8px">
+      <span style="font-size:14px">📊</span>
+      <span style="font-size:13px;font-weight:600;color:${s.color};flex:1">${s.msg}</span>
+    </div>`).join('');
+
+  const tout = alertesHtml + synthHtml;
+  el.innerHTML = tout || '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">✅ Rien à signaler</div>';
 }
 
 function toggleExplicationAlerte(id) {
