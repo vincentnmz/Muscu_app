@@ -370,6 +370,7 @@
   <button class="tab-btn" onclick="switchTab('seance')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M6.5 6v12M3.5 8.5v7M17.5 6v12M20.5 8.5v7M6.5 12h11"/></svg></span><span>Séance</span></button>
   <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M6 21v-7M12 21V5M18 21v-10"/></svg></span><span>Historique</span></button>
   <button class="tab-btn" onclick="switchTab('conseils')" style="position:relative"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.5A8 8 0 1 1 21 11.5z"/></svg></span><span>Conseils</span><span id="badge-conseils" style="display:none;position:absolute;top:2px;right:12px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
+  <button class="tab-btn" onclick="switchTab('reglages')"><span class="tab-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><span>Réglages</span></button>
 </div>
 
 <div class="container" id="main-container">
@@ -562,7 +563,7 @@
 
     <!-- Sous-onglets coach -->
     <div class="sub-tabs">
-      <button class="sub-tab cc1 active" id="cdtab-btn-overview" onclick="switchCoachDetailTab('overview')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.4"/></svg></span><span>Aperçu</span></button>
+      <button class="sub-tab cc1 active" id="cdtab-btn-overview" onclick="switchCoachDetailTab('overview')" ondblclick="debugCoachOuvrir()"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.4"/></svg></span><span>Aperçu</span></button>
       <button class="sub-tab cc2" id="cdtab-btn-seances" onclick="switchCoachDetailTab('seances')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M6.5 6v12M3.5 8.5v7M17.5 6v12M20.5 8.5v7M6.5 12h11"/></svg></span><span>Séances</span></button>
       <button class="sub-tab cc3" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span><span>Progrès</span></button>
       <button class="sub-tab cc4" id="cdtab-btn-volume" onclick="switchCoachDetailTab('volume')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M7 21v-6M12 21v-11M17 21v-9"/></svg></span><span>Volume</span></button>
@@ -718,6 +719,18 @@
       <div class="card">
         <div id="cd-programme-content"><div class="loader">Chargement...</div></div>
         <button class="btn btn-outline" style="margin-top:10px" onclick="cdAjouterSeance()">+ Nouvelle séance</button>
+      </div>
+    </div>
+    <!-- Debug coach (triple-tap sur "Aperçu" dans la nav) -->
+    <div id="debug-panel-coach" style="display:none;padding:12px;">
+      <div class="dash-card" style="padding:12px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;">🔧 Debug — getAppData athlète</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+          <button class="btn-sm btn-outline" onclick="debugCoachCharger()">🔄 Charger</button>
+          <button class="btn-sm btn-outline" onclick="debugCoachCopier()">📋 Copier JSON</button>
+          <button class="btn-sm btn-outline" onclick="document.getElementById('debug-panel-coach').style.display='none'">✕</button>
+        </div>
+        <pre id="debug-coach-output" style="font-size:10px;color:var(--text);background:var(--surface2);border-radius:8px;padding:10px;overflow-x:auto;max-height:450px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;">Appuie sur Charger</pre>
       </div>
     </div>
     </div><!-- /cd-main -->
@@ -1075,12 +1088,30 @@
         <div id="regularite-content"><div class="loader">Chargement...</div></div>
       </div>
 
-      <!-- Confidentialité & compte -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-alert"/></svg>Mon compte</div></div>
+    </div>
+
+    <!-- ONGLET RÉGLAGES -->
+    <div id="tab-reglages" class="tab-content">
+
+      <!-- Mon compte -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-user"/></svg>Mon compte</div></div>
       <div class="card">
         <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:14px;">Politique de confidentialité &amp; mes droits</a>
         <button onclick="supprimerMonCompte()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte et mes données</button>
         <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Action irréversible : toutes tes données (séances, poids, notes) seront effacées.</div>
+      </div>
+
+      <!-- Debug -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Diagnostic</div></div>
+      <div class="card" style="padding:14px;">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Affiche les données brutes calculées par le serveur. Utile pour vérifier un marqueur (streak, tonnage, records…) qui semble incorrect.</div>
+        <button class="btn btn-outline" onclick="debugChargerDonnees()" style="margin-bottom:10px;">🔄 Charger les données serveur</button>
+        <div id="debug-panel" style="display:none;">
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button class="btn-sm btn-outline" onclick="debugCopier()">📋 Copier JSON</button>
+          </div>
+          <pre id="debug-output" style="font-size:10px;color:var(--text);background:var(--surface2);border-radius:8px;padding:10px;overflow-x:auto;max-height:400px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
+        </div>
       </div>
 
     </div>
@@ -1343,6 +1374,48 @@ function arreterChronoEtReinitSeance() {
   const sb = document.getElementById('saisie-block'); if (sb) sb.style.display = 'block';
   const sel = document.getElementById('sel-seance-id'); if (sel) sel.value = '';
   const bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
+}
+
+// ==================== DEBUG ====================
+async function debugChargerDonnees() {
+  const out = document.getElementById('debug-output');
+  const panel = document.getElementById('debug-panel');
+  if (!out) return;
+  const id = athlete ? athlete.athlete_id : null;
+  if (!id) { out.textContent = 'Aucun athlète connecté.'; if (panel) panel.style.display = 'block'; return; }
+  out.textContent = 'Chargement…';
+  if (panel) panel.style.display = 'block';
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(id)}&nocache=${Date.now()}`);
+    const data = await res.json();
+    out.textContent = JSON.stringify(data, null, 2);
+  } catch(e) { out.textContent = 'Erreur : ' + e.message; }
+}
+function debugCopier() {
+  const out = document.getElementById('debug-output');
+  if (!out) return;
+  navigator.clipboard.writeText(out.textContent).then(() => alert('JSON copié !')).catch(() => alert('Copie manuelle nécessaire'));
+}
+
+function debugCoachOuvrir() {
+  const p = document.getElementById('debug-panel-coach');
+  if (!p) return;
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+async function debugCoachCharger() {
+  const out = document.getElementById('debug-coach-output');
+  if (!out || !coachAthleteCourant) { if (out) out.textContent = 'Aucun athlète sélectionné.'; return; }
+  out.textContent = 'Chargement…';
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(coachAthleteCourant.athlete_id)}&nocache=${Date.now()}`);
+    const data = await res.json();
+    out.textContent = JSON.stringify(data, null, 2);
+  } catch(e) { out.textContent = 'Erreur : ' + e.message; }
+}
+function debugCoachCopier() {
+  const out = document.getElementById('debug-coach-output');
+  if (!out) return;
+  navigator.clipboard.writeText(out.textContent).then(() => alert('JSON copié !')).catch(() => alert('Copie manuelle nécessaire'));
 }
 
 async function supprimerMonCompte() {
@@ -3462,10 +3535,10 @@ async function sInscrireCoach() {
   } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
 }
 
-const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Séance', historique: 'Historique', conseils: 'Conseils' };
+const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Séance', historique: 'Historique', conseils: 'Conseils', reglages: 'Réglages' };
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['accueil','objectif','seance','historique','conseils'][i] === tab);
+    b.classList.toggle('active', ['accueil','objectif','seance','historique','conseils','reglages'][i] === tab);
   });
   const hdr = document.getElementById('header-nom');
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];
