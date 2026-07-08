@@ -925,7 +925,6 @@
                 </select>
               </div>
             </div>
-            <button class="btn btn-outline" onclick="demarrerSeanceLibre()" style="margin-top:8px;font-size:12px;"><svg class="ico ico-btn"><use href="#i-shuffle"/></svg>Séance libre (sans programme)</button>
           </div>
 
           <!-- Liste exercices de la séance -->
@@ -5648,25 +5647,6 @@ function dessinerGraphPoids(pesees, periode, ids) {
   document.getElementById(ids.svg).innerHTML = svg;
 }
 
-async function demarrerSeanceLibre() {
-  seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
-  programmeSeance = []; lastPerfData = {};
-  // Réinitialiser le choix de programme et le bloc "autre exercice"
-  document.getElementById('sel-seance-id').value = 'Libre';
-  { const _r=document.getElementById('rech-exo'); if(_r)_r.value=''; }
-  document.getElementById('card-liste-seance').style.display = 'block';
-  document.getElementById('card-exo-actuel').style.display = 'none';
-  document.getElementById('btn-valider').style.display = 'none';
-  afficherListeExosLibres();
-  toggleExoHorsProgramme(true);
-
-  majProgressionSeance();
-  const resPerf = await fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=Libre`);
-  const dataPerf = await resPerf.json();
-  lastPerfData = dataPerf.perfs || {};
-  afficherListeExosLibres();
-  majProgressionSeance();
-}
 
 function terminerExercice() {
   if (!exoEnCours || exoEnCours.series.length === 0) {
