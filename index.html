@@ -619,6 +619,12 @@
         <div id="cd-regression"></div>
       </div>
 
+      <!-- Tendance mensuelle — COMPARISON_ENGINE j28 vs j28prec -->
+      <div class="v2-sec" id="cd-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">COMPARISON_ENGINE</div></div>
+      <div class="dash-card" id="cd-cmp28-card" style="padding:16px;display:none;">
+        <div id="cd-cmp28-content"></div>
+      </div>
+
       <!-- Records de l'athlète (en bas) -->
       <div class="v2-sec" id="cd-records-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records de l'athlète</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
       <div class="dash-card" id="cd-records-card" style="padding:16px;display:none">
@@ -1949,9 +1955,10 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
 
   // Reset les zones en chargement
   const indEl = document.getElementById('cd-indicateurs'); if (indEl) indEl.innerHTML = '<div class="loader">Chargement...</div>';
-  ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content'].forEach(id => {
+  ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content','cd-cmp28-content'].forEach(id => {
     const el = document.getElementById(id); if (el) el.innerHTML = '<div class="loader">Chargement...</div>';
   });
+  ['cd-cmp28-sec','cd-cmp28-card'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   document.getElementById('cd-progression-content').innerHTML = '';
   document.getElementById('cd-seances-content').innerHTML = '';
   document.getElementById('cd-seances-detail-content').innerHTML = '<div class="loader">Chargement...</div>';
@@ -2124,8 +2131,81 @@ function renderCoachOverview(data) {
     progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore de données.</div>';
   }
 
+  // RECENT_ENGINE : Variabilité + Charge accumulée (ajout sous le bloc récup)
+  const j7recent = ((data.recent || {}).j7 || {});
+  const monotonie7 = j7recent.monotonie;
+  const strain7    = j7recent.strain;
+  if (recupEl && (monotonie7 != null || strain7 != null)) {
+    const monotonieStr   = monotonie7 != null ? monotonie7.toFixed(2) : null;
+    const strainStr      = strain7 != null ? Math.round(strain7) : null;
+    const monotonieColor = monotonie7 == null ? '#aaa' : monotonie7 > 2 ? '#e5484d' : monotonie7 > 1.5 ? '#f59f00' : '#00c96e';
+    const monotonieLabel = monotonie7 == null ? '' : monotonie7 > 2 ? 'Charge monotone' : monotonie7 > 1.5 ? 'Modérée' : 'Variée';
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--border);padding-top:10px;margin-top:10px;';
+    grid.innerHTML = `
+      <div style="text-align:center;">
+        <div style="font-size:17px;font-weight:800;color:${monotonieColor};">${monotonieStr || '—'}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Variabilité · 7j</div>
+        ${monotonieLabel ? `<div style="font-size:9px;color:${monotonieColor};margin-top:1px;">${monotonieLabel}</div>` : ''}
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:17px;font-weight:800;color:var(--text);">${strainStr != null ? strainStr.toLocaleString('fr') : '—'}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Charge accumulée · 7j</div>
+      </div>`;
+    recupEl.appendChild(grid);
+  }
+
   // Volume par muscle — barres v2
   renderDashVolumeBars(data.historique ? (data.historique.volume_semaine || []) : [], 'cd-muscle');
+
+  // GLOBAL_ENGINE : Muscle en retard — bannière au-dessus des barres
+  const globalEng = data.global || {};
+  if (globalEng.muscle_retard) {
+    const mr = globalEng.muscle_retard;
+    const muscleEl = document.getElementById('cd-muscle');
+    if (muscleEl) {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:rgba(245,159,0,0.12);border:1px solid rgba(245,159,0,0.35);border-radius:8px;padding:8px 11px;margin-bottom:10px;display:flex;align-items:center;gap:8px;';
+      banner.innerHTML = `<span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${mr.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">GLOBAL_ENGINE</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${mr.series_faites} séries / ${mr.series_min} min · objectif ${mr.series_optimale} séries</div></div>`;
+      muscleEl.insertBefore(banner, muscleEl.firstChild);
+    }
+  }
+
+  // COMPARISON_ENGINE : Tendance mensuelle j28 vs j28prec
+  const cmp28 = (data.comparison || {}).j28_vs_j28prec || {};
+  const cmp28Sec  = document.getElementById('cd-cmp28-sec');
+  const cmp28Card = document.getElementById('cd-cmp28-card');
+  const cmp28El   = document.getElementById('cd-cmp28-content');
+  if (cmp28El && (cmp28.tonnage || cmp28.seances || cmp28.charge)) {
+    if (cmp28Sec)  cmp28Sec.style.display  = '';
+    if (cmp28Card) cmp28Card.style.display = '';
+    const t28 = cmp28.tonnage || {}, s28 = cmp28.seances || {}, c28 = cmp28.charge || {}, rpe28 = cmp28.rpe || {};
+    const fmtEvol = v => v == null ? '—' : v > 0 ? '▲ +'+v+'%' : v < 0 ? '▼ '+v+'%' : '→ stable';
+    const colEvol = v => v == null ? 'var(--text-muted)' : v >= 5 ? 'var(--good)' : v <= -10 ? 'var(--bad)' : 'var(--warn)';
+    cmp28El.innerHTML = `
+      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;opacity:.7;">COMPARISON_ENGINE · 28j vs 28j précédents</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 11px;">
+          <div style="font-size:14px;font-weight:800;color:${colEvol(t28.evol_pct)};">${fmtEvol(t28.evol_pct)}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Tonnage · 28j</div>
+          ${t28.courant != null ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${t28.courant}t vs ${t28.precedent}t</div>` : ''}
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 11px;">
+          <div style="font-size:14px;font-weight:800;color:${colEvol(c28.evol_pct)};">${c28.evol_pct != null ? (c28.evol_pct > 0 ? '▲ +'+c28.evol_pct+'%' : c28.evol_pct < 0 ? '▼ '+c28.evol_pct+'%' : '→ stable') : '—'}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Charges · 28j</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 11px;">
+          <div style="font-size:14px;font-weight:800;color:${colEvol(s28.evol_pct)};">${fmtEvol(s28.evol_pct)}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Séances · 28j</div>
+          ${s28.courant != null ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${s28.courant} vs ${s28.precedent}</div>` : ''}
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 11px;">
+          <div style="font-size:14px;font-weight:800;color:${rpe28.diff != null ? (rpe28.diff > 0.5 ? 'var(--bad)' : rpe28.diff < -0.5 ? 'var(--good)' : 'var(--text)') : 'var(--text-muted)'};">${rpe28.courant != null ? rpe28.courant : '—'}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">RPE moyen · 28j</div>
+          ${rpe28.diff != null ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${rpe28.diff > 0 ? '+' : ''}${rpe28.diff} vs préc.</div>` : ''}
+        </div>
+      </div>`;
+  }
 }
 
 function renderCoachExerciceSelect(data) {
