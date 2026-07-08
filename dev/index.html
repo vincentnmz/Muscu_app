@@ -1982,7 +1982,7 @@ function renderCoachOverview(data) {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color}">${r.rpe_moyen !== null ? r.rpe_moyen : '—'}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
-        <div class="dash-stat"><div class="dash-stat-num" style="color:${r.charge_color}">${r.charge_evol !== null ? (r.charge_evol > 0 ? '+' : '') + r.charge_evol + '%' : '—'}</div><div class="dash-stat-label">Charge vs S-1</div></div>
+        <div class="dash-stat"><div class="dash-stat-num" style="color:${dash.tonnage ? (dash.tonnage.evol >= 0 ? '#00c96e' : '#f59f00') : '#aaa'};font-size:15px">${dash.tonnage ? dash.tonnage.semaine + 't' : '—'}</div><div class="dash-stat-label">Tonnage sem.</div></div>
         <div class="dash-stat"><div class="dash-stat-num" style="color:#f5a524;font-size:18px">🔥${dash.streak ? dash.streak.semaines : 0}</div><div class="dash-stat-label">Sem. d'affilée</div></div>
       </div>
       <div style="border-left:3px solid ${sc};background:var(--surface2);border-radius:0 10px 10px 0;padding:9px 11px">
@@ -4989,13 +4989,16 @@ async function chargerAppData() {
         kpisEl.style.gridTemplateColumns = '1fr 1fr 1fr 1fr';
         kpisEl.innerHTML = `
           <div class="v2-kpi"><div class="kv" style="color:${r.rpe_color};">${r.rpe_moyen !== null ? r.rpe_moyen : '—'}</div><div class="kk">RPE moyen · 7j</div></div>
-          <div class="v2-kpi"><div class="kv" style="color:${r.charge_color};">${r.charge_evol !== null ? (r.charge_evol > 0 ? '+' : '') + r.charge_evol + '%' : '—'}</div><div class="kk">Charge vs S-1</div></div>
+          <div class="v2-kpi">
+            <div class="kv" style="color:${dash.tonnage ? (dash.tonnage.evol >= 0 ? '#00c96e' : '#f59f00') : '#aaa'};">${dash.tonnage ? dash.tonnage.semaine + 't' : '—'}</div>
+            <div class="kk">Tonnage · sem.${dash.tonnage && dash.tonnage.evol !== null ? ' <span style="font-size:10px;opacity:.7">' + (dash.tonnage.evol > 0 ? '▲+' : '▼') + dash.tonnage.evol + '%</span>' : ''}</div>
+          </div>
           <div class="v2-kpi" style="cursor:pointer" onclick="switchTab('records')" title="Voir les records">
             <div class="kv" style="color:#f5a524;">🔥 ${dash.streak ? dash.streak.semaines : 0}</div>
             <div class="kk">Sem. d'affilée</div>
           </div>
           <div class="v2-kpi" style="cursor:pointer" onclick="switchTab('records')" title="Voir les records">
-            <div class="kv" style="color:#00c96e;">⚡ ${dash.records_mois !== undefined ? dash.records_mois : '—'}</div>
+            <div class="kv" style="color:#00c96e;">⚡ ${dash.records_mois > 0 ? dash.records_mois : '—'}</div>
             <div class="kk">Records · 30j</div>
           </div>`;
       }
