@@ -619,8 +619,8 @@
         <div id="cd-regression"></div>
       </div>
 
-      <!-- Tendance mensuelle — COMPARISON_ENGINE j28 vs j28prec -->
-      <div class="v2-sec" id="cd-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">COMPARISON_ENGINE</div></div>
+      <!-- Tendance mensuelle — Évolution j28 vs j28prec -->
+      <div class="v2-sec" id="cd-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">28j vs mois préc.</div></div>
       <div class="dash-card" id="cd-cmp28-card" style="padding:16px;display:none;">
         <div id="cd-cmp28-content"></div>
       </div>
@@ -810,11 +810,11 @@
         </div>
       </div>
 
-      <!-- KPI ROW — RECENT_ENGINE + COMPARISON_ENGINE -->
+      <!-- KPI ROW — Charge récente + Évolution -->
       <div class="v2-kpis" id="dash-kpis" style="display:none;"></div>
 
-      <!-- Stats carrière — GLOBAL_ENGINE -->
-      <div class="v2-sec" id="dash-global-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">GLOBAL_ENGINE</div></div>
+      <!-- Stats carrière — Historique global -->
+      <div class="v2-sec" id="dash-global-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
       <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
         <div id="dash-global-content"></div>
       </div>
@@ -849,8 +849,8 @@
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
       </div>
 
-      <!-- Tendance mensuelle — COMPARISON_ENGINE j28 vs j28prec -->
-      <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">COMPARISON_ENGINE</div></div>
+      <!-- Tendance mensuelle — Évolution j28 vs j28prec -->
+      <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
       <div class="dash-card" id="dash-cmp28-card" style="padding:16px;display:none;">
         <div id="dash-cmp28-content"></div>
       </div>
@@ -973,9 +973,9 @@
                 <div style="flex:1;min-width:0">
                   <div class="saisie-lbl">Charge (kg)</div>
                   <div class="stepper-row">
-                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',-2.5)">−</button>
+                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',-0.5)">−</button>
                     <input type="number" id="inp-charge" class="stepper-num" placeholder="0" step="0.5" min="0" inputmode="decimal">
-                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',2.5)">+</button>
+                    <button type="button" class="stepper-btn" onclick="stepValue('inp-charge',0.5)">+</button>
                   </div>
                 </div>
                 <div style="flex:1;min-width:0">
@@ -2074,7 +2074,7 @@ function renderCoachOverview(data) {
     document.getElementById('cd-derniere-nom').textContent = '';
   }
 
-  // Récupération — depuis RECENT_ENGINE ou ancien champ
+  // Récupération — depuis Charge récente ou ancien champ
   const recupEl = document.getElementById('cd-recup');
   const recupObj = buildRecupFromData(data) || dash.recuperation || null;
   if (recupObj) {
@@ -2131,7 +2131,7 @@ function renderCoachOverview(data) {
     progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore de données.</div>';
   }
 
-  // RECENT_ENGINE : Variabilité + Charge accumulée (ajout sous le bloc récup)
+  // Charge récente : Variabilité + Charge accumulée (ajout sous le bloc récup)
   const j7recent = ((data.recent || {}).j7 || {});
   const monotonie7 = j7recent.monotonie;
   const strain7    = j7recent.strain;
@@ -2158,7 +2158,7 @@ function renderCoachOverview(data) {
   // Volume par muscle — barres v2
   renderDashVolumeBars(data.historique ? (data.historique.volume_semaine || []) : [], 'cd-muscle');
 
-  // GLOBAL_ENGINE : Muscle en retard — bannière au-dessus des barres
+  // Historique global : Muscle en retard — bannière au-dessus des barres
   const globalEng = data.global || {};
   if (globalEng.muscle_retard) {
     const mr = globalEng.muscle_retard;
@@ -2166,12 +2166,12 @@ function renderCoachOverview(data) {
     if (muscleEl) {
       const banner = document.createElement('div');
       banner.style.cssText = 'background:rgba(245,159,0,0.12);border:1px solid rgba(245,159,0,0.35);border-radius:8px;padding:8px 11px;margin-bottom:10px;display:flex;align-items:center;gap:8px;';
-      banner.innerHTML = `<span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${mr.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">GLOBAL_ENGINE</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${mr.series_faites} séries / ${mr.series_min} min · objectif ${mr.series_optimale} séries</div></div>`;
+      banner.innerHTML = `<span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${mr.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">Historique global</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${mr.series_faites} séries / ${mr.series_min} min · objectif ${mr.series_optimale} séries</div></div>`;
       muscleEl.insertBefore(banner, muscleEl.firstChild);
     }
   }
 
-  // COMPARISON_ENGINE : Tendance mensuelle j28 vs j28prec
+  // Évolution : Tendance mensuelle j28 vs j28prec
   const cmp28 = (data.comparison || {}).j28_vs_j28prec || {};
   const cmp28Sec  = document.getElementById('cd-cmp28-sec');
   const cmp28Card = document.getElementById('cd-cmp28-card');
@@ -2183,7 +2183,7 @@ function renderCoachOverview(data) {
     const fmtEvol = v => v == null ? '—' : v > 0 ? '▲ +'+v+'%' : v < 0 ? '▼ '+v+'%' : '→ stable';
     const colEvol = v => v == null ? 'var(--text-muted)' : v >= 5 ? 'var(--good)' : v <= -10 ? 'var(--bad)' : 'var(--warn)';
     cmp28El.innerHTML = `
-      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;opacity:.7;">COMPARISON_ENGINE · 28j vs 28j précédents</div>
+      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;opacity:.7;">Évolution · 28j vs 28j précédents</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div style="background:var(--surface2);border-radius:10px;padding:10px 11px;">
           <div style="font-size:14px;font-weight:800;color:${colEvol(t28.evol_pct)};">${fmtEvol(t28.evol_pct)}</div>
@@ -2334,7 +2334,7 @@ function afficherCoachTendances(semaines) {
 
 // Calcul commun des 5 marqueurs (utilisé par les feux du détail ET le tableau accueil)
 // -> garantit des chiffres identiques partout. `a` = objet athlète (annees_pratique + alertes)
-// Reconstruit un objet récupération depuis les nouvelles données RECENT_ENGINE
+// Reconstruit un objet récupération depuis les nouvelles données Charge récente
 function buildRecupFromData(data) {
   const recent = data.recent || {};
   const j7 = recent.j7 || {};
@@ -2366,7 +2366,7 @@ function computeMarqueursCoach(data, a) {
   else if (enProg === enBaisse) { progColor = '#f59f00'; progLabel = `${enProg}↑/${enBaisse}↓`; }
   else { progColor = '#e5484d'; progLabel = `${enProg}↑/${enBaisse}↓`; }
 
-  // 2. ACWR — priorité au ratio précalculé par RECENT_ENGINE
+  // 2. ACWR — priorité au ratio précalculé par Charge récente
   let acwrColor, acwrLabel, acwrRatio = null;
   const acwrBackend = dash.acwr || null;
   if (acwrBackend != null) {
@@ -2426,7 +2426,7 @@ function computeMarqueursCoach(data, a) {
     else { regColor = '#e5484d'; regLabel = `${faites}/${prevues}`; }
   }
 
-  // 5. Récupération — depuis RECENT_ENGINE ou ancien champ
+  // 5. Récupération — depuis Charge récente ou ancien champ
   const recupObj = buildRecupFromData(data) || dash.recuperation || {};
   let recupColor, recupLabel;
   if (!recupObj.statut) { recupColor = '#aaa'; recupLabel = 'N/A'; }
@@ -3718,6 +3718,11 @@ function switchSubTab(sub) {
 async function demarrerSeance() {
   const seanceId = document.getElementById('sel-seance-id').value;
   if (!seanceId) return;
+
+  if (seance.length > 0) {
+    const ok = confirm(`Tu as déjà ${seance.length} série${seance.length > 1 ? 's' : ''} enregistrée${seance.length > 1 ? 's' : ''} dans cette séance.\n\nSi tu continues, tout sera perdu.\n\nAbandonner la séance en cours ?`);
+    if (!ok) return;
+  }
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   document.getElementById('btn-valider').style.display = 'none';
@@ -5157,16 +5162,16 @@ async function chargerAppData() {
     // DASHBOARD — lecture directe des 3 moteurs
     // =========================================================================
     const dash       = data.dashboard;
-    const recent     = data.recent     || {};   // RECENT_ENGINE
-    const globalEng  = data.global     || {};   // GLOBAL_ENGINE
-    const comparison = data.comparison || {};   // COMPARISON_ENGINE
+    const recent     = data.recent     || {};   // Charge récente
+    const globalEng  = data.global     || {};   // Historique global
+    const comparison = data.comparison || {};   // Évolution
 
     const j7  = recent.j7  || {};
     const j28 = recent.j28 || {};
     const cmp7  = comparison.j7_vs_j7prec  || {};
     const cmp28 = comparison.j28_vs_j28prec || {};
 
-    // ── RECENT_ENGINE : Régularité (fenêtre 7j glissants) ────────────────────
+    // ── Charge récente : Régularité (fenêtre 7j glissants) ────────────────────
     const faites = j7.seances != null ? j7.seances : (dash.regularite ? (dash.regularite.seances_j7 || dash.regularite.seances_semaine || 0) : 0);
     const prevues = dash.regularite ? (dash.regularite.seances_prevues || 0) : 0;
     const pct = prevues > 0 ? Math.min(100, Math.round(faites / prevues * 100)) : 0;
@@ -5186,19 +5191,19 @@ async function chargerAppData() {
     // ── Volume par muscle — barres (volume_semaine = calendrier, conservé pour affichage) ──
     renderDashVolumeBars(data.historique.volume_semaine || []);
 
-    // GLOBAL_ENGINE : muscle en retard — bandeau au-dessus des barres
+    // Historique global : muscle en retard — bandeau au-dessus des barres
     if (globalEng.muscle_retard) {
       const mr = globalEng.muscle_retard;
       const muscleEl = document.getElementById('dash-muscle-content');
       if (muscleEl) {
         const banner = document.createElement('div');
         banner.style.cssText = 'background:rgba(245,159,0,0.12);border:1px solid rgba(245,159,0,0.35);border-radius:8px;padding:8px 11px;margin-bottom:10px;display:flex;align-items:center;gap:8px;';
-        banner.innerHTML = `<span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${mr.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">GLOBAL_ENGINE</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${mr.series_faites} séries / ${mr.series_min} min · objectif ${mr.series_optimale} séries</div></div>`;
+        banner.innerHTML = `<span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${mr.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">Historique global</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${mr.series_faites} séries / ${mr.series_min} min · objectif ${mr.series_optimale} séries</div></div>`;
         muscleEl.prepend(banner);
       }
     }
 
-    // ── COMPARISON_ENGINE : Progression des charges (j7 vs j7prec) ───────────
+    // ── Évolution : Progression des charges (j7 vs j7prec) ───────────
     const progEl = document.getElementById('dash-prog-content');
     const chargeDetails = cmp7.charge_details || (dash.progression ? dash.progression.details : null) || [];
     const enProg   = chargeDetails.filter(d => d.up).length;
@@ -5216,7 +5221,7 @@ async function chargerAppData() {
           <span style="font-size:11px;color:var(--danger);white-space:nowrap;">${d.variation}</span>
         </div>`).join('');
       progEl.innerHTML = `
-        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;opacity:.7;">COMPARISON_ENGINE · 7j vs 7j précédents</div>
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;opacity:.7;">Évolution · 7j vs 7j précédents</div>
         <div class="v2-pgrid" style="margin-bottom:${(enProg||enBaisse)?'12px':'0'};">
           <div class="v2-pstat" style="background:var(--good-a);"><div class="pn" style="color:var(--good);">${enProg}</div><div class="pk">exercices<br>en hausse</div></div>
           <div class="v2-pstat" style="background:var(--bad-a);"><div class="pn" style="color:var(--v2-bad);">${enBaisse}</div><div class="pk">exercices<br>en baisse</div></div>
@@ -5226,15 +5231,15 @@ async function chargerAppData() {
         ${enProg === 0 && enBaisse === 0 ? '<div style="color:var(--text-muted);font-size:13px;">Charges stables · 7 derniers jours</div>' : ''}`;
     } else {
       progEl.innerHTML = `
-        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;opacity:.7;">COMPARISON_ENGINE · 7j vs 7j précédents</div>
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;opacity:.7;">Évolution · 7j vs 7j précédents</div>
         <div style="color:var(--text-muted);font-size:13px;">Pas encore assez de séances pour comparer — il faut au moins une séance dans les 7j précédents.</div>`;
     }
 
-    // ── RECENT_ENGINE + COMPARISON_ENGINE : KPI row ───────────────────────────
+    // ── Charge récente + Évolution : KPI row ───────────────────────────
     const recupEl = document.getElementById('dash-recup-content');
     const kpisEl  = document.getElementById('dash-kpis');
 
-    // Récupération : statut depuis RECENT_ENGINE (RPE 7j)
+    // Récupération : statut depuis Charge récente (RPE 7j)
     const rpe7      = j7.rpe_moyen != null ? j7.rpe_moyen : null;
     const rpeColor  = rpe7 == null ? '#aaa' : rpe7 > 8.5 ? '#e5484d' : rpe7 > 7.5 ? '#f59f00' : '#00c96e';
     const recupStatut = rpe7 == null ? null : rpe7 > 8.5 ? 'eleve' : rpe7 > 7.5 ? 'modere' : 'optimal';
@@ -5243,15 +5248,15 @@ async function chargerAppData() {
     const recupDesc   = recupStatut === 'eleve' ? 'Repos conseillé, réduis l\'intensité.' : recupStatut === 'modere' ? 'Surveille ta récup, garde une marge.' : 'Charge et RPE maîtrisés, tu peux pousser.';
     const recupColor  = recupStatut === 'eleve' ? 'var(--v2-bad)' : recupStatut === 'modere' ? 'var(--warn)' : 'var(--good)';
 
-    // Tonnage 7j depuis RECENT_ENGINE + évolution depuis COMPARISON_ENGINE
+    // Tonnage 7j depuis Charge récente + évolution depuis Évolution
     const tonnageJ7   = j7.tonnage != null ? j7.tonnage : null;
     const tonnageEvol = cmp7.tonnage ? cmp7.tonnage.evol_pct : null;
     const tonnageColor = tonnageEvol == null ? '#aaa' : tonnageEvol >= 0 ? '#00c96e' : '#f59f00';
 
-    // Records 30j depuis GLOBAL_ENGINE
+    // Records 30j depuis Historique global
     const records30 = globalEng.records_30j != null ? globalEng.records_30j : (dash.records_mois || 0);
 
-    // ACWR depuis RECENT_ENGINE (via dashboard.acwr)
+    // ACWR depuis Charge récente (via dashboard.acwr)
     const acwrVal   = dash.acwr != null ? dash.acwr : null;
 
     if (kpisEl) {
@@ -5276,7 +5281,7 @@ async function chargerAppData() {
         </div>`;
     }
 
-    // Monotonie et Strain depuis RECENT_ENGINE
+    // Monotonie et Strain depuis Charge récente
     const monotonie7 = j7.monotonie;
     const strain7    = j7.strain;
     const monotonieStr = monotonie7 != null ? monotonie7.toFixed(2) : null;
@@ -5286,7 +5291,7 @@ async function chargerAppData() {
 
     if (recupStatut) {
       recupEl.innerHTML = `
-        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;opacity:.7;">RECENT_ENGINE · RPE moyen 7j glissants</div>
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;opacity:.7;">Charge récente · RPE moyen 7j glissants</div>
         <div style="display:flex;align-items:center;gap:13px;margin-bottom:12px;">
           <div style="width:50px;height:50px;border-radius:14px;background:${recupColor}22;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;">${recupEmoji}</div>
           <div style="flex:1;min-width:0;">
@@ -5310,7 +5315,7 @@ async function chargerAppData() {
       recupEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;">Pas encore assez de données — continue à t'entraîner !</div>`;
     }
 
-    // ── COMPARISON_ENGINE : Tendance mensuelle (j28 vs j28prec) ─────────────
+    // ── Évolution : Tendance mensuelle (j28 vs j28prec) ─────────────
     const cmp28Sec  = document.getElementById('dash-cmp28-sec');
     const cmp28Card = document.getElementById('dash-cmp28-card');
     const cmp28El   = document.getElementById('dash-cmp28-content');
@@ -5324,7 +5329,7 @@ async function chargerAppData() {
       const fmtEvol = (v) => v == null ? '—' : (v > 0 ? '▲ +'+v+'%' : v < 0 ? '▼ '+v+'%' : '→ stable');
       const colEvol = (v) => v == null ? 'var(--text-muted)' : v >= 5 ? 'var(--good)' : v <= -10 ? 'var(--bad)' : 'var(--warn)';
       cmp28El.innerHTML = `
-        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;opacity:.7;">COMPARISON_ENGINE · 28j vs 28j précédents</div>
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;opacity:.7;">Évolution · 28j vs 28j précédents</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div style="background:var(--surface2);border-radius:10px;padding:10px 11px;">
             <div style="font-size:14px;font-weight:800;color:${colEvol(t28.evol_pct)};">${fmtEvol(t28.evol_pct)}</div>
@@ -5348,7 +5353,7 @@ async function chargerAppData() {
         </div>`;
     }
 
-    // ── GLOBAL_ENGINE : Stats carrière ────────────────────────────────────────
+    // ── Historique global : Stats carrière ────────────────────────────────────────
     const globalCardEl = document.getElementById('dash-global-card');
     const globalSecEl  = document.getElementById('dash-global-sec');
     if (globalEng.total_seances > 0 && globalCardEl) {
