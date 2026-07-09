@@ -500,6 +500,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
         <button id="btn-theme-coach" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 9px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-sun"/></svg></button>
+        <button onclick="ouvrirReglagesCoach()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 9px;font-size:13px;cursor:pointer;" title="Réglages"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
         <button class="logout-btn" onclick="seDeconnecterCoach()" style="white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déconnexion</button>
       </div>
     </div>
@@ -527,6 +528,36 @@
 
       <!-- Bloc prioritaire + liste d'athlètes -->
       <div id="coach-synthese"><div class="loader">Chargement...</div></div>
+    </div>
+
+    <!-- DRAWER RÉGLAGES COACH -->
+    <div id="coach-reglages-overlay" onclick="fermerReglagesCoach()" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:998;"></div>
+    <div id="coach-reglages-drawer" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border);z-index:999;padding:0 0 env(safe-area-inset-bottom,0px);box-shadow:var(--shadow-lg);transition:transform 0.25s ease;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;">
+        <div style="font-size:16px;font-weight:800;">Réglages</div>
+        <button onclick="fermerReglagesCoach()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1;padding:4px;">✕</button>
+      </div>
+      <div style="padding:0 20px 24px;display:flex;flex-direction:column;gap:10px;">
+
+        <!-- Mon compte coach -->
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px;">Mon compte</div>
+        <div class="card" style="padding:14px 16px;margin:0;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;" id="coach-reglages-nom">—</div>
+          <div style="font-size:11px;color:var(--text-muted);">Coach connecté</div>
+        </div>
+
+        <!-- Déconnexion -->
+        <button onclick="seDeconnecterCoach();fermerReglagesCoach();" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          Se déconnecter
+        </button>
+
+        <!-- Zone danger -->
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Zone dangereuse</div>
+        <button onclick="supprimerCompteCoach()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte coach</button>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Action irréversible. Le lien avec vos athlètes sera supprimé.</div>
+
+      </div>
     </div>
 
     <!-- MODAL LIER UN ATHLÈTE -->
@@ -1507,6 +1538,27 @@ async function seConnecterCoach() {
       ouvrirEspaceCoach();
     } else { errEl.textContent = data.error || 'Login ou mot de passe incorrect.'; }
   } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
+}
+
+function ouvrirReglagesCoach() {
+  const overlay = document.getElementById('coach-reglages-overlay');
+  const drawer  = document.getElementById('coach-reglages-drawer');
+  const nomEl   = document.getElementById('coach-reglages-nom');
+  if (nomEl && coach) nomEl.textContent = coach.nom || 'Coach';
+  if (overlay) { overlay.style.display = 'block'; }
+  if (drawer)  { drawer.style.display = 'block'; }
+}
+
+function fermerReglagesCoach() {
+  document.getElementById('coach-reglages-overlay').style.display = 'none';
+  document.getElementById('coach-reglages-drawer').style.display = 'none';
+}
+
+function supprimerCompteCoach() {
+  if (!coach || !coach.coach_id) return;
+  if (!confirm('Supprimer définitivement votre compte coach ? Cette action est irréversible.')) return;
+  if (!confirm('Dernière confirmation : êtes-vous sûr ?')) return;
+  showToast('Fonctionnalité bientôt disponible.', '#f59f00');
 }
 
 function seDeconnecterCoach() {
