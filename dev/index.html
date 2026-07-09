@@ -1559,7 +1559,7 @@ async function supprimerCompteCoach() {
   if (!confirm('Supprimer définitivement votre compte coach ?\n\nVos athlètes seront déliés mais leurs données conservées. Cette action est irréversible.')) return;
   if (!confirm('Dernière confirmation : voulez-vous vraiment supprimer ce compte ?')) return;
   try {
-    const res = await fetch(GAS_URL, {
+    const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action: 'deleteCoach', coach_id: coach.coach_id })
     });
