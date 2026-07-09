@@ -1283,11 +1283,11 @@
     <div class="wq-block">
       <div class="wq-label">💪 Fatigue musculaire</div>
       <div class="wq-chips" id="wq-fatigue">
-        <button class="wq-chip" data-val="1" onclick="selectWQ('fatigue',this)">Aucune</button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('fatigue',this)">Faible</button>
+        <button class="wq-chip" data-val="5" onclick="selectWQ('fatigue',this)">Aucune</button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('fatigue',this)">Faible</button>
         <button class="wq-chip" data-val="3" onclick="selectWQ('fatigue',this)">Modérée</button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('fatigue',this)">Importante</button>
-        <button class="wq-chip" data-val="5" onclick="selectWQ('fatigue',this)">Très importante</button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('fatigue',this)">Importante</button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('fatigue',this)">Très importante</button>
       </div>
     </div>
 
@@ -1295,11 +1295,11 @@
     <div class="wq-block">
       <div class="wq-label">🤕 Douleur</div>
       <div class="wq-chips" id="wq-douleur">
-        <button class="wq-chip" data-val="0" onclick="selectWQ('douleur',this)">Aucune</button>
-        <button class="wq-chip" data-val="1" onclick="selectWQ('douleur',this)">Légère</button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('douleur',this)">Modérée</button>
-        <button class="wq-chip" data-val="3" onclick="selectWQ('douleur',this)">Forte</button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('douleur',this)">Très forte</button>
+        <button class="wq-chip" data-val="5" onclick="selectWQ('douleur',this)">Aucune</button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('douleur',this)">Légère</button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('douleur',this)">Modérée</button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('douleur',this)">Forte</button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('douleur',this)">Très forte</button>
       </div>
     </div>
 
@@ -4453,19 +4453,29 @@ function supprimerSerie(index) {
 
 // ==================== VALIDATION ====================
 // ── État bien-être courant ──────────────────────────────────────────────────
+// ── Mapping bien-être : 5 = très positif, 1 = très négatif (échelle uniforme) ──
+// Chaque marqueur : { label (UI), val (BDD 1–5) }
+// Fatigue et Douleur sont inversées : moins = mieux → score élevé
+const WELLNESS_CONFIG = {
+  sommeil:  { label: 'Qualité du sommeil',        douleurConditional: false },
+  energie:  { label: "Niveau d'énergie",           douleurConditional: false },
+  fatigue:  { label: 'Fatigue musculaire',          douleurConditional: false }, // inversé dans le HTML
+  douleur:  { label: 'Douleur',                    douleurConditional: true  }, // inversé + zone conditionnelle
+  ressenti: { label: 'Ressenti de la séance',      douleurConditional: false }
+};
+// Valeur "sans douleur" = 5 (Aucune). Zone s'affiche quand douleur < 5.
+const WELLNESS_NO_PAIN_VAL = '5';
+
 const wellnessState = { sommeil: null, energie: null, fatigue: null, douleur: null, zone: null, ressenti: null };
 
 function ouvrirWellnessModal() {
-  // Reset état
   Object.keys(wellnessState).forEach(k => wellnessState[k] = null);
   document.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
   document.getElementById('wq-zone-block').style.display = 'none';
-  // Afficher
   document.getElementById('wellness-overlay').style.display = 'block';
   const modal = document.getElementById('wellness-modal');
   modal.style.display = 'flex';
   modal.style.flexDirection = 'column';
-  requestAnimationFrame(() => { modal.style.transform = 'translateY(0)'; });
 }
 
 function fermerWellnessModal() {
@@ -4474,16 +4484,17 @@ function fermerWellnessModal() {
 }
 
 function selectWQ(question, btn) {
-  // Désélectionner les autres chips de la même question
   const container = document.getElementById('wq-' + question);
   container.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
   btn.classList.add('selected');
-  wellnessState[question] = btn.dataset.val;
-  // Afficher/masquer zone douloureuse
+  wellnessState[question] = Number(btn.dataset.val); // toujours numérique en BDD
   if (question === 'douleur') {
-    const hasPain = btn.dataset.val !== '0';
+    const hasPain = btn.dataset.val !== WELLNESS_NO_PAIN_VAL;
     document.getElementById('wq-zone-block').style.display = hasPain ? 'block' : 'none';
-    if (!hasPain) { wellnessState.zone = null; document.querySelectorAll('#wq-zone .wq-chip').forEach(c => c.classList.remove('selected')); }
+    if (!hasPain) {
+      wellnessState.zone = null;
+      document.querySelectorAll('#wq-zone .wq-chip').forEach(c => c.classList.remove('selected'));
+    }
   }
 }
 
