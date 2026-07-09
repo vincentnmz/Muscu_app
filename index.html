@@ -1241,6 +1241,131 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- ===== MODAL BIEN-ÊTRE PRÉ/POST SÉANCE ===== -->
+<div id="wellness-overlay" onclick="fermerWellnessModal()" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:300;"></div>
+<div id="wellness-modal" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:301;background:var(--surface);border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;">
+
+  <!-- Poignée + header -->
+  <div style="padding:10px 16px 0;text-align:center;flex-shrink:0;">
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px;"></div>
+    <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px;">Comment tu te sens ?</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">30 secondes · optionnel mais utile pour ton suivi</div>
+  </div>
+
+  <!-- Contenu scrollable -->
+  <div style="overflow-y:auto;padding:0 16px;flex:1;">
+
+    <!-- Q1 : Sommeil -->
+    <div class="wq-block">
+      <div class="wq-label">😴 Qualité du sommeil</div>
+      <div class="wq-chips" id="wq-sommeil">
+        <button class="wq-chip" data-val="5" onclick="selectWQ('sommeil',this)">Excellent</button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('sommeil',this)">Bon</button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('sommeil',this)">Moyen</button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('sommeil',this)">Mauvais</button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('sommeil',this)">Très mauvais</button>
+      </div>
+    </div>
+
+    <!-- Q2 : Énergie -->
+    <div class="wq-block">
+      <div class="wq-label">⚡ Niveau d'énergie</div>
+      <div class="wq-chips" id="wq-energie">
+        <button class="wq-chip" data-val="5" onclick="selectWQ('energie',this)">Très élevé</button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('energie',this)">Élevé</button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('energie',this)">Normal</button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('energie',this)">Faible</button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('energie',this)">Très faible</button>
+      </div>
+    </div>
+
+    <!-- Q3 : Fatigue musculaire -->
+    <div class="wq-block">
+      <div class="wq-label">💪 Fatigue musculaire</div>
+      <div class="wq-chips" id="wq-fatigue">
+        <button class="wq-chip" data-val="1" onclick="selectWQ('fatigue',this)">Aucune</button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('fatigue',this)">Faible</button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('fatigue',this)">Modérée</button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('fatigue',this)">Importante</button>
+        <button class="wq-chip" data-val="5" onclick="selectWQ('fatigue',this)">Très importante</button>
+      </div>
+    </div>
+
+    <!-- Q4 : Douleur -->
+    <div class="wq-block">
+      <div class="wq-label">🤕 Douleur</div>
+      <div class="wq-chips" id="wq-douleur">
+        <button class="wq-chip" data-val="0" onclick="selectWQ('douleur',this)">Aucune</button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('douleur',this)">Légère</button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('douleur',this)">Modérée</button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('douleur',this)">Forte</button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('douleur',this)">Très forte</button>
+      </div>
+    </div>
+
+    <!-- Q4b : Zone douloureuse (conditionnelle) -->
+    <div class="wq-block" id="wq-zone-block" style="display:none;">
+      <div class="wq-label" style="font-size:12px;color:var(--text-muted);">📍 Zone douloureuse</div>
+      <div class="wq-chips wq-chips-wrap" id="wq-zone">
+        <button class="wq-chip" data-val="epaule"   onclick="selectWQ('zone',this)">Épaule</button>
+        <button class="wq-chip" data-val="coude"    onclick="selectWQ('zone',this)">Coude</button>
+        <button class="wq-chip" data-val="poignet"  onclick="selectWQ('zone',this)">Poignet</button>
+        <button class="wq-chip" data-val="dos"      onclick="selectWQ('zone',this)">Dos</button>
+        <button class="wq-chip" data-val="hanche"   onclick="selectWQ('zone',this)">Hanche</button>
+        <button class="wq-chip" data-val="genou"    onclick="selectWQ('zone',this)">Genou</button>
+        <button class="wq-chip" data-val="cheville" onclick="selectWQ('zone',this)">Cheville</button>
+        <button class="wq-chip" data-val="autre"    onclick="selectWQ('zone',this)">Autre</button>
+      </div>
+    </div>
+
+    <!-- Q5 : Ressenti global -->
+    <div class="wq-block" style="margin-bottom:0;">
+      <div class="wq-label">😊 Ressenti de la séance</div>
+      <div class="wq-chips" id="wq-ressenti">
+        <button class="wq-chip" data-val="5" onclick="selectWQ('ressenti',this)">Très facile</button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('ressenti',this)">Facile</button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('ressenti',this)">Normale</button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('ressenti',this)">Difficile</button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('ressenti',this)">Très difficile</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer : boutons -->
+  <div style="padding:14px 16px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);display:flex;gap:10px;flex-shrink:0;">
+    <button onclick="validerSeanceSansWellness()" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:12px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;">Passer</button>
+    <button onclick="validerSeanceAvecWellness()" id="btn-wellness-valider" style="flex:2;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;">✅ Valider la séance</button>
+  </div>
+</div>
+
+<style>
+.wq-block { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.wq-label { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.wq-chips { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.wq-chips::-webkit-scrollbar { display: none; }
+.wq-chips-wrap { flex-wrap: wrap; overflow-x: visible; }
+.wq-chip {
+  flex-shrink: 0;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.wq-chip.selected {
+  background: var(--accent-a14);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+</style>
+
 <!-- DRAWER PROGRESSION -->
 <div id="drawer-overlay" onclick="fermerDrawer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:99;"></div>
 <div id="drawer-progression" style="position:fixed;bottom:-100%;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-radius:20px 20px 0 0;z-index:100;max-height:85vh;display:flex;flex-direction:column;transition:bottom 0.3s ease;">
@@ -4327,22 +4452,43 @@ function supprimerSerie(index) {
 }
 
 // ==================== VALIDATION ====================
-async function validerSeance() {
-  const totalSeries = seance.reduce((a,e)=>a+e.series.length,0);
-  if (totalSeries === 0) { showToast('Aucune série !', '#ff4444'); return; }
-  
-  // Double confirmation
-  const nbExos = seance.filter(e => e.series.length > 0).length;
-  const confirme = confirm(`✅ Valider la séance ?
+// ── État bien-être courant ──────────────────────────────────────────────────
+const wellnessState = { sommeil: null, energie: null, fatigue: null, douleur: null, zone: null, ressenti: null };
 
-${nbExos} exercice${nbExos>1?'s':''} · ${totalSeries} série${totalSeries>1?'s':''}
+function ouvrirWellnessModal() {
+  // Reset état
+  Object.keys(wellnessState).forEach(k => wellnessState[k] = null);
+  document.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
+  document.getElementById('wq-zone-block').style.display = 'none';
+  // Afficher
+  document.getElementById('wellness-overlay').style.display = 'block';
+  const modal = document.getElementById('wellness-modal');
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => { modal.style.transform = 'translateY(0)'; });
+}
 
-Cette action est irréversible.`);
-  if (!confirme) return;
+function fermerWellnessModal() {
+  document.getElementById('wellness-overlay').style.display = 'none';
+  document.getElementById('wellness-modal').style.display = 'none';
+}
 
+function selectWQ(question, btn) {
+  // Désélectionner les autres chips de la même question
+  const container = document.getElementById('wq-' + question);
+  container.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
+  btn.classList.add('selected');
+  wellnessState[question] = btn.dataset.val;
+  // Afficher/masquer zone douloureuse
+  if (question === 'douleur') {
+    const hasPain = btn.dataset.val !== '0';
+    document.getElementById('wq-zone-block').style.display = hasPain ? 'block' : 'none';
+    if (!hasPain) { wellnessState.zone = null; document.querySelectorAll('#wq-zone .wq-chip').forEach(c => c.classList.remove('selected')); }
+  }
+}
+
+async function _envoyerSeance() {
   const btn = document.getElementById('btn-valider');
   btn.textContent = '⏳ Envoi...'; btn.disabled = true;
-
   const lignes = [];
   seance.forEach(exo => exo.series.forEach(s => {
     lignes.push([
@@ -4351,7 +4497,6 @@ Cette action est irréversible.`);
       s.serie, s.charge, s.reps, s.rpe, s.repos, s.volume
     ]);
   }));
-
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST', mode: 'no-cors',
@@ -4364,6 +4509,45 @@ Cette action est irréversible.`);
     showToast('❌ Erreur envoi', '#ff4444');
     btn.textContent = '✅ Valider la séance'; btn.disabled = false;
   }
+}
+
+async function _envoyerWellness(seanceId, dateSeance) {
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'saveBienEtre',
+        athlete_id: athlete.athlete_id,
+        date:       dateSeance,
+        seance_id:  seanceId,
+        sommeil:    wellnessState.sommeil,
+        energie:    wellnessState.energie,
+        fatigue:    wellnessState.fatigue,
+        douleur:    wellnessState.douleur,
+        zone:       wellnessState.zone,
+        ressenti:   wellnessState.ressenti
+      })
+    });
+  } catch(e) { /* non bloquant */ }
+}
+
+async function validerSeanceAvecWellness() {
+  fermerWellnessModal();
+  const firstSerie = seance[0]?.series[0];
+  if (firstSerie) await _envoyerWellness(firstSerie.seanceId, firstSerie.date);
+  await _envoyerSeance();
+}
+
+async function validerSeanceSansWellness() {
+  fermerWellnessModal();
+  await _envoyerSeance();
+}
+
+function validerSeance() {
+  const totalSeries = seance.reduce((a,e)=>a+e.series.length,0);
+  if (totalSeries === 0) { showToast('Aucune série !', '#ff4444'); return; }
+  ouvrirWellnessModal();
 }
 
 function afficherRecap() {
