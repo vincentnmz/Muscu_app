@@ -1554,11 +1554,31 @@ function fermerReglagesCoach() {
   document.getElementById('coach-reglages-drawer').style.display = 'none';
 }
 
-function supprimerCompteCoach() {
+async function supprimerCompteCoach() {
   if (!coach || !coach.coach_id) return;
-  if (!confirm('Supprimer définitivement votre compte coach ? Cette action est irréversible.')) return;
-  if (!confirm('Dernière confirmation : êtes-vous sûr ?')) return;
-  showToast('Fonctionnalité bientôt disponible.', '#f59f00');
+  if (!confirm('Supprimer définitivement votre compte coach ?\n\nVos athlètes seront déliés mais leurs données conservées. Cette action est irréversible.')) return;
+  if (!confirm('Dernière confirmation : voulez-vous vraiment supprimer ce compte ?')) return;
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'deleteCoach', coach_id: coach.coach_id })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Compte supprimé.');
+      setTimeout(() => {
+        coach = null;
+        localStorage.removeItem('muscu_coach');
+        localStorage.removeItem('muscu_coach_vue');
+        document.body.classList.remove('coach-active');
+        showView('view-landing');
+      }, 1200);
+    } else {
+      showToast('Erreur : ' + (data.error || 'suppression échouée'), '#e5484d');
+    }
+  } catch (err) {
+    showToast('Erreur réseau.', '#e5484d');
+  }
 }
 
 function seDeconnecterCoach() {
@@ -2418,27 +2438,23 @@ function computeMarqueursCoach(data, a) {
   else if (enProg === enBaisse) { progColor = '#f59f00'; progLabel = `${enProg}↑/${enBaisse}↓`; }
   else { progColor = '#e5484d'; progLabel = `${enProg}↑/${enBaisse}↓`; }
 
-  // 2. ACWR — priorité au ratio précalculé par Charge récente
+  // 2. ACWR — vérifier d'abord si on a ≥28 jours d'historique
   let acwrColor, acwrLabel, acwrRatio = null;
+  const acwrLocal = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
   const acwrBackend = dash.acwr || null;
-  if (acwrBackend != null) {
-    acwrRatio = acwrBackend;
-    if (acwrBackend >= 0.8 && acwrBackend <= 1.3) { acwrColor = '#00c96e'; }
-    else if (acwrBackend > 1.5) { acwrColor = '#e5484d'; }
-    else if (acwrBackend > 1.3) { acwrColor = '#f59f00'; }  // 1.3–1.5 : charge modérée-élevée
-    else { acwrColor = '#4da6ff'; }  // < 0.8 : sous-charge (bleu distinct du rouge/orange)
-    acwrLabel = `ACWR ${acwrBackend}`;
+  const acwrInsuffisant = !acwrLocal || acwrLocal.insuffisant;
+  if (!acwrInsuffisant) {
+    // Historique suffisant : utiliser la valeur backend si disponible, sinon locale
+    const ratio = acwrBackend != null ? acwrBackend : acwrLocal.ratio;
+    acwrRatio = ratio;
+    if (ratio >= 0.8 && ratio <= 1.3) { acwrColor = '#00c96e'; }
+    else if (ratio > 1.5) { acwrColor = '#e5484d'; }
+    else if (ratio > 1.3) { acwrColor = '#f59f00'; }
+    else { acwrColor = '#4da6ff'; }  // < 0.8 : sous-charge
+    acwrLabel = `ACWR ${ratio}`;
   } else {
-    const acwr = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
-    if (!acwr || acwr.insuffisant) { acwrColor = '#aaa'; acwrLabel = '—'; }
-    else {
-      acwrRatio = acwr.ratio;
-      if (acwr.ratio >= 0.8 && acwr.ratio <= 1.3) { acwrColor = '#00c96e'; }
-      else if (acwr.ratio > 1.5) { acwrColor = '#e5484d'; }
-      else if (acwr.ratio > 1.3) { acwrColor = '#f59f00'; }
-      else { acwrColor = '#4da6ff'; }  // < 0.8 : sous-charge
-      acwrLabel = `ACWR ${acwr.ratio}`;
-    }
+    // Moins de 28 jours : ne pas afficher l'ACWR
+    acwrColor = '#aaa'; acwrLabel = '< 4 sem.';
   }
 
   // 3. Volume muscles
@@ -2458,9 +2474,9 @@ function computeMarqueursCoach(data, a) {
       if (faites < mev) belowMev = true;
       if (faites < mav) aboveMav = false;
     });
-    if (belowMev) { volColor = 'var(--bad)'; volLabel = 'Sous MEV'; }
-    else if (!aboveMav) { volColor = 'var(--warn)'; volLabel = 'Sous MAV'; }
-    else { volColor = 'var(--good)'; volLabel = 'Volume OK'; }
+    if (belowMev) { volColor = 'var(--bad)'; volLabel = 'Trop peu de séries'; }
+    else if (!aboveMav) { volColor = 'var(--warn)'; volLabel = 'Volume correct'; }
+    else { volColor = 'var(--good)'; volLabel = 'Volume optimal'; }
   }
 
   // 4. Régularité (prorata des jours écoulés)
