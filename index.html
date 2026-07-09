@@ -1243,7 +1243,7 @@
 
 <!-- ===== MODAL BIEN-ÊTRE PRÉ/POST SÉANCE ===== -->
 <div id="wellness-overlay" onclick="fermerWellnessModal()" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:300;"></div>
-<div id="wellness-modal" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:301;background:var(--surface);border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;">
+<div id="wellness-modal" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:301;background:var(--surface);border-radius:20px 20px 0 0;max-height:92vh;flex-direction:column;">
 
   <!-- Poignée + header -->
   <div style="padding:10px 16px 0;text-align:center;flex-shrink:0;">
@@ -4464,6 +4464,7 @@ function ouvrirWellnessModal() {
   document.getElementById('wellness-overlay').style.display = 'block';
   const modal = document.getElementById('wellness-modal');
   modal.style.display = 'flex';
+  modal.style.flexDirection = 'column';
   requestAnimationFrame(() => { modal.style.transform = 'translateY(0)'; });
 }
 
