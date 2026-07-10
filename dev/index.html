@@ -559,6 +559,10 @@
         <button onclick="supprimerCompteCoach()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte coach</button>
         <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Action irréversible. Le lien avec vos athlètes sera supprimé.</div>
 
+        <!-- Diagnostic -->
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Diagnostic</div>
+        <button onclick="debugCoachOuvrir();fermerReglagesCoach();" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">🔧 Données brutes (debug)</button>
+
       </div>
     </div>
 
@@ -585,14 +589,15 @@
       <div style="font-size:16px;font-weight:800;color:var(--text);">Sélectionne un athlète</div>
       <div style="font-size:13px;margin-top:6px;">Choisis un athlète dans la liste pour afficher son suivi.</div>
     </div>
-    <div class="header" style="display:flex;align-items:center;gap:11px;">
-      <button class="btn-sm btn-outline" onclick="retourCoachDetail()" style="flex-shrink:0;padding:8px 10px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>
-      <div id="cd-avatar" style="width:44px;height:44px;border-radius:13px;background:var(--accent-a12);color:var(--accent-strong);font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">–</div>
+    <div class="header" id="cd-header" style="display:flex;align-items:center;gap:9px;position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;transition:transform .25s ease;will-change:transform;">
+      <button class="btn-sm btn-outline" onclick="retourCoachDetail()" title="Retour" style="flex-shrink:0;padding:8px 10px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>
+      <div id="cd-avatar" style="width:40px;height:40px;border-radius:12px;background:var(--accent-a12);color:var(--accent-strong);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">–</div>
       <div style="flex:1;min-width:0;text-align:left;">
-        <h1 id="cd-tab-title" style="font-weight:800;font-size:23px;line-height:1.1;margin:0 0 2px;letter-spacing:-.4px;">Aperçu</h1>
-        <div style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span id="header-nom-athlete-coach" style="font-weight:700;color:var(--text);">Athlète</span><span id="header-niveau-athlete-coach"></span></div>
+        <h1 id="header-nom-athlete-coach" style="font-weight:800;font-size:19px;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Athlète</h1>
+        <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span id="cd-tab-title" style="font-weight:700;color:var(--accent);">Aperçu</span><span id="header-niveau-athlete-coach"></span></div>
       </div>
-      <button class="btn-sm btn-outline" onclick="debugCoachOuvrir()" title="Debug données" style="flex-shrink:0;padding:8px 10px;font-size:14px;">🔧</button>
+      <button onclick="ouvrirReglagesCoach()" title="Réglages" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion" style="flex-shrink:0;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
     </div>
 
     <!-- Sous-onglets coach -->
@@ -2146,6 +2151,7 @@ function switchCoachDetailTab(tab) {
   });
   const ttl = document.getElementById('cd-tab-title');
   if (ttl && CD_TAB_LABELS[tab]) ttl.textContent = CD_TAB_LABELS[tab];
+  const cdH = document.getElementById('cd-header'); if (cdH) cdH.style.transform = 'translateY(0)'; // header visible au changement d'onglet
   // Repart en haut du contenu à chaque changement d'onglet (évite les sauts de scroll)
   window.scrollTo(0, 0);
   // Fait défiler la pastille active au centre (pour que Programme & co restent accessibles)
@@ -6462,6 +6468,25 @@ function allerVersAgendaSeance() {
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 120);
 }
+
+// Header coach (vue athlète) : masquer au scroll vers le bas, réafficher au scroll vers le haut
+(function initCdHeaderAutoHide() {
+  let last = 0, ticking = false;
+  window.addEventListener('scroll', function () {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      const hdr = document.getElementById('cd-header');
+      if (hdr && document.body.classList.contains('coach-active') && document.body.classList.contains('athlete-selected')) {
+        const y = window.scrollY || document.documentElement.scrollTop || 0;
+        if (y > last && y > 70) hdr.style.transform = 'translateY(-110%)';
+        else hdr.style.transform = 'translateY(0)';
+        last = y;
+      }
+      ticking = false;
+    });
+  }, { passive: true });
+})();
 
 function toggleTheme() {
   const light = !document.body.classList.contains('light-mode');
