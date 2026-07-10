@@ -841,7 +841,7 @@
       </div>
 
       <!-- État du jour (synthèse questionnaire bien-être) -->
-      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de la dernière séance</div></div>
+      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</div></div>
       <div class="dash-card" id="dash-etat-card" style="padding:16px;display:none;">
         <div id="dash-etat-content"></div>
       </div>
@@ -923,11 +923,6 @@
           <div class="card" id="recap-programme-block" style="display:none">
             <div class="card-title"><svg class="ico"><use href="#i-clipboard"/></svg>Programme vs Réalisé</div>
             <div id="recap-programme-content"></div>
-          </div>
-          <div class="card">
-            <div class="card-title"><svg class="ico"><use href="#i-note"/></svg>Note sur la séance</div>
-            <textarea id="inp-note" placeholder="Comment tu t'es senti ? Douleurs, fatigue, ambiance..." 
-              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;resize:none;min-height:80px;font-family:inherit"></textarea>
           </div>
           <button class="btn btn-accent" onclick="nouvelleSeance()">+ Nouvelle séance</button>
         </div>
@@ -1047,13 +1042,6 @@
 
               <button class="btn btn-accent" onclick="ajouterSerie()" style="padding:16px;font-size:16px;margin-top:14px">+ Ajouter cette série</button>
               <button class="btn btn-outline" onclick="repeterDerniereSerie()" style="font-size:14px;padding:12px;margin-top:0"><svg class="ico ico-btn"><use href="#i-shuffle"/></svg>Répéter la dernière série</button>
-            </div>
-
-            <!-- Signaler une gêne / douleur → remonte au coach -->
-            <button class="btn-flag" onclick="toggleGene()"><svg class="ico"><use href="#i-alert"/></svg>Signaler une gêne / douleur</button>
-            <div id="gene-form" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
-              <textarea id="gene-input" placeholder="Ex : douleur à l'épaule droite sur cet exercice…" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:10px;outline:none;resize:none;min-height:60px;font-family:inherit"></textarea>
-              <button class="btn btn-accent" onclick="signalerGene()" style="margin-top:8px;font-size:14px;padding:11px">Envoyer au coach</button>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;margin-top:10px">
@@ -1334,7 +1322,7 @@
     </div>
 
     <!-- Q5 : Ressenti global -->
-    <div class="wq-block" style="margin-bottom:0;">
+    <div class="wq-block">
       <div class="wq-label">😊 Ressenti de la séance</div>
       <div class="wq-chips" id="wq-ressenti">
         <button class="wq-chip" data-val="5" onclick="selectWQ('ressenti',this)">Très facile</button>
@@ -1343,6 +1331,13 @@
         <button class="wq-chip" data-val="2" onclick="selectWQ('ressenti',this)">Difficile</button>
         <button class="wq-chip" data-val="1" onclick="selectWQ('ressenti',this)">Très difficile</button>
       </div>
+    </div>
+
+    <!-- Q6 : Note libre -->
+    <div class="wq-block" style="margin-bottom:0;border-bottom:none;">
+      <div class="wq-label">📝 Une note ? <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(optionnel)</span></div>
+      <textarea id="wq-note" placeholder="Douleurs, ressenti, contexte… (remonte à ton coach)"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px 12px;outline:none;resize:none;min-height:60px;font-family:inherit;line-height:1.4;"></textarea>
     </div>
 
   </div>
@@ -4479,6 +4474,7 @@ const wellnessState = { sommeil: null, energie: null, fatigue: null, douleur: nu
 function ouvrirWellnessModal() {
   Object.keys(wellnessState).forEach(k => wellnessState[k] = null);
   document.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
+  const noteInp = document.getElementById('wq-note'); if (noteInp) noteInp.value = '';
   document.getElementById('wq-zone-block').style.display = 'none';
   document.getElementById('wellness-overlay').style.display = 'block';
   const modal = document.getElementById('wellness-modal');
@@ -4546,7 +4542,8 @@ async function _envoyerWellness(seanceId, dateSeance) {
         fatigue:    wellnessState.fatigue,
         douleur:    wellnessState.douleur,
         zone:       wellnessState.zone,
-        ressenti:   wellnessState.ressenti
+        ressenti:   wellnessState.ressenti,
+        note:       (document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '')
       })
     });
   } catch(e) { /* non bloquant */ }
@@ -4637,8 +4634,9 @@ async function afficherProgrammeVsRealise(seanceType) {
 }
 
 async function nouvelleSeance() {
-  // Sauvegarder la note si elle existe
-  const note = document.getElementById('inp-note').value.trim();
+  // Note désormais saisie dans le questionnaire bien-être — champ récap retiré (null-safe)
+  const noteEl = document.getElementById('inp-note');
+  const note = noteEl ? noteEl.value.trim() : '';
   if (note) {
     const dateVal = document.getElementById('inp-date').value;
     const seanceType = document.getElementById('sel-seance-id').value;
@@ -4656,7 +4654,7 @@ async function nouvelleSeance() {
         })
       });
     } catch(e) { console.error('Erreur sauvegarde note', e); }
-    document.getElementById('inp-note').value = '';
+    if (noteEl) noteEl.value = '';
   }
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
@@ -5127,8 +5125,8 @@ function afficherProgressionExo() {
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border);">
         <td style="padding:5px 0;">Date</td>
         <td style="padding:5px 0;text-align:center;">Séance</td>
-        <td style="padding:5px 0;text-align:center;">Charge S1</td>
-        <td style="padding:5px 0;text-align:center;">Reps S1</td>
+        <td style="padding:5px 0;text-align:center;">Charge</td>
+        <td style="padding:5px 0;text-align:center;">Reps</td>
         <td style="padding:5px 0;text-align:center;">1RM est.</td>
         <td style="padding:5px 0;text-align:center;">Évol.</td>
       </tr>
@@ -5258,16 +5256,19 @@ function afficherVolumeMuscle(volumes) {
   const niveauKey = getNiveauKey(athlete ? athlete.strategie_progression : null);
   const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
 
-  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:12px;">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
-  volumes.slice().sort((a,b)=>(b.faites||0)-(a.faites||0)).map(v => {
+  const rowsVol = volumes.slice().sort((a,b)=>(b.faites||0)-(a.faites||0)).map(v => {
     const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
-    const optimal = cible[1];
-    const faites = v.faites || 0;
-    const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
-    const couleur = faites >= optimal ? 'var(--good)' : faites > 0 ? 'var(--warn)' : 'var(--v2-bad)';
-    return `<div class="v2-vrow"><div class="vn">${v.muscle}</div><div class="v2-vtrack"><div class="v2-vfill" style="width:${Math.max(pct,4)}%;background:${couleur};"></div></div><div class="vv">${faites}/${optimal}</div></div>`;
+    return { muscle: v.muscle, optimal: cible[1], faites: v.faites || 0 };
+  });
+  const scaleMax = Math.max(1, ...rowsVol.map(r => Math.max(r.optimal, r.faites)));
+  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:12px;">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
+  rowsVol.map(r => {
+    const wf = Math.min(100, r.faites / scaleMax * 100);
+    const wo = Math.min(100, r.optimal / scaleMax * 100);
+    const couleur = r.faites >= r.optimal ? 'var(--good)' : r.faites > 0 ? 'var(--warn)' : 'var(--v2-bad)';
+    return `<div class="v2-vrow"><div class="vn">${r.muscle}</div><div class="v2-vtrack" style="position:relative;overflow:visible;"><div class="v2-vfill" style="width:${Math.max(wf,2)}%;background:${couleur};"></div><div style="position:absolute;top:-3px;left:${wo}%;width:2px;height:calc(100% + 6px);background:var(--text);opacity:.5;border-radius:2px;" title="Objectif ${r.optimal}"></div></div><div class="vv" style="color:${couleur}">${r.faites}/${r.optimal}</div></div>`;
   }).join('') +
-  `<div class="v2-legend"><span><span class="v2-dot" style="background:var(--good)"></span>Optimal</span><span><span class="v2-dot" style="background:var(--warn)"></span>Sous la cible</span><span><span class="v2-dot" style="background:var(--v2-bad)"></span>En retard</span></div>`;
+  `<div class="v2-legend"><span><span class="v2-dot" style="background:var(--good)"></span>Optimal</span><span><span class="v2-dot" style="background:var(--warn)"></span>Sous la cible</span><span><span class="v2-dot" style="background:var(--v2-bad)"></span>En retard</span><span><span style="display:inline-block;width:2px;height:11px;background:var(--text);opacity:.5;border-radius:2px;"></span>Objectif</span></div>`;
 }
 
 // ==================== UTILS ====================
