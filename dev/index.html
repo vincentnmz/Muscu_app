@@ -1078,15 +1078,31 @@
       <!-- Objectif -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-target"/></svg>Mon objectif</div></div>
       <div class="card">
-        <div id="obj-actuel" style="margin-bottom:12px"></div>
-        <label>Modifier</label>
-        <select id="sel-objectif">
-          <option value="Prise de masse">Prise de masse</option>
-          <option value="Sèche">Sèche</option>
-          <option value="Prise de masse + sèche">Prise de masse + sèche</option>
-          <option value="Maintien">Maintien</option>
-        </select>
-        <button class="btn btn-accent" onclick="sauvegarderObjectif()">Sauvegarder</button>
+        <!-- Vue : carte objectif actuel -->
+        <div id="obj-card-view" style="display:flex;align-items:center;gap:12px;">
+          <div id="obj-icon" style="width:52px;height:52px;border-radius:14px;background:var(--accent-a14);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">🎯</div>
+          <div style="flex:1;min-width:0;">
+            <div id="obj-actuel-nom" style="font-size:15px;font-weight:800;color:var(--text);">Non défini</div>
+            <div style="font-size:12px;color:var(--text-muted);">Ton objectif actuel</div>
+          </div>
+          <button onclick="toggleObjectifEdit(true)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;">Modifier</button>
+        </div>
+        <!-- Édition -->
+        <div id="obj-card-edit" style="display:none;margin-top:4px;">
+          <label>Objectif</label>
+          <select id="sel-objectif">
+            <option value="Prise de masse">Prise de masse</option>
+            <option value="Sèche">Sèche</option>
+            <option value="Prise de masse + sèche">Prise de masse + sèche</option>
+            <option value="Maintien">Maintien</option>
+          </select>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-outline" onclick="toggleObjectifEdit(false)" style="flex:1;">Annuler</button>
+            <button class="btn btn-accent" onclick="sauvegarderObjectif()" style="flex:1;">Enregistrer</button>
+          </div>
+        </div>
+        <!-- Conservé pour compat (ancien conteneur, masqué) -->
+        <div id="obj-actuel" style="display:none;"></div>
       </div>
 
       <!-- Graphique poids -->
@@ -3820,7 +3836,7 @@ async function ouvrirApp() {
   document.body.classList.add('on-accueil');
 
   if (athlete.objectif) {
-    document.getElementById('obj-actuel').innerHTML = `<span class="objectif-tag">${ic('target')} ${athlete.objectif}</span>`;
+    majObjectifCard(athlete.objectif);
     document.getElementById('sel-objectif').value = athlete.objectif;
   }
 
@@ -4736,13 +4752,35 @@ function afficherProgrammeComplet() {
 }
 
 // ==================== OBJECTIF ====================
+function objIconFor(obj) {
+  const o = (obj || '').toLowerCase();
+  if (o.includes('masse') && o.includes('sèche')) return '♻️';
+  if (o.includes('masse')) return '📈';
+  if (o.includes('sèche')) return '🔥';
+  if (o.includes('maintien')) return '⚖️';
+  if (o.includes('force')) return '🏋️';
+  return '🎯';
+}
+function majObjectifCard(obj) {
+  const nomEl = document.getElementById('obj-actuel-nom');
+  const icoEl = document.getElementById('obj-icon');
+  if (nomEl) nomEl.textContent = obj || 'Non défini';
+  if (icoEl) icoEl.textContent = objIconFor(obj);
+}
+function toggleObjectifEdit(on) {
+  const v = document.getElementById('obj-card-view');
+  const e = document.getElementById('obj-card-edit');
+  if (v) v.style.display = on ? 'none' : 'flex';
+  if (e) e.style.display = on ? 'block' : 'none';
+}
 async function sauvegarderObjectif() {
   const obj = document.getElementById('sel-objectif').value;
   await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({action:'saveObjectif', athlete_id:athlete.athlete_id, objectif:obj}) });
   athlete.objectif = obj;
   localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
-  document.getElementById('obj-actuel').innerHTML = `<span class="objectif-tag">${ic('target')} ${obj}</span>`;
+  majObjectifCard(obj);
+  toggleObjectifEdit(false);
   showToast('✅ Objectif sauvegardé !');
 }
 
@@ -4828,22 +4866,46 @@ function selectCalDay(dateStr, name, el) {
 function renderCalDetail(dateStr, name) {
   const el = document.getElementById('cal-detail');
   if (!el) return;
-  const ti = seanceTypeInfo(name);
-  const dd = (dernierAppData && dernierAppData.dashboard) ? dernierAppData.dashboard.derniere_seance : null;
+  const det = seancesDetailMap[dateStr];
   let stats = '';
-  if (dd && dd.date === dateStr) {
+  if (det) {
     const chip = (v, l) => `<div style="background:var(--surface);border-radius:8px;padding:6px;text-align:center;"><div style="font-size:15px;font-weight:800;color:var(--text);">${v}</div><div style="font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;">${l}</div></div>`;
-    stats = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px;">
-      ${chip(dd.nb_exercices != null ? dd.nb_exercices : '—', 'exos')}
-      ${chip(dd.nb_series != null ? dd.nb_series : '—', 'séries')}
-      ${chip(dd.rpe_moyen != null ? dd.rpe_moyen : '—', 'RPE moy')}
+    const tonnageT = det.tonnage ? (Math.round(det.tonnage / 100) / 10) + 't' : '—';
+    stats = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px;">
+      ${chip(det.nbExos, 'exos')}
+      ${chip(det.nbSeries, 'séries')}
+      ${chip(tonnageT, 'tonnage')}
+      ${chip(det.rpeMoy != null ? det.rpeMoy : '—', 'RPE')}
     </div>`;
+  } else {
+    stats = `<div style="margin-top:8px;font-size:11px;color:var(--text-muted);">Détail indisponible pour ce jour.</div>`;
   }
   el.innerHTML = `<div style="background:var(--surface2);border-radius:12px;padding:11px 12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <div style="font-size:13px;font-weight:800;color:var(--text);">${dateStr}</div>
-      <span style="font-size:10px;font-weight:800;color:#fff;background:${ti.col};border-radius:20px;padding:3px 10px;">${name}</span>
+      <span style="font-size:10px;font-weight:800;color:#fff;background:var(--good);border-radius:20px;padding:3px 10px;">${name}</span>
     </div>${stats}</div>`;
+}
+
+// Détail des séances par date (pour l'agenda) — chargé depuis getSeancesDetail
+let seancesDetailMap = {};
+async function chargerSeancesDetail() {
+  if (!athlete) return;
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getSeancesDetail&athlete_id=${athlete.athlete_id}`);
+    const data = await res.json();
+    const map = {};
+    (data.seances || []).forEach(s => {
+      let nbSeries = 0, rpeSum = 0, rpeN = 0, tonnage = 0;
+      (s.exos || []).forEach(ex => (ex.series || []).forEach(se => {
+        nbSeries++;
+        if (se.rpe != null) { rpeSum += se.rpe; rpeN++; }
+        if (se.charge != null && se.reps != null) tonnage += se.charge * se.reps;
+      }));
+      map[s.date] = { seance_id: s.seance_id, nbExos: (s.exos || []).length, nbSeries, rpeMoy: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null, tonnage };
+    });
+    seancesDetailMap = map;
+  } catch (e) { /* non bloquant */ }
 }
 
 function renderCalendrier() {
@@ -4888,7 +4950,7 @@ function renderCalendrier() {
       const ti = seanceTypeInfo(hasSeance);
       d.style.cssText = `border-radius:9px;text-align:center;padding:3px 1px 4px;cursor:pointer;background:var(--surface2);${isToday ? 'outline:2px solid var(--accent);outline-offset:-2px;' : ''}`;
       d.title = hasSeance;
-      d.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.1;">${j}</div><div style="font-size:8.5px;font-weight:800;color:#fff;background:${ti.col};border-radius:5px;padding:1px 0;margin:2px 3px 0;line-height:1.4;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ti.abbr}</div>`;
+      d.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.1;">${j}</div><div style="font-size:8.5px;font-weight:800;color:#fff;background:var(--good);border-radius:5px;padding:1px 0;margin:2px 3px 0;line-height:1.4;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ti.abbr}</div>`;
       d.addEventListener('click', () => selectCalDay(dateStr, hasSeance, d));
     } else if (isToday) {
       d.style.cssText = 'background:var(--accent);border-radius:9px;text-align:center;padding:5px 2px;font-size:11px;color:var(--on-accent);font-weight:700;';
@@ -5433,12 +5495,14 @@ async function chargerAppData() {
     // Accueil : heatmap de régularité + streak (renvoie vers l'agenda Séance)
     renderHeatmapAccueil();
 
+    // Détail des séances par date (pour le clic sur l'agenda)
+    chargerSeancesDetail();
+
     // Graphique poids
     afficherGraphiquePoids(data.poids || []);
 
     // Objectif
-    const objActuel = document.getElementById('obj-actuel');
-    if (objActuel) objActuel.innerHTML = `<span style="background:rgba(0,201,110,0.1);border:1px solid #00c96e;color:#00c96e;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:700;">${athlete.objectif || 'Non défini'}</span>`;
+    majObjectifCard(athlete.objectif);
     const selObj = document.getElementById('sel-objectif');
     if (selObj && athlete.objectif) selObj.value = athlete.objectif;
 
