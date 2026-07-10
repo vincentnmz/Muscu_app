@@ -366,10 +366,10 @@
 
 <div class="tabs-bar" id="tabs-bar" style="display:none">
   <button class="tab-btn active" onclick="switchTab('accueil')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.4"/></svg></span><span>Accueil</span></button>
-  <button class="tab-btn" onclick="switchTab('objectif')"><span class="tab-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg></span><span>Objectif</span></button>
+  <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span><span>Progression</span></button>
   <button class="tab-btn" onclick="switchTab('seance')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M6.5 6v12M3.5 8.5v7M17.5 6v12M20.5 8.5v7M6.5 12h11"/></svg></span><span>Séance</span></button>
-  <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M6 21v-7M12 21V5M18 21v-10"/></svg></span><span>Historique</span></button>
-  <button class="tab-btn" onclick="switchTab('conseils')" style="position:relative"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.5A8 8 0 1 1 21 11.5z"/></svg></span><span>Conseils</span><span id="badge-conseils" style="display:none;position:absolute;top:2px;right:12px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
+  <button class="tab-btn" onclick="switchTab('objectif')"><span class="tab-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg></span><span>Objectif</span></button>
+  <button class="tab-btn" onclick="switchTab('conseils')" style="position:relative"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.5A8 8 0 1 1 21 11.5z"/></svg></span><span>Conversation</span><span id="badge-conseils" style="display:none;position:absolute;top:2px;right:12px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
 </div>
 
 <div class="container" id="main-container">
@@ -846,61 +846,31 @@
         <div id="dash-etat-content"></div>
       </div>
 
-      <!-- KPI ROW — Charge récente + Évolution -->
-      <div class="v2-kpis" id="dash-kpis" style="display:none;"></div>
-
-      <!-- Stats carrière — Historique global -->
-      <div class="v2-sec" id="dash-global-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
-      <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
-        <div id="dash-global-content"></div>
-      </div>
-
-      <!-- Poids -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Poids corporel</div><div class="more" onclick="switchTab('objectif')" style="cursor:pointer;">Voir tout →</div></div>
-      <div class="dash-card" onclick="switchTab('objectif')" title="Voir l'évolution du poids" style="padding:16px;">
-        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">
-          <div>
-            <div class="dash-big-num" style="font-size:32px;"><span id="dash-poids">—</span><span style="font-size:14px;color:var(--text-muted);"> kg</span></div>
-            <div style="font-size:12px;margin-top:6px;font-weight:700;" id="dash-poids-evolution"></div>
-          </div>
-          <div id="dash-poids-spark" style="flex:1;max-width:190px;"></div>
-        </div>
-      </div>
-
       <!-- État de forme (récupération) -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</div></div>
       <div class="dash-card" id="dash-recup-card" style="padding:16px;">
         <div id="dash-recup-content"><div class="loader">Chargement...</div></div>
       </div>
 
-      <!-- Volume par muscle (→ onglet Volume) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div><div class="more" onclick="allerVersVolumeAthlete()" style="cursor:pointer;">Voir tout →</div></div>
-      <div class="dash-card" id="dash-muscle-card" style="padding:16px;" onclick="allerVersVolumeAthlete()" title="Voir le volume par muscle">
-        <div id="dash-muscle-content"><div class="loader">Chargement...</div></div>
+      <!-- KPI ROW — Charge récente + Évolution -->
+      <div class="v2-kpis" id="dash-kpis" style="display:none;"></div>
+
+      <!-- Dernière séance -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-dumbbell"/></svg>Dernière séance</div></div>
+      <div class="dash-card" style="padding:16px;">
+        <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Progression (7j glissants → détail) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</div><div class="more" onclick="ouvrirDrawer()" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</div><div class="more" onclick="switchTab('historique')" style="cursor:pointer;">Voir tout →</div></div>
       <div class="dash-card" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Alertes (stagnation / absence / fatigue) — visible seulement s'il y a une alerte -->
       <div class="v2-sec" id="dash-alertes-sec" style="display:none;"><div class="st" style="color:var(--warn);"><svg class="ico"><use href="#i-alert"/></svg>Alertes</div></div>
-      <div class="dash-card" id="dash-alertes-card" style="padding:12px;display:none;">
+      <div class="dash-card" id="dash-alertes-card" style="padding:12px;display:none;margin-bottom:0;">
         <div id="dash-alertes-content"></div>
-      </div>
-
-      <!-- Tendance mensuelle — Évolution j28 vs j28prec -->
-      <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
-      <div class="dash-card" id="dash-cmp28-card" style="padding:16px;display:none;">
-        <div id="dash-cmp28-content"></div>
-      </div>
-
-      <!-- Dernière séance -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-dumbbell"/></svg>Dernière séance</div></div>
-      <div class="dash-card" style="padding:16px;margin-bottom:0;">
-        <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
       </div>
 
     </div>
@@ -1179,33 +1149,22 @@
 
     </div>
 
-    <!-- ONGLET HISTORIQUE -->
+    <!-- ONGLET PROGRESSION (ex-Historique) -->
     <div id="tab-historique" class="tab-content">
 
-      <!-- CALENDRIER -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</div></div>
+      <!-- CARRIÈRE (déplacé de l'Accueil) -->
+      <div class="v2-sec" id="dash-global-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
+      <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
+        <div id="dash-global-content"></div>
+      </div>
+
+      <!-- SECTION PERFORMANCE -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Performance</div></div>
+
+      <!-- VOLUME PAR MUSCLE -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div></div>
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:800;color:var(--text);" id="cal-titre">Juin 2026</span>
-          <div style="display:flex;gap:12px;">
-            <span onclick="calNaviguer(-1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">◀</span>
-            <span onclick="calNaviguer(1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">▶</span>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:5px;">
-          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">L</div>
-          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">M</div>
-          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">M</div>
-          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">J</div>
-          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">V</div>
-          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">S</div>
-          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">D</div>
-        </div>
-        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
-        <div style="display:flex;gap:12px;margin-top:8px;">
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:#e8f8f0;border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Séance</span></div>
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--accent);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Aujourd'hui</span></div>
-        </div>
+        <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- PROGRESSION PAR EXERCICE -->
@@ -1217,10 +1176,10 @@
         <div id="hist-progression-content"></div>
       </div>
 
-      <!-- VOLUME PAR MUSCLE -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle · semaine</div></div>
-      <div class="card">
-        <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
+      <!-- RECORDS PERSONNELS -->
+      <div class="v2-sec" id="dash-records-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
+      <div class="card" id="dash-records-card" style="display:none;">
+        <div id="dash-records"></div>
       </div>
 
       <!-- TENDANCES 4-8 SEMAINES -->
@@ -1235,10 +1194,24 @@
         <div id="hist-tendances-content"><div class="loader">Chargement...</div></div>
       </div>
 
-      <!-- RECORDS PERSONNELS -->
-      <div class="v2-sec" id="dash-records-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
-      <div class="card" id="dash-records-card" style="display:none;">
-        <div id="dash-records"></div>
+      <!-- TENDANCE MENSUELLE (déplacé de l'Accueil) -->
+      <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
+      <div class="dash-card" id="dash-cmp28-card" style="padding:16px;display:none;">
+        <div id="dash-cmp28-content"></div>
+      </div>
+
+      <!-- AGENDA — parké (sera déplacé vers un prochain onglet) -->
+      <div id="agenda-parked" style="display:none;">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span style="font-size:14px;font-weight:800;color:var(--text);" id="cal-titre">Juin 2026</span>
+            <div style="display:flex;gap:12px;">
+              <span onclick="calNaviguer(-1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">◀</span>
+              <span onclick="calNaviguer(1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">▶</span>
+            </div>
+          </div>
+          <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+        </div>
       </div>
 
     </div>
@@ -3868,10 +3841,10 @@ async function sInscrireCoach() {
   } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
 }
 
-const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Séance', historique: 'Historique', conseils: 'Conseils', reglages: 'Réglages' };
+const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Séance', historique: 'Progression', conseils: 'Conversation', reglages: 'Réglages' };
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['accueil','objectif','seance','historique','conseils','reglages'][i] === tab);
+    b.classList.toggle('active', ['accueil','historique','seance','objectif','conseils'][i] === tab);
   });
   const hdr = document.getElementById('header-nom');
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];
@@ -5402,17 +5375,20 @@ async function chargerAppData() {
           `<div class="poids-item"><span>${p.date}</span><span class="poids-val">${p.poids} kg</span></div>`
         ).join('');
       }
-      // Dashboard poids
-      document.getElementById('dash-poids').textContent = data.poids[0].poids;
+      // Dashboard poids (bloc retiré de l'Accueil — calcul rendu null-safe)
+      const dpoidsEl = document.getElementById('dash-poids');
+      if (dpoidsEl) dpoidsEl.textContent = data.poids[0].poids;
       if (data.poids.length > 1) {
         const diff = (data.poids[0].poids - data.poids[1].poids).toFixed(1);
         const sign = diff > 0 ? '▲' : '▼';
         const col = diff > 0 ? 'var(--warn)' : 'var(--good)';
-        document.getElementById('dash-poids-evolution').innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)} kg</span> <span style="color:var(--text-muted);font-weight:600;">· ${data.poids.length} mesures</span>`;
+        const evoEl = document.getElementById('dash-poids-evolution');
+        if (evoEl) evoEl.innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)} kg</span> <span style="color:var(--text-muted);font-weight:600;">· ${data.poids.length} mesures</span>`;
       }
       renderPoidsSpark(data.poids);
     } else if (athlete.poids) {
-      document.getElementById('dash-poids').textContent = athlete.poids;
+      const dpoidsEl2 = document.getElementById('dash-poids');
+      if (dpoidsEl2) dpoidsEl2.textContent = athlete.poids;
     }
     // Nom dans le hero
     const heroName = document.getElementById('dash-hero-name');
