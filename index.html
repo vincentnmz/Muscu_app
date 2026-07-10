@@ -359,7 +359,7 @@
 <header>
   <h1><svg class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use href="#i-dumbbell"/></svg><span id="header-nom">Novalyz</span></h1>
   <div style="display:flex;align-items:center;gap:10px;">
-    <button id="btn-theme" onclick="toggleTheme()" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-sun"/></svg></button>
+    <button id="btn-reglages-hdr" onclick="switchTab('reglages')" title="Réglages" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <button class="logout-btn" onclick="seDeconnecter()" style="display:none" id="btn-logout"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
   </div>
 </header>
@@ -841,6 +841,12 @@
         </div>
       </div>
 
+      <!-- État du jour (synthèse questionnaire bien-être) -->
+      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État du jour</div></div>
+      <div class="dash-card" id="dash-etat-card" style="padding:16px;display:none;">
+        <div id="dash-etat-content"></div>
+      </div>
+
       <!-- KPI ROW — Charge récente + Évolution -->
       <div class="v2-kpis" id="dash-kpis" style="display:none;"></div>
 
@@ -878,6 +884,12 @@
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</div><div class="more" onclick="ouvrirDrawer()" style="cursor:pointer;">Voir tout →</div></div>
       <div class="dash-card" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Alertes (stagnation / absence / fatigue) — visible seulement s'il y a une alerte -->
+      <div class="v2-sec" id="dash-alertes-sec" style="display:none;"><div class="st" style="color:var(--warn);"><svg class="ico"><use href="#i-alert"/></svg>Alertes</div></div>
+      <div class="dash-card" id="dash-alertes-card" style="padding:12px;display:none;">
+        <div id="dash-alertes-content"></div>
       </div>
 
       <!-- Tendance mensuelle — Évolution j28 vs j28prec -->
@@ -1136,6 +1148,15 @@
     <!-- ONGLET RÉGLAGES -->
     <div id="tab-reglages" class="tab-content">
 
+      <!-- Apparence -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Apparence</div></div>
+      <div class="card">
+        <button onclick="toggleTheme()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;">
+          <span style="display:flex;align-items:center;gap:10px;"><span id="reglages-theme-ico" style="display:inline-flex;"><svg class="ico"><use href="#i-moon"/></svg></span>Thème</span>
+          <span style="display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:13px;font-weight:700;"><span id="reglages-theme-label">Sombre</span> ⇄</span>
+        </button>
+      </div>
+
       <!-- Mon compte -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-user"/></svg>Mon compte</div></div>
       <div class="card">
@@ -1283,11 +1304,11 @@
     <div class="wq-block">
       <div class="wq-label">💪 Fatigue musculaire</div>
       <div class="wq-chips" id="wq-fatigue">
-        <button class="wq-chip" data-val="5" onclick="selectWQ('fatigue',this)">Aucune</button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('fatigue',this)">Faible</button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('fatigue',this)">Aucune</button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('fatigue',this)">Faible</button>
         <button class="wq-chip" data-val="3" onclick="selectWQ('fatigue',this)">Modérée</button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('fatigue',this)">Importante</button>
-        <button class="wq-chip" data-val="1" onclick="selectWQ('fatigue',this)">Très importante</button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('fatigue',this)">Importante</button>
+        <button class="wq-chip" data-val="5" onclick="selectWQ('fatigue',this)">Très importante</button>
       </div>
     </div>
 
@@ -1295,11 +1316,11 @@
     <div class="wq-block">
       <div class="wq-label">🤕 Douleur</div>
       <div class="wq-chips" id="wq-douleur">
-        <button class="wq-chip" data-val="5" onclick="selectWQ('douleur',this)">Aucune</button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('douleur',this)">Légère</button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('douleur',this)">Aucune</button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('douleur',this)">Légère</button>
         <button class="wq-chip" data-val="3" onclick="selectWQ('douleur',this)">Modérée</button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('douleur',this)">Forte</button>
-        <button class="wq-chip" data-val="1" onclick="selectWQ('douleur',this)">Très forte</button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('douleur',this)">Forte</button>
+        <button class="wq-chip" data-val="5" onclick="selectWQ('douleur',this)">Très forte</button>
       </div>
     </div>
 
@@ -1712,7 +1733,6 @@ function seDeconnecterCoach() {
   localStorage.removeItem('muscu_coach_vue');
   document.body.classList.remove('coach-active');
   document.body.classList.remove('athlete-selected');
-  document.getElementById('btn-theme').style.display = 'none';
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.remove('active');
   document.body.classList.remove('cd-nav');
@@ -1731,15 +1751,10 @@ async function ouvrirEspaceCoach() {
   document.getElementById('view-coach').classList.add('active');
   document.body.classList.remove('has-bottom-nav');
   document.getElementById('tabs-bar').style.display = 'none';
-  // Thème clair/sombre disponible aussi côté coach
-  const btnTheme = document.getElementById('btn-theme');
-  btnTheme.style.display = 'block';
+  // Thème clair/sombre disponible aussi côté coach (bouton dans le header coach)
   const coachLight = localStorage.getItem('muscu_theme') === 'light';
   document.body.classList.toggle('light-mode', coachLight);
-  const coachThemeIcon = ic(coachLight ? 'moon' : 'sun');
-  btnTheme.innerHTML = coachThemeIcon;
-  const btnThemeCoach = document.getElementById('btn-theme-coach');
-  if (btnThemeCoach) btnThemeCoach.innerHTML = coachThemeIcon;
+  syncThemeUI();
   document.getElementById('header-nom-coach').textContent = coach.nom;
   const listeEl = document.getElementById('liste-athletes-coach');
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
@@ -3789,13 +3804,11 @@ async function ouvrirApp() {
   document.getElementById('tabs-bar').style.display = 'flex';
   document.body.classList.add('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'block';
-  document.getElementById('btn-theme').style.display = 'block';
+  document.getElementById('btn-reglages-hdr').style.display = 'block';
   // Restore saved theme
   const savedTheme = localStorage.getItem('muscu_theme');
-  if (savedTheme === 'light') {
-    document.body.classList.add('light-mode');
-    document.getElementById('btn-theme').innerHTML = ic('moon');
-  }
+  if (savedTheme === 'light') document.body.classList.add('light-mode');
+  syncThemeUI();
   document.getElementById('header-nom').textContent = 'Accueil';
   document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('inp-date-poids').value = new Date().toISOString().split('T')[0];
@@ -4464,7 +4477,7 @@ const WELLNESS_CONFIG = {
   ressenti: { label: 'Ressenti de la séance',      douleurConditional: false }
 };
 // Valeur "sans douleur" = 5 (Aucune). Zone s'affiche quand douleur < 5.
-const WELLNESS_NO_PAIN_VAL = '5';
+const WELLNESS_NO_PAIN_VAL = '1';
 
 const wellnessState = { sommeil: null, energie: null, fatigue: null, douleur: null, zone: null, ressenti: null };
 
@@ -5351,6 +5364,10 @@ async function chargerAppData() {
     renderDashboardRecords(data.historique);
     renderDashboardActivite(data.historique);
 
+    // Nouveaux blocs Accueil : État du jour (questionnaire) + Alertes
+    renderEtatDuJour(data);
+    renderAlertes(data);
+
     // Graphique poids
     afficherGraphiquePoids(data.poids || []);
 
@@ -6013,15 +6030,189 @@ function terminerExercice() {
   showToast(`✅ ${nomFini} terminé !`);
 }
 
+// =====================================================================
+// BLOC « ÉTAT DU JOUR » — synthèse du dernier questionnaire bien-être
+// Barème stocké : sommeil/energie/ressenti → 5 = positif ;
+//                 fatigue/douleur           → 5 = négatif (barème naturel).
+// On ramène tout sur une échelle « positive » (5 = au top) pour le score.
+// =====================================================================
+const WQ_DIMS = [
+  { key: 'sommeil',  label: 'Sommeil',   invert: false },
+  { key: 'energie',  label: 'Énergie',   invert: false },
+  { key: 'fatigue',  label: 'Fraîcheur', invert: true  },
+  { key: 'douleur',  label: 'Sans dlr',  invert: true  },
+  { key: 'ressenti', label: 'Ressenti',  invert: false }
+];
+
+function wqPositif(dim, val) {
+  // Retourne une note 1..5 où 5 = positif, ou null si absent
+  if (val == null || val === '' || isNaN(Number(val))) return null;
+  const n = Number(val);
+  return dim.invert ? (6 - n) : n;
+}
+
+function wqColor(pos) {
+  if (pos >= 4)  return 'var(--good)';
+  if (pos >= 3)  return 'var(--warn)';
+  return 'var(--danger)';
+}
+
+function renderEtatDuJour(data) {
+  const sec  = document.getElementById('dash-etat-sec');
+  const card = document.getElementById('dash-etat-card');
+  const cont = document.getElementById('dash-etat-content');
+  if (!card || !cont) return;
+
+  const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
+  if (be.length === 0) { sec.style.display = 'none'; card.style.display = 'none'; return; }
+
+  const dernier = be[0];
+
+  // Score général du dernier questionnaire (moyenne des dimensions renseignées)
+  const positifs = WQ_DIMS.map(d => ({ d, pos: wqPositif(d, dernier[d.key]) }));
+  const renseignes = positifs.filter(p => p.pos != null);
+  if (renseignes.length === 0) { sec.style.display = 'none'; card.style.display = 'none'; return; }
+
+  const moy = renseignes.reduce((a, p) => a + p.pos, 0) / renseignes.length;
+  const score100 = Math.round((moy - 1) / 4 * 100);
+
+  // Libellé + couleur du score
+  let label, col;
+  if      (moy >= 4.2) { label = 'Excellente forme'; col = 'var(--good)'; }
+  else if (moy >= 3.4) { label = 'Bonne forme';      col = 'var(--good)'; }
+  else if (moy >= 2.6) { label = 'Forme correcte';   col = 'var(--warn)'; }
+  else if (moy >= 1.8) { label = 'Vigilance';        col = 'var(--warn)'; }
+  else                 { label = 'Récup conseillée'; col = 'var(--danger)'; }
+
+  // Tendance vs moyenne des questionnaires précédents (jusqu'à 3)
+  let trendHtml = '';
+  const precs = be.slice(1, 4).map(q => {
+    const ps = WQ_DIMS.map(d => wqPositif(d, q[d.key])).filter(v => v != null);
+    return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : null;
+  }).filter(v => v != null);
+  if (precs.length) {
+    const moyPrec = precs.reduce((a, b) => a + b, 0) / precs.length;
+    const delta = moy - moyPrec;
+    if (delta > 0.25)      trendHtml = `<span style="color:var(--good);font-weight:700;">↗ en hausse</span>`;
+    else if (delta < -0.25) trendHtml = `<span style="color:var(--danger);font-weight:700;">↘ en baisse</span>`;
+    else                    trendHtml = `<span style="color:var(--text-muted);font-weight:700;">→ stable</span>`;
+  }
+
+  // Point faible dominant (plus basse note positive)
+  const faible = renseignes.slice().sort((a, b) => a.pos - b.pos)[0];
+  const phrasesFaible = {
+    sommeil:  'sommeil dégradé',
+    energie:  'énergie basse',
+    fatigue:  'fatigue musculaire marquée',
+    douleur:  'douleur présente' + (dernier.zone ? ' (' + dernier.zone + ')' : ''),
+    ressenti: 'dernière séance ressentie difficile'
+  };
+  let synthese;
+  if (moy >= 3.4)      synthese = 'Bonne disponibilité — prêt à performer.';
+  else if (moy >= 2.6) synthese = 'Forme correcte — surveille : ' + phrasesFaible[faible.d.key] + '.';
+  else                 synthese = 'Point de vigilance : ' + phrasesFaible[faible.d.key] + '. Privilégie la récup ou allège les charges.';
+
+  // Mini-jauges (sans chiffres 1-5)
+  const jauges = positifs.map(p => {
+    const pos = p.pos;
+    const w = pos != null ? Math.round(pos / 5 * 100) : 0;
+    const c = pos != null ? wqColor(pos) : 'var(--border)';
+    return `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
+        <div style="flex:0 0 68px;font-size:11px;color:var(--text-muted);font-weight:600;">${p.d.label}</div>
+        <div style="flex:1;height:7px;background:var(--surface2);border-radius:20px;overflow:hidden;">
+          <div style="height:100%;width:${w}%;background:${c};border-radius:20px;transition:width .3s;"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  cont.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:15px;font-weight:800;color:${col};">${label}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${trendHtml || 'Dernier questionnaire'}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:30px;font-weight:800;color:${col};line-height:1;">${score100}<span style="font-size:13px;color:var(--text-muted);font-weight:600;">/100</span></div>
+      </div>
+    </div>
+    ${jauges}
+    <div style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:10px;font-size:12.5px;color:var(--text);line-height:1.45;">${synthese}</div>`;
+
+  sec.style.display = '';
+  card.style.display = '';
+}
+
+// =====================================================================
+// BLOC « ALERTES » — stagnation / absence / fatigue (masqué si aucune)
+// =====================================================================
+function renderAlertes(data) {
+  const sec  = document.getElementById('dash-alertes-sec');
+  const card = document.getElementById('dash-alertes-card');
+  const cont = document.getElementById('dash-alertes-content');
+  if (!card || !cont) return;
+
+  const alertes = [];
+  const dash = (data && data.dashboard) || {};
+
+  // 1) Absence — aucune séance sur 7 jours glissants
+  const reg = dash.regularite || {};
+  const j7 = reg.seances_j7 != null ? reg.seances_j7 : (reg.seances_semaine || 0);
+  if (Number(j7) === 0) {
+    alertes.push({ col: 'var(--danger)', titre: 'Absence prolongée', txt: 'Aucune séance enregistrée sur les 7 derniers jours.' });
+  }
+
+  // 2) Fatigue / douleur — d'après le dernier questionnaire (barème naturel : 4-5 = élevé)
+  const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
+  if (be.length) {
+    const d = be[0];
+    if (Number(d.fatigue) >= 4) {
+      alertes.push({ col: 'var(--warn)', titre: 'Fatigue élevée', txt: 'Fatigue musculaire importante déclarée au dernier questionnaire.' });
+    }
+    if (Number(d.douleur) >= 3) {
+      alertes.push({ col: 'var(--warn)', titre: 'Douleur signalée', txt: 'Douleur déclarée' + (d.zone ? ' · zone : ' + d.zone : '') + '. Adapte la charge si besoin.' });
+    }
+  }
+
+  // 3) Stagnation — plusieurs exercices en régression
+  const prog = dash.progression || {};
+  const enBaisse = Number(prog.en_baisse || 0);
+  const enHausse = Number(prog.en_progression || 0);
+  if (enBaisse >= 3 && enBaisse >= enHausse) {
+    alertes.push({ col: 'var(--warn)', titre: 'Stagnation', txt: enBaisse + ' exercices en baisse cette semaine. Pense à varier ou récupérer.' });
+  }
+
+  if (alertes.length === 0) { sec.style.display = 'none'; card.style.display = 'none'; return; }
+
+  cont.innerHTML = alertes.map((a, i) => `
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 4px;${i < alertes.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
+      <div style="flex:0 0 4px;align-self:stretch;background:${a.col};border-radius:2px;min-height:34px;"></div>
+      <div style="min-width:0;">
+        <div style="font-size:13px;font-weight:800;color:${a.col};">${a.titre}</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px;">${a.txt}</div>
+      </div>
+    </div>`).join('');
+
+  sec.style.display = '';
+  card.style.display = '';
+}
+
 function toggleTheme() {
   const light = !document.body.classList.contains('light-mode');
   document.body.classList.toggle('light-mode', light);
   localStorage.setItem('muscu_theme', light ? 'light' : 'dark');
-  const icon = ic(light ? 'moon' : 'sun');
-  ['btn-theme', 'btn-theme-coach'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) b.innerHTML = icon;
-  });
+  syncThemeUI();
+}
+
+// Met à jour tous les indicateurs de thème (bouton coach header + toggle dans Réglages)
+function syncThemeUI() {
+  const light = document.body.classList.contains('light-mode');
+  const bc = document.getElementById('btn-theme-coach');
+  if (bc) bc.innerHTML = ic(light ? 'moon' : 'sun');
+  const lbl = document.getElementById('reglages-theme-label');
+  if (lbl) lbl.textContent = light ? 'Clair' : 'Sombre';
+  const ico = document.getElementById('reglages-theme-ico');
+  if (ico) ico.innerHTML = ic(light ? 'sun' : 'moon');
 }
 
 function showToast(msg, color) {
