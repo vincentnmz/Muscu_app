@@ -869,8 +869,14 @@
 
       <!-- Alertes (stagnation / absence / fatigue) — visible seulement s'il y a une alerte -->
       <div class="v2-sec" id="dash-alertes-sec" style="display:none;"><div class="st" style="color:var(--warn);"><svg class="ico"><use href="#i-alert"/></svg>Alertes</div></div>
-      <div class="dash-card" id="dash-alertes-card" style="padding:12px;display:none;margin-bottom:0;">
+      <div class="dash-card" id="dash-alertes-card" style="padding:12px;display:none;">
         <div id="dash-alertes-content"></div>
+      </div>
+
+      <!-- Régularité — heatmap + streak (cliquable → agenda de l'onglet Séance) -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité</div><div class="more" onclick="allerVersAgendaSeance()" style="cursor:pointer;">Agenda →</div></div>
+      <div class="dash-card" onclick="allerVersAgendaSeance()" style="padding:16px;margin-bottom:0;cursor:pointer;" title="Voir l'agenda">
+        <div id="dash-heatmap-content"></div>
       </div>
 
     </div>
@@ -5375,6 +5381,9 @@ async function chargerAppData() {
     // Objectif : bloc Récompenses (paliers + cagnotte auto)
     renderRecompenses(data);
 
+    // Accueil : heatmap de régularité + streak (renvoie vers l'agenda Séance)
+    renderHeatmapAccueil();
+
     // Graphique poids
     afficherGraphiquePoids(data.poids || []);
 
@@ -6275,6 +6284,56 @@ function renderRecompenses(data) {
       <div style="font-size:20px;">👑</div>
       <div style="font-size:12px;color:var(--text-muted);line-height:1.4;">Récompense personnalisée du coach — <span style="font-weight:700;">bientôt</span>.</div>
     </div>`;
+}
+
+// =====================================================================
+// ACCUEIL — Heatmap de régularité (12 sem.) + streak. Cliquable → agenda Séance.
+// =====================================================================
+function renderHeatmapAccueil() {
+  const cont = document.getElementById('dash-heatmap-content');
+  if (!cont) return;
+  const fmt = dt => `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+  const today = new Date(); today.setHours(0,0,0,0);
+  let dow = today.getDay() - 1; if (dow < 0) dow = 6;
+  const monday = new Date(today); monday.setDate(today.getDate() - dow);
+  const WEEKS = 12;
+  const start = new Date(monday); start.setDate(monday.getDate() - (WEEKS - 1) * 7);
+  const weekHas = new Array(WEEKS).fill(false);
+  let cols = '';
+  for (let w = 0; w < WEEKS; w++) {
+    let col = '<div style="display:flex;flex-direction:column;gap:3px;">';
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(start); dt.setDate(start.getDate() + w * 7 + d);
+      const futur = dt > today;
+      const has = !futur && !!seancesDates[fmt(dt)];
+      if (has) weekHas[w] = true;
+      const bg = futur ? 'transparent' : has ? 'var(--good)' : 'var(--surface2)';
+      col += `<div style="width:13px;height:13px;border-radius:3px;background:${bg};" title="${fmt(dt)}${has ? ' · séance' : ''}"></div>`;
+    }
+    col += '</div>'; cols += col;
+  }
+  let streak = 0, wi = WEEKS - 1;
+  if (!weekHas[wi]) wi--; // semaine en cours pas encore commencée : on ne casse pas le streak
+  for (; wi >= 0; wi--) { if (weekHas[wi]) streak++; else break; }
+  cont.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <span style="font-size:22px;">🔥</span>
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--text);">${streak} semaine${streak > 1 ? 's' : ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);">de régularité d'affilée</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:3px;overflow-x:auto;padding-bottom:2px;">${cols}</div>`;
+}
+
+// Depuis l'Accueil : ouvre l'onglet Séance et défile jusqu'à l'agenda
+function allerVersAgendaSeance() {
+  switchTab('seance');
+  setTimeout(() => {
+    const el = document.getElementById('cal-grid');
+    const card = el && el.closest('.card');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 120);
 }
 
 function toggleTheme() {
