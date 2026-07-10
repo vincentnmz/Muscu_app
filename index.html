@@ -841,7 +841,7 @@
       </div>
 
       <!-- État du jour (synthèse questionnaire bien-être) -->
-      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État du jour</div></div>
+      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de la dernière séance</div></div>
       <div class="dash-card" id="dash-etat-card" style="padding:16px;display:none;">
         <div id="dash-etat-content"></div>
       </div>
@@ -4060,6 +4060,7 @@ function afficherListeSeance() {
   const listeEl = document.getElementById('liste-exercices-seance');
   if (programmeSeance.length === 0) {
     afficherListeExosLibres();
+    majProgressionSeance(); // maj des titres (corrige "Programme · Upper" qui restait en passant sur Libre)
     return;
   }
 
@@ -6037,12 +6038,21 @@ function terminerExercice() {
 // On ramène tout sur une échelle « positive » (5 = au top) pour le score.
 // =====================================================================
 const WQ_DIMS = [
-  { key: 'sommeil',  label: 'Sommeil',   invert: false },
-  { key: 'energie',  label: 'Énergie',   invert: false },
-  { key: 'fatigue',  label: 'Fraîcheur', invert: true  },
-  { key: 'douleur',  label: 'Sans dlr',  invert: true  },
-  { key: 'ressenti', label: 'Ressenti',  invert: false }
+  { key: 'sommeil',  label: 'Sommeil',  invert: false },
+  { key: 'energie',  label: 'Énergie',  invert: false },
+  { key: 'fatigue',  label: 'Fatigue',  invert: true  },
+  { key: 'douleur',  label: 'Douleur',  invert: true  },
+  { key: 'ressenti', label: 'Ressenti', invert: false }
 ];
+
+// Réponses textuelles indexées par la note brute 1..5 (barème du questionnaire)
+const WQ_ANSWERS = {
+  sommeil:  ['—', 'Très mauvais', 'Mauvais', 'Moyen', 'Bon', 'Excellent'],
+  energie:  ['—', 'Très faible', 'Faible', 'Normal', 'Élevé', 'Très élevé'],
+  fatigue:  ['—', 'Aucune', 'Faible', 'Modérée', 'Importante', 'Très importante'],
+  douleur:  ['—', 'Aucune', 'Légère', 'Modérée', 'Forte', 'Très forte'],
+  ressenti: ['—', 'Très difficile', 'Difficile', 'Normale', 'Facile', 'Très facile']
+};
 
 function wqPositif(dim, val) {
   // Retourne une note 1..5 où 5 = positif, ou null si absent
@@ -6112,17 +6122,25 @@ function renderEtatDuJour(data) {
   else if (moy >= 2.6) synthese = 'Forme correcte — surveille : ' + phrasesFaible[faible.d.key] + '.';
   else                 synthese = 'Point de vigilance : ' + phrasesFaible[faible.d.key] + '. Privilégie la récup ou allège les charges.';
 
-  // Mini-jauges (sans chiffres 1-5)
-  const jauges = positifs.map(p => {
-    const pos = p.pos;
-    const w = pos != null ? Math.round(pos / 5 * 100) : 0;
-    const c = pos != null ? wqColor(pos) : 'var(--border)';
+  // Mini-jauges : réponse réelle + couleur bon/mauvais (barre pleine rouge sur Douleur = beaucoup de douleur)
+  const jauges = WQ_DIMS.map(d => {
+    const raw = (dernier[d.key] == null || dernier[d.key] === '' || isNaN(Number(dernier[d.key]))) ? null : Number(dernier[d.key]);
+    const w = raw != null ? Math.round(raw / 5 * 100) : 0;
+    // couleur : dimension positive → haut = bon ; dimension négative (fatigue/douleur) → haut = mauvais
+    let c = 'var(--border)';
+    if (raw != null) {
+      const bon = d.invert ? raw <= 2 : raw >= 4;
+      const moyen = raw === 3;
+      c = bon ? 'var(--good)' : moyen ? 'var(--warn)' : 'var(--danger)';
+    }
+    const txt = raw != null ? (WQ_ANSWERS[d.key] ? WQ_ANSWERS[d.key][raw] : raw) : 'Non renseigné';
     return `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
-        <div style="flex:0 0 68px;font-size:11px;color:var(--text-muted);font-weight:600;">${p.d.label}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="flex:0 0 62px;font-size:11px;color:var(--text-muted);font-weight:600;">${d.label}</div>
         <div style="flex:1;height:7px;background:var(--surface2);border-radius:20px;overflow:hidden;">
           <div style="height:100%;width:${w}%;background:${c};border-radius:20px;transition:width .3s;"></div>
         </div>
+        <div style="flex:0 0 82px;text-align:right;font-size:10.5px;font-weight:700;color:${c};">${txt}</div>
       </div>`;
   }).join('');
 
