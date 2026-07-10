@@ -903,9 +903,10 @@
           <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">S</div>
           <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">D</div>
         </div>
-        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
-        <div style="display:flex;gap:12px;margin-top:8px;">
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:#e8f8f0;border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Séance</span></div>
+        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
+        <div id="cal-detail" style="margin-top:10px;"></div>
+        <div style="display:flex;gap:12px;margin-top:10px;">
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--good);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Séance</span></div>
           <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--accent);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Aujourd'hui</span></div>
         </div>
       </div>
@@ -4793,6 +4794,51 @@ async function chargerHistorique() {
   }
 }
 
+// Couleur + abréviation lisible d'un type de séance (agenda Option D)
+function seanceTypeInfo(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('upper'))  return { abbr: 'UPPER', col: '#9b7bff' };
+  if (n.includes('lower'))  return { abbr: 'LOWER', col: '#00b8c4' };
+  if (n.includes('push'))   return { abbr: 'PUSH',  col: '#f59f00' };
+  if (n.includes('pull'))   return { abbr: 'PULL',  col: '#00c96e' };
+  if (n.includes('full'))   return { abbr: 'FULL',  col: '#ec5aa8' };
+  if (n.includes('pec'))    return { abbr: 'PEC',   col: '#9b7bff' };
+  if (n.includes('dos'))    return { abbr: 'DOS',   col: '#00b8c4' };
+  if (n.includes('jambe'))  return { abbr: 'JAMBE', col: '#00b8c4' };
+  if (n.includes('bras'))   return { abbr: 'BRAS',  col: '#f59f00' };
+  if (n.includes('libre'))  return { abbr: 'LIBRE', col: 'var(--accent)' };
+  return { abbr: (name || '').substring(0, 5).toUpperCase(), col: 'var(--accent)' };
+}
+
+let calSelectedEl = null;
+function selectCalDay(dateStr, name, el) {
+  if (calSelectedEl) calSelectedEl.style.boxShadow = '';
+  calSelectedEl = el;
+  el.style.boxShadow = '0 0 0 2px var(--accent)';
+  renderCalDetail(dateStr, name);
+}
+
+function renderCalDetail(dateStr, name) {
+  const el = document.getElementById('cal-detail');
+  if (!el) return;
+  const ti = seanceTypeInfo(name);
+  const dd = (dernierAppData && dernierAppData.dashboard) ? dernierAppData.dashboard.derniere_seance : null;
+  let stats = '';
+  if (dd && dd.date === dateStr) {
+    const chip = (v, l) => `<div style="background:var(--surface);border-radius:8px;padding:6px;text-align:center;"><div style="font-size:15px;font-weight:800;color:var(--text);">${v}</div><div style="font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;">${l}</div></div>`;
+    stats = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px;">
+      ${chip(dd.nb_exercices != null ? dd.nb_exercices : '—', 'exos')}
+      ${chip(dd.nb_series != null ? dd.nb_series : '—', 'séries')}
+      ${chip(dd.rpe_moyen != null ? dd.rpe_moyen : '—', 'RPE moy')}
+    </div>`;
+  }
+  el.innerHTML = `<div style="background:var(--surface2);border-radius:12px;padding:11px 12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div style="font-size:13px;font-weight:800;color:var(--text);">${dateStr}</div>
+      <span style="font-size:10px;font-weight:800;color:#fff;background:${ti.col};border-radius:20px;padding:3px 10px;">${name}</span>
+    </div>${stats}</div>`;
+}
+
 function renderCalendrier() {
   const mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   const annee = calDate.getFullYear();
@@ -4819,6 +4865,10 @@ function renderCalendrier() {
     grid.appendChild(d);
   }
 
+  // Réinitialiser le panneau détail à chaque rendu
+  const detReset = document.getElementById('cal-detail'); if (detReset) detReset.innerHTML = '';
+  calSelectedEl = null;
+
   // Jours du mois
   for (let j = 1; j <= dernierJour.getDate(); j++) {
     const d = document.createElement('div');
@@ -4827,23 +4877,15 @@ function renderCalendrier() {
     const hasSeance = seancesDates[dateStr];
     const isFutur = new Date(annee, moisIdx, j) > today;
 
-    if (isToday) {
-      d.style.cssText = 'background:var(--accent);border-radius:6px;text-align:center;padding:5px 2px;font-size:11px;color:var(--on-accent);font-weight:700;';
-    } else if (hasSeance) {
-      d.style.cssText = 'background:#e8f8f0;border-radius:6px;text-align:center;padding:3px 1px;font-size:11px;color:#007a41;font-weight:700;cursor:pointer;';
+    if (hasSeance) {
+      const ti = seanceTypeInfo(hasSeance);
+      d.style.cssText = `border-radius:9px;text-align:center;padding:3px 1px 4px;cursor:pointer;background:var(--surface2);${isToday ? 'outline:2px solid var(--accent);outline-offset:-2px;' : ''}`;
       d.title = hasSeance;
-      // Abréger intelligemment le nom de séance
-      let seanceAbrege = hasSeance;
-      if (hasSeance.includes('Pec')) seanceAbrege = 'Pec';
-      else if (hasSeance.includes('Dos')) seanceAbrege = 'Dos';
-      else if (hasSeance.includes('Jambe') || hasSeance.includes('jambe')) seanceAbrege = 'Jamb';
-      else if (hasSeance.includes('Upper')) seanceAbrege = 'Upp';
-      else if (hasSeance.includes('Push')) seanceAbrege = 'Push';
-      else if (hasSeance.includes('Pull')) seanceAbrege = 'Pull';
-      else if (hasSeance.includes('Full')) seanceAbrege = 'Full';
-      else if (hasSeance.includes('Ischio') || hasSeance.includes('ischio')) seanceAbrege = 'Isch';
-      else seanceAbrege = hasSeance.substring(0, 4);
-      d.innerHTML = `<div style="font-size:10px;">${j}</div><div style="font-size:7px;color:#007a41;line-height:1.2;font-weight:600;">${seanceAbrege}</div>`;
+      d.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.1;">${j}</div><div style="font-size:8.5px;font-weight:800;color:#fff;background:${ti.col};border-radius:5px;padding:1px 0;margin:2px 3px 0;line-height:1.4;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ti.abbr}</div>`;
+      d.addEventListener('click', () => selectCalDay(dateStr, hasSeance, d));
+    } else if (isToday) {
+      d.style.cssText = 'background:var(--accent);border-radius:9px;text-align:center;padding:5px 2px;font-size:11px;color:var(--on-accent);font-weight:700;';
+      d.textContent = j;
     } else if (isFutur) {
       d.style.cssText = 'text-align:center;padding:5px 2px;font-size:11px;color:var(--border);';
       d.textContent = j;
