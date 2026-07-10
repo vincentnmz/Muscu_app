@@ -4539,6 +4539,7 @@ async function _envoyerSeance() {
   } catch(e) {
     showToast('❌ Erreur envoi', '#ff4444');
     btn.textContent = '✅ Valider la séance'; btn.disabled = false;
+    _validationEnCours = false;   // échec : on autorise une nouvelle tentative
   }
 }
 
@@ -4564,7 +4565,10 @@ async function _envoyerWellness(seanceId, dateSeance) {
   } catch(e) { /* non bloquant */ }
 }
 
+let _validationEnCours = false;
 async function validerSeanceAvecWellness() {
+  if (_validationEnCours) return;          // anti double-soumission
+  _validationEnCours = true;
   fermerWellnessModal();
   const firstSerie = seance[0]?.series[0];
   if (firstSerie) await _envoyerWellness(firstSerie.seanceId, firstSerie.date);
@@ -4572,6 +4576,8 @@ async function validerSeanceAvecWellness() {
 }
 
 async function validerSeanceSansWellness() {
+  if (_validationEnCours) return;          // anti double-soumission
+  _validationEnCours = true;
   fermerWellnessModal();
   await _envoyerSeance();
 }
@@ -4674,6 +4680,7 @@ async function nouvelleSeance() {
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   programmeSeance = []; lastPerfData = {};
+  _validationEnCours = false;   // prêt pour une nouvelle validation
   document.getElementById('recap-block').style.display = 'none';
   document.getElementById('card-liste-seance').style.display = 'none';
   document.getElementById('card-exo-actuel').style.display = 'none';
