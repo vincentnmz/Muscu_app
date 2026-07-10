@@ -603,11 +603,10 @@
     <!-- Sous-onglets coach -->
     <div class="sub-tabs">
       <button class="sub-tab cc1 active" id="cdtab-btn-overview" onclick="switchCoachDetailTab('overview')" ><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.4"/></svg></span><span>Aperçu</span></button>
-      <button class="sub-tab cc2" id="cdtab-btn-seances" onclick="switchCoachDetailTab('seances')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M6.5 6v12M3.5 8.5v7M17.5 6v12M20.5 8.5v7M6.5 12h11"/></svg></span><span>Séances</span></button>
-      <button class="sub-tab cc3" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span><span>Progrès</span></button>
-      <button class="sub-tab cc4" id="cdtab-btn-volume" onclick="switchCoachDetailTab('volume')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M7 21v-6M12 21v-11M17 21v-9"/></svg></span><span>Volume</span></button>
-      <button class="sub-tab cc5" id="cdtab-btn-conseils" onclick="ouvrirConversationCoach()" style="position:relative"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.5A8 8 0 1 1 21 11.5z"/></svg></span><span>Messages</span><span id="badge-conseils-coach" style="display:none;position:absolute;top:2px;right:6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;"></span></button>
-      <button class="sub-tab cc6" id="cdtab-btn-programme" onclick="switchCoachDetailTab('programme')"><span class="cd-ico"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><span>Programme</span></button>
+      <button class="sub-tab cc2" id="cdtab-btn-prog" onclick="switchCoachDetailTab('prog')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span><span>Progression</span></button>
+      <button class="sub-tab cc3" id="cdtab-btn-seances" onclick="switchCoachDetailTab('seances')"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M6.5 6v12M3.5 8.5v7M17.5 6v12M20.5 8.5v7M6.5 12h11"/></svg></span><span>Séances</span></button>
+      <button class="sub-tab cc4" id="cdtab-btn-programme" onclick="switchCoachDetailTab('programme')"><span class="cd-ico"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><span>Programme</span></button>
+      <button class="sub-tab cc5" id="cdtab-btn-conseils" onclick="ouvrirConversationCoach()" style="position:relative"><span class="cd-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.5A8 8 0 1 1 21 11.5z"/></svg></span><span>Conversation</span><span id="badge-conseils-coach" style="display:none;position:absolute;top:2px;right:6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;"></span></button>
     </div>
 
     <div id="cd-body">
@@ -657,17 +656,6 @@
         <div id="cd-regression"></div>
       </div>
 
-      <!-- Tendance mensuelle — Évolution j28 vs j28prec -->
-      <div class="v2-sec" id="cd-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">28j vs mois préc.</div></div>
-      <div class="dash-card" id="cd-cmp28-card" style="padding:16px;display:none;">
-        <div id="cd-cmp28-content"></div>
-      </div>
-
-      <!-- Records de l'athlète (en bas) -->
-      <div class="v2-sec" id="cd-records-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records de l'athlète</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
-      <div class="dash-card" id="cd-records-card" style="padding:16px;display:none">
-        <div id="cd-records"></div>
-      </div>
     </div>
 
     <!-- ONGLET SÉANCES -->
@@ -701,8 +689,16 @@
       </div>
     </div>
 
-    <!-- ONGLET PROGRESSION -->
+    <!-- ONGLET PROGRESSION (fusion Progrès + Volume + Records + Tendance mensuelle) -->
     <div id="cdtab-prog" style="display:none">
+
+      <!-- Volume par muscle -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div></div>
+      <div class="card">
+        <div id="cd-volume-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Progression par exercice -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div></div>
       <div class="card">
         <select id="cd-sel-exercice" onchange="afficherCoachProgressionExo()" style="margin-bottom:10px">
@@ -710,6 +706,8 @@
         </select>
         <div id="cd-progression-content"></div>
       </div>
+
+      <!-- Tendances -->
       <div class="v2-sec">
         <div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</div>
         <div style="display:flex;gap:6px">
@@ -720,15 +718,22 @@
       <div class="card">
         <div id="cd-tendances-content"><div class="loader">Chargement...</div></div>
       </div>
-    </div>
 
-    <!-- ONGLET VOLUME -->
-    <div id="cdtab-volume" style="display:none">
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle · semaine</div></div>
-      <div class="card">
-        <div id="cd-volume-content"><div class="loader">Chargement...</div></div>
+      <!-- Records (déplacé depuis Aperçu) -->
+      <div class="v2-sec" id="cd-records-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records de l'athlète</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
+      <div class="dash-card" id="cd-records-card" style="padding:16px;display:none">
+        <div id="cd-records"></div>
+      </div>
+
+      <!-- Tendance mensuelle (déplacé depuis Aperçu) -->
+      <div class="v2-sec" id="cd-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">28j vs mois préc.</div></div>
+      <div class="dash-card" id="cd-cmp28-card" style="padding:16px;display:none;">
+        <div id="cd-cmp28-content"></div>
       </div>
     </div>
+
+    <!-- ONGLET VOLUME (fusionné dans Progression — conteneur conservé vide) -->
+    <div id="cdtab-volume" style="display:none"></div>
 
     <!-- ONGLET AGENDA -->
     <div id="cdtab-cal" style="display:none">
@@ -2145,6 +2150,7 @@ function retourCoachDetail() {
 
 const CD_TAB_LABELS = { overview: 'Aperçu', seances: 'Séances', prog: 'Progression', volume: 'Volume', cal: 'Agenda', conseils: 'Conversation', programme: 'Programme' };
 function switchCoachDetailTab(tab) {
+  if (tab === 'volume') tab = 'prog';   // Volume fusionné dans Progression
   ['overview','seances','prog','volume','cal','conseils','programme'].forEach(t => {
     const el = document.getElementById('cdtab-' + t); if (el) el.style.display = t === tab ? 'block' : 'none';
     const btn = document.getElementById('cdtab-btn-' + t); if (btn) btn.classList.toggle('active', t === tab);
