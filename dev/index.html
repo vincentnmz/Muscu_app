@@ -878,6 +878,32 @@
     <!-- ONGLET SÉANCE -->
     <div id="tab-seance" class="tab-content">
 
+      <!-- AGENDA (calendrier) -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</div></div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:800;color:var(--text);" id="cal-titre">Juin 2026</span>
+          <div style="display:flex;gap:12px;">
+            <span onclick="calNaviguer(-1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">◀</span>
+            <span onclick="calNaviguer(1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">▶</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:5px;">
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">L</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">M</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">M</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">J</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">V</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">S</div>
+          <div style="text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;padding:3px;">D</div>
+        </div>
+        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+        <div style="display:flex;gap:12px;margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:#e8f8f0;border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Séance</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--accent);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Aujourd'hui</span></div>
+        </div>
+      </div>
+
       <!-- Sous-onglets -->
       <div class="sub-tabs">
         <button class="sub-tab active" onclick="switchSubTab('saisie')"><svg class="ico ico-btn"><use href="#i-dumbbell"/></svg>Saisie</button>
@@ -1198,20 +1224,6 @@
       <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
       <div class="dash-card" id="dash-cmp28-card" style="padding:16px;display:none;">
         <div id="dash-cmp28-content"></div>
-      </div>
-
-      <!-- AGENDA — parké (sera déplacé vers un prochain onglet) -->
-      <div id="agenda-parked" style="display:none;">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <span style="font-size:14px;font-weight:800;color:var(--text);" id="cal-titre">Juin 2026</span>
-            <div style="display:flex;gap:12px;">
-              <span onclick="calNaviguer(-1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">◀</span>
-              <span onclick="calNaviguer(1)" style="font-size:16px;cursor:pointer;color:var(--text-muted);font-weight:700;">▶</span>
-            </div>
-          </div>
-          <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
-        </div>
       </div>
 
     </div>
