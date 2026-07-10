@@ -911,13 +911,12 @@
         </div>
       </div>
 
-      <!-- Sous-onglets -->
-      <div class="sub-tabs">
-        <button class="sub-tab active" onclick="switchSubTab('saisie')"><svg class="ico ico-btn"><use href="#i-dumbbell"/></svg>Saisie</button>
-        <button class="sub-tab" onclick="switchSubTab('programme')"><svg class="ico ico-btn"><use href="#i-clipboard"/></svg>Programme</button>
+      <!-- Accès Programme (plus de sous-onglets — saisie par défaut) -->
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <button class="btn btn-outline" onclick="switchSubTab('programme')" style="width:auto;font-size:13px;padding:8px 14px;"><svg class="ico ico-btn"><use href="#i-clipboard"/></svg>Mon programme</button>
       </div>
 
-      <!-- SOUS-ONGLET SAISIE -->
+      <!-- SAISIE (vue par défaut) -->
       <div id="subtab-saisie">
 
         <!-- RECAP après validation -->
@@ -1067,6 +1066,7 @@
 
       <!-- SOUS-ONGLET PROGRAMME -->
       <div id="subtab-programme" style="display:none">
+        <button class="btn btn-outline" onclick="switchSubTab('saisie')" style="width:auto;font-size:13px;padding:8px 14px;margin-bottom:12px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg>Retour à la saisie</button>
         <div id="programme-complet-content"><div class="loader">Chargement...</div></div>
       </div>
 
