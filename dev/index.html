@@ -102,10 +102,10 @@
   /* Onglets coach : icône SVG au-dessus du label, actif souligné dans sa couleur (V2) */
   #view-coach-detail .sub-tab { flex: 1 1 0; flex-direction: column; align-items: center; gap: 3px; padding: 7px 3px; font-size: 9.5px; border: none; border-bottom: 2px solid transparent; background: none; border-radius: 0; min-width: 0; white-space: nowrap; color: var(--text-muted); }
   #view-coach-detail .sub-tab .cd-ico { line-height: 1; }
-  #view-coach-detail .sub-tab .cd-ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
-  /* Onglets coach : icône + libellé lisible (5 onglets, on a la place) */
-  #view-coach-detail .sub-tab > span:not(.cd-ico):not([id]) { display: block; font-size: 10px; line-height: 1.1; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  #view-coach-detail .sub-tab { padding: 7px 2px; justify-content: center; }
+  #view-coach-detail .sub-tab .cd-ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  /* Onglets coach en icônes seules, centrées — le nom de l'onglet est dans le titre du header */
+  #view-coach-detail .sub-tab > span:not(.cd-ico):not([id]) { display: none; }
+  #view-coach-detail .sub-tab { padding: 12px 3px; justify-content: center; align-items: center; }
   #view-coach-detail .sub-tab.active { background: none; color: var(--text-muted); }
   #view-coach-detail .sub-tab.cc1.active { color: var(--accent); border-bottom-color: var(--accent); }
   #view-coach-detail .sub-tab.cc2.active,
@@ -559,8 +559,8 @@
       <button class="btn-sm btn-outline" onclick="retourCoachDetail()" title="Retour" style="flex-shrink:0;padding:8px 10px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>
       <div id="cd-avatar" style="width:40px;height:40px;border-radius:12px;background:var(--accent-a12);color:var(--accent-strong);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">–</div>
       <div style="flex:1;min-width:0;text-align:left;">
-        <h1 id="header-nom-athlete-coach" style="font-weight:800;font-size:19px;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Athlète</h1>
-        <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span id="cd-tab-title" style="font-weight:700;color:var(--accent);">Aperçu</span><span id="header-niveau-athlete-coach"></span></div>
+        <h1 id="cd-tab-title" style="font-weight:800;font-size:19px;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Aperçu</h1>
+        <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span id="header-nom-athlete-coach" style="font-weight:700;color:var(--text);">Athlète</span><span id="header-niveau-athlete-coach"></span></div>
       </div>
       <button onclick="ouvrirReglagesCoach()" title="Réglages" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion" style="flex-shrink:0;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
