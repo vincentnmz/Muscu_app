@@ -102,10 +102,10 @@
   /* Onglets coach : icône SVG au-dessus du label, actif souligné dans sa couleur (V2) */
   #view-coach-detail .sub-tab { flex: 1 1 0; flex-direction: column; align-items: center; gap: 3px; padding: 7px 3px; font-size: 9.5px; border: none; border-bottom: 2px solid transparent; background: none; border-radius: 0; min-width: 0; white-space: nowrap; color: var(--text-muted); }
   #view-coach-detail .sub-tab .cd-ico { line-height: 1; }
-  #view-coach-detail .sub-tab .cd-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
-  /* Onglets coach en icônes seules — le nom de l'onglet est reporté dans le titre du header (le badge conserve son id, on ne le masque pas) */
-  #view-coach-detail .sub-tab > span:not(.cd-ico):not([id]) { display: none; }
-  #view-coach-detail .sub-tab { padding: 12px 3px; justify-content: center; }
+  #view-coach-detail .sub-tab .cd-ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  /* Onglets coach : icône + libellé lisible (5 onglets, on a la place) */
+  #view-coach-detail .sub-tab > span:not(.cd-ico):not([id]) { display: block; font-size: 10px; line-height: 1.1; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  #view-coach-detail .sub-tab { padding: 7px 2px; justify-content: center; }
   #view-coach-detail .sub-tab.active { background: none; color: var(--text-muted); }
   #view-coach-detail .sub-tab.cc1.active { color: var(--accent); border-bottom-color: var(--accent); }
   #view-coach-detail .sub-tab.cc2.active,
@@ -620,6 +620,12 @@
         <div id="cd-alertes"><div class="loader">Chargement...</div></div>
       </div>
 
+      <!-- Bilan de la dernière séance (questionnaire bien-être de l'athlète) -->
+      <div class="v2-sec" id="cd-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</div></div>
+      <div class="dash-card" id="cd-etat-card" style="padding:16px;display:none;">
+        <div id="cd-etat-content"></div>
+      </div>
+
       <!-- Tableau de bord (indicateurs de la semaine) -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Cette semaine</div></div>
       <div class="dash-card" style="padding:16px;">
@@ -636,12 +642,6 @@
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</div></div>
       <div class="dash-card" id="cd-acwr-card" style="padding:16px">
         <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
-      </div>
-
-      <!-- Volume par muscle → onglet Volume -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div><div class="more" onclick="switchCoachDetailTab('volume')" style="cursor:pointer;">Voir tout →</div></div>
-      <div class="dash-card" id="cd-muscle-card" style="padding:16px" onclick="switchCoachDetailTab('volume')" title="Voir le volume par muscle">
-        <div id="cd-muscle"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Progression 7 jours (cliquable → détail) -->
@@ -2234,6 +2234,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    renderEtatDuJourCoach(data);
     renderCoachRecordsEtRegression(data.historique);
     renderCoachIndicateurs(data);
     renderAlertesCoach(data);
@@ -6224,10 +6225,11 @@ function wqColor(pos) {
   return 'var(--danger)';
 }
 
-function renderEtatDuJour(data) {
-  const sec  = document.getElementById('dash-etat-sec');
-  const card = document.getElementById('dash-etat-card');
-  const cont = document.getElementById('dash-etat-content');
+function renderEtatDuJour(data, ids) {
+  ids = ids || { sec: 'dash-etat-sec', card: 'dash-etat-card', cont: 'dash-etat-content' };
+  const sec  = document.getElementById(ids.sec);
+  const card = document.getElementById(ids.card);
+  const cont = document.getElementById(ids.cont);
   if (!card || !cont) return;
 
   const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
@@ -6316,6 +6318,11 @@ function renderEtatDuJour(data) {
 
   sec.style.display = '';
   card.style.display = '';
+}
+
+// Version coach du bloc « Bilan de la dernière séance » (mêmes calculs, cibles cd-*)
+function renderEtatDuJourCoach(data) {
+  renderEtatDuJour(data, { sec: 'cd-etat-sec', card: 'cd-etat-card', cont: 'cd-etat-content' });
 }
 
 // =====================================================================
