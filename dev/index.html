@@ -5362,6 +5362,9 @@ async function chargerAppData() {
     renderEtatDuJour(data);
     renderAlertes(data);
 
+    // Objectif : bloc Récompenses (paliers + cagnotte auto)
+    renderRecompenses(data);
+
     // Graphique poids
     afficherGraphiquePoids(data.poids || []);
 
@@ -6192,6 +6195,59 @@ function renderAlertes(data) {
 
   sec.style.display = '';
   card.style.display = '';
+}
+
+// =====================================================================
+// BLOC « RÉCOMPENSES » (onglet Objectif) — paliers + cagnotte, calcul auto
+// =====================================================================
+function renderRecompenses(data) {
+  const cont = document.getElementById('recompense-content');
+  if (!cont) return;
+  const g = (data && data.global) || {};
+  const totalSeances = Number(g.total_seances || 0);
+  const records = Number(g.records_30j || 0);
+
+  // Cagnotte de points (auto) : séances ×10 + records ×50
+  const pts = totalSeances * 10 + records * 50;
+
+  // Paliers de séances
+  const paliers = [10, 25, 50, 100, 200, 365];
+  let prev = 0, next = paliers[0];
+  for (let i = 0; i < paliers.length; i++) {
+    if (totalSeances < paliers[i]) { next = paliers[i]; prev = i > 0 ? paliers[i - 1] : 0; break; }
+    prev = paliers[i]; next = paliers[i + 1] || paliers[i];
+  }
+  const atteint = totalSeances >= paliers[paliers.length - 1];
+  const restant = Math.max(0, next - totalSeances);
+  const pctPalier = atteint ? 100 : Math.round((totalSeances - prev) / (next - prev) * 100);
+
+  cont.style.textAlign = 'left';
+  cont.style.padding = '0';
+  cont.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;">
+      <div>
+        <div style="font-size:12px;color:var(--text-muted);font-weight:600;">Ta cagnotte</div>
+        <div style="font-size:28px;font-weight:800;color:var(--accent);line-height:1.1;">${pts}<span style="font-size:13px;color:var(--text-muted);font-weight:600;"> pts</span></div>
+      </div>
+      <div style="font-size:34px;">🎁</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">${totalSeances} séances ×10 · ${records} records (30j) ×50</div>
+
+    <div style="border-top:1px solid var(--border);padding-top:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:700;color:var(--text);">🏅 Prochain palier</span>
+        <span style="font-size:12px;color:var(--text-muted);font-weight:700;">${atteint ? 'Max atteint !' : restant + ' séance' + (restant > 1 ? 's' : '')}</span>
+      </div>
+      <div style="background:var(--surface2);border-radius:20px;height:8px;overflow:hidden;">
+        <div style="height:100%;width:${pctPalier}%;background:var(--accent);border-radius:20px;transition:width .3s;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">${totalSeances} / ${atteint ? totalSeances : next} séances</div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;display:flex;align-items:center;gap:10px;">
+      <div style="font-size:20px;">👑</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.4;">Récompense personnalisée du coach — <span style="font-weight:700;">bientôt</span>.</div>
+    </div>`;
 }
 
 function toggleTheme() {
