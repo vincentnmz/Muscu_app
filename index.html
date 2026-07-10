@@ -100,7 +100,7 @@
   #view-coach-detail .sub-tabs { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; z-index: 50; background: var(--surface); border-top: 1px solid var(--border); padding: 8px 10px calc(6px + env(safe-area-inset-bottom, 0px)); gap: 2px; }
   body.cd-nav { padding-bottom: 66px; }
   /* Onglets coach : icône SVG au-dessus du label, actif souligné dans sa couleur (V2) */
-  #view-coach-detail .sub-tab { flex: 1 1 0; flex-direction: column; align-items: center; gap: 3px; padding: 7px 3px; font-size: 9.5px; border: none; border-bottom: 2px solid transparent; background: none; border-radius: 0; min-width: 0; white-space: nowrap; color: var(--text-muted); }
+  #view-coach-detail .sub-tab { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 3px; font-size: 9.5px; border: none; border-bottom: 2px solid transparent; background: none; border-radius: 0; min-width: 0; white-space: nowrap; color: var(--text-muted); }
   #view-coach-detail .sub-tab .cd-ico { line-height: 1; }
   #view-coach-detail .sub-tab .cd-ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
   /* Onglets coach en icônes seules, centrées — le nom de l'onglet est dans le titre du header */
@@ -2911,7 +2911,7 @@ function seancesCardsHTML(entries) {
       <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">
         <div onclick="toggleSeanceCoach(${idx})" style="display:flex;justify-content:space-between;align-items:center;padding:12px;cursor:pointer;background:var(--surface);">
           <div>
-            <div style="font-size:13px;font-weight:800;color:var(--text);">${s.seance}</div>
+            <div style="font-size:13px;font-weight:800;color:var(--accent);">${s.seance}</div>
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${s.date}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
