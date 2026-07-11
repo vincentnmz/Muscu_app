@@ -6898,40 +6898,53 @@ function renderEtatDuJour(data, ids) {
   else if (moy >= 2.6) synthese = 'Forme correcte — surveille : ' + phrasesFaible[faible.d.key] + '.';
   else                 synthese = 'Point de vigilance : ' + phrasesFaible[faible.d.key] + '. Privilégie la récup ou allège les charges.';
 
-  // Mini-jauges : réponse réelle + couleur bon/mauvais (barre pleine rouge sur Douleur = beaucoup de douleur)
-  const jauges = WQ_DIMS.map(d => {
+  // Segments : 5 dimensions du ressenti en points colorés (pas de piège de longueur)
+  const segments = WQ_DIMS.map(d => {
     const raw = (dernier[d.key] == null || dernier[d.key] === '' || isNaN(Number(dernier[d.key]))) ? null : Number(dernier[d.key]);
-    const w = raw != null ? Math.round(raw / 5 * 100) : 0;
-    // couleur : dimension positive → haut = bon ; dimension négative (fatigue/douleur) → haut = mauvais
     let c = 'var(--border)';
     if (raw != null) {
       const bon = d.invert ? raw <= 2 : raw >= 4;
       const moyen = raw === 3;
       c = bon ? 'var(--good)' : moyen ? 'var(--warn)' : 'var(--danger)';
     }
-    const txt = raw != null ? (WQ_ANSWERS[d.key] ? WQ_ANSWERS[d.key][raw] : raw) : 'Non renseigné';
+    const txt = raw != null ? (WQ_ANSWERS[d.key] ? WQ_ANSWERS[d.key][raw] : raw) : '—';
     return `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <div style="flex:0 0 62px;font-size:11px;color:var(--text-muted);font-weight:600;">${d.label}</div>
-        <div style="flex:1;height:7px;background:var(--surface2);border-radius:20px;overflow:hidden;">
-          <div style="height:100%;width:${w}%;background:${c};border-radius:20px;transition:width .3s;"></div>
-        </div>
-        <div style="flex:0 0 82px;text-align:right;font-size:10.5px;font-weight:700;color:${c};">${txt}</div>
+      <div style="flex:1;text-align:center;min-width:0;">
+        <div style="height:6px;border-radius:20px;margin-bottom:6px;background:${c};"></div>
+        <div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:700;">${d.label}</div>
+        <div style="font-size:10px;font-weight:800;margin-top:2px;color:${c};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${txt}</div>
       </div>`;
   }).join('');
 
+  // Perf réelle de la dernière séance (RPE / exercices / séries) — propres à la séance
+  const ds = (data && data.recent && data.recent.derniere_seance) ? data.recent.derniere_seance : null;
+  const nomSeance = (ds && ds.seance_id && String(ds.seance_id).trim() && String(ds.seance_id).toLowerCase() !== 'null') ? String(ds.seance_id).trim() : '';
+  const dateSeance = ds && ds.date ? ds.date : '';
+  const sousTitre = (nomSeance ? 'Séance ' + escapeHtml(nomSeance) : 'Dernière séance') + (dateSeance ? ' · ' + dateSeance : '');
+  const perfChip = (v, k) => `<div style="flex:1;background:var(--surface2);border-radius:10px;padding:7px 4px;text-align:center;"><div style="font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;">${v}</div><div style="font-size:8.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);margin-top:1px;">${k}</div></div>`;
+  let perfHtml = '';
+  if (ds) {
+    const rpe = (ds.rpe_moyen != null && ds.rpe_moyen !== 'N/A') ? ds.rpe_moyen : '—';
+    perfHtml = `<div style="display:flex;gap:7px;margin-top:11px;">
+      ${perfChip(rpe, 'RPE moyen')}
+      ${perfChip(ds.nb_exercices != null ? ds.nb_exercices : '—', 'Exercices')}
+      ${perfChip(ds.nb_series != null ? ds.nb_series : '—', 'Séries')}
+    </div>`;
+  }
+
   cont.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
-      <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="min-width:0;">
         <div style="font-size:15px;font-weight:800;color:${col};">${label}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${trendHtml || 'Dernier questionnaire'}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${sousTitre}${trendHtml ? ' · ' + trendHtml : ''}</div>
       </div>
-      <div style="text-align:right;">
+      <div style="text-align:right;flex-shrink:0;">
         <div style="font-size:30px;font-weight:800;color:${col};line-height:1;">${score100}<span style="font-size:13px;color:var(--text-muted);font-weight:600;">/100</span></div>
       </div>
     </div>
-    ${jauges}
-    <div style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:10px;font-size:12.5px;color:var(--text);line-height:1.45;">${synthese}</div>`;
+    ${perfHtml}
+    <div style="display:flex;gap:5px;margin-top:13px;">${segments}</div>
+    <div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;font-size:12.5px;color:var(--text);line-height:1.45;">${synthese}</div>`;
 
   sec.style.display = '';
   card.style.display = '';
