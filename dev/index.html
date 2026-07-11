@@ -3134,10 +3134,11 @@ function computeMarqueursCoach(data, a) {
   // 2. ACWR — vérifier d'abord si on a ≥28 jours d'historique
   let acwrColor, acwrLabel, acwrRatio = null;
   const acwrLocal = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
-  const acwrBackend = dash.acwr || null;
-  const acwrInsuffisant = !acwrLocal || acwrLocal.insuffisant;
+  const acwrBackend = (dash.acwr != null) ? Number(dash.acwr) : null;
+  // Cohérent avec l'athlète : on affiche si le local est OK OU si le backend a une valeur
+  const acwrInsuffisant = (!acwrLocal || acwrLocal.insuffisant) && acwrBackend == null;
   if (!acwrInsuffisant) {
-    // Historique suffisant : utiliser la valeur backend si disponible, sinon locale
+    // Utiliser la valeur backend si disponible, sinon locale
     const ratio = acwrBackend != null ? acwrBackend : acwrLocal.ratio;
     acwrRatio = ratio;
     if (ratio >= 0.8 && ratio <= 1.3) { acwrColor = '#00c96e'; }
@@ -3651,6 +3652,40 @@ function renderACWR(data) {
   const prog = data.historique ? (data.historique.progression_par_exo || {}) : {};
   const vpj = data.historique ? (data.historique.volume_par_jour || {}) : {};
   const result = computeACWR(prog, vpj);
+  const backend = (data.dashboard && data.dashboard.acwr != null) ? Number(data.dashboard.acwr) : null;
+  const localOk = result && !result.insuffisant;
+
+  // Si le calcul local est insuffisant mais que le backend a une valeur (comme côté athlète),
+  // on affiche la valeur backend pour rester cohérent entre les deux côtés.
+  if (!localOk && backend != null && !isNaN(backend)) {
+    const z = backend < 0.8 ? { label: 'Sous-charge', color: '#00c9ff', bg: 'rgba(0,201,255,0.1)', conseil: 'Volume trop faible — augmente progressivement la charge hebdomadaire.' }
+      : backend <= 1.3 ? { label: 'Zone optimale', color: '#00c96e', bg: 'rgba(0,201,110,0.1)', conseil: 'Charge aiguë bien équilibrée par rapport à la charge chronique. Continue.' }
+      : backend <= 1.5 ? { label: 'Attention', color: '#f59f00', bg: 'rgba(245,159,0,0.1)', conseil: 'Augmentation rapide de la charge — surveille les signes de fatigue.' }
+      : { label: 'Zone danger', color: 'var(--danger)', bg: 'rgba(255,68,68,0.1)', conseil: 'Charge aiguë très élevée vs chronique — risque de blessure. Réduire le volume.' };
+    const pctb = Math.min(100, (backend / 2) * 100);
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-top:6px;">
+        <div style="text-align:center;min-width:64px;">
+          <div style="font-size:28px;font-weight:800;color:${z.color};">${backend.toFixed(2)}</div>
+          <div style="font-size:10px;color:var(--text-muted);">ratio ACWR</div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;color:${z.color};margin-bottom:6px;">${z.label}</div>
+          <div style="position:relative;background:var(--surface2);border-radius:20px;height:8px;margin-bottom:4px;">
+            <div style="position:absolute;left:0;top:0;height:100%;width:${pctb}%;background:${z.color};border-radius:20px;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);">
+            <span>0</span><span style="color:#00c96e;">0.8–1.3</span><span style="color:#f59f00;">1.5</span><span>2.0+</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px;background:${z.bg};border-left:3px solid ${z.color};border-radius:0 8px 8px 0;padding:8px 10px;font-size:12px;color:var(--text);">
+        ${ic('lightbulb')} ${z.conseil}
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · valeur calculée côté serveur</div>`;
+    document.getElementById('cd-acwr-chart-content').innerHTML = '';
+    return;
+  }
 
   if (result === null) {
     el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Pas assez de données (besoin d\'au moins 4 semaines d\'historique)</div>';
