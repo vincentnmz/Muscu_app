@@ -3804,6 +3804,28 @@ function renderProgrammeCoach() {
       ${exercicesData.filter(e => !exclus.includes(e.exercice)).map(e => `<option value="${e.exercice}">${e.exercice}</option>`).join('')}
     </select>`;
 
+  // Muscle d'un exercice (via le catalogue), résumé séries × reps
+  const muscleDe = nom => { const e = exercicesData.find(x => x.exercice === nom); return e && e.muscle ? e.muscle : ''; };
+  const resumeQty = l => {
+    const s = l.series_prevues || '–';
+    const rmin = l.reps_mini, rmax = l.reps_max;
+    const reps = (rmin && rmax) ? `${rmin}-${rmax}` : (rmin || rmax || '–');
+    return `${s} <span style="color:var(--text-muted);font-weight:600">×</span> ${reps}`;
+  };
+  // Ligne compacte (mode lecture) — le crayon ouvre le bloc d'édition
+  const ligneLecture = (l, accent) => {
+    const mus = muscleDe(l.exercice);
+    return `
+      <div onclick="cdToggleExo(${l.row_index})" style="display:flex;align-items:center;gap:11px;padding:10px 4px;cursor:pointer">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:700;color:${accent||'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.exercice}</div>
+          ${mus ? `<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-top:2px">${mus}</div>` : ''}
+        </div>
+        <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap">${resumeQty(l)}</span>
+        <span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>
+      </div>`;
+  };
+
   el.innerHTML = ordre.map((seanceId, si) => {
     // Regrouper les exercices en unités : soit seuls, soit en superset (même groupe_id)
     const lignes = seances[seanceId];
@@ -3820,13 +3842,20 @@ function renderProgrammeCoach() {
       }
     });
 
+    const blocEdit = (l, seanceId, extraBtn, extraSel) => {
+      const ouvertExo = !!cdExoOpen[l.row_index];
+      return `<div id="exo-edit-${l.row_index}" style="border-top:1px solid var(--border);padding-top:10px;margin-top:2px;${ouvertExo?'':'display:none'}">
+          ${champsExo(l, seanceId, extraBtn)}
+          ${extraSel || ''}
+        </div>`;
+    };
     const cartes = unites.map(u => {
       if (u.type === 'single') {
         const l = u.ligne;
         return `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
-          ${champsExo(l, seanceId)}
-          ${selLier(l, seanceId, [l.exercice])}
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
+          ${ligneLecture(l)}
+          ${blocEdit(l, seanceId, null, selLier(l, seanceId, [l.exercice]))}
         </div>`;
       }
       // Superset : une seule carte avec tous les membres empilés
@@ -3834,11 +3863,12 @@ function renderProgrammeCoach() {
       const nomsMembres = u.membres.map(m => m.exercice);
       return `
         <div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ${coul};border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
-          <div style="font-size:11px;font-weight:800;color:${coul};margin-bottom:10px;letter-spacing:0.5px">${ic('link')} SUPERSET · ${u.membres.length} exercices enchaînés</div>
+          <div style="font-size:11px;font-weight:800;color:${coul};margin-bottom:6px;letter-spacing:0.5px">${ic('link')} SUPERSET · ${u.membres.length} exercices enchaînés</div>
           ${u.membres.map((m, i) => `
-            ${i > 0 ? `<div style="text-align:center;color:${coul};font-size:16px;font-weight:800;margin:-2px 0 6px">↓</div>` : ''}
-            <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px">
-              ${champsExo(m, seanceId, `<button onclick="cdRetirerDuGroupe(${m.row_index},'${seanceId}')" title="Retirer du superset" style="background:${coul}1a;border:1px solid ${coul};color:${coul};border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;font-size:12px;flex-shrink:0;font-weight:700">✕</button>`)}
+            ${i > 0 ? `<div style="text-align:center;color:${coul};font-size:16px;font-weight:800;margin:-2px 0 4px">↓</div>` : ''}
+            <div style="background:var(--surface2);border-radius:8px;padding:2px 10px;margin-bottom:8px">
+              ${ligneLecture(m, coul)}
+              ${blocEdit(m, seanceId, `<button onclick="cdRetirerDuGroupe(${m.row_index},'${seanceId}')" title="Retirer du superset" style="background:${coul}1a;border:1px solid ${coul};color:${coul};border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;font-size:12px;flex-shrink:0;font-weight:700">✕</button>`)}
             </div>`).join('')}
           ${selLier(u.membres[0], seanceId, nomsMembres)}
         </div>`;
@@ -3860,6 +3890,14 @@ function renderProgrammeCoach() {
       </div>
     </div>`;
   }).join('');
+}
+
+// État d'ouverture des exercices (mode édition via crayon) — conservé entre les re-rendus
+let cdExoOpen = {};
+function cdToggleExo(rowIndex) {
+  cdExoOpen[rowIndex] = !cdExoOpen[rowIndex];
+  const bloc = document.getElementById('exo-edit-' + rowIndex);
+  if (bloc) bloc.style.display = cdExoOpen[rowIndex] ? 'block' : 'none';
 }
 
 // État d'ouverture des séances (accordéon) — conservé entre les re-rendus
