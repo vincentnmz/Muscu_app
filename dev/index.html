@@ -587,6 +587,12 @@
         <div id="cd-etat-content"></div>
       </div>
 
+      <!-- Analyse (moteur Novalyz — interprétation, lecture seule) -->
+      <div class="v2-sec" id="cd-analyse-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-lightbulb"/></svg>Analyse</div></div>
+      <div class="dash-card" id="cd-analyse-card" style="padding:16px;display:none;">
+        <div id="cd-analyse-content"></div>
+      </div>
+
       <!-- Tableau de bord (indicateurs de la semaine) -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Cette semaine</div></div>
       <div class="dash-card" style="padding:16px;">
@@ -1461,6 +1467,437 @@
   <button class="timer-btn-skip" onclick="skipTimer()">Prêt ✓</button>
 </div>
 
+<!-- ===== Moteur d'analyse Novalyz (inliné, indépendant) ===== -->
+<script>
+/* =============================================================================
+ * Novalyz · Moteur d'analyse & de recommandation
+ * -----------------------------------------------------------------------------
+ * Rôle : INTERPRÉTER les données déjà calculées par l'application.
+ *        Il ne recalcule JAMAIS une métrique, ne touche à aucune formule,
+ *        à aucune base de données, à aucune interface.
+ *
+ * Utilisable identiquement côté Athlète et côté Coach (aucune duplication).
+ *
+ * Principe : architecture orientée règles.
+ *   1. `normaliser(data)`  -> transforme des données brutes (structure app OU
+ *                              objet plat) en un jeu de "faits" propre et stable.
+ *   2. chaque règle est un objet indépendant { id, categorie, evaluer(faits) }.
+ *   3. `analyser(data)`    -> exécute toutes les règles, agrège et TRIE par
+ *                              priorité les analyses produites.
+ *
+ * Sortie : liste d'objets
+ *   { id, type, priorite, niveau, categorie, titre, description, regle }
+ *   - type      : 'success' | 'info' | 'warning' | 'critical'
+ *   - priorite  : 'succes'  | 'info' | 'important' | 'critique'  (sert au tri)
+ *   - niveau    : 'faible'  | 'moyen' | 'eleve'                  (intensité)
+ *
+ * Extensibilité : pour ajouter une règle, on pousse un objet dans REGLES.
+ *                 Aucune autre partie du moteur n'a besoin d'être modifiée.
+ * ========================================================================== */
+(function (global) {
+  'use strict';
+
+  var VERSION = '1.0.0';
+
+  /* ---------------------------------------------------------------------------
+   * SEUILS — tous les paramètres réglables sont centralisés ici.
+   * (Modifier un seuil ne demande de toucher à rien d'autre.)
+   * ------------------------------------------------------------------------- */
+  var SEUILS = {
+    // Bien-être : échelle 1..5. sommeil/energie/ressenti -> 5 = bon.
+    //             fatigue/douleur -> 5 = mauvais (barème naturel).
+    sommeilFaible: 2, sommeilBon: 4,
+    energieFaible: 2, energieBonne: 4,
+    fatigueElevee: 4, fatigueFaible: 2,
+    douleurElevee: 3,
+    ressentiDur: 2, ressentiFacile: 4,
+
+    // ACWR
+    acwrEleve: 1.5, acwrBas: 0.8, acwrOptMin: 0.8, acwrOptMax: 1.3,
+
+    // Charge / volume (évolutions en %)
+    tonnageHaussePct: 15, tonnageBaissePct: -15, chargeVarPct: 3,
+
+    // Volume via nb de séances 7j
+    seancesFaible: 1, seancesEleve: 5,
+
+    // Poids (kg)
+    poidsVar: 0.3,
+
+    // Progression (nombre d'exercices en hausse / baisse)
+    progExcellenteUp: 3, progExcellenteDownMax: 1
+  };
+
+  /* ---------------------------------------------------------------------------
+   * Helpers de lecture tolérants
+   * ------------------------------------------------------------------------- */
+  function num(v) {
+    if (v === null || v === undefined || v === '') return null;
+    var n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+  // Renvoie la première valeur définie parmi les chemins fournis (fonctions).
+  function premier() {
+    for (var i = 0; i < arguments.length; i++) {
+      try { var v = arguments[i](); if (v !== undefined && v !== null && v !== '') return v; }
+      catch (e) { /* chemin absent : on continue */ }
+    }
+    return null;
+  }
+  // Signal booléen "sûr" : ne renvoie true/false que si la valeur existe, sinon null.
+  function sig(valeur, predicat) {
+    if (valeur === null || valeur === undefined) return null;
+    return !!predicat(valeur);
+  }
+  // true seulement si TOUS les signaux valent exactement true (null/false -> pas de déclenchement).
+  function tous() {
+    for (var i = 0; i < arguments.length; i++) { if (arguments[i] !== true) return false; }
+    return true;
+  }
+  // true si AU MOINS un signal vaut true.
+  function auMoinsUn() {
+    for (var i = 0; i < arguments.length; i++) { if (arguments[i] === true) return true; }
+    return false;
+  }
+
+  /* ---------------------------------------------------------------------------
+   * NORMALISATION
+   * Transforme `data` (structure getAppData OU objet plat) en "faits".
+   * Chaque champ est nullable : une donnée absente => signal null => la règle
+   * qui en dépend ne se déclenche pas (aucun faux positif).
+   * ------------------------------------------------------------------------- */
+  function normaliser(data) {
+    data = data || {};
+    var be     = Array.isArray(data.bien_etre) ? (data.bien_etre[0] || {}) : (data.bienEtre || {});
+    var dash   = data.dashboard  || {};
+    var recent = data.recent     || {};
+    var comp   = data.comparison || {};
+    var hist   = data.historique || {};
+    var glob   = data.global     || {};
+    var poids  = Array.isArray(data.poids) ? data.poids : [];
+    var prog   = dash.progression || data.progression || {};
+
+    var r = {}; // valeurs numériques brutes
+
+    // --- Bien-être ---
+    r.sommeil  = num(premier(function(){return be.sommeil;},  function(){return data.sommeil;}));
+    r.energie  = num(premier(function(){return be.energie;},  function(){return data.energie;}));
+    r.fatigue  = num(premier(function(){return be.fatigue;},  function(){return data.fatigue;}));
+    r.douleur  = num(premier(function(){return be.douleur;},  function(){return data.douleur;}));
+    r.ressenti = num(premier(function(){return be.ressenti;}, function(){return data.ressenti;}));
+    r.zone     = premier(function(){return be.zone;}, function(){return data.zoneDouleur;});
+
+    // --- Charge / récupération ---
+    r.acwr = num(premier(
+      function(){return recent.acwr && recent.acwr.valeur;},
+      function(){return dash.acwr;},
+      function(){return data.acwr;}
+    ));
+    r.rpe7j = num(premier(
+      function(){return recent.j7 && recent.j7.rpe_moyen;},
+      function(){return data.rpe;}
+    ));
+
+    // --- Tonnage / volume ---
+    r.tonnage7j = num(premier(
+      function(){return dash.tonnage && dash.tonnage.j7;},
+      function(){return recent.j7 && recent.j7.tonnage;},
+      function(){return data.tonnage;}
+    ));
+    r.tonnageEvolPct = num(premier(
+      function(){return dash.tonnage && dash.tonnage.evol_pct;},
+      function(){return comp.j7_vs_j7prec && comp.j7_vs_j7prec.tonnage && comp.j7_vs_j7prec.tonnage.evol_pct;}
+    ));
+    r.charge28EvolPct = num(premier(
+      function(){return comp.j28_vs_j28prec && comp.j28_vs_j28prec.charge && comp.j28_vs_j28prec.charge.evol_pct;},
+      function(){return data.forceEvolPct;}
+    ));
+    r.volumeSemaine = premier(
+      function(){return hist.volume_semaine;},
+      function(){return data.volumeParMuscle;}
+    ) || [];
+    r.muscleRetard = premier(
+      function(){return glob.muscle_retard;},
+      function(){return dash.muscle_retard;}
+    );
+
+    // --- Progression ---
+    r.progUp   = num(premier(function(){return prog.en_progression;}, function(){return data.progressionUp;}));
+    r.progDown = num(premier(function(){return prog.en_baisse;},      function(){return data.progressionDown;}));
+
+    // --- Régularité ---
+    var reg = dash.regularite || data.regularite || {};
+    r.seances7j     = num(premier(function(){return reg.seances_j7;}, function(){return recent.j7 && recent.j7.seances;}, function(){return reg.seances_semaine;}));
+    r.seancesPrevues = num(function(){return reg.seances_prevues;}());
+
+    // --- Poids ---
+    r.poidsActuel = num(premier(function(){return poids[0] && poids[0].poids;}, function(){return data.poids;}));
+    r.poidsEvol   = (poids.length >= 2) ? (num(poids[0].poids) - num(poids[1].poids)) : num(data.evolutionPoids);
+
+    // --- Records ---
+    r.recordsRecents = num(premier(function(){return glob.records_30j;}, function(){return dash.records_mois;}));
+    r.totalSeances   = num(function(){return glob.total_seances;}());
+
+    /* -----------------------------------------------------------------------
+     * SIGNAUX qualitatifs (true / false / null) — le vocabulaire des règles.
+     * --------------------------------------------------------------------- */
+    var s = {};
+    // Bien-être
+    s.sommeilFaible  = sig(r.sommeil,  function(v){return v <= SEUILS.sommeilFaible;});
+    s.sommeilBon     = sig(r.sommeil,  function(v){return v >= SEUILS.sommeilBon;});
+    s.energieFaible  = sig(r.energie,  function(v){return v <= SEUILS.energieFaible;});
+    s.energieBonne   = sig(r.energie,  function(v){return v >= SEUILS.energieBonne;});
+    s.fatigueElevee  = sig(r.fatigue,  function(v){return v >= SEUILS.fatigueElevee;});
+    s.fatigueFaible  = sig(r.fatigue,  function(v){return v <= SEUILS.fatigueFaible;});
+    s.douleurElevee  = sig(r.douleur,  function(v){return v >= SEUILS.douleurElevee;});
+    s.douleurAbsente = sig(r.douleur,  function(v){return v <= 1;});
+    s.ressentiDur    = sig(r.ressenti, function(v){return v <= SEUILS.ressentiDur;});
+
+    // ACWR
+    s.acwrEleve   = sig(r.acwr, function(v){return v > SEUILS.acwrEleve;});
+    s.acwrBas     = sig(r.acwr, function(v){return v < SEUILS.acwrBas;});
+    s.acwrOptimal = sig(r.acwr, function(v){return v >= SEUILS.acwrOptMin && v <= SEUILS.acwrOptMax;});
+
+    // Progression
+    s.progressionHausse = (r.progUp != null && r.progDown != null) ? (r.progUp > r.progDown) : null;
+    s.progressionBaisse = (r.progUp != null && r.progDown != null) ? (r.progDown > r.progUp) : null;
+    s.progressionStable = (r.progUp != null && r.progDown != null) ? (r.progUp === r.progDown) : null;
+    s.progressionExcellente = (r.progUp != null && r.progDown != null)
+      ? (r.progUp >= SEUILS.progExcellenteUp && r.progDown <= SEUILS.progExcellenteDownMax) : null;
+
+    // Volume (proxys robustes : nb de séances 7j + évolution du tonnage)
+    var volFaibleSeances = sig(r.seances7j, function(v){return v <= SEUILS.seancesFaible;});
+    var volEleveSeances  = sig(r.seances7j, function(v){return v >= SEUILS.seancesEleve;});
+    var volFaibleTonnage = sig(r.tonnageEvolPct, function(v){return v <= SEUILS.tonnageBaissePct;});
+    var volEleveTonnage  = sig(r.tonnageEvolPct, function(v){return v >= SEUILS.tonnageHaussePct;});
+    s.volumeFaible = (volFaibleSeances === null && volFaibleTonnage === null) ? null : auMoinsUn(volFaibleSeances, volFaibleTonnage);
+    s.volumeEleve  = (volEleveSeances  === null && volEleveTonnage  === null) ? null : auMoinsUn(volEleveSeances,  volEleveTonnage);
+
+    // Force (proxy : évolution des charges sur 28j, sinon progression)
+    s.forceBaisse = (r.charge28EvolPct != null) ? (r.charge28EvolPct < -SEUILS.chargeVarPct) : s.progressionBaisse;
+    s.forceHausse = (r.charge28EvolPct != null) ? (r.charge28EvolPct >  SEUILS.chargeVarPct) : s.progressionHausse;
+
+    // Poids
+    s.poidsBaisse = sig(r.poidsEvol, function(v){return v < -SEUILS.poidsVar;});
+    s.poidsHausse = sig(r.poidsEvol, function(v){return v >  SEUILS.poidsVar;});
+
+    // Régularité
+    s.regulariteExcellente = (r.seances7j != null && r.seancesPrevues) ? (r.seances7j >= r.seancesPrevues) : null;
+    s.regulariteFaible     = (r.seances7j != null && r.seancesPrevues) ? (r.seances7j < r.seancesPrevues * 0.5) : sig(r.seances7j, function(v){return v === 0;});
+
+    // Divers
+    s.recordRecent = sig(r.recordsRecents, function(v){return v > 0;});
+
+    return { valeurs: r, signaux: s };
+  }
+
+  /* ---------------------------------------------------------------------------
+   * Fabrique d'analyse (uniformise la sortie + calcule le `type` depuis la priorité)
+   * ------------------------------------------------------------------------- */
+  var TYPE_PAR_PRIORITE = { critique: 'critical', important: 'warning', info: 'info', succes: 'success' };
+  var RANG_PRIORITE     = { critique: 4, important: 3, info: 2, succes: 1 };
+
+  function analyse(o) {
+    return {
+      type:        TYPE_PAR_PRIORITE[o.priorite] || 'info',
+      priorite:    o.priorite,
+      niveau:      o.niveau || 'moyen',
+      categorie:   o.categorie,
+      titre:       o.titre,
+      description: o.description
+    };
+  }
+
+  /* ---------------------------------------------------------------------------
+   * RÈGLES — chacune est autonome. `evaluer(f)` renvoie une analyse ou null.
+   * f = { valeurs, signaux }.  On ne lit que `f.signaux` (déjà seuillés).
+   * Pour ajouter une règle : ajouter un objet ici. Rien d'autre à modifier.
+   * ------------------------------------------------------------------------- */
+  var REGLES = [
+    {
+      id: 'fatigue_generale', categorie: 'récupération',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.sommeilFaible, s.energieFaible, s.fatigueElevee)) return null;
+        return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
+          titre: 'Fatigue générale probable',
+          description: 'Sommeil faible, énergie basse et fatigue musculaire élevée simultanément. Prévoir de la récupération avant de reprendre les charges lourdes.' });
+      }
+    },
+    {
+      id: 'surcharge_locale', categorie: 'blessure',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.douleurElevee, s.volumeEleve)) return null;
+        var zone = f.valeurs.zone ? (' (' + f.valeurs.zone + ')') : '';
+        return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
+          titre: 'Surcharge locale probable',
+          description: 'Douleur marquée' + zone + ' alors que le volume est en forte hausse. Réduire le volume sur cette zone et surveiller.' });
+      }
+    },
+    {
+      id: 'sous_entrainement', categorie: 'entraînement',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.progressionBaisse, s.volumeFaible)) return null;
+        return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
+          titre: 'Sous-entraînement probable',
+          description: 'La progression baisse alors que le volume est faible. Le stimulus est probablement insuffisant : augmenter progressivement le volume.' });
+      }
+    },
+    {
+      id: 'surmenage', categorie: 'récupération',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.progressionBaisse, s.volumeEleve, s.fatigueElevee)) return null;
+        return analyse({ priorite: 'critique', niveau: 'eleve', categorie: this.categorie,
+          titre: 'Surmenage probable',
+          description: 'Volume élevé + fatigue élevée + progression qui baisse : signes d\'accumulation. Envisager une semaine de décharge.' });
+      }
+    },
+    {
+      id: 'deficit_energetique', categorie: 'nutrition',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.poidsBaisse, s.forceBaisse)) return null;
+        return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
+          titre: 'Déficit énergétique probable',
+          description: 'Le poids diminue et la force baisse en parallèle. Vérifier les apports caloriques et protéiques.' });
+      }
+    },
+    {
+      id: 'risque_blessure', categorie: 'blessure',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.acwrEleve, s.douleurElevee, s.fatigueElevee)) return null;
+        return analyse({ priorite: 'critique', niveau: 'eleve', categorie: this.categorie,
+          titre: 'Risque accru de blessure',
+          description: 'Charge aiguë élevée (ACWR), douleur et fatigue combinées. Réduire fortement la charge sur les prochaines séances.' });
+      }
+    },
+    {
+      id: 'acwr_eleve_seul', categorie: 'charge',
+      evaluer: function (f) {
+        var s = f.signaux;
+        // Ne se déclenche que si le risque combiné (règle ci-dessus) ne s'applique pas.
+        if (s.acwrEleve !== true) return null;
+        if (tous(s.douleurElevee, s.fatigueElevee)) return null;
+        return analyse({ priorite: 'info', niveau: 'moyen', categorie: this.categorie,
+          titre: 'Charge en hausse rapide',
+          description: 'Le ratio charge aiguë / chronique (ACWR) est élevé. Progresser plus doucement pour laisser le corps s\'adapter.' });
+      }
+    },
+    {
+      id: 'bonne_adaptation', categorie: 'entraînement',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.progressionHausse, s.sommeilBon, s.fatigueFaible)) return null;
+        return analyse({ priorite: 'succes', niveau: 'moyen', categorie: this.categorie,
+          titre: 'Bonne adaptation à l\'entraînement',
+          description: 'Progression en hausse, bon sommeil et fatigue faible : l\'athlète encaisse bien la charge actuelle.' });
+      }
+    },
+    {
+      id: 'tres_bonne_adherence', categorie: 'adhérence',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.regulariteExcellente, s.progressionExcellente)) return null;
+        return analyse({ priorite: 'succes', niveau: 'eleve', categorie: this.categorie,
+          titre: 'Très bonne adhérence au programme',
+          description: 'Régularité et progression excellentes. Continuer sur cette dynamique.' });
+      }
+    },
+    {
+      id: 'marge_progression', categorie: 'entraînement',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.fatigueFaible, s.volumeFaible, s.progressionStable)) return null;
+        return analyse({ priorite: 'info', niveau: 'faible', categorie: this.categorie,
+          titre: 'Possibilité d\'augmenter la charge',
+          description: 'Fatigue faible, volume faible et progression stable : il reste de la marge pour augmenter progressivement la charge.' });
+      }
+    },
+    {
+      id: 'recuperation_optimale', categorie: 'récupération',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (!tous(s.fatigueFaible, s.sommeilBon, s.douleurAbsente)) return null;
+        // Évite le doublon avec "bonne adaptation" (qui inclut la progression).
+        if (s.progressionHausse === true) return null;
+        return analyse({ priorite: 'succes', niveau: 'faible', categorie: this.categorie,
+          titre: 'Bonne récupération',
+          description: 'Les marqueurs de récupération (sommeil, fatigue, douleur) sont au vert.' });
+      }
+    },
+    {
+      id: 'douleur_signalee', categorie: 'blessure',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (s.douleurElevee !== true) return null;
+        // Si déjà couvert par surcharge locale / risque blessure, ne pas dupliquer.
+        if (s.volumeEleve === true) return null;
+        if (tous(s.acwrEleve, s.fatigueElevee)) return null;
+        var zone = f.valeurs.zone ? (' · zone : ' + f.valeurs.zone) : '';
+        return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
+          titre: 'Douleur signalée',
+          description: 'Une douleur significative a été déclarée' + zone + '. Adapter la charge et surveiller son évolution.' });
+      }
+    },
+    {
+      id: 'irregularite', categorie: 'adhérence',
+      evaluer: function (f) {
+        var s = f.signaux;
+        if (s.regulariteFaible !== true) return null;
+        return analyse({ priorite: 'info', niveau: 'moyen', categorie: this.categorie,
+          titre: 'Régularité insuffisante',
+          description: 'Le nombre de séances est en dessous de l\'objectif. Relancer l\'athlète pour maintenir la dynamique.' });
+      }
+    }
+  ];
+
+  /* ---------------------------------------------------------------------------
+   * MOTEUR
+   * ------------------------------------------------------------------------- */
+  function analyser(data, options) {
+    options = options || {};
+    var faits = normaliser(data);
+    var resultats = [];
+    for (var i = 0; i < REGLES.length; i++) {
+      var regle = REGLES[i];
+      try {
+        var res = regle.evaluer(faits);
+        if (res) { res.id = regle.id; res.regle = regle.id; resultats.push(res); }
+      } catch (e) {
+        // Une règle qui échoue ne doit jamais casser le moteur.
+        if (options.debug && global.console) global.console.warn('[NovalyzEngine] règle en échec:', regle.id, e);
+      }
+    }
+    // Tri : priorité décroissante (critique -> succès), stable.
+    resultats.sort(function (a, b) { return (RANG_PRIORITE[b.priorite] || 0) - (RANG_PRIORITE[a.priorite] || 0); });
+
+    if (options.limite && resultats.length > options.limite) resultats = resultats.slice(0, options.limite);
+    return resultats;
+  }
+
+  /* ---------------------------------------------------------------------------
+   * API publique
+   * ------------------------------------------------------------------------- */
+  var NovalyzEngine = {
+    version:    VERSION,
+    analyser:   analyser,     // (data[, options]) -> [analyses triées]
+    normaliser: normaliser,   // (data) -> { valeurs, signaux }  (utile pour debug/tests)
+    REGLES:     REGLES,       // exposé pour extension / inspection
+    SEUILS:     SEUILS        // seuils réglables à chaud
+  };
+
+  // UMD léger : navigateur (window / self / this) + CommonJS + Apps Script.
+  global.NovalyzEngine = NovalyzEngine;
+  if (typeof module !== 'undefined' && module.exports) module.exports = NovalyzEngine;
+
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEj4SEA0wzmXcPWECRGCURsSTIbIMu81sFktWtQM86E2-3zgR7LCz-G9sqz2mLHUcQ/exec";
 // Helper icône SVG (famille unique, style Lucide) pour les contenus générés en JS
@@ -2270,6 +2707,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
 
     renderCoachOverview(data);
     renderEtatDuJourCoach(data);
+    renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique);
     renderCoachIndicateurs(data);
     renderAlertesCoach(data);
@@ -6371,6 +6809,30 @@ function renderEtatDuJour(data, ids) {
 // Version coach du bloc « Bilan de la dernière séance » (mêmes calculs, cibles cd-*)
 function renderEtatDuJourCoach(data) {
   renderEtatDuJour(data, { sec: 'cd-etat-sec', card: 'cd-etat-card', cont: 'cd-etat-content' });
+}
+
+// Carte « Analyse » (moteur Novalyz) — interprétation en lecture seule, côté coach
+function renderAnalyseCoach(data) {
+  const sec = document.getElementById('cd-analyse-sec');
+  const card = document.getElementById('cd-analyse-card');
+  const cont = document.getElementById('cd-analyse-content');
+  if (!card || !cont) return;
+  let analyses = [];
+  try { if (typeof NovalyzEngine !== 'undefined') analyses = NovalyzEngine.analyser(data) || []; } catch (e) { analyses = []; }
+  if (!analyses.length) { sec.style.display = 'none'; card.style.display = 'none'; return; }
+  const col = t => t === 'critical' ? 'var(--danger)' : t === 'warning' ? 'var(--warn)' : t === 'success' ? 'var(--good)' : 'var(--accent)';
+  const ico = t => t === 'critical' ? '🔴' : t === 'warning' ? '🟠' : t === 'success' ? '✅' : '💡';
+  cont.innerHTML = analyses.map((a, i) => `
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 4px;${i < analyses.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
+      <div style="flex:0 0 4px;align-self:stretch;background:${col(a.type)};border-radius:2px;min-height:36px;"></div>
+      <div style="min-width:0;">
+        <div style="font-size:13px;font-weight:800;color:${col(a.type)};">${ico(a.type)} ${escapeHtml(a.titre)}</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">${escapeHtml(a.description)}</div>
+        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;opacity:.7;">${escapeHtml(a.categorie)}</div>
+      </div>
+    </div>`).join('');
+  sec.style.display = '';
+  card.style.display = '';
 }
 
 // =====================================================================
