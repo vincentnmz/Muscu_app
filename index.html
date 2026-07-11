@@ -4007,19 +4007,43 @@ function renderBullesChat(commentaires, elId, isCoach) {
     return;
   }
   commentaires = [...commentaires].sort((a, b) => parseChatDate(a.date) - parseChatDate(b.date));
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+  el.style.gap = '10px';
+  // Avatar de l'interlocuteur (« eux ») : initiales + couleur selon le côté
+  const themNom = isCoach ? (coachAthleteCourant && coachAthleteCourant.nom ? coachAthleteCourant.nom : 'Athlète') : 'Coach';
+  const themInit = themNom.trim().slice(0, 2).toUpperCase();
+  const themCol = isCoach ? 'var(--good)' : 'var(--accent)';
+  const dayLabel = ts => {
+    const d = new Date(ts); if (isNaN(d.getTime())) return '';
+    const t = new Date(); const y = new Date(); y.setDate(t.getDate() - 1);
+    const sameDay = (a, b) => a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+    if (sameDay(d, t)) return "Aujourd'hui";
+    if (sameDay(d, y)) return 'Hier';
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  };
+  const heure = ts => { const d = new Date(ts); return isNaN(d.getTime()) ? '' : `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+  let lastDay = '';
   el.innerHTML = commentaires.map(c => {
+    const ts = parseChatDate(c.date);
     const isMine = isCoach ? (c.auteur !== 'athlete') : (c.auteur === 'athlete');
-    const align = isMine ? 'flex-end' : 'flex-start';
     const bg = isMine ? 'var(--accent)' : 'var(--surface2)';
-    const color = isMine ? '#000' : 'var(--text)';
+    const color = isMine ? '#fff' : 'var(--text)';
     const radius = isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px';
     const deleteBtn = (isCoach && isMine)
       ? `<button onclick="supprimerCommentaireCoach('${c.id}')" title="Supprimer" style="background:none;border:none;cursor:pointer;font-size:12px;opacity:0.5;padding:0 0 0 4px;"><svg class="ico"><use href="#i-trash"/></svg></button>` : '';
     const lu = (isCoach && !isMine && !estLu(c, 'muscu_lu_coach')) ? '<span style="font-size:9px;color:#f59f00;"> · non lu</span>' : '';
-    return `<div style="display:flex;flex-direction:column;align-items:${align};max-width:85%;">
-      <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13px;white-space:pre-wrap;line-height:1.4;">${escapeHtml(c.message)}</div>
-      <div style="font-size:9px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:2px;">${formatChatDate(c.date)}${lu}${deleteBtn}</div>
-    </div>`;
+    const meLabel = isMine ? ' · toi' : '';
+    const avatar = isMine ? '' : `<div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:color-mix(in srgb, ${themCol} 20%, transparent);color:${themCol};">${escapeHtml(themInit)}</div>`;
+    const bubble = `<div style="display:flex;flex-direction:column;align-items:${isMine?'flex-end':'flex-start'};min-width:0;">
+        <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13.5px;white-space:pre-wrap;line-height:1.4;">${escapeHtml(c.message)}</div>
+        <div style="font-size:9.5px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:2px;">${heure(ts)}${meLabel}${lu}${deleteBtn}</div>
+      </div>`;
+    const row = `<div style="display:flex;gap:8px;align-items:flex-end;max-width:85%;${isMine?'align-self:flex-end;flex-direction:row-reverse;':'align-self:flex-start;'}">${avatar}${bubble}</div>`;
+    const dl = dayLabel(ts);
+    let sep = '';
+    if (dl && dl !== lastDay) { sep = `<span style="align-self:center;font-size:10px;font-weight:700;color:var(--text-muted);background:var(--surface2);padding:3px 11px;border-radius:20px;">${dl}</span>`; lastDay = dl; }
+    return sep + row;
   }).join('');
   el.scrollTop = el.scrollHeight;
 }
