@@ -826,6 +826,12 @@
         <div id="dash-etat-content"></div>
       </div>
 
+      <!-- Analyse Novalyz (moteur d'interprétation) — visible seulement s'il y a une analyse -->
+      <div class="v2-sec" id="dash-analyse-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Analyse Novalyz</div></div>
+      <div class="dash-card" id="dash-analyse-card" style="padding:12px;display:none;">
+        <div id="dash-analyse-content"></div>
+      </div>
+
       <!-- État de forme (récupération) -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</div></div>
       <div class="dash-card" id="dash-recup-card" style="padding:16px;">
@@ -2419,6 +2425,33 @@ async function renderCoachSynthese(athletes) {
         </div>`).join('');
   }
 
+  // ---- Bloc « Analyse Novalyz » (moteur, par athlète) ----
+  let briefingHtml = '';
+  if (typeof NovalyzEngine !== 'undefined') {
+    const insights = [];
+    enrich.forEach(e => {
+      let ana = [];
+      try { ana = NovalyzEngine.analyser(datas[e.i] || {}) || []; } catch (err) { ana = []; }
+      const top = ana.find(x => x.type === 'critical' || x.type === 'warning');
+      if (top) insights.push({ e, top });
+    });
+    insights.sort((x, y) => (y.top.priorite || 0) - (x.top.priorite || 0));
+    if (insights.length) {
+      briefingHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Analyse Novalyz</div></div>` +
+        insights.map(({ e, top }) => {
+          const c = analyseCouleur(top.type);
+          return `<div onclick="ouvrirAthleteDepuisSelect('${e.i}')" style="display:flex;align-items:flex-start;gap:11px;padding:12px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px solid var(--border);border-left:4px solid ${c};">
+            <div style="min-width:0;flex:1;">
+              <div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div>
+              <div style="font-size:12.5px;font-weight:700;color:${c};margin-top:2px;">${analyseIcone(top.type)} ${escapeHtml(top.titre)}</div>
+              <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:2px;">${escapeHtml(top.description)}</div>
+            </div>
+            <span style="color:var(--text-muted);font-size:18px;flex-shrink:0;">›</span>
+          </div>`;
+        }).join('');
+    }
+  }
+
   // ---- Liste complète ----
   const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes athlètes</div></div>` +
     enrich.map(({ a, i, m, rpe, seancesSem, spark, tonnage, streak }) => {
@@ -2480,7 +2513,7 @@ async function renderCoachSynthese(athletes) {
       </div>
     </div>`;
 
-  el.innerHTML = heroHtml + prioHtml + listeHtml;
+  el.innerHTML = heroHtml + prioHtml + briefingHtml + listeHtml;
 }
 
 function ouvrirAthleteDepuisSelect(idx) {
@@ -6060,8 +6093,9 @@ async function chargerAppData() {
     renderDashboardRecords(data.historique);
     renderDashboardActivite(data.historique);
 
-    // Nouveaux blocs Accueil : État du jour (questionnaire) + Alertes
+    // Nouveaux blocs Accueil : État du jour (questionnaire) + Analyse moteur + Alertes
     renderEtatDuJour(data);
+    renderAnalyseAccueilAthlete(data);
     renderAlertes(data);
 
     // Objectif : bloc Récompenses (paliers + cagnotte auto)
@@ -6874,27 +6908,42 @@ function renderEtatDuJourCoach(data) {
 }
 
 // Carte « Analyse » (moteur Novalyz) — interprétation en lecture seule, côté coach
-function renderAnalyseCoach(data) {
-  const sec = document.getElementById('cd-analyse-sec');
-  const card = document.getElementById('cd-analyse-card');
-  const cont = document.getElementById('cd-analyse-content');
-  if (!card || !cont) return;
+// Couleur / icône d'une analyse du moteur (partagé)
+function analyseCouleur(t) { return t === 'critical' ? 'var(--danger)' : t === 'warning' ? 'var(--warn)' : t === 'success' ? 'var(--good)' : 'var(--accent)'; }
+function analyseIcone(t) { return t === 'critical' ? '🔴' : t === 'warning' ? '🟠' : t === 'success' ? '✅' : '💡'; }
+
+// Rendu partagé : liste d'analyses du moteur dans un conteneur (athlète ET coach)
+function renderAnalysesListe(data, ids, opts) {
+  opts = opts || {};
+  const sec = document.getElementById(ids.sec);
+  const card = document.getElementById(ids.card);
+  const cont = document.getElementById(ids.cont);
+  if (!card || !cont) return 0;
   let analyses = [];
   try { if (typeof NovalyzEngine !== 'undefined') analyses = NovalyzEngine.analyser(data) || []; } catch (e) { analyses = []; }
-  if (!analyses.length) { sec.style.display = 'none'; card.style.display = 'none'; return; }
-  const col = t => t === 'critical' ? 'var(--danger)' : t === 'warning' ? 'var(--warn)' : t === 'success' ? 'var(--good)' : 'var(--accent)';
-  const ico = t => t === 'critical' ? '🔴' : t === 'warning' ? '🟠' : t === 'success' ? '✅' : '💡';
+  if (opts.max) analyses = analyses.slice(0, opts.max);
+  if (!analyses.length) { if (sec) sec.style.display = 'none'; card.style.display = 'none'; return 0; }
   cont.innerHTML = analyses.map((a, i) => `
     <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 4px;${i < analyses.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
-      <div style="flex:0 0 4px;align-self:stretch;background:${col(a.type)};border-radius:2px;min-height:36px;"></div>
+      <div style="flex:0 0 4px;align-self:stretch;background:${analyseCouleur(a.type)};border-radius:2px;min-height:36px;"></div>
       <div style="min-width:0;">
-        <div style="font-size:13px;font-weight:800;color:${col(a.type)};">${ico(a.type)} ${escapeHtml(a.titre)}</div>
+        <div style="font-size:13px;font-weight:800;color:${analyseCouleur(a.type)};">${analyseIcone(a.type)} ${escapeHtml(a.titre)}</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">${escapeHtml(a.description)}</div>
-        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;opacity:.7;">${escapeHtml(a.categorie)}</div>
+        ${opts.hideCategorie ? '' : `<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;opacity:.7;">${escapeHtml(a.categorie)}</div>`}
       </div>
     </div>`).join('');
-  sec.style.display = '';
+  if (sec) sec.style.display = '';
   card.style.display = '';
+  return analyses.length;
+}
+
+function renderAnalyseCoach(data) {
+  renderAnalysesListe(data, { sec: 'cd-analyse-sec', card: 'cd-analyse-card', cont: 'cd-analyse-content' });
+}
+
+// Accueil athlète : conseils du moteur (2 max, sans la catégorie)
+function renderAnalyseAccueilAthlete(data) {
+  renderAnalysesListe(data, { sec: 'dash-analyse-sec', card: 'dash-analyse-card', cont: 'dash-analyse-content' }, { max: 2, hideCategorie: true });
 }
 
 // =====================================================================
