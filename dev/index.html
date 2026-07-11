@@ -3198,7 +3198,8 @@ function computeMarqueursCoach(data, a) {
   else { recupColor = '#e5484d'; recupLabel = 'Fatigue'; }
 
   // Statut global : pire des marqueurs + alertes
-  const couleurs = [progColor, acwrColor, volColor, regColor, recupColor];
+  // (ACWR exclu : il est masqué de l'affichage, il ne doit donc plus influencer le statut)
+  const couleurs = [progColor, volColor, regColor, recupColor];
   const alertes = a ? alertesActives(a) : [];
   const interTypes = ['fatigue', 'surcharge', 'irregularite'];
   const alerteGrave = alertes.some(al => al.severite === 'haute' || interTypes.includes(al.type));
