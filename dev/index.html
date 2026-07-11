@@ -3366,7 +3366,7 @@ function renderProgrammeCoach() {
       ${exercicesData.filter(e => !exclus.includes(e.exercice)).map(e => `<option value="${e.exercice}">${e.exercice}</option>`).join('')}
     </select>`;
 
-  el.innerHTML = ordre.map(seanceId => {
+  el.innerHTML = ordre.map((seanceId, si) => {
     // Regrouper les exercices en unités : soit seuls, soit en superset (même groupe_id)
     const lignes = seances[seanceId];
     const unites = [];
@@ -3406,18 +3406,32 @@ function renderProgrammeCoach() {
         </div>`;
     }).join('');
 
+    const ouvert = (seanceId in cdProgOpen) ? cdProgOpen[seanceId] : (si === 0);
     return `
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:0;margin-bottom:16px;overflow:hidden">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--accent-a08);border-bottom:1px solid var(--border)">
-        <div style="font-size:15px;font-weight:800;color:var(--text)"><svg class="ico"><use href="#i-clipboard"/></svg>${seanceId}</div>
-        <span style="font-size:11px;color:var(--text-muted);font-weight:600">${lignes.length} exo${lignes.length>1?'s':''}</span>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:0;margin-bottom:12px;overflow:hidden">
+      <div onclick='cdToggleSeanceProg(${si}, ${JSON.stringify(seanceId)})' style="display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:var(--accent-a08);cursor:pointer">
+        <div style="font-size:15px;font-weight:800;color:var(--accent);display:flex;align-items:center;gap:8px"><svg class="ico"><use href="#i-clipboard"/></svg>${seanceId}</div>
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="font-size:11px;font-weight:800;background:var(--accent-a14);color:var(--accent);padding:2px 9px;border-radius:20px">${lignes.length} exo${lignes.length>1?'s':''}</span>
+          <span id="prog-arrow-${si}" style="font-size:15px;color:var(--text-muted);transition:transform .2s;transform:${ouvert?'rotate(90deg)':'none'}">›</span>
+        </div>
       </div>
-      <div style="padding:12px 14px">
+      <div id="prog-body-${si}" style="padding:12px 14px;border-top:1px solid var(--border);${ouvert?'':'display:none'}">
         ${cartes}
         <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')" style="width:100%">+ Ajouter un exercice</button>
       </div>
     </div>`;
   }).join('');
+}
+
+// État d'ouverture des séances (accordéon) — conservé entre les re-rendus
+let cdProgOpen = {};
+function cdToggleSeanceProg(si, seanceId) {
+  cdProgOpen[seanceId] = !((seanceId in cdProgOpen) ? cdProgOpen[seanceId] : (si === 0));
+  const body = document.getElementById('prog-body-' + si);
+  const arrow = document.getElementById('prog-arrow-' + si);
+  if (body) body.style.display = cdProgOpen[seanceId] ? 'block' : 'none';
+  if (arrow) arrow.style.transform = cdProgOpen[seanceId] ? 'rotate(90deg)' : 'none';
 }
 
 function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec, groupeId) {
