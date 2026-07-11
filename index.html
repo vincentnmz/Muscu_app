@@ -2522,7 +2522,7 @@ function afficherCoachProgressionExo() {
     <table style="width:100%;font-size:12px;border-collapse:collapse">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">
         <td style="padding:5px 0">Date</td><td style="padding:5px 0;text-align:center">Séance</td>
-        <td style="padding:5px 0;text-align:center">Charge S1</td><td style="padding:5px 0;text-align:center">Reps S1</td>
+        <td style="padding:5px 0;text-align:center">Charge</td><td style="padding:5px 0;text-align:center">Reps</td>
         <td style="padding:5px 0;text-align:center">1RM est.</td>
         <td style="padding:5px 0;text-align:center">Évol.</td>
       </tr>
@@ -2738,21 +2738,9 @@ function renderCoachIndicateurs(data) {
 
 function renderCoachVolume(data) {
   const volumes = data.historique ? (data.historique.volume_semaine || []) : [];
-  const el = document.getElementById('cd-volume-content');
-  if (!volumes || volumes.length === 0) {
-    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune donnée cette semaine</div>'; return;
-  }
   const niveauKey = coachNiveauKey(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
-  const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
-  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:12px">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
-    volumes.slice().sort((a,b)=>(b.faites||0)-(a.faites||0)).map(v => {
-      const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
-      const optimal = cible[1], faites = v.faites || 0;
-      const pct = optimal > 0 ? Math.min(100, Math.round(faites/optimal*100)) : 0;
-      const couleur = faites >= optimal ? 'var(--good)' : faites > 0 ? 'var(--warn)' : 'var(--v2-bad)';
-      return `<div class="v2-vrow"><div class="vn">${v.muscle}</div><div class="v2-vtrack"><div class="v2-vfill" style="width:${Math.max(pct,4)}%;background:${couleur};"></div></div><div class="vv">${faites}/${optimal}</div></div>`;
-    }).join('') +
-    `<div class="v2-legend"><span><span class="v2-dot" style="background:var(--good)"></span>Optimal</span><span><span class="v2-dot" style="background:var(--warn)"></span>Sous la cible</span><span><span class="v2-dot" style="background:var(--v2-bad)"></span>En retard</span></div>`;
+  const mr = (data && data.global) ? data.global.muscle_retard : null;
+  renderVolumeOptionA(volumes, 'cd-volume-content', niveauKey, mr);
 }
 
 function cdCalNaviguer(direction) {
@@ -5405,29 +5393,40 @@ function afficherTendances(semaines) {
   `;
 }
 
-function afficherVolumeMuscle(volumes) {
-  const el = document.getElementById('hist-volume-content');
+// Rendu unifié « Volume par muscle » (Option A) — utilisé côté athlète ET coach.
+// volumes: [{muscle, faites}], targetId: conteneur, niveauKey: 'debutant'|'intermediaire'|'experimente',
+// muscleRetard: {muscle, series_faites, series_min, series_optimale} ou null (bandeau).
+function renderVolumeOptionA(volumes, targetId, niveauKey, muscleRetard) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
   if (!volumes || volumes.length === 0) {
     el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune donnée cette semaine</div>';
     return;
   }
-
-  const niveauKey = getNiveauKey(athlete ? athlete.strategie_progression : null);
   const niveauLabel = niveauKey === 'debutant' ? 'Débutant' : niveauKey === 'experimente' ? 'Expérimenté' : 'Intermédiaire';
-
   const rowsVol = volumes.slice().sort((a,b)=>(b.faites||0)-(a.faites||0)).map(v => {
     const cible = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
     return { muscle: v.muscle, optimal: cible[1], faites: v.faites || 0 };
   });
   const scaleMax = Math.max(1, ...rowsVol.map(r => Math.max(r.optimal, r.faites)));
-  el.innerHTML = `<div style="font-size:10px;color:var(--text-muted);margin-bottom:12px;">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>` +
-  rowsVol.map(r => {
-    const wf = Math.min(100, r.faites / scaleMax * 100);
-    const wo = Math.min(100, r.optimal / scaleMax * 100);
-    const couleur = r.faites >= r.optimal ? 'var(--good)' : r.faites > 0 ? 'var(--warn)' : 'var(--v2-bad)';
-    return `<div class="v2-vrow"><div class="vn">${r.muscle}</div><div class="v2-vtrack" style="position:relative;overflow:visible;"><div class="v2-vfill" style="width:${Math.max(wf,2)}%;background:${couleur};"></div><div style="position:absolute;top:-3px;left:${wo}%;width:2px;height:calc(100% + 6px);background:var(--text);opacity:.5;border-radius:2px;" title="Objectif ${r.optimal}"></div></div><div class="vv" style="color:${couleur}">${r.faites}/${r.optimal}</div></div>`;
-  }).join('') +
-  `<div class="v2-legend"><span><span class="v2-dot" style="background:var(--good)"></span>Optimal</span><span><span class="v2-dot" style="background:var(--warn)"></span>Sous la cible</span><span><span class="v2-dot" style="background:var(--v2-bad)"></span>En retard</span><span><span style="display:inline-block;width:2px;height:11px;background:var(--text);opacity:.5;border-radius:2px;"></span>Objectif</span></div>`;
+  let banner = '';
+  if (muscleRetard && muscleRetard.muscle) {
+    banner = `<div style="background:rgba(245,159,0,0.12);border:1px solid rgba(245,159,0,0.35);border-radius:8px;padding:8px 11px;margin-bottom:10px;display:flex;align-items:center;gap:8px;"><span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${muscleRetard.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">Historique global</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${muscleRetard.series_faites} séries / ${muscleRetard.series_min} min · objectif ${muscleRetard.series_optimale} séries</div></div></div>`;
+  }
+  el.innerHTML = banner
+    + `<div style="font-size:10px;color:var(--text-muted);margin-bottom:12px;">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>`
+    + rowsVol.map(r => {
+        const wf = Math.min(100, r.faites / scaleMax * 100);
+        const wo = Math.min(100, r.optimal / scaleMax * 100);
+        const couleur = r.faites >= r.optimal ? 'var(--good)' : r.faites > 0 ? 'var(--warn)' : 'var(--v2-bad)';
+        return `<div class="v2-vrow"><div class="vn">${r.muscle}</div><div class="v2-vtrack" style="position:relative;overflow:visible;"><div class="v2-vfill" style="width:${Math.max(wf,2)}%;background:${couleur};"></div><div style="position:absolute;top:-3px;left:${wo}%;width:2px;height:calc(100% + 6px);background:var(--text);opacity:.5;border-radius:2px;" title="Objectif ${r.optimal}"></div></div><div class="vv" style="color:${couleur}">${r.faites}/${r.optimal}</div></div>`;
+      }).join('')
+    + `<div class="v2-legend"><span><span class="v2-dot" style="background:var(--good)"></span>Optimal</span><span><span class="v2-dot" style="background:var(--warn)"></span>Sous la cible</span><span><span class="v2-dot" style="background:var(--v2-bad)"></span>En retard</span><span><span style="display:inline-block;width:2px;height:11px;background:var(--text);opacity:.5;border-radius:2px;"></span>Objectif</span></div>`;
+}
+
+function afficherVolumeMuscle(volumes) {
+  const mr = (dernierAppData && dernierAppData.global) ? dernierAppData.global.muscle_retard : null;
+  renderVolumeOptionA(volumes, 'hist-volume-content', getNiveauKey(athlete ? athlete.strategie_progression : null), mr);
 }
 
 // ==================== UTILS ====================
@@ -5831,7 +5830,7 @@ async function chargerAppData() {
       lastEl.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <div>
-            <div style="font-size:15px;font-weight:800;color:var(--text);">${d.seance_id}</div>
+            <div style="font-size:15px;font-weight:800;color:var(--accent);">${d.seance_id}</div>
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${d.date}</div>
           </div>
           <span class="dash-badge" style="background:#e8f8f0;border:1px solid #00c96e;color:#007a41;">✅ Complète</span>
