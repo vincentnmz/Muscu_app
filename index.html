@@ -605,9 +605,9 @@
         <div id="cd-recup"><div class="loader">Chargement...</div></div>
       </div>
 
-      <!-- ACWR -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</div></div>
-      <div class="dash-card" id="cd-acwr-card" style="padding:16px">
+      <!-- ACWR — masqué (peu lisible en muscu ; à réactiver pour un module Hyrox) -->
+      <div class="v2-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</div></div>
+      <div class="dash-card" id="cd-acwr-card" style="padding:16px;display:none">
         <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
       </div>
 
@@ -631,8 +631,8 @@
       <div class="card">
         <div id="cd-seances-detail-content"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Volume relatif hebdo · 8 sem.</div></div>
-      <div class="card" id="cd-acwr-history-card">
+      <div class="v2-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Volume relatif hebdo · 8 sem.</div></div>
+      <div class="card" id="cd-acwr-history-card" style="display:none">
         <div id="cd-acwr-chart-content"></div>
       </div>
     </div>
@@ -1659,10 +1659,11 @@
     s.douleurAbsente = sig(r.douleur,  function(v){return v <= 1;});
     s.ressentiDur    = sig(r.ressenti, function(v){return v <= SEUILS.ressentiDur;});
 
-    // ACWR
-    s.acwrEleve   = sig(r.acwr, function(v){return v > SEUILS.acwrEleve;});
-    s.acwrBas     = sig(r.acwr, function(v){return v < SEUILS.acwrBas;});
-    s.acwrOptimal = sig(r.acwr, function(v){return v >= SEUILS.acwrOptMin && v <= SEUILS.acwrOptMax;});
+    // ACWR — désactivé pour l'instant (peu fiable en muscu ; à réactiver pour un module Hyrox).
+    // On neutralise les signaux pour qu'aucune règle ACWR ne se déclenche.
+    s.acwrEleve   = null;
+    s.acwrBas     = null;
+    s.acwrOptimal = null;
 
     // Progression
     s.progressionHausse = (r.progUp != null && r.progDown != null) ? (r.progUp > r.progDown) : null;
@@ -3219,7 +3220,6 @@ function renderCoachIndicateurs(data) {
   const m = computeMarqueursCoach(data, coachAthleteCourant);
   const indicateurs = [
     { label: 'Progression', color: m.progColor, val: m.progLabel },
-    { label: 'ACWR', color: m.acwrColor, val: m.acwrLabel },
     { label: 'Volume', color: m.volColor, val: m.volLabel },
     { label: 'Régularité', color: m.regColor, val: m.regLabel },
     { label: 'Récupération', color: m.recupColor, val: m.recupLabel },
@@ -3550,7 +3550,7 @@ function renderRecapTable(results) {
   };
   const th = t => `<th style="text-align:center;padding:10px 8px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);font-weight:700;white-space:nowrap;">${t}</th>`;
   const rows = sorted.map(({ a, m }) => {
-    if (!m) return `<tr style="border-top:1px solid var(--border);"><td style="padding:12px 8px;font-weight:800;">${a.nom}</td><td colspan="8" style="color:var(--text-muted);font-size:12px;">Données indisponibles</td></tr>`;
+    if (!m) return `<tr style="border-top:1px solid var(--border);"><td style="padding:12px 8px;font-weight:800;">${a.nom}</td><td colspan="6" style="color:var(--text-muted);font-size:12px;">Données indisponibles</td></tr>`;
     const niv = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[getNiveauExperience(a.annees_pratique)] || '';
     const alBadge = m.nbAl > 0
       ? `<span style="background:#e5484d;color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;">${m.nbAl}</span>`
@@ -3562,7 +3562,6 @@ function renderRecapTable(results) {
           <div style="font-size:10px;color:var(--text-muted);">${niv}</div>
         </td>
         <td style="text-align:center;">${dot(m.progC)}</td>
-        <td style="text-align:center;"><div>${dot(m.acwrC)}</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${m.acwrTxt}</div></td>
         <td style="text-align:center;">${dot(m.recupC)}</td>
         <td style="text-align:center;">${dot(m.volC)}</td>
         <td style="text-align:center;font-size:12px;white-space:nowrap;">${m.ds}</td>
@@ -3576,7 +3575,7 @@ function renderRecapTable(results) {
       <table style="width:100%;border-collapse:collapse;min-width:640px;">
         <thead><tr style="background:var(--surface2);">
           <th style="text-align:left;padding:10px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);font-weight:700;">Athlète</th>
-          ${th('Progression')}${th('ACWR')}${th('Récup.')}${th('Volume')}${th('Dern. séance')}${th('Alertes')}${th('1RM tendance')}
+          ${th('Progression')}${th('Récup.')}${th('Volume')}${th('Dern. séance')}${th('Alertes')}${th('1RM tendance')}
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -4256,9 +4255,6 @@ function renderAlertesCoach(data) {
     if (m.progColor === '#e5484d') synthAlertes.push({ msg: `Progression en baisse — ${m.progLabel}`, color: '#e5484d' });
     if (m.recupColor === '#e5484d') synthAlertes.push({ msg: `Fatigue élevée — ${m.recupLabel}`, color: '#e5484d' });
     else if (m.recupColor === '#f59f00') synthAlertes.push({ msg: `Récupération modérée — ${m.recupLabel}`, color: '#f59f00' });
-    if (m.acwrColor === '#e5484d') synthAlertes.push({ msg: `Surcharge aiguë — ${m.acwrLabel}`, color: '#e5484d' });
-    else if (m.acwrColor === '#f59f00') synthAlertes.push({ msg: `Charge modérée-élevée — ${m.acwrLabel}`, color: '#f59f00' });
-    else if (m.acwrColor === '#4da6ff') synthAlertes.push({ msg: `Sous-charge — ${m.acwrLabel}`, color: '#4da6ff' });
     if (m.regColor === '#e5484d') synthAlertes.push({ msg: `Régularité insuffisante — ${m.regLabel}`, color: '#e5484d' });
   }
 
@@ -6318,7 +6314,8 @@ async function chargerAppData() {
 
     if (kpisEl) {
       kpisEl.style.display = 'grid';
-      kpisEl.style.gridTemplateColumns = '1fr 1fr 1fr 1fr';
+      kpisEl.style.gridTemplateColumns = '1fr 1fr 1fr';
+      // ACWR retiré (peu lisible en muscu ; à réactiver pour un module Hyrox)
       kpisEl.innerHTML = `
         <div class="v2-kpi">
           <div class="kv" style="color:${rpeColor};">${rpe7 != null ? rpe7 : '—'}</div>
@@ -6327,10 +6324,6 @@ async function chargerAppData() {
         <div class="v2-kpi">
           <div class="kv" style="color:${tonnageColor};">${tonnageJ7 != null ? tonnageJ7 + 't' : '—'}</div>
           <div class="kk">Tonnage · 7j${tonnageEvol != null ? ' <span style="font-size:10px;opacity:.7">' + (tonnageEvol > 0 ? '▲+' : '▼') + tonnageEvol + '%</span>' : ''}</div>
-        </div>
-        <div class="v2-kpi">
-          <div class="kv" style="color:${acwrVal == null ? '#aaa' : acwrVal >= 0.8 && acwrVal <= 1.3 ? '#00c96e' : acwrVal > 1.5 ? '#e5484d' : '#f59f00'};">${acwrVal != null ? acwrVal : '—'}</div>
-          <div class="kk">ACWR · 28j</div>
         </div>
         <div class="v2-kpi" style="cursor:pointer" onclick="switchTab('historique')" title="Voir les records">
           <div class="kv" style="color:#00c96e;">⚡ ${records30 > 0 ? records30 : '—'}</div>
