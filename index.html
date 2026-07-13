@@ -1310,7 +1310,7 @@
 
 <!-- Messagerie coach (liste des conversations, depuis l'accueil) -->
 <div id="coach-messagerie-overlay" onclick="fermerMessagerieCoach()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:998;"></div>
-<div id="coach-messagerie-drawer" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border);z-index:999;box-shadow:var(--shadow-lg);max-height:80vh;display:flex;flex-direction:column;">
+<div id="coach-messagerie-drawer" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border);z-index:999;box-shadow:var(--shadow-lg);max-height:80vh;flex-direction:column;">
   <div style="padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
     <div style="font-size:16px;font-weight:800;">Conversations</div>
     <button onclick="fermerMessagerieCoach()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;">×</button>
@@ -2446,9 +2446,8 @@ async function renderCoachSynthese(athletes) {
     const { a, m } = e;
     const dsAge = (m && m.derniere) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
     // Couleurs en HEX (nécessaire pour l'ajout d'alpha ${color}14 — un var() ne le permet pas)
-    const WARN = '#f59f00', BAD = '#f0505a', ACCENT = '#4d8dff';
-    // Message non lu = priorité n°1 (le coach doit répondre)
-    if (e.msgNonLus > 0) return { icon:'💬', txt: `${e.msgNonLus} message${e.msgNonLus>1?'s':''} non lu${e.msgNonLus>1?'s':''}`, color: ACCENT };
+    const WARN = '#f59f00', BAD = '#f0505a';
+    // (Les messages non lus ne sont PLUS listés ici — ils remontent via l'icône 💬 du header)
     // Absence ignorée si l'athlète est en vacances
     if (dsAge > 7 && !e.enPause) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color: WARN };
     const al = labelAlerteCourt(a);
@@ -4516,7 +4515,11 @@ async function envoyerMessageAthleteCoach() {
     });
     input.value = '';
     showToast('✅ Message envoyé !');
-    setTimeout(() => chargerMessagesCoach(), 800);
+    // Affichage immédiat (optimiste) dans la conversation de l'athlète
+    messagesCoach.push({ id: 'tmp-' + Date.now(), date: formatChatDate(new Date()), message: message, auteur: 'athlete', lu: false });
+    renderBullesChat(messagesCoach, 'conseils-content', false);
+    // Puis resynchronisation avec le serveur
+    setTimeout(async () => { await chargerMessagesCoach(); renderBullesChat(messagesCoach, 'conseils-content', false); }, 800);
   } catch(e) {
     showToast('❌ Erreur envoi', '#ff4444');
   }
