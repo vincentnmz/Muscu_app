@@ -5173,18 +5173,48 @@ async function _envoyerSeance() {
       s.serie, s.charge, s.reps, s.rpe, s.repos, s.volume
     ]);
   }));
+  // Date de la séance envoyée (pour la vérification post-écriture)
+  const dateEnvoyee = (seance[0] && seance[0].series[0]) ? seance[0].series[0].date : null;
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'saveSeance', data: lignes })
     });
+    // La réponse POST est opaque (no-cors) → on ne sait pas si l'écriture a réussi.
+    // On relit les données et on confirme que la séance est bien enregistrée.
+    const verif = await _verifierSeanceEnregistree(dateEnvoyee);
+    if (verif === false) {
+      showToast('⚠️ Enregistrement non confirmé — réessaie', '#f59f00');
+      btn.textContent = '✅ Valider la séance'; btn.disabled = false;
+      _validationEnCours = false;   // on autorise une nouvelle tentative
+      return;
+    }
     afficherRecap();
-    showToast('🎉 Séance enregistrée !');
+    // verif === null : vérification impossible (réseau) → on n'affirme pas un faux succès
+    showToast(verif === null ? '✅ Séance envoyée (confirmation indisponible)' : '🎉 Séance enregistrée !');
   } catch(e) {
     showToast('❌ Erreur envoi', '#ff4444');
     btn.textContent = '✅ Valider la séance'; btn.disabled = false;
     _validationEnCours = false;   // échec : on autorise une nouvelle tentative
+  }
+}
+
+// Vérifie que la séance vient d'être écrite côté serveur.
+// Retourne true (confirmée), false (absente → échec probable), null (vérif impossible).
+async function _verifierSeanceEnregistree(dateEnvoyee) {
+  if (!dateEnvoyee) return null;
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(athlete.athlete_id)}&nocache=${Date.now()}`);
+    const d = await res.json();
+    const dates = (d.historique && d.historique.dates_seances) ? d.historique.dates_seances : {};
+    if (dates[dateEnvoyee]) return true;
+    const der = (d.recent && d.recent.derniere_seance) ? d.recent.derniere_seance
+              : (d.dashboard && d.dashboard.derniere_seance) ? d.dashboard.derniere_seance : null;
+    if (der && der.date === dateEnvoyee) return true;
+    return false;
+  } catch(e) {
+    return null; // réseau/parse KO : on ne peut pas conclure
   }
 }
 
