@@ -2351,6 +2351,15 @@ async function renderCoachSynthese(athletes) {
     catch(e) { return null; }
   }));
 
+  // Messages non lus par athlète (auteur = athlète, non lus côté coach) → notif dès l'accueil
+  const msgNonLus = await Promise.all(athletes.map(async a => {
+    try {
+      const r = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(a.athlete_id)}&nocache=${Date.now()}`);
+      const d = await r.json();
+      return (d.commentaires || []).filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
+    } catch(e) { return 0; }
+  }));
+
   const enrich = athletes.map((a, i) => {
     let m = null;
     try { if (datas[i]) m = computeMarqueursCoach(datas[i], a); }
@@ -2370,7 +2379,7 @@ async function renderCoachSynthese(athletes) {
     }
     const tonnage = d.dashboard && d.dashboard.tonnage ? d.dashboard.tonnage : null;
     const streak = d.dashboard && d.dashboard.streak ? d.dashboard.streak.semaines : null;
-    return { a, i, m, rpe, seancesSem, spark, tonnage, streak };
+    return { a, i, m, rpe, seancesSem, spark, tonnage, streak, msgNonLus: msgNonLus[i] || 0 };
   });
   enrich.sort((x, y) => {
     const rx = x.m ? x.m.statut.rank : -1, ry = y.m ? y.m.statut.rank : -1;
@@ -2405,7 +2414,9 @@ async function renderCoachSynthese(athletes) {
     const { a, m } = e;
     const dsAge = (m && m.derniere) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
     // Couleurs en HEX (nécessaire pour l'ajout d'alpha ${color}14 — un var() ne le permet pas)
-    const WARN = '#f59f00', BAD = '#f0505a';
+    const WARN = '#f59f00', BAD = '#f0505a', ACCENT = '#4d8dff';
+    // Message non lu = priorité n°1 (le coach doit répondre)
+    if (e.msgNonLus > 0) return { icon:'💬', txt: `${e.msgNonLus} message${e.msgNonLus>1?'s':''} non lu${e.msgNonLus>1?'s':''}`, color: ACCENT };
     if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color: WARN };
     const al = labelAlerteCourt(a);
     if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? BAD : WARN };
