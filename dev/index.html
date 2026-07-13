@@ -2436,7 +2436,8 @@ async function renderCoachSynthese(athletes) {
     if (dsAge > 7 && !e.enPause) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color: WARN };
     const al = labelAlerteCourt(a);
     if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? BAD : WARN };
-    if (m && m.statut.rank===2) return { icon:'⚠', txt:'Intervention conseillée', color: BAD };
+    // Intervention seulement s'il reste une alerte de synthèse rouge NON traitée
+    if (m && m.statut.rank===2 && synthAlertesActivesCoach(a.athlete_id, m).length) return { icon:'⚠', txt:'Intervention conseillée', color: BAD };
     return null;
   };
 
@@ -2583,13 +2584,27 @@ function marquerAlerteTraitee(athleteId, al) {
   const cle = cleAlerte(athleteId, al);
   alertesTraiteesCache[cle] = lundiCourantISO();
   renderListeAthletesCoach();
+  // Rafraîchir l'accueil (Concept A) pour que l'alerte traitée en parte aussi
+  if (typeof athletesCoach !== 'undefined' && athletesCoach && athletesCoach.length) {
+    try { renderCoachSynthese(athletesCoach); } catch (e) {}
+  }
   fetch(SCRIPT_URL, {
-    method: 'POST', headers: {'Content-Type': 'text/plain'},
+    method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify({ action: 'marquerAlerteTraitee', coach_id: coach.coach_id, cle, semaine: lundiCourantISO() })
   });
 }
 function alertesActives(a) {
   return (a.alertes || []).filter(al => !alerteEstTraitee(a.athlete_id, al));
+}
+// Alertes de synthèse ROUGES encore actives (non traitées) pour un athlète
+function synthAlertesActivesCoach(athleteId, m) {
+  if (!m) return [];
+  const list = [];
+  if (m.volColor === '#e5484d' || m.volColor === 'var(--bad)') list.push('synth-volume');
+  if (m.progColor === '#e5484d') list.push('synth-progression');
+  if (m.recupColor === '#e5484d') list.push('synth-recup');
+  if (m.regColor === '#e5484d') list.push('synth-regularite');
+  return list.filter(t => !alerteEstTraitee(athleteId, { type: t }));
 }
 
 function renderCoachSurveiller(athletes) {
@@ -4209,17 +4224,19 @@ function renderConversationAlertes() {
   const el = document.getElementById('cd-conv-alertes');
   if (!el) return;
   const a = coachAthleteCourant;
-  const alertes = a ? alertesActives(a) : [];
-  if (!alertes.length) {
+  // Liste COMPLÈTE (non filtrée) = alertes backend + alertes de synthèse, puis on répartit traité / à traiter
+  const toutes = (a && a.alertes ? a.alertes.slice() : [])
+    .concat(construireSynthAlertes(coachAthleteData));
+  if (!toutes.length) {
     el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;color:var(--good);font-size:13px;font-weight:700;">✅ Aucune alerte cette semaine</div>';
     return;
   }
-  const traitees = alertes.filter(al => alerteEstTraitee(a.athlete_id, al));
-  const aTraiter = alertes.filter(al => !alerteEstTraitee(a.athlete_id, al));
+  const traitees = toutes.filter(al => alerteEstTraitee(a.athlete_id, al));
+  const aTraiter = toutes.filter(al => !alerteEstTraitee(a.athlete_id, al));
   const row = (al, done) => `
     <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);">
       <span style="width:26px;height:26px;border-radius:8px;background:${done?'var(--good-a)':'var(--warn-a)'};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">${done?'✅':'⚠'}</span>
-      <div style="flex:1;min-width:0;font-size:12.5px;font-weight:600;">${al.message || labelAlerteCourt(a) || 'Alerte'}</div>
+      <div style="flex:1;min-width:0;font-size:12.5px;font-weight:600;">${al.message || al.msg || 'Alerte'}</div>
       <span style="font-size:10.5px;font-weight:800;color:${done?'var(--good)':'var(--warn)'};white-space:nowrap;">${done?'Traitée':'À traiter'}</span>
     </div>`;
   el.innerHTML =
@@ -4267,28 +4284,32 @@ function dejaConseille(sujet) {
   return commentairesAthleteActuel.some(c => String(c.message).toLowerCase().includes(cible));
 }
 
+// Construit les alertes de synthèse (volume/progression/récup/régularité) d'un athlète.
+// Source UNIQUE utilisée par l'Aperçu ET par la Conversation. La régularité est
+// masquée si l'athlète est en vacances. Ne filtre PAS les traitées (le fait l'appelant).
+function construireSynthAlertes(data) {
+  const out = [];
+  if (!data || !coachAthleteCourant) return out;
+  const m = computeMarqueursCoach(data, coachAthleteCourant);
+  if (m.volColor === '#e5484d' || m.volColor === 'var(--bad)') out.push({ type: 'synth-volume', msg: `Volume insuffisant — ${m.volLabel}`, color: '#e5484d' });
+  else if (m.volColor === '#f59f00' || m.volColor === 'var(--warn)') out.push({ type: 'synth-volume', msg: `Volume faible — ${m.volLabel}`, color: '#f59f00' });
+  if (m.progColor === '#e5484d') out.push({ type: 'synth-progression', msg: `Progression en baisse — ${m.progLabel}`, color: '#e5484d' });
+  if (m.recupColor === '#e5484d') out.push({ type: 'synth-recup', msg: `Fatigue élevée — ${m.recupLabel}`, color: '#e5484d' });
+  else if (m.recupColor === '#f59f00') out.push({ type: 'synth-recup', msg: `Récupération modérée — ${m.recupLabel}`, color: '#f59f00' });
+  if (m.regColor === '#e5484d') out.push({ type: 'synth-regularite', msg: `Régularité insuffisante — ${m.regLabel}`, color: '#e5484d' });
+  const enPause = estEnPause(data.pause);
+  return out.filter(s => !(enPause && s.type === 'synth-regularite'));
+}
+
 function renderAlertesCoach(data) {
   const el = document.getElementById('cd-alertes');
   if (!el || !coachAthleteCourant) return;
   const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
   const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
 
-  // Synthèse depuis les marqueurs calculés (volume manque, progression en baisse, récup)
-  // Chaque alerte a un `type` stable → elle devient traitable (Répondre / ✓ Traité).
-  let synthAlertes = [];
   const d = data || coachAthleteData;
-  if (d) {
-    const m = computeMarqueursCoach(d, coachAthleteCourant);
-    if (m.volColor === '#e5484d' || m.volColor === 'var(--bad)') synthAlertes.push({ type: 'synth-volume', msg: `Volume insuffisant — ${m.volLabel}`, color: '#e5484d' });
-    else if (m.volColor === '#f59f00' || m.volColor === 'var(--warn)') synthAlertes.push({ type: 'synth-volume', msg: `Volume faible — ${m.volLabel}`, color: '#f59f00' });
-    if (m.progColor === '#e5484d') synthAlertes.push({ type: 'synth-progression', msg: `Progression en baisse — ${m.progLabel}`, color: '#e5484d' });
-    if (m.recupColor === '#e5484d') synthAlertes.push({ type: 'synth-recup', msg: `Fatigue élevée — ${m.recupLabel}`, color: '#e5484d' });
-    else if (m.recupColor === '#f59f00') synthAlertes.push({ type: 'synth-recup', msg: `Récupération modérée — ${m.recupLabel}`, color: '#f59f00' });
-    if (m.regColor === '#e5484d') synthAlertes.push({ type: 'synth-regularite', msg: `Régularité insuffisante — ${m.regLabel}`, color: '#e5484d' });
-  }
-  // Retirer celles déjà traitées cette semaine, et la régularité si l'athlète est en vacances
-  const enPause = estEnPause(d && d.pause);
-  synthAlertes = synthAlertes.filter(s => !alerteEstTraitee(coachAthleteCourant.athlete_id, { type: s.type }) && !(enPause && s.type === 'synth-regularite'));
+  // Alertes de synthèse non encore traitées cette semaine
+  let synthAlertes = construireSynthAlertes(d).filter(s => !alerteEstTraitee(coachAthleteCourant.athlete_id, { type: s.type }));
 
   const alertesHtml = alertes.map((al, idx) => {
     const c = couleurSeverite[al.severite] || '#a3a3a3';
@@ -4351,6 +4372,7 @@ function traiterAlerteDepuisDetail(idx) {
   if (!al) return;
   marquerAlerteTraitee(coachAthleteCourant.athlete_id, al); // met à jour l'accueil
   renderAlertesCoach(); // met à jour le détail
+  renderConversationAlertes(); // met à jour le bloc traitées/à traiter
 }
 
 // Marque une alerte de synthèse (volume/progression/récup) comme traitée pour la semaine
@@ -4358,6 +4380,7 @@ function traiterSyntheseAlerteCoach(type) {
   if (!coachAthleteCourant) return;
   marquerAlerteTraitee(coachAthleteCourant.athlete_id, { type: type });
   renderAlertesCoach(coachAthleteData); // recalcule et masque celle traitée
+  renderConversationAlertes();          // la fait apparaître en « traitée »
 }
 
 function sujetAlerte(al) {
