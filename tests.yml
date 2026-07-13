@@ -1,0 +1,24 @@
+name: Tests des calculs
+
+# Lance la suite de vérification des calculs (moteur Novalyz, ACWR, score Bilan)
+# automatiquement à chaque push et pull request sur dev et main.
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  calculs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Vérifier les calculs
+        run: node tests/calc.test.js
