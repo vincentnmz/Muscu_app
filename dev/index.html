@@ -1990,6 +1990,8 @@ let historiqueData = [];
 
 // ==================== SESSION ====================
 window.addEventListener('load', async () => {
+  // Applique le thème enregistré dès le chargement (login inclus) — évite le retour en dark au refresh
+  if (localStorage.getItem('muscu_theme') === 'light') document.body.classList.add('light-mode');
   const savedCoach = localStorage.getItem('muscu_coach');
   if (savedCoach) {
     try {
