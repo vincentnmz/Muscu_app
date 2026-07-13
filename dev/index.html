@@ -6949,10 +6949,12 @@ function renderEtatDuJour(data, ids) {
   let perfHtml = '';
   if (ds) {
     const rpe = (ds.rpe_moyen != null && ds.rpe_moyen !== 'N/A') ? ds.rpe_moyen : '—';
+    // Tonnage réel de la séance (somme charge×reps, calculé côté serveur). Fallback séries si absent.
+    const tonn = (ds.tonnage_t != null) ? ds.tonnage_t + ' t' : null;
     perfHtml = `<div style="display:flex;gap:7px;margin-top:11px;">
       ${perfChip(rpe, 'RPE moyen')}
+      ${tonn != null ? perfChip(tonn, 'Tonnage') : perfChip(ds.nb_series != null ? ds.nb_series : '—', 'Séries')}
       ${perfChip(ds.nb_exercices != null ? ds.nb_exercices : '—', 'Exercices')}
-      ${perfChip(ds.nb_series != null ? ds.nb_series : '—', 'Séries')}
     </div>`;
   }
 
