@@ -501,6 +501,7 @@
         <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <button onclick="ouvrirMessagerieCoach()" title="Conversations" style="position:relative;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-message"/></svg><span id="coach-msg-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px;"></span></button>
         <button onclick="ouvrirModalLierAthlete()" title="Lier un athlète" style="background:var(--accent);border:none;color:var(--on-accent);border-radius:8px;padding:7px 12px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;"><svg class="ico ico-btn"><use href="#i-plus"/></svg>Lier</button>
         <button onclick="ouvrirReglagesCoach()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer;" title="Réglages"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
         <button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion" style="white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
@@ -1305,6 +1306,16 @@
     <button onclick="debugCoachOuvrir();fermerReglagesCoach();" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">🔧 Données brutes (debug)</button>
 
   </div>
+</div>
+
+<!-- Messagerie coach (liste des conversations, depuis l'accueil) -->
+<div id="coach-messagerie-overlay" onclick="fermerMessagerieCoach()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:998;"></div>
+<div id="coach-messagerie-drawer" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border);z-index:999;box-shadow:var(--shadow-lg);max-height:80vh;display:flex;flex-direction:column;">
+  <div style="padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+    <div style="font-size:16px;font-weight:800;">Conversations</div>
+    <button onclick="fermerMessagerieCoach()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;">×</button>
+  </div>
+  <div id="coach-messagerie-liste" style="overflow-y:auto;padding:8px 10px 16px;"><div class="loader">Chargement...</div></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -2374,6 +2385,12 @@ async function renderCoachSynthese(athletes) {
       return (d.commentaires || []).filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
     } catch(e) { return 0; }
   }));
+  // Badge total de messages non lus dans le header de l'accueil coach
+  (function(){
+    const total = msgNonLus.reduce((s, n) => s + (n || 0), 0);
+    const b = document.getElementById('coach-msg-badge');
+    if (b) { b.textContent = total; b.style.display = total > 0 ? 'block' : 'none'; }
+  })();
 
   const enrich = athletes.map((a, i) => {
     let m = null;
@@ -2549,6 +2566,54 @@ function ouvrirAthleteDepuisSelect(idx) {
   if (idx === '' || idx === null || idx === undefined) return;
   const a = athletesCoach[Number(idx)];
   if (a) ouvrirDetailAthleteCoach(a);
+}
+
+// ---- Messagerie coach (liste des conversations depuis l'accueil) ----
+function fermerMessagerieCoach() {
+  document.getElementById('coach-messagerie-overlay').style.display = 'none';
+  document.getElementById('coach-messagerie-drawer').style.display = 'none';
+}
+async function ouvrirMessagerieCoach() {
+  const overlay = document.getElementById('coach-messagerie-overlay');
+  const drawer  = document.getElementById('coach-messagerie-drawer');
+  const liste   = document.getElementById('coach-messagerie-liste');
+  if (!drawer || !liste) return;
+  overlay.style.display = 'block';
+  drawer.style.display = 'flex';
+  liste.innerHTML = '<div class="loader">Chargement...</div>';
+  const athletes = athletesCoach || [];
+  if (!athletes.length) { liste.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">Aucun athlète.</div>'; return; }
+  // Récupère les messages de chaque athlète (dernier message + non lus)
+  const infos = await Promise.all(athletes.map(async (a) => {
+    try {
+      const r = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(a.athlete_id)}&nocache=${Date.now()}`);
+      const d = await r.json();
+      const msgs = (d.commentaires || []).slice().sort((x, y) => parseChatDate(y.date) - parseChatDate(x.date));
+      const nonLus = msgs.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
+      return { a, dernier: msgs[0] || null, nonLus };
+    } catch (e) { return { a, dernier: null, nonLus: 0 }; }
+  }));
+  // Tri : non lus d'abord, puis message le plus récent
+  infos.sort((x, y) => (y.nonLus - x.nonLus) || (parseChatDate(y.dernier && y.dernier.date) - parseChatDate(x.dernier && x.dernier.date)));
+  const initiales = nom => (nom || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  liste.innerHTML = infos.map(({ a, dernier, nonLus }) => {
+    const idx = athletesCoach.indexOf(a);
+    const apercu = dernier ? (dernier.auteur === 'athlete' ? '' : 'Toi : ') + String(dernier.message).slice(0, 42) : 'Aucun message';
+    const heure = dernier ? formatChatDate(dernier.date).split(' ').slice(-1)[0] : '';
+    return `<div onclick="ouvrirConversationDepuisMessagerie('${idx}')" style="display:flex;align-items:center;gap:11px;padding:11px 10px;border-radius:12px;cursor:pointer;${nonLus>0?'background:var(--accent-a08);':''}">
+      <div style="width:42px;height:42px;border-radius:12px;background:var(--accent-a12);color:var(--accent-strong);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initiales(a.nom)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>${nonLus>0?`<span style="background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px;flex-shrink:0;">${nonLus}</span>`:''}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${escapeHtml(apercu)}</div>
+      </div>
+      <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${heure}</span>
+    </div>`;
+  }).join('');
+}
+function ouvrirConversationDepuisMessagerie(idx) {
+  fermerMessagerieCoach();
+  const a = athletesCoach[Number(idx)];
+  if (a) ouvrirDetailAthleteCoach(a, 'conseils');
 }
 
 // ---- Alertes traitées (stockage local, remise à zéro chaque semaine) ----
