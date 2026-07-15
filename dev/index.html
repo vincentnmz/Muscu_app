@@ -1222,6 +1222,12 @@
         <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
       </div>
 
+      <!-- BALANCE MUSCULAIRE AGONISTE/ANTAGONISTE -->
+      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</div></div>
+      <div class="card">
+        <div id="hist-balance-content"><div class="loader">Chargement...</div></div>
+      </div>
+
       <!-- PROGRESSION PAR EXERCICE -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div></div>
       <div class="card">
@@ -1247,6 +1253,12 @@
       </div>
       <div class="card">
         <div id="hist-tendances-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- CORRÉLATION BIEN-ÊTRE × PERFORMANCE -->
+      <div class="v2-sec" id="hist-corr-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-heart"/></svg>Bien-être &amp; performance</div></div>
+      <div class="card" id="hist-corr-card" style="display:none;">
+        <div id="hist-corr-content"></div>
       </div>
 
       <!-- TENDANCE MENSUELLE (déplacé de l'Accueil) -->
@@ -5737,7 +5749,9 @@ async function chargerHistorique() {
 
   renderCalendrier();
   afficherVolumeMuscle(dernierAppData.historique.volume_semaine || []);
+  renderBilanBalance(dernierAppData.historique.volume_semaine || []);
   afficherTendances(4);
+  renderCorrelationBienEtre(dernierAppData.bien_etre, dernierAppData.historique.volume_par_jour || {});
 
   const exercices = dernierAppData.historique.exercices || [];
   const sel = document.getElementById('sel-hist-exercice');
@@ -6318,6 +6332,129 @@ function afficherVolumeMuscle(volumes) {
   renderVolumeOptionA(volumes, 'hist-volume-content', getNiveauKey(athlete ? athlete.strategie_progression : null), mr);
 }
 
+// ==================== BALANCE MUSCULAIRE AGONISTE/ANTAGONISTE ====================
+const PAIRES_AGONISTE = [
+  { a: 'Pectoraux', b: 'Dos',       label: 'Poussée / Tirage (haut)' },
+  { a: 'Biceps',    b: 'Triceps',   label: 'Biceps / Triceps' },
+  { a: 'Quadriceps',b: 'Ischio',    label: 'Quad / Ischio-jambiers' },
+];
+
+function renderBilanBalance(volumes) {
+  const el = document.getElementById('hist-balance-content');
+  if (!el) return;
+  if (!volumes || volumes.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune donnée cette semaine</div>';
+    return;
+  }
+  const map = {};
+  volumes.forEach(v => { map[v.muscle] = v.faites || 0; });
+
+  const rows = PAIRES_AGONISTE.map(p => {
+    const va = map[p.a] || 0, vb = map[p.b] || 0;
+    if (va === 0 && vb === 0) return null;
+    const total = va + vb;
+    const ratioA = total > 0 ? va / total : 0.5; // proportion de A dans la paire
+    const pctA = Math.round(ratioA * 100);
+    // Idéal ≈ 50%. On tolère 40-60% (vert), 30-70% (orange), hors = rouge
+    const ecart = Math.abs(ratioA - 0.5);
+    const col = ecart <= 0.10 ? 'var(--good)' : ecart <= 0.20 ? 'var(--warn)' : 'var(--danger)';
+    const msg = ecart <= 0.10 ? 'Équilibré'
+              : ecart <= 0.20 ? (ratioA > 0.5 ? p.a + ' dominant' : p.b + ' dominant')
+              : (ratioA > 0.5 ? '⚠️ ' + p.a + ' trop dominant' : '⚠️ ' + p.b + ' trop dominant');
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);">${p.label}</div>
+          <span style="font-size:10px;font-weight:700;color:${col};background:${col}1a;border-radius:5px;padding:2px 7px;">${msg}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="font-size:10px;color:var(--text-muted);min-width:68px;text-align:right;">${p.a} ${va}s</div>
+          <div style="flex:1;height:10px;border-radius:5px;background:var(--surface2);overflow:hidden;position:relative;">
+            <div style="position:absolute;left:0;top:0;height:100%;width:${pctA}%;background:var(--accent);border-radius:5px 0 0 5px;transition:width .4s;"></div>
+            <div style="position:absolute;left:50%;top:-2px;width:2px;height:calc(100%+4px);background:var(--text);opacity:.35;border-radius:2px;"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);min-width:68px;">${p.b} ${vb}s</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0 74px;margin-top:2px;">
+          <span style="font-size:9px;color:var(--text-muted);">${pctA}%</span>
+          <span style="font-size:9px;color:var(--text-muted);">${100-pctA}%</span>
+        </div>
+      </div>`;
+  }).filter(Boolean);
+
+  if (rows.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Travaille les deux membres d\'une paire cette semaine pour voir la balance.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="font-size:10px;color:var(--text-muted);margin-bottom:12px;">Idéal : barre centrée à 50% entre chaque paire agoniste/antagoniste. Séries de la semaine.</div>'
+    + rows.join('');
+}
+
+// ==================== CORRÉLATION BIEN-ÊTRE × PERFORMANCE ====================
+function renderCorrelationBienEtre(bienEtreArr, volumeParJour) {
+  const sec  = document.getElementById('hist-corr-sec');
+  const card = document.getElementById('hist-corr-card');
+  const el   = document.getElementById('hist-corr-content');
+  if (!el) return;
+
+  const be = Array.isArray(bienEtreArr) ? bienEtreArr : [];
+  const vpj = volumeParJour || {};
+  if (be.length < 5 || Object.keys(vpj).length < 5) {
+    if (sec) sec.style.display = 'none';
+    if (card) card.style.display = 'none';
+    return;
+  }
+
+  // Pour chaque entrée bien-être, on cherche le tonnage du jour même OU du lendemain
+  const DIMS = [
+    { key: 'sommeil',  label: 'Sommeil',        badLabel: 'mauvais (≤2)',   goodLabel: 'bon (≥4)',   bad: v => v <= 2, good: v => v >= 4 },
+    { key: 'energie',  label: 'Énergie',         badLabel: 'faible (≤2)',    goodLabel: 'élevée (≥4)', bad: v => v <= 2, good: v => v >= 4 },
+    { key: 'fatigue',  label: 'Fatigue musculaire', badLabel: 'élevée (≥4)', goodLabel: 'faible (≤2)', bad: v => v >= 4, good: v => v <= 2 },
+  ];
+
+  const addDay = d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n.toISOString().slice(0,10); };
+
+  const rows = DIMS.map(dim => {
+    const badVols = [], goodVols = [];
+    be.forEach(entry => {
+      const val = Number(entry[dim.key]);
+      if (!val) return;
+      // Cherche tonnage du lendemain (séance après le questionnaire)
+      const dNext = addDay(entry.date);
+      const vol = vpj[dNext] != null ? Number(vpj[dNext]) : (vpj[entry.date] != null ? Number(vpj[entry.date]) : null);
+      if (vol == null) return;
+      if (dim.bad(val))  badVols.push(vol);
+      if (dim.good(val)) goodVols.push(vol);
+    });
+    if (badVols.length < 2 || goodVols.length < 2) return null;
+    const avgBad  = Math.round(badVols.reduce((a,b)=>a+b,0) / badVols.length);
+    const avgGood = Math.round(goodVols.reduce((a,b)=>a+b,0) / goodVols.length);
+    if (avgGood === 0) return null;
+    const diff = Math.round((avgGood - avgBad) / avgGood * 100);
+    if (Math.abs(diff) < 5) return null; // écart non significatif
+    const col = diff > 0 ? 'var(--good)' : 'var(--danger)';
+    const signe = diff > 0 ? '+' : '';
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--surface2);">
+        <div>
+          <div style="font-size:12px;font-weight:700;">${dim.label}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${dim.badLabel} → ${avgBad} kg · ${dim.goodLabel} → ${avgGood} kg</div>
+        </div>
+        <span style="font-size:12px;font-weight:800;color:${col};background:${col}1a;border-radius:6px;padding:3px 9px;flex-shrink:0;">${signe}${diff}%</span>
+      </div>`;
+  }).filter(Boolean);
+
+  if (rows.length === 0) {
+    if (sec) sec.style.display = 'none';
+    if (card) card.style.display = 'none';
+    return;
+  }
+  if (sec) sec.style.display = '';
+  if (card) card.style.display = '';
+  el.innerHTML = '<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;">Impact de ton état du jour sur le tonnage de la séance suivante (kg déplacés au total).</div>'
+    + rows.join('');
+}
+
 // ==================== UTILS ====================
 async function chargerExercices() {
   try {
@@ -6489,9 +6626,11 @@ async function chargerAppData() {
 
     // Volume par muscle
     afficherVolumeMuscle(data.historique.volume_semaine || []);
+    renderBilanBalance(data.historique.volume_semaine || []);
 
     // Tendances
     afficherTendances(4);
+    renderCorrelationBienEtre(data.bien_etre, data.historique.volume_par_jour || {});
 
     // Exercices dropdown historique
     const exercices = data.historique.exercices || [];
