@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Novalyz</title>
+<!-- PWA / mode hors-ligne -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="logo%20novalyz.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1992,6 +1998,12 @@ let historiqueData = [];
 window.addEventListener('load', async () => {
   // Applique le thème enregistré dès le chargement (login inclus) — évite le retour en dark au refresh
   if (localStorage.getItem('muscu_theme') === 'light') document.body.classList.add('light-mode');
+  // Service worker : rend l'app disponible hors-ligne (salles de sport sans réseau)
+  if ('serviceWorker' in navigator) {
+    try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
+  }
+  // Synchronise les séances enregistrées hors-ligne, si connexion revenue
+  if (typeof flushSeancesOffline === 'function') { try { flushSeancesOffline(); } catch (e) {} }
   const savedCoach = localStorage.getItem('muscu_coach');
   if (savedCoach) {
     try {
@@ -5410,11 +5422,67 @@ function _bloquerBoutonsValidation() {
   if (bw) { bw.disabled = true; bw.textContent = '⏳ Enregistrement...'; }
 }
 
+// ===== File d'attente hors-ligne (séances) =====
+const OFFLINE_SEANCES_KEY = 'novalyz_offline_seances';
+function _lireQueueOffline() { try { return JSON.parse(localStorage.getItem(OFFLINE_SEANCES_KEY) || '[]'); } catch (e) { return []; } }
+function _ecrireQueueOffline(q) { try { localStorage.setItem(OFFLINE_SEANCES_KEY, JSON.stringify(q)); } catch (e) {} }
+function _construireLignesSeance() {
+  const lignes = [];
+  seance.forEach(exo => exo.series.forEach(s => {
+    lignes.push([s.date, s.semaine, s.seanceId, athlete.nom, athlete.athlete_id,
+      s.exerciceNom, s.muscle, s.exerciceId, s.serie, s.charge, s.reps, s.rpe, s.repos, s.volume]);
+  }));
+  return lignes;
+}
+function _wellnessPayload(seanceId, dateSeance) {
+  return { action: 'saveBienEtre', athlete_id: athlete.athlete_id, date: dateSeance, seance_id: seanceId,
+    sommeil: wellnessState.sommeil, energie: wellnessState.energie, fatigue: wellnessState.fatigue,
+    douleur: wellnessState.douleur, zone: wellnessState.zone, ressenti: wellnessState.ressenti,
+    note: (document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '') };
+}
+function enregistrerSeanceOffline(lignes, wellness) {
+  const q = _lireQueueOffline();
+  q.push({ lignes: lignes, wellness: wellness, ts: Date.now() });
+  _ecrireQueueOffline(q);
+}
+async function flushSeancesOffline() {
+  if (!navigator.onLine) return;
+  let q = _lireQueueOffline();
+  if (!q.length) return;
+  const restantes = [];
+  for (const item of q) {
+    try {
+      await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'saveSeance', data: item.lignes }) });
+      if (item.wellness) {
+        await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item.wellness) });
+      }
+    } catch (e) { restantes.push(item); }
+  }
+  _ecrireQueueOffline(restantes);
+  const envoyees = q.length - restantes.length;
+  if (envoyees > 0) showToast(`☁️ ${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`);
+}
+window.addEventListener('online', () => { flushSeancesOffline(); });
+// Traite une validation hors-ligne : met en file + affiche le récap. Renvoie true si géré hors-ligne.
+function _gererValidationHorsLigne(avecWellness) {
+  if (navigator.onLine) return false;
+  const lignes = _construireLignesSeance();
+  const fs = seance[0] && seance[0].series[0];
+  const wellness = (avecWellness && fs) ? _wellnessPayload(fs.seanceId, fs.date) : null;
+  enregistrerSeanceOffline(lignes, wellness);
+  afficherRecap();
+  showToast('📴 Hors-ligne : séance enregistrée, elle se synchronisera au retour du réseau');
+  return true;
+}
+
 async function validerSeanceAvecWellness() {
   if (_validationEnCours) return;          // anti double-soumission
   _validationEnCours = true;
   _bloquerBoutonsValidation();
   fermerWellnessModal();
+  if (_gererValidationHorsLigne(true)) return;   // hors-ligne : mis en file
   const firstSerie = seance[0]?.series[0];
   if (firstSerie) await _envoyerWellness(firstSerie.seanceId, firstSerie.date);
   await _envoyerSeance();
@@ -5425,6 +5493,7 @@ async function validerSeanceSansWellness() {
   _validationEnCours = true;
   _bloquerBoutonsValidation();
   fermerWellnessModal();
+  if (_gererValidationHorsLigne(false)) return;  // hors-ligne : mis en file
   await _envoyerSeance();
 }
 
