@@ -5285,6 +5285,12 @@ function ouvrirWellnessModal() {
 function fermerWellnessModal() {
   document.getElementById('wellness-overlay').style.display = 'none';
   document.getElementById('wellness-modal').style.display = 'none';
+  // Si l'utilisateur annule le questionnaire (pas de validation en cours), on ré-affiche le bouton du récap
+  if (!_validationEnCours) {
+    const total = seance.reduce((a, e) => a + e.series.length, 0);
+    const bv = document.getElementById('btn-valider');
+    if (bv && total > 0) { bv.style.display = 'block'; bv.disabled = false; }
+  }
 }
 
 function selectWQ(question, btn) {
@@ -5340,22 +5346,37 @@ async function _envoyerSeance() {
   }
 }
 
+// Normalise une date en dd/MM/yyyy (le format stocké côté serveur)
+function _normDateDDMM(s) {
+  if (!s) return '';
+  s = String(s);
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return iso[3] + '/' + iso[2] + '/' + iso[1];
+  const fr = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (fr) return fr[1] + '/' + fr[2] + '/' + fr[3];
+  return s;
+}
 // Vérifie que la séance vient d'être écrite côté serveur.
-// Retourne true (confirmée), false (absente → échec probable), null (vérif impossible).
+// Retourne true (confirmée), false (absente après plusieurs essais), null (vérif impossible).
+// Réessaie : le POST no-cors se termine avant l'écriture réelle → on laisse le temps au serveur.
 async function _verifierSeanceEnregistree(dateEnvoyee) {
   if (!dateEnvoyee) return null;
-  try {
-    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(athlete.athlete_id)}&nocache=${Date.now()}`);
-    const d = await res.json();
-    const dates = (d.historique && d.historique.dates_seances) ? d.historique.dates_seances : {};
-    if (dates[dateEnvoyee]) return true;
-    const der = (d.recent && d.recent.derniere_seance) ? d.recent.derniere_seance
-              : (d.dashboard && d.dashboard.derniere_seance) ? d.dashboard.derniere_seance : null;
-    if (der && der.date === dateEnvoyee) return true;
-    return false;
-  } catch(e) {
-    return null; // réseau/parse KO : on ne peut pas conclure
+  const cible = _normDateDDMM(dateEnvoyee);
+  for (let essai = 0; essai < 3; essai++) {
+    await new Promise(r => setTimeout(r, essai === 0 ? 900 : 1300));
+    try {
+      const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(athlete.athlete_id)}&nocache=${Date.now()}`);
+      const d = await res.json();
+      const dates = (d.historique && d.historique.dates_seances) ? d.historique.dates_seances : {};
+      if (dates[cible]) return true;
+      const der = (d.recent && d.recent.derniere_seance) ? d.recent.derniere_seance
+                : (d.dashboard && d.dashboard.derniere_seance) ? d.dashboard.derniere_seance : null;
+      if (der && _normDateDDMM(der.date) === cible) return true;
+    } catch(e) {
+      return null; // réseau/parse KO : on ne peut pas conclure
+    }
   }
+  return false;
 }
 
 async function _envoyerWellness(seanceId, dateSeance) {
@@ -5381,9 +5402,18 @@ async function _envoyerWellness(seanceId, dateSeance) {
 }
 
 let _validationEnCours = false;
+// Masque + désactive immédiatement le bouton de validation (anti-reclic)
+function _bloquerBoutonsValidation() {
+  const bv = document.getElementById('btn-valider');
+  if (bv) { bv.disabled = true; bv.style.display = 'none'; }
+  const bw = document.getElementById('btn-wellness-valider');
+  if (bw) { bw.disabled = true; bw.textContent = '⏳ Enregistrement...'; }
+}
+
 async function validerSeanceAvecWellness() {
   if (_validationEnCours) return;          // anti double-soumission
   _validationEnCours = true;
+  _bloquerBoutonsValidation();
   fermerWellnessModal();
   const firstSerie = seance[0]?.series[0];
   if (firstSerie) await _envoyerWellness(firstSerie.seanceId, firstSerie.date);
@@ -5393,13 +5423,17 @@ async function validerSeanceAvecWellness() {
 async function validerSeanceSansWellness() {
   if (_validationEnCours) return;          // anti double-soumission
   _validationEnCours = true;
+  _bloquerBoutonsValidation();
   fermerWellnessModal();
   await _envoyerSeance();
 }
 
 function validerSeance() {
+  if (_validationEnCours) return;          // anti double-soumission (validation déjà en cours)
   const totalSeries = seance.reduce((a,e)=>a+e.series.length,0);
   if (totalSeries === 0) { showToast('Aucune série !', '#ff4444'); return; }
+  // On masque le bouton du récap pendant le questionnaire pour éviter tout reclic
+  const bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
   ouvrirWellnessModal();
 }
 
