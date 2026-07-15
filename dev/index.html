@@ -5046,17 +5046,26 @@ function selectionnerExoLibre(exerciceNom) {
   document.getElementById('exo-actuel-nom').textContent = exo.exerciceNom;
   document.getElementById('exo-actuel-detail').textContent = exo.muscle + ' · Hors programme';
   document.getElementById('exo-actuel-cible').innerHTML = '';
-  document.getElementById('exo-actuel-suggestion').innerHTML = '';
-
   const perf = getPerf(exo.exerciceNom);
   if (perf) {
     document.getElementById('exo-actuel-perf').innerHTML = `Dernière fois : <strong>${perf.last_charge}kg × ${perf.max_reps} reps</strong>`;
     document.getElementById('inp-charge').value = perf.last_charge;
     document.getElementById('inp-reps').value = perf.max_reps;
+
+    // Suggestion surcharge pour exercice hors programme
+    const exoDataHP = exercicesData.find(e => e.exercice === exo.exerciceNom);
+    const incrementHP = parseFloat(String(exoDataHP ? exoDataHP.increment_kg : '2.5').replace(',','.').split('/')[0].trim()) || 2.5;
+    const stratHP = athlete ? athlete.strategie_progression : 'Progression linéaire';
+    // Pseudo-programme : on considère les reps actuelles comme cible
+    const pseudoProg = { reps_max: perf.max_reps, reps_mini: Math.max(1, perf.max_reps - 2) };
+    const suggHP = calculerSurcharge(stratHP, perf, pseudoProg, perf.last_charge, incrementHP);
+    document.getElementById('exo-actuel-suggestion').innerHTML = suggHP
+      ? `<div class="prog-suggestion" style="margin-top:6px">${suggHP}</div>` : '';
   } else {
     document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai</span>';
     document.getElementById('inp-charge').value = '';
     document.getElementById('inp-reps').value = '';
+    document.getElementById('exo-actuel-suggestion').innerHTML = '';
   }
 
   majSeriesActuel();
@@ -6374,7 +6383,16 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
     document.getElementById('inp-reps').value = repsMini;
   }
 
-  document.getElementById('exo-actuel-suggestion').innerHTML = '';
+  if (perf) {
+    const stratProg = athlete ? athlete.strategie_progression : 'Progression linéaire';
+    const pseudoProgP = { reps_max: repsMax, reps_mini: repsMini };
+    const bestChargeP = perf.prev_charge !== null ? Math.max(perf.last_charge, perf.prev_charge) : perf.last_charge;
+    const suggProg = calculerSurcharge(stratProg, perf, pseudoProgP, bestChargeP, increment2);
+    document.getElementById('exo-actuel-suggestion').innerHTML = suggProg
+      ? `<div class="prog-suggestion" style="margin-top:6px">${suggProg}</div>` : '';
+  } else {
+    document.getElementById('exo-actuel-suggestion').innerHTML = '';
+  }
   majSeriesActuel();
   window.scrollTo(0, 0);
   showToast('✅ ' + exerciceNom + ' sélectionné');
