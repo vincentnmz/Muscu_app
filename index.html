@@ -6384,7 +6384,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
 async function chargerAppData() {
   if (!athlete) return;
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`);
+    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}&nocache=${Date.now()}`);
     const data = await res.json();
 
     // Stocker les données globalement
