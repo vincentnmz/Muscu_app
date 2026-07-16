@@ -1219,6 +1219,14 @@
         <div id="dash-global-content"></div>
       </div>
 
+      <!-- EXPORT PDF -->
+      <div style="padding:4px 0 10px;display:flex;justify-content:flex-end;">
+        <button onclick="exporterBilanPDF()" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exporter bilan PDF
+        </button>
+      </div>
+
       <!-- SECTION PERFORMANCE -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Performance</div></div>
 
@@ -5090,7 +5098,8 @@ function selectionnerExoLibre(exerciceNom) {
     const stratHP = athlete ? athlete.strategie_progression : 'Progression linéaire';
     // Pseudo-programme : on considère les reps actuelles comme cible
     const pseudoProg = { reps_max: perf.max_reps, reps_mini: Math.max(1, perf.max_reps - 2) };
-    const suggHP = calculerSurcharge(stratHP, perf, pseudoProg, perf.last_charge, incrementHP);
+    const dernRpeHP = exoEnCours.series.length > 0 ? exoEnCours.series[exoEnCours.series.length - 1].rpe : null;
+    const suggHP = calculerSurcharge(stratHP, perf, pseudoProg, perf.last_charge, incrementHP, dernRpeHP);
     document.getElementById('exo-actuel-suggestion').innerHTML = suggHP
       ? `<div class="prog-suggestion" style="margin-top:6px">${suggHP}</div>` : '';
   } else {
@@ -5296,6 +5305,24 @@ function majSeriesActuel() {
       <button class="btn-sm btn-danger-sm" onclick="supprimerSerie(${i})">✕</button>
     </div>
   `).join('');
+  // Recalcule la suggestion RPE après chaque série saisie
+  if (exoEnCours && exoEnCours.series.length > 0) {
+    const dernSerie = exoEnCours.series[exoEnCours.series.length - 1];
+    const perf = getPerf(exoEnCours.exerciceNom);
+    if (perf) {
+      const strat = athlete ? athlete.strategie_progression : 'Progression linéaire';
+      const exoData = exercicesData ? exercicesData.find(e => e.exercice === exoEnCours.exerciceNom) : null;
+      const incr = exoData ? (parseFloat(String(exoData.increment_kg).replace(',','.').split('/')[0].trim()) || 2.5) : 2.5;
+      const progEl = exoEnCours._progData;
+      const pseudo = progEl
+        ? { reps_max: progEl.reps_max, reps_mini: progEl.reps_mini }
+        : { reps_max: perf.max_reps, reps_mini: Math.max(1, perf.max_reps - 2) };
+      const best = perf.prev_charge !== null ? Math.max(perf.last_charge, perf.prev_charge || 0) : perf.last_charge;
+      const sugg = calculerSurcharge(strat, perf, pseudo, best, incr, dernSerie.rpe);
+      const suggEl = document.getElementById('exo-actuel-suggestion');
+      if (suggEl) suggEl.innerHTML = sugg ? `<div class="prog-suggestion" style="margin-top:6px">${sugg}</div>` : '';
+    }
+  }
   majProgressionSeance();
 }
 
@@ -5582,6 +5609,25 @@ function afficherRecap() {
     });
     recap.appendChild(div);
   });
+
+  // Détection des records battus pendant cette séance
+  const recordsBattus = [];
+  seance.forEach(exo => {
+    const perfExo = getPerf(exo.exerciceNom);
+    const maxChargeSession = Math.max(...exo.series.map(s => s.charge));
+    if (maxChargeSession > 0 && (!perfExo || maxChargeSession > perfExo.last_charge)) {
+      recordsBattus.push({ nom: exo.exerciceNom, charge: maxChargeSession });
+    }
+  });
+  if (recordsBattus.length > 0) {
+    const recBlock = document.createElement('div');
+    recBlock.style.cssText = 'background:linear-gradient(135deg,rgba(47,123,255,.15),rgba(0,201,110,.12));border:1px solid rgba(0,201,110,.3);border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center;animation:pop-in .3s cubic-bezier(.2,.8,.2,1)';
+    recBlock.innerHTML = `
+      <div style="font-size:24px;margin-bottom:6px;">🏆</div>
+      <div style="font-size:14px;font-weight:800;color:var(--good);margin-bottom:6px;">Record${recordsBattus.length > 1 ? 's' : ''} personnel${recordsBattus.length > 1 ? 's' : ''} !</div>
+      ${recordsBattus.map(r => `<div style="font-size:13px;font-weight:700;color:var(--text);">${r.nom} — <span style="color:var(--good)">${r.charge}kg</span></div>`).join('')}`;
+    recap.insertBefore(recBlock, recap.firstChild);
+  }
 
   afficherProgrammeVsRealise(seanceType);
   window.scrollTo(0,0);
@@ -6664,6 +6710,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
     exoEnCours = { muscle, exerciceId: exoId, exerciceNom, series: [] };
     seance.push(exoEnCours);
   }
+  exoEnCours._progData = { reps_max: repsMax, reps_mini: repsMini };
   serieNum = exoEnCours.series.length + 1;
 
   // Mettre à jour l'affichage
@@ -6698,7 +6745,8 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
     const stratProg = athlete ? athlete.strategie_progression : 'Progression linéaire';
     const pseudoProgP = { reps_max: repsMax, reps_mini: repsMini };
     const bestChargeP = perf.prev_charge !== null ? Math.max(perf.last_charge, perf.prev_charge) : perf.last_charge;
-    const suggProg = calculerSurcharge(stratProg, perf, pseudoProgP, bestChargeP, increment2);
+    const dernRpeProg = exoEnCours && exoEnCours.series.length > 0 ? exoEnCours.series[exoEnCours.series.length - 1].rpe : null;
+    const suggProg = calculerSurcharge(stratProg, perf, pseudoProgP, bestChargeP, increment2, dernRpeProg);
     document.getElementById('exo-actuel-suggestion').innerHTML = suggProg
       ? `<div class="prog-suggestion" style="margin-top:6px">${suggProg}</div>` : '';
   } else {
@@ -7153,7 +7201,7 @@ function playBeep() {
 }
 
 // ==================== SURCHARGE PROGRESSIVE ====================
-function calculerSurcharge(strategie, perf, programme, bestCharge, increment) {
+function calculerSurcharge(strategie, perf, programme, bestCharge, increment, lastRpe) {
   if (!perf || !programme) return null;
 
   const repsMax = programme.reps_max;
@@ -7163,14 +7211,24 @@ function calculerSurcharge(strategie, perf, programme, bestCharge, increment) {
   const prev2Reps = perf.prev2_max_reps !== undefined ? perf.prev2_max_reps : null;
   const nouvelleCharge = Math.round((bestCharge + increment) * 4) / 4;
 
+  // Auto-régulation RPE : si RPE ≥ 9, bloquer la surcharge (trop proche de l'échec)
+  const rpe = lastRpe != null ? Number(lastRpe) : null;
+  const rpeBloque = rpe !== null && rpe >= 9;
+  const rpeFacile  = rpe !== null && rpe <= 7;
+
+  if (rpeBloque) {
+    return `<svg class="ico"><use href="#i-alert"/></svg><span style="color:var(--warn)">RPE ${rpe} — Consolide cette charge avant de progresser</span>`;
+  }
+
   if (strategie === 'Progression linéaire') {
-    // DÉBUTANT : dès que reps_max atteint → +charge
     if (lastReps >= repsMax) {
-      return `<svg class="ico"><use href="#i-dumbbell"/></svg>Débutant — Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg) → repart à ${repsMini} reps`;
+      const msg = rpeFacile
+        ? `<svg class="ico"><use href="#i-dumbbell"/></svg>Débutant — RPE ${rpe} (facile) · Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg)`
+        : `<svg class="ico"><use href="#i-dumbbell"/></svg>Débutant — Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg) → repart à ${repsMini} reps`;
+      return msg;
     }
 
   } else if (strategie === 'Double progression') {
-    // INTERMÉDIAIRE : 2x au max → +1 rep / 3x au max → +charge
     const deuxFoisAuMax = lastReps >= repsMax && prevReps !== null && prevReps >= repsMax;
     const troisFoisAuMax = deuxFoisAuMax && prev2Reps !== null && prev2Reps >= repsMax;
 
@@ -7181,7 +7239,6 @@ function calculerSurcharge(strategie, perf, programme, bestCharge, increment) {
     }
 
   } else if (strategie === 'Progression avancée') {
-    // EXPÉRIMENTÉ : +1 rep ou -30s repos
     const auMax = lastReps >= repsMax && prevReps !== null && prevReps >= repsMax;
     if (auMax) {
       return `<svg class="ico"><use href="#i-dumbbell"/></svg>Expérimenté — Choix : <strong>+1 rep</strong> (${lastReps + 1} reps) ou <strong>-30s repos</strong>`;
@@ -7266,6 +7323,87 @@ function filtrerDrawer(type) {
         </div>
       </div>`;
   }).join('');
+}
+
+// ==================== EXPORT PDF BILAN ====================
+function exporterBilanPDF() {
+  const d = dernierAppData;
+  if (!d) { showToast('⚠️ Données non chargées', '#ff4444'); return; }
+
+  const nom = athlete ? (athlete.prenom || 'Athlète') : 'Athlète';
+  const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // Records
+  const records = calculerRecords(d.historique || {});
+  const recordsHTML = records.slice(0, 10).map(r =>
+    `<tr><td>${r.exo}</td><td style="text-align:right;font-weight:700;color:#2f7bff">${r.charge} kg</td><td style="text-align:right;color:#555">${r.reps} reps</td><td style="text-align:right;color:#888;font-size:11px">${r.date || ''}</td></tr>`
+  ).join('');
+
+  // Volume par muscle
+  const volumes = (d.historique && d.historique.volume_par_muscle) || {};
+  const volumesHTML = Object.entries(volumes).map(([muscle, vol]) =>
+    `<tr><td>${muscle}</td><td style="text-align:right;font-weight:700">${vol} séries</td></tr>`
+  ).join('');
+
+  // Progression par exercice (résumé)
+  const prog = progressionData || {};
+  const progHTML = Object.entries(prog).slice(0, 8).map(([exo, perfs]) => {
+    if (!perfs || perfs.length < 2) return '';
+    const first = perfs[perfs.length - 1], last = perfs[0];
+    const diff = last.charge - first.charge;
+    const signe = diff > 0 ? '+' : '';
+    const col = diff > 0 ? '#00c96e' : diff < 0 ? '#e5484d' : '#888';
+    return `<tr><td>${exo}</td><td style="text-align:right">${first.charge} kg</td><td style="text-align:right">${last.charge} kg</td><td style="text-align:right;font-weight:700;color:${col}">${signe}${diff} kg</td></tr>`;
+  }).filter(Boolean).join('');
+
+  // Stats globales
+  const dash = d.dashboard || {};
+  const reg = dash.regularite || {};
+  const totalSeances = d.historique && d.historique.dates_seances ? Object.keys(d.historique.dates_seances).length : '—';
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+  <title>Bilan Novalyz — ${nom}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #111; padding: 32px; max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 800; color: #2f7bff; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 28px; }
+    h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #555; margin: 24px 0 10px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    td { padding: 7px 6px; border-bottom: 1px solid #f0f0f0; }
+    .kpi { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+    .kpi-box { background: #f6f8ff; border: 1px solid #dde6ff; border-radius: 10px; padding: 12px 18px; min-width: 120px; }
+    .kpi-val { font-size: 22px; font-weight: 800; color: #2f7bff; }
+    .kpi-lbl { font-size: 11px; color: #888; margin-top: 2px; }
+    .footer { margin-top: 36px; font-size: 11px; color: #bbb; text-align: center; }
+    @media print { body { padding: 16px; } button { display: none; } }
+  </style>
+  </head><body>
+  <h1>Bilan d'entraînement — ${nom}</h1>
+  <div class="sub">Généré le ${today} · Novalyz</div>
+
+  <div class="kpi">
+    <div class="kpi-box"><div class="kpi-val">${totalSeances}</div><div class="kpi-lbl">Séances totales</div></div>
+    <div class="kpi-box"><div class="kpi-val">${reg.seances_j7 ?? '—'}</div><div class="kpi-lbl">Séances (7j)</div></div>
+    <div class="kpi-box"><div class="kpi-val">${(dash.tonnage_7j ? Math.round(dash.tonnage_7j) + ' kg' : '—')}</div><div class="kpi-lbl">Tonnage (7j)</div></div>
+  </div>
+
+  ${progHTML ? `<h2>Progression par exercice</h2>
+  <table><tr style="color:#888;font-size:11px"><td>Exercice</td><td style="text-align:right">Départ</td><td style="text-align:right">Actuel</td><td style="text-align:right">Évolution</td></tr>${progHTML}</table>` : ''}
+
+  ${recordsHTML ? `<h2>Records personnels</h2>
+  <table><tr style="color:#888;font-size:11px"><td>Exercice</td><td style="text-align:right">Charge</td><td style="text-align:right">Reps</td><td style="text-align:right">Date</td></tr>${recordsHTML}</table>` : ''}
+
+  ${volumesHTML ? `<h2>Volume par muscle (période récente)</h2>
+  <table>${volumesHTML}</table>` : ''}
+
+  <div class="footer">Novalyz · Suivi d'entraînement personnel</div>
+  <script>window.onload = function(){ window.print(); }<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); }
+  else showToast('⚠️ Autorise les pop-ups pour exporter', '#f59f00');
 }
 
 // ==================== GRAPHIQUE POIDS ====================
