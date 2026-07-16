@@ -6176,7 +6176,7 @@ function renderProg12Semaines(perfs) {
     const lundi = new Date(d); lundi.setDate(d.getDate() - day);
     const key = lundi.toISOString().slice(0, 10);
     if (!semMap[key] || p.charge > semMap[key].charge)
-      semMap[key] = { key, charge: p.charge, reps: p.reps };
+      semMap[key] = { key, charge: p.charge, reps: p.reps, date: p.date };
   });
 
   const semaines = Object.values(semMap).sort((a, b) => a.key.localeCompare(b.key)).slice(-12);
@@ -6249,12 +6249,13 @@ function renderProg12Semaines(perfs) {
     return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--accent)" ${stroke}/>${lbl}`;
   }).join('');
 
-  // Labels X : semaine calendaire + date courte, max 5 labels
+  // Labels X : vraie date de la séance, max 5 labels
   const step = Math.max(1, Math.ceil(n / 5));
   const xLabels = semaines.map((s, i) => {
     if (i % step !== 0 && i !== n - 1) return '';
-    const d = new Date(s.key);
-    const lbl = `${d.getDate()}/${d.getMonth() + 1}`;
+    // s.date est au format jj/mm/aaaa
+    const parts = s.date ? s.date.split('/') : null;
+    const lbl = parts ? `${parts[0]}/${parts[1]}` : '';
     return `<text x="${xp(i)}" y="${H + 13}" text-anchor="${i === 0 ? 'start' : i === n-1 ? 'end' : 'middle'}" fill="rgba(136,136,170,.75)" font-size="8.5" font-weight="600">${lbl}</text>`;
   }).join('');
 
