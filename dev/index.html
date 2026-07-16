@@ -666,6 +666,41 @@
     <!-- ONGLET PROGRESSION (fusion Progrès + Volume + Records + Tendance mensuelle) -->
     <div id="cdtab-prog" style="display:none">
 
+      <!-- Header Progression : titre + bouton export -->
+      <div class="v2-sec">
+        <div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression</div>
+        <button onclick="ouvrirModalBilanPDF()" style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:20px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export PDF
+        </button>
+
+        <!-- Modal sélection période PDF -->
+        <div id="modal-bilan-pdf" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px 24px 20px;width:300px;box-shadow:0 24px 64px rgba(0,0,0,.5);">
+            <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px;">Exporter le bilan PDF</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Choisir la période couverte</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+              <label style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;cursor:pointer;">
+                <input type="radio" name="pdf-periode" value="mois" checked style="accent-color:var(--accent)">
+                <div><div style="font-size:12px;font-weight:700;color:var(--text)">Ce mois</div><div style="font-size:10px;color:var(--text-muted)" id="pdf-label-mois"></div></div>
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;cursor:pointer;">
+                <input type="radio" name="pdf-periode" value="3mois" style="accent-color:var(--accent)">
+                <div><div style="font-size:12px;font-weight:700;color:var(--text)">3 derniers mois</div><div style="font-size:10px;color:var(--text-muted)" id="pdf-label-3mois"></div></div>
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;cursor:pointer;">
+                <input type="radio" name="pdf-periode" value="tout" style="accent-color:var(--accent)">
+                <div><div style="font-size:12px;font-weight:700;color:var(--text)">Depuis le début</div><div style="font-size:10px;color:var(--text-muted)" id="pdf-label-tout"></div></div>
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button onclick="fermerModalBilanPDF()" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;">Annuler</button>
+              <button onclick="lancerExportBilanPDF()" style="flex:2;background:var(--accent);border:none;color:#fff;border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer;">Générer le PDF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Volume par muscle -->
       <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div></div>
       <div class="card">
@@ -1217,14 +1252,6 @@
       <div class="v2-sec" id="dash-global-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
       <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
         <div id="dash-global-content"></div>
-      </div>
-
-      <!-- EXPORT PDF -->
-      <div style="padding:4px 0 10px;display:flex;justify-content:flex-end;">
-        <button onclick="exporterBilanPDF()" style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">
-          <svg class="ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exporter bilan PDF
-        </button>
       </div>
 
       <!-- SECTION PERFORMANCE -->
@@ -7333,80 +7360,350 @@ function filtrerDrawer(type) {
 }
 
 // ==================== EXPORT PDF BILAN ====================
-function exporterBilanPDF() {
-  const d = dernierAppData;
+function ouvrirModalBilanPDF() {
+  const now = new Date();
+  const fmt = (d) => d.toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const debutMois = new Date(now.getFullYear(), now.getMonth(), 1);
+  const debut3m = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const hist = coachAthleteData && coachAthleteData.historique;
+  const datesSeances = hist ? Object.keys(hist.dates_seances || {}) : [];
+  let premiereDateStr = '—';
+  if (datesSeances.length) {
+    const sorted = datesSeances.map(s => { const p = s.split('/'); return new Date(p[2], p[1]-1, p[0]); }).sort((a,b)=>a-b);
+    premiereDateStr = fmt(sorted[0]);
+  }
+  const lm = document.getElementById('pdf-label-mois');
+  const l3 = document.getElementById('pdf-label-3mois');
+  const lt = document.getElementById('pdf-label-tout');
+  if (lm) lm.textContent = fmt(debutMois) + ' → ' + fmt(now);
+  if (l3) l3.textContent = fmt(debut3m) + ' → ' + fmt(now);
+  if (lt) lt.textContent = 'Depuis ' + premiereDateStr;
+  const modal = document.getElementById('modal-bilan-pdf');
+  if (modal) { modal.style.display = 'flex'; }
+}
+
+function fermerModalBilanPDF() {
+  const modal = document.getElementById('modal-bilan-pdf');
+  if (modal) modal.style.display = 'none';
+}
+
+function lancerExportBilanPDF() {
+  const sel = document.querySelector('input[name="pdf-periode"]:checked');
+  const periode = sel ? sel.value : 'mois';
+  fermerModalBilanPDF();
+  exporterBilanPDF(periode);
+}
+
+function exporterBilanPDF(periode) {
+  periode = periode || 'mois';
+  const d = coachAthleteData;
   if (!d) { showToast('⚠️ Données non chargées', '#ff4444'); return; }
 
-  const nom = athlete ? (athlete.prenom || 'Athlète') : 'Athlète';
-  const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const nomAthlete = coachAthleteCourant ? (coachAthleteCourant.prenom || coachAthleteCourant.nom || 'Athlète') : 'Athlète';
+  const nomCoach = coach ? (coach.nom || 'Coach') : 'Coach';
+  const strat = coachAthleteCourant ? (coachAthleteCourant.strategie_progression || '') : '';
+  const niveauRaw = coachAthleteCourant ? (coachAthleteCourant.niveau || '') : '';
+  const objectif = coachAthleteCourant ? (coachAthleteCourant.objectif || '') : '';
+  const maintenant = new Date();
+  const fmtDate = (dt) => dt.toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const fmtMois = (dt) => dt.toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
+  const today = fmtDate(maintenant);
 
-  // Records
-  const records = calculerRecords(d.historique || {});
-  const recordsHTML = records.slice(0, 10).map(r =>
-    `<tr><td>${r.exo}</td><td style="text-align:right;font-weight:700;color:#2f7bff">${r.charge} kg</td><td style="text-align:right;color:#555">${r.reps} reps</td><td style="text-align:right;color:#888;font-size:11px">${r.date || ''}</td></tr>`
-  ).join('');
+  // ── Calcul de la fenêtre temporelle selon la période choisie ──
+  let debutPeriode, periodeLbl;
+  if (periode === '3mois') {
+    debutPeriode = new Date(maintenant.getFullYear(), maintenant.getMonth() - 2, 1);
+    periodeLbl = fmtDate(debutPeriode) + ' → ' + fmtDate(maintenant);
+  } else if (periode === 'tout') {
+    debutPeriode = new Date(2000, 0, 1);
+    periodeLbl = 'Toute la période';
+  } else {
+    debutPeriode = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+    periodeLbl = fmtMois(maintenant).charAt(0).toUpperCase() + fmtMois(maintenant).slice(1);
+  }
+  const moisLabel = periodeLbl;
 
-  // Volume par muscle
-  const volumes = (d.historique && d.historique.volume_par_muscle) || {};
-  const volumesHTML = Object.entries(volumes).map(([muscle, vol]) =>
-    `<tr><td>${muscle}</td><td style="text-align:right;font-weight:700">${vol} séries</td></tr>`
-  ).join('');
-
-  // Progression par exercice (résumé)
-  const prog = progressionData || {};
-  const progHTML = Object.entries(prog).slice(0, 8).map(([exo, perfs]) => {
-    if (!perfs || perfs.length < 2) return '';
-    const first = perfs[perfs.length - 1], last = perfs[0];
-    const diff = last.charge - first.charge;
-    const signe = diff > 0 ? '+' : '';
-    const col = diff > 0 ? '#00c96e' : diff < 0 ? '#e5484d' : '#888';
-    return `<tr><td>${exo}</td><td style="text-align:right">${first.charge} kg</td><td style="text-align:right">${last.charge} kg</td><td style="text-align:right;font-weight:700;color:${col}">${signe}${diff} kg</td></tr>`;
-  }).filter(Boolean).join('');
-
-  // Stats globales
+  // ── Carrière du mois ──
   const dash = d.dashboard || {};
   const reg = dash.regularite || {};
-  const totalSeances = d.historique && d.historique.dates_seances ? Object.keys(d.historique.dates_seances).length : '—';
+  const hist = d.historique || {};
+  const datesSeancesAll = Object.keys(hist.dates_seances || {});
+  const datesSeancesPeriode = datesSeancesAll.filter(ds => {
+    const p = ds.split('/'); if (p.length < 3) return false;
+    return new Date(p[2], p[1]-1, p[0]) >= debutPeriode;
+  });
+  const totalSeances = datesSeancesPeriode.length;
+  const nbSemaines = Math.max(1, Math.round((maintenant - debutPeriode) / (7 * 24 * 3600 * 1000)));
+  const seancesParSem = (totalSeances / nbSemaines).toFixed(1);
+  const streak = reg.streak_semaines || '—';
+  const tonnagePeriode = (hist.tonnage_par_seance || [])
+    .filter(t => { const p = (t.date||'').split('/'); return p.length===3 && new Date(p[2],p[1]-1,p[0]) >= debutPeriode; })
+    .reduce((s, t) => s + (Number(t.tonnage) || 0), 0);
+  const tonnageMoisFmt = tonnagePeriode ? Math.round(tonnagePeriode).toLocaleString('fr-FR') + ' kg' : '—';
+  const tonnageSeance = totalSeances && tonnagePeriode ? Math.round(tonnagePeriode / totalSeances).toLocaleString('fr-FR') + ' kg' : '—';
+
+  // ── Régularité : dots calendrier (mois courant toujours) ──
+  const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+  const joursInMonth = new Date(maintenant.getFullYear(), maintenant.getMonth() + 1, 0).getDate();
+  const premierJour = debutMois.getDay() === 0 ? 6 : debutMois.getDay() - 1;
+  const datesSeances = datesSeancesAll;
+  const seancesCeMois = new Set(datesSeances.filter(ds => {
+    const parts = ds.split('/'); if (parts.length < 3) return false;
+    const d2 = new Date(parts[2], parts[1] - 1, parts[0]);
+    return d2.getMonth() === maintenant.getMonth() && d2.getFullYear() === maintenant.getFullYear();
+  }));
+  const records = calculerRecords(hist);
+  const datesRecords = new Set(records.map(r => r.date).filter(Boolean));
+  let dotsHTML = '';
+  for (let i = 0; i < premierJour; i++) dotsHTML += `<div class="dot"></div>`;
+  for (let day = 1; day <= joursInMonth; day++) {
+    const str = String(day).padStart(2,'0') + '/' + String(maintenant.getMonth()+1).padStart(2,'0') + '/' + maintenant.getFullYear();
+    const isRec = datesRecords.has(str);
+    const isSea = seancesCeMois.has(str);
+    dotsHTML += `<div class="dot${isRec ? ' hi' : isSea ? ' on' : ''}"></div>`;
+  }
+  const assiduité = joursInMonth ? Math.round((seancesCeMois.size / joursInMonth) * 100) : 0;
+
+  // ── Progression & Régression ──
+  const prog = cdProgressionData || {};
+  const lignesUp = [], lignesDn = [], lignesStable = [];
+  Object.entries(prog).forEach(([exo, perfs]) => {
+    if (!perfs || perfs.length < 2) return;
+    const first = perfs[perfs.length - 1], last = perfs[0];
+    const diffKg = last.charge - first.charge;
+    const diffReps = (last.reps || 0) - (first.reps || 0);
+    const muscle = last.muscle || '';
+    const nbSea = perfs.length;
+    if (diffKg > 0) {
+      const pct = first.charge ? Math.round((diffKg / first.charge) * 100) : 0;
+      lignesUp.push(`<tr><td><div class="en">${exo}</div><div class="em">${muscle}</div></td><td class="r" style="color:#475569;font-weight:600">${first.charge} kg</td><td class="r" style="color:#fff;font-weight:800">${last.charge} kg</td><td class="r"><span class="pill up">+${diffKg} kg</span><span class="pct">+${pct}%</span></td><td class="r" style="color:#475569;font-size:11px">×${nbSea}</td></tr>`);
+    } else if (diffReps > 0 && diffKg === 0) {
+      lignesUp.push(`<tr><td><div class="en">${exo}</div><div class="em">${muscle}</div></td><td class="r" style="color:#475569;font-weight:600">${first.charge} kg×${first.reps}</td><td class="r" style="color:#fff;font-weight:800">${last.charge} kg×${last.reps}</td><td class="r"><span class="pill rp">+${diffReps} reps</span></td><td class="r" style="color:#475569;font-size:11px">×${nbSea}</td></tr>`);
+    } else if (diffKg < 0) {
+      const pct = first.charge ? Math.round((Math.abs(diffKg) / first.charge) * 100) : 0;
+      lignesDn.push(`<tr><td><div class="en">${exo}</div><div class="em">${muscle}</div></td><td class="r" style="color:#475569;font-weight:600">${first.charge} kg</td><td class="r" style="color:#f43f5e;font-weight:800">${last.charge} kg</td><td class="r"><span class="pill dn">−${Math.abs(diffKg)} kg</span><span class="pct">−${pct}%</span></td><td class="r" style="color:#475569;font-size:11px">×${nbSea}</td></tr>`);
+    } else {
+      lignesStable.push(exo);
+    }
+  });
+  const separateur = lignesDn.length ? `<tr><td colspan="5" style="padding:3px 10px"><div style="height:1px;background:rgba(244,63,94,.25)"></div></td></tr>` : '';
+  const progRows = lignesUp.join('') + separateur + lignesDn.join('');
+
+  // ── Volume par groupe musculaire ──
+  const volMusc = hist.volume_par_muscle || {};
+  const MINI_VOL = 10; // seuil optimal approximatif
+  const volCards = Object.entries(volMusc).map(([muscle, vol]) => {
+    const pct = Math.min(100, Math.round((vol / (MINI_VOL * 2)) * 100));
+    const isLow = vol < MINI_VOL;
+    const barCol = isLow ? '#f59e0b' : '#3b82f6';
+    const badge = isLow
+      ? `<span class="vol-badge vol-low">↑ Faible</span>`
+      : `<span class="vol-badge vol-ok">✓ Optimal</span>`;
+    return `<div class="vol-card${isLow ? ' warn-card' : ''}">
+      <div><div class="vol-muscle-name">${muscle}</div></div>
+      <div class="vol-bar-col">
+        <div class="vol-bar-bg"><div class="vol-bar" style="width:${pct}%;background:${barCol}"></div></div>
+        <div class="vol-nums"><span class="vol-ser">${vol} sér. / mois</span></div>
+      </div>
+      ${badge}
+    </div>`;
+  }).join('');
+
+  // ── RPE moyen par exercice ──
+  const rpeMap = hist.rpe_par_exercice || {};
+  const rpeCards = Object.entries(rpeMap).map(([exo, rpeVal]) => {
+    const v = Number(rpeVal).toFixed(1);
+    const col = rpeVal >= 9 ? '#f43f5e' : rpeVal >= 7.5 ? '#f59e0b' : '#10b981';
+    const lbl = rpeVal >= 9 ? '⚠ Trop difficile' : rpeVal >= 7.5 ? 'Effort élevé' : 'Effort facile';
+    return `<div class="rpe-card"><div class="rpe-n" style="color:${col}">${v}</div><div class="rpe-exo">${exo}</div><div class="rpe-lbl">${lbl}</div></div>`;
+  }).join('');
+  const rpeVals = Object.values(rpeMap).map(Number).filter(v => v > 0);
+  const rpeMoyen = rpeVals.length ? (rpeVals.reduce((a,b)=>a+b,0)/rpeVals.length).toFixed(1) : null;
+  const rpeGlobalCard = rpeMoyen ? `<div class="rpe-card rpe-global-card"><div class="rpe-n" style="font-size:36px;color:#fff">${rpeMoyen}</div><div class="rpe-exo" style="color:rgba(255,255,255,.5);font-size:9px;text-transform:uppercase;letter-spacing:.1em;font-weight:700">RPE global moyen</div></div>` : '';
+
+  // ── Points d'attention ──
+  const musclesFaibles = Object.entries(volMusc).filter(([,v]) => v < MINI_VOL).map(([m]) => `<span class="chip r">${m} — ${volMusc[m]} sér.</span>`).join('');
+  const exosStables = lignesStable.map(e => `<span class="chip w">${e}</span>`).join('');
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <title>Bilan Novalyz — ${nom}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #111; padding: 32px; max-width: 760px; margin: 0 auto; }
-    h1 { font-size: 22px; font-weight: 800; color: #2f7bff; margin-bottom: 4px; }
-    .sub { font-size: 13px; color: #888; margin-bottom: 28px; }
-    h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #555; margin: 24px 0 10px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    td { padding: 7px 6px; border-bottom: 1px solid #f0f0f0; }
-    .kpi { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
-    .kpi-box { background: #f6f8ff; border: 1px solid #dde6ff; border-radius: 10px; padding: 12px 18px; min-width: 120px; }
-    .kpi-val { font-size: 22px; font-weight: 800; color: #2f7bff; }
-    .kpi-lbl { font-size: 11px; color: #888; margin-top: 2px; }
-    .footer { margin-top: 36px; font-size: 11px; color: #bbb; text-align: center; }
-    @media print { body { padding: 16px; } button { display: none; } }
-  </style>
-  </head><body>
-  <h1>Bilan d'entraînement — ${nom}</h1>
-  <div class="sub">Généré le ${today} · Novalyz</div>
-
-  <div class="kpi">
-    <div class="kpi-box"><div class="kpi-val">${totalSeances}</div><div class="kpi-lbl">Séances totales</div></div>
-    <div class="kpi-box"><div class="kpi-val">${reg.seances_j7 ?? '—'}</div><div class="kpi-lbl">Séances (7j)</div></div>
-    <div class="kpi-box"><div class="kpi-val">${(dash.tonnage_7j ? Math.round(dash.tonnage_7j) + ' kg' : '—')}</div><div class="kpi-lbl">Tonnage (7j)</div></div>
+<title>Bilan Novalyz — ${nomAthlete} — ${moisLabel}</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0e1a;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;color:#e2e8f0;font-size:13px}
+.bilan{max-width:820px;margin:0 auto;background:#0a0e1a}
+/* Header */
+.hd{padding:30px 40px 26px;background:linear-gradient(135deg,#0f1b3d 0%,#0d1526 50%,#0a0e1a 100%);border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:flex-start;position:relative;overflow:hidden}
+.hd::before{content:'';position:absolute;top:-60px;right:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(59,130,246,.12) 0%,transparent 65%);pointer-events:none}
+.hd-eyebrow{font-size:9px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;background:linear-gradient(90deg,#3b82f6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px}
+.hd-name{font-size:30px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1}
+.hd-meta{font-size:11px;color:#475569;margin-top:9px;display:flex;gap:14px}
+.hd-badge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93c5fd;font-size:10px;font-weight:700;border-radius:20px;padding:4px 12px}
+.hd-strat{margin-top:8px;display:inline-block;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25);color:#a78bfa;font-size:10px;font-weight:700;border-radius:20px;padding:4px 10px}
+.hd-right{text-align:right;flex-shrink:0}
+.hd-cl{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#475569;margin-bottom:4px}
+.hd-coach{font-size:14px;font-weight:700;color:rgba(255,255,255,.85)}
+.hd-date{font-size:10px;color:#475569;margin-top:4px}
+/* Body */
+.body{padding:28px 40px 36px}
+.block{margin-bottom:26px}
+.sec{font-size:8px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#94a3b8;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sec::before{content:'';width:3px;height:14px;border-radius:2px;background:linear-gradient(180deg,#3b82f6,#06b6d4);flex-shrink:0}
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.kpi{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:15px 17px}
+.kpi-n{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.kpi-n.a{color:#3b82f6}.kpi-n.g{color:#10b981}.kpi-n.p{color:#06b6d4}.kpi-n.v{color:#a78bfa}
+.kpi-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-top:6px}
+.kpi-s{font-size:9px;color:#475569;margin-top:2px}
+/* Régularité */
+.reg-wrap{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:28px}
+.reg-dots{display:flex;flex-wrap:wrap;gap:3px;max-width:240px}
+.dot{width:9px;height:9px;border-radius:2px;background:rgba(255,255,255,.06)}
+.dot.on{background:#3b82f6}
+.dot.hi{background:#10b981}
+.reg-stats{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rs-n{font-size:20px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+.rs-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#475569;margin-top:2px}
+.reg-legend{display:flex;gap:10px;margin-top:10px}
+.rleg{display:flex;align-items:center;gap:4px;font-size:9px;color:#475569;font-weight:600}
+.rleg-dot{width:8px;height:8px;border-radius:1px}
+/* Tendance */
+.trend-wrap{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:20px}
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+thead th{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding:0 8px 9px;text-align:left;border-bottom:1px solid rgba(255,255,255,.12)}
+thead th.r{text-align:right}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.04)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:8px 8px;vertical-align:middle;color:#94a3b8}
+tbody td.r{text-align:right}
+.en{font-weight:600;color:#e2e8f0;font-size:12px}
+.em{font-size:9px;color:#475569;margin-top:1px}
+.pill{display:inline-flex;align-items:center;font-size:10px;font-weight:800;border-radius:20px;padding:2px 8px}
+.pill.up{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.22)}
+.pill.dn{background:rgba(244,63,94,.12);color:#f43f5e;border:1px solid rgba(244,63,94,.2)}
+.pill.rp{background:rgba(59,130,246,.15);color:#3b82f6;border:1px solid rgba(59,130,246,.22)}
+.pct{font-size:9px;color:#475569;margin-left:4px}
+/* Volume */
+.vol-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vol-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.vol-card.warn-card{border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.05)}
+.vol-muscle-name{font-size:12px;font-weight:700;color:#e2e8f0;width:100px;flex-shrink:0}
+.vol-bar-col{flex:1}
+.vol-bar-bg{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.vol-bar{height:100%;border-radius:3px}
+.vol-nums{margin-top:4px}
+.vol-ser{font-size:10px;font-weight:700;color:#e2e8f0;font-variant-numeric:tabular-nums}
+.vol-badge{flex-shrink:0;font-size:9px;font-weight:700;border-radius:20px;padding:3px 8px}
+.vol-ok{background:rgba(16,185,129,.15);color:#10b981}
+.vol-low{background:rgba(245,158,11,.15);color:#f59e0b}
+/* RPE */
+.rpe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rpe-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px}
+.rpe-n{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.rpe-exo{font-size:11px;font-weight:600;color:#e2e8f0;margin-top:4px}
+.rpe-lbl{font-size:9px;color:#475569;margin-top:2px}
+.rpe-global-card{background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(6,182,212,.1));border-color:rgba(59,130,246,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+/* Points d'attention */
+.reco-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.reco-card{border-radius:10px;border:1px solid;padding:14px 16px}
+.reco-card.danger{border-color:rgba(244,63,94,.25);background:rgba(244,63,94,.06)}
+.reco-card.warn{border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.06)}
+.reco-ttl{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.reco-card.danger .reco-ttl{color:#f43f5e}
+.reco-card.warn .reco-ttl{color:#f59e0b}
+.reco-chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:10px;font-weight:600;border-radius:20px;padding:3px 9px}
+.chip.r{background:rgba(244,63,94,.12);color:#fb7185;border:1px solid rgba(244,63,94,.2)}
+.chip.w{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+/* Footer */
+.footer{padding:14px 40px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center}
+.ft-brand{font-size:12px;font-weight:800;background:linear-gradient(90deg,#3b82f6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.ft-note{font-size:9px;color:#475569}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head><body>
+<div class="bilan">
+<div class="hd">
+  <div>
+    <div class="hd-eyebrow">Novalyz · Bilan mensuel</div>
+    <div class="hd-name">${nomAthlete}</div>
+    <div class="hd-meta"><span>${niveauRaw}</span>${objectif ? `<span>${objectif}</span>` : ''}</div>
+    <div class="hd-badge">📅 ${moisLabel.charAt(0).toUpperCase()+moisLabel.slice(1)}</div>
+    ${strat ? `<div class="hd-strat">${strat}</div>` : ''}
   </div>
+  <div class="hd-right">
+    <div class="hd-cl">Coach</div>
+    <div class="hd-coach">${nomCoach}</div>
+    <div class="hd-date">Généré le ${today}</div>
+  </div>
+</div>
+<div class="body">
 
-  ${progHTML ? `<h2>Progression par exercice</h2>
-  <table><tr style="color:#888;font-size:11px"><td>Exercice</td><td style="text-align:right">Départ</td><td style="text-align:right">Actuel</td><td style="text-align:right">Évolution</td></tr>${progHTML}</table>` : ''}
+<div class="block">
+  <div class="sec">Carrière du mois</div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-n a">${totalSeances}</div><div class="kpi-l">Séances</div><div class="kpi-s">${seancesParSem} / semaine</div></div>
+    <div class="kpi"><div class="kpi-n">${dash.total_series ?? '—'}</div><div class="kpi-l">Séries totales</div></div>
+    <div class="kpi"><div class="kpi-n p" style="font-size:17px">${tonnageMoisFmt}</div><div class="kpi-l">Tonnage du mois</div><div class="kpi-s">${tonnageSeance} / séance</div></div>
+    <div class="kpi"><div class="kpi-n g">${streak}</div><div class="kpi-l">Streak (sem.)</div></div>
+  </div>
+</div>
 
-  ${recordsHTML ? `<h2>Records personnels</h2>
-  <table><tr style="color:#888;font-size:11px"><td>Exercice</td><td style="text-align:right">Charge</td><td style="text-align:right">Reps</td><td style="text-align:right">Date</td></tr>${recordsHTML}</table>` : ''}
+<div class="block">
+  <div class="sec">Régularité du mois</div>
+  <div class="reg-wrap">
+    <div>
+      <div class="reg-dots">${dotsHTML}</div>
+      <div class="reg-legend">
+        <div class="rleg"><div class="rleg-dot" style="background:#3b82f6"></div>Séance</div>
+        <div class="rleg"><div class="rleg-dot" style="background:#10b981"></div>Record battu</div>
+        <div class="rleg"><div class="rleg-dot" style="background:rgba(255,255,255,.06)"></div>Repos</div>
+      </div>
+    </div>
+    <div class="reg-stats">
+      <div><div class="rs-n" style="color:#3b82f6">${seancesCeMois.size}</div><div class="rs-l">Séances</div></div>
+      <div><div class="rs-n">${assiduité}<span style="font-size:12px">%</span></div><div class="rs-l">Assiduité</div></div>
+      <div><div class="rs-n" style="color:#10b981">${datesRecords.size}</div><div class="rs-l">Records battus</div></div>
+      <div><div class="rs-n">${seancesParSem}</div><div class="rs-l">/ Semaine</div></div>
+    </div>
+  </div>
+</div>
 
-  ${volumesHTML ? `<h2>Volume par muscle (période récente)</h2>
-  <table>${volumesHTML}</table>` : ''}
+${progRows ? `<div class="block">
+  <div class="sec">Progression &amp; régression du mois — tous les exercices</div>
+  <table>
+    <thead><tr><th>Exercice</th><th class="r">Début</th><th class="r">Fin</th><th class="r">Évolution</th><th class="r">Séances</th></tr></thead>
+    <tbody>${progRows}</tbody>
+  </table>
+</div>` : ''}
 
-  <div class="footer">Novalyz · Suivi d'entraînement personnel</div>
-  <script>window.onload = function(){ window.print(); }<\/script>
-  </body></html>`;
+${rpeCards ? `<div class="block">
+  <div class="sec">RPE moyen du mois par exercice</div>
+  <div class="rpe-grid">${rpeCards}${rpeGlobalCard}</div>
+</div>` : ''}
+
+${volCards ? `<div class="block">
+  <div class="sec">Volume mensuel par groupe musculaire</div>
+  <div class="vol-grid">${volCards}</div>
+</div>` : ''}
+
+${(musclesFaibles || exosStables) ? `<div class="block">
+  <div class="sec">Points d'attention</div>
+  <div class="reco-grid">
+    ${musclesFaibles ? `<div class="reco-card danger"><div class="reco-ttl">⚠ Muscles sous-travaillés</div><div class="reco-chips">${musclesFaibles}</div></div>` : ''}
+    ${exosStables ? `<div class="reco-card warn"><div class="reco-ttl">→ Exercices stables</div><div class="reco-chips">${exosStables}</div></div>` : ''}
+  </div>
+</div>` : ''}
+
+</div>
+<div class="footer">
+  <div class="ft-brand">Novalyz</div>
+  <div class="ft-note">Rapport confidentiel · Coach ${nomCoach} · ${moisLabel}</div>
+</div>
+</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
 
   const w = window.open('', '_blank');
   if (w) { w.document.write(html); w.document.close(); }
