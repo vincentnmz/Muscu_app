@@ -7437,7 +7437,13 @@ function exporterBilanPDF(periode) {
     return new Date(p[2], p[1]-1, p[0]) >= debutPeriode;
   });
   const totalSeances = datesSeancesPeriode.length;
-  const nbSemaines = Math.max(1, Math.round((maintenant - debutPeriode) / (7 * 24 * 3600 * 1000)));
+  // nbSemaines calculé depuis la première séance réelle si période = "tout"
+  let debutEffectif = debutPeriode;
+  if (datesSeancesPeriode.length) {
+    const sorted = datesSeancesPeriode.map(ds => { const p = ds.split('/'); return new Date(p[2],p[1]-1,p[0]); }).sort((a,b)=>a-b);
+    if (sorted[0] > debutPeriode) debutEffectif = sorted[0];
+  }
+  const nbSemaines = Math.max(1, Math.round((maintenant - debutEffectif) / (7 * 24 * 3600 * 1000)));
   const seancesParSem = (totalSeances / nbSemaines).toFixed(1);
 
   // ── Streak depuis dashboard ──
@@ -7546,18 +7552,28 @@ function exporterBilanPDF(periode) {
   const rpeMoyen = rpeValsAll.length ? (rpeValsAll.reduce((a,b)=>a+b,0)/rpeValsAll.length).toFixed(1) : null;
   const rpeGlobalCard = rpeMoyen ? `<div class="rpe-card rpe-global-card"><div class="rpe-n" style="font-size:36px;color:#fff">${rpeMoyen}</div><div class="rpe-exo" style="color:rgba(255,255,255,.5);font-size:9px;text-transform:uppercase;letter-spacing:.1em;font-weight:700">RPE global moyen</div></div>` : '';
 
-  // ── Volume par groupe musculaire calculé depuis progression_par_exo sur la période ──
-  // Seuil adapté : ~10 séries/semaine par muscle est la norme
-  const MINI_VOL = Math.max(1, nbSemaines) * 10;
-  const volEntries = Object.entries(volParMuscle).sort((a,b) => b[1] - a[1]);
+  // ── Volume par groupe musculaire ──
+  // Si p.muscle absent dans les perfs (tout en "Autre"), on replie sur hist.volume_semaine
+  // (snapshot semaine courante) en affichant les séries par semaine réelle
+  const autreRatio = (volParMuscle['Autre'] || 0) / Math.max(1, totalSeriesPeriode);
+  let volEntries, volNote = '';
+  if (autreRatio > 0.5 && volSemaine.length) {
+    // fallback : volume_semaine = series/semaine par muscle (semaine courante, mais cohérent)
+    volEntries = volSemaine.map(v => [v.muscle || 'Autre', v.faites || 0]).sort((a,b)=>b[1]-a[1]);
+    volNote = `<div style="font-size:9px;color:#475569;margin-bottom:8px;font-style:italic">Basé sur la semaine en cours (champ muscle non renseigné dans l'historique)</div>`;
+  } else {
+    volEntries = Object.entries(volParMuscle).filter(([m]) => m !== 'Autre' || autreRatio < 0.5).sort((a,b)=>b[1]-a[1]);
+  }
+  const MINI_VOL_SEM = 10; // séries/semaine recommandées par muscle
+  const MINI_VOL = autreRatio > 0.5 ? MINI_VOL_SEM : Math.max(1, nbSemaines) * MINI_VOL_SEM;
   const maxVol = volEntries.length ? volEntries[0][1] : 1;
-  const volCards = volEntries.length ? volEntries.map(([muscle, vol]) => {
+  const volCards = volEntries.length ? volNote + volEntries.map(([muscle, vol]) => {
     const pct = Math.min(100, Math.round((vol / Math.max(maxVol, MINI_VOL)) * 100));
     const isLow = vol < MINI_VOL;
     const barCol = isLow ? '#f59e0b' : '#3b82f6';
     const badge = isLow ? `<span class="vol-badge vol-low">↑ Faible</span>` : `<span class="vol-badge vol-ok">✓ Optimal</span>`;
-    const perSem = nbSemaines > 1 ? ` · ${(vol/nbSemaines).toFixed(1)} /sem.` : '';
-    return `<div class="vol-card${isLow ? ' warn-card' : ''}"><div><div class="vol-muscle-name">${muscle}</div></div><div class="vol-bar-col"><div class="vol-bar-bg"><div class="vol-bar" style="width:${pct}%;background:${barCol}"></div></div><div class="vol-nums"><span class="vol-ser">${vol} sér. total${perSem}</span></div></div>${badge}</div>`;
+    const detail = autreRatio > 0.5 ? ` sér./sem.` : (nbSemaines > 1 ? ` sér. · ${(vol/nbSemaines).toFixed(1)}/sem.` : ' sér. total');
+    return `<div class="vol-card${isLow ? ' warn-card' : ''}"><div><div class="vol-muscle-name">${muscle}</div></div><div class="vol-bar-col"><div class="vol-bar-bg"><div class="vol-bar" style="width:${pct}%;background:${barCol}"></div></div><div class="vol-nums"><span class="vol-ser">${vol}${detail}</span></div></div>${badge}</div>`;
   }).join('') : '<div style="color:#475569;font-style:italic;font-size:11px">Aucune donnée de volume pour cette période</div>';
 
   // ── Points d'attention ──
@@ -7717,9 +7733,9 @@ ${progRows ? `<div class="block">
   </table>
 </div>` : ''}
 
-${rpeCards ? `<div class="block">
+${(rpeCards || true) ? `<div class="block">
   <div class="sec">RPE moyen du mois par exercice</div>
-  <div class="rpe-grid">${rpeCards}${rpeGlobalCard}</div>
+  ${rpeCards ? `<div class="rpe-grid">${rpeCards}${rpeGlobalCard}</div>` : `<div style="color:#475569;font-style:italic;font-size:11px;padding:10px 0">RPE non saisi sur cette période — l'athlète peut renseigner l'effort perçu après chaque série.</div>`}
 </div>` : ''}
 
 ${volCards ? `<div class="block">
