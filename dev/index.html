@@ -7394,11 +7394,23 @@ function lancerExportBilanPDF() {
   exporterBilanPDF(periode);
 }
 
-function exporterBilanPDF(periode) {
+async function exporterBilanPDF(periode) {
   periode = periode || 'mois';
-  const d = coachAthleteData;
-  if (!d) { showToast('⚠️ Données non chargées', '#ff4444'); return; }
+  const athleteId = coachAthleteCourant ? coachAthleteCourant.athlete_id : null;
+  if (!athleteId) { showToast('⚠️ Athlète non sélectionné', '#ff4444'); return; }
+  showToast('Génération du bilan…', '#3b82f6');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getBilanPDF&athlete_id=${encodeURIComponent(athleteId)}&periode=${encodeURIComponent(periode)}`);
+    const bilan = await res.json();
+    if (bilan.error) { showToast('⚠️ ' + bilan.error, '#ff4444'); return; }
+    _rendreBilanPDF(bilan);
+  } catch(err) {
+    showToast('⚠️ Erreur lors du chargement du bilan', '#ff4444');
+    console.error(err);
+  }
+}
 
+function _rendreBilanPDF(bilan) {
   const nomAthlete = coachAthleteCourant ? (coachAthleteCourant.prenom || coachAthleteCourant.nom || 'Athlète') : 'Athlète';
   const nomCoach = coach ? (coach.nom || 'Coach') : 'Coach';
   const strat = coachAthleteCourant ? (coachAthleteCourant.strategie_progression || '') : '';
@@ -7406,178 +7418,83 @@ function exporterBilanPDF(periode) {
   const objectif = coachAthleteCourant ? (coachAthleteCourant.objectif || '') : '';
   const maintenant = new Date();
   const fmtDate = (dt) => dt.toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
-  const fmtMois = (dt) => dt.toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
   const today = fmtDate(maintenant);
+  const moisLabel = bilan.periode_label || bilan.periode || '';
 
-  // ── Calcul de la fenêtre temporelle selon la période choisie ──
-  let debutPeriode, periodeLbl;
-  if (periode === '3mois') {
-    debutPeriode = new Date(maintenant.getFullYear(), maintenant.getMonth() - 2, 1);
-    periodeLbl = fmtDate(debutPeriode) + ' → ' + fmtDate(maintenant);
-  } else if (periode === 'tout') {
-    debutPeriode = new Date(2000, 0, 1);
-    periodeLbl = 'Toute la période';
-  } else {
-    debutPeriode = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
-    periodeLbl = fmtMois(maintenant).charAt(0).toUpperCase() + fmtMois(maintenant).slice(1);
-  }
-  const moisLabel = periodeLbl;
+  // ── KPIs depuis backend ──
+  const totalSeances   = bilan.seances || 0;
+  const totalSeriesFmt = bilan.series  || '—';
+  const tonnageMoisFmt = bilan.tonnage_kg > 0 ? Math.round(bilan.tonnage_kg).toLocaleString('fr-FR') + ' kg' : '—';
+  const tonnageSeance  = bilan.tonnage_par_seance > 0 ? bilan.tonnage_par_seance.toLocaleString('fr-FR') + ' kg' : '—';
+  const seancesParSem  = bilan.seances_par_semaine != null ? bilan.seances_par_semaine : '—';
+  const streakFmt      = bilan.streak != null && bilan.streak > 0 ? bilan.streak + ' sem.' : '—';
+  const nbSemaines     = bilan.nb_semaines || 1;
 
-  // ── Sources de données ──
-  const dash = d.dashboard || {};
-  const hist = d.historique || {};
-  const progParExo = hist.progression_par_exo || {}; // {exo: [{date,charge,reps,rpe,muscle},...]}
-  const volSemaine = hist.volume_semaine || [];       // [{muscle, faites}]
-  const datesSeancesObj = hist.dates_seances || {};   // {"dd/mm/yyyy": "nom"}
-
-  // ── Filtrage par période ──
-  const datesSeancesAll = Object.keys(datesSeancesObj);
-  const datesSeancesPeriode = datesSeancesAll.filter(ds => {
-    const p = ds.split('/'); if (p.length < 3) return false;
-    return new Date(p[2], p[1]-1, p[0]) >= debutPeriode;
-  });
-  const totalSeances = datesSeancesPeriode.length;
-  // nbSemaines calculé depuis la première séance réelle si période = "tout"
-  let debutEffectif = debutPeriode;
-  if (datesSeancesPeriode.length) {
-    const sorted = datesSeancesPeriode.map(ds => { const p = ds.split('/'); return new Date(p[2],p[1]-1,p[0]); }).sort((a,b)=>a-b);
-    if (sorted[0] > debutPeriode) debutEffectif = sorted[0];
-  }
-  const nbSemaines = Math.max(1, Math.round((maintenant - debutEffectif) / (7 * 24 * 3600 * 1000)));
-  const seancesParSem = (totalSeances / nbSemaines).toFixed(1);
-
-  // ── Streak depuis dashboard ──
-  const streakVal = dash.streak ? dash.streak.semaines : null;
-  const streakFmt = streakVal != null ? streakVal + ' sem.' : '—';
-
-  // ── Tonnage & volume par muscle calculés depuis progression_par_exo sur la période ──
-  // Chaque entrée dans progression_par_exo = 1 série (p.series n'existe pas systématiquement)
-  let tonnagePeriode = 0, totalSeriesPeriode = 0;
-  const volParMuscle = {}; // {muscle: nbSeries}
-  Object.values(progParExo).forEach(perfs => {
-    (perfs || []).forEach(p => {
-      if (!p || !p.date) return;
-      const parts = p.date.split('/'); if (parts.length < 3) return;
-      if (new Date(parts[2], parts[1]-1, parts[0]) < debutPeriode) return;
-      const charge = Number(p.charge) || 0;
-      const reps = Number(p.reps) || 0;
-      tonnagePeriode += charge * reps;
-      totalSeriesPeriode += 1;
-      const muscle = (p.muscle || 'Autre').trim();
-      volParMuscle[muscle] = (volParMuscle[muscle] || 0) + 1;
-    });
-  });
-  const tonnageMoisFmt = tonnagePeriode > 0 ? Math.round(tonnagePeriode).toLocaleString('fr-FR') + ' kg' : '—';
-  const tonnageSeance = totalSeances && tonnagePeriode > 0 ? Math.round(tonnagePeriode / totalSeances).toLocaleString('fr-FR') + ' kg' : '—';
-  const totalSeriesFmt = totalSeriesPeriode > 0 ? totalSeriesPeriode : '—';
-
-  // ── Régularité : dots du mois courant (indépendant de la période choisie) ──
-  const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+  // ── Régularité — dots mois courant (calculé côté client à partir des dates renvoyées) ──
+  const datesSeancesAll  = bilan.dates_seances || [];
+  const datesRecordsMois = new Set(bilan.dates_records_mois || []);
+  const debutMois   = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
   const joursInMonth = new Date(maintenant.getFullYear(), maintenant.getMonth() + 1, 0).getDate();
-  const premierJour = debutMois.getDay() === 0 ? 6 : debutMois.getDay() - 1;
-  // Séances du mois courant uniquement (pas les records)
+  const premierJour  = debutMois.getDay() === 0 ? 6 : debutMois.getDay() - 1;
   const seancesCeMois = new Set(datesSeancesAll.filter(ds => {
-    const parts = ds.split('/'); if (parts.length < 3) return false;
-    const dt = new Date(parts[2], parts[1] - 1, parts[0]);
+    const p = ds.split('/'); if (p.length < 3) return false;
+    const dt = new Date(+p[2], +p[1]-1, +p[0]);
     return dt.getMonth() === maintenant.getMonth() && dt.getFullYear() === maintenant.getFullYear();
   }));
-  // Records = séances où on a battu son record (charge max sur la période)
-  const recordsParExo = calculerRecords(hist);
-  const datesRecords = new Set(recordsParExo.map(r => r.date).filter(Boolean));
-  // Un jour = séance OU record, mais une séance reste une séance
   let dotsHTML = '';
   for (let i = 0; i < premierJour; i++) dotsHTML += `<div class="dot"></div>`;
   for (let day = 1; day <= joursInMonth; day++) {
     const str = String(day).padStart(2,'0') + '/' + String(maintenant.getMonth()+1).padStart(2,'0') + '/' + maintenant.getFullYear();
     const isSea = seancesCeMois.has(str);
-    const isRec = isSea && datesRecords.has(str); // record = séance + record battu ce jour
+    const isRec = isSea && datesRecordsMois.has(str);
     dotsHTML += `<div class="dot${isRec ? ' hi' : isSea ? ' on' : ''}"></div>`;
   }
-  const assiduite = joursInMonth ? Math.round((seancesCeMois.size / joursInMonth) * 100) : 0;
-  const nbRecordsMois = [...datesRecords].filter(dr => {
-    const p = dr.split('/'); if (p.length < 3) return false;
-    const dt = new Date(p[2], p[1]-1, p[0]);
-    return dt.getMonth() === maintenant.getMonth() && dt.getFullYear() === maintenant.getFullYear();
-  }).length;
+  const assiduite    = joursInMonth ? Math.round((seancesCeMois.size / joursInMonth) * 100) : 0;
+  const nbRecordsMois = datesRecordsMois.size;
 
-  // ── Progression & Régression sur la période ──
+  // ── Progression / Régression depuis backend ──
   const lignesUp = [], lignesDn = [], lignesStable = [];
-  Object.entries(progParExo).forEach(([exo, perfsAll]) => {
-    const perfs = (perfsAll || []).filter(p => {
-      if (!p || !p.date) return false;
-      const parts = p.date.split('/'); if (parts.length < 3) return false;
-      return new Date(parts[2], parts[1]-1, parts[0]) >= debutPeriode;
-    });
-    if (perfs.length < 2) return;
-    const first = perfs[perfs.length - 1], last = perfs[0];
-    const diffKg = (Number(last.charge)||0) - (Number(first.charge)||0);
-    const diffReps = (Number(last.reps)||0) - (Number(first.reps)||0);
-    const muscle = last.muscle || first.muscle || '';
-    const nbSea = perfs.length;
-    if (diffKg > 0) {
-      const pct = first.charge ? Math.round((diffKg / first.charge) * 100) : 0;
-      lignesUp.push(`<tr><td><div class="en">${exo}</div><div class="em">${muscle}</div></td><td class="r" style="color:#475569;font-weight:600">${first.charge} kg</td><td class="r" style="color:#fff;font-weight:800">${last.charge} kg</td><td class="r"><span class="pill up">+${diffKg} kg</span><span class="pct">+${pct}%</span></td><td class="r" style="color:#475569;font-size:11px">×${nbSea}</td></tr>`);
-    } else if (diffReps > 0 && diffKg === 0) {
-      lignesUp.push(`<tr><td><div class="en">${exo}</div><div class="em">${muscle}</div></td><td class="r" style="color:#475569;font-weight:600">${first.charge} kg×${first.reps}</td><td class="r" style="color:#fff;font-weight:800">${last.charge} kg×${last.reps}</td><td class="r"><span class="pill rp">+${diffReps} reps</span></td><td class="r" style="color:#475569;font-size:11px">×${nbSea}</td></tr>`);
-    } else if (diffKg < 0) {
-      const pct = first.charge ? Math.round((Math.abs(diffKg) / first.charge) * 100) : 0;
-      lignesDn.push(`<tr><td><div class="en">${exo}</div><div class="em">${muscle}</div></td><td class="r" style="color:#475569;font-weight:600">${first.charge} kg</td><td class="r" style="color:#f43f5e;font-weight:800">${last.charge} kg</td><td class="r"><span class="pill dn">−${Math.abs(diffKg)} kg</span><span class="pct">−${pct}%</span></td><td class="r" style="color:#475569;font-size:11px">×${nbSea}</td></tr>`);
+  (bilan.progression || []).forEach(p => {
+    if (p.evol === 'up') {
+      const pct = p.debut_charge ? Math.round((p.diff_kg / p.debut_charge) * 100) : 0;
+      lignesUp.push(`<tr><td><div class="en">${p.exo}</div></td><td class="r" style="color:#475569;font-weight:600">${p.debut_charge} kg</td><td class="r" style="color:#fff;font-weight:800">${p.fin_charge} kg</td><td class="r"><span class="pill up">+${p.diff_kg} kg</span><span class="pct">+${pct}%</span></td><td class="r" style="color:#475569;font-size:11px">×${p.nb_seances}</td></tr>`);
+    } else if (p.evol === 'reps_up') {
+      lignesUp.push(`<tr><td><div class="en">${p.exo}</div></td><td class="r" style="color:#475569;font-weight:600">${p.debut_charge} kg×${p.debut_reps}</td><td class="r" style="color:#fff;font-weight:800">${p.fin_charge} kg×${p.fin_reps}</td><td class="r"><span class="pill rp">+${p.diff_reps} reps</span></td><td class="r" style="color:#475569;font-size:11px">×${p.nb_seances}</td></tr>`);
+    } else if (p.evol === 'down') {
+      const pct = p.debut_charge ? Math.round((Math.abs(p.diff_kg) / p.debut_charge) * 100) : 0;
+      lignesDn.push(`<tr><td><div class="en">${p.exo}</div></td><td class="r" style="color:#475569;font-weight:600">${p.debut_charge} kg</td><td class="r" style="color:#f43f5e;font-weight:800">${p.fin_charge} kg</td><td class="r"><span class="pill dn">−${Math.abs(p.diff_kg)} kg</span><span class="pct">−${pct}%</span></td><td class="r" style="color:#475569;font-size:11px">×${p.nb_seances}</td></tr>`);
     } else {
-      lignesStable.push(exo);
+      lignesStable.push(p.exo);
     }
   });
   const separateur = lignesDn.length ? `<tr><td colspan="5" style="padding:3px 10px"><div style="height:1px;background:rgba(244,63,94,.25)"></div></td></tr>` : '';
   const progRows = lignesUp.join('') + separateur + lignesDn.join('');
 
-  // ── RPE moyen par exercice depuis progression_par_exo sur la période ──
-  // Chaque entrée = 1 série; p.rpe peut être null/vide/string/number
-  const rpeParExo = {};
-  Object.entries(progParExo).forEach(([exo, perfsAll]) => {
-    const rpeValsExo = (perfsAll || []).filter(p => {
-      if (!p || !p.date) return false;
-      const parts = p.date.split('/'); if (parts.length < 3) return false;
-      if (new Date(parts[2], parts[1]-1, parts[0]) < debutPeriode) return false;
-      const rpeNum = parseFloat(p.rpe);
-      return !isNaN(rpeNum) && rpeNum > 0;
-    }).map(p => parseFloat(p.rpe));
-    if (rpeValsExo.length) rpeParExo[exo] = rpeValsExo.reduce((a,b)=>a+b,0) / rpeValsExo.length;
-  });
-  const rpeCards = Object.entries(rpeParExo).map(([exo, rpeVal]) => {
-    const v = rpeVal.toFixed(1);
-    const col = rpeVal >= 9 ? '#f43f5e' : rpeVal >= 7.5 ? '#f59e0b' : '#10b981';
-    const lbl = rpeVal >= 9 ? '⚠ Trop difficile' : rpeVal >= 7.5 ? 'Effort élevé' : 'Effort facile';
-    return `<div class="rpe-card"><div class="rpe-n" style="color:${col}">${v}</div><div class="rpe-exo">${exo}</div><div class="rpe-lbl">${lbl}</div></div>`;
+  // ── RPE depuis backend ──
+  const rpeArr = bilan.rpe_par_exercice || [];
+  const rpeCards = rpeArr.map(r => {
+    const col = r.rpe >= 9 ? '#f43f5e' : r.rpe >= 7.5 ? '#f59e0b' : '#10b981';
+    const lbl = r.rpe >= 9 ? '⚠ Trop difficile' : r.rpe >= 7.5 ? 'Effort élevé' : 'Effort facile';
+    return `<div class="rpe-card"><div class="rpe-n" style="color:${col}">${r.rpe.toFixed(1)}</div><div class="rpe-exo">${r.exo}</div><div class="rpe-lbl">${lbl}</div></div>`;
   }).join('');
-  const rpeValsAll = Object.values(rpeParExo);
-  const rpeMoyen = rpeValsAll.length ? (rpeValsAll.reduce((a,b)=>a+b,0)/rpeValsAll.length).toFixed(1) : null;
+  const rpeMoyen = bilan.rpe_moyen;
   const rpeGlobalCard = rpeMoyen ? `<div class="rpe-card rpe-global-card"><div class="rpe-n" style="font-size:36px;color:#fff">${rpeMoyen}</div><div class="rpe-exo" style="color:rgba(255,255,255,.5);font-size:9px;text-transform:uppercase;letter-spacing:.1em;font-weight:700">RPE global moyen</div></div>` : '';
 
-  // ── Volume par groupe musculaire ──
-  // Si p.muscle absent dans les perfs (tout en "Autre"), on replie sur hist.volume_semaine
-  // (snapshot semaine courante) en affichant les séries par semaine réelle
-  const autreRatio = (volParMuscle['Autre'] || 0) / Math.max(1, totalSeriesPeriode);
-  let volEntries, volNote = '';
-  if (autreRatio > 0.5 && volSemaine.length) {
-    // fallback : volume_semaine = series/semaine par muscle (semaine courante, mais cohérent)
-    volEntries = volSemaine.map(v => [v.muscle || 'Autre', v.faites || 0]).sort((a,b)=>b[1]-a[1]);
-    volNote = `<div style="font-size:9px;color:#475569;margin-bottom:8px;font-style:italic">Basé sur la semaine en cours (champ muscle non renseigné dans l'historique)</div>`;
-  } else {
-    volEntries = Object.entries(volParMuscle).filter(([m]) => m !== 'Autre' || autreRatio < 0.5).sort((a,b)=>b[1]-a[1]);
-  }
-  const MINI_VOL_SEM = 10; // séries/semaine recommandées par muscle
-  const MINI_VOL = autreRatio > 0.5 ? MINI_VOL_SEM : Math.max(1, nbSemaines) * MINI_VOL_SEM;
-  const maxVol = volEntries.length ? volEntries[0][1] : 1;
-  const volCards = volEntries.length ? volNote + volEntries.map(([muscle, vol]) => {
-    const pct = Math.min(100, Math.round((vol / Math.max(maxVol, MINI_VOL)) * 100));
-    const isLow = vol < MINI_VOL;
+  // ── Volume par muscle depuis backend ──
+  const MINI_VOL = nbSemaines * 10;
+  const volArr = bilan.volume_par_muscle || [];
+  const maxVol = volArr.length ? volArr[0].series : 1;
+  const volCards = volArr.length ? volArr.map(v => {
+    const pct = Math.min(100, Math.round((v.series / Math.max(maxVol, MINI_VOL)) * 100));
+    const isLow = v.series < MINI_VOL;
     const barCol = isLow ? '#f59e0b' : '#3b82f6';
     const badge = isLow ? `<span class="vol-badge vol-low">↑ Faible</span>` : `<span class="vol-badge vol-ok">✓ Optimal</span>`;
-    const detail = autreRatio > 0.5 ? ` sér./sem.` : (nbSemaines > 1 ? ` sér. · ${(vol/nbSemaines).toFixed(1)}/sem.` : ' sér. total');
-    return `<div class="vol-card${isLow ? ' warn-card' : ''}"><div><div class="vol-muscle-name">${muscle}</div></div><div class="vol-bar-col"><div class="vol-bar-bg"><div class="vol-bar" style="width:${pct}%;background:${barCol}"></div></div><div class="vol-nums"><span class="vol-ser">${vol}${detail}</span></div></div>${badge}</div>`;
+    const perSem = nbSemaines > 1 ? ` · ${(v.series/nbSemaines).toFixed(1)}/sem.` : '';
+    return `<div class="vol-card${isLow ? ' warn-card' : ''}"><div><div class="vol-muscle-name">${v.muscle}</div></div><div class="vol-bar-col"><div class="vol-bar-bg"><div class="vol-bar" style="width:${pct}%;background:${barCol}"></div></div><div class="vol-nums"><span class="vol-ser">${v.series} sér. total${perSem}</span></div></div>${badge}</div>`;
   }).join('') : '<div style="color:#475569;font-style:italic;font-size:11px">Aucune donnée de volume pour cette période</div>';
 
   // ── Points d'attention ──
-  const musclesFaibles = volEntries.filter(([,v]) => v < MINI_VOL).map(([m, v]) => `<span class="chip r">${m} — ${v} sér.</span>`).join('');
+  const musclesFaibles = volArr.filter(v => v.series < MINI_VOL).map(v => `<span class="chip r">${v.muscle} — ${v.series} sér.</span>`).join('');
   const exosStables = lignesStable.map(e => `<span class="chip w">${e}</span>`).join('');
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
@@ -7761,8 +7678,10 @@ ${(musclesFaibles || exosStables) ? `<div class="block">
 </body></html>`;
 
   const w = window.open('', '_blank');
-  if (w) { w.document.write(html); w.document.close(); }
-  else showToast('⚠️ Autorise les pop-ups pour exporter', '#f59f00');
+  if (!w) { showToast('⚠️ Autorise les pop-ups pour exporter', '#f59f00'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
 }
 
 // ==================== GRAPHIQUE POIDS ====================
