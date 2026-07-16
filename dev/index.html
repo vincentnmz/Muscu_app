@@ -7632,6 +7632,11 @@ tbody td.r{text-align:right}
 </div>
 
 <div class="block">
+  <div class="sec">Charge hebdomadaire (tonnage)</div>
+  <canvas id="chartTonnage" width="740" height="140" style="width:100%;height:140px;display:block;border-radius:6px"></canvas>
+</div>
+
+<div class="block">
   <div class="sec">Régularité du mois</div>
   <div class="reg-wrap">
     <div>
@@ -7688,6 +7693,61 @@ ${(musclesFaibles || exosStables) ? `<div class="block">
   <button onclick="telechargerPDF()" style="background:#10b981;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">⬇️ Télécharger PDF</button>
 </div>
 <script>
+(function drawTonnageChart() {
+  const data = ${JSON.stringify(bilan.tonnage_par_semaine || [])};
+  if (!data.length) return;
+  const canvas = document.getElementById('chartTonnage');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const PAD = { top: 20, right: 16, bottom: 36, left: 58 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top - PAD.bottom;
+  const maxT = Math.max(...data.map(d => d.tonnage));
+  const barW = Math.max(4, Math.floor(cW / data.length * 0.6));
+  const gap   = cW / data.length;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grille
+  const steps = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= steps; i++) {
+    const y = PAD.top + cH - (i / steps) * cH;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
+    const v = Math.round(maxT * i / steps);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = '10px -apple-system,sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(v >= 1000 ? (v/1000).toFixed(1)+'k' : v, PAD.left - 6, y + 3);
+  }
+
+  // Barres + labels semaine
+  data.forEach(function(d, i) {
+    const x = PAD.left + i * gap + gap / 2;
+    const barH = maxT > 0 ? (d.tonnage / maxT) * cH : 0;
+    const y = PAD.top + cH - barH;
+
+    // Gradient bleu
+    const grad = ctx.createLinearGradient(0, y, 0, PAD.top + cH);
+    grad.addColorStop(0, '#3b82f6');
+    grad.addColorStop(1, 'rgba(59,130,246,0.3)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x - barW/2, y, barW, barH, [3,3,0,0])
+                  : ctx.rect(x - barW/2, y, barW, barH);
+    ctx.fill();
+
+    // Label semaine (ex: S27)
+    const wNum = d.semaine.split('-W')[1] || d.semaine.slice(-2);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '9px -apple-system,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('S' + wNum, x, PAD.top + cH + 14);
+  });
+})();
+
 function telechargerPDF() {
   const blob = new Blob([document.documentElement.outerHTML], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
