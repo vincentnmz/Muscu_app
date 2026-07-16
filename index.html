@@ -2531,7 +2531,7 @@ async function renderCoachSynthese(athletes) {
 
   // ---- Liste complète ----
   const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes athlètes</div></div>` +
-    enrich.map(({ a, i, m, rpe, seancesSem, spark, tonnage, streak }) => {
+    enrich.map(({ a, i, m, rpe, seancesSem, spark, tonnage, streak, enPause }) => {
     const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
     const meta = [];
     if (seancesSem != null) meta.push(`<span><b style="color:var(--text);">${seancesSem}</b> séance${seancesSem>1?'s':''}/sem</span>`);
@@ -2546,14 +2546,15 @@ async function renderCoachSynthese(athletes) {
     if (streak != null && streak > 0) meta.push(`<span>🔥 <b style="color:#f5a524;">${streak} sem.</b></span>`);
     if (m && m.volLabel && m.volLabel !== 'N/A') meta.push(`<span style="color:${m.volColor};font-weight:700;">${m.volLabel}</span>`);
     if (m && m.progLabel && m.progLabel !== 'N/A') meta.push(`<span style="color:${m.progColor};font-weight:700;">${m.progLabel}</span>`);
-    return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:9px;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
-      <div style="width:44px;height:44px;border-radius:13px;background:${s.color}22;color:${s.color};font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initiales(a.nom)}</div>
+    const badgeVacances = enPause ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,179,237,.12);color:#63b3ed;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;">🏖️ Vacances</span>` : '';
+    return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface);border:1px solid ${enPause ? 'rgba(99,179,237,.3)' : 'var(--border)'};border-radius:14px;margin-bottom:9px;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='${enPause ? 'rgba(99,179,237,.3)' : 'var(--border)'}'">
+      <div style="width:44px;height:44px;border-radius:13px;background:${enPause ? 'rgba(99,179,237,.12)' : s.color+'22'};color:${enPause ? '#63b3ed' : s.color};font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${enPause ? '🏖️' : initiales(a.nom)}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;gap:9px;flex-wrap:wrap;">${meta.join('<span style="opacity:.4">·</span>')}</div>
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>${badgeVacances}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;gap:9px;flex-wrap:wrap;">${enPause ? '<span style="color:#63b3ed;">Pas d\'alerte absence pendant les vacances</span>' : meta.join('<span style="opacity:.4">·</span>')}</div>
       </div>
-      ${miniSpark(spark, s.color)}
-      <span style="display:inline-flex;align-items:center;gap:6px;background:${s.color}1a;color:${s.color};padding:5px 11px;border-radius:var(--radius-pill);font-size:11.5px;font-weight:800;white-space:nowrap;flex-shrink:0;"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};"></span>${s.label}</span>
+      ${enPause ? '' : miniSpark(spark, s.color)}
+      ${enPause ? '' : `<span style="display:inline-flex;align-items:center;gap:6px;background:${s.color}1a;color:${s.color};padding:5px 11px;border-radius:var(--radius-pill);font-size:11.5px;font-weight:800;white-space:nowrap;flex-shrink:0;"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};"></span>${s.label}</span>`}
     </div>`;
   }).join('');
 
@@ -4782,6 +4783,17 @@ function majProgressionSeance() {
   const titreListe = document.getElementById('titre-liste-seance');
   if (titreListe) titreListe.textContent = estLibre ? 'Séance libre' : 'Programme · ' + seanceId;
 
+  // En mode libre : masquer le bouton "Autre exercice" et ouvrir directement le sélecteur
+  const btnAutre = document.querySelector('button[onclick="toggleExoHorsProgramme()"]');
+  const cardHors = document.getElementById('card-hors-programme');
+  if (estLibre) {
+    if (btnAutre) btnAutre.style.display = 'none';
+    if (cardHors) { cardHors.style.display = 'block'; filtrerExosLibres(); }
+  } else {
+    if (btnAutre) btnAutre.style.display = '';
+    if (cardHors) cardHors.style.display = 'none';
+  }
+
   const exosLibres = seance.filter(e => !programmeSeance.some(p => p.exercice === e.exerciceNom));
   const totalExos = programmeSeance.length + exosLibres.length;
   const faitsProg = programmeSeance.filter(p => {
@@ -6155,7 +6167,7 @@ function renderProg12Semaines(perfs) {
   });
 
   const semaines = Object.values(semMap).sort((a, b) => a.key.localeCompare(b.key)).slice(-12);
-  if (semaines.length < 2) return ''; // pas assez de données
+  if (semaines.length < 1) return ''; // pas assez de données
 
   const n = semaines.length;
   const label = n < 12 ? `Progression · ${n} semaine${n > 1 ? 's' : ''}` : 'Progression · 12 semaines';
@@ -6165,7 +6177,24 @@ function renderProg12Semaines(perfs) {
   const col = diff > 0 ? 'var(--good)' : diff < 0 ? 'var(--danger)' : 'var(--text-muted)';
   const signe = diff > 0 ? '+' : '';
 
-  // SVG inline
+  // SVG inline — si 1 seule semaine, pas de courbe mais on affiche quand même les tiles
+  if (n === 1) {
+    return `<div style="margin-bottom:14px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:10px;">Progression · 1 semaine</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 6px;text-align:center;">
+          <div style="font-size:15px;font-weight:800;color:var(--accent);">${semaines[0].charge}<span style="font-size:9px;color:var(--text-muted);font-weight:600;">kg</span></div>
+          <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-top:3px;">Charge max</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 6px;text-align:center;">
+          <div style="font-size:15px;font-weight:800;">${semaines[0].reps}<span style="font-size:9px;color:var(--text-muted);font-weight:600;">reps</span></div>
+          <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-top:3px;">Reps max</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);">La courbe apparaîtra dès la 2ème semaine d'entraînement.</div>
+    </div>`;
+  }
+
   const W = 320, H = 110;
   const PAD = { top: 14, right: 8, bottom: 8, left: 30 };
   const iW = W - PAD.left - PAD.right, iH = H - PAD.top - PAD.bottom;
