@@ -3143,6 +3143,7 @@ function afficherCoachProgressionExo() {
   const rm1First = calc1RM(first.charge, first.reps);
   const rm1Diff = (rm1Last !== null && rm1First !== null) ? Math.round((rm1Last - rm1First) * 10) / 10 : null;
 
+  const aSemaines12Coach = compterSemaines(perfs) >= 2;
   el.innerHTML = renderProg12Semaines(perfs) + `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px">
       <span style="font-size:12px;color:var(--text-muted)">Progression totale</span>
@@ -3153,11 +3154,11 @@ function afficherCoachProgressionExo() {
       <span style="font-size:12px;color:var(--text-muted)">1RM estimé (Epley)</span>
       <span style="font-size:13px;font-weight:700;color:var(--accent)">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
     </div>` : ''}
-    <div style="display:flex;gap:6px;margin-bottom:8px;">
+    ${aSemaines12Coach ? '' : `<div style="display:flex;gap:6px;margin-bottom:8px;">
       <button id="cd-pce-charge" onclick="dessinerCoachProgChart('charge')" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">Charge</button>
       <button id="cd-pce-1rm" onclick="dessinerCoachProgChart('1rm')" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">1RM est.</button>
     </div>
-    <canvas id="chart-1rm-coach" style="width:100%;height:108px;display:block;margin-bottom:10px"></canvas>
+    <canvas id="chart-1rm-coach" style="width:100%;height:108px;display:block;margin-bottom:10px"></canvas>`}
     <table style="width:100%;font-size:12px;border-collapse:collapse">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">
         <td style="padding:5px 0">Date</td><td style="padding:5px 0;text-align:center">Séance</td>
@@ -3188,7 +3189,7 @@ function afficherCoachProgressionExo() {
       }).join('')}
     </table>`;
   cdProgExoChrono = perfs.slice().reverse();
-  dessinerCoachProgChart('charge');
+  if (!aSemaines12Coach) dessinerCoachProgChart('charge');
 }
 
 let cdProgExoChrono = null;
@@ -6152,6 +6153,18 @@ function drawLineChart(canvasId, values, color, opts) {
   }
 }
 
+function compterSemaines(perfs) {
+  const semSet = new Set();
+  perfs.forEach(p => {
+    const d = p.date ? new Date(p.date.split('/').reverse().join('-')) : null;
+    if (!d || isNaN(d)) return;
+    const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    const lundi = new Date(d); lundi.setDate(d.getDate() - day);
+    semSet.add(lundi.toISOString().slice(0, 10));
+  });
+  return semSet.size;
+}
+
 function renderProg12Semaines(perfs) {
   // Regroupe les perfs par semaine ISO, prend le max charge de chaque semaine
   const semMap = {};
@@ -6195,20 +6208,20 @@ function renderProg12Semaines(perfs) {
     </div>`;
   }
 
-  const W = 320, H = 110;
-  const PAD = { top: 14, right: 8, bottom: 8, left: 30 };
+  const W = 320, H = 120;
+  const PAD = { top: 18, right: 40, bottom: 8, left: 36 };
   const iW = W - PAD.left - PAD.right, iH = H - PAD.top - PAD.bottom;
   const vals = semaines.map(s => s.charge);
   const minV = Math.min(...vals) - 2.5, maxV = Math.max(...vals) + 2.5;
   const xp = i => PAD.left + (i / (n - 1)) * iW;
   const yp = v => PAD.top + (1 - (v - minV) / (maxV - minV)) * iH;
 
-  // Guides horizontaux
-  const guides = [minV + 2.5, (minV + maxV) / 2, maxV - 2.5];
+  // 3 guides horizontaux avec valeur + "kg"
+  const guides = [minV + 2.5, (minV + maxV) / 2, maxV - 2.5].map(v => Math.round(v * 2) / 2);
   const guidesSVG = guides.map(v => {
     const y = yp(v);
-    return `<line x1="${PAD.left}" y1="${y}" x2="${W - PAD.right}" y2="${y}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
-            <text x="${PAD.left - 4}" y="${y + 3.5}" text-anchor="end" fill="rgba(136,136,170,.65)" font-size="8" font-weight="600">${v}</text>`;
+    return `<line x1="${PAD.left}" y1="${y}" x2="${W - PAD.right}" y2="${y}" stroke="rgba(128,128,180,.12)" stroke-width="1" stroke-dasharray="3,3"/>
+            <text x="${PAD.left - 5}" y="${y + 3.5}" text-anchor="end" fill="rgba(136,136,170,.75)" font-size="8.5" font-weight="600">${v}kg</text>`;
   }).join('');
 
   // Aire
@@ -6218,21 +6231,31 @@ function renderProg12Semaines(perfs) {
   // Ligne
   const linePath = semaines.map((s, i) => `${i === 0 ? 'M' : 'L'}${xp(i)},${yp(s.charge)}`).join(' ');
 
-  // Dots
+  // Dots + étiquettes valeur sur premier, dernier et points de changement
   const dots = semaines.map((s, i) => {
-    const isLast = i === n - 1;
-    return isLast
-      ? `<circle cx="${xp(i)}" cy="${yp(s.charge)}" r="5" fill="var(--accent)" stroke="var(--surface2)" stroke-width="2"/>`
-      : `<circle cx="${xp(i)}" cy="${yp(s.charge)}" r="3" fill="var(--accent)"/>`;
+    const isFirst = i === 0;
+    const isLast  = i === n - 1;
+    const changed = i > 0 && s.charge !== semaines[i - 1].charge;
+    const showVal = isFirst || isLast || changed;
+    const r = (isFirst || isLast) ? 5 : 3;
+    const stroke = (isFirst || isLast) ? `stroke="var(--surface2)" stroke-width="2"` : '';
+    const cx = xp(i), cy = yp(s.charge);
+    // Étiquette : au-dessus sauf si très haut → en dessous
+    const lblY = cy < PAD.top + 14 ? cy + 14 : cy - 8;
+    const anchor = isFirst ? 'start' : isLast ? 'end' : 'middle';
+    const lbl = showVal
+      ? `<text x="${cx}" y="${lblY}" text-anchor="${anchor}" fill="var(--accent)" font-size="9" font-weight="800">${s.charge}kg</text>`
+      : '';
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--accent)" ${stroke}/>${lbl}`;
   }).join('');
 
-  // Labels X : max 6, espacés régulièrement
-  const step = Math.max(1, Math.ceil(n / 6));
+  // Labels X : semaine calendaire + date courte, max 5 labels
+  const step = Math.max(1, Math.ceil(n / 5));
   const xLabels = semaines.map((s, i) => {
     if (i % step !== 0 && i !== n - 1) return '';
     const d = new Date(s.key);
-    const lbl = `S${Math.floor((d - new Date(d.getFullYear(), 0, 1)) / 604800000) + 1}`;
-    return `<text x="${xp(i)}" y="${H + 12}" text-anchor="middle" fill="rgba(136,136,170,.7)" font-size="8" font-weight="600">${lbl}</text>`;
+    const lbl = `${d.getDate()}/${d.getMonth() + 1}`;
+    return `<text x="${xp(i)}" y="${H + 13}" text-anchor="${i === 0 ? 'start' : i === n-1 ? 'end' : 'middle'}" fill="rgba(136,136,170,.75)" font-size="8.5" font-weight="600">${lbl}</text>`;
   }).join('');
 
   // Badge progression moyenne
@@ -6258,11 +6281,11 @@ function renderProg12Semaines(perfs) {
         <div style="font-size:9px;color:${col};font-weight:700;margin-top:3px;">${signe}${diffPct}%</div>
       </div>
     </div>
-    <div style="position:relative;width:100%;padding-bottom:20px;">
+    <div style="position:relative;width:100%;padding-bottom:24px;">
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="g12" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--accent)" stop-opacity=".2"/>
+            <stop offset="0%" stop-color="var(--accent)" stop-opacity=".18"/>
             <stop offset="100%" stop-color="var(--accent)" stop-opacity=".01"/>
           </linearGradient>
         </defs>
@@ -6271,6 +6294,9 @@ function renderProg12Semaines(perfs) {
         <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         ${dots}
         ${xLabels}
+        <!-- Légende -->
+        <circle cx="${PAD.left + 4}" cy="${PAD.top - 8}" r="3.5" fill="var(--accent)"/>
+        <text x="${PAD.left + 10}" y="${PAD.top - 4}" fill="rgba(136,136,170,.85)" font-size="8.5" font-weight="600">Charge max / semaine</text>
       </svg>
     </div>
     <div style="display:inline-flex;align-items:center;gap:5px;background:${badgeBg};border:1px solid ${badgeCol}33;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:${badgeCol};">
@@ -6302,6 +6328,7 @@ function afficherProgressionExo() {
   const rm1First = calc1RM(first.charge, first.reps);
   const rm1Diff = (rm1Last !== null && rm1First !== null) ? Math.round((rm1Last - rm1First) * 10) / 10 : null;
 
+  const aSemaines12 = compterSemaines(perfs) >= 2;
   el.innerHTML = renderProg12Semaines(perfs) + `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px;">
       <span style="font-size:12px;color:var(--text-muted);">Progression totale</span>
@@ -6312,11 +6339,11 @@ function afficherProgressionExo() {
       <span style="font-size:12px;color:var(--text-muted);">1RM estimé (Epley)</span>
       <span style="font-size:13px;font-weight:700;color:var(--accent);">${rm1Last}kg ${rm1Diff !== null && rm1Diff !== 0 ? `<span style="color:${rm1Diff > 0 ? '#00c96e' : 'var(--danger)'};font-size:11px;">(${rm1Diff > 0 ? '+' : ''}${rm1Diff}kg)</span>` : ''}</span>
     </div>` : ''}
-    <div style="display:flex;gap:6px;margin-bottom:8px;">
+    ${aSemaines12 ? '' : `<div style="display:flex;gap:6px;margin-bottom:8px;">
       <button id="pce-charge" onclick="dessinerProgChartExo('charge')" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">Charge</button>
       <button id="pce-1rm" onclick="dessinerProgChartExo('1rm')" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">1RM est.</button>
     </div>
-    <canvas id="chart-1rm-athlete" style="width:100%;height:108px;display:block;margin-bottom:10px"></canvas>
+    <canvas id="chart-1rm-athlete" style="width:100%;height:108px;display:block;margin-bottom:10px"></canvas>`}
     <table style="width:100%;font-size:12px;border-collapse:collapse;">
       <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border);">
         <td style="padding:5px 0;">Date</td>
