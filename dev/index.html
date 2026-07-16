@@ -7423,11 +7423,15 @@ function exporterBilanPDF(periode) {
   }
   const moisLabel = periodeLbl;
 
-  // ── Carrière du mois ──
+  // ── Sources de données ──
   const dash = d.dashboard || {};
-  const reg = dash.regularite || {};
   const hist = d.historique || {};
-  const datesSeancesAll = Object.keys(hist.dates_seances || {});
+  const progParExo = hist.progression_par_exo || {}; // {exo: [{date,charge,reps,rpe,muscle},...]}
+  const volSemaine = hist.volume_semaine || [];       // [{muscle, faites}]
+  const datesSeancesObj = hist.dates_seances || {};   // {"dd/mm/yyyy": "nom"}
+
+  // ── Filtrage par période ──
+  const datesSeancesAll = Object.keys(datesSeancesObj);
   const datesSeancesPeriode = datesSeancesAll.filter(ds => {
     const p = ds.split('/'); if (p.length < 3) return false;
     return new Date(p[2], p[1]-1, p[0]) >= debutPeriode;
@@ -7435,44 +7439,71 @@ function exporterBilanPDF(periode) {
   const totalSeances = datesSeancesPeriode.length;
   const nbSemaines = Math.max(1, Math.round((maintenant - debutPeriode) / (7 * 24 * 3600 * 1000)));
   const seancesParSem = (totalSeances / nbSemaines).toFixed(1);
-  const streak = reg.streak_semaines || '—';
-  const tonnagePeriode = (hist.tonnage_par_seance || [])
-    .filter(t => { const p = (t.date||'').split('/'); return p.length===3 && new Date(p[2],p[1]-1,p[0]) >= debutPeriode; })
-    .reduce((s, t) => s + (Number(t.tonnage) || 0), 0);
-  const tonnageMoisFmt = tonnagePeriode ? Math.round(tonnagePeriode).toLocaleString('fr-FR') + ' kg' : '—';
-  const tonnageSeance = totalSeances && tonnagePeriode ? Math.round(tonnagePeriode / totalSeances).toLocaleString('fr-FR') + ' kg' : '—';
 
-  // ── Régularité : dots calendrier (mois courant toujours) ──
+  // ── Streak depuis dashboard ──
+  const streakVal = dash.streak ? dash.streak.semaines : null;
+  const streakFmt = streakVal != null ? streakVal + ' sem.' : '—';
+
+  // ── Tonnage calculé depuis progression_par_exo sur la période ──
+  let tonnagePeriode = 0, totalSeriesPeriode = 0;
+  Object.values(progParExo).forEach(perfs => {
+    (perfs || []).forEach(p => {
+      if (!p || !p.date) return;
+      const parts = p.date.split('/'); if (parts.length < 3) return;
+      if (new Date(parts[2], parts[1]-1, parts[0]) < debutPeriode) return;
+      const charge = Number(p.charge) || 0;
+      const reps = Number(p.reps) || 0;
+      const series = Number(p.series) || 1;
+      tonnagePeriode += charge * reps * series;
+      totalSeriesPeriode += series;
+    });
+  });
+  const tonnageMoisFmt = tonnagePeriode > 0 ? Math.round(tonnagePeriode).toLocaleString('fr-FR') + ' kg' : '—';
+  const tonnageSeance = totalSeances && tonnagePeriode > 0 ? Math.round(tonnagePeriode / totalSeances).toLocaleString('fr-FR') + ' kg' : '—';
+  const totalSeriesFmt = totalSeriesPeriode > 0 ? totalSeriesPeriode : (dash.total_series || '—');
+
+  // ── Régularité : dots du mois courant (indépendant de la période choisie) ──
   const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
   const joursInMonth = new Date(maintenant.getFullYear(), maintenant.getMonth() + 1, 0).getDate();
   const premierJour = debutMois.getDay() === 0 ? 6 : debutMois.getDay() - 1;
-  const datesSeances = datesSeancesAll;
-  const seancesCeMois = new Set(datesSeances.filter(ds => {
+  // Séances du mois courant uniquement (pas les records)
+  const seancesCeMois = new Set(datesSeancesAll.filter(ds => {
     const parts = ds.split('/'); if (parts.length < 3) return false;
-    const d2 = new Date(parts[2], parts[1] - 1, parts[0]);
-    return d2.getMonth() === maintenant.getMonth() && d2.getFullYear() === maintenant.getFullYear();
+    const dt = new Date(parts[2], parts[1] - 1, parts[0]);
+    return dt.getMonth() === maintenant.getMonth() && dt.getFullYear() === maintenant.getFullYear();
   }));
-  const records = calculerRecords(hist);
-  const datesRecords = new Set(records.map(r => r.date).filter(Boolean));
+  // Records = séances où on a battu son record (charge max sur la période)
+  const recordsParExo = calculerRecords(hist);
+  const datesRecords = new Set(recordsParExo.map(r => r.date).filter(Boolean));
+  // Un jour = séance OU record, mais une séance reste une séance
   let dotsHTML = '';
   for (let i = 0; i < premierJour; i++) dotsHTML += `<div class="dot"></div>`;
   for (let day = 1; day <= joursInMonth; day++) {
     const str = String(day).padStart(2,'0') + '/' + String(maintenant.getMonth()+1).padStart(2,'0') + '/' + maintenant.getFullYear();
-    const isRec = datesRecords.has(str);
     const isSea = seancesCeMois.has(str);
+    const isRec = isSea && datesRecords.has(str); // record = séance + record battu ce jour
     dotsHTML += `<div class="dot${isRec ? ' hi' : isSea ? ' on' : ''}"></div>`;
   }
-  const assiduité = joursInMonth ? Math.round((seancesCeMois.size / joursInMonth) * 100) : 0;
+  const assiduite = joursInMonth ? Math.round((seancesCeMois.size / joursInMonth) * 100) : 0;
+  const nbRecordsMois = [...datesRecords].filter(dr => {
+    const p = dr.split('/'); if (p.length < 3) return false;
+    const dt = new Date(p[2], p[1]-1, p[0]);
+    return dt.getMonth() === maintenant.getMonth() && dt.getFullYear() === maintenant.getFullYear();
+  }).length;
 
-  // ── Progression & Régression ──
-  const prog = cdProgressionData || {};
+  // ── Progression & Régression sur la période ──
   const lignesUp = [], lignesDn = [], lignesStable = [];
-  Object.entries(prog).forEach(([exo, perfs]) => {
-    if (!perfs || perfs.length < 2) return;
+  Object.entries(progParExo).forEach(([exo, perfsAll]) => {
+    const perfs = (perfsAll || []).filter(p => {
+      if (!p || !p.date) return false;
+      const parts = p.date.split('/'); if (parts.length < 3) return false;
+      return new Date(parts[2], parts[1]-1, parts[0]) >= debutPeriode;
+    });
+    if (perfs.length < 2) return;
     const first = perfs[perfs.length - 1], last = perfs[0];
-    const diffKg = last.charge - first.charge;
-    const diffReps = (last.reps || 0) - (first.reps || 0);
-    const muscle = last.muscle || '';
+    const diffKg = (Number(last.charge)||0) - (Number(first.charge)||0);
+    const diffReps = (Number(last.reps)||0) - (Number(first.reps)||0);
+    const muscle = last.muscle || first.muscle || '';
     const nbSea = perfs.length;
     if (diffKg > 0) {
       const pct = first.charge ? Math.round((diffKg / first.charge) * 100) : 0;
@@ -7489,40 +7520,40 @@ function exporterBilanPDF(periode) {
   const separateur = lignesDn.length ? `<tr><td colspan="5" style="padding:3px 10px"><div style="height:1px;background:rgba(244,63,94,.25)"></div></td></tr>` : '';
   const progRows = lignesUp.join('') + separateur + lignesDn.join('');
 
-  // ── Volume par groupe musculaire ──
-  const volMusc = hist.volume_par_muscle || {};
-  const MINI_VOL = 10; // seuil optimal approximatif
-  const volCards = Object.entries(volMusc).map(([muscle, vol]) => {
-    const pct = Math.min(100, Math.round((vol / (MINI_VOL * 2)) * 100));
-    const isLow = vol < MINI_VOL;
-    const barCol = isLow ? '#f59e0b' : '#3b82f6';
-    const badge = isLow
-      ? `<span class="vol-badge vol-low">↑ Faible</span>`
-      : `<span class="vol-badge vol-ok">✓ Optimal</span>`;
-    return `<div class="vol-card${isLow ? ' warn-card' : ''}">
-      <div><div class="vol-muscle-name">${muscle}</div></div>
-      <div class="vol-bar-col">
-        <div class="vol-bar-bg"><div class="vol-bar" style="width:${pct}%;background:${barCol}"></div></div>
-        <div class="vol-nums"><span class="vol-ser">${vol} sér. / mois</span></div>
-      </div>
-      ${badge}
-    </div>`;
-  }).join('');
-
-  // ── RPE moyen par exercice ──
-  const rpeMap = hist.rpe_par_exercice || {};
-  const rpeCards = Object.entries(rpeMap).map(([exo, rpeVal]) => {
-    const v = Number(rpeVal).toFixed(1);
+  // ── RPE moyen par exercice depuis progression_par_exo sur la période ──
+  const rpeParExo = {};
+  Object.entries(progParExo).forEach(([exo, perfsAll]) => {
+    const rpeValsExo = (perfsAll || []).filter(p => {
+      if (!p || !p.date || !p.rpe) return false;
+      const parts = p.date.split('/'); if (parts.length < 3) return false;
+      return new Date(parts[2], parts[1]-1, parts[0]) >= debutPeriode && Number(p.rpe) > 0;
+    }).map(p => Number(p.rpe));
+    if (rpeValsExo.length) rpeParExo[exo] = rpeValsExo.reduce((a,b)=>a+b,0) / rpeValsExo.length;
+  });
+  const rpeCards = Object.entries(rpeParExo).map(([exo, rpeVal]) => {
+    const v = rpeVal.toFixed(1);
     const col = rpeVal >= 9 ? '#f43f5e' : rpeVal >= 7.5 ? '#f59e0b' : '#10b981';
     const lbl = rpeVal >= 9 ? '⚠ Trop difficile' : rpeVal >= 7.5 ? 'Effort élevé' : 'Effort facile';
     return `<div class="rpe-card"><div class="rpe-n" style="color:${col}">${v}</div><div class="rpe-exo">${exo}</div><div class="rpe-lbl">${lbl}</div></div>`;
   }).join('');
-  const rpeVals = Object.values(rpeMap).map(Number).filter(v => v > 0);
-  const rpeMoyen = rpeVals.length ? (rpeVals.reduce((a,b)=>a+b,0)/rpeVals.length).toFixed(1) : null;
+  const rpeValsAll = Object.values(rpeParExo);
+  const rpeMoyen = rpeValsAll.length ? (rpeValsAll.reduce((a,b)=>a+b,0)/rpeValsAll.length).toFixed(1) : null;
   const rpeGlobalCard = rpeMoyen ? `<div class="rpe-card rpe-global-card"><div class="rpe-n" style="font-size:36px;color:#fff">${rpeMoyen}</div><div class="rpe-exo" style="color:rgba(255,255,255,.5);font-size:9px;text-transform:uppercase;letter-spacing:.1em;font-weight:700">RPE global moyen</div></div>` : '';
 
+  // ── Volume par groupe musculaire depuis volume_semaine ──
+  // volume_semaine = [{muscle, faites}] — représente le volume de la semaine récente
+  const MINI_VOL = 10;
+  const volCards = volSemaine.length ? volSemaine.sort((a,b)=>(b.faites||0)-(a.faites||0)).map(v => {
+    const vol = v.faites || 0;
+    const pct = Math.min(100, Math.round((vol / (MINI_VOL * 1.5)) * 100));
+    const isLow = vol < MINI_VOL;
+    const barCol = isLow ? '#f59e0b' : '#3b82f6';
+    const badge = isLow ? `<span class="vol-badge vol-low">↑ Faible</span>` : `<span class="vol-badge vol-ok">✓ Optimal</span>`;
+    return `<div class="vol-card${isLow ? ' warn-card' : ''}"><div><div class="vol-muscle-name">${v.muscle}</div></div><div class="vol-bar-col"><div class="vol-bar-bg"><div class="vol-bar" style="width:${pct}%;background:${barCol}"></div></div><div class="vol-nums"><span class="vol-ser">${vol} sér. / sem.</span></div></div>${badge}</div>`;
+  }).join('') : '';
+
   // ── Points d'attention ──
-  const musclesFaibles = Object.entries(volMusc).filter(([,v]) => v < MINI_VOL).map(([m]) => `<span class="chip r">${m} — ${volMusc[m]} sér.</span>`).join('');
+  const musclesFaibles = volSemaine.filter(v => (v.faites||0) < MINI_VOL).map(v => `<span class="chip r">${v.muscle} — ${v.faites} sér.</span>`).join('');
   const exosStables = lignesStable.map(e => `<span class="chip w">${e}</span>`).join('');
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
@@ -7644,9 +7675,9 @@ tbody td.r{text-align:right}
   <div class="sec">Carrière du mois</div>
   <div class="kpi-row">
     <div class="kpi"><div class="kpi-n a">${totalSeances}</div><div class="kpi-l">Séances</div><div class="kpi-s">${seancesParSem} / semaine</div></div>
-    <div class="kpi"><div class="kpi-n">${dash.total_series ?? '—'}</div><div class="kpi-l">Séries totales</div></div>
-    <div class="kpi"><div class="kpi-n p" style="font-size:17px">${tonnageMoisFmt}</div><div class="kpi-l">Tonnage du mois</div><div class="kpi-s">${tonnageSeance} / séance</div></div>
-    <div class="kpi"><div class="kpi-n g">${streak}</div><div class="kpi-l">Streak (sem.)</div></div>
+    <div class="kpi"><div class="kpi-n">${totalSeriesFmt}</div><div class="kpi-l">Séries totales</div></div>
+    <div class="kpi"><div class="kpi-n p" style="font-size:17px">${tonnageMoisFmt}</div><div class="kpi-l">Tonnage période</div><div class="kpi-s">${tonnageSeance} / séance</div></div>
+    <div class="kpi"><div class="kpi-n g">${streakFmt}</div><div class="kpi-l">Streak</div></div>
   </div>
 </div>
 
@@ -7663,8 +7694,8 @@ tbody td.r{text-align:right}
     </div>
     <div class="reg-stats">
       <div><div class="rs-n" style="color:#3b82f6">${seancesCeMois.size}</div><div class="rs-l">Séances</div></div>
-      <div><div class="rs-n">${assiduité}<span style="font-size:12px">%</span></div><div class="rs-l">Assiduité</div></div>
-      <div><div class="rs-n" style="color:#10b981">${datesRecords.size}</div><div class="rs-l">Records battus</div></div>
+      <div><div class="rs-n">${assiduite}<span style="font-size:12px">%</span></div><div class="rs-l">Assiduité</div></div>
+      <div><div class="rs-n" style="color:#10b981">${nbRecordsMois}</div><div class="rs-l">Records battus</div></div>
       <div><div class="rs-n">${seancesParSem}</div><div class="rs-l">/ Semaine</div></div>
     </div>
   </div>
