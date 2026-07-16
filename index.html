@@ -7470,15 +7470,17 @@ function _rendreBilanPDF(bilan) {
   const separateur = lignesDn.length ? `<tr><td colspan="5" style="padding:3px 10px"><div style="height:1px;background:rgba(244,63,94,.25)"></div></td></tr>` : '';
   const progRows = lignesUp.join('') + separateur + lignesDn.join('');
 
-  // ── RPE depuis backend ──
+  // ── RPE depuis backend — liste compacte ──
   const rpeArr = bilan.rpe_par_exercice || [];
-  const rpeCards = rpeArr.map(r => {
+  const rpeRows = rpeArr.map((r, i) => {
     const col = r.rpe >= 9 ? '#f43f5e' : r.rpe >= 7.5 ? '#f59e0b' : '#10b981';
-    const lbl = r.rpe >= 9 ? '⚠ Trop difficile' : r.rpe >= 7.5 ? 'Effort élevé' : 'Effort facile';
-    return `<div class="rpe-card"><div class="rpe-n" style="color:${col}">${r.rpe.toFixed(1)}</div><div class="rpe-exo">${r.exo}</div><div class="rpe-lbl">${lbl}</div></div>`;
+    const lbl = r.rpe >= 9 ? 'Intense' : r.rpe >= 7.5 ? 'Élevé' : 'Facile';
+    const lblBg = r.rpe >= 9 ? 'rgba(244,63,94,.12)' : r.rpe >= 7.5 ? 'rgba(245,158,11,.12)' : 'rgba(16,185,129,.12)';
+    const pct = Math.round((r.rpe / 10) * 100);
+    return `<div class="rpe-row"><span class="rpe-rank">${i+1}</span><span class="rpe-exo-name">${r.exo}</span><div class="rpe-bar-bg"><div class="rpe-bar-fill" style="width:${pct}%;background:${col}"></div></div><span class="rpe-val" style="color:${col}">${r.rpe.toFixed(1)}</span><span class="rpe-lbl-inline" style="color:${col};background:${lblBg}">${lbl}</span></div>`;
   }).join('');
   const rpeMoyen = bilan.rpe_moyen;
-  const rpeGlobalCard = rpeMoyen ? `<div class="rpe-card rpe-global-card"><div class="rpe-n" style="font-size:36px;color:#fff">${rpeMoyen}</div><div class="rpe-exo" style="color:rgba(255,255,255,.5);font-size:9px;text-transform:uppercase;letter-spacing:.1em;font-weight:700">RPE global moyen</div></div>` : '';
+  const rpeGlobalRow = rpeMoyen ? `<div class="rpe-row rpe-global-row"><span class="rpe-global-val">${rpeMoyen}</span><span class="rpe-global-lbl">RPE global moyen</span></div>` : '';
 
   // ── Volume par muscle depuis backend ──
   const MINI_VOL = nbSemaines * 10;
@@ -7536,6 +7538,9 @@ body{background:#0a0e1a;font-family:-apple-system,'Helvetica Neue',Arial,sans-se
 .kpi-n.a{color:#3b82f6}.kpi-n.g{color:#10b981}.kpi-n.p{color:#06b6d4}.kpi-n.v{color:#a78bfa}
 .kpi-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-top:6px}
 .kpi-s{font-size:9px;color:#475569;margin-top:2px}
+.kpi-delta{font-size:9px;font-weight:700;margin-top:5px;border-radius:10px;padding:2px 7px;display:inline-block}
+.kpi-up{background:rgba(16,185,129,.12);color:#10b981}
+.kpi-dn{background:rgba(244,63,94,.10);color:#f43f5e}
 /* Régularité */
 .reg-wrap{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:28px}
 .reg-dots{display:flex;flex-wrap:wrap;gap:3px;max-width:240px}
@@ -7578,13 +7583,18 @@ tbody td.r{text-align:right}
 .vol-badge{flex-shrink:0;font-size:9px;font-weight:700;border-radius:20px;padding:3px 8px}
 .vol-ok{background:rgba(16,185,129,.15);color:#10b981}
 .vol-low{background:rgba(245,158,11,.15);color:#f59e0b}
-/* RPE */
-.rpe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.rpe-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px}
-.rpe-n{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
-.rpe-exo{font-size:11px;font-weight:600;color:#e2e8f0;margin-top:4px}
-.rpe-lbl{font-size:9px;color:#475569;margin-top:2px}
-.rpe-global-card{background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(6,182,212,.1));border-color:rgba(59,130,246,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+/* RPE liste compacte */
+.rpe-list{display:flex;flex-direction:column;gap:4px}
+.rpe-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:7px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+.rpe-rank{font-size:9px;font-weight:700;color:#475569;width:14px;flex-shrink:0;text-align:right}
+.rpe-exo-name{font-size:11px;font-weight:600;color:#cbd5e1;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rpe-bar-bg{width:80px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;flex-shrink:0}
+.rpe-bar-fill{height:100%;border-radius:2px}
+.rpe-val{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;width:28px;text-align:right;flex-shrink:0}
+.rpe-lbl-inline{font-size:9px;font-weight:700;border-radius:12px;padding:2px 7px;flex-shrink:0;width:46px;text-align:center}
+.rpe-global-row{background:linear-gradient(90deg,rgba(59,130,246,.12),rgba(6,182,212,.07));border-color:rgba(59,130,246,.25);margin-top:6px}
+.rpe-global-val{font-size:18px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+.rpe-global-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-left:8px;flex:1}
 /* Points d'attention */
 .reco-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .reco-card{border-radius:10px;border:1px solid;padding:14px 16px}
@@ -7624,9 +7634,9 @@ tbody td.r{text-align:right}
 <div class="block">
   <div class="sec">Carrière du mois</div>
   <div class="kpi-row">
-    <div class="kpi"><div class="kpi-n a">${totalSeances}</div><div class="kpi-l">Séances</div><div class="kpi-s">${seancesParSem} / semaine</div></div>
-    <div class="kpi"><div class="kpi-n">${totalSeriesFmt}</div><div class="kpi-l">Séries totales</div></div>
-    <div class="kpi"><div class="kpi-n p" style="font-size:17px">${tonnageMoisFmt}</div><div class="kpi-l">Tonnage période</div><div class="kpi-s">${tonnageSeance} / séance</div></div>
+    <div class="kpi"><div class="kpi-n a">${totalSeances}</div><div class="kpi-l">Séances</div><div class="kpi-s">${seancesParSem} / semaine</div>${bilan.delta && bilan.delta.seances !== 0 ? `<div class="kpi-delta ${bilan.delta.seances > 0 ? 'kpi-up' : 'kpi-dn'}">${bilan.delta.seances > 0 ? '▲' : '▼'} ${Math.abs(bilan.delta.seances)} séance${Math.abs(bilan.delta.seances) > 1 ? 's' : ''} vs préc.</div>` : ''}</div>
+    <div class="kpi"><div class="kpi-n">${totalSeriesFmt}</div><div class="kpi-l">Séries totales</div>${bilan.delta && bilan.delta.series_pct != null && bilan.delta.series_pct !== 0 ? `<div class="kpi-delta ${bilan.delta.series_pct > 0 ? 'kpi-up' : 'kpi-dn'}">${bilan.delta.series_pct > 0 ? '▲' : '▼'} ${Math.abs(bilan.delta.series_pct)}% vs préc.</div>` : ''}</div>
+    <div class="kpi"><div class="kpi-n p" style="font-size:17px">${tonnageMoisFmt}</div><div class="kpi-l">Tonnage période</div><div class="kpi-s">${tonnageSeance} / séance</div>${bilan.delta && bilan.delta.tonnage_pct != null && bilan.delta.tonnage_pct !== 0 ? `<div class="kpi-delta ${bilan.delta.tonnage_pct > 0 ? 'kpi-up' : 'kpi-dn'}">${bilan.delta.tonnage_pct > 0 ? '▲' : '▼'} ${Math.abs(bilan.delta.tonnage_pct)}% vs préc.</div>` : ''}</div>
     <div class="kpi"><div class="kpi-n g">${streakFmt}</div><div class="kpi-l">Streak</div></div>
   </div>
 </div>
@@ -7664,9 +7674,9 @@ ${progRows ? `<div class="block">
   </table>
 </div>` : ''}
 
-${(rpeCards || true) ? `<div class="block">
-  <div class="sec">RPE moyen du mois par exercice</div>
-  ${rpeCards ? `<div class="rpe-grid">${rpeCards}${rpeGlobalCard}</div>` : `<div style="color:#475569;font-style:italic;font-size:11px;padding:10px 0">RPE non saisi sur cette période — l'athlète peut renseigner l'effort perçu après chaque série.</div>`}
+${rpeRows ? `<div class="block">
+  <div class="sec">RPE moyen par exercice</div>
+  <div class="rpe-list">${rpeRows}${rpeGlobalRow}</div>
 </div>` : ''}
 
 ${volCards ? `<div class="block">
@@ -7739,12 +7749,11 @@ ${(musclesFaibles || exosStables) ? `<div class="block">
                   : ctx.rect(x - barW/2, y, barW, barH);
     ctx.fill();
 
-    // Label semaine (ex: S27)
-    const wNum = d.semaine.split('-W')[1] || d.semaine.slice(-2);
+    // Label date lundi (ex: 09/06)
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.font = '9px -apple-system,sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('S' + wNum, x, PAD.top + cH + 14);
+    ctx.fillText(d.label || d.semaine, x, PAD.top + cH + 14);
   });
 })();
 
