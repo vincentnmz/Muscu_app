@@ -7494,8 +7494,17 @@ function _rendreBilanPDF(bilan) {
   }).join('') : '<div style="color:#475569;font-style:italic;font-size:11px">Aucune donnée de volume pour cette période</div>';
 
   // ── Points d'attention ──
-  const musclesFaibles = volArr.filter(v => v.series < MINI_VOL).map(v => `<span class="chip r">${v.muscle} — ${v.series} sér.</span>`).join('');
-  const exosStables = lignesStable.map(e => `<span class="chip w">${e}</span>`).join('');
+  // Muscles : seulement si < 60% du minimum ET muscle identifié, limité à 6
+  const seuilAlerte = MINI_VOL * 0.6;
+  const musclesFaibles = volArr
+    .filter(v => v.muscle !== 'Non renseigné' && v.series < seuilAlerte)
+    .slice(0, 6)
+    .map(v => `<span class="chip r">${v.muscle} — ${v.series} sér.</span>`).join('');
+  // Exercices stables : seulement si ≥ 5 séances (vraie stagnation, pas juste peu de data), limité à 8
+  const exosStables = lignesStable
+    .filter(e => (bilan.progression || []).find(p => p.exo === e && p.nb_seances >= 5))
+    .slice(0, 8)
+    .map(e => `<span class="chip w">${e}</span>`).join('');
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
 <title>Bilan Novalyz — ${nomAthlete} — ${moisLabel}</title>
