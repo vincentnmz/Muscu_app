@@ -7512,106 +7512,113 @@ function _rendreBilanPDF(bilan) {
 <title>Bilan Novalyz — ${nomAthlete} — ${moisLabel}</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:#0a0e1a;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;color:#e2e8f0;font-size:13px}
-.bilan{max-width:820px;margin:0 auto;background:#0a0e1a}
+body{background:#f1f5f9;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;color:#0f172a;font-size:13px}
+.bilan{max-width:820px;margin:0 auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 /* Header */
-.hd{padding:30px 40px 26px;background:linear-gradient(135deg,#0f1b3d 0%,#0d1526 50%,#0a0e1a 100%);border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:flex-start;position:relative;overflow:hidden}
-.hd::before{content:'';position:absolute;top:-60px;right:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(59,130,246,.12) 0%,transparent 65%);pointer-events:none}
-.hd-eyebrow{font-size:9px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;background:linear-gradient(90deg,#3b82f6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px}
-.hd-name{font-size:30px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1}
-.hd-meta{font-size:11px;color:#475569;margin-top:9px;display:flex;gap:14px}
-.hd-badge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93c5fd;font-size:10px;font-weight:700;border-radius:20px;padding:4px 12px}
-.hd-strat{margin-top:8px;display:inline-block;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25);color:#a78bfa;font-size:10px;font-weight:700;border-radius:20px;padding:4px 10px}
+.hd{padding:28px 40px 22px;background:linear-gradient(135deg,#eff6ff 0%,#f0f9ff 60%,#f8fafc 100%);border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:flex-start;position:relative;overflow:hidden}
+.hd::before{content:'';position:absolute;top:-60px;right:-60px;width:260px;height:260px;background:radial-gradient(circle,rgba(37,99,235,.07) 0%,transparent 65%);pointer-events:none}
+.hd-eyebrow{font-size:9px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#2563eb;margin-bottom:10px}
+.hd-name{font-size:30px;font-weight:800;color:#0f172a;letter-spacing:-.02em;line-height:1}
+.hd-meta{font-size:11px;color:#94a3b8;margin-top:9px;display:flex;gap:14px}
+.hd-badge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:10px;font-weight:700;border-radius:20px;padding:4px 12px}
+.hd-strat{margin-top:8px;display:inline-block;background:#f5f3ff;border:1px solid #ddd6fe;color:#7c3aed;font-size:10px;font-weight:700;border-radius:20px;padding:4px 10px}
 .hd-right{text-align:right;flex-shrink:0}
-.hd-cl{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#475569;margin-bottom:4px}
-.hd-coach{font-size:14px;font-weight:700;color:rgba(255,255,255,.85)}
-.hd-date{font-size:10px;color:#475569;margin-top:4px}
+.hd-cl{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#94a3b8;margin-bottom:4px}
+.hd-coach{font-size:14px;font-weight:700;color:#0f172a}
+.hd-date{font-size:10px;color:#94a3b8;margin-top:4px}
 /* Body */
-.body{padding:28px 40px 36px}
-.block{margin-bottom:26px}
-.sec{font-size:8px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#94a3b8;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.sec::before{content:'';width:3px;height:14px;border-radius:2px;background:linear-gradient(180deg,#3b82f6,#06b6d4);flex-shrink:0}
+.body{padding:26px 40px 34px}
+.block{margin-bottom:24px}
+.sec{font-size:8px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#94a3b8;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sec::before{content:'';width:3px;height:13px;border-radius:2px;background:linear-gradient(180deg,#2563eb,#0891b2);flex-shrink:0}
 /* KPIs */
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.kpi{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:15px 17px}
+.kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px}
 .kpi-n{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-.kpi-n.a{color:#3b82f6}.kpi-n.g{color:#10b981}.kpi-n.p{color:#06b6d4}.kpi-n.v{color:#a78bfa}
+.kpi-n.a{color:#2563eb}.kpi-n.g{color:#059669}.kpi-n.p{color:#0891b2}.kpi-n.v{color:#7c3aed}
 .kpi-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-top:6px}
-.kpi-s{font-size:9px;color:#475569;margin-top:2px}
+.kpi-s{font-size:9px;color:#94a3b8;margin-top:2px}
 .kpi-delta{font-size:9px;font-weight:700;margin-top:5px;border-radius:10px;padding:2px 7px;display:inline-block}
-.kpi-up{background:rgba(16,185,129,.12);color:#10b981}
-.kpi-dn{background:rgba(244,63,94,.10);color:#f43f5e}
-/* Régularité */
-.reg-wrap{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:28px}
-.reg-dots{display:flex;flex-wrap:wrap;gap:3px;max-width:240px}
-.dot{width:9px;height:9px;border-radius:2px;background:rgba(255,255,255,.06)}
-.dot.on{background:#3b82f6}
-.dot.hi{background:#10b981}
-.reg-stats{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.rs-n{font-size:20px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
-.rs-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#475569;margin-top:2px}
-.reg-legend{display:flex;gap:10px;margin-top:10px}
-.rleg{display:flex;align-items:center;gap:4px;font-size:9px;color:#475569;font-weight:600}
-.rleg-dot{width:8px;height:8px;border-radius:1px}
-/* Tendance */
-.trend-wrap{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:20px}
+.kpi-up{background:#dcfce7;color:#16a34a}
+.kpi-dn{background:#fee2e2;color:#dc2626}
+/* Calendrier régularité */
+.cal-wrap{display:flex;gap:24px;align-items:flex-start}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;flex:1}
+.cal-hd{font-size:7px;font-weight:700;text-align:center;color:#94a3b8;padding-bottom:3px;letter-spacing:.06em}
+.cal-day{height:20px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:#cbd5e1;background:#f8fafc;border:1px solid #e2e8f0;position:relative}
+.cal-day.empty{background:transparent;border-color:transparent}
+.cal-day.seance{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8;font-weight:800}
+.cal-day.record{background:#dcfce7;border-color:#86efac;color:#15803d;font-weight:800}
+.cal-day.record::after{content:'★';font-size:5px;position:absolute;top:1px;right:2px;color:#16a34a}
+.cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px}
+.cal-legend{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+.cleg{display:flex;align-items:center;gap:5px;font-size:9px;color:#64748b;font-weight:600}
+.cleg-dot{width:10px;height:10px;border-radius:2px;background:#f1f5f9;border:1px solid #e2e8f0}
+.cleg-dot.seance{background:#dbeafe;border-color:#93c5fd}
+.cleg-dot.record{background:#dcfce7;border-color:#86efac}
+.rleg{display:flex;align-items:center;gap:4px;font-size:9px;color:#64748b;font-weight:600}
+.rleg-sq{width:9px;height:9px;border-radius:2px}
+.cal-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex-shrink:0;width:160px}
+.rs-n{font-size:20px;font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums}
+.rs-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#94a3b8;margin-top:2px}
+/* Chart */
+.chart-bg{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px 10px}
 /* Table */
 table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
-thead th{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding:0 8px 9px;text-align:left;border-bottom:1px solid rgba(255,255,255,.12)}
+thead th{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;padding:0 8px 9px;text-align:left;border-bottom:1px solid #e2e8f0}
 thead th.r{text-align:right}
-tbody tr{border-bottom:1px solid rgba(255,255,255,.04)}
+tbody tr{border-bottom:1px solid #f1f5f9}
 tbody tr:last-child{border-bottom:none}
-tbody td{padding:8px 8px;vertical-align:middle;color:#94a3b8}
+tbody td{padding:8px;vertical-align:middle;color:#64748b}
 tbody td.r{text-align:right}
-.en{font-weight:600;color:#e2e8f0;font-size:12px}
-.em{font-size:9px;color:#475569;margin-top:1px}
+.en{font-weight:600;color:#0f172a;font-size:12px}
 .pill{display:inline-flex;align-items:center;font-size:10px;font-weight:800;border-radius:20px;padding:2px 8px}
-.pill.up{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.22)}
-.pill.dn{background:rgba(244,63,94,.12);color:#f43f5e;border:1px solid rgba(244,63,94,.2)}
-.pill.rp{background:rgba(59,130,246,.15);color:#3b82f6;border:1px solid rgba(59,130,246,.22)}
-.pct{font-size:9px;color:#475569;margin-left:4px}
+.pill.up{background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0}
+.pill.dn{background:#fee2e2;color:#dc2626;border:1px solid #fecaca}
+.pill.rp{background:#dbeafe;color:#2563eb;border:1px solid #bfdbfe}
+.pct{font-size:9px;color:#94a3b8;margin-left:4px}
 /* Volume */
 .vol-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.vol-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px}
-.vol-card.warn-card{border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.05)}
-.vol-muscle-name{font-size:12px;font-weight:700;color:#e2e8f0;width:100px;flex-shrink:0}
+.vol-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.vol-card.warn-card{border-color:#fde68a;background:#fffbeb}
+.vol-muscle-name{font-size:12px;font-weight:700;color:#0f172a;width:100px;flex-shrink:0}
 .vol-bar-col{flex:1}
-.vol-bar-bg{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.vol-bar-bg{height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden}
 .vol-bar{height:100%;border-radius:3px}
 .vol-nums{margin-top:4px}
-.vol-ser{font-size:10px;font-weight:700;color:#e2e8f0;font-variant-numeric:tabular-nums}
+.vol-ser{font-size:10px;font-weight:700;color:#334155;font-variant-numeric:tabular-nums}
 .vol-badge{flex-shrink:0;font-size:9px;font-weight:700;border-radius:20px;padding:3px 8px}
-.vol-ok{background:rgba(16,185,129,.15);color:#10b981}
-.vol-low{background:rgba(245,158,11,.15);color:#f59e0b}
+.vol-ok{background:#dcfce7;color:#16a34a}
+.vol-low{background:#fef3c7;color:#d97706}
 /* RPE liste compacte */
 .rpe-list{display:flex;flex-direction:column;gap:4px}
-.rpe-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:7px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
-.rpe-rank{font-size:9px;font-weight:700;color:#475569;width:14px;flex-shrink:0;text-align:right}
-.rpe-exo-name{font-size:11px;font-weight:600;color:#cbd5e1;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rpe-bar-bg{width:80px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;flex-shrink:0}
+.rpe-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:7px;background:#f8fafc;border:1px solid #e2e8f0}
+.rpe-rank{font-size:9px;font-weight:700;color:#94a3b8;width:14px;flex-shrink:0;text-align:right}
+.rpe-exo-name{font-size:11px;font-weight:600;color:#334155;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rpe-bar-bg{width:80px;height:4px;background:#e2e8f0;border-radius:2px;flex-shrink:0}
 .rpe-bar-fill{height:100%;border-radius:2px}
 .rpe-val{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;width:28px;text-align:right;flex-shrink:0}
 .rpe-lbl-inline{font-size:9px;font-weight:700;border-radius:12px;padding:2px 7px;flex-shrink:0;width:46px;text-align:center}
-.rpe-global-row{background:linear-gradient(90deg,rgba(59,130,246,.12),rgba(6,182,212,.07));border-color:rgba(59,130,246,.25);margin-top:6px}
-.rpe-global-val{font-size:18px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
-.rpe-global-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-left:8px;flex:1}
+.rpe-global-row{background:#eff6ff;border-color:#bfdbfe;margin-top:6px}
+.rpe-global-val{font-size:18px;font-weight:800;color:#1d4ed8;font-variant-numeric:tabular-nums}
+.rpe-global-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64748b;margin-left:8px;flex:1}
 /* Points d'attention */
 .reco-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .reco-card{border-radius:10px;border:1px solid;padding:14px 16px}
-.reco-card.danger{border-color:rgba(244,63,94,.25);background:rgba(244,63,94,.06)}
-.reco-card.warn{border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.06)}
+.reco-card.danger{border-color:#fecaca;background:#fff5f5}
+.reco-card.warn{border-color:#fde68a;background:#fffbeb}
 .reco-ttl{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
-.reco-card.danger .reco-ttl{color:#f43f5e}
-.reco-card.warn .reco-ttl{color:#f59e0b}
+.reco-card.danger .reco-ttl{color:#dc2626}
+.reco-card.warn .reco-ttl{color:#d97706}
 .reco-chips{display:flex;flex-wrap:wrap;gap:5px}
 .chip{font-size:10px;font-weight:600;border-radius:20px;padding:3px 9px}
-.chip.r{background:rgba(244,63,94,.12);color:#fb7185;border:1px solid rgba(244,63,94,.2)}
-.chip.w{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.chip.r{background:#fee2e2;color:#dc2626;border:1px solid #fecaca}
+.chip.w{background:#fef3c7;color:#d97706;border:1px solid #fde68a}
 /* Footer */
-.footer{padding:14px 40px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center}
-.ft-brand{font-size:12px;font-weight:800;background:linear-gradient(90deg,#3b82f6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.ft-note{font-size:9px;color:#475569}
-@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.footer{padding:13px 40px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:#f8fafc}
+.ft-brand{font-size:12px;font-weight:800;color:#2563eb}
+.ft-note{font-size:9px;color:#94a3b8}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff}button{display:none!important}}
 </style>
 </head><body>
 <div class="bilan">
@@ -7648,19 +7655,35 @@ tbody td.r{text-align:right}
 
 <div class="block">
   <div class="sec">Régularité du mois</div>
-  <div class="reg-wrap">
-    <div>
-      <div class="reg-dots">${dotsHTML}</div>
-      <div class="reg-legend">
-        <div class="rleg"><div class="rleg-dot" style="background:#3b82f6"></div>Séance</div>
-        <div class="rleg"><div class="rleg-dot" style="background:#10b981"></div>Record battu</div>
-        <div class="rleg"><div class="rleg-dot" style="background:rgba(255,255,255,.06)"></div>Repos</div>
+  <div class="cal-wrap">
+    <div style="flex:1">
+      <div class="cal-header">
+        ${['L','M','M','J','V','S','D'].map(j => `<div class="cal-hd">${j}</div>`).join('')}
+      </div>
+      <div class="cal-grid">
+        ${(function(){
+          let cells = '';
+          for (let i = 0; i < premierJour; i++) cells += `<div class="cal-day"></div>`;
+          for (let day = 1; day <= joursInMonth; day++) {
+            const str = String(day).padStart(2,'0') + '/' + String(maintenant.getMonth()+1).padStart(2,'0') + '/' + maintenant.getFullYear();
+            const isSea = seancesCeMois.has(str);
+            const isRec = isSea && datesRecordsMois.has(str);
+            const cls = isRec ? 'cal-day record' : isSea ? 'cal-day seance' : 'cal-day';
+            cells += `<div class="${cls}">${isRec ? '★' : isSea ? '' : ''}<span style="font-size:7px;opacity:.5">${day}</span></div>`;
+          }
+          return cells;
+        })()}
+      </div>
+      <div class="cal-legend">
+        <div class="cleg"><div class="cleg-dot seance"></div>Séance</div>
+        <div class="cleg"><div class="cleg-dot record"></div>Record ★</div>
+        <div class="cleg"><div class="cleg-dot"></div>Repos</div>
       </div>
     </div>
     <div class="reg-stats">
-      <div><div class="rs-n" style="color:#3b82f6">${seancesCeMois.size}</div><div class="rs-l">Séances</div></div>
+      <div><div class="rs-n" style="color:#2563eb">${seancesCeMois.size}</div><div class="rs-l">Séances</div></div>
       <div><div class="rs-n">${assiduite}<span style="font-size:12px">%</span></div><div class="rs-l">Assiduité</div></div>
-      <div><div class="rs-n" style="color:#10b981">${nbRecordsMois}</div><div class="rs-l">Records battus</div></div>
+      <div><div class="rs-n" style="color:#059669">${nbRecordsMois}</div><div class="rs-l">Records battus</div></div>
       <div><div class="rs-n">${seancesParSem}</div><div class="rs-l">/ Semaine</div></div>
     </div>
   </div>
@@ -7721,13 +7744,13 @@ ${(musclesFaibles || exosStables) ? `<div class="block">
 
   // Grille
   const steps = 4;
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.07)';
   ctx.lineWidth = 1;
   for (let i = 0; i <= steps; i++) {
     const y = PAD.top + cH - (i / steps) * cH;
     ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
     const v = Math.round(maxT * i / steps);
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillStyle = 'rgba(15,23,42,0.45)';
     ctx.font = '10px -apple-system,sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(v >= 1000 ? (v/1000).toFixed(1)+'k' : v, PAD.left - 6, y + 3);
@@ -7750,7 +7773,7 @@ ${(musclesFaibles || exosStables) ? `<div class="block">
     ctx.fill();
 
     // Label date lundi (ex: 09/06)
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = 'rgba(15,23,42,0.45)';
     ctx.font = '9px -apple-system,sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(d.label || d.semaine, x, PAD.top + cH + 14);
