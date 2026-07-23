@@ -1652,10 +1652,27 @@
   }
 
   /* ---------------------------------------------------------------------------
-   * NORMALISATION
+   * NORMALISATION  —  ★ CONTRAT D'ENTRÉE DU MOTEUR (point de branchement multisport)
    * Transforme `data` (structure getAppData OU objet plat) en "faits".
    * Chaque champ est nullable : une donnée absente => signal null => la règle
    * qui en dépend ne se déclenche pas (aucun faux positif).
+   *
+   * ─── CONTRAT (voir docs/moteur-analyse.md) ────────────────────────────────
+   * Le moteur ne connaît AUCUN sport. Il ne lit que des indicateurs génériques.
+   * Pour brancher un nouveau sport, on N'ÉCRIT PAS de nouveau moteur : on
+   * fournit un `data` dont ces champs sont renseignés (le module fait la
+   * traduction depuis ses mesures propres) :
+   *
+   *   Bien-être (universel)  : sommeil, energie, fatigue, douleur, ressenti  (1..5)
+   *   Charge (universel)     : acwr, rpe7j
+   *   Volume/Perf (par sport): tonnage7j/volumeSemaine, tonnageEvolPct,
+   *                            charge28EvolPct   ← muscu remplit avec tonnage/1RM ;
+   *                            foot remplirait avec distance/charge GPS
+   *   Poids (universel)      : poids + évolution
+   *   Disponibilité          : blessure/pause  → neutralise les règles d'assiduité
+   *
+   * Tant qu'un module remplit ces clés, les 13 REGLES fonctionnent sans
+   * modification. C'est toute la mécanique de l'architecture multisport.
    * ------------------------------------------------------------------------- */
   function normaliser(data) {
     data = data || {};
@@ -1991,6 +2008,36 @@
 </script>
 
 <script>
+/* =============================================================================
+ * CARTE DU CODE — index.html  (voir docs/architecture.md)
+ * -----------------------------------------------------------------------------
+ * Novalyz = NOYAU sport-agnostique + MODULES sport. La musculation est le
+ * premier module. L'isolation est LOGIQUE (dans ce fichier unique), pas
+ * physique : on déploie un seul index.html. Chaque section est étiquetée :
+ *
+ *   [NOYAU]        générique, ne connaît aucun sport  → réutilisable partout
+ *   [MODULE MUSCU] spécifique musculation             → 1er module
+ *   [MIXTE]        structure noyau + rendu muscu       → à scinder à terme
+ *   [UI]           présentation / plateforme
+ *
+ * Plan du fichier :
+ *   Bloc 1 (~1561) : [NOYAU] NovalyzEngine — moteur d'analyse (autonome)
+ *   Bloc 2 (~1993) : logique app
+ *       SESSION ............ [NOYAU]
+ *       AUTH ............... [NOYAU]
+ *       DEBUG .............. [UI]
+ *       ESPACE COACH ....... [NOYAU]
+ *       DETAIL ATHLETE ..... [MIXTE]
+ *       TABLEAU RÉCAP ...... [MIXTE]
+ *       PROGRAMME (CRUD) ... [MODULE MUSCU]
+ *       CHAT COACH↔ATHLETE . [NOYAU]
+ *       APP (athlète) ...... [MIXTE]
+ *   Bloc 3 (~7728) : [MODULE MUSCU] Bilan PDF
+ *
+ * Contrat d'extension multisport : un module n'écrit PAS de nouveau moteur.
+ * Il alimente NovalyzEngine.normaliser() avec des indicateurs génériques
+ * (voir le contrat documenté au-dessus de la fonction normaliser, bloc 1).
+ * ========================================================================== */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEj4SEA0wzmXcPWECRGCURsSTIbIMu81sFktWtQM86E2-3zgR7LCz-G9sqz2mLHUcQ/exec";
 // Helper icône SVG (famille unique, style Lucide) pour les contenus générés en JS
 function ic(name, cls) { return '<svg class="ico' + (cls ? ' ' + cls : '') + '"><use href="#i-' + name + '"/></svg>'; }
@@ -2047,7 +2094,7 @@ function getNiveauExperience(annees) {
 let indexExoProgramme = 0;
 let historiqueData = [];
 
-// ==================== SESSION ====================
+// ==================== SESSION ==================== [NOYAU]
 window.addEventListener('load', async () => {
   // Applique le thème enregistré dès le chargement (login inclus) — évite le retour en dark au refresh
   if (localStorage.getItem('muscu_theme') === 'light') document.body.classList.add('light-mode');
@@ -2074,7 +2121,7 @@ window.addEventListener('load', async () => {
   }
 });
 
-// ==================== AUTH ====================
+// ==================== AUTH ==================== [NOYAU]
 async function seConnecter() {
   const login = document.getElementById('inp-login').value.trim();
   const password = document.getElementById('inp-password').value;
@@ -2143,7 +2190,7 @@ function arreterChronoEtReinitSeance() {
   const bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
 }
 
-// ==================== DEBUG ====================
+// ==================== DEBUG ==================== [UI]
 async function debugChargerDonnees() {
   const out = document.getElementById('debug-output');
   const panel = document.getElementById('debug-panel');
@@ -2223,7 +2270,7 @@ function seDeconnecter() {
   switchTab('accueil');
 }
 
-// ==================== ESPACE COACH ====================
+// ==================== ESPACE COACH ==================== [NOYAU]
 let coach = null;
 let athletesCoach = [];
 
@@ -2798,7 +2845,7 @@ function renderCoachSurveiller(athletes) {
   card.style.display = 'block';
 }
 
-// ==================== DETAIL ATHLETE (COACH) ====================
+// ==================== DETAIL ATHLETE (COACH) ==================== [MIXTE]
 let coachAthleteData = null;       // résultat getAppData de l'athlète sélectionné
 let coachAthleteCourant = null;    // objet athlète (depuis la liste, contient alertes/annees)
 let cdProgressionData = {};
@@ -3619,7 +3666,7 @@ function toggleSeanceCoach(idx) {
   if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
 }
 
-// ==================== TABLEAU RÉCAP ATHLÈTES (COACH) ====================
+// ==================== TABLEAU RÉCAP ATHLÈTES (COACH) ==================== [MIXTE]
 function tendance1RM(prog) {
   const epley = (c, r) => (parseFloat(c) || 0) * (1 + (parseFloat(r) || 0) / 30);
   const deltas = [];
@@ -3991,7 +4038,7 @@ function surlignerAthleteSidebar(athleteId) {
   });
 }
 
-// ==================== PROGRAMME (CRUD COACH) ====================
+// ==================== PROGRAMME (CRUD COACH) ==================== [MODULE MUSCU]
 let cdProgrammeLignes = [];
 
 async function chargerProgrammeCoach() {
@@ -4257,7 +4304,7 @@ async function cdSupprimerLigne(rowIndex) {
   chargerProgrammeCoach();
 }
 
-// ==================== CHAT COACH <-> ATHLETE ====================
+// ==================== CHAT COACH <-> ATHLETE ==================== [NOYAU]
 let commentairesAthleteActuel = [];
 
 function formatChatDate(d) {
@@ -4661,7 +4708,7 @@ function afficherOngletConseils() {
   }
 }
 
-// ==================== APP ====================
+// ==================== APP (athlète) ==================== [MIXTE]
 async function ouvrirApp() {
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('view-app').classList.add('active');
