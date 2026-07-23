@@ -1967,8 +1967,26 @@
   /* ---------------------------------------------------------------------------
    * MOTEUR
    * ------------------------------------------------------------------------- */
+  // Athlète en vacances/pause : aucune alerte. Reprend seul dès que la date du
+  // jour dépasse la fin (fenêtre de dates, pas de flag manuel). Fait générique
+  // « disponibilité » lu par le moteur (voir docs/moteur-analyse.md).
+  function _enPauseData(data) {
+    var p = data && data.pause;
+    if (!p) return false;
+    function toD(s) {
+      var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+    }
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var d = toD(p.debut), f = toD(p.fin);
+    if (d && today < d) return false;   // vacances pas encore commencées
+    if (f && today > f) return false;   // vacances terminées -> alertes reprennent
+    return !!(d || f);
+  }
+
   function analyser(data, options) {
     options = options || {};
+    if (_enPauseData(data)) return [];   // en vacances : rien à signaler
     var faits = normaliser(data);
     var resultats = [];
     for (var i = 0; i < REGLES.length; i++) {
@@ -2532,9 +2550,9 @@ async function renderCoachSynthese(athletes) {
     return (ry - rx) || String(x.a.nom).localeCompare(String(y.a.nom));
   });
 
-  // KPIs
-  document.getElementById('coach-stat-surveiller').textContent = enrich.filter(e => e.m && e.m.statut.rank >= 1).length;
-  document.getElementById('coach-stat-action').textContent = enrich.filter(e => e.m && e.m.statut.rank === 2).length;
+  // KPIs — les athlètes en vacances ne comptent ni dans "à surveiller" ni "action".
+  document.getElementById('coach-stat-surveiller').textContent = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank >= 1).length;
+  document.getElementById('coach-stat-action').textContent = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 2).length;
   const absents = enrich.filter(e => {
     const dt = e.m && e.m.derniere ? e.m.derniere.date : null;
     if (!dt) return true; // aucune séance connue = absent
@@ -2562,8 +2580,9 @@ async function renderCoachSynthese(athletes) {
     // Couleurs en HEX (nécessaire pour l'ajout d'alpha ${color}14 — un var() ne le permet pas)
     const WARN = '#f59f00', BAD = '#f0505a';
     // (Les messages non lus ne sont PLUS listés ici — ils remontent via l'icône 💬 du header)
-    // Absence ignorée si l'athlète est en vacances
-    if (dsAge > 7 && !e.enPause) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color: WARN };
+    // En vacances : aucune raison de priorité (ni absence, ni alerte, ni synthèse).
+    if (e.enPause) return null;
+    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color: WARN };
     const al = labelAlerteCourt(a);
     if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? BAD : WARN };
     // Intervention seulement s'il reste une alerte de synthèse rouge NON traitée
@@ -4478,6 +4497,8 @@ function dejaConseille(sujet) {
 function construireSynthAlertes(data) {
   const out = [];
   if (!data || !coachAthleteCourant) return out;
+  // Mode vacances : aucune alerte de synthèse (reprend seul à la fin).
+  if (estEnPause(data && data.pause)) return out;
   const m = computeMarqueursCoach(data, coachAthleteCourant);
   if (m.volColor === '#e5484d' || m.volColor === 'var(--bad)') out.push({ type: 'synth-volume', msg: `Volume insuffisant — ${m.volLabel}`, color: '#e5484d' });
   else if (m.volColor === '#f59f00' || m.volColor === 'var(--warn)') out.push({ type: 'synth-volume', msg: `Volume faible — ${m.volLabel}`, color: '#f59f00' });
@@ -8234,6 +8255,13 @@ function renderAlertes(data) {
   const card = document.getElementById('dash-alertes-card');
   const cont = document.getElementById('dash-alertes-content');
   if (!card || !cont) return;
+
+  // Mode vacances : aucune alerte (reprend seul à la fin de la période).
+  if (estEnPause(data && data.pause)) {
+    if (sec) sec.style.display = 'none';
+    card.style.display = 'none';
+    return;
+  }
 
   const alertes = [];
   const dash = (data && data.dashboard) || {};
