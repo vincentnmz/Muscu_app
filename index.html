@@ -465,6 +465,8 @@
         <input type="text" id="reg-coach-login" placeholder="Choisis un identifiant" autocomplete="username">
         <label>Mot de passe</label>
         <input type="password" id="reg-coach-password" placeholder="Choisis un mot de passe" autocomplete="new-password">
+        <label>Sport</label>
+        <select id="reg-coach-sport" style="width:100%;"></select>
         <label style="display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:12px;color:var(--text-muted);font-weight:500;line-height:1.4;cursor:pointer;text-transform:none;letter-spacing:0;">
           <input type="checkbox" id="reg-coach-consent" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;accent-color:var(--accent);">
           <span>J'accepte de traiter les données de mes athlètes (dont données de santé) dans le respect de la <a href="#" onclick="ouvrirConfidentialite(event)" style="color:var(--accent);font-weight:600;">politique de confidentialité</a>.</span>
@@ -1341,6 +1343,11 @@
       <div style="font-size:13px;font-weight:700;margin-bottom:4px;" id="coach-reglages-nom">—</div>
       <div style="font-size:11px;color:var(--text-muted);">Coach connecté</div>
     </div>
+
+    <!-- Sport -->
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Sport</div>
+    <select id="coach-sport-select" onchange="enregistrerSportCoach()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;"></select>
+    <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Adapte le vocabulaire de l'app (athlètes / joueurs…) et, plus tard, les indicateurs suivis.</div>
 
     <!-- Apparence -->
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Apparence</div>
@@ -2379,8 +2386,38 @@ function ouvrirReglagesCoach() {
   const drawer  = document.getElementById('coach-reglages-drawer');
   const nomEl   = document.getElementById('coach-reglages-nom');
   if (nomEl && coach) nomEl.textContent = coach.nom || 'Coach';
+  // Sélecteur de sport : options depuis le registre SPORTS, valeur = sport du coach
+  const sel = document.getElementById('coach-sport-select');
+  if (sel) {
+    sel.innerHTML = Object.keys(SPORTS).map(function(cle) {
+      return `<option value="${cle}">${SPORTS[cle].nom}</option>`;
+    }).join('');
+    sel.value = (coach && coach.sport) ? coach.sport : 'muscu';
+  }
   if (overlay) { overlay.style.display = 'block'; }
   if (drawer)  { drawer.style.display = 'block'; }
+}
+
+// Enregistre le sport choisi (backend col E) puis rafraîchit les libellés.
+async function enregistrerSportCoach() {
+  const sel = document.getElementById('coach-sport-select');
+  if (!sel || !coach || !coach.coach_id) return;
+  const nouveauSport = sel.value;
+  const ancien = coach.sport;
+  coach.sport = nouveauSport;                 // optimiste : l'UI réagit tout de suite
+  appliquerLibellesSport();
+  try { renderListeAthletesCoach(); } catch (e) {}
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'saveSportCoach', coach_id: coach.coach_id, sport: nouveauSport })
+    });
+    showToast('Sport mis à jour : ' + (SPORTS[nouveauSport] ? SPORTS[nouveauSport].nom : nouveauSport));
+  } catch (e) {
+    coach.sport = ancien;                     // rollback si échec réseau
+    appliquerLibellesSport();
+    showToast('Échec de la mise à jour du sport');
+  }
 }
 
 function fermerReglagesCoach() {
@@ -4813,12 +4850,24 @@ function switchCoachAuthMode(mode) {
   document.getElementById('coach-auth-signup').style.display = mode === 'signup' ? 'block' : 'none';
   document.getElementById('coachtab-login').classList.toggle('auth-seg-active', mode === 'login');
   document.getElementById('coachtab-signup').classList.toggle('auth-seg-active', mode === 'signup');
+  // Remplit le sélecteur de sport de l'inscription coach (depuis le registre SPORTS).
+  if (mode === 'signup') {
+    const sel = document.getElementById('reg-coach-sport');
+    if (sel && !sel.options.length) {
+      sel.innerHTML = Object.keys(SPORTS).map(function(cle) {
+        return `<option value="${cle}">${SPORTS[cle].nom}</option>`;
+      }).join('');
+      sel.value = 'muscu';
+    }
+  }
 }
 
 async function sInscrireCoach() {
   const nom = document.getElementById('reg-coach-nom').value.trim();
   const login = document.getElementById('reg-coach-login').value.trim();
   const password = document.getElementById('reg-coach-password').value;
+  const sportSel = document.getElementById('reg-coach-sport');
+  const sport = sportSel ? sportSel.value : 'muscu';
   const errEl = document.getElementById('reg-coach-error');
   errEl.textContent = '';
   if (!nom || !login) { errEl.textContent = 'Remplis tous les champs.'; return; }
@@ -4829,7 +4878,7 @@ async function sInscrireCoach() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'registerCoach', nom, login, password })
+      body: JSON.stringify({ action: 'registerCoach', nom, login, password, sport })
     });
     const data = await res.json();
     if (data.success) {
