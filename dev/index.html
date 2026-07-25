@@ -519,7 +519,7 @@
     <div id="coach-home-body" style="display:none">
       <!-- KPIs (masqués : repris dans le hero Briefing) -->
       <div class="v2-kpis" style="grid-template-columns:1fr 1fr 1fr 1fr;display:none;">
-        <div class="v2-kpi"><div class="kv" id="coach-stat-total">—</div><div class="kk">Athlètes</div></div>
+        <div class="v2-kpi"><div class="kv" id="coach-stat-total">—</div><div class="kk" data-sport-label="athletes">Athlètes</div></div>
         <div class="v2-kpi"><div class="kv" id="coach-stat-surveiller" style="color:var(--warn)">—</div><div class="kk">À surveiller</div></div>
         <div class="v2-kpi"><div class="kv" id="coach-stat-action" style="color:var(--bad)">—</div><div class="kk">Intervention</div></div>
         <div class="v2-kpi"><div class="kv" id="coach-stat-absents" style="color:var(--text-muted)">—</div><div class="kk">Absents 7j+</div></div>
@@ -2059,13 +2059,22 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEj4SEA0wzmXcPWECRGCURsSTIbIMu81sFktWtQM86E2-3zgR7LCz-G9sqz2mLHUcQ/exec";
 
 /* =============================================================================
- * SPORTS (Phase 2) — registre des sports. Le sport est fourni par le backend
- * (hérité du coach). Ici on ne fait que stocker la config d'affichage ; l'UI
- * n'est PAS encore adaptée au sport (ce sera la Phase 3). Défaut : 'muscu'.
+ * SPORTS (Phase 2/3) — registre des sports. Le sport est fourni par le backend
+ * (hérité du coach). Chaque sport définit ses libellés d'affichage ; l'UI les
+ * applique via [data-sport-label] (Phase 3). Défaut : 'muscu'.
+ * Pour ajouter un sport : une entrée ici, rien d'autre à toucher (noyau neutre).
  * ========================================================================== */
 const SPORTS = {
-  muscu: { cle: 'muscu', nom: 'Musculation', libelleAthlete: 'Athlète', libelleGroupe: 'Groupe' }
-  // Phase 6+ : foot, hockey... s'ajouteront ici sans toucher au noyau.
+  muscu:      { cle: 'muscu',      nom: 'Musculation', athlete: 'Athlète', athletes: 'Athlètes', groupe: 'Groupe' },
+  foot:       { cle: 'foot',       nom: 'Football',    athlete: 'Joueur',  athletes: 'Joueurs',  groupe: 'Équipe' },
+  hockey:     { cle: 'hockey',     nom: 'Hockey',      athlete: 'Joueur',  athletes: 'Joueurs',  groupe: 'Équipe' },
+  basket:     { cle: 'basket',     nom: 'Basketball',  athlete: 'Joueur',  athletes: 'Joueurs',  groupe: 'Équipe' },
+  hand:       { cle: 'hand',       nom: 'Handball',    athlete: 'Joueur',  athletes: 'Joueurs',  groupe: 'Équipe' },
+  rugby:      { cle: 'rugby',      nom: 'Rugby',       athlete: 'Joueur',  athletes: 'Joueurs',  groupe: 'Équipe' },
+  tennis:     { cle: 'tennis',     nom: 'Tennis',      athlete: 'Joueur',  athletes: 'Joueurs',  groupe: 'Groupe' },
+  athletisme: { cle: 'athletisme', nom: 'Athlétisme',  athlete: 'Athlète', athletes: 'Athlètes', groupe: 'Groupe' },
+  natation:   { cle: 'natation',   nom: 'Natation',    athlete: 'Nageur',  athletes: 'Nageurs',  groupe: 'Groupe' },
+  combat:     { cle: 'combat',     nom: 'Sports de combat', athlete: 'Combattant', athletes: 'Combattants', groupe: 'Groupe' }
 };
 function sportConfig(cle) { return SPORTS[cle] || SPORTS.muscu; }
 // Sport actif courant : athlète -> son sport ; sinon coach -> son sport ; sinon muscu.
@@ -2074,7 +2083,18 @@ function sportActif() {
   if (typeof coach !== 'undefined' && coach && coach.sport) return coach.sport;
   return 'muscu';
 }
-function libelleSport(champ) { return sportConfig(sportActif())[champ]; }
+function libelleSport(champ) { return sportConfig(sportActif())[champ] || champ; }
+
+// Phase 3 — applique les libellés du sport actif à tous les [data-sport-label].
+// Chaque élément garde son texte muscu par défaut (secours si sport inconnu).
+function appliquerLibellesSport() {
+  try {
+    document.querySelectorAll('[data-sport-label]').forEach(function(el) {
+      var v = libelleSport(el.getAttribute('data-sport-label'));
+      if (v) el.textContent = v;
+    });
+  } catch (e) {}
+}
 
 // Helper icône SVG (famille unique, style Lucide) pour les contenus générés en JS
 function ic(name, cls) { return '<svg class="ico' + (cls ? ' ' + cls : '') + '"><use href="#i-' + name + '"/></svg>'; }
@@ -2482,6 +2502,7 @@ function renderListeAthletesCoach() {
   document.getElementById('liste-athletes-coach').innerHTML = '';
   document.getElementById('coach-home-body').style.display = 'block';
   document.getElementById('coach-stat-total').textContent = athletesCoach.length;
+  appliquerLibellesSport(); // Phase 3 : localise les libellés selon le sport du coach
   renderCoachSynthese(athletesCoach); // async : charge getAppData par athlète, remplit table + KPIs
 
   // select caché (compatibilité)
@@ -2650,7 +2671,7 @@ async function renderCoachSynthese(athletes) {
   }
 
   // ---- Liste complète ----
-  const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes athlètes</div></div>` +
+  const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes ${libelleSport('athletes').toLowerCase()}</div></div>` +
     enrich.map(({ a, i, m, rpe, seancesSem, spark, tonnage, streak, enPause }) => {
     const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
     const meta = [];
