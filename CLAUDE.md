@@ -11,10 +11,15 @@ Contexte perso du porteur : reconversion en analyse vidéo / cellule de performa
 
 ## Stack & déploiement (IMPORTANT)
 
-- **Front** : un seul fichier `index.html` (PWA, vanilla JS). Déployé manuellement par l'utilisateur.
-- **Backend** : `Code.gs` (Google Apps Script) — **versionné dans ce repo** (`./Code.gs`).
-- **Données** : Google Sheets.
-- **Le push GitHub est bloqué (403)** dans cet environnement → on **livre les fichiers** à l'utilisateur (via SendUserFile), il les uploade/colle lui-même.
+- **Front** : un seul fichier `index.html` (PWA, vanilla JS).
+- **Backend** : `Code.gs` (Google Apps Script) — **versionné dans ce repo** (`./Code.gs`). Collé à la main dans l'éditeur Apps Script + déployer une nouvelle version.
+- **Données** : Google Sheets. **Un seul backend Apps Script partagé** par toutes les URLs front (même `SCRIPT_URL`).
+- **Déploiement front = GitHub Pages auto** (`.github/workflows/deploy.yml`) :
+  - push sur **`main`** → déploie `index.html` sur l'**URL de production**
+  - push sur **`dev`** → déploie sur l'**URL de préprod** (`/dev/`)
+  - la branche de travail `claude/ai-saas-mvp-strategy-egvo9i` **n'est pas déployée**
+  - Flux cible : bricoler → `dev` (tester) → PR `dev`→`main` (publier)
+- **Le push GitHub est bloqué (403)** pour l'assistant → on **livre les fichiers** (via SendUserFile), l'utilisateur les uploade lui-même sur la branche voulue.
 
 ## ⚠️ RÈGLES CRITIQUES (à ne jamais oublier)
 
