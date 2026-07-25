@@ -2057,6 +2057,25 @@
  * (voir le contrat documenté au-dessus de la fonction normaliser, bloc 1).
  * ========================================================================== */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEj4SEA0wzmXcPWECRGCURsSTIbIMu81sFktWtQM86E2-3zgR7LCz-G9sqz2mLHUcQ/exec";
+
+/* =============================================================================
+ * SPORTS (Phase 2) — registre des sports. Le sport est fourni par le backend
+ * (hérité du coach). Ici on ne fait que stocker la config d'affichage ; l'UI
+ * n'est PAS encore adaptée au sport (ce sera la Phase 3). Défaut : 'muscu'.
+ * ========================================================================== */
+const SPORTS = {
+  muscu: { cle: 'muscu', nom: 'Musculation', libelleAthlete: 'Athlète', libelleGroupe: 'Groupe' }
+  // Phase 6+ : foot, hockey... s'ajouteront ici sans toucher au noyau.
+};
+function sportConfig(cle) { return SPORTS[cle] || SPORTS.muscu; }
+// Sport actif courant : athlète -> son sport ; sinon coach -> son sport ; sinon muscu.
+function sportActif() {
+  if (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.sport) return dernierAppData.sport;
+  if (typeof coach !== 'undefined' && coach && coach.sport) return coach.sport;
+  return 'muscu';
+}
+function libelleSport(champ) { return sportConfig(sportActif())[champ]; }
+
 // Helper icône SVG (famille unique, style Lucide) pour les contenus générés en JS
 function ic(name, cls) { return '<svg class="ico' + (cls ? ' ' + cls : '') + '"><use href="#i-' + name + '"/></svg>'; }
 
