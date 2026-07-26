@@ -541,13 +541,39 @@
     <!-- MODAL LIER UN ATHLÈTE -->
     <div id="modal-lier-athlete" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:999;align-items:center;justify-content:center;">
       <div class="card modal-card" style="width:90%;max-width:360px;padding:20px;box-shadow:var(--shadow-lg);">
-        <div class="card-title">Lier un athlète</div>
-        <label>Login de l'athlète (4 chiffres)</label>
-        <input type="password" id="inp-lier-login" maxlength="4" placeholder="••••" inputmode="numeric">
+        <!-- Onglets Lier / Créer -->
+        <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--surface2);border-radius:10px;padding:4px;">
+          <button id="lier-tab-lier" onclick="switchLierMode('lier')" style="flex:1;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;background:var(--accent);color:var(--on-accent);">Lier</button>
+          <button id="lier-tab-creer" onclick="switchLierMode('creer')" style="flex:1;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;background:transparent;color:var(--text-muted);">Créer</button>
+        </div>
+
+        <!-- Mode LIER (compte existant) -->
+        <div id="lier-mode-lier">
+          <label>Login de l'athlète (4 chiffres)</label>
+          <input type="password" id="inp-lier-login" maxlength="4" placeholder="••••" inputmode="numeric">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">L'athlète s'est déjà inscrit ? Entre son login pour le rattacher à ton espace.</div>
+        </div>
+
+        <!-- Mode CRÉER (nouveau compte, rattaché direct) -->
+        <div id="lier-mode-creer" style="display:none;">
+          <label>Prénom</label>
+          <input type="text" id="crea-prenom" placeholder="Prénom de l'athlète">
+          <div class="row2">
+            <div><label>Login (4 chiffres)</label><input type="password" id="crea-login" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+            <div><label>Taille (cm)</label><input type="number" id="crea-taille" placeholder="175"></div>
+          </div>
+          <label>Date de naissance</label>
+          <input type="date" id="crea-ddn">
+          <div id="crea-annees-wrap"><label>Années de pratique</label><input type="number" id="crea-annees" placeholder="Ex: 3" min="0" max="50"></div>
+          <label>Mot de passe</label>
+          <input type="text" id="crea-password" placeholder="Mot de passe (min. 6)">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">Tu définis le login et le mot de passe, puis tu les communiques à l'athlète.</div>
+        </div>
+
         <div id="lier-error" class="error-msg"></div>
-        <div style="display:flex;gap:8px;margin-top:4px;">
+        <div style="display:flex;gap:8px;margin-top:12px;">
           <button class="btn" style="flex:1;background:var(--surface2);color:var(--text-muted);" onclick="fermerModalLierAthlete()">Annuler</button>
-          <button class="btn btn-accent" style="flex:1;" onclick="lierAthlete()">Lier</button>
+          <button class="btn btn-accent" style="flex:1;" id="lier-submit-btn" onclick="submitLierAthlete()">Lier</button>
         </div>
       </div>
     </div>
@@ -2513,14 +2539,77 @@ async function ouvrirEspaceCoach() {
   }
 }
 
+let lierModeActuel = 'lier';
+
 function ouvrirModalLierAthlete() {
   document.getElementById('inp-lier-login').value = '';
+  ['crea-prenom','crea-login','crea-taille','crea-ddn','crea-annees','crea-password'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
   document.getElementById('lier-error').textContent = '';
+  switchLierMode('lier');
   document.getElementById('modal-lier-athlete').style.display = 'flex';
 }
 
 function fermerModalLierAthlete() {
   document.getElementById('modal-lier-athlete').style.display = 'none';
+}
+
+// Bascule entre "Lier un compte existant" et "Créer un nouveau compte".
+function switchLierMode(mode) {
+  lierModeActuel = mode;
+  document.getElementById('lier-mode-lier').style.display  = (mode === 'lier')  ? 'block' : 'none';
+  document.getElementById('lier-mode-creer').style.display = (mode === 'creer') ? 'block' : 'none';
+  const tL = document.getElementById('lier-tab-lier'), tC = document.getElementById('lier-tab-creer');
+  tL.style.background = mode === 'lier'  ? 'var(--accent)' : 'transparent';
+  tL.style.color      = mode === 'lier'  ? 'var(--on-accent)' : 'var(--text-muted)';
+  tC.style.background = mode === 'creer' ? 'var(--accent)' : 'transparent';
+  tC.style.color      = mode === 'creer' ? 'var(--on-accent)' : 'var(--text-muted)';
+  document.getElementById('lier-submit-btn').textContent = mode === 'creer' ? 'Créer' : 'Lier';
+  document.getElementById('lier-error').textContent = '';
+  // "Années de pratique" seulement si le sport du coach est la muscu (l'athlète en hérite).
+  const anneesWrap = document.getElementById('crea-annees-wrap');
+  const sportCoach = (coach && coach.sport) ? coach.sport : 'muscu';
+  if (anneesWrap) anneesWrap.style.display = (sportCoach === 'muscu') ? '' : 'none';
+}
+
+// Dispatcher du bouton principal selon l'onglet actif.
+function submitLierAthlete() {
+  if (lierModeActuel === 'creer') creerAthlete();
+  else lierAthlete();
+}
+
+// Le coach crée un athlète : compte rattaché direct, sport hérité du coach.
+async function creerAthlete() {
+  const errEl = document.getElementById('lier-error');
+  errEl.textContent = '';
+  const prenom = document.getElementById('crea-prenom').value.trim();
+  const login  = document.getElementById('crea-login').value.trim();
+  const taille = document.getElementById('crea-taille').value.trim();
+  const ddn    = document.getElementById('crea-ddn').value;
+  const password = document.getElementById('crea-password').value;
+  const sportCoach = (coach && coach.sport) ? coach.sport : 'muscu';
+  const annees = (sportCoach === 'muscu') ? document.getElementById('crea-annees').value.trim() : '0';
+  if (!prenom || !login || !ddn || !taille) { errEl.textContent = 'Remplis tous les champs.'; return; }
+  if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
+  if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
+  if (sportCoach === 'muscu' && annees === '') { errEl.textContent = 'Indique les années de pratique.'; return; }
+  errEl.textContent = 'Création...';
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'coachCreerAthlete', coach_id: coach.coach_id, prenom, login, ddn, taille, annees, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      fermerModalLierAthlete();
+      await chargerAthletesCoach();
+      showToast('✅ ' + prenom + ' créé et rattaché');
+    } else {
+      errEl.textContent = data.error || 'Création impossible.';
+    }
+  } catch(e) { errEl.textContent = 'Erreur de connexion.'; }
 }
 
 async function lierAthlete() {
