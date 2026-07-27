@@ -2138,6 +2138,20 @@ function appliquerLibellesSport() {
   } catch (e) {}
 }
 
+/* Tests physiques (catalogue générique, tous sports). sensHaut = "plus haut = mieux". */
+const TESTS_CATALOG = [
+  { cle:'vma',        nom:'VMA',           unite:'km/h', sensHaut:true },
+  { cle:'sprint_10m', nom:'Sprint 10 m',   unite:'s',    sensHaut:false },
+  { cle:'sprint_30m', nom:'Sprint 30 m',   unite:'s',    sensHaut:false },
+  { cle:'cmj',        nom:'CMJ (détente)', unite:'cm',   sensHaut:true },
+  { cle:'yoyo_test',  nom:'Yo-Yo Test',    unite:'m',    sensHaut:true },
+  { cle:'1rm',        nom:'1RM',           unite:'kg',   sensHaut:true }
+];
+function testInfo(cle) {
+  for (var i = 0; i < TESTS_CATALOG.length; i++) if (TESTS_CATALOG[i].cle === cle) return TESTS_CATALOG[i];
+  return { cle: cle, nom: cle, unite: '', sensHaut: true };
+}
+
 // Helper icône SVG (famille unique, style Lucide) pour les contenus générés en JS
 function ic(name, cls) { return '<svg class="ico' + (cls ? ' ' + cls : '') + '"><use href="#i-' + name + '"/></svg>'; }
 
@@ -2718,9 +2732,70 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
           <th style="padding:6px 8px;text-align:right;">Charge</th><th style="padding:6px 8px;text-align:right;">Dist.HI</th>
         </tr></thead><tbody>${rows||'<tr><td style="padding:8px;color:var(--text-muted)">Aucune séance</td></tr>'}</tbody>
       </table>
-    </div>`;
+    </div>
+    <div class="v2-sec"><div class="st">Tests physiques</div></div>
+    <div id="detail-tests-body"><div class="loader">Chargement…</div></div>`;
 
   dessinerChargeJoueur(d.charge_hebdo||[]);
+  renderTestsJoueur(d.athlete_id);
+}
+
+// Tests physiques d'un joueur : liste (valeur + évolution) et ajout rapide.
+async function renderTestsJoueur(athlete_id) {
+  const cont = document.getElementById('detail-tests-body');
+  if (!cont) return;
+  let data;
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getTests&athlete_id=${encodeURIComponent(athlete_id)}`);
+    data = await res.json();
+  } catch (e) { cont.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px;">Erreur.</div>'; return; }
+
+  const items = (data.tests || []).map(t => {
+    const info = testInfo(t.cle);
+    const pts = t.points || [];
+    const dernier = pts.length ? pts[pts.length-1].valeur : null;
+    const premier = pts.length ? pts[0].valeur : null;
+    let evol = '';
+    if (pts.length >= 2 && premier != null && dernier != null && premier !== dernier) {
+      const diff = Math.round((dernier - premier) * 100) / 100;
+      const mieux = info.sensHaut ? diff > 0 : diff < 0;
+      const col = mieux ? '#22c55e' : '#e5484d';
+      evol = `<span style="color:${col};font-size:11px;font-weight:700;">${mieux?'▲':'▼'} ${diff>0?'+':''}${diff} ${t.unite}</span>`;
+    }
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 4px;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:700;">${info.nom} <span style="font-size:10px;color:var(--text-muted);font-weight:600;">(${pts.length} mesure${pts.length>1?'s':''})</span></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${evol}
+        <div style="font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;">${dernier!=null?dernier:'—'} <span style="font-size:11px;color:var(--text-muted);font-weight:600;">${t.unite}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const options = TESTS_CATALOG.map(t => `<option value="${t.cle}">${t.nom} (${t.unite})</option>`).join('');
+  cont.innerHTML = `
+    <div class="dash-card" style="padding:8px 12px;margin-bottom:12px;">
+      ${items || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Aucun test enregistré.</div>'}
+      <div style="display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap;">
+        <select id="test-cle" style="flex:1;min-width:130px;font-size:12px;padding:8px;">${options}</select>
+        <input id="test-val" type="number" step="0.01" placeholder="Valeur" style="width:78px;font-size:12px;padding:8px;">
+        <button onclick="ajouterTest('${athlete_id}')" class="btn btn-accent" style="width:auto;margin:0;padding:8px 14px;font-size:12px;">+ Ajouter</button>
+      </div>
+    </div>`;
+}
+
+async function ajouterTest(athlete_id) {
+  const cle = document.getElementById('test-cle').value;
+  const val = document.getElementById('test-val').value;
+  if (val === '') return;
+  const info = testInfo(cle);
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveTest', athlete_id, cle, valeur: val, unite: info.unite })
+    });
+    showToast('Test ajouté');
+    renderTestsJoueur(athlete_id);
+  } catch (e) { showToast('Erreur'); }
 }
 
 function fermerDetailJoueurFoot(ev) {
