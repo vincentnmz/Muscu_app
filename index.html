@@ -2695,7 +2695,10 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <div style="font-size:18px;font-weight:800;">${escapeHtml(d.nom||'Joueur')}</div>
+      <div>
+        <div style="font-size:18px;font-weight:800;">${escapeHtml(d.nom||'Joueur')}</div>
+        ${d.poste ? `<div style="font-size:12px;color:var(--accent);font-weight:700;">${escapeHtml(d.poste)}</div>` : ''}
+      </div>
       <button onclick="fermerDetailJoueurFoot()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
     <div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:flex;gap:8px;">
@@ -2795,7 +2798,7 @@ async function renderSuiviEquipe() {
             ${dot(col)}
             <div style="min-width:0;">
               <div style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(j.nom)}</div>
-              <div style="font-size:11px;color:var(--text-muted);">${j.derniere_seance ? 'Dernière séance : '+j.derniere_seance : 'Aucune séance'}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${j.poste ? `<span style="color:var(--accent);font-weight:700;">${escapeHtml(j.poste)}</span> · ` : ''}${j.derniere_seance ? 'Dernière séance : '+j.derniere_seance : 'Aucune séance'}</div>
             </div>
           </div>
           <div style="display:flex;gap:10px;flex-shrink:0;">
