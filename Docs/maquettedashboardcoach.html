@@ -1,0 +1,275 @@
+<title>Novalyz — Dashboard coach (maquette)</title>
+<style>
+  :root{
+    --bg:#0a0f1c; --surface:#111a2e; --surface2:#18233c; --border:rgba(255,255,255,.08);
+    --text:#eaf0fb; --muted:#8ea3c4; --accent:#3b82f6; --accent2:#22d3ee; --violet:#8b5cf6;
+    --good:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+    --r:16px; --shadow:0 10px 30px -12px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(59,130,246,.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(139,92,246,.08), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 18px 60px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.02em;font-size:15px}
+  .brand .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--violet))}
+  .crumb{font-size:12px;color:var(--muted)}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+  .pad{padding:16px 18px}
+  .sec{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 12px}
+  .sec .more{font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0}
+  .num{font-variant-numeric:tabular-nums}
+
+  .head{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .head h1{margin:0;font-size:23px;letter-spacing:-.02em}
+  .head .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .chip{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+  .chip.accent{color:#bcd3ff;border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.12)}
+  .seg{margin-left:auto;display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px}
+  .seg button{border:none;background:none;color:var(--muted);font-weight:800;font-size:12px;padding:7px 13px;border-radius:9px;cursor:pointer}
+  .seg button.on{background:linear-gradient(135deg,var(--accent),#2563eb);color:#fff}
+
+  /* Bandeau disponibilité */
+  .avail{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
+  .stile{position:relative;padding:16px 16px 14px;border-top:3px solid var(--muted);border-top-left-radius:var(--r);border-top-right-radius:var(--r);cursor:pointer}
+  .stile .n{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+  .stile .l{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);font-weight:700;margin-top:8px}
+  .stile .sub{font-size:11px;color:var(--muted);margin-top:4px}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+  /* KPI équipe */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .kpi{position:relative;padding:15px 16px 14px}
+  .kpi .v{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .kpi .l{font-size:11px;color:var(--muted);font-weight:600;margin-top:6px}
+  .kpi .d{position:absolute;top:14px;right:16px;font-size:11px;font-weight:800}
+
+  .grid{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;align-items:start}
+  .stack{display:flex;flex-direction:column;gap:14px}
+
+  /* Table effectif */
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+  td,th{padding:11px 8px;text-align:left}
+  thead th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border);white-space:nowrap}
+  thead th.s{cursor:pointer;user-select:none}
+  thead th.s:hover{color:var(--text)}
+  tbody tr{cursor:pointer;transition:background .12s}
+  tbody tr:hover{background:rgba(59,130,246,.06)}
+  tbody tr+tr td{border-top:1px solid var(--border)}
+  td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+  .who{display:flex;align-items:center;gap:10px}
+  .ava{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#1f3a63,#0e1c33);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#cfe0ff;flex-shrink:0}
+  .who b{font-size:13px}
+  .bar{height:6px;border-radius:4px;background:var(--surface2);overflow:hidden;min-width:56px}
+  .bar>span{display:block;height:100%;border-radius:4px}
+  .stat{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;letter-spacing:.02em;padding:4px 10px;border-radius:20px;white-space:nowrap}
+  .stat.good{color:#9bf0bd;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35)}
+  .stat.warn{color:#ffcf7a;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35)}
+  .stat.bad{color:#ff9d9d;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35)}
+  .stat.inj{color:#c9d4e6;background:rgba(142,163,196,.14);border:1px solid rgba(142,163,196,.3)}
+  .up{color:var(--good);font-weight:800} .down{color:var(--bad);font-weight:800} .flat{color:var(--muted);font-weight:800}
+
+  /* Listes latérales */
+  .alert{display:flex;gap:10px;padding:11px 0;border-top:1px solid var(--border)}
+  .alert:first-child{border-top:none;padding-top:2px}
+  .alert .strip{width:3px;border-radius:3px;flex-shrink:0}
+  .alert .who2{font-size:12.5px}
+  .alert .msg{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45}
+  .injrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--border)}
+  .injrow:first-child{border-top:none;padding-top:2px}
+  .injrow .info{min-width:0;flex:1}
+  .injrow .info b{font-size:13px}
+  .injrow .info div{font-size:11px;color:var(--muted);margin-top:2px}
+  .when{font-size:11px;font-weight:800;white-space:nowrap;text-align:right}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+
+  @media(max-width:900px){.grid{grid-template-columns:1fr}.avail{grid-template-columns:1fr 1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><span class="logo"></span> Novalyz</div>
+    <div class="crumb">Coach · FC Démo</div>
+  </div>
+
+  <div class="head">
+    <div>
+      <h1>Suivi de l'équipe</h1>
+      <div class="meta">
+        <span class="chip accent">FC Démo · Séniors</span>
+        <span class="chip"><span id="eff">–</span> joueurs</span>
+        <span class="chip">Semaine 30</span>
+      </div>
+    </div>
+    <div class="seg">
+      <button class="on">Cette semaine</button>
+      <button>4 sem.</button>
+    </div>
+  </div>
+
+  <!-- Disponibilité de l'effectif -->
+  <div class="avail" id="avail"></div>
+
+  <!-- KPI équipe -->
+  <div class="kpis">
+    <div class="card kpi"><div class="v num">3 620<span style="font-size:13px;color:var(--muted)"> UA</span></div><div class="l">Charge moyenne / joueur (7j)</div><div class="d" style="color:var(--warn)">▲ 9%</div></div>
+    <div class="card kpi"><div class="v num">3.5<span style="font-size:13px;color:var(--muted)">/5</span></div><div class="l">Bien-être moyen (7j)</div><div class="d" style="color:var(--bad)">▼ 0.2</div></div>
+    <div class="card kpi"><div class="v num"><span style="color:#9bf0bd">6</span> · <span style="color:#ff9d9d">2</span></div><div class="l">En progression · en régression</div></div>
+    <div class="card kpi"><div class="v num">4</div><div class="l">Alertes actives</div><div class="d" style="color:var(--warn)">à traiter</div></div>
+  </div>
+
+  <div class="grid">
+    <!-- EFFECTIF -->
+    <div class="card pad">
+      <div class="sec"><span>Effectif · état du jour</span><span class="more" onclick="return false">Trier par disponibilité</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th class="s" onclick="sortBy('n')">Joueur</th>
+            <th>Poste</th>
+            <th>Disponibilité</th>
+            <th class="r s" onclick="sortBy('acwr')">ACWR</th>
+            <th>Bien-être</th>
+            <th class="r">7j</th>
+            <th>Dernière séance</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--good);display:inline-block"></span> Disponible</span>
+        <span><span class="dot" style="background:var(--warn);display:inline-block"></span> Vigilance</span>
+        <span><span class="dot" style="background:var(--bad);display:inline-block"></span> À risque</span>
+        <span><span class="dot" style="background:var(--muted);display:inline-block"></span> Indisponible</span>
+        <span style="margin-left:auto">ACWR : zone risque &gt; 1.5</span>
+      </div>
+    </div>
+
+    <!-- COLONNE DROITE -->
+    <div class="stack">
+      <div class="card pad">
+        <div class="sec"><span>Alertes de la semaine</span></div>
+        <div id="alerts"></div>
+      </div>
+
+      <div class="card pad">
+        <div class="sec"><span>Blessés &amp; retours</span></div>
+        <div id="inj"></div>
+      </div>
+
+      <div class="card pad">
+        <div class="sec"><span>Charge de l'équipe · 6 semaines</span></div>
+        <svg id="teamchart" viewBox="0 0 340 140" width="100%" height="140"></svg>
+        <div class="legend"><span><b style="color:var(--accent)">▮</b> Charge moyenne / joueur (UA)</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Effectif démo (une seule source de vérité : le bandeau + la table en dérivent)
+  var squad=[
+    {n:'Karim Benzarti', i:'KB', poste:'Attaquant',        dispo:'bad',  acwr:1.71, be:2.6, tend:-1, sess:'Hier'},
+    {n:'Nathan Diarra',  i:'ND', poste:'Milieu central',   dispo:'warn', acwr:1.62, be:3.2, tend:+1, sess:'Hier'},
+    {n:'Hugo Lambert',   i:'HL', poste:'Attaquant',        dispo:'warn', acwr:1.42, be:3.1, tend:-1, sess:'Il y a 2 j'},
+    {n:'Théo Girard',    i:'TG', poste:'Latéral droit',    dispo:'warn', acwr:1.38, be:3.0, tend:0,  sess:'Hier'},
+    {n:'Sofiane Bakir',  i:'SB', poste:'Milieu défensif',  dispo:'good', acwr:1.10, be:3.8, tend:+1, sess:'Aujourd’hui'},
+    {n:'Lucas Meyer',    i:'LM', poste:'Défenseur central',dispo:'good', acwr:1.05, be:4.1, tend:+1, sess:'Hier'},
+    {n:'Yanis Cherif',   i:'YC', poste:'Milieu offensif',  dispo:'good', acwr:0.95, be:4.3, tend:+1, sess:'Aujourd’hui'},
+    {n:'Adrien Faure',   i:'AF', poste:'Gardien',          dispo:'good', acwr:0.88, be:4.0, tend:0,  sess:'Hier'},
+    {n:'Paul Nguyen',    i:'PN', poste:'Latéral gauche',   dispo:'good', acwr:1.02, be:3.9, tend:+1, sess:'Il y a 2 j'},
+    {n:'Enzo Rossi',     i:'ER', poste:'Défenseur central',dispo:'inj',  acwr:null, be:null,tend:0,  sess:'Réathlé', ret:'Retour compét. J+6'},
+    {n:'Malik Traoré',   i:'MT', poste:'Ailier',           dispo:'inj',  acwr:null, be:null,tend:0,  sess:'Indispo',  ret:'Lésion mollet · J+10'}
+  ];
+
+  var LBL={good:'Disponible',warn:'Vigilance',bad:'À risque',inj:'Indispo'};
+
+  // --- Bandeau disponibilité (dérivé) ---
+  var tiles=[
+    {k:'good', t:'Disponibles',    c:'var(--good)', sub:'prêts à l’entraînement'},
+    {k:'warn', t:'À surveiller',   c:'var(--warn)', sub:'charge ou bien-être à suivre'},
+    {k:'bad',  t:'À risque',       c:'var(--bad)',  sub:'risque de surcharge / blessure'},
+    {k:'inj',  t:'Indisponibles',  c:'var(--muted)',sub:'blessés ou en réathlé'}
+  ];
+  document.getElementById('eff').textContent=squad.length;
+  document.getElementById('avail').innerHTML=tiles.map(function(x){
+    var c=squad.filter(function(p){return p.dispo===x.k}).length;
+    return '<div class="card stile" style="border-top-color:'+x.c+'">'
+      +'<div class="n">'+c+'</div>'
+      +'<div class="l"><span class="dot" style="background:'+x.c+'"></span>'+x.t+'</div>'
+      +'<div class="sub">'+x.sub+'</div></div>';
+  }).join('');
+
+  // --- Table effectif ---
+  function acwrCls(v){ return v==null?'flat':(v>1.5?'down':(v>1.3?'warn2':'up')); }
+  function tendMark(t){ return t>0?'<span class="up">▲</span>':(t<0?'<span class="down">▼</span>':'<span class="flat">—</span>'); }
+  function beColor(v){ return v>=3.8?'var(--good)':(v>=3?'var(--warn)':'var(--bad)'); }
+
+  var sortKey='dispo', order={bad:0,warn:1,inj:2,good:3};
+  function renderRows(){
+    var arr=squad.slice();
+    if(sortKey==='dispo') arr.sort(function(a,b){return order[a.dispo]-order[b.dispo]});
+    else if(sortKey==='acwr') arr.sort(function(a,b){return (b.acwr||0)-(a.acwr||0)});
+    else if(sortKey==='n') arr.sort(function(a,b){return a.n.localeCompare(b.n)});
+    document.getElementById('rows').innerHTML=arr.map(function(p){
+      var acwrTxt=p.acwr==null?'—':p.acwr.toFixed(2);
+      var acwrCol=p.acwr==null?'var(--muted)':(p.acwr>1.5?'#ff9d9d':(p.acwr>1.3?'#ffcf7a':'var(--text)'));
+      var be=p.be==null?'<td colspan="2" style="color:var(--muted)">'+(p.ret||'—')+'</td>'
+        :'<td><div class="bar"><span style="width:'+(p.be/5*100)+'%;background:'+beColor(p.be)+'"></span></div></td>'
+        +'<td class="r">'+tendMark(p.tend)+'</td>';
+      return '<tr>'
+        +'<td><div class="who"><div class="ava">'+p.i+'</div><b>'+p.n+'</b></div></td>'
+        +'<td style="color:var(--muted)">'+p.poste+'</td>'
+        +'<td><span class="stat '+p.dispo+'"><span class="dot" style="background:currentColor;opacity:.85"></span>'+LBL[p.dispo]+'</span></td>'
+        +'<td class="r" style="color:'+acwrCol+';font-weight:700">'+acwrTxt+'</td>'
+        +be
+        +'<td style="color:var(--muted)">'+p.sess+'</td>'
+        +'</tr>';
+    }).join('');
+  }
+  function sortBy(k){ sortKey=k; renderRows(); }
+  renderRows();
+
+  // --- Alertes de la semaine ---
+  var alerts=[
+    {c:'var(--bad)',  who:'Karim Benzarti', msg:'Risque de surcharge — ACWR 1.71 et fatigue élevée (2.6/5). Alléger 48 h.'},
+    {c:'var(--warn)', who:'Nathan Diarra',  msg:'Charge de sprint en hausse pendant le retour ischio. Surveiller la progressivité.'},
+    {c:'var(--bad)',  who:'Hugo Lambert',   msg:'Régression sur 2 séances + bien-être en baisse. Point individuel conseillé.'},
+    {c:'var(--warn)', who:'Théo Girard',    msg:'ACWR 1.38 — zone de vigilance. Rien d’alarmant, à suivre.'}
+  ];
+  document.getElementById('alerts').innerHTML=alerts.map(function(a){
+    return '<div class="alert"><div class="strip" style="background:'+a.c+'"></div>'
+      +'<div><div class="who2"><b>'+a.who+'</b></div><div class="msg">'+a.msg+'</div></div></div>';
+  }).join('');
+
+  // --- Blessés & retours ---
+  var inj=[
+    {i:'MT', n:'Malik Traoré',  sub:'Lésion mollet · gravité modérée', when:'Retour J+10', cls:'bad'},
+    {i:'ER', n:'Enzo Rossi',    sub:'Réathlé — retour terrain effectué', when:'Compét. J+6', cls:'warn'}
+  ];
+  document.getElementById('inj').innerHTML=inj.map(function(p){
+    var col=p.cls==='bad'?'#ff9d9d':'#ffcf7a';
+    return '<div class="injrow"><div class="ava">'+p.i+'</div>'
+      +'<div class="info"><b>'+p.n+'</b><div>'+p.sub+'</div></div>'
+      +'<div class="when" style="color:'+col+'">'+p.when+'</div></div>';
+  }).join('');
+
+  // --- Charge équipe · 6 semaines ---
+  (function(){
+    var data=[3100,3300,3200,3500,3400,3620];
+    var W=340,H=140,PAD={t:12,r:12,b:22,l:34},cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b,maxC=4000;
+    var s='';
+    for(var i=0;i<=2;i++){var y=PAD.t+cH-(i/2)*cH;s+='<line x1="'+PAD.l+'" y1="'+y+'" x2="'+(PAD.l+cW)+'" y2="'+y+'" stroke="rgba(255,255,255,.06)"/><text x="'+(PAD.l-6)+'" y="'+(y+3)+'" fill="#5f7297" font-size="9" text-anchor="end">'+(maxC*i/2/1000)+'k</text>';}
+    var gap=cW/data.length,bw=gap*0.52;
+    data.forEach(function(v,i){var x=PAD.l+i*gap+gap/2,bh=(v/maxC)*cH,y=PAD.t+cH-bh,last=i===data.length-1;
+      s+='<rect x="'+(x-bw/2)+'" y="'+y+'" width="'+bw+'" height="'+bh+'" rx="3" fill="'+(last?'#3b82f6':'rgba(59,130,246,.55)')+'"/>'
+        +'<text x="'+x+'" y="'+(H-7)+'" fill="#5f7297" font-size="8.5" text-anchor="middle">S'+(25+i)+'</text>';});
+    document.getElementById('teamchart').innerHTML=s;
+  })();
+</script>
