@@ -2767,6 +2767,37 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
         ${kpi(msAgg.nb||0,'Matchs')}
       </div></div>` : '';
 
+  // Objectifs (Profil) — catalogue §2
+  const objTag = {developpement_physique:{l:'Développement physique',c:'accent'}, prevention:{l:'Prévention',c:'warn'}, performance:{l:'Performance',c:'violet'}, retour_blessure:{l:'Retour blessure',c:'warn'}, maintien:{l:'Maintien',c:'accent'}};
+  const objStatut = {en_cours:{l:'Sur la voie',c:'#22c55e'}, a_surveiller:{l:'À surveiller',c:'#f5a623'}, atteint:{l:'Atteint',c:'#22c55e'}};
+  const tagBg = {accent:'rgba(59,130,246,.14)', warn:'rgba(245,158,11,.15)', violet:'rgba(139,92,246,.16)'};
+  const tagFg = {accent:'#bcd3ff', warn:'#ffcf7a', violet:'#d6c8ff'};
+  const objectifsHtml = (Array.isArray(d.objectifs) && d.objectifs.length) ? d.objectifs.map(o=>{
+    const tg = objTag[o.categorie] || {l:o.categorie, c:'accent'};
+    const st = objStatut[o.statut] || {l:o.statut||'', c:'var(--text-muted)'};
+    return `<div class="dash-card" style="padding:12px 13px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+        <span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:6px;color:${tagFg[tg.c]};background:${tagBg[tg.c]};">${escapeHtml(tg.l)}</span>
+        <span style="font-size:11px;font-weight:800;color:${st.c};">${escapeHtml(st.l)}</span>
+      </div>
+      <div style="font-size:12.5px;line-height:1.35;">${escapeHtml(o.description||'')}</div>
+    </div>`;
+  }).join('') : soon('Aucun objectif défini pour ce joueur.');
+
+  // Blessures / réathlé (Profil) — catalogue §9
+  const injStatut = {retour_progressif:{l:'Retour progressif',c:'#f5a623'}, retabli:{l:'Rétabli',c:'#22c55e'}, indispo:{l:'Indisponible',c:'#e5484d'}};
+  const blessuresHtml = (Array.isArray(d.blessures) && d.blessures.length) ? `<div class="dash-card" style="padding:4px 14px;margin-bottom:12px;">` + d.blessures.map(b=>{
+    const st = injStatut[b.statut] || {l:b.statut||'', c:'var(--text-muted)'};
+    const det = [b.gravite, (b.duree?('indispo '+b.duree+' j'):''), (b.retour_terrain?('retour terrain '+b.retour_terrain):''), (b.retour_competition?('retour compét. '+b.retour_competition):'')].filter(Boolean).join(' · ');
+    return `<div style="display:flex;gap:11px;padding:12px 0;border-top:1px solid var(--border);">
+      <span style="align-self:flex-start;font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap;color:${st.c};background:${st.c}1a;border:1px solid ${st.c}55;">${escapeHtml(st.l)}</span>
+      <div style="min-width:0;">
+        <b style="font-size:13px;">${escapeHtml((b.type||'') + (b.localisation ? (' — '+b.localisation) : ''))}</b>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.45;">${escapeHtml(det)}</div>
+      </div>
+    </div>`;
+  }).join('') + `</div>` : soon('Aucune blessure enregistrée.');
+
   body.innerHTML = `
     <!-- En-tête page joueur (barre sticky avec retour) — même structure que le détail coach muscu -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:5;">
@@ -2801,9 +2832,9 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
         ${dl('Antécédents', d.antecedents ? escapeHtml(d.antecedents) : '<span style="color:var(--text-muted);font-weight:600;">aucun</span>')}
       </div>
       <div class="v2-sec"><div class="st">Objectifs</div></div>
-      ${soon('Objectifs fixés par le coach — à venir. Nécessite l\'entité Objectif côté backend (catalogue §2).')}
+      ${objectifsHtml}
       <div class="v2-sec"><div class="st">Blessures &amp; réathlé</div></div>
-      ${soon('Suivi des blessures et du retour au jeu — à venir. Entité Blessure côté backend (catalogue §9, décision #5).')}
+      ${blessuresHtml}
     </div>
 
     <!-- PANEL 1 : CHARGE & PHYSIQUE (données réelles) -->
