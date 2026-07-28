@@ -1359,13 +1359,20 @@
 <!-- DRAWER RÉGLAGES COACH (niveau global : accessible depuis l'accueil coach ET la vue athlète) -->
 <!-- Détail joueur (sports co) -->
 <style>
-  .djt-tabs{display:flex;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:14px;}
-  .djt-btn{flex:1;text-align:center;padding:9px 5px;border:none;background:none;color:var(--text-muted);font-size:12px;font-weight:800;border-radius:9px;cursor:pointer;letter-spacing:.01em;white-space:nowrap;transition:background .15s,color .15s;}
-  .djt-btn.on{background:var(--accent);color:var(--on-accent,#fff);}
+  /* Page joueur foot — reprend la grille du détail coach muscu : .sub-tabs + corps main/rail */
+  #detail-joueur-body .sub-tabs{margin-bottom:14px;}
+  .fjd-ava{width:44px;height:44px;border-radius:12px;background:var(--accent-a12,rgba(59,130,246,.12));color:var(--accent);font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .fjd-rail{display:none;}
   .djt-dl{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--border);font-size:13px;}
   .djt-dl:first-child{border-top:none;}
   .djt-dl>span{color:var(--text-muted);}
   .djt-dl>b{font-weight:700;text-align:right;}
+  @media(min-width:1024px){
+    #detail-joueur-overlay>div{max-width:900px!important;}
+    .fjd-body{display:flex;align-items:flex-start;gap:22px;}
+    .fjd-main{flex:2 1 0;min-width:0;}
+    .fjd-rail{display:block;flex:1 1 0;min-width:0;position:sticky;top:64px;}
+  }
 </style>
 <div id="detail-joueur-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;overflow-y:auto;">
   <div style="max-width:520px;margin:0 auto;min-height:100%;">
@@ -2724,6 +2731,7 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
   const dispo = (acwr!=null && acwr>1.5) ? {t:'À risque',c:COL.rouge}
               : (acwr!=null && acwr>1.3) ? {t:'Vigilance',c:COL.orange}
               : {t:'Disponible',c:'#22c55e'};
+  const initiales = ((d.nom||'?').trim().split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2) || '?').toUpperCase();
 
   const dl = (k,v)=>`<div class="djt-dl"><span>${k}</span><b>${v}</b></div>`;
   const aVenir = '<span style="color:var(--text-muted);font-weight:600;">à renseigner</span>';
@@ -2760,9 +2768,10 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
       </div></div>` : '';
 
   body.innerHTML = `
-    <!-- En-tête page joueur (barre sticky avec retour) -->
+    <!-- En-tête page joueur (barre sticky avec retour) — même structure que le détail coach muscu -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:5;">
       <button onclick="fermerDetailJoueurFoot()" title="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:6px 11px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;">‹</button>
+      <div class="fjd-ava">${escapeHtml(initiales)}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.nom||'Joueur')}</div>
         ${d.poste ? `<div style="font-size:12px;color:var(--accent);font-weight:700;">${escapeHtml(d.poste)}</div>` : ''}
@@ -2770,12 +2779,16 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
       <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:${dispo.c};background:${dispo.c}1a;border:1px solid ${dispo.c}55;border-radius:20px;padding:5px 11px;white-space:nowrap;"><span style="width:8px;height:8px;border-radius:50%;background:${dispo.c};"></span>${dispo.t}</span>
     </div>
 
-    <!-- Onglets page joueur -->
-    <div class="djt-tabs">
-      <button class="djt-btn on" data-i="0" onclick="switchDetailJoueurTab(0)">Profil</button>
-      <button class="djt-btn" data-i="1" onclick="switchDetailJoueurTab(1)">Charge &amp; physique</button>
-      <button class="djt-btn" data-i="2" onclick="switchDetailJoueurTab(2)">Match &amp; technique</button>
+    <!-- Onglets page joueur — composant .sub-tabs de la grille muscu -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-i="0" onclick="switchDetailJoueurTab(0)">Profil</button>
+      <button class="sub-tab" data-i="1" onclick="switchDetailJoueurTab(1)">Charge &amp; physique</button>
+      <button class="sub-tab" data-i="2" onclick="switchDetailJoueurTab(2)">Match &amp; technique</button>
     </div>
+
+    <!-- Corps en grille (main + rail desktop), comme #cd-body muscu -->
+    <div class="fjd-body">
+    <div class="fjd-main">
 
     <!-- PANEL 0 : PROFIL -->
     <div class="djt-panel" data-i="0">
@@ -2817,7 +2830,26 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
         : (matchs.length ? tblSeances(matchRows) : soon('Aucun match enregistré. Ajoute une séance de type « match » (ou relance <b>seedDemoFoot()</b>).'))}
       <div class="v2-sec"><div class="st">Heatmap &amp; radar technique</div></div>
       ${soon('Heatmap terrain et radar technique par poste — à venir (nécessite les données de position ; prochaine étape).')}
-    </div>`;
+    </div>
+
+    </div><!-- /fjd-main -->
+    <aside class="fjd-rail">
+      <div class="dash-card" style="padding:14px;margin-bottom:12px;">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Disponibilité</div>
+        <div style="display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:${dispo.c};"><span style="width:10px;height:10px;border-radius:50%;background:${dispo.c};"></span>${dispo.t}</div>
+      </div>
+      <div class="dash-card" style="padding:14px;margin-bottom:12px;">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px;">Charge</div>
+        <div style="display:flex;align-items:baseline;gap:6px;"><span style="font-size:24px;font-weight:800;color:${acwrCol};">${acwr!=null?acwr.toFixed(2):'—'}</span><span style="font-size:11px;color:var(--text-muted);">ACWR</span></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Charge 7j : <b style="color:var(--text);">${(d.charge_7j||0).toLocaleString('fr-FR')}</b> UA</div>
+      </div>
+      <div class="dash-card" style="padding:14px;">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px;">Dernière séance</div>
+        <div style="font-size:15px;font-weight:800;">${(d.seances&&d.seances[0])?d.seances[0].date:'—'}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${(d.seances&&d.seances[0])?(d.seances[0].type==='match'?'Match':'Entraînement'):''}</div>
+      </div>
+    </aside>
+    </div><!-- /fjd-body -->`;
 
   dessinerChargeJoueur(d.charge_hebdo||[]);
   renderTestsJoueur(d.athlete_id);
@@ -2825,7 +2857,7 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
 
 // Onglets de la page joueur (overlay détail)
 function switchDetailJoueurTab(i) {
-  document.querySelectorAll('#detail-joueur-body .djt-btn').forEach(b=>b.classList.toggle('on', +b.dataset.i===i));
+  document.querySelectorAll('#detail-joueur-body .sub-tab').forEach(b=>b.classList.toggle('active', +b.dataset.i===i));
   document.querySelectorAll('#detail-joueur-body .djt-panel').forEach(p=>{ p.style.display = (+p.dataset.i===i) ? 'block' : 'none'; });
 }
 
