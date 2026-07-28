@@ -1367,9 +1367,9 @@
   .djt-dl>span{color:var(--text-muted);}
   .djt-dl>b{font-weight:700;text-align:right;}
 </style>
-<div id="detail-joueur-overlay" onclick="fermerDetailJoueurFoot(event)" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1000;overflow-y:auto;">
-  <div onclick="event.stopPropagation()" style="max-width:480px;margin:20px auto;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-lg);overflow:hidden;">
-    <div id="detail-joueur-body" style="padding:18px 18px 24px;"><div class="loader">Chargement…</div></div>
+<div id="detail-joueur-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;overflow-y:auto;">
+  <div style="max-width:520px;margin:0 auto;min-height:100%;">
+    <div id="detail-joueur-body" style="padding:14px 16px 48px;"><div class="loader">Chargement…</div></div>
   </div>
 </div>
 
@@ -2739,15 +2739,35 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
       </table>
     </div>`;
 
+  // Stats de match (backend enrichi) — fallback gracieux si la démo n'est pas encore reseedée
+  const msAgg = d.match_stats || null;
+  const matchsRich = Array.isArray(d.matchs) ? d.matchs : [];
+  const noteCol = n => n==null ? 'var(--text-muted)' : (n>=7 ? '#22c55e' : (n>=6 ? '#f5a623' : '#e5484d'));
+  const richMatchRows = matchsRich.map(m=>`
+    <div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--border);">
+      <span style="min-width:40px;text-align:center;font-weight:800;font-size:13px;padding:4px 6px;border-radius:8px;color:${noteCol(m.note)};background:${noteCol(m.note)}1a;">${m.note!=null?m.note:'—'}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;">${m.date}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${m.minutes!=null?m.minutes+"'":'—'}${m.buts?' · '+m.buts+' but'+(m.buts>1?'s':''):''}${m.passes_d?' · '+m.passes_d+' passe'+(m.passes_d>1?'s':'')+' déc.':''}</div>
+      </div>
+      ${(m.xg!=null||m.xa!=null)?`<div style="text-align:right;font-size:10px;color:var(--text-muted);line-height:1.4;">xG ${m.xg!=null?m.xg:'—'}<br>xA ${m.xa!=null?m.xa:'—'}</div>`:''}
+    </div>`).join('');
+  const matchKpis = msAgg ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:flex;gap:8px;">
+        ${kpi(msAgg.note_moy!=null?msAgg.note_moy:'—','Note moy.')}
+        ${kpi((msAgg.buts||0)+' · '+(msAgg.passes_d||0),'Buts · Passes D')}
+        ${kpi(msAgg.minutes||0,'Minutes')}
+        ${kpi(msAgg.nb||0,'Matchs')}
+      </div></div>` : '';
+
   body.innerHTML = `
-    <!-- En-tête joueur -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+    <!-- En-tête page joueur (barre sticky avec retour) -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:5;">
+      <button onclick="fermerDetailJoueurFoot()" title="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:6px 11px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;">‹</button>
       <div style="flex:1;min-width:0;">
         <div style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.nom||'Joueur')}</div>
         ${d.poste ? `<div style="font-size:12px;color:var(--accent);font-weight:700;">${escapeHtml(d.poste)}</div>` : ''}
       </div>
       <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:${dispo.c};background:${dispo.c}1a;border:1px solid ${dispo.c}55;border-radius:20px;padding:5px 11px;white-space:nowrap;"><span style="width:8px;height:8px;border-radius:50%;background:${dispo.c};"></span>${dispo.t}</span>
-      <button onclick="fermerDetailJoueurFoot()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;flex-shrink:0;">✕</button>
     </div>
 
     <!-- Onglets page joueur -->
@@ -2762,9 +2782,10 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
       <div class="v2-sec"><div class="st">Identité</div></div>
       <div class="dash-card" style="padding:4px 14px;margin-bottom:12px;">
         ${dl('Poste', d.poste ? escapeHtml(d.poste) : '—')}
-        ${dl('Jambe dominante', aVenir)}
-        ${dl('Taille · Poids', aVenir)}
-        ${dl('Antécédents', aVenir)}
+        ${dl('Jambe dominante', d.jambe_dominante ? escapeHtml(d.jambe_dominante) : '—')}
+        ${dl('Taille · Poids', (d.taille ? d.taille+' cm' : '—') + ' · ' + (d.poids ? d.poids+' kg' : '—'))}
+        ${dl('Né le', d.ddn ? escapeHtml(d.ddn) + (d.age!=null ? ` <span style="color:var(--text-muted);font-weight:600;">(${d.age} ans)</span>` : '') : '—')}
+        ${dl('Antécédents', d.antecedents ? escapeHtml(d.antecedents) : '<span style="color:var(--text-muted);font-weight:600;">aucun</span>')}
       </div>
       <div class="v2-sec"><div class="st">Objectifs</div></div>
       ${soon('Objectifs fixés par le coach — à venir. Nécessite l\'entité Objectif côté backend (catalogue §2).')}
@@ -2790,10 +2811,12 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
 
     <!-- PANEL 2 : MATCH & TECHNIQUE -->
     <div class="djt-panel" data-i="2" style="display:none;">
-      <div class="v2-sec"><div class="st">Matchs récents</div></div>
-      ${matchs.length ? tblSeances(matchRows) : soon('Aucun match enregistré. Ajoute une séance de type « match » pour le voir ici.')}
-      <div class="v2-sec"><div class="st">Statistiques de match</div></div>
-      ${soon('Stats de match détaillées (note, buts, passes décisives, xG+xA, heatmap terrain, radar technique) — à venir. Étape suivante : étendre <b>seedDemoFoot()</b> et le backend (catalogue §6).')}
+      ${matchKpis}
+      <div class="v2-sec"><div class="st">Derniers matchs</div></div>
+      ${matchsRich.length ? `<div class="dash-card" style="padding:2px 14px 6px;margin-bottom:12px;">${richMatchRows}</div>`
+        : (matchs.length ? tblSeances(matchRows) : soon('Aucun match enregistré. Ajoute une séance de type « match » (ou relance <b>seedDemoFoot()</b>).'))}
+      <div class="v2-sec"><div class="st">Heatmap &amp; radar technique</div></div>
+      ${soon('Heatmap terrain et radar technique par poste — à venir (nécessite les données de position ; prochaine étape).')}
     </div>`;
 
   dessinerChargeJoueur(d.charge_hebdo||[]);
