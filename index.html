@@ -1358,6 +1358,15 @@
 
 <!-- DRAWER RÉGLAGES COACH (niveau global : accessible depuis l'accueil coach ET la vue athlète) -->
 <!-- Détail joueur (sports co) -->
+<style>
+  .djt-tabs{display:flex;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:14px;}
+  .djt-btn{flex:1;text-align:center;padding:9px 5px;border:none;background:none;color:var(--text-muted);font-size:12px;font-weight:800;border-radius:9px;cursor:pointer;letter-spacing:.01em;white-space:nowrap;transition:background .15s,color .15s;}
+  .djt-btn.on{background:var(--accent);color:var(--on-accent,#fff);}
+  .djt-dl{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--border);font-size:13px;}
+  .djt-dl:first-child{border-top:none;}
+  .djt-dl>span{color:var(--text-muted);}
+  .djt-dl>b{font-weight:700;text-align:right;}
+</style>
 <div id="detail-joueur-overlay" onclick="fermerDetailJoueurFoot(event)" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1000;overflow-y:auto;">
   <div onclick="event.stopPropagation()" style="max-width:480px;margin:20px auto;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-lg);overflow:hidden;">
     <div id="detail-joueur-body" style="padding:18px 18px 24px;"><div class="loader">Chargement…</div></div>
@@ -2697,47 +2706,104 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
   const acwrCol = (acwr!=null && acwr>1.5) ? COL.rouge : (acwr!=null && acwr>1.3) ? COL.orange : 'var(--good)';
   const kpi = (v,l,c)=>`<div style="flex:1;text-align:center;"><div style="font-size:20px;font-weight:800;color:${c||'var(--text)'};font-variant-numeric:tabular-nums;">${v}</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;">${l}</div></div>`;
   const wLast = (d.wellness||[]).slice(-1)[0] || {};
-  const rows = (d.seances||[]).map(s=>`
+  const seances = d.seances || [];
+  const ligneSeance = s=>`
     <tr>
       <td style="padding:6px 8px;">${s.date}</td>
-      <td style="padding:6px 8px;">${s.type==='match'?'⚽ Match':'Entraîn.'}</td>
+      <td style="padding:6px 8px;">${s.type==='match'?'Match':'Entraîn.'}</td>
       <td style="padding:6px 8px;text-align:right;">${s.duree??'—'}</td>
       <td style="padding:6px 8px;text-align:right;">${s.rpe??'—'}</td>
       <td style="padding:6px 8px;text-align:right;">${s.charge??'—'}</td>
       <td style="padding:6px 8px;text-align:right;">${s.distance_hi??'—'}</td>
-    </tr>`).join('');
+    </tr>`;
+  const rows = seances.map(ligneSeance).join('');
+  const matchs = seances.filter(s=>s.type==='match');
+  const matchRows = matchs.map(ligneSeance).join('');
 
-  body.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <div>
-        <div style="font-size:18px;font-weight:800;">${escapeHtml(d.nom||'Joueur')}</div>
-        ${d.poste ? `<div style="font-size:12px;color:var(--accent);font-weight:700;">${escapeHtml(d.poste)}</div>` : ''}
-      </div>
-      <button onclick="fermerDetailJoueurFoot()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;">✕</button>
-    </div>
-    <div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:flex;gap:8px;">
-      ${kpi(acwr!=null?acwr.toFixed(2):'—','ACWR',acwrCol)}
-      ${kpi((d.charge_7j||0).toLocaleString('fr-FR'),'Charge 7j')}
-      ${kpi(wLast.fatigue??'—','Fatigue')}
-      ${kpi(wLast.douleur??'—','Douleur')}
-    </div></div>
-    <div class="v2-sec"><div class="st">Charge hebdomadaire (UA)</div></div>
-    <div class="dash-card" style="padding:14px 12px 10px;margin-bottom:12px;"><canvas id="canvas-charge-joueur" width="420" height="130" style="width:100%;height:130px;display:block;"></canvas></div>
-    <div class="v2-sec"><div class="st">Dernières séances</div></div>
-    <div class="dash-card" style="padding:6px;overflow-x:auto;">
+  // Disponibilité dérivée (même logique que le suivi équipe — pas de fabrication)
+  const dispo = (acwr!=null && acwr>1.5) ? {t:'À risque',c:COL.rouge}
+              : (acwr!=null && acwr>1.3) ? {t:'Vigilance',c:COL.orange}
+              : {t:'Disponible',c:'#22c55e'};
+
+  const dl = (k,v)=>`<div class="djt-dl"><span>${k}</span><b>${v}</b></div>`;
+  const aVenir = '<span style="color:var(--text-muted);font-weight:600;">à renseigner</span>';
+  const soon = txt=>`<div class="dash-card" style="padding:16px;color:var(--text-muted);font-size:12.5px;line-height:1.55;margin-bottom:12px;">${txt}</div>`;
+  const tblSeances = html=>`
+    <div class="dash-card" style="padding:6px;overflow-x:auto;margin-bottom:12px;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="color:var(--text-muted);text-align:left;">
           <th style="padding:6px 8px;">Date</th><th style="padding:6px 8px;">Type</th>
           <th style="padding:6px 8px;text-align:right;">Durée</th><th style="padding:6px 8px;text-align:right;">RPE</th>
           <th style="padding:6px 8px;text-align:right;">Charge</th><th style="padding:6px 8px;text-align:right;">Dist.HI</th>
-        </tr></thead><tbody>${rows||'<tr><td style="padding:8px;color:var(--text-muted)">Aucune séance</td></tr>'}</tbody>
+        </tr></thead><tbody>${html}</tbody>
       </table>
+    </div>`;
+
+  body.innerHTML = `
+    <!-- En-tête joueur -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.nom||'Joueur')}</div>
+        ${d.poste ? `<div style="font-size:12px;color:var(--accent);font-weight:700;">${escapeHtml(d.poste)}</div>` : ''}
+      </div>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:${dispo.c};background:${dispo.c}1a;border:1px solid ${dispo.c}55;border-radius:20px;padding:5px 11px;white-space:nowrap;"><span style="width:8px;height:8px;border-radius:50%;background:${dispo.c};"></span>${dispo.t}</span>
+      <button onclick="fermerDetailJoueurFoot()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;flex-shrink:0;">✕</button>
     </div>
-    <div class="v2-sec"><div class="st">Tests physiques</div></div>
-    <div id="detail-tests-body"><div class="loader">Chargement…</div></div>`;
+
+    <!-- Onglets page joueur -->
+    <div class="djt-tabs">
+      <button class="djt-btn on" data-i="0" onclick="switchDetailJoueurTab(0)">Profil</button>
+      <button class="djt-btn" data-i="1" onclick="switchDetailJoueurTab(1)">Charge &amp; physique</button>
+      <button class="djt-btn" data-i="2" onclick="switchDetailJoueurTab(2)">Match &amp; technique</button>
+    </div>
+
+    <!-- PANEL 0 : PROFIL -->
+    <div class="djt-panel" data-i="0">
+      <div class="v2-sec"><div class="st">Identité</div></div>
+      <div class="dash-card" style="padding:4px 14px;margin-bottom:12px;">
+        ${dl('Poste', d.poste ? escapeHtml(d.poste) : '—')}
+        ${dl('Jambe dominante', aVenir)}
+        ${dl('Taille · Poids', aVenir)}
+        ${dl('Antécédents', aVenir)}
+      </div>
+      <div class="v2-sec"><div class="st">Objectifs</div></div>
+      ${soon('Objectifs fixés par le coach — à venir. Nécessite l\'entité Objectif côté backend (catalogue §2).')}
+      <div class="v2-sec"><div class="st">Blessures &amp; réathlé</div></div>
+      ${soon('Suivi des blessures et du retour au jeu — à venir. Entité Blessure côté backend (catalogue §9, décision #5).')}
+    </div>
+
+    <!-- PANEL 1 : CHARGE & PHYSIQUE (données réelles) -->
+    <div class="djt-panel" data-i="1" style="display:none;">
+      <div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:flex;gap:8px;">
+        ${kpi(acwr!=null?acwr.toFixed(2):'—','ACWR',acwrCol)}
+        ${kpi((d.charge_7j||0).toLocaleString('fr-FR'),'Charge 7j')}
+        ${kpi(wLast.fatigue??'—','Fatigue')}
+        ${kpi(wLast.douleur??'—','Douleur')}
+      </div></div>
+      <div class="v2-sec"><div class="st">Charge hebdomadaire (UA)</div></div>
+      <div class="dash-card" style="padding:14px 12px 10px;margin-bottom:12px;"><canvas id="canvas-charge-joueur" width="420" height="130" style="width:100%;height:130px;display:block;"></canvas></div>
+      <div class="v2-sec"><div class="st">Dernières séances</div></div>
+      ${tblSeances(rows||'<tr><td style="padding:8px;color:var(--text-muted)">Aucune séance</td></tr>')}
+      <div class="v2-sec"><div class="st">Tests physiques</div></div>
+      <div id="detail-tests-body"><div class="loader">Chargement…</div></div>
+    </div>
+
+    <!-- PANEL 2 : MATCH & TECHNIQUE -->
+    <div class="djt-panel" data-i="2" style="display:none;">
+      <div class="v2-sec"><div class="st">Matchs récents</div></div>
+      ${matchs.length ? tblSeances(matchRows) : soon('Aucun match enregistré. Ajoute une séance de type « match » pour le voir ici.')}
+      <div class="v2-sec"><div class="st">Statistiques de match</div></div>
+      ${soon('Stats de match détaillées (note, buts, passes décisives, xG+xA, heatmap terrain, radar technique) — à venir. Étape suivante : étendre <b>seedDemoFoot()</b> et le backend (catalogue §6).')}
+    </div>`;
 
   dessinerChargeJoueur(d.charge_hebdo||[]);
   renderTestsJoueur(d.athlete_id);
+}
+
+// Onglets de la page joueur (overlay détail)
+function switchDetailJoueurTab(i) {
+  document.querySelectorAll('#detail-joueur-body .djt-btn').forEach(b=>b.classList.toggle('on', +b.dataset.i===i));
+  document.querySelectorAll('#detail-joueur-body .djt-panel').forEach(p=>{ p.style.display = (+p.dataset.i===i) ? 'block' : 'none'; });
 }
 
 // Tests physiques d'un joueur : liste (valeur + évolution) et ajout rapide.
