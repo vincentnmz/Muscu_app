@@ -2735,7 +2735,8 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const matchRows = matchs.map(ligneSeance).join('');
 
   // Disponibilité dérivée (même logique que le suivi équipe — pas de fabrication)
-  const dispo = (acwr!=null && acwr>1.5) ? {t:'À risque',c:COL.rouge}
+  const dispo = (d.moteur && d.moteur.disponibilite) ? {t:d.moteur.disponibilite.niveau, c:d.moteur.disponibilite.couleur}
+              : (acwr!=null && acwr>1.5) ? {t:'À risque',c:COL.rouge}
               : (acwr!=null && acwr>1.3) ? {t:'Vigilance',c:COL.orange}
               : {t:'Disponible',c:'#22c55e'};
   const initiales = ((d.nom||'?').trim().split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2) || '?').toUpperCase();
@@ -2944,6 +2945,21 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       </div>
     </div>` : '';
 
+  // Analyse — sorties du moteur (§12). La reco n'est montrée qu'au coach (l'app constate, le coach prescrit).
+  const mot = d.moteur;
+  const colRisque = v => v==='Élevé'?'#e5484d':v==='Modéré'?'#f5a623':'#22c55e';
+  const colRecup = v => (v==='Excellent'||v==='Bon')?'#22c55e':v==='Moyen'?'#f5a623':v==='Faible'?'#e5484d':'var(--text-muted)';
+  const motCell = (l,v,c)=>`<div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:3px;">${l}</div><div style="font-size:14px;font-weight:800;color:${c||'var(--text)'};">${escapeHtml(v)}</div></div>`;
+  const analyseCard = mot ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        ${motCell('Disponibilité', mot.disponibilite.niveau, mot.disponibilite.couleur)}
+        ${motCell('Risque surcharge', mot.surcharge, colRisque(mot.surcharge))}
+        ${motCell('État récup', mot.recup, colRecup(mot.recup))}
+        ${motCell('Risque blessure', mot.risque_blessure, colRisque(mot.risque_blessure))}
+      </div>
+      ${(cdMode==='coach' && mot.reco) ? `<div style="font-size:12.5px;line-height:1.45;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><b style="color:var(--accent);">Reco</b> · ${escapeHtml(mot.reco)}</div>` : ''}
+    </div>` : '';
+
   body.innerHTML = `
     <!-- En-tête page joueur (barre sticky avec retour) — même structure que le détail coach muscu -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:5;">
@@ -2971,6 +2987,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
     <!-- PANEL 0 : PROFIL -->
     <div class="djt-panel" data-i="0">
+      ${analyseCard ? `<div class="v2-sec"><div class="st">Analyse</div></div>${analyseCard}` : ''}
       <div class="v2-sec"><div class="st">Identité</div></div>
       <div class="dash-card" style="padding:4px 14px;margin-bottom:12px;">
         ${dl('Poste', d.poste ? escapeHtml(d.poste) : '—')}
