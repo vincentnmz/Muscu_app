@@ -2702,12 +2702,13 @@ function majSelectAthletesCoach() {
 }
 
 // Détail d'un joueur (sports co) : ouvre l'overlay et charge getSuiviJoueur.
-async function ouvrirDetailJoueurFoot(athlete_id) {
+async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const ov = document.getElementById('detail-joueur-overlay');
   const body = document.getElementById('detail-joueur-body');
   body.innerHTML = '<div class="loader">Chargement…</div>';
   ov.style.display = 'block';
   cdJoueurCourant = athlete_id;
+  cdMode = mode || 'coach';   // 'coach' (édition) ou 'athlete' (lecture seule, sa propre page)
   let d;
   try {
     const res = await fetch(`${SCRIPT_URL}?action=getSuiviJoueur&athlete_id=${encodeURIComponent(athlete_id)}`);
@@ -2813,7 +2814,7 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
   const tagBg = {accent:'rgba(59,130,246,.14)', warn:'rgba(245,158,11,.15)', violet:'rgba(139,92,246,.16)'};
   const tagFg = {accent:'#bcd3ff', warn:'#ffcf7a', violet:'#d6c8ff'};
   const objCatOptions = ['developpement_physique','prevention','performance','retour_blessure','maintien'].map(k=>`<option value="${k}">${(objTag[k]||{l:k}).l}</option>`).join('');
-  const objForm = `
+  const objForm = cdMode==='coach' ? `
     <button id="cd-obj-add" onclick="document.getElementById('cd-obj-form').style.display='block';this.style.display='none';" class="btn btn-outline" style="margin:2px 0 12px;">+ Ajouter un objectif</button>
     <div id="cd-obj-form" class="dash-card" style="display:none;padding:12px 13px;margin-bottom:12px;">
       <select id="cd-obj-cat" style="width:100%;margin-bottom:8px;">${objCatOptions}</select>
@@ -2823,14 +2824,14 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
         <button onclick="cdAjoutObjectif()" class="btn btn-accent" style="flex:1;margin:0;">Ajouter</button>
         <button onclick="ouvrirDetailJoueurFoot(cdJoueurCourant)" class="btn btn-outline" style="flex:1;margin:0;">Annuler</button>
       </div>
-    </div>`;
+    </div>` : '';
   const objectifsHtml = ((Array.isArray(d.objectifs) && d.objectifs.length) ? d.objectifs.map(o=>{
     const tg = objTag[o.categorie] || {l:o.categorie, c:'accent'};
     const st = objStatut[o.statut] || {l:o.statut||'', c:'var(--text-muted)'};
     return `<div class="dash-card" style="padding:12px 13px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
         <span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:6px;color:${tagFg[tg.c]};background:${tagBg[tg.c]};">${escapeHtml(tg.l)}</span>
-        <span style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:800;color:${st.c};">${escapeHtml(st.l)}</span><button onclick="cdSupprObjectif('${o.id}')" title="Supprimer" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;">×</button></span>
+        <span style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:800;color:${st.c};">${escapeHtml(st.l)}</span>${cdMode==='coach'?`<button onclick="cdSupprObjectif('${o.id}')" title="Supprimer" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;">×</button>`:''}</span>
       </div>
       <div style="font-size:12.5px;line-height:1.35;">${escapeHtml(o.description||'')}</div>
     </div>`;
@@ -2838,7 +2839,7 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
 
   // Blessures / réathlé (Profil) — catalogue §9
   const injStatut = {retour_progressif:{l:'Retour progressif',c:'#f5a623'}, retabli:{l:'Rétabli',c:'#22c55e'}, indispo:{l:'Indisponible',c:'#e5484d'}};
-  const blesForm = `
+  const blesForm = cdMode==='coach' ? `
     <button id="cd-bles-add" onclick="document.getElementById('cd-bles-form').style.display='block';this.style.display='none';" class="btn btn-outline" style="margin:2px 0 12px;">+ Ajouter une blessure</button>
     <div id="cd-bles-form" class="dash-card" style="display:none;padding:12px 13px;margin-bottom:12px;">
       <input id="cd-bles-type" placeholder="Type (Élongation, Entorse…)" style="width:100%;margin-bottom:8px;">
@@ -2852,7 +2853,7 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
         <button onclick="cdAjoutBlessure()" class="btn btn-accent" style="flex:1;margin:0;">Ajouter</button>
         <button onclick="ouvrirDetailJoueurFoot(cdJoueurCourant)" class="btn btn-outline" style="flex:1;margin:0;">Annuler</button>
       </div>
-    </div>`;
+    </div>` : '';
   const blessuresHtml = ((Array.isArray(d.blessures) && d.blessures.length) ? `<div class="dash-card" style="padding:4px 14px;margin-bottom:12px;">` + d.blessures.map(b=>{
     const st = injStatut[b.statut] || {l:b.statut||'', c:'var(--text-muted)'};
     const det = [b.gravite, (b.duree?('indispo '+b.duree+' j'):''), (b.retour_terrain?('retour terrain '+b.retour_terrain):''), (b.retour_competition?('retour compét. '+b.retour_competition):'')].filter(Boolean).join(' · ');
@@ -2862,7 +2863,7 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
         <b style="font-size:13px;">${escapeHtml((b.type||'') + (b.localisation ? (' — '+b.localisation) : ''))}</b>
         <div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.45;">${escapeHtml(det)}</div>
       </div>
-      <button onclick="cdSupprBlessure('${b.id}')" title="Supprimer" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;">×</button>
+      ${cdMode==='coach'?`<button onclick="cdSupprBlessure('${b.id}')" title="Supprimer" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;">×</button>`:''}
     </div>`;
   }).join('') + `</div>` : soon('Aucune blessure enregistrée.')) + blesForm;
 
@@ -2902,7 +2903,9 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
   body.innerHTML = `
     <!-- En-tête page joueur (barre sticky avec retour) — même structure que le détail coach muscu -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:5;">
-      <button onclick="fermerDetailJoueurFoot()" title="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:6px 11px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;">‹</button>
+      ${cdMode==='athlete'
+        ? `<button onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 9px;cursor:pointer;line-height:1;flex-shrink:0;"><svg class="ico ico-btn"><use href="#i-logout"/></svg></button>`
+        : `<button onclick="fermerDetailJoueurFoot()" title="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:6px 11px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;">‹</button>`}
       <div class="fjd-ava">${escapeHtml(initiales)}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.nom||'Joueur')}</div>
@@ -2991,6 +2994,7 @@ async function ouvrirDetailJoueurFoot(athlete_id) {
 
 // Édition objectifs / blessures (côté coach) — joueur actuellement ouvert
 let cdJoueurCourant = null;
+let cdMode = 'coach';   // 'coach' = édition ; 'athlete' = lecture seule (le joueur voit sa propre page)
 function _cdVal(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 function _cdPost(obj){ return fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(obj) }).then(r=>r.json()).catch(()=>({})); }
 async function cdAjoutObjectif(){
@@ -5433,6 +5437,15 @@ function afficherOngletConseils() {
 // ==================== APP (athlète) ==================== [MIXTE]
 async function ouvrirApp() {
   document.getElementById('view-login').classList.remove('active');
+  // Phase 3 : un athlète d'un sport collectif voit SA propre page joueur (3 onglets, lecture seule).
+  if (athlete && athlete.sport && athlete.sport !== 'muscu') {
+    document.getElementById('tabs-bar').style.display = 'none';
+    document.body.classList.remove('has-bottom-nav');
+    const st = localStorage.getItem('muscu_theme');
+    if (st === 'light') document.body.classList.add('light-mode');
+    ouvrirDetailJoueurFoot(athlete.athlete_id, 'athlete');
+    return;
+  }
   document.getElementById('view-app').classList.add('active');
   document.getElementById('tabs-bar').style.display = 'flex';
   document.body.classList.add('has-bottom-nav');
