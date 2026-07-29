@@ -2808,6 +2808,23 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
         ${kpi(msAgg.nb||0,'Matchs')}
       </div></div>` : '';
 
+  // Formulaire de saisie d'un match (coach) — champs adaptés au poste (§6)
+  const matchInputs = cfgPoste ? cfgPoste.stats.map(s=>{
+    const lbl = s.l.replace(/ \/ match| \(saison\)/,'');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;"><label style="font-size:12px;color:var(--text-muted);">${lbl}</label><input id="cd-mstat-${s.cle}" type="number" step="0.01" style="width:110px;"></div>`;
+  }).join('') : '';
+  const matchForm = (cdMode==='coach' && cfgPoste) ? `
+    <button id="cd-match-add" onclick="document.getElementById('cd-match-form').style.display='block';this.style.display='none';" class="btn btn-outline" style="margin:2px 0 12px;">+ Saisir un match</button>
+    <div id="cd-match-form" class="dash-card" style="display:none;padding:12px 13px;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;margin-bottom:8px;"><input id="cd-m-date" type="date" style="flex:1;"><input id="cd-m-note" type="number" step="0.1" placeholder="Note /10" style="width:100px;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;"><input id="cd-m-min" type="number" placeholder="Minutes" style="flex:1;"><input id="cd-m-duree" type="number" placeholder="Durée min" style="flex:1;"><input id="cd-m-rpe" type="number" placeholder="RPE" style="width:80px;"></div>
+      ${matchInputs}
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button onclick="cdSaveMatch()" class="btn btn-accent" style="flex:1;margin:0;">Enregistrer le match</button>
+        <button onclick="ouvrirDetailJoueurFoot(cdJoueurCourant)" class="btn btn-outline" style="flex:1;margin:0;">Annuler</button>
+      </div>
+    </div>` : '';
+
   // Objectifs (Profil) — catalogue §2
   const objTag = {developpement_physique:{l:'Développement physique',c:'accent'}, prevention:{l:'Prévention',c:'warn'}, performance:{l:'Performance',c:'violet'}, retour_blessure:{l:'Retour blessure',c:'warn'}, maintien:{l:'Maintien',c:'accent'}};
   const objStatut = {en_cours:{l:'Sur la voie',c:'#22c55e'}, a_surveiller:{l:'À surveiller',c:'#f5a623'}, atteint:{l:'Atteint',c:'#22c55e'}};
@@ -2962,6 +2979,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     <!-- PANEL 2 : MATCH & TECHNIQUE -->
     <div class="djt-panel" data-i="2" style="display:none;">
       ${matchKpis}
+      ${matchForm}
       ${statsMatchHtml ? `<div class="v2-sec"><div class="st">Statistiques${d.poste?' · '+escapeHtml(d.poste):''}</div></div>${statsMatchHtml}` : ''}
       <div class="v2-sec"><div class="st">Derniers matchs</div></div>
       ${matchsRich.length ? `<div class="dash-card" style="padding:2px 14px 6px;margin-bottom:12px;">${richMatchRows}</div>`
@@ -3021,6 +3039,13 @@ async function cdAjoutBlessure(){
 async function cdSupprBlessure(id){
   if(!confirm('Supprimer cette blessure ?')) return;
   await _cdPost({ action:'deleteBlessure', id:id });
+  ouvrirDetailJoueurFoot(cdJoueurCourant);
+}
+async function cdSaveMatch(){
+  const stats = {};
+  document.querySelectorAll('#cd-match-form [id^="cd-mstat-"]').forEach(el=>{ if(el.value!=='') stats[el.id.replace('cd-mstat-','')] = el.value; });
+  await _cdPost({ action:'saveMatch', athlete_id:cdJoueurCourant, date:_cdVal('cd-m-date'), note:_cdVal('cd-m-note'), minutes_jouees:_cdVal('cd-m-min'), duree:_cdVal('cd-m-duree'), rpe:_cdVal('cd-m-rpe'), stats });
+  if(typeof showToast==='function') showToast('Match enregistré');
   ouvrirDetailJoueurFoot(cdJoueurCourant);
 }
 
