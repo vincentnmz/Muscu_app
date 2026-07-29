@@ -3217,10 +3217,24 @@ async function renderSuiviEquipe() {
         ${kpi(eq.rouge||0, 'À risque', COL.rouge)}
         ${kpi(eq.orange||0, 'À surveiller', COL.orange)}
         ${kpi(eq.vert||0, 'Disponibles', COL.vert)}
-        ${kpi((eq.charge_equipe||0).toLocaleString('fr-FR'), 'Charge équipe (UA)')}
-        ${kpi(eq.fatigue_moyenne!=null ? eq.fatigue_moyenne+'/5' : '—', 'Fatigue moy.')}
+        ${kpi(eq.indispo||0, 'Indispo', 'var(--text-muted)')}
+      </div>
+      <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+      <div style="display:flex;gap:8px;">
+        ${kpi((eq.charge_equipe||0).toLocaleString('fr-FR'), 'Charge équipe')}
+        ${kpi(eq.bienetre_moyen!=null ? eq.bienetre_moyen+'/5' : '—', 'Bien-être moy.')}
+        ${kpi(`<span style="color:#22c55e">${eq.en_progression||0}</span> · <span style="color:#e5484d">${eq.en_regression||0}</span>`, 'Prog. · Régr.')}
       </div>
     </div>`;
+
+  // Blessés & retours (§13)
+  const blesses = data.blesses || [];
+  const injLbl = { indispo:{l:'Indisponible',c:COL.rouge}, retour_progressif:{l:'Retour progressif',c:COL.orange} };
+  const blessesHtml = blesses.length ? `
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-alert"/></svg>Blessés &amp; retours</div></div>
+    <div class="dash-card" style="padding:2px 14px;margin-bottom:12px;">
+      ${blesses.map(b=>{ const st=injLbl[b.statut]||{l:b.statut,c:'var(--text-muted)'}; const retour = b.statut==='indispo' ? (b.retour_terrain?('retour prévu '+b.retour_terrain):'indisponible') : (b.retour_competition?('compét. '+b.retour_competition):'retour terrain fait'); return `<div onclick="ouvrirDetailJoueurFoot('${b.athlete_id}')" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--border);cursor:pointer;"><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap;color:${st.c};background:${st.c}1a;border:1px solid ${st.c}55;">${st.l}</span><div style="flex:1;min-width:0;"><b style="font-size:13px;">${escapeHtml(b.nom)}</b><div style="font-size:11px;color:var(--text-muted);">${escapeHtml((b.type||'')+(b.localisation?(' — '+b.localisation):''))}</div></div><span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${escapeHtml(retour)}</span></div>`; }).join('')}
+    </div>` : '';
 
   // Liste joueurs (triés par risque côté backend)
   const cards = joueurs.map(j => {
@@ -3238,7 +3252,7 @@ async function renderSuiviEquipe() {
           <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0;">
             ${dot(col)}
             <div style="min-width:0;">
-              <div style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(j.nom)}</div>
+              <div style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(j.nom)} ${j.progression==='progression'?'<span style="color:#22c55e;">▲</span>':(j.progression==='regression'?'<span style="color:#e5484d;">▼</span>':'')}</div>
               <div style="font-size:11px;color:var(--text-muted);">${j.poste ? `<span style="color:var(--accent);font-weight:700;">${escapeHtml(j.poste)}</span> · ` : ''}${j.derniere_seance ? 'Dernière séance : '+j.derniere_seance : 'Aucune séance'}</div>
             </div>
           </div>
@@ -3254,7 +3268,9 @@ async function renderSuiviEquipe() {
 
   cont.innerHTML =
     `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Suivi de l'équipe — ${joueurs.length} ${labelJoueurs}</div></div>`
-    + header + cards;
+    + header + blessesHtml
+    + `<div class="v2-sec"><div class="st">Effectif</div></div>`
+    + cards;
 }
 
 function joursDepuis(dateVal) {
