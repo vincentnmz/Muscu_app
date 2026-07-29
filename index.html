@@ -2960,6 +2960,19 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       ${(cdMode==='coach' && mot.reco) ? `<div style="font-size:12.5px;line-height:1.45;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><b style="color:var(--accent);">Reco</b> · ${escapeHtml(mot.reco)}</div>` : ''}
     </div>` : '';
 
+  // Charge externe GPS (§8) — agrégat 7 jours (onglet Charge)
+  const gps = d.gps;
+  const gpsTile = (v,l)=>`<div style="text-align:center;"><div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;">${v}</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;">${l}</div></div>`;
+  const gpsUnit = u=>`<span style="font-size:11px;color:var(--text-muted);"> ${u}</span>`;
+  const gpsCard = (gps && gps.n) ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px;">
+      ${gpsTile((gps.distance/1000).toFixed(1)+gpsUnit('km'),'Distance')}
+      ${gpsTile(Math.round(gps.distance_hi)+gpsUnit('m'),'Dist. HI')}
+      ${gpsTile(gps.sprints,'Sprints')}
+      ${gpsTile(gps.accel+' / '+gps.decel,'Accél/Décél')}
+      ${gpsTile(gps.vmax?gps.vmax.toFixed(1)+gpsUnit('km/h'):'—','Vitesse max')}
+      ${gpsTile(Math.round(gps.charge_gps)+gpsUnit('UA'),'Charge GPS')}
+    </div></div>` : '';
+
   body.innerHTML = `
     <!-- En-tête page joueur (barre sticky avec retour) — même structure que le détail coach muscu -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:5;">
@@ -3012,6 +3025,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       </div></div>
       ${bilanForm}
       ${bienetreCard ? `<div class="v2-sec"><div class="st">Bien-être${cdMode==='athlete'?' · ton point du jour':''}</div></div>${bienetreCard}` : ''}
+      ${gpsCard ? `<div class="v2-sec"><div class="st">Charge externe (GPS) · 7 jours</div></div>${gpsCard}` : ''}
       <div class="v2-sec"><div class="st">Charge hebdomadaire (UA)</div></div>
       <div class="dash-card" style="padding:14px 12px 10px;margin-bottom:12px;"><canvas id="canvas-charge-joueur" width="420" height="130" style="width:100%;height:130px;display:block;"></canvas></div>
       <div class="v2-sec"><div class="st">Dernières séances</div></div>
