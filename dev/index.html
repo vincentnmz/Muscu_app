@@ -2817,11 +2817,12 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const matchForm = (cdMode==='coach' && cfgPoste) ? `
     <button id="cd-match-add" onclick="document.getElementById('cd-match-form').style.display='block';this.style.display='none';" class="btn btn-outline" style="margin:2px 0 12px;">+ Saisir un match</button>
     <div id="cd-match-form" class="dash-card" style="display:none;padding:12px 13px;margin-bottom:12px;">
-      <div style="display:flex;gap:8px;margin-bottom:8px;"><input id="cd-m-date" type="date" style="flex:1;"><input id="cd-m-note" type="number" step="0.1" placeholder="Note /10" style="width:100px;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;"><input id="cd-m-date" type="date" style="flex:1;"><input id="cd-m-heure" type="time" style="width:105px;"><input id="cd-m-note" type="number" step="0.1" placeholder="Note" style="width:75px;"></div>
       <div style="display:flex;gap:8px;margin-bottom:10px;"><input id="cd-m-min" type="number" placeholder="Minutes" style="flex:1;"><input id="cd-m-duree" type="number" placeholder="Durée min" style="flex:1;"><input id="cd-m-rpe" type="number" placeholder="RPE" style="width:80px;"></div>
       <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
-        <select id="cd-m-intensite" style="flex:1;"><option value="">Intensité réalisée</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);white-space:nowrap;padding:0 4px;"><input id="cd-m-titulaire" type="checkbox" checked> Titulaire</label>
+        <select id="cd-m-intensite-prevue" style="flex:1;"><option value="">Int. prévue</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+        <select id="cd-m-intensite" style="flex:1;"><option value="">Int. réalisée</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);white-space:nowrap;padding:0 2px;"><input id="cd-m-titulaire" type="checkbox" checked> Titul.</label>
       </div>
       ${matchInputs}
       <div style="display:flex;gap:8px;margin-top:4px;">
@@ -2971,10 +2972,20 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const gpsCard = (gps && gps.n) ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px;">
       ${gpsTile((gps.distance/1000).toFixed(1)+gpsUnit('km'),'Distance')}
       ${gpsTile(Math.round(gps.distance_hi)+gpsUnit('m'),'Dist. HI')}
+      ${gpsTile(Math.round(gps.sprint_distance||0)+gpsUnit('m'),'Sprint dist.')}
       ${gpsTile(gps.sprints,'Sprints')}
       ${gpsTile(gps.accel+' / '+gps.decel,'Accél/Décél')}
       ${gpsTile(gps.vmax?gps.vmax.toFixed(1)+gpsUnit('km/h'):'—','Vitesse max')}
       ${gpsTile(Math.round(gps.charge_gps)+gpsUnit('UA'),'Charge GPS')}
+    </div></div>` : '';
+
+  // KPI de charge (§11) — charge mensuelle, monotonie, strain, temps de jeu (onglet Charge)
+  const kf = d.kpi_foot;
+  const kpiFootCard = kf ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px 8px;">
+      ${gpsTile((kf.charge_mensuelle||0).toLocaleString('fr-FR')+gpsUnit('UA'),'Charge · 28 j')}
+      ${gpsTile(kf.monotonie!=null?kf.monotonie:'—','Monotonie')}
+      ${gpsTile(kf.strain!=null?kf.strain.toLocaleString('fr-FR'):'—','Strain')}
+      ${gpsTile((kf.temps_jeu||0)+gpsUnit('min'),'Temps de jeu')}
     </div></div>` : '';
 
   body.innerHTML = `
@@ -3013,6 +3024,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
         ${dl('Né le', d.ddn ? escapeHtml(d.ddn) + (d.age!=null ? ` <span style="color:var(--text-muted);font-weight:600;">(${d.age} ans)</span>` : '') : '—')}
         ${dl('Sexe', d.sexe ? escapeHtml(d.sexe==='H'?'Homme':(d.sexe==='F'?'Femme':d.sexe)) : '—')}
         ${dl('Club · Catégorie', (d.club?escapeHtml(d.club):'—')+(d.categorie?' · '+escapeHtml(d.categorie):''))}
+        ${d.discipline ? dl('Discipline', escapeHtml(d.discipline)) : ''}
         ${dl('Au club depuis', d.date_entree ? escapeHtml(d.date_entree) : '—')}
         ${dl('Antécédents', d.antecedents ? escapeHtml(d.antecedents) : '<span style="color:var(--text-muted);font-weight:600;">aucun</span>')}
       </div>
@@ -3035,6 +3047,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       ${gpsCard ? `<div class="v2-sec"><div class="st">Charge externe (GPS) · 7 jours</div></div>${gpsCard}` : ''}
       <div class="v2-sec"><div class="st">Charge hebdomadaire (UA)</div></div>
       <div class="dash-card" style="padding:14px 12px 10px;margin-bottom:12px;"><canvas id="canvas-charge-joueur" width="420" height="130" style="width:100%;height:130px;display:block;"></canvas></div>
+      ${kpiFootCard ? `<div class="v2-sec"><div class="st">Charge · monotonie / strain</div></div>${kpiFootCard}` : ''}
       <div class="v2-sec"><div class="st">Dernières séances</div></div>
       ${tblSeances(rows||'<tr><td style="padding:8px;color:var(--text-muted)">Aucune séance</td></tr>')}
       <div class="v2-sec"><div class="st">Tests physiques</div></div>
@@ -3110,7 +3123,7 @@ async function cdSaveMatch(){
   const stats = {};
   document.querySelectorAll('#cd-match-form [id^="cd-mstat-"]').forEach(el=>{ if(el.value!=='') stats[el.id.replace('cd-mstat-','')] = el.value; });
   const tit = document.getElementById('cd-m-titulaire');
-  await _cdPost({ action:'saveMatch', athlete_id:cdJoueurCourant, date:_cdVal('cd-m-date'), note:_cdVal('cd-m-note'), minutes_jouees:_cdVal('cd-m-min'), duree:_cdVal('cd-m-duree'), rpe:_cdVal('cd-m-rpe'), intensite_realisee:_cdVal('cd-m-intensite'), titulaire:(tit && tit.checked)?1:0, stats });
+  await _cdPost({ action:'saveMatch', athlete_id:cdJoueurCourant, date:_cdVal('cd-m-date'), heure:_cdVal('cd-m-heure'), note:_cdVal('cd-m-note'), minutes_jouees:_cdVal('cd-m-min'), duree:_cdVal('cd-m-duree'), rpe:_cdVal('cd-m-rpe'), intensite_prevue:_cdVal('cd-m-intensite-prevue'), intensite_realisee:_cdVal('cd-m-intensite'), titulaire:(tit && tit.checked)?1:0, stats });
   if(typeof showToast==='function') showToast('Match enregistré');
   ouvrirDetailJoueurFoot(cdJoueurCourant);
 }
