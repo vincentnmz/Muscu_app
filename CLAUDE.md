@@ -11,11 +11,15 @@ Contexte perso du porteur : reconversion en analyse vidéo / cellule de performa
 
 ## Stack & déploiement (IMPORTANT)
 
-- **Front** : un seul fichier `index.html` (PWA, vanilla JS).
+- **Front** : PWA vanilla JS, **architecture multi-fichiers** (depuis la refonte P0) :
+  - `index.html` = structure seule (aucun `<style>`/`<script>` inline)
+  - `css/novalyz.css` = tous les styles (→ sera découpé en `tokens/base/components/layout` en P1)
+  - `js/app.js` = toute la logique (métier inchangé)
+  - Objectif : charte pilotée par des **tokens CSS**, structure en **templates de page**, zéro style dans l'HTML.
 - **Backend** : `Code.gs` (Google Apps Script) — **versionné dans ce repo** (`./Code.gs`). Collé à la main dans l'éditeur Apps Script + déployer une nouvelle version.
 - **Données** : Google Sheets. **Un seul backend Apps Script partagé** par toutes les URLs front (même `SCRIPT_URL`).
 - **Déploiement front = GitHub Pages auto** (`.github/workflows/deploy.yml`) :
-  - push sur **`main`** → déploie `index.html` sur l'**URL de production**
+  - push sur **`main`** → déploie la coquille front (`index.html` + `css/` + `js/`) sur l'**URL de production**
   - push sur **`dev`** → déploie sur l'**URL de préprod** (`/dev/`)
   - la branche de travail `claude/ai-saas-mvp-strategy-egvo9i` **n'est pas déployée**
   - Flux cible : bricoler → `dev` (tester) → PR `dev`→`main` (publier)
