@@ -18,6 +18,26 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* ===== Titres ===== */
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--text);
+}
+h4, h5, h6 {
+  font-family: var(--font);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+}
+h1 { font-size: var(--text-h1); }
+h2 { font-size: var(--text-h2); }
+h3 { font-size: var(--text-h3); }
+h4 { font-size: var(--text-h4); }
+h5 { font-size: var(--text-h5); }
+h6 { font-size: var(--text-h6); }
+
 /* ===== Icônes SVG (sprite Lucide) ===== */
 .ico     { width:15px; height:15px; display:inline-block; vertical-align:-2px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
 .ico-btn { width:16px; height:16px; vertical-align:-3px; margin-right:4px; }
