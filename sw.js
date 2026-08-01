@@ -1,13 +1,15 @@
 /* Novalyz · Service Worker — mode hors-ligne
- * Met en cache la « coquille » de l'app (index.html, manifest, logo) pour
+ * Met en cache la « coquille » de l'app (index.html, CSS, JS, manifest, logo) pour
  * qu'elle s'ouvre sans connexion. Les appels de données (Apps Script) ne sont
  * jamais mis en cache : ils passent au réseau, et l'app gère le hors-ligne
  * (file d'attente des séances) de son côté.
  */
-const CACHE = 'novalyz-shell-v1';
+const CACHE = 'novalyz-shell-v2';
 const ASSETS = [
   './',
   './index.html',
+  './css/novalyz.css',
+  './js/app.js',
   './manifest.json',
   './logo novalyz.png'
 ];
