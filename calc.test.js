@@ -2,7 +2,8 @@
  * Novalyz · Suite de tests des calculs
  * -----------------------------------------------------------------------------
  * Objectif : vérifier que les formules de l'app disent LA VÉRITÉ, en testant
- *   LE VRAI CODE (extrait de index.html), pas une réécriture.
+ *   LE VRAI CODE (extrait de js/app.js, ou de index.html avant la refonte P0),
+ *   pas une réécriture.
  *
  * Ce fichier NE MODIFIE RIEN dans l'app. Il extrait les fonctions pures
  * (moteur Novalyz, computeACWR, score du Bilan) et les confronte à des valeurs
@@ -15,18 +16,23 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-// index.html peut être au même niveau (racine) ou un cran au-dessus (dossier tests/)
-function trouverIndexHtml() {
+// Depuis la refonte P0, la logique vit dans js/app.js. Avant P0, elle était
+// inline dans index.html. On lit js/app.js en priorité, puis on retombe sur
+// index.html : le test reste vert des deux côtés de la migration.
+// Chaque source peut être au même niveau (racine) ou un cran au-dessus (tests/).
+function trouverSource() {
   const candidats = [
-    path.join(__dirname, 'index.html'),        // calc.test.js à la racine
-    path.join(__dirname, '..', 'index.html'),  // calc.test.js dans tests/
+    path.join(__dirname, 'js', 'app.js'),            // calc.test.js à la racine (post-P0)
+    path.join(__dirname, '..', 'js', 'app.js'),      // calc.test.js dans tests/  (post-P0)
+    path.join(__dirname, 'index.html'),              // calc.test.js à la racine (pré-P0)
+    path.join(__dirname, '..', 'index.html'),        // calc.test.js dans tests/  (pré-P0)
   ];
   for (const p of candidats) { if (fs.existsSync(p)) return p; }
-  throw new Error('index.html introuvable (cherché à côté et un niveau au-dessus)');
+  throw new Error('Source introuvable (js/app.js ou index.html, à côté ou un niveau au-dessus)');
 }
-const HTML = fs.readFileSync(trouverIndexHtml(), 'utf8');
+const HTML = fs.readFileSync(trouverSource(), 'utf8');
 
-// ---- Extraction du VRAI code depuis index.html --------------------------------
+// ---- Extraction du VRAI code depuis la source (js/app.js ou index.html) --------
 function extractBetween(startMarker, endMarker, label) {
   const s = HTML.indexOf(startMarker);
   if (s === -1) throw new Error('Introuvable: ' + label + ' (début)');
