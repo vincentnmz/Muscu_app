@@ -311,37 +311,37 @@
       </div>
 
       <!-- Bilan de la dernière séance (questionnaire bien-être de l'athlète) -->
-      <div class="v2-sec" id="cd-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</div></div>
+      <div class="v2-sec" id="cd-etat-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</h2></div>
       <div class="dash-card" id="cd-etat-card" style="padding:16px;display:none;">
         <div id="cd-etat-content"></div>
       </div>
 
       <!-- Analyse (moteur Novalyz — interprétation, lecture seule) -->
-      <div class="v2-sec" id="cd-analyse-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-lightbulb"/></svg>Analyse</div></div>
+      <div class="v2-sec" id="cd-analyse-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-lightbulb"/></svg>Analyse</h2></div>
       <div class="dash-card" id="cd-analyse-card" style="padding:16px;display:none;">
         <div id="cd-analyse-content"></div>
       </div>
 
       <!-- Tableau de bord (indicateurs de la semaine) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Cette semaine</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-gauge"/></svg>Cette semaine</h2></div>
       <div class="dash-card" style="padding:16px;">
         <div id="cd-indicateurs"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- État de forme -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</h2></div>
       <div class="dash-card" id="cd-recup-card" style="padding:16px">
         <div id="cd-recup"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- ACWR — masqué (peu lisible en muscu ; à réactiver pour un module Hyrox) -->
-      <div class="v2-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</div></div>
+      <div class="v2-sec" style="display:none"><h2 class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</h2></div>
       <div class="dash-card" id="cd-acwr-card" style="padding:16px;display:none">
         <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Progression 7 jours (cliquable → détail) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</div><div class="more" onclick="switchCoachDetailTab('prog')" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</h2><div class="more" onclick="switchCoachDetailTab('prog')" style="cursor:pointer;">Voir tout →</div></div>
       <div class="dash-card" id="cd-prog-card" style="padding:16px" onclick="switchCoachDetailTab('prog')" title="Voir la progression détaillée">
         <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
       </div>
@@ -356,11 +356,11 @@
 
     <!-- ONGLET SÉANCES -->
     <div id="cdtab-seances" style="display:none">
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Historique des séances</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Historique des séances</h2></div>
       <div class="card">
         <div id="cd-seances-detail-content"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="v2-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Volume relatif hebdo · 8 sem.</div></div>
+      <div class="v2-sec" style="display:none"><h2 class="st"><svg class="ico"><use href="#i-zap"/></svg>Volume relatif hebdo · 8 sem.</h2></div>
       <div class="card" id="cd-acwr-history-card" style="display:none">
         <div id="cd-acwr-chart-content"></div>
       </div>
@@ -370,10 +370,10 @@
     <div id="cdtab-conseils" style="display:none">
 
       <!-- Alertes de la semaine (traitées / à traiter) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-bell"/></svg>Alertes de la semaine</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-bell"/></svg>Alertes de la semaine</h2></div>
       <div class="dash-card" id="cd-conv-alertes" style="padding:14px;"><div class="loader">Chargement...</div></div>
 
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation</h2></div>
       <div class="card" id="cd-commentaires-card" style="padding:0;overflow:hidden;">
         <div id="cd-commentaires-liste" style="max-height:55vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
         <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
@@ -390,7 +390,7 @@
 
       <!-- Header Progression : titre + bouton export -->
       <div class="v2-sec">
-        <div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression</div>
+        <h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression</h2>
         <button onclick="ouvrirModalBilanPDF()" style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:20px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;">
           <svg class="ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export PDF
@@ -424,19 +424,19 @@
       </div>
 
       <!-- Volume par muscle -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</h2></div>
       <div class="card">
         <div id="cd-volume-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Balance musculaire -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</h2></div>
       <div class="card">
         <div id="cd-balance-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Progression par exercice -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</h2></div>
       <div class="card">
         <select id="cd-sel-exercice" onchange="afficherCoachProgressionExo()" style="margin-bottom:10px">
           <option value="">— Choisir un exercice —</option>
@@ -446,7 +446,7 @@
 
       <!-- Tendances -->
       <div class="v2-sec">
-        <div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</div>
+        <h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</h2>
         <div style="display:flex;gap:6px">
           <button onclick="afficherCoachTendances(4)" id="cd-btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer">4 sem.</button>
           <button onclick="afficherCoachTendances(8)" id="cd-btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer">8 sem.</button>
@@ -457,13 +457,13 @@
       </div>
 
       <!-- Records (déplacé depuis Aperçu) -->
-      <div class="v2-sec" id="cd-records-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records de l'athlète</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
+      <div class="v2-sec" id="cd-records-sec" style="display:none"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records de l'athlète</h2><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
       <div class="dash-card" id="cd-records-card" style="padding:16px;display:none">
         <div id="cd-records"></div>
       </div>
 
       <!-- Tendance mensuelle (déplacé depuis Aperçu) -->
-      <div class="v2-sec" id="cd-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">28j vs mois préc.</div></div>
+      <div class="v2-sec" id="cd-cmp28-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">28j vs mois préc.</div></div>
       <div class="dash-card" id="cd-cmp28-card" style="padding:16px;display:none;">
         <div id="cd-cmp28-content"></div>
       </div>
@@ -474,7 +474,7 @@
 
     <!-- ONGLET AGENDA -->
     <div id="cdtab-cal" style="display:none">
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</h2></div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <span style="font-size:14px;font-weight:800;color:var(--text)" id="cd-cal-titre">Mois</span>
@@ -494,7 +494,7 @@
         </div>
         <div id="cd-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
       </div>
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Séances récentes</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Séances récentes</h2></div>
       <div class="card">
         <div id="cd-seances-content"></div>
       </div>
@@ -502,7 +502,7 @@
 
     <!-- ONGLET PROGRAMME -->
     <div id="cdtab-programme" style="display:none">
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Programme</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Programme</h2></div>
       <div class="card">
         <div id="cd-programme-content"><div class="loader">Chargement...</div></div>
         <button class="btn btn-outline" style="margin-top:10px" onclick="cdAjouterSeance()">+ Nouvelle séance</button>
@@ -591,19 +591,19 @@
       </div>
 
       <!-- État du jour (synthèse questionnaire bien-être) -->
-      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</div></div>
+      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</h2></div>
       <div class="dash-card" id="dash-etat-card" style="padding:16px;display:none;">
         <div id="dash-etat-content"></div>
       </div>
 
       <!-- Analyse Novalyz (moteur d'interprétation) — visible seulement s'il y a une analyse -->
-      <div class="v2-sec" id="dash-analyse-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Analyse Novalyz</div></div>
+      <div class="v2-sec" id="dash-analyse-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Analyse Novalyz</h2></div>
       <div class="dash-card" id="dash-analyse-card" style="padding:12px;display:none;">
         <div id="dash-analyse-content"></div>
       </div>
 
       <!-- État de forme (récupération) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</h2></div>
       <div class="dash-card" id="dash-recup-card" style="padding:16px;">
         <div id="dash-recup-content"><div class="loader">Chargement...</div></div>
       </div>
@@ -612,13 +612,13 @@
       <div class="v2-kpis" id="dash-kpis" style="display:none;"></div>
 
       <!-- Dernière séance -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-dumbbell"/></svg>Dernière séance</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-dumbbell"/></svg>Dernière séance</h2></div>
       <div class="dash-card" style="padding:16px;">
         <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Progression (7j glissants → détail) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</div><div class="more" onclick="switchTab('historique')" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</h2><div class="more" onclick="switchTab('historique')" style="cursor:pointer;">Voir tout →</div></div>
       <div class="dash-card" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
       </div>
@@ -630,7 +630,7 @@
       </div>
 
       <!-- Régularité — heatmap + streak (cliquable → agenda de l'onglet Séance) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité</div><div class="more" onclick="allerVersAgendaSeance()" style="cursor:pointer;">Agenda →</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité</h2><div class="more" onclick="allerVersAgendaSeance()" style="cursor:pointer;">Agenda →</div></div>
       <div class="dash-card" onclick="allerVersAgendaSeance()" style="padding:16px;margin-bottom:0;cursor:pointer;" title="Voir l'agenda">
         <div id="dash-heatmap-content"></div>
       </div>
@@ -641,7 +641,7 @@
     <div id="tab-seance" class="tab-content">
 
       <!-- AGENDA (calendrier) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</h2></div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <span style="font-size:14px;font-weight:800;color:var(--text);" id="cal-titre">Juin 2026</span>
@@ -832,7 +832,7 @@
     <div id="tab-objectif" class="tab-content">
 
       <!-- Objectif -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-target"/></svg>Mon objectif</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-target"/></svg>Mon objectif</h2></div>
       <div class="card">
         <!-- Vue : carte objectif actuel -->
         <div id="obj-card-view" style="display:flex;align-items:center;gap:12px;">
@@ -862,7 +862,7 @@
       </div>
 
       <!-- Graphique poids -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Évolution du poids</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Évolution du poids</h2></div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
           <div style="display:flex;align-items:baseline;gap:6px;">
@@ -884,7 +884,7 @@
       </div>
 
       <!-- Saisie poids -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-plus"/></svg>Enregistrer mon poids</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-plus"/></svg>Enregistrer mon poids</h2></div>
       <div class="card">
         <div class="row2">
           <div>
@@ -900,13 +900,13 @@
       </div>
 
       <!-- Régularité -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité cette semaine</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité cette semaine</h2></div>
       <div class="card">
         <div id="regularite-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Récompenses / budget (à définir) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Récompenses</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Récompenses</h2></div>
       <div class="card" id="recompense-card">
         <div id="recompense-content" style="text-align:center;padding:8px 4px;">
           <div style="font-size:28px;margin-bottom:6px;">🎁</div>
@@ -921,7 +921,7 @@
     <div id="tab-reglages" class="tab-content">
 
       <!-- Apparence -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Apparence</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Apparence</h2></div>
       <div class="card">
         <button onclick="toggleTheme()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;">
           <span style="display:flex;align-items:center;gap:10px;"><span id="reglages-theme-ico" style="display:inline-flex;"><svg class="ico"><use href="#i-moon"/></svg></span>Thème</span>
@@ -930,7 +930,7 @@
       </div>
 
       <!-- Mode vacances / pause -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Mode vacances</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Mode vacances</h2></div>
       <div class="card">
         <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Pendant tes vacances, on n'envoie plus d'alerte d'absence à ton coach. Tu peux quand même enregistrer des séances normalement.</div>
         <div id="pause-statut" style="display:none;font-size:13px;font-weight:700;color:var(--good);margin-bottom:12px;"></div>
@@ -945,7 +945,7 @@
       </div>
 
       <!-- Mon compte -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-user"/></svg>Mon compte</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Mon compte</h2></div>
       <div class="card">
         <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:14px;">Politique de confidentialité &amp; mes droits</a>
         <button onclick="supprimerMonCompte()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte et mes données</button>
@@ -953,7 +953,7 @@
       </div>
 
       <!-- Debug -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Diagnostic</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-gauge"/></svg>Diagnostic</h2></div>
       <div class="card" style="padding:14px;">
         <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Affiche les données brutes calculées par le serveur. Utile pour vérifier un marqueur (streak, tonnage, records…) qui semble incorrect.</div>
         <button class="btn btn-outline" onclick="debugChargerDonnees()" style="margin-bottom:10px;">🔄 Charger les données serveur</button>
@@ -971,28 +971,28 @@
     <div id="tab-historique" class="tab-content">
 
       <!-- CARRIÈRE (déplacé de l'Accueil) -->
-      <div class="v2-sec" id="dash-global-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
+      <div class="v2-sec" id="dash-global-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
       <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
         <div id="dash-global-content"></div>
       </div>
 
       <!-- SECTION PERFORMANCE -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Performance</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Performance</h2></div>
 
       <!-- VOLUME PAR MUSCLE -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</h2></div>
       <div class="card">
         <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- BALANCE MUSCULAIRE AGONISTE/ANTAGONISTE -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</h2></div>
       <div class="card">
         <div id="hist-balance-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- PROGRESSION PAR EXERCICE -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</h2></div>
       <div class="card">
         <select id="sel-hist-exercice" onchange="afficherProgressionExo()" style="margin-bottom:10px;">
           <option value="">— Choisir un exercice —</option>
@@ -1001,14 +1001,14 @@
       </div>
 
       <!-- RECORDS PERSONNELS -->
-      <div class="v2-sec" id="dash-records-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
+      <div class="v2-sec" id="dash-records-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</h2><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
       <div class="card" id="dash-records-card" style="display:none;">
         <div id="dash-records"></div>
       </div>
 
       <!-- TENDANCES 4-8 SEMAINES -->
       <div class="v2-sec">
-        <div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</div>
+        <h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</h2>
         <div style="display:flex;gap:6px;">
           <button onclick="afficherTendances(4)" id="btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">4 sem.</button>
           <button onclick="afficherTendances(8)" id="btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer;">8 sem.</button>
@@ -1019,13 +1019,13 @@
       </div>
 
       <!-- CORRÉLATION BIEN-ÊTRE × PERFORMANCE -->
-      <div class="v2-sec" id="hist-corr-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-heart"/></svg>Bien-être &amp; performance</div></div>
+      <div class="v2-sec" id="hist-corr-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-heart"/></svg>Bien-être &amp; performance</h2></div>
       <div class="card" id="hist-corr-card" style="display:none;">
         <div id="hist-corr-content"></div>
       </div>
 
       <!-- TENDANCE MENSUELLE (déplacé de l'Accueil) -->
-      <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
+      <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
       <div class="dash-card" id="dash-cmp28-card" style="padding:16px;display:none;">
         <div id="dash-cmp28-content"></div>
       </div>
@@ -1034,7 +1034,7 @@
 
     <!-- ONGLET CONSEILS -->
     <div id="tab-conseils" class="tab-content">
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation avec ton coach</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation avec ton coach</h2></div>
       <div class="card" style="padding:0;overflow:hidden;">
         <div id="conseils-content" style="max-height:60vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
         <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
