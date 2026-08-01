@@ -103,7 +103,7 @@
 }
 
 /* ===== Mode clair — surcharge des tokens primitifs ===== */
-body.light-mode {
+/* body.light-mode {
   --nv-bg:            #f4f6fa;
   --nv-surface:       #ffffff;
   --nv-surface2:      #eef1f6;
@@ -132,7 +132,7 @@ body.light-mode {
   --nv-good-a: rgba(0,168,84,.12);
   --nv-warn-a: rgba(217,130,0,.12);
   --nv-bad-a:  rgba(229,72,77,.10);
-}
+}*/
 
 /* ===== Animations ===== */
 @keyframes pop-in  { from { opacity:0; transform:translateY(8px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
