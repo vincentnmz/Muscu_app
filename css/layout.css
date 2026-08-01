@@ -1,0 +1,62 @@
+/* =============================================================================
+ * Novalyz · layout.css — Couche 4 : templates de pages et media queries
+ * Conteneurs, vues, structures responsive. Pas de couleurs hardcodées.
+ * =========================================================================== */
+
+/* ===== Conteneur principal ===== */
+.container      { padding:16px 20px; max-width:480px; margin:0 auto; }
+.container.no-pad { padding:0; }
+
+/* ===== Système de vues (SPA) ===== */
+.view        { display:none; }
+.view.active { display:block; }
+.tab-content        { display:none; }
+.tab-content.active { display:block; }
+
+/* ===== Template : authentification ===== */
+#view-login { max-width:420px; margin:0 auto; }
+
+/* ===== Template : coach-detail — en-tête masqué ===== */
+body.coach-active > header { display:none; }
+
+/* ===== Template : page joueur foot ===== */
+#detail-joueur-body .sub-tabs { margin-bottom:14px; }
+.fjd-rail { display:none; }
+
+/* ===== Tablette (>= 768px) ===== */
+@media (min-width:768px) {
+  .container   { max-width:720px; }
+  .tabs-bar    { max-width:720px; }
+  #view-coach-detail .sub-tabs { max-width:720px; }
+  #coach-athletes-grid { grid-template-columns:1fr 1fr 1fr !important; }
+}
+
+/* ===== Bureau coach (>= 1024px) ===== */
+@media (min-width:1024px) {
+  body.coach-active #main-container { max-width:1500px; padding:24px 32px; }
+
+  /* Accueil coach (aucun athlète sélectionné) */
+  body.coach-active:not(.athlete-selected) #view-coach-detail.view { display:none !important; }
+
+  /* Détail athlète : centre 2/3 + rail droit 1/3 */
+  body.coach-active.athlete-selected #view-coach.view { display:none !important; }
+  body.coach-active #cd-body  { display:flex; align-items:flex-start; gap:24px; }
+  body.coach-active #cd-main  { flex:2 1 0; min-width:0; }
+  body.coach-active #cd-rail  { flex:1 1 0; min-width:0; position:sticky; top:78px; display:block !important; }
+
+  /* Sous-onglets coach : barre horizontale (plus de barre fixe bas) */
+  body.coach-active #view-coach-detail .sub-tabs {
+    position:static; max-width:none; margin:0 0 18px; border-top:none;
+    background:none; border:none; border-bottom:1px solid var(--border);
+    border-radius:0; padding:0; z-index:auto;
+  }
+  body.coach-active #view-coach-detail .sub-tab { font-size:10.5px; padding:9px 4px; }
+  body.coach-active.cd-nav { padding-bottom:0; }
+  body.coach-active #cd-indicateurs > div { gap:10px; }
+
+  /* Page joueur foot en bureau : main + rail */
+  #detail-joueur-overlay > div { max-width:900px !important; }
+  .fjd-body { display:flex; align-items:flex-start; gap:22px; }
+  .fjd-main { flex:2 1 0; min-width:0; }
+  .fjd-rail { display:block; flex:1 1 0; min-width:0; position:sticky; top:64px; }
+}
