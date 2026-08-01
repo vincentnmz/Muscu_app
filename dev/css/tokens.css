@@ -69,8 +69,17 @@
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px;
   --sp-5:20px; --sp-6:24px; --sp-8:32px;
 
-  /* Typographie */
-  --font: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  /* Typographie — familles */
+  --font:         'Quicksand', 'Helvetica Neue', Arial, sans-serif;
+  --font-heading: 'Michroma', 'Helvetica Neue', Arial, sans-serif;
+
+  /* Typographie — échelle */
+  --text-h1: 36px;
+  --text-h2: 30px;
+  --text-h3: 24px;
+  --text-h4: 20px;
+  --text-h5: 16px;
+  --text-h6: 14px;
 }
 
 /* ===== Mode sombre — différé à P4 =====
