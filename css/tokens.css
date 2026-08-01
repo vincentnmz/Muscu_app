@@ -1,0 +1,139 @@
+/* =============================================================================
+ * Novalyz · tokens.css — Couche 1 : variables & animations
+ * Tout ce qui pilote la charte se trouve ici.
+ * Changer une valeur ici = charte mise à jour sans toucher l'HTML.
+ * =========================================================================== */
+
+/* ===== Tokens primitifs (mode sombre par défaut) ===== */
+:root {
+  /* Neutres (dark, biais bleu) */
+  --nv-bg:            #0b0e14;
+  --nv-surface:       #141a24;
+  --nv-surface2:      #1d2531;
+  --nv-border:        #2a3342;
+  --nv-text:          #eceff4;
+  --nv-text-muted:    #8a95a6;
+
+  /* Marque — bleu électrique */
+  --nv-accent:        #2f7bff;
+  --nv-accent-dim:    #2b62c9;
+  --nv-accent-strong: #5b9bff;
+  --nv-on-accent:     #ffffff;
+  --nv-accent-a05:    rgba(47,123,255,0.07);
+  --nv-accent-a08:    rgba(47,123,255,0.10);
+  --nv-accent-a10:    rgba(47,123,255,0.12);
+  --nv-accent-a12:    rgba(47,123,255,0.14);
+  --nv-accent-a14:    rgba(47,123,255,0.16);
+  --nv-accent-a15:    rgba(47,123,255,0.18);
+
+  /* Statuts sémantiques */
+  --nv-success:  #00c96e;
+  --nv-good:     #00c96e;
+  --nv-warn:     #f59f00;
+  --nv-caution:  #c8f000;
+  --nv-danger:   #ff4444;
+  --nv-bad:      #e5484d;
+
+  /* Rayons */
+  --nv-radius:      14px;
+  --nv-radius-sm:   9px;
+  --nv-radius-lg:   20px;
+  --nv-radius-pill: 999px;
+
+  /* Ombres / élévation */
+  --nv-shadow-sm: 0 1px 2px rgba(0,0,0,.25);
+  --nv-shadow:    0 6px 20px rgba(0,0,0,.30);
+  --nv-shadow-lg: 0 16px 44px rgba(0,0,0,.45);
+
+  /* Espacement (base 4px) */
+  --nv-sp-1: 4px;
+  --nv-sp-2: 8px;
+  --nv-sp-3: 12px;
+  --nv-sp-4: 16px;
+  --nv-sp-5: 20px;
+  --nv-sp-6: 24px;
+  --nv-sp-8: 32px;
+
+  /* Typographie */
+  --nv-font: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+  /* Tokens sémantiques v2 (indicateurs colorés) */
+  --nv-good-a: rgba(0,201,110,.14);
+  --nv-warn-a: rgba(245,159,0,.14);
+  --nv-bad-a:  rgba(240,80,90,.14);
+  --nv-v2-bad: #f0505a;
+
+  /* ── Alias court (rétro-compat avec app.js qui lit ces noms) ── */
+  --bg:           var(--nv-bg);
+  --surface:      var(--nv-surface);
+  --surface2:     var(--nv-surface2);
+  --border:       var(--nv-border);
+  --text:         var(--nv-text);
+  --text-muted:   var(--nv-text-muted);
+  --accent:       var(--nv-accent);
+  --accent-dim:   var(--nv-accent-dim);
+  --accent-strong:var(--nv-accent-strong);
+  --on-accent:    var(--nv-on-accent);
+  --accent-a05:   var(--nv-accent-a05);
+  --accent-a08:   var(--nv-accent-a08);
+  --accent-a10:   var(--nv-accent-a10);
+  --accent-a12:   var(--nv-accent-a12);
+  --accent-a14:   var(--nv-accent-a14);
+  --accent-a15:   var(--nv-accent-a15);
+  --success:      var(--nv-success);
+  --good:         var(--nv-good);
+  --warn:         var(--nv-warn);
+  --caution:      var(--nv-caution);
+  --danger:       var(--nv-danger);
+  --bad:          var(--nv-bad);
+  --radius:       var(--nv-radius);
+  --radius-sm:    var(--nv-radius-sm);
+  --radius-lg:    var(--nv-radius-lg);
+  --radius-pill:  var(--nv-radius-pill);
+  --shadow-sm:    var(--nv-shadow-sm);
+  --shadow:       var(--nv-shadow);
+  --shadow-lg:    var(--nv-shadow-lg);
+  --sp-1: var(--nv-sp-1); --sp-2: var(--nv-sp-2); --sp-3: var(--nv-sp-3);
+  --sp-4: var(--nv-sp-4); --sp-5: var(--nv-sp-5); --sp-6: var(--nv-sp-6); --sp-8: var(--nv-sp-8);
+  --font: var(--nv-font);
+  --good-a: var(--nv-good-a);
+  --warn-a: var(--nv-warn-a);
+  --bad-a:  var(--nv-bad-a);
+  --v2-bad: var(--nv-v2-bad);
+}
+
+/* ===== Mode clair — surcharge des tokens primitifs ===== */
+body.light-mode {
+  --nv-bg:            #f4f6fa;
+  --nv-surface:       #ffffff;
+  --nv-surface2:      #eef1f6;
+  --nv-border:        #dde3ec;
+  --nv-text:          #0f1620;
+  --nv-text-muted:    #5a6675;
+  --nv-accent:        #2f7bff;
+  --nv-accent-dim:    #9dc0ff;
+  --nv-accent-strong: #1e63e0;
+  --nv-on-accent:     #ffffff;
+  --nv-accent-a05:    rgba(47,123,255,0.06);
+  --nv-accent-a08:    rgba(47,123,255,0.09);
+  --nv-accent-a10:    rgba(47,123,255,0.10);
+  --nv-accent-a12:    rgba(47,123,255,0.12);
+  --nv-accent-a14:    rgba(47,123,255,0.13);
+  --nv-accent-a15:    rgba(47,123,255,0.14);
+  --nv-success:  #00a854;
+  --nv-good:     #00a854;
+  --nv-warn:     #d98200;
+  --nv-caution:  #8a9a00;
+  --nv-danger:   #e53935;
+  --nv-bad:      #d93a3f;
+  --nv-shadow-sm: 0 1px 2px rgba(16,22,32,.06);
+  --nv-shadow:    0 6px 20px rgba(16,22,32,.08);
+  --nv-shadow-lg: 0 16px 44px rgba(16,22,32,.14);
+  --nv-good-a: rgba(0,168,84,.12);
+  --nv-warn-a: rgba(217,130,0,.12);
+  --nv-bad-a:  rgba(229,72,77,.10);
+}
+
+/* ===== Animations ===== */
+@keyframes pop-in  { from { opacity:0; transform:translateY(8px) scale(0.98); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes fade-in { from { opacity:0; } to { opacity:1; } }
