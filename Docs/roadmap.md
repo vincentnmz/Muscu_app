@@ -26,8 +26,8 @@ Les deux tracks évoluent ensemble mais à des rythmes différents. Un jalon pro
 |---|---|---|---|---|
 | **0** | Documentation | Nul | Non | ✅ Terminé |
 | **1** | Isoler le noyau | Faible | Non | ✅ Terminé |
-| **2** | Entité `Sport` | Faible | Non | 🔜 Suivant |
-| **3** | UI par profil (hub) | Moyen | Non (feature-flag) | 🔜 |
+| **2** | Entité `Sport` | Faible | Non | ✅ Terminé |
+| **3** | UI par profil (hub) | Moyen | Non (feature-flag) | 🔜 Suivant |
 | **4** | Indicateurs génériques + modèle collectif | Moyen | Non (double-écriture) | 🔜 |
 | **5** | Base relationnelle (Supabase) | Élevé | Non (parallèle) | 🔜 |
 | **6** | 2ᵉ sport pilote | — | Non | 🔜 |
@@ -51,14 +51,19 @@ Les deux tracks évoluent ensemble mais à des rythmes différents. Un jalon pro
 
 ---
 
-### Phase 2 — Introduire l'entité `Sport` 🔜
+### Phase 2 — Introduire l'entité `Sport` ✅
 **But :** la musculation devient *un* module, pas *le* produit.
-**Actions :**
-- Ajouter colonne `sport` (col E) sur la feuille `Coachs` — Option A retenue (sport porté par le coach)
-- Basculer l'existant en `sport = muscu` automatiquement
-- Ajouter `AthleteSport` si besoin (athlète multi-sport)
-**Risque :** faible — l'UI muscu reste inchangée.
-**Critère de sortie :** un athlète peut théoriquement avoir 2 sports ; l'UI muscu inchangée.
+**Réalisé :**
+- Colonne `sport` (col E) présente sur `Coachs` — Option A (sport porté par le coach) ✅
+- `loginCoach` retourne `coach.sport` (défaut `muscu`) ✅
+- `saveSportCoach` / `registerCoach` écrivent en col E ✅
+- `register` (athlète) hérite via `lireSportAthlete()` ✅
+- `getAppData` retourne `sport` à l'athlète ; `getCoachAthletes` propage le sport ✅
+- `getSuiviEquipe` / `getSuiviJoueur` gèrent les sports hors muscu ✅
+- `SPORTS` registry dans `app.js` (10 sports) + `sportActif()` + `appliquerLibellesSport()` ✅
+- UI `coach-sport-select`, `reg-sport`, `reg-coach-sport` ✅
+- Données démo football (`seedDemoFoot`) ✅
+**Critère de sortie :** sport porté par le coach, UI muscu inchangée, footprint prêt pour le 2ᵉ sport. ✅
 
 ---
 
@@ -116,7 +121,7 @@ Les deux tracks évoluent ensemble mais à des rythmes différents. Un jalon pro
 |---|---|---|
 | **P0** | Extraction JS + CSS hors `index.html` | ✅ Terminé |
 | **P1** | Architecture CSS 4 couches | ✅ Terminé |
-| **P2** | Nouvelle charte graphique + migration `nv-` | 🚧 En cours |
+| **P2** | Nouvelle charte graphique + migration `nv-` | ✅ Terminé (nv- différé P3) |
 | **P3** | Figma design system + atomic split | 🔜 (lors de Phase A-3) |
 | **P4** | Dark mode complet | 🔜 (après charte stable) |
 
@@ -151,29 +156,21 @@ Les deux tracks évoluent ensemble mais à des rythmes différents. Un jalon pro
 
 ### P2 — Nouvelle charte graphique + migration `nv-` 🚧
 
-#### P2.1 — Nouvelle palette → `tokens.css` 🔜
-**Input :** palette dérivée du logo Novalyz.
-**But :** remplacer les valeurs couleur dans `:root` (neutres, accent, sémantiques, alphas).
-**Livrable :** `css/tokens.css` avec la nouvelle palette.
-**Modèle recommandé :** Opus si la palette nécessite une dérivation ou une validation de cohérence ; Sonnet si les valeurs hex sont directement fournies.
+#### P2.1 — Nouvelle palette + typographie + HTML sémantique ✅
+**Réalisé :**
+- `css/tokens.css` : nouvelle palette Novalyz (marine #070B14, bleu #1A5FFF, polaire #F9FBFF, clair #5C9AFF, violet #F47CE6) avec alphas, ombres teintées, mode clair comme défaut de travail. Dark mode commenté → différé P4.
+- `css/base.css` : échelle typographique H1-H6. Michroma (H1-H3, poids 400, line-height 1.2) + Quicksand (H4-H6, poids 600). Google Fonts combinée dans `index.html`.
+- `index.html` : 46 `<div class="st">` → `<h2 class="st">` (accessibilité / SEO).
+- `css/components.css` : `.v2-sec .st` ajusté → 13px, poids 400, letter-spacing 0.06em (Michroma via h2 base).
 
-#### P2.2 — Migration `nv-` CSS + HTML 🔜
-**But :** renommer toutes les classes de `components.css` avec le préfixe `nv-`.
-**Règle :** les classes référencées dans `js/app.js` (classList, innerHTML) sont listées et traitées séparément en P2.3.
-**Livrables :** `css/components.css` entièrement `nv-` + `index.html` mis à jour.
-**Modèle recommandé :** Sonnet (grep + rename mécanique).
+#### P2.2 — Migration `nv-` CSS + HTML ⏸ Suspendu
+**Raison :** ~70+ classes générées dynamiquement par `app.js` via `innerHTML` (templates). Un renommage CSS seul casse tout le HTML généré. Déposé à P3, quand les composants seront rearchitecturés.
 
-#### P2.3 — Migration `nv-` JS 🔜
-**But :** mettre à jour les références de classes dans `js/app.js`.
-**Références connues :** `auth-seg-active` (classList.toggle, 3988-4018), `error-msg` (innerHTML, 961/2212/2982/3289/3700).
-**Livrable :** `js/app.js` mis à jour (diff ciblé).
-**Modèle recommandé :** Sonnet.
+#### P2.3 — Migration `nv-` JS ⏸ Suspendu
+**Raison :** couplé à P2.2. Différé à P3.
 
-#### P2.4 — `sw.js` + validation 🔜
-**But :** mettre à jour le cache service worker (référence encore `css/novalyz.css` depuis P0).
-**Actions :** remplacer l'entrée `css/novalyz.css` par les 4 fichiers CSS ; incrémenter version → `novalyz-shell-v3`.
-**Livrable :** `sw.js` mis à jour.
-**Modèle recommandé :** Sonnet.
+#### P2.4 — `sw.js` ✅
+**Réalisé :** version `novalyz-shell-v1` → `v3` (deux phases rattrapées). ASSETS enrichi : `js/app.js` + `css/tokens.css` + `css/base.css` + `css/components.css` + `css/layout.css` ajoutés au précache.
 
 ---
 
