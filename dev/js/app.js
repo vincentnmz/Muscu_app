@@ -6151,20 +6151,11 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
 }
 
 // ==================== CHARGEMENT PRINCIPAL ====================
-async function chargerAppData() {
-  if (!athlete) return;
-  const ctrl = new AbortController();
-  // Avertit l'utilisateur si le serveur est lent (cold start Apps Script).
-  const tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
-  // Abandonne après 30 s pour ne pas laisser l'utilisateur sans retour.
-  const tKill = setTimeout(() => ctrl.abort(), 30000);
-  try {
-    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`, { signal: ctrl.signal });
-    clearTimeout(tSlow); clearTimeout(tKill);
-    const data = await res.json();
 
-    // Stocker les données globalement
-    dernierAppData = data;
+// Applique un snapshot getAppData à l'UI (cache local OU réseau).
+function _appliquerAppData(data) {
+  // Stocker les données globalement
+  dernierAppData = data;
     peuplerSeancesProgramme();
     seancesDates = data.historique.dates_seances || {};
     progressionData = data.historique.progression_par_exo || {};
@@ -6514,7 +6505,28 @@ async function chargerAppData() {
     } else {
       nextEl.innerHTML = '<div class="dc-inner" style="background:var(--good);"><div class="dc-ico">✅</div><div class="dc-txt"><div class="dc-v">Toutes les séances faites !</div></div></div>';
     }
+}
 
+async function chargerAppData() {
+  if (!athlete) return;
+  const _cacheKey = 'nv_cache_' + athlete.athlete_id;
+
+  // Stale-while-revalidate : affiche les données en cache immédiatement →
+  // pas d'écran blanc pendant le cold start Apps Script.
+  try {
+    const _hit = localStorage.getItem(_cacheKey);
+    if (_hit) _appliquerAppData(JSON.parse(_hit));
+  } catch (_) {}
+
+  const ctrl = new AbortController();
+  const tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+  const tKill = setTimeout(() => ctrl.abort(), 30000);
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`, { signal: ctrl.signal });
+    clearTimeout(tSlow); clearTimeout(tKill);
+    const data = await res.json();
+    try { localStorage.setItem(_cacheKey, JSON.stringify(data)); } catch (_) {}
+    _appliquerAppData(data);
   } catch(e) {
     clearTimeout(tSlow); clearTimeout(tKill);
     if (e.name === 'AbortError') {
