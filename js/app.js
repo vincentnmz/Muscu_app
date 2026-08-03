@@ -1480,13 +1480,13 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
     <!-- PANEL 3 : CONVERSATION -->
     <div class="djt-panel" data-i="3" style="display:none;">
-      <div style="background:var(--surface);border-radius:16px;border:1px solid var(--border);margin-bottom:12px;">
+      <div style="background:var(--surface);border-radius:16px;border:1px solid var(--border);margin-bottom:12px;width:100%;box-sizing:border-box;">
         <div id="djt-conv-messages" style="min-height:180px;max-height:52vh;overflow-y:auto;padding:16px 14px;"></div>
-        <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;">
-          <textarea id="djt-conv-input" rows="2" placeholder="Votre message…"
-            style="flex:1;resize:none;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13.5px;background:var(--surface2);color:var(--text);font-family:inherit;"
+        <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;flex-direction:row;gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;">
+          <textarea id="djt-conv-input" placeholder="Votre message…"
+            style="flex:1 1 0;min-width:0;min-height:72px;resize:none;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13.5px;background:var(--surface2);color:var(--text);font-family:inherit;box-sizing:border-box;"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerMessageJoueur();}"></textarea>
-          <button onclick="envoyerMessageJoueur()" class="btn btn-accent" style="padding:10px 16px;white-space:nowrap;margin:0;">Envoyer</button>
+          <button onclick="envoyerMessageJoueur()" class="btn btn-accent" style="flex:0 0 auto;padding:10px 14px;white-space:nowrap;margin:0;align-self:flex-end;">Envoyer</button>
         </div>
       </div>
     </div>
@@ -1603,8 +1603,8 @@ async function envoyerMessageJoueur() {
   const isCoach = cdMode === 'coach';
   const auteur = isCoach ? 'coach' : 'athlete';
   const auteur_nom = isCoach ? (coach && coach.nom ? coach.nom : 'Coach') : (athlete && athlete.nom ? athlete.nom : 'Joueur');
-  const coach_id = isCoach && coach ? (coach.coach_id || '') : '';
-  const coach_nom = isCoach && coach ? (coach.nom || '') : '';
+  const coach_id = isCoach ? (coach && coach.coach_id || '') : (athlete && athlete.coach_id || '');
+  const coach_nom = isCoach ? (coach && coach.nom || '') : '';
   inp.value = '';
   inp.disabled = true;
   try {
