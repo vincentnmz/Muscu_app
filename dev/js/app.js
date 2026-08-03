@@ -1836,7 +1836,7 @@ async function renderSuiviEquipe() {
   }
 
   const showComp = sportConfig(coach && coach.sport).groupe === 'Équipe';
-  const _eqTabBtn = (t, on) => `<button data-eqtab="${t}" onclick="switchEquipeTab('${t}')" style="flex:1;text-align:center;padding:11px 4px;font-size:13px;font-weight:700;border:none;border-bottom:2px solid ${on?'var(--accent)':'transparent'};color:${on?'var(--text)':'var(--text-muted)'};background:none;cursor:pointer;">${t==='suivi'?'Suivi':'Comparatif'}</button>`;
+  const _eqTabBtn = (t, on) => `<button data-eqtab="${t}" onclick="switchEquipeTab('${t}')" style="flex:1;text-align:center;padding:11px 4px;font-size:13px;font-weight:700;border:none;border-bottom:2px solid ${on?'var(--accent)':'transparent'};color:${on?'var(--text)':'var(--text-muted)'};background:none;cursor:pointer;">${t==='suivi'?'Suivi équipe':'Comparatif équipe'}</button>`;
   const tabBar = showComp ? `<div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:0;">${_eqTabBtn('suivi',true)}${_eqTabBtn('comp',false)}</div>` : '';
 
   const suiviHtml = `<div id="eq-tab-suivi">
@@ -1854,8 +1854,8 @@ async function renderSuiviEquipe() {
     _eqCompState.sortDir = -1;
     const postes = [...new Set(joueurs.map(j => j.poste).filter(Boolean))].sort();
     const pBtnStyle = (on) => `flex:0 0 auto;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid ${on?'var(--accent-dim)':'var(--border)'};background:${on?'var(--accent-a14)':'var(--surface2)'};color:${on?'var(--accent)':'var(--text-muted)'};`;
-    const posteBtns = [`<button data-eqposte="" onclick="_eqPoste(null)" style="${pBtnStyle(true)}">Tous</button>`,
-      ...postes.map(p => `<button data-eqposte="${escapeHtml(p)}" onclick="_eqPoste(${JSON.stringify(p)})" style="${pBtnStyle(false)}">${escapeHtml(p)}</button>`)
+    const posteBtns = [`<button data-eqposte="" onclick="_eqPoste(this.dataset.eqposte||null)" style="${pBtnStyle(true)}">Tous</button>`,
+      ...postes.map(p => `<button data-eqposte="${escapeHtml(p)}" onclick="_eqPoste(this.dataset.eqposte||null)" style="${pBtnStyle(false)}">${escapeHtml(p)}</button>`)
     ].join('');
     compHtml = `<div id="eq-tab-comp" style="display:none;padding-top:4px;">
       <div style="display:flex;gap:6px;padding:8px 0 10px;overflow-x:auto;scrollbar-width:none;">${posteBtns}</div>
