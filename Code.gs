@@ -1,4 +1,3 @@
-[Resource from github at repo://vincentnmz/Muscu_app/sha/8db2a8cec93b224dd97629692b20c54dfdefb935/contents/Code.gs] // =============================================================================
 // NOVALYZ — Code.gs
 // Architecture 3 moteurs : GLOBAL_ENGINE | RECENT_ENGINE | COMPARISON_ENGINE
 // =============================================================================
