@@ -55,6 +55,13 @@ function doGet(e) {
   return json({ error: 'action inconnue' });
 }
 
+// Maintient le script "chaud" — à brancher sur un déclencheur Apps Script toutes les 10 min.
+// Déclencheurs → Ajouter un déclencheur → warmup → Basé sur le temps → Minuteur → 10 min.
+function warmup() {
+  // Un accès minimal suffit à garder le conteneur actif.
+  SpreadsheetApp.getActiveSpreadsheet();
+}
+
 function doPost(e) {
   const body = JSON.parse(e.postData.contents);
   if (body.action === 'login')                 return loginPost(body);
