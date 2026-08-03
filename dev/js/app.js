@@ -1718,9 +1718,58 @@ async function renderSuiviEquipe() {
       </div>`;
   }).join('');
 
+  // Alertes de la semaine — agrégées depuis les alertes joueurs
+  const toutesAlertes = joueurs
+    .filter(j => j.alertes && j.alertes.length)
+    .flatMap(j => j.alertes.map(al => ({ ...al, nom: j.nom, athlete_id: j.athlete_id })))
+    .sort((a, b) => (a.severite === 'haute' ? 0 : 1) - (b.severite === 'haute' ? 0 : 1))
+    .slice(0, 6);
+  const alertesSemaineHtml = toutesAlertes.length ? `
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-bell"/></svg>Alertes de la semaine</div></div>
+    <div class="dash-card" style="padding:2px 14px;margin-bottom:12px;">
+      ${toutesAlertes.map(al => {
+        const c = al.severite === 'haute' ? COL.rouge : COL.orange;
+        return `<div onclick="ouvrirDetailJoueurFoot('${al.athlete_id}')" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${c};flex-shrink:0;display:inline-block;"></span>
+          <div style="flex:1;min-width:0;">
+            <span style="font-size:13px;font-weight:700;">${escapeHtml(al.nom)}</span>
+            <span style="font-size:12px;color:var(--text-muted);"> — ${escapeHtml(al.message)}</span>
+          </div>
+          <svg class="ico" style="color:var(--text-muted);flex-shrink:0;"><use href="#i-chevron-right"/></svg>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  // Courbe charge équipe (SVG inline — 8 semaines)
+  const chargeHebdo = data.charge_hebdo || [];
+  let courbeHtml = '';
+  if (chargeHebdo.length >= 2) {
+    const W = 280, H = 64, PAD = 4;
+    const vals = chargeHebdo.map(s => s.charge);
+    const maxC = Math.max(...vals) || 1;
+    const barW = Math.floor((W - PAD * 2) / vals.length) - 3;
+    const bars = vals.map((v, i) => {
+      const x = PAD + i * ((W - PAD * 2) / vals.length);
+      const bh = Math.max(3, Math.round((v / maxC) * (H - 16)));
+      const y = H - bh;
+      const isLast = i === vals.length - 1;
+      const col = isLast ? 'var(--accent)' : 'var(--accent-a15)';
+      const lbl = chargeHebdo[i].sem.slice(0, 5);
+      return `<rect x="${x.toFixed(1)}" y="${y}" width="${barW}" height="${bh}" rx="3" fill="${col}"/>
+              <text x="${(x + barW/2).toFixed(1)}" y="${H + 1}" text-anchor="middle" font-size="7" fill="var(--text-muted)" font-family="sans-serif">${lbl}</text>`;
+    }).join('');
+    courbeHtml = `
+      <div class="v2-sec" style="margin-top:4px;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Charge collective — 8 semaines</div></div>
+      <div class="dash-card" style="padding:14px 16px 18px;margin-bottom:12px;overflow:hidden;">
+        <svg width="100%" viewBox="0 0 ${W} ${H + 10}" style="display:block;overflow:visible;">
+          ${bars}
+        </svg>
+      </div>`;
+  }
+
   cont.innerHTML =
     `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Suivi de l'équipe — ${joueurs.length} ${labelJoueurs}</div></div>`
-    + header + blessesHtml
+    + header + alertesSemaineHtml + blessesHtml + courbeHtml
     + `<div class="v2-sec"><div class="st">Effectif</div></div>`
     + cards;
 }
