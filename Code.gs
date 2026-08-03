@@ -1972,6 +1972,7 @@ function athleteFromRow(row) {
     annees_pratique:       Number(row[6]) || 0,
     poids:                 getPoidsActuel(row[0]),
     strategie_progression: String(row[7] || 'Progression linéaire'),
+    coach_id:              String(row[8] || ''),
     sport:                 lireSportAthlete(row[0])   // Phase 3 : route la vue athlète (muscu vs sport co)
   };
 }
