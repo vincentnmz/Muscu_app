@@ -1835,11 +1835,109 @@ async function renderSuiviEquipe() {
       </div>`;
   }
 
-  cont.innerHTML =
-    `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Suivi de l'équipe — ${joueurs.length} ${labelJoueurs}</div></div>`
-    + header + alertesSemaineHtml + blessesHtml + courbeHtml
-    + `<div class="v2-sec"><div class="st">Effectif</div></div>`
-    + cards;
+  const showComp = sportConfig(coach && coach.sport).groupe === 'Équipe';
+  const _eqTabBtn = (t, on) => `<button data-eqtab="${t}" onclick="switchEquipeTab('${t}')" style="flex:1;text-align:center;padding:11px 4px;font-size:13px;font-weight:700;border:none;border-bottom:2px solid ${on?'var(--accent)':'transparent'};color:${on?'var(--text)':'var(--text-muted)'};background:none;cursor:pointer;">${t==='suivi'?'Suivi':'Comparatif'}</button>`;
+  const tabBar = showComp ? `<div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:0;">${_eqTabBtn('suivi',true)}${_eqTabBtn('comp',false)}</div>` : '';
+
+  const suiviHtml = `<div id="eq-tab-suivi">
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Suivi de l'équipe — ${joueurs.length} ${labelJoueurs}</div></div>
+    ${header}${alertesSemaineHtml}${blessesHtml}${courbeHtml}
+    <div class="v2-sec"><div class="st">Effectif</div></div>
+    ${cards}
+  </div>`;
+
+  let compHtml = '';
+  if (showComp) {
+    _eqCompState.joueurs = joueurs;
+    _eqCompState.poste = null;
+    _eqCompState.sortCol = 2;
+    _eqCompState.sortDir = -1;
+    const postes = [...new Set(joueurs.map(j => j.poste).filter(Boolean))].sort();
+    const pBtnStyle = (on) => `flex:0 0 auto;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid ${on?'var(--accent-dim)':'var(--border)'};background:${on?'var(--accent-a14)':'var(--surface2)'};color:${on?'var(--accent)':'var(--text-muted)'};`;
+    const posteBtns = [`<button data-eqposte="" onclick="_eqPoste(null)" style="${pBtnStyle(true)}">Tous</button>`,
+      ...postes.map(p => `<button data-eqposte="${escapeHtml(p)}" onclick="_eqPoste(${JSON.stringify(p)})" style="${pBtnStyle(false)}">${escapeHtml(p)}</button>`)
+    ].join('');
+    compHtml = `<div id="eq-tab-comp" style="display:none;padding-top:4px;">
+      <div style="display:flex;gap:6px;padding:8px 0 10px;overflow-x:auto;scrollbar-width:none;">${posteBtns}</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table id="eq-comp-table" style="width:100%;border-collapse:collapse;font-size:12px;"></table></div>
+        <div style="padding:8px 12px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--good);margin-right:3px;vertical-align:middle;"></span>Meilleur</span>
+          <span><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--bad);margin-right:3px;vertical-align:middle;"></span>ACWR ≥ 1.5</span>
+          <span>En-tête → tri · Ligne → fiche joueur</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  cont.innerHTML = tabBar + suiviHtml + compHtml;
+  if (showComp) setTimeout(_eqCompRender, 0);
+}
+
+let _eqCompState = { joueurs: [], poste: null, sortCol: 2, sortDir: -1 };
+
+function switchEquipeTab(t) {
+  ['suivi','comp'].forEach(id => {
+    const el = document.getElementById('eq-tab-'+id);
+    if (el) el.style.display = (id===t) ? 'block' : 'none';
+  });
+  document.querySelectorAll('[data-eqtab]').forEach(b => {
+    const on = b.dataset.eqtab === t;
+    b.style.color = on ? 'var(--text)' : 'var(--text-muted)';
+    b.style.borderBottomColor = on ? 'var(--accent)' : 'transparent';
+  });
+}
+
+function _eqCompRender() {
+  const { joueurs, poste, sortCol, sortDir } = _eqCompState;
+  const list = poste ? joueurs.filter(j => j.poste === poste) : joueurs;
+  const COLS = [
+    ['Joueur','nom',null],['St','statut',null],
+    ['ACWR','acwr','acwr'],['Bien-être','bienetre_moyen','haut'],
+    ['Fatigue','fatigue_moy','bas'],['Séances 7j','seances_7j','haut']
+  ];
+  const best = {};
+  COLS.forEach(([,key,dir],ci) => {
+    if (dir==='haut') { const vals=list.map(j=>j[key]).filter(v=>v!=null); if(vals.length) best[ci]=Math.max(...vals); }
+    if (dir==='bas')  { const vals=list.map(j=>j[key]).filter(v=>v!=null); if(vals.length) best[ci]=Math.min(...vals); }
+  });
+  const rows = [...list].sort((a,b) => {
+    const key=COLS[sortCol][1], va=a[key]??'', vb=b[key]??'';
+    if (typeof va==='number'&&typeof vb==='number') return (va-vb)*sortDir;
+    return String(va).localeCompare(String(vb))*sortDir;
+  });
+  const ini = n => n.split(/[\s.]+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  const thS = ci => `padding:9px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;border-bottom:1px solid var(--border);text-align:${ci>=2?'right':'left'};white-space:nowrap;color:${ci===sortCol?'var(--text)':'var(--text-muted)'};${ci>=2?'cursor:pointer;':''}`;
+  const head = '<thead><tr>'+COLS.map(([lbl,,],ci) => `<th style="${thS(ci)}"${ci>=2?` onclick="_eqSortBy(${ci})"`:''} >${lbl}${ci===sortCol?(sortDir<0?' ↓':' ↑'):''}</th>`).join('')+'</tr></thead>';
+  const body = '<tbody>'+rows.map(j => '<tr onclick="ouvrirDetailJoueurFoot(\''+j.athlete_id+'\')" style="cursor:pointer;">'+COLS.map(([,key,dir],ci) => {
+    const v = j[key];
+    if (key==='nom') return `<td style="padding:9px 8px;white-space:nowrap;"><div style="display:flex;align-items:center;gap:6px;"><div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#1a3260,#0d1a30);border:1px solid var(--border);font-size:9px;font-weight:800;color:#cfe0ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${ini(v)}</div><b style="font-size:12px;">${escapeHtml(v)}</b></div></td>`;
+    if (key==='statut') { const sc=v==='rouge'?'#e5484d':v==='orange'?'#f5a623':'#22c55e'; return `<td style="padding:9px 8px;text-align:right;"><span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${sc};"></span></td>`; }
+    const al = 'padding:9px 8px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;';
+    if (dir==='acwr') { const ac=v==null?'var(--text-muted)':v>1.5?'#e5484d':v>1.3?'#f5a623':'#22c55e'; return `<td style="${al}color:${ac};font-weight:800;">${v!=null?v.toFixed(2):'—'}</td>`; }
+    const isBest=v!=null&&v===best[ci], disp=v!=null?(Number.isInteger(v)?v:v.toFixed(1)):'—';
+    return `<td style="${al}${isBest?'color:var(--good);font-weight:800;':''}">${disp}</td>`;
+  }).join('')+'</tr>').join('')+'</tbody>';
+  const tbl = document.getElementById('eq-comp-table');
+  if (tbl) tbl.innerHTML = head+body;
+}
+
+function _eqSortBy(ci) {
+  if (_eqCompState.sortCol===ci) _eqCompState.sortDir*=-1; else { _eqCompState.sortCol=ci; _eqCompState.sortDir=-1; }
+  _eqCompRender();
+}
+
+function _eqPoste(p) {
+  _eqCompState.poste = p||null;
+  _eqCompState.sortCol = 2;
+  _eqCompState.sortDir = -1;
+  document.querySelectorAll('[data-eqposte]').forEach(b => {
+    const on = b.dataset.eqposte===(p||'');
+    b.style.background = on ? 'var(--accent-a14)' : 'var(--surface2)';
+    b.style.borderColor = on ? 'var(--accent-dim)' : 'var(--border)';
+    b.style.color = on ? 'var(--accent)' : 'var(--text-muted)';
+  });
+  _eqCompRender();
 }
 
 function joursDepuis(dateVal) {
