@@ -3026,7 +3026,8 @@ function seedDemoFoot() {
         }
 
         // Bien-être (Bien_etre : date, seance_id, athlete_id, sommeil, energie, fatigue, douleur, zone, ressenti, note)
-        var sommeil = rnd(3, 5), energie = rnd(3, 5), fatigue = rnd(1, 3), douleur = 0, ressenti = rnd(3, 5);
+        // Base "sain" : sommeil 4-5, fatigue 1-2 → déclenche toujours recuperation_optimale dans NovalyzEngine.
+        var sommeil = rnd(4, 5), energie = rnd(3, 5), fatigue = rnd(1, 2), douleur = 0, ressenti = rnd(4, 5);
         if (J.profil.risque === 'charge' && semaineRecente) { fatigue = rnd(4, 5); sommeil = rnd(2, 3); }
         if (J.profil.risque === 'douleur' && semaineRecente) { douleur = rnd(2, 3); fatigue = rnd(3, 5); }
         wellRows.push([dateStr, sid, J.id, sommeil, energie, fatigue, douleur, douleur > 0 ? 'Cuisse' : '', ressenti, '']);
