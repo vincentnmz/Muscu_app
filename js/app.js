@@ -1480,8 +1480,8 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
     <!-- PANEL 3 : CONVERSATION -->
     <div class="djt-panel" data-i="3" style="display:none;">
-      <div style="display:flex;flex-direction:column;height:520px;background:var(--surface);border-radius:16px;overflow:hidden;border:1px solid var(--border);">
-        <div id="djt-conv-messages" style="flex:1;overflow-y:auto;padding:16px 14px;"></div>
+      <div style="background:var(--surface);border-radius:16px;border:1px solid var(--border);margin-bottom:12px;">
+        <div id="djt-conv-messages" style="min-height:180px;max-height:52vh;overflow-y:auto;padding:16px 14px;"></div>
         <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;">
           <textarea id="djt-conv-input" rows="2" placeholder="Votre message…"
             style="flex:1;resize:none;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13.5px;background:var(--surface2);color:var(--text);font-family:inherit;"
