@@ -51,6 +51,7 @@ function doGet(e) {
   if (action === 'getSuiviEquipe')       return getSuiviEquipe(e);
   if (action === 'getSuiviJoueur')       return getSuiviJoueur(e);
   if (action === 'getTests')             return getTests(e);
+  if (action === 'ping')                 return json({ ok: true });
   return json({ error: 'action inconnue' });
 }
 
