@@ -27,10 +27,11 @@ Les deux tracks évoluent ensemble mais à des rythmes différents. Un jalon pro
 | **0** | Documentation | Nul | Non | ✅ Terminé |
 | **1** | Isoler le noyau | Faible | Non | ✅ Terminé |
 | **2** | Entité `Sport` | Faible | Non | ✅ Terminé |
-| **3** | UI par profil (hub) | Moyen | Non (feature-flag) | 🔜 Suivant |
-| **4** | Indicateurs génériques + modèle collectif | Moyen | Non (double-écriture) | 🔜 |
+| **3a** | Routing sport → vue | Faible | Non | ✅ Terminé |
+| **3b** | Hub profil transversal | Moyen | Non (feature-flag) | 🔜 Suivant |
+| **4** | Indicateurs génériques + modèle collectif | Moyen | Non (double-écriture) | 🚧 Partiel (foot ✅, muscu 🔜) |
 | **5** | Base relationnelle (Supabase) | Élevé | Non (parallèle) | 🔜 |
-| **6** | 2ᵉ sport pilote | — | Non | 🔜 |
+| **6** | 2ᵉ sport pilote (football) | Faible | Non | 🚧 ~80% (NovalyzEngine à brancher) |
 
 ---
 
@@ -67,27 +68,45 @@ Les deux tracks évoluent ensemble mais à des rythmes différents. Un jalon pro
 
 ---
 
-### Phase 3 — UI par profil (hub) 🔜
-**But :** tableau de bord central + vues adaptées au profil.
+### Phase 3a — Routing sport → vue ✅
+**But :** afficher la bonne vue selon le sport du profil connecté.
+**Réalisé :**
+- Coach : `renderListeAthletesCoach()` → sport ≠ muscu → `renderSuiviEquipe()` ; muscu → `renderCoachSynthese()` ✅
+- Athlète : `ouvrirApp()` → sport ≠ muscu → `ouvrirDetailJoueurFoot(id, 'athlete')` (3 onglets lecture seule) ; muscu → app classique ✅
+- Libellés dynamiques via `[data-sport-label]` + `appliquerLibellesSport()` ✅
+**Critère de sortie :** chaque profil voit la bonne vue au login, sans configuration manuelle. ✅
+
+---
+
+### Phase 3b — Hub profil transversal 🔜 Suivant
+**But :** tableau de bord central multi-sport + navigation unifiée par profil.
 **Actions :**
-- Construire le hub : profil transversal de l'athlète
-- Router l'affichage : sport actif → modules visibles ; profil → niveau de lecture
-- Tout derrière feature-flag (l'app actuelle reste le défaut)
-**Dépendance Track B :** le design system (nv- + Figma library) doit être en place avant de concevoir les nouveaux écrans.
+- Construire le hub : page de profil indépendante du sport (KPIs comparables, historique unifié)
+- Niveau de lecture par profil (athlète / coach / admin)
+- Feature-flag pour basculer entre l'app actuelle et le hub sans perte de fonction
+**Dépendance Track B :** design system (nv- + Figma library) avant de concevoir les écrans hub.
 **Risque :** moyen — nouvelle navigation. Mitigé par le flag.
 **Critère de sortie :** basculer entre l'app actuelle et le hub sans perte de fonction.
 
 ---
 
-### Phase 4 — Indicateurs génériques + modèle collectif 🔜
+### Phase 4 — Indicateurs génériques + modèle collectif 🚧
 **But :** remplacer les colonnes muscu par `Seance` + `Participation` + `Indicateur` typé.
-**Actions :**
-- Double-écriture : chaque saisie écrit dans `Performances` (ancien) ET le nouveau format
-- Introduire `Seance` (équipe) + `Participation` (athlète) ; muscu = équipe de 1
-- Vérifier la concordance, puis basculer la lecture sur `Indicateur`
-- Alimenter `normaliser()` : volume / progression / charge depuis le module muscu
+
+**Ce qui EST déjà en place :**
+- Onglet `Indicateurs` avec schéma générique (`date, athlete_id, seance_id, cle, valeur, unite, source`) ✅
+- `getSuiviEquipe` / `getSuiviJoueur` lisent exclusivement `Indicateurs` + `Bien_etre` + `Tests` ✅
+- `NovalyzEngine.normaliser()` conçu pour recevoir des indicateurs génériques ✅
+- **Football lit déjà le nouveau modèle** ✅
+
+**Ce qui reste à faire (muscu) :**
+- La muscu écrit encore sur `Performances` (format colonnes ancien) — aucune double-écriture vers `Indicateurs`
+- `normaliser()` n'est pas alimenté depuis muscu via `Indicateurs` : il lit `Performances` directement
+- Les entités formelles `Seance` (équipe) + `Participation` (athlète↔séance) n'existent pas comme onglets
+- Migration muscu → `Indicateurs` : double-écriture → validation → bascule lecture
+
 **Risque :** moyen — mitigé par la double-écriture et le retour arrière permanent.
-**Critère de sortie :** le moteur lit des indicateurs génériques ; les règles d'alerte inchangées.
+**Critère de sortie :** le moteur lit des indicateurs génériques pour tous les sports ; les règles d'alerte inchangées.
 
 ---
 
@@ -102,14 +121,25 @@ Les deux tracks évoluent ensemble mais à des rythmes différents. Un jalon pro
 
 ---
 
-### Phase 6 — 2ᵉ sport pilote 🔜
+### Phase 6 — 2ᵉ sport pilote (football) 🚧 ~80%
 **But :** brancher un module sport sans toucher au noyau. C'est la **preuve de l'architecture**.
-**Actions :**
-- Créer un module minimal (hockey ? football ? → selon le stage)
-- Indicateurs GPS/charge, écrans de saisie et d'analyse
-- Alimenter `normaliser()` depuis ces indicateurs
-**Risque :** faible si phases 1-4 sont faites — c'est justement leur test.
-**Critère de sortie :** un sport ajouté sans une seule ligne modifiée dans le noyau.
+
+**Ce qui EST fait ✅ :**
+- Module football complet : `seedDemoFoot` (6 joueurs, 5 semaines, 5 onglets Sheets) ✅
+- Indicateurs GPS/charge dans l'onglet `Indicateurs` : distance_totale, distance_hi, charge_interne, rpe, sprints, vitesse_max, accélérations + stats par poste ✅
+- Backend : `getSuiviEquipe` (vue coach) + `getSuiviJoueur` (vue joueur) ✅
+- Front : `renderSuiviEquipe` + `ouvrirDetailJoueurFoot` (3 onglets : charge, profil, match & technique) ✅
+- Stats par poste (Gardien, Défenseur, Milieu, Attaquant) + heatmap SVG + radar ✅
+- Formulaires saisie : match, objectifs, blessures, bien-être ✅
+- **Noyau non touché** : `NovalyzEngine`, `normaliser()`, `REGLES`, `SEUILS` inchangés ✅
+
+**Ce qui reste :**
+- Brancher les données foot dans `NovalyzEngine.analyser()` côté vue joueur (actuellement les alertes foot sont calculées backend, pas via le moteur front)
+- Mapper `bienetre`, `acwr`, `seances_7j` du retour `getSuiviJoueur` vers la structure `normaliser()` attendue
+- Bloc « Analyse Novalyz » dans la vue joueur foot (même rendu que muscu)
+
+**Risque :** faible — le moteur n'est pas modifié, c'est un mapping d'entrée.
+**Critère de sortie :** `NovalyzEngine.analyser()` produit des alertes pertinentes depuis les données foot, sans modifier une seule ligne du noyau.
 
 ---
 
