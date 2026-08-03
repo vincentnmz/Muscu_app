@@ -1224,6 +1224,22 @@ function getSuiviEquipe(e) {
     var rang = { rouge: 0, orange: 1, vert: 2 };
     resultats.sort(function(x,y){ return rang[x.statut] - rang[y.statut] || (y.charge_7j - x.charge_7j); });
 
+    // Charge hebdo équipe (8 dernières semaines) pour la courbe
+    var athIds = {};
+    joueurs.forEach(function(j) { athIds[j.athlete_id] = true; });
+    var semCharges = {};
+    for (var r = 1; r < rowsInd.length; r++) {
+      var row = rowsInd[r];
+      if (!athIds[String(row[1])]) continue;
+      if (String(row[3]) !== 'charge_interne') continue;
+      var d = parseDateFR(row[0]); if (!d) continue;
+      var lundiStr = formatDateFR(getLundi(d));
+      if (!semCharges[lundiStr]) semCharges[lundiStr] = 0;
+      semCharges[lundiStr] += Number(row[4]) || 0;
+    }
+    var semKeys = Object.keys(semCharges).sort(function(a, b) { var da = parseDateFR(a), db = parseDateFR(b); return da - db; });
+    var chargeHebdo = semKeys.slice(-8).map(function(sem) { return { sem: sem, charge: Math.round(semCharges[sem]) }; });
+
     return json({
       joueurs: resultats,
       equipe: {
@@ -1235,7 +1251,8 @@ function getSuiviEquipe(e) {
         bienetre_moyen: beEquipeArr.length ? Math.round(moy(beEquipeArr)*10)/10 : null,
         en_progression: nbProg, en_regression: nbReg
       },
-      blesses: blesses
+      blesses: blesses,
+      charge_hebdo: chargeHebdo
     });
   } catch (err) {
     return json({ joueurs: [], equipe: {}, error: err.message });
