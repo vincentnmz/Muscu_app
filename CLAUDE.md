@@ -11,17 +11,13 @@ Contexte perso du porteur : reconversion en analyse vidéo / cellule de performa
 
 ## Stack & déploiement (IMPORTANT)
 
-- **Front** : PWA vanilla JS, **architecture multi-fichiers** (depuis la refonte P0) :
-  - `index.html` = structure seule (aucun `<style>`/`<script>` inline)
-  - `css/novalyz.css` = tous les styles (→ sera découpé en `tokens/base/components/layout` en P1)
-  - `js/app.js` = toute la logique (métier inchangé)
-  - Objectif : charte pilotée par des **tokens CSS**, structure en **templates de page**, zéro style dans l'HTML.
+- **Front** : `index.html` (PWA, structure) + `js/app.js` (logique) + `css/tokens.css` / `base.css` / `components.css` / `layout.css` + `sw.js` (cache v3).
 - **Backend** : `Code.gs` (Google Apps Script) — **versionné dans ce repo** (`./Code.gs`). Collé à la main dans l'éditeur Apps Script + déployer une nouvelle version.
 - **Données** : Google Sheets. **Un seul backend Apps Script partagé** par toutes les URLs front (même `SCRIPT_URL`).
 - **Déploiement front = GitHub Pages auto** (`.github/workflows/deploy.yml`) :
-  - push sur **`main`** → déploie la coquille front (`index.html` + `css/` + `js/`) sur l'**URL de production**
+  - push sur **`main`** → déploie sur l'**URL de production**
   - push sur **`dev`** → déploie sur l'**URL de préprod** (`/dev/`)
-  - la branche de travail `claude/ai-saas-mvp-strategy-egvo9i` **n'est pas déployée**
+  - les branches de travail `claude/*` **ne sont pas déployées**
   - Flux cible : bricoler → `dev` (tester) → PR `dev`→`main` (publier)
 - **Le push GitHub est bloqué (403)** pour l'assistant → on **livre les fichiers** (via SendUserFile), l'utilisateur les uploade lui-même sur la branche voulue.
 
@@ -36,18 +32,23 @@ Contexte perso du porteur : reconversion en analyse vidéo / cellule de performa
 
 ## Modèle de données (colonnes Sheets)
 
-- **Athletes** : [0]id [1]login [2]loginCoach(C) [3]nom [4]ddn [5]taille [6]annees [7]strategie [8]coach_id(I) [9]password_hash(J)
+- **Athletes** : [0]id [1]login [2]loginCoach(C) [3]nom [4]ddn [5]taille [6]annees [7]strategie [8]coach_id(I) [9]password_hash(J) [10]sport(K) [11]poste(L) [12]jambe_dominante(M) [13]poids(N) [14]antecedents(O) [15]heatmap(P) [16]sexe(Q) [17]club(R) [18]categorie(S) [19]date_entree(T) [20]discipline(U)
 - **Coachs** : [0]coach_id [1]login [2]nom [3]password_hash(D) [4]sport(E)
 - **Performances** : [0]date [1]semaine [2]seance_id [3]nom [4]athlete_id [5]exercice [6]muscle [7]exercice_id [8]serie [9]charge [10]reps [11]rpe [12]repos [13]volume
+- **Indicateurs** (multisport) : [0]date [1]athlete_id [2]seance_id [3]cle [4]valeur [5]unite [6]source
+- **Bien_etre** : [0]date [1]seance_id [2]athlete_id [3]sommeil [4]energie [5]fatigue_musculaire [6]douleur [7]zone_douloureuse [8]ressenti_global [9]note
+- **Tests** : [0]date [1]athlete_id [2]cle [3]valeur [4]unite
+- **Objectifs** (joueurs) : [0]id [1]athlete_id [2]categorie [3]description [4]statut [5]date
+- **Blessures** : [0]id [1]athlete_id [2]date [3]type [4]localisation [5]gravite [6]duree [7]retour_terrain [8]retour_competition [9]statut
 
 ## Vision multisport (roadmap)
 
 Voir [`docs/roadmap-produit.md`](./docs/roadmap-produit.md). Décisions figées (voir `docs/README.md`) :
 séance=créneau d'équipe + participations · match=type de séance · Test≠Exercice · poste/catégorie sur le lien athlète-équipe · entité Blessure · vocabulaire par sport (noyau neutre).
 
-Phases : 0 Documentation ✅ · 1 Isoler le noyau ✅ (balisage dans index.html) · 2 Entité Sport 🚧 (Option A : sport porté par le coach, col E) · 3 UI par profil (hub) · 4 Indicateurs génériques + collectif · 5 Supabase · 6 2ᵉ sport.
+Phases : 0 ✅ · 1 ✅ · 2 ✅ · 3a ✅ (routing sport→vue) · 3b 🔜 (hub transversal) · 4 🚧 (foot sur Indicateurs ✅, muscu sur Performances 🔜) · 5 🔜 (Supabase) · 6 🚧 ~80% (module foot complet, NovalyzEngine branché sur bienetre foot).
 
-Le **moteur d'analyse** (`NovalyzEngine` dans index.html) est déjà sport-agnostique : `SEUILS` + `normaliser()` + règles. Pour brancher un sport, on alimente `normaliser()`, on ne réécrit pas le moteur.
+Le **moteur d'analyse** (`NovalyzEngine` dans `js/app.js`) est sport-agnostique : `SEUILS` + `normaliser()` + règles. Pour brancher un sport, on alimente `normaliser()`, on ne réécrit pas le moteur. Le moteur est désormais aussi appelé depuis la vue joueur foot (signaux bien-être communs).
 
 ## Fonctionnement de la collaboration
 
