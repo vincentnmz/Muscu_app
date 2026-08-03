@@ -1107,6 +1107,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     return;
   }
 
+  cdJoueurNom = d.nom || 'Joueur';
   const COL = { rouge:'#e5484d', orange:'#f5a623' };
   const acwr = d.acwr;
   const acwrCol = (acwr!=null && acwr>1.5) ? COL.rouge : (acwr!=null && acwr>1.3) ? COL.orange : 'var(--good)';
@@ -1415,6 +1416,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       <button class="sub-tab active" data-i="0" onclick="switchDetailJoueurTab(0)">Profil</button>
       <button class="sub-tab" data-i="1" onclick="switchDetailJoueurTab(1)">Charge &amp; physique</button>
       <button class="sub-tab" data-i="2" onclick="switchDetailJoueurTab(2)">Match &amp; technique</button>
+      <button class="sub-tab" data-i="3" onclick="switchDetailJoueurTab(3)">Conversation</button>
     </div>
 
     <!-- Corps en grille (main + rail desktop), comme #cd-body muscu -->
@@ -1476,6 +1478,19 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       ${(!d.heatmap||!d.heatmap.length) && !(cfgPoste && d.match_agg) ? soon('Stats de match — relance <b>seedDemoFoot()</b> pour générer les données par poste.') : ''}
     </div>
 
+    <!-- PANEL 3 : CONVERSATION -->
+    <div class="djt-panel" data-i="3" style="display:none;">
+      <div style="display:flex;flex-direction:column;height:520px;background:var(--surface);border-radius:16px;overflow:hidden;border:1px solid var(--border);">
+        <div id="djt-conv-messages" style="flex:1;overflow-y:auto;padding:16px 14px;"></div>
+        <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="djt-conv-input" rows="2" placeholder="Votre message…"
+            style="flex:1;resize:none;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13.5px;background:var(--surface2);color:var(--text);font-family:inherit;"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerMessageJoueur();}"></textarea>
+          <button onclick="envoyerMessageJoueur()" class="btn btn-accent" style="padding:10px 16px;white-space:nowrap;margin:0;">Envoyer</button>
+        </div>
+      </div>
+    </div>
+
     </div><!-- /fjd-main -->
     <aside class="fjd-rail">
       <div class="dash-card" style="padding:14px;margin-bottom:12px;">
@@ -1501,6 +1516,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
 // Édition objectifs / blessures (côté coach) — joueur actuellement ouvert
 let cdJoueurCourant = null;
+let cdJoueurNom = '';
 let cdMode = 'coach';   // 'coach' = édition ; 'athlete' = lecture seule (le joueur voit sa propre page)
 function _cdVal(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 function _cdPost(obj){ return fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(obj) }).then(r=>r.json()).catch(()=>({})); }
@@ -1548,6 +1564,58 @@ async function cdSaveBilan(){
 function switchDetailJoueurTab(i) {
   document.querySelectorAll('#detail-joueur-body .sub-tab').forEach(b=>b.classList.toggle('active', +b.dataset.i===i));
   document.querySelectorAll('#detail-joueur-body .djt-panel').forEach(p=>{ p.style.display = (+p.dataset.i===i) ? 'block' : 'none'; });
+  if (i === 3) chargerConversationJoueur();
+}
+
+// Conversation coach ↔ joueur foot (onglet 3)
+async function chargerConversationJoueur() {
+  const el = document.getElementById('djt-conv-messages');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Chargement…</div>';
+  let msgs = [];
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(cdJoueurCourant)}`);
+    const data = await res.json();
+    msgs = data.commentaires || [];
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Erreur de chargement.</div>';
+    return;
+  }
+  const isCoach = cdMode === 'coach';
+  const luKey = isCoach ? ('foot_lu_coach_' + cdJoueurCourant) : ('foot_lu_athlete_' + cdJoueurCourant);
+  const nonLusIds = msgs.filter(c => isCoach ? (c.auteur === 'athlete') : (c.auteur !== 'athlete')).filter(c => !estLu(c, luKey)).map(c => c.id);
+  if (nonLusIds.length) {
+    ajouterLusLocaux(luKey, nonLusIds);
+    fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'marquerCommentairesLus', ids: nonLusIds }) });
+    msgs.forEach(c => { if (nonLusIds.includes(c.id)) c.lu = true; });
+  }
+  const savedCac = coachAthleteCourant;
+  coachAthleteCourant = { nom: cdJoueurNom || 'Joueur' };
+  renderBullesChat(msgs, 'djt-conv-messages', isCoach);
+  coachAthleteCourant = savedCac;
+}
+
+async function envoyerMessageJoueur() {
+  const inp = document.getElementById('djt-conv-input');
+  if (!inp) return;
+  const msg = inp.value.trim();
+  if (!msg) return;
+  const isCoach = cdMode === 'coach';
+  const auteur = isCoach ? 'coach' : 'athlete';
+  const auteur_nom = isCoach ? (coach && coach.nom ? coach.nom : 'Coach') : (athlete && athlete.nom ? athlete.nom : 'Joueur');
+  const coach_id = isCoach && coach ? (coach.coach_id || '') : '';
+  const coach_nom = isCoach && coach ? (coach.nom || '') : '';
+  inp.value = '';
+  inp.disabled = true;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveCommentaire', auteur, auteur_nom, athlete_id: cdJoueurCourant, message: msg, coach_id, coach_nom })
+    });
+  } catch(e) {}
+  inp.disabled = false;
+  setTimeout(() => chargerConversationJoueur(), 600);
 }
 
 // Tests physiques d'un joueur : liste (valeur + évolution) et ajout rapide.
