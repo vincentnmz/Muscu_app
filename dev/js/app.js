@@ -1486,7 +1486,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
           <textarea id="djt-conv-input" placeholder="Votre message…"
             style="flex:1 1 0;min-width:0;min-height:72px;resize:none;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13.5px;background:var(--surface2);color:var(--text);font-family:inherit;box-sizing:border-box;"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerMessageJoueur();}"></textarea>
-          <button onclick="envoyerMessageJoueur()" class="btn btn-accent" style="flex:0 0 auto;padding:10px 14px;white-space:nowrap;margin:0;align-self:flex-end;">Envoyer</button>
+          <button onclick="envoyerMessageJoueur()" class="btn-accent" style="flex:0 0 auto;width:auto;padding:10px 16px;border-radius:10px;border:none;font-size:14px;font-weight:700;white-space:nowrap;cursor:pointer;align-self:flex-end;">Envoyer</button>
         </div>
       </div>
     </div>
