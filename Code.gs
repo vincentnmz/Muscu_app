@@ -1,4 +1,4 @@
-// =============================================================================
+[Resource from github at repo://vincentnmz/Muscu_app/sha/8db2a8cec93b224dd97629692b20c54dfdefb935/contents/Code.gs] // =============================================================================
 // NOVALYZ — Code.gs
 // Architecture 3 moteurs : GLOBAL_ENGINE | RECENT_ENGINE | COMPARISON_ENGINE
 // =============================================================================
@@ -2431,6 +2431,84 @@ function saveBienEtre(body) {
 function saveSeance(data) {
   const sheet = SS.getSheetByName('Performances');
   data.forEach(row => { row[0] = formatDateFR(row[0]); row[1] = String(row[1]); sheet.appendRow(row); });
+
+  // Phase 4 — double-écriture vers Indicateurs (agrégats session + par exercice).
+  // Silencieux : ne jamais bloquer la sauvegarde principale.
+  try {
+    var shInd = _getSheetLoose('Indicateurs');
+    if (shInd.getLastRow() === 0)
+      shInd.getRange(1,1,1,7).setValues([['date','athlete_id','seance_id','cle','valeur','unite','source']]);
+
+    var athlete_id = String(data[0][4]);
+    var seance_id  = String(data[0][2]);
+    var nom        = String(data[0][3] || '');
+    var date       = data[0][0]; // déjà formaté dd/mm/yyyy
+
+    // ── Agrégats ────────────────────────────────────────────────────────────
+    var tonnage = 0, rpeSum = 0, rpeCount = 0;
+    var exercicesSet = {}, musclesSet = {};
+    // exo_id → { nom, muscle, charge_max, vol, reps, nb, rpe_s, rpe_n }
+    var exoMap = {};
+
+    data.forEach(function(r) {
+      var charge = Number(r[9])  || 0;
+      var reps   = Number(r[10]) || 0;
+      var rpe    = Number(r[11]) || 0;
+      var volume = Number(r[13]) || (charge * reps);
+      var exo    = String(r[5]  || '');
+      var muscle = String(r[6]  || '');
+      var eid    = String(r[7]  || exo); // exercice_id ou nom exercice
+
+      tonnage += volume;
+      if (rpe > 0) { rpeSum += rpe; rpeCount++; }
+      if (exo)    exercicesSet[exo]    = true;
+      if (muscle) musclesSet[muscle]   = true;
+
+      if (eid) {
+        if (!exoMap[eid]) exoMap[eid] = { nom: exo, muscle: muscle, charge_max: 0, vol: 0, reps: 0, nb: 0, rpe_s: 0, rpe_n: 0 };
+        var e = exoMap[eid];
+        if (charge > e.charge_max) e.charge_max = charge;
+        e.vol  += volume;
+        e.reps += reps;
+        e.nb++;
+        if (rpe > 0) { e.rpe_s += rpe; e.rpe_n++; }
+      }
+    });
+
+    var rpe_moy    = rpeCount > 0 ? Math.round((rpeSum / rpeCount) * 10) / 10 : null;
+    var exoList    = Object.keys(exercicesSet).join(',');
+    var muscleList = Object.keys(musclesSet).join(',');
+
+    // ── Lignes session ───────────────────────────────────────────────────────
+    var indRows = [];
+    indRows.push([date, athlete_id, seance_id, 'type_seance', 'muscu', '', 'muscu']);
+    if (nom) indRows.push([date, athlete_id, seance_id, 'nom_seance', nom, '', 'muscu']);
+    indRows.push([date, athlete_id, seance_id, 'tonnage_total', Math.round(tonnage), 'kg', 'calculé']);
+    indRows.push([date, athlete_id, seance_id, 'nb_series', data.length, 'n', 'calculé']);
+    if (rpe_moy !== null) indRows.push([date, athlete_id, seance_id, 'rpe_moyen', rpe_moy, '1-10', 'calculé']);
+    if (exoList)    indRows.push([date, athlete_id, seance_id, 'exercices', exoList, '', 'muscu']);
+    if (muscleList) indRows.push([date, athlete_id, seance_id, 'muscles',   muscleList, '', 'muscu']);
+
+    // ── Lignes par exercice ──────────────────────────────────────────────────
+    for (var eid in exoMap) {
+      var e   = exoMap[eid];
+      var sid = seance_id + '_exo_' + eid;
+      indRows.push([date, athlete_id, sid, 'exercice', e.nom, '', 'muscu']);
+      if (e.muscle)       indRows.push([date, athlete_id, sid, 'muscle',       e.muscle,                          '', 'muscu']);
+      if (e.charge_max > 0) indRows.push([date, athlete_id, sid, 'charge_max', e.charge_max,                     'kg', 'muscu']);
+      if (e.vol > 0)      indRows.push([date, athlete_id, sid, 'volume_total', Math.round(e.vol),                'kg', 'muscu']);
+      if (e.reps > 0)     indRows.push([date, athlete_id, sid, 'reps_total',   e.reps,                           'reps', 'muscu']);
+      indRows.push([date, athlete_id, sid, 'nb_series', e.nb, 'n', 'muscu']);
+      if (e.rpe_n > 0)    indRows.push([date, athlete_id, sid, 'rpe_moyen', Math.round((e.rpe_s / e.rpe_n) * 10) / 10, '1-10', 'muscu']);
+    }
+
+    if (indRows.length)
+      shInd.getRange(shInd.getLastRow() + 1, 1, indRows.length, 7).setValues(indRows);
+
+  } catch (err) {
+    console.error('saveSeance > Indicateurs double-write:', err.message);
+  }
+
   CacheService.getScriptCache().remove('appdata_' + data[0][4]);
   return json({ success: true });
 }
