@@ -611,6 +611,9 @@ let historiqueData = [];
 
 // ==================== SESSION ==================== [NOYAU]
 window.addEventListener('load', async () => {
+  // Pré-chauffe Apps Script dès le chargement de la page : réduit le cold start au login.
+  fetch(SCRIPT_URL + '?action=ping').catch(() => {});
+
   // Applique le thème enregistré dès le chargement (login inclus) — évite le retour en dark au refresh
   if (localStorage.getItem('muscu_theme') === 'light') document.body.classList.add('light-mode');
   // Service worker : rend l'app disponible hors-ligne (salles de sport sans réseau)
@@ -1092,9 +1095,17 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   cdMode = mode || 'coach';   // 'coach' (édition) ou 'athlete' (lecture seule, sa propre page)
   let d;
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getSuiviJoueur&athlete_id=${encodeURIComponent(athlete_id)}`);
+    const _ctrl = new AbortController();
+    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    const res = await fetch(`${SCRIPT_URL}?action=getSuiviJoueur&athlete_id=${encodeURIComponent(athlete_id)}`, { signal: _ctrl.signal });
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     d = await res.json();
-  } catch (e) { body.innerHTML = '<div style="color:var(--text-muted);padding:12px">Erreur de chargement.</div>'; return; }
+  } catch (e) {
+    const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
+    body.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
+    return;
+  }
 
   const COL = { rouge:'#e5484d', orange:'#f5a623' };
   const acwr = d.acwr;
@@ -1626,9 +1637,17 @@ async function renderSuiviEquipe() {
   cont.innerHTML = '<div class="loader">Analyse de l\'équipe…</div>';
   let data;
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getSuiviEquipe&coach_id=${encodeURIComponent(coach.coach_id)}`);
+    const _ctrl = new AbortController();
+    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    const res = await fetch(`${SCRIPT_URL}?action=getSuiviEquipe&coach_id=${encodeURIComponent(coach.coach_id)}`, { signal: _ctrl.signal });
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     data = await res.json();
-  } catch (e) { cont.innerHTML = '<div style="color:var(--text-muted);padding:12px">Erreur de chargement.</div>'; return; }
+  } catch (e) {
+    const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
+    cont.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
+    return;
+  }
 
   const joueurs = data.joueurs || [];
   const eq = data.equipe || {};
@@ -6134,8 +6153,14 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
 // ==================== CHARGEMENT PRINCIPAL ====================
 async function chargerAppData() {
   if (!athlete) return;
+  const ctrl = new AbortController();
+  // Avertit l'utilisateur si le serveur est lent (cold start Apps Script).
+  const tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+  // Abandonne après 30 s pour ne pas laisser l'utilisateur sans retour.
+  const tKill = setTimeout(() => ctrl.abort(), 30000);
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}&nocache=${Date.now()}`);
+    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`, { signal: ctrl.signal });
+    clearTimeout(tSlow); clearTimeout(tKill);
     const data = await res.json();
 
     // Stocker les données globalement
@@ -6491,6 +6516,12 @@ async function chargerAppData() {
     }
 
   } catch(e) {
+    clearTimeout(tSlow); clearTimeout(tKill);
+    if (e.name === 'AbortError') {
+      showToast('Délai dépassé (30 s). Vérifie ta connexion et rafraîchis.', 'var(--danger)');
+    } else {
+      showToast('Erreur de connexion. Réessaie dans quelques secondes.', 'var(--danger)');
+    }
     console.error('chargerAppData error:', e);
   }
 }
