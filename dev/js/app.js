@@ -1346,6 +1346,22 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       ${(cdMode==='coach' && mot.reco) ? `<div style="font-size:12.5px;line-height:1.45;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><b style="color:var(--accent);">Reco</b> · ${escapeHtml(mot.reco)}</div>` : ''}
     </div>` : '';
 
+  // Phase 6 — NovalyzEngine appliqué aux données foot : bien-être → signaux communs.
+  // Le noyau n'est pas modifié ; on lui fournit les entrées que normaliser() sait lire.
+  let novalyzAlertes = [];
+  if (typeof NovalyzEngine !== 'undefined' && d.bienetre && Object.keys(d.bienetre).length) {
+    try { novalyzAlertes = NovalyzEngine.analyser({ bienEtre: d.bienetre }) || []; } catch(e) {}
+  }
+  const novalyzCard = novalyzAlertes.length ? `<div class="dash-card" style="padding:4px 0 0;margin-bottom:12px;">${
+    novalyzAlertes.map((a,i) => {
+      const c = analyseCouleur(a.type);
+      return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;${i<novalyzAlertes.length-1?'border-bottom:1px solid var(--border);':''}">`
+        + `<div style="flex:0 0 4px;align-self:stretch;background:${c};border-radius:2px;min-height:36px;"></div>`
+        + `<div style="min-width:0;"><div style="font-size:13px;font-weight:800;color:${c};">${analyseIcone(a.type)} ${escapeHtml(a.titre)}</div>`
+        + `<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">${escapeHtml(a.description)}</div></div></div>`;
+    }).join('')
+  }</div>` : '';
+
   // Charge externe GPS (§8) — agrégat 7 jours (onglet Charge)
   const gps = d.gps;
   const gpsTile = (v,l)=>`<div style="text-align:center;"><div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;">${v}</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;">${l}</div></div>`;
@@ -1425,6 +1441,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       </div></div>
       ${bilanForm}
       ${bienetreCard ? `<div class="v2-sec"><div class="st">Bien-être${cdMode==='athlete'?' · ton point du jour':''}</div></div>${bienetreCard}` : ''}
+      ${novalyzCard ? `<div class="v2-sec"><div class="st">Analyse Novalyz</div></div>${novalyzCard}` : ''}
       ${gpsCard ? `<div class="v2-sec"><div class="st">Charge externe (GPS) · 7 jours</div></div>${gpsCard}` : ''}
       <div class="v2-sec"><div class="st">Charge hebdomadaire (UA)</div></div>
       <div class="dash-card" style="padding:14px 12px 10px;margin-bottom:12px;"><canvas id="canvas-charge-joueur" width="420" height="130" style="width:100%;height:130px;display:block;"></canvas></div>
