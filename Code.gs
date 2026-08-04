@@ -50,6 +50,7 @@ function doGet(e) {
   if (action === 'lierAthlete')          return lierAthlete(e);
   if (action === 'getSuiviEquipe')       return getSuiviEquipe(e);
   if (action === 'getSuiviJoueur')       return getSuiviJoueur(e);
+  if (action === 'getContexte')          return getContexte(e);
   if (action === 'getTests')             return getTests(e);
   if (action === 'ping')                 return json({ ok: true });
   return json({ error: 'action inconnue' });
@@ -91,6 +92,8 @@ function doPost(e) {
   if (body.action === 'deleteBlessure')          return deleteBlessure(body);
   if (body.action === 'saveMatch')               return saveMatch(body);
   if (body.action === 'saveBilanAthlete')        return saveBilanAthlete(body);
+  if (body.action === 'saveContexte')            return saveContexte(body);
+  if (body.action === 'cloreContexte')           return cloreContexte(body);
   return json({ error: 'action inconnue' });
 }
 
@@ -181,6 +184,142 @@ function setPauseAthlete(body) {
   if (!found) sheet.appendRow([body.athlete_id, debut, fin]);
   try { CacheService.getScriptCache().remove('appdata_' + body.athlete_id); } catch (ex) {}
   return json({ success: true });
+}
+
+// =============================================================================
+// CONTEXTE DE PERFORMANCE (Phase 1 — tuyauterie données, aucun impact moteur)
+// -----------------------------------------------------------------------------
+// Feuille `ContexteAthlete` : une ligne = une période d'état d'un athlète.
+// Colonnes : [0]id [1]athlete_id [2]etat [3]date_debut [4]date_fin [5]source [6]note
+// L'état ACTIF = la ligne dont [date_debut, date_fin] contient aujourd'hui
+// (date_fin vide = période ouverte). L'historique = toutes les lignes de l'athlète.
+// Le noyau reste sport-agnostique : `etat` est une simple clé de texte.
+// =============================================================================
+
+// Garantit l'existence de la feuille + son en-tête. À utiliser en écriture.
+function _sheetContexte() {
+  var sh = _getSheetLoose('ContexteAthlete');
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(['id', 'athlete_id', 'etat', 'date_debut', 'date_fin', 'source', 'note']);
+  }
+  return sh;
+}
+
+// État actif d'un athlète à la date du jour, ou null. Ne crée jamais la feuille.
+function lireContexteActif(athlete_id) {
+  var sh = _findSheetLoose('ContexteAthlete');
+  if (!sh || sh.getLastRow() < 2) return null;
+  var rows = sh.getDataRange().getValues();
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var best = null, bestDebut = null;
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][1]) !== String(athlete_id)) continue;
+    var etat = String(rows[i][2] || '').trim();
+    if (!etat) continue;
+    var d = _isoToDate(_fmtJour(rows[i][3]));
+    var f = _isoToDate(_fmtJour(rows[i][4]));
+    if (d && today < d) continue;   // pas encore commencé
+    if (f && today > f) continue;   // déjà terminé
+    if (!bestDebut || (d && d > bestDebut)) { bestDebut = d; best = rows[i]; }  // la plus récente
+  }
+  if (!best) return null;
+  var fin = _fmtJour(best[4]);
+  var joursRestants = null;
+  if (fin) { var ff = _isoToDate(fin); if (ff) joursRestants = Math.max(0, Math.round((ff.getTime() - today.getTime()) / 86400000)); }
+  return {
+    id:            String(best[0] || ''),
+    etat:          String(best[2] || ''),
+    date_debut:    _fmtJour(best[3]),
+    date_fin:      fin,
+    source:        String(best[5] || ''),
+    note:          String(best[6] || ''),
+    jours_restants: joursRestants
+  };
+}
+
+// Historique complet des états d'un athlète (plus récent d'abord).
+function lireContexteHistorique(athlete_id) {
+  var sh = _findSheetLoose('ContexteAthlete');
+  if (!sh || sh.getLastRow() < 2) return [];
+  var rows = sh.getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][1]) !== String(athlete_id)) continue;
+    out.push({
+      id:         String(rows[i][0] || ''),
+      etat:       String(rows[i][2] || ''),
+      date_debut: _fmtJour(rows[i][3]),
+      date_fin:   _fmtJour(rows[i][4]),
+      source:     String(rows[i][5] || ''),
+      note:       String(rows[i][6] || '')
+    });
+  }
+  out.sort(function (a, b) { return String(b.date_debut).localeCompare(String(a.date_debut)); });
+  return out;
+}
+
+// GET — état actif + historique d'un athlète.
+function getContexte(e) {
+  var athlete_id = String(e.parameter.athlete_id || '');
+  if (!athlete_id) return json({ error: 'athlete_id manquant' });
+  return json({ actif: lireContexteActif(athlete_id), historique: lireContexteHistorique(athlete_id) });
+}
+
+// POST — ouvre une nouvelle période d'état (clôt la période ouverte précédente).
+function saveContexte(body) {
+  var athlete_id = String(body.athlete_id || '');
+  var etat = String(body.etat || '').trim();
+  if (!athlete_id || !etat) return json({ success: false, error: 'athlete_id ou etat manquant' });
+  var debut  = _fmtJour(body.date_debut) || _fmtJour(new Date());
+  var fin    = body.date_fin ? _fmtJour(body.date_fin) : '';
+  var source = String(body.source || 'manuel');
+  var note   = String(body.note || '');
+
+  var sh = _sheetContexte();
+  var rows = sh.getDataRange().getValues();
+  // Clôt toute période ouverte de cet athlète qui débute avant le nouvel état,
+  // la veille du nouveau début → pas de chevauchement dans l'historique.
+  var newD = _isoToDate(debut);
+  var veille = newD ? new Date(newD.getTime()) : null;
+  if (veille) veille.setDate(veille.getDate() - 1);
+  var veilleStr = veille ? _fmtJour(veille) : '';
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][1]) !== athlete_id) continue;
+    if (_fmtJour(rows[i][4])) continue;                 // déjà close
+    var rowD = _isoToDate(_fmtJour(rows[i][3]));
+    if (rowD && newD && rowD <= newD) sh.getRange(i + 1, 5).setValue(veilleStr);
+  }
+
+  sh.appendRow(['ctx_' + Date.now(), athlete_id, etat, debut, fin, source, note]);
+  try { CacheService.getScriptCache().remove('appdata_' + athlete_id); } catch (ex) {}
+  return json({ success: true, actif: lireContexteActif(athlete_id) });
+}
+
+// POST — clôt une période (par id, sinon la période ouverte de l'athlète).
+function cloreContexte(body) {
+  var id = String(body.id || '');
+  var athlete_id = String(body.athlete_id || '');
+  var fin = body.date_fin ? _fmtJour(body.date_fin) : _fmtJour(new Date());
+  var sh = _findSheetLoose('ContexteAthlete');
+  if (!sh || sh.getLastRow() < 2) return json({ success: false, error: 'Aucun contexte' });
+  var rows = sh.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (id && String(rows[i][0]) === id) {
+      sh.getRange(i + 1, 5).setValue(fin);
+      try { CacheService.getScriptCache().remove('appdata_' + String(rows[i][1])); } catch (ex) {}
+      return json({ success: true });
+    }
+  }
+  if (athlete_id) {
+    for (var j = 1; j < rows.length; j++) {
+      if (String(rows[j][1]) === athlete_id && !_fmtJour(rows[j][4])) {
+        sh.getRange(j + 1, 5).setValue(fin);
+        try { CacheService.getScriptCache().remove('appdata_' + athlete_id); } catch (ex) {}
+        return json({ success: true });
+      }
+    }
+  }
+  return json({ success: false, error: 'Contexte introuvable' });
 }
 
 // =============================================================================
@@ -341,6 +480,9 @@ function getAppData(e) {
 
     // ─── Mode pause / vacances (posé par l'athlète) ──────────────────────────
     pause: lirePause(athlete_id),
+
+    // ─── Contexte de performance (Phase 1) — état actif ou null ──────────────
+    contexte: lireContexteActif(athlete_id),
 
     // ─── Sport actif (Phase 2) — hérité du coach, 'muscu' par défaut ─────────
     sport: lireSportAthlete(athlete_id)
@@ -1502,7 +1644,8 @@ function getSuiviJoueur(e) {
       wellness: wellness, bienetre: bienetre, gps: gps, kpi_foot: kpiFoot,
       seances: listeSeances,
       matchs: matchs, match_stats: matchStats, match_agg: matchAgg, heatmap: heatArr,
-      objectifs: objectifs, blessures: blessures, moteur: moteur
+      objectifs: objectifs, blessures: blessures, moteur: moteur,
+      contexte: lireContexteActif(athlete_id)
     });
   } catch (err) { return json({ error: err.message }); }
 }
