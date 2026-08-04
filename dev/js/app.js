@@ -425,14 +425,39 @@
 
   function analyser(data, options) {
     options = options || {};
-    if (_enPauseData(data)) return [];   // en vacances : rien à signaler
-    var faits = normaliser(data);
+    if (_enPauseData(data)) return [];   // en vacances : rien à signaler (mute total)
+
+    /* --- Phase 3 : CONTEXTE DE PERFORMANCE -----------------------------------
+     * Résolution lazy (le module NovalyzContexte est chargé après le moteur).
+     * Absent → comportement d'origine strictement identique (non-régression).
+     * saison_normale → politique vide → aucun effet. */
+    var Ctx = global.NovalyzContexte || null;
+    var ctx = Ctx ? Ctx.resoudre(data) : null;
+    var politique = ctx ? ctx.politique : {};
+
+    // 1) Seuils contextualisés (ex : intensification tolère une fatigue haute).
+    //    On surcharge SEUILS le temps de la normalisation, puis on restaure.
+    var faits;
+    if (Ctx && politique.seuils) {
+      var _seuilsOrig = SEUILS;
+      try { SEUILS = Ctx.fusionnerSeuils(SEUILS, politique); faits = normaliser(data); }
+      finally { SEUILS = _seuilsOrig; }
+    } else {
+      faits = normaliser(data);
+    }
+
+    // 2) Application de la politique : neutralise des signaux + filtre les règles.
+    if (Ctx) faits = Ctx.appliquer(faits, politique);
+    var regles = Ctx ? Ctx.filtrerRegles(REGLES, politique) : REGLES;
+    var etatCourant = ctx ? ctx.etat : 'saison_normale';
+    /* ---------------------------------------------------------------------- */
+
     var resultats = [];
-    for (var i = 0; i < REGLES.length; i++) {
-      var regle = REGLES[i];
+    for (var i = 0; i < regles.length; i++) {
+      var regle = regles[i];
       try {
         var res = regle.evaluer(faits);
-        if (res) { res.id = regle.id; res.regle = regle.id; resultats.push(res); }
+        if (res) { res.id = regle.id; res.regle = regle.id; res.contexte = etatCourant; resultats.push(res); }
       } catch (e) {
         // Une règle qui échoue ne doit jamais casser le moteur.
         if (options.debug && global.console) global.console.warn('[NovalyzEngine] règle en échec:', regle.id, e);
@@ -1528,7 +1553,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   // Le noyau n'est pas modifié ; on lui fournit les entrées que normaliser() sait lire.
   let novalyzAlertes = [];
   if (typeof NovalyzEngine !== 'undefined' && d.bienetre && Object.keys(d.bienetre).length) {
-    try { novalyzAlertes = NovalyzEngine.analyser({ bienEtre: d.bienetre }) || []; } catch(e) {}
+    try { novalyzAlertes = NovalyzEngine.analyser({ bienEtre: d.bienetre, contexte: d.contexte }) || []; } catch(e) {}
   }
   const novalyzCard = novalyzAlertes.length ? `<div class="dash-card" style="padding:4px 0 0;margin-bottom:12px;">${
     novalyzAlertes.map((a,i) => {
