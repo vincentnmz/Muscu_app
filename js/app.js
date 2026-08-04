@@ -1684,7 +1684,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
     </div><!-- /fjd-main -->
     <aside class="fjd-rail">
-      ${(cdMode === 'coach' || _ctxActif(d.contexte)) ? carteContexteHTML(d.contexte, athlete_id, cdMode) : ''}
+      ${carteContexteHTML(d.contexte, athlete_id, 'foot')}
       <div class="dash-card" style="padding:14px;margin-bottom:12px;">
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Disponibilité</div>
         <div style="display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:${dispo.c};"><span style="width:10px;height:10px;border-radius:50%;background:${dispo.c};"></span>${dispo.t}</div>
@@ -2638,7 +2638,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
-    renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'coach');
+    renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu');
     renderEtatDuJourCoach(data);
     renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique);
@@ -6574,7 +6574,7 @@ function _appliquerAppData(data) {
     renderDashboardActivite(data.historique);
 
     // Nouveaux blocs Accueil : Contexte + État du jour + Analyse moteur + Alertes
-    renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete');
+    renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete');   // athlète : éditable aussi
     renderEtatDuJour(data);
     renderAnalyseAccueilAthlete(data);
     renderAlertes(data);
@@ -7784,8 +7784,9 @@ function _ctxLibelle(cle) {
 function _ctxUI(cle) { return ETATS_UI[cle] || ETATS_UI.saison_normale; }
 function _ctxActif(contexte) { return !!(contexte && contexte.etat && contexte.etat !== 'saison_normale'); }
 
-// Carte « Contexte de performance ». mode='coach' → boutons d'action.
-function carteContexteHTML(contexte, athlete_id, mode) {
+// Carte « Contexte de performance ». Toujours éditable (coach ET athlète).
+// `source` route le rechargement après écriture : 'foot' | 'muscu' | 'athlete'.
+function carteContexteHTML(contexte, athlete_id, source) {
   var actif = _ctxActif(contexte);
   var cle = actif ? contexte.etat : 'saison_normale';
   var ui = _ctxUI(cle);
@@ -7794,14 +7795,12 @@ function carteContexteHTML(contexte, athlete_id, mode) {
   var sous = actif
     ? escapeHtml((contexte.date_debut || '') + (contexte.date_fin ? ' → ' + contexte.date_fin : '') + (contexte.jours_restants != null ? ' · ' + contexte.jours_restants + 'j restants' : ''))
     : 'Aucun ajustement — analyses standard.';
-  var boutons = '';
-  if (mode === 'coach') {
-    var aid = String(athlete_id || '');
-    boutons = '<div style="display:flex;gap:8px;margin-top:12px;">'
-      + '<button onclick="ouvrirModaleContexte(\'' + aid + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' + (actif ? 'Changer l\'état' : 'Poser un état') + '</button>'
-      + (actif ? '<button onclick="terminerContexte(\'' + aid + '\')" style="border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Terminer</button>' : '')
-      + '</div>';
-  }
+  var aid = String(athlete_id || '');
+  var src = source || 'muscu';
+  var boutons = '<div style="display:flex;gap:8px;margin-top:12px;">'
+    + '<button onclick="ouvrirModaleContexte(\'' + aid + '\',\'' + src + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' + (actif ? 'Changer l\'état' : 'Poser un état') + '</button>'
+    + (actif ? '<button onclick="terminerContexte(\'' + aid + '\',\'' + src + '\')" style="border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Terminer</button>' : '')
+    + '</div>';
   return '<div class="dash-card" style="padding:14px;margin-bottom:12px;">'
     + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Contexte de performance</div>'
     + '<div style="display:flex;align-items:center;gap:9px;">'
@@ -7811,12 +7810,11 @@ function carteContexteHTML(contexte, athlete_id, mode) {
     + '</div>' + boutons + '</div>';
 }
 
-// Rendu dans un conteneur. En lecture (athlète), masqué si saison normale (zéro bruit).
-function renderCarteContexte(contexte, athlete_id, containerId, mode) {
+// Rendu dans un conteneur. `source` = vue d'origine (pour le rechargement).
+function renderCarteContexte(contexte, athlete_id, containerId, source) {
   var el = document.getElementById(containerId);
   if (!el) return;
-  if (mode !== 'coach' && !_ctxActif(contexte)) { el.innerHTML = ''; return; }
-  el.innerHTML = carteContexteHTML(contexte, athlete_id, mode);
+  el.innerHTML = carteContexteHTML(contexte, athlete_id, source);
 }
 
 // --- Modale de saisie (coach) --------------------------------------------
@@ -7826,8 +7824,8 @@ function _ctxDetecterSource() {
   if (ov && ov.style.display && ov.style.display !== 'none') return 'foot';
   return 'muscu';
 }
-function ouvrirModaleContexte(athlete_id) {
-  _ctxCible = { athlete_id: String(athlete_id || ''), source: _ctxDetecterSource(), choix: null };
+function ouvrirModaleContexte(athlete_id, source) {
+  _ctxCible = { athlete_id: String(athlete_id || ''), source: source || _ctxDetecterSource(), choix: null };
   var chips = '';
   var E = (typeof NovalyzContexte !== 'undefined' && NovalyzContexte.ETATS) ? NovalyzContexte.ETATS : {};
   for (var cle in E) {
@@ -7865,9 +7863,9 @@ async function poserContexte() {
     note: document.getElementById('ctx-modale-note').value, source: 'coach'
   }, _ctxCible.athlete_id, _ctxCible.source);
 }
-async function terminerContexte(athlete_id) {
+async function terminerContexte(athlete_id, source) {
   if (!confirm('Terminer l\'état de contexte en cours ?')) return;
-  await _ctxEnvoyer({ action: 'cloreContexte', athlete_id: String(athlete_id || '') }, athlete_id, _ctxDetecterSource());
+  await _ctxEnvoyer({ action: 'cloreContexte', athlete_id: String(athlete_id || '') }, athlete_id, source || _ctxDetecterSource());
 }
 async function _ctxEnvoyer(body, aid, source) {
   try { await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); } catch (e) {}
@@ -7877,7 +7875,10 @@ async function _ctxEnvoyer(body, aid, source) {
 }
 function _ctxRecharger(athlete_id, source) {
   if (source === 'foot') {
-    if (typeof ouvrirDetailJoueurFoot === 'function') ouvrirDetailJoueurFoot(athlete_id, 'coach');
+    // Préserve le mode courant (coach édite / joueur consulte sa page).
+    if (typeof ouvrirDetailJoueurFoot === 'function') ouvrirDetailJoueurFoot(athlete_id, (typeof cdMode !== 'undefined' ? cdMode : 'coach'));
+  } else if (source === 'athlete') {
+    if (typeof chargerAppData === 'function') chargerAppData();
   } else if (typeof ouvrirDetailAthleteCoach === 'function' && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant) {
     ouvrirDetailAthleteCoach(coachAthleteCourant, null);
   }
