@@ -195,6 +195,32 @@
     </div>
   </div>
 
+  <!-- Modale : Contexte de performance (le coach pose l'état d'un athlète) -->
+  <div id="modal-contexte" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:999;align-items:center;justify-content:center;padding:16px;">
+    <div class="dash-card" style="width:100%;max-width:380px;padding:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="font-size:16px;font-weight:800;">Contexte de performance</h3>
+        <button onclick="fermerModaleContexte()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:9px;">État</div>
+      <div id="ctx-modale-chips" style="display:flex;flex-wrap:wrap;gap:7px;"></div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <label style="flex:1;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">Début
+          <input type="date" id="ctx-modale-debut" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:13px;font-family:inherit;">
+        </label>
+        <label style="flex:1;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">Fin
+          <input type="date" id="ctx-modale-fin" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:13px;font-family:inherit;">
+        </label>
+      </div>
+      <input type="text" id="ctx-modale-note" placeholder="Note (optionnel)" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:13px;font-family:inherit;">
+      <div id="ctx-modale-hint" style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.45;"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="fermerModaleContexte()" style="flex:0 0 auto;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>
+        <button onclick="poserContexte()" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:10px;font-size:13.5px;font-weight:800;cursor:pointer;">Appliquer l'état</button>
+      </div>
+    </div>
+  </div>
+
   <!-- VUE COACH -->
   <div id="view-coach" class="view">
     <div class="header" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
@@ -309,6 +335,9 @@
         <div class="dash-label"><svg class="ico"><use href="#i-bell"/></svg>Alertes</div>
         <div id="cd-alertes"><div class="loader">Chargement...</div></div>
       </div>
+
+      <!-- Contexte de performance (état posé par le coach) -->
+      <div id="cd-contexte"></div>
 
       <!-- Bilan de la dernière séance (questionnaire bien-être de l'athlète) -->
       <div class="v2-sec" id="cd-etat-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</h2></div>
@@ -589,6 +618,9 @@
           <div style="color:var(--text-muted);font-size:13px;padding:8px 2px;">Chargement...</div>
         </div>
       </div>
+
+      <!-- Contexte de performance (lecture seule pour l'athlète) -->
+      <div id="dash-contexte"></div>
 
       <!-- État du jour (synthèse questionnaire bien-être) -->
       <div class="v2-sec" id="dash-etat-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</h2></div>
