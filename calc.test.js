@@ -59,6 +59,13 @@ const acwrCode = extractBetween(
 const wqDimsCode  = extractBetween('const WQ_DIMS = [', '];', 'WQ_DIMS');
 const wqPositifCode = extractBetween('function wqPositif(dim, val) {', '\n}', 'wqPositif');
 
+// 4) NovalyzContexte (module autonome, Phase 2) — extrait entre marqueurs dédiés
+const contexteCode = extractBetween(
+  '/* NOVALYZ_CONTEXTE_START',
+  '/* NOVALYZ_CONTEXTE_END */',
+  'module NovalyzContexte'
+);
+
 // ---- Sandbox d'exécution (pas de DOM) -----------------------------------------
 const sandbox = {};
 sandbox.self = sandbox;
@@ -67,10 +74,12 @@ sandbox.module = { exports: {} };
 sandbox.console = console;
 vm.createContext(sandbox);
 vm.runInContext(engineCode, sandbox);
+vm.runInContext(contexteCode, sandbox);
 vm.runInContext(acwrCode + '\nthis.computeACWR = computeACWR;', sandbox);
 vm.runInContext(wqDimsCode + '\n' + wqPositifCode + '\nthis.WQ_DIMS = WQ_DIMS; this.wqPositif = wqPositif;', sandbox);
 
 const Engine = sandbox.NovalyzEngine;
+const Ctx = sandbox.NovalyzContexte;
 const computeACWR = sandbox.computeACWR;
 const WQ_DIMS = sandbox.WQ_DIMS;
 const wqPositif = sandbox.wqPositif;
@@ -180,6 +189,70 @@ function approx(nom, obtenu, attendu, tol) {
   // Chaque analyse a la forme attendue
   const forme = (multi || []).every(a => a.type && a.titre && a.description);
   check('Engine analyses bien formées (type/titre/description)', forme, 'toutes OK', multi);
+})();
+
+// =============================================================================
+// D) NovalyzContexte (Phase 2) — registre, résolution, politique, non-régression
+// =============================================================================
+(function testContexte() {
+  check('Contexte exposé', !!Ctx && typeof Ctx.resoudre === 'function', 'fonction', typeof (Ctx && Ctx.resoudre));
+  check('5 états essentiels présents',
+    Ctx && ['saison_normale','deload','retour_vacances','retour_blessure','intensification'].every(k => Ctx.ETATS[k]),
+    true, Ctx && Object.keys(Ctx.ETATS));
+
+  // --- resoudre ---
+  const rNorm = Ctx.resoudre({});
+  eq('resoudre sans contexte → saison_normale', rNorm.etat, 'saison_normale');
+  eq('saison_normale a une politique vide', JSON.stringify(rNorm.politique), '{}');
+
+  const rDeload = Ctx.resoudre({ contexte: { etat: 'deload', date_debut: '2026-08-01', date_fin: '2026-08-07' } });
+  eq('resoudre deload → etat deload', rDeload.etat, 'deload');
+  eq('resoudre deload → mode decharge', rDeload.mode, 'decharge');
+  eq('resoudre propage les dates', rDeload.date_fin, '2026-08-07');
+
+  const rInconnu = Ctx.resoudre({ contexte: { etat: 'etat_bidon_xyz' } });
+  eq('état inconnu → retombe sur saison_normale', rInconnu.etat, 'saison_normale');
+  eq('état inconnu → drapeau inconnu=true', rInconnu.inconnu, true);
+
+  // --- appliquer (neutralisation de signaux) ---
+  const faitsIn = { valeurs: {}, signaux: { volumeFaible: true, forceBaisse: true, fatigueElevee: true } };
+  const faitsOut = Ctx.appliquer(faitsIn, Ctx.ETATS.deload.politique);
+  eq('appliquer deload neutralise volumeFaible', faitsOut.signaux.volumeFaible, null);
+  eq('appliquer deload neutralise forceBaisse', faitsOut.signaux.forceBaisse, null);
+  eq('appliquer NE touche PAS fatigueElevee', faitsOut.signaux.fatigueElevee, true);
+  eq('appliquer ne mute pas l\'entrée (immuable)', faitsIn.signaux.volumeFaible, true);
+
+  const faitsRepr = Ctx.appliquer({ signaux: {} }, Ctx.ETATS.retour_vacances.politique);
+  eq('retour_vacances → comparaisons suspendues', faitsRepr.comparaisons_suspendues, true);
+
+  // --- filtrerRegles ---
+  const faux = [{ id: 'sous_entrainement', categorie: 'entraînement' }, { id: 'fatigue_generale', categorie: 'récupération' }, { id: 'surmenage', categorie: 'récupération' }];
+  const gardees = Ctx.filtrerRegles(faux, Ctx.ETATS.deload.politique).map(r => r.id);
+  check('deload suspend sous_entrainement + surmenage', !gardees.includes('sous_entrainement') && !gardees.includes('surmenage'), true, gardees);
+  check('deload garde fatigue_generale', gardees.includes('fatigue_generale'), true, gardees);
+  eq('saison_normale ne suspend aucune règle', Ctx.filtrerRegles(faux, {}).length, 3);
+
+  // --- fusionnerSeuils ---
+  const seuilsFus = Ctx.fusionnerSeuils(Engine.SEUILS, Ctx.ETATS.intensification.politique);
+  eq('intensification surcharge fatigueElevee → 5', seuilsFus.fatigueElevee, 5);
+  eq('fusionnerSeuils préserve les autres seuils', seuilsFus.sommeilFaible, Engine.SEUILS.sommeilFaible);
+  eq('fusionnerSeuils ne mute pas SEUILS global', Engine.SEUILS.fatigueElevee, 4);
+
+  // --- NON-RÉGRESSION MÉTIER : le vrai scénario "retour de vacances" ---
+  // Progression en baisse + volume faible → le moteur crie "sous-entraînement"…
+  const dataReprise = { dashboard: { progression: { en_progression: 0, en_baisse: 3 }, regularite: { seances_j7: 0, seances_prevues: 4 } } };
+  const sansCtx = Engine.analyser(dataReprise);
+  check('HORS contexte : sous_entrainement bien détecté',
+    sansCtx.some(a => a.id === 'sous_entrainement'), true, sansCtx.map(a => a.id));
+
+  // …mais en "retour_vacances" la couche contexte le supprime (double protection :
+  // signal neutralisé ET règle suspendue).
+  const pol = Ctx.resoudre({ contexte: { etat: 'retour_vacances' } }).politique;
+  const faitsCtx = Ctx.appliquer(Engine.normaliser(dataReprise), pol);
+  const reglesCtx = Ctx.filtrerRegles(Engine.REGLES, pol);
+  const analysesCtx = reglesCtx.map(r => { try { const a = r.evaluer(faitsCtx); if (a) a.id = r.id; return a; } catch (e) { return null; } }).filter(Boolean);
+  check('AVEC contexte retour_vacances : sous_entrainement supprimé',
+    !analysesCtx.some(a => a.id === 'sous_entrainement'), true, analysesCtx.map(a => a.id));
 })();
 
 // ---- Rapport ------------------------------------------------------------------
