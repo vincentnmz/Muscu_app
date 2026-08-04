@@ -253,6 +253,33 @@ function approx(nom, obtenu, attendu, tol) {
   const analysesCtx = reglesCtx.map(r => { try { const a = r.evaluer(faitsCtx); if (a) a.id = r.id; return a; } catch (e) { return null; } }).filter(Boolean);
   check('AVEC contexte retour_vacances : sous_entrainement supprimé',
     !analysesCtx.some(a => a.id === 'sous_entrainement'), true, analysesCtx.map(a => a.id));
+
+  // --- INTÉGRATION Phase 3 : analyser() applique LUI-MÊME le contexte ---
+  const repriseAvecCtx = Object.assign({}, dataReprise, { contexte: { etat: 'retour_vacances' } });
+  const integ = Engine.analyser(repriseAvecCtx);
+  check('Phase 3 : analyser() supprime sous_entrainement en retour_vacances',
+    !integ.some(a => a.id === 'sous_entrainement'), true, integ.map(a => a.id));
+  check('Phase 3 : chaque analyse est taguée du contexte',
+    integ.every(a => a.contexte === 'retour_vacances'), true, integ.map(a => a.contexte));
+
+  // Non-régression : même appel SANS contexte → sous_entrainement présent + tag saison_normale
+  const integNorm = Engine.analyser(dataReprise);
+  check('Phase 3 : hors contexte, sous_entrainement présent',
+    integNorm.some(a => a.id === 'sous_entrainement'), true, integNorm.map(a => a.id));
+  check('Phase 3 : hors contexte, tag = saison_normale',
+    integNorm.every(a => a.contexte === 'saison_normale'), true, integNorm.map(a => a.contexte));
+
+  // Intensification via analyser() : seuil fatigue relevé à 5 → fatigue=4 ne crie plus
+  const dataFatigue = { bien_etre: [{ sommeil: 2, energie: 2, fatigue: 4 }] };
+  const sansIntens = Engine.analyser(dataFatigue);
+  check('fatigue_generale détecté hors intensification (fatigue=4)',
+    sansIntens.some(a => a.id === 'fatigue_generale'), true, sansIntens.map(a => a.id));
+  const avecIntens = Engine.analyser(Object.assign({}, dataFatigue, { contexte: { etat: 'intensification' } }));
+  check('intensification relève le seuil : fatigue=4 ne déclenche plus fatigue_generale',
+    !avecIntens.some(a => a.id === 'fatigue_generale'), true, avecIntens.map(a => a.id));
+
+  // Le seuil global n'a PAS été muté après un appel contextualisé (restauration)
+  eq('SEUILS.fatigueElevee restauré à 4 après intensification', Engine.SEUILS.fatigueElevee, 4);
 })();
 
 // ---- Rapport ------------------------------------------------------------------
