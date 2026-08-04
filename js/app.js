@@ -465,6 +465,172 @@
 
 
 
+/* NOVALYZ_CONTEXTE_START — Couche « Contexte de performance » (Phase 2)
+ * =============================================================================
+ * Novalyz · Contexte de performance — module NOYAU, sport-agnostique
+ * -----------------------------------------------------------------------------
+ * Répond à « POURQUOI » avant que le moteur interprète le « QUOI ».
+ * Un athlète est, à une date donnée, dans un ÉTAT (deload, retour de vacances…).
+ * Chaque état porte une POLITIQUE : un petit vocabulaire que le moteur applique
+ * pour ne pas prendre une baisse VOULUE pour une régression.
+ *
+ * Ce module est AUTONOME : il ne branche rien. L'intégration au moteur se fait
+ * en Phase 3 (2 insertions dans NovalyzEngine.analyser). Ici : le registre, la
+ * résolution de l'état actif, et les transformations (neutraliser un signal,
+ * suspendre une règle, fusionner un seuil).
+ *
+ * VOCABULAIRE DE POLITIQUE (volontairement réduit) :
+ *   suspendre    : [id|categorie]  → ces règles ne s'évaluent pas
+ *   neutraliser  : [signal]        → force le signal à null (cesse de compter)
+ *   seuils       : {clé: valeur}   → surcharge un SEUILS (voir fusionnerSeuils)
+ *   suspendre_comparaisons: bool   → coupe les comparaisons directes/historiques
+ *   mode         : string          → étiquette pour l'UI (reprise, décharge…)
+ *
+ * Ajouter un état = ajouter une entrée dans ETATS. Rien d'autre à modifier.
+ * ========================================================================== */
+(function (global) {
+  'use strict';
+
+  var VERSION = '1.0.0';
+
+  // Registre déclaratif des états. `saison_normale` = défaut, politique VIDE
+  // (le moteur se comporte alors exactement comme sans contexte : non-régression).
+  var ETATS = {
+    saison_normale: {
+      libelle: 'Saison normale',
+      politique: {}
+    },
+    deload: {
+      libelle: 'Semaine de décharge',
+      politique: {
+        mode: 'decharge',
+        // La baisse de volume/charge est VOULUE : elle cesse de compter comme négative.
+        neutraliser: ['volumeFaible', 'forceBaisse', 'progressionBaisse'],
+        suspendre:   ['sous_entrainement', 'surmenage']
+      }
+    },
+    retour_vacances: {
+      libelle: 'Retour de vacances',
+      politique: {
+        mode: 'reprise_progressive',
+        duree_jours: 14,
+        neutraliser: ['progressionBaisse', 'forceBaisse'],
+        suspendre:   ['sous_entrainement', 'irregularite'],
+        suspendre_comparaisons: true
+      }
+    },
+    retour_blessure: {
+      libelle: 'Retour de blessure',
+      politique: {
+        mode: 'reprise',
+        neutraliser: ['progressionBaisse', 'forceBaisse', 'volumeFaible'],
+        suspendre:   ['sous_entrainement', 'irregularite', 'surmenage'],
+        suspendre_comparaisons: true
+      }
+    },
+    intensification: {
+      libelle: 'Phase d\'intensification',
+      politique: {
+        mode: 'intensification',
+        // Fatigue élevée ATTENDUE : on ne la signale qu'au maximum de l'échelle.
+        seuils: { fatigueElevee: 5 }
+      }
+    }
+  };
+
+  /* --- Résolution de l'état actif ------------------------------------------
+   * Lit `data.contexte` (déjà résolu par le backend : l'état du jour, ou null).
+   * Un état inconnu retombe proprement sur `saison_normale` (extensibilité sûre). */
+  function resoudre(data) {
+    var ctx = data && data.contexte;
+    var cle = (ctx && ctx.etat) ? String(ctx.etat).trim() : 'saison_normale';
+    var connu = Object.prototype.hasOwnProperty.call(ETATS, cle);
+    var def = connu ? ETATS[cle] : ETATS.saison_normale;
+    return {
+      etat:           connu ? cle : 'saison_normale',
+      libelle:        def.libelle || cle,
+      politique:      def.politique || {},
+      mode:           (def.politique && def.politique.mode) || null,
+      date_debut:     ctx ? (ctx.date_debut || null) : null,
+      date_fin:       ctx ? (ctx.date_fin || null) : null,
+      jours_restants: (ctx && ctx.jours_restants != null) ? ctx.jours_restants : null,
+      source:         ctx ? (ctx.source || null) : null,
+      inconnu:        !connu && !!(ctx && ctx.etat)   // état posé mais non reconnu
+    };
+  }
+
+  /* --- Application de la politique aux faits (signaux) ----------------------
+   * Renvoie une COPIE des faits : neutralise les signaux demandés + pose le
+   * drapeau `comparaisons_suspendues`. NE touche PAS aux seuils (voir fusionnerSeuils). */
+  function appliquer(faits, politique) {
+    politique = politique || {};
+    faits = faits || {};
+    var signaux = {}, src = faits.signaux || {};
+    for (var k in src) { if (Object.prototype.hasOwnProperty.call(src, k)) signaux[k] = src[k]; }
+    var neutraliser = politique.neutraliser || [];
+    for (var i = 0; i < neutraliser.length; i++) signaux[neutraliser[i]] = null; // cesse de compter
+    return {
+      valeurs: faits.valeurs || {},
+      signaux: signaux,
+      comparaisons_suspendues: !!politique.suspendre_comparaisons
+    };
+  }
+
+  /* --- Filtrage des règles suspendues --------------------------------------
+   * `suspendre` peut viser un id de règle OU une catégorie. On garde tout ce
+   * qui n'est pas explicitement suspendu. */
+  function filtrerRegles(regles, politique) {
+    regles = regles || [];
+    politique = politique || {};
+    var stop = politique.suspendre || [];
+    if (!stop.length) return regles.slice();
+    var set = {};
+    for (var i = 0; i < stop.length; i++) set[String(stop[i])] = true;
+    return regles.filter(function (r) { return !set[String(r.id)] && !set[String(r.categorie)]; });
+  }
+
+  /* --- Fusion des seuils ----------------------------------------------------
+   * Renvoie une COPIE de `seuils` avec les surcharges de la politique appliquées.
+   * Utilisé en Phase 3 pour alimenter normaliser() sans muter les SEUILS globaux. */
+  function fusionnerSeuils(seuils, politique) {
+    seuils = seuils || {};
+    politique = politique || {};
+    var out = {};
+    for (var k in seuils) { if (Object.prototype.hasOwnProperty.call(seuils, k)) out[k] = seuils[k]; }
+    var over = politique.seuils || {};
+    for (var j in over) { if (Object.prototype.hasOwnProperty.call(over, j)) out[j] = over[j]; }
+    return out;
+  }
+
+  // Liste des états (pour un futur sélecteur UI).
+  function etatsDisponibles() {
+    var out = [];
+    for (var cle in ETATS) {
+      if (!Object.prototype.hasOwnProperty.call(ETATS, cle)) continue;
+      out.push({ cle: cle, libelle: ETATS[cle].libelle || cle, mode: (ETATS[cle].politique && ETATS[cle].politique.mode) || null });
+    }
+    return out;
+  }
+
+  var NovalyzContexte = {
+    version:          VERSION,
+    ETATS:            ETATS,
+    resoudre:         resoudre,
+    appliquer:        appliquer,
+    filtrerRegles:    filtrerRegles,
+    fusionnerSeuils:  fusionnerSeuils,
+    etatsDisponibles: etatsDisponibles
+  };
+
+  global.NovalyzContexte = NovalyzContexte;
+  if (typeof module !== 'undefined' && module.exports) module.exports = NovalyzContexte;
+
+})(typeof self !== 'undefined' ? self : this);
+/* NOVALYZ_CONTEXTE_END */
+
+
+
+
 /* =============================================================================
  * CARTE DU CODE — index.html  (voir docs/architecture.md)
  * -----------------------------------------------------------------------------
