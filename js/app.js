@@ -1684,6 +1684,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
     </div><!-- /fjd-main -->
     <aside class="fjd-rail">
+      ${(cdMode === 'coach' || _ctxActif(d.contexte)) ? carteContexteHTML(d.contexte, athlete_id, cdMode) : ''}
       <div class="dash-card" style="padding:14px;margin-bottom:12px;">
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Disponibilité</div>
         <div style="display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:${dispo.c};"><span style="width:10px;height:10px;border-radius:50%;background:${dispo.c};"></span>${dispo.t}</div>
@@ -2637,6 +2638,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'coach');
     renderEtatDuJourCoach(data);
     renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique);
@@ -6571,7 +6573,8 @@ function _appliquerAppData(data) {
     renderDashboardRecords(data.historique);
     renderDashboardActivite(data.historique);
 
-    // Nouveaux blocs Accueil : État du jour (questionnaire) + Analyse moteur + Alertes
+    // Nouveaux blocs Accueil : Contexte + État du jour + Analyse moteur + Alertes
+    renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete');
     renderEtatDuJour(data);
     renderAnalyseAccueilAthlete(data);
     renderAlertes(data);
@@ -7760,6 +7763,126 @@ function wqColor(pos) {
   return 'var(--danger)';
 }
 
+/* =============================================================================
+ * CONTEXTE DE PERFORMANCE — UI (Phase 4)  [NOYAU/UI]
+ * -----------------------------------------------------------------------------
+ * Rend visible l'état posé par le coach (carte + tag sur les analyses) et
+ * permet de le poser via une modale (saveContexte / cloreContexte).
+ * La LOGIQUE reste dans NovalyzContexte ; ici uniquement l'affichage.
+ * ========================================================================== */
+var ETATS_UI = {
+  saison_normale:  { emoji: '',   couleur: 'var(--text-muted)', duree: null },
+  deload:          { emoji: '📉', couleur: 'var(--warn)',       duree: 7  },
+  retour_vacances: { emoji: '🌴', couleur: 'var(--accent)',     duree: 14 },
+  retour_blessure: { emoji: '🩹', couleur: 'var(--violet)',     duree: 21 },
+  intensification: { emoji: '🔥', couleur: 'var(--danger)',     duree: 14 }
+};
+function _ctxLibelle(cle) {
+  var E = (typeof NovalyzContexte !== 'undefined' && NovalyzContexte.ETATS) ? NovalyzContexte.ETATS : {};
+  return (E[cle] && E[cle].libelle) || cle;
+}
+function _ctxUI(cle) { return ETATS_UI[cle] || ETATS_UI.saison_normale; }
+function _ctxActif(contexte) { return !!(contexte && contexte.etat && contexte.etat !== 'saison_normale'); }
+
+// Carte « Contexte de performance ». mode='coach' → boutons d'action.
+function carteContexteHTML(contexte, athlete_id, mode) {
+  var actif = _ctxActif(contexte);
+  var cle = actif ? contexte.etat : 'saison_normale';
+  var ui = _ctxUI(cle);
+  var col = actif ? ui.couleur : 'var(--text-muted)';
+  var titre = (actif && ui.emoji ? ui.emoji + ' ' : '') + escapeHtml(_ctxLibelle(cle));
+  var sous = actif
+    ? escapeHtml((contexte.date_debut || '') + (contexte.date_fin ? ' → ' + contexte.date_fin : '') + (contexte.jours_restants != null ? ' · ' + contexte.jours_restants + 'j restants' : ''))
+    : 'Aucun ajustement — analyses standard.';
+  var boutons = '';
+  if (mode === 'coach') {
+    var aid = String(athlete_id || '');
+    boutons = '<div style="display:flex;gap:8px;margin-top:12px;">'
+      + '<button onclick="ouvrirModaleContexte(\'' + aid + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' + (actif ? 'Changer l\'état' : 'Poser un état') + '</button>'
+      + (actif ? '<button onclick="terminerContexte(\'' + aid + '\')" style="border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Terminer</button>' : '')
+      + '</div>';
+  }
+  return '<div class="dash-card" style="padding:14px;margin-bottom:12px;">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Contexte de performance</div>'
+    + '<div style="display:flex;align-items:center;gap:9px;">'
+    + '<span style="width:10px;height:10px;border-radius:50%;background:' + col + ';flex-shrink:0;"></span>'
+    + '<div style="min-width:0;"><div style="font-size:15px;font-weight:800;">' + titre + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + sous + '</div></div>'
+    + '</div>' + boutons + '</div>';
+}
+
+// Rendu dans un conteneur. En lecture (athlète), masqué si saison normale (zéro bruit).
+function renderCarteContexte(contexte, athlete_id, containerId, mode) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  if (mode !== 'coach' && !_ctxActif(contexte)) { el.innerHTML = ''; return; }
+  el.innerHTML = carteContexteHTML(contexte, athlete_id, mode);
+}
+
+// --- Modale de saisie (coach) --------------------------------------------
+var _ctxCible = { athlete_id: null, source: null, choix: null };
+function _ctxDetecterSource() {
+  var ov = document.getElementById('detail-joueur-overlay');
+  if (ov && ov.style.display && ov.style.display !== 'none') return 'foot';
+  return 'muscu';
+}
+function ouvrirModaleContexte(athlete_id) {
+  _ctxCible = { athlete_id: String(athlete_id || ''), source: _ctxDetecterSource(), choix: null };
+  var chips = '';
+  var E = (typeof NovalyzContexte !== 'undefined' && NovalyzContexte.ETATS) ? NovalyzContexte.ETATS : {};
+  for (var cle in E) {
+    if (!Object.prototype.hasOwnProperty.call(E, cle) || cle === 'saison_normale') continue;
+    var ui = _ctxUI(cle);
+    chips += '<button type="button" data-ctx="' + cle + '" onclick="_ctxChoisir(\'' + cle + '\')" style="flex:0 0 auto;font-size:12.5px;font-weight:700;padding:9px 13px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;">' + (ui.emoji ? ui.emoji + ' ' : '') + escapeHtml(_ctxLibelle(cle)) + '</button>';
+  }
+  document.getElementById('ctx-modale-chips').innerHTML = chips;
+  document.getElementById('ctx-modale-debut').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('ctx-modale-fin').value = '';
+  document.getElementById('ctx-modale-note').value = '';
+  document.getElementById('ctx-modale-hint').textContent = 'Choisis un état : la date de fin se pré-remplit.';
+  document.getElementById('modal-contexte').style.display = 'flex';
+}
+function _ctxChoisir(cle) {
+  _ctxCible.choix = cle;
+  var nodes = document.querySelectorAll('#ctx-modale-chips [data-ctx]');
+  for (var i = 0; i < nodes.length; i++) {
+    var on = nodes[i].getAttribute('data-ctx') === cle;
+    nodes[i].style.background = on ? 'var(--accent-a14)' : 'var(--surface2)';
+    nodes[i].style.borderColor = on ? 'var(--accent-dim)' : 'var(--border)';
+    nodes[i].style.color = on ? 'var(--accent)' : 'var(--text-muted)';
+  }
+  var ui = _ctxUI(cle);
+  if (ui.duree) { var d = new Date(); d.setDate(d.getDate() + ui.duree); document.getElementById('ctx-modale-fin').value = d.toISOString().slice(0, 10); }
+  document.getElementById('ctx-modale-hint').innerHTML = 'État : <b style="color:var(--text)">' + escapeHtml(_ctxLibelle(cle)) + '</b> · durée par défaut ' + (ui.duree || '—') + ' j.';
+}
+function fermerModaleContexte() { var m = document.getElementById('modal-contexte'); if (m) m.style.display = 'none'; }
+async function poserContexte() {
+  if (!_ctxCible.choix) { document.getElementById('ctx-modale-hint').textContent = 'Choisis d\'abord un état.'; return; }
+  await _ctxEnvoyer({
+    action: 'saveContexte', athlete_id: _ctxCible.athlete_id, etat: _ctxCible.choix,
+    date_debut: document.getElementById('ctx-modale-debut').value,
+    date_fin: document.getElementById('ctx-modale-fin').value,
+    note: document.getElementById('ctx-modale-note').value, source: 'coach'
+  }, _ctxCible.athlete_id, _ctxCible.source);
+}
+async function terminerContexte(athlete_id) {
+  if (!confirm('Terminer l\'état de contexte en cours ?')) return;
+  await _ctxEnvoyer({ action: 'cloreContexte', athlete_id: String(athlete_id || '') }, athlete_id, _ctxDetecterSource());
+}
+async function _ctxEnvoyer(body, aid, source) {
+  try { await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); } catch (e) {}
+  fermerModaleContexte();
+  if (typeof showToast === 'function') showToast('Contexte mis à jour');
+  setTimeout(function () { _ctxRecharger(aid, source); }, 700);  // no-cors → laisser l'écriture aboutir
+}
+function _ctxRecharger(athlete_id, source) {
+  if (source === 'foot') {
+    if (typeof ouvrirDetailJoueurFoot === 'function') ouvrirDetailJoueurFoot(athlete_id, 'coach');
+  } else if (typeof ouvrirDetailAthleteCoach === 'function' && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant) {
+    ouvrirDetailAthleteCoach(coachAthleteCourant, null);
+  }
+}
+
 function renderEtatDuJour(data, ids) {
   ids = ids || { sec: 'dash-etat-sec', card: 'dash-etat-card', cont: 'dash-etat-content' };
   const sec  = document.getElementById(ids.sec);
@@ -7891,7 +8014,13 @@ function renderAnalysesListe(data, ids, opts) {
   try { if (typeof NovalyzEngine !== 'undefined') analyses = NovalyzEngine.analyser(data) || []; } catch (e) { analyses = []; }
   if (opts.max) analyses = analyses.slice(0, opts.max);
   if (!analyses.length) { if (sec) sec.style.display = 'none'; card.style.display = 'none'; return 0; }
-  cont.innerHTML = analyses.map((a, i) => `
+  // Bandeau contexte : le « pourquoi ». Présent si une analyse porte un état actif.
+  let _etatAna = null;
+  for (let _k = 0; _k < analyses.length; _k++) { if (analyses[_k].contexte && analyses[_k].contexte !== 'saison_normale') { _etatAna = analyses[_k].contexte; break; } }
+  const _bandeauCtx = _etatAna
+    ? `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:var(--surface2);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-muted);"><span>🧠</span> Analyses ajustées pour : <b style="color:var(--text);">${escapeHtml(_ctxLibelle(_etatAna))}</b></div>`
+    : '';
+  cont.innerHTML = _bandeauCtx + analyses.map((a, i) => `
     <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 4px;${i < analyses.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
       <div style="flex:0 0 4px;align-self:stretch;background:${analyseCouleur(a.type)};border-radius:2px;min-height:36px;"></div>
       <div style="min-width:0;">
