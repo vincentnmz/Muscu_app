@@ -6928,16 +6928,24 @@ async function chargerAppData() {
 
   // Stale-while-revalidate : affiche les données en cache immédiatement →
   // pas d'écran blanc pendant le cold start Apps Script.
+  // Si le cache est ancien (pas de cardio_history), on saute l'affichage intermédiaire
+  // pour éviter de masquer le bloc historique cardio avec de vieilles données.
   try {
     const _hit = localStorage.getItem(_cacheKey);
-    if (_hit) _appliquerAppData(JSON.parse(_hit));
+    if (_hit) {
+      const _parsed = JSON.parse(_hit);
+      if (_parsed.cardio_history !== undefined) _appliquerAppData(_parsed);
+    }
   } catch (_) {}
 
   const ctrl = new AbortController();
   const tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
   const tKill = setTimeout(() => ctrl.abort(), 30000);
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`, { signal: ctrl.signal });
+    // Ajouter nocache si l'ancienne réponse localStorage n'avait pas cardio_history
+    let _fetchUrl = `${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`;
+    try { const _old = JSON.parse(localStorage.getItem(_cacheKey) || '{}'); if (_old.cardio_history === undefined) _fetchUrl += '&nocache=1'; } catch(_) {}
+    const res = await fetch(_fetchUrl, { signal: ctrl.signal });
     clearTimeout(tSlow); clearTimeout(tKill);
     const data = await res.json();
     try { localStorage.setItem(_cacheKey, JSON.stringify(data)); } catch (_) {}
