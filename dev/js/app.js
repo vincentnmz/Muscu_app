@@ -8499,6 +8499,10 @@ async function sauvegarderCardio() {
   var type  = (document.getElementById('cardio-type') || {}).value;
   if (!date)  { showToast('Choisis une date', 'var(--warn)'); return; }
   if (!duree) { showToast('Durée obligatoire', 'var(--warn)'); return; }
+
+  var btnSave = document.getElementById('btn-save-cardio');
+  if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ Envoi en cours…'; }
+
   function gv(id) { var el = document.getElementById(id); return el ? el.value : ''; }
   var body = {
     action:      'saveCardio',
@@ -8527,8 +8531,13 @@ async function sauvegarderCardio() {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body)
     });
-    await r.json();
-  } catch (_) {}
+    var res = await r.json();
+    if (res && res.error) throw new Error(res.error);
+  } catch (err) {
+    showToast('Erreur : ' + (err.message || 'réseau'), 'var(--bad)');
+    if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✅ Enregistrer la séance'; }
+    return;
+  }
   // Récap
   var typeLabel = _CARDIO_TYPE_LABELS[type] || type;
   var stats = [];
@@ -8572,7 +8581,7 @@ function nouvelleSeanceCardio() {
         </div>
       </div>
       <div id="cardio-fields-content"></div>
-      <button class="btn btn-accent" onclick="sauvegarderCardio()" style="margin-top:14px;padding:14px;">✅ Enregistrer la séance</button>
+      <button id="btn-save-cardio" class="btn btn-accent" onclick="sauvegarderCardio()" style="margin-top:14px;padding:14px;">✅ Enregistrer la séance</button>
     </div>`;
   var di = document.getElementById('cardio-date');
   if (di) { var t = new Date(); di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0'); }
