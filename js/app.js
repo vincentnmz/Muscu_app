@@ -6914,6 +6914,9 @@ function _appliquerAppData(data) {
     } else {
       nextEl.innerHTML = '<div class="dc-inner" style="background:var(--good);"><div class="dc-ico">✅</div><div class="dc-txt"><div class="dc-v">Toutes les séances faites !</div></div></div>';
     }
+
+    // ── Cardio — résumé multi-fenêtre ─────────────────────────────────────────
+    renderDashCardio(data.cardio);
 }
 
 async function chargerAppData() {
@@ -8313,4 +8316,174 @@ function showToast(msg, color) {
   t.style.color = color ? '#fff' : '#000';
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// =============================================================================
+// CARDIO — Switcher, formulaire dynamique, sauvegarde, dashboard
+// =============================================================================
+
+var _modeSeance = 'muscu';
+
+function switchModeSeance(mode) {
+  _modeSeance = mode;
+  var isCardio = mode === 'cardio';
+  var saisiEl  = document.getElementById('saisie-block');
+  var cardioEl = document.getElementById('cardio-block');
+  var recapEl  = document.getElementById('recap-block');
+  var btnM = document.getElementById('btn-mode-muscu');
+  var btnC = document.getElementById('btn-mode-cardio');
+  if (saisiEl) saisiEl.style.display = isCardio ? 'none' : '';
+  if (cardioEl) cardioEl.style.display = isCardio ? 'block' : 'none';
+  if (recapEl)  recapEl.style.display  = 'none';
+  if (btnM) { btnM.className = isCardio ? 'btn btn-outline' : 'btn btn-accent'; }
+  if (btnC) { btnC.className = isCardio ? 'btn btn-accent'  : 'btn btn-outline'; }
+  var btnVal = document.getElementById('btn-valider');
+  if (btnVal) btnVal.style.display = 'none';
+  if (isCardio) {
+    var di = document.getElementById('cardio-date');
+    if (di && !di.value) {
+      var t = new Date();
+      di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+    }
+    renderCardioFields();
+  }
+}
+
+var _CARDIO_SPEC = {
+  footing: [
+    { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1' },
+    { id: 'fc_moy',      label: 'FC moy. (bpm)',        placeholder: '145' }
+  ],
+  velo: [
+    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180' },
+    { id: 'cadence',       label: 'Cadence (rpm)',       placeholder: '85' },
+    { id: 'vitesse_moy',   label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1' },
+    { id: 'fc_moy',        label: 'FC moy. (bpm)',       placeholder: '140' }
+  ],
+  marche_inclinee: [
+    { id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30' },
+    { id: 'vitesse_moy', label: 'Vitesse (km/h)',  placeholder: '6',  step: '0.1' },
+    { id: 'fc_moy',      label: 'FC moy. (bpm)',   placeholder: '130' }
+  ],
+  natation: [
+    { id: 'fc_moy',   label: 'FC moy. (bpm)',   placeholder: '140' }
+  ],
+  autre: [
+    { id: 'fc_moy',   label: 'FC moy. (bpm)',   placeholder: '135' }
+  ]
+};
+
+function renderCardioFields() {
+  var typeEl = document.getElementById('cardio-type');
+  var el = document.getElementById('cardio-fields-content');
+  if (!el || !typeEl) return;
+  var type = typeEl.value;
+  var spec = _CARDIO_SPEC[type] || [];
+  var specHtml = spec.map(function(f) {
+    var attrs = 'type="number" id="cardio-' + f.id + '" placeholder="' + f.placeholder + '" inputmode="' + (f.step ? 'decimal' : 'numeric') + '"';
+    if (f.step) attrs += ' step="' + f.step + '"';
+    if (f.max)  attrs += ' max="' + f.max + '"';
+    return '<div><label>' + f.label + '</label><input ' + attrs + '></div>';
+  }).join('');
+  el.innerHTML = `
+    <div class="row2" style="margin-top:14px;">
+      <div><label>Durée (min)</label><input type="number" id="cardio-duree" placeholder="45" min="1" inputmode="numeric"></div>
+      <div><label>Distance (km)</label><input type="number" id="cardio-distance" placeholder="0" step="0.1" min="0" inputmode="decimal"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">${specHtml}</div>
+    <div class="row2" style="margin-top:8px;">
+      <div><label>Calories (kcal)</label><input type="number" id="cardio-calories" placeholder="350" inputmode="numeric"></div>
+      <div></div>
+    </div>
+    <div style="margin-top:14px;">
+      <label>RPE (intensité ressentie)</label>
+      <div class="chip-row" id="cardio-rpe-chips">
+        ${[6,7,8,9,10].map(function(v){ return '<button type="button" class="saisie-chip" onclick="pickCardioRpe(this,\''+v+'\')">' + v + '</button>'; }).join('')}
+      </div>
+      <input type="hidden" id="cardio-rpe" value="">
+    </div>`;
+}
+
+function pickCardioRpe(btn, val) {
+  document.getElementById('cardio-rpe').value = val;
+  document.querySelectorAll('#cardio-rpe-chips .saisie-chip').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+}
+
+async function sauvegarderCardio() {
+  if (!athlete) return;
+  var date  = (document.getElementById('cardio-date') || {}).value;
+  var duree = (document.getElementById('cardio-duree') || {}).value;
+  var type  = (document.getElementById('cardio-type') || {}).value;
+  if (!date)  { showToast('Choisis une date', 'var(--warn)'); return; }
+  if (!duree) { showToast('Durée obligatoire', 'var(--warn)'); return; }
+  function gv(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+  var body = {
+    action:      'saveCardio',
+    athlete_id:  athlete.athlete_id,
+    date:        date,
+    type_cardio: type,
+    duree:       gv('cardio-duree'),
+    distance:    gv('cardio-distance'),
+    vitesse_moy: gv('cardio-vitesse_moy'),
+    inclinaison: gv('cardio-inclinaison'),
+    puissance_moy: gv('cardio-puissance_moy'),
+    cadence:     gv('cardio-cadence'),
+    calories:    gv('cardio-calories'),
+    fc_moy:      gv('cardio-fc_moy'),
+    rpe:         gv('cardio-rpe')
+  };
+  try {
+    var r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    await r.json();
+  } catch (_) {}
+  showToast('Séance cardio enregistrée ✅');
+  renderCardioFields();
+  chargerAppData();
+}
+
+var _CARDIO_TYPE_LABELS = {
+  footing: 'Footing', velo: 'Vélo', marche_inclinee: 'Marche inclinée',
+  natation: 'Natation', autre: 'Autre'
+};
+
+function renderDashCardio(cardioData) {
+  var secEl  = document.getElementById('dash-cardio-sec');
+  var cardEl = document.getElementById('dash-cardio-card');
+  var contEl = document.getElementById('dash-cardio-content');
+  if (!secEl || !cardEl || !contEl) return;
+  if (!cardioData || !cardioData.windows) { secEl.style.display = 'none'; cardEl.style.display = 'none'; return; }
+  var w = cardioData.windows;
+  var hasData = (w[30] && w[30].sessions > 0) || (w[7] && w[7].sessions > 0);
+  if (!hasData) { secEl.style.display = 'none'; cardEl.style.display = 'none'; return; }
+  secEl.style.display  = '';
+  cardEl.style.display = '';
+  function fmtW(wObj) {
+    if (!wObj || wObj.sessions === 0) return '<span style="color:var(--text-muted);font-size:11px;">—</span>';
+    var parts = ['<b>' + wObj.sessions + '</b> séance' + (wObj.sessions > 1 ? 's' : '')];
+    if (wObj.distance) parts.push('<b>' + wObj.distance + '</b> km');
+    if (wObj.duree)    parts.push('<b>' + wObj.duree + '</b> min');
+    return parts.join(' · ');
+  }
+  var WINS = [[7,'7j'],[30,'1 mois'],[90,'3 mois'],[180,'6 mois']];
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+  WINS.forEach(function(pair) {
+    var k = pair[0], label = pair[1];
+    var wObj = w[k] || { sessions: 0 };
+    var types = '';
+    if (wObj.par_type) {
+      types = Object.keys(wObj.par_type).map(function(t){ return _CARDIO_TYPE_LABELS[t] || t; }).join(', ');
+    }
+    html += '<div style="background:var(--surface2);border-radius:10px;padding:10px 11px;">' +
+      '<div style="font-size:10px;color:var(--text-muted);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em;">' + label + '</div>' +
+      '<div style="font-size:12px;color:var(--text);">' + fmtW(wObj) + '</div>' +
+      (types ? '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">' + escapeHtml(types) + '</div>' : '') +
+      '</div>';
+  });
+  html += '</div>';
+  contEl.innerHTML = html;
 }
