@@ -8398,14 +8398,14 @@ function renderCardioFields() {
       </div>
       <div>
         <label>Distance (km) <span id="cardio-dist-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label>
-        <input type="number" id="cardio-distance" placeholder="auto" step="0.1" min="0" inputmode="decimal" data-auto="0" oninput="this.dataset.auto='0';document.getElementById('cardio-dist-hint').textContent='';calcAutoCardio()">
+        <input type="number" id="cardio-distance" placeholder="auto" step="0.1" min="0" inputmode="decimal" data-auto="" oninput="this.dataset.auto='0';document.getElementById('cardio-dist-hint').textContent='';calcAutoCardio()">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">${specHtml}</div>
     <div class="row2" style="margin-top:8px;">
       <div>
         <label>Calories (kcal) <span id="cardio-cal-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label>
-        <input type="number" id="cardio-calories" placeholder="auto" inputmode="numeric" data-auto="0" oninput="this.dataset.auto='0';document.getElementById('cardio-cal-hint').textContent='';calcAutoCardio()">
+        <input type="number" id="cardio-calories" placeholder="auto" inputmode="numeric" data-auto="" oninput="this.dataset.auto='0';document.getElementById('cardio-cal-hint').textContent='';calcAutoCardio()">
       </div>
       <div></div>
     </div>
@@ -8489,6 +8489,12 @@ async function sauvegarderCardio() {
     fc_moy:      gv('cardio-fc_moy'),
     rpe:         gv('cardio-rpe')
   };
+  // Lire les valeurs avant d'envoyer (pour le récap)
+  var dist    = parseFloat(gv('cardio-distance'))  || 0;
+  var cal     = parseFloat(gv('cardio-calories'))  || 0;
+  var rpe     = parseFloat(gv('cardio-rpe'))       || 0;
+  var fc      = parseFloat(gv('cardio-fc_moy'))    || 0;
+  var charge  = (rpe && parseFloat(duree)) ? Math.round(rpe * parseFloat(duree)) : 0;
   try {
     var r = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -8497,9 +8503,53 @@ async function sauvegarderCardio() {
     });
     await r.json();
   } catch (_) {}
-  showToast('Séance cardio enregistrée ✅');
-  renderCardioFields();
+  // Récap
+  var typeLabel = _CARDIO_TYPE_LABELS[type] || type;
+  var stats = [];
+  if (parseFloat(duree)) stats.push({ n: duree + ' min', k: 'Durée' });
+  if (dist)   stats.push({ n: dist + ' km',   k: 'Distance' });
+  if (cal)    stats.push({ n: cal + ' kcal',  k: 'Calories' });
+  if (charge) stats.push({ n: charge + ' UA', k: 'Charge interne' });
+  if (fc)     stats.push({ n: fc + ' bpm',    k: 'FC moy.' });
+  var statsHtml = stats.map(function(s) {
+    return '<div class="dash-stat"><div class="dash-stat-num" style="color:var(--accent);">' + s.n + '</div><div class="dash-stat-label">' + s.k + '</div></div>';
+  }).join('');
+  var cardioEl = document.getElementById('cardio-block');
+  if (cardioEl) cardioEl.innerHTML = `
+    <div class="card">
+      <div class="card-title" style="color:var(--good);">✅ Séance enregistrée !</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">${escapeHtml(typeLabel)} · ${body.date}</div>
+      <div style="display:grid;grid-template-columns:repeat(${Math.min(stats.length,3)},1fr);gap:8px;margin-bottom:14px;">${statsHtml}</div>
+      <button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button>
+    </div>`;
   chargerAppData();
+}
+
+function nouvelleSeanceCardio() {
+  var cardioEl = document.getElementById('cardio-block');
+  if (!cardioEl) return;
+  // Remet le formulaire en place (même HTML qu'à l'origine dans index.html)
+  cardioEl.innerHTML = `
+    <div class="card">
+      <div class="card-title">Séance cardio</div>
+      <div class="row2">
+        <div><label>Date</label><input type="date" id="cardio-date"></div>
+        <div><label>Type</label>
+          <select id="cardio-type" onchange="renderCardioFields()">
+            <option value="footing">Footing</option>
+            <option value="velo">Vélo</option>
+            <option value="marche_inclinee">Marche inclinée</option>
+            <option value="natation">Natation</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+      </div>
+      <div id="cardio-fields-content"></div>
+      <button class="btn btn-accent" onclick="sauvegarderCardio()" style="margin-top:14px;padding:14px;">✅ Enregistrer la séance</button>
+    </div>`;
+  var di = document.getElementById('cardio-date');
+  if (di) { var t = new Date(); di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0'); }
+  renderCardioFields();
 }
 
 var _CARDIO_TYPE_LABELS = {
