@@ -8570,41 +8570,76 @@ var _CARDIO_TYPE_LABELS = {
   natation: 'Natation', autre: 'Autre'
 };
 
+var _dashCardioPeriod  = 30;
+var _dashCardioWindows = null;
+
 function renderDashCardio(cardioData) {
   var secEl  = document.getElementById('dash-cardio-sec');
   var cardEl = document.getElementById('dash-cardio-card');
-  var contEl = document.getElementById('dash-cardio-content');
-  if (!secEl || !cardEl || !contEl) return;
+  if (!secEl || !cardEl) return;
   if (!cardioData || !cardioData.windows) { secEl.style.display = 'none'; cardEl.style.display = 'none'; return; }
   var w = cardioData.windows;
-  var hasData = (w[30] && w[30].sessions > 0) || (w[7] && w[7].sessions > 0);
+  var hasData = (w[7] && w[7].sessions > 0) || (w[30] && w[30].sessions > 0);
   if (!hasData) { secEl.style.display = 'none'; cardEl.style.display = 'none'; return; }
+  _dashCardioWindows = w;
+  // Sélectionner la fenêtre la plus pertinente par défaut
+  _dashCardioPeriod = (w[7] && w[7].sessions > 0) ? 7 : 30;
   secEl.style.display  = '';
   cardEl.style.display = '';
-  function fmtW(wObj) {
-    if (!wObj || wObj.sessions === 0) return '<span style="color:var(--text-muted);font-size:11px;">—</span>';
-    var parts = ['<b>' + wObj.sessions + '</b> séance' + (wObj.sessions > 1 ? 's' : '')];
-    if (wObj.distance) parts.push('<b>' + wObj.distance + '</b> km');
-    if (wObj.duree)    parts.push('<b>' + wObj.duree + '</b> min');
-    return parts.join(' · ');
-  }
-  var WINS = [[7,'7j'],[30,'1 mois'],[90,'3 mois'],[180,'6 mois']];
-  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
-  WINS.forEach(function(pair) {
-    var k = pair[0], label = pair[1];
-    var wObj = w[k] || { sessions: 0 };
-    var types = '';
-    if (wObj.par_type) {
-      types = Object.keys(wObj.par_type).map(function(t){ return _CARDIO_TYPE_LABELS[t] || t; }).join(', ');
+  _renderDashCardioContent();
+}
+
+function _setDashCardioPeriod(days) {
+  _dashCardioPeriod = days;
+  _renderDashCardioContent();
+}
+
+function _renderDashCardioContent() {
+  var contEl = document.getElementById('dash-cardio-content');
+  if (!contEl || !_dashCardioWindows) return;
+  var w  = _dashCardioWindows;
+  var wd = w[_dashCardioPeriod] || { sessions: 0, duree: 0, distance: 0, calories: 0, par_type: {} };
+  var PERIODS = [[7,'7j'],[30,'1 mois'],[90,'3 mois'],[180,'6 mois']];
+
+  // Chips de période
+  var chips = PERIODS.map(function(p) {
+    var on = p[0] === _dashCardioPeriod;
+    return '<button onclick="_setDashCardioPeriod(' + p[0] + ')" style="flex:1;padding:6px 0;border-radius:9px;font-size:10px;font-weight:700;border:1.5px solid '
+      + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent)' : 'var(--surface2)') + ';color:'
+      + (on ? 'var(--on-accent)' : 'var(--text-muted)') + ';cursor:pointer;">' + p[1] + '</button>';
+  }).join('');
+
+  var body = '';
+  if (wd.sessions === 0) {
+    body = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:10px 0;">Aucune séance sur cette période</div>';
+  } else {
+    var tiles = [
+      { v: wd.sessions,    u: 'séances' },
+      { v: wd.distance ? wd.distance + ' km'   : '—', u: 'distance' },
+      { v: wd.duree    ? wd.duree    + ' min'  : '—', u: 'durée' },
+      { v: wd.calories ? wd.calories + ' kcal' : '—', u: 'calories' }
+    ];
+    body = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px;">';
+    tiles.forEach(function(t) {
+      body += '<div style="background:var(--surface2);border-radius:10px;padding:8px 4px;text-align:center;">'
+        + '<div style="font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15;">' + t.v + '</div>'
+        + '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;">' + t.u + '</div>'
+        + '</div>';
+    });
+    body += '</div>';
+    if (wd.par_type && Object.keys(wd.par_type).length) {
+      var typeStr = Object.keys(wd.par_type).map(function(t) {
+        return (_CH_ICO[t] || '⚡') + ' ' + (_CARDIO_TYPE_LABELS[t] || t) + ' × ' + wd.par_type[t];
+      }).join('  ·  ');
+      body += '<div style="font-size:11px;color:var(--text-muted);">' + typeStr + '</div>';
     }
-    html += '<div style="background:var(--surface2);border-radius:10px;padding:10px 11px;">' +
-      '<div style="font-size:10px;color:var(--text-muted);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em;">' + label + '</div>' +
-      '<div style="font-size:12px;color:var(--text);">' + fmtW(wObj) + '</div>' +
-      (types ? '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">' + escapeHtml(types) + '</div>' : '') +
-      '</div>';
-  });
-  html += '</div>';
-  contEl.innerHTML = html;
+  }
+
+  var lien = '<div style="margin-top:10px;text-align:right;">'
+    + '<button onclick="switchTab(\'historique\')" style="background:none;border:none;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;padding:0;">Historique complet →</button>'
+    + '</div>';
+
+  contEl.innerHTML = '<div style="display:flex;gap:5px;margin-bottom:10px;">' + chips + '</div>' + body + lien;
 }
 
 // =============================================================================
