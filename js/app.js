@@ -8351,27 +8351,29 @@ function switchModeSeance(mode) {
 
 var _CARDIO_SPEC = {
   footing: [
-    { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1' },
-    { id: 'fc_moy',      label: 'FC moy. (bpm)',        placeholder: '145' }
+    { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true },
+    { id: 'fc_moy',      label: 'FC moy. (bpm)',        placeholder: '145', optional: true }
   ],
   velo: [
-    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180' },
+    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true },
     { id: 'cadence',       label: 'Cadence (rpm)',       placeholder: '85' },
-    { id: 'vitesse_moy',   label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1' },
-    { id: 'fc_moy',        label: 'FC moy. (bpm)',       placeholder: '140' }
+    { id: 'vitesse_moy',   label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true },
+    { id: 'fc_moy',        label: 'FC moy. (bpm)',       placeholder: '140', optional: true }
   ],
   marche_inclinee: [
-    { id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30' },
-    { id: 'vitesse_moy', label: 'Vitesse (km/h)',  placeholder: '6',  step: '0.1' },
-    { id: 'fc_moy',      label: 'FC moy. (bpm)',   placeholder: '130' }
+    { id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true },
+    { id: 'vitesse_moy', label: 'Vitesse (km/h)',  placeholder: '6',  step: '0.1', calc: true },
+    { id: 'fc_moy',      label: 'FC moy. (bpm)',   placeholder: '130', optional: true }
   ],
   natation: [
-    { id: 'fc_moy',   label: 'FC moy. (bpm)',   placeholder: '140' }
+    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '140', optional: true }
   ],
   autre: [
-    { id: 'fc_moy',   label: 'FC moy. (bpm)',   placeholder: '135' }
+    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '135', optional: true }
   ]
 };
+
+var _FC_HINT = ' <span style="font-size:9px;color:var(--text-muted);font-weight:500;">📡 optionnel</span>';
 
 function renderCardioFields() {
   var typeEl = document.getElementById('cardio-type');
@@ -8380,19 +8382,31 @@ function renderCardioFields() {
   var type = typeEl.value;
   var spec = _CARDIO_SPEC[type] || [];
   var specHtml = spec.map(function(f) {
-    var attrs = 'type="number" id="cardio-' + f.id + '" placeholder="' + f.placeholder + '" inputmode="' + (f.step ? 'decimal' : 'numeric') + '"';
+    var fid = 'cardio-' + f.id;
+    var attrs = 'type="number" id="' + fid + '" placeholder="' + f.placeholder + '" inputmode="' + (f.step ? 'decimal' : 'numeric') + '"';
     if (f.step) attrs += ' step="' + f.step + '"';
     if (f.max)  attrs += ' max="' + f.max + '"';
-    return '<div><label>' + f.label + '</label><input ' + attrs + '></div>';
+    if (f.calc) attrs += ' oninput="calcAutoCardio()"';
+    var lbl = f.label + (f.optional ? _FC_HINT : '');
+    return '<div><label>' + lbl + '</label><input ' + attrs + '></div>';
   }).join('');
   el.innerHTML = `
     <div class="row2" style="margin-top:14px;">
-      <div><label>Durée (min)</label><input type="number" id="cardio-duree" placeholder="45" min="1" inputmode="numeric"></div>
-      <div><label>Distance (km)</label><input type="number" id="cardio-distance" placeholder="0" step="0.1" min="0" inputmode="decimal"></div>
+      <div>
+        <label>Durée (min)</label>
+        <input type="number" id="cardio-duree" placeholder="45" min="1" inputmode="numeric" oninput="calcAutoCardio()">
+      </div>
+      <div>
+        <label>Distance (km) <span id="cardio-dist-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label>
+        <input type="number" id="cardio-distance" placeholder="auto" step="0.1" min="0" inputmode="decimal" data-auto="0" oninput="this.dataset.auto='0';document.getElementById('cardio-dist-hint').textContent='';calcAutoCardio()">
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">${specHtml}</div>
     <div class="row2" style="margin-top:8px;">
-      <div><label>Calories (kcal)</label><input type="number" id="cardio-calories" placeholder="350" inputmode="numeric"></div>
+      <div>
+        <label>Calories (kcal) <span id="cardio-cal-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label>
+        <input type="number" id="cardio-calories" placeholder="auto" inputmode="numeric" data-auto="0" oninput="this.dataset.auto='0';document.getElementById('cardio-cal-hint').textContent='';calcAutoCardio()">
+      </div>
       <div></div>
     </div>
     <div style="margin-top:14px;">
@@ -8402,6 +8416,48 @@ function renderCardioFields() {
       </div>
       <input type="hidden" id="cardio-rpe" value="">
     </div>`;
+}
+
+function calcAutoCardio() {
+  var type    = (document.getElementById('cardio-type')         || {}).value || 'footing';
+  var duree   = parseFloat((document.getElementById('cardio-duree')         || {}).value) || 0;
+  var vitesse = parseFloat((document.getElementById('cardio-vitesse_moy')   || {}).value) || 0;
+  var inclin  = parseFloat((document.getElementById('cardio-inclinaison')   || {}).value) || 0;
+  var puiss   = parseFloat((document.getElementById('cardio-puissance_moy') || {}).value) || 0;
+  var poids   = parseFloat((athlete && athlete.poids) || 70);
+  var distEl  = document.getElementById('cardio-distance');
+  var calEl   = document.getElementById('cardio-calories');
+
+  // Distance auto : vitesse × durée (h)
+  if (distEl && distEl.dataset.auto !== '0' && duree > 0 && vitesse > 0) {
+    distEl.value = Math.round(vitesse * duree / 60 * 10) / 10;
+    distEl.dataset.auto = '1';
+    var dh = document.getElementById('cardio-dist-hint');
+    if (dh) dh.textContent = '✦ calculé';
+  }
+  var dist = parseFloat((distEl || {}).value) || 0;
+
+  // Calories auto selon type
+  var calAuto = 0;
+  if (type === 'footing' && poids && dist) {
+    calAuto = Math.round(poids * dist * 1.04);
+  } else if (type === 'marche_inclinee' && poids && duree) {
+    calAuto = Math.round((3.5 + 0.35 * inclin) * poids * (duree / 60));
+  } else if (type === 'velo') {
+    if (puiss && duree) calAuto = Math.round(puiss * (duree / 60) * 0.86);
+    else if (poids && dist) calAuto = Math.round(poids * dist * 0.5);
+  } else if (type === 'natation' && poids && duree) {
+    calAuto = Math.round(8 * poids * (duree / 60));
+  } else if (poids && dist) {
+    calAuto = Math.round(poids * dist * 0.8);
+  }
+
+  if (calEl && calEl.dataset.auto !== '0' && calAuto > 0) {
+    calEl.value = calAuto;
+    calEl.dataset.auto = '1';
+    var ch = document.getElementById('cardio-cal-hint');
+    if (ch) ch.textContent = '✦ estimé';
+  }
 }
 
 function pickCardioRpe(btn, val) {
