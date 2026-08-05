@@ -2638,7 +2638,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
-    renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu');
+    try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
     renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique);
@@ -6574,7 +6574,7 @@ function _appliquerAppData(data) {
     renderDashboardActivite(data.historique);
 
     // Nouveaux blocs Accueil : Contexte + État du jour + Analyse moteur + Alertes
-    renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete');   // athlète : éditable aussi
+    try { renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete'); } catch (_) {}
     renderEtatDuJour(data);
     renderAnalyseAccueilAthlete(data);
     renderAlertes(data);
@@ -7868,10 +7868,16 @@ async function terminerContexte(athlete_id, source) {
   await _ctxEnvoyer({ action: 'cloreContexte', athlete_id: String(athlete_id || '') }, athlete_id, source || _ctxDetecterSource());
 }
 async function _ctxEnvoyer(body, aid, source) {
-  try { await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); } catch (e) {}
+  // text/plain → pas de préflight CORS ET réponse lisible : on ATTEND la
+  // confirmation d'écriture (+ vidage du cache serveur) avant de recharger.
+  // Évite la course « écrit sur le Sheet mais l'UI montre encore l'ancien état ».
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+    await r.json();
+  } catch (e) {}
   fermerModaleContexte();
   if (typeof showToast === 'function') showToast('Contexte mis à jour');
-  setTimeout(function () { _ctxRecharger(aid, source); }, 700);  // no-cors → laisser l'écriture aboutir
+  _ctxRecharger(aid, source);
 }
 function _ctxRecharger(athlete_id, source) {
   if (source === 'foot') {
