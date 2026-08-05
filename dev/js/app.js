@@ -8363,6 +8363,10 @@ var _CARDIO_SPEC = {
     { id: 'vitesse_moy',   label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true },
     { id: 'fc_moy',        label: 'FC moy. (bpm)',       placeholder: '140', optional: true }
   ],
+  marche_normale: [
+    { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true },
+    { id: 'fc_moy',      label: 'FC moy. (bpm)',  placeholder: '110', optional: true }
+  ],
   marche_inclinee: [
     { id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true },
     { id: 'vitesse_moy', label: 'Vitesse (km/h)',  placeholder: '6',  step: '0.1', calc: true },
@@ -8454,6 +8458,8 @@ function calcAutoCardio() {
   var calAuto = 0;
   if (type === 'footing' && poids && dist) {
     calAuto = Math.round(poids * dist * 1.04);
+  } else if (type === 'marche_normale' && poids && duree) {
+    calAuto = Math.round(3.5 * poids * (duree / 60));
   } else if (type === 'marche_inclinee' && poids && duree) {
     calAuto = Math.round((3.5 + 0.35 * inclin) * poids * (duree / 60));
   } else if (type === 'velo') {
@@ -8551,6 +8557,7 @@ function nouvelleSeanceCardio() {
           <select id="cardio-type" onchange="renderCardioFields()">
             <option value="footing">Footing</option>
             <option value="velo">Vélo</option>
+            <option value="marche_normale">Marche</option>
             <option value="marche_inclinee">Marche inclinée</option>
             <option value="natation">Natation</option>
             <option value="autre">Autre</option>
@@ -8566,7 +8573,8 @@ function nouvelleSeanceCardio() {
 }
 
 var _CARDIO_TYPE_LABELS = {
-  footing: 'Footing', velo: 'Vélo', marche_inclinee: 'Marche inclinée',
+  footing: 'Footing', velo: 'Vélo',
+  marche_normale: 'Marche', marche_inclinee: 'Marche inclinée',
   natation: 'Natation', autre: 'Autre'
 };
 
@@ -8650,9 +8658,9 @@ var _cardioSessions = [];
 var _cardioPeriod   = 30;
 var _cardioSubTab   = 'activite';
 
-var _CH_ICO = { footing: '🏃', velo: '🚴', marche_inclinee: '🥾', natation: '🏊', autre: '⚡' };
-var _CH_CLR = { footing: '#6366f1', velo: '#0ea5e9', marche_inclinee: '#10b981', natation: '#8b5cf6', autre: '#f59e0b' };
-var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(14,165,233,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', autre: 'rgba(245,158,11,.14)' };
+var _CH_ICO = { footing: '🏃', velo: '🚴', marche_normale: '🚶', marche_inclinee: '🥾', natation: '🏊', autre: '⚡' };
+var _CH_CLR = { footing: '#6366f1', velo: '#0ea5e9', marche_normale: '#22d3ee', marche_inclinee: '#10b981', natation: '#8b5cf6', autre: '#f59e0b' };
+var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(14,165,233,.14)', marche_normale: 'rgba(34,211,238,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', autre: 'rgba(245,158,11,.14)' };
 
 function renderCardioHistorique(sessions) {
   var secEl  = document.getElementById('hist-cardio-sec');
@@ -8757,7 +8765,7 @@ function _renderCardioHist() {
   if (!filtered.length) {
     activHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px 0;">Aucune séance sur cette période</div>';
   } else {
-    ['footing','velo','marche_inclinee','natation','autre'].forEach(function(t) {
+    ['footing','velo','marche_normale','marche_inclinee','natation','autre'].forEach(function(t) {
       var ss = byType[t];
       if (!ss || !ss.length) return;
       var kmT = 0, kmN = 0, vT = 0, vN = 0, cT = 0, cN = 0, fcT = 0, fcN = 0;
