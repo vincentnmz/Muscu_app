@@ -1546,7 +1546,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
         ${motCell('État récup', mot.recup, colRecup(mot.recup))}
         ${motCell('Risque blessure', mot.risque_blessure, colRisque(mot.risque_blessure))}
       </div>
-      ${(cdMode==='coach' && mot.reco) ? `<div style="font-size:12.5px;line-height:1.45;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><b style="color:var(--accent);">Reco</b> · ${escapeHtml(mot.reco)}</div>` : ''}
+      ${(cdMode==='coach' && mot.reco) ? `<div style="font-size:12.5px;line-height:1.45;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">${mot.contexte_tag ? `<span style="display:inline-block;font-size:10px;font-weight:800;background:var(--accent);color:var(--on-accent);border-radius:4px;padding:1px 6px;margin-right:6px;vertical-align:middle;">${escapeHtml(mot.contexte_tag)}</span>` : ''}<b style="color:var(--accent);">Reco</b> · ${escapeHtml(mot.reco)}</div>` : ''}
     </div>` : '';
 
   // Phase 6 — NovalyzEngine appliqué aux données foot : bien-être → signaux communs.
