@@ -488,9 +488,8 @@ function getAppData(e) {
     // ─── Sport actif (Phase 2) — hérité du coach, 'muscu' par défaut ─────────
     sport: lireSportAthlete(athlete_id),
 
-    // ─── Cardio — résumé par fenêtre temporelle ───────────────────────────────
-    cardio:         getCardioSummary(athlete_id),
-    cardio_history: getCardioHistory(athlete_id)
+    // ─── Cardio — résumé + historique (1 seule lecture Indicateurs) ──────────
+    cardio: getCardioAll(athlete_id)
   };
 
   const resultStr = JSON.stringify(result);
@@ -3318,21 +3317,26 @@ function saveCardio(body) {
     rows.push([date, athlete_id, sid, 'charge_interne', dureeN * rpeN, 'UA', 'calculé']);
   }
   if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
+  try { CacheService.getScriptCache().remove('appdata_' + athlete_id); } catch(ex) {}
   return json({ success: true, seance_id: sid });
 }
 
-function getCardioSummary(athlete_id) {
+// Une seule lecture du sheet Indicateurs pour produire résumé + historique.
+function getCardioAll(athlete_id) {
   var sh = _findSheetLoose('Indicateurs');
-  if (!sh) return { windows: {} };
+  if (!sh) return { windows: {}, history: [] };
   var rows = sh.getDataRange().getValues();
   var today = new Date();
   today.setHours(0, 0, 0, 0);
+  var tz = Session.getScriptTimeZone();
+  var cutoff180 = new Date(today.getTime() - 180 * 86400000);
   var WINS = [7, 30, 90, 180];
-  var result = {};
+  var winResult = {};
   WINS.forEach(function(w) {
-    result[w] = { sessions: 0, duree: 0, distance: 0, calories: 0, charge: 0, par_type: {} };
+    winResult[w] = { sessions: 0, duree: 0, distance: 0, calories: 0, charge: 0, par_type: {} };
   });
-  // Regrouper par session (seance_id préfixé 'cardio_')
+
+  // Lecture unique — regroupement par seance_id
   var sessions = {};
   for (var i = 1; i < rows.length; i++) {
     var r = rows[i];
@@ -3341,71 +3345,58 @@ function getCardioSummary(athlete_id) {
     if (sid.indexOf('cardio_') !== 0) continue;
     var d = parseDateFR(r[0]);
     if (!d) continue;
-    if (!sessions[sid]) sessions[sid] = { date: d, data: {} };
+    if (!sessions[sid]) sessions[sid] = { d: d, data: {} };
     sessions[sid].data[String(r[3])] = r[4];
   }
+
+  var histList = [];
   var sids = Object.keys(sessions);
   for (var j = 0; j < sids.length; j++) {
     var s = sessions[sids[j]];
-    var daysAgo = Math.floor((today - s.date) / 86400000);
-    if (daysAgo < 0) continue;
-    for (var k = 0; k < WINS.length; k++) {
-      if (daysAgo >= WINS[k]) continue;
-      var wr = result[WINS[k]];
-      wr.sessions++;
-      wr.duree    += Number(s.data.duree)          || 0;
-      wr.distance += Number(s.data.distance)        || 0;
-      wr.calories += Number(s.data.calories)        || 0;
-      wr.charge   += Number(s.data.charge_interne)  || 0;
-      var type = String(s.data.type_cardio || 'autre');
-      wr.par_type[type] = (wr.par_type[type] || 0) + 1;
+    var daysAgo = Math.floor((today - s.d) / 86400000);
+
+    // Fenêtres glissantes
+    if (daysAgo >= 0) {
+      for (var k = 0; k < WINS.length; k++) {
+        if (daysAgo >= WINS[k]) continue;
+        var wr = winResult[WINS[k]];
+        wr.sessions++;
+        wr.duree    += Number(s.data.duree)         || 0;
+        wr.distance += Number(s.data.distance)       || 0;
+        wr.calories += Number(s.data.calories)       || 0;
+        wr.charge   += Number(s.data.charge_interne) || 0;
+        var type = String(s.data.type_cardio || 'autre');
+        wr.par_type[type] = (wr.par_type[type] || 0) + 1;
+      }
+    }
+
+    // Historique détaillé (180 derniers jours)
+    if (s.d >= cutoff180) {
+      histList.push({
+        sid:            sids[j],
+        date:           Utilities.formatDate(s.d, tz, 'yyyy-MM-dd'),
+        type_cardio:    String(s.data.type_cardio  || 'autre'),
+        duree:          Number(s.data.duree)          || 0,
+        distance:       Number(s.data.distance)       || 0,
+        vitesse_moy:    Number(s.data.vitesse_moy)    || 0,
+        inclinaison:    Number(s.data.inclinaison)    || 0,
+        puissance_moy:  Number(s.data.puissance_moy)  || 0,
+        cadence:        Number(s.data.cadence)        || 0,
+        fc_moy:         Number(s.data.fc_moy)         || 0,
+        calories:       Number(s.data.calories)        || 0,
+        charge_interne: Number(s.data.charge_interne) || 0
+      });
     }
   }
+
   WINS.forEach(function(w) {
-    var wr = result[w];
+    var wr = winResult[w];
     wr.duree    = Math.round(wr.duree);
     wr.distance = Math.round(wr.distance * 10) / 10;
     wr.calories = Math.round(wr.calories);
     wr.charge   = Math.round(wr.charge);
   });
-  return { windows: result };
-}
+  histList.sort(function(a, b) { return b.date.localeCompare(a.date); });
 
-function getCardioHistory(athlete_id) {
-  var sh = _findSheetLoose('Indicateurs');
-  if (!sh) return [];
-  var rows = sh.getDataRange().getValues();
-  var today = new Date(); today.setHours(0, 0, 0, 0);
-  var cutoff = new Date(today.getTime() - 180 * 86400000);
-  var tz = Session.getScriptTimeZone();
-  var sessions = {};
-  for (var i = 1; i < rows.length; i++) {
-    var r = rows[i];
-    if (String(r[1]) !== String(athlete_id)) continue;
-    var sid = String(r[2] || '');
-    if (sid.indexOf('cardio_') !== 0) continue;
-    var d = parseDateFR(r[0]);
-    if (!d || d < cutoff) continue;
-    if (!sessions[sid]) sessions[sid] = { d: d, data: {} };
-    sessions[sid].data[String(r[3])] = r[4];
-  }
-  var list = Object.keys(sessions).map(function(sid) {
-    var s = sessions[sid];
-    return {
-      sid:            sid,
-      date:           Utilities.formatDate(s.d, tz, 'yyyy-MM-dd'),
-      type_cardio:    String(s.data.type_cardio  || 'autre'),
-      duree:          Number(s.data.duree)          || 0,
-      distance:       Number(s.data.distance)       || 0,
-      vitesse_moy:    Number(s.data.vitesse_moy)    || 0,
-      inclinaison:    Number(s.data.inclinaison)    || 0,
-      puissance_moy:  Number(s.data.puissance_moy)  || 0,
-      cadence:        Number(s.data.cadence)        || 0,
-      fc_moy:         Number(s.data.fc_moy)         || 0,
-      calories:       Number(s.data.calories)        || 0,
-      charge_interne: Number(s.data.charge_interne) || 0
-    };
-  });
-  list.sort(function(a, b) { return b.date.localeCompare(a.date); });
-  return list;
+  return { windows: winResult, history: histList };
 }
