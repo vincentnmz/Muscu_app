@@ -94,6 +94,7 @@ function doPost(e) {
   if (body.action === 'saveBilanAthlete')        return saveBilanAthlete(body);
   if (body.action === 'saveContexte')            return saveContexte(body);
   if (body.action === 'cloreContexte')           return cloreContexte(body);
+  if (body.action === 'saveCardio')              return saveCardio(body);
   return json({ error: 'action inconnue' });
 }
 
@@ -485,7 +486,10 @@ function getAppData(e) {
     contexte: lireContexteActif(athlete_id),
 
     // ─── Sport actif (Phase 2) — hérité du coach, 'muscu' par défaut ─────────
-    sport: lireSportAthlete(athlete_id)
+    sport: lireSportAthlete(athlete_id),
+
+    // ─── Cardio — résumé par fenêtre temporelle ───────────────────────────────
+    cardio: getCardioSummary(athlete_id)
   };
 
   const resultStr = JSON.stringify(result);
@@ -1598,6 +1602,10 @@ function getSuiviJoueur(e) {
         retour_terrain: String(rowsInj[bi][7] || ''), retour_competition: String(rowsInj[bi][8] || ''), statut: String(rowsInj[bi][9] || '') });
     }
 
+    // ── Contexte de performance (Phase 5) — lu AVANT le moteur pour ajuster les seuils ──
+    var contexte = lireContexteActif(athlete_id);
+    var ctxEtat = (contexte && contexte.etat) ? String(contexte.etat) : 'saison_normale';
+
     // ── Moteur d'analyse (§12) : décisions à partir de bien-être + blessures + charge ──
     var beM = bienetre || {};
     var _n = function(x){ return (x != null && x !== '') ? Number(x) : null; };
@@ -1605,9 +1613,15 @@ function getSuiviJoueur(e) {
     var injActive = null;
     for (var im = 0; im < blessures.length; im++) { var stM = blessures[im].statut; if (stM === 'indispo' || stM === 'retour_progressif') { injActive = blessures[im]; break; } }
     var surchargeN = (acwr != null && acwr > 1.5) ? 2 : (acwr != null && acwr > 1.3) ? 1 : 0;
+    // Contexte : déload → charges élevées volontaires, on abaisse l'alarme d'un cran.
+    //            retour vacances → forme basse, même charge = effort subjectif plus élevé.
+    if (ctxEtat === 'deload')          surchargeN = Math.max(0, surchargeN - 1);
+    if (ctxEtat === 'retour_vacances') surchargeN = Math.min(2, surchargeN + 1);
     var surcharge = ['Faible', 'Modéré', 'Élevé'][surchargeN];
     var rbPts = surchargeN + (douleurM >= 3 ? 2 : douleurM >= 2 ? 1 : 0) + (fatigueM >= 4 ? 1 : 0) + (courbM >= 4 ? 1 : 0);
     var risqueBlessureN = rbPts >= 3 ? 2 : rbPts >= 1 ? 1 : 0;
+    // Contexte : retour blessure → risque structurellement majoré d'un cran.
+    if (ctxEtat === 'retour_blessure') risqueBlessureN = Math.min(2, risqueBlessureN + 1);
     var risqueBlessure = ['Faible', 'Modéré', 'Élevé'][risqueBlessureN];
     var recArr = [];
     if (sommeilM != null) recArr.push(sommeilM / 5);
@@ -1623,6 +1637,8 @@ function getSuiviJoueur(e) {
       var mid = (risqueBlessureN === 1) || (surchargeN === 1) || (recScore != null && recScore < 60) || (injActive && injActive.statut === 'retour_progressif');
       dispoN = bad ? 2 : mid ? 1 : 0;
     }
+    // Contexte : retour blessure → Vigilance minimum (jamais "Prêt" pendant cette période).
+    if (ctxEtat === 'retour_blessure' && dispoN === 0) dispoN = 1;
     var moteur = {
       disponibilite: { niveau: ['Prêt', 'Vigilance', 'À surveiller'][dispoN], couleur: ['#22c55e', '#f5a623', '#e5484d'][dispoN] },
       surcharge: surcharge, risque_blessure: risqueBlessure, recup: recup
@@ -1634,6 +1650,9 @@ function getSuiviJoueur(e) {
     else if (injActive && injActive.statut === 'retour_progressif') moteur.reco = 'Retour progressif — respecter la progressivité de charge.';
     else if (risqueBlessureN === 1 || surchargeN === 1) moteur.reco = 'Vigilance — surveiller les sensations, ne pas surcharger.';
     else moteur.reco = 'RAS — maintenir la charge actuelle.';
+    // Préfixe contexte dans la reco (visible coach seulement côté front).
+    var _ctxLabels = { deload: 'Déload', retour_vacances: 'Retour vacances', retour_blessure: 'Retour blessure', intensification: 'Intensification' };
+    if (ctxEtat !== 'saison_normale' && _ctxLabels[ctxEtat]) moteur.contexte_tag = _ctxLabels[ctxEtat];
 
     return json({
       athlete_id: athlete_id, nom: nom, poste: poste,
@@ -1645,7 +1664,7 @@ function getSuiviJoueur(e) {
       seances: listeSeances,
       matchs: matchs, match_stats: matchStats, match_agg: matchAgg, heatmap: heatArr,
       objectifs: objectifs, blessures: blessures, moteur: moteur,
-      contexte: lireContexteActif(athlete_id)
+      contexte: contexte
     });
   } catch (err) { return json({ error: err.message }); }
 }
@@ -3260,4 +3279,93 @@ function seedDemoFoot() {
   return 'Démo foot créée : coach "demofoot" (mdp demo1234), ' + joueurs.length + ' joueurs, ' +
          indRows.length + ' lignes Indicateurs (onglet "' + shInd.getName() + '"), ' + wellRows.length + ' bien-être, ' + testRows.length + ' tests, ' +
          objRows.length + ' objectifs, ' + injRows.length + ' blessures.';
+}
+
+// =============================================================================
+// §13 CARDIO — Saisie et résumé
+// =============================================================================
+
+function saveCardio(body) {
+  var athlete_id = String(body.athlete_id || '');
+  if (!athlete_id) return json({ success: false, error: 'Athlète manquant' });
+  var sh = _getSheetLoose('Indicateurs');
+  if (sh.getLastRow() === 0) sh.getRange(1,1,1,7).setValues([['date','athlete_id','seance_id','cle','valeur','unite','source']]);
+  var date = _toDDMM(body.date) || formatDateFR(Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'));
+  var sid = 'cardio_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  var rows = [];
+  function addNum(cle, val, unite) {
+    var n = Number(val);
+    if (val === '' || val == null || isNaN(n) || n === 0) return;
+    rows.push([date, athlete_id, sid, cle, n, unite || '', 'saisie']);
+  }
+  function addStr(cle, val) {
+    if (val === '' || val == null) return;
+    rows.push([date, athlete_id, sid, cle, String(val), '', 'saisie']);
+  }
+  addStr('type_cardio', body.type_cardio);
+  addNum('duree',       body.duree,       'min');
+  addNum('distance',    body.distance,    'km');
+  addNum('vitesse_moy', body.vitesse_moy, 'km/h');
+  addNum('inclinaison', body.inclinaison, '%');
+  addNum('puissance_moy', body.puissance_moy, 'W');
+  addNum('cadence',     body.cadence,     'rpm');
+  addNum('fc_moy',      body.fc_moy,      'bpm');
+  addNum('calories',    body.calories,    'kcal');
+  var dureeN = Number(body.duree), rpeN = Number(body.rpe);
+  if (dureeN && rpeN) {
+    addNum('rpe', body.rpe, '1-10');
+    rows.push([date, athlete_id, sid, 'charge_interne', dureeN * rpeN, 'UA', 'calculé']);
+  }
+  if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
+  return json({ success: true, seance_id: sid });
+}
+
+function getCardioSummary(athlete_id) {
+  var sh = _findSheetLoose('Indicateurs');
+  if (!sh) return { windows: {} };
+  var rows = sh.getDataRange().getValues();
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+  var WINS = [7, 30, 90, 180];
+  var result = {};
+  WINS.forEach(function(w) {
+    result[w] = { sessions: 0, duree: 0, distance: 0, calories: 0, charge: 0, par_type: {} };
+  });
+  // Regrouper par session (seance_id préfixé 'cardio_')
+  var sessions = {};
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    if (String(r[1]) !== String(athlete_id)) continue;
+    var sid = String(r[2] || '');
+    if (sid.indexOf('cardio_') !== 0) continue;
+    var d = parseDateFR(r[0]);
+    if (!d) continue;
+    if (!sessions[sid]) sessions[sid] = { date: d, data: {} };
+    sessions[sid].data[String(r[3])] = r[4];
+  }
+  var sids = Object.keys(sessions);
+  for (var j = 0; j < sids.length; j++) {
+    var s = sessions[sids[j]];
+    var daysAgo = Math.floor((today - s.date) / 86400000);
+    if (daysAgo < 0) continue;
+    for (var k = 0; k < WINS.length; k++) {
+      if (daysAgo >= WINS[k]) continue;
+      var wr = result[WINS[k]];
+      wr.sessions++;
+      wr.duree    += Number(s.data.duree)          || 0;
+      wr.distance += Number(s.data.distance)        || 0;
+      wr.calories += Number(s.data.calories)        || 0;
+      wr.charge   += Number(s.data.charge_interne)  || 0;
+      var type = String(s.data.type_cardio || 'autre');
+      wr.par_type[type] = (wr.par_type[type] || 0) + 1;
+    }
+  }
+  WINS.forEach(function(w) {
+    var wr = result[w];
+    wr.duree    = Math.round(wr.duree);
+    wr.distance = Math.round(wr.distance * 10) / 10;
+    wr.calories = Math.round(wr.calories);
+    wr.charge   = Math.round(wr.charge);
+  });
+  return { windows: result };
 }

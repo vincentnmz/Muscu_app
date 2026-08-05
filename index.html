@@ -655,6 +655,12 @@
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
       </div>
 
+      <!-- Cardio — résumé multi-fenêtre (masqué sans données) -->
+      <div class="v2-sec" id="dash-cardio-sec" style="display:none;"><h2 class="st">🏃 Cardio</h2></div>
+      <div class="dash-card" id="dash-cardio-card" style="padding:16px;display:none;">
+        <div id="dash-cardio-content"></div>
+      </div>
+
       <!-- Alertes (stagnation / absence / fatigue) — visible seulement s'il y a une alerte -->
       <div class="v2-sec" id="dash-alertes-sec" style="display:none;"><div class="st" style="color:var(--warn);"><svg class="ico"><use href="#i-alert"/></svg>Alertes</div></div>
       <div class="dash-card" id="dash-alertes-card" style="padding:12px;display:none;">
@@ -706,6 +712,37 @@
 
       <!-- SAISIE (vue par défaut) -->
       <div id="subtab-saisie">
+
+        <!-- Switcher Muscu / Cardio -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="btn btn-accent" id="btn-mode-muscu" onclick="switchModeSeance('muscu')" style="flex:1;padding:10px;">🏋️ Muscu</button>
+          <button class="btn btn-outline" id="btn-mode-cardio" onclick="switchModeSeance('cardio')" style="flex:1;padding:10px;">🏃 Cardio</button>
+        </div>
+
+        <!-- BLOC CARDIO (masqué par défaut) -->
+        <div id="cardio-block" style="display:none;">
+          <div class="card">
+            <div class="card-title">Séance cardio</div>
+            <div class="row2">
+              <div>
+                <label>Date</label>
+                <input type="date" id="cardio-date">
+              </div>
+              <div>
+                <label>Type</label>
+                <select id="cardio-type" onchange="renderCardioFields()">
+                  <option value="footing">Footing</option>
+                  <option value="velo">Vélo</option>
+                  <option value="marche_inclinee">Marche inclinée</option>
+                  <option value="natation">Natation</option>
+                  <option value="autre">Autre</option>
+                </select>
+              </div>
+            </div>
+            <div id="cardio-fields-content"></div>
+            <button class="btn btn-accent" onclick="sauvegarderCardio()" style="margin-top:14px;padding:14px;">✅ Enregistrer la séance</button>
+          </div>
+        </div>
 
         <!-- RECAP après validation -->
         <div id="recap-block" style="display:none">
