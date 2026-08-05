@@ -8393,7 +8393,15 @@ function renderCardioFields() {
     var lbl = f.label + (f.optional ? _FC_HINT : '');
     return '<div><label>' + lbl + '</label><input ' + attrs + '></div>';
   }).join('');
-  el.innerHTML = `
+  // Champ poids si absent du profil (nécessaire pour les calculs calories/distance)
+  var poidsConnu = athlete && parseFloat(athlete.poids) > 0;
+  var poidsHtml = poidsConnu ? '' :
+    '<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);border-radius:10px;padding:10px 12px;margin-top:14px;margin-bottom:2px;">'
+    + '<div style="font-size:11px;color:var(--warn);font-weight:700;margin-bottom:6px;">⚠️ Poids non renseigné dans ton profil</div>'
+    + '<label style="font-size:12px;">Ton poids (kg) <span style="font-size:10px;color:var(--text-muted);font-weight:400;">— utilisé pour estimer les calories</span></label>'
+    + '<input type="number" id="cardio-poids-saisie" placeholder="ex: 62" inputmode="decimal" step="0.5" min="30" max="200" oninput="calcAutoCardio()" style="margin-top:6px;">'
+    + '</div>';
+  el.innerHTML = poidsHtml + `
     <div class="row2" style="margin-top:14px;">
       <div>
         <label>Durée (min)</label>
@@ -8427,7 +8435,9 @@ function calcAutoCardio() {
   var vitesse = parseFloat((document.getElementById('cardio-vitesse_moy')   || {}).value) || 0;
   var inclin  = parseFloat((document.getElementById('cardio-inclinaison')   || {}).value) || 0;
   var puiss   = parseFloat((document.getElementById('cardio-puissance_moy') || {}).value) || 0;
-  var poids   = parseFloat((athlete && athlete.poids) || 70);
+  var poidsEl = document.getElementById('cardio-poids-saisie');
+  var poids   = parseFloat((poidsEl && poidsEl.value) || (athlete && athlete.poids) || 0);
+  if (!poids) return; // sans poids, pas de calcul auto
   var distEl  = document.getElementById('cardio-distance');
   var calEl   = document.getElementById('cardio-calories');
 
