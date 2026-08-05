@@ -6917,6 +6917,9 @@ function _appliquerAppData(data) {
 
     // ── Cardio — résumé multi-fenêtre ─────────────────────────────────────────
     renderDashCardio(data.cardio);
+
+    // ── Cardio — historique détaillé (onglet Progression) ────────────────────
+    renderCardioHistorique(data.cardio_history);
 }
 
 async function chargerAppData() {
@@ -8592,4 +8595,193 @@ function renderDashCardio(cardioData) {
   });
   html += '</div>';
   contEl.innerHTML = html;
+}
+
+// =============================================================================
+// CARDIO — Historique détaillé (onglet Progression)
+// =============================================================================
+
+var _cardioSessions = [];
+var _cardioPeriod   = 30;
+var _cardioSubTab   = 'activite';
+
+var _CH_ICO = { footing: '🏃', velo: '🚴', marche_inclinee: '🥾', natation: '🏊', autre: '⚡' };
+var _CH_CLR = { footing: '#6366f1', velo: '#0ea5e9', marche_inclinee: '#10b981', natation: '#8b5cf6', autre: '#f59e0b' };
+var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(14,165,233,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', autre: 'rgba(245,158,11,.14)' };
+
+function renderCardioHistorique(sessions) {
+  var secEl  = document.getElementById('hist-cardio-sec');
+  var cardEl = document.getElementById('hist-cardio-card');
+  if (!secEl || !cardEl) return;
+  if (!sessions || sessions.length === 0) {
+    secEl.style.display  = 'none';
+    cardEl.style.display = 'none';
+    return;
+  }
+  _cardioSessions = sessions;
+  _cardioPeriod   = 30;
+  _cardioSubTab   = 'activite';
+  secEl.style.display  = '';
+  cardEl.style.display = '';
+  _renderCardioHist();
+}
+
+function _filterCardioSessions(days) {
+  var cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - days);
+  var cutStr = cutoff.toISOString().slice(0, 10);
+  return _cardioSessions.filter(function(s) { return s.date >= cutStr; });
+}
+
+function _setCardioPeriod(days) {
+  _cardioPeriod = days;
+  _renderCardioHist();
+}
+
+function _setCardioSubTab(tab) {
+  _cardioSubTab = tab;
+  var panA = document.getElementById('ch-panel-activite');
+  var panR = document.getElementById('ch-panel-recentes');
+  var btnA = document.getElementById('ch-stab-activite');
+  var btnR = document.getElementById('ch-stab-recentes');
+  if (!panA || !panR) return;
+  panA.style.display = tab === 'activite' ? '' : 'none';
+  panR.style.display = tab === 'recentes' ? '' : 'none';
+  var BASE = 'flex:1;text-align:center;padding:8px 6px;border-radius:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
+  if (btnA) btnA.style.cssText = BASE + (tab === 'activite' ? 'background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15);' : 'background:transparent;color:var(--text-muted);');
+  if (btnR) btnR.style.cssText = BASE + (tab === 'recentes' ? 'background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15);' : 'background:transparent;color:var(--text-muted);');
+}
+
+function _renderCardioHist() {
+  var contEl = document.getElementById('hist-cardio-content');
+  if (!contEl) return;
+  var filtered = _filterCardioSessions(_cardioPeriod);
+  var PERIOD_MAP = [[7,'7j'],[30,'1 mois'],[90,'3 mois'],[180,'6 mois']];
+
+  // Period chips
+  var chips = PERIOD_MAP.map(function(p) {
+    var on = p[0] === _cardioPeriod;
+    return '<button onclick="_setCardioPeriod(' + p[0] + ')" style="flex:1;padding:7px 0;border-radius:10px;font-size:11px;font-weight:700;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent)' : 'var(--surface2)') + ';color:' + (on ? 'var(--on-accent)' : 'var(--text-muted)') + ';cursor:pointer;">' + p[1] + '</button>';
+  }).join('');
+
+  // KPI aggregates
+  var totalKm = 0, totalKcal = 0, vitSum = 0, vitN = 0;
+  filtered.forEach(function(s) {
+    totalKm   += s.distance;
+    totalKcal += s.calories;
+    if (s.vitesse_moy) { vitSum += s.vitesse_moy; vitN++; }
+  });
+  var avgVit = vitN ? Math.round(vitSum / vitN * 10) / 10 : null;
+
+  function kpiTile(v, u, l) {
+    return '<div style="background:var(--surface2);border-radius:12px;padding:10px 6px;text-align:center;">'
+      + '<div style="font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.1;">' + v + '</div>'
+      + (u ? '<div style="font-size:9px;font-weight:600;color:var(--text-muted);margin-top:2px;">' + u + '</div>' : '')
+      + '<div style="font-size:9px;color:var(--text-muted);margin-top:1px;">' + escapeHtml(l) + '</div>'
+      + '</div>';
+  }
+  var kpis = kpiTile(Math.round(totalKm * 10) / 10 || '—', 'km', 'total')
+    + kpiTile(Math.round(totalKcal) || '—', 'kcal', 'total')
+    + kpiTile(filtered.length, 'séances', '')
+    + kpiTile(avgVit !== null ? avgVit : '—', avgVit !== null ? 'km/h' : '', 'vit. moy.');
+
+  // Sub-tab buttons
+  var BASE_BTN = 'flex:1;text-align:center;padding:8px 6px;border-radius:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
+  var btns = '<button id="ch-stab-activite" onclick="_setCardioSubTab(\'activite\')" style="' + BASE_BTN + (_cardioSubTab === 'activite' ? 'background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15);' : 'background:transparent;color:var(--text-muted);') + '">Par activité</button>'
+    + '<button id="ch-stab-recentes" onclick="_setCardioSubTab(\'recentes\')" style="' + BASE_BTN + (_cardioSubTab === 'recentes' ? 'background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15);' : 'background:transparent;color:var(--text-muted);') + '">Séances récentes</button>';
+
+  // "Par activité" panel
+  var byType = {};
+  filtered.forEach(function(s) {
+    var t = s.type_cardio || 'autre';
+    if (!byType[t]) byType[t] = [];
+    byType[t].push(s);
+  });
+
+  function statCell(v, u, l, last) {
+    return '<div style="padding:10px 11px;background:var(--surface2);' + (!last ? 'border-right:1px solid var(--border);' : '') + '">'
+      + '<div style="font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;">'
+        + (v !== null ? v + '<span style="font-size:8px;color:var(--text-muted);margin-left:2px;">' + u + '</span>' : '—')
+      + '</div>'
+      + '<div style="font-size:9px;color:var(--text-muted);margin-top:3px;">' + escapeHtml(l) + '</div>'
+      + '</div>';
+  }
+
+  var activHtml = '';
+  if (!filtered.length) {
+    activHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px 0;">Aucune séance sur cette période</div>';
+  } else {
+    ['footing','velo','marche_inclinee','natation','autre'].forEach(function(t) {
+      var ss = byType[t];
+      if (!ss || !ss.length) return;
+      var kmT = 0, kmN = 0, vT = 0, vN = 0, cT = 0, cN = 0, fcT = 0, fcN = 0;
+      ss.forEach(function(s) {
+        if (s.distance)    { kmT += s.distance;   kmN++; }
+        if (s.vitesse_moy) { vT  += s.vitesse_moy; vN++; }
+        if (s.calories)    { cT  += s.calories;   cN++; }
+        if (s.fc_moy)      { fcT += s.fc_moy;    fcN++; }
+      });
+      var avgKm  = kmN ? Math.round(kmT / ss.length * 10) / 10 : null;
+      var avgVit2= vN  ? Math.round(vT  / vN * 10) / 10 : null;
+      var avgCal = cN  ? Math.round(cT  / ss.length) : null;
+      var avgFc  = fcN ? Math.round(fcT / fcN) : null;
+      var clr = _CH_CLR[t] || '#6366f1';
+      var bg  = _CH_BG[t]  || 'rgba(99,102,241,.14)';
+      var lbl = _CARDIO_TYPE_LABELS[t] || t;
+      activHtml += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;">'
+        + '<div style="padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);">'
+          + '<div style="width:32px;height:32px;border-radius:9px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">' + (_CH_ICO[t] || '⚡') + '</div>'
+          + '<div><div style="font-size:13px;font-weight:800;color:' + clr + ';">' + escapeHtml(lbl) + '</div>'
+          + '<div style="font-size:10px;color:var(--text-muted);margin-top:1px;">' + ss.length + ' séance' + (ss.length > 1 ? 's' : '') + '</div></div>'
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;">'
+          + statCell(avgKm,   'km',   'km moy./séance',   false)
+          + statCell(avgVit2, 'km/h', 'vitesse moy.',     false)
+          + statCell(avgCal,  'kcal', 'kcal moy./séance', true)
+        + '</div>'
+        + (avgFc ? '<div style="padding:6px 14px;border-top:1px solid var(--border);background:var(--surface2);font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:#e5484d;display:inline-block;"></span>FC moy. : <b>' + avgFc + '</b> bpm</div>' : '')
+        + '</div>';
+    });
+  }
+
+  // "Séances récentes" panel
+  var recHtml = '';
+  if (!filtered.length) {
+    recHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px 0;">Aucune séance sur cette période</div>';
+  } else {
+    var shown = filtered.slice(0, 25);
+    recHtml = '<div>';
+    shown.forEach(function(s, idx) {
+      var t     = s.type_cardio || 'autre';
+      var clr   = _CH_CLR[t] || '#6366f1';
+      var bg    = _CH_BG[t]  || 'rgba(99,102,241,.14)';
+      var lbl   = _CARDIO_TYPE_LABELS[t] || t;
+      var date  = s.date ? s.date.slice(8,10) + '/' + s.date.slice(5,7) : '';
+      var parts = [];
+      if (s.duree)       parts.push(s.duree + ' min');
+      if (s.distance)    parts.push(s.distance + ' km');
+      if (s.vitesse_moy) parts.push(s.vitesse_moy + ' km/h');
+      var isLast = idx === shown.length - 1;
+      recHtml += '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;' + (!isLast ? 'border-bottom:1px solid var(--border);' : '') + '">'
+        + '<div style="width:34px;height:34px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">' + (_CH_ICO[t] || '⚡') + '</div>'
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:12px;font-weight:800;color:' + clr + ';">' + escapeHtml(lbl) + '</div>'
+          + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + date + (parts.length ? ' · ' + parts.join(' · ') : '') + '</div>'
+        + '</div>'
+        + (s.calories ? '<div style="text-align:right;flex-shrink:0;"><div style="font-size:14px;font-weight:900;color:var(--warn);">' + Math.round(s.calories) + '</div><div style="font-size:9px;color:var(--text-muted);">kcal</div></div>' : '')
+        + '</div>';
+    });
+    recHtml += '</div>';
+    if (filtered.length > 25) {
+      recHtml += '<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:8px 0;">+ ' + (filtered.length - 25) + ' séances non affichées</div>';
+    }
+  }
+
+  contEl.innerHTML =
+    '<div style="display:flex;gap:6px;margin-bottom:14px;">' + chips + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:16px;">' + kpis + '</div>'
+    + '<div style="display:flex;background:var(--surface2);border-radius:12px;padding:3px;margin-bottom:14px;gap:3px;">' + btns + '</div>'
+    + '<div id="ch-panel-activite"' + (_cardioSubTab !== 'activite' ? ' style="display:none;"' : '') + '>' + activHtml + '</div>'
+    + '<div id="ch-panel-recentes"' + (_cardioSubTab !== 'recentes' ? ' style="display:none;"' : '') + '>' + recHtml + '</div>';
 }
