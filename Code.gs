@@ -489,7 +489,8 @@ function getAppData(e) {
     sport: lireSportAthlete(athlete_id),
 
     // ─── Cardio — résumé par fenêtre temporelle ───────────────────────────────
-    cardio: getCardioSummary(athlete_id)
+    cardio:         getCardioSummary(athlete_id),
+    cardio_history: getCardioHistory(athlete_id)
   };
 
   const resultStr = JSON.stringify(result);
@@ -3368,4 +3369,43 @@ function getCardioSummary(athlete_id) {
     wr.charge   = Math.round(wr.charge);
   });
   return { windows: result };
+}
+
+function getCardioHistory(athlete_id) {
+  var sh = _findSheetLoose('Indicateurs');
+  if (!sh) return [];
+  var rows = sh.getDataRange().getValues();
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var cutoff = new Date(today.getTime() - 180 * 86400000);
+  var tz = Session.getScriptTimeZone();
+  var sessions = {};
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    if (String(r[1]) !== String(athlete_id)) continue;
+    var sid = String(r[2] || '');
+    if (sid.indexOf('cardio_') !== 0) continue;
+    var d = parseDateFR(r[0]);
+    if (!d || d < cutoff) continue;
+    if (!sessions[sid]) sessions[sid] = { d: d, data: {} };
+    sessions[sid].data[String(r[3])] = r[4];
+  }
+  var list = Object.keys(sessions).map(function(sid) {
+    var s = sessions[sid];
+    return {
+      sid:            sid,
+      date:           Utilities.formatDate(s.d, tz, 'yyyy-MM-dd'),
+      type_cardio:    String(s.data.type_cardio  || 'autre'),
+      duree:          Number(s.data.duree)          || 0,
+      distance:       Number(s.data.distance)       || 0,
+      vitesse_moy:    Number(s.data.vitesse_moy)    || 0,
+      inclinaison:    Number(s.data.inclinaison)    || 0,
+      puissance_moy:  Number(s.data.puissance_moy)  || 0,
+      cadence:        Number(s.data.cadence)        || 0,
+      fc_moy:         Number(s.data.fc_moy)         || 0,
+      calories:       Number(s.data.calories)        || 0,
+      charge_interne: Number(s.data.charge_interne) || 0
+    };
+  });
+  list.sort(function(a, b) { return b.date.localeCompare(a.date); });
+  return list;
 }
