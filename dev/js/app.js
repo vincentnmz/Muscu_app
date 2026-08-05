@@ -8620,8 +8620,11 @@ function _renderDashCardioContent() {
   var periodOpts = PERIODS.map(function(p) {
     return '<option value="' + p[0] + '"' + (p[0] === _dashCardioPeriod ? ' selected' : '') + '>' + p[1] + '</option>';
   }).join('');
-  var chips = '<select onchange="_setDashCardioPeriod(+this.value)" style="width:100%;padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%234A5980%22/></svg>\');background-repeat:no-repeat;background-position:right 12px center;">'
-    + periodOpts + '</select>';
+  var chips = '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<span style="font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap;">Période :</span>'
+    + '<select onchange="_setDashCardioPeriod(+this.value)" style="padding:5px 28px 5px 10px;border-radius:8px;font-size:12px;font-weight:700;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%234A5980%22/></svg>\');background-repeat:no-repeat;background-position:right 8px center;">'
+    + periodOpts + '</select>'
+    + '</div>';
 
   var body = '';
   if (wd.sessions === 0) {
@@ -8723,8 +8726,11 @@ function _renderCardioHist() {
   var periodOpts = PERIOD_MAP.map(function(p) {
     return '<option value="' + p[0] + '"' + (p[0] === _cardioPeriod ? ' selected' : '') + '>' + p[1] + '</option>';
   }).join('');
-  var chips = '<select onchange="_setCardioPeriod(+this.value)" style="width:100%;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:700;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%234A5980%22/></svg>\');background-repeat:no-repeat;background-position:right 12px center;">'
-    + periodOpts + '</select>';
+  var chips = '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<span style="font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap;">Période :</span>'
+    + '<select onchange="_setCardioPeriod(+this.value)" style="padding:6px 28px 6px 10px;border-radius:8px;font-size:12px;font-weight:700;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2020/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%234A5980%22/></svg>\');background-repeat:no-repeat;background-position:right 8px center;">'
+    + periodOpts + '</select>'
+    + '</div>';
 
   // ── Agrégats KPI ──────────────────────────────────────────────
   var totalKm = 0, totalKcal = 0, totalDuree = 0, vitSum = 0, vitN = 0;
