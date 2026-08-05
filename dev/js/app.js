@@ -8645,10 +8645,16 @@ function _renderDashCardioContent() {
     });
     body += '</div>';
     if (wd.par_type && Object.keys(wd.par_type).length) {
-      var typeStr = Object.keys(wd.par_type).map(function(t) {
-        return (_CH_ICO[t] || '⚡') + ' ' + (_CARDIO_TYPE_LABELS[t] || t) + ' × ' + wd.par_type[t];
-      }).join('  ·  ');
-      body += '<div style="font-size:11px;color:var(--text-muted);">' + typeStr + '</div>';
+      body += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+      Object.keys(wd.par_type).forEach(function(t) {
+        var clr = _CH_CLR[t] || '#6366f1';
+        var bg  = _CH_BG[t]  || 'rgba(99,102,241,.14)';
+        var ico = _CH_ICO[t] || '⚡';
+        var lbl = _CARDIO_TYPE_LABELS[t] || t;
+        body += '<span style="display:inline-flex;align-items:center;gap:4px;background:' + bg + ';color:' + clr + ';border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;">'
+          + ico + ' ' + escapeHtml(lbl) + ' <span style="opacity:.65;">×' + wd.par_type[t] + '</span></span>';
+      });
+      body += '</div>';
     }
   }
 
@@ -8865,6 +8871,10 @@ function _renderCardioHist() {
             + '<div style="font-size:13px;font-weight:900;color:var(--warn);font-variant-numeric:tabular-nums;">' + Math.round(s.calories) + '</div>'
             + '<div style="font-size:8px;font-weight:700;color:var(--warn);opacity:.8;">kcal</div>'
           + '</div>' : '')
+        + '<div style="display:flex;gap:4px;flex-shrink:0;margin-left:2px;">'
+          + '<button onclick="_cardioModifier(\'' + s.sid + '\')" style="background:var(--accent-a10);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Modifier">✏️</button>'
+          + '<button onclick="_cardioSupprimer(\'' + s.sid + '\')" style="background:var(--bad-a);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Supprimer">🗑️</button>'
+        + '</div>'
         + '</div>';
     });
     if (filtered.length > 25) {
@@ -8878,4 +8888,142 @@ function _renderCardioHist() {
     + '<div style="display:flex;background:var(--surface2);border-radius:12px;padding:3px;margin-bottom:14px;gap:3px;">' + btns + '</div>'
     + '<div id="ch-panel-activite"' + (_cardioSubTab !== 'activite' ? ' style="display:none;"' : '') + '>' + activHtml + '</div>'
     + '<div id="ch-panel-recentes"' + (_cardioSubTab !== 'recentes' ? ' style="display:none;"' : '') + '>' + recHtml + '</div>';
+}
+
+// =============================================================================
+// CARDIO — Supprimer / Modifier une séance
+// =============================================================================
+
+function _cardioSupprimer(sid) {
+  var old = document.getElementById('_cardio-confirm-overlay');
+  if (old) old.remove();
+  var s = _cardioSessions.find(function(x) { return x.sid === sid; });
+  if (!s) return;
+  var t   = s.type_cardio || 'autre';
+  var lbl = _CARDIO_TYPE_LABELS[t] || t;
+  var ico = _CH_ICO[t] || '⚡';
+  var ov  = document.createElement('div');
+  ov.id   = '_cardio-confirm-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML =
+    '<div style="width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 32px;box-shadow:0 -8px 30px rgba(7,11,20,.18);">'
+    + '<div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px;"></div>'
+    + '<div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px;">Supprimer cette séance ?</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">' + ico + ' ' + escapeHtml(lbl) + ' · ' + (s.date || '') + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + '<button onclick="document.getElementById(\'_cardio-confirm-overlay\').remove()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
+      + '<button onclick="_cardioConfirmSupprimer(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--bad);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🗑️ Supprimer</button>'
+    + '</div>'
+    + '</div>';
+  ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+async function _cardioConfirmSupprimer(sid) {
+  var ov = document.getElementById('_cardio-confirm-overlay');
+  if (ov) ov.remove();
+  if (!athlete) return;
+  showToast('Suppression…', 'var(--text-muted)');
+  try {
+    var r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'deleteCardio', athlete_id: athlete.athlete_id, seance_id: sid })
+    });
+    var res = await r.json();
+    if (res.success) {
+      showToast('Séance supprimée', 'var(--good)');
+      chargerAppData();
+    } else {
+      showToast('Erreur : ' + (res.error || 'inconnue'), 'var(--bad)');
+    }
+  } catch(e) {
+    showToast('Erreur réseau', 'var(--bad)');
+  }
+}
+
+function _cardioModifier(sid) {
+  var old = document.getElementById('_cardio-edit-overlay');
+  if (old) old.remove();
+  var s = _cardioSessions.find(function(x) { return x.sid === sid; });
+  if (!s) return;
+  var typeOpts = ['footing','velo','marche_normale','marche_inclinee','natation','autre'].map(function(k) {
+    return '<option value="' + k + '"' + (s.type_cardio === k ? ' selected' : '') + '>' + (_CARDIO_TYPE_LABELS[k] || k) + '</option>';
+  }).join('');
+  function numField(id, label, val, unite, step) {
+    return '<div><label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">' + label + (unite ? ' (' + unite + ')' : '') + '</label>'
+      + '<input type="number" id="' + id + '" value="' + (val || '') + '" step="' + (step || '1') + '" style="width:100%;box-sizing:border-box;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--font);"></div>';
+  }
+  var ov = document.createElement('div');
+  ov.id  = '_cardio-edit-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML =
+    '<div style="width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 28px;box-shadow:0 -8px 30px rgba(7,11,20,.18);max-height:85vh;overflow-y:auto;">'
+    + '<div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 18px;"></div>'
+    + '<div style="font-size:15px;font-weight:800;margin-bottom:16px;">Modifier la séance</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+      + '<div><label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">Date</label>'
+        + '<input type="date" id="_ce-date" value="' + (s.date || '') + '" style="width:100%;box-sizing:border-box;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;"></div>'
+      + '<div><label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">Type</label>'
+        + '<select id="_ce-type" style="width:100%;box-sizing:border-box;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;">' + typeOpts + '</select></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+      + numField('_ce-duree',    'Durée',         s.duree,       'min',   '1')
+      + numField('_ce-distance', 'Distance',      s.distance,    'km',    '0.1')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+      + numField('_ce-vitesse',  'Vitesse moy.',  s.vitesse_moy, 'km/h',  '0.1')
+      + numField('_ce-calories', 'Calories',      s.calories,    'kcal',  '1')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'
+      + numField('_ce-fc',       'FC moy.',       s.fc_moy,      'bpm',   '1')
+      + numField('_ce-rpe',      'RPE',           '',            '1-10',  '0.5')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + '<button onclick="document.getElementById(\'_cardio-edit-overlay\').remove()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
+      + '<button onclick="_cardioSauvegarderModif(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ Enregistrer</button>'
+    + '</div>'
+    + '</div>';
+  ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+async function _cardioSauvegarderModif(sid) {
+  if (!athlete) return;
+  function gv(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+  var date  = gv('_ce-date');
+  var duree = gv('_ce-duree');
+  if (!date || !duree) { showToast('Date et durée obligatoires', 'var(--warn)'); return; }
+  var body = {
+    action:       'updateCardio',
+    athlete_id:   athlete.athlete_id,
+    seance_id:    sid,
+    date:         date,
+    type_cardio:  gv('_ce-type'),
+    duree:        duree,
+    distance:     gv('_ce-distance'),
+    vitesse_moy:  gv('_ce-vitesse'),
+    calories:     gv('_ce-calories'),
+    fc_moy:       gv('_ce-fc'),
+    rpe:          gv('_ce-rpe')
+  };
+  var ov = document.getElementById('_cardio-edit-overlay');
+  if (ov) ov.remove();
+  showToast('Enregistrement…', 'var(--text-muted)');
+  try {
+    var r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    var res = await r.json();
+    if (res.success) {
+      showToast('Séance modifiée ✓', 'var(--good)');
+      chargerAppData();
+    } else {
+      showToast('Erreur : ' + (res.error || 'inconnue'), 'var(--bad)');
+    }
+  } catch(e) {
+    showToast('Erreur réseau', 'var(--bad)');
+  }
 }
