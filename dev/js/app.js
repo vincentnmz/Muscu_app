@@ -6919,7 +6919,7 @@ function _appliquerAppData(data) {
     renderDashCardio(data.cardio);
 
     // ── Cardio — historique détaillé (onglet Progression) ────────────────────
-    renderCardioHistorique(data.cardio_history);
+    renderCardioHistorique(data.cardio && data.cardio.history);
 }
 
 async function chargerAppData() {
@@ -6928,23 +6928,22 @@ async function chargerAppData() {
 
   // Stale-while-revalidate : affiche les données en cache immédiatement →
   // pas d'écran blanc pendant le cold start Apps Script.
-  // Si le cache est ancien (pas de cardio_history), on saute l'affichage intermédiaire
-  // pour éviter de masquer le bloc historique cardio avec de vieilles données.
+  // Si le cache est ancien (pas de history cardio), on saute l'affichage intermédiaire.
   try {
     const _hit = localStorage.getItem(_cacheKey);
     if (_hit) {
       const _parsed = JSON.parse(_hit);
-      if (_parsed.cardio_history !== undefined) _appliquerAppData(_parsed);
+      if (_parsed.cardio && _parsed.cardio.history !== undefined) _appliquerAppData(_parsed);
     }
   } catch (_) {}
 
   const ctrl = new AbortController();
-  const tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
-  const tKill = setTimeout(() => ctrl.abort(), 30000);
+  const tSlow = setTimeout(() => showToast('Serveur en démarrage (~15 s)…', 'var(--warn)'), 8000);
+  const tKill = setTimeout(() => ctrl.abort(), 90000);
   try {
-    // Ajouter nocache si l'ancienne réponse localStorage n'avait pas cardio_history
+    // Ajouter nocache si l'ancienne réponse localStorage n'avait pas cardio.history
     let _fetchUrl = `${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`;
-    try { const _old = JSON.parse(localStorage.getItem(_cacheKey) || '{}'); if (_old.cardio_history === undefined) _fetchUrl += '&nocache=1'; } catch(_) {}
+    try { const _old = JSON.parse(localStorage.getItem(_cacheKey) || '{}'); if (!_old.cardio || _old.cardio.history === undefined) _fetchUrl += '&nocache=1'; } catch(_) {}
     const res = await fetch(_fetchUrl, { signal: ctrl.signal });
     clearTimeout(tSlow); clearTimeout(tKill);
     const data = await res.json();
@@ -6953,7 +6952,7 @@ async function chargerAppData() {
   } catch(e) {
     clearTimeout(tSlow); clearTimeout(tKill);
     if (e.name === 'AbortError') {
-      showToast('Délai dépassé (30 s). Vérifie ta connexion et rafraîchis.', 'var(--danger)');
+      showToast('Serveur trop lent (90 s dépassés). Rafraîchis dans quelques secondes.', 'var(--danger)');
     } else {
       showToast('Erreur de connexion. Réessaie dans quelques secondes.', 'var(--danger)');
     }
