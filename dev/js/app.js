@@ -8565,6 +8565,7 @@ async function sauvegarderCardio() {
     inclinaison: gv('cardio-inclinaison'),
     puissance_moy: gv('cardio-puissance_moy'),
     cadence:     gv('cardio-cadence'),
+    pas:         (function(){ var d=parseFloat(gv('cardio-distance'))||0; var h=parseFloat((athlete||{}).taille)||0; return (d>0&&h>0&&(type==='marche_normale'||type==='marche_inclinee'))?Math.round(d*100000/(h*0.413)):''; })(),
     calories:    gv('cardio-calories'),
     fc_moy:      gv('cardio-fc_moy'),
     rpe:         gv('cardio-rpe')
@@ -8919,6 +8920,7 @@ function _renderCardioHist() {
       var parts = [];
       if (s.duree)       parts.push(s.duree + ' min');
       if (s.distance)    parts.push(s.distance + ' km');
+      if (s.pas)         parts.push(s.pas + ' pas');
       if (s.vitesse_moy) parts.push(s.vitesse_moy + ' km/h');
       recHtml += '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">'
         + '<div style="width:34px;height:34px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">' + ico + '</div>'
@@ -9034,9 +9036,13 @@ function _cardioModifier(sid) {
       + numField('_ce-vitesse',  'Vitesse moy.',  s.vitesse_moy, 'km/h',  '0.1')
       + numField('_ce-calories', 'Calories',      s.calories,    'kcal',  '1')
     + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
       + numField('_ce-fc',       'FC moy.',       s.fc_moy,      'bpm',   '1')
+      + '<div></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'
       + numField('_ce-rpe',      'RPE',           '',            '1-10',  '0.5')
+      + '<div></div>'
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<button onclick="document.getElementById(\'_cardio-edit-overlay\').remove()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
@@ -9064,6 +9070,7 @@ async function _cardioSauvegarderModif(sid) {
     vitesse_moy:  gv('_ce-vitesse'),
     calories:     gv('_ce-calories'),
     fc_moy:       gv('_ce-fc'),
+    pas:          (function(){ var d=parseFloat(gv('_ce-distance'))||0; var h=parseFloat((athlete||{}).taille)||0; var t=gv('_ce-type'); return (d>0&&h>0&&(t==='marche_normale'||t==='marche_inclinee'))?Math.round(d*100000/(h*0.413)):''; })(),
     rpe:          gv('_ce-rpe')
   };
   var ov = document.getElementById('_cardio-edit-overlay');
