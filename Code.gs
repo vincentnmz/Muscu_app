@@ -95,6 +95,8 @@ function doPost(e) {
   if (body.action === 'saveContexte')            return saveContexte(body);
   if (body.action === 'cloreContexte')           return cloreContexte(body);
   if (body.action === 'saveCardio')              return saveCardio(body);
+  if (body.action === 'deleteCardio')            return deleteCardio(body);
+  if (body.action === 'updateCardio')            return updateCardio(body);
   return json({ error: 'action inconnue' });
 }
 
@@ -3309,6 +3311,7 @@ function saveCardio(body) {
   addNum('inclinaison', body.inclinaison, '%');
   addNum('puissance_moy', body.puissance_moy, 'W');
   addNum('cadence',     body.cadence,     'rpm');
+  addNum('pas',         body.pas,         'pas');
   addNum('fc_moy',      body.fc_moy,      'bpm');
   addNum('calories',    body.calories,    'kcal');
   var dureeN = Number(body.duree), rpeN = Number(body.rpe);
@@ -3333,7 +3336,7 @@ function getCardioAll(athlete_id) {
   var WINS = [7, 30, 90, 180];
   var winResult = {};
   WINS.forEach(function(w) {
-    winResult[w] = { sessions: 0, duree: 0, distance: 0, calories: 0, charge: 0, par_type: {} };
+    winResult[w] = { sessions: 0, duree: 0, distance: 0, calories: 0, charge: 0, pas: 0, par_type: {} };
   });
 
   // Lecture unique — regroupement par seance_id
@@ -3365,6 +3368,7 @@ function getCardioAll(athlete_id) {
         wr.distance += Number(s.data.distance)       || 0;
         wr.calories += Number(s.data.calories)       || 0;
         wr.charge   += Number(s.data.charge_interne) || 0;
+        wr.pas      += Number(s.data.pas)            || 0;
         var type = String(s.data.type_cardio || 'autre');
         wr.par_type[type] = (wr.par_type[type] || 0) + 1;
       }
@@ -3384,6 +3388,7 @@ function getCardioAll(athlete_id) {
         cadence:        Number(s.data.cadence)        || 0,
         fc_moy:         Number(s.data.fc_moy)         || 0,
         calories:       Number(s.data.calories)        || 0,
+        pas:            Number(s.data.pas)             || 0,
         charge_interne: Number(s.data.charge_interne) || 0
       });
     }
@@ -3395,8 +3400,68 @@ function getCardioAll(athlete_id) {
     wr.distance = Math.round(wr.distance * 10) / 10;
     wr.calories = Math.round(wr.calories);
     wr.charge   = Math.round(wr.charge);
+    wr.pas      = Math.round(wr.pas);
   });
   histList.sort(function(a, b) { return b.date.localeCompare(a.date); });
 
   return { windows: winResult, history: histList };
+}
+
+function deleteCardio(body) {
+  var athlete_id = String(body.athlete_id || '');
+  var seance_id  = String(body.seance_id  || '');
+  if (!athlete_id || !seance_id) return json({ error: 'Paramètres manquants' });
+  var sh = _findSheetLoose('Indicateurs');
+  if (!sh) return json({ error: 'Sheet Indicateurs introuvable' });
+  var data = sh.getDataRange().getValues();
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][1]) === athlete_id && String(data[i][2]) === seance_id) {
+      sh.deleteRow(i + 1);
+    }
+  }
+  try { CacheService.getScriptCache().remove('appdata_' + athlete_id); } catch(ex) {}
+  return json({ success: true });
+}
+
+function updateCardio(body) {
+  var athlete_id = String(body.athlete_id || '');
+  var seance_id  = String(body.seance_id  || '');
+  if (!athlete_id || !seance_id) return json({ error: 'Paramètres manquants' });
+  var sh = _findSheetLoose('Indicateurs');
+  if (!sh) return json({ error: 'Sheet Indicateurs introuvable' });
+  var existing = sh.getDataRange().getValues();
+  for (var i = existing.length - 1; i >= 1; i--) {
+    if (String(existing[i][1]) === athlete_id && String(existing[i][2]) === seance_id) {
+      sh.deleteRow(i + 1);
+    }
+  }
+  var date = _toDDMM(body.date) || String(body.date || '');
+  var rows = [];
+  function addNum(cle, val, unite) {
+    var n = Number(val);
+    if (val === '' || val == null || isNaN(n) || n === 0) return;
+    rows.push([date, athlete_id, seance_id, cle, n, unite || '', 'saisie']);
+  }
+  function addStr(cle, val) {
+    if (val === '' || val == null) return;
+    rows.push([date, athlete_id, seance_id, cle, String(val), '', 'saisie']);
+  }
+  addStr('type_cardio',   body.type_cardio);
+  addNum('duree',         body.duree,         'min');
+  addNum('distance',      body.distance,      'km');
+  addNum('vitesse_moy',   body.vitesse_moy,   'km/h');
+  addNum('inclinaison',   body.inclinaison,   '%');
+  addNum('puissance_moy', body.puissance_moy, 'W');
+  addNum('cadence',       body.cadence,       'rpm');
+  addNum('pas',           body.pas,           'pas');
+  addNum('fc_moy',        body.fc_moy,        'bpm');
+  addNum('calories',      body.calories,      'kcal');
+  var dureeN = Number(body.duree), rpeN = Number(body.rpe);
+  if (dureeN && rpeN) {
+    addNum('rpe', body.rpe, '1-10');
+    rows.push([date, athlete_id, seance_id, 'charge_interne', dureeN * rpeN, 'UA', 'calculé']);
+  }
+  if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
+  try { CacheService.getScriptCache().remove('appdata_' + athlete_id); } catch(ex) {}
+  return json({ success: true, seance_id: seance_id });
 }
