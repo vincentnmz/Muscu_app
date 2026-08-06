@@ -5367,11 +5367,55 @@ async function validerSeanceSansWellness() {
 }
 
 function validerSeance() {
-  if (_validationEnCours) return;          // anti double-soumission (validation déjà en cours)
+  if (_validationEnCours) return;
   const totalSeries = seance.reduce((a,e)=>a+e.series.length,0);
   if (totalSeries === 0) { showToast('Aucune série !', '#ff4444'); return; }
-  // On masque le bouton du récap pendant le questionnaire pour éviter tout reclic
   const bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
+  _confirmerFinSeance();
+}
+
+function _confirmerFinSeance() {
+  const totalSeries = seance.reduce((a,e) => a + e.series.length, 0);
+  const totalExos   = seance.length;
+  const totalVol    = seance.reduce((a,e) => a + e.series.reduce((b,s) => b + s.volume, 0), 0);
+  var old = document.getElementById('_confirm-fin-seance');
+  if (old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = '_confirm-fin-seance';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML =
+    '<div style="width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 32px;box-shadow:0 -8px 30px rgba(7,11,20,.18);">'
+    + '<div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px;"></div>'
+    + '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px;">Terminer la séance ?</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;">'
+      + '<div style="background:var(--surface2);border-radius:10px;padding:10px 4px;text-align:center;">'
+        + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalExos + '</div>'
+        + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">exercices</div></div>'
+      + '<div style="background:var(--surface2);border-radius:10px;padding:10px 4px;text-align:center;">'
+        + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalSeries + '</div>'
+        + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">séries</div></div>'
+      + '<div style="background:var(--surface2);border-radius:10px;padding:10px 4px;text-align:center;">'
+        + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalVol + ' kg</div>'
+        + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">volume</div></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + '<button onclick="_annulerFinSeance()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">↩ Continuer</button>'
+      + '<button onclick="_validerFinSeance()" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ Terminer</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(ov);
+}
+
+function _annulerFinSeance() {
+  var ov = document.getElementById('_confirm-fin-seance');
+  if (ov) ov.remove();
+  const bv = document.getElementById('btn-valider');
+  if (bv) { bv.style.display = 'block'; bv.disabled = false; }
+}
+
+function _validerFinSeance() {
+  var ov = document.getElementById('_confirm-fin-seance');
+  if (ov) ov.remove();
   ouvrirWellnessModal();
 }
 
@@ -6922,8 +6966,12 @@ function _appliquerAppData(data) {
     renderCardioHistorique(data.cardio && data.cardio.history);
 }
 
+function _showLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'block'; }
+function _hideLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'none'; }
+
 async function chargerAppData() {
   if (!athlete) return;
+  _showLoader();
   const _cacheKey = 'nv_cache_' + athlete.athlete_id;
 
   // Stale-while-revalidate : affiche les données en cache immédiatement →
@@ -6957,6 +7005,8 @@ async function chargerAppData() {
       showToast('Erreur de connexion. Réessaie dans quelques secondes.', 'var(--danger)');
     }
     console.error('chargerAppData error:', e);
+  } finally {
+    _hideLoader();
   }
 }
 
