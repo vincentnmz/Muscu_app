@@ -8479,7 +8479,7 @@ function renderCardioFields() {
         <label>Calories (kcal) <span id="cardio-cal-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label>
         <input type="number" id="cardio-calories" placeholder="auto" inputmode="numeric" data-auto="" oninput="this.dataset.auto='0';document.getElementById('cardio-cal-hint').textContent='';calcAutoCardio()">
       </div>
-      <div></div>
+      ${(type === 'marche_normale' || type === 'marche_inclinee') ? '<div><label>Pas <span style="font-size:9px;color:var(--accent);font-weight:600;" id="cardio-pas-hint"></span></label><div id="cardio-pas-preview" style="padding:10px 12px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border);color:var(--text-muted);font-size:13px;line-height:1.3;">— entrer la distance</div></div>' : '<div></div>'}
     </div>
     <div style="margin-top:14px;">
       <label>RPE (intensité ressentie)</label>
@@ -8534,6 +8534,28 @@ function calcAutoCardio() {
     var ch = document.getElementById('cardio-cal-hint');
     if (ch) ch.textContent = '✦ estimé';
   }
+
+  // Prévisualisation des pas (marche seulement)
+  var pasPrev = document.getElementById('cardio-pas-preview');
+  if (pasPrev) {
+    var taille = parseFloat((athlete || {}).taille) || 0;
+    var distPas = dist;
+    var pasRef = false;
+    if (distPas === 0 && duree > 0 && (type === 'marche_normale' || type === 'marche_inclinee')) {
+      distPas = Math.round(4.5 * duree / 60 * 10) / 10; // vitesse référence 4.5 km/h
+      pasRef = true;
+    }
+    if (distPas > 0 && taille > 0) {
+      var pas = Math.round(distPas * 100000 / (taille * 0.413));
+      pasPrev.textContent = pas.toLocaleString('fr-FR') + ' pas';
+      pasPrev.style.color = pasRef ? 'var(--text-muted)' : 'var(--accent)';
+      var ph = document.getElementById('cardio-pas-hint');
+      if (ph) ph.textContent = pasRef ? '~ réf. 4.5 km/h' : '✦ estimé';
+    } else {
+      pasPrev.textContent = '— durée requise';
+      pasPrev.style.color = 'var(--text-muted)';
+    }
+  }
 }
 
 function pickCardioRpe(btn, val) {
@@ -8565,7 +8587,7 @@ async function sauvegarderCardio() {
     inclinaison: gv('cardio-inclinaison'),
     puissance_moy: gv('cardio-puissance_moy'),
     cadence:     gv('cardio-cadence'),
-    pas:         (function(){ var d=parseFloat(gv('cardio-distance'))||0; var h=parseFloat((athlete||{}).taille)||0; return (d>0&&h>0&&(type==='marche_normale'||type==='marche_inclinee'))?Math.round(d*100000/(h*0.413)):''; })(),
+    pas:         (function(){ if(!(type==='marche_normale'||type==='marche_inclinee')) return ''; var h=parseFloat((athlete||{}).taille)||0; if(!h) return ''; var d=parseFloat(gv('cardio-distance'))||0; if(d===0){var dur=parseFloat(gv('cardio-duree'))||0; if(dur>0) d=Math.round(4.5*dur/60*10)/10;} return d>0?Math.round(d*100000/(h*0.413)):''; })(),
     calories:    gv('cardio-calories'),
     fc_moy:      gv('cardio-fc_moy'),
     rpe:         gv('cardio-rpe')
@@ -9070,7 +9092,7 @@ async function _cardioSauvegarderModif(sid) {
     vitesse_moy:  gv('_ce-vitesse'),
     calories:     gv('_ce-calories'),
     fc_moy:       gv('_ce-fc'),
-    pas:          (function(){ var d=parseFloat(gv('_ce-distance'))||0; var h=parseFloat((athlete||{}).taille)||0; var t=gv('_ce-type'); return (d>0&&h>0&&(t==='marche_normale'||t==='marche_inclinee'))?Math.round(d*100000/(h*0.413)):''; })(),
+    pas:          (function(){ var t=gv('_ce-type'); if(!(t==='marche_normale'||t==='marche_inclinee')) return ''; var h=parseFloat((athlete||{}).taille)||0; if(!h) return ''; var d=parseFloat(gv('_ce-distance'))||0; if(d===0){var dur=parseFloat(gv('_ce-duree'))||0; if(dur>0) d=Math.round(4.5*dur/60*10)/10;} return d>0?Math.round(d*100000/(h*0.413)):''; })(),
     rpe:          gv('_ce-rpe')
   };
   var ov = document.getElementById('_cardio-edit-overlay');
