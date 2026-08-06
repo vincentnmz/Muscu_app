@@ -8576,6 +8576,13 @@ async function sauvegarderCardio() {
   if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ Envoi en cours…'; }
 
   function gv(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+  var pasCalc = (function(){
+    if(!(type==='marche_normale'||type==='marche_inclinee')) return '';
+    var h=parseFloat((athlete||{}).taille)||0; if(!h) return '';
+    var d=parseFloat(gv('cardio-distance'))||0;
+    if(d===0){var dur=parseFloat(gv('cardio-duree'))||0; if(dur>0) d=Math.round(4.5*dur/60*10)/10;}
+    return d>0?Math.round(d*100000/(h*0.413)):'';
+  })();
   var body = {
     action:      'saveCardio',
     athlete_id:  athlete.athlete_id,
@@ -8587,7 +8594,7 @@ async function sauvegarderCardio() {
     inclinaison: gv('cardio-inclinaison'),
     puissance_moy: gv('cardio-puissance_moy'),
     cadence:     gv('cardio-cadence'),
-    pas:         (function(){ if(!(type==='marche_normale'||type==='marche_inclinee')) return ''; var h=parseFloat((athlete||{}).taille)||0; if(!h) return ''; var d=parseFloat(gv('cardio-distance'))||0; if(d===0){var dur=parseFloat(gv('cardio-duree'))||0; if(dur>0) d=Math.round(4.5*dur/60*10)/10;} return d>0?Math.round(d*100000/(h*0.413)):''; })(),
+    pas:         pasCalc,
     calories:    gv('cardio-calories'),
     fc_moy:      gv('cardio-fc_moy'),
     rpe:         gv('cardio-rpe')
@@ -8615,10 +8622,11 @@ async function sauvegarderCardio() {
   var typeLabel = _CARDIO_TYPE_LABELS[type] || type;
   var stats = [];
   if (parseFloat(duree)) stats.push({ n: duree + ' min', k: 'Durée' });
-  if (dist)   stats.push({ n: dist + ' km',   k: 'Distance' });
-  if (cal)    stats.push({ n: cal + ' kcal',  k: 'Calories' });
-  if (charge) stats.push({ n: charge + ' UA', k: 'Charge interne' });
-  if (fc)     stats.push({ n: fc + ' bpm',    k: 'FC moy.' });
+  if (dist)     stats.push({ n: dist + ' km',   k: 'Distance' });
+  if (pasCalc)  stats.push({ n: Number(pasCalc).toLocaleString('fr-FR') + ' pas', k: 'Pas' });
+  if (cal)      stats.push({ n: cal + ' kcal',  k: 'Calories' });
+  if (charge)   stats.push({ n: charge + ' UA', k: 'Charge interne' });
+  if (fc)       stats.push({ n: fc + ' bpm',    k: 'FC moy.' });
   var statsHtml = stats.map(function(s) {
     return '<div class="dash-stat"><div class="dash-stat-num" style="color:var(--accent);">' + s.n + '</div><div class="dash-stat-label">' + s.k + '</div></div>';
   }).join('');
@@ -8718,7 +8726,7 @@ function _renderDashCardioContent() {
       { v: wd.duree    ? wd.duree    + ' min'  : '—', u: 'durée' },
       { v: wd.calories ? wd.calories + ' kcal' : '—', u: 'calories' }
     ];
-    body = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px;">';
+    body = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:' + (wd.pas ? '7px' : '10px') + ';">';
     tiles.forEach(function(t) {
       body += '<div style="background:var(--surface2);border-radius:10px;padding:8px 4px;text-align:center;">'
         + '<div style="font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15;">' + t.v + '</div>'
@@ -8726,6 +8734,12 @@ function _renderDashCardioContent() {
         + '</div>';
     });
     body += '</div>';
+    if (wd.pas) {
+      body += '<div style="background:var(--surface2);border-radius:10px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+        + '<span style="font-size:10px;color:var(--text-muted);font-weight:700;">👣 Pas totaux (marche)</span>'
+        + '<span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;">' + wd.pas.toLocaleString('fr-FR') + '</span>'
+        + '</div>';
+    }
     if (wd.par_type && Object.keys(wd.par_type).length) {
       body += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
       Object.keys(wd.par_type).forEach(function(t) {
@@ -8821,11 +8835,12 @@ function _renderCardioHist() {
     + '</div>';
 
   // ── Agrégats KPI ──────────────────────────────────────────────
-  var totalKm = 0, totalKcal = 0, totalDuree = 0, vitSum = 0, vitN = 0;
+  var totalKm = 0, totalKcal = 0, totalDuree = 0, totalPas = 0, vitSum = 0, vitN = 0;
   filtered.forEach(function(s) {
     totalKm    += s.distance    || 0;
     totalKcal  += s.calories    || 0;
     totalDuree += s.duree       || 0;
+    totalPas   += s.pas         || 0;
     if (s.vitesse_moy) { vitSum += s.vitesse_moy; vitN++; }
   });
   var avgVitG = vitN ? Math.round(vitSum / vitN * 10) / 10 : null;
@@ -8839,10 +8854,15 @@ function _renderCardioHist() {
       + '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;">' + escapeHtml(label) + '</div>'
       + '</div>';
   }
+  var pasTotKpi = Math.round(totalPas) || null;
   var kpis = kpiTile(filtered.length || null, null,    'séances',  'var(--accent)')
     + kpiTile(Math.round(totalKm * 10) / 10 || null, 'km',   'distance', '#0ea5e9')
     + kpiTile(Math.round(totalDuree)   || null, 'min',  'durée',    '#10b981')
     + kpiTile(Math.round(totalKcal)    || null, 'kcal', 'calories', 'var(--warn)');
+  var kpisRow2 = pasTotKpi ? '<div style="background:var(--surface2);border-radius:12px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+    + '<span style="font-size:10px;color:var(--text-muted);font-weight:700;">👣 Pas totaux (marche)</span>'
+    + '<span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;">' + pasTotKpi.toLocaleString('fr-FR') + '</span>'
+    + '</div>' : '';
 
   // ── Toggle sous-onglets ───────────────────────────────────────
   var BASE_BTN = 'flex:1;text-align:center;padding:8px 6px;border-radius:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
@@ -8868,9 +8888,10 @@ function _renderCardioHist() {
     ['footing','velo','marche_normale','marche_inclinee','natation','autre'].forEach(function(t) {
       var ss = byType[t];
       if (!ss || !ss.length) return;
-      var kmT=0,kmN=0,vT=0,vN=0,cT=0,cN=0,fcT=0,fcN=0,dT=0;
+      var kmT=0,kmN=0,vT=0,vN=0,cT=0,cN=0,fcT=0,fcN=0,dT=0,pasT=0;
       ss.forEach(function(s) {
         dT += s.duree    || 0;
+        pasT += s.pas    || 0;
         if (s.distance)    { kmT += s.distance;    kmN++; }
         if (s.vitesse_moy) { vT  += s.vitesse_moy; vN++;  }
         if (s.calories)    { cT  += s.calories;    cN++;  }
@@ -8881,6 +8902,7 @@ function _renderCardioHist() {
       var avgCal  = cN  ? Math.round(cT  / ss.length)          : null;
       var avgFc   = fcN ? Math.round(fcT / fcN)                  : null;
       var totDur  = Math.round(dT);
+      var totPas  = (t === 'marche_normale' || t === 'marche_inclinee') && pasT > 0 ? Math.round(pasT) : null;
       var clr = _CH_CLR[t] || '#6366f1';
       var bg  = _CH_BG[t]  || 'rgba(99,102,241,.14)';
       var lbl = _CARDIO_TYPE_LABELS[t] || t;
@@ -8898,8 +8920,10 @@ function _renderCardioHist() {
         miniStat(avgKm,   'km',   'km moy./séance'),
         miniStat(avgVit2, 'km/h', 'vitesse moy.'),
         miniStat(totDur || null, 'min', 'durée tot.'),
-        miniStat(avgCal,  'kcal', 'kcal moy./séance')
+        miniStat(avgCal,  'kcal', 'kcal moy./séance'),
+        totPas ? miniStat(totPas.toLocaleString('fr-FR'), 'pas', 'pas totaux') : null
       ].filter(Boolean).join('');
+      var statsCols = [avgKm,avgVit2,totDur||null,avgCal,totPas].filter(function(x){return x!==null&&x!==0;}).length;
 
       activHtml += '<div style="border-left:4px solid ' + clr + ';background:var(--surface);border-radius:12px;padding:12px 14px;margin-bottom:10px;">'
         + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:' + (statsHtml ? '12px' : '0') + ';">'
@@ -8910,7 +8934,7 @@ function _renderCardioHist() {
           + '</div>'
           + (avgFc ? '<div style="background:rgba(220,53,69,.10);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;color:var(--danger);">❤ ' + avgFc + ' bpm</div>' : '')
         + '</div>'
-        + (statsHtml ? '<div style="display:grid;grid-template-columns:repeat(' + ([avgKm,avgVit2,totDur,avgCal].filter(function(x){return x!==null&&x!==0;}).length) + ',1fr);gap:12px;">' + statsHtml + '</div>' : '')
+        + (statsHtml ? '<div style="display:grid;grid-template-columns:repeat(' + statsCols + ',1fr);gap:12px;">' + statsHtml + '</div>' : '')
         + '</div>';
     });
   }
@@ -8967,7 +8991,8 @@ function _renderCardioHist() {
 
   contEl.innerHTML =
     '<div style="margin-bottom:12px;">' + chips + '</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:16px;">' + kpis + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:' + (kpisRow2 ? '7px' : '16px') + ';">' + kpis + '</div>'
+    + (kpisRow2 ? '<div style="margin-bottom:16px;">' + kpisRow2 + '</div>' : '')
     + '<div style="display:flex;background:var(--surface2);border-radius:12px;padding:3px;margin-bottom:14px;gap:3px;">' + btns + '</div>'
     + '<div id="ch-panel-activite"' + (_cardioSubTab !== 'activite' ? ' style="display:none;"' : '') + '>' + activHtml + '</div>'
     + '<div id="ch-panel-recentes"' + (_cardioSubTab !== 'recentes' ? ' style="display:none;"' : '') + '>' + recHtml + '</div>';
