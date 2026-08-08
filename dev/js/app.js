@@ -686,7 +686,7 @@
  * Il alimente NovalyzEngine.normaliser() avec des indicateurs génériques
  * (voir le contrat documenté au-dessus de la fonction normaliser, bloc 1).
  * ========================================================================== */
-const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEj4SEA0wzmXcPWECRGCURsSTIbIMu81sFktWtQM86E2-3zgR7LCz-G9sqz2mLHUcQ/exec";
 
 /* =============================================================================
  * SPORTS (Phase 2/3) — registre des sports. Le sport est fourni par le backend
@@ -966,8 +966,20 @@ async function supprimerMonCompte() {
   } catch(e) { showToast('Erreur réseau.', 'var(--danger)'); }
 }
 
+// Ferme les overlays/modales et vide les cartes contexte (évite qu'ils restent
+// affichés par-dessus l'écran de connexion au moment de la déconnexion).
+function _fermerOverlaysEtContexte() {
+  ['detail-joueur-overlay', 'modal-contexte'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  ['dash-contexte', 'cd-contexte'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+}
+
 function seDeconnecter() {
   arreterChronoEtReinitSeance();
+  _fermerOverlaysEtContexte();
   athlete = null;
   localStorage.removeItem('muscu_athlete');
   document.getElementById('view-login').classList.add('active');
@@ -1102,6 +1114,7 @@ async function supprimerCompteCoach() {
 }
 
 function seDeconnecterCoach() {
+  _fermerOverlaysEtContexte();
   coach = null;
   localStorage.removeItem('muscu_coach');
   localStorage.removeItem('muscu_coach_vue');
@@ -5626,13 +5639,14 @@ async function sauvegarderPoids() {
     body: JSON.stringify({action:'savePoids', athlete_id:athlete.athlete_id, athlete:athlete.nom, poids, date}) });
   showToast('✅ Poids enregistré !');
   document.getElementById('inp-poids').value = '';
-  chargerPoids();
+  // l'écriture no-cors se propage côté serveur : petit délai avant de relire
+  setTimeout(chargerPoids, 600);
 }
 
 async function chargerPoids() {
   const el = document.getElementById('hist-poids');
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}`);
+    const res = await fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}&nocache=${Date.now()}`);
     const data = await res.json();
     if (data.poids && data.poids.length > 0) {
       el.innerHTML = data.poids.map(p => `
@@ -5640,6 +5654,8 @@ async function chargerPoids() {
           <span>${p.date}</span>
           <span class="poids-val">${p.poids} kg</span>
         </div>`).join('');
+      // rafraîchit aussi le graphique d'évolution du poids (dashboard)
+      try { afficherGraphiquePoids(data.poids); } catch(_) {}
     } else { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune pesée enregistrée</div>'; }
   } catch(e) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Erreur</div>'; }
 }
@@ -7847,8 +7863,10 @@ function _ctxLibelle(cle) {
 function _ctxUI(cle) { return ETATS_UI[cle] || ETATS_UI.saison_normale; }
 function _ctxActif(contexte) { return !!(contexte && contexte.etat && contexte.etat !== 'saison_normale'); }
 
-// Carte « Contexte de performance ». Toujours éditable (coach ET athlète).
+// Carte « Contexte de performance ». Le CHOIX de l'état est réservé au coach /
+// préparateur : le joueur voit son contexte (posé par le coach) mais ne l'édite pas.
 // `source` route le rechargement après écriture : 'foot' | 'muscu' | 'athlete'.
+// Éditable si : vue coach muscu ('muscu') OU vue foot en mode coach.
 function carteContexteHTML(contexte, athlete_id, source) {
   var actif = _ctxActif(contexte);
   var cle = actif ? contexte.etat : 'saison_normale';
@@ -7860,10 +7878,13 @@ function carteContexteHTML(contexte, athlete_id, source) {
     : 'Aucun ajustement — analyses standard.';
   var aid = String(athlete_id || '');
   var src = source || 'muscu';
-  var boutons = '<div style="display:flex;gap:8px;margin-top:12px;">'
-    + '<button onclick="ouvrirModaleContexte(\'' + aid + '\',\'' + src + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' + (actif ? 'Changer l\'état' : 'Poser un état') + '</button>'
-    + (actif ? '<button onclick="terminerContexte(\'' + aid + '\',\'' + src + '\')" style="border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Terminer</button>' : '')
-    + '</div>';
+  var editable = (src === 'muscu') || (src === 'foot' && typeof cdMode !== 'undefined' && cdMode === 'coach');
+  var boutons = editable
+    ? '<div style="display:flex;gap:8px;margin-top:12px;">'
+      + '<button onclick="ouvrirModaleContexte(\'' + aid + '\',\'' + src + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' + (actif ? 'Changer l\'état' : 'Poser un état') + '</button>'
+      + (actif ? '<button onclick="terminerContexte(\'' + aid + '\',\'' + src + '\')" style="border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Terminer</button>' : '')
+      + '</div>'
+    : '';
   return '<div class="dash-card" style="padding:14px;margin-bottom:12px;">'
     + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Contexte de performance</div>'
     + '<div style="display:flex;align-items:center;gap:9px;">'
@@ -8496,13 +8517,10 @@ function calcAutoCardio() {
   var vitesse = parseFloat((document.getElementById('cardio-vitesse_moy')   || {}).value) || 0;
   var inclin  = parseFloat((document.getElementById('cardio-inclinaison')   || {}).value) || 0;
   var puiss   = parseFloat((document.getElementById('cardio-puissance_moy') || {}).value) || 0;
-  var poidsEl = document.getElementById('cardio-poids-saisie');
-  var poids   = parseFloat((poidsEl && poidsEl.value) || (athlete && athlete.poids) || 0);
-  if (!poids) return; // sans poids, pas de calcul auto
   var distEl  = document.getElementById('cardio-distance');
   var calEl   = document.getElementById('cardio-calories');
 
-  // Distance auto : vitesse × durée (h)
+  // Distance auto : vitesse × durée (h) — ne dépend pas du poids
   if (distEl && distEl.dataset.auto !== '0' && duree > 0 && vitesse > 0) {
     distEl.value = Math.round(vitesse * duree / 60 * 10) / 10;
     distEl.dataset.auto = '1';
@@ -8511,7 +8529,33 @@ function calcAutoCardio() {
   }
   var dist = parseFloat((distEl || {}).value) || 0;
 
-  // Calories auto selon type
+  // Prévisualisation des pas (marche seulement) — ne dépend pas du poids
+  var pasPrev = document.getElementById('cardio-pas-preview');
+  if (pasPrev) {
+    var taille = parseFloat((athlete || {}).taille) || 0;
+    var distPas = dist;
+    var pasRef = false;
+    if (distPas === 0 && duree > 0 && (type === 'marche_normale' || type === 'marche_inclinee')) {
+      distPas = Math.round(4.5 * duree / 60 * 10) / 10; // vitesse référence 4.5 km/h
+      pasRef = true;
+    }
+    if (distPas > 0 && taille > 0) {
+      var pas = Math.round(distPas * 100000 / (taille * 0.413));
+      pasPrev.textContent = pas.toLocaleString('fr-FR') + ' pas';
+      pasPrev.style.color = pasRef ? 'var(--text-muted)' : 'var(--accent)';
+      var ph = document.getElementById('cardio-pas-hint');
+      if (ph) ph.textContent = pasRef ? '~ réf. 4.5 km/h' : '✦ estimé';
+    } else {
+      pasPrev.textContent = '— durée requise';
+      pasPrev.style.color = 'var(--text-muted)';
+    }
+  }
+
+  // Calories auto — dépend du poids
+  var poidsEl = document.getElementById('cardio-poids-saisie');
+  var poids   = parseFloat((poidsEl && poidsEl.value) || (athlete && athlete.poids) || 0);
+  if (!poids) return;
+
   var calAuto = 0;
   if (type === 'footing' && poids && dist) {
     calAuto = Math.round(poids * dist * 1.04);
@@ -8533,28 +8577,6 @@ function calcAutoCardio() {
     calEl.dataset.auto = '1';
     var ch = document.getElementById('cardio-cal-hint');
     if (ch) ch.textContent = '✦ estimé';
-  }
-
-  // Prévisualisation des pas (marche seulement)
-  var pasPrev = document.getElementById('cardio-pas-preview');
-  if (pasPrev) {
-    var taille = parseFloat((athlete || {}).taille) || 0;
-    var distPas = dist;
-    var pasRef = false;
-    if (distPas === 0 && duree > 0 && (type === 'marche_normale' || type === 'marche_inclinee')) {
-      distPas = Math.round(4.5 * duree / 60 * 10) / 10; // vitesse référence 4.5 km/h
-      pasRef = true;
-    }
-    if (distPas > 0 && taille > 0) {
-      var pas = Math.round(distPas * 100000 / (taille * 0.413));
-      pasPrev.textContent = pas.toLocaleString('fr-FR') + ' pas';
-      pasPrev.style.color = pasRef ? 'var(--text-muted)' : 'var(--accent)';
-      var ph = document.getElementById('cardio-pas-hint');
-      if (ph) ph.textContent = pasRef ? '~ réf. 4.5 km/h' : '✦ estimé';
-    } else {
-      pasPrev.textContent = '— durée requise';
-      pasPrev.style.color = 'var(--text-muted)';
-    }
   }
 }
 
