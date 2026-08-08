@@ -425,14 +425,39 @@
 
   function analyser(data, options) {
     options = options || {};
-    if (_enPauseData(data)) return [];   // en vacances : rien à signaler
-    var faits = normaliser(data);
+    if (_enPauseData(data)) return [];   // en vacances : rien à signaler (mute total)
+
+    /* --- Phase 3 : CONTEXTE DE PERFORMANCE -----------------------------------
+     * Résolution lazy (le module NovalyzContexte est chargé après le moteur).
+     * Absent → comportement d'origine strictement identique (non-régression).
+     * saison_normale → politique vide → aucun effet. */
+    var Ctx = global.NovalyzContexte || null;
+    var ctx = Ctx ? Ctx.resoudre(data) : null;
+    var politique = ctx ? ctx.politique : {};
+
+    // 1) Seuils contextualisés (ex : intensification tolère une fatigue haute).
+    //    On surcharge SEUILS le temps de la normalisation, puis on restaure.
+    var faits;
+    if (Ctx && politique.seuils) {
+      var _seuilsOrig = SEUILS;
+      try { SEUILS = Ctx.fusionnerSeuils(SEUILS, politique); faits = normaliser(data); }
+      finally { SEUILS = _seuilsOrig; }
+    } else {
+      faits = normaliser(data);
+    }
+
+    // 2) Application de la politique : neutralise des signaux + filtre les règles.
+    if (Ctx) faits = Ctx.appliquer(faits, politique);
+    var regles = Ctx ? Ctx.filtrerRegles(REGLES, politique) : REGLES;
+    var etatCourant = ctx ? ctx.etat : 'saison_normale';
+    /* ---------------------------------------------------------------------- */
+
     var resultats = [];
-    for (var i = 0; i < REGLES.length; i++) {
-      var regle = REGLES[i];
+    for (var i = 0; i < regles.length; i++) {
+      var regle = regles[i];
       try {
         var res = regle.evaluer(faits);
-        if (res) { res.id = regle.id; res.regle = regle.id; resultats.push(res); }
+        if (res) { res.id = regle.id; res.regle = regle.id; res.contexte = etatCourant; resultats.push(res); }
       } catch (e) {
         // Une règle qui échoue ne doit jamais casser le moteur.
         if (options.debug && global.console) global.console.warn('[NovalyzEngine] règle en échec:', regle.id, e);
@@ -461,6 +486,172 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = NovalyzEngine;
 
 })(typeof self !== 'undefined' ? self : this);
+
+
+
+
+/* NOVALYZ_CONTEXTE_START — Couche « Contexte de performance » (Phase 2)
+ * =============================================================================
+ * Novalyz · Contexte de performance — module NOYAU, sport-agnostique
+ * -----------------------------------------------------------------------------
+ * Répond à « POURQUOI » avant que le moteur interprète le « QUOI ».
+ * Un athlète est, à une date donnée, dans un ÉTAT (deload, retour de vacances…).
+ * Chaque état porte une POLITIQUE : un petit vocabulaire que le moteur applique
+ * pour ne pas prendre une baisse VOULUE pour une régression.
+ *
+ * Ce module est AUTONOME : il ne branche rien. L'intégration au moteur se fait
+ * en Phase 3 (2 insertions dans NovalyzEngine.analyser). Ici : le registre, la
+ * résolution de l'état actif, et les transformations (neutraliser un signal,
+ * suspendre une règle, fusionner un seuil).
+ *
+ * VOCABULAIRE DE POLITIQUE (volontairement réduit) :
+ *   suspendre    : [id|categorie]  → ces règles ne s'évaluent pas
+ *   neutraliser  : [signal]        → force le signal à null (cesse de compter)
+ *   seuils       : {clé: valeur}   → surcharge un SEUILS (voir fusionnerSeuils)
+ *   suspendre_comparaisons: bool   → coupe les comparaisons directes/historiques
+ *   mode         : string          → étiquette pour l'UI (reprise, décharge…)
+ *
+ * Ajouter un état = ajouter une entrée dans ETATS. Rien d'autre à modifier.
+ * ========================================================================== */
+(function (global) {
+  'use strict';
+
+  var VERSION = '1.0.0';
+
+  // Registre déclaratif des états. `saison_normale` = défaut, politique VIDE
+  // (le moteur se comporte alors exactement comme sans contexte : non-régression).
+  var ETATS = {
+    saison_normale: {
+      libelle: 'Saison normale',
+      politique: {}
+    },
+    deload: {
+      libelle: 'Semaine de décharge',
+      politique: {
+        mode: 'decharge',
+        // La baisse de volume/charge est VOULUE : elle cesse de compter comme négative.
+        neutraliser: ['volumeFaible', 'forceBaisse', 'progressionBaisse'],
+        suspendre:   ['sous_entrainement', 'surmenage']
+      }
+    },
+    retour_vacances: {
+      libelle: 'Retour de vacances',
+      politique: {
+        mode: 'reprise_progressive',
+        duree_jours: 14,
+        neutraliser: ['progressionBaisse', 'forceBaisse'],
+        suspendre:   ['sous_entrainement', 'irregularite'],
+        suspendre_comparaisons: true
+      }
+    },
+    retour_blessure: {
+      libelle: 'Retour de blessure',
+      politique: {
+        mode: 'reprise',
+        neutraliser: ['progressionBaisse', 'forceBaisse', 'volumeFaible'],
+        suspendre:   ['sous_entrainement', 'irregularite', 'surmenage'],
+        suspendre_comparaisons: true
+      }
+    },
+    intensification: {
+      libelle: 'Phase d\'intensification',
+      politique: {
+        mode: 'intensification',
+        // Fatigue élevée ATTENDUE : on ne la signale qu'au maximum de l'échelle.
+        seuils: { fatigueElevee: 5 }
+      }
+    }
+  };
+
+  /* --- Résolution de l'état actif ------------------------------------------
+   * Lit `data.contexte` (déjà résolu par le backend : l'état du jour, ou null).
+   * Un état inconnu retombe proprement sur `saison_normale` (extensibilité sûre). */
+  function resoudre(data) {
+    var ctx = data && data.contexte;
+    var cle = (ctx && ctx.etat) ? String(ctx.etat).trim() : 'saison_normale';
+    var connu = Object.prototype.hasOwnProperty.call(ETATS, cle);
+    var def = connu ? ETATS[cle] : ETATS.saison_normale;
+    return {
+      etat:           connu ? cle : 'saison_normale',
+      libelle:        def.libelle || cle,
+      politique:      def.politique || {},
+      mode:           (def.politique && def.politique.mode) || null,
+      date_debut:     ctx ? (ctx.date_debut || null) : null,
+      date_fin:       ctx ? (ctx.date_fin || null) : null,
+      jours_restants: (ctx && ctx.jours_restants != null) ? ctx.jours_restants : null,
+      source:         ctx ? (ctx.source || null) : null,
+      inconnu:        !connu && !!(ctx && ctx.etat)   // état posé mais non reconnu
+    };
+  }
+
+  /* --- Application de la politique aux faits (signaux) ----------------------
+   * Renvoie une COPIE des faits : neutralise les signaux demandés + pose le
+   * drapeau `comparaisons_suspendues`. NE touche PAS aux seuils (voir fusionnerSeuils). */
+  function appliquer(faits, politique) {
+    politique = politique || {};
+    faits = faits || {};
+    var signaux = {}, src = faits.signaux || {};
+    for (var k in src) { if (Object.prototype.hasOwnProperty.call(src, k)) signaux[k] = src[k]; }
+    var neutraliser = politique.neutraliser || [];
+    for (var i = 0; i < neutraliser.length; i++) signaux[neutraliser[i]] = null; // cesse de compter
+    return {
+      valeurs: faits.valeurs || {},
+      signaux: signaux,
+      comparaisons_suspendues: !!politique.suspendre_comparaisons
+    };
+  }
+
+  /* --- Filtrage des règles suspendues --------------------------------------
+   * `suspendre` peut viser un id de règle OU une catégorie. On garde tout ce
+   * qui n'est pas explicitement suspendu. */
+  function filtrerRegles(regles, politique) {
+    regles = regles || [];
+    politique = politique || {};
+    var stop = politique.suspendre || [];
+    if (!stop.length) return regles.slice();
+    var set = {};
+    for (var i = 0; i < stop.length; i++) set[String(stop[i])] = true;
+    return regles.filter(function (r) { return !set[String(r.id)] && !set[String(r.categorie)]; });
+  }
+
+  /* --- Fusion des seuils ----------------------------------------------------
+   * Renvoie une COPIE de `seuils` avec les surcharges de la politique appliquées.
+   * Utilisé en Phase 3 pour alimenter normaliser() sans muter les SEUILS globaux. */
+  function fusionnerSeuils(seuils, politique) {
+    seuils = seuils || {};
+    politique = politique || {};
+    var out = {};
+    for (var k in seuils) { if (Object.prototype.hasOwnProperty.call(seuils, k)) out[k] = seuils[k]; }
+    var over = politique.seuils || {};
+    for (var j in over) { if (Object.prototype.hasOwnProperty.call(over, j)) out[j] = over[j]; }
+    return out;
+  }
+
+  // Liste des états (pour un futur sélecteur UI).
+  function etatsDisponibles() {
+    var out = [];
+    for (var cle in ETATS) {
+      if (!Object.prototype.hasOwnProperty.call(ETATS, cle)) continue;
+      out.push({ cle: cle, libelle: ETATS[cle].libelle || cle, mode: (ETATS[cle].politique && ETATS[cle].politique.mode) || null });
+    }
+    return out;
+  }
+
+  var NovalyzContexte = {
+    version:          VERSION,
+    ETATS:            ETATS,
+    resoudre:         resoudre,
+    appliquer:        appliquer,
+    filtrerRegles:    filtrerRegles,
+    fusionnerSeuils:  fusionnerSeuils,
+    etatsDisponibles: etatsDisponibles
+  };
+
+  global.NovalyzContexte = NovalyzContexte;
+  if (typeof module !== 'undefined' && module.exports) module.exports = NovalyzContexte;
+
+})(typeof self !== 'undefined' ? self : this);
+/* NOVALYZ_CONTEXTE_END */
 
 
 
@@ -495,7 +686,7 @@
  * Il alimente NovalyzEngine.normaliser() avec des indicateurs génériques
  * (voir le contrat documenté au-dessus de la fonction normaliser, bloc 1).
  * ========================================================================== */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEj4SEA0wzmXcPWECRGCURsSTIbIMu81sFktWtQM86E2-3zgR7LCz-G9sqz2mLHUcQ/exec";
+const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service";
 
 /* =============================================================================
  * SPORTS (Phase 2/3) — registre des sports. Le sport est fourni par le backend
@@ -611,6 +802,9 @@ let historiqueData = [];
 
 // ==================== SESSION ==================== [NOYAU]
 window.addEventListener('load', async () => {
+  // Pré-chauffe Apps Script dès le chargement de la page : réduit le cold start au login.
+  fetch(SCRIPT_URL + '?action=ping').catch(() => {});
+
   // Applique le thème enregistré dès le chargement (login inclus) — évite le retour en dark au refresh
   if (localStorage.getItem('muscu_theme') === 'light') document.body.classList.add('light-mode');
   // Service worker : rend l'app disponible hors-ligne (salles de sport sans réseau)
@@ -772,8 +966,20 @@ async function supprimerMonCompte() {
   } catch(e) { showToast('Erreur réseau.', 'var(--danger)'); }
 }
 
+// Ferme les overlays/modales et vide les cartes contexte (évite qu'ils restent
+// affichés par-dessus l'écran de connexion au moment de la déconnexion).
+function _fermerOverlaysEtContexte() {
+  ['detail-joueur-overlay', 'modal-contexte'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  ['dash-contexte', 'cd-contexte'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+}
+
 function seDeconnecter() {
   arreterChronoEtReinitSeance();
+  _fermerOverlaysEtContexte();
   athlete = null;
   localStorage.removeItem('muscu_athlete');
   document.getElementById('view-login').classList.add('active');
@@ -908,6 +1114,7 @@ async function supprimerCompteCoach() {
 }
 
 function seDeconnecterCoach() {
+  _fermerOverlaysEtContexte();
   coach = null;
   localStorage.removeItem('muscu_coach');
   localStorage.removeItem('muscu_coach_vue');
@@ -1092,10 +1299,19 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   cdMode = mode || 'coach';   // 'coach' (édition) ou 'athlete' (lecture seule, sa propre page)
   let d;
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getSuiviJoueur&athlete_id=${encodeURIComponent(athlete_id)}`);
+    const _ctrl = new AbortController();
+    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    const res = await fetch(`${SCRIPT_URL}?action=getSuiviJoueur&athlete_id=${encodeURIComponent(athlete_id)}`, { signal: _ctrl.signal });
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     d = await res.json();
-  } catch (e) { body.innerHTML = '<div style="color:var(--text-muted);padding:12px">Erreur de chargement.</div>'; return; }
+  } catch (e) {
+    const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
+    body.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
+    return;
+  }
 
+  cdJoueurNom = d.nom || 'Joueur';
   const COL = { rouge:'#e5484d', orange:'#f5a623' };
   const acwr = d.acwr;
   const acwrCol = (acwr!=null && acwr>1.5) ? COL.rouge : (acwr!=null && acwr>1.3) ? COL.orange : 'var(--good)';
@@ -1343,8 +1559,24 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
         ${motCell('État récup', mot.recup, colRecup(mot.recup))}
         ${motCell('Risque blessure', mot.risque_blessure, colRisque(mot.risque_blessure))}
       </div>
-      ${(cdMode==='coach' && mot.reco) ? `<div style="font-size:12.5px;line-height:1.45;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><b style="color:var(--accent);">Reco</b> · ${escapeHtml(mot.reco)}</div>` : ''}
+      ${(cdMode==='coach' && mot.reco) ? `<div style="font-size:12.5px;line-height:1.45;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">${mot.contexte_tag ? `<span style="display:inline-block;font-size:10px;font-weight:800;background:var(--accent);color:var(--on-accent);border-radius:4px;padding:1px 6px;margin-right:6px;vertical-align:middle;">${escapeHtml(mot.contexte_tag)}</span>` : ''}<b style="color:var(--accent);">Reco</b> · ${escapeHtml(mot.reco)}</div>` : ''}
     </div>` : '';
+
+  // Phase 6 — NovalyzEngine appliqué aux données foot : bien-être → signaux communs.
+  // Le noyau n'est pas modifié ; on lui fournit les entrées que normaliser() sait lire.
+  let novalyzAlertes = [];
+  if (typeof NovalyzEngine !== 'undefined' && d.bienetre && Object.keys(d.bienetre).length) {
+    try { novalyzAlertes = NovalyzEngine.analyser({ bienEtre: d.bienetre, contexte: d.contexte }) || []; } catch(e) {}
+  }
+  const novalyzCard = novalyzAlertes.length ? `<div class="dash-card" style="padding:4px 0 0;margin-bottom:12px;">${
+    novalyzAlertes.map((a,i) => {
+      const c = analyseCouleur(a.type);
+      return `<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 14px;${i<novalyzAlertes.length-1?'border-bottom:1px solid var(--border);':''}">`
+        + `<div style="flex:0 0 4px;align-self:stretch;background:${c};border-radius:2px;min-height:36px;"></div>`
+        + `<div style="min-width:0;"><div style="font-size:13px;font-weight:800;color:${c};">${analyseIcone(a.type)} ${escapeHtml(a.titre)}</div>`
+        + `<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">${escapeHtml(a.description)}</div></div></div>`;
+    }).join('')
+  }</div>` : '';
 
   // Charge externe GPS (§8) — agrégat 7 jours (onglet Charge)
   const gps = d.gps;
@@ -1388,6 +1620,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       <button class="sub-tab active" data-i="0" onclick="switchDetailJoueurTab(0)">Profil</button>
       <button class="sub-tab" data-i="1" onclick="switchDetailJoueurTab(1)">Charge &amp; physique</button>
       <button class="sub-tab" data-i="2" onclick="switchDetailJoueurTab(2)">Match &amp; technique</button>
+      <button class="sub-tab" data-i="3" onclick="switchDetailJoueurTab(3)">Conversation</button>
     </div>
 
     <!-- Corps en grille (main + rail desktop), comme #cd-body muscu -->
@@ -1425,6 +1658,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       </div></div>
       ${bilanForm}
       ${bienetreCard ? `<div class="v2-sec"><div class="st">Bien-être${cdMode==='athlete'?' · ton point du jour':''}</div></div>${bienetreCard}` : ''}
+      ${novalyzCard ? `<div class="v2-sec"><div class="st">Analyse Novalyz</div></div>${novalyzCard}` : ''}
       ${gpsCard ? `<div class="v2-sec"><div class="st">Charge externe (GPS) · 7 jours</div></div>${gpsCard}` : ''}
       <div class="v2-sec"><div class="st">Charge hebdomadaire (UA)</div></div>
       <div class="dash-card" style="padding:14px 12px 10px;margin-bottom:12px;"><canvas id="canvas-charge-joueur" width="420" height="130" style="width:100%;height:130px;display:block;"></canvas></div>
@@ -1448,8 +1682,22 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       ${(!d.heatmap||!d.heatmap.length) && !(cfgPoste && d.match_agg) ? soon('Stats de match — relance <b>seedDemoFoot()</b> pour générer les données par poste.') : ''}
     </div>
 
+    <!-- PANEL 3 : CONVERSATION -->
+    <div class="djt-panel" data-i="3" style="display:none;">
+      <div style="background:var(--surface);border-radius:16px;border:1px solid var(--border);margin-bottom:12px;width:100%;box-sizing:border-box;">
+        <div id="djt-conv-messages" style="min-height:180px;max-height:52vh;overflow-y:auto;padding:16px 14px;"></div>
+        <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;flex-direction:row;gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;">
+          <textarea id="djt-conv-input" placeholder="Votre message…"
+            style="flex:1 1 0;min-width:0;min-height:72px;resize:none;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13.5px;background:var(--surface2);color:var(--text);font-family:inherit;box-sizing:border-box;"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerMessageJoueur();}"></textarea>
+          <button onclick="envoyerMessageJoueur()" class="btn-accent" style="flex:0 0 auto;width:auto;padding:10px 16px;border-radius:10px;border:none;font-size:14px;font-weight:700;white-space:nowrap;cursor:pointer;align-self:flex-end;">Envoyer</button>
+        </div>
+      </div>
+    </div>
+
     </div><!-- /fjd-main -->
     <aside class="fjd-rail">
+      ${carteContexteHTML(d.contexte, athlete_id, 'foot')}
       <div class="dash-card" style="padding:14px;margin-bottom:12px;">
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Disponibilité</div>
         <div style="display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:${dispo.c};"><span style="width:10px;height:10px;border-radius:50%;background:${dispo.c};"></span>${dispo.t}</div>
@@ -1473,6 +1721,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
 // Édition objectifs / blessures (côté coach) — joueur actuellement ouvert
 let cdJoueurCourant = null;
+let cdJoueurNom = '';
 let cdMode = 'coach';   // 'coach' = édition ; 'athlete' = lecture seule (le joueur voit sa propre page)
 function _cdVal(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 function _cdPost(obj){ return fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(obj) }).then(r=>r.json()).catch(()=>({})); }
@@ -1520,6 +1769,58 @@ async function cdSaveBilan(){
 function switchDetailJoueurTab(i) {
   document.querySelectorAll('#detail-joueur-body .sub-tab').forEach(b=>b.classList.toggle('active', +b.dataset.i===i));
   document.querySelectorAll('#detail-joueur-body .djt-panel').forEach(p=>{ p.style.display = (+p.dataset.i===i) ? 'block' : 'none'; });
+  if (i === 3) chargerConversationJoueur();
+}
+
+// Conversation coach ↔ joueur foot (onglet 3)
+async function chargerConversationJoueur() {
+  const el = document.getElementById('djt-conv-messages');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Chargement…</div>';
+  let msgs = [];
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(cdJoueurCourant)}`);
+    const data = await res.json();
+    msgs = data.commentaires || [];
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Erreur de chargement.</div>';
+    return;
+  }
+  const isCoach = cdMode === 'coach';
+  const luKey = isCoach ? ('foot_lu_coach_' + cdJoueurCourant) : ('foot_lu_athlete_' + cdJoueurCourant);
+  const nonLusIds = msgs.filter(c => isCoach ? (c.auteur === 'athlete') : (c.auteur !== 'athlete')).filter(c => !estLu(c, luKey)).map(c => c.id);
+  if (nonLusIds.length) {
+    ajouterLusLocaux(luKey, nonLusIds);
+    fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'marquerCommentairesLus', ids: nonLusIds }) });
+    msgs.forEach(c => { if (nonLusIds.includes(c.id)) c.lu = true; });
+  }
+  const savedCac = coachAthleteCourant;
+  coachAthleteCourant = { nom: cdJoueurNom || 'Joueur' };
+  renderBullesChat(msgs, 'djt-conv-messages', isCoach);
+  coachAthleteCourant = savedCac;
+}
+
+async function envoyerMessageJoueur() {
+  const inp = document.getElementById('djt-conv-input');
+  if (!inp) return;
+  const msg = inp.value.trim();
+  if (!msg) return;
+  const isCoach = cdMode === 'coach';
+  const auteur = isCoach ? 'coach' : 'athlete';
+  const auteur_nom = isCoach ? (coach && coach.nom ? coach.nom : 'Coach') : (athlete && athlete.nom ? athlete.nom : 'Joueur');
+  const coach_id = isCoach ? (coach && coach.coach_id || '') : (athlete && athlete.coach_id || '');
+  const coach_nom = isCoach ? (coach && coach.nom || '') : '';
+  inp.value = '';
+  inp.disabled = true;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveCommentaire', auteur, auteur_nom, athlete_id: cdJoueurCourant, message: msg, coach_id, coach_nom })
+    });
+  } catch(e) {}
+  inp.disabled = false;
+  setTimeout(() => chargerConversationJoueur(), 600);
 }
 
 // Tests physiques d'un joueur : liste (valeur + évolution) et ajout rapide.
@@ -1609,9 +1910,17 @@ async function renderSuiviEquipe() {
   cont.innerHTML = '<div class="loader">Analyse de l\'équipe…</div>';
   let data;
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getSuiviEquipe&coach_id=${encodeURIComponent(coach.coach_id)}`);
+    const _ctrl = new AbortController();
+    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    const res = await fetch(`${SCRIPT_URL}?action=getSuiviEquipe&coach_id=${encodeURIComponent(coach.coach_id)}`, { signal: _ctrl.signal });
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     data = await res.json();
-  } catch (e) { cont.innerHTML = '<div style="color:var(--text-muted);padding:12px">Erreur de chargement.</div>'; return; }
+  } catch (e) {
+    const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
+    cont.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
+    return;
+  }
 
   const joueurs = data.joueurs || [];
   const eq = data.equipe || {};
@@ -1682,11 +1991,158 @@ async function renderSuiviEquipe() {
       </div>`;
   }).join('');
 
-  cont.innerHTML =
-    `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Suivi de l'équipe — ${joueurs.length} ${labelJoueurs}</div></div>`
-    + header + blessesHtml
-    + `<div class="v2-sec"><div class="st">Effectif</div></div>`
-    + cards;
+  // Alertes de la semaine — agrégées depuis les alertes joueurs
+  const toutesAlertes = joueurs
+    .filter(j => j.alertes && j.alertes.length)
+    .flatMap(j => j.alertes.map(al => ({ ...al, nom: j.nom, athlete_id: j.athlete_id })))
+    .sort((a, b) => (a.severite === 'haute' ? 0 : 1) - (b.severite === 'haute' ? 0 : 1))
+    .slice(0, 6);
+  const alertesSemaineHtml = toutesAlertes.length ? `
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-bell"/></svg>Alertes de la semaine</div></div>
+    <div class="dash-card" style="padding:2px 14px;margin-bottom:12px;">
+      ${toutesAlertes.map(al => {
+        const c = al.severite === 'haute' ? COL.rouge : COL.orange;
+        return `<div onclick="ouvrirDetailJoueurFoot('${al.athlete_id}')" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);cursor:pointer;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${c};flex-shrink:0;display:inline-block;"></span>
+          <div style="flex:1;min-width:0;">
+            <span style="font-size:13px;font-weight:700;">${escapeHtml(al.nom)}</span>
+            <span style="font-size:12px;color:var(--text-muted);"> — ${escapeHtml(al.message)}</span>
+          </div>
+          <svg class="ico" style="color:var(--text-muted);flex-shrink:0;"><use href="#i-chevron-right"/></svg>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  // Courbe charge équipe (SVG inline — 8 semaines)
+  const chargeHebdo = data.charge_hebdo || [];
+  let courbeHtml = '';
+  if (chargeHebdo.length >= 2) {
+    const W = 280, H = 64, PAD = 4;
+    const vals = chargeHebdo.map(s => s.charge);
+    const maxC = Math.max(...vals) || 1;
+    const barW = Math.floor((W - PAD * 2) / vals.length) - 3;
+    const bars = vals.map((v, i) => {
+      const x = PAD + i * ((W - PAD * 2) / vals.length);
+      const bh = Math.max(3, Math.round((v / maxC) * (H - 16)));
+      const y = H - bh;
+      const isLast = i === vals.length - 1;
+      const col = isLast ? 'var(--accent)' : 'var(--accent-a15)';
+      const lbl = chargeHebdo[i].sem.slice(0, 5);
+      return `<rect x="${x.toFixed(1)}" y="${y}" width="${barW}" height="${bh}" rx="3" fill="${col}"/>
+              <text x="${(x + barW/2).toFixed(1)}" y="${H + 1}" text-anchor="middle" font-size="7" fill="var(--text-muted)" font-family="sans-serif">${lbl}</text>`;
+    }).join('');
+    courbeHtml = `
+      <div class="v2-sec" style="margin-top:4px;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Charge collective — 8 semaines</div></div>
+      <div class="dash-card" style="padding:14px 16px 18px;margin-bottom:12px;overflow:hidden;">
+        <svg width="100%" viewBox="0 0 ${W} ${H + 10}" style="display:block;overflow:visible;">
+          ${bars}
+        </svg>
+      </div>`;
+  }
+
+  const showComp = sportConfig(coach && coach.sport).groupe === 'Équipe';
+  const _eqTabBtn = (t, on) => `<button data-eqtab="${t}" onclick="switchEquipeTab('${t}')" style="flex:1;text-align:center;padding:11px 4px;font-size:13px;font-weight:700;border:none;border-bottom:2px solid ${on?'var(--accent)':'transparent'};color:${on?'var(--text)':'var(--text-muted)'};background:none;cursor:pointer;">${t==='suivi'?'Suivi équipe':'Comparatif équipe'}</button>`;
+  const tabBar = showComp ? `<div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:0;">${_eqTabBtn('suivi',true)}${_eqTabBtn('comp',false)}</div>` : '';
+
+  const suiviHtml = `<div id="eq-tab-suivi">
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Suivi de l'équipe — ${joueurs.length} ${labelJoueurs}</div></div>
+    ${header}${alertesSemaineHtml}${blessesHtml}${courbeHtml}
+    <div class="v2-sec"><div class="st">Effectif</div></div>
+    ${cards}
+  </div>`;
+
+  let compHtml = '';
+  if (showComp) {
+    _eqCompState.joueurs = joueurs;
+    _eqCompState.poste = null;
+    _eqCompState.sortCol = 2;
+    _eqCompState.sortDir = -1;
+    const postes = [...new Set(joueurs.map(j => j.poste).filter(Boolean))].sort();
+    const pBtnStyle = (on) => `flex:0 0 auto;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid ${on?'var(--accent-dim)':'var(--border)'};background:${on?'var(--accent-a14)':'var(--surface2)'};color:${on?'var(--accent)':'var(--text-muted)'};`;
+    const posteBtns = [`<button data-eqposte="" onclick="_eqPoste(this.dataset.eqposte||null)" style="${pBtnStyle(true)}">Tous</button>`,
+      ...postes.map(p => `<button data-eqposte="${escapeHtml(p)}" onclick="_eqPoste(this.dataset.eqposte||null)" style="${pBtnStyle(false)}">${escapeHtml(p)}</button>`)
+    ].join('');
+    compHtml = `<div id="eq-tab-comp" style="display:none;padding-top:4px;">
+      <div style="display:flex;gap:6px;padding:8px 0 10px;overflow-x:auto;scrollbar-width:none;">${posteBtns}</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table id="eq-comp-table" style="width:100%;border-collapse:collapse;font-size:12px;"></table></div>
+        <div style="padding:8px 12px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--good);margin-right:3px;vertical-align:middle;"></span>Meilleur</span>
+          <span><span style="width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--bad);margin-right:3px;vertical-align:middle;"></span>ACWR ≥ 1.5</span>
+          <span>En-tête → tri · Ligne → fiche joueur</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  cont.innerHTML = tabBar + suiviHtml + compHtml;
+  if (showComp) setTimeout(_eqCompRender, 0);
+}
+
+let _eqCompState = { joueurs: [], poste: null, sortCol: 2, sortDir: -1 };
+
+function switchEquipeTab(t) {
+  ['suivi','comp'].forEach(id => {
+    const el = document.getElementById('eq-tab-'+id);
+    if (el) el.style.display = (id===t) ? 'block' : 'none';
+  });
+  document.querySelectorAll('[data-eqtab]').forEach(b => {
+    const on = b.dataset.eqtab === t;
+    b.style.color = on ? 'var(--text)' : 'var(--text-muted)';
+    b.style.borderBottomColor = on ? 'var(--accent)' : 'transparent';
+  });
+}
+
+function _eqCompRender() {
+  const { joueurs, poste, sortCol, sortDir } = _eqCompState;
+  const list = poste ? joueurs.filter(j => j.poste === poste) : joueurs;
+  const COLS = [
+    ['Joueur','nom',null],['St','statut',null],
+    ['ACWR','acwr','acwr'],['Bien-être','bienetre_moyen','haut'],
+    ['Fatigue','fatigue_moy','bas'],['Séances 7j','seances_7j','haut']
+  ];
+  const best = {};
+  COLS.forEach(([,key,dir],ci) => {
+    if (dir==='haut') { const vals=list.map(j=>j[key]).filter(v=>v!=null); if(vals.length) best[ci]=Math.max(...vals); }
+    if (dir==='bas')  { const vals=list.map(j=>j[key]).filter(v=>v!=null); if(vals.length) best[ci]=Math.min(...vals); }
+  });
+  const rows = [...list].sort((a,b) => {
+    const key=COLS[sortCol][1], va=a[key]??'', vb=b[key]??'';
+    if (typeof va==='number'&&typeof vb==='number') return (va-vb)*sortDir;
+    return String(va).localeCompare(String(vb))*sortDir;
+  });
+  const ini = n => n.split(/[\s.]+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  const thS = ci => `padding:9px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;border-bottom:1px solid var(--border);text-align:${ci>=2?'right':'left'};white-space:nowrap;color:${ci===sortCol?'var(--text)':'var(--text-muted)'};${ci>=2?'cursor:pointer;':''}`;
+  const head = '<thead><tr>'+COLS.map(([lbl,,],ci) => `<th style="${thS(ci)}"${ci>=2?` onclick="_eqSortBy(${ci})"`:''} >${lbl}${ci===sortCol?(sortDir<0?' ↓':' ↑'):''}</th>`).join('')+'</tr></thead>';
+  const body = '<tbody>'+rows.map(j => '<tr onclick="ouvrirDetailJoueurFoot(\''+j.athlete_id+'\')" style="cursor:pointer;">'+COLS.map(([,key,dir],ci) => {
+    const v = j[key];
+    if (key==='nom') return `<td style="padding:9px 8px;white-space:nowrap;"><div style="display:flex;align-items:center;gap:6px;"><div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#1a3260,#0d1a30);border:1px solid var(--border);font-size:9px;font-weight:800;color:#cfe0ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${ini(v)}</div><b style="font-size:12px;">${escapeHtml(v)}</b></div></td>`;
+    if (key==='statut') { const sc=v==='rouge'?'#e5484d':v==='orange'?'#f5a623':'#22c55e'; return `<td style="padding:9px 8px;text-align:right;"><span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${sc};"></span></td>`; }
+    const al = 'padding:9px 8px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;';
+    if (dir==='acwr') { const ac=v==null?'var(--text-muted)':v>1.5?'#e5484d':v>1.3?'#f5a623':'#22c55e'; return `<td style="${al}color:${ac};font-weight:800;">${v!=null?v.toFixed(2):'—'}</td>`; }
+    const isBest=v!=null&&v===best[ci], disp=v!=null?(Number.isInteger(v)?v:v.toFixed(1)):'—';
+    return `<td style="${al}${isBest?'color:var(--good);font-weight:800;':''}">${disp}</td>`;
+  }).join('')+'</tr>').join('')+'</tbody>';
+  const tbl = document.getElementById('eq-comp-table');
+  if (tbl) tbl.innerHTML = head+body;
+}
+
+function _eqSortBy(ci) {
+  if (_eqCompState.sortCol===ci) _eqCompState.sortDir*=-1; else { _eqCompState.sortCol=ci; _eqCompState.sortDir=-1; }
+  _eqCompRender();
+}
+
+function _eqPoste(p) {
+  _eqCompState.poste = p||null;
+  _eqCompState.sortCol = 2;
+  _eqCompState.sortDir = -1;
+  document.querySelectorAll('[data-eqposte]').forEach(b => {
+    const on = b.dataset.eqposte===(p||'');
+    b.style.background = on ? 'var(--accent-a14)' : 'var(--surface2)';
+    b.style.borderColor = on ? 'var(--accent-dim)' : 'var(--border)';
+    b.style.color = on ? 'var(--accent)' : 'var(--text-muted)';
+  });
+  _eqCompRender();
 }
 
 function joursDepuis(dateVal) {
@@ -1937,7 +2393,9 @@ async function ouvrirMessagerieCoach() {
       const r = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(a.athlete_id)}&nocache=${Date.now()}`);
       const d = await r.json();
       const msgs = (d.commentaires || []).slice().sort((x, y) => parseChatDate(y.date) - parseChatDate(x.date));
-      const nonLus = msgs.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
+      // Lu si : serveur (c.lu), clé muscu, OU clé foot par athlète (conversation foot).
+      const lusFoot = getLusLocaux('foot_lu_coach_' + a.athlete_id);
+      const nonLus = msgs.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach') && !lusFoot.has(String(c.id))).length;
       return { a, dernier: msgs[0] || null, nonLus };
     } catch (e) { return { a, dernier: null, nonLus: 0 }; }
   }));
@@ -1961,7 +2419,15 @@ async function ouvrirMessagerieCoach() {
 function ouvrirConversationDepuisMessagerie(idx) {
   fermerMessagerieCoach();
   const a = athletesCoach[Number(idx)];
-  if (a) ouvrirDetailAthleteCoach(a, 'conseils');
+  if (!a) return;
+  // Route selon le sport : joueur foot → fiche foot (onglet conversation), sinon vue muscu.
+  const estFoot = (coach && coach.sport && coach.sport !== 'muscu') || (a.sport && a.sport !== 'muscu');
+  if (estFoot && typeof ouvrirDetailJoueurFoot === 'function') {
+    ouvrirDetailJoueurFoot(a.athlete_id, 'coach');
+    if (typeof switchDetailJoueurTab === 'function') setTimeout(() => switchDetailJoueurTab(3), 60);
+  } else {
+    ouvrirDetailAthleteCoach(a, 'conseils');
+  }
 }
 
 // ---- Alertes traitées (stockage local, remise à zéro chaque semaine) ----
@@ -2195,6 +2661,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
     renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique);
@@ -4923,11 +5390,55 @@ async function validerSeanceSansWellness() {
 }
 
 function validerSeance() {
-  if (_validationEnCours) return;          // anti double-soumission (validation déjà en cours)
+  if (_validationEnCours) return;
   const totalSeries = seance.reduce((a,e)=>a+e.series.length,0);
   if (totalSeries === 0) { showToast('Aucune série !', '#ff4444'); return; }
-  // On masque le bouton du récap pendant le questionnaire pour éviter tout reclic
   const bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
+  _confirmerFinSeance();
+}
+
+function _confirmerFinSeance() {
+  const totalSeries = seance.reduce((a,e) => a + e.series.length, 0);
+  const totalExos   = seance.length;
+  const totalVol    = seance.reduce((a,e) => a + e.series.reduce((b,s) => b + s.volume, 0), 0);
+  var old = document.getElementById('_confirm-fin-seance');
+  if (old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = '_confirm-fin-seance';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML =
+    '<div style="width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 32px;box-shadow:0 -8px 30px rgba(7,11,20,.18);">'
+    + '<div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px;"></div>'
+    + '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px;">Terminer la séance ?</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;">'
+      + '<div style="background:var(--surface2);border-radius:10px;padding:10px 4px;text-align:center;">'
+        + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalExos + '</div>'
+        + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">exercices</div></div>'
+      + '<div style="background:var(--surface2);border-radius:10px;padding:10px 4px;text-align:center;">'
+        + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalSeries + '</div>'
+        + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">séries</div></div>'
+      + '<div style="background:var(--surface2);border-radius:10px;padding:10px 4px;text-align:center;">'
+        + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalVol + ' kg</div>'
+        + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">volume</div></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + '<button onclick="_annulerFinSeance()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">↩ Continuer</button>'
+      + '<button onclick="_validerFinSeance()" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ Terminer</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(ov);
+}
+
+function _annulerFinSeance() {
+  var ov = document.getElementById('_confirm-fin-seance');
+  if (ov) ov.remove();
+  const bv = document.getElementById('btn-valider');
+  if (bv) { bv.style.display = 'block'; bv.disabled = false; }
+}
+
+function _validerFinSeance() {
+  var ov = document.getElementById('_confirm-fin-seance');
+  if (ov) ov.remove();
   ouvrirWellnessModal();
 }
 
@@ -5138,13 +5649,14 @@ async function sauvegarderPoids() {
     body: JSON.stringify({action:'savePoids', athlete_id:athlete.athlete_id, athlete:athlete.nom, poids, date}) });
   showToast('✅ Poids enregistré !');
   document.getElementById('inp-poids').value = '';
-  chargerPoids();
+  // l'écriture no-cors se propage côté serveur : petit délai avant de relire
+  setTimeout(chargerPoids, 600);
 }
 
 async function chargerPoids() {
   const el = document.getElementById('hist-poids');
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}`);
+    const res = await fetch(`${SCRIPT_URL}?action=getPoids&athlete_id=${athlete.athlete_id}&nocache=${Date.now()}`);
     const data = await res.json();
     if (data.poids && data.poids.length > 0) {
       el.innerHTML = data.poids.map(p => `
@@ -5152,6 +5664,8 @@ async function chargerPoids() {
           <span>${p.date}</span>
           <span class="poids-val">${p.poids} kg</span>
         </div>`).join('');
+      // rafraîchit aussi le graphique d'évolution du poids (dashboard)
+      try { afficherGraphiquePoids(data.poids); } catch(_) {}
     } else { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aucune pesée enregistrée</div>'; }
   } catch(e) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Erreur</div>'; }
 }
@@ -6115,14 +6629,11 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
 }
 
 // ==================== CHARGEMENT PRINCIPAL ====================
-async function chargerAppData() {
-  if (!athlete) return;
-  try {
-    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}&nocache=${Date.now()}`);
-    const data = await res.json();
 
-    // Stocker les données globalement
-    dernierAppData = data;
+// Applique un snapshot getAppData à l'UI (cache local OU réseau).
+function _appliquerAppData(data) {
+  // Stocker les données globalement
+  dernierAppData = data;
     peuplerSeancesProgramme();
     seancesDates = data.historique.dates_seances || {};
     progressionData = data.historique.progression_par_exo || {};
@@ -6132,7 +6643,8 @@ async function chargerAppData() {
     renderDashboardRecords(data.historique);
     renderDashboardActivite(data.historique);
 
-    // Nouveaux blocs Accueil : État du jour (questionnaire) + Analyse moteur + Alertes
+    // Nouveaux blocs Accueil : Contexte + État du jour + Analyse moteur + Alertes
+    try { renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete'); } catch (_) {}
     renderEtatDuJour(data);
     renderAnalyseAccueilAthlete(data);
     renderAlertes(data);
@@ -6473,8 +6985,54 @@ async function chargerAppData() {
       nextEl.innerHTML = '<div class="dc-inner" style="background:var(--good);"><div class="dc-ico">✅</div><div class="dc-txt"><div class="dc-v">Toutes les séances faites !</div></div></div>';
     }
 
+    // ── Cardio — résumé multi-fenêtre ─────────────────────────────────────────
+    renderDashCardio(data.cardio);
+
+    // ── Cardio — historique détaillé (onglet Progression) ────────────────────
+    renderCardioHistorique(data.cardio && data.cardio.history);
+}
+
+function _showLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'block'; }
+function _hideLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'none'; }
+
+async function chargerAppData() {
+  if (!athlete) return;
+  _showLoader();
+  const _cacheKey = 'nv_cache_' + athlete.athlete_id;
+
+  // Stale-while-revalidate : affiche les données en cache immédiatement →
+  // pas d'écran blanc pendant le cold start Apps Script.
+  // Si le cache est ancien (pas de history cardio), on saute l'affichage intermédiaire.
+  try {
+    const _hit = localStorage.getItem(_cacheKey);
+    if (_hit) {
+      const _parsed = JSON.parse(_hit);
+      if (_parsed.cardio && _parsed.cardio.history !== undefined) _appliquerAppData(_parsed);
+    }
+  } catch (_) {}
+
+  const ctrl = new AbortController();
+  const tSlow = setTimeout(() => showToast('Serveur en démarrage (~15 s)…', 'var(--warn)'), 8000);
+  const tKill = setTimeout(() => ctrl.abort(), 90000);
+  try {
+    // Ajouter nocache si l'ancienne réponse localStorage n'avait pas cardio.history
+    let _fetchUrl = `${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`;
+    try { const _old = JSON.parse(localStorage.getItem(_cacheKey) || '{}'); if (!_old.cardio || _old.cardio.history === undefined) _fetchUrl += '&nocache=1'; } catch(_) {}
+    const res = await fetch(_fetchUrl, { signal: ctrl.signal });
+    clearTimeout(tSlow); clearTimeout(tKill);
+    const data = await res.json();
+    try { localStorage.setItem(_cacheKey, JSON.stringify(data)); } catch (_) {}
+    _appliquerAppData(data);
   } catch(e) {
+    clearTimeout(tSlow); clearTimeout(tKill);
+    if (e.name === 'AbortError') {
+      showToast('Serveur trop lent (90 s dépassés). Rafraîchis dans quelques secondes.', 'var(--danger)');
+    } else {
+      showToast('Erreur de connexion. Réessaie dans quelques secondes.', 'var(--danger)');
+    }
     console.error('chargerAppData error:', e);
+  } finally {
+    _hideLoader();
   }
 }
 
@@ -7294,6 +7852,138 @@ function wqColor(pos) {
   return 'var(--danger)';
 }
 
+/* =============================================================================
+ * CONTEXTE DE PERFORMANCE — UI (Phase 4)  [NOYAU/UI]
+ * -----------------------------------------------------------------------------
+ * Rend visible l'état posé par le coach (carte + tag sur les analyses) et
+ * permet de le poser via une modale (saveContexte / cloreContexte).
+ * La LOGIQUE reste dans NovalyzContexte ; ici uniquement l'affichage.
+ * ========================================================================== */
+var ETATS_UI = {
+  saison_normale:  { emoji: '',   couleur: 'var(--text-muted)', duree: null },
+  deload:          { emoji: '📉', couleur: 'var(--warn)',       duree: 7  },
+  retour_vacances: { emoji: '🌴', couleur: 'var(--accent)',     duree: 14 },
+  retour_blessure: { emoji: '🩹', couleur: 'var(--violet)',     duree: 21 },
+  intensification: { emoji: '🔥', couleur: 'var(--danger)',     duree: 14 }
+};
+function _ctxLibelle(cle) {
+  var E = (typeof NovalyzContexte !== 'undefined' && NovalyzContexte.ETATS) ? NovalyzContexte.ETATS : {};
+  return (E[cle] && E[cle].libelle) || cle;
+}
+function _ctxUI(cle) { return ETATS_UI[cle] || ETATS_UI.saison_normale; }
+function _ctxActif(contexte) { return !!(contexte && contexte.etat && contexte.etat !== 'saison_normale'); }
+
+// Carte « Contexte de performance ». Le CHOIX de l'état est réservé au coach /
+// préparateur : le joueur voit son contexte (posé par le coach) mais ne l'édite pas.
+// `source` route le rechargement après écriture : 'foot' | 'muscu' | 'athlete'.
+// Éditable si : vue coach muscu ('muscu') OU vue foot en mode coach.
+function carteContexteHTML(contexte, athlete_id, source) {
+  var actif = _ctxActif(contexte);
+  var cle = actif ? contexte.etat : 'saison_normale';
+  var ui = _ctxUI(cle);
+  var col = actif ? ui.couleur : 'var(--text-muted)';
+  var titre = (actif && ui.emoji ? ui.emoji + ' ' : '') + escapeHtml(_ctxLibelle(cle));
+  var sous = actif
+    ? escapeHtml((contexte.date_debut || '') + (contexte.date_fin ? ' → ' + contexte.date_fin : '') + (contexte.jours_restants != null ? ' · ' + contexte.jours_restants + 'j restants' : ''))
+    : 'Aucun ajustement — analyses standard.';
+  var aid = String(athlete_id || '');
+  var src = source || 'muscu';
+  var editable = (src === 'muscu') || (src === 'foot' && typeof cdMode !== 'undefined' && cdMode === 'coach');
+  var boutons = editable
+    ? '<div style="display:flex;gap:8px;margin-top:12px;">'
+      + '<button onclick="ouvrirModaleContexte(\'' + aid + '\',\'' + src + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' + (actif ? 'Changer l\'état' : 'Poser un état') + '</button>'
+      + (actif ? '<button onclick="terminerContexte(\'' + aid + '\',\'' + src + '\')" style="border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Terminer</button>' : '')
+      + '</div>'
+    : '';
+  return '<div class="dash-card" style="padding:14px;margin-bottom:12px;">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Contexte de performance</div>'
+    + '<div style="display:flex;align-items:center;gap:9px;">'
+    + '<span style="width:10px;height:10px;border-radius:50%;background:' + col + ';flex-shrink:0;"></span>'
+    + '<div style="min-width:0;"><div style="font-size:15px;font-weight:800;">' + titre + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + sous + '</div></div>'
+    + '</div>' + boutons + '</div>';
+}
+
+// Rendu dans un conteneur. `source` = vue d'origine (pour le rechargement).
+function renderCarteContexte(contexte, athlete_id, containerId, source) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = carteContexteHTML(contexte, athlete_id, source);
+}
+
+// --- Modale de saisie (coach) --------------------------------------------
+var _ctxCible = { athlete_id: null, source: null, choix: null };
+function _ctxDetecterSource() {
+  var ov = document.getElementById('detail-joueur-overlay');
+  if (ov && ov.style.display && ov.style.display !== 'none') return 'foot';
+  return 'muscu';
+}
+function ouvrirModaleContexte(athlete_id, source) {
+  _ctxCible = { athlete_id: String(athlete_id || ''), source: source || _ctxDetecterSource(), choix: null };
+  var chips = '';
+  var E = (typeof NovalyzContexte !== 'undefined' && NovalyzContexte.ETATS) ? NovalyzContexte.ETATS : {};
+  for (var cle in E) {
+    if (!Object.prototype.hasOwnProperty.call(E, cle) || cle === 'saison_normale') continue;
+    var ui = _ctxUI(cle);
+    chips += '<button type="button" data-ctx="' + cle + '" onclick="_ctxChoisir(\'' + cle + '\')" style="flex:0 0 auto;font-size:12.5px;font-weight:700;padding:9px 13px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;">' + (ui.emoji ? ui.emoji + ' ' : '') + escapeHtml(_ctxLibelle(cle)) + '</button>';
+  }
+  document.getElementById('ctx-modale-chips').innerHTML = chips;
+  document.getElementById('ctx-modale-debut').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('ctx-modale-fin').value = '';
+  document.getElementById('ctx-modale-note').value = '';
+  document.getElementById('ctx-modale-hint').textContent = 'Choisis un état : la date de fin se pré-remplit.';
+  document.getElementById('modal-contexte').style.display = 'flex';
+}
+function _ctxChoisir(cle) {
+  _ctxCible.choix = cle;
+  var nodes = document.querySelectorAll('#ctx-modale-chips [data-ctx]');
+  for (var i = 0; i < nodes.length; i++) {
+    var on = nodes[i].getAttribute('data-ctx') === cle;
+    nodes[i].style.background = on ? 'var(--accent-a14)' : 'var(--surface2)';
+    nodes[i].style.borderColor = on ? 'var(--accent-dim)' : 'var(--border)';
+    nodes[i].style.color = on ? 'var(--accent)' : 'var(--text-muted)';
+  }
+  var ui = _ctxUI(cle);
+  if (ui.duree) { var d = new Date(); d.setDate(d.getDate() + ui.duree); document.getElementById('ctx-modale-fin').value = d.toISOString().slice(0, 10); }
+  document.getElementById('ctx-modale-hint').innerHTML = 'État : <b style="color:var(--text)">' + escapeHtml(_ctxLibelle(cle)) + '</b> · durée par défaut ' + (ui.duree || '—') + ' j.';
+}
+function fermerModaleContexte() { var m = document.getElementById('modal-contexte'); if (m) m.style.display = 'none'; }
+async function poserContexte() {
+  if (!_ctxCible.choix) { document.getElementById('ctx-modale-hint').textContent = 'Choisis d\'abord un état.'; return; }
+  await _ctxEnvoyer({
+    action: 'saveContexte', athlete_id: _ctxCible.athlete_id, etat: _ctxCible.choix,
+    date_debut: document.getElementById('ctx-modale-debut').value,
+    date_fin: document.getElementById('ctx-modale-fin').value,
+    note: document.getElementById('ctx-modale-note').value, source: 'coach'
+  }, _ctxCible.athlete_id, _ctxCible.source);
+}
+async function terminerContexte(athlete_id, source) {
+  if (!confirm('Terminer l\'état de contexte en cours ?')) return;
+  await _ctxEnvoyer({ action: 'cloreContexte', athlete_id: String(athlete_id || '') }, athlete_id, source || _ctxDetecterSource());
+}
+async function _ctxEnvoyer(body, aid, source) {
+  // text/plain → pas de préflight CORS ET réponse lisible : on ATTEND la
+  // confirmation d'écriture (+ vidage du cache serveur) avant de recharger.
+  // Évite la course « écrit sur le Sheet mais l'UI montre encore l'ancien état ».
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+    await r.json();
+  } catch (e) {}
+  fermerModaleContexte();
+  if (typeof showToast === 'function') showToast('Contexte mis à jour');
+  _ctxRecharger(aid, source);
+}
+function _ctxRecharger(athlete_id, source) {
+  if (source === 'foot') {
+    // Préserve le mode courant (coach édite / joueur consulte sa page).
+    if (typeof ouvrirDetailJoueurFoot === 'function') ouvrirDetailJoueurFoot(athlete_id, (typeof cdMode !== 'undefined' ? cdMode : 'coach'));
+  } else if (source === 'athlete') {
+    if (typeof chargerAppData === 'function') chargerAppData();
+  } else if (typeof ouvrirDetailAthleteCoach === 'function' && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant) {
+    ouvrirDetailAthleteCoach(coachAthleteCourant, null);
+  }
+}
+
 function renderEtatDuJour(data, ids) {
   ids = ids || { sec: 'dash-etat-sec', card: 'dash-etat-card', cont: 'dash-etat-content' };
   const sec  = document.getElementById(ids.sec);
@@ -7425,7 +8115,13 @@ function renderAnalysesListe(data, ids, opts) {
   try { if (typeof NovalyzEngine !== 'undefined') analyses = NovalyzEngine.analyser(data) || []; } catch (e) { analyses = []; }
   if (opts.max) analyses = analyses.slice(0, opts.max);
   if (!analyses.length) { if (sec) sec.style.display = 'none'; card.style.display = 'none'; return 0; }
-  cont.innerHTML = analyses.map((a, i) => `
+  // Bandeau contexte : le « pourquoi ». Présent si une analyse porte un état actif.
+  let _etatAna = null;
+  for (let _k = 0; _k < analyses.length; _k++) { if (analyses[_k].contexte && analyses[_k].contexte !== 'saison_normale') { _etatAna = analyses[_k].contexte; break; } }
+  const _bandeauCtx = _etatAna
+    ? `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:var(--surface2);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-muted);"><span>🧠</span> Analyses ajustées pour : <b style="color:var(--text);">${escapeHtml(_ctxLibelle(_etatAna))}</b></div>`
+    : '';
+  cont.innerHTML = _bandeauCtx + analyses.map((a, i) => `
     <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 4px;${i < analyses.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
       <div style="flex:0 0 4px;align-self:stretch;background:${analyseCouleur(a.type)};border-radius:2px;min-height:36px;"></div>
       <div style="min-width:0;">
@@ -7711,4 +8407,768 @@ function showToast(msg, color) {
   t.style.color = color ? '#fff' : '#000';
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// =============================================================================
+// CARDIO — Switcher, formulaire dynamique, sauvegarde, dashboard
+// =============================================================================
+
+var _modeSeance = 'muscu';
+
+function switchModeSeance(mode) {
+  _modeSeance = mode;
+  var isCardio = mode === 'cardio';
+  var saisiEl  = document.getElementById('saisie-block');
+  var cardioEl = document.getElementById('cardio-block');
+  var recapEl  = document.getElementById('recap-block');
+  var btnM = document.getElementById('btn-mode-muscu');
+  var btnC = document.getElementById('btn-mode-cardio');
+  if (saisiEl) saisiEl.style.display = isCardio ? 'none' : '';
+  if (cardioEl) cardioEl.style.display = isCardio ? 'block' : 'none';
+  if (recapEl)  recapEl.style.display  = 'none';
+  if (btnM) { btnM.className = isCardio ? 'btn btn-outline' : 'btn btn-accent'; }
+  if (btnC) { btnC.className = isCardio ? 'btn btn-accent'  : 'btn btn-outline'; }
+  var btnVal = document.getElementById('btn-valider');
+  if (btnVal) btnVal.style.display = 'none';
+  if (isCardio) {
+    var di = document.getElementById('cardio-date');
+    if (di && !di.value) {
+      var t = new Date();
+      di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+    }
+    renderCardioFields();
+  }
+}
+
+var _CARDIO_SPEC = {
+  footing: [
+    { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true },
+    { id: 'fc_moy',      label: 'FC moy. (bpm)',        placeholder: '145', optional: true }
+  ],
+  velo: [
+    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true },
+    { id: 'cadence',       label: 'Cadence (rpm)',       placeholder: '85' },
+    { id: 'vitesse_moy',   label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true },
+    { id: 'fc_moy',        label: 'FC moy. (bpm)',       placeholder: '140', optional: true }
+  ],
+  marche_normale: [
+    { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true },
+    { id: 'fc_moy',      label: 'FC moy. (bpm)',  placeholder: '110', optional: true }
+  ],
+  marche_inclinee: [
+    { id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true },
+    { id: 'vitesse_moy', label: 'Vitesse (km/h)',  placeholder: '6',  step: '0.1', calc: true },
+    { id: 'fc_moy',      label: 'FC moy. (bpm)',   placeholder: '130', optional: true }
+  ],
+  natation: [
+    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '140', optional: true }
+  ],
+  autre: [
+    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '135', optional: true }
+  ]
+};
+
+var _FC_HINT = ' <span style="font-size:9px;color:var(--text-muted);font-weight:500;">📡 optionnel</span>';
+
+function renderCardioFields() {
+  var typeEl = document.getElementById('cardio-type');
+  var el = document.getElementById('cardio-fields-content');
+  if (!el || !typeEl) return;
+  var type = typeEl.value;
+  var spec = _CARDIO_SPEC[type] || [];
+  var specHtml = spec.map(function(f) {
+    var fid = 'cardio-' + f.id;
+    var attrs = 'type="number" id="' + fid + '" placeholder="' + f.placeholder + '" inputmode="' + (f.step ? 'decimal' : 'numeric') + '"';
+    if (f.step) attrs += ' step="' + f.step + '"';
+    if (f.max)  attrs += ' max="' + f.max + '"';
+    if (f.calc) attrs += ' oninput="calcAutoCardio()"';
+    var lbl = f.label + (f.optional ? _FC_HINT : '');
+    return '<div><label>' + lbl + '</label><input ' + attrs + '></div>';
+  }).join('');
+  // Champ poids si absent du profil (nécessaire pour les calculs calories/distance)
+  var poidsConnu = athlete && parseFloat(athlete.poids) > 0;
+  var poidsHtml = poidsConnu ? '' :
+    '<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);border-radius:10px;padding:10px 12px;margin-top:14px;margin-bottom:2px;">'
+    + '<div style="font-size:11px;color:var(--warn);font-weight:700;margin-bottom:6px;">⚠️ Poids non renseigné dans ton profil</div>'
+    + '<label style="font-size:12px;">Ton poids (kg) <span style="font-size:10px;color:var(--text-muted);font-weight:400;">— utilisé pour estimer les calories</span></label>'
+    + '<input type="number" id="cardio-poids-saisie" placeholder="ex: 62" inputmode="decimal" step="0.5" min="30" max="200" oninput="calcAutoCardio()" style="margin-top:6px;">'
+    + '</div>';
+  el.innerHTML = poidsHtml + `
+    <div class="row2" style="margin-top:14px;">
+      <div>
+        <label>Durée (min)</label>
+        <input type="number" id="cardio-duree" placeholder="45" min="1" inputmode="numeric" oninput="calcAutoCardio()">
+      </div>
+      <div>
+        <label>Distance (km) <span id="cardio-dist-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label>
+        <input type="number" id="cardio-distance" placeholder="auto" step="0.1" min="0" inputmode="decimal" data-auto="" oninput="this.dataset.auto='0';document.getElementById('cardio-dist-hint').textContent='';calcAutoCardio()">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">${specHtml}</div>
+    <div class="row2" style="margin-top:8px;">
+      <div>
+        <label>Calories (kcal) <span id="cardio-cal-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label>
+        <input type="number" id="cardio-calories" placeholder="auto" inputmode="numeric" data-auto="" oninput="this.dataset.auto='0';document.getElementById('cardio-cal-hint').textContent='';calcAutoCardio()">
+      </div>
+      ${(type === 'marche_normale' || type === 'marche_inclinee') ? '<div><label>Pas <span style="font-size:9px;color:var(--accent);font-weight:600;" id="cardio-pas-hint"></span></label><div id="cardio-pas-preview" style="padding:10px 12px;border-radius:10px;background:var(--surface2);border:1.5px solid var(--border);color:var(--text-muted);font-size:13px;line-height:1.3;">— entrer la distance</div></div>' : '<div></div>'}
+    </div>
+    <div style="margin-top:14px;">
+      <label>RPE (intensité ressentie)</label>
+      <div class="chip-row" id="cardio-rpe-chips">
+        ${[6,7,8,9,10].map(function(v){ return '<button type="button" class="saisie-chip" onclick="pickCardioRpe(this,\''+v+'\')">' + v + '</button>'; }).join('')}
+      </div>
+      <input type="hidden" id="cardio-rpe" value="">
+    </div>`;
+}
+
+function calcAutoCardio() {
+  var type    = (document.getElementById('cardio-type')         || {}).value || 'footing';
+  var duree   = parseFloat((document.getElementById('cardio-duree')         || {}).value) || 0;
+  var vitesse = parseFloat((document.getElementById('cardio-vitesse_moy')   || {}).value) || 0;
+  var inclin  = parseFloat((document.getElementById('cardio-inclinaison')   || {}).value) || 0;
+  var puiss   = parseFloat((document.getElementById('cardio-puissance_moy') || {}).value) || 0;
+  var distEl  = document.getElementById('cardio-distance');
+  var calEl   = document.getElementById('cardio-calories');
+
+  // Distance auto : vitesse × durée (h) — ne dépend pas du poids
+  if (distEl && distEl.dataset.auto !== '0' && duree > 0 && vitesse > 0) {
+    distEl.value = Math.round(vitesse * duree / 60 * 10) / 10;
+    distEl.dataset.auto = '1';
+    var dh = document.getElementById('cardio-dist-hint');
+    if (dh) dh.textContent = '✦ calculé';
+  }
+  var dist = parseFloat((distEl || {}).value) || 0;
+
+  // Prévisualisation des pas (marche seulement) — ne dépend pas du poids
+  var pasPrev = document.getElementById('cardio-pas-preview');
+  if (pasPrev) {
+    var taille = parseFloat((athlete || {}).taille) || 0;
+    var distPas = dist;
+    var pasRef = false;
+    if (distPas === 0 && duree > 0 && (type === 'marche_normale' || type === 'marche_inclinee')) {
+      distPas = Math.round(4.5 * duree / 60 * 10) / 10; // vitesse référence 4.5 km/h
+      pasRef = true;
+    }
+    if (distPas > 0 && taille > 0) {
+      var pas = Math.round(distPas * 100000 / (taille * 0.413));
+      pasPrev.textContent = pas.toLocaleString('fr-FR') + ' pas';
+      pasPrev.style.color = pasRef ? 'var(--text-muted)' : 'var(--accent)';
+      var ph = document.getElementById('cardio-pas-hint');
+      if (ph) ph.textContent = pasRef ? '~ réf. 4.5 km/h' : '✦ estimé';
+    } else {
+      pasPrev.textContent = '— durée requise';
+      pasPrev.style.color = 'var(--text-muted)';
+    }
+  }
+
+  // Calories auto — dépend du poids
+  var poidsEl = document.getElementById('cardio-poids-saisie');
+  var poids   = parseFloat((poidsEl && poidsEl.value) || (athlete && athlete.poids) || 0);
+  if (!poids) return;
+
+  var calAuto = 0;
+  if (type === 'footing' && poids && dist) {
+    calAuto = Math.round(poids * dist * 1.04);
+  } else if (type === 'marche_normale' && poids && duree) {
+    calAuto = Math.round(3.5 * poids * (duree / 60));
+  } else if (type === 'marche_inclinee' && poids && duree) {
+    calAuto = Math.round((3.5 + 0.35 * inclin) * poids * (duree / 60));
+  } else if (type === 'velo') {
+    if (puiss && duree) calAuto = Math.round(puiss * (duree / 60) * 0.86);
+    else if (poids && dist) calAuto = Math.round(poids * dist * 0.5);
+  } else if (type === 'natation' && poids && duree) {
+    calAuto = Math.round(8 * poids * (duree / 60));
+  } else if (poids && dist) {
+    calAuto = Math.round(poids * dist * 0.8);
+  }
+
+  if (calEl && calEl.dataset.auto !== '0' && calAuto > 0) {
+    calEl.value = calAuto;
+    calEl.dataset.auto = '1';
+    var ch = document.getElementById('cardio-cal-hint');
+    if (ch) ch.textContent = '✦ estimé';
+  }
+}
+
+function pickCardioRpe(btn, val) {
+  document.getElementById('cardio-rpe').value = val;
+  document.querySelectorAll('#cardio-rpe-chips .saisie-chip').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+}
+
+async function sauvegarderCardio() {
+  if (!athlete) return;
+  var date  = (document.getElementById('cardio-date') || {}).value;
+  var duree = (document.getElementById('cardio-duree') || {}).value;
+  var type  = (document.getElementById('cardio-type') || {}).value;
+  if (!date)  { showToast('Choisis une date', 'var(--warn)'); return; }
+  if (!duree) { showToast('Durée obligatoire', 'var(--warn)'); return; }
+
+  var btnSave = document.getElementById('btn-save-cardio');
+  if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ Envoi en cours…'; }
+
+  function gv(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+  var pasCalc = (function(){
+    if(!(type==='marche_normale'||type==='marche_inclinee')) return '';
+    var h=parseFloat((athlete||{}).taille)||0; if(!h) return '';
+    var d=parseFloat(gv('cardio-distance'))||0;
+    if(d===0){var dur=parseFloat(gv('cardio-duree'))||0; if(dur>0) d=Math.round(4.5*dur/60*10)/10;}
+    return d>0?Math.round(d*100000/(h*0.413)):'';
+  })();
+  var body = {
+    action:      'saveCardio',
+    athlete_id:  athlete.athlete_id,
+    date:        date,
+    type_cardio: type,
+    duree:       gv('cardio-duree'),
+    distance:    gv('cardio-distance'),
+    vitesse_moy: gv('cardio-vitesse_moy'),
+    inclinaison: gv('cardio-inclinaison'),
+    puissance_moy: gv('cardio-puissance_moy'),
+    cadence:     gv('cardio-cadence'),
+    pas:         pasCalc,
+    calories:    gv('cardio-calories'),
+    fc_moy:      gv('cardio-fc_moy'),
+    rpe:         gv('cardio-rpe')
+  };
+  // Lire les valeurs avant d'envoyer (pour le récap)
+  var dist    = parseFloat(gv('cardio-distance'))  || 0;
+  var cal     = parseFloat(gv('cardio-calories'))  || 0;
+  var rpe     = parseFloat(gv('cardio-rpe'))       || 0;
+  var fc      = parseFloat(gv('cardio-fc_moy'))    || 0;
+  var charge  = (rpe && parseFloat(duree)) ? Math.round(rpe * parseFloat(duree)) : 0;
+  try {
+    var r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    var res = await r.json();
+    if (res && res.error) throw new Error(res.error);
+  } catch (err) {
+    showToast('Erreur : ' + (err.message || 'réseau'), 'var(--bad)');
+    if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✅ Enregistrer la séance'; }
+    return;
+  }
+  // Récap
+  var typeLabel = _CARDIO_TYPE_LABELS[type] || type;
+  var stats = [];
+  if (parseFloat(duree)) stats.push({ n: duree + ' min', k: 'Durée' });
+  if (dist)     stats.push({ n: dist + ' km',   k: 'Distance' });
+  if (pasCalc)  stats.push({ n: Number(pasCalc).toLocaleString('fr-FR') + ' pas', k: 'Pas' });
+  if (cal)      stats.push({ n: cal + ' kcal',  k: 'Calories' });
+  if (charge)   stats.push({ n: charge + ' UA', k: 'Charge interne' });
+  if (fc)       stats.push({ n: fc + ' bpm',    k: 'FC moy.' });
+  var statsHtml = stats.map(function(s) {
+    return '<div class="dash-stat"><div class="dash-stat-num" style="color:var(--accent);">' + s.n + '</div><div class="dash-stat-label">' + s.k + '</div></div>';
+  }).join('');
+  var cardioEl = document.getElementById('cardio-block');
+  if (cardioEl) cardioEl.innerHTML = `
+    <div class="card">
+      <div class="card-title" style="color:var(--good);">✅ Séance enregistrée !</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">${escapeHtml(typeLabel)} · ${body.date}</div>
+      <div style="display:grid;grid-template-columns:repeat(${Math.min(stats.length,3)},1fr);gap:8px;margin-bottom:14px;">${statsHtml}</div>
+      <button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button>
+    </div>`;
+  chargerAppData();
+}
+
+function nouvelleSeanceCardio() {
+  var cardioEl = document.getElementById('cardio-block');
+  if (!cardioEl) return;
+  // Remet le formulaire en place (même HTML qu'à l'origine dans index.html)
+  cardioEl.innerHTML = `
+    <div class="card">
+      <div class="card-title">Séance cardio</div>
+      <div class="row2">
+        <div><label>Date</label><input type="date" id="cardio-date"></div>
+        <div><label>Type</label>
+          <select id="cardio-type" onchange="renderCardioFields()">
+            <option value="footing">Footing</option>
+            <option value="velo">Vélo</option>
+            <option value="marche_normale">Marche</option>
+            <option value="marche_inclinee">Marche inclinée</option>
+            <option value="natation">Natation</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+      </div>
+      <div id="cardio-fields-content"></div>
+      <button id="btn-save-cardio" class="btn btn-accent" onclick="sauvegarderCardio()" style="margin-top:14px;padding:14px;">✅ Enregistrer la séance</button>
+    </div>`;
+  var di = document.getElementById('cardio-date');
+  if (di) { var t = new Date(); di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0'); }
+  renderCardioFields();
+}
+
+var _CARDIO_TYPE_LABELS = {
+  footing: 'Footing', velo: 'Vélo',
+  marche_normale: 'Marche', marche_inclinee: 'Marche inclinée',
+  natation: 'Natation', autre: 'Autre'
+};
+
+var _dashCardioPeriod  = 30;
+var _dashCardioWindows = null;
+
+function renderDashCardio(cardioData) {
+  var secEl  = document.getElementById('dash-cardio-sec');
+  var cardEl = document.getElementById('dash-cardio-card');
+  if (!secEl || !cardEl) return;
+  if (!cardioData || !cardioData.windows) { secEl.style.display = 'none'; cardEl.style.display = 'none'; return; }
+  var w = cardioData.windows;
+  var hasData = (w[7] && w[7].sessions > 0) || (w[30] && w[30].sessions > 0);
+  if (!hasData) { secEl.style.display = 'none'; cardEl.style.display = 'none'; return; }
+  _dashCardioWindows = w;
+  // Sélectionner la fenêtre la plus pertinente par défaut
+  _dashCardioPeriod = (w[7] && w[7].sessions > 0) ? 7 : 30;
+  secEl.style.display  = '';
+  cardEl.style.display = '';
+  _renderDashCardioContent();
+}
+
+function _setDashCardioPeriod(days) {
+  _dashCardioPeriod = days;
+  _renderDashCardioContent();
+}
+
+function _renderDashCardioContent() {
+  var contEl = document.getElementById('dash-cardio-content');
+  if (!contEl || !_dashCardioWindows) return;
+  var w  = _dashCardioWindows;
+  var wd = w[_dashCardioPeriod] || { sessions: 0, duree: 0, distance: 0, calories: 0, par_type: {} };
+  var PERIODS = [[7,'7j'],[30,'1 mois'],[90,'3 mois'],[180,'6 mois']];
+
+  // Sélecteur de période
+  var periodOpts = PERIODS.map(function(p) {
+    return '<option value="' + p[0] + '"' + (p[0] === _dashCardioPeriod ? ' selected' : '') + '>' + p[1] + '</option>';
+  }).join('');
+  var chips = '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<span style="font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap;">Période :</span>'
+    + '<select onchange="_setDashCardioPeriod(+this.value)" style="padding:5px 28px 5px 10px;border-radius:8px;font-size:12px;font-weight:700;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%234A5980%22/></svg>\');background-repeat:no-repeat;background-position:right 8px center;">'
+    + periodOpts + '</select>'
+    + '</div>';
+
+  var body = '';
+  if (wd.sessions === 0) {
+    body = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:10px 0;">Aucune séance sur cette période</div>';
+  } else {
+    var tiles = [
+      { v: wd.sessions,    u: 'séances' },
+      { v: wd.distance ? wd.distance + ' km'   : '—', u: 'distance' },
+      { v: wd.duree    ? wd.duree    + ' min'  : '—', u: 'durée' },
+      { v: wd.calories ? wd.calories + ' kcal' : '—', u: 'calories' }
+    ];
+    body = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:' + (wd.pas ? '7px' : '10px') + ';">';
+    tiles.forEach(function(t) {
+      body += '<div style="background:var(--surface2);border-radius:10px;padding:8px 4px;text-align:center;">'
+        + '<div style="font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15;">' + t.v + '</div>'
+        + '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;">' + t.u + '</div>'
+        + '</div>';
+    });
+    body += '</div>';
+    if (wd.pas) {
+      body += '<div style="background:var(--surface2);border-radius:10px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+        + '<span style="font-size:10px;color:var(--text-muted);font-weight:700;">👣 Pas totaux (marche)</span>'
+        + '<span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;">' + wd.pas.toLocaleString('fr-FR') + '</span>'
+        + '</div>';
+    }
+    if (wd.par_type && Object.keys(wd.par_type).length) {
+      body += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+      Object.keys(wd.par_type).forEach(function(t) {
+        var clr = _CH_CLR[t] || '#6366f1';
+        var bg  = _CH_BG[t]  || 'rgba(99,102,241,.14)';
+        var ico = _CH_ICO[t] || '⚡';
+        var lbl = _CARDIO_TYPE_LABELS[t] || t;
+        body += '<span style="display:inline-flex;align-items:center;gap:4px;background:' + bg + ';color:' + clr + ';border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;">'
+          + ico + ' ' + escapeHtml(lbl) + ' <span style="opacity:.65;">×' + wd.par_type[t] + '</span></span>';
+      });
+      body += '</div>';
+    }
+  }
+
+  var lien = '<div style="margin-top:10px;text-align:right;">'
+    + '<button onclick="switchTab(\'historique\')" style="background:none;border:none;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;padding:0;">Historique complet →</button>'
+    + '</div>';
+
+  contEl.innerHTML = '<div style="margin-bottom:10px;">' + chips + '</div>' + body + lien;
+}
+
+// =============================================================================
+// CARDIO — Historique détaillé (onglet Progression)
+// =============================================================================
+
+var _cardioSessions = [];
+var _cardioPeriod   = 30;
+var _cardioSubTab   = 'activite';
+
+var _CH_ICO = { footing: '🏃', velo: '🚴', marche_normale: '🚶', marche_inclinee: '🥾', natation: '🏊', autre: '⚡' };
+var _CH_CLR = { footing: '#6366f1', velo: '#0ea5e9', marche_normale: '#22d3ee', marche_inclinee: '#10b981', natation: '#8b5cf6', autre: '#f59e0b' };
+var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(14,165,233,.14)', marche_normale: 'rgba(34,211,238,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', autre: 'rgba(245,158,11,.14)' };
+
+function renderCardioHistorique(sessions) {
+  var secEl  = document.getElementById('hist-cardio-sec');
+  var cardEl = document.getElementById('hist-cardio-card');
+  if (!secEl || !cardEl) return;
+  if (!sessions || sessions.length === 0) {
+    secEl.style.display  = 'none';
+    cardEl.style.display = 'none';
+    return;
+  }
+  _cardioSessions = sessions;
+  _cardioPeriod   = 30;
+  _cardioSubTab   = 'activite';
+  secEl.style.display  = '';
+  cardEl.style.display = '';
+  _renderCardioHist();
+}
+
+function _filterCardioSessions(days) {
+  var cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - days);
+  var cutStr = cutoff.toISOString().slice(0, 10);
+  return _cardioSessions.filter(function(s) { return s.date >= cutStr; });
+}
+
+function _setCardioPeriod(days) {
+  _cardioPeriod = days;
+  _renderCardioHist();
+}
+
+function _setCardioSubTab(tab) {
+  _cardioSubTab = tab;
+  var panA = document.getElementById('ch-panel-activite');
+  var panR = document.getElementById('ch-panel-recentes');
+  var btnA = document.getElementById('ch-stab-activite');
+  var btnR = document.getElementById('ch-stab-recentes');
+  if (!panA || !panR) return;
+  panA.style.display = tab === 'activite' ? '' : 'none';
+  panR.style.display = tab === 'recentes' ? '' : 'none';
+  var BASE = 'flex:1;text-align:center;padding:8px 6px;border-radius:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
+  if (btnA) btnA.style.cssText = BASE + (tab === 'activite' ? 'background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15);' : 'background:transparent;color:var(--text-muted);');
+  if (btnR) btnR.style.cssText = BASE + (tab === 'recentes' ? 'background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15);' : 'background:transparent;color:var(--text-muted);');
+}
+
+function _renderCardioHist() {
+  var contEl = document.getElementById('hist-cardio-content');
+  if (!contEl) return;
+  var filtered = _filterCardioSessions(_cardioPeriod);
+  var PERIOD_MAP = [[7,'7j'],[30,'1 mois'],[90,'3 mois'],[180,'6 mois']];
+  var MOIS = ['jan.','fév.','mars','avr.','mai','juin','juil.','août','sep.','oct.','nov.','déc.'];
+
+  // ── Sélecteur de période ─────────────────────────────────────
+  var periodOpts = PERIOD_MAP.map(function(p) {
+    return '<option value="' + p[0] + '"' + (p[0] === _cardioPeriod ? ' selected' : '') + '>' + p[1] + '</option>';
+  }).join('');
+  var chips = '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<span style="font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap;">Période :</span>'
+    + '<select onchange="_setCardioPeriod(+this.value)" style="padding:6px 28px 6px 10px;border-radius:8px;font-size:12px;font-weight:700;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2020/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%234A5980%22/></svg>\');background-repeat:no-repeat;background-position:right 8px center;">'
+    + periodOpts + '</select>'
+    + '</div>';
+
+  // ── Agrégats KPI ──────────────────────────────────────────────
+  var totalKm = 0, totalKcal = 0, totalDuree = 0, totalPas = 0, vitSum = 0, vitN = 0;
+  filtered.forEach(function(s) {
+    totalKm    += s.distance    || 0;
+    totalKcal  += s.calories    || 0;
+    totalDuree += s.duree       || 0;
+    totalPas   += s.pas         || 0;
+    if (s.vitesse_moy) { vitSum += s.vitesse_moy; vitN++; }
+  });
+  var avgVitG = vitN ? Math.round(vitSum / vitN * 10) / 10 : null;
+
+  function kpiTile(val, unit, label, clr) {
+    var show = val !== null && val !== undefined && val !== 0;
+    return '<div style="background:var(--surface2);border-radius:12px;padding:11px 4px 8px;text-align:center;border-top:3px solid ' + clr + ';">'
+      + '<div style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;color:' + (show ? clr : 'var(--text-muted)') + ';">'
+        + (show ? val : '—') + '</div>'
+      + (unit && show ? '<div style="font-size:8px;font-weight:700;color:' + clr + ';opacity:.75;margin-top:2px;">' + unit + '</div>' : '<div style="margin-top:2px;height:11px;"></div>')
+      + '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;">' + escapeHtml(label) + '</div>'
+      + '</div>';
+  }
+  var pasTotKpi = Math.round(totalPas) || null;
+  var kpis = kpiTile(filtered.length || null, null,    'séances',  'var(--accent)')
+    + kpiTile(Math.round(totalKm * 10) / 10 || null, 'km',   'distance', '#0ea5e9')
+    + kpiTile(Math.round(totalDuree)   || null, 'min',  'durée',    '#10b981')
+    + kpiTile(Math.round(totalKcal)    || null, 'kcal', 'calories', 'var(--warn)');
+  var kpisRow2 = pasTotKpi ? '<div style="background:var(--surface2);border-radius:12px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+    + '<span style="font-size:10px;color:var(--text-muted);font-weight:700;">👣 Pas totaux (marche)</span>'
+    + '<span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;">' + pasTotKpi.toLocaleString('fr-FR') + '</span>'
+    + '</div>' : '';
+
+  // ── Toggle sous-onglets ───────────────────────────────────────
+  var BASE_BTN = 'flex:1;text-align:center;padding:8px 6px;border-radius:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
+  var btns = '<button id="ch-stab-activite" onclick="_setCardioSubTab(\'activite\')" style="' + BASE_BTN
+    + (_cardioSubTab === 'activite' ? 'background:var(--surface);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10);' : 'background:transparent;color:var(--text-muted);')
+    + '">Par activité</button>'
+    + '<button id="ch-stab-recentes" onclick="_setCardioSubTab(\'recentes\')" style="' + BASE_BTN
+    + (_cardioSubTab === 'recentes' ? 'background:var(--surface);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10);' : 'background:transparent;color:var(--text-muted);')
+    + '">Séances récentes</button>';
+
+  // ── Panel « Par activité » ────────────────────────────────────
+  var byType = {};
+  filtered.forEach(function(s) {
+    var t = s.type_cardio || 'autre';
+    if (!byType[t]) byType[t] = [];
+    byType[t].push(s);
+  });
+
+  var activHtml = '';
+  if (!filtered.length) {
+    activHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucune séance sur cette période</div>';
+  } else {
+    ['footing','velo','marche_normale','marche_inclinee','natation','autre'].forEach(function(t) {
+      var ss = byType[t];
+      if (!ss || !ss.length) return;
+      var kmT=0,kmN=0,vT=0,vN=0,cT=0,cN=0,fcT=0,fcN=0,dT=0,pasT=0;
+      ss.forEach(function(s) {
+        dT += s.duree    || 0;
+        pasT += s.pas    || 0;
+        if (s.distance)    { kmT += s.distance;    kmN++; }
+        if (s.vitesse_moy) { vT  += s.vitesse_moy; vN++;  }
+        if (s.calories)    { cT  += s.calories;    cN++;  }
+        if (s.fc_moy)      { fcT += s.fc_moy;      fcN++; }
+      });
+      var avgKm   = kmN ? Math.round(kmT / ss.length * 10) / 10 : null;
+      var avgVit2 = vN  ? Math.round(vT  / vN        * 10) / 10 : null;
+      var avgCal  = cN  ? Math.round(cT  / ss.length)          : null;
+      var avgFc   = fcN ? Math.round(fcT / fcN)                  : null;
+      var totDur  = Math.round(dT);
+      var totPas  = (t === 'marche_normale' || t === 'marche_inclinee') && pasT > 0 ? Math.round(pasT) : null;
+      var clr = _CH_CLR[t] || '#6366f1';
+      var bg  = _CH_BG[t]  || 'rgba(99,102,241,.14)';
+      var lbl = _CARDIO_TYPE_LABELS[t] || t;
+      var ico = _CH_ICO[t] || '⚡';
+
+      function miniStat(v, u, l) {
+        if (v === null) return '';
+        return '<div style="text-align:center;">'
+          + '<div style="font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;">' + v
+            + '<span style="font-size:9px;font-weight:600;color:var(--text-muted);"> ' + u + '</span></div>'
+          + '<div style="font-size:9px;color:var(--text-muted);margin-top:2px;">' + l + '</div>'
+          + '</div>';
+      }
+      var statsHtml = [
+        miniStat(avgKm,   'km',   'km moy./séance'),
+        miniStat(avgVit2, 'km/h', 'vitesse moy.'),
+        miniStat(totDur || null, 'min', 'durée tot.'),
+        miniStat(avgCal,  'kcal', 'kcal moy./séance'),
+        totPas ? miniStat(totPas.toLocaleString('fr-FR'), 'pas', 'pas totaux') : null
+      ].filter(Boolean).join('');
+      var statsCols = [avgKm,avgVit2,totDur||null,avgCal,totPas].filter(function(x){return x!==null&&x!==0;}).length;
+
+      activHtml += '<div style="border-left:4px solid ' + clr + ';background:var(--surface);border-radius:12px;padding:12px 14px;margin-bottom:10px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:' + (statsHtml ? '12px' : '0') + ';">'
+          + '<div style="width:36px;height:36px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + ico + '</div>'
+          + '<div style="flex:1;">'
+            + '<div style="font-size:14px;font-weight:800;color:' + clr + ';">' + escapeHtml(lbl) + '</div>'
+            + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + ss.length + ' séance' + (ss.length > 1 ? 's' : '') + '</div>'
+          + '</div>'
+          + (avgFc ? '<div style="background:rgba(220,53,69,.10);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;color:var(--danger);">❤ ' + avgFc + ' bpm</div>' : '')
+        + '</div>'
+        + (statsHtml ? '<div style="display:grid;grid-template-columns:repeat(' + statsCols + ',1fr);gap:12px;">' + statsHtml + '</div>' : '')
+        + '</div>';
+    });
+  }
+
+  // ── Panel « Séances récentes » (groupées par mois) ────────────
+  var recHtml = '';
+  if (!filtered.length) {
+    recHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucune séance sur cette période</div>';
+  } else {
+    var shown = filtered.slice(0, 25);
+    var lastMonthKey = '';
+    shown.forEach(function(s) {
+      var t   = s.type_cardio || 'autre';
+      var clr = _CH_CLR[t] || '#6366f1';
+      var bg  = _CH_BG[t]  || 'rgba(99,102,241,.14)';
+      var lbl = _CARDIO_TYPE_LABELS[t] || t;
+      var ico = _CH_ICO[t] || '⚡';
+      var day = s.date ? parseInt(s.date.slice(8,10), 10) : '';
+      var moI = s.date ? parseInt(s.date.slice(5,7), 10) - 1 : -1;
+      var yr  = s.date ? s.date.slice(0,4) : '';
+      var mk  = yr + '-' + moI;
+      if (mk !== lastMonthKey) {
+        recHtml += '<div style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;'
+          + (lastMonthKey ? 'padding:12px 0 4px;' : 'padding:2px 0 4px;') + '">'
+          + (moI >= 0 ? MOIS[moI] + ' ' + yr : '') + '</div>';
+        lastMonthKey = mk;
+      }
+      var dateStr = day + ' ' + (moI >= 0 ? MOIS[moI] : '');
+      var parts = [];
+      if (s.duree)       parts.push(s.duree + ' min');
+      if (s.distance)    parts.push(s.distance + ' km');
+      if (s.pas)         parts.push(s.pas + ' pas');
+      if (s.vitesse_moy) parts.push(s.vitesse_moy + ' km/h');
+      recHtml += '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">'
+        + '<div style="width:34px;height:34px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">' + ico + '</div>'
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:12px;font-weight:800;color:' + clr + ';">' + escapeHtml(lbl) + '</div>'
+          + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + dateStr + (parts.length ? ' · ' + parts.join(' · ') : '') + '</div>'
+        + '</div>'
+        + (s.calories ? '<div style="background:var(--warn-a);border-radius:20px;padding:4px 9px;text-align:center;flex-shrink:0;">'
+            + '<div style="font-size:13px;font-weight:900;color:var(--warn);font-variant-numeric:tabular-nums;">' + Math.round(s.calories) + '</div>'
+            + '<div style="font-size:8px;font-weight:700;color:var(--warn);opacity:.8;">kcal</div>'
+          + '</div>' : '')
+        + '<div style="display:flex;gap:4px;flex-shrink:0;margin-left:2px;">'
+          + '<button onclick="_cardioModifier(\'' + s.sid + '\')" style="background:var(--accent-a10);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Modifier">✏️</button>'
+          + '<button onclick="_cardioSupprimer(\'' + s.sid + '\')" style="background:var(--bad-a);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Supprimer">🗑️</button>'
+        + '</div>'
+        + '</div>';
+    });
+    if (filtered.length > 25) {
+      recHtml += '<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:10px 0;">+ ' + (filtered.length - 25) + ' séances non affichées</div>';
+    }
+  }
+
+  contEl.innerHTML =
+    '<div style="margin-bottom:12px;">' + chips + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:' + (kpisRow2 ? '7px' : '16px') + ';">' + kpis + '</div>'
+    + (kpisRow2 ? '<div style="margin-bottom:16px;">' + kpisRow2 + '</div>' : '')
+    + '<div style="display:flex;background:var(--surface2);border-radius:12px;padding:3px;margin-bottom:14px;gap:3px;">' + btns + '</div>'
+    + '<div id="ch-panel-activite"' + (_cardioSubTab !== 'activite' ? ' style="display:none;"' : '') + '>' + activHtml + '</div>'
+    + '<div id="ch-panel-recentes"' + (_cardioSubTab !== 'recentes' ? ' style="display:none;"' : '') + '>' + recHtml + '</div>';
+}
+
+// =============================================================================
+// CARDIO — Supprimer / Modifier une séance
+// =============================================================================
+
+function _cardioSupprimer(sid) {
+  var old = document.getElementById('_cardio-confirm-overlay');
+  if (old) old.remove();
+  var s = _cardioSessions.find(function(x) { return x.sid === sid; });
+  if (!s) return;
+  var t   = s.type_cardio || 'autre';
+  var lbl = _CARDIO_TYPE_LABELS[t] || t;
+  var ico = _CH_ICO[t] || '⚡';
+  var ov  = document.createElement('div');
+  ov.id   = '_cardio-confirm-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML =
+    '<div style="width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 32px;box-shadow:0 -8px 30px rgba(7,11,20,.18);">'
+    + '<div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px;"></div>'
+    + '<div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px;">Supprimer cette séance ?</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">' + ico + ' ' + escapeHtml(lbl) + ' · ' + (s.date || '') + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + '<button onclick="document.getElementById(\'_cardio-confirm-overlay\').remove()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
+      + '<button onclick="_cardioConfirmSupprimer(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--bad);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🗑️ Supprimer</button>'
+    + '</div>'
+    + '</div>';
+  ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+async function _cardioConfirmSupprimer(sid) {
+  var ov = document.getElementById('_cardio-confirm-overlay');
+  if (ov) ov.remove();
+  if (!athlete) return;
+  showToast('Suppression…', 'var(--text-muted)');
+  try {
+    var r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'deleteCardio', athlete_id: athlete.athlete_id, seance_id: sid })
+    });
+    var res = await r.json();
+    if (res.success) {
+      showToast('Séance supprimée', 'var(--good)');
+      chargerAppData();
+    } else {
+      showToast('Erreur : ' + (res.error || 'inconnue'), 'var(--bad)');
+    }
+  } catch(e) {
+    showToast('Erreur réseau', 'var(--bad)');
+  }
+}
+
+function _cardioModifier(sid) {
+  var old = document.getElementById('_cardio-edit-overlay');
+  if (old) old.remove();
+  var s = _cardioSessions.find(function(x) { return x.sid === sid; });
+  if (!s) return;
+  var typeOpts = ['footing','velo','marche_normale','marche_inclinee','natation','autre'].map(function(k) {
+    return '<option value="' + k + '"' + (s.type_cardio === k ? ' selected' : '') + '>' + (_CARDIO_TYPE_LABELS[k] || k) + '</option>';
+  }).join('');
+  function numField(id, label, val, unite, step) {
+    return '<div><label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">' + label + (unite ? ' (' + unite + ')' : '') + '</label>'
+      + '<input type="number" id="' + id + '" value="' + (val || '') + '" step="' + (step || '1') + '" style="width:100%;box-sizing:border-box;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--font);"></div>';
+  }
+  var ov = document.createElement('div');
+  ov.id  = '_cardio-edit-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
+  ov.innerHTML =
+    '<div style="width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 28px;box-shadow:0 -8px 30px rgba(7,11,20,.18);max-height:85vh;overflow-y:auto;">'
+    + '<div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 18px;"></div>'
+    + '<div style="font-size:15px;font-weight:800;margin-bottom:16px;">Modifier la séance</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+      + '<div><label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">Date</label>'
+        + '<input type="date" id="_ce-date" value="' + (s.date || '') + '" style="width:100%;box-sizing:border-box;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;"></div>'
+      + '<div><label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">Type</label>'
+        + '<select id="_ce-type" style="width:100%;box-sizing:border-box;padding:9px 10px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;">' + typeOpts + '</select></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+      + numField('_ce-duree',    'Durée',         s.duree,       'min',   '1')
+      + numField('_ce-distance', 'Distance',      s.distance,    'km',    '0.1')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+      + numField('_ce-vitesse',  'Vitesse moy.',  s.vitesse_moy, 'km/h',  '0.1')
+      + numField('_ce-calories', 'Calories',      s.calories,    'kcal',  '1')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+      + numField('_ce-fc',       'FC moy.',       s.fc_moy,      'bpm',   '1')
+      + '<div></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'
+      + numField('_ce-rpe',      'RPE',           '',            '1-10',  '0.5')
+      + '<div></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + '<button onclick="document.getElementById(\'_cardio-edit-overlay\').remove()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
+      + '<button onclick="_cardioSauvegarderModif(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ Enregistrer</button>'
+    + '</div>'
+    + '</div>';
+  ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+async function _cardioSauvegarderModif(sid) {
+  if (!athlete) return;
+  function gv(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+  var date  = gv('_ce-date');
+  var duree = gv('_ce-duree');
+  if (!date || !duree) { showToast('Date et durée obligatoires', 'var(--warn)'); return; }
+  var body = {
+    action:       'updateCardio',
+    athlete_id:   athlete.athlete_id,
+    seance_id:    sid,
+    date:         date,
+    type_cardio:  gv('_ce-type'),
+    duree:        duree,
+    distance:     gv('_ce-distance'),
+    vitesse_moy:  gv('_ce-vitesse'),
+    calories:     gv('_ce-calories'),
+    fc_moy:       gv('_ce-fc'),
+    pas:          (function(){ var t=gv('_ce-type'); if(!(t==='marche_normale'||t==='marche_inclinee')) return ''; var h=parseFloat((athlete||{}).taille)||0; if(!h) return ''; var d=parseFloat(gv('_ce-distance'))||0; if(d===0){var dur=parseFloat(gv('_ce-duree'))||0; if(dur>0) d=Math.round(4.5*dur/60*10)/10;} return d>0?Math.round(d*100000/(h*0.413)):''; })(),
+    rpe:          gv('_ce-rpe')
+  };
+  var ov = document.getElementById('_cardio-edit-overlay');
+  if (ov) ov.remove();
+  showToast('Enregistrement…', 'var(--text-muted)');
+  try {
+    var r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    var res = await r.json();
+    if (res.success) {
+      showToast('Séance modifiée ✓', 'var(--good)');
+      chargerAppData();
+    } else {
+      showToast('Erreur : ' + (res.error || 'inconnue'), 'var(--bad)');
+    }
+  } catch(e) {
+    showToast('Erreur réseau', 'var(--bad)');
+  }
 }
