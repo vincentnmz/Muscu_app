@@ -2393,7 +2393,9 @@ async function ouvrirMessagerieCoach() {
       const r = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(a.athlete_id)}&nocache=${Date.now()}`);
       const d = await r.json();
       const msgs = (d.commentaires || []).slice().sort((x, y) => parseChatDate(y.date) - parseChatDate(x.date));
-      const nonLus = msgs.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
+      // Lu si : serveur (c.lu), clé muscu, OU clé foot par athlète (conversation foot).
+      const lusFoot = getLusLocaux('foot_lu_coach_' + a.athlete_id);
+      const nonLus = msgs.filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach') && !lusFoot.has(String(c.id))).length;
       return { a, dernier: msgs[0] || null, nonLus };
     } catch (e) { return { a, dernier: null, nonLus: 0 }; }
   }));
@@ -2417,7 +2419,15 @@ async function ouvrirMessagerieCoach() {
 function ouvrirConversationDepuisMessagerie(idx) {
   fermerMessagerieCoach();
   const a = athletesCoach[Number(idx)];
-  if (a) ouvrirDetailAthleteCoach(a, 'conseils');
+  if (!a) return;
+  // Route selon le sport : joueur foot → fiche foot (onglet conversation), sinon vue muscu.
+  const estFoot = (coach && coach.sport && coach.sport !== 'muscu') || (a.sport && a.sport !== 'muscu');
+  if (estFoot && typeof ouvrirDetailJoueurFoot === 'function') {
+    ouvrirDetailJoueurFoot(a.athlete_id, 'coach');
+    if (typeof switchDetailJoueurTab === 'function') setTimeout(() => switchDetailJoueurTab(3), 60);
+  } else {
+    ouvrirDetailAthleteCoach(a, 'conseils');
+  }
 }
 
 // ---- Alertes traitées (stockage local, remise à zéro chaque semaine) ----
