@@ -686,7 +686,7 @@
  * Il alimente NovalyzEngine.normaliser() avec des indicateurs génériques
  * (voir le contrat documenté au-dessus de la fonction normaliser, bloc 1).
  * ========================================================================== */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEj4SEA0wzmXcPWECRGCURsSTIbIMu81sFktWtQM86E2-3zgR7LCz-G9sqz2mLHUcQ/exec";
+const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service";
 
 /* =============================================================================
  * SPORTS (Phase 2/3) — registre des sports. Le sport est fourni par le backend
