@@ -9140,13 +9140,16 @@ function _renderCardioHist() {
     });
   }
 
-  // ── Panel « Séances récentes » (groupées par mois) ────────────
+  // ── Panel « Séances récentes » (groupées par jour) ────────────
   var recHtml = '';
   if (!filtered.length) {
     recHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucune séance sur cette période</div>';
   } else {
+    var JOURS = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
     var shown = filtered.slice(0, 25);
-    var lastMonthKey = '';
+    var dayCount = {};
+    shown.forEach(function(s) { var k = (s.date || '').slice(0, 10); dayCount[k] = (dayCount[k] || 0) + 1; });
+    var lastDayKey = '';
     shown.forEach(function(s) {
       var t   = s.type_cardio || 'autre';
       var clr = _CH_CLR[t] || '#6366f1';
@@ -9155,25 +9158,30 @@ function _renderCardioHist() {
       var ico = _CH_ICO[t] || '⚡';
       var day = s.date ? parseInt(s.date.slice(8,10), 10) : '';
       var moI = s.date ? parseInt(s.date.slice(5,7), 10) - 1 : -1;
-      var yr  = s.date ? s.date.slice(0,4) : '';
-      var mk  = yr + '-' + moI;
-      if (mk !== lastMonthKey) {
-        recHtml += '<div style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;'
-          + (lastMonthKey ? 'padding:12px 0 4px;' : 'padding:2px 0 4px;') + '">'
-          + (moI >= 0 ? MOIS[moI] + ' ' + yr : '') + '</div>';
-        lastMonthKey = mk;
-      }
       var dateStr = day + ' ' + (moI >= 0 ? MOIS[moI] : '');
+      // En-tête de JOUR (séparateur net) quand la journée change
+      var dayKey = s.date ? s.date.slice(0, 10) : '';
+      if (dayKey !== lastDayKey) {
+        var dObj = s.date ? new Date(s.date + 'T00:00:00') : null;
+        var wd = (dObj && !isNaN(dObj.getTime())) ? JOURS[dObj.getDay()] : '';
+        var cnt = dayCount[dayKey] || 1;
+        recHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;'
+          + (lastDayKey ? 'padding:13px 0 7px;margin-top:3px;border-top:1px solid var(--border);' : 'padding:2px 0 7px;') + '">'
+          + '<span style="font-size:11.5px;font-weight:800;color:var(--text);text-transform:capitalize;">' + wd + ' ' + dateStr + '</span>'
+          + (cnt > 1 ? '<span style="font-size:9.5px;font-weight:800;color:var(--accent);background:var(--accent-a14);border-radius:20px;padding:2px 8px;">' + cnt + ' séances</span>' : '')
+          + '</div>';
+        lastDayKey = dayKey;
+      }
       var parts = [];
       if (s.duree)       parts.push(s.duree + ' min');
       if (s.distance)    parts.push(s.distance + ' km');
       if (s.pas)         parts.push(s.pas + ' pas');
       if (s.vitesse_moy) parts.push(s.vitesse_moy + ' km/h');
-      recHtml += '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">'
+      recHtml += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0 7px 4px;">'
         + '<div style="width:34px;height:34px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">' + ico + '</div>'
         + '<div style="flex:1;min-width:0;">'
           + '<div style="font-size:12px;font-weight:800;color:' + clr + ';">' + escapeHtml(lbl) + '</div>'
-          + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + dateStr + (parts.length ? ' · ' + parts.join(' · ') : '') + '</div>'
+          + (parts.length ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + parts.join(' · ') + '</div>' : '')
         + '</div>'
         + (s.calories ? '<div style="background:var(--warn-a);border-radius:20px;padding:4px 9px;text-align:center;flex-shrink:0;">'
             + '<div style="font-size:13px;font-weight:900;color:var(--warn);font-variant-numeric:tabular-nums;">' + Math.round(s.calories) + '</div>'
