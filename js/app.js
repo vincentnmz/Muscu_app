@@ -8389,7 +8389,12 @@ function renderHeatmapAccueil() {
       const hasC = !futur && !!seancesDatesCardio[key];
       const has  = hasM || hasC;
       if (has) weekHas[w] = true;
-      const bg = futur ? 'transparent' : has ? 'var(--good)' : 'var(--surface2)';
+      // Vert = muscu · rouge = cardio · dégradé = les deux (même code que l'agenda)
+      const bg = futur ? 'transparent'
+        : (hasM && hasC) ? 'linear-gradient(135deg,var(--good) 0 50%,var(--bad) 50% 100%)'
+        : hasM ? 'var(--good)'
+        : hasC ? 'var(--bad)'
+        : 'var(--surface2)';
       const lbl = has ? ' · ' + [hasM ? 'muscu' : '', hasC ? 'cardio' : ''].filter(Boolean).join(' + ') : '';
       col += `<div style="width:13px;height:13px;border-radius:3px;background:${bg};" title="${key}${lbl}"></div>`;
     }
@@ -8406,7 +8411,12 @@ function renderHeatmapAccueil() {
         <div style="font-size:11px;color:var(--text-muted);">de régularité d'affilée</div>
       </div>
     </div>
-    <div style="display:flex;gap:3px;overflow-x:auto;padding-bottom:2px;">${cols}</div>`;
+    <div style="display:flex;gap:3px;overflow-x:auto;padding-bottom:2px;">${cols}</div>
+    <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap;">
+      <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);"><span style="width:10px;height:10px;border-radius:3px;background:var(--good);"></span>Muscu</span>
+      <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);"><span style="width:10px;height:10px;border-radius:3px;background:var(--bad);"></span>Cardio</span>
+      <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,var(--good) 0 50%,var(--bad) 50% 100%);"></span>Les deux</span>
+    </div>`;
 }
 
 // Depuis l'Accueil : ouvre l'onglet Séance et défile jusqu'à l'agenda
