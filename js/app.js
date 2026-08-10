@@ -8870,12 +8870,13 @@ var _cardioSubTab   = 'recentes';
 var _cardioChartMetric = 'km';   // métrique de la courbe « Par semaine »
 
 // Config des métriques de la courbe hebdo (déroulante)
+// cap = légende explicite (total vs moyenne) affichée sous la courbe.
 var _CARDIO_CHART_METRICS = {
-  km:  { label: 'Distance (km)',  unit: 'km',   col: '#0ea5e9', dec: 1, get: function(w){ return w.km; } },
-  min: { label: 'Durée (min)',    unit: 'min',  col: '#10b981', dec: 0, get: function(w){ return w.min; } },
-  kcal:{ label: 'Calories (kcal)',unit: 'kcal', col: '#E07800', dec: 0, get: function(w){ return w.kcal; } },
-  pas: { label: 'Pas',            unit: 'pas',  col: '#6366f1', dec: 0, get: function(w){ return w.pas; } },
-  vit: { label: 'Vitesse (km/h)', unit: 'km/h', col: '#8b5cf6', dec: 1, get: function(w){ return w.vit; } }
+  km:  { label: 'Distance (km)',  cap: 'Distance totale / semaine',  unit: 'km',   col: '#0ea5e9', dec: 1, get: function(w){ return w.km; } },
+  min: { label: 'Durée (min)',    cap: 'Durée totale / semaine',     unit: 'min',  col: '#10b981', dec: 0, get: function(w){ return w.min; } },
+  kcal:{ label: 'Calories (kcal)',cap: 'Calories totales / semaine',  unit: 'kcal', col: '#E07800', dec: 0, get: function(w){ return w.kcal; } },
+  pas: { label: 'Pas',            cap: 'Pas totaux / semaine',        unit: 'pas',  col: '#6366f1', dec: 0, get: function(w){ return w.pas; } },
+  vit: { label: 'Vitesse (km/h)', cap: 'Vitesse moyenne / semaine',   unit: 'km/h', col: '#8b5cf6', dec: 1, get: function(w){ return w.vit; } }
 };
 function _setCardioChartMetric(v) { _cardioChartMetric = v; _renderCardioHist(); }
 
@@ -9055,23 +9056,28 @@ function _renderCardioHist() {
         + '<span style="font-size:12px;font-weight:800;color:var(--text-muted);">Tendance</span>' + selectHtml + '</div>'
         + '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:14px 0;background:var(--surface2);border-radius:12px;margin-bottom:14px;">Choisis une période plus longue (1 mois / 3 mois) pour voir la courbe.</div>';
     } else {
-      var W = 320, H = 130, padL = 8, padR = 8, padT = 14, padB = 22, n = chartWeeks.length;
+      // Graphe compact (plus plat)
+      var W = 320, H = 74, padL = 30, padR = 8, padT = 10, padB = 16, n = chartWeeks.length;
       var vals = chartWeeks.map(function(w) { return mConf.get(w) || 0; });
-      var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
-      var sp = (mx - mn) || 1; mn -= sp * 0.15; mx += sp * 0.15; sp = mx - mn;
+      var mxA = Math.max.apply(null, vals), mnA = Math.min.apply(null, vals);
+      var mn = mnA, mx = mxA;
+      var sp = (mx - mn) || 1; mn -= sp * 0.18; mx += sp * 0.18; sp = mx - mn;
       var X = function(i) { return padL + i * (W - padL - padR) / (n - 1); };
       var Y = function(v) { return H - padB - (v - mn) / sp * (H - padT - padB); };
       var pts = vals.map(function(v, i) { return { x: X(i), y: Y(v) }; });
       var line = _cardioSmoothPath(pts);
       var area = line + 'L' + pts[n - 1].x.toFixed(1) + ',' + (H - padB) + 'L' + pts[0].x.toFixed(1) + ',' + (H - padB) + 'Z';
+      var fmtY = function(v) { return mConf.dec ? v.toFixed(mConf.dec) : (v >= 1000 ? Math.round(v / 100) / 10 + 'k' : Math.round(v)); };
+      // Repères d'axe Y : max (haut) et min (bas) → on sait à quoi correspond la hauteur
+      var yAxis = '<text x="' + (padL - 4) + '" y="' + (padT + 3) + '" text-anchor="end" font-size="7.5" fill="var(--text-muted)" font-weight="700">' + fmtY(mxA) + '</text>'
+        + '<text x="' + (padL - 4) + '" y="' + (H - padB) + '" text-anchor="end" font-size="7.5" fill="var(--text-muted)" font-weight="700">' + fmtY(mnA) + '</text>';
       var xlabels = chartWeeks.map(function(w, i) {
+        if (n > 8 && i % 2 !== 0 && i !== n - 1) return ''; // éviter la surcharge de labels
         var d = new Date(w.key + 'T00:00:00');
-        return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="8" fill="var(--text-muted)" font-weight="700">' + d.getDate() + '/' + (d.getMonth() + 1) + '</text>';
+        return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="middle" font-size="7.5" fill="var(--text-muted)" font-weight="700">' + d.getDate() + '/' + (d.getMonth() + 1) + '</text>';
       }).join('');
-      var dots = pts.map(function(p, i) {
-        var last = (i === n - 1);
-        return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + (last ? 4 : 2.3) + '" fill="' + (last ? mConf.col : 'var(--surface)') + '" stroke="' + mConf.col + '" stroke-width="' + (last ? 2 : 1.5) + '"/>';
-      }).join('');
+      var lastPt = pts[n - 1];
+      var dots = '<circle cx="' + lastPt.x.toFixed(1) + '" cy="' + lastPt.y.toFixed(1) + '" r="3.5" fill="' + mConf.col + '" stroke="var(--surface)" stroke-width="1.5"/>';
       var gid = 'cch_' + _cardioChartMetric;
       var curVal = vals[n - 1], prevVal = vals[n - 2];
       var dp = (prevVal > 0) ? Math.round((curVal - prevVal) / prevVal * 100) : null;
@@ -9081,19 +9087,20 @@ function _renderCardioHist() {
         dpHtml = '<span style="font-size:11px;font-weight:800;margin-left:5px;color:' + (flat ? 'var(--text-muted)' : (up ? 'var(--good)' : 'var(--danger)')) + ';">' + (flat ? '→ ' : (up ? '↑ +' : '↓ ')) + dp + '%</span>';
       }
       var curTxt = mConf.dec ? curVal.toFixed(mConf.dec) : Math.round(curVal).toLocaleString('fr-FR');
-      chart = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">'
-          + '<div style="display:flex;align-items:baseline;gap:4px;"><span style="font-size:22px;font-weight:900;line-height:1;color:' + mConf.col + ';font-variant-numeric:tabular-nums;">' + curTxt + '</span>'
+      chart = '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">'
+          + '<div><div style="display:flex;align-items:baseline;gap:4px;"><span style="font-size:20px;font-weight:900;line-height:1;color:' + mConf.col + ';font-variant-numeric:tabular-nums;">' + curTxt + '</span>'
             + '<span style="font-size:11px;font-weight:700;color:var(--text-muted);">' + mConf.unit + '</span>' + dpHtml + '</div>'
+            + '<div style="font-size:9.5px;color:var(--text-muted);font-weight:600;margin-top:2px;">cette semaine · vs préc.</div></div>'
           + selectHtml
         + '</div>'
         + '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;">'
           + '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + mConf.col + '" stop-opacity="0.20"/><stop offset="1" stop-color="' + mConf.col + '" stop-opacity="0"/></linearGradient></defs>'
           + '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>'
           + '<path d="' + area + '" fill="url(#' + gid + ')"/>'
-          + '<path d="' + line + '" fill="none" stroke="' + mConf.col + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
-          + dots + xlabels
+          + '<path d="' + line + '" fill="none" stroke="' + mConf.col + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
+          + yAxis + dots + xlabels
         + '</svg>'
-        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;margin:2px 0 14px;">' + mConf.label + ' par semaine · semaine en cours à droite</div>';
+        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;margin:3px 0 14px;font-weight:600;">' + mConf.cap + ' · 14 dernières semaines max</div>';
     }
 
     // Une cellule métrique = valeur + delta vs semaine précédente (↑ vert / ↓ rouge)
