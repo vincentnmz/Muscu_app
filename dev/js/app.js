@@ -5674,6 +5674,7 @@ async function chargerPoids() {
 let calDate = new Date();
 let seancesDates = {};
 let seancesDatesCardio = {};   // jours avec séance cardio (clés DD/MM/YYYY) → régularité globale
+let cardioParJour = {};        // détail cardio agrégé par jour (clé DD/MM/YYYY) → agenda
 let progressionData = {};
 let tendancesData = null;
 let dernierAppData = null;
@@ -5729,25 +5730,57 @@ function selectCalDay(dateStr, name, el) {
 function renderCalDetail(dateStr, name) {
   const el = document.getElementById('cal-detail');
   if (!el) return;
-  const det = seancesDetailMap[dateStr];
-  let stats = '';
-  if (det) {
-    const chip = (v, l) => `<div style="background:var(--surface);border-radius:8px;padding:6px;text-align:center;"><div style="font-size:15px;font-weight:800;color:var(--text);">${v}</div><div style="font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;">${l}</div></div>`;
-    const tonnageT = det.tonnage ? (Math.round(det.tonnage / 100) / 10) + 't' : '—';
-    stats = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px;">
-      ${chip(det.nbExos, 'exos')}
-      ${chip(det.nbSeries, 'séries')}
-      ${chip(tonnageT, 'tonnage')}
-      ${chip(det.rpeMoy != null ? det.rpeMoy : '—', 'RPE')}
-    </div>`;
-  } else {
-    stats = `<div style="margin-top:8px;font-size:11px;color:var(--text-muted);">Détail indisponible pour ce jour.</div>`;
+  const chip = (v, l) => `<div style="background:var(--surface);border-radius:8px;padding:6px;text-align:center;"><div style="font-size:15px;font-weight:800;color:var(--text);">${v}</div><div style="font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;">${l}</div></div>`;
+
+  // ── Bloc muscu ──
+  let muscuBlock = '';
+  if (name) {
+    const det = seancesDetailMap[dateStr];
+    let stats;
+    if (det) {
+      const tonnageT = det.tonnage ? (Math.round(det.tonnage / 100) / 10) + 't' : '—';
+      stats = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px;">
+        ${chip(det.nbExos, 'exos')}${chip(det.nbSeries, 'séries')}${chip(tonnageT, 'tonnage')}${chip(det.rpeMoy != null ? det.rpeMoy : '—', 'RPE')}
+      </div>`;
+    } else {
+      stats = `<div style="margin-top:8px;font-size:11px;color:var(--text-muted);">Détail indisponible pour ce jour.</div>`;
+    }
+    muscuBlock = `<div style="background:var(--surface2);border-radius:12px;padding:11px 12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="font-size:13px;font-weight:800;color:var(--text);">${dateStr}</div>
+        <span style="font-size:10px;font-weight:800;color:#fff;background:var(--good);border-radius:20px;padding:3px 10px;">${name}</span>
+      </div>${stats}</div>`;
   }
-  el.innerHTML = `<div style="background:var(--surface2);border-radius:12px;padding:11px 12px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <div style="font-size:13px;font-weight:800;color:var(--text);">${dateStr}</div>
-      <span style="font-size:10px;font-weight:800;color:#fff;background:var(--good);border-radius:20px;padding:3px 10px;">${name}</span>
-    </div>${stats}</div>`;
+
+  // ── Bloc cardio ──
+  let cardioBlock = '';
+  const cj = cardioParJour[dateStr];
+  if (cj) {
+    const typeChips = Object.keys(cj.types).map(function(t) {
+      const clr = (typeof _CH_CLR !== 'undefined' && _CH_CLR[t]) || '#6366f1';
+      const bg  = (typeof _CH_BG !== 'undefined' && _CH_BG[t]) || 'rgba(99,102,241,.14)';
+      const ico = (typeof _CH_ICO !== 'undefined' && _CH_ICO[t]) || '⚡';
+      const lbl = (typeof _CARDIO_TYPE_LABELS !== 'undefined' && _CARDIO_TYPE_LABELS[t]) || t;
+      return `<span style="font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px;color:${clr};background:${bg};">${ico} ${lbl}</span>`;
+    }).join('');
+    const cStats = [
+      cj.km   ? chip(Math.round(cj.km * 10) / 10, 'km')   : '',
+      cj.min  ? chip(Math.round(cj.min), 'min')           : '',
+      cj.kcal ? chip(Math.round(cj.kcal), 'kcal')         : '',
+      cj.pas  ? chip(Math.round(cj.pas).toLocaleString('fr-FR'), 'pas') : '',
+    ].filter(Boolean);
+    const cols = cStats.length || 1;
+    cardioBlock = `<div style="background:var(--surface2);border-radius:12px;padding:11px 12px;${muscuBlock ? 'margin-top:8px;' : ''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="font-size:13px;font-weight:800;color:var(--text);">${name ? 'Cardio' : dateStr}</div>
+        <span style="font-size:10px;font-weight:800;color:#fff;background:var(--bad);border-radius:20px;padding:3px 10px;">${cj.n} séance${cj.n > 1 ? 's' : ''}</span>
+      </div>
+      ${typeChips ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:9px;">${typeChips}</div>` : ''}
+      ${cStats.length ? `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:6px;margin-top:9px;">${cStats.join('')}</div>` : ''}
+    </div>`;
+  }
+
+  el.innerHTML = muscuBlock + cardioBlock;
 }
 
 // Détail des séances par date (pour l'agenda) — chargé depuis getSeancesDetail
@@ -5806,15 +5839,20 @@ function renderCalendrier() {
     const d = document.createElement('div');
     const dateStr = `${String(j).padStart(2,'0')}/${String(moisIdx+1).padStart(2,'0')}/${annee}`;
     const isToday = j === today.getDate() && moisIdx === today.getMonth() && annee === today.getFullYear();
-    const hasSeance = seancesDates[dateStr];
+    const hasSeance = seancesDates[dateStr];        // muscu
+    const hasCardio = !!seancesDatesCardio[dateStr]; // cardio
     const isFutur = new Date(annee, moisIdx, j) > today;
 
-    if (hasSeance) {
-      const ti = seanceTypeInfo(hasSeance);
+    if (hasSeance || hasCardio) {
+      // Pastille : vert = muscu · rouge = cardio · dégradé vert/rouge = les deux
+      let pillBg, pillTxt;
+      if (hasSeance && hasCardio)      { pillBg = 'linear-gradient(90deg,var(--good) 0 50%,var(--bad) 50% 100%)'; pillTxt = 'M+C'; }
+      else if (hasSeance)              { pillBg = 'var(--good)'; pillTxt = seanceTypeInfo(hasSeance).abbr; }
+      else                             { pillBg = 'var(--bad)';  pillTxt = 'CARDIO'; }
       d.style.cssText = `border-radius:9px;text-align:center;padding:3px 1px 4px;cursor:pointer;background:var(--surface2);${isToday ? 'outline:2px solid var(--accent);outline-offset:-2px;' : ''}`;
-      d.title = hasSeance;
-      d.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.1;">${j}</div><div style="font-size:8.5px;font-weight:800;color:#fff;background:var(--good);border-radius:5px;padding:1px 0;margin:2px 3px 0;line-height:1.4;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ti.abbr}</div>`;
-      d.addEventListener('click', () => selectCalDay(dateStr, hasSeance, d));
+      d.title = [hasSeance || '', hasCardio ? 'Cardio' : ''].filter(Boolean).join(' + ');
+      d.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.1;">${j}</div><div style="font-size:8.5px;font-weight:800;color:#fff;background:${pillBg};border-radius:5px;padding:1px 0;margin:2px 3px 0;line-height:1.4;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pillTxt}</div>`;
+      d.addEventListener('click', () => selectCalDay(dateStr, hasSeance || '', d));
     } else if (isToday) {
       d.style.cssText = 'background:var(--accent);border-radius:9px;text-align:center;padding:5px 2px;font-size:11px;color:var(--on-accent);font-weight:700;';
       d.textContent = j;
@@ -6654,12 +6692,18 @@ function _appliquerAppData(data) {
     // Objectif : bloc Récompenses (paliers + cagnotte auto)
     renderRecompenses(data);
 
-    // Jours de cardio (clés DD/MM/YYYY) → la heatmap de régularité compte muscu + cardio
+    // Jours de cardio (clés DD/MM/YYYY) → heatmap de régularité (muscu + cardio) + agenda coloré
     seancesDatesCardio = {};
+    cardioParJour = {};
     var _cardioHist = (data.cardio && data.cardio.history) || [];
     _cardioHist.forEach(function(s) {
       var iso = s && s.date ? String(s.date) : '';
-      if (iso.length >= 10) seancesDatesCardio[iso.slice(8,10) + '/' + iso.slice(5,7) + '/' + iso.slice(0,4)] = true;
+      if (iso.length < 10) return;
+      var key = iso.slice(8,10) + '/' + iso.slice(5,7) + '/' + iso.slice(0,4);
+      seancesDatesCardio[key] = true;
+      var agg = cardioParJour[key] || (cardioParJour[key] = { n: 0, km: 0, min: 0, kcal: 0, pas: 0, types: {} });
+      agg.n++; agg.km += s.distance || 0; agg.min += s.duree || 0; agg.kcal += s.calories || 0; agg.pas += s.pas || 0;
+      var t = s.type_cardio || 'autre'; agg.types[t] = (agg.types[t] || 0) + 1;
     });
 
     // Accueil : heatmap de régularité + streak (renvoie vers l'agenda Séance)
