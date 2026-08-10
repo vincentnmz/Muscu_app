@@ -5673,6 +5673,7 @@ async function chargerPoids() {
 // ==================== HISTORIQUE ====================
 let calDate = new Date();
 let seancesDates = {};
+let seancesDatesCardio = {};   // jours avec séance cardio (clés DD/MM/YYYY) → régularité globale
 let progressionData = {};
 let tendancesData = null;
 let dernierAppData = null;
@@ -6652,6 +6653,14 @@ function _appliquerAppData(data) {
 
     // Objectif : bloc Récompenses (paliers + cagnotte auto)
     renderRecompenses(data);
+
+    // Jours de cardio (clés DD/MM/YYYY) → la heatmap de régularité compte muscu + cardio
+    seancesDatesCardio = {};
+    var _cardioHist = (data.cardio && data.cardio.history) || [];
+    _cardioHist.forEach(function(s) {
+      var iso = s && s.date ? String(s.date) : '';
+      if (iso.length >= 10) seancesDatesCardio[iso.slice(8,10) + '/' + iso.slice(5,7) + '/' + iso.slice(0,4)] = true;
+    });
 
     // Accueil : heatmap de régularité + streak (renvoie vers l'agenda Séance)
     renderHeatmapAccueil();
@@ -8330,11 +8339,15 @@ function renderHeatmapAccueil() {
     let col = '<div style="display:flex;flex-direction:column;gap:3px;">';
     for (let d = 0; d < 7; d++) {
       const dt = new Date(start); dt.setDate(start.getDate() + w * 7 + d);
+      const key = fmt(dt);
       const futur = dt > today;
-      const has = !futur && !!seancesDates[fmt(dt)];
+      const hasM = !futur && !!seancesDates[key];
+      const hasC = !futur && !!seancesDatesCardio[key];
+      const has  = hasM || hasC;
       if (has) weekHas[w] = true;
       const bg = futur ? 'transparent' : has ? 'var(--good)' : 'var(--surface2)';
-      col += `<div style="width:13px;height:13px;border-radius:3px;background:${bg};" title="${fmt(dt)}${has ? ' · séance' : ''}"></div>`;
+      const lbl = has ? ' · ' + [hasM ? 'muscu' : '', hasC ? 'cardio' : ''].filter(Boolean).join(' + ') : '';
+      col += `<div style="width:13px;height:13px;border-radius:3px;background:${bg};" title="${key}${lbl}"></div>`;
     }
     col += '</div>'; cols += col;
   }
