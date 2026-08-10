@@ -8799,7 +8799,7 @@ function _renderDashCardioContent() {
 
 var _cardioSessions = [];
 var _cardioPeriod   = 30;
-var _cardioSubTab   = 'activite';
+var _cardioSubTab   = 'semaine';
 
 var _CH_ICO = { footing: '🏃', velo: '🚴', marche_normale: '🚶', marche_inclinee: '🥾', natation: '🏊', autre: '⚡' };
 var _CH_CLR = { footing: '#6366f1', velo: '#0ea5e9', marche_normale: '#22d3ee', marche_inclinee: '#10b981', natation: '#8b5cf6', autre: '#f59e0b' };
@@ -8816,7 +8816,7 @@ function renderCardioHistorique(sessions) {
   }
   _cardioSessions = sessions;
   _cardioPeriod   = 30;
-  _cardioSubTab   = 'activite';
+  _cardioSubTab   = 'semaine';
   secEl.style.display  = '';
   cardEl.style.display = '';
   _renderCardioHist();
@@ -8837,33 +8837,40 @@ function _setCardioPeriod(days) {
 
 function _setCardioSubTab(tab) {
   _cardioSubTab = tab;
-  var panA = document.getElementById('ch-panel-activite');
-  var panR = document.getElementById('ch-panel-recentes');
-  var btnA = document.getElementById('ch-stab-activite');
-  var btnR = document.getElementById('ch-stab-recentes');
-  if (!panA || !panR) return;
-  panA.style.display = tab === 'activite' ? '' : 'none';
-  panR.style.display = tab === 'recentes' ? '' : 'none';
-  var BASE = 'flex:1;text-align:center;padding:8px 6px;border-radius:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
-  if (btnA) btnA.style.cssText = BASE + (tab === 'activite' ? 'background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15);' : 'background:transparent;color:var(--text-muted);');
-  if (btnR) btnR.style.cssText = BASE + (tab === 'recentes' ? 'background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15);' : 'background:transparent;color:var(--text-muted);');
+  var BASE = 'flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:11.5px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
+  ['semaine', 'activite', 'recentes'].forEach(function(t) {
+    var pan = document.getElementById('ch-panel-' + t);
+    var btn = document.getElementById('ch-stab-' + t);
+    var on  = (t === tab);
+    if (pan) pan.style.display = on ? '' : 'none';
+    if (btn) btn.style.cssText = BASE + (on ? 'background:var(--surface);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10);' : 'background:transparent;color:var(--text-muted);');
+  });
+}
+
+// Lundi (ISO) de la semaine d'une date yyyy-mm-dd → clé de regroupement hebdo
+function _cardioMondayISO(iso) {
+  var d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return iso;
+  var day = (d.getDay() + 6) % 7; // 0 = lundi
+  d.setDate(d.getDate() - day);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
 function _renderCardioHist() {
   var contEl = document.getElementById('hist-cardio-content');
   if (!contEl) return;
   var filtered = _filterCardioSessions(_cardioPeriod);
-  var PERIOD_MAP = [[7,'7j'],[30,'1 mois'],[90,'3 mois'],[180,'6 mois']];
+  var PERIOD_MAP = [[7,'7 j'],[30,'4 sem'],[90,'3 mois'],[180,'6 mois']];
   var MOIS = ['jan.','fév.','mars','avr.','mai','juin','juil.','août','sep.','oct.','nov.','déc.'];
 
-  // ── Sélecteur de période ─────────────────────────────────────
-  var periodOpts = PERIOD_MAP.map(function(p) {
-    return '<option value="' + p[0] + '"' + (p[0] === _cardioPeriod ? ' selected' : '') + '>' + p[1] + '</option>';
-  }).join('');
-  var chips = '<div style="display:flex;align-items:center;gap:8px;">'
-    + '<span style="font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap;">Période :</span>'
-    + '<select onchange="_setCardioPeriod(+this.value)" style="padding:6px 28px 6px 10px;border-radius:8px;font-size:12px;font-weight:700;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2020/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%234A5980%22/></svg>\');background-repeat:no-repeat;background-position:right 8px center;">'
-    + periodOpts + '</select>'
+  // ── Sélecteur de période — pastilles (rangée tapable) ────────
+  var chips = '<div style="display:flex;gap:6px;">'
+    + PERIOD_MAP.map(function(p) {
+        var on = (p[0] === _cardioPeriod);
+        return '<button onclick="_setCardioPeriod(' + p[0] + ')" style="flex:1;text-align:center;padding:8px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+          + (on ? 'background:var(--accent-a14);border:1.5px solid var(--accent);color:var(--accent);' : 'background:var(--surface2);border:1.5px solid var(--border);color:var(--text-muted);')
+          + '">' + p[1] + '</button>';
+      }).join('')
     + '</div>';
 
   // ── Agrégats KPI ──────────────────────────────────────────────
@@ -8897,13 +8904,102 @@ function _renderCardioHist() {
     + '</div>' : '';
 
   // ── Toggle sous-onglets ───────────────────────────────────────
-  var BASE_BTN = 'flex:1;text-align:center;padding:8px 6px;border-radius:9px;font-size:12px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
-  var btns = '<button id="ch-stab-activite" onclick="_setCardioSubTab(\'activite\')" style="' + BASE_BTN
-    + (_cardioSubTab === 'activite' ? 'background:var(--surface);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10);' : 'background:transparent;color:var(--text-muted);')
-    + '">Par activité</button>'
-    + '<button id="ch-stab-recentes" onclick="_setCardioSubTab(\'recentes\')" style="' + BASE_BTN
-    + (_cardioSubTab === 'recentes' ? 'background:var(--surface);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10);' : 'background:transparent;color:var(--text-muted);')
-    + '">Séances récentes</button>';
+  var BASE_BTN = 'flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:11.5px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
+  function stabBtn(id, label) {
+    var on = (_cardioSubTab === id);
+    return '<button id="ch-stab-' + id + '" onclick="_setCardioSubTab(\'' + id + '\')" style="' + BASE_BTN
+      + (on ? 'background:var(--surface);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10);' : 'background:transparent;color:var(--text-muted);')
+      + '">' + label + '</button>';
+  }
+  var btns = stabBtn('semaine', 'Par semaine') + stabBtn('activite', 'Par activité') + stabBtn('recentes', 'Séances récentes');
+
+  // ── Panel « Par semaine » (comparatif hebdo, delta sur la distance) ──
+  var weeksMap = {};
+  filtered.forEach(function(s) {
+    if (!s.date) return;
+    var wk = _cardioMondayISO(s.date);
+    if (!weeksMap[wk]) weeksMap[wk] = { key: wk, km: 0, min: 0, kcal: 0, pas: 0, n: 0, types: {} };
+    var w = weeksMap[wk];
+    w.km += s.distance || 0; w.min += s.duree || 0; w.kcal += s.calories || 0; w.pas += s.pas || 0; w.n++;
+    var t = s.type_cardio || 'autre'; w.types[t] = (w.types[t] || 0) + 1;
+  });
+  var weeks = Object.keys(weeksMap).map(function(k) { return weeksMap[k]; }).sort(function(a, b) { return a.key < b.key ? 1 : -1; }); // récent → ancien
+  weeks.forEach(function(w, i) {
+    var prev = weeks[i + 1];
+    w.deltaPct = (prev && prev.km > 0) ? Math.round((w.km - prev.km) / prev.km * 100) : null;
+    w.isFirst  = !prev;
+  });
+  var todayMonday = _cardioMondayISO(new Date().toISOString().slice(0, 10));
+
+  function _cardioWeekLabel(mondayIso) {
+    var d = new Date(mondayIso + 'T00:00:00');
+    var e = new Date(d); e.setDate(e.getDate() + 6);
+    var m1 = d.getMonth(), m2 = e.getMonth();
+    return (m1 === m2)
+      ? d.getDate() + ' – ' + e.getDate() + ' ' + MOIS[m2]
+      : d.getDate() + ' ' + MOIS[m1] + ' – ' + e.getDate() + ' ' + MOIS[m2];
+  }
+
+  var semaineHtml = '';
+  if (!weeks.length) {
+    semaineHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucune séance sur cette période</div>';
+  } else {
+    // Mini-graphe de tendance (distance/sem, 10 dernières semaines, ancien → récent)
+    var chartWeeks = weeks.slice().reverse().slice(-10);
+    var maxKm = chartWeeks.reduce(function(m, w) { return Math.max(m, w.km); }, 0.01);
+    var chart = '<div style="display:flex;align-items:flex-end;gap:6px;height:70px;padding:6px 2px 0;margin-bottom:5px;">';
+    chartWeeks.forEach(function(w) {
+      var h = Math.max(6, Math.round(w.km / maxKm * 100));
+      var cur = (w.key === todayMonday);
+      var d = new Date(w.key + 'T00:00:00');
+      chart += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;">'
+        + '<div style="width:100%;max-width:30px;height:' + h + '%;border-radius:6px 6px 3px 3px;background:var(--accent);opacity:' + (cur ? '1' : '.35') + ';"></div>'
+        + '<div style="font-size:8.5px;color:var(--text-muted);font-weight:700;white-space:nowrap;">' + d.getDate() + '/' + (d.getMonth() + 1) + '</div>'
+        + '</div>';
+    });
+    chart += '</div><div style="font-size:9.5px;color:var(--text-muted);text-align:center;margin-bottom:14px;">Distance par semaine (km)</div>';
+
+    var rows = '';
+    weeks.slice(0, 12).forEach(function(w) {
+      var cur = (w.key === todayMonday);
+      var delta;
+      if (w.deltaPct === null) {
+        delta = '<span style="font-size:11px;font-weight:800;border-radius:20px;padding:3px 9px;color:var(--text-muted);background:var(--surface2);white-space:nowrap;">— ' + (w.isFirst ? '1ʳᵉ sem.' : 'réf.') + '</span>';
+      } else {
+        var up = w.deltaPct > 0, flat = w.deltaPct === 0;
+        var clr = flat ? 'var(--text-muted)' : (up ? 'var(--good)' : 'var(--danger)');
+        var bg  = flat ? 'var(--surface2)' : (up ? 'var(--good-a,rgba(0,168,84,.12))' : 'var(--bad-a,rgba(217,58,63,.12))');
+        var arr = flat ? '→ ' : (up ? '↑ +' : '↓ ');
+        delta = '<span style="font-size:11px;font-weight:800;border-radius:20px;padding:3px 9px;color:' + clr + ';background:' + bg + ';white-space:nowrap;">' + arr + w.deltaPct + '% dist.</span>';
+      }
+      function wkM(v, u, l) {
+        return '<div style="text-align:center;"><div style="font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;">' + v
+          + '<span style="font-size:9px;font-weight:600;color:var(--text-muted);">' + (u ? ' ' + u : '') + '</span></div>'
+          + '<div style="font-size:9px;color:var(--text-muted);margin-top:3px;">' + l + '</div></div>';
+      }
+      var typeChips = ['footing','velo','marche_normale','marche_inclinee','natation','autre'].filter(function(t) { return w.types[t]; }).map(function(t) {
+        return '<span style="font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px;color:' + (_CH_CLR[t] || '#6366f1') + ';background:' + (_CH_BG[t] || 'rgba(99,102,241,.14)') + ';">' + (_CH_ICO[t] || '⚡') + ' ' + escapeHtml(_CARDIO_TYPE_LABELS[t] || t) + '</span>';
+      }).join('');
+      rows += '<div style="border:1px solid ' + (cur ? 'var(--accent)' : 'var(--border)') + ';border-radius:12px;padding:11px 12px;margin-bottom:9px;'
+        + (cur ? 'background:var(--accent-a05,rgba(26,95,255,.05));' : 'background:var(--surface);') + '">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:9px;">'
+          + '<div><div style="font-size:13px;font-weight:800;">' + _cardioWeekLabel(w.key)
+            + (cur ? '<span style="font-size:9px;font-weight:800;color:var(--accent);background:var(--accent-a14);border-radius:20px;padding:2px 7px;margin-left:6px;">EN COURS</span>' : '') + '</div>'
+            + '<div style="font-size:10px;color:var(--text-muted);font-weight:600;margin-top:1px;">' + w.n + ' séance' + (w.n > 1 ? 's' : '') + '</div></div>'
+          + delta
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'
+          + wkM(Math.round(w.km * 10) / 10, 'km', 'distance')
+          + wkM(Math.round(w.min), 'min', 'durée')
+          + wkM(Math.round(w.kcal), 'kcal', 'calories')
+          + wkM(w.pas ? Math.round(w.pas).toLocaleString('fr-FR') : '—', '', 'pas')
+        + '</div>'
+        + (typeChips ? '<div style="display:flex;gap:5px;margin-top:9px;flex-wrap:wrap;">' + typeChips + '</div>' : '')
+        + '</div>';
+    });
+    if (weeks.length > 12) rows += '<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px 0;">+ ' + (weeks.length - 12) + ' semaines plus anciennes</div>';
+    semaineHtml = chart + rows;
+  }
 
   // ── Panel « Par activité » ────────────────────────────────────
   var byType = {};
@@ -9026,6 +9122,7 @@ function _renderCardioHist() {
     + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:' + (kpisRow2 ? '7px' : '16px') + ';">' + kpis + '</div>'
     + (kpisRow2 ? '<div style="margin-bottom:16px;">' + kpisRow2 + '</div>' : '')
     + '<div style="display:flex;background:var(--surface2);border-radius:12px;padding:3px;margin-bottom:14px;gap:3px;">' + btns + '</div>'
+    + '<div id="ch-panel-semaine"'  + (_cardioSubTab !== 'semaine'  ? ' style="display:none;"' : '') + '>' + semaineHtml + '</div>'
     + '<div id="ch-panel-activite"' + (_cardioSubTab !== 'activite' ? ' style="display:none;"' : '') + '>' + activHtml + '</div>'
     + '<div id="ch-panel-recentes"' + (_cardioSubTab !== 'recentes' ? ' style="display:none;"' : '') + '>' + recHtml + '</div>';
 }
