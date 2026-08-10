@@ -12,7 +12,7 @@ header h1 { font-size:17px; font-weight:700; }
 .logout-btn { font-size:12px; color:var(--danger); cursor:pointer; background:none; border:none; padding:4px 8px; }
 
 /* ===== Navigation principale (bottom bar) ===== */
-.tabs-bar { background:var(--surface); border-top:1px solid var(--border); display:flex; position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; z-index:50; padding-bottom:env(safe-area-inset-bottom,0px); }
+.tabs-bar { background:var(--surface); border-top:1px solid var(--border); display:flex; position:fixed; bottom:0; left:0; right:0; max-width:var(--app-w); margin:0 auto; z-index:50; padding-bottom:env(safe-area-inset-bottom,0px); }
 .tab-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:13px 2px; font-size:10px; font-weight:600; text-align:center; cursor:pointer; color:var(--text-muted); border:none; background:none; transition:color 0.2s; }
 .tab-btn > span:not(.tab-ico):not([id]) { display:none; }
 .tab-btn .tab-ico { font-size:21px; line-height:1; transition:transform 0.15s; }
@@ -29,7 +29,7 @@ body.has-bottom-nav .toast { bottom:84px; }
 .sub-tab.active { background:var(--accent-a14); color:var(--accent); border-color:var(--accent-dim); }
 
 /* Sous-onglets contexte coach-detail (fixe en bas, icône+label) */
-#view-coach-detail .sub-tabs { position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; z-index:50; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(6px + env(safe-area-inset-bottom,0px)); gap:2px; }
+#view-coach-detail .sub-tabs { position:fixed; bottom:0; left:0; right:0; max-width:var(--app-w); margin:0 auto; z-index:50; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(6px + env(safe-area-inset-bottom,0px)); gap:2px; }
 body.cd-nav { padding-bottom:66px; }
 #view-coach-detail .sub-tab { flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:7px 3px; font-size:9.5px; border:none; border-bottom:2px solid transparent; background:none; border-radius:0; min-width:0; white-space:nowrap; color:var(--text-muted); }
 #view-coach-detail .sub-tab .cd-ico { line-height:1; }

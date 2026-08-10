@@ -1,10 +1,35 @@
 /* =============================================================================
- * Novalyz · layout.css — Couche 4 : templates de pages et media queries
- * Conteneurs, vues, structures responsive. Pas de couleurs hardcodées.
+ * Novalyz · layout.css — Couche 4 : templates de pages & grille responsive
+ * -----------------------------------------------------------------------------
+ * BREAKPOINTS BOOTSTRAP STANDARD :
+ *   sm ≥576  ·  md ≥768  ·  lg ≥992  ·  xl ≥1200  ·  xxl ≥1400
+ * LARGEURS CONTENEUR BOOTSTRAP :
+ *   540 · 720 · 960 · 1140 · 1320
+ *
+ * Toutes les largeurs de l'app dérivent de DEUX tokens (source unique de vérité)
+ * → largeurs cohérentes sur tout le produit, un seul endroit à ajuster :
+ *   --app-w    : conteneur athlète / général (1 colonne, plafonné à 720 pour la lecture)
+ *   --coach-w  : conteneur espace coach (data-dense, suit l'échelle jusqu'à 1320)
+ * Les barres de nav fixes et les overlays s'alignent sur ces mêmes tokens.
  * =========================================================================== */
 
+/* ===== Tokens de largeur responsive (échelle Bootstrap) ===== */
+:root {
+  --app-w:     100%;        /* xs : fluide */
+  --app-pad:   16px 20px;
+  --coach-w:   720px;       /* < lg : coach = largeur app */
+  --coach-pad: 20px 20px;
+  --overlay-w: 100%;        /* modales / overlays larges */
+  --auth-w:    100%;        /* écran d'auth (formulaire focalisé) */
+}
+@media (min-width:576px)  { :root { --app-w:540px;  --auth-w:460px; --overlay-w:540px; } }
+@media (min-width:768px)  { :root { --app-w:720px;  --app-pad:20px 24px; --coach-w:720px; --overlay-w:720px; } }
+@media (min-width:992px)  { :root { --coach-w:960px;  --coach-pad:24px 28px; --overlay-w:900px; } }
+@media (min-width:1200px) { :root { --coach-w:1140px; } }
+@media (min-width:1400px) { :root { --coach-w:1320px; --coach-pad:28px 36px; } }
+
 /* ===== Conteneur principal ===== */
-.container      { padding:16px 20px; max-width:480px; margin:0 auto; }
+.container        { width:100%; max-width:var(--app-w); padding:var(--app-pad); margin:0 auto; }
 .container.no-pad { padding:0; }
 
 /* ===== Système de vues (SPA) ===== */
@@ -14,27 +39,29 @@
 .tab-content.active { display:block; }
 
 /* ===== Template : authentification ===== */
-#view-login { max-width:420px; margin:0 auto; }
+#view-login { max-width:var(--auth-w); margin:0 auto; }
+
+/* Note : les barres de nav fixes (.tabs-bar, #view-coach-detail .sub-tabs)
+ * lisent directement --app-w dans components.css → largeur alignée sur le conteneur. */
+
+/* ===== Grille liste athlètes (coach) — responsive Bootstrap ===== */
+#coach-athletes-grid { display:grid; grid-template-columns:1fr !important; gap:10px; }
+@media (min-width:576px) { #coach-athletes-grid { grid-template-columns:1fr 1fr !important; } }
+@media (min-width:992px) { #coach-athletes-grid { grid-template-columns:1fr 1fr 1fr !important; } }
 
 /* ===== Template : coach-detail — en-tête masqué ===== */
 body.coach-active > header { display:none; }
 
 /* ===== Template : page joueur foot ===== */
 #detail-joueur-body .sub-tabs { margin-bottom:14px; }
-.fjd-rail { display:none; }
+.fjd-rail                     { display:none; }
+#detail-joueur-overlay > div  { max-width:var(--overlay-w); }
 
-/* ===== Tablette (>= 768px) ===== */
-@media (min-width:768px) {
-  .container   { max-width:720px; }
-  .tabs-bar    { max-width:720px; }
-  #view-coach-detail .sub-tabs { max-width:720px; }
-  #coach-athletes-grid { grid-template-columns:1fr 1fr 1fr !important; }
-}
+/* ===== Espace coach — conteneur large (data-dense) ===== */
+body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coach-pad); }
 
-/* ===== Bureau coach (>= 1024px) ===== */
-@media (min-width:1024px) {
-  body.coach-active #main-container { max-width:1500px; padding:24px 32px; }
-
+/* ===== Bureau coach (≥ lg 992) : layouts avancés ===== */
+@media (min-width:992px) {
   /* Accueil coach (aucun athlète sélectionné) */
   body.coach-active:not(.athlete-selected) #view-coach-detail.view { display:none !important; }
 
@@ -55,7 +82,6 @@ body.coach-active > header { display:none; }
   body.coach-active #cd-indicateurs > div { gap:10px; }
 
   /* Page joueur foot en bureau : main + rail */
-  #detail-joueur-overlay > div { max-width:900px !important; }
   .fjd-body { display:flex; align-items:flex-start; gap:22px; }
   .fjd-main { flex:2 1 0; min-width:0; }
   .fjd-rail { display:block; flex:1 1 0; min-width:0; position:sticky; top:64px; }
