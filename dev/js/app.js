@@ -8932,7 +8932,7 @@ function _setCardioPeriod(days) {
 function _setCardioSubTab(tab) {
   _cardioSubTab = tab;
   var BASE = 'flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:11.5px;font-weight:700;border:none;cursor:pointer;transition:background .12s,color .12s;';
-  ['recentes', 'semaine', 'activite', 'pas'].forEach(function(t) {
+  ['semaine', 'activite', 'recentes'].forEach(function(t) {
     var pan = document.getElementById('ch-panel-' + t);
     var btn = document.getElementById('ch-stab-' + t);
     var on  = (t === tab);
@@ -9005,12 +9005,7 @@ function _renderCardioHist() {
       + (on ? 'background:var(--surface);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10);' : 'background:transparent;color:var(--text-muted);')
       + '">' + label + '</button>';
   }
-  // Onglet « Pas » seulement si de la marche avec pas est enregistrée (cumul marche + marche inclinée)
-  var _MARCHE_TYPES = { marche_normale: 1, marche_inclinee: 1 };
-  var hasPasData = _cardioSessions.some(function(s) { return _MARCHE_TYPES[s.type_cardio] && (s.pas || 0) > 0; });
-  if (_cardioSubTab === 'pas' && !hasPasData) _cardioSubTab = 'recentes';
-  var btns = stabBtn('recentes', hasPasData ? 'Récentes' : 'Séances récentes') + stabBtn('semaine', 'Par semaine') + stabBtn('activite', 'Par activité')
-    + (hasPasData ? stabBtn('pas', 'Pas') : '');
+  var btns = stabBtn('recentes', 'Séances récentes') + stabBtn('semaine', 'Par semaine') + stabBtn('activite', 'Par activité');
 
   // ── Panel « Par semaine » — PAR ACTIVITÉ (on ne mélange pas les sports) ──
   var todayMonday = _cardioMondayISO(new Date().toISOString().slice(0, 10));
@@ -9287,75 +9282,6 @@ function _renderCardioHist() {
     }
   }
 
-  // ── Panel « Pas » — pas par jour (marche + marche inclinée) ──
-  var pasJourHtml = '';
-  if (hasPasData) {
-    var pasMap = {}; // ISO yyyy-mm-dd → { pas, n, km }
-    filtered.forEach(function(s) {
-      if (!_MARCHE_TYPES[s.type_cardio] || !s.pas) return;
-      var iso = (s.date || '').slice(0, 10); if (iso.length < 10) return;
-      var d = pasMap[iso] || (pasMap[iso] = { pas: 0, n: 0, km: 0 });
-      d.pas += s.pas || 0; d.n++; d.km += s.distance || 0;
-    });
-    var pasDays = Object.keys(pasMap).sort();
-    if (!pasDays.length) {
-      pasJourHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucune marche sur cette période</div>';
-    } else {
-      var CY = '#22d3ee';
-      var totPas  = pasDays.reduce(function(a, k) { return a + pasMap[k].pas; }, 0);
-      var bestPas = pasDays.reduce(function(m, k) { return Math.max(m, pasMap[k].pas); }, 0);
-      var moyPas  = Math.round(totPas / pasDays.length);
-      function kpiP(v, l) {
-        return '<div style="background:var(--surface2);border-radius:12px;padding:11px 6px;text-align:center;border-top:3px solid ' + CY + ';">'
-          + '<div style="font-size:17px;font-weight:900;line-height:1;color:' + CY + ';font-variant-numeric:tabular-nums;">' + v + '</div>'
-          + '<div style="font-size:9px;color:var(--text-muted);margin-top:5px;font-weight:600;line-height:1.2;">' + l + '</div></div>';
-      }
-      var kpisP = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">'
-        + kpiP(moyPas.toLocaleString('fr-FR'), 'moyenne / jour actif')
-        + kpiP(totPas.toLocaleString('fr-FR'), 'total (période)')
-        + kpiP(bestPas.toLocaleString('fr-FR'), 'meilleur jour')
-        + '</div>';
-
-      // Barres : derniers min(période, 30) jours en continu
-      var nDays = Math.min(_cardioPeriod, 30);
-      var t0 = new Date(); t0.setHours(0, 0, 0, 0);
-      var Wp = 320, Hp = 70, pL = 6, pR = 6, pT = 8, pB = 14;
-      var series = [];
-      for (var di = nDays - 1; di >= 0; di--) {
-        var dd = new Date(t0); dd.setDate(t0.getDate() - di);
-        var isoK = dd.getFullYear() + '-' + String(dd.getMonth() + 1).padStart(2, '0') + '-' + String(dd.getDate()).padStart(2, '0');
-        series.push({ d: dd, pas: pasMap[isoK] ? pasMap[isoK].pas : 0 });
-      }
-      var maxP = series.reduce(function(m, x) { return Math.max(m, x.pas); }, 1);
-      var nb = series.length, bw = (Wp - pL - pR) / nb, step = Math.ceil(nb / 8);
-      var bars = '', xlab = '';
-      series.forEach(function(x, i) {
-        if (x.pas) {
-          var h = Math.max(3, Math.round(x.pas / maxP * (Hp - pT - pB)));
-          var bx = pL + i * bw, by = Hp - pB - h, last = (i === nb - 1);
-          bars += '<rect x="' + (bx + bw * 0.16).toFixed(1) + '" y="' + by.toFixed(1) + '" width="' + (bw * 0.68).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="' + CY + '" opacity="' + (last ? 1 : 0.6) + '"/>';
-        }
-        if (i % step === 0 || i === nb - 1) xlab += '<text x="' + (pL + i * bw + bw / 2).toFixed(1) + '" y="' + (Hp - 3) + '" text-anchor="middle" font-size="6.5" fill="var(--text-muted)" font-weight="700">' + x.d.getDate() + '/' + (x.d.getMonth() + 1) + '</text>';
-      });
-      var chartP = '<svg viewBox="0 0 ' + Wp + ' ' + Hp + '" width="100%" style="display:block;overflow:visible;"><line x1="' + pL + '" y1="' + (Hp - pB) + '" x2="' + (Wp - pR) + '" y2="' + (Hp - pB) + '" stroke="var(--border)" stroke-width="1"/>' + bars + xlab + '</svg>'
-        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;font-weight:600;margin:4px 0 16px;">Pas par jour · ' + nDays + ' derniers jours (marche)</div>';
-
-      // Liste des jours (récent → ancien)
-      var JOURS2 = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
-      var listP = '';
-      pasDays.slice().reverse().slice(0, 20).forEach(function(iso) {
-        var dd = new Date(iso + 'T00:00:00'), e = pasMap[iso];
-        listP += '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">'
-          + '<div style="width:32px;height:32px;border-radius:10px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🚶</div>'
-          + '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:800;text-transform:capitalize;">' + JOURS2[dd.getDay()] + ' ' + dd.getDate() + '/' + (dd.getMonth() + 1) + '</div>'
-          + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px;">' + e.n + ' marche' + (e.n > 1 ? 's' : '') + (e.km ? ' · ' + (Math.round(e.km * 10) / 10) + ' km' : '') + '</div></div>'
-          + '<div style="font-size:15px;font-weight:900;color:' + CY + ';font-variant-numeric:tabular-nums;flex-shrink:0;">' + Math.round(e.pas).toLocaleString('fr-FR') + ' <small style="font-size:9px;font-weight:700;color:var(--text-muted);">pas</small></div>'
-          + '</div>';
-      });
-      pasJourHtml = kpisP + chartP + listP;
-    }
-  }
-
   contEl.innerHTML =
     '<div style="margin-bottom:12px;">' + chips + '</div>'
     + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:' + (kpisRow2 ? '7px' : '16px') + ';">' + kpis + '</div>'
@@ -9363,8 +9289,7 @@ function _renderCardioHist() {
     + '<div style="display:flex;background:var(--surface2);border-radius:12px;padding:3px;margin-bottom:14px;gap:3px;">' + btns + '</div>'
     + '<div id="ch-panel-semaine"'  + (_cardioSubTab !== 'semaine'  ? ' style="display:none;"' : '') + '>' + semaineHtml + '</div>'
     + '<div id="ch-panel-activite"' + (_cardioSubTab !== 'activite' ? ' style="display:none;"' : '') + '>' + activHtml + '</div>'
-    + '<div id="ch-panel-recentes"' + (_cardioSubTab !== 'recentes' ? ' style="display:none;"' : '') + '>' + recHtml + '</div>'
-    + (hasPasData ? '<div id="ch-panel-pas"' + (_cardioSubTab !== 'pas' ? ' style="display:none;"' : '') + '>' + pasJourHtml + '</div>' : '');
+    + '<div id="ch-panel-recentes"' + (_cardioSubTab !== 'recentes' ? ' style="display:none;"' : '') + '>' + recHtml + '</div>';
 }
 
 // =============================================================================
