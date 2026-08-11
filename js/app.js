@@ -1070,7 +1070,7 @@ async function enregistrerSportCoach() {
   try { renderListeAthletesCoach(); } catch (e) {}
   try {
     await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'saveSportCoach', coach_id: coach.coach_id, sport: nouveauSport })
     });
     showToast('Sport mis à jour : ' + (SPORTS[nouveauSport] ? SPORTS[nouveauSport].nom : nouveauSport));
@@ -1791,7 +1791,7 @@ async function chargerConversationJoueur() {
   const nonLusIds = msgs.filter(c => isCoach ? (c.auteur === 'athlete') : (c.auteur !== 'athlete')).filter(c => !estLu(c, luKey)).map(c => c.id);
   if (nonLusIds.length) {
     ajouterLusLocaux(luKey, nonLusIds);
-    fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'marquerCommentairesLus', ids: nonLusIds }) });
+    fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({ action:'marquerCommentairesLus', ids: nonLusIds }) });
     msgs.forEach(c => { if (nonLusIds.includes(c.id)) c.lu = true; });
   }
   const savedCac = coachAthleteCourant;
@@ -1814,8 +1814,8 @@ async function envoyerMessageJoueur() {
   inp.disabled = true;
   try {
     await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'saveCommentaire', auteur, auteur_nom, athlete_id: cdJoueurCourant, message: msg, coach_id, coach_nom })
     });
   } catch(e) {}
@@ -2468,7 +2468,7 @@ function marquerAlerteTraitee(athleteId, al) {
     try { renderCoachSynthese(athletesCoach); } catch (e) {}
   }
   fetch(SCRIPT_URL, {
-    method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'text/plain'},
+    method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
     body: JSON.stringify({ action: 'marquerAlerteTraitee', coach_id: coach.coach_id, cle, semaine: lundiCourantISO() })
   });
 }
@@ -4144,8 +4144,8 @@ function ouvrirConversationCoach() {
   if (nonLus.length > 0) {
     ajouterLusLocaux('muscu_lu_coach', nonLus);
     fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLus })
     });
     commentairesAthleteActuel.forEach(c => { if (nonLus.includes(c.id)) c.lu = true; });
@@ -4302,8 +4302,8 @@ async function envoyerCommentaireCoach() {
   if (!coachAthleteCourant || !coach) return;
   try {
     await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveCommentaire',
         coach_id: coach.coach_id,
@@ -4330,8 +4330,8 @@ async function envoyerMessageAthleteCoach() {
   if (!athlete) return;
   try {
     await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveCommentaire',
         auteur: 'athlete',
@@ -4356,8 +4356,8 @@ async function supprimerCommentaireCoach(id) {
   if (!confirm('Supprimer ce conseil ? L\'athlète ne le verra plus.')) return;
   try {
     await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'supprimerCommentaire', id: id })
     });
     showToast('🗑️ Conseil supprimé');
@@ -4402,8 +4402,8 @@ function afficherOngletConseils() {
   if (nonLusCoach.length > 0) {
     ajouterLusLocaux('muscu_lu_athlete', nonLusCoach);
     fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLusCoach })
     });
     messagesCoach.forEach(c => { if (nonLusCoach.includes(c.id)) c.lu = true; });
@@ -5538,8 +5538,8 @@ async function nouvelleSeance() {
     const seanceType = document.getElementById('sel-seance-id').value;
     try {
       await fetch(SCRIPT_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
           action: 'saveNote',
           date: dateVal,
@@ -5634,7 +5634,7 @@ function toggleObjectifEdit(on) {
 }
 async function sauvegarderObjectif() {
   const obj = document.getElementById('sel-objectif').value;
-  await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+  await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify({action:'saveObjectif', athlete_id:athlete.athlete_id, objectif:obj}) });
   athlete.objectif = obj;
   localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
@@ -5647,11 +5647,11 @@ async function sauvegarderPoids() {
   const poids = document.getElementById('inp-poids').value;
   const date = document.getElementById('inp-date-poids').value;
   if (!poids || !date) { showToast('⚠️ Remplis poids et date', '#ff4444'); return; }
-  await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+  await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify({action:'savePoids', athlete_id:athlete.athlete_id, athlete:athlete.nom, poids, date}) });
   showToast('✅ Poids enregistré !');
   document.getElementById('inp-poids').value = '';
-  // l'écriture no-cors se propage côté serveur : petit délai avant de relire
+  // petit délai avant de relire (laisse le serveur propager l'écriture)
   setTimeout(chargerPoids, 600);
 }
 
@@ -8238,7 +8238,7 @@ async function enregistrerPause() {
   if (!debut && !fin) { showToast('⚠️ Choisis au moins une date', '#f59f00'); return; }
   if (debut && fin && fin < debut) { showToast('⚠️ La fin est avant le début', '#f59f00'); return; }
   try {
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'setPauseAthlete', athlete_id: athlete.athlete_id, debut: debut, fin: fin }) });
     if (dernierAppData) dernierAppData.pause = { debut: debut, fin: fin };
     majUiPause();
@@ -8248,7 +8248,7 @@ async function enregistrerPause() {
 async function annulerPause() {
   if (!athlete) return;
   try {
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'setPauseAthlete', athlete_id: athlete.athlete_id, debut: '', fin: '' }) });
     if (dernierAppData) dernierAppData.pause = null;
     majUiPause();
