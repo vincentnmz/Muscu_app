@@ -5068,8 +5068,8 @@ async function signalerGene() {
   const message = '🚩 Gêne/douleur' + (exo ? ' — ' + exo : '') + ' : ' + txt;
   try {
     await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'saveCommentaire', auteur: 'athlete', auteur_nom: (athlete.prenom || athlete.nom || 'Athlète'), athlete_id: athlete.athlete_id, message: message })
     });
     input.value = '';
@@ -5214,39 +5214,37 @@ function selectWQ(question, btn) {
 
 async function _envoyerSeance() {
   const btn = document.getElementById('btn-valider');
-  btn.textContent = '⏳ Envoi...'; btn.disabled = true;
-  const lignes = [];
-  seance.forEach(exo => exo.series.forEach(s => {
-    lignes.push([
-      s.date, s.semaine, s.seanceId, athlete.nom, athlete.athlete_id,
-      s.exerciceNom, s.muscle, s.exerciceId,
-      s.serie, s.charge, s.reps, s.rpe, s.repos, s.volume
-    ]);
-  }));
-  // Date de la séance envoyée (pour la vérification post-écriture)
-  const dateEnvoyee = (seance[0] && seance[0].series[0]) ? seance[0].series[0].date : null;
+  if (btn) { btn.textContent = '⏳ Envoi...'; btn.disabled = true; }
+  const lignes = _construireLignesSeance();
+
+  // La séance n'est JAMAIS perdue : en cas d'échec/incertitude → file d'attente + resync auto.
+  function _miseEnFile(msg, couleur) {
+    enregistrerSeanceOffline(lignes, null);
+    afficherRecap();
+    showToast(msg, couleur || '#f59f00');
+  }
+
   try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+    // Requête SIMPLE (text/plain → pas de préflight) et LISIBLE (mode cors par défaut) :
+    // on lit la vraie réponse du serveur au lieu de deviner (fini le no-cors opaque).
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'saveSeance', data: lignes })
     });
-    // La réponse POST est opaque (no-cors) → on ne sait pas si l'écriture a réussi.
-    // On relit les données et on confirme que la séance est bien enregistrée.
-    const verif = await _verifierSeanceEnregistree(dateEnvoyee);
-    if (verif === false) {
-      showToast('⚠️ Enregistrement non confirmé — réessaie', '#f59f00');
-      btn.textContent = '✅ Valider la séance'; btn.disabled = false;
-      _validationEnCours = false;   // on autorise une nouvelle tentative
-      return;
+    let j = null;
+    try { j = await res.json(); } catch (_) { j = null; }
+    const ok = res.ok && j && !j.erreur && !j.error;
+    if (ok) {
+      afficherRecap();
+      showToast('🎉 Séance enregistrée !');
+    } else {
+      // Le serveur a répondu mais a refusé l'écriture → on met en file plutôt que de perdre.
+      _miseEnFile('⚠️ Enregistrement refusé côté serveur — mis en file, resync auto', '#f59f00');
     }
-    afficherRecap();
-    // verif === null : vérification impossible (réseau) → on n'affirme pas un faux succès
-    showToast(verif === null ? '✅ Séance envoyée (confirmation indisponible)' : '🎉 Séance enregistrée !');
-  } catch(e) {
-    showToast('❌ Erreur envoi', '#ff4444');
-    btn.textContent = '✅ Valider la séance'; btn.disabled = false;
-    _validationEnCours = false;   // échec : on autorise une nouvelle tentative
+  } catch (e) {
+    // Réseau instable / requête non aboutie → file d'attente (aucune perte).
+    _miseEnFile('📴 Réseau instable : séance mise en file, elle se synchronisera');
   }
 }
 
@@ -5286,8 +5284,8 @@ async function _verifierSeanceEnregistree(dateEnvoyee) {
 async function _envoyerWellness(seanceId, dateSeance) {
   try {
     await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveBienEtre',
         athlete_id: athlete.athlete_id,
@@ -5344,11 +5342,15 @@ async function flushSeancesOffline() {
   const restantes = [];
   for (const item of q) {
     try {
-      await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+      // Réponse LISIBLE : on ne retire de la file QUE si le serveur confirme l'écriture.
+      const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'saveSeance', data: item.lignes }) });
+      let j = null; try { j = await res.json(); } catch (_) { j = null; }
+      const ok = res.ok && j && !j.erreur && !j.error;
+      if (!ok) { restantes.push(item); continue; }   // pas confirmé → on garde pour réessayer
       if (item.wellness) {
-        await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(item.wellness) });
+        try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(item.wellness) }); } catch (_) { /* bien-être non bloquant */ }
       }
     } catch (e) { restantes.push(item); }
   }
