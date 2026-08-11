@@ -8872,13 +8872,15 @@ var _cardioChartMetric = 'km';   // métrique de la courbe « Par semaine »
 // Config des métriques de la courbe hebdo (déroulante)
 // cap = légende explicite (total vs moyenne) affichée sous la courbe.
 var _CARDIO_CHART_METRICS = {
-  km:  { label: 'Distance (km)',  cap: 'Distance totale / semaine',  unit: 'km',   col: '#0ea5e9', dec: 1, get: function(w){ return w.km; } },
-  min: { label: 'Durée (min)',    cap: 'Durée totale / semaine',     unit: 'min',  col: '#10b981', dec: 0, get: function(w){ return w.min; } },
-  kcal:{ label: 'Calories (kcal)',cap: 'Calories totales / semaine',  unit: 'kcal', col: '#E07800', dec: 0, get: function(w){ return w.kcal; } },
-  pas: { label: 'Pas',            cap: 'Pas totaux / semaine',        unit: 'pas',  col: '#6366f1', dec: 0, get: function(w){ return w.pas; } },
-  vit: { label: 'Vitesse (km/h)', cap: 'Vitesse moyenne / semaine',   unit: 'km/h', col: '#8b5cf6', dec: 1, get: function(w){ return w.vit; } }
+  km:  { label: 'Distance', cap: 'Distance totale / sem.',  unit: 'km',   dec: 1, get: function(w){ return w.km; } },
+  min: { label: 'Durée',    cap: 'Durée totale / sem.',     unit: 'min',  dec: 0, get: function(w){ return w.min; } },
+  kcal:{ label: 'Calories', cap: 'Calories totales / sem.', unit: 'kcal', dec: 0, get: function(w){ return w.kcal; } },
+  pas: { label: 'Pas',      cap: 'Pas totaux / sem.',       unit: 'pas',  dec: 0, get: function(w){ return w.pas; } },
+  vit: { label: 'Vitesse',  cap: 'Vitesse moyenne / sem.',  unit: 'km/h', dec: 1, get: function(w){ return w.vit; } }
 };
 function _setCardioChartMetric(v) { _cardioChartMetric = v; _renderCardioHist(); }
+var _cardioWeekAct = null; // activité sélectionnée dans « Par semaine » (type_cardio)
+function _setCardioWeekAct(v) { _cardioWeekAct = v; _renderCardioHist(); }
 
 // Courbe lissée (Catmull-Rom → Bézier) à partir de points {x,y}
 function _cardioSmoothPath(pts) {
@@ -9003,32 +9005,10 @@ function _renderCardioHist() {
       + (on ? 'background:var(--surface);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.10);' : 'background:transparent;color:var(--text-muted);')
       + '">' + label + '</button>';
   }
-  var btns = stabBtn('semaine', 'Par semaine') + stabBtn('activite', 'Par activité') + stabBtn('recentes', 'Séances récentes');
+  var btns = stabBtn('recentes', 'Séances récentes') + stabBtn('semaine', 'Par semaine') + stabBtn('activite', 'Par activité');
 
-  // ── Panel « Par semaine » (comparatif hebdo, delta sur la distance) ──
-  var weeksMap = {};
-  filtered.forEach(function(s) {
-    if (!s.date) return;
-    var wk = _cardioMondayISO(s.date);
-    if (!weeksMap[wk]) weeksMap[wk] = { key: wk, km: 0, min: 0, kcal: 0, pas: 0, n: 0, vitSum: 0, vitN: 0, types: {} };
-    var w = weeksMap[wk];
-    w.km += s.distance || 0; w.min += s.duree || 0; w.kcal += s.calories || 0; w.pas += s.pas || 0; w.n++;
-    if (s.vitesse_moy) { w.vitSum += s.vitesse_moy; w.vitN++; }
-    var t = s.type_cardio || 'autre'; w.types[t] = (w.types[t] || 0) + 1;
-  });
-  var weeks = Object.keys(weeksMap).map(function(k) { return weeksMap[k]; }).sort(function(a, b) { return a.key < b.key ? 1 : -1; }); // récent → ancien
-  weeks.forEach(function(w) { w.vit = w.vitN ? Math.round(w.vitSum / w.vitN * 10) / 10 : 0; });
-  function _pctDelta(cur, prev) { return (prev && prev > 0) ? Math.round((cur - prev) / prev * 100) : null; }
-  weeks.forEach(function(w, i) {
-    var prev = weeks[i + 1];
-    w.d_km   = prev ? _pctDelta(w.km,   prev.km)   : null;
-    w.d_min  = prev ? _pctDelta(w.min,  prev.min)  : null;
-    w.d_kcal = prev ? _pctDelta(w.kcal, prev.kcal) : null;
-    w.d_pas  = prev ? _pctDelta(w.pas,  prev.pas)  : null;
-    w.isFirst = !prev;
-  });
+  // ── Panel « Par semaine » — PAR ACTIVITÉ (on ne mélange pas les sports) ──
   var todayMonday = _cardioMondayISO(new Date().toISOString().slice(0, 10));
-
   function _cardioWeekLabel(mondayIso) {
     var d = new Date(mondayIso + 'T00:00:00');
     var e = new Date(d); e.setDate(e.getDate() + 6);
@@ -9037,73 +9017,108 @@ function _renderCardioHist() {
       ? d.getDate() + ' – ' + e.getDate() + ' ' + MOIS[m2]
       : d.getDate() + ' ' + MOIS[m1] + ' – ' + e.getDate() + ' ' + MOIS[m2];
   }
+  function _pctDelta(cur, prev) { return (prev && prev > 0) ? Math.round((cur - prev) / prev * 100) : null; }
 
   var semaineHtml = '';
-  if (!weeks.length) {
+  // Activités présentes sur la période + activité sélectionnée (défaut = la plus pratiquée)
+  var actCounts = {};
+  filtered.forEach(function(s) { var t = s.type_cardio || 'autre'; actCounts[t] = (actCounts[t] || 0) + 1; });
+  var ACT_ORDER = ['footing','velo','marche_normale','marche_inclinee','natation','autre'];
+  var actTypes = Object.keys(actCounts).sort(function(a, b) { return ACT_ORDER.indexOf(a) - ACT_ORDER.indexOf(b); });
+
+  if (!actTypes.length) {
     semaineHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucune séance sur cette période</div>';
   } else {
-    // Mini-graphe de tendance — COURBE lissée, métrique choisie dans la déroulante
-    var mConf = _CARDIO_CHART_METRICS[_cardioChartMetric] || _CARDIO_CHART_METRICS.km;
-    var chartWeeks = weeks.slice().reverse().slice(-14); // ancien → récent
-    var opts = Object.keys(_CARDIO_CHART_METRICS).map(function(k) {
+    var actSel = (_cardioWeekAct && actCounts[_cardioWeekAct]) ? _cardioWeekAct
+      : actTypes.reduce(function(best, t) { return actCounts[t] > (actCounts[best] || 0) ? t : best; }, actTypes[0]);
+    var actColor = _CH_CLR[actSel] || '#6366f1';
+
+    // Agrégation hebdo pour CETTE activité uniquement
+    var weeksMap = {};
+    filtered.forEach(function(s) {
+      if (!s.date || (s.type_cardio || 'autre') !== actSel) return;
+      var wk = _cardioMondayISO(s.date);
+      if (!weeksMap[wk]) weeksMap[wk] = { key: wk, km: 0, min: 0, kcal: 0, pas: 0, n: 0, vitSum: 0, vitN: 0 };
+      var w = weeksMap[wk];
+      w.km += s.distance || 0; w.min += s.duree || 0; w.kcal += s.calories || 0; w.pas += s.pas || 0; w.n++;
+      if (s.vitesse_moy) { w.vitSum += s.vitesse_moy; w.vitN++; }
+    });
+    var weeks = Object.keys(weeksMap).map(function(k) { return weeksMap[k]; }).sort(function(a, b) { return a.key < b.key ? 1 : -1; });
+    weeks.forEach(function(w) { w.vit = w.vitN ? Math.round(w.vitSum / w.vitN * 10) / 10 : 0; });
+    weeks.forEach(function(w, i) {
+      var prev = weeks[i + 1];
+      w.d_km = prev ? _pctDelta(w.km, prev.km) : null;
+      w.d_min = prev ? _pctDelta(w.min, prev.min) : null;
+      w.d_kcal = prev ? _pctDelta(w.kcal, prev.kcal) : null;
+      w.d_pas = prev ? _pctDelta(w.pas, prev.pas) : null;
+      w.isFirst = !prev;
+    });
+
+    // ── Header compact : 2 petites déroulantes (activité colorée + métrique) ──
+    var actOpts = actTypes.map(function(t) {
+      return '<option value="' + t + '"' + (t === actSel ? ' selected' : '') + '>' + (_CH_ICO[t] || '⚡') + ' ' + (_CARDIO_TYPE_LABELS[t] || t) + '</option>';
+    }).join('');
+    var CHEV = "background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%229%22 height=%225%22><path d=%22M0 0l4.5 5 4.5-5z%22 fill=%22%23FFFFFF%22/></svg>');background-repeat:no-repeat;background-position:right 7px center;";
+    var CHEV_D = "background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%229%22 height=%225%22><path d=%22M0 0l4.5 5 4.5-5z%22 fill=%22%234A5980%22/></svg>');background-repeat:no-repeat;background-position:right 7px center;";
+    var actSelectHtml = '<select onchange="_setCardioWeekAct(this.value)" style="appearance:none;-webkit-appearance:none;padding:6px 22px 6px 9px;border-radius:8px;font-size:11.5px;font-weight:700;border:none;color:#fff;cursor:pointer;font-family:inherit;background-color:' + actColor + ';' + CHEV + '">' + actOpts + '</select>';
+    var metOpts = Object.keys(_CARDIO_CHART_METRICS).map(function(k) {
       return '<option value="' + k + '"' + (k === _cardioChartMetric ? ' selected' : '') + '>' + _CARDIO_CHART_METRICS[k].label + '</option>';
     }).join('');
-    var selectHtml = '<select onchange="_setCardioChartMetric(this.value)" style="appearance:none;-webkit-appearance:none;padding:6px 24px 6px 10px;border-radius:9px;font-size:11.5px;font-weight:700;border:1.5px solid var(--border);background-color:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;background-image:url(\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%234A5980%22/></svg>\');background-repeat:no-repeat;background-position:right 8px center;">' + opts + '</select>';
+    var metSelectHtml = '<select onchange="_setCardioChartMetric(this.value)" style="appearance:none;-webkit-appearance:none;padding:6px 22px 6px 9px;border-radius:8px;font-size:11.5px;font-weight:700;border:1px solid var(--border);background-color:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;' + CHEV_D + '">' + metOpts + '</select>';
+    var selRow = '<div style="display:flex;gap:8px;margin-bottom:10px;">' + actSelectHtml + metSelectHtml + '</div>';
 
-    var chart;
+    var mConf = _CARDIO_CHART_METRICS[_cardioChartMetric] || _CARDIO_CHART_METRICS.km;
+    var chartWeeks = weeks.slice().reverse().slice(-14); // ancien → récent
+    var vals = chartWeeks.map(function(w) { return mConf.get(w) || 0; });
+    var allZero = vals.every(function(v) { return !v; });
+
+    var head;
     if (chartWeeks.length < 2) {
-      chart = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">'
-        + '<span style="font-size:12px;font-weight:800;color:var(--text-muted);">Tendance</span>' + selectHtml + '</div>'
-        + '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:14px 0;background:var(--surface2);border-radius:12px;margin-bottom:14px;">Choisis une période plus longue (1 mois / 3 mois) pour voir la courbe.</div>';
+      head = selRow + '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:14px 0;background:var(--surface2);border-radius:10px;margin-bottom:14px;">Choisis une période plus longue (1 mois / 3 mois) pour voir la courbe.</div>';
+    } else if (allZero) {
+      head = selRow + '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:14px 0;background:var(--surface2);border-radius:10px;margin-bottom:14px;">« ' + mConf.label + ' » non suivi pour ' + (_CARDIO_TYPE_LABELS[actSel] || actSel).toLowerCase() + '.</div>';
     } else {
-      // Graphe compact (plus plat)
-      var W = 320, H = 74, padL = 30, padR = 8, padT = 10, padB = 16, n = chartWeeks.length;
-      var vals = chartWeeks.map(function(w) { return mConf.get(w) || 0; });
+      var W = 320, H = 56, padL = 26, padR = 6, padT = 8, padB = 14, n = chartWeeks.length;
       var mxA = Math.max.apply(null, vals), mnA = Math.min.apply(null, vals);
-      var mn = mnA, mx = mxA;
-      var sp = (mx - mn) || 1; mn -= sp * 0.18; mx += sp * 0.18; sp = mx - mn;
+      var mn = mnA, mx = mxA, sp = (mx - mn) || 1; mn -= sp * 0.18; mx += sp * 0.18; sp = mx - mn;
       var X = function(i) { return padL + i * (W - padL - padR) / (n - 1); };
       var Y = function(v) { return H - padB - (v - mn) / sp * (H - padT - padB); };
       var pts = vals.map(function(v, i) { return { x: X(i), y: Y(v) }; });
       var line = _cardioSmoothPath(pts);
       var area = line + 'L' + pts[n - 1].x.toFixed(1) + ',' + (H - padB) + 'L' + pts[0].x.toFixed(1) + ',' + (H - padB) + 'Z';
       var fmtY = function(v) { return mConf.dec ? v.toFixed(mConf.dec) : (v >= 1000 ? Math.round(v / 100) / 10 + 'k' : Math.round(v)); };
-      // Repères d'axe Y : max (haut) et min (bas) → on sait à quoi correspond la hauteur
-      var yAxis = '<text x="' + (padL - 4) + '" y="' + (padT + 3) + '" text-anchor="end" font-size="7.5" fill="var(--text-muted)" font-weight="700">' + fmtY(mxA) + '</text>'
-        + '<text x="' + (padL - 4) + '" y="' + (H - padB) + '" text-anchor="end" font-size="7.5" fill="var(--text-muted)" font-weight="700">' + fmtY(mnA) + '</text>';
+      var yAxis = '<text x="' + (padL - 4) + '" y="' + (padT + 3) + '" text-anchor="end" font-size="7" fill="var(--text-muted)" font-weight="700">' + fmtY(mxA) + '</text>'
+        + '<text x="' + (padL - 4) + '" y="' + (H - padB) + '" text-anchor="end" font-size="7" fill="var(--text-muted)" font-weight="700">' + fmtY(mnA) + '</text>';
       var xlabels = chartWeeks.map(function(w, i) {
-        if (n > 8 && i % 2 !== 0 && i !== n - 1) return ''; // éviter la surcharge de labels
+        if (i % 2 !== 0 && i !== n - 1) return '';
         var d = new Date(w.key + 'T00:00:00');
-        return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="middle" font-size="7.5" fill="var(--text-muted)" font-weight="700">' + d.getDate() + '/' + (d.getMonth() + 1) + '</text>';
+        return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 3) + '" text-anchor="middle" font-size="7" fill="var(--text-muted)" font-weight="700">' + d.getDate() + '/' + (d.getMonth() + 1) + '</text>';
       }).join('');
-      var lastPt = pts[n - 1];
-      var dots = '<circle cx="' + lastPt.x.toFixed(1) + '" cy="' + lastPt.y.toFixed(1) + '" r="3.5" fill="' + mConf.col + '" stroke="var(--surface)" stroke-width="1.5"/>';
-      var gid = 'cch_' + _cardioChartMetric;
+      var lp = pts[n - 1];
+      var gid = 'cch_' + actSel + '_' + _cardioChartMetric;
       var curVal = vals[n - 1], prevVal = vals[n - 2];
       var dp = (prevVal > 0) ? Math.round((curVal - prevVal) / prevVal * 100) : null;
       var dpHtml = '';
       if (dp !== null) {
         var up = dp > 0, flat = dp === 0;
-        dpHtml = '<span style="font-size:11px;font-weight:800;margin-left:5px;color:' + (flat ? 'var(--text-muted)' : (up ? 'var(--good)' : 'var(--danger)')) + ';">' + (flat ? '→ ' : (up ? '↑ +' : '↓ ')) + dp + '%</span>';
+        dpHtml = '<span style="font-size:10.5px;font-weight:800;margin-left:5px;color:' + (flat ? 'var(--text-muted)' : (up ? 'var(--good)' : 'var(--danger)')) + ';">' + (flat ? '→ ' : (up ? '↑ +' : '↓ ')) + dp + '%</span>';
       }
       var curTxt = mConf.dec ? curVal.toFixed(mConf.dec) : Math.round(curVal).toLocaleString('fr-FR');
-      chart = '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">'
-          + '<div><div style="display:flex;align-items:baseline;gap:4px;"><span style="font-size:20px;font-weight:900;line-height:1;color:' + mConf.col + ';font-variant-numeric:tabular-nums;">' + curTxt + '</span>'
-            + '<span style="font-size:11px;font-weight:700;color:var(--text-muted);">' + mConf.unit + '</span>' + dpHtml + '</div>'
-            + '<div style="font-size:9.5px;color:var(--text-muted);font-weight:600;margin-top:2px;">cette semaine · vs préc.</div></div>'
-          + selectHtml
-        + '</div>'
+      head = selRow
+        + '<div style="display:flex;align-items:baseline;gap:5px;margin-bottom:1px;"><span style="font-size:19px;font-weight:900;line-height:1;color:' + actColor + ';font-variant-numeric:tabular-nums;">' + curTxt + '</span>'
+          + '<span style="font-size:10.5px;font-weight:700;color:var(--text-muted);">' + mConf.unit + '</span>' + dpHtml + '</div>'
+        + '<div style="font-size:9px;color:var(--text-muted);font-weight:600;margin-bottom:5px;">cette semaine · vs semaine précédente</div>'
         + '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;">'
-          + '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + mConf.col + '" stop-opacity="0.20"/><stop offset="1" stop-color="' + mConf.col + '" stop-opacity="0"/></linearGradient></defs>'
+          + '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + actColor + '" stop-opacity="0.18"/><stop offset="1" stop-color="' + actColor + '" stop-opacity="0"/></linearGradient></defs>'
           + '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>'
           + '<path d="' + area + '" fill="url(#' + gid + ')"/>'
-          + '<path d="' + line + '" fill="none" stroke="' + mConf.col + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
-          + yAxis + dots + xlabels
+          + '<path d="' + line + '" fill="none" stroke="' + actColor + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+          + yAxis + '<circle cx="' + lp.x.toFixed(1) + '" cy="' + lp.y.toFixed(1) + '" r="2.8" fill="' + actColor + '" stroke="var(--surface)" stroke-width="1.3"/>' + xlabels
         + '</svg>'
-        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;margin:3px 0 14px;font-weight:600;">' + mConf.cap + ' · 14 dernières semaines max</div>';
+        + '<div style="font-size:9px;color:var(--text-muted);text-align:center;margin:2px 0 14px;font-weight:600;">' + (_CARDIO_TYPE_LABELS[actSel] || actSel) + ' · ' + mConf.cap + '</div>';
     }
 
-    // Une cellule métrique = valeur + delta vs semaine précédente (↑ vert / ↓ rouge)
+    // Lignes hebdo (activité seule) : valeur + delta par métrique
     function wkM(v, u, l, d) {
       var deltaHtml;
       if (d === null || d === undefined) {
@@ -9125,9 +9140,6 @@ function _renderCardioHist() {
       var tag = cur
         ? '<span style="font-size:9px;font-weight:800;color:var(--accent);background:var(--accent-a14);border-radius:20px;padding:2px 7px;margin-left:6px;">EN COURS</span>'
         : (w.isFirst ? '<span style="font-size:9px;font-weight:700;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:2px 7px;margin-left:6px;">réf.</span>' : '');
-      var typeChips = ['footing','velo','marche_normale','marche_inclinee','natation','autre'].filter(function(t) { return w.types[t]; }).map(function(t) {
-        return '<span style="font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px;color:' + (_CH_CLR[t] || '#6366f1') + ';background:' + (_CH_BG[t] || 'rgba(99,102,241,.14)') + ';">' + (_CH_ICO[t] || '⚡') + ' ' + escapeHtml(_CARDIO_TYPE_LABELS[t] || t) + '</span>';
-      }).join('');
       rows += '<div style="border:1px solid ' + (cur ? 'var(--accent)' : 'var(--border)') + ';border-radius:12px;padding:11px 12px;margin-bottom:9px;'
         + (cur ? 'background:var(--accent-a05,rgba(26,95,255,.05));' : 'background:var(--surface);') + '">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">'
@@ -9140,11 +9152,10 @@ function _renderCardioHist() {
           + wkM(Math.round(w.kcal), 'kcal', 'calories', w.d_kcal)
           + wkM(w.pas ? Math.round(w.pas).toLocaleString('fr-FR') : '—', '', 'pas', w.d_pas)
         + '</div>'
-        + (typeChips ? '<div style="display:flex;gap:5px;margin-top:10px;flex-wrap:wrap;">' + typeChips + '</div>' : '')
         + '</div>';
     });
     if (weeks.length > 12) rows += '<div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px 0;">+ ' + (weeks.length - 12) + ' semaines plus anciennes</div>';
-    semaineHtml = chart + rows;
+    semaineHtml = head + rows;
   }
 
   // ── Panel « Par activité » ────────────────────────────────────
