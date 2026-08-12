@@ -2204,7 +2204,7 @@ async function renderCoachSynthese(athletes) {
     const rpe = (d.recent && d.recent.j7 && d.recent.j7.rpe_moyen != null) ? d.recent.j7.rpe_moyen
               : (d.dashboard && d.dashboard.recuperation ? d.dashboard.recuperation.rpe_moyen : null);
     const _reg = d.dashboard && d.dashboard.regularite ? d.dashboard.regularite : null;
-    const seancesSem = _reg ? (_reg.seances_j7 != null ? _reg.seances_j7 : _reg.seances_semaine) : null;
+    const seancesSem = _reg ? (_reg.seances_semaine != null ? _reg.seances_semaine : _reg.seances_j7) : null;
     let spark = [];
     const _vpj = (d.recent && d.recent.volume_par_jour) ? d.recent.volume_par_jour
                : (d.historique && d.historique.volume_par_jour ? d.historique.volume_par_jour : null);
@@ -2745,7 +2745,7 @@ function renderCoachOverview(data) {
 
   // Régularité
   const reg = dash.regularite || {};
-  const faites = reg.seances_j7 != null ? reg.seances_j7 : (reg.seances_semaine || 0);
+  const faites = reg.seances_semaine != null ? reg.seances_semaine : (reg.seances_j7 || 0);
   const prevues = reg.seances_prevues || 0;
   const pct = prevues > 0 ? Math.min(100, Math.round(faites/prevues*100)) : 0;
   document.getElementById('cd-reg-faites').textContent = faites;
@@ -3099,7 +3099,7 @@ function computeMarqueursCoach(data, a) {
 
   // 4. Régularité (prorata des jours écoulés)
   const reg = dash.regularite || {};
-  const faites = reg.seances_j7 != null ? reg.seances_j7 : (reg.seances_semaine || 0);
+  const faites = reg.seances_semaine != null ? reg.seances_semaine : (reg.seances_j7 || 0);
   const prevues = reg.seances_prevues || 0;
   let regColor, regLabel;
   if (prevues === 0) { regColor = '#aaa'; regLabel = 'N/A'; }
@@ -6725,7 +6725,7 @@ function _appliquerAppData(data) {
     // Régularité dans objectif
     const regEl = document.getElementById('regularite-content');
     if (regEl) {
-      const faites2 = data.dashboard.regularite.seances_j7 != null ? data.dashboard.regularite.seances_j7 : (data.dashboard.regularite.seances_semaine || 0);
+      const faites2 = data.dashboard.regularite.seances_semaine != null ? data.dashboard.regularite.seances_semaine : (data.dashboard.regularite.seances_j7 || 0);
       const prevues2 = data.dashboard.regularite.seances_prevues || 0;
       const manque2 = Math.max(0, prevues2 - faites2);
       const pct2 = prevues2 > 0 ? Math.min(100, Math.round(faites2/prevues2*100)) : 0;
@@ -6802,8 +6802,10 @@ function _appliquerAppData(data) {
     const cmp7  = comparison.j7_vs_j7prec  || {};
     const cmp28 = comparison.j28_vs_j28prec || {};
 
-    // ── Charge récente : Régularité (fenêtre 7j glissants) ────────────────────
-    const faites = j7.seances != null ? j7.seances : (dash.regularite ? (dash.regularite.seances_j7 || dash.regularite.seances_semaine || 0) : 0);
+    // ── Régularité : séances de la SEMAINE EN COURS (depuis lundi) → l'anneau se remet à zéro chaque lundi ──
+    const faites = (dash.regularite && dash.regularite.seances_semaine != null)
+      ? dash.regularite.seances_semaine
+      : (j7.seances != null ? j7.seances : 0);
     const prevues = dash.regularite ? (dash.regularite.seances_prevues || 0) : 0;
     const pct = prevues > 0 ? Math.min(100, Math.round(faites / prevues * 100)) : 0;
     document.getElementById('dash-seances-faites').textContent = faites;
