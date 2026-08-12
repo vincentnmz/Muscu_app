@@ -4525,6 +4525,7 @@ async function sInscrireCoach() {
 
 const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Séance', historique: 'Progression', conseils: 'Conversation', reglages: 'Réglages' };
 function switchTab(tab) {
+  window.scrollTo({ top: 0, behavior: 'instant' });
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
     b.classList.toggle('active', ['accueil','historique','seance','objectif','conseils'][i] === tab);
   });
@@ -4602,7 +4603,15 @@ async function demarrerSeance() {
   const dataPerf = await resPerf.json();
   lastPerfData = dataPerf.perfs || {};
 
+  scrollVersProchain = true;
   afficherListeSeance();
+  setTimeout(() => {
+    const sid = document.getElementById('sel-seance-id').value;
+    if (sid === 'Libre' || programmeSeance.length === 0) {
+      const c = document.getElementById('card-hors-programme');
+      if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 150);
 }
 
 function majProgressionSeance() {
@@ -6337,6 +6346,7 @@ function afficherProgressionExo() {
     </table>`;
   progExoChrono = perfs.slice().reverse();
   dessinerProgChartExo('charge');
+  setTimeout(() => { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
 }
 
 // Trace le graphique de progression selon le mode choisi (charge réelle ou 1RM estimé)
@@ -8508,6 +8518,7 @@ function switchModeSeance(mode) {
       di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
     }
     renderCardioFields();
+    setTimeout(() => { if (cardioEl) cardioEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
   }
 }
 
