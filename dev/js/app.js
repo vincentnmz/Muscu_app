@@ -4706,7 +4706,7 @@ function avancerSuperset(reposVal) {
     // Exercice suivant du même tour : on enchaîne, sans repos
     chargerExoSuperset();
     showToast('➡️ ' + supersetGroupe[supersetIdx].exercice);
-    window.scrollTo(0, 0);
+    setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
   } else {
     // Tour terminé
     supersetIdx = 0;
@@ -4719,7 +4719,7 @@ function avancerSuperset(reposVal) {
       showToast('✅ Superset terminé !');
     } else {
       chargerExoSuperset(); // premier exo du tour suivant
-      window.scrollTo(0, 0);
+      setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
       if (reposVal > 0) startTimer(reposVal, `Tour ${supersetTour - 1} terminé · repos`);
       else showToast('Tour ' + supersetTour);
     }
@@ -4934,7 +4934,7 @@ function selectionnerExoLibre(exerciceNom) {
   }
 
   majSeriesActuel();
-  window.scrollTo(0, 0);
+  setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
 }
 
 function retourListeSeance() {
@@ -4944,7 +4944,7 @@ function retourListeSeance() {
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('card-liste-seance').style.display = 'block';
   afficherListeSeance();
-  window.scrollTo(0, 0);
+  setTimeout(() => { const c = document.getElementById('card-liste-seance'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
 }
 
 function toggleExoHorsProgramme(forceOpen) {
@@ -4995,7 +4995,7 @@ function choisirExoDirect(val) {
   document.getElementById('card-hors-programme').style.display = 'none';
   const inp = document.getElementById('rech-exo'); if (inp) inp.value = '';
   afficherListeSeance();
-  window.scrollTo(0, 0);
+  setTimeout(() => { const l = document.getElementById('liste-exercices-seance'); const last = l && l.lastElementChild; if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
   showToast(dejaPresent ? exoNom + ' est déjà dans la séance' : '✅ ' + exoNom + ' ajouté');
 }
 
@@ -6665,7 +6665,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
     document.getElementById('exo-actuel-suggestion').innerHTML = '';
   }
   majSeriesActuel();
-  window.scrollTo(0, 0);
+  setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
   showToast('✅ ' + exerciceNom + ' sélectionné');
 }
 
