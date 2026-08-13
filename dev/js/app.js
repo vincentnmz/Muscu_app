@@ -4559,8 +4559,18 @@ function allerVersVolumeAthlete() {
   setTimeout(() => {
     const el = document.getElementById('hist-volume-content');
     const card = el && el.closest('.card');
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 120);
+    const sec = card && card.previousElementSibling;
+    (sec || card || el) && (sec || card || el).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 200);
+}
+
+function allerVersRecords() {
+  switchTab('historique');
+  setTimeout(() => {
+    const sec = document.getElementById('dash-records-sec');
+    if (sec && sec.style.display !== 'none') sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else { const card = document.getElementById('dash-records-card'); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }, 200);
 }
 
 function switchSubTab(sub) {
@@ -6346,7 +6356,11 @@ function afficherProgressionExo() {
     </table>`;
   progExoChrono = perfs.slice().reverse();
   dessinerProgChartExo('charge');
-  setTimeout(() => { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  setTimeout(() => {
+    const card = el.closest('.card');
+    const sec = card && card.previousElementSibling;
+    (sec || card || el).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
 }
 
 // Trace le graphique de progression selon le mode choisi (charge réelle ou 1RM estimé)
@@ -6915,9 +6929,9 @@ function _appliquerAppData(data) {
           <div class="kv" style="color:${tonnageColor};">${tonnageJ7 != null ? tonnageJ7 + 't' : '—'}</div>
           <div class="kk">Tonnage · 7j${tonnageEvol != null ? ' <span style="font-size:10px;opacity:.7">' + (tonnageEvol > 0 ? '▲+' : '▼') + tonnageEvol + '%</span>' : ''}</div>
         </div>
-        <div class="v2-kpi" style="cursor:pointer" onclick="switchTab('historique')" title="Voir les records">
+        <div class="v2-kpi" style="cursor:pointer;transition:opacity .15s" onclick="allerVersRecords()" onmouseenter="this.style.opacity='.72'" onmouseleave="this.style.opacity='1'" title="Voir les records personnels">
           <div class="kv" style="color:#00c96e;">⚡ ${records30 > 0 ? records30 : '—'}</div>
-          <div class="kk">Records · 30j</div>
+          <div class="kk">Records · 30j <span style="font-size:9px;opacity:.6">↗</span></div>
         </div>`;
     }
 
@@ -7262,7 +7276,7 @@ function allerProgressionExo(exo) {
     const sel = document.getElementById('sel-hist-exercice');
     if (!sel) return;
     const opt = Array.from(sel.options).find(o => o.value === exo);
-    if (opt) { sel.value = exo; afficherProgressionExo(); sel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    if (opt) { sel.value = exo; afficherProgressionExo(); }
   }, 300);
 }
 
