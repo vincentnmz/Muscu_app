@@ -4573,6 +4573,15 @@ function allerVersRecords() {
   }, 200);
 }
 
+function allerVersCardioHist() {
+  switchTab('historique');
+  setTimeout(() => {
+    const sec = document.getElementById('hist-cardio-sec');
+    if (sec && sec.style.display !== 'none') sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else { const card = document.getElementById('hist-cardio-card'); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }, 200);
+}
+
 function switchSubTab(sub) {
   document.querySelectorAll('.sub-tab').forEach((b, i) => {
     b.classList.toggle('active', ['saisie','programme'][i] === sub);
@@ -8454,7 +8463,7 @@ function allerVersAgendaSeance() {
     const el = document.getElementById('cal-grid');
     const card = el && el.closest('.card');
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 120);
+  }, 200);
 }
 
 // Header coach (vue athlète) : masquer au scroll vers le bas, réafficher au scroll vers le haut
