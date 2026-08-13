@@ -4553,6 +4553,15 @@ function switchTab(tab) {
 
 }
 
+function scrollVersTitre(el, extra) {
+  if (!el) return;
+  extra = extra == null ? 8 : extra;
+  const hdr = document.querySelector('header');
+  const hdrH = hdr ? hdr.offsetHeight : 0;
+  const top = window.scrollY + el.getBoundingClientRect().top - hdrH - extra;
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
 // Depuis le dashboard athlète : ouvre l'Historique et défile jusqu'au volume par muscle
 function allerVersVolumeAthlete() {
   switchTab('historique');
@@ -4560,7 +4569,7 @@ function allerVersVolumeAthlete() {
     const el = document.getElementById('hist-volume-content');
     const card = el && el.closest('.card');
     const sec = card && card.previousElementSibling;
-    (sec || card || el) && (sec || card || el).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    (sec || card || el) && scrollVersTitre(sec || card || el);
   }, 200);
 }
 
@@ -4568,8 +4577,8 @@ function allerVersRecords() {
   switchTab('historique');
   setTimeout(() => {
     const sec = document.getElementById('dash-records-sec');
-    if (sec && sec.style.display !== 'none') sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    else { const card = document.getElementById('dash-records-card'); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (sec && sec.style.display !== 'none') scrollVersTitre(sec);
+    else { const card = document.getElementById('dash-records-card'); if (card) scrollVersTitre(card); }
   }, 200);
 }
 
@@ -4577,8 +4586,8 @@ function allerVersCardioHist() {
   switchTab('historique');
   setTimeout(() => {
     const sec = document.getElementById('hist-cardio-sec');
-    if (sec && sec.style.display !== 'none') sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    else { const card = document.getElementById('hist-cardio-card'); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (sec && sec.style.display !== 'none') scrollVersTitre(sec);
+    else { const card = document.getElementById('hist-cardio-card'); if (card) scrollVersTitre(card); }
   }, 200);
 }
 
@@ -4628,7 +4637,7 @@ async function demarrerSeance() {
     const sid = document.getElementById('sel-seance-id').value;
     if (sid === 'Libre' || programmeSeance.length === 0) {
       const c = document.getElementById('card-hors-programme');
-      if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (c) scrollVersTitre(c);
     }
   }, 150);
 }
@@ -4734,7 +4743,7 @@ function avancerSuperset(reposVal) {
     // Exercice suivant du même tour : on enchaîne, sans repos
     chargerExoSuperset();
     showToast('➡️ ' + supersetGroupe[supersetIdx].exercice);
-    setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+    setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) scrollVersTitre(c); }, 50);
   } else {
     // Tour terminé
     supersetIdx = 0;
@@ -4747,7 +4756,7 @@ function avancerSuperset(reposVal) {
       showToast('✅ Superset terminé !');
     } else {
       chargerExoSuperset(); // premier exo du tour suivant
-      setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+      setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) scrollVersTitre(c); }, 50);
       if (reposVal > 0) startTimer(reposVal, `Tour ${supersetTour - 1} terminé · repos`);
       else showToast('Tour ' + supersetTour);
     }
@@ -4962,7 +4971,7 @@ function selectionnerExoLibre(exerciceNom) {
   }
 
   majSeriesActuel();
-  setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) scrollVersTitre(c); }, 50);
 }
 
 function retourListeSeance() {
@@ -4972,7 +4981,7 @@ function retourListeSeance() {
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('card-liste-seance').style.display = 'block';
   afficherListeSeance();
-  setTimeout(() => { const c = document.getElementById('card-liste-seance'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  setTimeout(() => { const c = document.getElementById('card-liste-seance'); if (c) scrollVersTitre(c); }, 50);
 }
 
 function toggleExoHorsProgramme(forceOpen) {
@@ -4983,7 +4992,7 @@ function toggleExoHorsProgramme(forceOpen) {
   if (willOpen) {
     // Scroll vers le haut de la liste
     const listeCard = document.getElementById('card-liste-seance');
-    if (listeCard) listeCard.scrollIntoView({behavior: 'smooth', block: 'start'});
+    if (listeCard) scrollVersTitre(listeCard);
     const _re1=document.getElementById('rech-exo'); if(_re1)_re1.value=''; remplirListeExosLibres('');
   }
 }
@@ -6368,7 +6377,7 @@ function afficherProgressionExo() {
   setTimeout(() => {
     const card = el.closest('.card');
     const sec = card && card.previousElementSibling;
-    (sec || card || el).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    scrollVersTitre(sec || card || el);
   }, 50);
 }
 
@@ -6698,7 +6707,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
     document.getElementById('exo-actuel-suggestion').innerHTML = '';
   }
   majSeriesActuel();
-  setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) scrollVersTitre(c); }, 50);
   showToast('✅ ' + exerciceNom + ' sélectionné');
 }
 
@@ -8462,7 +8471,7 @@ function allerVersAgendaSeance() {
   setTimeout(() => {
     const el = document.getElementById('cal-grid');
     const card = el && el.closest('.card');
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (card) scrollVersTitre(card);
   }, 200);
 }
 
@@ -8541,7 +8550,7 @@ function switchModeSeance(mode) {
       di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
     }
     renderCardioFields();
-    setTimeout(() => { if (cardioEl) cardioEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+    setTimeout(() => { if (cardioEl) scrollVersTitre(cardioEl); }, 50);
   }
 }
 
