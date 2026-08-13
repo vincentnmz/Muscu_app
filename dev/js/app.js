@@ -2795,28 +2795,35 @@ function renderCoachOverview(data) {
     recupEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore assez de données.</div>';
   }
 
-  // Progression semaine
+  // Progression semaine — même logique que la vue athlète avec fallback sur comparison
   const progEl = document.getElementById('cd-prog-semaine');
-  if (dash.progression) {
-    const p = dash.progression;
-    const up = p.details.filter(d => d.up).map(d => `
-      <div style="display:flex;justify-content:space-between;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px">
+  const chargeDetailsCd = (dash.progression && dash.progression.details && dash.progression.details.length > 0)
+    ? dash.progression.details
+    : (((data.comparison || {}).j7_vs_j7prec || {}).charge_details || []);
+  const enProgCd   = chargeDetailsCd.filter(d => d.up).length;
+  const enBaisseCd = chargeDetailsCd.filter(d => d.down && !d.up).length;
+  if (chargeDetailsCd.length > 0) {
+    const up = chargeDetailsCd.filter(d => d.up).map(d => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px">
         <span style="font-size:11px;color:#00c96e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
         <span style="font-size:11px;color:#00c96e;white-space:nowrap">${d.variation}</span></div>`).join('');
-    const down = p.details.filter(d => d.down && !d.up).map(d => `
-      <div style="display:flex;justify-content:space-between;padding:5px 8px;background:rgba(255,68,68,0.1);border-radius:6px;margin-bottom:4px">
+    const down = chargeDetailsCd.filter(d => d.down && !d.up).map(d => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(255,68,68,0.1);border-radius:6px;margin-bottom:4px">
         <span style="font-size:11px;color:var(--danger);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
         <span style="font-size:11px;color:var(--danger);white-space:nowrap">${d.variation}</span></div>`).join('');
     progEl.innerHTML = `
-      <div class="v2-pgrid" style="margin-bottom:${(up||down)?'12px':'0'}">
-        <div class="v2-pstat" style="background:var(--good-a)"><div class="pn" style="color:var(--good)">${p.en_progression || 0}</div><div class="pk">exercices<br>en progression</div></div>
-        <div class="v2-pstat" style="background:var(--bad-a)"><div class="pn" style="color:var(--v2-bad)">${p.en_baisse || 0}</div><div class="pk">exercices<br>en baisse</div></div>
+      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;opacity:.7;">Évolution · 7j vs 7j précédents</div>
+      <div class="v2-pgrid" style="margin-bottom:${(enProgCd||enBaisseCd)?'12px':'0'}">
+        <div class="v2-pstat" style="background:var(--good-a)"><div class="pn" style="color:var(--good)">${enProgCd}</div><div class="pk">exercices<br>en progression</div></div>
+        <div class="v2-pstat" style="background:var(--bad-a)"><div class="pn" style="color:var(--v2-bad)">${enBaisseCd}</div><div class="pk">exercices<br>en baisse</div></div>
       </div>
-      ${up ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">En progression</div>${up}` : ''}
-      ${down ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin:8px 0 4px">En baisse</div>${down}` : ''}
-      ${!up && !down ? '<div style="color:var(--text-muted);font-size:13px">Charges stables sur les 7 derniers jours</div>' : ''}`;
+      ${enProgCd   > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">En progression</div>${up}` : ''}
+      ${enBaisseCd > 0 ? `<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;margin:8px 0 4px">En baisse</div>${down}` : ''}
+      ${enProgCd === 0 && enBaisseCd === 0 ? '<div style="color:var(--text-muted);font-size:13px">Charges stables · 7 derniers jours</div>' : ''}`;
   } else {
-    progEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;margin-top:6px">Pas encore de données.</div>';
+    progEl.innerHTML = `
+      <div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;opacity:.7;">Évolution · 7j vs 7j précédents</div>
+      <div style="color:var(--text-muted);font-size:13px;">Pas encore assez de séances pour comparer — il faut au moins une séance dans les 7j précédents.</div>`;
   }
 
   // Charge récente : Variabilité + Charge accumulée (ajout sous le bloc récup)
