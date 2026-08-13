@@ -8552,9 +8552,10 @@ function switchModeSeance(mode) {
   if (btnVal) btnVal.style.display = 'none';
   if (isCardio) {
     var di = document.getElementById('cardio-date');
-    if (di && !di.value) {
-      var t = new Date();
-      di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+    var t = new Date();
+    var todayStr = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+    if (di && (!di.value || di.value < todayStr)) {
+      di.value = todayStr;
     }
     renderCardioFields();
     setTimeout(() => { if (cardioEl) scrollVersTitre(cardioEl); }, 50);
@@ -8974,7 +8975,7 @@ function _filterCardioSessions(days) {
   var cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
   cutoff.setDate(cutoff.getDate() - days);
-  var cutStr = cutoff.toISOString().slice(0, 10);
+  var cutStr = cutoff.getFullYear() + '-' + String(cutoff.getMonth()+1).padStart(2,'0') + '-' + String(cutoff.getDate()).padStart(2,'0');
   return _cardioSessions.filter(function(s) { return s.date >= cutStr; });
 }
 
