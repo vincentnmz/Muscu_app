@@ -4610,6 +4610,129 @@ function switchSubTab(sub) {
   }
 }
 
+// ==================== BROUILLON DE SÉANCE (anti-perte de saisie) ====================
+// Sauvegarde en continu la séance muscu en cours dans localStorage. Sans ça, un
+// rafraîchissement, un changement d'onglet, ou la mise en veille de l'app (l'OS
+// mobile recharge la page en tâche de fond → toutes les variables JS repartent à
+// zéro) fait perdre les séries déjà saisies mais pas encore validées.
+var _brouillonRestaure = false;
+
+function _brouillonKey() {
+  return athlete ? 'muscu_brouillon_' + athlete.athlete_id : null;
+}
+
+// Écrit l'état courant de la saisie. Si aucune série n'est saisie, purge le
+// brouillon (évite de laisser traîner un vieux brouillon après tout effacé).
+function _saveBrouillon() {
+  try {
+    var key = _brouillonKey();
+    if (!key) return;
+    var totalSeries = seance.reduce(function(a, e) { return a + (e.series ? e.series.length : 0); }, 0);
+    if (totalSeries === 0) { localStorage.removeItem(key); return; }
+    var di = document.getElementById('inp-date');
+    var ss = document.getElementById('sel-seance-id');
+    localStorage.setItem(key, JSON.stringify({
+      v: 1,
+      date:              di ? di.value : '',
+      seanceId:          ss ? ss.value : '',
+      seance:            seance,
+      serieNum:          serieNum,
+      programmeSeance:   programmeSeance,
+      indexExoProgramme: indexExoProgramme,
+      lastPerfData:      lastPerfData,
+      exoEnCoursNom:     exoEnCours ? exoEnCours.exerciceNom : null,
+      ts:                Date.now()
+    }));
+  } catch (e) {}
+}
+
+function _effacerBrouillon() {
+  try { var key = _brouillonKey(); if (key) localStorage.removeItem(key); } catch (e) {}
+}
+
+// Restaure un brouillon au chargement (appelé une seule fois, après _appliquerAppData
+// pour disposer de exercicesData / programme / perfs). Réhydrate les variables et
+// réaffiche la liste des exercices avec les séries déjà faites.
+function _restaurerBrouillon() {
+  if (_brouillonRestaure) return;
+  var key = _brouillonKey();
+  if (!key) return;
+  var raw;
+  try { raw = localStorage.getItem(key); } catch (e) { return; }
+  if (!raw) return;
+  var b;
+  try { b = JSON.parse(raw); } catch (e) { _effacerBrouillon(); return; }
+  if (!b || !Array.isArray(b.seance)) { _effacerBrouillon(); return; }
+  var totalSeries = b.seance.reduce(function(a, e) { return a + (e.series ? e.series.length : 0); }, 0);
+  if (totalSeries === 0) { _effacerBrouillon(); return; }
+  _brouillonRestaure = true;
+
+  seance            = b.seance;
+  serieNum          = b.serieNum || 1;
+  programmeSeance   = b.programmeSeance || [];
+  indexExoProgramme = b.indexExoProgramme || 0;
+  lastPerfData      = b.lastPerfData || {};
+  exoEnCours        = null;
+
+  var di = document.getElementById('inp-date');      if (di && b.date) di.value = b.date;
+  var ss = document.getElementById('sel-seance-id'); if (ss && b.seanceId) ss.value = b.seanceId;
+
+  var cardListe = document.getElementById('card-liste-seance');
+  if (cardListe) cardListe.style.display = 'block';
+  var cardExo = document.getElementById('card-exo-actuel');   if (cardExo)  cardExo.style.display  = 'none';
+  var cardHP  = document.getElementById('card-hors-programme'); if (cardHP)  cardHP.style.display   = 'none';
+  try { afficherListeSeance(); } catch (e) {}
+  try { majProgressionSeance(); } catch (e) {}
+  var bv = document.getElementById('btn-valider');
+  if (bv) bv.style.display = 'block';
+
+  _afficherBandeauBrouillon(totalSeries, b.ts);
+}
+
+function _afficherBandeauBrouillon(totalSeries, ts) {
+  var old = document.getElementById('brouillon-banner'); if (old) old.remove();
+  var host = document.getElementById('subtab-saisie');
+  if (!host) return;
+  var quand = '';
+  try {
+    var d = new Date(ts);
+    quand = d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+          + ' ' + String(d.getHours()).padStart(2, '0') + 'h' + String(d.getMinutes()).padStart(2, '0');
+  } catch (e) {}
+  var el = document.createElement('div');
+  el.id = 'brouillon-banner';
+  el.style.cssText = 'display:flex;align-items:center;gap:10px;background:var(--accent-a08);border:1px solid var(--accent-dim);border-radius:12px;padding:11px 13px;margin-bottom:12px;';
+  el.innerHTML =
+      '<span style="font-size:18px;line-height:1">↩️</span>'
+    + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:13px;font-weight:800;color:var(--text)">Séance récupérée</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + totalSeries + ' série' + (totalSeries > 1 ? 's' : '') + ' non enregistrée' + (totalSeries > 1 ? 's' : '') + (quand ? ' · ' + quand : '') + '</div>'
+    + '</div>'
+    + '<button onclick="_abandonnerBrouillon()" style="flex-shrink:0;padding:7px 11px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer">Abandonner</button>';
+  host.insertBefore(el, host.firstChild);
+}
+
+function _abandonnerBrouillon() {
+  if (!confirm('Abandonner cette séance récupérée ? Les séries non enregistrées seront définitivement perdues.')) return;
+  _effacerBrouillon();
+  seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0; programmeSeance = [];
+  var b = document.getElementById('brouillon-banner'); if (b) b.remove();
+  var cardListe = document.getElementById('card-liste-seance');   if (cardListe) cardListe.style.display = 'none';
+  var cardExo   = document.getElementById('card-exo-actuel');     if (cardExo)   cardExo.style.display   = 'none';
+  var cardHP    = document.getElementById('card-hors-programme'); if (cardHP)    cardHP.style.display    = 'none';
+  var bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
+  try { majProgressionSeance(); } catch (e) {}
+  showToast('Séance abandonnée', 'var(--text-muted)');
+}
+
+// Filet de sécurité : au moindre passage en arrière-plan (changement d'onglet,
+// bascule vers une autre appli, fermeture), on fige l'état. Couvre les cas où le
+// navigateur tue la page sans laisser le temps de sauver autrement.
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden') _saveBrouillon();
+});
+window.addEventListener('pagehide', function () { _saveBrouillon(); });
+
 // ==================== SÉANCE GUIDÉE ====================
 async function demarrerSeance() {
   const seanceId = document.getElementById('sel-seance-id').value;
@@ -4621,6 +4744,8 @@ async function demarrerSeance() {
   }
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
+  _effacerBrouillon();
+  { const _b=document.getElementById('brouillon-banner'); if(_b)_b.remove(); }
   document.getElementById('btn-valider').style.display = 'none';
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('card-hors-programme').style.display = 'none';
@@ -4918,6 +5043,7 @@ function supprimerExoLibre(exerciceNom) {
   afficherListeSeance();
   const total = seance.reduce((a,e)=>a+e.series.length,0);
   document.getElementById('btn-valider').style.display = total > 0 ? 'block' : 'none';
+  _saveBrouillon();
 }
 
 // Efface les séries faites d'un exercice du programme (ex. pour corriger une erreur, ou le 2e exo d'un superset)
@@ -4929,6 +5055,7 @@ function resetExoSeance(exerciceNom) {
   afficherListeSeance();
   const total = seance.reduce((a,e)=>a+e.series.length,0);
   document.getElementById('btn-valider').style.display = total > 0 ? 'block' : 'none';
+  _saveBrouillon();
 }
 
 function afficherListeExosLibres() {
@@ -5148,6 +5275,7 @@ function ajouterSerie() {
   majSeriesActuel();
   resetRpeChip();
   document.getElementById('btn-valider').style.display = 'block';
+  _saveBrouillon();
   const reposVal = parseInt(repos);
   if (enSuperset) {
     // Mode superset : on enchaîne l'exercice suivant ; repos seulement à la fin du tour
@@ -5200,6 +5328,7 @@ function supprimerSerie(index) {
   majSeriesActuel();
   const total = seance.reduce((a,e)=>a+e.series.length,0);
   document.getElementById('btn-valider').style.display = total > 0 ? 'block' : 'none';
+  _saveBrouillon();
 }
 
 // ==================== VALIDATION ====================
@@ -5489,6 +5618,10 @@ function _validerFinSeance() {
 }
 
 function afficherRecap() {
+  // La séance est désormais enregistrée (ou mise en file hors-ligne, elle-même
+  // persistée) : le brouillon n'a plus de raison d'être.
+  _effacerBrouillon();
+  { const _b = document.getElementById('brouillon-banner'); if (_b) _b.remove(); }
   const saisieBlock = document.getElementById('saisie-block');
   saisieBlock.style.display = 'none';
   document.getElementById('recap-block').style.display = 'block';
@@ -5599,6 +5732,8 @@ async function nouvelleSeance() {
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   programmeSeance = []; lastPerfData = {};
+  _effacerBrouillon();
+  { const _b = document.getElementById('brouillon-banner'); if (_b) _b.remove(); }
   _validationEnCours = false;   // prêt pour une nouvelle validation
   document.getElementById('recap-block').style.display = 'none';
   document.getElementById('card-liste-seance').style.display = 'none';
@@ -7096,6 +7231,10 @@ function _appliquerAppData(data) {
 
     // ── Cardio — historique détaillé (onglet Progression) ────────────────────
     renderCardioHistorique(data.cardio && data.cardio.history);
+
+    // Récupération d'une séance muscu laissée en cours (anti-perte de saisie).
+    // Une seule fois par chargement de page (garde interne _brouillonRestaure).
+    try { _restaurerBrouillon(); } catch (e) {}
 }
 
 function _showLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'block'; }
