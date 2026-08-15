@@ -7284,7 +7284,15 @@ async function chargerAppData() {
       return;
     }
     try { localStorage.setItem(_cacheKey, JSON.stringify(data)); } catch (_) {}
-    _appliquerAppData(data);
+    // On isole l'AFFICHAGE de la partie réseau : si une donnée fait planter le rendu,
+    // on veut le vrai message JS (et savoir que c'est côté affichage), pas le toast
+    // générique "Erreur de connexion" qui laisse croire à un problème réseau.
+    try {
+      _appliquerAppData(data);
+    } catch (errAff) {
+      console.error("Erreur d'affichage des données:", errAff);
+      showToast("Erreur d'affichage : " + (errAff && errAff.message ? errAff.message : errAff), 'var(--danger)');
+    }
   } catch(e) {
     clearTimeout(tSlow); clearTimeout(tKill);
     if (e.name === 'AbortError') {
