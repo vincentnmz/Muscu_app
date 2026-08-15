@@ -779,6 +779,14 @@ let programmeSeance = [];
 let lastPerfData = {};
 function couleurGroupe(g) { const c = ['#f59f00','#a855f7','#ec4899','#14b8a6']; let h=0; for (let i=0;i<g.length;i++) h=(h*31+g.charCodeAt(i))%c.length; return c[h]; }
 
+// Date locale du jour au format YYYY-MM-DD. À utiliser pour toute date « aujourd'hui »
+// par défaut : toISOString() renvoie l'heure UTC, donc entre minuit et 2h (heure d'été
+// FR) il donne encore la veille → séances datées d'un jour en arrière.
+function _todayLocalStr() {
+  const t = new Date();
+  return t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+}
+
 function normaliserNomExo(s) {
   return String(s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
@@ -4440,8 +4448,8 @@ async function ouvrirApp() {
   if (savedTheme === 'light') document.body.classList.add('light-mode');
   syncThemeUI();
   document.getElementById('header-nom').textContent = 'Accueil';
-  document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('inp-date-poids').value = new Date().toISOString().split('T')[0];
+  document.getElementById('inp-date').value = _todayLocalStr();
+  document.getElementById('inp-date-poids').value = _todayLocalStr();
   document.getElementById('main-container').classList.add('no-pad');
   document.body.classList.add('on-accueil');
 
@@ -5749,7 +5757,7 @@ async function nouvelleSeance() {
   btnValider.disabled = false;
   btnValider.textContent = '✅ Valider la séance';
   document.getElementById('sel-seance-id').value = '';
-  document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('inp-date').value = _todayLocalStr();
   majProgressionSeance();
   window.scrollTo(0,0);
 }
@@ -7266,6 +7274,15 @@ async function chargerAppData() {
     const res = await fetch(_fetchUrl, { signal: ctrl.signal });
     clearTimeout(tSlow); clearTimeout(tKill);
     const data = await res.json();
+    // Réponse d'erreur du serveur (ex. 500 { erreur:... }, ou payload sans historique) :
+    // on affiche le VRAI message et on ne met SURTOUT pas cette erreur en cache
+    // (sinon on servirait une réponse cassée aux chargements suivants).
+    if (!res.ok || (data && data.erreur) || !data || !data.historique) {
+      const msg = (data && data.erreur) ? String(data.erreur) : ('Réponse serveur invalide (HTTP ' + res.status + ')');
+      console.error('getAppData a renvoyé une erreur:', res.status, data);
+      showToast('Erreur serveur : ' + msg + ' — réessaie dans un instant', 'var(--danger)');
+      return;
+    }
     try { localStorage.setItem(_cacheKey, JSON.stringify(data)); } catch (_) {}
     _appliquerAppData(data);
   } catch(e) {
