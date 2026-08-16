@@ -55,7 +55,7 @@ body.coach-active > header { display:none; }
 /* ===== Template : page joueur foot ===== */
 #detail-joueur-body .sub-tabs { margin-bottom:14px; }
 .fjd-rail                     { display:none; }
-#detail-joueur-overlay > div  { max-width:var(--overlay-w); }
+#detail-joueur-overlay > div  { max-width:var(--overlay-w); margin:0 auto; min-height:100%; }
 
 /* ===== Espace coach — conteneur large (data-dense) ===== */
 body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coach-pad); }
