@@ -6879,126 +6879,142 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
 // ==================== CHARGEMENT PRINCIPAL ====================
 
 // Applique un snapshot getAppData à l'UI (cache local OU réseau).
+// Exécute un rendu de façon isolée : si un bloc du tableau de bord plante (donnée
+// mal formée, etc.), on log l'erreur et on continue les autres blocs — un seul
+// widget cassé ne doit plus jamais bloquer tout le chargement de l'app.
+function _safe(label, fn) {
+  try { fn(); } catch (e) { console.error('Rendu « ' + label + ' » a échoué :', e); }
+}
+
 function _appliquerAppData(data) {
   // Stocker les données globalement
   dernierAppData = data;
-    peuplerSeancesProgramme();
+    _safe('seances-programme', () => peuplerSeancesProgramme());
     seancesDates = data.historique.dates_seances || {};
     progressionData = data.historique.progression_par_exo || {};
     tendancesData = data.historique.tendances || null;
 
     // Data-viz dashboard : records perso + heatmap d'activité
-    renderDashboardRecords(data.historique);
-    renderDashboardActivite(data.historique);
+    _safe('records', () => renderDashboardRecords(data.historique));
+    _safe('activite', () => renderDashboardActivite(data.historique));
 
     // Nouveaux blocs Accueil : Contexte + État du jour + Analyse moteur + Alertes
-    try { renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete'); } catch (_) {}
-    renderEtatDuJour(data);
-    renderAnalyseAccueilAthlete(data);
-    renderAlertes(data);
-    majUiPause();
+    _safe('contexte', () => renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete'));
+    _safe('etat-du-jour', () => renderEtatDuJour(data));
+    _safe('analyse-accueil', () => renderAnalyseAccueilAthlete(data));
+    _safe('alertes', () => renderAlertes(data));
+    _safe('pause', () => majUiPause());
 
     // Objectif : bloc Récompenses (paliers + cagnotte auto)
-    renderRecompenses(data);
+    _safe('recompenses', () => renderRecompenses(data));
 
     // Jours de cardio (clés DD/MM/YYYY) → heatmap de régularité (muscu + cardio) + agenda coloré
-    seancesDatesCardio = {};
-    cardioParJour = {};
-    var _cardioHist = (data.cardio && data.cardio.history) || [];
-    _cardioHist.forEach(function(s) {
-      var iso = s && s.date ? String(s.date) : '';
-      if (iso.length < 10) return;
-      var key = iso.slice(8,10) + '/' + iso.slice(5,7) + '/' + iso.slice(0,4);
-      seancesDatesCardio[key] = true;
-      var agg = cardioParJour[key] || (cardioParJour[key] = { n: 0, km: 0, min: 0, kcal: 0, pas: 0, types: {} });
-      agg.n++; agg.km += s.distance || 0; agg.min += s.duree || 0; agg.kcal += s.calories || 0; agg.pas += s.pas || 0;
-      var t = s.type_cardio || 'autre'; agg.types[t] = (agg.types[t] || 0) + 1;
+    _safe('cardio-agg', () => {
+      seancesDatesCardio = {};
+      cardioParJour = {};
+      var _cardioHist = (data.cardio && data.cardio.history) || [];
+      _cardioHist.forEach(function(s) {
+        var iso = s && s.date ? String(s.date) : '';
+        if (iso.length < 10) return;
+        var key = iso.slice(8,10) + '/' + iso.slice(5,7) + '/' + iso.slice(0,4);
+        seancesDatesCardio[key] = true;
+        var agg = cardioParJour[key] || (cardioParJour[key] = { n: 0, km: 0, min: 0, kcal: 0, pas: 0, types: {} });
+        agg.n++; agg.km += s.distance || 0; agg.min += s.duree || 0; agg.kcal += s.calories || 0; agg.pas += s.pas || 0;
+        var t = s.type_cardio || 'autre'; agg.types[t] = (agg.types[t] || 0) + 1;
+      });
     });
 
     // Accueil : heatmap de régularité + streak (renvoie vers l'agenda Séance)
-    renderHeatmapAccueil();
+    _safe('heatmap-accueil', () => renderHeatmapAccueil());
 
     // Détail des séances par date (pour le clic sur l'agenda)
-    chargerSeancesDetail();
+    _safe('seances-detail', () => chargerSeancesDetail());
 
     // Graphique poids
-    afficherGraphiquePoids(data.poids || []);
+    _safe('graph-poids', () => afficherGraphiquePoids(data.poids || []));
 
-    // Objectif
-    majObjectifCard(athlete.objectif);
-    const selObj = document.getElementById('sel-objectif');
-    if (selObj && athlete.objectif) selObj.value = athlete.objectif;
+    // Objectif + régularité
+    _safe('objectif', () => {
+      majObjectifCard(athlete.objectif);
+      const selObj = document.getElementById('sel-objectif');
+      if (selObj && athlete.objectif) selObj.value = athlete.objectif;
 
-    // Régularité dans objectif
-    const regEl = document.getElementById('regularite-content');
-    if (regEl) {
-      const faites2 = data.dashboard.regularite.seances_semaine != null ? data.dashboard.regularite.seances_semaine : (data.dashboard.regularite.seances_j7 || 0);
-      const prevues2 = data.dashboard.regularite.seances_prevues || 0;
-      const manque2 = Math.max(0, prevues2 - faites2);
-      const pct2 = prevues2 > 0 ? Math.min(100, Math.round(faites2/prevues2*100)) : 0;
-      const col2 = manque2 > 0 ? '#ff9500' : '#00a854';
-      regEl.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="font-size:24px;font-weight:800;color:var(--text);">${faites2}<span style="font-size:13px;color:var(--text-muted);font-weight:400;"> / ${prevues2}</span></div>
-          <div style="font-size:13px;font-weight:700;color:${col2};">${manque2 > 0 ? '⚠️ '+manque2+' manquante'+(manque2>1?'s':'') : '✅ Objectif atteint !'}</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:20px;height:7px;">
-          <div style="background:var(--accent);height:100%;width:${pct2}%;border-radius:20px;"></div>
-        </div>`;
-    }
+      const regEl = document.getElementById('regularite-content');
+      if (regEl) {
+        const faites2 = data.dashboard.regularite.seances_semaine != null ? data.dashboard.regularite.seances_semaine : (data.dashboard.regularite.seances_j7 || 0);
+        const prevues2 = data.dashboard.regularite.seances_prevues || 0;
+        const manque2 = Math.max(0, prevues2 - faites2);
+        const pct2 = prevues2 > 0 ? Math.min(100, Math.round(faites2/prevues2*100)) : 0;
+        const col2 = manque2 > 0 ? '#ff9500' : '#00a854';
+        regEl.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:24px;font-weight:800;color:var(--text);">${faites2}<span style="font-size:13px;color:var(--text-muted);font-weight:400;"> / ${prevues2}</span></div>
+            <div style="font-size:13px;font-weight:700;color:${col2};">${manque2 > 0 ? '⚠️ '+manque2+' manquante'+(manque2>1?'s':'') : '✅ Objectif atteint !'}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:20px;height:7px;">
+            <div style="background:var(--accent);height:100%;width:${pct2}%;border-radius:20px;"></div>
+          </div>`;
+      }
+    });
 
     // Mettre à jour le poids depuis Poids_historique
-    if (data.poids && data.poids.length > 0) {
-      const poidsEl = document.getElementById('hist-poids');
-      if (poidsEl) {
-        poidsEl.innerHTML = data.poids.map(p =>
-          `<div class="poids-item"><span>${p.date}</span><span class="poids-val">${p.poids} kg</span></div>`
-        ).join('');
+    _safe('poids', () => {
+      if (data.poids && data.poids.length > 0) {
+        const poidsEl = document.getElementById('hist-poids');
+        if (poidsEl) {
+          poidsEl.innerHTML = data.poids.map(p =>
+            `<div class="poids-item"><span>${p.date}</span><span class="poids-val">${p.poids} kg</span></div>`
+          ).join('');
+        }
+        // Dashboard poids (bloc retiré de l'Accueil — calcul rendu null-safe)
+        const dpoidsEl = document.getElementById('dash-poids');
+        if (dpoidsEl) dpoidsEl.textContent = data.poids[0].poids;
+        if (data.poids.length > 1) {
+          const diff = (data.poids[0].poids - data.poids[1].poids).toFixed(1);
+          const sign = diff > 0 ? '▲' : '▼';
+          const col = diff > 0 ? 'var(--warn)' : 'var(--good)';
+          const evoEl = document.getElementById('dash-poids-evolution');
+          if (evoEl) evoEl.innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)} kg</span> <span style="color:var(--text-muted);font-weight:600;">· ${data.poids.length} mesures</span>`;
+        }
+        renderPoidsSpark(data.poids);
+      } else if (athlete.poids) {
+        const dpoidsEl2 = document.getElementById('dash-poids');
+        if (dpoidsEl2) dpoidsEl2.textContent = athlete.poids;
       }
-      // Dashboard poids (bloc retiré de l'Accueil — calcul rendu null-safe)
-      const dpoidsEl = document.getElementById('dash-poids');
-      if (dpoidsEl) dpoidsEl.textContent = data.poids[0].poids;
-      if (data.poids.length > 1) {
-        const diff = (data.poids[0].poids - data.poids[1].poids).toFixed(1);
-        const sign = diff > 0 ? '▲' : '▼';
-        const col = diff > 0 ? 'var(--warn)' : 'var(--good)';
-        const evoEl = document.getElementById('dash-poids-evolution');
-        if (evoEl) evoEl.innerHTML = `<span style="color:${col}">${sign} ${Math.abs(diff)} kg</span> <span style="color:var(--text-muted);font-weight:600;">· ${data.poids.length} mesures</span>`;
-      }
-      renderPoidsSpark(data.poids);
-    } else if (athlete.poids) {
-      const dpoidsEl2 = document.getElementById('dash-poids');
-      if (dpoidsEl2) dpoidsEl2.textContent = athlete.poids;
-    }
+    });
     // Nom dans le hero
     const heroName = document.getElementById('dash-hero-name');
     if (heroName && athlete && athlete.nom) heroName.textContent = athlete.nom;
 
     // Rendre le calendrier
-    renderCalendrier();
+    _safe('calendrier', () => renderCalendrier());
 
     // Volume par muscle
-    afficherVolumeMuscle(data.historique.volume_semaine || []);
-    renderBilanBalance(data.historique.volume_semaine || []);
+    _safe('volume-muscle', () => afficherVolumeMuscle(data.historique.volume_semaine || []));
+    _safe('bilan-balance', () => renderBilanBalance(data.historique.volume_semaine || []));
 
     // Tendances
-    afficherTendances(4);
-    renderCorrelationBienEtre(data.bien_etre, data.historique.volume_par_jour || {});
+    _safe('tendances', () => afficherTendances(4));
+    _safe('correlation', () => renderCorrelationBienEtre(data.bien_etre, data.historique.volume_par_jour || {}));
 
     // Exercices dropdown historique
-    const exercices = data.historique.exercices || [];
-    const sel = document.getElementById('sel-hist-exercice');
-    if (sel) {
-      sel.innerHTML = '<option value="">— Choisir un exercice —</option>';
-      exercices.forEach(e => {
-        const o = document.createElement('option');
-        o.value = e; o.textContent = e; sel.appendChild(o);
-      });
-    }
+    _safe('exercices-dropdown', () => {
+      const exercices = data.historique.exercices || [];
+      const sel = document.getElementById('sel-hist-exercice');
+      if (sel) {
+        sel.innerHTML = '<option value="">— Choisir un exercice —</option>';
+        exercices.forEach(e => {
+          const o = document.createElement('option');
+          o.value = e; o.textContent = e; sel.appendChild(o);
+        });
+      }
+    });
 
     // =========================================================================
-    // DASHBOARD — lecture directe des 3 moteurs
+    // DASHBOARD — lecture directe des 3 moteurs (bloc isolé : un plantage ici
+    // ne doit pas empêcher le rendu du cardio ni la récupération de brouillon)
     // =========================================================================
+    _safe('dashboard', () => {
     const dash       = data.dashboard;
     const recent     = data.recent     || {};   // Charge récente
     const globalEng  = data.global     || {};   // Historique global
@@ -7248,12 +7264,13 @@ function _appliquerAppData(data) {
     } else {
       nextEl.innerHTML = '<div class="dc-inner" style="background:var(--good);"><div class="dc-ico">✅</div><div class="dc-txt"><div class="dc-v">Toutes les séances faites !</div></div></div>';
     }
+    }); // fin _safe('dashboard')
 
     // ── Cardio — résumé multi-fenêtre ─────────────────────────────────────────
-    renderDashCardio(data.cardio);
+    _safe('dash-cardio', () => renderDashCardio(data.cardio));
 
     // ── Cardio — historique détaillé (onglet Progression) ────────────────────
-    renderCardioHistorique(data.cardio && data.cardio.history);
+    _safe('cardio-historique', () => renderCardioHistorique(data.cardio && data.cardio.history));
 
     // Récupération d'une séance muscu laissée en cours (anti-perte de saisie).
     // Une seule fois par chargement de page (garde interne _brouillonRestaure).
