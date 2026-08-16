@@ -6736,16 +6736,31 @@ function renderCorrelationBienEtre(bienEtreArr, volumeParJour) {
     { key: 'fatigue',  label: 'Fatigue musculaire', badLabel: 'élevée (≥4)', goodLabel: 'faible (≤2)', bad: v => v >= 4, good: v => v <= 2 },
   ];
 
-  const addDay = d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n.toISOString().slice(0,10); };
+  // entry.date arrive en JJ/MM/AAAA (fmtFR côté backend), mais vpj est indexé en
+  // AAAA-MM-JJ. On normalise en ISO AVANT tout calcul : new Date('16/08/2026') est
+  // une date invalide en JS → toISOString() lève "Invalid time value" et faisait
+  // planter tout le chargement dès qu'il y avait ≥5 questionnaires bien-être.
+  const toISO = d => {
+    const s = String(d || '');
+    if (s.indexOf('/') !== -1) { const p = s.split('/'); return p.length === 3 ? p[2] + '-' + p[1].padStart(2,'0') + '-' + p[0].padStart(2,'0') : s.slice(0,10); }
+    return s.slice(0, 10);
+  };
+  const addDay = d => {
+    const n = new Date(toISO(d) + 'T00:00:00');
+    if (isNaN(n.getTime())) return '';
+    n.setDate(n.getDate() + 1);
+    return n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0');
+  };
 
   const rows = DIMS.map(dim => {
     const badVols = [], goodVols = [];
     be.forEach(entry => {
       const val = Number(entry[dim.key]);
       if (!val) return;
-      // Cherche tonnage du lendemain (séance après le questionnaire)
+      // Cherche tonnage du jour même OU du lendemain (séance après le questionnaire)
+      const dSame = toISO(entry.date);
       const dNext = addDay(entry.date);
-      const vol = vpj[dNext] != null ? Number(vpj[dNext]) : (vpj[entry.date] != null ? Number(vpj[entry.date]) : null);
+      const vol = (dNext && vpj[dNext] != null) ? Number(vpj[dNext]) : (vpj[dSame] != null ? Number(vpj[dSame]) : null);
       if (vol == null) return;
       if (dim.bad(val))  badVols.push(vol);
       if (dim.good(val)) goodVols.push(vol);
