@@ -8,14 +8,15 @@
  *
  * Toutes les largeurs de l'app dérivent de DEUX tokens (source unique de vérité)
  * → largeurs cohérentes sur tout le produit, un seul endroit à ajuster :
- *   --app-w    : conteneur athlète / général (1 colonne, plafonné à 720 pour la lecture)
+ *   --app-w    : conteneur athlète / joueur / général (suit l'échelle jusqu'à 1320 desktop)
  *   --coach-w  : conteneur espace coach (data-dense, suit l'échelle jusqu'à 1320)
+ * Sur desktop, toutes les vues sont donc plafonnées à 1320 (même largeur max).
  * Les barres de nav fixes et les overlays s'alignent sur ces mêmes tokens.
  * =========================================================================== */
 
 /* ===== Tokens de largeur responsive (échelle Bootstrap) ===== */
 :root {
-  --app-w:     100%;        /* xs : fluide */
+  --app-w:     100%;        /* xs : fluide — monte jusqu'à 1320 sur desktop */
   --app-pad:   16px 20px;
   --coach-w:   720px;       /* < lg : coach = largeur app */
   --coach-pad: 20px 20px;
@@ -24,9 +25,9 @@
 }
 @media (min-width:576px)  { :root { --app-w:540px;  --auth-w:460px; --overlay-w:540px; } }
 @media (min-width:768px)  { :root { --app-w:720px;  --app-pad:20px 24px; --coach-w:720px; --overlay-w:720px; } }
-@media (min-width:992px)  { :root { --coach-w:960px;  --coach-pad:24px 28px; --overlay-w:900px; } }
-@media (min-width:1200px) { :root { --coach-w:1140px; } }
-@media (min-width:1400px) { :root { --coach-w:1320px; --coach-pad:28px 36px; } }
+@media (min-width:992px)  { :root { --app-w:960px;  --coach-w:960px;  --coach-pad:24px 28px; --overlay-w:900px; } }
+@media (min-width:1200px) { :root { --app-w:1140px; --coach-w:1140px; } }
+@media (min-width:1400px) { :root { --app-w:1320px; --coach-w:1320px; --coach-pad:28px 36px; } }
 
 /* ===== Conteneur principal ===== */
 .container        { width:100%; max-width:var(--app-w); padding:var(--app-pad); margin:0 auto; }
