@@ -1454,12 +1454,12 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   };
   const cfgPoste = POSTE_STATS[d.poste] || null;
   const aggV = (cle,type)=>{ const a = d.match_agg && d.match_agg[cle]; if(!a) return null; return type==='total'?a.total:(type==='total1'?Math.round(a.total*10)/10:a.moy); };
-  const matchKpis = msAgg ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:flex;gap:8px;">
-        ${kpi(msAgg.note_moy!=null?msAgg.note_moy:'—','Note moy.')}
-        ${cfgPoste ? kpi((aggV(cfgPoste.head.cle,cfgPoste.head.type)!=null?aggV(cfgPoste.head.cle,cfgPoste.head.type):'—'), cfgPoste.head.l) : kpi((msAgg.buts||0),'Buts')}
-        ${kpi(msAgg.minutes||0,'Minutes')}
-        ${kpi(msAgg.nb||0,'Matchs')}
-      </div></div>` : '';
+  const matchKpis = msAgg ? `<div class="v2-kpis" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+        <div class="v2-kpi"><div class="kv">${msAgg.note_moy!=null?msAgg.note_moy:'—'}</div><div class="kk">Note moy.</div></div>
+        ${cfgPoste ? `<div class="v2-kpi"><div class="kv">${aggV(cfgPoste.head.cle,cfgPoste.head.type)!=null?aggV(cfgPoste.head.cle,cfgPoste.head.type):'—'}</div><div class="kk">${escapeHtml(cfgPoste.head.l)}</div></div>` : `<div class="v2-kpi"><div class="kv">${msAgg.buts||0}</div><div class="kk">Buts</div></div>`}
+        <div class="v2-kpi"><div class="kv">${msAgg.minutes||0}</div><div class="kk">Minutes</div></div>
+        <div class="v2-kpi"><div class="kv">${msAgg.nb||0}</div><div class="kk">Matchs</div></div>
+      </div>` : '';
 
   // Formulaire de saisie d'un match (coach) — champs adaptés au poste (§6)
   const matchInputs = cfgPoste ? cfgPoste.stats.map(s=>{
@@ -1691,8 +1691,8 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
     <!-- PANEL 0 : PROFIL -->
     <div class="djt-panel" data-i="0">
-      ${analyseCard ? `<div class="v2-sec"><div class="st">Analyse</div></div>${analyseCard}` : ''}
-      <div class="v2-sec"><div class="st">Identité</div></div>
+      ${analyseCard ? `<div class="v2-sec"><div class="st">${ic('activity')}Analyse</div></div>${analyseCard}` : ''}
+      <div class="v2-sec"><div class="st">${ic('note')}Identité</div></div>
       <div class="dash-card" style="padding:4px 14px;margin-bottom:12px;">
         ${dl('Poste', d.poste ? escapeHtml(d.poste) : '—')}
         ${dl('Jambe dominante', d.jambe_dominante ? escapeHtml(d.jambe_dominante) : '—')}
@@ -1704,30 +1704,30 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
         ${dl('Au club depuis', d.date_entree ? escapeHtml(d.date_entree) : '—')}
         ${dl('Antécédents', d.antecedents ? escapeHtml(d.antecedents) : '<span style="color:var(--text-muted);font-weight:600;">aucun</span>')}
       </div>
-      <div class="v2-sec"><div class="st">Objectifs</div></div>
+      <div class="v2-sec"><div class="st">${ic('target')}Objectifs</div></div>
       ${objectifsHtml}
-      <div class="v2-sec"><div class="st">Blessures &amp; réathlé</div></div>
+      <div class="v2-sec"><div class="st">${ic('alert')}Blessures &amp; réathlé</div></div>
       ${blessuresHtml}
     </div>
 
     <!-- PANEL 1 : CHARGE & PHYSIQUE (données réelles) -->
     <div class="djt-panel" data-i="1" style="display:none;">
-      <div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:flex;gap:8px;">
-        ${kpi(acwr!=null?acwr.toFixed(2):'—','ACWR',acwrCol)}
-        ${kpi((d.charge_7j||0).toLocaleString('fr-FR'),'Charge 7j')}
-        ${kpi(wLast.fatigue??'—','Fatigue')}
-        ${kpi(wLast.douleur??'—','Douleur')}
-      </div></div>
+      <div class="v2-kpis" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+        <div class="v2-kpi"><div class="kv" style="color:${acwrCol};">${acwr!=null?acwr.toFixed(2):'—'}</div><div class="kk">ACWR</div></div>
+        <div class="v2-kpi"><div class="kv">${(d.charge_7j||0).toLocaleString('fr-FR')}</div><div class="kk">Charge 7j</div></div>
+        <div class="v2-kpi"><div class="kv">${wLast.fatigue??'—'}</div><div class="kk">Fatigue</div></div>
+        <div class="v2-kpi"><div class="kv">${wLast.douleur??'—'}</div><div class="kk">Douleur</div></div>
+      </div>
       ${bilanForm}
-      ${bienetreCard ? `<div class="v2-sec"><div class="st">Bien-être${cdMode==='athlete'?' · ton point du jour':''}</div></div>${bienetreCard}` : ''}
-      ${novalyzCard ? `<div class="v2-sec"><div class="st">Analyse Novalyz</div></div>${novalyzCard}` : ''}
-      ${gpsCard ? `<div class="v2-sec"><div class="st">Charge externe (GPS) · 7 jours</div></div>${gpsCard}` : ''}
-      <div class="v2-sec"><div class="st">Charge hebdomadaire (UA)</div></div>
+      ${bienetreCard ? `<div class="v2-sec"><div class="st">${ic('gauge')}Bien-être${cdMode==='athlete'?' · ton point du jour':''}</div></div>${bienetreCard}` : ''}
+      ${novalyzCard ? `<div class="v2-sec"><div class="st">${ic('zap')}Analyse Novalyz</div></div>${novalyzCard}` : ''}
+      ${gpsCard ? `<div class="v2-sec"><div class="st">${ic('gauge')}Charge externe (GPS) · 7 jours</div></div>${gpsCard}` : ''}
+      <div class="v2-sec"><div class="st">${ic('barchart')}Charge hebdomadaire (UA)</div></div>
       <div class="dash-card" style="padding:14px 12px 10px;margin-bottom:12px;"><canvas id="canvas-charge-joueur" width="420" height="130" style="width:100%;height:130px;display:block;"></canvas></div>
-      ${kpiFootCard ? `<div class="v2-sec"><div class="st">Charge · monotonie / strain</div></div>${kpiFootCard}` : ''}
-      <div class="v2-sec"><div class="st">Dernières séances</div></div>
+      ${kpiFootCard ? `<div class="v2-sec"><div class="st">${ic('trending')}Charge · monotonie / strain</div></div>${kpiFootCard}` : ''}
+      <div class="v2-sec"><div class="st">${ic('dumbbell')}Dernières séances</div></div>
       ${tblSeances(rows||'<tr><td style="padding:8px;color:var(--text-muted)">Aucune séance</td></tr>')}
-      <div class="v2-sec"><div class="st">Tests physiques</div></div>
+      <div class="v2-sec"><div class="st">${ic('clipboard')}Tests physiques</div></div>
       <div id="detail-tests-body"><div class="loader">Chargement…</div></div>
     </div>
 
@@ -1735,12 +1735,12 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     <div class="djt-panel" data-i="2" style="display:none;">
       ${matchKpis}
       ${matchForm}
-      ${statsMatchHtml ? `<div class="v2-sec"><div class="st">Statistiques${d.poste?' · '+escapeHtml(d.poste):''}</div></div>${statsMatchHtml}` : ''}
-      <div class="v2-sec"><div class="st">Derniers matchs</div></div>
+      ${statsMatchHtml ? `<div class="v2-sec"><div class="st">${ic('barchart')}Statistiques${d.poste?' · '+escapeHtml(d.poste):''}</div></div>${statsMatchHtml}` : ''}
+      <div class="v2-sec"><div class="st">${ic('trophy')}Derniers matchs</div></div>
       ${matchsRich.length ? `<div class="dash-card" style="padding:2px 14px 6px;margin-bottom:12px;">${richMatchRows}</div>`
         : (matchs.length ? tblSeances(matchRows) : soon('Aucun match enregistré. Ajoute une séance de type « match » (ou relance <b>seedDemoFoot()</b>).'))}
-      ${(d.heatmap&&d.heatmap.length) ? `<div class="v2-sec"><div class="st">Heatmap · zones d'activité</div></div><div class="dash-card" style="padding:12px;margin-bottom:12px;">${buildHeat(d.heatmap)}</div>` : ''}
-      ${(cfgPoste && d.match_agg) ? `<div class="v2-sec"><div class="st">Radar technique${d.poste?' · '+escapeHtml(d.poste):''}</div></div><div class="dash-card" style="padding:8px 8px 4px;">${buildRadar()}</div>` : ''}
+      ${(d.heatmap&&d.heatmap.length) ? `<div class="v2-sec"><div class="st">${ic('activity')}Heatmap · zones d'activité</div></div><div class="dash-card" style="padding:12px;margin-bottom:12px;">${buildHeat(d.heatmap)}</div>` : ''}
+      ${(cfgPoste && d.match_agg) ? `<div class="v2-sec"><div class="st">${ic('target')}Radar technique${d.poste?' · '+escapeHtml(d.poste):''}</div></div><div class="dash-card" style="padding:8px 8px 4px;">${buildRadar()}</div>` : ''}
       ${(!d.heatmap||!d.heatmap.length) && !(cfgPoste && d.match_agg) ? soon('Stats de match — relance <b>seedDemoFoot()</b> pour générer les données par poste.') : ''}
     </div>
 
