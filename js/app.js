@@ -4693,6 +4693,11 @@ function switchSubTab(sub) {
 // mobile recharge la page en tâche de fond → toutes les variables JS repartent à
 // zéro) fait perdre les séries déjà saisies mais pas encore validées.
 var _brouillonRestaure = false;
+// Verrou anti-doublon : passe à true dès que la séance est envoyée (récap affiché).
+// Empêche visibilitychange/pagehide de ré-enregistrer un brouillon pour des séries
+// DÉJÀ enregistrées (sinon bandeau « Séance récupérée » fantôme → revalidation → doublon).
+// Remis à false au démarrage d'une nouvelle séance.
+var _seanceEnvoyee = false;
 
 function _brouillonKey() {
   return athlete ? 'muscu_brouillon_' + athlete.athlete_id : null;
@@ -4702,6 +4707,7 @@ function _brouillonKey() {
 // brouillon (évite de laisser traîner un vieux brouillon après tout effacé).
 function _saveBrouillon() {
   try {
+    if (_seanceEnvoyee) return;   // séance déjà envoyée → ne pas recréer de brouillon
     var key = _brouillonKey();
     if (!key) return;
     var totalSeries = seance.reduce(function(a, e) { return a + (e.series ? e.series.length : 0); }, 0);
@@ -4791,6 +4797,7 @@ function _afficherBandeauBrouillon(totalSeries, ts) {
 
 function _abandonnerBrouillon() {
   if (!confirm('Abandonner cette séance récupérée ? Les séries non enregistrées seront définitivement perdues.')) return;
+  _seanceEnvoyee = false;
   _effacerBrouillon();
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0; programmeSeance = [];
   var b = document.getElementById('brouillon-banner'); if (b) b.remove();
@@ -4821,6 +4828,7 @@ async function demarrerSeance() {
   }
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
+  _seanceEnvoyee = false;
   _effacerBrouillon();
   { const _b=document.getElementById('brouillon-banner'); if(_b)_b.remove(); }
   document.getElementById('btn-valider').style.display = 'none';
@@ -5696,7 +5704,9 @@ function _validerFinSeance() {
 
 function afficherRecap() {
   // La séance est désormais enregistrée (ou mise en file hors-ligne, elle-même
-  // persistée) : le brouillon n'a plus de raison d'être.
+  // persistée) : le brouillon n'a plus de raison d'être, et on verrouille toute
+  // ré-écriture (sinon visibilitychange/pagehide recréerait un brouillon fantôme).
+  _seanceEnvoyee = true;
   _effacerBrouillon();
   { const _b = document.getElementById('brouillon-banner'); if (_b) _b.remove(); }
   const saisieBlock = document.getElementById('saisie-block');
@@ -5809,6 +5819,7 @@ async function nouvelleSeance() {
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   programmeSeance = []; lastPerfData = {};
+  _seanceEnvoyee = false;
   _effacerBrouillon();
   { const _b = document.getElementById('brouillon-banner'); if (_b) _b.remove(); }
   _validationEnCours = false;   // prêt pour une nouvelle validation
