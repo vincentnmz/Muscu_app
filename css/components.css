@@ -264,6 +264,9 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .nv-stat--warn   .nv-stat-num { color:var(--warn); }
 .nv-stat--danger .nv-stat-num { color:var(--danger); }
 .nv-stat--tile  { background:var(--surface2); border-radius:var(--radius-sm); padding:9px 8px; }
+.nv-stat--on-accent .nv-stat-num,
+.nv-stat--on-accent .nv-stat-label { color:var(--on-accent); }
+.nv-stat--tile-accent { background:var(--on-accent-a16); border-radius:var(--radius); padding:9px 6px; }
 
 /* ---- Chip / pill : tag, type, statut (remplace border-radius:20px ×49) ---- */
 .nv-chip        { display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-xs); font-weight:var(--fw-bold); padding:3px 10px; border-radius:var(--radius-pill); background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); white-space:nowrap; }
