@@ -6018,7 +6018,8 @@ function renderCalDetail(dateStr, name) {
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <div style="font-size:13px;font-weight:800;color:var(--text);">${dateStr}</div>
         <span style="font-size:10px;font-weight:800;color:#fff;background:var(--good);border-radius:20px;padding:3px 10px;">${name}</span>
-      </div>${stats}</div>`;
+      </div>${stats}
+      ${det ? `<div style="text-align:right;margin-top:9px;"><button onclick="_supprimerSeanceMuscu('${dateStr}','${String(name||'').replace(/'/g,"\\'")}')" style="background:none;border:1px solid var(--border);color:var(--danger);font-size:11px;font-weight:700;cursor:pointer;padding:4px 10px;border-radius:8px;">${ic('trash')} Supprimer la séance</button></div>` : ''}</div>`;
   }
 
   // ── Bloc cardio ──
@@ -6050,6 +6051,32 @@ function renderCalDetail(dateStr, name) {
   }
 
   el.innerHTML = muscuBlock + cardioBlock;
+}
+
+// Suppression d'une séance muscu (depuis le détail de l'agenda). Une séance =
+// toutes les séries d'un type (seance_id) à une date donnée.
+function _supprimerSeanceMuscu(dateStr, seanceId) {
+  if (!athlete) return;
+  if (!confirm('Supprimer la séance « ' + seanceId + ' » du ' + dateStr + ' ?\n\nToutes les séries de cette séance seront définitivement effacées.')) return;
+  _confirmSupprimerSeanceMuscu(dateStr, seanceId);
+}
+async function _confirmSupprimerSeanceMuscu(dateStr, seanceId) {
+  showToast('Suppression…', 'var(--text-muted)');
+  try {
+    const r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'deleteSeance', athlete_id: athlete.athlete_id, date: dateStr, seance_id: seanceId })
+    });
+    const res = await r.json();
+    if (res && res.success) {
+      showToast('Séance supprimée', 'var(--good)');
+      const cd = document.getElementById('cal-detail'); if (cd) cd.innerHTML = '';
+      chargerAppData();
+    } else {
+      showToast('Erreur : ' + ((res && res.error) || 'inconnue'), 'var(--bad)');
+    }
+  } catch (e) { showToast('Erreur réseau', 'var(--bad)'); }
 }
 
 // Détail des séances par date (pour l'agenda) — chargé depuis getSeancesDetail
