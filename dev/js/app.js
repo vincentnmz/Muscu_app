@@ -6032,7 +6032,10 @@ function renderCalDetail(dateStr, name) {
         <div style="font-size:13px;font-weight:800;color:var(--text);">${dateStr}</div>
         <span style="font-size:10px;font-weight:800;color:#fff;background:var(--good);border-radius:20px;padding:3px 10px;">${name}</span>
       </div>${stats}
-      ${det ? `<div style="text-align:right;margin-top:9px;"><button onclick="_supprimerSeanceMuscu('${dateStr}','${String(name||'').replace(/'/g,"\\'")}')" style="background:none;border:1px solid var(--border);color:var(--danger);font-size:11px;font-weight:700;cursor:pointer;padding:4px 10px;border-radius:8px;">${ic('trash')} Supprimer la séance</button></div>` : ''}</div>`;
+      ${det ? `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:9px;">
+        <button onclick="_modifierSeanceMuscu('${dateStr}','${String(name||'').replace(/'/g,"\\'")}')" style="background:var(--surface);border:1px solid var(--border);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;padding:5px 11px;border-radius:8px;">${ic('pencil')} Modifier</button>
+        <button onclick="_supprimerSeanceMuscu('${dateStr}','${String(name||'').replace(/'/g,"\\'")}')" style="background:none;border:1px solid var(--border);color:var(--danger);font-size:11px;font-weight:700;cursor:pointer;padding:5px 11px;border-radius:8px;">${ic('trash')} Supprimer</button>
+      </div>` : ''}</div>`;
   }
 
   // ── Bloc cardio ──
@@ -6092,6 +6095,95 @@ async function _confirmSupprimerSeanceMuscu(dateStr, seanceId) {
   } catch (e) { showToast('Erreur réseau', 'var(--bad)'); }
 }
 
+// ===== Éditeur de séance muscu (modifier / supprimer série par série) =====
+var _editSeanceCtx = null;
+
+function _editSerieRow(exoName, muscle, exoId, s) {
+  function inp(cls, val, step) {
+    return '<input type="number" class="' + cls + '" value="' + (val != null ? val : '') + '" step="' + (step || '1') + '" style="width:100%;box-sizing:border-box;padding:7px 6px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:var(--fs-base);text-align:center;font-family:var(--font);">';
+  }
+  return '<div class="es-row" data-exo="' + escapeHtml(exoName) + '" data-muscle="' + escapeHtml(muscle || '') + '" data-exoid="' + escapeHtml(exoId || '') + '" style="display:grid;grid-template-columns:18px 1fr 1fr 1fr 1fr 26px;gap:6px;align-items:center;margin-bottom:6px;">'
+    + '<span style="font-size:var(--fs-xs);font-weight:800;color:var(--accent);">S</span>'
+    + inp('es-charge', s.charge, '0.5') + inp('es-reps', s.reps, '1') + inp('es-rpe', s.rpe, '0.5') + inp('es-repos', s.repos, '5')
+    + '<button onclick="this.closest(\'.es-row\').remove()" title="Supprimer cette série" style="background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer;padding:0;line-height:1;">✕</button>'
+    + '</div>';
+}
+
+function _modifierSeanceMuscu(dateStr, seanceId) {
+  var det = seancesDetailMap[dateStr];
+  if (!det || !det.exos || !det.exos.length) { showToast('Détail de la séance indisponible', 'var(--warn)'); return; }
+  _editSeanceCtx = { dateStr: dateStr, seanceId: seanceId };
+  var old = document.getElementById('edit-seance-overlay'); if (old) old.remove();
+
+  var body = det.exos.map(function(ex) {
+    var rows = (ex.series || []).map(function(s) { return _editSerieRow(ex.exo || '', ex.muscle, ex.exercice_id, s); }).join('');
+    return '<div class="es-exo" style="margin-bottom:14px;">'
+      + nvLabel(escapeHtml(ex.exo || ''), { style: 'margin-bottom:6px;' })
+      + rows + '</div>';
+  }).join('');
+
+  var ov = document.createElement('div');
+  ov.id = 'edit-seance-overlay';
+  ov.className = 'nv-sheet-overlay';
+  ov.innerHTML =
+    '<div class="nv-sheet" style="max-height:88vh;overflow-y:auto;">'
+    + '<div class="nv-sheet-handle"></div>'
+    + '<div class="nv-sheet-title">Modifier la séance</div>'
+    + '<div class="nv-sheet-sub">' + escapeHtml(seanceId) + ' · ' + escapeHtml(dateStr) + '</div>'
+    + '<div style="display:grid;grid-template-columns:18px 1fr 1fr 1fr 1fr 26px;gap:6px;font-size:var(--fs-2xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:6px;text-align:center;"><span></span><span>Charge</span><span>Reps</span><span>RPE</span><span>Repos</span><span></span></div>'
+    + '<div id="edit-seance-body">' + body + '</div>'
+    + '<div style="font-size:var(--fs-2xs);color:var(--text-subtle);margin:2px 0 6px;">Supprime toutes les séries pour effacer la séance.</div>'
+    + '<div class="nv-sheet-actions"><button class="btn btn-neutral" onclick="_fermerModifSeance()">Annuler</button><button class="btn btn-accent" onclick="_sauvegarderModifSeance()">✅ Enregistrer</button></div>'
+    + '</div>';
+  ov.addEventListener('click', function (e) { if (e.target === ov) _fermerModifSeance(); });
+  document.body.appendChild(ov);
+}
+
+function _fermerModifSeance() {
+  var ov = document.getElementById('edit-seance-overlay'); if (ov) ov.remove();
+  _editSeanceCtx = null;
+}
+
+async function _sauvegarderModifSeance() {
+  if (!_editSeanceCtx || !athlete) return;
+  var dateStr = _editSeanceCtx.dateStr, seanceId = _editSeanceCtx.seanceId;
+  var iso = dateStr.indexOf('/') !== -1 ? dateStr.split('/').reverse().join('-') : dateStr;
+  var rows = [], serieParExo = {};
+  document.querySelectorAll('#edit-seance-body .es-row').forEach(function (row) {
+    var exo = row.getAttribute('data-exo') || '';
+    var muscle = row.getAttribute('data-muscle') || '';
+    var exoId = row.getAttribute('data-exoid') || '';
+    var gv = function (sel) { var el = row.querySelector(sel); return el ? el.value : ''; };
+    var charge = parseFloat(gv('.es-charge')) || 0;
+    var reps = parseInt(gv('.es-reps')) || 0;
+    var rpe = gv('.es-rpe') !== '' ? parseFloat(gv('.es-rpe')) : null;
+    var repos = parseInt(gv('.es-repos')) || 0;
+    if (!reps) return;   // série sans reps → ignorée
+    serieParExo[exo] = (serieParExo[exo] || 0) + 1;
+    var volume = charge > 0 ? charge * reps : reps;
+    rows.push([iso, getNumSemaine(iso), seanceId, athlete.nom, athlete.athlete_id, exo, muscle, exoId, serieParExo[exo], charge, reps, rpe, repos, volume]);
+  });
+  if (rows.length === 0 && !confirm('Aucune série : cela supprimera toute la séance. Continuer ?')) return;
+
+  showToast(rows.length ? 'Enregistrement…' : 'Suppression…', 'var(--text-muted)');
+  try {
+    var r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'updateSeance', athlete_id: athlete.athlete_id, date: iso, seance_id: seanceId, data: rows })
+    });
+    var res = await r.json();
+    if (res && res.success) {
+      showToast(rows.length ? 'Séance modifiée' : 'Séance supprimée', 'var(--good)');
+      _fermerModifSeance();
+      var cd = document.getElementById('cal-detail'); if (cd) cd.innerHTML = '';
+      chargerAppData();
+    } else {
+      showToast('Erreur : ' + ((res && res.error) || 'inconnue'), 'var(--bad)');
+    }
+  } catch (e) { showToast('Erreur réseau', 'var(--bad)'); }
+}
+
 // Détail des séances par date (pour l'agenda) — chargé depuis getSeancesDetail
 let seancesDetailMap = {};
 async function chargerSeancesDetail() {
@@ -6107,7 +6199,7 @@ async function chargerSeancesDetail() {
         if (se.rpe != null) { rpeSum += se.rpe; rpeN++; }
         if (se.charge != null && se.reps != null) tonnage += se.charge * se.reps;
       }));
-      map[s.date] = { seance_id: s.seance_id, nbExos: (s.exos || []).length, nbSeries, rpeMoy: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null, tonnage };
+      map[s.date] = { seance_id: s.seance_id, nbExos: (s.exos || []).length, nbSeries, rpeMoy: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null, tonnage, exos: s.exos || [] };
     });
     seancesDetailMap = map;
   } catch (e) { /* non bloquant */ }
