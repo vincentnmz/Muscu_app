@@ -243,3 +243,92 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .nv-auth-seg button.auth-seg-active { background:var(--accent); color:var(--on-accent); }
 
 .error-msg { color:var(--danger); font-size:13px; text-align:center; margin-top:4px; min-height:20px; }
+
+/* =============================================================================
+ * BIBLIOTHÈQUE DE COMPOSANTS — Phase 1 (charte refonte)
+ * Classes canoniques .nv-*, pilotées UNIQUEMENT par les tokens (aucune valeur
+ * en dur). Elles remplacent, à terme, les composants redéfinis inline dans
+ * app.js (voir Docs/audit-refonte-css.md). Additif : rien ne les utilise encore
+ * → aucun changement visuel tant que la migration (P2/P3) n'a pas commencé.
+ * =========================================================================== */
+
+/* ---- Tuile de stat / KPI : nombre + label (remplace kpi/gpsTile/heroPill/
+ *      chip/dash-stat/v2-kpi/v2-pstat — ~8 variantes inline aujourd'hui) ---- */
+.nv-stat        { display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; min-width:0; }
+.nv-stat-num    { font-size:var(--fs-xl); font-weight:var(--fw-heavy); color:var(--text); line-height:var(--lh-tight); letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
+.nv-stat-label  { font-size:var(--fs-2xs); font-weight:var(--fw-bold); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); line-height:var(--lh-snug); }
+.nv-stat--sm .nv-stat-num { font-size:var(--fs-lg); }
+.nv-stat--lg .nv-stat-num { font-size:var(--fs-2xl); }
+.nv-stat--accent .nv-stat-num { color:var(--accent); }
+.nv-stat--good   .nv-stat-num { color:var(--good); }
+.nv-stat--warn   .nv-stat-num { color:var(--warn); }
+.nv-stat--danger .nv-stat-num { color:var(--danger); }
+.nv-stat--tile  { background:var(--surface2); border-radius:var(--radius-sm); padding:9px 8px; }
+
+/* ---- Chip / pill : tag, type, statut (remplace border-radius:20px ×49) ---- */
+.nv-chip        { display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-xs); font-weight:var(--fw-bold); padding:3px 10px; border-radius:var(--radius-pill); background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); white-space:nowrap; }
+.nv-chip--sm    { font-size:var(--fs-2xs); padding:2px 8px; }
+.nv-chip--accent{ background:var(--accent-a10); border-color:var(--accent-dim); color:var(--accent); }
+.nv-chip--good  { background:var(--good-a); border-color:transparent; color:var(--good); }
+.nv-chip--warn  { background:var(--warn-a); border-color:transparent; color:var(--warn); }
+.nv-chip--danger{ background:var(--bad-a);  border-color:transparent; color:var(--danger); }
+.nv-chip--info  { background:var(--info-a); border-color:transparent; color:var(--info); }
+/* Catégoriels (types cardio) : poser --chip-c, un seul rendu */
+.nv-chip--cat   { color:var(--chip-c,var(--accent)); border-color:var(--chip-c,var(--border)); background:var(--surface2); }
+.nv-chip--run   { --chip-c:var(--c-run); }
+.nv-chip--bike  { --chip-c:var(--c-bike); }
+.nv-chip--walk  { --chip-c:var(--c-walk); }
+.nv-chip--hike  { --chip-c:var(--c-hike); }
+.nv-chip--swim  { --chip-c:var(--c-swim); }
+.nv-chip--other { --chip-c:var(--c-other); }
+
+/* ---- Label de section (remplace text-transform:uppercase ×55 inline) ---- */
+.nv-label       { font-size:var(--fs-xs); font-weight:var(--fw-bold); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); }
+.nv-label--sm   { font-size:var(--fs-2xs); letter-spacing:.05em; }
+.nv-label--accent { color:var(--accent); }
+
+/* ---- Champ de formulaire : label + input ---- */
+.nv-field       { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+.nv-field > label { font-size:var(--fs-xs); font-weight:var(--fw-bold); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); }
+.nv-input       { width:100%; box-sizing:border-box; padding:11px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); background:var(--surface2); color:var(--text); font-size:var(--fs-base); font-family:var(--font); transition:border-color .15s; }
+.nv-input:focus { outline:none; border-color:var(--accent); }
+.nv-input::placeholder { color:var(--text-subtle); }
+
+/* ---- Bottom-sheet / modale de confirmation (remplace les sheets reconstruites
+ *      inline : suppr. cardio, fin de séance, etc.) ---- */
+.nv-sheet-overlay { position:fixed; inset:0; background:rgba(7,11,20,.45); z-index:9000; display:flex; align-items:flex-end; justify-content:center; }
+.nv-sheet       { width:100%; max-width:480px; background:var(--surface); border-radius:var(--radius-lg) var(--radius-lg) 0 0; padding:24px 20px 32px; box-shadow:var(--shadow-lg); animation:pop-in .22s cubic-bezier(.2,.8,.2,1); }
+.nv-sheet-handle{ width:40px; height:4px; background:var(--border); border-radius:var(--radius-pill); margin:0 auto 20px; }
+.nv-sheet-title { font-size:var(--fs-lg); font-weight:var(--fw-heavy); color:var(--text); margin-bottom:6px; }
+.nv-sheet-sub   { font-size:var(--fs-sm); color:var(--text-muted); margin-bottom:20px; }
+.nv-sheet-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
+
+/* ---- Variantes de carte (accent bord gauche) ---- */
+.card--flush    { margin-bottom:0; }
+.card--accent   { border-left:3px solid var(--accent); }
+.card--good     { border-left:3px solid var(--good); }
+.card--warn     { border-left:3px solid var(--warn); }
+.card--danger   { border-left:3px solid var(--danger); }
+
+/* ---- Boutons : variantes manquantes (complètent .btn existant) ---- */
+.btn-ghost      { background:transparent; color:var(--accent); box-shadow:none; }
+.btn-ghost:hover{ background:var(--accent-a08); }
+.btn-danger     { background:var(--danger); color:var(--on-danger); }
+.btn-neutral    { background:var(--surface2); border:1px solid var(--border); color:var(--text); }
+.btn-block      { width:100%; }
+.btn-inline     { width:auto; }
+
+/* ---- Navigation du bas — composant UNIQUE (athlète + coach, rendu identique)
+ *      Remplace .tab-btn (athlète) ET .sub-tab.cc* (coach). Icône + label,
+ *      état actif standardisé (couleur accent + barre indicatrice en haut). ---- */
+.nv-nav          { display:flex; position:fixed; bottom:0; left:0; right:0; max-width:var(--app-w); margin:0 auto; z-index:50;
+                   background:var(--surface); border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom,0px); }
+.nv-navbtn       { position:relative; flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+                   padding:9px 3px; border:none; background:none; cursor:pointer; white-space:nowrap; transition:color .2s;
+                   font-size:var(--fs-2xs); font-weight:var(--fw-bold); color:var(--text-muted); }
+.nv-navbtn .nv-navico      { line-height:1; display:block; }
+.nv-navbtn .nv-navico svg  { width:24px; height:24px; display:block; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.nv-navbtn.active          { color:var(--accent); }
+.nv-navbtn.active::before  { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:26px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }
+.nv-navbtn:disabled        { opacity:.45; cursor:not-allowed; }
+.nv-navbtn .nv-nav-badge   { position:absolute; top:4px; right:calc(50% - 20px); background:var(--danger); color:#fff; font-size:var(--fs-2xs); font-weight:var(--fw-heavy); min-width:15px; height:15px; border-radius:var(--radius-pill); line-height:15px; text-align:center; padding:0 3px; }
