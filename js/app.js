@@ -4748,6 +4748,19 @@ function _restaurerBrouillon() {
   if (!b || !Array.isArray(b.seance)) { _effacerBrouillon(); return; }
   var totalSeries = b.seance.reduce(function(a, e) { return a + (e.series ? e.series.length : 0); }, 0);
   if (totalSeries === 0) { _effacerBrouillon(); return; }
+
+  // Auto-nettoyage : si une séance du MÊME type est déjà enregistrée à cette date
+  // (le brouillon correspond à une séance déjà validée — typiquement un vieux
+  // brouillon d'avant le correctif), on l'efface en silence, sans bandeau trompeur.
+  try {
+    var bd = String(b.date || ''), frDate = bd;
+    if (bd.indexOf('-') !== -1) { var p = bd.split('-'); frDate = p[2] + '/' + p[1] + '/' + p[0]; }
+    var ds = (dernierAppData && dernierAppData.historique && dernierAppData.historique.dates_seances) || {};
+    if (frDate && ds[frDate] && String(ds[frDate]) === String(b.seanceId || '')) {
+      _brouillonRestaure = true; _effacerBrouillon(); return;
+    }
+  } catch (e) {}
+
   _brouillonRestaure = true;
 
   seance            = b.seance;
