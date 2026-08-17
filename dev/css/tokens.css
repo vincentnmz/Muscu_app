@@ -1,7 +1,7 @@
 /* =============================================================================
  * Novalyz · tokens.css — Couche 1 : variables & animations
- * Tout ce qui pilote la charte se trouve ici.
- * Changer une valeur ici = charte mise à jour sans toucher l'HTML.
+ * SOURCE UNIQUE DE VÉRITÉ de la charte. Changer une valeur ici = charte mise à
+ * jour partout, sans toucher au HTML.
  *
  * Palette Novalyz :
  *   Marine profond   #070B14   (texte, référence sombre)
@@ -9,22 +9,38 @@
  *   Blanc polaire    #F9FBFF   (fond clair)
  *   Bleu clair       #5C9AFF   (accent secondaire / dim)
  *   Violet highlight #F47CE6   (mise en évidence)
- *   Sémantiques (vert/orange/rouge) : à préciser en P2.1b
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * TABLE DE CORRESPONDANCE (migration : remplacer le hex en dur par le token)
+ *   Verts   #00c96e #22c55e #16a34a #10b981 #00a854      → var(--good)
+ *   Rouges  #e5484d #ff4444 #dc2626 #dc3545              → var(--danger)
+ *   Ambres  #f59f00 #f5a623                              → var(--warn)
+ *   Bleus   #3b82f6 #2563eb                              → var(--info)
+ *   Gris    #94a3b8 #64748b #475569 → --text-muted · #e2e8f0 → --border
+ *           #f8fafc → --surface2 · #0f172a → --text
+ *   Blancs sur accent  rgba(255,255,255,.12/.16/.28/.35) → var(--on-accent-a*)
+ *   Types cardio  #6366f1 #0ea5e9 #22d3ee #10b981 #8b5cf6 #f59e0b → var(--c-*)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * ÉCHELLE TYPO (28 tailles en dur aujourd'hui → 8 pas cibles) :
+ *   5–10px  → --fs-2xs (10) · 11–11.5 → --fs-xs (11) · 12–12.5 → --fs-sm (12)
+ *   13–13.5 → --fs-base (13) · 14–16 → --fs-md (15) · 17–19 → --fs-lg (18)
+ *   20–24   → --fs-xl (22) · 28–34 → --fs-2xl (28)
  * =========================================================================== */
 
-/* ===== Mode clair — défaut de travail (P2) ===== */
+/* ===== Mode clair — défaut de travail ===== */
 :root {
-  /* Fonds */
+  /* ---- Fonds & surfaces ---- */
   --bg:         #F9FBFF;   /* blanc polaire — page */
   --surface:    #FFFFFF;   /* cartes, éléments élevés */
   --surface2:   #EEF3FF;   /* inputs, surfaces secondaires */
   --border:     #D8E2FF;   /* séparateurs, contours */
 
-  /* Textes */
-  --text:       #070B14;   /* marine profond */
-  --text-muted: #4A5980;   /* slate navy — libellés, placeholders */
+  /* ---- Textes ---- */
+  --text:        #070B14;  /* marine profond */
+  --text-muted:  #4A5980;  /* slate navy — libellés, placeholders */
+  --text-subtle: #8595B8;  /* tertiaire — méta, unités (absorbe les gris slate clairs) */
 
-  /* Marque — bleu électrique */
+  /* ---- Marque — bleu électrique ---- */
   --accent:        #1A5FFF;
   --accent-dim:    #5C9AFF;   /* bleu clair — hover, états dim */
   --accent-strong: #1248D4;   /* plus foncé — états pressé */
@@ -36,78 +52,86 @@
   --accent-a14:    rgba(26,95,255,0.13);
   --accent-a15:    rgba(26,95,255,0.15);
 
-  /* Mise en évidence (violet/magenta) */
+  /* ---- Mise en évidence (violet/magenta) ---- */
   --highlight:   #F47CE6;
   --highlight-a: rgba(244,124,230,0.14);
 
-  /* Statuts sémantiques — provisoires, à confirmer */
-  --success: #00A854;
-  --good:    #00A854;
-  --warn:    #E07800;
+  /* ---- Statuts sémantiques (canoniques — un seul hex par statut) ---- */
+  --good:    #00A854;  --success: var(--good);   --good-a: rgba(0,168,84,.12);   --on-good:   #FFFFFF;
+  --warn:    #E07800;                             --warn-a: rgba(224,120,0,.12);  --on-warn:   #FFFFFF;
+  --danger:  #DC3545;  --bad: var(--danger);      --bad-a:  rgba(220,53,69,.10);  --on-danger: #FFFFFF;
+  --info:    #2563EB;                             --info-a: rgba(37,99,235,.12);  --on-info:   #FFFFFF;
   --caution: #6E7A00;
-  --danger:  #DC3545;
-  --bad:     #D93A3F;
+  --v2-bad:  var(--danger);   /* rétro-compat (ancien nom) */
 
-  /* Indicateurs colorés */
-  --good-a: rgba(0,168,84,.12);
-  --warn-a: rgba(224,120,0,.12);
-  --bad-a:  rgba(220,53,69,.10);
-  --v2-bad: #DC3545;
+  /* ---- Palette catégorielle : types cardio / disciplines ---- */
+  --c-run:   #6366F1;   /* footing */
+  --c-bike:  #0EA5E9;   /* vélo */
+  --c-walk:  #22D3EE;   /* marche */
+  --c-hike:  #10B981;   /* marche inclinée */
+  --c-swim:  #8B5CF6;   /* natation */
+  --c-other: #F59E0B;   /* autre */
 
-  /* Rayons */
-  --radius:      14px;
-  --radius-sm:   9px;
-  --radius-lg:   20px;
-  --radius-pill: 999px;
+  /* ---- Blancs translucides sur fond accent (hero, CTA colorés) ---- */
+  --on-accent-a07: rgba(255,255,255,0.07);
+  --on-accent-a12: rgba(255,255,255,0.12);
+  --on-accent-a16: rgba(255,255,255,0.16);
+  --on-accent-a28: rgba(255,255,255,0.28);
+  --on-accent-a35: rgba(255,255,255,0.35);
 
-  /* Ombres (light mode — teintées marine) */
+  /* ---- Rayons (échelle resserrée) ---- */
+  --radius-xs:   6px;    /* chips serrés, mini-badges */
+  --radius-sm:   9px;    /* inputs, petits boutons */
+  --radius:      14px;   /* base : boutons, cartes internes */
+  --radius-lg:   20px;   /* grandes cartes, bottom-sheets */
+  --radius-pill: 999px;  /* pastilles, chips arrondis */
+
+  /* ---- Ombres (light — teintées marine) ---- */
   --shadow-sm: 0 1px 2px rgba(7,11,20,.06);
   --shadow:    0 6px 20px rgba(7,11,20,.08);
   --shadow-lg: 0 16px 44px rgba(7,11,20,.14);
 
-  /* Espacement (base 4px) */
+  /* ---- Espacement (base 4px) ---- */
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px;
   --sp-5:20px; --sp-6:24px; --sp-8:32px;
 
-  /* Typographie — familles */
+  /* ---- Typographie — familles ---- */
   --font:         'Quicksand', 'Helvetica Neue', Arial, sans-serif;
   --font-heading: 'Michroma', 'Helvetica Neue', Arial, sans-serif;
 
-  /* Typographie — échelle */
-  --text-h1: 36px;
-  --text-h2: 30px;
-  --text-h3: 24px;
-  --text-h4: 20px;
-  --text-h5: 16px;
-  --text-h6: 14px;
+  /* ---- Typographie — échelle resserrée (8 pas, cible de migration) ---- */
+  --fs-2xs:  10px;   /* micro-labels uppercase (unités, ×N, tags) */
+  --fs-xs:   11px;   /* légendes, sous-textes, labels de tuiles */
+  --fs-sm:   12px;   /* texte secondaire */
+  --fs-base: 13px;   /* texte courant UI (défaut) */
+  --fs-md:   15px;   /* accent, inputs, boutons */
+  --fs-lg:   18px;   /* titres de bloc, noms */
+  --fs-xl:   22px;   /* chiffres de stat / KPI */
+  --fs-2xl:  28px;   /* chiffre hero */
+
+  /* ---- Typographie — graisses ---- */
+  --fw-regular: 400;
+  --fw-medium:  600;
+  --fw-bold:    700;
+  --fw-heavy:   800;
+  --fw-black:   900;
+
+  /* ---- Typographie — interlignes ---- */
+  --lh-tight:  1.1;
+  --lh-snug:   1.25;
+  --lh-normal: 1.5;
+
+  /* ---- Anciens tokens de titres (peu utilisés — conservés pour compat) ---- */
+  --text-h1: 36px;  --text-h2: 30px;  --text-h3: 24px;
+  --text-h4: 20px;  --text-h5: 16px;  --text-h6: 14px;
 }
 
-/* ===== Mode sombre — différé à P4 =====
+/* ===== Mode sombre — différé (structure prête, valeurs à confirmer) =====
 body.dark-mode {
-  --bg:         #070B14;
-  --surface:    #0F1525;
-  --surface2:   #182038;
-  --border:     #263050;
-  --text:       #F9FBFF;
-  --text-muted: #8A9ABE;
-
-  --accent:        #1A5FFF;
-  --accent-dim:    #1248D4;
-  --accent-strong: #5C9AFF;
-  --on-accent:     #FFFFFF;
-  --accent-a05:    rgba(26,95,255,0.08);
-  --accent-a08:    rgba(26,95,255,0.11);
-  --accent-a10:    rgba(26,95,255,0.13);
-  --accent-a12:    rgba(26,95,255,0.15);
-  --accent-a14:    rgba(26,95,255,0.17);
-  --accent-a15:    rgba(26,95,255,0.19);
-
-  --highlight:   #F47CE6;
-  --highlight-a: rgba(244,124,230,0.18);
-
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.30);
-  --shadow:    0 6px 20px rgba(0,0,0,.40);
-  --shadow-lg: 0 16px 44px rgba(0,0,0,.55);
+  --bg:#070B14; --surface:#0F1525; --surface2:#182038; --border:#263050;
+  --text:#F9FBFF; --text-muted:#8A9ABE; --text-subtle:#5E6E92;
+  --accent:#1A5FFF; --accent-dim:#1248D4; --accent-strong:#5C9AFF;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.30); --shadow:0 6px 20px rgba(0,0,0,.40); --shadow-lg:0 16px 44px rgba(0,0,0,.55);
 }
 */
 
