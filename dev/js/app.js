@@ -748,6 +748,44 @@ function testInfo(cle) {
 // Helper icône SVG (famille unique, style Lucide) pour les contenus générés en JS
 function ic(name, cls) { return '<svg class="ico' + (cls ? ' ' + cls : '') + '"><use href="#i-' + name + '"/></svg>'; }
 
+// ==================== HELPERS DE COMPOSANTS (charte .nv-*) ====================
+// Générateurs UNIQUES pilotés par css/components.css. Remplacent les fabriques
+// inline dupliquées (kpi/gpsTile/heroPill/chip…). Un seul point de vérité par
+// composant → restyler = éditer les tokens/classes, pas chasser du HTML inline.
+// nvStat(num, label, {size:'sm'|'lg', tone:'accent'|'good'|'warn'|'danger'|'on-accent',
+//                     tile:bool, color:'<css>', class:'…', wrapStyle:'…'})
+function nvStat(num, label, opts) {
+  opts = opts || {};
+  var cls = 'nv-stat';
+  if (opts.size)  cls += ' nv-stat--' + opts.size;
+  if (opts.tone)  cls += ' nv-stat--' + opts.tone;
+  if (opts.tile)  cls += ' nv-stat--tile';
+  if (opts.class) cls += ' ' + opts.class;
+  var ns = opts.color ? ' style="color:' + opts.color + '"' : '';
+  var ws = opts.wrapStyle ? ' style="' + opts.wrapStyle + '"' : '';
+  return '<div class="' + cls + '"' + ws + '>'
+       + '<div class="nv-stat-num"' + ns + '>' + num + '</div>'
+       + '<div class="nv-stat-label">' + label + '</div></div>';
+}
+// nvChip(text, {tone:'good'|'warn'|'danger'|'info'|'accent', cat:'run'|'bike'|…, sm:bool, class:'…'})
+function nvChip(text, opts) {
+  opts = opts || {};
+  var cls = 'nv-chip';
+  if (opts.tone) cls += ' nv-chip--' + opts.tone;
+  if (opts.cat)  cls += ' nv-chip--cat nv-chip--' + opts.cat;
+  if (opts.sm)   cls += ' nv-chip--sm';
+  if (opts.class) cls += ' ' + opts.class;
+  return '<span class="' + cls + '">' + text + '</span>';
+}
+// nvLabel(text, {sm:bool, accent:bool, style:'…'})
+function nvLabel(text, opts) {
+  opts = opts || {};
+  var cls = 'nv-label';
+  if (opts.sm)     cls += ' nv-label--sm';
+  if (opts.accent) cls += ' nv-label--accent';
+  return '<div class="' + cls + '"' + (opts.style ? ' style="' + opts.style + '"' : '') + '>' + text + '</div>';
+}
+
 // Échappe le HTML des contenus fournis par l'utilisateur (anti-XSS) avant injection via innerHTML.
 function escapeHtml(v) {
   if (v === null || v === undefined) return '';
@@ -1323,7 +1361,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const COL = { rouge:'#e5484d', orange:'#f5a623' };
   const acwr = d.acwr;
   const acwrCol = (acwr!=null && acwr>1.5) ? COL.rouge : (acwr!=null && acwr>1.3) ? COL.orange : 'var(--good)';
-  const kpi = (v,l,c)=>`<div style="flex:1;text-align:center;"><div style="font-size:20px;font-weight:800;color:${c||'var(--text)'};font-variant-numeric:tabular-nums;">${v}</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;">${l}</div></div>`;
+  const kpi = (v,l,c)=>nvStat(v, l, { color:(c||''), wrapStyle:'flex:1' });
   const wLast = (d.wellness||[]).slice(-1)[0] || {};
   const seances = d.seances || [];
   const ligneSeance = s=>`
@@ -1588,7 +1626,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
   // Charge externe GPS (§8) — agrégat 7 jours (onglet Charge)
   const gps = d.gps;
-  const gpsTile = (v,l)=>`<div style="text-align:center;"><div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;">${v}</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;">${l}</div></div>`;
+  const gpsTile = (v,l)=>nvStat(v, l);
   const gpsUnit = u=>`<span style="font-size:11px;color:var(--text-muted);"> ${u}</span>`;
   const gpsCard = (gps && gps.n) ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px;">
       ${gpsTile((gps.distance/1000).toFixed(1)+gpsUnit('km'),'Distance')}
@@ -1943,7 +1981,7 @@ async function renderSuiviEquipe() {
   const COL = { rouge: '#e5484d', orange: '#f5a623', vert: '#22c55e' };
 
   // Bandeau équipe
-  const kpi = (n, lbl, col) => `<div style="flex:1;text-align:center;"><div style="font-size:22px;font-weight:800;color:${col||'var(--text)'};font-variant-numeric:tabular-nums;">${n}</div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:2px;">${lbl}</div></div>`;
+  const kpi = (n, lbl, col) => nvStat(n, lbl, { color:(col||''), wrapStyle:'flex:1' });
   const header = `
     <div class="dash-card" style="padding:16px;margin-bottom:12px;">
       <div style="display:flex;gap:8px;">
@@ -2349,7 +2387,7 @@ async function renderCoachSynthese(athletes) {
     const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
     return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${track}" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${size/2} ${size/2})"/></svg>`;
   };
-  const heroPill = (n, label) => `<div style="background:rgba(255,255,255,.16);border-radius:12px;padding:9px 6px;flex:1;text-align:center;"><div style="font-size:17px;font-weight:800;">${n}</div><div style="font-size:8.5px;opacity:.9;text-transform:uppercase;letter-spacing:.04em;margin-top:1px;">${label}</div></div>`;
+  const heroPill = (n, label) => nvStat(n, label, { size:'sm', tone:'on-accent', class:'nv-stat--tile-accent', wrapStyle:'flex:1' });
   const heroHtml = `
     <div style="position:relative;border-radius:20px;padding:18px;overflow:hidden;color:var(--on-accent);background:linear-gradient(135deg,var(--accent),var(--accent-strong));box-shadow:var(--shadow);margin-bottom:16px;">
       <div style="position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);"></div>
@@ -5919,7 +5957,7 @@ function selectCalDay(dateStr, name, el) {
 function renderCalDetail(dateStr, name) {
   const el = document.getElementById('cal-detail');
   if (!el) return;
-  const chip = (v, l) => `<div style="background:var(--surface);border-radius:8px;padding:6px;text-align:center;"><div style="font-size:15px;font-weight:800;color:var(--text);">${v}</div><div style="font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;">${l}</div></div>`;
+  const chip = (v, l) => nvStat(v, l, { size:'sm', tile:true });
 
   // ── Bloc muscu ──
   let muscuBlock = '';
