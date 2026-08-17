@@ -1657,17 +1657,24 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     </div></div>` : '';
 
   body.innerHTML = `
-    <!-- En-tête page joueur (barre sticky avec retour) — même structure que le détail coach muscu -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:5;">
+    <!-- Barre de retour (sticky) -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5;">
       ${cdMode==='athlete'
-        ? `<button onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 9px;cursor:pointer;line-height:1;flex-shrink:0;"><svg class="ico ico-btn"><use href="#i-logout"/></svg></button>`
-        : `<button onclick="fermerDetailJoueurFoot()" title="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:6px 11px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;">‹</button>`}
-      <div class="fjd-ava">${escapeHtml(initiales)}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.nom||'Joueur')}</div>
-        ${d.poste ? `<div style="font-size:12px;color:var(--accent);font-weight:700;">${escapeHtml(d.poste)}</div>` : ''}
+        ? `<button onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 9px;cursor:pointer;line-height:1;flex-shrink:0;"><svg class="ico ico-btn"><use href="#i-logout"/></svg></button>`
+        : `<button onclick="fermerDetailJoueurFoot()" title="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:6px 11px;cursor:pointer;font-size:var(--fs-lg);line-height:1;flex-shrink:0;">‹</button>`}
+      ${nvLabel(cdMode==='athlete' ? 'Ma fiche' : 'Fiche joueur')}
+    </div>
+
+    <!-- HERO — même langage visuel que l'accueil muscu (.v2-hero) -->
+    <div class="v2-hero">
+      <div class="v2-hero-top">
+        <div class="fjd-ava" style="width:64px;height:64px;font-size:var(--fs-xl);border-radius:18px;">${escapeHtml(initiales)}</div>
+        <div style="min-width:0;flex:1;">
+          <div class="v2-hi">${d.poste ? escapeHtml(d.poste) : 'Joueur'}${d.club ? ' · '+escapeHtml(d.club) : ''}</div>
+          <div class="v2-name">${escapeHtml(d.nom||'Joueur')}</div>
+          <div style="margin-top:9px;">${nvChip('<span style="width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;"></span>' + escapeHtml(dispo.t), { tone: _toneFromColor(dispo.c) })}</div>
+        </div>
       </div>
-      ${nvChip('<span style="width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;"></span>' + escapeHtml(dispo.t), { tone: _toneFromColor(dispo.c) })}
     </div>
 
     <!-- Onglets page joueur — composant .sub-tabs de la grille muscu -->
