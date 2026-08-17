@@ -1545,7 +1545,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const buildHeat = zones => {
     if(!zones||!zones.length) return '';
     const cols=6, rows=3, W=340, H=200, cw=W/cols, ch=H/rows;
-    let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;border-radius:10px;background:#0e2419;">`;
+    let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;border-radius:10px;background:#0e2419;max-width:420px;margin:0 auto;">`;
     zones.forEach((v,i)=>{ const c=i%cols, r=Math.floor(i/cols); s+=`<rect x="${(c*cw).toFixed(1)}" y="${(r*ch).toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" fill="${heatCol(v)}" opacity="${(0.12+v/100*0.62).toFixed(2)}"/>`; });
     s+=`<rect x="4" y="4" width="${W-8}" height="${H-8}" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/><line x1="${W/2}" y1="4" x2="${W/2}" y2="${H-4}" stroke="rgba(255,255,255,.35)"/><circle cx="${W/2}" cy="${H/2}" r="24" fill="none" stroke="rgba(255,255,255,.35)"/></svg>`;
     s+=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--text-muted);margin-top:8px;"><span>Faible</span><span style="color:#22c55e">▮</span><span style="color:#eab308">▮</span><span style="color:#f97316">▮</span><span style="color:#ef4444">▮ Forte</span><span style="margin-left:auto">sens du jeu →</span></div>`;
@@ -1559,7 +1559,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     const cx=130, cy=118, R=76;
     const pt=(i,rad)=>{const a=-Math.PI/2+i*2*Math.PI/N;return [cx+rad*Math.cos(a),cy+rad*Math.sin(a)];};
     const poly=(fn,fill,stroke,sw)=>{let p='';for(let i=0;i<N;i++){const nv=Math.max(0,Math.min(100,fn(i)));const q=pt(i,R*nv/100);p+=q[0].toFixed(1)+','+q[1].toFixed(1)+' ';}return `<polygon points="${p}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`;};
-    let s=`<svg viewBox="0 0 260 236" width="100%" height="212">`;
+    let s=`<svg viewBox="0 0 260 236" width="100%" style="max-width:300px;height:auto;display:block;margin:0 auto;">`;
     [0.25,0.5,0.75,1].forEach(f=>{let p='';for(let i=0;i<N;i++){const q=pt(i,R*f);p+=q[0].toFixed(1)+','+q[1].toFixed(1)+' ';}s+=`<polygon points="${p}" fill="none" stroke="rgba(255,255,255,.07)"/>`;});
     for(let i=0;i<N;i++){const q=pt(i,R);s+=`<line x1="${cx}" y1="${cy}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}" stroke="rgba(255,255,255,.07)"/>`;const l=pt(i,R+15);s+=`<text x="${l[0].toFixed(1)}" y="${(l[1]+3).toFixed(1)}" fill="#8ea3c4" font-size="9" text-anchor="middle">${axes[i][1]}</text>`;}
     s+=poly(i=>(axes[i][4]/axes[i][2])*100, 'rgba(142,163,196,.13)', 'rgba(142,163,196,.55)', 1.5);
@@ -1761,9 +1761,13 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     </aside>
     </div><!-- /fjd-body -->`;
 
-  dessinerChargeJoueur(d.charge_hebdo||[]);
+  _chargeJoueurData = d.charge_hebdo || [];
+  dessinerChargeJoueur(_chargeJoueurData);
   renderTestsJoueur(d.athlete_id);
 }
+// Données de la courbe de charge du joueur ouvert — pour redessiner net quand
+// l'onglet Charge (masqué au 1er rendu) devient visible.
+let _chargeJoueurData = [];
 
 // Édition objectifs / blessures (côté coach) — joueur actuellement ouvert
 let cdJoueurCourant = null;
@@ -1815,6 +1819,9 @@ async function cdSaveBilan(){
 function switchDetailJoueurTab(i) {
   document.querySelectorAll('#detail-joueur-body .sub-tab').forEach(b=>b.classList.toggle('active', +b.dataset.i===i));
   document.querySelectorAll('#detail-joueur-body .djt-panel').forEach(p=>{ p.style.display = (+p.dataset.i===i) ? 'block' : 'none'; });
+  // Onglet Charge : le canvas était masqué au 1er rendu (clientWidth=0) → on le
+  // redessine maintenant qu'il est visible, à la bonne largeur (rendu net).
+  if (i === 1) requestAnimationFrame(() => dessinerChargeJoueur(_chargeJoueurData || []));
   if (i === 3) chargerConversationJoueur();
 }
 
@@ -1935,7 +1942,15 @@ function dessinerChargeJoueur(data) {
   const canvas = document.getElementById('canvas-charge-joueur');
   if (!canvas || !data.length) return;
   const ctx = canvas.getContext('2d');
-  const W=canvas.width, H=canvas.height, PAD={t:12,r:10,b:24,l:38};
+  // Buffer dimensionné à la taille réelle affichée × densité écran : sinon le
+  // bitmap fixe (420px) est étiré en CSS 100% → rendu flou sur les vues larges.
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 420;
+  const cssH = canvas.clientHeight || 130;
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);   // on dessine en px CSS, net en HiDPI
+  const W=cssW, H=cssH, PAD={t:12,r:10,b:24,l:38};
   const cW=W-PAD.l-PAD.r, cH=H-PAD.t-PAD.b;
   const maxV=Math.max.apply(null, data.map(d=>d.charge).concat([1]));
   ctx.clearRect(0,0,W,H);
