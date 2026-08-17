@@ -785,6 +785,15 @@ function nvLabel(text, opts) {
   if (opts.accent) cls += ' nv-label--accent';
   return '<div class="' + cls + '"' + (opts.style ? ' style="' + opts.style + '"' : '') + '>' + text + '</div>';
 }
+// Mappe une couleur de statut (hex) sur un ton sémantique de la charte, pour que
+// les pastilles/statuts passent par les tokens au lieu d'une couleur en dur.
+function _toneFromColor(c) {
+  c = String(c || '').toLowerCase();
+  if (/e5484d|dc3545|ef4444|d93a3f|ff4444|dc2626/.test(c)) return 'danger';
+  if (/f5a623|f59f00|e07800|eab308|f97316|ff9500/.test(c)) return 'warn';
+  if (/22c55e|00a854|00c96e|16a34a|10b981/.test(c))        return 'good';
+  return 'accent';
+}
 
 // Échappe le HTML des contenus fournis par l'utilisateur (anti-XSS) avant injection via innerHTML.
 function escapeHtml(v) {
@@ -1658,7 +1667,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
         <div style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.nom||'Joueur')}</div>
         ${d.poste ? `<div style="font-size:12px;color:var(--accent);font-weight:700;">${escapeHtml(d.poste)}</div>` : ''}
       </div>
-      <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:${dispo.c};background:${dispo.c}1a;border:1px solid ${dispo.c}55;border-radius:20px;padding:5px 11px;white-space:nowrap;"><span style="width:8px;height:8px;border-radius:50%;background:${dispo.c};"></span>${dispo.t}</span>
+      ${nvChip('<span style="width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;"></span>' + escapeHtml(dispo.t), { tone: _toneFromColor(dispo.c) })}
     </div>
 
     <!-- Onglets page joueur — composant .sub-tabs de la grille muscu -->
@@ -1745,17 +1754,17 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     <aside class="fjd-rail">
       ${carteContexteHTML(d.contexte, athlete_id, 'foot')}
       <div class="dash-card" style="padding:14px;margin-bottom:12px;">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Disponibilité</div>
-        <div style="display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:${dispo.c};"><span style="width:10px;height:10px;border-radius:50%;background:${dispo.c};"></span>${dispo.t}</div>
+        ${nvLabel('Disponibilité', { sm:true, style:'margin-bottom:8px;' })}
+        <div style="display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-md);font-weight:var(--fw-heavy);color:${dispo.c};"><span style="width:10px;height:10px;border-radius:50%;background:${dispo.c};"></span>${escapeHtml(dispo.t)}</div>
       </div>
       <div class="dash-card" style="padding:14px;margin-bottom:12px;">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px;">Charge</div>
-        <div style="display:flex;align-items:baseline;gap:6px;"><span style="font-size:24px;font-weight:800;color:${acwrCol};">${acwr!=null?acwr.toFixed(2):'—'}</span><span style="font-size:11px;color:var(--text-muted);">ACWR</span></div>
+        ${nvLabel('Charge', { sm:true, style:'margin-bottom:6px;' })}
+        <div style="display:flex;align-items:baseline;gap:6px;"><span style="font-size:var(--fs-xl);font-weight:var(--fw-heavy);color:${acwrCol};">${acwr!=null?acwr.toFixed(2):'—'}</span><span style="font-size:var(--fs-xs);color:var(--text-muted);">ACWR</span></div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Charge 7j : <b style="color:var(--text);">${(d.charge_7j||0).toLocaleString('fr-FR')}</b> UA</div>
       </div>
       <div class="dash-card" style="padding:14px;">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px;">Dernière séance</div>
-        <div style="font-size:15px;font-weight:800;">${(d.seances&&d.seances[0])?d.seances[0].date:'—'}</div>
+        ${nvLabel('Dernière séance', { sm:true, style:'margin-bottom:6px;' })}
+        <div style="font-size:var(--fs-md);font-weight:var(--fw-heavy);">${(d.seances&&d.seances[0])?d.seances[0].date:'—'}</div>
         <div style="font-size:11px;color:var(--text-muted);">${(d.seances&&d.seances[0])?(d.seances[0].type==='match'?'Match':'Entraînement'):''}</div>
       </div>
     </aside>
