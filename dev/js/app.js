@@ -1349,7 +1349,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const ov = document.getElementById('detail-joueur-overlay');
   const body = document.getElementById('detail-joueur-body');
   body.innerHTML = '<div class="loader">Chargement…</div>';
-  ov.style.display = 'block';
+  ov.style.display = 'flex';
   cdJoueurCourant = athlete_id;
   cdMode = mode || 'coach';   // 'coach' (édition) ou 'athlete' (lecture seule, sa propre page)
   let d;
@@ -1779,6 +1779,14 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       </div>
     </aside>
     </div><!-- /fjd-body -->`;
+
+  // La barre d'onglets sort de la zone qui défile pour devenir un enfant flex de
+  // l'overlay (barre du bas fiable, sans position:fixed → évite le bug iOS du
+  // fixed dans un conteneur overflow:auto).
+  try {
+    var _navEl = body.querySelector('.djt-tabs');
+    if (ov && _navEl) ov.appendChild(_navEl);
+  } catch (e) {}
 
   _chargeJoueurData = d.charge_hebdo || [];
   dessinerChargeJoueur(_chargeJoueurData);
