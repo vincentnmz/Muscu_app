@@ -56,8 +56,9 @@ body.coach-active > header { display:none; }
 /* ===== Template : page joueur foot ===== */
 #detail-joueur-body .sub-tabs { margin-bottom:14px; }
 .fjd-rail                     { display:none; }
-/* Vue joueur = vue « joueur/athlète » → même largeur que l'app athlète (--app-w, 720). */
-#detail-joueur-overlay > div  { max-width:var(--app-w); margin:0 auto; min-height:100%; }
+/* Overlay en flex-colonne : la zone .fjd-scroll défile, la barre d'onglets est un
+ * enfant flex en bas (pas de position:fixed → fiable iOS). Largeur = --app-w. */
+.fjd-scroll { flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0; width:100%; max-width:var(--app-w); margin:0 auto; }
 
 /* ===== Espace coach — conteneur large (data-dense) ===== */
 body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coach-pad); }
