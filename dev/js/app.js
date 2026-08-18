@@ -2848,17 +2848,18 @@ function renderCoachOverview(data) {
   if (recupObj) {
     const r = recupObj;
     const sc = r.statut === 'optimal' ? 'var(--good)' : r.statut === 'modere' ? 'var(--warn)' : 'var(--v2-bad)';
+    const scA = r.statut === 'optimal' ? 'var(--good-a)' : r.statut === 'modere' ? 'var(--warn-a)' : 'var(--bad-a)';
     const se = r.statut === 'optimal' ? '💪' : r.statut === 'modere' ? '😮‍💨' : '🥵';
     const sl = r.statut === 'optimal' ? 'Bien récupéré' : r.statut === 'modere' ? 'Fatigue modérée' : 'Fatigue élevée';
     recupEl.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <div style="width:46px;height:46px;border-radius:13px;background:${sc}22;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0">${se}</div>
-        <div style="font-size:16px;font-weight:800;color:${sc}">${sl}</div>
+        <div style="width:46px;height:46px;border-radius:13px;background:${scA};display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0">${se}</div>
+        <div style="font-size:var(--fs-lg);font-weight:800;color:${sc}">${sl}</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color}">${r.rpe_moyen !== null ? r.rpe_moyen : '—'}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
-        <div class="dash-stat"><div class="dash-stat-num" style="color:${dash.tonnage ? ((dash.tonnage.evol_pct != null ? dash.tonnage.evol_pct : dash.tonnage.evol) >= 0 ? '#00c96e' : '#f59f00') : '#aaa'};font-size:15px">${dash.tonnage ? (dash.tonnage.j7 != null ? dash.tonnage.j7 : dash.tonnage.semaine) + 't' : '—'}</div><div class="dash-stat-label">Tonnage 7j</div></div>
-        <div class="dash-stat"><div class="dash-stat-num" style="color:#f5a524;font-size:18px">🔥${dash.streak ? dash.streak.semaines : 0}</div><div class="dash-stat-label">Sem. d'affilée</div></div>
+        <div class="dash-stat"><div class="dash-stat-num" style="color:${dash.tonnage ? ((dash.tonnage.evol_pct != null ? dash.tonnage.evol_pct : dash.tonnage.evol) >= 0 ? 'var(--good)' : 'var(--warn)') : 'var(--text-subtle)'};font-size:15px">${dash.tonnage ? (dash.tonnage.j7 != null ? dash.tonnage.j7 : dash.tonnage.semaine) + 't' : '—'}</div><div class="dash-stat-label">Tonnage 7j</div></div>
+        <div class="dash-stat"><div class="dash-stat-num" style="color:var(--warn);font-size:18px">🔥${dash.streak ? dash.streak.semaines : 0}</div><div class="dash-stat-label">Sem. d'affilée</div></div>
       </div>
       <div style="border-left:3px solid ${sc};background:var(--surface2);border-radius:0 10px 10px 0;padding:9px 11px">
         <div style="font-size:11px;font-weight:700;margin-bottom:3px;color:${sc}">${ic('lightbulb')} Suggestion auto (à valider par toi)</div>
@@ -2866,7 +2867,7 @@ function renderCoachOverview(data) {
         ${(() => {
           const sujetR = r.statut === 'optimal' ? 'récupération' : r.statut === 'modere' ? 'fatigue modérée' : 'fatigue élevée';
           return dejaConseille(sujetR)
-            ? `<div style="margin-top:8px;font-size:12px;color:#00c96e;font-weight:700">✅ Déjà conseillé</div>
+            ? `<div style="margin-top:8px;font-size:12px;color:var(--good);font-weight:700">✅ Déjà conseillé</div>
                <button class="btn-sm btn-outline" style="margin-top:6px" onclick="repondreAlerte('${sujetR}')">${ic('pencil')} Ajouter un autre conseil</button>`
             : `<button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${sujetR}')">${ic('pencil')} En faire un conseil</button>`;
         })()}
@@ -2884,11 +2885,11 @@ function renderCoachOverview(data) {
   const enBaisseCd = chargeDetailsCd.filter(d => d.down && !d.up).length;
   if (chargeDetailsCd.length > 0) {
     const up = chargeDetailsCd.filter(d => d.up).map(d => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(0,201,110,0.1);border-radius:6px;margin-bottom:4px">
-        <span style="font-size:11px;color:#00c96e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
-        <span style="font-size:11px;color:#00c96e;white-space:nowrap">${d.variation}</span></div>`).join('');
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:var(--good-a);border-radius:6px;margin-bottom:4px">
+        <span style="font-size:11px;color:var(--good);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
+        <span style="font-size:11px;color:var(--good);white-space:nowrap">${d.variation}</span></div>`).join('');
     const down = chargeDetailsCd.filter(d => d.down && !d.up).map(d => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:rgba(255,68,68,0.1);border-radius:6px;margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:var(--bad-a);border-radius:6px;margin-bottom:4px">
         <span style="font-size:11px;color:var(--danger);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${d.exercice}</span>
         <span style="font-size:11px;color:var(--danger);white-space:nowrap">${d.variation}</span></div>`).join('');
     progEl.innerHTML = `
@@ -2913,7 +2914,7 @@ function renderCoachOverview(data) {
   if (recupEl && (monotonie7 != null || strain7 != null)) {
     const monotonieStr   = monotonie7 != null ? monotonie7.toFixed(2) : null;
     const strainStr      = strain7 != null ? Math.round(strain7) : null;
-    const monotonieColor = monotonie7 == null ? '#aaa' : monotonie7 > 2 ? '#e5484d' : monotonie7 > 1.5 ? '#f59f00' : '#00c96e';
+    const monotonieColor = monotonie7 == null ? 'var(--text-subtle)' : monotonie7 > 2 ? 'var(--danger)' : monotonie7 > 1.5 ? 'var(--warn)' : 'var(--good)';
     const monotonieLabel = monotonie7 == null ? '' : monotonie7 > 2 ? 'Charge monotone' : monotonie7 > 1.5 ? 'Modérée' : 'Variée';
     const grid = document.createElement('div');
     grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--border);padding-top:10px;margin-top:10px;';
@@ -7354,7 +7355,7 @@ function _appliquerAppData(data) {
     const strain7    = j7.strain;
     const monotonieStr = monotonie7 != null ? monotonie7.toFixed(2) : null;
     const strainStr    = strain7    != null ? Math.round(strain7)   : null;
-    const monotonieColor = monotonie7 == null ? '#aaa' : monotonie7 > 2 ? '#e5484d' : monotonie7 > 1.5 ? '#f59f00' : '#00c96e';
+    const monotonieColor = monotonie7 == null ? 'var(--text-subtle)' : monotonie7 > 2 ? 'var(--danger)' : monotonie7 > 1.5 ? 'var(--warn)' : 'var(--good)';
     const monotonieLabel = monotonie7 == null ? '—' : monotonie7 > 2 ? 'Charge monotone' : monotonie7 > 1.5 ? 'Modérée' : 'Variée';
 
     if (recupStatut) {
