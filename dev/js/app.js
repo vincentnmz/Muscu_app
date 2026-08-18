@@ -1677,12 +1677,12 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       </div>
     </div>
 
-    <!-- Onglets vue joueur : barre du bas sur mobile, onglets en haut sur desktop (.djt-tabs) -->
-    <div class="sub-tabs djt-tabs">
-      <button class="sub-tab active" data-i="0" onclick="switchDetailJoueurTab(0)"><span class="dj-ico">${ic('note')}</span><span>Profil</span></button>
-      <button class="sub-tab" data-i="1" onclick="switchDetailJoueurTab(1)"><span class="dj-ico">${ic('gauge')}</span><span>Charge</span></button>
-      <button class="sub-tab" data-i="2" onclick="switchDetailJoueurTab(2)"><span class="dj-ico">${ic('trophy')}</span><span>Match</span></button>
-      <button class="sub-tab" data-i="3" onclick="switchDetailJoueurTab(3)"><span class="dj-ico">${ic('message')}</span><span>Conversation</span></button>
+    <!-- Onglets page joueur — composant .sub-tabs de la grille muscu -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-i="0" onclick="switchDetailJoueurTab(0)">Profil</button>
+      <button class="sub-tab" data-i="1" onclick="switchDetailJoueurTab(1)">Charge &amp; physique</button>
+      <button class="sub-tab" data-i="2" onclick="switchDetailJoueurTab(2)">Match &amp; technique</button>
+      <button class="sub-tab" data-i="3" onclick="switchDetailJoueurTab(3)">Conversation</button>
     </div>
 
     <!-- Corps en grille (main + rail desktop), comme #cd-body muscu -->
