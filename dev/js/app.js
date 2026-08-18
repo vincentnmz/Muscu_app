@@ -1657,13 +1657,16 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     </div></div>` : '';
 
   body.innerHTML = `
-    <!-- Barre de retour (sticky) -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5;">
-      ${cdMode==='athlete'
-        ? `<button onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 9px;cursor:pointer;line-height:1;flex-shrink:0;"><svg class="ico ico-btn"><use href="#i-logout"/></svg></button>`
-        : `<button onclick="fermerDetailJoueurFoot()" title="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:6px 11px;cursor:pointer;font-size:var(--fs-lg);line-height:1;flex-shrink:0;">‹</button>`}
-      ${nvLabel(cdMode==='athlete' ? 'Ma fiche' : 'Fiche joueur')}
-    </div>
+    <!-- Header — même composant que l'accueil muscu (logo + boutons compte) -->
+    <header style="margin:-14px -16px 14px;">
+      <h1><svg class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use href="#i-dumbbell"/></svg><span>Novalyz</span></h1>
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${cdMode==='athlete'
+          ? `<button onclick="toggleTheme()" title="Thème" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;cursor:pointer;line-height:1;"><svg class="ico"><use href="#i-moon"/></svg></button>
+             <button class="logout-btn" onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion" style="white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`
+          : `<button class="btn-sm btn-outline" onclick="fermerDetailJoueurFoot()" title="Retour" style="padding:8px 12px;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg> Retour</button>`}
+      </div>
+    </header>
 
     <!-- HERO — même langage visuel que l'accueil muscu (.v2-hero) -->
     <div class="v2-hero">
