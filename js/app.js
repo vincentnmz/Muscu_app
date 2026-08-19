@@ -1844,7 +1844,7 @@ async function cdSaveBilan(){
 
 // Onglets de la page joueur (overlay détail)
 function switchDetailJoueurTab(i) {
-  document.querySelectorAll('#detail-joueur-body .sub-tab').forEach(b=>b.classList.toggle('active', +b.dataset.i===i));
+  document.querySelectorAll('#detail-joueur-overlay .sub-tab').forEach(b=>b.classList.toggle('active', +b.dataset.i===i));
   document.querySelectorAll('#detail-joueur-body .djt-panel').forEach(p=>{ p.style.display = (+p.dataset.i===i) ? 'block' : 'none'; });
   // Onglet Charge : le canvas était masqué au 1er rendu (clientWidth=0) → on le
   // redessine maintenant qu'il est visible, à la bonne largeur (rendu net).
@@ -7123,7 +7123,7 @@ function _appliquerAppData(data) {
     _safe('activite', () => renderDashboardActivite(data.historique));
 
     // Nouveaux blocs Accueil : Contexte + État du jour + Analyse moteur + Alertes
-    _safe('contexte', () => renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete'));
+    _safe('contexte', () => renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'dash-contexte', 'athlete', data.pause));
     _safe('etat-du-jour', () => renderEtatDuJour(data));
     _safe('analyse-accueil', () => renderAnalyseAccueilAthlete(data));
     _safe('alertes', () => renderAlertes(data));
@@ -8430,10 +8430,37 @@ function carteContexteHTML(contexte, athlete_id, source) {
     + '</div>' + boutons + '</div>';
 }
 
+// Carte « En vacances » : reflète la pause (mode vacances) posée dans Réglages.
+// La pause et le contexte de performance sont deux mécanismes distincts ; côté
+// Accueil on montre en priorité la pause active pour que l'athlète voie bien
+// que ses dates sont prises en compte (sinon la carte contexte affiche
+// « Saison normale », ce qui donne l'impression que rien n'a été enregistré).
+function carteVacancesHTML(pause) {
+  var col = '#63b3ed';
+  var jours = null;
+  if (pause && pause.fin) {
+    var f = _dateISOtoLocal(pause.fin);
+    if (f) { var t = new Date(); t.setHours(0,0,0,0); jours = Math.max(0, Math.round((f - t) / 86400000)); }
+  }
+  var frDeb = pause && pause.debut ? String(pause.debut).split('-').reverse().join('/') : '';
+  var frFin = pause && pause.fin ? String(pause.fin).split('-').reverse().join('/') : '';
+  var sous = (frDeb ? frDeb : '') + (frFin ? (frDeb ? ' → ' : "jusqu'au ") + frFin : '')
+           + (jours != null ? ' · ' + jours + 'j restants' : '');
+  return '<div class="dash-card" style="padding:14px;margin-bottom:12px;">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Contexte de performance</div>'
+    + '<div style="display:flex;align-items:center;gap:9px;">'
+    + '<span style="width:10px;height:10px;border-radius:50%;background:' + col + ';flex-shrink:0;"></span>'
+    + '<div style="min-width:0;"><div style="font-size:15px;font-weight:800;">🏝️ En vacances</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + escapeHtml(sous || 'Alertes en pause — reprise automatique à la fin.') + '</div></div>'
+    + '</div></div>';
+}
+
 // Rendu dans un conteneur. `source` = vue d'origine (pour le rechargement).
-function renderCarteContexte(contexte, athlete_id, containerId, source) {
+// Si l'athlète est en pause (mode vacances), on affiche la carte vacances.
+function renderCarteContexte(contexte, athlete_id, containerId, source, pause) {
   var el = document.getElementById(containerId);
   if (!el) return;
+  if (pause && estEnPause(pause)) { el.innerHTML = carteVacancesHTML(pause); return; }
   el.innerHTML = carteContexteHTML(contexte, athlete_id, source);
 }
 
