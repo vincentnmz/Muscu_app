@@ -4,7 +4,7 @@
  * jamais mis en cache : ils passent au réseau, et l'app gère le hors-ligne
  * (file d'attente des séances) de son côté.
  */
-const CACHE = 'novalyz-shell-v63';
+const CACHE = 'novalyz-shell-v64';
 const ASSETS = [
   './',
   './index.html',
@@ -56,15 +56,24 @@ self.addEventListener('push', (e) => {
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const target = (e.notification.data && e.notification.data.url) || './';
-  e.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const c of list) {
-        if ('focus' in c) { c.focus(); if ('navigate' in c && target !== './') { try { c.navigate(target); } catch (_) {} } return; }
+  const d = e.notification.data || {};
+  const target = d.target || '';   // ex. 'conversation'
+  e.waitUntil((async () => {
+    const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // App déjà ouverte : on la refocalise et on lui dit quoi ouvrir.
+    for (const c of list) {
+      if ('focus' in c) {
+        try { await c.focus(); } catch (_) {}
+        try { c.postMessage({ type: 'novalyz-notif', target: target }); } catch (_) {}
+        return;
       }
-      if (self.clients.openWindow) return self.clients.openWindow(target);
-    })
-  );
+    }
+    // App fermée : on l'ouvre avec la cible en paramètre (lu au démarrage).
+    if (self.clients.openWindow) {
+      const dest = target ? ('./?notif=' + encodeURIComponent(target)) : './';
+      return self.clients.openWindow(dest);
+    }
+  })());
 });
 
 self.addEventListener('fetch', (e) => {
