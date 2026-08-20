@@ -865,7 +865,22 @@ window.addEventListener('load', async () => {
   // Service worker : rend l'app disponible hors-ligne (salles de sport sans réseau)
   if ('serviceWorker' in navigator) {
     try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
+    // Clic sur une notif alors que l'app est déjà ouverte → le SW nous dit quoi ouvrir.
+    try {
+      navigator.serviceWorker.addEventListener('message', function (e) {
+        var d = e.data || {};
+        if (d.type === 'novalyz-notif') _gererNotifTarget(d.target);
+      });
+    } catch (e) {}
   }
+  // Clic sur une notif alors que l'app était fermée : cible passée en ?notif=…
+  try {
+    var _nq = new URLSearchParams(location.search).get('notif');
+    if (_nq) {
+      _notifPending = _nq;
+      if (history.replaceState) history.replaceState(null, '', location.pathname);
+    }
+  } catch (e) {}
   // Synchronise les séances enregistrées hors-ligne, si connexion revenue
   if (typeof flushSeancesOffline === 'function') { try { flushSeancesOffline(); } catch (e) {} }
   const savedCoach = localStorage.getItem('muscu_coach');
@@ -4517,6 +4532,7 @@ async function ouvrirApp() {
     const st = localStorage.getItem('muscu_theme');
     if (st === 'light') document.body.classList.add('light-mode');
     ouvrirDetailJoueurFoot(athlete.athlete_id, 'athlete');
+    if (_notifPending) { var _tf = _notifPending; _notifPending = null; setTimeout(function () { _gererNotifTarget(_tf); }, 700); }
     return;
   }
   document.getElementById('view-app').classList.add('active');
@@ -4543,6 +4559,7 @@ async function ouvrirApp() {
   const _re1=document.getElementById('rech-exo'); if(_re1)_re1.value=''; remplirListeExosLibres('');
   chargerAppData(); // Un seul appel pour tout
   chargerMessagesCoach(); // Messages du coach
+  if (_notifPending) { var _tm = _notifPending; _notifPending = null; setTimeout(function () { _gererNotifTarget(_tm); }, 500); }
 }
 
 function switchAuthMode(mode) {
@@ -8912,6 +8929,29 @@ async function testerNotifications() {
   } catch (e) {
     if (diag) { diag.style.color = 'var(--danger)'; diag.textContent = '❌ Erreur réseau pendant le test.'; }
   }
+}
+
+// Cible d'ouverture demandée par une notif reçue avant que l'app soit prête
+// (clic sur notif app fermée). Consommée à la fin de la connexion athlète.
+var _notifPending = null;
+
+// Ouvre la conversation à la suite d'un clic sur une notif de message.
+function _ouvrirConversationNotif() {
+  // Joueur foot : overlay ouvert → onglet Conversation (index 3).
+  var ov = document.getElementById('detail-joueur-overlay');
+  if (ov && ov.style.display && ov.style.display !== 'none' && typeof switchDetailJoueurTab === 'function') {
+    switchDetailJoueurTab(3);
+    return;
+  }
+  // Athlète muscu : onglet Conversation.
+  if (typeof switchTab === 'function' && document.getElementById('tab-conseils')) {
+    switchTab('conseils');
+  }
+}
+
+function _gererNotifTarget(target) {
+  if (!target) return;
+  if (target === 'conversation') _ouvrirConversationNotif();
 }
 
 function renderAlertes(data) {
