@@ -4,7 +4,7 @@
  * jamais mis en cache : ils passent au réseau, et l'app gère le hors-ligne
  * (file d'attente des séances) de son côté.
  */
-const CACHE = 'novalyz-shell-v59';
+const CACHE = 'novalyz-shell-v60';
 const ASSETS = [
   './',
   './index.html',
@@ -31,6 +31,39 @@ self.addEventListener('activate', (e) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+  );
+});
+
+/* ===== Notifications push (Étape A : messages) =============================
+ * Le backend (Supabase) envoie un payload JSON { title, body, url, tag }.
+ * On affiche la notification ; au clic, on ouvre/refocalise l'app. */
+self.addEventListener('push', (e) => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (_) {
+    try { data = { body: e.data ? e.data.text() : '' }; } catch (__) { data = {}; }
+  }
+  const title = data.title || 'Novalyz';
+  const options = {
+    body: data.body || '',
+    icon: './logo novalyz.png',
+    badge: './logo novalyz.png',
+    tag: data.tag || 'novalyz-msg',
+    renotify: true,
+    data: { url: data.url || './' }
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const target = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ('focus' in c) { c.focus(); if ('navigate' in c && target !== './') { try { c.navigate(target); } catch (_) {} } return; }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    })
   );
 });
 

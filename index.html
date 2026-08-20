@@ -1023,6 +1023,18 @@
         </div>
       </div>
 
+      <!-- Notifications push -->
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-bell"/></svg>Notifications</h2></div>
+      <div class="card" id="push-card" style="display:none;">
+        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Reçois une notification sur ton téléphone quand ton coach t'envoie un message.</div>
+        <div id="push-statut" style="display:none;font-size:13px;font-weight:700;margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;">
+          <button id="push-btn-on" onclick="activerNotifications()" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Activer les notifications</button>
+          <button id="push-btn-off" onclick="desactiverNotifications()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">Désactiver</button>
+        </div>
+        <div id="push-hint" style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.4;"></div>
+      </div>
+
       <!-- Mon compte -->
       <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Mon compte</h2></div>
       <div class="card">
