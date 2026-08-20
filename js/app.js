@@ -7128,6 +7128,7 @@ function _appliquerAppData(data) {
     _safe('analyse-accueil', () => renderAnalyseAccueilAthlete(data));
     _safe('alertes', () => renderAlertes(data));
     _safe('pause', () => majUiPause());
+    _safe('push', () => majUiPush());
 
     // Objectif : bloc Récompenses (paliers + cagnotte auto)
     _safe('recompenses', () => renderRecompenses(data));
@@ -8752,6 +8753,126 @@ async function annulerPause() {
     majUiPause();
     showToast('Pause annulée');
   } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+}
+
+// ===== Notifications push (Étape A : messages) =============================
+// Clé publique VAPID (l'app server est identifié côté backend par la clé privée,
+// stockée dans les secrets Supabase). Publique = pas secrète.
+const NOVALYZ_VAPID_PUBLIC = 'BIzG073IKmX56aYIpl1JPg-od65mAxCYhQ5r7SkgH0h02UAPBFw8Vi9_mmcAXnIJ7Xo3KS77HUr4ALXo6DU38LA';
+
+function _urlB64ToUint8(base64) {
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+// true si le navigateur peut faire du push (et, sur iOS, seulement en PWA installée)
+function _pushSupporte() {
+  return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+}
+function _estIOS() { return /iP(hone|ad|od)/.test(navigator.userAgent); }
+function _estInstalle() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+// Met à jour la carte Réglages > Notifications selon l'état réel de l'abonnement.
+async function majUiPush() {
+  const card = document.getElementById('push-card');
+  const stat = document.getElementById('push-statut');
+  const bOn  = document.getElementById('push-btn-on');
+  const bOff = document.getElementById('push-btn-off');
+  const hint = document.getElementById('push-hint');
+  if (!card) return;
+  card.style.display = 'block';
+
+  if (!_pushSupporte()) {
+    if (bOn) bOn.style.display = 'none';
+    if (bOff) bOff.style.display = 'none';
+    if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--text-muted)'; stat.textContent = 'Non disponible sur ce navigateur.'; }
+    if (hint) hint.textContent = '';
+    return;
+  }
+  // iOS : le push n'existe que si l'app est ajoutée à l'écran d'accueil.
+  if (_estIOS() && !_estInstalle()) {
+    if (bOn) bOn.style.display = 'none';
+    if (bOff) bOff.style.display = 'none';
+    if (stat) { stat.style.display = 'none'; }
+    if (hint) hint.innerHTML = '📲 Sur iPhone, ajoute d\'abord l\'app à ton écran d\'accueil (bouton Partager → « Sur l\'écran d\'accueil »), puis rouvre-la depuis l\'icône pour activer les notifications.';
+    return;
+  }
+
+  let sub = null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    sub = await reg.pushManager.getSubscription();
+  } catch (_) {}
+  const actif = !!sub && Notification.permission === 'granted';
+
+  if (actif) {
+    if (bOn) bOn.style.display = 'none';
+    if (bOff) bOff.style.display = 'inline-block';
+    if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '🔔 Notifications activées'; }
+    if (hint) hint.textContent = '';
+  } else {
+    if (bOn) { bOn.style.display = 'inline-block'; bOn.textContent = 'Activer les notifications'; }
+    if (bOff) bOff.style.display = 'none';
+    if (stat) stat.style.display = 'none';
+    if (hint) hint.textContent = (Notification.permission === 'denied')
+      ? 'Les notifications sont bloquées dans les réglages de ton navigateur. Autorise-les pour Novalyz puis reviens ici.'
+      : '';
+  }
+}
+
+async function activerNotifications() {
+  if (!athlete) { showToast('Connecte-toi d\'abord'); return; }
+  if (!_pushSupporte()) { showToast('Non disponible sur ce navigateur'); return; }
+  if (_estIOS() && !_estInstalle()) { majUiPush(); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { showToast('⚠️ Autorisation refusée', '#f59f00'); majUiPush(); return; }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlB64ToUint8(NOVALYZ_VAPID_PUBLIC),
+      });
+    }
+    const raw = sub.toJSON();
+    await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'savePushSub', athlete_id: athlete.athlete_id,
+        endpoint: sub.endpoint, p256dh: raw.keys && raw.keys.p256dh, auth: raw.keys && raw.keys.auth,
+        user_agent: navigator.userAgent,
+      }),
+    });
+    showToast('🔔 Notifications activées');
+    majUiPush();
+  } catch (e) {
+    showToast('❌ Impossible d\'activer', '#ff4444');
+    majUiPush();
+  }
+}
+
+async function desactiverNotifications() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      const endpoint = sub.endpoint;
+      try { await sub.unsubscribe(); } catch (_) {}
+      await fetch(SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'deletePushSub', endpoint }),
+      });
+    }
+    showToast('Notifications désactivées');
+    majUiPush();
+  } catch (e) { showToast('❌ Erreur', '#ff4444'); majUiPush(); }
 }
 
 function renderAlertes(data) {
