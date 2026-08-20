@@ -8825,7 +8825,9 @@ async function majUiPush() {
   } else {
     if (bOn) { bOn.style.display = 'inline-block'; bOn.textContent = 'Activer les notifications'; }
     if (bOff) bOff.style.display = 'none';
-    if (bTest) bTest.style.display = 'none';
+    // Le test interroge le serveur par compte : on le laisse accessible même
+    // si l'abonnement local semble inactif (utile pour diagnostiquer).
+    if (bTest) bTest.style.display = 'block';
     if (stat) stat.style.display = 'none';
     if (hint) hint.textContent = (Notification.permission === 'denied')
       ? 'Les notifications sont bloquées dans les réglages de ton navigateur. Autorise-les pour Novalyz puis reviens ici.'
