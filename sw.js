@@ -4,7 +4,7 @@
  * jamais mis en cache : ils passent au réseau, et l'app gère le hors-ligne
  * (file d'attente des séances) de son côté.
  */
-const CACHE = 'novalyz-shell-v64';
+const CACHE = 'novalyz-shell-v65';
 const ASSETS = [
   './',
   './index.html',
@@ -35,8 +35,8 @@ self.addEventListener('activate', (e) => {
 });
 
 /* ===== Notifications push (Étape A : messages) =============================
- * Le backend (Supabase) envoie un payload JSON { title, body, url, tag }.
- * On affiche la notification ; au clic, on ouvre/refocalise l'app. */
+ * Le backend (Supabase) envoie un payload JSON { title, body, tag, target }.
+ * On affiche la notification ; au clic, on ouvre l'app sur la bonne cible. */
 self.addEventListener('push', (e) => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (_) {
@@ -49,7 +49,8 @@ self.addEventListener('push', (e) => {
     badge: './logo novalyz.png',
     tag: data.tag || 'novalyz-msg',
     renotify: true,
-    data: { url: data.url || './' }
+    // On conserve la cible (ex. 'conversation') pour le clic (notificationclick).
+    data: { url: data.url || './', target: data.target || '' }
   };
   e.waitUntil(self.registration.showNotification(title, options));
 });
