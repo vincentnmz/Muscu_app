@@ -865,15 +865,24 @@ window.addEventListener('load', async () => {
   // Service worker : rend l'app disponible hors-ligne (salles de sport sans réseau)
   if ('serviceWorker' in navigator) {
     try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
-    // Clic sur une notif alors que l'app est déjà ouverte → le SW nous dit quoi ouvrir.
+    // Clic sur une notif alors que l'app est déjà ouverte → le SW nous demande
+    // de relire la cible déposée dans le cache.
     try {
       navigator.serviceWorker.addEventListener('message', function (e) {
         var d = e.data || {};
-        if (d.type === 'novalyz-notif') _gererNotifTarget(d.target);
+        if (d.type === 'novalyz-notif-check') _checkNotifCache();
       });
     } catch (e) {}
   }
+  // iOS relance/ramène l'app au premier plan sans forcément recharger la page :
+  // on revérifie la cible à chaque retour au premier plan.
+  try {
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) _checkNotifCache();
+    });
+  } catch (e) {}
   // Clic sur une notif alors que l'app était fermée : cible passée en ?notif=…
+  // (Android/desktop) ou déposée dans un cache par le SW (iOS, params ignorés).
   try {
     var _nq = new URLSearchParams(location.search).get('notif');
     if (_nq) {
@@ -881,6 +890,7 @@ window.addEventListener('load', async () => {
       if (history.replaceState) history.replaceState(null, '', location.pathname);
     }
   } catch (e) {}
+  _checkNotifCache();
   // Synchronise les séances enregistrées hors-ligne, si connexion revenue
   if (typeof flushSeancesOffline === 'function') { try { flushSeancesOffline(); } catch (e) {} }
   const savedCoach = localStorage.getItem('muscu_coach');
@@ -4532,7 +4542,7 @@ async function ouvrirApp() {
     const st = localStorage.getItem('muscu_theme');
     if (st === 'light') document.body.classList.add('light-mode');
     ouvrirDetailJoueurFoot(athlete.athlete_id, 'athlete');
-    if (_notifPending) { var _tf = _notifPending; _notifPending = null; setTimeout(function () { _gererNotifTarget(_tf); }, 700); }
+    _consommerNotifPending();
     return;
   }
   document.getElementById('view-app').classList.add('active');
@@ -4559,7 +4569,7 @@ async function ouvrirApp() {
   const _re1=document.getElementById('rech-exo'); if(_re1)_re1.value=''; remplirListeExosLibres('');
   chargerAppData(); // Un seul appel pour tout
   chargerMessagesCoach(); // Messages du coach
-  if (_notifPending) { var _tm = _notifPending; _notifPending = null; setTimeout(function () { _gererNotifTarget(_tm); }, 500); }
+  _consommerNotifPending();
 }
 
 function switchAuthMode(mode) {
@@ -8952,6 +8962,36 @@ function _ouvrirConversationNotif() {
 function _gererNotifTarget(target) {
   if (!target) return;
   if (target === 'conversation') _ouvrirConversationNotif();
+}
+
+// Consomme la cible en attente, mais seulement une fois l'athlète connecté
+// (sinon on garde _notifPending et la connexion la rejouera).
+function _consommerNotifPending() {
+  if (!_notifPending) return;
+  if (typeof athlete === 'undefined' || !athlete) return;
+  var t = _notifPending; _notifPending = null;
+  setTimeout(function () { _gererNotifTarget(t); }, 500);
+}
+
+// Lit (et vide) la cible déposée par le SW dans le cache 'novalyz-notif'.
+// Appelée au démarrage, au retour au premier plan, et sur ping du SW.
+function _checkNotifCache() {
+  try {
+    if (!('caches' in window)) return;
+    caches.open('novalyz-notif').then(function (c) {
+      c.match('pending-target').then(function (r) {
+        if (!r) return;
+        r.text().then(function (t) {
+          try { c.delete('pending-target'); } catch (e) {}
+          if (t) {
+            _notifPending = t;
+            if (typeof showToast === 'function') showToast('🔔 Ouverture : ' + t);  // diag (temporaire)
+            _consommerNotifPending();
+          }
+        });
+      });
+    }).catch(function () {});
+  } catch (e) {}
 }
 
 function renderAlertes(data) {
