@@ -9095,8 +9095,11 @@ async function synchroniserGoogleHealth() {
     var j = await resp.json();
     if (j && j.success) {
       var n = j.imported || 0;
-      if (info) { info.style.color = 'var(--good)'; info.textContent = '✅ ' + n + ' activité' + (n > 1 ? 's' : '') + ' importée' + (n > 1 ? 's' : '') + ' dans le bloc cardio.'; }
-      showToast('⌚ ' + n + ' activité' + (n > 1 ? 's' : '') + ' importée' + (n > 1 ? 's' : ''));
+      var ns = j.stepsImported || 0;
+      var msg = '✅ ' + n + ' activité' + (n > 1 ? 's' : '') + ' + ' + ns + ' jour' + (ns > 1 ? 's' : '') + ' de pas importé' + (ns > 1 ? 's' : '') + '.';
+      if (j.stepsError) msg += ' ⚠️ pas : ' + j.stepsError;
+      if (info) { info.style.color = j.stepsError ? 'var(--warn)' : 'var(--good)'; info.textContent = msg; }
+      showToast('⌚ ' + n + ' activité' + (n > 1 ? 's' : '') + ' · ' + ns + ' j de pas');
       try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {}
     } else {
       if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Échec' + (j && j.error ? ' : ' + j.error : '') + '.'; }
