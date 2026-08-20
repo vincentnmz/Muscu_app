@@ -9062,37 +9062,46 @@ async function majUiGoogleHealth() {
       body: JSON.stringify({ action: 'googleHealthStatus', athlete_id: athlete.athlete_id }),
     });
     var j = await resp.json();
-    var bTest = document.getElementById('gh-btn-test');
+    var bSync = document.getElementById('gh-btn-sync');
     if (j && j.connected) {
       if (bOn) bOn.style.display = 'none';
       if (bOff) bOff.style.display = 'inline-block';
-      if (bTest) bTest.style.display = 'block';
+      if (bSync) bSync.style.display = 'block';
       if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '⌚ Montre connectée'; }
     } else {
       if (bOn) bOn.style.display = 'inline-block';
       if (bOff) bOff.style.display = 'none';
-      if (bTest) bTest.style.display = 'none';
+      if (bSync) bSync.style.display = 'none';
       if (stat) stat.style.display = 'none';
     }
   } catch (e) {}
 }
 
-// Explorateur temporaire : affiche le JSON brut des activités récupérées, pour
-// caler l'affichage cardio sur la vraie structure de l'API Health.
-async function testerRecupGoogleHealth() {
+// Importe les activités de la montre dans le bloc cardio, puis recharge.
+async function synchroniserGoogleHealth() {
   if (!athlete) return;
-  var out = document.getElementById('gh-probe');
-  if (out) { out.style.display = 'block'; out.value = '⏳ Récupération…'; }
+  var info = document.getElementById('gh-sync-info');
+  var btn = document.getElementById('gh-btn-sync');
+  if (info) { info.style.display = 'block'; info.style.color = 'var(--text-muted)'; info.textContent = '⏳ Synchronisation en cours…'; }
+  if (btn) btn.disabled = true;
   try {
     var resp = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthProbe', athlete_id: athlete.athlete_id, dataType: 'exercise' }),
+      body: JSON.stringify({ action: 'googleHealthSync', athlete_id: athlete.athlete_id }),
     });
     var j = await resp.json();
-    if (out) out.value = JSON.stringify(j, null, 2);
+    if (j && j.success) {
+      var n = j.imported || 0;
+      if (info) { info.style.color = 'var(--good)'; info.textContent = '✅ ' + n + ' activité' + (n > 1 ? 's' : '') + ' importée' + (n > 1 ? 's' : '') + ' dans le bloc cardio.'; }
+      showToast('⌚ ' + n + ' activité' + (n > 1 ? 's' : '') + ' importée' + (n > 1 ? 's' : ''));
+      try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {}
+    } else {
+      if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Échec' + (j && j.error ? ' : ' + j.error : '') + '.'; }
+    }
   } catch (e) {
-    if (out) out.value = '❌ Erreur réseau pendant la récupération.';
+    if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau pendant la synchronisation.'; }
   }
+  if (btn) btn.disabled = false;
 }
 
 async function deconnecterGoogleHealth() {
