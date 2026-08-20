@@ -9062,16 +9062,37 @@ async function majUiGoogleHealth() {
       body: JSON.stringify({ action: 'googleHealthStatus', athlete_id: athlete.athlete_id }),
     });
     var j = await resp.json();
+    var bTest = document.getElementById('gh-btn-test');
     if (j && j.connected) {
       if (bOn) bOn.style.display = 'none';
       if (bOff) bOff.style.display = 'inline-block';
+      if (bTest) bTest.style.display = 'block';
       if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '⌚ Montre connectée'; }
     } else {
       if (bOn) bOn.style.display = 'inline-block';
       if (bOff) bOff.style.display = 'none';
+      if (bTest) bTest.style.display = 'none';
       if (stat) stat.style.display = 'none';
     }
   } catch (e) {}
+}
+
+// Explorateur temporaire : affiche le JSON brut des activités récupérées, pour
+// caler l'affichage cardio sur la vraie structure de l'API Health.
+async function testerRecupGoogleHealth() {
+  if (!athlete) return;
+  var out = document.getElementById('gh-probe');
+  if (out) { out.style.display = 'block'; out.value = '⏳ Récupération…'; }
+  try {
+    var resp = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'googleHealthProbe', athlete_id: athlete.athlete_id, dataType: 'exercise' }),
+    });
+    var j = await resp.json();
+    if (out) out.value = JSON.stringify(j, null, 2);
+  } catch (e) {
+    if (out) out.value = '❌ Erreur réseau pendant la récupération.';
+  }
 }
 
 async function deconnecterGoogleHealth() {
