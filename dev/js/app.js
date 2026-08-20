@@ -7529,7 +7529,10 @@ function _appliquerAppData(data) {
     _safe('dash-cardio', () => renderDashCardio(data.cardio));
 
     // ── Cardio — historique détaillé (onglet Progression) ────────────────────
+    _pasQuotidiens = (data && data.pas_quotidiens) || [];
     _safe('cardio-historique', () => renderCardioHistorique(data.cardio && data.cardio.history));
+    // Synchro auto de la montre (silencieuse, throttlée), si connectée.
+    _safe('gh-autosync', () => autoSyncGoogleHealth());
 
     // Récupération d'une séance muscu laissée en cours (anti-perte de saisie).
     // Une seule fois par chargement de page (garde interne _brouillonRestaure).
@@ -9116,6 +9119,31 @@ async function deconnecterGoogleHealth() {
   majUiGoogleHealth();
 }
 
+// Synchro automatique silencieuse : au plus 1×/6h par appareil, si la montre
+// est connectée. Recharge les données si de nouvelles activités sont importées.
+async function autoSyncGoogleHealth() {
+  if (!athlete) return;
+  var last = +(localStorage.getItem('gh_last_autosync') || 0);
+  if (Date.now() - last < 6 * 3600 * 1000) return;
+  localStorage.setItem('gh_last_autosync', String(Date.now()));
+  try {
+    var sr = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'googleHealthStatus', athlete_id: athlete.athlete_id }),
+    });
+    var sj = await sr.json();
+    if (!sj || !sj.connected) return;
+    var r = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'googleHealthSync', athlete_id: athlete.athlete_id }),
+    });
+    var j = await r.json();
+    if (j && j.success && ((j.imported || 0) > 0 || (j.stepsImported || 0) > 0) && typeof chargerAppData === 'function') {
+      chargerAppData();
+    }
+  } catch (e) {}
+}
+
 function renderAlertes(data) {
   const sec  = document.getElementById('dash-alertes-sec');
   const card = document.getElementById('dash-alertes-card');
@@ -9731,6 +9759,7 @@ function _renderDashCardioContent() {
 // =============================================================================
 
 var _cardioSessions = [];
+var _pasQuotidiens  = [];   // pas ambiants par jour (montre) : [{date, pas}]
 var _cardioPeriod   = 7;
 var _cardioSubTab   = 'recentes';
 var _cardioChartMetric = 'km';   // métrique de la courbe « Par semaine »
@@ -9873,7 +9902,8 @@ function _renderCardioHist() {
   }
   // Onglet « Pas » seulement si de la marche avec pas est enregistrée (cumul marche + marche inclinée)
   var _MARCHE_TYPES = { marche_normale: 1, marche_inclinee: 1 };
-  var hasPasData = _cardioSessions.some(function(s) { return _MARCHE_TYPES[s.type_cardio] && (s.pas || 0) > 0; });
+  var hasPasData = (_pasQuotidiens && _pasQuotidiens.length > 0)
+    || _cardioSessions.some(function(s) { return _MARCHE_TYPES[s.type_cardio] && (s.pas || 0) > 0; });
   if (_cardioSubTab === 'pas' && !hasPasData) _cardioSubTab = 'recentes';
   var btns = stabBtn('recentes', hasPasData ? 'Récentes' : 'Séances récentes') + stabBtn('semaine', 'Par semaine') + stabBtn('activite', 'Par activité')
     + (hasPasData ? stabBtn('pas', 'Pas') : '');
@@ -10158,15 +10188,26 @@ function _renderCardioHist() {
   var pasJourHtml = '';
   if (hasPasData) {
     var pasMap = {}; // ISO yyyy-mm-dd → { pas, n, km }
-    filtered.forEach(function(s) {
-      if (!_MARCHE_TYPES[s.type_cardio] || !s.pas) return;
-      var iso = (s.date || '').slice(0, 10); if (iso.length < 10) return;
-      var d = pasMap[iso] || (pasMap[iso] = { pas: 0, n: 0, km: 0 });
-      d.pas += s.pas || 0; d.n++; d.km += s.distance || 0;
-    });
+    var _pasDaily = !!(_pasQuotidiens && _pasQuotidiens.length);
+    if (_pasQuotidiens && _pasQuotidiens.length) {
+      // Pas quotidiens ambiants (total du jour, montre) — prioritaire sur les pas de séances.
+      var _cutD = new Date(); _cutD.setHours(0, 0, 0, 0); _cutD.setDate(_cutD.getDate() - _cardioPeriod);
+      var _cutIso = _cutD.getFullYear() + '-' + String(_cutD.getMonth() + 1).padStart(2, '0') + '-' + String(_cutD.getDate()).padStart(2, '0');
+      _pasQuotidiens.forEach(function(x) {
+        var iso = (x.date || '').slice(0, 10); if (iso.length < 10 || iso < _cutIso) return;
+        pasMap[iso] = { pas: x.pas || 0, n: 1, km: 0 };
+      });
+    } else {
+      filtered.forEach(function(s) {
+        if (!_MARCHE_TYPES[s.type_cardio] || !s.pas) return;
+        var iso = (s.date || '').slice(0, 10); if (iso.length < 10) return;
+        var d = pasMap[iso] || (pasMap[iso] = { pas: 0, n: 0, km: 0 });
+        d.pas += s.pas || 0; d.n++; d.km += s.distance || 0;
+      });
+    }
     var pasDays = Object.keys(pasMap).sort();
     if (!pasDays.length) {
-      pasJourHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucune marche sur cette période</div>';
+      pasJourHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucun pas sur cette période</div>';
     } else {
       var CY = '#22d3ee';
       var totPas  = pasDays.reduce(function(a, k) { return a + pasMap[k].pas; }, 0);
@@ -10205,7 +10246,7 @@ function _renderCardioHist() {
         if (i % step === 0 || i === nb - 1) xlab += '<text x="' + (pL + i * bw + bw / 2).toFixed(1) + '" y="' + (Hp - 3) + '" text-anchor="middle" font-size="6.5" fill="var(--text-muted)" font-weight="700">' + x.d.getDate() + '/' + (x.d.getMonth() + 1) + '</text>';
       });
       var chartP = '<svg viewBox="0 0 ' + Wp + ' ' + Hp + '" width="100%" style="display:block;overflow:visible;"><line x1="' + pL + '" y1="' + (Hp - pB) + '" x2="' + (Wp - pR) + '" y2="' + (Hp - pB) + '" stroke="var(--border)" stroke-width="1"/>' + bars + xlab + '</svg>'
-        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;font-weight:600;margin:4px 0 16px;">Pas par jour · ' + nDays + ' derniers jours (marche)</div>';
+        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;font-weight:600;margin:4px 0 16px;">Pas par jour · ' + nDays + ' derniers jours' + (_pasDaily ? ' (montre)' : ' (marche)') + '</div>';
 
       // Liste des jours (récent → ancien)
       var JOURS2 = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
@@ -10215,7 +10256,7 @@ function _renderCardioHist() {
         listP += '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">'
           + '<div style="width:32px;height:32px;border-radius:10px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🚶</div>'
           + '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:800;text-transform:capitalize;">' + JOURS2[dd.getDay()] + ' ' + dd.getDate() + '/' + (dd.getMonth() + 1) + '</div>'
-          + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px;">' + e.n + ' marche' + (e.n > 1 ? 's' : '') + (e.km ? ' · ' + (Math.round(e.km * 10) / 10) + ' km' : '') + '</div></div>'
+          + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px;">' + (_pasDaily ? 'Total du jour' : (e.n + ' marche' + (e.n > 1 ? 's' : '') + (e.km ? ' · ' + (Math.round(e.km * 10) / 10) + ' km' : ''))) + '</div></div>'
           + '<div style="font-size:15px;font-weight:900;color:' + CY + ';font-variant-numeric:tabular-nums;flex-shrink:0;">' + Math.round(e.pas).toLocaleString('fr-FR') + ' <small style="font-size:9px;font-weight:700;color:var(--text-muted);">pas</small></div>'
           + '</div>';
       });
