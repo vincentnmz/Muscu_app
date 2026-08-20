@@ -8814,15 +8814,18 @@ async function majUiPush() {
     sub = await reg.pushManager.getSubscription();
   } catch (_) {}
   const actif = !!sub && Notification.permission === 'granted';
+  const bTest = document.getElementById('push-btn-test');
 
   if (actif) {
     if (bOn) bOn.style.display = 'none';
     if (bOff) bOff.style.display = 'inline-block';
+    if (bTest) bTest.style.display = 'block';
     if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '🔔 Notifications activées'; }
     if (hint) hint.textContent = '';
   } else {
     if (bOn) { bOn.style.display = 'inline-block'; bOn.textContent = 'Activer les notifications'; }
     if (bOff) bOff.style.display = 'none';
+    if (bTest) bTest.style.display = 'none';
     if (stat) stat.style.display = 'none';
     if (hint) hint.textContent = (Notification.permission === 'denied')
       ? 'Les notifications sont bloquées dans les réglages de ton navigateur. Autorise-les pour Novalyz puis reviens ici.'
@@ -8846,7 +8849,7 @@ async function activerNotifications() {
       });
     }
     const raw = sub.toJSON();
-    await fetch(SCRIPT_URL, {
+    const resp = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'savePushSub', athlete_id: athlete.athlete_id,
@@ -8854,6 +8857,9 @@ async function activerNotifications() {
         user_agent: navigator.userAgent,
       }),
     });
+    let ok = false;
+    try { const j = await resp.json(); ok = !!j.success; if (!ok && j.error) console.warn('savePushSub:', j.error); } catch (_) {}
+    if (!ok) { showToast('❌ Enregistrement serveur échoué', '#ff4444'); majUiPush(); return; }
     showToast('🔔 Notifications activées');
     majUiPush();
   } catch (e) {
@@ -8877,6 +8883,33 @@ async function desactiverNotifications() {
     showToast('Notifications désactivées');
     majUiPush();
   } catch (e) { showToast('❌ Erreur', '#ff4444'); majUiPush(); }
+}
+
+// Diagnostic : demande au serveur d'envoyer une notif de test à CE compte et
+// affiche précisément où ça casse (secrets ? abonnement ? service push ?).
+async function testerNotifications() {
+  if (!athlete) return;
+  const diag = document.getElementById('push-diag');
+  if (diag) { diag.style.display = 'block'; diag.style.color = 'var(--text-muted)'; diag.textContent = '⏳ Test en cours…'; }
+  try {
+    const resp = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'testPush', athlete_id: athlete.athlete_id }),
+    });
+    const j = await resp.json();
+    let txt, col = 'var(--danger)';
+    if (j && j.erreur) { txt = '❌ Erreur serveur : ' + j.erreur; }
+    else if (!j || !j.vapid) { txt = '❌ Clés VAPID absentes côté serveur (secrets Supabase à configurer).'; }
+    else if (!j.subsFound) { txt = '❌ Aucun abonnement enregistré pour ce compte. Appuie sur « Activer les notifications ».'; }
+    else if (j.sent > 0) { txt = '✅ Notif envoyée (' + j.sent + '/' + j.subsFound + '). Elle doit apparaître dans quelques secondes.'; col = 'var(--good)'; }
+    else {
+      const e = (j.results && j.results[0]) || {};
+      txt = '❌ Envoi refusé par le service push' + (e.code ? ' (code ' + e.code + ')' : '') + (e.msg ? ' : ' + e.msg : '') + '.';
+    }
+    if (diag) { diag.style.color = col; diag.textContent = txt; }
+  } catch (e) {
+    if (diag) { diag.style.color = 'var(--danger)'; diag.textContent = '❌ Erreur réseau pendant le test.'; }
+  }
 }
 
 function renderAlertes(data) {
