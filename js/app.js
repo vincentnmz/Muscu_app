@@ -4646,6 +4646,10 @@ function switchTab(tab) {
   if (tab === 'conseils') {
     afficherOngletConseils();
   }
+  if (tab === 'reglages') {
+    try { majUiPause(); } catch (_) {}
+    try { majUiPush(); } catch (_) {}
+  }
 
 }
 
