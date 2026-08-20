@@ -881,6 +881,8 @@ window.addEventListener('load', async () => {
       if (!document.hidden) _checkNotifCache();
     });
   } catch (e) {}
+  // Retour d'autorisation Google Health (?code=…) → échange les jetons.
+  try { _traiterRetourGoogleHealth(); } catch (e) {}
   // Clic sur une notif alors que l'app était fermée : cible passée en ?notif=…
   // (Android/desktop) ou déposée dans un cache par le SW (iOS, params ignorés).
   try {
@@ -4676,6 +4678,7 @@ function switchTab(tab) {
   if (tab === 'reglages') {
     try { majUiPause(); } catch (_) {}
     try { majUiPush(); } catch (_) {}
+    try { majUiGoogleHealth(); } catch (_) {}
   }
 
 }
@@ -8992,6 +8995,95 @@ function _checkNotifCache() {
       });
     }).catch(function () {});
   } catch (e) {}
+}
+
+// ===== Montre connectée — Google Health (Fitbit via compte Google) =========
+// Étape A : connexion OAuth. La clé publique (Client ID) n'est pas secrète.
+const GOOGLE_CLIENT_ID = '1045768686321-ln365kpvvdiqel2ssscfj096cfjcge6b.apps.googleusercontent.com';
+// Scopes de LECTURE : activités/fitness + mesures de santé (fréquence cardiaque).
+const GOOGLE_HEALTH_SCOPE = 'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly';
+
+// URI de redirection = dossier courant de l'app (retire un éventuel index.html).
+// Doit correspondre EXACTEMENT à l'URI enregistré dans la console Google.
+function _ghRedirectUri() { return location.origin + location.pathname.replace(/[^/]*$/, ''); }
+
+function connecterGoogleHealth() {
+  if (!athlete) { showToast('Connecte-toi d\'abord'); return; }
+  var state = Math.random().toString(36).slice(2) + '.' + Date.now();
+  localStorage.setItem('gh_oauth_state', state);
+  localStorage.setItem('gh_oauth_athlete', athlete.athlete_id || '');
+  var url = 'https://accounts.google.com/o/oauth2/v2/auth'
+    + '?client_id=' + encodeURIComponent(GOOGLE_CLIENT_ID)
+    + '&redirect_uri=' + encodeURIComponent(_ghRedirectUri())
+    + '&response_type=code'
+    + '&scope=' + encodeURIComponent(GOOGLE_HEALTH_SCOPE)
+    + '&access_type=offline'      // pour obtenir un refresh_token
+    + '&prompt=consent'
+    + '&include_granted_scopes=true'
+    + '&state=' + encodeURIComponent(state);
+  window.location.href = url;
+}
+
+// Traite le retour de Google (?code=…&state=…) au démarrage de l'app.
+async function _traiterRetourGoogleHealth() {
+  var params;
+  try { params = new URLSearchParams(location.search); } catch (e) { return; }
+  var code = params.get('code');
+  var state = params.get('state');
+  var err = params.get('error');
+  if (!code && !err) return;              // pas un retour Google
+  var savedState = localStorage.getItem('gh_oauth_state');
+  var aid = localStorage.getItem('gh_oauth_athlete') || (athlete && athlete.athlete_id) || '';
+  if (history.replaceState) history.replaceState(null, '', location.pathname);  // nettoie l'URL
+  if (err) { showToast('❌ Autorisation refusée', '#ff4444'); return; }
+  if (!savedState || state !== savedState) { showToast('❌ Autorisation invalide (sécurité)', '#ff4444'); return; }
+  localStorage.removeItem('gh_oauth_state');
+  try {
+    var resp = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'googleHealthCallback', code: code, redirect_uri: _ghRedirectUri(), athlete_id: aid }),
+    });
+    var j = await resp.json();
+    if (j && j.success) showToast('⌚ Montre connectée !');
+    else showToast('❌ Connexion échouée' + (j && j.error ? ' : ' + j.error : ''), '#ff4444');
+  } catch (e) { showToast('❌ Erreur réseau', '#ff4444'); }
+  try { majUiGoogleHealth(); } catch (e) {}
+}
+
+async function majUiGoogleHealth() {
+  var card = document.getElementById('gh-card');
+  if (!card || !athlete) return;
+  var stat = document.getElementById('gh-statut');
+  var bOn = document.getElementById('gh-btn-on');
+  var bOff = document.getElementById('gh-btn-off');
+  try {
+    var resp = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'googleHealthStatus', athlete_id: athlete.athlete_id }),
+    });
+    var j = await resp.json();
+    if (j && j.connected) {
+      if (bOn) bOn.style.display = 'none';
+      if (bOff) bOff.style.display = 'inline-block';
+      if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '⌚ Montre connectée'; }
+    } else {
+      if (bOn) bOn.style.display = 'inline-block';
+      if (bOff) bOff.style.display = 'none';
+      if (stat) stat.style.display = 'none';
+    }
+  } catch (e) {}
+}
+
+async function deconnecterGoogleHealth() {
+  if (!athlete) return;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'googleHealthDisconnect', athlete_id: athlete.athlete_id }),
+    });
+    showToast('Montre déconnectée');
+  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+  majUiGoogleHealth();
 }
 
 function renderAlertes(data) {
