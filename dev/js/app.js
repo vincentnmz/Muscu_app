@@ -9635,7 +9635,9 @@ function nouvelleSeanceCardio() {
 var _CARDIO_TYPE_LABELS = {
   footing: 'Footing', velo: 'Vélo',
   marche_normale: 'Marche', marche_inclinee: 'Marche inclinée',
-  natation: 'Natation', autre: 'Autre'
+  natation: 'Natation',
+  rameur: 'Rameur', hiit: 'HIIT', elliptique: 'Elliptique', boxe: 'Boxe',
+  autre: 'Autre'
 };
 
 var _dashCardioPeriod  = 30;
@@ -9759,9 +9761,9 @@ function _cardioSmoothPath(pts) {
   return d;
 }
 
-var _CH_ICO = { footing: '🏃', velo: '🚴', marche_normale: '🚶', marche_inclinee: '🥾', natation: '🏊', autre: '⚡' };
-var _CH_CLR = { footing: '#6366f1', velo: '#0ea5e9', marche_normale: '#22d3ee', marche_inclinee: '#10b981', natation: '#8b5cf6', autre: '#f59e0b' };
-var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(14,165,233,.14)', marche_normale: 'rgba(34,211,238,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', autre: 'rgba(245,158,11,.14)' };
+var _CH_ICO = { footing: '🏃', velo: '🚴', marche_normale: '🚶', marche_inclinee: '🥾', natation: '🏊', rameur: '🚣', hiit: '🔥', elliptique: '🌀', boxe: '🥊', autre: '⚡' };
+var _CH_CLR = { footing: '#6366f1', velo: '#0ea5e9', marche_normale: '#22d3ee', marche_inclinee: '#10b981', natation: '#8b5cf6', rameur: '#14b8a6', hiit: '#ef4444', elliptique: '#a855f7', boxe: '#f97316', autre: '#f59e0b' };
+var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(14,165,233,.14)', marche_normale: 'rgba(34,211,238,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', rameur: 'rgba(20,184,166,.14)', hiit: 'rgba(239,68,68,.14)', elliptique: 'rgba(168,85,247,.14)', boxe: 'rgba(249,115,22,.14)', autre: 'rgba(245,158,11,.14)' };
 
 function renderCardioHistorique(sessions) {
   var secEl  = document.getElementById('hist-cardio-sec');
@@ -9892,8 +9894,8 @@ function _renderCardioHist() {
   // Activités présentes sur la période + activité sélectionnée (défaut = la plus pratiquée)
   var actCounts = {};
   filtered.forEach(function(s) { var t = s.type_cardio || 'autre'; actCounts[t] = (actCounts[t] || 0) + 1; });
-  var ACT_ORDER = ['footing','velo','marche_normale','marche_inclinee','natation','autre'];
-  var actTypes = Object.keys(actCounts).sort(function(a, b) { return ACT_ORDER.indexOf(a) - ACT_ORDER.indexOf(b); });
+  var ACT_ORDER = ['footing','velo','marche_normale','marche_inclinee','natation','rameur','hiit','elliptique','boxe','autre'];
+  var actTypes = Object.keys(actCounts).sort(function(a, b) { var ia=ACT_ORDER.indexOf(a), ib=ACT_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
 
   if (!actTypes.length) {
     semaineHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucune séance sur cette période</div>';
@@ -10039,7 +10041,8 @@ function _renderCardioHist() {
   if (!filtered.length) {
     activHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucune séance sur cette période</div>';
   } else {
-    ['footing','velo','marche_normale','marche_inclinee','natation','autre'].forEach(function(t) {
+    var _ACT_ORD = ['footing','velo','marche_normale','marche_inclinee','natation','rameur','hiit','elliptique','boxe','autre'];
+    Object.keys(byType).sort(function(a,b){ var ia=_ACT_ORD.indexOf(a), ib=_ACT_ORD.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); }).forEach(function(t) {
       var ss = byType[t];
       if (!ss || !ss.length) return;
       var kmT=0,kmN=0,vT=0,vN=0,cT=0,cN=0,fcT=0,fcN=0,dT=0,pasT=0;
