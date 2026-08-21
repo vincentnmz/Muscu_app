@@ -9851,6 +9851,11 @@ function _cardioMondayISO(iso) {
 function _renderCardioHist() {
   var contEl = document.getElementById('hist-cardio-content');
   if (!contEl) return;
+  // Toujours lire les pas quotidiens depuis les dernières données chargées
+  // (indépendant du chemin de navigation qui a déclenché le rendu).
+  if (typeof dernierAppData !== 'undefined' && dernierAppData && Array.isArray(dernierAppData.pas_quotidiens)) {
+    _pasQuotidiens = dernierAppData.pas_quotidiens;
+  }
   var filtered = _filterCardioSessions(_cardioPeriod);
   var PERIOD_MAP = [[7,'7 j'],[30,'1 mois'],[90,'3 mois']];
   var MOIS = ['jan.','fév.','mars','avr.','mai','juin','juil.','août','sep.','oct.','nov.','déc.'];
@@ -10191,16 +10196,20 @@ function _renderCardioHist() {
   var pasJourHtml = '';
   if (hasPasData) {
     var pasMap = {}; // ISO yyyy-mm-dd → { pas, n, km }
-    var _pasDaily = !!(_pasQuotidiens && _pasQuotidiens.length);
+    var _pasDaily = false;
+    // 1) Pas quotidiens ambiants (total du jour, montre) — prioritaire.
     if (_pasQuotidiens && _pasQuotidiens.length) {
-      // Pas quotidiens ambiants (total du jour, montre) — prioritaire sur les pas de séances.
       var _cutD = new Date(); _cutD.setHours(0, 0, 0, 0); _cutD.setDate(_cutD.getDate() - _cardioPeriod);
       var _cutIso = _cutD.getFullYear() + '-' + String(_cutD.getMonth() + 1).padStart(2, '0') + '-' + String(_cutD.getDate()).padStart(2, '0');
       _pasQuotidiens.forEach(function(x) {
         var iso = (x.date || '').slice(0, 10); if (iso.length < 10 || iso < _cutIso) return;
-        pasMap[iso] = { pas: x.pas || 0, n: 1, km: 0 };
+        pasMap[iso] = { pas: Number(x.pas) || 0, n: 1, km: 0 };
       });
-    } else {
+      _pasDaily = Object.keys(pasMap).length > 0;
+    }
+    // 2) Repli : si aucun pas quotidien sur la période, on prend les pas des marches.
+    if (!_pasDaily) {
+      pasMap = {};
       filtered.forEach(function(s) {
         if (!_MARCHE_TYPES[s.type_cardio] || !s.pas) return;
         var iso = (s.date || '').slice(0, 10); if (iso.length < 10) return;
