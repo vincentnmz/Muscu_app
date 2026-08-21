@@ -10195,28 +10195,28 @@ function _renderCardioHist() {
   // ── Panel « Pas » — pas par jour (marche + marche inclinée) ──
   var pasJourHtml = '';
   if (hasPasData) {
-    var pasMap = {}; // ISO yyyy-mm-dd → { pas, n, km }
-    var _pasDaily = false;
-    // 1) Pas quotidiens ambiants (total du jour, montre) — prioritaire.
+    // pasMap : ISO yyyy-mm-dd → { pas, n, km, src }. On FUSIONNE deux sources :
+    // la montre (total du jour, prioritaire) et les marches saisies (jours sans
+    // montre) — sans double compter (le total montre inclut déjà la marche du jour).
+    var pasMap = {};
+    var _cutD = new Date(); _cutD.setHours(0, 0, 0, 0); _cutD.setDate(_cutD.getDate() - _cardioPeriod);
+    var _cutIso = _cutD.getFullYear() + '-' + String(_cutD.getMonth() + 1).padStart(2, '0') + '-' + String(_cutD.getDate()).padStart(2, '0');
+    // 1) Pas quotidiens de la montre (total du jour).
     if (_pasQuotidiens && _pasQuotidiens.length) {
-      var _cutD = new Date(); _cutD.setHours(0, 0, 0, 0); _cutD.setDate(_cutD.getDate() - _cardioPeriod);
-      var _cutIso = _cutD.getFullYear() + '-' + String(_cutD.getMonth() + 1).padStart(2, '0') + '-' + String(_cutD.getDate()).padStart(2, '0');
       _pasQuotidiens.forEach(function(x) {
         var iso = (x.date || '').slice(0, 10); if (iso.length < 10 || iso < _cutIso) return;
-        pasMap[iso] = { pas: Number(x.pas) || 0, n: 1, km: 0 };
-      });
-      _pasDaily = Object.keys(pasMap).length > 0;
-    }
-    // 2) Repli : si aucun pas quotidien sur la période, on prend les pas des marches.
-    if (!_pasDaily) {
-      pasMap = {};
-      filtered.forEach(function(s) {
-        if (!_MARCHE_TYPES[s.type_cardio] || !s.pas) return;
-        var iso = (s.date || '').slice(0, 10); if (iso.length < 10) return;
-        var d = pasMap[iso] || (pasMap[iso] = { pas: 0, n: 0, km: 0 });
-        d.pas += s.pas || 0; d.n++; d.km += s.distance || 0;
+        pasMap[iso] = { pas: Number(x.pas) || 0, n: 1, km: 0, src: 'montre' };
       });
     }
+    // 2) Pas des marches saisies — uniquement les jours sans total montre.
+    filtered.forEach(function(s) {
+      if (!_MARCHE_TYPES[s.type_cardio] || !s.pas) return;
+      var iso = (s.date || '').slice(0, 10); if (iso.length < 10) return;
+      if (pasMap[iso] && pasMap[iso].src === 'montre') return;
+      var d = pasMap[iso] || (pasMap[iso] = { pas: 0, n: 0, km: 0, src: 'saisie' });
+      d.pas += s.pas || 0; d.n++; d.km += s.distance || 0;
+    });
+    var _pasDaily = Object.keys(pasMap).some(function(k) { return pasMap[k].src === 'montre'; });
     var pasDays = Object.keys(pasMap).sort();
     if (!pasDays.length) {
       pasJourHtml = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px 0;">Aucun pas sur cette période</div>';
@@ -10236,8 +10236,9 @@ function _renderCardioHist() {
         + kpiP(bestPas.toLocaleString('fr-FR'), 'meilleur jour')
         + '</div>';
 
-      // Barres : derniers min(période, 30) jours en continu
-      var nDays = Math.min(_cardioPeriod, 30);
+      // Barres : toute la période sélectionnée (jusqu'à 92 jours), pour couvrir
+      // à la fois les pas montre (anciens) et les marches saisies (récentes).
+      var nDays = Math.min(_cardioPeriod, 92);
       var t0 = new Date(); t0.setHours(0, 0, 0, 0);
       var Wp = 320, Hp = 70, pL = 6, pR = 6, pT = 8, pB = 14;
       var series = [];
@@ -10258,7 +10259,7 @@ function _renderCardioHist() {
         if (i % step === 0 || i === nb - 1) xlab += '<text x="' + (pL + i * bw + bw / 2).toFixed(1) + '" y="' + (Hp - 3) + '" text-anchor="middle" font-size="6.5" fill="var(--text-muted)" font-weight="700">' + x.d.getDate() + '/' + (x.d.getMonth() + 1) + '</text>';
       });
       var chartP = '<svg viewBox="0 0 ' + Wp + ' ' + Hp + '" width="100%" style="display:block;overflow:visible;"><line x1="' + pL + '" y1="' + (Hp - pB) + '" x2="' + (Wp - pR) + '" y2="' + (Hp - pB) + '" stroke="var(--border)" stroke-width="1"/>' + bars + xlab + '</svg>'
-        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;font-weight:600;margin:4px 0 16px;">Pas par jour · ' + nDays + ' derniers jours' + (_pasDaily ? ' (montre)' : ' (marche)') + '</div>';
+        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;font-weight:600;margin:4px 0 16px;">Pas par jour · ' + nDays + ' derniers jours' + (_pasDaily ? ' · montre + marches' : ' · marches') + '</div>';
 
       // Liste des jours (récent → ancien)
       var JOURS2 = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
@@ -10268,7 +10269,7 @@ function _renderCardioHist() {
         listP += '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">'
           + '<div style="width:32px;height:32px;border-radius:10px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🚶</div>'
           + '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:800;text-transform:capitalize;">' + JOURS2[dd.getDay()] + ' ' + dd.getDate() + '/' + (dd.getMonth() + 1) + '</div>'
-          + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px;">' + (_pasDaily ? 'Total du jour' : (e.n + ' marche' + (e.n > 1 ? 's' : '') + (e.km ? ' · ' + (Math.round(e.km * 10) / 10) + ' km' : ''))) + '</div></div>'
+          + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px;">' + (e.src === 'montre' ? 'Total du jour ⌚' : (e.n + ' marche' + (e.n > 1 ? 's' : '') + (e.km ? ' · ' + (Math.round(e.km * 10) / 10) + ' km' : ''))) + '</div></div>'
           + '<div style="font-size:15px;font-weight:900;color:' + CY + ';font-variant-numeric:tabular-nums;flex-shrink:0;">' + Math.round(e.pas).toLocaleString('fr-FR') + ' <small style="font-size:9px;font-weight:700;color:var(--text-muted);">pas</small></div>'
           + '</div>';
       });
