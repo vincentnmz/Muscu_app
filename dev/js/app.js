@@ -10236,12 +10236,13 @@ function _renderCardioHist() {
         + kpiP(bestPas.toLocaleString('fr-FR'), 'meilleur jour')
         + '</div>';
 
-      // Courbe : tendance en moyenne mobile 7 j sur toute la période (jusqu'à 92 j),
-      // couvrant à la fois les pas montre (anciens) et les marches saisies (récentes).
+      // Barres par jour sur toute la période (jusqu'à 92 j), couvrant les pas
+      // montre (anciens) et les marches saisies (récentes). Couleur par source,
+      // ligne objectif, détail au toucher.
       var nDays = Math.min(_cardioPeriod, 92);
       var t0 = new Date(); t0.setHours(0, 0, 0, 0);
       var Wp = 320, Hp = 78, pcL = 8, pcR = 8, pcT = 12, pcB = 15;
-      var OBJ = 10000;
+      var OBJ = 10000, VIO = '#8b5cf6';
       var series = [];
       for (var di = nDays - 1; di >= 0; di--) {
         var dd = new Date(t0); dd.setDate(t0.getDate() - di);
@@ -10250,41 +10251,34 @@ function _renderCardioHist() {
         series.push({ d: dd, iso: isoK, pas: eK ? eK.pas : 0, src: eK ? eK.src : null, has: !!eK });
       }
       var nb = series.length;
-      var roll = series.map(function(x, i) {
-        var sum = 0, c = 0;
-        for (var j = Math.max(0, i - 6); j <= i; j++) { if (series[j].has) { sum += series[j].pas; c++; } }
-        return { v: c >= 2 ? sum / c : 0, has: c >= 2 };
-      });
       var maxP = OBJ * 1.15;
       series.forEach(function(x) { if (x.pas > maxP) maxP = x.pas; });
-      roll.forEach(function(r) { if (r.v > maxP) maxP = r.v; });
-      var PX = function(i) { return pcL + (i + 0.5) * (Wp - pcL - pcR) / nb; };
-      var PY = function(v) { return Hp - pcB - (v / maxP) * (Hp - pcT - pcB); };
-      var yObj = PY(OBJ);
-      var svgP = '<defs><linearGradient id="pasGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + CY + '" stop-opacity="0.26"/><stop offset="1" stop-color="' + CY + '" stop-opacity="0"/></linearGradient></defs>'
-        + '<line x1="' + pcL + '" y1="' + (Hp - pcB) + '" x2="' + (Wp - pcR) + '" y2="' + (Hp - pcB) + '" stroke="var(--border)" stroke-width="1"/>'
+      var bwH = (Wp - pcL - pcR) / nb;
+      var yObj = Hp - pcB - (OBJ / maxP) * (Hp - pcT - pcB);
+      var svgP = '<line x1="' + pcL + '" y1="' + (Hp - pcB) + '" x2="' + (Wp - pcR) + '" y2="' + (Hp - pcB) + '" stroke="var(--border)" stroke-width="1"/>'
         + '<line x1="' + pcL + '" y1="' + yObj.toFixed(1) + '" x2="' + (Wp - pcR) + '" y2="' + yObj.toFixed(1) + '" stroke="#f59f00" stroke-width="1" stroke-dasharray="4 3" opacity="0.75"/>'
         + '<text x="' + (Wp - pcR) + '" y="' + (yObj - 3).toFixed(1) + '" text-anchor="end" font-size="7" fill="#f59f00" font-weight="800">obj 10k</text>';
-      var _seg = [];
-      var _flushSeg = function() {
-        if (_seg.length > 1) {
-          var path = _cardioSmoothPath(_seg);
-          var area = path + 'L' + _seg[_seg.length - 1].x.toFixed(1) + ',' + (Hp - pcB) + 'L' + _seg[0].x.toFixed(1) + ',' + (Hp - pcB) + 'Z';
-          svgP += '<path d="' + area + '" fill="url(#pasGrad)"/><path d="' + path + '" fill="none" stroke="' + CY + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
-            + '<circle cx="' + _seg[_seg.length - 1].x.toFixed(1) + '" cy="' + _seg[_seg.length - 1].y.toFixed(1) + '" r="2.8" fill="' + CY + '" stroke="var(--surface)" stroke-width="1.3"/>';
-        } else if (_seg.length === 1) {
-          svgP += '<circle cx="' + _seg[0].x.toFixed(1) + '" cy="' + _seg[0].y.toFixed(1) + '" r="2.4" fill="' + CY + '"/>';
-        }
-        _seg = [];
-      };
-      roll.forEach(function(r, i) { if (r.has) _seg.push({ x: PX(i), y: PY(r.v) }); else _flushSeg(); });
-      _flushSeg();
+      var ww = Math.max(1.3, bwH * 0.62);
+      var hasSaisie = false, hasMontre = false;
+      series.forEach(function(x, i) {
+        if (!x.pas) return;
+        var h = Math.max(2, (x.pas / maxP) * (Hp - pcT - pcB));
+        var bx = pcL + i * bwH + (bwH - ww) / 2, by = Hp - pcB - h;
+        var col = x.src === 'saisie' ? VIO : CY;
+        if (x.src === 'saisie') hasSaisie = true; else hasMontre = true;
+        svgP += '<rect x="' + bx.toFixed(1) + '" y="' + by.toFixed(1) + '" width="' + ww.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1.5" fill="' + col + '"/>';
+      });
       var stepX = Math.max(1, Math.ceil(nb / 7));
-      series.forEach(function(x, i) { if (i % stepX === 0 || i === nb - 1) svgP += '<text x="' + PX(i).toFixed(1) + '" y="' + (Hp - 4) + '" text-anchor="middle" font-size="6.5" fill="var(--text-muted)" font-weight="700">' + x.d.getDate() + '/' + (x.d.getMonth() + 1) + '</text>'; });
-      var bwH = (Wp - pcL - pcR) / nb;
+      series.forEach(function(x, i) { if (i % stepX === 0 || i === nb - 1) svgP += '<text x="' + (pcL + (i + 0.5) * bwH).toFixed(1) + '" y="' + (Hp - 4) + '" text-anchor="middle" font-size="6.5" fill="var(--text-muted)" font-weight="700">' + x.d.getDate() + '/' + (x.d.getMonth() + 1) + '</text>'; });
       series.forEach(function(x, i) { if (!x.has) return; svgP += '<rect class="pas-hit" data-pas="' + x.pas + '" data-date="' + x.iso + '" data-src="' + (x.src || '') + '" x="' + (pcL + i * bwH).toFixed(1) + '" y="' + pcT + '" width="' + bwH.toFixed(1) + '" height="' + (Hp - pcT - pcB) + '" fill="transparent"/>'; });
-      var chartP = '<svg class="pas-curve" viewBox="0 0 ' + Wp + ' ' + Hp + '" width="100%" style="display:block;overflow:visible;touch-action:pan-y;">' + svgP + '</svg>'
-        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;font-weight:600;margin:4px 0 16px;">Tendance (moyenne 7 j) · ' + nDays + ' derniers jours</div>';
+      var pasLeg = (hasSaisie && hasMontre)
+        ? '<div style="display:flex;gap:14px;justify-content:center;margin-top:4px;">'
+          + '<span style="font-size:9.5px;color:var(--text-muted);font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i style="width:8px;height:8px;border-radius:2px;background:' + CY + ';display:inline-block;"></i>⌚ Montre</span>'
+          + '<span style="font-size:9.5px;color:var(--text-muted);font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i style="width:8px;height:8px;border-radius:2px;background:' + VIO + ';display:inline-block;"></i>✍️ Saisie</span>'
+          + '</div>' : '';
+      var chartP = '<svg class="pas-chart" viewBox="0 0 ' + Wp + ' ' + Hp + '" width="100%" style="display:block;overflow:visible;touch-action:pan-y;">' + svgP + '</svg>'
+        + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;font-weight:600;margin:4px 0 2px;">Pas par jour · ' + nDays + ' derniers jours</div>' + pasLeg
+        + '<div style="height:12px;"></div>';
 
       // Liste des jours (récent → ancien)
       var JOURS2 = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
@@ -10316,7 +10310,7 @@ function _renderCardioHist() {
 
 // Bulle de détail sur la courbe des pas (survol / toucher).
 function _attachPasTip() {
-  var svg = document.querySelector('#hist-cardio-content .pas-curve');
+  var svg = document.querySelector('#hist-cardio-content .pas-chart');
   if (!svg) return;
   var tip = document.getElementById('_pas-tip');
   if (!tip) {
