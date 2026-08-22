@@ -4626,6 +4626,8 @@ async function sInscrireCoach() {
   const password = document.getElementById('reg-coach-password').value;
   const sportSel = document.getElementById('reg-coach-sport');
   const sport = sportSel ? sportSel.value : 'muscu';
+  const roleSel = document.getElementById('reg-coach-role');
+  const role = roleSel ? roleSel.value : 'coach';
   const errEl = document.getElementById('reg-coach-error');
   errEl.textContent = '';
   if (!nom || !login) { errEl.textContent = 'Remplis tous les champs.'; return; }
@@ -4636,7 +4638,7 @@ async function sInscrireCoach() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'registerCoach', nom, login, password, sport })
+      body: JSON.stringify({ action: 'registerCoach', nom, login, password, sport, role })
     });
     const data = await res.json();
     if (data.success) {
