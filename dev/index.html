@@ -139,7 +139,7 @@
     </div>
 
     <div style="text-align:center;margin-top:14px" id="lien-espace-coach-wrap">
-      <a href="#" id="lien-espace-coach" onclick="toggleEspaceCoach(event)" style="font-size:13px;color:var(--text-muted)">Espace coach</a>
+      <a href="#" id="lien-espace-coach" onclick="toggleEspaceCoach(event)" style="font-size:13px;color:var(--text-muted)">Espace coach / prépa</a>
     </div>
     <div id="card-login-coach" style="display:none">
       <div style="text-align:center;margin-bottom:12px;">
@@ -150,13 +150,13 @@
         <button id="coachtab-signup" onclick="switchCoachAuthMode('signup')">Créer un compte</button>
       </div>
       <div class="card" id="coach-auth-login">
-        <div class="card-title">Connexion coach</div>
-        <label>Login coach</label>
-        <input type="password" id="inp-login-coach" placeholder="Login coach">
+        <div class="card-title">Connexion coach / prépa</div>
+        <label>Identifiant</label>
+        <input type="password" id="inp-login-coach" placeholder="Ton identifiant">
         <label>Mot de passe</label>
         <input type="password" id="inp-password-coach" placeholder="Mot de passe">
         <div id="login-coach-error" class="error-msg"></div>
-        <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter (coach)</button>
+        <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter</button>
       </div>
       <div class="card" id="coach-auth-signup" style="display:none">
         <div class="card-title">Créer un compte coach / prépa</div>
