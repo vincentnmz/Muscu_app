@@ -1839,6 +1839,20 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     if (ov && _navEl) ov.appendChild(_navEl);
   } catch (e) {}
 
+  // Étape 4 — onglets adaptés au rôle du staff (l'athlète, sur sa page, voit tout).
+  // Prépa : physique/charge (cache l'onglet Match). Coach : match/tactique (cache Charge & physique).
+  // Le rôle prépa n'existe que pour les sports co ; la muscu (fiche à part) n'est pas concernée.
+  try {
+    if (cdMode === 'coach') {
+      var _r = (coach && coach.role) || 'coach';
+      var _hide = _r === 'prepa' ? [2] : [1];
+      _hide.forEach(function (i) {
+        var b = ov.querySelector('.djt-tabs [data-i="' + i + '"]'); if (b) b.style.display = 'none';
+        var p = body.querySelector('.djt-panel[data-i="' + i + '"]'); if (p) p.style.display = 'none';
+      });
+    }
+  } catch (e) {}
+
   _chargeJoueurData = d.charge_hebdo || [];
   dessinerChargeJoueur(_chargeJoueurData);
   renderTestsJoueur(d.athlete_id);
@@ -4828,7 +4842,20 @@ function switchCoachAuthMode(mode) {
       }).join('');
       sel.value = 'muscu';
     }
+    majRoleSelonSport();
   }
+}
+
+// Le rôle « prépa » n'existe pas en muscu (le coach y fait déjà la prépa).
+// On masque l'option quand le sport est la muscu et on retombe sur « coach ».
+function majRoleSelonSport() {
+  var sp = document.getElementById('reg-coach-sport');
+  var rl = document.getElementById('reg-coach-role');
+  if (!sp || !rl) return;
+  var estMuscu = (sp.value === 'muscu');
+  var prepaOpt = rl.querySelector('option[value="prepa"]');
+  if (prepaOpt) prepaOpt.style.display = estMuscu ? 'none' : '';
+  if (estMuscu && rl.value === 'prepa') rl.value = 'coach';
 }
 
 async function sInscrireCoach() {
@@ -4838,7 +4865,8 @@ async function sInscrireCoach() {
   const sportSel = document.getElementById('reg-coach-sport');
   const sport = sportSel ? sportSel.value : 'muscu';
   const roleSel = document.getElementById('reg-coach-role');
-  const role = roleSel ? roleSel.value : 'coach';
+  // Pas de prépa en muscu (le coach y fait déjà la prépa) → on force « coach ».
+  const role = (sport === 'muscu') ? 'coach' : (roleSel ? roleSel.value : 'coach');
   const errEl = document.getElementById('reg-coach-error');
   errEl.textContent = '';
   if (!nom || !login) { errEl.textContent = 'Remplis tous les champs.'; return; }
