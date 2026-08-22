@@ -2053,11 +2053,13 @@ let _cockpitState = { joueurs: [], equipe: {}, filtre: null };
 
 // Action suggérée selon le type d'alerte principale (vocabulaire prépa).
 const _COCKPIT_ACTIONS = {
-  absence:   'Reprendre contact · replanifier une séance',
-  surcharge: 'Réduire la charge · récupération active',
-  charge:    'Surveiller la montée de charge',
-  douleur:   'Bilan douleur · avis kiné si besoin',
-  fatigue:   'Alléger la séance · soigner le sommeil',
+  absence:     'Reprendre contact · replanifier une séance',
+  surcharge:   'Réduire la charge · récupération active',
+  charge:      'Surveiller la montée de charge',
+  sous_charge: 'Réintroduire de la charge progressivement',
+  douleur:     'Bilan douleur · avis kiné si besoin',
+  fatigue:     'Alléger la séance · soigner le sommeil',
+  sommeil:     'Point sommeil · hygiène de récupération',
 };
 
 async function renderCockpitPrepa() {
@@ -2137,8 +2139,9 @@ async function renderCockpitPrepa() {
 
   // Filtres effectif
   const FILTRES = [
-    ['', 'Tous'], ['surcharge', 'Surcharge'], ['fatigue', 'Fatigue'],
-    ['douleur', 'Douleur'], ['absence', 'Absence'], ['blessure', 'Blessés'],
+    ['', 'Tous'], ['surcharge', 'Surcharge'], ['sous_charge', 'Sous-charge'],
+    ['fatigue', 'Fatigue'], ['sommeil', 'Sommeil'], ['douleur', 'Douleur'],
+    ['absence', 'Absence'], ['blessure', 'Blessés'],
   ];
   const fBtn = (val, lbl, on) => `<button data-cfiltre="${val}" onclick="_cockpitFiltrer(this.dataset.cfiltre||null)" style="flex:0 0 auto;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid ${on?'var(--accent-dim)':'var(--border)'};background:${on?'var(--accent-a14)':'var(--surface2)'};color:${on?'var(--accent)':'var(--text-muted)'};">${lbl}</button>`;
   const filtresHtml = `<div style="display:flex;gap:6px;padding:8px 0 12px;overflow-x:auto;scrollbar-width:none;">${FILTRES.map(([v,l]) => fBtn(v, l, v==='')).join('')}</div>`;
@@ -2174,7 +2177,8 @@ function _cockpitRenderEffectif() {
   }
   const metric = (v, lbl) => `<div style="text-align:center;min-width:52px;"><div style="font-size:15px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;">${v}</div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">${lbl}</div></div>`;
   box.innerHTML = list.map(j => {
-    const col = COL[j.statut] || COL.vert;
+    // Indisponible (blessé) : traité comme un état à part (gris), pas comme « au vert ».
+    const col = j.blesse === 'indispo' ? 'var(--text-muted)' : (COL[j.statut] || COL.vert);
     const acwrTxt = j.acwr != null ? j.acwr.toFixed(2) : '—';
     const acwrCol = (j.acwr != null && j.acwr > 1.5) ? COL.rouge : (j.acwr != null && j.acwr > 1.3) ? COL.orange : 'var(--text)';
     const chips = (j.alertes||[]).map(al => {
@@ -4851,7 +4855,7 @@ async function sInscrireCoach() {
   } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
 }
 
-// ── Données de démo (11 joueurs foot) — depuis Réglages coach ──────────────
+// ── Données de démo (14 joueurs foot, symptômes variés) — depuis Réglages coach ──
 async function genererDemoFoot() {
   if (!coach) { showToast('Connecte-toi en coach'); return; }
   var info = document.getElementById('demo-foot-info');
@@ -4862,7 +4866,7 @@ async function genererDemoFoot() {
     var j = await r.json();
     if (j && j.success) {
       if (info) { info.style.color = 'var(--good)'; info.textContent = '✅ ' + j.joueurs + ' joueurs créés (' + j.charges + ' charges, ' + j.blessures + ' blessures). Pense à mettre ton sport sur « Foot ».'; }
-      showToast('👥 11 joueurs de démo créés');
+      showToast('👥 ' + j.joueurs + ' joueurs de démo créés');
       if (typeof ouvrirEspaceCoach === 'function') ouvrirEspaceCoach();
     } else if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ ' + ((j && j.error) || 'échec'); }
   } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
