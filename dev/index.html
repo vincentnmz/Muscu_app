@@ -159,7 +159,12 @@
         <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter (coach)</button>
       </div>
       <div class="card" id="coach-auth-signup" style="display:none">
-        <div class="card-title">Créer un compte coach</div>
+        <div class="card-title">Créer un compte coach / prépa</div>
+        <label>Je suis</label>
+        <select id="reg-coach-role" style="width:100%;">
+          <option value="coach">Coach</option>
+          <option value="prepa">Préparateur physique</option>
+        </select>
         <label>Nom</label>
         <input type="text" id="reg-coach-nom" placeholder="Ton nom">
         <label>Login coach</label>
@@ -173,7 +178,7 @@
           <span>J'accepte de traiter les données de mes athlètes (dont données de santé) dans le respect de la <a href="#" onclick="ouvrirConfidentialite(event)" style="color:var(--accent);font-weight:600;">politique de confidentialité</a>.</span>
         </label>
         <div id="reg-coach-error" class="error-msg"></div>
-        <button class="btn btn-accent" onclick="sInscrireCoach()">Créer mon compte coach</button>
+        <button class="btn btn-accent" onclick="sInscrireCoach()">Créer mon compte</button>
       </div>
     </div>
 
