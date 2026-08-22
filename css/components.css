@@ -6,6 +6,15 @@
 /* ===== Animation d'entrée (modale / carte) ===== */
 .modal-card { animation:pop-in 0.22s cubic-bezier(.2,.8,.2,1); }
 
+/* ===== Couleur de rôle (staff) — HEADER uniquement (bande + pastille) ===== */
+body[data-role]        { --role:#4f46e5; --role-a:rgba(79,70,229,.12); }   /* coach par défaut */
+body[data-role="coach"]{ --role:#4f46e5; --role-a:rgba(79,70,229,.12); }
+body[data-role="prepa"]{ --role:#ea580c; --role-a:rgba(234,88,12,.12); }
+body[data-role="kine"] { --role:#0d9488; --role-a:rgba(13,148,136,.12); }
+#view-coach > .header        { position:relative; }
+#view-coach > .header::before{ content:""; position:absolute; left:0; right:0; top:-10px; height:3px; border-radius:2px; background:var(--role,var(--accent)); }
+.coach-role-chip { font-size:9.5px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; color:var(--role,var(--accent)); background:var(--role-a,var(--accent-a)); padding:3px 8px; border-radius:20px; white-space:nowrap; }
+
 /* ===== En-tête global ===== */
 header { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
 header h1 { font-size:17px; font-weight:700; }
