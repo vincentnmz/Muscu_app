@@ -172,7 +172,7 @@
         <label>Mot de passe</label>
         <input type="password" id="reg-coach-password" placeholder="Choisis un mot de passe" autocomplete="new-password">
         <label>Sport</label>
-        <select id="reg-coach-sport" style="width:100%;"></select>
+        <select id="reg-coach-sport" style="width:100%;" onchange="majRoleSelonSport()"></select>
         <label style="display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:12px;color:var(--text-muted);font-weight:500;line-height:1.4;cursor:pointer;text-transform:none;letter-spacing:0;">
           <input type="checkbox" id="reg-coach-consent" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;accent-color:var(--accent);">
           <span>J'accepte de traiter les données de mes athlètes (dont données de santé) dans le respect de la <a href="#" onclick="ouvrirConfidentialite(event)" style="color:var(--accent);font-weight:600;">politique de confidentialité</a>.</span>
