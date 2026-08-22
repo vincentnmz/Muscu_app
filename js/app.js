@@ -4650,6 +4650,38 @@ async function sInscrireCoach() {
   } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
 }
 
+// ── Données de démo (11 joueurs foot) — depuis Réglages coach ──────────────
+async function genererDemoFoot() {
+  if (!coach) { showToast('Connecte-toi en coach'); return; }
+  var info = document.getElementById('demo-foot-info');
+  if (info) { info.style.display = 'block'; info.style.color = 'var(--text-muted)'; info.textContent = '⏳ Génération…'; }
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'seedDemoFoot', coach_id: coach.coach_id }) });
+    var j = await r.json();
+    if (j && j.success) {
+      if (info) { info.style.color = 'var(--good)'; info.textContent = '✅ ' + j.joueurs + ' joueurs créés (' + j.charges + ' charges, ' + j.blessures + ' blessures). Pense à mettre ton sport sur « Foot ».'; }
+      showToast('👥 11 joueurs de démo créés');
+      if (typeof ouvrirEspaceCoach === 'function') ouvrirEspaceCoach();
+    } else if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ ' + ((j && j.error) || 'échec'); }
+  } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
+}
+async function supprimerDemoFoot() {
+  if (!coach) return;
+  var info = document.getElementById('demo-foot-info');
+  if (info) { info.style.display = 'block'; info.style.color = 'var(--text-muted)'; info.textContent = '⏳ Suppression…'; }
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'clearDemoFoot', coach_id: coach.coach_id }) });
+    var j = await r.json();
+    if (j && j.success) {
+      if (info) { info.style.color = 'var(--good)'; info.textContent = '🗑️ ' + j.supprimes + ' joueurs de démo supprimés.'; }
+      showToast('Démos supprimés');
+      if (typeof ouvrirEspaceCoach === 'function') ouvrirEspaceCoach();
+    } else if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ ' + ((j && j.error) || 'échec'); }
+  } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
+}
+
 const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Séance', historique: 'Progression', conseils: 'Conversation', reglages: 'Réglages' };
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
