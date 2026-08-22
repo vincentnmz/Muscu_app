@@ -237,8 +237,11 @@
   <div id="view-coach" class="view">
     <div class="header" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
       <div>
-        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
-        <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
+        <div id="coach-header-eyebrow" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
+          <span id="coach-role-chip" class="coach-role-chip" style="display:none;"></span>
+        </div>
       </div>
       <button onclick="ouvrirModalLierAthlete()" style="flex-shrink:0;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px 16px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-plus"/></svg>Lier un athlète</button>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
