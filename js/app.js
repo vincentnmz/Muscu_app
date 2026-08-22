@@ -2218,8 +2218,14 @@ function _cockpitFiltrer(f) {
   _cockpitRenderEffectif();
 }
 
-// Ouvre la fiche athlète (onglets adaptés au rôle prépa — Étape 4).
+// Ouvre la fiche du joueur. Sports co (foot…) → fiche joueur dédiée (bien-être,
+// charge/ACWR, blessures, RTP). Muscu → fiche athlète classique.
+// L'adaptation fine des onglets par rôle viendra à l'Étape 4.
 function _cockpitOuvrir(athlete_id) {
+  if (coach && coach.sport && coach.sport !== 'muscu') {
+    ouvrirDetailJoueurFoot(athlete_id, 'coach');
+    return;
+  }
   const a = (athletesCoach || []).find(x => String(x.athlete_id) === String(athlete_id));
   if (a) ouvrirDetailAthleteCoach(a);
 }
