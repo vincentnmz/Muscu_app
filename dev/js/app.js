@@ -1240,11 +1240,14 @@ async function ouvrirEspaceCoach() {
     const athletes = data.athletes || [];
     if (athletes.length === 0) {
       document.getElementById('coach-home-body').style.display = 'none';
+      const _ck = document.getElementById('prepa-cockpit');
+      if (_ck) _ck.style.display = 'none';
+      listeEl.style.display = '';
       listeEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun athlète associé à ton compte. Utilise le bouton « Lier un athlète » en haut pour en ajouter.</div>';
       return;
     }
     athletesCoach = athletes;
-    renderListeAthletesCoach();
+    renderListeAthletesCoach(); // role-aware : prépa → cockpit, coach → accueil classique
     // Restaurer la fiche athlète consultée avant un rechargement
     try {
       const vue = JSON.parse(localStorage.getItem('muscu_coach_vue') || 'null');
@@ -1353,6 +1356,20 @@ function renderListeAthletesCoach() {
   document.getElementById('liste-athletes-coach').innerHTML = '';
   document.getElementById('coach-stat-total').textContent = athletesCoach.length;
   appliquerLibellesSport(); // Phase 3 : localise les libellés selon le sport du coach
+
+  // Rôle prépa → accueil dédié (cockpit charge), quel que soit le sport.
+  if ((coach && coach.role) === 'prepa') {
+    const _lst = document.getElementById('liste-athletes-coach');
+    if (_lst) _lst.style.display = 'none';
+    document.getElementById('coach-home-body').style.display = 'none';
+    majSelectAthletesCoach();
+    renderCockpitPrepa();
+    return;
+  }
+  const _ck = document.getElementById('prepa-cockpit');
+  if (_ck) _ck.style.display = 'none';
+  const _lst = document.getElementById('liste-athletes-coach');
+  if (_lst) _lst.style.display = '';
 
   // Sport ≠ muscu → vue générique "Suivi équipe" (lit l'onglet Indicateurs).
   // Muscu → dashboard historique inchangé.
@@ -2024,6 +2041,183 @@ function dessinerChargeJoueur(data) {
     if(ctx.roundRect) ctx.roundRect(x-barW/2,y,barW,bh,[3,3,0,0]); else ctx.rect(x-barW/2,y,barW,bh);
     ctx.fill();
     ctx.fillStyle='rgba(128,128,128,0.85)';ctx.textAlign='center';ctx.fillText(d.label||d.semaine,x,PAD.t+cH+14);});
+}
+
+/* ===== Cockpit prépa physique (Étape 3b) ================================== *
+ * Accueil dédié au rôle « prépa » : synthèse charge/dispo de l'équipe,
+ * priorités du jour (joueurs à risque + action suggérée) et effectif filtrable.
+ * Lit le même endpoint que le Suivi équipe (getSuiviEquipe) mais l'oriente
+ * « gestion de la charge » et ouvre la fiche athlète (onglets prépa, Étape 4).
+ * Code couleur du rôle = header uniquement ; le corps utilise --accent + sémantique. */
+let _cockpitState = { joueurs: [], equipe: {}, filtre: null };
+
+// Action suggérée selon le type d'alerte principale (vocabulaire prépa).
+const _COCKPIT_ACTIONS = {
+  absence:   'Reprendre contact · replanifier une séance',
+  surcharge: 'Réduire la charge · récupération active',
+  charge:    'Surveiller la montée de charge',
+  douleur:   'Bilan douleur · avis kiné si besoin',
+  fatigue:   'Alléger la séance · soigner le sommeil',
+};
+
+async function renderCockpitPrepa() {
+  const cont = document.getElementById('prepa-cockpit');
+  if (!cont) return;
+  cont.style.display = 'block';
+  cont.innerHTML = '<div class="loader">Analyse de la charge…</div>';
+  let data;
+  try {
+    const _ctrl = new AbortController();
+    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    const res = await fetch(`${SCRIPT_URL}?action=getSuiviEquipe&coach_id=${encodeURIComponent(coach.coach_id)}`, { signal: _ctrl.signal });
+    clearTimeout(_tSlow); clearTimeout(_tKill);
+    data = await res.json();
+  } catch (e) {
+    const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
+    cont.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
+    return;
+  }
+
+  const joueurs = data.joueurs || [];
+  const eq = data.equipe || {};
+  _cockpitState.joueurs = joueurs;
+  _cockpitState.equipe = eq;
+  _cockpitState.filtre = null;
+  const labelJoueurs = libelleSport('athletes').toLowerCase();
+
+  if (!joueurs.length) {
+    cont.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun ${libelleSport('athlete').toLowerCase()} associé à ton compte. Utilise « Lier un athlète » en haut pour composer ton effectif.</div>`;
+    return;
+  }
+
+  const COL = { rouge: '#e5484d', orange: '#f5a623', vert: '#22c55e' };
+
+  // Bandeau synthèse : disponibilité + charge collective
+  const kpi = (n, lbl, col) => nvStat(n, lbl, { color:(col||''), wrapStyle:'flex:1' });
+  const header = `
+    <div class="dash-card" style="padding:16px;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;">
+        ${kpi(eq.rouge||0, 'À risque', COL.rouge)}
+        ${kpi(eq.orange||0, 'À surveiller', COL.orange)}
+        ${kpi(eq.vert||0, 'Disponibles', COL.vert)}
+        ${kpi(eq.indispo||0, 'Indispo', 'var(--text-muted)')}
+      </div>
+      <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+      <div style="display:flex;gap:8px;">
+        ${kpi((eq.charge_equipe||0).toLocaleString('fr-FR'), 'Charge 7j équipe')}
+        ${kpi(eq.fatigue_moyenne!=null ? eq.fatigue_moyenne+'/5' : '—', 'Fatigue moy.', eq.fatigue_moyenne!=null && eq.fatigue_moyenne>=4 ? COL.orange : '')}
+        ${kpi(`<span style="color:#22c55e">${eq.en_progression||0}</span> · <span style="color:#e5484d">${eq.en_regression||0}</span>`, 'Prog. · Régr.')}
+      </div>
+    </div>`;
+
+  // À gérer aujourd'hui : joueurs rouges, raison + action prépa suggérée
+  const prioritaires = joueurs.filter(j => j.statut === 'rouge');
+  const prioHtml = prioritaires.length ? `
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-alert"/></svg>À gérer aujourd'hui</div></div>
+    <div class="dash-card" style="padding:2px 14px;margin-bottom:14px;border-left:3px solid ${COL.rouge};">
+      ${prioritaires.map(j => {
+        const al = (j.alertes||[]).find(x => x.severite === 'haute') || (j.alertes||[])[0] || {};
+        const action = _COCKPIT_ACTIONS[al.type] || 'À évaluer';
+        return `<div onclick="_cockpitOuvrir('${j.athlete_id}')" style="display:flex;align-items:flex-start;gap:11px;padding:12px 0;border-top:1px solid var(--border);cursor:pointer;">
+          <span style="width:9px;height:9px;border-radius:50%;background:${COL.rouge};flex-shrink:0;margin-top:4px;display:inline-block;"></span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:800;">${escapeHtml(j.nom)}${j.poste ? ` <span style="font-size:11px;color:var(--accent);font-weight:700;">${escapeHtml(j.poste)}</span>` : ''}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:1px;">${escapeHtml(al.message || 'Situation à risque')}</div>
+            <div style="font-size:12px;color:var(--accent);font-weight:700;margin-top:4px;">→ ${escapeHtml(action)}</div>
+          </div>
+          <svg class="ico" style="color:var(--text-muted);flex-shrink:0;margin-top:2px;"><use href="#i-chevron-right"/></svg>
+        </div>`;
+      }).join('')}
+    </div>` : `
+    <div class="dash-card" style="padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${COL.vert};flex-shrink:0;display:inline-block;"></span>
+      <div style="font-size:13px;color:var(--text-muted);">Aucun joueur à risque aujourd'hui. Effectif sous contrôle. 👍</div>
+    </div>`;
+
+  // Filtres effectif
+  const FILTRES = [
+    ['', 'Tous'], ['surcharge', 'Surcharge'], ['fatigue', 'Fatigue'],
+    ['douleur', 'Douleur'], ['absence', 'Absence'], ['blessure', 'Blessés'],
+  ];
+  const fBtn = (val, lbl, on) => `<button data-cfiltre="${val}" onclick="_cockpitFiltrer(this.dataset.cfiltre||null)" style="flex:0 0 auto;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid ${on?'var(--accent-dim)':'var(--border)'};background:${on?'var(--accent-a14)':'var(--surface2)'};color:${on?'var(--accent)':'var(--text-muted)'};">${lbl}</button>`;
+  const filtresHtml = `<div style="display:flex;gap:6px;padding:8px 0 12px;overflow-x:auto;scrollbar-width:none;">${FILTRES.map(([v,l]) => fBtn(v, l, v==='')).join('')}</div>`;
+
+  cont.innerHTML = `
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Cockpit prépa — ${joueurs.length} ${labelJoueurs}</div></div>
+    ${header}
+    ${prioHtml}
+    <div class="v2-sec"><div class="st">Effectif</div></div>
+    ${filtresHtml}
+    <div id="cockpit-effectif"></div>`;
+  _cockpitRenderEffectif();
+}
+
+// Un joueur passe-t-il le filtre actif ?
+function _cockpitMatch(j, f) {
+  if (!f) return true;
+  if (f === 'blessure') return !!j.blesse;
+  const types = (j.alertes||[]).map(a => a.type);
+  if (f === 'surcharge') return types.includes('surcharge') || types.includes('charge');
+  return types.includes(f);
+}
+
+function _cockpitRenderEffectif() {
+  const box = document.getElementById('cockpit-effectif');
+  if (!box) return;
+  const COL = { rouge: '#e5484d', orange: '#f5a623', vert: '#22c55e' };
+  const dot = c => `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};flex-shrink:0;"></span>`;
+  const list = _cockpitState.joueurs.filter(j => _cockpitMatch(j, _cockpitState.filtre));
+  if (!list.length) {
+    box.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:16px 4px;">Aucun joueur dans cette catégorie.</div>`;
+    return;
+  }
+  const metric = (v, lbl) => `<div style="text-align:center;min-width:52px;"><div style="font-size:15px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;">${v}</div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">${lbl}</div></div>`;
+  box.innerHTML = list.map(j => {
+    const col = COL[j.statut] || COL.vert;
+    const acwrTxt = j.acwr != null ? j.acwr.toFixed(2) : '—';
+    const acwrCol = (j.acwr != null && j.acwr > 1.5) ? COL.rouge : (j.acwr != null && j.acwr > 1.3) ? COL.orange : 'var(--text)';
+    const chips = (j.alertes||[]).map(al => {
+      const c = al.severite === 'haute' ? COL.rouge : COL.orange;
+      return `<span style="display:inline-block;font-size:11px;font-weight:700;color:${c};background:${c}1a;border-radius:20px;padding:3px 10px;">${al.message}</span>`;
+    }).join(' ');
+    const blesseChip = j.blesse ? `<span style="display:inline-block;font-size:11px;font-weight:700;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;">${j.blesse==='indispo'?'Indisponible':'Retour progressif'}</span>` : '';
+    return `
+      <div class="dash-card" onclick="_cockpitOuvrir('${j.athlete_id}')" style="padding:13px 14px;margin-bottom:9px;border-left:3px solid ${col};cursor:pointer;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0;">
+            ${dot(col)}
+            <div style="min-width:0;">
+              <div style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(j.nom)} ${j.progression==='progression'?'<span style="color:#22c55e;">▲</span>':(j.progression==='regression'?'<span style="color:#e5484d;">▼</span>':'')}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${j.poste ? `<span style="color:var(--accent);font-weight:700;">${escapeHtml(j.poste)}</span> · ` : ''}${j.derniere_seance ? 'Dernière séance : '+j.derniere_seance : 'Aucune séance'}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-shrink:0;">
+            ${metric(`<span style="color:${acwrCol}">${acwrTxt}</span>`, 'ACWR')}
+            ${metric(j.seances_7j, 'Séances 7j')}
+            ${metric(j.fatigue_moy!=null ? j.fatigue_moy : '—', 'Fatigue')}
+          </div>
+        </div>
+        ${(chips||blesseChip) ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${chips}${blesseChip}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function _cockpitFiltrer(f) {
+  _cockpitState.filtre = f || null;
+  document.querySelectorAll('[data-cfiltre]').forEach(b => {
+    const on = b.dataset.cfiltre === (f || '');
+    b.style.background = on ? 'var(--accent-a14)' : 'var(--surface2)';
+    b.style.borderColor = on ? 'var(--accent-dim)' : 'var(--border)';
+    b.style.color = on ? 'var(--accent)' : 'var(--text-muted)';
+  });
+  _cockpitRenderEffectif();
+}
+
+// Ouvre la fiche athlète (onglets adaptés au rôle prépa — Étape 4).
+function _cockpitOuvrir(athlete_id) {
+  const a = (athletesCoach || []).find(x => String(x.athlete_id) === String(athlete_id));
+  if (a) ouvrirDetailAthleteCoach(a);
 }
 
 // Vue "Suivi équipe" (sports collectifs) — lit getSuiviEquipe (onglet Indicateurs).
