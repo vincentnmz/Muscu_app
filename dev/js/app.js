@@ -1224,6 +1224,13 @@ async function ouvrirEspaceCoach() {
   document.body.classList.toggle('light-mode', coachLight);
   syncThemeUI();
   document.getElementById('header-nom-coach').textContent = coach.nom;
+  // Identité de rôle (couleur de header + pastille) — coach / prépa
+  var _role = (coach && coach.role) || 'coach';
+  document.body.dataset.role = _role;
+  var _eb = document.getElementById('coach-header-eyebrow');
+  if (_eb) _eb.textContent = _role === 'prepa' ? 'Espace prépa physique' : 'Espace coach';
+  var _chip = document.getElementById('coach-role-chip');
+  if (_chip) { _chip.textContent = _role === 'prepa' ? 'Prépa' : 'Coach'; _chip.style.display = 'inline-block'; }
   const listeEl = document.getElementById('liste-athletes-coach');
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
   await chargerAlertesTraitees();
