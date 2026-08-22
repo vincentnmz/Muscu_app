@@ -1735,6 +1735,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     <div class="sub-tabs djt-tabs">
       <button class="sub-tab active" data-i="0" onclick="switchDetailJoueurTab(0)"><span class="dj-ico">${ic('note')}</span><span>Profil</span></button>
       <button class="sub-tab" data-i="1" onclick="switchDetailJoueurTab(1)"><span class="dj-ico">${ic('gauge')}</span><span>Charge</span></button>
+      <button class="sub-tab" data-i="4" onclick="switchDetailJoueurTab(4)"><span class="dj-ico">${ic('dumbbell')}</span><span>Renfo</span></button>
       <button class="sub-tab" data-i="2" onclick="switchDetailJoueurTab(2)"><span class="dj-ico">${ic('trophy')}</span><span>Match</span></button>
       <button class="sub-tab" data-i="3" onclick="switchDetailJoueurTab(3)"><span class="dj-ico">${ic('message')}</span><span>Conversation</span></button>
     </div>
@@ -1783,6 +1784,13 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       ${tblSeances(rows||'<tr><td style="padding:8px;color:var(--text-muted)">Aucune séance</td></tr>')}
       <div class="v2-sec"><div class="st">${ic('clipboard')}Tests physiques</div></div>
       <div id="detail-tests-body"><div class="loader">Chargement…</div></div>
+    </div>
+
+    <!-- PANEL 4 : RENFORCEMENT (muscu) — prépa uniquement -->
+    <div class="djt-panel" data-i="4" style="display:none;">
+      <div class="v2-sec"><div class="st">${ic('dumbbell')}Programme de renforcement</div></div>
+      <div id="fjd-programme-content"><div class="loader">Chargement…</div></div>
+      <button class="btn btn-outline" style="margin-top:10px;width:100%;" onclick="cdAjouterSeance()">+ Nouvelle séance</button>
     </div>
 
     <!-- PANEL 2 : MATCH & TECHNIQUE -->
@@ -1839,18 +1847,20 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     if (ov && _navEl) ov.appendChild(_navEl);
   } catch (e) {}
 
-  // Étape 4 — onglets adaptés au rôle du staff (l'athlète, sur sa page, voit tout).
-  // Prépa : physique/charge (cache l'onglet Match). Coach : match/tactique (cache Charge & physique).
+  // Étape 4 — onglets adaptés au rôle. Onglets (data-i) : 0 Profil · 1 Charge&physique
+  // · 4 Renfo (muscu) · 2 Match&technique · 3 Conversation.
+  //   • Prépa  : Profil · Charge · Renfo · Conversation  (cache Match)
+  //   • Coach  : Profil · Match · Conversation           (cache Charge + Renfo)
+  //   • Athlète (sa page) : Profil · Charge · Match · Conversation (Renfo caché tant que
+  //     l'exécution joueur n'est pas branchée — à venir).
   // Le rôle prépa n'existe que pour les sports co ; la muscu (fiche à part) n'est pas concernée.
   try {
-    if (cdMode === 'coach') {
-      var _r = (coach && coach.role) || 'coach';
-      var _hide = _r === 'prepa' ? [2] : [1];
-      _hide.forEach(function (i) {
-        var b = ov.querySelector('.djt-tabs [data-i="' + i + '"]'); if (b) b.style.display = 'none';
-        var p = body.querySelector('.djt-panel[data-i="' + i + '"]'); if (p) p.style.display = 'none';
-      });
-    }
+    var _r = (coach && coach.role) || 'coach';
+    var _hide = (cdMode !== 'coach') ? [4] : (_r === 'prepa' ? [2] : [1, 4]);
+    _hide.forEach(function (i) {
+      var b = ov.querySelector('.djt-tabs [data-i="' + i + '"]'); if (b) b.style.display = 'none';
+      var p = body.querySelector('.djt-panel[data-i="' + i + '"]'); if (p) p.style.display = 'none';
+    });
   } catch (e) {}
 
   _chargeJoueurData = d.charge_hebdo || [];
@@ -1915,6 +1925,14 @@ function switchDetailJoueurTab(i) {
   // redessine maintenant qu'il est visible, à la bonne largeur (rendu net).
   if (i === 1) requestAnimationFrame(() => dessinerChargeJoueur(_chargeJoueurData || []));
   if (i === 3) chargerConversationJoueur();
+  if (i === 4) ouvrirRenfoJoueur();
+}
+
+// Onglet « Renfo » (prépa) — réutilise le builder de programme muscu, ciblé sur
+// le joueur foot courant et sur le conteneur de la fiche joueur.
+function ouvrirRenfoJoueur() {
+  progCtx = { el: 'fjd-programme-content', athleteId: cdJoueurCourant, athleteNom: cdJoueurNom || '' };
+  chargerProgrammeCoach();
 }
 
 // Conversation coach ↔ joueur foot (onglet 3)
@@ -2934,7 +2952,10 @@ function switchCoachDetailTab(tab) {
   if (coachAthleteCourant) {
     try { localStorage.setItem('muscu_coach_vue', JSON.stringify({ athlete_id: coachAthleteCourant.athlete_id, tab: tab })); } catch(e) {}
   }
-  if (tab === 'programme') chargerProgrammeCoach();
+  if (tab === 'programme') {
+    progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null }; // contexte muscu
+    chargerProgrammeCoach();
+  }
   majRailVisibilite(tab);
 }
 
@@ -4090,23 +4111,35 @@ function surlignerAthleteSidebar(athleteId) {
 // ==================== PROGRAMME (CRUD COACH) ==================== [MODULE MUSCU]
 let cdProgrammeLignes = [];
 
+// Contexte du builder de programme — permet de le piloter sur n'importe quelle
+// fiche (muscu : #cd-programme-content + coachAthleteCourant ; renfo prépa sur
+// fiche joueur : #fjd-programme-content + le joueur foot courant).
+let progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null };
+function _progEl()         { return document.getElementById(progCtx.el); }
+function _progAthleteId()  { return progCtx.athleteId || (coachAthleteCourant && coachAthleteCourant.athlete_id) || null; }
+function _progAthleteNom() { return progCtx.athleteNom || (coachAthleteCourant && coachAthleteCourant.nom) || ''; }
+
+// Recharge le programme du contexte courant (progCtx doit être positionné avant
+// le 1er appel par l'ouvreur ; les rafraîchissements internes le réutilisent).
 async function chargerProgrammeCoach() {
-  const el = document.getElementById('cd-programme-content');
-  if (!coachAthleteCourant) return;
-  el.innerHTML = '<div class="loader">Chargement...</div>';
+  const el = _progEl();
+  const aid = _progAthleteId();
+  if (!aid) return;
+  if (el) el.innerHTML = '<div class="loader">Chargement...</div>';
   if (exercicesData.length === 0) await chargerExercices();
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getCoachProgramme&athlete_id=${encodeURIComponent(coachAthleteCourant.athlete_id)}`);
+    const res = await fetch(`${SCRIPT_URL}?action=getCoachProgramme&athlete_id=${encodeURIComponent(aid)}`);
     const data = await res.json();
     cdProgrammeLignes = data.lignes || [];
     renderProgrammeCoach();
   } catch(e) {
-    el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+    if (el) el.innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }
 }
 
 function renderProgrammeCoach() {
-  const el = document.getElementById('cd-programme-content');
+  const el = _progEl();
+  if (!el) return;
   const seances = {};
   const ordre = [];
   cdProgrammeLignes.forEach(l => {
@@ -4262,7 +4295,7 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
   return fetch(SCRIPT_URL, {
     method: 'POST', headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify({
-      action: 'saveProgrammeLigne', row_index: rowIndex, athlete_id: coachAthleteCourant.athlete_id,
+      action: 'saveProgrammeLigne', row_index: rowIndex, athlete_id: _progAthleteId(),
       seance_id: ligne.seance_id, exercice: ligne.exercice,
       series_prevues: ligne.series_prevues, reps_mini: ligne.reps_mini, reps_max: ligne.reps_max,
       repos_sec: ligne.repos_sec, groupe_id: ligne.groupe_id || ''
@@ -4316,8 +4349,8 @@ async function cdLierExerciceParNom(rowIndex, seanceId, exerciceNom) {
     // Sauver d'abord la ligne courante (avec son exercice à jour) AVANT de créer la ligne liée et de recharger
     await cdSauverLigne(rowIndex, seanceId, null, null, null, null, null, groupeId);
     const body = {
-      action: 'saveProgrammeLigne', athlete_id: coachAthleteCourant.athlete_id,
-      athlete_nom: coachAthleteCourant.nom, seance_id: seanceId, exercice: exerciceNom,
+      action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
+      athlete_nom: _progAthleteNom(), seance_id: seanceId, exercice: exerciceNom,
       series_prevues: ligne.series_prevues || 3, reps_mini: ligne.reps_mini || 8,
       reps_max: ligne.reps_max || 12, repos_sec: ligne.repos_sec || 90, groupe_id: groupeId
     };
@@ -4330,8 +4363,8 @@ async function cdAjouterExercice(seanceId) {
   if (exercicesData.length === 0) return;
   const exo = exercicesData[0];
   const body = {
-    action: 'saveProgrammeLigne', athlete_id: coachAthleteCourant.athlete_id,
-    athlete_nom: coachAthleteCourant.nom, seance_id: seanceId, exercice: exo.exercice,
+    action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
+    athlete_nom: _progAthleteNom(), seance_id: seanceId, exercice: exo.exercice,
     series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: ''
   };
   await fetch(SCRIPT_URL, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
@@ -4348,7 +4381,7 @@ async function cdSupprimerLigne(rowIndex) {
   if (!confirm('Supprimer cet exercice du programme ?')) return;
   await fetch(SCRIPT_URL, {
     method: 'POST', headers: {'Content-Type': 'text/plain'},
-    body: JSON.stringify({action: 'supprimerProgrammeLigne', row_index: rowIndex, athlete_id: coachAthleteCourant.athlete_id})
+    body: JSON.stringify({action: 'supprimerProgrammeLigne', row_index: rowIndex, athlete_id: _progAthleteId()})
   });
   chargerProgrammeCoach();
 }
