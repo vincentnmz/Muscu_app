@@ -2233,6 +2233,7 @@ function _cockpitRenderEffectif() {
             <div style="min-width:0;">
               <div style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(j.nom)} ${j.progression==='progression'?'<span style="color:#22c55e;">▲</span>':(j.progression==='regression'?'<span style="color:#e5484d;">▼</span>':'')}</div>
               <div style="font-size:11px;color:var(--text-muted);">${j.poste ? `<span style="color:var(--accent);font-weight:700;">${escapeHtml(j.poste)}</span> · ` : ''}${j.derniere_seance ? 'Dernière séance : '+j.derniere_seance : 'Aucune séance'}</div>
+              ${j.login ? `<div style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">🔑 login <b style="color:var(--text);">${escapeHtml(j.login)}</b> · mdp <b style="color:var(--text);">foot1234</b></div>` : ''}
             </div>
           </div>
           <div style="display:flex;gap:10px;flex-shrink:0;">
@@ -2344,6 +2345,7 @@ async function renderSuiviEquipe() {
             <div style="min-width:0;">
               <div style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(j.nom)} ${j.progression==='progression'?'<span style="color:#22c55e;">▲</span>':(j.progression==='regression'?'<span style="color:#e5484d;">▼</span>':'')}</div>
               <div style="font-size:11px;color:var(--text-muted);">${j.poste ? `<span style="color:var(--accent);font-weight:700;">${escapeHtml(j.poste)}</span> · ` : ''}${j.derniere_seance ? 'Dernière séance : '+j.derniere_seance : 'Aucune séance'}</div>
+              ${j.login ? `<div style="font-size:10.5px;color:var(--text-muted);margin-top:2px;">🔑 login <b style="color:var(--text);">${escapeHtml(j.login)}</b> · mdp <b style="color:var(--text);">foot1234</b></div>` : ''}
             </div>
           </div>
           <div style="display:flex;gap:10px;flex-shrink:0;">
@@ -4964,7 +4966,10 @@ async function supprimerDemoFoot() {
       body: JSON.stringify({ action: 'clearDemoFoot', coach_id: coach.coach_id }) });
     var j = await r.json();
     if (j && j.success) {
-      if (info) { info.style.color = 'var(--good)'; info.textContent = '🗑️ ' + j.supprimes + ' joueurs de démo supprimés.'; }
+      if (info) {
+        if (j.restants && j.restants > 0) { info.style.color = 'var(--warn)'; info.textContent = '⚠️ ' + j.supprimes + ' supprimés, ' + j.restants + ' restants (données liées ?).'; }
+        else { info.style.color = 'var(--good)'; info.textContent = '🗑️ ' + j.supprimes + ' joueurs de démo supprimés.'; }
+      }
       showToast('Démos supprimés');
       if (typeof ouvrirEspaceCoach === 'function') ouvrirEspaceCoach();
     } else if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ ' + ((j && j.error) || 'échec'); }
