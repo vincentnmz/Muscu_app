@@ -4259,7 +4259,7 @@ function renderProgrammeCoach() {
       </div>
       <div id="prog-body-${si}" style="padding:12px 14px;border-top:1px solid var(--border);${ouvert?'':'display:none'}">
         ${cartes}
-        <button class="btn-sm btn-outline" onclick="cdAjouterExercice('${seanceId}')" style="width:100%">+ Ajouter un exercice</button>
+        <button onclick="cdAjouterExercice('${seanceId}')" style="width:100%;margin-top:4px;padding:12px;border:1.5px dashed var(--accent-dim);background:var(--accent-a08);color:var(--accent);border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><span style="font-size:18px;line-height:1;">+</span> Ajouter un exercice</button>
       </div>
     </div>`;
   }).join('');
@@ -4374,6 +4374,7 @@ async function cdAjouterExercice(seanceId) {
 async function cdAjouterSeance() {
   const nom = prompt('Nom de la nouvelle séance (ex: Push, Pull, Jambes...)');
   if (!nom) return;
+  cdProgOpen[nom] = true;   // ouvrir la nouvelle séance après rechargement (voir le +Ajouter)
   await cdAjouterExercice(nom);
 }
 
