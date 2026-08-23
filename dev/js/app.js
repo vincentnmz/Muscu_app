@@ -2134,14 +2134,14 @@ async function renderCockpitPrepa() {
   const kpi = (n, lbl, col) => nvStat(n, lbl, { color:(col||''), wrapStyle:'flex:1' });
   const header = `
     <div class="dash-card" style="padding:16px;margin-bottom:12px;">
-      <div style="display:flex;gap:8px;">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
         ${kpi(eq.rouge||0, 'À risque', COL.rouge)}
         ${kpi(eq.orange||0, 'À surveiller', COL.orange)}
         ${kpi(eq.vert||0, 'Disponibles', COL.vert)}
         ${kpi(eq.indispo||0, 'Indispo', 'var(--text-muted)')}
       </div>
       <div style="height:1px;background:var(--border);margin:14px 0;"></div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
         ${kpi((eq.charge_equipe||0).toLocaleString('fr-FR'), 'Charge 7j équipe')}
         ${kpi(eq.fatigue_moyenne!=null ? eq.fatigue_moyenne+'/5' : '—', 'Fatigue moy.', eq.fatigue_moyenne!=null && eq.fatigue_moyenne>=4 ? COL.orange : '')}
         ${kpi(`<span style="color:#22c55e">${eq.en_progression||0}</span> · <span style="color:#e5484d">${eq.en_regression||0}</span>`, 'Prog. · Régr.')}
