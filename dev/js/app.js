@@ -913,6 +913,14 @@ window.addEventListener('load', async () => {
 });
 
 // ==================== AUTH ==================== [NOYAU]
+// Affiche / masque un champ mot de passe (bouton œil).
+function togglePwd(id, btn) {
+  var el = document.getElementById(id); if (!el) return;
+  var reveal = el.type === 'password';
+  el.type = reveal ? 'text' : 'password';
+  if (btn) { btn.textContent = reveal ? '🙈' : '👁'; btn.setAttribute('aria-label', reveal ? 'Masquer le mot de passe' : 'Afficher le mot de passe'); }
+}
+
 async function seConnecter() {
   const login = document.getElementById('inp-login').value.trim();
   const password = document.getElementById('inp-password').value;
@@ -4950,10 +4958,10 @@ async function genererDemoFoot() {
           var _l0 = j.logins[0], _l1 = j.logins[j.logins.length - 1];
           _creds = '<div style="margin-top:6px;color:var(--text);font-weight:700;">🔑 Connexion joueurs : logins <b>' + _l0 + '</b>→<b>' + _l1 + '</b> · mot de passe <b>' + (j.password || '') + '</b></div>';
         }
+        // On n'affiche l'auto-test que s'il ÉCHOUE (sinon bruit inutile).
         var _diag = '';
-        if (j.login_test) {
-          if (j.login_test.ok) _diag = '<div style="margin-top:6px;color:var(--good);font-weight:700;">✓ Auto-test connexion OK (login ' + j.login_test.login + ' · foot1234)</div>';
-          else _diag = '<div style="margin-top:6px;color:var(--danger);font-weight:700;">⚠️ Auto-test connexion ÉCHEC — login ' + (j.login_test.login||'?') + ', hash stocké len=' + (j.login_test.storedLen!=null?j.login_test.storedLen:'?') + (j.login_test.error?(' err:'+j.login_test.error):'') + '</div>';
+        if (j.login_test && !j.login_test.ok) {
+          _diag = '<div style="margin-top:6px;color:var(--danger);font-weight:700;">⚠️ Auto-test connexion ÉCHEC — login ' + (j.login_test.login||'?') + ', hash stocké len=' + (j.login_test.storedLen!=null?j.login_test.storedLen:'?') + (j.login_test.error?(' err:'+j.login_test.error):'') + '</div>';
         }
         info.innerHTML = '✅ ' + j.joueurs + ' joueurs créés (' + j.charges + ' charges, ' + j.blessures + ' blessures). Pense à mettre ton sport sur « Foot ».' + _creds + _diag;
       }
