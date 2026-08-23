@@ -82,6 +82,11 @@ select:hover, input:hover  { border-color:var(--text-muted); }
 select:focus, input:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-a15); }
 input::placeholder, textarea::placeholder { color:var(--text-muted); opacity:0.7; }
 
+/* Champ mot de passe avec bouton œil (afficher/masquer) */
+.pwd-wrap { position:relative; margin-bottom:10px; }
+.pwd-wrap > input { margin-bottom:0 !important; padding-right:44px; }
+.pwd-eye { position:absolute; right:4px; top:0; height:100%; width:38px; display:flex; align-items:center; justify-content:center; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px; line-height:1; padding:0; }
+
 /* ===== Grilles utilitaires ===== */
 .row2 { display:grid; grid-template-columns:1fr 1fr;     gap:10px; }
 .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;  }
