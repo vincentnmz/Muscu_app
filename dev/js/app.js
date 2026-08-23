@@ -1844,8 +1844,12 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   // retire donc toute barre restée d'une ouverture précédente avant d'ajouter
   // la nouvelle (sinon les barres s'empilent → « deux barres » sur mobile).
   try {
-    var _old = ov.querySelectorAll(':scope > .djt-tabs');
-    for (var _k = 0; _k < _old.length; _k++) _old[_k].remove();
+    // Retire toute barre déjà déplacée dans l'overlay lors d'une ouverture précédente
+    // (elle survit au remplacement du body → sinon empilement = « double barre »).
+    var _kids = Array.prototype.slice.call(ov.children);
+    for (var _k = 0; _k < _kids.length; _k++) {
+      if (_kids[_k].classList && _kids[_k].classList.contains('djt-tabs')) _kids[_k].remove();
+    }
     var _navEl = body.querySelector('.djt-tabs');
     if (ov && _navEl) ov.appendChild(_navEl);
   } catch (e) {}
