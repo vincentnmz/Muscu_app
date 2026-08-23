@@ -170,6 +170,10 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .v2-kpi   { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 11px; }
 .v2-kpi .kv { font-size:20px; font-weight:800; line-height:1; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
 .v2-kpi .kk { font-size:10px; color:var(--text-muted); font-weight:600; margin-top:5px; line-height:1.25; }
+/* KPIs de la fiche joueur (4 mesures) : 2 colonnes en mobile, 4 dès qu'il y a la
+ * place. minmax(0,1fr) autorise le rétrécissement → pas de débordement horizontal. */
+.fjd-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-bottom:12px; }
+@media (min-width:480px) { .fjd-kpis { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 .v2-sec   { display:flex; align-items:center; justify-content:space-between; margin:2px 2px 9px; }
 .v2-sec .st { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:400; letter-spacing:.06em; }
 .v2-sec .st .ico { width:15px; height:15px; color:var(--accent); }
