@@ -1505,7 +1505,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   };
   const cfgPoste = POSTE_STATS[d.poste] || null;
   const aggV = (cle,type)=>{ const a = d.match_agg && d.match_agg[cle]; if(!a) return null; return type==='total'?a.total:(type==='total1'?Math.round(a.total*10)/10:a.moy); };
-  const matchKpis = msAgg ? `<div class="v2-kpis" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+  const matchKpis = msAgg ? `<div class="fjd-kpis">
         <div class="v2-kpi"><div class="kv">${msAgg.note_moy!=null?msAgg.note_moy:'—'}</div><div class="kk">Note moy.</div></div>
         ${cfgPoste ? `<div class="v2-kpi"><div class="kv">${aggV(cfgPoste.head.cle,cfgPoste.head.type)!=null?aggV(cfgPoste.head.cle,cfgPoste.head.type):'—'}</div><div class="kk">${escapeHtml(cfgPoste.head.l)}</div></div>` : `<div class="v2-kpi"><div class="kv">${msAgg.buts||0}</div><div class="kk">Buts</div></div>`}
         <div class="v2-kpi"><div class="kv">${msAgg.minutes||0}</div><div class="kk">Minutes</div></div>
@@ -1688,7 +1688,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const gps = d.gps;
   const gpsTile = (v,l)=>nvStat(v, l);
   const gpsUnit = u=>`<span style="font-size:11px;color:var(--text-muted);"> ${u}</span>`;
-  const gpsCard = (gps && gps.n) ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px;">
+  const gpsCard = (gps && gps.n) ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 8px;">
       ${gpsTile((gps.distance/1000).toFixed(1)+gpsUnit('km'),'Distance')}
       ${gpsTile(Math.round(gps.distance_hi)+gpsUnit('m'),'Dist. HI')}
       ${gpsTile(Math.round(gps.sprint_distance||0)+gpsUnit('m'),'Sprint dist.')}
@@ -1700,7 +1700,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
   // KPI de charge (§11) — charge mensuelle, monotonie, strain, temps de jeu (onglet Charge)
   const kf = d.kpi_foot;
-  const kpiFootCard = kf ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px 8px;">
+  const kpiFootCard = kf ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 8px;">
       ${gpsTile((kf.charge_mensuelle||0).toLocaleString('fr-FR')+gpsUnit('UA'),'Charge · 28 j')}
       ${gpsTile(kf.monotonie!=null?kf.monotonie:'—','Monotonie')}
       ${gpsTile(kf.strain!=null?kf.strain.toLocaleString('fr-FR'):'—','Strain')}
@@ -1767,7 +1767,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
     <!-- PANEL 1 : CHARGE & PHYSIQUE (données réelles) -->
     <div class="djt-panel" data-i="1" style="display:none;">
-      <div class="v2-kpis" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+      <div class="fjd-kpis">
         <div class="v2-kpi"><div class="kv" style="color:${acwrCol};">${acwr!=null?acwr.toFixed(2):'—'}</div><div class="kk">ACWR</div></div>
         <div class="v2-kpi"><div class="kv">${(d.charge_7j||0).toLocaleString('fr-FR')}</div><div class="kk">Charge 7j</div></div>
         <div class="v2-kpi"><div class="kv">${wLast.fatigue??'—'}</div><div class="kk">Fatigue</div></div>
@@ -1839,10 +1839,13 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     </aside>
     </div><!-- /fjd-body -->`;
 
-  // La barre d'onglets sort de la zone qui défile pour devenir un enfant flex de
-  // l'overlay (barre du bas fiable, sans position:fixed → évite le bug iOS du
-  // fixed dans un conteneur overflow:auto).
+  // La barre d'onglets sort de la zone qui défile pour être un enfant direct de
+  // l'overlay (barre du bas fiable). Elle survit au remplacement du body : on
+  // retire donc toute barre restée d'une ouverture précédente avant d'ajouter
+  // la nouvelle (sinon les barres s'empilent → « deux barres » sur mobile).
   try {
+    var _old = ov.querySelectorAll(':scope > .djt-tabs');
+    for (var _k = 0; _k < _old.length; _k++) _old[_k].remove();
     var _navEl = body.querySelector('.djt-tabs');
     if (ov && _navEl) ov.appendChild(_navEl);
   } catch (e) {}
