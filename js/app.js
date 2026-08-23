@@ -4934,7 +4934,15 @@ async function genererDemoFoot() {
       body: JSON.stringify({ action: 'seedDemoFoot', coach_id: coach.coach_id }) });
     var j = await r.json();
     if (j && j.success) {
-      if (info) { info.style.color = 'var(--good)'; info.textContent = '✅ ' + j.joueurs + ' joueurs créés (' + j.charges + ' charges, ' + j.blessures + ' blessures). Pense à mettre ton sport sur « Foot ».'; }
+      if (info) {
+        info.style.color = 'var(--good)';
+        var _creds = '';
+        if (j.logins && j.logins.length) {
+          var _l0 = j.logins[0], _l1 = j.logins[j.logins.length - 1];
+          _creds = '<div style="margin-top:6px;color:var(--text);font-weight:700;">🔑 Connexion joueurs : logins <b>' + _l0 + '</b>→<b>' + _l1 + '</b> · mot de passe <b>' + (j.password || '') + '</b></div>';
+        }
+        info.innerHTML = '✅ ' + j.joueurs + ' joueurs créés (' + j.charges + ' charges, ' + j.blessures + ' blessures). Pense à mettre ton sport sur « Foot ».' + _creds;
+      }
       showToast('👥 ' + j.joueurs + ' joueurs de démo créés');
       if (typeof ouvrirEspaceCoach === 'function') ouvrirEspaceCoach();
     } else if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ ' + ((j && j.error) || 'échec'); }
