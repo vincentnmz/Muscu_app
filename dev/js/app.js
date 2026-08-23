@@ -1754,6 +1754,9 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
     <!-- PANEL 0 : PROFIL -->
     <div class="djt-panel" data-i="0">
+      <!-- État du jour (forme) — même bloc que la page athlète muscu -->
+      <div class="v2-sec" id="fjd-etat-sec" style="display:none;"><div class="st">${ic('activity')}État du jour</div></div>
+      <div class="dash-card" id="fjd-etat-card" style="padding:16px;margin-bottom:12px;display:none;"><div id="fjd-etat-content"></div></div>
       ${analyseCard ? `<div class="v2-sec"><div class="st">${ic('activity')}Analyse</div></div>${analyseCard}` : ''}
       <div class="v2-sec"><div class="st">${ic('note')}Identité</div></div>
       <div class="dash-card" style="padding:4px 14px;margin-bottom:12px;">
@@ -1881,6 +1884,12 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   _chargeJoueurData = d.charge_hebdo || [];
   dessinerChargeJoueur(_chargeJoueurData);
   renderTestsJoueur(d.athlete_id);
+  // Bloc « État du jour » (forme) — réutilise le composant de la page athlète muscu,
+  // alimenté par le bien-être foot (le plus récent en premier).
+  try {
+    var _well = (d.wellness || []).slice().reverse();
+    renderEtatDuJour({ bien_etre: _well, recent: null }, { sec: 'fjd-etat-sec', card: 'fjd-etat-card', cont: 'fjd-etat-content' });
+  } catch (_) {}
 }
 // Données de la courbe de charge du joueur ouvert — pour redessiner net quand
 // l'onglet Charge (masqué au 1er rendu) devient visible.
