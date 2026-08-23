@@ -2142,20 +2142,43 @@ async function renderCockpitPrepa() {
 
   const COL = { rouge: '#e5484d', orange: '#f5a623', vert: '#22c55e' };
 
-  // Bandeau synthèse : disponibilité + charge collective
-  const kpi = (n, lbl, col) => nvStat(n, lbl, { color:(col||''), wrapStyle:'flex:1' });
+  // ---- Hero « Briefing du jour » (même langage visuel que l'accueil coach muscu) ----
+  const total = joueurs.length;
+  const aGerer = eq.rouge || 0;
+  const pctControle = total ? Math.round((total - aGerer) / total * 100) : 0;
+  const dateFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const svgRing = (pct, size, stroke, color, track) => {
+    const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${track}" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${size/2} ${size/2})"/></svg>`;
+  };
+  const heroPill = (n, label) => nvStat(n, label, { size:'sm', tone:'on-accent', class:'nv-stat--tile-accent', wrapStyle:'flex:1' });
   const header = `
-    <div class="dash-card" style="padding:16px;margin-bottom:12px;">
-      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
-        ${kpi(eq.rouge||0, 'À risque', COL.rouge)}
-        ${kpi(eq.orange||0, 'À surveiller', COL.orange)}
-        ${kpi(eq.vert||0, 'Disponibles', COL.vert)}
-        ${kpi(eq.indispo||0, 'Indispo', 'var(--text-muted)')}
+    <div style="position:relative;border-radius:20px;padding:18px;overflow:hidden;color:var(--on-accent);background:linear-gradient(135deg,var(--accent),var(--accent-strong));box-shadow:var(--shadow);margin-bottom:14px;">
+      <div style="position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);"></div>
+      <div style="position:relative;z-index:1;">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;opacity:.9;">Bonjour ${escapeHtml(coach ? coach.nom : 'Prépa')}</div>
+        <div style="font-size:12px;opacity:.9;margin-top:2px;">${dateFR} · ${total} ${labelJoueurs} suivi${total > 1 ? 's' : ''}</div>
+        <div style="display:flex;align-items:center;gap:16px;margin-top:14px;">
+          <div style="position:relative;width:64px;height:64px;flex-shrink:0;">
+            ${svgRing(pctControle, 64, 6, '#fff', 'rgba(255,255,255,.28)')}
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-size:16px;font-weight:800;">${pctControle}%</div><div style="font-size:8px;opacity:.9;text-transform:uppercase;letter-spacing:.05em;">sous contrôle</div></div>
+          </div>
+          <div style="flex:1;min-width:0;"><div style="font-size:34px;font-weight:800;line-height:1;">${aGerer}</div><div style="font-size:12.5px;opacity:.92;margin-top:4px;font-weight:600;">${aGerer === 0 ? 'effectif sous contrôle 🎉' : (libelleSport('athlete').toLowerCase()) + (aGerer > 1 ? 's' : '') + ' à gérer aujourd\'hui'}</div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          ${heroPill(eq.orange||0, 'à surveiller')}
+          ${heroPill(eq.indispo||0, 'indispo')}
+          ${heroPill((eq.charge_equipe||0).toLocaleString('fr-FR'), 'charge 7j')}
+        </div>
       </div>
-      <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+    </div>`;
+  // ---- Bandeau chiffres équipe (charge / fatigue / progression) ----
+  const kpi = (n, lbl, col) => nvStat(n, lbl, { color:(col||''), wrapStyle:'flex:1' });
+  const statsCard = `
+    <div class="dash-card" style="padding:14px 16px;margin-bottom:14px;">
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
-        ${kpi((eq.charge_equipe||0).toLocaleString('fr-FR'), 'Charge 7j équipe')}
         ${kpi(eq.fatigue_moyenne!=null ? eq.fatigue_moyenne+'/5' : '—', 'Fatigue moy.', eq.fatigue_moyenne!=null && eq.fatigue_moyenne>=4 ? COL.orange : '')}
+        ${kpi(eq.bienetre_moyen!=null ? eq.bienetre_moyen+'/5' : '—', 'Bien-être moy.')}
         ${kpi(`<span style="color:#22c55e">${eq.en_progression||0}</span> · <span style="color:#e5484d">${eq.en_regression||0}</span>`, 'Prog. · Régr.')}
       </div>
     </div>`;
@@ -2194,8 +2217,8 @@ async function renderCockpitPrepa() {
   const filtresHtml = `<div style="display:flex;gap:6px;padding:8px 0 12px;overflow-x:auto;scrollbar-width:none;">${FILTRES.map(([v,l]) => fBtn(v, l, v==='')).join('')}</div>`;
 
   cont.innerHTML = `
-    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Cockpit prépa — ${joueurs.length} ${labelJoueurs}</div></div>
     ${header}
+    ${statsCard}
     ${prioHtml}
     <div class="v2-sec"><div class="st">Effectif</div></div>
     ${filtresHtml}
