@@ -4292,6 +4292,7 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
   if (repsMax !== null) ligne.reps_max = Number(repsMax);
   if (reposSec !== null) ligne.repos_sec = Number(reposSec);
   if (groupeId !== null) { ligne.groupe_id = groupeId.trim().toUpperCase(); renderProgrammeCoach(); }
+  else if (exercice !== null) { cdExoOpen[rowIndex] = true; renderProgrammeCoach(); } // MAJ live du nom/muscle affiché
   return fetch(SCRIPT_URL, {
     method: 'POST', headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify({
