@@ -371,15 +371,17 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
   width:100%; justify-content:center; gap:2px; overflow:visible;
   background:var(--surface); border-top:1px solid var(--border); border-radius:0;
   box-shadow:0 -4px 16px rgba(7,11,20,.10);
-  padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));
+  padding:8px 10px calc(6px + env(safe-area-inset-bottom,0px));
 }
+/* Onglets icônes seules + indicateur bas actif — identique à #view-coach-detail .sub-tab
+   (le nom de l'onglet courant est repris dans le header sticky #fjd-tab-title). */
 .djt-tabs .sub-tab {
-  position:relative; flex:1 1 0; min-width:0; max-width:calc(var(--app-w) / 4);
+  position:relative; flex:1 1 0; min-width:0; max-width:calc(var(--app-w) / 5);
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  border:none; border-radius:0; background:none; padding:6px 3px;
-  color:var(--text-muted); font-size:var(--fs-2xs); font-weight:var(--fw-bold); white-space:nowrap;
+  border:none; border-bottom:2px solid transparent; border-radius:0; background:none; padding:12px 3px;
+  color:var(--text-muted); font-size:9.5px; font-weight:var(--fw-bold); white-space:nowrap;
 }
 .djt-tabs .sub-tab .dj-ico     { line-height:1; display:block; }
-.djt-tabs .sub-tab .dj-ico svg { width:22px; height:22px; }
-.djt-tabs .sub-tab.active          { background:none; color:var(--accent); }
-.djt-tabs .sub-tab.active::before  { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:24px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }
+.djt-tabs .sub-tab .dj-ico svg { width:24px; height:24px; }
+.djt-tabs .sub-tab > span:not(.dj-ico) { display:none; }   /* icônes seules, comme la fiche muscu */
+.djt-tabs .sub-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
