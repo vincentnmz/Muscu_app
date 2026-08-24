@@ -93,7 +93,7 @@
     <div id="auth-login">
       <div class="card">
         <label>Login (4 chiffres)</label>
-        <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
+        <input type="text" id="inp-login" maxlength="4" placeholder="1234" inputmode="numeric" autocomplete="username">
         <label>Mot de passe</label>
         <div class="pwd-wrap"><input type="password" id="inp-password" placeholder="Mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('inp-password',this)" aria-label="Afficher le mot de passe">👁</button></div>
         <div id="login-error" class="error-msg"></div>
@@ -118,7 +118,7 @@
         <div class="row2">
           <div>
             <label>Login (4 chiffres)</label>
-            <input type="password" id="reg-login" maxlength="4" placeholder="••••" inputmode="numeric">
+            <input type="text" id="reg-login" maxlength="4" placeholder="1234" inputmode="numeric">
           </div>
           <div id="reg-annees-wrap">
             <label>Années de pratique</label>
@@ -152,7 +152,7 @@
       <div class="card" id="coach-auth-login">
         <div class="card-title">Connexion coach / prépa</div>
         <label>Identifiant</label>
-        <input type="password" id="inp-login-coach" placeholder="Ton identifiant">
+        <input type="text" id="inp-login-coach" placeholder="Ton identifiant" autocomplete="username">
         <label>Mot de passe</label>
         <div class="pwd-wrap"><input type="password" id="inp-password-coach" placeholder="Mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('inp-password-coach',this)" aria-label="Afficher le mot de passe">👁</button></div>
         <div id="login-coach-error" class="error-msg"></div>
@@ -286,7 +286,7 @@
         <!-- Mode LIER (compte existant) -->
         <div id="lier-mode-lier">
           <label>Login de l'athlète (4 chiffres)</label>
-          <input type="password" id="inp-lier-login" maxlength="4" placeholder="••••" inputmode="numeric">
+          <input type="text" id="inp-lier-login" maxlength="4" placeholder="1234" inputmode="numeric">
           <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">L'athlète s'est déjà inscrit ? Entre son login pour le rattacher à ton espace.</div>
         </div>
 
@@ -295,7 +295,7 @@
           <label>Prénom</label>
           <input type="text" id="crea-prenom" placeholder="Prénom de l'athlète">
           <div class="row2">
-            <div><label>Login (4 chiffres)</label><input type="password" id="crea-login" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+            <div><label>Login (4 chiffres)</label><input type="text" id="crea-login" maxlength="4" placeholder="1234" inputmode="numeric"></div>
             <div><label>Taille (cm)</label><input type="number" id="crea-taille" placeholder="175"></div>
           </div>
           <label>Date de naissance</label>
