@@ -1716,27 +1716,19 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     </div></div>` : '';
 
   body.innerHTML = `
-    <!-- Header — même composant que l'accueil muscu (logo + boutons compte) -->
-    <header style="margin:-14px -16px 14px;">
-      <h1><svg class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use href="#i-dumbbell"/></svg><span>Novalyz</span></h1>
-      <div style="display:flex;align-items:center;gap:10px;">
-        ${cdMode==='athlete'
-          ? `<button onclick="toggleTheme()" title="Thème" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;cursor:pointer;line-height:1;"><svg class="ico"><use href="#i-moon"/></svg></button>
-             <button class="logout-btn" onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion" style="white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`
-          : `<button class="btn-sm btn-outline" onclick="fermerDetailJoueurFoot()" title="Retour" style="padding:8px 12px;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg> Retour</button>`}
+    <!-- Header sticky — même structure que la fiche athlète muscu (#cd-header) :
+         avatar + titre de l'onglet courant (change à chaque onglet) + nom/poste. -->
+    <div class="header" id="fjd-header" style="display:flex;align-items:center;gap:9px;position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;">
+      ${cdMode==='coach' ? `<button class="btn-sm btn-outline" onclick="fermerDetailJoueurFoot()" title="Retour" style="flex-shrink:0;padding:8px 10px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>` : ''}
+      <div class="fjd-ava" style="width:40px;height:40px;border-radius:12px;font-size:14px;flex-shrink:0;">${escapeHtml(initiales)}</div>
+      <div style="flex:1;min-width:0;text-align:left;">
+        <h1 id="fjd-tab-title" style="font-weight:800;font-size:19px;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Profil</h1>
+        <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="font-weight:700;color:var(--text);">${escapeHtml(d.nom||'Joueur')}</span>${d.poste?' · '+escapeHtml(d.poste):''}${d.club?' · '+escapeHtml(d.club):''} · <span style="color:${dispo.c};font-weight:700;">●&nbsp;${escapeHtml(dispo.t)}</span></div>
       </div>
-    </header>
-
-    <!-- HERO — même langage visuel que l'accueil muscu (.v2-hero) -->
-    <div class="v2-hero">
-      <div class="v2-hero-top">
-        <div class="fjd-ava" style="width:64px;height:64px;font-size:var(--fs-xl);border-radius:18px;">${escapeHtml(initiales)}</div>
-        <div style="min-width:0;flex:1;">
-          <div class="v2-hi">${d.poste ? escapeHtml(d.poste) : 'Joueur'}${d.club ? ' · '+escapeHtml(d.club) : ''}</div>
-          <div class="v2-name">${escapeHtml(d.nom||'Joueur')}</div>
-          <div style="margin-top:9px;">${nvChip('<span style="width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;"></span>' + escapeHtml(dispo.t), { tone: _toneFromColor(dispo.c) })}</div>
-        </div>
-      </div>
+      ${cdMode==='athlete'
+        ? `<button onclick="toggleTheme()" title="Thème" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;cursor:pointer;line-height:1;"><svg class="ico"><use href="#i-moon"/></svg></button>
+           <button class="logout-btn" onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion" style="flex-shrink:0;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`
+        : `<button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion" style="flex-shrink:0;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`}
     </div>
 
     <!-- Onglets vue joueur : barre du bas sur mobile, onglets en haut sur desktop (.djt-tabs) -->
@@ -1941,10 +1933,17 @@ async function cdSaveBilan(){
   ouvrirDetailJoueurFoot(cdJoueurCourant, 'athlete');
 }
 
+// Titre affiché dans le header selon l'onglet (comme #cd-tab-title muscu)
+const DJT_TAB_LABELS = { 0: 'Profil', 1: 'Charge & physique', 2: 'Match', 3: 'Conversation', 4: 'Renforcement' };
+
 // Onglets de la page joueur (overlay détail)
 function switchDetailJoueurTab(i) {
   document.querySelectorAll('#detail-joueur-overlay .sub-tab').forEach(b=>b.classList.toggle('active', +b.dataset.i===i));
   document.querySelectorAll('#detail-joueur-body .djt-panel').forEach(p=>{ p.style.display = (+p.dataset.i===i) ? 'block' : 'none'; });
+  // Le header reprend le titre de l'onglet courant (comme la fiche athlète muscu).
+  var _t = document.getElementById('fjd-tab-title'); if (_t && DJT_TAB_LABELS[i]) _t.textContent = DJT_TAB_LABELS[i];
+  // Remonte en haut du contenu à chaque changement d'onglet.
+  var _sc = document.querySelector('#detail-joueur-overlay .fjd-scroll'); if (_sc) _sc.scrollTop = 0;
   // Onglet Charge : le canvas était masqué au 1er rendu (clientWidth=0) → on le
   // redessine maintenant qu'il est visible, à la bonne largeur (rendu net).
   if (i === 1) requestAnimationFrame(() => dessinerChargeJoueur(_chargeJoueurData || []));
@@ -2107,6 +2106,40 @@ function dessinerChargeJoueur(data) {
  * Code couleur du rôle = header uniquement ; le corps utilise --accent + sémantique. */
 let _cockpitState = { joueurs: [], equipe: {}, filtre: null };
 
+// Hero « Briefing du jour » partagé (accueils coach & prépa foot) — même langage
+// visuel que l'accueil coach muscu : dégradé accent, anneau %, grand nombre, pastilles.
+function _briefingHero(eq, total, labelJoueurs, greetingName) {
+  const aGerer = eq.rouge || 0;
+  const pct = total ? Math.round((total - aGerer) / total * 100) : 0;
+  const dateFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const ring = (p, size, stroke, color, track) => {
+    const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, p)) / 100);
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${track}" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${size/2} ${size/2})"/></svg>`;
+  };
+  const pill = (n, label) => nvStat(n, label, { size:'sm', tone:'on-accent', class:'nv-stat--tile-accent', wrapStyle:'flex:1' });
+  const labelAthlete = libelleSport('athlete').toLowerCase();
+  return `
+    <div style="position:relative;border-radius:20px;padding:18px;overflow:hidden;color:var(--on-accent);background:linear-gradient(135deg,var(--accent),var(--accent-strong));box-shadow:var(--shadow);margin-bottom:14px;">
+      <div style="position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);"></div>
+      <div style="position:relative;z-index:1;">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;opacity:.9;">Bonjour ${escapeHtml(greetingName || 'Coach')}</div>
+        <div style="font-size:12px;opacity:.9;margin-top:2px;">${dateFR} · ${total} ${labelJoueurs} suivi${total > 1 ? 's' : ''}</div>
+        <div style="display:flex;align-items:center;gap:16px;margin-top:14px;">
+          <div style="position:relative;width:64px;height:64px;flex-shrink:0;">
+            ${ring(pct, 64, 6, '#fff', 'rgba(255,255,255,.28)')}
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-size:16px;font-weight:800;">${pct}%</div><div style="font-size:8px;opacity:.9;text-transform:uppercase;letter-spacing:.05em;">sous contrôle</div></div>
+          </div>
+          <div style="flex:1;min-width:0;"><div style="font-size:34px;font-weight:800;line-height:1;">${aGerer}</div><div style="font-size:12.5px;opacity:.92;margin-top:4px;font-weight:600;">${aGerer === 0 ? 'effectif sous contrôle 🎉' : labelAthlete + (aGerer > 1 ? 's' : '') + ' à gérer aujourd\'hui'}</div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          ${pill(eq.orange||0, 'à surveiller')}
+          ${pill(eq.indispo||0, 'indispo')}
+          ${pill((eq.charge_equipe||0).toLocaleString('fr-FR'), 'charge 7j')}
+        </div>
+      </div>
+    </div>`;
+}
+
 // Action suggérée selon le type d'alerte principale (vocabulaire prépa).
 const _COCKPIT_ACTIONS = {
   absence:     'Reprendre contact · replanifier une séance',
@@ -2151,36 +2184,8 @@ async function renderCockpitPrepa() {
 
   const COL = { rouge: '#e5484d', orange: '#f5a623', vert: '#22c55e' };
 
-  // ---- Hero « Briefing du jour » (même langage visuel que l'accueil coach muscu) ----
-  const total = joueurs.length;
-  const aGerer = eq.rouge || 0;
-  const pctControle = total ? Math.round((total - aGerer) / total * 100) : 0;
-  const dateFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  const svgRing = (pct, size, stroke, color, track) => {
-    const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
-    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${track}" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${size/2} ${size/2})"/></svg>`;
-  };
-  const heroPill = (n, label) => nvStat(n, label, { size:'sm', tone:'on-accent', class:'nv-stat--tile-accent', wrapStyle:'flex:1' });
-  const header = `
-    <div style="position:relative;border-radius:20px;padding:18px;overflow:hidden;color:var(--on-accent);background:linear-gradient(135deg,var(--accent),var(--accent-strong));box-shadow:var(--shadow);margin-bottom:14px;">
-      <div style="position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);"></div>
-      <div style="position:relative;z-index:1;">
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;opacity:.9;">Bonjour ${escapeHtml(coach ? coach.nom : 'Prépa')}</div>
-        <div style="font-size:12px;opacity:.9;margin-top:2px;">${dateFR} · ${total} ${labelJoueurs} suivi${total > 1 ? 's' : ''}</div>
-        <div style="display:flex;align-items:center;gap:16px;margin-top:14px;">
-          <div style="position:relative;width:64px;height:64px;flex-shrink:0;">
-            ${svgRing(pctControle, 64, 6, '#fff', 'rgba(255,255,255,.28)')}
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-size:16px;font-weight:800;">${pctControle}%</div><div style="font-size:8px;opacity:.9;text-transform:uppercase;letter-spacing:.05em;">sous contrôle</div></div>
-          </div>
-          <div style="flex:1;min-width:0;"><div style="font-size:34px;font-weight:800;line-height:1;">${aGerer}</div><div style="font-size:12.5px;opacity:.92;margin-top:4px;font-weight:600;">${aGerer === 0 ? 'effectif sous contrôle 🎉' : (libelleSport('athlete').toLowerCase()) + (aGerer > 1 ? 's' : '') + ' à gérer aujourd\'hui'}</div></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:14px;">
-          ${heroPill(eq.orange||0, 'à surveiller')}
-          ${heroPill(eq.indispo||0, 'indispo')}
-          ${heroPill((eq.charge_equipe||0).toLocaleString('fr-FR'), 'charge 7j')}
-        </div>
-      </div>
-    </div>`;
+  // ---- Hero « Briefing du jour » (composant partagé, même visuel que l'accueil coach muscu) ----
+  const header = _briefingHero(eq, joueurs.length, labelJoueurs, coach ? coach.nom : 'Prépa');
   // ---- Bandeau chiffres équipe (charge / fatigue / progression) ----
   const kpi = (n, lbl, col) => nvStat(n, lbl, { color:(col||''), wrapStyle:'flex:1' });
   const statsCard = `
@@ -2340,19 +2345,12 @@ async function renderSuiviEquipe() {
   const dot = c => `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};flex-shrink:0;"></span>`;
   const COL = { rouge: '#e5484d', orange: '#f5a623', vert: '#22c55e' };
 
-  // Bandeau équipe
+  // Bandeau équipe — hero « Briefing » partagé (même visuel que l'accueil coach muscu / cockpit prépa)
   const kpi = (n, lbl, col) => nvStat(n, lbl, { color:(col||''), wrapStyle:'flex:1' });
-  const header = `
-    <div class="dash-card" style="padding:16px;margin-bottom:12px;">
-      <div style="display:flex;gap:8px;">
-        ${kpi(eq.rouge||0, 'À risque', COL.rouge)}
-        ${kpi(eq.orange||0, 'À surveiller', COL.orange)}
-        ${kpi(eq.vert||0, 'Disponibles', COL.vert)}
-        ${kpi(eq.indispo||0, 'Indispo', 'var(--text-muted)')}
-      </div>
-      <div style="height:1px;background:var(--border);margin:14px 0;"></div>
-      <div style="display:flex;gap:8px;">
-        ${kpi((eq.charge_equipe||0).toLocaleString('fr-FR'), 'Charge équipe')}
+  const header = _briefingHero(eq, joueurs.length, labelJoueurs, coach ? coach.nom : 'Coach') + `
+    <div class="dash-card" style="padding:14px 16px;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
+        ${kpi(eq.fatigue_moyenne!=null ? eq.fatigue_moyenne+'/5' : '—', 'Fatigue moy.', eq.fatigue_moyenne!=null && eq.fatigue_moyenne>=4 ? COL.orange : '')}
         ${kpi(eq.bienetre_moyen!=null ? eq.bienetre_moyen+'/5' : '—', 'Bien-être moy.')}
         ${kpi(`<span style="color:#22c55e">${eq.en_progression||0}</span> · <span style="color:#e5484d">${eq.en_regression||0}</span>`, 'Prog. · Régr.')}
       </div>
