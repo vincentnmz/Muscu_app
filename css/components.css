@@ -43,7 +43,7 @@ body.has-bottom-nav .toast { bottom:84px; }
 #view-coach-detail .sub-tabs { position:fixed; bottom:0; left:0; right:0; z-index:50; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(6px + env(safe-area-inset-bottom,0px)); gap:2px; }
 #view-coach-detail .sub-tabs > * { max-width:calc(var(--coach-w) / 5); }
 #view-coach-detail .sub-tabs { justify-content:center; }
-body.cd-nav { padding-bottom:66px; }
+body.cd-nav { padding-bottom:76px; }
 
 /* En-tête coach / prépa : sur mobile, le nom + « Lier un athlète » + les boutons
  * (messages / réglages / déco) ne tiennent pas sur une ligne. Sans wrap, ils
@@ -58,15 +58,17 @@ body.cd-nav { padding-bottom:66px; }
 #view-coach-detail .sub-tab { flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:7px 3px; font-size:9.5px; border:none; border-bottom:2px solid transparent; background:none; border-radius:0; min-width:0; white-space:nowrap; color:var(--text-muted); }
 #view-coach-detail .sub-tab .cd-ico { line-height:1; }
 #view-coach-detail .sub-tab .cd-ico svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:block; }
-#view-coach-detail .sub-tab > span:not(.cd-ico):not([id]) { display:none; }
-#view-coach-detail .sub-tab { padding:12px 3px; justify-content:center; align-items:center; }
+/* Icône + LABEL visibles + indicateur haut — standard .nv-navbtn (comme la barre
+   de navigation athlète muscu et la fiche joueur foot). */
+#view-coach-detail .sub-tab { position:relative; padding:9px 3px; justify-content:center; align-items:center; border-bottom:none; }
 #view-coach-detail .sub-tab.active { background:none; color:var(--text-muted); }
 #view-coach-detail .sub-tab.cc1.active,
 #view-coach-detail .sub-tab.cc2.active,
 #view-coach-detail .sub-tab.cc3.active,
 #view-coach-detail .sub-tab.cc4.active,
 #view-coach-detail .sub-tab.cc5.active,
-#view-coach-detail .sub-tab.cc6.active { color:var(--accent); border-bottom-color:var(--accent); }
+#view-coach-detail .sub-tab.cc6.active { color:var(--accent); }
+#view-coach-detail .sub-tab.active::before { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:26px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }
 
 /* Focus visible clavier */
 button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-visible, .nv-auth-seg button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
@@ -366,22 +368,22 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 
 /* ---- Onglets vue joueur foot (.djt-tabs) : barre d'icônes EN BAS (comme muscu).
  *      Enfant flex de l'overlay flex-colonne (pas de position:fixed → fiable iOS). ---- */
+/* Barre d'onglets fiche joueur foot = STANDARD .nv-navbtn (icône + LABEL,
+   actif = couleur accent + barre indicatrice en haut) — identique à la barre
+   de navigation de la vue athlète muscu. */
 .djt-tabs.sub-tabs {
   position:fixed; left:0; right:0; bottom:0; z-index:60;
-  width:100%; justify-content:center; gap:2px; overflow:visible;
+  width:100%; max-width:var(--app-w); margin:0 auto; justify-content:center; gap:0; overflow:visible;
   background:var(--surface); border-top:1px solid var(--border); border-radius:0;
-  box-shadow:0 -4px 16px rgba(7,11,20,.10);
-  padding:8px 10px calc(6px + env(safe-area-inset-bottom,0px));
+  padding:0 0 env(safe-area-inset-bottom,0px);
 }
-/* Onglets icônes seules + indicateur bas actif — identique à #view-coach-detail .sub-tab
-   (le nom de l'onglet courant est repris dans le header sticky #fjd-tab-title). */
 .djt-tabs .sub-tab {
-  position:relative; flex:1 1 0; min-width:0; max-width:calc(var(--app-w) / 5);
+  position:relative; flex:1 1 0; min-width:0;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  border:none; border-bottom:2px solid transparent; border-radius:0; background:none; padding:12px 3px;
-  color:var(--text-muted); font-size:9.5px; font-weight:var(--fw-bold); white-space:nowrap;
+  border:none; border-radius:0; background:none; cursor:pointer; padding:9px 3px;
+  color:var(--text-muted); font-size:var(--fs-2xs); font-weight:var(--fw-bold); white-space:nowrap; transition:color .2s;
 }
 .djt-tabs .sub-tab .dj-ico     { line-height:1; display:block; }
-.djt-tabs .sub-tab .dj-ico svg { width:24px; height:24px; }
-.djt-tabs .sub-tab > span:not(.dj-ico) { display:none; }   /* icônes seules, comme la fiche muscu */
-.djt-tabs .sub-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.djt-tabs .sub-tab .dj-ico svg { width:24px; height:24px; display:block; }
+.djt-tabs .sub-tab.active          { color:var(--accent); }
+.djt-tabs .sub-tab.active::before  { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:26px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }
