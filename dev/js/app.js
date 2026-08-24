@@ -7902,7 +7902,7 @@ function _appliquerAppData(data) {
     // ── Cardio — historique détaillé (onglet Progression) ────────────────────
     _pasQuotidiens = (data && data.pas_quotidiens) || [];
     _safe('cardio-historique', () => renderCardioHistorique(data.cardio && data.cardio.history));
-    // Synchro auto de la montre (silencieuse, throttlée), si connectée.
+    // Synchro auto de la montre à la connexion (message visible, ≥ 1×/24h), si connectée.
     _safe('gh-autosync', () => autoSyncGoogleHealth());
 
     // Récupération d'une séance muscu laissée en cours (anti-perte de saisie).
@@ -9493,27 +9493,39 @@ async function deconnecterGoogleHealth() {
   majUiGoogleHealth();
 }
 
-// Synchro automatique silencieuse : au plus 1×/6h par appareil, si la montre
-// est connectée. Recharge les données si de nouvelles activités sont importées.
+// Synchro automatique à la connexion (au plus 1×/6h par athlète, donc ≥ 1×/24h),
+// AVEC un retour visible (toast). Si la montre n'est pas connectée : rien.
 async function autoSyncGoogleHealth() {
   if (!athlete) return;
-  var last = +(localStorage.getItem('gh_last_autosync') || 0);
-  if (Date.now() - last < 6 * 3600 * 1000) return;
-  localStorage.setItem('gh_last_autosync', String(Date.now()));
+  var key = 'gh_last_autosync_' + athlete.athlete_id;
+  var last = +(localStorage.getItem(key) || 0);
+  if (Date.now() - last < 6 * 3600 * 1000) return;   // déjà synchronisé récemment
   try {
+    // 1) La montre est-elle connectée ? (sinon on ne consomme pas le délai)
     var sr = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'googleHealthStatus', athlete_id: athlete.athlete_id }),
     });
     var sj = await sr.json();
     if (!sj || !sj.connected) return;
+    // 2) Montre connectée → on synchronise avec un message visible.
+    localStorage.setItem(key, String(Date.now()));
+    if (typeof showToast === 'function') showToast('⌚ Synchronisation de la montre…', 'var(--text-muted)');
     var r = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'googleHealthSync', athlete_id: athlete.athlete_id }),
     });
     var j = await r.json();
-    if (j && j.success && ((j.imported || 0) > 0 || (j.stepsImported || 0) > 0) && typeof chargerAppData === 'function') {
-      chargerAppData();
+    if (j && j.success) {
+      var n = j.imported || 0, ns = j.stepsImported || 0;
+      if (n > 0 || ns > 0) {
+        if (typeof showToast === 'function') showToast('⌚ Montre synchronisée · ' + n + ' act. · ' + ns + ' j de pas', 'var(--good)');
+        if (typeof chargerAppData === 'function') chargerAppData();
+      } else {
+        if (typeof showToast === 'function') showToast('⌚ Montre déjà à jour', 'var(--good)');
+      }
+    } else if (typeof showToast === 'function') {
+      showToast('⌚ Synchro montre indisponible', 'var(--warn)');
     }
   } catch (e) {}
 }
