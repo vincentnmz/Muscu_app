@@ -7,9 +7,13 @@ on:
 permissions:
   contents: write
 
+# Un seul groupe pour TOUTES les branches + pas d'annulation en cours : les
+# déploiements se sérialisent (file d'attente) au lieu de s'annuler, ce qui
+# évite de laisser un artefact Pages « github-pages » orphelin (→ « Multiple
+# artifacts named github-pages »). Le push sur gh-pages reste atomique.
 concurrency:
-  group: deploy-${{ github.ref_name }}
-  cancel-in-progress: true
+  group: pages-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
