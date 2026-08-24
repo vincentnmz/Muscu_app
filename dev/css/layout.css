@@ -57,8 +57,12 @@ body.coach-active > header { display:none; }
 #detail-joueur-body .sub-tabs { margin-bottom:14px; }
 .fjd-rail                     { display:none; }
 /* Overlay en flex-colonne : la zone .fjd-scroll défile, la barre d'onglets est un
- * enfant flex en bas (pas de position:fixed → fiable iOS). Largeur = --app-w. */
-.fjd-scroll { flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0; width:100%; max-width:var(--app-w); margin:0 auto; }
+ * enfant flex en bas (pas de position:fixed → fiable iOS).
+ * La zone qui défile prend TOUTE la largeur → l'ascenseur est au bord droit de
+ * la fenêtre (comme la vue athlète muscu). Le contenu, lui, reste centré à
+ * --app-w via #detail-joueur-body. */
+.fjd-scroll { flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0; width:100%; }
+#detail-joueur-body { max-width:var(--app-w); margin:0 auto; }
 
 /* ===== Espace coach — conteneur large (data-dense) ===== */
 body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coach-pad); }
