@@ -1175,6 +1175,8 @@
 <!-- Détail joueur (sports co) -->
 
 <div id="detail-joueur-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;flex-direction:column;overflow:hidden;">
+  <!-- Header pleine largeur (comme la vue athlète muscu) : titre = onglet courant. Peuplé par ouvrirDetailJoueurFoot. -->
+  <header id="fjd-topbar" style="flex-shrink:0;"></header>
   <div class="fjd-scroll">
     <div id="detail-joueur-body" style="padding:14px 16px calc(70px + env(safe-area-inset-bottom,0px));"><div class="loader">Chargement…</div></div>
   </div>
