@@ -1059,6 +1059,7 @@ async function supprimerMonCompte() {
 // Ferme les overlays/modales et vide les cartes contexte (évite qu'ils restent
 // affichés par-dessus l'écran de connexion au moment de la déconnexion).
 function _fermerOverlaysEtContexte() {
+  document.documentElement.classList.remove('fjd-open');   // libère le défilement de la page
   ['detail-joueur-overlay', 'modal-contexte'].forEach(function (id) {
     var el = document.getElementById(id); if (el) el.style.display = 'none';
   });
@@ -1409,6 +1410,10 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const body = document.getElementById('detail-joueur-body');
   body.innerHTML = '<div class="loader">Chargement…</div>';
   ov.style.display = 'flex';
+  // Verrouille le défilement de la page du dessous (coach/prépa) tant que
+  // l'overlay est ouvert : sinon deux ascenseurs (celui de l'overlay + celui de
+  // la page derrière). L'overlay a sa propre zone qui défile (.fjd-scroll).
+  document.documentElement.classList.add('fjd-open');
   cdJoueurCourant = athlete_id;
   cdMode = mode || 'coach';   // 'coach' (édition) ou 'athlete' (lecture seule, sa propre page)
   let d;
@@ -2100,6 +2105,7 @@ async function ajouterTest(athlete_id) {
 
 function fermerDetailJoueurFoot(ev) {
   document.getElementById('detail-joueur-overlay').style.display = 'none';
+  document.documentElement.classList.remove('fjd-open');   // rend le défilement à la page
 }
 
 function dessinerChargeJoueur(data) {
