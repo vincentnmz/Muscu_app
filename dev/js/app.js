@@ -1876,15 +1876,15 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   // Étape 4 — onglets adaptés au rôle. Onglets (data-i) : 0 Profil · 1 Charge&physique
   // · 4 Renfo (muscu) · 2 Match&technique · 3 Conversation.
   //   • Prépa  : Profil · Charge · Renfo · Conversation  (cache Match)
-  //   • Coach  : Profil · Match · Conversation           (cache Charge + Renfo)
+  //   • Coach  : Profil · Renfo · Match · Conversation   (cache Charge)
   //   • Athlète (sa page) : Profil · Charge · Match · Conversation (Renfo caché tant que
   //     l'exécution joueur n'est pas branchée — à venir).
   // Le rôle prépa n'existe que pour les sports co ; la muscu (fiche à part) n'est pas concernée.
   try {
     var _r = (coach && coach.role) || 'coach';
-    // Renfo (4) visible pour TOUT le staff (coach + prépa). Coach cache Charge (1),
-    // prépa cache Match (2). Athlète : ni Renfo (exécution à venir).
-    var _hide = (cdMode !== 'coach') ? [4] : (_r === 'prepa' ? [2] : [1]);
+    // Renfo (4) TOUJOURS visible sur la fiche joueur foot (quel que soit rôle/mode).
+    // Coach cache Charge (1) ; prépa cache Match (2) ; athlète voit tout.
+    var _hide = (cdMode !== 'coach') ? [] : (_r === 'prepa' ? [2] : [1]);
     _hide.forEach(function (i) {
       var b = ov.querySelector('.djt-tabs [data-i="' + i + '"]'); if (b) b.style.display = 'none';
       var p = body.querySelector('.djt-panel[data-i="' + i + '"]'); if (p) p.style.display = 'none';
