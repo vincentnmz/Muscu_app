@@ -4,7 +4,7 @@
  * jamais mis en cache : ils passent au réseau, et l'app gère le hors-ligne
  * (file d'attente des séances) de son côté.
  */
-const CACHE = 'novalyz-shell-v104';
+const CACHE = 'novalyz-shell-v106';
 const ASSETS = [
   './',
   './index.html',
@@ -94,19 +94,18 @@ self.addEventListener('fetch', (e) => {
     return; // le navigateur gère (réseau) ; l'app a sa file d'attente hors-ligne
   }
 
-  // Coquille de l'app (même origine, GET) : cache d'abord, réseau en secours.
+  // Coquille de l'app (même origine, GET) : RÉSEAU d'abord, cache en secours.
+  // → en ligne, on charge toujours la dernière version (fini le cache qui sert
+  //   l'ancien code). Hors-ligne, on retombe sur le cache (mode hors-ligne OK).
   if (req.method === 'GET' && url.origin === location.origin) {
     e.respondWith(
-      caches.match(req).then((hit) => {
-        if (hit) return hit;
-        return fetch(req).then((res) => {
-          if (res && res.status === 200 && res.type === 'basic') {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
-          }
-          return res;
-        }).catch(() => caches.match('./index.html'));
-      })
+      fetch(req).then((res) => {
+        if (res && res.status === 200 && res.type === 'basic') {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
+        return res;
+      }).catch(() => caches.match(req).then((hit) => hit || caches.match('./index.html')))
     );
   }
 });
