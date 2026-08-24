@@ -385,9 +385,12 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 /* Barre d'onglets fiche joueur foot = STANDARD .nv-navbtn (icône + LABEL,
    actif = couleur accent + barre indicatrice en haut) — identique à la barre
    de navigation de la vue athlète muscu. */
+/* Barre bord à bord comme le header (#fjd-topbar) : pas de max-width ni de
+   marge auto → elle occupe toute la largeur de l'écran, en solo comme dans les
+   vues coach/prépa. */
 .djt-tabs.sub-tabs {
   position:fixed; left:0; right:0; bottom:0; z-index:60;
-  width:100%; max-width:var(--app-w); margin:0 auto; justify-content:center; gap:0; overflow:visible;
+  width:100%; margin:0; justify-content:center; gap:0; overflow:visible;
   background:var(--surface); border-top:1px solid var(--border); border-radius:0;
   padding:0 0 env(safe-area-inset-bottom,0px);
 }
