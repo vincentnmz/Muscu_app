@@ -1719,7 +1719,6 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   try {
     var _tb = document.getElementById('fjd-topbar');
     if (_tb) {
-      var _sub = escapeHtml(d.nom || 'Joueur') + (d.poste ? ' · ' + escapeHtml(d.poste) : '') + (d.club ? ' · ' + escapeHtml(d.club) : '');
       var _iconBtn = 'background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;';
       var _gearSvg = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
       var _back = (cdMode === 'coach')
@@ -1732,14 +1731,13 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
         : `<button onclick="ouvrirReglagesCoach()" title="Réglages" style="${_iconBtn}">${_gearSvg}</button>
            <button onclick="ouvrirMessagerieCoach()" title="Conversations" style="${_iconBtn}"><svg class="ico"><use href="#i-message"/></svg></button>
            <button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`;
+      // Header épuré (comme la fiche muscu) : nom de l'onglet + boutons. Toutes
+      // les infos joueur (nom, poste, club, dispo) sont déplacées dans le bloc
+      // « hero » en haut de l'onglet Profil (voir #fjd-hero plus bas).
       _tb.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
           ${_back}
-          <div style="width:36px;height:36px;border-radius:11px;background:var(--accent-a12);color:var(--accent-strong);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${escapeHtml(initiales)}</div>
-          <div style="min-width:0;">
-            <h1 id="fjd-tab-title" style="font-size:18px;font-weight:800;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Profil</h1>
-            <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_sub} · <span style="color:${dispo.c};font-weight:700;">●&nbsp;${escapeHtml(dispo.t)}</span></div>
-          </div>
+          <h1 id="fjd-tab-title" style="font-size:18px;font-weight:800;line-height:1.1;margin:0 0 0 2px;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Profil</h1>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">${_right}</div>`;
       _tb.style.display = 'flex';
@@ -1762,6 +1760,21 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
     <!-- PANEL 0 : PROFIL -->
     <div class="djt-panel" data-i="0">
+      <!-- Hero d'accueil (comme le briefing muscu) : Bonjour + nom + infos joueur.
+           L'avatar accepte une photo (d.photo) et retombe sur les initiales sinon. -->
+      <div id="fjd-hero" class="fjd-hero">
+        <div class="fjd-hero-av">${d.photo ? `<img src="${escapeHtml(d.photo)}" alt="">` : escapeHtml(initiales)}</div>
+        <div style="min-width:0;flex:1;">
+          <div class="fjd-hero-grt">Bonjour 👋</div>
+          <div class="fjd-hero-name">${escapeHtml(d.nom || 'Joueur')}</div>
+          <div class="fjd-hero-pills">
+            <span class="fjd-pill" style="background:color-mix(in srgb, ${dispo.c} 12%, transparent);border-color:color-mix(in srgb, ${dispo.c} 28%, transparent);color:${dispo.c};"><span style="width:8px;height:8px;border-radius:50%;background:${dispo.c};"></span>${escapeHtml(dispo.t)}</span>
+            ${d.poste ? `<span class="fjd-pill">⚽ ${escapeHtml(d.poste)}</span>` : ''}
+            ${d.club ? `<span class="fjd-pill">🛡️ ${escapeHtml(d.club)}</span>` : ''}
+            ${d.categorie ? `<span class="fjd-pill">${escapeHtml(d.categorie)}</span>` : ''}
+          </div>
+        </div>
+      </div>
       <!-- État du jour (forme) — même bloc que la page athlète muscu -->
       <div class="v2-sec" id="fjd-etat-sec" style="display:none;"><div class="st">${ic('activity')}État du jour</div></div>
       <div class="dash-card" id="fjd-etat-card" style="padding:16px;margin-bottom:12px;display:none;"><div id="fjd-etat-content"></div></div>
