@@ -1715,23 +1715,35 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       ${gpsTile((kf.temps_jeu||0)+gpsUnit('min'),'Temps de jeu')}
     </div></div>` : '';
 
-  body.innerHTML = `
-    <!-- Header sticky — même structure que la fiche athlète muscu (#cd-header) :
-         avatar + titre de l'onglet courant (change à chaque onglet) + nom/poste. -->
-    <div class="header" id="fjd-header" style="display:flex;align-items:center;gap:9px;position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;">
-      ${cdMode==='coach' ? `<button class="btn-sm btn-outline" onclick="fermerDetailJoueurFoot()" title="Retour" style="flex-shrink:0;padding:8px 10px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>` : ''}
-      <div style="width:40px;height:40px;border-radius:12px;background:var(--accent-a12);color:var(--accent-strong);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${escapeHtml(initiales)}</div>
-      <div style="flex:1;min-width:0;text-align:left;">
-        <h1 id="fjd-tab-title" style="font-weight:800;font-size:19px;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Profil</h1>
-        <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="font-weight:700;color:var(--text);">${escapeHtml(d.nom||'Joueur')}</span>${d.poste?' · '+escapeHtml(d.poste):''}${d.club?' · '+escapeHtml(d.club):''} · <span style="color:${dispo.c};font-weight:700;">●&nbsp;${escapeHtml(dispo.t)}</span></div>
-      </div>
-      ${cdMode==='athlete'
-        ? `<button onclick="toggleTheme()" title="Thème" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;cursor:pointer;line-height:1;"><svg class="ico"><use href="#i-moon"/></svg></button>
-           <button class="logout-btn" onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion" style="flex-shrink:0;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`
-        : `<button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion" style="flex-shrink:0;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`}
-    </div>
+  // Header pleine largeur (hors zone à largeur limitée) — peuplé sur #fjd-topbar.
+  try {
+    var _tb = document.getElementById('fjd-topbar');
+    if (_tb) {
+      var _sub = escapeHtml(d.nom || 'Joueur') + (d.poste ? ' · ' + escapeHtml(d.poste) : '') + (d.club ? ' · ' + escapeHtml(d.club) : '');
+      var _iconBtn = 'background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;';
+      var _back = (cdMode === 'coach')
+        ? `<button onclick="fermerDetailJoueurFoot()" title="Retour" style="${_iconBtn}"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>` : '';
+      var _right = (cdMode === 'athlete')
+        ? `<button onclick="toggleTheme()" title="Thème" style="${_iconBtn}"><svg class="ico"><use href="#i-moon"/></svg></button>
+           <button class="logout-btn" onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`
+        : `<button onclick="ouvrirReglagesCoach()" title="Réglages" style="${_iconBtn}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+           <button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`;
+      _tb.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+          ${_back}
+          <div style="width:36px;height:36px;border-radius:11px;background:var(--accent-a12);color:var(--accent-strong);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${escapeHtml(initiales)}</div>
+          <div style="min-width:0;">
+            <h1 id="fjd-tab-title" style="font-size:18px;font-weight:800;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Profil</h1>
+            <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_sub} · <span style="color:${dispo.c};font-weight:700;">●&nbsp;${escapeHtml(dispo.t)}</span></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">${_right}</div>`;
+      _tb.style.display = 'flex';
+    }
+  } catch (e) {}
 
-    <!-- Onglets vue joueur : barre du bas sur mobile, onglets en haut sur desktop (.djt-tabs) -->
+  body.innerHTML = `
+    <!-- Onglets vue joueur : barre du bas sur mobile (.djt-tabs) -->
     <div class="sub-tabs djt-tabs">
       <button class="sub-tab active" data-i="0" onclick="switchDetailJoueurTab(0)"><span class="dj-ico">${ic('note')}</span><span>Profil</span></button>
       <button class="sub-tab" data-i="1" onclick="switchDetailJoueurTab(1)"><span class="dj-ico">${ic('gauge')}</span><span>Charge</span></button>
