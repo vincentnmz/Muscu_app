@@ -187,6 +187,20 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
  * place. minmax(0,1fr) autorise le rétrécissement → pas de débordement horizontal. */
 .fjd-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-bottom:12px; }
 @media (min-width:480px) { .fjd-kpis { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+/* Hero d'accueil de la fiche joueur (onglet Profil) : « Bonjour + nom » + infos.
+ * Même esprit que le briefing muscu ; l'avatar accepte une photo (img) ou des initiales. */
+.fjd-hero { display:flex; align-items:flex-start; gap:14px; padding:18px; margin-bottom:14px;
+  border-radius:18px; border:1px solid var(--border);
+  background:linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%); }
+.fjd-hero-av { width:56px; height:56px; border-radius:16px; flex-shrink:0; overflow:hidden;
+  display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800;
+  background:var(--accent); color:#fff; box-shadow:0 6px 18px rgba(26,95,255,.35); }
+.fjd-hero-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.fjd-hero-grt  { font-size:13px; font-weight:700; color:var(--text-muted); }
+.fjd-hero-name { font-size:24px; font-weight:800; letter-spacing:-.5px; line-height:1.05; margin:1px 0 9px; }
+.fjd-hero-pills { display:flex; flex-wrap:wrap; gap:6px; }
+.fjd-pill { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700;
+  padding:4px 10px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--text); }
 .v2-sec   { display:flex; align-items:center; justify-content:space-between; margin:2px 2px 9px; }
 .v2-sec .st { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:400; letter-spacing:.06em; }
 .v2-sec .st .ico { width:15px; height:15px; color:var(--accent); }
