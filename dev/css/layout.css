@@ -63,6 +63,9 @@ body.coach-active > header { display:none; }
  * --app-w via #detail-joueur-body. */
 .fjd-scroll { flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0; width:100%; }
 #detail-joueur-body { max-width:var(--app-w); margin:0 auto; }
+/* Fiche joueur foot ouverte : on fige la page du dessous (une seule barre de
+ * défilement, celle de l'overlay). */
+html.fjd-open, html.fjd-open body { overflow:hidden; }
 
 /* ===== Espace coach — conteneur large (data-dense) ===== */
 body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coach-pad); }
