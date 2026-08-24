@@ -1720,7 +1720,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
          avatar + titre de l'onglet courant (change à chaque onglet) + nom/poste. -->
     <div class="header" id="fjd-header" style="display:flex;align-items:center;gap:9px;position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;">
       ${cdMode==='coach' ? `<button class="btn-sm btn-outline" onclick="fermerDetailJoueurFoot()" title="Retour" style="flex-shrink:0;padding:8px 10px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>` : ''}
-      <div class="fjd-ava" style="width:40px;height:40px;border-radius:12px;font-size:14px;flex-shrink:0;">${escapeHtml(initiales)}</div>
+      <div style="width:40px;height:40px;border-radius:12px;background:var(--accent-a12);color:var(--accent-strong);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${escapeHtml(initiales)}</div>
       <div style="flex:1;min-width:0;text-align:left;">
         <h1 id="fjd-tab-title" style="font-weight:800;font-size:19px;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Profil</h1>
         <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="font-weight:700;color:var(--text);">${escapeHtml(d.nom||'Joueur')}</span>${d.poste?' · '+escapeHtml(d.poste):''}${d.club?' · '+escapeHtml(d.club):''} · <span style="color:${dispo.c};font-weight:700;">●&nbsp;${escapeHtml(dispo.t)}</span></div>
