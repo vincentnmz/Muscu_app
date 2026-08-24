@@ -1721,16 +1721,12 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     if (_tb) {
       var _sub = escapeHtml(d.nom || 'Joueur') + (d.poste ? ' · ' + escapeHtml(d.poste) : '') + (d.club ? ' · ' + escapeHtml(d.club) : '');
       var _iconBtn = 'background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 9px;cursor:pointer;line-height:1;flex-shrink:0;';
-      var _gearSvg = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
       var _back = (cdMode === 'coach')
         ? `<button onclick="fermerDetailJoueurFoot()" title="Retour" style="${_iconBtn}"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>` : '';
-      // Trois boutons standard : Réglages · Conversation · Déco.
       var _right = (cdMode === 'athlete')
-        ? `<button onclick="if(typeof ouvrirReglagesAthlete==='function'){ouvrirReglagesAthlete();}else{fermerDetailJoueurFoot();if(typeof switchTab==='function')switchTab('reglages');}" title="Réglages" style="${_iconBtn}">${_gearSvg}</button>
-           <button onclick="switchDetailJoueurTab(3)" title="Conversation" style="${_iconBtn}"><svg class="ico"><use href="#i-message"/></svg></button>
+        ? `<button onclick="toggleTheme()" title="Thème" style="${_iconBtn}"><svg class="ico"><use href="#i-moon"/></svg></button>
            <button class="logout-btn" onclick="fermerDetailJoueurFoot();seDeconnecter();" title="Déconnexion"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`
-        : `<button onclick="ouvrirReglagesCoach()" title="Réglages" style="${_iconBtn}">${_gearSvg}</button>
-           <button onclick="ouvrirMessagerieCoach()" title="Conversations" style="${_iconBtn}"><svg class="ico"><use href="#i-message"/></svg></button>
+        : `<button onclick="ouvrirReglagesCoach()" title="Réglages" style="${_iconBtn}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
            <button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>`;
       _tb.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
@@ -1876,15 +1872,13 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   // Étape 4 — onglets adaptés au rôle. Onglets (data-i) : 0 Profil · 1 Charge&physique
   // · 4 Renfo (muscu) · 2 Match&technique · 3 Conversation.
   //   • Prépa  : Profil · Charge · Renfo · Conversation  (cache Match)
-  //   • Coach  : Profil · Renfo · Match · Conversation   (cache Charge)
+  //   • Coach  : Profil · Match · Conversation           (cache Charge + Renfo)
   //   • Athlète (sa page) : Profil · Charge · Match · Conversation (Renfo caché tant que
   //     l'exécution joueur n'est pas branchée — à venir).
   // Le rôle prépa n'existe que pour les sports co ; la muscu (fiche à part) n'est pas concernée.
   try {
     var _r = (coach && coach.role) || 'coach';
-    // Renfo (4) TOUJOURS visible sur la fiche joueur foot (quel que soit rôle/mode).
-    // Coach cache Charge (1) ; prépa cache Match (2) ; athlète voit tout.
-    var _hide = (cdMode !== 'coach') ? [] : (_r === 'prepa' ? [2] : [1]);
+    var _hide = (cdMode !== 'coach') ? [4] : (_r === 'prepa' ? [2] : [1, 4]);
     _hide.forEach(function (i) {
       var b = ov.querySelector('.djt-tabs [data-i="' + i + '"]'); if (b) b.style.display = 'none';
       var p = body.querySelector('.djt-panel[data-i="' + i + '"]'); if (p) p.style.display = 'none';
