@@ -1235,6 +1235,7 @@ async function ouvrirEspaceCoach() {
   document.body.classList.toggle('light-mode', coachLight);
   syncThemeUI();
   document.getElementById('header-nom-coach').textContent = coach.nom;
+  _setSportIco('ct-sport-ico-use', coach && coach.sport);   // icône du header selon le sport
   // Identité de rôle (couleur de header + pastille) — coach / prépa
   var _role = (coach && coach.role) || 'coach';
   document.body.dataset.role = _role;
@@ -1742,9 +1743,10 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       // les infos joueur (nom, poste, club, dispo) sont déplacées dans le bloc
       // « hero » en haut de l'onglet Profil (voir #fjd-hero plus bas).
       _tb.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+        <div style="display:flex;align-items:center;gap:9px;min-width:0;flex:1;">
           ${_back}
-          <h1 id="fjd-tab-title" style="font-size:18px;font-weight:800;line-height:1.1;margin:0 0 0 2px;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Profil</h1>
+          <svg class="ico" style="width:20px;height:20px;color:var(--accent);flex-shrink:0;"><use href="#${_sportIcoId(d.sport)}"/></svg>
+          <h1 id="fjd-tab-title" style="font-size:18px;font-weight:800;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Profil</h1>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">${_right}</div>`;
       _tb.style.display = 'flex';
@@ -4880,6 +4882,17 @@ function afficherOngletConseils() {
   }
 }
 
+// Icône de sport pour les en-têtes (haltère muscu, ballon foot…). Extensible :
+// il suffit d'ajouter un couple sport → id d'icône SVG pour un nouveau sport.
+function _sportIcoId(sport) {
+  var map = { muscu: 'i-dumbbell', foot: 'i-ball', football: 'i-ball' };
+  return map[String(sport || '').toLowerCase()] || 'i-ball'; // défaut : sports collectifs
+}
+function _setSportIco(useElId, sport) {
+  var u = document.getElementById(useElId);
+  if (u) u.setAttribute('href', '#' + _sportIcoId(sport));
+}
+
 // ==================== APP (athlète) ==================== [MIXTE]
 async function ouvrirApp() {
   document.getElementById('view-login').classList.remove('active');
@@ -4902,6 +4915,7 @@ async function ouvrirApp() {
   const savedTheme = localStorage.getItem('muscu_theme');
   if (savedTheme === 'light') document.body.classList.add('light-mode');
   syncThemeUI();
+  _setSportIco('brand-ico-use', athlete && athlete.sport);   // icône du header selon le sport
   document.getElementById('header-nom').textContent = 'Accueil';
   document.getElementById('inp-date').value = _todayLocalStr();
   document.getElementById('inp-date-poids').value = _todayLocalStr();
