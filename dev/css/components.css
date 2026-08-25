@@ -29,6 +29,25 @@ body.coach-active:not(.athlete-selected) #coach-topbar { display:flex; }
 #coach-topbar .ct-plus     { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
 #coach-topbar .ct-deco     { color:var(--danger); border-color:color-mix(in srgb, var(--danger) 25%, transparent); background:color-mix(in srgb, var(--danger) 10%, transparent); }
 
+/* ===== Header fiche athlète coach muscu (#cd-header) =====
+ * Même traitement que #coach-topbar : pleine largeur + sticky (via `header`),
+ * épuré (icône sport + nom d'onglet + boutons). Affiché sur la fiche détail. */
+#cd-header { display:none; gap:9px; }
+body.coach-active.athlete-selected #cd-header { display:flex; }
+#cd-header #cd-sport-ico  { width:20px; height:20px; color:var(--accent); flex-shrink:0; }
+#cd-header #cd-tab-title  { flex:1; min-width:0; margin:0; font-weight:800; font-size:18px; line-height:1.1; letter-spacing:-.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text); }
+#cd-header .cd-back       { flex-shrink:0; display:inline-flex; align-items:center; background:none; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 9px; cursor:pointer; }
+#cd-header .cd-head-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+#cd-header .cd-hbtn       { display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+#cd-header .cd-hbtn .ico  { width:16px; height:16px; }
+#cd-header .cd-deco       { color:var(--danger); border-color:color-mix(in srgb, var(--danger) 25%, transparent); background:color-mix(in srgb, var(--danger) 10%, transparent); }
+@media (max-width:600px) {
+  #cd-header { padding:11px 14px; }
+  #cd-header .cd-hbtn { padding:0; width:36px; height:36px; justify-content:center; gap:0; }
+  #cd-header .cd-back { padding:0; width:36px; height:36px; justify-content:center; }
+  #cd-header .cd-lbl  { display:none; }
+}
+
 /* ===== En-tête global ===== */
 header { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
 header h1 { font-size:17px; font-weight:700; }
