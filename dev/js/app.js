@@ -1078,12 +1078,14 @@ function seDeconnecter() {
   document.getElementById('tabs-bar').style.display = 'none';
   document.body.classList.remove('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'none';
-  document.getElementById('header-nom').textContent = 'Novalyz';
   document.getElementById('inp-login').value = '';
   document.getElementById('inp-password').value = '';
   document.getElementById('login-error').textContent = '';
   document.getElementById('reg-error').textContent = '';
   switchTab('accueil');
+  // Après switchTab (qui écrit le libellé d'onglet « Accueil ») : on rétablit la
+  // marque sur l'écran de connexion. Doit rester la DERNIÈRE écriture du titre.
+  document.getElementById('header-nom').textContent = 'Novalyz';
 }
 
 // ==================== ESPACE COACH ==================== [NOYAU]
