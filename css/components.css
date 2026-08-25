@@ -11,9 +11,22 @@ body[data-role]        { --role:#4f46e5; --role-a:rgba(79,70,229,.12); }   /* co
 body[data-role="coach"]{ --role:#4f46e5; --role-a:rgba(79,70,229,.12); }
 body[data-role="prepa"]{ --role:#ea580c; --role-a:rgba(234,88,12,.12); }
 body[data-role="kine"] { --role:#0d9488; --role-a:rgba(13,148,136,.12); }
-#view-coach > .header        { position:relative; }
-#view-coach > .header::before{ content:""; position:absolute; left:0; right:0; top:-10px; height:3px; border-radius:2px; background:var(--role,var(--accent)); }
 .coach-role-chip { font-size:9.5px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; color:var(--role,var(--accent)); background:var(--role-a,var(--accent-a)); padding:3px 8px; border-radius:20px; white-space:nowrap; }
+
+/* ===== Header accueil coach / prépa (#coach-topbar) =====
+ * Pleine largeur + sticky (hérite du sélecteur `header`), affiché uniquement en
+ * vue accueil coach. Liseré de couleur du rôle = bord supérieur. */
+#coach-topbar { display:none; border-top:3px solid var(--role,var(--accent)); gap:10px; }
+body.coach-active:not(.athlete-selected) #coach-topbar { display:flex; }
+#coach-topbar .ct-id       { min-width:0; }
+#coach-topbar .ct-eyebrow  { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; }
+#coach-topbar .ct-name-row { display:flex; align-items:center; gap:8px; }
+#coach-topbar .ct-name     { font-weight:800; font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#coach-topbar .ct-actions  { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+#coach-topbar .ct-btn      { position:relative; display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+#coach-topbar .ct-btn .ico { width:16px; height:16px; }
+#coach-topbar .ct-plus     { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+#coach-topbar .ct-deco     { color:var(--danger); border-color:color-mix(in srgb, var(--danger) 25%, transparent); background:color-mix(in srgb, var(--danger) 10%, transparent); }
 
 /* ===== En-tête global ===== */
 header { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
@@ -45,15 +58,13 @@ body.has-bottom-nav .toast { bottom:84px; }
 #view-coach-detail .sub-tabs { justify-content:center; }
 body.cd-nav { padding-bottom:76px; }
 
-/* En-tête coach / prépa : sur mobile, le nom + « Lier un athlète » + les boutons
- * (messages / réglages / déco) ne tiennent pas sur une ligne. Sans wrap, ils
- * débordaient à droite et étaient rognés par body{overflow-x:hidden} → réglages
- * inaccessibles. On passe en multi-lignes : nom + actions en haut, « Lier » dessous. */
+/* Header accueil coach/prépa sur mobile : les libellés (« Lier un athlète », « Déco »)
+ * sont masqués → boutons en icônes carrées, tout tient sur UNE ligne (＋ 💬 ⚙︎ ⏻). */
 @media (max-width:600px) {
-  #view-coach > .header { flex-wrap:wrap; row-gap:10px; }
-  #view-coach > .header > div:first-child { order:1; flex:1 1 auto; min-width:0; }
-  #view-coach > .header > div:last-child  { order:2; margin-left:auto; }
-  #view-coach > .header > button          { order:3; flex-basis:100%; justify-content:center; }
+  #coach-topbar { padding:11px 14px; }
+  #coach-topbar .ct-actions { gap:7px; }
+  #coach-topbar .ct-btn { padding:0; width:36px; height:36px; justify-content:center; gap:0; }
+  #coach-topbar .ct-lbl { display:none; }
 }
 #view-coach-detail .sub-tab { flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:7px 3px; font-size:9.5px; border:none; border-bottom:2px solid transparent; background:none; border-radius:0; min-width:0; white-space:nowrap; color:var(--text-muted); }
 #view-coach-detail .sub-tab .cd-ico { line-height:1; }
