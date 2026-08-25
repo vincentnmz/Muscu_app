@@ -18,7 +18,8 @@ body[data-role="kine"] { --role:#0d9488; --role-a:rgba(13,148,136,.12); }
  * vue accueil coach. Liseré de couleur du rôle = bord supérieur. */
 #coach-topbar { display:none; border-top:3px solid var(--role,var(--accent)); gap:10px; }
 body.coach-active:not(.athlete-selected) #coach-topbar { display:flex; }
-#coach-topbar .ct-id       { min-width:0; }
+#coach-topbar #ct-sport-ico { width:22px; height:22px; color:var(--role,var(--accent)); flex-shrink:0; }
+#coach-topbar .ct-id       { min-width:0; margin-right:auto; }
 #coach-topbar .ct-eyebrow  { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; }
 #coach-topbar .ct-name-row { display:flex; align-items:center; gap:8px; }
 #coach-topbar .ct-name     { font-weight:800; font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -31,6 +32,9 @@ body.coach-active:not(.athlete-selected) #coach-topbar { display:flex; }
 /* ===== En-tête global ===== */
 header { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
 header h1 { font-size:17px; font-weight:700; }
+/* Écran de connexion : pas d'icône de sport (l'app est multisport) → « Novalyz »
+ * seul. L'icône (haltère/ballon…) n'apparaît qu'une fois connecté, selon le sport. */
+body:has(#view-login.active) header #brand-ico { display:none; }
 .logout-btn { font-size:12px; color:var(--danger); cursor:pointer; background:none; border:none; padding:4px 8px; }
 
 /* ===== Navigation principale (bottom bar) ===== */
