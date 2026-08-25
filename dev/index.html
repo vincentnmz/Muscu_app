@@ -69,6 +69,25 @@
   </div>
 </header>
 
+<!-- Header accueil coach / prépa : pleine largeur + sticky, comme le header
+     athlète. Affiché uniquement en vue accueil coach (voir CSS #coach-topbar).
+     Le liseré de couleur du rôle (coach/prépa) est le bord supérieur. -->
+<header id="coach-topbar">
+  <div class="ct-id">
+    <div id="coach-header-eyebrow" class="ct-eyebrow">Espace coach</div>
+    <div class="ct-name-row">
+      <div id="header-nom-coach" class="ct-name">Coach</div>
+      <span id="coach-role-chip" class="coach-role-chip" style="display:none;"></span>
+    </div>
+  </div>
+  <div class="ct-actions">
+    <button class="ct-btn ct-plus" onclick="ouvrirModalLierAthlete()" title="Lier un athlète"><svg class="ico ico-btn"><use href="#i-plus"/></svg><span class="ct-lbl">Lier un athlète</span></button>
+    <button class="ct-btn" onclick="ouvrirMessagerieCoach()" title="Conversations"><svg class="ico"><use href="#i-message"/></svg><span id="coach-msg-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px;"></span></button>
+    <button class="ct-btn" onclick="ouvrirReglagesCoach()" title="Réglages"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <button class="ct-btn ct-deco logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion"><svg class="ico ico-btn"><use href="#i-logout"/></svg><span class="ct-lbl">Déco</span></button>
+  </div>
+</header>
+
 <div class="tabs-bar" id="tabs-bar" style="display:none">
   <button class="tab-btn active" onclick="switchTab('accueil')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.4"/></svg></span><span>Accueil</span></button>
   <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span><span>Progression</span></button>
@@ -235,21 +254,8 @@
 
   <!-- VUE COACH -->
   <div id="view-coach" class="view">
-    <div class="header" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-      <div>
-        <div id="coach-header-eyebrow" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
-          <span id="coach-role-chip" class="coach-role-chip" style="display:none;"></span>
-        </div>
-      </div>
-      <button onclick="ouvrirModalLierAthlete()" style="flex-shrink:0;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px 16px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-plus"/></svg>Lier un athlète</button>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-        <button onclick="ouvrirMessagerieCoach()" title="Conversations" style="position:relative;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-message"/></svg><span id="coach-msg-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px;"></span></button>
-        <button onclick="ouvrirReglagesCoach()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer;" title="Réglages"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-        <button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion" style="white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
-      </div>
-    </div>
+    <!-- Le header de l'accueil coach/prépa est désormais #coach-topbar (pleine
+         largeur, sticky, hors conteneur — défini juste après le header global). -->
 
     <!-- Cockpit prépa (charge / prévention) — affiché si role = prepa -->
     <div id="prepa-cockpit" style="display:none;"></div>
