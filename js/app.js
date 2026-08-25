@@ -3069,17 +3069,19 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   document.body.classList.add('cd-nav');
   document.body.classList.add('athlete-selected');
   surlignerAthleteSidebar(a.athlete_id);
-  document.getElementById('header-nom-athlete-coach').textContent = a.nom;
-  // Avatar : initiales
-  const avEl = document.getElementById('cd-avatar');
-  if (avEl) avEl.textContent = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+  // Bloc « Bonjour » (onglet Aperçu) : nom + avatar (initiales) + pastilles infos.
+  var _heroNom = document.getElementById('cd-hero-name'); if (_heroNom) _heroNom.textContent = a.nom;
+  var _heroAv = document.getElementById('cd-hero-av');
+  if (_heroAv) _heroAv.textContent = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+  _setSportIco('cd-sport-ico-use', a.sport);   // icône du header (haltère muscu)
   const niv = getNiveauExperience(a.annees_pratique);
   const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv];
   const bits = [nivLabel];
   if (a.objectif) bits.push(a.objectif);
   bits.push(`${a.annees_pratique || 0} an${(a.annees_pratique||0)>1?'s':''}`);
   if (a.poids) bits.push(`${a.poids} kg`);
-  document.getElementById('header-niveau-athlete-coach').textContent = ' · ' + bits.join(' · ');
+  var _heroPills = document.getElementById('cd-hero-pills');
+  if (_heroPills) _heroPills.innerHTML = bits.filter(Boolean).map(b => `<span class="fjd-pill">${escapeHtml(String(b))}</span>`).join('');
   switchCoachDetailTab(initialTab || 'overview');
   cdCalDate = new Date();
 
@@ -3186,10 +3188,10 @@ function renderCoachRecordsEtRegression(hist) {
 function renderCoachOverview(data) {
   const dash = data.dashboard || {};
 
-  // Enrichir le sous-titre en-tête avec le poids réel (si connu)
+  // Enrichir le bloc « Bonjour » avec le poids réel (si connu et pas déjà présent)
   if (data.poids && data.poids.length && coachAthleteCourant) {
-    const sub = document.getElementById('header-niveau-athlete-coach');
-    if (sub && !/kg/.test(sub.textContent)) sub.textContent = sub.textContent + ` · ${data.poids[0].poids} kg`;
+    const hp = document.getElementById('cd-hero-pills');
+    if (hp && !/kg/.test(hp.textContent)) hp.insertAdjacentHTML('beforeend', `<span class="fjd-pill">${escapeHtml(String(data.poids[0].poids))} kg</span>`);
   }
 
   // Régularité
