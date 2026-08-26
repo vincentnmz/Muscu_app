@@ -1753,6 +1753,37 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     }
   } catch (e) {}
 
+  // Séances de renfo réalisées (exécution guidée du joueur) — bloc affiché dans
+  // l'onglet Charge : ce que le joueur a fait + le ressenti tagué « renfo ».
+  const _renfoS = d.renfo_seances || [];
+  const renfoSeancesHtml = _renfoS.length ? _renfoS.map(rs => {
+    const exos = (rs.exercices || []).map(e => {
+      const series = (e.series || []).map(s => `${s.charge != null ? s.charge + 'kg' : '—'} × ${s.reps ?? '—'}${s.rpe != null ? ` <span style="color:var(--text-muted)">RPE ${s.rpe}</span>` : ''}`).join(' · ');
+      return `<div style="padding:7px 0;border-top:1px solid var(--border);">
+        <div style="font-size:13px;font-weight:700;">${escapeHtml(e.exercice)}${e.muscle ? ` <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">${escapeHtml(e.muscle)}</span>` : ''}</div>
+        <div style="font-size:11.5px;color:var(--text);margin-top:2px;">${series || '—'}</div>
+      </div>`;
+    }).join('');
+    const r = rs.ressenti;
+    const ressentiHtml = r ? `<div style="margin-top:9px;padding:8px 10px;background:var(--surface2);border-radius:9px;font-size:11px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+      <span style="font-weight:800;">🔒 Ressenti renfo</span>
+      ${r.fatigue != null ? `<span>Fatigue <b style="color:var(--text)">${r.fatigue}/5</b></span>` : ''}
+      ${r.douleur != null ? `<span>Douleur <b style="color:var(--text)">${r.douleur}/5</b></span>` : ''}
+      ${r.energie != null ? `<span>Énergie <b style="color:var(--text)">${r.energie}/5</b></span>` : ''}
+      ${r.sommeil != null ? `<span>Sommeil <b style="color:var(--text)">${r.sommeil}/5</b></span>` : ''}
+      ${r.ressenti ? `<span>“${escapeHtml(r.ressenti)}”</span>` : ''}
+    </div>` : '';
+    return `<div class="dash-card" style="padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="font-size:14px;font-weight:800;">${escapeHtml(rs.seance_id || 'Renfo')}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(rs.date)}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${rs.nb_series} série${rs.nb_series > 1 ? 's' : ''}${rs.volume_total ? ` · vol ${rs.volume_total}` : ''}${rs.rpe_moyen != null ? ` · RPE moy ${rs.rpe_moyen}` : ''}</div>
+      ${exos}
+      ${ressentiHtml}
+    </div>`;
+  }).join('') : '';
+
   body.innerHTML = `
     <!-- Onglets vue joueur : barre du bas sur mobile (.djt-tabs) -->
     <div class="sub-tabs djt-tabs">
@@ -1823,6 +1854,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       ${kpiFootCard ? `<div class="v2-sec"><div class="st">${ic('trending')}Charge · monotonie / strain</div></div>${kpiFootCard}` : ''}
       <div class="v2-sec"><div class="st">${ic('dumbbell')}Dernières séances</div></div>
       ${tblSeances(rows||'<tr><td style="padding:8px;color:var(--text-muted)">Aucune séance</td></tr>')}
+      ${renfoSeancesHtml ? `<div class="v2-sec"><div class="st">${ic('dumbbell')}Séances de renfo réalisées</div></div>${renfoSeancesHtml}` : ''}
       <div class="v2-sec"><div class="st">${ic('clipboard')}Tests physiques</div></div>
       <div id="detail-tests-body"><div class="loader">Chargement…</div></div>
     </div>
