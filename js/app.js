@@ -1618,29 +1618,44 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
 
   // Heatmap SVG (6×3 zones) — onglet Match
   const heatCol = v => v>=75?'#ef4444':(v>=50?'#f97316':(v>=28?'#eab308':'#22c55e'));
+  // Heatmap thème clair : vraie pelouse claire + tracés, chaleur lissée (dégradé)
+  // au lieu de la grille de carrés (fond sombre) — plus lisible sur l'app claire.
   const buildHeat = zones => {
     if(!zones||!zones.length) return '';
-    const cols=6, rows=3, W=340, H=200, cw=W/cols, ch=H/rows;
-    let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;border-radius:10px;background:#0e2419;max-width:420px;margin:0 auto;">`;
-    zones.forEach((v,i)=>{ const c=i%cols, r=Math.floor(i/cols); s+=`<rect x="${(c*cw).toFixed(1)}" y="${(r*ch).toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" fill="${heatCol(v)}" opacity="${(0.12+v/100*0.62).toFixed(2)}"/>`; });
-    s+=`<rect x="4" y="4" width="${W-8}" height="${H-8}" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/><line x1="${W/2}" y1="4" x2="${W/2}" y2="${H-4}" stroke="rgba(255,255,255,.35)"/><circle cx="${W/2}" cy="${H/2}" r="24" fill="none" stroke="rgba(255,255,255,.35)"/></svg>`;
-    s+=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--text-muted);margin-top:8px;"><span>Faible</span><span style="color:#22c55e">▮</span><span style="color:#eab308">▮</span><span style="color:#f97316">▮</span><span style="color:#ef4444">▮ Forte</span><span style="margin-left:auto">sens du jeu →</span></div>`;
-    return s;
+    const cols=6, rows=3, W=360, H=224, PAD=8, iw=W-2*PAD, ih=H-2*PAD, cw=iw/cols, ch=ih/rows;
+    let heat='';
+    zones.forEach((v,i)=>{ const c=i%cols, r=Math.floor(i/cols);
+      heat+=`<rect x="${(PAD+c*cw).toFixed(1)}" y="${(PAD+r*ch).toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" fill="${heatCol(v)}" opacity="${(0.14+v/100*0.7).toFixed(2)}"/>`; });
+    const cx=W/2, cy=H/2;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:420px;display:block;margin:0 auto;">
+      <defs><filter id="fh-blur"><feGaussianBlur stdDeviation="10"/></filter><clipPath id="fh-clip"><rect x="${PAD}" y="${PAD}" width="${iw}" height="${ih}" rx="10"/></clipPath></defs>
+      <rect x="${PAD}" y="${PAD}" width="${iw}" height="${ih}" rx="10" fill="var(--pitch,#E6F3EA)"/>
+      <g clip-path="url(#fh-clip)" filter="url(#fh-blur)" opacity="0.85">${heat}</g>
+      <g fill="none" stroke="var(--pitch-line,#B9D8C4)" stroke-width="2">
+        <rect x="${PAD}" y="${PAD}" width="${iw}" height="${ih}" rx="10"/>
+        <line x1="${cx}" y1="${PAD}" x2="${cx}" y2="${H-PAD}"/>
+        <circle cx="${cx}" cy="${cy}" r="30"/><circle cx="${cx}" cy="${cy}" r="2.4" fill="var(--pitch-line,#B9D8C4)" stroke="none"/>
+        <rect x="${PAD}" y="${cy-46}" width="44" height="92"/><rect x="${W-PAD-44}" y="${cy-46}" width="44" height="92"/>
+        <rect x="${PAD}" y="${cy-20}" width="16" height="40"/><rect x="${W-PAD-16}" y="${cy-20}" width="16" height="40"/>
+      </g></svg>
+      <div style="display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--text-muted);margin-top:9px;"><span>Faible</span><span style="flex:1;height:8px;border-radius:5px;background:linear-gradient(90deg,#22c55e,#eab308,#f97316,#ef4444);"></span><span>Forte</span><span style="margin-left:auto;font-weight:700;">sens du jeu →</span></div>`;
   };
 
-  // Radar SVG par poste — polygone joueur + polygone "repère du poste" (référence)
+  // Radar SVG par poste (thème clair) — polygone joueur (accent, plein) + polygone
+  // "repère du poste" (pointillé gris). Anneaux/axes en couleur de bordure.
   const buildRadar = () => {
     if(!cfgPoste || !d.match_agg) return '';
     const axes = cfgPoste.radar, N = axes.length;
-    const cx=130, cy=118, R=76;
+    const cx=140, cy=120, R=82;
     const pt=(i,rad)=>{const a=-Math.PI/2+i*2*Math.PI/N;return [cx+rad*Math.cos(a),cy+rad*Math.sin(a)];};
-    const poly=(fn,fill,stroke,sw)=>{let p='';for(let i=0;i<N;i++){const nv=Math.max(0,Math.min(100,fn(i)));const q=pt(i,R*nv/100);p+=q[0].toFixed(1)+','+q[1].toFixed(1)+' ';}return `<polygon points="${p}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`;};
-    let s=`<svg viewBox="0 0 260 236" width="100%" style="max-width:300px;height:auto;display:block;margin:0 auto;">`;
-    [0.25,0.5,0.75,1].forEach(f=>{let p='';for(let i=0;i<N;i++){const q=pt(i,R*f);p+=q[0].toFixed(1)+','+q[1].toFixed(1)+' ';}s+=`<polygon points="${p}" fill="none" stroke="rgba(255,255,255,.07)"/>`;});
-    for(let i=0;i<N;i++){const q=pt(i,R);s+=`<line x1="${cx}" y1="${cy}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}" stroke="rgba(255,255,255,.07)"/>`;const l=pt(i,R+15);s+=`<text x="${l[0].toFixed(1)}" y="${(l[1]+3).toFixed(1)}" fill="#8ea3c4" font-size="9" text-anchor="middle">${axes[i][1]}</text>`;}
-    s+=poly(i=>(axes[i][4]/axes[i][2])*100, 'rgba(142,163,196,.13)', 'rgba(142,163,196,.55)', 1.5);
-    s+=poly(i=>{ const v=aggV(axes[i][0],axes[i][3])||0; return (v/axes[i][2])*100; }, 'rgba(59,130,246,.24)', '#3b82f6', 2);
-    s+=`</svg><div style="display:flex;gap:16px;justify-content:center;font-size:10.5px;color:var(--text-muted);margin-top:2px;"><span><b style="color:#3b82f6">▮</b> ${escapeHtml((d.nom||'Joueur').split(' ')[0])}</span><span><b style="color:#8ea3c4">▮</b> Repère du poste</span></div>`;
+    const mk=(fn)=>{let p='';for(let i=0;i<N;i++){const nv=Math.max(0,Math.min(100,fn(i)));const q=pt(i,R*nv/100);p+=q[0].toFixed(1)+','+q[1].toFixed(1)+' ';}return p;};
+    let s=`<svg viewBox="0 0 280 250" width="100%" style="max-width:320px;height:auto;display:block;margin:0 auto;font-family:inherit;"><defs><radialGradient id="rd-fill" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.30"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0.13"/></radialGradient></defs>`;
+    [0.25,0.5,0.75,1].forEach(f=>{ s+=`<polygon points="${mk(()=>f*100)}" fill="none" stroke="var(--border)" stroke-width="1"/>`; });
+    for(let i=0;i<N;i++){const q=pt(i,R);s+=`<line x1="${cx}" y1="${cy}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}" stroke="var(--border)" stroke-width="1"/>`;const l=pt(i,R+18);s+=`<text x="${l[0].toFixed(1)}" y="${(l[1]+3).toFixed(1)}" fill="var(--text-muted)" font-size="10.5" font-weight="700" text-anchor="middle">${axes[i][1]}</text>`;}
+    s+=`<polygon points="${mk(i=>(axes[i][4]/axes[i][2])*100)}" fill="none" stroke="var(--text-muted)" stroke-width="1.4" stroke-dasharray="4 3" stroke-linejoin="round" opacity="0.7"/>`;
+    s+=`<polygon points="${mk(i=>{ const v=aggV(axes[i][0],axes[i][3])||0; return (v/axes[i][2])*100; })}" fill="url(#rd-fill)" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round"/>`;
+    for(let i=0;i<N;i++){const v=aggV(axes[i][0],axes[i][3])||0;const nv=Math.max(0,Math.min(100,(v/axes[i][2])*100));const q=pt(i,R*nv/100);s+=`<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="3.4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`;}
+    s+=`</svg><div style="display:flex;gap:16px;justify-content:center;font-size:10.5px;color:var(--text-muted);margin-top:2px;"><span><b style="color:var(--accent)">▮</b> ${escapeHtml((d.nom||'Joueur').split(' ')[0])}</span><span><b style="color:var(--text-muted)">▮</b> Repère du poste</span></div>`;
     return s;
   };
 
