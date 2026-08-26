@@ -1827,11 +1827,16 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       <div id="detail-tests-body"><div class="loader">Chargement…</div></div>
     </div>
 
-    <!-- PANEL 4 : RENFORCEMENT (muscu) — prépa uniquement -->
+    <!-- PANEL 4 : RENFORCEMENT (muscu) — prépa édite, le joueur consulte -->
     <div class="djt-panel" data-i="4" style="display:none;">
       <div class="v2-sec"><div class="st">${ic('dumbbell')}Programme de renforcement</div></div>
+      ${cdMode === 'athlete'
+        ? `<div style="font-size:12px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:10px;">🔒 Programme défini par ton préparateur physique — en lecture seule.</div>`
+        : ''}
       <div id="fjd-programme-content"><div class="loader">Chargement…</div></div>
-      <button class="btn btn-outline" style="margin-top:10px;width:100%;" onclick="cdAjouterSeance()">+ Nouvelle séance</button>
+      ${cdMode === 'athlete'
+        ? ''
+        : `<button class="btn btn-outline" style="margin-top:10px;width:100%;" onclick="cdAjouterSeance()">+ Nouvelle séance</button>`}
     </div>
 
     <!-- PANEL 2 : MATCH & TECHNIQUE -->
@@ -1994,7 +1999,9 @@ function switchDetailJoueurTab(i) {
 // Onglet « Renfo » (prépa) — réutilise le builder de programme muscu, ciblé sur
 // le joueur foot courant et sur le conteneur de la fiche joueur.
 function ouvrirRenfoJoueur() {
-  progCtx = { el: 'fjd-programme-content', athleteId: cdJoueurCourant, athleteNom: cdJoueurNom || '' };
+  // Le joueur (cdMode 'athlete') consulte son programme en lecture seule : c'est
+  // le prépa qui le définit. En mode 'coach' (prépa), le programme reste éditable.
+  progCtx = { el: 'fjd-programme-content', athleteId: cdJoueurCourant, athleteNom: cdJoueurNom || '', readonly: (cdMode === 'athlete') };
   chargerProgrammeCoach();
 }
 
@@ -4208,6 +4215,7 @@ let progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null };
 function _progEl()         { return document.getElementById(progCtx.el); }
 function _progAthleteId()  { return progCtx.athleteId || (coachAthleteCourant && coachAthleteCourant.athlete_id) || null; }
 function _progAthleteNom() { return progCtx.athleteNom || (coachAthleteCourant && coachAthleteCourant.nom) || ''; }
+function _progReadonly()   { return !!(progCtx && progCtx.readonly); }   // joueur = consultation seule
 
 // Recharge le programme du contexte courant (progCtx doit être positionné avant
 // le 1er appel par l'ouvreur ; les rafraîchissements internes le réutilisent).
@@ -4230,6 +4238,7 @@ async function chargerProgrammeCoach() {
 function renderProgrammeCoach() {
   const el = _progEl();
   if (!el) return;
+  const ro = _progReadonly();   // lecture seule (joueur) : pas d'édition
   const seances = {};
   const ordre = [];
   cdProgrammeLignes.forEach(l => {
@@ -4275,17 +4284,18 @@ function renderProgrammeCoach() {
     const reps = (rmin && rmax) ? `${rmin}-${rmax}` : (rmin || rmax || '–');
     return `${s} <span style="color:var(--text-muted);font-weight:600">×</span> ${reps}`;
   };
-  // Ligne compacte (mode lecture) — le crayon ouvre le bloc d'édition
+  // Ligne compacte (mode lecture) — le crayon ouvre le bloc d'édition.
+  // En lecture seule (joueur) : pas de clic ni de crayon, simple consultation.
   const ligneLecture = (l, accent) => {
     const mus = muscleDe(l.exercice);
     return `
-      <div onclick="cdToggleExo(${l.row_index})" style="display:flex;align-items:center;gap:11px;padding:10px 4px;cursor:pointer">
+      <div ${ro ? '' : `onclick="cdToggleExo(${l.row_index})"`} style="display:flex;align-items:center;gap:11px;padding:10px 4px;${ro ? '' : 'cursor:pointer'}">
         <div style="flex:1;min-width:0">
           <div style="font-size:13.5px;font-weight:700;color:${accent||'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.exercice}</div>
           ${mus ? `<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-top:2px">${mus}</div>` : ''}
         </div>
         <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap">${resumeQty(l)}</span>
-        <span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>
+        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>`}
       </div>`;
   };
 
@@ -4318,7 +4328,7 @@ function renderProgrammeCoach() {
         return `
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
           ${ligneLecture(l)}
-          ${blocEdit(l, seanceId, null, selLier(l, seanceId, [l.exercice]))}
+          ${ro ? '' : blocEdit(l, seanceId, null, selLier(l, seanceId, [l.exercice]))}
         </div>`;
       }
       // Superset : une seule carte avec tous les membres empilés
@@ -4331,9 +4341,9 @@ function renderProgrammeCoach() {
             ${i > 0 ? `<div style="text-align:center;color:${coul};font-size:16px;font-weight:800;margin:-2px 0 4px">↓</div>` : ''}
             <div style="background:var(--surface2);border-radius:8px;padding:2px 10px;margin-bottom:8px">
               ${ligneLecture(m, coul)}
-              ${blocEdit(m, seanceId, `<button onclick="cdRetirerDuGroupe(${m.row_index},'${seanceId}')" title="Retirer du superset" style="background:${coul}1a;border:1px solid ${coul};color:${coul};border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;font-size:12px;flex-shrink:0;font-weight:700">✕</button>`)}
+              ${ro ? '' : blocEdit(m, seanceId, `<button onclick="cdRetirerDuGroupe(${m.row_index},'${seanceId}')" title="Retirer du superset" style="background:${coul}1a;border:1px solid ${coul};color:${coul};border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;font-size:12px;flex-shrink:0;font-weight:700">✕</button>`)}
             </div>`).join('')}
-          ${selLier(u.membres[0], seanceId, nomsMembres)}
+          ${ro ? '' : selLier(u.membres[0], seanceId, nomsMembres)}
         </div>`;
     }).join('');
 
@@ -4349,7 +4359,7 @@ function renderProgrammeCoach() {
       </div>
       <div id="prog-body-${si}" style="padding:12px 14px;border-top:1px solid var(--border);${ouvert?'':'display:none'}">
         ${cartes}
-        <button onclick="cdAjouterExercice('${seanceId}')" style="width:100%;margin-top:4px;padding:12px;border:1.5px dashed var(--accent-dim);background:var(--accent-a08);color:var(--accent);border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><span style="font-size:18px;line-height:1;">+</span> Ajouter un exercice</button>
+        ${ro ? '' : `<button onclick="cdAjouterExercice('${seanceId}')" style="width:100%;margin-top:4px;padding:12px;border:1.5px dashed var(--accent-dim);background:var(--accent-a08);color:var(--accent);border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><span style="font-size:18px;line-height:1;">+</span> Ajouter un exercice</button>`}
       </div>
     </div>`;
   }).join('');
