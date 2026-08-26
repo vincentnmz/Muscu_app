@@ -2290,6 +2290,25 @@ const _COCKPIT_ACTIONS = {
   sommeil:     'Point sommeil · hygiène de récupération',
 };
 
+// Met à jour le badge de messages non lus du header coach/prépa (#coach-msg-badge).
+// Nécessaire hors accueil muscu : la vue cockpit prépa et le suivi équipe foot ne
+// passent pas par renderCoachSynthese qui le faisait → sinon aucune notif visible.
+async function majBadgeMessagesCoach(athleteIds) {
+  const b = document.getElementById('coach-msg-badge');
+  if (!b) return;
+  try {
+    const counts = await Promise.all((athleteIds || []).map(async id => {
+      try {
+        const r = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(id)}&nocache=${Date.now()}`);
+        const d = await r.json();
+        return (d.commentaires || []).filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
+      } catch (e) { return 0; }
+    }));
+    const total = counts.reduce((s, n) => s + (n || 0), 0);
+    b.textContent = total; b.style.display = total > 0 ? 'block' : 'none';
+  } catch (e) {}
+}
+
 async function renderCockpitPrepa() {
   const cont = document.getElementById('prepa-cockpit');
   if (!cont) return;
@@ -2315,6 +2334,7 @@ async function renderCockpitPrepa() {
   _cockpitState.equipe = eq;
   _cockpitState.filtre = null;
   const labelJoueurs = libelleSport('athletes').toLowerCase();
+  majBadgeMessagesCoach(joueurs.map(j => j.athlete_id));   // badge notif conversation (prépa)
 
   if (!joueurs.length) {
     cont.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun ${libelleSport('athlete').toLowerCase()} associé à ton compte. Utilise « Lier un athlète » en haut pour composer ton effectif.</div>`;
@@ -2475,6 +2495,7 @@ async function renderSuiviEquipe() {
   const joueurs = data.joueurs || [];
   const eq = data.equipe || {};
   const labelJoueurs = libelleSport('athletes').toLowerCase();
+  majBadgeMessagesCoach(joueurs.map(j => j.athlete_id));   // badge notif conversation (coach foot)
 
   if (!joueurs.length) {
     cont.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:12px">Aucun ${libelleSport('athlete').toLowerCase()} pour l'instant. Utilise « Lier un athlète » en haut.</div>`;
