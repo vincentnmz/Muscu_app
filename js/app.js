@@ -1771,17 +1771,18 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       { k:'fatigue', l:'Fatigue', good:false }, { k:'douleur', l:'Douleur', good:false },
       { k:'energie', l:'Énergie', good:true },  { k:'sommeil', l:'Sommeil', good:true },
     ];
+    // Dimensions du ressenti en rangée horizontale, chacune avec sa barre colorée.
     const _rBars = r ? _rDims.filter(dm => r[dm.k] != null).map(dm => {
       const v = r[dm.k];
-      return `<div style="margin-bottom:8px;">
-        <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px;"><span style="color:var(--text-muted);">${dm.l}</span><b>${v}/5</b></div>
+      return `<div style="flex:1;min-width:64px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:4px;margin-bottom:4px;"><span style="font-size:10.5px;color:var(--text-muted);">${dm.l}</span><b style="font-size:12px;">${v}/5</b></div>
         <div style="height:6px;border-radius:4px;background:var(--surface);overflow:hidden;"><span style="display:block;height:100%;border-radius:4px;width:${v/5*100}%;background:${wbColor(v, dm.good)};"></span></div>
       </div>`;
     }).join('') : '';
     const ressentiHtml = r ? `<div style="margin-top:9px;padding:11px 12px;background:var(--surface2);border-radius:10px;">
       <div style="font-size:11px;font-weight:800;color:var(--text-muted);margin-bottom:9px;">🔒 RESSENTI RENFO</div>
-      ${_rBars || '<div style="font-size:11px;color:var(--text-muted);">—</div>'}
-      ${r.ressenti ? `<div style="font-size:11.5px;color:var(--text);font-style:italic;margin-top:2px;">“${escapeHtml(r.ressenti)}”</div>` : ''}
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">${_rBars || '<div style="font-size:11px;color:var(--text-muted);">—</div>'}</div>
+      ${r.ressenti ? `<div style="font-size:11.5px;color:var(--text);font-style:italic;margin-top:9px;">“${escapeHtml(r.ressenti)}”</div>` : ''}
     </div>` : '';
     return `<div class="dash-card" style="padding:12px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
