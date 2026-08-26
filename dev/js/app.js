@@ -1778,7 +1778,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       if (r[dm.k] == null || isNaN(v)) return '';
       return `<div style="flex:1;min-width:60px;">
         <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:4px;">${dm.l}</div>
-        <div style="height:7px;border-radius:4px;background:var(--surface);overflow:hidden;"><span style="display:block;height:100%;border-radius:4px;width:${v/5*100}%;background:${wbColor(v, dm.good)};"></span></div>
+        <div style="height:7px;border-radius:4px;background:${wbColor(v, dm.good)};"></div>
       </div>`;
     }).join('') : '';
     const ressentiHtml = _rBars ? `<div style="margin-top:9px;padding:11px 12px;background:var(--surface2);border-radius:10px;">
@@ -6128,6 +6128,7 @@ async function _verifierSeanceEnregistree(dateEnvoyee) {
 }
 
 async function _envoyerWellness(seanceId, dateSeance) {
+  const noteTxt = document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '';
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -6143,10 +6144,23 @@ async function _envoyerWellness(seanceId, dateSeance) {
         douleur:    wellnessState.douleur,
         zone:       wellnessState.zone,
         ressenti:   wellnessState.ressenti,
-        note:       (document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '')
+        note:       noteTxt
       })
     });
   } catch(e) { /* non bloquant */ }
+  // La note écrite en fin de séance = message pour le coach/prépa → on la poste
+  // dans la conversation (ex. « cool », un souci ressenti, une remarque…).
+  if (noteTxt) {
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'saveCommentaire', auteur: 'athlete',
+          auteur_nom: (athlete.prenom || athlete.nom || 'Athlète'), athlete_id: athlete.athlete_id,
+          message: `📝 Note séance ${seanceId} : ${noteTxt}` })
+      });
+    } catch(e) { /* non bloquant */ }
+  }
 }
 
 let _validationEnCours = false;
