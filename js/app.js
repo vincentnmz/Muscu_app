@@ -2005,6 +2005,53 @@ function ouvrirRenfoJoueur() {
   chargerProgrammeCoach();
 }
 
+// Exécution guidée du renfo côté joueur : on réutilise le MOTEUR de séance muscu
+// (chrono de repos, saisie série par série, questionnaire ressenti, sauvegarde
+// dans Performances → l'analyse ACWR/charge intègre le renfo). On révèle l'écran
+// de séance (contenu seul, sans la barre d'onglets) puis on revient à la fiche.
+async function demarrerRenfoJoueur(seanceId) {
+  if (!seanceId || !athlete) return;
+  // Le programme du joueur (qui contient son renfo) doit être chargé pour que le
+  // moteur retrouve les exercices de la séance. On le charge SANS rendre le
+  // tableau de bord muscu (on alimente seulement dernierAppData).
+  if (!dernierAppData || !dernierAppData.programme) {
+    try {
+      const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${athlete.athlete_id}`);
+      const data = await res.json();
+      if (data && !data.erreur && data.historique) dernierAppData = data;
+    } catch (e) {}
+  }
+  // Ferme la fiche, révèle l'écran de séance guidée (sans navigation muscu).
+  const ov = document.getElementById('detail-joueur-overlay'); if (ov) ov.style.display = 'none';
+  document.documentElement.classList.remove('fjd-open');
+  document.getElementById('view-login').classList.remove('active');
+  document.getElementById('view-coach').classList.remove('active');
+  document.getElementById('view-coach-detail').classList.remove('active');
+  document.getElementById('view-app').classList.add('active');
+  document.getElementById('tabs-bar').style.display = 'none';
+  document.body.classList.remove('has-bottom-nav');
+  document.body.classList.add('renfo-exec');
+  switchTab('seance');
+  peuplerSeancesProgramme();
+  const sel = document.getElementById('sel-seance-id'); if (sel) sel.value = seanceId;
+  demarrerSeance();
+  window.scrollTo(0, 0);
+}
+
+// Retour à la fiche joueur depuis l'écran d'exécution du renfo.
+function retourFicheDepuisRenfo() {
+  const enCours = (typeof seance !== 'undefined' && seance.length > 0 && !_seanceEnvoyee);
+  if (enCours && !confirm('Quitter la séance ? Les séries non validées seront perdues.')) return;
+  document.body.classList.remove('renfo-exec');
+  document.getElementById('view-app').classList.remove('active');
+  // Nettoyage de l'état de séance (sans toast d'abandon).
+  try { seance = []; exoEnCours = null; serieNum = 1; programmeSeance = []; } catch (e) {}
+  ['card-exo-actuel','card-liste-seance','card-hors-programme','recap-block','seance-progress'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  if (athlete) ouvrirDetailJoueurFoot(athlete.athlete_id, 'athlete');
+}
+
 // Conversation coach ↔ joueur foot (onglet 3)
 async function chargerConversationJoueur() {
   const el = document.getElementById('djt-conv-messages');
@@ -4359,7 +4406,9 @@ function renderProgrammeCoach() {
       </div>
       <div id="prog-body-${si}" style="padding:12px 14px;border-top:1px solid var(--border);${ouvert?'':'display:none'}">
         ${cartes}
-        ${ro ? '' : `<button onclick="cdAjouterExercice('${seanceId}')" style="width:100%;margin-top:4px;padding:12px;border:1.5px dashed var(--accent-dim);background:var(--accent-a08);color:var(--accent);border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><span style="font-size:18px;line-height:1;">+</span> Ajouter un exercice</button>`}
+        ${ro
+          ? `<button onclick='demarrerRenfoJoueur(${JSON.stringify(seanceId)})' style="width:100%;margin-top:4px;padding:13px;border:none;border-radius:11px;background:var(--accent);color:#fff;font-size:14.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(26,95,255,.28);"><span style="font-size:16px;line-height:1;">▶</span> Démarrer cette séance</button>`
+          : `<button onclick="cdAjouterExercice('${seanceId}')" style="width:100%;margin-top:4px;padding:12px;border:1.5px dashed var(--accent-dim);background:var(--accent-a08);color:var(--accent);border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"><span style="font-size:18px;line-height:1;">+</span> Ajouter un exercice</button>`}
       </div>
     </div>`;
   }).join('');
