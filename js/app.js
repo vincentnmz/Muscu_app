@@ -1498,6 +1498,13 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       {cle:'passes_cles',l:'Passes clés / match',type:'moy',max:4,col:'var(--accent)'},
       {cle:'centres_reussis',l:'Centres réussis / match',type:'moy',max:3,col:'#22d3ee'}
     ], radar:[['buts','Buts',8,'total',3],['tirs','Tirs',6,'moy',3],['tirs_cadres','Cadrés',4,'moy',1.6],['passes_cles','P. clés',4,'moy',1.8],['xa','xA',5,'total',2]] },
+    'Ailier': { head:{cle:'passes_cles',l:'P. clés/m',type:'moy'}, stats:[
+      {cle:'dribbles_reussis',l:'Dribbles réussis / match',type:'moy',max:6,col:'var(--accent)'},
+      {cle:'centres_reussis',l:'Centres réussis / match',type:'moy',max:4,col:'var(--violet)'},
+      {cle:'passes_cles',l:'Passes clés / match',type:'moy',max:4,col:'#22d3ee'},
+      {cle:'tirs',l:'Tirs / match',type:'moy',max:5,col:'var(--warn)'},
+      {cle:'buts',l:'Buts (saison)',type:'total',max:6,col:'#22c55e'}
+    ], radar:[['dribbles_reussis','Dribbles',6,'moy',3],['centres_reussis','Centres',4,'moy',2],['passes_cles','P. clés',4,'moy',2],['tirs','Tirs',5,'moy',2.4],['buts','Buts',6,'total',2]] },
     'Milieu': { head:{cle:'passes_progressives',l:'P. prog./m',type:'moy'}, stats:[
       {cle:'passes_reussies',l:'Passes réussies / match',type:'moy',max:80,col:'var(--accent)'},
       {cle:'passes_progressives',l:'Passes progressives / match',type:'moy',max:12,col:'var(--violet)'},
