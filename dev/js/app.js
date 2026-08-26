@@ -1765,13 +1765,23 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       </div>`;
     }).join('');
     const r = rs.ressenti;
-    const ressentiHtml = r ? `<div style="margin-top:9px;padding:8px 10px;background:var(--surface2);border-radius:9px;font-size:11px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
-      <span style="font-weight:800;">🔒 Ressenti renfo</span>
-      ${r.fatigue != null ? `<span>Fatigue <b style="color:var(--text)">${r.fatigue}/5</b></span>` : ''}
-      ${r.douleur != null ? `<span>Douleur <b style="color:var(--text)">${r.douleur}/5</b></span>` : ''}
-      ${r.energie != null ? `<span>Énergie <b style="color:var(--text)">${r.energie}/5</b></span>` : ''}
-      ${r.sommeil != null ? `<span>Sommeil <b style="color:var(--text)">${r.sommeil}/5</b></span>` : ''}
-      ${r.ressenti ? `<span>“${escapeHtml(r.ressenti)}”</span>` : ''}
+    // Ressenti en barres colorées (même code couleur que le bloc bien-être) plutôt
+    // que de simples notes → lecture visuelle rapide pour le prépa.
+    const _rDims = [
+      { k:'fatigue', l:'Fatigue', good:false }, { k:'douleur', l:'Douleur', good:false },
+      { k:'energie', l:'Énergie', good:true },  { k:'sommeil', l:'Sommeil', good:true },
+    ];
+    const _rBars = r ? _rDims.filter(dm => r[dm.k] != null).map(dm => {
+      const v = r[dm.k];
+      return `<div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px;"><span style="color:var(--text-muted);">${dm.l}</span><b>${v}/5</b></div>
+        <div style="height:6px;border-radius:4px;background:var(--surface);overflow:hidden;"><span style="display:block;height:100%;border-radius:4px;width:${v/5*100}%;background:${wbColor(v, dm.good)};"></span></div>
+      </div>`;
+    }).join('') : '';
+    const ressentiHtml = r ? `<div style="margin-top:9px;padding:11px 12px;background:var(--surface2);border-radius:10px;">
+      <div style="font-size:11px;font-weight:800;color:var(--text-muted);margin-bottom:9px;">🔒 RESSENTI RENFO</div>
+      ${_rBars || '<div style="font-size:11px;color:var(--text-muted);">—</div>'}
+      ${r.ressenti ? `<div style="font-size:11.5px;color:var(--text);font-style:italic;margin-top:2px;">“${escapeHtml(r.ressenti)}”</div>` : ''}
     </div>` : '';
     return `<div class="dash-card" style="padding:12px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -1852,8 +1862,8 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       <div class="v2-sec"><div class="st">${ic('barchart')}Charge hebdomadaire (UA)</div></div>
       <div class="dash-card" style="padding:14px 12px 10px;margin-bottom:12px;"><canvas id="canvas-charge-joueur" width="420" height="130" style="width:100%;height:130px;display:block;"></canvas></div>
       ${kpiFootCard ? `<div class="v2-sec"><div class="st">${ic('trending')}Charge · monotonie / strain</div></div>${kpiFootCard}` : ''}
-      <div class="v2-sec"><div class="st">${ic('dumbbell')}Dernières séances</div></div>
-      ${tblSeances(rows||'<tr><td style="padding:8px;color:var(--text-muted)">Aucune séance</td></tr>')}
+      ${cdMode === 'athlete' ? '' : `<div class="v2-sec"><div class="st">${ic('dumbbell')}Dernières séances</div></div>
+      ${tblSeances(rows||'<tr><td style="padding:8px;color:var(--text-muted)">Aucune séance</td></tr>')}`}
       ${renfoSeancesHtml ? `<div class="v2-sec"><div class="st">${ic('dumbbell')}Séances de renfo réalisées</div></div>${renfoSeancesHtml}` : ''}
       <div class="v2-sec"><div class="st">${ic('clipboard')}Tests physiques</div></div>
       <div id="detail-tests-body"><div class="loader">Chargement…</div></div>
