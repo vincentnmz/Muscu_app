@@ -48,6 +48,12 @@ body.coach-active.athlete-selected #cd-header { display:flex; }
   #cd-header .cd-lbl  { display:none; }
 }
 
+/* ===== Exécution guidée du renfo (joueur) : barre de retour dédiée ===== */
+#renfo-topbar { display:none; gap:9px; }
+body.renfo-exec #renfo-topbar { display:flex; }
+body.renfo-exec > header      { display:none; }   /* masque le header global pendant l'exécution */
+#renfo-topbar .cd-back { flex-shrink:0; display:inline-flex; align-items:center; background:none; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 9px; cursor:pointer; }
+
 /* ===== En-tête global ===== */
 header { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
 header h1 { font-size:17px; font-weight:700; }
