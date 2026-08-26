@@ -34,6 +34,8 @@
   --surface:    #FFFFFF;   /* cartes, éléments élevés */
   --surface2:   #EEF3FF;   /* inputs, surfaces secondaires */
   --border:     #D8E2FF;   /* séparateurs, contours */
+  --pitch:      #E6F3EA;   /* pelouse (heatmap foot) */
+  --pitch-line: #B9D8C4;   /* tracés du terrain (heatmap foot) */
 
   /* ---- Textes ---- */
   --text:        #070B14;  /* marine profond */
