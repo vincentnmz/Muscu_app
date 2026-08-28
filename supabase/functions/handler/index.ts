@@ -314,13 +314,54 @@ function computeStreak(dates: string[], now: Date): number {
 // Ajouter un sport = ajouter un cas dans calculerChargeSport ; le reste ne bouge pas.
 // ============================================================================
 
-// Seuils ACWR — SOURCE UNIQUE (utilisée par interpreterACWR ET evaluerEtatAthlete).
-const SEUILS_ACWR = { BAS: 0.8, OPT_MAX: 1.3, HAUT: 1.5 }
-// Jours actifs minimum sur 28 j pour une chronique fiable. Décision métier : 6.
-// En-dessous de 6 jours actifs, la chronique (÷4) repose sur trop peu de séances réelles
-// et un pic isolé fausse le ratio → ACWR non interprétable. Critère de FIABILITÉ
-// uniquement — jamais une alerte ; une faible fréquence n'est pas un problème en soi.
-const ACWR_MIN_JOURS_ACTIFS_28 = 6
+// ============================================================================
+// CORE NOVALYZ — CONFIGURATION MÉTIER (Phase 3A) · SOURCE UNIQUE DE VÉRITÉ
+// ----------------------------------------------------------------------------
+// Refactor de CONFIGURATION uniquement : toutes les valeurs sont reprises
+// À L'IDENTIQUE de l'existant. Aucune règle nouvelle, aucun changement de
+// comportement, aucune modification de seuil. Le moteur (evaluerEtatAthlete)
+// et la chaîne ACWR lisent désormais ces constantes au lieu de littéraux.
+// ============================================================================
+
+// --- Seuils santé / charge (agnostiques du sport) ---
+const CORE_SEUILS = {
+  douleur:     { gene: 2, forte: 3 },               // /5  (gêne ≥2, forte ≥3)
+  fatigue:     { haute: 4 },                         // /5
+  sommeil:     { bas: 2 },                           // /5  (moyenne récente ≤2)
+  courbatures: { haut: 4 },                          // /5  (muscu)
+  recup:       { faible: 45, moyen: 60, bon: 75 },   // score 0..100
+  acwr:        { bas: 0.8, optMax: 1.3, haut: 1.5 }, // ratio (ex-SEUILS_ACWR, Phase 2B)
+}
+
+// --- Niveaux d'état (0/1/2) ---
+// couleur/statut CONSERVÉS ici en 3A (couleurs identiques à l'actuel) ; leur
+// extraction vers la présentation front est prévue en Phase 3B.
+const CORE_NIVEAUX = [
+  { cle: 'optimal',   label: 'Prêt',         statut: 'vert',   couleur: '#22c55e' },
+  { cle: 'vigilance', label: 'Vigilance',    statut: 'orange', couleur: '#f5a623' },
+  { cle: 'action',    label: 'À surveiller', statut: 'rouge',  couleur: '#e5484d' },
+]
+
+// --- Fiabilité / confiance (qualité des données) ---
+const CORE_FIABILITE = {
+  histoMin: 28,          // jours d'historique de charge min pour un ACWR fiable
+  joursActifsMin: 6,     // jours actifs min sur 28 (chronique non trouée) — décision métier
+  confJoursFaible: 7,    // < 7 j d'historique → confiance faible
+  confJoursMoyen: 21,    // < 21 j → confiance moyenne
+  wellnessMin: 3,        // < 3 mesures bien-être → confiance moyenne
+}
+
+// --- Contextes de performance — REGISTRE DÉCLARATIF (effets ACTUELS, non modifiés) ---
+// ⚠ 3A : registre DOCUMENTAIRE seulement (source de vérité pour la Phase 3C, qui
+// pilotera le moteur depuis ce registre). Le câblage reste en clair dans
+// evaluerEtatAthlete (aucune modification des contextes en 3A).
+const CORE_CONTEXTES = {
+  saison_normale:  { reposPrevu: false },
+  deload:          { reposPrevu: true,  surchargeDelta: -1 },
+  retour_vacances: { reposPrevu: true,  surchargeDelta: +1, acwrRepriseJours: 28 },
+  retour_blessure: { reposPrevu: true,  niveauMin: 1, risqueDelta: +1 },
+  intensification: { reposPrevu: false },
+}
 
 // A. Adaptateur de charge PAR SPORT → série journalière commune {isoDate: charge}.
 function calculerChargeSport(sport: string, rows: any[]): { chargeParJour: Record<string, number>; premiere: string | null } {
@@ -366,11 +407,11 @@ function calculerACWR(chargeParJour: Record<string, number>, now: Date): { ratio
 // OU chronique trouée (jours actifs insuffisants). Retourne false = ACWR non interprétable.
 function fiabiliteACWR(premiere: string | null, ctxObj: any, now: Date, joursActifs28: number): boolean {
   const histo = _joursDepuis(premiere, now)
-  if (histo == null || histo < 28) return false
-  if (joursActifs28 < ACWR_MIN_JOURS_ACTIFS_28) return false
+  if (histo == null || histo < CORE_FIABILITE.histoMin) return false
+  if (joursActifs28 < CORE_FIABILITE.joursActifsMin) return false
   if (ctxObj && String(ctxObj.etat || '') === 'retour_vacances') {
     const rd = _joursDepuis(ctxObj.date_debut, now)
-    if (rd != null && rd >= 0 && rd < 28) return false
+    if (rd != null && rd >= 0 && rd < CORE_CONTEXTES.retour_vacances.acwrRepriseJours) return false
   }
   return true
 }
@@ -378,9 +419,9 @@ function fiabiliteACWR(premiere: string | null, ctxObj: any, now: Date, joursAct
 // D. Interprétation catégorielle — NE renvoie jamais une couleur d'athlète.
 function interpreterACWR(ratio: number | null, fiable: boolean): string {
   if (!fiable || ratio == null) return 'non_interpretable'
-  if (ratio > SEUILS_ACWR.HAUT) return 'eleve'
-  if (ratio > SEUILS_ACWR.OPT_MAX) return 'vigilance'
-  if (ratio < SEUILS_ACWR.BAS) return 'sous_charge'
+  if (ratio > CORE_SEUILS.acwr.haut) return 'eleve'
+  if (ratio > CORE_SEUILS.acwr.optMax) return 'vigilance'
+  if (ratio < CORE_SEUILS.acwr.bas) return 'sous_charge'
   return 'normal'
 }
 
@@ -1268,10 +1309,11 @@ interface EtatInput {
 }
 
 function evaluerEtatAthlete(s: EtatInput): any {
-  const NIV = ['Prêt', 'Vigilance', 'À surveiller']
-  const COUL = ['#22c55e', '#f5a623', '#e5484d']
-  const STA = ['vert', 'orange', 'rouge']
+  const NIV = CORE_NIVEAUX.map(n => n.label)     // ['Prêt','Vigilance','À surveiller']
+  const COUL = CORE_NIVEAUX.map(n => n.couleur)  // couleurs conservées en 3A (extraction → 3B)
+  const STA = CORE_NIVEAUX.map(n => n.statut)    // ['vert','orange','rouge']
   const ctx = s.ctxEtat || 'saison_normale'
+  // reposPrevu : logique de contexte laissée en clair (câblage via CORE_CONTEXTES = Phase 3C).
   const reposPrevu = ctx === 'deload' || ctx === 'retour_vacances' || ctx === 'retour_blessure'
 
   // --- Garde-fou ACWR (décision retour-vacances) : si l'historique de charge est
@@ -1284,23 +1326,23 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // --- Niveau de confiance (qualité des données disponibles) ---
   let confiance: string
   if (s.q.wellnessN === 0 && !s.q.hasCharge) confiance = 'non_interpretable'
-  else if (s.q.jours < 7 || s.q.wellnessN === 0) confiance = 'faible'
-  else if (s.q.jours < 21 || s.q.wellnessN < 3 || acwrForConf == null) confiance = 'moyenne'
+  else if (s.q.jours < CORE_FIABILITE.confJoursFaible || s.q.wellnessN === 0) confiance = 'faible'
+  else if (s.q.jours < CORE_FIABILITE.confJoursMoyen || s.q.wellnessN < CORE_FIABILITE.wellnessMin || acwrForConf == null) confiance = 'moyenne'
   else confiance = 'haute'
 
   // --- Charge (ACWR) ajustée par le contexte — seulement si ACWR interprétable ---
   let surchargeN = 0
   if (acwrOk) {
-    surchargeN = (s.acwr as number) > SEUILS_ACWR.HAUT ? 2 : (s.acwr as number) > SEUILS_ACWR.OPT_MAX ? 1 : 0
+    surchargeN = (s.acwr as number) > CORE_SEUILS.acwr.haut ? 2 : (s.acwr as number) > CORE_SEUILS.acwr.optMax ? 1 : 0
     if (ctx === 'deload') surchargeN = Math.max(0, surchargeN - 1)
     if (ctx === 'retour_vacances') surchargeN = Math.min(2, surchargeN + 1)
   }
 
   const doul = s.douleur ?? 0, fat = s.fatigue ?? 0, som = s.sommeil, courb = s.courbatures ?? 0
   const chargeHaute = surchargeN >= 1
-  const sommeilBas = som != null && som <= 2
-  const fatigueHaute = fat >= 4
-  const douleurGene = doul >= 2, douleurForte = doul >= 3
+  const sommeilBas = som != null && som <= CORE_SEUILS.sommeil.bas
+  const fatigueHaute = fat >= CORE_SEUILS.fatigue.haute
+  const douleurGene = doul >= CORE_SEUILS.douleur.gene, douleurForte = doul >= CORE_SEUILS.douleur.forte
 
   // --- Signaux → alertes (le contexte peut en supprimer) ---
   const alertes: { type: string; severite: string; message: string }[] = []
@@ -1308,14 +1350,14 @@ function evaluerEtatAthlete(s: EtatInput): any {
     alertes.push({ type: 'absence', severite: 'haute', message: 'Aucune séance depuis 7 jours' })
   if (surchargeN >= 2) alertes.push({ type: 'surcharge', severite: 'haute', message: `Charge aiguë élevée (ACWR ${s.acwr})` })
   else if (surchargeN === 1) alertes.push({ type: 'charge', severite: 'moyenne', message: `Charge en hausse (ACWR ${s.acwr})` })
-  else if (acwrOk && (s.acwr as number) < SEUILS_ACWR.BAS && s.seances7 > 0 && !reposPrevu) alertes.push({ type: 'sous_charge', severite: 'moyenne', message: `Sous-charge (ACWR ${s.acwr})` })
+  else if (acwrOk && (s.acwr as number) < CORE_SEUILS.acwr.bas && s.seances7 > 0 && !reposPrevu) alertes.push({ type: 'sous_charge', severite: 'moyenne', message: `Sous-charge (ACWR ${s.acwr})` })
   if (douleurForte) alertes.push({ type: 'douleur', severite: 'haute', message: 'Douleur signalée' })
   else if (douleurGene) alertes.push({ type: 'douleur', severite: 'moyenne', message: 'Gêne signalée' })
   if (fatigueHaute) alertes.push({ type: 'fatigue', severite: 'moyenne', message: `Fatigue élevée (${Math.round(fat * 10) / 10}/5)` })
   if (sommeilBas) alertes.push({ type: 'sommeil', severite: 'moyenne', message: `Sommeil dégradé (${Math.round((som as number) * 10) / 10}/5)` })
 
   // --- Risque blessure (cumul de points) ---
-  const rbPts = surchargeN + (douleurForte ? 2 : douleurGene ? 1 : 0) + (fatigueHaute ? 1 : 0) + (courb >= 4 ? 1 : 0)
+  const rbPts = surchargeN + (douleurForte ? 2 : douleurGene ? 1 : 0) + (fatigueHaute ? 1 : 0) + (courb >= CORE_SEUILS.courbatures.haut ? 1 : 0)
   let risqueBlessureN = rbPts >= 3 ? 2 : rbPts >= 1 ? 1 : 0
   if (ctx === 'retour_blessure') risqueBlessureN = Math.min(2, risqueBlessureN + 1)
 
@@ -1325,13 +1367,13 @@ function evaluerEtatAthlete(s: EtatInput): any {
   if (s.fatigue != null) recArr.push((6 - fat) / 5)
   if (s.courbatures != null) recArr.push((6 - courb) / 5)
   const recScore = recArr.length ? (recArr.reduce((a, b) => a + b, 0) / recArr.length) * 100 : null
-  const recup = recScore == null ? '—' : recScore >= 75 ? 'Excellent' : recScore >= 60 ? 'Bon' : recScore >= 45 ? 'Moyen' : 'Faible'
+  const recup = recScore == null ? '—' : recScore >= CORE_SEUILS.recup.bon ? 'Excellent' : recScore >= CORE_SEUILS.recup.moyen ? 'Bon' : recScore >= CORE_SEUILS.recup.faible ? 'Moyen' : 'Faible'
 
   // --- Niveau global (0/1/2) : UNE seule décision, partagée par les deux vues ---
   // Décision métier « récup faible » : ISOLÉE → Vigilance (orange). Rouge seulement
   // si elle s'accompagne d'un AUTRE signal concordant INDÉPENDANT de la récup
   // (charge élevée ou douleur — pas sommeil/fatigue qui SONT la cause de la récup).
-  const recFaible = recScore != null && recScore < 45
+  const recFaible = recScore != null && recScore < CORE_SEUILS.recup.faible
   const signalConcordant = chargeHaute || douleurGene              // indépendants de la récup
   const recFaibleConcordante = recFaible && signalConcordant
   let niveau: number
@@ -1340,7 +1382,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
     const haute = alertes.some(a => a.severite === 'haute')
     const combo = fatigueHaute && sommeilBas && chargeHaute        // §16 : combinaison de signaux
     const bad = haute || risqueBlessureN === 2 || recFaibleConcordante || combo
-    const mid = alertes.length > 0 || risqueBlessureN === 1 || recFaible || (recScore != null && recScore < 60) || s.injStatut === 'retour_progressif'
+    const mid = alertes.length > 0 || risqueBlessureN === 1 || recFaible || (recScore != null && recScore < CORE_SEUILS.recup.moyen) || s.injStatut === 'retour_progressif'
     niveau = bad ? 2 : mid ? 1 : 0
   }
   if (ctx === 'retour_blessure' && niveau === 0) niveau = 1
