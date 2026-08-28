@@ -86,7 +86,7 @@ function calculerACWR(chargeParJour, now = NOW) {
  *    OU  chronique trouée = trop peu de jours actifs sur 28 j (< ACWR_MIN_JOURS_ACTIFS_28).
  *    Critère de FIABILITÉ uniquement — jamais un signal négatif.
  * =========================================================================== */
-const ACWR_MIN_JOURS_ACTIFS_28 = 8;   // ≈ 2 séances/sem sur 4 sem (voir rapport)
+const ACWR_MIN_JOURS_ACTIFS_28 = 6;   // décision métier : < 6 jours actifs/28 → non interprétable
 function fiabiliteACWR(premiere, ctx, now, joursActifs28) {
   const histo = joursDepuis(premiere, now);
   if (histo == null || histo < 28) return false;
@@ -188,11 +188,12 @@ const CASES = [
   { nom: 'L. Seuil opt = 1.30',   histo: 45, load: (d) => d < 7 ? 722 : 500, attendu: 'normal' },       // ratio 1.30 → PAS vigilance
   { nom: 'L. Seuil haut = 1.50',  histo: 45, load: (d) => d < 7 ? 900 : 500, attendu: 'vigilance' },    // ratio 1.50 → PAS élevé
   { nom: 'L. Juste au-dessus 1.51', histo: 45, load: (d) => d < 7 ? 910 : 500, attendu: 'eleve' },      // ratio 1.51 → élevé
-  // Cas ajoutés Phase 2B :
-  { nom: '11. Peu de jours actifs',     histo: 60, load: (d) => (d % 6 === 0 ? 900 : 0), attendu: 'non_interpretable' }, // ~5 jours actifs/28
-  { nom: '12. Reprise après blessure',  histo: 60, load: () => 500, ctx: { etat: 'retour_blessure' },  attendu: 'normal' }, // retour_blessure n'invalide PAS l'ACWR
-  { nom: '13. Absence réelle de charge',histo: 60, load: (d) => d >= 28 ? 500 : 0,                     attendu: 'non_interpretable' }, // a chargé avant, plus rien sur 28 j
-  { nom: '14. Données totalement absentes', histo: 0, load: () => 0,                                    attendu: 'non_interpretable' },
+  // Cas ajoutés Phase 2B (seuil jours actifs = 6) :
+  { nom: '11. 5 jours actifs / 28',     histo: 60, load: (d) => ([0, 5, 10, 15, 20].includes(d) || d === 40) ? 900 : 0, attenduFiable: false, attendu: 'non_interpretable' },
+  { nom: '12. 6 jours actifs / 28',     histo: 60, load: (d) => ([0, 5, 10, 15, 20, 25].includes(d) || d === 40) ? 900 : 0, attenduFiable: true }, // >= 6 → interprété
+  { nom: '13. Reprise après blessure',  histo: 60, load: () => 500, ctx: { etat: 'retour_blessure' },  attendu: 'normal' }, // retour_blessure n'invalide PAS l'ACWR
+  { nom: '14. Absence réelle de charge',histo: 60, load: (d) => d >= 28 ? 500 : 0,                     attendu: 'non_interpretable' }, // a chargé avant, plus rien sur 28 j
+  { nom: '15. Données totalement absentes', histo: 0, load: () => 0,                                    attendu: 'non_interpretable' },
 ];
 
 function run() {
@@ -219,8 +220,9 @@ function run() {
     const sportEgal = (am.ratio === af.ratio && catM === catF);
     // « = ancien » : le ratio central reproduit le ratio backend quand la chronique existe.
     const egalAncien = (am.ratio === ratAnc) || (am.ratio == null && ratAnc == null);
-    const okAtt = (catM === c.attendu);
-    if (!okAtt || !sportEgal || !egalAncien) ko++;
+    const okAtt = c.attendu ? (catM === c.attendu) : true;
+    const okFiable = (c.attenduFiable == null) ? true : (fm === c.attenduFiable);
+    if (!okAtt || !okFiable || !sportEgal || !egalAncien) ko++;
 
     console.log(
       pad(c.nom, 30),
@@ -229,7 +231,7 @@ function run() {
       pad(catM, 17),
       pad(sportEgal ? '✅' : '❌', 11),
       pad(egalAncien ? '✅' : '❌', 8),
-      c.attendu + ' ' + (okAtt ? '✅' : '❌')
+      (c.attendu || (c.attenduFiable != null ? 'fiable=' + c.attenduFiable : '')) + ' ' + ((okAtt && okFiable) ? '✅' : '❌')
     );
   }
   console.log('-'.repeat(100));
