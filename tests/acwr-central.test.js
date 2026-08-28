@@ -81,12 +81,16 @@ function calculerACWR(chargeParJour, now = NOW) {
 }
 
 /* =============================================================================
- * D-fiab. fiabiliteACWR(premiere, ctx, now) — GARDE-FOU CENTRALISÉ (une seule copie).
- *    false si < 28 j d'historique OU reprise après vacances < 28 j (chronique trouée).
+ * D-fiab. fiabiliteACWR(premiere, ctx, now, joursActifs28) — GARDE-FOU CENTRALISÉ.
+ *    false si : < 28 j d'historique  OU  reprise vacances < 28 j (chronique trouée)
+ *    OU  chronique trouée = trop peu de jours actifs sur 28 j (< ACWR_MIN_JOURS_ACTIFS_28).
+ *    Critère de FIABILITÉ uniquement — jamais un signal négatif.
  * =========================================================================== */
-function fiabiliteACWR(premiere, ctx, now = NOW) {
+const ACWR_MIN_JOURS_ACTIFS_28 = 8;   // ≈ 2 séances/sem sur 4 sem (voir rapport)
+function fiabiliteACWR(premiere, ctx, now, joursActifs28) {
   const histo = joursDepuis(premiere, now);
   if (histo == null || histo < 28) return false;
+  if (joursActifs28 < ACWR_MIN_JOURS_ACTIFS_28) return false;
   if (ctx && ctx.etat === 'retour_vacances') {
     const rd = joursDepuis(ctx.date_debut, now);
     if (rd != null && rd >= 0 && rd < 28) return false;
@@ -184,6 +188,11 @@ const CASES = [
   { nom: 'L. Seuil opt = 1.30',   histo: 45, load: (d) => d < 7 ? 722 : 500, attendu: 'normal' },       // ratio 1.30 → PAS vigilance
   { nom: 'L. Seuil haut = 1.50',  histo: 45, load: (d) => d < 7 ? 900 : 500, attendu: 'vigilance' },    // ratio 1.50 → PAS élevé
   { nom: 'L. Juste au-dessus 1.51', histo: 45, load: (d) => d < 7 ? 910 : 500, attendu: 'eleve' },      // ratio 1.51 → élevé
+  // Cas ajoutés Phase 2B :
+  { nom: '11. Peu de jours actifs',     histo: 60, load: (d) => (d % 6 === 0 ? 900 : 0), attendu: 'non_interpretable' }, // ~5 jours actifs/28
+  { nom: '12. Reprise après blessure',  histo: 60, load: () => 500, ctx: { etat: 'retour_blessure' },  attendu: 'normal' }, // retour_blessure n'invalide PAS l'ACWR
+  { nom: '13. Absence réelle de charge',histo: 60, load: (d) => d >= 28 ? 500 : 0,                     attendu: 'non_interpretable' }, // a chargé avant, plus rien sur 28 j
+  { nom: '14. Données totalement absentes', histo: 0, load: () => 0,                                    attendu: 'non_interpretable' },
 ];
 
 function run() {
@@ -196,12 +205,12 @@ function run() {
     // Chaîne centrale — MUSCU
     const cm = normaliserCharge(calculerChargeSport('muscu', rowsMuscu));
     const am = calculerACWR(cm.chargeParJour);
-    const fm = fiabiliteACWR(cm.premiere, c.ctx, NOW);
+    const fm = fiabiliteACWR(cm.premiere, c.ctx, NOW, am.joursActifs28);
     const catM = interpreterACWR(am.ratio, fm);
     // Chaîne centrale — FOOT (même série)
     const cf = normaliserCharge(calculerChargeSport('foot', rowsFoot));
     const af = calculerACWR(cf.chargeParJour);
-    const ff = fiabiliteACWR(cf.premiere, c.ctx, NOW);
+    const ff = fiabiliteACWR(cf.premiere, c.ctx, NOW, af.joursActifs28);
     const catF = interpreterACWR(af.ratio, ff);
     // Ancien backend (même série) + ancien front
     const ratAnc = ancienBackend(cm.chargeParJour);
@@ -224,10 +233,15 @@ function run() {
     );
   }
   console.log('-'.repeat(100));
-  // Vérif métier point 9 : aucune catégorie ACWR ne met l'athlète en rouge à elle seule.
+  // Point 15 : aucune catégorie ACWR (même 'eleve') ne met l'athlète en rouge à elle seule.
   const rougeSeul = ['normal', 'vigilance', 'sous_charge', 'eleve', 'non_interpretable']
     .some(cat => impactEtat(cat).rougeSeul);
-  console.log('Point 9 — ACWR seul ne met jamais rouge :', rougeSeul ? '❌' : '✅');
-  console.log(ko === 0 ? '✅ Tous les attendus + équivalences (sport & ancien) vérifiés.' : `❌ ${ko} scénario(s) en échec.`);
+  // Point 16 : ACWR non interprétable → AUCUNE alerte (ni surcharge ni sous-charge).
+  const nonInterpSansAlerte = impactEtat('non_interpretable').alerte === null
+    && impactEtat('non_interpretable').surchargeN === 0;
+  console.log('Point 15 — ACWR élevé seul ≠ rouge automatique :', rougeSeul ? '❌' : '✅');
+  console.log('Point 16 — ACWR non interprétable → aucune alerte négative :', nonInterpSansAlerte ? '✅' : '❌');
+  if (rougeSeul || !nonInterpSansAlerte) ko++;
+  console.log(ko === 0 ? '✅ Tous les attendus + équivalences (sport & ancien) + points métier vérifiés.' : `❌ ${ko} vérification(s) en échec.`);
 }
 run();

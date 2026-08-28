@@ -303,12 +303,92 @@ function computeStreak(dates: string[], now: Date): number {
   return streak
 }
 
-function computeACWR(perfs: any[], now: Date): number {
+// ANCIEN (conservé pour comparaison parallèle Phase 2B). Correctif 0→null appliqué :
+// une absence de données = null (non interprétable), jamais 0 (qui ressemblerait à une sous-charge).
+function computeACWR(perfs: any[], now: Date): number | null {
   const c7 = fmtYMD(minus(now, 7)), c28 = fmtYMD(minus(now, 28))
   const t7 = perfs.filter(r => normDate(r.date) >= c7).reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
   const t28 = perfs.filter(r => normDate(r.date) >= c28).reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
-  if (!t28) return 0
+  if (!t28) return null
   return Math.round(t7 / (t28 / 4) * 100) / 100
+}
+
+// ============================================================================
+// MOTEUR ACWR CENTRAL (Phase 2B) — chaîne multisport UNIQUE
+//   calculerChargeSport → normaliserCharge → calculerACWR → fiabiliteACWR → interpreterACWR
+// La FORMULE est inchangée : aiguë(Σ7 j) / (chronique Σ28 j / 4).
+// Le problème vacances/reprise/historique est traité par la FIABILITÉ, pas la formule.
+// Ajouter un sport = ajouter un cas dans calculerChargeSport ; le reste ne bouge pas.
+// ============================================================================
+
+// Seuils ACWR — SOURCE UNIQUE (utilisée par interpreterACWR ET evaluerEtatAthlete).
+const SEUILS_ACWR = { BAS: 0.8, OPT_MAX: 1.3, HAUT: 1.5 }
+// Jours actifs minimum sur 28 j pour une chronique fiable. Justification (voir rapport) :
+// l'ACWR couplé suppose un entraînement continu ; en-dessous de ~2 séances/sem sur 4 sem
+// (8 jours), la chronique (÷4) repose sur trop peu de séances réelles et un pic isolé
+// fausse le ratio. Critère de FIABILITÉ uniquement — jamais un signal négatif.
+const ACWR_MIN_JOURS_ACTIFS_28 = 8
+
+// A. Adaptateur de charge PAR SPORT → série journalière commune {isoDate: charge}.
+function calculerChargeSport(sport: string, rows: any[]): { chargeParJour: Record<string, number>; premiere: string | null } {
+  const chargeParJour: Record<string, number> = {}
+  let premiere: string | null = null
+  const add = (d: string | null, v: number) => {
+    if (!d || !(v > 0)) return
+    chargeParJour[d] = (chargeParJour[d] || 0) + v
+    if (!premiere || d < premiere) premiere = d
+  }
+  if (sport === 'muscu') {
+    // Charge muscu = TONNAGE (charge × reps) agrégé par jour.
+    for (const r of rows) add(normDate(r.date), (Number(r.charge) || 0) * (Number(r.reps) || 0))
+  } else if (sport === 'foot') {
+    // Charge foot = charge_interne (sRPE-like) déjà calculée, table indicateurs.
+    for (const r of rows) if (String(r.cle) === 'charge_interne') add(normDate(r.date), Number(r.valeur) || 0)
+  } else {
+    // Sports futurs (cyclisme : puissance/durée ; natation : distance/sRPE…) : adaptateur
+    // à fournir. Par défaut on prend une charge déjà normalisée {date, charge} si présente,
+    // sinon aucune charge → ACWR non interprétable (pas d'alerte).
+    for (const r of rows) add(normDate(r.date), Number(r.charge) || 0)
+  }
+  return { chargeParJour, premiere }
+}
+
+// B. Normalisation — identité aujourd'hui (point d'extension si un sport livrait un autre format).
+function normaliserCharge(x: { chargeParJour: Record<string, number>; premiere: string | null }) { return x }
+
+// C. Ratio ACWR couplé + nb de jours actifs sur 28 j (pour la fiabilité chronique).
+function calculerACWR(chargeParJour: Record<string, number>, now: Date): { ratio: number | null; aigue: number; chronique: number; joursActifs28: number } {
+  let aigue = 0, somme28 = 0, joursActifs28 = 0
+  for (let d = 0; d < 28; d++) {
+    const v = chargeParJour[fmtYMD(minus(now, d))] || 0
+    somme28 += v
+    if (v > 0) joursActifs28++
+    if (d < 7) aigue += v
+  }
+  const chronique = somme28 / 4
+  return { ratio: chronique > 0 ? Math.round(aigue / chronique * 100) / 100 : null, aigue, chronique, joursActifs28 }
+}
+
+// Garde-fou FIABILITÉ centralisé (une seule copie) : historique < 28 j, reprise vacances < 28 j,
+// OU chronique trouée (jours actifs insuffisants). Retourne false = ACWR non interprétable.
+function fiabiliteACWR(premiere: string | null, ctxObj: any, now: Date, joursActifs28: number): boolean {
+  const histo = _joursDepuis(premiere, now)
+  if (histo == null || histo < 28) return false
+  if (joursActifs28 < ACWR_MIN_JOURS_ACTIFS_28) return false
+  if (ctxObj && String(ctxObj.etat || '') === 'retour_vacances') {
+    const rd = _joursDepuis(ctxObj.date_debut, now)
+    if (rd != null && rd >= 0 && rd < 28) return false
+  }
+  return true
+}
+
+// D. Interprétation catégorielle — NE renvoie jamais une couleur d'athlète.
+function interpreterACWR(ratio: number | null, fiable: boolean): string {
+  if (!fiable || ratio == null) return 'non_interpretable'
+  if (ratio > SEUILS_ACWR.HAUT) return 'eleve'
+  if (ratio > SEUILS_ACWR.OPT_MAX) return 'vigilance'
+  if (ratio < SEUILS_ACWR.BAS) return 'sous_charge'
+  return 'normal'
 }
 
 // ── Alertes ───────────────────────────────────────────────────────────────────
@@ -658,7 +738,13 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
 
   const dates = [...new Set(perfs.map(r => normDate(r.date)))].sort()
   const dernierDate = dates[dates.length - 1]
-  const acwr = sport === 'muscu' ? computeACWR(perfs, now) : null
+  // ACWR — chaîne CENTRALE (Phase 2B). Ancien (computeACWR) calculé en parallèle pour comparaison.
+  const chSportA = sport === 'muscu' ? normaliserCharge(calculerChargeSport('muscu', perfs)) : { chargeParJour: {}, premiere: null }
+  const acwrCalcA = calculerACWR(chSportA.chargeParJour, now)
+  const acwrAncienA = sport === 'muscu' ? computeACWR(perfs, now) : null
+  const acwr = sport === 'muscu' ? acwrCalcA.ratio : null
+  if (sport === 'muscu' && acwr !== acwrAncienA && !(acwr == null && acwrAncienA == null))
+    console.warn('[ACWR cmp getAppData]', { ancien: acwrAncienA, nouveau: acwr })
 
   const c7 = fmtYMD(minus(now, 7))
   const tonnage7 = perfs.filter(r => normDate(r.date) >= c7).reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
@@ -848,14 +934,14 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // contexte. injStatut = null (la muscu ne trace pas l'entité Blessure comme le foot).
   let moteur: any = null
   if (sport === 'muscu') {
-    const premiereP = dates.length ? dates[0] : null   // dates triées ascendant
+    const premiereP = chSportA.premiere   // 1re charge (tonnage), source centrale
     const ctxObjM = _contexteActif(contexteRows || [], now)
     const ctxEtatM = ctxObjM ? String(ctxObjM.etat || 'saison_normale') : 'saison_normale'
     const sigM = _aggSignaux(beRows || [], now, 7)
     const seances7M = new Set(perfs.filter(r => (normDate(r.date) || '') >= c7).map(r => normDate(r.date))).size
     const histoM = _joursDepuis(premiereP, now)
     const etatM = evaluerEtatAthlete({
-      acwr, acwrFiable: _acwrFiable(premiereP, ctxObjM, now), seances7: seances7M,
+      acwr, acwrFiable: fiabiliteACWR(premiereP, ctxObjM, now, acwrCalcA.joursActifs28), seances7: seances7M,
       douleur: sigM.douleur, fatigue: sigM.fatigue, sommeil: sigM.sommeil, courbatures: null,
       injStatut: null, ctxEtat: ctxEtatM,
       q: { jours: histoM != null ? histoM : (perfs.length ? 7 : 0), wellnessN: sigM.wellnessN, hasCharge: perfs.length > 0 },
@@ -863,7 +949,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     moteur = {
       disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
       recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
-      acwr_fiable: etatM.acwr_fiable, contexte_tag: etatM.contexte_tag,
+      acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
+      acwr_ancien: acwrAncienA,   // parallèle (comparaison Phase 2B — retiré après validation)
     }
     if (etatM.acwr_note) moteur.acwr_note = etatM.acwr_note
   }
@@ -1215,7 +1302,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // --- Charge (ACWR) ajustée par le contexte — seulement si ACWR interprétable ---
   let surchargeN = 0
   if (acwrOk) {
-    surchargeN = (s.acwr as number) > 1.5 ? 2 : (s.acwr as number) > 1.3 ? 1 : 0
+    surchargeN = (s.acwr as number) > SEUILS_ACWR.HAUT ? 2 : (s.acwr as number) > SEUILS_ACWR.OPT_MAX ? 1 : 0
     if (ctx === 'deload') surchargeN = Math.max(0, surchargeN - 1)
     if (ctx === 'retour_vacances') surchargeN = Math.min(2, surchargeN + 1)
   }
@@ -1232,7 +1319,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
     alertes.push({ type: 'absence', severite: 'haute', message: 'Aucune séance depuis 7 jours' })
   if (surchargeN >= 2) alertes.push({ type: 'surcharge', severite: 'haute', message: `Charge aiguë élevée (ACWR ${s.acwr})` })
   else if (surchargeN === 1) alertes.push({ type: 'charge', severite: 'moyenne', message: `Charge en hausse (ACWR ${s.acwr})` })
-  else if (acwrOk && (s.acwr as number) < 0.8 && s.seances7 > 0 && !reposPrevu) alertes.push({ type: 'sous_charge', severite: 'moyenne', message: `Sous-charge (ACWR ${s.acwr})` })
+  else if (acwrOk && (s.acwr as number) < SEUILS_ACWR.BAS && s.seances7 > 0 && !reposPrevu) alertes.push({ type: 'sous_charge', severite: 'moyenne', message: `Sous-charge (ACWR ${s.acwr})` })
   if (douleurForte) alertes.push({ type: 'douleur', severite: 'haute', message: 'Douleur signalée' })
   else if (douleurGene) alertes.push({ type: 'douleur', severite: 'moyenne', message: 'Gêne signalée' })
   if (fatigueHaute) alertes.push({ type: 'fatigue', severite: 'moyenne', message: `Fatigue élevée (${Math.round(fat * 10) / 10}/5)` })
@@ -1300,8 +1387,11 @@ function evaluerEtatAthlete(s: EtatInput): any {
     donnees_utilisees: donnees,
     contexte_tag: ctx !== 'saison_normale' ? ctx : null,
     signaux: { acwr: acwrOk ? s.acwr : null, douleur: s.douleur, fatigue: s.fatigue, sommeil: s.sommeil, seances7: s.seances7 },
+    acwr_categorie: interpreterACWR(s.acwr ?? null, acwrOk),
   }
-  if (!acwrOk && s.acwr != null) out.acwr_note = 'ACWR non interprétable — historique de reprise insuffisant'
+  // Note générique : couvre historique < 28 j, reprise vacances < 28 j, chronique trouée
+  // (jours actifs insuffisants). Jamais transformée en alerte négative.
+  if (!acwrOk && s.acwr != null) out.acwr_note = 'ACWR non interprétable — historique de charge insuffisant'
   return out
 }
 
@@ -1356,8 +1446,8 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
     for (const rb of beAll || []) { const id = String(rb.athlete_id); if (athIds.has(id)) (beRawByAth[id] ||= []).push(rb) }
 
     // charge_interne par athlète (7j / 28j) + dernière + PREMIÈRE (historique) + jours actifs 7j
-    const parAth: Record<string, { charge7: number; charge28: number; seances7: Set<string>; derniere: string | null; premiere: string | null }> = {}
-    const acc = (id: string) => (parAth[id] ||= { charge7: 0, charge28: 0, seances7: new Set(), derniere: null, premiere: null })
+    const parAth: Record<string, { charge7: number; charge28: number; seances7: Set<string>; derniere: string | null; premiere: string | null; chargeParJour: Record<string, number> }> = {}
+    const acc = (id: string) => (parAth[id] ||= { charge7: 0, charge28: 0, seances7: new Set(), derniere: null, premiere: null, chargeParJour: {} })
     for (const row of indAll || []) {
       const id = String(row.athlete_id)
       if (!athIds.has(id)) continue
@@ -1367,7 +1457,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       const a = acc(id)
       if (!a.derniere || dIso > a.derniere) a.derniere = dIso
       if (!a.premiere || dIso < a.premiere) a.premiere = dIso   // pour le garde-fou ACWR (historique)
-      if (dIso >= j28) a.charge28 += val
+      if (dIso >= j28) { a.charge28 += val; if (val > 0) a.chargeParJour[dIso] = (a.chargeParJour[dIso] || 0) + val }  // série 28 j → chaîne ACWR centrale
       if (dIso >= j7) { a.charge7 += val; a.seances7.add(dIso) }
     }
 
@@ -1421,13 +1511,17 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
     const fatigueEquipeArr: number[] = [], beEquipeArr: number[] = [], blesses: any[] = []
 
     for (const j of joueurs) {
-      const a = parAth[j.athlete_id] || { charge7: 0, charge28: 0, seances7: new Set<string>(), derniere: null, premiere: null }
+      const a = parAth[j.athlete_id] || { charge7: 0, charge28: 0, seances7: new Set<string>(), derniere: null, premiere: null, chargeParJour: {} }
       const seances7 = a.seances7.size
-      const chronic = a.charge28 / 4
-      const acwr = chronic > 0 ? Math.round(a.charge7 / chronic * 100) / 100 : null
+      // ACWR — chaîne CENTRALE (foot = charge_interne). Ancien inline calculé en parallèle.
+      const acwrCalc = calculerACWR(a.chargeParJour, now)
+      const acwr = acwrCalc.ratio
+      const acwrAncien = a.charge28 > 0 ? Math.round(a.charge7 / (a.charge28 / 4) * 100) / 100 : null
+      if (acwr !== acwrAncien && !(acwr == null && acwrAncien == null))
+        console.warn('[ACWR cmp getSuiviEquipe]', j.athlete_id, { ancien: acwrAncien, nouveau: acwr })
       const inj = injByAth[j.athlete_id] || null
       const histoDays = _joursDepuis(a.premiere, now)
-      const acwrFiable = _acwrFiable(a.premiere, ctxObjOf(j.athlete_id), now)
+      const acwrFiable = fiabiliteACWR(a.premiere, ctxObjOf(j.athlete_id), now, acwrCalc.joursActifs28)
 
       // Signaux agrégés (fenêtre 7 j) — MÊME agrégation que la fiche (_aggSignaux).
       const sig = _aggSignaux(beRawByAth[j.athlete_id] || [], now, 7)
@@ -1480,6 +1574,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
         // Enrichissements du moteur central (mêmes valeurs que la fiche) :
         disponibilite: etat.disponibilite, risque_blessure: etat.risque_blessure,
         recup: etat.recup, confiance: etat.confiance, reco: etat.reco, contexte_tag: etat.contexte_tag,
+        acwr_fiable: etat.acwr_fiable, acwr_categorie: etat.acwr_categorie, acwr_ancien: acwrAncien,
       })
     }
 
@@ -1556,6 +1651,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     let charge7 = 0, charge28 = 0
     let premiereCharge: string | null = null   // 1re date de charge (garde-fou ACWR reprise)
     const chargeParJour: Record<string, number> = {}
+    const chargeParJour28: Record<string, number> = {}   // série 28 j → chaîne ACWR centrale
     const wellDate: Record<string, number> = {}, bienetreI: Record<string, number> = {}
 
     for (const row of indAll || []) {
@@ -1574,13 +1670,17 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
         const lundiStr = fmtYMD(getLundi(dObj))
         if (!semLundi[w] || lundiStr < semLundi[w]) semLundi[w] = lundiStr
         if (!premiereCharge || dIso < premiereCharge) premiereCharge = dIso
-        if (dIso >= j28) charge28 += val
+        if (dIso >= j28) { charge28 += val; if (val > 0) chargeParJour28[dIso] = (chargeParJour28[dIso] || 0) + val }
         if (dIso >= j7) { charge7 += val; chargeParJour[dIso] = (chargeParJour[dIso] || 0) + val }
       }
     }
 
-    const chronic = charge28 / 4
-    const acwr = chronic > 0 ? Math.round(charge7 / chronic * 100) / 100 : null
+    // ACWR — chaîne CENTRALE (foot = charge_interne). Ancien inline en parallèle.
+    const acwrCalcF = calculerACWR(chargeParJour28, now)
+    const acwr = acwrCalcF.ratio
+    const acwrAncienF = charge28 > 0 ? Math.round(charge7 / (charge28 / 4) * 100) / 100 : null
+    if (acwr !== acwrAncienF && !(acwr == null && acwrAncienF == null))
+      console.warn('[ACWR cmp getSuiviJoueur]', athleteId, { ancien: acwrAncienF, nouveau: acwr })
     const chargeHebdo = Object.keys(chargeParSem).sort().slice(-6).map(w => ({
       semaine: w, charge: Math.round(chargeParSem[w]), label: semLundi[w] ? fmtFR(semLundi[w]).slice(0, 5) : w,
     }))
@@ -1719,7 +1819,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     const beFoot = (beAll || []).filter(rb => { const dI = normDate(rb.date); return dI ? !renfoKeys.has(`${dI}|${String(rb.seance_id || '')}`) : true })
     const sig7 = _aggSignaux(beFoot, now, 7)
     const histoDaysF = _joursDepuis(premiereCharge, now)
-    const acwrFiableF = _acwrFiable(premiereCharge, contexte, now)
+    const acwrFiableF = fiabiliteACWR(premiereCharge, contexte, now, acwrCalcF.joursActifs28)
     const etat = evaluerEtatAthlete({
       acwr, acwrFiable: acwrFiableF, seances7: seances7f,
       douleur: sig7.douleur, fatigue: sig7.fatigue, sommeil: sig7.sommeil,
@@ -1733,7 +1833,8 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
       disponibilite: etat.disponibilite,
       surcharge: etat.surcharge, risque_blessure: etat.risque_blessure, recup: etat.recup,
       reco: etat.reco, confiance: etat.confiance, alertes: etat.alertes,
-      acwr_fiable: etat.acwr_fiable,
+      acwr_fiable: etat.acwr_fiable, acwr_categorie: etat.acwr_categorie,
+      acwr_ancien: acwrAncienF,   // parallèle (comparaison Phase 2B — retiré après validation)
     }
     if (etat.acwr_note) moteur.acwr_note = etat.acwr_note
     if (etat.contexte_tag) moteur.contexte_tag = _ctxLabels[etat.contexte_tag] || etat.contexte_tag
