@@ -353,10 +353,9 @@ const CORE_FIABILITE = {
   wellnessMin: 3,        // < 3 mesures bien-être → confiance moyenne
 }
 
-// --- Contextes de performance — REGISTRE DÉCLARATIF (effets ACTUELS, non modifiés) ---
-// ⚠ 3A : registre DOCUMENTAIRE seulement (source de vérité pour la Phase 3C, qui
-// pilotera le moteur depuis ce registre). Le câblage reste en clair dans
-// evaluerEtatAthlete (aucune modification des contextes en 3A).
+// --- Contextes de performance — REGISTRE DÉCLARATIF (SOURCE UNIQUE des effets, Phase 3C) ---
+// Chaque contexte porte ses effets métier. evaluerEtatAthlete les APPLIQUE via
+// effetsContexte() aux mêmes points qu'avant (parité stricte). Valeurs inchangées.
 const CORE_CONTEXTES = {
   saison_normale:  { reposPrevu: false },
   deload:          { reposPrevu: true,  surchargeDelta: -1 },
@@ -364,6 +363,21 @@ const CORE_CONTEXTES = {
   retour_blessure: { reposPrevu: true,  niveauMin: 1, risqueDelta: +1 },
   intensification: { reposPrevu: false },
 }
+
+// Résolution centralisée des effets de contexte (Phase 3C) — consomme CORE_CONTEXTES.
+// Ne DÉCIDE rien : fournit les paramètres d'effet ; evaluerEtatAthlete reste seul
+// à appliquer et à décider du verdict. Contexte inconnu → aucun effet (parité).
+function effetsContexte(ctxEtat: string): { reposPrevu: boolean; surchargeDelta: number; niveauMin: number | null; risqueDelta: number } {
+  const c: any = (CORE_CONTEXTES as any)[ctxEtat] || {}
+  return {
+    reposPrevu: c.reposPrevu === true,
+    surchargeDelta: c.surchargeDelta || 0,
+    niveauMin: c.niveauMin != null ? c.niveauMin : null,
+    risqueDelta: c.risqueDelta || 0,
+  }
+}
+// Clamp d'un niveau 0..2 (surcharge / risque ajustés par le contexte).
+const clampNiv = (n: number): number => Math.max(0, Math.min(2, n))
 
 // A. Adaptateur de charge PAR SPORT → série journalière commune {isoDate: charge}.
 function calculerChargeSport(sport: string, rows: any[]): { chargeParJour: Record<string, number>; premiere: string | null } {
@@ -1314,8 +1328,9 @@ function evaluerEtatAthlete(s: EtatInput): any {
   const NIV = CORE_NIVEAUX.map(n => n.label)     // ['Prêt','Vigilance','À surveiller']
   const STA = CORE_NIVEAUX.map(n => n.statut)    // ['vert','orange','rouge'] — catégorie métier
   const ctx = s.ctxEtat || 'saison_normale'
-  // reposPrevu : logique de contexte laissée en clair (câblage via CORE_CONTEXTES = Phase 3C).
-  const reposPrevu = ctx === 'deload' || ctx === 'retour_vacances' || ctx === 'retour_blessure'
+  // Effets de contexte centralisés (Phase 3C) — pilotés par CORE_CONTEXTES.
+  const eff = effetsContexte(ctx)
+  const reposPrevu = eff.reposPrevu
 
   // --- Garde-fou ACWR (décision retour-vacances) : si l'historique de charge est
   // insuffisant (reprise, < 28 j de chronique réelle), l'ACWR est NON INTERPRÉTABLE.
@@ -1335,8 +1350,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
   let surchargeN = 0
   if (acwrOk) {
     surchargeN = (s.acwr as number) > CORE_SEUILS.acwr.haut ? 2 : (s.acwr as number) > CORE_SEUILS.acwr.optMax ? 1 : 0
-    if (ctx === 'deload') surchargeN = Math.max(0, surchargeN - 1)
-    if (ctx === 'retour_vacances') surchargeN = Math.min(2, surchargeN + 1)
+    if (eff.surchargeDelta) surchargeN = clampNiv(surchargeN + eff.surchargeDelta)
   }
 
   const doul = s.douleur ?? 0, fat = s.fatigue ?? 0, som = s.sommeil, courb = s.courbatures ?? 0
@@ -1360,7 +1374,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // --- Risque blessure (cumul de points) ---
   const rbPts = surchargeN + (douleurForte ? 2 : douleurGene ? 1 : 0) + (fatigueHaute ? 1 : 0) + (courb >= CORE_SEUILS.courbatures.haut ? 1 : 0)
   let risqueBlessureN = rbPts >= 3 ? 2 : rbPts >= 1 ? 1 : 0
-  if (ctx === 'retour_blessure') risqueBlessureN = Math.min(2, risqueBlessureN + 1)
+  if (eff.risqueDelta) risqueBlessureN = clampNiv(risqueBlessureN + eff.risqueDelta)
 
   // --- Récupération (score bien-être) ---
   const recArr: number[] = []
@@ -1386,7 +1400,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
     const mid = alertes.length > 0 || risqueBlessureN === 1 || recFaible || (recScore != null && recScore < CORE_SEUILS.recup.moyen) || s.injStatut === 'retour_progressif'
     niveau = bad ? 2 : mid ? 1 : 0
   }
-  if (ctx === 'retour_blessure' && niveau === 0) niveau = 1
+  if (eff.niveauMin != null && niveau < eff.niveauMin) niveau = eff.niveauMin
   if (confiance === 'non_interpretable') niveau = 0   // nouvel athlète : pas de fausse alerte
 
   // --- Recommandation (explicable, non médicale) ---
