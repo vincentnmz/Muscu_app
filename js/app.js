@@ -689,6 +689,22 @@
 const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service";
 
 /* =============================================================================
+ * STATUT_VISUEL — mapping PRÉSENTATION du niveau d'état Core (Phase 3B).
+ * Le backend décide du niveau métier (disponibilite.niveau : « Prêt » / « Vigilance »
+ * / « À surveiller ») ; c'est ICI, côté front, que le niveau devient une couleur.
+ * Couleurs IDENTIQUES à celles émises auparavant par le Core (0/1/2) → aucun
+ * changement visuel. (Bascule vers les tokens CSS = éventuelle phase ultérieure.)
+ * ========================================================================== */
+const STATUT_VISUEL = {
+  'Prêt':         '#22c55e',   // niveau 0 — optimal
+  'Vigilance':    '#f5a623',   // niveau 1 — vigilance
+  'À surveiller': '#e5484d',   // niveau 2 — action
+};
+function couleurStatut(niveauLabel) {
+  return STATUT_VISUEL[niveauLabel] || '#22c55e';   // défaut = vert (comme l'ancien fallback)
+}
+
+/* =============================================================================
  * SPORTS (Phase 2/3) — registre des sports. Le sport est fourni par le backend
  * (hérité du coach). Chaque sport définit ses libellés d'affichage ; l'UI les
  * applique via [data-sport-label] (Phase 3). Défaut : 'muscu'.
@@ -1454,7 +1470,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const matchRows = matchs.map(ligneSeance).join('');
 
   // Disponibilité dérivée (même logique que le suivi équipe — pas de fabrication)
-  const dispo = (d.moteur && d.moteur.disponibilite) ? {t:d.moteur.disponibilite.niveau, c:d.moteur.disponibilite.couleur}
+  const dispo = (d.moteur && d.moteur.disponibilite) ? {t:d.moteur.disponibilite.niveau, c:couleurStatut(d.moteur.disponibilite.niveau)}
               : (acwr!=null && acwr>1.5) ? {t:'À risque',c:COL.rouge}
               : (acwr!=null && acwr>1.3) ? {t:'Vigilance',c:COL.orange}
               : {t:'Disponible',c:'#22c55e'};
@@ -1698,7 +1714,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   const motCell = (l,v,c)=>`<div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:3px;">${l}</div><div style="font-size:14px;font-weight:800;color:${c||'var(--text)'};">${escapeHtml(v)}</div></div>`;
   const analyseCard = mot ? `<div class="dash-card" style="padding:14px;margin-bottom:12px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        ${motCell('Disponibilité', mot.disponibilite.niveau, mot.disponibilite.couleur)}
+        ${motCell('Disponibilité', mot.disponibilite.niveau, couleurStatut(mot.disponibilite.niveau))}
         ${motCell('Risque surcharge', mot.surcharge, colRisque(mot.surcharge))}
         ${motCell('État récup', mot.recup, colRecup(mot.recup))}
         ${motCell('Risque blessure', mot.risque_blessure, colRisque(mot.risque_blessure))}

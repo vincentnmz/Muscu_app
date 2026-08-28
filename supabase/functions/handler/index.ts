@@ -333,13 +333,15 @@ const CORE_SEUILS = {
   acwr:        { bas: 0.8, optMax: 1.3, haut: 1.5 }, // ratio (ex-SEUILS_ACWR, Phase 2B)
 }
 
-// --- Niveaux d'état (0/1/2) ---
-// couleur/statut CONSERVÉS ici en 3A (couleurs identiques à l'actuel) ; leur
-// extraction vers la présentation front est prévue en Phase 3B.
+// --- Niveaux d'état (0/1/2) — MÉTIER uniquement (Phase 3B) ---
+// Le Core décide du NIVEAU et de son libellé/statut métier ; il ne décide plus
+// de la COULEUR d'affichage (mapping niveau→couleur = responsabilité du front).
+// `statut` (vert/orange/rouge) reste une CATÉGORIE métier utilisée comme clé de
+// tri/regroupement côté front — ce n'est pas une couleur hexadécimale.
 const CORE_NIVEAUX = [
-  { cle: 'optimal',   label: 'Prêt',         statut: 'vert',   couleur: '#22c55e' },
-  { cle: 'vigilance', label: 'Vigilance',    statut: 'orange', couleur: '#f5a623' },
-  { cle: 'action',    label: 'À surveiller', statut: 'rouge',  couleur: '#e5484d' },
+  { cle: 'optimal',   label: 'Prêt',         statut: 'vert'   },
+  { cle: 'vigilance', label: 'Vigilance',    statut: 'orange' },
+  { cle: 'action',    label: 'À surveiller', statut: 'rouge'  },
 ]
 
 // --- Fiabilité / confiance (qualité des données) ---
@@ -1310,8 +1312,7 @@ interface EtatInput {
 
 function evaluerEtatAthlete(s: EtatInput): any {
   const NIV = CORE_NIVEAUX.map(n => n.label)     // ['Prêt','Vigilance','À surveiller']
-  const COUL = CORE_NIVEAUX.map(n => n.couleur)  // couleurs conservées en 3A (extraction → 3B)
-  const STA = CORE_NIVEAUX.map(n => n.statut)    // ['vert','orange','rouge']
+  const STA = CORE_NIVEAUX.map(n => n.statut)    // ['vert','orange','rouge'] — catégorie métier
   const ctx = s.ctxEtat || 'saison_normale'
   // reposPrevu : logique de contexte laissée en clair (câblage via CORE_CONTEXTES = Phase 3C).
   const reposPrevu = ctx === 'deload' || ctx === 'retour_vacances' || ctx === 'retour_blessure'
@@ -1409,7 +1410,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
   const out: any = {
     niveau,
     statut: STA[niveau],
-    disponibilite: { niveau: NIV[niveau], couleur: COUL[niveau] },
+    disponibilite: { niveau: NIV[niveau] },   // couleur retirée (Phase 3B) → mapping front
     surchargeN, surcharge: ['Faible', 'Modéré', 'Élevé'][surchargeN],
     risqueBlessureN, risque_blessure: ['Faible', 'Modéré', 'Élevé'][risqueBlessureN],
     recScore, recup,

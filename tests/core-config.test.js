@@ -61,15 +61,18 @@ check('confJoursMoyen', CORE_FIABILITE.confJoursMoyen === 21, 21, CORE_FIABILITE
 check('wellnessMin', CORE_FIABILITE.wellnessMin === 3, 3, CORE_FIABILITE.wellnessMin);
 // Niveaux (labels / statuts / couleurs conservées 3A)
 const NIVattendus = [
-  { cle: 'optimal', label: 'Prêt', statut: 'vert', couleur: '#22c55e' },
-  { cle: 'vigilance', label: 'Vigilance', statut: 'orange', couleur: '#f5a623' },
-  { cle: 'action', label: 'À surveiller', statut: 'rouge', couleur: '#e5484d' },
+  { cle: 'optimal', label: 'Prêt', statut: 'vert' },
+  { cle: 'vigilance', label: 'Vigilance', statut: 'orange' },
+  { cle: 'action', label: 'À surveiller', statut: 'rouge' },
 ];
 NIVattendus.forEach((n, i) => {
   check(`niveau[${i}].label`, CORE_NIVEAUX[i].label === n.label, n.label, CORE_NIVEAUX[i].label);
   check(`niveau[${i}].statut`, CORE_NIVEAUX[i].statut === n.statut, n.statut, CORE_NIVEAUX[i].statut);
-  check(`niveau[${i}].couleur`, CORE_NIVEAUX[i].couleur === n.couleur, n.couleur, CORE_NIVEAUX[i].couleur);
+  // Phase 3B : le Core ne porte plus de couleur (présentation sortie côté front).
+  check(`niveau[${i}] SANS couleur (3B)`, CORE_NIVEAUX[i].couleur === undefined, 'absent', CORE_NIVEAUX[i].couleur);
 });
+// Le moteur ne produit plus disponibilite.couleur (3B).
+check('disponibilite output sans couleur', !/disponibilite:\s*\{\s*niveau:[^}]*couleur/.test(SRC), 'absent', 'PRÉSENT');
 // Contextes (reposPrevu = parité du comportement actuel)
 check('deload.reposPrevu', CORE_CONTEXTES.deload.reposPrevu === true, true, CORE_CONTEXTES.deload.reposPrevu);
 check('retour_vacances.reposPrevu', CORE_CONTEXTES.retour_vacances.reposPrevu === true, true, CORE_CONTEXTES.retour_vacances.reposPrevu);
