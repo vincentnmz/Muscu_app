@@ -88,6 +88,11 @@ const CASES = [
   { nom: 'Absent 7 j', w: [0, 1, 1, 1], fat: 2, dou: 0, som: 4, histo: 60 },
   { nom: 'ACWR insuffisant (< 28 j)', w: [1.5, 0, 0, 0], fat: 2, dou: 0, som: 4, histo: 12, attendu: 'ACWR non interp.' },
   { nom: 'Récup faible + surcharge', w: [2, 1, 1, 1], fat: 4, dou: 0, som: 1.5, histo: 60, attendu: 'rouge' },
+  // Scénarios isolés (Phase 3A — couverture des branches de décision) :
+  { nom: 'Douleur seule', w: [1, 1, 1, 1], fat: 2, dou: 3, som: 4, histo: 60, attendu: 'rouge' },
+  { nom: 'Fatigue seule', w: [1, 1, 1, 1], fat: 4, dou: 0, som: 4, histo: 60, attendu: 'orange' },
+  { nom: 'Sommeil faible seul', w: [1, 1, 1, 1], fat: 2, dou: 0, som: 1.5, histo: 60, attendu: 'orange' },
+  { nom: 'Sous-charge (ACWR bas)', w: [0.5, 1, 1, 1], fat: 2, dou: 0, som: 4, histo: 60, attendu: 'orange' },
 ];
 
 function run() {
