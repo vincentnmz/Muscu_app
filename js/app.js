@@ -3354,9 +3354,19 @@ function renderCoachOverview(data) {
     document.getElementById('cd-derniere-nom').textContent = '';
   }
 
-  // Récupération — depuis Charge récente ou ancien champ
+  // Récupération — Phase 2A : verdict = MOTEUR CENTRAL (bien-être) si dispo ; RPE
+  // conservé comme signal séance affiché (RPE moy 7j), pas de formule combinée.
   const recupEl = document.getElementById('cd-recup');
-  const recupObj = buildRecupFromData(data) || dash.recuperation || null;
+  const _oldRecup = buildRecupFromData(data);   // ANCIEN (RPE) conservé — sert au RPE affiché + fallback
+  const _Mrec = data.moteur;
+  let recupObj;
+  if (_Mrec && _Mrec.recup && _Mrec.recup !== '—') {
+    const _map = { 'Excellent': 'optimal', 'Bon': 'optimal', 'Moyen': 'modere', 'Faible': 'eleve' };
+    recupObj = { statut: _map[_Mrec.recup] || 'modere', conseil: _Mrec.reco || (_oldRecup && _oldRecup.conseil) || '',
+      rpe_moyen: _oldRecup ? _oldRecup.rpe_moyen : null, rpe_color: _oldRecup ? _oldRecup.rpe_color : 'var(--text-muted)' };
+  } else {
+    recupObj = _oldRecup || dash.recuperation || null;   // fallback : ancien RPE (moteur absent / pas de bien-être)
+  }
   if (recupObj) {
     const r = recupObj;
     const sc = r.statut === 'optimal' ? 'var(--good)' : r.statut === 'modere' ? 'var(--warn)' : 'var(--v2-bad)';
@@ -3712,24 +3722,38 @@ function computeMarqueursCoach(data, a) {
     else { regColor = '#e5484d'; regLabel = `${faites}/${prevues}`; }
   }
 
-  // 5. Récupération — depuis Charge récente ou ancien champ
-  const recupObj = buildRecupFromData(data) || dash.recuperation || {};
+  // 5. Récupération — Phase 2A : verdict = MOTEUR CENTRAL (bien-être) si dispo.
+  //    Le RPE reste un signal séance (affiché ailleurs), pas la décision de récup.
+  const M = data.moteur;   // sortie backend evaluerEtatAthlete (null si non redéployé)
+  const recupObj = buildRecupFromData(data) || dash.recuperation || {};   // ANCIEN (RPE) conservé
   let recupColor, recupLabel;
-  if (!recupObj.statut) { recupColor = '#aaa'; recupLabel = 'N/A'; }
+  if (M && M.recup && M.recup !== '—') {
+    // Décision d'état → moteur central. Excellent/Bon = OK, Moyen = surveillance, Faible = fatigue.
+    recupColor = (M.recup === 'Excellent' || M.recup === 'Bon') ? '#00c96e' : M.recup === 'Moyen' ? '#f59f00' : '#e5484d';
+    recupLabel = M.recup;
+  } else if (!recupObj.statut) { recupColor = '#aaa'; recupLabel = 'N/A'; }
   else if (recupObj.statut === 'optimal') { recupColor = '#00c96e'; recupLabel = 'Récup OK'; }
   else if (recupObj.statut === 'modere') { recupColor = '#f59f00'; recupLabel = 'Modérée'; }
   else { recupColor = '#e5484d'; recupLabel = 'Fatigue'; }
 
-  // Statut global : pire des marqueurs + alertes
-  // (ACWR exclu : il est masqué de l'affichage, il ne doit donc plus influencer le statut)
-  const couleurs = [progColor, volColor, regColor, recupColor];
-  const alertes = a ? alertesActives(a) : [];
-  const interTypes = ['fatigue', 'surcharge', 'irregularite'];
-  const alerteGrave = alertes.some(al => al.severite === 'haute' || interTypes.includes(al.type));
+  // Statut global — Phase 2A : vient du MOTEUR CENTRAL (disponibilité) si dispo,
+  // sinon ANCIEN calcul local (pire des marqueurs + alertes) conservé pour fallback/comparaison.
   let statut;
-  if (couleurs.includes('#e5484d') || alerteGrave) statut = { rank: 2, color: '#e5484d', label: 'Action' };
-  else if (couleurs.includes('#f59f00') || alertes.length > 0) statut = { rank: 1, color: '#f5a623', label: 'Surveillance' };
-  else statut = { rank: 0, color: '#00c96e', label: 'Optimal' };
+  if (M && M.disponibilite && M.disponibilite.niveau) {
+    const niv = M.disponibilite.niveau;
+    statut = niv === 'À surveiller' ? { rank: 2, color: '#e5484d', label: 'Action' }
+           : niv === 'Vigilance'   ? { rank: 1, color: '#f5a623', label: 'Surveillance' }
+           : { rank: 0, color: '#00c96e', label: 'Optimal' };
+  } else {
+    // ===== ANCIEN (fallback) : pire des marqueurs + alertes (ACWR exclu de l'affichage) =====
+    const couleurs = [progColor, volColor, regColor, recupColor];
+    const alertes = a ? alertesActives(a) : [];
+    const interTypes = ['fatigue', 'surcharge', 'irregularite'];
+    const alerteGrave = alertes.some(al => al.severite === 'haute' || interTypes.includes(al.type));
+    if (couleurs.includes('#e5484d') || alerteGrave) statut = { rank: 2, color: '#e5484d', label: 'Action' };
+    else if (couleurs.includes('#f59f00') || alertes.length > 0) statut = { rank: 1, color: '#f5a623', label: 'Surveillance' };
+    else statut = { rank: 0, color: '#00c96e', label: 'Optimal' };
+  }
 
   return {
     progColor, progLabel, acwrColor, acwrLabel, acwrRatio,
@@ -7940,13 +7964,21 @@ function _appliquerAppData(data) {
     const recupEl = document.getElementById('dash-recup-content');
     const kpisEl  = document.getElementById('dash-kpis');
 
-    // Récupération : statut depuis Charge récente (RPE 7j)
+    // Récupération — Phase 2A : VERDICT = MOTEUR CENTRAL (bien-être) si dispo ;
+    // sinon RPE 7j (fallback). Le RPE reste calculé/affiché comme signal séance.
     const rpe7      = j7.rpe_moyen != null ? j7.rpe_moyen : null;
     const rpeColor  = rpe7 == null ? '#aaa' : rpe7 > 8.5 ? '#e5484d' : rpe7 > 7.5 ? '#f59f00' : '#00c96e';
-    const recupStatut = rpe7 == null ? null : rpe7 > 8.5 ? 'eleve' : rpe7 > 7.5 ? 'modere' : 'optimal';
+    const _Mrecup   = data.moteur;
+    let recupStatut;
+    if (_Mrecup && _Mrecup.recup && _Mrecup.recup !== '—') {
+      recupStatut = (_Mrecup.recup === 'Excellent' || _Mrecup.recup === 'Bon') ? 'optimal' : _Mrecup.recup === 'Moyen' ? 'modere' : 'eleve';
+    } else {
+      recupStatut = rpe7 == null ? null : rpe7 > 8.5 ? 'eleve' : rpe7 > 7.5 ? 'modere' : 'optimal';
+    }
     const recupEmoji  = recupStatut === 'eleve' ? '🥵' : recupStatut === 'modere' ? '😮‍💨' : '💪';
     const recupLabel  = recupStatut === 'eleve' ? 'Fatigue élevée' : recupStatut === 'modere' ? 'Fatigue modérée' : 'Bien récupéré';
-    const recupDesc   = recupStatut === 'eleve' ? 'Repos conseillé, réduis l\'intensité.' : recupStatut === 'modere' ? 'Surveille ta récup, garde une marge.' : 'Charge et RPE maîtrisés, tu peux pousser.';
+    const recupDesc   = (_Mrecup && _Mrecup.reco) ? _Mrecup.reco
+      : (recupStatut === 'eleve' ? 'Repos conseillé, réduis l\'intensité.' : recupStatut === 'modere' ? 'Surveille ta récup, garde une marge.' : 'Charge et RPE maîtrisés, tu peux pousser.');
     const recupColor  = recupStatut === 'eleve' ? 'var(--v2-bad)' : recupStatut === 'modere' ? 'var(--warn)' : 'var(--good)';
 
     // Tonnage 7j depuis Charge récente + évolution depuis Évolution
