@@ -4218,6 +4218,17 @@ function renderACWR(data) {
   const result = computeACWR(prog, vpj);
   const backend = (data.dashboard && data.dashboard.acwr != null) ? Number(data.dashboard.acwr) : null;
   const localOk = result && !result.insuffisant;
+  const mot = data.moteur;
+
+  // Phase 4A — le backend est l'autorité du ratio ACWR. S'il juge l'ACWR NON interprétable
+  // (historique < 28 j, < 6 jours actifs, reprise vacances, chronique nulle), on respecte
+  // cette décision : on n'affiche PAS un ratio local qui la contredirait.
+  if (mot && mot.acwr_fiable === false) {
+    const note = mot.acwr_note || 'ACWR non interprétable — données insuffisantes.';
+    el.innerHTML = `<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">⏳ ${escapeHtml(note)}</div>`;
+    const ch = document.getElementById('cd-acwr-chart-content'); if (ch) ch.innerHTML = '';
+    return;
+  }
 
   // Si le calcul local est insuffisant mais que le backend a une valeur (comme côté athlète),
   // on affiche la valeur backend pour rester cohérent entre les deux côtés.
@@ -4260,7 +4271,10 @@ function renderACWR(data) {
     return;
   }
 
-  const { ratio, volumes, exact, chronicDays } = result;
+  const { volumes, exact, chronicDays } = result;
+  // Phase 4A — ratio AFFICHÉ : backend prioritaire s'il est fiable ; sinon local (fallback).
+  // Le graphe hebdo (volumes) reste une métrique front (volume_par_jour), inchangée.
+  const ratio = (mot && mot.acwr_fiable === true && backend != null && !isNaN(backend)) ? backend : result.ratio;
   const partiel = chronicDays < 28;
   const zone = ratio < 0.8 ? { label: 'Sous-charge', color: '#00c9ff', bg: 'rgba(0,201,255,0.1)', conseil: 'Volume trop faible — augmente progressivement la charge hebdomadaire.' }
     : ratio <= 1.3 ? { label: 'Zone optimale', color: '#00c96e', bg: 'rgba(0,201,110,0.1)', conseil: 'Charge aiguë bien équilibrée par rapport à la charge chronique. Continue.' }
