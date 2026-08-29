@@ -435,16 +435,28 @@
     var ctx = Ctx ? Ctx.resoudre(data) : null;
     var politique = ctx ? ctx.politique : {};
 
+    // 0) Seuils SANTÉ depuis le backend (Phase 4C-A) : CORE_SEUILS → API → moteur.seuils_sante.
+    //    Source unique = backend. Fallback sur les valeurs historiques (2/4/3) UNIQUEMENT si
+    //    absent (ancien backend / hors-ligne). Mêmes valeurs → mêmes règles → même bilan.
+    var _bs = (data && (data.seuils_sante || (data.moteur && data.moteur.seuils_sante))) || null;
+
     // 1) Seuils contextualisés (ex : intensification tolère une fatigue haute).
     //    On surcharge SEUILS le temps de la normalisation, puis on restaure.
+    //    Ordre : base santé (backend) → override de contexte par-dessus (intensification 5).
     var faits;
-    if (Ctx && politique.seuils) {
-      var _seuilsOrig = SEUILS;
-      try { SEUILS = Ctx.fusionnerSeuils(SEUILS, politique); faits = normaliser(data); }
-      finally { SEUILS = _seuilsOrig; }
-    } else {
+    var _seuilsOrig = SEUILS;
+    try {
+      var _base = SEUILS;
+      if (_bs) {
+        _base = {};
+        for (var _k in SEUILS) { if (Object.prototype.hasOwnProperty.call(SEUILS, _k)) _base[_k] = SEUILS[_k]; }
+        if (_bs.sommeilBas   != null) _base.sommeilFaible = Number(_bs.sommeilBas);
+        if (_bs.fatigueHaute != null) _base.fatigueElevee = Number(_bs.fatigueHaute);
+        if (_bs.douleurForte != null) _base.douleurElevee = Number(_bs.douleurForte);
+      }
+      SEUILS = (Ctx && politique.seuils) ? Ctx.fusionnerSeuils(_base, politique) : _base;
       faits = normaliser(data);
-    }
+    } finally { SEUILS = _seuilsOrig; }
 
     // 2) Application de la politique : neutralise des signaux + filtre les règles.
     if (Ctx) faits = Ctx.appliquer(faits, politique);
@@ -1726,7 +1738,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   // Le noyau n'est pas modifié ; on lui fournit les entrées que normaliser() sait lire.
   let novalyzAlertes = [];
   if (typeof NovalyzEngine !== 'undefined' && d.bienetre && Object.keys(d.bienetre).length) {
-    try { novalyzAlertes = NovalyzEngine.analyser({ bienEtre: d.bienetre, contexte: d.contexte }) || []; } catch(e) {}
+    try { novalyzAlertes = NovalyzEngine.analyser({ bienEtre: d.bienetre, contexte: d.contexte, seuils_sante: (d.moteur && d.moteur.seuils_sante) }) || []; } catch(e) {}
   }
   const novalyzCard = novalyzAlertes.length ? `<div class="dash-card" style="padding:4px 0 0;margin-bottom:12px;">${
     novalyzAlertes.map((a,i) => {
