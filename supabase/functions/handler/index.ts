@@ -379,6 +379,13 @@ function effetsContexte(ctxEtat: string): { reposPrevu: boolean; surchargeDelta:
 // Clamp d'un niveau 0..2 (surcharge / risque ajustés par le contexte).
 const clampNiv = (n: number): number => Math.max(0, Math.min(2, n))
 
+// Seuils SANTÉ exposés au front (bilan NovalyzEngine) — Phase 4C-A.
+// SOURCE UNIQUE = CORE_SEUILS. Le front les consomme via moteur.seuils_sante
+// (fallback front 2/4/3 uniquement si absent : ancien backend / hors-ligne).
+function seuilsSanteAPI() {
+  return { sommeilBas: CORE_SEUILS.sommeil.bas, fatigueHaute: CORE_SEUILS.fatigue.haute, douleurForte: CORE_SEUILS.douleur.forte }
+}
+
 // A. Adaptateur de charge PAR SPORT → série journalière commune {isoDate: charge}.
 function calculerChargeSport(sport: string, rows: any[]): { chargeParJour: Record<string, number>; premiere: string | null } {
   const chargeParJour: Record<string, number> = {}
@@ -997,6 +1004,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
       recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
       acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
+      seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
     }
     if (etatM.acwr_note) moteur.acwr_note = etatM.acwr_note
   }
@@ -1865,6 +1873,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
       surcharge: etat.surcharge, risque_blessure: etat.risque_blessure, recup: etat.recup,
       reco: etat.reco, confiance: etat.confiance, alertes: etat.alertes,
       acwr_fiable: etat.acwr_fiable, acwr_categorie: etat.acwr_categorie,
+      seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
     }
     if (etat.acwr_note) moteur.acwr_note = etat.acwr_note
     if (etat.contexte_tag) moteur.contexte_tag = _ctxLabels[etat.contexte_tag] || etat.contexte_tag

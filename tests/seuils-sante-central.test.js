@@ -50,7 +50,23 @@ const CAS = [
 ];
 for (const [nom, cond] of CAS) { check(nom, cond, 'ok', 'ko'); console.log(`  ${(nom + '                      ').slice(0, 24)} ${cond ? '✅' : '❌'}`); }
 
-console.log('=== 3. Override contextuel intensification (≠ Core) ===');
+console.log('=== 3. Chaîne ACTIVE : backend seuils_sante consommé par NovalyzEngine ===');
+const dataFat = { bien_etre: [{ sommeil: 2, energie: 2, fatigue: 4 }] };
+const idsDe = (d) => (Engine.analyser(d) || []).map(r => r.id).sort();
+// Sans seuils_sante → fallback 2/4/3 → fatigue_generale se déclenche.
+const sansBS = idsDe(dataFat);
+// Avec seuils_sante backend = défaut (2/4/3) → PARITÉ stricte avec le fallback.
+const avecDefaut = idsDe({ ...dataFat, seuils_sante: { sommeilBas: 2, fatigueHaute: 4, douleurForte: 3 } });
+check('parité fallback ↔ backend défaut', JSON.stringify(sansBS) === JSON.stringify(avecDefaut), sansBS.join(','), avecDefaut.join(','));
+check('fatigue_generale présent (fatigue 4 ≥ 4)', sansBS.includes('fatigue_generale'), 'présent', sansBS.join(','));
+// Preuve que le backend PILOTE réellement : fatigueHaute=99 → fatigue 4 ne déclenche plus.
+const avec99 = idsDe({ ...dataFat, seuils_sante: { sommeilBas: 2, fatigueHaute: 99, douleurForte: 3 } });
+check('backend fatigueHaute=99 consommé → fatigue_generale absent', !avec99.includes('fatigue_generale'), 'absent', avec99.join(','));
+console.log(`  sans BS: [${sansBS.join(', ')}]`);
+console.log(`  BS défaut (2/4/3): [${avecDefaut.join(', ')}] — parité ✅`);
+console.log(`  BS fatigueHaute=99: [${avec99.join(', ')}] — backend piloté ✅`);
+
+console.log('=== 4. Override contextuel intensification (≠ Core) ===');
 check('intensification.fatigueElevee = 5 conservé', /seuils:\s*\{\s*fatigueElevee:\s*5\s*\}/.test(APP), '5', '?');
 check('base fatigue (Core) = 4', CORE_SEUILS.fatigue.haute === 4, 4, CORE_SEUILS.fatigue.haute);
 console.log('  base 4 (Core) · intensification 5 (override front) — distincts ✅');
