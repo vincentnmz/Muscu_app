@@ -769,6 +769,63 @@ function renderCockpitEtat(m){
     + recoHtml
   +'</div>';
 }
+// Formatage présentation (aucun calcul métier).
+function _ckT(v){ return (Math.round(Number(v) * 10) / 10).toFixed(1).replace('.', ',') + ' t'; }
+function _ckKpi(k, v, sub, evolPct){
+  var evol = '';
+  if (evolPct != null && !isNaN(Number(evolPct))) {
+    var up = Number(evolPct) >= 0;
+    evol = '<span style="font-size:10.5px;font-weight:700;color:' + (up ? '#00c96e' : '#e5484d') + ';">' + (up ? '▲ +' : '▼ ') + evolPct + ' %</span>';
+  }
+  return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 12px;">'
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;display:flex;justify-content:space-between;gap:6px;"><span>' + k + '</span>' + evol + '</div>'
+    + '<div style="font-size:19px;font-weight:800;margin-top:3px;">' + escapeHtml(String(v)) + '</div>'
+    + (sub ? '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px;">' + escapeHtml(String(sub)) + '</div>' : '')
+    + '</div>';
+}
+// Bloc B — Charge. Lit dashboard.* / comparison.* / recent.* / moteur.acwr_*. AUCUN calcul ACWR.
+function renderCockpitCharge(data){
+  var m = data.moteur || {};
+  var dash = data.dashboard || {};
+  var comp = data.comparison || {};
+  var rec = data.recent || {};
+  var reg = dash.regularite || {};
+  // --- ACWR (backend-first ; jamais recalculé ici) ---
+  var acwrHtml;
+  if (m.acwr_fiable !== true) {
+    var note = m.acwr_note || 'ACWR non interprétable — données insuffisantes.';
+    acwrHtml = '<div style="display:flex;align-items:center;gap:10px;">'
+      + '<div style="font-size:26px;font-weight:800;color:var(--text-muted);line-height:1;">—</div>'
+      + '<div><div style="font-size:12.5px;font-weight:700;color:var(--text-muted);">ACWR non interprétable</div>'
+      + '<div style="font-size:10.5px;color:var(--text-muted);">' + escapeHtml(String(note)) + '</div></div></div>';
+  } else {
+    var catMap = { normal:{l:'Zone optimale',c:'#00c96e'}, vigilance:{l:'Vigilance',c:'#f5a623'}, eleve:{l:'Charge élevée',c:'#e5484d'}, sous_charge:{l:'Sous-charge',c:'#00c9ff'} };
+    var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)' };
+    var ratio = (dash.acwr != null) ? Number(dash.acwr) : null;
+    acwrHtml = '<div style="display:flex;align-items:center;gap:12px;">'
+      + '<div style="font-size:28px;font-weight:800;color:' + cat.c + ';line-height:1;">' + (ratio != null ? ratio.toFixed(2) : '—') + '</div>'
+      + '<div><div style="font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Ratio ACWR</div>'
+      + '<div style="font-size:12.5px;font-weight:700;color:' + cat.c + ';">' + escapeHtml(cat.l) + '</div></div></div>';
+  }
+  // --- KPI charge (données déjà présentes ; sinon —) ---
+  var t7 = (dash.tonnage && dash.tonnage.j7 != null) ? _ckT(dash.tonnage.j7) : '—';
+  var t7evol = dash.tonnage ? dash.tonnage.evol_pct : null;
+  var t28o = comp.j28_vs_j28prec && comp.j28_vs_j28prec.tonnage;
+  var t28 = (t28o && t28o.j28 != null) ? _ckT(t28o.j28) : '—';
+  var t28evol = t28o ? t28o.evol_pct : null;
+  var seances7 = (reg.seances_j7 != null) ? reg.seances_j7 : ((rec.j7 && rec.j7.seances != null) ? rec.j7.seances : '—');
+  var rpe = (rec.j7 && rec.j7.rpe_moyen != null) ? String(rec.j7.rpe_moyen).replace('.', ',') : '—';
+  var regSub = (reg.seances_prevues != null) ? (seances7 + '/' + reg.seances_prevues + ' objectif') : null;
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📊 Charge d\'entraînement</div>'
+    + acwrHtml
+    + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:14px;">'
+      + _ckKpi('Tonnage 7 j', t7, (dash.tonnage && dash.tonnage.j7_prec != null) ? ('vs ' + _ckT(dash.tonnage.j7_prec)) : null, t7evol)
+      + _ckKpi('Tonnage 28 j', t28, 'charge chronique', t28evol)
+      + _ckKpi('Séances 7 j', seances7, regSub, null)
+      + _ckKpi('RPE moyen', rpe, 'effort perçu', null)
+    + '</div></div>';
+}
 function renderCockpit(data, prefix){
   var el = document.getElementById(prefix + '-cockpit');
   if (!el) return;
@@ -776,7 +833,8 @@ function renderCockpit(data, prefix){
   if (data && data.sport && data.sport !== 'muscu') { el.innerHTML = ''; return; }  // muscu uniquement
   var m = data && data.moteur;
   if (!m) { el.innerHTML = ''; return; }
-  el.innerHTML = renderCockpitEtat(m);   // Étape 2 : bloc A — État
+  el.innerHTML = renderCockpitEtat(m)          // Étape 2 : bloc A — État
+               + renderCockpitCharge(data);    // Étape 3 : bloc B — Charge
 }
 
 /* =============================================================================
