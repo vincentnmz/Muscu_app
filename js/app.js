@@ -725,6 +725,61 @@ function couleurStatut(niveauLabel) {
 }
 
 /* =============================================================================
+ * COCKPIT (Phase 5A) — couche de PRÉSENTATION uniquement.
+ * Lit UNIQUEMENT data.moteur.* (et plus tard dashboard/bien_etre), déjà calculés
+ * côté backend. NE CALCULE AUCUN VERDICT, aucun seuil, aucun ACWR.
+ * prefix : 'cd' (coach) | 'dash' (athlète). Rendu seulement si COCKPIT_ON=true.
+ * Étape 2 : bloc A — État uniquement.
+ * ========================================================================== */
+// Libellé → couleur (présentation ; mêmes teintes que l'app, aucune décision).
+function _ckColRecup(v){ return (v==='Excellent'||v==='Bon') ? '#22c55e' : v==='Moyen' ? '#f5a623' : v==='Faible' ? '#e5484d' : 'var(--text-muted)'; }
+function _ckColNiv3(v){ return v==='Faible' ? '#22c55e' : v==='Modéré' ? '#f5a623' : v==='Élevé' ? '#e5484d' : 'var(--text-muted)'; }
+function _ckConf(c){
+  var map = { haute:{l:'Confiance haute',c:'#2563eb'}, moyenne:{l:'Confiance moyenne',c:'#f5a623'}, faible:{l:'Confiance faible',c:'#8595b8'}, non_interpretable:{l:'Données insuffisantes',c:'#8595b8'} };
+  return map[c] || null;
+}
+var _CK_CTX = { deload:'Déload', retour_vacances:'Retour vacances', retour_blessure:'Retour blessure', intensification:'Intensification', saison_normale:'' };
+function _ckMini(k, val, col){
+  return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:9px 10px;">'
+    +'<div style="font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">'+k+'</div>'
+    +'<div style="font-size:15px;font-weight:800;margin-top:2px;display:flex;align-items:center;gap:6px;">'
+    +'<span style="width:8px;height:8px;border-radius:50%;background:'+col+';display:inline-block;"></span>'+escapeHtml(String(val))+'</div></div>';
+}
+// Bloc A — État. m = data.moteur (déjà produit par evaluerEtatAthlete côté backend).
+function renderCockpitEtat(m){
+  var dispoNiv = (m.disponibilite && m.disponibilite.niveau) || '—';
+  var dispoCol = couleurStatut(dispoNiv);
+  var conf = _ckConf(m.confiance);
+  var confHtml = conf ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:'+conf.c+';background:'+conf.c+'1a;border:1px solid '+conf.c+'33;padding:3px 9px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:'+conf.c+';"></span>'+conf.l+'</span>' : '';
+  var ctxLbl = (m.contexte_tag != null) ? (_CK_CTX[m.contexte_tag] !== undefined ? _CK_CTX[m.contexte_tag] : String(m.contexte_tag)) : '';
+  var ctxHtml = ctxLbl ? '<span style="font-size:10.5px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);padding:3px 9px;border-radius:999px;">'+escapeHtml(ctxLbl)+'</span>' : '';
+  var recoHtml = m.reco ? '<div style="margin-top:12px;display:flex;gap:8px;align-items:flex-start;background:var(--surface2);border-left:3px solid '+dispoCol+';border-radius:0 10px 10px 0;padding:9px 11px;font-size:12px;color:var(--text);">💡 <span>'+escapeHtml(String(m.reco))+'</span></div>' : '';
+  return '<div class="dash-card" style="padding:16px;position:relative;overflow:hidden;margin-bottom:12px;">'
+    +'<div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:'+dispoCol+';"></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
+      +'<div><div style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);font-weight:700;">Disponibilité</div>'
+      +'<div style="font-size:22px;font-weight:800;color:'+dispoCol+';line-height:1.05;">'+escapeHtml(dispoNiv)+'</div></div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">'+confHtml+ctxHtml+'</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">'
+      + _ckMini('Récupération', m.recup || '—', _ckColRecup(m.recup))
+      + _ckMini('Risque blessure', m.risque_blessure || '—', _ckColNiv3(m.risque_blessure))
+      + _ckMini('Surcharge', m.surcharge || '—', _ckColNiv3(m.surcharge))
+    +'</div>'
+    + recoHtml
+  +'</div>';
+}
+function renderCockpit(data, prefix){
+  var el = document.getElementById(prefix + '-cockpit');
+  if (!el) return;
+  if (!COCKPIT_ON) { el.innerHTML = ''; return; }        // OFF : conteneur vide, aucun changement visible
+  if (data && data.sport && data.sport !== 'muscu') { el.innerHTML = ''; return; }  // muscu uniquement
+  var m = data && data.moteur;
+  if (!m) { el.innerHTML = ''; return; }
+  el.innerHTML = renderCockpitEtat(m);   // Étape 2 : bloc A — État
+}
+
+/* =============================================================================
  * SPORTS (Phase 2/3) — registre des sports. Le sport est fourni par le backend
  * (hérité du coach). Chaque sport définit ses libellés d'affichage ; l'UI les
  * applique via [data-sport-label] (Phase 3). Défaut : 'muscu'.
@@ -3289,6 +3344,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    try { renderCockpit(data, 'cd'); } catch (_) {}   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
     renderAnalyseCoach(data);
@@ -7807,6 +7863,7 @@ function _safe(label, fn) {
 function _appliquerAppData(data) {
   // Stocker les données globalement
   dernierAppData = data;
+    _safe('cockpit', () => renderCockpit(data, 'dash'));   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     _safe('seances-programme', () => peuplerSeancesProgramme());
     seancesDates = data.historique.dates_seances || {};
     progressionData = data.historique.progression_par_exo || {};
