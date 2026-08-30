@@ -381,6 +381,8 @@
           <div class="fjd-hero-pills" id="cd-hero-pills"></div>
         </div>
       </div>
+      <!-- Cockpit (Phase 5A) — rempli par renderCockpit(data,'cd') si COCKPIT_ON. Vide sinon. -->
+      <div id="cd-cockpit"></div>
       <!-- Alertes (priorité en haut) -->
       <div class="dash-card" id="cd-alertes-card" style="padding:16px">
         <div class="dash-label"><svg class="ico"><use href="#i-bell"/></svg>Alertes</div>
@@ -669,6 +671,9 @@
           <div style="color:var(--text-muted);font-size:13px;padding:8px 2px;">Chargement...</div>
         </div>
       </div>
+
+      <!-- Cockpit (Phase 5A) — rempli par renderCockpit(data,'dash') si COCKPIT_ON. Vide sinon. -->
+      <div id="dash-cockpit"></div>
 
       <!-- Contexte de performance (lecture seule pour l'athlète) -->
       <div id="dash-contexte"></div>
