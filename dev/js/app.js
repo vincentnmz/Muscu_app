@@ -865,6 +865,45 @@ function renderCockpitBienEtre(data){
     + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">' + cells + '</div>'
     + zoneHtml + noteHtml + '</div>';
 }
+// KPI avec valeur HTML déjà colorée (présentation).
+function _ckKpiC(k, valHtml, sub){
+  return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 12px;">'
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">' + k + '</div>'
+    + '<div style="font-size:19px;font-weight:800;margin-top:3px;">' + valHtml + '</div>'
+    + (sub ? '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px;">' + escapeHtml(sub) + '</div>' : '') + '</div>';
+}
+// Bloc E — Performance (métriques MUSCU descriptives). Réutilise tendance1RM (existant,
+// pur) + data.global.records_30j + data.historique.volume_semaine. Aucun verdict/ACWR/Core.
+function renderCockpitPerformance(data){
+  var hist = data.historique || {};
+  var glob = data.global || {};
+  // Progression e1RM (fonction existante tendance1RM ; descriptif, aucune décision)
+  var t = tendance1RM(hist.progression_par_exo || {});
+  var pct = (t && t.pct != null) ? t.pct : null;
+  var pctCol = pct == null ? 'var(--text-muted)' : pct > 0 ? '#00c96e' : pct < 0 ? '#e5484d' : 'var(--text-muted)';
+  var pctTxt = pct == null ? '—' : (pct > 0 ? '+' : '') + pct + ' %';
+  // Records 30 j (déjà calculé côté backend : global.records_30j)
+  var rec = (glob.records_30j != null) ? glob.records_30j : null;
+  // Volume par muscle (données brutes : historique.volume_semaine)
+  var vol = Array.isArray(hist.volume_semaine) ? hist.volume_semaine.slice() : [];
+  vol.sort(function(a, b){ return (b.faites || 0) - (a.faites || 0); });
+  var maxV = vol.reduce(function(mx, x){ return Math.max(mx, x.faites || 0); }, 0) || 1;
+  var volHtml = vol.length ? vol.slice(0, 5).map(function(x){
+    var w = Math.round((x.faites || 0) / maxV * 100);
+    return '<div style="display:grid;grid-template-columns:78px 1fr auto;gap:9px;align-items:center;font-size:11.5px;margin-bottom:6px;">'
+      + '<span>' + escapeHtml(String(x.muscle || '—')) + '</span>'
+      + '<span style="height:7px;background:var(--surface2);border-radius:5px;overflow:hidden;"><i style="display:block;height:100%;border-radius:5px;width:' + w + '%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));"></i></span>'
+      + '<b style="font-variant-numeric:tabular-nums;">' + (x.faites || 0) + '</b></div>';
+  }).join('') : '<div style="font-size:12px;color:var(--text-muted);">Pas de volume cette semaine.</div>';
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🏋️ Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique muscu</span></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px;">'
+      + _ckKpiC('Progression e1RM', '<span style="color:' + pctCol + ';">' + pctTxt + '</span>', 'tendance moyenne')
+      + _ckKpiC('Records (30 j)', (rec == null ? '—' : '⚡ ' + escapeHtml(String(rec))), 'nouveaux records')
+    + '</div>'
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Séries par muscle · 7 j</div>'
+    + volHtml + '</div>';
+}
 function renderCockpit(data, prefix){
   var el = document.getElementById(prefix + '-cockpit');
   if (!el) return;
@@ -874,7 +913,8 @@ function renderCockpit(data, prefix){
   if (!m) { el.innerHTML = ''; return; }
   el.innerHTML = renderCockpitEtat(m)              // Étape 2 : bloc A — État
                + renderCockpitCharge(data)         // Étape 3 : bloc B — Charge
-               + renderCockpitBienEtre(data);      // Étape 4 : bloc C — Bien-être
+               + renderCockpitBienEtre(data)       // Étape 4 : bloc C — Bien-être
+               + renderCockpitPerformance(data);   // Étape 5 : bloc E — Performance
 }
 
 /* =============================================================================
