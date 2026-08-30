@@ -701,6 +701,14 @@
 const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service";
 
 /* =============================================================================
+ * COCKPIT_ON — flag de la refonte Dashboard (Phase 5A). PRÉSENTATION uniquement.
+ *   false = affichage actuel strictement inchangé (défaut).
+ *   true  = rendu du cockpit (renderCockpit) + masquage des anciennes cartes.
+ * Les anciennes cartes sont CONSERVÉES : bascule/retour immédiat, aucun bloc supprimé.
+ * ========================================================================== */
+const COCKPIT_ON = false;
+
+/* =============================================================================
  * STATUT_VISUEL — mapping PRÉSENTATION du niveau d'état Core (Phase 3B).
  * Le backend décide du niveau métier (disponibilite.niveau : « Prêt » / « Vigilance »
  * / « À surveiller ») ; c'est ICI, côté front, que le niveau devient une couleur.
