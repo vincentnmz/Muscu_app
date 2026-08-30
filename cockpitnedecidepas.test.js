@@ -20,15 +20,17 @@ function extractFn(name) {
   for (; j < SRC.length; j++) { const c = SRC[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } }
   return SRC.slice(m.index, j);
 }
-function extractVarObj(name) {
-  const m = SRC.match(new RegExp('var\\s+' + name + '\\s*=\\s*'));
-  let i = SRC.indexOf('{', m.index), d = 0, j = i;
-  for (; j < SRC.length; j++) { const c = SRC[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } }
-  return SRC.slice(m.index, j + 1) + ';';
+function extractDecl(name) {
+  const m = SRC.match(new RegExp('(?:const|let|var)\\s+' + name + '\\s*=\\s*'));
+  if (!m) throw new Error('decl introuvable: ' + name);
+  let i = m.index + m[0].length; const open = SRC[i], close = open === '[' ? ']' : '}';
+  let d = 0, j = i;
+  for (; j < SRC.length; j++) { const c = SRC[j]; if (c === open) d++; else if (c === close) { d--; if (d === 0) { j++; break; } } }
+  return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', 'renderCockpit'];
-const code = extractVarObj('_CK_CTX') + '\n' + fnNames.map(extractFn).join('\n');
+const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', '_ckWbColor', 'renderCockpitBienEtre', 'renderCockpit'];
+const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
 const check = (n, c, att, obt) => { if (c) ok++; else { ko++; console.log('  ❌ ' + n + ' — attendu ' + att + ', obtenu ' + obt); } };
@@ -56,6 +58,7 @@ const dataMuscu = {
   dashboard: { acwr: 1.12, tonnage: { j7: 12.4, evol_pct: 8, j7_prec: 11.5 }, regularite: { seances_j7: 4, seances_prevues: 4 } },
   comparison: { j28_vs_j28prec: { tonnage: { j28: 46.2, evol_pct: 4 } } },
   recent: { j7: { seances: 4, rpe_moyen: 7.8 } },
+  bien_etre: [{ date: '01/09', sommeil: 2, energie: 3, fatigue: 4, douleur: 2, zone: 'Genou droit', ressenti: 3, note: 'Nuit courte, genou tire.' }],
 };
 const dataFoot = { sport: 'foot', moteur: { disponibilite: { niveau: 'Prêt' }, recup: 'Bon', surcharge: 'Faible', risque_blessure: 'Faible', confiance: 'haute', reco: 'RAS' } };
 const dataNonInterp = {
@@ -89,6 +92,19 @@ const htmlNI = run(true, dataNonInterp, 'dash');
 check('B non-interp → "ACWR non interprétable"', /ACWR non interprétable/.test(htmlNI), 'présent', 'absent');
 check('B non-interp → ratio 1.6 NON affiché comme verdict', !/1\.60/.test(htmlNI), 'absent', 'PRÉSENT');
 check('B non-interp → note backend affichée', /historique de charge insuffisant/.test(htmlNI), 'présent', 'absent');
+// Bloc C — Bien-être (bien_etre[0], valeurs conservées, libellés existants)
+check('C → carte bien-être', /Bien-être · dernier questionnaire/.test(html), 'présent', 'absent');
+check('C → 5 valeurs numériques /5 conservées', (html.match(/\/5</g) || []).length >= 5, '>=5', (html.match(/\/5</g) || []).length);
+check('C → sommeil=2 libellé « Mauvais » (WQ_ANSWERS)', /Mauvais/.test(html), 'présent', 'absent');
+check('C → fatigue=4 libellé « Importante »', /Importante/.test(html), 'présent', 'absent');
+check('C → zone affichée (douleur≠1 + zone)', /Genou droit/.test(html), 'présent', 'absent');
+check('C → note affichée', /Nuit courte/.test(html), 'présent', 'absent');
+// Données absentes → gestion propre, rien inventé
+const htmlNoBE = run(true, { sport: 'muscu', moteur: dataMuscu.moteur }, 'dash');
+check('C sans bien_etre → « Aucun questionnaire récent »', /Aucun questionnaire récent/.test(htmlNoBE), 'présent', 'absent');
+// Douleur = 1 → zone NON affichée même si présente (pas d'invention)
+const htmlDoul1 = run(true, { sport: 'muscu', moteur: dataMuscu.moteur, dashboard: dataMuscu.dashboard, bien_etre: [{ sommeil: 4, douleur: 1, zone: 'Cheville' }] }, 'dash');
+check('C douleur=1 → zone masquée', !/Cheville/.test(htmlDoul1), 'absent', 'PRÉSENT');
 
 // 4) ON + foot → vide (muscu uniquement)
 check('ON foot → vide (muscu only)', run(true, dataFoot, 'cd') === '', '""', 'non vide');
@@ -96,7 +112,7 @@ check('ON foot → vide (muscu only)', run(true, dataFoot, 'cd') === '', '""', '
 check('ON sans moteur → vide', run(true, { sport: 'muscu' }, 'dash') === '', '""', 'non vide');
 
 // 6) STATIQUE — le cockpit ne recalcule aucun verdict
-const bodyCk = extractFn('renderCockpit') + extractFn('renderCockpitEtat') + extractFn('renderCockpitCharge');
+const bodyCk = extractFn('renderCockpit') + extractFn('renderCockpitEtat') + extractFn('renderCockpitCharge') + extractFn('renderCockpitBienEtre');
 const interdits = ['computeACWR', 'calculerACWR', 'evaluerEtatAthlete', 'fiabiliteACWR', 'interpreterACWR', 'CORE_SEUILS', 'CORE_FIABILITE', 'NovalyzEngine'];
 for (const mot of interdits) check('cockpit n\'appelle pas ' + mot, !bodyCk.includes(mot), 'absent', 'PRÉSENT');
 // lit bien moteur.* (m.*)
