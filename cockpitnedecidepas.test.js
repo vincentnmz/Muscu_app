@@ -27,7 +27,7 @@ function extractVarObj(name) {
   return SRC.slice(m.index, j + 1) + ';';
 }
 
-const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', 'renderCockpit'];
+const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', 'renderCockpit'];
 const code = extractVarObj('_CK_CTX') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
@@ -50,8 +50,20 @@ function run(flag, data, prefix) {
   return (store[prefix + '-cockpit'] || {}).innerHTML || '';
 }
 
-const dataMuscu = { sport: 'muscu', moteur: { disponibilite: { niveau: 'Vigilance' }, recup: 'Moyen', surcharge: 'Faible', risque_blessure: 'Modéré', confiance: 'haute', contexte_tag: null, reco: 'Vigilance — surveiller les sensations.' } };
+const dataMuscu = {
+  sport: 'muscu',
+  moteur: { disponibilite: { niveau: 'Vigilance' }, recup: 'Moyen', surcharge: 'Faible', risque_blessure: 'Modéré', confiance: 'haute', contexte_tag: null, reco: 'Vigilance — surveiller les sensations.', acwr_fiable: true, acwr_categorie: 'normal' },
+  dashboard: { acwr: 1.12, tonnage: { j7: 12.4, evol_pct: 8, j7_prec: 11.5 }, regularite: { seances_j7: 4, seances_prevues: 4 } },
+  comparison: { j28_vs_j28prec: { tonnage: { j28: 46.2, evol_pct: 4 } } },
+  recent: { j7: { seances: 4, rpe_moyen: 7.8 } },
+};
 const dataFoot = { sport: 'foot', moteur: { disponibilite: { niveau: 'Prêt' }, recup: 'Bon', surcharge: 'Faible', risque_blessure: 'Faible', confiance: 'haute', reco: 'RAS' } };
+const dataNonInterp = {
+  sport: 'muscu',
+  moteur: { disponibilite: { niveau: 'Prêt' }, recup: 'Bon', surcharge: 'Faible', risque_blessure: 'Faible', confiance: 'moyenne', reco: 'RAS', acwr_fiable: false, acwr_note: 'ACWR non interprétable — historique de charge insuffisant', acwr_categorie: 'non_interpretable' },
+  dashboard: { acwr: 1.6, tonnage: { j7: 5.0, evol_pct: null } },
+  comparison: {}, recent: { j7: {} },
+};
 
 // 2) OFF → vide
 check('OFF (dash) → vide', run(false, dataMuscu, 'dash') === '', '""', '[' + run(false, dataMuscu, 'dash').length + ' car]');
@@ -65,6 +77,18 @@ check('ON muscu → affiche récup (Moyen)', /Moyen/.test(html), 'présent', 'ab
 check('ON muscu → affiche risque (Modéré)', /Modéré/.test(html), 'présent', 'absent');
 check('ON muscu → affiche la reco (moteur.reco)', /surveiller les sensations/.test(html), 'présent', 'absent');
 check('ON muscu → badge confiance', /Confiance haute/.test(html), 'présent', 'absent');
+// Bloc B — Charge
+check('B → carte charge', /Charge d.entraînement/.test(html), 'présent', 'absent');
+check('B → ACWR ratio (1.12 depuis dashboard.acwr)', /1\.12/.test(html), 'présent', 'absent');
+check('B → catégorie ACWR (Zone optimale)', /Zone optimale/.test(html), 'présent', 'absent');
+check('B → tonnage 7j (12,4 t)', /12,4 t/.test(html), 'présent', 'absent');
+check('B → tonnage 28j (46,2 t)', /46,2 t/.test(html), 'présent', 'absent');
+check('B → RPE (7,8)', /7,8/.test(html), 'présent', 'absent');
+// acwr_fiable=false → non interprétable, ratio JAMAIS présenté comme verdict
+const htmlNI = run(true, dataNonInterp, 'dash');
+check('B non-interp → "ACWR non interprétable"', /ACWR non interprétable/.test(htmlNI), 'présent', 'absent');
+check('B non-interp → ratio 1.6 NON affiché comme verdict', !/1\.60/.test(htmlNI), 'absent', 'PRÉSENT');
+check('B non-interp → note backend affichée', /historique de charge insuffisant/.test(htmlNI), 'présent', 'absent');
 
 // 4) ON + foot → vide (muscu uniquement)
 check('ON foot → vide (muscu only)', run(true, dataFoot, 'cd') === '', '""', 'non vide');
@@ -72,7 +96,7 @@ check('ON foot → vide (muscu only)', run(true, dataFoot, 'cd') === '', '""', '
 check('ON sans moteur → vide', run(true, { sport: 'muscu' }, 'dash') === '', '""', 'non vide');
 
 // 6) STATIQUE — le cockpit ne recalcule aucun verdict
-const bodyCk = extractFn('renderCockpit') + extractFn('renderCockpitEtat');
+const bodyCk = extractFn('renderCockpit') + extractFn('renderCockpitEtat') + extractFn('renderCockpitCharge');
 const interdits = ['computeACWR', 'calculerACWR', 'evaluerEtatAthlete', 'fiabiliteACWR', 'interpreterACWR', 'CORE_SEUILS', 'CORE_FIABILITE', 'NovalyzEngine'];
 for (const mot of interdits) check('cockpit n\'appelle pas ' + mot, !bodyCk.includes(mot), 'absent', 'PRÉSENT');
 // lit bien moteur.* (m.*)
