@@ -826,6 +826,45 @@ function renderCockpitCharge(data){
       + _ckKpi('RPE moyen', rpe, 'effort perçu', null)
     + '</div></div>';
 }
+// Couleur bien-être — MÊME logique que le wbColor existant (présentation, pas une décision).
+function _ckWbColor(v, good){ var lvl = good ? v : (6 - v); return lvl >= 4 ? '#22c55e' : lvl >= 3 ? '#f5a623' : '#e5484d'; }
+// Bloc C — Bien-être. Lit UNIQUEMENT bien_etre[0]. Réutilise WQ_DIMS + WQ_ANSWERS
+// (libellés existants du questionnaire). Aucun score, aucun calcul, aucune tendance.
+function renderCockpitBienEtre(data){
+  var be = (data.bien_etre && data.bien_etre[0]) || null;
+  if (!be) {
+    return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🫀 Bien-être</div>'
+      + '<div style="font-size:12px;color:var(--text-muted);">Aucun questionnaire récent.</div></div>';
+  }
+  var ICO = { sommeil:'😴', energie:'⚡', fatigue:'💪', douleur:'🤕', ressenti:'😊' };
+  var cells = WQ_DIMS.map(function(dim){
+    var raw = be[dim.key];
+    if (raw == null || raw === '' || isNaN(Number(raw))) {
+      return '<div style="text-align:center;"><div style="font-size:16px;">' + (ICO[dim.key]||'') + '</div>'
+        + '<div style="font-size:15px;font-weight:800;color:var(--text-subtle);margin-top:1px;">—</div>'
+        + '<div style="font-size:9px;color:var(--text-muted);margin-top:9px;">' + escapeHtml(dim.label) + '</div></div>';
+    }
+    var v = Number(raw);
+    var good = !dim.invert;
+    var col = _ckWbColor(v, good);
+    var lab = (WQ_ANSWERS[dim.key] && WQ_ANSWERS[dim.key][v]) || '';
+    return '<div style="text-align:center;">'
+      + '<div style="font-size:16px;">' + (ICO[dim.key]||'') + '</div>'
+      + '<div style="font-size:15px;font-weight:800;color:' + col + ';margin-top:1px;">' + v + '<span style="font-size:9px;color:var(--text-subtle);">/5</span></div>'
+      + '<div style="height:5px;border-radius:4px;background:var(--surface2);overflow:hidden;margin-top:5px;"><span style="display:block;height:100%;border-radius:4px;width:' + (v / 5 * 100) + '%;background:' + col + ';"></span></div>'
+      + '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;">' + escapeHtml(dim.label) + '</div>'
+      + (lab ? '<div style="font-size:9px;color:var(--text-subtle);">' + escapeHtml(lab) + '</div>' : '')
+      + '</div>';
+  }).join('');
+  var doul = Number(be.douleur);
+  var zoneHtml = (!isNaN(doul) && doul !== 1 && be.zone) ? '<div style="margin-top:11px;font-size:11.5px;color:var(--text-muted);">📍 Zone : <b style="color:var(--text);">' + escapeHtml(String(be.zone)) + '</b></div>' : '';
+  var noteHtml = be.note ? '<div style="margin-top:8px;font-size:11.5px;color:var(--text-muted);font-style:italic;">📝 « ' + escapeHtml(String(be.note)) + ' »</div>' : '';
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🫀 Bien-être · dernier questionnaire</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">' + cells + '</div>'
+    + zoneHtml + noteHtml + '</div>';
+}
 function renderCockpit(data, prefix){
   var el = document.getElementById(prefix + '-cockpit');
   if (!el) return;
@@ -833,8 +872,9 @@ function renderCockpit(data, prefix){
   if (data && data.sport && data.sport !== 'muscu') { el.innerHTML = ''; return; }  // muscu uniquement
   var m = data && data.moteur;
   if (!m) { el.innerHTML = ''; return; }
-  el.innerHTML = renderCockpitEtat(m)          // Étape 2 : bloc A — État
-               + renderCockpitCharge(data);    // Étape 3 : bloc B — Charge
+  el.innerHTML = renderCockpitEtat(m)              // Étape 2 : bloc A — État
+               + renderCockpitCharge(data)         // Étape 3 : bloc B — Charge
+               + renderCockpitBienEtre(data);      // Étape 4 : bloc C — Bien-être
 }
 
 /* =============================================================================
