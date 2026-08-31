@@ -1264,7 +1264,53 @@ function renderCockpitEvolutionFoot(data){
     + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:12px 0 7px;">ACWR</div>' + acwrHtml
     + '</div>';
 }
-// Orchestrateur cockpit foot (fiche joueur). Bloc A (État) + B (Charge) + C (Bien-être) + D (Évolution).
+// Bloc E foot — Performance : métriques MATCH + GPS réelles (data.match_stats,
+// match_agg, gps). AUCUN équivalent de la muscu (pas d'e1RM/records/tonnage).
+// Purement descriptif : lit les valeurs déjà agrégées par le backend, ne
+// recalcule rien, aucun verdict.
+function _ckFr(v){ return String(v).replace('.', ','); }
+function renderCockpitPerformanceFoot(data){
+  var ms = data.match_stats || {};
+  var agg = data.match_agg || {};
+  var gps = data.gps || {};
+  var nbMatch = ms.nb || 0;
+  var hasMatch = nbMatch > 0;
+  var hasGps = (gps.n || 0) > 0 || (gps.distance_hi || 0) > 0 || (gps.sprints || 0) > 0;
+  if (!hasMatch && !hasGps) {
+    return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🏟️ Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique foot</span></div>'
+      + '<div style="font-size:12px;color:var(--text-muted);">Aucune donnée de match ou GPS.</div></div>';
+  }
+  var xg = (agg.xg && agg.xg.total != null) ? agg.xg.total : null;
+  var xa = (agg.xa && agg.xa.total != null) ? agg.xa.total : null;
+  var matchHtml = '';
+  if (hasMatch) {
+    matchHtml = '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Match</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px;">'
+        + _ckKpi('Matchs', nbMatch, 'joués', null)
+        + _ckKpi('Minutes', (ms.minutes != null ? Math.round(ms.minutes) : '—'), 'temps de jeu', null)
+        + _ckKpi('Buts', (ms.buts != null ? ms.buts : '—'), null, null)
+        + _ckKpi('Passes déc.', (ms.passes_d != null ? ms.passes_d : '—'), null, null)
+        + _ckKpi('Note moy.', (ms.note_moy != null ? _ckFr(ms.note_moy) : '—'), 'sur 10', null)
+        + (xg != null ? _ckKpi('xG', _ckFr(xg), 'cumulé', null) : '')
+        + (xa != null ? _ckKpi('xA', _ckFr(xa), 'cumulé', null) : '')
+      + '</div>';
+  }
+  var gpsHtml = '';
+  if (hasGps) {
+    gpsHtml = '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">GPS / physique · 7 j</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;">'
+        + _ckKpi('Distance HI', (gps.distance_hi != null ? Math.round(gps.distance_hi).toLocaleString('fr-FR') : '—'), 'm haute intensité', null)
+        + _ckKpi('Sprints', (gps.sprints != null ? Math.round(gps.sprints) : '—'), 'nombre', null)
+        + _ckKpi('Vitesse max', (gps.vmax ? _ckFr(gps.vmax) : '—'), 'km/h', null)
+        + _ckKpi('Accél. / décél.', (Math.round(gps.accel || 0) + ' / ' + Math.round(gps.decel || 0)), 'nombre', null)
+      + '</div>';
+  }
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🏟️ Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique foot</span></div>'
+    + matchHtml + gpsHtml + '</div>';
+}
+// Orchestrateur cockpit foot (fiche joueur). A (État) + B (Charge) + C (Bien-être) + D (Évolution) + E (Performance).
 function renderCockpitFoot(data){
   var el = document.getElementById('foot-cockpit');
   if (!el) return;
@@ -1274,7 +1320,8 @@ function renderCockpitFoot(data){
   el.innerHTML = renderCockpitEtat(m)                    // Bloc A — État (réutilisé, moteur commun)
                + renderCockpitChargeFoot(data)           // Bloc B — Charge foot (UA)
                + renderCockpitBienEtreFoot(data)         // Bloc C — Bien-être foot
-               + renderCockpitEvolutionFoot(data);       // Bloc D — Évolution foot
+               + renderCockpitEvolutionFoot(data)        // Bloc D — Évolution foot
+               + renderCockpitPerformanceFoot(data);     // Bloc E — Performance foot (match + GPS)
 }
 
 /* =============================================================================
