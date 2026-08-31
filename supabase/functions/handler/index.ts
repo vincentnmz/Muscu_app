@@ -678,6 +678,19 @@ function buildVolumeParJour(perfs: any[]): Record<string, number> {
   return r
 }
 
+// Volume de la SEMAINE en cours = nombre de séries par muscle depuis lundi.
+// SOURCE DE VÉRITÉ UNIQUE : consommée à l'identique par le payload athlète
+// (getAppData) ET coach (getSuiviJoueur) → même forme [{ muscle, faites }],
+// le front (afficherVolumeMuscle / renderBilanBalance / cockpit E) l'attend ainsi.
+function buildVolumeSemaineParMuscle(perfs: any[], now: Date): any[] {
+  const lundiStr = fmtYMD(getLundi(now))
+  const parMuscle: Record<string, number> = {}
+  for (const r of perfs) {
+    if (normDate(r.date) >= lundiStr && r.muscle) parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + 1
+  }
+  return Object.entries(parMuscle).map(([muscle, faites]) => ({ muscle, faites }))
+}
+
 // ── GET handlers ──────────────────────────────────────────────────────────────
 async function handleLogin(params: URLSearchParams): Promise<Response> {
   const login = params.get('login')?.trim()
@@ -807,7 +820,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const acwr = sport === 'muscu' ? acwrCalcA.ratio : null
 
   const c7 = fmtYMD(minus(now, 7))
-  const tonnage7 = perfs.filter(r => normDate(r.date) >= c7).reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
+  // (tonnage 7 j : plus de recalcul local — SOURCE UNIQUE = computeRecent.j7, voir tonnageObj)
 
   const lundiStr = fmtYMD(lundi)
   const perfsWeek = perfs.filter(r => normDate(r.date) >= lundiStr)
@@ -893,10 +906,12 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   }
 
   // tonnage as object with j7 + evol_pct from comparison (in tonnes, matching Code.gs finalizeWindow)
+  // j7 : SOURCE UNIQUE = computeRecent.j7.tonnage (même fenêtre now-7, même formule) —
+  // plus de recalcul local (dédup anomalie #3, valeur identique).
   const tonnageEvol = comparisonData.j7_vs_j7prec?.tonnage?.evol_pct ?? null
   const j7PrecKg = comparisonData.j7_vs_j7prec?.tonnage?.j7_prec ?? null
   const tonnageObj = {
-    j7: Math.round(tonnage7 / 100) / 10,
+    j7: recentData.j7.tonnage,
     evol_pct: tonnageEvol,
     j7_prec: j7PrecKg != null ? Math.round(j7PrecKg / 100) / 10 : null,
   }
@@ -1036,7 +1051,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       dates_seances: datesSeances,
       exercices: [...new Set(perfs.map(r => r.exercice).filter(Boolean))],
       progression_par_exo: buildProgressionParExo(perfs),
-      volume_semaine: Object.entries(seriesParMuscle).map(([muscle, faites]) => ({ muscle, faites })),
+      volume_semaine: buildVolumeSemaineParMuscle(perfs, now),
       volume_par_jour: buildVolumeParJour(perfs),
     },
     poids,
@@ -1200,7 +1215,7 @@ async function handleGetCoachAthleteDetail(params: URLSearchParams): Promise<Res
     blessures: (blessuresRows || []).map(r => ({ id: r.id, date: fmtFR(r.date), type: r.type, localisation: r.localisation, gravite: r.gravite, duree: r.duree, retour_terrain: fmtFR(r.retour_terrain), retour_competition: fmtFR(r.retour_competition), statut: r.statut })),
     historique: {
       progression_par_exo: buildProgressionParExo(perfsArr),
-      volume_semaine: buildVolumeSemaineHisto(perfsArr),
+      volume_semaine: buildVolumeSemaineParMuscle(perfsArr, now),
     },
   })
 }

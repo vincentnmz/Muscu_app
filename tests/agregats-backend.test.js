@@ -28,14 +28,14 @@ function extractFn(name) {
 }
 
 const WINDOWS_SRC = SRC.match(/const WINDOWS = \{[^}]*\}/)[0] + ';';   // { ACUTE:7, MID:14, CHRONIC:28, LONG:56 }
-const FN_NAMES = ['fmtYMD', 'minus', 'parseFR', 'fmtFR', 'normDate', 'isoWeek', 'prevIsoWeek',
-  'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'buildProgressionParExo'];
+const FN_NAMES = ['fmtYMD', 'minus', 'parseFR', 'fmtFR', 'normDate', 'isoWeek', 'prevIsoWeek', 'getLundi',
+  'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'buildProgressionParExo', 'buildVolumeSemaineParMuscle'];
 const tsCode = WINDOWS_SRC + '\n\n' + FN_NAMES.map(extractFn).join('\n\n');
 const jsCode = stripTypeScriptTypes(tsCode);           // retire les types → JS exécutable
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext(jsCode + '\n' + FN_NAMES.map(n => `this.${n} = ${n};`).join(''), sandbox);
-const { computeGlobal, computeRecent, computeComparison, computeStreak, buildProgressionParExo } = sandbox;
+const { computeGlobal, computeRecent, computeComparison, computeStreak, buildProgressionParExo, buildVolumeSemaineParMuscle } = sandbox;
 
 let ok = 0, ko = 0;
 const check = (n, cond, att, obt) => { if (cond) ok++; else { ko++; console.log('  ❌ ' + n + ' — attendu ' + att + ', obtenu ' + obt); } };
@@ -146,6 +146,10 @@ eq('comparison j7 seances = 3', cmp.j7_vs_j7prec.seances.j7, 3);
 eq('comparison j7_prec seances = 1', cmp.j7_vs_j7prec.seances.j7_prec, 1);
 eq('comparison j28 tonnage = 2000 kg', cmp.j28_vs_j28prec.tonnage.j28, 2000);
 eq('comparison j28 évolution = null (période précédente vide)', cmp.j28_vs_j28prec.tonnage.evol_pct, null);
+// Dédup anomalie #3 : le tonnage 7 j est le MÊME depuis computeRecent et computeComparison
+// (même fenêtre now-7, même formule). tonnageObj.j7 (dashboard) = recentData.j7.tonnage.
+eq('cohérence tonnage 7 j : recent.j7.tonnage_kg === comparison.j7', rec.j7.tonnage_kg, cmp.j7_vs_j7prec.tonnage.j7);
+eq('tonnage 7 j en tonnes (source dashboard) = 1.5', rec.j7.tonnage, 1.5);
 
 // =============================================================================
 // computeStreak — semaines ISO consécutives depuis « now »
@@ -179,6 +183,27 @@ eq('progression Curl plafonnée à 8 points (sur 9 dates)', prog.Curl.length, 8)
 eq('Curl[0] = date la plus récente 09/08/2026', prog.Curl[0].date, '09/08/2026');
 eq('Curl[7] = 02/08/2026 (8 plus récentes → 01/08 exclue)', prog.Curl[7].date, '02/08/2026');
 check('Curl exclut bien la plus ancienne (01/08)', !prog.Curl.some(p => p.date === '01/08/2026'), 'absente', 'PRÉSENTE');
+
+// =============================================================================
+// buildVolumeSemaineParMuscle — séries/muscle de la SEMAINE (source UNIQUE
+// athlète + coach). Anomalie #1 : les 2 payloads renvoient désormais la même
+// forme [{muscle, faites}].
+// =============================================================================
+const perfsVol = [
+  { date: '2026-08-20', seance_id: 'A', exercice: 'Squat',    muscle: 'Jambes',    charge: 100, reps: 5 }, // semaine en cours
+  { date: '2026-08-20', seance_id: 'A', exercice: 'Presse',   muscle: 'Jambes',    charge: 200, reps: 8 }, // 2e série Jambes
+  { date: '2026-08-20', seance_id: 'A', exercice: 'Bench',    muscle: 'Pectoraux', charge: 80,  reps: 5 },
+  { date: '2026-08-20', seance_id: 'A', exercice: 'Inconnu',  muscle: '',          charge: 40,  reps: 5 }, // pas de muscle → ignoré
+  { date: '2026-07-01', seance_id: 'B', exercice: 'Rowing',   muscle: 'Dos',       charge: 60,  reps: 8 }, // vieux → exclu
+];
+const vs = buildVolumeSemaineParMuscle(perfsVol, NOW);
+check('volume_semaine = tableau (forme unique athlète/coach)', Array.isArray(vs), 'array', typeof vs);
+eq('2 muscles cette semaine (Jambes, Pectoraux)', vs.length, 2);
+eq('Jambes = 2 séries', (vs.find(m => m.muscle === 'Jambes') || {}).faites, 2);
+eq('Pectoraux = 1 série', (vs.find(m => m.muscle === 'Pectoraux') || {}).faites, 1);
+check('muscle vide ignoré (pas d\'entrée sans nom)', !vs.some(m => !m.muscle), 'ignoré', 'PRÉSENT');
+check('séance ancienne (01/07) exclue (Dos absent)', !vs.some(m => m.muscle === 'Dos'), 'absent', 'PRÉSENT');
+eq('aucune séance cette semaine → []', buildVolumeSemaineParMuscle([{ date: '2026-01-01', muscle: 'Dos', charge: 1, reps: 1 }], NOW).length, 0);
 
 console.log('-'.repeat(66));
 console.log(ko === 0
