@@ -942,7 +942,7 @@ function renderCockpitPerformance(data){
       + _ckKpiC('Progression e1RM', '<span style="color:' + pctCol + ';">' + pctTxt + '</span>', 'tendance moyenne')
       + _ckKpiC('Records (30 j)', (rec == null ? '—' : '⚡ ' + escapeHtml(String(rec))), 'nouveaux records')
     + '</div>'
-    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Séries par muscle · 7 j</div>'
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Séries par muscle · cette semaine</div>'
     + volHtml + '</div>';
 }
 /* --- Bloc F — Historique (Étape 6) : synthèse 100 % présentation. -------------
