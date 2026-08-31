@@ -25,7 +25,7 @@ function extractDecl(name) {
   return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckKpi', 'renderCockpitChargeFoot', '_ckWbColor', 'renderCockpitBienEtreFoot', '_ckSpark', '_ckDir', 'renderCockpitEvolutionFoot', 'renderCockpitFoot'];
+const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckKpi', 'renderCockpitChargeFoot', '_ckWbColor', 'renderCockpitBienEtreFoot', '_ckSpark', '_ckDir', 'renderCockpitEvolutionFoot', '_ckFr', 'renderCockpitPerformanceFoot', 'renderCockpitFoot'];
 const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
@@ -51,6 +51,9 @@ const dataFoot = {
   bienetre: { sommeil: 2, energie: 3, fatigue: 4, douleur: 2 },
   wellness: [{ sommeil: 4, energie: 4, fatigue: 2, douleur: 1 }, { sommeil: 3, energie: 3, fatigue: 3, douleur: 1 }, { sommeil: 2, energie: 3, fatigue: 4, douleur: 2 }],
   charge_hebdo: [{ semaine: '2026-W31', charge: 900, label: '01/08' }, { semaine: '2026-W32', charge: 1100, label: '08/08' }, { semaine: '2026-W33', charge: 930, label: '15/08' }],
+  match_stats: { nb: 5, note_moy: 6.8, minutes: 410, buts: 3, passes_d: 2 },
+  match_agg: { xg: { total: 2.4, moy: 0.5 }, xa: { total: 1.1, moy: 0.2 } },
+  gps: { distance: 8500, distance_hi: 850, sprint_distance: 300, sprints: 24, accel: 40, decel: 38, vmax: 31.2, charge_gps: 0, n: 3 },
 };
 const dataFootNI = {
   moteur: { disponibilite: { niveau: 'Prêt' }, recup: 'Bon', surcharge: 'Faible', risque_blessure: 'Faible', confiance: 'moyenne', reco: 'RAS', acwr_fiable: false, acwr_note: 'ACWR non interprétable — historique insuffisant', acwr_categorie: 'non_interpretable' },
@@ -98,6 +101,24 @@ check('D non-interp → PAS de « dernière valeur »', !/dernière valeur trans
 const htmlEvoNeutre = run(true, { moteur: dataFoot.moteur, acwr: dataFoot.acwr });
 check('D sans wellness → « Pas assez de questionnaires »', /Pas assez de questionnaires pour une tendance/.test(htmlEvoNeutre));
 check('D sans charge_hebdo → « Évolution de la charge indisponible »', /Évolution de la charge indisponible/.test(htmlEvoNeutre));
+// Bloc E — Performance foot (match + GPS, métriques réelles, pas de copie muscu)
+check('E → carte Performance foot', /🏟️ Performance/.test(html));
+check('E → section Match', /Match<\/div>|>Match</.test(html));
+check('E → matchs 5 + minutes 410', /Matchs/.test(html) && /410/.test(html));
+check('E → buts 3 (match_stats)', /Buts/.test(html));
+check('E → note moy. 6,8 (FR)', /6,8/.test(html));
+check('E → xG 2,4 (match_agg.total)', /xG/.test(html) && /2,4/.test(html));
+check('E → xA 1,1', /xA/.test(html) && /1,1/.test(html));
+check('E → GPS distance HI 850', /Distance HI/.test(html) && /850/.test(html));
+check('E → sprints 24', /Sprints/.test(html) && /24/.test(html));
+check('E → vitesse max 31,2 km/h', /31,2/.test(html));
+// Sans match ni GPS → message propre, rien inventé
+const htmlNoPerf = run(true, { moteur: dataFoot.moteur, match_stats: { nb: 0 }, gps: { n: 0 } });
+check('E sans données → « Aucune donnée de match ou GPS »', /Aucune donnée de match ou GPS/.test(htmlNoPerf));
+// GPS seul (pas de match) → affiche GPS, pas la section Match
+const htmlGpsOnly = run(true, { moteur: dataFoot.moteur, match_stats: { nb: 0 }, gps: dataFoot.gps });
+check('E GPS seul → distance HI affichée', /Distance HI/.test(htmlGpsOnly));
+check('E GPS seul → pas de « Matchs »', !/Matchs/.test(htmlGpsOnly));
 // Repli sur wellness si pas de bienetre
 const htmlWell = run(true, { moteur: dataFoot.moteur, wellness: dataFoot.wellness });
 check('C → repli wellness (dernier point) affiché', /\/5</.test(htmlWell) && /🫀 Bien-être · dernier/.test(htmlWell));
@@ -108,7 +129,7 @@ check('C sans bien-être → « Aucun questionnaire récent »', /Aucun question
 check('ON sans moteur → vide', run(true, { bienetre: dataFoot.bienetre }) === '');
 
 // STATIQUE — le cockpit foot ne décide pas
-const body = extractFn('renderCockpitFoot') + extractFn('renderCockpitBienEtreFoot') + extractFn('renderCockpitChargeFoot') + extractFn('renderCockpitEvolutionFoot');
+const body = extractFn('renderCockpitFoot') + extractFn('renderCockpitBienEtreFoot') + extractFn('renderCockpitChargeFoot') + extractFn('renderCockpitEvolutionFoot') + extractFn('renderCockpitPerformanceFoot');
 for (const mot of ['computeACWR', 'calculerACWR', 'evaluerEtatAthlete', 'fiabiliteACWR', 'interpreterACWR', 'CORE_SEUILS', 'CORE_FIABILITE', 'NovalyzEngine']) {
   check('foot cockpit n\'appelle pas ' + mot, !body.includes(mot));
 }
@@ -117,6 +138,6 @@ check('renderCockpitFoot réutilise renderCockpitEtat', /renderCockpitEtat\(m\)/
 
 console.log('-'.repeat(66));
 console.log(ko === 0
-  ? `✅ Cockpit foot (A + B + C + D) — ${ok} vérifs (OFF vide · ON État+Charge+Bien-être+Évolution · ne décide pas).`
+  ? `✅ Cockpit foot (A + B + C + D + E) — ${ok} vérifs (OFF vide · ON État+Charge+Bien-être+Évolution+Perf · ne décide pas).`
   : `❌ ${ko} écart(s) sur ${ok + ko}.`);
 if (ko > 0) process.exitCode = 1;
