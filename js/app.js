@@ -1068,6 +1068,27 @@ function renderCockpit(data, prefix){
                + renderCockpitHistorique(data);     // Étape 6 : bloc F — Historique
 }
 
+/* --- Étape 8 — Intégration : masquage RÉVERSIBLE des anciennes cartes
+ * STRICTEMENT redondantes avec le cockpit, UNIQUEMENT si COCKPIT_ON.
+ *   • OFF (défaut) → on ne touche à rien : l'app reste exactement comme avant.
+ *   • ON           → seuls les doublons INTÉGRAUX sont masqués (présentation).
+ * Réversible (recharger sans COCKPIT_ON restaure tout), centralisé, sans aucune
+ * suppression de code ni de fonction métier.
+ * N'inclut QUE des doublons intégraux :
+ *   - dash-kpis : RPE 7j + Tonnage 7j + Records 30j → déjà dans les blocs B et E.
+ * Volontairement EXCLUS (porteurs d'info ABSENTE du cockpit → restent visibles) :
+ *   - dash-recup / cd-recup : monotonie + charge accumulée (strain) / action « conseil » coach ;
+ *   - dash-etat  / cd-etat  : score de forme /100 + point faible dominant.
+ * L'onglet Progression et ses conteneurs ne sont JAMAIS listés ici. */
+const COCKPIT_DOUBLONS_IDS = ['dash-kpis'];
+function appliquerMasquageCockpit(){
+  if (!COCKPIT_ON) return;                       // OFF : aucun masquage → comportement inchangé
+  COCKPIT_DOUBLONS_IDS.forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';           // masquage de présentation, réversible
+  });
+}
+
 /* =============================================================================
  * SPORTS (Phase 2/3) — registre des sports. Le sport est fourni par le backend
  * (hérité du coach). Chaque sport définit ses libellés d'affichage ; l'UI les
@@ -8551,6 +8572,9 @@ function _appliquerAppData(data) {
     // Récupération d'une séance muscu laissée en cours (anti-perte de saisie).
     // Une seule fois par chargement de page (garde interne _brouillonRestaure).
     try { _restaurerBrouillon(); } catch (e) {}
+
+    // Étape 8 — masquage réversible des doublons cockpit (no-op si COCKPIT_ON=false).
+    _safe('cockpit-layout', () => appliquerMasquageCockpit());
 }
 
 function _showLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'block'; }
