@@ -149,7 +149,7 @@ function computeGlobal(perfs: any[]): any {
   const datesSet = new Set<string>()
   const records: Record<string, { charge: number; reps: number; volume: number; date: string }> = {}
   let totalTonnage = 0, totalRpe = 0, rpeCount = 0, totalSeries = 0, totalReps = 0
-  const seanceMap: Record<string, { date: string; tonnage: number; exercices: Set<string>; muscles: Set<string> }> = {}
+  const seanceMap: Record<string, { date: string; seance_id: string; tonnage: number; exercices: Set<string>; muscles: Set<string> }> = {}
 
   for (const r of perfs) {
     const charge = Number(r.charge) || 0
@@ -160,24 +160,30 @@ function computeGlobal(perfs: any[]): any {
     totalReps += reps
     if (r.rpe) { totalRpe += Number(r.rpe); rpeCount++ }
     // séances = jours distincts (comme Code.gs seancesSet.add(dateStr))
-    datesSet.add(normDate(r.date))
+    const dIso = normDate(r.date)
+    datesSet.add(dIso)
 
     const exo = r.exercice
     if (exo && (!records[exo] || charge > records[exo].charge || (charge === records[exo].charge && reps > records[exo].reps))) {
       records[exo] = { charge, reps, volume: Number(r.volume) || tonnage, date: fmtFR(r.date) }
     }
 
-    if (!seanceMap[r.seance_id]) seanceMap[r.seance_id] = { date: r.date, tonnage: 0, exercices: new Set(), muscles: new Set() }
-    seanceMap[r.seance_id].tonnage += tonnage
-    if (exo) seanceMap[r.seance_id].exercices.add(exo)
-    if (r.muscle) seanceMap[r.seance_id].muscles.add(r.muscle)
+    // Une SÉANCE RÉELLE = une DATE réelle. On NE regroupe PAS par seance_id : c'est
+    // le NOM/TYPE de séance (« Push », « Full body »…), réutilisé à chaque séance de
+    // ce type → sinon toutes les séances d'un même type fusionnent (bug « 36 exos »).
+    if (dIso) {
+      if (!seanceMap[dIso]) seanceMap[dIso] = { date: dIso, seance_id: String(r.seance_id ?? ''), tonnage: 0, exercices: new Set(), muscles: new Set() }
+      seanceMap[dIso].tonnage += tonnage
+      if (exo) seanceMap[dIso].exercices.add(exo)
+      if (r.muscle) seanceMap[dIso].muscles.add(r.muscle)
+    }
   }
 
-  const dernieres_seances = Object.entries(seanceMap)
-    .sort((a, b) => String(b[1].date).localeCompare(String(a[1].date)))
+  const dernieres_seances = Object.values(seanceMap)
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)))   // dates ISO yyyy-mm-dd → tri chronologique fiable
     .slice(0, 3)
-    .map(([sid, s]) => ({
-      seance_id: sid,
+    .map((s) => ({
+      seance_id: s.seance_id,
       date: fmtFR(s.date),
       tonnage: Math.round(s.tonnage),
       exercices: [...s.exercices],
