@@ -816,6 +816,12 @@ function renderCockpitCharge(data){
   var seances7 = (reg.seances_j7 != null) ? reg.seances_j7 : ((rec.j7 && rec.j7.seances != null) ? rec.j7.seances : '—');
   var rpe = (rec.j7 && rec.j7.rpe_moyen != null) ? String(rec.j7.rpe_moyen).replace('.', ',') : '—';
   var regSub = (reg.seances_prevues != null) ? (seances7 + '/' + reg.seances_prevues + ' objectif') : null;
+  // Variabilité (monotonie) + charge accumulée (strain) — valeurs BRUTES déjà
+  // calculées par le backend (recent.j7). Rapatriées depuis l'ancienne carte
+  // « État de forme » ; descriptives, sans seuil ni couleur-verdict.
+  var _j7 = rec.j7 || {};
+  var mono = (_j7.monotonie != null) ? String(Number(_j7.monotonie).toFixed(2)).replace('.', ',') : '—';
+  var strain = (_j7.strain != null) ? Math.round(Number(_j7.strain)).toLocaleString('fr-FR') : '—';
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
     + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📊 Charge d\'entraînement</div>'
     + acwrHtml
@@ -824,10 +830,23 @@ function renderCockpitCharge(data){
       + _ckKpi('Tonnage 28 j', t28, 'charge chronique', t28evol)
       + _ckKpi('Séances 7 j', seances7, regSub, null)
       + _ckKpi('RPE moyen', rpe, 'effort perçu', null)
+      + _ckKpi('Variabilité 7 j', mono, 'monotonie de charge', null)
+      + _ckKpi('Charge cumulée 7 j', strain, 'strain (charge × monotonie)', null)
     + '</div></div>';
 }
 // Couleur bien-être — MÊME logique que le wbColor existant (présentation, pas une décision).
 function _ckWbColor(v, good){ var lvl = good ? v : (6 - v); return lvl >= 4 ? '#22c55e' : lvl >= 3 ? '#f5a623' : '#e5484d'; }
+// Synthèse descriptive du dernier questionnaire (score /100 + point faible).
+// Réutilise wqPositif + WQ_DIMS existants — même arithmétique que la carte
+// « Bilan de la dernière séance ». Descriptif, PAS un verdict (aucun libellé
+// d'état, aucune couleur décisionnelle) ; le verdict reste au bloc A (moteur.*).
+function _ckFormeQuestionnaire(be){
+  var pos = WQ_DIMS.map(function(d){ return { d: d, p: wqPositif(d, be[d.key]) }; }).filter(function(x){ return x.p != null; });
+  if (!pos.length) return null;
+  var moy = pos.reduce(function(a, x){ return a + x.p; }, 0) / pos.length;
+  var faible = pos.slice().sort(function(a, b){ return a.p - b.p; })[0];
+  return { score: Math.round((moy - 1) / 4 * 100), faible: faible.d.label };
+}
 // Bloc C — Bien-être. Lit UNIQUEMENT bien_etre[0]. Réutilise WQ_DIMS + WQ_ANSWERS
 // (libellés existants du questionnaire). Aucun score, aucun calcul, aucune tendance.
 function renderCockpitBienEtre(data){
@@ -860,10 +879,14 @@ function renderCockpitBienEtre(data){
   var doul = Number(be.douleur);
   var zoneHtml = (!isNaN(doul) && doul !== 1 && be.zone) ? '<div style="margin-top:11px;font-size:11.5px;color:var(--text-muted);">📍 Zone : <b style="color:var(--text);">' + escapeHtml(String(be.zone)) + '</b></div>' : '';
   var noteHtml = be.note ? '<div style="margin-top:8px;font-size:11.5px;color:var(--text-muted);font-style:italic;">📝 « ' + escapeHtml(String(be.note)) + ' »</div>' : '';
+  // Synthèse questionnaire (score /100 + point faible) rapatriée depuis l'ancien
+  // « Bilan de la dernière séance ». Descriptif, neutre — pas un verdict.
+  var forme = _ckFormeQuestionnaire(be);
+  var formeHtml = forme ? '<div style="margin-top:11px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-muted);">Synthèse questionnaire : <b style="color:var(--text);">' + forme.score + '/100</b> · point faible : <b style="color:var(--text);">' + escapeHtml(forme.faible) + '</b></div>' : '';
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
     + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🫀 Bien-être · dernier questionnaire</div>'
     + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">' + cells + '</div>'
-    + zoneHtml + noteHtml + '</div>';
+    + formeHtml + zoneHtml + noteHtml + '</div>';
 }
 // KPI avec valeur HTML déjà colorée (présentation).
 function _ckKpiC(k, valHtml, sub){
