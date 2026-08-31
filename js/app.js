@@ -1600,8 +1600,10 @@ function ouvrirReglagesCoach() {
     sel.value = (coach && coach.sport) ? coach.sport : 'muscu';
   }
   try { majUiCockpitPref(); } catch (_) {}
-  if (overlay) { overlay.style.display = 'block'; }
-  if (drawer)  { drawer.style.display = 'block'; }
+  // Réglages coach = vraie page plein écran (comme la vue athlète) : pas de fond
+  // estompé, panneau opaque en flex-colonne, contenu scrollable.
+  if (overlay) { overlay.style.display = 'none'; }
+  if (drawer)  { drawer.style.display = 'flex'; window.scrollTo({ top: 0, behavior: 'instant' }); }
 }
 
 // Enregistre le sport choisi (backend col E) puis rafraîchit les libellés.
