@@ -1310,7 +1310,53 @@ function renderCockpitPerformanceFoot(data){
     + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🏟️ Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique foot</span></div>'
     + matchHtml + gpsHtml + '</div>';
 }
-// Orchestrateur cockpit foot (fiche joueur). A (État) + B (Charge) + C (Bien-être) + D (Évolution) + E (Performance).
+// Bloc F foot — Historique : synthèse descriptive (séances récentes, temps de
+// jeu, matchs, blessures actives) + dernières activités + bandeau blessure.
+// Lit data.seances / matchs / match_stats / blessures. Aucun calcul, aucun verdict.
+function renderCockpitHistoriqueFoot(data){
+  var ms = data.match_stats || {};
+  var seances = Array.isArray(data.seances) ? data.seances : [];
+  var bless = Array.isArray(data.blessures) ? data.blessures : [];
+  var actives = bless.filter(function(b){ return b.statut === 'indispo' || b.statut === 'retour_progressif'; });
+  var nbMatch = ms.nb || 0;
+
+  if (!seances.length && !nbMatch && !bless.length) {
+    return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">📅 Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
+      + '<div style="font-size:12px;color:var(--text-muted);">Aucun historique.</div></div>';
+  }
+
+  var actHtml = seances.length ? seances.slice(0, 4).map(function(s){
+    var meta = [];
+    if (s.type) meta.push(String(s.type));
+    if (s.charge != null && s.charge !== '') meta.push(Math.round(Number(s.charge)) + ' UA');
+    return '<div style="display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:baseline;font-size:11.5px;margin-bottom:6px;">'
+      + '<b style="font-variant-numeric:tabular-nums;">' + escapeHtml(String(s.date || '—')) + '</b>'
+      + '<span style="color:var(--text-muted);">' + escapeHtml(meta.join(' · ')) + '</span></div>';
+  }).join('') : '<div style="font-size:12px;color:var(--text-muted);">Aucune séance récente.</div>';
+
+  var blessBanner = '';
+  if (actives.length) {
+    var b0 = actives[0];
+    var retour = b0.retour_terrain ? (' · retour ' + escapeHtml(String(b0.retour_terrain))) : '';
+    blessBanner = '<div style="margin-top:11px;font-size:11.5px;color:var(--text-muted);">🩹 Blessure en cours : <b style="color:var(--text);">'
+      + escapeHtml(String(b0.type || '—')) + (b0.localisation ? ' (' + escapeHtml(String(b0.localisation)) + ')' : '') + '</b>' + retour + '</div>';
+  }
+
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📅 Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;">'
+      + _ckKpi('Séances récentes', seances.length, 'affichées', null)
+      + _ckKpi('Matchs saison', nbMatch, 'joués', null)
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px;">'
+      + _ckKpi('Temps de jeu', (ms.minutes != null ? Math.round(ms.minutes) : '—'), 'minutes', null)
+      + _ckKpi('Blessures actives', actives.length, 'en cours', null)
+    + '</div>'
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Dernières activités</div>'
+    + actHtml + blessBanner + '</div>';
+}
+// Orchestrateur cockpit foot (fiche joueur). A + B + C + D + E + F (cockpit foot complet).
 function renderCockpitFoot(data){
   var el = document.getElementById('foot-cockpit');
   if (!el) return;
@@ -1321,7 +1367,8 @@ function renderCockpitFoot(data){
                + renderCockpitChargeFoot(data)           // Bloc B — Charge foot (UA)
                + renderCockpitBienEtreFoot(data)         // Bloc C — Bien-être foot
                + renderCockpitEvolutionFoot(data)        // Bloc D — Évolution foot
-               + renderCockpitPerformanceFoot(data);     // Bloc E — Performance foot (match + GPS)
+               + renderCockpitPerformanceFoot(data)      // Bloc E — Performance foot (match + GPS)
+               + renderCockpitHistoriqueFoot(data);      // Bloc F — Historique foot
 }
 
 /* =============================================================================
