@@ -1217,7 +1217,54 @@ function renderCockpitChargeFoot(data){
       + _ckKpi('Charge cumulée', strain, 'strain', null)
     + '</div></div>';
 }
-// Orchestrateur cockpit foot (fiche joueur). Bloc A (État) + B (Charge foot) + C (Bien-être foot).
+// Bloc D foot — Évolution : tendances descriptives (sparklines SVG, réutilise
+// _ckSpark/_ckDir). Bien-être = wellness[] (déjà chronologique) ; charge =
+// charge_hebdo (UA) ; ACWR = DERNIÈRE valeur backend (data.acwr + moteur.acwr_*),
+// jamais recalculée. Aucun verdict, aucun seuil.
+function renderCockpitEvolutionFoot(data){
+  var m = data.moteur || {};
+  var well = Array.isArray(data.wellness) ? data.wellness.slice(-10) : [];
+  var DIMS = WQ_DIMS.filter(function(d){ return ['sommeil', 'energie', 'fatigue', 'douleur'].indexOf(d.key) !== -1; });
+  var beRows = DIMS.map(function(dim){
+    var serie = well.map(function(x){ return x[dim.key]; }).filter(function(v){ return v != null && v !== '' && !isNaN(Number(v)); }).map(Number);
+    if (serie.length < 2) return '';
+    return '<div style="display:grid;grid-template-columns:70px 1fr auto;gap:9px;align-items:center;margin-bottom:6px;">'
+      + '<span style="font-size:11px;color:var(--text-muted);">' + escapeHtml(dim.label) + '</span>'
+      + _ckSpark(serie) + _ckDir(serie) + '</div>';
+  }).filter(Boolean).join('');
+  var beHtml = beRows || '<div style="font-size:12px;color:var(--text-muted);">Pas assez de questionnaires pour une tendance.</div>';
+
+  var ch = Array.isArray(data.charge_hebdo) ? data.charge_hebdo.map(function(x){ return Number(x.charge) || 0; }) : [];
+  var chHtml = ch.length >= 2
+    ? '<div style="display:grid;grid-template-columns:70px 1fr auto;gap:9px;align-items:center;">'
+        + '<span style="font-size:11px;color:var(--text-muted);">Charge</span>'
+        + _ckSpark(ch) + _ckDir(ch) + '</div>'
+        + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">' + ch.length + ' semaines · UA</div>'
+    : '<div style="font-size:12px;color:var(--text-muted);">Évolution de la charge indisponible.</div>';
+
+  var acwrHtml;
+  if (m.acwr_fiable !== true) {
+    acwrHtml = '<div style="font-size:12.5px;font-weight:700;color:var(--text-muted);">ACWR non interprétable</div>'
+      + '<div style="font-size:10.5px;color:var(--text-muted);">' + escapeHtml(String(m.acwr_note || 'Données insuffisantes — aucune interprétation possible.')) + '</div>';
+  } else {
+    var catMap = { normal:{l:'Zone optimale',c:'#00c96e'}, vigilance:{l:'Vigilance',c:'#f5a623'}, eleve:{l:'Charge élevée',c:'#e5484d'}, sous_charge:{l:'Sous-charge',c:'#00c9ff'} };
+    var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)' };
+    var ratio = (data.acwr != null) ? Number(data.acwr) : null;
+    acwrHtml = '<div style="display:flex;align-items:center;gap:12px;">'
+      + '<div style="font-size:24px;font-weight:800;color:' + cat.c + ';line-height:1;">' + (ratio != null ? ratio.toFixed(2) : '—') + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:' + cat.c + ';">' + escapeHtml(cat.l) + '</div></div>'
+      + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">dernière valeur transmise par le moteur</div>';
+  }
+
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">📈 Évolution <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· tendances descriptives</span></div>'
+    + '<div style="font-size:10px;color:var(--text-subtle);margin-bottom:12px;">Détail → onglets Charge & Match.</div>'
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Bien-être</div>' + beHtml
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:12px 0 7px;">Charge</div>' + chHtml
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:12px 0 7px;">ACWR</div>' + acwrHtml
+    + '</div>';
+}
+// Orchestrateur cockpit foot (fiche joueur). Bloc A (État) + B (Charge) + C (Bien-être) + D (Évolution).
 function renderCockpitFoot(data){
   var el = document.getElementById('foot-cockpit');
   if (!el) return;
@@ -1226,7 +1273,8 @@ function renderCockpitFoot(data){
   if (!m) { el.innerHTML = ''; return; }
   el.innerHTML = renderCockpitEtat(m)                    // Bloc A — État (réutilisé, moteur commun)
                + renderCockpitChargeFoot(data)           // Bloc B — Charge foot (UA)
-               + renderCockpitBienEtreFoot(data);        // Bloc C — Bien-être foot
+               + renderCockpitBienEtreFoot(data)         // Bloc C — Bien-être foot
+               + renderCockpitEvolutionFoot(data);       // Bloc D — Évolution foot
 }
 
 /* =============================================================================
