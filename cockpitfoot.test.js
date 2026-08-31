@@ -25,7 +25,7 @@ function extractDecl(name) {
   return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckKpi', 'renderCockpitChargeFoot', '_ckWbColor', 'renderCockpitBienEtreFoot', '_ckSpark', '_ckDir', 'renderCockpitEvolutionFoot', '_ckFr', 'renderCockpitPerformanceFoot', 'renderCockpitFoot'];
+const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckKpi', 'renderCockpitChargeFoot', '_ckWbColor', 'renderCockpitBienEtreFoot', '_ckSpark', '_ckDir', 'renderCockpitEvolutionFoot', '_ckFr', 'renderCockpitPerformanceFoot', 'renderCockpitHistoriqueFoot', 'renderCockpitFoot'];
 const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
@@ -54,6 +54,9 @@ const dataFoot = {
   match_stats: { nb: 5, note_moy: 6.8, minutes: 410, buts: 3, passes_d: 2 },
   match_agg: { xg: { total: 2.4, moy: 0.5 }, xa: { total: 1.1, moy: 0.2 } },
   gps: { distance: 8500, distance_hi: 850, sprint_distance: 300, sprints: 24, accel: 40, decel: 38, vmax: 31.2, charge_gps: 0, n: 3 },
+  seances: [{ date: '20/08/2026', type: 'match', duree: 90, rpe: 8, charge: 720 }, { date: '18/08/2026', type: 'entrainement', duree: 75, rpe: 6, charge: 450 }, { date: '16/08/2026', type: 'entrainement', duree: 60, rpe: 5, charge: 300 }],
+  matchs: [{ date: '20/08/2026', note: 7, buts: 1, passes_d: 1, xg: 0.6, xa: 0.3, minutes: 90 }],
+  blessures: [{ date: '01/07/2026', type: 'Entorse', localisation: 'Cheville', gravite: 'moyenne', statut: 'gueri' }, { date: '15/08/2026', type: 'Contracture', localisation: 'Ischio', statut: 'indispo', retour_terrain: '25/08/2026' }],
 };
 const dataFootNI = {
   moteur: { disponibilite: { niveau: 'Prêt' }, recup: 'Bon', surcharge: 'Faible', risque_blessure: 'Faible', confiance: 'moyenne', reco: 'RAS', acwr_fiable: false, acwr_note: 'ACWR non interprétable — historique insuffisant', acwr_categorie: 'non_interpretable' },
@@ -119,6 +122,18 @@ check('E sans données → « Aucune donnée de match ou GPS »', /Aucune donné
 const htmlGpsOnly = run(true, { moteur: dataFoot.moteur, match_stats: { nb: 0 }, gps: dataFoot.gps });
 check('E GPS seul → distance HI affichée', /Distance HI/.test(htmlGpsOnly));
 check('E GPS seul → pas de « Matchs »', !/Matchs/.test(htmlGpsOnly));
+// Bloc F — Historique foot (séances / matchs / blessures)
+check('F → carte Historique', /📅 Historique/.test(html));
+check('F → séances récentes = 3', /Séances récentes/.test(html) && /3/.test(html));
+check('F → matchs saison = 5', /Matchs saison/.test(html));
+check('F → temps de jeu (minutes)', /Temps de jeu/.test(html) && /410/.test(html));
+check('F → blessures actives = 1 (indispo seulement)', /Blessures actives/.test(html));
+check('F → dernières activités (dates 20/08, 18/08)', /20\/08\/2026/.test(html) && /18\/08\/2026/.test(html));
+check('F → bandeau blessure active (Contracture / Ischio)', /Blessure en cours/.test(html) && /Contracture/.test(html));
+check('F → blessure guérie NON comptée comme active (pas de bandeau Entorse)', !/Blessure en cours[\s\S]*Entorse/.test(html));
+// Sans historique → message propre
+const htmlNoHist = run(true, { moteur: dataFoot.moteur, match_stats: { nb: 0 }, seances: [], blessures: [] });
+check('F sans historique → « Aucun historique »', /Aucun historique/.test(htmlNoHist));
 // Repli sur wellness si pas de bienetre
 const htmlWell = run(true, { moteur: dataFoot.moteur, wellness: dataFoot.wellness });
 check('C → repli wellness (dernier point) affiché', /\/5</.test(htmlWell) && /🫀 Bien-être · dernier/.test(htmlWell));
@@ -129,7 +144,7 @@ check('C sans bien-être → « Aucun questionnaire récent »', /Aucun question
 check('ON sans moteur → vide', run(true, { bienetre: dataFoot.bienetre }) === '');
 
 // STATIQUE — le cockpit foot ne décide pas
-const body = extractFn('renderCockpitFoot') + extractFn('renderCockpitBienEtreFoot') + extractFn('renderCockpitChargeFoot') + extractFn('renderCockpitEvolutionFoot') + extractFn('renderCockpitPerformanceFoot');
+const body = extractFn('renderCockpitFoot') + extractFn('renderCockpitBienEtreFoot') + extractFn('renderCockpitChargeFoot') + extractFn('renderCockpitEvolutionFoot') + extractFn('renderCockpitPerformanceFoot') + extractFn('renderCockpitHistoriqueFoot');
 for (const mot of ['computeACWR', 'calculerACWR', 'evaluerEtatAthlete', 'fiabiliteACWR', 'interpreterACWR', 'CORE_SEUILS', 'CORE_FIABILITE', 'NovalyzEngine']) {
   check('foot cockpit n\'appelle pas ' + mot, !body.includes(mot));
 }
@@ -138,6 +153,6 @@ check('renderCockpitFoot réutilise renderCockpitEtat', /renderCockpitEtat\(m\)/
 
 console.log('-'.repeat(66));
 console.log(ko === 0
-  ? `✅ Cockpit foot (A + B + C + D + E) — ${ok} vérifs (OFF vide · ON État+Charge+Bien-être+Évolution+Perf · ne décide pas).`
+  ? `✅ Cockpit foot (A→F complet) — ${ok} vérifs (OFF vide · ON présentation · ne décide pas).`
   : `❌ ${ko} écart(s) sur ${ok + ko}.`);
 if (ko > 0) process.exitCode = 1;
