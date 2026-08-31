@@ -35,8 +35,9 @@ const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + ext
 let ok = 0, ko = 0;
 const check = (n, c, att, obt) => { if (c) ok++; else { ko++; console.log('  ❌ ' + n + ' — attendu ' + att + ', obtenu ' + obt); } };
 
-// 1) flag défaut
-check('COCKPIT_ON défaut = false', /const\s+COCKPIT_ON\s*=\s*false/.test(SRC), 'false', '?');
+// 1) flag défaut = false + gouverné par localStorage (préférence utilisateur, aucune décision)
+check('COCKPIT_ON initialisé à false', /let\s+COCKPIT_ON\s*=\s*false/.test(SRC), 'false', '?');
+check('COCKPIT_ON gouverné par localStorage (défaut si absent)', /localStorage\.getItem\('nv_cockpit_on'\)\s*===\s*'1'/.test(SRC), 'oui', 'non');
 
 function run(flag, data, prefix) {
   const store = {};
