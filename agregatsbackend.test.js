@@ -27,12 +27,15 @@ function extractFn(name) {
   return SRC.slice(m.index, j);
 }
 
-const tsCode = ['fmtYMD', 'parseFR', 'fmtFR', 'normDate', 'computeGlobal'].map(extractFn).join('\n\n');
+const WINDOWS_SRC = SRC.match(/const WINDOWS = \{[^}]*\}/)[0] + ';';   // { ACUTE:7, MID:14, CHRONIC:28, LONG:56 }
+const FN_NAMES = ['fmtYMD', 'minus', 'parseFR', 'fmtFR', 'normDate', 'isoWeek', 'prevIsoWeek',
+  'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'buildProgressionParExo'];
+const tsCode = WINDOWS_SRC + '\n\n' + FN_NAMES.map(extractFn).join('\n\n');
 const jsCode = stripTypeScriptTypes(tsCode);           // retire les types → JS exécutable
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext(jsCode + '\nthis.computeGlobal = computeGlobal;', sandbox);
-const computeGlobal = sandbox.computeGlobal;
+vm.runInContext(jsCode + '\n' + FN_NAMES.map(n => `this.${n} = ${n};`).join(''), sandbox);
+const { computeGlobal, computeRecent, computeComparison, computeStreak, buildProgressionParExo } = sandbox;
 
 let ok = 0, ko = 0;
 const check = (n, cond, att, obt) => { if (cond) ok++; else { ko++; console.log('  ❌ ' + n + ' — attendu ' + att + ', obtenu ' + obt); } };
@@ -99,8 +102,86 @@ const vide = computeGlobal([]);
 eq('perfs vides → total_seances 0', vide.total_seances, 0);
 eq('perfs vides → dernieres_seances []', vide.dernieres_seances.length, 0);
 
+// =============================================================================
+// computeRecent — fenêtres glissantes (référence : now = 2026-08-20)
+// =============================================================================
+const NOW = new Date('2026-08-20T12:00:00Z');
+// 3 séances dans les 7 j (14, 17, 20 août, 500 kg chacune) + 1 hors 7 j (09 août).
+const perfsRecent = [
+  { date: '2026-08-14', seance_id: 'A', exercice: 'Squat', muscle: 'Jambes', charge: 100, reps: 5, rpe: 8 },
+  { date: '2026-08-17', seance_id: 'A', exercice: 'Squat', muscle: 'Jambes', charge: 100, reps: 5, rpe: 6 },
+  { date: '2026-08-20', seance_id: 'A', exercice: 'Squat', muscle: 'Jambes', charge: 100, reps: 5, rpe: 10 },
+  { date: '2026-08-09', seance_id: 'A', exercice: 'Squat', muscle: 'Jambes', charge: 100, reps: 5, rpe: 4 },
+];
+const rec = computeRecent(perfsRecent, NOW);
+// j7 : 3 jours, 500 kg × 3 = 1500 kg = 1,5 t
+eq('recent.j7.seances = 3 jours distincts', rec.j7.seances, 3);
+eq('recent.j7.tonnage_kg = 1500', rec.j7.tonnage_kg, 1500);
+eq('recent.j7.tonnage = 1.5 t', rec.j7.tonnage, 1.5);
+eq('recent.j7.rpe_moyen = 8 ((8+6+10)/3)', rec.j7.rpe_moyen, 8);
+eq('recent.j7.frequence_semaine = 3', rec.j7.frequence_semaine, 3);
+// monotonie/strain : loads [500,0,0,500,0,0,500] sur 7 j → mean=1500/7, std connu
+eq('recent.j7.monotonie = 0.87', rec.j7.monotonie, 0.87);
+eq('recent.j7.strain = 1305', rec.j7.strain, 1305);
+// j28 : les 4 séances (500×4 = 2000 kg), RPE moyen (8+6+10+4)/4 = 7
+eq('recent.j28.seances = 4', rec.j28.seances, 4);
+eq('recent.j28.tonnage_kg = 2000', rec.j28.tonnage_kg, 2000);
+eq('recent.j28.rpe_moyen = 7', rec.j28.rpe_moyen, 7);
+eq('recent.j28.frequence_semaine = 1', rec.j28.frequence_semaine, 1);
+// cas limite : aucune donnée dans la fenêtre → monotonie/strain null
+const recVide = computeRecent([], NOW);
+eq('recent vide → j7.seances 0', recVide.j7.seances, 0);
+eq('recent vide → j7.monotonie null', recVide.j7.monotonie, null);
+eq('recent vide → j7.strain null', recVide.j7.strain, null);
+eq('recent vide → j7.rpe_moyen null', recVide.j7.rpe_moyen, null);
+
+// =============================================================================
+// computeComparison — 7 j vs 7 j précédents / 28 j vs 28 j précédents
+// =============================================================================
+const cmp = computeComparison(perfsRecent, NOW);
+eq('comparison j7 tonnage = 1500 kg', cmp.j7_vs_j7prec.tonnage.j7, 1500);
+eq('comparison j7_prec tonnage = 500 kg (séance du 09/08)', cmp.j7_vs_j7prec.tonnage.j7_prec, 500);
+eq('comparison j7 évolution = +200 % ((1500-500)/500)', cmp.j7_vs_j7prec.tonnage.evol_pct, 200);
+eq('comparison j7 seances = 3', cmp.j7_vs_j7prec.seances.j7, 3);
+eq('comparison j7_prec seances = 1', cmp.j7_vs_j7prec.seances.j7_prec, 1);
+eq('comparison j28 tonnage = 2000 kg', cmp.j28_vs_j28prec.tonnage.j28, 2000);
+eq('comparison j28 évolution = null (période précédente vide)', cmp.j28_vs_j28prec.tonnage.evol_pct, null);
+
+// =============================================================================
+// computeStreak — semaines ISO consécutives depuis « now »
+// =============================================================================
+eq('streak 3 semaines consécutives (20, 13, 06 août)', computeStreak(['2026-08-20', '2026-08-13', '2026-08-06'], NOW), 3);
+eq('streak = 0 si la semaine courante manque (rupture immédiate)', computeStreak(['2026-08-13', '2026-08-06'], NOW), 0);
+eq('streak 1 (uniquement la semaine courante)', computeStreak(['2026-08-20'], NOW), 1);
+eq('streak 0 si aucune date', computeStreak([], NOW), 0);
+
+// =============================================================================
+// buildProgressionParExo — 1 point par DATE (meilleure série du jour), 8 récents
+// =============================================================================
+const perfsProg = [
+  // 10/08 : 2 séries le même jour → la MEILLEURE (charge la plus haute) est retenue
+  { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 100, reps: 5 },
+  { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 90,  reps: 8 },
+  { date: '2026-08-17', seance_id: 'A', exercice: 'Squat', charge: 105, reps: 5 },
+  { date: '2026-08-20', seance_id: 'A', exercice: 'Squat', charge: 102, reps: 5 },
+];
+// 9 dates distinctes pour « Curl » → doit être plafonné à 8 points
+for (let d = 1; d <= 9; d++) perfsProg.push({ date: `2026-08-0${d}`, seance_id: 'B', exercice: 'Curl', charge: 20, reps: 10 });
+const prog = buildProgressionParExo(perfsProg);
+eq('progression Squat = 3 points (1 par date)', prog.Squat.length, 3);
+eq('Squat[0] = date la plus récente 20/08/2026', prog.Squat[0].date, '20/08/2026');
+eq('Squat[0].charge = 102', prog.Squat[0].charge, 102);
+eq('Squat[1].charge = 105 (17/08)', prog.Squat[1].charge, 105);
+eq('Squat[2] = meilleure série du 10/08 = 100×5 (pas 90×8)', prog.Squat[2].charge, 100);
+eq('Squat[2].reps = 5 (charge prioritaire sur volume)', prog.Squat[2].reps, 5);
+eq('Squat[2].volume = 500 (100×5)', prog.Squat[2].volume, 500);
+eq('progression Curl plafonnée à 8 points (sur 9 dates)', prog.Curl.length, 8);
+eq('Curl[0] = date la plus récente 09/08/2026', prog.Curl[0].date, '09/08/2026');
+eq('Curl[7] = 02/08/2026 (8 plus récentes → 01/08 exclue)', prog.Curl[7].date, '02/08/2026');
+check('Curl exclut bien la plus ancienne (01/08)', !prog.Curl.some(p => p.date === '01/08/2026'), 'absente', 'PRÉSENTE');
+
 console.log('-'.repeat(66));
 console.log(ko === 0
-  ? `✅ Agrégats backend — ${ok} vérifs de VALEUR (computeGlobal ; une séance = une date réelle).`
+  ? `✅ Agrégats backend — ${ok} vérifs de VALEUR (computeGlobal · computeRecent · computeComparison · computeStreak · buildProgressionParExo).`
   : `❌ ${ko} écart(s) sur ${ok + ko}.`);
 if (ko > 0) process.exitCode = 1;
