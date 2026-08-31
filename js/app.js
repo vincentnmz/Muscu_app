@@ -3711,7 +3711,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
     renderAnalyseCoach(data);
-    renderCoachRecordsEtRegression(data.historique);
+    renderCoachRecordsEtRegression(data.historique, data.global);
     renderCoachIndicateurs(data);
     renderAlertesCoach(data);
     afficherGraphiquePoidsCoach(data.poids || []);
@@ -3729,12 +3729,12 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
 }
 
 // Records + exercices en régression (détail coach), à partir de progression_par_exo
-function renderCoachRecordsEtRegression(hist) {
+function renderCoachRecordsEtRegression(hist, glob) {
   const prog = (hist && hist.progression_par_exo) || {};
   // --- Records (meilleure charge réelle, pas le 1RM) ---
   const rCard = document.getElementById('cd-records-card'), rEl = document.getElementById('cd-records');
   const rSec = document.getElementById('cd-records-sec');
-  const records = calculerRecords(hist);
+  const records = calculerRecords(hist, glob && glob.records);
   if (rCard && rEl) {
     if (records.length === 0) { rCard.style.display = 'none'; if (rSec) rSec.style.display = 'none'; }
     else {
@@ -7454,12 +7454,12 @@ function renderDashVolumeBars(volumes, targetId) {
   el.innerHTML = rows + `<div class="v2-legend"><span><span class="v2-dot" style="background:var(--good)"></span>Optimal</span><span><span class="v2-dot" style="background:var(--warn)"></span>Sous la cible</span><span><span class="v2-dot" style="background:var(--v2-bad)"></span>En retard</span></div>`;
 }
 
-function renderDashboardRecords(hist) {
+function renderDashboardRecords(hist, glob) {
   const card = document.getElementById('dash-records-card');
   const el = document.getElementById('dash-records');
   const sec = document.getElementById('dash-records-sec');
   if (!card || !el) return;
-  const records = calculerRecords(hist);
+  const records = calculerRecords(hist, glob && glob.records);
   if (records.length === 0) { card.style.display = 'none'; if (sec) sec.style.display = 'none'; return; }
   card.style.display = ''; if (sec) sec.style.display = 'flex';
   el.innerHTML = records.slice(0, 5).map((r, i, arr) => `
@@ -7474,19 +7474,30 @@ function renderDashboardRecords(hist) {
 }
 
 // Record = meilleure charge réellement soulevée (à charge égale, le plus de reps). Pas le 1RM.
-function calculerRecords(hist) {
-  const prog = (hist && hist.progression_par_exo) || {};
+// Records personnels par exercice. Source PRIORITAIRE = records ALL-TIME du
+// backend (global.records) — vrai PR sur tout l'historique. Repli sur
+// progression_par_exo (8 derniers points) uniquement si l'all-time est absent
+// (ancien payload / hors-ligne). Ignore les charges nulles (poids de corps).
+function calculerRecords(hist, allTime) {
   const records = [];
-  Object.keys(prog).forEach(exo => {
-    let best = null;
-    (prog[exo] || []).forEach(p => {
-      if (!p || !(p.charge > 0)) return; // ignore poids de corps / charge nulle
-      if (!best || p.charge > best.charge || (p.charge === best.charge && p.reps > best.reps)) {
-        best = { charge: p.charge, reps: p.reps, date: p.date };
-      }
+  if (allTime && typeof allTime === 'object' && Object.keys(allTime).length) {
+    Object.keys(allTime).forEach(exo => {
+      const r = allTime[exo];
+      if (r && r.charge > 0) records.push({ exo: exo, charge: r.charge, reps: r.reps, date: r.date });
     });
-    if (best) records.push(Object.assign({ exo }, best));
-  });
+  } else {
+    const prog = (hist && hist.progression_par_exo) || {};
+    Object.keys(prog).forEach(exo => {
+      let best = null;
+      (prog[exo] || []).forEach(p => {
+        if (!p || !(p.charge > 0)) return; // ignore poids de corps / charge nulle
+        if (!best || p.charge > best.charge || (p.charge === best.charge && p.reps > best.reps)) {
+          best = { charge: p.charge, reps: p.reps, date: p.date };
+        }
+      });
+      if (best) records.push(Object.assign({ exo }, best));
+    });
+  }
   records.sort((a, b) => b.charge - a.charge || b.reps - a.reps);
   return records;
 }
@@ -8235,7 +8246,7 @@ function _appliquerAppData(data) {
     tendancesData = data.historique.tendances || null;
 
     // Data-viz dashboard : records perso + heatmap d'activité
-    _safe('records', () => renderDashboardRecords(data.historique));
+    _safe('records', () => renderDashboardRecords(data.historique, data.global));
     _safe('activite', () => renderDashboardActivite(data.historique));
 
     // Nouveaux blocs Accueil : Contexte + État du jour + Analyse moteur + Alertes

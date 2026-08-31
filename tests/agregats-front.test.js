@@ -67,6 +67,18 @@ eq('record[1] = Bench', recs[1].exo, 'Bench');
 check('Gainage (charge 0) absent des records', !recs.some(r => r.exo === 'Gainage'), 'absent', 'PRÉSENT');
 eq('calculerRecords sans données → []', calculerRecords({}).length, 0);
 
+// Correctif anomalie : SOURCE PRIORITAIRE = records all-time (global.records),
+// pas les 8 derniers points. Ici le PR all-time (180) dépasse le max des points (120).
+const allTime = { Squat: { charge: 180, reps: 3, date: '02/01/2025' }, Bench: { charge: 100, reps: 5, date: '03/01/2025' }, Gainage: { charge: 0, reps: 90, date: '04/01/2025' } };
+const recsAllTime = calculerRecords({ progression_par_exo: { Squat: [{ charge: 120, reps: 5, date: '15/08/2026' }] } }, allTime);
+eq('all-time prioritaire : Squat = 180 (PR réel, pas 120)', recsAllTime[0].charge, 180);
+eq('all-time : 2 records (Gainage charge 0 exclu)', recsAllTime.length, 2);
+eq('all-time trié charge desc : [0] Squat, [1] Bench', recsAllTime[1].exo, 'Bench');
+// Repli conservé si all-time absent (hors-ligne / ancien payload)
+eq('repli progression_par_exo si all-time absent → 120',
+  calculerRecords({ progression_par_exo: { Squat: [{ charge: 120, reps: 5, date: '15/08/2026' }] } }, null)[0].charge, 120);
+eq('repli si all-time vide {} → progression', calculerRecords({ progression_par_exo: { Squat: [{ charge: 120, reps: 5, date: '15/08/2026' }] } }, {})[0].charge, 120);
+
 console.log('-'.repeat(66));
 console.log(ko === 0
   ? `✅ Calculs d'affichage front — ${ok} vérifs de VALEUR (calc1RM · tendance1RM · calculerRecords).`
