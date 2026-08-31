@@ -1140,6 +1140,59 @@ function appliquerMasquageCockpit(){
 }
 
 /* =============================================================================
+ * COCKPIT FOOT (Phase Foot) — présentation seule, dans la fiche joueur.
+ * Blocs A + C d'abord. Le moteur de décision est COMMUN (evaluerEtatAthlete) :
+ * le bloc A réutilise renderCockpitEtat tel quel (data.moteur identique à la
+ * muscu). Le bloc C lit le bien-être foot (data.bienetre / wellness), clé
+ * différente de la muscu. Aucun verdict, aucun recalcul ; même flag COCKPIT_ON.
+ * ========================================================================== */
+// Bloc C foot — bien-être du jour (4 signaux : sommeil/energie/fatigue/douleur).
+// Réutilise WQ_DIMS + WQ_ANSWERS + _ckWbColor. Pas de ressenti/zone/note (absents
+// du payload foot). Descriptif, aucun calcul de verdict.
+function renderCockpitBienEtreFoot(data){
+  var be = (data && data.bienetre && Object.keys(data.bienetre).length) ? data.bienetre
+    : (Array.isArray(data && data.wellness) && data.wellness.length ? data.wellness[data.wellness.length - 1] : null);
+  if (!be) {
+    return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🫀 Bien-être</div>'
+      + '<div style="font-size:12px;color:var(--text-muted);">Aucun questionnaire récent.</div></div>';
+  }
+  var DIMS = WQ_DIMS.filter(function(d){ return ['sommeil', 'energie', 'fatigue', 'douleur'].indexOf(d.key) !== -1; });
+  var ICO = { sommeil:'😴', energie:'⚡', fatigue:'💪', douleur:'🤕' };
+  var cells = DIMS.map(function(dim){
+    var raw = be[dim.key];
+    if (raw == null || raw === '' || isNaN(Number(raw))) {
+      return '<div style="text-align:center;"><div style="font-size:16px;">' + (ICO[dim.key] || '') + '</div>'
+        + '<div style="font-size:15px;font-weight:800;color:var(--text-subtle);margin-top:1px;">—</div>'
+        + '<div style="font-size:9px;color:var(--text-muted);margin-top:9px;">' + escapeHtml(dim.label) + '</div></div>';
+    }
+    var v = Number(raw);
+    var col = _ckWbColor(v, !dim.invert);
+    var lab = (WQ_ANSWERS[dim.key] && WQ_ANSWERS[dim.key][v]) || '';
+    return '<div style="text-align:center;">'
+      + '<div style="font-size:16px;">' + (ICO[dim.key] || '') + '</div>'
+      + '<div style="font-size:15px;font-weight:800;color:' + col + ';margin-top:1px;">' + v + '<span style="font-size:9px;color:var(--text-subtle);">/5</span></div>'
+      + '<div style="height:5px;border-radius:4px;background:var(--surface2);overflow:hidden;margin-top:5px;"><span style="display:block;height:100%;border-radius:4px;width:' + (v / 5 * 100) + '%;background:' + col + ';"></span></div>'
+      + '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;">' + escapeHtml(dim.label) + '</div>'
+      + (lab ? '<div style="font-size:9px;color:var(--text-subtle);">' + escapeHtml(lab) + '</div>' : '')
+      + '</div>';
+  }).join('');
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🫀 Bien-être · dernier questionnaire</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">' + cells + '</div></div>';
+}
+// Orchestrateur cockpit foot (fiche joueur). Bloc A (État, moteur commun) + C (Bien-être foot).
+function renderCockpitFoot(data){
+  var el = document.getElementById('foot-cockpit');
+  if (!el) return;
+  if (!COCKPIT_ON) { el.innerHTML = ''; return; }        // OFF : conteneur vide, comportement inchangé
+  var m = data && data.moteur;
+  if (!m) { el.innerHTML = ''; return; }
+  el.innerHTML = renderCockpitEtat(m)                    // Bloc A — État (réutilisé, moteur commun)
+               + renderCockpitBienEtreFoot(data);        // Bloc C — Bien-être foot
+}
+
+/* =============================================================================
  * SPORTS (Phase 2/3) — registre des sports. Le sport est fourni par le backend
  * (hérité du coach). Chaque sport définit ses libellés d'affichage ; l'UI les
  * applique via [data-sport-label] (Phase 3). Défaut : 'muscu'.
@@ -2303,6 +2356,8 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
           </div>
         </div>
       </div>
+      <!-- Cockpit foot (Phase Foot) — rempli par renderCockpitFoot(d) si COCKPIT_ON. Vide sinon. -->
+      <div id="foot-cockpit"></div>
       <!-- État du jour (forme) — même bloc que la page athlète muscu -->
       <div class="v2-sec" id="fjd-etat-sec" style="display:none;"><div class="st">${ic('activity')}État du jour</div></div>
       <div class="dash-card" id="fjd-etat-card" style="padding:16px;margin-bottom:12px;display:none;"><div id="fjd-etat-content"></div></div>
@@ -2441,6 +2496,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   _chargeJoueurData = d.charge_hebdo || [];
   dessinerChargeJoueur(_chargeJoueurData);
   renderTestsJoueur(d.athlete_id);
+  try { renderCockpitFoot(d); } catch (_) {}   // Cockpit foot (A + C) — no-op si COCKPIT_ON=false
   // Bloc « État du jour » (forme) — réutilise le composant de la page athlète muscu,
   // alimenté par le bien-être foot (le plus récent en premier).
   try {
