@@ -1181,7 +1181,43 @@ function renderCockpitBienEtreFoot(data){
     + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🫀 Bien-être · dernier questionnaire</div>'
     + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">' + cells + '</div></div>';
 }
-// Orchestrateur cockpit foot (fiche joueur). Bloc A (État, moteur commun) + C (Bien-être foot).
+// Bloc B foot — Charge (UA / sRPE). Lit data.acwr + moteur.acwr_* (backend-first,
+// JAMAIS recalculé) et kpi_foot (charge_mensuelle, monotonie, strain) + charge_7j.
+// Unité = UA (charge interne foot), pas des tonnes. Aucun verdict, aucun calcul.
+function renderCockpitChargeFoot(data){
+  var m = data.moteur || {};
+  var kpi = data.kpi_foot || {};
+  var acwrHtml;
+  if (m.acwr_fiable !== true) {
+    var note = m.acwr_note || 'ACWR non interprétable — données insuffisantes.';
+    acwrHtml = '<div style="display:flex;align-items:center;gap:10px;">'
+      + '<div style="font-size:26px;font-weight:800;color:var(--text-muted);line-height:1;">—</div>'
+      + '<div><div style="font-size:12.5px;font-weight:700;color:var(--text-muted);">ACWR non interprétable</div>'
+      + '<div style="font-size:10.5px;color:var(--text-muted);">' + escapeHtml(String(note)) + '</div></div></div>';
+  } else {
+    var catMap = { normal:{l:'Zone optimale',c:'#00c96e'}, vigilance:{l:'Vigilance',c:'#f5a623'}, eleve:{l:'Charge élevée',c:'#e5484d'}, sous_charge:{l:'Sous-charge',c:'#00c9ff'} };
+    var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)' };
+    var ratio = (data.acwr != null) ? Number(data.acwr) : null;
+    acwrHtml = '<div style="display:flex;align-items:center;gap:12px;">'
+      + '<div style="font-size:28px;font-weight:800;color:' + cat.c + ';line-height:1;">' + (ratio != null ? ratio.toFixed(2) : '—') + '</div>'
+      + '<div><div style="font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Ratio ACWR</div>'
+      + '<div style="font-size:12.5px;font-weight:700;color:' + cat.c + ';">' + escapeHtml(cat.l) + '</div></div></div>';
+  }
+  var c7 = (data.charge_7j != null) ? Math.round(Number(data.charge_7j)).toLocaleString('fr-FR') : '—';
+  var c28 = (kpi.charge_mensuelle != null) ? Math.round(Number(kpi.charge_mensuelle)).toLocaleString('fr-FR') : '—';
+  var mono = (kpi.monotonie != null) ? String(Number(kpi.monotonie).toFixed(2)).replace('.', ',') : '—';
+  var strain = (kpi.strain != null) ? Math.round(Number(kpi.strain)).toLocaleString('fr-FR') : '—';
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📊 Charge <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· UA (charge interne)</span></div>'
+    + acwrHtml
+    + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:14px;">'
+      + _ckKpi('Charge 7 j', c7, 'charge aiguë', null)
+      + _ckKpi('Charge 28 j', c28, 'charge chronique', null)
+      + _ckKpi('Variabilité', mono, 'monotonie', null)
+      + _ckKpi('Charge cumulée', strain, 'strain', null)
+    + '</div></div>';
+}
+// Orchestrateur cockpit foot (fiche joueur). Bloc A (État) + B (Charge foot) + C (Bien-être foot).
 function renderCockpitFoot(data){
   var el = document.getElementById('foot-cockpit');
   if (!el) return;
@@ -1189,6 +1225,7 @@ function renderCockpitFoot(data){
   var m = data && data.moteur;
   if (!m) { el.innerHTML = ''; return; }
   el.innerHTML = renderCockpitEtat(m)                    // Bloc A — État (réutilisé, moteur commun)
+               + renderCockpitChargeFoot(data)           // Bloc B — Charge foot (UA)
                + renderCockpitBienEtreFoot(data);        // Bloc C — Bien-être foot
 }
 
