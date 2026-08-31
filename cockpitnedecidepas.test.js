@@ -29,7 +29,7 @@ function extractDecl(name) {
   return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', '_ckWbColor', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpit'];
+const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', '_ckWbColor', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpitHistorique', 'renderCockpit'];
 const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
@@ -56,12 +56,13 @@ function run(flag, data, prefix) {
 const dataMuscu = {
   sport: 'muscu',
   moteur: { disponibilite: { niveau: 'Vigilance' }, recup: 'Moyen', surcharge: 'Faible', risque_blessure: 'Modéré', confiance: 'haute', contexte_tag: null, reco: 'Vigilance — surveiller les sensations.', acwr_fiable: true, acwr_categorie: 'normal' },
-  dashboard: { acwr: 1.12, tonnage: { j7: 12.4, evol_pct: 8, j7_prec: 11.5 }, regularite: { seances_j7: 4, seances_prevues: 4 } },
+  dashboard: { acwr: 1.12, tonnage: { j7: 12.4, evol_pct: 8, j7_prec: 11.5 }, regularite: { seances_j7: 4, seances_prevues: 4 }, streak: { semaines: 5 } },
   comparison: { j28_vs_j28prec: { tonnage: { j28: 46.2, evol_pct: 4 } } },
   recent: { j7: { seances: 4, rpe_moyen: 7.8 } },
   bien_etre: [{ date: '01/09', sommeil: 2, energie: 3, fatigue: 4, douleur: 2, zone: 'Genou droit', ressenti: 3, note: 'Nuit courte, genou tire.' }],
   historique: { progression_par_exo: { 'Squat': [{ charge: 100, reps: 5 }, { charge: 105, reps: 5 }] }, volume_semaine: [{ muscle: 'Quadriceps', faites: 12 }, { muscle: 'Pectoraux', faites: 8 }] },
-  global: { records_30j: 2 },
+  global: { records_30j: 2, total_seances: 37, tonnage_total_kg: 128400, dernieres_seances: [{ date: '30/08', tonnage: 8200, exercices: ['Squat', 'Développé'] }, { date: '28/08', tonnage: 7600, exercices: ['Tractions'] }] },
+  poids: [{ date: '30/08', poids: 82 }, { date: '01/07', poids: 84 }],
 };
 const dataFoot = { sport: 'foot', moteur: { disponibilite: { niveau: 'Prêt' }, recup: 'Bon', surcharge: 'Faible', risque_blessure: 'Faible', confiance: 'haute', reco: 'RAS' } };
 const dataNonInterp = {
@@ -121,13 +122,32 @@ check('E sans progression → e1RM « — »', /Progression e1RM[\s\S]*?—/.tes
 check('E sans records → « — »', /Records \(30 j\)[\s\S]*?—/.test(htmlNoPerf), 'présent', 'absent');
 check('E sans volume → « Pas de volume cette semaine »', /Pas de volume cette semaine/.test(htmlNoPerf), 'présent', 'absent');
 
+// Bloc F — Historique (global.* + poids[] + streak — présentation pure, données existantes)
+check('F → carte Historique', /📅 Historique/.test(html), 'présent', 'absent');
+check('F → séances totales (37 via global.total_seances)', /37/.test(html), 'présent', 'absent');
+check('F → tonnage cumulé (128,4 t via global.tonnage_total_kg)', /128,4 t/.test(html), 'présent', 'absent');
+check('F → régularité streak (5 sem. via dashboard.streak)', /5 sem\./.test(html), 'présent', 'absent');
+check('F → poids dernier (82 kg via poids[0])', /82 kg/.test(html), 'présent', 'absent');
+check('F → variation poids NEUTRE (-2 kg, descriptif)', /-2 kg depuis/.test(html), 'présent', 'absent');
+check('F → dernières séances (30/08)', /30\/08/.test(html), 'présent', 'absent');
+// Historique sans données → rendu propre, rien inventé
+const htmlNoHist = run(true, { sport: 'muscu', moteur: dataMuscu.moteur }, 'dash');
+check('F sans global → séances « — »', /Séances totales[\s\S]*?—/.test(htmlNoHist), 'présent', 'absent');
+check('F sans poids → « — »', /Poids[\s\S]*?—/.test(htmlNoHist), 'présent', 'absent');
+check('F sans dernières séances → « Aucune séance enregistrée »', /Aucune séance enregistrée/.test(htmlNoHist), 'présent', 'absent');
+
 // 4) ON + foot → vide (muscu uniquement)
 check('ON foot → vide (muscu only)', run(true, dataFoot, 'cd') === '', '""', 'non vide');
 // 5) ON sans moteur → vide
 check('ON sans moteur → vide', run(true, { sport: 'muscu' }, 'dash') === '', '""', 'non vide');
 
 // 6) STATIQUE — le cockpit ne recalcule aucun verdict
-const bodyCk = extractFn('renderCockpit') + extractFn('renderCockpitEtat') + extractFn('renderCockpitCharge') + extractFn('renderCockpitBienEtre') + extractFn('renderCockpitPerformance');
+const bodyCk = extractFn('renderCockpit') + extractFn('renderCockpitEtat') + extractFn('renderCockpitCharge') + extractFn('renderCockpitBienEtre') + extractFn('renderCockpitPerformance') + extractFn('renderCockpitHistorique');
+// Bloc F n'écrit dans aucun conteneur de l'onglet Progression / Historique détaillé
+const bodyHist = extractFn('renderCockpitHistorique');
+for (const cont of ['tab-historique', 'hist-progression-content', 'cd-progression-content', 'getElementById']) {
+  check('F n\'écrit pas dans ' + cont, !bodyHist.includes(cont), 'absent', 'PRÉSENT');
+}
 const interdits = ['computeACWR', 'calculerACWR', 'evaluerEtatAthlete', 'fiabiliteACWR', 'interpreterACWR', 'CORE_SEUILS', 'CORE_FIABILITE', 'NovalyzEngine'];
 for (const mot of interdits) check('cockpit n\'appelle pas ' + mot, !bodyCk.includes(mot), 'absent', 'PRÉSENT');
 // lit bien moteur.* (m.*)
