@@ -904,6 +904,68 @@ function renderCockpitPerformance(data){
     + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Séries par muscle · 7 j</div>'
     + volHtml + '</div>';
 }
+/* --- Bloc F — Historique (Étape 6) : synthèse 100 % présentation. -------------
+ * Ne lit que des données DÉJÀ exposées et communes aux deux payloads :
+ *   global.total_seances · global.tonnage_total_kg · global.dernieres_seances[]
+ *   poids[] (dernier + variation vs plus ancien, NEUTRE, pas un verdict)
+ *   dashboard.streak.semaines (athlète ; absent côté coach → « — »).
+ * Aucun calcul métier, seuil, score, ACWR ni verdict. N'écrit que dans le
+ * conteneur cockpit. Ne touche jamais l'onglet Progression. */
+function renderCockpitHistorique(data){
+  var glob = data.global || {};
+  var dash = data.dashboard || {};
+  var poids = Array.isArray(data.poids) ? data.poids : [];
+
+  var nbSeances = (glob.total_seances != null) ? glob.total_seances
+    : (glob.nb_seances != null) ? glob.nb_seances : null;
+
+  var tonnageKg = (glob.tonnage_total_kg != null) ? glob.tonnage_total_kg
+    : (glob.tonnage_total != null) ? glob.tonnage_total : null;
+  var tonnageTxt = (tonnageKg == null) ? '—'
+    : (tonnageKg >= 1000 ? _ckT(tonnageKg / 1000)          // t, virgule FR (réutilise _ckT)
+                         : Math.round(tonnageKg) + ' kg');
+
+  var streak = (dash.streak && dash.streak.semaines != null) ? dash.streak.semaines
+    : (dash.regularite && dash.regularite.streak != null) ? dash.regularite.streak : null;
+  var streakTxt = (streak == null) ? '—' : streak + (streak > 1 ? ' sem.' : ' sem.');
+
+  // Poids : dernier point + variation NEUTRE (dernier − plus ancien), descriptif.
+  var poidsTxt = '—', poidsSub = 'dernier relevé';
+  if (poids.length) {
+    var dernier = poids[0], ancien = poids[poids.length - 1];
+    var pv = (dernier && dernier.poids != null) ? dernier.poids : null;
+    poidsTxt = (pv == null) ? '—' : pv + ' kg';
+    if (poids.length >= 2 && dernier.poids != null && ancien.poids != null) {
+      var dp = Math.round((dernier.poids - ancien.poids) * 10) / 10;
+      poidsSub = (dp === 0 ? '±0 kg' : (dp > 0 ? '+' : '') + dp + ' kg') + ' depuis ' + escapeHtml(String(ancien.date || ''));
+    }
+  }
+
+  // 3 dernières séances (résumé déjà calculé par le backend).
+  var ds = Array.isArray(glob.dernieres_seances) ? glob.dernieres_seances : [];
+  var dsHtml = ds.length ? ds.slice(0, 3).map(function(s){
+    var nbExo = Array.isArray(s.exercices) ? s.exercices.length : null;
+    var meta = [];
+    if (nbExo != null) meta.push(nbExo + (nbExo > 1 ? ' exos' : ' exo'));
+    if (s.tonnage != null) meta.push(Math.round(s.tonnage) + ' kg');
+    return '<div style="display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:baseline;font-size:11.5px;margin-bottom:6px;">'
+      + '<b style="font-variant-numeric:tabular-nums;">' + escapeHtml(String(s.date || '—')) + '</b>'
+      + '<span style="color:var(--text-muted);">' + escapeHtml(meta.join(' · ')) + '</span></div>';
+  }).join('') : '<div style="font-size:12px;color:var(--text-muted);">Aucune séance enregistrée.</div>';
+
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📅 Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;">'
+      + _ckKpiC('Séances totales', (nbSeances == null ? '—' : escapeHtml(String(nbSeances))), 'cumul')
+      + _ckKpiC('Tonnage cumulé', escapeHtml(tonnageTxt), 'toutes séances')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px;">'
+      + _ckKpiC('Régularité', escapeHtml(streakTxt), 'semaines d’affilée')
+      + _ckKpiC('Poids', escapeHtml(poidsTxt), poidsSub)
+    + '</div>'
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Dernières séances</div>'
+    + dsHtml + '</div>';
+}
 function renderCockpit(data, prefix){
   var el = document.getElementById(prefix + '-cockpit');
   if (!el) return;
@@ -914,7 +976,8 @@ function renderCockpit(data, prefix){
   el.innerHTML = renderCockpitEtat(m)              // Étape 2 : bloc A — État
                + renderCockpitCharge(data)         // Étape 3 : bloc B — Charge
                + renderCockpitBienEtre(data)       // Étape 4 : bloc C — Bien-être
-               + renderCockpitPerformance(data);   // Étape 5 : bloc E — Performance
+               + renderCockpitPerformance(data)     // Étape 5 : bloc E — Performance
+               + renderCockpitHistorique(data);     // Étape 6 : bloc F — Historique
 }
 
 /* =============================================================================
