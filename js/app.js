@@ -1097,13 +1097,22 @@ function renderCockpit(data, prefix){
  *   • ON           → seuls les doublons INTÉGRAUX sont masqués (présentation).
  * Réversible (recharger sans COCKPIT_ON restaure tout), centralisé, sans aucune
  * suppression de code ni de fonction métier.
- * N'inclut QUE des doublons intégraux :
- *   - dash-kpis : RPE 7j + Tonnage 7j + Records 30j → déjà dans les blocs B et E.
- * Volontairement EXCLUS (porteurs d'info ABSENTE du cockpit → restent visibles) :
- *   - dash-recup / cd-recup : monotonie + charge accumulée (strain) / action « conseil » coach ;
- *   - dash-etat  / cd-etat  : score de forme /100 + point faible dominant.
- * L'onglet Progression et ses conteneurs ne sont JAMAIS listés ici. */
-const COCKPIT_DOUBLONS_IDS = ['dash-kpis'];
+ * N'inclut QUE des cartes ENTIÈREMENT couvertes par le cockpit :
+ *   - dash-kpis  : RPE 7j + Tonnage 7j + Records 30j → blocs B et E ;
+ *   - dash-recup : récup → bloc A ; monotonie + strain → bloc B (rapatriés) ;
+ *   - dash-etat  : 5 dims → bloc C ; score /100 + point faible → bloc C (rapatriés) ;
+ *   - cd-etat    : idem dash-etat côté coach.
+ * On masque la carte ET son en-tête de section (-sec / -card) pour ne pas laisser
+ * de titre orphelin.
+ * Volontairement CONSERVÉ (contient encore une ACTION absente du cockpit) :
+ *   - cd-recup : bouton « en faire un conseil » (le cockpit reste non interactif).
+ * L'onglet Progression, le Foot et la Prépa ne sont JAMAIS listés ici. */
+const COCKPIT_DOUBLONS_IDS = [
+  'dash-kpis',
+  'dash-recup-sec', 'dash-recup-card',
+  'dash-etat-sec', 'dash-etat-card',
+  'cd-etat-sec', 'cd-etat-card',
+];
 function appliquerMasquageCockpit(){
   if (!COCKPIT_ON) return;                       // OFF : aucun masquage → comportement inchangé
   COCKPIT_DOUBLONS_IDS.forEach(function(id){
@@ -3692,6 +3701,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderCoachSeances(data);
     chargerSeancesDetailCoach(a.athlete_id, data);
     renderACWR(data);
+    try { appliquerMasquageCockpit(); } catch (_) {}   // Étape 8 — masquage réversible des doublons coach (no-op si COCKPIT_ON=false)
   } catch(e) {
     document.getElementById('cd-recup').innerHTML = '<div class="error-msg">Erreur de chargement</div>';
   }

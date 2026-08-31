@@ -66,12 +66,15 @@ function runCockpit(flag, data, prefix) {
 function runMasquage(flag) {
   const mk = (disp) => ({ style: { display: disp } });
   const store = {
-    'dash-kpis':  mk('grid'),   // doublon intégral (B+E)
-    'dash-recup': mk(''),       // info unique (monotonie/strain) → doit rester
-    'dash-etat':  mk(''),       // info unique (score /100) → doit rester
-    'cd-recup':   mk(''),
-    'cd-etat':    mk(''),
-    'tab-historique': mk(''),   // onglet Progression → jamais touché
+    'dash-kpis':       mk('grid'),  // doublon B+E
+    'dash-recup-sec':  mk(''),      // récup (A) + monotonie/strain (B) → couvert
+    'dash-recup-card': mk(''),
+    'dash-etat-sec':   mk(''),      // 5 dims (C) + score/100 (C) → couvert
+    'dash-etat-card':  mk(''),
+    'cd-etat-sec':     mk(''),      // idem côté coach → couvert
+    'cd-etat-card':    mk(''),
+    'cd-recup':        mk(''),      // CONSERVÉ : action « en faire un conseil »
+    'tab-historique': mk(''),       // onglet Progression → jamais touché
     'hist-progression-content': mk(''),
     'cd-progression-content': mk(''),
   };
@@ -85,8 +88,10 @@ function runMasquage(flag) {
 check('OFF → cockpit conteneur vide', runCockpit(false, dataMuscu, 'dash') === '');
 const offMask = runMasquage(false);
 check('OFF → dash-kpis NON masqué (grid conservé)', offMask['dash-kpis'].style.display === 'grid');
-check('OFF → dash-recup NON masqué', offMask['dash-recup'].style.display === '');
-check('OFF → dash-etat NON masqué', offMask['dash-etat'].style.display === '');
+check('OFF → dash-recup NON masqué', offMask['dash-recup-card'].style.display === '');
+check('OFF → dash-etat NON masqué', offMask['dash-etat-card'].style.display === '');
+check('OFF → cd-etat NON masqué', offMask['cd-etat-card'].style.display === '');
+check('OFF → cd-recup NON masqué', offMask['cd-recup'].style.display === '');
 check('OFF → onglet Progression NON masqué', offMask['tab-historique'].style.display === '');
 
 // ── 2) ON : cockpit A→F visible ──────────────────────────────────────────────
@@ -99,21 +104,31 @@ check('ON → bloc D (Évolution)', /📈 Évolution/.test(htmlOn));
 check('ON → bloc E (Performance)', /🏋️ Performance/.test(htmlOn));
 check('ON → bloc F (Historique)', /📅 Historique/.test(htmlOn));
 
-// ── 3) ON : SEUL le doublon intégral masqué, cartes uniques conservées ───────
+// ── 3) ON : doublons entièrement couverts masqués ; cd-recup (action) conservé ─
 const onMask = runMasquage(true);
 check('ON → dash-kpis MASQUÉ (doublon B+E)', onMask['dash-kpis'].style.display === 'none');
-check('ON → dash-recup CONSERVÉ (monotonie/strain absents du cockpit)', onMask['dash-recup'].style.display !== 'none');
-check('ON → dash-etat CONSERVÉ (score /100 absent du cockpit)', onMask['dash-etat'].style.display !== 'none');
-check('ON → cd-recup CONSERVÉ (action conseil coach)', onMask['cd-recup'].style.display !== 'none');
-check('ON → cd-etat CONSERVÉ', onMask['cd-etat'].style.display !== 'none');
+check('ON → dash-recup MASQUÉ (carte)', onMask['dash-recup-card'].style.display === 'none');
+check('ON → dash-recup MASQUÉ (en-tête)', onMask['dash-recup-sec'].style.display === 'none');
+check('ON → dash-etat MASQUÉ (carte)', onMask['dash-etat-card'].style.display === 'none');
+check('ON → dash-etat MASQUÉ (en-tête)', onMask['dash-etat-sec'].style.display === 'none');
+check('ON → cd-etat MASQUÉ (carte)', onMask['cd-etat-card'].style.display === 'none');
+check('ON → cd-etat MASQUÉ (en-tête)', onMask['cd-etat-sec'].style.display === 'none');
+check('ON → cd-recup CONSERVÉ (action « en faire un conseil »)', onMask['cd-recup'].style.display !== 'none');
 check('ON → onglet Progression (tab-historique) CONSERVÉ', onMask['tab-historique'].style.display !== 'none');
 check('ON → hist-progression-content CONSERVÉ', onMask['hist-progression-content'].style.display !== 'none');
 check('ON → cd-progression-content CONSERVÉ', onMask['cd-progression-content'].style.display !== 'none');
+// L'action coach « en faire un conseil » existe toujours dans le source (non déplacée)
+check('action « en faire un conseil » toujours présente (repondreAlerte)', SRC.includes('repondreAlerte(') && SRC.includes('En faire un conseil'));
 
 // ── 4) PROTECTION statique — le mécanisme ne supprime rien, périmètre borné ──
 const idsSrc = extractDecl('COCKPIT_DOUBLONS_IDS');
-for (const interdit of ['recup', 'etat', 'tab-historique', 'progression', 'foot', 'prepa', 'heatmap', 'radar', 'match', 'contexte', 'analyse', 'alertes', 'cardio', 'objectif']) {
+// cd-recup (action conseil) et tous les périmètres protégés ne doivent JAMAIS être listés
+for (const interdit of ['cd-recup', 'tab-historique', 'progression', 'foot', 'prepa', 'heatmap', 'radar', 'match', 'contexte', 'analyse', 'alertes', 'cardio', 'objectif', 'prepa-cockpit']) {
   check('liste masquage n\'inclut pas « ' + interdit + ' »', !idsSrc.includes(interdit));
+}
+// et inclut bien les cartes désormais couvertes (carte + en-tête)
+for (const attendu of ['dash-kpis', 'dash-recup-sec', 'dash-recup-card', 'dash-etat-sec', 'dash-etat-card', 'cd-etat-sec', 'cd-etat-card']) {
+  check('liste masquage inclut « ' + attendu + ' »', idsSrc.includes(attendu));
 }
 const bodyMask = extractFn('appliquerMasquageCockpit');
 check('masquage : garde-fou OFF (if (!COCKPIT_ON) return)', /if\s*\(\s*!COCKPIT_ON\s*\)\s*return/.test(bodyMask));
@@ -132,6 +147,6 @@ for (const fn of ['function afficherProgressionExo(', 'function renderProg12Sema
 
 console.log('-'.repeat(66));
 console.log(ko === 0
-  ? `✅ Intégration cockpit — ${ok} vérifs (OFF inchangé · ON masque le seul doublon · Progression/Foot/Prépa intacts).`
+  ? `✅ Intégration cockpit — ${ok} vérifs (OFF inchangé · ON masque les doublons couverts · cd-recup + Progression/Foot/Prépa intacts).`
   : `❌ ${ko} écart(s) sur ${ok + ko}.`);
 if (ko > 0) process.exitCode = 1;
