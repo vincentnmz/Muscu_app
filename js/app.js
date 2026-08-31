@@ -966,6 +966,93 @@ function renderCockpitHistorique(data){
     + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Dernières séances</div>'
     + dsHtml + '</div>';
 }
+/* --- Bloc D — Évolution (Étape 7) : synthèse visuelle des tendances, 100 %
+ * présentation. Sparklines SVG inline (aucun canvas, aucun getElementById,
+ * aucune fonction de l'onglet Progression réutilisée). N'écrit que dans le
+ * conteneur cockpit.
+ *   • Bien-être : séries de bien_etre[] (les 2 vues) — direction NEUTRE (brut).
+ *   • Volume : historique.volume_par_jour agrégé par semaine (athlète ; coach
+ *     n'expose pas ce champ → état neutre).
+ *   • ACWR : DERNIÈRE valeur backend uniquement (dashboard.acwr + moteur.
+ *     acwr_fiable/_categorie). Jamais recalculé ; non fiable → « non
+ *     interprétable », aucune position/interprétation suggérée.
+ * Aucun verdict, seuil, score ni recalcul ACWR. */
+function _ckSpark(vals, w, h, stroke){
+  vals = (vals || []).filter(function(v){ return v != null && !isNaN(Number(v)); }).map(Number);
+  if (vals.length < 2) return '';
+  w = w || 116; h = h || 28;
+  var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), span = (mx - mn) || 1, n = vals.length;
+  var xy = function(v, i){ var x = (i / (n - 1)) * (w - 4) + 2; var y = h - 2 - ((v - mn) / span) * (h - 4); return [Math.round(x * 10) / 10, Math.round(y * 10) / 10]; };
+  var pts = vals.map(function(v, i){ var p = xy(v, i); return p[0] + ',' + p[1]; }).join(' ');
+  var lp = xy(vals[n - 1], n - 1);
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" preserveAspectRatio="none" style="display:block;overflow:visible;">'
+    + '<polyline points="' + pts + '" fill="none" stroke="' + (stroke || 'var(--accent)') + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>'
+    + '<circle cx="' + lp[0] + '" cy="' + lp[1] + '" r="2" fill="' + (stroke || 'var(--accent)') + '"/></svg>';
+}
+function _ckDir(vals){ // direction descriptive NEUTRE (dernier − premier), sans jugement bon/mauvais
+  var d = vals[vals.length - 1] - vals[0];
+  var a = d > 0 ? '↗' : d < 0 ? '↘' : '→';
+  return '<span style="color:var(--text-muted);font-size:12px;font-weight:800;">' + a + '</span>';
+}
+function _ckWeeklyVolume(vpj){ // agrège volume_par_jour (ISO) en sommes hebdo — binning présentation
+  var keys = Object.keys(vpj || {}).filter(function(k){ return vpj[k] != null; }).sort();
+  if (keys.length < 2) return [];
+  var t0 = Date.parse(keys[0]); if (isNaN(t0)) return [];
+  var buckets = {};
+  keys.forEach(function(k){ var d = Date.parse(k); if (isNaN(d)) return; var wk = Math.floor((d - t0) / (7 * 86400000)); buckets[wk] = (buckets[wk] || 0) + (Number(vpj[k]) || 0); });
+  return Object.keys(buckets).map(Number).sort(function(a, b){ return a - b; }).map(function(w){ return buckets[w]; });
+}
+function renderCockpitEvolution(data){
+  var m = data.moteur || {};
+  var dash = data.dashboard || {};
+  var hist = data.historique || {};
+
+  // --- 1) Bien-être : tendances descriptives (séries chronologiques) ---
+  var beArr = Array.isArray(data.bien_etre) ? data.bien_etre.slice().reverse().slice(-10) : [];
+  var beRows = WQ_DIMS.map(function(dim){
+    var serie = beArr.map(function(x){ return x[dim.key]; }).filter(function(v){ return v != null && v !== '' && !isNaN(Number(v)); }).map(Number);
+    if (serie.length < 2) return '';
+    return '<div style="display:grid;grid-template-columns:70px 1fr auto;gap:9px;align-items:center;margin-bottom:6px;">'
+      + '<span style="font-size:11px;color:var(--text-muted);">' + escapeHtml(dim.label) + '</span>'
+      + _ckSpark(serie)
+      + _ckDir(serie) + '</div>';
+  }).filter(Boolean).join('');
+  var beHtml = beRows || '<div style="font-size:12px;color:var(--text-muted);">Pas assez de questionnaires pour une tendance.</div>';
+
+  // --- 2) Volume : évolution hebdomadaire (athlète ; coach n'expose pas volume_par_jour) ---
+  var wk = _ckWeeklyVolume(hist.volume_par_jour);
+  var volHtml = wk.length >= 2
+    ? '<div style="display:grid;grid-template-columns:70px 1fr auto;gap:9px;align-items:center;">'
+        + '<span style="font-size:11px;color:var(--text-muted);">Tonnage</span>'
+        + _ckSpark(wk) + _ckDir(wk) + '</div>'
+        + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">' + wk.length + ' semaines glissantes</div>'
+    : '<div style="font-size:12px;color:var(--text-muted);">Évolution du volume indisponible dans cette vue.</div>';
+
+  // --- 3) ACWR : DERNIÈRE valeur backend uniquement (jamais recalculée) ---
+  var acwrHtml;
+  if (m.acwr_fiable !== true) {
+    acwrHtml = '<div style="font-size:12.5px;font-weight:700;color:var(--text-muted);">ACWR non interprétable</div>'
+      + '<div style="font-size:10.5px;color:var(--text-muted);">' + escapeHtml(String(m.acwr_note || 'Données insuffisantes — aucune interprétation possible.')) + '</div>';
+  } else {
+    var catMap = { normal:{l:'Zone optimale',c:'#00c96e'}, vigilance:{l:'Vigilance',c:'#f5a623'}, eleve:{l:'Charge élevée',c:'#e5484d'}, sous_charge:{l:'Sous-charge',c:'#00c9ff'} };
+    var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)' };
+    var ratio = (dash.acwr != null) ? Number(dash.acwr) : null;
+    var pos = ratio == null ? null : Math.max(0, Math.min(100, (ratio - 0.5) / (1.7 - 0.5) * 100));
+    acwrHtml = '<div style="display:flex;align-items:center;gap:12px;">'
+      + '<div style="font-size:24px;font-weight:800;color:' + cat.c + ';line-height:1;">' + (ratio != null ? ratio.toFixed(2) : '—') + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:' + cat.c + ';">' + escapeHtml(cat.l) + '</div></div>'
+      + (pos == null ? '' : '<div style="position:relative;height:6px;border-radius:5px;background:var(--surface2);margin-top:9px;"><span style="position:absolute;top:-2px;left:' + (Math.round(pos * 10) / 10) + '%;width:3px;height:10px;border-radius:2px;background:' + cat.c + ';transform:translateX(-50%);"></span></div>')
+      + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">dernière valeur transmise par le moteur</div>';
+  }
+
+  return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">📈 Évolution <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· tendances descriptives</span></div>'
+    + '<div style="font-size:10px;color:var(--text-subtle);margin-bottom:12px;">Détail exercice par exercice → onglet Progression.</div>'
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Bien-être</div>' + beHtml
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:12px 0 7px;">Volume</div>' + volHtml
+    + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:12px 0 7px;">ACWR</div>' + acwrHtml
+    + '</div>';
+}
 function renderCockpit(data, prefix){
   var el = document.getElementById(prefix + '-cockpit');
   if (!el) return;
@@ -977,6 +1064,7 @@ function renderCockpit(data, prefix){
                + renderCockpitCharge(data)         // Étape 3 : bloc B — Charge
                + renderCockpitBienEtre(data)       // Étape 4 : bloc C — Bien-être
                + renderCockpitPerformance(data)     // Étape 5 : bloc E — Performance
+               + renderCockpitEvolution(data)       // Étape 7 : bloc D — Évolution
                + renderCockpitHistorique(data);     // Étape 6 : bloc F — Historique
 }
 
