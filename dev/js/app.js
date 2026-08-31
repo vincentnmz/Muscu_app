@@ -705,8 +705,26 @@ const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth
  *   false = affichage actuel strictement inchangé (défaut).
  *   true  = rendu du cockpit (renderCockpit) + masquage des anciennes cartes.
  * Les anciennes cartes sont CONSERVÉES : bascule/retour immédiat, aucun bloc supprimé.
+ *
+ * Depuis l'Étape 8 : la valeur est une PRÉFÉRENCE UTILISATEUR persistée dans
+ * localStorage ('nv_cockpit_on'), activable via un interrupteur dans les
+ * Réglages. Défaut = false (clé absente) → aucune bascule = comportement inchangé.
+ * Réglage local à l'appareil, sans backend.
  * ========================================================================== */
-const COCKPIT_ON = false;
+let COCKPIT_ON = false;
+try { COCKPIT_ON = (localStorage.getItem('nv_cockpit_on') === '1'); } catch (e) {}
+function estCockpitActif(){ try { return localStorage.getItem('nv_cockpit_on') === '1'; } catch (e) { return false; } }
+function basculerCockpit(){
+  var v = !estCockpitActif();
+  try { localStorage.setItem('nv_cockpit_on', v ? '1' : '0'); } catch (e) {}
+  location.reload();   // recharge : cockpit + masquage des doublons réévalués proprement
+}
+function majUiCockpitPref(){
+  var on = estCockpitActif();
+  ['reglages-cockpit-label', 'reglages-cockpit-label-coach'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.textContent = on ? 'Activé' : 'Désactivé';
+  });
+}
 
 /* =============================================================================
  * STATUT_VISUEL — mapping PRÉSENTATION du niveau d'état Core (Phase 3B).
@@ -1581,6 +1599,7 @@ function ouvrirReglagesCoach() {
     }).join('');
     sel.value = (coach && coach.sport) ? coach.sport : 'muscu';
   }
+  try { majUiCockpitPref(); } catch (_) {}
   if (overlay) { overlay.style.display = 'block'; }
   if (drawer)  { drawer.style.display = 'block'; }
 }
@@ -5724,6 +5743,7 @@ function switchTab(tab) {
     try { majUiPause(); } catch (_) {}
     try { majUiPush(); } catch (_) {}
     try { majUiGoogleHealth(); } catch (_) {}
+    try { majUiCockpitPref(); } catch (_) {}
   }
 
 }
