@@ -29,7 +29,7 @@ function extractDecl(name) {
   return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', '_ckWbColor', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpitHistorique', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'renderCockpitEvolution', 'renderCockpit'];
+const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', '_ckWbColor', 'wqPositif', '_ckFormeQuestionnaire', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpitHistorique', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'renderCockpitEvolution', 'renderCockpit'];
 const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
@@ -58,7 +58,7 @@ const dataMuscu = {
   moteur: { disponibilite: { niveau: 'Vigilance' }, recup: 'Moyen', surcharge: 'Faible', risque_blessure: 'Modéré', confiance: 'haute', contexte_tag: null, reco: 'Vigilance — surveiller les sensations.', acwr_fiable: true, acwr_categorie: 'normal' },
   dashboard: { acwr: 1.12, tonnage: { j7: 12.4, evol_pct: 8, j7_prec: 11.5 }, regularite: { seances_j7: 4, seances_prevues: 4 }, streak: { semaines: 5 } },
   comparison: { j28_vs_j28prec: { tonnage: { j28: 46.2, evol_pct: 4 } } },
-  recent: { j7: { seances: 4, rpe_moyen: 7.8 } },
+  recent: { j7: { seances: 4, rpe_moyen: 7.8, monotonie: 1.4, strain: 933 } },
   bien_etre: [
     { date: '01/09', sommeil: 2, energie: 3, fatigue: 4, douleur: 2, zone: 'Genou droit', ressenti: 3, note: 'Nuit courte, genou tire.' },
     { date: '29/08', sommeil: 3, energie: 3, fatigue: 3, douleur: 1, ressenti: 4, note: '' },
@@ -95,6 +95,10 @@ check('B → catégorie ACWR (Zone optimale)', /Zone optimale/.test(html), 'pré
 check('B → tonnage 7j (12,4 t)', /12,4 t/.test(html), 'présent', 'absent');
 check('B → tonnage 28j (46,2 t)', /46,2 t/.test(html), 'présent', 'absent');
 check('B → RPE (7,8)', /7,8/.test(html), 'présent', 'absent');
+// Rapatriement (Étape 8 bis) : variabilité (monotonie) + charge cumulée (strain) — valeurs brutes
+check('B → Variabilité 7 j (monotonie 1,40 via recent.j7)', /Variabilité 7 j/.test(html) && /1,40/.test(html), 'présent', 'absent');
+check('B → Charge cumulée 7 j (strain 933 via recent.j7)', /Charge cumulée 7 j/.test(html) && /933/.test(html), 'présent', 'absent');
+check('B → monotonie absente → « — » (rien inventé)', /Variabilité 7 j/.test(run(true, { sport: 'muscu', moteur: dataMuscu.moteur, dashboard: dataMuscu.dashboard, recent: { j7: {} } }, 'dash')), 'présent', 'absent');
 // acwr_fiable=false → non interprétable, ratio JAMAIS présenté comme verdict
 const htmlNI = run(true, dataNonInterp, 'dash');
 check('B non-interp → "ACWR non interprétable"', /ACWR non interprétable/.test(htmlNI), 'présent', 'absent');
@@ -107,6 +111,10 @@ check('C → sommeil=2 libellé « Mauvais » (WQ_ANSWERS)', /Mauvais/.test(html
 check('C → fatigue=4 libellé « Importante »', /Importante/.test(html), 'présent', 'absent');
 check('C → zone affichée (douleur≠1 + zone)', /Genou droit/.test(html), 'présent', 'absent');
 check('C → note affichée', /Nuit courte/.test(html), 'présent', 'absent');
+// Rapatriement (Étape 8 bis) : synthèse questionnaire (score /100 + point faible) — descriptif, pas un verdict
+check('C → synthèse questionnaire score /100 (45/100)', /45\/100/.test(html), 'présent', 'absent');
+check('C → point faible dominant (Sommeil)', /point faible : <b[^>]*>Sommeil/.test(html), 'présent', 'absent');
+check('C → synthèse absente si aucune dimension (rien inventé)', !/\/100/.test(run(true, { sport: 'muscu', moteur: dataMuscu.moteur, bien_etre: [{ note: 'rien' }] }, 'dash')), 'absent', 'PRÉSENT');
 // Données absentes → gestion propre, rien inventé
 const htmlNoBE = run(true, { sport: 'muscu', moteur: dataMuscu.moteur }, 'dash');
 check('C sans bien_etre → « Aucun questionnaire récent »', /Aucun questionnaire récent/.test(htmlNoBE), 'présent', 'absent');
