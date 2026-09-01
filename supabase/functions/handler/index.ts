@@ -773,6 +773,20 @@ function aggGpsFenetreFoot(seances: Record<string, any>, now: Date, jours: numbe
   return gps
 }
 
+// Séances foot : sépare le VRAI total (toutes les séances non-renfo enregistrées)
+// de la LISTE récente (10 plus récentes, triées par date). total ≠ liste.length.
+// Iso-comportement : reproduit exactement l'ancien listeSeances (tri + slice 10).
+function seancesFoot(seances: Record<string, any>, renfoIds: Set<string>) {
+  const nonRenfo = Object.entries(seances).filter(([sid]) => !renfoIds.has(sid)).map(([, s]) => s)
+  const total = nonRenfo.length
+  const liste = nonRenfo.sort((a: any, b: any) => b.dateIso.localeCompare(a.dateIso)).slice(0, 10).map((s: any) => ({
+    date: s.date, type: s.cles['type_seance'] || '—', duree: s.cles['duree'] || null,
+    rpe: s.cles['rpe'] || null, charge: s.cles['charge_interne'] || null,
+    distance_hi: s.cles['distance_hi'] || null, sprints: s.cles['sprints'] || null,
+  }))
+  return { total, liste }
+}
+
 // ── GET handlers ──────────────────────────────────────────────────────────────
 async function handleLogin(params: URLSearchParams): Promise<Response> {
   const login = params.get('login')?.trim()
@@ -1886,14 +1900,8 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     }
     for (const wk in bienetreI) bienetre[wk] = bienetreI[wk]
 
-    const listeSeances = Object.entries(seances)
-      .filter(([sid]) => !renfoIds.has(sid))   // exclut les séances de renfo (affichées dans leur propre bloc)
-      .map(([, s]) => s)
-      .sort((a, b) => b.dateIso.localeCompare(a.dateIso)).slice(0, 10).map(s => ({
-        date: s.date, type: s.cles['type_seance'] || '—', duree: s.cles['duree'] || null,
-        rpe: s.cles['rpe'] || null, charge: s.cles['charge_interne'] || null,
-        distance_hi: s.cles['distance_hi'] || null, sprints: s.cles['sprints'] || null,
-      }))
+    // Vrai total (toutes séances non-renfo) + liste récente (10 max) — extrait PUR.
+    const { total: totalSeancesFoot, liste: listeSeances } = seancesFoot(seances, renfoIds)
 
     const gps = aggGpsFenetreFoot(seances, now, 7)   // extrait PUR (fenêtre 7 j)
 
@@ -1954,7 +1962,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
       charge_7j: Math.round(charge7), acwr,
       charge_hebdo: chargeHebdo,
       wellness, bienetre, gps, kpi_foot: kpiFoot,
-      seances: listeSeances, renfo_seances,
+      seances: listeSeances, total_seances: totalSeancesFoot, renfo_seances,
       matchs, match_stats: matchStats, match_agg: matchAgg, heatmap: heatArr,
       objectifs, blessures, moteur, contexte,
     })

@@ -55,6 +55,7 @@ const dataFoot = {
   match_agg: { xg: { total: 2.4, moy: 0.5 }, xa: { total: 1.1, moy: 0.2 } },
   gps: { distance: 8500, distance_hi: 850, sprint_distance: 300, sprints: 24, accel: 40, decel: 38, vmax: 31.2, charge_gps: 0, n: 3 },
   seances: [{ date: '20/08/2026', type: 'match', duree: 90, rpe: 8, charge: 720 }, { date: '18/08/2026', type: 'entrainement', duree: 75, rpe: 6, charge: 450 }, { date: '16/08/2026', type: 'entrainement', duree: 60, rpe: 5, charge: 300 }],
+  total_seances: 12,
   matchs: [{ date: '20/08/2026', note: 7, buts: 1, passes_d: 1, xg: 0.6, xa: 0.3, minutes: 90 }],
   blessures: [{ date: '01/07/2026', type: 'Entorse', localisation: 'Cheville', gravite: 'moyenne', statut: 'gueri' }, { date: '15/08/2026', type: 'Contracture', localisation: 'Ischio', statut: 'indispo', retour_terrain: '25/08/2026' }],
 };
@@ -124,7 +125,10 @@ check('E GPS seul → distance HI affichée', /Distance HI/.test(htmlGpsOnly));
 check('E GPS seul → pas de « Matchs »', !/Matchs/.test(htmlGpsOnly));
 // Bloc F — Historique foot (séances / matchs / blessures)
 check('F → carte Historique', /📅 Historique/.test(html));
-check('F → séances récentes = 3', /Séances récentes/.test(html) && /3/.test(html));
+check('F → VRAI total séances = 12 (total_seances, pas la liste de 3)', /Séances \(total\)/.test(html) && /12/.test(html) && /enregistrées/.test(html));
+// fallback : total_seances absent → longueur de la liste (ancien payload)
+const htmlNoTotal = run(true, { moteur: dataFoot.moteur, match_stats: dataFoot.match_stats, seances: dataFoot.seances });
+check('F → fallback total = liste (3) si total_seances absent', /Séances \(total\)/.test(htmlNoTotal) && /3<\/div>|>3</.test(htmlNoTotal));
 check('F → matchs saison = 5', /Matchs saison/.test(html));
 check('F → temps de jeu (minutes)', /Temps de jeu/.test(html) && /410/.test(html));
 check('F → blessures actives = 1 (indispo seulement)', /Blessures actives/.test(html));
