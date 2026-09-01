@@ -787,6 +787,70 @@ function seancesFoot(seances: Record<string, any>, renfoIds: Set<string>) {
   return { total, liste }
 }
 
+// ── Agrégats ÉQUIPE / PRÉPA (extraits de handleGetSuiviEquipe — ISO-COMPORTEMENT) ──
+// Sens des tests physiques : +1 = « plus haut = mieux », -1 = « plus bas = mieux ».
+const SENS_TESTS: Record<string, number> = { vma: 1, sprint_10m: -1, sprint_30m: -1, cmj: 1, squat_jump: 1, yoyo_test: 1, agilite_5_10_5: -1, force_iso: 1, force_max: 1, '1rm': 1, test_vitesse: 1 }
+
+// Score bien-être d'un joueur = moyenne de [sommeil, 6−fatigue, 6−douleur] (dims
+// renseignées). null si aucune dimension. sig = sortie de _aggSignaux.
+function beScoreJoueur(sig: any): number | null {
+  const beComp: number[] = []
+  if (sig.sommeil != null) beComp.push(sig.sommeil)
+  if (sig.fatigue != null) beComp.push(6 - sig.fatigue)
+  if (sig.douleur != null) beComp.push(6 - sig.douleur)
+  return beComp.length ? beComp.reduce((x, y) => x + y, 0) / beComp.length : null
+}
+
+// Progression d'un athlète depuis ses tests : par clé, signe de (dernier − premier)
+// × sens. up>down → progression ; down>up → regression ; sinon stable.
+// tset = { cle: [{ d: timestamp, v: valeur }] } ; sens = SENS_TESTS.
+function progressionAthlete(tset: any, sens: Record<string, number>): string {
+  if (!tset) return 'stable'
+  let up = 0, down = 0
+  for (const c in tset) {
+    const pts = tset[c].slice().sort((a, b) => a.d - b.d)
+    if (pts.length < 2) continue
+    const diff = (pts[pts.length - 1].v - pts[0].v) * (sens[c] || 1)
+    if (diff > 0) up++; else if (diff < 0) down++
+  }
+  return up > down ? 'progression' : (down > up ? 'regression' : 'stable')
+}
+
+// Charge hebdomadaire d'équipe : Σ charge_interne par semaine ISO (lundi), 8
+// dernières semaines, ordre chronologique. rows = lignes charge_interne.
+function chargeHebdoEquipe(rows: any[], athIds: Set<string>): any[] {
+  const semCharges: Record<string, number> = {}
+  for (const row of rows || []) {
+    if (!athIds.has(String(row.athlete_id))) continue
+    const d = parseFR(row.date); if (!d) continue
+    const lundiStr = fmtFR(fmtYMD(getLundi(d)))
+    semCharges[lundiStr] = (semCharges[lundiStr] || 0) + (Number(row.valeur) || 0)
+  }
+  const semKeys = Object.keys(semCharges).sort((a, b) => (parseFR(a)?.getTime() || 0) - (parseFR(b)?.getTime() || 0))
+  return semKeys.slice(-8).map(sem => ({ sem, charge: Math.round(semCharges[sem]) }))
+}
+
+// Agrégats d'équipe à partir des items par joueur { charge7, fatigue, beScore,
+// progression } : charge cumulée (arrondie), fatigue moyenne, bien-être moyen
+// (arrondis 0,1 ; null si aucune valeur), et comptes progression/régression.
+function agregerEquipe(items: any[]) {
+  const moy = (arr: number[]) => arr && arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null
+  let chargeEquipe = 0, nbProg = 0, nbReg = 0
+  const fatigueArr: number[] = [], beArr: number[] = []
+  for (const it of items) {
+    chargeEquipe += it.charge7 || 0
+    if (it.fatigue != null) fatigueArr.push(it.fatigue)
+    if (it.beScore != null) beArr.push(it.beScore)
+    if (it.progression === 'progression') nbProg++; else if (it.progression === 'regression') nbReg++
+  }
+  return {
+    charge_equipe: Math.round(chargeEquipe),
+    fatigue_moyenne: fatigueArr.length ? Math.round((moy(fatigueArr) || 0) * 10) / 10 : null,
+    bienetre_moyen: beArr.length ? Math.round((moy(beArr) || 0) * 10) / 10 : null,
+    en_progression: nbProg, en_regression: nbReg,
+  }
+}
+
 // ── GET handlers ──────────────────────────────────────────────────────────────
 async function handleLogin(params: URLSearchParams): Promise<Response> {
   const login = params.get('login')?.trim()
@@ -1642,7 +1706,6 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
     }
 
     // progression via tests (premier vs dernier point, selon le sens)
-    const SENS: Record<string, number> = { vma: 1, sprint_10m: -1, sprint_30m: -1, cmj: 1, squat_jump: 1, yoyo_test: 1, agilite_5_10_5: -1, force_iso: 1, force_max: 1, '1rm': 1, test_vitesse: 1 }
     const testsAth: Record<string, Record<string, { d: number; v: number }[]>> = {}
     for (const r of testAll || []) {
       const id = String(r.athlete_id)
@@ -1651,22 +1714,13 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       ;(testsAth[id] ||= {})
       ;(testsAth[id][String(r.cle)] ||= []).push({ d: dt.getTime(), v: Number(r.valeur) })
     }
-    const progressionAth = (id: string) => {
-      const tset = testsAth[id]; if (!tset) return 'stable'
-      let up = 0, down = 0
-      for (const c in tset) {
-        const pts = tset[c].sort((a, b) => a.d - b.d)
-        if (pts.length < 2) continue
-        const diff = (pts[pts.length - 1].v - pts[0].v) * (SENS[c] || 1)
-        if (diff > 0) up++; else if (diff < 0) down++
-      }
-      return up > down ? 'progression' : (down > up ? 'regression' : 'stable')
-    }
+    const progressionAth = (id: string) => progressionAthlete(testsAth[id], SENS_TESTS)   // extrait PUR
 
     const resultats: any[] = []
     const nb: Record<string, number> = { vert: 0, orange: 0, rouge: 0 }
-    let chargeEquipe = 0, nbProg = 0, nbReg = 0, nbIndispo = 0
-    const fatigueEquipeArr: number[] = [], beEquipeArr: number[] = [], blesses: any[] = []
+    let nbIndispo = 0
+    const blesses: any[] = []
+    const equipeItems: { charge7: number; fatigue: number | null; beScore: number | null; progression: string }[] = []
 
     for (const j of joueurs) {
       const a = parAth[j.athlete_id] || { charge7: 0, charge28: 0, seances7: new Set<string>(), derniere: null, premiere: null, chargeParJour: {} }
@@ -1703,17 +1757,9 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       const statut = etat.statut
       const alertes = etat.alertes
       nb[statut]++
-      chargeEquipe += a.charge7
-      if (sig.fatigue != null) fatigueEquipeArr.push(sig.fatigue)
-
       const prog = progressionAth(j.athlete_id)
-      const beComp: number[] = []
-      if (sig.sommeil != null) beComp.push(sig.sommeil)
-      if (sig.fatigue != null) beComp.push(6 - sig.fatigue)
-      if (sig.douleur != null) beComp.push(6 - sig.douleur)
-      const beScore = beComp.length ? beComp.reduce((x, y) => x + y, 0) / beComp.length : null
-      if (beScore != null) beEquipeArr.push(beScore)
-      if (prog === 'progression') nbProg++; else if (prog === 'regression') nbReg++
+      const beScore = beScoreJoueur(sig)
+      equipeItems.push({ charge7: a.charge7, fatigue: sig.fatigue, beScore, progression: prog })
       if (inj) { blesses.push({ athlete_id: j.athlete_id, nom: j.nom, poste: j.poste, type: inj.type, localisation: inj.localisation, statut: inj.statut, retour_terrain: inj.retour_terrain, retour_competition: inj.retour_competition }); if (inj.statut === 'indispo') nbIndispo++ }
 
       resultats.push({
@@ -1736,16 +1782,9 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
     const rang: Record<string, number> = { rouge: 0, orange: 1, vert: 2 }
     resultats.sort((x, y) => rang[x.statut] - rang[y.statut] || (y.charge_7j - x.charge_7j))
 
-    // charge hebdo équipe (8 dernières semaines)
-    const semCharges: Record<string, number> = {}
-    for (const row of indAll || []) {
-      if (!athIds.has(String(row.athlete_id))) continue
-      const d = parseFR(row.date); if (!d) continue
-      const lundiStr = fmtFR(fmtYMD(getLundi(d)))
-      semCharges[lundiStr] = (semCharges[lundiStr] || 0) + (Number(row.valeur) || 0)
-    }
-    const semKeys = Object.keys(semCharges).sort((a, b) => (parseFR(a)?.getTime() || 0) - (parseFR(b)?.getTime() || 0))
-    const chargeHebdo = semKeys.slice(-8).map(sem => ({ sem, charge: Math.round(semCharges[sem]) }))
+    // Agrégats d'équipe + charge hebdo (8 sem.) — extraits PURS.
+    const eqAgg = agregerEquipe(equipeItems)
+    const chargeHebdo = chargeHebdoEquipe(indAll || [], athIds)
 
     return jsonResp({
       joueurs: resultats,
@@ -1753,10 +1792,10 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
         total: joueurs.length,
         vert: nb.vert, orange: nb.orange, rouge: nb.rouge,
         indispo: nbIndispo,
-        charge_equipe: Math.round(chargeEquipe),
-        fatigue_moyenne: fatigueEquipeArr.length ? Math.round((moy(fatigueEquipeArr) || 0) * 10) / 10 : null,
-        bienetre_moyen: beEquipeArr.length ? Math.round((moy(beEquipeArr) || 0) * 10) / 10 : null,
-        en_progression: nbProg, en_regression: nbReg,
+        charge_equipe: eqAgg.charge_equipe,
+        fatigue_moyenne: eqAgg.fatigue_moyenne,
+        bienetre_moyen: eqAgg.bienetre_moyen,
+        en_progression: eqAgg.en_progression, en_regression: eqAgg.en_regression,
       },
       blesses,
       charge_hebdo: chargeHebdo,
