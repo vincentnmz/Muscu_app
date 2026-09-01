@@ -1319,6 +1319,8 @@ function renderCockpitHistoriqueFoot(data){
   var bless = Array.isArray(data.blessures) ? data.blessures : [];
   var actives = bless.filter(function(b){ return b.statut === 'indispo' || b.statut === 'retour_progressif'; });
   var nbMatch = ms.nb || 0;
+  // VRAI total de séances (backend total_seances) — distinct de la liste plafonnée à 10.
+  var totalSeances = (data.total_seances != null) ? data.total_seances : seances.length;
 
   if (!seances.length && !nbMatch && !bless.length) {
     return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
@@ -1346,7 +1348,7 @@ function renderCockpitHistoriqueFoot(data){
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
     + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📅 Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;">'
-      + _ckKpi('Séances récentes', seances.length, 'affichées', null)
+      + _ckKpi('Séances (total)', totalSeances, 'enregistrées', null)
       + _ckKpi('Matchs saison', nbMatch, 'joués', null)
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px;">'
