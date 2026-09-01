@@ -706,6 +706,7 @@ function chargeFenetresFoot(rows: any[], now: Date) {
   const chargeParSem: Record<string, number> = {}, semLundi: Record<string, string> = {}
   let charge7 = 0, charge28 = 0
   let premiereCharge: string | null = null
+  let derniere: string | null = null   // date de charge la plus récente (accueil)
   for (const row of rows || []) {
     if (String(row.cle) !== 'charge_interne') continue
     const dIso = normDate(row.date); if (!dIso) continue
@@ -716,10 +717,11 @@ function chargeFenetresFoot(rows: any[], now: Date) {
     const lundiStr = fmtYMD(getLundi(dObj))
     if (!semLundi[w] || lundiStr < semLundi[w]) semLundi[w] = lundiStr
     if (!premiereCharge || dIso < premiereCharge) premiereCharge = dIso
+    if (!derniere || dIso > derniere) derniere = dIso
     if (dIso >= j28) { charge28 += val; if (val > 0) chargeParJour28[dIso] = (chargeParJour28[dIso] || 0) + val }
     if (dIso >= j7) { charge7 += val; chargeParJour[dIso] = (chargeParJour[dIso] || 0) + val }
   }
-  return { charge7, charge28, chargeParJour, chargeParJour28, premiereCharge, chargeParSem, semLundi }
+  return { charge7, charge28, chargeParJour, chargeParJour28, premiereCharge, derniere, chargeParSem, semLundi }
 }
 
 // Monotonie / strain (Foster) sur 7 jours glissants. sdD = 0 → monotonie null.
@@ -1592,19 +1594,15 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
     for (const rb of beAll || []) { const id = String(rb.athlete_id); if (athIds.has(id)) (beRawByAth[id] ||= []).push(rb) }
 
     // charge_interne par athlète (7j / 28j) + dernière + PREMIÈRE (historique) + jours actifs 7j
+    // Mutualisation (Étape 3) : MÊME helper que la fiche joueur (chargeFenetresFoot).
+    // On groupe les lignes charge_interne par athlète, puis on réutilise le helper.
+    // a.chargeParJour = série 28 j (val>0) → entrée ACWR ; seances7 = jours de charge 7 j.
+    const rowsByAth: Record<string, any[]> = {}
+    for (const row of indAll || []) { const id = String(row.athlete_id); if (athIds.has(id)) (rowsByAth[id] ||= []).push(row) }
     const parAth: Record<string, { charge7: number; charge28: number; seances7: Set<string>; derniere: string | null; premiere: string | null; chargeParJour: Record<string, number> }> = {}
-    const acc = (id: string) => (parAth[id] ||= { charge7: 0, charge28: 0, seances7: new Set(), derniere: null, premiere: null, chargeParJour: {} })
-    for (const row of indAll || []) {
-      const id = String(row.athlete_id)
-      if (!athIds.has(id)) continue
-      const dIso = normDate(row.date)
-      if (!dIso) continue
-      const val = Number(row.valeur) || 0
-      const a = acc(id)
-      if (!a.derniere || dIso > a.derniere) a.derniere = dIso
-      if (!a.premiere || dIso < a.premiere) a.premiere = dIso   // pour le garde-fou ACWR (historique)
-      if (dIso >= j28) { a.charge28 += val; if (val > 0) a.chargeParJour[dIso] = (a.chargeParJour[dIso] || 0) + val }  // série 28 j → chaîne ACWR centrale
-      if (dIso >= j7) { a.charge7 += val; a.seances7.add(dIso) }
+    for (const id in rowsByAth) {
+      const c = chargeFenetresFoot(rowsByAth[id], now)
+      parAth[id] = { charge7: c.charge7, charge28: c.charge28, seances7: new Set(Object.keys(c.chargeParJour)), derniere: c.derniere, premiere: c.premiereCharge, chargeParJour: c.chargeParJour28 }
     }
 
     // bien-être 7j par athlète

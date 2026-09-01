@@ -55,12 +55,19 @@ eq('J-8 exclu des 7 j (charge7 ne contient pas 400)', chF.charge7, 600);
 eq('chargeParJour = 3 jours (7 j)', Object.keys(chF.chargeParJour).length, 3);
 eq('chargeParJour28 = 5 jours (28 j, val>0)', Object.keys(chF.chargeParJour28).length, 5);
 eq('premiereCharge = 2026-08-05 (plus ancienne)', chF.premiereCharge, '2026-08-05');
+eq('derniere = 2026-08-19 (charge la plus récente, pour l\'accueil)', chF.derniere, '2026-08-19');
 check('ligne non-charge (sommeil) ignorée', !Object.keys(chF.chargeParJour).includes('2026-08-19') || chF.charge7 === 600, '600', chF.charge7);
 // aucune donnée
 const chVide = chargeFenetresFoot([], NOW);
 eq('charge vide → charge7 0', chVide.charge7, 0);
 eq('charge vide → charge28 0', chVide.charge28, 0);
 eq('charge vide → premiereCharge null', chVide.premiereCharge, null);
+eq('charge vide → derniere null', chVide.derniere, null);
+// une seule journée
+const ch1 = chargeFenetresFoot([{ cle: 'charge_interne', date: '2026-08-20', valeur: '150' }], NOW);
+eq('1 jour → charge7 150', ch1.charge7, 150);
+eq('1 jour → charge28 150', ch1.charge28, 150);
+eq('1 jour → premiere = derniere = 2026-08-20', ch1.premiereCharge + '|' + ch1.derniere, '2026-08-20|2026-08-20');
 
 // ── monotonieStrainFoot — Foster 7 j glissants ───────────────────────────────
 // charges 500 les jours J, J-3, J-6 (dans la fenêtre [now-6..now]) → loads [500,0,0,500,0,0,500]
@@ -146,6 +153,21 @@ const acc = accueilCharge(rowsCharge.filter(r => r.cle === 'charge_interne'), NO
 eq('cohérence charge7 fiche === accueil', chF.charge7, acc.charge7);
 eq('cohérence charge28 fiche === accueil', chF.charge28, acc.charge28);
 eq('cohérence chargeParJour28 (entrée ACWR) identique', JSON.stringify(chF.chargeParJour28), JSON.stringify(acc.chargeParJour28));
+
+// Multi-athlètes : l'accueil groupe par athlète puis appelle le MÊME helper.
+// On prouve l'isolation (la charge de B ne fuit pas chez A).
+const rowsMulti = [
+  { athlete_id: 'A', cle: 'charge_interne', date: '2026-08-19', valeur: '100' },
+  { athlete_id: 'A', cle: 'charge_interne', date: '2026-08-17', valeur: '200' },
+  { athlete_id: 'B', cle: 'charge_interne', date: '2026-08-19', valeur: '999' },
+];
+const byAth = {};
+for (const r of rowsMulti) (byAth[r.athlete_id] ||= []).push(r);
+const cA = chargeFenetresFoot(byAth['A'], NOW), cB = chargeFenetresFoot(byAth['B'], NOW);
+eq('multi-athlètes : A charge7 = 300 (pas de fuite de B)', cA.charge7, 300);
+eq('multi-athlètes : B charge7 = 999 (isolé)', cB.charge7, 999);
+eq('multi-athlètes : A et B ont des séries ACWR distinctes',
+  JSON.stringify(cA.chargeParJour28) === JSON.stringify(cB.chargeParJour28), false);
 
 console.log('-'.repeat(66));
 console.log(ko === 0
