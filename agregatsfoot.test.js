@@ -25,12 +25,12 @@ function extractFn(name) {
 }
 
 const FN = ['fmtYMD', 'minus', 'parseFR', 'fmtFR', 'normDate', 'isoWeek', 'getLundi',
-  'chargeFenetresFoot', 'monotonieStrainFoot', 'aggMatchsFoot', 'aggGpsFenetreFoot'];
+  'chargeFenetresFoot', 'monotonieStrainFoot', 'aggMatchsFoot', 'aggGpsFenetreFoot', 'seancesFoot'];
 const jsCode = stripTypeScriptTypes(FN.map(extractFn).join('\n\n'));
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext(jsCode + '\n' + FN.map(n => `this.${n}=${n};`).join(''), sandbox);
-const { normDate, fmtYMD, minus, chargeFenetresFoot, monotonieStrainFoot, aggMatchsFoot, aggGpsFenetreFoot } = sandbox;
+const { normDate, fmtYMD, minus, chargeFenetresFoot, monotonieStrainFoot, aggMatchsFoot, aggGpsFenetreFoot, seancesFoot } = sandbox;
 
 let ok = 0, ko = 0;
 const check = (n, cond, att, obt) => { if (cond) ok++; else { ko++; console.log('  ❌ ' + n + ' — attendu ' + att + ', obtenu ' + obt); } };
@@ -132,6 +132,37 @@ eq('GPS partiel : sprints présents = 10', gPart.sprints, 10);
 eq('GPS partiel : vmax absente → 0', gPart.vmax, 0);
 eq('aucune séance → n 0', aggGpsFenetreFoot({}, NOW, 7).n, 0);
 
+// ── seancesFoot — VRAI total vs LISTE plafonnée à 10 (Étape 4) ───────────────
+function makeSeances(n) {
+  const o = {};
+  for (let i = 0; i < n; i++) { const dd = String(i + 1).padStart(2, '0'); o['s' + i] = { dateIso: '2026-08-' + dd, date: dd + '/08/2026', cles: { type_seance: 'entrainement' } }; }
+  return o; // s0 = plus ancienne (01/08), s(n-1) = plus récente
+}
+const S0 = seancesFoot({}, new Set());
+eq('0 séance → total 0', S0.total, 0);
+eq('0 séance → liste vide', S0.liste.length, 0);
+const S1 = seancesFoot(makeSeances(1), new Set());
+eq('1 séance → total 1', S1.total, 1);
+eq('1 séance → liste 1', S1.liste.length, 1);
+const S10 = seancesFoot(makeSeances(10), new Set());
+eq('10 séances → total 10', S10.total, 10);
+eq('10 séances → liste 10', S10.liste.length, 10);
+const S11 = seancesFoot(makeSeances(11), new Set());
+eq('11 séances → total 11 (PAS 10)', S11.total, 11);
+eq('11 séances → liste plafonnée à 10', S11.liste.length, 10);
+const S15 = seancesFoot(makeSeances(15), new Set());
+eq('15 séances → total 15 (indépendant du slice)', S15.total, 15);
+eq('15 séances → liste 10', S15.liste.length, 10);
+eq('15 séances → liste[0] = plus récente (15/08/2026)', S15.liste[0].date, '15/08/2026');
+check('15 séances → les 10 affichées sont les plus récentes (01→05 exclues)',
+  !S15.liste.some(s => ['01/08/2026', '02/08/2026', '03/08/2026', '04/08/2026', '05/08/2026'].includes(s.date)), 'exclues', 'PRÉSENTES');
+// pas de fusion : 15 seance_id distincts → total = 15
+eq('pas de fusion par seance_id → total = nb d\'événements', seancesFoot(makeSeances(15), new Set()).total, 15);
+// renfo exclu du total ET de la liste
+const S5renfo = seancesFoot(makeSeances(5), new Set(['s0', 's1']));
+eq('renfo exclu → total 3 (5 − 2 renfo)', S5renfo.total, 3);
+eq('renfo exclu → liste 3', S5renfo.liste.length, 3);
+
 // ── Cohérence fiche ↔ accueil (getSuiviEquipe) sur la charge ─────────────────
 // getSuiviEquipe pré-filtre cle='charge_interne' (query) puis accumule charge7/28 +
 // chargeParJour28 (val>0) avec les MÊMES fenêtres. On reproduit ce calcul et on
@@ -171,6 +202,6 @@ eq('multi-athlètes : A et B ont des séries ACWR distinctes',
 
 console.log('-'.repeat(66));
 console.log(ko === 0
-  ? `✅ Agrégats foot — ${ok} vérifs de VALEUR (charge · monotonie/strain · matchs · GPS · cohérence fiche↔accueil).`
+  ? `✅ Agrégats foot — ${ok} vérifs de VALEUR (charge · monotonie/strain · matchs · GPS · séances total/liste · cohérence).`
   : `❌ ${ko} écart(s) sur ${ok + ko}.`);
 if (ko > 0) process.exitCode = 1;
