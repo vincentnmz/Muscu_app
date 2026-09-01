@@ -3058,15 +3058,57 @@ async function renderCockpitPrepa() {
 
   // ---- Hero « Briefing du jour » (composant partagé, même visuel que l'accueil coach muscu) ----
   const header = _briefingHero(eq, joueurs.length, labelJoueurs, coach ? coach.nom : 'Prépa');
-  // ---- Bandeau chiffres équipe (charge / fatigue / progression) ----
+  // Cockpit prépa = PRÉSENTATION des agrégats backend (getSuiviEquipe). Aucun
+  // recalcul métier ici : chaque valeur vient directement du payload `equipe`.
   const kpi = (n, lbl, col) => nvStat(n, lbl, { color:(col||''), wrapStyle:'flex:1' });
-  const statsCard = `
+
+  // ---- BLOC A — État de l'équipe (compteurs backend : equipe.total/vert/orange/rouge/indispo) ----
+  const etatCard = `
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de l'équipe</div></div>
     <div class="dash-card" style="padding:14px 16px;margin-bottom:14px;">
-      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
+        ${kpi(eq.total!=null ? eq.total : joueurs.length, labelJoueurs)}
+        ${kpi(`<span style="color:${COL.vert}">${eq.vert||0}</span>`, 'sous contrôle')}
+        ${kpi(`<span style="color:${COL.orange}">${eq.orange||0}</span>`, 'à surveiller')}
+        ${kpi(`<span style="color:${COL.rouge}">${eq.rouge||0}</span>`, 'à gérer')}
+      </div>
+      ${eq.indispo ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:10px;">🩹 ${eq.indispo} indisponible${eq.indispo>1?'s':''}</div>` : ''}
+    </div>`;
+
+  // ---- BLOC B — Charge de l'équipe (equipe.charge_equipe + charge_hebdo, aucun recalcul) ----
+  const hebdo = Array.isArray(data.charge_hebdo) ? data.charge_hebdo : [];
+  const hebdoVals = hebdo.map(w => Number(w.charge) || 0);
+  const spark = (hebdoVals.length >= 2 && typeof _ckSpark === 'function') ? _ckSpark(hebdoVals, 240, 40) : '';
+  const chargeCard = `
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Charge de l'équipe</div></div>
+    <div class="dash-card" style="padding:14px 16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:baseline;gap:8px;${spark?'margin-bottom:10px;':''}">
+        <div style="font-size:24px;font-weight:800;">${(eq.charge_equipe||0).toLocaleString('fr-FR')}</div>
+        <div style="font-size:11px;color:var(--text-muted);">UA · charge 7 j (cumul équipe)</div>
+      </div>
+      ${spark ? `<div style="overflow-x:auto;">${spark}</div><div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">${hebdo.length} semaines · charge hebdo (UA)</div>`
+        : (hebdo.length === 1 ? `<div style="font-size:11px;color:var(--text-muted);">Dernière semaine : ${hebdoVals[0].toLocaleString('fr-FR')} UA</div>` : '')}
+    </div>`;
+
+  // ---- BLOC C — Bien-être / récupération (equipe.fatigue_moyenne / bienetre_moyen) ----
+  const bienetreCard = `
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Bien-être de l'équipe</div></div>
+    <div class="dash-card" style="padding:14px 16px;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
         ${kpi(eq.fatigue_moyenne!=null ? eq.fatigue_moyenne+'/5' : '—', 'Fatigue moy.', eq.fatigue_moyenne!=null && eq.fatigue_moyenne>=4 ? COL.orange : '')}
         ${kpi(eq.bienetre_moyen!=null ? eq.bienetre_moyen+'/5' : '—', 'Bien-être moy.')}
-        ${kpi(`<span style="color:#22c55e">${eq.en_progression||0}</span> · <span style="color:#e5484d">${eq.en_regression||0}</span>`, 'Prog. · Régr.')}
       </div>
+    </div>`;
+
+  // ---- BLOC D — Progression (equipe.en_progression / en_regression) ----
+  const progressionCard = `
+    <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression de l'équipe</div></div>
+    <div class="dash-card" style="padding:14px 16px;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
+        ${kpi(`<span style="color:${COL.vert}">▲ ${eq.en_progression||0}</span>`, 'en progression')}
+        ${kpi(`<span style="color:${COL.rouge}">▼ ${eq.en_regression||0}</span>`, 'en régression')}
+      </div>
+      <div style="font-size:10px;color:var(--text-subtle);margin-top:8px;">Sur la base des tests physiques enregistrés.</div>
     </div>`;
 
   // À gérer aujourd'hui : joueurs rouges, raison + action prépa suggérée
@@ -3104,8 +3146,11 @@ async function renderCockpitPrepa() {
 
   cont.innerHTML = `
     ${header}
-    ${statsCard}
     ${prioHtml}
+    ${etatCard}
+    ${chargeCard}
+    ${bienetreCard}
+    ${progressionCard}
     <div class="v2-sec"><div class="st">Effectif</div></div>
     ${filtresHtml}
     <div id="cockpit-effectif"></div>`;
