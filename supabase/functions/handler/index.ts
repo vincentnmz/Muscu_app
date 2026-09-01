@@ -691,6 +691,86 @@ function buildVolumeSemaineParMuscle(perfs: any[], now: Date): any[] {
   return Object.entries(parMuscle).map(([muscle, faites]) => ({ muscle, faites }))
 }
 
+// ── Agrégats FOOT (extraits de handleGetSuiviJoueur — ISO-COMPORTEMENT) ──────────
+// Fonctions PURES pour rendre les calculs foot testables (traçabilité). Elles
+// reproduisent EXACTEMENT la logique inline précédente (fenêtres, arrondis,
+// filtres, valeurs par défaut). Aucune amélioration de formule ici.
+
+// Fenêtres de charge interne (UA). charge7/28 = Σ sur dIso ≥ now-7 / now-28 ;
+// chargeParJour (7 j, toutes valeurs) ; chargeParJour28 (28 j, valeurs > 0 →
+// chaîne ACWR) ; premiereCharge = plus ancienne date de charge ; chargeParSem/
+// semLundi (semaine ISO, pour la charge hebdo).
+function chargeFenetresFoot(rows: any[], now: Date) {
+  const j7 = fmtYMD(minus(now, 7)), j28 = fmtYMD(minus(now, 28))
+  const chargeParJour: Record<string, number> = {}, chargeParJour28: Record<string, number> = {}
+  const chargeParSem: Record<string, number> = {}, semLundi: Record<string, string> = {}
+  let charge7 = 0, charge28 = 0
+  let premiereCharge: string | null = null
+  for (const row of rows || []) {
+    if (String(row.cle) !== 'charge_interne') continue
+    const dIso = normDate(row.date); if (!dIso) continue
+    const val = Number(row.valeur) || 0
+    const dObj = parseFR(dIso)!
+    const w = isoWeek(dObj)
+    chargeParSem[w] = (chargeParSem[w] || 0) + val
+    const lundiStr = fmtYMD(getLundi(dObj))
+    if (!semLundi[w] || lundiStr < semLundi[w]) semLundi[w] = lundiStr
+    if (!premiereCharge || dIso < premiereCharge) premiereCharge = dIso
+    if (dIso >= j28) { charge28 += val; if (val > 0) chargeParJour28[dIso] = (chargeParJour28[dIso] || 0) + val }
+    if (dIso >= j7) { charge7 += val; chargeParJour[dIso] = (chargeParJour[dIso] || 0) + val }
+  }
+  return { charge7, charge28, chargeParJour, chargeParJour28, premiereCharge, chargeParSem, semLundi }
+}
+
+// Monotonie / strain (Foster) sur 7 jours glissants. sdD = 0 → monotonie null.
+function monotonieStrainFoot(chargeParJour: Record<string, number>, charge7: number, now: Date) {
+  const days7: number[] = []
+  for (let dd = 0; dd < 7; dd++) days7.push(chargeParJour[fmtYMD(minus(now, dd))] || 0)
+  const meanD = days7.reduce((a, b) => a + b, 0) / 7
+  const sdD = Math.sqrt(days7.reduce((a, b) => a + (b - meanD) ** 2, 0) / 7)
+  const monotonie = sdD > 0 ? Math.round(meanD / sdD * 100) / 100 : null
+  const strain = monotonie != null ? Math.round(charge7 * monotonie) : null
+  return { monotonie, strain }
+}
+
+// Agrégation des matchs (saison). matchs = 8 plus récents ; match_agg = par clé
+// {total, moy} ; match_stats = {nb, note_moy (moyenne), minutes/buts/passes_d (Σ)}.
+// Chaque match reste indépendant (une entrée seances par seance_id unique).
+function aggMatchsFoot(seances: Record<string, any>) {
+  const num = (v: any) => (v !== '' && v != null) ? Number(v) : null
+  const tousMatchs = Object.values(seances).filter((s: any) => String(s.cles['type_seance']) === 'match').sort((a: any, b: any) => b.dateIso.localeCompare(a.dateIso))
+  const matchs = tousMatchs.slice(0, 8).map((s: any) => ({
+    date: s.date, note: num(s.cles['note']), buts: num(s.cles['buts']) || 0,
+    passes_d: num(s.cles['passes_decisives']) || 0, xg: num(s.cles['xg']), xa: num(s.cles['xa']), minutes: num(s.cles['minutes_jouees']),
+  }))
+  const aggSum: Record<string, number> = {}, aggCnt: Record<string, number> = {}
+  for (const s of tousMatchs) for (const k in (s as any).cles) { const vv = num((s as any).cles[k]); if (vv == null) continue; aggSum[k] = (aggSum[k] || 0) + vv; aggCnt[k] = (aggCnt[k] || 0) + 1 }
+  const matchAgg: Record<string, any> = {}
+  for (const kk in aggSum) matchAgg[kk] = { total: Math.round(aggSum[kk] * 100) / 100, moy: aggCnt[kk] ? Math.round(aggSum[kk] / aggCnt[kk] * 10) / 10 : 0 }
+  const matchStats = { nb: tousMatchs.length, note_moy: aggCnt['note'] ? Math.round(aggSum['note'] / aggCnt['note'] * 10) / 10 : null, minutes: aggSum['minutes_jouees'] || 0, buts: aggSum['buts'] || 0, passes_d: aggSum['passes_decisives'] || 0 }
+  return { matchs, match_agg: matchAgg, match_stats: matchStats }
+}
+
+// Agrégation GPS sur une fenêtre de `jours` (Σ, sauf vmax = max). Valeur absente
+// → 0 (comportement actuel : Number(x || 0)).
+function aggGpsFenetreFoot(seances: Record<string, any>, now: Date, jours: number) {
+  const cutoff = fmtYMD(minus(now, jours))
+  const gps: any = { distance: 0, distance_hi: 0, sprint_distance: 0, sprints: 0, accel: 0, decel: 0, vmax: 0, charge_gps: 0, n: 0 }
+  for (const s of Object.values(seances) as any[]) {
+    if (!s.dateIso || s.dateIso < cutoff) continue
+    gps.n++
+    gps.distance += Number(s.cles['distance_totale'] || 0)
+    gps.distance_hi += Number(s.cles['distance_hi'] || 0)
+    gps.sprint_distance += Number(s.cles['sprint_distance'] || 0)
+    gps.sprints += Number(s.cles['sprints'] || 0)
+    gps.accel += Number(s.cles['accelerations'] || 0)
+    gps.decel += Number(s.cles['decelerations'] || 0)
+    gps.charge_gps += Number(s.cles['charge_gps'] || 0)
+    const vm = Number(s.cles['vitesse_max'] || 0); if (vm > gps.vmax) gps.vmax = vm
+  }
+  return gps
+}
+
 // ── GET handlers ──────────────────────────────────────────────────────────────
 async function handleLogin(params: URLSearchParams): Promise<Response> {
   const login = params.get('login')?.trim()
@@ -1710,33 +1790,21 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
 
     const WELL: Record<string, number> = { sommeil: 1, energie: 1, fatigue: 1, motivation: 1, stress: 1, courbatures: 1, douleur: 1, dispo_mentale: 1, fatigue_post: 1, difficulte_seance: 1, satisfaction: 1, douleur_post: 1 }
     const seances: Record<string, { date: string; dateIso: string; cles: Record<string, any> }> = {}
-    const chargeParSem: Record<string, number> = {}, semLundi: Record<string, string> = {}
-    let charge7 = 0, charge28 = 0
-    let premiereCharge: string | null = null   // 1re date de charge (garde-fou ACWR reprise)
-    const chargeParJour: Record<string, number> = {}
-    const chargeParJour28: Record<string, number> = {}   // série 28 j → chaîne ACWR centrale
     const wellDate: Record<string, number> = {}, bienetreI: Record<string, number> = {}
 
     for (const row of indAll || []) {
       const dIso = normDate(row.date); if (!dIso) continue
-      const sid = String(row.seance_id), cle = String(row.cle), val = Number(row.valeur) || 0
+      const sid = String(row.seance_id), cle = String(row.cle)
       if (!seances[sid]) seances[sid] = { date: fmtFR(dIso), dateIso: dIso, cles: {} }
       seances[sid].cles[cle] = row.valeur
       if (WELL[cle] && row.valeur !== '' && row.valeur != null) {
         const t = (parseFR(dIso)?.getTime()) || 0
         if (!wellDate[cle] || t >= wellDate[cle]) { wellDate[cle] = t; bienetreI[cle] = Number(row.valeur) }
       }
-      if (cle === 'charge_interne') {
-        const dObj = parseFR(dIso)!
-        const w = isoWeek(dObj)
-        chargeParSem[w] = (chargeParSem[w] || 0) + val
-        const lundiStr = fmtYMD(getLundi(dObj))
-        if (!semLundi[w] || lundiStr < semLundi[w]) semLundi[w] = lundiStr
-        if (!premiereCharge || dIso < premiereCharge) premiereCharge = dIso
-        if (dIso >= j28) { charge28 += val; if (val > 0) chargeParJour28[dIso] = (chargeParJour28[dIso] || 0) + val }
-        if (dIso >= j7) { charge7 += val; chargeParJour[dIso] = (chargeParJour[dIso] || 0) + val }
-      }
     }
+
+    // Fenêtres de charge interne (extrait PUR, iso-comportement).
+    const { charge7, charge28, chargeParJour, chargeParJour28, premiereCharge, chargeParSem, semLundi } = chargeFenetresFoot(indAll || [], now)
 
     // ACWR — chaîne CENTRALE (foot = charge_interne), source unique.
     const acwrCalcF = calculerACWR(chargeParJour28, now)
@@ -1745,12 +1813,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
       semaine: w, charge: Math.round(chargeParSem[w]), label: semLundi[w] ? fmtFR(semLundi[w]).slice(0, 5) : w,
     }))
 
-    const days7: number[] = []
-    for (let dd = 0; dd < 7; dd++) days7.push(chargeParJour[fmtYMD(minus(now, dd))] || 0)
-    const meanD = days7.reduce((a, b) => a + b, 0) / 7
-    const sdD = Math.sqrt(days7.reduce((a, b) => a + (b - meanD) ** 2, 0) / 7)
-    const monotonie = sdD > 0 ? Math.round(meanD / sdD * 100) / 100 : null
-    const strain = monotonie != null ? Math.round(charge7 * monotonie) : null
+    const { monotonie, strain } = monotonieStrainFoot(chargeParJour, charge7, now)   // extrait PUR
     const kpiFoot: any = { charge_mensuelle: Math.round(charge28), monotonie, strain, temps_jeu: 0 }
 
     // ---- Séances de renfo réalisées (table performances) -------------------
@@ -1834,31 +1897,9 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
         distance_hi: s.cles['distance_hi'] || null, sprints: s.cles['sprints'] || null,
       }))
 
-    const gps: any = { distance: 0, distance_hi: 0, sprint_distance: 0, sprints: 0, accel: 0, decel: 0, vmax: 0, charge_gps: 0, n: 0 }
-    for (const s of Object.values(seances)) {
-      if (!s.dateIso || s.dateIso < j7) continue
-      gps.n++
-      gps.distance += Number(s.cles['distance_totale'] || 0)
-      gps.distance_hi += Number(s.cles['distance_hi'] || 0)
-      gps.sprint_distance += Number(s.cles['sprint_distance'] || 0)
-      gps.sprints += Number(s.cles['sprints'] || 0)
-      gps.accel += Number(s.cles['accelerations'] || 0)
-      gps.decel += Number(s.cles['decelerations'] || 0)
-      gps.charge_gps += Number(s.cles['charge_gps'] || 0)
-      const vm = Number(s.cles['vitesse_max'] || 0); if (vm > gps.vmax) gps.vmax = vm
-    }
+    const gps = aggGpsFenetreFoot(seances, now, 7)   // extrait PUR (fenêtre 7 j)
 
-    const num = (v: any) => (v !== '' && v != null) ? Number(v) : null
-    const tousMatchs = Object.values(seances).filter(s => String(s.cles['type_seance']) === 'match').sort((a, b) => b.dateIso.localeCompare(a.dateIso))
-    const matchs = tousMatchs.slice(0, 8).map(s => ({
-      date: s.date, note: num(s.cles['note']), buts: num(s.cles['buts']) || 0,
-      passes_d: num(s.cles['passes_decisives']) || 0, xg: num(s.cles['xg']), xa: num(s.cles['xa']), minutes: num(s.cles['minutes_jouees']),
-    }))
-    const aggSum: Record<string, number> = {}, aggCnt: Record<string, number> = {}
-    for (const s of tousMatchs) for (const k in s.cles) { const vv = num(s.cles[k]); if (vv == null) continue; aggSum[k] = (aggSum[k] || 0) + vv; aggCnt[k] = (aggCnt[k] || 0) + 1 }
-    const matchAgg: Record<string, any> = {}
-    for (const kk in aggSum) matchAgg[kk] = { total: Math.round(aggSum[kk] * 100) / 100, moy: aggCnt[kk] ? Math.round(aggSum[kk] / aggCnt[kk] * 10) / 10 : 0 }
-    const matchStats = { nb: tousMatchs.length, note_moy: aggCnt['note'] ? Math.round(aggSum['note'] / aggCnt['note'] * 10) / 10 : null, minutes: aggSum['minutes_jouees'] || 0, buts: aggSum['buts'] || 0, passes_d: aggSum['passes_decisives'] || 0 }
+    const { matchs, match_agg: matchAgg, match_stats: matchStats } = aggMatchsFoot(seances)   // extrait PUR
     kpiFoot.temps_jeu = matchStats.minutes
     const heatArr = heatmap ? heatmap.split(',').map(v => Number(v) || 0) : []
 
