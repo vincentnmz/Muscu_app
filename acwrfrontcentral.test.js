@@ -80,6 +80,65 @@ check('STATUT_VISUEL inchangé (hex)', /'Prêt':\s*'#22c55e'/.test(APP) && /'Vig
 check('renderACWRChart toujours appelé', /renderACWRChart\(volumes\)/.test(APP), 'présent', 'absent');
 console.log('  computeACWR conservé ✅ · couleurs statut inchangées ✅ · graphe conservé ✅');
 
+/* =============================================================================
+ * P1-A — EXÉCUTION du VRAI marqueurRecap (js/app.js) : ACWR backend-first.
+ * On extrait la vraie fonction et on la lance avec des dépendances stubées
+ * (computeACWR est un ESPION : on vérifie qu'il n'est appelé QUE si le backend
+ * est absent). Aucune modification de production ici — test seul.
+ * =========================================================================== */
+const vm = require('vm');
+function extractFn(src, name) {
+  const m = src.match(new RegExp('function\\s+' + name + '\\s*\\('));
+  if (!m) throw new Error('fn introuvable : ' + name);
+  let i = src.indexOf('{', m.index), d = 0, j = i;
+  for (; j < src.length; j++) { const c = src[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } }
+  return src.slice(m.index, j);
+}
+let computeACWRcalls = 0, computeACWRret = null;
+const sbx = {
+  // Espion : compte les appels + renvoie une valeur locale contrôlée.
+  computeACWR: function () { computeACWRcalls++; return computeACWRret; },
+  getNiveauExperience: () => 'experimente',
+  VOLUME_CIBLE: {},
+  alertesActives: () => [],
+  tendance1RM: () => ({ pct: null }),
+};
+vm.createContext(sbx);
+vm.runInContext(extractFn(APP, 'marqueurRecap') + '\nthis.marqueurRecap = marqueurRecap;', sbx);
+const marqueurRecap = sbx.marqueurRecap;
+// garde anti-reproduction : on exécute bien la fonction du fichier source.
+check('P1-A garde : marqueurRecap extraite de app.js', typeof marqueurRecap === 'function', 'function', typeof marqueurRecap);
+
+const mkData = (moteur, acwrDash) => ({ dashboard: { acwr: acwrDash, progression: {}, recuperation: {}, derniere_seance: {} }, historique: { progression_par_exo: {}, volume_par_jour: {}, volume_semaine: [] }, moteur });
+const A = { annees_pratique: 5 };
+const runMR = (data, localRet) => { computeACWRcalls = 0; computeACWRret = localRet; return marqueurRecap(data, A); };
+
+console.log('=== P1-A · marqueurRecap backend-first (exécution réelle) ===');
+// 1) backend présent + fiable → valeur backend, computeACWR NON appelé
+let m = runMR(mkData({ acwr_fiable: true }, 1.20), { ratio: 1.25, insuffisant: false });
+check('1. backend fiable → acwrTxt = backend 1.20', m.acwrTxt === 1.20, 1.20, m.acwrTxt);
+check('1. computeACWR NON appelé (backend présent)', computeACWRcalls === 0, 0, computeACWRcalls);
+check('1. couleur backend 1.20 → vert', m.acwrC === '#00c96e', '#00c96e', m.acwrC);
+// 2) backend présent + NON fiable → « — », jamais le ratio local 1.60
+m = runMR(mkData({ acwr_fiable: false }, 1.60), { ratio: 1.60, insuffisant: false });
+check('2. backend non fiable → acwrTxt = «—» (pas 1.60)', m.acwrTxt === '—', '—', m.acwrTxt);
+check('2. couleur grise (non interprétable)', m.acwrC === '#aaa', '#aaa', m.acwrC);
+check('2. computeACWR NON appelé (décision backend respectée)', computeACWRcalls === 0, 0, computeACWRcalls);
+// 3) backend absent → fallback local autorisé
+m = runMR(mkData(undefined, null), { ratio: 0.9, insuffisant: false });
+check('3. backend absent → acwrTxt = local 0.9', m.acwrTxt === 0.9, 0.9, m.acwrTxt);
+check('3. computeACWR appelé (fallback)', computeACWRcalls >= 1, '>=1', computeACWRcalls);
+// 4) backend et local DIFFÉRENTS → backend gagne
+m = runMR(mkData({ acwr_fiable: true }, 1.20), { ratio: 0.5, insuffisant: false });
+check('4. divergence → backend gagne (1.20, pas 0.5)', m.acwrTxt === 1.20, 1.20, m.acwrTxt);
+// 5) cas normal (identiques) → comportement inchangé
+m = runMR(mkData({ acwr_fiable: true }, 1.0), { ratio: 1.0, insuffisant: false });
+check('5. cas normal → 1.0 vert (inchangé)', m.acwrTxt === 1.0 && m.acwrC === '#00c96e', { t: 1.0, c: '#00c96e' }, { t: m.acwrTxt, c: m.acwrC });
+// 6) backend absent + local insuffisant → « — » (ancien comportement préservé)
+m = runMR(mkData(undefined, null), { insuffisant: true, joursDepuisDebut: 12 });
+check('6. backend absent + local insuffisant → «—»', m.acwrTxt === '—' && m.acwrC === '#aaa', '—/#aaa', m.acwrTxt + '/' + m.acwrC);
+console.log('  marqueurRecap exécuté : backend-first + garde-fou fiabilité + fallback legacy ✅');
+
 console.log('-'.repeat(72));
 console.log(ko === 0 ? `✅ ACWR front backend-first : ${ok} vérifs OK.` : `❌ ${ko} écart(s) sur ${ok + ko}.`);
 if (ko > 0) process.exitCode = 1;
