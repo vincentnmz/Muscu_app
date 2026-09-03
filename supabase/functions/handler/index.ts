@@ -603,8 +603,10 @@ function _buildCardioRows(body: any, athlete_id: string, sid: string, date: stri
   addNum('duree', body.duree, 'min')
   addNum('distance', body.distance, 'km')
   addNum('vitesse_moy', body.vitesse_moy, 'km/h')
+  addNum('vitesse_max', body.vitesse_max, 'km/h')
   addNum('inclinaison', body.inclinaison, '%')
   addNum('puissance_moy', body.puissance_moy, 'W')
+  addNum('puissance_max', body.puissance_max, 'W')
   addNum('cadence', body.cadence, 'rpm')
   addNum('pas', body.pas, 'pas')
   addNum('fc_moy', body.fc_moy, 'bpm')
@@ -615,6 +617,36 @@ function _buildCardioRows(body: any, athlete_id: string, sid: string, date: stri
     rows.push({ date, athlete_id, seance_id: sid, cle: 'charge_interne', valeur: String(dureeN * rpeN), unite: 'UA', source: 'calculé' })
   }
   return rows
+}
+
+// Mappe une activité Strava (item de GET /athlete/activities, ou détail) vers le
+// schéma cardio de Novalyz. PURE : conversions d'unités uniquement (m/s→km/h,
+// m→km, s→min), aucun accès réseau/DB. Renvoie null si ce n'est pas du vélo.
+// Le résultat est un « body » consommable par _buildCardioRows (Étape 3).
+function mapStravaActivite(a: any): any {
+  if (!a) return null
+  const t = String(a.sport_type || a.type || '')
+  if (!/Ride/.test(t)) return null                              // Ride/VirtualRide/GravelRide/MountainBikeRide/EBikeRide…
+  const num = (v: any) => (v != null && v !== '' && !isNaN(Number(v))) ? Number(v) : null
+  const r1 = (v: number | null) => v == null ? null : Math.round(v * 10) / 10
+  const r2 = (v: number | null) => v == null ? null : Math.round(v * 100) / 100
+  const ri = (v: number | null) => v == null ? null : Math.round(v)
+  const spd = num(a.average_speed), spdMax = num(a.max_speed), dist = num(a.distance), mv = num(a.moving_time)
+  const dateSrc = String(a.start_date_local || a.start_date || '')
+  return {
+    strava_id: a.id != null ? String(a.id) : null,
+    type_cardio: 'velo',
+    date: dateSrc ? dateSrc.slice(0, 10) : '',
+    duree: mv != null ? Math.round(mv / 60) : null,             // s → min
+    distance: r2(dist == null ? null : dist / 1000),            // m → km
+    vitesse_moy: r1(spd == null ? null : spd * 3.6),            // m/s → km/h
+    vitesse_max: r1(spdMax == null ? null : spdMax * 3.6),      // m/s → km/h
+    puissance_moy: ri(num(a.average_watts)),                    // W
+    puissance_max: ri(num(a.max_watts)),                        // W
+    cadence: ri(num(a.average_cadence)),                        // rpm (pédalage)
+    fc_moy: ri(num(a.average_heartrate)),                       // bpm
+    calories: ri(num(a.calories)),                              // kcal (détail activité uniquement)
+  }
 }
 
 async function buildCardioAll(athleteId: string): Promise<any> {
