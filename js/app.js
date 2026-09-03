@@ -4754,25 +4754,9 @@ function marqueurRecap(data, a) {
   const progC = (enProg === 0 && enBaisse === 0) ? '#aaa'
     : (enProg > enBaisse) ? '#00c96e'
     : (enProg === enBaisse) ? '#f59f00' : '#e5484d';
-  // ACWR — P1-A : le backend est l'autorité (même chaîne calculerACWR + fiabilité).
-  // On respecte moteur.acwr_fiable : un backend « non interprétable » n'est JAMAIS
-  // remplacé par un ratio local. computeACWR ne sert que de FALLBACK quand le backend
-  // est absent (ancien backend / hors-ligne). Seuils de coloration inchangés.
-  let acwrC, acwrTxt;
-  const acwrBk = (dash.acwr != null) ? Number(dash.acwr) : null;
-  const motB = data.moteur;
-  const backendPresent = (motB != null) || (acwrBk != null);
-  const colorRatio = (ratio) => { acwrTxt = ratio; acwrC = (ratio >= 0.8 && ratio <= 1.3) ? '#00c96e' : (ratio > 1.5) ? '#e5484d' : '#f59f00'; };
-  if (backendPresent) {
-    if (motB && motB.acwr_fiable === false) { acwrC = '#aaa'; acwrTxt = '—'; }   // non interprétable : décision backend respectée
-    else if (acwrBk != null) colorRatio(acwrBk);                                 // ratio backend (autorité)
-    else { acwrC = '#aaa'; acwrTxt = '—'; }                                      // backend présent, pas de ratio exploitable
-  } else {
-    // Fallback LEGACY (aucune donnée backend) : ancien calcul local (computeACWR).
-    const acwr = computeACWR(hist.progression_par_exo || {}, hist.volume_par_jour || {});
-    if (!acwr || acwr.insuffisant) { acwrC = '#aaa'; acwrTxt = '—'; }
-    else colorRatio(acwr.ratio);
-  }
+  // (ACWR retiré — P1-C : la table Récap n'a pas de colonne ACWR ; cette sortie
+  // n'était consommée par aucun rendu. L'ACWR affiché ailleurs — fiche, onglet
+  // Charge (renderACWR), cockpit — reste backend-first et inchangé.)
   // Récupération
   const r = dash.recuperation || {};
   const recupC = !r.statut ? '#aaa' : r.statut === 'optimal' ? '#00c96e' : r.statut === 'modere' ? '#f59f00' : '#e5484d';
@@ -4801,7 +4785,7 @@ function marqueurRecap(data, a) {
   const nbAl = alertesActives(a).length;
   // 1RM tendance
   const t = tendance1RM(hist.progression_par_exo || {});
-  return { progC, acwrC, acwrTxt, recupC, volC, ds, nbAl, t1rm: t.pct };
+  return { progC, recupC, volC, ds, nbAl, t1rm: t.pct };
 }
 
 async function ouvrirRecapAthletes() {

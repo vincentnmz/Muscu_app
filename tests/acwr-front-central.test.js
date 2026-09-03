@@ -81,10 +81,12 @@ check('renderACWRChart toujours appelé', /renderACWRChart\(volumes\)/.test(APP)
 console.log('  computeACWR conservé ✅ · couleurs statut inchangées ✅ · graphe conservé ✅');
 
 /* =============================================================================
- * P1-A — EXÉCUTION du VRAI marqueurRecap (js/app.js) : ACWR backend-first.
- * On extrait la vraie fonction et on la lance avec des dépendances stubées
- * (computeACWR est un ESPION : on vérifie qu'il n'est appelé QUE si le backend
- * est absent). Aucune modification de production ici — test seul.
+ * P1-C — La sortie ACWR vestigiale de marqueurRecap est SUPPRIMÉE.
+ * (P1-A avait fiabilisé cette sortie ; P1-B a montré qu'aucun rendu ne la
+ * consomme — le Récap n'a pas de colonne ACWR. On vérifie ici qu'elle a bien
+ * disparu, que le Récap garde EXACTEMENT ses colonnes, et que marqueurRecap ne
+ * calcule plus d'ACWR.) Exécution des vraies fonctions de js/app.js.
+ * L'ACWR réellement affiché (onglet Charge / renderACWR) reste testé ci-dessus.
  * =========================================================================== */
 const vm = require('vm');
 function extractFn(src, name) {
@@ -94,50 +96,42 @@ function extractFn(src, name) {
   for (; j < src.length; j++) { const c = src[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } }
   return src.slice(m.index, j);
 }
-let computeACWRcalls = 0, computeACWRret = null;
+let computeACWRcalls = 0;
 const sbx = {
-  // Espion : compte les appels + renvoie une valeur locale contrôlée.
-  computeACWR: function () { computeACWRcalls++; return computeACWRret; },
+  computeACWR: function () { computeACWRcalls++; return { ratio: 1.6, insuffisant: false }; },   // ESPION : ne doit plus être appelé par marqueurRecap
   getNiveauExperience: () => 'experimente',
   VOLUME_CIBLE: {},
   alertesActives: () => [],
-  tendance1RM: () => ({ pct: null }),
+  tendance1RM: () => ({ pct: 3 }),
 };
 vm.createContext(sbx);
-vm.runInContext(extractFn(APP, 'marqueurRecap') + '\nthis.marqueurRecap = marqueurRecap;', sbx);
-const marqueurRecap = sbx.marqueurRecap;
-// garde anti-reproduction : on exécute bien la fonction du fichier source.
-check('P1-A garde : marqueurRecap extraite de app.js', typeof marqueurRecap === 'function', 'function', typeof marqueurRecap);
+vm.runInContext(extractFn(APP, 'marqueurRecap') + '\n' + extractFn(APP, 'renderRecapTable')
+  + '\nthis.marqueurRecap = marqueurRecap; this.renderRecapTable = renderRecapTable;', sbx);
+const marqueurRecap = sbx.marqueurRecap, renderRecapTable = sbx.renderRecapTable;
+check('P1-C garde : marqueurRecap extraite de app.js', typeof marqueurRecap === 'function', 'function', typeof marqueurRecap);
 
-const mkData = (moteur, acwrDash) => ({ dashboard: { acwr: acwrDash, progression: {}, recuperation: {}, derniere_seance: {} }, historique: { progression_par_exo: {}, volume_par_jour: {}, volume_semaine: [] }, moteur });
+const mkData = (moteur, acwrDash) => ({ dashboard: { acwr: acwrDash, progression: {}, recuperation: { statut: 'optimal' }, derniere_seance: { date: '01/09' } }, historique: { progression_par_exo: {}, volume_par_jour: {}, volume_semaine: [] }, moteur });
 const A = { annees_pratique: 5 };
-const runMR = (data, localRet) => { computeACWRcalls = 0; computeACWRret = localRet; return marqueurRecap(data, A); };
 
-console.log('=== P1-A · marqueurRecap backend-first (exécution réelle) ===');
-// 1) backend présent + fiable → valeur backend, computeACWR NON appelé
-let m = runMR(mkData({ acwr_fiable: true }, 1.20), { ratio: 1.25, insuffisant: false });
-check('1. backend fiable → acwrTxt = backend 1.20', m.acwrTxt === 1.20, 1.20, m.acwrTxt);
-check('1. computeACWR NON appelé (backend présent)', computeACWRcalls === 0, 0, computeACWRcalls);
-check('1. couleur backend 1.20 → vert', m.acwrC === '#00c96e', '#00c96e', m.acwrC);
-// 2) backend présent + NON fiable → « — », jamais le ratio local 1.60
-m = runMR(mkData({ acwr_fiable: false }, 1.60), { ratio: 1.60, insuffisant: false });
-check('2. backend non fiable → acwrTxt = «—» (pas 1.60)', m.acwrTxt === '—', '—', m.acwrTxt);
-check('2. couleur grise (non interprétable)', m.acwrC === '#aaa', '#aaa', m.acwrC);
-check('2. computeACWR NON appelé (décision backend respectée)', computeACWRcalls === 0, 0, computeACWRcalls);
-// 3) backend absent → fallback local autorisé
-m = runMR(mkData(undefined, null), { ratio: 0.9, insuffisant: false });
-check('3. backend absent → acwrTxt = local 0.9', m.acwrTxt === 0.9, 0.9, m.acwrTxt);
-check('3. computeACWR appelé (fallback)', computeACWRcalls >= 1, '>=1', computeACWRcalls);
-// 4) backend et local DIFFÉRENTS → backend gagne
-m = runMR(mkData({ acwr_fiable: true }, 1.20), { ratio: 0.5, insuffisant: false });
-check('4. divergence → backend gagne (1.20, pas 0.5)', m.acwrTxt === 1.20, 1.20, m.acwrTxt);
-// 5) cas normal (identiques) → comportement inchangé
-m = runMR(mkData({ acwr_fiable: true }, 1.0), { ratio: 1.0, insuffisant: false });
-check('5. cas normal → 1.0 vert (inchangé)', m.acwrTxt === 1.0 && m.acwrC === '#00c96e', { t: 1.0, c: '#00c96e' }, { t: m.acwrTxt, c: m.acwrC });
-// 6) backend absent + local insuffisant → « — » (ancien comportement préservé)
-m = runMR(mkData(undefined, null), { insuffisant: true, joursDepuisDebut: 12 });
-check('6. backend absent + local insuffisant → «—»', m.acwrTxt === '—' && m.acwrC === '#aaa', '—/#aaa', m.acwrTxt + '/' + m.acwrC);
-console.log('  marqueurRecap exécuté : backend-first + garde-fou fiabilité + fallback legacy ✅');
+console.log('=== P1-C · sortie ACWR vestigiale supprimée de marqueurRecap ===');
+computeACWRcalls = 0;
+const m = marqueurRecap(mkData({ acwr_fiable: true }, 1.20), A);
+// La sortie ne porte plus AUCUNE clé ACWR.
+check('marqueurRecap ne renvoie plus acwrC', !('acwrC' in m), false, 'acwrC' in m);
+check('marqueurRecap ne renvoie plus acwrTxt', !('acwrTxt' in m), false, 'acwrTxt' in m);
+// Les autres marqueurs sont INCHANGÉS.
+['progC', 'recupC', 'volC', 'ds', 'nbAl', 't1rm'].forEach(k =>
+  check('marqueurRecap conserve ' + k, k in m, true, k in m));
+// marqueurRecap ne calcule plus d'ACWR → computeACWR n'est plus appelé.
+check('computeACWR n’est plus appelé par marqueurRecap', computeACWRcalls === 0, 0, computeACWRcalls);
+
+// renderRecapTable : colonnes EXACTEMENT inchangées, aucune colonne ACWR.
+const html = renderRecapTable([{ a: { athlete_id: 'x', nom: 'Zoe', annees_pratique: 5 }, m }]);
+const thead = html.split('<tbody>')[0];
+const cols = (thead.match(/<th[^>]*>([^<]+)<\/th>/g) || []).map(t => t.replace(/<[^>]+>/g, '').trim());
+check('Récap : 7 colonnes attendues', JSON.stringify(cols) === JSON.stringify(['Athlète', 'Progression', 'Récup.', 'Volume', 'Dern. séance', 'Alertes', '1RM tendance']), '[Athlète,Progression,Récup.,Volume,Dern. séance,Alertes,1RM tendance]', cols);
+check('Récap : aucune colonne ACWR', !/ACWR/i.test(thead), 'pas d’ACWR', thead.match(/ACWR/i));
+console.log('  marqueurRecap : ACWR retiré · Récap 7 colonnes inchangées · computeACWR non appelé ✅');
 
 console.log('-'.repeat(72));
 console.log(ko === 0 ? `✅ ACWR front backend-first : ${ok} vérifs OK.` : `❌ ${ko} écart(s) sur ${ok + ko}.`);
