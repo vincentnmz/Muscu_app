@@ -1369,49 +1369,6 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
   return jsonResp({ ok: true, athletes: result })
 }
 
-async function handleGetCoachAthleteDetail(params: URLSearchParams): Promise<Response> {
-  const coachId = params.get('coach_id')
-  const athleteId = params.get('athlete_id')
-  if (!coachId || !athleteId) return jsonResp({ erreur: 'Paramètres manquants' })
-
-  const { data: ath } = await sb().from('athletes').select('*').eq('id', athleteId).eq('coach_id', coachId).single()
-  if (!ath) return jsonResp({ erreur: 'Athlète non trouvé' })
-
-  const now = new Date()
-  const [{ data: perfs }, { data: poidsRows }, { data: beRows }, { data: progRows }, { data: contexteRows }, { data: objectifsRows }, { data: blessuresRows }] = await Promise.all([
-    sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
-    sb().from('poids_historique').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(30),
-    sb().from('bien_etre').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(30),
-    sb().from('programme').select('*').eq('athlete_id', athleteId).order('groupe_id').order('id'),
-    sb().from('contexte_athlete').select('*').eq('athlete_id', athleteId).order('date_debut', { ascending: false }),
-    sb().from('objectifs').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
-    sb().from('blessures').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
-  ])
-
-  const perfsArr = perfs || []
-  const globalData = computeGlobal(perfsArr)
-  const recentData = computeRecent(perfsArr, now)
-  const alertes = calculerAlertes(perfsArr, athleteId, Number(ath.annees) || 0, false)
-
-  return jsonResp({
-    ok: true,
-    athlete: { id: ath.id, nom: ath.nom, ddn: fmtFR(ath.ddn), taille: ath.taille, annees: ath.annees, annees_pratique: Number(ath.annees) || 0, niveau: getNiveauExperience(Number(ath.annees) || 0), strategie: ath.strategie || ((ath.sport || 'muscu') === 'muscu' ? getStrategieFromAnnees(Number(ath.annees) || 0) : ''), strategie_progression: ath.strategie || ((ath.sport || 'muscu') === 'muscu' ? getStrategieFromAnnees(Number(ath.annees) || 0) : ''), sport: ath.sport || 'muscu', poste: ath.poste, sexe: ath.sexe, club: ath.club, categorie: ath.categorie, antecedents: ath.antecedents, login: ath.login },
-    global: globalData,
-    recent: recentData,
-    alertes,
-    poids: (poidsRows || []).map(r => ({ date: fmtFR(r.date), poids: Number(r.poids) })),
-    bien_etre: (beRows || []).map(r => ({ date: fmtFR(r.date), sommeil: r.sommeil, energie: r.energie, fatigue: r.fatigue_musculaire, douleur: r.douleur, zone: r.zone_douloureuse, ressenti: r.ressenti_global, note: r.note })),
-    programme: (progRows || []).map(r => ({ id: r.id, row_index: r.id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id })),
-    contexte: (contexteRows || []).map(r => ({ id: r.id, etat: r.etat, description: r.note || '', note: r.note || '', date_debut: fmtFR(r.date_debut), date_fin: r.date_fin ? fmtFR(r.date_fin) : null, source: r.source || '' })),
-    objectifs: (objectifsRows || []).map(r => ({ id: r.id, categorie: r.categorie, description: r.description, statut: r.statut, date: fmtFR(r.date) })),
-    blessures: (blessuresRows || []).map(r => ({ id: r.id, date: fmtFR(r.date), type: r.type, localisation: r.localisation, gravite: r.gravite, duree: r.duree, retour_terrain: fmtFR(r.retour_terrain), retour_competition: fmtFR(r.retour_competition), statut: r.statut })),
-    historique: {
-      progression_par_exo: buildProgressionParExo(perfsArr),
-      volume_semaine: buildVolumeSemaineParMuscle(perfsArr, now),
-    },
-  })
-}
-
 async function handleGetCommentaires(params: URLSearchParams): Promise<Response> {
   const coachId = params.get('coach_id')
   const athleteId = params.get('athlete_id')
@@ -2064,14 +2021,6 @@ function _contexteActif(rows: any[], now: Date): any {
   return { id: best.id, etat: best.etat, description: best.note || '', note: best.note || '', date_debut: fmtFR(best.date_debut), date_fin: best.date_fin ? fmtFR(best.date_fin) : null, source: best.source || '', jours_restants: joursRestants }
 }
 
-async function handleGetContexte(params: URLSearchParams): Promise<Response> {
-  const athleteId = params.get('athlete_id')
-  if (!athleteId) return jsonResp({ error: 'athlete_id manquant' })
-  const { data } = await sb().from('contexte_athlete').select('*').eq('athlete_id', athleteId).order('date_debut', { ascending: false })
-  const historique = (data || []).map(r => ({ id: r.id, etat: r.etat, date_debut: fmtFR(r.date_debut), date_fin: r.date_fin ? fmtFR(r.date_fin) : '', source: r.source || '', note: r.note || '' }))
-  return jsonResp({ success: true, actif: _contexteActif(data || [], new Date()), historique })
-}
-
 async function handleGetTests(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')
   if (!athleteId) return jsonResp({ tests: [] })
@@ -2600,25 +2549,6 @@ async function _googleAccessToken(athlete_id: string): Promise<{ token: string |
   } catch (e: any) { return { token: null, error: String((e && e.message) || e) } }
 }
 
-// Explorateur (temporaire) : renvoie le JSON brut de l'API pour un type de
-// donnée, afin de caler l'affichage sur la vraie structure des réponses.
-async function handleGoogleHealthProbe(body: any): Promise<Response> {
-  const athlete_id = String(body.athlete_id || '')
-  const dataType = String(body.dataType || 'exercise').trim()
-  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
-  const { token, error } = await _googleAccessToken(athlete_id)
-  if (!token) return jsonResp({ success: false, stage: 'token', error: error || 'pas de token' })
-  // On liste sans filtre de dates (la syntaxe de filtre dépend du type) pour
-  // voir la structure réelle des points de données.
-  const url = `https://health.googleapis.com/v4/users/me/dataTypes/${encodeURIComponent(dataType)}/dataPoints?pageSize=20`
-  try {
-    const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
-    const txt = await r.text()
-    let json: any = null; try { json = JSON.parse(txt) } catch (_) {}
-    return jsonResp({ success: r.ok, status: r.status, dataType, raw: (json ?? txt) })
-  } catch (e: any) { return jsonResp({ success: false, stage: 'fetch', error: String((e && e.message) || e) }) }
-}
-
 // Importe les activités Fitbit (dataType 'exercise') comme séances cardio, dans
 // la table indicateurs (seance_id 'cardio_fitbit_<id>' → apparaît dans le bloc
 // cardio existant). Ré-exécutable sans doublon (on efface puis réinsère par id).
@@ -3128,7 +3058,6 @@ Deno.serve(async (req: Request) => {
         case 'exercices':             return handleGetExercices()
         case 'loginCoach':            return handleLoginCoach(params)
         case 'getCoachAthletes':      return handleGetCoachAthletes(params)
-        case 'getCoachAthleteDetail': return handleGetCoachAthleteDetail(params)
         case 'getCommentaires':       return handleGetCommentaires(params)
         case 'getCoachProgramme':     return handleGetCoachProgramme(params)
         case 'getSeancesDetail':      return handleGetSeancesDetail(params)
@@ -3137,7 +3066,6 @@ Deno.serve(async (req: Request) => {
         case 'lierAthlete':           return handleLierAthlete(params)
         case 'getSuiviEquipe':        return handleGetSuiviEquipe(params)
         case 'getSuiviJoueur':        return handleGetSuiviJoueur(params)
-        case 'getContexte':           return handleGetContexte(params)
         case 'getTests':              return handleGetTests(params)
         default:                      return jsonResp({ erreur: `Action inconnue: ${action}` }, 404)
       }
@@ -3167,7 +3095,6 @@ Deno.serve(async (req: Request) => {
         case 'googleHealthCallback':     return handleGoogleHealthCallback(body)
         case 'googleHealthStatus':       return handleGoogleHealthStatus(body)
         case 'googleHealthDisconnect':   return handleGoogleHealthDisconnect(body)
-        case 'googleHealthProbe':        return handleGoogleHealthProbe(body)
         case 'googleHealthSync':         return handleGoogleHealthSync(body)
         case 'marquerCommentairesLus':   return handleMarquerCommentairesLus(body)
         case 'supprimerCommentaire':     return handleSupprimerCommentaire(body)
