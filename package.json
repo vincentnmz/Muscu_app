@@ -1,0 +1,29 @@
+{
+  "name": "muscu_app",
+  "version": "1.0.0",
+  "description": "essai # Muscu_app",
+  "main": "calc.test.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build:www": "node scripts/build-www.mjs",
+    "test": "node scripts/run-tests.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vincentnmz/Muscu_app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vincentnmz/Muscu_app/issues"
+  },
+  "homepage": "https://github.com/vincentnmz/Muscu_app#readme",
+  "dependencies": {
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/cli": "^6.2.2",
+    "@capacitor/core": "^6.2.2"
+  }
+}
