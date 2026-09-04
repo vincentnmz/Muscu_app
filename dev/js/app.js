@@ -702,18 +702,18 @@ const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth
 
 /* =============================================================================
  * COCKPIT_ON — flag de la refonte Dashboard (Phase 5A). PRÉSENTATION uniquement.
- *   false = affichage actuel strictement inchangé (défaut).
- *   true  = rendu du cockpit (renderCockpit) + masquage des anciennes cartes.
+ *   true  = rendu du cockpit (renderCockpit) + masquage des anciennes cartes (DÉFAUT).
+ *   false = affichage classique strictement inchangé (opt-out).
  * Les anciennes cartes sont CONSERVÉES : bascule/retour immédiat, aucun bloc supprimé.
  *
  * Depuis l'Étape 8 : la valeur est une PRÉFÉRENCE UTILISATEUR persistée dans
  * localStorage ('nv_cockpit_on'), activable via un interrupteur dans les
- * Réglages. Défaut = false (clé absente) → aucune bascule = comportement inchangé.
+ * Réglages. Défaut = true (clé absente) → cockpit affiché ; clé '0' = opt-out.
  * Réglage local à l'appareil, sans backend.
  * ========================================================================== */
-let COCKPIT_ON = false;
-try { COCKPIT_ON = (localStorage.getItem('nv_cockpit_on') === '1'); } catch (e) {}
-function estCockpitActif(){ try { return localStorage.getItem('nv_cockpit_on') === '1'; } catch (e) { return false; } }
+let COCKPIT_ON = true;
+try { COCKPIT_ON = (localStorage.getItem('nv_cockpit_on') !== '0'); } catch (e) {}
+function estCockpitActif(){ try { return localStorage.getItem('nv_cockpit_on') !== '0'; } catch (e) { return true; } }
 function basculerCockpit(){
   var v = !estCockpitActif();
   try { localStorage.setItem('nv_cockpit_on', v ? '1' : '0'); } catch (e) {}
