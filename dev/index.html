@@ -346,6 +346,31 @@
     </div>
   </div>
 
+  <!-- MODALE — Réinitialiser le mot de passe d'un athlète (coach) -->
+  <div id="reset-mdp-overlay" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+    <div class="card modal-card" style="width:100%;max-width:360px;padding:20px;box-shadow:var(--shadow-lg);box-sizing:border-box;">
+      <div style="font-size:17px;font-weight:800;margin-bottom:4px;">🔐 Réinitialiser le mot de passe</div>
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px;">Vous allez définir un nouveau mot de passe pour <b id="reset-mdp-nom">cet athlète</b>. Communiquez-le-lui ensuite.</div>
+
+      <label>Nouveau mot de passe</label>
+      <div style="display:flex;gap:8px;align-items:stretch;">
+        <input type="password" id="reset-mdp-input" placeholder="6 caractères minimum" autocomplete="new-password" style="flex:1;min-width:0;">
+        <button type="button" class="btn" title="Afficher / masquer" onclick="toggleResetMdpVisibility()" id="reset-mdp-eye" style="width:auto;margin:0;padding:0 12px;background:var(--surface2);color:var(--text-muted);">👁</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button type="button" class="btn btn-outline" onclick="genererMdpCoach()" style="flex:1;margin:0;font-size:13px;padding:9px;">🎲 Générer</button>
+        <button type="button" class="btn btn-outline" onclick="copierResetMdp()" style="flex:1;margin:0;font-size:13px;padding:9px;">📋 Copier</button>
+      </div>
+
+      <div id="reset-mdp-msg" style="font-size:12.5px;margin-top:12px;line-height:1.4;word-break:break-word;"></div>
+
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn" style="flex:1;margin:0;background:var(--surface2);color:var(--text-muted);" onclick="fermerResetMdp()">Annuler</button>
+        <button class="btn btn-accent" style="flex:1;margin:0;" id="reset-mdp-confirm" onclick="confirmerResetMdp()">Confirmer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- VUE DETAIL ATHLETE (COACH) -->
   <div id="view-coach-detail" class="view">
     <!-- Placeholder desktop : aucun athlète sélectionné -->
@@ -380,6 +405,10 @@
           <div class="fjd-hero-name" id="cd-hero-name">Athlète</div>
           <div class="fjd-hero-pills" id="cd-hero-pills"></div>
         </div>
+      </div>
+      <!-- Gestion du compte : réinitialisation du mot de passe par le coach -->
+      <div style="margin:0 0 12px;">
+        <button class="btn btn-outline" style="width:auto;margin:0;font-size:13px;padding:9px 14px;" onclick="ouvrirResetMdp(coachAthleteCourant &amp;&amp; coachAthleteCourant.athlete_id, coachAthleteCourant &amp;&amp; coachAthleteCourant.nom)">🔐 Réinitialiser le mot de passe</button>
       </div>
       <!-- Cockpit (Phase 5A) — rempli par renderCockpit(data,'cd') si COCKPIT_ON. Vide sinon. -->
       <div id="cd-cockpit"></div>
