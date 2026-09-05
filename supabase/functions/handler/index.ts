@@ -961,6 +961,25 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   }})
 }
 
+// L'athlète change LUI-MÊME son mot de passe (connecté). Preuve de possession :
+// on exige le mot de passe ACTUEL (verifyPwd) avant de le remplacer. Réutilise
+// hashSalted (salt = login). Ne touche qu'à password_hash.
+async function handleChangePassword(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const ancien = String(body.ancien_mdp || '')
+  const nouveau = String(body.nouveau_mdp || '')
+  if (!athlete_id || !ancien || !nouveau) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (nouveau.length < 6) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })
+  const { data: ath } = await sb().from('athletes').select('id,login,password_hash').eq('id', athlete_id).single()
+  if (!ath) return jsonResp({ success: false, error: 'Accès refusé' })
+  const { ok } = await verifyPwd(ancien, ath.password_hash || '', ath.login)
+  if (!ok) return jsonResp({ success: false, error: 'Mot de passe actuel incorrect' })
+  const hash = await hashSalted(nouveau, ath.login)
+  const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true })
+}
+
 // Ajout / mise à jour / effacement de l'email d'un athlète (compte existant).
 // Email OPTIONNEL : une chaîne vide efface l'email. Un email non vide doit être
 // valide. Ne touche à aucun autre champ.
@@ -3253,6 +3272,7 @@ Deno.serve(async (req: Request) => {
         case 'coachCreerAthlete':        return handleCoachCreerAthlete(body)
         case 'coachResetAthlete':        return handleCoachResetAthlete(body)
         case 'saveEmail':                return handleSaveEmail(body)
+        case 'changePassword':           return handleChangePassword(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password }))

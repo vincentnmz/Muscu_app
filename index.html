@@ -1138,6 +1138,13 @@
         <button onclick="enregistrerEmailAthlete()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer l'email</button>
         <div id="reglages-email-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
         <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+        <label>Mot de passe actuel</label>
+        <input type="password" id="pwd-actuel" placeholder="Ton mot de passe actuel" autocomplete="current-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <label style="display:block;margin-top:8px;">Nouveau mot de passe</label>
+        <input type="password" id="pwd-nouveau" placeholder="6 caractères minimum" autocomplete="new-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <button onclick="changerMonMotDePasse()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Modifier mon mot de passe</button>
+        <div id="pwd-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+        <div style="height:1px;background:var(--border);margin:14px 0;"></div>
         <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:14px;">Politique de confidentialité &amp; mes droits</a>
         <button onclick="supprimerMonCompte()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte et mes données</button>
         <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Action irréversible : toutes tes données (séances, poids, notes) seront effacées.</div>
