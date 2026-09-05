@@ -2330,6 +2330,30 @@ async function handleCoachCreerAthlete(body: any): Promise<Response> {
   return jsonResp({ success: true, id: data.id, nom: data.nom })
 }
 
+// Reset du mot de passe d'un athlète PAR SON COACH (Option C). Ne remplace que
+// password_hash, via le même hachage qu'à la création (hashSalted, salt = login).
+// Sécurité : le coach ne peut réinitialiser QUE ses propres athlètes
+// (athletes.coach_id === coach_id). Aucune écriture si un contrôle échoue ;
+// message générique « Accès refusé » (anti-énumération, pas de fuite de données).
+async function handleCoachResetAthlete(body: any): Promise<Response> {
+  const coach_id = String(body.coach_id || '')
+  const athlete_id = String(body.athlete_id || '')
+  const nouveau_mdp = String(body.nouveau_mdp || '')
+  if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (!nouveau_mdp || nouveau_mdp.length < 6) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })
+
+  const { data: coach } = await sb().from('coachs').select('coach_id').eq('coach_id', coach_id).single()
+  if (!coach) return jsonResp({ success: false, error: 'Accès refusé' })
+
+  const { data: ath } = await sb().from('athletes').select('id,login,coach_id').eq('id', athlete_id).single()
+  if (!ath || String(ath.coach_id) !== String(coach_id)) return jsonResp({ success: false, error: 'Accès refusé' })
+
+  const hash = await hashSalted(nouveau_mdp, ath.login)
+  const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true })
+}
+
 async function handleSaveSportCoach(body: any): Promise<Response> {
   const { coach_id, sport } = body
   if (!coach_id || !sport) return jsonResp({ erreur: 'Paramètres manquants' })
@@ -3204,6 +3228,7 @@ Deno.serve(async (req: Request) => {
         case 'clearDemoFoot':            return handleClearDemoFoot(body)
         case 'supprimerCompte':          return handleSupprimerCompte(body)
         case 'coachCreerAthlete':        return handleCoachCreerAthlete(body)
+        case 'coachResetAthlete':        return handleCoachResetAthlete(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password }))
