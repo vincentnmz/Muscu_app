@@ -2450,6 +2450,120 @@ async function handleDeletePushSub(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
+// ── Notifications natives (FCM HTTP v1) ───────────────────────────────────────
+// Transport pour l'app Android (Capacitor). Indépendant du Web Push (VAPID) :
+// stockage séparé (native_push_tokens), envoi via l'API FCM HTTP v1 authentifiée
+// par un compte de service (secret Supabase FCM_SERVICE_ACCOUNT, jamais au front).
+// La logique métier « quoi/quand notifier » ne change pas : seul le transport
+// s'ajoute, en parallèle du Web Push (voir notifyAthlete).
+let _fcmSa: any = null
+function _fcmServiceAccount(): any {
+  if (_fcmSa !== null) return _fcmSa
+  const raw = Deno.env.get('FCM_SERVICE_ACCOUNT')
+  if (!raw) { _fcmSa = false; return false }
+  try {
+    const sa = JSON.parse(raw)
+    _fcmSa = (sa && sa.client_email && sa.private_key && sa.project_id) ? sa : false
+  } catch (_) { _fcmSa = false }
+  return _fcmSa
+}
+
+function _b64url(bytes: Uint8Array): string {
+  let s = ''
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i])
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+function _b64urlStr(str: string): string { return _b64url(new TextEncoder().encode(str)) }
+function _pemToDer(pem: string): Uint8Array {
+  const b64 = String(pem).replace(/-----BEGIN [^-]+-----/, '').replace(/-----END [^-]+-----/, '').replace(/\s+/g, '')
+  const bin = atob(b64)
+  const der = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) der[i] = bin.charCodeAt(i)
+  return der
+}
+
+// Jeton d'accès OAuth2 (Google) obtenu via JWT signé par le compte de service.
+// Mis en cache jusqu'à ~1 min avant expiration.
+let _fcmTokenCache: { token: string, exp: number } | null = null
+async function _getFcmAccessToken(sa: any): Promise<string | null> {
+  const now = Math.floor(Date.now() / 1000)
+  if (_fcmTokenCache && _fcmTokenCache.exp > now + 60) return _fcmTokenCache.token
+  try {
+    const header = { alg: 'RS256', typ: 'JWT' }
+    const claim = { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }
+    const signingInput = _b64urlStr(JSON.stringify(header)) + '.' + _b64urlStr(JSON.stringify(claim))
+    const key = await crypto.subtle.importKey('pkcs8', _pemToDer(sa.private_key), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign'])
+    const sig = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(signingInput)))
+    const jwt = signingInput + '.' + _b64url(sig)
+    const resp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' + encodeURIComponent(jwt),
+    })
+    const j = await resp.json()
+    if (!j || !j.access_token) return null
+    _fcmTokenCache = { token: j.access_token, exp: now + (Number(j.expires_in) || 3600) }
+    return j.access_token
+  } catch (_) { return null }
+}
+
+// Envoie une notif FCM à tous les tokens natifs d'un athlète. Best-effort :
+// n'échoue jamais l'appelant, purge les tokens morts (404 / UNREGISTERED).
+async function sendFcmToAthlete(athlete_id: string, payload: Record<string, unknown>): Promise<{ sent: number, found: number, error?: string }> {
+  const sa = _fcmServiceAccount()
+  if (!sa) return { sent: 0, found: 0, error: 'fcm-sa-absent' }
+  const { data: toks } = await sb().from('native_push_tokens').select('*').eq('athlete_id', String(athlete_id))
+  if (!toks?.length) return { sent: 0, found: 0 }
+  const access = await _getFcmAccessToken(sa)
+  if (!access) return { sent: 0, found: toks.length, error: 'fcm-auth' }
+  const url = 'https://fcm.googleapis.com/v1/projects/' + sa.project_id + '/messages:send'
+  let sent = 0
+  await Promise.all(toks.map(async (t: any) => {
+    const message = {
+      token: t.token,
+      notification: { title: String(payload.title || 'Novalyz'), body: String(payload.body || '') },
+      data: { target: String(payload.target || ''), url: String(payload.url || './') },
+    }
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + access, 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) })
+      if (r.ok) { sent++; return }
+      let txt = ''
+      try { txt = await r.text() } catch (_) {}
+      if (r.status === 404 || /UNREGISTERED|NOT_FOUND/.test(txt)) {
+        try { await sb().from('native_push_tokens').delete().eq('token', t.token) } catch (_) {}
+      }
+    } catch (_) {}
+  }))
+  return { sent, found: toks.length }
+}
+
+// Notifie un athlète sur TOUS ses canaux (Web Push + FCM), chacun best-effort et
+// indépendant. Point d'entrée unique des notifications métier.
+async function notifyAthlete(athlete_id: string, payload: Record<string, unknown>): Promise<void> {
+  await Promise.all([
+    sendPushToAthlete(athlete_id, payload).catch(() => {}),
+    sendFcmToAthlete(athlete_id, payload).then(() => {}).catch(() => {}),
+  ])
+}
+
+async function handleSaveNativePushToken(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const token = String(body.token || '')
+  const platform = String(body.platform || '')
+  if (!athlete_id || !token) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const row = { token, athlete_id, platform, created_at: new Date().toISOString() }
+  const { error } = await sb().from('native_push_tokens').upsert(row, { onConflict: 'token' })
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true })
+}
+
+async function handleDeleteNativePushToken(body: any): Promise<Response> {
+  const token = String(body.token || '')
+  if (!token) return jsonResp({ success: false, error: 'token manquant' })
+  const { error } = await sb().from('native_push_tokens').delete().eq('token', token)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true })
+}
+
 // Diagnostic : envoie une notif de test à l'athlète et renvoie précisément quel
 // maillon casse (secrets VAPID absents ? aucun abonnement ? web-push en erreur ?).
 async function handleTestPush(body: any): Promise<Response> {
@@ -2472,7 +2586,15 @@ async function handleTestPush(body: any): Promise<Response> {
       }
     }
   }
-  return jsonResp({ success: true, vapid, subsFound: subs?.length || 0, sent: results.filter(r => r.ok).length, results })
+  // Canal natif (FCM) : diagnostic en parallèle du Web Push.
+  let fcm: any = { configured: false, found: 0, sent: 0 }
+  try {
+    if (_fcmServiceAccount()) {
+      const r = await sendFcmToAthlete(athlete_id, { title: '🔔 Test Novalyz', body: 'Si tu vois ceci, les notifications marchent !', target: '', url: './' })
+      fcm = { configured: true, found: r.found, sent: r.sent, error: r.error || null }
+    }
+  } catch (e: any) { fcm = { configured: true, found: 0, sent: 0, error: String((e && e.message) || e).slice(0, 200) } }
+  return jsonResp({ success: true, vapid, subsFound: subs?.length || 0, sent: results.filter(r => r.ok).length, results, fcm })
 }
 
 // ── Google Health API (montre Fitbit via compte Google) ───────────────────────
@@ -2686,7 +2808,7 @@ async function handleSaveCommentaire(body: any): Promise<Response> {
   if (aut === 'coach') {
     const expediteur = String(coach_nom || auteur_nom || 'Ton coach')
     const apercu = msg.length > 90 ? msg.slice(0, 87) + '…' : msg
-    try { await sendPushToAthlete(String(athlete_id), { title: `💬 ${expediteur}`, body: apercu, tag: 'novalyz-msg', target: 'conversation' }) } catch (_) {}
+    try { await notifyAthlete(String(athlete_id), { title: `💬 ${expediteur}`, body: apercu, tag: 'novalyz-msg', target: 'conversation' }) } catch (_) {}
   }
   return jsonResp({ success: true })
 }
@@ -3091,6 +3213,8 @@ Deno.serve(async (req: Request) => {
         case 'saveCommentaire':          return handleSaveCommentaire(body)
         case 'savePushSub':              return handleSavePushSub(body)
         case 'deletePushSub':            return handleDeletePushSub(body)
+        case 'saveNativePushToken':      return handleSaveNativePushToken(body)
+        case 'deleteNativePushToken':    return handleDeleteNativePushToken(body)
         case 'testPush':                 return handleTestPush(body)
         case 'googleHealthCallback':     return handleGoogleHealthCallback(body)
         case 'googleHealthStatus':       return handleGoogleHealthStatus(body)
