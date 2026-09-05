@@ -712,6 +712,10 @@ const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth
  * Réglage local à l'appareil, sans backend.
  * ========================================================================== */
 let COCKPIT_ON = true;
+// Interrupteur Cockpit retiré des Réglages : le Cockpit est désormais l'affichage
+// standard. On efface une éventuelle ancienne préférence « désactivé » ('0') pour
+// que personne ne reste bloqué sans moyen de le réactiver.
+try { if (localStorage.getItem('nv_cockpit_on') === '0') localStorage.removeItem('nv_cockpit_on'); } catch (e) {}
 try { COCKPIT_ON = (localStorage.getItem('nv_cockpit_on') !== '0'); } catch (e) {}
 function estCockpitActif(){ try { return localStorage.getItem('nv_cockpit_on') !== '0'; } catch (e) { return true; } }
 function basculerCockpit(){
