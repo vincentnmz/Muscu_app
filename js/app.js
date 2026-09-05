@@ -1977,6 +1977,102 @@ function fermerModalLierAthlete() {
   document.getElementById('modal-lier-athlete').style.display = 'none';
 }
 
+/* __RESET_MDP_START__
+ * Réinitialisation du mot de passe d'un athlète PAR SON COACH (front, Étape 2).
+ * UI uniquement : appelle l'action backend coachResetAthlete. Le coach_id vient
+ * de la SESSION (jamais saisi), l'athlete_id du CONTEXTE de la fiche affichée.
+ * Le front n'a jamais l'ancien mot de passe et n'affiche jamais le hash. */
+let _resetMdpAthleteId = null;
+let _resetMdpEnCours = false;
+
+// Longueur mini identique au backend / à l'inscription (6).
+function _resetMdpValide(mdp) { return typeof mdp === 'string' && mdp.length >= 6; }
+
+// Mot de passe temporaire lisible (sans caractères ambigus 0/O/1/l/I…), 8 signes.
+function genererMdpCoach() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const rnd = (typeof crypto !== 'undefined' && crypto.getRandomValues)
+    ? () => crypto.getRandomValues(new Uint32Array(1))[0]
+    : () => Math.floor(Math.random() * 4294967296);
+  let out = '';
+  for (let i = 0; i < 8; i++) out += chars[rnd() % chars.length];
+  const inp = document.getElementById('reset-mdp-input');
+  if (inp) { inp.type = 'text'; inp.value = out; }
+  const eye = document.getElementById('reset-mdp-eye'); if (eye) eye.textContent = '🙈';
+  return out;
+}
+
+function toggleResetMdpVisibility() {
+  const inp = document.getElementById('reset-mdp-input');
+  const eye = document.getElementById('reset-mdp-eye');
+  if (!inp) return;
+  const masque = inp.type === 'password';
+  inp.type = masque ? 'text' : 'password';
+  if (eye) eye.textContent = masque ? '🙈' : '👁';
+}
+
+function copierResetMdp() {
+  const inp = document.getElementById('reset-mdp-input');
+  if (!inp || !inp.value) { showToast('Aucun mot de passe à copier'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inp.value).then(() => showToast('📋 Copié')).catch(() => showToast('Copie manuelle nécessaire'));
+  } else { showToast('Copie manuelle nécessaire'); }
+}
+
+// Ouvre la modale pour l'athlète du contexte (id + nom passés par la fiche).
+function ouvrirResetMdp(athlete_id, nom) {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  if (!athlete_id) { showToast('Aucun athlète sélectionné'); return; }
+  _resetMdpAthleteId = athlete_id;
+  _resetMdpEnCours = false;
+  const nomEl = document.getElementById('reset-mdp-nom'); if (nomEl) nomEl.textContent = nom || 'cet athlète';
+  const inp = document.getElementById('reset-mdp-input'); if (inp) { inp.type = 'password'; inp.value = ''; }
+  const eye = document.getElementById('reset-mdp-eye'); if (eye) eye.textContent = '👁';
+  const msg = document.getElementById('reset-mdp-msg'); if (msg) { msg.textContent = ''; msg.style.color = ''; }
+  const btn = document.getElementById('reset-mdp-confirm'); if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
+  const ov = document.getElementById('reset-mdp-overlay'); if (ov) ov.style.display = 'flex';
+}
+
+function fermerResetMdp() {
+  const ov = document.getElementById('reset-mdp-overlay'); if (ov) ov.style.display = 'none';
+  _resetMdpAthleteId = null;
+}
+
+async function confirmerResetMdp() {
+  if (_resetMdpEnCours) return;
+  const inp = document.getElementById('reset-mdp-input');
+  const msg = document.getElementById('reset-mdp-msg');
+  const btn = document.getElementById('reset-mdp-confirm');
+  const mdp = inp ? inp.value : '';
+  const setMsg = (t, col) => { if (msg) { msg.textContent = t; msg.style.color = col || 'var(--danger)'; } };
+  if (!coach || !coach.coach_id) { setMsg('Session coach introuvable.'); return; }
+  if (!_resetMdpAthleteId) { setMsg('Aucun athlète sélectionné.'); return; }
+  if (!_resetMdpValide(mdp)) { setMsg('Mot de passe : 6 caractères minimum.'); return; }
+  _resetMdpEnCours = true; if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'coachResetAthlete', coach_id: coach.coach_id, athlete_id: _resetMdpAthleteId, nouveau_mdp: mdp }),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      if (inp) inp.type = 'text';   // laisse le coach lire / copier le nouveau mdp
+      setMsg('✅ Mot de passe réinitialisé. Nouveau mot de passe : ' + mdp + ' — communique-le à l\'athlète.', 'var(--good)');
+      if (btn) { btn.disabled = true; btn.textContent = 'Terminé'; }
+      showToast('🔐 Mot de passe réinitialisé');
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec de la réinitialisation.'));
+      if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
+    }
+  } catch (e) {
+    setMsg('❌ Erreur réseau. Réessaie.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
+  } finally {
+    _resetMdpEnCours = false;
+  }
+}
+/* __RESET_MDP_END__ */
+
 // Bascule entre "Lier un compte existant" et "Créer un nouveau compte".
 function switchLierMode(mode) {
   lierModeActuel = mode;
@@ -2559,6 +2655,11 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       ${objectifsHtml}
       <div class="v2-sec"><div class="st">${ic('alert')}Blessures &amp; réathlé</div></div>
       ${blessuresHtml}
+      ${cdMode==='coach' ? `
+      <div class="v2-sec"><div class="st">${ic('note')}Compte</div></div>
+      <div class="dash-card" style="padding:12px 14px;margin-bottom:12px;">
+        <button class="btn btn-outline" style="width:auto;margin:0;font-size:13px;padding:9px 14px;" onclick="ouvrirResetMdp(cdJoueurCourant, cdJoueurNom)">🔐 Réinitialiser le mot de passe</button>
+      </div>` : ''}
     </div>
 
     <!-- PANEL 1 : CHARGE & PHYSIQUE (données réelles) -->
