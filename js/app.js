@@ -712,6 +712,10 @@ const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth
  * Réglage local à l'appareil, sans backend.
  * ========================================================================== */
 let COCKPIT_ON = true;
+// Interrupteur Cockpit retiré des Réglages : le Cockpit est désormais l'affichage
+// standard. On efface une éventuelle ancienne préférence « désactivé » ('0') pour
+// que personne ne reste bloqué sans moyen de le réactiver.
+try { if (localStorage.getItem('nv_cockpit_on') === '0') localStorage.removeItem('nv_cockpit_on'); } catch (e) {}
 try { COCKPIT_ON = (localStorage.getItem('nv_cockpit_on') !== '0'); } catch (e) {}
 function estCockpitActif(){ try { return localStorage.getItem('nv_cockpit_on') !== '0'; } catch (e) { return true; } }
 function basculerCockpit(){
@@ -2110,6 +2114,38 @@ function prefillEmailReglages() {
   if (inp && athlete) inp.value = athlete.email || '';
 }
 /* __EMAIL_ATHLETE_END__ */
+
+/* __CHANGE_PWD_START__
+ * L'athlète change lui-même son mot de passe (connecté). On demande l'ancien
+ * (preuve de possession) — le backend le revérifie. Le front n'a jamais le
+ * hash ; il n'envoie que ancien + nouveau. */
+async function changerMonMotDePasse() {
+  if (!athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord'); return; }
+  const a = document.getElementById('pwd-actuel');
+  const n = document.getElementById('pwd-nouveau');
+  const msg = document.getElementById('pwd-msg');
+  const ancien = a ? a.value : '';
+  const nouveau = n ? n.value : '';
+  const setMsg = (t, col) => { if (msg) { msg.textContent = t; msg.style.color = col || 'var(--danger)'; } };
+  if (!ancien || !nouveau) { setMsg('Remplis les deux champs.'); return; }
+  if (nouveau.length < 6) { setMsg('Nouveau mot de passe : 6 caractères minimum.'); return; }
+  if (nouveau === ancien) { setMsg('Le nouveau mot de passe doit être différent de l\'ancien.'); return; }
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'changePassword', athlete_id: athlete.athlete_id, ancien_mdp: ancien, nouveau_mdp: nouveau }),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      setMsg('✅ Mot de passe modifié.', 'var(--good)');
+      if (a) a.value = ''; if (n) n.value = '';
+      showToast('🔐 Mot de passe modifié');
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec de la modification.'));
+    }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+/* __CHANGE_PWD_END__ */
 
 // Bascule entre "Lier un compte existant" et "Créer un nouveau compte".
 function switchLierMode(mode) {
