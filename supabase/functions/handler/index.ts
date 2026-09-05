@@ -993,6 +993,68 @@ async function handleSaveEmail(body: any): Promise<Response> {
   return jsonResp({ success: true, email })
 }
 
+// L'athlète met à jour son profil (nom, taille, poids, années, ddn). Ne touche
+// qu'aux champs fournis. N'affecte ni login ni mot de passe ni coach.
+async function handleSaveProfil(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const patch: any = {}
+  if (body.nom != null && String(body.nom).trim()) patch.nom = String(body.nom).trim()
+  if (body.taille != null && body.taille !== '') patch.taille = Number(body.taille) || null
+  if (body.poids != null && body.poids !== '') patch.poids = Number(body.poids) || null
+  if (body.annees != null && body.annees !== '') patch.annees = Number(body.annees) || 0
+  if (body.ddn != null && String(body.ddn).trim()) patch.ddn = String(body.ddn).trim()
+  if (!Object.keys(patch).length) return jsonResp({ success: false, error: 'Rien à enregistrer' })
+  const { error } = await sb().from('athletes').update(patch).eq('id', athlete_id)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true })
+}
+
+// Le coach met à jour son profil (nom, email). Email optionnel, validé s'il est
+// non vide.
+async function handleSaveCoachProfil(body: any): Promise<Response> {
+  const coach_id = String(body.coach_id || '')
+  if (!coach_id) return jsonResp({ success: false, error: 'coach_id manquant' })
+  const patch: any = {}
+  if (body.nom != null && String(body.nom).trim()) patch.nom = String(body.nom).trim()
+  if (body.email != null) {
+    const e = String(body.email).trim()
+    if (e && !_emailValide(e)) return jsonResp({ success: false, error: 'Email invalide' })
+    patch.email = e || null
+  }
+  if (!Object.keys(patch).length) return jsonResp({ success: false, error: 'Rien à enregistrer' })
+  const { error } = await sb().from('coachs').update(patch).eq('coach_id', coach_id)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true })
+}
+
+// Le coach change LUI-MÊME son mot de passe (preuve de possession : ancien mdp).
+async function handleChangePasswordCoach(body: any): Promise<Response> {
+  const coach_id = String(body.coach_id || '')
+  const ancien = String(body.ancien_mdp || '')
+  const nouveau = String(body.nouveau_mdp || '')
+  if (!coach_id || !ancien || !nouveau) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (nouveau.length < 6) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })
+  const { data: coach } = await sb().from('coachs').select('coach_id,login,password_hash').eq('coach_id', coach_id).single()
+  if (!coach) return jsonResp({ success: false, error: 'Accès refusé' })
+  const { ok } = await verifyPwd(ancien, coach.password_hash || '', coach.login)
+  if (!ok) return jsonResp({ success: false, error: 'Mot de passe actuel incorrect' })
+  const hash = await hashSalted(nouveau, coach.login)
+  const { error } = await sb().from('coachs').update({ password_hash: hash }).eq('coach_id', coach_id)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true })
+}
+
+// Club et catégorie par défaut du coach (préférence d'équipe). Stockage simple.
+async function handleSaveClubCoach(body: any): Promise<Response> {
+  const coach_id = String(body.coach_id || '')
+  if (!coach_id) return jsonResp({ success: false, error: 'coach_id manquant' })
+  const patch = { club: String(body.club || '').trim() || null, categorie_defaut: String(body.categorie_defaut || '').trim() || null }
+  const { error } = await sb().from('coachs').update(patch).eq('coach_id', coach_id)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true })
+}
+
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')?.trim()
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -1367,7 +1429,7 @@ async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
   if (!ok) return jsonResp({ success: false, error: 'Login ou mot de passe incorrect.' })
   if (upgrade) await sb().from('coachs').update({ password_hash: upgrade }).eq('coach_id', coach.coach_id)
 
-  return jsonResp({ success: true, coach: { coach_id: coach.coach_id, nom: coach.nom, sport: String(coach.sport || '').trim() || 'muscu', role: String(coach.role || '').trim() || 'coach' } })
+  return jsonResp({ success: true, coach: { coach_id: coach.coach_id, nom: coach.nom, sport: String(coach.sport || '').trim() || 'muscu', role: String(coach.role || '').trim() || 'coach', email: coach.email || '', club: coach.club || '', categorie_defaut: coach.categorie_defaut || '' } })
 }
 
 async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response> {
@@ -3273,6 +3335,10 @@ Deno.serve(async (req: Request) => {
         case 'coachResetAthlete':        return handleCoachResetAthlete(body)
         case 'saveEmail':                return handleSaveEmail(body)
         case 'changePassword':           return handleChangePassword(body)
+        case 'saveProfil':               return handleSaveProfil(body)
+        case 'saveCoachProfil':          return handleSaveCoachProfil(body)
+        case 'changePasswordCoach':      return handleChangePasswordCoach(body)
+        case 'saveClubCoach':            return handleSaveClubCoach(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password }))
