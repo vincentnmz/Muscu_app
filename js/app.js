@@ -1640,12 +1640,14 @@ async function sInscrire() {
   const annees = (sport === 'muscu') ? document.getElementById('reg-annees').value.trim() : '0';
   const ddn = document.getElementById('reg-ddn').value;
   const password = document.getElementById('reg-password').value;
+  const email = (document.getElementById('reg-email') ? document.getElementById('reg-email').value : '').trim();
   const errEl = document.getElementById('reg-error');
   errEl.textContent = '';
   if (!prenom || !login || !ddn || !taille) { errEl.textContent = 'Remplis tous les champs.'; return; }
   if (sport === 'muscu' && annees === '') { errEl.textContent = 'Indique tes années de pratique.'; return; }
   if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
+  if (email && !emailValideFront(email)) { errEl.textContent = 'Email invalide (ou laisse le champ vide).'; return; }
   if (!document.getElementById('reg-consent').checked) { errEl.textContent = 'Tu dois accepter la politique de confidentialité.'; return; }
   errEl.textContent = 'Création...';
   try {
@@ -1653,7 +1655,7 @@ async function sInscrire() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, annees, password, sport })
+      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, annees, password, sport, email })
     });
     const data = await res.json();
     if (data.success) {
@@ -2072,6 +2074,42 @@ async function confirmerResetMdp() {
   }
 }
 /* __RESET_MDP_END__ */
+
+/* __EMAIL_ATHLETE_START__
+ * Email de l'athlète (P1 du reset par email). OPTIONNEL. Sert plus tard à
+ * recevoir un lien de réinitialisation. Ici : juste stocker/mettre à jour. */
+function emailValideFront(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '')); }
+
+async function enregistrerEmailAthlete() {
+  if (!athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord'); return; }
+  const inp = document.getElementById('reglages-email');
+  const msg = document.getElementById('reglages-email-msg');
+  const email = inp ? inp.value.trim() : '';
+  const setMsg = (t, col) => { if (msg) { msg.textContent = t; msg.style.color = col || 'var(--danger)'; } };
+  if (email && !emailValideFront(email)) { setMsg('Email invalide (ou laisse le champ vide).'); return; }
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveEmail', athlete_id: athlete.athlete_id, email }),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      athlete.email = email;
+      try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+      setMsg(email ? '✅ Email enregistré.' : '✅ Email retiré.', 'var(--good)');
+      showToast('✅ Email enregistré');
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+    }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+
+// Pré-remplit le champ email des Réglages avec l'email courant de l'athlète.
+function prefillEmailReglages() {
+  const inp = document.getElementById('reglages-email');
+  if (inp && athlete) inp.value = athlete.email || '';
+}
+/* __EMAIL_ATHLETE_END__ */
 
 // Bascule entre "Lier un compte existant" et "Créer un nouveau compte".
 function switchLierMode(mode) {
@@ -6125,6 +6163,7 @@ function switchTab(tab) {
     try { majUiPush(); } catch (_) {}
     try { majUiGoogleHealth(); } catch (_) {}
     try { majUiCockpitPref(); } catch (_) {}
+    try { prefillEmailReglages(); } catch (_) {}
   }
 
 }

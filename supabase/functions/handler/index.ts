@@ -919,7 +919,14 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
     poids,
     taille: (ath.taille != null && ath.taille !== '') ? Number(ath.taille) : null,
     ddn: ath.ddn ? fmtFR(ath.ddn) : '',
+    email: ath.email || '',
   }})
+}
+
+// Validation minimale d'un email (format). L'email est OPTIONNEL dans Novalyz :
+// une chaîne vide est gérée en amont (non stockée), ici on ne juge que le format.
+function _emailValide(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
 async function handleRegister(params: URLSearchParams): Promise<Response> {
@@ -930,14 +937,16 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   const taille = params.get('taille') || null
   const annees = params.get('annees') || '0'
   const sport = params.get('sport') || 'muscu'
+  const email = (params.get('email') || '').trim()
   if (!login || !pwd) return jsonResp({ erreur: 'Paramètres manquants' })
+  if (email && !_emailValide(email)) return jsonResp({ erreur: 'Email invalide', message: 'Email invalide' })
 
   const { data: existing } = await sb().from('athletes').select('id').eq('login', login).single()
   if (existing) return jsonResp({ erreur: 'Login déjà utilisé', message: 'Login déjà utilisé' })
 
   const hash = await hashSalted(pwd, login)
   const newId = await nextAthleteId()
-  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, annees: Number(annees) || 0 }).select().single()
+  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, annees: Number(annees) || 0, email: email || null }).select().single()
   if (error) return jsonResp({ erreur: error.message, message: error.message })
   return jsonResp({ success: true, athlete: {
     athlete_id: data.id,
@@ -948,7 +957,21 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
     objectif: '',
     strategie_progression: '',
     annees_pratique: Number(annees) || 0,
+    email: email || '',
   }})
+}
+
+// Ajout / mise à jour / effacement de l'email d'un athlète (compte existant).
+// Email OPTIONNEL : une chaîne vide efface l'email. Un email non vide doit être
+// valide. Ne touche à aucun autre champ.
+async function handleSaveEmail(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const email = String(body.email || '').trim()
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  if (email && !_emailValide(email)) return jsonResp({ success: false, error: 'Email invalide' })
+  const { error } = await sb().from('athletes').update({ email: email || null }).eq('id', athlete_id)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true, email })
 }
 
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
@@ -3229,6 +3252,7 @@ Deno.serve(async (req: Request) => {
         case 'supprimerCompte':          return handleSupprimerCompte(body)
         case 'coachCreerAthlete':        return handleCoachCreerAthlete(body)
         case 'coachResetAthlete':        return handleCoachResetAthlete(body)
+        case 'saveEmail':                return handleSaveEmail(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password }))
