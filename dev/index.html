@@ -1138,32 +1138,16 @@
         <button onclick="enregistrerEmailAthlete()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer l'email</button>
         <div id="reglages-email-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
         <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+        <label>Mot de passe actuel</label>
+        <input type="password" id="pwd-actuel" placeholder="Ton mot de passe actuel" autocomplete="current-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <label style="display:block;margin-top:8px;">Nouveau mot de passe</label>
+        <input type="password" id="pwd-nouveau" placeholder="6 caractères minimum" autocomplete="new-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <button onclick="changerMonMotDePasse()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Modifier mon mot de passe</button>
+        <div id="pwd-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+        <div style="height:1px;background:var(--border);margin:14px 0;"></div>
         <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:14px;">Politique de confidentialité &amp; mes droits</a>
         <button onclick="supprimerMonCompte()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte et mes données</button>
         <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Action irréversible : toutes tes données (séances, poids, notes) seront effacées.</div>
-      </div>
-
-      <!-- Cockpit (aperçu) -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Cockpit <span style="font-size:10px;color:var(--text-subtle);font-weight:700;">· aperçu</span></h2></div>
-      <div class="card">
-        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Affiche une synthèse rapide (État · Charge · Bien-être · Évolution · Performance · Historique) en haut de l'accueil, et masque les cartes qui font doublon. Ton onglet Progression et le reste ne changent pas. Réglage stocké sur cet appareil.</div>
-        <button onclick="basculerCockpit()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;">
-          <span>Cockpit de synthèse</span>
-          <span style="display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:13px;font-weight:700;"><span id="reglages-cockpit-label">Désactivé</span> ⇄</span>
-        </button>
-      </div>
-
-      <!-- Debug -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-gauge"/></svg>Diagnostic</h2></div>
-      <div class="card" style="padding:14px;">
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Affiche les données brutes calculées par le serveur. Utile pour vérifier un marqueur (streak, tonnage, records…) qui semble incorrect.</div>
-        <button class="btn btn-outline" onclick="debugChargerDonnees()" style="margin-bottom:10px;">🔄 Charger les données serveur</button>
-        <div id="debug-panel" style="display:none;">
-          <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button class="btn-sm btn-outline" onclick="debugCopier()">📋 Copier JSON</button>
-          </div>
-          <pre id="debug-output" style="font-size:10px;color:var(--text);background:var(--surface2);border-radius:8px;padding:10px;overflow-x:auto;max-height:400px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
-        </div>
       </div>
 
     </div>
@@ -1267,12 +1251,12 @@
 </div>
 
 <div id="coach-reglages-overlay" onclick="fermerReglagesCoach()" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:998;"></div>
-<div id="coach-reglages-drawer" style="display:none;position:fixed;inset:0;max-width:480px;margin:0 auto;background:var(--surface);z-index:999;flex-direction:column;overflow:hidden;">
+<div id="coach-reglages-drawer" style="display:none;position:fixed;inset:0;background:var(--surface);z-index:999;flex-direction:column;overflow:hidden;">
   <header style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top,0px)) 12px 12px;border-bottom:1px solid var(--border);background:var(--surface);">
     <button onclick="fermerReglagesCoach()" aria-label="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:18px;line-height:1;">←</button>
     <div style="font-size:17px;font-weight:800;">Réglages</div>
   </header>
-  <div style="flex:1;overflow-y:auto;padding:16px 20px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch;">
+  <div style="flex:1;overflow-y:auto;padding:16px 20px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch;max-width:640px;margin:0 auto;width:100%;box-sizing:border-box;">
 
     <!-- Mon compte coach -->
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px;">Mon compte</div>
@@ -1292,13 +1276,6 @@
       <span>Thème</span><span style="color:var(--text-muted);"><span id="reglages-theme-label-coach">Sombre</span> ⇄</span>
     </button>
 
-    <!-- Cockpit (aperçu) -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Cockpit · aperçu</div>
-    <button onclick="basculerCockpit()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">
-      <span>Cockpit de synthèse</span><span style="color:var(--text-muted);"><span id="reglages-cockpit-label-coach">Désactivé</span> ⇄</span>
-    </button>
-    <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Synthèse rapide en haut de la fiche + masquage des doublons. Progression et actions inchangées. Réglage local à cet appareil.</div>
-
     <!-- Déconnexion -->
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Session</div>
     <button onclick="seDeconnecterCoach();fermerReglagesCoach();" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
@@ -1317,9 +1294,6 @@
     <button onclick="supprimerDemoFoot()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;">Supprimer les joueurs de démo</button>
     <div id="demo-foot-info" style="display:none;font-size:11.5px;color:var(--text-muted);line-height:1.4;"></div>
 
-    <!-- Diagnostic -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Diagnostic</div>
-    <button onclick="debugCoachOuvrir();fermerReglagesCoach();" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">🔧 Données brutes (debug)</button>
 
   </div>
 </div>
