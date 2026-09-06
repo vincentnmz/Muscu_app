@@ -142,6 +142,7 @@
         <div class="pwd-wrap"><input type="password" id="inp-password" placeholder="Mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('inp-password',this)" aria-label="Afficher le mot de passe">👁</button></div>
         <div id="login-error" class="error-msg"></div>
         <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
+        <div style="text-align:center;margin-top:10px;"><a href="#" onclick="ouvrirMdpOublie(event)" style="font-size:12.5px;color:var(--accent);font-weight:600;text-decoration:none;">Mot de passe oublié ?</a></div>
       </div>
     </div>
 
@@ -344,6 +345,38 @@
           <button class="btn" style="flex:1;background:var(--surface2);color:var(--text-muted);" onclick="fermerModalLierAthlete()">Annuler</button>
           <button class="btn btn-accent" style="flex:1;" id="lier-submit-btn" onclick="submitLierAthlete()">Lier</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE — Mot de passe oublié (demande de lien par email) -->
+  <div id="forgot-overlay" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+    <div class="card modal-card" style="width:100%;max-width:360px;padding:20px;box-shadow:var(--shadow-lg);box-sizing:border-box;">
+      <div style="font-size:17px;font-weight:800;margin-bottom:4px;">🔑 Mot de passe oublié</div>
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px;">Entre l'email de ton compte. Si un compte correspond, tu recevras un lien pour choisir un nouveau mot de passe.</div>
+      <label>Email</label>
+      <input type="email" id="forgot-email" placeholder="ton@email.com" autocomplete="email" inputmode="email" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+      <div id="forgot-msg" style="font-size:12.5px;margin-top:10px;line-height:1.4;word-break:break-word;"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn" style="flex:1;margin:0;background:var(--surface2);color:var(--text-muted);" onclick="fermerMdpOublie()">Annuler</button>
+        <button class="btn btn-accent" style="flex:1;margin:0;" id="forgot-submit" onclick="envoyerMdpOublie()">Envoyer le lien</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE — Nouveau mot de passe (via le lien reçu par email : ?reset_token=…) -->
+  <div id="reset-overlay" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.72);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);z-index:1001;align-items:center;justify-content:center;padding:16px;">
+    <div class="card modal-card" style="width:100%;max-width:360px;padding:20px;box-shadow:var(--shadow-lg);box-sizing:border-box;">
+      <div style="font-size:17px;font-weight:800;margin-bottom:4px;">🔐 Nouveau mot de passe</div>
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px;">Choisis ton nouveau mot de passe.</div>
+      <label>Nouveau mot de passe</label>
+      <input type="password" id="reset-new" placeholder="6 caractères minimum" autocomplete="new-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+      <label style="display:block;margin-top:8px;">Confirme le mot de passe</label>
+      <input type="password" id="reset-confirm" placeholder="Retape le mot de passe" autocomplete="new-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+      <div id="reset-msg" style="font-size:12.5px;margin-top:10px;line-height:1.4;word-break:break-word;"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn" style="flex:1;margin:0;background:var(--surface2);color:var(--text-muted);" onclick="fermerNouveauMdp()">Annuler</button>
+        <button class="btn btn-accent" style="flex:1;margin:0;" id="reset-submit" onclick="validerNouveauMdp()">Valider</button>
       </div>
     </div>
   </div>

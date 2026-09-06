@@ -1161,6 +1161,33 @@ async function handleRequestPasswordReset(body: any): Promise<Response> {
   return generique()
 }
 
+// Complète le reset : consomme un token valide (non expiré, non utilisé) et
+// remplace le mot de passe. Le token est fourni EN CLAIR par le lien de l'email ;
+// on le compare par son hash. Usage unique (token marqué used après succès).
+async function handleResetPassword(body: any): Promise<Response> {
+  const token = String(body.token || '').trim()
+  const nouveau = String(body.nouveau_mdp || '')
+  if (!token || !nouveau) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (nouveau.length < 6) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })
+
+  const token_hash = await sha256hex(token)
+  const { data: row } = await sb().from('password_reset_tokens').select('*').eq('token_hash', token_hash).eq('used', false).single()
+  if (!row) return jsonResp({ success: false, error: 'Lien invalide ou déjà utilisé.' })
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    try { await sb().from('password_reset_tokens').update({ used: true }).eq('token_hash', token_hash) } catch (_) {}
+    return jsonResp({ success: false, error: 'Lien expiré. Refais une demande.' })
+  }
+
+  const { data: ath } = await sb().from('athletes').select('id,login').eq('id', String(row.athlete_id)).single()
+  if (!ath) return jsonResp({ success: false, error: 'Compte introuvable.' })
+
+  const hash = await hashSalted(nouveau, ath.login)
+  const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
+  if (error) return jsonResp({ success: false, error: error.message })
+  try { await sb().from('password_reset_tokens').update({ used: true }).eq('token_hash', token_hash) } catch (_) {}
+  return jsonResp({ success: true })
+}
+
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')?.trim()
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -3448,6 +3475,7 @@ Deno.serve(async (req: Request) => {
         case 'exportAthlete':            return handleExportAthlete(body)
         case 'exportEquipe':             return handleExportEquipe(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
+        case 'resetPassword':            return handleResetPassword(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password }))
