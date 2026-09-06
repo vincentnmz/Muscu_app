@@ -1055,6 +1055,44 @@ async function handleSaveClubCoach(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
+// ── Export RGPD (portabilité des données) ─────────────────────────────────────
+// Tables personnelles d'un athlète, clé = athlete_id (jamais password_hash).
+const _EXPORT_TABLES = ['performances', 'indicateurs', 'bien_etre', 'tests', 'objectifs', 'objectif', 'blessures', 'poids_historique', 'commentaires', 'contexte_athlete', 'programme']
+
+async function _collecterDonneesAthlete(id: string): Promise<Record<string, any>> {
+  const bloc: Record<string, any> = {}
+  for (const t of _EXPORT_TABLES) {
+    try { const { data } = await sb().from(t).select('*').eq('athlete_id', id); bloc[t] = data || [] }
+    catch (_) { bloc[t] = [] }
+  }
+  return bloc
+}
+
+// Export complet des données d'UN athlète (JSON). Le hash n'est jamais exporté.
+async function handleExportAthlete(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const { data: prof } = await sb().from('athletes').select('*').eq('id', athlete_id).single()
+  if (!prof) return jsonResp({ success: false, error: 'Athlète introuvable' })
+  const profil: any = { ...prof }; delete profil.password_hash
+  const bloc = await _collecterDonneesAthlete(athlete_id)
+  return jsonResp({ success: true, data: { export: 'novalyz', type: 'athlete', date: new Date().toISOString(), athlete_id, profil, ...bloc } })
+}
+
+// Export des données de TOUS les athlètes d'un coach (JSON).
+async function handleExportEquipe(body: any): Promise<Response> {
+  const coach_id = String(body.coach_id || '')
+  if (!coach_id) return jsonResp({ success: false, error: 'coach_id manquant' })
+  const { data: aths } = await sb().from('athletes').select('*').eq('coach_id', coach_id)
+  const athletes: any[] = []
+  for (const a of (aths || [])) {
+    const profil: any = { ...a }; delete profil.password_hash
+    const bloc = await _collecterDonneesAthlete(a.id)
+    athletes.push({ athlete_id: a.id, profil, ...bloc })
+  }
+  return jsonResp({ success: true, data: { export: 'novalyz', type: 'equipe', date: new Date().toISOString(), coach_id, athletes } })
+}
+
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')?.trim()
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -3339,6 +3377,8 @@ Deno.serve(async (req: Request) => {
         case 'saveCoachProfil':          return handleSaveCoachProfil(body)
         case 'changePasswordCoach':      return handleChangePasswordCoach(body)
         case 'saveClubCoach':            return handleSaveClubCoach(body)
+        case 'exportAthlete':            return handleExportAthlete(body)
+        case 'exportEquipe':             return handleExportEquipe(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password }))

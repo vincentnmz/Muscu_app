@@ -1203,6 +1203,14 @@
       <div class="rg-panel" data-rg="data" style="display:none;">
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Mes données</h2></div>
         <div class="card">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Télécharge tout ton historique (séances, poids, ressentis, objectifs, blessures). JSON = tout ; CSV = tes séances.</div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="exporterMesDonnees('json')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Exporter (JSON)</button>
+            <button onclick="exporterMesDonnees('csv')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Séances (CSV)</button>
+          </div>
+          <div id="export-ath-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+        </div>
+        <div class="card">
           <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;">Politique de confidentialité &amp; mes droits</a>
         </div>
         <div class="v2-sec"><h2 class="st" style="color:var(--danger);"><svg class="ico"><use href="#i-alert"/></svg>Zone dangereuse</h2></div>
@@ -1395,6 +1403,15 @@
 
     <!-- DONNÉES -->
     <div class="crg-panel" data-crg="data" style="display:none;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Données de l'équipe</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Historique complet de tes athlètes (séances, indicateurs, blessures…). JSON = tout ; CSV = toutes les séances.</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="exporterEquipe('json')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Exporter (JSON)</button>
+          <button onclick="exporterEquipe('csv')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Séances (CSV)</button>
+        </div>
+        <div id="export-coach-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+      </div>
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--danger);">Zone dangereuse</div>
       <button onclick="supprimerCompteCoach()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte coach</button>
       <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Action irréversible. Le lien avec vos athlètes sera supprimé (leurs données conservées).</div>

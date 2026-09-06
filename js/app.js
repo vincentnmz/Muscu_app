@@ -2286,6 +2286,70 @@ async function enregistrerClubCoach() {
 }
 /* __REGLAGES_V3_COACH_END__ */
 
+/* __EXPORT_RGPD_START__
+ * Export RGPD (portabilité) : télécharge les données en JSON (complet) ou CSV
+ * (séances). Le téléchargement web utilise un Blob + <a download> (comme le
+ * bilan). En WebView native, le download n'est pas supporté (adaptation
+ * ultérieure) : on le signale au lieu d'échouer en silence. */
+function _telecharger(filename, content, mime) {
+  try {
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { try { URL.revokeObjectURL(url); a.remove(); } catch (e) {} }, 1500);
+    return true;
+  } catch (e) { return false; }
+}
+
+function _toCSV(rows) {
+  if (!rows || !rows.length) return '';
+  var cols = Object.keys(rows[0]);
+  var esc = function (v) { v = (v == null ? '' : String(v)); return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var lines = [cols.join(',')];
+  rows.forEach(function (r) { lines.push(cols.map(function (c) { return esc(r[c]); }).join(',')); });
+  return lines.join('\n');
+}
+
+async function exporterMesDonnees(format) {
+  if (!athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord'); return; }
+  var msg = document.getElementById('export-ath-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  setMsg('⏳ Préparation…', 'var(--text-muted)');
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'exportAthlete', athlete_id: athlete.athlete_id }) });
+    var data = await res.json();
+    if (!data || !data.success) { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'export.')); return; }
+    var d = data.data, stamp = new Date().toISOString().slice(0, 10), okDl;
+    if (format === 'csv') { okDl = _telecharger('novalyz-seances-' + stamp + '.csv', _toCSV(d.performances || []), 'text/csv;charset=utf-8'); }
+    else { okDl = _telecharger('novalyz-mes-donnees-' + stamp + '.json', JSON.stringify(d, null, 2), 'application/json'); }
+    setMsg(okDl ? '✅ Téléchargement lancé.' : '❌ Téléchargement non supporté ici (utilise la version web).', okDl ? 'var(--good)' : 'var(--danger)');
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+
+async function exporterEquipe(format) {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  var msg = document.getElementById('export-coach-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  setMsg('⏳ Préparation…', 'var(--text-muted)');
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'exportEquipe', coach_id: coach.coach_id }) });
+    var data = await res.json();
+    if (!data || !data.success) { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'export.')); return; }
+    var d = data.data, stamp = new Date().toISOString().slice(0, 10), okDl;
+    if (format === 'csv') {
+      var rows = [];
+      (d.athletes || []).forEach(function (a) { (a.performances || []).forEach(function (p) { rows.push(Object.assign({ athlete_id: a.athlete_id }, p)); }); });
+      okDl = _telecharger('novalyz-equipe-seances-' + stamp + '.csv', _toCSV(rows), 'text/csv;charset=utf-8');
+    } else {
+      okDl = _telecharger('novalyz-equipe-' + stamp + '.json', JSON.stringify(d, null, 2), 'application/json');
+    }
+    setMsg(okDl ? '✅ Téléchargement lancé.' : '❌ Téléchargement non supporté ici (utilise la version web).', okDl ? 'var(--good)' : 'var(--danger)');
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+/* __EXPORT_RGPD_END__ */
+
 // Bascule entre "Lier un compte existant" et "Créer un nouveau compte".
 function switchLierMode(mode) {
   lierModeActuel = mode;
