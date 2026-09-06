@@ -1332,42 +1332,89 @@
   </header>
   <div style="flex:1;overflow-y:auto;padding:16px 20px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch;max-width:640px;margin:0 auto;width:100%;box-sizing:border-box;">
 
-    <!-- Mon compte coach -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px;">Mon compte</div>
-    <div class="card" style="padding:14px 16px;margin:0;">
-      <div style="font-size:13px;font-weight:700;margin-bottom:4px;" id="coach-reglages-nom">—</div>
-      <div style="font-size:11px;color:var(--text-muted);">Coach connecté</div>
+    <!-- Sous-onglets Réglages coach -->
+    <div class="sub-tabs" style="margin:0 0 4px;">
+      <button class="sub-tab active" data-crg="compte" onclick="switchCoachReglagesTab('compte')"><span>Mon compte</span></button>
+      <button class="sub-tab" data-crg="pref" onclick="switchCoachReglagesTab('pref')"><span>Préférences</span></button>
+      <button class="sub-tab" data-crg="equipe" onclick="switchCoachReglagesTab('equipe')"><span>Équipe</span></button>
+      <button class="sub-tab" data-crg="data" onclick="switchCoachReglagesTab('data')"><span>Données</span></button>
+      <button class="sub-tab" data-crg="apropos" onclick="switchCoachReglagesTab('apropos')"><span>À propos</span></button>
     </div>
 
-    <!-- Sport -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Sport</div>
-    <select id="coach-sport-select" onchange="enregistrerSportCoach()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;"></select>
-    <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Adapte le vocabulaire de l'app (athlètes / joueurs…) et, plus tard, les indicateurs suivis.</div>
+    <!-- MON COMPTE -->
+    <div class="crg-panel" data-crg="compte" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Profil coach</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;" id="coach-reglages-nom">—</div>
+        <label>Nom affiché</label>
+        <input type="text" id="coach-prof-nom" placeholder="Ton nom" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <label style="display:block;margin-top:8px;">Email <span style="color:var(--text-muted);font-weight:600;text-transform:none;letter-spacing:0;">(récupération + notifs)</span></label>
+        <input type="email" id="coach-prof-email" placeholder="ton@email.com" autocomplete="email" inputmode="email" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <button onclick="enregistrerProfilCoach()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer</button>
+        <div id="coach-prof-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Mot de passe</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <label>Mot de passe actuel</label>
+        <input type="password" id="cpwd-actuel" placeholder="Ton mot de passe actuel" autocomplete="current-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <label style="display:block;margin-top:8px;">Nouveau mot de passe</label>
+        <input type="password" id="cpwd-nouveau" placeholder="6 caractères minimum" autocomplete="new-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <button onclick="changerMotDePasseCoach()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Modifier mon mot de passe</button>
+        <div id="cpwd-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+      </div>
+    </div>
 
-    <!-- Apparence -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Apparence</div>
-    <button onclick="toggleTheme()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">
-      <span>Thème</span><span style="color:var(--text-muted);"><span id="reglages-theme-label-coach">Sombre</span> ⇄</span>
-    </button>
+    <!-- PRÉFÉRENCES -->
+    <div class="crg-panel" data-crg="pref" style="display:none;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Apparence</div>
+      <button onclick="toggleTheme()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">
+        <span>Thème</span><span style="color:var(--text-muted);"><span id="reglages-theme-label-coach">Sombre</span> ⇄</span>
+      </button>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Sport</div>
+      <select id="coach-sport-select" onchange="enregistrerSportCoach()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;"></select>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Adapte le vocabulaire de l'app (athlètes / joueurs…) et, plus tard, les indicateurs suivis.</div>
+    </div>
 
-    <!-- Déconnexion -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Session</div>
+    <!-- ÉQUIPE -->
+    <div class="crg-panel" data-crg="equipe" style="display:none;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Club &amp; équipe</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <label>Nom du club</label>
+        <input type="text" id="coach-club" placeholder="Ex. AS Novalyz" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <label style="display:block;margin-top:8px;">Catégorie par défaut</label>
+        <input type="text" id="coach-cat" placeholder="Ex. U17" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.4;margin-top:8px;">Pré-remplira la création de nouveaux joueurs (à venir).</div>
+        <button onclick="enregistrerClubCoach()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer</button>
+        <div id="coach-club-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Démo</div>
+      <button onclick="genererDemoFoot()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">👥 Générer 14 joueurs de démo (foot)</button>
+      <button onclick="supprimerDemoFoot()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;">Supprimer les joueurs de démo</button>
+      <div id="demo-foot-info" style="display:none;font-size:11.5px;color:var(--text-muted);line-height:1.4;"></div>
+    </div>
+
+    <!-- DONNÉES -->
+    <div class="crg-panel" data-crg="data" style="display:none;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--danger);">Zone dangereuse</div>
+      <button onclick="supprimerCompteCoach()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte coach</button>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Action irréversible. Le lien avec vos athlètes sera supprimé (leurs données conservées).</div>
+    </div>
+
+    <!-- À PROPOS -->
+    <div class="crg-panel" data-crg="apropos" style="display:none;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Application</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:13px;font-weight:600;">Version</span><span id="app-version-coach" style="font-size:12.5px;color:var(--text-muted);font-weight:700;">Novalyz</span></div>
+      </div>
+      <a href="mailto:portefaixvincent@gmail.com" style="font-size:13px;color:var(--accent);font-weight:700;text-decoration:none;">Contact &amp; envoyer un retour</a>
+    </div>
+
+    <!-- Déconnexion (toujours visible, hors onglets) -->
+    <div style="height:1px;background:var(--border);margin:6px 0;"></div>
     <button onclick="seDeconnecterCoach();fermerReglagesCoach();" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
       Se déconnecter
     </button>
-
-    <!-- Zone danger -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Zone dangereuse</div>
-    <button onclick="supprimerCompteCoach()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte coach</button>
-    <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Action irréversible. Le lien avec vos athlètes sera supprimé.</div>
-
-    <!-- Démo -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Démo</div>
-    <button onclick="genererDemoFoot()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">👥 Générer 14 joueurs de démo (foot)</button>
-    <button onclick="supprimerDemoFoot()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;">Supprimer les joueurs de démo</button>
-    <div id="demo-foot-info" style="display:none;font-size:11.5px;color:var(--text-muted);line-height:1.4;"></div>
-
 
   </div>
 </div>

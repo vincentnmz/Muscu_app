@@ -1839,6 +1839,8 @@ function ouvrirReglagesCoach() {
     }).join('');
     sel.value = (coach && coach.sport) ? coach.sport : 'muscu';
   }
+  try { prefillCoachReglages(); } catch (_) {}
+  try { switchCoachReglagesTab('compte'); } catch (_) {}
   try { majUiCockpitPref(); } catch (_) {}
   // Réglages coach = vraie page plein écran (comme la vue athlète) : pas de fond
   // estompé, panneau opaque en flex-colonne, contenu scrollable.
@@ -2201,6 +2203,88 @@ async function enregistrerProfil() {
   } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
 }
 /* __REGLAGES_V3_END__ */
+
+/* __REGLAGES_V3_COACH_START__
+ * Sous-onglets Réglages coach + profil coach (nom/email), mot de passe, club. */
+function switchCoachReglagesTab(tab) {
+  document.querySelectorAll('#coach-reglages-drawer .sub-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.crg === tab); });
+  document.querySelectorAll('#coach-reglages-drawer .crg-panel').forEach(function (p) { p.style.display = (p.dataset.crg === tab) ? 'flex' : 'none'; });
+}
+
+function prefillCoachReglages() {
+  if (!coach) return;
+  var set = function (id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
+  set('coach-prof-nom', coach.nom);
+  set('coach-prof-email', coach.email);
+  set('coach-club', coach.club);
+  set('coach-cat', coach.categorie_defaut);
+  var v = document.getElementById('app-version-coach'); if (v) v.textContent = 'Novalyz ' + APP_VERSION;
+}
+
+async function enregistrerProfilCoach() {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  var msg = document.getElementById('coach-prof-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  var nom = ((document.getElementById('coach-prof-nom') || {}).value || '').trim();
+  var email = ((document.getElementById('coach-prof-email') || {}).value || '').trim();
+  if (email && !emailValideFront(email)) { setMsg('Email invalide (ou laisse le champ vide).'); return; }
+  try {
+    var res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveCoachProfil', coach_id: coach.coach_id, nom: nom, email: email }),
+    });
+    var data = await res.json();
+    if (data && data.success) {
+      if (nom) coach.nom = nom;
+      coach.email = email;
+      try { localStorage.setItem('muscu_coach', JSON.stringify(coach)); } catch (e) {}
+      var nEl = document.getElementById('coach-reglages-nom'); if (nEl && coach.nom) nEl.textContent = coach.nom;
+      setMsg('✅ Profil enregistré.', 'var(--good)');
+      showToast('✅ Profil enregistré');
+    } else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.')); }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+
+async function changerMotDePasseCoach() {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  var msg = document.getElementById('cpwd-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  var a = document.getElementById('cpwd-actuel'), n = document.getElementById('cpwd-nouveau');
+  var ancien = a ? a.value : '', nouveau = n ? n.value : '';
+  if (!ancien || !nouveau) { setMsg('Remplis les deux champs.'); return; }
+  if (nouveau.length < 6) { setMsg('Nouveau mot de passe : 6 caractères minimum.'); return; }
+  if (nouveau === ancien) { setMsg('Le nouveau mot de passe doit être différent de l\'ancien.'); return; }
+  try {
+    var res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'changePasswordCoach', coach_id: coach.coach_id, ancien_mdp: ancien, nouveau_mdp: nouveau }),
+    });
+    var data = await res.json();
+    if (data && data.success) { if (a) a.value = ''; if (n) n.value = ''; setMsg('✅ Mot de passe modifié.', 'var(--good)'); showToast('🔐 Mot de passe modifié'); }
+    else { setMsg('❌ ' + ((data && data.error) || 'Échec de la modification.')); }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+
+async function enregistrerClubCoach() {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  var msg = document.getElementById('coach-club-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  var club = ((document.getElementById('coach-club') || {}).value || '').trim();
+  var cat = ((document.getElementById('coach-cat') || {}).value || '').trim();
+  try {
+    var res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveClubCoach', coach_id: coach.coach_id, club: club, categorie_defaut: cat }),
+    });
+    var data = await res.json();
+    if (data && data.success) {
+      coach.club = club; coach.categorie_defaut = cat;
+      try { localStorage.setItem('muscu_coach', JSON.stringify(coach)); } catch (e) {}
+      setMsg('✅ Enregistré.', 'var(--good)'); showToast('✅ Enregistré');
+    } else { setMsg('❌ ' + ((data && data.error) || 'Échec.')); }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+/* __REGLAGES_V3_COACH_END__ */
 
 // Bascule entre "Lier un compte existant" et "Créer un nouveau compte".
 function switchLierMode(mode) {
