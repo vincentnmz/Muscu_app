@@ -12065,19 +12065,24 @@ function _renderCardioHist() {
     var pasMap = {};
     var _cutD = new Date(); _cutD.setHours(0, 0, 0, 0); _cutD.setDate(_cutD.getDate() - _cardioPeriod);
     var _cutIso = _cutD.getFullYear() + '-' + String(_cutD.getMonth() + 1).padStart(2, '0') + '-' + String(_cutD.getDate()).padStart(2, '0');
-    // 1) Pas quotidiens de la montre (total du jour).
+    // 1) Pas quotidiens de la montre (TOTAL du jour, prioritaire). `total:true`
+    //    marque un total complet → aucune activité ne s'y ajoute (déjà inclus).
     if (_pasQuotidiens && _pasQuotidiens.length) {
       _pasQuotidiens.forEach(function(x) {
         var iso = (x.date || '').slice(0, 10); if (iso.length < 10 || iso < _cutIso) return;
-        pasMap[iso] = { pas: Number(x.pas) || 0, n: 1, km: 0, src: 'montre' };
+        pasMap[iso] = { pas: Number(x.pas) || 0, n: 1, km: 0, src: 'montre', total: true };
       });
     }
-    // 2) Pas des marches saisies — uniquement les jours sans total montre.
+    // 2) Pas des activités de marche — uniquement les jours SANS total montre.
+    //    Une activité venue de la montre (sid `cardio_fitbit_…`) reste « montre »
+    //    (bleu) ; seule une saisie manuelle est « saisie » (violet).
     filtered.forEach(function(s) {
       if (!_MARCHE_TYPES[s.type_cardio] || !s.pas) return;
       var iso = (s.date || '').slice(0, 10); if (iso.length < 10) return;
-      if (pasMap[iso] && pasMap[iso].src === 'montre') return;
-      var d = pasMap[iso] || (pasMap[iso] = { pas: 0, n: 0, km: 0, src: 'saisie' });
+      if (pasMap[iso] && pasMap[iso].total) return;   // total du jour déjà là → pas de double compte
+      var estMontre = /^cardio_fitbit_/.test(s.sid || s.seance_id || '');
+      var d = pasMap[iso] || (pasMap[iso] = { pas: 0, n: 0, km: 0, src: estMontre ? 'montre' : 'saisie' });
+      if (estMontre) d.src = 'montre';   // la montre prime sur une saisie du même jour
       d.pas += s.pas || 0; d.n++; d.km += s.distance || 0;
     });
     var _pasDaily = Object.keys(pasMap).some(function(k) { return pasMap[k].src === 'montre'; });

@@ -3059,7 +3059,11 @@ async function handleGoogleHealthSync(body: any): Promise<Response> {
         const y = cd.year, mo = cd.month, da = cd.day
         if (!y || !mo || !da) continue
         const date = `${y}-${String(mo).padStart(2, '0')}-${String(da).padStart(2, '0')}`
-        const count = (dp.steps && dp.steps.countSum) ? Number(dp.steps.countSum) : 0
+        // La somme des pas peut être exposée sous plusieurs noms selon la forme
+        // renvoyée par l'API (countSum sur un rollup, count/sum sinon). On tolère
+        // ces variantes pour ne pas rater le total (symptôme : 0 pas importé).
+        const st = dp.steps || {}
+        const count = Number(st.countSum ?? st.count ?? st.sum ?? st.value ?? dp.count ?? 0) || 0
         if (count > 0) { stepRows.push({ date, athlete_id, seance_id: `pasjour_${date.replace(/-/g, '')}`, cle: 'pas', valeur: String(count), unite: 'pas', source: 'fitbit' }); stepsImported++ }
       }
       // Si rien n'a été importé alors que la requête a réussi, on montre la structure.
