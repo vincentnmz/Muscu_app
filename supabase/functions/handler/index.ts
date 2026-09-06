@@ -977,6 +977,7 @@ async function handleChangePassword(body: any): Promise<Response> {
   const hash = await hashSalted(nouveau, ath.login)
   const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
   if (error) return jsonResp({ success: false, error: error.message })
+  await _invaliderTokensReset(String(ath.id))   // sécurité : plus aucun lien de reset actif
   return jsonResp({ success: true })
 }
 
@@ -1100,6 +1101,16 @@ async function handleExportEquipe(body: any): Promise<Response> {
 // ⚠️ PRODUCTION : cette action DEVRA être protégée par un rate limiting (par IP
 // et par email) avant mise en production — non implémenté dans cette étape.
 const RESET_MSG_GENERIQUE = 'Si un compte correspond à cette adresse, un email de réinitialisation a été envoyé.'
+const RESET_TOKEN_MSG = 'Lien invalide ou expiré. Refais une demande.'   // message unique (anti-énumération)
+const RESET_MAX_PAR_FENETRE = 3          // rate limiting : max demandes par compte…
+const RESET_FENETRE_MS = 15 * 60 * 1000  // …sur une fenêtre de 15 min (durable, en base).
+
+// Invalide TOUS les tokens de reset encore actifs d'un athlète (used=true).
+// Appelé après tout changement de mot de passe (reset email, self-service,
+// reset coach) pour qu'aucun ancien lien ne reste exploitable.
+async function _invaliderTokensReset(athlete_id: string): Promise<void> {
+  try { await sb().from('password_reset_tokens').update({ used: true }).eq('athlete_id', String(athlete_id)).eq('used', false) } catch (_) {}
+}
 
 // Envoie l'email de reset via Resend. Ne logue jamais la clé ni le token.
 async function _envoyerEmailReset(email: string, rawToken: string): Promise<boolean> {
@@ -1139,8 +1150,19 @@ async function handleRequestPasswordReset(body: any): Promise<Response> {
   const { data: ath } = await sb().from('athletes').select('id').eq('email', email).single()
   if (!ath) return generique()
 
+  // Rate limiting DURABLE (en base) : au-delà de N demandes sur la fenêtre, on
+  // renvoie la MÊME réponse générique (anti-énumération préservée) sans créer de
+  // token ni envoyer d'email — limite le spam Resend. NB : limite par COMPTE ;
+  // une protection par IP au niveau edge/proxy reste recommandée en production.
+  try {
+    const { data: recents } = await sb().from('password_reset_tokens').select('created_at').eq('athlete_id', String(ath.id))
+    const seuil = Date.now() - RESET_FENETRE_MS
+    const nb = (recents || []).filter((r: any) => new Date(r.created_at).getTime() > seuil).length
+    if (nb >= RESET_MAX_PAR_FENETRE) { console.error('reset: rate limit atteint'); return generique() }
+  } catch (_) {}
+
   // Étape F — invalider les anciens tokens actifs de cet athlète (1 seul actif).
-  try { await sb().from('password_reset_tokens').update({ used: true }).eq('athlete_id', String(ath.id)).eq('used', false) } catch (_) {}
+  await _invaliderTokensReset(String(ath.id))
 
   // Étape D — token aléatoire cryptographiquement sûr (32 octets → 64 hex).
   const rawBytes = new Uint8Array(32); crypto.getRandomValues(rawBytes)
@@ -1171,20 +1193,23 @@ async function handleResetPassword(body: any): Promise<Response> {
   if (nouveau.length < 6) return jsonResp({ success: false, error: 'Mot de passe : 6 caractères minimum.' })
 
   const token_hash = await sha256hex(token)
+  // Message UNIQUE pour tout échec de token (invalide / utilisé / expiré) :
+  // ne révèle pas lequel (anti-énumération).
   const { data: row } = await sb().from('password_reset_tokens').select('*').eq('token_hash', token_hash).eq('used', false).single()
-  if (!row) return jsonResp({ success: false, error: 'Lien invalide ou déjà utilisé.' })
+  if (!row) return jsonResp({ success: false, error: RESET_TOKEN_MSG })
   if (new Date(row.expires_at).getTime() < Date.now()) {
     try { await sb().from('password_reset_tokens').update({ used: true }).eq('token_hash', token_hash) } catch (_) {}
-    return jsonResp({ success: false, error: 'Lien expiré. Refais une demande.' })
+    return jsonResp({ success: false, error: RESET_TOKEN_MSG })
   }
 
   const { data: ath } = await sb().from('athletes').select('id,login').eq('id', String(row.athlete_id)).single()
-  if (!ath) return jsonResp({ success: false, error: 'Compte introuvable.' })
+  if (!ath) return jsonResp({ success: false, error: RESET_TOKEN_MSG })
 
   const hash = await hashSalted(nouveau, ath.login)
   const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
   if (error) return jsonResp({ success: false, error: error.message })
-  try { await sb().from('password_reset_tokens').update({ used: true }).eq('token_hash', token_hash) } catch (_) {}
+  // Succès : invalider TOUS les tokens de reset actifs de l'athlète (dont celui-ci).
+  await _invaliderTokensReset(String(ath.id))
   return jsonResp({ success: true })
 }
 
@@ -2588,6 +2613,7 @@ async function handleCoachResetAthlete(body: any): Promise<Response> {
   const hash = await hashSalted(nouveau_mdp, ath.login)
   const { error } = await sb().from('athletes').update({ password_hash: hash }).eq('id', ath.id)
   if (error) return jsonResp({ success: false, error: error.message })
+  await _invaliderTokensReset(String(ath.id))   // le reset coach annule les liens email actifs de l'athlète
   return jsonResp({ success: true })
 }
 
