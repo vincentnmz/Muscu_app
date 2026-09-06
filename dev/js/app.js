@@ -1582,6 +1582,8 @@ window.addEventListener('load', async () => {
     }
   } catch (e) {}
   _checkNotifCache();
+  // Lien "mot de passe oublié" reçu par email (?reset_token=…) → écran nouveau mdp.
+  try { _detecterResetToken(); } catch (e) {}
   // Synchronise les séances enregistrées hors-ligne, si connexion revenue
   if (typeof flushSeancesOffline === 'function') { try { flushSeancesOffline(); } catch (e) {} }
   const savedCoach = localStorage.getItem('muscu_coach');
@@ -2349,6 +2351,92 @@ async function exporterEquipe(format) {
   } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
 }
 /* __EXPORT_RGPD_END__ */
+
+/* __RESET_FLOW_START__
+ * Flux "mot de passe oublié" (P3, front) :
+ *  - demande de lien par email (requestPasswordReset, réponse générique) ;
+ *  - écran "nouveau mot de passe" ouvert par le lien ?reset_token=… du mail
+ *    (resetPassword). Aucune session requise (l'utilisateur n'est pas connecté). */
+var _resetToken = null;
+
+function ouvrirMdpOublie(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  var inp = document.getElementById('forgot-email'); if (inp) inp.value = '';
+  var msg = document.getElementById('forgot-msg'); if (msg) { msg.textContent = ''; msg.style.color = ''; }
+  var btn = document.getElementById('forgot-submit'); if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
+  var ov = document.getElementById('forgot-overlay'); if (ov) ov.style.display = 'flex';
+}
+function fermerMdpOublie() { var ov = document.getElementById('forgot-overlay'); if (ov) ov.style.display = 'none'; }
+
+async function envoyerMdpOublie() {
+  var inp = document.getElementById('forgot-email');
+  var msg = document.getElementById('forgot-msg');
+  var btn = document.getElementById('forgot-submit');
+  var email = inp ? inp.value.trim() : '';
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  if (!email || !emailValideFront(email)) { setMsg('Entre un email valide.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'requestPasswordReset', email: email }),
+    });
+    // Réponse volontairement générique (anti-énumération) : on affiche toujours
+    // le même message, qu'un compte existe ou non.
+    setMsg('✅ Si un compte correspond à cet email, tu vas recevoir un lien. Pense à vérifier tes spams.', 'var(--good)');
+    if (btn) btn.textContent = 'Envoyé';
+  } catch (e) {
+    setMsg('❌ Erreur réseau. Réessaie.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
+  }
+}
+
+// Au chargement : si l'URL contient ?reset_token=…, ouvre l'écran nouveau mdp
+// et nettoie l'URL (le token ne doit pas rester dans la barre d'adresse).
+function _detecterResetToken() {
+  var tok = null;
+  try { tok = new URLSearchParams(location.search).get('reset_token'); } catch (e) { return; }
+  if (!tok) return;
+  _resetToken = tok;
+  try { if (history.replaceState) history.replaceState(null, '', location.pathname); } catch (e) {}
+  var n = document.getElementById('reset-new'); if (n) n.value = '';
+  var cf = document.getElementById('reset-confirm'); if (cf) cf.value = '';
+  var msg = document.getElementById('reset-msg'); if (msg) { msg.textContent = ''; msg.style.color = ''; }
+  var btn = document.getElementById('reset-submit'); if (btn) { btn.disabled = false; btn.textContent = 'Valider'; }
+  var ov = document.getElementById('reset-overlay'); if (ov) ov.style.display = 'flex';
+}
+function fermerNouveauMdp() { var ov = document.getElementById('reset-overlay'); if (ov) ov.style.display = 'none'; _resetToken = null; }
+
+async function validerNouveauMdp() {
+  var n = document.getElementById('reset-new'), cf = document.getElementById('reset-confirm');
+  var msg = document.getElementById('reset-msg'), btn = document.getElementById('reset-submit');
+  var nouveau = n ? n.value : '', confirm = cf ? cf.value : '';
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  if (!_resetToken) { setMsg('Lien invalide. Refais une demande.'); return; }
+  if (!nouveau || nouveau.length < 6) { setMsg('Mot de passe : 6 caractères minimum.'); return; }
+  if (nouveau !== confirm) { setMsg('Les deux mots de passe ne correspondent pas.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    var res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'resetPassword', token: _resetToken, nouveau_mdp: nouveau }),
+    });
+    var data = await res.json();
+    if (data && data.success) {
+      _resetToken = null;
+      setMsg('✅ Mot de passe modifié. Tu peux te connecter avec ton nouveau mot de passe.', 'var(--good)');
+      if (btn) { btn.disabled = true; btn.textContent = 'Terminé'; }
+      setTimeout(function () { try { fermerNouveauMdp(); } catch (e) {} }, 2200);
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec. Le lien est peut-être expiré ou déjà utilisé.'));
+      if (btn) { btn.disabled = false; btn.textContent = 'Valider'; }
+    }
+  } catch (e) {
+    setMsg('❌ Erreur réseau. Réessaie.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Valider'; }
+  }
+}
+/* __RESET_FLOW_END__ */
 
 // Bascule entre "Lier un compte existant" et "Créer un nouveau compte".
 function switchLierMode(mode) {
