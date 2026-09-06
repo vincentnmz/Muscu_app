@@ -7,9 +7,13 @@ on:
 permissions:
   contents: write
 
+# Un seul groupe pour TOUTES les branches + pas d'annulation en cours : les
+# déploiements se sérialisent (file d'attente) au lieu de s'annuler, ce qui
+# évite de laisser un artefact Pages « github-pages » orphelin (→ « Multiple
+# artifacts named github-pages »). Le push sur gh-pages reste atomique.
 concurrency:
-  group: deploy-${{ github.ref_name }}
-  cancel-in-progress: true
+  group: pages-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -29,13 +33,24 @@ jobs:
       - name: Ensure gh-pages directory exists
         run: mkdir -p gh-pages/dev
 
-      - name: Copy index.html to correct location
+      - name: Copy front assets to correct location
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
-            cp index.html gh-pages/index.html
+            DEST=gh-pages
           else
-            cp index.html gh-pages/dev/index.html
+            DEST=gh-pages/dev
           fi
+          mkdir -p "$DEST"
+          # Fichiers racine de la coquille
+          cp index.html manifest.json sw.js "$DEST"/ 2>/dev/null || true
+          cp "logo novalyz.png" "$DEST"/ 2>/dev/null || true
+          # Dossiers (on nettoie l'ancien contenu pour éviter les fichiers obsolètes)
+          for d in css js assets; do
+            if [ -d "$d" ]; then
+              rm -rf "$DEST/$d"
+              cp -r "$d" "$DEST"/
+            fi
+          done
 
       - name: Commit and push gh-pages
         run: |

@@ -6,23 +6,31 @@
 <title>Novalyz</title>
 <!-- PWA / mode hors-ligne -->
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0b0e14">
+<meta name="theme-color" content="#1A5FFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="logo%20novalyz.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@300..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/layout.css">
+<style>
+/* ── Loader bar global ── */
+#nv-loader-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:9999;overflow:hidden;display:none;background:var(--accent-a12);}
+#nv-loader-bar::after{content:'';position:absolute;top:0;left:0;width:55%;height:100%;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:nv-bar-move 1.1s linear infinite;}
+@keyframes nv-bar-move{0%{transform:translateX(-100%)}100%{transform:translateX(220%)}}
+</style>
 </head>
 <body>
+<div id="nv-loader-bar"></div>
 
 <!-- ===== Sprite d'icônes (famille SVG unique, style Lucide) ===== -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
   <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M6.5 6v12M3.5 8.5v7M17.5 6v12M20.5 8.5v7M6.5 12h11"/></symbol>
+  <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7.4l3.4 2.5-1.3 4h-4.2l-1.3-4z"/><path d="M12 2.5v4.9M20.8 9.1l-4.6 0.8M17.4 19.6l-3.1-3.7M6.6 19.6l3.1-3.7M3.2 9.1l4.6 0.8"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.4"/></symbol>
   <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-trending" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></symbol>
@@ -55,10 +63,53 @@
 </defs></svg>
 
 <header>
-  <h1><svg class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use href="#i-dumbbell"/></svg><span id="header-nom">Novalyz</span></h1>
+  <h1><svg id="brand-ico" class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use id="brand-ico-use" href="#i-dumbbell"/></svg><span id="header-nom">Novalyz</span></h1>
   <div style="display:flex;align-items:center;gap:10px;">
     <button id="btn-reglages-hdr" onclick="switchTab('reglages')" title="Réglages" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <button class="logout-btn" onclick="seDeconnecter()" style="display:none" id="btn-logout"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
+  </div>
+</header>
+
+<!-- Barre affichée pendant l'exécution guidée du renfo par le joueur (sur l'écran
+     de séance réutilisé). Permet de revenir à sa fiche. Masquée sinon. -->
+<header id="renfo-topbar">
+  <button class="cd-back" onclick="retourFicheDepuisRenfo()" title="Retour à ma fiche"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>
+  <svg class="ico" style="width:20px;height:20px;color:var(--accent);flex-shrink:0;"><use href="#i-dumbbell"/></svg>
+  <h1 style="flex:1;min-width:0;margin:0;font-size:18px;font-weight:800;letter-spacing:-.3px;">Séance de renfo</h1>
+</header>
+
+<!-- Header accueil coach / prépa : pleine largeur + sticky, comme le header
+     athlète. Affiché uniquement en vue accueil coach (voir CSS #coach-topbar).
+     Le liseré de couleur du rôle (coach/prépa) est le bord supérieur. -->
+<header id="coach-topbar">
+  <svg id="ct-sport-ico" class="ico"><use id="ct-sport-ico-use" href="#i-dumbbell"/></svg>
+  <div class="ct-id">
+    <div id="coach-header-eyebrow" class="ct-eyebrow">Espace coach</div>
+    <div class="ct-name-row">
+      <div id="header-nom-coach" class="ct-name">Coach</div>
+      <span id="coach-role-chip" class="coach-role-chip" style="display:none;"></span>
+    </div>
+  </div>
+  <div class="ct-actions">
+    <button class="ct-btn ct-plus" onclick="ouvrirModalLierAthlete()" title="Lier un athlète"><svg class="ico ico-btn"><use href="#i-plus"/></svg><span class="ct-lbl">Lier un athlète</span></button>
+    <button class="ct-btn" onclick="ouvrirMessagerieCoach()" title="Conversations"><svg class="ico"><use href="#i-message"/></svg><span id="coach-msg-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px;"></span></button>
+    <button class="ct-btn" onclick="ouvrirReglagesCoach()" title="Réglages"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <button class="ct-btn ct-deco logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion"><svg class="ico ico-btn"><use href="#i-logout"/></svg><span class="ct-lbl">Déco</span></button>
+  </div>
+</header>
+
+<!-- Header fiche athlète (coach muscu) : pleine largeur + sticky, épuré comme la
+     fiche joueur foot (icône sport + nom d'onglet + boutons). Affiché uniquement
+     sur la fiche détail (body.athlete-selected). Les infos athlète sont dans le
+     bloc « Bonjour » de l'onglet Aperçu (#cd-hero). -->
+<header id="cd-header">
+  <button class="cd-back" onclick="retourCoachDetail()" title="Retour"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>
+  <svg id="cd-sport-ico" class="ico"><use id="cd-sport-ico-use" href="#i-dumbbell"/></svg>
+  <h1 id="cd-tab-title">Aperçu</h1>
+  <div class="cd-head-actions">
+    <button class="cd-hbtn" onclick="ouvrirReglagesCoach()" title="Réglages"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <button class="cd-hbtn" onclick="ouvrirMessagerieCoach()" title="Conversations"><svg class="ico"><use href="#i-message"/></svg></button>
+    <button class="cd-hbtn cd-deco logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion"><svg class="ico ico-btn"><use href="#i-logout"/></svg><span class="cd-lbl">Déco</span></button>
   </div>
 </header>
 
@@ -86,11 +137,12 @@
     <div id="auth-login">
       <div class="card">
         <label>Login (4 chiffres)</label>
-        <input type="password" id="inp-login" maxlength="4" placeholder="••••" inputmode="numeric">
+        <input type="text" id="inp-login" maxlength="4" placeholder="1234" inputmode="numeric" autocomplete="username">
         <label>Mot de passe</label>
-        <input type="password" id="inp-password" placeholder="Mot de passe">
+        <div class="pwd-wrap"><input type="password" id="inp-password" placeholder="Mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('inp-password',this)" aria-label="Afficher le mot de passe">👁</button></div>
         <div id="login-error" class="error-msg"></div>
         <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
+        <div style="text-align:center;margin-top:10px;"><a href="#" onclick="ouvrirMdpOublie(event)" style="font-size:12.5px;color:var(--accent);font-weight:600;text-decoration:none;">Mot de passe oublié ?</a></div>
       </div>
     </div>
 
@@ -111,7 +163,7 @@
         <div class="row2">
           <div>
             <label>Login (4 chiffres)</label>
-            <input type="password" id="reg-login" maxlength="4" placeholder="••••" inputmode="numeric">
+            <input type="text" id="reg-login" maxlength="4" placeholder="1234" inputmode="numeric">
           </div>
           <div id="reg-annees-wrap">
             <label>Années de pratique</label>
@@ -120,8 +172,10 @@
         </div>
         <label>Date de naissance</label>
         <input type="date" id="reg-ddn">
+        <label>Email <span style="color:var(--text-muted);font-weight:600;text-transform:none;letter-spacing:0;">(optionnel)</span></label>
+        <input type="email" id="reg-email" placeholder="Pour récupérer ton mot de passe" autocomplete="email" inputmode="email">
         <label>Mot de passe</label>
-        <input type="password" id="reg-password" placeholder="Choisis un mot de passe" autocomplete="new-password">
+        <div class="pwd-wrap"><input type="password" id="reg-password" placeholder="Choisis un mot de passe" autocomplete="new-password"><button type="button" class="pwd-eye" onclick="togglePwd('reg-password',this)" aria-label="Afficher le mot de passe">👁</button></div>
         <label style="display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:12px;color:var(--text-muted);font-weight:500;line-height:1.4;cursor:pointer;text-transform:none;letter-spacing:0;">
           <input type="checkbox" id="reg-consent" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;accent-color:var(--accent);">
           <span>J'accepte que mes données (dont les données de santé : poids, ressenti, douleurs) soient traitées pour le suivi sportif. <a href="#" onclick="ouvrirConfidentialite(event)" style="color:var(--accent);font-weight:600;">Politique de confidentialité</a></span>
@@ -132,7 +186,7 @@
     </div>
 
     <div style="text-align:center;margin-top:14px" id="lien-espace-coach-wrap">
-      <a href="#" id="lien-espace-coach" onclick="toggleEspaceCoach(event)" style="font-size:13px;color:var(--text-muted)">Espace coach</a>
+      <a href="#" id="lien-espace-coach" onclick="toggleEspaceCoach(event)" style="font-size:13px;color:var(--text-muted)">Espace coach / prépa</a>
     </div>
     <div id="card-login-coach" style="display:none">
       <div style="text-align:center;margin-bottom:12px;">
@@ -143,30 +197,35 @@
         <button id="coachtab-signup" onclick="switchCoachAuthMode('signup')">Créer un compte</button>
       </div>
       <div class="card" id="coach-auth-login">
-        <div class="card-title">Connexion coach</div>
-        <label>Login coach</label>
-        <input type="password" id="inp-login-coach" placeholder="Login coach">
+        <div class="card-title">Connexion coach / prépa</div>
+        <label>Identifiant</label>
+        <input type="text" id="inp-login-coach" placeholder="Ton identifiant" autocomplete="username">
         <label>Mot de passe</label>
-        <input type="password" id="inp-password-coach" placeholder="Mot de passe">
+        <div class="pwd-wrap"><input type="password" id="inp-password-coach" placeholder="Mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('inp-password-coach',this)" aria-label="Afficher le mot de passe">👁</button></div>
         <div id="login-coach-error" class="error-msg"></div>
-        <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter (coach)</button>
+        <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter</button>
       </div>
       <div class="card" id="coach-auth-signup" style="display:none">
-        <div class="card-title">Créer un compte coach</div>
+        <div class="card-title">Créer un compte coach / prépa</div>
+        <label>Je suis</label>
+        <select id="reg-coach-role" style="width:100%;">
+          <option value="coach">Coach</option>
+          <option value="prepa">Préparateur physique</option>
+        </select>
         <label>Nom</label>
         <input type="text" id="reg-coach-nom" placeholder="Ton nom">
         <label>Login coach</label>
         <input type="text" id="reg-coach-login" placeholder="Choisis un identifiant" autocomplete="username">
         <label>Mot de passe</label>
-        <input type="password" id="reg-coach-password" placeholder="Choisis un mot de passe" autocomplete="new-password">
+        <div class="pwd-wrap"><input type="password" id="reg-coach-password" placeholder="Choisis un mot de passe" autocomplete="new-password"><button type="button" class="pwd-eye" onclick="togglePwd('reg-coach-password',this)" aria-label="Afficher le mot de passe">👁</button></div>
         <label>Sport</label>
-        <select id="reg-coach-sport" style="width:100%;"></select>
+        <select id="reg-coach-sport" style="width:100%;" onchange="majRoleSelonSport()"></select>
         <label style="display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:12px;color:var(--text-muted);font-weight:500;line-height:1.4;cursor:pointer;text-transform:none;letter-spacing:0;">
           <input type="checkbox" id="reg-coach-consent" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;accent-color:var(--accent);">
           <span>J'accepte de traiter les données de mes athlètes (dont données de santé) dans le respect de la <a href="#" onclick="ouvrirConfidentialite(event)" style="color:var(--accent);font-weight:600;">politique de confidentialité</a>.</span>
         </label>
         <div id="reg-coach-error" class="error-msg"></div>
-        <button class="btn btn-accent" onclick="sInscrireCoach()">Créer mon compte coach</button>
+        <button class="btn btn-accent" onclick="sInscrireCoach()">Créer mon compte</button>
       </div>
     </div>
 
@@ -195,20 +254,39 @@
     </div>
   </div>
 
-  <!-- VUE COACH -->
-  <div id="view-coach" class="view">
-    <div class="header" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-      <div>
-        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Espace coach</div>
-        <div id="header-nom-coach" style="font-weight:800;font-size:18px">Coach</div>
+  <!-- Modale : Contexte de performance (le coach pose l'état d'un athlète) -->
+  <div id="modal-contexte" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1100;align-items:center;justify-content:center;padding:16px;">
+    <div class="dash-card" style="width:100%;max-width:380px;padding:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="font-size:16px;font-weight:800;">Contexte de performance</h3>
+        <button onclick="fermerModaleContexte()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;">×</button>
       </div>
-      <button onclick="ouvrirModalLierAthlete()" style="flex-shrink:0;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px 16px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-plus"/></svg>Lier un athlète</button>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-        <button onclick="ouvrirMessagerieCoach()" title="Conversations" style="position:relative;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer;"><svg class="ico"><use href="#i-message"/></svg><span id="coach-msg-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px;"></span></button>
-        <button onclick="ouvrirReglagesCoach()" style="background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer;" title="Réglages"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-        <button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion" style="white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:9px;">État</div>
+      <div id="ctx-modale-chips" style="display:flex;flex-wrap:wrap;gap:7px;"></div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <label style="flex:1;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">Début
+          <input type="date" id="ctx-modale-debut" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:13px;font-family:inherit;">
+        </label>
+        <label style="flex:1;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);">Fin
+          <input type="date" id="ctx-modale-fin" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:13px;font-family:inherit;">
+        </label>
+      </div>
+      <input type="text" id="ctx-modale-note" placeholder="Note (optionnel)" style="width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:13px;font-family:inherit;">
+      <div id="ctx-modale-hint" style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.45;"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="fermerModaleContexte()" style="flex:0 0 auto;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>
+        <button onclick="poserContexte()" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:10px;font-size:13.5px;font-weight:800;cursor:pointer;">Appliquer l'état</button>
       </div>
     </div>
+  </div>
+
+  <!-- VUE COACH -->
+  <div id="view-coach" class="view">
+    <!-- Le header de l'accueil coach/prépa est désormais #coach-topbar (pleine
+         largeur, sticky, hors conteneur — défini juste après le header global). -->
+
+    <!-- Cockpit prépa (charge / prévention) — affiché si role = prepa -->
+    <div id="prepa-cockpit" style="display:none;"></div>
 
     <div id="liste-athletes-coach"><div class="loader">Chargement...</div></div>
 
@@ -242,7 +320,7 @@
         <!-- Mode LIER (compte existant) -->
         <div id="lier-mode-lier">
           <label>Login de l'athlète (4 chiffres)</label>
-          <input type="password" id="inp-lier-login" maxlength="4" placeholder="••••" inputmode="numeric">
+          <input type="text" id="inp-lier-login" maxlength="4" placeholder="1234" inputmode="numeric">
           <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">L'athlète s'est déjà inscrit ? Entre son login pour le rattacher à ton espace.</div>
         </div>
 
@@ -251,7 +329,7 @@
           <label>Prénom</label>
           <input type="text" id="crea-prenom" placeholder="Prénom de l'athlète">
           <div class="row2">
-            <div><label>Login (4 chiffres)</label><input type="password" id="crea-login" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+            <div><label>Login (4 chiffres)</label><input type="text" id="crea-login" maxlength="4" placeholder="1234" inputmode="numeric"></div>
             <div><label>Taille (cm)</label><input type="number" id="crea-taille" placeholder="175"></div>
           </div>
           <label>Date de naissance</label>
@@ -271,6 +349,63 @@
     </div>
   </div>
 
+  <!-- MODALE — Mot de passe oublié (demande de lien par email) -->
+  <div id="forgot-overlay" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+    <div class="card modal-card" style="width:100%;max-width:360px;padding:20px;box-shadow:var(--shadow-lg);box-sizing:border-box;">
+      <div style="font-size:17px;font-weight:800;margin-bottom:4px;">🔑 Mot de passe oublié</div>
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px;">Entre l'email de ton compte. Si un compte correspond, tu recevras un lien pour choisir un nouveau mot de passe.</div>
+      <label>Email</label>
+      <input type="email" id="forgot-email" placeholder="ton@email.com" autocomplete="email" inputmode="email" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+      <div id="forgot-msg" style="font-size:12.5px;margin-top:10px;line-height:1.4;word-break:break-word;"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn" style="flex:1;margin:0;background:var(--surface2);color:var(--text-muted);" onclick="fermerMdpOublie()">Annuler</button>
+        <button class="btn btn-accent" style="flex:1;margin:0;" id="forgot-submit" onclick="envoyerMdpOublie()">Envoyer le lien</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE — Nouveau mot de passe (via le lien reçu par email : ?reset_token=…) -->
+  <div id="reset-overlay" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.72);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);z-index:1001;align-items:center;justify-content:center;padding:16px;">
+    <div class="card modal-card" style="width:100%;max-width:360px;padding:20px;box-shadow:var(--shadow-lg);box-sizing:border-box;">
+      <div style="font-size:17px;font-weight:800;margin-bottom:4px;">🔐 Nouveau mot de passe</div>
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px;">Choisis ton nouveau mot de passe.</div>
+      <label>Nouveau mot de passe</label>
+      <input type="password" id="reset-new" placeholder="6 caractères minimum" autocomplete="new-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+      <label style="display:block;margin-top:8px;">Confirme le mot de passe</label>
+      <input type="password" id="reset-confirm" placeholder="Retape le mot de passe" autocomplete="new-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+      <div id="reset-msg" style="font-size:12.5px;margin-top:10px;line-height:1.4;word-break:break-word;"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn" style="flex:1;margin:0;background:var(--surface2);color:var(--text-muted);" onclick="fermerNouveauMdp()">Annuler</button>
+        <button class="btn btn-accent" style="flex:1;margin:0;" id="reset-submit" onclick="validerNouveauMdp()">Valider</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE — Réinitialiser le mot de passe d'un athlète (coach) -->
+  <div id="reset-mdp-overlay" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+    <div class="card modal-card" style="width:100%;max-width:360px;padding:20px;box-shadow:var(--shadow-lg);box-sizing:border-box;">
+      <div style="font-size:17px;font-weight:800;margin-bottom:4px;">🔐 Réinitialiser le mot de passe</div>
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px;">Vous allez définir un nouveau mot de passe pour <b id="reset-mdp-nom">cet athlète</b>. Communiquez-le-lui ensuite.</div>
+
+      <label>Nouveau mot de passe</label>
+      <div style="display:flex;gap:8px;align-items:stretch;">
+        <input type="password" id="reset-mdp-input" placeholder="6 caractères minimum" autocomplete="new-password" style="flex:1;min-width:0;">
+        <button type="button" class="btn" title="Afficher / masquer" onclick="toggleResetMdpVisibility()" id="reset-mdp-eye" style="width:auto;margin:0;padding:0 12px;background:var(--surface2);color:var(--text-muted);">👁</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button type="button" class="btn btn-outline" onclick="genererMdpCoach()" style="flex:1;margin:0;font-size:13px;padding:9px;">🎲 Générer</button>
+        <button type="button" class="btn btn-outline" onclick="copierResetMdp()" style="flex:1;margin:0;font-size:13px;padding:9px;">📋 Copier</button>
+      </div>
+
+      <div id="reset-mdp-msg" style="font-size:12.5px;margin-top:12px;line-height:1.4;word-break:break-word;"></div>
+
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn" style="flex:1;margin:0;background:var(--surface2);color:var(--text-muted);" onclick="fermerResetMdp()">Annuler</button>
+        <button class="btn btn-accent" style="flex:1;margin:0;" id="reset-mdp-confirm" onclick="confirmerResetMdp()">Confirmer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- VUE DETAIL ATHLETE (COACH) -->
   <div id="view-coach-detail" class="view">
     <!-- Placeholder desktop : aucun athlète sélectionné -->
@@ -279,16 +414,8 @@
       <div style="font-size:16px;font-weight:800;color:var(--text);">Sélectionne un athlète</div>
       <div style="font-size:13px;margin-top:6px;">Choisis un athlète dans la liste pour afficher son suivi.</div>
     </div>
-    <div class="header" id="cd-header" style="display:flex;align-items:center;gap:9px;position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;transition:transform .25s ease;will-change:transform;">
-      <button class="btn-sm btn-outline" onclick="retourCoachDetail()" title="Retour" style="flex-shrink:0;padding:8px 10px;"><svg class="ico ico-btn"><use href="#i-arrow-left"/></svg></button>
-      <div id="cd-avatar" style="width:40px;height:40px;border-radius:12px;background:var(--accent-a12);color:var(--accent-strong);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">–</div>
-      <div style="flex:1;min-width:0;text-align:left;">
-        <h1 id="cd-tab-title" style="font-weight:800;font-size:19px;line-height:1.1;margin:0;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">Aperçu</h1>
-        <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span id="header-nom-athlete-coach" style="font-weight:700;color:var(--text);">Athlète</span><span id="header-niveau-athlete-coach"></span></div>
-      </div>
-      <button onclick="ouvrirReglagesCoach()" title="Réglages" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
-      <button class="logout-btn" onclick="seDeconnecterCoach()" title="Déconnexion" style="flex-shrink:0;white-space:nowrap;"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
-    </div>
+    <!-- Le header de la fiche athlète est désormais #cd-header (pleine largeur,
+         sticky, défini juste après #coach-topbar). -->
 
     <!-- Sous-onglets coach -->
     <div class="sub-tabs">
@@ -304,44 +431,63 @@
 
     <!-- ONGLET APERÇU -->
     <div id="cdtab-overview">
+      <!-- Bloc « Bonjour » (comme la fiche joueur foot) : avatar + nom + infos.
+           Rempli par ouvrirDetailAthleteCoach / renderCoachOverview. -->
+      <div id="cd-hero" class="fjd-hero">
+        <div class="fjd-hero-av" id="cd-hero-av">–</div>
+        <div style="min-width:0;flex:1;">
+          <div class="fjd-hero-grt">Bonjour 👋</div>
+          <div class="fjd-hero-name" id="cd-hero-name">Athlète</div>
+          <div class="fjd-hero-pills" id="cd-hero-pills"></div>
+        </div>
+      </div>
+      <!-- Gestion du compte : réinitialisation du mot de passe par le coach -->
+      <div style="margin:0 0 12px;">
+        <button class="btn btn-outline" style="width:auto;margin:0;font-size:13px;padding:9px 14px;" onclick="ouvrirResetMdp(coachAthleteCourant &amp;&amp; coachAthleteCourant.athlete_id, coachAthleteCourant &amp;&amp; coachAthleteCourant.nom)">🔐 Réinitialiser le mot de passe</button>
+      </div>
+      <!-- Cockpit (Phase 5A) — rempli par renderCockpit(data,'cd') si COCKPIT_ON. Vide sinon. -->
+      <div id="cd-cockpit"></div>
       <!-- Alertes (priorité en haut) -->
       <div class="dash-card" id="cd-alertes-card" style="padding:16px">
         <div class="dash-label"><svg class="ico"><use href="#i-bell"/></svg>Alertes</div>
         <div id="cd-alertes"><div class="loader">Chargement...</div></div>
       </div>
 
+      <!-- Contexte de performance (état posé par le coach) -->
+      <div id="cd-contexte"></div>
+
       <!-- Bilan de la dernière séance (questionnaire bien-être de l'athlète) -->
-      <div class="v2-sec" id="cd-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</div></div>
+      <div class="v2-sec" id="cd-etat-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</h2></div>
       <div class="dash-card" id="cd-etat-card" style="padding:16px;display:none;">
         <div id="cd-etat-content"></div>
       </div>
 
       <!-- Analyse (moteur Novalyz — interprétation, lecture seule) -->
-      <div class="v2-sec" id="cd-analyse-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-lightbulb"/></svg>Analyse</div></div>
+      <div class="v2-sec" id="cd-analyse-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-lightbulb"/></svg>Analyse</h2></div>
       <div class="dash-card" id="cd-analyse-card" style="padding:16px;display:none;">
         <div id="cd-analyse-content"></div>
       </div>
 
       <!-- Tableau de bord (indicateurs de la semaine) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Cette semaine</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-gauge"/></svg>Cette semaine</h2></div>
       <div class="dash-card" style="padding:16px;">
         <div id="cd-indicateurs"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- État de forme -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</h2></div>
       <div class="dash-card" id="cd-recup-card" style="padding:16px">
         <div id="cd-recup"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- ACWR — masqué (peu lisible en muscu ; à réactiver pour un module Hyrox) -->
-      <div class="v2-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</div></div>
+      <div class="v2-sec" style="display:none"><h2 class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</h2></div>
       <div class="dash-card" id="cd-acwr-card" style="padding:16px;display:none">
         <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Progression 7 jours (cliquable → détail) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</div><div class="more" onclick="switchCoachDetailTab('prog')" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</h2><div class="more" onclick="switchCoachDetailTab('prog')" style="cursor:pointer;">Voir tout →</div></div>
       <div class="dash-card" id="cd-prog-card" style="padding:16px" onclick="switchCoachDetailTab('prog')" title="Voir la progression détaillée">
         <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
       </div>
@@ -356,11 +502,11 @@
 
     <!-- ONGLET SÉANCES -->
     <div id="cdtab-seances" style="display:none">
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Historique des séances</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Historique des séances</h2></div>
       <div class="card">
         <div id="cd-seances-detail-content"><div class="loader">Chargement...</div></div>
       </div>
-      <div class="v2-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-zap"/></svg>Volume relatif hebdo · 8 sem.</div></div>
+      <div class="v2-sec" style="display:none"><h2 class="st"><svg class="ico"><use href="#i-zap"/></svg>Volume relatif hebdo · 8 sem.</h2></div>
       <div class="card" id="cd-acwr-history-card" style="display:none">
         <div id="cd-acwr-chart-content"></div>
       </div>
@@ -370,10 +516,10 @@
     <div id="cdtab-conseils" style="display:none">
 
       <!-- Alertes de la semaine (traitées / à traiter) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-bell"/></svg>Alertes de la semaine</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-bell"/></svg>Alertes de la semaine</h2></div>
       <div class="dash-card" id="cd-conv-alertes" style="padding:14px;"><div class="loader">Chargement...</div></div>
 
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation</h2></div>
       <div class="card" id="cd-commentaires-card" style="padding:0;overflow:hidden;">
         <div id="cd-commentaires-liste" style="max-height:55vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
         <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
@@ -390,7 +536,7 @@
 
       <!-- Header Progression : titre + bouton export -->
       <div class="v2-sec">
-        <div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression</div>
+        <h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression</h2>
         <button onclick="ouvrirModalBilanPDF()" style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:20px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;">
           <svg class="ico" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export PDF
@@ -424,19 +570,19 @@
       </div>
 
       <!-- Volume par muscle -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</h2></div>
       <div class="card">
         <div id="cd-volume-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Balance musculaire -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</h2></div>
       <div class="card">
         <div id="cd-balance-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Progression par exercice -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</h2></div>
       <div class="card">
         <select id="cd-sel-exercice" onchange="afficherCoachProgressionExo()" style="margin-bottom:10px">
           <option value="">— Choisir un exercice —</option>
@@ -446,7 +592,7 @@
 
       <!-- Tendances -->
       <div class="v2-sec">
-        <div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</div>
+        <h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</h2>
         <div style="display:flex;gap:6px">
           <button onclick="afficherCoachTendances(4)" id="cd-btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer">4 sem.</button>
           <button onclick="afficherCoachTendances(8)" id="cd-btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer">8 sem.</button>
@@ -457,13 +603,13 @@
       </div>
 
       <!-- Records (déplacé depuis Aperçu) -->
-      <div class="v2-sec" id="cd-records-sec" style="display:none"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records de l'athlète</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
+      <div class="v2-sec" id="cd-records-sec" style="display:none"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records de l'athlète</h2><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
       <div class="dash-card" id="cd-records-card" style="padding:16px;display:none">
         <div id="cd-records"></div>
       </div>
 
       <!-- Tendance mensuelle (déplacé depuis Aperçu) -->
-      <div class="v2-sec" id="cd-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">28j vs mois préc.</div></div>
+      <div class="v2-sec" id="cd-cmp28-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">28j vs mois préc.</div></div>
       <div class="dash-card" id="cd-cmp28-card" style="padding:16px;display:none;">
         <div id="cd-cmp28-content"></div>
       </div>
@@ -474,7 +620,7 @@
 
     <!-- ONGLET AGENDA -->
     <div id="cdtab-cal" style="display:none">
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</h2></div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <span style="font-size:14px;font-weight:800;color:var(--text)" id="cd-cal-titre">Mois</span>
@@ -494,7 +640,7 @@
         </div>
         <div id="cd-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
       </div>
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Séances récentes</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Séances récentes</h2></div>
       <div class="card">
         <div id="cd-seances-content"></div>
       </div>
@@ -502,7 +648,7 @@
 
     <!-- ONGLET PROGRAMME -->
     <div id="cdtab-programme" style="display:none">
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Programme</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-clipboard"/></svg>Programme</h2></div>
       <div class="card">
         <div id="cd-programme-content"><div class="loader">Chargement...</div></div>
         <button class="btn btn-outline" style="margin-top:10px" onclick="cdAjouterSeance()">+ Nouvelle séance</button>
@@ -590,20 +736,26 @@
         </div>
       </div>
 
+      <!-- Cockpit (Phase 5A) — rempli par renderCockpit(data,'dash') si COCKPIT_ON. Vide sinon. -->
+      <div id="dash-cockpit"></div>
+
+      <!-- Contexte de performance (lecture seule pour l'athlète) -->
+      <div id="dash-contexte"></div>
+
       <!-- État du jour (synthèse questionnaire bien-être) -->
-      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</div></div>
+      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</h2></div>
       <div class="dash-card" id="dash-etat-card" style="padding:16px;display:none;">
         <div id="dash-etat-content"></div>
       </div>
 
       <!-- Analyse Novalyz (moteur d'interprétation) — visible seulement s'il y a une analyse -->
-      <div class="v2-sec" id="dash-analyse-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Analyse Novalyz</div></div>
+      <div class="v2-sec" id="dash-analyse-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Analyse Novalyz</h2></div>
       <div class="dash-card" id="dash-analyse-card" style="padding:12px;display:none;">
         <div id="dash-analyse-content"></div>
       </div>
 
       <!-- État de forme (récupération) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</div></div>
+      <div class="v2-sec" id="dash-recup-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</h2></div>
       <div class="dash-card" id="dash-recup-card" style="padding:16px;">
         <div id="dash-recup-content"><div class="loader">Chargement...</div></div>
       </div>
@@ -612,15 +764,21 @@
       <div class="v2-kpis" id="dash-kpis" style="display:none;"></div>
 
       <!-- Dernière séance -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-dumbbell"/></svg>Dernière séance</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-dumbbell"/></svg>Dernière séance</h2></div>
       <div class="dash-card" style="padding:16px;">
         <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Progression (7j glissants → détail) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</div><div class="more" onclick="switchTab('historique')" style="cursor:pointer;">Voir tout →</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</h2><div class="more" onclick="switchTab('historique')" style="cursor:pointer;">Voir tout →</div></div>
       <div class="dash-card" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
         <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
+      </div>
+
+      <!-- Cardio — résumé multi-fenêtre (masqué sans données) -->
+      <div class="v2-sec" id="dash-cardio-sec" style="display:none;cursor:pointer;" onclick="allerVersCardioHist()"><h2 class="st">🏃 Cardio</h2></div>
+      <div class="dash-card" id="dash-cardio-card" style="padding:16px;display:none;cursor:pointer;" onclick="allerVersCardioHist()" title="Voir l'historique cardio">
+        <div id="dash-cardio-content"></div>
       </div>
 
       <!-- Alertes (stagnation / absence / fatigue) — visible seulement s'il y a une alerte -->
@@ -630,7 +788,7 @@
       </div>
 
       <!-- Régularité — heatmap + streak (cliquable → agenda de l'onglet Séance) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité</div><div class="more" onclick="allerVersAgendaSeance()" style="cursor:pointer;">Agenda →</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité</h2><div class="more" onclick="allerVersAgendaSeance()" style="cursor:pointer;">Agenda →</div></div>
       <div class="dash-card" onclick="allerVersAgendaSeance()" style="padding:16px;margin-bottom:0;cursor:pointer;" title="Voir l'agenda">
         <div id="dash-heatmap-content"></div>
       </div>
@@ -641,7 +799,7 @@
     <div id="tab-seance" class="tab-content">
 
       <!-- AGENDA (calendrier) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</h2></div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <span style="font-size:14px;font-weight:800;color:var(--text);" id="cal-titre">Juin 2026</span>
@@ -661,8 +819,10 @@
         </div>
         <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
         <div id="cal-detail" style="margin-top:10px;"></div>
-        <div style="display:flex;gap:12px;margin-top:10px;">
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--good);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Séance</span></div>
+        <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--good);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Muscu</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--bad);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Cardio</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;border-radius:3px;background:linear-gradient(90deg,var(--good) 0 50%,var(--bad) 50% 100%);"></div><span style="font-size:10px;color:var(--text-muted);">Les deux</span></div>
           <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--accent);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Aujourd'hui</span></div>
         </div>
       </div>
@@ -674,6 +834,38 @@
 
       <!-- SAISIE (vue par défaut) -->
       <div id="subtab-saisie">
+
+        <!-- Switcher Muscu / Cardio -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="btn btn-accent" id="btn-mode-muscu" onclick="switchModeSeance('muscu')" style="flex:1;padding:10px;">🏋️ Muscu</button>
+          <button class="btn btn-outline" id="btn-mode-cardio" onclick="switchModeSeance('cardio')" style="flex:1;padding:10px;">🏃 Cardio</button>
+        </div>
+
+        <!-- BLOC CARDIO (masqué par défaut) -->
+        <div id="cardio-block" style="display:none;">
+          <div class="card">
+            <div class="card-title">Séance cardio</div>
+            <div class="row2">
+              <div>
+                <label>Date</label>
+                <input type="date" id="cardio-date">
+              </div>
+              <div>
+                <label>Type</label>
+                <select id="cardio-type" onchange="renderCardioFields()">
+                  <option value="footing">Footing</option>
+                  <option value="velo">Vélo</option>
+                  <option value="marche_normale">Marche</option>
+                  <option value="marche_inclinee">Marche inclinée</option>
+                  <option value="natation">Natation</option>
+                  <option value="autre">Autre</option>
+                </select>
+              </div>
+            </div>
+            <div id="cardio-fields-content"></div>
+            <button id="btn-save-cardio" class="btn btn-accent" onclick="sauvegarderCardio()" style="margin-top:14px;padding:14px;">✅ Enregistrer la séance</button>
+          </div>
+        </div>
 
         <!-- RECAP après validation -->
         <div id="recap-block" style="display:none">
@@ -832,7 +1024,7 @@
     <div id="tab-objectif" class="tab-content">
 
       <!-- Objectif -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-target"/></svg>Mon objectif</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-target"/></svg>Mon objectif</h2></div>
       <div class="card">
         <!-- Vue : carte objectif actuel -->
         <div id="obj-card-view" style="display:flex;align-items:center;gap:12px;">
@@ -862,7 +1054,7 @@
       </div>
 
       <!-- Graphique poids -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Évolution du poids</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Évolution du poids</h2></div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
           <div style="display:flex;align-items:baseline;gap:6px;">
@@ -884,7 +1076,7 @@
       </div>
 
       <!-- Saisie poids -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-plus"/></svg>Enregistrer mon poids</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-plus"/></svg>Enregistrer mon poids</h2></div>
       <div class="card">
         <div class="row2">
           <div>
@@ -900,13 +1092,13 @@
       </div>
 
       <!-- Régularité -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité cette semaine</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité cette semaine</h2></div>
       <div class="card">
         <div id="regularite-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- Récompenses / budget (à définir) -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Récompenses</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Récompenses</h2></div>
       <div class="card" id="recompense-card">
         <div id="recompense-content" style="text-align:center;padding:8px 4px;">
           <div style="font-size:28px;margin-bottom:6px;">🎁</div>
@@ -920,48 +1112,156 @@
     <!-- ONGLET RÉGLAGES -->
     <div id="tab-reglages" class="tab-content">
 
-      <!-- Apparence -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Apparence</div></div>
-      <div class="card">
-        <button onclick="toggleTheme()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;">
-          <span style="display:flex;align-items:center;gap:10px;"><span id="reglages-theme-ico" style="display:inline-flex;"><svg class="ico"><use href="#i-moon"/></svg></span>Thème</span>
-          <span style="display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:13px;font-weight:700;"><span id="reglages-theme-label">Sombre</span> ⇄</span>
-        </button>
+      <!-- Sous-onglets Réglages -->
+      <div class="sub-tabs" style="margin-bottom:14px;">
+        <button class="sub-tab active" data-rg="compte" onclick="switchReglagesTab('compte')"><span>Mon compte</span></button>
+        <button class="sub-tab" data-rg="pref" onclick="switchReglagesTab('pref')"><span>Préférences</span></button>
+        <button class="sub-tab" data-rg="appareils" onclick="switchReglagesTab('appareils')"><span>Appareils</span></button>
+        <button class="sub-tab" data-rg="data" onclick="switchReglagesTab('data')"><span>Données</span></button>
+        <button class="sub-tab" data-rg="apropos" onclick="switchReglagesTab('apropos')"><span>À propos</span></button>
       </div>
 
-      <!-- Mode vacances / pause -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-calendar"/></svg>Mode vacances</div></div>
-      <div class="card">
-        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Pendant tes vacances, on n'envoie plus d'alerte d'absence à ton coach. Tu peux quand même enregistrer des séances normalement.</div>
-        <div id="pause-statut" style="display:none;font-size:13px;font-weight:700;color:var(--good);margin-bottom:12px;"></div>
-        <div style="display:flex;gap:8px;">
-          <div style="flex:1;"><label style="font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;">Début</label><input type="date" id="pause-debut" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:9px;"></div>
-          <div style="flex:1;"><label style="font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;">Fin</label><input type="date" id="pause-fin" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:9px;"></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button onclick="enregistrerPause()" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Activer la pause</button>
-          <button onclick="annulerPause()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>
-        </div>
-      </div>
-
-      <!-- Mon compte -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-user"/></svg>Mon compte</div></div>
-      <div class="card">
-        <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:14px;">Politique de confidentialité &amp; mes droits</a>
-        <button onclick="supprimerMonCompte()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte et mes données</button>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Action irréversible : toutes tes données (séances, poids, notes) seront effacées.</div>
-      </div>
-
-      <!-- Debug -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Diagnostic</div></div>
-      <div class="card" style="padding:14px;">
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Affiche les données brutes calculées par le serveur. Utile pour vérifier un marqueur (streak, tonnage, records…) qui semble incorrect.</div>
-        <button class="btn btn-outline" onclick="debugChargerDonnees()" style="margin-bottom:10px;">🔄 Charger les données serveur</button>
-        <div id="debug-panel" style="display:none;">
-          <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button class="btn-sm btn-outline" onclick="debugCopier()">📋 Copier JSON</button>
+      <!-- ===== PANEL : MON COMPTE ===== -->
+      <div class="rg-panel" data-rg="compte">
+        <!-- Profil -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Profil</h2></div>
+        <div class="card">
+          <label>Prénom</label>
+          <input type="text" id="prof-prenom" placeholder="Ton prénom" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <div style="flex:1;"><label>Taille (cm)</label><input type="number" id="prof-taille" placeholder="175" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;"></div>
+            <div style="flex:1;"><label>Poids (kg)</label><input type="number" id="prof-poids" placeholder="70" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;"></div>
           </div>
-          <pre id="debug-output" style="font-size:10px;color:var(--text);background:var(--surface2);border-radius:8px;padding:10px;overflow-x:auto;max-height:400px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></pre>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <div style="flex:1;"><label>Années de pratique</label><input type="number" id="prof-annees" placeholder="3" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;"></div>
+            <div style="flex:1;"><label>Date de naissance</label><input type="date" id="prof-ddn" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;"></div>
+          </div>
+          <button onclick="enregistrerProfil()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer mon profil</button>
+          <div id="prof-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+        </div>
+
+        <!-- Email -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-bell"/></svg>Email</h2></div>
+        <div class="card">
+          <label>Email <span style="color:var(--text-muted);font-weight:600;text-transform:none;letter-spacing:0;">(pour récupérer ton mot de passe)</span></label>
+          <input type="email" id="reglages-email" placeholder="ton@email.com" autocomplete="email" inputmode="email" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+          <button onclick="enregistrerEmailAthlete()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer l'email</button>
+          <div id="reglages-email-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+        </div>
+
+        <!-- Mot de passe -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Mot de passe</h2></div>
+        <div class="card">
+          <label>Mot de passe actuel</label>
+          <input type="password" id="pwd-actuel" placeholder="Ton mot de passe actuel" autocomplete="current-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+          <label style="display:block;margin-top:8px;">Nouveau mot de passe</label>
+          <input type="password" id="pwd-nouveau" placeholder="6 caractères minimum" autocomplete="new-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+          <button onclick="changerMonMotDePasse()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Modifier mon mot de passe</button>
+          <div id="pwd-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL : PRÉFÉRENCES ===== -->
+      <div class="rg-panel" data-rg="pref" style="display:none;">
+        <!-- Apparence -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Apparence</h2></div>
+        <div class="card">
+          <button onclick="toggleTheme()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;">
+            <span style="display:flex;align-items:center;gap:10px;"><span id="reglages-theme-ico" style="display:inline-flex;"><svg class="ico"><use href="#i-moon"/></svg></span>Thème</span>
+            <span style="display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:13px;font-weight:700;"><span id="reglages-theme-label">Sombre</span> ⇄</span>
+          </button>
+        </div>
+
+        <!-- Notifications push -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-bell"/></svg>Notifications</h2></div>
+        <div class="card" id="push-card">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Reçois une notification sur ton téléphone quand ton coach t'envoie un message.</div>
+          <div id="push-statut" style="display:none;font-size:13px;font-weight:700;margin-bottom:12px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button id="push-btn-on" onclick="activerNotifications()" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Activer les notifications</button>
+            <button id="push-btn-off" onclick="desactiverNotifications()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">Désactiver</button>
+          </div>
+          <button id="push-btn-test" onclick="testerNotifications()" style="display:none;width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Envoyer une notif de test</button>
+          <div id="push-diag" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.5;"></div>
+          <div id="push-hint" style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.4;"></div>
+        </div>
+
+        <!-- Mode vacances / pause -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Mode vacances</h2></div>
+        <div class="card">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Pendant tes vacances, on n'envoie plus d'alerte d'absence à ton coach. Tu peux quand même enregistrer des séances normalement.</div>
+          <div id="pause-statut" style="display:none;font-size:13px;font-weight:700;color:var(--good);margin-bottom:12px;"></div>
+          <div style="display:flex;gap:8px;">
+            <div style="flex:1;"><label style="font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;">Début</label><input type="date" id="pause-debut" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:9px;"></div>
+            <div style="flex:1;"><label style="font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;">Fin</label><input type="date" id="pause-fin" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:9px;"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button onclick="enregistrerPause()" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Activer la pause</button>
+            <button onclick="annulerPause()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL : APPAREILS ===== -->
+      <div class="rg-panel" data-rg="appareils" style="display:none;">
+        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin:2px 2px 12px;">Connecte tes capteurs pour importer automatiquement tes données (cardio, distance, vitesse, puissance…).</div>
+
+        <!-- Montre connectée (Google Health / Fitbit) -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Montre connectée</h2></div>
+        <div class="card" id="gh-card">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Connecte ta montre Fitbit (via ton compte Google) pour importer automatiquement tes activités dans le bloc cardio.</div>
+          <div id="gh-statut" style="display:none;font-size:13px;font-weight:700;margin-bottom:12px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button id="gh-btn-on" onclick="connecterGoogleHealth()" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>
+            <button id="gh-btn-off" onclick="deconnecterGoogleHealth()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">Déconnecter</button>
+          </div>
+          <button id="gh-btn-sync" onclick="synchroniserGoogleHealth()" style="display:none;width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Synchroniser mes activités</button>
+          <div id="gh-sync-info" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.4;"></div>
+        </div>
+
+        <!-- Compteur vélo / GPS (à venir) -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Compteur vélo / GPS <span style="font-size:10px;color:var(--accent);font-weight:800;">· bientôt</span></h2></div>
+        <div class="card" style="opacity:.75;">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;">Van Rysel 500 &amp; compatibles : distance, vitesse moy/max, puissance, cadence, calories — import du fichier d'activité (.FIT / .TCX).</div>
+        </div>
+
+        <!-- Ceinture cardio (à venir) -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Ceinture cardio <span style="font-size:10px;color:var(--accent);font-weight:800;">· bientôt</span></h2></div>
+        <div class="card" style="opacity:.75;">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;">Fréquence cardiaque en direct pendant la séance (via l'app native, en Bluetooth).</div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL : DONNÉES ===== -->
+      <div class="rg-panel" data-rg="data" style="display:none;">
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Mes données</h2></div>
+        <div class="card">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Télécharge tout ton historique (séances, poids, ressentis, objectifs, blessures). JSON = tout ; CSV = tes séances.</div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="exporterMesDonnees('json')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Exporter (JSON)</button>
+            <button onclick="exporterMesDonnees('csv')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Séances (CSV)</button>
+          </div>
+          <div id="export-ath-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+        </div>
+        <div class="card">
+          <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;">Politique de confidentialité &amp; mes droits</a>
+        </div>
+        <div class="v2-sec"><h2 class="st" style="color:var(--danger);"><svg class="ico"><use href="#i-alert"/></svg>Zone dangereuse</h2></div>
+        <div class="card" style="border-color:color-mix(in srgb,var(--danger) 30%,var(--border));">
+          <button onclick="supprimerMonCompte()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte et mes données</button>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Action irréversible : toutes tes données (séances, poids, notes) seront effacées.</div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL : À PROPOS ===== -->
+      <div class="rg-panel" data-rg="apropos" style="display:none;">
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Application</h2></div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:13.5px;font-weight:600;">Version</span><span id="app-version-ath" style="font-size:12.5px;color:var(--text-muted);font-weight:700;">Novalyz</span></div>
+        </div>
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-bell"/></svg>Aide</h2></div>
+        <div class="card">
+          <a href="mailto:portefaixvincent@gmail.com" style="display:block;font-size:13px;color:var(--accent);font-weight:600;">Contact &amp; envoyer un retour</a>
         </div>
       </div>
 
@@ -971,28 +1271,28 @@
     <div id="tab-historique" class="tab-content">
 
       <!-- CARRIÈRE (déplacé de l'Accueil) -->
-      <div class="v2-sec" id="dash-global-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
+      <div class="v2-sec" id="dash-global-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
       <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
         <div id="dash-global-content"></div>
       </div>
 
       <!-- SECTION PERFORMANCE -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Performance</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Performance</h2></div>
 
       <!-- VOLUME PAR MUSCLE -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</h2></div>
       <div class="card">
         <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- BALANCE MUSCULAIRE AGONISTE/ANTAGONISTE -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</h2></div>
       <div class="card">
         <div id="hist-balance-content"><div class="loader">Chargement...</div></div>
       </div>
 
       <!-- PROGRESSION PAR EXERCICE -->
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</h2></div>
       <div class="card">
         <select id="sel-hist-exercice" onchange="afficherProgressionExo()" style="margin-bottom:10px;">
           <option value="">— Choisir un exercice —</option>
@@ -1001,14 +1301,14 @@
       </div>
 
       <!-- RECORDS PERSONNELS -->
-      <div class="v2-sec" id="dash-records-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</div><div class="more" style="color:var(--text-muted);">meilleure charge</div></div>
+      <div class="v2-sec" id="dash-records-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</h2><div class="more" onclick="allerVersRecords()" style="cursor:pointer;">Voir tout →</div></div>
       <div class="card" id="dash-records-card" style="display:none;">
         <div id="dash-records"></div>
       </div>
 
       <!-- TENDANCES 4-8 SEMAINES -->
       <div class="v2-sec">
-        <div class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</div>
+        <h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</h2>
         <div style="display:flex;gap:6px;">
           <button onclick="afficherTendances(4)" id="btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">4 sem.</button>
           <button onclick="afficherTendances(8)" id="btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer;">8 sem.</button>
@@ -1019,22 +1319,28 @@
       </div>
 
       <!-- CORRÉLATION BIEN-ÊTRE × PERFORMANCE -->
-      <div class="v2-sec" id="hist-corr-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-heart"/></svg>Bien-être &amp; performance</div></div>
+      <div class="v2-sec" id="hist-corr-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-heart"/></svg>Bien-être &amp; performance</h2></div>
       <div class="card" id="hist-corr-card" style="display:none;">
         <div id="hist-corr-content"></div>
       </div>
 
       <!-- TENDANCE MENSUELLE (déplacé de l'Accueil) -->
-      <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><div class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</div><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
+      <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
       <div class="dash-card" id="dash-cmp28-card" style="padding:16px;display:none;">
         <div id="dash-cmp28-content"></div>
+      </div>
+
+      <!-- HISTORIQUE CARDIO -->
+      <div class="v2-sec" id="hist-cardio-sec" style="display:none;"><h2 class="st">🏃 Cardio · Historique</h2></div>
+      <div class="card" id="hist-cardio-card" style="padding:12px;display:none;">
+        <div id="hist-cardio-content"></div>
       </div>
 
     </div>
 
     <!-- ONGLET CONSEILS -->
     <div id="tab-conseils" class="tab-content">
-      <div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation avec ton coach</div></div>
+      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-message"/></svg>Conversation avec ton coach</h2></div>
       <div class="card" style="padding:0;overflow:hidden;">
         <div id="conseils-content" style="max-height:60vh;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
         <div style="border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;">
@@ -1051,53 +1357,114 @@
 <!-- DRAWER RÉGLAGES COACH (niveau global : accessible depuis l'accueil coach ET la vue athlète) -->
 <!-- Détail joueur (sports co) -->
 
-<div id="detail-joueur-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;overflow-y:auto;">
-  <div style="max-width:520px;margin:0 auto;min-height:100%;">
-    <div id="detail-joueur-body" style="padding:14px 16px 48px;"><div class="loader">Chargement…</div></div>
+<div id="detail-joueur-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;flex-direction:column;overflow:hidden;">
+  <!-- Header pleine largeur (comme la vue athlète muscu) : titre = onglet courant. Peuplé par ouvrirDetailJoueurFoot. -->
+  <header id="fjd-topbar" style="flex-shrink:0;"></header>
+  <div class="fjd-scroll">
+    <div id="detail-joueur-body" style="padding:14px 16px calc(70px + env(safe-area-inset-bottom,0px));"><div class="loader">Chargement…</div></div>
   </div>
 </div>
 
 <div id="coach-reglages-overlay" onclick="fermerReglagesCoach()" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:998;"></div>
-<div id="coach-reglages-drawer" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border);z-index:999;padding:0 0 env(safe-area-inset-bottom,0px);box-shadow:var(--shadow-lg);transition:transform 0.25s ease;">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;">
-    <div style="font-size:16px;font-weight:800;">Réglages</div>
-    <button onclick="fermerReglagesCoach()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1;padding:4px;">✕</button>
-  </div>
-  <div style="padding:0 20px 24px;display:flex;flex-direction:column;gap:10px;">
+<div id="coach-reglages-drawer" style="display:none;position:fixed;inset:0;background:var(--surface);z-index:999;flex-direction:column;overflow:hidden;">
+  <header style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top,0px)) 12px 12px;border-bottom:1px solid var(--border);background:var(--surface);">
+    <button onclick="fermerReglagesCoach()" aria-label="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:18px;line-height:1;">←</button>
+    <div style="font-size:17px;font-weight:800;">Réglages</div>
+  </header>
+  <div style="flex:1;overflow-y:auto;padding:16px 20px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch;max-width:640px;margin:0 auto;width:100%;box-sizing:border-box;">
 
-    <!-- Mon compte coach -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px;">Mon compte</div>
-    <div class="card" style="padding:14px 16px;margin:0;">
-      <div style="font-size:13px;font-weight:700;margin-bottom:4px;" id="coach-reglages-nom">—</div>
-      <div style="font-size:11px;color:var(--text-muted);">Coach connecté</div>
+    <!-- Sous-onglets Réglages coach -->
+    <div class="sub-tabs" style="margin:0 0 4px;">
+      <button class="sub-tab active" data-crg="compte" onclick="switchCoachReglagesTab('compte')"><span>Mon compte</span></button>
+      <button class="sub-tab" data-crg="pref" onclick="switchCoachReglagesTab('pref')"><span>Préférences</span></button>
+      <button class="sub-tab" data-crg="equipe" onclick="switchCoachReglagesTab('equipe')"><span>Équipe</span></button>
+      <button class="sub-tab" data-crg="data" onclick="switchCoachReglagesTab('data')"><span>Données</span></button>
+      <button class="sub-tab" data-crg="apropos" onclick="switchCoachReglagesTab('apropos')"><span>À propos</span></button>
     </div>
 
-    <!-- Sport -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Sport</div>
-    <select id="coach-sport-select" onchange="enregistrerSportCoach()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;"></select>
-    <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Adapte le vocabulaire de l'app (athlètes / joueurs…) et, plus tard, les indicateurs suivis.</div>
+    <!-- MON COMPTE -->
+    <div class="crg-panel" data-crg="compte" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Profil coach</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;" id="coach-reglages-nom">—</div>
+        <label>Nom affiché</label>
+        <input type="text" id="coach-prof-nom" placeholder="Ton nom" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <label style="display:block;margin-top:8px;">Email <span style="color:var(--text-muted);font-weight:600;text-transform:none;letter-spacing:0;">(récupération + notifs)</span></label>
+        <input type="email" id="coach-prof-email" placeholder="ton@email.com" autocomplete="email" inputmode="email" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <button onclick="enregistrerProfilCoach()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer</button>
+        <div id="coach-prof-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Mot de passe</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <label>Mot de passe actuel</label>
+        <input type="password" id="cpwd-actuel" placeholder="Ton mot de passe actuel" autocomplete="current-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <label style="display:block;margin-top:8px;">Nouveau mot de passe</label>
+        <input type="password" id="cpwd-nouveau" placeholder="6 caractères minimum" autocomplete="new-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <button onclick="changerMotDePasseCoach()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Modifier mon mot de passe</button>
+        <div id="cpwd-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+      </div>
+    </div>
 
-    <!-- Apparence -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Apparence</div>
-    <button onclick="toggleTheme()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">
-      <span>Thème</span><span style="color:var(--text-muted);"><span id="reglages-theme-label-coach">Sombre</span> ⇄</span>
-    </button>
+    <!-- PRÉFÉRENCES -->
+    <div class="crg-panel" data-crg="pref" style="display:none;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Apparence</div>
+      <button onclick="toggleTheme()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">
+        <span>Thème</span><span style="color:var(--text-muted);"><span id="reglages-theme-label-coach">Sombre</span> ⇄</span>
+      </button>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Sport</div>
+      <select id="coach-sport-select" onchange="enregistrerSportCoach()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;"></select>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Adapte le vocabulaire de l'app (athlètes / joueurs…) et, plus tard, les indicateurs suivis.</div>
+    </div>
 
-    <!-- Déconnexion -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Session</div>
+    <!-- ÉQUIPE -->
+    <div class="crg-panel" data-crg="equipe" style="display:none;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Club &amp; équipe</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <label>Nom du club</label>
+        <input type="text" id="coach-club" placeholder="Ex. AS Novalyz" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <label style="display:block;margin-top:8px;">Catégorie par défaut</label>
+        <input type="text" id="coach-cat" placeholder="Ex. U17" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.4;margin-top:8px;">Pré-remplira la création de nouveaux joueurs (à venir).</div>
+        <button onclick="enregistrerClubCoach()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer</button>
+        <div id="coach-club-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Démo</div>
+      <button onclick="genererDemoFoot()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">👥 Générer 14 joueurs de démo (foot)</button>
+      <button onclick="supprimerDemoFoot()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;">Supprimer les joueurs de démo</button>
+      <div id="demo-foot-info" style="display:none;font-size:11.5px;color:var(--text-muted);line-height:1.4;"></div>
+    </div>
+
+    <!-- DONNÉES -->
+    <div class="crg-panel" data-crg="data" style="display:none;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Données de l'équipe</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Historique complet de tes athlètes (séances, indicateurs, blessures…). JSON = tout ; CSV = toutes les séances.</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="exporterEquipe('json')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Exporter (JSON)</button>
+          <button onclick="exporterEquipe('csv')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Séances (CSV)</button>
+        </div>
+        <div id="export-coach-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--danger);">Zone dangereuse</div>
+      <button onclick="supprimerCompteCoach()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte coach</button>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Action irréversible. Le lien avec vos athlètes sera supprimé (leurs données conservées).</div>
+    </div>
+
+    <!-- À PROPOS -->
+    <div class="crg-panel" data-crg="apropos" style="display:none;flex-direction:column;gap:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Application</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:13px;font-weight:600;">Version</span><span id="app-version-coach" style="font-size:12.5px;color:var(--text-muted);font-weight:700;">Novalyz</span></div>
+      </div>
+      <a href="mailto:portefaixvincent@gmail.com" style="font-size:13px;color:var(--accent);font-weight:700;text-decoration:none;">Contact &amp; envoyer un retour</a>
+    </div>
+
+    <!-- Déconnexion (toujours visible, hors onglets) -->
+    <div style="height:1px;background:var(--border);margin:6px 0;"></div>
     <button onclick="seDeconnecterCoach();fermerReglagesCoach();" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
       Se déconnecter
     </button>
-
-    <!-- Zone danger -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Zone dangereuse</div>
-    <button onclick="supprimerCompteCoach()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte coach</button>
-    <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Action irréversible. Le lien avec vos athlètes sera supprimé.</div>
-
-    <!-- Diagnostic -->
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:8px;margin-bottom:2px;">Diagnostic</div>
-    <button onclick="debugCoachOuvrir();fermerReglagesCoach();" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">🔧 Données brutes (debug)</button>
 
   </div>
 </div>

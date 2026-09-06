@@ -6,13 +6,66 @@
 /* ===== Animation d'entrée (modale / carte) ===== */
 .modal-card { animation:pop-in 0.22s cubic-bezier(.2,.8,.2,1); }
 
+/* ===== Couleur de rôle (staff) — HEADER uniquement (bande + pastille) ===== */
+body[data-role]        { --role:#4f46e5; --role-a:rgba(79,70,229,.12); }   /* coach par défaut */
+body[data-role="coach"]{ --role:#4f46e5; --role-a:rgba(79,70,229,.12); }
+body[data-role="prepa"]{ --role:#ea580c; --role-a:rgba(234,88,12,.12); }
+body[data-role="kine"] { --role:#0d9488; --role-a:rgba(13,148,136,.12); }
+.coach-role-chip { font-size:9.5px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; color:var(--role,var(--accent)); background:var(--role-a,var(--accent-a)); padding:3px 8px; border-radius:20px; white-space:nowrap; }
+
+/* ===== Header accueil coach / prépa (#coach-topbar) =====
+ * Pleine largeur + sticky (hérite du sélecteur `header`), affiché uniquement en
+ * vue accueil coach. Liseré de couleur du rôle = bord supérieur. */
+#coach-topbar { display:none; border-top:3px solid var(--role,var(--accent)); gap:10px; }
+body.coach-active:not(.athlete-selected) #coach-topbar { display:flex; }
+#coach-topbar #ct-sport-ico { width:22px; height:22px; color:var(--role,var(--accent)); flex-shrink:0; }
+#coach-topbar .ct-id       { min-width:0; margin-right:auto; }
+#coach-topbar .ct-eyebrow  { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; }
+#coach-topbar .ct-name-row { display:flex; align-items:center; gap:8px; }
+#coach-topbar .ct-name     { font-weight:800; font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#coach-topbar .ct-actions  { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+#coach-topbar .ct-btn      { position:relative; display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+#coach-topbar .ct-btn .ico { width:16px; height:16px; }
+#coach-topbar .ct-plus     { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+#coach-topbar .ct-deco     { color:var(--danger); border-color:color-mix(in srgb, var(--danger) 25%, transparent); background:color-mix(in srgb, var(--danger) 10%, transparent); }
+
+/* ===== Header fiche athlète coach muscu (#cd-header) =====
+ * Même traitement que #coach-topbar : pleine largeur + sticky (via `header`),
+ * épuré (icône sport + nom d'onglet + boutons). Affiché sur la fiche détail. */
+#cd-header { display:none; gap:9px; }
+body.coach-active.athlete-selected #cd-header { display:flex; }
+#cd-header #cd-sport-ico  { width:20px; height:20px; color:var(--accent); flex-shrink:0; }
+#cd-header #cd-tab-title  { flex:1; min-width:0; margin:0; font-weight:800; font-size:18px; line-height:1.1; letter-spacing:-.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text); }
+#cd-header .cd-back       { flex-shrink:0; display:inline-flex; align-items:center; background:none; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 9px; cursor:pointer; }
+#cd-header .cd-head-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+#cd-header .cd-hbtn       { display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+#cd-header .cd-hbtn .ico  { width:16px; height:16px; }
+#cd-header .cd-deco       { color:var(--danger); border-color:color-mix(in srgb, var(--danger) 25%, transparent); background:color-mix(in srgb, var(--danger) 10%, transparent); }
+@media (max-width:600px) {
+  #cd-header { padding:11px 14px; }
+  #cd-header .cd-hbtn { padding:0; width:36px; height:36px; justify-content:center; gap:0; }
+  #cd-header .cd-back { padding:0; width:36px; height:36px; justify-content:center; }
+  #cd-header .cd-lbl  { display:none; }
+}
+
+/* ===== Exécution guidée du renfo (joueur) : barre de retour dédiée ===== */
+#renfo-topbar { display:none; gap:9px; }
+body.renfo-exec #renfo-topbar { display:flex; }
+body.renfo-exec > header      { display:none; }   /* masque le header global pendant l'exécution */
+#renfo-topbar .cd-back { flex-shrink:0; display:inline-flex; align-items:center; background:none; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 9px; cursor:pointer; }
+
 /* ===== En-tête global ===== */
 header { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
 header h1 { font-size:17px; font-weight:700; }
+/* Écran de connexion : pas d'icône de sport (l'app est multisport) → « Novalyz »
+ * seul. L'icône (haltère/ballon…) n'apparaît qu'une fois connecté, selon le sport. */
+body:has(#view-login.active) header #brand-ico { display:none; }
 .logout-btn { font-size:12px; color:var(--danger); cursor:pointer; background:none; border:none; padding:4px 8px; }
 
 /* ===== Navigation principale (bottom bar) ===== */
-.tabs-bar { background:var(--surface); border-top:1px solid var(--border); display:flex; position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; z-index:50; padding-bottom:env(safe-area-inset-bottom,0px); }
+.tabs-bar { background:var(--surface); border-top:1px solid var(--border); display:flex; position:fixed; bottom:0; left:0; right:0; z-index:50; padding-bottom:env(safe-area-inset-bottom,0px); }
+.tabs-bar > * { max-width:calc(var(--app-w) / 5); }
+.tabs-bar { justify-content:center; }
 .tab-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:13px 2px; font-size:10px; font-weight:600; text-align:center; cursor:pointer; color:var(--text-muted); border:none; background:none; transition:color 0.2s; }
 .tab-btn > span:not(.tab-ico):not([id]) { display:none; }
 .tab-btn .tab-ico { font-size:21px; line-height:1; transition:transform 0.15s; }
@@ -29,20 +82,33 @@ body.has-bottom-nav .toast { bottom:84px; }
 .sub-tab.active { background:var(--accent-a14); color:var(--accent); border-color:var(--accent-dim); }
 
 /* Sous-onglets contexte coach-detail (fixe en bas, icône+label) */
-#view-coach-detail .sub-tabs { position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; z-index:50; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(6px + env(safe-area-inset-bottom,0px)); gap:2px; }
-body.cd-nav { padding-bottom:66px; }
+#view-coach-detail .sub-tabs { position:fixed; bottom:0; left:0; right:0; z-index:50; background:var(--surface); border-top:1px solid var(--border); padding:8px 10px calc(6px + env(safe-area-inset-bottom,0px)); gap:2px; }
+#view-coach-detail .sub-tabs > * { max-width:calc(var(--coach-w) / 5); }
+#view-coach-detail .sub-tabs { justify-content:center; }
+body.cd-nav { padding-bottom:76px; }
+
+/* Header accueil coach/prépa sur mobile : les libellés (« Lier un athlète », « Déco »)
+ * sont masqués → boutons en icônes carrées, tout tient sur UNE ligne (＋ 💬 ⚙︎ ⏻). */
+@media (max-width:600px) {
+  #coach-topbar { padding:11px 14px; }
+  #coach-topbar .ct-actions { gap:7px; }
+  #coach-topbar .ct-btn { padding:0; width:36px; height:36px; justify-content:center; gap:0; }
+  #coach-topbar .ct-lbl { display:none; }
+}
 #view-coach-detail .sub-tab { flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:7px 3px; font-size:9.5px; border:none; border-bottom:2px solid transparent; background:none; border-radius:0; min-width:0; white-space:nowrap; color:var(--text-muted); }
 #view-coach-detail .sub-tab .cd-ico { line-height:1; }
 #view-coach-detail .sub-tab .cd-ico svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:block; }
-#view-coach-detail .sub-tab > span:not(.cd-ico):not([id]) { display:none; }
-#view-coach-detail .sub-tab { padding:12px 3px; justify-content:center; align-items:center; }
+/* Icône + LABEL visibles + indicateur haut — standard .nv-navbtn (comme la barre
+   de navigation athlète muscu et la fiche joueur foot). */
+#view-coach-detail .sub-tab { position:relative; padding:9px 3px; justify-content:center; align-items:center; border-bottom:none; }
 #view-coach-detail .sub-tab.active { background:none; color:var(--text-muted); }
 #view-coach-detail .sub-tab.cc1.active,
 #view-coach-detail .sub-tab.cc2.active,
 #view-coach-detail .sub-tab.cc3.active,
 #view-coach-detail .sub-tab.cc4.active,
 #view-coach-detail .sub-tab.cc5.active,
-#view-coach-detail .sub-tab.cc6.active { color:var(--accent); border-bottom-color:var(--accent); }
+#view-coach-detail .sub-tab.cc6.active { color:var(--accent); }
+#view-coach-detail .sub-tab.active::before { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:26px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }
 
 /* Focus visible clavier */
 button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-visible, .nv-auth-seg button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
@@ -140,15 +206,6 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .dash-badge    { border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; }
 .dash-tag      { border-radius:6px; padding:2px 7px; font-size:10px; font-weight:600; }
 
-/* Overrides mode clair dashboard */
-body.light-mode .dash          { background:#f5f5f5; }
-body.light-mode .dash-card     { background:#fff; border-color:#e0e0e0; }
-body.light-mode .dash-stat     { background:#f0f0f0; }
-body.light-mode .dash-big-num  { color:#111; }
-body.light-mode .dash-stat-num { color:#111; }
-body.light-mode .dash-label    { color:#999; }
-body.light-mode .dash-bar-bg   { background:#e0e0e0; }
-
 /* ===== v2 — langage visuel unifié ===== */
 .v2-hero     { background:radial-gradient(120% 90% at 100% 0%, var(--accent-a12), transparent 60%), var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px; margin-bottom:12px; }
 .v2-hero-top { display:flex; align-items:center; gap:15px; }
@@ -166,8 +223,26 @@ body.light-mode .dash-bar-bg   { background:#e0e0e0; }
 .v2-kpi   { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 11px; }
 .v2-kpi .kv { font-size:20px; font-weight:800; line-height:1; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
 .v2-kpi .kk { font-size:10px; color:var(--text-muted); font-weight:600; margin-top:5px; line-height:1.25; }
+/* KPIs de la fiche joueur (4 mesures) : 2 colonnes en mobile, 4 dès qu'il y a la
+ * place. minmax(0,1fr) autorise le rétrécissement → pas de débordement horizontal. */
+.fjd-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-bottom:12px; }
+@media (min-width:480px) { .fjd-kpis { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+/* Hero d'accueil de la fiche joueur (onglet Profil) : « Bonjour + nom » + infos.
+ * Même esprit que le briefing muscu ; l'avatar accepte une photo (img) ou des initiales. */
+.fjd-hero { display:flex; align-items:flex-start; gap:14px; padding:18px; margin-bottom:14px;
+  border-radius:18px; border:1px solid var(--border);
+  background:linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%); }
+.fjd-hero-av { width:56px; height:56px; border-radius:16px; flex-shrink:0; overflow:hidden;
+  display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800;
+  background:var(--accent); color:#fff; box-shadow:0 6px 18px rgba(26,95,255,.35); }
+.fjd-hero-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.fjd-hero-grt  { font-size:13px; font-weight:700; color:var(--text-muted); }
+.fjd-hero-name { font-size:24px; font-weight:800; letter-spacing:-.5px; line-height:1.05; margin:1px 0 9px; }
+.fjd-hero-pills { display:flex; flex-wrap:wrap; gap:6px; }
+.fjd-pill { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700;
+  padding:4px 10px; border-radius:999px; background:var(--surface); border:1px solid var(--border); color:var(--text); }
 .v2-sec   { display:flex; align-items:center; justify-content:space-between; margin:2px 2px 9px; }
-.v2-sec .st { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; letter-spacing:.02em; }
+.v2-sec .st { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:400; letter-spacing:.06em; }
 .v2-sec .st .ico { width:15px; height:15px; color:var(--accent); }
 .v2-sec .more { font-size:11px; font-weight:700; color:var(--accent); }
 .v2-vrow  { display:flex; align-items:center; gap:10px; margin-top:11px; }
@@ -252,3 +327,120 @@ body.light-mode .dash-bar-bg   { background:#e0e0e0; }
 .nv-auth-seg button.auth-seg-active { background:var(--accent); color:var(--on-accent); }
 
 .error-msg { color:var(--danger); font-size:13px; text-align:center; margin-top:4px; min-height:20px; }
+
+/* =============================================================================
+ * BIBLIOTHÈQUE DE COMPOSANTS — Phase 1 (charte refonte)
+ * Classes canoniques .nv-*, pilotées UNIQUEMENT par les tokens (aucune valeur
+ * en dur). Elles remplacent, à terme, les composants redéfinis inline dans
+ * app.js (voir Docs/audit-refonte-css.md). Additif : rien ne les utilise encore
+ * → aucun changement visuel tant que la migration (P2/P3) n'a pas commencé.
+ * =========================================================================== */
+
+/* ---- Tuile de stat / KPI : nombre + label (remplace kpi/gpsTile/heroPill/
+ *      chip/dash-stat/v2-kpi/v2-pstat — ~8 variantes inline aujourd'hui) ---- */
+.nv-stat        { display:flex; flex-direction:column; align-items:center; text-align:center; gap:2px; min-width:0; }
+.nv-stat-num    { font-size:var(--fs-xl); font-weight:var(--fw-heavy); color:var(--text); line-height:var(--lh-tight); letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
+.nv-stat-label  { font-size:var(--fs-2xs); font-weight:var(--fw-bold); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); line-height:var(--lh-snug); }
+.nv-stat--sm .nv-stat-num { font-size:var(--fs-lg); }
+.nv-stat--lg .nv-stat-num { font-size:var(--fs-2xl); }
+.nv-stat--accent .nv-stat-num { color:var(--accent); }
+.nv-stat--good   .nv-stat-num { color:var(--good); }
+.nv-stat--warn   .nv-stat-num { color:var(--warn); }
+.nv-stat--danger .nv-stat-num { color:var(--danger); }
+.nv-stat--tile  { background:var(--surface2); border-radius:var(--radius-sm); padding:9px 8px; }
+.nv-stat--on-accent .nv-stat-num,
+.nv-stat--on-accent .nv-stat-label { color:var(--on-accent); }
+.nv-stat--tile-accent { background:var(--on-accent-a16); border-radius:var(--radius); padding:9px 6px; }
+
+/* ---- Chip / pill : tag, type, statut (remplace border-radius:20px ×49) ---- */
+.nv-chip        { display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-xs); font-weight:var(--fw-bold); padding:3px 10px; border-radius:var(--radius-pill); background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); white-space:nowrap; }
+.nv-chip--sm    { font-size:var(--fs-2xs); padding:2px 8px; }
+.nv-chip--accent{ background:var(--accent-a10); border-color:var(--accent-dim); color:var(--accent); }
+.nv-chip--good  { background:var(--good-a); border-color:transparent; color:var(--good); }
+.nv-chip--warn  { background:var(--warn-a); border-color:transparent; color:var(--warn); }
+.nv-chip--danger{ background:var(--bad-a);  border-color:transparent; color:var(--danger); }
+.nv-chip--info  { background:var(--info-a); border-color:transparent; color:var(--info); }
+/* Catégoriels (types cardio) : poser --chip-c, un seul rendu */
+.nv-chip--cat   { color:var(--chip-c,var(--accent)); border-color:var(--chip-c,var(--border)); background:var(--surface2); }
+.nv-chip--run   { --chip-c:var(--c-run); }
+.nv-chip--bike  { --chip-c:var(--c-bike); }
+.nv-chip--walk  { --chip-c:var(--c-walk); }
+.nv-chip--hike  { --chip-c:var(--c-hike); }
+.nv-chip--swim  { --chip-c:var(--c-swim); }
+.nv-chip--other { --chip-c:var(--c-other); }
+
+/* ---- Label de section (remplace text-transform:uppercase ×55 inline) ---- */
+.nv-label       { font-size:var(--fs-xs); font-weight:var(--fw-bold); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); }
+.nv-label--sm   { font-size:var(--fs-2xs); letter-spacing:.05em; }
+.nv-label--accent { color:var(--accent); }
+
+/* ---- Champ de formulaire : label + input ---- */
+.nv-field       { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+.nv-field > label { font-size:var(--fs-xs); font-weight:var(--fw-bold); text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); }
+.nv-input       { width:100%; box-sizing:border-box; padding:11px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); background:var(--surface2); color:var(--text); font-size:var(--fs-base); font-family:var(--font); transition:border-color .15s; }
+.nv-input:focus { outline:none; border-color:var(--accent); }
+.nv-input::placeholder { color:var(--text-subtle); }
+
+/* ---- Bottom-sheet / modale de confirmation (remplace les sheets reconstruites
+ *      inline : suppr. cardio, fin de séance, etc.) ---- */
+.nv-sheet-overlay { position:fixed; inset:0; background:rgba(7,11,20,.45); z-index:9000; display:flex; align-items:flex-end; justify-content:center; }
+.nv-sheet       { width:100%; max-width:480px; background:var(--surface); border-radius:var(--radius-lg) var(--radius-lg) 0 0; padding:24px 20px 32px; box-shadow:var(--shadow-lg); animation:pop-in .22s cubic-bezier(.2,.8,.2,1); }
+.nv-sheet-handle{ width:40px; height:4px; background:var(--border); border-radius:var(--radius-pill); margin:0 auto 20px; }
+.nv-sheet-title { font-size:var(--fs-lg); font-weight:var(--fw-heavy); color:var(--text); margin-bottom:6px; }
+.nv-sheet-sub   { font-size:var(--fs-sm); color:var(--text-muted); margin-bottom:20px; }
+.nv-sheet-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
+
+/* ---- Variantes de carte (accent bord gauche) ---- */
+.card--flush    { margin-bottom:0; }
+.card--accent   { border-left:3px solid var(--accent); }
+.card--good     { border-left:3px solid var(--good); }
+.card--warn     { border-left:3px solid var(--warn); }
+.card--danger   { border-left:3px solid var(--danger); }
+
+/* ---- Boutons : variantes manquantes (complètent .btn existant) ---- */
+.btn-ghost      { background:transparent; color:var(--accent); box-shadow:none; }
+.btn-ghost:hover{ background:var(--accent-a08); }
+.btn-danger     { background:var(--danger); color:var(--on-danger); }
+.btn-neutral    { background:var(--surface2); border:1px solid var(--border); color:var(--text); }
+.btn-block      { width:100%; }
+.btn-inline     { width:auto; }
+
+/* ---- Navigation du bas — composant UNIQUE (athlète + coach, rendu identique)
+ *      Remplace .tab-btn (athlète) ET .sub-tab.cc* (coach). Icône + label,
+ *      état actif standardisé (couleur accent + barre indicatrice en haut). ---- */
+.nv-nav          { display:flex; position:fixed; bottom:0; left:0; right:0; max-width:var(--app-w); margin:0 auto; z-index:50;
+                   background:var(--surface); border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom,0px); }
+.nv-navbtn       { position:relative; flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+                   padding:9px 3px; border:none; background:none; cursor:pointer; white-space:nowrap; transition:color .2s;
+                   font-size:var(--fs-2xs); font-weight:var(--fw-bold); color:var(--text-muted); }
+.nv-navbtn .nv-navico      { line-height:1; display:block; }
+.nv-navbtn .nv-navico svg  { width:24px; height:24px; display:block; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.nv-navbtn.active          { color:var(--accent); }
+.nv-navbtn.active::before  { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:26px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }
+.nv-navbtn:disabled        { opacity:.45; cursor:not-allowed; }
+.nv-navbtn .nv-nav-badge   { position:absolute; top:4px; right:calc(50% - 20px); background:var(--danger); color:#fff; font-size:var(--fs-2xs); font-weight:var(--fw-heavy); min-width:15px; height:15px; border-radius:var(--radius-pill); line-height:15px; text-align:center; padding:0 3px; }
+
+/* ---- Onglets vue joueur foot (.djt-tabs) : barre d'icônes EN BAS (comme muscu).
+ *      Enfant flex de l'overlay flex-colonne (pas de position:fixed → fiable iOS). ---- */
+/* Barre d'onglets fiche joueur foot = STANDARD .nv-navbtn (icône + LABEL,
+   actif = couleur accent + barre indicatrice en haut) — identique à la barre
+   de navigation de la vue athlète muscu. */
+/* Barre bord à bord comme le header (#fjd-topbar) : pas de max-width ni de
+   marge auto → elle occupe toute la largeur de l'écran, en solo comme dans les
+   vues coach/prépa. */
+.djt-tabs.sub-tabs {
+  position:fixed; left:0; right:0; bottom:0; z-index:60;
+  width:100%; margin:0; justify-content:center; gap:0; overflow:visible;
+  background:var(--surface); border-top:1px solid var(--border); border-radius:0;
+  padding:0 0 env(safe-area-inset-bottom,0px);
+}
+.djt-tabs .sub-tab {
+  position:relative; flex:1 1 0; min-width:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  border:none; border-radius:0; background:none; cursor:pointer; padding:9px 3px;
+  color:var(--text-muted); font-size:var(--fs-2xs); font-weight:var(--fw-bold); white-space:nowrap; transition:color .2s;
+}
+.djt-tabs .sub-tab .dj-ico     { line-height:1; display:block; }
+.djt-tabs .sub-tab .dj-ico svg { width:24px; height:24px; display:block; }
+.djt-tabs .sub-tab.active          { color:var(--accent); }
+.djt-tabs .sub-tab.active::before  { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:26px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }

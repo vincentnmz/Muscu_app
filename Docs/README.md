@@ -18,6 +18,7 @@ La musculation est le **premier module**, pas le produit. Le noyau ne dépend d'
 | [`modele-de-donnees.md`](./modele-de-donnees.md) | Entités génériques, table `Indicateur`, mapping Sheets → SQL. |
 | [`moteur-analyse.md`](./moteur-analyse.md) | Le cœur décisionnel : seuils, signaux, règles, alertes. |
 | [`kpi.md`](./kpi.md) | Chaque indicateur, sa formule, son interprétation. |
+| [`catalogue-metriques.md`](./catalogue-metriques.md) | **Bibliothèque de métriques** : chaque mesure + ses métadonnées (sport, type, unité, saisie, moteur…). Ajouter un sport = enrichir ce catalogue. |
 | [`cahier-des-charges.md`](./cahier-des-charges.md) | Besoins fonctionnels par profil utilisateur. |
 | [`roadmap-produit.md`](./roadmap-produit.md) | Les 6 phases de migration, sans casser l'existant. |
 

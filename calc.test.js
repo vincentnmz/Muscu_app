@@ -2,7 +2,8 @@
  * Novalyz · Suite de tests des calculs
  * -----------------------------------------------------------------------------
  * Objectif : vérifier que les formules de l'app disent LA VÉRITÉ, en testant
- *   LE VRAI CODE (extrait de index.html), pas une réécriture.
+ *   LE VRAI CODE (extrait de js/app.js, ou de index.html avant la refonte P0),
+ *   pas une réécriture.
  *
  * Ce fichier NE MODIFIE RIEN dans l'app. Il extrait les fonctions pures
  * (moteur Novalyz, computeACWR, score du Bilan) et les confronte à des valeurs
@@ -15,18 +16,23 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-// index.html peut être au même niveau (racine) ou un cran au-dessus (dossier tests/)
-function trouverIndexHtml() {
+// Depuis la refonte P0, la logique vit dans js/app.js. Avant P0, elle était
+// inline dans index.html. On lit js/app.js en priorité, puis on retombe sur
+// index.html : le test reste vert des deux côtés de la migration.
+// Chaque source peut être au même niveau (racine) ou un cran au-dessus (tests/).
+function trouverSource() {
   const candidats = [
-    path.join(__dirname, 'index.html'),        // calc.test.js à la racine
-    path.join(__dirname, '..', 'index.html'),  // calc.test.js dans tests/
+    path.join(__dirname, 'js', 'app.js'),            // calc.test.js à la racine (post-P0)
+    path.join(__dirname, '..', 'js', 'app.js'),      // calc.test.js dans tests/  (post-P0)
+    path.join(__dirname, 'index.html'),              // calc.test.js à la racine (pré-P0)
+    path.join(__dirname, '..', 'index.html'),        // calc.test.js dans tests/  (pré-P0)
   ];
   for (const p of candidats) { if (fs.existsSync(p)) return p; }
-  throw new Error('index.html introuvable (cherché à côté et un niveau au-dessus)');
+  throw new Error('Source introuvable (js/app.js ou index.html, à côté ou un niveau au-dessus)');
 }
-const HTML = fs.readFileSync(trouverIndexHtml(), 'utf8');
+const HTML = fs.readFileSync(trouverSource(), 'utf8');
 
-// ---- Extraction du VRAI code depuis index.html --------------------------------
+// ---- Extraction du VRAI code depuis la source (js/app.js ou index.html) --------
 function extractBetween(startMarker, endMarker, label) {
   const s = HTML.indexOf(startMarker);
   if (s === -1) throw new Error('Introuvable: ' + label + ' (début)');
@@ -53,6 +59,13 @@ const acwrCode = extractBetween(
 const wqDimsCode  = extractBetween('const WQ_DIMS = [', '];', 'WQ_DIMS');
 const wqPositifCode = extractBetween('function wqPositif(dim, val) {', '\n}', 'wqPositif');
 
+// 4) NovalyzContexte (module autonome, Phase 2) — extrait entre marqueurs dédiés
+const contexteCode = extractBetween(
+  '/* NOVALYZ_CONTEXTE_START',
+  '/* NOVALYZ_CONTEXTE_END */',
+  'module NovalyzContexte'
+);
+
 // ---- Sandbox d'exécution (pas de DOM) -----------------------------------------
 const sandbox = {};
 sandbox.self = sandbox;
@@ -61,10 +74,12 @@ sandbox.module = { exports: {} };
 sandbox.console = console;
 vm.createContext(sandbox);
 vm.runInContext(engineCode, sandbox);
+vm.runInContext(contexteCode, sandbox);
 vm.runInContext(acwrCode + '\nthis.computeACWR = computeACWR;', sandbox);
 vm.runInContext(wqDimsCode + '\n' + wqPositifCode + '\nthis.WQ_DIMS = WQ_DIMS; this.wqPositif = wqPositif;', sandbox);
 
 const Engine = sandbox.NovalyzEngine;
+const Ctx = sandbox.NovalyzContexte;
 const computeACWR = sandbox.computeACWR;
 const WQ_DIMS = sandbox.WQ_DIMS;
 const wqPositif = sandbox.wqPositif;
@@ -174,6 +189,97 @@ function approx(nom, obtenu, attendu, tol) {
   // Chaque analyse a la forme attendue
   const forme = (multi || []).every(a => a.type && a.titre && a.description);
   check('Engine analyses bien formées (type/titre/description)', forme, 'toutes OK', multi);
+})();
+
+// =============================================================================
+// D) NovalyzContexte (Phase 2) — registre, résolution, politique, non-régression
+// =============================================================================
+(function testContexte() {
+  check('Contexte exposé', !!Ctx && typeof Ctx.resoudre === 'function', 'fonction', typeof (Ctx && Ctx.resoudre));
+  check('5 états essentiels présents',
+    Ctx && ['saison_normale','deload','retour_vacances','retour_blessure','intensification'].every(k => Ctx.ETATS[k]),
+    true, Ctx && Object.keys(Ctx.ETATS));
+
+  // --- resoudre ---
+  const rNorm = Ctx.resoudre({});
+  eq('resoudre sans contexte → saison_normale', rNorm.etat, 'saison_normale');
+  eq('saison_normale a une politique vide', JSON.stringify(rNorm.politique), '{}');
+
+  const rDeload = Ctx.resoudre({ contexte: { etat: 'deload', date_debut: '2026-08-01', date_fin: '2026-08-07' } });
+  eq('resoudre deload → etat deload', rDeload.etat, 'deload');
+  eq('resoudre deload → mode decharge', rDeload.mode, 'decharge');
+  eq('resoudre propage les dates', rDeload.date_fin, '2026-08-07');
+
+  const rInconnu = Ctx.resoudre({ contexte: { etat: 'etat_bidon_xyz' } });
+  eq('état inconnu → retombe sur saison_normale', rInconnu.etat, 'saison_normale');
+  eq('état inconnu → drapeau inconnu=true', rInconnu.inconnu, true);
+
+  // --- appliquer (neutralisation de signaux) ---
+  const faitsIn = { valeurs: {}, signaux: { volumeFaible: true, forceBaisse: true, fatigueElevee: true } };
+  const faitsOut = Ctx.appliquer(faitsIn, Ctx.ETATS.deload.politique);
+  eq('appliquer deload neutralise volumeFaible', faitsOut.signaux.volumeFaible, null);
+  eq('appliquer deload neutralise forceBaisse', faitsOut.signaux.forceBaisse, null);
+  eq('appliquer NE touche PAS fatigueElevee', faitsOut.signaux.fatigueElevee, true);
+  eq('appliquer ne mute pas l\'entrée (immuable)', faitsIn.signaux.volumeFaible, true);
+
+  const faitsRepr = Ctx.appliquer({ signaux: {} }, Ctx.ETATS.retour_vacances.politique);
+  eq('retour_vacances → comparaisons suspendues', faitsRepr.comparaisons_suspendues, true);
+
+  // --- filtrerRegles ---
+  const faux = [{ id: 'sous_entrainement', categorie: 'entraînement' }, { id: 'fatigue_generale', categorie: 'récupération' }, { id: 'surmenage', categorie: 'récupération' }];
+  const gardees = Ctx.filtrerRegles(faux, Ctx.ETATS.deload.politique).map(r => r.id);
+  check('deload suspend sous_entrainement + surmenage', !gardees.includes('sous_entrainement') && !gardees.includes('surmenage'), true, gardees);
+  check('deload garde fatigue_generale', gardees.includes('fatigue_generale'), true, gardees);
+  eq('saison_normale ne suspend aucune règle', Ctx.filtrerRegles(faux, {}).length, 3);
+
+  // --- fusionnerSeuils ---
+  const seuilsFus = Ctx.fusionnerSeuils(Engine.SEUILS, Ctx.ETATS.intensification.politique);
+  eq('intensification surcharge fatigueElevee → 5', seuilsFus.fatigueElevee, 5);
+  eq('fusionnerSeuils préserve les autres seuils', seuilsFus.sommeilFaible, Engine.SEUILS.sommeilFaible);
+  eq('fusionnerSeuils ne mute pas SEUILS global', Engine.SEUILS.fatigueElevee, 4);
+
+  // --- NON-RÉGRESSION MÉTIER : le vrai scénario "retour de vacances" ---
+  // Progression en baisse + volume faible → le moteur crie "sous-entraînement"…
+  const dataReprise = { dashboard: { progression: { en_progression: 0, en_baisse: 3 }, regularite: { seances_j7: 0, seances_prevues: 4 } } };
+  const sansCtx = Engine.analyser(dataReprise);
+  check('HORS contexte : sous_entrainement bien détecté',
+    sansCtx.some(a => a.id === 'sous_entrainement'), true, sansCtx.map(a => a.id));
+
+  // …mais en "retour_vacances" la couche contexte le supprime (double protection :
+  // signal neutralisé ET règle suspendue).
+  const pol = Ctx.resoudre({ contexte: { etat: 'retour_vacances' } }).politique;
+  const faitsCtx = Ctx.appliquer(Engine.normaliser(dataReprise), pol);
+  const reglesCtx = Ctx.filtrerRegles(Engine.REGLES, pol);
+  const analysesCtx = reglesCtx.map(r => { try { const a = r.evaluer(faitsCtx); if (a) a.id = r.id; return a; } catch (e) { return null; } }).filter(Boolean);
+  check('AVEC contexte retour_vacances : sous_entrainement supprimé',
+    !analysesCtx.some(a => a.id === 'sous_entrainement'), true, analysesCtx.map(a => a.id));
+
+  // --- INTÉGRATION Phase 3 : analyser() applique LUI-MÊME le contexte ---
+  const repriseAvecCtx = Object.assign({}, dataReprise, { contexte: { etat: 'retour_vacances' } });
+  const integ = Engine.analyser(repriseAvecCtx);
+  check('Phase 3 : analyser() supprime sous_entrainement en retour_vacances',
+    !integ.some(a => a.id === 'sous_entrainement'), true, integ.map(a => a.id));
+  check('Phase 3 : chaque analyse est taguée du contexte',
+    integ.every(a => a.contexte === 'retour_vacances'), true, integ.map(a => a.contexte));
+
+  // Non-régression : même appel SANS contexte → sous_entrainement présent + tag saison_normale
+  const integNorm = Engine.analyser(dataReprise);
+  check('Phase 3 : hors contexte, sous_entrainement présent',
+    integNorm.some(a => a.id === 'sous_entrainement'), true, integNorm.map(a => a.id));
+  check('Phase 3 : hors contexte, tag = saison_normale',
+    integNorm.every(a => a.contexte === 'saison_normale'), true, integNorm.map(a => a.contexte));
+
+  // Intensification via analyser() : seuil fatigue relevé à 5 → fatigue=4 ne crie plus
+  const dataFatigue = { bien_etre: [{ sommeil: 2, energie: 2, fatigue: 4 }] };
+  const sansIntens = Engine.analyser(dataFatigue);
+  check('fatigue_generale détecté hors intensification (fatigue=4)',
+    sansIntens.some(a => a.id === 'fatigue_generale'), true, sansIntens.map(a => a.id));
+  const avecIntens = Engine.analyser(Object.assign({}, dataFatigue, { contexte: { etat: 'intensification' } }));
+  check('intensification relève le seuil : fatigue=4 ne déclenche plus fatigue_generale',
+    !avecIntens.some(a => a.id === 'fatigue_generale'), true, avecIntens.map(a => a.id));
+
+  // Le seuil global n'a PAS été muté après un appel contextualisé (restauration)
+  eq('SEUILS.fatigueElevee restauré à 4 après intensification', Engine.SEUILS.fatigueElevee, 4);
 })();
 
 // ---- Rapport ------------------------------------------------------------------

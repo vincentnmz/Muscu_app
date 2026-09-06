@@ -1,0 +1,162 @@
+/* =============================================================================
+ * PHASE FOOT — Garde-fou cockpit foot (blocs A + C), présentation seule.
+ * Vérifie : OFF → conteneur vide ; ON + moteur → bloc A (État, moteur commun)
+ * + bloc C (Bien-être foot depuis data.bienetre / wellness) ; sans moteur →
+ * vide ; le cockpit foot ne recalcule aucun verdict.
+ * =========================================================================== */
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+
+function extractFn(name) {
+  const m = SRC.match(new RegExp('function\\s+' + name + '\\s*\\('));
+  if (!m) throw new Error('fn introuvable: ' + name);
+  let i = SRC.indexOf('{', m.index), d = 0, j = i;
+  for (; j < SRC.length; j++) { const c = SRC[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } }
+  return SRC.slice(m.index, j);
+}
+function extractDecl(name) {
+  const m = SRC.match(new RegExp('(?:const|let|var)\\s+' + name + '\\s*=\\s*'));
+  if (!m) throw new Error('decl introuvable: ' + name);
+  let i = m.index + m[0].length; const open = SRC[i], close = open === '[' ? ']' : '}';
+  let d = 0, j = i;
+  for (; j < SRC.length; j++) { const c = SRC[j]; if (c === open) d++; else if (c === close) { d--; if (d === 0) { j++; break; } } }
+  return SRC.slice(m.index, j) + ';';
+}
+
+const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckKpi', 'renderCockpitChargeFoot', '_ckWbColor', 'renderCockpitBienEtreFoot', '_ckSpark', '_ckDir', 'renderCockpitEvolutionFoot', '_ckFr', 'renderCockpitPerformanceFoot', 'renderCockpitHistoriqueFoot', 'renderCockpitFoot'];
+const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
+
+let ok = 0, ko = 0;
+const check = (n, c) => { if (c) ok++; else { ko++; console.log('  ❌ ' + n); } };
+
+function run(flag, data) {
+  const store = {};
+  const sandbox = {
+    COCKPIT_ON: flag,
+    escapeHtml: s => String(s == null ? '' : s),
+    couleurStatut: l => ({ 'Prêt': '#22c55e', 'Vigilance': '#f5a623', 'À surveiller': '#e5484d' }[l] || '#22c55e'),
+    document: { getElementById: id => store[id] || (store[id] = { innerHTML: '' }) },
+    DATA: data,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(code + '\nrenderCockpitFoot(DATA);', sandbox);
+  return (store['foot-cockpit'] || {}).innerHTML || '';
+}
+
+const dataFoot = {
+  moteur: { disponibilite: { niveau: 'Vigilance' }, recup: 'Moyen', surcharge: 'Faible', risque_blessure: 'Modéré', confiance: 'haute', contexte_tag: null, reco: 'Vigilance — surveiller les sensations.', acwr_fiable: true, acwr_categorie: 'normal' },
+  acwr: 1.12, charge_7j: 930, kpi_foot: { charge_mensuelle: 4200, monotonie: 1.4, strain: 205, temps_jeu: 0 },
+  bienetre: { sommeil: 2, energie: 3, fatigue: 4, douleur: 2 },
+  wellness: [{ sommeil: 4, energie: 4, fatigue: 2, douleur: 1 }, { sommeil: 3, energie: 3, fatigue: 3, douleur: 1 }, { sommeil: 2, energie: 3, fatigue: 4, douleur: 2 }],
+  charge_hebdo: [{ semaine: '2026-W31', charge: 900, label: '01/08' }, { semaine: '2026-W32', charge: 1100, label: '08/08' }, { semaine: '2026-W33', charge: 930, label: '15/08' }],
+  match_stats: { nb: 5, note_moy: 6.8, minutes: 410, buts: 3, passes_d: 2 },
+  match_agg: { xg: { total: 2.4, moy: 0.5 }, xa: { total: 1.1, moy: 0.2 } },
+  gps: { distance: 8500, distance_hi: 850, sprint_distance: 300, sprints: 24, accel: 40, decel: 38, vmax: 31.2, charge_gps: 0, n: 3 },
+  seances: [{ date: '20/08/2026', type: 'match', duree: 90, rpe: 8, charge: 720 }, { date: '18/08/2026', type: 'entrainement', duree: 75, rpe: 6, charge: 450 }, { date: '16/08/2026', type: 'entrainement', duree: 60, rpe: 5, charge: 300 }],
+  total_seances: 12,
+  matchs: [{ date: '20/08/2026', note: 7, buts: 1, passes_d: 1, xg: 0.6, xa: 0.3, minutes: 90 }],
+  blessures: [{ date: '01/07/2026', type: 'Entorse', localisation: 'Cheville', gravite: 'moyenne', statut: 'gueri' }, { date: '15/08/2026', type: 'Contracture', localisation: 'Ischio', statut: 'indispo', retour_terrain: '25/08/2026' }],
+};
+const dataFootNI = {
+  moteur: { disponibilite: { niveau: 'Prêt' }, recup: 'Bon', surcharge: 'Faible', risque_blessure: 'Faible', confiance: 'moyenne', reco: 'RAS', acwr_fiable: false, acwr_note: 'ACWR non interprétable — historique insuffisant', acwr_categorie: 'non_interpretable' },
+  acwr: 1.6, charge_7j: 300, kpi_foot: {},
+  bienetre: { sommeil: 4, energie: 4, fatigue: 2, douleur: 1 },
+};
+
+// OFF → vide
+check('OFF → conteneur vide', run(false, dataFoot) === '');
+// ON + moteur → bloc A + C
+const html = run(true, dataFoot);
+check('ON → non vide', html.length > 0);
+check('A → disponibilité (Vigilance)', /Vigilance/.test(html));
+check('A → récup (Moyen)', /Moyen/.test(html));
+check('A → risque (Modéré)', /Modéré/.test(html));
+check('A → reco (moteur.reco)', /surveiller les sensations/.test(html));
+// Bloc B — Charge foot (UA)
+check('B → carte Charge', /📊 Charge/.test(html));
+check('B → unité UA (charge interne)', /UA \(charge interne\)/.test(html));
+check('B → ACWR ratio 1.12 (data.acwr)', /1\.12/.test(html));
+check('B → catégorie ACWR (Zone optimale)', /Zone optimale/.test(html));
+check('B → Charge 7 j = 930 (charge_7j)', /Charge 7 j/.test(html) && /930/.test(html));
+check('B → Charge 28 j (label présent)', /Charge 28 j/.test(html));
+check('B → Variabilité 1,40 (kpi_foot.monotonie)', /Variabilité/.test(html) && /1,40/.test(html));
+check('B → Charge cumulée 205 (kpi_foot.strain)', /Charge cumulée/.test(html) && /205/.test(html));
+// ACWR non fiable → « non interprétable », ratio jamais présenté comme verdict
+const htmlNI = run(true, dataFootNI);
+check('B non-interp → « ACWR non interprétable »', /ACWR non interprétable/.test(htmlNI));
+check('B non-interp → ratio 1.6 NON affiché comme verdict', !/1\.60/.test(htmlNI));
+check('B non-interp → note backend affichée', /historique insuffisant/.test(htmlNI));
+check('C → carte bien-être', /🫀 Bien-être/.test(html));
+check('C → 4 signaux /5 (sommeil/energie/fatigue/douleur)', (html.match(/\/5</g) || []).length === 4);
+check('C → sommeil=2 libellé « Mauvais » (WQ_ANSWERS)', /Mauvais/.test(html));
+check('C → source data.bienetre (dernier)', /Bien-être · dernier questionnaire/.test(html));
+// Bloc D — Évolution foot (sparklines : wellness + charge_hebdo + ACWR)
+check('D → carte Évolution', /📈 Évolution/.test(html));
+check('D → sparklines (polyline) rendues', /<polyline/.test(html));
+check('D → ≥5 tendances (4 bien-être + charge)', (html.match(/<polyline/g) || []).length >= 5);
+check('D → libellé tendance bien-être (Sommeil)', /Sommeil/.test(html));
+check('D → charge hebdo (semaines · UA)', /semaines · UA/.test(html));
+check('D → ACWR dernière valeur backend (fiable)', /dernière valeur transmise par le moteur/.test(html));
+check('D non-interp → « ACWR non interprétable »', /ACWR non interprétable/.test(htmlNI));
+check('D non-interp → PAS de « dernière valeur »', !/dernière valeur transmise/.test(htmlNI));
+// Données absentes → état neutre, rien inventé
+const htmlEvoNeutre = run(true, { moteur: dataFoot.moteur, acwr: dataFoot.acwr });
+check('D sans wellness → « Pas assez de questionnaires »', /Pas assez de questionnaires pour une tendance/.test(htmlEvoNeutre));
+check('D sans charge_hebdo → « Évolution de la charge indisponible »', /Évolution de la charge indisponible/.test(htmlEvoNeutre));
+// Bloc E — Performance foot (match + GPS, métriques réelles, pas de copie muscu)
+check('E → carte Performance foot', /🏟️ Performance/.test(html));
+check('E → section Match', /Match<\/div>|>Match</.test(html));
+check('E → matchs 5 + minutes 410', /Matchs/.test(html) && /410/.test(html));
+check('E → buts 3 (match_stats)', /Buts/.test(html));
+check('E → note moy. 6,8 (FR)', /6,8/.test(html));
+check('E → xG 2,4 (match_agg.total)', /xG/.test(html) && /2,4/.test(html));
+check('E → xA 1,1', /xA/.test(html) && /1,1/.test(html));
+check('E → GPS distance HI 850', /Distance HI/.test(html) && /850/.test(html));
+check('E → sprints 24', /Sprints/.test(html) && /24/.test(html));
+check('E → vitesse max 31,2 km/h', /31,2/.test(html));
+// Sans match ni GPS → message propre, rien inventé
+const htmlNoPerf = run(true, { moteur: dataFoot.moteur, match_stats: { nb: 0 }, gps: { n: 0 } });
+check('E sans données → « Aucune donnée de match ou GPS »', /Aucune donnée de match ou GPS/.test(htmlNoPerf));
+// GPS seul (pas de match) → affiche GPS, pas la section Match
+const htmlGpsOnly = run(true, { moteur: dataFoot.moteur, match_stats: { nb: 0 }, gps: dataFoot.gps });
+check('E GPS seul → distance HI affichée', /Distance HI/.test(htmlGpsOnly));
+check('E GPS seul → pas de « Matchs »', !/Matchs/.test(htmlGpsOnly));
+// Bloc F — Historique foot (séances / matchs / blessures)
+check('F → carte Historique', /📅 Historique/.test(html));
+check('F → VRAI total séances = 12 (total_seances, pas la liste de 3)', /Séances \(total\)/.test(html) && /12/.test(html) && /enregistrées/.test(html));
+// fallback : total_seances absent → longueur de la liste (ancien payload)
+const htmlNoTotal = run(true, { moteur: dataFoot.moteur, match_stats: dataFoot.match_stats, seances: dataFoot.seances });
+check('F → fallback total = liste (3) si total_seances absent', /Séances \(total\)/.test(htmlNoTotal) && /3<\/div>|>3</.test(htmlNoTotal));
+check('F → matchs saison = 5', /Matchs saison/.test(html));
+check('F → temps de jeu (minutes)', /Temps de jeu/.test(html) && /410/.test(html));
+check('F → blessures actives = 1 (indispo seulement)', /Blessures actives/.test(html));
+check('F → dernières activités (dates 20/08, 18/08)', /20\/08\/2026/.test(html) && /18\/08\/2026/.test(html));
+check('F → bandeau blessure active (Contracture / Ischio)', /Blessure en cours/.test(html) && /Contracture/.test(html));
+check('F → blessure guérie NON comptée comme active (pas de bandeau Entorse)', !/Blessure en cours[\s\S]*Entorse/.test(html));
+// Sans historique → message propre
+const htmlNoHist = run(true, { moteur: dataFoot.moteur, match_stats: { nb: 0 }, seances: [], blessures: [] });
+check('F sans historique → « Aucun historique »', /Aucun historique/.test(htmlNoHist));
+// Repli sur wellness si pas de bienetre
+const htmlWell = run(true, { moteur: dataFoot.moteur, wellness: dataFoot.wellness });
+check('C → repli wellness (dernier point) affiché', /\/5</.test(htmlWell) && /🫀 Bien-être · dernier/.test(htmlWell));
+// Bien-être absent → message propre
+const htmlNoBE = run(true, { moteur: dataFoot.moteur });
+check('C sans bien-être → « Aucun questionnaire récent »', /Aucun questionnaire récent/.test(htmlNoBE));
+// Sans moteur → vide
+check('ON sans moteur → vide', run(true, { bienetre: dataFoot.bienetre }) === '');
+
+// STATIQUE — le cockpit foot ne décide pas
+const body = extractFn('renderCockpitFoot') + extractFn('renderCockpitBienEtreFoot') + extractFn('renderCockpitChargeFoot') + extractFn('renderCockpitEvolutionFoot') + extractFn('renderCockpitPerformanceFoot') + extractFn('renderCockpitHistoriqueFoot');
+for (const mot of ['computeACWR', 'calculerACWR', 'evaluerEtatAthlete', 'fiabiliteACWR', 'interpreterACWR', 'CORE_SEUILS', 'CORE_FIABILITE', 'NovalyzEngine']) {
+  check('foot cockpit n\'appelle pas ' + mot, !body.includes(mot));
+}
+// Bloc A réutilise bien renderCockpitEtat (moteur commun)
+check('renderCockpitFoot réutilise renderCockpitEtat', /renderCockpitEtat\(m\)/.test(extractFn('renderCockpitFoot')));
+
+console.log('-'.repeat(66));
+console.log(ko === 0
+  ? `✅ Cockpit foot (A→F complet) — ${ok} vérifs (OFF vide · ON présentation · ne décide pas).`
+  : `❌ ${ko} écart(s) sur ${ok + ko}.`);
+if (ko > 0) process.exitCode = 1;

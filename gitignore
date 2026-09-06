@@ -1,0 +1,9 @@
+# Dépendances npm (régénérables via `npm install`)
+node_modules/
+
+# Sortie de build Capacitor (régénérable via `npm run build:www`)
+# La source de vérité reste index.html + js/ + css/ + sw.js à la racine.
+www/
+
+# Android : le projet natif android/ EST versionné (shell Capacitor).
+# Ses propres artefacts de build sont ignorés par android/.gitignore.
