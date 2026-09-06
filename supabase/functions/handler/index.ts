@@ -1093,6 +1093,74 @@ async function handleExportEquipe(body: any): Promise<Response> {
   return jsonResp({ success: true, data: { export: 'novalyz', type: 'equipe', date: new Date().toISOString(), coach_id, athletes } })
 }
 
+// ── Reset de mot de passe par email (P2 — backend seul) ───────────────────────
+// Réponse TOUJOURS générique pour un email valide (anti-énumération) : on ne
+// révèle jamais si un compte existe. Le token brut n'existe QUE dans le lien de
+// l'email ; en base on ne garde que son hash. Expiration 1 h, usage unique.
+// ⚠️ PRODUCTION : cette action DEVRA être protégée par un rate limiting (par IP
+// et par email) avant mise en production — non implémenté dans cette étape.
+const RESET_MSG_GENERIQUE = 'Si un compte correspond à cette adresse, un email de réinitialisation a été envoyé.'
+
+// Envoie l'email de reset via Resend. Ne logue jamais la clé ni le token.
+async function _envoyerEmailReset(email: string, rawToken: string): Promise<boolean> {
+  const key = Deno.env.get('RESEND_API_KEY')
+  if (!key) { console.error('reset: RESEND_API_KEY absente'); return false }
+  const baseUrl = Deno.env.get('APP_BASE_URL') || 'https://vincentnmz.github.io/Muscu_app/dev/'
+  const lien = baseUrl + (baseUrl.indexOf('?') !== -1 ? '&' : '?') + 'reset_token=' + rawToken
+  const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:24px">
+    <div style="max-width:480px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:24px">
+      <h2 style="margin:0 0 12px">Réinitialisation de votre mot de passe</h2>
+      <p style="color:#8b96b0;line-height:1.5">Une demande de réinitialisation de votre mot de passe Novalyz a été effectuée. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.</p>
+      <p style="text-align:center;margin:24px 0">
+        <a href="${lien}" style="display:inline-block;background:#37d3b5;color:#052b25;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:10px">Réinitialiser mon mot de passe</a>
+      </p>
+      <p style="color:#8b96b0;font-size:13px;line-height:1.5">Ce lien est valable <b>1 heure</b>. Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email — votre mot de passe reste inchangé.</p>
+    </div></body></html>`
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'Novalyz <onboarding@resend.dev>', to: [email], subject: 'Réinitialisation de votre mot de passe Novalyz', html }),
+    })
+    if (!r.ok) { console.error('reset: envoi email refusé (HTTP ' + r.status + ')'); return false }
+    return true
+  } catch (_) { console.error('reset: erreur réseau envoi email'); return false }
+}
+
+async function handleRequestPasswordReset(body: any): Promise<Response> {
+  const email = String(body.email || '').trim()
+  // Étape A — format invalide : erreur normale, rien créé, rien envoyé.
+  if (!email || !_emailValide(email)) return jsonResp({ success: false, error: 'Email invalide' })
+
+  // Réponse identique dans tous les cas valides (anti-énumération).
+  const generique = () => jsonResp({ success: true, message: RESET_MSG_GENERIQUE })
+
+  // Étape B/C — compte inexistant (ou sans email) : rien créé, rien envoyé.
+  const { data: ath } = await sb().from('athletes').select('id').eq('email', email).single()
+  if (!ath) return generique()
+
+  // Étape F — invalider les anciens tokens actifs de cet athlète (1 seul actif).
+  try { await sb().from('password_reset_tokens').update({ used: true }).eq('athlete_id', String(ath.id)).eq('used', false) } catch (_) {}
+
+  // Étape D — token aléatoire cryptographiquement sûr (32 octets → 64 hex).
+  const rawBytes = new Uint8Array(32); crypto.getRandomValues(rawBytes)
+  const rawToken = Array.from(rawBytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  const token_hash = await sha256hex(rawToken)   // on ne stocke QUE le hash
+  // Étape E — expiration à +1 h.
+  const expires_at = new Date(Date.now() + 3600 * 1000).toISOString()
+
+  const { error } = await sb().from('password_reset_tokens').insert({ athlete_id: String(ath.id), token_hash, expires_at, used: false, created_at: new Date().toISOString() })
+  if (error) { console.error('reset: échec insertion token'); return generique() }
+
+  // Envoi. En cas d'échec Resend : invalider le token (pas de reset actif inutilisable).
+  const envoye = await _envoyerEmailReset(email, rawToken)
+  if (!envoye) {
+    try { await sb().from('password_reset_tokens').update({ used: true }).eq('token_hash', token_hash) } catch (_) {}
+  }
+  // Anti-énumération : on renvoie toujours la même réponse générique.
+  return generique()
+}
+
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')?.trim()
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -3379,6 +3447,7 @@ Deno.serve(async (req: Request) => {
         case 'saveClubCoach':            return handleSaveClubCoach(body)
         case 'exportAthlete':            return handleExportAthlete(body)
         case 'exportEquipe':             return handleExportEquipe(body)
+        case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password }))
