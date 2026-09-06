@@ -2363,7 +2363,7 @@ function ouvrirMdpOublie(e) {
   if (e && e.preventDefault) e.preventDefault();
   var inp = document.getElementById('forgot-email'); if (inp) inp.value = '';
   var msg = document.getElementById('forgot-msg'); if (msg) { msg.textContent = ''; msg.style.color = ''; }
-  var btn = document.getElementById('forgot-submit'); if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
+  var btn = document.getElementById('forgot-submit'); if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; btn.onclick = envoyerMdpOublie; }
   var ov = document.getElementById('forgot-overlay'); if (ov) ov.style.display = 'flex';
 }
 function fermerMdpOublie() { var ov = document.getElementById('forgot-overlay'); if (ov) ov.style.display = 'none'; }
@@ -2384,7 +2384,9 @@ async function envoyerMdpOublie() {
     // Réponse volontairement générique (anti-énumération) : on affiche toujours
     // le même message, qu'un compte existe ou non.
     setMsg('✅ Si un compte correspond à cet email, tu vas recevoir un lien. Pense à vérifier tes spams.', 'var(--good)');
-    if (btn) btn.textContent = 'Envoyé';
+    // Le bouton devient "Fermer" et la modale se referme d'elle-même.
+    if (btn) { btn.disabled = false; btn.textContent = 'Fermer'; btn.onclick = fermerMdpOublie; }
+    setTimeout(function () { try { fermerMdpOublie(); } catch (e) {} }, 4000);
   } catch (e) {
     setMsg('❌ Erreur réseau. Réessaie.');
     if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
