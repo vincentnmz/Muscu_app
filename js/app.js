@@ -2147,6 +2147,61 @@ async function changerMonMotDePasse() {
 }
 /* __CHANGE_PWD_END__ */
 
+/* __REGLAGES_V3_START__
+ * Sous-onglets des Réglages athlète + édition du profil. */
+var APP_VERSION = '1.4';
+
+function switchReglagesTab(tab) {
+  document.querySelectorAll('#tab-reglages .sub-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.rg === tab); });
+  document.querySelectorAll('#tab-reglages .rg-panel').forEach(function (p) { p.style.display = (p.dataset.rg === tab) ? 'block' : 'none'; });
+}
+
+// ddn : l'objet athlète l'a en FR (jj/mm/aaaa) ; un <input type=date> veut aaaa-mm-jj.
+function _ddnVersISO(ddn) {
+  if (!ddn) return '';
+  var s = String(ddn);
+  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return '';
+}
+
+function prefillProfilReglages() {
+  if (!athlete) return;
+  var set = function (id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
+  set('prof-prenom', athlete.nom);
+  set('prof-taille', athlete.taille);
+  set('prof-poids', athlete.poids);
+  set('prof-annees', athlete.annees_pratique);
+  var d = document.getElementById('prof-ddn'); if (d) d.value = _ddnVersISO(athlete.ddn);
+  var v = document.getElementById('app-version-ath'); if (v) v.textContent = 'Novalyz ' + APP_VERSION;
+}
+
+async function enregistrerProfil() {
+  if (!athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord'); return; }
+  var msg = document.getElementById('prof-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  var val = function (id) { var el = document.getElementById(id); return el ? String(el.value).trim() : ''; };
+  var prenom = val('prof-prenom'), taille = val('prof-taille'), poids = val('prof-poids'), annees = val('prof-annees'), ddn = val('prof-ddn');
+  try {
+    var res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveProfil', athlete_id: athlete.athlete_id, nom: prenom, taille: taille, poids: poids, annees: annees, ddn: ddn }),
+    });
+    var data = await res.json();
+    if (data && data.success) {
+      if (prenom) athlete.nom = prenom;
+      if (taille !== '') athlete.taille = Number(taille);
+      if (poids !== '') athlete.poids = Number(poids);
+      if (annees !== '') athlete.annees_pratique = Number(annees);
+      try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+      setMsg('✅ Profil enregistré.', 'var(--good)');
+      showToast('✅ Profil enregistré');
+    } else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.')); }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+/* __REGLAGES_V3_END__ */
+
 // Bascule entre "Lier un compte existant" et "Créer un nouveau compte".
 function switchLierMode(mode) {
   lierModeActuel = mode;
@@ -6200,6 +6255,7 @@ function switchTab(tab) {
     try { majUiGoogleHealth(); } catch (_) {}
     try { majUiCockpitPref(); } catch (_) {}
     try { prefillEmailReglages(); } catch (_) {}
+    try { prefillProfilReglages(); } catch (_) {}
   }
 
 }
