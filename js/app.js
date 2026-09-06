@@ -10659,9 +10659,33 @@ function _urlB64ToUint8(base64) {
 }
 
 // true si le navigateur peut faire du push (et, sur iOS, seulement en PWA installée)
+// ── Aiguillage natif (Capacitor) : sur l'app native, les notifications passent
+//    par FCM (façade NovalyzNotifications) au lieu du Web Push. Ces helpers
+//    isolent la détection et l'état d'activation FCM (mémorisé par athlète). ──
+/* __NATIF_PUSH_START__ */
+var _fcmAutoFait = false;   // ré-enregistrement silencieux du token : 1×/session
+function _estAppNative() {
+  try { return !!(window.NovalyzPlatform && window.NovalyzPlatform.isNativeApp()); } catch (_) { return false; }
+}
+function _fcmFlagKey() { return 'nv_fcm_on_' + ((athlete && athlete.athlete_id) || 'x'); }
+function _fcmActif() { try { return localStorage.getItem(_fcmFlagKey()) === '1'; } catch (_) { return false; } }
+function _setFcmActif(v) { try { if (v) localStorage.setItem(_fcmFlagKey(), '1'); else localStorage.removeItem(_fcmFlagKey()); } catch (_) {} }
+function _fcmOpts() { return { athleteId: (athlete && athlete.athlete_id) || null, scriptUrl: SCRIPT_URL, fetchImpl: (typeof fetch === 'function' ? fetch : null) }; }
+function _fcmMsgErreur(r) {
+  var m = {
+    'permission-refusee': 'Autorisation refusée dans les réglages du téléphone',
+    'permission-erreur': 'Autorisation impossible', 'permission-indisponible': 'Autorisation indisponible',
+    'plugin-indisponible': 'Module de notifications indisponible', 'non-connecte': 'Connecte-toi d\'abord',
+    'registration-erreur': 'Enregistrement impossible',
+  };
+  return (r && m[r.raison]) || 'Activation impossible';
+}
+
 function _pushSupporte() {
+  if (_estAppNative()) return true;   // l'app native gère FCM (pas de Web Push)
   return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
 }
+/* __NATIF_PUSH_END__ */
 function _estIOS() { return /iP(hone|ad|od)/.test(navigator.userAgent); }
 function _estInstalle() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -10676,6 +10700,27 @@ async function majUiPush() {
   const hint = document.getElementById('push-hint');
   if (!card) return;
   card.style.display = 'block';
+
+  // App native : état FCM (mémorisé par athlète). Pas de logique Web Push ici.
+  if (_estAppNative()) {
+    const bTest = document.getElementById('push-btn-test');
+    const actif = _fcmActif();
+    // Rafraîchit le token FCM au lancement (1×/session) si déjà activé.
+    if (actif && !_fcmAutoFait) { _fcmAutoFait = true; try { NovalyzNotifications.activer(_fcmOpts()); } catch (_) {} }
+    if (bTest) bTest.style.display = 'none';   // « test » = diagnostic Web Push, sans objet en natif
+    if (actif) {
+      if (bOn) bOn.style.display = 'none';
+      if (bOff) bOff.style.display = 'inline-block';
+      if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '🔔 Notifications activées'; }
+      if (hint) hint.textContent = '';
+    } else {
+      if (bOn) { bOn.style.display = 'inline-block'; bOn.textContent = 'Activer les notifications'; }
+      if (bOff) bOff.style.display = 'none';
+      if (stat) stat.style.display = 'none';
+      if (hint) hint.textContent = '';
+    }
+    return;
+  }
 
   if (!_pushSupporte()) {
     if (bOn) bOn.style.display = 'none';
@@ -10722,6 +10767,16 @@ async function majUiPush() {
 
 async function activerNotifications() {
   if (!athlete) { showToast('Connecte-toi d\'abord'); return; }
+  // App native : FCM via la façade (Web Push absent en WebView).
+  if (_estAppNative()) {
+    try {
+      const r = await NovalyzNotifications.activer(_fcmOpts());
+      if (r && r.ok) { _setFcmActif(true); showToast('🔔 Notifications activées'); }
+      else { showToast('⚠️ ' + _fcmMsgErreur(r), '#f59f00'); }
+    } catch (e) { showToast('❌ Impossible d\'activer', '#ff4444'); }
+    majUiPush();
+    return;
+  }
   if (!_pushSupporte()) { showToast('Non disponible sur ce navigateur'); return; }
   if (_estIOS() && !_estInstalle()) { majUiPush(); return; }
   try {
@@ -10756,6 +10811,12 @@ async function activerNotifications() {
 }
 
 async function desactiverNotifications() {
+  // App native : désassocier le token FCM via la façade.
+  if (_estAppNative()) {
+    try { await NovalyzNotifications.desactiver(_fcmOpts()); } catch (_) {}
+    _setFcmActif(false); showToast('Notifications désactivées'); majUiPush();
+    return;
+  }
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();

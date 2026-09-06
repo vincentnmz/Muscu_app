@@ -1631,6 +1631,10 @@
 
 
 
+  <!-- Couche native (Capacitor) : détection de plateforme + aiguillage des
+       notifications (Web Push ↔ FCM). Chargées AVANT app.js. -->
+  <script src="js/platform.js"></script>
+  <script src="js/notifications.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
