@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # nécessaire pour publier la Release
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,3 +49,17 @@ jobs:
           name: novalyz-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # Publie l'APK dans une Release à tag fixe (novalyz-apk-latest) : lien de
+      # téléchargement direct et stable, installable en tapant dessus au téléphone.
+      # On efface la Release précédente pour garder un seul « dernier APK ».
+      - name: Publier l'APK en Release (lien direct téléphone)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete novalyz-apk-latest --cleanup-tag --yes 2>/dev/null || true
+          gh release create novalyz-apk-latest \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            --title "Novalyz — APK de test (debug)" \
+            --notes "Build automatique depuis \`${{ github.ref_name }}\` (commit ${{ github.sha }}). APK de test : notifications push FCM inactives tant que Firebase n'est pas branché. Installe-le en autorisant les sources inconnues." \
+            --target "${{ github.sha }}"
