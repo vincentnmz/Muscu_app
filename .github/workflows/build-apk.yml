@@ -29,6 +29,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Injecter google-services.json (config Firebase, depuis le secret)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::warning::Secret GOOGLE_SERVICES_JSON absent → APK construit SANS push FCM."
+          else
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            echo "✓ google-services.json injecté ($(wc -c < android/app/google-services.json) octets)"
+          fi
+
       - name: Installer les dépendances
         run: npm ci
 
