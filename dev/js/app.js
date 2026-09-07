@@ -10718,7 +10718,7 @@ async function majUiPush() {
     const actif = _fcmActif();
     // Rafraîchit le token FCM au lancement (1×/session) si déjà activé.
     if (actif && !_fcmAutoFait) { _fcmAutoFait = true; try { NovalyzNotifications.activer(_fcmOpts()); } catch (_) {} }
-    if (bTest) bTest.style.display = 'none';   // « test » = diagnostic Web Push, sans objet en natif
+    if (bTest) bTest.style.display = 'block';   // diagnostic FCM (token trouvé ? envoi ?)
     if (actif) {
       if (bOn) bOn.style.display = 'none';
       if (bOff) bOff.style.display = 'inline-block';
@@ -10857,7 +10857,15 @@ async function testerNotifications() {
     });
     const j = await resp.json();
     let txt, col = 'var(--danger)';
-    if (j && j.erreur) { txt = '❌ Erreur serveur : ' + j.erreur; }
+    if (_estAppNative()) {
+      // App native : on lit le diagnostic FCM (bloc j.fcm), pas le Web Push.
+      const f = (j && j.fcm) || {};
+      if (j && j.erreur) { txt = '❌ Erreur serveur : ' + j.erreur; }
+      else if (!f.configured) { txt = '❌ Clé serveur FCM absente : le secret FCM_SERVICE_ACCOUNT n\'est pas configuré dans Supabase (ou backend pas à jour).'; }
+      else if (!f.found) { txt = '❌ Aucun token enregistré pour ce compte. Ré-active les notifications — et vérifie que la table native_push_tokens existe dans Supabase.'; }
+      else if (f.sent > 0) { txt = '✅ Notif envoyée (token trouvé : ' + f.found + ' · envoyé : ' + f.sent + '). Mets l\'app en arrière-plan pour la voir.'; col = 'var(--good)'; }
+      else { txt = '❌ Token trouvé (' + f.found + ') mais envoi refusé par FCM' + (f.error ? ' : ' + f.error : '') + '. (ex. « fcm-auth » = compte de service invalide ou mauvais projet Firebase.)'; }
+    } else if (j && j.erreur) { txt = '❌ Erreur serveur : ' + j.erreur; }
     else if (!j || !j.vapid) { txt = '❌ Clés VAPID absentes côté serveur (secrets Supabase à configurer).'; }
     else if (!j.subsFound) { txt = '❌ Aucun abonnement enregistré pour ce compte. Appuie sur « Activer les notifications ».'; }
     else if (j.sent > 0) { txt = '✅ Notif envoyée (' + j.sent + '/' + j.subsFound + '). Elle doit apparaître dans quelques secondes.'; col = 'var(--good)'; }
