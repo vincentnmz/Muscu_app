@@ -29,13 +29,13 @@ function extractFn(name) {
 
 const WINDOWS_SRC = SRC.match(/const WINDOWS = \{[^}]*\}/)[0] + ';';   // { ACUTE:7, MID:14, CHRONIC:28, LONG:56 }
 const FN_NAMES = ['fmtYMD', 'minus', 'parseFR', 'fmtFR', 'normDate', 'isoWeek', 'prevIsoWeek', 'getLundi',
-  'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'buildProgressionParExo', 'buildVolumeSemaineParMuscle'];
+  'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'computeTendances', 'buildProgressionParExo', 'buildVolumeSemaineParMuscle'];
 const tsCode = WINDOWS_SRC + '\n\n' + FN_NAMES.map(extractFn).join('\n\n');
 const jsCode = stripTypeScriptTypes(tsCode);           // retire les types → JS exécutable
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext(jsCode + '\n' + FN_NAMES.map(n => `this.${n} = ${n};`).join(''), sandbox);
-const { computeGlobal, computeRecent, computeComparison, computeStreak, buildProgressionParExo, buildVolumeSemaineParMuscle } = sandbox;
+const { computeGlobal, computeRecent, computeComparison, computeStreak, computeTendances, buildProgressionParExo, buildVolumeSemaineParMuscle } = sandbox;
 
 let ok = 0, ko = 0;
 const check = (n, cond, att, obt) => { if (cond) ok++; else { ko++; console.log('  ❌ ' + n + ' — attendu ' + att + ', obtenu ' + obt); } };
@@ -146,6 +146,12 @@ eq('comparison j7 seances = 3', cmp.j7_vs_j7prec.seances.j7, 3);
 eq('comparison j7_prec seances = 1', cmp.j7_vs_j7prec.seances.j7_prec, 1);
 eq('comparison j28 tonnage = 2000 kg', cmp.j28_vs_j28prec.tonnage.j28, 2000);
 eq('comparison j28 évolution = null (période précédente vide)', cmp.j28_vs_j28prec.tonnage.evol_pct, null);
+// Bug « Tendance mensuelle » : champs courant/precedent/evol_pct/diff (front) ajoutés
+eq('comparison j28 tonnage.courant = 2 t (2000 kg → tonnes)', cmp.j28_vs_j28prec.tonnage.courant, 2);
+eq('comparison j28 seances.courant = 4', cmp.j28_vs_j28prec.seances.courant, 4);
+eq('comparison j28 seances.evol_pct = null (préc. vide)', cmp.j28_vs_j28prec.seances.evol_pct, null);
+eq('comparison j28 rpe.courant = 7', cmp.j28_vs_j28prec.rpe.courant, 7);
+eq('comparison j28 rpe.diff = null (préc. vide)', cmp.j28_vs_j28prec.rpe.diff, null);
 // Dédup anomalie #3 : le tonnage 7 j est le MÊME depuis computeRecent et computeComparison
 // (même fenêtre now-7, même formule). tonnageObj.j7 (dashboard) = recentData.j7.tonnage.
 eq('cohérence tonnage 7 j : recent.j7.tonnage_kg === comparison.j7', rec.j7.tonnage_kg, cmp.j7_vs_j7prec.tonnage.j7);
@@ -158,6 +164,29 @@ eq('streak 3 semaines consécutives (20, 13, 06 août)', computeStreak(['2026-08
 eq('streak = 0 si la semaine courante manque (rupture immédiate)', computeStreak(['2026-08-13', '2026-08-06'], NOW), 0);
 eq('streak 1 (uniquement la semaine courante)', computeStreak(['2026-08-20'], NOW), 1);
 eq('streak 0 si aucune date', computeStreak([], NOW), 0);
+
+// =============================================================================
+// computeTendances — évolution 1re → dernière semaine (volume/RPE/charge + statut)
+// =============================================================================
+const perfsTend = [
+  // Semaine début (2026-08-03, W32) : 2 séries, charge moy 100, RPE moy 7
+  { date: '2026-08-03', exercice: 'Squat', charge: 100, reps: 5, rpe: 7 },
+  { date: '2026-08-03', exercice: 'Bench', charge: 100, reps: 5, rpe: 7 },
+  // Semaine fin (2026-08-17, W34) : 3 séries, charge moy 110 (+10 %), RPE stable 7
+  { date: '2026-08-17', exercice: 'Squat', charge: 110, reps: 5, rpe: 7 },
+  { date: '2026-08-17', exercice: 'Bench', charge: 110, reps: 5, rpe: 7 },
+  { date: '2026-08-17', exercice: 'Row',   charge: 110, reps: 5, rpe: 7 },
+];
+const tend = computeTendances(perfsTend, NOW);
+eq('tendances s4 volume_debut = 2 séries', tend.s4.volume_debut, 2);
+eq('tendances s4 volume_fin = 3 séries', tend.s4.volume_fin, 3);
+eq('tendances s4 charge_debut = 100', tend.s4.charge_debut, 100);
+eq('tendances s4 charge_fin = 110', tend.s4.charge_fin, 110);
+eq('tendances s4 rpe_debut = 7', tend.s4.rpe_debut, 7);
+eq('tendances s4 rpe_fin = 7', tend.s4.rpe_fin, 7);
+eq('tendances s4 statut = positif (charge +10 %, RPE stable)', tend.s4.statut, 'positif');
+check('tendances null si < 2 semaines de données',
+  computeTendances([{ date: '2026-08-17', exercice: 'Squat', charge: 100, reps: 5, rpe: 7 }], NOW).s4 === null, 'null', 'non-null');
 
 // =============================================================================
 // buildProgressionParExo — 1 point par DATE (meilleure série du jour), 8 récents
