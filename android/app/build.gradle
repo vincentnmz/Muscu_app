@@ -16,7 +16,22 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Clé de signature FIXE pour les builds de test (APK hors Play Store).
+    // But : signature identique à chaque build → les mises à jour s'installent
+    // par-dessus l'ancienne, sans désinstaller. Ce n'est PAS la clé de publication
+    // Play Store (celle-là sera créée à part et gardée secrète).
+    signingConfigs {
+        testfixed {
+            storeFile file('novalyz-testkey.jks')
+            storePassword 'novalyzTest'
+            keyAlias 'novalyz'
+            keyPassword 'novalyzTest'
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.testfixed
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
