@@ -10564,6 +10564,16 @@ function renderAnalysesListe(data, ids, opts) {
   const _bandeauCtx = _etatAna
     ? `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:var(--surface2);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-muted);"><span>🧠</span> Analyses ajustées pour : <b style="color:var(--text);">${escapeHtml(_ctxLibelle(_etatAna))}</b></div>`
     : '';
+  // Cadrage athlète (coach vs solo) : sur un signal dur (critical/warning), l'athlète
+  // suivi par un coach est renvoyé vers lui (« le coach prescrit »), le solo reçoit un
+  // repère de vigilance neutre (jamais de conseil médical/prescriptif).
+  const aUnCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
+  function _cadrageAthlete(a) {
+    if (!opts.pourAthlete) return '';
+    if (a.type !== 'critical' && a.type !== 'warning') return '';
+    const txt = aUnCoach ? '💬 À voir avec ton coach' : '👀 À surveiller — allège si ça persiste';
+    return `<div style="font-size:10.5px;font-weight:700;margin-top:6px;color:var(--text-muted);">${txt}</div>`;
+  }
   cont.innerHTML = _bandeauCtx + analyses.map((a, i) => `
     <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 4px;${i < analyses.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
       <div style="flex:0 0 4px;align-self:stretch;background:${analyseCouleur(a.type)};border-radius:2px;min-height:36px;"></div>
@@ -10571,6 +10581,7 @@ function renderAnalysesListe(data, ids, opts) {
         <div style="font-size:13px;font-weight:800;color:${analyseCouleur(a.type)};">${analyseIcone(a.type)} ${escapeHtml(a.titre)}</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">${escapeHtml(a.description)}</div>
         ${opts.hideCategorie ? '' : `<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;opacity:.7;">${escapeHtml(a.categorie)}</div>`}
+        ${_cadrageAthlete(a)}
       </div>
     </div>`).join('');
   if (sec) sec.style.display = '';
@@ -10584,7 +10595,7 @@ function renderAnalyseCoach(data) {
 
 // Accueil athlète : conseils du moteur (2 max, sans la catégorie)
 function renderAnalyseAccueilAthlete(data) {
-  renderAnalysesListe(data, { sec: 'dash-analyse-sec', card: 'dash-analyse-card', cont: 'dash-analyse-content' }, { max: 2, hideCategorie: true });
+  renderAnalysesListe(data, { sec: 'dash-analyse-sec', card: 'dash-analyse-card', cont: 'dash-analyse-content' }, { max: 2, hideCategorie: true, pourAthlete: true });
 }
 
 // =====================================================================

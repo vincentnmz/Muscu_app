@@ -290,13 +290,62 @@ function computeComparison(perfs: any[], now: Date): any {
       rpe: { j7: j7w.rpe_moyen, j7_prec: j7pw.rpe_moyen },
       charge_details: chargeDetails,
     },
+    // NB : on garde j28/j28_prec (lus par le cockpit + tests) ET on expose
+    // courant/precedent/evol_pct/diff attendus par le bloc « Tendance mensuelle »
+    // (tonnage en tonnes pour l'affichage « …t vs …t »). Ajout non cassant.
     j28_vs_j28prec: {
-      tonnage: { j28: j28w.tonnage, j28_prec: j28pw.tonnage, evol_pct: evol(j28w.tonnage, j28pw.tonnage) },
-      seances: { j28: j28w.seances, j28_prec: j28pw.seances },
-      rpe: { j28: j28w.rpe_moyen, j28_prec: j28pw.rpe_moyen },
+      tonnage: { j28: j28w.tonnage, j28_prec: j28pw.tonnage, evol_pct: evol(j28w.tonnage, j28pw.tonnage),
+                 courant: Math.round(j28w.tonnage / 100) / 10, precedent: Math.round(j28pw.tonnage / 100) / 10 },
+      seances: { j28: j28w.seances, j28_prec: j28pw.seances,
+                 courant: j28w.seances, precedent: j28pw.seances, evol_pct: evol(j28w.seances, j28pw.seances) },
+      rpe: { j28: j28w.rpe_moyen, j28_prec: j28pw.rpe_moyen,
+             courant: j28w.rpe_moyen, precedent: j28pw.rpe_moyen,
+             diff: (j28w.rpe_moyen != null && j28pw.rpe_moyen != null) ? Math.round((j28w.rpe_moyen - j28pw.rpe_moyen) * 10) / 10 : null },
       charge: { evol_pct: evol(j28w.tonnage, j28pw.tonnage) },
     },
   }
+}
+
+// Tendances 4 / 8 semaines : évolution première semaine → dernière semaine de la
+// période (volume = nb de séries/sem., RPE moyen, charge moyenne/sem.) + statut
+// « positif / plateau / régression ». null si < 2 semaines de données (le front
+// affiche alors « Pas assez de données sur cette période »). Descriptif, aucune
+// décision — lu par afficherTendances (athlète) et afficherCoachTendances (coach).
+function computeTendances(perfs: any[], now: Date): any {
+  const build = (weeks: number) => {
+    const cut = fmtYMD(minus(now, weeks * 7))
+    const rows = (perfs || []).filter(r => normDate(r.date) >= cut)
+    if (!rows.length) return null
+    const byWeek: Record<string, { series: number; rpeSum: number; rpeN: number; chargeSum: number; chargeN: number }> = {}
+    for (const r of rows) {
+      const iso = normDate(r.date); if (!iso) continue
+      const dt = parseFR(r.date) || new Date(iso + 'T00:00:00Z')
+      const wk = isoWeek(dt)
+      const w = byWeek[wk] || (byWeek[wk] = { series: 0, rpeSum: 0, rpeN: 0, chargeSum: 0, chargeN: 0 })
+      w.series += 1
+      if (r.rpe != null && r.rpe !== '') { w.rpeSum += Number(r.rpe); w.rpeN += 1 }
+      const ch = Number(r.charge) || 0
+      if (ch > 0) { w.chargeSum += ch; w.chargeN += 1 }
+    }
+    const keys = Object.keys(byWeek).sort()
+    if (keys.length < 2) return null
+    const first = byWeek[keys[0]], last = byWeek[keys[keys.length - 1]]
+    const r1 = (v: number) => Math.round(v * 10) / 10
+    const volume_debut = first.series, volume_fin = last.series
+    const rpe_debut = first.rpeN ? r1(first.rpeSum / first.rpeN) : 0
+    const rpe_fin = last.rpeN ? r1(last.rpeSum / last.rpeN) : 0
+    const charge_debut = first.chargeN ? Math.round(first.chargeSum / first.chargeN) : 0
+    const charge_fin = last.chargeN ? Math.round(last.chargeSum / last.chargeN) : 0
+    const chargePct = charge_debut > 0 ? (charge_fin - charge_debut) / charge_debut : 0
+    const volPct = volume_debut > 0 ? (volume_fin - volume_debut) / volume_debut : 0
+    const rpeUp = rpe_fin - rpe_debut
+    let statut: string
+    if (chargePct <= -0.05 || rpeUp >= 1.0) statut = 'regression'
+    else if (chargePct >= 0.05 || volPct >= 0.10) statut = 'positif'
+    else statut = 'plateau'
+    return { volume_debut, volume_fin, rpe_debut, rpe_fin, charge_debut, charge_fin, statut }
+  }
+  return { s4: build(4), s8: build(8) }
 }
 
 function computeStreak(dates: string[], now: Date): number {
@@ -1507,6 +1556,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       progression_par_exo: buildProgressionParExo(perfs),
       volume_semaine: buildVolumeSemaineParMuscle(perfs, now),
       volume_par_jour: buildVolumeParJour(perfs),
+      tendances: computeTendances(perfs, now),
     },
     poids,
     programme,
