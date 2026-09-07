@@ -8,3 +8,6 @@ www/
 # Android : le projet natif android/ EST versionné (shell Capacitor).
 # Ses propres artefacts de build sont ignorés par android/.gitignore.
 
+
+# Config Firebase Android (jamais committée — injectée au build via secret)
+android/app/google-services.json
