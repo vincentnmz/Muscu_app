@@ -1551,8 +1551,20 @@ window.addEventListener('load', async () => {
 
   // Applique le thème enregistré dès le chargement (login inclus) — évite le retour en dark au refresh
   if (localStorage.getItem('muscu_theme') === 'light') document.body.classList.add('light-mode');
-  // Service worker : rend l'app disponible hors-ligne (salles de sport sans réseau)
-  if ('serviceWorker' in navigator) {
+  // Service worker : hors-ligne pour la PWA web. En app NATIVE, on ne l'enregistre
+  // PAS (les fichiers sont déjà embarqués dans l'APK) et on DÉSENREGISTRE tout SW
+  // existant + on vide les caches : sinon un ancien SW continue de servir l'ancien
+  // code après une mise à jour de l'APK (bug « la version ne change pas »).
+  if (typeof _estAppNative === 'function' && _estAppNative()) {
+    try {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+        navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { try { r.unregister(); } catch (e) {} }); }).catch(function () {});
+      }
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (ks) { ks.forEach(function (k) { try { caches.delete(k); } catch (e) {} }); }).catch(function () {});
+      }
+    } catch (e) {}
+  } else if ('serviceWorker' in navigator) {
     try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
     // Clic sur une notif alors que l'app est déjà ouverte → le SW nous demande
     // de relire la cible déposée dans le cache.

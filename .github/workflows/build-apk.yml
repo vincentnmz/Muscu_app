@@ -53,6 +53,11 @@ jobs:
           echo "BUILD_ID = $BID"
           grep -m1 "var BUILD_ID" www/js/app.js || true
 
+      - name: versionCode unique (n° de run) → Android reconnaît la mise à jour
+        run: |
+          sed -i "s/versionCode 1/versionCode ${GITHUB_RUN_NUMBER}/" android/app/build.gradle
+          grep -m1 versionCode android/app/build.gradle
+
       - name: Synchroniser Capacitor (www → android + plugins)
         run: npx cap sync android
 
