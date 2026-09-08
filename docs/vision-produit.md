@@ -136,6 +136,54 @@ mécaniquement.
 
 ---
 
+## Bloc IA — assistant / coach numérique (décision de direction)
+
+**But** : pour l'athlète **sans coach** (surtout muscu), une IA intégrée qui
+répond à ses questions et le guide — grounded sur SES données. C'est la réponse
+concrète à « quelle promesse pour un athlète sans coach ». Aussi utilisable par
+un club / prépa / coach pour interroger les données recueillies.
+
+**Architecture (règle forte) :**
+- Le **moteur déterministe** (ACWR, seuils, tendances, `NovalyzEngine`) reste la
+  **source de vérité** — fiable, gratuit, explicable.
+- L'**IA = couche langage** branchée sur les sorties du moteur. Elle *explique*
+  et *répond*, elle **n'invente jamais un chiffre** qu'elle n'a pas reçu.
+
+**Technique :** front → **edge function Supabase** (qui détient la clé API IA,
+jamais le front) → construit un contexte = données déjà calculées de l'athlète
++ system prompt « coach Novalyz » → appelle l'IA → renvoie la réponse.
+
+**Deux usages :**
+1. **Conversationnel** : l'athlète pose ses questions (« pourquoi je stagne ? »,
+   « je dors mal, je fais quand même les jambes ? »).
+2. **Enrichir les blocs analyse** : explication en langage naturel générée à
+   partir des signaux du moteur (au lieu d'une phrase figée).
+
+**3 contraintes à anticiper :**
+- 💶 **Coût** par appel → prévoir des **limites** (ex. X questions/jour en
+  gratuit, illimité en payant).
+- 🔒 **RGPD** : l'IA = nouveau sous-traitant → **à ajouter à la politique de
+  confidentialité**.
+- 🎯 **Garde-fou** : pas de chiffre inventé, pas de conseil médical, reste dans
+  entraînement / récupération.
+
+## Segmentation marché : muscu (grand public) vs sports (pro)
+
+Décision : **dissocier la muscu du reste des sports** — mais **même socle
+technique** (un seul moteur, noyau neutre déjà figé). Dissocier les *marchés*,
+PAS faire deux apps.
+
+| | **Muscu** | **Autres sports (foot, hockey…)** |
+|---|---|---|
+| Cible | grand public, amateurs, tout le monde | pros : clubs, prépa physique, fédérations |
+| Moteur d'usage | l'**IA-coach** pour l'athlète solo | coach / analyste, cellule perf, vidéo |
+| Modèle | B2C, freemium (Play Store) | B2B, vente à des structures |
+| Rôle du porteur | peut **être le coach** (niveau 3) | axe reconversion (DU haute perf → fédé) |
+
+Conséquence pratique : **même codebase / moteur**, mais **deux parcours
+d'entrée** — l'onboarding muscu met l'IA-coach en avant ; l'onboarding pro met
+les outils coach/club en avant.
+
 ## Prochaines étapes (quand on s'y mettra — rien maintenant)
 
 1. Figer **la promesse** (question ci-dessus).
