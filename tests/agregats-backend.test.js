@@ -168,25 +168,38 @@ eq('streak 0 si aucune date', computeStreak([], NOW), 0);
 // =============================================================================
 // computeTendances — évolution 1re → dernière semaine (volume/RPE/charge + statut)
 // =============================================================================
+// NOW = 2026-08-20 → la semaine en cours (celle du 17) est EXCLUE. On compare
+// donc deux semaines COMPLÈTES antérieures : 03/08 et 10/08.
 const perfsTend = [
-  // Semaine début (2026-08-03, W32) : 2 séries, charge moy 100, RPE moy 7
+  // Semaine début (2026-08-03) : 2 séries, charge moy 100, RPE moy 7
   { date: '2026-08-03', exercice: 'Squat', charge: 100, reps: 5, rpe: 7 },
   { date: '2026-08-03', exercice: 'Bench', charge: 100, reps: 5, rpe: 7 },
-  // Semaine fin (2026-08-17, W34) : 3 séries, charge moy 110 (+10 %), RPE stable 7
-  { date: '2026-08-17', exercice: 'Squat', charge: 110, reps: 5, rpe: 7 },
-  { date: '2026-08-17', exercice: 'Bench', charge: 110, reps: 5, rpe: 7 },
-  { date: '2026-08-17', exercice: 'Row',   charge: 110, reps: 5, rpe: 7 },
+  // Semaine fin (2026-08-10) : 3 séries, charge moy 110 (+10 %), RPE stable 7
+  { date: '2026-08-10', exercice: 'Squat', charge: 110, reps: 5, rpe: 7 },
+  { date: '2026-08-10', exercice: 'Bench', charge: 110, reps: 5, rpe: 7 },
+  { date: '2026-08-10', exercice: 'Row',   charge: 110, reps: 5, rpe: 7 },
+  // Semaine EN COURS (2026-08-17, incomplète) : doit être IGNORÉE
+  { date: '2026-08-17', exercice: 'Squat', charge: 999, reps: 5, rpe: 10 },
 ];
 const tend = computeTendances(perfsTend, NOW);
 eq('tendances s4 volume_debut = 2 séries', tend.s4.volume_debut, 2);
-eq('tendances s4 volume_fin = 3 séries', tend.s4.volume_fin, 3);
+eq('tendances s4 volume_fin = 3 séries (semaine en cours ignorée)', tend.s4.volume_fin, 3);
 eq('tendances s4 charge_debut = 100', tend.s4.charge_debut, 100);
-eq('tendances s4 charge_fin = 110', tend.s4.charge_fin, 110);
+eq('tendances s4 charge_fin = 110 (pas 999 : semaine en cours ignorée)', tend.s4.charge_fin, 110);
 eq('tendances s4 rpe_debut = 7', tend.s4.rpe_debut, 7);
 eq('tendances s4 rpe_fin = 7', tend.s4.rpe_fin, 7);
-eq('tendances s4 statut = positif (charge +10 %, RPE stable)', tend.s4.statut, 'positif');
-check('tendances null si < 2 semaines de données',
-  computeTendances([{ date: '2026-08-17', exercice: 'Squat', charge: 100, reps: 5, rpe: 7 }], NOW).s4 === null, 'null', 'non-null');
+eq('tendances s4 statut = positif (charge +10 %, volume +50 %)', tend.s4.statut, 'positif');
+// Volume en BAISSE nette → PAS positif (régression), même si la charge tient
+const perfsBaisse = [
+  { date: '2026-08-03', exercice: 'Squat', charge: 100, reps: 5, rpe: 7 },
+  { date: '2026-08-03', exercice: 'Bench', charge: 100, reps: 5, rpe: 7 },
+  { date: '2026-08-03', exercice: 'Row',   charge: 100, reps: 5, rpe: 7 },
+  { date: '2026-08-03', exercice: 'Curl',  charge: 100, reps: 5, rpe: 7 },
+  { date: '2026-08-10', exercice: 'Squat', charge: 100, reps: 5, rpe: 7 }, // 4 séries → 1 : -75 %
+];
+eq('tendances statut = regression si volume chute (−75 %)', computeTendances(perfsBaisse, NOW).s4.statut, 'regression');
+check('tendances null si < 2 semaines complètes',
+  computeTendances([{ date: '2026-08-10', exercice: 'Squat', charge: 100, reps: 5, rpe: 7 }], NOW).s4 === null, 'null', 'non-null');
 
 // =============================================================================
 // buildProgressionParExo — 1 point par DATE (meilleure série du jour), 8 récents
