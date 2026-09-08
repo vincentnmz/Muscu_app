@@ -46,6 +46,13 @@ jobs:
       - name: Assembler www/ (coquille web pour Capacitor)
         run: npm run build:www
 
+      - name: Marqueur de build (date + sha) dans l'app
+        run: |
+          BID="$(date -u +%Y-%m-%d\ %H:%M)Z-${GITHUB_SHA:0:7}"
+          sed -i "s/__BUILD_ID__/$BID/g" www/js/app.js
+          echo "BUILD_ID = $BID"
+          grep -m1 "var BUILD_ID" www/js/app.js || true
+
       - name: Synchroniser Capacitor (www → android + plugins)
         run: npx cap sync android
 
