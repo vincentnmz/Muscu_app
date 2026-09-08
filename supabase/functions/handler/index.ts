@@ -312,6 +312,7 @@ function computeComparison(perfs: any[], now: Date): any {
 // affiche alors « Pas assez de données sur cette période »). Descriptif, aucune
 // décision — lu par afficherTendances (athlète) et afficherCoachTendances (coach).
 function computeTendances(perfs: any[], now: Date): any {
+  const curWk = isoWeek(now)   // semaine EN COURS (incomplète) → exclue des tendances
   const build = (weeks: number) => {
     const cut = fmtYMD(minus(now, weeks * 7))
     const rows = (perfs || []).filter(r => normDate(r.date) >= cut)
@@ -321,6 +322,7 @@ function computeTendances(perfs: any[], now: Date): any {
       const iso = normDate(r.date); if (!iso) continue
       const dt = parseFR(r.date) || new Date(iso + 'T00:00:00Z')
       const wk = isoWeek(dt)
+      if (wk === curWk) continue   // on ne compare que des semaines COMPLÈTES (pas la semaine partielle en cours)
       const w = byWeek[wk] || (byWeek[wk] = { series: 0, rpeSum: 0, rpeN: 0, chargeSum: 0, chargeN: 0 })
       w.series += 1
       if (r.rpe != null && r.rpe !== '') { w.rpeSum += Number(r.rpe); w.rpeN += 1 }
@@ -339,9 +341,13 @@ function computeTendances(perfs: any[], now: Date): any {
     const chargePct = charge_debut > 0 ? (charge_fin - charge_debut) / charge_debut : 0
     const volPct = volume_debut > 0 ? (volume_fin - volume_debut) / volume_debut : 0
     const rpeUp = rpe_fin - rpe_debut
+    // Statut : le VOLUME compte autant que la charge. Une baisse nette de volume
+    // OU de charge (ou un RPE qui flambe) → ce n'est PAS « positif ».
+    const baisse = chargePct <= -0.05 || volPct <= -0.10
+    const hausse = chargePct >= 0.05 || volPct >= 0.10
     let statut: string
-    if (chargePct <= -0.05 || rpeUp >= 1.0) statut = 'regression'
-    else if (chargePct >= 0.05 || volPct >= 0.10) statut = 'positif'
+    if (baisse || rpeUp >= 1.0) statut = 'regression'
+    else if (hausse) statut = 'positif'
     else statut = 'plateau'
     return { volume_debut, volume_fin, rpe_debut, rpe_fin, charge_debut, charge_fin, statut }
   }
