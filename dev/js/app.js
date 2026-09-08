@@ -2154,6 +2154,10 @@ async function changerMonMotDePasse() {
 /* __REGLAGES_V3_START__
  * Sous-onglets des Réglages athlète + édition du profil. */
 var APP_VERSION = '1.4';
+// Marqueur de build : remplacé par le CI (date + sha) au moment du build APK.
+// Reste 'dev' en préprod/web (non remplacé) → permet de savoir quelle version tourne.
+var BUILD_ID = '__BUILD_ID__';
+function _buildIdAffiche() { return (BUILD_ID.indexOf('__BUILD') === 0) ? 'dev' : BUILD_ID; }
 
 function switchReglagesTab(tab) {
   document.querySelectorAll('#tab-reglages .sub-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.rg === tab); });
@@ -2178,7 +2182,7 @@ function prefillProfilReglages() {
   set('prof-poids', athlete.poids);
   set('prof-annees', athlete.annees_pratique);
   var d = document.getElementById('prof-ddn'); if (d) d.value = _ddnVersISO(athlete.ddn);
-  var v = document.getElementById('app-version-ath'); if (v) v.textContent = 'Novalyz ' + APP_VERSION;
+  var v = document.getElementById('app-version-ath'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
 }
 
 async function enregistrerProfil() {
@@ -2220,7 +2224,7 @@ function prefillCoachReglages() {
   set('coach-prof-email', coach.email);
   set('coach-club', coach.club);
   set('coach-cat', coach.categorie_defaut);
-  var v = document.getElementById('app-version-coach'); if (v) v.textContent = 'Novalyz ' + APP_VERSION;
+  var v = document.getElementById('app-version-coach'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
 }
 
 async function enregistrerProfilCoach() {
@@ -6284,7 +6288,8 @@ function _setSportIco(useElId, sport) {
 // ==================== APP (athlète) ==================== [MIXTE]
 async function ouvrirApp() {
   document.getElementById('view-login').classList.remove('active');
-  _promptNotifNatif();   // app native : proposer les notifs au 1er lancement (comme les autres apps)
+  _promptNotifNatif();          // app native : proposer les notifs au 1er lancement (comme les autres apps)
+  _installNativeResumeListener(); // app native : rafraîchir au retour au premier plan
   // Phase 3 : un athlète d'un sport collectif voit SA propre page joueur (3 onglets, lecture seule).
   if (athlete && athlete.sport && athlete.sport !== 'muscu') {
     document.getElementById('tabs-bar').style.display = 'none';
@@ -10818,6 +10823,28 @@ async function _promptNotifNatif() {
       if (r && r.ok) _setFcmActif(true);
     }
     // 'denied' → ne rien faire (l'utilisateur peut réactiver depuis Réglages)
+  } catch (e) {}
+}
+
+// Rafraîchit messages + badge au RETOUR au premier plan, via l'événement 'resume'
+// du plugin @capacitor/app — le signal FIABLE en natif (visibilitychange ne fire
+// pas toujours au réveil de la WebView). Installé une seule fois.
+var _resumeListenerInstalled = false;
+function _installNativeResumeListener() {
+  if (_resumeListenerInstalled || !_estAppNative()) return;
+  var App = null;
+  try { App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App; } catch (e) {}
+  if (!App || typeof App.addListener !== 'function') return;
+  _resumeListenerInstalled = true;
+  try {
+    App.addListener('resume', function () {
+      try {
+        if (typeof athlete !== 'undefined' && athlete) {
+          if (typeof chargerMessagesCoach === 'function') chargerMessagesCoach();
+          if (typeof chargerAppData === 'function') chargerAppData();
+        }
+      } catch (e) {}
+    });
   } catch (e) {}
 }
 
