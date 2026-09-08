@@ -6255,6 +6255,13 @@ async function chargerMessagesCoach() {
     messagesCoach = [];
   }
   majBadgeConseils();
+  // Si l'onglet Conversation est ouvert, le re-rendre avec les nouveaux messages
+  // (message reçu en arrière-plan, retour au premier plan, ou clic sur notif) —
+  // sinon il fallait cliquer sur le badge pour voir le message apparaître.
+  try {
+    var _tc = document.getElementById('tab-conseils');
+    if (_tc && _tc.classList.contains('active') && typeof afficherOngletConseils === 'function') afficherOngletConseils();
+  } catch (e) {}
 }
 
 function majBadgeConseils() {
