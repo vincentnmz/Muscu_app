@@ -6284,6 +6284,7 @@ function _setSportIco(useElId, sport) {
 // ==================== APP (athlète) ==================== [MIXTE]
 async function ouvrirApp() {
   document.getElementById('view-login').classList.remove('active');
+  _promptNotifNatif();   // app native : proposer les notifs au 1er lancement (comme les autres apps)
   // Phase 3 : un athlète d'un sport collectif voit SA propre page joueur (3 onglets, lecture seule).
   if (athlete && athlete.sport && athlete.sport !== 'muscu') {
     document.getElementById('tabs-bar').style.display = 'none';
@@ -6321,6 +6322,23 @@ async function ouvrirApp() {
   chargerMessagesCoach(); // Messages du coach
   _consommerNotifPending();
 }
+
+// Rafraîchit les données au RETOUR au premier plan (app native ou onglet PWA).
+// Sinon un message reçu pendant que l'app est en arrière-plan n'apparaît qu'après
+// un redémarrage complet. Throttlé (8 s) pour ne pas surcharger le backend.
+var _lastResumeRefresh = 0;
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden) return;
+  var now = Date.now();
+  if (now - _lastResumeRefresh < 8000) return;
+  _lastResumeRefresh = now;
+  try {
+    if (typeof athlete !== 'undefined' && athlete) {
+      if (typeof chargerAppData === 'function') chargerAppData();
+      if (typeof chargerMessagesCoach === 'function') chargerMessagesCoach();
+    }
+  } catch (e) {}
+});
 
 function switchAuthMode(mode) {
   document.getElementById('auth-login').style.display = mode === 'login' ? 'block' : 'none';
@@ -10774,6 +10792,33 @@ async function majUiPush() {
       ? 'Les notifications sont bloquées dans les réglages de ton navigateur. Autorise-les pour Novalyz puis reviens ici.'
       : '';
   }
+}
+
+// Demande proactive des notifications (app native), au 1er lancement connecté :
+// - déjà accordé → on (ré)enregistre le token silencieusement ;
+// - pas encore décidé → on déclenche la demande système UNE fois (comme les autres
+//   apps) ; si refusé, on ne renagge pas (drapeau nv_push_prompted).
+async function _promptNotifNatif() {
+  if (!_estAppNative() || !athlete) return;
+  var P = null;
+  try { P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications; } catch (e) {}
+  if (!P) return;
+  try {
+    var perm = await P.checkPermissions();
+    var etat = perm && perm.receive;
+    if (etat === 'granted') {
+      try { await NovalyzNotifications.activer(_fcmOpts()); _setFcmActif(true); } catch (e) {}
+      return;
+    }
+    if (etat === 'prompt' || etat === 'prompt-with-rationale') {
+      var deja = false; try { deja = localStorage.getItem('nv_push_prompted') === '1'; } catch (e) {}
+      if (deja) return;                                         // déjà demandé une fois → stop
+      try { localStorage.setItem('nv_push_prompted', '1'); } catch (e) {}
+      var r = await NovalyzNotifications.activer(_fcmOpts());   // déclenche la demande système
+      if (r && r.ok) _setFcmActif(true);
+    }
+    // 'denied' → ne rien faire (l'utilisateur peut réactiver depuis Réglages)
+  } catch (e) {}
 }
 
 async function activerNotifications() {
