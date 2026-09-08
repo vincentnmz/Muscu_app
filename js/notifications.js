@@ -94,6 +94,16 @@
     } catch (e) { return { ok: false, raison: 'erreur-reseau' }; }
   }
 
+  // Prévient l'app (hook global) qu'une notif est arrivée (foreground) ou a été
+  // tapée. L'app peut ainsi rafraîchir messages/badge sans dépendre de
+  // visibilitychange (peu fiable au réveil de la WebView native).
+  function _notifierApp(type, notif) {
+    try {
+      var data = (notif && notif.data) || {};
+      if (typeof global.NovalyzOnNotifEvent === 'function') global.NovalyzOnNotifEvent(type, data);
+    } catch (e) {}
+  }
+
   // Installe les écouteurs FCM UNE SEULE FOIS (évite les doubles inscriptions).
   function _installerListeners(P, opts) {
     if (_natif.listeners) return;
@@ -102,6 +112,10 @@
       // 'registration' porte le token, et refire au CHANGEMENT de token.
       P.addListener('registration', function (t) { _envoyerTokenBackend(t && t.value, opts); });
       P.addListener('registrationError', function (e) { _natif.derniereErreur = e; });
+      // Notif reçue app au premier plan → rafraîchir (badge live).
+      P.addListener('pushNotificationReceived', function (n) { _notifierApp('received', n); });
+      // Notif tapée (app en arrière-plan/fermée) → rafraîchir + ouvrir la conversation.
+      P.addListener('pushNotificationActionPerformed', function (a) { _notifierApp('tap', (a && a.notification) || a); });
     } catch (e) { _natif.listeners = false; }
   }
 

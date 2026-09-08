@@ -10947,6 +10947,23 @@ function _gererNotifTarget(target) {
   if (target === 'conversation') _ouvrirConversationNotif();
 }
 
+// Hook appelé par la façade native (notifications.js) quand une notif FCM est
+// REÇUE au premier plan ('received') ou TAPÉE ('tap'). On rafraîchit messages +
+// badge tout de suite (sans dépendre de visibilitychange, peu fiable au réveil
+// de la WebView), et on ouvre la conversation si la notif le demande.
+window.NovalyzOnNotifEvent = function (type, data) {
+  try {
+    if (typeof athlete !== 'undefined' && athlete) {
+      if (typeof chargerMessagesCoach === 'function') chargerMessagesCoach();
+      if (typeof chargerAppData === 'function') chargerAppData();
+    }
+    if (type === 'tap') {
+      var target = (data && data.target) || '';
+      if (target) setTimeout(function () { _gererNotifTarget(target); }, 400);
+    }
+  } catch (e) {}
+};
+
 // Consomme la cible en attente, mais seulement une fois l'athlète connecté
 // (sinon on garde _notifPending et la connexion la rejouera).
 function _consommerNotifPending() {
