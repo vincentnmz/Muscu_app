@@ -6353,6 +6353,8 @@ async function ouvrirApp() {
 var _lastResumeRefresh = 0;
 document.addEventListener('visibilitychange', function () {
   if (document.hidden) return;
+  // Chrono de repos : recalage immédiat (non throttlé) au retour au 1er plan.
+  try { if (typeof _timerTick === 'function' && _timerTick) _timerTick(); } catch (e) {}
   var now = Date.now();
   if (now - _lastResumeRefresh < 8000) return;
   _lastResumeRefresh = now;
@@ -9512,40 +9514,44 @@ function demarrerDepuisDashboard(seanceId) {
 // ==================== TIMER ====================
 let timerInterval = null;
 let timerRemaining = 0;
+let timerEndAt = 0;      // horodatage de fin → le repos résiste à l'écran éteint
+let _timerTick = null;   // permet de forcer un rafraîchissement au retour au 1er plan
 const CIRCUMFERENCE = 188.5; // 2 * PI * 30
 
 function startTimer(seconds, serieInfo) {
   if (timerInterval) clearInterval(timerInterval);
+  if (seconds === 0) { _timerTick = null; return; }
+  timerEndAt = Date.now() + seconds * 1000;
   timerRemaining = seconds;
-  
+
   const overlay = document.getElementById('timer-overlay');
   const display = document.getElementById('timer-display');
   const circle = document.getElementById('timer-circle');
   const info = document.getElementById('timer-serie-info');
-  
-  if (seconds === 0) return;
-  
+
   overlay.classList.add('active');
   info.textContent = serieInfo;
-  
+
   function update() {
+    // Temps restant recalculé depuis l'horodatage de fin : juste même si l'écran
+    // s'est éteint ou l'app est passée en arrière-plan (où setInterval est gelé).
+    timerRemaining = Math.max(0, Math.ceil((timerEndAt - Date.now()) / 1000));
     display.textContent = timerRemaining;
     const progress = timerRemaining / seconds;
     circle.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
-    
+
     if (timerRemaining <= 0) {
       clearInterval(timerInterval);
       timerInterval = null;
-      // Vibration
+      _timerTick = null;
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      // Son
       playBeep();
       overlay.classList.remove('active');
       showToast('✅ Repos terminé, allons-y !');
     }
-    timerRemaining--;
   }
-  
+
+  _timerTick = update;
   update();
   timerInterval = setInterval(update, 1000);
 }
@@ -9553,6 +9559,7 @@ function startTimer(seconds, serieInfo) {
 function skipTimer() {
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = null;
+  _timerTick = null;
   document.getElementById('timer-overlay').classList.remove('active');
 }
 
@@ -10857,6 +10864,7 @@ function _installNativeResumeListener() {
   _resumeListenerInstalled = true;
   try {
     App.addListener('resume', function () {
+      try { if (typeof _timerTick === 'function' && _timerTick) _timerTick(); } catch (e) {}
       try {
         if (typeof athlete !== 'undefined' && athlete) {
           if (typeof chargerMessagesCoach === 'function') chargerMessagesCoach();
