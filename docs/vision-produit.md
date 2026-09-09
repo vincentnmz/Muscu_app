@@ -184,6 +184,74 @@ Conséquence pratique : **même codebase / moteur**, mais **deux parcours
 d'entrée** — l'onboarding muscu met l'IA-coach en avant ; l'onboarding pro met
 les outils coach/club en avant.
 
+## 🚶 Parcours athlète solo (chantier prioritaire — décidé)
+
+**Priorité actuelle : rendre l'app « parfaite un minimum » côté CONTENU avant de
+débloquer la plomberie de publication** (domaine, mails, Store). On démarre par
+le **parcours de l'athlète muscu SANS coach** (cible B2C grand public).
+
+### Diagnostic grounded (ce que fait vraiment le code, sept. 2026)
+
+| Étape | Aujourd'hui | Verdict |
+|---|---|---|
+| 1. Arrivée | Pas d'onboarding guidé | ⚠️ flou |
+| 2. Accueil | Pile de stats (2 analyses + heatmap + bien-être + cockpit) | ⚠️ « je fais quoi ? » sans réponse |
+| 3. **Programme** | **Aucun moyen d'en créer un** — le builder (`saveProgrammeLigne`, `getCoachProgramme`) est **coach only** ; l'athlète ne fait que lire (`afficherProgrammeComplet` → *« Aucun programme défini »*) | 🔴 **le parcours casse ici** |
+| 4. Séance | Log libre « hors-programme » possible, sans cadre | 🟠 il se débrouille |
+| 5. Bien-être | Rempli après séance | ✅ OK |
+| 6. Analyses | Moteur OK mais affiché en stats (cadrage solo « à surveiller » déjà là) | 🟠 à transformer en phrases |
+| 7. Progresser | Partiel | 🟠 |
+
+**Point de rupture = étape 3** : sans coach, Novalyz ne dit pas *comment
+s'entraîner* (point ① de la boussole). Tout le reste dépend de ça.
+
+### Les 3 chantiers du parcours solo (dans l'ordre)
+
+- **A. Débloquer le programme côté solo** (keystone). Le moteur backend
+  (`saveProgrammeLigne`…) **existe déjà** → surtout exposer une porte côté
+  athlète + un onboarding léger.
+- **B. Recentrer l'Accueil sur « Aujourd'hui »** : séance du jour + état + bouton
+  *Commencer*, au lieu de la pile de stats.
+- **C. Analyses en phrases actionnables** : généraliser le cadrage déjà amorcé.
+
+### Décision — comment le solo obtient son programme : **LES DEUX**
+
+1. **D'abord** : ouvrir le **builder existant côté athlète** → il crée/modifie
+   ses séances et exos lui-même (rapide, le builder existe).
+2. **Ensuite** : **Novalyz propose un programme de départ** via un onboarding
+   (objectif + jours dispos + niveau + matériel → structure 2/3/4/5 jours,
+   hypertrophie/force…), que l'athlète peut ensuite ajuster.
+
+> Rappel boussole : la bibliothèque de programmes n'est PAS le produit. Le
+> programme est le **cadre** ; la valeur reste l'analyse (données + ressenti).
+
+### ⭐ La promesse solo, confirmée (la boucle Novalyz)
+
+> **Je te donne un programme → je regarde comment tu l'exécutes → j'analyse ta
+> progression → j'évalue ton état → je t'explique ce qui va et ce qui ne va pas
+> → je t'indique quoi améliorer.**
+
+C'est LA promesse pour l'athlète sans coach. Chaque écran du parcours solo doit
+servir une étape de cette boucle (et le moteur + le bloc IA en sont le cœur).
+
+## Module Cardio / Hyrox — onglet dédié (décidé)
+
+Le **bloc cardio actuel est à revoir** : aujourd'hui il est noyé dans l'onglet
+Progression, et pour une session vélo seul **le temps** s'affiche (pas
+distance/vitesse/puissance). Décision : **un onglet Cardio à part entière**
+(muscu ≠ cardio), avec ses **propres analyses, données et graphiques**, ouvert
+au **cardio + Hyrox** (courses hybrides / renforcement + endurance).
+
+- Sépare visuellement **Muscu** et **Cardio/Hyrox** (deux mondes d'entraînement).
+- Détail par type : vélo (distance / vitesse / puissance / FC), course, Hyrox
+  (stations + temps), etc. — pas seulement la durée.
+- Mêmes principes : le moteur analyse, on montre des **phrases actionnables**,
+  pas des chiffres bruts.
+- S'appuie sur la table **`indicateurs`** (multisport) déjà prévue pour ça.
+
+Place dans la roadmap : relève du chantier **B (organisation / navigation)** ;
+peut se faire en parallèle du keystone **A (programme solo)**.
+
 ## Prochaines étapes (quand on s'y mettra — rien maintenant)
 
 1. Figer **la promesse** (question ci-dessus).
