@@ -1,0 +1,94 @@
+# Construit l'APK Android « Novalyz Dev » — une appli SÉPARÉE (identifiant
+# com.novalyz.app.dev, nom « Novalyz Dev ») qui s'installe À CÔTÉ de l'appli
+# publique sans la remplacer. Objectif : tester le code en cours de dev sur le
+# téléphone tout en gardant l'appli de tous les jours intacte.
+#
+# Ce workflow NE MODIFIE PAS le build de prod (build-apk.yml) : il change juste
+# l'identifiant + le nom au moment de compiler. Les notifications push FCM sont
+# INACTIVES sur la Dev tant que le paquet com.novalyz.app.dev n'est pas ajouté
+# dans Firebase (à faire plus tard si besoin) — c'est voulu.
+#
+# Déclenchement MANUEL : Actions → « Build APK Android — DEV » → Run workflow,
+# et choisis la branche à compiler (dev quand on codera dessus).
+name: Build APK Android — DEV
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Identité DEV : identifiant + nom distincts → installable à côté de l'appli
+      # publique. On NE touche pas au dépôt (modifs éphémères dans le runner).
+      - name: Basculer en identité « Novalyz Dev »
+        run: |
+          sed -i 's/applicationId "com.novalyz.app"/applicationId "com.novalyz.app.dev"/' android/app/build.gradle
+          sed -i 's#<string name="app_name">[^<]*</string>#<string name="app_name">Novalyz Dev</string>#' android/app/src/main/res/values/strings.xml
+          sed -i 's#<string name="title_activity_main">[^<]*</string>#<string name="title_activity_main">Novalyz Dev</string>#' android/app/src/main/res/values/strings.xml
+          echo "✓ Identité Dev : applicationId=com.novalyz.app.dev · nom=Novalyz Dev"
+          grep -m1 applicationId android/app/build.gradle
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Assembler www/ (coquille web pour Capacitor)
+        run: npm run build:www
+
+      - name: Marqueur de build (date + sha) dans l'app
+        run: |
+          BID="DEV $(date -u +%Y-%m-%d\ %H:%M)Z-${GITHUB_SHA:0:7}"
+          sed -i "s/__BUILD_ID__/$BID/g" www/js/app.js
+          echo "BUILD_ID = $BID"
+
+      - name: versionCode unique (n° de run)
+        run: |
+          sed -i "s/versionCode 1/versionCode ${GITHUB_RUN_NUMBER}/" android/app/build.gradle
+          grep -m1 versionCode android/app/build.gradle
+
+      # PAS d'injection de google-services.json → le plugin n'est pas appliqué
+      # (voir le try/catch de build.gradle) → build OK, push FCM inactif sur la Dev.
+      - name: Synchroniser Capacitor (www → android + plugins)
+        run: npx cap sync android
+
+      - name: Construire l'APK debug (Dev)
+        run: |
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Publier l'APK Dev en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: novalyz-dev-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      # Release à tag fixe SÉPARÉE (novalyz-apk-dev) : n'écrase jamais l'APK de
+      # prod (novalyz-apk-latest).
+      - name: Publier l'APK Dev en Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete novalyz-apk-dev --cleanup-tag --yes 2>/dev/null || true
+          gh release create novalyz-apk-dev \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            --title "Novalyz Dev — APK de test" \
+            --notes "Appli SÉPARÉE (com.novalyz.app.dev, « Novalyz Dev ») construite depuis \`${{ github.ref_name }}\` (commit ${{ github.sha }}). S'installe à côté de l'appli publique. Push FCM inactif sur la Dev." \
+            --target "${{ github.sha }}"
