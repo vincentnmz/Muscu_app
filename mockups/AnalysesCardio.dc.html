@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+      --text:#070B14; --muted:#4A5980; --subtle:#8595B8;
+      --accent:#1A5FFF; --on-accent:#FFFFFF;
+      --bike:#0EA5E9; --bike-a:rgba(14,165,233,.12); --bike-strong:#0b7fb4; --good:#00A854; --good-a:rgba(0,168,84,.12);
+      --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --head:'Michroma','Helvetica Neue',Arial,sans-serif;
+      --sh:0 6px 20px rgba(7,11,20,.08); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased;}
+    .phone{width:390px;height:844px;background:var(--bg);position:relative;overflow:hidden;}
+    .scroll{position:absolute;inset:0 0 66px 0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:18px 16px 18px;}
+    .scroll::-webkit-scrollbar{width:0}
+    .hd{display:flex;align-items:center;justify-content:space-between;}
+    .ttl{font-family:var(--head);font-size:17px;letter-spacing:.02em;} .sub{font-size:11.5px;color:var(--subtle);margin-top:3px;}
+    .av{width:38px;height:38px;border-radius:999px;background:var(--surface2);color:var(--accent);font-family:var(--head);font-size:13px;display:grid;place-items:center;border:1px solid var(--border);}
+    .switch{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm);}
+    .switch button{flex:1;border:none;background:transparent;font-family:var(--head);font-size:12px;color:var(--muted);padding:11px 0;display:flex;align-items:center;justify-content:center;gap:7px;}
+    .switch button.on{background:var(--bike);color:#fff;} .switch button svg{width:15px;height:15px;}
+    .tabs{display:flex;gap:5px;background:var(--surface2);border-radius:12px;padding:4px;}
+    .tabs button{flex:1;border:none;background:transparent;font-family:var(--font);font-weight:700;font-size:11.5px;color:var(--muted);padding:8px 0;border-radius:9px;white-space:nowrap;}
+    .tabs button.on{background:var(--surface);color:var(--bike);box-shadow:var(--sh-sm);}
+    .verdict{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);padding:13px 15px;display:flex;gap:11px;align-items:flex-start;border-left:4px solid var(--good);}
+    .verdict .vic{width:24px;height:24px;border-radius:999px;flex:none;display:grid;place-items:center;color:#fff;background:var(--good);}
+    .verdict .h{font-size:14px;font-weight:700;line-height:1.25;} .verdict .d{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;}
+    .sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtle);font-weight:700;margin:2px 2px -4px;}
+    .kgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+    .kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);padding:13px 15px;display:flex;flex-direction:column;gap:3px;}
+    .kpi .u{font-size:10px;color:var(--subtle);letter-spacing:.05em;text-transform:uppercase;font-weight:700;}
+    .kpi .v{font-family:var(--head);font-size:21px;line-height:1;} .kpi .v small{font-size:11px;color:var(--subtle);margin-left:2px;}
+    .kpi .delta{font-size:11px;font-weight:700;color:var(--good);}
+    .trend{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);padding:14px 15px;display:flex;flex-direction:column;gap:10px;}
+    .trow{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;}
+    .trow .l{color:var(--muted);} .trow .v{font-family:var(--head);font-size:13px;color:var(--good);}
+    .trow + .trow{border-top:1px solid var(--border);padding-top:9px;}
+    .fabwrap{position:absolute;right:15px;bottom:80px;display:flex;align-items:center;gap:9px;z-index:6;}
+    .fabtip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh);border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);}
+    .fab{width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;}
+    .nav{position:absolute;left:0;right:0;bottom:0;height:66px;background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;}
+    .nv{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--subtle);font-size:9.5px;font-weight:600;}
+    .nv.active{color:var(--accent);} .nv svg{width:22px;height:22px;}
+  </style>
+</helmet>
+
+<div class="phone">
+  <div class="scroll">
+
+    <div class="hd">
+      <div><div class="ttl">Mes analyses</div><div class="sub">Cardio · septembre</div></div>
+      <div class="av">V</div>
+    </div>
+
+    <div class="switch">
+      <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
+      <button class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
+    </div>
+
+    <div class="tabs">
+      <button class="on">Résumé</button>
+      <button>Par sport</button>
+      <button>Tendances</button>
+      <button>Historique</button>
+    </div>
+
+    <div class="verdict">
+      <span class="vic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      <div>
+        <div class="h">Ton endurance progresse</div>
+        <div class="d">+1,8 km/h à FC équivalente. Charge cardio maîtrisée (ACWR 1.0), tu peux monter le volume — moteur Novalyz.</div>
+      </div>
+    </div>
+
+    <div class="sec">Ce mois-ci · vélo</div>
+    <div class="kgrid">
+      <div class="kpi"><span class="u">Distance</span><span class="v">{{km}}<small>km</small></span><span class="delta">▲ +18% vs mois-1</span></div>
+      <div class="kpi"><span class="u">Temps total</span><span class="v">5h42</span><span class="delta">▲ +40 min</span></div>
+      <div class="kpi"><span class="u">Vitesse moy</span><span class="v">{{vit}}<small>km/h</small></span><span class="delta">▲ +1,8</span></div>
+      <div class="kpi"><span class="u">RPE moyen</span><span class="v">{{rpe}}</span><span class="delta">stable</span></div>
+    </div>
+
+    <div class="sec">Tendances</div>
+    <div class="trend">
+      <div class="trow"><span class="l">7 jours vs 7 jours précédents</span><span class="v">▲ +12%</span></div>
+      <div class="trow"><span class="l">1 mois vs 1 mois précédent</span><span class="v">▲ +18%</span></div>
+      <div class="trow"><span class="l">FC moyenne à effort égal</span><span class="v">▼ −4 bpm</span></div>
+    </div>
+
+  </div>
+
+  <div class="fabwrap">
+    <span class="fabtip">Demande à Novalyz</span>
+    <button class="fab"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
+  </div>
+
+  <div class="nav">
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Aujourd'hui</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</div>
+    <div class="nv active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg>État</div>
+  </div>
+</div>
+
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { t: 0 }; }
+  componentDidMount(){
+    const dur = 2200, start = (performance && performance.now) ? performance.now() : Date.now();
+    const step = (now) => { let p = Math.min(1, ((now || Date.now()) - start) / dur); p = 1 - Math.pow(1 - p, 3); this.setState({ t: p }); if (p < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+  renderVals(){ const t = this.state.t; return { km: Math.round(168 * t), vit: (27.4 * t).toFixed(1), rpe: (6.2 * t).toFixed(1) }; }
+}
+</script>
+</body>
+</html>

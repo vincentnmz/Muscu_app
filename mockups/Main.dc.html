@@ -1,0 +1,200 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+      --text:#070B14; --muted:#4A5980; --subtle:#8595B8;
+      --accent:#1A5FFF; --accent-strong:#1248D4; --on-accent:#FFFFFF; --accent-a:rgba(26,95,255,.10);
+      --good:#00A854; --good-a:rgba(0,168,84,.12); --warn:#E07800; --warn-a:rgba(224,120,0,.12);
+      --gold:#E0A100; --gold-a:rgba(224,161,0,.13);
+      --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --head:'Michroma','Helvetica Neue',Arial,sans-serif;
+      --sh:0 6px 20px rgba(7,11,20,.08); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased;}
+    .phone{width:390px;height:844px;background:var(--bg);position:relative;overflow:hidden;}
+    .scroll{position:absolute;inset:0 0 66px 0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:18px 16px 18px;}
+    .scroll::-webkit-scrollbar{width:0}
+    .hd{display:flex;align-items:center;justify-content:space-between;}
+    .wm{font-family:var(--head);font-size:10px;letter-spacing:.16em;color:var(--subtle);}
+    .hi{font-family:var(--head);font-size:18px;margin-top:4px;}
+    .date{font-size:11px;color:var(--subtle);margin-top:3px;}
+    .hicons{display:flex;gap:8px;}
+    .hibtn{width:38px;height:38px;border-radius:11px;background:var(--surface);border:1px solid var(--border);color:var(--muted);display:grid;place-items:center;position:relative;box-shadow:var(--sh-sm);}
+    .hibtn svg{width:19px;height:19px;}
+    .hibtn.badge::after{content:"3";position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;border-radius:999px;background:var(--warn);color:#fff;font-size:9px;font-weight:800;display:grid;place-items:center;border:1.5px solid var(--bg);padding:0 3px;}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--sh-sm);}
+    .banner{display:flex;gap:12px;align-items:center;padding:12px 15px;border-radius:16px;background:var(--good-a);border:1px solid rgba(0,168,84,.2);}
+    .dot{width:10px;height:10px;border-radius:999px;flex:none;}
+    .banner .t{font-weight:700;font-size:14px;} .banner .s{font-size:11.5px;color:var(--muted);margin-top:1px;}
+    .label{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700;}
+    .seance{padding:16px 17px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--sh);}
+    .seance h2{font-family:var(--head);font-size:18px;margin:3px 0 0;}
+    .meta{font-size:12px;color:var(--subtle);}
+    .focus{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted);background:var(--surface2);border-radius:12px;padding:8px 11px;}
+    .focus b{color:var(--text);font-weight:700;}
+    .cta{display:flex;align-items:center;justify-content:center;gap:9px;height:50px;border-radius:14px;background:var(--accent);color:var(--on-accent);font-family:var(--font);font-weight:700;font-size:15px;border:none;box-shadow:0 6px 16px rgba(26,95,255,.32);}
+    .other{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--accent);font-family:var(--font);font-weight:700;font-size:13px;}
+    .bwrap{padding:13px 14px;display:flex;flex-direction:column;gap:11px;}
+    .brow{display:flex;align-items:center;justify-content:space-between;}
+    .brow .k{font-weight:700;font-size:13px;} .brow .u{font-size:11px;color:var(--accent);font-weight:600;}
+    .bgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+    .bcell{display:flex;flex-direction:column;align-items:center;gap:5px;}
+    .bcell .ic{color:var(--muted);} .bcell .nm{font-size:9.5px;color:var(--subtle);font-weight:600;text-align:center;}
+    .bpips{display:flex;gap:2px;} .bp{width:5px;height:5px;border-radius:999px;background:var(--border);}
+    .bp.on{background:var(--good);} .bp.warn{background:var(--warn);}
+    .rew{padding:14px 15px;display:flex;flex-direction:column;gap:12px;border:1px solid rgba(224,161,0,.3);background:linear-gradient(180deg,var(--gold-a),var(--surface));}
+    .rew .rowh{display:flex;align-items:center;justify-content:space-between;}
+    .rew .rowh .k{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;}
+    .rew .rowh .k svg{color:var(--gold);}
+    .rew .prog{font-family:var(--head);font-size:15px;color:var(--gold);}
+    .newpr{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:10px 12px;}
+    .newpr .medal{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--gold-a);color:var(--gold);}
+    .newpr .a{font-weight:700;font-size:13px;} .newpr .b{font-size:11px;color:var(--subtle);margin-top:1px;}
+    .miles{display:flex;flex-direction:column;gap:6px;}
+    .miles .lh{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--muted);}
+    .miles .lh b{color:var(--text);}
+    .mbar{height:8px;border-radius:999px;background:var(--surface2);overflow:hidden;}
+    .mbar span{display:block;height:100%;background:var(--gold);border-radius:999px;}
+    .badges{display:flex;gap:7px;}
+    .bdg{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:8px 4px;}
+    .bdg .n{font-size:9.5px;color:var(--muted);font-weight:700;text-align:center;} .bdg svg{color:var(--gold);}
+    .nova{display:flex;gap:12px;padding:14px 15px;align-items:flex-start;background:linear-gradient(180deg,var(--accent-a),var(--surface));border:1px solid rgba(26,95,255,.18);border-radius:16px;}
+    .nova .logo{width:32px;height:32px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none;font-family:var(--head);font-size:12px;}
+    .nova .k{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-strong);}
+    .nova .t{font-size:12.5px;line-height:1.45;margin-top:3px;}
+    .row{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;}
+    .row .k{font-weight:700;font-size:13px;}
+    .week{display:flex;gap:6px;align-items:center;} .wk{width:24px;height:8px;border-radius:999px;background:var(--border);} .wk.on{background:var(--accent);}
+    ic{color:var(--accent);flex:none;display:inline-flex;}
+    .nav{position:absolute;left:0;right:0;bottom:0;height:66px;background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;}
+    .nv{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--subtle);font-size:9.5px;font-weight:600;}
+    .nv.active{color:var(--accent);} .nv svg{width:22px;height:22px;}
+    .fabwrap{position:absolute;right:15px;bottom:80px;display:flex;align-items:center;gap:9px;z-index:6;}
+    .fabtip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh);border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);}
+    .fab{width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;}
+  </style>
+</helmet>
+
+<div class="phone">
+  <div class="scroll">
+
+    <div class="hd">
+      <div>
+        <div class="wm">NOVALYZ</div>
+        <div class="hi">Bonjour Vincent</div>
+        <div class="date">Mardi 9 septembre</div>
+      </div>
+      <div class="hicons">
+        <button class="hibtn badge" title="Messages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg></button>
+        <button class="hibtn" title="Réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 6.7 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 12.6a2 2 0 0 1 0-4 1.6 1.6 0 0 0 1.5-2.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 3V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
+        <button class="hibtn" title="Déconnexion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+      </div>
+    </div>
+
+    <div class="banner">
+      <span class="dot" style="background:var(--good)"></span>
+      <div><div class="t" style="color:var(--good)">Prêt à performer</div><div class="s">Sommeil 8h · énergie haute · récupération OK</div></div>
+    </div>
+
+    <div class="card seance">
+      <div><div class="label">Séance du jour</div><h2>Haut du corps</h2></div>
+      <div class="meta">≈ 1h05 · 6 exercices · Push</div>
+      <div class="focus">
+        <ic><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg></ic>
+        <span>Focus : progresser sur le <b>développé incliné</b></span>
+      </div>
+      <button class="cta"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8V4z"/></svg>Commencer ma séance</button>
+      <button class="other"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Démarrer une autre séance</button>
+    </div>
+
+    <div class="card bwrap">
+      <div class="brow"><span class="k">Ton point du jour</span><span class="u">Mettre à jour ›</span></div>
+      <div class="bgrid">
+        <div class="bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span class="bpips"><i class="bp on"></i><i class="bp on"></i><i class="bp on"></i><i class="bp on"></i></span><span class="nm">Sommeil</span></div>
+        <div class="bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/></svg></span><span class="bpips"><i class="bp on"></i><i class="bp on"></i><i class="bp on"></i><i class="bp on"></i></span><span class="nm">Mental</span></div>
+        <div class="bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/></svg></span><span class="bpips"><i class="bp on"></i><i class="bp on"></i><i class="bp on"></i><i class="bp on"></i></span><span class="nm">Énergie</span></div>
+        <div class="bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/></svg></span><span class="bpips"><i class="bp warn"></i><i class="bp warn"></i><i class="bp warn"></i></span><span class="nm">Fatigue</span></div>
+        <div class="bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></span><span class="bpips"><i class="bp on"></i></span><span class="nm">Douleurs</span></div>
+      </div>
+    </div>
+
+    <div class="card rew">
+      <div class="rowh">
+        <span class="k"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg>Récompenses</span>
+        <span class="prog">+{{prog}}% ce mois</span>
+      </div>
+      <div class="newpr">
+        <span class="medal"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
+        <div><div class="a">Nouveau record débloqué</div><div class="b">Développé incliné · 62,5 kg (+7,5 kg)</div></div>
+      </div>
+      <div class="miles">
+        <div class="lh"><span>Défi du mois : <b>10 séances</b></span><span><b>{{mdone}}</b>/10</span></div>
+        <div class="mbar"><span style="width: {{mw}}"></span></div>
+      </div>
+      <div class="badges">
+        <div class="bdg"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="n">Série 5 sem.</span></div>
+        <div class="bdg"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="n">2 records</span></div>
+        <div class="bdg"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="n">1,2 t / séance</span></div>
+      </div>
+    </div>
+
+    <div class="nova">
+      <span class="logo">N</span>
+      <div>
+        <div class="k">Le mot de Novalyz</div>
+        <div class="t">Belle dynamique cette semaine, tu progresses au développé. Mais ta fatigue jambes monte depuis 3 séances : garde la charge sur le bas du corps et concentre-toi sur le haut aujourd'hui.</div>
+      </div>
+    </div>
+
+    <div class="card row">
+      <div><div class="k">Régularité</div><div class="meta" style="margin-top:2px">2 / 4 cette semaine · série de 5 sem.</div></div>
+      <div class="week"><span class="wk on"></span><span class="wk on"></span><span class="wk"></span><span class="wk"></span></div>
+    </div>
+
+  </div>
+
+  <div class="fabwrap">
+    <span class="fabtip">Demande à Novalyz</span>
+    <button class="fab"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
+  </div>
+
+  <div class="nav">
+    <div class="nv active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Aujourd'hui</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg>État</div>
+  </div>
+</div>
+
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { t: 0 }; }
+  componentDidMount(){
+    const dur = 2200, start = (performance && performance.now) ? performance.now() : Date.now();
+    const step = (now) => {
+      let p = Math.min(1, ((now || Date.now()) - start) / dur);
+      p = 1 - Math.pow(1 - p, 3);
+      this.setState({ t: p });
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  renderVals(){
+    const t = this.state.t;
+    const done = Math.round(8 * t);
+    return { prog: Math.round(12 * t), mdone: done, mw: (80 * t).toFixed(1) + '%' };
+  }
+}
+</script>
+</body>
+</html>
