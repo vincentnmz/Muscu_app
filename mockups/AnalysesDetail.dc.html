@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+      --text:#070B14; --muted:#4A5980; --subtle:#8595B8;
+      --accent:#1A5FFF; --accent-strong:#1248D4; --on-accent:#FFFFFF;
+      --good:#00A854; --good-a:rgba(0,168,84,.12); --warn:#E07800; --warn-a:rgba(224,120,0,.12);
+      --push:#1A5FFF; --pull:#8B5CF6; --legs:#0EA5E9;
+      --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --head:'Michroma','Helvetica Neue',Arial,sans-serif;
+      --sh:0 6px 20px rgba(7,11,20,.08); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased;}
+    .phone{width:390px;height:844px;background:var(--bg);position:relative;overflow:hidden;}
+    .scroll{position:absolute;inset:0 0 66px 0;overflow-y:auto;display:flex;flex-direction:column;gap:13px;padding:18px 16px 18px;}
+    .scroll::-webkit-scrollbar{width:0}
+    .hd{display:flex;align-items:center;justify-content:space-between;}
+    .ttl{font-family:var(--head);font-size:17px;letter-spacing:.02em;}
+    .av{width:38px;height:38px;border-radius:999px;background:var(--surface2);color:var(--accent);
+      font-family:var(--head);font-size:13px;display:grid;place-items:center;border:1px solid var(--border);}
+    .tabs{display:flex;gap:5px;background:var(--surface2);border-radius:12px;padding:4px;}
+    .tabs button{flex:1;border:none;background:transparent;font-family:var(--font);font-weight:700;font-size:11.5px;
+      color:var(--muted);padding:8px 0;border-radius:9px;white-space:nowrap;}
+    .tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm);}
+    .sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtle);font-weight:700;margin:2px 2px -4px;}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);}
+    .exo{display:flex;align-items:center;gap:12px;padding:12px 14px;}
+    .exo + .exo{border-top:1px solid var(--border);}
+    .exo .nm{flex:1;}
+    .exo .nm .a{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:6px;}
+    .exo .nm .b{font-size:11px;color:var(--subtle);margin-top:1px;}
+    .pr{font-size:9px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--good);border-radius:5px;padding:2px 5px;}
+    .val{font-family:var(--head);font-size:14px;text-align:right;flex:none;}
+    .val small{display:block;font-family:var(--font);font-size:9.5px;color:var(--subtle);font-weight:600;margin-top:2px;}
+    .bal{padding:14px 15px;display:flex;flex-direction:column;gap:12px;}
+    .balrow{display:flex;flex-direction:column;gap:5px;}
+    .balrow .lh{display:flex;align-items:center;justify-content:space-between;font-size:12px;}
+    .balrow .lh .n{font-weight:700;display:flex;align-items:center;gap:7px;}
+    .balrow .lh .n i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+    .balrow .lh .p{font-family:var(--head);font-size:12px;color:var(--muted);}
+    .bt{height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;}
+    .bt span{display:block;height:100%;border-radius:999px;}
+    .balnote{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--muted);background:var(--warn-a);border:1px solid rgba(224,120,0,.2);border-radius:12px;padding:10px 12px;line-height:1.4;}
+    .balnote b{color:var(--warn);}
+    .balnote svg{flex:none;color:var(--warn);margin-top:1px;}
+    .nav{position:absolute;left:0;right:0;bottom:0;height:66px;background:var(--surface);
+      border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;}
+    .nv{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--subtle);font-size:9.5px;font-weight:600;}
+    .nv.active{color:var(--accent);}
+    .nv svg{width:22px;height:22px;}
+    .fabwrap{position:absolute;right:15px;bottom:80px;display:flex;align-items:center;gap:9px;z-index:6;}
+    .fabtip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh);border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);}
+    .fab{width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;}
+  </style>
+</helmet>
+
+<div class="phone">
+  <div class="scroll">
+
+    <div class="hd">
+      <div class="ttl">Mes analyses</div>
+      <div class="av">V</div>
+    </div>
+
+    <div class="tabs">
+      <button>Résumé</button>
+      <button class="on">Par exercice</button>
+      <button>Tendances</button>
+      <button>Historique</button>
+    </div>
+
+    <div class="sec">Progression & records</div>
+    <div class="card">
+      <div class="exo">
+        <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 20 14 17 26 13 38 9 50 5 58 3" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="nm"><div class="a">Développé incliné <span class="pr">PR</span></div><div class="b">+7,5 kg en 6 sem.</div></div>
+        <div class="val">62,5 kg<small>4 × 8</small></div>
+      </div>
+      <div class="exo">
+        <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 19 14 18 26 14 38 12 50 8 58 6" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="nm"><div class="a">Squat</div><div class="b">+10 kg en 8 sem.</div></div>
+        <div class="val">100 kg<small>5 × 5</small></div>
+      </div>
+      <div class="exo">
+        <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 18 14 17 26 16 38 15 50 15 58 14" stroke="#E07800" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="nm"><div class="a">Développé couché</div><div class="b">Stagne depuis 3 séances</div></div>
+        <div class="val">60 kg<small>4 × 8</small></div>
+      </div>
+      <div class="exo">
+        <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 20 14 16 26 14 38 11 50 6 58 4" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="nm"><div class="a">Tractions lestées <span class="pr">PR</span></div><div class="b">+8 kg en 5 sem.</div></div>
+        <div class="val">+12 kg<small>4 × 6</small></div>
+      </div>
+    </div>
+
+    <div class="sec">Balance musculaire · 30 j</div>
+    <div class="card bal">
+      <div class="balrow">
+        <div class="lh"><span class="n"><i style="background:var(--push)"></i>Poussée (pec/épaules/tri)</span><span class="p">42%</span></div>
+        <div class="bt"><span style="width:42%;background:var(--push)"></span></div>
+      </div>
+      <div class="balrow">
+        <div class="lh"><span class="n"><i style="background:var(--pull)"></i>Tirage (dos/biceps)</span><span class="p">31%</span></div>
+        <div class="bt"><span style="width:31%;background:var(--pull)"></span></div>
+      </div>
+      <div class="balrow">
+        <div class="lh"><span class="n"><i style="background:var(--legs)"></i>Jambes</span><span class="p">27%</span></div>
+        <div class="bt"><span style="width:27%;background:var(--legs)"></span></div>
+      </div>
+      <div class="balnote">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <div><b>Déséquilibre —</b> tu pousses plus que tu tires. Ajoute une séance dos pour protéger tes épaules.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="fabwrap">
+    <span class="fabtip">Demande à Novalyz</span>
+    <button class="fab"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
+  </div>
+
+  <div class="nav">
+    <div class="nv">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>
+      Aujourd'hui
+    </div>
+    <div class="nv">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>
+      Entraînement
+    </div>
+    <div class="nv">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>
+      Cardio
+    </div>
+    <div class="nv active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>
+      Analyses
+    </div>
+    <div class="nv">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg>
+      État
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

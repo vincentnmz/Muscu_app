@@ -1,0 +1,149 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+      --text:#070B14; --muted:#4A5980; --subtle:#8595B8;
+      --accent:#1A5FFF; --accent-strong:#1248D4; --on-accent:#FFFFFF; --accent-a:rgba(26,95,255,.10);
+      --good:#00A854; --good-a:rgba(0,168,84,.12); --warn:#E07800; --warn-a:rgba(224,120,0,.12); --danger:#DC3545;
+      --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --head:'Michroma','Helvetica Neue',Arial,sans-serif;
+      --sh:0 6px 20px rgba(7,11,20,.08); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased;}
+    .phone{width:390px;height:844px;background:var(--bg);position:relative;overflow:hidden;}
+    .scroll{position:absolute;inset:0 0 66px 0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:18px 16px 18px;}
+    .scroll::-webkit-scrollbar{width:0}
+    .hd{display:flex;align-items:center;justify-content:space-between;}
+    .ttl{font-family:var(--head);font-size:17px;letter-spacing:.02em;}
+    .av{width:38px;height:38px;border-radius:999px;background:var(--surface2);color:var(--accent);font-family:var(--head);font-size:13px;display:grid;place-items:center;border:1px solid var(--border);}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh-sm);}
+    .hero{display:flex;align-items:center;gap:16px;padding:16px;border-radius:20px;box-shadow:var(--sh);background:var(--good-a);border:1px solid rgba(0,168,84,.22);}
+    .ring{width:64px;height:64px;flex:none;}
+    .hero .st{font-family:var(--head);font-size:17px;color:var(--good);}
+    .hero .ex{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;}
+    .sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtle);font-weight:700;margin:4px 2px -4px;}
+    .charge{padding:14px 15px;display:flex;flex-direction:column;gap:9px;}
+    .charge .rowh{display:flex;align-items:center;justify-content:space-between;}
+    .charge .rowh .k{font-weight:700;font-size:12.5px;}
+    .ratio{font-size:10.5px;font-weight:800;color:var(--good);background:var(--good-a);border-radius:6px;padding:3px 8px;}
+    .lg{display:flex;gap:12px;font-size:9.5px;color:var(--subtle);}
+    .lg i{width:16px;height:3px;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:4px;}
+    .days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:13px 13px;}
+    .dcol{display:flex;flex-direction:column;align-items:center;gap:6px;}
+    .dcol .lbl{font-size:9px;color:var(--subtle);font-weight:600;}
+    .dbar{width:11px;height:11px;border-radius:999px;}
+    .dg{background:var(--good);} .dw{background:var(--warn);} .dd{background:var(--danger);} .dn{background:var(--border);}
+    .er{display:flex;align-items:center;gap:12px;padding:11px 13px;}
+    .er + .er{border-top:1px solid var(--border);}
+    .er .ic{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;background:var(--surface2);color:var(--accent);}
+    .er .lab{flex:1;font-weight:600;font-size:13px;}
+    .er .val{font-size:11.5px;color:var(--subtle);margin-right:2px;}
+    .scale{display:flex;gap:4px;} .pip{width:9px;height:9px;border-radius:999px;background:var(--border);}
+    .pip.on{background:var(--good);} .pip.warn{background:var(--warn);}
+    .reco{display:flex;gap:11px;align-items:flex-start;padding:14px 15px;border-radius:16px;background:var(--accent-a);border:1px solid rgba(26,95,255,.18);}
+    .reco .t{font-size:12.5px;line-height:1.45;} .reco .t b{color:var(--accent-strong);}
+    .reco svg{flex:none;color:var(--accent);margin-top:1px;}
+    .nav{position:absolute;left:0;right:0;bottom:0;height:66px;background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;}
+    .nv{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--subtle);font-size:9.5px;font-weight:600;}
+    .nv.active{color:var(--accent);} .nv svg{width:22px;height:22px;}
+    .fabwrap{position:absolute;right:15px;bottom:80px;display:flex;align-items:center;gap:9px;z-index:6;}
+    .fabtip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh);border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);}
+    .fab{width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;}
+  </style>
+</helmet>
+
+<div class="phone">
+  <div class="scroll">
+
+    <div class="hd">
+      <div class="ttl">Mon état</div>
+      <div class="av">V</div>
+    </div>
+
+    <div class="hero">
+      <svg class="ring" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(0,168,84,.18)" stroke-width="4"/>
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="#00A854" stroke-width="4" stroke-linecap="round" stroke-dasharray="82 100" transform="rotate(-90 18 18)"/>
+        <text x="18" y="20.5" text-anchor="middle" font-family="Michroma" font-size="8" fill="#00A854">82</text>
+      </svg>
+      <div>
+        <div class="st">Favorable</div>
+        <div class="ex">Ton corps encaisse bien la charge. Bonnes conditions pour progresser aujourd'hui.</div>
+      </div>
+    </div>
+
+    <div class="sec">Charge & récupération · 14 jours</div>
+    <div class="card charge">
+      <div class="rowh"><span class="k">Équilibre charge / récup</span><span class="ratio">ACWR 1.1 · maîtrisé</span></div>
+      <svg width="100%" height="86" viewBox="0 0 320 86" preserveAspectRatio="none">
+        <line x1="0" y1="68" x2="320" y2="68" stroke="#D8E2FF" stroke-width="1"/>
+        <path d="M8 50 L52 44 L96 52 L140 38 L184 46 L228 34 L272 42 L312 36 L312 68 L8 68 Z" fill="rgba(26,95,255,.10)"/>
+        <path d="M8 50 L52 44 L96 52 L140 38 L184 46 L228 34 L272 42 L312 36" fill="none" stroke="#1A5FFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 56 L52 54 L96 55 L140 50 L184 51 L228 47 L272 48 L312 45" fill="none" stroke="#00A854" stroke-width="2.2" stroke-dasharray="4 4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="lg"><span><i style="background:#1A5FFF"></i>Charge aiguë (7j)</span><span><i style="background:#00A854"></i>Charge chronique (28j)</span></div>
+    </div>
+
+    <div class="sec">Poids · 3 mois</div>
+    <div class="card charge">
+      <div class="rowh"><span class="k">78,4 kg <span style="font-size:11px;color:var(--subtle);font-weight:600;">aujourd'hui</span></span><span class="ratio">−1,6 kg / 3 mois</span></div>
+      <svg width="100%" height="70" viewBox="0 0 320 70" preserveAspectRatio="none">
+        <line x1="0" y1="54" x2="320" y2="54" stroke="#D8E2FF" stroke-width="1"/>
+        <path d="M10 20 L60 24 L110 22 L160 30 L210 34 L260 40 L310 44" fill="none" stroke="#1A5FFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="310" cy="44" r="3.4" fill="#1A5FFF"/>
+      </svg>
+      <div class="lg"><span>juin · 80,0 kg</span><span>sept · 78,4 kg</span></div>
+    </div>
+
+    <div class="sec">Ton ressenti · 7 derniers jours</div>
+    <div class="card days">
+      <div class="dcol"><span class="dbar dg"></span><span class="lbl">L</span></div>
+      <div class="dcol"><span class="dbar dg"></span><span class="lbl">M</span></div>
+      <div class="dcol"><span class="dbar dw"></span><span class="lbl">M</span></div>
+      <div class="dcol"><span class="dbar dg"></span><span class="lbl">J</span></div>
+      <div class="dcol"><span class="dbar dw"></span><span class="lbl">V</span></div>
+      <div class="dcol"><span class="dbar dg"></span><span class="lbl">S</span></div>
+      <div class="dcol"><span class="dbar dg"></span><span class="lbl">D</span></div>
+    </div>
+
+    <div class="sec">Bien-être du jour</div>
+    <div class="card">
+      <div class="er"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span class="lab">Sommeil</span><span class="val">8h · réparateur</span><span class="scale"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i></span></div>
+      <div class="er"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/></svg></span><span class="lab">Mental</span><span class="val">motivé</span><span class="scale"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i></span></div>
+      <div class="er"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/></svg></span><span class="lab">Énergie</span><span class="val">haute</span><span class="scale"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip"></i></span></div>
+      <div class="er"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/></svg></span><span class="lab">Fatigue musculaire</span><span class="val">modérée</span><span class="scale"><i class="pip warn"></i><i class="pip warn"></i><i class="pip warn"></i><i class="pip"></i><i class="pip"></i></span></div>
+      <div class="er"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></span><span class="lab">Douleurs</span><span class="val">aucune</span><span class="scale"><i class="pip on"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span></div>
+    </div>
+
+    <div class="reco">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
+      <div class="t"><b>Reco du jour —</b> conditions favorables, fais ta séance prévue. Surveille les jambes (fatigue modérée depuis 3 séances).</div>
+    </div>
+
+  </div>
+
+  <div class="fabwrap">
+    <span class="fabtip">Demande à Novalyz</span>
+    <button class="fab"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
+  </div>
+
+  <div class="nav">
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Aujourd'hui</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</div>
+    <div class="nv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</div>
+    <div class="nv active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg>État</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
