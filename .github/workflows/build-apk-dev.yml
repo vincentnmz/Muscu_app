@@ -63,8 +63,22 @@ jobs:
           sed -i "s/versionCode 1/versionCode ${GITHUB_RUN_NUMBER}/" android/app/build.gradle
           grep -m1 versionCode android/app/build.gradle
 
-      # PAS d'injection de google-services.json → le plugin n'est pas appliqué
-      # (voir le try/catch de build.gradle) → build OK, push FCM inactif sur la Dev.
+      # Injecte google-services.json depuis le secret. Ce fichier contient
+      # DEUX paquets (com.novalyz.app ET com.novalyz.app.dev), donc le plugin
+      # trouve le client .dev → build OK + Firebase s'initialise → l'app s'ouvre
+      # (et le push FCM fonctionne aussi sur la Dev).
+      - name: Injecter google-services.json (config Firebase, depuis le secret)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Secret GOOGLE_SERVICES_JSON absent → la Dev planterait au lancement (Firebase non configuré). Build stoppé."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          echo "✓ google-services.json injecté ($(wc -c < android/app/google-services.json) octets)"
+          grep -o '"package_name": *"[^"]*"' android/app/google-services.json || true
+
       - name: Synchroniser Capacitor (www → android + plugins)
         run: npx cap sync android
 
