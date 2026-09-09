@@ -1,7 +1,7 @@
 # Novalyz — Contexte projet (lire en premier)
 
 > Ce fichier est lu automatiquement au début de chaque session. Il évite de tout ré-expliquer.
-> Réflexions de fond : [`docs/vision-produit.md`](./docs/vision-produit.md) · [`docs/roadmap-beta.md`](./docs/roadmap-beta.md) (route vers un test à grande échelle) · [`docs/animations.md`](./docs/animations.md) · archi détaillée : [`docs/`](./docs/).
+> Réflexions de fond : [`docs/vision-produit.md`](./docs/vision-produit.md) · [`docs/backlog-app.md`](./docs/backlog-app.md) (à faire & vérifier, athlète/coach) · [`docs/roadmap-beta.md`](./docs/roadmap-beta.md) (route vers un test à grande échelle) · [`docs/animations.md`](./docs/animations.md) · archi détaillée : [`docs/`](./docs/).
 
 ## Le projet en une phrase
 
