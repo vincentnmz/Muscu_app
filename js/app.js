@@ -9683,6 +9683,8 @@ function fermerSeancePage() {
   try { if (typeof seance !== 'undefined' && seance && seance.length) { if (!confirm('Quitter la séance en cours ? Tes séries saisies restent sauvegardées en brouillon.')) return; } } catch (e) {}
   document.body.classList.remove('seance-active');
   _seanceChronoStop();
+  _seanceChronoT0 = 0;
+  var _c = document.getElementById('seance-page-chrono'); if (_c) _c.textContent = '';
 }
 function _majSeancePageTitre() {
   var el = document.getElementById('seance-page-title'); if (!el) return;
@@ -9765,9 +9767,9 @@ function _enRenderSelMuscu() {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var sl = document.getElementById('en-slist'); if (!sl) return;
   if (!_enOrder.length) { sl.innerHTML = '<div class="en-muted">Aucune séance au programme. Utilise « Créer / modifier mon programme ».</div>'; return; }
-  if (!_enSelSeance || _enOrder.indexOf(_enSelSeance) === -1) _enSelSeance = _enOrder[0];
+  if (!_enSelSeance || (_enSelSeance !== 'Libre' && _enOrder.indexOf(_enSelSeance) === -1)) _enSelSeance = _enOrder.length ? _enOrder[0] : 'Libre';
   var svgD = '<svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>';
-  sl.innerHTML = _enOrder.map(function (sid) {
+  var html = _enOrder.map(function (sid) {
     var exos = _enByS[sid] || [], on = (sid === _enSelSeance);
     var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3).join(', ');
     return '<div class="en-sel' + (on ? ' on' : '') + '" onclick=\'_enSelectSeance(' + JSON.stringify(String(sid)) + ')\'>'
@@ -9775,13 +9777,20 @@ function _enRenderSelMuscu() {
       + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>'
       + '<span class="en-rad"></span></div>';
   }).join('');
+  // Carte « Séance libre » (toujours proposée) : exercices choisis à la volée.
+  var onL = (_enSelSeance === 'Libre');
+  html += '<div class="en-sel' + (onL ? ' on' : '') + '" onclick=\'_enSelectSeance("Libre")\'>'
+    + '<span class="ic"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>'
+    + '<div class="nm"><div class="a">Séance libre</div><div class="b">Choisis les exercices en cours de route</div></div>'
+    + '<span class="en-rad"></span></div>';
+  sl.innerHTML = html;
 }
 function _enRenderSelCardio() {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var g = document.getElementById('en-grid'); if (!g) return;
   g.innerHTML = _EN_ACTS.map(function (a) {
     var on = (a.t === _enSelActivite);
-    return '<div class="en-act' + (on ? ' on' : '') + '" onclick="_enSelectActivite(' + JSON.stringify(a.t) + ')">'
+    return '<div class="en-act' + (on ? ' on' : '') + '" onclick=\'_enSelectActivite(' + JSON.stringify(a.t) + ')\'>'
       + '<span class="en-rad"></span>'
       + '<span class="ic"><svg viewBox="0 0 24 24">' + a.svg + '</svg></span>'
       + '<div class="a">' + esc(a.label) + '</div><div class="b">' + esc(a.hint) + '</div></div>';
@@ -9789,8 +9798,10 @@ function _enRenderSelCardio() {
 }
 function _enDemarrer() {
   if (_enMode === 'cardio') {
+    try { _seanceChronoStop(); _seanceChronoT0 = Date.now(); } catch (e) {}
     ouvrirSeancePage();
     try { if (typeof switchModeSeance === 'function') switchModeSeance('cardio'); } catch (e) {}
+    try { _seanceChronoStart(); } catch (e) {}
     try { var ct = document.getElementById('cardio-type'); if (ct) { ct.value = _enSelActivite; if (typeof renderCardioFields === 'function') renderCardioFields(); } } catch (e) {}
     try { var cd = document.getElementById('cardio-date'); if (cd && !cd.value) { var t = new Date(); cd.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); } } catch (e) {}
     try { _majSeancePageTitre(); } catch (e) {}

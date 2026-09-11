@@ -85,6 +85,15 @@ body.seance-active #subtab-saisie   { position:fixed; inset:calc(56px + env(safe
                                       padding:14px 16px calc(28px + env(safe-area-inset-bottom,0px)); }
 body.seance-active #subtab-saisie > * { max-width:640px; margin-left:auto; margin-right:auto; }
 body.seance-active #seance-progress { top:0 !important; }
+/* Onglet Entraînement = HUB : la saisie inline (#subtab-saisie) n'apparaît QUE
+   en page plein écran (body.seance-active). Hors page → masquée (le hub +
+   l'agenda restent). !important pour battre le display inline de switchSubTab. */
+#tab-seance #subtab-saisie              { display:none !important; }
+body.seance-active #tab-seance #subtab-saisie { display:block !important; }
+/* En page séance : le mode (muscu/cardio) et la séance sont déjà choisis dans le
+   hub → on masque l'ancien switcher et le bloc « Ma séance » (date/type). */
+body.seance-active #mode-switch,
+body.seance-active #card-choix-seance   { display:none !important; }
 /* Reskin « Séance en cours » → look maquette (scopé à la page séance). */
 body.seance-active #subtab-saisie .card              { border-radius:18px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
 body.seance-active #seance-progress > div            { border-radius:18px; border-color:var(--border); box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
