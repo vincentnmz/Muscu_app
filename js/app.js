@@ -9636,14 +9636,26 @@ function _cxRender() {
  * « Réalisé » celles faites cette semaine (sinon « À faire »). */
 function _enStart(seanceId) {
   try {
+    // 1) rendre le panneau de saisie visible (sinon la séance démarre mais reste
+    //    masquée si le sous-onglet « programme » était actif), puis mode muscu.
+    if (typeof switchSubTab === 'function') switchSubTab('saisie');
     if (typeof switchModeSeance === 'function') switchModeSeance('muscu');
+    // 2) sélectionner la séance (ajouter l'option si absente) puis démarrer.
     var sel = document.getElementById('sel-seance-id');
     if (sel) {
       sel.value = seanceId;
-      if (sel.value === seanceId && typeof demarrerSeance === 'function') demarrerSeance();
+      if (sel.value !== seanceId) {
+        var opt = document.createElement('option'); opt.value = seanceId; opt.textContent = seanceId;
+        sel.appendChild(opt); sel.value = seanceId;
+      }
+      if (typeof demarrerSeance === 'function') demarrerSeance();
     }
-    var t = document.getElementById('card-choix-seance') || document.getElementById('saisie-block');
-    if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 3) défiler jusqu'aux exercices de la séance démarrée.
+    setTimeout(function () {
+      var t = document.getElementById('card-liste-seance');
+      if (!t || t.style.display === 'none') t = document.getElementById('card-choix-seance');
+      if (t) { if (typeof scrollVersTitre === 'function') scrollVersTitre(t); else t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }, 250);
   } catch (e) {}
 }
 function renderEntrainement(data) {
