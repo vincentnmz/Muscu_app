@@ -6776,6 +6776,7 @@ async function demarrerSeance() {
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
   _seanceEnvoyee = false;
+  try { _seanceChronoT0 = Date.now(); _seanceChronoStart(); } catch (e) {}
   _effacerBrouillon();
   { const _b=document.getElementById('brouillon-banner'); if(_b)_b.remove(); }
   document.getElementById('btn-valider').style.display = 'none';
@@ -7005,16 +7006,29 @@ function afficherListeSeance() {
         ? `<span style="font-size:11px;font-weight:800;color:var(--on-accent);background:var(--accent);border-radius:20px;padding:3px 10px;white-space:nowrap">À faire</span>`
         : `<span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:3px 10px;white-space:nowrap">${p.series_prevues} séries</span>`;
 
+    // Ligne au style maquette « Séance en cours » : icône statut + nom + objectif + chip.
+    const stCls = dejaDone ? 'done' : isNext ? 'cur' : 'todo';
+    const icoInner = dejaDone
+      ? '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>'
+      : isNext
+        ? '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+        : String(i + 1);
+    const chip = dejaDone
+      ? `<span class="sc-chip done">${seriesFaites} série${seriesFaites > 1 ? 's' : ''}</span>`
+      : isNext
+        ? `<span class="sc-chip cur">En cours</span>`
+        : `<span class="sc-chip todo">À faire</span>`;
+    const subTxt = dejaDone
+      ? `${seriesFaites} / ${p.series_prevues} séries faites`
+      : `Objectif : ${p.series_prevues} × ${p.reps_mini}-${p.reps_max} reps`;
     const div = document.createElement('div');
-    div.style.cssText = `background:var(--surface);border:${isNext ? '2px' : '1px'} solid ${borderColor};${groupeStyle}border-radius:var(--radius);padding:14px;margin-bottom:${p.groupe_id ? '2px' : '10px'};cursor:pointer`;
+    div.className = 'sc-exo ' + stCls;
+    div.style.cssText = groupeStyle;
     div.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="font-size:15px;font-weight:800;flex:1;min-width:0">${p.exercice}</div>
-        ${statutPill}
-        ${dejaDone ? `<button class="btn-sm btn-danger-sm reset-exo" title="Effacer les séries faites" style="padding:4px 8px;line-height:1"><svg class="ico"><use href="#i-trash"/></svg></button>` : ''}
-      </div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Objectif : ${p.series_prevues} séries · ${p.reps_mini}-${p.reps_max} reps</div>
-      ${perfHtml}${suggHtml}
+      <span class="sc-ico">${icoInner}</span>
+      <div class="sc-nm"><div class="a">${p.exercice}</div><div class="b">${subTxt}</div></div>
+      ${chip}
+      ${dejaDone ? `<button class="btn-sm reset-exo sc-del" title="Effacer les séries faites"><svg class="ico"><use href="#i-trash"/></svg></button>` : ''}
     `;
     const estGroupe = p.groupe_id && programmeSeance.filter(o => o.groupe_id === p.groupe_id).length >= 2;
     div.addEventListener('click', () => estGroupe
@@ -7048,15 +7062,12 @@ function ajouterCarteExoLibre(listeEl, e) {
   const seriesFaites = e.series.length;
   const perf = getPerf(e.exerciceNom);
   const div = document.createElement('div');
-  div.style.cssText = `background:var(--surface);border:1px solid ${seriesFaites > 0 ? 'var(--success)' : 'var(--border)'};border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;position:relative`;
+  div.className = 'sc-exo ' + (seriesFaites > 0 ? 'done' : 'todo');
   div.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <div style="font-size:15px;font-weight:800;flex:1;min-width:0">${e.exerciceNom}</div>
-      ${seriesFaites > 0 ? `<span style="font-size:11px;font-weight:700;color:var(--success);background:rgba(0,201,110,0.12);border-radius:20px;padding:3px 10px;white-space:nowrap">${seriesFaites} série${seriesFaites>1?"s":""}</span>` : `<span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:3px 10px;white-space:nowrap">Hors prog.</span>`}
-      <button class="btn-sm btn-danger-sm" title="Retirer cet exercice" style="padding:4px 8px;line-height:1"><svg class="ico"><use href="#i-trash"/></svg></button>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${e.muscle}</div>
-    ${perf ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Dernière fois : <strong style="color:var(--text)">${perf.last_charge}kg × ${perf.max_reps}</strong></div>` : '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Premier essai</div>'}
+    <span class="sc-ico">${seriesFaites > 0 ? '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : '+'}</span>
+    <div class="sc-nm"><div class="a">${e.exerciceNom}</div><div class="b">${e.muscle}${perf ? ' · dernière : ' + perf.last_charge + 'kg × ' + perf.max_reps : ''}</div></div>
+    ${seriesFaites > 0 ? `<span class="sc-chip done">${seriesFaites} série${seriesFaites>1?'s':''}</span>` : `<span class="sc-chip todo">Hors prog.</span>`}
+    <button class="btn-sm btn-danger-sm sc-del" title="Retirer cet exercice"><svg class="ico"><use href="#i-trash"/></svg></button>
   `;
   div.querySelector('.btn-danger-sm').addEventListener('click', (ev) => {
     ev.stopPropagation();
@@ -9655,16 +9666,23 @@ function _cxRender() {
 // Ouvre le flux de saisie en PAGE PLEIN ÉCRAN (body.seance-active) — l'en-tête
 // d'app et la barre du bas sont masqués, un bouton retour apparaît. Aucune
 // logique de saisie modifiée.
+var _seanceChronoT0 = 0, _seanceChronoIv = null;
+function _seanceChronoFmt(ms) { var s = Math.floor(ms / 1000), m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }
+function _seanceChronoTick() { var el = document.getElementById('seance-page-chrono'); if (!el) return; el.textContent = _seanceChronoT0 ? _seanceChronoFmt(Date.now() - _seanceChronoT0) : ''; }
+function _seanceChronoStart() { if (!_seanceChronoT0) _seanceChronoT0 = Date.now(); _seanceChronoTick(); if (_seanceChronoIv) clearInterval(_seanceChronoIv); _seanceChronoIv = setInterval(_seanceChronoTick, 1000); }
+function _seanceChronoStop() { if (_seanceChronoIv) { clearInterval(_seanceChronoIv); _seanceChronoIv = null; } }
 function ouvrirSeancePage() {
   try { if (typeof switchSubTab === 'function') switchSubTab('saisie'); } catch (e) {}
   document.body.classList.add('seance-active');
   var cont = document.getElementById('subtab-saisie'); if (cont) cont.scrollTop = 0;
   window.scrollTo(0, 0);
   _majSeancePageTitre();
+  if (_seanceChronoT0) _seanceChronoStart(); else _seanceChronoTick();
 }
 function fermerSeancePage() {
   try { if (typeof seance !== 'undefined' && seance && seance.length) { if (!confirm('Quitter la séance en cours ? Tes séries saisies restent sauvegardées en brouillon.')) return; } } catch (e) {}
   document.body.classList.remove('seance-active');
+  _seanceChronoStop();
 }
 function _majSeancePageTitre() {
   var el = document.getElementById('seance-page-title'); if (!el) return;

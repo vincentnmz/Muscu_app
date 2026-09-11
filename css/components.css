@@ -92,6 +92,25 @@ body.seance-active .exo-actuel-card                  { background:var(--surface)
 body.seance-active #card-liste-seance                { background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); padding:14px 15px; }
 body.seance-active #btn-valider                      { border-radius:14px; padding:15px; font-size:15px; box-shadow:0 6px 16px rgba(0,168,84,.28); }
 body.seance-active #card-choix-seance                { border-radius:18px; }
+/* Lignes d'exercices « Séance en cours » (style maquette) — classes dédiées. */
+.sc-exo{ display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--border); border-radius:15px; padding:12px 13px; margin-bottom:8px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); cursor:pointer; }
+.sc-exo.cur{ border-color:var(--accent); box-shadow:0 4px 14px rgba(26,95,255,.16); }
+.sc-exo .sc-ico{ width:28px; height:28px; border-radius:999px; flex:none; display:grid; place-items:center; font-size:12px; font-weight:800; }
+.sc-exo.done .sc-ico{ background:var(--good,#00A854); color:#fff; }
+.sc-exo.cur .sc-ico{ background:var(--accent); color:var(--on-accent,#fff); }
+.sc-exo.todo .sc-ico{ background:var(--surface2); color:var(--text-subtle); border:1.5px solid var(--border); }
+.sc-exo .sc-ico svg{ width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; }
+.sc-exo .sc-nm{ flex:1; min-width:0; }
+.sc-exo .sc-nm .a{ font-weight:700; font-size:13.5px; }
+.sc-exo .sc-nm .b{ font-size:11px; color:var(--text-subtle); margin-top:1px; }
+.sc-chip{ font-size:10.5px; font-weight:700; border-radius:999px; padding:4px 9px; flex:none; white-space:nowrap; }
+.sc-chip.done{ background:var(--good-a,rgba(0,168,84,.12)); color:var(--good,#00A854); }
+.sc-chip.cur{ background:var(--accent); color:var(--on-accent,#fff); }
+.sc-chip.todo{ background:var(--surface2); color:var(--text-muted); }
+.sc-del{ background:none; border:none; color:var(--text-subtle); padding:4px; cursor:pointer; flex:none; }
+.sc-del .ico{ width:16px; height:16px; }
+/* Chrono d'en-tête de la page séance */
+#seance-page-chrono{ display:inline-flex; align-items:center; gap:6px; background:var(--accent-a10,rgba(26,95,255,.10)); color:var(--accent-strong,#1248D4); border-radius:999px; padding:6px 11px; font-size:13px; font-weight:800; font-variant-numeric:tabular-nums; flex:none; }
 body.has-bottom-nav .toast { bottom:84px; }
 
 /* ===== Sous-onglets (pill row) ===== */
