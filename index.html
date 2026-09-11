@@ -905,31 +905,74 @@
         #tab-seance .en-add{ display:flex; align-items:center; justify-content:center; gap:8px; height:44px; border-radius:14px; border:1.5px dashed var(--border); background:transparent; color:var(--accent); font-family:inherit; font-weight:700; font-size:13.5px; cursor:pointer; }
         #tab-seance .en-add svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
         #tab-seance .en-muted{ font-size:12px; color:var(--text-muted); padding:4px 2px; }
-        #tab-seance .en-startbtn{ display:flex; align-items:center; justify-content:center; gap:9px; height:50px; border-radius:14px; background:var(--accent); color:#fff; border:none; font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; box-shadow:0 6px 16px rgba(26,95,255,.32); }
+        #tab-seance .en-startbtn{ display:flex; align-items:center; justify-content:center; gap:9px; height:52px; border-radius:14px; background:var(--accent); color:#fff; border:none; font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; box-shadow:0 6px 16px rgba(26,95,255,.32); }
         #tab-seance .en-startbtn svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-seance .en-startbtn.cardio{ background:#0EA5E9; box-shadow:0 6px 16px rgba(14,165,233,.32); }
+        /* Toggle Muscu / Cardio */
+        #tab-seance .en-seg{ display:flex; gap:5px; background:var(--surface2); border-radius:13px; padding:5px; }
+        #tab-seance .en-seg button{ flex:1; border:none; background:transparent; font-family:inherit; font-weight:700; font-size:13px; color:var(--text-muted); padding:10px 0; border-radius:9px; display:flex; align-items:center; justify-content:center; gap:7px; cursor:pointer; }
+        #tab-seance .en-seg button.on{ background:var(--surface); color:var(--accent); box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
+        #tab-seance .en-seg button.on.cx{ color:#0b7fb4; }
+        #tab-seance .en-seg button svg{ width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        /* Sélection de séance (carte + pastille radio) */
+        #tab-seance .en-sel{ display:flex; align-items:center; gap:12px; background:var(--surface); border:1.5px solid var(--border); border-radius:15px; padding:13px 14px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); cursor:pointer; }
+        #tab-seance .en-sel.on{ border-color:var(--accent); box-shadow:0 6px 18px rgba(26,95,255,.16); }
+        #tab-seance .en-sel .ic{ width:40px; height:40px; border-radius:12px; background:var(--surface2); color:var(--accent); display:grid; place-items:center; flex:none; }
+        #tab-seance .en-sel.on .ic{ background:var(--accent); color:#fff; }
+        #tab-seance .en-sel .ic svg{ width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-seance .en-sel .nm{ flex:1; min-width:0; }
+        #tab-seance .en-sel .nm .a{ font-weight:700; font-size:14px; }
+        #tab-seance .en-sel .nm .b{ font-size:11px; color:var(--text-subtle); margin-top:2px; }
+        #tab-seance .en-rad{ width:22px; height:22px; border-radius:999px; border:2px solid var(--border); flex:none; display:grid; place-items:center; }
+        #tab-seance .en-sel.on .en-rad{ border-color:var(--accent); }
+        #tab-seance .en-sel.on .en-rad::after{ content:""; width:11px; height:11px; border-radius:999px; background:var(--accent); }
+        /* Grille activités cardio */
+        #tab-seance .en-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        #tab-seance .en-act{ position:relative; display:flex; flex-direction:column; gap:8px; background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); cursor:pointer; }
+        #tab-seance .en-act.on{ border-color:#0EA5E9; box-shadow:0 6px 18px rgba(14,165,233,.16); }
+        #tab-seance .en-act .ic{ width:42px; height:42px; border-radius:12px; background:var(--surface2); color:#0EA5E9; display:grid; place-items:center; }
+        #tab-seance .en-act.on .ic{ background:#0EA5E9; color:#fff; }
+        #tab-seance .en-act .ic svg{ width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-seance .en-act .a{ font-weight:800; font-size:14px; }
+        #tab-seance .en-act .b{ font-size:10.5px; color:var(--text-subtle); }
+        #tab-seance .en-act .en-rad{ position:absolute; top:12px; right:12px; width:20px; height:20px; }
+        #tab-seance .en-act.on .en-rad{ border-color:#0EA5E9; }
+        #tab-seance .en-act.on .en-rad::after{ content:""; width:10px; height:10px; border-radius:999px; background:#0EA5E9; }
       </style>
       <div class="en-hub">
+        <!-- Mon programme (nb séances + stratégie + adhérence) -->
         <div class="en-card en-prog">
-          <div class="en-top">
-            <div>
-              <div class="en-label">Mon programme</div>
-              <h2 id="en-prog-nom">Mon programme</h2>
-              <div class="en-sub" id="en-prog-sub"></div>
-            </div>
-            <button class="en-ghost" onclick="ouvrirEditeurProgramme()"><svg width="13" height="13" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Ajuster</button>
-          </div>
+          <div class="en-label">Mon programme</div>
+          <h2 id="en-prog-nom">— séances</h2>
+          <div class="en-sub" id="en-prog-sub"></div>
           <div class="en-adh">
             <div class="en-bar"><span id="en-adh-bar" style="width:0%"></span></div>
             <div class="en-adh-txt"><b id="en-adh-v">—</b> <span id="en-adh-l">cette semaine</span></div>
           </div>
         </div>
 
-        <button class="en-startbtn" onclick="ouvrirSeancePage()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8V4z"/></svg>Démarrer une séance</button>
+        <!-- Toggle Musculation / Cardio -->
+        <div class="en-seg" id="en-seg">
+          <button id="en-seg-muscu" class="on" onclick="_enSetMode('muscu')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Musculation</button>
+          <button id="en-seg-cardio" onclick="_enSetMode('cardio')"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
+        </div>
 
-        <div class="en-sec">Tes séances</div>
-        <div class="en-slist" id="en-slist"></div>
+        <!-- Sélection MUSCU -->
+        <div id="en-sel-muscu">
+          <div class="en-sec">Choisis ta séance</div>
+          <div class="en-slist" id="en-slist"></div>
+        </div>
+        <!-- Sélection CARDIO -->
+        <div id="en-sel-cardio" style="display:none">
+          <div class="en-sec">Choisis ton activité</div>
+          <div class="en-grid" id="en-grid"></div>
+        </div>
 
-        <button class="en-add" onclick="ouvrirEditeurProgramme()"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Créer / modifier une séance</button>
+        <!-- Démarrer -->
+        <button class="en-startbtn" id="en-start" onclick="_enDemarrer()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8V4z"/></svg>Démarrer la séance</button>
+
+        <!-- Créer / modifier programme -->
+        <button class="en-add" onclick="ouvrirEditeurProgramme()"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Créer / modifier mon programme</button>
       </div>
 
       <!-- AGENDA (calendrier) -->

@@ -9736,25 +9736,85 @@ function fermerEditeurProgramme() {
   // Le programme a pu changer → recharger pour rafraîchir le hub et le sélecteur.
   if (typeof chargerAppData === 'function') chargerAppData();
 }
+// État de l'écran Entraînement (Option A) : mode (muscu/cardio) + sélection.
+var _enMode = 'muscu';
+var _enSelSeance = null;
+var _enSelActivite = 'velo';
+var _enOrder = [], _enByS = {};
+var _EN_ACTS = [
+  { t: 'velo', label: 'Vélo', hint: 'Distance · watts · FC', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>' },
+  { t: 'footing', label: 'Footing', hint: 'Distance · vitesse · FC', svg: '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>' },
+  { t: 'marche_normale', label: 'Marche', hint: 'Distance · pas · FC', svg: '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>' },
+  { t: 'marche_inclinee', label: 'Marche inclinée', hint: 'Pente · distance', svg: '<path d="M3 20h18M5 20 16 6M9 10l3 2"/>' },
+  { t: 'natation', label: 'Natation', hint: 'Distance · temps · FC', svg: '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01M9 12l4-3 3 2"/>' },
+  { t: 'autre', label: 'Autre', hint: 'Durée · RPE · kcal', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>' }
+];
+function _enSetMode(m) {
+  _enMode = m;
+  var bm = document.getElementById('en-seg-muscu'), bc = document.getElementById('en-seg-cardio');
+  if (bm) bm.classList.toggle('on', m === 'muscu');
+  if (bc) { bc.classList.toggle('on', m === 'cardio'); bc.classList.toggle('cx', m === 'cardio'); }
+  var sm = document.getElementById('en-sel-muscu'), sc = document.getElementById('en-sel-cardio');
+  if (sm) sm.style.display = (m === 'muscu') ? '' : 'none';
+  if (sc) sc.style.display = (m === 'cardio') ? '' : 'none';
+  var st = document.getElementById('en-start'); if (st) st.classList.toggle('cardio', m === 'cardio');
+}
+function _enSelectSeance(sid) { _enSelSeance = sid; _enRenderSelMuscu(); }
+function _enSelectActivite(t) { _enSelActivite = t; _enRenderSelCardio(); }
+function _enRenderSelMuscu() {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var sl = document.getElementById('en-slist'); if (!sl) return;
+  if (!_enOrder.length) { sl.innerHTML = '<div class="en-muted">Aucune séance au programme. Utilise « Créer / modifier mon programme ».</div>'; return; }
+  if (!_enSelSeance || _enOrder.indexOf(_enSelSeance) === -1) _enSelSeance = _enOrder[0];
+  var svgD = '<svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>';
+  sl.innerHTML = _enOrder.map(function (sid) {
+    var exos = _enByS[sid] || [], on = (sid === _enSelSeance);
+    var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3).join(', ');
+    return '<div class="en-sel' + (on ? ' on' : '') + '" onclick=\'_enSelectSeance(' + JSON.stringify(String(sid)) + ')\'>'
+      + '<span class="ic">' + svgD + '</span>'
+      + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>'
+      + '<span class="en-rad"></span></div>';
+  }).join('');
+}
+function _enRenderSelCardio() {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var g = document.getElementById('en-grid'); if (!g) return;
+  g.innerHTML = _EN_ACTS.map(function (a) {
+    var on = (a.t === _enSelActivite);
+    return '<div class="en-act' + (on ? ' on' : '') + '" onclick="_enSelectActivite(' + JSON.stringify(a.t) + ')">'
+      + '<span class="en-rad"></span>'
+      + '<span class="ic"><svg viewBox="0 0 24 24">' + a.svg + '</svg></span>'
+      + '<div class="a">' + esc(a.label) + '</div><div class="b">' + esc(a.hint) + '</div></div>';
+  }).join('');
+}
+function _enDemarrer() {
+  if (_enMode === 'cardio') {
+    ouvrirSeancePage();
+    try { if (typeof switchModeSeance === 'function') switchModeSeance('cardio'); } catch (e) {}
+    try { var ct = document.getElementById('cardio-type'); if (ct) { ct.value = _enSelActivite; if (typeof renderCardioFields === 'function') renderCardioFields(); } } catch (e) {}
+    try { var cd = document.getElementById('cardio-date'); if (cd && !cd.value) { var t = new Date(); cd.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); } } catch (e) {}
+    try { _majSeancePageTitre(); } catch (e) {}
+  } else {
+    if (_enSelSeance) _enStart(_enSelSeance);
+    else ouvrirSeancePage();
+  }
+}
 function renderEntrainement(data) {
   data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null) || {};
-  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var prog = Array.isArray(data.programme) ? data.programme : [];
-
-  // Séances distinctes du programme (ordre d'apparition) + nb d'exercices.
-  var order = [], byS = {};
+  _enOrder = []; _enByS = {};
   prog.forEach(function (p) {
     if (!p || !p.seance_id) return;
-    if (!byS[p.seance_id]) { byS[p.seance_id] = []; order.push(p.seance_id); }
-    byS[p.seance_id].push(p);
+    if (!_enByS[p.seance_id]) { _enByS[p.seance_id] = []; _enOrder.push(p.seance_id); }
+    _enByS[p.seance_id].push(p);
   });
-
-  // Programme : nom + résumé + adhérence (régularité réelle).
+  // Programme : nb séances + stratégie + adhérence (régularité réelle).
   try {
     var nomEl = document.getElementById('en-prog-nom');
-    if (nomEl) { var strat = ''; try { strat = (athlete && athlete.strategie) ? String(athlete.strategie).trim() : ''; } catch (e0) {} nomEl.textContent = strat || 'Mon programme'; }
+    if (nomEl) nomEl.textContent = _enOrder.length ? (_enOrder.length + ' séance' + (_enOrder.length > 1 ? 's' : '')) : 'Aucune séance';
+    var strat = ''; try { strat = (athlete && athlete.strategie) ? String(athlete.strategie).trim() : ''; } catch (e0) {}
     var subEl = document.getElementById('en-prog-sub');
-    if (subEl) subEl.textContent = order.length ? (order.length + ' séance' + (order.length > 1 ? 's' : '') + ' · ' + prog.length + ' exercice' + (prog.length > 1 ? 's' : '')) : 'Aucune séance — crée ton programme';
+    if (subEl) subEl.textContent = _enOrder.length ? ((strat || 'Programme personnalisé') + ' · ' + prog.length + ' exercice' + (prog.length > 1 ? 's' : '')) : 'Crée ton programme pour commencer';
     var reg = (data.dashboard && data.dashboard.regularite) || {};
     var done = (reg.seances_semaine != null) ? Number(reg.seances_semaine) : Number(reg.seances_j7 || 0);
     var goal = Number(reg.seances_prevues || 4) || 4;
@@ -9763,44 +9823,9 @@ function renderEntrainement(data) {
     var vEl = document.getElementById('en-adh-v'); if (vEl) vEl.textContent = pct + '%';
     var lEl = document.getElementById('en-adh-l'); if (lEl) lEl.textContent = done + '/' + goal + ' cette semaine';
   } catch (e) {}
-
-  // Séances faites cette semaine (dernieres_seances : date fmtFR dd/mm/yyyy).
-  var doneThisWeek = {};
-  try {
-    var ds = (data.global && Array.isArray(data.global.dernieres_seances)) ? data.global.dernieres_seances : [];
-    var now = new Date(); now.setHours(0, 0, 0, 0);
-    var dow = (now.getDay() + 6) % 7; // 0 = lundi
-    var monday = new Date(now.getTime() - dow * 86400000);
-    ds.forEach(function (s) {
-      if (!s || !s.date || !s.seance_id) return;
-      var p = String(s.date).split('/');
-      if (p.length !== 3) return;
-      var d = new Date(+p[2], +p[1] - 1, +p[0]); d.setHours(0, 0, 0, 0);
-      if (d >= monday && d <= now) doneThisWeek[s.seance_id] = true;
-    });
-  } catch (e) {}
-
-  // Liste des séances (cliquables → démarre la saisie existante).
-  try {
-    var sl = document.getElementById('en-slist');
-    if (sl) {
-      if (!order.length) {
-        sl.innerHTML = '<div class="en-muted">Aucune séance au programme pour l’instant. Utilise « Créer / modifier une séance ».</div>';
-      } else {
-        sl.innerHTML = order.map(function (sid) {
-          var exos = byS[sid] || [];
-          var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3).join(', ');
-          var fait = !!doneThisWeek[sid];
-          var chip = fait
-            ? '<span class="en-chip done"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Réalisé</span>'
-            : '<span class="en-chip todo">À faire</span>';
-          return '<div class="en-srow" onclick=\'_enStart(' + JSON.stringify(String(sid)) + ')\'>'
-            + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>'
-            + chip + '</div>';
-        }).join('');
-      }
-    }
-  } catch (e) {}
+  try { _enRenderSelMuscu(); } catch (e) {}
+  try { _enRenderSelCardio(); } catch (e) {}
+  try { _enSetMode(_enMode); } catch (e) {}
 }
 
 function _appliquerAppData(data) {
