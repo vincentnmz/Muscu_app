@@ -1782,7 +1782,12 @@ function seDeconnecter() {
   document.getElementById('view-app').classList.remove('active');
   document.getElementById('tabs-bar').style.display = 'none';
   document.body.classList.remove('has-bottom-nav');
+  // Quitter proprement la page séance plein écran (sinon en-tête retour reste).
+  document.body.classList.remove('seance-active');
+  try { _seanceChronoStop(); _seanceChronoT0 = 0; } catch (e) {}
   document.getElementById('btn-logout').style.display = 'none';
+  { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'none'; }
+  { var _br = document.getElementById('btn-reglages-hdr'); if (_br) _br.style.display = 'none'; }
   document.getElementById('inp-login').value = '';
   document.getElementById('inp-password').value = '';
   document.getElementById('login-error').textContent = '';
@@ -5737,7 +5742,7 @@ function renderProgrammeCoach() {
         </div>`;
     }).join('');
 
-    const ouvert = (seanceId in cdProgOpen) ? cdProgOpen[seanceId] : (si === 0);
+    const ouvert = (seanceId in cdProgOpen) ? cdProgOpen[seanceId] : false;
     return `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:0;margin-bottom:12px;overflow:hidden">
       <div onclick='cdToggleSeanceProg(${si}, ${JSON.stringify(seanceId)})' style="display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:var(--accent-a08);cursor:pointer">
@@ -5769,7 +5774,7 @@ function cdToggleExo(rowIndex) {
 // État d'ouverture des séances (accordéon) — conservé entre les re-rendus
 let cdProgOpen = {};
 function cdToggleSeanceProg(si, seanceId) {
-  cdProgOpen[seanceId] = !((seanceId in cdProgOpen) ? cdProgOpen[seanceId] : (si === 0));
+  cdProgOpen[seanceId] = !((seanceId in cdProgOpen) ? cdProgOpen[seanceId] : false);
   const body = document.getElementById('prog-body-' + si);
   const arrow = document.getElementById('prog-arrow-' + si);
   if (body) body.style.display = cdProgOpen[seanceId] ? 'block' : 'none';
@@ -9679,8 +9684,29 @@ function ouvrirSeancePage() {
   _majSeancePageTitre();
   if (_seanceChronoT0) _seanceChronoStart(); else _seanceChronoTick();
 }
+// Flèche ← de la page séance : si un exercice est ouvert → retour à la LISTE des
+// exercices de la séance ; sinon → quitter la page (retour au hub).
+function _seanceBack() {
+  var exo = document.getElementById('card-exo-actuel');
+  if (exo && exo.style.display !== 'none' && typeof retourListeSeance === 'function') { retourListeSeance(); return; }
+  fermerSeancePage();
+}
 function fermerSeancePage() {
-  try { if (typeof seance !== 'undefined' && seance && seance.length) { if (!confirm('Quitter la séance en cours ? Tes séries saisies restent sauvegardées en brouillon.')) return; } } catch (e) {}
+  var enCours = false;
+  try { enCours = (typeof seance !== 'undefined' && seance && seance.length > 0); } catch (e) {}
+  if (enCours && !confirm('Quitter la séance ? Les séries non validées seront perdues.')) return;
+  // Quitter = abandonner la séance en cours (une seule confirmation ; pas de 2e
+  // avertissement au prochain démarrage puisque l'état est remis à zéro).
+  if (enCours) {
+    try {
+      seance = []; exoEnCours = null; serieNum = 1; _seanceEnvoyee = false;
+      if (typeof _effacerBrouillon === 'function') _effacerBrouillon();
+      var _b = document.getElementById('brouillon-banner'); if (_b) _b.remove();
+      var _ca = document.getElementById('card-exo-actuel'); if (_ca) _ca.style.display = 'none';
+      var _cl = document.getElementById('card-liste-seance'); if (_cl) _cl.style.display = 'none';
+      var _bv = document.getElementById('btn-valider'); if (_bv) _bv.style.display = 'none';
+    } catch (e) {}
+  }
   document.body.classList.remove('seance-active');
   _seanceChronoStop();
   _seanceChronoT0 = 0;
@@ -9725,6 +9751,7 @@ function _enStart(seanceId) {
  * séance à jour. */
 function ouvrirEditeurProgramme() {
   if (typeof athlete === 'undefined' || !athlete) return;
+  try { cdProgOpen = {}; } catch (e) {}   // toutes les séances fermées à l'ouverture
   try {
     progCtx = { el: 'prog-editor-content', athleteId: athlete.athlete_id, athleteNom: athlete.nom || '', readonly: false };
   } catch (e) { return; }
