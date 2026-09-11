@@ -9028,6 +9028,28 @@ function _safe(label, fn) {
   try { fn(); } catch (e) { console.error('Rendu « ' + label + ' » a échoué :', e); }
 }
 
+// Accueil « Aujourd'hui » (refonte maquette) : remplit les valeurs dynamiques
+// (prénom, date, régularité). Les autres blocs restent visuels pour l'instant,
+// on les branchera aux données au fil des phases.
+function renderAujourdhui(data) {
+  var prenom = 'Athlète';
+  try { if (athlete && athlete.nom) prenom = String(athlete.nom).trim().split(/\s+/)[0]; } catch (e) {}
+  var elP = document.getElementById('tj-prenom'); if (elP) elP.textContent = 'Bonjour ' + prenom;
+  try {
+    var s = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    s = s.charAt(0).toUpperCase() + s.slice(1);
+    var elD = document.getElementById('tj-date'); if (elD) elD.textContent = s;
+  } catch (e) {}
+  try {
+    var reg = (data && data.dashboard && data.dashboard.regularite) || {};
+    var faites = (reg.seances_semaine != null) ? reg.seances_semaine : (reg.seances_j7 || 0);
+    var prevues = reg.seances_prevues || 4;
+    var elR = document.getElementById('tj-reg'); if (elR) elR.textContent = faites + ' / ' + prevues + ' cette semaine';
+    var elW = document.getElementById('tj-reg-week');
+    if (elW) { var n = Math.max(prevues || 0, 4), h = ''; for (var i = 0; i < n; i++) { h += '<span class="tj-wk' + (i < faites ? ' on' : '') + '"></span>'; } elW.innerHTML = h; }
+  } catch (e) {}
+}
+
 function _appliquerAppData(data) {
   // Stocker les données globalement
   dernierAppData = data;
@@ -9051,6 +9073,9 @@ function _appliquerAppData(data) {
 
     // Objectif : bloc Récompenses (paliers + cagnotte auto)
     _safe('recompenses', () => renderRecompenses(data));
+
+    // Accueil « Aujourd'hui » (refonte maquette) — prénom, date, régularité.
+    _safe('aujourdhui', () => renderAujourdhui(data));
 
     // Jours de cardio (clés DD/MM/YYYY) → heatmap de régularité (muscu + cardio) + agenda coloré
     _safe('cardio-agg', () => {

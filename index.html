@@ -62,7 +62,7 @@
   <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2z"/></symbol>
 </defs></svg>
 
-<header>
+<header id="app-header">
   <h1><svg id="brand-ico" class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use id="brand-ico-use" href="#i-dumbbell"/></svg><span id="header-nom">Novalyz</span></h1>
   <div style="display:flex;align-items:center;gap:10px;">
     <button id="btn-reglages-hdr" onclick="switchTab('reglages')" title="Réglages" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
@@ -711,86 +711,149 @@
 
     <!-- ONGLET ACCUEIL -->
     <div id="tab-accueil" class="tab-content active dash">
+      <style id="tj-css">
+      #tab-accueil.dash{--tj-bg:#F9FBFF;--tj-surface:#FFFFFF;--tj-surface2:#EEF3FF;--tj-border:#D8E2FF;--tj-text:#070B14;--tj-muted:#4A5980;--tj-subtle:#8595B8;--tj-accent:#1A5FFF;--tj-accent-strong:#1248D4;--tj-accent-a:rgba(26,95,255,.10);--tj-good:#00A854;--tj-good-a:rgba(0,168,84,.12);--tj-warn:#E07800;--tj-gold:#E0A100;--tj-gold-a:rgba(224,161,0,.13);--tj-sh:0 6px 20px rgba(7,11,20,.08);--tj-sh-sm:0 1px 2px rgba(7,11,20,.06);--tj-font:'Quicksand','Helvetica Neue',Arial,sans-serif;--tj-head:'Michroma','Helvetica Neue',Arial,sans-serif;}
+      .tj{display:flex;flex-direction:column;gap:12px;padding:16px 16px 90px;font-family:var(--tj-font);color:var(--tj-text);}
+      .tj *{box-sizing:border-box;}
+      .tj-hd{display:flex;align-items:flex-start;justify-content:space-between;}
+      .tj-wm{font-family:var(--tj-head);font-size:10px;letter-spacing:.16em;color:var(--tj-subtle);}
+      .tj-hi{font-family:var(--tj-head);font-size:18px;margin-top:4px;}
+      .tj-date{font-size:11px;color:var(--tj-subtle);margin-top:3px;}
+      .tj-hicons{display:flex;gap:8px;}
+      .tj-hibtn{width:38px;height:38px;border-radius:11px;background:var(--tj-surface);border:1px solid var(--tj-border);color:var(--tj-muted);display:grid;place-items:center;position:relative;box-shadow:var(--tj-sh-sm);cursor:pointer;}
+      .tj-hibtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      .tj-hibtn.tj-badge::after{content:attr(data-badge);position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;border-radius:999px;background:var(--tj-warn);color:#fff;font-size:9px;font-weight:800;display:grid;place-items:center;border:1.5px solid var(--tj-bg);padding:0 3px;}
+      .tj-card{background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:20px;box-shadow:var(--tj-sh-sm);}
+      .tj-banner{display:flex;gap:12px;align-items:center;padding:12px 15px;border-radius:16px;background:var(--tj-good-a);border:1px solid rgba(0,168,84,.2);}
+      .tj-dot{width:10px;height:10px;border-radius:999px;flex:none;background:var(--tj-good);}
+      .tj-banner .t{font-weight:700;font-size:14px;color:var(--tj-good);}.tj-banner .s{font-size:11.5px;color:var(--tj-muted);margin-top:1px;}
+      .tj-label{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tj-accent);font-weight:700;}
+      .tj-seance{padding:16px 17px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--tj-sh);}
+      .tj-seance h2{font-family:var(--tj-head);font-size:18px;margin:3px 0 0;}
+      .tj-meta{font-size:12px;color:var(--tj-subtle);}
+      .tj-focus{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--tj-muted);background:var(--tj-surface2);border-radius:12px;padding:8px 11px;}
+      .tj-focus b{color:var(--tj-text);font-weight:700;}.tj-focus svg{color:var(--tj-accent);flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      .tj-cta{display:flex;align-items:center;justify-content:center;gap:9px;height:50px;border-radius:14px;background:var(--tj-accent);color:#fff;font-family:var(--tj-font);font-weight:700;font-size:15px;border:none;box-shadow:0 6px 16px rgba(26,95,255,.32);cursor:pointer;}
+      .tj-cta svg{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+      .tj-other{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:12px;background:var(--tj-surface);border:1px solid var(--tj-border);color:var(--tj-accent);font-family:var(--tj-font);font-weight:700;font-size:13px;cursor:pointer;}
+      .tj-other svg{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+      .tj-bwrap{padding:13px 14px;display:flex;flex-direction:column;gap:11px;}
+      .tj-brow{display:flex;align-items:center;justify-content:space-between;}
+      .tj-brow .k{font-weight:700;font-size:13px;}.tj-brow .u{font-size:11px;color:var(--tj-accent);font-weight:600;cursor:pointer;}
+      .tj-bgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+      .tj-bcell{display:flex;flex-direction:column;align-items:center;gap:5px;}
+      .tj-bcell .ic{color:var(--tj-muted);}.tj-bcell .ic svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      .tj-bcell .nm{font-size:9.5px;color:var(--tj-subtle);font-weight:600;text-align:center;}
+      .tj-bpips{display:flex;gap:2px;}.tj-bp{width:5px;height:5px;border-radius:999px;background:var(--tj-border);}.tj-bp.on{background:var(--tj-good);}.tj-bp.warn{background:var(--tj-warn);}
+      .tj-rew{padding:14px 15px;display:flex;flex-direction:column;gap:12px;border:1px solid rgba(224,161,0,.3);background:linear-gradient(180deg,var(--tj-gold-a),var(--tj-surface));}
+      .tj-rew .rowh{display:flex;align-items:center;justify-content:space-between;}
+      .tj-rew .rowh .k{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;}
+      .tj-rew .rowh .k svg{color:var(--tj-gold);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      .tj-rew .prog{font-family:var(--tj-head);font-size:15px;color:var(--tj-gold);}
+      .tj-newpr{display:flex;align-items:center;gap:11px;background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:13px;padding:10px 12px;}
+      .tj-newpr .medal{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--tj-gold-a);color:var(--tj-gold);}
+      .tj-newpr .medal svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      .tj-newpr .a{font-weight:700;font-size:13px;}.tj-newpr .b{font-size:11px;color:var(--tj-subtle);margin-top:1px;}
+      .tj-miles{display:flex;flex-direction:column;gap:6px;}
+      .tj-miles .lh{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--tj-muted);}.tj-miles .lh b{color:var(--tj-text);}
+      .tj-mbar{height:8px;border-radius:999px;background:var(--tj-surface2);overflow:hidden;}.tj-mbar span{display:block;height:100%;background:var(--tj-gold);border-radius:999px;}
+      .tj-badges{display:flex;gap:7px;}
+      .tj-bdg{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:11px;padding:8px 4px;}
+      .tj-bdg .n{font-size:9.5px;color:var(--tj-muted);font-weight:700;text-align:center;}.tj-bdg svg{color:var(--tj-gold);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      .tj-nova{display:flex;gap:12px;padding:14px 15px;align-items:flex-start;background:linear-gradient(180deg,var(--tj-accent-a),var(--tj-surface));border:1px solid rgba(26,95,255,.18);border-radius:16px;}
+      .tj-nova .logo{width:32px;height:32px;border-radius:10px;background:var(--tj-accent);color:#fff;display:grid;place-items:center;flex:none;font-family:var(--tj-head);font-size:12px;}
+      .tj-nova .k{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--tj-accent-strong);}
+      .tj-nova .t{font-size:12.5px;line-height:1.45;margin-top:3px;}
+      .tj-row{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;}
+      .tj-row .k{font-weight:700;font-size:13px;}
+      .tj-week{display:flex;gap:6px;align-items:center;}.tj-wk{width:24px;height:8px;border-radius:999px;background:var(--tj-border);}.tj-wk.on{background:var(--tj-accent);}
+      .tj-fabwrap{position:fixed;right:15px;bottom:80px;display:flex;align-items:center;gap:9px;z-index:40;}
+      .tj-fabtip{background:var(--tj-surface);border:1px solid var(--tj-border);box-shadow:var(--tj-sh);border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--tj-text);}
+      .tj-fab{width:56px;height:56px;border-radius:999px;background:var(--tj-accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;}
+      .tj-fab svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      /* Accueil « Aujourd'hui » = son propre en-tête → on masque l'en-tête d'app ici (les autres onglets le gardent). */
+      body.on-accueil #app-header{display:none;}
+      body.on-accueil #main-container{padding-top:0;}
+      </style>
 
-      <!-- HERO : semaine + salut + prochaine séance -->
-      <div class="v2-hero">
-        <div class="v2-hero-top">
-          <div class="ring-wrap" style="width:72px;height:72px;">
-            <svg viewBox="0 0 60 60" width="72" height="72">
-              <circle class="ring-bg" cx="30" cy="30" r="26"/>
-              <circle class="ring-fg" id="dash-ring-semaine" cx="30" cy="30" r="26" stroke-dasharray="163.4" stroke-dashoffset="163.4"/>
-            </svg>
-            <div class="ring-label" style="font-size:22px;">
-              <span id="dash-seances-faites">—</span>
-              <span style="font-size:9px;color:var(--text-muted);font-weight:700;margin-top:1px;">/ <span id="dash-seances-prevues">—</span> séances</span>
-            </div>
+      <div class="tj">
+        <div class="tj-hd">
+          <div>
+            <div class="tj-wm">NOVALYZ</div>
+            <div class="tj-hi" id="tj-prenom">Bonjour</div>
+            <div class="tj-date" id="tj-date"></div>
           </div>
-          <div style="min-width:0;flex:1;">
-            <div class="v2-hi">Bonjour 👋</div>
-            <div class="v2-name" id="dash-hero-name">Athlète</div>
-            <div class="v2-week" id="dash-semaine-msg"></div>
+          <div class="tj-hicons">
+            <button class="tj-hibtn" id="tj-btn-msg" title="Messages" onclick="switchTab('conseils')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg></button>
+            <button class="tj-hibtn" title="Réglages" onclick="switchTab('reglages')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 6.7 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 12.6a2 2 0 0 1 0-4 1.6 1.6 0 0 0 1.5-2.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 3V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
+            <button class="tj-hibtn" title="Déconnexion" onclick="seDeconnecter()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
           </div>
         </div>
-        <div class="v2-cta" id="dash-next-seance">
-          <div style="color:var(--text-muted);font-size:13px;padding:8px 2px;">Chargement...</div>
+
+        <div class="tj-banner">
+          <span class="tj-dot"></span>
+          <div><div class="t">Prêt à performer</div><div class="s">Sommeil 8h · énergie haute · récupération OK</div></div>
+        </div>
+
+        <div class="tj-card tj-seance">
+          <div><div class="tj-label">Séance du jour</div><h2>Haut du corps</h2></div>
+          <div class="tj-meta">≈ 1h05 · 6 exercices · Push</div>
+          <div class="tj-focus">
+            <svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>Focus : progresser sur le <b>développé incliné</b></span>
+          </div>
+          <button class="tj-cta" onclick="switchTab('seance')"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>Commencer ma séance</button>
+          <button class="tj-other" onclick="switchTab('seance')"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Démarrer une autre séance</button>
+        </div>
+
+        <div class="tj-card tj-bwrap">
+          <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="switchTab('seance')">Mettre à jour ›</span></div>
+          <div class="tj-bgrid">
+            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span class="tj-bpips"><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i></span><span class="nm">Sommeil</span></div>
+            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/></svg></span><span class="tj-bpips"><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i></span><span class="nm">Mental</span></div>
+            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/></svg></span><span class="tj-bpips"><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i></span><span class="nm">Énergie</span></div>
+            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/></svg></span><span class="tj-bpips"><i class="tj-bp warn"></i><i class="tj-bp warn"></i><i class="tj-bp warn"></i></span><span class="nm">Fatigue</span></div>
+            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></span><span class="tj-bpips"><i class="tj-bp on"></i></span><span class="nm">Douleurs</span></div>
+          </div>
+        </div>
+
+        <div class="tj-card tj-rew">
+          <div class="rowh">
+            <span class="k"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg>Récompenses</span>
+            <span class="prog" id="tj-prog">+12% ce mois</span>
+          </div>
+          <div class="tj-newpr">
+            <span class="medal"><svg width="19" height="19" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
+            <div><div class="a">Nouveau record débloqué</div><div class="b">Développé incliné · 62,5 kg (+7,5 kg)</div></div>
+          </div>
+          <div class="tj-miles">
+            <div class="lh"><span>Défi du mois : <b>10 séances</b></span><span><b id="tj-mdone">8</b>/10</span></div>
+            <div class="tj-mbar"><span id="tj-mbar" style="width:80%"></span></div>
+          </div>
+          <div class="tj-badges">
+            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="n">Série 5 sem.</span></div>
+            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="n">2 records</span></div>
+            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="n">1,2 t / séance</span></div>
+          </div>
+        </div>
+
+        <div class="tj-nova">
+          <span class="logo">N</span>
+          <div>
+            <div class="k">Le mot de Novalyz</div>
+            <div class="t" id="tj-nova-txt">Belle dynamique cette semaine, tu progresses au développé. Mais ta fatigue jambes monte depuis 3 séances : garde la charge sur le bas du corps et concentre-toi sur le haut aujourd'hui.</div>
+          </div>
+        </div>
+
+        <div class="tj-card tj-row">
+          <div><div class="k">Régularité</div><div class="tj-meta" id="tj-reg" style="margin-top:2px">— / — cette semaine</div></div>
+          <div class="tj-week" id="tj-reg-week"><span class="tj-wk"></span><span class="tj-wk"></span><span class="tj-wk"></span><span class="tj-wk"></span></div>
         </div>
       </div>
 
-      <!-- Cockpit (Phase 5A) — rempli par renderCockpit(data,'dash') si COCKPIT_ON. Vide sinon. -->
-      <div id="dash-cockpit"></div>
-
-      <!-- Contexte de performance (lecture seule pour l'athlète) -->
-      <div id="dash-contexte"></div>
-
-      <!-- État du jour (synthèse questionnaire bien-être) -->
-      <div class="v2-sec" id="dash-etat-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</h2></div>
-      <div class="dash-card" id="dash-etat-card" style="padding:16px;display:none;">
-        <div id="dash-etat-content"></div>
-      </div>
-
-      <!-- Analyse Novalyz (moteur d'interprétation) — visible seulement s'il y a une analyse -->
-      <div class="v2-sec" id="dash-analyse-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Analyse Novalyz</h2></div>
-      <div class="dash-card" id="dash-analyse-card" style="padding:12px;display:none;">
-        <div id="dash-analyse-content"></div>
-      </div>
-
-      <!-- État de forme (récupération) -->
-      <div class="v2-sec" id="dash-recup-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</h2></div>
-      <div class="dash-card" id="dash-recup-card" style="padding:16px;">
-        <div id="dash-recup-content"><div class="loader">Chargement...</div></div>
-      </div>
-
-      <!-- KPI ROW — Charge récente + Évolution -->
-      <div class="v2-kpis" id="dash-kpis" style="display:none;"></div>
-
-      <!-- Dernière séance -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-dumbbell"/></svg>Dernière séance</h2></div>
-      <div class="dash-card" style="padding:16px;">
-        <div id="dash-last-seance"><div class="loader">Chargement...</div></div>
-      </div>
-
-      <!-- Progression (7j glissants → détail) -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</h2><div class="more" onclick="switchTab('historique')" style="cursor:pointer;">Voir tout →</div></div>
-      <div class="dash-card" id="dash-prog-card" style="padding:16px;cursor:pointer;" onclick="ouvrirDrawer()">
-        <div id="dash-prog-content"><div class="loader">Chargement...</div></div>
-      </div>
-
-      <!-- Cardio — résumé multi-fenêtre (masqué sans données) -->
-      <div class="v2-sec" id="dash-cardio-sec" style="display:none;cursor:pointer;" onclick="allerVersCardioHist()"><h2 class="st">🏃 Cardio</h2></div>
-      <div class="dash-card" id="dash-cardio-card" style="padding:16px;display:none;cursor:pointer;" onclick="allerVersCardioHist()" title="Voir l'historique cardio">
-        <div id="dash-cardio-content"></div>
-      </div>
-
-      <!-- Alertes (stagnation / absence / fatigue) — visible seulement s'il y a une alerte -->
-      <div class="v2-sec" id="dash-alertes-sec" style="display:none;"><div class="st" style="color:var(--warn);"><svg class="ico"><use href="#i-alert"/></svg>Alertes</div></div>
-      <div class="dash-card" id="dash-alertes-card" style="padding:12px;display:none;">
-        <div id="dash-alertes-content"></div>
-      </div>
-
-      <!-- Régularité — heatmap + streak (cliquable → agenda de l'onglet Séance) -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité</h2><div class="more" onclick="allerVersAgendaSeance()" style="cursor:pointer;">Agenda →</div></div>
-      <div class="dash-card" onclick="allerVersAgendaSeance()" style="padding:16px;margin-bottom:0;cursor:pointer;" title="Voir l'agenda">
-        <div id="dash-heatmap-content"></div>
+      <div class="tj-fabwrap">
+        <span class="tj-fabtip">Demande à Novalyz</span>
+        <button class="tj-fab" onclick="switchTab('conseils')"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
       </div>
 
     </div>
