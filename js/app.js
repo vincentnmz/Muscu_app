@@ -9536,40 +9536,66 @@ function _cxRender() {
     }
   } catch (e) {}
 
-  // Graphique : métrique choisie, une valeur par sortie (chronologique).
+  // Graphique : métrique agrégée par bucket temporel adapté à la période
+  // (semaine→jours, mois→semaines, 3 mois→semaines, année→mois). Axe X étiqueté.
   try {
     var ch = document.getElementById('cx-chart');
     if (ch) {
       var mConf = _CX_MET[_cxMetric] || _CX_MET.km;
+      var isAvg = (_cxMetric === 'vit');   // vitesse = moyenne ; sinon somme
       var metOpts = Object.keys(_CX_MET).map(function (k) { return '<option value="' + k + '"' + (k === _cxMetric ? ' selected' : '') + '>' + _CX_MET[k].label + '</option>'; }).join('');
       var drop = '<div class="cx-rowh"><span class="cx-mdrop"><select onchange="_cxSetMetric(this.value)">' + metOpts + '</select></span><span class="trend" id="cx-trend"></span></div>';
-      var chrono = filt.slice().sort(function (a, b) { return (a.date < b.date) ? -1 : (a.date > b.date ? 1 : 0); });
-      var pts = chrono.map(function (s) { return Number(mConf.get(s)) || 0; });
-      var nz = pts.filter(function (x) { return x > 0; });
-      if (pts.length < 2 || !nz.length) {
+
+      var nowB = new Date(); nowB.setHours(0, 0, 0, 0);
+      var JJ = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+      var unit, nB;
+      if (_cxPeriod <= 7) { unit = 'day'; nB = 7; }
+      else if (_cxPeriod <= 31) { unit = 'week'; nB = 5; }
+      else if (_cxPeriod <= 92) { unit = 'week'; nB = 13; }
+      else { unit = 'month'; nB = 12; }
+      function _mondayOf(d) { var x = new Date(d.getTime()); x.setHours(0, 0, 0, 0); var w = (x.getDay() + 6) % 7; x.setDate(x.getDate() - w); return x; }
+      var curMon = _mondayOf(nowB);
+      var labels = [], sums = [], cnts = [];
+      for (var b = 0; b < nB; b++) { sums.push(0); cnts.push(0); }
+      for (var b2 = 0; b2 < nB; b2++) {
+        var end = nB - 1 - b2;
+        if (unit === 'day') { var dd = new Date(nowB.getTime() - end * 86400000); labels.push(JJ[dd.getDay()]); }
+        else if (unit === 'week') { var ws = new Date(curMon.getTime() - end * 7 * 86400000); labels.push(ws.getDate() + '/' + (ws.getMonth() + 1)); }
+        else { var mo = new Date(nowB.getFullYear(), nowB.getMonth() - end, 1); labels.push(MOIS[mo.getMonth()]); }
+      }
+      function _bidx(dateStr) {
+        var d = new Date(dateStr + 'T00:00:00'); if (isNaN(d.getTime())) return -1; d.setHours(0, 0, 0, 0);
+        if (unit === 'day') { var df = Math.round((nowB - d) / 86400000); return (df >= 0 && df < nB) ? (nB - 1 - df) : -1; }
+        if (unit === 'week') { var dw = Math.round((curMon - _mondayOf(d)) / (7 * 86400000)); return (dw >= 0 && dw < nB) ? (nB - 1 - dw) : -1; }
+        var dm = (nowB.getFullYear() * 12 + nowB.getMonth()) - (d.getFullYear() * 12 + d.getMonth()); return (dm >= 0 && dm < nB) ? (nB - 1 - dm) : -1;
+      }
+      filt.forEach(function (s) { var bi = _bidx(s.date); if (bi < 0) return; var val = Number(mConf.get(s)); if (isNaN(val)) return; sums[bi] += val; cnts[bi]++; });
+      var series = sums.map(function (sm, i) { return cnts[i] ? (isAvg ? sm / cnts[i] : sm) : null; });
+      var pts = [];
+      series.forEach(function (v, i) { if (v != null) pts.push({ i: i, v: v }); });
+
+      if (pts.length < 2) {
         ch.innerHTML = drop + '<div class="cx-muted" style="text-align:center;padding:14px 0;">Pas assez de données pour tracer « ' + mConf.label.toLowerCase() + ' » sur cette période.</div>';
       } else {
-        var W = 320, H = 92, padT = 12, padB = 18, padX = 12;
-        var mx = Math.max.apply(null, pts), mn = Math.min.apply(null, pts), sp = (mx - mn) || 1;
-        var X = function (i) { return padX + i * (W - 2 * padX) / (pts.length - 1); };
+        var W = 320, H = 96, padT = 10, padB = 20, padX = 14;
+        var vv = pts.map(function (p) { return p.v; });
+        var mx = Math.max.apply(null, vv), mn = Math.min.apply(null, vv), sp = (mx - mn) || 1;
+        var X = function (i) { return padX + i * (W - 2 * padX) / (nB - 1); };
         var Y = function (val) { return H - padB - (val - mn) / sp * (H - padT - padB); };
-        var line = pts.map(function (val, i) { return X(i).toFixed(1) + ' ' + Y(val).toFixed(1); });
+        var line = pts.map(function (p) { return X(p.i).toFixed(1) + ' ' + Y(p.v).toFixed(1); });
         var d = 'M' + line.join(' L');
-        var area = d + ' L' + X(pts.length - 1).toFixed(1) + ' ' + (H - padB) + ' L' + X(0).toFixed(1) + ' ' + (H - padB) + ' Z';
-        var lx = X(pts.length - 1).toFixed(1), ly = Y(pts[pts.length - 1]).toFixed(1);
-        var svg = '<svg width="100%" height="92" viewBox="0 0 320 92" preserveAspectRatio="none">'
+        var area = d + ' L' + X(pts[pts.length - 1].i).toFixed(1) + ' ' + (H - padB) + ' L' + X(pts[0].i).toFixed(1) + ' ' + (H - padB) + ' Z';
+        var dots = pts.map(function (p) { return '<circle cx="' + X(p.i).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="2.6" fill="var(--cx-accent)"/>'; }).join('');
+        var svg = '<svg width="100%" height="' + H + '" viewBox="0 0 320 ' + H + '" preserveAspectRatio="none">'
           + '<line x1="0" y1="' + (H - padB) + '" x2="320" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>'
           + '<path d="' + area + '" fill="var(--cx-accent-a)"/>'
           + '<path d="' + d + '" fill="none" stroke="var(--cx-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
-          + '<circle cx="' + lx + '" cy="' + ly + '" r="3.4" fill="var(--cx-accent)"/></svg>';
-        var d0 = new Date(chrono[0].date + 'T00:00:00'), dL = new Date(chrono[chrono.length - 1].date + 'T00:00:00');
-        var xlab = '<div class="cx-xlab"><span>' + (d0.getDate() + ' ' + MOIS[d0.getMonth()]) + '</span><span>' + (dL.getDate() + ' ' + MOIS[dL.getMonth()]) + '</span></div>';
+          + dots + '</svg>';
+        var step = Math.ceil(nB / 7);
+        var xlab = '<div class="cx-xlab">' + labels.map(function (l, i) { return '<span style="flex:1;text-align:center;' + ((i % step === 0 || i === nB - 1) ? '' : 'visibility:hidden;') + '">' + l + '</span>'; }).join('') + '</div>';
         ch.innerHTML = drop + svg + xlab;
         var tr = document.getElementById('cx-trend');
-        if (tr && pts.length >= 2) {
-          var first = pts[0] || 0, last = pts[pts.length - 1] || 0;
-          if (first > 0) { var p2 = Math.round((last - first) / first * 100); tr.textContent = (p2 >= 0 ? '▲ +' + p2 : '▼ ' + p2) + ' %'; tr.style.color = p2 >= 0 ? 'var(--good)' : 'var(--warn)'; }
-        }
+        if (tr) { var f = pts[0].v, l2 = pts[pts.length - 1].v; if (f > 0) { var p2 = Math.round((l2 - f) / f * 100); tr.textContent = (p2 >= 0 ? '▲ +' + p2 : '▼ ' + p2) + ' %'; tr.style.color = p2 >= 0 ? 'var(--good)' : 'var(--warn)'; } }
       }
     }
   } catch (e) {}
