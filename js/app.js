@@ -6324,16 +6324,15 @@ async function ouvrirApp() {
   document.body.classList.add('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'block';
   document.getElementById('btn-reglages-hdr').style.display = 'block';
+  { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'block'; }
   // Restore saved theme
   const savedTheme = localStorage.getItem('muscu_theme');
   if (savedTheme === 'light') document.body.classList.add('light-mode');
   syncThemeUI();
   _setSportIco('brand-ico-use', athlete && athlete.sport);   // icône du header selon le sport
-  document.getElementById('header-nom').textContent = 'Accueil';
+  document.getElementById('header-nom').textContent = 'Aujourd’hui';
   document.getElementById('inp-date').value = _todayLocalStr();
   document.getElementById('inp-date-poids').value = _todayLocalStr();
-  document.getElementById('main-container').classList.add('no-pad');
-  document.body.classList.add('on-accueil');
 
   if (athlete.objectif) {
     majObjectifCard(athlete.objectif);
@@ -6504,7 +6503,7 @@ async function supprimerDemoFoot() {
   } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
 }
 
-const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'État', conseils: 'Conversation', reglages: 'Réglages' };
+const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'État', conseils: 'Conversation', reglages: 'Réglages' };
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   // ⚠️ Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
@@ -6518,13 +6517,11 @@ function switchTab(tab) {
   document.getElementById('tab-' + tab).classList.add('active');
   // Dashboard prend toute la largeur sans padding
   const container = document.getElementById('main-container');
+  container.classList.remove('no-pad');
+  document.body.classList.remove('on-accueil');
   if (tab === 'accueil') {
-    container.classList.add('no-pad');
-    document.body.classList.add('on-accueil');
     chargerDashboard();
-  } else {
-    container.classList.remove('no-pad');
-    document.body.classList.remove('on-accueil');
+    if (typeof dernierAppData !== 'undefined' && dernierAppData) { try { renderAujourdhui(dernierAppData); } catch (_) {} }
   }
   if (tab === 'historique') {
     if (dernierAppData) chargerHistorique();
@@ -9053,6 +9050,16 @@ function renderAujourdhui(data) {
     var elR = document.getElementById('tj-reg'); if (elR) elR.textContent = faites + ' / ' + prevues + ' cette semaine';
     var elW = document.getElementById('tj-reg-week');
     if (elW) { var n = Math.max(prevues || 0, 4), h = ''; for (var i = 0; i < n; i++) { h += '<span class="tj-wk' + (i < faites ? ' on' : '') + '"></span>'; } elW.innerHTML = h; }
+    // Roue des séances (bloc d'accueil) : anneau animé qui « monte » vers faites/prevues.
+    var elRingN = document.getElementById('tj-ring-n'); if (elRingN) elRingN.textContent = faites + '/' + prevues;
+    var fg = document.getElementById('tj-ring-fg');
+    if (fg) {
+      var pct = prevues ? Math.max(0, Math.min(100, Math.round(faites / prevues * 100))) : 0;
+      fg.style.transition = 'none';
+      fg.setAttribute('stroke-dashoffset', '100');
+      void fg.getBoundingClientRect();   // force reflow → l'anim repart de 0 à chaque rendu
+      requestAnimationFrame(function () { fg.style.transition = ''; fg.setAttribute('stroke-dashoffset', String(100 - pct)); });
+    }
   } catch (e) {}
 
   var m = (data && data.moteur) || {};
