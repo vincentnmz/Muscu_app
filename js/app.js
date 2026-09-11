@@ -6524,9 +6524,9 @@ const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'En
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   // ⚠️ Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
-  // Aujourd'hui · Entraînement · Cardio · Analyses · État.
+  // Aujourd'hui · Entraînement · Analyses · État. (Cardio retiré de la barre.)
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['accueil','seance','cardio','historique','etat'][i] === tab);
+    b.classList.toggle('active', ['accueil','seance','historique','etat'][i] === tab);
   });
   const hdr = document.getElementById('header-nom');
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];

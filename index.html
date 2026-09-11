@@ -114,14 +114,15 @@
   </div>
 </header>
 
-<!-- Barre de navigation du bas — 5 onglets (maquette validée) :
-     Aujourd'hui · Entraînement · Cardio · Analyses · État.
+<!-- Barre de navigation du bas — 4 onglets :
+     Aujourd'hui · Entraînement · Analyses · État.
+     (Onglet « Cardio » retiré : le cardio se LOGGE dans Entraînement et s'ANALYSE
+     dans Analyses — pas de doublon. L'emplacement libéré sera réattribué plus tard.)
      ⚠️ L'ORDRE ci-dessous doit rester aligné avec le tableau positionnel de
-     switchTab() dans js/app.js : ['accueil','seance','cardio','historique','etat']. -->
+     switchTab() dans js/app.js : ['accueil','seance','historique','etat']. -->
 <div class="tabs-bar" id="tabs-bar" style="display:none">
   <button class="tab-btn active" onclick="switchTab('accueil')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg></span><span>Aujourd'hui</span></button>
   <button class="tab-btn" onclick="switchTab('seance')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg></span><span>Entraînement</span></button>
-  <button class="tab-btn" onclick="switchTab('cardio')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><span>Cardio</span></button>
   <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg></span><span>Analyses</span></button>
   <button class="tab-btn" onclick="switchTab('etat')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg></span><span>État</span></button>
 </div>
