@@ -3253,13 +3253,28 @@ async function handleSaveBienEtre(body: any): Promise<Response> {
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   // colonnes numériques : '' ou texte → null (sinon Postgres rejette tout l'insert)
   const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
-  const { error } = await sb().from('bien_etre').insert({
-    date: normDate(date) || fmtYMD(new Date()), seance_id: seance_id || null, athlete_id,
+  const d = normDate(date) || fmtYMD(new Date())
+  const row: any = {
+    date: d, seance_id: seance_id || null, athlete_id,
     sommeil: num(sommeil), energie: num(energie), fatigue_musculaire: num(fatigue), douleur: num(douleur),
     zone_douloureuse: zone != null && zone !== '' ? String(zone) : null,
     ressenti_global: ressenti != null && ressenti !== '' ? String(ressenti) : null,
     note: num(note),
-  })
+  }
+  // Option 1 — « état du jour » : UNE seule ligne bien_etre par (athlete_id, date).
+  // Une 2e saisie le même jour (2e séance, ou « point du jour » depuis l'accueil)
+  // MET À JOUR la ligne du jour au lieu d'en créer une nouvelle. Le RPE par série
+  // (muscu) et le RPE cardio restent séparés, dans leurs propres tables.
+  const { data: existing } = await sb().from('bien_etre')
+    .select('seance_id').eq('athlete_id', athlete_id).eq('date', d).limit(1)
+  if (existing && existing.length) {
+    // conserve le seance_id existant si la nouvelle saisie n'en fournit pas
+    if (!row.seance_id && existing[0].seance_id) row.seance_id = existing[0].seance_id
+    const { error } = await sb().from('bien_etre').update(row).eq('athlete_id', athlete_id).eq('date', d)
+    if (error) return jsonResp({ success: false, error: error.message })
+    return jsonResp({ ok: true, success: true, updated: true })
+  }
+  const { error } = await sb().from('bien_etre').insert(row)
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ ok: true, success: true })
 }

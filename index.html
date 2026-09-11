@@ -831,7 +831,7 @@
         </div>
 
         <div class="tj-card tj-bwrap">
-          <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="switchTab('seance')">Mettre à jour ›</span></div>
+          <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="ouvrirPointDuJour()">Mettre à jour ›</span></div>
           <div class="tj-bgrid" id="tj-bgrid"></div>
         </div>
 
@@ -1863,8 +1863,8 @@
   <!-- Poignée + header -->
   <div style="padding:10px 16px 0;text-align:center;flex-shrink:0;">
     <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px;"></div>
-    <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px;">Comment tu te sens ?</div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">30 secondes · optionnel mais utile pour ton suivi</div>
+    <div id="wq-title" style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px;">Comment tu te sens ?</div>
+    <div id="wq-sub" style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">30 secondes · optionnel mais utile pour ton suivi</div>
   </div>
 
   <!-- Contenu scrollable -->
@@ -1935,7 +1935,7 @@
 
     <!-- Q5 : Ressenti global -->
     <div class="wq-block">
-      <div class="wq-label">😊 Ressenti de la séance</div>
+      <div class="wq-label" id="wq-lbl-ressenti">😊 Ressenti de la séance</div>
       <div class="wq-chips wq-seg" id="wq-ressenti">
         <button class="wq-chip" data-val="1" onclick="selectWQ('ressenti',this)"><span class="wq-emo">😵</span><span class="wq-cap">Très dur</span></button>
         <button class="wq-chip" data-val="2" onclick="selectWQ('ressenti',this)"><span class="wq-emo">😮‍💨</span><span class="wq-cap">Difficile</span></button>
@@ -1955,7 +1955,7 @@
   </div>
 
   <!-- Footer : boutons -->
-  <div style="padding:14px 16px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);display:flex;gap:10px;flex-shrink:0;">
+  <div id="wq-footer" style="padding:14px 16px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);display:flex;gap:10px;flex-shrink:0;">
     <button onclick="validerSeanceSansWellness()" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:12px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;">Passer</button>
     <button onclick="validerSeanceAvecWellness()" id="btn-wellness-valider" style="flex:2;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;">✅ Valider la séance</button>
   </div>

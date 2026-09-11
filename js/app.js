@@ -7396,22 +7396,149 @@ const WELLNESS_NO_PAIN_VAL = '1';
 
 const wellnessState = { sommeil: null, energie: null, fatigue: null, douleur: null, zone: null, ressenti: null };
 
-function ouvrirWellnessModal() {
+// ── Option 1 — « état du jour » ─────────────────────────────────────────────
+// Un SEUL questionnaire bien-être par jour, déclenché après une séance (muscu OU
+// cardio) OU à la demande depuis l'accueil (« Mettre à jour »). Il alimente le
+// moteur + les onglets Aujourd'hui/État. Le RPE par série (muscu) et le RPE
+// cardio restent séparés (dans les données de séance) pour les Analyses.
+let _wqStandalone = false;   // true = « point du jour » autonome (pas lié à une validation de séance)
+var _pdjDate = null;         // date (yyyy-mm-dd) pour laquelle enregistrer le point du jour
+
+// L'état du jour a-t-il déjà été renseigné aujourd'hui ? (dédup : 1 par jour)
+function _bienEtreFaitAujourdhui() {
+  try {
+    var be = (dernierAppData && Array.isArray(dernierAppData.bien_etre) && dernierAppData.bien_etre[0]) ? dernierAppData.bien_etre[0] : null;
+    if (!be || !be.date) return false;
+    return _normDateDDMM(be.date) === _normDateDDMM(_todayLocalStr());
+  } catch (e) { return false; }
+}
+
+function _wqResetForm() {
   Object.keys(wellnessState).forEach(k => wellnessState[k] = null);
   document.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
   const noteInp = document.getElementById('wq-note'); if (noteInp) noteInp.value = '';
-  document.getElementById('wq-zone-block').style.display = 'none';
+  const zb = document.getElementById('wq-zone-block'); if (zb) zb.style.display = 'none';
+}
+
+// Pré-remplit le questionnaire depuis la saisie du jour (cas « mise à jour »)
+function _wqPrefillFromToday() {
+  try {
+    if (!_bienEtreFaitAujourdhui()) return;
+    var be = dernierAppData.bien_etre[0];
+    ['sommeil', 'energie', 'fatigue', 'douleur', 'ressenti'].forEach(function (k) {
+      var v = be[k];
+      if (v == null || v === '' || isNaN(Number(v))) return;
+      var cont = document.getElementById('wq-' + k);
+      if (!cont) return;
+      var btn = cont.querySelector('.wq-chip[data-val="' + Number(v) + '"]');
+      if (btn) selectWQ(k, btn);
+    });
+    if (be.zone) {
+      var zc = document.getElementById('wq-zone');
+      if (zc) { var zb = zc.querySelector('.wq-chip[data-val="' + be.zone + '"]'); if (zb) selectWQ('zone', zb); }
+    }
+  } catch (e) {}
+}
+
+// Adapte titre/sous-titre/label ressenti + boutons selon le mode d'ouverture.
+function _wqSetMode(standalone) {
+  _wqStandalone = !!standalone;
+  var title = document.getElementById('wq-title');
+  var sub = document.getElementById('wq-sub');
+  var lblR = document.getElementById('wq-lbl-ressenti');
+  var footer = document.getElementById('wq-footer');
+  var btnSec = 'flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:12px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;';
+  var btnMain = 'flex:2;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;';
+  if (standalone) {
+    if (title) title.textContent = 'Ton point du jour';
+    if (sub) sub.textContent = 'Comment tu te sens aujourd’hui ? · 30 secondes';
+    if (lblR) lblR.textContent = '😊 Ressenti général';
+    if (footer) footer.innerHTML =
+      '<button onclick="fermerWellnessModal()" style="' + btnSec + '">Fermer</button>'
+      + '<button onclick="enregistrerPointDuJour()" id="btn-wellness-valider" style="' + btnMain + '">✅ Enregistrer</button>';
+  } else {
+    if (title) title.textContent = 'Comment tu te sens ?';
+    if (sub) sub.textContent = '30 secondes · optionnel mais utile pour ton suivi';
+    if (lblR) lblR.textContent = '😊 Ressenti de la séance';
+    if (footer) footer.innerHTML =
+      '<button onclick="validerSeanceSansWellness()" style="' + btnSec + '">Passer</button>'
+      + '<button onclick="validerSeanceAvecWellness()" id="btn-wellness-valider" style="' + btnMain + '">✅ Valider la séance</button>';
+  }
+}
+
+function ouvrirWellnessModal() {
+  _wqResetForm();
+  _wqSetMode(false);
   document.getElementById('wellness-overlay').style.display = 'block';
   const modal = document.getElementById('wellness-modal');
   modal.style.display = 'flex';
   modal.style.flexDirection = 'column';
 }
 
+// « Point du jour » autonome (accueil) ou après une séance cardio.
+// dateOverride (yyyy-mm-dd) : date de rattachement (défaut : aujourd'hui).
+function ouvrirPointDuJour(dateOverride) {
+  if (!athlete) return;
+  _wqResetForm();
+  _wqSetMode(true);
+  _pdjDate = dateOverride || null;
+  _wqPrefillFromToday();
+  document.getElementById('wellness-overlay').style.display = 'block';
+  const modal = document.getElementById('wellness-modal');
+  modal.style.display = 'flex';
+  modal.style.flexDirection = 'column';
+  try { modal.querySelector('div[style*="overflow-y"]').scrollTop = 0; } catch (e) {}
+}
+
+// Enregistre le point du jour (bien-être) SANS séance associée.
+async function enregistrerPointDuJour() {
+  if (!athlete) return;
+  var btn = document.getElementById('btn-wellness-valider');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement...'; }
+  var noteTxt = document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '';
+  var dateEnvoi = _pdjDate || _todayLocalStr();
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'saveBienEtre',
+        athlete_id: athlete.athlete_id,
+        date: dateEnvoi,
+        seance_id: null,
+        sommeil: wellnessState.sommeil, energie: wellnessState.energie,
+        fatigue: wellnessState.fatigue, douleur: wellnessState.douleur,
+        zone: wellnessState.zone, ressenti: wellnessState.ressenti, note: noteTxt
+      })
+    });
+    // Note libre → postée au coach comme commentaire (comme en fin de séance).
+    if (noteTxt) {
+      try {
+        await fetch(SCRIPT_URL, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'saveCommentaire', auteur: 'athlete',
+            auteur_nom: (athlete.prenom || athlete.nom || 'Athlète'), athlete_id: athlete.athlete_id,
+            message: '📝 Point du jour : ' + noteTxt
+          })
+        });
+      } catch (e) {}
+    }
+    showToast('Point du jour enregistré ✅');
+  } catch (e) {
+    showToast('Réseau instable — réessaie', '#f59f00');
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Enregistrer'; }
+    return;
+  }
+  fermerWellnessModal();
+  if (typeof chargerAppData === 'function') chargerAppData();
+}
+
 function fermerWellnessModal() {
   document.getElementById('wellness-overlay').style.display = 'none';
   document.getElementById('wellness-modal').style.display = 'none';
   // Si l'utilisateur annule le questionnaire (pas de validation en cours), on ré-affiche le bouton du récap
-  if (!_validationEnCours) {
+  if (!_validationEnCours && !_wqStandalone) {
     const total = seance.reduce((a, e) => a + e.series.length, 0);
     const bv = document.getElementById('btn-valider');
     if (bv && total > 0) { bv.style.display = 'block'; bv.disabled = false; }
@@ -7677,7 +7804,13 @@ function _annulerFinSeance() {
 function _validerFinSeance() {
   var ov = document.getElementById('_confirm-fin-seance');
   if (ov) ov.remove();
-  ouvrirWellnessModal();
+  // Option 1 — état du jour déjà renseigné : on ne redemande pas, on enregistre la séance.
+  if (_bienEtreFaitAujourdhui()) {
+    if (typeof showToast === 'function') showToast('État du jour déjà renseigné');
+    validerSeanceSansWellness();
+  } else {
+    ouvrirWellnessModal();
+  }
 }
 
 function afficherRecap() {
@@ -12541,6 +12674,12 @@ async function sauvegarderCardio() {
       <button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button>
     </div>`;
   chargerAppData();
+  // Option 1 — état du jour : après une séance cardio du jour aussi, 1×/jour.
+  // Le RPE cardio (ci-dessus) reste séparé pour les Analyses ; ici c'est le
+  // bien-être « point du jour » qui alimente le moteur + Aujourd'hui/État.
+  if (date === _todayLocalStr() && !_bienEtreFaitAujourdhui()) {
+    setTimeout(function () { ouvrirPointDuJour(date); }, 450);
+  }
 }
 
 function nouvelleSeanceCardio() {
