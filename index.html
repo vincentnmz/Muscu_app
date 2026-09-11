@@ -723,6 +723,10 @@
          fournit le padding latéral (--app-pad) ; .tj n'ajoute pas de marge H. */
       /* padding bas généreux : la bulle FAB (fixe, en bas à droite) ne doit pas
          recouvrir le dernier bloc / les boutons. */
+      /* La classe .dash ajoute un padding 16px 20px qui S'AJOUTAIT à celui du
+         conteneur (#main-container) → accueil plus étroit que les autres écrans.
+         On l'annule ici : la largeur vient du seul conteneur, comme partout. */
+      #tab-accueil.dash{padding:0;}
       .tj{display:flex;flex-direction:column;gap:12px;padding:0 0 104px;font-family:var(--tj-font);color:var(--tj-text);}
       .tj-greet{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 16px;}
       .tj-greet .tj-hi{margin-top:0;}
