@@ -85,6 +85,13 @@ body.seance-active #subtab-saisie   { position:fixed; inset:calc(56px + env(safe
                                       padding:14px 16px calc(28px + env(safe-area-inset-bottom,0px)); }
 body.seance-active #subtab-saisie > * { max-width:640px; margin-left:auto; margin-right:auto; }
 body.seance-active #seance-progress { top:0 !important; }
+/* Reskin « Séance en cours » → look maquette (scopé à la page séance). */
+body.seance-active #subtab-saisie .card              { border-radius:18px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
+body.seance-active #seance-progress > div            { border-radius:18px; border-color:var(--border); box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
+body.seance-active .exo-actuel-card                  { background:var(--surface); border:1.5px solid var(--accent); border-radius:18px; box-shadow:0 8px 22px rgba(26,95,255,.16); padding:15px 16px; }
+body.seance-active #card-liste-seance                { background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); padding:14px 15px; }
+body.seance-active #btn-valider                      { border-radius:14px; padding:15px; font-size:15px; box-shadow:0 6px 16px rgba(0,168,84,.28); }
+body.seance-active #card-choix-seance                { border-radius:18px; }
 body.has-bottom-nav .toast { bottom:84px; }
 
 /* ===== Sous-onglets (pill row) ===== */
