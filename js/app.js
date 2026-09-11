@@ -6531,6 +6531,10 @@ function switchTab(tab) {
     if (dernierAppData) renderEtat(dernierAppData);
     else chargerAppData().then(() => renderEtat(dernierAppData));
   }
+  if (tab === 'cardio') {
+    if (dernierAppData) renderCardio(dernierAppData);
+    else chargerAppData().then(() => renderCardio(dernierAppData));
+  }
   if (tab === 'conseils') {
     afficherOngletConseils();
   }
@@ -9402,6 +9406,199 @@ function renderEtat(data) {
   } catch (e) {}
 }
 
+/* Écran CARDIO (onglet #tab-cardio) — « Cardio ». Tout est calculé depuis
+ * data.cardio.history (sorties réelles : date ISO, type_cardio, distance km,
+ * duree min, calories, vitesse_moy km/h, fc_moy bpm, rpe, pas). Aucun chiffre
+ * inventé ; une période/activité sans données affiche un état vide honnête. */
+var _cxSessions = [];
+var _cxAct = 'all';
+var _cxPeriod = 30;
+var _cxMetric = 'km';
+var _CX_MET = {
+  km:  { label: 'Distance', unit: 'km',   dec: 1, get: function (s) { return s.distance; } },
+  min: { label: 'Durée',    unit: 'min',  dec: 0, get: function (s) { return s.duree; } },
+  vit: { label: 'Vitesse',  unit: 'km/h', dec: 1, get: function (s) { return s.vitesse_moy; } },
+  kcal:{ label: 'Calories', unit: 'kcal', dec: 0, get: function (s) { return s.calories; } }
+};
+function _cxSetAct(v) { _cxAct = v; _cxRender(); }
+function _cxSetPeriod(d) { _cxPeriod = d; _cxRender(); }
+function _cxSetMetric(v) { _cxMetric = v; _cxRender(); }
+function _cxDur(min) {
+  min = Math.round(Number(min) || 0);
+  if (min >= 60) { var h = Math.floor(min / 60), m = min % 60; return h + 'h' + (m ? String(m).padStart(2, '0') : ''); }
+  return min + ' min';
+}
+function renderCardio(data) {
+  data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null) || {};
+  _cxSessions = (data.cardio && Array.isArray(data.cardio.history)) ? data.cardio.history : [];
+  _cxRender();
+}
+function _cxRender() {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var LBL = (typeof _CARDIO_TYPE_LABELS !== 'undefined') ? _CARDIO_TYPE_LABELS : {};
+  var ICO = (typeof _CH_ICO !== 'undefined') ? _CH_ICO : {};
+  var MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  var all = _cxSessions || [];
+
+  // Sélecteur d'activité : « Toutes » + types présents (par fréquence).
+  try {
+    var cnt = {};
+    all.forEach(function (s) { var t = s.type_cardio || 'autre'; cnt[t] = (cnt[t] || 0) + 1; });
+    var types = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; });
+    if (_cxAct !== 'all' && types.indexOf(_cxAct) === -1) _cxAct = 'all';
+    var sel = document.getElementById('cx-act');
+    if (sel) {
+      var opts = '<option value="all"' + (_cxAct === 'all' ? ' selected' : '') + '>Toutes les activités</option>';
+      types.forEach(function (t) { opts += '<option value="' + t + '"' + (t === _cxAct ? ' selected' : '') + '>' + (ICO[t] || '') + ' ' + esc(LBL[t] || t) + '</option>'; });
+      sel.innerHTML = opts;
+    }
+  } catch (e) {}
+
+  // Boutons période (état actif).
+  try {
+    var pc = document.getElementById('cx-period');
+    if (pc) Array.prototype.forEach.call(pc.querySelectorAll('button'), function (b) { b.classList.toggle('on', Number(b.getAttribute('data-d')) === _cxPeriod); });
+  } catch (e) {}
+
+  // Filtre période + activité.
+  function inWindow(s, days, offset) {
+    if (!s.date) return false;
+    var d = new Date(s.date + 'T00:00:00'); if (isNaN(d.getTime())) return false;
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    var hi = new Date(now.getTime() - (offset || 0) * 86400000);
+    var lo = new Date(hi.getTime() - days * 86400000);
+    return d > lo && d <= hi;
+  }
+  var actOk = function (s) { return _cxAct === 'all' || (s.type_cardio || 'autre') === _cxAct; };
+  var filt = all.filter(function (s) { return actOk(s) && inWindow(s, _cxPeriod, 0); });
+  var prevF = all.filter(function (s) { return actOk(s) && inWindow(s, _cxPeriod, _cxPeriod); });
+  var actLbl = _cxAct === 'all' ? 'Toutes activités' : (LBL[_cxAct] || _cxAct);
+  var PERLBL = { 7: 'cette semaine', 30: 'ce mois', 90: '3 mois', 365: 'cette année' };
+
+  // Agrégats.
+  function agg(list) {
+    var o = { n: list.length, dist: 0, dur: 0, cal: 0, vSum: 0, vN: 0, fcSum: 0, fcN: 0, rpeSum: 0, rpeN: 0, pas: 0 };
+    list.forEach(function (s) {
+      o.dist += Number(s.distance) || 0; o.dur += Number(s.duree) || 0; o.cal += Number(s.calories) || 0; o.pas += Number(s.pas) || 0;
+      if (s.vitesse_moy) { o.vSum += Number(s.vitesse_moy); o.vN++; }
+      if (s.fc_moy) { o.fcSum += Number(s.fc_moy); o.fcN++; }
+      if (s.rpe) { o.rpeSum += Number(s.rpe); o.rpeN++; }
+    });
+    return o;
+  }
+  var A = agg(filt);
+
+  // Verdict : constat factuel + tendance distance vs période précédente.
+  try {
+    var v = document.getElementById('cx-verdict');
+    if (v) {
+      if (!filt.length) { v.style.display = 'none'; }
+      else {
+        var P = agg(prevF);
+        var txt = A.n + ' sortie' + (A.n > 1 ? 's' : '') + (A.dist ? ' · ' + (Math.round(A.dist * 10) / 10).toString().replace('.', ',') + ' km' : '') + ' ' + (PERLBL[_cxPeriod] || '');
+        var trend = '';
+        if (P.dist > 0 && A.dist > 0) {
+          var pct = Math.round((A.dist - P.dist) / P.dist * 100);
+          trend = ' Volume ' + (pct >= 0 ? 'en hausse de +' + pct : 'en baisse de ' + pct) + ' % vs période précédente.';
+        }
+        var head = A.dist > 0 ? 'Ta charge cardio' : 'Continue sur ta lancée';
+        v.style.display = '';
+        v.innerHTML = '<span class="vic"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>'
+          + '<div><div class="h">' + head + '</div><div class="d">' + esc(txt) + '.' + esc(trend) + '</div></div>';
+      }
+    }
+  } catch (e) {}
+
+  // Résumé KPI.
+  try {
+    var sumEl = document.getElementById('cx-sum');
+    if (sumEl) {
+      var headRow = '<div class="cx-rowh"><span class="k">' + esc(actLbl) + ' · ' + (PERLBL[_cxPeriod] || '') + '</span><span class="s">' + A.n + ' sortie' + (A.n > 1 ? 's' : '') + '</span></div>';
+      if (!filt.length) {
+        sumEl.innerHTML = headRow + '<div class="cx-muted">Aucune sortie sur cette période. Saisis un résultat ou change de période.</div>';
+      } else {
+        var vMoy = A.vN ? (A.vSum / A.vN) : (A.dur ? (A.dist / (A.dur / 60)) : 0);
+        var tiles = [];
+        if (A.dist) tiles.push({ v: (Math.round(A.dist * 10) / 10).toString().replace('.', ','), u: 'km' });
+        tiles.push({ v: _cxDur(A.dur), u: 'temps' });
+        if (vMoy) tiles.push({ v: (Math.round(vMoy * 10) / 10).toString().replace('.', ','), u: 'km/h moy' });
+        if (A.cal) tiles.push({ v: Math.round(A.cal).toLocaleString('fr-FR'), u: 'kcal' });
+        if (A.fcN) tiles.push({ v: Math.round(A.fcSum / A.fcN), u: 'bpm moy' });
+        if (A.rpeN) tiles.push({ v: (Math.round(A.rpeSum / A.rpeN * 10) / 10).toString().replace('.', ','), u: 'RPE moy' });
+        if (A.pas && (_cxAct === 'marche_normale' || _cxAct === 'marche_inclinee')) tiles.push({ v: Math.round(A.pas).toLocaleString('fr-FR'), u: 'pas' });
+        var kp = tiles.map(function (t) { return '<div class="cx-kpi"><span class="v">' + t.v + '</span><span class="u">' + t.u + '</span></div>'; }).join('');
+        sumEl.innerHTML = headRow + '<div class="cx-kpis">' + kp + '</div>';
+      }
+    }
+  } catch (e) {}
+
+  // Graphique : métrique choisie, une valeur par sortie (chronologique).
+  try {
+    var ch = document.getElementById('cx-chart');
+    if (ch) {
+      var mConf = _CX_MET[_cxMetric] || _CX_MET.km;
+      var metOpts = Object.keys(_CX_MET).map(function (k) { return '<option value="' + k + '"' + (k === _cxMetric ? ' selected' : '') + '>' + _CX_MET[k].label + '</option>'; }).join('');
+      var drop = '<div class="cx-rowh"><span class="cx-mdrop"><select onchange="_cxSetMetric(this.value)">' + metOpts + '</select></span><span class="trend" id="cx-trend"></span></div>';
+      var chrono = filt.slice().sort(function (a, b) { return (a.date < b.date) ? -1 : (a.date > b.date ? 1 : 0); });
+      var pts = chrono.map(function (s) { return Number(mConf.get(s)) || 0; });
+      var nz = pts.filter(function (x) { return x > 0; });
+      if (pts.length < 2 || !nz.length) {
+        ch.innerHTML = drop + '<div class="cx-muted" style="text-align:center;padding:14px 0;">Pas assez de données pour tracer « ' + mConf.label.toLowerCase() + ' » sur cette période.</div>';
+      } else {
+        var W = 320, H = 92, padT = 12, padB = 18, padX = 12;
+        var mx = Math.max.apply(null, pts), mn = Math.min.apply(null, pts), sp = (mx - mn) || 1;
+        var X = function (i) { return padX + i * (W - 2 * padX) / (pts.length - 1); };
+        var Y = function (val) { return H - padB - (val - mn) / sp * (H - padT - padB); };
+        var line = pts.map(function (val, i) { return X(i).toFixed(1) + ' ' + Y(val).toFixed(1); });
+        var d = 'M' + line.join(' L');
+        var area = d + ' L' + X(pts.length - 1).toFixed(1) + ' ' + (H - padB) + ' L' + X(0).toFixed(1) + ' ' + (H - padB) + ' Z';
+        var lx = X(pts.length - 1).toFixed(1), ly = Y(pts[pts.length - 1]).toFixed(1);
+        var svg = '<svg width="100%" height="92" viewBox="0 0 320 92" preserveAspectRatio="none">'
+          + '<line x1="0" y1="' + (H - padB) + '" x2="320" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>'
+          + '<path d="' + area + '" fill="var(--cx-accent-a)"/>'
+          + '<path d="' + d + '" fill="none" stroke="var(--cx-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+          + '<circle cx="' + lx + '" cy="' + ly + '" r="3.4" fill="var(--cx-accent)"/></svg>';
+        var d0 = new Date(chrono[0].date + 'T00:00:00'), dL = new Date(chrono[chrono.length - 1].date + 'T00:00:00');
+        var xlab = '<div class="cx-xlab"><span>' + (d0.getDate() + ' ' + MOIS[d0.getMonth()]) + '</span><span>' + (dL.getDate() + ' ' + MOIS[dL.getMonth()]) + '</span></div>';
+        ch.innerHTML = drop + svg + xlab;
+        var tr = document.getElementById('cx-trend');
+        if (tr && pts.length >= 2) {
+          var first = pts[0] || 0, last = pts[pts.length - 1] || 0;
+          if (first > 0) { var p2 = Math.round((last - first) / first * 100); tr.textContent = (p2 >= 0 ? '▲ +' + p2 : '▼ ' + p2) + ' %'; tr.style.color = p2 >= 0 ? 'var(--good)' : 'var(--warn)'; }
+        }
+      }
+    }
+  } catch (e) {}
+
+  // Dernières sorties (max 6, plus récentes d'abord).
+  try {
+    var sl = document.getElementById('cx-slist');
+    if (sl) {
+      var recent = filt.slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); }).slice(0, 6);
+      if (!recent.length) {
+        sl.innerHTML = '<div class="cx-muted" style="padding:4px 2px;">Aucune sortie à afficher.</div>';
+      } else {
+        sl.innerHTML = recent.map(function (s) {
+          var dt = new Date((s.date || '') + 'T00:00:00');
+          var day = isNaN(dt.getTime()) ? '—' : dt.getDate();
+          var mo = isNaN(dt.getTime()) ? '' : MOIS[dt.getMonth()];
+          var t = s.type_cardio || 'autre';
+          var parts = [];
+          if (s.distance) parts.push((Math.round(Number(s.distance) * 10) / 10).toString().replace('.', ',') + ' km');
+          if (s.duree) parts.push(_cxDur(s.duree));
+          if (s.vitesse_moy) parts.push((Math.round(Number(s.vitesse_moy) * 10) / 10).toString().replace('.', ',') + ' km/h');
+          else if (s.fc_moy) parts.push(Math.round(Number(s.fc_moy)) + ' bpm');
+          else if (s.calories) parts.push(Math.round(Number(s.calories)) + ' kcal');
+          var rpe = s.rpe ? '<span class="cx-rpe">RPE ' + esc(String(s.rpe)) + '</span>' : '';
+          return '<div class="cx-srow"><div class="cx-dt"><div class="d">' + day + '</div><div class="mo">' + mo + '</div></div>'
+            + '<div class="cx-mid"><div class="a">' + (ICO[t] || '') + ' ' + esc(LBL[t] || t) + '</div><div class="b">' + esc(parts.join(' · ') || '—') + '</div></div>'
+            + rpe + '</div>';
+        }).join('');
+      }
+    }
+  } catch (e) {}
+}
+
 function _appliquerAppData(data) {
   // Stocker les données globalement
   dernierAppData = data;
@@ -9429,6 +9626,7 @@ function _appliquerAppData(data) {
     // Accueil « Aujourd'hui » (refonte maquette) — prénom, date, régularité.
     _safe('aujourdhui', () => renderAujourdhui(data));
     _safe('etat', () => renderEtat(data));
+    _safe('cardio-tab', () => renderCardio(data));
 
     // Jours de cardio (clés DD/MM/YYYY) → heatmap de régularité (muscu + cardio) + agenda coloré
     _safe('cardio-agg', () => {
