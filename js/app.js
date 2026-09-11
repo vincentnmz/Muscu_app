@@ -6767,6 +6767,7 @@ window.addEventListener('pagehide', function () { _saveBrouillon(); });
 async function demarrerSeance() {
   const seanceId = document.getElementById('sel-seance-id').value;
   if (!seanceId) return;
+  try { _majSeancePageTitre(); } catch (e) {}
 
   if (seance.length > 0) {
     const ok = confirm(`Tu as déjà ${seance.length} série${seance.length > 1 ? 's' : ''} enregistrée${seance.length > 1 ? 's' : ''} dans cette séance.\n\nSi tu continues, tout sera perdu.\n\nAbandonner la séance en cours ?`);
@@ -9651,11 +9652,32 @@ function _cxRender() {
  * NE TOUCHE PAS le flux de saisie/chrono ci-dessous. Le programme n'étant pas
  * planifié par jour, « Tes séances » liste les séances du programme et marque
  * « Réalisé » celles faites cette semaine (sinon « À faire »). */
+// Ouvre le flux de saisie en PAGE PLEIN ÉCRAN (body.seance-active) — l'en-tête
+// d'app et la barre du bas sont masqués, un bouton retour apparaît. Aucune
+// logique de saisie modifiée.
+function ouvrirSeancePage() {
+  try { if (typeof switchSubTab === 'function') switchSubTab('saisie'); } catch (e) {}
+  document.body.classList.add('seance-active');
+  var cont = document.getElementById('subtab-saisie'); if (cont) cont.scrollTop = 0;
+  window.scrollTo(0, 0);
+  _majSeancePageTitre();
+}
+function fermerSeancePage() {
+  try { if (typeof seance !== 'undefined' && seance && seance.length) { if (!confirm('Quitter la séance en cours ? Tes séries saisies restent sauvegardées en brouillon.')) return; } } catch (e) {}
+  document.body.classList.remove('seance-active');
+}
+function _majSeancePageTitre() {
+  var el = document.getElementById('seance-page-title'); if (!el) return;
+  try {
+    if ((typeof _modeSeance !== 'undefined' ? _modeSeance : 'muscu') === 'cardio') { el.textContent = 'Séance cardio'; return; }
+    var sel = document.getElementById('sel-seance-id'); var v = sel && sel.value;
+    el.textContent = (v && v !== '') ? (v === 'Libre' ? 'Séance libre' : v) : 'Nouvelle séance';
+  } catch (e) { el.textContent = 'Séance'; }
+}
 function _enStart(seanceId) {
   try {
-    // 1) rendre le panneau de saisie visible (sinon la séance démarre mais reste
-    //    masquée si le sous-onglet « programme » était actif), puis mode muscu.
-    if (typeof switchSubTab === 'function') switchSubTab('saisie');
+    // 1) ouvrir la page plein écran (rend la saisie visible), mode muscu.
+    ouvrirSeancePage();
     if (typeof switchModeSeance === 'function') switchModeSeance('muscu');
     // 2) sélectionner la séance (ajouter l'option si absente) puis démarrer.
     var sel = document.getElementById('sel-seance-id');
@@ -9667,12 +9689,14 @@ function _enStart(seanceId) {
       }
       if (typeof demarrerSeance === 'function') demarrerSeance();
     }
-    // 3) défiler jusqu'aux exercices de la séance démarrée.
+    _majSeancePageTitre();
+    // 3) défiler (dans la page) jusqu'aux exercices de la séance démarrée.
     setTimeout(function () {
+      var cont = document.getElementById('subtab-saisie');
       var t = document.getElementById('card-liste-seance');
       if (!t || t.style.display === 'none') t = document.getElementById('card-choix-seance');
-      if (t) { if (typeof scrollVersTitre === 'function') scrollVersTitre(t); else t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    }, 250);
+      if (cont && t) cont.scrollTop = Math.max(0, t.offsetTop - 12);
+    }, 300);
   } catch (e) {}
 }
 /* Éditeur de programme (athlète) : ouvre l'overlay plein écran et réutilise
@@ -12176,6 +12200,7 @@ var _modeSeance = 'muscu';
 
 function switchModeSeance(mode) {
   _modeSeance = mode;
+  try { _majSeancePageTitre(); } catch (e) {}
   var isCardio = mode === 'cardio';
   var saisiEl  = document.getElementById('saisie-block');
   var cardioEl = document.getElementById('cardio-block');

@@ -73,6 +73,18 @@ body:has(#view-login.active) header #brand-ico { display:none; }
 .tab-btn.active { color:var(--accent); }
 .tab-btn.active .tab-ico { transform:translateY(-1px); }
 body.has-bottom-nav { padding-bottom:64px; }
+
+/* ---- Page SÉANCE plein écran : le flux de saisie (#subtab-saisie) s'ouvre
+   par-dessus l'app avec son propre en-tête retour (#seance-page-hd), header
+   d'app et barre du bas masqués. Aucune logique modifiée. ---- */
+body.seance-active #app-header,
+body.seance-active #tabs-bar        { display:none !important; }
+body.seance-active #seance-page-hd  { display:flex !important; }
+body.seance-active #subtab-saisie   { position:fixed; inset:calc(56px + env(safe-area-inset-top,0px)) 0 0 0; z-index:60; margin:0;
+                                      overflow-y:auto; -webkit-overflow-scrolling:touch; background:var(--bg);
+                                      padding:14px 16px calc(28px + env(safe-area-inset-bottom,0px)); }
+body.seance-active #subtab-saisie > * { max-width:640px; margin-left:auto; margin-right:auto; }
+body.seance-active #seance-progress { top:0 !important; }
 body.has-bottom-nav .toast { bottom:84px; }
 
 /* ===== Sous-onglets (pill row) ===== */
