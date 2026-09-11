@@ -298,7 +298,7 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .v2-pstat .pk { font-size:10.5px; color:var(--text-muted); font-weight:600; line-height:1.2; }
 
 /* ===== Timer ===== */
-.timer-overlay      { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:2px solid var(--accent); padding:16px 20px; z-index:50; display:none; }
+.timer-overlay      { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:2px solid var(--accent); padding:16px 20px; z-index:70; display:none; }
 .timer-overlay.active { display:flex; align-items:center; justify-content:space-between; gap:16px; }
 .timer-circle-wrap  { position:relative; width:70px; height:70px; flex-shrink:0; }
 .timer-circle-wrap svg { transform:rotate(-90deg); }
