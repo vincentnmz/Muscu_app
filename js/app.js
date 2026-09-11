@@ -9054,6 +9054,137 @@ function renderAujourdhui(data) {
     var elW = document.getElementById('tj-reg-week');
     if (elW) { var n = Math.max(prevues || 0, 4), h = ''; for (var i = 0; i < n; i++) { h += '<span class="tj-wk' + (i < faites ? ' on' : '') + '"></span>'; } elW.innerHTML = h; }
   } catch (e) {}
+
+  var m = (data && data.moteur) || {};
+  var be0 = (data && Array.isArray(data.bien_etre) && data.bien_etre[0]) ? data.bien_etre[0] : null;
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+
+  // --- Bandeau : état du jour (moteur.disponibilite + résumé bien-être) ---
+  try {
+    var niv = (m.disponibilite && m.disponibilite.niveau) || null;
+    var BAN = {
+      'Prêt':         { t: 'Prêt à performer', bg: 'rgba(0,168,84,.12)',  bd: 'rgba(0,168,84,.28)',  c: 'var(--tj-good)', dot: 'var(--tj-good)' },
+      'Vigilance':    { t: 'Reste vigilant',   bg: 'rgba(224,120,0,.12)', bd: 'rgba(224,120,0,.28)', c: 'var(--tj-warn)', dot: 'var(--tj-warn)' },
+      'À surveiller': { t: 'À surveiller',      bg: 'rgba(220,53,69,.10)', bd: 'rgba(220,53,69,.28)', c: '#DC3545',        dot: '#DC3545' }
+    };
+    var ban = BAN[niv] || { t: 'Ton état du jour', bg: 'var(--tj-surface2)', bd: 'var(--tj-border)', c: 'var(--tj-text)', dot: 'var(--tj-subtle)' };
+    var elBan = document.getElementById('tj-banner'); if (elBan) elBan.setAttribute('style', 'background:' + ban.bg + ';border-color:' + ban.bd + ';');
+    var elBt = document.getElementById('tj-banner-t'); if (elBt) { elBt.textContent = ban.t; elBt.style.color = ban.c; }
+    var elDot = document.getElementById('tj-banner-dot'); if (elDot) elDot.style.background = ban.dot;
+    var elBs = document.getElementById('tj-banner-s');
+    if (elBs) {
+      var sp = [];
+      if (be0) {
+        if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) sp.push('Sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
+        if (be0.energie != null && !isNaN(Number(be0.energie))) sp.push('énergie ' + String(WQ_ANSWERS.energie[Number(be0.energie)] || '').toLowerCase());
+      }
+      if (m.recup && m.recup !== '—') sp.push('récup ' + String(m.recup).toLowerCase());
+      elBs.textContent = sp.length ? sp.join(' · ') : 'Complète ton questionnaire bien-être';
+    }
+  } catch (e) {}
+
+  // --- Bien-être « point du jour » : 5 cellules depuis bien_etre[0] ---
+  try {
+    var elG = document.getElementById('tj-bgrid');
+    if (elG) {
+      var ICOB = {
+        sommeil: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+        ressenti: '<path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/>',
+        energie: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>',
+        fatigue: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>',
+        douleur: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
+      };
+      var CELLS = [
+        { key: 'sommeil', nm: 'Sommeil', invert: false },
+        { key: 'ressenti', nm: 'Mental', invert: false },
+        { key: 'energie', nm: 'Énergie', invert: false },
+        { key: 'fatigue', nm: 'Fatigue', invert: true },
+        { key: 'douleur', nm: 'Douleurs', invert: true }
+      ];
+      elG.innerHTML = CELLS.map(function (c) {
+        var raw = be0 ? be0[c.key] : null;
+        var has = !(raw == null || raw === '' || isNaN(Number(raw)));
+        var nn = has ? Number(raw) : 0;
+        var pos = has ? wqPositif({ invert: c.invert }, raw) : null;
+        var col = (pos != null) ? (pos >= 4 ? 'var(--tj-good)' : pos >= 3 ? 'var(--tj-warn)' : '#DC3545') : 'var(--tj-border)';
+        var pips = '';
+        if (has) { for (var k = 0; k < nn; k++) { pips += '<i class="tj-bp" style="background:' + col + '"></i>'; } }
+        else { pips = '<i class="tj-bp"></i>'; }
+        return '<div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICOB[c.key] + '</svg></span>'
+          + '<span class="tj-bpips">' + pips + '</span><span class="nm">' + c.nm + '</span></div>';
+      }).join('');
+    }
+  } catch (e) {}
+
+  // --- Séance du jour : 1re séance du programme (pas de planification par jour) ---
+  try {
+    var prog = (data && data.programme) || [];
+    var seances = [];
+    prog.forEach(function (p) { if (p && p.seance_id && seances.indexOf(p.seance_id) === -1) seances.push(p.seance_id); });
+    var elNom = document.getElementById('tj-seance-nom');
+    var elMeta = document.getElementById('tj-seance-meta');
+    var elFoc = document.getElementById('tj-seance-focus');
+    var elFocT = document.getElementById('tj-seance-focus-txt');
+    if (seances.length) {
+      var s1 = seances[0];
+      var exos = prog.filter(function (p) { return p.seance_id === s1; });
+      if (elNom) elNom.textContent = s1;
+      if (elMeta) elMeta.textContent = exos.length + ' exercice' + (exos.length > 1 ? 's' : '') + (seances.length > 1 ? ' · ' + seances.length + ' séances au programme' : '');
+      var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3);
+      if (elFoc && elFocT && noms.length) { elFocT.innerHTML = 'Au programme : <b>' + esc(noms.join(' · ')) + '</b>'; elFoc.style.display = ''; }
+      else if (elFoc) elFoc.style.display = 'none';
+    } else {
+      if (elNom) elNom.textContent = 'Séance libre';
+      if (elMeta) elMeta.textContent = 'Choisis tes exercices au démarrage';
+      if (elFoc) elFoc.style.display = 'none';
+    }
+  } catch (e) {}
+
+  // --- Mot de Novalyz : recommandation du moteur ---
+  try {
+    var elNv = document.getElementById('tj-nova-txt');
+    if (elNv) {
+      var reco = m.reco || null;
+      if (reco && String(reco).trim() && String(reco).indexOf('Données insuffisantes') === -1) elNv.textContent = String(reco);
+      else elNv.textContent = 'Enregistre tes séances et ton bien-être : je te donnerai des conseils personnalisés au fil des semaines.';
+    }
+  } catch (e) {}
+
+  // --- Récompenses : chiffres réels (global + régularité + streak) ---
+  try {
+    var g = (data && data.global) || {};
+    var dashb = (data && data.dashboard) || {};
+    var totalS = Number(g.total_seances || 0);
+    var rec30 = Number(g.records_30j || 0);
+    var pts = totalS * 10 + rec30 * 50;
+    var elProg = document.getElementById('tj-prog'); if (elProg) elProg.textContent = pts + ' pts';
+    var rpe = g.records_par_exo || {};
+    var best = null;
+    Object.keys(rpe).forEach(function (exo) {
+      var r = rpe[exo]; if (!r) return;
+      var t = 0; try { var pp = String(r.date || '').split('/'); t = pp.length === 3 ? new Date(+pp[2], +pp[1] - 1, +pp[0]).getTime() : 0; } catch (e3) { t = 0; }
+      if (!best || t > best.t) best = { exo: exo, charge: r.charge, t: t };
+    });
+    var elNa = document.getElementById('tj-newpr-a'), elNb = document.getElementById('tj-newpr-b');
+    if (best && best.charge != null) {
+      if (elNa) elNa.textContent = 'Ton meilleur record';
+      if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg';
+    } else {
+      if (elNa) elNa.textContent = 'Records';
+      if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records';
+    }
+    var reg2 = dashb.regularite || {};
+    var done2 = (reg2.seances_semaine != null) ? Number(reg2.seances_semaine) : Number(reg2.seances_j7 || 0);
+    var goal2 = Number(reg2.seances_prevues || 4) || 4;
+    var elMg = document.getElementById('tj-mgoal'); if (elMg) elMg.textContent = goal2 + ' séances';
+    var elMd = document.getElementById('tj-mdone'); if (elMd) elMd.textContent = done2;
+    var elMt = document.getElementById('tj-mtot'); if (elMt) elMt.textContent = goal2;
+    var elMb = document.getElementById('tj-mbar'); if (elMb) elMb.style.width = Math.max(0, Math.min(100, goal2 ? Math.round(done2 / goal2 * 100) : 0)) + '%';
+    var streak = (dashb.streak && dashb.streak.semaines != null) ? Number(dashb.streak.semaines) : null;
+    var elB1 = document.getElementById('tj-bdg1'); if (elB1) elB1.textContent = (streak != null ? 'Série ' + streak + ' sem.' : 'Série —');
+    var elB2 = document.getElementById('tj-bdg2'); if (elB2) elB2.textContent = rec30 + ' record' + (rec30 > 1 ? 's' : '');
+    var elB3 = document.getElementById('tj-bdg3'); if (elB3) elB3.textContent = totalS + ' séance' + (totalS > 1 ? 's' : '');
+  } catch (e) {}
 }
 
 /* Écran ÉTAT (onglet #tab-etat) — « Mon état ». Peuple les blocs depuis les

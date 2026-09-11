@@ -794,17 +794,17 @@
           </div>
         </div>
 
-        <div class="tj-banner">
-          <span class="tj-dot"></span>
-          <div><div class="t">Prêt à performer</div><div class="s">Sommeil 8h · énergie haute · récupération OK</div></div>
+        <div class="tj-banner" id="tj-banner">
+          <span class="tj-dot" id="tj-banner-dot"></span>
+          <div><div class="t" id="tj-banner-t">Ton état du jour</div><div class="s" id="tj-banner-s">Complète ton questionnaire bien-être</div></div>
         </div>
 
         <div class="tj-card tj-seance">
-          <div><div class="tj-label">Séance du jour</div><h2>Haut du corps</h2></div>
-          <div class="tj-meta">≈ 1h05 · 6 exercices · Push</div>
-          <div class="tj-focus">
+          <div><div class="tj-label">Séance du jour</div><h2 id="tj-seance-nom">Ta séance</h2></div>
+          <div class="tj-meta" id="tj-seance-meta"></div>
+          <div class="tj-focus" id="tj-seance-focus" style="display:none">
             <svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>
-            <span>Focus : progresser sur le <b>développé incliné</b></span>
+            <span id="tj-seance-focus-txt"></span>
           </div>
           <button class="tj-cta" onclick="switchTab('seance')"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>Commencer ma séance</button>
           <button class="tj-other" onclick="switchTab('seance')"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Démarrer une autre séance</button>
@@ -812,13 +812,7 @@
 
         <div class="tj-card tj-bwrap">
           <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="switchTab('seance')">Mettre à jour ›</span></div>
-          <div class="tj-bgrid">
-            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span class="tj-bpips"><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i></span><span class="nm">Sommeil</span></div>
-            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/></svg></span><span class="tj-bpips"><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i></span><span class="nm">Mental</span></div>
-            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/></svg></span><span class="tj-bpips"><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i><i class="tj-bp on"></i></span><span class="nm">Énergie</span></div>
-            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/></svg></span><span class="tj-bpips"><i class="tj-bp warn"></i><i class="tj-bp warn"></i><i class="tj-bp warn"></i></span><span class="nm">Fatigue</span></div>
-            <div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></span><span class="tj-bpips"><i class="tj-bp on"></i></span><span class="nm">Douleurs</span></div>
-          </div>
+          <div class="tj-bgrid" id="tj-bgrid"></div>
         </div>
 
         <div class="tj-card tj-rew">
@@ -826,18 +820,18 @@
             <span class="k"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg>Récompenses</span>
             <span class="prog" id="tj-prog">+12% ce mois</span>
           </div>
-          <div class="tj-newpr">
+          <div class="tj-newpr" id="tj-newpr">
             <span class="medal"><svg width="19" height="19" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
-            <div><div class="a">Nouveau record débloqué</div><div class="b">Développé incliné · 62,5 kg (+7,5 kg)</div></div>
+            <div><div class="a" id="tj-newpr-a">Records</div><div class="b" id="tj-newpr-b">—</div></div>
           </div>
           <div class="tj-miles">
-            <div class="lh"><span>Défi du mois : <b>10 séances</b></span><span><b id="tj-mdone">8</b>/10</span></div>
-            <div class="tj-mbar"><span id="tj-mbar" style="width:80%"></span></div>
+            <div class="lh"><span>Défi de la semaine : <b id="tj-mgoal">—</b></span><span><b id="tj-mdone">0</b>/<span id="tj-mtot">0</span></span></div>
+            <div class="tj-mbar"><span id="tj-mbar" style="width:0%"></span></div>
           </div>
           <div class="tj-badges">
-            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="n">Série 5 sem.</span></div>
-            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="n">2 records</span></div>
-            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="n">1,2 t / séance</span></div>
+            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="n" id="tj-bdg1">Série —</span></div>
+            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="n" id="tj-bdg2">— records</span></div>
+            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="n" id="tj-bdg3">— séances</span></div>
           </div>
         </div>
 
