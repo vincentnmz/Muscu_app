@@ -113,12 +113,16 @@
   </div>
 </header>
 
+<!-- Barre de navigation du bas — 5 onglets (maquette validée) :
+     Aujourd'hui · Entraînement · Cardio · Analyses · État.
+     ⚠️ L'ORDRE ci-dessous doit rester aligné avec le tableau positionnel de
+     switchTab() dans js/app.js : ['accueil','seance','cardio','historique','etat']. -->
 <div class="tabs-bar" id="tabs-bar" style="display:none">
-  <button class="tab-btn active" onclick="switchTab('accueil')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.4"/></svg></span><span>Accueil</span></button>
-  <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></svg></span><span>Progression</span></button>
-  <button class="tab-btn" onclick="switchTab('seance')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M6.5 6v12M3.5 8.5v7M17.5 6v12M20.5 8.5v7M6.5 12h11"/></svg></span><span>Séance</span></button>
-  <button class="tab-btn" onclick="switchTab('objectif')"><span class="tab-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg></span><span>Objectif</span></button>
-  <button class="tab-btn" onclick="switchTab('conseils')" style="position:relative"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.5A8 8 0 1 1 21 11.5z"/></svg></span><span>Conversation</span><span id="badge-conseils" style="display:none;position:absolute;top:2px;right:12px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
+  <button class="tab-btn active" onclick="switchTab('accueil')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg></span><span>Aujourd'hui</span></button>
+  <button class="tab-btn" onclick="switchTab('seance')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg></span><span>Entraînement</span></button>
+  <button class="tab-btn" onclick="switchTab('cardio')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><span>Cardio</span></button>
+  <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg></span><span>Analyses</span></button>
+  <button class="tab-btn" onclick="switchTab('etat')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg></span><span>État</span></button>
 </div>
 
 <div class="container" id="main-container">
@@ -784,7 +788,7 @@
             <div class="tj-date" id="tj-date"></div>
           </div>
           <div class="tj-hicons">
-            <button class="tj-hibtn" id="tj-btn-msg" title="Messages" onclick="switchTab('conseils')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg></button>
+            <button class="tj-hibtn" id="tj-btn-msg" title="Messages" onclick="switchTab('conseils')" style="position:relative"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg><span id="badge-conseils" style="display:none;position:absolute;top:-2px;right:-2px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
             <button class="tj-hibtn" title="Réglages" onclick="switchTab('reglages')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 6.7 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 12.6a2 2 0 0 1 0-4 1.6 1.6 0 0 0 1.5-2.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 3V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
             <button class="tj-hibtn" title="Déconnexion" onclick="seDeconnecter()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
           </div>
@@ -1412,6 +1416,33 @@
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerMessageAthleteCoach();}"></textarea>
           <button onclick="envoyerMessageAthleteCoach()" style="background:var(--accent);border:none;border-radius:8px;padding:8px 14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--on-accent)"><svg class="ico"><use href="#i-send"/></svg></button>
         </div>
+      </div>
+    </div>
+
+    <!-- ONGLET CARDIO — écran en préparation (contenu réel : prochaine phase).
+         Présent pour que la barre de nav (5 onglets maquette) fonctionne. -->
+    <div id="tab-cardio" class="tab-content">
+      <div class="v2-sec"><h2 class="st"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</h2></div>
+      <div class="card" style="text-align:center;padding:26px 18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--surface2);display:grid;place-items:center;margin:0 auto 12px;color:var(--accent);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>
+        </div>
+        <div style="font-size:16px;font-weight:800;margin-bottom:6px;">Cardio — bientôt</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.5;max-width:340px;margin:0 auto;">Séances cardio, RPE et questionnaire dédiés, avec leurs analyses. On construit cet écran à la prochaine étape.</div>
+      </div>
+    </div>
+
+    <!-- ONGLET ÉTAT — écran en préparation (bien-être, sommeil, mental, objectifs).
+         Contient l'accès aux Objectifs (l'onglet a quitté la barre du bas). -->
+    <div id="tab-etat" class="tab-content">
+      <div class="v2-sec"><h2 class="st"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/></svg>État</h2></div>
+      <div class="card" style="text-align:center;padding:26px 18px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--surface2);display:grid;place-items:center;margin:0 auto 12px;color:var(--accent);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg>
+        </div>
+        <div style="font-size:16px;font-weight:800;margin-bottom:6px;">État — bientôt</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.5;max-width:340px;margin:0 auto 16px;">Sommeil, énergie, fatigue, mental et douleurs : ton état pour piloter l'entraînement. Écran en construction.</div>
+        <button onclick="switchTab('objectif')" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:11px 18px;font-size:13px;font-weight:700;cursor:pointer;">Mes objectifs →</button>
       </div>
     </div>
 

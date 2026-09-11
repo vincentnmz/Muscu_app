@@ -6504,11 +6504,13 @@ async function supprimerDemoFoot() {
   } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
 }
 
-const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Séance', historique: 'Progression', conseils: 'Conversation', reglages: 'Réglages' };
+const TAB_LABELS = { accueil: 'Accueil', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'État', conseils: 'Conversation', reglages: 'Réglages' };
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
+  // ⚠️ Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
+  // Aujourd'hui · Entraînement · Cardio · Analyses · État.
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['accueil','historique','seance','objectif','conseils'][i] === tab);
+    b.classList.toggle('active', ['accueil','seance','cardio','historique','etat'][i] === tab);
   });
   const hdr = document.getElementById('header-nom');
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];
