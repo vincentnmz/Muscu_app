@@ -6530,6 +6530,10 @@ function switchTab(tab) {
     if (dernierAppData) chargerHistorique();
     else chargerAppData().then(() => chargerHistorique());
   }
+  if (tab === 'etat') {
+    if (dernierAppData) renderEtat(dernierAppData);
+    else chargerAppData().then(() => renderEtat(dernierAppData));
+  }
   if (tab === 'conseils') {
     afficherOngletConseils();
   }
@@ -9052,6 +9056,214 @@ function renderAujourdhui(data) {
   } catch (e) {}
 }
 
+/* Écran ÉTAT (onglet #tab-etat) — « Mon état ». Peuple les blocs depuis les
+ * DONNÉES RÉELLES du backend (moteur.recScore / disponibilite / reco / acwr_*,
+ * data.dashboard.acwr, data.bien_etre[], data.poids[]). Aucun chiffre inventé :
+ * un bloc sans données affiche un état vide honnête. La courbe ACWR 14 j de la
+ * maquette n'est PAS tracée (pas de série de charge journalière exposée) ; on
+ * affiche uniquement la dernière valeur ACWR fiable. */
+function renderEtat(data) {
+  data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null) || {};
+  var m = data.moteur || {};
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+
+  // ---- HERO : score de récupération (moteur.recScore) + niveau de dispo ----
+  try {
+    var el = document.getElementById('et-hero');
+    if (el) {
+      var niv = (m.disponibilite && m.disponibilite.niveau) || null;
+      var col = niv ? couleurStatut(niv) : 'var(--text-muted)';
+      var score = (m.recScore != null && !isNaN(Number(m.recScore))) ? Math.round(Number(m.recScore)) : null;
+      var EX = {
+        'Prêt': "Bonnes conditions pour t'entraîner comme prévu aujourd'hui.",
+        'Vigilance': "Surveille tes sensations et évite de surcharger aujourd'hui.",
+        'À surveiller': "Allège et surveille de près : ton corps a besoin de récupérer."
+      };
+      var TINT = {
+        'Prêt': { bg: 'var(--good-a)', bd: 'rgba(0,168,84,.22)' },
+        'Vigilance': { bg: 'var(--warn-a)', bd: 'rgba(224,120,0,.22)' },
+        'À surveiller': { bg: 'var(--bad-a)', bd: 'rgba(220,53,69,.22)' }
+      };
+      var tint = TINT[niv] || { bg: 'var(--surface)', bd: 'var(--border)' };
+      var titre = niv || 'En attente de données';
+      var ex = EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.';
+      var dashArc = (score != null) ? (score + ' 100') : '0 100';
+      var ringTxt = (score != null) ? String(score) : '—';
+      el.setAttribute('style', 'background:' + tint.bg + ';border-color:' + tint.bd + ';');
+      el.innerHTML =
+        '<svg class="et-ring" viewBox="0 0 36 36">'
+        + '<circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--border)" stroke-width="4"/>'
+        + '<circle cx="18" cy="18" r="15.5" fill="none" stroke="' + col + '" stroke-width="4" stroke-linecap="round" pathLength="100" stroke-dasharray="' + dashArc + '" transform="rotate(-90 18 18)"/>'
+        + '<text x="18" y="20.6" text-anchor="middle" font-size="9" font-weight="700" fill="' + col + '">' + ringTxt + '</text>'
+        + '</svg>'
+        + '<div><div class="et-st" style="color:' + col + '">' + esc(titre) + '</div>'
+        + '<div class="et-ex">' + esc(ex) + '</div></div>';
+    }
+  } catch (e) {}
+
+  // ---- ACWR : dernière valeur fiable uniquement (jamais recalculée ici) ----
+  try {
+    var elA = document.getElementById('et-acwr');
+    if (elA) {
+      var dashd = data.dashboard || {};
+      var fiable = (m.acwr_fiable === true);
+      var ratio = (dashd.acwr != null && !isNaN(Number(dashd.acwr))) ? Number(dashd.acwr) : null;
+      if (!fiable || ratio == null) {
+        var note = m.acwr_note || 'Données insuffisantes pour interpréter la charge.';
+        elA.innerHTML =
+          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span></div>'
+          + '<div style="display:flex;align-items:center;gap:12px;">'
+          + '<span class="et-big" style="color:var(--text-muted)">—</span>'
+          + '<span class="et-muted">ACWR non interprétable pour l’instant.<br>' + esc(note) + '</span></div>';
+      } else {
+        var catMap = {
+          normal: { l: 'Zone optimale', c: 'var(--good)', bg: 'var(--good-a)' },
+          vigilance: { l: 'Vigilance', c: 'var(--warn)', bg: 'var(--warn-a)' },
+          eleve: { l: 'Charge élevée', c: 'var(--danger)', bg: 'var(--bad-a)' },
+          sous_charge: { l: 'Sous-charge', c: 'var(--accent)', bg: 'var(--accent-a10)' }
+        };
+        var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)', bg: 'var(--surface2)' };
+        elA.innerHTML =
+          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span>'
+          + '<span class="et-chip" style="color:' + cat.c + ';background:' + cat.bg + '">ACWR ' + ratio.toFixed(2) + '</span></div>'
+          + '<div style="display:flex;align-items:center;gap:12px;">'
+          + '<span class="et-big" style="color:' + cat.c + '">' + ratio.toFixed(2) + '</span>'
+          + '<span class="et-muted"><b style="color:' + cat.c + '">' + esc(cat.l) + '</b><br>Rapport charge aiguë (7 j) / chronique (28 j).</span></div>';
+      }
+    }
+  } catch (e) {}
+
+  // ---- POIDS : série réelle poids_historique ----
+  try {
+    var elP = document.getElementById('et-poids');
+    if (elP) {
+      var arr = (data.poids || []).map(function (p) { return { d: p.date, v: parseFloat(p.poids) }; }).filter(function (p) { return !isNaN(p.v); });
+      var chrono = arr.slice().reverse();   // backend desc → chronologique
+      var cur = null;
+      try { cur = arr.length ? arr[0].v : ((athlete && athlete.poids != null && athlete.poids !== '') ? parseFloat(athlete.poids) : null); } catch (e2) { cur = null; }
+      var curTxt = (cur != null && !isNaN(cur)) ? (String(Math.round(cur * 10) / 10).replace('.', ',') + ' kg') : '—';
+      if (chrono.length >= 2) {
+        var first = chrono[0], last = chrono[chrono.length - 1];
+        var delta = Math.round((last.v - first.v) * 10) / 10;
+        var deltaTxt = (delta > 0 ? '+' : '') + String(delta).replace('.', ',') + ' kg';
+        var vals = chrono.map(function (p) { return p.v; });
+        var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), span = (mx - mn) || 1;
+        var X = function (i) { return (i / (chrono.length - 1)) * 300 + 10; };
+        var Y = function (v) { return 54 - ((v - mn) / span) * 40; };
+        var pts = chrono.map(function (p, i) { return X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1); });
+        var dPath = 'M' + pts.join(' L');
+        var lx = X(chrono.length - 1).toFixed(1), ly = Y(last.v).toFixed(1);
+        elP.innerHTML =
+          '<div class="et-rowh"><span class="et-k">' + curTxt + ' <span style="font-size:11px;color:var(--text-subtle);font-weight:600">aujourd’hui</span></span>'
+          + '<span class="et-chip" style="color:var(--text-muted);background:var(--surface2)">' + deltaTxt + '</span></div>'
+          + '<svg width="100%" height="70" viewBox="0 0 320 70" preserveAspectRatio="none">'
+          + '<line x1="0" y1="54" x2="320" y2="54" stroke="var(--border)" stroke-width="1"/>'
+          + '<path d="' + dPath + '" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
+          + '<circle cx="' + lx + '" cy="' + ly + '" r="3.4" fill="var(--accent)"/></svg>'
+          + '<div class="et-lg"><span>' + esc(first.d) + ' · ' + String(Math.round(first.v * 10) / 10).replace('.', ',') + ' kg</span>'
+          + '<span>' + esc(last.d) + ' · ' + String(Math.round(last.v * 10) / 10).replace('.', ',') + ' kg</span></div>';
+      } else {
+        elP.innerHTML =
+          '<div class="et-rowh"><span class="et-k">' + curTxt + '</span></div>'
+          + '<div class="et-muted">Pas encore assez de mesures pour tracer la tendance. Ajoute ton poids régulièrement.</div>';
+      }
+    }
+  } catch (e) {}
+
+  // ---- RESSENTI 7 jours : dot par jour depuis bien_etre[] ----
+  try {
+    var elD = document.getElementById('et-days');
+    if (elD) {
+      var beArr = Array.isArray(data.bien_etre) ? data.bien_etre : [];
+      var byDate = {};
+      beArr.forEach(function (b) { if (b && b.date) byDate[b.date] = b; });
+      var DIMS = [
+        { key: 'sommeil', invert: false }, { key: 'energie', invert: false },
+        { key: 'fatigue', invert: true }, { key: 'douleur', invert: true }, { key: 'ressenti', invert: false }
+      ];
+      var JOURS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+      var htmlD = '', today = new Date(); today.setHours(0, 0, 0, 0);
+      for (var i = 6; i >= 0; i--) {
+        var dd = new Date(today.getTime() - i * 86400000);
+        var keyD = ('0' + dd.getDate()).slice(-2) + '/' + ('0' + (dd.getMonth() + 1)).slice(-2) + '/' + dd.getFullYear();
+        var beD = byDate[keyD], bg = 'var(--border)';
+        if (beD) {
+          var poss = [];
+          DIMS.forEach(function (dm) { var p = wqPositif({ invert: dm.invert }, beD[dm.key]); if (p != null) poss.push(p); });
+          if (poss.length) {
+            var avg = poss.reduce(function (a, b2) { return a + b2; }, 0) / poss.length;
+            bg = avg >= 4 ? 'var(--good)' : avg >= 3 ? 'var(--warn)' : 'var(--danger)';
+          }
+        }
+        htmlD += '<div class="et-dcol"><span class="et-dbar" style="background:' + bg + '"></span><span class="et-lbl">' + JOURS[dd.getDay()] + '</span></div>';
+      }
+      elD.innerHTML = htmlD;
+    }
+  } catch (e) {}
+
+  // ---- BIEN-ÊTRE DU JOUR : bien_etre[0] (5 dimensions) ----
+  try {
+    var elW2 = document.getElementById('et-wb');
+    if (elW2) {
+      var be0 = (Array.isArray(data.bien_etre) && data.bien_etre[0]) ? data.bien_etre[0] : null;
+      var ICO = {
+        sommeil: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+        ressenti: '<path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/>',
+        energie: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>',
+        fatigue: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>',
+        douleur: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
+      };
+      var ROWS = [
+        { key: 'sommeil', label: 'Sommeil', invert: false },
+        { key: 'ressenti', label: 'Ressenti', invert: false },
+        { key: 'energie', label: 'Énergie', invert: false },
+        { key: 'fatigue', label: 'Fatigue musculaire', invert: true },
+        { key: 'douleur', label: 'Douleur', invert: true }
+      ];
+      if (!be0) {
+        elW2.innerHTML = '<div style="padding:16px" class="et-muted">Aucun questionnaire récent. Remplis ton bien-être après ta prochaine séance pour suivre ton état.</div>';
+      } else {
+        var rowsHtml = ROWS.map(function (r) {
+          var raw = be0[r.key];
+          var has = !(raw == null || raw === '' || isNaN(Number(raw)));
+          var n = has ? Number(raw) : 0;
+          var pos = has ? wqPositif({ invert: r.invert }, raw) : null;
+          var col2 = (pos != null) ? (pos >= 4 ? 'var(--good)' : pos >= 3 ? 'var(--warn)' : 'var(--danger)') : 'var(--border)';
+          var valTxt = has ? ((WQ_ANSWERS[r.key] && WQ_ANSWERS[r.key][n]) || (n + '/5')) : '—';
+          var pips = '';
+          for (var k = 0; k < 5; k++) { pips += '<i class="et-pip"' + (has && k < n ? ' style="background:' + col2 + '"' : '') + '></i>'; }
+          return '<div class="et-er"><span class="et-ic"><svg width="17" height="17" viewBox="0 0 24 24">' + ICO[r.key] + '</svg></span>'
+            + '<span class="et-lab">' + r.label + '</span>'
+            + '<span class="et-val">' + esc(valTxt) + '</span>'
+            + '<span class="et-scale">' + pips + '</span></div>';
+        }).join('');
+        var zone = '';
+        var doul = Number(be0.douleur);
+        if (!isNaN(doul) && doul > 1 && be0.zone) {
+          zone = '<div class="et-er"><span class="et-lab" style="font-weight:600;color:var(--text-muted);font-size:11.5px">📍 Zone : <b style="color:var(--text)">' + esc(be0.zone) + '</b></span></div>';
+        }
+        elW2.innerHTML = rowsHtml + zone;
+      }
+    }
+  } catch (e) {}
+
+  // ---- RECO DU JOUR : moteur.reco ----
+  try {
+    var elR2 = document.getElementById('et-reco');
+    if (elR2) {
+      var reco = m.reco || null;
+      if (reco && String(reco).trim() && String(reco).indexOf('Données insuffisantes') === -1) {
+        elR2.style.display = '';
+        elR2.innerHTML =
+          '<svg width="19" height="19" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>'
+          + '<div class="et-t"><b>Reco du jour —</b> ' + esc(reco) + '</div>';
+      } else {
+        elR2.style.display = 'none';
+      }
+    }
+  } catch (e) {}
+}
+
 function _appliquerAppData(data) {
   // Stocker les données globalement
   dernierAppData = data;
@@ -9078,6 +9290,7 @@ function _appliquerAppData(data) {
 
     // Accueil « Aujourd'hui » (refonte maquette) — prénom, date, régularité.
     _safe('aujourdhui', () => renderAujourdhui(data));
+    _safe('etat', () => renderEtat(data));
 
     // Jours de cardio (clés DD/MM/YYYY) → heatmap de régularité (muscu + cardio) + agenda coloré
     _safe('cardio-agg', () => {

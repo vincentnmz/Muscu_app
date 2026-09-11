@@ -1432,17 +1432,86 @@
       </div>
     </div>
 
-    <!-- ONGLET ÉTAT — écran en préparation (bien-être, sommeil, mental, objectifs).
-         Contient l'accès aux Objectifs (l'onglet a quitté la barre du bas). -->
+    <!-- ONGLET ÉTAT — écran « Mon état » (maquette Etat.dc.html).
+         Blocs peuplés par renderEtat(data) en JS depuis les DONNÉES RÉELLES du
+         backend (moteur.recScore / disponibilite / reco, bien_etre[], poids[],
+         dashboard.acwr). Aucun chiffre inventé : un bloc sans données affiche un
+         état vide honnête. -->
     <div id="tab-etat" class="tab-content">
-      <div class="v2-sec"><h2 class="st"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/></svg>État</h2></div>
-      <div class="card" style="text-align:center;padding:26px 18px;">
-        <div style="width:56px;height:56px;border-radius:16px;background:var(--surface2);display:grid;place-items:center;margin:0 auto 12px;color:var(--accent);">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg>
-        </div>
-        <div style="font-size:16px;font-weight:800;margin-bottom:6px;">État — bientôt</div>
-        <div style="font-size:13px;color:var(--text-muted);line-height:1.5;max-width:340px;margin:0 auto 16px;">Sommeil, énergie, fatigue, mental et douleurs : ton état pour piloter l'entraînement. Écran en construction.</div>
-        <button onclick="switchTab('objectif')" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:11px 18px;font-size:13px;font-weight:700;cursor:pointer;">Mes objectifs →</button>
+      <style id="et-css">
+        #tab-etat.tab-content{ padding-bottom:calc(96px + env(safe-area-inset-bottom,0px)); }
+        #tab-etat .et-wrap{ display:flex; flex-direction:column; gap:12px; }
+        #tab-etat .et-sec{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-subtle); font-weight:700; margin:4px 2px -4px; }
+        #tab-etat .et-card{ background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
+        #tab-etat .et-hero{ display:flex; align-items:center; gap:16px; padding:16px; border-radius:20px; box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08)); border:1px solid var(--border); background:var(--surface); }
+        #tab-etat .et-ring{ width:64px; height:64px; flex:none; }
+        #tab-etat .et-hero .et-st{ font-size:17px; font-weight:800; line-height:1.1; }
+        #tab-etat .et-hero .et-ex{ font-size:12px; color:var(--text-muted); margin-top:4px; line-height:1.4; }
+        #tab-etat .et-charge{ padding:14px 15px; display:flex; flex-direction:column; gap:9px; }
+        #tab-etat .et-rowh{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+        #tab-etat .et-rowh .et-k{ font-weight:700; font-size:12.5px; }
+        #tab-etat .et-big{ font-size:26px; font-weight:800; line-height:1; }
+        #tab-etat .et-chip{ font-size:10.5px; font-weight:800; border-radius:6px; padding:3px 8px; white-space:nowrap; }
+        #tab-etat .et-lg{ display:flex; gap:12px; font-size:9.5px; color:var(--text-subtle); flex-wrap:wrap; }
+        #tab-etat .et-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px; padding:13px; }
+        #tab-etat .et-dcol{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+        #tab-etat .et-dcol .et-lbl{ font-size:9px; color:var(--text-subtle); font-weight:600; }
+        #tab-etat .et-dbar{ width:11px; height:11px; border-radius:999px; background:var(--border); }
+        #tab-etat .et-er{ display:flex; align-items:center; gap:12px; padding:11px 13px; }
+        #tab-etat .et-er + .et-er{ border-top:1px solid var(--border); }
+        #tab-etat .et-er .et-ic{ width:30px; height:30px; border-radius:9px; flex:none; display:grid; place-items:center; background:var(--surface2); color:var(--accent); }
+        #tab-etat .et-er .et-ic svg{ fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-etat .et-er .et-lab{ flex:1; font-weight:600; font-size:13px; }
+        #tab-etat .et-er .et-val{ font-size:11.5px; color:var(--text-subtle); margin-right:2px; }
+        #tab-etat .et-scale{ display:flex; gap:4px; flex:none; }
+        #tab-etat .et-pip{ width:9px; height:9px; border-radius:999px; background:var(--border); }
+        #tab-etat .et-reco{ display:flex; gap:11px; align-items:flex-start; padding:14px 15px; border-radius:16px; background:var(--accent-a10); border:1px solid var(--accent-a15); }
+        #tab-etat .et-reco svg{ flex:none; color:var(--accent); margin-top:1px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-etat .et-reco .et-t{ font-size:12.5px; line-height:1.45; }
+        #tab-etat .et-reco .et-t b{ color:var(--accent-strong); }
+        #tab-etat .et-goals{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 15px; cursor:pointer; width:100%; text-align:left; background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); color:var(--text); font:inherit; }
+        #tab-etat .et-goals .et-gt{ font-weight:700; font-size:13px; }
+        #tab-etat .et-goals .et-gs{ font-size:11px; color:var(--text-muted); margin-top:2px; }
+        #tab-etat .et-muted{ font-size:12px; color:var(--text-muted); line-height:1.5; }
+        #tab-etat .et-fabwrap{ position:fixed; right:15px; bottom:calc(80px + env(safe-area-inset-bottom,0px)); display:flex; align-items:center; gap:9px; z-index:40; }
+        #tab-etat .et-fabtip{ background:var(--surface); border:1px solid var(--border); box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08)); border-radius:999px; padding:7px 12px; font-size:11.5px; font-weight:700; color:var(--text); }
+        #tab-etat .et-fab{ width:56px; height:56px; border-radius:999px; background:var(--accent); color:#fff; border:none; box-shadow:0 8px 22px rgba(26,95,255,.42); display:grid; place-items:center; cursor:pointer; }
+        #tab-etat .et-fab svg{ fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+      </style>
+
+      <div class="et-wrap">
+        <!-- Hero : score de récup (moteur.recScore) + niveau de disponibilité -->
+        <div class="et-hero" id="et-hero"></div>
+
+        <!-- Charge & récup : ACWR réel (dashboard.acwr + moteur.acwr_*) -->
+        <div class="et-sec">Charge &amp; récupération</div>
+        <div class="et-card et-charge" id="et-acwr"></div>
+
+        <!-- Poids : série réelle poids_historique -->
+        <div class="et-sec">Poids</div>
+        <div class="et-card et-charge" id="et-poids"></div>
+
+        <!-- Ressenti : dot par jour depuis bien_etre[] -->
+        <div class="et-sec">Ton ressenti · 7 derniers jours</div>
+        <div class="et-card et-days" id="et-days"></div>
+
+        <!-- Bien-être du jour : bien_etre[0] (5 dimensions) -->
+        <div class="et-sec">Bien-être du jour</div>
+        <div class="et-card" id="et-wb"></div>
+
+        <!-- Reco du jour : moteur.reco -->
+        <div class="et-reco" id="et-reco" style="display:none"></div>
+
+        <!-- Accès Objectifs (l'onglet a quitté la barre du bas) -->
+        <button class="et-goals" onclick="switchTab('objectif')">
+          <div><div class="et-gt">Mes objectifs</div><div class="et-gs">Suivre et fixer tes objectifs</div></div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      <div class="et-fabwrap">
+        <span class="et-fabtip">Demande à Novalyz</span>
+        <button class="et-fab" onclick="switchTab('conseils')" title="Demande à Novalyz"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
       </div>
     </div>
 
