@@ -5744,6 +5744,7 @@ function renderProgrammeCoach() {
         <div style="font-size:15px;font-weight:800;color:var(--accent);display:flex;align-items:center;gap:8px"><svg class="ico"><use href="#i-clipboard"/></svg>${seanceId}</div>
         <div style="display:flex;align-items:center;gap:9px">
           <span style="font-size:11px;font-weight:800;background:var(--accent-a14);color:var(--accent);padding:2px 9px;border-radius:20px">${lignes.length} exo${lignes.length>1?'s':''}</span>
+          ${ro ? '' : `<button onclick='event.stopPropagation();cdSupprimerSeance(${JSON.stringify(seanceId)})' title="Supprimer la séance" style="background:var(--bad-a);border:1px solid var(--danger);color:var(--danger);border-radius:8px;width:30px;height:30px;padding:0;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;">🗑</button>`}
           <span id="prog-arrow-${si}" style="font-size:15px;color:var(--text-muted);transition:transform .2s;transform:${ouvert?'rotate(90deg)':'none'}">›</span>
         </div>
       </div>
@@ -5877,6 +5878,22 @@ async function cdSupprimerLigne(rowIndex) {
     method: 'POST', headers: {'Content-Type': 'text/plain'},
     body: JSON.stringify({action: 'supprimerProgrammeLigne', row_index: rowIndex, athlete_id: _progAthleteId()})
   });
+  chargerProgrammeCoach();
+}
+
+// Supprime une séance entière (toutes ses lignes) du programme.
+async function cdSupprimerSeance(seanceId) {
+  if (!confirm('Supprimer toute la séance « ' + seanceId + ' » et ses exercices ?')) return;
+  const rows = cdProgrammeLignes.filter(l => l.seance_id === seanceId);
+  const aid = _progAthleteId();
+  for (let i = 0; i < rows.length; i++) {
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST', headers: {'Content-Type': 'text/plain'},
+        body: JSON.stringify({action: 'supprimerProgrammeLigne', row_index: rows[i].row_index, athlete_id: aid})
+      });
+    } catch (e) {}
+  }
   chargerProgrammeCoach();
 }
 
@@ -9735,7 +9752,7 @@ function renderEntrainement(data) {
           var chip = fait
             ? '<span class="en-chip done"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Réalisé</span>'
             : '<span class="en-chip todo">À faire</span>';
-          return '<div class="en-srow" onclick="_enStart(' + JSON.stringify(String(sid)) + ')">'
+          return '<div class="en-srow" onclick=\'_enStart(' + JSON.stringify(String(sid)) + ')\'>'
             + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>'
             + chip + '</div>';
         }).join('');
