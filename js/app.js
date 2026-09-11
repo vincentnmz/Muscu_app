@@ -7396,154 +7396,227 @@ const WELLNESS_NO_PAIN_VAL = '1';
 
 const wellnessState = { sommeil: null, energie: null, fatigue: null, douleur: null, zone: null, ressenti: null };
 
-// ── Option 1 — « état du jour » ─────────────────────────────────────────────
-// Un SEUL questionnaire bien-être par jour, déclenché après une séance (muscu OU
-// cardio) OU à la demande depuis l'accueil (« Mettre à jour »). Il alimente le
-// moteur + les onglets Aujourd'hui/État. Le RPE par série (muscu) et le RPE
-// cardio restent séparés (dans les données de séance) pour les Analyses.
-let _wqStandalone = false;   // true = « point du jour » autonome (pas lié à une validation de séance)
-var _pdjDate = null;         // date (yyyy-mm-dd) pour laquelle enregistrer le point du jour
+// ── Questionnaires (Phase 1) ────────────────────────────────────────────────
+// DEUX questionnaires distincts, à DEUX moments :
+//  • ÉTAT DU JOUR (readiness) — au « Démarrer la séance » (AVANT) + accueil.
+//    sommeil · énergie · fatigue → bien_etre (1×/jour). Alimente le moteur.
+//    (mesuré avant pour ne pas être « pollué » par la fatigue de la séance)
+//  • BILAN DE SÉANCE — APRÈS validation (muscu ET cardio).
+//    ressenti (Facile→Très dur) + douleurs (+ zone) + note → indicateurs
+//    (ressenti_<type> / douleur_<type>) pour les Analyses ; la douleur remonte
+//    aussi dans bien_etre du jour pour rester visible du moteur.
+var _wqMode = 'etat';       // 'etat' | 'bilan'
+var _wqType = 'muscu';      // pour le bilan : 'muscu' | 'cardio'
+var _wqDate = null;         // date de rattachement (yyyy-mm-dd)
+var _wqThen = null;         // callback après état du jour (démarrage de la séance)
+var _wqSeanceId = null;     // seance_id (bilan cardio)
 
 // L'état du jour a-t-il déjà été renseigné aujourd'hui ? (dédup : 1 par jour)
 function _bienEtreFaitAujourdhui() {
   try {
     var be = (dernierAppData && Array.isArray(dernierAppData.bien_etre) && dernierAppData.bien_etre[0]) ? dernierAppData.bien_etre[0] : null;
     if (!be || !be.date) return false;
-    return _normDateDDMM(be.date) === _normDateDDMM(_todayLocalStr());
+    // « fait » = au moins un signal readiness renseigné aujourd'hui
+    var hasReadiness = ['sommeil', 'energie', 'fatigue'].some(function (k) { return be[k] != null && be[k] !== '' && !isNaN(Number(be[k])); });
+    return hasReadiness && _normDateDDMM(be.date) === _normDateDDMM(_todayLocalStr());
   } catch (e) { return false; }
+}
+
+var _BTN_SEC = 'flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:12px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;';
+var _BTN_MAIN = 'flex:2;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;';
+var _WQ_BLOCKS = ['wqb-sommeil', 'wqb-energie', 'wqb-fatigue', 'wqb-ressenti', 'wqb-douleur', 'wq-zone-block', 'wqb-note'];
+
+function _wqShow(ids) {
+  _WQ_BLOCKS.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = (ids.indexOf(id) !== -1) ? '' : 'none';
+  });
 }
 
 function _wqResetForm() {
   Object.keys(wellnessState).forEach(k => wellnessState[k] = null);
   document.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
-  const noteInp = document.getElementById('wq-note'); if (noteInp) noteInp.value = '';
-  const zb = document.getElementById('wq-zone-block'); if (zb) zb.style.display = 'none';
+  var n = document.getElementById('wq-note'); if (n) n.value = '';
+  var zt = document.getElementById('wq-zone-text'); if (zt) zt.value = '';
 }
 
-// Pré-remplit le questionnaire depuis la saisie du jour (cas « mise à jour »)
-function _wqPrefillFromToday() {
-  try {
-    if (!_bienEtreFaitAujourdhui()) return;
-    var be = dernierAppData.bien_etre[0];
-    ['sommeil', 'energie', 'fatigue', 'douleur', 'ressenti'].forEach(function (k) {
-      var v = be[k];
-      if (v == null || v === '' || isNaN(Number(v))) return;
-      var cont = document.getElementById('wq-' + k);
-      if (!cont) return;
-      var btn = cont.querySelector('.wq-chip[data-val="' + Number(v) + '"]');
-      if (btn) selectWQ(k, btn);
-    });
-    if (be.zone) {
-      var zc = document.getElementById('wq-zone');
-      if (zc) { var zb = zc.querySelector('.wq-chip[data-val="' + be.zone + '"]'); if (zb) selectWQ('zone', zb); }
-    }
-  } catch (e) {}
-}
-
-// Adapte titre/sous-titre/label ressenti + boutons selon le mode d'ouverture.
-function _wqSetMode(standalone) {
-  _wqStandalone = !!standalone;
-  var title = document.getElementById('wq-title');
-  var sub = document.getElementById('wq-sub');
-  var lblR = document.getElementById('wq-lbl-ressenti');
-  var footer = document.getElementById('wq-footer');
-  var btnSec = 'flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:12px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;';
-  var btnMain = 'flex:2;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;';
-  if (standalone) {
-    if (title) title.textContent = 'Ton point du jour';
-    if (sub) sub.textContent = 'Comment tu te sens aujourd’hui ? · 30 secondes';
-    if (lblR) lblR.textContent = '😊 Ressenti général';
-    if (footer) footer.innerHTML =
-      '<button onclick="fermerWellnessModal()" style="' + btnSec + '">Fermer</button>'
-      + '<button onclick="enregistrerPointDuJour()" id="btn-wellness-valider" style="' + btnMain + '">✅ Enregistrer</button>';
-  } else {
-    if (title) title.textContent = 'Comment tu te sens ?';
-    if (sub) sub.textContent = '30 secondes · optionnel mais utile pour ton suivi';
-    if (lblR) lblR.textContent = '😊 Ressenti de la séance';
-    if (footer) footer.innerHTML =
-      '<button onclick="validerSeanceSansWellness()" style="' + btnSec + '">Passer</button>'
-      + '<button onclick="validerSeanceAvecWellness()" id="btn-wellness-valider" style="' + btnMain + '">✅ Valider la séance</button>';
-  }
-}
-
-function ouvrirWellnessModal() {
-  _wqResetForm();
-  _wqSetMode(false);
+function _wqOpen() {
   document.getElementById('wellness-overlay').style.display = 'block';
-  const modal = document.getElementById('wellness-modal');
-  modal.style.display = 'flex';
-  modal.style.flexDirection = 'column';
-}
-
-// « Point du jour » autonome (accueil) ou après une séance cardio.
-// dateOverride (yyyy-mm-dd) : date de rattachement (défaut : aujourd'hui).
-function ouvrirPointDuJour(dateOverride) {
-  if (!athlete) return;
-  _wqResetForm();
-  _wqSetMode(true);
-  _pdjDate = dateOverride || null;
-  _wqPrefillFromToday();
-  document.getElementById('wellness-overlay').style.display = 'block';
-  const modal = document.getElementById('wellness-modal');
+  var modal = document.getElementById('wellness-modal');
   modal.style.display = 'flex';
   modal.style.flexDirection = 'column';
   try { modal.querySelector('div[style*="overflow-y"]').scrollTop = 0; } catch (e) {}
 }
 
-// Enregistre le point du jour (bien-être) SANS séance associée.
-async function enregistrerPointDuJour() {
-  if (!athlete) return;
+function fermerWellnessModal() {
+  document.getElementById('wellness-overlay').style.display = 'none';
+  document.getElementById('wellness-modal').style.display = 'none';
+  // En mode bilan (fin de séance), si l'utilisateur ferme sans valider, on ré-affiche
+  // le bouton de validation du récap (sauf validation déjà en cours).
+  if (_wqMode === 'bilan' && !_validationEnCours) {
+    var total = 0; try { total = seance.reduce(function (a, e) { return a + e.series.length; }, 0); } catch (e) {}
+    var bv = document.getElementById('btn-valider');
+    if (bv && total > 0) { bv.style.display = 'block'; bv.disabled = false; }
+  }
+}
+
+// ===== ÉTAT DU JOUR (readiness — avant la séance / accueil) =====
+// opts.date : date de rattachement · opts.then : callback (démarrage séance)
+function ouvrirEtatDuJour(opts) {
+  opts = opts || {};
+  _wqThen = (typeof opts.then === 'function') ? opts.then : null;
+  if (!athlete) { var t0 = _wqThen; _wqThen = null; if (t0) t0(); return; }
+  _wqMode = 'etat';
+  _wqDate = opts.date || null;
+  _wqResetForm();
+  _wqShow(['wqb-sommeil', 'wqb-energie', 'wqb-fatigue']);
+  var title = document.getElementById('wq-title'); if (title) title.textContent = 'Ton état du jour';
+  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = _wqThen ? 'Avant de commencer · 20 secondes' : 'Comment tu te sens aujourd’hui ? · 20 secondes';
+  var footer = document.getElementById('wq-footer');
+  if (footer) footer.innerHTML =
+    '<button onclick="_etatSkip()" style="' + _BTN_SEC + '">' + (_wqThen ? 'Passer' : 'Fermer') + '</button>'
+    + '<button onclick="enregistrerEtatDuJour()" id="btn-wellness-valider" style="' + _BTN_MAIN + '">✅ Enregistrer</button>';
+  _wqPrefillEtat();
+  _wqOpen();
+}
+// Alias : « Mettre à jour » de l'accueil ouvre l'état du jour (sans démarrage).
+function ouvrirPointDuJour(dateOverride) { ouvrirEtatDuJour({ date: dateOverride || null }); }
+
+function _etatSkip() {
+  var then = _wqThen; _wqThen = null;
+  fermerWellnessModal();
+  if (then) then();
+}
+
+function _wqPrefillEtat() {
+  try {
+    if (!_bienEtreFaitAujourdhui()) return;
+    var be = dernierAppData.bien_etre[0];
+    ['sommeil', 'energie', 'fatigue'].forEach(function (k) {
+      var v = be[k];
+      if (v == null || v === '' || isNaN(Number(v))) return;
+      var cont = document.getElementById('wq-' + k); if (!cont) return;
+      var btn = cont.querySelector('.wq-chip[data-val="' + Number(v) + '"]');
+      if (btn) selectWQ(k, btn);
+    });
+  } catch (e) {}
+}
+
+async function enregistrerEtatDuJour() {
+  if (!athlete) { _etatSkip(); return; }
   var btn = document.getElementById('btn-wellness-valider');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enregistrement...'; }
-  var noteTxt = document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '';
-  var dateEnvoi = _pdjDate || _todayLocalStr();
+  var dateEnvoi = _wqDate || _todayLocalStr();
   try {
     await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
-        action: 'saveBienEtre',
-        athlete_id: athlete.athlete_id,
-        date: dateEnvoi,
-        seance_id: null,
-        sommeil: wellnessState.sommeil, energie: wellnessState.energie,
-        fatigue: wellnessState.fatigue, douleur: wellnessState.douleur,
-        zone: wellnessState.zone, ressenti: wellnessState.ressenti, note: noteTxt
+        action: 'saveBienEtre', athlete_id: athlete.athlete_id, date: dateEnvoi, seance_id: null,
+        sommeil: wellnessState.sommeil, energie: wellnessState.energie, fatigue: wellnessState.fatigue
       })
     });
-    // Note libre → postée au coach comme commentaire (comme en fin de séance).
-    if (noteTxt) {
-      try {
-        await fetch(SCRIPT_URL, {
-          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'saveCommentaire', auteur: 'athlete',
-            auteur_nom: (athlete.prenom || athlete.nom || 'Athlète'), athlete_id: athlete.athlete_id,
-            message: '📝 Point du jour : ' + noteTxt
-          })
-        });
-      } catch (e) {}
-    }
-    showToast('Point du jour enregistré ✅');
+    showToast('État du jour enregistré ✅');
   } catch (e) {
     showToast('Réseau instable — réessaie', '#f59f00');
     if (btn) { btn.disabled = false; btn.textContent = '✅ Enregistrer'; }
     return;
   }
+  var then = _wqThen; _wqThen = null;
   fermerWellnessModal();
   if (typeof chargerAppData === 'function') chargerAppData();
+  if (then) then();
 }
 
-function fermerWellnessModal() {
-  document.getElementById('wellness-overlay').style.display = 'none';
-  document.getElementById('wellness-modal').style.display = 'none';
-  // Si l'utilisateur annule le questionnaire (pas de validation en cours), on ré-affiche le bouton du récap
-  if (!_validationEnCours && !_wqStandalone) {
-    const total = seance.reduce((a, e) => a + e.series.length, 0);
-    const bv = document.getElementById('btn-valider');
-    if (bv && total > 0) { bv.style.display = 'block'; bv.disabled = false; }
+// ===== BILAN DE SÉANCE (après validation — muscu & cardio) =====
+function ouvrirBilanSeance(type, seanceId, date) {
+  _wqMode = 'bilan';
+  _wqType = (type === 'cardio') ? 'cardio' : 'muscu';
+  _wqSeanceId = seanceId || null;
+  _wqDate = date || _todayLocalStr();
+  _wqResetForm();
+  _wqShow(['wqb-ressenti', 'wqb-douleur', 'wqb-note']); // zone conditionnelle
+  var zb = document.getElementById('wq-zone-block'); if (zb) zb.style.display = 'none';
+  var title = document.getElementById('wq-title'); if (title) title.textContent = 'Bilan de ta séance';
+  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = 'Comment ça s’est passé ? · optionnel';
+  var footer = document.getElementById('wq-footer');
+  if (footer) footer.innerHTML =
+    '<button onclick="_bilanSkip()" style="' + _BTN_SEC + '">Passer</button>'
+    + '<button onclick="validerBilanSeance()" id="btn-wellness-valider" style="' + _BTN_MAIN + '">✅ Enregistrer</button>';
+  _wqOpen();
+}
+
+// Construit le payload du bilan (ressenti + douleur + zone).
+function _bilanPayload(type, seanceId, dateSeance) {
+  var zoneText = document.getElementById('wq-zone-text') ? document.getElementById('wq-zone-text').value.trim() : '';
+  var zone = zoneText || (wellnessState.zone != null ? String(wellnessState.zone) : '');
+  return {
+    action: 'saveBilanSeance', athlete_id: athlete.athlete_id, type: type,
+    seance_id: seanceId || null, date: dateSeance,
+    ressenti: wellnessState.ressenti, douleur: wellnessState.douleur, zone: zone
+  };
+}
+
+async function _envoyerBilan(type, seanceId, dateSeance) {
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(_bilanPayload(type, seanceId, dateSeance))
+    });
+  } catch (e) { /* non bloquant */ }
+  // Note libre → message coach (comme avant).
+  var noteTxt = document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '';
+  if (noteTxt) {
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'saveCommentaire', auteur: 'athlete',
+          auteur_nom: (athlete.prenom || athlete.nom || 'Athlète'), athlete_id: athlete.athlete_id,
+          message: '📝 Séance ' + (seanceId || '') + ' : ' + noteTxt
+        })
+      });
+    } catch (e) {}
   }
 }
+
+// « Enregistrer » du bilan. Cardio : la séance est déjà enregistrée → on ajoute
+// juste le bilan. Muscu : on enregistre la séance + le bilan.
+async function validerBilanSeance() {
+  if (_wqType === 'cardio') {
+    var btn = document.getElementById('btn-wellness-valider'); if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+    var sid = _wqSeanceId, dt = _wqDate;
+    fermerWellnessModal();
+    await _envoyerBilan('cardio', sid, dt);
+    showToast('Bilan enregistré ✅');
+    if (typeof chargerAppData === 'function') chargerAppData();
+    return;
+  }
+  if (_validationEnCours) return;
+  _validationEnCours = true;
+  _bloquerBoutonsValidation();
+  var fs = seance[0] && seance[0].series[0];
+  var payloadOffline = fs ? _bilanPayload('muscu', fs.seanceId, fs.date) : null;
+  fermerWellnessModal();
+  if (_gererValidationHorsLigne(payloadOffline)) return;
+  if (fs) await _envoyerBilan('muscu', fs.seanceId, fs.date);
+  await _envoyerSeance();
+}
+
+// « Passer » du bilan. Cardio : rien de plus. Muscu : enregistre la séance seule.
+function _bilanSkip() {
+  if (_wqType === 'cardio') { fermerWellnessModal(); return; }
+  if (_validationEnCours) return;
+  _validationEnCours = true;
+  _bloquerBoutonsValidation();
+  fermerWellnessModal();
+  if (_gererValidationHorsLigne(null)) return;
+  _envoyerSeance();
+}
+
+// Rétro-compat : anciens noms encore référencés dans le HTML par défaut.
+function validerSeanceAvecWellness() { return validerBilanSeance(); }
+function validerSeanceSansWellness() { return _bilanSkip(); }
+function ouvrirWellnessModal() { ouvrirBilanSeance('muscu'); }
 
 function selectWQ(question, btn) {
   const container = document.getElementById('wq-' + question);
@@ -7556,6 +7629,7 @@ function selectWQ(question, btn) {
     if (!hasPain) {
       wellnessState.zone = null;
       document.querySelectorAll('#wq-zone .wq-chip').forEach(c => c.classList.remove('selected'));
+      var zt = document.getElementById('wq-zone-text'); if (zt) zt.value = '';
     }
   }
 }
@@ -7722,35 +7796,14 @@ async function flushSeancesOffline() {
 }
 window.addEventListener('online', () => { flushSeancesOffline(); });
 // Traite une validation hors-ligne : met en file + affiche le récap. Renvoie true si géré hors-ligne.
-function _gererValidationHorsLigne(avecWellness) {
+// bilanPayload : payload saveBilanSeance à rejouer au retour du réseau (ou null).
+function _gererValidationHorsLigne(bilanPayload) {
   if (navigator.onLine) return false;
   const lignes = _construireLignesSeance();
-  const fs = seance[0] && seance[0].series[0];
-  const wellness = (avecWellness && fs) ? _wellnessPayload(fs.seanceId, fs.date) : null;
-  enregistrerSeanceOffline(lignes, wellness);
+  enregistrerSeanceOffline(lignes, bilanPayload || null);
   afficherRecap();
   showToast('📴 Hors-ligne : séance enregistrée, elle se synchronisera au retour du réseau');
   return true;
-}
-
-async function validerSeanceAvecWellness() {
-  if (_validationEnCours) return;          // anti double-soumission
-  _validationEnCours = true;
-  _bloquerBoutonsValidation();
-  fermerWellnessModal();
-  if (_gererValidationHorsLigne(true)) return;   // hors-ligne : mis en file
-  const firstSerie = seance[0]?.series[0];
-  if (firstSerie) await _envoyerWellness(firstSerie.seanceId, firstSerie.date);
-  await _envoyerSeance();
-}
-
-async function validerSeanceSansWellness() {
-  if (_validationEnCours) return;          // anti double-soumission
-  _validationEnCours = true;
-  _bloquerBoutonsValidation();
-  fermerWellnessModal();
-  if (_gererValidationHorsLigne(false)) return;  // hors-ligne : mis en file
-  await _envoyerSeance();
 }
 
 function validerSeance() {
@@ -7804,13 +7857,8 @@ function _annulerFinSeance() {
 function _validerFinSeance() {
   var ov = document.getElementById('_confirm-fin-seance');
   if (ov) ov.remove();
-  // Option 1 — état du jour déjà renseigné : on ne redemande pas, on enregistre la séance.
-  if (_bienEtreFaitAujourdhui()) {
-    if (typeof showToast === 'function') showToast('État du jour déjà renseigné');
-    validerSeanceSansWellness();
-  } else {
-    ouvrirWellnessModal();
-  }
+  // Après validation → bilan de séance (ressenti + douleurs + note).
+  ouvrirBilanSeance('muscu');
 }
 
 function afficherRecap() {
@@ -9958,7 +10006,16 @@ function _enRenderSelCardio() {
       + '<div class="a">' + esc(a.label) + '</div><div class="b">' + esc(a.hint) + '</div></div>';
   }).join('');
 }
+// « Démarrer la séance » : d'abord l'état du jour (readiness, AVANT), 1×/jour et
+// skippable ; puis on démarre réellement la séance (muscu ou cardio).
 function _enDemarrer() {
+  if (!_bienEtreFaitAujourdhui() && typeof athlete !== 'undefined' && athlete) {
+    ouvrirEtatDuJour({ then: _enDemarrerNow });
+  } else {
+    _enDemarrerNow();
+  }
+}
+function _enDemarrerNow() {
   if (_enMode === 'cardio') {
     try { _seanceChronoStop(); _seanceChronoT0 = Date.now(); } catch (e) {}
     ouvrirSeancePage();
@@ -12674,12 +12731,10 @@ async function sauvegarderCardio() {
       <button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button>
     </div>`;
   chargerAppData();
-  // Option 1 — état du jour : après une séance cardio du jour aussi, 1×/jour.
-  // Le RPE cardio (ci-dessus) reste séparé pour les Analyses ; ici c'est le
-  // bien-être « point du jour » qui alimente le moteur + Aujourd'hui/État.
-  if (date === _todayLocalStr() && !_bienEtreFaitAujourdhui()) {
-    setTimeout(function () { ouvrirPointDuJour(date); }, 450);
-  }
+  // Après la séance cardio → bilan de séance (ressenti + douleurs + note).
+  // La séance est déjà enregistrée ; le bilan s'y rattache via son seance_id.
+  var _sidCardio = (typeof res !== 'undefined' && res && res.seance_id) ? res.seance_id : null;
+  setTimeout(function () { ouvrirBilanSeance('cardio', _sidCardio, date); }, 350);
 }
 
 function nouvelleSeanceCardio() {

@@ -3261,21 +3261,61 @@ async function handleSaveBienEtre(body: any): Promise<Response> {
     ressenti_global: ressenti != null && ressenti !== '' ? String(ressenti) : null,
     note: num(note),
   }
-  // Option 1 — « état du jour » : UNE seule ligne bien_etre par (athlete_id, date).
-  // Une 2e saisie le même jour (2e séance, ou « point du jour » depuis l'accueil)
-  // MET À JOUR la ligne du jour au lieu d'en créer une nouvelle. Le RPE par série
-  // (muscu) et le RPE cardio restent séparés, dans leurs propres tables.
+  // UNE seule ligne bien_etre par (athlete_id, date). L'état du jour (readiness :
+  // sommeil/énergie/fatigue, saisi AVANT la séance) et la douleur (remontée du
+  // bilan APRÈS la séance) écrivent tous deux la ligne du jour → on FUSIONNE les
+  // champs non nuls au lieu d'écraser (sinon l'un effacerait l'autre).
   const { data: existing } = await sb().from('bien_etre')
     .select('seance_id').eq('athlete_id', athlete_id).eq('date', d).limit(1)
   if (existing && existing.length) {
-    // conserve le seance_id existant si la nouvelle saisie n'en fournit pas
-    if (!row.seance_id && existing[0].seance_id) row.seance_id = existing[0].seance_id
-    const { error } = await sb().from('bien_etre').update(row).eq('athlete_id', athlete_id).eq('date', d)
+    const patch: any = {}
+    for (const k of Object.keys(row)) {
+      if (k === 'date' || k === 'athlete_id') continue
+      if (k === 'seance_id') { if (row.seance_id) patch.seance_id = row.seance_id; continue }
+      if (row[k] != null) patch[k] = row[k]   // ne fusionne que les champs fournis
+    }
+    if (!Object.keys(patch).length) return jsonResp({ ok: true, success: true, updated: false })
+    const { error } = await sb().from('bien_etre').update(patch).eq('athlete_id', athlete_id).eq('date', d)
     if (error) return jsonResp({ success: false, error: error.message })
     return jsonResp({ ok: true, success: true, updated: true })
   }
   const { error } = await sb().from('bien_etre').insert(row)
   if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ ok: true, success: true })
+}
+
+// Bilan de séance (APRÈS validation, muscu OU cardio) : ressenti perçu + douleur.
+// → lignes `indicateurs` (ressenti_<type> / douleur_<type>) taguées par seance_id,
+//   pour des analyses SÉPARÉES muscu vs cardio. La douleur remonte aussi dans le
+//   bien_etre du jour (fusion) pour rester visible du moteur (règles douleur).
+async function handleSaveBilanSeance(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const type = (body.type === 'cardio') ? 'cardio' : 'muscu'
+  const d = normDate(body.date) || fmtYMD(new Date())
+  const sid = body.seance_id ? String(body.seance_id) : `${type}_${Date.now()}`
+  const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
+  const ressenti = num(body.ressenti)   // 1..4 (1 = Facile … 4 = Très dur)
+  const douleur = num(body.douleur)     // 1..4 (1 = aucune)
+  const zone = (body.zone != null && body.zone !== '') ? String(body.zone) : ''
+
+  const rows: any[] = []
+  if (ressenti != null) rows.push({ date: d, athlete_id, seance_id: sid, cle: `ressenti_${type}`, valeur: String(ressenti), unite: '', source: 'saisie' })
+  if (douleur != null && douleur > 1) rows.push({ date: d, athlete_id, seance_id: sid, cle: `douleur_${type}`, valeur: String(douleur), unite: zone, source: 'saisie' })
+  if (rows.length) {
+    const { error } = await sb().from('indicateurs').insert(rows)
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+
+  // Douleur → bien_etre du jour (fusion) : le moteur lit la douleur depuis bien_etre.
+  if (douleur != null && douleur > 1) {
+    const { data: be } = await sb().from('bien_etre').select('seance_id').eq('athlete_id', athlete_id).eq('date', d).limit(1)
+    if (be && be.length) {
+      await sb().from('bien_etre').update({ douleur, zone_douloureuse: zone || null }).eq('athlete_id', athlete_id).eq('date', d)
+    } else {
+      await sb().from('bien_etre').insert({ date: d, seance_id: sid, athlete_id, douleur, zone_douloureuse: zone || null })
+    }
+  }
   return jsonResp({ ok: true, success: true })
 }
 
@@ -3602,6 +3642,7 @@ Deno.serve(async (req: Request) => {
         case 'supprimerProgrammeLigne':  return handleSupprimerProgrammeLigne(body)
         case 'deleteCoach':              return handleDeleteCoach(body)
         case 'saveBienEtre':             return handleSaveBienEtre(body)
+        case 'saveBilanSeance':          return handleSaveBilanSeance(body)
         case 'setPauseAthlete':          return handleSetPauseAthlete(body)
         case 'marquerAlerteTraitee':     return handleMarquerAlerteTraitee(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
