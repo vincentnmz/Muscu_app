@@ -79,6 +79,15 @@ jobs:
           echo "✓ google-services.json injecté ($(wc -c < android/app/google-services.json) octets)"
           grep -o '"package_name": *"[^"]*"' android/app/google-services.json || true
 
+      # Dev = bac à sable pour tester l'INTERFACE. On retire le plugin push
+      # natif : l'inscription FCM plantait au moment de la demande d'autorisation
+      # (crash natif). Le code JS des notifs est protégé → sans le plugin, il
+      # devient un no-op propre. Le push reste testé sur l'app publique.
+      - name: Retirer le module push (Dev sans notifications, évite le crash FCM)
+        run: |
+          npm remove @capacitor/push-notifications || true
+          echo "✓ Plugin push retiré du build Dev."
+
       - name: Synchroniser Capacitor (www → android + plugins)
         run: npx cap sync android
 
