@@ -7005,26 +7005,25 @@ function afficherListeSeance() {
     const partenaires = p.groupe_id ? programmeSeance.filter(o => o !== p && o.groupe_id === p.groupe_id).map(o => o.exercice) : [];
     const groupeStyle = p.groupe_id ? `border-left:3px solid ${couleurGroupe(p.groupe_id)};` : '';
 
-    const statutPill = dejaDone
-      ? `<span style="font-size:11px;font-weight:700;color:var(--success);background:rgba(0,201,110,0.12);border-radius:20px;padding:3px 10px;white-space:nowrap">${seriesFaites} série${seriesFaites>1?"s":""}</span>`
-      : isNext
-        ? `<span style="font-size:11px;font-weight:800;color:var(--on-accent);background:var(--accent);border-radius:20px;padding:3px 10px;white-space:nowrap">À faire</span>`
-        : `<span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface2);border-radius:20px;padding:3px 10px;white-space:nowrap">${p.series_prevues} séries</span>`;
-
-    // Ligne au style maquette « Séance en cours » : icône statut + nom + objectif + chip.
-    const stCls = dejaDone ? 'done' : isNext ? 'cur' : 'todo';
-    const icoInner = dejaDone
+    // Statut : « à faire » par défaut (aucun exercice pré-sélectionné en entrant).
+    // « en cours » = au moins 1 série saisie mais pas encore terminé.
+    // « terminé » = bouton « Terminer l'exercice » utilisé (flag .termine).
+    var exoS = dejaDone;                     // exercice avec ≥ 1 série
+    var fini = !!(exoS && exoS.termine);
+    var enCours = !!(exoS && !exoS.termine);
+    const stCls = fini ? 'done' : enCours ? 'cur' : 'todo';
+    const icoInner = fini
       ? '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>'
-      : isNext
-        ? '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+      : enCours
+        ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4l2.5 1.5"/></svg>'
         : String(i + 1);
-    const chip = dejaDone
-      ? `<span class="sc-chip done">${seriesFaites} série${seriesFaites > 1 ? 's' : ''}</span>`
-      : isNext
-        ? `<span class="sc-chip cur">En cours</span>`
-        : `<span class="sc-chip todo">À faire</span>`;
-    const subTxt = dejaDone
-      ? `${seriesFaites} / ${p.series_prevues} séries faites`
+    const chip = fini
+      ? '<span class="sc-chip done"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Réalisé</span>'
+      : enCours
+        ? `<span class="sc-chip cur">En cours · ${seriesFaites} série${seriesFaites > 1 ? 's' : ''}</span>`
+        : '<span class="sc-chip todo">À faire</span>';
+    const subTxt = exoS
+      ? `${seriesFaites} / ${p.series_prevues} séries`
       : `Objectif : ${p.series_prevues} × ${p.reps_mini}-${p.reps_max} reps`;
     const div = document.createElement('div');
     div.className = 'sc-exo ' + stCls;
@@ -7033,7 +7032,7 @@ function afficherListeSeance() {
       <span class="sc-ico">${icoInner}</span>
       <div class="sc-nm"><div class="a">${p.exercice}</div><div class="b">${subTxt}</div></div>
       ${chip}
-      ${dejaDone ? `<button class="btn-sm reset-exo sc-del" title="Effacer les séries faites"><svg class="ico"><use href="#i-trash"/></svg></button>` : ''}
+      ${exoS ? `<button class="btn-sm reset-exo sc-del" title="Effacer les séries faites"><svg class="ico"><use href="#i-trash"/></svg></button>` : ''}
     `;
     const estGroupe = p.groupe_id && programmeSeance.filter(o => o.groupe_id === p.groupe_id).length >= 2;
     div.addEventListener('click', () => estGroupe
@@ -7318,6 +7317,7 @@ function ajouterSerie() {
     serie: serieNum, charge: parseFloat(charge), reps: parseInt(reps),
     rpe: parseInt(rpe), repos: parseInt(repos), volume
   });
+  exoEnCours.termine = false;   // une nouvelle série → exercice « en cours » (plus « terminé »)
 
   serieNum++;
   majSeriesActuel();
@@ -7628,6 +7628,7 @@ async function validerSeanceSansWellness() {
 
 function validerSeance() {
   if (_validationEnCours) return;
+  try { if (typeof skipTimer === 'function') skipTimer(); } catch (e) {}   // coupe le chrono de repos
   const totalSeries = seance.reduce((a,e)=>a+e.series.length,0);
   if (totalSeries === 0) { showToast('Aucune série !', '#ff4444'); return; }
   const bv = document.getElementById('btn-valider'); if (bv) bv.style.display = 'none';
@@ -9711,6 +9712,7 @@ function fermerSeancePage() {
   _seanceChronoStop();
   _seanceChronoT0 = 0;
   var _c = document.getElementById('seance-page-chrono'); if (_c) _c.textContent = '';
+  try { if (typeof skipTimer === 'function') skipTimer(); } catch (e) {}   // coupe le chrono de repos
 }
 function _majSeancePageTitre() {
   var el = document.getElementById('seance-page-title'); if (!el) return;
@@ -11119,6 +11121,7 @@ function terminerExercice() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   document.getElementById('timer-overlay').classList.remove('active');
   document.getElementById('card-hors-programme').style.display = 'none';
+  exoEnCours.termine = true;   // marque l'exercice comme TERMINÉ → « Réalisé » dans la liste
   const nomFini = exoEnCours.exerciceNom;
   scrollVersProchain = true;
   retourListeSeance();
