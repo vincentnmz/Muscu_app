@@ -9658,6 +9658,25 @@ function _enStart(seanceId) {
     }, 250);
   } catch (e) {}
 }
+/* Éditeur de programme (athlète) : ouvre l'overlay plein écran et réutilise
+ * l'éditeur du coach (renderProgrammeCoach & CRUD) en pointant progCtx sur
+ * l'athlète courant. À la fermeture, recharge appData → hub + sélecteur de
+ * séance à jour. */
+function ouvrirEditeurProgramme() {
+  if (typeof athlete === 'undefined' || !athlete) return;
+  try {
+    progCtx = { el: 'prog-editor-content', athleteId: athlete.athlete_id, athleteNom: athlete.nom || '', readonly: false };
+  } catch (e) { return; }
+  var ov = document.getElementById('prog-editor-overlay');
+  if (ov) ov.style.display = 'flex';
+  if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
+}
+function fermerEditeurProgramme() {
+  var ov = document.getElementById('prog-editor-overlay');
+  if (ov) ov.style.display = 'none';
+  // Le programme a pu changer → recharger pour rafraîchir le hub et le sélecteur.
+  if (typeof chargerAppData === 'function') chargerAppData();
+}
 function renderEntrainement(data) {
   data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null) || {};
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
