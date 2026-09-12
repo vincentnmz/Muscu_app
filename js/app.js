@@ -8247,7 +8247,7 @@ function _maCap(t) { return '<div style="font-size:11px;color:var(--text-subtle)
 // reste prioritaire (spécifique par muscle).
 function _maVolTargets() {
   var yrs = 0; try { yrs = Number(typeof athlete !== 'undefined' && athlete && athlete.annees) || 0; } catch (e) {}
-  var T = yrs >= 3 ? { min: 12, opt: 20, label: 'avancé' } : yrs >= 1 ? { min: 10, opt: 16, label: 'intermédiaire' } : { min: 8, opt: 12, label: 'débutant' };
+  var T = yrs > 9 ? { min: 12, opt: 20, label: 'avancé' } : yrs >= 4 ? { min: 10, opt: 16, label: 'intermédiaire' } : { min: 8, opt: 12, label: 'débutant' };
   T.yrs = yrs; return T;
 }
 // Série hebdo (8 sem.) d'une métrique cardio pour un sport donné (somme ou moyenne).
