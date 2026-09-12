@@ -1450,85 +1450,116 @@
     <div id="tab-historique" class="tab-content">
 
       <style id="ma-css">
-        #tab-historique{padding:0;}
-        #tab-historique .ma{display:flex;flex-direction:column;gap:13px;padding:18px 16px 104px;}
-        #tab-historique .ma-hd{display:flex;align-items:center;justify-content:space-between;}
-        #tab-historique .ma-ttl{font-family:var(--head,'Michroma','Helvetica Neue',Arial,sans-serif);font-size:17px;letter-spacing:.02em;color:var(--text);}
-        #tab-historique .ma-sub{font-size:11.5px;color:var(--text-subtle);margin-top:3px;}
-        #tab-historique .ma-av{width:38px;height:38px;border-radius:999px;background:var(--surface2);color:var(--accent);font-family:var(--head,'Michroma',sans-serif);font-size:13px;display:grid;place-items:center;border:1px solid var(--border);cursor:pointer;flex:none;}
-        #tab-historique .ma-switch{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
-        #tab-historique .ma-switch button{flex:1;border:none;background:transparent;font-family:var(--head,'Michroma',sans-serif);font-size:12px;color:var(--text-muted);padding:11px 0;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;}
-        #tab-historique .ma-switch button.on{background:var(--accent);color:#fff;}
-        #tab-historique .ma-switch button.on.cardio{background:#0EA5E9;}
-        #tab-historique .ma-switch svg{width:15px;height:15px;}
-        #tab-historique .ma-tabs{display:flex;gap:5px;background:var(--surface2);border-radius:12px;padding:4px;}
-        #tab-historique .ma-tabs button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:700;font-size:11.5px;color:var(--text-muted);padding:8px 0;border-radius:9px;white-space:nowrap;cursor:pointer;}
-        #tab-historique .ma-tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
-        #tab-historique .ma-sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin:2px 2px -4px;}
-        #tab-historique .ma-verdict{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:13px 15px;display:flex;gap:11px;align-items:flex-start;border-left:4px solid var(--good);}
-        #tab-historique .ma-verdict.cardio{border-left-color:#0EA5E9;}
-        #tab-historique .ma-vic{width:24px;height:24px;border-radius:999px;flex:none;display:grid;place-items:center;color:#fff;background:var(--good);}
-        #tab-historique .ma-verdict.cardio .ma-vic{background:#0EA5E9;}
-        #tab-historique .ma-vh{font-size:14px;font-weight:700;line-height:1.25;color:var(--text);}
-        #tab-historique .ma-vd{font-size:12px;color:var(--text-muted);margin-top:2px;line-height:1.4;}
-        #tab-historique .ma-kgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
-        #tab-historique .ma-kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:13px 15px;display:flex;flex-direction:column;gap:3px;}
-        #tab-historique .ma-kpi .u{font-size:10px;color:var(--text-subtle);letter-spacing:.05em;text-transform:uppercase;font-weight:700;}
-        #tab-historique .ma-kpi .v{font-family:var(--head,'Michroma',sans-serif);font-size:22px;line-height:1;color:var(--text);}
-        #tab-historique .ma-kpi .v small{font-size:12px;color:var(--text-subtle);margin-left:2px;font-family:var(--font,inherit);}
-        #tab-historique .ma-kpi .delta{font-size:11px;font-weight:700;}
-        #tab-historique .ma-kpi .delta.up{color:var(--good);}
-        #tab-historique .ma-kpi .delta.dn{color:var(--warn);}
-        #tab-historique .ma-rpe{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:14px 15px;display:flex;flex-direction:column;gap:10px;}
-        #tab-historique .ma-rpe .rowh{display:flex;align-items:center;justify-content:space-between;}
-        #tab-historique .ma-rpe .rowh .k{font-weight:700;font-size:13px;color:var(--text);}
-        #tab-historique .ma-rpe .rowh .v{font-family:var(--head,'Michroma',sans-serif);font-size:15px;color:var(--accent);}
-        #tab-historique .ma-track{height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;}
-        #tab-historique .ma-track span{display:block;height:100%;width:72%;background:linear-gradient(90deg,var(--good),var(--warn));border-radius:999px;}
-        #tab-historique .ma-rpe .sc{display:flex;justify-content:space-between;font-size:9.5px;color:var(--text-subtle);}
-        #tab-historique .ma-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
-        #tab-historique .ma-exo{display:flex;align-items:center;gap:12px;padding:12px 14px;}
-        #tab-historique .ma-exo + .ma-exo{border-top:1px solid var(--border);}
-        #tab-historique .ma-exo .nm{flex:1;min-width:0;}
-        #tab-historique .ma-exo .nm .a{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:6px;color:var(--text);}
-        #tab-historique .ma-exo .nm .b{font-size:11px;color:var(--text-subtle);margin-top:1px;}
-        #tab-historique .ma-pr{font-size:9px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--good);border-radius:5px;padding:2px 5px;}
-        #tab-historique .ma-val{font-family:var(--head,'Michroma',sans-serif);font-size:14px;text-align:right;flex:none;color:var(--text);}
-        #tab-historique .ma-val small{display:block;font-family:var(--font,inherit);font-size:9.5px;color:var(--text-subtle);font-weight:600;margin-top:2px;}
-        #tab-historique .ma-bal{padding:14px 15px;display:flex;flex-direction:column;gap:12px;}
-        #tab-historique .ma-balrow{display:flex;flex-direction:column;gap:5px;}
-        #tab-historique .ma-balrow .lh{display:flex;align-items:center;justify-content:space-between;font-size:12px;}
-        #tab-historique .ma-balrow .lh .n{font-weight:700;display:flex;align-items:center;gap:7px;color:var(--text);}
-        #tab-historique .ma-balrow .lh .n i{width:8px;height:8px;border-radius:2px;display:inline-block;}
-        #tab-historique .ma-balrow .lh .p{font-family:var(--head,'Michroma',sans-serif);font-size:12px;color:var(--text-muted);}
-        #tab-historique .ma-bt{height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;}
-        #tab-historique .ma-bt span{display:block;height:100%;border-radius:999px;}
-        #tab-historique .ma-balnote{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--text-muted);background:var(--warn-a,rgba(224,120,0,.12));border:1px solid rgba(224,120,0,.2);border-radius:12px;padding:10px 12px;line-height:1.4;}
-        #tab-historique .ma-balnote b{color:var(--warn);}
-        #tab-historique .ma-balnote svg{flex:none;color:var(--warn);margin-top:1px;}
-        #tab-historique .ma-trend{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));overflow:hidden;}
-        #tab-historique .ma-trow{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;font-size:12.5px;color:var(--text);}
-        #tab-historique .ma-trow + .ma-trow{border-top:1px solid var(--border);}
-        #tab-historique .ma-trow .v{font-family:var(--head,'Michroma',sans-serif);font-size:13px;color:var(--good);}
-        #tab-historique .ma-empty{background:var(--surface);border:1px dashed var(--border);border-radius:16px;padding:26px 18px;text-align:center;font-size:12.5px;color:var(--text-subtle);line-height:1.5;}
-        #tab-historique .ma-fabwrap{position:fixed;right:16px;bottom:82px;display:flex;align-items:center;gap:9px;z-index:40;}
-        #tab-historique .ma-fabtip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);}
-        #tab-historique .ma-fab{width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;}
-      </style>
+#tab-historique{padding:0;}
+#tab-historique .ma{display:flex;flex-direction:column;gap:12px;padding:16px 20px 104px;}
+#tab-historique .ma-hd{display:flex;align-items:center;justify-content:space-between;}
+#tab-historique .ma-ttl{font-family:var(--head,'Michroma',sans-serif);font-size:17px;letter-spacing:.02em;color:var(--text);}
+#tab-historique .ma-sub{font-size:11.5px;color:var(--text-subtle);margin-top:3px;}
+#tab-historique .ma-av{width:38px;height:38px;border-radius:999px;background:var(--surface2);color:var(--accent);font-family:var(--head,'Michroma',sans-serif);font-size:13px;display:grid;place-items:center;border:1px solid var(--border);flex:none;cursor:pointer;}
+#tab-historique .ma-switch{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
+#tab-historique .ma-switch button{flex:1;min-width:0;border:none;background:transparent;font-family:var(--head,'Michroma',sans-serif);font-size:12px;color:var(--text-muted);padding:11px 2px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap;}
+#tab-historique .ma-switch button.on{background:var(--accent);color:#fff;}
+#tab-historique .ma-switch button.on.cx{background:#0EA5E9;}
+#tab-historique .ma-switch svg{width:15px;height:15px;flex:none;}
+#tab-historique .ma-tabs{display:flex;gap:5px;background:var(--surface2);border-radius:12px;padding:4px;}
+#tab-historique .ma-tabs button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:700;font-size:11.5px;color:var(--text-muted);padding:8px 0;border-radius:9px;white-space:nowrap;cursor:pointer;}
+#tab-historique .ma-tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
+#tab-historique .ma-tabs button.on.cx{color:#0EA5E9;}
+#tab-historique .ma-period{display:flex;gap:4px;}
+#tab-historique .ma-period button{flex:1;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:11px;color:var(--text-muted);padding:7px 0;border-radius:9px;cursor:pointer;}
+#tab-historique .ma-period button.on{background:var(--accent-a10,rgba(26,95,255,.10));border-color:var(--accent);color:var(--accent);}
+#tab-historique .ma-period button.plus{flex:0 0 42px;display:flex;align-items:center;justify-content:center;color:var(--accent);}
+#tab-historique .ma-sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin:4px 2px -3px;display:flex;justify-content:space-between;align-items:baseline;}
+#tab-historique .ma-sec .r{letter-spacing:0;text-transform:none;font-size:11px;color:var(--text-subtle);}
+#tab-historique .ma-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
+#tab-historique .ma-verdict{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:13px 15px;display:flex;gap:11px;align-items:flex-start;border-left:4px solid #00A854;}
+#tab-historique .ma-verdict.cx{border-left-color:#0EA5E9;} #tab-historique .ma-verdict.acc{border-left-color:var(--accent);}
+#tab-historique .ma-vic{width:24px;height:24px;border-radius:999px;flex:none;display:grid;place-items:center;color:#fff;background:#00A854;}
+#tab-historique .ma-verdict.cx .ma-vic{background:#0EA5E9;} #tab-historique .ma-verdict.acc .ma-vic{background:var(--accent);}
+#tab-historique .ma-verdict .vh{font-size:14px;font-weight:700;line-height:1.25;color:var(--text);}
+#tab-historique .ma-verdict .vd{font-size:12px;color:var(--text-muted);margin-top:2px;line-height:1.4;}
+#tab-historique .ma-kgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+#tab-historique .ma-kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:13px 15px;display:flex;flex-direction:column;gap:3px;}
+#tab-historique .ma-kpi .u{font-size:10px;color:var(--text-subtle);letter-spacing:.05em;text-transform:uppercase;font-weight:700;}
+#tab-historique .ma-kpi .v{font-family:var(--head,'Michroma',sans-serif);font-size:22px;line-height:1;color:var(--text);}
+#tab-historique .ma-kpi .v small{font-size:12px;color:var(--text-subtle);margin-left:2px;font-family:var(--font,inherit);}
+#tab-historique .ma-kpi .d{font-size:11px;font-weight:700;} #tab-historique .ma-kpi .d.up{color:#00A854;} #tab-historique .ma-kpi .d.dn{color:#E07800;}
+#tab-historique .ma-k3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+#tab-historique .ma-k3 .c{background:var(--surface);padding:12px 10px;display:flex;flex-direction:column;gap:3px;}
+#tab-historique .ma-k3 .v{font-family:var(--head,'Michroma',sans-serif);font-size:19px;line-height:1;color:var(--text);}
+#tab-historique .ma-k3 .u{font-size:9px;color:var(--text-subtle);letter-spacing:.05em;text-transform:uppercase;font-weight:700;}
+#tab-historique .ma-rsbox{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:14px 15px;}
+#tab-historique .ma-rsbars{display:flex;align-items:flex-end;gap:5px;height:66px;}
+#tab-historique .ma-rsbars .b{flex:1;border-radius:4px 4px 0 0;}
+#tab-historique .ma-rsleg{display:flex;gap:12px;flex-wrap:wrap;margin-top:11px;}
+#tab-historique .ma-rspill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--text-muted);}
+#tab-historique .ma-rsdot{width:9px;height:9px;border-radius:999px;display:inline-block;}
+#tab-historique .ma-axis{display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);}
+#tab-historique .ma-vol{padding:14px 15px;display:flex;flex-direction:column;gap:11px;}
+#tab-historique .ma-volrow{display:flex;flex-direction:column;gap:5px;}
+#tab-historique .ma-volrow .lh{display:flex;justify-content:space-between;font-size:12px;}
+#tab-historique .ma-volrow .lh .n{font-weight:700;color:var(--text);} #tab-historique .ma-volrow .lh .p{color:var(--text-muted);font-family:var(--head,'Michroma',sans-serif);font-size:11px;}
+#tab-historique .ma-vt{height:8px;border-radius:999px;background:var(--surface2);overflow:hidden;}
+#tab-historique .ma-vt span{display:block;height:100%;border-radius:999px;background:var(--accent);}
+#tab-historique .ma-modesel{display:flex;gap:5px;}
+#tab-historique .ma-modesel button{flex:1;min-width:0;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:10.5px;color:var(--text-muted);padding:8px 4px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;}
+#tab-historique .ma-modesel button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+#tab-historique .ma-modesel svg{width:14px;height:14px;flex:none;}
+#tab-historique .ma-pdd{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:10px 13px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));font-weight:700;font-size:12.5px;color:var(--text);}
+#tab-historique .ma-pdd .mut{color:var(--text-subtle);font-weight:600;font-size:11px;}
+#tab-historique .ma-exo{display:flex;align-items:center;gap:12px;padding:12px 14px;} #tab-historique .ma-exo + .ma-exo{border-top:1px solid var(--border);}
+#tab-historique .ma-exo .nm{flex:1;min-width:0;} #tab-historique .ma-exo .nm .a{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:6px;color:var(--text);}
+#tab-historique .ma-exo .nm .b{font-size:11px;color:var(--text-subtle);margin-top:1px;}
+#tab-historique .ma-pr{font-size:9px;font-weight:800;letter-spacing:.04em;color:#fff;background:#00A854;border-radius:5px;padding:2px 5px;}
+#tab-historique .ma-val{font-family:var(--head,'Michroma',sans-serif);font-size:14px;text-align:right;flex:none;color:var(--text);}
+#tab-historique .ma-val small{display:block;font-family:var(--font,inherit);font-size:9.5px;color:var(--text-subtle);font-weight:600;margin-top:2px;}
+#tab-historique .ma-bal2{padding:14px 15px;display:flex;flex-direction:column;gap:14px;}
+#tab-historique .ma-b2h{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:6px;} #tab-historique .ma-b2h .l{color:#1A5FFF;} #tab-historique .ma-b2h .r{color:#8B5CF6;}
+#tab-historique .ma-b2bar{height:12px;border-radius:999px;background:#8B5CF6;overflow:hidden;} #tab-historique .ma-b2bar span{display:block;height:100%;background:#1A5FFF;}
+#tab-historique .ma-b2sub{display:flex;justify-content:space-between;font-size:10px;color:var(--text-subtle);margin-top:4px;}
+#tab-historique .ma-recg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+#tab-historique .ma-rec{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:12px 13px;display:flex;flex-direction:column;gap:6px;}
+#tab-historique .ma-rec .top{display:flex;align-items:center;justify-content:space-between;}
+#tab-historique .ma-rec .medal{width:26px;height:26px;border-radius:8px;background:rgba(0,168,84,.12);color:#00A854;display:grid;place-items:center;}
+#tab-historique .ma-rec .rv{font-family:var(--head,'Michroma',sans-serif);font-size:18px;color:var(--text);} #tab-historique .ma-rec .rn{font-size:12px;font-weight:700;color:var(--text);} #tab-historique .ma-rec .rd{font-size:10px;color:var(--text-subtle);}
+#tab-historique .ma-trend{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));overflow:hidden;}
+#tab-historique .ma-trow{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;font-size:12.5px;color:var(--text);} #tab-historique .ma-trow + .ma-trow{border-top:1px solid var(--border);}
+#tab-historique .ma-trow .v{font-family:var(--head,'Michroma',sans-serif);font-size:13px;color:#00A854;}
+#tab-historique .ma-chart{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:14px 15px;display:flex;flex-direction:column;gap:10px;}
+#tab-historique .ma-ctop{display:flex;align-items:center;justify-content:space-between;}
+#tab-historique .ma-chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--text);}
+#tab-historique .ma-barc{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:14px 15px;display:flex;flex-direction:column;gap:9px;}
+#tab-historique .ma-bars2{display:flex;align-items:flex-end;gap:6px;height:82px;} #tab-historique .ma-bars2 span{flex:1;border-radius:4px 4px 0 0;min-height:4px;display:block;}
+#tab-historique .ma-hcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:12px 14px;display:flex;flex-direction:column;gap:9px;}
+#tab-historique .ma-hhd{display:flex;align-items:center;gap:11px;}
+#tab-historique .ma-hdate{width:40px;text-align:center;flex:none;} #tab-historique .ma-hdate .dd{font-family:var(--head,'Michroma',sans-serif);font-size:16px;color:var(--text);} #tab-historique .ma-hdate .mm{font-size:9px;color:var(--text-subtle);text-transform:uppercase;}
+#tab-historique .ma-hmain{flex:1;min-width:0;} #tab-historique .ma-hmain .a{font-weight:700;font-size:13.5px;color:var(--text);} #tab-historique .ma-hmain .b{font-size:11px;color:var(--text-subtle);margin-top:1px;}
+#tab-historique .ma-rdot{width:26px;height:26px;border-radius:999px;flex:none;display:grid;place-items:center;color:#fff;font-family:var(--head,'Michroma',sans-serif);font-size:11px;}
+#tab-historique .ma-hdet{display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--border);padding-top:9px;}
+#tab-historique .ma-hex{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;} #tab-historique .ma-hex .n{font-weight:600;color:var(--text);} #tab-historique .ma-hex .s{color:var(--text-muted);font-variant-numeric:tabular-nums;}
+#tab-historique .ma-actsel{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:12px 14px;color:var(--text-muted);}
+#tab-historique .ma-actic{width:38px;height:38px;border-radius:11px;background:rgba(14,165,233,.12);color:#0EA5E9;display:grid;place-items:center;flex:none;}
+#tab-historique .ma-actsel .a{font-family:var(--head,'Michroma',sans-serif);font-size:15px;color:var(--text);} #tab-historique .ma-actsel .b{font-size:10.5px;color:var(--text-subtle);margin-top:2px;}
+#tab-historique .ma-sport{display:flex;align-items:center;gap:12px;padding:12px 14px;} #tab-historique .ma-sport + .ma-sport{border-top:1px solid var(--border);}
+#tab-historique .ma-spic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;flex:none;}
+#tab-historique .ma-spmain{flex:1;min-width:0;} #tab-historique .ma-spmain .a{font-weight:700;font-size:13px;color:var(--text);} #tab-historique .ma-spmain .b{font-size:10.5px;color:var(--text-subtle);margin-top:1px;}
+#tab-historique .ma-spval{text-align:right;flex:none;} #tab-historique .ma-spval .v{font-family:var(--head,'Michroma',sans-serif);font-size:14px;color:var(--text);} #tab-historique .ma-spval .u{font-size:9.5px;color:var(--text-subtle);}
+#tab-historique .ma-note{background:var(--accent-a10,rgba(26,95,255,.10));border:1px solid rgba(26,95,255,.18);border-radius:12px;padding:10px 12px;font-size:11.5px;color:var(--accent);line-height:1.45;}
+#tab-historique .ma-fabwrap{position:fixed;right:16px;bottom:82px;display:flex;align-items:center;gap:9px;z-index:40;}
+#tab-historique .ma-fabtip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);}
+#tab-historique .ma-fab{width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;}
+</style>
 
       <div class="ma">
-
         <div class="ma-hd">
-          <div>
-            <div class="ma-ttl">Mes analyses</div>
-            <div class="ma-sub">Le verdict, puis les chiffres.</div>
-          </div>
+          <div><div class="ma-ttl">Mes analyses</div><div class="ma-sub">Le verdict, puis les chiffres.</div></div>
           <button class="ma-av" onclick="switchTab('conseils')" title="Demande à Novalyz">V</button>
         </div>
 
         <div class="ma-switch">
-          <button id="ma-sw-muscu" class="on" onclick="maSetDisc('muscu')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
-          <button id="ma-sw-cardio" onclick="maSetDisc('cardio')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
+          <button id="ma-sw-muscu" class="on" onclick="maSetDisc('muscu')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
+          <button id="ma-sw-cardio" onclick="maSetDisc('cardio')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
+          <button id="ma-sw-croise" onclick="maSetDisc('croise')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5"/><circle cx="15" cy="15" r="5"/></svg>Croisé</button>
         </div>
 
         <div class="ma-tabs">
@@ -1538,139 +1569,150 @@
           <button id="ma-tab-historique" onclick="maSetTab('historique')">Historique</button>
         </div>
 
-        <!-- ===================== MUSCU ===================== -->
-        <!-- Muscu · Résumé -->
+        <div class="ma-period" id="ma-period">
+          <button onclick="maSetPeriode('semaine',this)">Semaine</button>
+          <button class="on" onclick="maSetPeriode('mois',this)">Mois</button>
+          <button onclick="maSetPeriode('3mois',this)">3 mois</button>
+          <button class="plus" title="Période plus longue (6 mois, 9 mois, année…)" onclick="maSetPeriode('plus',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+
         <div id="ma-muscu-resume" class="ma-pane">
-          <div class="ma-verdict">
-            <span class="ma-vic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-            <div>
-              <div class="ma-vh">Bon mois, tu progresses</div>
-              <div class="ma-vd">Charge et régularité en hausse. Point de vigilance : ton volume pec devient irrégulier.</div>
-            </div>
-          </div>
-          <div class="ma-sec">Ce mois-ci</div>
-          <div class="ma-kgrid">
-            <div class="ma-kpi"><span class="u">Tonnage moyen</span><span class="v">4,2<small>t / séance</small></span><span class="delta up">▲ +6% vs S-1</span></div>
-            <div class="ma-kpi"><span class="u">Séances</span><span class="v">12</span><span class="delta up">▲ +2 vs mois-1</span></div>
-            <div class="ma-kpi"><span class="u">Séries totales</span><span class="v">48</span><span class="delta up">▲ +18 vs S-1</span></div>
-            <div class="ma-kpi"><span class="u">Répétitions</span><span class="v">512</span><span class="delta dn">▼ -3% vs S-1</span></div>
-          </div>
-          <div class="ma-rpe">
-            <div class="rowh"><span class="k">RPE moyen (intensité ressentie)</span><span class="v">7,2</span></div>
-            <div class="ma-track"><span></span></div>
-            <div class="sc"><span>facile</span><span>optimal</span><span>trop dur</span></div>
-          </div>
-        </div>
-
-        <!-- Muscu · Par exercice -->
+<div class="ma-sec">Ce mois-ci</div>
+<div class="ma-kgrid">
+  <div class="ma-kpi"><span class="u">Tonnage moyen</span><span class="v">4,2<small>t / séance</small></span><span class="d up">▲ +6% vs mois-1</span></div>
+  <div class="ma-kpi"><span class="u">Séances</span><span class="v">12</span><span class="d up">▲ +2 vs mois-1</span></div>
+  <div class="ma-kpi"><span class="u">Séries totales</span><span class="v">288</span><span class="d up">▲ +18</span></div>
+  <div class="ma-kpi"><span class="u">Répétitions</span><span class="v">2512</span><span class="d dn">▼ -3%</span></div>
+  <div class="ma-kpi"><span class="u">RPE moyen</span><span class="v">7,2<small>/10</small></span><span class="d up">▲ optimale</span></div>
+  <div class="ma-kpi"><span class="u">Records battus</span><span class="v">4</span><span class="d up">▲ +2 vs mois-1</span></div>
+</div>
+<div class="ma-sec">Ressenti des séances <span class="r">par séance · sur le mois</span></div>
+<div class="ma-rsbox">
+  <div class="ma-rsbars"><div class="b" style="height:50%;background:#8FBF3F"></div><div class="b" style="height:75%;background:#E07800"></div><div class="b" style="height:50%;background:#8FBF3F"></div><div class="b" style="height:75%;background:#E07800"></div><div class="b" style="height:100%;background:#DC3545"></div><div class="b" style="height:75%;background:#E07800"></div><div class="b" style="height:50%;background:#8FBF3F"></div><div class="b" style="height:75%;background:#E07800"></div><div class="b" style="height:75%;background:#E07800"></div><div class="b" style="height:100%;background:#DC3545"></div><div class="b" style="height:50%;background:#8FBF3F"></div><div class="b" style="height:75%;background:#E07800"></div><div class="b" style="height:75%;background:#E07800"></div><div class="b" style="height:50%;background:#8FBF3F"></div></div>
+  <div class="ma-axis" style="margin-top:6px"><span>2/9</span><span>7/9</span><span>10/9</span><span>Auj.</span></div>
+  <div class="ma-rsleg"><span class="ma-rspill"><span class="ma-rsdot" style="background:#00A854"></span>Facile</span><span class="ma-rspill"><span class="ma-rsdot" style="background:#8FBF3F"></span>Moyen</span><span class="ma-rspill"><span class="ma-rsdot" style="background:#E07800"></span>Difficile</span><span class="ma-rspill"><span class="ma-rsdot" style="background:#DC3545"></span>Très dur</span></div>
+</div>
+<div class="ma-sec">Volume musculaire · ce mois-ci <span class="r">séries</span></div>
+<div class="ma-card ma-vol">
+  <div class="ma-volrow"><div class="lh"><span class="n">Pectoraux</span><span class="p" style="color:#00A854">52 · optimal</span></div><div class="ma-vt"><span style="width:74%;background:#00A854"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Dos</span><span class="p" style="color:#E07800">44 · sous-optimal</span></div><div class="ma-vt"><span style="width:63%;background:#E07800"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Jambes</span><span class="p" style="color:#00A854">60 · optimal</span></div><div class="ma-vt"><span style="width:86%;background:#00A854"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Épaules</span><span class="p" style="color:#E07800">30 · sous-optimal</span></div><div class="ma-vt"><span style="width:43%;background:#E07800"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Bras</span><span class="p" style="color:#00A854">40 · optimal</span></div><div class="ma-vt"><span style="width:57%;background:#00A854"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Abdos</span><span class="p" style="color:#DC3545">16 · insuffisant</span></div><div class="ma-vt"><span style="width:23%;background:#DC3545"></span></div></div>
+  <div class="ma-rsleg" style="margin-top:2px"><span class="ma-rspill"><span class="ma-rsdot" style="background:#00A854"></span>Optimal</span><span class="ma-rspill"><span class="ma-rsdot" style="background:#E07800"></span>Sous-optimal</span><span class="ma-rspill"><span class="ma-rsdot" style="background:#DC3545"></span>Insuffisant</span></div>
+</div></div>
         <div id="ma-muscu-detail" class="ma-pane" style="display:none;">
-          <div class="ma-sec">Progression &amp; records</div>
-          <div class="ma-card">
-            <div class="ma-exo">
-              <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 20 14 17 26 13 38 9 50 5 58 3" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <div class="nm"><div class="a">Développé incliné <span class="ma-pr">PR</span></div><div class="b">+7,5 kg en 6 sem.</div></div>
-              <div class="ma-val">62,5 kg<small>4 × 8</small></div>
-            </div>
-            <div class="ma-exo">
-              <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 19 14 18 26 14 38 12 50 8 58 6" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <div class="nm"><div class="a">Squat</div><div class="b">+10 kg en 8 sem.</div></div>
-              <div class="ma-val">100 kg<small>5 × 5</small></div>
-            </div>
-            <div class="ma-exo">
-              <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 18 14 17 26 16 38 15 50 15 58 14" stroke="#E07800" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <div class="nm"><div class="a">Développé couché</div><div class="b">Stagne depuis 3 séances</div></div>
-              <div class="ma-val">60 kg<small>4 × 8</small></div>
-            </div>
-            <div class="ma-exo">
-              <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 20 14 16 26 14 38 11 50 6 58 4" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <div class="nm"><div class="a">Tractions lestées <span class="ma-pr">PR</span></div><div class="b">+8 kg en 5 sem.</div></div>
-              <div class="ma-val">+12 kg<small>4 × 6</small></div>
-            </div>
-          </div>
-          <div class="ma-sec">Balance musculaire · 30 j</div>
-          <div class="ma-card ma-bal">
-            <div class="ma-balrow">
-              <div class="lh"><span class="n"><i style="background:#1A5FFF"></i>Poussée (pec/épaules/tri)</span><span class="p">42%</span></div>
-              <div class="ma-bt"><span style="width:42%;background:#1A5FFF"></span></div>
-            </div>
-            <div class="ma-balrow">
-              <div class="lh"><span class="n"><i style="background:#8B5CF6"></i>Tirage (dos/biceps)</span><span class="p">31%</span></div>
-              <div class="ma-bt"><span style="width:31%;background:#8B5CF6"></span></div>
-            </div>
-            <div class="ma-balrow">
-              <div class="lh"><span class="n"><i style="background:#0EA5E9"></i>Jambes</span><span class="p">27%</span></div>
-              <div class="ma-bt"><span style="width:27%;background:#0EA5E9"></span></div>
-            </div>
-            <div class="ma-balnote">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-              <div><b>Déséquilibre —</b> tu pousses plus que tu tires. Ajoute une séance dos pour protéger tes épaules.</div>
-            </div>
-          </div>
-          <!-- Progression détaillée (conservée, câblée au vrai data plus tard) -->
-          <div id="ma-prog-legacy" style="display:none;" aria-hidden="true">
-            <div class="ma-sec">Progression par exercice</div>
-            <select id="sel-hist-exercice" onchange="afficherProgressionExo()">
-              <option value="">— Choisir un exercice —</option>
-            </select>
-            <div id="hist-progression-content"></div>
-          </div>
-        </div>
-
-        <!-- Muscu · Tendances -->
+<div class="ma-sec">Progression <span class="r">3 vues au choix</span></div>
+<div class="ma-modesel"><button class="on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Par exercice</button><button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 8v6M8 20l4-6 4 6"/></svg>Par groupe</button><button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Par séance</button></div>
+<div class="ma-pdd"><span>Développé incliné</span><span class="mut">changer d'exercice ▾</span></div>
+<div class="ma-card">
+  <div class="ma-exo"><svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 21 L13 18 L24 14 L36 9 L47 7 L58 3" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="nm"><div class="a">Développé incliné <span class="ma-pr">PR</span></div><div class="b">+7,5 kg en 6 sem.</div></div><div class="ma-val">62,5 kg<small>4 × 8</small></div></div>
+  <div class="ma-exo"><svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 21 L13 17 L24 14 L36 10 L47 7 L58 3" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="nm"><div class="a">Squat</div><div class="b">+10 kg en 8 sem.</div></div><div class="ma-val">100 kg<small>5 × 5</small></div></div>
+  <div class="ma-exo"><svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 21 L13 21 L24 21 L36 21 L47 21 L58 21" stroke="#E07800" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="nm"><div class="a">Développé couché</div><div class="b">Stagne depuis 3 séances</div></div><div class="ma-val">60 kg<small>4 × 8</small></div></div>
+  <div class="ma-exo"><svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 21 L13 17 L24 12 L36 8 L47 8 L58 3" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="nm"><div class="a">Tractions lestées <span class="ma-pr">PR</span></div><div class="b">+8 kg en 5 sem.</div></div><div class="ma-val">+12 kg<small>4 × 6</small></div></div>
+</div>
+<div class="ma-sec">Balance musculaire · agoniste / antagoniste</div>
+<div class="ma-card ma-bal2">
+  <div class="ma-b2row"><div class="ma-b2h"><span class="l">Pectoraux 58%</span><span class="r">42% Dos</span></div><div class="ma-b2bar"><span style="width:58%"></span></div><div class="ma-b2sub"><span>Poussée</span><span>~50/50 idéal</span><span>Tirage</span></div></div><div class="ma-b2row"><div class="ma-b2h"><span class="l">Quadriceps 55%</span><span class="r">45% Ischios</span></div><div class="ma-b2bar"><span style="width:55%"></span></div><div class="ma-b2sub"><span>Avant</span><span>~50/50 idéal</span><span>Arrière</span></div></div><div class="ma-b2row"><div class="ma-b2h"><span class="l">Biceps 48%</span><span class="r">52% Triceps</span></div><div class="ma-b2bar"><span style="width:48%"></span></div><div class="ma-b2sub"><span>Flexion</span><span>~50/50 idéal</span><span>Extension</span></div></div>
+</div>
+<div class="ma-sec">Records personnels</div>
+<div class="ma-recg">
+  <div class="ma-rec"><div class="top"><span class="rn">Squat</span><span class="medal"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span></div><div class="rv">100 kg</div><div class="rd">12 sept.</div></div><div class="ma-rec"><div class="top"><span class="rn">Développé couché</span><span class="medal"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span></div><div class="rv">82,5 kg</div><div class="rd">5 sept.</div></div><div class="ma-rec"><div class="top"><span class="rn">Soulevé de terre</span><span class="medal"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span></div><div class="rv">140 kg</div><div class="rd">9 sept.</div></div><div class="ma-rec"><div class="top"><span class="rn">Tractions</span><span class="medal"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span></div><div class="rv">+12 kg</div><div class="rd">10 sept.</div></div>
+</div></div>
         <div id="ma-muscu-tendances" class="ma-pane" style="display:none;">
-          <div class="ma-empty">Tendances muscu — bientôt.<br>Évolution du tonnage, du volume par muscle et de la charge sur 4 à 12 semaines.</div>
-        </div>
-
-        <!-- Muscu · Historique -->
+<div class="ma-sec">Charge d'entraînement <span class="r">4 / 8 sem.</span></div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Tonnage hebdo</span><span style="font-size:11px;color:#00A854;font-weight:700">▲ +14% sur 8 sem.</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L48 66 L94 72 L140 47 L186 53 L232 29 L278 35 L324 10 L324 90 L2 90 Z" fill="rgba(26,95,255,.12)"/><path d="M2 84 L48 66 L94 72 L140 47 L186 53 L232 29 L278 35 L324 10" fill="none" stroke="#1A5FFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#1A5FFF"/></svg><div class="ma-axis"><span>S-8</span><span>S-6</span><span>S-4</span><span>S-2</span><span>Sem.</span></div></div>
+<div class="ma-sec">Indice de forme (moteur)</div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Disponibilité</span><span style="font-size:11px;color:var(--text-muted);font-weight:700">Prêt · stable</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 66 L48 84 L94 56 L140 29 L186 47 L232 19 L278 33 L324 10 L324 90 L2 90 Z" fill="rgba(0,168,84,.12)"/><path d="M2 66 L48 84 L94 56 L140 29 L186 47 L232 19 L278 33 L324 10" fill="none" stroke="#00A854" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#00A854"/></svg><div class="ma-axis"><span>S-8</span><span>S-6</span><span>S-4</span><span>S-2</span><span>Auj.</span></div></div>
+<div class="ma-sec">Ce qui bouge</div>
+<div class="ma-trend">
+  <div class="ma-trow"><span>Tonnage 4 sem. vs 4 précédentes</span><span class="v">▲ +9%</span></div>
+  <div class="ma-trow"><span>Régularité (séances/sem.)</span><span class="v">▲ 3,0</span></div>
+  <div class="ma-trow"><span>RPE moyen à charge égale</span><span class="v" style="color:#00A854">▼ -0,4</span></div>
+  <div class="ma-trow"><span>Muscle en retard</span><span class="v" style="color:#E07800">Dos</span></div>
+</div></div>
         <div id="ma-muscu-historique" class="ma-pane" style="display:none;">
-          <div class="ma-empty">Historique muscu — bientôt.<br>Le détail de chaque séance passée, séance par séance.</div>
-        </div>
-
-        <!-- ===================== CARDIO ===================== -->
-        <!-- Cardio · Résumé -->
+<div class="ma-hcard">
+  <div class="ma-hhd"><div class="ma-hdate"><div class="dd">12</div><div class="mm">sept</div></div><div class="ma-hmain"><div class="a">Full Body A</div><div class="b">6 exos · 24 séries · 4,3 t · 58 min</div></div><div class="ma-rdot" style="background:#E07800">3</div></div>
+  <div class="ma-hdet"><div class="ma-hex"><span class="n">Squat</span><span class="s">5×5 · 100 kg · repos 2:00 · RPE 8</span></div><div class="ma-hex"><span class="n">Développé couché</span><span class="s">4×8 · 70 kg · repos 1:30 · RPE 8</span></div><div class="ma-hex"><span class="n">Rowing barre</span><span class="s">4×10 · 60 kg · repos 1:30 · RPE 7</span></div><div class="ma-hex"><span class="n">Développé militaire</span><span class="s">3×10 · 40 kg · repos 1:30 · RPE 8</span></div></div>
+</div>
+<div class="ma-hcard">
+  <div class="ma-hhd"><div class="ma-hdate"><div class="dd">10</div><div class="mm">sept</div></div><div class="ma-hmain"><div class="a">Full Body C</div><div class="b">6 exos · 22 séries · 3,9 t · 52 min</div></div><div class="ma-rdot" style="background:#8FBF3F">2</div></div>
+  <div class="ma-hdet"><div class="ma-hex"><span class="n">Presse à cuisses</span><span class="s">4×12 · 160 kg · repos 2:00 · RPE 7</span></div><div class="ma-hex"><span class="n">Dips</span><span class="s">4×10 · corps · repos 1:30 · RPE 8</span></div><div class="ma-hex"><span class="n">Tirage horizontal</span><span class="s">4×12 · 55 kg · repos 1:30 · RPE 7</span></div></div>
+</div>
+<div class="ma-hcard">
+  <div class="ma-hhd"><div class="ma-hdate"><div class="dd">07</div><div class="mm">sept</div></div><div class="ma-hmain"><div class="a">Full Body B</div><div class="b">6 exos · 23 séries · 4,1 t · 55 min</div></div><div class="ma-rdot" style="background:#00A854">1</div></div>
+</div>
+<div class="ma-note">Pastille = <b>ressenti de la séance</b> (vert Facile → rouge Très dur). Tap sur une séance = détail exo/série/rep/repos/RPE.</div></div>
         <div id="ma-cardio-resume" class="ma-pane" style="display:none;">
-          <div class="ma-verdict cardio">
-            <span class="ma-vic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-            <div>
-              <div class="ma-vh">Ton endurance progresse</div>
-              <div class="ma-vd">+1,8 km/h à FC équivalente. Charge cardio maîtrisée (ACWR 1.0), tu peux monter le volume — moteur Novalyz.</div>
-            </div>
-          </div>
-          <div class="ma-sec">Ce mois-ci · vélo</div>
-          <div class="ma-kgrid">
-            <div class="ma-kpi"><span class="u">Distance</span><span class="v">168<small>km</small></span><span class="delta up">▲ +18% vs mois-1</span></div>
-            <div class="ma-kpi"><span class="u">Temps total</span><span class="v">5h42</span><span class="delta up">▲ +40 min</span></div>
-            <div class="ma-kpi"><span class="u">Vitesse moy</span><span class="v">27,4<small>km/h</small></span><span class="delta up">▲ +1,8</span></div>
-            <div class="ma-kpi"><span class="u">RPE moyen</span><span class="v">6,2</span><span class="delta">stable</span></div>
-          </div>
-          <div class="ma-sec">Tendances</div>
-          <div class="ma-trend">
-            <div class="ma-trow"><span class="l">7 jours vs 7 jours précédents</span><span class="v">▲ +12%</span></div>
-            <div class="ma-trow"><span class="l">1 mois vs 1 mois précédent</span><span class="v">▲ +18%</span></div>
-            <div class="ma-trow"><span class="l">FC moyenne à effort égal</span><span class="v" style="color:var(--good)">▼ −4 bpm</span></div>
-          </div>
-        </div>
-
-        <!-- Cardio · Par sport -->
+<div class="ma-verdict cx"><span class="ma-vic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span><div><div class="vh">Ton endurance progresse</div><div class="vd">+1,8 km/h à FC équivalente sur le mois. Charge maîtrisée (ACWR 1.0) — tu peux monter le volume.</div></div></div>
+<div class="ma-sec">Tous sports · septembre <span class="r">16 sorties</span></div>
+<div class="ma-card">
+  <div class="ma-sport"><span class="ma-spic" style="background:#0EA5E9"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div class="ma-spmain"><div class="a">Vélo</div><div class="b">8 sorties · 4h48 · RPE 6</div></div><div class="ma-spval"><div class="v">168 km</div><div class="u">27,4 km/h</div></div></div><div class="ma-sport"><span class="ma-spic" style="background:#6366F1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/></svg></span><div class="ma-spmain"><div class="a">Footing</div><div class="b">5 sorties · 3h10 · RPE 6</div></div><div class="ma-spval"><div class="v">41 km</div><div class="u">10,4 km/h</div></div></div><div class="ma-sport"><span class="ma-spic" style="background:#22D3EE"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></span><div class="ma-spmain"><div class="a">Marche</div><div class="b">3 sorties · 2h20 · RPE 6</div></div><div class="ma-spval"><div class="v">12 km</div><div class="u">5,1 km/h</div></div></div>
+</div>
+<div class="ma-sec">Pas quotidiens <span class="r">selon la période</span></div>
+<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / semaine</span><span style="font-size:11px;font-weight:700;color:#0EA5E9">Ø 8 940 / jour</span></div><div class="ma-bars2"><span style="height:87%;background:#0EA5E9"></span><span style="height:94%;background:#0EA5E9"></span><span style="height:90%;background:#0EA5E9"></span><span style="height:100%;background:#0EA5E9"></span></div><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span></div></div>
+<div class="ma-sec">Charge cardio</div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">UA / semaine</span><span style="font-size:11px;color:#00A854;font-weight:700">ACWR 1.0 · optimal</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 52 L131 68 L195 31 L260 36 L324 10 L324 90 L2 90 Z" fill="rgba(14,165,233,.12)"/><path d="M2 84 L66 52 L131 68 L195 31 L260 36 L324 10" fill="none" stroke="#0EA5E9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#0EA5E9"/></svg><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span></div></div></div>
         <div id="ma-cardio-detail" class="ma-pane" style="display:none;">
-          <div class="ma-empty">Par sport — bientôt.<br>Vélo, footing, marche… chacun avec ses métriques et sa progression.</div>
-        </div>
-
-        <!-- Cardio · Tendances -->
+<div class="ma-sec">Choisis ton activité</div>
+<div class="ma-actsel"><span class="ma-actic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div style="flex:1"><div class="a">Vélo</div><div class="b">Course · Marche · Natation · Hyrox · Autre</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+<div class="ma-sec">Vélo · septembre <span class="r">6 sorties</span></div>
+<div class="ma-k3">
+  <div class="c"><span class="v">168</span><span class="u">km</span></div><div class="c"><span class="v">5h42</span><span class="u">temps</span></div><div class="c"><span class="v">27,4</span><span class="u">km/h moy</span></div><div class="c"><span class="v">178</span><span class="u">watts moy</span></div><div class="c"><span class="v">141</span><span class="u">bpm moy</span></div><div class="c"><span class="v">6,2</span><span class="u">rpe moy</span></div>
+</div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Distance ▾</span><span style="font-size:11px;color:#00A854;font-weight:700">▲ +18% par semaine</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 72 L131 78 L195 47 L260 53 L324 10 L324 90 L2 90 Z" fill="rgba(14,165,233,.12)"/><path d="M2 84 L66 72 L131 78 L195 47 L260 53 L324 10" fill="none" stroke="#0EA5E9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#0EA5E9"/></svg><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span><span>S5</span></div></div>
+<div class="ma-sec">Dernières sorties</div>
+<div class="ma-card">
+  <div class="ma-hhd" style="padding:11px 14px"><div class="ma-hdate"><div class="dd">07</div><div class="mm">sept</div></div><div class="ma-hmain"><div class="a">Sortie route</div><div class="b">42,3 km · 1h28 · 28,6 km/h · 152 bpm</div></div><span class="ma-chip">RPE 7</span></div>
+  <div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">04</div><div class="mm">sept</div></div><div class="ma-hmain"><div class="a">Home-trainer</div><div class="b">28,6 km · 58 min · 195 W · 138 bpm</div></div><span class="ma-chip">RPE 6</span></div>
+</div></div>
         <div id="ma-cardio-tendances" class="ma-pane" style="display:none;">
-          <div class="ma-empty">Tendances cardio — bientôt.<br>Distance, vitesse et FC à effort égal sur plusieurs semaines.</div>
-        </div>
-
-        <!-- Cardio · Historique -->
+<div class="ma-sec">Efficience aérobie <span class="r">vitesse à FC égale</span></div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">km/h @ 145 bpm</span><span style="font-size:11px;color:#00A854;font-weight:700">▲ +1,8 km/h</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 66 L131 71 L195 43 L260 36 L324 10 L324 90 L2 90 Z" fill="rgba(14,165,233,.12)"/><path d="M2 84 L66 66 L131 71 L195 43 L260 36 L324 10" fill="none" stroke="#0EA5E9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#0EA5E9"/></svg><div class="ma-axis"><span>S-6</span><span>S-4</span><span>S-2</span><span>Auj.</span></div></div>
+<div class="ma-sec">Volume par sport <span class="r">4 vs 4 sem.</span></div>
+<div class="ma-card ma-vol">
+  <div class="ma-volrow"><div class="lh"><span class="n">Vélo</span><span class="p">168 km</span></div><div class="ma-vt"><span style="width:93%;background:#0EA5E9"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Footing</span><span class="p">41 km</span></div><div class="ma-vt"><span style="width:68%;background:#6366F1"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Marche</span><span class="p">12 km</span></div><div class="ma-vt"><span style="width:40%;background:#22D3EE"></span></div></div>
+</div>
+<div class="ma-sec">Ce qui bouge</div>
+<div class="ma-trend">
+  <div class="ma-trow"><span>Distance 7j vs 7j précédents</span><span class="v">▲ +12%</span></div>
+  <div class="ma-trow"><span>FC moyenne à effort égal</span><span class="v" style="color:#00A854">▼ -4 bpm</span></div>
+  <div class="ma-trow"><span>Charge cardio (ACWR)</span><span class="v" style="color:#00A854">1.0 · optimal</span></div>
+</div></div>
         <div id="ma-cardio-historique" class="ma-pane" style="display:none;">
-          <div class="ma-empty">Historique cardio — bientôt.<br>Chaque séance cardio, du plus récent au plus ancien.</div>
-        </div>
+<div class="ma-card">
+  <div class="ma-hhd" style="padding:11px 14px;"><div class="ma-hdate"><div class="dd">12</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#0EA5E9"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div class="ma-hmain"><div class="a">Vélo · route</div><div class="b">32 km · 1h10 · 27,4 km/h</div></div><span class="ma-chip">RPE 6</span></div><div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">10</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#22D3EE"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></span><div class="ma-hmain"><div class="a">Marche</div><div class="b">4,2 km · 48 min · 5,1 km/h</div></div><span class="ma-chip">RPE 2</span></div><div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">08</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#6366F1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/></svg></span><div class="ma-hmain"><div class="a">Footing</div><div class="b">8,1 km · 44 min · 11,0 km/h</div></div><span class="ma-chip">RPE 7</span></div><div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">06</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#0EA5E9"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div class="ma-hmain"><div class="a">Home-trainer</div><div class="b">28 km · 58 min · 195 W</div></div><span class="ma-chip">RPE 6</span></div>
+</div>
+<div class="ma-note">Flux chronologique <b>tous sports mélangés</b> (vs « Par sport » qui isole une activité). Filtre par période + tap = détail.</div></div>
+        <div id="ma-croise-resume" class="ma-pane" style="display:none;">
+<div class="ma-verdict acc"><span class="ma-vic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/></svg></span><div><div class="vh">Bon équilibre global</div><div class="vd">Charge muscu + cardio bien répartie, ton bien-être suit. Récupération : bonne. Le moteur te voit « Prêt ».</div></div></div>
+<div class="ma-sec">Charge totale <span class="r">muscu + cardio · UA</span></div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Charge combinée / sem.</span><span style="font-size:11px;color:#00A854;font-weight:700">ACWR global 1.0</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 58 L131 68 L195 36 L260 42 L324 10 L324 90 L2 90 Z" fill="rgba(26,95,255,.12)"/><path d="M2 84 L66 58 L131 68 L195 36 L260 42 L324 10" fill="none" stroke="#1A5FFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#1A5FFF"/></svg><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span></div></div>
+<div class="ma-sec">Répartition de la charge</div>
+<div class="ma-card ma-vol">
+  <div class="ma-volrow"><div class="lh"><span class="n">Musculation</span><span class="p">62%</span></div><div class="ma-vt"><span style="width:62%"></span></div></div>
+  <div class="ma-volrow"><div class="lh"><span class="n">Cardio</span><span class="p">38%</span></div><div class="ma-vt"><span style="width:38%;background:#0EA5E9"></span></div></div>
+</div>
+<div class="ma-sec">Bien-être × performance</div>
+<div class="ma-trend">
+  <div class="ma-trow"><span>Nuits ≥ 4/5 → tonnage</span><span class="v">▲ +8%</span></div>
+  <div class="ma-trow"><span>Semaines à forte charge → fatigue</span><span class="v" style="color:#E07800">▲ +1,2</span></div>
+  <div class="ma-trow"><span>Récupération (moteur)</span><span class="v">Bonne</span></div>
+</div></div>
+        <div id="ma-croise-tendances" class="ma-pane" style="display:none;">
+<div class="ma-sec">Charge globale <span class="r">muscu + cardio · 8 sem.</span></div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Charge combinée</span><span style="font-size:11px;color:#00A854;font-weight:700">ACWR 1.0</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L48 68 L94 76 L140 51 L186 55 L232 35 L278 39 L324 10 L324 90 L2 90 Z" fill="rgba(26,95,255,.12)"/><path d="M2 84 L48 68 L94 76 L140 51 L186 55 L232 35 L278 39 L324 10" fill="none" stroke="#1A5FFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#1A5FFF"/></svg><div class="ma-axis"><span>S-8</span><span>S-6</span><span>S-4</span><span>S-2</span><span>Sem.</span></div></div>
+<div class="ma-sec">Bien-être (moteur) <span class="r">sommeil · énergie · fatigue</span></div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Indice de forme</span><span style="font-size:11px;color:var(--text-muted);font-weight:700">Prêt</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 66 L48 84 L94 56 L140 33 L186 47 L232 19 L278 29 L324 10 L324 90 L2 90 Z" fill="rgba(0,168,84,.12)"/><path d="M2 66 L48 84 L94 56 L140 33 L186 47 L232 19 L278 29 L324 10" fill="none" stroke="#00A854" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#00A854"/></svg><div class="ma-axis"><span>S-8</span><span>S-6</span><span>S-4</span><span>S-2</span><span>Auj.</span></div></div></div>
 
+        <!-- Progression détaillée conservée (câblage réel plus tard) -->
+        <div id="ma-prog-legacy" style="display:none;" aria-hidden="true">
+          <div class="ma-sec">Progression par exercice</div>
+          <select id="sel-hist-exercice" onchange="afficherProgressionExo()"><option value="">— Choisir un exercice —</option></select>
+          <div id="hist-progression-content"></div>
+        </div>
       </div>
 
       <div class="ma-fabwrap">
         <span class="ma-fabtip">Demande à Novalyz</span>
-        <button class="ma-fab" onclick="switchTab('conseils')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
+        <button class="ma-fab" onclick="switchTab('conseils')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/></svg></button>
       </div>
 
     </div>

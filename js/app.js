@@ -8136,24 +8136,41 @@ async function chargerHistorique() {
   try { _maApply(); } catch (e) {}
 }
 
-// ── Écran Analyses : navigation 2 niveaux (Muscu/Cardio × Résumé/Détail/…) ──
-var _maDisc = 'muscu';   // 'muscu' | 'cardio'
+// ── Écran Analyses : navigation 2 niveaux (Muscu/Cardio/Croisé × sous-onglets) ──
+var _maDisc = 'muscu';   // 'muscu' | 'cardio' | 'croise'
 var _maTab = 'resume';   // 'resume' | 'detail' | 'tendances' | 'historique'
-function maSetDisc(d) { _maDisc = (d === 'cardio') ? 'cardio' : 'muscu'; _maTab = 'resume'; _maApply(); }
-function maSetTab(t) { _maTab = t; _maApply(); }
+// Sous-onglets disponibles par discipline (Croisé n'a que Résumé + Tendances).
+var _MA_TABS = { muscu: ['resume', 'detail', 'tendances', 'historique'], cardio: ['resume', 'detail', 'tendances', 'historique'], croise: ['resume', 'tendances'] };
+function maSetDisc(d) {
+  _maDisc = (['muscu', 'cardio', 'croise'].indexOf(d) >= 0) ? d : 'muscu';
+  if (_MA_TABS[_maDisc].indexOf(_maTab) < 0) _maTab = 'resume';
+  _maApply();
+  try { window.scrollTo(0, 0); } catch (e) {}
+}
+function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
+// Sélecteur de période (visuel pour l'instant — le câblage data suivra).
+function maSetPeriode(p, btn) {
+  try {
+    var row = document.getElementById('ma-period');
+    if (row) { row.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); }); if (btn && p !== 'plus') btn.classList.add('on'); }
+  } catch (e) {}
+}
 function _maApply() {
-  // Toggle discipline (Muscu / Cardio)
-  var bm = document.getElementById('ma-sw-muscu'), bc = document.getElementById('ma-sw-cardio');
-  if (bm) bm.classList.toggle('on', _maDisc === 'muscu');
-  if (bc) { bc.classList.toggle('on', _maDisc === 'cardio'); bc.classList.toggle('cardio', _maDisc === 'cardio'); }
+  // Toggle discipline (Muscu / Cardio / Croisé)
+  ['muscu', 'cardio', 'croise'].forEach(function (d) {
+    var b = document.getElementById('ma-sw-' + d);
+    if (b) { b.classList.toggle('on', d === _maDisc); b.classList.toggle('cx', d === _maDisc && d === 'cardio'); }
+  });
   // Le 2e sous-onglet change de libellé selon la discipline
   var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Par exercice';
-  // Sous-onglets actifs
+  // Sous-onglets : dispo (Croisé masque Détail + Historique) + actif
+  var dispo = _MA_TABS[_maDisc];
   ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
-    var b = document.getElementById('ma-tab-' + t); if (b) b.classList.toggle('on', t === _maTab);
+    var b = document.getElementById('ma-tab-' + t);
+    if (b) { var av = dispo.indexOf(t) >= 0; b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); }
   });
   // Panes visibles
-  ['muscu', 'cardio'].forEach(function (d) {
+  ['muscu', 'cardio', 'croise'].forEach(function (d) {
     ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
       var p = document.getElementById('ma-' + d + '-' + t);
       if (p) p.style.display = (d === _maDisc && t === _maTab) ? '' : 'none';
