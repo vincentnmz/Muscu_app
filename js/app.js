@@ -8353,7 +8353,7 @@ function _maMuscuResume(data) {
       var opt = optW * weeks, min = minW * weeks, scale = opt * 1.3, C;
       if (v.tot >= opt) { C = '#00A854'; } else if (v.tot >= min) { C = '#E07800'; } else { C = '#DC3545'; }
       return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + v.tot + ' / ' + opt + ' séries</span></div>'
-        + '<div class="ma-vtrack"><div class="ma-vfill" style="width:' + Math.min(100, v.tot / scale * 100).toFixed(0) + '%;background:' + C + '"></div><div class="ma-vmark" style="left:' + (opt / scale * 100).toFixed(0) + '%"></div></div></div>';
+        + '<div class="ma-vtrack"><div class="ma-vfill" style="width:' + Math.min(100, v.tot / scale * 100).toFixed(0) + '%;background:' + C + '"></div></div></div>';
     }).join('')
       + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
@@ -8362,9 +8362,9 @@ function _maMuscuResume(data) {
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p]) + rsHtml
     + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries') + volHtml
-    + _maCap('Séries par muscle sur la période. Le trait « opt » = l\'objectif à atteindre (le chiffre à droite). Barre verte = atteint, orange/rouge = en dessous. Cible niveau ' + TGT.label + '.')
-    + _maSec('Balance musculaire', 'agoniste / antagoniste') + _maBalance(data)
-    + _maCap('Équilibre entre groupes opposés (poussée/tirage, avant/arrière…). Un ratio proche de 50/50 limite les déséquilibres et le risque de blessure.'));
+    + _maCap('Séries par muscle sur la période. Le chiffre à droite = l\'objectif à atteindre. Barre verte = atteint, orange/rouge = en dessous. Cible niveau ' + TGT.label + '.')
+    + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p]) + _maBalance(data)
+    + _maCap('Équilibre entre groupes opposés (poussée/tirage, avant/arrière…) sur la période choisie. Un ratio proche de 50/50 limite les déséquilibres et le risque de blessure.'));
 }
 
 function _maMuscuExercice(data) {
@@ -8452,7 +8452,9 @@ function _maProgSea(data) {
 
 // Balance agoniste/antagoniste (contexte, sous la progression).
 function _maBalance(data) {
-  var vs = {}; ((data.historique && data.historique.volume_semaine) || []).forEach(function (v) { vs[v.muscle] = v.faites || 0; });
+  // Séries par muscle sur la période sélectionnée → la balance évolue dans le temps.
+  var r = (data.recent && data.recent[_MA_WIN[_maPeriode]]) || {};
+  var vs = r.series_par_muscle || {};
   var pairs = [['Pectoraux', 'Dos', 'Poussée', 'Tirage'], ['Quadriceps', 'Ischios', 'Avant', 'Arrière'], ['Biceps', 'Triceps', 'Flexion', 'Extension']];
   var balRows = pairs.filter(function (pr) { return (vs[pr[0]] || 0) + (vs[pr[1]] || 0) > 0; }).map(function (pr) {
     var tot = (vs[pr[0]] || 0) + (vs[pr[1]] || 0), pct = Math.round((vs[pr[0]] || 0) / tot * 100);
