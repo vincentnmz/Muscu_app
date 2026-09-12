@@ -1496,6 +1496,24 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       history,
     }
   }
+  // Bilans de séance (ressenti perçu + douleurs), muscu vs cardio SÉPARÉS → onglet
+  // Analyses. Lignes indicateurs `ressenti_<type>` / `douleur_<type>` (valeur 1..4 ;
+  // pour la douleur, unite = zone). Triés récent → ancien.
+  let analyses: any = { ressenti_muscu: [], ressenti_cardio: [], douleurs_muscu: [], douleurs_cardio: [] }
+  {
+    const { data: bilanRows } = await sb().from('indicateurs').select('*')
+      .eq('athlete_id', athleteId)
+      .in('cle', ['ressenti_muscu', 'ressenti_cardio', 'douleur_muscu', 'douleur_cardio'])
+      .order('date', { ascending: false }).limit(300)
+    for (const r of (bilanRows || [])) {
+      const base = { date: normDate(r.date), seance_id: r.seance_id, valeur: Number(r.valeur) || null }
+      if (r.cle === 'ressenti_muscu') analyses.ressenti_muscu.push(base)
+      else if (r.cle === 'ressenti_cardio') analyses.ressenti_cardio.push(base)
+      else if (r.cle === 'douleur_muscu') analyses.douleurs_muscu.push({ ...base, zone: r.unite || '' })
+      else if (r.cle === 'douleur_cardio') analyses.douleurs_cardio.push({ ...base, zone: r.unite || '' })
+    }
+  }
+
   // Pas quotidiens ambiants (Fitbit) : [{date, pas}] triés récent → ancien.
   const pas_quotidiens = (pasJourRows || [])
     .filter((r: any) => r.cle === 'pas')
@@ -1571,6 +1589,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     contexte,
     sport,
     cardio,
+    analyses,
     pas_quotidiens,
     volume_obti,
   })

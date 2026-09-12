@@ -8129,6 +8129,93 @@ async function chargerHistorique() {
       o.value = e; o.textContent = e; sel.appendChild(o);
     });
   }
+
+  // Bilans de séance (ressenti + douleurs), muscu & cardio séparés.
+  var an = dernierAppData.analyses || {};
+  renderAnalyseRessenti('an-ressenti-muscu-content', an.ressenti_muscu);
+  renderAnalyseDouleurs('an-douleurs-muscu-content', an.douleurs_muscu);
+  renderAnalyseRessenti('an-ressenti-cardio-content', an.ressenti_cardio);
+  renderAnalyseDouleurs('an-douleurs-cardio-content', an.douleurs_cardio);
+  _anCroiseEmpty();
+}
+
+// ── Onglet Analyses : sous-onglets Muscu / Cardio / Croisé ──────────────────
+function switchAnalyse(sub) {
+  ['muscu', 'cardio', 'croise'].forEach(function (s) {
+    var pane = document.getElementById('an-' + s);
+    if (pane) pane.style.display = (s === sub) ? '' : 'none';
+    var tab = document.getElementById('an-tab-' + s);
+    if (tab) { tab.classList.toggle('on', s === sub); tab.classList.toggle('cardio', s === sub && sub === 'cardio'); }
+  });
+  try { window.scrollTo(0, 0); } catch (e) {}
+}
+
+// Affiche l'invite du sous-onglet Croisé quand aucune analyse croisée n'est visible.
+function _anCroiseEmpty() {
+  var any = ['dash-global-card', 'hist-corr-card', 'dash-cmp28-card'].some(function (id) {
+    var e = document.getElementById(id); return e && e.style.display !== 'none';
+  });
+  var em = document.getElementById('an-croise-empty'); if (em) em.style.display = any ? 'none' : 'block';
+}
+
+// Ressenti de séance (1 Facile → 4 Très dur) : distribution + mini-timeline.
+var _RS_COL = { 1: '#22c55e', 2: '#a3c644', 3: '#f59f00', 4: '#e5484d' };
+var _RS_LBL = { 1: 'Facile', 2: 'Moyen', 3: 'Difficile', 4: 'Très dur' };
+function renderAnalyseRessenti(containerId, arr) {
+  var el = document.getElementById(containerId); if (!el) return;
+  arr = Array.isArray(arr) ? arr.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4; }) : [];
+  if (!arr.length) {
+    el.innerHTML = '<div class="an-empty">Aucun ressenti pour l\'instant. Il se remplira après tes bilans de fin de séance.</div>';
+    return;
+  }
+  var cnt = { 1: 0, 2: 0, 3: 0, 4: 0 }; arr.forEach(function (x) { cnt[x.valeur]++; });
+  var n = arr.length;
+  var pills = [1, 2, 3, 4].map(function (v) {
+    return '<span class="an-rspill"><span class="an-dot" style="background:' + _RS_COL[v] + '"></span>' + _RS_LBL[v] + ' · ' + cnt[v] + '</span>';
+  }).join('');
+  var recent = arr.slice(0, 14).reverse();  // ancien → récent (gauche → droite)
+  var bars = recent.map(function (x) {
+    var h = Math.round(x.valeur / 4 * 100);
+    return '<div class="an-bar" title="' + _RS_LBL[x.valeur] + ' · ' + (x.date || '') + '" style="height:' + h + '%;background:' + _RS_COL[x.valeur] + '"></div>';
+  }).join('');
+  var moy = arr.reduce(function (a, x) { return a + x.valeur; }, 0) / n;
+  el.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">'
+    + '<span style="font-size:12px;color:var(--text-muted);">' + n + ' séance' + (n > 1 ? 's' : '') + '</span>'
+    + '<span style="font-size:12px;color:var(--text-muted);">Moyenne <b style="color:var(--text);">' + _RS_LBL[Math.round(moy)] + '</b></span></div>'
+    + '<div class="an-bars">' + bars + '</div>'
+    + '<div class="an-rs" style="margin-top:10px;">' + pills + '</div>';
+}
+
+// Douleurs signalées (2 Légère · 3 Modérée · 4 Forte) : zones fréquentes + récentes.
+var _DL_LBL = { 2: 'Légère', 3: 'Modérée', 4: 'Forte' };
+function _anZoneLabel(z) {
+  if (!z) return 'Non précisée';
+  var M = { nuque: 'Nuque / cou', epaule: 'Épaule', pectoraux: 'Pectoraux', biceps: 'Biceps', triceps: 'Triceps', avant_bras: 'Avant-bras', coude: 'Coude', poignet: 'Poignet', main: 'Main', haut_dos: 'Haut du dos', lombaires: 'Lombaires', abdos: 'Abdos', hanche: 'Hanche', aine: 'Aine / adducteurs', fessier: 'Fessier', quadriceps: 'Quadriceps', ischios: 'Ischios', genou: 'Genou', mollet: 'Mollet', cheville: 'Cheville', pied: 'Pied', autre: 'Autre' };
+  return M[z] || z;
+}
+function renderAnalyseDouleurs(containerId, arr) {
+  var el = document.getElementById(containerId); if (!el) return;
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  arr = Array.isArray(arr) ? arr.filter(function (x) { return x && x.valeur >= 2; }) : [];
+  if (!arr.length) {
+    el.innerHTML = '<div class="an-empty">Aucune douleur signalée. 💪</div>';
+    return;
+  }
+  var freq = {}; arr.forEach(function (x) { var z = _anZoneLabel(x.zone || 'autre'); freq[z] = (freq[z] || 0) + 1; });
+  var zones = Object.keys(freq).map(function (z) { return { z: z, n: freq[z] }; }).sort(function (a, b) { return b.n - a.n; });
+  var zHtml = zones.map(function (o) { return '<div class="an-zone"><span>' + esc(o.z) + '</span><span class="an-znum">' + o.n + '×</span></div>'; }).join('');
+  var recent = arr.slice(0, 5).map(function (x) {
+    var col = x.valeur >= 4 ? '#e5484d' : x.valeur === 3 ? '#f59f00' : '#f5a623';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 0;">'
+      + '<span style="color:var(--text-muted);">' + esc(x.date || '') + '</span>'
+      + '<span><b>' + esc(_anZoneLabel(x.zone || 'autre')) + '</b> · <span style="color:' + col + ';font-weight:700;">' + (_DL_LBL[x.valeur] || '') + '</span></span></div>';
+  }).join('');
+  el.innerHTML =
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">' + arr.length + ' séance' + (arr.length > 1 ? 's' : '') + ' avec douleur · zones les plus fréquentes</div>'
+    + zHtml
+    + '<div style="margin-top:10px;margin-bottom:2px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);">Récentes</div>'
+    + recent;
 }
 
 // Couleur + abréviation lisible d'un type de séance (agenda Option D)

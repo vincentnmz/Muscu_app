@@ -1449,70 +1449,130 @@
     <!-- ONGLET PROGRESSION (ex-Historique) -->
     <div id="tab-historique" class="tab-content">
 
-      <!-- CARRIÈRE (déplacé de l'Accueil) -->
-      <div class="v2-sec" id="dash-global-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
-      <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
-        <div id="dash-global-content"></div>
+      <style id="an-css">
+        #tab-historique .an-tabs{display:flex;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:14px;position:sticky;top:0;z-index:5;}
+        #tab-historique .an-tab{flex:1;border:none;background:transparent;color:var(--text-muted);font-family:inherit;font-size:13px;font-weight:700;padding:9px 6px;border-radius:9px;cursor:pointer;transition:background .15s,color .15s;}
+        #tab-historique .an-tab.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12);}
+        #tab-historique .an-tab.on.cardio{color:#0EA5E9;}
+        #tab-historique .an-empty{font-size:12.5px;color:var(--text-muted);line-height:1.5;}
+        #tab-historique .an-rs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+        #tab-historique .an-rspill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--text-muted);}
+        #tab-historique .an-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+        #tab-historique .an-bars{display:flex;align-items:flex-end;gap:4px;height:60px;margin-top:4px;}
+        #tab-historique .an-bar{flex:1;min-width:5px;border-radius:3px 3px 0 0;background:var(--accent);}
+        #tab-historique .an-zone{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--border);}
+        #tab-historique .an-zone:last-child{border-bottom:none;}
+        #tab-historique .an-znum{font-weight:800;font-variant-numeric:tabular-nums;}
+      </style>
+
+      <div class="an-tabs" role="tablist">
+        <button id="an-tab-muscu"  class="an-tab on" onclick="switchAnalyse('muscu')">Muscu</button>
+        <button id="an-tab-cardio" class="an-tab"    onclick="switchAnalyse('cardio')">Cardio</button>
+        <button id="an-tab-croise" class="an-tab"    onclick="switchAnalyse('croise')">Croisé</button>
       </div>
 
-      <!-- SECTION PERFORMANCE -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Performance</h2></div>
+      <!-- ============ SOUS-ONGLET MUSCU ============ -->
+      <div id="an-muscu" class="an-pane">
 
-      <!-- VOLUME PAR MUSCLE -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</h2></div>
-      <div class="card">
-        <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
-      </div>
-
-      <!-- BALANCE MUSCULAIRE AGONISTE/ANTAGONISTE -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</h2></div>
-      <div class="card">
-        <div id="hist-balance-content"><div class="loader">Chargement...</div></div>
-      </div>
-
-      <!-- PROGRESSION PAR EXERCICE -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</h2></div>
-      <div class="card">
-        <select id="sel-hist-exercice" onchange="afficherProgressionExo()" style="margin-bottom:10px;">
-          <option value="">— Choisir un exercice —</option>
-        </select>
-        <div id="hist-progression-content"></div>
-      </div>
-
-      <!-- RECORDS PERSONNELS -->
-      <div class="v2-sec" id="dash-records-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</h2><div class="more" onclick="allerVersRecords()" style="cursor:pointer;">Voir tout →</div></div>
-      <div class="card" id="dash-records-card" style="display:none;">
-        <div id="dash-records"></div>
-      </div>
-
-      <!-- TENDANCES 4-8 SEMAINES -->
-      <div class="v2-sec">
-        <h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</h2>
-        <div style="display:flex;gap:6px;">
-          <button onclick="afficherTendances(4)" id="btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">4 sem.</button>
-          <button onclick="afficherTendances(8)" id="btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer;">8 sem.</button>
+        <!-- VOLUME PAR MUSCLE -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</h2></div>
+        <div class="card">
+          <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
         </div>
-      </div>
-      <div class="card">
-        <div id="hist-tendances-content"><div class="loader">Chargement...</div></div>
+
+        <!-- BALANCE MUSCULAIRE AGONISTE/ANTAGONISTE -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</h2></div>
+        <div class="card">
+          <div id="hist-balance-content"><div class="loader">Chargement...</div></div>
+        </div>
+
+        <!-- PROGRESSION PAR EXERCICE -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</h2></div>
+        <div class="card">
+          <select id="sel-hist-exercice" onchange="afficherProgressionExo()" style="margin-bottom:10px;">
+            <option value="">— Choisir un exercice —</option>
+          </select>
+          <div id="hist-progression-content"></div>
+        </div>
+
+        <!-- RESSENTI DES SÉANCES MUSCU -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Ressenti des séances</h2></div>
+        <div class="card">
+          <div id="an-ressenti-muscu-content"></div>
+        </div>
+
+        <!-- DOULEURS MUSCU -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-heart"/></svg>Douleurs signalées</h2></div>
+        <div class="card">
+          <div id="an-douleurs-muscu-content"></div>
+        </div>
+
+        <!-- RECORDS PERSONNELS -->
+        <div class="v2-sec" id="dash-records-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</h2><div class="more" onclick="allerVersRecords()" style="cursor:pointer;">Voir tout →</div></div>
+        <div class="card" id="dash-records-card" style="display:none;">
+          <div id="dash-records"></div>
+        </div>
+
+        <!-- TENDANCES 4-8 SEMAINES -->
+        <div class="v2-sec">
+          <h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</h2>
+          <div style="display:flex;gap:6px;">
+            <button onclick="afficherTendances(4)" id="btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">4 sem.</button>
+            <button onclick="afficherTendances(8)" id="btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer;">8 sem.</button>
+          </div>
+        </div>
+        <div class="card">
+          <div id="hist-tendances-content"><div class="loader">Chargement...</div></div>
+        </div>
+
       </div>
 
-      <!-- CORRÉLATION BIEN-ÊTRE × PERFORMANCE -->
-      <div class="v2-sec" id="hist-corr-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-heart"/></svg>Bien-être &amp; performance</h2></div>
-      <div class="card" id="hist-corr-card" style="display:none;">
-        <div id="hist-corr-content"></div>
+      <!-- ============ SOUS-ONGLET CARDIO ============ -->
+      <div id="an-cardio" class="an-pane" style="display:none;">
+
+        <!-- HISTORIQUE CARDIO -->
+        <div class="v2-sec" id="hist-cardio-sec"><h2 class="st">🏃 Cardio · Historique</h2></div>
+        <div class="card" id="hist-cardio-card" style="padding:12px;">
+          <div id="hist-cardio-content"><div class="an-empty">Aucune séance cardio enregistrée pour l'instant.</div></div>
+        </div>
+
+        <!-- RESSENTI CARDIO -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Ressenti des séances</h2></div>
+        <div class="card">
+          <div id="an-ressenti-cardio-content"></div>
+        </div>
+
+        <!-- DOULEURS CARDIO -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-heart"/></svg>Douleurs signalées</h2></div>
+        <div class="card">
+          <div id="an-douleurs-cardio-content"></div>
+        </div>
+
       </div>
 
-      <!-- TENDANCE MENSUELLE (déplacé de l'Accueil) -->
-      <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
-      <div class="dash-card" id="dash-cmp28-card" style="padding:16px;display:none;">
-        <div id="dash-cmp28-content"></div>
-      </div>
+      <!-- ============ SOUS-ONGLET CROISÉ ============ -->
+      <div id="an-croise" class="an-pane" style="display:none;">
 
-      <!-- HISTORIQUE CARDIO -->
-      <div class="v2-sec" id="hist-cardio-sec" style="display:none;"><h2 class="st">🏃 Cardio · Historique</h2></div>
-      <div class="card" id="hist-cardio-card" style="padding:12px;display:none;">
-        <div id="hist-cardio-content"></div>
+        <!-- CARRIÈRE -->
+        <div class="v2-sec" id="dash-global-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
+        <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
+          <div id="dash-global-content"></div>
+        </div>
+
+        <!-- CORRÉLATION BIEN-ÊTRE × PERFORMANCE -->
+        <div class="v2-sec" id="hist-corr-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-heart"/></svg>Bien-être &amp; performance</h2></div>
+        <div class="card" id="hist-corr-card" style="display:none;">
+          <div id="hist-corr-content"></div>
+        </div>
+
+        <!-- TENDANCE MENSUELLE -->
+        <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
+        <div class="dash-card" id="dash-cmp28-card" style="padding:16px;display:none;">
+          <div id="dash-cmp28-content"></div>
+        </div>
+
+        <div class="an-empty" id="an-croise-empty" style="display:none;padding:8px 2px;">Les analyses croisées (bien-être × performance, tendance mensuelle, carrière) apparaîtront ici au fil de tes séances et questionnaires.</div>
+
       </div>
 
     </div>
