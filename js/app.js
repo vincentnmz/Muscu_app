@@ -6298,11 +6298,125 @@ function majBadgeConseils() {
   }
 }
 
-function afficherOngletConseils() {
-  renderBullesChat(messagesCoach, 'conseils-content', false);
+// ══════════ Écran « Conversations » (maquettes Conversations.dc.html + IAChat.dc.html) ══════════
+// Deux fils : Novalyz IA (assistant — réponses branchées plus tard sur le moteur) et le coach
+// (messagerie réelle existante). L'entrée sur l'onglet affiche la LISTE ; on ouvre un fil au clic.
+var _cvView = 'list';   // 'list' | 'ia' | 'coach'
+var _cvIaMsgs = [];     // messages du fil IA (session — pas encore persistés côté backend)
 
-  // Marquer les messages du coach comme lus (local + serveur)
-  const nonLusCoach = messagesCoach.filter(c => c.auteur !== 'athlete' && !estLu(c, 'muscu_lu_athlete')).map(c => c.id);
+// Nom d'affichage du coach : déduit du dernier message coach, sinon générique.
+function _cvCoachNom() {
+  var m = (messagesCoach || []).filter(function (c) { return c.auteur !== 'athlete' && c.auteur_nom; });
+  return (m.length && m[m.length - 1].auteur_nom) || 'Ton coach';
+}
+function _cvInit(s) { s = String(s || '').trim(); if (!s) return 'C'; var p = s.split(/\s+/); return ((p[0][0] || '') + (p[1] ? p[1][0] : '')).toUpperCase(); }
+function _cvHeure(d) { var t = parseChatDate(d); if (!t) return ''; var x = new Date(t); var now = new Date(); var sameDay = x.getDate() === now.getDate() && x.getMonth() === now.getMonth() && x.getFullYear() === now.getFullYear(); return sameDay ? (String(x.getHours()).padStart(2, '0') + ':' + String(x.getMinutes()).padStart(2, '0')) : (String(x.getDate()).padStart(2, '0') + '/' + String(x.getMonth() + 1).padStart(2, '0')); }
+
+// Point d'entrée de l'onglet : construit la liste et affiche la bonne vue.
+function afficherOngletConseils() {
+  cvRenderThreads();
+  if (_cvView === 'coach') cvOpenCoach(true);
+  else if (_cvView === 'ia') cvOpenIA();
+  else cvShowList();
+}
+// Entrée directe sur le fil Novalyz IA (boutons « Demande à Novalyz »).
+function ouvrirNovalyzIA() { _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils'); }
+// Entrée sur la liste des conversations (bulle d'en-tête).
+function ouvrirConversations() { _cvView = 'list'; if (typeof switchTab === 'function') switchTab('conseils'); }
+
+function _cvShow(view) {
+  _cvView = view;
+  var map = { list: 'cv-list-view', ia: 'cv-ia-view', coach: 'cv-coach-view' };
+  Object.keys(map).forEach(function (k) { var el = document.getElementById(map[k]); if (el) el.style.display = (k === view) ? 'flex' : 'none'; });
+}
+function cvShowList() { cvRenderThreads(); _cvShow('list'); }
+
+// Liste des fils : Novalyz IA (toujours) + coach (si lié) ou invitation.
+function cvRenderThreads() {
+  var el = document.getElementById('cv-threads');
+  if (!el) return;
+  var iaPrev = _cvIaMsgs.length ? _cvIaMsgs[_cvIaMsgs.length - 1].t : 'Pose-moi une question sur ta progression.';
+  var html = '<button class="cv-thread" onclick="cvOpenIA()">'
+    + '<span class="av ia">N</span>'
+    + '<div class="mid"><div class="r1"><span class="nm">Novalyz IA</span><span class="tag">assistant</span></div>'
+    + '<div class="pv">' + escapeHtml(iaPrev) + '</div></div>'
+    + '<div class="rt"><span class="tm">' + (_cvIaMsgs.length ? "à l'instant" : 'dispo') + '</span></div></button>';
+
+  var aUnCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id) || (messagesCoach && messagesCoach.length > 0);
+  if (aUnCoach) {
+    var sorted = [...(messagesCoach || [])].sort(function (a, b) { return parseChatDate(a.date) - parseChatDate(b.date); });
+    var last = sorted[sorted.length - 1];
+    var prev = last ? String(last.message || '') : 'Démarre la conversation avec ton coach.';
+    var tm = last ? _cvHeure(last.date) : '';
+    var nonLus = (messagesCoach || []).filter(function (c) { return c.auteur !== 'athlete' && !estLu(c, 'muscu_lu_athlete'); }).length;
+    var nom = _cvCoachNom();
+    html += '<button class="cv-thread" onclick="cvOpenCoach()">'
+      + '<span class="av coach">' + escapeHtml(_cvInit(nom)) + '</span>'
+      + '<div class="mid"><div class="r1"><span class="nm">' + escapeHtml(nom) + '</span></div>'
+      + '<div class="pv">' + escapeHtml(prev) + '</div></div>'
+      + '<div class="rt"><span class="tm">' + escapeHtml(tm) + '</span>' + (nonLus > 0 ? '<span class="cv-unread">' + nonLus + '</span>' : '') + '</div></button>';
+  } else {
+    html += '<div class="cv-sec">Pas encore de coach ?</div>'
+      + '<button class="cv-invite" onclick="cvInviterCoach()">'
+      + '<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.5-3.3 2.9-5 5.5-5s5 1.7 5.5 5"/><path d="M18 8v6M15 11h6"/></svg></span>'
+      + '<div><div class="a">Inviter un coach</div><div class="b">Partage ton suivi avec un coach ou un prépa.</div></div></button>';
+  }
+  el.innerHTML = html;
+}
+
+function cvInviterCoach() {
+  if (typeof showToast === 'function') showToast('Partage bientôt disponible — ton coach pourra te suivre ici.');
+}
+
+// ── Fil Novalyz IA ──
+function cvOpenIA() {
+  if (!_cvIaMsgs.length) {
+    var prenom = (typeof athlete !== 'undefined' && athlete && (athlete.prenom || athlete.nom)) || '';
+    _cvIaMsgs.push({ role: 'ia', t: 'Salut' + (prenom ? ' ' + prenom : '') + '. Je vois ton suivi — séances, charges, ressenti. Pose-moi une question sur ta progression.' });
+  }
+  cvRenderIa();
+  _cvShow('ia');
+}
+function cvRenderIa() {
+  var el = document.getElementById('cv-ia-msgs');
+  if (!el) return;
+  el.innerHTML = _cvIaMsgs.map(function (m) {
+    return m.role === 'me'
+      ? '<div class="cv-me">' + escapeHtml(m.t) + '</div>'
+      : '<div class="cv-ai"><span class="av">N</span><div class="bub">' + escapeHtml(m.t) + '</div></div>';
+  }).join('');
+  try { el.scrollTop = el.scrollHeight; } catch (e) {}
+}
+function cvIaChip(btn) {
+  var input = document.getElementById('cv-ia-input');
+  if (input) input.value = btn ? btn.textContent : '';
+  cvSendIA();
+}
+function cvSendIA() {
+  var input = document.getElementById('cv-ia-input');
+  if (!input) return;
+  var msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  _cvIaMsgs.push({ role: 'me', t: msg });
+  cvRenderIa();
+  // L'IA n'est pas encore branchée sur le moteur : réponse honnête (aucun chiffre inventé).
+  setTimeout(function () {
+    _cvIaMsgs.push({ role: 'ia', t: "Je suis en cours de branchement sur ton moteur d'analyse : bientôt je répondrai à partir de tes vraies données (séances, charges, ressenti, récup). En attendant, tes analyses détaillées sont dans l'onglet Analyses, et ton coach peut te répondre ici." });
+    cvRenderIa();
+  }, 500);
+}
+
+// ── Fil Coach (messagerie réelle) ──
+function cvOpenCoach(keepView) {
+  cvRenderCoachMsgs();
+  var nom = _cvCoachNom();
+  var elN = document.getElementById('cv-coach-nom'); if (elN) elN.textContent = nom;
+  var elA = document.getElementById('cv-coach-av'); if (elA) elA.textContent = _cvInit(nom);
+  if (!keepView) _cvShow('coach');
+  else _cvShow('coach');
+  // Marquer les messages du coach comme lus (local + serveur).
+  var nonLusCoach = (messagesCoach || []).filter(function (c) { return c.auteur !== 'athlete' && !estLu(c, 'muscu_lu_athlete'); }).map(function (c) { return c.id; });
   if (nonLusCoach.length > 0) {
     ajouterLusLocaux('muscu_lu_athlete', nonLusCoach);
     fetch(SCRIPT_URL, {
@@ -6310,10 +6424,11 @@ function afficherOngletConseils() {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLusCoach })
     });
-    messagesCoach.forEach(c => { if (nonLusCoach.includes(c.id)) c.lu = true; });
+    messagesCoach.forEach(function (c) { if (nonLusCoach.includes(c.id)) c.lu = true; });
     majBadgeConseils();
   }
 }
+function cvRenderCoachMsgs() { renderBullesChat(messagesCoach, 'conseils-content', false); }
 
 // Icône de sport pour les en-têtes (haltère muscu, ballon foot…). Extensible :
 // il suffit d'ajouter un couple sport → id d'icône SVG pour un nouveau sport.
@@ -12630,8 +12745,9 @@ function _ouvrirConversationNotif() {
     switchDetailJoueurTab(3);
     return;
   }
-  // Athlète muscu : onglet Conversation.
+  // Athlète muscu : onglet Conversation → ouvre directement le fil du coach.
   if (typeof switchTab === 'function' && document.getElementById('tab-conseils')) {
+    _cvView = 'coach';
     switchTab('conseils');
   }
 }
