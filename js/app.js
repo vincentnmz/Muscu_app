@@ -6546,6 +6546,7 @@ function switchTab(tab) {
     if (typeof dernierAppData !== 'undefined' && dernierAppData) { try { renderAujourdhui(dernierAppData); } catch (_) {} }
   }
   if (tab === 'historique') {
+    try { maResetNav(); } catch (e) {}
     if (dernierAppData) chargerHistorique();
     else chargerAppData().then(() => chargerHistorique());
   }
@@ -8149,6 +8150,19 @@ function maSetDisc(d) {
   try { window.scrollTo(0, 0); } catch (e) {}
 }
 function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
+// Réinitialise le curseur de navigation à Muscu · Résumé · Semaine.
+// Appelé à chaque ouverture de l'écran Analyses (et donc après changement de compte).
+function maResetNav() {
+  _maDisc = 'muscu'; _maTab = 'resume'; _maPeriode = 'semaine';
+  try {
+    var row = document.getElementById('ma-period');
+    if (row) row.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); });
+    var sem = document.getElementById('ma-per-semaine'); if (sem) sem.classList.add('on');
+    var menu = document.getElementById('ma-period-menu'); if (menu) menu.style.display = 'none';
+    var plus = document.getElementById('ma-per-plus');
+    if (plus) plus.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+  } catch (e) {}
+}
 // Sélecteur de période : met à jour l'état + re-rend les vues data.
 function maSetPeriode(p, btn) {
   if (p === 'plus') { maToggleMenu('ma-period-menu'); return; }
@@ -8189,7 +8203,7 @@ function _maApply() {
 }
 
 // ═══════════════ Écran Analyses : câblage données réelles ═══════════════
-var _maPeriode = 'mois';   // semaine|mois|3mois|6mois|9mois|annee
+var _maPeriode = 'semaine';   // semaine|mois|3mois|6mois|9mois|annee
 var _MA_WIN = { semaine: 'j7', mois: 'j28', '3mois': 'j90', '6mois': 'j180', '9mois': 'j270', annee: 'j365' };
 var _MA_DAYS = { semaine: 7, mois: 28, '3mois': 90, '6mois': 180, '9mois': 270, annee: 365 };
 var _MA_PLABEL = { semaine: 'cette semaine', mois: 'ce mois-ci', '3mois': 'ces 3 mois', '6mois': 'ces 6 mois', '9mois': 'ces 9 mois', annee: 'cette année' };
@@ -8331,14 +8345,15 @@ function _maMuscuResume(data) {
   var obti = {}; (data.volume_obti || []).forEach(function (o) { obti[o.muscle] = o; });
   var weeks = Math.max(1, Math.round(days / 7));
   var TGT = _maVolTargets();
-  var vs = Object.keys(spm).map(function (m) { return { muscle: m, spw: Math.round(spm[m] / weeks * 10) / 10 }; }).sort(function (a, b) { return b.spw - a.spw; });
+  var vs = Object.keys(spm).map(function (m) { return { muscle: m, tot: spm[m] }; }).sort(function (a, b) { return b.tot - a.tot; });
   var volHtml;
   if (vs.length) {
     volHtml = '<div class="ma-card ma-vol">' + vs.map(function (v) {
-      var o = obti[v.muscle], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min, scale = optW * 1.3, C, gap;
-      if (v.spw >= optW) { C = '#00A854'; gap = ''; } else if (v.spw >= minW) { C = '#E07800'; gap = ' · −' + (Math.round((optW - v.spw) * 10) / 10) + ' sous l\'opt'; } else { C = '#DC3545'; gap = ' · −' + (Math.round((optW - v.spw) * 10) / 10) + ' sous l\'opt'; }
-      return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + String(v.spw).replace('.', ',') + ' / ' + optW + ' séries/sem<span style="color:var(--text-subtle);font-weight:400">' + gap + '</span></span></div>'
-        + '<div class="ma-vtrack"><div class="ma-vmin" style="left:' + (minW / scale * 100).toFixed(0) + '%"></div><div class="ma-vfill" style="width:' + Math.min(100, v.spw / scale * 100).toFixed(0) + '%;background:' + C + '"></div><div class="ma-vmark" style="left:' + (optW / scale * 100).toFixed(0) + '%"></div></div></div>';
+      var o = obti[v.muscle], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min;
+      var opt = optW * weeks, min = minW * weeks, scale = opt * 1.3, C;
+      if (v.tot >= opt) { C = '#00A854'; } else if (v.tot >= min) { C = '#E07800'; } else { C = '#DC3545'; }
+      return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + v.tot + ' / ' + opt + ' séries</span></div>'
+        + '<div class="ma-vtrack"><div class="ma-vfill" style="width:' + Math.min(100, v.tot / scale * 100).toFixed(0) + '%;background:' + C + '"></div><div class="ma-vmark" style="left:' + (opt / scale * 100).toFixed(0) + '%"></div></div></div>';
     }).join('')
       + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
@@ -8346,8 +8361,10 @@ function _maMuscuResume(data) {
   _maSet('ma-muscu-resume', verdict + _maSec(ptitle)
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p]) + rsHtml
-    + _maSec('Volume musculaire', 'moyenne / semaine') + volHtml
-    + _maCap('Séries par muscle et par semaine. Le trait noir « opt » = ta cible optimale (niveau ' + TGT.label + ', ~' + TGT.min + '–' + TGT.opt + ' séries/sem.), le trait gris = le mini. L\'écart au trait noir = ce qu\'il te manque pour être optimal.'));
+    + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries') + volHtml
+    + _maCap('Séries par muscle sur la période. Le trait « opt » = l\'objectif à atteindre (le chiffre à droite). Barre verte = atteint, orange/rouge = en dessous. Cible niveau ' + TGT.label + '.')
+    + _maSec('Balance musculaire', 'agoniste / antagoniste') + _maBalance(data)
+    + _maCap('Équilibre entre groupes opposés (poussée/tirage, avant/arrière…). Un ratio proche de 50/50 limite les déséquilibres et le risque de blessure.'));
 }
 
 function _maMuscuExercice(data) {
@@ -8358,7 +8375,7 @@ function _maMuscuExercice(data) {
   var MODES = [['exo', 'Par exercice', '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>'], ['grp', 'Par groupe', '<circle cx="12" cy="5" r="2.5"/><path d="M12 8v6M8 20l4-6 4 6"/>'], ['sea', 'Par séance', '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>']];
   var head = _maSec('Progression', '3 vues au choix') + '<div class="ma-modesel">' + MODES.map(function (mm) { return '<button class="' + (mm[0] === mode ? 'on' : '') + '" onclick="maSetProgMode(\'' + mm[0] + '\')">' + _maSvg(mm[2], 14) + mm[1] + '</button>'; }).join('') + '</div>';
   var body = (mode === 'grp') ? _maProgGrp(data) : (mode === 'sea') ? _maProgSea(data) : _maProgExo(data);
-  _maSet('ma-muscu-detail', head + body + _maSec('Balance musculaire · agoniste / antagoniste') + _maBalance(data) + _maSec('Records personnels') + _maRecords(data));
+  _maSet('ma-muscu-detail', head + body + _maSec('Records personnels') + _maRecords(data));
 }
 
 var _maExoSel = null, _maExoMetric = '1rm';

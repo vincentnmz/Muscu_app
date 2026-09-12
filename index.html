@@ -1598,8 +1598,8 @@
         </div>
 
         <div class="ma-period" id="ma-period">
-          <button onclick="maSetPeriode('semaine',this)">Semaine</button>
-          <button class="on" onclick="maSetPeriode('mois',this)">Mois</button>
+          <button class="on" id="ma-per-semaine" onclick="maSetPeriode('semaine',this)">Semaine</button>
+          <button onclick="maSetPeriode('mois',this)">Mois</button>
           <button onclick="maSetPeriode('3mois',this)">3 mois</button>
           <button class="plus" id="ma-per-plus" title="Période plus longue (6 mois, 9 mois, année…)" onclick="maSetPeriode('plus',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
