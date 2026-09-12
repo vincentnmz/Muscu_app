@@ -8278,8 +8278,12 @@ function _maCap(t) { return '<div style="font-size:11px;color:var(--text-subtle)
 // plus le volume utile (MEV→MAV) est élevé. La table volume_obti, si remplie,
 // reste prioritaire (spécifique par muscle).
 function _maVolTargets() {
-  var yrs = 0; try { yrs = Number(typeof athlete !== 'undefined' && athlete && athlete.annees) || 0; } catch (e) {}
-  var T = yrs > 9 ? { min: 12, opt: 20, label: 'avancé' } : yrs >= 4 ? { min: 10, opt: 16, label: 'intermédiaire' } : { min: 8, opt: 12, label: 'débutant' };
+  // Années de pratique = champ `annees_pratique` (source unique dans toute l'app).
+  var yrs = 0; try { yrs = Number(typeof athlete !== 'undefined' && athlete && athlete.annees_pratique) || 0; } catch (e) {}
+  // Cibles de volume par niveau (séries/muscle/semaine) : débutant 0-3, intermédiaire 4-9, avancé >9.
+  var T = (yrs > 9) ? { min: 12, opt: 20, label: 'avancé' }
+    : (yrs >= 4) ? { min: 10, opt: 16, label: 'intermédiaire' }
+    : { min: 8, opt: 12, label: 'débutant' };
   T.yrs = yrs; return T;
 }
 // Série hebdo (8 sem.) d'une métrique cardio pour un sport donné (somme ou moyenne).
@@ -8451,15 +8455,35 @@ function _maProgSea(data) {
 }
 
 // Balance agoniste/antagoniste (contexte, sous la progression).
+// Robuste aux variantes d'orthographe du muscle (Ischio / Ischios / Ischio-jambiers,
+// Dos / Dorsaux / Grand dorsal…) : on somme par mot-clé normalisé, pas par égalité stricte.
 function _maBalance(data) {
   // Séries par muscle sur la période sélectionnée → la balance évolue dans le temps.
   var r = (data.recent && data.recent[_MA_WIN[_maPeriode]]) || {};
   var vs = r.series_par_muscle || {};
-  var pairs = [['Pectoraux', 'Dos', 'Poussée', 'Tirage'], ['Quadriceps', 'Ischios', 'Avant', 'Arrière'], ['Biceps', 'Triceps', 'Flexion', 'Extension']];
-  var balRows = pairs.filter(function (pr) { return (vs[pr[0]] || 0) + (vs[pr[1]] || 0) > 0; }).map(function (pr) {
-    var tot = (vs[pr[0]] || 0) + (vs[pr[1]] || 0), pct = Math.round((vs[pr[0]] || 0) / tot * 100);
-    return '<div class="ma-b2row"><div class="ma-b2h"><span class="l">' + pr[0] + ' ' + pct + '%</span><span class="r">' + (100 - pct) + '% ' + pr[1] + '</span></div><div class="ma-b2bar"><span style="width:' + pct + '%"></span></div><div class="ma-b2sub"><span>' + pr[2] + '</span><span>~50/50 idéal</span><span>' + pr[3] + '</span></div></div>';
-  }).join('');
+  function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, ''); }
+  // Somme des séries dont le muscle contient un des mots-clés (hors exclusions).
+  function sumK(keys, excl) {
+    var t = 0;
+    Object.keys(vs).forEach(function (m) {
+      var n = norm(m);
+      var hit = keys.some(function (k) { return n.indexOf(k) >= 0; });
+      var ex = excl && excl.some(function (e) { return n.indexOf(e) >= 0; });
+      if (hit && !ex) t += (vs[m] || 0);
+    });
+    return t;
+  }
+  var pairs = [
+    { a: ['pector'], la: 'Pectoraux', ea: 'Poussée', b: ['dos', 'dorsa', 'dorsal'], lb: 'Dos', eb: 'Tirage' },
+    { a: ['quadri'], la: 'Quadriceps', ea: 'Avant', b: ['ischio'], lb: 'Ischios', eb: 'Arrière' },
+    { a: ['biceps'], ax: ['femor'], la: 'Biceps', ea: 'Flexion', b: ['triceps'], lb: 'Triceps', eb: 'Extension' }
+  ];
+  var balRows = pairs.map(function (pr) { return { pr: pr, va: sumK(pr.a, pr.ax), vb: sumK(pr.b, pr.bx) }; })
+    .filter(function (x) { return x.va + x.vb > 0; })
+    .map(function (x) {
+      var pr = x.pr, tot = x.va + x.vb, pct = Math.round(x.va / tot * 100);
+      return '<div class="ma-b2row"><div class="ma-b2h"><span class="l">' + pr.la + ' ' + pct + '%</span><span class="r">' + (100 - pct) + '% ' + pr.lb + '</span></div><div class="ma-b2bar"><span style="width:' + pct + '%"></span></div><div class="ma-b2sub"><span>' + pr.ea + '</span><span>~50/50 idéal</span><span>' + pr.eb + '</span></div></div>';
+    }).join('');
   return balRows ? ('<div class="ma-card ma-bal2">' + balRows + '</div>') : _maEmpty('Balance dispo dès que tu as travaillé des groupes opposés.');
 }
 function _maRecords(data) {
