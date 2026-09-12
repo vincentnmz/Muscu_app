@@ -8241,6 +8241,15 @@ var _maCardioSport = null;      // sport sélectionné dans « Par sport » (nul
 var _maCardioMetric = 'distance';
 function maToggleMenu(id) { var e = document.getElementById(id); if (e) e.style.display = (!e.style.display || e.style.display === 'none') ? 'block' : 'none'; }
 function _maCap(t) { return '<div style="font-size:11px;color:var(--text-subtle);line-height:1.45;padding:0 2px 2px">' + t + '</div>'; }
+// Cibles de volume (séries/muscle/semaine) modulées par l'expérience (années).
+// Repères hypertrophie (Schoenfeld / Israetel) : plus l'athlète est avancé,
+// plus le volume utile (MEV→MAV) est élevé. La table volume_obti, si remplie,
+// reste prioritaire (spécifique par muscle).
+function _maVolTargets() {
+  var yrs = 0; try { yrs = Number(typeof athlete !== 'undefined' && athlete && athlete.annees) || 0; } catch (e) {}
+  var T = yrs >= 3 ? { min: 12, opt: 20, label: 'avancé' } : yrs >= 1 ? { min: 10, opt: 16, label: 'intermédiaire' } : { min: 8, opt: 12, label: 'débutant' };
+  T.yrs = yrs; return T;
+}
 // Série hebdo (8 sem.) d'une métrique cardio pour un sport donné (somme ou moyenne).
 function _maSportWeekly(sesss, metric) {
   var avgM = { vitesse_moy: 1, fc_moy: 1 }, now = new Date(); now.setHours(0, 0, 0, 0); var out = [];
@@ -8303,11 +8312,12 @@ function _maMuscuResume(data) {
   var spm = r.series_par_muscle || {};
   var obti = {}; (data.volume_obti || []).forEach(function (o) { obti[o.muscle] = o; });
   var weeks = Math.max(1, Math.round(days / 7));
+  var TGT = _maVolTargets();
   var vs = Object.keys(spm).map(function (m) { return { muscle: m, faites: spm[m] }; }).sort(function (a, b) { return b.faites - a.faites; });
   var volHtml;
   if (vs.length) {
     volHtml = '<div class="ma-card ma-vol">' + vs.map(function (v) {
-      var o = obti[v.muscle], optW = (o && o.series_opt) || 14, minW = (o && o.series_min) || 9;
+      var o = obti[v.muscle], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min;
       var opt = optW * weeks, min = minW * weeks, C, L;
       if (v.faites >= opt) { C = '#00A854'; L = 'optimal'; } else if (v.faites >= min) { C = '#E07800'; L = 'sous-optimal'; } else { C = '#DC3545'; L = 'insuffisant'; }
       return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + v.faites + ' · ' + L + '</span></div><div class="ma-vt"><span style="width:' + Math.min(100, Math.round(v.faites / opt * 100)) + '%;background:' + C + '"></span></div></div>';
@@ -8319,7 +8329,7 @@ function _maMuscuResume(data) {
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p]) + rsHtml
     + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries') + volHtml
-    + _maCap('Séries par muscle vs cible hebdo. Vert = dans la zone optimale, orange = un peu juste, rouge = insuffisant pour progresser.'));
+    + _maCap('Séries par muscle vs cible hebdo, adaptée à ton niveau (' + TGT.yrs + ' an' + (TGT.yrs > 1 ? 's' : '') + ' → ' + TGT.label + ' : ~' + TGT.min + '–' + TGT.opt + ' séries/sem.). Vert = optimal, orange = un peu juste, rouge = insuffisant.'));
 }
 
 function _maMuscuExercice(data) {
