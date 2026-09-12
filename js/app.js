@@ -8331,23 +8331,23 @@ function _maMuscuResume(data) {
   var obti = {}; (data.volume_obti || []).forEach(function (o) { obti[o.muscle] = o; });
   var weeks = Math.max(1, Math.round(days / 7));
   var TGT = _maVolTargets();
-  var vs = Object.keys(spm).map(function (m) { return { muscle: m, faites: spm[m] }; }).sort(function (a, b) { return b.faites - a.faites; });
+  var vs = Object.keys(spm).map(function (m) { return { muscle: m, spw: Math.round(spm[m] / weeks * 10) / 10 }; }).sort(function (a, b) { return b.spw - a.spw; });
   var volHtml;
   if (vs.length) {
     volHtml = '<div class="ma-card ma-vol">' + vs.map(function (v) {
-      var o = obti[v.muscle], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min;
-      var opt = optW * weeks, min = minW * weeks, C, L;
-      if (v.faites >= opt) { C = '#00A854'; L = 'optimal'; } else if (v.faites >= min) { C = '#E07800'; L = 'sous-optimal'; } else { C = '#DC3545'; L = 'insuffisant'; }
-      return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + v.faites + ' · ' + L + '</span></div><div class="ma-vt"><span style="width:' + Math.min(100, Math.round(v.faites / opt * 100)) + '%;background:' + C + '"></span></div></div>';
+      var o = obti[v.muscle], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min, scale = optW * 1.3, C, gap;
+      if (v.spw >= optW) { C = '#00A854'; gap = ''; } else if (v.spw >= minW) { C = '#E07800'; gap = ' · −' + (Math.round((optW - v.spw) * 10) / 10) + ' sous l\'opt'; } else { C = '#DC3545'; gap = ' · −' + (Math.round((optW - v.spw) * 10) / 10) + ' sous l\'opt'; }
+      return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + String(v.spw).replace('.', ',') + ' / ' + optW + ' séries/sem<span style="color:var(--text-subtle);font-weight:400">' + gap + '</span></span></div>'
+        + '<div class="ma-vtrack"><div class="ma-vmin" style="left:' + (minW / scale * 100).toFixed(0) + '%"></div><div class="ma-vfill" style="width:' + Math.min(100, v.spw / scale * 100).toFixed(0) + '%;background:' + C + '"></div><div class="ma-vmark" style="left:' + (optW / scale * 100).toFixed(0) + '%"></div></div></div>';
     }).join('')
-      + '<div class="ma-rsleg" style="margin-top:2px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+      + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
   var ptitle = _MA_PLABEL[p].charAt(0).toUpperCase() + _MA_PLABEL[p].slice(1);
   _maSet('ma-muscu-resume', verdict + _maSec(ptitle)
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p]) + rsHtml
-    + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries') + volHtml
-    + _maCap('Séries par muscle vs cible hebdo, adaptée à ton niveau (' + TGT.yrs + ' an' + (TGT.yrs > 1 ? 's' : '') + ' → ' + TGT.label + ' : ~' + TGT.min + '–' + TGT.opt + ' séries/sem.). Vert = optimal, orange = un peu juste, rouge = insuffisant.'));
+    + _maSec('Volume musculaire', 'moyenne / semaine') + volHtml
+    + _maCap('Séries par muscle et par semaine. Le trait noir « opt » = ta cible optimale (niveau ' + TGT.label + ', ~' + TGT.min + '–' + TGT.opt + ' séries/sem.), le trait gris = le mini. L\'écart au trait noir = ce qu\'il te manque pour être optimal.'));
 }
 
 function _maMuscuExercice(data) {
@@ -8357,41 +8357,96 @@ function _maMuscuExercice(data) {
   var mode = _maProgMode;
   var MODES = [['exo', 'Par exercice', '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>'], ['grp', 'Par groupe', '<circle cx="12" cy="5" r="2.5"/><path d="M12 8v6M8 20l4-6 4 6"/>'], ['sea', 'Par séance', '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>']];
   var head = _maSec('Progression', '3 vues au choix') + '<div class="ma-modesel">' + MODES.map(function (mm) { return '<button class="' + (mm[0] === mode ? 'on' : '') + '" onclick="maSetProgMode(\'' + mm[0] + '\')">' + _maSvg(mm[2], 14) + mm[1] + '</button>'; }).join('') + '</div>';
-  var items = [], capTxt = '';
-  if (mode === 'exo') {
-    items = exos.slice(0, 12).map(function (exo) {
-      var pts = prog[exo].slice().reverse(), ch = pts.map(function (p) { return p.charge || 0; });
-      var first = ch[0], last = ch[ch.length - 1], delta = Math.round((last - first) * 10) / 10;
-      var col = delta > 0 ? '#00A854' : delta < 0 ? '#DC3545' : '#E07800';
-      var sub = (delta > 0 ? '+' + String(delta).replace('.', ',') + ' kg' : delta < 0 ? String(delta).replace('.', ',') + ' kg' : 'stable') + ' · ' + pts.length + ' pts';
-      return { name: exo, ch: ch, col: col, sub: sub, val: (last || 0) + ' kg', small: (pts[pts.length - 1].reps || '') + ' reps' };
-    });
-    capTxt = 'Charge (kg) de ta meilleure série par exercice, dans le temps.';
-  } else {
-    var agg = _maProgAgg(data.seances_detail || []);
-    var src = mode === 'grp' ? agg.byM : agg.byS;
-    items = Object.keys(src).filter(function (k) { return src[k].length >= 2; }).map(function (k) {
-      var arr = src[k], tons = arr.map(function (x) { return Math.round(x.tonnage / 100) / 10; });
-      var first = arr[0].tonnage, last = arr[arr.length - 1].tonnage, pct = first ? Math.round((last - first) / first * 100) : 0;
-      var col = pct > 0 ? '#00A854' : pct < 0 ? '#DC3545' : '#E07800';
-      return { name: k, ch: tons, col: col, sub: (pct > 0 ? '+' : '') + pct + '% · ' + arr.length + ' séances', val: (Math.round(last / 100) / 10) + ' t', small: 'tonnage', _last: last };
-    }).sort(function (a, b) { return b._last - a._last; }).slice(0, 12);
-    capTxt = mode === 'grp' ? 'Tonnage (charge×reps) cumulé par groupe musculaire, séance après séance.' : 'Tonnage total par type de séance, à chaque fois que tu la refais.';
-  }
-  var progHtml = items.length ? ('<div class="ma-card">' + items.map(function (it) { return '<div class="ma-exo">' + _maSpark(it.ch, it.col) + '<div class="nm"><div class="a">' + _maE(it.name) + '</div><div class="b">' + it.sub + '</div></div><div class="ma-val">' + it.val + '<small>' + it.small + '</small></div></div>'; }).join('') + '</div>' + _maCap(capTxt)) : _maEmpty('Pas encore assez de données pour ce mode.');
-  // Balance agoniste/antagoniste depuis volume_semaine
+  var body = (mode === 'grp') ? _maProgGrp(data) : (mode === 'sea') ? _maProgSea(data) : _maProgExo(data);
+  _maSet('ma-muscu-detail', head + body + _maSec('Balance musculaire · agoniste / antagoniste') + _maBalance(data) + _maSec('Records personnels') + _maRecords(data));
+}
+
+var _maExoSel = null, _maExoMetric = '1rm';
+function maSetExo(e) { _maExoSel = e; try { _maMuscuExercice(dernierAppData); } catch (x) {} }
+function maSetExoMetric(m) { _maExoMetric = m; try { _maMuscuExercice(dernierAppData); } catch (x) {} }
+function _maE1RM(p) { return Math.round((p.charge || 0) * (1 + (p.reps || 0) / 30)); }
+function _maEstDuree(s) { var sec = 0; (s.exercices || []).forEach(function (e) { (e.series || []).forEach(function (x) { sec += (x.repos || 90) + 35; }); }); return Math.round(sec / 60); }
+
+// PAR EXERCICE : sélecteur d'exercice + graphe (1RM/charge/volume) + stats + séances.
+function _maProgExo(data) {
+  var prog = (data.historique && data.historique.progression_par_exo) || {};
+  var exos = Object.keys(prog).filter(function (k) { return (prog[k] || []).length >= 1; }).sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; });
+  if (!exos.length) return _maEmpty('Pas encore de données de progression par exercice.');
+  var sel = (_maExoSel && exos.indexOf(_maExoSel) >= 0) ? _maExoSel : exos[0];
+  var pts = prog[sel].slice().reverse();   // chrono
+  var muscle = ''; try { (data.seances_detail || []).some(function (s) { return (s.exercices || []).some(function (e) { if (e.nom === sel) { muscle = e.muscle || ''; return true; } return false; }); }); } catch (e) {}
+  var menu = '<div id="ma-exo-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;max-height:250px;overflow:auto;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">' + exos.map(function (e, i) { return '<div onclick="maSetExo(' + JSON.stringify(e) + ')" style="padding:10px 13px;font-size:13px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (e === sel ? 'background:var(--surface2);' : '') + '">' + _maE(e) + '</div>'; }).join('') + '</div>';
+  var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + prog[sel].length + ' séance' + (prog[sel].length > 1 ? 's' : '') + ' suivie' + (prog[sel].length > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
+  var MET = [['1rm', '1RM estimé', 'kg'], ['charge', 'Charge max', 'kg'], ['volume', 'Volume', 'kg']];
+  var met = MET.filter(function (x) { return x[0] === _maExoMetric; })[0] || MET[0];
+  var seg = '<div class="ma-seg">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div>';
+  var series = pts.map(function (p) { return met[0] === '1rm' ? _maE1RM(p) : met[0] === 'charge' ? (p.charge || 0) : (p.volume || ((p.charge || 0) * (p.reps || 0))); });
+  var last = series[series.length - 1] || 0, first = series[0] || 0, delta = Math.round((last - first) * 10) / 10;
+  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + met[1] + ' (' + met[2] + ')</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + last + ' <span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span></span></div>' + _maArea(series, '#1A5FFF', 'rgba(26,95,255,.12)') + '<div class="ma-axis"><span>' + pts.length + ' séances</span><span>aujourd\'hui</span></div></div>';
+  var best = pts.reduce(function (a, b) { return (b.charge || 0) > (a.charge || 0) ? b : a; }, pts[0]);
+  var recCharge = (data.global && data.global.records_par_exo && data.global.records_par_exo[sel] && data.global.records_par_exo[sel].charge) || best.charge || 0;
+  var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">1RM estimé</div></div><div class="c"><div class="v">' + (best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + (delta >= 0 ? '+' : '') + delta + ' ' + met[2] + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + recCharge + ' kg</div><div class="u">record charge</div></div></div>';
+  var recent = pts.slice().reverse().slice(0, 6).map(function (p) { return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + (p.charge || 0) + ' kg × ' + (p.reps || 0) + '</span><span class="r">' + _maE1RM(p) + '</span></div>'; }).join('');
+  return pick + seg + chart + stats + _maCap('Colonne de droite des séances = 1RM estimé de la série (formule d\'Epley). Le graphe suit la métrique choisie ci-dessus.') + _maSec('Dernières séances') + '<div class="ma-card">' + recent + '</div>';
+}
+
+// PAR GROUPE : lignes riches (séries/sem vs cible + fréquence + tonnage + tendance).
+function _maProgGrp(data) {
+  var sd = data.seances_detail || [];
+  if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
+  var days = _MA_DAYS[_maPeriode], cut = _maCutISO(days), weeks = Math.max(1, Math.round(days / 7));
+  var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd.slice(0, 12);
+  var TGT = _maVolTargets(), obti = {}; (data.volume_obti || []).forEach(function (o) { obti[o.muscle] = o; });
+  var agg = {};
+  inP.slice().reverse().forEach(function (s) {
+    var mt = {};
+    (s.exercices || []).forEach(function (e) { var m = e.muscle || '—', t = (e.series || []).reduce(function (a, x) { return a + ((x.charge || 0) * (x.reps || 0)); }, 0), ns = (e.series || []).length; if (!agg[m]) agg[m] = { sets: 0, ton: 0, days: {}, serie: [] }; agg[m].sets += ns; agg[m].ton += t; agg[m].days[s.date] = 1; mt[m] = (mt[m] || 0) + t; });
+    Object.keys(mt).forEach(function (m) { agg[m].serie.push(mt[m]); });
+  });
+  var rows = Object.keys(agg).map(function (m) { var a = agg[m]; return { m: m, spw: Math.round(a.sets / weeks * 10) / 10, freq: Math.round(Object.keys(a.days).length / weeks * 10) / 10, ton: Math.round(a.ton / 100) / 10, serie: a.serie }; }).sort(function (a, b) { return b.spw - a.spw; });
+  var html = '<div class="ma-card">' + rows.map(function (rw) {
+    var o = obti[rw.m], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min, scale = optW * 1.3;
+    var C = rw.spw >= optW ? '#00A854' : rw.spw >= minW ? '#E07800' : '#DC3545';
+    var first = rw.serie[0] || 0, last = rw.serie[rw.serie.length - 1] || 0, pct = first ? Math.round((last - first) / first * 100) : 0;
+    return '<div class="ma-grow"><div class="ma-grh"><span class="n">' + _maE(rw.m) + '</span><span class="t ' + (pct >= 0 ? 'ma-up' : 'ma-dn') + '">' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span></div>'
+      + '<div class="ma-gbar"><div class="ma-gfill" style="width:' + Math.min(100, rw.spw / scale * 100).toFixed(0) + '%;background:' + C + '"></div><div class="ma-gmark" style="left:' + (optW / scale * 100).toFixed(0) + '%"></div></div>'
+      + '<div class="ma-gmet"><span>Séries <b>' + String(rw.spw).replace('.', ',') + '/' + optW + '</b>/sem</span><span>Fréq. <b>' + String(rw.freq).replace('.', ',') + '×</b>/sem</span><span>Tonnage <b>' + rw.ton + ' t</b></span></div></div>';
+  }).join('') + '</div>';
+  return html + _maCap('Par muscle : la barre = séries/sem vs ta cible (trait noir = optimal) ; à côté, fréquence (séances/sem touchant le muscle) et tonnage ; à droite, la tendance du tonnage. Les séries/sem sont le marqueur n°1 pour l\'hypertrophie.');
+}
+
+// PAR SÉANCE : une carte-bilan par type (tonnage, durée est., ressenti, nb, tendance).
+function _maProgSea(data) {
+  var sd = data.seances_detail || [];
+  if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
+  var cut = _maCutISO(_MA_DAYS[_maPeriode]);
+  var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd;
+  var rs = {}; ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + x.date] = x.valeur; });
+  var RSL = { 1: 'Facile', 2: 'Moyen', 3: 'Difficile', 4: 'Très dur' };
+  var by = {};
+  inP.slice().reverse().forEach(function (s) { var sid = s.seance_id || 'Séance'; if (!by[sid]) by[sid] = { ton: [], dur: [], rs: [], n: 0 }; by[sid].ton.push(s.tonnage || 0); by[sid].dur.push(_maEstDuree(s)); var rv = rs[sid + '|' + s.date]; if (rv) by[sid].rs.push(rv); by[sid].n++; });
+  var avg = function (a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : 0; };
+  return Object.keys(by).map(function (sid) {
+    var b = by[sid], tonAvg = Math.round(avg(b.ton) / 100) / 10, durAvg = Math.round(avg(b.dur)), rsAvg = b.rs.length ? Math.round(avg(b.rs)) : null;
+    var first = b.ton[0], last = b.ton[b.ton.length - 1], pct = first ? Math.round((last - first) / first * 100) : 0;
+    return '<div class="ma-card" style="padding:13px 15px;display:flex;flex-direction:column;gap:9px"><div class="ma-grh"><span class="n" style="font-size:14px">' + _maE(sid) + '</span><span class="t ' + (pct >= 0 ? 'ma-up' : 'ma-dn') + '">' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span></div><div class="ma-stat4"><div class="c"><div class="v">' + tonAvg + ' t</div><div class="u">tonnage moy.</div></div><div class="c"><div class="v">~' + durAvg + ' min</div><div class="u">durée est.</div></div><div class="c"><div class="v">' + (rsAvg ? RSL[rsAvg] : '—') + '</div><div class="u">ressenti moy.</div></div><div class="c"><div class="v">' + b.n + '×</div><div class="u">réalisée</div></div></div></div>';
+  }).join('') + _maCap('Chaque type de séance : tonnage moyen, durée estimée (repos + travail), ressenti moyen, nb de fois réalisée, et tendance du tonnage.');
+}
+
+// Balance agoniste/antagoniste (contexte, sous la progression).
+function _maBalance(data) {
   var vs = {}; ((data.historique && data.historique.volume_semaine) || []).forEach(function (v) { vs[v.muscle] = v.faites || 0; });
   var pairs = [['Pectoraux', 'Dos', 'Poussée', 'Tirage'], ['Quadriceps', 'Ischios', 'Avant', 'Arrière'], ['Biceps', 'Triceps', 'Flexion', 'Extension']];
   var balRows = pairs.filter(function (pr) { return (vs[pr[0]] || 0) + (vs[pr[1]] || 0) > 0; }).map(function (pr) {
     var tot = (vs[pr[0]] || 0) + (vs[pr[1]] || 0), pct = Math.round((vs[pr[0]] || 0) / tot * 100);
     return '<div class="ma-b2row"><div class="ma-b2h"><span class="l">' + pr[0] + ' ' + pct + '%</span><span class="r">' + (100 - pct) + '% ' + pr[1] + '</span></div><div class="ma-b2bar"><span style="width:' + pct + '%"></span></div><div class="ma-b2sub"><span>' + pr[2] + '</span><span>~50/50 idéal</span><span>' + pr[3] + '</span></div></div>';
   }).join('');
-  var balHtml = balRows ? ('<div class="ma-card ma-bal2">' + balRows + '</div>') : _maEmpty('Balance dispo dès que tu as travaillé des groupes opposés.');
-  // Records
+  return balRows ? ('<div class="ma-card ma-bal2">' + balRows + '</div>') : _maEmpty('Balance dispo dès que tu as travaillé des groupes opposés.');
+}
+function _maRecords(data) {
   var recs = (data.global && data.global.records_par_exo) || {};
   var recArr = Object.keys(recs).map(function (k) { return { n: k, c: recs[k].charge || 0, d: recs[k].date }; }).sort(function (a, b) { return b.c - a.c; }).slice(0, 4);
-  var recHtml = recArr.length ? ('<div class="ma-recg">' + recArr.map(function (x) { return '<div class="ma-rec"><div class="top"><span class="rn">' + _maE(x.n) + '</span><span class="medal">' + _maSvg('<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/>', 15) + '</span></div><div class="rv">' + x.c + ' kg</div><div class="rd">' + _maE(x.d || '') + '</div></div>'; }).join('') + '</div>') : _maEmpty('Aucun record enregistré pour l\'instant.');
-  _maSet('ma-muscu-detail', head + '<div class="ma-pdd"><span>Meilleurs exercices</span><span class="mut">' + exos.length + ' suivis</span></div>' + progHtml + _maSec('Balance musculaire · agoniste / antagoniste') + balHtml + _maSec('Records personnels') + recHtml);
+  return recArr.length ? ('<div class="ma-recg">' + recArr.map(function (x) { return '<div class="ma-rec"><div class="top"><span class="rn">' + _maE(x.n) + '</span><span class="medal">' + _maSvg('<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/>', 15) + '</span></div><div class="rv">' + x.c + ' kg</div><div class="rd">' + _maE(x.d || '') + '</div></div>'; }).join('') + '</div>') : _maEmpty('Aucun record enregistré pour l\'instant.');
 }
 var _maProgMode = 'exo';   // 'exo' | 'grp' | 'sea'
 function maSetProgMode(m) { _maProgMode = m; try { _maMuscuExercice(dernierAppData); } catch (e) {} }
