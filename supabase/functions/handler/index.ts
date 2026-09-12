@@ -239,6 +239,8 @@ function computeRecent(perfs: any[], now: Date): any {
     const strain = (monotonie !== null) ? Math.round(mean * days * monotonie) : null
     result[KEY_MAP[key]] = {
       seances,
+      series: filtered.length,
+      reps: filtered.reduce((s, r) => s + (Number(r.reps) || 0), 0),
       tonnage: Math.round(tonnage / 100) / 10,
       tonnage_kg: Math.round(tonnage),
       rpe_moyen: rpeRows.length ? Math.round(rpeRows.reduce((s, r) => s + Number(r.rpe), 0) / rpeRows.length * 10) / 10 : null,

@@ -8132,7 +8132,8 @@ async function chargerHistorique() {
     });
   }
 
-  // Écran Analyses (maquette « Mes analyses ») : initialise la navigation 2 niveaux.
+  // Écran Analyses (maquette « Mes analyses ») : données réelles + navigation.
+  try { maRenderData(); } catch (e) {}
   try { _maApply(); } catch (e) {}
 }
 
@@ -8148,12 +8149,14 @@ function maSetDisc(d) {
   try { window.scrollTo(0, 0); } catch (e) {}
 }
 function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
-// Sélecteur de période (visuel pour l'instant — le câblage data suivra).
+// Sélecteur de période : met à jour l'état + re-rend les vues data.
 function maSetPeriode(p, btn) {
   try {
     var row = document.getElementById('ma-period');
     if (row) { row.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); }); if (btn && p !== 'plus') btn.classList.add('on'); }
   } catch (e) {}
+  if (p === 'plus') { if (typeof showToast === 'function') showToast('Périodes longues (6 mois, 9 mois, année) : bientôt'); return; }
+  if (['semaine', 'mois', '3mois'].indexOf(p) >= 0) { _maPeriode = p; try { maRenderData(); } catch (e) {} }
 }
 function _maApply() {
   // Toggle discipline (Muscu / Cardio / Croisé)
@@ -8176,6 +8179,261 @@ function _maApply() {
       if (p) p.style.display = (d === _maDisc && t === _maTab) ? '' : 'none';
     });
   });
+}
+
+// ═══════════════ Écran Analyses : câblage données réelles ═══════════════
+var _maPeriode = 'mois';   // 'semaine' | 'mois' | '3mois'
+var _MA_WIN = { semaine: 'j7', mois: 'j28', '3mois': 'j56' };
+var _MA_DAYS = { semaine: 7, mois: 28, '3mois': 84 };
+var _MA_PLABEL = { semaine: 'cette semaine', mois: 'ce mois-ci', '3mois': 'ces 3 mois' };
+var _MA_RSC = { 1: '#00A854', 2: '#8FBF3F', 3: '#E07800', 4: '#DC3545' };
+function _maE(x) { return (typeof escapeHtml === 'function') ? escapeHtml(String(x == null ? '' : x)) : String(x == null ? '' : x); }
+function _maSvg(p, w) { w = w || 15; return '<svg width="' + w + '" height="' + w + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>'; }
+function _maSpark(pts, color) {
+  if (!pts || pts.length < 2) pts = [1, 1];
+  var w = 60, h = 24, xs = pts.map(function (p, i) { return 2 + i * (w - 4) / (pts.length - 1); });
+  var mn = Math.min.apply(null, pts), mx = Math.max.apply(null, pts);
+  var ys = pts.map(function (v) { return h - 3 - ((v - mn) / ((mx - mn) || 1)) * (h - 6); });
+  return '<svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="' + xs.map(function (x, i) { return (i ? 'L' : 'M') + x.toFixed(0) + ' ' + ys[i].toFixed(0); }).join(' ') + '" stroke="' + color + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function _maArea(pts, color, fill) {
+  if (!pts || pts.length < 2) pts = [0, 0];
+  var w = 326, h = 90, xs = pts.map(function (p, i) { return 2 + i * (w - 4) / (pts.length - 1); });
+  var mn = Math.min.apply(null, pts), mx = Math.max.apply(null, pts);
+  var ys = pts.map(function (v) { return h - 6 - ((v - mn) / ((mx - mn) || 1)) * (h - 16); });
+  var line = xs.map(function (x, i) { return (i ? 'L' : 'M') + x.toFixed(0) + ' ' + ys[i].toFixed(0); }).join(' ');
+  return '<svg width="100%" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><path d="' + line + ' L' + xs[xs.length - 1].toFixed(0) + ' ' + h + ' L' + xs[0].toFixed(0) + ' ' + h + ' Z" fill="' + fill + '"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + xs[xs.length - 1].toFixed(0) + '" cy="' + ys[ys.length - 1].toFixed(0) + '" r="3.4" fill="' + color + '"/></svg>';
+}
+function _maSet(id, html) { var el = document.getElementById(id); if (el) el.innerHTML = html; }
+function _maEmpty(msg) { return '<div class="ma-note" style="background:var(--surface2);border-color:var(--border);color:var(--text-muted)">' + msg + '</div>'; }
+function _maFRtoDate(s) { var m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; }
+function _maCutISO(days) { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - days); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _maSec(t, r) { return '<div class="ma-sec">' + t + (r ? '<span class="r">' + r + '</span>' : '') + '</div>'; }
+
+var _MA_CARDIO_META = {
+  velo: ['Vélo', '#0EA5E9', '<path d="M3 12h4l2.5-6 5 12 2.5-6H21"/>'],
+  footing: ['Footing', '#6366F1', '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>'],
+  marche_normale: ['Marche', '#22D3EE', '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>'],
+  marche_inclinee: ['Marche inclinée', '#10B981', '<path d="M3 20h18M5 20 16 6"/>'],
+  natation: ['Natation', '#8B5CF6', '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01"/>'],
+  rameur: ['Rameur', '#14B8A6', '<path d="M4 12h16"/>'], hiit: ['HIIT', '#EF4444', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>'],
+  autre: ['Autre', '#F59E0B', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>']
+};
+function _maCM(t) { return _MA_CARDIO_META[t] || [t || 'Autre', '#F59E0B', _MA_CARDIO_META.autre[2]]; }
+function _maHMS(min) { min = Math.round(min || 0); var h = Math.floor(min / 60); return h ? (h + 'h' + String(min % 60).padStart(2, '0')) : (min + ' min'); }
+
+// Point d'entrée : rend tous les sous-onglets à partir de dernierAppData.
+function maRenderData() {
+  var data = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
+  if (!data) return;
+  try { _maMuscuResume(data); } catch (e) {}
+  try { _maMuscuExercice(data); } catch (e) {}
+  try { _maMuscuTendances(data); } catch (e) {}
+  try { _maMuscuHistorique(data); } catch (e) {}
+  try { _maCardioResume(data); } catch (e) {}
+  try { _maCardioParSport(data); } catch (e) {}
+  try { _maCardioTendances(data); } catch (e) {}
+  try { _maCardioHistorique(data); } catch (e) {}
+  try { _maCroise(data); } catch (e) {}
+}
+
+function _maMuscuResume(data) {
+  var p = _maPeriode, r = (data.recent && data.recent[_MA_WIN[p]]) || {}, days = _MA_DAYS[p];
+  var mot = data.moteur || {};
+  var niv = (mot.disponibilite && mot.disponibilite.niveau) || null;
+  var VB = { 'Prêt': ['acc', 'var(--accent)', 'Prêt à performer', 'Charge et régularité au rendez-vous, le moteur te voit prêt.'],
+    'Vigilance': ['acc', '#E07800', 'Reste vigilant', 'Ta charge monte — surveille la récupération.'],
+    'À surveiller': ['acc', '#DC3545', 'À surveiller', 'Signes de fatigue : allège si besoin.'] };
+  var vb = VB[niv] || ['acc', 'var(--accent)', 'Ton bilan', 'Renseigne tes séances et ton état du jour pour affiner l\'analyse.'];
+  var verdict = '<div class="ma-verdict acc" style="border-left-color:' + vb[1] + '"><span class="ma-vic" style="background:' + vb[1] + '">' + _maSvg('<path d="M20 6 9 17l-5-5"/>', 14) + '</span><div><div class="vh">' + vb[2] + '</div><div class="vd">' + _maE(mot.reco || vb[3]) + '</div></div></div>';
+  // KPI réels
+  var seances = r.seances != null ? r.seances : 0;
+  var tMoy = seances ? (Math.round((r.tonnage_kg || 0) / seances / 100) / 10) : null;
+  var recs = data.global && data.global.records_par_exo ? data.global.records_par_exo : {};
+  var cut = _maCutISO(days), nRec = 0;
+  Object.keys(recs).forEach(function (k) { var d = _maFRtoDate(recs[k].date); if (d) { var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (iso >= cut) nRec++; } });
+  var kpi = [
+    ['Tonnage moyen', (tMoy != null ? String(tMoy).replace('.', ',') : '—'), 't / séance'],
+    ['Séances', String(seances), ''],
+    ['Séries totales', String(r.series != null ? r.series : '—'), ''],
+    ['Répétitions', String(r.reps != null ? r.reps : '—'), ''],
+    ['RPE moyen', (r.rpe_moyen != null ? String(r.rpe_moyen).replace('.', ',') : '—'), '/10'],
+    ['Records battus', String(nRec), '']
+  ].map(function (k) { return '<div class="ma-kpi"><span class="u">' + k[0] + '</span><span class="v">' + k[1] + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</span></div>'; }).join('');
+  // Ressenti (période)
+  var rsArr = (data.analyses && data.analyses.ressenti_muscu) ? data.analyses.ressenti_muscu.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= cut; }) : [];
+  var rsHtml;
+  if (rsArr.length) {
+    var rec = rsArr.slice(0, 14).reverse();
+    rsHtml = '<div class="ma-rsbox"><div class="ma-rsbars">' + rec.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>'
+      + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+  } else { rsHtml = _maEmpty('Aucun ressenti sur la période — il se remplit après tes bilans de séance.'); }
+  // Volume musculaire (semaine en cours) + statut vs objectifs
+  var vs = Array.isArray(data.historique && data.historique.volume_semaine) ? data.historique.volume_semaine.slice() : [];
+  var obti = {}; (data.volume_obti || []).forEach(function (o) { obti[o.muscle] = o; });
+  vs.sort(function (a, b) { return (b.faites || 0) - (a.faites || 0); });
+  var volHtml;
+  if (vs.length) {
+    var mx = Math.max.apply(null, vs.map(function (v) { return v.faites || 0; }).concat([1]));
+    volHtml = '<div class="ma-card ma-vol">' + vs.map(function (v) {
+      var o = obti[v.muscle], C = 'var(--accent)', L = '';
+      if (o) { var opt = o.series_opt || 0, min = o.series_min || 0; if (v.faites >= opt) { C = '#00A854'; L = 'optimal'; } else if (v.faites >= min) { C = '#E07800'; L = 'sous-optimal'; } else { C = '#DC3545'; L = 'insuffisant'; } }
+      return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + v.faites + (L ? ' · ' + L : '') + '</span></div><div class="ma-vt"><span style="width:' + Math.round((v.faites || 0) / (obti[v.muscle] ? Math.max(obti[v.muscle].series_opt || mx, 1) : mx) * 100) + '%;background:' + C + '"></span></div></div>';
+    }).join('')
+      + '<div class="ma-rsleg" style="margin-top:2px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+  } else { volHtml = _maEmpty('Pas encore de volume cette semaine.'); }
+  var ptitle = _MA_PLABEL[p].charAt(0).toUpperCase() + _MA_PLABEL[p].slice(1);
+  _maSet('ma-muscu-resume', verdict + _maSec(ptitle)
+    + '<div class="ma-kgrid">' + kpi + '</div>'
+    + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p]) + rsHtml
+    + _maSec('Volume musculaire', 'cette semaine · séries') + volHtml);
+}
+
+function _maMuscuExercice(data) {
+  var prog = (data.historique && data.historique.progression_par_exo) || {};
+  var exos = Object.keys(prog).filter(function (k) { return (prog[k] || []).length >= 2; });
+  exos.sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; });
+  var head = _maSec('Progression', '3 vues au choix')
+    + '<div class="ma-modesel"><button class="on" onclick="maSetProgMode(\'exo\',this)">' + _maSvg('<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>', 14) + 'Par exercice</button><button onclick="maSetProgMode(\'grp\',this)">' + _maSvg('<circle cx="12" cy="5" r="2.5"/><path d="M12 8v6M8 20l4-6 4 6"/>', 14) + 'Par groupe</button><button onclick="maSetProgMode(\'sea\',this)">' + _maSvg('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>', 14) + 'Par séance</button></div>';
+  var progHtml;
+  if (exos.length) {
+    progHtml = '<div class="ma-card">' + exos.slice(0, 8).map(function (exo) {
+      var pts = prog[exo].slice().reverse();   // chrono
+      var charges = pts.map(function (p) { return p.charge || 0; });
+      var first = charges[0], last = charges[charges.length - 1], delta = Math.round((last - first) * 10) / 10;
+      var col = delta > 0 ? '#00A854' : delta < 0 ? '#DC3545' : '#E07800';
+      var sub = delta > 0 ? ('+' + String(delta).replace('.', ',') + ' kg') : delta < 0 ? (String(delta).replace('.', ',') + ' kg') : 'stable';
+      var lastPt = pts[pts.length - 1];
+      return '<div class="ma-exo">' + _maSpark(charges, col) + '<div class="nm"><div class="a">' + _maE(exo) + '</div><div class="b">' + sub + ' · ' + pts.length + ' pts</div></div><div class="ma-val">' + (last || 0) + ' kg<small>' + (lastPt.reps || '') + ' reps</small></div></div>';
+    }).join('') + '</div>';
+  } else { progHtml = _maEmpty('Pas encore assez de données de progression.'); }
+  // Balance agoniste/antagoniste depuis volume_semaine
+  var vs = {}; ((data.historique && data.historique.volume_semaine) || []).forEach(function (v) { vs[v.muscle] = v.faites || 0; });
+  var pairs = [['Pectoraux', 'Dos', 'Poussée', 'Tirage'], ['Quadriceps', 'Ischios', 'Avant', 'Arrière'], ['Biceps', 'Triceps', 'Flexion', 'Extension']];
+  var balRows = pairs.filter(function (pr) { return (vs[pr[0]] || 0) + (vs[pr[1]] || 0) > 0; }).map(function (pr) {
+    var tot = (vs[pr[0]] || 0) + (vs[pr[1]] || 0), pct = Math.round((vs[pr[0]] || 0) / tot * 100);
+    return '<div class="ma-b2row"><div class="ma-b2h"><span class="l">' + pr[0] + ' ' + pct + '%</span><span class="r">' + (100 - pct) + '% ' + pr[1] + '</span></div><div class="ma-b2bar"><span style="width:' + pct + '%"></span></div><div class="ma-b2sub"><span>' + pr[2] + '</span><span>~50/50 idéal</span><span>' + pr[3] + '</span></div></div>';
+  }).join('');
+  var balHtml = balRows ? ('<div class="ma-card ma-bal2">' + balRows + '</div>') : _maEmpty('Balance dispo dès que tu as travaillé des groupes opposés.');
+  // Records
+  var recs = (data.global && data.global.records_par_exo) || {};
+  var recArr = Object.keys(recs).map(function (k) { return { n: k, c: recs[k].charge || 0, d: recs[k].date }; }).sort(function (a, b) { return b.c - a.c; }).slice(0, 4);
+  var recHtml = recArr.length ? ('<div class="ma-recg">' + recArr.map(function (x) { return '<div class="ma-rec"><div class="top"><span class="rn">' + _maE(x.n) + '</span><span class="medal">' + _maSvg('<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/>', 15) + '</span></div><div class="rv">' + x.c + ' kg</div><div class="rd">' + _maE(x.d || '') + '</div></div>'; }).join('') + '</div>') : _maEmpty('Aucun record enregistré pour l\'instant.');
+  _maSet('ma-muscu-detail', head + '<div class="ma-pdd"><span>Meilleurs exercices</span><span class="mut">' + exos.length + ' suivis</span></div>' + progHtml + _maSec('Balance musculaire · agoniste / antagoniste') + balHtml + _maSec('Records personnels') + recHtml);
+}
+function maSetProgMode(m, btn) { try { var row = btn.parentElement; row.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); }); btn.classList.add('on'); } catch (e) {} }
+
+function _maMuscuTendances(data) {
+  var vpj = (data.historique && data.historique.volume_par_jour) || {};
+  // tonnage hebdo sur 8 semaines
+  var now = new Date(); now.setHours(0, 0, 0, 0);
+  var weeks = [];
+  for (var w = 7; w >= 0; w--) { var s = new Date(now); s.setDate(s.getDate() - (w * 7 + 6)); var tot = 0; for (var d = 0; d < 7; d++) { var dd = new Date(s); dd.setDate(dd.getDate() + d); var iso = dd.getFullYear() + '-' + String(dd.getMonth() + 1).padStart(2, '0') + '-' + String(dd.getDate()).padStart(2, '0'); tot += (vpj[iso] || 0); } weeks.push(Math.round(tot / 100) / 10); }
+  var hasW = weeks.some(function (v) { return v > 0; });
+  var chart = hasW ? ('<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Tonnage hebdo (t)</span></div>' + _maArea(weeks, '#1A5FFF', 'rgba(26,95,255,.12)') + '<div class="ma-axis"><span>S-8</span><span>S-6</span><span>S-4</span><span>S-2</span><span>Sem.</span></div></div>') : _maEmpty('Pas assez d\'historique pour une tendance.');
+  var cmp = data.comparison || {};
+  var rows = '';
+  try {
+    var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents</span><span class="v" style="color:' + (t.evol_pct >= 0 ? '#00A854' : '#DC3545') + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>';
+  } catch (e) {}
+  var reg = (data.dashboard && data.dashboard.regularite) || {};
+  if (reg.seances_semaine != null) rows += '<div class="ma-trow"><span>Régularité (séances/sem.)</span><span class="v">' + reg.seances_semaine + '</span></div>';
+  var mr = (data.global && data.global.mean_rpe); if (mr) rows += '<div class="ma-trow"><span>RPE moyen (global)</span><span class="v">' + String(mr).replace('.', ',') + '</span></div>';
+  var trend = rows ? ('<div class="ma-trend">' + rows + '</div>') : '';
+  _maSet('ma-muscu-tendances', _maSec('Charge d\'entraînement', '8 sem.') + chart + (trend ? _maSec('Ce qui bouge') + trend : ''));
+}
+
+function _maMuscuHistorique(data) {
+  var ds = (data.global && data.global.dernieres_seances) || [];
+  var rs = {}; ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + _maFRISO(x.date)] = x.valeur; });
+  if (!ds.length) { _maSet('ma-muscu-historique', _maEmpty('Aucune séance enregistrée pour l\'instant.')); return; }
+  var html = ds.map(function (s) {
+    var dd = _maFRtoDate(s.date), day = dd ? String(dd.getDate()).padStart(2, '0') : '--', mon = dd ? ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc'][dd.getMonth()] : '';
+    var rv = rs[s.seance_id + '|' + (dd ? dd.getFullYear() + '-' + String(dd.getMonth() + 1).padStart(2, '0') + '-' + day : '')] || null;
+    var dot = rv ? '<div class="ma-rdot" style="background:' + _MA_RSC[rv] + '">' + rv + '</div>' : '';
+    return '<div class="ma-hcard"><div class="ma-hhd"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><div class="ma-hmain"><div class="a">' + _maE(s.seance_id || 'Séance') + '</div><div class="b">' + (s.exercices ? s.exercices.length : 0) + ' exos · ' + (Math.round((s.tonnage || 0) / 100) / 10) + ' t</div></div>' + dot + '</div></div>';
+  }).join('');
+  _maSet('ma-muscu-historique', html + _maEmpty('Les 3 dernières séances. Historique complet à venir.'));
+}
+function _maFRISO(s) { var d = _maFRtoDate(s); return d ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') : String(s || ''); }
+
+function _maCardioAgg(hist, days) {
+  var cut = _maCutISO(days), by = {};
+  (hist || []).forEach(function (s) {
+    if ((s.date || '') < cut) return;
+    var t = s.type_cardio || 'autre';
+    if (!by[t]) by[t] = { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0, cal: 0 };
+    var o = by[t]; o.n++; o.dist += (+s.distance || 0); o.duree += (+s.duree || 0); o.cal += (+s.calories || 0);
+    if (+s.vitesse_moy) { o.vit += +s.vitesse_moy; o.vn++; } if (+s.rpe) { o.rpe += +s.rpe; o.rn++; } if (+s.fc_moy) { o.fc += +s.fc_moy; o.fn++; } if (+s.puissance_moy) { o.w += +s.puissance_moy; o.wn++; }
+  });
+  return by;
+}
+function _maCardioResume(data) {
+  var hist = (data.cardio && data.cardio.history) || [];
+  var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode]);
+  var types = Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; });
+  var total = types.reduce(function (s, t) { return s + by[t].n; }, 0);
+  var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _MA_PLABEL[_maPeriode] : 'Pas encore de cardio') + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' enregistrée' + (total > 1 ? 's' : '') + '. Continue pour bâtir ta base d\'endurance.') : 'Enregistre une séance cardio pour voir tes analyses ici.') + '</div></div></div>';
+  var listHtml = types.length ? ('<div class="ma-card">' + types.map(function (t) {
+    var m = _maCM(t), o = by[t];
+    return '<div class="ma-sport"><span class="ma-spic" style="background:' + m[1] + '">' + _maSvg(m[2], 17) + '</span><div class="ma-spmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + o.n + ' sortie' + (o.n > 1 ? 's' : '') + ' · ' + _maHMS(o.duree) + (o.rn ? ' · RPE ' + (Math.round(o.rpe / o.rn * 10) / 10) : '') + '</div></div><div class="ma-spval"><div class="v">' + (Math.round(o.dist * 10) / 10) + ' km</div><div class="u">' + (o.vn ? (Math.round(o.vit / o.vn * 10) / 10) + ' km/h' : '') + '</div></div></div>';
+  }).join('') + '</div>') : _maEmpty('Aucune sortie sur la période.');
+  // Pas quotidiens (7 derniers jours dispo)
+  var pas = (data.pas_quotidiens || []).slice(0, 14).reverse();
+  var pasHtml = pas.length ? ('<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / jour</span><span style="font-size:11px;font-weight:700;color:#0EA5E9">Ø ' + Math.round(pas.reduce(function (s, x) { return s + (x.pas || 0); }, 0) / pas.length).toLocaleString('fr-FR') + '</span></div><div class="ma-bars2">' + pas.map(function (x) { return '<span style="height:' + Math.round((x.pas || 0) / Math.max.apply(null, pas.map(function (y) { return y.pas || 1; })) * 100) + '%;background:#0EA5E9"></span>'; }).join('') + '</div></div>') : '';
+  _maSet('ma-cardio-resume', verdict + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : ''));
+}
+function _maCardioParSport(data) {
+  var hist = (data.cardio && data.cardio.history) || [];
+  var by = _maCardioAgg(hist, 3650);
+  var types = Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; });
+  if (!types.length) { _maSet('ma-cardio-detail', _maEmpty('Aucune séance cardio pour l\'instant.')); return; }
+  var sel = types[0], m = _maCM(sel), o = by[sel];
+  var sesss = hist.filter(function (s) { return (s.type_cardio || 'autre') === sel; });
+  var sel2 = '<div class="ma-actsel"><span class="ma-actic">' + _maSvg(m[2], 20) + '</span><div style="flex:1"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + types.slice(1).map(function (t) { return _maCM(t)[0]; }).join(' · ') + (types.length > 1 ? '' : 'seul sport pour l\'instant') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>';
+  var tiles = [[Math.round(o.dist * 10) / 10, 'km'], [_maHMS(o.duree), 'temps'], [o.vn ? Math.round(o.vit / o.vn * 10) / 10 : '—', 'km/h moy'], [o.wn ? Math.round(o.w / o.wn) : '—', 'watts moy'], [o.fn ? Math.round(o.fc / o.fn) : '—', 'bpm moy'], [o.rn ? Math.round(o.rpe / o.rn * 10) / 10 : '—', 'rpe moy']];
+  var k3 = '<div class="ma-k3">' + tiles.map(function (t) { return '<div class="c"><span class="v">' + String(t[0]).replace('.', ',') + '</span><span class="u">' + t[1] + '</span></div>'; }).join('') + '</div>';
+  var last = sesss.slice(0, 5).map(function (s) {
+    var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc'][dd.getMonth()];
+    var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); if (+s.fc_moy) parts.push(Math.round(s.fc_moy) + ' bpm');
+    return '<div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
+  }).join('').replace('border-top:1px solid var(--border)', '');
+  _maSet('ma-cardio-detail', _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · total', o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>');
+}
+function _maCardioTendances(data) {
+  var hist = (data.cardio && data.cardio.history) || [];
+  var by = _maCardioAgg(hist, 56);
+  var types = Object.keys(by).sort(function (a, b) { return by[b].dist - by[a].dist; });
+  if (!types.length) { _maSet('ma-cardio-tendances', _maEmpty('Pas encore de cardio à analyser.')); return; }
+  var mx = Math.max.apply(null, types.map(function (t) { return by[t].dist || 0; }).concat([1]));
+  var vol = '<div class="ma-card ma-vol">' + types.map(function (t) { var m = _maCM(t); return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(m[0]) + '</span><span class="p">' + (Math.round(by[t].dist * 10) / 10) + ' km</span></div><div class="ma-vt"><span style="width:' + Math.round(by[t].dist / mx * 100) + '%;background:' + m[1] + '"></span></div></div>'; }).join('') + '</div>';
+  _maSet('ma-cardio-tendances', _maSec('Volume par sport', '8 sem. · km') + vol + _maSec('À venir') + _maEmpty('Efficience (vitesse à FC égale) et FC à effort égal arrivent avec plus de séances.'));
+}
+function _maCardioHistorique(data) {
+  var hist = ((data.cardio && data.cardio.history) || []).slice(0, 20);
+  if (!hist.length) { _maSet('ma-cardio-historique', _maEmpty('Aucune séance cardio enregistrée.')); return; }
+  var rows = hist.map(function (s, i) {
+    var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc'][dd.getMonth()], m = _maCM(s.type_cardio);
+    var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h');
+    return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><span class="ma-spic" style="width:30px;height:30px;background:' + m[1] + '">' + _maSvg(m[2], 16) + '</span><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
+  }).join('');
+  _maSet('ma-cardio-historique', '<div class="ma-card">' + rows + '</div>');
+}
+function _maCroise(data) {
+  var r = (data.recent && data.recent.j28) || {};
+  var muscuT = r.tonnage_kg || 0;
+  var hist = (data.cardio && data.cardio.history) || [], cut = _maCutISO(28), cardioUA = 0;
+  hist.forEach(function (s) { if ((s.date || '') >= cut && +s.rpe && +s.duree) cardioUA += (+s.rpe) * (+s.duree); });
+  var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les 2 comparables
+  var tot = muscuUA + cardioUA;
+  var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
+  var mot = data.moteur || {};
+  var verdict = '<div class="ma-verdict acc"><span class="ma-vic">' + _maSvg('<path d="M12 3v18M3 12h18"/>', 14) + '</span><div><div class="vh">Vue d\'ensemble</div><div class="vd">' + _maE(tot ? ('Charge muscu + cardio combinée. Disponibilité : ' + ((mot.disponibilite && mot.disponibilite.niveau) || '—') + ' · récup ' + (mot.recup || '—') + '.') : 'Ajoute des séances muscu et cardio pour croiser tes données.') + '</div></div></div>';
+  var rep = tot ? ('<div class="ma-card ma-vol"><div class="ma-volrow"><div class="lh"><span class="n">Musculation</span><span class="p">' + mPct + '%</span></div><div class="ma-vt"><span style="width:' + mPct + '%"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Cardio</span><span class="p">' + (100 - mPct) + '%</span></div><div class="ma-vt"><span style="width:' + (100 - mPct) + '%;background:#0EA5E9"></span></div></div></div>') : _maEmpty('Répartition dispo dès que tu as des deux.');
+  var be = (data.bien_etre && data.bien_etre[0]) || null;
+  var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
+  _maSet('ma-croise-resume', verdict + _maSec('Répartition de la charge', 'muscu vs cardio · 28j') + rep + (wb ? _maSec('Bien-être') + wb : ''));
+  _maSet('ma-croise-tendances', _maSec('À venir') + _maEmpty('Les tendances croisées (charge globale, bien-être × performance) arrivent avec plus d\'historique.'));
 }
 
 // Ressenti de séance (1 Facile → 4 Très dur) : distribution + mini-timeline.
