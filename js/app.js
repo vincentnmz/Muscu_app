@@ -8114,11 +8114,13 @@ async function chargerHistorique() {
   progressionData = dernierAppData.historique.progression_par_exo || {};
   tendancesData = dernierAppData.historique.tendances || null;
 
-  renderCalendrier();
-  afficherVolumeMuscle(dernierAppData.historique.volume_semaine || []);
-  renderBilanBalance(dernierAppData.historique.volume_semaine || []);
-  afficherTendances(4);
-  renderCorrelationBienEtre(dernierAppData.bien_etre, dernierAppData.historique.volume_par_jour || {});
+  // Anciens rendus (DOM déplacé vers la nouvelle maquette « Mes analyses ») —
+  // conservés et gardés-safe : ils no-op si leurs éléments n'existent plus.
+  try { renderCalendrier(); } catch (e) {}
+  try { afficherVolumeMuscle(dernierAppData.historique.volume_semaine || []); } catch (e) {}
+  try { renderBilanBalance(dernierAppData.historique.volume_semaine || []); } catch (e) {}
+  try { afficherTendances(4); } catch (e) {}
+  try { renderCorrelationBienEtre(dernierAppData.bien_etre, dernierAppData.historique.volume_par_jour || {}); } catch (e) {}
 
   const exercices = dernierAppData.historique.exercices || [];
   const sel = document.getElementById('sel-hist-exercice');
@@ -8130,32 +8132,33 @@ async function chargerHistorique() {
     });
   }
 
-  // Bilans de séance (ressenti + douleurs), muscu & cardio séparés.
-  var an = dernierAppData.analyses || {};
-  renderAnalyseRessenti('an-ressenti-muscu-content', an.ressenti_muscu);
-  renderAnalyseDouleurs('an-douleurs-muscu-content', an.douleurs_muscu);
-  renderAnalyseRessenti('an-ressenti-cardio-content', an.ressenti_cardio);
-  renderAnalyseDouleurs('an-douleurs-cardio-content', an.douleurs_cardio);
-  _anCroiseEmpty();
+  // Écran Analyses (maquette « Mes analyses ») : initialise la navigation 2 niveaux.
+  try { _maApply(); } catch (e) {}
 }
 
-// ── Onglet Analyses : sous-onglets Muscu / Cardio / Croisé ──────────────────
-function switchAnalyse(sub) {
-  ['muscu', 'cardio', 'croise'].forEach(function (s) {
-    var pane = document.getElementById('an-' + s);
-    if (pane) pane.style.display = (s === sub) ? '' : 'none';
-    var tab = document.getElementById('an-tab-' + s);
-    if (tab) { tab.classList.toggle('on', s === sub); tab.classList.toggle('cardio', s === sub && sub === 'cardio'); }
+// ── Écran Analyses : navigation 2 niveaux (Muscu/Cardio × Résumé/Détail/…) ──
+var _maDisc = 'muscu';   // 'muscu' | 'cardio'
+var _maTab = 'resume';   // 'resume' | 'detail' | 'tendances' | 'historique'
+function maSetDisc(d) { _maDisc = (d === 'cardio') ? 'cardio' : 'muscu'; _maTab = 'resume'; _maApply(); }
+function maSetTab(t) { _maTab = t; _maApply(); }
+function _maApply() {
+  // Toggle discipline (Muscu / Cardio)
+  var bm = document.getElementById('ma-sw-muscu'), bc = document.getElementById('ma-sw-cardio');
+  if (bm) bm.classList.toggle('on', _maDisc === 'muscu');
+  if (bc) { bc.classList.toggle('on', _maDisc === 'cardio'); bc.classList.toggle('cardio', _maDisc === 'cardio'); }
+  // Le 2e sous-onglet change de libellé selon la discipline
+  var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Par exercice';
+  // Sous-onglets actifs
+  ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
+    var b = document.getElementById('ma-tab-' + t); if (b) b.classList.toggle('on', t === _maTab);
   });
-  try { window.scrollTo(0, 0); } catch (e) {}
-}
-
-// Affiche l'invite du sous-onglet Croisé quand aucune analyse croisée n'est visible.
-function _anCroiseEmpty() {
-  var any = ['dash-global-card', 'hist-corr-card', 'dash-cmp28-card'].some(function (id) {
-    var e = document.getElementById(id); return e && e.style.display !== 'none';
+  // Panes visibles
+  ['muscu', 'cardio'].forEach(function (d) {
+    ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
+      var p = document.getElementById('ma-' + d + '-' + t);
+      if (p) p.style.display = (d === _maDisc && t === _maTab) ? '' : 'none';
+    });
   });
-  var em = document.getElementById('an-croise-empty'); if (em) em.style.display = any ? 'none' : 'block';
 }
 
 // Ressenti de séance (1 Facile → 4 Très dur) : distribution + mini-timeline.

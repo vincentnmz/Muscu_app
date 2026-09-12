@@ -1449,130 +1449,228 @@
     <!-- ONGLET PROGRESSION (ex-Historique) -->
     <div id="tab-historique" class="tab-content">
 
-      <style id="an-css">
-        #tab-historique .an-tabs{display:flex;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:14px;position:sticky;top:0;z-index:5;}
-        #tab-historique .an-tab{flex:1;border:none;background:transparent;color:var(--text-muted);font-family:inherit;font-size:13px;font-weight:700;padding:9px 6px;border-radius:9px;cursor:pointer;transition:background .15s,color .15s;}
-        #tab-historique .an-tab.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12);}
-        #tab-historique .an-tab.on.cardio{color:#0EA5E9;}
-        #tab-historique .an-empty{font-size:12.5px;color:var(--text-muted);line-height:1.5;}
-        #tab-historique .an-rs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-        #tab-historique .an-rspill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--text-muted);}
-        #tab-historique .an-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
-        #tab-historique .an-bars{display:flex;align-items:flex-end;gap:4px;height:60px;margin-top:4px;}
-        #tab-historique .an-bar{flex:1;min-width:5px;border-radius:3px 3px 0 0;background:var(--accent);}
-        #tab-historique .an-zone{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--border);}
-        #tab-historique .an-zone:last-child{border-bottom:none;}
-        #tab-historique .an-znum{font-weight:800;font-variant-numeric:tabular-nums;}
+      <style id="ma-css">
+        #tab-historique{padding:0;}
+        #tab-historique .ma{display:flex;flex-direction:column;gap:13px;padding:18px 16px 104px;}
+        #tab-historique .ma-hd{display:flex;align-items:center;justify-content:space-between;}
+        #tab-historique .ma-ttl{font-family:var(--head,'Michroma','Helvetica Neue',Arial,sans-serif);font-size:17px;letter-spacing:.02em;color:var(--text);}
+        #tab-historique .ma-sub{font-size:11.5px;color:var(--text-subtle);margin-top:3px;}
+        #tab-historique .ma-av{width:38px;height:38px;border-radius:999px;background:var(--surface2);color:var(--accent);font-family:var(--head,'Michroma',sans-serif);font-size:13px;display:grid;place-items:center;border:1px solid var(--border);cursor:pointer;flex:none;}
+        #tab-historique .ma-switch{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
+        #tab-historique .ma-switch button{flex:1;border:none;background:transparent;font-family:var(--head,'Michroma',sans-serif);font-size:12px;color:var(--text-muted);padding:11px 0;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;}
+        #tab-historique .ma-switch button.on{background:var(--accent);color:#fff;}
+        #tab-historique .ma-switch button.on.cardio{background:#0EA5E9;}
+        #tab-historique .ma-switch svg{width:15px;height:15px;}
+        #tab-historique .ma-tabs{display:flex;gap:5px;background:var(--surface2);border-radius:12px;padding:4px;}
+        #tab-historique .ma-tabs button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:700;font-size:11.5px;color:var(--text-muted);padding:8px 0;border-radius:9px;white-space:nowrap;cursor:pointer;}
+        #tab-historique .ma-tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
+        #tab-historique .ma-sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin:2px 2px -4px;}
+        #tab-historique .ma-verdict{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:13px 15px;display:flex;gap:11px;align-items:flex-start;border-left:4px solid var(--good);}
+        #tab-historique .ma-verdict.cardio{border-left-color:#0EA5E9;}
+        #tab-historique .ma-vic{width:24px;height:24px;border-radius:999px;flex:none;display:grid;place-items:center;color:#fff;background:var(--good);}
+        #tab-historique .ma-verdict.cardio .ma-vic{background:#0EA5E9;}
+        #tab-historique .ma-vh{font-size:14px;font-weight:700;line-height:1.25;color:var(--text);}
+        #tab-historique .ma-vd{font-size:12px;color:var(--text-muted);margin-top:2px;line-height:1.4;}
+        #tab-historique .ma-kgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+        #tab-historique .ma-kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:13px 15px;display:flex;flex-direction:column;gap:3px;}
+        #tab-historique .ma-kpi .u{font-size:10px;color:var(--text-subtle);letter-spacing:.05em;text-transform:uppercase;font-weight:700;}
+        #tab-historique .ma-kpi .v{font-family:var(--head,'Michroma',sans-serif);font-size:22px;line-height:1;color:var(--text);}
+        #tab-historique .ma-kpi .v small{font-size:12px;color:var(--text-subtle);margin-left:2px;font-family:var(--font,inherit);}
+        #tab-historique .ma-kpi .delta{font-size:11px;font-weight:700;}
+        #tab-historique .ma-kpi .delta.up{color:var(--good);}
+        #tab-historique .ma-kpi .delta.dn{color:var(--warn);}
+        #tab-historique .ma-rpe{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:14px 15px;display:flex;flex-direction:column;gap:10px;}
+        #tab-historique .ma-rpe .rowh{display:flex;align-items:center;justify-content:space-between;}
+        #tab-historique .ma-rpe .rowh .k{font-weight:700;font-size:13px;color:var(--text);}
+        #tab-historique .ma-rpe .rowh .v{font-family:var(--head,'Michroma',sans-serif);font-size:15px;color:var(--accent);}
+        #tab-historique .ma-track{height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;}
+        #tab-historique .ma-track span{display:block;height:100%;width:72%;background:linear-gradient(90deg,var(--good),var(--warn));border-radius:999px;}
+        #tab-historique .ma-rpe .sc{display:flex;justify-content:space-between;font-size:9.5px;color:var(--text-subtle);}
+        #tab-historique .ma-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
+        #tab-historique .ma-exo{display:flex;align-items:center;gap:12px;padding:12px 14px;}
+        #tab-historique .ma-exo + .ma-exo{border-top:1px solid var(--border);}
+        #tab-historique .ma-exo .nm{flex:1;min-width:0;}
+        #tab-historique .ma-exo .nm .a{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:6px;color:var(--text);}
+        #tab-historique .ma-exo .nm .b{font-size:11px;color:var(--text-subtle);margin-top:1px;}
+        #tab-historique .ma-pr{font-size:9px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--good);border-radius:5px;padding:2px 5px;}
+        #tab-historique .ma-val{font-family:var(--head,'Michroma',sans-serif);font-size:14px;text-align:right;flex:none;color:var(--text);}
+        #tab-historique .ma-val small{display:block;font-family:var(--font,inherit);font-size:9.5px;color:var(--text-subtle);font-weight:600;margin-top:2px;}
+        #tab-historique .ma-bal{padding:14px 15px;display:flex;flex-direction:column;gap:12px;}
+        #tab-historique .ma-balrow{display:flex;flex-direction:column;gap:5px;}
+        #tab-historique .ma-balrow .lh{display:flex;align-items:center;justify-content:space-between;font-size:12px;}
+        #tab-historique .ma-balrow .lh .n{font-weight:700;display:flex;align-items:center;gap:7px;color:var(--text);}
+        #tab-historique .ma-balrow .lh .n i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+        #tab-historique .ma-balrow .lh .p{font-family:var(--head,'Michroma',sans-serif);font-size:12px;color:var(--text-muted);}
+        #tab-historique .ma-bt{height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;}
+        #tab-historique .ma-bt span{display:block;height:100%;border-radius:999px;}
+        #tab-historique .ma-balnote{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--text-muted);background:var(--warn-a,rgba(224,120,0,.12));border:1px solid rgba(224,120,0,.2);border-radius:12px;padding:10px 12px;line-height:1.4;}
+        #tab-historique .ma-balnote b{color:var(--warn);}
+        #tab-historique .ma-balnote svg{flex:none;color:var(--warn);margin-top:1px;}
+        #tab-historique .ma-trend{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));overflow:hidden;}
+        #tab-historique .ma-trow{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;font-size:12.5px;color:var(--text);}
+        #tab-historique .ma-trow + .ma-trow{border-top:1px solid var(--border);}
+        #tab-historique .ma-trow .v{font-family:var(--head,'Michroma',sans-serif);font-size:13px;color:var(--good);}
+        #tab-historique .ma-empty{background:var(--surface);border:1px dashed var(--border);border-radius:16px;padding:26px 18px;text-align:center;font-size:12.5px;color:var(--text-subtle);line-height:1.5;}
+        #tab-historique .ma-fabwrap{position:fixed;right:16px;bottom:82px;display:flex;align-items:center;gap:9px;z-index:40;}
+        #tab-historique .ma-fabtip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);}
+        #tab-historique .ma-fab{width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;}
       </style>
 
-      <div class="an-tabs" role="tablist">
-        <button id="an-tab-muscu"  class="an-tab on" onclick="switchAnalyse('muscu')">Muscu</button>
-        <button id="an-tab-cardio" class="an-tab"    onclick="switchAnalyse('cardio')">Cardio</button>
-        <button id="an-tab-croise" class="an-tab"    onclick="switchAnalyse('croise')">Croisé</button>
-      </div>
+      <div class="ma">
 
-      <!-- ============ SOUS-ONGLET MUSCU ============ -->
-      <div id="an-muscu" class="an-pane">
-
-        <!-- VOLUME PAR MUSCLE -->
-        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Volume par muscle</h2></div>
-        <div class="card">
-          <div id="hist-volume-content"><div class="loader">Chargement...</div></div>
+        <div class="ma-hd">
+          <div>
+            <div class="ma-ttl">Mes analyses</div>
+            <div class="ma-sub">Le verdict, puis les chiffres.</div>
+          </div>
+          <button class="ma-av" onclick="switchTab('conseils')" title="Demande à Novalyz">V</button>
         </div>
 
-        <!-- BALANCE MUSCULAIRE AGONISTE/ANTAGONISTE -->
-        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Balance musculaire</h2></div>
-        <div class="card">
-          <div id="hist-balance-content"><div class="loader">Chargement...</div></div>
+        <div class="ma-switch">
+          <button id="ma-sw-muscu" class="on" onclick="maSetDisc('muscu')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
+          <button id="ma-sw-cardio" onclick="maSetDisc('cardio')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
         </div>
 
-        <!-- PROGRESSION PAR EXERCICE -->
-        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression par exercice</h2></div>
-        <div class="card">
-          <select id="sel-hist-exercice" onchange="afficherProgressionExo()" style="margin-bottom:10px;">
-            <option value="">— Choisir un exercice —</option>
-          </select>
-          <div id="hist-progression-content"></div>
+        <div class="ma-tabs">
+          <button id="ma-tab-resume" class="on" onclick="maSetTab('resume')">Résumé</button>
+          <button id="ma-tab-detail" onclick="maSetTab('detail')">Par exercice</button>
+          <button id="ma-tab-tendances" onclick="maSetTab('tendances')">Tendances</button>
+          <button id="ma-tab-historique" onclick="maSetTab('historique')">Historique</button>
         </div>
 
-        <!-- RESSENTI DES SÉANCES MUSCU -->
-        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Ressenti des séances</h2></div>
-        <div class="card">
-          <div id="an-ressenti-muscu-content"></div>
-        </div>
-
-        <!-- DOULEURS MUSCU -->
-        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-heart"/></svg>Douleurs signalées</h2></div>
-        <div class="card">
-          <div id="an-douleurs-muscu-content"></div>
-        </div>
-
-        <!-- RECORDS PERSONNELS -->
-        <div class="v2-sec" id="dash-records-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Records personnels</h2><div class="more" onclick="allerVersRecords()" style="cursor:pointer;">Voir tout →</div></div>
-        <div class="card" id="dash-records-card" style="display:none;">
-          <div id="dash-records"></div>
-        </div>
-
-        <!-- TENDANCES 4-8 SEMAINES -->
-        <div class="v2-sec">
-          <h2 class="st"><svg class="ico"><use href="#i-barchart"/></svg>Tendances</h2>
-          <div style="display:flex;gap:6px;">
-            <button onclick="afficherTendances(4)" id="btn-tend-4" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">4 sem.</button>
-            <button onclick="afficherTendances(8)" id="btn-tend-8" style="background:var(--surface2);color:var(--text-muted);border:none;border-radius:8px;padding:5px 10px;font-size:10px;cursor:pointer;">8 sem.</button>
+        <!-- ===================== MUSCU ===================== -->
+        <!-- Muscu · Résumé -->
+        <div id="ma-muscu-resume" class="ma-pane">
+          <div class="ma-verdict">
+            <span class="ma-vic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            <div>
+              <div class="ma-vh">Bon mois, tu progresses</div>
+              <div class="ma-vd">Charge et régularité en hausse. Point de vigilance : ton volume pec devient irrégulier.</div>
+            </div>
+          </div>
+          <div class="ma-sec">Ce mois-ci</div>
+          <div class="ma-kgrid">
+            <div class="ma-kpi"><span class="u">Tonnage moyen</span><span class="v">4,2<small>t / séance</small></span><span class="delta up">▲ +6% vs S-1</span></div>
+            <div class="ma-kpi"><span class="u">Séances</span><span class="v">12</span><span class="delta up">▲ +2 vs mois-1</span></div>
+            <div class="ma-kpi"><span class="u">Séries totales</span><span class="v">48</span><span class="delta up">▲ +18 vs S-1</span></div>
+            <div class="ma-kpi"><span class="u">Répétitions</span><span class="v">512</span><span class="delta dn">▼ -3% vs S-1</span></div>
+          </div>
+          <div class="ma-rpe">
+            <div class="rowh"><span class="k">RPE moyen (intensité ressentie)</span><span class="v">7,2</span></div>
+            <div class="ma-track"><span></span></div>
+            <div class="sc"><span>facile</span><span>optimal</span><span>trop dur</span></div>
           </div>
         </div>
-        <div class="card">
-          <div id="hist-tendances-content"><div class="loader">Chargement...</div></div>
+
+        <!-- Muscu · Par exercice -->
+        <div id="ma-muscu-detail" class="ma-pane" style="display:none;">
+          <div class="ma-sec">Progression &amp; records</div>
+          <div class="ma-card">
+            <div class="ma-exo">
+              <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 20 14 17 26 13 38 9 50 5 58 3" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div class="nm"><div class="a">Développé incliné <span class="ma-pr">PR</span></div><div class="b">+7,5 kg en 6 sem.</div></div>
+              <div class="ma-val">62,5 kg<small>4 × 8</small></div>
+            </div>
+            <div class="ma-exo">
+              <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 19 14 18 26 14 38 12 50 8 58 6" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div class="nm"><div class="a">Squat</div><div class="b">+10 kg en 8 sem.</div></div>
+              <div class="ma-val">100 kg<small>5 × 5</small></div>
+            </div>
+            <div class="ma-exo">
+              <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 18 14 17 26 16 38 15 50 15 58 14" stroke="#E07800" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div class="nm"><div class="a">Développé couché</div><div class="b">Stagne depuis 3 séances</div></div>
+              <div class="ma-val">60 kg<small>4 × 8</small></div>
+            </div>
+            <div class="ma-exo">
+              <svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="M2 20 14 16 26 14 38 11 50 6 58 4" stroke="#00A854" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div class="nm"><div class="a">Tractions lestées <span class="ma-pr">PR</span></div><div class="b">+8 kg en 5 sem.</div></div>
+              <div class="ma-val">+12 kg<small>4 × 6</small></div>
+            </div>
+          </div>
+          <div class="ma-sec">Balance musculaire · 30 j</div>
+          <div class="ma-card ma-bal">
+            <div class="ma-balrow">
+              <div class="lh"><span class="n"><i style="background:#1A5FFF"></i>Poussée (pec/épaules/tri)</span><span class="p">42%</span></div>
+              <div class="ma-bt"><span style="width:42%;background:#1A5FFF"></span></div>
+            </div>
+            <div class="ma-balrow">
+              <div class="lh"><span class="n"><i style="background:#8B5CF6"></i>Tirage (dos/biceps)</span><span class="p">31%</span></div>
+              <div class="ma-bt"><span style="width:31%;background:#8B5CF6"></span></div>
+            </div>
+            <div class="ma-balrow">
+              <div class="lh"><span class="n"><i style="background:#0EA5E9"></i>Jambes</span><span class="p">27%</span></div>
+              <div class="ma-bt"><span style="width:27%;background:#0EA5E9"></span></div>
+            </div>
+            <div class="ma-balnote">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+              <div><b>Déséquilibre —</b> tu pousses plus que tu tires. Ajoute une séance dos pour protéger tes épaules.</div>
+            </div>
+          </div>
+          <!-- Progression détaillée (conservée, câblée au vrai data plus tard) -->
+          <div id="ma-prog-legacy" style="display:none;" aria-hidden="true">
+            <div class="ma-sec">Progression par exercice</div>
+            <select id="sel-hist-exercice" onchange="afficherProgressionExo()">
+              <option value="">— Choisir un exercice —</option>
+            </select>
+            <div id="hist-progression-content"></div>
+          </div>
+        </div>
+
+        <!-- Muscu · Tendances -->
+        <div id="ma-muscu-tendances" class="ma-pane" style="display:none;">
+          <div class="ma-empty">Tendances muscu — bientôt.<br>Évolution du tonnage, du volume par muscle et de la charge sur 4 à 12 semaines.</div>
+        </div>
+
+        <!-- Muscu · Historique -->
+        <div id="ma-muscu-historique" class="ma-pane" style="display:none;">
+          <div class="ma-empty">Historique muscu — bientôt.<br>Le détail de chaque séance passée, séance par séance.</div>
+        </div>
+
+        <!-- ===================== CARDIO ===================== -->
+        <!-- Cardio · Résumé -->
+        <div id="ma-cardio-resume" class="ma-pane" style="display:none;">
+          <div class="ma-verdict cardio">
+            <span class="ma-vic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            <div>
+              <div class="ma-vh">Ton endurance progresse</div>
+              <div class="ma-vd">+1,8 km/h à FC équivalente. Charge cardio maîtrisée (ACWR 1.0), tu peux monter le volume — moteur Novalyz.</div>
+            </div>
+          </div>
+          <div class="ma-sec">Ce mois-ci · vélo</div>
+          <div class="ma-kgrid">
+            <div class="ma-kpi"><span class="u">Distance</span><span class="v">168<small>km</small></span><span class="delta up">▲ +18% vs mois-1</span></div>
+            <div class="ma-kpi"><span class="u">Temps total</span><span class="v">5h42</span><span class="delta up">▲ +40 min</span></div>
+            <div class="ma-kpi"><span class="u">Vitesse moy</span><span class="v">27,4<small>km/h</small></span><span class="delta up">▲ +1,8</span></div>
+            <div class="ma-kpi"><span class="u">RPE moyen</span><span class="v">6,2</span><span class="delta">stable</span></div>
+          </div>
+          <div class="ma-sec">Tendances</div>
+          <div class="ma-trend">
+            <div class="ma-trow"><span class="l">7 jours vs 7 jours précédents</span><span class="v">▲ +12%</span></div>
+            <div class="ma-trow"><span class="l">1 mois vs 1 mois précédent</span><span class="v">▲ +18%</span></div>
+            <div class="ma-trow"><span class="l">FC moyenne à effort égal</span><span class="v" style="color:var(--good)">▼ −4 bpm</span></div>
+          </div>
+        </div>
+
+        <!-- Cardio · Par sport -->
+        <div id="ma-cardio-detail" class="ma-pane" style="display:none;">
+          <div class="ma-empty">Par sport — bientôt.<br>Vélo, footing, marche… chacun avec ses métriques et sa progression.</div>
+        </div>
+
+        <!-- Cardio · Tendances -->
+        <div id="ma-cardio-tendances" class="ma-pane" style="display:none;">
+          <div class="ma-empty">Tendances cardio — bientôt.<br>Distance, vitesse et FC à effort égal sur plusieurs semaines.</div>
+        </div>
+
+        <!-- Cardio · Historique -->
+        <div id="ma-cardio-historique" class="ma-pane" style="display:none;">
+          <div class="ma-empty">Historique cardio — bientôt.<br>Chaque séance cardio, du plus récent au plus ancien.</div>
         </div>
 
       </div>
 
-      <!-- ============ SOUS-ONGLET CARDIO ============ -->
-      <div id="an-cardio" class="an-pane" style="display:none;">
-
-        <!-- HISTORIQUE CARDIO -->
-        <div class="v2-sec" id="hist-cardio-sec"><h2 class="st">🏃 Cardio · Historique</h2></div>
-        <div class="card" id="hist-cardio-card" style="padding:12px;">
-          <div id="hist-cardio-content"><div class="an-empty">Aucune séance cardio enregistrée pour l'instant.</div></div>
-        </div>
-
-        <!-- RESSENTI CARDIO -->
-        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Ressenti des séances</h2></div>
-        <div class="card">
-          <div id="an-ressenti-cardio-content"></div>
-        </div>
-
-        <!-- DOULEURS CARDIO -->
-        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-heart"/></svg>Douleurs signalées</h2></div>
-        <div class="card">
-          <div id="an-douleurs-cardio-content"></div>
-        </div>
-
-      </div>
-
-      <!-- ============ SOUS-ONGLET CROISÉ ============ -->
-      <div id="an-croise" class="an-pane" style="display:none;">
-
-        <!-- CARRIÈRE -->
-        <div class="v2-sec" id="dash-global-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Carrière</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Historique global</div></div>
-        <div class="dash-card" id="dash-global-card" style="padding:14px 16px;display:none;">
-          <div id="dash-global-content"></div>
-        </div>
-
-        <!-- CORRÉLATION BIEN-ÊTRE × PERFORMANCE -->
-        <div class="v2-sec" id="hist-corr-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-heart"/></svg>Bien-être &amp; performance</h2></div>
-        <div class="card" id="hist-corr-card" style="display:none;">
-          <div id="hist-corr-content"></div>
-        </div>
-
-        <!-- TENDANCE MENSUELLE -->
-        <div class="v2-sec" id="dash-cmp28-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Tendance mensuelle</h2><div style="font-size:9px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Évolution</div></div>
-        <div class="dash-card" id="dash-cmp28-card" style="padding:16px;display:none;">
-          <div id="dash-cmp28-content"></div>
-        </div>
-
-        <div class="an-empty" id="an-croise-empty" style="display:none;padding:8px 2px;">Les analyses croisées (bien-être × performance, tendance mensuelle, carrière) apparaîtront ici au fil de tes séances et questionnaires.</div>
-
+      <div class="ma-fabwrap">
+        <span class="ma-fabtip">Demande à Novalyz</span>
+        <button class="ma-fab" onclick="switchTab('conseils')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
       </div>
 
     </div>
