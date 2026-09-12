@@ -219,8 +219,9 @@ function computeRecent(perfs: any[], now: Date): any {
     const tonnage = filtered.reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
     const rpeRows = filtered.filter(r => r.rpe)
     const parMuscle: Record<string, number> = {}
+    const seriesMuscle: Record<string, number> = {}
     for (const r of filtered) {
-      if (r.muscle) parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + ((Number(r.charge) || 0) * (Number(r.reps) || 0))
+      if (r.muscle) { parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + ((Number(r.charge) || 0) * (Number(r.reps) || 0)); seriesMuscle[r.muscle] = (seriesMuscle[r.muscle] || 0) + 1 }
     }
     // tonnage par jour, puis loads sur TOUTE la fenêtre (jours de repos = 0) — comme Code.gs
     const dailyTonnage: Record<string, number> = {}
@@ -245,6 +246,7 @@ function computeRecent(perfs: any[], now: Date): any {
       tonnage_kg: Math.round(tonnage),
       rpe_moyen: rpeRows.length ? Math.round(rpeRows.reduce((s, r) => s + Number(r.rpe), 0) / rpeRows.length * 10) / 10 : null,
       volume_par_muscle: parMuscle,
+      series_par_muscle: seriesMuscle,
       frequence_semaine: Math.round(seances / (days / 7) * 10) / 10,
       monotonie,
       strain,
@@ -778,6 +780,26 @@ function buildVolumeSemaineParMuscle(perfs: any[], now: Date): any[] {
     if (normDate(r.date) >= lundiStr && r.muscle) parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + 1
   }
   return Object.entries(parMuscle).map(([muscle, faites]) => ({ muscle, faites }))
+}
+
+// Détail des séances (Analyses · Historique) : 20 dernières séances, regroupées
+// par (date, seance_id), avec chaque exercice et ses séries (charge/reps/rpe/repos).
+function buildSeancesDetail(perfs: any[]): any[] {
+  const map: Record<string, any> = {}
+  for (const r of perfs) {
+    const dIso = normDate(r.date); if (!dIso) continue
+    const key = dIso + '|' + String(r.seance_id ?? '')
+    if (!map[key]) map[key] = { date: dIso, date_fr: fmtFR(r.date), seance_id: String(r.seance_id ?? ''), tonnage: 0, series: 0, exos: {} as Record<string, any> }
+    const s = map[key], charge = Number(r.charge) || 0, reps = Number(r.reps) || 0
+    s.tonnage += charge * reps; s.series++
+    const exo = r.exercice || '—'
+    if (!s.exos[exo]) s.exos[exo] = { nom: exo, muscle: r.muscle || '', series: [] }
+    s.exos[exo].series.push({ charge, reps, rpe: Number(r.rpe) || null, repos: Number(r.repos) || null })
+  }
+  return Object.values(map)
+    .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
+    .slice(0, 20)
+    .map((s: any) => ({ date: s.date, date_fr: s.date_fr, seance_id: s.seance_id, tonnage: Math.round(s.tonnage), nb_series: s.series, exercices: Object.values(s.exos) }))
 }
 
 // ── Agrégats FOOT (extraits de handleGetSuiviJoueur — ISO-COMPORTEMENT) ──────────
@@ -1592,6 +1614,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sport,
     cardio,
     analyses,
+    seances_detail: buildSeancesDetail(perfs),
     pas_quotidiens,
     volume_obti,
   })
