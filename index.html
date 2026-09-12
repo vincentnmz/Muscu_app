@@ -1469,7 +1469,7 @@
 #tab-historique .ma-period{display:flex;gap:4px;}
 #tab-historique .ma-period button{flex:1;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:11px;color:var(--text-muted);padding:7px 0;border-radius:9px;cursor:pointer;}
 #tab-historique .ma-period button.on{background:var(--accent-a10,rgba(26,95,255,.10));border-color:var(--accent);color:var(--accent);}
-#tab-historique .ma-period button.plus{flex:0 0 42px;display:flex;align-items:center;justify-content:center;color:var(--accent);}
+#tab-historique .ma-period button.plus{flex:0 0 auto;min-width:42px;padding:7px 10px;display:flex;align-items:center;justify-content:center;color:var(--accent);white-space:nowrap;}
 #tab-historique .ma-sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin:4px 2px -3px;display:flex;justify-content:space-between;align-items:baseline;}
 #tab-historique .ma-sec .r{letter-spacing:0;text-transform:none;font-size:11px;color:var(--text-subtle);}
 #tab-historique .ma-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
@@ -1574,7 +1574,12 @@
           <button onclick="maSetPeriode('semaine',this)">Semaine</button>
           <button class="on" onclick="maSetPeriode('mois',this)">Mois</button>
           <button onclick="maSetPeriode('3mois',this)">3 mois</button>
-          <button class="plus" title="Période plus longue (6 mois, 9 mois, année…)" onclick="maSetPeriode('plus',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button class="plus" id="ma-per-plus" title="Période plus longue (6 mois, 9 mois, année…)" onclick="maSetPeriode('plus',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+        <div id="ma-period-menu" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));">
+          <div onclick="maSetPeriode('6mois')" style="padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);">6 mois</div>
+          <div onclick="maSetPeriode('9mois')" style="padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);border-top:1px solid var(--border);">9 mois</div>
+          <div onclick="maSetPeriode('annee')" style="padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);border-top:1px solid var(--border);">Année</div>
         </div>
 
         <div id="ma-muscu-resume" class="ma-pane">

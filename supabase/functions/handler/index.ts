@@ -208,9 +208,11 @@ function computeGlobal(perfs: any[]): any {
 }
 
 function computeRecent(perfs: any[], now: Date): any {
-  const KEY_MAP: Record<string, string> = { ACUTE: 'j7', MID: 'j14', CHRONIC: 'j28', LONG: 'j56' }
+  // Fenêtres pour l'écran Analyses : les 4 de base + périodes longues (3/6/9 mois, an).
+  const RECENT_WINDOWS: Record<string, number> = { ...WINDOWS, M3: 90, M6: 180, M9: 270, Y: 365 }
+  const KEY_MAP: Record<string, string> = { ACUTE: 'j7', MID: 'j14', CHRONIC: 'j28', LONG: 'j56', M3: 'j90', M6: 'j180', M9: 'j270', Y: 'j365' }
   const result: Record<string, any> = {}
-  for (const [key, days] of Object.entries(WINDOWS)) {
+  for (const [key, days] of Object.entries(RECENT_WINDOWS)) {
     const cutoff = fmtYMD(minus(now, days))
     const filtered = perfs.filter(r => normDate(r.date) >= cutoff)
     // séances = nombre de JOURS d'entraînement distincts (comme Code.gs finalizeWindow: w.dates.size)
