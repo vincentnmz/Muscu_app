@@ -1794,8 +1794,14 @@
         #tab-conseils .cv-ai .bub{ background:var(--surface); border:1px solid var(--border); border-radius:4px 15px 15px 15px; padding:11px 13px; font-size:13px; line-height:1.5; box-shadow:var(--shadow-sm); }
         #tab-conseils .cv-ai .bub b{ color:var(--accent-strong); }
         #tab-conseils .cv-me{ align-self:flex-end; max-width:82%; background:var(--accent); color:#fff; border-radius:15px 15px 4px 15px; padding:11px 13px; font-size:13px; line-height:1.45; box-shadow:0 4px 12px rgba(26,95,255,.28); white-space:pre-wrap; }
-        #tab-conseils .cv-sugg{ display:flex; gap:8px; overflow-x:auto; padding:2px 15px 10px; flex:none; }
-        #tab-conseils .cv-chip{ white-space:nowrap; font-size:12px; font-weight:600; color:var(--accent); background:var(--accent-a08); border:1px solid var(--accent-a15); border-radius:999px; padding:8px 13px; flex:none; cursor:pointer; font-family:inherit; }
+        #tab-conseils .cv-sugg-wrap{ flex:none; padding:2px 0 8px; }
+        #tab-conseils .cv-sugg{ display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+        #tab-conseils .cv-sugg::-webkit-scrollbar{ height:0; }
+        #tab-conseils .cv-slot{ flex:0 0 100%; scroll-snap-align:center; display:flex; justify-content:center; padding:0 15px; }
+        #tab-conseils .cv-chip{ white-space:normal; text-align:center; font-size:13px; font-weight:600; color:var(--accent); background:var(--accent-a08); border:1px solid var(--accent-a15); border-radius:999px; padding:10px 18px; cursor:pointer; font-family:inherit; max-width:100%; }
+        #tab-conseils .cv-dots{ display:flex; justify-content:center; gap:6px; margin-top:8px; }
+        #tab-conseils .cv-dot{ width:6px; height:6px; border-radius:999px; background:var(--border); transition:background .2s,width .2s; }
+        #tab-conseils .cv-dot.on{ background:var(--accent); width:16px; }
         #tab-conseils .cv-input{ display:flex; align-items:center; gap:10px; padding:12px 14px 14px; border-top:1px solid var(--border); background:var(--surface); flex:none; }
         #tab-conseils .cv-field{ flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:22px; padding:11px 16px; font-size:13px; color:var(--text); font-family:inherit; outline:none; resize:none; max-height:96px; line-height:1.4; }
         #tab-conseils .cv-send{ width:44px; height:44px; border-radius:999px; background:var(--accent); color:#fff; display:grid; place-items:center; flex:none; border:none; cursor:pointer; box-shadow:0 6px 14px rgba(26,95,255,.32); }
@@ -1816,10 +1822,9 @@
           <div class="cv-who"><div class="a">Novalyz IA</div><div class="b"><i></i>lit tes données d'entraînement</div></div>
         </div>
         <div class="cv-msgs" id="cv-ia-msgs"></div>
-        <div class="cv-sugg" id="cv-ia-sugg">
-          <button class="cv-chip" onclick="cvIaChip(this)">Je dors mal, je fais les jambes ?</button>
-          <button class="cv-chip" onclick="cvIaChip(this)">Comment progresser au squat ?</button>
-          <button class="cv-chip" onclick="cvIaChip(this)">Suis-je en surcharge ?</button>
+        <div class="cv-sugg-wrap">
+          <div class="cv-sugg" id="cv-ia-sugg"></div>
+          <div class="cv-dots" id="cv-ia-dots"></div>
         </div>
         <div class="cv-input">
           <textarea class="cv-field" id="cv-ia-input" rows="1" placeholder="Pose ta question à Novalyz…"

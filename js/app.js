@@ -6369,12 +6369,30 @@ function cvInviterCoach() {
 }
 
 // ── Fil Novalyz IA ──
+// Suggestions pré-écrites (carrousel swipe : une visible, on glisse pour changer).
+var _CV_SUGG = ['Je dors mal, je fais les jambes ?', 'Comment progresser au squat ?', 'Suis-je en surcharge ?', 'Pourquoi je stagne au développé couché ?', 'Mon volume est-il suffisant ?'];
+function cvRenderSugg() {
+  var row = document.getElementById('cv-ia-sugg'), dots = document.getElementById('cv-ia-dots');
+  if (!row) return;
+  row.innerHTML = _CV_SUGG.map(function (s) { return '<div class="cv-slot"><button class="cv-chip" onclick="cvIaChip(this)">' + escapeHtml(s) + '</button></div>'; }).join('');
+  if (dots) dots.innerHTML = _CV_SUGG.map(function (_, i) { return '<span class="cv-dot' + (i === 0 ? ' on' : '') + '"></span>'; }).join('');
+  if (!row._cvBound) {
+    row._cvBound = true;
+    row.addEventListener('scroll', function () {
+      var i = Math.round(row.scrollLeft / Math.max(1, row.clientWidth));
+      var ds = dots ? dots.children : [];
+      for (var k = 0; k < ds.length; k++) ds[k].classList.toggle('on', k === i);
+    });
+  }
+  try { row.scrollLeft = 0; } catch (e) {}
+}
 function cvOpenIA() {
   if (!_cvIaMsgs.length) {
     var prenom = (typeof athlete !== 'undefined' && athlete && (athlete.prenom || athlete.nom)) || '';
     _cvIaMsgs.push({ role: 'ia', t: 'Salut' + (prenom ? ' ' + prenom : '') + '. Je vois ton suivi — séances, charges, ressenti. Pose-moi une question sur ta progression.' });
   }
   cvRenderIa();
+  cvRenderSugg();
   _cvShow('ia');
 }
 function cvRenderIa() {
