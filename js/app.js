@@ -8612,6 +8612,21 @@ function maRenderData() {
   try { _maCroise(data); } catch (e) {}
 }
 
+// Bloc « Lecture Novalyz » : constats + reco orientés objectif (backend
+// analyse_synthese.muscu). Tolérant : si absent (backend pas encore redéployé), rien.
+function _maSynthese(data) {
+  var s = data && data.analyse_synthese && data.analyse_synthese.muscu;
+  if (!s || (!(s.constats && s.constats.length) && !s.reco)) return '';
+  var TON = { positif: '#00A854', neutre: 'var(--text-subtle)', attention: '#E07800' };
+  var objChip = s.objectif ? '<span class="r"><span class="ma-rspill" style="background:var(--accent-a10,rgba(26,95,255,.10));color:var(--accent)">' + _maE(s.objectif) + '</span></span>' : '';
+  var constats = (s.constats || []).map(function (c) {
+    return '<div style="display:flex;gap:9px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:999px;background:' + (TON[c.ton] || 'var(--text-subtle)') + ';margin-top:6px;flex:none"></span><span style="font-size:13px;line-height:1.45">' + _maE(c.texte) + '</span></div>';
+  }).join('');
+  var reco = s.reco ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(s.reco.texte) + '</div></div></div>') : '';
+  var conf = s.confiance ? '<div style="text-align:right;font-size:10px;color:var(--text-subtle)">fiabilité : ' + _maE(s.confiance) + '</div>' : '';
+  return '<div class="ma-sec">Lecture Novalyz' + objChip + '</div>'
+    + '<div class="ma-card" style="display:flex;flex-direction:column;gap:9px">' + constats + reco + conf + '</div>';
+}
 function _maMuscuResume(data) {
   var p = _maPeriode, r = (data.recent && data.recent[_MA_WIN[p]]) || {}, days = _MA_DAYS[p];
   var mot = data.moteur || {};
@@ -8662,7 +8677,7 @@ function _maMuscuResume(data) {
       + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
   var ptitle = _MA_PLABEL[p].charAt(0).toUpperCase() + _MA_PLABEL[p].slice(1);
-  _maSet('ma-muscu-resume', verdict + _maSec(ptitle)
+  _maSet('ma-muscu-resume', _maSynthese(data) + verdict + _maSec(ptitle)
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p]) + rsHtml
     + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries') + volHtml

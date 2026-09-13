@@ -1294,6 +1294,55 @@ async function handleResetPassword(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
+// « Lecture Novalyz » (muscu) : constats + 1 reco, ORIENTÉS OBJECTIF, à partir de
+// signaux DÉJÀ calculés (comparison 4 sem., moteur, régularité). Déterministe ;
+// ne recalcule rien et ne remplace pas le moteur (angle progression/objectif).
+// Angle complémentaire de moteur.reco (qui est orienté état/récup du jour).
+function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any): any {
+  const obj = String(objectif || '').toLowerCase()
+  const prise = obj.includes('masse') || obj.includes('hypertroph')
+  const seche = obj.includes('sèche') || obj.includes('seche') || obj.includes('perte')
+  const cmp = (comparison && comparison.j28_vs_j28prec) || {}
+  const tonEvol = cmp.tonnage ? cmp.tonnage.evol_pct : null
+  const rpeDiff = cmp.rpe ? cmp.rpe.diff : null
+  const recup = (moteur && moteur.recup) || null
+  const seancesCur = regularite ? (regularite.seances_semaine != null ? regularite.seances_semaine : (regularite.seances_j7 != null ? regularite.seances_j7 : null)) : null
+  const seancesPrev = regularite ? (regularite.seances_prevues || null) : null
+
+  const constats: any[] = []
+  if (tonEvol != null) {
+    if (tonEvol >= 5 && (rpeDiff == null || rpeDiff <= 0.5)) {
+      constats.push({ ton: 'positif', texte: `Ton volume progresse (+${tonEvol}% sur 4 semaines) sans hausse marquée de l'effort perçu — progression cohérente${prise ? ' avec ta prise de masse' : (seche ? ' malgré la sèche, bon signe' : '')}.` })
+    } else if (tonEvol <= -8) {
+      constats.push({ ton: 'attention', texte: `Ton volume a baissé (${tonEvol}% sur 4 semaines)${seche ? ' — attention à préserver le muscle pendant la sèche' : ''}.` })
+    } else {
+      constats.push({ ton: 'neutre', texte: `Volume stable sur 4 semaines (${tonEvol > 0 ? '+' : ''}${tonEvol}%).` })
+    }
+  }
+  const contrainte = (rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2)) || recup === 'Faible'
+  if (rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2)) {
+    constats.push({ ton: 'attention', texte: `Ton effort perçu (RPE) monte (+${rpeDiff}) alors que le volume stagne — tu forces plus pour le même travail.` })
+  } else if (recup === 'Faible') {
+    constats.push({ ton: 'attention', texte: `Ta récupération est dégradée ces jours-ci.` })
+  }
+  const regFaible = !!(seancesPrev && seancesCur != null && seancesCur < seancesPrev * 0.6)
+  if (regFaible) constats.push({ ton: 'attention', texte: `Régularité sous ton objectif (${seancesCur}/${seancesPrev} séances).` })
+  else if (seancesPrev && seancesCur != null && seancesCur >= seancesPrev && !constats.some(c => c.ton === 'attention')) {
+    constats.push({ ton: 'positif', texte: `Régularité au rendez-vous (${seancesCur}/${seancesPrev} séances).` })
+  }
+
+  const aBaisse = tonEvol != null && tonEvol <= -8
+  let reco: any
+  if (contrainte) reco = { texte: `Allège temporairement le volume ou l'intensité 1 à 2 séances pour laisser la récupération remonter.`, priorite: 'haute' }
+  else if (regFaible) reco = { texte: `Vise ${seancesPrev} séances/semaine : la régularité est le 1er moteur de progression.`, priorite: 'moyenne' }
+  else if (aBaisse) reco = { texte: prise ? `Remonte progressivement le volume par muscle vers ta cible pour relancer la prise de masse.` : `Remonte progressivement ton volume vers ta cible.`, priorite: 'moyenne' }
+  else if (tonEvol != null && tonEvol >= 5) reco = { texte: `Conserve la structure actuelle et poursuis la surcharge progressive (petites hausses de charge ou de reps).`, priorite: 'info' }
+  else reco = { texte: `Continue et enregistre régulièrement tes séances : les analyses s'affinent avec les données.`, priorite: 'info' }
+
+  const confiance = (tonEvol != null) ? (seancesPrev ? 'bonne' : 'moyenne') : 'faible'
+  return { objectif: objectif || null, constats: constats.slice(0, 3), reco, confiance }
+}
+
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')?.trim()
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -1618,6 +1667,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sport,
     cardio,
     analyses,
+    analyse_synthese: { muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj) },
     seances_detail: buildSeancesDetail(perfs),
     pas_quotidiens,
     blessures: (blessuresRows || []).map(r => ({
