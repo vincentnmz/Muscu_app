@@ -22,11 +22,13 @@ const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext([
   extractFn('fmtYMD'), extractFn('minus'),
-  extractFn('buildSyntheseMuscu'), extractFn('buildSyntheseCardio'),
-  'this.buildSyntheseMuscu = buildSyntheseMuscu; this.buildSyntheseCardio = buildSyntheseCardio;'
+  extractFn('buildSyntheseMuscu'), extractFn('buildSyntheseCardio'), extractFn('buildSyntheseCroise'),
+  'this.buildSyntheseMuscu = buildSyntheseMuscu; this.buildSyntheseCardio = buildSyntheseCardio; this.buildSyntheseCroise = buildSyntheseCroise;'
 ].join('\n'), sandbox);
 const buildSyntheseMuscu = sandbox.buildSyntheseMuscu;
 const buildSyntheseCardio = sandbox.buildSyntheseCardio;
+const buildSyntheseCroise = sandbox.buildSyntheseCroise;
+const cmp28 = (t28) => ({ j28_vs_j28prec: { tonnage: { j28: t28 } } });
 const NOW = new Date();
 const daysAgoISO = n => new Date(NOW.getTime() - n * 86400000).toISOString().slice(0, 10);
 
@@ -86,7 +88,24 @@ check('G: reco moyenne', g.reco && g.reco.priorite === 'moyenne');
 let h = buildSyntheseCardio({ history: [ { date: daysAgoISO(2), rpe: 7, duree: 45, distance: 9, fc_moy: 150 } ] }, { recup: 'Bon', disponibilite: { niveau: 'Vigilance' } }, NOW);
 check('H: reco s\'aligne sur l\'état (récup/facile)', /récup|facile/i.test(h.reco.texte));
 
+// ── Croisé ──────────────────────────────────────────────────────────────────
+// I — rien des deux côtés → reco info, confiance faible
+let ci = buildSyntheseCroise(cmp28(0), { history: [] }, null, NOW);
+check('I: reco info si aucune donnée', ci.reco && ci.reco.priorite === 'info');
+check('I: confiance faible', ci.confiance === 'faible');
+
+// J — quasi 100% muscu → constat + reco « ajoute du cardio »
+let cj = buildSyntheseCroise(cmp28(50000), { history: [] }, { recup: 'Bon' }, NOW);
+check('J: constat déséquilibre muscu', cj.constats.some(c => /musculation/i.test(c.texte)));
+check('J: reco propose du cardio', /cardio/i.test(cj.reco.texte));
+
+// K — équilibré + état vigilance → reco « semaine plus légère / repos »
+let ck = buildSyntheseCroise(cmp28(20000), { history: [
+  { date: daysAgoISO(3), rpe: 8, duree: 60 }, { date: daysAgoISO(10), rpe: 8, duree: 60 },
+] }, { recup: 'Bon', disponibilite: { niveau: 'Vigilance' } }, NOW);
+check('K: reco s\'aligne sur l\'état (repos/légère)', /légère|repos|récup/i.test(ck.reco.texte));
+
 console.log('-'.repeat(78));
-console.log('P0 — buildSynthese (muscu + cardio) : ' + ok + ' vérifs OK / ' + ko + ' échec(s).');
+console.log('P0 — buildSynthese (muscu + cardio + croisé) : ' + ok + ' vérifs OK / ' + ko + ' échec(s).');
 if (ko === 0) console.log('✅ Lecture Novalyz (synthèse muscu) conforme aux attendus.');
 else { console.log('❌ Échecs : ' + fails.join(' | ')); process.exit(1); }

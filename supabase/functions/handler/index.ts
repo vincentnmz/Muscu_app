@@ -1403,6 +1403,39 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   return { objectif: null, constats: constats.slice(0, 3), reco, confiance }
 }
 
+// « Lecture Novalyz » (croisé) : équilibre muscu/cardio (28j) + récupération vs
+// charge globale. Déterministe ; s'aligne sur l'état du jour.
+function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Date): any {
+  const c28 = fmtYMD(minus(now, 28))
+  let cardioUA = 0
+  const hist = (cardio && cardio.history) || []
+  for (const s of hist) { if (String(s.date || '') >= c28) cardioUA += (Number(s.rpe) || 0) * (Number(s.duree) || 0) }
+  const muscuT = (comparison && comparison.j28_vs_j28prec && comparison.j28_vs_j28prec.tonnage && comparison.j28_vs_j28prec.tonnage.j28) || 0
+  const muscuUA = Math.round(muscuT / 50)   // proxy pour rendre muscu et cardio comparables
+  const tot = muscuUA + cardioUA
+  const recup = (moteur && moteur.recup) || null
+  const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
+  const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
+  if (tot === 0) {
+    return { objectif: null, constats: [{ ton: 'neutre', texte: `Pas encore assez de séances muscu + cardio pour croiser tes données.` }], reco: { texte: `Enregistre tes séances des deux côtés : Novalyz croisera charge et récupération.`, priorite: 'info' }, confiance: 'faible' }
+  }
+  const mPct = Math.round(muscuUA / tot * 100)
+  const constats: any[] = []
+  if (mPct >= 85) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % musculation (${mPct} %). Un peu de cardio renforcerait ta base d'endurance.` })
+  else if (mPct <= 15) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % cardio (${100 - mPct} %). La musculation entretient force et masse.` })
+  else constats.push({ ton: 'positif', texte: `Bon équilibre muscu / cardio (${mPct} % / ${100 - mPct} %).` })
+  if (recup === 'Excellent' || recup === 'Bon') constats.push({ ton: 'positif', texte: `Ta récupération suit ta charge globale (${String(recup).toLowerCase()}).` })
+  else if (recup === 'Faible') constats.push({ ton: 'attention', texte: `Ta récupération est basse au regard de ta charge globale.` })
+
+  let reco: any
+  if (etatVigilance) reco = { texte: `Ta charge globale pèse sur ta récupération : prévois une semaine un peu plus légère ou une journée de repos.`, priorite: 'moyenne' }
+  else if (mPct >= 85) reco = { texte: `Ajoute 1 séance de cardio facile par semaine pour équilibrer et soutenir ta récupération.`, priorite: 'info' }
+  else if (mPct <= 15) reco = { texte: `Ajoute 1 à 2 séances de musculation par semaine pour préserver force et masse.`, priorite: 'info' }
+  else reco = { texte: `Bon équilibre : conserve ce ratio muscu / cardio et veille à ce que la récupération suive la charge.`, priorite: 'info' }
+  const confiance = (muscuUA > 0 && cardioUA > 0) ? 'bonne' : 'moyenne'
+  return { objectif: null, constats: constats.slice(0, 3), reco, confiance }
+}
+
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')?.trim()
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -1730,6 +1763,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     analyse_synthese: {
       muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj),
       cardio: buildSyntheseCardio(cardio, moteur, now),
+      croise: buildSyntheseCroise(comparisonData, cardio, moteur, now),
     },
     seances_detail: buildSeancesDetail(perfs),
     pas_quotidiens,
