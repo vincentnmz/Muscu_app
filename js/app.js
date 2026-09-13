@@ -6298,6 +6298,97 @@ function majBadgeConseils() {
   }
 }
 
+// ══════════ Écran « Douleurs & blessures » ══════════
+// Douleurs = signalées dans le bilan de séance (analyses.douleurs_muscu/cardio).
+// Blessures = suivi structuré (table blessures) déclaré/édité ici.
+var _blForm = null;   // null = liste ; objet = formulaire (nouvelle/édition)
+var _BL_INT = { 2: ['Légère', '#8FBF3F'], 3: ['Modérée', '#E07800'], 4: ['Forte', '#DC3545'], 5: ['Très forte', '#B91C1C'] };
+var _BL_STATUT = { en_cours: ['En cours', '#DC3545'], retour_progressif: ['Retour progressif', '#E07800'], gueri: ['Guéri', '#00A854'] };
+var _BL_MON = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+function _blTs(fr) { var d = _maFRtoDate(fr); return d ? d.getTime() : 0; }
+function _blToISO(fr) { var d = _maFRtoDate(fr); if (!d) return ''; return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function renderBlessures(data) {
+  var el = document.getElementById('bl-body'); if (!el) return;
+  if (_blForm) { el.innerHTML = _blFormHtml(_blForm); return; }
+  var inj = (data && data.blessures) || [];
+  var injSorted = inj.slice().sort(function (a, b) { var act = function (x) { return (x.statut === 'gueri') ? 1 : 0; }; return act(a) - act(b) || _blTs(b.date) - _blTs(a.date); });
+  var injHtml = injSorted.length ? injSorted.map(function (b) {
+    var st = _BL_STATUT[b.statut] || ['—', 'var(--text-subtle)'];
+    var sub = [b.localisation, b.gravite].filter(Boolean).join(' · ');
+    return '<div class="bl-card"><div class="bl-inj"><span class="bl-injdot" style="background:' + st[1] + '"></span><div class="bl-injmain"><div style="display:flex;align-items:center;gap:8px;justify-content:space-between"><span class="bl-injh">' + _maE(b.type || 'Blessure') + '</span><span class="bl-badge" style="background:' + st[1] + '1a;color:' + st[1] + '">' + st[0] + '</span></div>'
+      + (sub ? '<div class="bl-injsub">' + _maE(sub) + '</div>' : '')
+      + '<div class="bl-injsub">' + (b.date ? 'depuis le ' + _maE(b.date) : '') + (b.retour_terrain ? ' · retour prévu ' + _maE(b.retour_terrain) : '') + '</div>'
+      + '<div class="bl-acts"><button class="bl-btn" onclick="blEditer(\'' + b.id + '\')">Modifier</button>' + (b.statut !== 'gueri' ? '<button class="bl-btn" onclick="blMarquerGueri(\'' + b.id + '\')">Marquer guéri</button>' : '') + '<button class="bl-btn danger" onclick="blSupprimer(\'' + b.id + '\')">Supprimer</button></div></div></div></div>';
+  }).join('') : '<div class="bl-empty">Aucune blessure suivie. Déclare-en une pour suivre ton retour.</div>';
+
+  var dou = [];
+  ['muscu', 'cardio'].forEach(function (t) {
+    ((data && data.analyses && data.analyses['douleurs_' + t]) || []).forEach(function (x) { if (x && Number(x.valeur) >= 2) dou.push({ date: x.date, val: Number(x.valeur), zone: x.zone || '', type: t }); });
+  });
+  dou.sort(function (a, b) { return _blTs(b.date) - _blTs(a.date); });
+  dou = dou.slice(0, 40);
+  var douHtml = dou.length ? ('<div class="bl-card">' + dou.map(function (x) {
+    var d = _maFRtoDate(x.date), dd = d ? String(d.getDate()).padStart(2, '0') : '—', mm = d ? _BL_MON[d.getMonth()] : '';
+    var it = _BL_INT[x.val] || ['Signalée', '#E07800'];
+    return '<div class="bl-drow"><div class="bl-ddate"><div class="dd">' + dd + '</div><div class="mm">' + mm + '</div></div><div class="bl-dmain"><div class="a">' + (x.zone ? _maE(x.zone) : 'Zone non précisée') + '</div><div class="b">' + (x.type === 'cardio' ? 'Cardio' : 'Muscu') + '</div></div><span class="bl-int" style="background:' + it[1] + '">' + it[0] + '</span></div>';
+  }).join('') + '</div>') : '<div class="bl-empty">Aucune douleur signalée. Les douleurs de tes bilans de séance apparaîtront ici.</div>';
+
+  el.innerHTML = '<div class="bl-sec">Blessures suivies<button class="bl-add" onclick="blNouvelle()">＋ Déclarer</button></div>' + injHtml
+    + '<div class="bl-sec">Douleurs signalées <span style="font-weight:600;text-transform:none;letter-spacing:0;color:var(--text-subtle)">bilans de séance</span></div>' + douHtml
+    + _maCap('Les douleurs viennent du bilan après chaque séance (intensité + zone). Une blessure est un suivi structuré (type, gravité, retour) que tu déclares ici.');
+}
+function _blFormHtml(f) {
+  return '<div class="bl-sec">' + (f.id ? 'Modifier la blessure' : 'Déclarer une blessure') + '</div>'
+    + '<div class="bl-card">'
+    + '<div class="bl-field"><label>Type / nature</label><input id="bl-f-type" value="' + _maE(f.type || '') + '" placeholder="ex. Tendinite, élongation…"></div>'
+    + '<div class="bl-field"><label>Localisation</label><input id="bl-f-loc" value="' + _maE(f.localisation || '') + '" placeholder="ex. Épaule droite, ischio gauche…"></div>'
+    + '<div class="bl-field"><label>Gravité</label><select id="bl-f-grav">' + ['légère', 'modérée', 'sévère'].map(function (o) { return '<option' + (f.gravite === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></div>'
+    + '<div class="bl-field"><label>Date de survenue</label><input id="bl-f-date" type="date" value="' + _blToISO(f.date) + '"></div>'
+    + '<div class="bl-field"><label>Statut</label><select id="bl-f-statut">' + [['en_cours', 'En cours'], ['retour_progressif', 'Retour progressif'], ['gueri', 'Guéri']].map(function (o) { return '<option value="' + o[0] + '"' + ((f.statut || 'en_cours') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>'
+    + '<div class="bl-field"><label>Retour prévu (optionnel)</label><input id="bl-f-retour" type="date" value="' + _blToISO(f.retour_terrain) + '"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:4px"><button class="bl-btn" style="flex:1" onclick="blAnnulerForm()">Annuler</button><button class="bl-btn" style="flex:2;background:var(--accent);color:#fff;border-color:var(--accent)" onclick="blEnregistrer()">Enregistrer</button></div>'
+    + '</div>';
+}
+function blNouvelle() { _blForm = { statut: 'en_cours', gravite: 'légère' }; renderBlessures(dernierAppData); }
+function blEditer(id) { var b = ((dernierAppData && dernierAppData.blessures) || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (b) { _blForm = Object.assign({}, b); renderBlessures(dernierAppData); } }
+function blAnnulerForm() { _blForm = null; renderBlessures(dernierAppData); }
+async function blEnregistrer() {
+  if (!athlete) return;
+  var v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+  if (!v('bl-f-type')) { showToast('⚠️ Indique le type de blessure', '#f59f00'); return; }
+  var payload = { action: 'saveBlessure', athlete_id: athlete.athlete_id, type: v('bl-f-type'), localisation: v('bl-f-loc'), gravite: v('bl-f-grav'), statut: v('bl-f-statut') };
+  if (_blForm && _blForm.id) payload.id = _blForm.id;
+  var dt = v('bl-f-date'); if (dt) payload.date = dt;
+  var ret = v('bl-f-retour'); if (ret) payload.retour_terrain = ret;
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+    showToast('✅ Blessure enregistrée');
+  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+  _blForm = null;
+  try { await chargerAppData(); } catch (e) {}
+  renderBlessures(dernierAppData);
+}
+async function blMarquerGueri(id) {
+  var b = ((dernierAppData && dernierAppData.blessures) || []).filter(function (x) { return String(x.id) === String(id); })[0]; if (!b || !athlete) return;
+  var payload = { action: 'saveBlessure', id: b.id, athlete_id: athlete.athlete_id, type: b.type, localisation: b.localisation, gravite: b.gravite, statut: 'gueri' };
+  var ret = _blToISO(b.retour_terrain); if (ret) payload.retour_terrain = ret;
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+    showToast('✅ Marqué guéri');
+  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+  try { await chargerAppData(); } catch (e) {}
+  renderBlessures(dernierAppData);
+}
+async function blSupprimer(id) {
+  if (!confirm('Supprimer cette blessure ?')) return;
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteBlessure', id: id }) });
+    showToast('🗑️ Supprimée');
+  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+  try { await chargerAppData(); } catch (e) {}
+  renderBlessures(dernierAppData);
+}
+
 // ══════════ Écran « Conversations » (maquettes Conversations.dc.html + IAChat.dc.html) ══════════
 // Deux fils : Novalyz IA (assistant — réponses branchées plus tard sur le moteur) et le coach
 // (messagerie réelle existante). L'entrée sur l'onglet affiche la LISTE ; on ouvre un fil au clic.
@@ -6716,7 +6807,7 @@ async function supprimerDemoFoot() {
   } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
 }
 
-const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'État', conseils: 'Conversation', reglages: 'Réglages' };
+const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'État', conseils: 'Conversation', blessures: 'Douleurs & blessures', reglages: 'Réglages' };
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   // ⚠️ Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
@@ -6755,6 +6846,11 @@ function switchTab(tab) {
   }
   if (tab === 'conseils') {
     afficherOngletConseils();
+  }
+  if (tab === 'blessures') {
+    _blForm = null;
+    if (dernierAppData) renderBlessures(dernierAppData);
+    else chargerAppData().then(() => renderBlessures(dernierAppData));
   }
   if (tab === 'reglages') {
     try { majUiPause(); } catch (_) {}

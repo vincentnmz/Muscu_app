@@ -1313,6 +1313,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: cardioRows },
     { data: objectifRows },
     { data: pasJourRows },
+    { data: blessuresRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1325,6 +1326,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'cardio_%').order('date', { ascending: false }),
     sb().from('objectif').select('*').eq('athlete_id', athleteId).limit(1),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'pasjour_%').order('date', { ascending: false }),
+    sb().from('blessures').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
   ])
 
   const perfs = perfsAll || []
@@ -1618,6 +1620,14 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     analyses,
     seances_detail: buildSeancesDetail(perfs),
     pas_quotidiens,
+    blessures: (blessuresRows || []).map(r => ({
+      id: String(r.id || ''), date: r.date ? fmtFR(r.date) : '',
+      type: String(r.type || ''), localisation: String(r.localisation || ''),
+      gravite: String(r.gravite || ''), duree: (r.duree !== '' && r.duree != null) ? Number(r.duree) : null,
+      retour_terrain: r.retour_terrain ? fmtFR(r.retour_terrain) : '',
+      retour_competition: r.retour_competition ? fmtFR(r.retour_competition) : '',
+      statut: String(r.statut || ''),
+    })),
     volume_obti,
   })
 }

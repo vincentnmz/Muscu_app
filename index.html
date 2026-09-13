@@ -878,12 +878,22 @@
 
     <!-- ONGLET SÉANCE -->
     <div id="tab-seance" class="tab-content">
+      <!-- Bulle « Demande à Novalyz » (masquée pendant la saisie plein écran) -->
+      <div class="en-fabwrap">
+        <span class="en-fabtip">Demande à Novalyz</span>
+        <button class="en-fab" onclick="ouvrirNovalyzIA()" title="Demande à Novalyz"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
+      </div>
 
       <!-- HUB ENTRAÎNEMENT (maquette Entrainement.dc.html) — aperçu programme +
            séances. Peuplé par renderEntrainement(data). NE REMPLACE PAS le flux
            de saisie/chrono/questionnaire ci-dessous : il le complète en tête. -->
       <style id="en-css">
         #tab-seance .en-hub{ display:flex; flex-direction:column; gap:12px; margin-bottom:14px; }
+        #tab-seance .en-fabwrap{ position:fixed; right:15px; bottom:calc(80px + env(safe-area-inset-bottom,0px)); display:flex; align-items:center; gap:9px; z-index:40; }
+        #tab-seance .en-fabtip{ background:var(--surface); border:1px solid var(--border); box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08)); border-radius:999px; padding:7px 12px; font-size:11.5px; font-weight:700; color:var(--text); }
+        #tab-seance .en-fab{ width:56px; height:56px; border-radius:999px; background:var(--accent); color:#fff; border:none; box-shadow:0 8px 22px rgba(26,95,255,.42); display:grid; place-items:center; cursor:pointer; }
+        #tab-seance .en-fab svg{ fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        body.seance-active #tab-seance .en-fabwrap{ display:none; }
         #tab-seance .en-card{ background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
         #tab-seance .en-prog{ padding:15px 16px; display:flex; flex-direction:column; gap:11px; box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08)); }
         #tab-seance .en-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
@@ -1576,6 +1586,7 @@
 #tab-historique .ma-fabwrap{position:fixed;right:16px;bottom:82px;display:flex;align-items:center;gap:9px;z-index:40;}
 #tab-historique .ma-fabtip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);}
 #tab-historique .ma-fab{width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;}
+#tab-historique .ma-fab svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 </style>
 
       <div class="ma">
@@ -1745,7 +1756,7 @@
 
       <div class="ma-fabwrap">
         <span class="ma-fabtip">Demande à Novalyz</span>
-        <button class="ma-fab" onclick="ouvrirNovalyzIA()"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/></svg></button>
+        <button class="ma-fab" onclick="ouvrirNovalyzIA()"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
       </div>
 
     </div>
@@ -2021,12 +2032,60 @@
           <div><div class="et-gt">Mes objectifs</div><div class="et-gs">Suivre et fixer tes objectifs</div></div>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
         </button>
+
+        <!-- Accès Douleurs & blessures -->
+        <button class="et-goals" onclick="switchTab('blessures')" style="margin-top:10px">
+          <div><div class="et-gt">Douleurs &amp; blessures</div><div class="et-gs">Tes douleurs signalées et tes blessures suivies</div></div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
       </div>
 
       <div class="et-fabwrap">
         <span class="et-fabtip">Demande à Novalyz</span>
         <button class="et-fab" onclick="ouvrirNovalyzIA()" title="Demande à Novalyz"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
       </div>
+    </div>
+
+    <!-- ONGLET DOULEURS & BLESSURES — douleurs signalées (bilans de séance) +
+         blessures suivies (table blessures). Panneau plein écran ; construit par
+         renderBlessures(data). Déclaration/édition via formulaire inline. -->
+    <div id="tab-blessures" class="tab-content">
+      <style id="bl-css">
+        #tab-blessures.tab-content{ position:fixed; top:0; left:50%; transform:translateX(-50%); width:100%; max-width:var(--app-w); bottom:calc(56px + env(safe-area-inset-bottom,0px)); background:var(--bg); z-index:40; padding:0; }
+        #tab-blessures.tab-content.active{ display:flex; flex-direction:column; }
+        #tab-blessures .bl-top{ display:flex; align-items:center; gap:12px; padding:calc(14px + env(safe-area-inset-top,0px)) 15px 14px; border-bottom:1px solid var(--border); background:var(--surface); flex:none; }
+        #tab-blessures .bl-back{ width:34px; height:34px; border-radius:999px; background:var(--surface2); display:grid; place-items:center; color:var(--text-muted); flex:none; border:none; cursor:pointer; }
+        #tab-blessures .bl-back svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-blessures .bl-ttl{ font-family:var(--font-heading); font-size:16px; }
+        #tab-blessures .bl-body{ flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px; }
+        #tab-blessures .bl-sec{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-subtle); font-weight:700; margin:4px 2px -4px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+        #tab-blessures .bl-add{ border:1px solid var(--accent); background:var(--accent-a08); color:var(--accent); border-radius:9px; padding:6px 10px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+        #tab-blessures .bl-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-sm); padding:13px 14px; }
+        #tab-blessures .bl-inj{ display:flex; gap:11px; align-items:flex-start; }
+        #tab-blessures .bl-injdot{ width:10px; height:10px; border-radius:999px; margin-top:5px; flex:none; }
+        #tab-blessures .bl-injmain{ flex:1; min-width:0; }
+        #tab-blessures .bl-injh{ font-weight:700; font-size:14px; }
+        #tab-blessures .bl-injsub{ font-size:11.5px; color:var(--text-muted); margin-top:2px; line-height:1.45; }
+        #tab-blessures .bl-badge{ font-size:9.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; border-radius:5px; padding:2px 6px; flex:none; }
+        #tab-blessures .bl-acts{ display:flex; gap:6px; margin-top:9px; flex-wrap:wrap; }
+        #tab-blessures .bl-btn{ border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); border-radius:9px; padding:6px 10px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+        #tab-blessures .bl-btn.danger{ color:var(--danger,#DC3545); border-color:var(--danger,#DC3545); background:transparent; }
+        #tab-blessures .bl-drow{ display:flex; align-items:center; gap:11px; padding:11px 0; border-top:1px solid var(--border); }
+        #tab-blessures .bl-drow:first-child{ border-top:none; }
+        #tab-blessures .bl-ddate{ text-align:center; flex:none; width:42px; }
+        #tab-blessures .bl-ddate .dd{ font-family:var(--font-heading); font-size:15px; } #tab-blessures .bl-ddate .mm{ font-size:10px; color:var(--text-subtle); text-transform:uppercase; }
+        #tab-blessures .bl-dmain{ flex:1; min-width:0; } #tab-blessures .bl-dmain .a{ font-weight:700; font-size:13px; } #tab-blessures .bl-dmain .b{ font-size:11px; color:var(--text-muted); margin-top:1px; }
+        #tab-blessures .bl-int{ font-size:10px; font-weight:800; border-radius:6px; padding:3px 7px; flex:none; color:#fff; }
+        #tab-blessures .bl-empty{ background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:16px; font-size:12.5px; color:var(--text-muted); text-align:center; line-height:1.5; }
+        #tab-blessures .bl-field{ display:flex; flex-direction:column; gap:5px; margin-bottom:11px; }
+        #tab-blessures .bl-field label{ font-size:11px; font-weight:700; color:var(--text-muted); }
+        #tab-blessures .bl-field input, #tab-blessures .bl-field select{ background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13px; color:var(--text); font-family:inherit; outline:none; width:100%; }
+      </style>
+      <div class="bl-top">
+        <button class="bl-back" onclick="switchTab('etat')" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <span class="bl-ttl">Douleurs &amp; blessures</span>
+      </div>
+      <div class="bl-body" id="bl-body"></div>
     </div>
 
 </div>
