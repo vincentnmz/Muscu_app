@@ -1436,6 +1436,40 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
   return { objectif: null, constats: constats.slice(0, 3), reco, confiance }
 }
 
+// P0 #6 — Centre d'alertes (athlète) : UNE liste typée au schéma unifié, à partir
+// des alertes DÉJÀ produites par le moteur (pas de 2e moteur) + stagnation depuis
+// comparison. Classée par sévérité. L'état « lu » est appliqué ensuite (getAppData).
+function buildAlertesCentre(moteur: any, comparison: any): any[] {
+  const SEV: Record<string, number> = { haute: 3, moyenne: 2, basse: 1 }
+  const TITRES: Record<string, string> = {
+    absence: 'Absence prolongée', charge: 'Charge en hausse', surcharge: 'Charge aiguë élevée',
+    sous_charge: 'Sous-charge', douleur: 'Douleur signalée', fatigue: 'Fatigue élevée',
+    sommeil: 'Sommeil dégradé', stagnation: 'Stagnation',
+  }
+  const ACTIONS: Record<string, string> = {
+    absence: 'Reprends une séance cette semaine pour relancer la régularité.',
+    charge: "Surveille tes sensations, évite d'augmenter la charge cette semaine.",
+    surcharge: 'Allège la charge 1 à 2 séances pour récupérer.',
+    sous_charge: 'Tu peux augmenter progressivement ton volume.',
+    douleur: "Adapte la charge sur la zone et surveille ; avis kiné si ça persiste.",
+    fatigue: "Priorise le sommeil et la récupération ; évite d'intensifier.",
+    sommeil: "Améliore ton sommeil ; séance normale mais pas d'intensification.",
+    stagnation: 'Varie les exercices ou introduis une semaine plus légère.',
+  }
+  const reliability = (moteur && moteur.confiance) || 'moyenne'
+  const context = (moteur && moteur.contexte_tag) || null
+  const out: any[] = []
+  const push = (type: string, severity: string, evidence: string, source: string) =>
+    out.push({ type, severity: severity || 'moyenne', source: source || 'moteur', title: TITRES[type] || type, evidence: evidence || '', context, reliability, action: ACTIONS[type] || '' })
+  ;((moteur && moteur.alertes) || []).forEach((a: any) => push(a.type, a.severite, a.message, 'moteur'))
+  // Stagnation : ≥3 exercices en baisse cette semaine (depuis comparison), si non couvert.
+  const det = (comparison && comparison.j7_vs_j7prec && comparison.j7_vs_j7prec.charge_details) || []
+  const baisse = det.filter((d: any) => d && d.down).length
+  if (baisse >= 3 && !out.some(a => a.type === 'stagnation')) push('stagnation', 'moyenne', baisse + ' exercices en baisse cette semaine.', 'progression')
+  out.sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0))
+  return out
+}
+
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')?.trim()
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -1456,6 +1490,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: objectifRows },
     { data: pasJourRows },
     { data: blessuresRows },
+    { data: alerteLueRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1469,6 +1504,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('objectif').select('*').eq('athlete_id', athleteId).limit(1),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'pasjour_%').order('date', { ascending: false }),
     sb().from('blessures').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
+    sb().from('indicateurs').select('cle').eq('athlete_id', athleteId).eq('seance_id', 'alerte_lue'),
   ])
 
   const perfs = perfsAll || []
@@ -1766,6 +1802,14 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       cardio: buildSyntheseCardio(cardio, moteur, now),
       croise: buildSyntheseCroise(comparisonData, cardio, moteur, now),
     },
+    alertes_centre: (() => {
+      const weekKey = fmtYMD(getLundi(now))
+      const luSet = new Set((alerteLueRows || []).map((r: any) => String(r.cle)))
+      return buildAlertesCentre(moteur, comparisonData).map((a: any) => {
+        const id = a.type + '|' + weekKey
+        return { ...a, id, read: luSet.has(id) }
+      })
+    })(),
     seances_detail: buildSeancesDetail(perfs),
     pas_quotidiens,
     blessures: (blessuresRows || []).map(r => ({
@@ -3541,6 +3585,19 @@ async function handleSetPauseAthlete(body: any): Promise<Response> {
   return jsonResp({ ok: true })
 }
 
+// Marque une alerte athlète comme lue (état durable, stocké dans indicateurs
+// sous seance_id='alerte_lue', cle=<id> où id = type|semaine). Idempotent.
+async function handleMarquerAlerteLue(body: any): Promise<Response> {
+  const { athlete_id, id } = body
+  if (!athlete_id || !id) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'alerte_lue').eq('cle', String(id)).limit(1)
+  if (!existing?.length) {
+    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'alerte_lue', cle: String(id), valeur: '1', unite: '', source: 'app' })
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true })
+}
+
 async function handleMarquerAlerteTraitee(body: any): Promise<Response> {
   const { coach_id, cle, semaine } = body
   if (!coach_id || !cle) return jsonResp({ success: false, error: 'Paramètres manquants' })
@@ -3857,6 +3914,7 @@ Deno.serve(async (req: Request) => {
         case 'saveBilanSeance':          return handleSaveBilanSeance(body)
         case 'setPauseAthlete':          return handleSetPauseAthlete(body)
         case 'marquerAlerteTraitee':     return handleMarquerAlerteTraitee(body)
+        case 'marquerAlerteLue':         return handleMarquerAlerteLue(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
         case 'deleteObjectifJoueur':     return handleDeleteObjectifJoueur(body)
         case 'saveBlessure':             return handleSaveBlessure(body)

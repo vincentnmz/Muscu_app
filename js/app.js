@@ -13160,62 +13160,53 @@ async function autoSyncGoogleHealth() {
   } catch (e) {}
 }
 
+// Centre d'alertes athlète (P0 #6) : rend le flux UNIFIÉ du backend
+// (data.alertes_centre — schéma type/severity/source/evidence/context/reliability/
+// action/read). Source unique (fini le calcul dupliqué en front). Tolérant : si le
+// backend ne renvoie pas encore le champ, le bloc se masque.
+var _ALERTE_COL = { haute: 'var(--danger)', moyenne: 'var(--warn)', basse: 'var(--text-muted)' };
+var _ALERTE_RELI = { bonne: 'fiable', haute: 'fiable', moyenne: 'fiabilité moyenne', faible: 'peu fiable', non_interpretable: 'données insuffisantes' };
 function renderAlertes(data) {
   const sec  = document.getElementById('dash-alertes-sec');
   const card = document.getElementById('dash-alertes-card');
   const cont = document.getElementById('dash-alertes-content');
   if (!card || !cont) return;
+  const hide = () => { if (sec) sec.style.display = 'none'; card.style.display = 'none'; };
+  if (estEnPause(data && data.pause)) return hide();
+  const centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre : null;
+  if (!centre) return hide();                          // backend pas encore redéployé
+  const unread = centre.filter(a => !a.read);
+  if (!unread.length) return hide();
 
-  // Mode vacances : aucune alerte (reprend seul à la fin de la période).
-  if (estEnPause(data && data.pause)) {
-    if (sec) sec.style.display = 'none';
-    card.style.display = 'none';
-    return;
-  }
-
-  const alertes = [];
-  const dash = (data && data.dashboard) || {};
-
-  // 1) Absence — aucune séance sur 7 jours glissants (masquée en mode vacances)
-  const reg = dash.regularite || {};
-  const j7 = reg.seances_j7 != null ? reg.seances_j7 : (reg.seances_semaine || 0);
-  if (Number(j7) === 0 && !estEnPause(data && data.pause)) {
-    alertes.push({ col: 'var(--danger)', titre: 'Absence prolongée', txt: 'Aucune séance enregistrée sur les 7 derniers jours.' });
-  }
-
-  // 2) Fatigue / douleur — d'après le dernier questionnaire (barème naturel : 4-5 = élevé)
-  const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
-  if (be.length) {
-    const d = be[0];
-    if (Number(d.fatigue) >= 4) {
-      alertes.push({ col: 'var(--warn)', titre: 'Fatigue élevée', txt: 'Fatigue musculaire importante déclarée au dernier questionnaire.' });
-    }
-    if (Number(d.douleur) >= 3) {
-      alertes.push({ col: 'var(--warn)', titre: 'Douleur signalée', txt: 'Douleur déclarée' + (d.zone ? ' · zone : ' + d.zone : '') + '. Adapte la charge si besoin.' });
-    }
-  }
-
-  // 3) Stagnation — plusieurs exercices en régression
-  const prog = dash.progression || {};
-  const enBaisse = Number(prog.en_baisse || 0);
-  const enHausse = Number(prog.en_progression || 0);
-  if (enBaisse >= 3 && enBaisse >= enHausse) {
-    alertes.push({ col: 'var(--warn)', titre: 'Stagnation', txt: enBaisse + ' exercices en baisse cette semaine. Pense à varier ou récupérer.' });
-  }
-
-  if (alertes.length === 0) { sec.style.display = 'none'; card.style.display = 'none'; return; }
-
-  cont.innerHTML = alertes.map((a, i) => `
-    <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 4px;${i < alertes.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
-      <div style="flex:0 0 4px;align-self:stretch;background:${a.col};border-radius:2px;min-height:34px;"></div>
-      <div style="min-width:0;">
-        <div style="font-size:13px;font-weight:800;color:${a.col};">${a.titre}</div>
-        <div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px;">${a.txt}</div>
-      </div>
-    </div>`).join('');
-
-  sec.style.display = '';
+  cont.innerHTML = unread.map((a, i) => {
+    const col = _ALERTE_COL[a.severity] || 'var(--warn)';
+    const meta = [a.context, _ALERTE_RELI[a.reliability]].filter(Boolean).join(' · ');
+    return '<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 4px;' + (i < unread.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">'
+      + '<div style="flex:0 0 4px;align-self:stretch;background:' + col + ';border-radius:2px;min-height:40px;"></div>'
+      + '<div style="min-width:0;flex:1;">'
+      + '<div style="font-size:13px;font-weight:800;color:' + col + ';">' + escapeHtml(a.title || '') + '</div>'
+      + (a.evidence ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px;">' + escapeHtml(a.evidence) + '</div>' : '')
+      + (a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '')
+      + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')
+      + '</div>'
+      + '<button onclick="marquerAlerteLue(' + JSON.stringify(a.id) + ')" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
+      + '</div>';
+  }).join('');
+  if (sec) sec.style.display = '';
   card.style.display = '';
+}
+// Marque une alerte comme lue (durable côté backend) + maj optimiste.
+async function marquerAlerteLue(id) {
+  if (!athlete || !id) return;
+  try {
+    if (dernierAppData && Array.isArray(dernierAppData.alertes_centre)) {
+      dernierAppData.alertes_centre.forEach(a => { if (a.id === id) a.read = true; });
+    }
+  } catch (e) {}
+  try { renderAlertes(dernierAppData); } catch (e) {}
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'marquerAlerteLue', athlete_id: athlete.athlete_id, id: id }) });
+  } catch (e) {}
 }
 
 // =====================================================================
