@@ -834,6 +834,20 @@
           <button class="tj-other" onclick="switchTab('seance')"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Voir mon entraînement</button>
         </div>
 
+        <!-- Point d'attention (alerte prioritaire du centre d'alertes P0) + action -->
+        <div class="tj-card" id="tj-attention" style="display:none;padding:14px 16px;box-shadow:var(--tj-sh);border-left:4px solid var(--tj-warn);">
+          <div style="display:flex;align-items:flex-start;gap:11px;">
+            <span id="tj-att-dot" style="width:9px;height:9px;border-radius:999px;background:var(--tj-warn);margin-top:5px;flex:none;"></span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;">Point d'attention</div>
+              <div id="tj-att-title" style="font-size:14px;font-weight:800;color:var(--tj-text);margin-top:3px;"></div>
+              <div id="tj-att-evidence" style="font-size:12px;color:var(--tj-muted);line-height:1.4;margin-top:2px;"></div>
+              <div id="tj-att-action" style="font-size:12.5px;color:var(--tj-text);line-height:1.4;margin-top:6px;font-weight:600;"></div>
+            </div>
+            <button id="tj-att-lu" title="Marquer comme lu" style="flex:none;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--tj-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+          </div>
+        </div>
+
         <div class="tj-card tj-bwrap">
           <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="ouvrirPointDuJour()">Mettre à jour ›</span></div>
           <div class="tj-bgrid" id="tj-bgrid"></div>

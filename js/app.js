@@ -10251,6 +10251,35 @@ function renderAujourdhui(data) {
     }
   } catch (e) {}
 
+  // --- Point d'attention : alerte prioritaire non lue (centre d'alertes P0) ---
+  try {
+    var att = document.getElementById('tj-attention');
+    if (att) {
+      var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
+      if (centre.length) {
+        var top = centre[0];
+        var ACOL = { haute: '#DC3545', moyenne: 'var(--tj-warn)', basse: 'var(--tj-subtle)' };
+        var acol = ACOL[top.severity] || 'var(--tj-warn)';
+        att.style.display = ''; att.style.borderLeftColor = acol;
+        var ad = document.getElementById('tj-att-dot'); if (ad) ad.style.background = acol;
+        var at = document.getElementById('tj-att-title'); if (at) at.textContent = top.title || '';
+        var ae = document.getElementById('tj-att-evidence'); if (ae) { ae.textContent = top.evidence || ''; ae.style.display = top.evidence ? '' : 'none'; }
+        var aa = document.getElementById('tj-att-action'); if (aa) { aa.textContent = top.action ? ('→ ' + top.action) : ''; aa.style.display = top.action ? '' : 'none'; }
+        var al = document.getElementById('tj-att-lu'); if (al) al.onclick = function () { marquerAlerteLue(top.id); };
+      } else { att.style.display = 'none'; }
+    }
+  } catch (e) {}
+
+  // --- Le mot de Novalyz = reco RÉELLE (Lecture Novalyz muscu, sinon moteur) ---
+  try {
+    var novaTxt = '';
+    var sM = data && data.analyse_synthese && data.analyse_synthese.muscu;
+    if (sM && sM.reco && sM.reco.texte) novaTxt = sM.reco.texte;
+    else if (m.reco && String(m.reco).trim()) novaTxt = String(m.reco);
+    var eln = document.getElementById('tj-nova-txt');
+    if (eln && novaTxt) eln.textContent = novaTxt;
+  } catch (e) {}
+
   // --- Bien-être « point du jour » : 5 cellules depuis bien_etre[0] ---
   try {
     var elG = document.getElementById('tj-bgrid');
@@ -13204,6 +13233,7 @@ async function marquerAlerteLue(id) {
     }
   } catch (e) {}
   try { renderAlertes(dernierAppData); } catch (e) {}
+  try { renderAujourdhui(dernierAppData); } catch (e) {}
   try {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'marquerAlerteLue', athlete_id: athlete.athlete_id, id: id }) });
   } catch (e) {}
