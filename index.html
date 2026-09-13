@@ -707,6 +707,10 @@
             <text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Chargement...</text>
           </svg>
         </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--text-subtle)">
+          <span style="width:14px;height:3px;border-radius:2px;background:var(--accent-strong);display:inline-block"></span>
+          Poids (kg) · axe vertical = kg, horizontal = date · chaque point = une pesée
+        </div>
       </div>
     </aside>
     </div><!-- /cd-body -->
@@ -1262,6 +1266,10 @@
             <text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Chargement...</text>
           </svg>
         </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--text-subtle);">
+          <span style="width:14px;height:3px;border-radius:2px;background:var(--accent-strong);display:inline-block;"></span>
+          Poids (kg) au fil du temps · axe vertical = kg, axe horizontal = date · chaque point = une pesée
+        </div>
       </div>
 
       <!-- Saisie poids -->
@@ -1280,21 +1288,7 @@
         <button class="btn btn-outline" onclick="sauvegarderPoids()">Enregistrer</button>
       </div>
 
-      <!-- Régularité -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Régularité cette semaine</h2></div>
-      <div class="card">
-        <div id="regularite-content"><div class="loader">Chargement...</div></div>
-      </div>
-
-      <!-- Récompenses / budget (à définir) -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trophy"/></svg>Récompenses</h2></div>
-      <div class="card" id="recompense-card">
-        <div id="recompense-content" style="text-align:center;padding:8px 4px;">
-          <div style="font-size:28px;margin-bottom:6px;">🎁</div>
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">Bientôt disponible</div>
-          <div style="font-size:12px;color:var(--text-muted);line-height:1.4;">Système de récompenses et de budget lié à ta régularité et à tes objectifs.</div>
-        </div>
-      </div>
+      <!-- Régularité & Récompenses vivent sur l'Accueil (dédoublonnage) : retirés d'ici. -->
 
     </div>
 

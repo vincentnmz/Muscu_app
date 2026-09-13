@@ -10391,13 +10391,26 @@ function renderEtat(data) {
       var dashd = data.dashboard || {};
       var fiable = (m.acwr_fiable === true);
       var ratio = (dashd.acwr != null && !isNaN(Number(dashd.acwr))) ? Number(dashd.acwr) : null;
+      // Mini-graphe de charge hebdo (tonnage/sem., 8 sem.) — depuis volume_par_jour.
+      var chargeChart = '';
+      try {
+        var chW = _maWeekly((data.historique && data.historique.volume_par_jour) || {}, 8, 'sum').map(function (v) { return Math.round(v / 100) / 10; });
+        if (chW.some(function (v) { return v > 0; })) {
+          var chLast = chW[chW.length - 1];
+          chargeChart = '<div style="margin-top:13px;border-top:1px solid var(--border);padding-top:11px">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700">Charge · tonnage / sem.</span><span style="font-family:var(--font-heading);font-size:14px;color:var(--accent)">' + String(chLast).replace('.', ',') + ' <span style="font-size:9px;color:var(--text-subtle)">t</span></span></div>'
+            + _maArea(chW, '#1A5FFF', 'rgba(26,95,255,.12)')
+            + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:2px"><span>il y a 8 sem.</span><span>cette sem.</span></div></div>';
+        }
+      } catch (e) {}
       if (!fiable || ratio == null) {
         var note = m.acwr_note || 'Données insuffisantes pour interpréter la charge.';
         elA.innerHTML =
           '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
           + '<span class="et-big" style="color:var(--text-muted)">—</span>'
-          + '<span class="et-muted">ACWR non interprétable pour l’instant.<br>' + esc(note) + '</span></div>';
+          + '<span class="et-muted">ACWR non interprétable pour l’instant.<br>' + esc(note) + '</span></div>'
+          + chargeChart;
       } else {
         var catMap = {
           normal: { l: 'Zone optimale', c: 'var(--good)', bg: 'var(--good-a)' },
@@ -10406,12 +10419,18 @@ function renderEtat(data) {
           sous_charge: { l: 'Sous-charge', c: 'var(--accent)', bg: 'var(--accent-a10)' }
         };
         var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)', bg: 'var(--surface2)' };
+        // Jauge de zone ACWR : 0 → 2.0. Zones 0-0.8 sous-charge · 0.8-1.3 optimal · 1.3-1.5 vigilance · >1.5 élevé.
+        var pos = Math.max(0, Math.min(100, ratio / 2 * 100));
+        var zbar = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,rgba(26,95,255,.30) 0 40%,rgba(0,168,84,.45) 40% 65%,rgba(224,120,0,.45) 65% 75%,rgba(220,53,69,.45) 75% 100%)">'
+          + '<div style="position:absolute;top:-3px;left:' + pos.toFixed(0) + '%;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)"></div></div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:4px"><span>sous-charge</span><span>optimal 0,8–1,3</span><span>élevé &gt;1,5</span></div></div>';
         elA.innerHTML =
           '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span>'
           + '<span class="et-chip" style="color:' + cat.c + ';background:' + cat.bg + '">ACWR ' + ratio.toFixed(2) + '</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
           + '<span class="et-big" style="color:' + cat.c + '">' + ratio.toFixed(2) + '</span>'
-          + '<span class="et-muted"><b style="color:' + cat.c + '">' + esc(cat.l) + '</b><br>Rapport charge aiguë (7 j) / chronique (28 j).</span></div>';
+          + '<span class="et-muted"><b style="color:' + cat.c + '">' + esc(cat.l) + '</b><br>Rapport charge aiguë (7 j) / chronique (28 j).</span></div>'
+          + zbar + chargeChart;
       }
     }
   } catch (e) {}
