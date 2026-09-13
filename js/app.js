@@ -10369,7 +10369,9 @@ function renderEtat(data) {
       };
       var tint = TINT[niv] || { bg: 'var(--surface)', bd: 'var(--border)' };
       var titre = niv || 'En attente de données';
-      var ex = EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.';
+      // Explication : la reco réelle du moteur (data-driven) → cohérente avec l'ACWR
+      // affiché dessous (ex. « Vigilance » à cause du sommeil/fatigue, pas de la charge).
+      var ex = (m.reco && String(m.reco).trim()) ? String(m.reco) : (EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.');
       var dashArc = (score != null) ? (score + ' 100') : '0 100';
       var ringTxt = (score != null) ? String(score) : '—';
       el.setAttribute('style', 'background:' + tint.bg + ';border-color:' + tint.bd + ';');
@@ -10391,26 +10393,13 @@ function renderEtat(data) {
       var dashd = data.dashboard || {};
       var fiable = (m.acwr_fiable === true);
       var ratio = (dashd.acwr != null && !isNaN(Number(dashd.acwr))) ? Number(dashd.acwr) : null;
-      // Mini-graphe de charge hebdo (tonnage/sem., 8 sem.) — depuis volume_par_jour.
-      var chargeChart = '';
-      try {
-        var chW = _maWeekly((data.historique && data.historique.volume_par_jour) || {}, 8, 'sum').map(function (v) { return Math.round(v / 100) / 10; });
-        if (chW.some(function (v) { return v > 0; })) {
-          var chLast = chW[chW.length - 1];
-          chargeChart = '<div style="margin-top:13px;border-top:1px solid var(--border);padding-top:11px">'
-            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700">Charge · tonnage / sem.</span><span style="font-family:var(--font-heading);font-size:14px;color:var(--accent)">' + String(chLast).replace('.', ',') + ' <span style="font-size:9px;color:var(--text-subtle)">t</span></span></div>'
-            + _maArea(chW, '#1A5FFF', 'rgba(26,95,255,.12)')
-            + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:2px"><span>il y a 8 sem.</span><span>cette sem.</span></div></div>';
-        }
-      } catch (e) {}
       if (!fiable || ratio == null) {
         var note = m.acwr_note || 'Données insuffisantes pour interpréter la charge.';
         elA.innerHTML =
           '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
           + '<span class="et-big" style="color:var(--text-muted)">—</span>'
-          + '<span class="et-muted">ACWR non interprétable pour l’instant.<br>' + esc(note) + '</span></div>'
-          + chargeChart;
+          + '<span class="et-muted">ACWR non interprétable pour l’instant.<br>' + esc(note) + '</span></div>';
       } else {
         var catMap = {
           normal: { l: 'Zone optimale', c: 'var(--good)', bg: 'var(--good-a)' },
@@ -10430,46 +10419,15 @@ function renderEtat(data) {
           + '<div style="display:flex;align-items:center;gap:12px;">'
           + '<span class="et-big" style="color:' + cat.c + '">' + ratio.toFixed(2) + '</span>'
           + '<span class="et-muted"><b style="color:' + cat.c + '">' + esc(cat.l) + '</b><br>Rapport charge aiguë (7 j) / chronique (28 j).</span></div>'
-          + zbar + chargeChart;
+          + zbar;
       }
     }
   } catch (e) {}
 
-  // ---- POIDS : série réelle poids_historique ----
+  // ---- POIDS : graphe complet (déplacé depuis Objectif) : 1M/3M/Tout + axes + légende ----
   try {
-    var elP = document.getElementById('et-poids');
-    if (elP) {
-      var arr = (data.poids || []).map(function (p) { return { d: p.date, v: parseFloat(p.poids) }; }).filter(function (p) { return !isNaN(p.v); });
-      var chrono = arr.slice().reverse();   // backend desc → chronologique
-      var cur = null;
-      try { cur = arr.length ? arr[0].v : ((athlete && athlete.poids != null && athlete.poids !== '') ? parseFloat(athlete.poids) : null); } catch (e2) { cur = null; }
-      var curTxt = (cur != null && !isNaN(cur)) ? (String(Math.round(cur * 10) / 10).replace('.', ',') + ' kg') : '—';
-      if (chrono.length >= 2) {
-        var first = chrono[0], last = chrono[chrono.length - 1];
-        var delta = Math.round((last.v - first.v) * 10) / 10;
-        var deltaTxt = (delta > 0 ? '+' : '') + String(delta).replace('.', ',') + ' kg';
-        var vals = chrono.map(function (p) { return p.v; });
-        var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), span = (mx - mn) || 1;
-        var X = function (i) { return (i / (chrono.length - 1)) * 300 + 10; };
-        var Y = function (v) { return 54 - ((v - mn) / span) * 40; };
-        var pts = chrono.map(function (p, i) { return X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1); });
-        var dPath = 'M' + pts.join(' L');
-        var lx = X(chrono.length - 1).toFixed(1), ly = Y(last.v).toFixed(1);
-        elP.innerHTML =
-          '<div class="et-rowh"><span class="et-k">' + curTxt + ' <span style="font-size:11px;color:var(--text-subtle);font-weight:600">aujourd’hui</span></span>'
-          + '<span class="et-chip" style="color:var(--text-muted);background:var(--surface2)">' + deltaTxt + '</span></div>'
-          + '<svg width="100%" height="70" viewBox="0 0 320 70" preserveAspectRatio="none">'
-          + '<line x1="0" y1="54" x2="320" y2="54" stroke="var(--border)" stroke-width="1"/>'
-          + '<path d="' + dPath + '" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
-          + '<circle cx="' + lx + '" cy="' + ly + '" r="3.4" fill="var(--accent)"/></svg>'
-          + '<div class="et-lg"><span>' + esc(first.d) + ' · ' + String(Math.round(first.v * 10) / 10).replace('.', ',') + ' kg</span>'
-          + '<span>' + esc(last.d) + ' · ' + String(Math.round(last.v * 10) / 10).replace('.', ',') + ' kg</span></div>';
-      } else {
-        elP.innerHTML =
-          '<div class="et-rowh"><span class="et-k">' + curTxt + '</span></div>'
-          + '<div class="et-muted">Pas encore assez de mesures pour tracer la tendance. Ajoute ton poids régulièrement.</div>';
-      }
-    }
+    toutesLesPesees = data.poids || [];
+    filtrerGraphPoids('1m');
   } catch (e) {}
 
   // ---- RESSENTI 7 jours : dot par jour depuis bien_etre[] ----
@@ -12128,8 +12086,9 @@ function afficherGraphiquePoids(poids) {
   filtrerGraphPoids('1m');
 }
 
+// Graphe de poids de l'écran État (déplacé depuis Objectif) : mêmes ids préfixés « et- ».
 function filtrerGraphPoids(periode) {
-  dessinerGraphPoids(toutesLesPesees, periode, { btn:'gp-', svg:'graph-poids-svg', actuel:'graph-poids-actuel', evol:'graph-poids-evol' });
+  dessinerGraphPoids(toutesLesPesees, periode, { btn:'et-gp-', svg:'et-graph-poids-svg', actuel:'et-graph-poids-actuel', evol:'et-graph-poids-evol' });
 }
 
 let cdToutesLesPesees = [];
