@@ -46,6 +46,13 @@ let c = buildSyntheseMuscu('Maintien', cmp(2, 0), { recup: 'Bon' }, reg(1, 4));
 check('C: reco priorité moyenne', c.reco && c.reco.priorite === 'moyenne');
 check('C: constat régularité', c.constats.some(x => /régularité/i.test(x.texte)));
 
+// E — bonne progression MAIS état en vigilance → reco alignée (pas « augmente »)
+let e = buildSyntheseMuscu('Prise de masse', cmp(10, 0), { recup: 'Bon', disponibilite: { niveau: 'Vigilance' } }, reg(3, 3));
+check('E: reco moyenne (pas info) si Vigilance', e.reco && e.reco.priorite === 'moyenne');
+check('E: reco s\'aligne sur l\'état (récup/vigilance/sans augmenter)', /récup|vigilance|sans l'augmenter/i.test(e.reco.texte));
+check('E: reco ne pousse pas la « surcharge progressive »', !/surcharge progressive/i.test(e.reco.texte));
+check('E: constat attention état présent', e.constats.some(x => x.ton === 'attention'));
+
 // D — pas assez de données (aucune comparaison) → confiance faible, reco info
 let d = buildSyntheseMuscu('', cmp(null, null), null, null);
 check('D: confiance faible sans données', d.confiance === 'faible');

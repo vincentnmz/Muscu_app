@@ -1306,6 +1306,10 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   const tonEvol = cmp.tonnage ? cmp.tonnage.evol_pct : null
   const rpeDiff = cmp.rpe ? cmp.rpe.diff : null
   const recup = (moteur && moteur.recup) || null
+  const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
+  // État du jour dégradé (récup faible OU disponibilité Vigilance/À surveiller) :
+  // la reco progression doit alors S'ALIGNER avec le verdict (pas de « augmente »).
+  const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
   const seancesCur = regularite ? (regularite.seances_semaine != null ? regularite.seances_semaine : (regularite.seances_j7 != null ? regularite.seances_j7 : null)) : null
   const seancesPrev = regularite ? (regularite.seances_prevues || null) : null
 
@@ -1324,6 +1328,8 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     constats.push({ ton: 'attention', texte: `Ton effort perçu (RPE) monte (+${rpeDiff}) alors que le volume stagne — tu forces plus pour le même travail.` })
   } else if (recup === 'Faible') {
     constats.push({ ton: 'attention', texte: `Ta récupération est dégradée ces jours-ci.` })
+  } else if (etatVigilance) {
+    constats.push({ ton: 'attention', texte: `Ton état du jour appelle à la vigilance (récupération / fatigue) — à prendre en compte avant d'intensifier.` })
   }
   const regFaible = !!(seancesPrev && seancesCur != null && seancesCur < seancesPrev * 0.6)
   if (regFaible) constats.push({ ton: 'attention', texte: `Régularité sous ton objectif (${seancesCur}/${seancesPrev} séances).` })
@@ -1332,11 +1338,15 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   }
 
   const aBaisse = tonEvol != null && tonEvol <= -8
+  const progOk = tonEvol != null && tonEvol >= 5
   let reco: any
   if (contrainte) reco = { texte: `Allège temporairement le volume ou l'intensité 1 à 2 séances pour laisser la récupération remonter.`, priorite: 'haute' }
   else if (regFaible) reco = { texte: `Vise ${seancesPrev} séances/semaine : la régularité est le 1er moteur de progression.`, priorite: 'moyenne' }
+  // État en vigilance : on NE dit PAS « augmente » — on s'aligne sur le verdict.
+  else if (etatVigilance && progOk) reco = { texte: `Ta progression est cohérente, mais ton état du jour appelle à la vigilance : garde la charge sans l'augmenter aujourd'hui et priorise la récupération ; tu relanceras la surcharge une fois au vert.`, priorite: 'moyenne' }
+  else if (etatVigilance) reco = { texte: `Priorise la récupération aujourd'hui (état en vigilance) avant d'augmenter la charge.`, priorite: 'moyenne' }
   else if (aBaisse) reco = { texte: prise ? `Remonte progressivement le volume par muscle vers ta cible pour relancer la prise de masse.` : `Remonte progressivement ton volume vers ta cible.`, priorite: 'moyenne' }
-  else if (tonEvol != null && tonEvol >= 5) reco = { texte: `Conserve la structure actuelle et poursuis la surcharge progressive (petites hausses de charge ou de reps).`, priorite: 'info' }
+  else if (progOk) reco = { texte: `Conserve la structure actuelle et poursuis la surcharge progressive (petites hausses de charge ou de reps).`, priorite: 'info' }
   else reco = { texte: `Continue et enregistre régulièrement tes séances : les analyses s'affinent avec les données.`, priorite: 'info' }
 
   const confiance = (tonEvol != null) ? (seancesPrev ? 'bonne' : 'moyenne') : 'faible'
