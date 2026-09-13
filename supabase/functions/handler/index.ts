@@ -2090,13 +2090,18 @@ function evaluerEtatAthlete(s: EtatInput): any {
   const recFaible = recScore != null && recScore < CORE_SEUILS.recup.faible
   const signalConcordant = chargeHaute || douleurGene              // indépendants de la récup
   const recFaibleConcordante = recFaible && signalConcordant
+  // Calibrage sévérité : sous-charge et absence sont des signaux de charge BASSE /
+  // régularité — ils restent des ALERTES (coach, reco) mais ne dégradent PAS la
+  // disponibilité du jour (readiness). De plus, « récup moyenne » seule (<60) ne
+  // suffit plus à passer en Vigilance : il faut « récup faible » (<45) ou un cumul.
+  const alertesEtat = alertes.filter(a => a.type !== 'sous_charge' && a.type !== 'absence')
   let niveau: number
   if (s.injStatut === 'indispo') niveau = 2
   else {
-    const haute = alertes.some(a => a.severite === 'haute')
+    const haute = alertesEtat.some(a => a.severite === 'haute')
     const combo = fatigueHaute && sommeilBas && chargeHaute        // §16 : combinaison de signaux
     const bad = haute || risqueBlessureN === 2 || recFaibleConcordante || combo
-    const mid = alertes.length > 0 || risqueBlessureN === 1 || recFaible || (recScore != null && recScore < CORE_SEUILS.recup.moyen) || s.injStatut === 'retour_progressif'
+    const mid = alertesEtat.length > 0 || risqueBlessureN === 1 || recFaible || s.injStatut === 'retour_progressif'
     niveau = bad ? 2 : mid ? 1 : 0
   }
   if (eff.niveauMin != null && niveau < eff.niveauMin) niveau = eff.niveauMin
