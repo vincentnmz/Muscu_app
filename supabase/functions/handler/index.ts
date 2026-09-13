@@ -1714,7 +1714,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const histoM = _joursDepuis(premiereP, now)
     const etatM = evaluerEtatAthlete({
       acwr, acwrFiable: fiabiliteACWR(premiereP, ctxObjM, now, acwrCalcA.joursActifs28), seances7: seances7M,
-      douleur: sigM.douleur, fatigue: sigM.fatigue, sommeil: sigM.sommeil, courbatures: null,
+      // Verdict athlète : fatigue = MOYENNE récente (readiness), pas le pire jour.
+      douleur: sigM.douleur, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, courbatures: null,
       injStatut: null, ctxEtat: ctxEtatM,
       q: { jours: histoM != null ? histoM : (perfs.length ? 7 : 0), wellnessN: sigM.wellnessN, hasCharge: perfs.length > 0 },
     })
@@ -1996,7 +1997,7 @@ async function handleLierAthlete(params: URLSearchParams): Promise<Response> {
 //   douleur = MAX récent · fatigue = MAX récent · sommeil = MOYENNE récente.
 // (max pour la douleur/fatigue = orienté prévention ; moyenne sommeil = §16, une
 //  seule mauvaise nuit ne doit pas suffire.)
-function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; fatigue: number|null; sommeil: number|null; wellnessN: number } {
+function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; wellnessN: number } {
   const cut = fmtYMD(minus(now, days))
   const doul: number[] = [], fat: number[] = [], som: number[] = []
   for (const r of rows || []) {
@@ -2007,7 +2008,10 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
   }
   const mx = (a: number[]) => a.length ? Math.max(...a) : null
   const mn = (a: number[]) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null
-  return { douleur: mx(doul), fatigue: mx(fat), sommeil: mn(som), wellnessN: Math.max(doul.length, fat.length, som.length) }
+  // `fatigue` = MAX (prévention, lu par le coach — figé). `fatigueMoy` = moyenne
+  // récente, utilisée par le VERDICT athlète (readiness) pour qu'un seul jour
+  // fatigué ne plombe pas la semaine. Ajout non cassant.
+  return { douleur: mx(doul), fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), wellnessN: Math.max(doul.length, fat.length, som.length) }
 }
 
 interface EtatInput {
