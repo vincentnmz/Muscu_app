@@ -8614,8 +8614,9 @@ function maRenderData() {
 
 // Bloc « Lecture Novalyz » : constats + reco orientés objectif (backend
 // analyse_synthese.muscu). Tolérant : si absent (backend pas encore redéployé), rien.
-function _maSynthese(data) {
-  var s = data && data.analyse_synthese && data.analyse_synthese.muscu;
+function _maSynthese(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.muscu); }
+function _maSyntheseCardio(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.cardio); }
+function _maSyntheseBloc(s) {
   if (!s || (!(s.constats && s.constats.length) && !s.reco)) return '';
   var TON = { positif: '#00A854', neutre: 'var(--text-subtle)', attention: '#E07800' };
   var objChip = s.objectif ? '<span class="r"><span class="ma-rspill" style="background:var(--accent-a10,rgba(26,95,255,.10));color:var(--accent)">' + _maE(s.objectif) + '</span></span>' : '';
@@ -8910,7 +8911,7 @@ function _maCardioResume(data) {
     var recC = rsC.slice(0, 14).reverse();
     rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _MA_PLABEL[_maPeriode]) + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   }
-  _maSet('ma-cardio-resume', verdict + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml);
+  _maSet('ma-cardio-resume', _maSyntheseCardio(data) + verdict + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml);
 }
 function _maCardioParSport(data) {
   var hist = (data.cardio && data.cardio.history) || [];

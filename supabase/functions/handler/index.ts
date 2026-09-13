@@ -1353,6 +1353,56 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   return { objectif: objectif || null, constats: constats.slice(0, 3), reco, confiance }
 }
 
+// « Lecture Novalyz » (cardio) : régularité + charge cardio (RPE×durée) 28j vs 28j
+// précédents + efficience (FC à effort constant). Déterministe, ne recalcule que
+// des agrégats simples sur cardio.history. S'aligne sur l'état du jour (récup/dispo).
+function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
+  const hist = (cardio && cardio.history) || []
+  if (!hist.length) {
+    return { constats: [{ ton: 'neutre', texte: `Pas encore de cardio enregistré.` }], reco: { texte: `Ajoute une sortie cardio pour suivre ton endurance.`, priorite: 'info' }, confiance: 'faible' }
+  }
+  const c28 = fmtYMD(minus(now, 28)), c56 = fmtYMD(minus(now, 56))
+  let n28 = 0, n56 = 0, ch28 = 0, ch56 = 0, dist28 = 0
+  const fcPts: any[] = []
+  for (const s of hist) {
+    const d = String(s.date || '')
+    const ua = (Number(s.rpe) || 0) * (Number(s.duree) || 0)
+    if (d >= c28) { n28++; ch28 += ua; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy) }) }
+    else if (d >= c56) { n56++; ch56 += ua }
+  }
+  const chEvol = ch56 > 0 ? Math.round((ch28 - ch56) / ch56 * 100) : null
+  const recup = (moteur && moteur.recup) || null
+  const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
+  const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
+
+  const constats: any[] = []
+  if (n28 === 0) {
+    constats.push({ ton: 'neutre', texte: `Aucune sortie cardio ces 4 dernières semaines.` })
+  } else {
+    constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${Math.round(dist28 * 10) / 10} km au total)` : ''}.` })
+    if (chEvol != null && chEvol >= 50) constats.push({ ton: 'attention', texte: `Ta charge cardio a fortement augmenté (+${chEvol}% sur 4 semaines) — hausse rapide.` })
+    else if (chEvol != null && chEvol <= -40) constats.push({ ton: 'neutre', texte: `Ta charge cardio a baissé (${chEvol}% sur 4 semaines).` })
+    // Efficience : FC moyenne première moitié vs seconde moitié de la fenêtre.
+    if (fcPts.length >= 4) {
+      const srt = fcPts.slice().sort((a, b) => a.d.localeCompare(b.d))
+      const half = Math.floor(srt.length / 2)
+      const avg = (arr: any[]) => arr.reduce((s, x) => s + x.fc, 0) / arr.length
+      const fcOld = avg(srt.slice(0, half)), fcNew = avg(srt.slice(half))
+      if (fcNew <= fcOld - 3) constats.push({ ton: 'positif', texte: `À effort comparable, ta FC moyenne baisse (${Math.round(fcOld)}→${Math.round(fcNew)} bpm) — ton endurance progresse.` })
+    }
+  }
+
+  const chargeJump = chEvol != null && chEvol >= 50
+  let reco: any
+  if (etatVigilance && (chargeJump || n28 > 0)) reco = { texte: `Ton état du jour appelle à la vigilance : garde un cardio facile aujourd'hui et priorise la récupération.`, priorite: 'moyenne' }
+  else if (chargeJump) reco = { texte: `Fais monter ta charge cardio plus graduellement (≈ +10 % par semaine max) pour limiter le risque de surmenage.`, priorite: 'moyenne' }
+  else if (n28 === 0) reco = { texte: `Reprends 1 à 2 sorties cardio par semaine pour bâtir ta base d'endurance.`, priorite: 'info' }
+  else reco = { texte: `Continue sur ce rythme et varie les intensités (facile / modéré) pour progresser sans t'épuiser.`, priorite: 'info' }
+
+  const confiance = (n28 + n56 >= 4) ? 'bonne' : (n28 > 0 ? 'moyenne' : 'faible')
+  return { objectif: null, constats: constats.slice(0, 3), reco, confiance }
+}
+
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')?.trim()
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -1677,7 +1727,10 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sport,
     cardio,
     analyses,
-    analyse_synthese: { muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj) },
+    analyse_synthese: {
+      muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj),
+      cardio: buildSyntheseCardio(cardio, moteur, now),
+    },
     seances_detail: buildSeancesDetail(perfs),
     pas_quotidiens,
     blessures: (blessuresRows || []).map(r => ({

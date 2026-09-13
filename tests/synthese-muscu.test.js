@@ -20,8 +20,15 @@ function extractFn(name) {
 }
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext(extractFn('buildSyntheseMuscu') + '\nthis.buildSyntheseMuscu = buildSyntheseMuscu;', sandbox);
+vm.runInContext([
+  extractFn('fmtYMD'), extractFn('minus'),
+  extractFn('buildSyntheseMuscu'), extractFn('buildSyntheseCardio'),
+  'this.buildSyntheseMuscu = buildSyntheseMuscu; this.buildSyntheseCardio = buildSyntheseCardio;'
+].join('\n'), sandbox);
 const buildSyntheseMuscu = sandbox.buildSyntheseMuscu;
+const buildSyntheseCardio = sandbox.buildSyntheseCardio;
+const NOW = new Date();
+const daysAgoISO = n => new Date(NOW.getTime() - n * 86400000).toISOString().slice(0, 10);
 
 const cmp = (tonEvol, rpeDiff) => ({ j28_vs_j28prec: { tonnage: { evol_pct: tonEvol }, rpe: { diff: rpeDiff } } });
 const reg = (cur, prev) => ({ seances_semaine: cur, seances_prevues: prev });
@@ -59,7 +66,27 @@ check('D: confiance faible sans données', d.confiance === 'faible');
 check('D: max 3 constats', d.constats.length <= 3);
 check('D: reco toujours présente', !!d.reco);
 
+// ── Cardio ──────────────────────────────────────────────────────────────────
+// F — aucun cardio → constat neutre + reco info
+let f = buildSyntheseCardio({ history: [] }, null, NOW);
+check('F: reco info si pas de cardio', f.reco && f.reco.priorite === 'info');
+check('F: confiance faible', f.confiance === 'faible');
+
+// G — hausse rapide de charge cardio (28j vs 28j préc.) → attention + reco moyenne
+let g = buildSyntheseCardio({ history: [
+  { date: daysAgoISO(3), rpe: 8, duree: 60, distance: 12, fc_moy: 150 },
+  { date: daysAgoISO(10), rpe: 8, duree: 60, distance: 12, fc_moy: 150 },
+  { date: daysAgoISO(17), rpe: 8, duree: 50, distance: 10, fc_moy: 150 },
+  { date: daysAgoISO(40), rpe: 5, duree: 30, distance: 5, fc_moy: 150 },
+] }, { recup: 'Bon' }, NOW);
+check('G: constat attention (charge)', g.constats.some(c => c.ton === 'attention'));
+check('G: reco moyenne', g.reco && g.reco.priorite === 'moyenne');
+
+// H — état vigilance → reco cardio facile / récup (jamais « pousse »)
+let h = buildSyntheseCardio({ history: [ { date: daysAgoISO(2), rpe: 7, duree: 45, distance: 9, fc_moy: 150 } ] }, { recup: 'Bon', disponibilite: { niveau: 'Vigilance' } }, NOW);
+check('H: reco s\'aligne sur l\'état (récup/facile)', /récup|facile/i.test(h.reco.texte));
+
 console.log('-'.repeat(78));
-console.log('P0 — buildSyntheseMuscu : ' + ok + ' vérifs OK / ' + ko + ' échec(s).');
+console.log('P0 — buildSynthese (muscu + cardio) : ' + ok + ' vérifs OK / ' + ko + ' échec(s).');
 if (ko === 0) console.log('✅ Lecture Novalyz (synthèse muscu) conforme aux attendus.');
 else { console.log('❌ Échecs : ' + fails.join(' | ')); process.exit(1); }
