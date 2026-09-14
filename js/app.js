@@ -5662,7 +5662,12 @@ function renderProgrammeCoach() {
       ${champNum(l.reps_mini, '8', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,this.value,null,null,null)`, 'Reps min')}
       ${champNum(l.reps_max, '12', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)`, 'Reps max')}
       ${champNum(l.repos_sec || '', '90', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)`, 'Repos (s)')}
-    </div>`;
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      ${champNum(l.charge_pct_1rm != null ? l.charge_pct_1rm : '', '75', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,this.value,null)`, '% du 1RM')}
+      ${champNum(l.rpe_cible != null ? l.rpe_cible : '', '8', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,null,this.value)`, 'RPE cible')}
+    </div>
+    ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">🎯 Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}`;
 
   // Dropdown pour lier un exercice (ajoute au superset ancré sur ligneAncre)
   const selLier = (ligneAncre, seanceId, exclus) => `
@@ -5810,7 +5815,30 @@ function cdSetSeanceJour(seanceId, jour) {
       body: JSON.stringify({ action: 'saveProgrammeJour', athlete_id: _progAthleteId(), seance_id: seanceId, jour: (jour == null ? null : Number(jour)) }) });
   } catch (e) {}
 }
-function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec, groupeId) {
+// 1RM estimé de l'athlète pour un exo = max des e1RM (Epley) sur son historique ;
+// repli sur le record de charge. Sert à convertir un % de 1RM en kg indicatifs.
+function _est1RM(exo) {
+  try {
+    var d = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
+    if (!d || !exo) return null;
+    var best = null;
+    var pts = (d.historique && d.historique.progression_par_exo && d.historique.progression_par_exo[exo]) || [];
+    pts.forEach(function (p) { var e = calc1RM(p.charge, p.reps); if (e && (best == null || e > best)) best = e; });
+    if (best == null) { var rec = d.global && d.global.records_par_exo && d.global.records_par_exo[exo]; if (rec && rec.charge) best = Number(rec.charge); }
+    return best;
+  } catch (e) { return null; }
+}
+// kg indicatifs pour un % de 1RM, arrondis à 2,5 kg.
+function _cibleKg(exo, pct) { var rm = _est1RM(exo); if (!rm || !pct) return null; return Math.round(rm * pct / 100 / 2.5) * 2.5; }
+// Texte de la cible d'un exercice : « 75% du 1RM ≈ 82 kg · RPE 8 ».
+function _cibleTxt(l, withKg) {
+  if (!l) return '';
+  var parts = [];
+  if (l.charge_pct_1rm != null) { var kg = withKg ? _cibleKg(l.exercice, l.charge_pct_1rm) : null; parts.push(l.charge_pct_1rm + '% du 1RM' + (kg ? ' ≈ ' + kg + ' kg' : '')); }
+  if (l.rpe_cible != null) parts.push('RPE ' + l.rpe_cible);
+  return parts.join(' · ');
+}
+function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec, groupeId, chargePct, rpeCible) {
   const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
   if (!ligne) return;
   if (exercice !== null) ligne.exercice = exercice;
@@ -5818,6 +5846,9 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
   if (repsMini !== null) ligne.reps_mini = Number(repsMini);
   if (repsMax !== null) ligne.reps_max = Number(repsMax);
   if (reposSec !== null) ligne.repos_sec = Number(reposSec);
+  // Cibles (phase 2) : % du 1RM + RPE cible. '' → efface (null).
+  if (chargePct !== undefined && chargePct !== null) { ligne.charge_pct_1rm = (chargePct === '' ? null : Number(chargePct)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); }
+  if (rpeCible !== undefined && rpeCible !== null) { ligne.rpe_cible = (rpeCible === '' ? null : Number(rpeCible)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); }
   if (groupeId !== null) { ligne.groupe_id = groupeId.trim().toUpperCase(); renderProgrammeCoach(); }
   else if (exercice !== null) { cdExoOpen[rowIndex] = true; renderProgrammeCoach(); } // MAJ live du nom/muscle affiché
   return fetch(SCRIPT_URL, {
@@ -5826,7 +5857,9 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
       action: 'saveProgrammeLigne', row_index: rowIndex, athlete_id: _progAthleteId(),
       seance_id: ligne.seance_id, exercice: ligne.exercice,
       series_prevues: ligne.series_prevues, reps_mini: ligne.reps_mini, reps_max: ligne.reps_max,
-      repos_sec: ligne.repos_sec, groupe_id: ligne.groupe_id || ''
+      repos_sec: ligne.repos_sec, groupe_id: ligne.groupe_id || '',
+      charge_pct_1rm: (ligne.charge_pct_1rm == null ? null : Number(ligne.charge_pct_1rm)),
+      rpe_cible: (ligne.rpe_cible == null ? null : Number(ligne.rpe_cible))
     })
   });
 }
@@ -8348,6 +8381,7 @@ function afficherProgrammeComplet() {
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
             ${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}
           </div>
+          ${(function(){ var t = _cibleTxt(p, true); return t ? `<div style="font-size:11px;font-weight:700;color:var(--accent);margin-top:3px">🎯 ${t}</div>` : ''; })()}
         </div>
       `).join('')}
     </div>
@@ -10245,7 +10279,8 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   document.getElementById('exo-actuel-nom').textContent = exerciceNom;
   const pProg = programmeSeance.find(p => p.exercice === exerciceNom);
   const partenairesActuel = pProg && pProg.groupe_id ? programmeSeance.filter(o => o !== pProg && o.groupe_id === pProg.groupe_id).map(o => o.exercice) : [];
-  document.getElementById('exo-actuel-detail').innerHTML = `${muscle} · ${repsMini}-${repsMax} reps${partenairesActuel.length > 0 ? ` <span style="color:${couleurGroupe(pProg.groupe_id)}">· Superset, alterne avec ${partenairesActuel.join(', ')}</span>` : ''}`;
+  var _cibleProg = _cibleTxt(pProg, true);
+  document.getElementById('exo-actuel-detail').innerHTML = `${muscle} · ${repsMini}-${repsMax} reps${partenairesActuel.length > 0 ? ` <span style="color:${couleurGroupe(pProg.groupe_id)}">· Superset, alterne avec ${partenairesActuel.join(', ')}</span>` : ''}${_cibleProg ? `<br><span style="color:var(--accent);font-weight:700">🎯 Cible programme : ${_cibleProg}</span>` : ''}`;
   document.getElementById('card-exo-actuel').style.display = 'block';
   document.getElementById('card-hors-programme').style.display = 'none';
 

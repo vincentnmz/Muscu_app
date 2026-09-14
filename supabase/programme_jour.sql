@@ -5,6 +5,8 @@
 -- séance partagent la valeur ; l'action saveProgrammeJour les met à jour ensemble).
 ALTER TABLE programme ADD COLUMN IF NOT EXISTS jour smallint;
 
--- Phase 2 (à venir) : charge cible (% du 1RM) + RPE cible par exercice.
--- ALTER TABLE programme ADD COLUMN IF NOT EXISTS charge_pct_1rm numeric;
--- ALTER TABLE programme ADD COLUMN IF NOT EXISTS rpe_cible numeric;
+-- Phase 2 : charge cible (% du 1RM) + RPE cible par exercice.
+-- charge_pct_1rm : % du 1RM estimé (ex. 75) ; converti en kg indicatifs côté app.
+-- rpe_cible : RPE visé (ex. 8). Les deux sont facultatifs (NULL = non défini).
+ALTER TABLE programme ADD COLUMN IF NOT EXISTS charge_pct_1rm numeric;
+ALTER TABLE programme ADD COLUMN IF NOT EXISTS rpe_cible numeric;
