@@ -11060,13 +11060,22 @@ function _enRenderSelMuscu() {
   if (!_enOrder.length) { sl.innerHTML = '<div class="en-muted">Aucune séance au programme. Utilise « Créer / modifier mon programme ».</div>'; return; }
   if (!_enSelSeance || (_enSelSeance !== 'Libre' && _enOrder.indexOf(_enSelSeance) === -1)) _enSelSeance = _enOrder.length ? _enOrder[0] : 'Libre';
   var svgD = '<svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>';
-  var html = _enOrder.map(function (sid) {
+  // Réalisé cette semaine (n'importe quel jour) → statut ✓/○ directement sur la carte.
+  var cut = _maCut('semaine'), doneByType = {};
+  ((typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.seances_detail) || []).forEach(function (s) { if ((s.date || '') >= cut && s.seance_id) { if (!doneByType[s.seance_id] || s.date > doneByType[s.seance_id]) doneByType[s.seance_id] = s.date; } });
+  // Ordre : par jour conseillé (planifiées d'abord, lun→dim), puis ordre du programme.
+  var ordre = _enOrder.slice().map(function (sid, i) { var j = _seanceJour(_enByS[sid]); return { sid: sid, j: j == null ? 99 : j, i: i }; })
+    .sort(function (a, b) { return a.j - b.j || a.i - b.i; }).map(function (x) { return x.sid; });
+  var html = ordre.map(function (sid) {
     var exos = _enByS[sid] || [], on = (sid === _enSelSeance);
     var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3).join(', ');
+    var jr = _seanceJour(exos), dDate = doneByType[sid];
+    var jhint = jr ? '<span style="color:var(--accent);font-weight:700">' + _PROG_JOURS_LONG[jr - 1] + '</span> · ' : '';
+    var tag = dDate ? '<span class="en-wtag done">✓ ' + esc(_enJourCourt(dDate)) + '</span>' : '<span class="en-wtag todo">○ à faire</span>';
     return '<div class="en-sel' + (on ? ' on' : '') + '" onclick=\'_enSelectSeance(' + JSON.stringify(String(sid)) + ')\'>'
       + '<span class="ic">' + svgD + '</span>'
-      + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>'
-      + '<span class="en-rad"></span></div>';
+      + '<div class="nm"><div class="a">' + esc(sid) + '</div><div class="b">' + jhint + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>'
+      + tag + '<span class="en-rad"></span></div>';
   }).join('');
   // Carte « Séance libre » (toujours proposée) : exercices choisis à la volée.
   var onL = (_enSelSeance === 'Libre');
@@ -11151,28 +11160,8 @@ function renderEnSuivi(data) {
   var sd = (data && data.seances_detail) || [];
   var rsMap = {}; ((data && data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x && x.seance_id != null) rsMap[x.seance_id + '|' + x.date] = x.valeur; });
 
-  // ── Bloc A : cette semaine (calendaire ou glissante selon le réglage) ──
-  var cut = _maCut('semaine');
-  var doneByType = {};
-  sd.forEach(function (s) { if ((s.date || '') >= cut && s.seance_id) { if (!doneByType[s.seance_id] || s.date > doneByType[s.seance_id]) doneByType[s.seance_id] = s.date; } });
-  var blocA = '';
-  if (_enOrder.length) {
-    var svgChk = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-    // Ordre : séances planifiées d'abord (lun→dim), non planifiées ensuite — l'ordre du programme départage.
-    var ordreA = _enOrder.slice().map(function (sid, i) { var j = _seanceJour(_enByS[sid]); return { sid: sid, j: j == null ? 99 : j, i: i }; })
-      .sort(function (a, b) { return a.j - b.j || a.i - b.i; }).map(function (x) { return x.sid; });
-    var rowsA = ordreA.map(function (sid) {
-      var exos = _enByS[sid] || [], noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3).join(', ');
-      var jr = _seanceJour(exos);
-      var dDate = doneByType[sid];
-      var st = dDate ? '<span class="en-st done">' + svgChk + '</span>' : '<span class="en-st todo"></span>';
-      var tag = dDate ? '<span class="en-wtag done">✓ ' + esc(_enJourCourt(dDate)) + '</span>' : '<span class="en-wtag todo">○ à faire</span>';
-      var jhint = (jr ? '<span style="color:var(--accent);font-weight:700">' + _PROG_JOURS_LONG[jr - 1] + '</span> · ' : '');
-      return '<div class="en-wrow">' + st + '<div class="en-wnm"><div class="a">' + esc(sid) + '</div><div class="b">' + jhint + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>' + tag + '</div>';
-    }).join('');
-    blocA = '<div class="en-sec">Cette semaine · prévu vs réalisé</div><div style="display:flex;flex-direction:column;gap:8px;">' + rowsA + '</div>';
-  }
-
+  // Le « prévu vs réalisé » de la semaine est désormais porté par les cartes du
+  // sélecteur « Choisis ta séance » (statut ✓/○ + jour) → plus de bloc en double ici.
   // ── Bloc B : dernières séances réalisées (≤ 6) + détail + tendance ──
   var blocB = '';
   if (sd.length) {
@@ -11195,7 +11184,7 @@ function renderEnSuivi(data) {
     blocB = '<div class="en-sec">Dernières séances réalisées</div><div style="display:flex;flex-direction:column;gap:8px;">' + rowsB + '</div>';
   }
 
-  el.innerHTML = blocA + blocB;
+  el.innerHTML = blocB;
 }
 
 function _appliquerAppData(data) {
