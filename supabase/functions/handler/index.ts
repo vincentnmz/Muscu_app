@@ -1669,6 +1669,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id,
     exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini,
     reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id,
+    jour: r.jour != null ? Number(r.jour) : null,   // jour conseillé (1=lun … 7=dim), null = non planifié
   }))
 
   const bien_etre = (beRows || []).map(r => ({
@@ -1972,7 +1973,7 @@ async function handleGetCoachProgramme(params: URLSearchParams): Promise<Respons
   const athleteId = params.get('athlete_id')
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
   const { data } = await sb().from('programme').select('*').eq('athlete_id', athleteId).order('groupe_id').order('id')
-  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id }))
+  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null }))
   // le front lit data.lignes ; on garde aussi "programme" par rétro-compat
   return jsonResp({ ok: true, lignes, programme: lignes })
 }
@@ -3500,13 +3501,37 @@ async function handleSaveNote(body: any): Promise<Response> {
 async function handleSaveProgrammeLigne(body: any): Promise<Response> {
   const { athlete_id, athlete_nom, seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, row_index } = body
   if (!athlete_id || !exercice) return jsonResp({ erreur: 'Paramètres manquants' })
+  // jour conseillé : facultatif ; à l'insertion, hérite du jour déjà posé sur la séance.
+  const jourIn = (body.jour === '' || body.jour == null) ? null : Number(body.jour)
   if (row_index) {
-    const { error } = await sb().from('programme').update({ seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id }).eq('id', row_index)
+    const patch: any = { seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id }
+    if (body.jour !== undefined) patch.jour = jourIn
+    const { error } = await sb().from('programme').update(patch).eq('id', row_index)
     if (error) return jsonResp({ erreur: error.message })
   } else {
-    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id })
+    let jour = jourIn
+    if (jour == null && seance_id) {
+      // hérite du jour de la séance (si une autre ligne de la même séance en a un)
+      const { data: sib } = await sb().from('programme').select('jour').eq('athlete_id', athlete_id).eq('seance_id', seance_id).not('jour', 'is', null).limit(1)
+      if (sib && sib.length && sib[0].jour != null) jour = Number(sib[0].jour)
+    }
+    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour })
     if (error) return jsonResp({ erreur: error.message })
   }
+  return jsonResp({ ok: true })
+}
+
+// Jour conseillé d'une séance (Lun=1 … Dim=7, null = non planifié) : appliqué à
+// TOUTES les lignes de la séance. Le jour est indicatif — faire la séance un autre
+// jour ne la pénalise pas (le suivi « réalisé » compte la séance quel que soit le jour).
+async function handleSaveProgrammeJour(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const seance_id = String(body.seance_id ?? '')
+  if (!athlete_id || !seance_id) return jsonResp({ erreur: 'Paramètres manquants' })
+  const jour = (body.jour === '' || body.jour == null) ? null : Number(body.jour)
+  if (jour != null && (isNaN(jour) || jour < 1 || jour > 7)) return jsonResp({ erreur: 'jour invalide' })
+  const { error } = await sb().from('programme').update({ jour }).eq('athlete_id', athlete_id).eq('seance_id', seance_id)
+  if (error) return jsonResp({ erreur: error.message })
   return jsonResp({ ok: true })
 }
 
@@ -3948,6 +3973,7 @@ Deno.serve(async (req: Request) => {
         case 'savePoids':                return handleSavePoids(body)
         case 'saveNote':                 return handleSaveNote(body)
         case 'saveProgrammeLigne':       return handleSaveProgrammeLigne(body)
+        case 'saveProgrammeJour':        return handleSaveProgrammeJour(body)
         case 'supprimerProgrammeLigne':  return handleSupprimerProgrammeLigne(body)
         case 'deleteCoach':              return handleDeleteCoach(body)
         case 'saveBienEtre':             return handleSaveBienEtre(body)

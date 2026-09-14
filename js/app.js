@@ -5754,6 +5754,7 @@ function renderProgrammeCoach() {
         </div>
       </div>
       <div id="prog-body-${si}" style="padding:12px 14px;border-top:1px solid var(--border);${ouvert?'':'display:none'}">
+        ${ro ? '' : _progJourPicker(seanceId, lignes)}
         ${cartes}
         ${ro
           ? `<button onclick='demarrerRenfoJoueur(${JSON.stringify(seanceId)})' style="width:100%;margin-top:4px;padding:13px;border:none;border-radius:11px;background:var(--accent);color:#fff;font-size:14.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(26,95,255,.28);"><span style="font-size:16px;line-height:1;">▶</span> Démarrer cette séance</button>`
@@ -5781,6 +5782,34 @@ function cdToggleSeanceProg(si, seanceId) {
   if (arrow) arrow.style.transform = cdProgOpen[seanceId] ? 'rotate(90deg)' : 'none';
 }
 
+// Jours (1=lundi … 7=dimanche). Le jour d'une séance est un CONSEIL : le faire un
+// autre jour ne pénalise pas le suivi.
+var _PROG_JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+var _PROG_JOURS_LONG = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+// Jour conseillé d'une séance = 1er jour non nul parmi ses lignes.
+function _seanceJour(lignes) { var l = (lignes || []).find(function (x) { return x && x.jour != null; }); return l ? Number(l.jour) : null; }
+function _progJourPicker(seanceId, lignes) {
+  var cur = _seanceJour(lignes);
+  var sidJson = JSON.stringify(seanceId).replace(/"/g, '&quot;');
+  var chips = _PROG_JOURS.map(function (nm, i) {
+    var j = i + 1, on = (cur === j);
+    return '<button type="button" onclick="cdSetSeanceJour(' + sidJson + ',' + (on ? 'null' : j) + ')" style="flex:1;min-width:0;padding:7px 0;border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent)' : 'var(--surface)') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer">' + nm + '</button>';
+  }).join('');
+  return '<div style="margin-bottom:12px">'
+    + '<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center"><span>Jour conseillé</span>' + (cur ? '<span style="color:var(--accent);font-weight:800;text-transform:none;letter-spacing:0">' + _PROG_JOURS_LONG[cur - 1] + '</span>' : '<span style="text-transform:none;letter-spacing:0">non planifié</span>') + '</div>'
+    + '<div style="display:flex;gap:4px">' + chips + '</div>'
+    + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;line-height:1.35">Indicatif : faire la séance un autre jour ne pénalise pas ton suivi.</div>'
+    + '</div>';
+}
+// Pose (ou retire) le jour conseillé sur TOUTES les lignes de la séance.
+function cdSetSeanceJour(seanceId, jour) {
+  cdProgrammeLignes.forEach(function (l) { if (l.seance_id === seanceId) l.jour = (jour == null ? null : Number(jour)); });
+  renderProgrammeCoach();
+  try {
+    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveProgrammeJour', athlete_id: _progAthleteId(), seance_id: seanceId, jour: (jour == null ? null : Number(jour)) }) });
+  } catch (e) {}
+}
 function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec, groupeId) {
   const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
   if (!ligne) return;
@@ -11094,12 +11123,17 @@ function renderEnSuivi(data) {
   var blocA = '';
   if (_enOrder.length) {
     var svgChk = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
-    var rowsA = _enOrder.map(function (sid) {
+    // Ordre : séances planifiées d'abord (lun→dim), non planifiées ensuite — l'ordre du programme départage.
+    var ordreA = _enOrder.slice().map(function (sid, i) { var j = _seanceJour(_enByS[sid]); return { sid: sid, j: j == null ? 99 : j, i: i }; })
+      .sort(function (a, b) { return a.j - b.j || a.i - b.i; }).map(function (x) { return x.sid; });
+    var rowsA = ordreA.map(function (sid) {
       var exos = _enByS[sid] || [], noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3).join(', ');
+      var jr = _seanceJour(exos);
       var dDate = doneByType[sid];
       var st = dDate ? '<span class="en-st done">' + svgChk + '</span>' : '<span class="en-st todo"></span>';
       var tag = dDate ? '<span class="en-wtag done">✓ ' + esc(_enJourCourt(dDate)) + '</span>' : '<span class="en-wtag todo">○ à faire</span>';
-      return '<div class="en-wrow">' + st + '<div class="en-wnm"><div class="a">' + esc(sid) + '</div><div class="b">' + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>' + tag + '</div>';
+      var jhint = (jr ? '<span style="color:var(--accent);font-weight:700">' + _PROG_JOURS_LONG[jr - 1] + '</span> · ' : '');
+      return '<div class="en-wrow">' + st + '<div class="en-wnm"><div class="a">' + esc(sid) + '</div><div class="b">' + jhint + exos.length + ' exo' + (exos.length > 1 ? 's' : '') + (noms ? ' · ' + esc(noms) : '') + '</div></div>' + tag + '</div>';
     }).join('');
     blocA = '<div class="en-sec">Cette semaine · prévu vs réalisé</div><div style="display:flex;flex-direction:column;gap:8px;">' + rowsA + '</div>';
   }
