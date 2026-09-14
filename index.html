@@ -968,6 +968,30 @@
         #tab-seance .en-act .en-rad{ position:absolute; top:12px; right:12px; width:20px; height:20px; }
         #tab-seance .en-act.on .en-rad{ border-color:#0EA5E9; }
         #tab-seance .en-act.on .en-rad::after{ content:""; width:10px; height:10px; border-radius:999px; background:#0EA5E9; }
+        /* Suivi : cette semaine (prévu/réalisé) */
+        #tab-seance .en-wrow{ display:flex; align-items:center; gap:11px; padding:11px 13px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
+        #tab-seance .en-st{ width:24px; height:24px; border-radius:999px; flex:none; display:grid; place-items:center; }
+        #tab-seance .en-st.done{ background:var(--good); }
+        #tab-seance .en-st.todo{ border:2px solid var(--border); }
+        #tab-seance .en-wnm{ flex:1; min-width:0; }
+        #tab-seance .en-wnm .a{ font-weight:700; font-size:13.5px; }
+        #tab-seance .en-wnm .b{ font-size:11px; color:var(--text-subtle); margin-top:1px; }
+        #tab-seance .en-wtag{ font-size:10.5px; font-weight:700; flex:none; }
+        #tab-seance .en-wtag.done{ color:var(--good); }
+        #tab-seance .en-wtag.todo{ color:var(--text-subtle); }
+        /* Suivi : dernières séances réalisées */
+        #tab-seance .en-seac{ background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); overflow:hidden; }
+        #tab-seance .en-seahd{ display:flex; align-items:center; gap:11px; padding:12px 13px; cursor:pointer; }
+        #tab-seance .en-seadt{ text-align:center; width:40px; flex:none; }
+        #tab-seance .en-seadt .d{ font-family:var(--font-heading,'Michroma',sans-serif); font-size:15px; }
+        #tab-seance .en-seadt .m{ font-size:10px; color:var(--text-subtle); text-transform:uppercase; }
+        #tab-seance .en-seamid{ flex:1; min-width:0; }
+        #tab-seance .en-seamid .a{ font-weight:700; font-size:13.5px; }
+        #tab-seance .en-seamid .b{ font-size:11px; color:var(--text-muted); margin-top:2px; }
+        #tab-seance .en-trbadge{ font-size:11px; font-weight:800; flex:none; }
+        #tab-seance .en-trbadge.up{ color:var(--good); }
+        #tab-seance .en-trbadge.dn{ color:var(--warn); }
+        #tab-seance .en-seac .nv-seancedet{ margin:0 13px 12px; }
       </style>
       <div class="en-hub">
         <!-- Mon programme (nb séances + stratégie + adhérence) -->
@@ -1004,6 +1028,10 @@
         <!-- Créer / modifier programme -->
         <button class="en-add" onclick="ouvrirEditeurProgramme()"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Créer / modifier mon programme</button>
       </div>
+
+      <!-- Suivi : prévu vs réalisé (cette semaine) + dernières séances réalisées.
+           Peuplé par renderEnSuivi(data) depuis programme + seances_detail. -->
+      <div id="en-suivi" style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;"></div>
 
       <!-- AGENDA (calendrier) -->
       <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</h2></div>

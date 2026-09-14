@@ -491,3 +491,16 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .djt-tabs .sub-tab .dj-ico svg { width:24px; height:24px; display:block; }
 .djt-tabs .sub-tab.active          { color:var(--accent); }
 .djt-tabs .sub-tab.active::before  { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:26px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }
+
+/* ── Détail d'une séance (partagé : Entraînement « Dernières séances » +
+ *    Analyses ▸ Muscu ▸ Historique). Exercice + séries en pastilles charge×reps. ── */
+.nv-seancedet     { background:var(--surface2); border-radius:12px; padding:10px 12px; }
+.nv-exrow         { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); }
+.nv-exrow:last-child { border-bottom:none; }
+.nv-exn           { font-size:12.5px; font-weight:700; color:var(--text); }
+.nv-sets          { display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+.nv-set           { font-size:11px; font-weight:700; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:3px 7px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+.nv-trend         { margin-top:10px; display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600; border-radius:11px; padding:9px 11px; line-height:1.35; }
+.nv-trend svg     { flex:none; }
+.nv-trend.up      { background:rgba(0,168,84,.10); color:var(--good); }
+.nv-trend.dn      { background:rgba(224,120,0,.10); color:var(--warn); }
