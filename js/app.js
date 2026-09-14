@@ -8734,6 +8734,23 @@ function maSetExoMetric(m) { _maExoMetric = m; try { _maMuscuExercice(dernierApp
 function _maE1RM(p) { return Math.round((p.charge || 0) * (1 + (p.reps || 0) / 30)); }
 function _maEstDuree(s) { var sec = 0; (s.exercices || []).forEach(function (e) { (e.series || []).forEach(function (x) { sec += (x.repos || 90) + 35; }); }); return Math.round(sec / 60); }
 
+// Tendance ROBUSTE d'une série de tonnage par séance : moyenne de la 1re moitié
+// de la période vs la 2de. Le tonnage par séance est trop bruité (une séance où
+// le muscle n'est que secondaire pèse peu) pour comparer bêtement 1er vs dernier
+// point — ça produisait des % aberrants (+282%). Retourne le % ou null (< 2 séances).
+function _maTrendHalf(arr) {
+  var a = (arr || []).filter(function (v) { return typeof v === 'number'; });
+  var np = a.length; if (np < 2) return null;
+  var h = Math.floor(np / 2) || 1;
+  var mean = function (x) { return x.length ? x.reduce(function (s, y) { return s + y; }, 0) / x.length : 0; };
+  var f = mean(a.slice(0, h)), l = mean(a.slice(np - h));
+  return f ? Math.round((l - f) / f * 100) : null;
+}
+function _maTrendBadge(arr) {
+  var np = (arr || []).length, pct = _maTrendHalf(arr);
+  if (pct == null) return '<span class="t" style="color:var(--text-subtle)">' + (np < 2 ? '— 1 séance' : '—') + '</span>';
+  return '<span class="t ' + (pct >= 0 ? 'ma-up' : 'ma-dn') + '">' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>';
+}
 // PAR EXERCICE : sélecteur d'exercice + graphe (1RM/charge/volume) + stats + séances.
 function _maProgExo(data) {
   var progAll = (data.historique && data.historique.progression_par_exo) || {};
@@ -8782,14 +8799,12 @@ function _maProgGrp(data) {
   var html = '<div class="ma-card">' + rows.map(function (rw) {
     var o = obti[rw.m], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min, scale = optW * 1.3;
     var C = rw.spw >= optW ? '#00A854' : rw.spw >= minW ? '#E07800' : '#DC3545';
-    var np = rw.serie.length, first = rw.serie[0] || 0, last = rw.serie[np - 1] || 0;
-    var pct = (np >= 2 && first) ? Math.round((last - first) / first * 100) : null;
-    var tb = (pct == null) ? '<span class="t" style="color:var(--text-subtle)">— 1 séance</span>' : '<span class="t ' + (pct >= 0 ? 'ma-up' : 'ma-dn') + '">' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>';
+    var tb = _maTrendBadge(rw.serie);
     return '<div class="ma-grow"><div class="ma-grh"><span class="n">' + _maE(rw.m) + '</span>' + tb + '</div>'
       + '<div class="ma-gbar"><div class="ma-gfill" style="width:' + Math.min(100, rw.spw / scale * 100).toFixed(0) + '%;background:' + C + '"></div><div class="ma-gmark" style="left:' + (optW / scale * 100).toFixed(0) + '%"></div></div>'
       + '<div class="ma-gmet"><span>Séries <b>' + String(rw.spw).replace('.', ',') + '/' + optW + '</b>/sem</span><span>Fréq. <b>' + String(rw.freq).replace('.', ',') + '×</b>/sem</span><span>Tonnage <b>' + rw.ton + ' t</b></span></div></div>';
   }).join('') + '</div>';
-  return html + _maCap('Par muscle : la barre = séries/sem vs ta cible (trait noir = optimal) ; à côté, fréquence (séances/sem touchant le muscle) et tonnage ; à droite, la tendance du tonnage. Les séries/sem sont le marqueur n°1 pour l\'hypertrophie.');
+  return html + _maCap('Par muscle : la barre = séries/sem vs ta cible (trait noir = optimal) ; à côté, fréquence (séances/sem touchant le muscle) et tonnage ; à droite, la tendance du tonnage (moyenne du début vs la fin de la période, pour lisser les séances isolées). Les séries/sem sont le marqueur n°1 pour l\'hypertrophie.');
 }
 
 // PAR SÉANCE : une carte-bilan par type (tonnage, durée est., ressenti, nb, tendance).
@@ -8798,18 +8813,23 @@ function _maProgSea(data) {
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
   var cut = _maCut(_maPeriode);
   var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd;
-  var rs = {}; ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + x.date] = x.valeur; });
+  // Ressenti : join par (seance_id, date), avec repli par DATE seule — le seance_id
+  // est souvent vide/différent entre le bilan et les perfs, ce qui faisait afficher « — ».
+  var rs = {}, rsByDate = {};
+  ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) {
+    if (x.valeur == null) return;
+    if (x.seance_id != null && x.seance_id !== '') rs[x.seance_id + '|' + x.date] = x.valeur;
+    if (x.date) rsByDate[x.date] = x.valeur;
+  });
   var RSL = { 1: 'Facile', 2: 'Moyen', 3: 'Difficile', 4: 'Très dur' };
   var by = {};
-  inP.slice().reverse().forEach(function (s) { var sid = s.seance_id || 'Séance'; if (!by[sid]) by[sid] = { ton: [], dur: [], rs: [], n: 0 }; by[sid].ton.push(s.tonnage || 0); by[sid].dur.push(_maEstDuree(s)); var rv = rs[sid + '|' + s.date]; if (rv) by[sid].rs.push(rv); by[sid].n++; });
+  inP.slice().reverse().forEach(function (s) { var sid = s.seance_id || 'Séance'; if (!by[sid]) by[sid] = { ton: [], dur: [], rs: [], n: 0 }; by[sid].ton.push(s.tonnage || 0); by[sid].dur.push(_maEstDuree(s)); var rv = rs[sid + '|' + s.date]; if (rv == null) rv = rsByDate[s.date]; if (rv) by[sid].rs.push(rv); by[sid].n++; });
   var avg = function (a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : 0; };
   return Object.keys(by).map(function (sid) {
     var b = by[sid], tonAvg = Math.round(avg(b.ton) / 100) / 10, durAvg = Math.round(avg(b.dur)), rsAvg = b.rs.length ? Math.round(avg(b.rs)) : null;
-    var np = b.ton.length, first = b.ton[0], last = b.ton[np - 1];
-    var pct = (np >= 2 && first) ? Math.round((last - first) / first * 100) : null;
-    var tb = (pct == null) ? '<span class="t" style="color:var(--text-subtle)">— 1 séance</span>' : '<span class="t ' + (pct >= 0 ? 'ma-up' : 'ma-dn') + '">' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>';
+    var tb = _maTrendBadge(b.ton);
     return '<div class="ma-card" style="padding:13px 15px;display:flex;flex-direction:column;gap:9px"><div class="ma-grh"><span class="n" style="font-size:14px">' + _maE(sid) + '</span>' + tb + '</div><div class="ma-stat4"><div class="c"><div class="v">' + tonAvg + ' t</div><div class="u">tonnage moy.</div></div><div class="c"><div class="v">~' + durAvg + ' min</div><div class="u">durée est.</div></div><div class="c"><div class="v">' + (rsAvg ? RSL[rsAvg] : '—') + '</div><div class="u">ressenti moy.</div></div><div class="c"><div class="v">' + b.n + '×</div><div class="u">réalisée</div></div></div></div>';
-  }).join('') + _maCap('Chaque type de séance : tonnage moyen, durée estimée (repos + travail), ressenti moyen, nb de fois réalisée, et tendance du tonnage.');
+  }).join('') + _maCap('Chaque type de séance : tonnage moyen, durée estimée (repos + travail), ressenti moyen, nb de fois réalisée, et tendance du tonnage (moyenne début vs fin de période).');
 }
 
 // Balance agoniste/antagoniste (contexte, sous la progression).
