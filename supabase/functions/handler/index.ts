@@ -254,6 +254,26 @@ function computeRecent(perfs: any[], now: Date): any {
       strain,
     }
   }
+  // Fenêtre « semaine calendaire » (depuis lundi) — pour le réglage semaine_type.
+  {
+    const cutoff = fmtYMD(getLundi(now))
+    const filtered = perfs.filter(r => normDate(r.date) >= cutoff)
+    const seriesMuscle: Record<string, number> = {}
+    const parMuscle: Record<string, number> = {}
+    for (const r of filtered) if (r.muscle) { seriesMuscle[r.muscle] = (seriesMuscle[r.muscle] || 0) + 1; parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + ((Number(r.charge) || 0) * (Number(r.reps) || 0)) }
+    const tonnage = filtered.reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
+    const rpeRows = filtered.filter(r => r.rpe)
+    result['semaineCal'] = {
+      seances: new Set(filtered.map(r => normDate(r.date))).size,
+      series: filtered.length,
+      reps: filtered.reduce((s, r) => s + (Number(r.reps) || 0), 0),
+      tonnage: Math.round(tonnage / 100) / 10,
+      tonnage_kg: Math.round(tonnage),
+      rpe_moyen: rpeRows.length ? Math.round(rpeRows.reduce((s, r) => s + Number(r.rpe), 0) / rpeRows.length * 10) / 10 : null,
+      volume_par_muscle: parMuscle,
+      series_par_muscle: seriesMuscle,
+    }
+  }
   return result
 }
 
@@ -1491,6 +1511,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: pasJourRows },
     { data: blessuresRows },
     { data: alerteLueRows },
+    { data: prefRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1505,6 +1526,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'pasjour_%').order('date', { ascending: false }),
     sb().from('blessures').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('indicateurs').select('cle').eq('athlete_id', athleteId).eq('seance_id', 'alerte_lue'),
+    sb().from('indicateurs').select('valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').eq('cle', 'semaine_type').order('date', { ascending: false }).limit(1),
   ])
 
   const perfs = perfsAll || []
@@ -1811,6 +1833,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       })
     })(),
     seances_detail: buildSeancesDetail(perfs),
+    semaine_type: (prefRows && prefRows[0] && prefRows[0].valeur === 'glissant') ? 'glissant' : 'calendaire',
     pas_quotidiens,
     blessures: (blessuresRows || []).map(r => ({
       id: String(r.id || ''), date: r.date ? fmtFR(r.date) : '',
@@ -3587,6 +3610,23 @@ async function handleSetPauseAthlete(body: any): Promise<Response> {
 
 // Marque une alerte athlète comme lue (état durable, stocké dans indicateurs
 // sous seance_id='alerte_lue', cle=<id> où id = type|semaine). Idempotent.
+// Préférence « semaine d'entraînement » (calendaire lundi→dim. / glissante 7 j).
+// Stockée dans indicateurs (seance_id='pref', cle='semaine_type'). Idempotente.
+async function handleSaveSemaineType(body: any): Promise<Response> {
+  const { athlete_id } = body
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const v = (body.valeur === 'glissant') ? 'glissant' : 'calendaire'
+  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'semaine_type').limit(1)
+  if (existing?.length) {
+    const { error } = await sb().from('indicateurs').update({ valeur: v }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'semaine_type')
+    if (error) return jsonResp({ success: false, error: error.message })
+  } else {
+    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'semaine_type', valeur: v, unite: '', source: 'app' })
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true })
+}
+
 async function handleMarquerAlerteLue(body: any): Promise<Response> {
   const { athlete_id, id } = body
   if (!athlete_id || !id) return jsonResp({ success: false, error: 'Paramètres manquants' })
@@ -3915,6 +3955,7 @@ Deno.serve(async (req: Request) => {
         case 'setPauseAthlete':          return handleSetPauseAthlete(body)
         case 'marquerAlerteTraitee':     return handleMarquerAlerteTraitee(body)
         case 'marquerAlerteLue':         return handleMarquerAlerteLue(body)
+        case 'saveSemaineType':          return handleSaveSemaineType(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
         case 'deleteObjectifJoueur':     return handleDeleteObjectifJoueur(body)
         case 'saveBlessure':             return handleSaveBlessure(body)

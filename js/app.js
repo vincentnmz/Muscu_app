@@ -6854,6 +6854,7 @@ function switchTab(tab) {
   }
   if (tab === 'reglages') {
     try { majUiPause(); } catch (_) {}
+    try { majUiSemaineType(); } catch (_) {}
     try { majUiPush(); } catch (_) {}
     try { majUiGoogleHealth(); } catch (_) {}
     try { majUiCockpitPref(); } catch (_) {}
@@ -8495,6 +8496,29 @@ var _MA_WIN = { semaine: 'j7', mois: 'j28', '3mois': 'j90', '6mois': 'j180', '9m
 var _MA_DAYS = { semaine: 7, mois: 28, '3mois': 90, '6mois': 180, '9mois': 270, annee: 365 };
 var _MA_PLABEL = { semaine: 'cette semaine', mois: 'ce mois-ci', '3mois': 'ces 3 mois', '6mois': 'ces 6 mois', '9mois': 'ces 9 mois', annee: 'cette année' };
 var _MA_PERIODS = ['semaine', 'mois', '3mois', '6mois', '9mois', 'annee'];
+// Réglages : bascule « semaine d'entraînement » (calendaire / glissante).
+function majUiSemaineType() {
+  var v = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.semaine_type === 'glissant') ? 'glissant' : 'calendaire';
+  var cal = document.getElementById('sem-btn-cal'), gli = document.getElementById('sem-btn-gli');
+  function base(b, active) { if (!b) return; b.style.borderColor = active ? 'var(--accent)' : 'var(--border)'; b.style.background = active ? 'var(--accent-a10,rgba(26,95,255,.10))' : 'var(--surface2)'; b.style.color = active ? 'var(--accent)' : 'var(--text)'; }
+  base(cal, v === 'calendaire'); base(gli, v === 'glissant');
+}
+async function setSemaineType(v) {
+  v = (v === 'glissant') ? 'glissant' : 'calendaire';
+  try { if (dernierAppData) dernierAppData.semaine_type = v; } catch (e) {}
+  majUiSemaineType();
+  try { if (typeof maRenderData === 'function') maRenderData(); } catch (e) {}
+  try { if (typeof renderAujourdhui === 'function' && dernierAppData) renderAujourdhui(dernierAppData); } catch (e) {}
+  try { if (typeof showToast === 'function') showToast('✅ Préférence enregistrée'); } catch (e) {}
+  try { if (athlete) await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSemaineType', athlete_id: athlete.athlete_id, valeur: v }) }); } catch (e) {}
+}
+// Réglage « semaine d'entraînement » : calendaire (lundi→dim., reset lundi) ou glissante (7 j).
+function _maSemaineType() { try { return (dernierAppData && dernierAppData.semaine_type === 'glissant') ? 'glissant' : 'calendaire'; } catch (e) { return 'calendaire'; } }
+function _maLastMondayISO() { var d = new Date(); d.setHours(0, 0, 0, 0); var off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+// Clé de fenêtre `recent` selon la période (semaine calendaire → 'semaineCal').
+function _maRecentWin(p) { return (p === 'semaine' && _maSemaineType() === 'calendaire') ? 'semaineCal' : _MA_WIN[p]; }
+// Date de coupe pour filtrer par période (semaine calendaire → depuis lundi).
+function _maCut(p) { return (p === 'semaine' && _maSemaineType() === 'calendaire') ? _maLastMondayISO() : _maCutISO(_MA_DAYS[p]); }
 var _MA_RSC = { 1: '#00A854', 2: '#8FBF3F', 3: '#E07800', 4: '#DC3545' };
 function _maE(x) { return (typeof escapeHtml === 'function') ? escapeHtml(String(x == null ? '' : x)) : String(x == null ? '' : x); }
 function _maSvg(p, w) { w = w || 15; return '<svg width="' + w + '" height="' + w + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>'; }
@@ -8633,7 +8657,7 @@ function _maSyntheseBloc(s) {
     + '<div style="font-size:10px;color:var(--text-subtle);text-align:right">Synthèse sur tes 4 dernières semaines (indépendante du filtre de période).</div></div>';
 }
 function _maMuscuResume(data) {
-  var p = _maPeriode, r = (data.recent && data.recent[_MA_WIN[p]]) || {}, days = _MA_DAYS[p];
+  var p = _maPeriode, r = (data.recent && data.recent[_maRecentWin(p)]) || {}, days = _MA_DAYS[p];
   var mot = data.moteur || {};
   var niv = (mot.disponibilite && mot.disponibilite.niveau) || null;
   var VB = { 'Prêt': ['acc', 'var(--accent)', 'Prêt à performer', 'Charge et régularité au rendez-vous, le moteur te voit prêt.'],
@@ -8645,7 +8669,7 @@ function _maMuscuResume(data) {
   var seances = r.seances != null ? r.seances : 0;
   var tMoy = seances ? (Math.round((r.tonnage_kg || 0) / seances / 100) / 10) : null;
   var recs = data.global && data.global.records_par_exo ? data.global.records_par_exo : {};
-  var cut = _maCutISO(days), nRec = 0;
+  var cut = _maCut(p), nRec = 0;
   Object.keys(recs).forEach(function (k) { var d = _maFRtoDate(recs[k].date); if (d) { var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (iso >= cut) nRec++; } });
   var kpi = [
     ['Tonnage moyen', (tMoy != null ? String(tMoy).replace('.', ',') : '—'), 't / séance'],
@@ -8760,7 +8784,7 @@ function _maProgGrp(data) {
 function _maProgSea(data) {
   var sd = data.seances_detail || [];
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
-  var cut = _maCutISO(_MA_DAYS[_maPeriode]);
+  var cut = _maCut(_maPeriode);
   var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd;
   var rs = {}; ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + x.date] = x.valeur; });
   var RSL = { 1: 'Facile', 2: 'Moyen', 3: 'Difficile', 4: 'Très dur' };
@@ -8779,7 +8803,7 @@ function _maProgSea(data) {
 // Dos / Dorsaux / Grand dorsal…) : on somme par mot-clé normalisé, pas par égalité stricte.
 function _maBalance(data) {
   // Séries par muscle sur la période sélectionnée → la balance évolue dans le temps.
-  var r = (data.recent && data.recent[_MA_WIN[_maPeriode]]) || {};
+  var r = (data.recent && data.recent[_maRecentWin(_maPeriode)]) || {};
   var vs = r.series_par_muscle || {};
   function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, ''); }
   // Somme des séries dont le muscle contient un des mots-clés (hors exclusions).
@@ -8857,7 +8881,7 @@ function _maFmtExo(exo) {
   return { nom: exo.nom, s: n + '×' + reps + ' · ' + charge + ' kg' + (rep ? ' · repos ' + rep : '') + (rpe ? ' · RPE ' + rpe : '') };
 }
 function _maMuscuHistorique(data) {
-  var ds = (data.seances_detail || []).filter(function (s) { return (s.date || '') >= _maCutISO(_MA_DAYS[_maPeriode]); });
+  var ds = (data.seances_detail || []).filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); });
   if (!ds.length) ds = (data.seances_detail || []).slice(0, 6);   // fallback : dernières séances
   var rs = {}; ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + x.date] = x.valeur; });
   if (!ds.length) { _maSet('ma-muscu-historique', _maEmpty('Aucune séance sur la période.')); return; }
@@ -8875,8 +8899,8 @@ function _maMuscuHistorique(data) {
 }
 function maToggleHS(i) { var d = document.getElementById('ma-hs-' + i), c = document.getElementById('ma-hs-chev-' + i); if (d) { var open = d.style.display === 'none'; d.style.display = open ? 'flex' : 'none'; if (c) c.style.transform = open ? 'rotate(180deg)' : ''; } }
 
-function _maCardioAgg(hist, days) {
-  var cut = _maCutISO(days), by = {};
+function _maCardioAgg(hist, days, cutOverride) {
+  var cut = cutOverride || _maCutISO(days), by = {};
   (hist || []).forEach(function (s) {
     if ((s.date || '') < cut) return;
     var t = s.type_cardio || 'autre';
@@ -8888,7 +8912,7 @@ function _maCardioAgg(hist, days) {
 }
 function _maCardioResume(data) {
   var hist = (data.cardio && data.cardio.history) || [];
-  var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode]);
+  var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode));
   var types = Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; });
   var total = types.reduce(function (s, t) { return s + by[t].n; }, 0);
   var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _MA_PLABEL[_maPeriode] : 'Pas encore de cardio') + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' enregistrée' + (total > 1 ? 's' : '') + '. Continue pour bâtir ta base d\'endurance.') : 'Enregistre une séance cardio pour voir tes analyses ici.') + '</div></div></div>';
@@ -8897,7 +8921,7 @@ function _maCardioResume(data) {
     return '<div class="ma-sport"><span class="ma-spic" style="background:' + m[1] + '">' + _maSvg(m[2], 17) + '</span><div class="ma-spmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + o.n + ' sortie' + (o.n > 1 ? 's' : '') + ' · ' + _maHMS(o.duree) + (o.rn ? ' · RPE ' + (Math.round(o.rpe / o.rn * 10) / 10) : '') + '</div></div><div class="ma-spval"><div class="v">' + (Math.round(o.dist * 10) / 10) + ' km</div><div class="u">' + (o.vn ? (Math.round(o.vit / o.vn * 10) / 10) + ' km/h' : '') + '</div></div></div>';
   }).join('') + '</div>') : _maEmpty('Aucune sortie sur la période.');
   // Pas quotidiens sur la période choisie (max 30 barres) + axe daté.
-  var pasCut = _maCutISO(_MA_DAYS[_maPeriode]);
+  var pasCut = _maCut(_maPeriode);
   var pas = (data.pas_quotidiens || []).filter(function (x) { return (x.date || '') >= pasCut; }).slice().sort(function (a, b) { return (a.date < b.date) ? -1 : 1; });
   if (pas.length > 30) pas = pas.slice(pas.length - 30);
   var pasMax = Math.max.apply(null, pas.map(function (y) { return y.pas || 1; }).concat([1]));
@@ -8908,7 +8932,7 @@ function _maCardioResume(data) {
   var chW = _maWeekly(chDict, nwCh, 'sum');
   var chargeHtml = chW.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / sem. · ' + nwCh + ' sem.') + _maChartBlock('Charge (UA)', chW, 'UA', '#0EA5E9', 'rgba(14,165,233,.12)', _maTrendFirst(nwCh), 'Charge cardio = RPE × durée, additionnée par semaine (UA). Le nombre de semaines suit la période choisie. Une montée trop brutale = risque de surmenage.')) : '';
   // Ressenti des sorties cardio (bilan de séance) sur la période — miroir du ressenti muscu.
-  var cCut = _maCutISO(_MA_DAYS[_maPeriode]);
+  var cCut = _maCut(_maPeriode);
   var rsC = (data.analyses && data.analyses.ressenti_cardio) ? data.analyses.ressenti_cardio.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= cCut; }) : [];
   var rsCardioHtml = '';
   if (rsC.length) {
@@ -8924,7 +8948,7 @@ function _maCardioParSport(data) {
   if (!types.length) { _maSet('ma-cardio-detail', _maEmpty('Aucune séance cardio pour l\'instant.')); return; }
   var sel = (_maCardioSport && types.indexOf(_maCardioSport) >= 0) ? _maCardioSport : types[0];
   var m = _maCM(sel);
-  var o = _maCardioAgg(hist, _MA_DAYS[_maPeriode])[sel] || { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0 };
+  var o = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode))[sel] || { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0 };
   // Sélecteur de sport (liste déroulante)
   var sportMenu = '<div id="ma-cx-sport-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">'
     + types.map(function (t, i) { var mm = _maCM(t); return '<div onclick="maSetCardioSport(\'' + t + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (t === sel ? 'background:var(--surface2);' : '') + '"><span style="color:' + mm[1] + '">' + _maSvg(mm[2], 16) + '</span><span style="font-weight:700;font-size:13px">' + _maE(mm[0]) + '</span><span style="margin-left:auto;font-size:11px;color:var(--text-subtle)">' + allBy[t].n + ' sorties</span></div>'; }).join('') + '</div>';
@@ -8941,7 +8965,7 @@ function _maCardioParSport(data) {
     + METRICS.map(function (x, i) { return '<div onclick="maSetCardioMetric(\'' + x[0] + '\')" style="padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (x[0] === curM[0] ? 'color:#0EA5E9;background:var(--surface2);' : '') + '">' + x[1] + ' (' + x[2] + ')</div>'; }).join('') + '</div>';
   var lastPS = wk.length ? wk[wk.length - 1] : 0;
   var chart = wk.some(function (v) { return v > 0; }) ? ('<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip" style="cursor:pointer" onclick="maToggleMenu(\'ma-cx-metric-menu\')">' + curM[1] + ' ▾</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#0EA5E9">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/sem.</span></span></div>' + metricMenu + _maArea(wk, m[1], 'rgba(14,165,233,.12)') + _maTrendAxis(nwPS) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée. ' + nwPS + ' semaines (suit la période choisie) · chaque point = 1 semaine.')) : '';
-  var lastArr = sesss.filter(function (s) { return (s.date || '') >= _maCutISO(_MA_DAYS[_maPeriode]); }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
+  var lastArr = sesss.filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
   var last = lastArr.slice(0, 6).map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
     var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); if (+s.fc_moy) parts.push(Math.round(s.fc_moy) + ' bpm');
@@ -8953,7 +8977,7 @@ function maSetCardioSport(t) { _maCardioSport = t; try { _maCardioParSport(derni
 function maSetCardioMetric(m) { _maCardioMetric = m; try { _maCardioParSport(dernierAppData); } catch (e) {} }
 function _maCardioTendances(data) {
   var hist = (data.cardio && data.cardio.history) || [];
-  var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode]);
+  var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode));
   var types = Object.keys(by).sort(function (a, b) { return by[b].dist - by[a].dist; });
   if (!types.length) { _maSet('ma-cardio-tendances', _maEmpty('Pas encore de cardio à analyser sur la période.')); return; }
   var mx = Math.max.apply(null, types.map(function (t) { return by[t].dist || 0; }).concat([1]));
@@ -8967,7 +8991,7 @@ function _maCardioTendances(data) {
 }
 function _maCardioHistorique(data) {
   var all = (data.cardio && data.cardio.history) || [];
-  var hist = all.filter(function (s) { return (s.date || '') >= _maCutISO(_MA_DAYS[_maPeriode]); });
+  var hist = all.filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); });
   if (!hist.length) hist = all.slice(0, 20);
   if (!hist.length) { _maSet('ma-cardio-historique', _maEmpty('Aucune séance cardio enregistrée.')); return; }
   hist = hist.slice(0, 25);
@@ -8979,9 +9003,9 @@ function _maCardioHistorique(data) {
   _maSet('ma-cardio-historique', '<div class="ma-card">' + rows + '</div>');
 }
 function _maCroise(data) {
-  var r = (data.recent && data.recent[_MA_WIN[_maPeriode]]) || {};
+  var r = (data.recent && data.recent[_maRecentWin(_maPeriode)]) || {};
   var muscuT = r.tonnage_kg || 0;
-  var hist = (data.cardio && data.cardio.history) || [], cut = _maCutISO(_MA_DAYS[_maPeriode]), cardioUA = 0;
+  var hist = (data.cardio && data.cardio.history) || [], cut = _maCut(_maPeriode), cardioUA = 0;
   hist.forEach(function (s) { if ((s.date || '') >= cut && +s.rpe && +s.duree) cardioUA += (+s.rpe) * (+s.duree); });
   var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les 2 comparables
   var tot = muscuUA + cardioUA;
