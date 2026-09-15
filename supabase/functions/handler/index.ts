@@ -1632,8 +1632,12 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const seancesJ7 = recentData.j7?.seances ?? 0
   // séances de la SEMAINE CALENDAIRE (depuis lundi) → l'anneau d'objectif se remet à zéro chaque lundi
   const seancesCetteSemaine = new Set(perfsWeek.map(r => normDate(r.date))).size
-  // séances prévues/semaine : table objectif, colonne seances_semaine
-  const seancesPrevues = Number(objectifRows?.[0]?.seances_semaine) || 0
+  // séances prévues/semaine : valeur explicite (table objectif) sinon DÉRIVÉE du
+  // programme = nombre de séances distinctes (chaque séance ≈ 1×/semaine). Ainsi
+  // l'adhérence « X/N » reflète le vrai programme (issu de l'onboarding ou du builder).
+  const seancesPrevuesExplicite = Number(objectifRows?.[0]?.seances_semaine) || 0
+  const seancesProgramme = new Set((progRows || []).map((r: any) => String(r.seance_id ?? '')).filter(Boolean)).size
+  const seancesPrevues = seancesPrevuesExplicite || seancesProgramme
   const streakSemaines = computeStreak(dates, now)
   const regulariteObj = {
     seances_j7: seancesJ7,
