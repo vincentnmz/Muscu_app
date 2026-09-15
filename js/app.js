@@ -6944,7 +6944,6 @@ function switchTab(tab) {
   if (tab === 'reglages') {
     try { majUiPause(); } catch (_) {}
     try { majUiSemaineType(); } catch (_) {}
-    try { majUiProgAuto(); } catch (_) {}
     try { majUiPush(); } catch (_) {}
     try { majUiGoogleHealth(); } catch (_) {}
     try { majUiCockpitPref(); } catch (_) {}
@@ -8605,18 +8604,6 @@ async function setSemaineType(v) {
   try { if (typeof renderAujourdhui === 'function' && dernierAppData) renderAujourdhui(dernierAppData); } catch (e) {}
   try { if (typeof showToast === 'function') showToast('✅ Préférence enregistrée'); } catch (e) {}
   try { if (athlete) await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSemaineType', athlete_id: athlete.athlete_id, valeur: v }) }); } catch (e) {}
-}
-// Réglage « proposition automatique de programme » (drapeau prog_auto_off inversé).
-function majUiProgAuto() {
-  var off = !!(typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.prog_auto_off);
-  var on = document.getElementById('prog-auto-on'), o = document.getElementById('prog-auto-off');
-  function base(b, active) { if (!b) return; b.style.borderColor = active ? 'var(--accent)' : 'var(--border)'; b.style.background = active ? 'var(--accent-a10,rgba(26,95,255,.10))' : 'var(--surface2)'; b.style.color = active ? 'var(--accent)' : 'var(--text)'; }
-  base(on, !off); base(o, off);
-}
-function setProgAuto(on) {
-  _savePref('prog_auto_off', on ? 0 : 1);
-  majUiProgAuto();
-  try { if (typeof showToast === 'function') showToast(on ? '✅ Proposition activée' : '✅ Tu gères ton programme'); } catch (e) {}
 }
 // Réglage « semaine d'entraînement » : calendaire (lundi→dim., reset lundi) ou glissante (7 j).
 function _maSemaineType() { try { return (dernierAppData && dernierAppData.semaine_type === 'glissant') ? 'glissant' : 'calendaire'; } catch (e) { return 'calendaire'; } }
@@ -11175,6 +11162,9 @@ function ouvrirGenProgramme() {
   if (exercicesData.length === 0 && typeof chargerExercices === 'function') { chargerExercices().then(_genRender); } else { _genRender(); }
 }
 function fermerGenProgramme() { var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; }
+// « Je gère mon programme moi-même » → coupe la proposition auto à la connexion.
+// (Reste toujours accessible via le bouton « ✨ Novalyz me propose un programme ».)
+function _genRefuse() { _savePref('prog_auto_off', 1); fermerGenProgramme(); try { showToast('OK, tu gères ton programme. Tu pourras le générer depuis Entraînement quand tu veux.'); } catch (e) {} }
 function _genSetObjectif(v) { _genState.objectif = v; _genState.step = 2; _genRender(); }
 function _genSetJours(v) { _genState.jours = Number(v); _genState.step = 3; _genRender(); }
 function _genSetNiveau(v) { _genState.niveau = v; _genRender(); }
@@ -11194,7 +11184,8 @@ function _genRender() {
   var body = '';
   if (st.step === 1) {
     body = '<h2 style="font-size:18px;margin:2px 0 4px">Ton objectif ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Ça règle les répétitions, la charge cible et le repos.</div>'
-      + Object.keys(_GEN_OBJ).map(function (k) { var o = _GEN_OBJ[k]; return _genCard('_genSetObjectif(\'' + k + '\')', st.objectif === k, o.label, o.hint + ' · ' + o.s + '×' + o.rmin + '-' + o.rmax + ' · ' + o.pct + '% · RPE ' + o.rpe); }).join('');
+      + Object.keys(_GEN_OBJ).map(function (k) { var o = _GEN_OBJ[k]; return _genCard('_genSetObjectif(\'' + k + '\')', st.objectif === k, o.label, o.hint + ' · ' + o.s + '×' + o.rmin + '-' + o.rmax + ' · ' + o.pct + '% · RPE ' + o.rpe); }).join('')
+      + '<button onclick="_genRefuse()" style="width:100%;margin-top:6px;background:none;border:none;color:var(--text-subtle);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
   } else if (st.step === 2) {
     body = '<h2 style="font-size:18px;margin:2px 0 4px">Combien de jours par semaine ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Détermine la structure de tes séances.</div>'
       + _GEN_JOPT.map(function (j) { return _genCard('_genSetJours(' + j[0] + ')', st.jours === j[0], j[1], j[2]); }).join('');
