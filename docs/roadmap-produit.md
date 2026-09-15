@@ -64,8 +64,8 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 8. **Aujourd'hui** (état → séance → point d'attention → action) — ✅
 9. **Mon entraînement** (prévu → réalisé → effet) — ✅
 10. **Mes analyses** (chiffres + interprétation) — 🟡 (interprétation en place, à étoffer)
-11. **Mon état** (donnée / analyse / recommandation distinctes) — 🟡 (écran État existe,
-    distinction à renforcer)
+11. **Mon état** (donnée / analyse / recommandation distinctes) — ✅ (par signal :
+    donnée → 🔎 analyse → 💡 conseil, réutilise les alertes du moteur ; + bandeau fiabilité)
 12. **Programme proposé par Novalyz** (objectif+jours+niveau→structure) — ✅ (onboarding + génération)
 13. **Programme adaptatif** (ajustements depuis données réelles) — ⬜ (après moteur fiable)
 
@@ -117,6 +117,9 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 - **Notifs intelligentes (#29)** : action cron `cronPushAlertes` (réutilise getAppData ;
   push des alertes « haute » dont l'absence ; anti-spam par type/semaine). Tap → Accueil.
   Cron pg_cron planifié (8h UTC, voir `supabase/cron-alertes.sql`) + testé (pushed OK).
+- **P1-11 Mon état** : chaque signal bien-être (sommeil/fatigue/douleur) affiche
+  donnée → 🔎 analyse → 💡 conseil (réutilise les alertes du moteur, zéro nouveau calcul)
+  + bandeau de fiabilité des données (moteur.confiance).
 - **Réglages** : semaine calendaire/glissante · « Revoir l'intro ».
 
 ## 🚚 Distribution / MAJ auto

@@ -10722,8 +10722,17 @@ function renderEtat(data) {
         { key: 'fatigue', label: 'Fatigue musculaire', invert: true },
         { key: 'douleur', label: 'Douleur', invert: true }
       ];
+      // Analyse → reco PAR SIGNAL : réutilise les alertes du moteur (type → title/action).
+      // Aucun nouveau calcul : le moteur a déjà évalué sommeil/fatigue/douleur via ses seuils.
+      var alertByType = {};
+      (data.alertes_centre || []).forEach(function (a) { if (a && a.type && !alertByType[a.type]) alertByType[a.type] = a; });
+      var SIG2ALERT = { sommeil: 'sommeil', fatigue: 'fatigue', douleur: 'douleur' };
+      // Fiabilité des données (moteur.confiance).
+      var CONF = { haute: ['élevée', 'var(--good)'], moyenne: ['moyenne', 'var(--warn)'], faible: ['faible', 'var(--danger)'], non_interpretable: ['insuffisante', 'var(--text-muted)'] };
+      var cf = CONF[m.confiance] || null;
+      var fiabHtml = cf ? '<div style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-muted)"><span style="width:8px;height:8px;border-radius:999px;background:' + cf[1] + ';flex:none"></span>Fiabilité des données : <b style="color:' + cf[1] + '">' + cf[0] + '</b></div>' : '';
       if (!be0) {
-        elW2.innerHTML = '<div style="padding:16px" class="et-muted">Aucun questionnaire récent. Remplis ton bien-être après ta prochaine séance pour suivre ton état.</div>';
+        elW2.innerHTML = fiabHtml + '<div style="padding:16px" class="et-muted">Aucun questionnaire récent. Remplis ton bien-être après ta prochaine séance pour suivre ton état.</div>';
       } else {
         var rowsHtml = ROWS.map(function (r) {
           var raw = be0[r.key];
@@ -10734,17 +10743,28 @@ function renderEtat(data) {
           var valTxt = has ? ((WQ_ANSWERS[r.key] && WQ_ANSWERS[r.key][n]) || (n + '/5')) : '—';
           var pips = '';
           for (var k = 0; k < 5; k++) { pips += '<i class="et-pip"' + (has && k < n ? ' style="background:' + col2 + '"' : '') + '></i>'; }
-          return '<div class="et-er"><span class="et-ic"><svg width="17" height="17" viewBox="0 0 24 24">' + ICO[r.key] + '</svg></span>'
+          var dataRow = '<div class="et-er"><span class="et-ic"><svg width="17" height="17" viewBox="0 0 24 24">' + ICO[r.key] + '</svg></span>'
             + '<span class="et-lab">' + r.label + '</span>'
             + '<span class="et-val">' + esc(valTxt) + '</span>'
             + '<span class="et-scale">' + pips + '</span></div>';
+          // Analyse + reco si le moteur a flaggé ce signal.
+          var al = alertByType[SIG2ALERT[r.key]];
+          var anz = '';
+          if (al && has) {
+            var sev = (al.severity === 'haute') ? 'var(--danger)' : 'var(--warn)';
+            anz = '<div style="margin:2px 0 8px 30px;padding:8px 11px;border-left:2px solid ' + sev + ';background:var(--surface2);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:3px">'
+              + '<span style="font-size:11.5px;color:var(--text)"><b style="color:' + sev + '">🔎 Analyse —</b> ' + esc(al.title || '') + '</span>'
+              + (al.action ? '<span style="font-size:11.5px;color:var(--text-muted)"><b>💡 Conseil —</b> ' + esc(al.action) + '</span>' : '')
+              + '</div>';
+          }
+          return dataRow + anz;
         }).join('');
         var zone = '';
         var doul = Number(be0.douleur);
         if (!isNaN(doul) && doul > 1 && be0.zone) {
           zone = '<div class="et-er"><span class="et-lab" style="font-weight:600;color:var(--text-muted);font-size:11.5px">📍 Zone : <b style="color:var(--text)">' + esc(be0.zone) + '</b></span></div>';
         }
-        elW2.innerHTML = rowsHtml + zone;
+        elW2.innerHTML = fiabHtml + rowsHtml + zone;
       }
     }
   } catch (e) {}
