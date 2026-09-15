@@ -1,77 +1,110 @@
 # Novalyz — Roadmap produit & journal de livraison
 
-> Fichier de suivi **durable** (le contexte de session peut être compacté).
-> Source : la roadmap envoyée par le porteur + les décisions prises en session.
+> **Fichier de suivi durable** (le contexte de session peut être compacté).
+> Source de vérité = roadmap envoyée par le porteur (reproduite ci-dessous, condensée
+> mais fidèle) + décisions de session. **À mettre à jour à chaque item livré.**
 > Voir aussi [`vision-produit.md`](./vision-produit.md), [`backlog-app.md`](./backlog-app.md),
 > [`roadmap-beta.md`](./roadmap-beta.md).
+>
+> Statuts : ✅ fait · 🟡 partiel / en place à améliorer · 🔵 en cours · ⬜ à faire.
 
-Boussole (ne pas dériver) : **① comment m'entraîner · ② est-ce bien fait ·
-③ comment progresser** (données + ressenti). La boucle : Objectif → Programme →
-Exécution → Données → Moteur → Analyse → Contexte → Recommandation → Action → Progression.
+## 0. Vision
 
-Méthode de travail : Audit → Plan → Valider → Implémenter (isolé) → Tester
-(`npm test`, `node --check`, `build:www`) → 1 commit → APK Dev. `index.ts` =
-déploiement **manuel** sur Supabase (ou via l'outillage Supabase avec accord).
+Faire évoluer Novalyz d'une app qui **affiche des données** vers une **cellule de
+performance**. Promesse **Solo** : « Je t'aide à mieux t'entraîner, comprendre si tu
+progresses et savoir quoi améliorer. » **Coach** : « Je t'aide à suivre tes athlètes,
+comprendre leur état et prendre de meilleures décisions. »
 
----
+Cœur = la chaîne : **Objectif → Programme → Exécution → Données → Analyse → Contexte →
+Recommandation → Action → Progression**. L'app doit répondre à : ① Comment m'entraîner ?
+② Est-ce bien fait ? ③ Quoi améliorer ?
 
-## ✅ Livré (branche `claude/novalyz-player-profile-mockups-g4bock`)
+## Règle absolue de développement
 
-**Analyses & fiabilité**
-- Lecture Novalyz (synthèse en phrases) muscu · cardio · croisé, fenêtre fixe 4 sem.
-- Centre d'alertes athlète (modèle unifié, état « lu » durable).
-- Calibrage de la sévérité du verdict (moteur) : fatigue en moyenne récente.
-- Période « Semaine » = semaine **calendaire** (reset lundi) + réglage calendaire/glissante.
-- Progression fiable : tendance robuste (moyenne début vs fin, fini le « +282% »),
-  « Par exercice » filtré par période, ressenti « Par séance » (repli par date).
-
-**Écrans**
-- Accueil « Aujourd'hui » : état → séance → point d'attention → action.
-- Entraînement : suivi séances (prévu/réalisé) fusionné dans le sélecteur ; détail
-  des séances en pastilles (composant partagé avec l'historique Analyses).
-
-**Programme (le cadre — ①)**
-- Builder athlète complet : séances, exos, supersets, séries/reps/repos,
-  **jour conseillé** (non pénalisant), **charge cible % du 1RM**, **RPE cible**.
-- **Onboarding 1re connexion** : explication de l'app + parcours par profil
-  (Novalyz me construit un programme / je gère le mien / j'ai un coach — détecté
-  via `coach_id`). Déclenché **instantanément à l'inscription**. Drapeaux
-  `onboarding_vu` / `prog_auto_off` (indicateurs). « Revoir l'intro » dans Réglages.
-- **Programme proposé** (génération déterministe : objectif + jours + niveau →
-  vrais exercices du catalogue, avec jours + cibles).
-
-**Est-ce bien fait — ②**
-- Exécution vs cible (charge %1RM tol ±5% · RPE ±1) : en fin de séance + bloc
-  « Exécution vs cible » dans les Analyses.
-
-**Régularité**
-- Objectif séances/semaine **dérivé du programme** (nb de séances distinctes) →
-  l'adhérence « X/N » reflète le vrai programme.
+Le **code existant = source de vérité**. La roadmap = direction produit, pas archi imposée.
+Pour chaque item : **Audit → Plan → (Validation si choix archi) → Implémentation minimale
+isolée → Tests (unit/intég/régression) → Rapport → 1 commit → STOP.**
+Interdits : refaire une fonctionnalité qui marche · 2ᵉ moteur · dupliquer données ·
+modifier le moteur sans nécessité · IA là où une règle déterministe suffit · mélanger
+plusieurs domaines · refonte visuelle pendant une étape fonctionnelle.
+Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 
 ---
 
-## 🔜 Suite (priorisée, à ajuster avec le porteur)
+## ORDRE DE PRIORITÉ (backbone de travail)
 
-1. **Notifs d'alerte pour l'athlète** — push proactif depuis le centre d'alertes
-   (infra FCM native déjà en place). *(en cours)*
-2. **Lecture Novalyz enrichie** — intégrer « exécution vs cible » dans la synthèse
-   en phrases (backend).
-3. **Montre & capteurs (Google Health)** — sommeil / BPM / pas → nourrit le moteur
-   (⚠️ doublons de pas à gérer, cf. backlog C1).
-4. **Objectif de séances explicite** (override) + séances hybrides muscu/cardio +
-   catalogue d'exos cardio.
-5. **État ▸ onglet Nutrition** (conseils IA selon objectif).
-6. **Contexte de performance** (retour vacances / blessure / deload) fiabilisé.
+### P0 — CERVEAU
+1. **Objectifs** comme colonne vertébrale des analyses — 🟡 (objectif contextualise la
+   Lecture Novalyz / la génération de programme ; structure à étendre au besoin)
+2. **Analyse des données** (données → interprétation en phrases) — ✅ Lecture Novalyz
+   (muscu · cardio · croisé)
+3. **Recommandations** (finding/priority/evidence/reco/confidence/context) — ✅ dans la synthèse
+4. **Contexte de performance** (retour vacances/blessure/deload, fiabilité affichée) — 🟡
+   (contexte_tag / acwr_fiable existent ; UI dédiée à renforcer)
+5. **Fiabilité** des analyses — 🟡 (confiance/reliability exposés ; tendances fiabilisées)
+6. **Alertes** (centre unifié type/severity/source/evidence/context/reliability/read/action) — ✅
+
+### P1 — SOLO
+7. **Programme côté athlète** (builder manuel, réutiliser l'existant) — ✅ (jours, charge
+   %1RM, RPE cible, supersets, prévu vs réalisé)
+8. **Aujourd'hui** (état → séance → point d'attention → action) — ✅
+9. **Mon entraînement** (prévu → réalisé → effet) — ✅
+10. **Mes analyses** (chiffres + interprétation) — 🟡 (interprétation en place, à étoffer)
+11. **Mon état** (donnée / analyse / recommandation distinctes) — 🟡 (écran État existe,
+    distinction à renforcer)
+12. **Programme proposé par Novalyz** (objectif+jours+niveau→structure) — ✅ (onboarding + génération)
+13. **Programme adaptatif** (ajustements depuis données réelles) — ⬜ (après moteur fiable)
+
+### P2 — DONNÉES SPORTIVES
+14. Cardio (section dédiée) — 🟡 (saisie + analyses cardio existent) · 15. GPS type Strava — ⬜
+16. Activités structurées — ⬜ · 17. Multi-sources — ⬜ · 18. Déduplication (activités + pas) — ⬜
+19. Watch / Health Connect — ⬜ · 20. Vélo — ⬜ · 21. Running/marche — 🟡 · 22. Hyrox — ⬜
+23. Natation — ⬜ · 24. Séances hybrides muscu/cardio — ⬜
+
+### P3 — NUTRITION
+25. Nutrition Solo (dans Mon état, liée à l'objectif) — ⬜ · 26. Analyse nutritionnelle — ⬜
+27. Nutrition Coach — ⬜
+
+### P4 — IA
+28. Coach IA (conversation groundée sur le moteur) — 🟡 (écran conversation en place, IA à brancher)
+29. IA de recommandation / explication — ⬜ · 30. Morphologie IA (photos, premium) — ⬜
+
+### P5 — COACH (phase 2)
+31. Home Coach — 🟡 · 32. Aujourd'hui Coach — ⬜ · 33. Alertes Coach — ⬜
+34. Analyse Coach — 🟡 · 35. Programme Coach — ✅ (existant) · 36. Conversation Coach↔Athlète — 🟡
+
+### P6 — BUSINESS
+37. Premium — ⬜ · 38. Paiement — ⬜ · 39. Rapports mensuels — ⬜ · 40. Emails automatiques — 🟡 (Resend en place)
+
+> **Alertes & notifications (Phase 8 détaillée)** : 28. Centre d'alertes ✅ ·
+> 29. **Notifications intelligentes** (push seulement si assez important) — 🔵 **en cours** ·
+> 30. Notifications Coach ⬜.
+
+### Navigation cible (direction, à ne pas coder telle quelle sans audit)
+`AUJOURD'HUI · MON ENTRAÎNEMENT · CARDIO/HYROX · MES ANALYSES · MON ÉTAT · PROFIL` (+ nav Coach distincte).
+
+---
+
+## ✅ Journal de livraison (branche `claude/novalyz-player-profile-mockups-g4bock`)
+
+- **P0-2/3/5** Lecture Novalyz muscu/cardio/croisé (fenêtre fixe 4 sem.) + fiabilité tendances
+  (tendance robuste, « Par exercice » filtré période, ressenti « Par séance »).
+- **P0-4/5** Calibrage sévérité du verdict (fatigue en moyenne récente).
+- **P0-6** Centre d'alertes athlète (modèle unifié + état « lu » durable).
+- **P1-8** Écran Aujourd'hui (état → séance → point d'attention → action).
+- **P1-9** Mon entraînement (prévu/réalisé fusionné au sélecteur, détail en pastilles partagé).
+- **P1-7** Builder programme athlète complet : jour conseillé (non pénalisant), charge cible
+  **% du 1RM**, RPE cible.
+- **② Est-ce bien fait** : exécution vs cible (charge %1RM ±5 % · RPE ±1) en fin de séance + Analyses.
+- **P1-12** Onboarding 1re connexion (explication + parcours par profil coach/solo) + **programme
+  proposé** (génération déterministe objectif/jours/niveau). Déclenché à l'inscription.
+- **Régularité** : objectif séances/sem dérivé du programme.
+- **Réglages** : semaine calendaire/glissante · « Revoir l'intro ».
 
 ## 🚚 Distribution / MAJ auto
-- **Play Store — test interne** = vraie solution d'auto-update (compte dev en
-  validation d'identité Google). Quand validé : build **release signé (AAB)** + fiche.
-- En attendant : **PWA** (web, auto via Service Worker) ou **bannière « MAJ dispo »**
-  in-app (compare la version installée à la Release `novalyz-apk-dev`).
-
-## 🔵 Coach (phase 2)
-Rendu complet de la partie coach (accueil = tous ses athlètes, alertes à traiter,
-séance à faire, état/bien-être, analyses, conversation). Voir `backlog-app.md` B.
+- **Play Store — test interne** = vraie solution d'auto-update (compte dev en validation Google).
+  Quand validé : build **release signé (AAB)** + fiche.
+- En attendant : **PWA** (web, auto via Service Worker) ou **bannière « MAJ dispo »** in-app.
 
 ---
-_Journal maintenu au fil des livraisons. Cocher/mettre à jour à chaque lot._
+_Mettre à jour ce fichier à chaque item livré (cocher le statut + ligne de journal)._
