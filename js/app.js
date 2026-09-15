@@ -7775,7 +7775,7 @@ const WELLNESS_CONFIG = {
 // Valeur "sans douleur" = 5 (Aucune). Zone s'affiche quand douleur < 5.
 const WELLNESS_NO_PAIN_VAL = '1';
 
-const wellnessState = { sommeil: null, energie: null, fatigue: null, douleur: null, zone: null, ressenti: null };
+const wellnessState = { sommeil: null, energie: null, fatigue: null, motivation: null, douleur: null, zone: null, ressenti: null };
 
 // ── Questionnaires (Phase 1) ────────────────────────────────────────────────
 // DEUX questionnaires distincts, à DEUX moments :
@@ -7798,7 +7798,7 @@ function _bienEtreFaitAujourdhui() {
     var be = (dernierAppData && Array.isArray(dernierAppData.bien_etre) && dernierAppData.bien_etre[0]) ? dernierAppData.bien_etre[0] : null;
     if (!be || !be.date) return false;
     // « fait » = au moins un signal readiness renseigné aujourd'hui
-    var hasReadiness = ['sommeil', 'energie', 'fatigue'].some(function (k) { return be[k] != null && be[k] !== '' && !isNaN(Number(be[k])); });
+    var hasReadiness = ['sommeil', 'energie', 'fatigue', 'motivation'].some(function (k) { return be[k] != null && be[k] !== '' && !isNaN(Number(be[k])); });
     return hasReadiness && _normDateDDMM(be.date) === _normDateDDMM(_todayLocalStr());
   } catch (e) { return false; }
 }
@@ -7850,7 +7850,7 @@ function ouvrirEtatDuJour(opts) {
   _wqMode = 'etat';
   _wqDate = opts.date || null;
   _wqResetForm();
-  _wqShow(['wqb-sommeil', 'wqb-energie', 'wqb-fatigue']);
+  _wqShow(['wqb-sommeil', 'wqb-fatigue', 'wqb-motivation']);
   var title = document.getElementById('wq-title'); if (title) title.textContent = 'Ton état du jour';
   var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = _wqThen ? 'Avant de commencer · 20 secondes' : 'Comment tu te sens aujourd’hui ? · 20 secondes';
   var footer = document.getElementById('wq-footer');
@@ -7873,7 +7873,7 @@ function _wqPrefillEtat() {
   try {
     if (!_bienEtreFaitAujourdhui()) return;
     var be = dernierAppData.bien_etre[0];
-    ['sommeil', 'energie', 'fatigue'].forEach(function (k) {
+    ['sommeil', 'energie', 'fatigue', 'motivation'].forEach(function (k) {
       var v = be[k];
       if (v == null || v === '' || isNaN(Number(v))) return;
       var cont = document.getElementById('wq-' + k); if (!cont) return;
@@ -7893,7 +7893,8 @@ async function enregistrerEtatDuJour() {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveBienEtre', athlete_id: athlete.athlete_id, date: dateEnvoi, seance_id: null,
-        sommeil: wellnessState.sommeil, energie: wellnessState.energie, fatigue: wellnessState.fatigue
+        sommeil: wellnessState.sommeil, energie: wellnessState.energie, fatigue: wellnessState.fatigue,
+        motivation: wellnessState.motivation
       })
     });
     showToast('État du jour enregistré ✅');
@@ -8098,6 +8099,7 @@ async function _envoyerWellness(seanceId, dateSeance) {
         sommeil:    wellnessState.sommeil,
         energie:    wellnessState.energie,
         fatigue:    wellnessState.fatigue,
+        motivation: wellnessState.motivation,
         douleur:    wellnessState.douleur,
         zone:       wellnessState.zone,
         ressenti:   wellnessState.ressenti,
@@ -8144,6 +8146,7 @@ function _construireLignesSeance() {
 function _wellnessPayload(seanceId, dateSeance) {
   return { action: 'saveBienEtre', athlete_id: athlete.athlete_id, date: dateSeance, seance_id: seanceId,
     sommeil: wellnessState.sommeil, energie: wellnessState.energie, fatigue: wellnessState.fatigue,
+    motivation: wellnessState.motivation,
     douleur: wellnessState.douleur, zone: wellnessState.zone, ressenti: wellnessState.ressenti,
     note: (document.getElementById('wq-note') ? document.getElementById('wq-note').value.trim() : '') };
 }
@@ -10486,14 +10489,14 @@ function renderAujourdhui(data) {
         ressenti: '<path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/>',
         energie: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>',
         fatigue: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>',
+        motivation: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/><path d="M12 22c3 0 5-2 5-5"/>',
         douleur: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
       };
+      // Point du jour = ce qu'on renseigne le MATIN (sommeil/fatigue/motivation).
       var CELLS = [
         { key: 'sommeil', nm: 'Sommeil', invert: false },
-        { key: 'ressenti', nm: 'Mental', invert: false },
-        { key: 'energie', nm: 'Énergie', invert: false },
         { key: 'fatigue', nm: 'Fatigue', invert: true },
-        { key: 'douleur', nm: 'Douleurs', invert: true }
+        { key: 'motivation', nm: 'Motivation', invert: false }
       ];
       elG.innerHTML = CELLS.map(function (c) {
         var raw = be0 ? be0[c.key] : null;
@@ -10680,7 +10683,7 @@ function renderEtat(data) {
       var byDate = {};
       beArr.forEach(function (b) { if (b && b.date) byDate[b.date] = b; });
       var DIMS = [
-        { key: 'sommeil', invert: false }, { key: 'energie', invert: false },
+        { key: 'sommeil', invert: false }, { key: 'energie', invert: false }, { key: 'motivation', invert: false },
         { key: 'fatigue', invert: true }, { key: 'douleur', invert: true }, { key: 'ressenti', invert: false }
       ];
       var JOURS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
@@ -10713,14 +10716,16 @@ function renderEtat(data) {
         ressenti: '<path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/>',
         energie: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>',
         fatigue: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>',
+        motivation: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/><path d="M12 22c3 0 5-2 5-5"/>',
         douleur: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
       };
+      // Matin : sommeil/fatigue/motivation. 'post' = renseigné APRÈS la séance (bilan).
       var ROWS = [
         { key: 'sommeil', label: 'Sommeil', invert: false },
-        { key: 'ressenti', label: 'Ressenti', invert: false },
-        { key: 'energie', label: 'Énergie', invert: false },
         { key: 'fatigue', label: 'Fatigue musculaire', invert: true },
-        { key: 'douleur', label: 'Douleur', invert: true }
+        { key: 'motivation', label: 'Motivation', invert: false },
+        { key: 'ressenti', label: 'Ressenti (difficulté séance)', invert: false, post: true },
+        { key: 'douleur', label: 'Douleur', invert: true, post: true }
       ];
       // Analyse → reco PAR SIGNAL : réutilise les alertes du moteur (type → title/action).
       // Aucun nouveau calcul : le moteur a déjà évalué sommeil/fatigue/douleur via ses seuils.
@@ -10740,7 +10745,7 @@ function renderEtat(data) {
           var n = has ? Number(raw) : 0;
           var pos = has ? wqPositif({ invert: r.invert }, raw) : null;
           var col2 = (pos != null) ? (pos >= 4 ? 'var(--good)' : pos >= 3 ? 'var(--warn)' : 'var(--danger)') : 'var(--border)';
-          var valTxt = has ? ((WQ_ANSWERS[r.key] && WQ_ANSWERS[r.key][n]) || (n + '/5')) : '—';
+          var valTxt = has ? ((WQ_ANSWERS[r.key] && WQ_ANSWERS[r.key][n]) || (n + '/5')) : (r.post ? 'après séance' : '—');
           var pips = '';
           for (var k = 0; k < 5; k++) { pips += '<i class="et-pip"' + (has && k < n ? ' style="background:' + col2 + '"' : '') + '></i>'; }
           var dataRow = '<div class="et-er"><span class="et-ic"><svg width="17" height="17" viewBox="0 0 24 24">' + ICO[r.key] + '</svg></span>'
@@ -12753,12 +12758,16 @@ function terminerExercice() {
 //                 fatigue/douleur           → 5 = négatif (barème naturel).
 // On ramène tout sur une échelle « positive » (5 = au top) pour le score.
 // =====================================================================
+// Dimensions PRISES EN COMPTE dans le score bien-être (moyenne des signaux présents).
+// On garde 'energie' (données historiques) ET on ajoute 'motivation' (nouveau matin) :
+// un signal absent est simplement exclu de la moyenne → rétro-compatible.
 const WQ_DIMS = [
-  { key: 'sommeil',  label: 'Sommeil',  invert: false },
-  { key: 'energie',  label: 'Énergie',  invert: false },
-  { key: 'fatigue',  label: 'Fatigue',  invert: true  },
-  { key: 'douleur',  label: 'Douleur',  invert: true  },
-  { key: 'ressenti', label: 'Ressenti', invert: false }
+  { key: 'sommeil',    label: 'Sommeil',    invert: false },
+  { key: 'energie',    label: 'Énergie',    invert: false },
+  { key: 'fatigue',    label: 'Fatigue',    invert: true  },
+  { key: 'motivation', label: 'Motivation', invert: false },
+  { key: 'douleur',    label: 'Douleur',    invert: true  },
+  { key: 'ressenti',   label: 'Ressenti',   invert: false }
 ];
 
 // Réponses textuelles indexées par la note brute 1..5 (barème du questionnaire)
@@ -12766,6 +12775,7 @@ const WQ_ANSWERS = {
   sommeil:  ['—', 'Très mauvais', 'Mauvais', 'Moyen', 'Bon', 'Excellent'],
   energie:  ['—', 'Très faible', 'Faible', 'Normal', 'Élevé', 'Très élevé'],
   fatigue:  ['—', 'Aucune', 'Faible', 'Modérée', 'Importante', 'Très importante'],
+  motivation: ['—', 'Très faible', 'Faible', 'Moyenne', 'Bonne', 'À fond'],
   douleur:  ['—', 'Aucune', 'Légère', 'Modérée', 'Forte', 'Très forte'],
   ressenti: ['—', 'Très difficile', 'Difficile', 'Normale', 'Facile', 'Très facile']
 };

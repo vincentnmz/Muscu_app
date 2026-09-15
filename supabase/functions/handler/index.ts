@@ -1680,7 +1680,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
 
   const bien_etre = (beRows || []).map(r => ({
     date: fmtFR(r.date), sommeil: r.sommeil, energie: r.energie,
-    fatigue: r.fatigue_musculaire, douleur: r.douleur,
+    fatigue: r.fatigue_musculaire, motivation: r.motivation, douleur: r.douleur,
     zone: r.zone_douloureuse, ressenti: r.ressenti_global, note: r.note,
   }))
 
@@ -3636,14 +3636,14 @@ async function handleDeleteCoach(body: any): Promise<Response> {
 }
 
 async function handleSaveBienEtre(body: any): Promise<Response> {
-  const { athlete_id, seance_id, date, sommeil, energie, fatigue, douleur, zone, ressenti, note } = body
+  const { athlete_id, seance_id, date, sommeil, energie, fatigue, motivation, douleur, zone, ressenti, note } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   // colonnes numériques : '' ou texte → null (sinon Postgres rejette tout l'insert)
   const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
   const d = normDate(date) || fmtYMD(new Date())
   const row: any = {
     date: d, seance_id: seance_id || null, athlete_id,
-    sommeil: num(sommeil), energie: num(energie), fatigue_musculaire: num(fatigue), douleur: num(douleur),
+    sommeil: num(sommeil), energie: num(energie), fatigue_musculaire: num(fatigue), motivation: num(motivation), douleur: num(douleur),
     zone_douloureuse: zone != null && zone !== '' ? String(zone) : null,
     ressenti_global: ressenti != null && ressenti !== '' ? String(ressenti) : null,
     note: num(note),

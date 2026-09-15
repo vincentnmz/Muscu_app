@@ -120,6 +120,10 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 - **P1-11 Mon état** : chaque signal bien-être (sommeil/fatigue/douleur) affiche
   donnée → 🔎 analyse → 💡 conseil (réutilise les alertes du moteur, zéro nouveau calcul)
   + bandeau de fiabilité des données (moteur.confiance).
+- **Questionnaire du matin** : recentré sur **Sommeil · Fatigue · Motivation** (nouveau
+  champ `motivation`, colonne DB ajoutée). Accueil « point du jour » et « ressenti 7 j »
+  alignés ; État distingue les signaux du matin des signaux post-séance (ressenti/douleur
+  = « après séance »).
 - **Réglages** : semaine calendaire/glissante · « Revoir l'intro ».
 
 ## 🚚 Distribution / MAJ auto
