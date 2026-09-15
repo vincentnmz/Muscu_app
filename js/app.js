@@ -5838,6 +5838,33 @@ function _cibleTxt(l, withKg) {
   if (l.rpe_cible != null) parts.push('RPE ' + l.rpe_cible);
   return parts.join(' · ');
 }
+// « Est-ce bien fait » : verdict d'exécution vs cible programme (charge %1RM et/ou
+// RPE). Tolérance charge ±5%, RPE ±1. Descriptif (pas de jugement) : 'ok' / 'sous'
+// / 'sur'. `series` = [{charge, reps, rpe}]. Retourne {charge, rpe} ou null.
+function _cibleVerdict(p, series) {
+  if (!p || !series || !series.length) return null;
+  var out = { charge: null, rpe: null };
+  if (p.charge_pct_1rm != null) {
+    var tgt = _cibleKg(p.exercice, p.charge_pct_1rm);
+    var real = Math.max.apply(null, series.map(function (s) { return Number(s.charge) || 0; }));
+    if (tgt && real) { var d = (real - tgt) / tgt; out.charge = { tgt: tgt, real: real, v: (Math.abs(d) <= 0.05 ? 'ok' : (d < 0 ? 'sous' : 'sur')) }; }
+  }
+  if (p.rpe_cible != null) {
+    var rpes = series.map(function (s) { return Number(s.rpe) || 0; }).filter(function (x) { return x > 0; });
+    if (rpes.length) { var mr = Math.round(rpes.reduce(function (a, b) { return a + b; }, 0) / rpes.length); var dr = mr - Number(p.rpe_cible); out.rpe = { tgt: Number(p.rpe_cible), real: mr, v: (Math.abs(dr) <= 1 ? 'ok' : (dr < 0 ? 'sous' : 'sur')) }; }
+  }
+  return (out.charge || out.rpe) ? out : null;
+}
+// Rendu HTML des lignes charge/RPE d'un verdict (réutilisé fin de séance + Analyses).
+var _CIBLE_CH = { ok: ['var(--good)', 'dans la cible'], sous: ['var(--warn)', 'sous la cible'], sur: ['var(--warn)', 'au-dessus'] };
+var _CIBLE_RP = { ok: ['var(--good)', 'effort conforme'], sous: ['var(--text-muted)', 'plus facile que prévu'], sur: ['var(--warn)', 'plus dur que prévu'] };
+function _cibleVerdictHtml(vc) {
+  if (!vc) return '';
+  var parts = [];
+  if (vc.charge) parts.push('<span style="color:' + _CIBLE_CH[vc.charge.v][0] + '">🎯 Charge ' + vc.charge.real + ' kg / cible ≈ ' + vc.charge.tgt + ' kg — ' + _CIBLE_CH[vc.charge.v][1] + '</span>');
+  if (vc.rpe) parts.push('<span style="color:' + _CIBLE_RP[vc.rpe.v][0] + '">RPE ' + vc.rpe.real + ' / cible ' + vc.rpe.tgt + ' — ' + _CIBLE_RP[vc.rpe.v][1] + '</span>');
+  return parts.length ? '<div style="font-size:12px;margin-top:3px;display:flex;flex-direction:column;gap:2px;font-weight:600">' + parts.join('') + '</div>' : '';
+}
 function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec, groupeId, chargePct, rpeCible) {
   const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
   if (!ligne) return;
@@ -8293,12 +8320,15 @@ async function afficherProgrammeVsRealise(seanceType) {
     if (nonFait) { statut = '⚪ Non fait'; couleur = 'var(--text-muted)'; }
     else if (seriesOk && repsOk) { statut = '✅ Objectif atteint'; couleur = 'var(--success)'; }
     else { statut = '🔴 Insuffisant'; couleur = 'var(--danger)'; }
+    var cibleTxt = _cibleTxt(p, true);
+    var vcHtml = _cibleVerdictHtml(_cibleVerdict(p, exoRealise ? exoRealise.series : []));
     return `
       <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px;border-left:3px solid ${couleur}">
         <div style="font-size:13px;font-weight:700">${p.exercice}</div>
-        <div style="font-size:12px;color:var(--text-muted)">Prévu: ${p.series_prevues} séries · ${p.reps_mini}-${p.reps_max} reps</div>
+        <div style="font-size:12px;color:var(--text-muted)">Prévu: ${p.series_prevues} séries · ${p.reps_mini}-${p.reps_max} reps${cibleTxt ? ' · ' + cibleTxt : ''}</div>
         <div style="font-size:12px">Réalisé: <strong>${seriesFaites} séries · ~${repsMoy} reps</strong></div>
         <div style="font-size:12px;color:${couleur};font-weight:700">${statut}</div>
+        ${vcHtml}
       </div>`;
   }).join('');
 }
@@ -8719,6 +8749,31 @@ function _maSyntheseBloc(s) {
     + '<div class="ma-card" style="display:flex;flex-direction:column;gap:9px">' + constats + reco + conf
     + '<div style="font-size:10px;color:var(--text-subtle);text-align:right">Synthèse sur tes 4 dernières semaines (indépendante du filtre de période).</div></div>';
 }
+// « Est-ce bien fait » (période) : pour chaque exo du programme portant une cible,
+// la dernière exécution sur la période comparée à la cible (charge %1RM / RPE).
+// Retourne '' si aucune cible n'est définie.
+function _maExecVsCible(data) {
+  var prog = (data && data.programme) || [];
+  var cibles = prog.filter(function (p) { return p && (p.charge_pct_1rm != null || p.rpe_cible != null); });
+  if (!cibles.length) return '';
+  var cut = _maCut(_maPeriode);
+  var sd = ((data && data.seances_detail) || []).filter(function (s) { return (s.date || '') >= cut; });
+  var rows = [], nOk = 0, nEval = 0, seen = {};
+  cibles.forEach(function (p) {
+    if (seen[p.exercice]) return; seen[p.exercice] = 1;
+    var lastEx = null, lastDate = '';
+    sd.forEach(function (s) { (s.exercices || []).forEach(function (e) { if (e.nom === p.exercice && (s.date || '') >= lastDate) { lastDate = s.date; lastEx = e; } }); });
+    var vc = lastEx ? _cibleVerdict(p, lastEx.series || []) : null;
+    if (!vc) { rows.push('<div class="ma-card" style="padding:11px 13px;margin-bottom:6px"><div style="font-size:13px;font-weight:700">' + _maE(p.exercice) + '</div><div style="font-size:12px;color:var(--text-subtle)">Cible ' + _maE(_cibleTxt(p, true)) + ' — pas encore réalisé sur la période</div></div>'); return; }
+    nEval++;
+    var allOk = (!vc.charge || vc.charge.v === 'ok') && (!vc.rpe || vc.rpe.v === 'ok');
+    if (allOk) nOk++;
+    rows.push('<div class="ma-card" style="padding:11px 13px;margin-bottom:6px;border-left:3px solid ' + (allOk ? 'var(--good)' : 'var(--warn)') + '"><div style="font-size:13px;font-weight:700">' + _maE(p.exercice) + ' <span style="font-size:11px;color:var(--text-subtle);font-weight:600">· ' + _maE(_enJourCourt(lastDate)) + '</span></div>' + _cibleVerdictHtml(vc) + '</div>');
+  });
+  var head = nEval ? (nOk + '/' + nEval + ' dans la cible') : 'à réaliser';
+  return _maSec('Exécution vs cible', head) + rows.join('')
+    + _maCap('Ta dernière exécution de chaque exercice à cible, comparée à ta cible programme (charge = % du 1RM estimé, tolérance ±5% ; RPE ±1). « Sous la cible » n\'est pas forcément un échec (deload, reps plus hautes…).');
+}
 function _maMuscuResume(data) {
   var p = _maPeriode, r = (data.recent && data.recent[_maRecentWin(p)]) || {}, days = _MA_DAYS[p];
   var mot = data.moteur || {};
@@ -8771,6 +8826,7 @@ function _maMuscuResume(data) {
   var ptitle = _MA_PLABEL[p].charAt(0).toUpperCase() + _MA_PLABEL[p].slice(1);
   _maSet('ma-muscu-resume', _maSynthese(data) + verdict + _maSec(ptitle)
     + '<div class="ma-kgrid">' + kpi + '</div>'
+    + _maExecVsCible(data)
     + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p]) + rsHtml
     + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries') + volHtml
     + _maCap('Séries par muscle sur la période. Le chiffre à droite = l\'objectif à atteindre. Barre verte = atteint, orange/rouge = en dessous. Cible niveau ' + TGT.label + '.')
