@@ -3542,6 +3542,40 @@ async function handleSaveProgrammeJour(body: any): Promise<Response> {
   return jsonResp({ ok: true })
 }
 
+// Génération d'un programme de départ (onboarding). Le FRONT construit les lignes
+// (objectif + jours + niveau → structure, en piochant dans le catalogue) ; le
+// backend persiste de façon atomique : si remplacer=true, on efface d'abord tout
+// le programme de l'athlète, puis on insère les lignes fournies.
+async function handleGenererProgramme(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ erreur: 'athlete_id manquant' })
+  const lignes = Array.isArray(body.lignes) ? body.lignes : []
+  if (!lignes.length) return jsonResp({ erreur: 'Aucune ligne à insérer' })
+  const nom = String(body.athlete_nom || '')
+  const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
+  const rows = lignes.map((l: any) => ({
+    athlete_id, athlete_nom: nom,
+    seance_id: String(l.seance_id ?? ''),
+    exercice: String(l.exercice ?? ''),
+    series_prevues: num(l.series_prevues),
+    reps_mini: num(l.reps_mini),
+    reps_max: num(l.reps_max),
+    repos_sec: num(l.repos_sec),
+    groupe_id: l.groupe_id ? String(l.groupe_id) : null,
+    jour: num(l.jour),
+    charge_pct_1rm: num(l.charge_pct_1rm),
+    rpe_cible: num(l.rpe_cible),
+  })).filter((r: any) => r.exercice && r.seance_id)
+  if (!rows.length) return jsonResp({ erreur: 'Lignes invalides' })
+  if (body.remplacer) {
+    const { error: delErr } = await sb().from('programme').delete().eq('athlete_id', athlete_id)
+    if (delErr) return jsonResp({ erreur: delErr.message })
+  }
+  const { error } = await sb().from('programme').insert(rows)
+  if (error) return jsonResp({ erreur: error.message })
+  return jsonResp({ ok: true, inserees: rows.length })
+}
+
 async function handleSupprimerProgrammeLigne(body: any): Promise<Response> {
   const { row_index } = body
   if (!row_index) return jsonResp({ erreur: 'row_index manquant' })
@@ -3981,6 +4015,7 @@ Deno.serve(async (req: Request) => {
         case 'saveNote':                 return handleSaveNote(body)
         case 'saveProgrammeLigne':       return handleSaveProgrammeLigne(body)
         case 'saveProgrammeJour':        return handleSaveProgrammeJour(body)
+        case 'genererProgramme':         return handleGenererProgramme(body)
         case 'supprimerProgrammeLigne':  return handleSupprimerProgrammeLigne(body)
         case 'deleteCoach':              return handleDeleteCoach(body)
         case 'saveBienEtre':             return handleSaveBienEtre(body)

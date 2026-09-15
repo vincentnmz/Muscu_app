@@ -11085,6 +11085,141 @@ function fermerEditeurProgramme() {
   // Le programme a pu changer → recharger pour rafraîchir le hub et le sélecteur.
   if (typeof chargerAppData === 'function') chargerAppData();
 }
+
+// ═══════════ ONBOARDING : Novalyz propose un programme de départ ═══════════
+// Génération DÉTERMINISTE (objectif + jours + niveau) en piochant de VRAIS
+// exercices du catalogue. Le résultat est un point de départ, entièrement
+// modifiable ensuite dans l'éditeur. Cf. docs/vision-produit.md (niveau 1).
+var _GEN_OBJ = {
+  hypertrophie: { label: 'Hypertrophie', hint: 'Prise de muscle', s: 4, rmin: 8, rmax: 12, pct: 72, rpe: 8, repos: 90 },
+  force:        { label: 'Force',        hint: 'Charges lourdes', s: 5, rmin: 3, rmax: 5,  pct: 85, rpe: 8, repos: 180 },
+  tonification: { label: 'Tonification', hint: 'Endurance musculaire', s: 3, rmin: 15, rmax: 20, pct: 55, rpe: 7, repos: 60 },
+  remise:       { label: 'Remise en forme', hint: 'Reprise en douceur', s: 3, rmin: 10, rmax: 12, pct: 60, rpe: 7, repos: 90 }
+};
+var _GEN_G = {
+  pecs:    { key: ['pector'],        prefer: ['developpe couche barre', 'developpe couche', 'developpe machine'] },
+  dos:     { key: ['dos', 'dorsa'],  prefer: ['traction', 'tirage vertical prise large', 'rowing barre'] },
+  quad:    { key: ['quadri'],        prefer: ['squat', 'presse inclinee', 'hack squat'] },
+  ischio:  { key: ['ischio'],        prefer: ['rdl barre', 'rdl', 'leg curl'] },
+  fessier: { key: ['fessier'],       prefer: ['hip thrust', 'fente bulgare', 'fente longue'] },
+  epaule:  { key: ['epaule'],        prefer: ['developpe militaire', 'elevation laterale'] },
+  biceps:  { key: ['biceps'],        prefer: ['curl barre', 'curl halter'] },
+  triceps: { key: ['triceps'],       prefer: ['extension poulie barre', 'extension'] },
+  mollet:  { key: ['molet', 'mollet'], prefer: ['mollets debout', 'mollets assis'] },
+  abdos:   { key: ['abdo'],          prefer: ['crunch', 'releve de jambe'] }
+};
+var _GEN_SPLITS = {
+  2: [['Full body A', ['quad', 'pecs', 'dos', 'epaule', 'ischio', 'abdos']], ['Full body B', ['fessier', 'pecs', 'dos', 'epaule', 'biceps', 'triceps']]],
+  3: [['Push', ['pecs', 'epaule', 'triceps']], ['Pull', ['dos', 'biceps', 'abdos']], ['Legs', ['quad', 'ischio', 'fessier', 'mollet']]],
+  4: [['Haut A', ['pecs', 'dos', 'epaule', 'biceps', 'triceps']], ['Bas A', ['quad', 'ischio', 'fessier', 'mollet']], ['Haut B', ['dos', 'pecs', 'epaule', 'triceps', 'biceps']], ['Bas B', ['fessier', 'quad', 'ischio', 'abdos']]],
+  5: [['Push', ['pecs', 'epaule', 'triceps']], ['Pull', ['dos', 'biceps']], ['Legs', ['quad', 'ischio', 'fessier', 'mollet']], ['Haut', ['pecs', 'dos', 'epaule']], ['Bas', ['quad', 'fessier', 'ischio', 'abdos']]]
+};
+var _GEN_JOURS = { 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
+function _genNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function _genPick(cat, g, used) {
+  var pool = cat.filter(function (e) { var m = _genNorm(e.muscle); return g.key.some(function (k) { return m.indexOf(k) >= 0; }); });
+  if (!pool.length) return null;
+  for (var i = 0; i < g.prefer.length; i++) { var pk = g.prefer[i]; var hit = pool.find(function (e) { return _genNorm(e.exercice).indexOf(pk) >= 0 && !used[e.exercice]; }); if (hit) return hit; }
+  var f = pool.find(function (e) { return !used[e.exercice]; });
+  return f || pool[0];
+}
+function _genProgramme(objectif, jours, niveau, cat) {
+  var o = _GEN_OBJ[objectif] || _GEN_OBJ.hypertrophie;
+  var sets = Math.max(2, o.s + (niveau === 'debutant' ? -1 : 0));
+  var split = _GEN_SPLITS[jours] || _GEN_SPLITS[3];
+  var jarr = _GEN_JOURS[jours] || _GEN_JOURS[3];
+  var maxExos = niveau === 'debutant' ? 4 : (niveau === 'avance' ? 99 : 6);
+  var lignes = [];
+  split.forEach(function (sc, si) {
+    var sid = sc[0], groups = sc[1].slice(0, maxExos), used = {}, jour = jarr[si];
+    groups.forEach(function (gk) {
+      var g = _GEN_G[gk]; if (!g) return;
+      var ex = _genPick(cat, g, used); if (!ex) return;
+      used[ex.exercice] = 1;
+      lignes.push({ seance_id: sid, exercice: ex.exercice, series_prevues: sets, reps_mini: o.rmin, reps_max: o.rmax, repos_sec: o.repos, groupe_id: '', jour: jour, charge_pct_1rm: o.pct, rpe_cible: o.rpe });
+    });
+  });
+  return lignes;
+}
+
+// ── Modal onboarding (3 étapes) ──
+var _genState = { step: 1, objectif: null, jours: null, niveau: null };
+var _GEN_NIV = [['debutant', 'Débutant', '0-3 ans de pratique'], ['intermediaire', 'Intermédiaire', '4-9 ans'], ['avance', 'Avancé', '10 ans et +']];
+var _GEN_JOPT = [[2, '2 jours', 'Full body'], [3, '3 jours', 'Push / Pull / Legs'], [4, '4 jours', 'Haut / Bas'], [5, '5 jours', 'PPL + Haut / Bas']];
+function ouvrirGenProgramme() {
+  if (typeof athlete === 'undefined' || !athlete) return;
+  _genState = { step: 1, objectif: null, jours: null, niveau: null };
+  var ov = document.getElementById('gen-prog-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'gen-prog-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:1000;display:flex;align-items:flex-end;justify-content:center;';
+    ov.onclick = function (e) { if (e.target === ov) fermerGenProgramme(); };
+    ov.innerHTML = '<div id="gen-prog-sheet" style="background:var(--surface);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto;box-shadow:0 -8px 30px rgba(7,11,20,.25)"></div>';
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'flex';
+  if (exercicesData.length === 0 && typeof chargerExercices === 'function') { chargerExercices().then(_genRender); } else { _genRender(); }
+}
+function fermerGenProgramme() { var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; }
+function _genSetObjectif(v) { _genState.objectif = v; _genState.step = 2; _genRender(); }
+function _genSetJours(v) { _genState.jours = Number(v); _genState.step = 3; _genRender(); }
+function _genSetNiveau(v) { _genState.niveau = v; _genRender(); }
+function _genBack() { if (_genState.step > 1) { _genState.step--; _genRender(); } }
+function _genCard(onclick, on, titre, sous) {
+  return '<button onclick="' + onclick + '" style="text-align:left;display:flex;align-items:center;gap:12px;width:100%;padding:14px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a08)' : 'var(--surface)') + ';border-radius:14px;margin-bottom:8px;cursor:pointer">'
+    + '<div style="flex:1"><div style="font-weight:800;font-size:14.5px;color:' + (on ? 'var(--accent)' : 'var(--text)') + '">' + titre + '</div><div style="font-size:12px;color:var(--text-subtle);margin-top:2px">' + sous + '</div></div>'
+    + '<span style="width:20px;height:20px;border-radius:999px;border:2px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';flex:none;display:grid;place-items:center">' + (on ? '<span style="width:10px;height:10px;border-radius:999px;background:var(--accent)"></span>' : '') + '</span></button>';
+}
+function _genRender() {
+  var sh = document.getElementById('gen-prog-sheet'); if (!sh) return;
+  var st = _genState, esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var head = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
+    + (st.step > 1 ? '<button onclick="_genBack()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:0 6px 0 0">‹</button>' : '<span></span>')
+    + '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:13px;letter-spacing:.02em">Étape ' + st.step + '/3</div>'
+    + '<button onclick="fermerGenProgramme()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1">×</button></div>';
+  var body = '';
+  if (st.step === 1) {
+    body = '<h2 style="font-size:18px;margin:2px 0 4px">Ton objectif ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Ça règle les répétitions, la charge cible et le repos.</div>'
+      + Object.keys(_GEN_OBJ).map(function (k) { var o = _GEN_OBJ[k]; return _genCard('_genSetObjectif(\'' + k + '\')', st.objectif === k, o.label, o.hint + ' · ' + o.s + '×' + o.rmin + '-' + o.rmax + ' · ' + o.pct + '% · RPE ' + o.rpe); }).join('');
+  } else if (st.step === 2) {
+    body = '<h2 style="font-size:18px;margin:2px 0 4px">Combien de jours par semaine ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Détermine la structure de tes séances.</div>'
+      + _GEN_JOPT.map(function (j) { return _genCard('_genSetJours(' + j[0] + ')', st.jours === j[0], j[1], j[2]); }).join('');
+  } else {
+    body = '<h2 style="font-size:18px;margin:2px 0 4px">Ton niveau ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Ajuste le volume (nombre d\'exercices et de séries).</div>'
+      + _GEN_NIV.map(function (n) { return _genCard('_genSetNiveau(\'' + n[0] + '\')', st.niveau === n[0], n[1], n[2]); }).join('');
+    if (st.niveau) {
+      var lignes = _genProgramme(st.objectif, st.jours, st.niveau, exercicesData);
+      var parSeance = {}; lignes.forEach(function (l) { (parSeance[l.seance_id] = parSeance[l.seance_id] || []).push(l); });
+      var apercu = Object.keys(parSeance).map(function (sid) { var jr = parSeance[sid][0].jour; return '<div style="margin-bottom:8px"><div style="font-weight:800;font-size:13px;color:var(--accent)">' + esc(sid) + (jr ? ' <span style="font-weight:600;color:var(--text-subtle)">· ' + _PROG_JOURS_LONG[jr - 1] + '</span>' : '') + '</div><div style="font-size:12px;color:var(--text-muted)">' + parSeance[sid].map(function (l) { return esc(l.exercice); }).join(', ') + '</div></div>'; }).join('');
+      body += '<div style="margin-top:14px;padding:14px;background:var(--surface2);border-radius:14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:8px">Aperçu · ' + Object.keys(parSeance).length + ' séances · ' + lignes.length + ' exercices</div>' + apercu + '</div>'
+        + '<button onclick="_genGenerer()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
+        + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>';
+    }
+  }
+  sh.innerHTML = head + body;
+}
+async function _genGenerer() {
+  var st = _genState;
+  if (!st.objectif || !st.jours || !st.niveau) return;
+  var lignes = _genProgramme(st.objectif, st.jours, st.niveau, exercicesData);
+  if (!lignes.length) { showToast('Catalogue indisponible, réessaie'); return; }
+  // Programme existant → demander avant d'écraser.
+  var existant = (dernierAppData && Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0);
+  if (existant && !confirm('Tu as déjà un programme. Le remplacer par le nouveau ? (l\'ancien sera supprimé)')) return;
+  var btn = document.querySelector('#gen-prog-sheet button[onclick="_genGenerer()"]'); if (btn) { btn.disabled = true; btn.textContent = '⏳ Création…'; }
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'genererProgramme', athlete_id: athlete.athlete_id, athlete_nom: athlete.nom || '', remplacer: true, lignes: lignes }) });
+    var data = await res.json();
+    if (data && (data.ok || data.inserees)) {
+      showToast('✅ Programme créé (' + (data.inserees || lignes.length) + ' exercices)');
+      fermerGenProgramme();
+      if (typeof chargerAppData === 'function') await chargerAppData();
+      if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme();
+    } else { showToast('Erreur : ' + ((data && data.erreur) || 'création impossible')); if (btn) { btn.disabled = false; btn.textContent = 'Créer mon programme'; } }
+  } catch (e) { showToast('Erreur réseau'); if (btn) { btn.disabled = false; btn.textContent = 'Créer mon programme'; } }
+}
 // État de l'écran Entraînement (Option A) : mode (muscu/cardio) + sélection.
 var _enMode = 'muscu';
 var _enSelSeance = null;
