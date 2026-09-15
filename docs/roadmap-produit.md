@@ -31,6 +31,20 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 
 ---
 
+## Ordre de travail décidé (porteur, sept. 2026)
+
+1. **Tout finir côté ATHLÈTE (Solo)** — avant de toucher au coach. Sous-ordre :
+   - **A. Cerveau + écrans** : P1-11 Mon état (donnée→analyse→reco) · P1-10 Mes analyses
+     (interprétation étoffée) · P0-4 Contexte de perf (+ fiabilité) · P0-1 Objectifs
+     (consolidation) · Lecture Novalyz enrichie (exécution vs cible en phrases).
+   - **B. Données sportives (P2)** : Cardio/Hyrox dédié · activités structurées · GPS ·
+     Watch/Health Connect · déduplication · vélo/running/natation · séances hybrides.
+   - **C. Nutrition solo (P3)** : nutrition dans Mon état + analyse nutritionnelle.
+   - **D. IA athlète (P4)** : conversation groundée sur le moteur.
+   - **E. P1-13 Programme adaptatif** (en dernier, moteur fiable requis).
+2. **Revisite visuelle** de l'app athlète (validée avec le porteur) — cohérence globale.
+3. **Tout le COACH (P5)** — home, aujourd'hui, alertes, analyses, programme, conversation.
+
 ## ORDRE DE PRIORITÉ (backbone de travail)
 
 ### P0 — CERVEAU
