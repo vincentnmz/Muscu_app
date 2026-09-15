@@ -13446,6 +13446,7 @@ function _ouvrirConversationNotif() {
 function _gererNotifTarget(target) {
   if (!target) return;
   if (target === 'conversation') _ouvrirConversationNotif();
+  else if (target === 'accueil' || target === 'alertes') { try { switchTab('accueil'); } catch (e) {} }
 }
 
 // Hook appelé par la façade native (notifications.js) quand une notif FCM est

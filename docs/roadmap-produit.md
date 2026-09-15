@@ -77,8 +77,9 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 37. Premium — ⬜ · 38. Paiement — ⬜ · 39. Rapports mensuels — ⬜ · 40. Emails automatiques — 🟡 (Resend en place)
 
 > **Alertes & notifications (Phase 8 détaillée)** : 28. Centre d'alertes ✅ ·
-> 29. **Notifications intelligentes** (push seulement si assez important) — 🔵 **en cours** ·
-> 30. Notifications Coach ⬜.
+> 29. **Notifications intelligentes** (push seulement si assez important) — ✅ code livré
+> (action `cronPushAlertes`, importantes seulement, 1×/jour, anti-spam hebdo) · ⏳ **cron
+> Supabase à planifier** (SQL fourni + secret `CRON_SECRET`) · 30. Notifications Coach ⬜.
 
 ### Navigation cible (direction, à ne pas coder telle quelle sans audit)
 `AUJOURD'HUI · MON ENTRAÎNEMENT · CARDIO/HYROX · MES ANALYSES · MON ÉTAT · PROFIL` (+ nav Coach distincte).
@@ -99,6 +100,9 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 - **P1-12** Onboarding 1re connexion (explication + parcours par profil coach/solo) + **programme
   proposé** (génération déterministe objectif/jours/niveau). Déclenché à l'inscription.
 - **Régularité** : objectif séances/sem dérivé du programme.
+- **Notifs intelligentes (#29)** : action cron `cronPushAlertes` (réutilise getAppData ;
+  push des alertes « haute » dont l'absence ; anti-spam par type/semaine). Tap → Accueil.
+  ⏳ Reste à planifier le cron Supabase (voir `supabase/cron-alertes.sql`).
 - **Réglages** : semaine calendaire/glissante · « Revoir l'intro ».
 
 ## 🚚 Distribution / MAJ auto
