@@ -1681,6 +1681,9 @@ async function sInscrire() {
       localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
       showToast('✅ Bienvenue ' + prenom + ' !');
       ouvrirApp();
+      // Nouveau compte → onboarding IMMÉDIAT (sans attendre le 1er chargement serveur).
+      // _onbChecked évite un 2e déclenchement quand getAppData revient.
+      try { if (sport === 'muscu' && typeof ouvrirOnboarding === 'function') { _onbChecked = true; ouvrirOnboarding(); } } catch (e) {}
     } else { errEl.textContent = data.message || 'Ce login est déjà utilisé.'; }
   } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
 }
