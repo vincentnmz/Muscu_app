@@ -1526,7 +1526,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'pasjour_%').order('date', { ascending: false }),
     sb().from('blessures').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('indicateurs').select('cle').eq('athlete_id', athleteId).eq('seance_id', 'alerte_lue'),
-    sb().from('indicateurs').select('valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').eq('cle', 'semaine_type').order('date', { ascending: false }).limit(1),
+    sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').order('date', { ascending: false }),
   ])
 
   const perfs = perfsAll || []
@@ -1836,7 +1836,10 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       })
     })(),
     seances_detail: buildSeancesDetail(perfs),
-    semaine_type: (prefRows && prefRows[0] && prefRows[0].valeur === 'glissant') ? 'glissant' : 'calendaire',
+    semaine_type: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'semaine_type'); return (r && r.valeur === 'glissant') ? 'glissant' : 'calendaire'; })(),
+    // Onboarding : intro vue une fois + proposition auto de programme coupée par l'athlète.
+    onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
+    prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
     pas_quotidiens,
     blessures: (blessuresRows || []).map(r => ({
       id: String(r.id || ''), date: r.date ? fmtFR(r.date) : '',
@@ -3678,6 +3681,24 @@ async function handleSetPauseAthlete(body: any): Promise<Response> {
 // sous seance_id='alerte_lue', cle=<id> où id = type|semaine). Idempotent.
 // Préférence « semaine d'entraînement » (calendaire lundi→dim. / glissante 7 j).
 // Stockée dans indicateurs (seance_id='pref', cle='semaine_type'). Idempotente.
+// Préférences d'onboarding (drapeaux 0/1) stockées dans indicateurs (seance_id='pref').
+// cle ∈ {onboarding_vu, prog_auto_off}. Idempotent.
+async function handleSavePref(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const cle = String(body.cle || '')
+  if (!athlete_id || !['onboarding_vu', 'prog_auto_off'].includes(cle)) return jsonResp({ success: false, error: 'Paramètres invalides' })
+  const v = (body.valeur === 0 || body.valeur === '0' || body.valeur === false) ? '0' : '1'
+  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', cle).limit(1)
+  if (existing?.length) {
+    const { error } = await sb().from('indicateurs').update({ valeur: v }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', cle)
+    if (error) return jsonResp({ success: false, error: error.message })
+  } else {
+    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle, valeur: v, unite: '', source: 'app' })
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true })
+}
+
 async function handleSaveSemaineType(body: any): Promise<Response> {
   const { athlete_id } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
@@ -4024,6 +4045,7 @@ Deno.serve(async (req: Request) => {
         case 'marquerAlerteTraitee':     return handleMarquerAlerteTraitee(body)
         case 'marquerAlerteLue':         return handleMarquerAlerteLue(body)
         case 'saveSemaineType':          return handleSaveSemaineType(body)
+        case 'savePref':                 return handleSavePref(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
         case 'deleteObjectifJoueur':     return handleDeleteObjectifJoueur(body)
         case 'saveBlessure':             return handleSaveBlessure(body)

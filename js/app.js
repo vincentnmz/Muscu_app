@@ -6944,6 +6944,7 @@ function switchTab(tab) {
   if (tab === 'reglages') {
     try { majUiPause(); } catch (_) {}
     try { majUiSemaineType(); } catch (_) {}
+    try { majUiProgAuto(); } catch (_) {}
     try { majUiPush(); } catch (_) {}
     try { majUiGoogleHealth(); } catch (_) {}
     try { majUiCockpitPref(); } catch (_) {}
@@ -8604,6 +8605,18 @@ async function setSemaineType(v) {
   try { if (typeof renderAujourdhui === 'function' && dernierAppData) renderAujourdhui(dernierAppData); } catch (e) {}
   try { if (typeof showToast === 'function') showToast('✅ Préférence enregistrée'); } catch (e) {}
   try { if (athlete) await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSemaineType', athlete_id: athlete.athlete_id, valeur: v }) }); } catch (e) {}
+}
+// Réglage « proposition automatique de programme » (drapeau prog_auto_off inversé).
+function majUiProgAuto() {
+  var off = !!(typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.prog_auto_off);
+  var on = document.getElementById('prog-auto-on'), o = document.getElementById('prog-auto-off');
+  function base(b, active) { if (!b) return; b.style.borderColor = active ? 'var(--accent)' : 'var(--border)'; b.style.background = active ? 'var(--accent-a10,rgba(26,95,255,.10))' : 'var(--surface2)'; b.style.color = active ? 'var(--accent)' : 'var(--text)'; }
+  base(on, !off); base(o, off);
+}
+function setProgAuto(on) {
+  _savePref('prog_auto_off', on ? 0 : 1);
+  majUiProgAuto();
+  try { if (typeof showToast === 'function') showToast(on ? '✅ Proposition activée' : '✅ Tu gères ton programme'); } catch (e) {}
 }
 // Réglage « semaine d'entraînement » : calendaire (lundi→dim., reset lundi) ou glissante (7 j).
 function _maSemaineType() { try { return (dernierAppData && dernierAppData.semaine_type === 'glissant') ? 'glissant' : 'calendaire'; } catch (e) { return 'calendaire'; } }
@@ -11220,6 +11233,85 @@ async function _genGenerer() {
     } else { showToast('Erreur : ' + ((data && data.erreur) || 'création impossible')); if (btn) { btn.disabled = false; btn.textContent = 'Créer mon programme'; } }
   } catch (e) { showToast('Erreur réseau'); if (btn) { btn.disabled = false; btn.textContent = 'Créer mon programme'; } }
 }
+
+// ═══════════ ONBOARDING PREMIÈRE CONNEXION (explication app + parcours) ═══════════
+// Drapeaux (indicateurs 'pref') : onboarding_vu (intro vue 1×) · prog_auto_off
+// (l'athlète gère son programme → on ne le propose plus). Branche selon coach_id.
+var _onbChecked = false, _onbI = 0, _onbSteps = [];
+function _savePref(cle, val) {
+  try { if (dernierAppData) dernierAppData[cle] = !!val; } catch (e) {}
+  try { return fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'savePref', athlete_id: athlete.athlete_id, cle: cle, valeur: val ? 1 : 0 }) }); } catch (e) {}
+}
+// Déclenché une fois par session après le 1er chargement des données.
+function _maybeOnboarding() {
+  if (!athlete || !dernierAppData) return;
+  if (typeof coach !== 'undefined' && coach && coach.coach_id) return;   // session coach → pas d'onboarding athlète
+  var ov = document.getElementById('onb-overlay');
+  if (ov && ov.style.display === 'flex') return;
+  var hasCoach = !!(athlete && athlete.coach_id);
+  var hasProg = Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0;
+  if (!dernierAppData.onboarding_vu) { ouvrirOnboarding(); return; }
+  // Intro déjà vue : reproposer un programme si pertinent (pas de coach, pas coupé, aucun programme).
+  if (!hasProg && !hasCoach && !dernierAppData.prog_auto_off) { ouvrirGenProgramme(); }
+}
+function ouvrirOnboarding() {
+  if (!athlete) return;
+  var hasCoach = !!(athlete && athlete.coach_id);
+  _onbSteps = hasCoach ? ['promesse', 'marche', 'diff', 'nav', 'coachinfo'] : ['promesse', 'marche', 'diff', 'nav', 'profil'];
+  _onbI = 0;
+  var ov = document.getElementById('onb-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'onb-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:var(--bg,var(--surface));z-index:1100;display:flex;flex-direction:column';
+    ov.innerHTML = '<div id="onb-inner" style="flex:1;display:flex;flex-direction:column;max-width:560px;width:100%;margin:0 auto;padding:20px 20px calc(20px + env(safe-area-inset-bottom));overflow:auto"></div>';
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'flex';
+  _onbRender();
+}
+function fermerOnboarding() { var ov = document.getElementById('onb-overlay'); if (ov) ov.style.display = 'none'; }
+function _onbNext() { if (_onbI < _onbSteps.length - 1) { _onbI++; _onbRender(); } }
+function _onbBack() { if (_onbI > 0) { _onbI--; _onbRender(); } }
+function _onbChoix(c) {
+  _savePref('onboarding_vu', 1);
+  if (c === 'novalyz') { fermerOnboarding(); ouvrirGenProgramme(); }
+  else if (c === 'mine') { _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme 👍'); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
+  else if (c === 'coach') { _onbSteps = ['coachinfo']; _onbI = 0; _onbRender(); }
+}
+function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); }
+function _onbContent(step) {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var prenom = 'toi'; try { if (athlete && athlete.nom) prenom = String(athlete.nom).trim().split(/\s+/)[0]; } catch (e) {}
+  var login = (athlete && athlete.login) ? String(athlete.login) : '';
+  var big = function (emoji, titre, sous) { return '<div style="text-align:center;margin:auto 0"><div style="font-size:46px;margin-bottom:14px">' + emoji + '</div><h1 style="font-size:23px;margin:0 0 10px;line-height:1.2">' + titre + '</h1><div style="font-size:14.5px;color:var(--text-muted);line-height:1.5;max-width:420px;margin:0 auto">' + sous + '</div></div>'; };
+  var pt = function (n, t, s) { return '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;text-align:left"><span style="flex:none;width:26px;height:26px;border-radius:999px;background:var(--accent);color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center">' + n + '</span><div><div style="font-weight:800;font-size:14.5px">' + t + '</div><div style="font-size:13px;color:var(--text-muted);line-height:1.45">' + s + '</div></div></div>'; };
+  var nav = function (emoji, t, s) { return '<div style="display:flex;gap:11px;align-items:center;padding:11px 13px;background:var(--surface2);border-radius:12px;margin-bottom:8px;text-align:left"><span style="font-size:20px;flex:none">' + emoji + '</span><div><div style="font-weight:800;font-size:13.5px">' + t + '</div><div style="font-size:12px;color:var(--text-muted)">' + s + '</div></div></div>'; };
+  if (step === 'promesse') return { primary: 'Suivant', html: big('👋', 'Bienvenue, ' + esc(prenom), 'Novalyz, c\'est ton analyste d\'entraînement. Je te donne un cadre, je regarde comment tu l\'exécutes, et je te dis ce qui va et ce qui ne va pas.') };
+  if (step === 'marche') return { primary: 'Suivant', html: '<div style="margin:auto 0"><h1 style="font-size:22px;margin:0 0 16px;text-align:center">Comment ça marche</h1>' + pt('①', 'Un cadre', 'Un programme : séances, charges et cibles. Tu fais tes séances et tu notes ton ressenti.') + pt('②', 'Est-ce bien fait ?', 'Novalyz compare ce que tu réalises à tes cibles et te le dit clairement.') + pt('③', 'Quoi progresser', 'Tendances, alertes et une « Lecture Novalyz » qui t\'explique la suite.') + '</div>' };
+  if (step === 'diff') return { primary: 'Suivant', html: big('🧠', 'Données + ressenti', 'Je ne regarde pas que les chiffres : je croise tes données ET ton ressenti pour décider avec toi, pas à ta place.') };
+  if (step === 'nav') return { primary: 'Suivant', html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 16px;text-align:center">Où trouver quoi</h1>' + nav('🏠', 'Accueil', 'Ton « aujourd\'hui » : état du jour, séance, alertes.') + nav('🏋️', 'Entraînement', 'Tes séances et ton programme.') + nav('📊', 'Analyses', 'Tes stats et la Lecture Novalyz.') + nav('❤️', 'État', 'Ta récupération et ton bien-être.') + nav('💬', 'Conversation', 'Ton coach ou l\'assistant.') + '</div>' };
+  if (step === 'coachinfo') return { primary: 'J\'ai compris', onPrimary: '_onbFini()', html: '<div style="margin:auto 0">' + big('🤝', 'Tu as un coach', 'Ton coach te construit ton programme et suit tes analyses. Toi, tu fais tes séances et ton ressenti — Novalyz s\'occupe du reste.') + (login ? '<div style="margin-top:18px;padding:14px;background:var(--surface2);border-radius:14px;text-align:center"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Donne ce login à ton coach pour qu\'il te lie :</div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:26px;letter-spacing:.1em;color:var(--accent)">' + esc(login) + '</div></div>' : '') + '</div>' };
+  // profil
+  var card = function (c, emoji, t, s) { return '<button onclick="_onbChoix(\'' + c + '\')" style="text-align:left;display:flex;gap:12px;align-items:center;width:100%;padding:15px;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;margin-bottom:10px;cursor:pointer"><span style="font-size:24px;flex:none">' + emoji + '</span><div style="flex:1"><div style="font-weight:800;font-size:15px">' + t + '</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">' + s + '</div></div><span style="color:var(--accent);font-size:20px">›</span></button>'; };
+  return { html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 6px;text-align:center">Comment veux-tu être suivi ?</h1><div style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:16px">Tu pourras changer d\'avis plus tard.</div>'
+    + card('novalyz', '✨', 'Novalyz me construit un programme', 'Réponds à 3 questions, j\'assemble un programme de départ adapté.')
+    + card('mine', '📝', 'Je gère mon programme moi-même', 'Tu crées tes séances. On ne te proposera plus de programme.')
+    + card('coach', '🤝', 'J\'ai un coach', 'C\'est ton coach qui te fait ton programme.')
+    + '</div>' };
+}
+function _onbRender() {
+  var inner = document.getElementById('onb-inner'); if (!inner) return;
+  var step = _onbSteps[_onbI], c = _onbContent(step);
+  var dots = _onbSteps.map(function (s, i) { return '<span style="width:7px;height:7px;border-radius:999px;background:' + (i === _onbI ? 'var(--accent)' : 'var(--border)') + '"></span>'; }).join('');
+  var top = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
+    + (_onbI > 0 && _onbSteps.length > 1 ? '<button onclick="_onbBack()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;padding:0 6px 0 0">‹</button>' : '<span style="width:22px"></span>')
+    + '<div style="display:flex;gap:6px;align-items:center">' + dots + '</div>'
+    + '<button onclick="_onbFini()" style="background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;font-weight:600">Passer</button></div>';
+  var btn = c.primary ? '<button onclick="' + (c.onPrimary || '_onbNext()') + '" style="width:100%;margin-top:16px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">' + c.primary + '</button>' : '';
+  inner.innerHTML = top + '<div style="flex:1;display:flex;flex-direction:column">' + c.html + '</div>' + btn;
+}
+
 // État de l'écran Entraînement (Option A) : mode (muscu/cardio) + sélection.
 var _enMode = 'muscu';
 var _enSelSeance = null;
@@ -11381,6 +11473,8 @@ function renderEnSuivi(data) {
 function _appliquerAppData(data) {
   // Stocker les données globalement
   dernierAppData = data;
+  // Onboarding 1re connexion (une fois par session, après le 1er chargement).
+  _safe('onboarding', function () { if (!_onbChecked) { _onbChecked = true; setTimeout(_maybeOnboarding, 500); } });
     _safe('cockpit', () => renderCockpit(data, 'dash'));   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     _safe('seances-programme', () => peuplerSeancesProgramme());
     seancesDates = data.historique.dates_seances || {};
