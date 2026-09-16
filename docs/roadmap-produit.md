@@ -140,5 +140,9 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
   Quand validé : build **release signé (AAB)** + fiche.
 - En attendant : **PWA** (web, auto via Service Worker) ou **bannière « MAJ dispo »** in-app.
 
+## 🐞 Bugs / correctifs à faire (backlog)
+- **Accueil « Aujourd'hui »** : à l'ouverture, l'animation du cercle de séance se
+  rejoue plusieurs fois (devrait s'animer une seule fois). — à corriger.
+
 ---
 _Mettre à jour ce fichier à chaque item livré (cocher le statut + ligne de journal)._
