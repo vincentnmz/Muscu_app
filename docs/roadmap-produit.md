@@ -143,6 +143,11 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
   contre le moteur et la Lecture Novalyz rendue consciente du contexte (déload → baisse
   de volume = normale, pas une régression ; intensification → hausse de RPE = attendue,
   pas une alerte). Entrée Lexique ajoutée.
+- **« ? » par bloc + bases scientifiques** : chaque bloc d'analyse (Tonnage, Volume,
+  Balance, RPE, Progression/1RM, Exécution vs cible, Régularité, ACWR) a un « ? » qui
+  explique CE bloc (définition + calcul + **fiabilité/limite**), sans doublonner les
+  phrases (légendes raccourcies). Contenu sourcé → `docs/bases-scientifiques.md`.
+  **ACWR adouci** partout (indice à interpréter, pas un verdict — littérature à l'appui).
 - **Lexique** (compréhensibilité) : glossaire des termes techniques (Tonnage, RPE, ACWR,
   1RM/e1RM, surcharge, balance, efficience, récupération, fiabilité…) en langage simple,
   accessible via « ? » dans l'en-tête des Analyses et Réglages ▸ Découverte.

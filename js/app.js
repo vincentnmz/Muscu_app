@@ -8640,7 +8640,35 @@ function _maSet(id, html) { var el = document.getElementById(id); if (el) el.inn
 function _maEmpty(msg) { return '<div class="ma-note" style="background:var(--surface2);border-color:var(--border);color:var(--text-muted)">' + msg + '</div>'; }
 function _maFRtoDate(s) { var m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; }
 function _maCutISO(days) { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - days); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-function _maSec(t, r) { return '<div class="ma-sec">' + t + (r ? '<span class="r">' + r + '</span>' : '') + '</div>'; }
+function _maSec(t, r, info) { return '<div class="ma-sec">' + t + (info ? _maInfoBtn(info) : '') + (r ? '<span class="r">' + r + '</span>' : '') + '</div>'; }
+// « ? » d'explication d'un bloc précis (pas un glossaire à côté). Contenu = définition
+// + comment Novalyz le calcule + fiabilité/limite. Distinct des phrases (pas de doublon).
+function _maInfoBtn(k) { return '<button onclick="_maInfoOpen(\'' + k + '\')" title="C\'est quoi ?" aria-label="Explication" style="margin-left:7px;width:17px;height:17px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:10px;font-weight:800;cursor:pointer;line-height:1;padding:0;vertical-align:middle;">?</button>'; }
+// Contenu sourcé (voir docs/bases-scientifiques.md). t = titre, d = définition + calcul,
+// fiab = niveau de fiabilité / limite (le point crédibilité pour un usage public).
+var _MA_INFO = {
+  tonnage: { t: 'Tonnage', d: 'Le tonnage = charge × répétitions, additionné sur toutes tes séries. C\'est une mesure du volume de travail soulevé, que Novalyz somme par séance et par semaine pour suivre ta charge globale.', fiab: 'Fiable comme suivi de charge, mais ce n\'est pas une mesure d\'intensité : un gros tonnage peut venir de beaucoup de répétitions légères.' },
+  volume: { t: 'Volume (séries par semaine)', d: 'Le volume utile pour prendre du muscle se compte surtout en nombre de séries par groupe musculaire et par semaine. Novalyz compare tes séries/sem à une cible adaptée à ton niveau.', fiab: 'Bien étayé : les méta-analyses montrent une relation dose-réponse (~10 séries/sem par muscle comme repère, davantage selon le niveau).' },
+  balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
+  rpe: { t: 'RPE (effort perçu)', d: 'Le RPE note la difficulté d\'une série de 1 à 10 (RPE 8 ≈ il te restait environ 2 répétitions en réserve). C\'est une mesure de l\'intensité ressentie.', fiab: 'Validé scientifiquement (échelle de Borg / répétitions en réserve) ; fiable avec un peu d\'habitude à l\'auto-évaluation.' },
+  acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: '⚠️ Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
+  progression: { t: 'Progression / 1RM estimé', d: 'Le 1RM estimé (formule d\'Epley : charge × (1 + reps/30)) approxime la charge que tu soulèverais 1 fois, sans tester ton maximum. Novalyz suit son évolution pour juger ta progression de force.', fiab: 'Fiable surtout en dessous de ~10 répétitions ; l\'erreur d\'estimation grandit au-delà.' },
+  execcible: { t: 'Exécution vs cible', d: 'Compare ce que tu as réalisé aux cibles posées sur l\'exercice. Charge : réalisé vs % de ton 1RM estimé (tolérance ±5 %). RPE : moyenne vs cible (±1).', fiab: 'Indicatif : « sous la cible » n\'est pas forcément un échec (deload, répétitions plus hautes…). La cible en kg dépend d\'un 1RM estimé.' },
+  regularite: { t: 'Régularité', d: 'Le nombre de séances réalisées par semaine, comparé à ton objectif (déduit de ton programme).', fiab: 'La régularité sur la durée est l\'un des premiers facteurs de progression.' },
+  efficience: { t: 'Efficience cardio', d: 'À effort comparable, une fréquence cardiaque moyenne plus basse indique une meilleure condition aérobie.', fiab: 'Novalyz ne l\'affirme que si ton effort (RPE) est resté similaire — sinon une FC plus basse peut simplement venir de sorties plus faciles.' }
+};
+function _maInfoOpen(k) {
+  var e = _MA_INFO[k]; if (!e) return;
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var ov = document.getElementById('mainfo-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'mainfo-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:1001;display:flex;align-items:flex-end;justify-content:center'; ov.onclick = function (ev) { if (ev.target === ov) ov.style.display = 'none'; }; document.body.appendChild(ov); }
+  ov.innerHTML = '<div style="background:var(--surface);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:80vh;overflow:auto;box-shadow:0 -8px 30px rgba(7,11,20,.25)">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-weight:800;font-size:16px;color:var(--accent)">' + esc(e.t) + '</div><button onclick="document.getElementById(\'mainfo-overlay\').style.display=\'none\'" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="font-size:13px;color:var(--text-muted);line-height:1.55">' + esc(e.d) + '</div>'
+    + (e.fiab ? '<div style="margin-top:11px;padding:10px 12px;background:var(--surface2);border-radius:11px;font-size:12px;color:var(--text-muted);line-height:1.5"><b style="color:var(--text)">Fiabilité —</b> ' + esc(e.fiab) + '</div>' : '')
+    + '</div>';
+  ov.style.display = 'flex';
+}
 function _maRsAxis(rec, p) {
   if (!rec || !rec.length) return '';
   var fmt = function (iso) { var d = new Date(iso + 'T00:00:00'); if (isNaN(d.getTime())) return iso; return p === 'semaine' ? ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'][d.getDay()] : (d.getDate() + '/' + (d.getMonth() + 1)); };
@@ -8777,8 +8805,8 @@ function _maExecVsCible(data) {
     rows.push('<div class="ma-card" style="padding:11px 13px;margin-bottom:6px;border-left:3px solid ' + (allOk ? 'var(--good)' : 'var(--warn)') + '"><div style="font-size:13px;font-weight:700">' + _maE(p.exercice) + ' <span style="font-size:11px;color:var(--text-subtle);font-weight:600">· ' + _maE(_enJourCourt(lastDate)) + '</span></div>' + _cibleVerdictHtml(vc) + '</div>');
   });
   var head = nEval ? (nOk + '/' + nEval + ' dans la cible') : 'à réaliser';
-  return _maSec('Exécution vs cible', head) + rows.join('')
-    + _maCap('Ta dernière exécution de chaque exercice à cible, comparée à ta cible programme (charge = % du 1RM estimé, tolérance ±5% ; RPE ±1). « Sous la cible » n\'est pas forcément un échec (deload, reps plus hautes…).');
+  return _maSec('Exécution vs cible', head, 'execcible') + rows.join('')
+    + _maCap('Ta dernière exécution de chaque exercice à cible.');
 }
 function _maMuscuResume(data) {
   var p = _maPeriode, r = (data.recent && data.recent[_maRecentWin(p)]) || {}, days = _MA_DAYS[p];
@@ -8830,14 +8858,14 @@ function _maMuscuResume(data) {
       + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
   var ptitle = _MA_PLABEL[p].charAt(0).toUpperCase() + _MA_PLABEL[p].slice(1);
-  _maSet('ma-muscu-resume', _maSynthese(data) + verdict + _maSec(ptitle)
+  _maSet('ma-muscu-resume', _maSynthese(data) + verdict + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
-    + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p]) + rsHtml
-    + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries') + volHtml
-    + _maCap('Séries par muscle sur la période. Le chiffre à droite = l\'objectif à atteindre. Barre verte = atteint, orange/rouge = en dessous. Cible niveau ' + TGT.label + '.')
-    + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p]) + _maBalance(data)
-    + _maCap('Équilibre entre groupes opposés (poussée/tirage, avant/arrière…) sur la période choisie. Un ratio proche de 50/50 limite les déséquilibres et le risque de blessure.'));
+    + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'rpe') + rsHtml
+    + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries', 'volume') + volHtml
+    + _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.')
+    + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p], 'balance') + _maBalance(data)
+    + _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.'));
 }
 
 function _maMuscuExercice(data) {
@@ -8846,7 +8874,7 @@ function _maMuscuExercice(data) {
   exos.sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; });
   var mode = _maProgMode;
   var MODES = [['exo', 'Par exercice', '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>'], ['grp', 'Par groupe', '<circle cx="12" cy="5" r="2.5"/><path d="M12 8v6M8 20l4-6 4 6"/>'], ['sea', 'Par séance', '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>']];
-  var head = _maSec('Progression', '3 vues au choix') + '<div class="ma-modesel">' + MODES.map(function (mm) { return '<button class="' + (mm[0] === mode ? 'on' : '') + '" onclick="maSetProgMode(\'' + mm[0] + '\')">' + _maSvg(mm[2], 14) + mm[1] + '</button>'; }).join('') + '</div>';
+  var head = _maSec('Progression', '3 vues au choix', 'progression') + '<div class="ma-modesel">' + MODES.map(function (mm) { return '<button class="' + (mm[0] === mode ? 'on' : '') + '" onclick="maSetProgMode(\'' + mm[0] + '\')">' + _maSvg(mm[2], 14) + mm[1] + '</button>'; }).join('') + '</div>';
   var body = (mode === 'grp') ? _maProgGrp(data) : (mode === 'sea') ? _maProgSea(data) : _maProgExo(data);
   _maSet('ma-muscu-detail', head + body + _maSec('Records personnels') + _maRecords(data));
 }
@@ -9015,9 +9043,9 @@ function _maMuscuTendances(data) {
   var hasW = wt.some(function (v) { return v > 0; });
   var out = '';
   if (hasW) {
-    out += _maSec('Tonnage soulevé', 'par semaine · 8 sem.')
+    out += _maSec('Tonnage soulevé', 'par semaine · 8 sem.', 'tonnage')
       + _maChartBlock('Tonnage / semaine', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', 'il y a 8 sem.', 'Total charge × reps de chaque semaine. La courbe qui monte = tu soulèves plus de volume au fil du temps → c\'est le moteur n°1 de progression.');
-    out += _maSec('Régularité', 'par semaine · 8 sem.')
+    out += _maSec('Régularité', 'par semaine · 8 sem.', 'regularite')
       + _maChartBlock('Séances / semaine', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', 'il y a 8 sem.', 'Combien de séances tu fais chaque semaine. La régularité prime sur tout le reste.');
   } else { out += _maEmpty('Pas assez d\'historique pour une tendance (besoin de plusieurs semaines).'); }
   var cmp = data.comparison || {}, rows = '';
@@ -10644,7 +10672,7 @@ function renderEtat(data) {
       if (!fiable || ratio == null) {
         var note = m.acwr_note || 'Données insuffisantes pour interpréter la charge.';
         elA.innerHTML =
-          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span><span class="et-chip" style="color:var(--text-muted);background:var(--surface2)">ACWR —</span></div>'
+          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span>' + _maInfoBtn('acwr') + '<span class="et-chip" style="color:var(--text-muted);background:var(--surface2)">ACWR —</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
           + '<span class="et-big" style="color:var(--text-muted)">—</span>'
           + '<span class="et-muted"><b>Pas encore calculable.</b><br>' + esc(note) + '</span></div>'
@@ -10666,7 +10694,7 @@ function renderEtat(data) {
           + '<div style="position:absolute;top:-3px;left:' + pos.toFixed(0) + '%;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)"></div></div>'
           + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:4px"><span>sous-charge</span><span>optimal 0,8–1,3</span><span>élevé &gt;1,5</span></div></div>';
         elA.innerHTML =
-          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span>'
+          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span>' + _maInfoBtn('acwr') + ''
           + '<span class="et-chip" style="color:' + cat.c + ';background:' + cat.bg + '">ACWR ' + ratio.toFixed(2) + '</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
           + '<span class="et-big" style="color:' + cat.c + '">' + ratio.toFixed(2) + '</span>'
@@ -11208,7 +11236,7 @@ var _LEXIQUE = [
   ['RPE', '« Effort perçu », de 1 à 10. RPE 8 ≈ il te restait environ 2 répétitions en réserve. Ça mesure à quel point une série était dure.'],
   ['1RM', 'La charge maximale que tu pourrais soulever 1 seule fois sur un exercice.'],
   ['e1RM (Epley)', '1RM estimé à partir d\'une série normale (formule d\'Epley), sans avoir à tester ton vrai maximum.'],
-  ['ACWR', 'Rapport entre ta charge récente (7 derniers jours) et ta charge habituelle (moyenne sur 28 jours). Trop élevé = tu en fais beaucoup plus que d\'habitude (risque). Zone d\'équilibre ≈ 0,8–1,3.'],
+  ['ACWR', 'Rapport entre ta charge récente (7 j) et ta charge habituelle (28 j). Zone de repère ≈ 0,8–1,3. ⚠️ À interpréter avec prudence, pas comme un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.'],
   ['Charge aiguë / chronique', 'Aiguë = ce que tu as fait récemment (7 j). Chronique = ta moyenne habituelle (28 j). L\'ACWR compare les deux.'],
   ['Surcharge progressive', 'Augmenter petit à petit la charge ou les répétitions pour continuer à progresser sans stagner.'],
   ['Balance musculaire', 'L\'équilibre entre groupes opposés (pectoraux vs dos, quadriceps vs ischios…). Proche de 50/50 = moins de déséquilibres et de risque de blessure.'],
