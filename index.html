@@ -1389,8 +1389,11 @@
         <!-- Aide / découverte -->
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Découverte</h2></div>
         <div class="card">
-          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Revoir la présentation de l'app (la boucle Novalyz, où trouver quoi).</div>
-          <button onclick="ouvrirOnboarding()" style="width:100%;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Revoir l'intro</button>
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Revoir la présentation de l'app, ou consulter le lexique des termes techniques.</div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="ouvrirOnboarding()" style="flex:1;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Revoir l'intro</button>
+            <button onclick="ouvrirLexique()" style="flex:1;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Lexique</button>
+          </div>
         </div>
 
         <!-- Apparence -->
@@ -1633,7 +1636,10 @@
       <div class="ma">
         <div class="ma-hd">
           <div><div class="ma-ttl">Mes analyses</div><div class="ma-sub">Le verdict, puis les chiffres.</div></div>
-          <button class="ma-av" onclick="ouvrirNovalyzIA()" title="Demande à Novalyz">V</button>
+          <div style="display:flex;gap:8px;align-items:center;flex:none">
+            <button class="ma-av" onclick="ouvrirLexique()" title="Lexique — c'est quoi ce terme ?" style="font-weight:800">?</button>
+            <button class="ma-av" onclick="ouvrirNovalyzIA()" title="Demande à Novalyz">V</button>
+          </div>
         </div>
 
         <div class="ma-switch">

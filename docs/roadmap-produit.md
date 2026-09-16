@@ -133,6 +133,9 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
   « 3 exercices en baisse » sans détail).
 - **État ▸ ACWR non calculable** : explication athlète (« charge récente vs habituelle »)
   + seuil (~4 semaines / 28 j, ≥ 6 jours d'entraînement).
+- **Lexique** (compréhensibilité) : glossaire des termes techniques (Tonnage, RPE, ACWR,
+  1RM/e1RM, surcharge, balance, efficience, récupération, fiabilité…) en langage simple,
+  accessible via « ? » dans l'en-tête des Analyses et Réglages ▸ Découverte.
 - **Réglages** : semaine calendaire/glissante · « Revoir l'intro ».
 
 ## 🚚 Distribution / MAJ auto

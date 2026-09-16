@@ -11200,6 +11200,42 @@ function fermerGenProgramme() { var ov = document.getElementById('gen-prog-overl
 // « Je gère mon programme moi-même » → coupe la proposition auto à la connexion.
 // (Reste toujours accessible via le bouton « ✨ Novalyz me propose un programme ».)
 function _genRefuse() { _savePref('prog_auto_off', 1); fermerGenProgramme(); try { showToast('OK, tu gères ton programme. Tu pourras le générer depuis Entraînement quand tu veux.'); } catch (e) {} }
+
+// ═══════════ LEXIQUE — explique tous les termes techniques en langage simple ═══════════
+var _LEXIQUE = [
+  ['Tonnage', 'Le poids total soulevé = charge × répétitions, additionné sur toutes tes séries. Quand il monte au fil des semaines, tu progresses en volume de travail.'],
+  ['Volume (séries)', 'Le nombre de séries par muscle et par semaine. C\'est le marqueur n°1 pour prendre du muscle (hypertrophie).'],
+  ['RPE', '« Effort perçu », de 1 à 10. RPE 8 ≈ il te restait environ 2 répétitions en réserve. Ça mesure à quel point une série était dure.'],
+  ['1RM', 'La charge maximale que tu pourrais soulever 1 seule fois sur un exercice.'],
+  ['e1RM (Epley)', '1RM estimé à partir d\'une série normale (formule d\'Epley), sans avoir à tester ton vrai maximum.'],
+  ['ACWR', 'Rapport entre ta charge récente (7 derniers jours) et ta charge habituelle (moyenne sur 28 jours). Trop élevé = tu en fais beaucoup plus que d\'habitude (risque). Zone d\'équilibre ≈ 0,8–1,3.'],
+  ['Charge aiguë / chronique', 'Aiguë = ce que tu as fait récemment (7 j). Chronique = ta moyenne habituelle (28 j). L\'ACWR compare les deux.'],
+  ['Surcharge progressive', 'Augmenter petit à petit la charge ou les répétitions pour continuer à progresser sans stagner.'],
+  ['Balance musculaire', 'L\'équilibre entre groupes opposés (pectoraux vs dos, quadriceps vs ischios…). Proche de 50/50 = moins de déséquilibres et de risque de blessure.'],
+  ['Efficience (cardio)', 'À effort comparable, ta fréquence cardiaque baisse quand ton endurance s\'améliore.'],
+  ['Récupération', 'Un score bien-être (sommeil, fatigue…) qui estime à quel point ton corps est prêt à s\'entraîner.'],
+  ['Fiabilité / confiance', 'À quel point Novalyz a assez de données pour se prononcer. Elle monte avec le nombre de séances et de questionnaires enregistrés.']
+];
+function ouvrirLexique() {
+  var ov = document.getElementById('lex-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'lex-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:1000;display:flex;align-items:flex-end;justify-content:center;';
+    ov.onclick = function (e) { if (e.target === ov) fermerLexique(); };
+    var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+    var rows = _LEXIQUE.map(function (t) {
+      return '<div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="font-weight:800;font-size:14px;color:var(--accent)">' + esc(t[0]) + '</div><div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-top:3px">' + esc(t[1]) + '</div></div>';
+    }).join('');
+    ov.innerHTML = '<div style="background:var(--surface);width:100%;max-width:520px;border-radius:20px 20px 0 0;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(7,11,20,.25)">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px"><div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:16px">Lexique</div><div style="font-size:12px;color:var(--text-subtle);margin-top:2px">Les termes de Novalyz en clair</div></div>'
+      + '<button onclick="fermerLexique()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'
+      + '<div style="overflow:auto;padding:0 18px calc(18px + env(safe-area-inset-bottom))">' + rows + '</div></div>';
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'flex';
+}
+function fermerLexique() { var ov = document.getElementById('lex-overlay'); if (ov) ov.style.display = 'none'; }
 function _genSetObjectif(v) { _genState.objectif = v; _genState.step = 2; _genRender(); }
 function _genSetJours(v) { _genState.jours = Number(v); _genState.step = 3; _genRender(); }
 function _genSetNiveau(v) { _genState.niveau = v; _genRender(); }
