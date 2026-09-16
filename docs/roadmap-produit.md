@@ -63,7 +63,8 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
    %1RM, RPE cible, supersets, prévu vs réalisé)
 8. **Aujourd'hui** (état → séance → point d'attention → action) — ✅
 9. **Mon entraînement** (prévu → réalisé → effet) — ✅
-10. **Mes analyses** (chiffres + interprétation) — 🟡 (interprétation en place, à étoffer)
+10. **Mes analyses** (chiffres + interprétation) — 🟡 (interprétation + Lexique + « respect
+    du programme » dans la synthèse ; reste à étoffer certaines tendances)
 11. **Mon état** (donnée / analyse / recommandation distinctes) — ✅ (par signal :
     donnée → 🔎 analyse → 💡 conseil, réutilise les alertes du moteur ; + bandeau fiabilité)
 12. **Programme proposé par Novalyz** (objectif+jours+niveau→structure) — ✅ (onboarding + génération)
@@ -133,6 +134,9 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
   « 3 exercices en baisse » sans détail).
 - **État ▸ ACWR non calculable** : explication athlète (« charge récente vs habituelle »)
   + seuil (~4 semaines / 28 j, ≥ 6 jours d'entraînement).
+- **Lecture Novalyz — respect du programme (#4)** : constat « tu es dans la cible sur X/Y
+  exercices » (exécution vs cible charge %1RM / RPE) intégré à la synthèse muscu
+  (helper backend buildRespectProgramme, réutilise la logique du front).
 - **Lexique** (compréhensibilité) : glossaire des termes techniques (Tonnage, RPE, ACWR,
   1RM/e1RM, surcharge, balance, efficience, récupération, fiabilité…) en langage simple,
   accessible via « ? » dans l'en-tête des Analyses et Réglages ▸ Découverte.

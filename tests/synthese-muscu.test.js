@@ -76,6 +76,12 @@ check('L: aucune fausse progression de volume', !l.constats.some(c => c.ton === 
 check('L: constat « pas assez de recul »', l.constats.some(c => /recul/i.test(c.texte)));
 check('L: confiance moyenne (base non fiable)', l.confiance === 'moyenne');
 
+// M — respect du programme (exécution vs cible) intégré à la synthèse
+let m1 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon' }, reg(3, 3), { nCible: 4, nEval: 4, nOk: 4 });
+check('M: respect programme = constat positif', m1.constats.some(c => c.ton === 'positif' && /cible/i.test(c.texte)));
+let m2 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon' }, reg(3, 3), { nCible: 4, nEval: 4, nOk: 1 });
+check('M: respect programme faible = constat attention', m2.constats.some(c => c.ton === 'attention' && /cible/i.test(c.texte)));
+
 // ── Cardio ──────────────────────────────────────────────────────────────────
 // F — aucun cardio → constat neutre + reco info
 let f = buildSyntheseCardio({ history: [] }, null, NOW);

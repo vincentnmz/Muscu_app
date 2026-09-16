@@ -1318,7 +1318,48 @@ async function handleResetPassword(body: any): Promise<Response> {
 // signaux DÉJÀ calculés (comparison 4 sem., moteur, régularité). Déterministe ;
 // ne recalcule rien et ne remplace pas le moteur (angle progression/objectif).
 // Angle complémentaire de moteur.reco (qui est orienté état/récup du jour).
-function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any): any {
+// « Respect du programme » : sur les exercices portant une cible (charge %1RM /
+// RPE), combien sont DANS la cible à leur dernière exécution. Réutilise la même
+// logique que le front (1RM estimé = max charge×(1+reps/30) ; charge tol ±5% ;
+// RPE moyen ±1). Retourne {nCible, nEval, nOk} ou null si aucune cible définie.
+function buildRespectProgramme(programme: any[], seancesDetail: any[], perfs: any[]): any {
+  const cibles = (programme || []).filter(p => p && (p.charge_pct_1rm != null || p.rpe_cible != null))
+  if (!cibles.length) return null
+  const est1RM: Record<string, number> = {}
+  for (const r of (perfs || [])) {
+    const exo = r.exercice; if (!exo) continue
+    const c = Number(r.charge) || 0, reps = Number(r.reps) || 0
+    if (!c || !reps) continue
+    const e = c * (1 + reps / 30)
+    if (!est1RM[exo] || e > est1RM[exo]) est1RM[exo] = e
+  }
+  const seen: Record<string, boolean> = {}
+  let nCible = 0, nEval = 0, nOk = 0
+  for (const p of cibles) {
+    const exo = p.exercice; if (!exo || seen[exo]) continue; seen[exo] = true
+    nCible++
+    let lastEx: any = null, lastDate = ''
+    for (const s of (seancesDetail || [])) {
+      for (const e of (s.exercices || [])) { if (e.nom === exo && (s.date || '') >= lastDate) { lastDate = s.date; lastEx = e } }
+    }
+    const series = lastEx ? (lastEx.series || []) : []
+    if (!series.length) continue
+    nEval++
+    let chargeOk = true, rpeOk = true
+    if (p.charge_pct_1rm != null && est1RM[exo]) {
+      const target = Math.round(est1RM[exo] * Number(p.charge_pct_1rm) / 100 / 2.5) * 2.5
+      const real = Math.max(...series.map((x: any) => Number(x.charge) || 0))
+      if (target && real) chargeOk = Math.abs(real - target) / target <= 0.05
+    }
+    if (p.rpe_cible != null) {
+      const rpes = series.map((x: any) => Number(x.rpe) || 0).filter((v: number) => v > 0)
+      if (rpes.length) { const mr = Math.round(rpes.reduce((a: number, b: number) => a + b, 0) / rpes.length); rpeOk = Math.abs(mr - Number(p.rpe_cible)) <= 1 }
+    }
+    if (chargeOk && rpeOk) nOk++
+  }
+  return { nCible, nEval, nOk }
+}
+function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any, execCible?: any): any {
   const obj = String(objectif || '').toLowerCase()
   const prise = obj.includes('masse') || obj.includes('hypertroph')
   const seche = obj.includes('sèche') || obj.includes('seche') || obj.includes('perte')
@@ -1352,6 +1393,14 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   } else if (tonEvolRaw != null) {
     // Une évolution existe mais la base est trop courte pour l'affirmer honnêtement.
     constats.push({ ton: 'neutre', texte: `Pas encore assez de recul pour juger l'évolution de ton volume (période précédente trop courte).` })
+  }
+  // Respect du programme (exécution vs cible charge %1RM / RPE), si des cibles existent.
+  if (execCible && execCible.nEval > 0) {
+    const r = execCible.nOk, n = execCible.nEval
+    if (r >= Math.ceil(n * 0.7)) constats.push({ ton: 'positif', texte: `Tu respectes ton programme : dans la cible sur ${r}/${n} exercice${n > 1 ? 's' : ''} suivi${n > 1 ? 's' : ''} (charge / RPE).` })
+    else constats.push({ ton: 'attention', texte: `Respect du programme : ${r}/${n} exercice${n > 1 ? 's' : ''} dans la cible — ajuste tes charges ou revois tes cibles.` })
+  } else if (execCible && execCible.nCible > 0) {
+    constats.push({ ton: 'neutre', texte: `Tu as défini des cibles mais pas encore réalisé ces exercices — fais-les pour suivre ton respect du programme.` })
   }
   const contrainte = (rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2)) || recup === 'Faible'
   if (rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2)) {
@@ -1816,6 +1865,10 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     if (etatM.acwr_note) moteur.acwr_note = etatM.acwr_note
   }
 
+  // Calculés une fois : détail des séances + respect du programme (exécution vs cible).
+  const seancesDetailArr = buildSeancesDetail(perfs)
+  const execCibleMuscu = buildRespectProgramme(programme, seancesDetailArr, perfs)
+
   return jsonResp({
     moteur,
     global: enrichedGlobal,
@@ -1850,7 +1903,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     cardio,
     analyses,
     analyse_synthese: {
-      muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj),
+      muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj, execCibleMuscu),
       cardio: buildSyntheseCardio(cardio, moteur, now),
       croise: buildSyntheseCroise(comparisonData, cardio, moteur, now),
     },
@@ -1862,7 +1915,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
         return { ...a, id, read: luSet.has(id) }
       })
     })(),
-    seances_detail: buildSeancesDetail(perfs),
+    seances_detail: seancesDetailArr,
     semaine_type: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'semaine_type'); return (r && r.valeur === 'glissant') ? 'glissant' : 'calendaire'; })(),
     // Onboarding : intro vue une fois + proposition auto de programme coupée par l'athlète.
     onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
