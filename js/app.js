@@ -11214,7 +11214,8 @@ var _LEXIQUE = [
   ['Balance musculaire', 'L\'équilibre entre groupes opposés (pectoraux vs dos, quadriceps vs ischios…). Proche de 50/50 = moins de déséquilibres et de risque de blessure.'],
   ['Efficience (cardio)', 'À effort comparable, ta fréquence cardiaque baisse quand ton endurance s\'améliore.'],
   ['Récupération', 'Un score bien-être (sommeil, fatigue…) qui estime à quel point ton corps est prêt à s\'entraîner.'],
-  ['Fiabilité / confiance', 'À quel point Novalyz a assez de données pour se prononcer. Elle monte avec le nombre de séances et de questionnaires enregistrés.']
+  ['Fiabilité / confiance', 'À quel point Novalyz a assez de données pour se prononcer. Elle monte avec le nombre de séances et de questionnaires enregistrés.'],
+  ['Contexte de performance', 'Un état que tu déclares (déload, retour de vacances, reprise après blessure, intensification). Il adapte l\'analyse : Novalyz interprète tes données différemment selon la situation (ex. il ne compte pas une baisse de charge comme une régression pendant un déload).']
 ];
 function ouvrirLexique() {
   var ov = document.getElementById('lex-overlay');
@@ -12861,6 +12862,14 @@ function _ctxActif(contexte) { return !!(contexte && contexte.etat && contexte.e
 // préparateur : le joueur voit son contexte (posé par le coach) mais ne l'édite pas.
 // `source` route le rechargement après écriture : 'foot' | 'muscu' | 'athlete'.
 // Éditable si : vue coach muscu ('muscu') OU vue foot en mode coach.
+// Effet CONCRET de chaque contexte sur l'analyse (langage clair) — explique
+// « pourquoi Novalyz interprète différemment aujourd'hui » (roadmap #11).
+var _CTX_EFFET = {
+  deload: 'Semaine allégée assumée : Novalyz n\'attend pas de progression et ne compte pas la baisse de volume comme une régression.',
+  retour_vacances: 'Reprise : ta charge n\'est pas encore comparée à ton habituel (ACWR en pause le temps de reconstruire ~4 semaines d\'historique), et Novalyz reste indulgent pendant que tu remontes.',
+  retour_blessure: 'Prudence renforcée : Novalyz relève ton niveau de risque et évite de te pousser tant que tu reprends.',
+  intensification: 'Phase de charge assumée : une hausse d\'intensité est attendue et n\'est pas traitée comme une alerte.'
+};
 function carteContexteHTML(contexte, athlete_id, source) {
   var actif = _ctxActif(contexte);
   var cle = actif ? contexte.etat : 'saison_normale';
@@ -12870,6 +12879,9 @@ function carteContexteHTML(contexte, athlete_id, source) {
   var sous = actif
     ? escapeHtml((contexte.date_debut || '') + (contexte.date_fin ? ' → ' + contexte.date_fin : '') + (contexte.jours_restants != null ? ' · ' + contexte.jours_restants + 'j restants' : ''))
     : 'Aucun ajustement — analyses standard.';
+  var effet = (actif && _CTX_EFFET[cle])
+    ? '<div style="margin-top:10px;padding:9px 11px;background:var(--surface2);border-radius:10px;border-left:2px solid ' + col + ';font-size:11.5px;color:var(--text-muted);line-height:1.45;"><b style="color:var(--text)">Effet sur ton analyse —</b> ' + escapeHtml(_CTX_EFFET[cle]) + '</div>'
+    : '';
   var aid = String(athlete_id || '');
   var src = source || 'muscu';
   var editable = (src === 'muscu') || (src === 'foot' && typeof cdMode !== 'undefined' && cdMode === 'coach');
@@ -12885,7 +12897,7 @@ function carteContexteHTML(contexte, athlete_id, source) {
     + '<span style="width:10px;height:10px;border-radius:50%;background:' + col + ';flex-shrink:0;"></span>'
     + '<div style="min-width:0;"><div style="font-size:15px;font-weight:800;">' + titre + '</div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + sous + '</div></div>'
-    + '</div>' + boutons + '</div>';
+    + '</div>' + effet + boutons + '</div>';
 }
 
 // Carte « En vacances » : reflète la pause (mode vacances) posée dans Réglages.

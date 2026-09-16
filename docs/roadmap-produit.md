@@ -53,8 +53,9 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 2. **Analyse des données** (données → interprétation en phrases) — ✅ Lecture Novalyz
    (muscu · cardio · croisé)
 3. **Recommandations** (finding/priority/evidence/reco/confidence/context) — ✅ dans la synthèse
-4. **Contexte de performance** (retour vacances/blessure/deload, fiabilité affichée) — 🟡
-   (contexte_tag / acwr_fiable existent ; UI dédiée à renforcer)
+4. **Contexte de performance** (retour vacances/blessure/deload, fiabilité affichée) — ✅
+   (système complet : l'athlète pose un état → moteur ajusté ; la carte explique
+   maintenant l'EFFET concret sur l'analyse « pourquoi Novalyz interprète différemment »)
 5. **Fiabilité** des analyses — 🟡 (confiance/reliability exposés ; tendances fiabilisées)
 6. **Alertes** (centre unifié type/severity/source/evidence/context/reliability/read/action) — ✅
 
@@ -137,6 +138,10 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 - **Lecture Novalyz — respect du programme (#4)** : constat « tu es dans la cible sur X/Y
   exercices » (exécution vs cible charge %1RM / RPE) intégré à la synthèse muscu
   (helper backend buildRespectProgramme, réutilise la logique du front).
+- **Contexte de performance (P0-4)** : la carte contexte (Accueil) explique désormais
+  l'EFFET concret de l'état actif (déload / retour vacances / retour blessure /
+  intensification) sur l'analyse — « pourquoi Novalyz interprète différemment ». Entrée
+  Lexique ajoutée.
 - **Lexique** (compréhensibilité) : glossaire des termes techniques (Tonnage, RPE, ACWR,
   1RM/e1RM, surcharge, balance, efficience, récupération, fiabilité…) en langage simple,
   accessible via « ? » dans l'en-tête des Analyses et Réglages ▸ Découverte.
