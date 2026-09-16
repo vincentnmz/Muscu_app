@@ -12865,10 +12865,10 @@ function _ctxActif(contexte) { return !!(contexte && contexte.etat && contexte.e
 // Effet CONCRET de chaque contexte sur l'analyse (langage clair) — explique
 // « pourquoi Novalyz interprète différemment aujourd'hui » (roadmap #11).
 var _CTX_EFFET = {
-  deload: 'Semaine allégée assumée : Novalyz n\'attend pas de progression et ne compte pas la baisse de volume comme une régression.',
-  retour_vacances: 'Reprise : ta charge n\'est pas encore comparée à ton habituel (ACWR en pause le temps de reconstruire ~4 semaines d\'historique), et Novalyz reste indulgent pendant que tu remontes.',
-  retour_blessure: 'Prudence renforcée : Novalyz relève ton niveau de risque et évite de te pousser tant que tu reprends.',
-  intensification: 'Phase de charge assumée : une hausse d\'intensité est attendue et n\'est pas traitée comme une alerte.'
+  deload: 'Novalyz met en veille les alertes « absence » et « sous-charge » et abaisse le seuil de surcharge : une baisse de volume est attendue et n\'est pas signalée comme une régression.',
+  retour_vacances: 'Reprise : l\'ACWR est mis en pause le temps de reconstruire ~4 semaines d\'historique, et les alertes « absence » / « sous-charge » sont en veille pendant que tu remontes.',
+  retour_blessure: 'Prudence renforcée : Novalyz relève ton niveau de risque et te garde au moins en « Vigilance » tant que tu reprends.',
+  intensification: 'Phase de charge assumée : une hausse de l\'effort perçu (RPE) est attendue et n\'est pas traitée comme une alerte.'
 };
 function carteContexteHTML(contexte, athlete_id, source) {
   var actif = _ctxActif(contexte);

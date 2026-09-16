@@ -1375,6 +1375,13 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   const tonEvol = (tonEvolRaw != null && baseFiable) ? tonEvolRaw : null
   const recup = (moteur && moteur.recup) || null
   const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
+  // Contexte de performance (déclaré par l'athlète) : la synthèse doit interpréter
+  // en conséquence (déload → baisse de volume normale ; intensification → hausse
+  // d'effort attendue), sinon l'explication du contexte serait fausse.
+  const ctx = (moteur && moteur.contexte_tag) || null
+  const enDeload = ctx === 'deload'
+  const enIntensif = ctx === 'intensification'
+  const enReprise = ctx === 'retour_vacances' || ctx === 'retour_blessure'
   // État du jour dégradé (récup faible OU disponibilité Vigilance/À surveiller) :
   // la reco progression doit alors S'ALIGNER avec le verdict (pas de « augmente »).
   const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
@@ -1386,7 +1393,9 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     if (tonEvol >= 5 && (rpeDiff == null || rpeDiff <= 0.5)) {
       constats.push({ ton: 'positif', texte: `Ton volume progresse (+${tonEvol}% sur 4 semaines) sans hausse marquée de l'effort perçu — progression cohérente${prise ? ' avec ta prise de masse' : (seche ? ' malgré la sèche, bon signe' : '')}.` })
     } else if (tonEvol <= -8) {
-      constats.push({ ton: 'attention', texte: `Ton volume a baissé (${tonEvol}% sur 4 semaines)${seche ? ' — attention à préserver le muscle pendant la sèche' : ''}.` })
+      if (enDeload) constats.push({ ton: 'neutre', texte: `Volume réduit (${tonEvol}% sur 4 semaines) — normal pendant ton déload, tu récupères.` })
+      else if (enReprise) constats.push({ ton: 'neutre', texte: `Volume plus bas (${tonEvol}% sur 4 semaines) — cohérent avec ta reprise, remonte progressivement.` })
+      else constats.push({ ton: 'attention', texte: `Ton volume a baissé (${tonEvol}% sur 4 semaines)${seche ? ' — attention à préserver le muscle pendant la sèche' : ''}.` })
     } else {
       constats.push({ ton: 'neutre', texte: `Volume stable sur 4 semaines (${tonEvol > 0 ? '+' : ''}${tonEvol}%).` })
     }
@@ -1402,8 +1411,11 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   } else if (execCible && execCible.nCible > 0) {
     constats.push({ ton: 'neutre', texte: `Tu as défini des cibles mais pas encore réalisé ces exercices — fais-les pour suivre ton respect du programme.` })
   }
-  const contrainte = (rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2)) || recup === 'Faible'
-  if (rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2)) {
+  // En intensification, une hausse de RPE est ATTENDUE → on ne la traite pas comme
+  // une contrainte anormale (la récup faible, elle, reste un signal quel que soit le contexte).
+  const rpeMonte = rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2) && !enIntensif
+  const contrainte = rpeMonte || recup === 'Faible'
+  if (rpeMonte) {
     constats.push({ ton: 'attention', texte: `Ton effort perçu (RPE) monte (+${rpeDiff}) alors que le volume stagne — tu forces plus pour le même travail.` })
   } else if (recup === 'Faible') {
     constats.push({ ton: 'attention', texte: `Ta récupération est dégradée ces jours-ci.` })

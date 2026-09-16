@@ -82,6 +82,16 @@ check('M: respect programme = constat positif', m1.constats.some(c => c.ton === 
 let m2 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon' }, reg(3, 3), { nCible: 4, nEval: 4, nOk: 1 });
 check('M: respect programme faible = constat attention', m2.constats.some(c => c.ton === 'attention' && /cible/i.test(c.texte)));
 
+// N — contexte DÉLOAD : une baisse de volume n'est PAS une régression (attendue)
+let n1 = buildSyntheseMuscu('Prise de masse', cmp(-12, 0), { recup: 'Bon', contexte_tag: 'deload' }, reg(3, 3));
+check('N: déload → baisse de volume en neutre', n1.constats.some(c => c.ton === 'neutre' && /déload/i.test(c.texte)));
+check('N: déload → pas d\'attention « volume a baissé »', !n1.constats.some(c => c.ton === 'attention' && /volume a baissé/i.test(c.texte)));
+
+// O — contexte INTENSIFICATION : hausse de RPE attendue (pas de « tu forces plus »)
+let o1 = buildSyntheseMuscu('Prise de masse', cmp(1, 0.9), { recup: 'Bon', contexte_tag: 'intensification' }, reg(3, 3));
+check('O: intensification → pas de « tu forces plus »', !o1.constats.some(c => /tu forces plus/i.test(c.texte)));
+check('O: intensification → reco pas haute priorité', !(o1.reco && o1.reco.priorite === 'haute'));
+
 // ── Cardio ──────────────────────────────────────────────────────────────────
 // F — aucun cardio → constat neutre + reco info
 let f = buildSyntheseCardio({ history: [] }, null, NOW);

@@ -138,10 +138,11 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 - **Lecture Novalyz — respect du programme (#4)** : constat « tu es dans la cible sur X/Y
   exercices » (exécution vs cible charge %1RM / RPE) intégré à la synthèse muscu
   (helper backend buildRespectProgramme, réutilise la logique du front).
-- **Contexte de performance (P0-4)** : la carte contexte (Accueil) explique désormais
-  l'EFFET concret de l'état actif (déload / retour vacances / retour blessure /
-  intensification) sur l'analyse — « pourquoi Novalyz interprète différemment ». Entrée
-  Lexique ajoutée.
+- **Contexte de performance (P0-4)** : la carte contexte (Accueil) explique l'EFFET
+  concret de l'état actif sur l'analyse. **Fiabilité** : les phrases ont été VÉRIFIÉES
+  contre le moteur et la Lecture Novalyz rendue consciente du contexte (déload → baisse
+  de volume = normale, pas une régression ; intensification → hausse de RPE = attendue,
+  pas une alerte). Entrée Lexique ajoutée.
 - **Lexique** (compréhensibilité) : glossaire des termes techniques (Tonnage, RPE, ACWR,
   1RM/e1RM, surcharge, balance, efficience, récupération, fiabilité…) en langage simple,
   accessible via « ? » dans l'en-tête des Analyses et Réglages ▸ Découverte.
