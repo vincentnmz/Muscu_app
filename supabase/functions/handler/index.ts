@@ -1463,7 +1463,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   for (const s of hist) {
     const d = String(s.date || '')
     const ua = (Number(s.rpe) || 0) * (Number(s.duree) || 0)
-    if (d >= c28) { n28++; ch28 += ua; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy) }) }
+    if (d >= c28) { n28++; ch28 += ua; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy), rpe: Number(s.rpe) || 0 }) }
     else if (d >= c56) { n56++; ch56 += ua }
   }
   // FIABILITÉ : n'évaluer l'évolution de charge que si la période précédente a une
@@ -1480,13 +1480,21 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
     constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${Math.round(dist28 * 10) / 10} km au total)` : ''}.` })
     if (chEvol != null && chEvol >= 50) constats.push({ ton: 'attention', texte: `Ta charge cardio a fortement augmenté (+${chEvol}% sur 4 semaines) — hausse rapide.` })
     else if (chEvol != null && chEvol <= -40) constats.push({ ton: 'neutre', texte: `Ta charge cardio a baissé (${chEvol}% sur 4 semaines).` })
-    // Efficience : FC moyenne première moitié vs seconde moitié de la fenêtre.
+    // Efficience : FC moyenne 1re vs 2de moitié — MAIS seulement « à effort comparable »,
+    // càd si le RPE moyen des deux moitiés est proche (sinon une FC plus basse peut venir
+    // de sorties plus faciles, pas d'un gain d'endurance). On ne l'affirme donc que si
+    // l'effort est vérifié comparable.
     if (fcPts.length >= 4) {
       const srt = fcPts.slice().sort((a, b) => a.d.localeCompare(b.d))
       const half = Math.floor(srt.length / 2)
-      const avg = (arr: any[]) => arr.reduce((s, x) => s + x.fc, 0) / arr.length
-      const fcOld = avg(srt.slice(0, half)), fcNew = avg(srt.slice(half))
-      if (fcNew <= fcOld - 4) constats.push({ ton: 'positif', texte: `À effort comparable, ta FC moyenne baisse (${Math.round(fcOld)}→${Math.round(fcNew)} bpm) — ton endurance progresse.` })
+      const avgFc = (arr: any[]) => arr.reduce((s, x) => s + x.fc, 0) / arr.length
+      const oldH = srt.slice(0, half), newH = srt.slice(half)
+      const fcOld = avgFc(oldH), fcNew = avgFc(newH)
+      const rpeOldArr = oldH.map((x: any) => x.rpe).filter((v: number) => v > 0)
+      const rpeNewArr = newH.map((x: any) => x.rpe).filter((v: number) => v > 0)
+      const effortComparable = rpeOldArr.length && rpeNewArr.length &&
+        Math.abs(rpeOldArr.reduce((a: number, b: number) => a + b, 0) / rpeOldArr.length - rpeNewArr.reduce((a: number, b: number) => a + b, 0) / rpeNewArr.length) <= 1
+      if (fcNew <= fcOld - 4 && effortComparable) constats.push({ ton: 'positif', texte: `À effort comparable, ta FC moyenne baisse (${Math.round(fcOld)}→${Math.round(fcNew)} bpm) — bon signe pour ton endurance.` })
     }
   }
 
@@ -1522,8 +1530,8 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
   if (mPct >= 85) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % musculation (${mPct} %). Un peu de cardio renforcerait ta base d'endurance.` })
   else if (mPct <= 15) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % cardio (${100 - mPct} %). La musculation entretient force et masse.` })
   else constats.push({ ton: 'positif', texte: `Bon équilibre muscu / cardio (${mPct} % / ${100 - mPct} %).` })
-  if (recup === 'Excellent' || recup === 'Bon') constats.push({ ton: 'positif', texte: `Ta récupération suit ta charge globale (${String(recup).toLowerCase()}).` })
-  else if (recup === 'Faible') constats.push({ ton: 'attention', texte: `Ta récupération est basse au regard de ta charge globale.` })
+  if (recup === 'Excellent' || recup === 'Bon') constats.push({ ton: 'positif', texte: `Ta récupération est ${String(recup).toLowerCase()} — tu encaisses bien ta charge actuelle.` })
+  else if (recup === 'Faible') constats.push({ ton: 'attention', texte: `Ta récupération est basse — allège ta charge globale (muscu + cardio) le temps qu'elle remonte.` })
 
   let reco: any
   if (etatVigilance) reco = { texte: `Ta charge globale pèse sur ta récupération : prévois une semaine un peu plus légère ou une journée de repos.`, priorite: 'moyenne' }
