@@ -92,6 +92,15 @@ let o1 = buildSyntheseMuscu('Prise de masse', cmp(1, 0.9), { recup: 'Bon', conte
 check('O: intensification → pas de « tu forces plus »', !o1.constats.some(c => /tu forces plus/i.test(c.texte)));
 check('O: intensification → reco pas haute priorité', !(o1.reco && o1.reco.priorite === 'haute'));
 
+// P — objectif RECOMPOSITION (masse + sèche) : la synthèse cadre en recomposition
+let p = buildSyntheseMuscu('Prise de masse + sèche', cmp(10, 0), { recup: 'Bon' }, reg(3, 3));
+check('P: recomp → constat mentionne la recomposition', p.constats.some(c => /recomposition/i.test(c.texte)));
+
+// Q — objectif MAINTIEN : progression au-dessus du maintien → reco sans « surcharge progressive »
+let q = buildSyntheseMuscu('Maintien', cmp(10, 0), { recup: 'Bon' }, reg(3, 3));
+check('Q: maintien → reco ne pousse pas la surcharge progressive', !/surcharge progressive/i.test(q.reco.texte));
+check('Q: maintien → reco parle bien de maintien', /maintien|maintenir/i.test(q.reco.texte));
+
 // ── Cardio ──────────────────────────────────────────────────────────────────
 // F — aucun cardio → constat neutre + reco info
 let f = buildSyntheseCardio({ history: [] }, null, NOW);

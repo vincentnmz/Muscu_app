@@ -1363,6 +1363,10 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   const obj = String(objectif || '').toLowerCase()
   const prise = obj.includes('masse') || obj.includes('hypertroph')
   const seche = obj.includes('sèche') || obj.includes('seche') || obj.includes('perte')
+  // Objectif = colonne vertébrale : recomp (masse + sèche) et maintien doivent aussi
+  // cadrer la lecture (pas seulement masse/sèche). Synchronisé avec OBJECTIFS (front).
+  const recomp = prise && seche
+  const maintien = obj.includes('maintien')
   const cmp = (comparison && comparison.j28_vs_j28prec) || {}
   const tonEvolRaw = cmp.tonnage ? cmp.tonnage.evol_pct : null
   const rpeDiff = cmp.rpe ? cmp.rpe.diff : null
@@ -1391,11 +1395,11 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   const constats: any[] = []
   if (tonEvol != null) {
     if (tonEvol >= 5 && (rpeDiff == null || rpeDiff <= 0.5)) {
-      constats.push({ ton: 'positif', texte: `Ton volume progresse (+${tonEvol}% sur 4 semaines) sans hausse marquée de l'effort perçu — progression cohérente${prise ? ' avec ta prise de masse' : (seche ? ' malgré la sèche, bon signe' : '')}.` })
+      constats.push({ ton: 'positif', texte: `Ton volume progresse (+${tonEvol}% sur 4 semaines) sans hausse marquée de l'effort perçu — progression cohérente${recomp ? ' avec ta recomposition (tu construis à poids stable)' : (prise ? ' avec ta prise de masse' : (seche ? ' malgré la sèche, bon signe' : (maintien ? ' — au-delà de ce qu\'un simple maintien demande' : '')))}.` })
     } else if (tonEvol <= -8) {
       if (enDeload) constats.push({ ton: 'neutre', texte: `Volume réduit (${tonEvol}% sur 4 semaines) — normal pendant ton déload, tu récupères.` })
       else if (enReprise) constats.push({ ton: 'neutre', texte: `Volume plus bas (${tonEvol}% sur 4 semaines) — cohérent avec ta reprise, remonte progressivement.` })
-      else constats.push({ ton: 'attention', texte: `Ton volume a baissé (${tonEvol}% sur 4 semaines)${seche ? ' — attention à préserver le muscle pendant la sèche' : ''}.` })
+      else constats.push({ ton: 'attention', texte: `Ton volume a baissé (${tonEvol}% sur 4 semaines)${recomp ? ' — surveille ta force pour préserver ta recomposition' : (seche ? ' — attention à préserver le muscle pendant la sèche' : (maintien ? ' — tolérable pour un maintien tant que ta régularité tient' : ''))}.` })
     } else {
       constats.push({ ton: 'neutre', texte: `Volume stable sur 4 semaines (${tonEvol > 0 ? '+' : ''}${tonEvol}%).` })
     }
@@ -1436,8 +1440,8 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   // État en vigilance : on NE dit PAS « augmente » — on s'aligne sur le verdict.
   else if (etatVigilance && progOk) reco = { texte: `Ta progression est cohérente, mais ton état du jour appelle à la vigilance : garde la charge sans l'augmenter aujourd'hui et priorise la récupération ; tu relanceras la surcharge une fois au vert.`, priorite: 'moyenne' }
   else if (etatVigilance) reco = { texte: `Priorise la récupération aujourd'hui (état en vigilance) avant d'augmenter la charge.`, priorite: 'moyenne' }
-  else if (aBaisse) reco = { texte: prise ? `Remonte progressivement le volume par muscle vers ta cible pour relancer la prise de masse.` : `Remonte progressivement ton volume vers ta cible.`, priorite: 'moyenne' }
-  else if (progOk) reco = { texte: `Conserve la structure actuelle et poursuis la surcharge progressive (petites hausses de charge ou de reps).`, priorite: 'info' }
+  else if (aBaisse) reco = { texte: recomp ? `Reviens à tes charges habituelles pour préserver tes acquis (recomposition).` : (maintien ? `Reviens à ta charge habituelle : elle suffit à maintenir tes acquis.` : (prise ? `Remonte progressivement le volume par muscle vers ta cible pour relancer la prise de masse.` : `Remonte progressivement ton volume vers ta cible.`)), priorite: 'moyenne' }
+  else if (progOk) reco = { texte: maintien ? `Tu es même au-dessus d'un simple maintien : garde cette charge, inutile de forcer la surcharge.` : `Conserve la structure actuelle et poursuis la surcharge progressive (petites hausses de charge ou de reps).`, priorite: 'info' }
   else reco = { texte: `Continue et enregistre régulièrement tes séances : les analyses s'affinent avec les données.`, priorite: 'info' }
 
   // Confiance = profondeur réelle des données (nb de séances) + présence d'une base

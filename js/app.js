@@ -8425,6 +8425,40 @@ function afficherProgrammeComplet() {
 }
 
 // ==================== OBJECTIF ====================
+// Source UNIQUE de l'objectif athlète : ce dict relie chaque objectif du profil
+// (a) au type de programme que le générateur proposera (clé `gen` = _GEN_OBJ) et
+// (b) à la façon dont la Lecture Novalyz cadre les analyses. Les textes `lecture`
+// décrivent EXACTEMENT le comportement de buildSyntheseMuscu (cf. index.ts) — à
+// garder synchronisés (règle 6bis : une phrase affichée = un comportement réel).
+var OBJECTIFS = {
+  'Prise de masse': {
+    gen: 'hypertrophie',
+    prog: '4 séries de 8–12 reps · ~70–75 % 1RM',
+    focus: 'Le volume prime : viser puis dépasser ta cible de séries par muscle.',
+    lecture: 'Novalyz suit ton volume : une baisse est signalée et il t\'encourage à la surcharge progressive.'
+  },
+  'Sèche': {
+    gen: 'hypertrophie',
+    prog: '4 séries de 8–12 reps · garde tes charges',
+    focus: 'Préserver le muscle en déficit : maintenir charge et volume.',
+    lecture: 'Novalyz surveille davantage une baisse de volume (risque de fonte musculaire en sèche).'
+  },
+  'Prise de masse + sèche': {
+    gen: 'hypertrophie',
+    prog: '4 séries de 8–12 reps · ~70 % 1RM',
+    focus: 'Recomposition : progresser en force à poids de corps stable.',
+    lecture: 'Novalyz cadre tes analyses en recomposition : construire à poids stable, sans t\'alarmer d\'une évolution de poids modérée.'
+  },
+  'Maintien': {
+    gen: 'remise',
+    prog: '3 séries de 10–12 reps · charge confortable',
+    focus: 'Entretien : la régularité prime sur l\'intensité.',
+    lecture: 'Novalyz valorise ta régularité ; pas de pression pour augmenter les charges.'
+  }
+};
+function _objLine(ic, k, v) {
+  return '<div style="display:flex;gap:9px;padding:6px 0"><span style="font-size:15px;flex:none;line-height:1.3">' + ic + '</span><div style="min-width:0"><div style="font-size:12px;font-weight:700;color:var(--text)">' + k + '</div><div style="font-size:12px;color:var(--text-muted);line-height:1.45">' + v + '</div></div></div>';
+}
 function objIconFor(obj) {
   const o = (obj || '').toLowerCase();
   if (o.includes('masse') && o.includes('sèche')) return '♻️';
@@ -8439,6 +8473,21 @@ function majObjectifCard(obj) {
   const icoEl = document.getElementById('obj-icon');
   if (nomEl) nomEl.textContent = obj || 'Non défini';
   if (icoEl) icoEl.textContent = objIconFor(obj);
+  // « Ce que ça change pour toi » : rend l'objectif visible comme colonne
+  // vertébrale (programme conseillé + priorité + façon dont les analyses le lisent).
+  const detEl = document.getElementById('obj-actuel');
+  if (detEl) {
+    const info = OBJECTIFS[obj];
+    if (info) {
+      detEl.style.display = 'block';
+      detEl.innerHTML = '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">'
+        + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:4px">Ce que ça change pour toi</div>'
+        + _objLine('🏋️', 'Programme conseillé', info.prog)
+        + _objLine('🎯', 'Priorité', info.focus)
+        + _objLine('🧠', 'Lecture Novalyz', info.lecture)
+        + '</div>';
+    } else { detEl.style.display = 'none'; detEl.innerHTML = ''; }
+  }
 }
 function toggleObjectifEdit(on) {
   const v = document.getElementById('obj-card-view');
@@ -11215,7 +11264,10 @@ var _GEN_NIV = [['debutant', 'Débutant', '0-3 ans de pratique'], ['intermediair
 var _GEN_JOPT = [[2, '2 jours', 'Full body'], [3, '3 jours', 'Push / Pull / Legs'], [4, '4 jours', 'Haut / Bas'], [5, '5 jours', 'PPL + Haut / Bas']];
 function ouvrirGenProgramme() {
   if (typeof athlete === 'undefined' || !athlete) return;
-  _genState = { step: 1, objectif: null, jours: null, niveau: null };
+  // Pré-règle l'objectif du générateur depuis l'objectif du profil (une seule
+  // notion) — reste modifiable à l'étape 1.
+  var _objDef = null; try { if (athlete && athlete.objectif && OBJECTIFS[athlete.objectif]) _objDef = OBJECTIFS[athlete.objectif].gen; } catch (e) {}
+  _genState = { step: 1, objectif: _objDef, jours: null, niveau: null };
   var ov = document.getElementById('gen-prog-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -11287,7 +11339,9 @@ function _genRender() {
     + '<button onclick="fermerGenProgramme()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1">×</button></div>';
   var body = '';
   if (st.step === 1) {
+    var _preObj = ''; try { if (athlete && athlete.objectif && OBJECTIFS[athlete.objectif]) _preObj = athlete.objectif; } catch (e) {}
     body = '<h2 style="font-size:18px;margin:2px 0 4px">Ton objectif ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Ça règle les répétitions, la charge cible et le repos.</div>'
+      + (_preObj ? '<div style="font-size:11.5px;color:var(--accent);background:var(--accent-a08);border-radius:9px;padding:8px 10px;margin-bottom:10px">Pré-réglé sur ton objectif « ' + esc(_preObj) +' ». Tu peux le changer ici.</div>' : '')
       + Object.keys(_GEN_OBJ).map(function (k) { var o = _GEN_OBJ[k]; return _genCard('_genSetObjectif(\'' + k + '\')', st.objectif === k, o.label, o.hint + ' · ' + o.s + '×' + o.rmin + '-' + o.rmax + ' · ' + o.pct + '% · RPE ' + o.rpe); }).join('')
       + '<button onclick="_genRefuse()" style="width:100%;margin-top:6px;background:none;border:none;color:var(--text-subtle);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
   } else if (st.step === 2) {

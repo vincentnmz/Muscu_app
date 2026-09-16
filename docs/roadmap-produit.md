@@ -52,8 +52,11 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 ## ORDRE DE PRIORITÉ (backbone de travail)
 
 ### P0 — CERVEAU
-1. **Objectifs** comme colonne vertébrale des analyses — 🟡 (objectif contextualise la
-   Lecture Novalyz / la génération de programme ; structure à étendre au besoin)
+1. **Objectifs** comme colonne vertébrale des analyses — ✅ (volet « cadré » livré :
+   écran « Mon objectif » qui explique ce que l'objectif change ; objectif profil ↔
+   générateur réconciliés (dict `OBJECTIFS`, pré-réglage du générateur) ; Maintien +
+   recomposition cadrent maintenant la Lecture Novalyz. Option « objectifs chiffrés
+   suivis » = extension possible plus tard, non retenue pour cette étape.)
 2. **Analyse des données** (données → interprétation en phrases) — ✅ Lecture Novalyz
    (muscu · cardio · croisé)
 3. **Recommandations** (finding/priority/evidence/reco/confidence/context) — ✅ dans la synthèse
@@ -108,6 +111,13 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 
 ## ✅ Journal de livraison (branche `claude/novalyz-player-profile-mockups-g4bock`)
 
+- **P0-1 Objectifs (colonne vertébrale, volet cadré)** : dict `OBJECTIFS` = source
+  unique reliant l'objectif du profil (a) au type de programme conseillé et (b) à la
+  façon dont la Lecture Novalyz cadre les analyses. Écran « Mon objectif » enrichi
+  d'un bloc « Ce que ça change pour toi » (programme conseillé · priorité · lecture
+  Novalyz). Générateur de programme **pré-réglé** sur l'objectif du profil (modifiable).
+  Backend `buildSyntheseMuscu` : **Maintien** et **recomposition** (masse + sèche)
+  cadrent désormais le wording (avant : masse/sèche seulement) + 2 tests dédiés.
 - **P0-2/3/5** Lecture Novalyz muscu/cardio/croisé (fenêtre fixe 4 sem.) + fiabilité tendances
   (tendance robuste, « Par exercice » filtré période, ressenti « Par séance »).
 - **P0-4/5** Calibrage sévérité du verdict (fatigue en moyenne récente).
