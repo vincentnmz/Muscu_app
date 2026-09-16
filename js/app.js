@@ -10498,17 +10498,20 @@ function renderAujourdhui(data) {
         { key: 'fatigue', nm: 'Fatigue', invert: true },
         { key: 'motivation', nm: 'Motivation', invert: false }
       ];
+      var escB = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
       elG.innerHTML = CELLS.map(function (c) {
         var raw = be0 ? be0[c.key] : null;
         var has = !(raw == null || raw === '' || isNaN(Number(raw)));
         var nn = has ? Number(raw) : 0;
         var pos = has ? wqPositif({ invert: c.invert }, raw) : null;
         var col = (pos != null) ? (pos >= 4 ? 'var(--tj-good)' : pos >= 3 ? 'var(--tj-warn)' : '#DC3545') : 'var(--tj-border)';
-        var pips = '';
-        if (has) { for (var k = 0; k < nn; k++) { pips += '<i class="tj-bp" style="background:' + col + '"></i>'; } }
-        else { pips = '<i class="tj-bp"></i>'; }
-        return '<div class="tj-bcell"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICOB[c.key] + '</svg></span>'
-          + '<span class="tj-bpips">' + pips + '</span><span class="nm">' + c.nm + '</span></div>';
+        var valTxt = has ? ((WQ_ANSWERS[c.key] && WQ_ANSWERS[c.key][nn]) || (nn + '/5')) : '—';
+        var seg = '';
+        for (var k = 1; k <= 5; k++) { seg += '<i' + (has && k <= nn ? ' style="background:' + col + '"' : '') + '></i>'; }
+        return '<div class="tj-bcell"><span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICOB[c.key] + '</svg></span>'
+          + '<span class="nm">' + c.nm + '</span>'
+          + '<span class="val" style="color:' + (has ? col : 'var(--tj-subtle)') + '">' + escB(valTxt) + '</span>'
+          + '<span class="tj-bseg">' + seg + '</span></div>';
       }).join('');
     }
   } catch (e) {}
