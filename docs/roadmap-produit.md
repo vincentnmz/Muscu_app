@@ -31,19 +31,23 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 
 ---
 
-## Ordre de travail décidé (porteur, sept. 2026)
+## Ordre de travail décidé (porteur, sept. 2026 — mis à jour)
 
-1. **Tout finir côté ATHLÈTE (Solo)** — avant de toucher au coach. Sous-ordre :
-   - **A. Cerveau + écrans** : P1-11 Mon état (donnée→analyse→reco) · P1-10 Mes analyses
-     (interprétation étoffée) · P0-4 Contexte de perf (+ fiabilité) · P0-1 Objectifs
-     (consolidation) · Lecture Novalyz enrichie (exécution vs cible en phrases).
-   - **B. Données sportives (P2)** : Cardio/Hyrox dédié · activités structurées · GPS ·
-     Watch/Health Connect · déduplication · vélo/running/natation · séances hybrides.
-   - **C. Nutrition solo (P3)** : nutrition dans Mon état + analyse nutritionnelle.
-   - **D. IA athlète (P4)** : conversation groundée sur le moteur.
-   - **E. P1-13 Programme adaptatif** (en dernier, moteur fiable requis).
-2. **Revisite visuelle** de l'app athlète (validée avec le porteur) — cohérence globale.
-3. **Tout le COACH (P5)** — home, aujourd'hui, alertes, analyses, programme, conversation.
+**Cap confirmé par le porteur : après avoir bouclé P0/P1, on avance dans l'ordre
+numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
+
+0. **Finir P0/P1 côté athlète** : dernier gros reste = **P0-1 Objectifs**
+   (consolidation) + peaufinage **P1-10 Mes analyses**. (**P1-13 adaptatif** reste
+   volontairement tout à la fin, moteur fiable requis.)
+1. **P2 — Données sportives** : Cardio/Hyrox dédié · activités structurées · GPS ·
+   Watch/Health Connect · déduplication · vélo/running/natation · séances hybrides.
+2. **P3 — Nutrition** : nutrition dans Mon état + analyse nutritionnelle (Solo puis Coach).
+3. **P4 — IA** : conversation groundée sur le moteur + IA de recommandation/explication.
+4. **P5 — Coach** : home, aujourd'hui, alertes, analyses, programme, conversation.
+5. **P6 — Business** : premium, paiement, rapports mensuels, e-mails auto.
+
+> **Revisite visuelle** de l'app athlète : à caler avec le porteur (placement non figé —
+> soit juste après P0/P1, soit avant P5 Coach). À trancher le moment venu.
 
 ## ORDRE DE PRIORITÉ (backbone de travail)
 
