@@ -8650,12 +8650,16 @@ var _MA_INFO = {
   tonnage: { t: 'Tonnage', d: 'Le tonnage = charge × répétitions, additionné sur toutes tes séries. C\'est une mesure du volume de travail soulevé, que Novalyz somme par séance et par semaine pour suivre ta charge globale.', fiab: 'Fiable comme suivi de charge, mais ce n\'est pas une mesure d\'intensité : un gros tonnage peut venir de beaucoup de répétitions légères.' },
   volume: { t: 'Volume (séries par semaine)', d: 'Le volume utile pour prendre du muscle se compte surtout en nombre de séries par groupe musculaire et par semaine. Novalyz compare tes séries/sem à une cible adaptée à ton niveau.', fiab: 'Bien étayé : les méta-analyses montrent une relation dose-réponse (~10 séries/sem par muscle comme repère, davantage selon le niveau).' },
   balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
-  rpe: { t: 'RPE (effort perçu)', d: 'Le RPE note la difficulté d\'une série de 1 à 10 (RPE 8 ≈ il te restait environ 2 répétitions en réserve). C\'est une mesure de l\'intensité ressentie.', fiab: 'Validé scientifiquement (échelle de Borg / répétitions en réserve) ; fiable avec un peu d\'habitude à l\'auto-évaluation.' },
+  ressenti: { t: 'Ressenti des séances', d: 'Après chaque séance tu notes sa difficulté globale de 1 (Facile) à 4 (Très dur). Ce bloc suit l\'évolution de ce ressenti sur la période — un moyen simple de repérer une fatigue qui s\'installe.', fiab: 'Auto-évaluation subjective (proche du RPE de séance, validé — Borg / Foster). Elle dépend de ton humeur du jour : lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
   acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: '⚠️ Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
   progression: { t: 'Progression / 1RM estimé', d: 'Le 1RM estimé (formule d\'Epley : charge × (1 + reps/30)) approxime la charge que tu soulèverais 1 fois, sans tester ton maximum. Novalyz suit son évolution pour juger ta progression de force.', fiab: 'Fiable surtout en dessous de ~10 répétitions ; l\'erreur d\'estimation grandit au-delà.' },
   execcible: { t: 'Exécution vs cible', d: 'Compare ce que tu as réalisé aux cibles posées sur l\'exercice. Charge : réalisé vs % de ton 1RM estimé (tolérance ±5 %). RPE : moyenne vs cible (±1).', fiab: 'Indicatif : « sous la cible » n\'est pas forcément un échec (deload, répétitions plus hautes…). La cible en kg dépend d\'un 1RM estimé.' },
   regularite: { t: 'Régularité', d: 'Le nombre de séances réalisées par semaine, comparé à ton objectif (déduit de ton programme).', fiab: 'La régularité sur la durée est l\'un des premiers facteurs de progression.' },
-  efficience: { t: 'Efficience cardio', d: 'À effort comparable, une fréquence cardiaque moyenne plus basse indique une meilleure condition aérobie.', fiab: 'Novalyz ne l\'affirme que si ton effort (RPE) est resté similaire — sinon une FC plus basse peut simplement venir de sorties plus faciles.' }
+  efficience: { t: 'Efficience cardio', d: 'À effort comparable, une fréquence cardiaque moyenne plus basse indique une meilleure condition aérobie.', fiab: 'Novalyz ne l\'affirme que si ton effort (RPE) est resté similaire — sinon une FC plus basse peut simplement venir de sorties plus faciles.' },
+  charge_cardio: { t: 'Charge cardio (interne)', d: 'La charge interne d\'une sortie = RPE × durée (en minutes), additionnée par semaine en UA (unités arbitraires). Elle mesure ce que la séance t\'a coûté, pas seulement la distance parcourue.', fiab: 'Méthode reconnue (session-RPE, Foster 2001) : simple et fiable pour suivre l\'évolution de ta charge. Une hausse trop rapide d\'une semaine à l\'autre invite à la prudence.' },
+  charge_globale: { t: 'Charge globale (muscu + cardio)', d: 'Additionne ta charge muscu et ta charge cardio sur une même échelle (UA) pour voir ta charge totale par semaine. La muscu (tonnage) est convertie via un ratio approché pour la rendre comparable au cardio (RPE × durée).', fiab: 'La partie cardio (session-RPE) est bien établie ; la mise à la même échelle que la muscu repose sur une conversion approximative. Lis la tendance (monte / descend), pas le chiffre exact.' },
+  equilibre_mc: { t: 'Répartition muscu / cardio', d: 'La part de ta charge totale qui vient de la muscu vs du cardio, sur la période. Utile pour voir si tu équilibres les deux selon ton objectif.', fiab: 'Repère indicatif : la muscu est ramenée à la même échelle que le cardio via une conversion approximative — regarde la tendance, pas le pourcentage au point près.' },
+  forme: { t: 'Indice de forme', d: 'Un indice sur 100 qui résume ton bien-être : (sommeil + énergie − fatigue) ramené sur 100, moyenné par semaine (100 = parfaitement récupéré). À croiser avec ta charge.', fiab: 'Indicateur maison, basé sur ton ressenti déclaré (non validé cliniquement). Il vaut surtout par sa tendance : si la forme chute quand la charge monte, c\'est un signal pour lever le pied.' }
 };
 function _maInfoOpen(k) {
   var e = _MA_INFO[k]; if (!e) return;
@@ -8861,7 +8865,7 @@ function _maMuscuResume(data) {
   _maSet('ma-muscu-resume', _maSynthese(data) + verdict + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
-    + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'rpe') + rsHtml
+    + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'ressenti') + rsHtml
     + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries', 'volume') + volHtml
     + _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.')
     + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p], 'balance') + _maBalance(data)
@@ -9129,14 +9133,14 @@ function _maCardioResume(data) {
   var chDict = {}; hist.forEach(function (s) { if (+s.rpe && +s.duree) chDict[s.date] = (chDict[s.date] || 0) + (+s.rpe) * (+s.duree); });
   var nwCh = _maTrendWeeks();
   var chW = _maWeekly(chDict, nwCh, 'sum');
-  var chargeHtml = chW.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / sem. · ' + nwCh + ' sem.') + _maChartBlock('Charge (UA)', chW, 'UA', '#0EA5E9', 'rgba(14,165,233,.12)', _maTrendFirst(nwCh), 'Charge cardio = RPE × durée, additionnée par semaine (UA). Le nombre de semaines suit la période choisie. Une montée trop brutale = risque de surmenage.')) : '';
+  var chargeHtml = chW.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / sem. · ' + nwCh + ' sem.', 'charge_cardio') + _maChartBlock('Charge (UA)', chW, 'UA', '#0EA5E9', 'rgba(14,165,233,.12)', _maTrendFirst(nwCh), 'Chaque point = 1 semaine (nombre de semaines selon la période). Une montée trop brutale peut signaler un risque de surmenage.')) : '';
   // Ressenti des sorties cardio (bilan de séance) sur la période — miroir du ressenti muscu.
   var cCut = _maCut(_maPeriode);
   var rsC = (data.analyses && data.analyses.ressenti_cardio) ? data.analyses.ressenti_cardio.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= cCut; }) : [];
   var rsCardioHtml = '';
   if (rsC.length) {
     var recC = rsC.slice(0, 14).reverse();
-    rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _MA_PLABEL[_maPeriode]) + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+    rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _MA_PLABEL[_maPeriode], 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   }
   _maSet('ma-cardio-resume', _maSyntheseCardio(data) + verdict + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml);
 }
@@ -9185,7 +9189,7 @@ function _maCardioTendances(data) {
   var nwEff = _maTrendWeeks();
   var fcW = _maSportWeekly(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy', nwEff);
   var fcFirst = fcW.find(function (x) { return x; }) || 0, fcLast = 0; for (var _fi = fcW.length - 1; _fi >= 0; _fi--) { if (fcW[_fi]) { fcLast = fcW[_fi]; break; } }
-  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / sem. · ' + nwEff + ' sem.') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#0EA5E9">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maArea(fcW.map(function (v) { return v || fcFirst; }), '#0EA5E9', 'rgba(14,165,233,.12)') + _maTrendAxis(nwEff) + _maCap('FC moyenne à effort perçu constant : si elle baisse au fil des semaines, ton cœur travaille moins pour le même effort → tu progresses en endurance.')) : '';
+  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / sem. · ' + nwEff + ' sem.', 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#0EA5E9">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maArea(fcW.map(function (v) { return v || fcFirst; }), '#0EA5E9', 'rgba(14,165,233,.12)') + _maTrendAxis(nwEff) + _maCap('Chaque point = 1 semaine. À lire à effort comparable (RPE proche).')) : '';
   _maSet('ma-cardio-tendances', _maSec('Volume par sport', _MA_PLABEL[_maPeriode] + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff);
 }
 function _maCardioHistorique(data) {
@@ -9214,7 +9218,7 @@ function _maCroise(data) {
   var rep = tot ? ('<div class="ma-card ma-vol"><div class="ma-volrow"><div class="lh"><span class="n">Musculation</span><span class="p">' + mPct + '%</span></div><div class="ma-vt"><span style="width:' + mPct + '%"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Cardio</span><span class="p">' + (100 - mPct) + '%</span></div><div class="ma-vt"><span style="width:' + (100 - mPct) + '%;background:#0EA5E9"></span></div></div></div>') : _maEmpty('Répartition dispo dès que tu as des deux.');
   var be = (data.bien_etre && data.bien_etre[0]) || null;
   var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
-  _maSet('ma-croise-resume', _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _MA_PLABEL[_maPeriode]) + rep + _maCap('Part de ta charge totale venant de la muscu vs du cardio, sur la période. Utile pour équilibrer les deux.') + (wb ? _maSec('Bien-être') + wb : ''));
+  _maSet('ma-croise-resume', _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _MA_PLABEL[_maPeriode], 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : ''));
   // Tendances croisées : charge globale (muscu + cardio) + indice de forme (bien-être).
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
   var nwX = _maTrendWeeks();
@@ -9227,10 +9231,10 @@ function _maCroise(data) {
   var beW = _maWeekly(beD, nwX, 'avg').map(function (v) { return Math.round(v / 15 * 100); });
   var out = '';
   if (totalW.some(function (v) { return v > 0; })) {
-    out += _maSec('Charge globale', 'muscu + cardio · UA/sem. · ' + nwX + ' sem.') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maTrendFirst(nwX), 'Somme de ta charge muscu (tonnage) et cardio (RPE × durée) par semaine. Le nombre de semaines suit la période choisie. Une hausse trop rapide = risque de surmenage.');
+    out += _maSec('Charge globale', 'muscu + cardio · UA/sem. · ' + nwX + ' sem.', 'charge_globale') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine. Une hausse trop rapide peut signaler un risque de surmenage.');
   }
   if (beW.some(function (v) { return v > 0; })) {
-    out += _maSec('Indice de forme', 'bien-être · ' + nwX + ' sem.') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maTrendFirst(nwX), 'Indice de forme sur 100 = (sommeil + énergie − fatigue) ramené sur 100, moyenné par semaine (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.');
+    out += _maSec('Indice de forme', 'bien-être · ' + nwX + ' sem.', 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.');
   }
   _maSet('ma-croise-tendances', out || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.'));
 }

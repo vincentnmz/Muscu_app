@@ -148,6 +148,12 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
   explique CE bloc (définition + calcul + **fiabilité/limite**), sans doublonner les
   phrases (légendes raccourcies). Contenu sourcé → `docs/bases-scientifiques.md`.
   **ACWR adouci** partout (indice à interpréter, pas un verdict — littérature à l'appui).
+  **« ? » étendu au cardio et au croisé** : Charge cardio (session-RPE/Foster),
+  Ressenti des sorties, Efficience, Répartition muscu/cardio, Charge globale,
+  Indice de forme — chacun avec sa fiabilité/limite. Le bloc « Ressenti » (muscu +
+  cardio) a désormais un « ? » exact (échelle 1–4 de difficulté de séance, pas un
+  RPE 1–10). Composites (charge globale, répartition, indice de forme) documentés
+  honnêtement comme proxys de tendance dans `docs/bases-scientifiques.md`.
 - **Lexique** (compréhensibilité) : glossaire des termes techniques (Tonnage, RPE, ACWR,
   1RM/e1RM, surcharge, balance, efficience, récupération, fiabilité…) en langage simple,
   accessible via « ? » dans l'en-tête des Analyses et Réglages ▸ Découverte.

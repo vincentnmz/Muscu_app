@@ -46,6 +46,16 @@
 - **Statut** : ⚠️ **contesté**. Problèmes : couplage mathématique (l'aiguë est incluse dans la chronique), **jamais validé** comme intervention réduisant les blessures, seuils/temporalité hétérogènes.
 - **Wording imposé** : présenter comme **un indice de variation de charge à interpréter avec prudence**, jamais comme un prédicteur de blessure ni un verdict. Novalyz ne l'utilise **pas** comme décision isolée (le moteur le confirme).
 
+## Charge globale & répartition muscu/cardio (composites Novalyz)
+- **Code** : charge globale/sem = tonnage muscu converti en UA (`tonnage / 50`) + charge cardio (`Σ RPE × durée`). Répartition = part muscu vs cardio de ce total.
+- **Statut** : 🟡 la brique cardio (session-RPE) est validée ; la **mise à la même échelle que la muscu** repose sur un ratio approximatif (`/50`), donc c'est un **proxy de comparaison**, pas une mesure absolue.
+- **Wording imposé** : parler de **tendance** (monte/descend, part relative), jamais du chiffre exact. Le « ? » du bloc le dit explicitement.
+
+## Indice de forme (composite Novalyz)
+- **Code** : `(sommeil + énergie + (6 − fatigue)) / 15 × 100`, moyenné par semaine (0–100).
+- **Statut** : 🟡 **indicateur maison** dérivé du ressenti déclaré, non validé cliniquement. Utile par sa **tendance** (croisée à la charge), pas comme score médical.
+- **Wording imposé** : « indice de forme » basé sur ton ressenti ; à croiser avec la charge (forme qui chute + charge qui monte = signal de lever le pied).
+
 ## Efficience cardio (FC à effort constant)
 - **Code** : FC moyenne 1re vs 2de moitié de la fenêtre, **affirmée seulement si le RPE moyen des deux moitiés est proche (±1)**.
 - **Source** : principe physiologique — meilleure condition aérobie → FC plus basse à charge donnée.
