@@ -10644,10 +10644,14 @@ function renderEtat(data) {
       if (!fiable || ratio == null) {
         var note = m.acwr_note || 'Données insuffisantes pour interpréter la charge.';
         elA.innerHTML =
-          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span></div>'
+          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span><span class="et-chip" style="color:var(--text-muted);background:var(--surface2)">ACWR —</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
           + '<span class="et-big" style="color:var(--text-muted)">—</span>'
-          + '<span class="et-muted">ACWR non interprétable pour l’instant.<br>' + esc(note) + '</span></div>';
+          + '<span class="et-muted"><b>Pas encore calculable.</b><br>' + esc(note) + '</span></div>'
+          + '<div style="margin-top:11px;padding:11px 12px;background:var(--surface2);border-radius:11px;font-size:11.5px;color:var(--text-muted);line-height:1.5">'
+          + '<b style="color:var(--text)">C\'est quoi l\'ACWR ?</b> C\'est le rapport entre ta charge <b>récente</b> (7 derniers jours) et ta charge <b>habituelle</b> (moyenne sur 4 semaines). En clair : est-ce que tu en fais <b>beaucoup plus que d\'habitude</b> ? Rester dans une zone d\'équilibre (≈ 0,8–1,3) aide à progresser sans te blesser.'
+          + '<br><br><b style="color:var(--text)">Calculable à partir de quand ?</b> Il faut <b>~4 semaines d\'entraînement</b> (28 jours d\'historique) avec au moins <b>6 jours d\'entraînement</b> sur cette période. Continue d\'enregistrer tes séances : il s\'activera tout seul.'
+          + '</div>';
       } else {
         var catMap = {
           normal: { l: 'Zone optimale', c: 'var(--good)', bg: 'var(--good-a)' },

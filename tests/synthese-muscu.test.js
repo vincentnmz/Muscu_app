@@ -32,7 +32,8 @@ const cmp28 = (t28) => ({ j28_vs_j28prec: { tonnage: { j28: t28 } } });
 const NOW = new Date();
 const daysAgoISO = n => new Date(NOW.getTime() - n * 86400000).toISOString().slice(0, 10);
 
-const cmp = (tonEvol, rpeDiff) => ({ j28_vs_j28prec: { tonnage: { evol_pct: tonEvol }, rpe: { diff: rpeDiff } } });
+// nCur/nPrev = nb de séances sur 28 j courants / précédents (défaut = base solide).
+const cmp = (tonEvol, rpeDiff, nCur = 6, nPrev = 6) => ({ j28_vs_j28prec: { tonnage: { evol_pct: tonEvol }, rpe: { diff: rpeDiff }, seances: { j28: nCur, j28_prec: nPrev } } });
 const reg = (cur, prev) => ({ seances_semaine: cur, seances_prevues: prev });
 
 let ok = 0, ko = 0, fails = [];
@@ -62,11 +63,18 @@ check('E: reco s\'aligne sur l\'état (récup/vigilance/sans augmenter)', /récu
 check('E: reco ne pousse pas la « surcharge progressive »', !/surcharge progressive/i.test(e.reco.texte));
 check('E: constat attention état présent', e.constats.some(x => x.ton === 'attention'));
 
-// D — pas assez de données (aucune comparaison) → confiance faible, reco info
-let d = buildSyntheseMuscu('', cmp(null, null), null, null);
+// D — pas assez de données (aucune séance) → confiance faible, reco info
+let d = buildSyntheseMuscu('', cmp(null, null, 0, 0), null, null);
 check('D: confiance faible sans données', d.confiance === 'faible');
 check('D: max 3 constats', d.constats.length <= 3);
 check('D: reco toujours présente', !!d.reco);
+
+// L — évolution calculée MAIS base trop courte (< 3 séances préc.) → pas de fausse
+// progression, constat « pas assez de recul », confiance moyenne (fiabilité).
+let l = buildSyntheseMuscu('Prise de masse', cmp(500, 0, 6, 1), { recup: 'Bon' }, reg(3, 3));
+check('L: aucune fausse progression de volume', !l.constats.some(c => c.ton === 'positif' && /volume progresse/i.test(c.texte)));
+check('L: constat « pas assez de recul »', l.constats.some(c => /recul/i.test(c.texte)));
+check('L: confiance moyenne (base non fiable)', l.confiance === 'moyenne');
 
 // ── Cardio ──────────────────────────────────────────────────────────────────
 // F — aucun cardio → constat neutre + reco info
@@ -79,7 +87,9 @@ let g = buildSyntheseCardio({ history: [
   { date: daysAgoISO(3), rpe: 8, duree: 60, distance: 12, fc_moy: 150 },
   { date: daysAgoISO(10), rpe: 8, duree: 60, distance: 12, fc_moy: 150 },
   { date: daysAgoISO(17), rpe: 8, duree: 50, distance: 10, fc_moy: 150 },
+  // base de comparaison RÉELLE (≥ 2 sorties) sur la période précédente → % fiable
   { date: daysAgoISO(40), rpe: 5, duree: 30, distance: 5, fc_moy: 150 },
+  { date: daysAgoISO(48), rpe: 5, duree: 30, distance: 5, fc_moy: 150 },
 ] }, { recup: 'Bon' }, NOW);
 check('G: constat attention (charge)', g.constats.some(c => c.ton === 'attention'));
 check('G: reco moyenne', g.reco && g.reco.priorite === 'moyenne');

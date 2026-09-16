@@ -124,6 +124,15 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
   champ `motivation`, colonne DB ajoutée). Accueil « point du jour » et « ressenti 7 j »
   alignés ; État distingue les signaux du matin des signaux post-séance (ressenti/douleur
   = « après séance »).
+- **Fiabilité Lecture Novalyz (P0-5)** : garde-fou de base — une évolution % (muscu
+  tonnage, cardio charge) n'est affirmée que si la période précédente est une vraie
+  base (muscu ≥ 3 séances, cardio ≥ 2 sorties) → fini les % aberrants sur peu de recul ;
+  confiance recalculée sur le nb réel de séances ; efficience FC ≥ 4 bpm. Constat
+  « pas assez de recul » sinon.
+- **Centre d'alertes** : la stagnation NOMME les exercices en baisse (au lieu de
+  « 3 exercices en baisse » sans détail).
+- **État ▸ ACWR non calculable** : explication athlète (« charge récente vs habituelle »)
+  + seuil (~4 semaines / 28 j, ≥ 6 jours d'entraînement).
 - **Réglages** : semaine calendaire/glissante · « Revoir l'intro ».
 
 ## 🚚 Distribution / MAJ auto

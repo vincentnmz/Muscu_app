@@ -39,11 +39,15 @@ check('A: schéma complet', a[0].type && a[0].severity && a[0].source && a[0].ti
 check('A: evidence = message moteur', a[1].evidence === 'Fatigue élevée (4/5)');
 check('A: title lisible', a[0].title === 'Charge aiguë élevée');
 
-// B — stagnation ajoutée depuis comparison (≥3 exos en baisse)
-const cmp = { j7_vs_j7prec: { charge_details: [{ down: true }, { down: true }, { down: true }, { down: false }] } };
+// B — stagnation ajoutée depuis comparison (≥3 exos en baisse), avec NOMS des exos
+const cmp = { j7_vs_j7prec: { charge_details: [
+  { exercice: 'Squat', down: true }, { exercice: 'Développé couché', down: true },
+  { exercice: 'Rowing', down: true }, { exercice: 'Curl', down: false },
+] } };
 const b = buildAlertesCentre({ alertes: [] }, cmp);
 check('B: stagnation détectée', b.some(x => x.type === 'stagnation'));
 check('B: action stagnation présente', (b.find(x => x.type === 'stagnation') || {}).action);
+check('B: evidence nomme les exercices en baisse', /Squat/.test((b.find(x => x.type === 'stagnation') || {}).evidence || ''));
 
 // C — pas de stagnation si <3 en baisse
 const c = buildAlertesCentre({ alertes: [] }, { j7_vs_j7prec: { charge_details: [{ down: true }, { down: true }] } });

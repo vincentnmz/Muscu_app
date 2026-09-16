@@ -1323,8 +1323,15 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   const prise = obj.includes('masse') || obj.includes('hypertroph')
   const seche = obj.includes('sèche') || obj.includes('seche') || obj.includes('perte')
   const cmp = (comparison && comparison.j28_vs_j28prec) || {}
-  const tonEvol = cmp.tonnage ? cmp.tonnage.evol_pct : null
+  const tonEvolRaw = cmp.tonnage ? cmp.tonnage.evol_pct : null
   const rpeDiff = cmp.rpe ? cmp.rpe.diff : null
+  // FIABILITÉ : nombre de séances sur la fenêtre courante / précédente (28 j).
+  const nCur = cmp.seances ? (cmp.seances.j28 != null ? cmp.seances.j28 : cmp.seances.courant) : null
+  const nPrev = cmp.seances ? (cmp.seances.j28_prec != null ? cmp.seances.j28_prec : cmp.seances.precedent) : null
+  // Une évolution % n'est fiable que si la période précédente est une VRAIE base
+  // (≥ 3 séances) — sinon un mois quasi vide produit des % aberrants (+2400 %…).
+  const baseFiable = typeof nPrev === 'number' && nPrev >= 3
+  const tonEvol = (tonEvolRaw != null && baseFiable) ? tonEvolRaw : null
   const recup = (moteur && moteur.recup) || null
   const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
   // État du jour dégradé (récup faible OU disponibilité Vigilance/À surveiller) :
@@ -1342,6 +1349,9 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     } else {
       constats.push({ ton: 'neutre', texte: `Volume stable sur 4 semaines (${tonEvol > 0 ? '+' : ''}${tonEvol}%).` })
     }
+  } else if (tonEvolRaw != null) {
+    // Une évolution existe mais la base est trop courte pour l'affirmer honnêtement.
+    constats.push({ ton: 'neutre', texte: `Pas encore assez de recul pour juger l'évolution de ton volume (période précédente trop courte).` })
   }
   const contrainte = (rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2)) || recup === 'Faible'
   if (rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2)) {
@@ -1369,7 +1379,12 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   else if (progOk) reco = { texte: `Conserve la structure actuelle et poursuis la surcharge progressive (petites hausses de charge ou de reps).`, priorite: 'info' }
   else reco = { texte: `Continue et enregistre régulièrement tes séances : les analyses s'affinent avec les données.`, priorite: 'info' }
 
-  const confiance = (tonEvol != null) ? (seancesPrev ? 'bonne' : 'moyenne') : 'faible'
+  // Confiance = profondeur réelle des données (nb de séances) + présence d'une base
+  // de comparaison fiable — plus honnête que « un % existe donc c'est bon ».
+  let confiance: string
+  if (nCur == null || nCur < 2) confiance = 'faible'
+  else if (!baseFiable) confiance = 'moyenne'
+  else confiance = (nCur >= 6) ? 'bonne' : 'moyenne'
   return { objectif: objectif || null, constats: constats.slice(0, 3), reco, confiance }
 }
 
@@ -1390,7 +1405,9 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
     if (d >= c28) { n28++; ch28 += ua; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy) }) }
     else if (d >= c56) { n56++; ch56 += ua }
   }
-  const chEvol = ch56 > 0 ? Math.round((ch28 - ch56) / ch56 * 100) : null
+  // FIABILITÉ : n'évaluer l'évolution de charge que si la période précédente a une
+  // vraie base (≥ 2 sorties) — sinon 1 sortie isolée produit un % aberrant.
+  const chEvol = (ch56 > 0 && n56 >= 2) ? Math.round((ch28 - ch56) / ch56 * 100) : null
   const recup = (moteur && moteur.recup) || null
   const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
   const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
@@ -1408,7 +1425,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
       const half = Math.floor(srt.length / 2)
       const avg = (arr: any[]) => arr.reduce((s, x) => s + x.fc, 0) / arr.length
       const fcOld = avg(srt.slice(0, half)), fcNew = avg(srt.slice(half))
-      if (fcNew <= fcOld - 3) constats.push({ ton: 'positif', texte: `À effort comparable, ta FC moyenne baisse (${Math.round(fcOld)}→${Math.round(fcNew)} bpm) — ton endurance progresse.` })
+      if (fcNew <= fcOld - 4) constats.push({ ton: 'positif', texte: `À effort comparable, ta FC moyenne baisse (${Math.round(fcOld)}→${Math.round(fcNew)} bpm) — ton endurance progresse.` })
     }
   }
 
@@ -1484,8 +1501,14 @@ function buildAlertesCentre(moteur: any, comparison: any): any[] {
   ;((moteur && moteur.alertes) || []).forEach((a: any) => push(a.type, a.severite, a.message, 'moteur'))
   // Stagnation : ≥3 exercices en baisse cette semaine (depuis comparison), si non couvert.
   const det = (comparison && comparison.j7_vs_j7prec && comparison.j7_vs_j7prec.charge_details) || []
-  const baisse = det.filter((d: any) => d && d.down).length
-  if (baisse >= 3 && !out.some(a => a.type === 'stagnation')) push('stagnation', 'moyenne', baisse + ' exercices en baisse cette semaine.', 'progression')
+  const baisseAll = det.filter((d: any) => d && d.down)
+  const baisseExos = baisseAll.map((d: any) => d.exercice).filter(Boolean)
+  if (baisseAll.length >= 3 && !out.some(a => a.type === 'stagnation')) {
+    // On NOMME les exercices concernés (sinon « 3 exercices en baisse » sans détail).
+    const liste = baisseExos.slice(0, 6).join(', ')
+    const ev = baisseExos.length ? `${baisseAll.length} exercices en baisse cette semaine : ${liste}.` : `${baisseAll.length} exercices en baisse cette semaine.`
+    push('stagnation', 'moyenne', ev, 'progression')
+  }
   out.sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0))
   return out
 }
