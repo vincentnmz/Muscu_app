@@ -35,6 +35,8 @@ Contexte perso du porteur : reconversion en analyse vidéo / cellule de performa
 4. **Après toute modif d'`index.ts`**, croiser front↔backend : chaque `action` appelée par `js/app.js` doit avoir une route dans le handler.
 5. **Ne pas réimplémenter ce qui existe déjà.** Lire le code avant de proposer. Le **moteur d'analyse est la source de vérité** (déterministe) ; une éventuelle IA sera une *couche langage* branchée dessus, elle n'invente pas de chiffre.
 6. **Vérifier avant de livrer** : `node --check` (front) et les tests `npm test` (`node scripts/run-tests.mjs`).
+   ⚠️ **« Tests verts / build OK » ≠ « affirmation vraie ».** Ce sont des conditions **nécessaires, pas suffisantes** : le code peut tourner sans erreur ET afficher une phrase fausse.
+6bis. **FIABILITÉ DES AFFIRMATIONS (règle anti « c'est bon » prématuré).** Pour **toute phrase affichée à l'utilisateur** qui affirme un fait (analyse, verdict, effet d'un contexte, niveau de fiabilité, %, tendance) : (a) la **tracer jusqu'au code** qui la produit et vérifier que le wording correspond **exactement** au comportement réel du moteur ; (b) chercher **activement le cas où elle serait fausse** (peu de données, base de comparaison faible, contexte actif, données manquantes) ; (c) en rendant compte, distinguer **« vérifié contre le code »** de **« supposé / non encore vérifié »** — ne pas dire « c'est fiable » par défaut.
 7. **Secrets** : ne jamais afficher/demander `RESEND_API_KEY` ni aucun secret ; `google-services.json` (config Firebase Android) est injecté via le secret GitHub `GOOGLE_SERVICES_JSON`, **pas committé**.
 
 ## Outillage
