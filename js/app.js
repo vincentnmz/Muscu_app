@@ -14235,6 +14235,16 @@ function calcAutoCardio() {
     else if (poids && dist) calAuto = Math.round(poids * dist * 0.5);
   } else if (type === 'natation' && poids && duree) {
     calAuto = Math.round(8 * poids * (duree / 60));
+  // Types sans distance naturelle : estimation à la DURÉE via le MET de l'activité
+  // (kcal ≈ MET × poids × heures). MET du Compendium of Physical Activities.
+  } else if (type === 'rameur' && poids && duree) {
+    calAuto = Math.round(7 * poids * (duree / 60));
+  } else if (type === 'hiit' && poids && duree) {
+    calAuto = Math.round(8 * poids * (duree / 60));
+  } else if (type === 'elliptique' && poids && duree) {
+    calAuto = Math.round(5 * poids * (duree / 60));
+  } else if (type === 'boxe' && poids && duree) {
+    calAuto = Math.round(7 * poids * (duree / 60));
   } else if (poids && dist) {
     calAuto = Math.round(poids * dist * 0.8);
   }

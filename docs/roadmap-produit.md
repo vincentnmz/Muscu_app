@@ -121,6 +121,9 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
   selon le type), icônes/couleurs complétées (`_MA_CARDIO_META` : elliptique, boxe).
   Cohérence saisie ↔ champs ↔ stockage ↔ analyses ↔ édition sur les 10 types.
   Front-only (backend `saveCardio` accepte déjà tout type). Tests 41/41.
+  **+ Calories cohérentes** : rameur/HIIT/elliptique/boxe (sans distance naturelle)
+  reçoivent enfin une estimation à la **durée via MET** (Compendium of Physical
+  Activities) au lieu de rien ; documenté dans `docs/bases-scientifiques.md`.
 - **P0-1 Objectifs (colonne vertébrale, volet cadré)** : dict `OBJECTIFS` = source
   unique reliant l'objectif du profil (a) au type de programme conseillé et (b) à la
   façon dont la Lecture Novalyz cadre les analyses. Écran « Mon objectif » enrichi

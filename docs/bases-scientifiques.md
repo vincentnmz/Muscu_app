@@ -32,6 +32,16 @@
 - **Source** : méthode *session-RPE* (Foster et al., 2001) pour quantifier la charge interne.
 - **Statut** : ✅ méthode reconnue et simple.
 
+## Calories (estimation)
+- **Code** : selon le type — distance × poids (course/vélo), ou **durée via le MET** de
+  l'activité (`kcal ≈ MET × poids(kg) × heures`) pour marche, natation (MET 8), **rameur
+  (7), HIIT (8), elliptique (5), boxe (7)**. Vélo : puissance (W) si disponible.
+- **Source** : *Compendium of Physical Activities* (Ainsworth et al.) pour les MET ;
+  approximation `kcal/h ≈ MET × poids`.
+- **Statut** : ✅ estimation reconnue **mais approximative** (affichée « ✦ estimé ») :
+  les MET sont des moyennes de population, la dépense réelle varie avec l'intensité et
+  l'individu. Toujours surchargeable manuellement par l'athlète.
+
 ## 1RM estimé (progression de force)
 - **Code** : Epley `1RM ≈ charge × (1 + reps/30)`.
 - **Source** : formule d'Epley (1985) ; alternative Brzycki. Corrélations élevées avec le 1RM réel.
