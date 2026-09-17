@@ -36,18 +36,19 @@ Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
 **Cap confirmé par le porteur : après avoir bouclé P0/P1, on avance dans l'ordre
 numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 
-0. **Finir P0/P1 côté athlète** : dernier gros reste = **P0-1 Objectifs**
-   (consolidation) + peaufinage **P1-10 Mes analyses**. (**P1-13 adaptatif** reste
-   volontairement tout à la fin, moteur fiable requis.)
-1. **P2 — Données sportives** : Cardio/Hyrox dédié · activités structurées · GPS ·
+0. **P0/P1 côté athlète** : ✅ **P0-1 Objectifs livré**. Reste mineur = peaufinage
+   **P1-10 Mes analyses** (au fil de l'eau). **P1-13 adaptatif = mis de côté**
+   (porteur, sept. 2026) : à reprendre plus tard, moteur fiable requis.
+1. **P2 — Données sportives** ⬅️ **EN COURS** : Cardio/Hyrox dédié · activités structurées · GPS ·
    Watch/Health Connect · déduplication · vélo/running/natation · séances hybrides.
 2. **P3 — Nutrition** : nutrition dans Mon état + analyse nutritionnelle (Solo puis Coach).
 3. **P4 — IA** : conversation groundée sur le moteur + IA de recommandation/explication.
 4. **P5 — Coach** : home, aujourd'hui, alertes, analyses, programme, conversation.
 5. **P6 — Business** : premium, paiement, rapports mensuels, e-mails auto.
 
-> **Revisite visuelle** de l'app athlète : à caler avec le porteur (placement non figé —
-> soit juste après P0/P1, soit avant P5 Coach). À trancher le moment venu.
+> **Revisite visuelle** de l'app athlète : **décidé (porteur, sept. 2026)** → elle se
+> fera **avec la phase coach, tout à la fin** (une fois tout le fonctionnel terminé),
+> pas entre P0/P1 et P2.
 
 ## ORDRE DE PRIORITÉ (backbone de travail)
 
@@ -76,7 +77,7 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 11. **Mon état** (donnée / analyse / recommandation distinctes) — ✅ (par signal :
     donnée → 🔎 analyse → 💡 conseil, réutilise les alertes du moteur ; + bandeau fiabilité)
 12. **Programme proposé par Novalyz** (objectif+jours+niveau→structure) — ✅ (onboarding + génération)
-13. **Programme adaptatif** (ajustements depuis données réelles) — ⬜ (après moteur fiable)
+13. **Programme adaptatif** (ajustements depuis données réelles) — ⬜ **mis de côté** (à reprendre plus tard, moteur fiable requis)
 
 ### P2 — DONNÉES SPORTIVES
 14. Cardio (section dédiée) — 🟡 (saisie + analyses cardio existent) · 15. GPS type Strava — ⬜
