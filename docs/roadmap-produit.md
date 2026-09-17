@@ -127,6 +127,11 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
   **+ Métriques par discipline** : le champ **Distance masqué** pour HIIT / boxe /
   elliptique (effort à la durée, distance sans intérêt) — saisie centrée sur les
   bons marqueurs. (À suivre : natation/rameur en mètres, à traiter avec l'import.)
+  **+ Entraînement ▸ mode Cardio corrigé** : le bloc « dernières séances » affichait
+  les séances **muscu** même en cardio → il montre désormais les **sorties cardio**.
+  Les boutons de construction de programme (muscu) — « Novalyz me propose un
+  programme » + « Créer / modifier » — sont **masqués en mode cardio** (pas de plan
+  course/vélo/fractionné pour l'instant ; à réactiver quand le cardio en aura un).
 - **P0-1 Objectifs (colonne vertébrale, volet cadré)** : dict `OBJECTIFS` = source
   unique reliant l'objectif du profil (a) au type de programme conseillé et (b) à la
   façon dont la Lecture Novalyz cadre les analyses. Écran « Mon objectif » enrichi

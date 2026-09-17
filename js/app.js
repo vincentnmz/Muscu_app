@@ -11491,6 +11491,12 @@ function _enSetMode(m) {
   if (sm) sm.style.display = (m === 'muscu') ? '' : 'none';
   if (sc) sc.style.display = (m === 'cardio') ? '' : 'none';
   var st = document.getElementById('en-start'); if (st) st.classList.toggle('cardio', m === 'cardio');
+  // Les constructeurs de programme sont MUSCU → cachés en mode cardio (pas de plan
+  // de course/vélo/fractionné pour l'instant). À réactiver quand le cardio en aura.
+  var gen = document.getElementById('en-gen'); if (gen) gen.style.display = (m === 'muscu') ? '' : 'none';
+  var creer = document.getElementById('en-creer'); if (creer) creer.style.display = (m === 'muscu') ? '' : 'none';
+  // Le bloc « dernières séances / sorties » suit le mode (muscu vs cardio).
+  try { renderEnSuivi(typeof dernierAppData !== 'undefined' ? dernierAppData : null); } catch (e) {}
 }
 function _enSelectSeance(sid) { _enSelSeance = sid; _enRenderSelMuscu(); }
 function _enSelectActivite(t) { _enSelActivite = t; _enRenderSelCardio(); }
@@ -11597,6 +11603,28 @@ function enToggleSea(i) { var d = document.getElementById('en-sea-' + i), c = do
 function renderEnSuivi(data) {
   var el = document.getElementById('en-suivi'); if (!el) return;
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  // En mode CARDIO, ce bloc doit montrer les SORTIES CARDIO — pas les séances muscu
+  // (sinon on affiche de la muscu dans l'onglet cardio de l'Entraînement).
+  if (_enMode === 'cardio') {
+    var LBL = (typeof _CARDIO_TYPE_LABELS !== 'undefined') ? _CARDIO_TYPE_LABELS : {};
+    var ICO = (typeof _CH_ICO !== 'undefined') ? _CH_ICO : {};
+    var ch = ((data && data.cardio && data.cardio.history) || []).slice()
+      .sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); }).slice(0, 6);
+    if (!ch.length) { el.innerHTML = '<div class="en-sec">Dernières sorties cardio</div><div class="en-muted" style="padding:4px 2px">Aucune sortie cardio enregistrée pour l\'instant.</div>'; return; }
+    var rowsC = ch.map(function (s) {
+      var dd = new Date((s.date || '') + 'T00:00:00'), day = isNaN(dd.getTime()) ? '' : String(dd.getDate()).padStart(2, '0'), mon = isNaN(dd.getTime()) ? '' : _EN_MONS[dd.getMonth()];
+      var t = s.type_cardio || 'autre', parts = [];
+      if (+s.distance) parts.push((Math.round(s.distance * 10) / 10).toString().replace('.', ',') + ' km');
+      if (+s.duree) parts.push(_cxDur(s.duree));
+      if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10).toString().replace('.', ',') + ' km/h');
+      if (+s.fc_moy) parts.push(Math.round(s.fc_moy) + ' bpm');
+      var rpe = (+s.rpe) ? '<span class="en-wtag done">RPE ' + s.rpe + '</span>' : '';
+      return '<div class="en-seac"><div class="en-seahd" style="cursor:default"><div class="en-seadt"><div class="d">' + day + '</div><div class="m">' + mon + '</div></div>'
+        + '<div class="en-seamid"><div class="a">' + (ICO[t] || '') + ' ' + esc(LBL[t] || t) + '</div><div class="b">' + esc(parts.join(' · ') || '—') + '</div></div>' + rpe + '</div></div>';
+    }).join('');
+    el.innerHTML = '<div class="en-sec">Dernières sorties cardio</div><div style="display:flex;flex-direction:column;gap:8px;">' + rowsC + '</div>';
+    return;
+  }
   var sd = (data && data.seances_detail) || [];
   var rsMap = {}; ((data && data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x && x.seance_id != null) rsMap[x.seance_id + '|' + x.date] = x.valeur; });
 
