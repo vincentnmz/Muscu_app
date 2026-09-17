@@ -1360,9 +1360,11 @@ function buildRespectProgramme(programme: any[], seancesDetail: any[], perfs: an
   return { nCible, nEval, nOk }
 }
 function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any, execCible?: any): any {
-  const obj = String(objectif || '').toLowerCase()
+  // Normalisé SANS accents : des valeurs héritées existent (« séche » vs « sèche »),
+  // la détection doit rester robuste à l'orthographe (sinon le cadrage saute).
+  const obj = String(objectif || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   const prise = obj.includes('masse') || obj.includes('hypertroph')
-  const seche = obj.includes('sèche') || obj.includes('seche') || obj.includes('perte')
+  const seche = obj.includes('seche') || obj.includes('perte')
   // Objectif = colonne vertébrale : recomp (masse + sèche) et maintien doivent aussi
   // cadrer la lecture (pas seulement masse/sèche). Synchronisé avec OBJECTIFS (front).
   const recomp = prise && seche

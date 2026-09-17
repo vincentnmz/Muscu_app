@@ -8459,6 +8459,12 @@ var OBJECTIFS = {
 function _objLine(ic, k, v) {
   return '<div style="display:flex;gap:9px;padding:6px 0"><span style="font-size:15px;flex:none;line-height:1.3">' + ic + '</span><div style="min-width:0"><div style="font-size:12px;font-weight:700;color:var(--text)">' + k + '</div><div style="font-size:12px;color:var(--text-muted);line-height:1.45">' + v + '</div></div></div>';
 }
+// Résolution TOLÉRANTE de l'objectif → info (insensible casse/accents/espaces) :
+// des valeurs héritées existent avec une orthographe différente (« séche » vs
+// « sèche »), il ne faut pas que le bloc disparaisse pour autant.
+function _objNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+var _OBJECTIFS_N = {}; try { Object.keys(OBJECTIFS).forEach(function (k) { _OBJECTIFS_N[_objNorm(k)] = OBJECTIFS[k]; }); } catch (e) {}
+function _objInfo(obj) { return OBJECTIFS[obj] || _OBJECTIFS_N[_objNorm(obj)] || null; }
 function objIconFor(obj) {
   const o = (obj || '').toLowerCase();
   if (o.includes('masse') && o.includes('sèche')) return '♻️';
@@ -8477,7 +8483,7 @@ function majObjectifCard(obj) {
   // vertébrale (programme conseillé + priorité + façon dont les analyses le lisent).
   const detEl = document.getElementById('obj-actuel');
   if (detEl) {
-    const info = OBJECTIFS[obj];
+    const info = _objInfo(obj);
     if (info) {
       detEl.style.display = 'block';
       detEl.innerHTML = '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">'
@@ -11266,7 +11272,7 @@ function ouvrirGenProgramme() {
   if (typeof athlete === 'undefined' || !athlete) return;
   // Pré-règle l'objectif du générateur depuis l'objectif du profil (une seule
   // notion) — reste modifiable à l'étape 1.
-  var _objDef = null; try { if (athlete && athlete.objectif && OBJECTIFS[athlete.objectif]) _objDef = OBJECTIFS[athlete.objectif].gen; } catch (e) {}
+  var _objDef = null; try { var _oi = _objInfo(athlete && athlete.objectif); if (_oi) _objDef = _oi.gen; } catch (e) {}
   _genState = { step: 1, objectif: _objDef, jours: null, niveau: null };
   var ov = document.getElementById('gen-prog-overlay');
   if (!ov) {
@@ -11339,7 +11345,7 @@ function _genRender() {
     + '<button onclick="fermerGenProgramme()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1">×</button></div>';
   var body = '';
   if (st.step === 1) {
-    var _preObj = ''; try { if (athlete && athlete.objectif && OBJECTIFS[athlete.objectif]) _preObj = athlete.objectif; } catch (e) {}
+    var _preObj = ''; try { if (athlete && athlete.objectif && _objInfo(athlete.objectif)) _preObj = athlete.objectif; } catch (e) {}
     body = '<h2 style="font-size:18px;margin:2px 0 4px">Ton objectif ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Ça règle les répétitions, la charge cible et le repos.</div>'
       + (_preObj ? '<div style="font-size:11.5px;color:var(--accent);background:var(--accent-a08);border-radius:9px;padding:8px 10px;margin-bottom:10px">Pré-réglé sur ton objectif « ' + esc(_preObj) +' ». Tu peux le changer ici.</div>' : '')
       + Object.keys(_GEN_OBJ).map(function (k) { var o = _GEN_OBJ[k]; return _genCard('_genSetObjectif(\'' + k + '\')', st.objectif === k, o.label, o.hint + ' · ' + o.s + '×' + o.rmin + '-' + o.rmax + ' · ' + o.pct + '% · RPE ' + o.rpe); }).join('')
