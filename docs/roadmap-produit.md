@@ -124,6 +124,9 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
   **+ Calories cohérentes** : rameur/HIIT/elliptique/boxe (sans distance naturelle)
   reçoivent enfin une estimation à la **durée via MET** (Compendium of Physical
   Activities) au lieu de rien ; documenté dans `docs/bases-scientifiques.md`.
+  **+ Métriques par discipline** : le champ **Distance masqué** pour HIIT / boxe /
+  elliptique (effort à la durée, distance sans intérêt) — saisie centrée sur les
+  bons marqueurs. (À suivre : natation/rameur en mètres, à traiter avec l'import.)
 - **P0-1 Objectifs (colonne vertébrale, volet cadré)** : dict `OBJECTIFS` = source
   unique reliant l'objectif du profil (a) au type de programme conseillé et (b) à la
   façon dont la Lecture Novalyz cadre les analyses. Écran « Mon objectif » enrichi

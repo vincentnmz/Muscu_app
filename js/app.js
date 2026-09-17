@@ -14150,17 +14150,14 @@ function renderCardioFields() {
     + '<label style="font-size:12px;">Ton poids (kg) <span style="font-size:10px;color:var(--text-muted);font-weight:400;">— utilisé pour estimer les calories</span></label>'
     + '<input type="number" id="cardio-poids-saisie" placeholder="ex: 62" inputmode="decimal" step="0.5" min="30" max="200" oninput="calcAutoCardio()" style="margin-top:6px;">'
     + '</div>';
-  el.innerHTML = poidsHtml + `
-    <div class="row2" style="margin-top:14px;">
-      <div>
-        <label>Durée (min)</label>
-        <input type="number" id="cardio-duree" placeholder="45" min="1" inputmode="numeric" oninput="calcAutoCardio()">
-      </div>
-      <div>
-        <label>Distance (km) <span id="cardio-dist-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label>
-        <input type="number" id="cardio-distance" placeholder="auto" step="0.1" min="0" inputmode="decimal" data-auto="" oninput="this.dataset.auto='0';document.getElementById('cardio-dist-hint').textContent='';calcAutoCardio()">
-      </div>
-    </div>
+  // Distance sans intérêt pour ces disciplines (effort à la durée) → champ masqué.
+  var noDist = (type === 'hiit' || type === 'boxe' || type === 'elliptique');
+  var dureeInput = '<div><label>Durée (min)</label><input type="number" id="cardio-duree" placeholder="45" min="1" inputmode="numeric" oninput="calcAutoCardio()"></div>';
+  var distInput = '<div><label>Distance (km) <span id="cardio-dist-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label><input type="number" id="cardio-distance" placeholder="auto" step="0.1" min="0" inputmode="decimal" data-auto="" oninput="this.dataset.auto=\'0\';document.getElementById(\'cardio-dist-hint\').textContent=\'\';calcAutoCardio()"></div>';
+  var dureeDistHtml = noDist
+    ? '<div style="margin-top:14px;">' + dureeInput + '</div>'
+    : '<div class="row2" style="margin-top:14px;">' + dureeInput + distInput + '</div>';
+  el.innerHTML = poidsHtml + dureeDistHtml + `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">${specHtml}</div>
     <div class="row2" style="margin-top:8px;">
       <div>
