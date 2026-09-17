@@ -80,6 +80,9 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 13. **Programme adaptatif** (ajustements depuis données réelles) — ⬜ **mis de côté** (à reprendre plus tard, moteur fiable requis)
 
 ### P2 — DONNÉES SPORTIVES
+> **Ordre P2 (porteur, sept. 2026)** : ① **Stabiliser le cardio existant** (cohérence
+> types, fiabilité) ⬅️ en cours · ② **Import d'activités (Strava / GPS / autres)** —
+> important, à faire ensuite · ③ **Hyrox** — important, **placement à décider**.
 14. Cardio (section dédiée) — 🟡 (saisie + analyses cardio existent) · 15. GPS type Strava — ⬜
 16. Activités structurées — ⬜ · 17. Multi-sources — ⬜ · 18. Déduplication (activités + pas) — ⬜
 19. Watch / Health Connect — ⬜ · 20. Vélo — ⬜ · 21. Running/marche — 🟡 · 22. Hyrox — ⬜
@@ -112,6 +115,12 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 
 ## ✅ Journal de livraison (branche `claude/novalyz-player-profile-mockups-g4bock`)
 
+- **P2-14 Cardio — stabilisation (types cohérents)** : les 4 types déjà connus des
+  analyses/édition mais **absents de la saisie** (rameur, HIIT, elliptique, boxe) sont
+  désormais saisissables. Champs dédiés ajoutés (`_CARDIO_SPEC` : puissance/cadence/FC
+  selon le type), icônes/couleurs complétées (`_MA_CARDIO_META` : elliptique, boxe).
+  Cohérence saisie ↔ champs ↔ stockage ↔ analyses ↔ édition sur les 10 types.
+  Front-only (backend `saveCardio` accepte déjà tout type). Tests 41/41.
 - **P0-1 Objectifs (colonne vertébrale, volet cadré)** : dict `OBJECTIFS` = source
   unique reliant l'objectif du profil (a) au type de programme conseillé et (b) à la
   façon dont la Lecture Novalyz cadre les analyses. Écran « Mon objectif » enrichi

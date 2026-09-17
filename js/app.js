@@ -8762,6 +8762,8 @@ var _MA_CARDIO_META = {
   marche_inclinee: ['Marche inclinée', '#10B981', '<path d="M3 20h18M5 20 16 6"/>'],
   natation: ['Natation', '#8B5CF6', '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01"/>'],
   rameur: ['Rameur', '#14B8A6', '<path d="M4 12h16"/>'], hiit: ['HIIT', '#EF4444', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>'],
+  elliptique: ['Elliptique', '#D946EF', '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>'],
+  boxe: ['Boxe', '#F43F5E', '<path d="M7 7h7a3 3 0 0 1 3 3v3a4 4 0 0 1-4 4H9a2 2 0 0 1-2-2V7z"/>'],
   autre: ['Autre', '#F59E0B', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>']
 };
 function _maCM(t) { return _MA_CARDIO_META[t] || [t || 'Autre', '#F59E0B', _MA_CARDIO_META.autre[2]]; }
@@ -14103,6 +14105,21 @@ var _CARDIO_SPEC = {
   natation: [
     { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '140', optional: true }
   ],
+  rameur: [
+    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '150', optional: true },
+    { id: 'cadence',       label: 'Cadence (coups/min)', placeholder: '26' },
+    { id: 'fc_moy',        label: 'FC moy. (bpm)',        placeholder: '145', optional: true }
+  ],
+  hiit: [
+    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '155', optional: true }
+  ],
+  elliptique: [
+    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '120', optional: true },
+    { id: 'fc_moy',        label: 'FC moy. (bpm)',        placeholder: '140', optional: true }
+  ],
+  boxe: [
+    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '150', optional: true }
+  ],
   autre: [
     { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '135', optional: true }
   ]
@@ -14333,6 +14350,10 @@ function nouvelleSeanceCardio() {
             <option value="marche_normale">Marche</option>
             <option value="marche_inclinee">Marche inclinée</option>
             <option value="natation">Natation</option>
+            <option value="rameur">Rameur</option>
+            <option value="hiit">HIIT</option>
+            <option value="elliptique">Elliptique</option>
+            <option value="boxe">Boxe</option>
             <option value="autre">Autre</option>
           </select>
         </div>
