@@ -10781,7 +10781,14 @@ function renderEtat(data) {
     if (elD) {
       var beArr = Array.isArray(data.bien_etre) ? data.bien_etre : [];
       var byDate = {};
-      beArr.forEach(function (b) { if (b && b.date) byDate[b.date] = b; });
+      // Fusionne les lignes d'un même jour (matin + post-séance) — cf. « bien-être du jour ».
+      beArr.forEach(function (b) {
+        if (!b || !b.date) return;
+        var t = byDate[b.date] || (byDate[b.date] = {});
+        ['sommeil', 'energie', 'motivation', 'fatigue', 'douleur', 'ressenti'].forEach(function (k) {
+          if ((t[k] == null || t[k] === '') && b[k] != null && b[k] !== '') t[k] = b[k];
+        });
+      });
       var DIMS = [
         { key: 'sommeil', invert: false }, { key: 'energie', invert: false }, { key: 'motivation', invert: false },
         { key: 'fatigue', invert: true }, { key: 'douleur', invert: true }, { key: 'ressenti', invert: false }
@@ -10810,7 +10817,22 @@ function renderEtat(data) {
   try {
     var elW2 = document.getElementById('et-wb');
     if (elW2) {
-      var be0 = (Array.isArray(data.bien_etre) && data.bien_etre[0]) ? data.bien_etre[0] : null;
+      // Un même jour a souvent DEUX lignes bien_etre : le questionnaire du matin
+      // (sommeil/fatigue/motivation) et le bilan post-séance (ressenti/douleur).
+      // On FUSIONNE les lignes du jour le plus récent, sinon ressenti/douleur (ou
+      // l'inverse) apparaissent vides à tort selon la ligne tombée en [0].
+      var _beAll = Array.isArray(data.bien_etre) ? data.bien_etre : [];
+      var be0 = null;
+      if (_beAll.length) {
+        var _d0 = _beAll[0].date; be0 = {};
+        _beAll.forEach(function (b) {
+          if (!b || b.date !== _d0) return;
+          ['sommeil', 'energie', 'fatigue', 'motivation', 'douleur', 'ressenti', 'zone', 'note', 'seance_id'].forEach(function (k) {
+            if ((be0[k] == null || be0[k] === '') && b[k] != null && b[k] !== '') be0[k] = b[k];
+          });
+        });
+        be0.date = _d0;
+      }
       var ICO = {
         sommeil: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
         ressenti: '<path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/>',
