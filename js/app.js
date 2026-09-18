@@ -7623,7 +7623,7 @@ function _reposIdxNear(val) { var t = Number(val) || 120, idx = 0, best = Infini
 function _reposWheelInit() {
   var w = document.getElementById('repos-wheel'); if (!w) return;
   if (!_reposWheelBuilt) {
-    var sp = '<div style="height:' + (_REPOS_IH * 2) + 'px"></div>';
+    var sp = '<div style="height:' + _REPOS_IH + 'px"></div>';
     w.innerHTML = sp + _REPOS_VALS.map(function (v) { return '<div class="repos-item" data-v="' + v + '" style="height:' + _REPOS_IH + 'px;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--text-muted);transition:color .12s,font-size .12s">' + _reposFmt(v) + '</div>'; }).join('') + sp;
     w.addEventListener('scroll', function () { if (_reposScrollT) clearTimeout(_reposScrollT); _reposWheelHighlight(); _reposScrollT = setTimeout(_reposWheelHighlight, 90); });
     _reposWheelBuilt = true;
@@ -11064,8 +11064,9 @@ function renderCardio(data) {
   data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null) || {};
   _cxSessions = (data.cardio && Array.isArray(data.cardio.history)) ? data.cardio.history : [];
   _cxRender();
-  // Si l'univers Hyrox est affiché, on rafraîchit sa liste (nouvelles Hyrox).
-  try { var hw = document.getElementById('cx-hyrox-sub'); if (hw && hw.style.display !== 'none') renderHyroxHome(); } catch (e) {}
+  // Si l'univers Hyrox est affiché (segment Hyrox de l'Entraînement), on rafraîchit
+  // sa liste « Mes Hyrox » (nouvelles Hyrox enregistrées).
+  try { var hw = document.getElementById('en-sel-hyrox'); if (hw && hw.style.display !== 'none') renderHyroxHome(); } catch (e) {}
 }
 function _cxRender() {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
@@ -11638,18 +11639,23 @@ var _EN_ACTS = [
 ];
 function _enSetMode(m) {
   _enMode = m;
-  var bm = document.getElementById('en-seg-muscu'), bc = document.getElementById('en-seg-cardio');
+  var bm = document.getElementById('en-seg-muscu'), bc = document.getElementById('en-seg-cardio'), bh = document.getElementById('en-seg-hyrox');
   if (bm) bm.classList.toggle('on', m === 'muscu');
   if (bc) { bc.classList.toggle('on', m === 'cardio'); bc.classList.toggle('cx', m === 'cardio'); }
-  var sm = document.getElementById('en-sel-muscu'), sc = document.getElementById('en-sel-cardio');
+  if (bh) { bh.classList.toggle('on', m === 'hyrox'); bh.classList.toggle('hx', m === 'hyrox'); }
+  var sm = document.getElementById('en-sel-muscu'), sc = document.getElementById('en-sel-cardio'), sh = document.getElementById('en-sel-hyrox');
   if (sm) sm.style.display = (m === 'muscu') ? '' : 'none';
   if (sc) sc.style.display = (m === 'cardio') ? '' : 'none';
-  var st = document.getElementById('en-start'); if (st) st.classList.toggle('cardio', m === 'cardio');
-  // Les constructeurs de programme sont MUSCU → cachés en mode cardio (pas de plan
+  if (sh) sh.style.display = (m === 'hyrox') ? '' : 'none';
+  // Hyrox a ses propres boutons (chrono / saisie) dans sa carte → on masque le
+  // « Démarrer » générique et les constructeurs de programme.
+  var st = document.getElementById('en-start'); if (st) { st.classList.toggle('cardio', m === 'cardio'); st.style.display = (m === 'hyrox') ? 'none' : ''; }
+  // Les constructeurs de programme sont MUSCU → cachés en mode cardio/hyrox (pas de plan
   // de course/vélo/fractionné pour l'instant). À réactiver quand le cardio en aura.
   var gen = document.getElementById('en-gen'); if (gen) gen.style.display = (m === 'muscu') ? '' : 'none';
   var creer = document.getElementById('en-creer'); if (creer) creer.style.display = (m === 'muscu') ? '' : 'none';
-  // Le bloc « dernières séances / sorties » suit le mode (muscu vs cardio).
+  if (m === 'hyrox') { try { renderHyroxHome(); } catch (e) {} }
+  // Le bloc « dernières séances / sorties » suit le mode (muscu vs cardio ; masqué en hyrox).
   try { renderEnSuivi(typeof dernierAppData !== 'undefined' ? dernierAppData : null); } catch (e) {}
 }
 function _enSelectSeance(sid) { _enSelSeance = sid; _enRenderSelMuscu(); }
@@ -11691,9 +11697,9 @@ function _enRenderSelCardio() {
   g.innerHTML = _EN_ACTS.map(function (a) {
     var on = (a.t === _enSelActivite);
     return '<div class="en-act' + (on ? ' on' : '') + '" onclick=\'_enSelectActivite(' + JSON.stringify(a.t) + ')\'>'
-      + '<span class="en-rad"></span>'
       + '<span class="ic"><svg viewBox="0 0 24 24">' + a.svg + '</svg></span>'
-      + '<div class="a">' + esc(a.label) + '</div><div class="b">' + esc(a.hint) + '</div></div>';
+      + '<div class="tx"><div class="a">' + esc(a.label) + '</div><div class="b">' + esc(a.hint) + '</div></div>'
+      + '<span class="en-rad"></span></div>';
   }).join('');
 }
 // « Démarrer la séance » : d'abord l'état du jour (readiness, AVANT), 1×/jour et
@@ -11757,13 +11763,16 @@ function enToggleSea(i) { var d = document.getElementById('en-sea-' + i), c = do
 function renderEnSuivi(data) {
   var el = document.getElementById('en-suivi'); if (!el) return;
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  // En mode HYROX, la carte Hyrox affiche déjà « Mes Hyrox » → pas de bloc suivi ici.
+  if (_enMode === 'hyrox') { el.innerHTML = ''; return; }
   // En mode CARDIO, ce bloc doit montrer les SORTIES CARDIO — pas les séances muscu
   // (sinon on affiche de la muscu dans l'onglet cardio de l'Entraînement).
   if (_enMode === 'cardio') {
     var LBL = (typeof _CARDIO_TYPE_LABELS !== 'undefined') ? _CARDIO_TYPE_LABELS : {};
     var ICO = (typeof _CH_ICO !== 'undefined') ? _CH_ICO : {};
-    var ch = ((data && data.cardio && data.cardio.history) || []).slice()
-      .sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); }).slice(0, 6);
+    var ch = ((data && data.cardio && data.cardio.history) || [])
+      .filter(function (s) { return (s.type_cardio || '') !== 'hyrox'; })  // Hyrox = univers dédié
+      .slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); }).slice(0, 6);
     if (!ch.length) { el.innerHTML = '<div class="en-sec">Dernières sorties cardio</div><div class="en-muted" style="padding:4px 2px">Aucune sortie cardio enregistrée pour l\'instant.</div>'; return; }
     var rowsC = ch.map(function (s) {
       var dd = new Date((s.date || '') + 'T00:00:00'), day = isNaN(dd.getTime()) ? '' : String(dd.getDate()).padStart(2, '0'), mon = isNaN(dd.getTime()) ? '' : _EN_MONS[dd.getMonth()];
@@ -14384,7 +14393,7 @@ function cxSetWorld(w, btn) {
 }
 function _hxTodayISO() { var t = new Date(); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
 function renderHyroxHome() {
-  var el = document.getElementById('cx-hyrox-sub'); if (!el) return;
+  var el = document.getElementById('en-sel-hyrox'); if (!el) return;
   var hist = ((typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.cardio && dernierAppData.cardio.history) || []).filter(function (s) { return (s.type_cardio || '') === 'hyrox'; });
   var list = hist.length ? hist.slice(0, 8).map(function (s) {
     var tot = Number(s.hyrox_total) || (Number(s.duree) || 0) * 60;

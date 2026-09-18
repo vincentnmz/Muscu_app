@@ -941,10 +941,11 @@
         #tab-seance .en-startbtn.cardio{ background:#0EA5E9; box-shadow:0 6px 16px rgba(14,165,233,.32); }
         /* Toggle Muscu / Cardio */
         #tab-seance .en-seg{ display:flex; gap:5px; background:var(--surface2); border-radius:13px; padding:5px; }
-        #tab-seance .en-seg button{ flex:1; border:none; background:transparent; font-family:inherit; font-weight:700; font-size:13px; color:var(--text-muted); padding:10px 0; border-radius:9px; display:flex; align-items:center; justify-content:center; gap:7px; cursor:pointer; }
+        #tab-seance .en-seg button{ flex:1; border:none; background:transparent; font-family:inherit; font-weight:700; font-size:12.5px; color:var(--text-muted); padding:10px 0; border-radius:9px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; white-space:nowrap; }
         #tab-seance .en-seg button.on{ background:var(--surface); color:var(--accent); box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
         #tab-seance .en-seg button.on.cx{ color:#0b7fb4; }
-        #tab-seance .en-seg button svg{ width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-seance .en-seg button.on.hx{ color:#CA9A04; }
+        #tab-seance .en-seg button svg{ width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
         /* Sélection de séance (carte + pastille radio) */
         #tab-seance .en-sel{ display:flex; align-items:center; gap:12px; background:var(--surface); border:1.5px solid var(--border); border-radius:15px; padding:13px 14px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); cursor:pointer; }
         #tab-seance .en-sel.on{ border-color:var(--accent); box-shadow:0 6px 18px rgba(26,95,255,.16); }
@@ -958,17 +959,18 @@
         #tab-seance .en-sel.on .en-rad{ border-color:var(--accent); }
         #tab-seance .en-sel.on .en-rad::after{ content:""; width:11px; height:11px; border-radius:999px; background:var(--accent); }
         /* Grille activités cardio */
-        #tab-seance .en-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-        #tab-seance .en-act{ position:relative; display:flex; flex-direction:column; gap:8px; background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); cursor:pointer; }
-        #tab-seance .en-act.on{ border-color:#0EA5E9; box-shadow:0 6px 18px rgba(14,165,233,.16); }
-        #tab-seance .en-act .ic{ width:42px; height:42px; border-radius:12px; background:var(--surface2); color:#0EA5E9; display:grid; place-items:center; }
+        #tab-seance .en-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        #tab-seance .en-act{ position:relative; display:flex; align-items:center; gap:9px; background:var(--surface); border:1.5px solid var(--border); border-radius:13px; padding:9px 30px 9px 9px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); cursor:pointer; }
+        #tab-seance .en-act.on{ border-color:#0EA5E9; box-shadow:0 4px 12px rgba(14,165,233,.14); }
+        #tab-seance .en-act .ic{ width:34px; height:34px; border-radius:10px; background:var(--surface2); color:#0EA5E9; display:grid; place-items:center; flex:none; }
         #tab-seance .en-act.on .ic{ background:#0EA5E9; color:#fff; }
-        #tab-seance .en-act .ic svg{ width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-        #tab-seance .en-act .a{ font-weight:800; font-size:14px; }
-        #tab-seance .en-act .b{ font-size:10.5px; color:var(--text-subtle); }
-        #tab-seance .en-act .en-rad{ position:absolute; top:12px; right:12px; width:20px; height:20px; }
+        #tab-seance .en-act .ic svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-seance .en-act .tx{ min-width:0; }
+        #tab-seance .en-act .a{ font-weight:800; font-size:13px; line-height:1.15; }
+        #tab-seance .en-act .b{ font-size:9.5px; color:var(--text-subtle); line-height:1.2; margin-top:1px; }
+        #tab-seance .en-act .en-rad{ position:absolute; top:50%; transform:translateY(-50%); right:9px; width:16px; height:16px; border-width:1.5px; }
         #tab-seance .en-act.on .en-rad{ border-color:#0EA5E9; }
-        #tab-seance .en-act.on .en-rad::after{ content:""; width:10px; height:10px; border-radius:999px; background:#0EA5E9; }
+        #tab-seance .en-act.on .en-rad::after{ content:""; width:8px; height:8px; border-radius:999px; background:#0EA5E9; }
         /* Suivi : cette semaine (prévu/réalisé) */
         #tab-seance .en-wrow{ display:flex; align-items:center; gap:11px; padding:11px 13px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
         #tab-seance .en-st{ width:24px; height:24px; border-radius:999px; flex:none; display:grid; place-items:center; }
@@ -1008,8 +1010,9 @@
 
         <!-- Toggle Musculation / Cardio -->
         <div class="en-seg" id="en-seg">
-          <button id="en-seg-muscu" class="on" onclick="_enSetMode('muscu')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Musculation</button>
+          <button id="en-seg-muscu" class="on" onclick="_enSetMode('muscu')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
           <button id="en-seg-cardio" onclick="_enSetMode('cardio')"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
+          <button id="en-seg-hyrox" onclick="_enSetMode('hyrox')"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7z"/><path d="M9 12h6M12 9v6"/></svg>Hyrox</button>
         </div>
 
         <!-- Sélection MUSCU -->
@@ -1022,6 +1025,8 @@
           <div class="en-sec">Choisis ton activité</div>
           <div class="en-grid" id="en-grid"></div>
         </div>
+        <!-- Univers HYROX (rempli par renderHyroxHome) -->
+        <div id="en-sel-hyrox" style="display:none"></div>
 
         <!-- Démarrer -->
         <button class="en-startbtn" id="en-start" onclick="_enDemarrer()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8V4z"/></svg>Démarrer la séance</button>
@@ -1228,9 +1233,9 @@
 
               <div class="saisie-lbl" style="margin-top:14px">Repos <span style="font-size:10px;color:var(--text-subtle);font-weight:600">— fais défiler</span></div>
               <style>#repos-wheel::-webkit-scrollbar{display:none}</style>
-              <div style="position:relative;height:180px;overflow:hidden;border-radius:14px;background:var(--surface2);border:1px solid var(--border);margin-top:6px">
+              <div style="position:relative;height:108px;overflow:hidden;border-radius:14px;background:var(--surface2);border:1px solid var(--border);margin-top:6px">
                 <div id="repos-wheel" style="height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
-                <div style="position:absolute;left:8px;right:8px;top:72px;height:36px;border-radius:9px;border:1.5px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.08));pointer-events:none"></div>
+                <div style="position:absolute;left:8px;right:8px;top:36px;height:36px;border-radius:9px;border:1.5px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.08));pointer-events:none"></div>
               </div>
               <input type="hidden" id="sel-repos" value="120">
 
@@ -1972,13 +1977,6 @@
       </style>
 
       <div class="cx-wrap">
-        <!-- Sélecteur d'univers : Cardio (sorties classiques) vs Hyrox (écran dédié) -->
-        <div class="cx-period" id="cx-world" style="margin-bottom:2px">
-          <button class="on" onclick="cxSetWorld('cardio',this)">🏃 Cardio</button>
-          <button onclick="cxSetWorld('hyrox',this)">🟨 Hyrox</button>
-        </div>
-        <div id="cx-hyrox-sub" style="display:none"></div>
-        <div id="cx-cardio-sub">
         <div class="cx-cap">Choisis ton activité</div>
         <div class="cx-selector">
           <span class="icb"><svg width="21" height="21" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span>
