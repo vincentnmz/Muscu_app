@@ -58,6 +58,8 @@
   .stime{width:74px;text-align:center;padding:8px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;font-family:inherit}
   .stime:focus{outline:none;border-color:var(--accent)}
   .wt{color:var(--accent);font-weight:700}
+  .wtin{width:42px;text-align:center;padding:2px 3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--accent);font-weight:700;font-size:11px;font-family:inherit}
+  .wtin:focus{outline:none;border-color:var(--accent)}
   .total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:13px 15px;border-radius:14px;background:var(--accent-a08);border:1px solid var(--accent-a14)}
   .total .lbl{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
   .total .sub{font-size:10.5px;color:var(--text-subtle);margin-top:2px}
@@ -108,7 +110,7 @@
 
   <!-- ===================== SAISIE ===================== -->
   <div class="view on" id="v-saisie">
-    <div class="note"><b>Maquette — saisie.</b> Les 16 segments officiels d'une HYROX (8 × Run de 1 km + 8 ateliers), chacun avec son temps (m:ss). Le total et la répartition course / ateliers se calculent tout seuls. En mode <b>Entraînement</b>, laisse vide ce que tu n'as pas fait. Les poids affichés suivent ta <b>division</b>.</div>
+    <div class="note"><b>Maquette — saisie.</b> Les 16 segments officiels d'une HYROX (8 × Run de 1 km + 8 ateliers), chacun avec son temps (m:ss). Le total et la répartition course / ateliers se calculent tout seuls. La <b>division</b> pré-remplit les poids officiels, mais <b>chaque poids reste modifiable</b> (charge adaptée à l'entraînement). En mode <b>Entraînement</b>, laisse vide ce que tu n'as pas fait.</div>
 
     <div class="seg">
       <button class="on">Course / simulation</button>
@@ -127,19 +129,19 @@
       <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Run 1</div><div class="ssub">1 km</div></div><input class="stime" value="5:10"></div>
       <div class="srow"><span class="sic stn">1</span><div class="smid"><div class="snm">SkiErg</div><div class="ssub">1000 m</div></div><input class="stime" value="4:35"></div>
       <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Run 2</div><div class="ssub">1 km</div></div><input class="stime" value="5:20"></div>
-      <div class="srow"><span class="sic stn">2</span><div class="smid"><div class="snm">Sled Push</div><div class="ssub">50 m · <span class="wt" id="w-push">152 kg</span></div></div><input class="stime" value="3:05"></div>
+      <div class="srow"><span class="sic stn">2</span><div class="smid"><div class="snm">Sled Push</div><div class="ssub">50 m · <input class="wtin" id="w-push" value="152"> kg</div></div><input class="stime" value="3:05"></div>
       <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Run 3</div><div class="ssub">1 km</div></div><input class="stime" value="5:25"></div>
-      <div class="srow"><span class="sic stn">3</span><div class="smid"><div class="snm">Sled Pull</div><div class="ssub">50 m · <span class="wt" id="w-pull">103 kg</span></div></div><input class="stime" value="3:40"></div>
+      <div class="srow"><span class="sic stn">3</span><div class="smid"><div class="snm">Sled Pull</div><div class="ssub">50 m · <input class="wtin" id="w-pull" value="103"> kg</div></div><input class="stime" value="3:40"></div>
       <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Run 4</div><div class="ssub">1 km</div></div><input class="stime" value="5:30"></div>
       <div class="srow"><span class="sic stn">4</span><div class="smid"><div class="snm">Burpee Broad Jump</div><div class="ssub">80 m</div></div><input class="stime" value="4:10"></div>
       <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Run 5</div><div class="ssub">1 km</div></div><input class="stime" value="5:35"></div>
       <div class="srow"><span class="sic stn">5</span><div class="smid"><div class="snm">Rowing</div><div class="ssub">1000 m</div></div><input class="stime" value="4:20"></div>
       <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Run 6</div><div class="ssub">1 km</div></div><input class="stime" value="5:40"></div>
-      <div class="srow"><span class="sic stn">6</span><div class="smid"><div class="snm">Farmers Carry</div><div class="ssub">200 m · <span class="wt" id="w-farm">2 × 24 kg</span></div></div><input class="stime" value="2:35"></div>
+      <div class="srow"><span class="sic stn">6</span><div class="smid"><div class="snm">Farmers Carry</div><div class="ssub">200 m · 2 × <input class="wtin" id="w-farm" value="24"> kg</div></div><input class="stime" value="2:35"></div>
       <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Run 7</div><div class="ssub">1 km</div></div><input class="stime" value="5:45"></div>
-      <div class="srow"><span class="sic stn">7</span><div class="smid"><div class="snm">Sandbag Lunges</div><div class="ssub">100 m · <span class="wt" id="w-sand">20 kg</span></div></div><input class="stime" value="4:45"></div>
+      <div class="srow"><span class="sic stn">7</span><div class="smid"><div class="snm">Sandbag Lunges</div><div class="ssub">100 m · <input class="wtin" id="w-sand" value="20"> kg</div></div><input class="stime" value="4:45"></div>
       <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Run 8</div><div class="ssub">1 km</div></div><input class="stime" value="5:20"></div>
-      <div class="srow"><span class="sic stn">8</span><div class="smid"><div class="snm">Wall Balls</div><div class="ssub">100 reps · <span class="wt" id="w-wall">6 kg</span></div></div><input class="stime" value="5:05"></div>
+      <div class="srow"><span class="sic stn">8</span><div class="smid"><div class="snm">Wall Balls</div><div class="ssub"><input class="wtin" id="w-reps" value="100" style="width:34px"> reps · <input class="wtin" id="w-wall" value="6"> kg</div></div><input class="stime" value="5:05"></div>
     </div>
 
     <div class="total">
@@ -199,22 +201,18 @@
     btn.classList.add('on');
     window.scrollTo(0,0);
   }
-  // Poids officiels HYROX 2026/27 par division
+  // Poids officiels HYROX 2026/27 par division (pré-remplissage ; restent éditables)
   var HX_W = {
-    mo:{push:'152 kg',pull:'103 kg',farm:'2 × 24 kg',sand:'20 kg',wall:'6 kg'},
-    wo:{push:'102 kg',pull:'78 kg',farm:'2 × 16 kg',sand:'10 kg',wall:'4 kg'},
-    mp:{push:'202 kg',pull:'153 kg',farm:'2 × 32 kg',sand:'30 kg',wall:'9 kg'},
-    wp:{push:'152 kg',pull:'103 kg',farm:'2 × 24 kg',sand:'20 kg',wall:'6 kg'}
+    mo:{push:152,pull:103,farm:24,sand:20,wall:6},
+    wo:{push:102,pull:78,farm:16,sand:10,wall:4},
+    mp:{push:202,pull:153,farm:32,sand:30,wall:9},
+    wp:{push:152,pull:103,farm:24,sand:20,wall:6}
   };
   function setDiv(d,btn){
     document.querySelectorAll('#divsel button').forEach(function(b){b.classList.remove('on')});
     btn.classList.add('on');
     var w=HX_W[d];
-    document.getElementById('w-push').textContent=w.push;
-    document.getElementById('w-pull').textContent=w.pull;
-    document.getElementById('w-farm').textContent=w.farm;
-    document.getElementById('w-sand').textContent=w.sand;
-    document.getElementById('w-wall').textContent=w.wall;
+    ['push','pull','farm','sand','wall'].forEach(function(k){ var el=document.getElementById('w-'+k); if(el) el.value=w[k]; });
   }
 </script>
 </body>
