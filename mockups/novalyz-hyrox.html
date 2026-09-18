@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyrox</title>
+<style>
+  :root{
+    --bg:#f3f5f9; --surface:#ffffff; --surface2:#eef1f6; --border:#e2e7ef;
+    --text:#0d1526; --text-muted:#5b667a; --text-subtle:#8a94a6;
+    --accent:#1a5fff; --accent-a08:rgba(26,95,255,.08); --accent-a14:rgba(26,95,255,.14);
+    --run:#0ea5e9; --run-a:rgba(14,165,233,.12);
+    --good:#00a854; --good-a:rgba(0,168,84,.12);
+    --warn:#e07800; --warn-a:rgba(224,120,0,.12);
+    --bad:#dc3545; --bad-a:rgba(220,53,69,.12);
+    --sh:0 6px 20px rgba(7,11,20,.07); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0a0e17; --surface:#131a27; --surface2:#1c2536; --border:#28324a;
+    --text:#eef2f8; --text-muted:#9fabc0; --text-subtle:#6b7890;
+    --accent:#5b8bff; --accent-a08:rgba(91,139,255,.10); --accent-a14:rgba(91,139,255,.18);
+    --run:#38bdf8; --run-a:rgba(56,189,248,.14);
+    --good:#28c46e; --good-a:rgba(40,196,110,.14); --warn:#f59f2b; --warn-a:rgba(245,159,43,.14);
+    --bad:#ef5a6a; --bad-a:rgba(239,90,106,.15); --sh:0 8px 24px rgba(0,0,0,.4); --sh-sm:0 1px 2px rgba(0,0,0,.3);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0a0e17; --surface:#131a27; --surface2:#1c2536; --border:#28324a;
+    --text:#eef2f8; --text-muted:#9fabc0; --text-subtle:#6b7890;
+    --accent:#5b8bff; --accent-a08:rgba(91,139,255,.10); --accent-a14:rgba(91,139,255,.18);
+    --run:#38bdf8; --run-a:rgba(56,189,248,.14);
+    --good:#28c46e; --good-a:rgba(40,196,110,.14); --warn:#f59f2b; --warn-a:rgba(245,159,43,.14);
+    --bad:#ef5a6a; --bad-a:rgba(239,90,106,.15); --sh:0 8px 24px rgba(0,0,0,.4); --sh-sm:0 1px 2px rgba(0,0,0,.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45;-webkit-font-smoothing:antialiased;padding:0 16px 56px}
+  .wrap{max-width:460px;margin:0 auto}
+  .eyebrow{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--text-subtle)}
+  .h1{font-size:22px;font-weight:800;letter-spacing:.02em;margin-top:2px}
+  .head{padding:24px 2px 4px}
+  .tabs{display:flex;gap:4px;background:var(--surface2);border-radius:12px;padding:4px;margin:14px 0 4px}
+  .tabs button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);padding:9px 0;border-radius:9px;cursor:pointer}
+  .tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm)}
+  .seclbl{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin:18px 2px 8px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm)}
+  .seg{display:flex;gap:8px;margin:12px 0}
+  .seg button{flex:1;border:1.5px solid var(--border);background:var(--surface);border-radius:11px;padding:9px 0;font-size:12.5px;font-weight:700;color:var(--text-muted);cursor:pointer}
+  .seg button.on{border-color:var(--accent);color:var(--accent);background:var(--accent-a08)}
+  .hint{font-size:11.5px;color:var(--text-muted);margin:4px 2px 8px}
+  /* segment rows */
+  .srow{display:flex;align-items:center;gap:11px;padding:9px 13px;border-top:1px solid var(--border)}
+  .srow:first-child{border-top:none}
+  .sic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:12px;flex:none}
+  .sic.run{background:var(--run-a);color:var(--run)}
+  .sic.stn{background:var(--surface2);color:var(--text-muted);font-weight:800;font-size:11px}
+  .smid{flex:1;min-width:0}
+  .snm{font-size:13px;font-weight:700}
+  .ssub{font-size:10.5px;color:var(--text-subtle)}
+  .stime{width:74px;text-align:center;padding:8px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;font-family:inherit}
+  .stime:focus{outline:none;border-color:var(--accent)}
+  .total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:13px 15px;border-radius:14px;background:var(--accent-a08);border:1px solid var(--accent-a14)}
+  .total .lbl{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+  .total .sub{font-size:10.5px;color:var(--text-subtle);margin-top:2px}
+  .total .big{font-size:26px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+  .chips{display:flex;gap:7px;margin-top:8px}
+  .chip{flex:1;border:1.5px solid var(--border);background:var(--surface);border-radius:10px;padding:9px 0;text-align:center;font-weight:700;color:var(--text-muted);cursor:pointer;font-size:14px}
+  .chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-a08)}
+  .btn{width:100%;margin-top:14px;padding:15px;border-radius:14px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer}
+  label{display:block;font-size:12px;font-weight:700;color:var(--text-muted);margin:14px 2px 6px}
+  /* results */
+  .rtop{display:flex;align-items:flex-end;justify-content:space-between;padding:16px 16px 14px}
+  .rtot{font-size:34px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1}
+  .rdelta{font-size:12px;font-weight:800;padding:4px 9px;border-radius:8px}
+  .up{color:var(--good);background:var(--good-a)} .dn{color:var(--bad);background:var(--bad-a)}
+  .rbar{display:flex;height:12px;border-radius:99px;overflow:hidden;margin:0 16px 6px}
+  .rbar .r{background:var(--run)} .rbar .s{background:var(--accent)}
+  .rleg{display:flex;justify-content:space-between;padding:0 16px 14px;font-size:11px;color:var(--text-muted)}
+  .rleg b{color:var(--text)}
+  .stat{display:flex;align-items:center;gap:11px;padding:11px 15px;border-top:1px solid var(--border)}
+  .sbar{flex:1;min-width:0}
+  .sbar .top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px}
+  .sbar .top .nm{font-weight:700}
+  .sbar .top .tm{font-variant-numeric:tabular-nums;font-weight:800}
+  .track{height:7px;border-radius:99px;background:var(--surface2);overflow:hidden}
+  .fill{height:100%;border-radius:99px;background:var(--accent)}
+  .fill.slow{background:var(--warn)}
+  .fill.run{background:var(--run)}
+  .sdelta{width:62px;text-align:right;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;flex:none}
+  .foot{font-size:11px;color:var(--text-subtle);text-align:center;margin-top:16px;line-height:1.6}
+  .note{background:var(--accent-a08);border:1px solid var(--accent-a14);border-radius:12px;padding:11px 13px;font-size:12px;color:var(--text-muted);margin:12px 0;line-height:1.5}
+  .note b{color:var(--accent)}
+  .toggle{position:fixed;top:12px;right:12px;font-size:11px;font-weight:700;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;color:var(--text-muted);z-index:10}
+  .view{display:none}.view.on{display:block}
+</style>
+</head>
+<body>
+<button class="toggle" onclick="document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')">☾ / ☀</button>
+<div class="wrap">
+  <div class="head">
+    <div class="eyebrow">Cardio · Hyrox</div>
+    <div class="h1">Hyrox</div>
+  </div>
+
+  <div class="tabs">
+    <button class="on" onclick="showV('saisie',this)">Saisie</button>
+    <button onclick="showV('resultat',this)">Résultat / analyse</button>
+  </div>
+
+  <!-- ===================== SAISIE ===================== -->
+  <div class="view on" id="v-saisie">
+    <div class="note"><b>Maquette — saisie.</b> Les 16 segments d'une Hyrox (8 courses de 1 km + 8 ateliers), chacun avec son temps (m:ss). Le total et la répartition course / ateliers se calculent tout seuls. En mode <b>Entraînement</b>, laisse vide ce que tu n'as pas fait.</div>
+
+    <div class="seg">
+      <button class="on">Course / simulation</button>
+      <button>Entraînement</button>
+    </div>
+    <label>Date</label>
+    <input class="stime" style="width:100%;text-align:left" value="18/09/2026" readonly>
+
+    <div class="seclbl">Segments</div>
+    <div class="card">
+      <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Course 1</div><div class="ssub">1 km</div></div><input class="stime" value="5:10"></div>
+      <div class="srow"><span class="sic stn">1</span><div class="smid"><div class="snm">SkiErg</div><div class="ssub">1000 m</div></div><input class="stime" value="4:35"></div>
+      <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Course 2</div><div class="ssub">1 km</div></div><input class="stime" value="5:20"></div>
+      <div class="srow"><span class="sic stn">2</span><div class="smid"><div class="snm">Sled Push</div><div class="ssub">50 m</div></div><input class="stime" value="3:05"></div>
+      <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Course 3</div><div class="ssub">1 km</div></div><input class="stime" value="5:25"></div>
+      <div class="srow"><span class="sic stn">3</span><div class="smid"><div class="snm">Sled Pull</div><div class="ssub">50 m</div></div><input class="stime" value="3:40"></div>
+      <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Course 4</div><div class="ssub">1 km</div></div><input class="stime" value="5:30"></div>
+      <div class="srow"><span class="sic stn">4</span><div class="smid"><div class="snm">Burpee Broad Jumps</div><div class="ssub">80 m</div></div><input class="stime" value="4:10"></div>
+      <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Course 5</div><div class="ssub">1 km</div></div><input class="stime" value="5:35"></div>
+      <div class="srow"><span class="sic stn">5</span><div class="smid"><div class="snm">Rameur</div><div class="ssub">1000 m</div></div><input class="stime" value="4:20"></div>
+      <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Course 6</div><div class="ssub">1 km</div></div><input class="stime" value="5:40"></div>
+      <div class="srow"><span class="sic stn">6</span><div class="smid"><div class="snm">Farmers Carry</div><div class="ssub">200 m</div></div><input class="stime" value="2:35"></div>
+      <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Course 7</div><div class="ssub">1 km</div></div><input class="stime" value="5:45"></div>
+      <div class="srow"><span class="sic stn">7</span><div class="smid"><div class="snm">Sandbag Lunges</div><div class="ssub">100 m</div></div><input class="stime" value="4:45"></div>
+      <div class="srow"><span class="sic run">🏃</span><div class="smid"><div class="snm">Course 8</div><div class="ssub">1 km</div></div><input class="stime" value="5:20"></div>
+      <div class="srow"><span class="sic stn">8</span><div class="smid"><div class="snm">Wall Balls</div><div class="ssub">100 reps</div></div><input class="stime" value="5:05"></div>
+    </div>
+
+    <div class="total">
+      <div><div class="lbl">Temps total</div><div class="sub">Course 43:45 · Ateliers 32:15 · 16/16 segments</div></div>
+      <div class="big">1:16:00</div>
+    </div>
+
+    <label>RPE (intensité ressentie)</label>
+    <div class="chips">
+      <div class="chip">6</div><div class="chip">7</div><div class="chip on">8</div><div class="chip">9</div><div class="chip">10</div>
+    </div>
+
+    <button class="btn">✅ Enregistrer la Hyrox</button>
+  </div>
+
+  <!-- ===================== RÉSULTAT ===================== -->
+  <div class="view" id="v-resultat">
+    <div class="note"><b>Maquette — résultat / analyse.</b> Après enregistrement : temps total (vs ta Hyrox précédente), répartition course / ateliers, et le détail par atelier avec l'atelier le plus lent et ta progression par rapport à la dernière fois.</div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="rtop">
+        <div><div class="eyebrow" style="margin-bottom:4px">Course · 18 sept</div><div class="rtot">1:16:00</div></div>
+        <div class="rdelta up">▲ −2:10 vs préc.</div>
+      </div>
+      <div class="rbar"><div class="r" style="width:57.6%"></div><div class="s" style="width:42.4%"></div></div>
+      <div class="rleg"><span>🏃 Course <b>43:45</b> (58 %)</span><span>Ateliers <b>32:15</b> (42 %)</span></div>
+    </div>
+
+    <div class="seclbl">Détail par atelier</div>
+    <div class="card">
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">SkiErg</span><span class="tm">4:35</span></div><div class="track"><div class="fill" style="width:60%"></div></div></div><span class="sdelta up">−0:08</span></div>
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Sled Push</span><span class="tm">3:05</span></div><div class="track"><div class="fill" style="width:40%"></div></div></div><span class="sdelta dn">+0:12</span></div>
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Sled Pull</span><span class="tm">3:40</span></div><div class="track"><div class="fill" style="width:48%"></div></div></div><span class="sdelta up">−0:05</span></div>
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Burpee Broad Jumps</span><span class="tm">4:10</span></div><div class="track"><div class="fill" style="width:54%"></div></div></div><span class="sdelta up">−0:20</span></div>
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Rameur</span><span class="tm">4:20</span></div><div class="track"><div class="fill" style="width:56%"></div></div></div><span class="sdelta dn">+0:03</span></div>
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Farmers Carry</span><span class="tm">2:35</span></div><div class="track"><div class="fill" style="width:34%"></div></div></div><span class="sdelta up">−0:10</span></div>
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Sandbag Lunges <span style="color:var(--warn);font-size:9px;font-weight:800">· LE + LENT</span></span><span class="tm">4:45</span></div><div class="track"><div class="fill slow" style="width:62%"></div></div></div><span class="sdelta dn">+0:15</span></div>
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Wall Balls</span><span class="tm">5:05</span></div><div class="track"><div class="fill" style="width:66%"></div></div></div><span class="sdelta up">−0:07</span></div>
+    </div>
+
+    <div class="seclbl">Courses (1 km)</div>
+    <div class="card">
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Allure moyenne course</span><span class="tm">5:28 /km</span></div><div class="track"><div class="fill run" style="width:70%"></div></div></div><span class="sdelta up">−0:04</span></div>
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Course la plus rapide (C1)</span><span class="tm">5:10</span></div></div></div>
+      <div class="stat"><div class="sbar"><div class="top"><span class="nm">Course la plus lente (C7)</span><span class="tm">5:45</span></div></div></div>
+    </div>
+
+    <div class="foot">Comparaison avec ta <b>Hyrox précédente</b> (même segment). L'atelier « le plus lent » = ta cible de progression. La Hyrox compte aussi dans ta charge cardio.</div>
+  </div>
+
+</div>
+<script>
+  function showV(v,btn){
+    document.querySelectorAll('.view').forEach(function(e){e.classList.remove('on')});
+    document.getElementById('v-'+v).classList.add('on');
+    document.querySelectorAll('.tabs button').forEach(function(b){b.classList.remove('on')});
+    btn.classList.add('on');
+    window.scrollTo(0,0);
+  }
+</script>
+</body>
+</html>
