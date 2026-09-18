@@ -91,30 +91,47 @@
 <button class="toggle" onclick="document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')">☾ / ☀</button>
 <div class="wrap">
   <div class="head"><div class="eyebrow">Cardio</div><div class="h1">Hyrox — proposition</div></div>
-  <div class="tabs">
-    <button class="on" onclick="showV('cardio',this)">Mise en avant (Cardio)</button>
+  <div class="tabs" id="metatabs">
+    <button class="on" onclick="showV('cardio',this)">Onglet Cardio</button>
     <button onclick="showV('live',this)">Chrono live (démo)</button>
   </div>
 
-  <!-- ===== CARDIO TAB avec Hyrox en avant ===== -->
+  <!-- ===== CARDIO TAB : sélecteur Cardio | Hyrox ===== -->
   <div class="view on" id="v-cardio">
-    <div class="note"><b>Idée.</b> En haut de l'onglet Cardio, une carte Hyrox mise en avant avec deux entrées : <b>démarrer le chrono</b> (pendant la course) ou <b>saisir après coup</b> (les temps à la main). Le reste du Cardio (nouvelle sortie, dernières sorties) suit dessous.</div>
+    <div class="note"><b>Idée.</b> En haut de l'onglet, un sélecteur <b>Cardio | Hyrox</b> : deux univers <b>distincts</b>. « Cardio » = tes sorties habituelles. « Hyrox » = son écran dédié (démarrer le chrono, saisir après coup, tes Hyrox). Appuie sur les onglets ci-dessous pour voir les deux.</div>
 
-    <div class="hero">
-      <div class="badge">⬛🟨 Épreuve hybride</div>
-      <div class="ttl">HYROX</div>
-      <div class="sub">8 × (Run 1 km + atelier). Chronomètre l'enchaînement, ou saisis tes temps.</div>
-      <div class="acts">
-        <button class="primary" onclick="document.querySelector('.tabs button:nth-child(2)').click()">▶ Démarrer</button>
-        <button class="ghost">✎ Saisir après coup</button>
-      </div>
+    <div class="tabs" style="margin-top:14px" id="chsel">
+      <button class="on" onclick="chSub('cardio',this)">🏃 Cardio</button>
+      <button onclick="chSub('hyrox',this)">🟨 Hyrox</button>
     </div>
 
-    <div class="seclbl">Autres activités</div>
-    <div class="ccard"><span class="ic">➕</span><div style="flex:1"><div class="a">Nouvelle sortie cardio</div><div class="b">Footing, vélo, natation, HIIT…</div></div><span style="color:var(--text-subtle)">›</span></div>
-    <div class="ccard"><span class="ic">📊</span><div style="flex:1"><div class="a">Mes analyses cardio</div><div class="b">Charge, efficience, volume par sport</div></div><span style="color:var(--text-subtle)">›</span></div>
+    <!-- Sous-vue CARDIO (habituel) -->
+    <div id="sub-cardio">
+      <div class="ccard" style="border-color:var(--accent-a14)"><span class="ic">➕</span><div style="flex:1"><div class="a">Nouvelle sortie</div><div class="b">Footing, vélo, natation, rameur, HIIT…</div></div><span style="color:var(--text-subtle)">›</span></div>
+      <div class="seclbl">Ce mois</div>
+      <div class="ccard"><div style="flex:1;display:flex;gap:18px"><div><div class="a">8</div><div class="b">sorties</div></div><div><div class="a">64 km</div><div class="b">distance</div></div><div><div class="a">7 h 20</div><div class="b">temps</div></div></div></div>
+      <div class="seclbl">Dernières sorties</div>
+      <div class="ccard"><span class="ic" style="background:var(--run-a);color:var(--run)">🏃</span><div style="flex:1"><div class="a">Footing · 8,2 km</div><div class="b">17 sept · 42 min · RPE 7</div></div></div>
+      <div class="ccard"><span class="ic" style="background:var(--run-a);color:var(--run)">🚴</span><div style="flex:1"><div class="a">Vélo · 24 km</div><div class="b">15 sept · 55 min</div></div></div>
+      <div class="foot">Vue Cardio classique — inchangée. Hyrox vit dans son propre onglet →</div>
+    </div>
 
-    <div class="foot">La Hyrox reste une activité cardio (elle compte dans ta charge), mais mérite sa propre entrée : format long, structuré, à chronométrer en continu.</div>
+    <!-- Sous-vue HYROX (dédiée) -->
+    <div id="sub-hyrox" style="display:none">
+      <div class="hero">
+        <div class="badge">⬛🟨 Épreuve hybride</div>
+        <div class="ttl">HYROX</div>
+        <div class="sub">8 × (Run 1 km + atelier). Chronomètre l'enchaînement en direct, ou saisis tes temps après coup.</div>
+        <div class="acts">
+          <button class="primary" onclick="document.querySelectorAll('#metatabs button')[1].click()">▶ Démarrer</button>
+          <button class="ghost">✎ Saisir après coup</button>
+        </div>
+      </div>
+      <div class="seclbl">Mes Hyrox</div>
+      <div class="ccard"><span class="ic" style="background:rgba(234,179,8,.16);color:var(--hyrox-d)">🟨</span><div style="flex:1"><div class="a">Course · 1:16:00</div><div class="b">18 sept · ♂ Open · 16/16 segments</div></div><span style="color:var(--text-subtle)">›</span></div>
+      <div class="ccard"><span class="ic" style="background:rgba(234,179,8,.16);color:var(--hyrox-d)">🟨</span><div style="flex:1"><div class="a">Entraînement · 38:20</div><div class="b">12 sept · 8/16 segments</div></div><span style="color:var(--text-subtle)">›</span></div>
+      <div class="foot">Écran Hyrox dédié : démarrer/saisir + l'historique de tes Hyrox (chaque ligne ouvre les splits & l'analyse). Elles comptent quand même dans ta charge cardio.</div>
+    </div>
   </div>
 
   <!-- ===== LIVE CHRONO ===== -->
@@ -166,7 +183,8 @@
 </div>
 
 <script>
-  function showV(v,btn){document.querySelectorAll('.view').forEach(function(e){e.classList.remove('on')});document.getElementById('v-'+v).classList.add('on');document.querySelectorAll('.tabs button').forEach(function(b){b.classList.remove('on')});btn.classList.add('on');window.scrollTo(0,0);}
+  function showV(v,btn){document.querySelectorAll('.view').forEach(function(e){e.classList.remove('on')});document.getElementById('v-'+v).classList.add('on');document.querySelectorAll('#metatabs button').forEach(function(b){b.classList.remove('on')});btn.classList.add('on');window.scrollTo(0,0);}
+  function chSub(s,btn){document.getElementById('sub-cardio').style.display=(s==='cardio')?'block':'none';document.getElementById('sub-hyrox').style.display=(s==='hyrox')?'block':'none';document.querySelectorAll('#chsel button').forEach(function(b){b.classList.remove('on')});btn.classList.add('on');}
   var HY=[['Run 1','1 km',1],['SkiErg','1000 m',0],['Run 2','1 km',1],['Sled Push','50 m',0],['Run 3','1 km',1],['Sled Pull','50 m',0],['Run 4','1 km',1],['Burpee Broad Jump','80 m',0],['Run 5','1 km',1],['Rowing','1000 m',0],['Run 6','1 km',1],['Farmers Carry','200 m',0],['Run 7','1 km',1],['Sandbag Lunges','100 m',0],['Run 8','1 km',1],['Wall Balls','100 reps',0]];
   var t0,segT0,idx,splits,timer,paused,pausedAt,pauseAcc;
   function fmt(ms){ms=Math.max(0,Math.floor(ms/1000));var m=Math.floor(ms/60),s=ms%60;return m+':'+String(s).padStart(2,'0');}
