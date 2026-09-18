@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Par séance</title>
+<style>
+  :root{
+    --bg:#f3f5f9; --surface:#ffffff; --surface2:#eef1f6; --border:#e2e7ef;
+    --text:#0d1526; --text-muted:#5b667a; --text-subtle:#8a94a6;
+    --accent:#1a5fff; --accent-a08:rgba(26,95,255,.08); --accent-a14:rgba(26,95,255,.14);
+    --good:#00a854; --good-a:rgba(0,168,84,.12);
+    --warn:#e07800; --warn-a:rgba(224,120,0,.12);
+    --bad:#dc3545; --bad-a:rgba(220,53,69,.12);
+    --sh:0 6px 20px rgba(7,11,20,.07); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+    --radius:18px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0a0e17; --surface:#131a27; --surface2:#1c2536; --border:#28324a;
+      --text:#eef2f8; --text-muted:#9fabc0; --text-subtle:#6b7890;
+      --accent:#5b8bff; --accent-a08:rgba(91,139,255,.10); --accent-a14:rgba(91,139,255,.18);
+      --good:#28c46e; --good-a:rgba(40,196,110,.14);
+      --warn:#f59f2b; --warn-a:rgba(245,159,43,.14);
+      --bad:#ef5a6a; --bad-a:rgba(239,90,106,.15);
+      --sh:0 8px 24px rgba(0,0,0,.4); --sh-sm:0 1px 2px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0a0e17; --surface:#131a27; --surface2:#1c2536; --border:#28324a;
+    --text:#eef2f8; --text-muted:#9fabc0; --text-subtle:#6b7890;
+    --accent:#5b8bff; --accent-a08:rgba(91,139,255,.10); --accent-a14:rgba(91,139,255,.18);
+    --good:#28c46e; --warn:#f59f2b; --bad:#ef5a6a;
+    --good-a:rgba(40,196,110,.14); --warn-a:rgba(245,159,43,.14); --bad-a:rgba(239,90,106,.15);
+    --sh:0 8px 24px rgba(0,0,0,.4); --sh-sm:0 1px 2px rgba(0,0,0,.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45;-webkit-font-smoothing:antialiased;padding:0 16px 48px}
+  .wrap{max-width:460px;margin:0 auto}
+  .eyebrow{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--text-subtle)}
+  .h1{font-size:22px;font-weight:800;letter-spacing:.02em;margin-top:2px}
+  .head{padding:26px 2px 6px}
+  .note{background:var(--accent-a08);border:1px solid var(--accent-a14);border-radius:12px;padding:11px 13px;font-size:12px;color:var(--text-muted);margin:14px 0 6px;line-height:1.5}
+  .note b{color:var(--accent)}
+  /* Segmented (vue) */
+  .seg{display:flex;gap:4px;background:var(--surface2);border-radius:12px;padding:4px;margin:14px 0 4px}
+  .seg button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:700;font-size:12px;color:var(--text-muted);padding:8px 0;border-radius:9px;cursor:pointer}
+  .seg button.on{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm)}
+  /* Period pills */
+  .pills{display:flex;gap:6px;margin:12px 0 4px}
+  .pill{flex:1;text-align:center;border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:7px 0;font-size:11.5px;font-weight:700;color:var(--text-muted);cursor:pointer}
+  .pill.on{border-color:var(--accent);color:var(--accent);background:var(--accent-a08)}
+  .seclbl{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin:18px 2px 8px}
+  /* Session card */
+  .sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--sh-sm);margin-bottom:12px;overflow:hidden}
+  .sc-hd{display:flex;align-items:center;gap:12px;padding:14px 15px;cursor:pointer}
+  .sc-dt{width:44px;flex:none;text-align:center;background:var(--surface2);border-radius:11px;padding:6px 0}
+  .sc-dt .d{font-size:16px;font-weight:800;line-height:1}
+  .sc-dt .m{font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin-top:2px}
+  .sc-mid{flex:1;min-width:0}
+  .sc-nm{font-size:14.5px;font-weight:800;letter-spacing:.01em}
+  .sc-sub{font-size:11px;color:var(--text-subtle);margin-top:2px}
+  .sc-chev{color:var(--text-subtle);transition:transform .2s;flex:none}
+  .sc.open .sc-chev{transform:rotate(180deg)}
+  .badge{font-size:10px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;flex:none}
+  .b-up{color:var(--good);background:var(--good-a)}
+  .b-dn{color:var(--bad);background:var(--bad-a)}
+  .b-eq{color:var(--text-muted);background:var(--surface2)}
+  /* Chips row inside card */
+  .sc-kpis{display:flex;gap:8px;padding:0 15px 13px;flex-wrap:wrap}
+  .kchip{background:var(--surface2);border-radius:9px;padding:6px 9px;display:flex;flex-direction:column;gap:1px;min-width:64px}
+  .kchip .v{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+  .kchip .u{font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);font-weight:700}
+  /* Body (exos) */
+  .sc-bd{border-top:1px solid var(--border);display:none}
+  .sc.open .sc-bd{display:block}
+  .exo{display:flex;align-items:center;gap:11px;padding:12px 15px;border-bottom:1px solid var(--border)}
+  .exo:last-child{border-bottom:none}
+  .exo-ic{width:30px;height:30px;border-radius:9px;background:var(--accent-a14);color:var(--accent);display:grid;place-items:center;flex:none;font-size:14px;font-weight:800}
+  .exo-mid{flex:1;min-width:0}
+  .exo-nm{font-size:13px;font-weight:700}
+  .exo-detail{font-size:11px;color:var(--text-muted);margin-top:2px;font-variant-numeric:tabular-nums}
+  .exo-detail .prev{color:var(--text-subtle)}
+  .exo-delta{text-align:right;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .delta-main{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+  .delta-sub{font-size:9px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;color:var(--text-subtle)}
+  .up{color:var(--good)} .dn{color:var(--bad)} .eq{color:var(--text-muted)}
+  .foot{font-size:11px;color:var(--text-subtle);text-align:center;margin-top:18px;line-height:1.6}
+  .legend{display:flex;justify-content:center;gap:16px;margin-top:10px;font-size:10.5px;color:var(--text-muted)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:8px;height:8px;border-radius:99px}
+  .toggle{position:fixed;top:12px;right:12px;font-size:11px;font-weight:700;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;color:var(--text-muted);z-index:10}
+</style>
+</head>
+<body>
+<button class="toggle" onclick="document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')">☾ / ☀</button>
+<div class="wrap">
+
+  <div class="head">
+    <div class="eyebrow">Mes analyses · Musculation</div>
+    <div class="h1">Par séance</div>
+  </div>
+
+  <div class="note"><b>Proposition de refonte.</b> « Par séance » liste maintenant <b>chaque séance réellement faite</b> sur la période choisie. On déplie une séance pour voir, <b>exercice par exercice</b>, la progression ou la régression vs la fois précédente. → Le bloc « dernières séances réalisées » de l'écran <b>Entraînement</b> est retiré (l'info vit ici).</div>
+
+  <div class="seg">
+    <button>Par exercice</button>
+    <button class="on">Par séance</button>
+    <button>Par groupe</button>
+  </div>
+
+  <div class="pills">
+    <span class="pill">Semaine</span>
+    <span class="pill">Mois</span>
+    <span class="pill on">3 mois</span>
+    <span class="pill">Tout</span>
+  </div>
+
+  <div class="seclbl">6 séances · 3 derniers mois</div>
+
+  <!-- Séance 1 — dépliée -->
+  <div class="sc open" onclick="this.classList.toggle('open')">
+    <div class="sc-hd">
+      <div class="sc-dt"><div class="d">18</div><div class="m">sept</div></div>
+      <div class="sc-mid">
+        <div class="sc-nm">Push</div>
+        <div class="sc-sub">7 exercices · vendredi</div>
+      </div>
+      <span class="badge b-up">▲ +6% tonnage</span>
+      <svg class="sc-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="sc-kpis">
+      <div class="kchip"><span class="v">5,9 t</span><span class="u">tonnage</span></div>
+      <div class="kchip"><span class="v">62 min</span><span class="u">durée</span></div>
+      <div class="kchip"><span class="v">Difficile</span><span class="u">ressenti</span></div>
+      <div class="kchip"><span class="v">21</span><span class="u">séries</span></div>
+    </div>
+    <div class="sc-bd">
+      <div class="exo">
+        <div class="exo-ic">DC</div>
+        <div class="exo-mid">
+          <div class="exo-nm">Développé couché barre</div>
+          <div class="exo-detail">82,5 kg × 8 · <span class="prev">avant 80 kg × 8</span></div>
+        </div>
+        <div class="exo-delta"><span class="delta-main up">▲ +2,5 kg</span><span class="delta-sub">progression</span></div>
+      </div>
+      <div class="exo">
+        <div class="exo-ic">DI</div>
+        <div class="exo-mid">
+          <div class="exo-nm">Développé incliné haltères</div>
+          <div class="exo-detail">30 kg × 10 · <span class="prev">avant 30 kg × 8</span></div>
+        </div>
+        <div class="exo-delta"><span class="delta-main up">▲ +2 reps</span><span class="delta-sub">progression</span></div>
+      </div>
+      <div class="exo">
+        <div class="exo-ic">EL</div>
+        <div class="exo-mid">
+          <div class="exo-nm">Élévations latérales</div>
+          <div class="exo-detail">12 kg × 15 · <span class="prev">avant 12 kg × 15</span></div>
+        </div>
+        <div class="exo-delta"><span class="delta-main eq">= stable</span><span class="delta-sub">maintien</span></div>
+      </div>
+      <div class="exo">
+        <div class="exo-ic">EP</div>
+        <div class="exo-mid">
+          <div class="exo-nm">Extension triceps poulie</div>
+          <div class="exo-detail">35 kg × 11 · <span class="prev">avant 35 kg × 12</span></div>
+        </div>
+        <div class="exo-delta"><span class="delta-main dn">▼ −1 rep</span><span class="delta-sub">régression</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Séance 2 — repliée -->
+  <div class="sc" onclick="this.classList.toggle('open')">
+    <div class="sc-hd">
+      <div class="sc-dt"><div class="d">17</div><div class="m">sept</div></div>
+      <div class="sc-mid">
+        <div class="sc-nm">Pull</div>
+        <div class="sc-sub">5 exercices · jeudi</div>
+      </div>
+      <span class="badge b-up">▲ +3% tonnage</span>
+      <svg class="sc-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="sc-kpis">
+      <div class="kchip"><span class="v">4,6 t</span><span class="u">tonnage</span></div>
+      <div class="kchip"><span class="v">55 min</span><span class="u">durée</span></div>
+      <div class="kchip"><span class="v">Moyen</span><span class="u">ressenti</span></div>
+      <div class="kchip"><span class="v">20</span><span class="u">séries</span></div>
+    </div>
+    <div class="sc-bd">
+      <div class="exo">
+        <div class="exo-ic">TR</div>
+        <div class="exo-mid">
+          <div class="exo-nm">Tractions lestées</div>
+          <div class="exo-detail">+5 kg × 8 · <span class="prev">avant +2,5 kg × 8</span></div>
+        </div>
+        <div class="exo-delta"><span class="delta-main up">▲ +2,5 kg</span><span class="delta-sub">progression</span></div>
+      </div>
+      <div class="exo">
+        <div class="exo-ic">RB</div>
+        <div class="exo-mid">
+          <div class="exo-nm">Rowing barre</div>
+          <div class="exo-detail">70 kg × 10 · <span class="prev">avant 67,5 kg × 10</span></div>
+        </div>
+        <div class="exo-delta"><span class="delta-main up">▲ +2,5 kg</span><span class="delta-sub">progression</span></div>
+      </div>
+      <div class="exo">
+        <div class="exo-ic">CB</div>
+        <div class="exo-mid">
+          <div class="exo-nm">Curl barre</div>
+          <div class="exo-detail">30 kg × 12 · <span class="prev">avant 30 kg × 12</span></div>
+        </div>
+        <div class="exo-delta"><span class="delta-main eq">= stable</span><span class="delta-sub">maintien</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Séance 3 — repliée -->
+  <div class="sc" onclick="this.classList.toggle('open')">
+    <div class="sc-hd">
+      <div class="sc-dt"><div class="d">15</div><div class="m">sept</div></div>
+      <div class="sc-mid">
+        <div class="sc-nm">Legs</div>
+        <div class="sc-sub">6 exercices · mardi</div>
+      </div>
+      <span class="badge b-dn">▼ −4% tonnage</span>
+      <svg class="sc-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="sc-kpis">
+      <div class="kchip"><span class="v">6,3 t</span><span class="u">tonnage</span></div>
+      <div class="kchip"><span class="v">68 min</span><span class="u">durée</span></div>
+      <div class="kchip"><span class="v">Très dur</span><span class="u">ressenti</span></div>
+      <div class="kchip"><span class="v">20</span><span class="u">séries</span></div>
+    </div>
+    <div class="sc-bd">
+      <div class="exo">
+        <div class="exo-ic">SQ</div>
+        <div class="exo-mid">
+          <div class="exo-nm">Squat barre</div>
+          <div class="exo-detail">100 kg × 6 · <span class="prev">avant 102,5 kg × 6</span></div>
+        </div>
+        <div class="exo-delta"><span class="delta-main dn">▼ −2,5 kg</span><span class="delta-sub">régression</span></div>
+      </div>
+      <div class="exo">
+        <div class="exo-ic">PC</div>
+        <div class="exo-mid">
+          <div class="exo-nm">Presse à cuisses</div>
+          <div class="exo-detail">180 kg × 12 · <span class="prev">avant 170 kg × 12</span></div>
+        </div>
+        <div class="exo-delta"><span class="delta-main up">▲ +10 kg</span><span class="delta-sub">progression</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:var(--good)"></span>Progression</span>
+    <span><span class="dot" style="background:var(--text-muted)"></span>Maintien</span>
+    <span><span class="dot" style="background:var(--bad)"></span>Régression</span>
+  </div>
+  <div class="foot">Chaque exercice est comparé à sa <b>dernière exécution précédente</b> (même exercice).<br>Tonnage de séance = Σ charge × reps. Le badge en haut = évolution vs la même séance d'avant.</div>
+
+</div>
+</body>
+</html>
