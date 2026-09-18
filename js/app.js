@@ -9036,14 +9036,28 @@ function _maProgGrp(data) {
   return html + _maCap('Par muscle : la barre = séries/sem vs ta cible (trait noir = optimal) ; à côté, fréquence (séances/sem touchant le muscle) et tonnage ; à droite, l\'évolution du tonnage <b>vs la période précédente</b> de même durée (« — » si pas d\'historique comparable). Les séries/sem sont le marqueur n°1 pour l\'hypertrophie.');
 }
 
-// PAR SÉANCE : une carte-bilan par type (tonnage, durée est., ressenti, nb, tendance).
+// Meilleure série d'un exercice (charge max, puis reps max) → base de comparaison.
+function _maBestSet(exo) {
+  var b = null;
+  (exo.series || []).forEach(function (x) { var c = x.charge || 0, r = x.reps || 0; if (!b || c > b.charge || (c === b.charge && r > b.reps)) b = { charge: c, reps: r }; });
+  return b;
+}
+function _maSeaToggle(i) {
+  var c = document.getElementById('ma-sea-' + i); if (!c) return;
+  var open = c.getAttribute('data-open') === '1';
+  c.setAttribute('data-open', open ? '0' : '1');
+  var bd = document.getElementById('ma-sea-bd-' + i); if (bd) bd.style.display = open ? 'none' : 'block';
+  var ch = document.getElementById('ma-sea-ch-' + i); if (ch) ch.style.transform = open ? '' : 'rotate(180deg)';
+}
+// PAR SÉANCE : la liste des séances RÉELLEMENT faites sur la période, dépliables.
+// Par exercice : meilleure série + évolution vs la dernière exécution précédente du
+// MÊME exercice (marche aussi en séance libre). Badge d'en-tête = tonnage vs même
+// séance d'avant (masqué pour « Libre »/« Séance », dont le type n'est pas stable).
 function _maProgSea(data) {
   var sd = data.seances_detail || [];
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
   var cut = _maCut(_maPeriode);
-  var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd;
-  // Ressenti : join par (seance_id, date), avec repli par DATE seule — le seance_id
-  // est souvent vide/différent entre le bilan et les perfs, ce qui faisait afficher « — ».
+  var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd.slice(0, 12);
   var rs = {}, rsByDate = {};
   ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) {
     if (x.valeur == null) return;
@@ -9051,14 +9065,58 @@ function _maProgSea(data) {
     if (x.date) rsByDate[x.date] = x.valeur;
   });
   var RSL = { 1: 'Facile', 2: 'Moyen', 3: 'Difficile', 4: 'Très dur' };
-  var by = {};
-  inP.slice().reverse().forEach(function (s) { var sid = s.seance_id || 'Séance'; if (!by[sid]) by[sid] = { ton: [], dur: [], rs: [], n: 0 }; by[sid].ton.push(s.tonnage || 0); by[sid].dur.push(_maEstDuree(s)); var rv = rs[sid + '|' + s.date]; if (rv == null) rv = rsByDate[s.date]; if (rv) by[sid].rs.push(rv); by[sid].n++; });
-  var avg = function (a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : 0; };
-  return Object.keys(by).map(function (sid) {
-    var b = by[sid], tonAvg = Math.round(avg(b.ton) / 100) / 10, durAvg = Math.round(avg(b.dur)), rsAvg = b.rs.length ? Math.round(avg(b.rs)) : null;
-    var tb = _maTrendBadge(b.ton);
-    return '<div class="ma-card" style="padding:13px 15px;display:flex;flex-direction:column;gap:9px"><div class="ma-grh"><span class="n" style="font-size:14px">' + _maE(sid) + '</span>' + tb + '</div><div class="ma-stat4"><div class="c"><div class="v">' + tonAvg + ' t</div><div class="u">tonnage moy.</div></div><div class="c"><div class="v">~' + durAvg + ' min</div><div class="u">durée est.</div></div><div class="c"><div class="v">' + (rsAvg ? RSL[rsAvg] : '—') + '</div><div class="u">ressenti moy.</div></div><div class="c"><div class="v">' + b.n + '×</div><div class="u">réalisée</div></div></div></div>';
-  }).join('') + _maCap('Chaque type de séance : tonnage moyen, durée estimée (repos + travail), ressenti moyen, nb de fois réalisée, et tendance du tonnage (moyenne début vs fin de période).');
+  // Occurrences par exercice (1 par séance) triées chrono → « la fois précédente ».
+  var occ = {};
+  sd.forEach(function (s) { (s.exercices || []).forEach(function (e) { var b = _maBestSet(e); if (!b) return; (occ[e.nom] = occ[e.nom] || []).push({ date: s.date, charge: b.charge, reps: b.reps, e1: b.charge * (1 + b.reps / 30) }); }); });
+  Object.keys(occ).forEach(function (k) { occ[k].sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); });
+  function prevOcc(nom, date) { var arr = occ[nom] || [], p = null; for (var i = 0; i < arr.length; i++) { if (arr[i].date < date) p = arr[i]; else break; } return p; }
+  function prevTonSameType(sid, date) { var p = null; sd.forEach(function (s) { if ((s.seance_id || 'Séance') === sid && (s.date || '') < date) { if (!p || s.date > p.date) p = s; } }); return p ? (p.tonnage || 0) : null; }
+  var esc = _maE;
+  var sorted = inP.slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
+  var cards = sorted.map(function (s, idx) {
+    var sid = s.seance_id || 'Séance';
+    var libre = /libre|^séance$/i.test(sid);
+    var nSeries = (s.exercices || []).reduce(function (a, e) { return a + ((e.series || []).length); }, 0);
+    var ton = Math.round((s.tonnage || 0) / 100) / 10, dur = _maEstDuree(s);
+    var rv = rs[sid + '|' + s.date]; if (rv == null) rv = rsByDate[s.date];
+    var dd = new Date((s.date || '') + 'T00:00:00');
+    var day = isNaN(dd.getTime()) ? '' : String(dd.getDate()), mon = isNaN(dd.getTime()) ? '' : _MA_MON[dd.getMonth()];
+    var badge = '';
+    if (!libre) { var pt = prevTonSameType(sid, s.date); if (pt && pt > 0) { var pct = Math.round(((s.tonnage || 0) - pt) / pt * 100); badge = '<span style="font-size:10px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;flex:none;color:' + (pct >= 0 ? 'var(--good)' : 'var(--danger)') + ';background:' + (pct >= 0 ? 'var(--good-a,rgba(0,168,84,.12))' : 'var(--bad-a,rgba(220,53,69,.12))') + '">tonnage ' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>'; } }
+    var exos = (s.exercices || []).map(function (e) {
+      var cur = _maBestSet(e); if (!cur) return '';
+      var e1c = cur.charge * (1 + cur.reps / 30), pv = prevOcc(e.nom, s.date);
+      var ini = ((e.nom || '?').replace(/[^A-Za-zÀ-ÿ ]/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase()) || '?';
+      var deltaMain, deltaSub, col;
+      if (!pv) { deltaMain = '1re fois'; deltaSub = 'nouveau'; col = 'var(--text-muted)'; }
+      else {
+        var up = e1c > pv.e1 + 0.01, dn = e1c < pv.e1 - 0.01;
+        col = up ? 'var(--good)' : dn ? 'var(--danger)' : 'var(--text-muted)';
+        deltaSub = up ? 'progression' : dn ? 'régression' : 'maintien';
+        if (cur.charge !== pv.charge) deltaMain = (cur.charge >= pv.charge ? '▲ +' : '▼ ') + String(Math.round(Math.abs(cur.charge - pv.charge) * 10) / 10).replace('.', ',') + ' kg';
+        else if (cur.reps !== pv.reps) deltaMain = (cur.reps >= pv.reps ? '▲ +' : '▼ ') + Math.abs(cur.reps - pv.reps) + ' rep' + (Math.abs(cur.reps - pv.reps) > 1 ? 's' : '');
+        else deltaMain = '= stable';
+      }
+      var prevTxt = pv ? ' · <span style="color:var(--text-subtle)">avant ' + String(pv.charge).replace('.', ',') + ' kg × ' + pv.reps + '</span>' : '';
+      return '<div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--border)">'
+        + '<span style="width:30px;height:30px;border-radius:9px;background:var(--accent-a14,rgba(26,95,255,.14));color:var(--accent);display:grid;place-items:center;flex:none;font-size:12px;font-weight:800">' + ini + '</span>'
+        + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">' + esc(e.nom) + '</div>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">' + String(cur.charge).replace('.', ',') + ' kg × ' + cur.reps + prevTxt + '</div></div>'
+        + '<div style="text-align:right;flex:none"><div style="font-size:12px;font-weight:800;color:' + col + '">' + deltaMain + '</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;color:var(--text-subtle)">' + deltaSub + '</div></div>'
+        + '</div>';
+    }).join('');
+    var open = idx === 0;
+    return '<div class="ma-card" id="ma-sea-' + idx + '" data-open="' + (open ? '1' : '0') + '" style="padding:0;overflow:hidden;margin-bottom:10px">'
+      + '<div onclick="_maSeaToggle(' + idx + ')" style="display:flex;align-items:center;gap:11px;padding:13px 14px;cursor:pointer">'
+      + '<div style="width:42px;flex:none;text-align:center;background:var(--surface2);border-radius:10px;padding:5px 0"><div style="font-size:15px;font-weight:800;line-height:1">' + day + '</div><div style="font-size:8px;text-transform:uppercase;color:var(--text-subtle);margin-top:1px">' + mon + '</div></div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + esc(sid) + '</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px">' + ton + ' t · ~' + dur + ' min · ' + nSeries + ' séries' + (rv ? ' · ' + RSL[rv] : '') + '</div></div>'
+      + badge
+      + '<span id="ma-sea-ch-' + idx + '" style="color:var(--text-subtle);transition:transform .2s;flex:none' + (open ? ';transform:rotate(180deg)' : '') + '">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span>'
+      + '</div>'
+      + '<div id="ma-sea-bd-' + idx + '" style="display:' + (open ? 'block' : 'none') + '">' + exos + '</div>'
+      + '</div>';
+  }).join('');
+  return cards + _maCap('Chaque séance de la période, dépliable. Par exercice : ta meilleure série et son évolution vs la <b>dernière fois</b> (même exercice). Le badge d\'en-tête compare le tonnage à la même séance précédente.');
 }
 
 // Balance agoniste/antagoniste (contexte, sous la progression).
@@ -11663,34 +11721,13 @@ function renderEnSuivi(data) {
     el.innerHTML = '<div class="en-sec">Dernières sorties cardio</div><div style="display:flex;flex-direction:column;gap:8px;">' + rowsC + '</div>';
     return;
   }
+  // Muscu : le détail « dernières séances réalisées » a été RETIRÉ d'ici (demande
+  // porteur). Il vit désormais dans Mes analyses ▸ Par séance (progression par
+  // exercice vs la fois précédente). On laisse un accès discret, pas le bloc.
   var sd = (data && data.seances_detail) || [];
-  var rsMap = {}; ((data && data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x && x.seance_id != null) rsMap[x.seance_id + '|' + x.date] = x.valeur; });
-
-  // Le « prévu vs réalisé » de la semaine est désormais porté par les cartes du
-  // sélecteur « Choisis ta séance » (statut ✓/○ + jour) → plus de bloc en double ici.
-  // ── Bloc B : dernières séances réalisées (≤ 6) + détail + tendance ──
-  var blocB = '';
-  if (sd.length) {
-    var last = sd.slice(0, 6);
-    var rowsB = last.map(function (s, i) {
-      var dd = new Date(s.date + 'T00:00:00'), day = isNaN(dd.getTime()) ? '' : String(dd.getDate()).padStart(2, '0'), mon = isNaN(dd.getTime()) ? '' : _EN_MONS[dd.getMonth()];
-      var prev = null; for (var j = i + 1; j < sd.length; j++) { if (sd[j].seance_id === s.seance_id) { prev = sd[j]; break; } }
-      var pct = (prev && prev.tonnage) ? Math.round(((s.tonnage || 0) - (prev.tonnage || 0)) / (prev.tonnage || 1) * 100) : null;
-      var ton = Math.round((s.tonnage || 0) / 100) / 10, dur = _maEstDuree(s), rv = rsMap[s.seance_id + '|' + s.date];
-      var chips = ton + ' t · ~' + _maHMS(dur) + ' · ' + (s.exercices ? s.exercices.length : 0) + ' exos' + (rv ? ' · ' + _EN_RSL[rv] : '');
-      var badge = (pct != null) ? '<span class="en-trbadge ' + (pct >= 0 ? 'up' : 'dn') + '">' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>' : '';
-      var arrow = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="' + (pct >= 0 ? 'M4 16l6-6 4 4 6-8' : 'M4 8l6 6 4-4 6 8') + '"/></svg>';
-      var trend = (pct != null) ? '<div class="nv-trend ' + (pct >= 0 ? 'up' : 'dn') + '">' + arrow + (pct >= 0 ? '+' : '') + pct + ' % de tonnage vs ta ' + esc(s.seance_id || 'séance') + ' précédente' + (pct >= 0 ? ' — tu progresses.' : '.') + '</div>' : '';
-      var det = '<div class="nv-seancedet">' + _nvExoRows(s.exercices) + trend + '</div>';
-      return '<div class="en-seac"><div class="en-seahd" onclick="enToggleSea(' + i + ')"><div class="en-seadt"><div class="d">' + day + '</div><div class="m">' + mon + '</div></div>'
-        + '<div class="en-seamid"><div class="a">' + esc(s.seance_id || 'Séance') + '</div><div class="b">' + esc(chips) + '</div></div>' + badge
-        + '<span id="en-sea-chev-' + i + '" style="color:var(--text-subtle);transition:transform .2s;">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
-        + '<div id="en-sea-' + i + '" style="display:none">' + det + '</div></div>';
-    }).join('');
-    blocB = '<div class="en-sec">Dernières séances réalisées</div><div style="display:flex;flex-direction:column;gap:8px;">' + rowsB + '</div>';
-  }
-
-  el.innerHTML = blocB;
+  el.innerHTML = sd.length
+    ? '<button onclick="switchTab(\'historique\')" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--text)"><span style="font-size:16px">📈</span><div style="flex:1;text-align:left"><div style="font-size:12.5px;font-weight:800">Voir le détail de tes séances</div><div style="font-size:11px;color:var(--text-subtle)">Mes analyses ▸ Par séance — progression par exercice</div></div><span style="color:var(--text-subtle)">›</span></button>'
+    : '';
 }
 
 function _appliquerAppData(data) {

@@ -3796,13 +3796,19 @@ async function handleSaveBilanSeance(body: any): Promise<Response> {
     if (error) return jsonResp({ success: false, error: error.message })
   }
 
-  // Douleur → bien_etre du jour (fusion) : le moteur lit la douleur depuis bien_etre.
-  if (douleur != null && douleur > 1) {
+  // Ressenti + douleur → bien_etre du jour (fusion) : c'est le SNAPSHOT du jour que
+  // lisent l'écran État (« bien-être du jour ») et le moteur (règles douleur). On y
+  // recopie donc TOUJOURS le ressenti et la douleur du bilan (avant, seule une
+  // douleur > 1 y arrivait → ressenti/douleur=1 invisibles côté État).
+  const patch: any = {}
+  if (ressenti != null) patch.ressenti_global = String(ressenti)
+  if (douleur != null) { patch.douleur = douleur; if (zone) patch.zone_douloureuse = zone }
+  if (Object.keys(patch).length) {
     const { data: be } = await sb().from('bien_etre').select('seance_id').eq('athlete_id', athlete_id).eq('date', d).limit(1)
     if (be && be.length) {
-      await sb().from('bien_etre').update({ douleur, zone_douloureuse: zone || null }).eq('athlete_id', athlete_id).eq('date', d)
+      await sb().from('bien_etre').update(patch).eq('athlete_id', athlete_id).eq('date', d)
     } else {
-      await sb().from('bien_etre').insert({ date: d, seance_id: sid, athlete_id, douleur, zone_douloureuse: zone || null })
+      await sb().from('bien_etre').insert(Object.assign({ date: d, seance_id: sid, athlete_id }, patch))
     }
   }
   return jsonResp({ ok: true, success: true })
