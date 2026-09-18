@@ -14420,17 +14420,20 @@ function renderHyroxHome() {
     var tot = Number(s.hyrox_total) || (Number(s.duree) || 0) * 60;
     var dd = new Date((s.date || '') + 'T00:00:00'), dstr = isNaN(dd.getTime()) ? '' : (dd.getDate() + ' ' + _MA_MON[dd.getMonth()]);
     var nseg = _HYROX_SEG.filter(function (sg) { return Number(s['hyrox_' + sg.k]) > 0; }).length;
-    var mode = (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Course';
-    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:38px;height:38px;border-radius:11px;background:rgba(234,179,8,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:16px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">' + dstr + ' · ' + nseg + '/16 segments</div></div><span style="color:var(--text-subtle)">›</span></div>';
-  }).join('') : '<div style="padding:14px;color:var(--text-muted);font-size:12.5px">Aucune Hyrox enregistrée. Démarre le chrono ou saisis tes temps.</div>';
+    var mode = (s.hyrox_mode === 'atelier') ? 'Par atelier' : (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Circuit';
+    var segLbl = (s.hyrox_mode === 'atelier') ? (nseg + ' atelier' + (nseg > 1 ? 's' : '')) : (nseg + '/16 segments');
+    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:38px;height:38px;border-radius:11px;background:rgba(234,179,8,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:16px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">' + dstr + ' · ' + segLbl + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
+  }).join('') : '<div style="padding:14px;color:var(--text-muted);font-size:12.5px">Aucune Hyrox enregistrée. Lance le circuit officiel, un atelier, ou saisis un résultat.</div>';
   el.innerHTML = '<div style="border-radius:20px;padding:18px;background:linear-gradient(135deg,#EAB308,#CA9A04);color:#1a1400;box-shadow:0 8px 24px rgba(234,179,8,.32);margin-top:6px">'
     + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.75">Épreuve hybride</div>'
     + '<div style="font-size:26px;font-weight:900;letter-spacing:.02em;margin:2px 0">HYROX</div>'
-    + '<div style="font-size:12px;font-weight:600;opacity:.82;line-height:1.4">8 × (Run 1 km + atelier). Chronomètre l\'enchaînement, ou saisis tes temps après coup.</div>'
-    + '<div style="display:flex;gap:9px;margin-top:14px">'
-    + '<button onclick="ouvrirHyroxChrono()" style="flex:1;border:none;border-radius:12px;padding:13px 0;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;background:#1a1400;color:#EAB308">▶ Démarrer</button>'
-    + '<button onclick="ouvrirSaisieHyrox()" style="flex:1;border:none;border-radius:12px;padding:13px 0;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;background:rgba(26,20,0,.14);color:#1a1400">✎ Saisir après coup</button>'
-    + '</div></div>'
+    + '<div style="font-size:12px;font-weight:600;opacity:.82;line-height:1.4">Fais le circuit officiel chronométré, ou travaille quelques ateliers en ciblé.</div></div>'
+    // Deux entrées : circuit officiel (chiffres figés) vs par atelier (réglable).
+    + '<div style="display:flex;gap:10px;margin-top:12px">'
+    + '<button onclick="ouvrirHyroxChrono()" style="flex:1;text-align:left;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;padding:14px 13px;cursor:pointer;font-family:inherit"><div style="font-size:20px">🏁</div><div style="font-weight:800;font-size:13.5px;margin-top:5px">Circuit officiel</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:1px">8 × Run + atelier, chrono</div></button>'
+    + '<button onclick="ouvrirHyroxAtelier()" style="flex:1;text-align:left;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;padding:14px 13px;cursor:pointer;font-family:inherit"><div style="font-size:20px">🎯</div><div style="font-weight:800;font-size:13.5px;margin-top:5px">Par atelier</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:1px">Choisis tes exercices</div></button>'
+    + '</div>'
+    + '<button onclick="ouvrirSaisieHyrox()" style="width:100%;margin-top:9px;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:11px;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);cursor:pointer">✎ Saisir un résultat après coup</button>'
     + '<div class="cx-sec" style="margin-top:16px">Mes Hyrox</div>' + list;
 }
 // « Saisir après coup » : overlay dédié (univers Hyrox, indépendant de la page
@@ -14454,6 +14457,12 @@ function fermerHyroxManuel() { var ov = document.getElementById('hyrox-manuel-ov
 function ouvrirHyroxDetail(sid) { try { showToast('Analyse détaillée de la Hyrox : bientôt (étape 2).'); } catch (e) {} }
 // Chrono live : un temps total en continu + split par segment (« Segment suivant »).
 var _hxTimer = null, _hxT0 = 0, _hxSegT0 = 0, _hxIdx = 0, _hxSplits = [], _hxPaused = false, _hxPausedAt = 0, _hxPauseAcc = 0, _hxWeights = null;
+// Liste des segments ACTIFS du chrono en cours : le circuit officiel complet
+// (_HYROX_SEG), ou un sous-ensemble choisi en mode « Par atelier ».
+var _hxSegs = _HYROX_SEG.slice();
+// Les 8 ateliers officiels (sans les runs) — base du mode « Par atelier ».
+var _HYROX_STATIONS = _HYROX_SEG.filter(function (s) { return !s.run; });
+function _hxStationNo(i) { var n = 0; for (var j = 0; j <= i && j < _hxSegs.length; j++) { if (!_hxSegs[j].run) n++; } return n; }
 function _hxOv() { return document.getElementById('hyrox-chrono-overlay'); }
 function ouvrirHyroxChrono() {
   var ov = _hxOv();
@@ -14463,19 +14472,20 @@ function ouvrirHyroxChrono() {
 function fermerHyroxChrono() { if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; } var ov = _hxOv(); if (ov) ov.style.display = 'none'; }
 function _hxHeader(t) { return '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">' + t + '</div><button onclick="fermerHyroxChrono()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'; }
 function _hxChip(id, on, oc, label) { return '<button type="button" id="' + id + '" class="saisie-chip' + (on ? ' on' : '') + '" onclick="' + oc + '">' + label + '</button>'; }
-function _hxSetMode(m) { _hyroxMode = m; ['course', 'entrainement'].forEach(function (x) { var b = document.getElementById('hxc-mode-' + x); if (b) b.classList.toggle('on', x === m); }); }
-function _hxSetDiv(d) { _hyroxDiv = d; _HYROX_DIV.forEach(function (x) { var b = document.getElementById('hxc-div-' + x[0]); if (b) b.classList.toggle('on', x[0] === d); }); var wv = _HYROX_W[d] || _HYROX_W.mo; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { var el = document.getElementById('hxc-w-' + k); if (el) el.value = wv[k]; }); }
-// Détail de la séance Hyrox : les 16 segments (distances) + poids éditables selon
-// la division. Affiché sous les sélecteurs pour qu'on sache « à quoi ça correspond »
-// avant de démarrer.
+// Circuit OFFICIEL : la division met à jour l'affichage (lecture seule) des poids
+// officiels — pas de saisie, ce sont les chiffres de la compétition.
+function _hxSetDiv(d) { _hyroxDiv = d; _HYROX_DIV.forEach(function (x) { var b = document.getElementById('hxc-div-' + x[0]); if (b) b.classList.toggle('on', x[0] === d); }); var wv = _HYROX_W[d] || _HYROX_W.mo; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { var el = document.getElementById('hxc-wd-' + k); if (el) el.textContent = wv[k]; }); }
+// Détail du circuit OFFICIEL : les 16 segments avec distances/reps + poids officiels
+// de la division. Tout est en LECTURE SEULE (chiffres officiels, pas de réglage).
 function _hxCourseDetailHtml() {
   var wv = _HYROX_W[_hyroxDiv] || _HYROX_W.mo;
   var rows = _HYROX_SEG.map(function (sg, i) {
+    var no = 0; for (var j = 0; j <= i; j++) { if (!_HYROX_SEG[j].run) no++; }
     var ic = sg.run
       ? '<span style="width:24px;height:24px;border-radius:7px;background:rgba(14,165,233,.14);color:#0EA5E9;display:grid;place-items:center;font-size:11px;flex:none">🏃</span>'
-      : '<span style="width:24px;height:24px;border-radius:7px;background:var(--surface);color:var(--text-muted);display:grid;place-items:center;font-size:10px;font-weight:800;flex:none">' + ((i + 1) / 2) + '</span>';
+      : '<span style="width:24px;height:24px;border-radius:7px;background:var(--surface);color:var(--text-muted);display:grid;place-items:center;font-size:10px;font-weight:800;flex:none">' + no + '</span>';
     var right = sg.w
-      ? (sg.wx2 ? '2 × ' : '') + '<input id="hxc-w-' + sg.w + '" inputmode="numeric" value="' + wv[sg.w] + '" style="width:44px;text-align:center;padding:3px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--accent);font-weight:700;font-size:12px"> kg'
+      ? '<span style="color:var(--hy-strong,#CA9A04);font-weight:800;font-size:12px">' + (sg.wx2 ? '2 × ' : '') + '<span id="hxc-wd-' + sg.w + '">' + wv[sg.w] + '</span> kg</span>'
       : '<span style="color:var(--text-subtle);font-size:11.5px;font-weight:600">' + sg.d + '</span>';
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:' + (i ? '1px solid var(--border)' : 'none') + '">' + ic
       + '<div style="flex:1;min-width:0"><span style="font-size:12.5px;font-weight:700">' + sg.t + '</span>' + (sg.w ? '<span style="font-size:10.5px;color:var(--text-subtle)"> · ' + sg.d + '</span>' : '') + '</div>'
@@ -14484,17 +14494,17 @@ function _hxCourseDetailHtml() {
   return '<div style="text-align:left;margin-top:14px">'
     + '<div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);margin-bottom:4px">Détail · 8 × (Run 1 km + atelier)</div>'
     + '<div style="border:1px solid var(--border);border-radius:12px;padding:2px 13px;background:var(--surface2)">' + rows + '</div>'
-    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Poids pré-remplis selon la division — modifie-les si besoin.</div></div>';
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Distances, reps et poids <b>officiels</b> selon la division. Pour un travail libre, utilise « Par atelier ».</div></div>';
 }
 function _hxStartHtml() {
-  return '<div style="max-width:460px;margin:0 auto">' + _hxHeader('Hyrox')
+  return '<div style="max-width:460px;margin:0 auto">' + _hxHeader('Circuit officiel')
     + '<div style="border-radius:18px;padding:20px;text-align:center;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06))">'
     + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-subtle)">Prêt ?</div>'
     + '<div style="font-size:20px;font-weight:900;margin:4px 0 12px">Chronométrer ta Hyrox</div>'
-    + '<div style="display:flex;gap:8px;margin-bottom:8px">' + _hxChip('hxc-mode-course', _hyroxMode === 'course', '_hxSetMode(\'course\')', 'Course') + _hxChip('hxc-mode-entrainement', _hyroxMode === 'entrainement', '_hxSetMode(\'entrainement\')', 'Entraînement') + '</div>'
+    + '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px">Division</div>'
     + '<div style="display:flex;gap:6px">' + _HYROX_DIV.map(function (x) { return _hxChip('hxc-div-' + x[0], _hyroxDiv === x[0], '_hxSetDiv(\'' + x[0] + '\')', x[1]); }).join('') + '</div>'
     + _hxCourseDetailHtml()
-    + '<button onclick="_hxBegin()" style="width:100%;border:none;border-radius:16px;padding:18px;margin-top:16px;font-family:inherit;font-weight:900;font-size:17px;cursor:pointer;color:#1a1400;background:linear-gradient(135deg,#EAB308,#CA9A04);box-shadow:0 8px 20px rgba(234,179,8,.35)">▶ Démarrer la Hyrox</button>'
+    + '<button onclick="_hxStartCircuit()" style="width:100%;border:none;border-radius:16px;padding:18px;margin-top:16px;font-family:inherit;font-weight:900;font-size:17px;cursor:pointer;color:#1a1400;background:linear-gradient(135deg,#EAB308,#CA9A04);box-shadow:0 8px 20px rgba(234,179,8,.35)">▶ Démarrer le circuit</button>'
     + '</div><div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:14px;line-height:1.6">Tape « Segment suivant » à chaque transition. Le temps total tourne en continu.</div></div>';
 }
 function _hxLiveHtml() {
@@ -14511,23 +14521,30 @@ function _hxLiveHtml() {
     + '<div style="display:flex;gap:9px;margin-top:9px"><button id="hx-pause" onclick="_hxPause()" style="flex:1;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:12px 0;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);cursor:pointer">⏸ Pause</button><button onclick="_hxCancel()" style="flex:1;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:12px 0;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);cursor:pointer">✕ Annuler</button></div>'
     + '<div id="hx-splits" style="margin-top:6px"></div></div>';
 }
+// Lance le chrono sur la liste _hxSegs déjà préparée (circuit officiel ou atelier).
+// Les poids (_hxWeights), le mode (_hyroxMode) et les segments (_hxSegs) sont posés
+// par l'appelant : _hxStartCircuit() ou _hxStartAtelier().
 function _hxBegin() {
-  // Capture les poids (éventuellement modifiés) AVANT de remplacer l'écran de départ.
-  _hxWeights = {}; var wd = _HYROX_W[_hyroxDiv] || _HYROX_W.mo;
-  ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { var el = document.getElementById('hxc-w-' + k); var v = el ? parseFloat(el.value) : NaN; _hxWeights[k] = (v > 0) ? v : wd[k]; });
   _hxIdx = 0; _hxSplits = []; _hxPaused = false; _hxPauseAcc = 0; _hxT0 = Date.now(); _hxSegT0 = Date.now(); var ov = _hxOv(); if (ov) ov.innerHTML = _hxLiveHtml(); _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); if (_hxTimer) clearInterval(_hxTimer); _hxTimer = setInterval(_hxTick, 200); _hxTick();
 }
+// Circuit OFFICIEL : les 16 segments, poids officiels de la division (non modifiés).
+function _hxStartCircuit() {
+  _hxSegs = _HYROX_SEG.slice();
+  _hyroxMode = 'course';
+  _hxWeights = Object.assign({}, _HYROX_W[_hyroxDiv] || _HYROX_W.mo);
+  _hxBegin();
+}
 function _hxTick() { if (_hxPaused) return; var now = Date.now(); var c = document.getElementById('hx-clock'); if (c) c.textContent = _hyroxFmt(Math.round((now - _hxT0 - _hxPauseAcc) / 1000)); var s = document.getElementById('hx-seg'); if (s) s.textContent = _hyroxFmt(Math.round((now - _hxSegT0) / 1000)); }
-function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var h = ''; for (var i = 0; i < 16; i++) { var bg = i < _hxIdx ? (_HYROX_SEG[i].run ? '#0EA5E9' : 'var(--accent)') : (i === _hxIdx ? '#EAB308' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
-function _hxRenderCur() { var sg = _HYROX_SEG[_hxIdx] || _HYROX_SEG[15]; var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / 16'; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier'); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (_hxIdx === 15 ? 'Terminer ✓' : 'Segment suivant ✓'); nx.style.background = (_hxIdx === 15 ? 'var(--good)' : 'var(--accent)'); } }
-function _hxRenderSplits() { var el = document.getElementById('hx-splits'); if (!el) return; var rows = []; for (var i = 0; i < _hxIdx; i++) { var sg = _HYROX_SEG[i]; rows.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;background:' + (sg.run ? 'rgba(14,165,233,.12);color:#0EA5E9' : 'var(--surface2);color:var(--text-muted)') + '">' + (sg.run ? '🏃' : ((i + 1) / 2)) + '</span><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } el.innerHTML = rows.reverse().join(''); }
-function _hxNext() { var now = Date.now(); _hxSplits[_hxIdx] = now - _hxSegT0; _hxSegT0 = now; _hxIdx++; if (_hxIdx >= 16) { _hxFinish(); return; } _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); _hxTick(); }
+function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var n = _hxSegs.length, h = ''; for (var i = 0; i < n; i++) { var bg = i < _hxIdx ? (_hxSegs[i].run ? '#0EA5E9' : 'var(--accent)') : (i === _hxIdx ? '#EAB308' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
+function _hxRenderCur() { var n = _hxSegs.length; var sg = _hxSegs[_hxIdx] || _hxSegs[n - 1]; var last = (_hxIdx === n - 1); var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / ' + n; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier') + (sg.w && _hxWeights && _hxWeights[sg.w] ? ' · ' + _hxWeights[sg.w] + ' kg' : ''); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (last ? 'Terminer ✓' : 'Segment suivant ✓'); nx.style.background = (last ? 'var(--good)' : 'var(--accent)'); } }
+function _hxRenderSplits() { var el = document.getElementById('hx-splits'); if (!el) return; var rows = []; for (var i = 0; i < _hxIdx; i++) { var sg = _hxSegs[i]; rows.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;background:' + (sg.run ? 'rgba(14,165,233,.12);color:#0EA5E9' : 'var(--surface2);color:var(--text-muted)') + '">' + (sg.run ? '🏃' : _hxStationNo(i)) + '</span><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } el.innerHTML = rows.reverse().join(''); }
+function _hxNext() { var now = Date.now(); _hxSplits[_hxIdx] = now - _hxSegT0; _hxSegT0 = now; _hxIdx++; if (_hxIdx >= _hxSegs.length) { _hxFinish(); return; } _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); _hxTick(); }
 function _hxPause() { var b = document.getElementById('hx-pause'); if (!_hxPaused) { _hxPaused = true; _hxPausedAt = Date.now(); if (b) b.textContent = '▶ Reprendre'; } else { _hxPaused = false; _hxPauseAcc += Date.now() - _hxPausedAt; _hxSegT0 += Date.now() - _hxPausedAt; if (b) b.textContent = '⏸ Pause'; } }
 function _hxCancel() { if (confirm('Annuler cette Hyrox ? Les splits en cours seront perdus.')) fermerHyroxChrono(); }
 async function _hxFinish() {
   if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; }
   var total = Math.round((Date.now() - _hxT0 - _hxPauseAcc) / 1000);
-  var segments = {}; _HYROX_SEG.forEach(function (sg, i) { if (_hxSplits[i] != null) segments[sg.k] = Math.round(_hxSplits[i] / 1000); });
+  var segments = {}; _hxSegs.forEach(function (sg, i) { if (_hxSplits[i] != null) segments[sg.k] = Math.round(_hxSplits[i] / 1000); });
   var poids = {}, w = _HYROX_W[_hyroxDiv] || _HYROX_W.mo; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { poids[k] = (_hxWeights && _hxWeights[k] > 0) ? _hxWeights[k] : w[k]; });
   var ov = _hxOv(); if (ov) ov.innerHTML = _hxDoneHtml(total, 'load');
   try {
@@ -14538,7 +14555,7 @@ async function _hxFinish() {
   } catch (e) { if (ov) ov.innerHTML = _hxDoneHtml(total, 'err'); }
 }
 function _hxDoneHtml(total, state) {
-  var sp = []; for (var i = 0; i < _hxSplits.length; i++) { if (_hxSplits[i] != null) { var sg = _HYROX_SEG[i]; sp.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } }
+  var sp = []; for (var i = 0; i < _hxSplits.length; i++) { if (_hxSplits[i] != null && _hxSegs[i]) { var sg = _hxSegs[i]; sp.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } }
   var st = state === 'ok' ? '<div style="font-size:11px;font-weight:800;color:var(--good)">✅ Enregistrée</div>' : state === 'err' ? '<div style="font-size:11px;font-weight:800;color:var(--bad,#DC3545)">⚠️ Erreur — réessaie plus tard</div>' : '<div style="font-size:11px;color:var(--text-subtle)">Enregistrement…</div>';
   return '<div style="max-width:460px;margin:0 auto">' + _hxHeader('Hyrox terminée')
     + '<div style="border-radius:18px;padding:22px;text-align:center;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06))">' + st
@@ -14546,6 +14563,75 @@ function _hxDoneHtml(total, state) {
     + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent)">' + _hyroxFmt(total) + '</div>'
     + '<button onclick="fermerHyroxChrono()" style="width:100%;border:none;border-radius:14px;padding:15px;margin-top:12px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;background:var(--accent);color:#fff">Fermer</button>'
     + '</div><div class="cx-sec" style="margin-top:16px">Tes splits</div>' + sp.reverse().join('') + '</div>';
+}
+
+// ── HYROX « Par atelier » : entraînement ciblé (hors circuit officiel) ───────
+// On choisit quelques ateliers, on règle charge + nb de séries, puis on lance le
+// MÊME chrono que le circuit mais sur la liste de segments choisie (_hxSegs).
+var _hxAt = { sel: {}, series: {}, weights: {}, runs: false };
+function _hxAtOv() { return document.getElementById('hyrox-atelier-overlay'); }
+function _hxAtCount() { return Object.keys(_hxAt.sel).filter(function (k) { return _hxAt.sel[k]; }).length; }
+function ouvrirHyroxAtelier() {
+  if (!athlete) return;
+  if (!_hxAtCount()) { _hxAt.sel = { sledpush: true, wallballs: true }; }
+  var ov = _hxAtOv();
+  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-atelier-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
+  ov.style.display = 'block'; ov.scrollTop = 0; _hxAtRender();
+}
+function fermerHyroxAtelier() { var ov = _hxAtOv(); if (ov) ov.style.display = 'none'; }
+// Mémorise les poids tapés avant de re-render (sinon un re-render les réinitialise).
+function _hxAtCaptureWeights() { _HYROX_STATIONS.forEach(function (s) { if (!s.w) return; var el = document.getElementById('hxat-w-' + s.k); if (el) { var v = parseFloat(el.value); if (v > 0) _hxAt.weights[s.k] = v; } }); }
+function _hxAtToggle(k) { _hxAtCaptureWeights(); if (_hxAt.sel[k]) delete _hxAt.sel[k]; else _hxAt.sel[k] = true; _hxAtRender(); }
+function _hxAtSer(k, n) { _hxAtCaptureWeights(); _hxAt.series[k] = n; _hxAtRender(); }
+function _hxAtRuns() { _hxAtCaptureWeights(); _hxAt.runs = !_hxAt.runs; _hxAtRender(); }
+function _hxAtRender() {
+  var ov = _hxAtOv(); if (!ov) return;
+  var wv = _HYROX_W[_hyroxDiv] || _HYROX_W.mo;
+  var stations = _HYROX_STATIONS.map(function (s) {
+    var on = !!_hxAt.sel[s.k], ser = _hxAt.series[s.k] || 1;
+    var cfg = '';
+    if (on) {
+      var wIn = s.w ? '<div style="flex:1"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin-bottom:5px">Charge (kg)</div><input id="hxat-w-' + s.k + '" inputmode="numeric" value="' + (_hxAt.weights[s.k] != null ? _hxAt.weights[s.k] : wv[s.w]) + '" style="width:100%;padding:9px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);font-family:inherit;font-size:15px;font-weight:800;color:#CA9A04;text-align:center"></div>' : '';
+      var serBtns = [1, 2, 3, 4].map(function (nn) { return '<button type="button" onclick="_hxAtSer(\'' + s.k + '\',' + nn + ')" style="flex:1;padding:9px 0;border-radius:9px;border:1.5px solid ' + (ser === nn ? '#EAB308' : 'var(--border)') + ';background:' + (ser === nn ? 'rgba(234,179,8,.14)' : 'var(--surface)') + ';font-family:inherit;font-weight:800;font-size:13px;color:' + (ser === nn ? '#CA9A04' : 'var(--text-muted)') + ';cursor:pointer">' + nn + '</button>'; }).join('');
+      cfg = '<div style="padding:2px 13px 13px;border-top:1px dashed var(--border)"><div style="display:flex;gap:8px;margin-top:11px">' + wIn
+        + '<div style="flex:1"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin-bottom:5px">Séries</div><div style="display:flex;gap:5px">' + serBtns + '</div></div></div>'
+        + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px">Cible officielle : ' + s.d + '</div></div>';
+    }
+    return '<div style="background:var(--surface);border:1.5px solid ' + (on ? '#EAB308' : 'var(--border)') + ';border-radius:14px;margin-bottom:9px;overflow:hidden' + (on ? ';box-shadow:0 6px 16px rgba(234,179,8,.16)' : '') + '">'
+      + '<div onclick="_hxAtToggle(\'' + s.k + '\')" style="display:flex;align-items:center;gap:11px;padding:11px;cursor:pointer">'
+      + '<span style="width:22px;height:22px;border-radius:7px;border:2px solid ' + (on ? '#EAB308' : 'var(--border)') + ';background:' + (on ? '#EAB308' : 'transparent') + ';flex:none;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900">' + (on ? '✓' : '') + '</span>'
+      + '<span style="flex:1;min-width:0"><span style="display:block;font-weight:800;font-size:13.5px">' + s.t + '</span><span style="display:block;font-size:10.5px;color:var(--text-subtle)">' + s.d + (s.w ? ' · ' + wv[s.w] + ' kg' : '') + '</span></span>'
+      + '</div>' + cfg + '</div>';
+  }).join('');
+  var n = _hxAtCount();
+  ov.innerHTML = '<div style="max-width:460px;margin:0 auto">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Par atelier</div><button onclick="fermerHyroxAtelier()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin:2px 2px 12px">Choisis les ateliers à travailler — pas besoin de faire tout le circuit. Règle la charge et le nombre de séries.</div>'
+    + '<div style="font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-subtle);margin:2px 2px 9px">Ateliers · <span style="color:#CA9A04">' + n + ' choisi' + (n > 1 ? 's' : '') + '</span></div>'
+    + stations
+    + '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-top:4px"><div style="font-size:12.5px;font-weight:700">Ajouter un <b style="color:#0EA5E9">Run 1 km</b> avant chaque atelier</div><button type="button" onclick="_hxAtRuns()" style="width:44px;height:26px;border-radius:999px;border:1px solid ' + (_hxAt.runs ? '#0EA5E9' : 'var(--border)') + ';background:' + (_hxAt.runs ? '#0EA5E9' : 'var(--surface2)') + ';position:relative;cursor:pointer"><i style="position:absolute;top:2px;left:' + (_hxAt.runs ? '20px' : '2px') + ';width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));transition:.15s"></i></button></div>'
+    + '<button onclick="_hxStartAtelier()" ' + (n ? '' : 'disabled') + ' style="width:100%;border:none;border-radius:15px;padding:17px;margin-top:14px;font-family:inherit;font-weight:900;font-size:16px;cursor:' + (n ? 'pointer' : 'default') + ';color:' + (n ? '#1a1400' : 'var(--text-subtle)') + ';background:' + (n ? 'linear-gradient(135deg,#EAB308,#CA9A04)' : 'var(--surface2)') + ';box-shadow:' + (n ? '0 8px 20px rgba(234,179,8,.35)' : 'none') + '">▶ Démarrer l\'atelier</button>'
+    + '<div style="font-size:11px;color:var(--text-subtle);margin-top:10px;text-align:center;line-height:1.5">Novalyz chronomètre chaque atelier et suivra ta progression dessus.</div></div>';
+}
+function _hxStartAtelier() {
+  if (!_hxAtCount()) return;
+  var wv = _HYROX_W[_hyroxDiv] || _HYROX_W.mo, weights = {}, segs = [], runN = 0;
+  _HYROX_STATIONS.forEach(function (s) {
+    if (!_hxAt.sel[s.k]) return;
+    if (s.w) { var el = document.getElementById('hxat-w-' + s.k); var v = el ? parseFloat(el.value) : NaN; var wgt = (v > 0) ? v : wv[s.w]; _hxAt.weights[s.k] = wgt; weights[s.w] = wgt; }
+    var ser = _hxAt.series[s.k] || 1;
+    for (var i = 0; i < ser; i++) {
+      if (_hxAt.runs) { runN++; segs.push({ k: 'run_at' + runN, t: 'Run ' + runN, d: '1 km', run: true }); }
+      segs.push({ k: (ser > 1 ? s.k + '_' + (i + 1) : s.k), t: s.t + (ser > 1 ? ' · série ' + (i + 1) : ''), d: s.d, w: s.w, wx2: s.wx2 });
+    }
+  });
+  if (!segs.length) return;
+  fermerHyroxAtelier();
+  _hxSegs = segs; _hyroxMode = 'atelier'; _hxWeights = weights;
+  var ov = _hxOv();
+  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-chrono-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
+  ov.style.display = 'block'; ov.scrollTop = 0;
+  _hxBegin();
 }
 
 function renderCardioFields() {
