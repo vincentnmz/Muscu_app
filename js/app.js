@@ -11282,7 +11282,7 @@ function _cxRender() {
 // logique de saisie modifiée.
 var _seanceChronoT0 = 0, _seanceChronoIv = null, _seanceDureeMin = 0;
 function _seanceChronoFmt(ms) { var s = Math.floor(ms / 1000), m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }
-function _seanceChronoTick() { var el = document.getElementById('seance-page-chrono'); if (!el) return; el.textContent = _seanceChronoT0 ? _seanceChronoFmt(Date.now() - _seanceChronoT0) : ''; }
+function _seanceChronoTick() { var t = _seanceChronoT0 ? _seanceChronoFmt(Date.now() - _seanceChronoT0) : ''; var el = document.getElementById('seance-page-chrono'); if (el) el.textContent = t; var cc = document.getElementById('cardio-live-clock'); if (cc) cc.textContent = t || '0:00'; }
 function _seanceChronoStart() { if (!_seanceChronoT0) _seanceChronoT0 = Date.now(); _seanceChronoTick(); if (_seanceChronoIv) clearInterval(_seanceChronoIv); _seanceChronoIv = setInterval(_seanceChronoTick, 1000); }
 function _seanceChronoStop() { if (_seanceChronoIv) { clearInterval(_seanceChronoIv); _seanceChronoIv = null; } }
 function ouvrirSeancePage() {
@@ -14642,6 +14642,9 @@ function renderCardioFields() {
   var el = document.getElementById('cardio-fields-content');
   if (!el || !typeEl) return;
   var type = typeEl.value;
+  // Nom de l'activité dans l'en-tête « séance en cours ».
+  var actEl = document.getElementById('cardio-live-act');
+  if (actEl) { var _LBL = (typeof _CARDIO_TYPE_LABELS !== 'undefined') ? _CARDIO_TYPE_LABELS : {}; actEl.textContent = _LBL[type] || 'Cardio'; }
   if (type === 'hyrox') { el.innerHTML = _hyroxFormHtml(); _hyroxRecalcTotal(); return; }
   var spec = _CARDIO_SPEC[type] || [];
   var specHtml = spec.map(function(f) {
@@ -14823,7 +14826,7 @@ async function sauvegarderCardio() {
     if (res && res.error) throw new Error(res.error);
   } catch (err) {
     showToast('Erreur : ' + (err.message || 'réseau'), 'var(--bad)');
-    if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✅ Enregistrer la séance'; }
+    if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✔ Terminer & enregistrer'; }
     return;
   }
   // Récap
@@ -14856,10 +14859,16 @@ async function sauvegarderCardio() {
 function nouvelleSeanceCardio() {
   var cardioEl = document.getElementById('cardio-block');
   if (!cardioEl) return;
-  // Remet le formulaire en place (même HTML qu'à l'origine dans index.html)
+  // Remet le formulaire en place (même structure que dans index.html : en-tête
+  // « séance en cours » + carte « Ta séance » + bouton vert).
   cardioEl.innerHTML = `
+    <div class="card" id="cardio-live-head" style="text-align:center;padding:16px 16px 18px;">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-subtle);">Séance en cours</div>
+      <div id="cardio-live-act" style="font-size:16px;font-weight:800;margin:3px 0 8px;">Cardio</div>
+      <div id="cardio-live-clock" style="font-family:ui-monospace,Menlo,monospace;font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;color:#0EA5E9;">0:00</div>
+    </div>
     <div class="card">
-      <div class="card-title">Séance cardio</div>
+      <div class="card-title">Ta séance</div>
       <div class="row2">
         <div><label>Date</label><input type="date" id="cardio-date"></div>
         <div><label>Type</label>
@@ -14879,7 +14888,7 @@ function nouvelleSeanceCardio() {
         </div>
       </div>
       <div id="cardio-fields-content"></div>
-      <button id="btn-save-cardio" class="btn btn-accent" onclick="sauvegarderCardio()" style="margin-top:14px;padding:14px;">✅ Enregistrer la séance</button>
+      <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:16px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
     </div>`;
   var di = document.getElementById('cardio-date');
   if (di) { var t = new Date(); di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0'); }

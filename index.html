@@ -1083,8 +1083,14 @@
 
         <!-- BLOC CARDIO (masqué par défaut) -->
         <div id="cardio-block" style="display:none;">
+          <!-- Séance en cours : chrono live + activité (rempli par renderCardioFields) -->
+          <div class="card" id="cardio-live-head" style="text-align:center;padding:16px 16px 18px;">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-subtle);">Séance en cours</div>
+            <div id="cardio-live-act" style="font-size:16px;font-weight:800;margin:3px 0 8px;">Cardio</div>
+            <div id="cardio-live-clock" style="font-family:ui-monospace,Menlo,monospace;font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;color:#0EA5E9;">0:00</div>
+          </div>
           <div class="card">
-            <div class="card-title">Séance cardio</div>
+            <div class="card-title">Ta séance</div>
             <div class="row2">
               <div>
                 <label>Date</label>
@@ -1109,7 +1115,7 @@
               </div>
             </div>
             <div id="cardio-fields-content"></div>
-            <button id="btn-save-cardio" class="btn btn-accent" onclick="sauvegarderCardio()" style="margin-top:14px;padding:14px;">✅ Enregistrer la séance</button>
+            <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:16px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
           </div>
         </div>
 
