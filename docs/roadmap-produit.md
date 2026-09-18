@@ -85,7 +85,7 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 > important, à faire ensuite · ③ **Hyrox** — important, **placement à décider**.
 14. Cardio (section dédiée) — 🟡 (saisie + analyses cardio existent) · 15. GPS type Strava — ⬜
 16. Activités structurées — ⬜ · 17. Multi-sources — ⬜ · 18. Déduplication (activités + pas) — ⬜
-19. Watch / Health Connect — ⬜ · 20. Vélo — ⬜ · 21. Running/marche — 🟡 · 22. Hyrox — ⬜
+19. Watch / Health Connect — ⬜ · 20. Vélo — ⬜ · 21. Running/marche — 🟡 · 22. Hyrox — 🔵 (saisie livrée ; analyse à venir)
 23. Natation — ⬜ · 24. Séances hybrides muscu/cardio — ⬜
 
 ### P3 — NUTRITION
@@ -114,6 +114,16 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 ---
 
 ## ✅ Journal de livraison (branche `claude/novalyz-player-profile-mockups-g4bock`)
+
+- **P2-22 Hyrox — étape 1 (saisie + enregistrement)** : type « Hyrox » dans la saisie
+  cardio → formulaire structuré des 16 segments officiels (8 Run 1 km + 8 ateliers,
+  termes/ordre/distances vérifiés rulebook). Mode Course/simulation ou Entraînement
+  (segments partiels). Sélecteur de **division** (Open/Pro × H/F) pré-remplissant les
+  **poids officiels 2026/27**, chaque poids restant **éditable** (charge adaptée).
+  Total + répartition course/ateliers auto. Stockage dans l'historique cardio
+  (`cardio_hyrox_…`, type_cardio=hyrox, durée=total) → compte dans la charge cardio ;
+  16 splits + poids conservés (action backend `saveHyrox`). Maquette validée avant
+  code. **Analyse Hyrox (splits/progression) = étape 2.** ⚠️ index.ts à redéployer.
 
 - **P2-14 Cardio — stabilisation (types cohérents)** : les 4 types déjà connus des
   analyses/édition mais **absents de la saisie** (rameur, HIIT, elliptique, boxe) sont

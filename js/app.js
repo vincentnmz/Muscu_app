@@ -8799,6 +8799,7 @@ var _MA_CARDIO_META = {
   rameur: ['Rameur', '#14B8A6', '<path d="M4 12h16"/>'], hiit: ['HIIT', '#EF4444', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>'],
   elliptique: ['Elliptique', '#D946EF', '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>'],
   boxe: ['Boxe', '#F43F5E', '<path d="M7 7h7a3 3 0 0 1 3 3v3a4 4 0 0 1-4 4H9a2 2 0 0 1-2-2V7z"/>'],
+  hyrox: ['Hyrox', '#EAB308', '<path d="M4 7h16M4 12h16M4 17h16"/>'],
   autre: ['Autre', '#F59E0B', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>']
 };
 function _maCM(t) { return _MA_CARDIO_META[t] || [t || 'Autre', '#F59E0B', _MA_CARDIO_META.autre[2]]; }
@@ -14285,11 +14286,97 @@ var _CARDIO_SPEC = {
 
 var _FC_HINT = ' <span style="font-size:9px;color:var(--text-muted);font-weight:500;">📡 optionnel</span>';
 
+// ═══════════ HYROX (P2-22) — saisie structurée dans le flux cardio ═══════════
+// 8 × (Run 1 km + 1 atelier). Stockée dans l'historique cardio (cardio_hyrox_…)
+// avec ses 16 splits + les poids réellement utilisés. Termes/ordre/poids officiels.
+var _HYROX_SEG = [
+  { k: 'run1', t: 'Run 1', d: '1 km', run: true },
+  { k: 'skierg', t: 'SkiErg', d: '1000 m' },
+  { k: 'run2', t: 'Run 2', d: '1 km', run: true },
+  { k: 'sledpush', t: 'Sled Push', d: '50 m', w: 'push' },
+  { k: 'run3', t: 'Run 3', d: '1 km', run: true },
+  { k: 'sledpull', t: 'Sled Pull', d: '50 m', w: 'pull' },
+  { k: 'run4', t: 'Run 4', d: '1 km', run: true },
+  { k: 'burpees', t: 'Burpee Broad Jump', d: '80 m' },
+  { k: 'run5', t: 'Run 5', d: '1 km', run: true },
+  { k: 'row', t: 'Rowing', d: '1000 m' },
+  { k: 'run6', t: 'Run 6', d: '1 km', run: true },
+  { k: 'farmers', t: 'Farmers Carry', d: '200 m', w: 'farm', wx2: true },
+  { k: 'run7', t: 'Run 7', d: '1 km', run: true },
+  { k: 'lunges', t: 'Sandbag Lunges', d: '100 m', w: 'sand' },
+  { k: 'run8', t: 'Run 8', d: '1 km', run: true },
+  { k: 'wallballs', t: 'Wall Balls', d: '100 reps', w: 'wall' }
+];
+var _HYROX_W = {
+  mo: { push: 152, pull: 103, farm: 24, sand: 20, wall: 6 },
+  wo: { push: 102, pull: 78, farm: 16, sand: 10, wall: 4 },
+  mp: { push: 202, pull: 153, farm: 32, sand: 30, wall: 9 },
+  wp: { push: 152, pull: 103, farm: 24, sand: 20, wall: 6 }
+};
+var _HYROX_DIV = [['mo', '♂ Open'], ['wo', '♀ Open'], ['mp', '♂ Pro'], ['wp', '♀ Pro']];
+var _hyroxMode = 'course', _hyroxDiv = 'mo';
+function _hyroxParse(str) { str = String(str == null ? '' : str).trim(); if (!str) return 0; if (str.indexOf(':') >= 0) { var p = str.split(':'); return (parseInt(p[0]) || 0) * 60 + (parseInt(p[1]) || 0); } return Math.round(parseFloat(str) || 0); }
+function _hyroxFmt(sec) { sec = Math.max(0, Math.round(Number(sec) || 0)); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); }
+function _hyroxRecalcTotal() {
+  var tot = 0, runTot = 0, stTot = 0, n = 0;
+  _HYROX_SEG.forEach(function (sg) { var el = document.getElementById('hx-' + sg.k); if (!el) return; var v = _hyroxParse(el.value); if (v > 0) { tot += v; n++; if (sg.run) runTot += v; else stTot += v; } });
+  var tEl = document.getElementById('hx-total'); if (tEl) tEl.textContent = tot > 0 ? _hyroxFmt(tot) : '—';
+  var sEl = document.getElementById('hx-split'); if (sEl) sEl.textContent = tot > 0 ? ('Course ' + _hyroxFmt(runTot) + ' · Ateliers ' + _hyroxFmt(stTot) + ' · ' + n + '/16') : '16 segments · m:ss';
+}
+function _hyroxSetMode(m) { _hyroxMode = m; ['course', 'entrainement'].forEach(function (x) { var b = document.getElementById('hx-mode-' + x); if (b) b.classList.toggle('on', x === m); }); }
+function _hyroxSetDiv(d) { _hyroxDiv = d; _HYROX_DIV.forEach(function (x) { var b = document.getElementById('hx-div-' + x[0]); if (b) b.classList.toggle('on', x[0] === d); }); var w = _HYROX_W[d]; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { var el = document.getElementById('hxw-' + k); if (el) el.value = w[k]; }); }
+function _hyroxFormHtml() {
+  var chip = function (id, on, oc, label) { return '<button type="button" id="' + id + '" class="saisie-chip' + (on ? ' on' : '') + '" onclick="' + oc + '">' + label + '</button>'; };
+  var rows = _HYROX_SEG.map(function (sg, i) {
+    var ic = sg.run
+      ? '<span style="width:26px;height:26px;border-radius:8px;background:rgba(14,165,233,.14);color:#0EA5E9;display:grid;place-items:center;font-size:12px;flex:none">🏃</span>'
+      : '<span style="width:26px;height:26px;border-radius:8px;background:var(--surface2);color:var(--text-muted);display:grid;place-items:center;font-size:11px;font-weight:800;flex:none">' + ((i + 1) / 2) + '</span>';
+    var sub = sg.w
+      ? sg.d + ' · ' + (sg.wx2 ? '2 × ' : '') + '<input id="hxw-' + sg.w + '" inputmode="numeric" value="' + _HYROX_W[_hyroxDiv][sg.w] + '" style="width:42px;text-align:center;padding:2px 3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--accent);font-weight:700;font-size:11px"> kg'
+      : sg.d;
+    return '<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-top:' + (i ? '1px solid var(--border)' : 'none') + '">' + ic
+      + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">' + sg.t + '</div><div style="font-size:10.5px;color:var(--text-subtle)">' + sub + '</div></div>'
+      + '<input id="hx-' + sg.k + '" inputmode="numeric" placeholder="m:ss" oninput="_hyroxRecalcTotal()" style="width:72px;text-align:center;padding:8px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-weight:800">'
+      + '</div>';
+  }).join('');
+  return '<div style="margin-top:12px">'
+    + '<div style="display:flex;gap:8px;margin-bottom:10px">' + chip('hx-mode-course', _hyroxMode === 'course', '_hyroxSetMode(\'course\')', 'Course / simulation') + chip('hx-mode-entrainement', _hyroxMode === 'entrainement', '_hyroxSetMode(\'entrainement\')', 'Entraînement') + '</div>'
+    + '<div class="saisie-lbl">Division <span style="font-size:10px;color:var(--text-subtle);font-weight:600">— pré-remplit les poids (modifiables)</span></div>'
+    + '<div style="display:flex;gap:6px;margin:6px 0 10px">' + _HYROX_DIV.map(function (x) { return chip('hx-div-' + x[0], _hyroxDiv === x[0], '_hyroxSetDiv(\'' + x[0] + '\')', x[1]); }).join('') + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Temps par segment (m:ss). En entraînement, laisse vide ce que tu n\'as pas fait.</div>'
+    + '<div class="card" style="padding:4px 14px">' + rows + '</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--accent-a08,rgba(26,95,255,.08))">'
+    + '<div><div style="font-size:11px;color:var(--text-muted);font-weight:700">TEMPS TOTAL</div><div id="hx-split" style="font-size:10.5px;color:var(--text-subtle)">16 segments · m:ss</div></div>'
+    + '<div id="hx-total" style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:22px;color:var(--accent)">—</div></div>'
+    + '<div style="margin-top:14px"><label>RPE (intensité ressentie)</label><div class="chip-row" id="cardio-rpe-chips">'
+    + [6, 7, 8, 9, 10].map(function (v) { return '<button type="button" class="saisie-chip" onclick="pickCardioRpe(this,\'' + v + '\')">' + v + '</button>'; }).join('')
+    + '</div><input type="hidden" id="cardio-rpe" value=""></div></div>';
+}
+async function sauvegarderHyrox() {
+  if (!athlete) return;
+  var date = (document.getElementById('cardio-date') || {}).value;
+  if (!date) { showToast('Choisis une date', 'var(--warn)'); return; }
+  var segs = {}, tot = 0, n = 0;
+  _HYROX_SEG.forEach(function (sg) { var el = document.getElementById('hx-' + sg.k); var v = el ? _hyroxParse(el.value) : 0; if (v > 0) { segs[sg.k] = v; tot += v; n++; } });
+  if (n === 0) { showToast('Renseigne au moins un segment', 'var(--warn)'); return; }
+  var poids = {}; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { var el = document.getElementById('hxw-' + k); var v = el ? parseFloat(el.value) : 0; if (v > 0) poids[k] = v; });
+  var rpe = (document.getElementById('cardio-rpe') || {}).value || '';
+  var btnSave = document.getElementById('btn-save-cardio'); if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ Envoi…'; }
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveHyrox', athlete_id: athlete.athlete_id, date: date, mode: _hyroxMode, division: _hyroxDiv, segments: segs, poids: poids, total_sec: tot, rpe: rpe }) });
+    var res = await r.json(); if (res && res.error) throw new Error(res.error);
+  } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✅ Enregistrer la séance'; } return; }
+  var cardioEl = document.getElementById('cardio-block');
+  if (cardioEl) cardioEl.innerHTML = '<div class="card"><div class="card-title" style="color:var(--good)">✅ Hyrox enregistrée !</div><div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">' + (_hyroxMode === 'course' ? 'Course / simulation' : 'Entraînement') + ' · ' + n + '/16 segments</div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:26px;color:var(--accent);margin-bottom:14px">' + _hyroxFmt(tot) + '</div><button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button></div>';
+  if (typeof chargerAppData === 'function') chargerAppData();
+}
+
 function renderCardioFields() {
   var typeEl = document.getElementById('cardio-type');
   var el = document.getElementById('cardio-fields-content');
   if (!el || !typeEl) return;
   var type = typeEl.value;
+  if (type === 'hyrox') { el.innerHTML = _hyroxFormHtml(); _hyroxRecalcTotal(); return; }
   var spec = _CARDIO_SPEC[type] || [];
   var specHtml = spec.map(function(f) {
     var fid = 'cardio-' + f.id;
@@ -14420,9 +14507,10 @@ function pickCardioRpe(btn, val) {
 
 async function sauvegarderCardio() {
   if (!athlete) return;
+  var type  = (document.getElementById('cardio-type') || {}).value;
+  if (type === 'hyrox') return sauvegarderHyrox();   // saisie structurée dédiée
   var date  = (document.getElementById('cardio-date') || {}).value;
   var duree = (document.getElementById('cardio-duree') || {}).value;
-  var type  = (document.getElementById('cardio-type') || {}).value;
   if (!date)  { showToast('Choisis une date', 'var(--warn)'); return; }
   if (!duree) { showToast('Durée obligatoire', 'var(--warn)'); return; }
 
@@ -14519,6 +14607,7 @@ function nouvelleSeanceCardio() {
             <option value="hiit">HIIT</option>
             <option value="elliptique">Elliptique</option>
             <option value="boxe">Boxe</option>
+            <option value="hyrox">Hyrox</option>
             <option value="autre">Autre</option>
           </select>
         </div>
@@ -14536,6 +14625,7 @@ var _CARDIO_TYPE_LABELS = {
   marche_normale: 'Marche', marche_inclinee: 'Marche inclinée',
   natation: 'Natation',
   rameur: 'Rameur', hiit: 'HIIT', elliptique: 'Elliptique', boxe: 'Boxe',
+  hyrox: 'Hyrox',
   autre: 'Autre'
 };
 
@@ -14661,7 +14751,7 @@ function _cardioSmoothPath(pts) {
   return d;
 }
 
-var _CH_ICO = { footing: '🏃', velo: '🚴', marche_normale: '🚶', marche_inclinee: '🥾', natation: '🏊', rameur: '🚣', hiit: '🔥', elliptique: '🌀', boxe: '🥊', autre: '⚡' };
+var _CH_ICO = { footing: '🏃', velo: '🚴', marche_normale: '🚶', marche_inclinee: '🥾', natation: '🏊', rameur: '🚣', hiit: '🔥', elliptique: '🌀', boxe: '🥊', hyrox: '🟨', autre: '⚡' };
 var _CH_CLR = { footing: '#6366f1', velo: '#0ea5e9', marche_normale: '#22d3ee', marche_inclinee: '#10b981', natation: '#8b5cf6', rameur: '#14b8a6', hiit: '#ef4444', elliptique: '#a855f7', boxe: '#f97316', autre: '#f59e0b' };
 var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(14,165,233,.14)', marche_normale: 'rgba(34,211,238,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', rameur: 'rgba(20,184,166,.14)', hiit: 'rgba(239,68,68,.14)', elliptique: 'rgba(168,85,247,.14)', boxe: 'rgba(249,115,22,.14)', autre: 'rgba(245,158,11,.14)' };
 

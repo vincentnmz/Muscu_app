@@ -662,7 +662,7 @@ function _aggCardioWindow(sessions: any[], now: Date, days: number): any {
 function _cardioNumify(ind: Record<string, any>): Record<string, any> {
   const out: Record<string, any> = {}
   for (const [k, v] of Object.entries(ind)) {
-    if (k === 'type_cardio') { out[k] = String(v ?? '') ; continue }
+    if (k === 'type_cardio' || k === 'hyrox_mode' || k === 'hyrox_division') { out[k] = String(v ?? '') ; continue }
     out[k] = (v === '' || v == null) ? null : (Number(v) || 0)
   }
   return out
@@ -3814,6 +3814,40 @@ async function handleSaveBilanSeance(body: any): Promise<Response> {
   return jsonResp({ ok: true, success: true })
 }
 
+// HYROX (P2-22) : 8 × (Run 1 km + atelier). Stockée dans l'historique cardio
+// (seance_id `cardio_hyrox_…`, type_cardio='hyrox', durée=total) → compte dans la
+// charge cardio, et les 16 splits + poids utilisés reviennent avec la session.
+async function handleSaveHyrox(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const d = normDate(body.date) || fmtYMD(new Date())
+  const mode = body.mode === 'entrainement' ? 'entrainement' : 'course'
+  const division = String(body.division || 'mo')
+  const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
+  const segs = (body.segments && typeof body.segments === 'object') ? body.segments : {}
+  const poids = (body.poids && typeof body.poids === 'object') ? body.poids : {}
+  const segKeys = Object.keys(segs).filter(k => num(segs[k]) != null && Number(segs[k]) > 0)
+  if (!segKeys.length) return jsonResp({ success: false, error: 'aucun segment' })
+  const total = num(body.total_sec) || segKeys.reduce((a, k) => a + Number(segs[k]), 0)
+  const runKm = segKeys.filter(k => k.indexOf('run') === 0).length
+  const sid = `cardio_hyrox_${Date.now()}`
+  const R = (cle: string, valeur: string, unite = '') => ({ date: d, athlete_id, seance_id: sid, cle, valeur, unite, source: 'saisie' })
+  const rows: any[] = [
+    R('type_cardio', 'hyrox'),
+    R('duree', String(Math.round(total / 60)), 'min'),
+    R('hyrox_mode', mode),
+    R('hyrox_division', division),
+    R('hyrox_total', String(total), 's'),
+  ]
+  if (runKm > 0) rows.push(R('distance', String(runKm), 'km'))
+  if (num(body.rpe) != null) rows.push(R('rpe', String(num(body.rpe))))
+  segKeys.forEach(k => rows.push(R('hyrox_' + k, String(Math.round(Number(segs[k]))), 's')))
+  Object.keys(poids).forEach(k => { if (num(poids[k]) != null) rows.push(R('hyrox_poids_' + k, String(Number(poids[k])), 'kg')) })
+  const { error } = await sb().from('indicateurs').insert(rows)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ ok: true, success: true, seance_id: sid, total_sec: total })
+}
+
 async function handleSetPauseAthlete(body: any): Promise<Response> {
   const { athlete_id, debut, fin } = body
   if (!athlete_id) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -4203,6 +4237,7 @@ Deno.serve(async (req: Request) => {
         case 'saveContexte':             return handleSaveContexte(body)
         case 'cloreContexte':            return handleCloreContexte(body)
         case 'saveCardio':               return handleSaveCardio(body)
+        case 'saveHyrox':                return handleSaveHyrox(body)
         case 'deleteCardio':             return handleDeleteCardio(body)
         case 'updateCardio':             return handleUpdateCardio(body)
         default:                         return jsonResp({ erreur: `Action inconnue: ${action}` }, 404)
