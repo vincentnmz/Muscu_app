@@ -1557,11 +1557,23 @@ window.addEventListener('load', async () => {
   // code après une mise à jour de l'APK (bug « la version ne change pas »).
   if (typeof _estAppNative === 'function' && _estAppNative()) {
     try {
+      var _hadSW = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
       if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
         navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { try { r.unregister(); } catch (e) {} }); }).catch(function () {});
       }
       if (window.caches && caches.keys) {
         caches.keys().then(function (ks) { ks.forEach(function (k) { try { caches.delete(k); } catch (e) {} }); }).catch(function () {});
+      }
+      // Un ANCIEN Service Worker (versions précédentes de l'APK) peut encore
+      // contrôler cette page et servir une coquille périmée depuis SON cache. On
+      // vient de le désinscrire → on force UN rechargement (une seule fois par
+      // session) pour que la prochaine lecture vienne du bundle APK à jour.
+      if (_hadSW) {
+        var _done = false; try { _done = !!sessionStorage.getItem('nvz_sw_reload'); } catch (e) {}
+        if (!_done) {
+          try { sessionStorage.setItem('nvz_sw_reload', '1'); } catch (e) {}
+          setTimeout(function () { try { location.reload(); } catch (e) {} }, 400);
+        }
       }
     } catch (e) {}
   } else if ('serviceWorker' in navigator) {
