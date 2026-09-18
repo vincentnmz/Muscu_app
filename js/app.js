@@ -7161,7 +7161,7 @@ async function demarrerSeance() {
   }
 
   seance = []; exoEnCours = null; serieNum = 1; indexExoProgramme = 0;
-  _seanceEnvoyee = false;
+  _seanceEnvoyee = false; _seanceDureeMin = 0;
   try { _seanceChronoT0 = Date.now(); _seanceChronoStart(); } catch (e) {}
   _effacerBrouillon();
   { const _b=document.getElementById('brouillon-banner'); if(_b)_b.remove(); }
@@ -8250,6 +8250,9 @@ function afficherRecap() {
   // persistée) : le brouillon n'a plus de raison d'être, et on verrouille toute
   // ré-écriture (sinon visibilitychange/pagehide recréerait un brouillon fantôme).
   _seanceEnvoyee = true;
+  // Fige le chrono de séance et mémorise la durée mesurée (temps réel de la séance).
+  try { if (_seanceChronoT0) _seanceDureeMin = Math.max(1, Math.round((Date.now() - _seanceChronoT0) / 60000)); } catch (e) {}
+  try { _seanceChronoStop(); } catch (e) {}
   _effacerBrouillon();
   { const _b = document.getElementById('brouillon-banner'); if (_b) _b.remove(); }
   const saisieBlock = document.getElementById('saisie-block');
@@ -8260,8 +8263,9 @@ function afficherRecap() {
   const seanceType = document.getElementById('sel-seance-id').value;
   const totalSeries = seance.reduce((a,e)=>a+e.series.length,0);
   const totalVol = seance.reduce((a,e)=>a+e.series.reduce((b,s)=>b+s.volume,0),0);
+  const _dureeTxt = _seanceDureeMin > 0 ? ` · ⏱ ${_seanceDureeMin} min` : '';
   document.getElementById('recap-seance-info').innerHTML =
-    `<span style="color:var(--accent);font-weight:700">${seanceType}</span> · ${formatDateDisplay(dateVal)} · ${totalSeries} séries · Vol: ${totalVol}`;
+    `<span style="color:var(--accent);font-weight:700">${seanceType}</span> · ${formatDateDisplay(dateVal)} · ${totalSeries} séries · Vol: ${totalVol}${_dureeTxt}`;
 
   const recap = document.getElementById('recap-content');
   recap.innerHTML = '';
@@ -11114,7 +11118,7 @@ function _cxRender() {
 // Ouvre le flux de saisie en PAGE PLEIN ÉCRAN (body.seance-active) — l'en-tête
 // d'app et la barre du bas sont masqués, un bouton retour apparaît. Aucune
 // logique de saisie modifiée.
-var _seanceChronoT0 = 0, _seanceChronoIv = null;
+var _seanceChronoT0 = 0, _seanceChronoIv = null, _seanceDureeMin = 0;
 function _seanceChronoFmt(ms) { var s = Math.floor(ms / 1000), m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }
 function _seanceChronoTick() { var el = document.getElementById('seance-page-chrono'); if (!el) return; el.textContent = _seanceChronoT0 ? _seanceChronoFmt(Date.now() - _seanceChronoT0) : ''; }
 function _seanceChronoStart() { if (!_seanceChronoT0) _seanceChronoT0 = Date.now(); _seanceChronoTick(); if (_seanceChronoIv) clearInterval(_seanceChronoIv); _seanceChronoIv = setInterval(_seanceChronoTick, 1000); }
@@ -11136,7 +11140,8 @@ function _seanceBack() {
 }
 function fermerSeancePage() {
   var enCours = false;
-  try { enCours = (typeof seance !== 'undefined' && seance && seance.length > 0); } catch (e) {}
+  // Séance DÉJÀ validée (_seanceEnvoyee) = plus rien à perdre → pas d'avertissement.
+  try { enCours = (typeof seance !== 'undefined' && seance && seance.length > 0 && !_seanceEnvoyee); } catch (e) {}
   if (enCours && !confirm('Quitter la séance ? Les séries non validées seront perdues.')) return;
   // Quitter = abandonner la séance en cours (une seule confirmation ; pas de 2e
   // avertissement au prochain démarrage puisque l'état est remis à zéro).
