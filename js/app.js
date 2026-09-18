@@ -11064,6 +11064,8 @@ function renderCardio(data) {
   data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null) || {};
   _cxSessions = (data.cardio && Array.isArray(data.cardio.history)) ? data.cardio.history : [];
   _cxRender();
+  // Si l'univers Hyrox est affiché, on rafraîchit sa liste (nouvelles Hyrox).
+  try { var hw = document.getElementById('cx-hyrox-sub'); if (hw && hw.style.display !== 'none') renderHyroxHome(); } catch (e) {}
 }
 function _cxRender() {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
@@ -14369,6 +14371,110 @@ async function sauvegarderHyrox() {
   var cardioEl = document.getElementById('cardio-block');
   if (cardioEl) cardioEl.innerHTML = '<div class="card"><div class="card-title" style="color:var(--good)">✅ Hyrox enregistrée !</div><div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">' + (_hyroxMode === 'course' ? 'Course / simulation' : 'Entraînement') + ' · ' + n + '/16 segments</div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:26px;color:var(--accent);margin-bottom:14px">' + _hyroxFmt(tot) + '</div><button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button></div>';
   if (typeof chargerAppData === 'function') chargerAppData();
+}
+
+// ── HYROX : univers dédié dans l'onglet Cardio + chrono live ──
+function cxSetWorld(w, btn) {
+  var ws = document.getElementById('cx-world');
+  if (ws) Array.prototype.forEach.call(ws.querySelectorAll('button'), function (b) { b.classList.toggle('on', btn ? b === btn : ((b.getAttribute('onclick') || '').indexOf("'" + w + "'") >= 0)); });
+  var c = document.getElementById('cx-cardio-sub'), h = document.getElementById('cx-hyrox-sub');
+  if (c) c.style.display = (w === 'hyrox') ? 'none' : '';
+  if (h) h.style.display = (w === 'hyrox') ? '' : 'none';
+  if (w === 'hyrox') { try { renderHyroxHome(); } catch (e) {} }
+}
+function _hxTodayISO() { var t = new Date(); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
+function renderHyroxHome() {
+  var el = document.getElementById('cx-hyrox-sub'); if (!el) return;
+  var hist = ((typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.cardio && dernierAppData.cardio.history) || []).filter(function (s) { return (s.type_cardio || '') === 'hyrox'; });
+  var list = hist.length ? hist.slice(0, 8).map(function (s) {
+    var tot = Number(s.hyrox_total) || (Number(s.duree) || 0) * 60;
+    var dd = new Date((s.date || '') + 'T00:00:00'), dstr = isNaN(dd.getTime()) ? '' : (dd.getDate() + ' ' + _MA_MON[dd.getMonth()]);
+    var nseg = _HYROX_SEG.filter(function (sg) { return Number(s['hyrox_' + sg.k]) > 0; }).length;
+    var mode = (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Course';
+    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:38px;height:38px;border-radius:11px;background:rgba(234,179,8,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:16px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">' + dstr + ' · ' + nseg + '/16 segments</div></div><span style="color:var(--text-subtle)">›</span></div>';
+  }).join('') : '<div style="padding:14px;color:var(--text-muted);font-size:12.5px">Aucune Hyrox enregistrée. Démarre le chrono ou saisis tes temps.</div>';
+  el.innerHTML = '<div style="border-radius:20px;padding:18px;background:linear-gradient(135deg,#EAB308,#CA9A04);color:#1a1400;box-shadow:0 8px 24px rgba(234,179,8,.32);margin-top:6px">'
+    + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.75">Épreuve hybride</div>'
+    + '<div style="font-size:26px;font-weight:900;letter-spacing:.02em;margin:2px 0">HYROX</div>'
+    + '<div style="font-size:12px;font-weight:600;opacity:.82;line-height:1.4">8 × (Run 1 km + atelier). Chronomètre l\'enchaînement, ou saisis tes temps après coup.</div>'
+    + '<div style="display:flex;gap:9px;margin-top:14px">'
+    + '<button onclick="ouvrirHyroxChrono()" style="flex:1;border:none;border-radius:12px;padding:13px 0;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;background:#1a1400;color:#EAB308">▶ Démarrer</button>'
+    + '<button onclick="ouvrirSaisieHyrox()" style="flex:1;border:none;border-radius:12px;padding:13px 0;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;background:rgba(26,20,0,.14);color:#1a1400">✎ Saisir après coup</button>'
+    + '</div></div>'
+    + '<div class="cx-sec" style="margin-top:16px">Mes Hyrox</div>' + list;
+}
+function ouvrirSaisieHyrox() {
+  switchTab('seance'); try { switchModeSeance('cardio'); } catch (e) {}
+  setTimeout(function () { var sel = document.getElementById('cardio-type'); if (sel) { sel.value = 'hyrox'; renderCardioFields(); } var d = document.getElementById('cardio-date'); if (d && !d.value) d.value = _hxTodayISO(); }, 80);
+}
+function ouvrirHyroxDetail(sid) { try { showToast('Analyse détaillée de la Hyrox : bientôt (étape 2).'); } catch (e) {} }
+// Chrono live : un temps total en continu + split par segment (« Segment suivant »).
+var _hxTimer = null, _hxT0 = 0, _hxSegT0 = 0, _hxIdx = 0, _hxSplits = [], _hxPaused = false, _hxPausedAt = 0, _hxPauseAcc = 0;
+function _hxOv() { return document.getElementById('hyrox-chrono-overlay'); }
+function ouvrirHyroxChrono() {
+  var ov = _hxOv();
+  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-chrono-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
+  ov.style.display = 'block'; ov.scrollTop = 0; ov.innerHTML = _hxStartHtml();
+}
+function fermerHyroxChrono() { if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; } var ov = _hxOv(); if (ov) ov.style.display = 'none'; }
+function _hxHeader(t) { return '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">' + t + '</div><button onclick="fermerHyroxChrono()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'; }
+function _hxChip(id, on, oc, label) { return '<button type="button" id="' + id + '" class="saisie-chip' + (on ? ' on' : '') + '" onclick="' + oc + '">' + label + '</button>'; }
+function _hxSetMode(m) { _hyroxMode = m; ['course', 'entrainement'].forEach(function (x) { var b = document.getElementById('hxc-mode-' + x); if (b) b.classList.toggle('on', x === m); }); }
+function _hxSetDiv(d) { _hyroxDiv = d; _HYROX_DIV.forEach(function (x) { var b = document.getElementById('hxc-div-' + x[0]); if (b) b.classList.toggle('on', x[0] === d); }); }
+function _hxStartHtml() {
+  return '<div style="max-width:460px;margin:0 auto">' + _hxHeader('Hyrox')
+    + '<div style="border-radius:18px;padding:20px;text-align:center;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06))">'
+    + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-subtle)">Prêt ?</div>'
+    + '<div style="font-size:20px;font-weight:900;margin:4px 0 12px">Chronométrer ta Hyrox</div>'
+    + '<div style="display:flex;gap:8px;margin-bottom:8px">' + _hxChip('hxc-mode-course', _hyroxMode === 'course', '_hxSetMode(\'course\')', 'Course') + _hxChip('hxc-mode-entrainement', _hyroxMode === 'entrainement', '_hxSetMode(\'entrainement\')', 'Entraînement') + '</div>'
+    + '<div style="display:flex;gap:6px;margin-bottom:16px">' + _HYROX_DIV.map(function (x) { return _hxChip('hxc-div-' + x[0], _hyroxDiv === x[0], '_hxSetDiv(\'' + x[0] + '\')', x[1]); }).join('') + '</div>'
+    + '<button onclick="_hxBegin()" style="width:100%;border:none;border-radius:16px;padding:18px;font-family:inherit;font-weight:900;font-size:17px;cursor:pointer;color:#1a1400;background:linear-gradient(135deg,#EAB308,#CA9A04);box-shadow:0 8px 20px rgba(234,179,8,.35)">▶ Démarrer la Hyrox</button>'
+    + '</div><div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:14px;line-height:1.6">Tape « Segment suivant » à chaque transition. Le temps total tourne en continu.</div></div>';
+}
+function _hxLiveHtml() {
+  return '<div style="max-width:460px;margin:0 auto">' + _hxHeader('Hyrox · en cours')
+    + '<div style="text-align:center"><div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-subtle)">Temps total</div>'
+    + '<div id="hx-clock" style="font-family:ui-monospace,Menlo,monospace;font-size:54px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1">0:00</div>'
+    + '<div id="hx-prog" style="display:flex;gap:3px;margin:16px 0 10px"></div></div>'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));padding:16px;margin:8px 0">'
+    + '<div id="hx-cur-lbl" style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text-subtle)">Segment 1 / 16</div>'
+    + '<div id="hx-cur-nm" style="font-size:22px;font-weight:900;margin:3px 0">Run 1</div>'
+    + '<div id="hx-cur-d" style="font-size:12px;color:var(--text-muted)">1 km · course</div>'
+    + '<div id="hx-seg" style="font-family:ui-monospace,Menlo,monospace;font-size:26px;font-weight:800;color:#CA9A04;font-variant-numeric:tabular-nums;margin-top:6px">0:00</div></div>'
+    + '<button id="hx-next" onclick="_hxNext()" style="width:100%;border:none;border-radius:16px;padding:20px;font-family:inherit;font-weight:900;font-size:18px;cursor:pointer;color:#fff;background:var(--accent);box-shadow:0 8px 20px rgba(26,95,255,.3)">Segment suivant ✓</button>'
+    + '<div style="display:flex;gap:9px;margin-top:9px"><button id="hx-pause" onclick="_hxPause()" style="flex:1;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:12px 0;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);cursor:pointer">⏸ Pause</button><button onclick="_hxCancel()" style="flex:1;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:12px 0;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);cursor:pointer">✕ Annuler</button></div>'
+    + '<div id="hx-splits" style="margin-top:6px"></div></div>';
+}
+function _hxBegin() { _hxIdx = 0; _hxSplits = []; _hxPaused = false; _hxPauseAcc = 0; _hxT0 = Date.now(); _hxSegT0 = Date.now(); var ov = _hxOv(); if (ov) ov.innerHTML = _hxLiveHtml(); _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); if (_hxTimer) clearInterval(_hxTimer); _hxTimer = setInterval(_hxTick, 200); _hxTick(); }
+function _hxTick() { if (_hxPaused) return; var now = Date.now(); var c = document.getElementById('hx-clock'); if (c) c.textContent = _hyroxFmt(Math.round((now - _hxT0 - _hxPauseAcc) / 1000)); var s = document.getElementById('hx-seg'); if (s) s.textContent = _hyroxFmt(Math.round((now - _hxSegT0) / 1000)); }
+function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var h = ''; for (var i = 0; i < 16; i++) { var bg = i < _hxIdx ? (_HYROX_SEG[i].run ? '#0EA5E9' : 'var(--accent)') : (i === _hxIdx ? '#EAB308' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
+function _hxRenderCur() { var sg = _HYROX_SEG[_hxIdx] || _HYROX_SEG[15]; var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / 16'; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier'); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (_hxIdx === 15 ? 'Terminer ✓' : 'Segment suivant ✓'); nx.style.background = (_hxIdx === 15 ? 'var(--good)' : 'var(--accent)'); } }
+function _hxRenderSplits() { var el = document.getElementById('hx-splits'); if (!el) return; var rows = []; for (var i = 0; i < _hxIdx; i++) { var sg = _HYROX_SEG[i]; rows.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;background:' + (sg.run ? 'rgba(14,165,233,.12);color:#0EA5E9' : 'var(--surface2);color:var(--text-muted)') + '">' + (sg.run ? '🏃' : ((i + 1) / 2)) + '</span><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } el.innerHTML = rows.reverse().join(''); }
+function _hxNext() { var now = Date.now(); _hxSplits[_hxIdx] = now - _hxSegT0; _hxSegT0 = now; _hxIdx++; if (_hxIdx >= 16) { _hxFinish(); return; } _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); _hxTick(); }
+function _hxPause() { var b = document.getElementById('hx-pause'); if (!_hxPaused) { _hxPaused = true; _hxPausedAt = Date.now(); if (b) b.textContent = '▶ Reprendre'; } else { _hxPaused = false; _hxPauseAcc += Date.now() - _hxPausedAt; _hxSegT0 += Date.now() - _hxPausedAt; if (b) b.textContent = '⏸ Pause'; } }
+function _hxCancel() { if (confirm('Annuler cette Hyrox ? Les splits en cours seront perdus.')) fermerHyroxChrono(); }
+async function _hxFinish() {
+  if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; }
+  var total = Math.round((Date.now() - _hxT0 - _hxPauseAcc) / 1000);
+  var segments = {}; _HYROX_SEG.forEach(function (sg, i) { if (_hxSplits[i] != null) segments[sg.k] = Math.round(_hxSplits[i] / 1000); });
+  var poids = {}, w = _HYROX_W[_hyroxDiv]; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { poids[k] = w[k]; });
+  var ov = _hxOv(); if (ov) ov.innerHTML = _hxDoneHtml(total, 'load');
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveHyrox', athlete_id: athlete.athlete_id, date: _hxTodayISO(), mode: _hyroxMode, division: _hyroxDiv, segments: segments, poids: poids, total_sec: total, rpe: '' }) });
+    var res = await r.json(); if (res && res.error) throw new Error(res.error);
+    if (ov) ov.innerHTML = _hxDoneHtml(total, 'ok');
+    if (typeof chargerAppData === 'function') chargerAppData();
+  } catch (e) { if (ov) ov.innerHTML = _hxDoneHtml(total, 'err'); }
+}
+function _hxDoneHtml(total, state) {
+  var sp = []; for (var i = 0; i < _hxSplits.length; i++) { if (_hxSplits[i] != null) { var sg = _HYROX_SEG[i]; sp.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } }
+  var st = state === 'ok' ? '<div style="font-size:11px;font-weight:800;color:var(--good)">✅ Enregistrée</div>' : state === 'err' ? '<div style="font-size:11px;font-weight:800;color:var(--bad,#DC3545)">⚠️ Erreur — réessaie plus tard</div>' : '<div style="font-size:11px;color:var(--text-subtle)">Enregistrement…</div>';
+  return '<div style="max-width:460px;margin:0 auto">' + _hxHeader('Hyrox terminée')
+    + '<div style="border-radius:18px;padding:22px;text-align:center;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06))">' + st
+    + '<div style="font-size:12px;color:var(--text-muted);margin-top:6px">Temps total</div>'
+    + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent)">' + _hyroxFmt(total) + '</div>'
+    + '<button onclick="fermerHyroxChrono()" style="width:100%;border:none;border-radius:14px;padding:15px;margin-top:12px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;background:var(--accent);color:#fff">Fermer</button>'
+    + '</div><div class="cx-sec" style="margin-top:16px">Tes splits</div>' + sp.reverse().join('') + '</div>';
 }
 
 function renderCardioFields() {

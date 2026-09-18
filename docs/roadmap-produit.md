@@ -123,7 +123,13 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
   Total + répartition course/ateliers auto. Stockage dans l'historique cardio
   (`cardio_hyrox_…`, type_cardio=hyrox, durée=total) → compte dans la charge cardio ;
   16 splits + poids conservés (action backend `saveHyrox`). Maquette validée avant
-  code. **Analyse Hyrox (splits/progression) = étape 2.** ⚠️ index.ts à redéployer.
+  code.
+- **P2-22 Hyrox — étape 1b (écran dédié + chrono live)** : onglet Cardio scindé en
+  **[ Cardio | Hyrox ]** (univers distincts, validé porteur). Écran Hyrox : carte
+  « Démarrer / Saisir après coup » + liste « Mes Hyrox ». **Chrono live** (overlay) :
+  un temps total en continu, « Segment suivant » capture chaque split sans couper le
+  total (esprit enchaînement), pause/annuler, écran fin → enregistrement auto via
+  `saveHyrox`. Maquette interactive validée avant code. **Analyse Hyrox = étape 2.**
 
 - **P2-14 Cardio — stabilisation (types cohérents)** : les 4 types déjà connus des
   analyses/édition mais **absents de la saisie** (rameur, HIIT, elliptique, boxe) sont

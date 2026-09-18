@@ -1972,6 +1972,13 @@
       </style>
 
       <div class="cx-wrap">
+        <!-- Sélecteur d'univers : Cardio (sorties classiques) vs Hyrox (écran dédié) -->
+        <div class="cx-period" id="cx-world" style="margin-bottom:2px">
+          <button class="on" onclick="cxSetWorld('cardio',this)">🏃 Cardio</button>
+          <button onclick="cxSetWorld('hyrox',this)">🟨 Hyrox</button>
+        </div>
+        <div id="cx-hyrox-sub" style="display:none"></div>
+        <div id="cx-cardio-sub">
         <div class="cx-cap">Choisis ton activité</div>
         <div class="cx-selector">
           <span class="icb"><svg width="21" height="21" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span>
@@ -1998,6 +2005,7 @@
           <button class="cx-btn primary" onclick="switchTab('seance'); try{switchModeSeance('cardio');}catch(e){}"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Saisir un résultat</button>
           <button class="cx-btn ghost" onclick="switchTab('reglages')"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10"/><path d="M2 12.5 7 17"/></svg>Connecter un appareil</button>
         </div>
+        </div><!-- /cx-cardio-sub -->
       </div>
 
       <div class="et-fabwrap" style="position:fixed;right:15px;bottom:calc(80px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:9px;z-index:40;">
