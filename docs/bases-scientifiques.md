@@ -22,6 +22,17 @@
 - **Statut** : ✅ bien étayé (gains ↑ avec le volume, avec rendements décroissants).
 - **Repère** : ~10 séries/sem/muscle est un point de départ raisonnable ; davantage selon le niveau.
 
+## Volume indirect (muscles secondaires)
+- **Code** : dans « Mes analyses ▸ Par groupe », le muscle **secondaire** d'un exercice
+  (colonne `muscle_secondaire` du catalogue) reçoit **0,5 série** (et 0,5× tonnage),
+  affiché « dont X indir. ». Le muscle **principal** reçoit 1 série (volume direct).
+- **Source** : distinction **volume direct / indirect** en hypertrophie (ex. les triceps
+  travaillent au développé couché). Le facteur ½ est une **convention** courante.
+- **Statut** : 🟡 **convention, pas une constante** : la littérature ne fixe pas un
+  coefficient universel (0, 0,5 ou 1 selon les auteurs). Présenté comme repère, clairement
+  distingué du volume direct. (Aujourd'hui « Par groupe » ; le bloc résumé « Volume »
+  reste en direct tant que le backend ne compte pas l'indirect.)
+
 ## RPE — effort perçu
 - **Code** : échelle 1–10 saisie par l'athlète ; sert au ressenti + à la charge interne.
 - **Source** : échelle de Borg (CR-10) ; RPE basé sur les répétitions en réserve (RIR) validé pour la muscu (Zourdos et al.).
