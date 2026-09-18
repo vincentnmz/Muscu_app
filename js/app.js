@@ -7614,6 +7614,35 @@ function stepValue(id, delta) {
   v = Math.max(0, Math.round((v + delta) * 100) / 100);
   el.value = v;
 }
+// ── Molette de repos (30 s → 10 min, pas de 30 s) ──────────────────────────
+// Remplace les anciens chips (choix limité) par un sélecteur défilable vertical.
+var _REPOS_VALS = (function () { var a = []; for (var v = 30; v <= 600; v += 30) a.push(v); return a; })();
+var _REPOS_IH = 36, _reposWheelBuilt = false, _reposScrollT = null;
+function _reposFmt(s) { var m = Math.floor(s / 60), r = s % 60; return m > 0 ? (m + ' min' + (r ? ' 30' : '')) : (s + ' s'); }
+function _reposIdxNear(val) { var t = Number(val) || 120, idx = 0, best = Infinity; for (var i = 0; i < _REPOS_VALS.length; i++) { var d = Math.abs(_REPOS_VALS[i] - t); if (d < best) { best = d; idx = i; } } return idx; }
+function _reposWheelInit() {
+  var w = document.getElementById('repos-wheel'); if (!w) return;
+  if (!_reposWheelBuilt) {
+    var sp = '<div style="height:' + (_REPOS_IH * 2) + 'px"></div>';
+    w.innerHTML = sp + _REPOS_VALS.map(function (v) { return '<div class="repos-item" data-v="' + v + '" style="height:' + _REPOS_IH + 'px;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--text-muted);transition:color .12s,font-size .12s">' + _reposFmt(v) + '</div>'; }).join('') + sp;
+    w.addEventListener('scroll', function () { if (_reposScrollT) clearTimeout(_reposScrollT); _reposWheelHighlight(); _reposScrollT = setTimeout(_reposWheelHighlight, 90); });
+    _reposWheelBuilt = true;
+  }
+  _reposWheelSet(parseInt((document.getElementById('sel-repos') || {}).value) || 120);
+}
+function _reposWheelHighlight() {
+  var w = document.getElementById('repos-wheel'); if (!w) return;
+  var idx = Math.max(0, Math.min(_REPOS_VALS.length - 1, Math.round(w.scrollTop / _REPOS_IH))), val = _REPOS_VALS[idx];
+  var h = document.getElementById('sel-repos'); if (h) h.value = String(val);
+  var items = w.querySelectorAll('.repos-item');
+  for (var i = 0; i < items.length; i++) { var on = (i === idx); items[i].style.color = on ? 'var(--accent)' : 'var(--text-muted)'; items[i].style.fontSize = on ? '17px' : '15px'; items[i].style.fontWeight = on ? '800' : '700'; }
+}
+function _reposWheelSet(val) {
+  var w = document.getElementById('repos-wheel'); if (!w) return;
+  var idx = _reposIdxNear(val); w.scrollTop = idx * _REPOS_IH;
+  var h = document.getElementById('sel-repos'); if (h) h.value = String(_REPOS_VALS[idx]);
+  _reposWheelHighlight();
+}
 function pickChip(grp, el, val) {
   document.querySelectorAll('#' + grp + '-chips .saisie-chip').forEach(c => c.classList.remove('on'));
   if (el) el.classList.add('on');
@@ -7621,6 +7650,7 @@ function pickChip(grp, el, val) {
   if (h) h.value = val;
 }
 function setChipByVal(grp, val) {
+  if (grp === 'repos') { _reposWheelSet(val); return; }   // repos = molette désormais
   let found = false;
   document.querySelectorAll('#' + grp + '-chips .saisie-chip').forEach(c => {
     const on = String(c.textContent).replace('s', '') === String(val);
@@ -7717,6 +7747,7 @@ function ajouterSerie() {
 }
 
 function majSeriesActuel() {
+  try { _reposWheelInit(); } catch (e) {}
   const list = document.getElementById('series-list-actuel');
   const total = exoEnCours.series.length;
   document.getElementById('badge-series-actuel').textContent = `${total} série${total>1?'s':''}`;
@@ -9108,17 +9139,18 @@ function _maProgSea(data) {
     if (!libre) { var pt = prevTonSameType(sid, s.date); if (pt && pt > 0) { var pct = Math.round(((s.tonnage || 0) - pt) / pt * 100); badge = '<span style="font-size:10px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;flex:none;color:' + (pct >= 0 ? 'var(--good)' : 'var(--danger)') + ';background:' + (pct >= 0 ? 'var(--good-a,rgba(0,168,84,.12))' : 'var(--bad-a,rgba(220,53,69,.12))') + '">tonnage ' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>'; } }
     var exos = (s.exercices || []).map(function (e) {
       var cur = _maBestSet(e); if (!cur) return '';
-      var e1c = cur.charge * (1 + cur.reps / 30), pv = prevOcc(e.nom, s.date);
+      var pv = prevOcc(e.nom, s.date);
       var ini = ((e.nom || '?').replace(/[^A-Za-zÀ-ÿ ]/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase()) || '?';
-      var deltaMain, deltaSub, col;
+      var deltaMain, deltaSub, col, up, dn;
       if (!pv) { deltaMain = '1re fois'; deltaSub = 'nouveau'; col = 'var(--text-muted)'; }
       else {
-        var up = e1c > pv.e1 + 0.01, dn = e1c < pv.e1 - 0.01;
+        // Couleur ET texte suivent la MÊME logique (charge d'abord, puis reps) pour
+        // qu'un « +5 kg » ne soit jamais affiché comme une régression.
+        if (cur.charge !== pv.charge) { up = cur.charge > pv.charge; dn = cur.charge < pv.charge; deltaMain = (up ? '▲ +' : '▼ ') + String(Math.round(Math.abs(cur.charge - pv.charge) * 10) / 10).replace('.', ',') + ' kg'; }
+        else if (cur.reps !== pv.reps) { up = cur.reps > pv.reps; dn = cur.reps < pv.reps; deltaMain = (up ? '▲ +' : '▼ ') + Math.abs(cur.reps - pv.reps) + ' rep' + (Math.abs(cur.reps - pv.reps) > 1 ? 's' : ''); }
+        else { up = false; dn = false; deltaMain = '= stable'; }
         col = up ? 'var(--good)' : dn ? 'var(--danger)' : 'var(--text-muted)';
         deltaSub = up ? 'progression' : dn ? 'régression' : 'maintien';
-        if (cur.charge !== pv.charge) deltaMain = (cur.charge >= pv.charge ? '▲ +' : '▼ ') + String(Math.round(Math.abs(cur.charge - pv.charge) * 10) / 10).replace('.', ',') + ' kg';
-        else if (cur.reps !== pv.reps) deltaMain = (cur.reps >= pv.reps ? '▲ +' : '▼ ') + Math.abs(cur.reps - pv.reps) + ' rep' + (Math.abs(cur.reps - pv.reps) > 1 ? 's' : '');
-        else deltaMain = '= stable';
       }
       var prevTxt = pv ? ' · <span style="color:var(--text-subtle)">avant ' + String(pv.charge).replace('.', ',') + ' kg × ' + pv.reps + '</span>' : '';
       return '<div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--border)">'

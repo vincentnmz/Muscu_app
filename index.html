@@ -1225,12 +1225,11 @@
               </div>
               <input type="hidden" id="sel-rpe" value="">
 
-              <div class="saisie-lbl" style="margin-top:14px">Repos</div>
-              <div class="chip-row" id="repos-chips">
-                <button type="button" class="saisie-chip" onclick="pickChip('repos',this,'60')">60s</button>
-                <button type="button" class="saisie-chip" onclick="pickChip('repos',this,'90')">90s</button>
-                <button type="button" class="saisie-chip on" onclick="pickChip('repos',this,'120')">120s</button>
-                <button type="button" class="saisie-chip" onclick="pickChip('repos',this,'180')">180s</button>
+              <div class="saisie-lbl" style="margin-top:14px">Repos <span style="font-size:10px;color:var(--text-subtle);font-weight:600">— fais défiler</span></div>
+              <style>#repos-wheel::-webkit-scrollbar{display:none}</style>
+              <div style="position:relative;height:180px;overflow:hidden;border-radius:14px;background:var(--surface2);border:1px solid var(--border);margin-top:6px">
+                <div id="repos-wheel" style="height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
+                <div style="position:absolute;left:8px;right:8px;top:72px;height:36px;border-radius:9px;border:1.5px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.08));pointer-events:none"></div>
               </div>
               <input type="hidden" id="sel-repos" value="120">
 
