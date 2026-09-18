@@ -11659,6 +11659,9 @@ function _enSetMode(m) {
   if (sm) sm.style.display = (m === 'muscu') ? '' : 'none';
   if (sc) sc.style.display = (m === 'cardio') ? '' : 'none';
   if (sh) sh.style.display = (m === 'hyrox') ? '' : 'none';
+  // Bloc « Mon programme » = MUSCU uniquement (pas de programme cardio/hyrox pour
+  // l'instant) → masqué en Cardio et Hyrox.
+  var pc = document.getElementById('en-prog-card'); if (pc) pc.style.display = (m === 'muscu') ? '' : 'none';
   // Hyrox a ses propres boutons (chrono / saisie) dans sa carte → on masque le
   // « Démarrer » générique et les constructeurs de programme.
   var st = document.getElementById('en-start'); if (st) { st.classList.toggle('cardio', m === 'cardio'); st.style.display = (m === 'hyrox') ? 'none' : ''; }
