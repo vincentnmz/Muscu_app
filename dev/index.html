@@ -997,6 +997,13 @@
         #tab-seance .en-seac .nv-seancedet{ margin:0 13px 12px; }
       </style>
       <div class="en-hub">
+        <!-- Onglets Muscu / Cardio / Hyrox EN HAUT de la page -->
+        <div class="en-seg" id="en-seg">
+          <button id="en-seg-muscu" class="on" onclick="_enSetMode('muscu')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
+          <button id="en-seg-cardio" onclick="_enSetMode('cardio')"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
+          <button id="en-seg-hyrox" onclick="_enSetMode('hyrox')"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7z"/><path d="M9 12h6M12 9v6"/></svg>Hyrox</button>
+        </div>
+
         <!-- Mon programme (nb séances + stratégie + adhérence) — MUSCU uniquement -->
         <div class="en-card en-prog" id="en-prog-card">
           <div class="en-label">Mon programme</div>
@@ -1006,13 +1013,6 @@
             <div class="en-bar"><span id="en-adh-bar" style="width:0%"></span></div>
             <div class="en-adh-txt"><b id="en-adh-v">—</b> <span id="en-adh-l">cette semaine</span></div>
           </div>
-        </div>
-
-        <!-- Toggle Musculation / Cardio -->
-        <div class="en-seg" id="en-seg">
-          <button id="en-seg-muscu" class="on" onclick="_enSetMode('muscu')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
-          <button id="en-seg-cardio" onclick="_enSetMode('cardio')"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
-          <button id="en-seg-hyrox" onclick="_enSetMode('hyrox')"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7z"/><path d="M9 12h6M12 9v6"/></svg>Hyrox</button>
         </div>
 
         <!-- Sélection MUSCU -->
