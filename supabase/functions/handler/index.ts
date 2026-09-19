@@ -208,9 +208,11 @@ function computeGlobal(perfs: any[]): any {
 }
 
 function computeRecent(perfs: any[], now: Date): any {
-  const KEY_MAP: Record<string, string> = { ACUTE: 'j7', MID: 'j14', CHRONIC: 'j28', LONG: 'j56' }
+  // Fenêtres pour l'écran Analyses : les 4 de base + périodes longues (3/6/9 mois, an).
+  const RECENT_WINDOWS: Record<string, number> = { ...WINDOWS, M3: 90, M6: 180, M9: 270, Y: 365 }
+  const KEY_MAP: Record<string, string> = { ACUTE: 'j7', MID: 'j14', CHRONIC: 'j28', LONG: 'j56', M3: 'j90', M6: 'j180', M9: 'j270', Y: 'j365' }
   const result: Record<string, any> = {}
-  for (const [key, days] of Object.entries(WINDOWS)) {
+  for (const [key, days] of Object.entries(RECENT_WINDOWS)) {
     const cutoff = fmtYMD(minus(now, days))
     const filtered = perfs.filter(r => normDate(r.date) >= cutoff)
     // séances = nombre de JOURS d'entraînement distincts (comme Code.gs finalizeWindow: w.dates.size)
@@ -219,8 +221,9 @@ function computeRecent(perfs: any[], now: Date): any {
     const tonnage = filtered.reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
     const rpeRows = filtered.filter(r => r.rpe)
     const parMuscle: Record<string, number> = {}
+    const seriesMuscle: Record<string, number> = {}
     for (const r of filtered) {
-      if (r.muscle) parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + ((Number(r.charge) || 0) * (Number(r.reps) || 0))
+      if (r.muscle) { parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + ((Number(r.charge) || 0) * (Number(r.reps) || 0)); seriesMuscle[r.muscle] = (seriesMuscle[r.muscle] || 0) + 1 }
     }
     // tonnage par jour, puis loads sur TOUTE la fenêtre (jours de repos = 0) — comme Code.gs
     const dailyTonnage: Record<string, number> = {}
@@ -239,13 +242,36 @@ function computeRecent(perfs: any[], now: Date): any {
     const strain = (monotonie !== null) ? Math.round(mean * days * monotonie) : null
     result[KEY_MAP[key]] = {
       seances,
+      series: filtered.length,
+      reps: filtered.reduce((s, r) => s + (Number(r.reps) || 0), 0),
       tonnage: Math.round(tonnage / 100) / 10,
       tonnage_kg: Math.round(tonnage),
       rpe_moyen: rpeRows.length ? Math.round(rpeRows.reduce((s, r) => s + Number(r.rpe), 0) / rpeRows.length * 10) / 10 : null,
       volume_par_muscle: parMuscle,
+      series_par_muscle: seriesMuscle,
       frequence_semaine: Math.round(seances / (days / 7) * 10) / 10,
       monotonie,
       strain,
+    }
+  }
+  // Fenêtre « semaine calendaire » (depuis lundi) — pour le réglage semaine_type.
+  {
+    const cutoff = fmtYMD(getLundi(now))
+    const filtered = perfs.filter(r => normDate(r.date) >= cutoff)
+    const seriesMuscle: Record<string, number> = {}
+    const parMuscle: Record<string, number> = {}
+    for (const r of filtered) if (r.muscle) { seriesMuscle[r.muscle] = (seriesMuscle[r.muscle] || 0) + 1; parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + ((Number(r.charge) || 0) * (Number(r.reps) || 0)) }
+    const tonnage = filtered.reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
+    const rpeRows = filtered.filter(r => r.rpe)
+    result['semaineCal'] = {
+      seances: new Set(filtered.map(r => normDate(r.date))).size,
+      series: filtered.length,
+      reps: filtered.reduce((s, r) => s + (Number(r.reps) || 0), 0),
+      tonnage: Math.round(tonnage / 100) / 10,
+      tonnage_kg: Math.round(tonnage),
+      rpe_moyen: rpeRows.length ? Math.round(rpeRows.reduce((s, r) => s + Number(r.rpe), 0) / rpeRows.length * 10) / 10 : null,
+      volume_par_muscle: parMuscle,
+      series_par_muscle: seriesMuscle,
     }
   }
   return result
@@ -636,7 +662,7 @@ function _aggCardioWindow(sessions: any[], now: Date, days: number): any {
 function _cardioNumify(ind: Record<string, any>): Record<string, any> {
   const out: Record<string, any> = {}
   for (const [k, v] of Object.entries(ind)) {
-    if (k === 'type_cardio') { out[k] = String(v ?? '') ; continue }
+    if (k === 'type_cardio' || k === 'hyrox_mode' || k === 'hyrox_division') { out[k] = String(v ?? '') ; continue }
     out[k] = (v === '' || v == null) ? null : (Number(v) || 0)
   }
   return out
@@ -776,6 +802,26 @@ function buildVolumeSemaineParMuscle(perfs: any[], now: Date): any[] {
     if (normDate(r.date) >= lundiStr && r.muscle) parMuscle[r.muscle] = (parMuscle[r.muscle] || 0) + 1
   }
   return Object.entries(parMuscle).map(([muscle, faites]) => ({ muscle, faites }))
+}
+
+// Détail des séances (Analyses · Historique) : 20 dernières séances, regroupées
+// par (date, seance_id), avec chaque exercice et ses séries (charge/reps/rpe/repos).
+function buildSeancesDetail(perfs: any[]): any[] {
+  const map: Record<string, any> = {}
+  for (const r of perfs) {
+    const dIso = normDate(r.date); if (!dIso) continue
+    const key = dIso + '|' + String(r.seance_id ?? '')
+    if (!map[key]) map[key] = { date: dIso, date_fr: fmtFR(r.date), seance_id: String(r.seance_id ?? ''), tonnage: 0, series: 0, exos: {} as Record<string, any> }
+    const s = map[key], charge = Number(r.charge) || 0, reps = Number(r.reps) || 0
+    s.tonnage += charge * reps; s.series++
+    const exo = r.exercice || '—'
+    if (!s.exos[exo]) s.exos[exo] = { nom: exo, muscle: r.muscle || '', series: [] }
+    s.exos[exo].series.push({ charge, reps, rpe: Number(r.rpe) || null, repos: Number(r.repos) || null })
+  }
+  return Object.values(map)
+    .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
+    .slice(0, 20)
+    .map((s: any) => ({ date: s.date, date_fr: s.date_fr, seance_id: s.seance_id, tonnage: Math.round(s.tonnage), nb_series: s.series, exercices: Object.values(s.exos) }))
 }
 
 // ── Agrégats FOOT (extraits de handleGetSuiviJoueur — ISO-COMPORTEMENT) ──────────
@@ -1268,6 +1314,280 @@ async function handleResetPassword(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
+// « Lecture Novalyz » (muscu) : constats + 1 reco, ORIENTÉS OBJECTIF, à partir de
+// signaux DÉJÀ calculés (comparison 4 sem., moteur, régularité). Déterministe ;
+// ne recalcule rien et ne remplace pas le moteur (angle progression/objectif).
+// Angle complémentaire de moteur.reco (qui est orienté état/récup du jour).
+// « Respect du programme » : sur les exercices portant une cible (charge %1RM /
+// RPE), combien sont DANS la cible à leur dernière exécution. Réutilise la même
+// logique que le front (1RM estimé = max charge×(1+reps/30) ; charge tol ±5% ;
+// RPE moyen ±1). Retourne {nCible, nEval, nOk} ou null si aucune cible définie.
+function buildRespectProgramme(programme: any[], seancesDetail: any[], perfs: any[]): any {
+  const cibles = (programme || []).filter(p => p && (p.charge_pct_1rm != null || p.rpe_cible != null))
+  if (!cibles.length) return null
+  const est1RM: Record<string, number> = {}
+  for (const r of (perfs || [])) {
+    const exo = r.exercice; if (!exo) continue
+    const c = Number(r.charge) || 0, reps = Number(r.reps) || 0
+    if (!c || !reps) continue
+    const e = c * (1 + reps / 30)
+    if (!est1RM[exo] || e > est1RM[exo]) est1RM[exo] = e
+  }
+  const seen: Record<string, boolean> = {}
+  let nCible = 0, nEval = 0, nOk = 0
+  for (const p of cibles) {
+    const exo = p.exercice; if (!exo || seen[exo]) continue; seen[exo] = true
+    nCible++
+    let lastEx: any = null, lastDate = ''
+    for (const s of (seancesDetail || [])) {
+      for (const e of (s.exercices || [])) { if (e.nom === exo && (s.date || '') >= lastDate) { lastDate = s.date; lastEx = e } }
+    }
+    const series = lastEx ? (lastEx.series || []) : []
+    if (!series.length) continue
+    nEval++
+    let chargeOk = true, rpeOk = true
+    if (p.charge_pct_1rm != null && est1RM[exo]) {
+      const target = Math.round(est1RM[exo] * Number(p.charge_pct_1rm) / 100 / 2.5) * 2.5
+      const real = Math.max(...series.map((x: any) => Number(x.charge) || 0))
+      if (target && real) chargeOk = Math.abs(real - target) / target <= 0.05
+    }
+    if (p.rpe_cible != null) {
+      const rpes = series.map((x: any) => Number(x.rpe) || 0).filter((v: number) => v > 0)
+      if (rpes.length) { const mr = Math.round(rpes.reduce((a: number, b: number) => a + b, 0) / rpes.length); rpeOk = Math.abs(mr - Number(p.rpe_cible)) <= 1 }
+    }
+    if (chargeOk && rpeOk) nOk++
+  }
+  return { nCible, nEval, nOk }
+}
+function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any, execCible?: any): any {
+  // Normalisé SANS accents : des valeurs héritées existent (« séche » vs « sèche »),
+  // la détection doit rester robuste à l'orthographe (sinon le cadrage saute).
+  const obj = String(objectif || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const prise = obj.includes('masse') || obj.includes('hypertroph')
+  const seche = obj.includes('seche') || obj.includes('perte')
+  // Objectif = colonne vertébrale : recomp (masse + sèche) et maintien doivent aussi
+  // cadrer la lecture (pas seulement masse/sèche). Synchronisé avec OBJECTIFS (front).
+  const recomp = prise && seche
+  const maintien = obj.includes('maintien')
+  const cmp = (comparison && comparison.j28_vs_j28prec) || {}
+  const tonEvolRaw = cmp.tonnage ? cmp.tonnage.evol_pct : null
+  const rpeDiff = cmp.rpe ? cmp.rpe.diff : null
+  // FIABILITÉ : nombre de séances sur la fenêtre courante / précédente (28 j).
+  const nCur = cmp.seances ? (cmp.seances.j28 != null ? cmp.seances.j28 : cmp.seances.courant) : null
+  const nPrev = cmp.seances ? (cmp.seances.j28_prec != null ? cmp.seances.j28_prec : cmp.seances.precedent) : null
+  // Une évolution % n'est fiable que si la période précédente est une VRAIE base
+  // (≥ 3 séances) — sinon un mois quasi vide produit des % aberrants (+2400 %…).
+  const baseFiable = typeof nPrev === 'number' && nPrev >= 3
+  const tonEvol = (tonEvolRaw != null && baseFiable) ? tonEvolRaw : null
+  const recup = (moteur && moteur.recup) || null
+  const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
+  // Contexte de performance (déclaré par l'athlète) : la synthèse doit interpréter
+  // en conséquence (déload → baisse de volume normale ; intensification → hausse
+  // d'effort attendue), sinon l'explication du contexte serait fausse.
+  const ctx = (moteur && moteur.contexte_tag) || null
+  const enDeload = ctx === 'deload'
+  const enIntensif = ctx === 'intensification'
+  const enReprise = ctx === 'retour_vacances' || ctx === 'retour_blessure'
+  // État du jour dégradé (récup faible OU disponibilité Vigilance/À surveiller) :
+  // la reco progression doit alors S'ALIGNER avec le verdict (pas de « augmente »).
+  const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
+  const seancesCur = regularite ? (regularite.seances_semaine != null ? regularite.seances_semaine : (regularite.seances_j7 != null ? regularite.seances_j7 : null)) : null
+  const seancesPrev = regularite ? (regularite.seances_prevues || null) : null
+
+  const constats: any[] = []
+  if (tonEvol != null) {
+    if (tonEvol >= 5 && (rpeDiff == null || rpeDiff <= 0.5)) {
+      constats.push({ ton: 'positif', texte: `Ton volume progresse (+${tonEvol}% sur 4 semaines) sans hausse marquée de l'effort perçu — progression cohérente${recomp ? ' avec ta recomposition (tu construis à poids stable)' : (prise ? ' avec ta prise de masse' : (seche ? ' malgré la sèche, bon signe' : (maintien ? ' — au-delà de ce qu\'un simple maintien demande' : '')))}.` })
+    } else if (tonEvol <= -8) {
+      if (enDeload) constats.push({ ton: 'neutre', texte: `Volume réduit (${tonEvol}% sur 4 semaines) — normal pendant ton déload, tu récupères.` })
+      else if (enReprise) constats.push({ ton: 'neutre', texte: `Volume plus bas (${tonEvol}% sur 4 semaines) — cohérent avec ta reprise, remonte progressivement.` })
+      else constats.push({ ton: 'attention', texte: `Ton volume a baissé (${tonEvol}% sur 4 semaines)${recomp ? ' — surveille ta force pour préserver ta recomposition' : (seche ? ' — attention à préserver le muscle pendant la sèche' : (maintien ? ' — tolérable pour un maintien tant que ta régularité tient' : ''))}.` })
+    } else {
+      constats.push({ ton: 'neutre', texte: `Volume stable sur 4 semaines (${tonEvol > 0 ? '+' : ''}${tonEvol}%).` })
+    }
+  } else if (tonEvolRaw != null) {
+    // Une évolution existe mais la base est trop courte pour l'affirmer honnêtement.
+    constats.push({ ton: 'neutre', texte: `Pas encore assez de recul pour juger l'évolution de ton volume (période précédente trop courte).` })
+  }
+  // Respect du programme (exécution vs cible charge %1RM / RPE), si des cibles existent.
+  if (execCible && execCible.nEval > 0) {
+    const r = execCible.nOk, n = execCible.nEval
+    if (r >= Math.ceil(n * 0.7)) constats.push({ ton: 'positif', texte: `Tu respectes ton programme : dans la cible sur ${r}/${n} exercice${n > 1 ? 's' : ''} suivi${n > 1 ? 's' : ''} (charge / RPE).` })
+    else constats.push({ ton: 'attention', texte: `Respect du programme : ${r}/${n} exercice${n > 1 ? 's' : ''} dans la cible — ajuste tes charges ou revois tes cibles.` })
+  } else if (execCible && execCible.nCible > 0) {
+    constats.push({ ton: 'neutre', texte: `Tu as défini des cibles mais pas encore réalisé ces exercices — fais-les pour suivre ton respect du programme.` })
+  }
+  // En intensification, une hausse de RPE est ATTENDUE → on ne la traite pas comme
+  // une contrainte anormale (la récup faible, elle, reste un signal quel que soit le contexte).
+  const rpeMonte = rpeDiff != null && rpeDiff >= 0.7 && (tonEvol == null || tonEvol <= 2) && !enIntensif
+  const contrainte = rpeMonte || recup === 'Faible'
+  if (rpeMonte) {
+    constats.push({ ton: 'attention', texte: `Ton effort perçu (RPE) monte (+${rpeDiff}) alors que le volume stagne — tu forces plus pour le même travail.` })
+  } else if (recup === 'Faible') {
+    constats.push({ ton: 'attention', texte: `Ta récupération est dégradée ces jours-ci.` })
+  } else if (etatVigilance) {
+    constats.push({ ton: 'attention', texte: `Ton état du jour appelle à la vigilance (récupération / fatigue) — à prendre en compte avant d'intensifier.` })
+  }
+  const regFaible = !!(seancesPrev && seancesCur != null && seancesCur < seancesPrev * 0.6)
+  if (regFaible) constats.push({ ton: 'attention', texte: `Régularité sous ton objectif (${seancesCur}/${seancesPrev} séances).` })
+  else if (seancesPrev && seancesCur != null && seancesCur >= seancesPrev && !constats.some(c => c.ton === 'attention')) {
+    constats.push({ ton: 'positif', texte: `Régularité au rendez-vous (${seancesCur}/${seancesPrev} séances).` })
+  }
+
+  const aBaisse = tonEvol != null && tonEvol <= -8
+  const progOk = tonEvol != null && tonEvol >= 5
+  let reco: any
+  if (contrainte) reco = { texte: `Allège temporairement le volume ou l'intensité 1 à 2 séances pour laisser la récupération remonter.`, priorite: 'haute' }
+  else if (regFaible) reco = { texte: `Vise ${seancesPrev} séances/semaine : la régularité est le 1er moteur de progression.`, priorite: 'moyenne' }
+  // État en vigilance : on NE dit PAS « augmente » — on s'aligne sur le verdict.
+  else if (etatVigilance && progOk) reco = { texte: `Ta progression est cohérente, mais ton état du jour appelle à la vigilance : garde la charge sans l'augmenter aujourd'hui et priorise la récupération ; tu relanceras la surcharge une fois au vert.`, priorite: 'moyenne' }
+  else if (etatVigilance) reco = { texte: `Priorise la récupération aujourd'hui (état en vigilance) avant d'augmenter la charge.`, priorite: 'moyenne' }
+  else if (aBaisse) reco = { texte: recomp ? `Reviens à tes charges habituelles pour préserver tes acquis (recomposition).` : (maintien ? `Reviens à ta charge habituelle : elle suffit à maintenir tes acquis.` : (prise ? `Remonte progressivement le volume par muscle vers ta cible pour relancer la prise de masse.` : `Remonte progressivement ton volume vers ta cible.`)), priorite: 'moyenne' }
+  else if (progOk) reco = { texte: maintien ? `Tu es même au-dessus d'un simple maintien : garde cette charge, inutile de forcer la surcharge.` : `Conserve la structure actuelle et poursuis la surcharge progressive (petites hausses de charge ou de reps).`, priorite: 'info' }
+  else reco = { texte: `Continue et enregistre régulièrement tes séances : les analyses s'affinent avec les données.`, priorite: 'info' }
+
+  // Confiance = profondeur réelle des données (nb de séances) + présence d'une base
+  // de comparaison fiable — plus honnête que « un % existe donc c'est bon ».
+  let confiance: string
+  if (nCur == null || nCur < 2) confiance = 'faible'
+  else if (!baseFiable) confiance = 'moyenne'
+  else confiance = (nCur >= 6) ? 'bonne' : 'moyenne'
+  return { objectif: objectif || null, constats: constats.slice(0, 3), reco, confiance }
+}
+
+// « Lecture Novalyz » (cardio) : régularité + charge cardio (RPE×durée) 28j vs 28j
+// précédents + efficience (FC à effort constant). Déterministe, ne recalcule que
+// des agrégats simples sur cardio.history. S'aligne sur l'état du jour (récup/dispo).
+function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
+  const hist = (cardio && cardio.history) || []
+  if (!hist.length) {
+    return { constats: [{ ton: 'neutre', texte: `Pas encore de cardio enregistré.` }], reco: { texte: `Ajoute une sortie cardio pour suivre ton endurance.`, priorite: 'info' }, confiance: 'faible' }
+  }
+  const c28 = fmtYMD(minus(now, 28)), c56 = fmtYMD(minus(now, 56))
+  let n28 = 0, n56 = 0, ch28 = 0, ch56 = 0, dist28 = 0
+  const fcPts: any[] = []
+  for (const s of hist) {
+    const d = String(s.date || '')
+    const ua = (Number(s.rpe) || 0) * (Number(s.duree) || 0)
+    if (d >= c28) { n28++; ch28 += ua; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy), rpe: Number(s.rpe) || 0 }) }
+    else if (d >= c56) { n56++; ch56 += ua }
+  }
+  // FIABILITÉ : n'évaluer l'évolution de charge que si la période précédente a une
+  // vraie base (≥ 2 sorties) — sinon 1 sortie isolée produit un % aberrant.
+  const chEvol = (ch56 > 0 && n56 >= 2) ? Math.round((ch28 - ch56) / ch56 * 100) : null
+  const recup = (moteur && moteur.recup) || null
+  const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
+  const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
+
+  const constats: any[] = []
+  if (n28 === 0) {
+    constats.push({ ton: 'neutre', texte: `Aucune sortie cardio ces 4 dernières semaines.` })
+  } else {
+    constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${Math.round(dist28 * 10) / 10} km au total)` : ''}.` })
+    if (chEvol != null && chEvol >= 50) constats.push({ ton: 'attention', texte: `Ta charge cardio a fortement augmenté (+${chEvol}% sur 4 semaines) — hausse rapide.` })
+    else if (chEvol != null && chEvol <= -40) constats.push({ ton: 'neutre', texte: `Ta charge cardio a baissé (${chEvol}% sur 4 semaines).` })
+    // Efficience : FC moyenne 1re vs 2de moitié — MAIS seulement « à effort comparable »,
+    // càd si le RPE moyen des deux moitiés est proche (sinon une FC plus basse peut venir
+    // de sorties plus faciles, pas d'un gain d'endurance). On ne l'affirme donc que si
+    // l'effort est vérifié comparable.
+    if (fcPts.length >= 4) {
+      const srt = fcPts.slice().sort((a, b) => a.d.localeCompare(b.d))
+      const half = Math.floor(srt.length / 2)
+      const avgFc = (arr: any[]) => arr.reduce((s, x) => s + x.fc, 0) / arr.length
+      const oldH = srt.slice(0, half), newH = srt.slice(half)
+      const fcOld = avgFc(oldH), fcNew = avgFc(newH)
+      const rpeOldArr = oldH.map((x: any) => x.rpe).filter((v: number) => v > 0)
+      const rpeNewArr = newH.map((x: any) => x.rpe).filter((v: number) => v > 0)
+      const effortComparable = rpeOldArr.length && rpeNewArr.length &&
+        Math.abs(rpeOldArr.reduce((a: number, b: number) => a + b, 0) / rpeOldArr.length - rpeNewArr.reduce((a: number, b: number) => a + b, 0) / rpeNewArr.length) <= 1
+      if (fcNew <= fcOld - 4 && effortComparable) constats.push({ ton: 'positif', texte: `À effort comparable, ta FC moyenne baisse (${Math.round(fcOld)}→${Math.round(fcNew)} bpm) — bon signe pour ton endurance.` })
+    }
+  }
+
+  const chargeJump = chEvol != null && chEvol >= 50
+  let reco: any
+  if (etatVigilance && (chargeJump || n28 > 0)) reco = { texte: `Ton état du jour appelle à la vigilance : garde un cardio facile aujourd'hui et priorise la récupération.`, priorite: 'moyenne' }
+  else if (chargeJump) reco = { texte: `Fais monter ta charge cardio plus graduellement (≈ +10 % par semaine max) pour limiter le risque de surmenage.`, priorite: 'moyenne' }
+  else if (n28 === 0) reco = { texte: `Reprends 1 à 2 sorties cardio par semaine pour bâtir ta base d'endurance.`, priorite: 'info' }
+  else reco = { texte: `Continue sur ce rythme et varie les intensités (facile / modéré) pour progresser sans t'épuiser.`, priorite: 'info' }
+
+  const confiance = (n28 + n56 >= 4) ? 'bonne' : (n28 > 0 ? 'moyenne' : 'faible')
+  return { objectif: null, constats: constats.slice(0, 3), reco, confiance }
+}
+
+// « Lecture Novalyz » (croisé) : équilibre muscu/cardio (28j) + récupération vs
+// charge globale. Déterministe ; s'aligne sur l'état du jour.
+function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Date): any {
+  const c28 = fmtYMD(minus(now, 28))
+  let cardioUA = 0
+  const hist = (cardio && cardio.history) || []
+  for (const s of hist) { if (String(s.date || '') >= c28) cardioUA += (Number(s.rpe) || 0) * (Number(s.duree) || 0) }
+  const muscuT = (comparison && comparison.j28_vs_j28prec && comparison.j28_vs_j28prec.tonnage && comparison.j28_vs_j28prec.tonnage.j28) || 0
+  const muscuUA = Math.round(muscuT / 50)   // proxy pour rendre muscu et cardio comparables
+  const tot = muscuUA + cardioUA
+  const recup = (moteur && moteur.recup) || null
+  const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
+  const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
+  if (tot === 0) {
+    return { objectif: null, constats: [{ ton: 'neutre', texte: `Pas encore assez de séances muscu + cardio pour croiser tes données.` }], reco: { texte: `Enregistre tes séances des deux côtés : Novalyz croisera charge et récupération.`, priorite: 'info' }, confiance: 'faible' }
+  }
+  const mPct = Math.round(muscuUA / tot * 100)
+  const constats: any[] = []
+  if (mPct >= 85) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % musculation (${mPct} %). Un peu de cardio renforcerait ta base d'endurance.` })
+  else if (mPct <= 15) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % cardio (${100 - mPct} %). La musculation entretient force et masse.` })
+  else constats.push({ ton: 'positif', texte: `Bon équilibre muscu / cardio (${mPct} % / ${100 - mPct} %).` })
+  if (recup === 'Excellent' || recup === 'Bon') constats.push({ ton: 'positif', texte: `Ta récupération est ${String(recup).toLowerCase()} — tu encaisses bien ta charge actuelle.` })
+  else if (recup === 'Faible') constats.push({ ton: 'attention', texte: `Ta récupération est basse — allège ta charge globale (muscu + cardio) le temps qu'elle remonte.` })
+
+  let reco: any
+  if (etatVigilance) reco = { texte: `Ta charge globale pèse sur ta récupération : prévois une semaine un peu plus légère ou une journée de repos.`, priorite: 'moyenne' }
+  else if (mPct >= 85) reco = { texte: `Ajoute 1 séance de cardio facile par semaine pour équilibrer et soutenir ta récupération.`, priorite: 'info' }
+  else if (mPct <= 15) reco = { texte: `Ajoute 1 à 2 séances de musculation par semaine pour préserver force et masse.`, priorite: 'info' }
+  else reco = { texte: `Bon équilibre : conserve ce ratio muscu / cardio et veille à ce que la récupération suive la charge.`, priorite: 'info' }
+  const confiance = (muscuUA > 0 && cardioUA > 0) ? 'bonne' : 'moyenne'
+  return { objectif: null, constats: constats.slice(0, 3), reco, confiance }
+}
+
+// P0 #6 — Centre d'alertes (athlète) : UNE liste typée au schéma unifié, à partir
+// des alertes DÉJÀ produites par le moteur (pas de 2e moteur) + stagnation depuis
+// comparison. Classée par sévérité. L'état « lu » est appliqué ensuite (getAppData).
+function buildAlertesCentre(moteur: any, comparison: any): any[] {
+  const SEV: Record<string, number> = { haute: 3, moyenne: 2, basse: 1 }
+  const TITRES: Record<string, string> = {
+    absence: 'Absence prolongée', charge: 'Charge en hausse', surcharge: 'Charge aiguë élevée',
+    sous_charge: 'Sous-charge', douleur: 'Douleur signalée', fatigue: 'Fatigue élevée',
+    sommeil: 'Sommeil dégradé', stagnation: 'Stagnation',
+  }
+  const ACTIONS: Record<string, string> = {
+    absence: 'Reprends une séance cette semaine pour relancer la régularité.',
+    charge: "Surveille tes sensations, évite d'augmenter la charge cette semaine.",
+    surcharge: 'Allège la charge 1 à 2 séances pour récupérer.',
+    sous_charge: 'Tu peux augmenter progressivement ton volume.',
+    douleur: "Adapte la charge sur la zone et surveille ; avis kiné si ça persiste.",
+    fatigue: "Priorise le sommeil et la récupération ; évite d'intensifier.",
+    sommeil: "Améliore ton sommeil ; séance normale mais pas d'intensification.",
+    stagnation: 'Varie les exercices ou introduis une semaine plus légère.',
+  }
+  const reliability = (moteur && moteur.confiance) || 'moyenne'
+  const context = (moteur && moteur.contexte_tag) || null
+  const out: any[] = []
+  const push = (type: string, severity: string, evidence: string, source: string) =>
+    out.push({ type, severity: severity || 'moyenne', source: source || 'moteur', title: TITRES[type] || type, evidence: evidence || '', context, reliability, action: ACTIONS[type] || '' })
+  ;((moteur && moteur.alertes) || []).forEach((a: any) => push(a.type, a.severite, a.message, 'moteur'))
+  // Stagnation : ≥3 exercices en baisse cette semaine (depuis comparison), si non couvert.
+  const det = (comparison && comparison.j7_vs_j7prec && comparison.j7_vs_j7prec.charge_details) || []
+  const baisseAll = det.filter((d: any) => d && d.down)
+  const baisseExos = baisseAll.map((d: any) => d.exercice).filter(Boolean)
+  if (baisseAll.length >= 3 && !out.some(a => a.type === 'stagnation')) {
+    // On NOMME les exercices concernés (sinon « 3 exercices en baisse » sans détail).
+    const liste = baisseExos.slice(0, 6).join(', ')
+    const ev = baisseExos.length ? `${baisseAll.length} exercices en baisse cette semaine : ${liste}.` : `${baisseAll.length} exercices en baisse cette semaine.`
+    push('stagnation', 'moyenne', ev, 'progression')
+  }
+  out.sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0))
+  return out
+}
+
 async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')?.trim()
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
@@ -1287,6 +1607,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: cardioRows },
     { data: objectifRows },
     { data: pasJourRows },
+    { data: blessuresRows },
+    { data: alerteLueRows },
+    { data: prefRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1299,6 +1622,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'cardio_%').order('date', { ascending: false }),
     sb().from('objectif').select('*').eq('athlete_id', athleteId).limit(1),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'pasjour_%').order('date', { ascending: false }),
+    sb().from('blessures').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
+    sb().from('indicateurs').select('cle').eq('athlete_id', athleteId).eq('seance_id', 'alerte_lue'),
+    sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').order('date', { ascending: false }),
   ])
 
   const perfs = perfsAll || []
@@ -1404,8 +1730,12 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const seancesJ7 = recentData.j7?.seances ?? 0
   // séances de la SEMAINE CALENDAIRE (depuis lundi) → l'anneau d'objectif se remet à zéro chaque lundi
   const seancesCetteSemaine = new Set(perfsWeek.map(r => normDate(r.date))).size
-  // séances prévues/semaine : table objectif, colonne seances_semaine
-  const seancesPrevues = Number(objectifRows?.[0]?.seances_semaine) || 0
+  // séances prévues/semaine : valeur explicite (table objectif) sinon DÉRIVÉE du
+  // programme = nombre de séances distinctes (chaque séance ≈ 1×/semaine). Ainsi
+  // l'adhérence « X/N » reflète le vrai programme (issu de l'onboarding ou du builder).
+  const seancesPrevuesExplicite = Number(objectifRows?.[0]?.seances_semaine) || 0
+  const seancesProgramme = new Set((progRows || []).map((r: any) => String(r.seance_id ?? '')).filter(Boolean)).size
+  const seancesPrevues = seancesPrevuesExplicite || seancesProgramme
   const streakSemaines = computeStreak(dates, now)
   const regulariteObj = {
     seances_j7: seancesJ7,
@@ -1441,11 +1771,14 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id,
     exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini,
     reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id,
+    jour: r.jour != null ? Number(r.jour) : null,   // jour conseillé (1=lun … 7=dim), null = non planifié
+    charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null,   // cible : % du 1RM
+    rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null,                  // cible : RPE
   }))
 
   const bien_etre = (beRows || []).map(r => ({
     date: fmtFR(r.date), sommeil: r.sommeil, energie: r.energie,
-    fatigue: r.fatigue_musculaire, douleur: r.douleur,
+    fatigue: r.fatigue_musculaire, motivation: r.motivation, douleur: r.douleur,
     zone: r.zone_douloureuse, ressenti: r.ressenti_global, note: r.note,
   }))
 
@@ -1496,6 +1829,24 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       history,
     }
   }
+  // Bilans de séance (ressenti perçu + douleurs), muscu vs cardio SÉPARÉS → onglet
+  // Analyses. Lignes indicateurs `ressenti_<type>` / `douleur_<type>` (valeur 1..4 ;
+  // pour la douleur, unite = zone). Triés récent → ancien.
+  let analyses: any = { ressenti_muscu: [], ressenti_cardio: [], douleurs_muscu: [], douleurs_cardio: [] }
+  {
+    const { data: bilanRows } = await sb().from('indicateurs').select('*')
+      .eq('athlete_id', athleteId)
+      .in('cle', ['ressenti_muscu', 'ressenti_cardio', 'douleur_muscu', 'douleur_cardio'])
+      .order('date', { ascending: false }).limit(300)
+    for (const r of (bilanRows || [])) {
+      const base = { date: normDate(r.date), seance_id: r.seance_id, valeur: Number(r.valeur) || null }
+      if (r.cle === 'ressenti_muscu') analyses.ressenti_muscu.push(base)
+      else if (r.cle === 'ressenti_cardio') analyses.ressenti_cardio.push(base)
+      else if (r.cle === 'douleur_muscu') analyses.douleurs_muscu.push({ ...base, zone: r.unite || '' })
+      else if (r.cle === 'douleur_cardio') analyses.douleurs_cardio.push({ ...base, zone: r.unite || '' })
+    }
+  }
+
   // Pas quotidiens ambiants (Fitbit) : [{date, pas}] triés récent → ancien.
   const pas_quotidiens = (pasJourRows || [])
     .filter((r: any) => r.cle === 'pas')
@@ -1526,18 +1877,23 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const histoM = _joursDepuis(premiereP, now)
     const etatM = evaluerEtatAthlete({
       acwr, acwrFiable: fiabiliteACWR(premiereP, ctxObjM, now, acwrCalcA.joursActifs28), seances7: seances7M,
-      douleur: sigM.douleur, fatigue: sigM.fatigue, sommeil: sigM.sommeil, courbatures: null,
+      // Verdict athlète : fatigue = MOYENNE récente (readiness), pas le pire jour.
+      douleur: sigM.douleur, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, courbatures: null,
       injStatut: null, ctxEtat: ctxEtatM,
       q: { jours: histoM != null ? histoM : (perfs.length ? 7 : 0), wellnessN: sigM.wellnessN, hasCharge: perfs.length > 0 },
     })
     moteur = {
       disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
-      recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
+      recScore: etatM.recScore, recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
       acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
       seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
     }
     if (etatM.acwr_note) moteur.acwr_note = etatM.acwr_note
   }
+
+  // Calculés une fois : détail des séances + respect du programme (exécution vs cible).
+  const seancesDetailArr = buildSeancesDetail(perfs)
+  const execCibleMuscu = buildRespectProgramme(programme, seancesDetailArr, perfs)
 
   return jsonResp({
     moteur,
@@ -1571,7 +1927,34 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     contexte,
     sport,
     cardio,
+    analyses,
+    analyse_synthese: {
+      muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj, execCibleMuscu),
+      cardio: buildSyntheseCardio(cardio, moteur, now),
+      croise: buildSyntheseCroise(comparisonData, cardio, moteur, now),
+    },
+    alertes_centre: (() => {
+      const weekKey = fmtYMD(getLundi(now))
+      const luSet = new Set((alerteLueRows || []).map((r: any) => String(r.cle)))
+      return buildAlertesCentre(moteur, comparisonData).map((a: any) => {
+        const id = a.type + '|' + weekKey
+        return { ...a, id, read: luSet.has(id) }
+      })
+    })(),
+    seances_detail: seancesDetailArr,
+    semaine_type: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'semaine_type'); return (r && r.valeur === 'glissant') ? 'glissant' : 'calendaire'; })(),
+    // Onboarding : intro vue une fois + proposition auto de programme coupée par l'athlète.
+    onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
+    prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
     pas_quotidiens,
+    blessures: (blessuresRows || []).map(r => ({
+      id: String(r.id || ''), date: r.date ? fmtFR(r.date) : '',
+      type: String(r.type || ''), localisation: String(r.localisation || ''),
+      gravite: String(r.gravite || ''), duree: (r.duree !== '' && r.duree != null) ? Number(r.duree) : null,
+      retour_terrain: r.retour_terrain ? fmtFR(r.retour_terrain) : '',
+      retour_competition: r.retour_competition ? fmtFR(r.retour_competition) : '',
+      statut: String(r.statut || ''),
+    })),
     volume_obti,
   })
 }
@@ -1701,7 +2084,7 @@ async function handleGetCoachProgramme(params: URLSearchParams): Promise<Respons
   const athleteId = params.get('athlete_id')
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
   const { data } = await sb().from('programme').select('*').eq('athlete_id', athleteId).order('groupe_id').order('id')
-  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id }))
+  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null, charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null, rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null }))
   // le front lit data.lignes ; on garde aussi "programme" par rétro-compat
   return jsonResp({ ok: true, lignes, programme: lignes })
 }
@@ -1793,7 +2176,7 @@ async function handleLierAthlete(params: URLSearchParams): Promise<Response> {
 //   douleur = MAX récent · fatigue = MAX récent · sommeil = MOYENNE récente.
 // (max pour la douleur/fatigue = orienté prévention ; moyenne sommeil = §16, une
 //  seule mauvaise nuit ne doit pas suffire.)
-function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; fatigue: number|null; sommeil: number|null; wellnessN: number } {
+function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; wellnessN: number } {
   const cut = fmtYMD(minus(now, days))
   const doul: number[] = [], fat: number[] = [], som: number[] = []
   for (const r of rows || []) {
@@ -1804,7 +2187,10 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
   }
   const mx = (a: number[]) => a.length ? Math.max(...a) : null
   const mn = (a: number[]) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null
-  return { douleur: mx(doul), fatigue: mx(fat), sommeil: mn(som), wellnessN: Math.max(doul.length, fat.length, som.length) }
+  // `fatigue` = MAX (prévention, lu par le coach — figé). `fatigueMoy` = moyenne
+  // récente, utilisée par le VERDICT athlète (readiness) pour qu'un seul jour
+  // fatigué ne plombe pas la semaine. Ajout non cassant.
+  return { douleur: mx(doul), fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), wellnessN: Math.max(doul.length, fat.length, som.length) }
 }
 
 interface EtatInput {
@@ -1887,13 +2273,18 @@ function evaluerEtatAthlete(s: EtatInput): any {
   const recFaible = recScore != null && recScore < CORE_SEUILS.recup.faible
   const signalConcordant = chargeHaute || douleurGene              // indépendants de la récup
   const recFaibleConcordante = recFaible && signalConcordant
+  // Calibrage sévérité : sous-charge et absence sont des signaux de charge BASSE /
+  // régularité — ils restent des ALERTES (coach, reco) mais ne dégradent PAS la
+  // disponibilité du jour (readiness). De plus, « récup moyenne » seule (<60) ne
+  // suffit plus à passer en Vigilance : il faut « récup faible » (<45) ou un cumul.
+  const alertesEtat = alertes.filter(a => a.type !== 'sous_charge' && a.type !== 'absence')
   let niveau: number
   if (s.injStatut === 'indispo') niveau = 2
   else {
-    const haute = alertes.some(a => a.severite === 'haute')
+    const haute = alertesEtat.some(a => a.severite === 'haute')
     const combo = fatigueHaute && sommeilBas && chargeHaute        // §16 : combinaison de signaux
     const bad = haute || risqueBlessureN === 2 || recFaibleConcordante || combo
-    const mid = alertes.length > 0 || risqueBlessureN === 1 || recFaible || (recScore != null && recScore < CORE_SEUILS.recup.moyen) || s.injStatut === 'retour_progressif'
+    const mid = alertesEtat.length > 0 || risqueBlessureN === 1 || recFaible || s.injStatut === 'retour_progressif'
     niveau = bad ? 2 : mid ? 1 : 0
   }
   if (eff.niveauMin != null && niveau < eff.niveauMin) niveau = eff.niveauMin
@@ -2888,6 +3279,41 @@ async function notifyAthlete(athlete_id: string, payload: Record<string, unknown
   ])
 }
 
+// ── Notifications intelligentes (cron) — roadmap #29 ──────────────────────────
+// Parcourt les athlètes abonnés au push (natif OU web), calcule leurs alertes en
+// RÉUTILISANT handleGetAppData (même logique déterministe, aucune duplication) et
+// envoie UNE notification pour l'alerte IMPORTANTE (severity 'haute', ce qui inclut
+// l'absence prolongée) non déjà notifiée cette semaine. Anti-spam : 1 push par
+// (type, semaine) via indicateurs seance_id='alerte_push'. Protégé par CRON_SECRET.
+async function handleCronPushAlertes(body: any): Promise<Response> {
+  const secret = Deno.env.get('CRON_SECRET')
+  if (!secret || String(body.secret || '') !== secret) return jsonResp({ error: 'unauthorized' }, 401)
+  const [{ data: nt }, { data: ws }] = await Promise.all([
+    sb().from('native_push_tokens').select('athlete_id'),
+    sb().from('push_subscriptions').select('athlete_id'),
+  ])
+  const ids = [...new Set([...(nt || []), ...(ws || [])].map((r: any) => String(r.athlete_id)).filter(Boolean))]
+  const weekKey = fmtYMD(getLundi(new Date()))
+  let pushed = 0, scanned = 0
+  for (const id of ids) {
+    scanned++
+    try {
+      const res = await handleGetAppData(new URLSearchParams({ athlete_id: id }))
+      const data: any = await res.json()
+      const importantes = ((data && data.alertes_centre) || []).filter((a: any) => a && a.severity === 'haute' && !a.read)
+      if (!importantes.length) continue
+      const top = importantes[0]   // déjà trié par sévérité décroissante
+      const key = String(top.id || (top.type + '|' + weekKey))
+      const { data: deja } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').eq('cle', key).limit(1)
+      if (deja && deja.length) continue
+      await notifyAthlete(id, { title: '⚠️ ' + (top.title || 'Alerte Novalyz'), body: top.action || top.evidence || '', tag: 'novalyz-alerte', target: 'accueil' })
+      await sb().from('indicateurs').insert({ athlete_id: id, date: fmtYMD(new Date()), seance_id: 'alerte_push', cle: key, valeur: '1', unite: '', source: 'cron' })
+      pushed++
+    } catch (_) { /* best-effort : un athlète en échec ne bloque pas les autres */ }
+  }
+  return jsonResp({ ok: true, scanned, pushed })
+}
+
 async function handleSaveNativePushToken(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const token = String(body.token || '')
@@ -3221,14 +3647,77 @@ async function handleSaveNote(body: any): Promise<Response> {
 async function handleSaveProgrammeLigne(body: any): Promise<Response> {
   const { athlete_id, athlete_nom, seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, row_index } = body
   if (!athlete_id || !exercice) return jsonResp({ erreur: 'Paramètres manquants' })
+  // jour conseillé : facultatif ; à l'insertion, hérite du jour déjà posé sur la séance.
+  const jourIn = (body.jour === '' || body.jour == null) ? null : Number(body.jour)
+  // cibles (phase 2) : % du 1RM + RPE cible. '' → null (efface).
+  const pctIn = (body.charge_pct_1rm === '' || body.charge_pct_1rm == null) ? null : Number(body.charge_pct_1rm)
+  const rpeIn = (body.rpe_cible === '' || body.rpe_cible == null) ? null : Number(body.rpe_cible)
   if (row_index) {
-    const { error } = await sb().from('programme').update({ seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id }).eq('id', row_index)
+    const patch: any = { seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id }
+    if (body.jour !== undefined) patch.jour = jourIn
+    if (body.charge_pct_1rm !== undefined) patch.charge_pct_1rm = pctIn
+    if (body.rpe_cible !== undefined) patch.rpe_cible = rpeIn
+    const { error } = await sb().from('programme').update(patch).eq('id', row_index)
     if (error) return jsonResp({ erreur: error.message })
   } else {
-    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id })
+    let jour = jourIn
+    if (jour == null && seance_id) {
+      // hérite du jour de la séance (si une autre ligne de la même séance en a un)
+      const { data: sib } = await sb().from('programme').select('jour').eq('athlete_id', athlete_id).eq('seance_id', seance_id).not('jour', 'is', null).limit(1)
+      if (sib && sib.length && sib[0].jour != null) jour = Number(sib[0].jour)
+    }
+    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour, charge_pct_1rm: pctIn, rpe_cible: rpeIn })
     if (error) return jsonResp({ erreur: error.message })
   }
   return jsonResp({ ok: true })
+}
+
+// Jour conseillé d'une séance (Lun=1 … Dim=7, null = non planifié) : appliqué à
+// TOUTES les lignes de la séance. Le jour est indicatif — faire la séance un autre
+// jour ne la pénalise pas (le suivi « réalisé » compte la séance quel que soit le jour).
+async function handleSaveProgrammeJour(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const seance_id = String(body.seance_id ?? '')
+  if (!athlete_id || !seance_id) return jsonResp({ erreur: 'Paramètres manquants' })
+  const jour = (body.jour === '' || body.jour == null) ? null : Number(body.jour)
+  if (jour != null && (isNaN(jour) || jour < 1 || jour > 7)) return jsonResp({ erreur: 'jour invalide' })
+  const { error } = await sb().from('programme').update({ jour }).eq('athlete_id', athlete_id).eq('seance_id', seance_id)
+  if (error) return jsonResp({ erreur: error.message })
+  return jsonResp({ ok: true })
+}
+
+// Génération d'un programme de départ (onboarding). Le FRONT construit les lignes
+// (objectif + jours + niveau → structure, en piochant dans le catalogue) ; le
+// backend persiste de façon atomique : si remplacer=true, on efface d'abord tout
+// le programme de l'athlète, puis on insère les lignes fournies.
+async function handleGenererProgramme(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ erreur: 'athlete_id manquant' })
+  const lignes = Array.isArray(body.lignes) ? body.lignes : []
+  if (!lignes.length) return jsonResp({ erreur: 'Aucune ligne à insérer' })
+  const nom = String(body.athlete_nom || '')
+  const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
+  const rows = lignes.map((l: any) => ({
+    athlete_id, athlete_nom: nom,
+    seance_id: String(l.seance_id ?? ''),
+    exercice: String(l.exercice ?? ''),
+    series_prevues: num(l.series_prevues),
+    reps_mini: num(l.reps_mini),
+    reps_max: num(l.reps_max),
+    repos_sec: num(l.repos_sec),
+    groupe_id: l.groupe_id ? String(l.groupe_id) : null,
+    jour: num(l.jour),
+    charge_pct_1rm: num(l.charge_pct_1rm),
+    rpe_cible: num(l.rpe_cible),
+  })).filter((r: any) => r.exercice && r.seance_id)
+  if (!rows.length) return jsonResp({ erreur: 'Lignes invalides' })
+  if (body.remplacer) {
+    const { error: delErr } = await sb().from('programme').delete().eq('athlete_id', athlete_id)
+    if (delErr) return jsonResp({ erreur: delErr.message })
+  }
+  const { error } = await sb().from('programme').insert(rows)
+  if (error) return jsonResp({ erreur: error.message })
+  return jsonResp({ ok: true, inserees: rows.length })
 }
 
 async function handleSupprimerProgrammeLigne(body: any): Promise<Response> {
@@ -3249,19 +3738,114 @@ async function handleDeleteCoach(body: any): Promise<Response> {
 }
 
 async function handleSaveBienEtre(body: any): Promise<Response> {
-  const { athlete_id, seance_id, date, sommeil, energie, fatigue, douleur, zone, ressenti, note } = body
+  const { athlete_id, seance_id, date, sommeil, energie, fatigue, motivation, douleur, zone, ressenti, note } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   // colonnes numériques : '' ou texte → null (sinon Postgres rejette tout l'insert)
   const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
-  const { error } = await sb().from('bien_etre').insert({
-    date: normDate(date) || fmtYMD(new Date()), seance_id: seance_id || null, athlete_id,
-    sommeil: num(sommeil), energie: num(energie), fatigue_musculaire: num(fatigue), douleur: num(douleur),
+  const d = normDate(date) || fmtYMD(new Date())
+  const row: any = {
+    date: d, seance_id: seance_id || null, athlete_id,
+    sommeil: num(sommeil), energie: num(energie), fatigue_musculaire: num(fatigue), motivation: num(motivation), douleur: num(douleur),
     zone_douloureuse: zone != null && zone !== '' ? String(zone) : null,
     ressenti_global: ressenti != null && ressenti !== '' ? String(ressenti) : null,
     note: num(note),
-  })
+  }
+  // UNE seule ligne bien_etre par (athlete_id, date). L'état du jour (readiness :
+  // sommeil/énergie/fatigue, saisi AVANT la séance) et la douleur (remontée du
+  // bilan APRÈS la séance) écrivent tous deux la ligne du jour → on FUSIONNE les
+  // champs non nuls au lieu d'écraser (sinon l'un effacerait l'autre).
+  const { data: existing } = await sb().from('bien_etre')
+    .select('seance_id').eq('athlete_id', athlete_id).eq('date', d).limit(1)
+  if (existing && existing.length) {
+    const patch: any = {}
+    for (const k of Object.keys(row)) {
+      if (k === 'date' || k === 'athlete_id') continue
+      if (k === 'seance_id') { if (row.seance_id) patch.seance_id = row.seance_id; continue }
+      if (row[k] != null) patch[k] = row[k]   // ne fusionne que les champs fournis
+    }
+    if (!Object.keys(patch).length) return jsonResp({ ok: true, success: true, updated: false })
+    const { error } = await sb().from('bien_etre').update(patch).eq('athlete_id', athlete_id).eq('date', d)
+    if (error) return jsonResp({ success: false, error: error.message })
+    return jsonResp({ ok: true, success: true, updated: true })
+  }
+  const { error } = await sb().from('bien_etre').insert(row)
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ ok: true, success: true })
+}
+
+// Bilan de séance (APRÈS validation, muscu OU cardio) : ressenti perçu + douleur.
+// → lignes `indicateurs` (ressenti_<type> / douleur_<type>) taguées par seance_id,
+//   pour des analyses SÉPARÉES muscu vs cardio. La douleur remonte aussi dans le
+//   bien_etre du jour (fusion) pour rester visible du moteur (règles douleur).
+async function handleSaveBilanSeance(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const type = (body.type === 'cardio') ? 'cardio' : 'muscu'
+  const d = normDate(body.date) || fmtYMD(new Date())
+  const sid = body.seance_id ? String(body.seance_id) : `${type}_${Date.now()}`
+  const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
+  const ressenti = num(body.ressenti)   // 1..4 (1 = Facile … 4 = Très dur)
+  const douleur = num(body.douleur)     // 1..4 (1 = aucune)
+  const zone = (body.zone != null && body.zone !== '') ? String(body.zone) : ''
+
+  const rows: any[] = []
+  if (ressenti != null) rows.push({ date: d, athlete_id, seance_id: sid, cle: `ressenti_${type}`, valeur: String(ressenti), unite: '', source: 'saisie' })
+  if (douleur != null && douleur > 1) rows.push({ date: d, athlete_id, seance_id: sid, cle: `douleur_${type}`, valeur: String(douleur), unite: zone, source: 'saisie' })
+  if (rows.length) {
+    const { error } = await sb().from('indicateurs').insert(rows)
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+
+  // Ressenti + douleur → bien_etre du jour (fusion) : c'est le SNAPSHOT du jour que
+  // lisent l'écran État (« bien-être du jour ») et le moteur (règles douleur). On y
+  // recopie donc TOUJOURS le ressenti et la douleur du bilan (avant, seule une
+  // douleur > 1 y arrivait → ressenti/douleur=1 invisibles côté État).
+  const patch: any = {}
+  if (ressenti != null) patch.ressenti_global = String(ressenti)
+  if (douleur != null) { patch.douleur = douleur; if (zone) patch.zone_douloureuse = zone }
+  if (Object.keys(patch).length) {
+    const { data: be } = await sb().from('bien_etre').select('seance_id').eq('athlete_id', athlete_id).eq('date', d).limit(1)
+    if (be && be.length) {
+      await sb().from('bien_etre').update(patch).eq('athlete_id', athlete_id).eq('date', d)
+    } else {
+      await sb().from('bien_etre').insert(Object.assign({ date: d, seance_id: sid, athlete_id }, patch))
+    }
+  }
+  return jsonResp({ ok: true, success: true })
+}
+
+// HYROX (P2-22) : 8 × (Run 1 km + atelier). Stockée dans l'historique cardio
+// (seance_id `cardio_hyrox_…`, type_cardio='hyrox', durée=total) → compte dans la
+// charge cardio, et les 16 splits + poids utilisés reviennent avec la session.
+async function handleSaveHyrox(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const d = normDate(body.date) || fmtYMD(new Date())
+  const mode = body.mode === 'entrainement' ? 'entrainement' : 'course'
+  const division = String(body.division || 'mo')
+  const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
+  const segs = (body.segments && typeof body.segments === 'object') ? body.segments : {}
+  const poids = (body.poids && typeof body.poids === 'object') ? body.poids : {}
+  const segKeys = Object.keys(segs).filter(k => num(segs[k]) != null && Number(segs[k]) > 0)
+  if (!segKeys.length) return jsonResp({ success: false, error: 'aucun segment' })
+  const total = num(body.total_sec) || segKeys.reduce((a, k) => a + Number(segs[k]), 0)
+  const runKm = segKeys.filter(k => k.indexOf('run') === 0).length
+  const sid = `cardio_hyrox_${Date.now()}`
+  const R = (cle: string, valeur: string, unite = '') => ({ date: d, athlete_id, seance_id: sid, cle, valeur, unite, source: 'saisie' })
+  const rows: any[] = [
+    R('type_cardio', 'hyrox'),
+    R('duree', String(Math.round(total / 60)), 'min'),
+    R('hyrox_mode', mode),
+    R('hyrox_division', division),
+    R('hyrox_total', String(total), 's'),
+  ]
+  if (runKm > 0) rows.push(R('distance', String(runKm), 'km'))
+  if (num(body.rpe) != null) rows.push(R('rpe', String(num(body.rpe))))
+  segKeys.forEach(k => rows.push(R('hyrox_' + k, String(Math.round(Number(segs[k]))), 's')))
+  Object.keys(poids).forEach(k => { if (num(poids[k]) != null) rows.push(R('hyrox_poids_' + k, String(Number(poids[k])), 'kg')) })
+  const { error } = await sb().from('indicateurs').insert(rows)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ ok: true, success: true, seance_id: sid, total_sec: total })
 }
 
 async function handleSetPauseAthlete(body: any): Promise<Response> {
@@ -3272,6 +3856,54 @@ async function handleSetPauseAthlete(body: any): Promise<Response> {
   const { error } = await sb().from('indicateurs').insert({ date: fmtYMD(new Date()), athlete_id, seance_id: `pause_${Date.now()}`, cle: 'pause', valeur, unite, source: 'system' })
   if (error) return jsonResp({ erreur: error.message })
   return jsonResp({ ok: true })
+}
+
+// Marque une alerte athlète comme lue (état durable, stocké dans indicateurs
+// sous seance_id='alerte_lue', cle=<id> où id = type|semaine). Idempotent.
+// Préférence « semaine d'entraînement » (calendaire lundi→dim. / glissante 7 j).
+// Stockée dans indicateurs (seance_id='pref', cle='semaine_type'). Idempotente.
+// Préférences d'onboarding (drapeaux 0/1) stockées dans indicateurs (seance_id='pref').
+// cle ∈ {onboarding_vu, prog_auto_off}. Idempotent.
+async function handleSavePref(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const cle = String(body.cle || '')
+  if (!athlete_id || !['onboarding_vu', 'prog_auto_off'].includes(cle)) return jsonResp({ success: false, error: 'Paramètres invalides' })
+  const v = (body.valeur === 0 || body.valeur === '0' || body.valeur === false) ? '0' : '1'
+  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', cle).limit(1)
+  if (existing?.length) {
+    const { error } = await sb().from('indicateurs').update({ valeur: v }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', cle)
+    if (error) return jsonResp({ success: false, error: error.message })
+  } else {
+    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle, valeur: v, unite: '', source: 'app' })
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true })
+}
+
+async function handleSaveSemaineType(body: any): Promise<Response> {
+  const { athlete_id } = body
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const v = (body.valeur === 'glissant') ? 'glissant' : 'calendaire'
+  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'semaine_type').limit(1)
+  if (existing?.length) {
+    const { error } = await sb().from('indicateurs').update({ valeur: v }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'semaine_type')
+    if (error) return jsonResp({ success: false, error: error.message })
+  } else {
+    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'semaine_type', valeur: v, unite: '', source: 'app' })
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true })
+}
+
+async function handleMarquerAlerteLue(body: any): Promise<Response> {
+  const { athlete_id, id } = body
+  if (!athlete_id || !id) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'alerte_lue').eq('cle', String(id)).limit(1)
+  if (!existing?.length) {
+    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'alerte_lue', cle: String(id), valeur: '1', unite: '', source: 'app' })
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true })
 }
 
 async function handleMarquerAlerteTraitee(body: any): Promise<Response> {
@@ -3571,6 +4203,7 @@ Deno.serve(async (req: Request) => {
         case 'saveCommentaire':          return handleSaveCommentaire(body)
         case 'savePushSub':              return handleSavePushSub(body)
         case 'deletePushSub':            return handleDeletePushSub(body)
+        case 'cronPushAlertes':          return handleCronPushAlertes(body)
         case 'saveNativePushToken':      return handleSaveNativePushToken(body)
         case 'deleteNativePushToken':    return handleDeleteNativePushToken(body)
         case 'testPush':                 return handleTestPush(body)
@@ -3584,11 +4217,17 @@ Deno.serve(async (req: Request) => {
         case 'savePoids':                return handleSavePoids(body)
         case 'saveNote':                 return handleSaveNote(body)
         case 'saveProgrammeLigne':       return handleSaveProgrammeLigne(body)
+        case 'saveProgrammeJour':        return handleSaveProgrammeJour(body)
+        case 'genererProgramme':         return handleGenererProgramme(body)
         case 'supprimerProgrammeLigne':  return handleSupprimerProgrammeLigne(body)
         case 'deleteCoach':              return handleDeleteCoach(body)
         case 'saveBienEtre':             return handleSaveBienEtre(body)
+        case 'saveBilanSeance':          return handleSaveBilanSeance(body)
         case 'setPauseAthlete':          return handleSetPauseAthlete(body)
         case 'marquerAlerteTraitee':     return handleMarquerAlerteTraitee(body)
+        case 'marquerAlerteLue':         return handleMarquerAlerteLue(body)
+        case 'saveSemaineType':          return handleSaveSemaineType(body)
+        case 'savePref':                 return handleSavePref(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
         case 'deleteObjectifJoueur':     return handleDeleteObjectifJoueur(body)
         case 'saveBlessure':             return handleSaveBlessure(body)
@@ -3598,6 +4237,7 @@ Deno.serve(async (req: Request) => {
         case 'saveContexte':             return handleSaveContexte(body)
         case 'cloreContexte':            return handleCloreContexte(body)
         case 'saveCardio':               return handleSaveCardio(body)
+        case 'saveHyrox':                return handleSaveHyrox(body)
         case 'deleteCardio':             return handleDeleteCardio(body)
         case 'updateCardio':             return handleUpdateCardio(body)
         default:                         return jsonResp({ erreur: `Action inconnue: ${action}` }, 404)

@@ -1,0 +1,19 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "title": "Aujourd'hui" },
+    { "file": "Entrainement.dc.html", "x": 490, "y": 0, "w": 390, "h": 844, "title": "Mon entraînement" },
+    { "file": "Cardio.dc.html", "x": 980, "y": 0, "w": 390, "h": 844, "title": "Cardio · Vélo" },
+    { "file": "Hyrox.dc.html", "x": 1470, "y": 0, "w": 390, "h": 844, "title": "Cardio · Hyrox" },
+    { "file": "Etat.dc.html", "x": 1960, "y": 0, "w": 390, "h": 844, "title": "Mon état" },
+    { "file": "Analyses.dc.html", "x": 0, "y": 964, "w": 390, "h": 844, "title": "Analyses · Muscu" },
+    { "file": "AnalysesCardio.dc.html", "x": 490, "y": 964, "w": 390, "h": 844, "title": "Analyses · Cardio" },
+    { "file": "AnalysesDetail.dc.html", "x": 980, "y": 964, "w": 390, "h": 844, "title": "Analyses · Par exercice" },
+    { "file": "Conversations.dc.html", "x": 1470, "y": 964, "w": 390, "h": 844, "title": "Conversations" },
+    { "file": "IAChat.dc.html", "x": 1960, "y": 964, "w": 390, "h": 844, "title": "Novalyz IA (chat)" }
+  ],
+  "annotations": [
+    { "id": "note-nav", "x": 0, "y": -150, "w": 700, "text": "Novalyz — parcours athlète solo (v4, charte : bleu #1A5FFF, Michroma + Quicksand).\nHaut : Aujourd'hui (Bonjour + réglages/déconnexion/messages, récompenses animées) · Entraînement + agenda · Cardio (sélecteur + Hyrox) · État (charge/récup + poids + ressenti). Bas : Analyses (switch Muscu/Cardio + sous-onglets) · Conversations (Coach + IA) · Chat IA. Bulle IA flottante sur tous les écrans." },
+    { "id": "note-conv", "x": 1470, "y": 868, "w": 420, "text": "CONVERSATIONS — hub unique : fil Coach + fil Novalyz IA. La bulle flottante ouvre directement le chat IA (à droite)." }
+  ],
+  "launch": { "view": "canvas" }
+}

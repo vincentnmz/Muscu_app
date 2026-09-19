@@ -57,6 +57,7 @@ eq('1 wellness → wellnessN 1', s1.wellnessN, 1);
 const sN = _aggSignaux([be('2026-08-19', 2, 3, 4), be('2026-08-15', 3, 5, 2)], NOW);
 eq('plusieurs → douleur = MAX (3)', sN.douleur, 3);
 eq('plusieurs → fatigue = MAX (5)', sN.fatigue, 5);
+eq('plusieurs → fatigueMoy = MOYENNE ((3+5)/2 = 4)', sN.fatigueMoy, 4);
 eq('plusieurs → sommeil = MOYENNE ((4+2)/2 = 3)', sN.sommeil, 3);
 eq('plusieurs → wellnessN 2', sN.wellnessN, 2);
 const sHors = _aggSignaux([be('2026-08-19', 2, 3, 4), be('2026-08-15', 3, 5, 2), be('2026-08-10', 5, 5, 5)], NOW);

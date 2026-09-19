@@ -67,12 +67,59 @@ body:has(#view-login.active) header #brand-ico { display:none; }
 .tabs-bar > * { max-width:calc(var(--app-w) / 5); }
 .tabs-bar { justify-content:center; }
 .tab-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:13px 2px; font-size:10px; font-weight:600; text-align:center; cursor:pointer; color:var(--text-muted); border:none; background:none; transition:color 0.2s; }
-.tab-btn > span:not(.tab-ico):not([id]) { display:none; }
+.tab-btn > span:not(.tab-ico):not([id]) { font-size:9.5px; line-height:1.1; font-weight:600; }
 .tab-btn .tab-ico { font-size:21px; line-height:1; transition:transform 0.15s; }
 .tab-btn .tab-ico svg { width:25px; height:25px; display:block; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .tab-btn.active { color:var(--accent); }
 .tab-btn.active .tab-ico { transform:translateY(-1px); }
 body.has-bottom-nav { padding-bottom:64px; }
+
+/* ---- Page SÉANCE plein écran : le flux de saisie (#subtab-saisie) s'ouvre
+   par-dessus l'app avec son propre en-tête retour (#seance-page-hd), header
+   d'app et barre du bas masqués. Aucune logique modifiée. ---- */
+body.seance-active #app-header,
+body.seance-active #tabs-bar        { display:none !important; }
+body.seance-active #seance-page-hd  { display:flex !important; }
+body.seance-active #subtab-saisie   { position:fixed; inset:calc(56px + env(safe-area-inset-top,0px)) 0 0 0; z-index:60; margin:0;
+                                      overflow-y:auto; -webkit-overflow-scrolling:touch; background:var(--bg);
+                                      padding:14px 16px calc(28px + env(safe-area-inset-bottom,0px)); }
+body.seance-active #subtab-saisie > * { max-width:640px; margin-left:auto; margin-right:auto; }
+body.seance-active #seance-progress { top:0 !important; }
+/* Onglet Entraînement = HUB : la saisie inline (#subtab-saisie) n'apparaît QUE
+   en page plein écran (body.seance-active). Hors page → masquée (le hub +
+   l'agenda restent). !important pour battre le display inline de switchSubTab. */
+#tab-seance #subtab-saisie              { display:none !important; }
+body.seance-active #tab-seance #subtab-saisie { display:block !important; }
+/* En page séance : le mode (muscu/cardio) et la séance sont déjà choisis dans le
+   hub → on masque l'ancien switcher et le bloc « Ma séance » (date/type). */
+body.seance-active #mode-switch,
+body.seance-active #card-choix-seance   { display:none !important; }
+/* Reskin « Séance en cours » → look maquette (scopé à la page séance). */
+body.seance-active #subtab-saisie .card              { border-radius:18px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
+body.seance-active #seance-progress > div            { border-radius:18px; border-color:var(--border); box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
+body.seance-active .exo-actuel-card                  { background:var(--surface); border:1.5px solid var(--accent); border-radius:18px; box-shadow:0 8px 22px rgba(26,95,255,.16); padding:15px 16px; }
+body.seance-active #card-liste-seance                { background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); padding:14px 15px; }
+body.seance-active #btn-valider                      { border-radius:14px; padding:15px; font-size:15px; box-shadow:0 6px 16px rgba(0,168,84,.28); }
+body.seance-active #card-choix-seance                { border-radius:18px; }
+/* Lignes d'exercices « Séance en cours » (style maquette) — classes dédiées. */
+.sc-exo{ display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--border); border-radius:15px; padding:12px 13px; margin-bottom:8px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); cursor:pointer; }
+.sc-exo.cur{ border-color:var(--accent); box-shadow:0 4px 14px rgba(26,95,255,.16); }
+.sc-exo .sc-ico{ width:28px; height:28px; border-radius:999px; flex:none; display:grid; place-items:center; font-size:12px; font-weight:800; }
+.sc-exo.done .sc-ico{ background:var(--good,#00A854); color:#fff; }
+.sc-exo.cur .sc-ico{ background:var(--accent); color:var(--on-accent,#fff); }
+.sc-exo.todo .sc-ico{ background:var(--surface2); color:var(--text-subtle); border:1.5px solid var(--border); }
+.sc-exo .sc-ico svg{ width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; }
+.sc-exo .sc-nm{ flex:1; min-width:0; }
+.sc-exo .sc-nm .a{ font-weight:700; font-size:13.5px; }
+.sc-exo .sc-nm .b{ font-size:11px; color:var(--text-subtle); margin-top:1px; }
+.sc-chip{ font-size:10.5px; font-weight:700; border-radius:999px; padding:4px 9px; flex:none; white-space:nowrap; }
+.sc-chip.done{ background:var(--good-a,rgba(0,168,84,.12)); color:var(--good,#00A854); }
+.sc-chip.cur{ background:var(--accent); color:var(--on-accent,#fff); }
+.sc-chip.todo{ background:var(--surface2); color:var(--text-muted); }
+.sc-del{ background:none; border:none; color:var(--text-subtle); padding:4px; cursor:pointer; flex:none; }
+.sc-del .ico{ width:16px; height:16px; }
+/* Chrono d'en-tête de la page séance */
+#seance-page-chrono{ display:inline-flex; align-items:center; gap:6px; background:var(--accent-a10,rgba(26,95,255,.10)); color:var(--accent-strong,#1248D4); border-radius:999px; padding:6px 11px; font-size:13px; font-weight:800; font-variant-numeric:tabular-nums; flex:none; }
 body.has-bottom-nav .toast { bottom:84px; }
 
 /* ===== Sous-onglets (pill row) ===== */
@@ -260,7 +307,7 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .v2-pstat .pk { font-size:10.5px; color:var(--text-muted); font-weight:600; line-height:1.2; }
 
 /* ===== Timer ===== */
-.timer-overlay      { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:2px solid var(--accent); padding:16px 20px; z-index:50; display:none; }
+.timer-overlay      { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:2px solid var(--accent); padding:16px 20px; z-index:70; display:none; }
 .timer-overlay.active { display:flex; align-items:center; justify-content:space-between; gap:16px; }
 .timer-circle-wrap  { position:relative; width:70px; height:70px; flex-shrink:0; }
 .timer-circle-wrap svg { transform:rotate(-90deg); }
@@ -444,3 +491,16 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .djt-tabs .sub-tab .dj-ico svg { width:24px; height:24px; display:block; }
 .djt-tabs .sub-tab.active          { color:var(--accent); }
 .djt-tabs .sub-tab.active::before  { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:26px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }
+
+/* ── Détail d'une séance (partagé : Entraînement « Dernières séances » +
+ *    Analyses ▸ Muscu ▸ Historique). Exercice + séries en pastilles charge×reps. ── */
+.nv-seancedet     { background:var(--surface2); border-radius:12px; padding:10px 12px; }
+.nv-exrow         { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); }
+.nv-exrow:last-child { border-bottom:none; }
+.nv-exn           { font-size:12.5px; font-weight:700; color:var(--text); }
+.nv-sets          { display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+.nv-set           { font-size:11px; font-weight:700; background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:3px 7px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+.nv-trend         { margin-top:10px; display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600; border-radius:11px; padding:9px 11px; line-height:1.35; }
+.nv-trend svg     { flex:none; }
+.nv-trend.up      { background:rgba(0,168,84,.10); color:var(--good); }
+.nv-trend.dn      { background:rgba(224,120,0,.10); color:var(--warn); }

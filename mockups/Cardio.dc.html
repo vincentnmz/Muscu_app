@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+      --text:#070B14; --muted:#4A5980; --subtle:#8595B8;
+      --accent:#1A5FFF; --on-accent:#FFFFFF;
+      --bike:#0EA5E9; --bike-a:rgba(14,165,233,.12); --bike-strong:#0b7fb4; --good:#00A854; --good-a:rgba(0,168,84,.12);
+      --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --head:'Michroma','Helvetica Neue',Arial,sans-serif;
+      --sh:0 6px 20px rgba(7,11,20,.08); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased;}
+    .phone{width:390px;height:844px;background:var(--bg);position:relative;overflow:hidden;}
+    .scroll{position:absolute;inset:0 0 66px 0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:18px 16px 18px;}
+    .scroll::-webkit-scrollbar{width:0}
+    .hd{display:flex;align-items:center;justify-content:space-between;}
+    .ttl{font-family:var(--head);font-size:17px;letter-spacing:.02em;}
+    .av{width:38px;height:38px;border-radius:999px;background:var(--surface2);color:var(--accent);
+      font-family:var(--head);font-size:13px;display:grid;place-items:center;border:1px solid var(--border);}
+    .cap{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtle);font-weight:700;margin:2px 2px -6px;}
+    .selector{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);
+      border-radius:16px;box-shadow:var(--sh-sm);padding:12px 15px;}
+    .selector .icb{width:36px;height:36px;border-radius:11px;background:var(--bike-a);color:var(--bike);display:grid;place-items:center;flex:none;}
+    .selector .nm{flex:1;}
+    .selector .nm .a{font-family:var(--head);font-size:15px;}
+    .selector .nm .b{font-size:11px;color:var(--subtle);margin-top:2px;}
+    .selector .chev{color:var(--muted);}
+    .period{display:flex;gap:5px;background:var(--surface2);border-radius:11px;padding:4px;}
+    .period button{flex:1;border:none;background:transparent;font-family:var(--font);font-weight:700;font-size:11.5px;
+      color:var(--muted);padding:7px 0;border-radius:8px;}
+    .period button.on{background:var(--surface);color:var(--bike);box-shadow:var(--sh-sm);}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh-sm);}
+    .verdict{padding:13px 15px;display:flex;gap:11px;align-items:flex-start;border-left:4px solid var(--good);}
+    .verdict .vic{width:24px;height:24px;border-radius:999px;flex:none;display:grid;place-items:center;color:#fff;background:var(--good);}
+    .verdict .h{font-size:13.5px;font-weight:700;line-height:1.25;}
+    .verdict .d{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.4;}
+    .sum{padding:14px 15px;display:flex;flex-direction:column;gap:12px;}
+    .sum .rowh{display:flex;align-items:center;justify-content:space-between;}
+    .sum .rowh .k{font-weight:700;font-size:12.5px;}
+    .sum .rowh .s{font-size:10.5px;color:var(--subtle);}
+    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 8px;}
+    .kpi{display:flex;flex-direction:column;gap:2px;}
+    .kpi .v{font-family:var(--head);font-size:15px;}
+    .kpi .u{font-size:9px;color:var(--subtle);letter-spacing:.04em;text-transform:uppercase;font-weight:600;}
+    .chart{padding:13px 15px;display:flex;flex-direction:column;gap:9px;box-shadow:var(--sh);}
+    .chart .rowh{display:flex;align-items:center;justify-content:space-between;}
+    .mdrop{display:inline-flex;align-items:center;gap:6px;background:var(--bike-a);color:var(--bike-strong);
+      font-family:var(--font);font-weight:700;font-size:12px;border:1px solid rgba(14,165,233,.25);border-radius:999px;padding:5px 11px;}
+    .chart .s{font-size:10.5px;color:var(--bike);font-weight:600;}
+    .xlab{display:flex;justify-content:space-between;font-size:9px;color:var(--subtle);padding:0 2px;}
+    .sec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtle);font-weight:700;margin:4px 2px -4px;}
+    .slist{display:flex;flex-direction:column;gap:8px;}
+    .srow{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sh-sm);}
+    .srow .dt{width:40px;flex:none;text-align:center;}
+    .srow .dt .d{font-family:var(--head);font-size:13px;}
+    .srow .dt .mo{font-size:8.5px;color:var(--subtle);text-transform:uppercase;}
+    .srow .mid{flex:1;}
+    .srow .mid .a{font-weight:700;font-size:12.5px;}
+    .srow .mid .b{font-size:10.5px;color:var(--subtle);margin-top:1px;}
+    .rpe{font-size:9px;font-weight:800;color:var(--bike-strong);background:var(--bike-a);border-radius:5px;padding:2px 6px;flex:none;}
+    .src{font-size:8.5px;font-weight:700;border-radius:5px;padding:2px 5px;flex:none;}
+    .src.dev{background:var(--good-a);color:var(--good);}
+    .src.man{background:var(--surface2);color:var(--muted);}
+    .acts{display:flex;gap:9px;}
+    .btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:46px;border-radius:13px;font-family:var(--font);font-weight:700;font-size:12.5px;border:none;}
+    .btn.primary{background:var(--bike);color:#fff;box-shadow:0 6px 16px rgba(14,165,233,.3);}
+    .btn.ghost{background:var(--surface);color:var(--bike-strong);border:1px solid var(--border);}
+    .nav{position:absolute;left:0;right:0;bottom:0;height:66px;background:var(--surface);
+      border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;}
+    .nv{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--subtle);font-size:9.5px;font-weight:600;}
+    .nv.active{color:var(--accent);}
+    .nv svg{width:22px;height:22px;}
+    .fabwrap{position:absolute;right:15px;bottom:80px;display:flex;align-items:center;gap:9px;z-index:6;}
+    .fabtip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh);border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);}
+    .fab{width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;}
+  </style>
+</helmet>
+
+<div class="phone">
+  <div class="scroll">
+
+    <div class="hd">
+      <div class="ttl">Cardio</div>
+      <div class="av">V</div>
+    </div>
+
+    <div class="cap">Choisis ton activité</div>
+    <div class="selector">
+      <span class="icb"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/></svg></span>
+      <div class="nm">
+        <div class="a">Vélo</div>
+        <div class="b">Course · Marche · Natation · Hyrox · Autre…</div>
+      </div>
+      <span class="chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+    </div>
+
+    <div class="period">
+      <button>Semaine</button>
+      <button class="on">Mois</button>
+      <button>3 mois</button>
+      <button>Année</button>
+    </div>
+
+    <div class="card verdict">
+      <span class="vic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      <div>
+        <div class="h">Ton endurance progresse</div>
+        <div class="d">+1,8 km/h de moyenne à FC équivalente. Charge cardio maîtrisée (ACWR 1.0) — tu peux pousser un peu le volume.</div>
+      </div>
+    </div>
+
+    <div class="card sum">
+      <div class="rowh"><span class="k">Vélo · septembre</span><span class="s">6 sorties</span></div>
+      <div class="kpis">
+        <div class="kpi"><span class="v">168</span><span class="u">km</span></div>
+        <div class="kpi"><span class="v">5h42</span><span class="u">temps</span></div>
+        <div class="kpi"><span class="v">27,4</span><span class="u">km/h moy</span></div>
+        <div class="kpi"><span class="v">178</span><span class="u">watts moy</span></div>
+        <div class="kpi"><span class="v">141</span><span class="u">bpm moy</span></div>
+        <div class="kpi"><span class="v">6,2</span><span class="u">RPE moy</span></div>
+      </div>
+    </div>
+
+    <div class="card chart">
+      <div class="rowh">
+        <span class="mdrop">Distance <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+        <span class="s">▲ +18% · par semaine</span>
+      </div>
+      <svg width="100%" height="92" viewBox="0 0 320 92" preserveAspectRatio="none">
+        <line x1="0" y1="74" x2="320" y2="74" stroke="#D8E2FF" stroke-width="1"/>
+        <line x1="0" y1="42" x2="320" y2="42" stroke="#EEF3FF" stroke-width="1"/>
+        <path d="M20 62 L92 44 L164 52 L236 28 L308 20 L308 74 L20 74 Z" fill="rgba(14,165,233,.12)"/>
+        <path d="M20 62 L92 44 L164 52 L236 28 L308 20" fill="none" stroke="#0EA5E9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="308" cy="20" r="3.4" fill="#0EA5E9"/>
+      </svg>
+      <div class="xlab"><span>S1</span><span>S2</span><span>S3</span><span>S4</span><span>S5</span></div>
+    </div>
+
+    <div class="sec">Dernières sorties</div>
+    <div class="slist">
+      <div class="srow">
+        <div class="dt"><div class="d">07</div><div class="mo">sept</div></div>
+        <div class="mid"><div class="a">Sortie route</div><div class="b">42,3 km · 1h28 · 28,6 km/h</div></div>
+        <span class="rpe">RPE 7</span>
+        <span class="src dev">Compteur</span>
+      </div>
+      <div class="srow">
+        <div class="dt"><div class="d">04</div><div class="mo">sept</div></div>
+        <div class="mid"><div class="a">Home-trainer</div><div class="b">32 km · 1h10 · 195 W moy</div></div>
+        <span class="rpe">RPE 6</span>
+        <span class="src man">Manuel</span>
+      </div>
+    </div>
+
+    <div class="acts">
+      <button class="btn primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Saisir un résultat
+      </button>
+      <button class="btn ghost">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17l9-10"/><path d="M2 12.5 7 17"/></svg>
+        Connecter un appareil
+      </button>
+    </div>
+
+  </div>
+
+  <div class="fabwrap">
+    <span class="fabtip">Demande à Novalyz</span>
+    <button class="fab"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
+  </div>
+
+  <div class="nav">
+    <div class="nv">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>
+      Aujourd'hui
+    </div>
+    <div class="nv">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>
+      Entraînement
+    </div>
+    <div class="nv active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>
+      Cardio
+    </div>
+    <div class="nv">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>
+      Analyses
+    </div>
+    <div class="nv">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg>
+      État
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

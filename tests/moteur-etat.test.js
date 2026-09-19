@@ -115,13 +115,16 @@ function reproductionEtat(s) {
   const recScore = recArr.length ? (recArr.reduce((a, b) => a + b, 0) / recArr.length) * 100 : null;
   const recFaible = recScore != null && recScore < 45;
   const recFaibleConcordante = recFaible && (chargeHaute || douleurGene);
+  // Calibrage sévérité (miroir prod) : sous-charge + absence exclues du niveau
+  // de disponibilité ; « récup moyenne » seule ne déclenche plus Vigilance.
+  const tagsEtat = tags.filter(t => !t.startsWith('sous_charge') && !t.startsWith('absence'));
   let niveau;
   if (s.injStatut === 'indispo') niveau = 2;
   else {
-    const haute = tags.some(a => a.endsWith(':h'));
+    const haute = tagsEtat.some(a => a.endsWith(':h'));
     const combo = fatigueHaute && sommeilBas && chargeHaute;
     const bad = haute || risqueBlessureN === 2 || recFaibleConcordante || combo;
-    const mid = tags.length > 0 || risqueBlessureN === 1 || recFaible || (recScore != null && recScore < 60) || s.injStatut === 'retour_progressif';
+    const mid = tagsEtat.length > 0 || risqueBlessureN === 1 || recFaible || s.injStatut === 'retour_progressif';
     niveau = bad ? 2 : mid ? 1 : 0;
   }
   if (ctx === 'retour_blessure' && niveau === 0) niveau = 1;
@@ -170,7 +173,9 @@ const CAS = [
   { nom: 'B5 ACWR = 0.80 (=bas) → pas de sous-charge', in: { acwr: 0.8, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 0, statut: 'vert', acwr_categorie: 'normal', tags: [], reco: 'RAS — maintenir la charge actuelle.' } },
   { nom: 'B6 ACWR = 0.79 (<bas) + séances → sous-charge', in: { acwr: 0.79, acwrFiable: true, seances7: 2, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
-    exp: { niveau: 1, statut: 'orange', surcharge: 'Faible', risque_blessure: 'Faible', acwr_categorie: 'sous_charge', tags: ['sous_charge:m'], reco: 'Vigilance — surveiller les sensations, ne pas surcharger.' } },
+    // Calibrage sévérité : la sous-charge reste une alerte (tag conservé) mais ne
+    // dégrade PLUS la disponibilité → niveau 0 (vert), pas Vigilance.
+    exp: { niveau: 0, statut: 'vert', surcharge: 'Faible', risque_blessure: 'Faible', acwr_categorie: 'sous_charge', tags: ['sous_charge:m'], reco: 'RAS — maintenir la charge actuelle.' } },
 
   // Frontières douleur (gene=2 / forte=3) et sommeil (bas=2)
   { nom: 'C1 douleur = 2 (=gene) → gêne', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 2, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
@@ -220,7 +225,8 @@ const CAS = [
 
   // H. sous-charge active en saison normale
   { nom: 'I1 sous-charge active (ACWR 0.5, saison normale)', in: { acwr: 0.5, acwrFiable: true, seances7: 2, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
-    exp: { niveau: 1, statut: 'orange', acwr_categorie: 'sous_charge', tags: ['sous_charge:m'], reco: 'Vigilance — surveiller les sensations, ne pas surcharger.' } },
+    // Calibrage sévérité : sous-charge ≠ readiness dégradée → niveau 0 (vert).
+    exp: { niveau: 0, statut: 'vert', acwr_categorie: 'sous_charge', tags: ['sous_charge:m'], reco: 'RAS — maintenir la charge actuelle.' } },
 ];
 
 // ── Exécution : VRAI moteur vs littéraux attendus (oracle primaire) ──────────
