@@ -2811,7 +2811,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     </div>` : '';
 
   // Heatmap SVG (6×3 zones) — onglet Match
-  const heatCol = v => v>=75?'#ef4444':(v>=50?'#f97316':(v>=28?'#eab308':'#22c55e'));
+  const heatCol = v => v>=75?'#ef4444':(v>=50?'#f97316':(v>=28?'#FFBC13':'#22c55e'));
   // Heatmap thème clair : vraie pelouse claire + tracés, chaleur lissée (dégradé)
   // au lieu de la grille de carrés (fond sombre) — plus lisible sur l'app claire.
   const buildHeat = zones => {
@@ -2832,7 +2832,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
         <rect x="${PAD}" y="${cy-46}" width="44" height="92"/><rect x="${W-PAD-44}" y="${cy-46}" width="44" height="92"/>
         <rect x="${PAD}" y="${cy-20}" width="16" height="40"/><rect x="${W-PAD-16}" y="${cy-20}" width="16" height="40"/>
       </g></svg>
-      <div style="display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--text-muted);margin-top:9px;"><span>Faible</span><span style="flex:1;height:8px;border-radius:5px;background:linear-gradient(90deg,#22c55e,#eab308,#f97316,#ef4444);"></span><span>Forte</span><span style="margin-left:auto;font-weight:700;">sens du jeu →</span></div>`;
+      <div style="display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--text-muted);margin-top:9px;"><span>Faible</span><span style="flex:1;height:8px;border-radius:5px;background:linear-gradient(90deg,#22c55e,#FFBC13,#f97316,#ef4444);"></span><span>Forte</span><span style="margin-left:auto;font-weight:700;">sens du jeu →</span></div>`;
   };
 
   // Radar SVG par poste (thème clair) — polygone joueur (accent, plein) + polygone
@@ -8699,7 +8699,7 @@ function _maApply() {
   // Toggle discipline (Muscu / Cardio / Croisé)
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
     var b = document.getElementById('ma-sw-' + d);
-    if (b) { b.classList.toggle('on', d === _maDisc); b.classList.toggle('cx', d === _maDisc && d === 'cardio'); }
+    if (b) { b.classList.toggle('on', d === _maDisc); b.classList.toggle('cx', d === _maDisc && d === 'cardio'); b.classList.toggle('cr', d === _maDisc && d === 'croise'); }
   });
   // Le 2e sous-onglet change de libellé selon la discipline
   var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Par exercice';
@@ -8707,7 +8707,7 @@ function _maApply() {
   var dispo = _MA_TABS[_maDisc];
   ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
     var b = document.getElementById('ma-tab-' + t);
-    if (b) { var av = dispo.indexOf(t) >= 0; b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); }
+    if (b) { var av = dispo.indexOf(t) >= 0; b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
   });
   // Panes visibles
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
@@ -8838,7 +8838,7 @@ var _MA_CARDIO_META = {
   rameur: ['Rameur', '#14B8A6', '<path d="M4 12h16"/>'], hiit: ['HIIT', '#EF4444', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>'],
   elliptique: ['Elliptique', '#D946EF', '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>'],
   boxe: ['Boxe', '#F43F5E', '<path d="M7 7h7a3 3 0 0 1 3 3v3a4 4 0 0 1-4 4H9a2 2 0 0 1-2-2V7z"/>'],
-  hyrox: ['Hyrox', '#EAB308', '<path d="M4 7h16M4 12h16M4 17h16"/>'],
+  hyrox: ['Hyrox', '#FFBC13', '<path d="M4 7h16M4 12h16M4 17h16"/>'],
   autre: ['Autre', '#F59E0B', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>']
 };
 function _maCM(t) { return _MA_CARDIO_META[t] || [t || 'Autre', '#F59E0B', _MA_CARDIO_META.autre[2]]; }
@@ -8915,8 +8915,8 @@ function _maSyntheseBloc(s) {
   }).join('');
   var reco = s.reco ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(s.reco.texte) + '</div></div></div>') : '';
   var conf = s.confiance ? '<div style="text-align:right;font-size:10px;color:var(--text-subtle)">fiabilité : ' + _maE(s.confiance) + '</div>' : '';
-  return '<div class="ma-sec">Lecture Novalyz' + head + '</div>'
-    + '<div class="ma-card" style="display:flex;flex-direction:column;gap:9px">' + constats + reco + conf
+  return '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz' + head + '</div>'
+    + '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;margin:8px 0 16px">' + constats + reco + conf
     + '<div style="font-size:10px;color:var(--text-subtle);text-align:right">Synthèse sur tes 4 dernières semaines (indépendante du filtre de période).</div></div>';
 }
 // « Est-ce bien fait » (période) : pour chaque exo du programme portant une cible,
@@ -9451,7 +9451,7 @@ function _maCroise(data) {
   var tot = muscuUA + cardioUA;
   var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
   var mot = data.moteur || {};
-  var verdict = '<div class="ma-verdict acc"><span class="ma-vic">' + _maSvg('<path d="M12 3v18M3 12h18"/>', 14) + '</span><div><div class="vh">Vue d\'ensemble</div><div class="vd">' + _maE(tot ? ('Charge muscu + cardio combinée. Disponibilité : ' + ((mot.disponibilite && mot.disponibilite.niveau) || '—') + ' · récup ' + (mot.recup || '—') + '.') : 'Ajoute des séances muscu et cardio pour croiser tes données.') + '</div></div></div>';
+  var verdict = '<div class="ma-verdict cr"><span class="ma-vic" style="background:#931F1D">' + _maSvg('<path d="M12 3v18M3 12h18"/>', 14) + '</span><div><div class="vh">Vue d\'ensemble</div><div class="vd">' + _maE(tot ? ('Charge muscu + cardio combinée. Disponibilité : ' + ((mot.disponibilite && mot.disponibilite.niveau) || '—') + ' · récup ' + (mot.recup || '—') + '.') : 'Ajoute des séances muscu et cardio pour croiser tes données.') + '</div></div></div>';
   var rep = tot ? ('<div class="ma-card ma-vol"><div class="ma-volrow"><div class="lh"><span class="n">Musculation</span><span class="p">' + mPct + '%</span></div><div class="ma-vt"><span style="width:' + mPct + '%"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Cardio</span><span class="p">' + (100 - mPct) + '%</span></div><div class="ma-vt"><span style="width:' + (100 - mPct) + '%;background:#9D5FD3"></span></div></div></div>') : _maEmpty('Répartition dispo dès que tu as des deux.');
   var be = (data.bien_etre && data.bien_etre[0]) || null;
   var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
@@ -14466,9 +14466,9 @@ function renderHyroxHome() {
     var nseg = _HYROX_SEG.filter(function (sg) { return Number(s['hyrox_' + sg.k]) > 0; }).length;
     var mode = (s.hyrox_mode === 'atelier') ? 'Par atelier' : (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Circuit';
     var segLbl = (s.hyrox_mode === 'atelier') ? (nseg + ' atelier' + (nseg > 1 ? 's' : '')) : (nseg + '/16 segments');
-    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:38px;height:38px;border-radius:11px;background:rgba(234,179,8,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:16px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">' + dstr + ' · ' + segLbl + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
+    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:38px;height:38px;border-radius:11px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:16px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">' + dstr + ' · ' + segLbl + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
   }).join('') : '<div style="padding:14px;color:var(--text-muted);font-size:12.5px">Aucune Hyrox enregistrée. Lance le circuit officiel, un atelier, ou saisis un résultat.</div>';
-  el.innerHTML = '<div style="border-radius:20px;padding:18px;background:linear-gradient(135deg,#EAB308,#CA9A04);color:#1a1400;box-shadow:0 8px 24px rgba(234,179,8,.32);margin-top:6px">'
+  el.innerHTML = '<div style="border-radius:20px;padding:18px;background:linear-gradient(135deg,#FFBC13,#CA9A04);color:#1a1400;box-shadow:0 8px 24px rgba(255,188,19,.32);margin-top:6px">'
     + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.75">Épreuve hybride</div>'
     + '<div style="font-size:26px;font-weight:900;letter-spacing:.02em;margin:2px 0">HYROX</div>'
     + '<div style="font-size:12px;font-weight:600;opacity:.82;line-height:1.4">Fais le circuit officiel chronométré, ou travaille quelques ateliers en ciblé.</div></div>'
@@ -14550,7 +14550,7 @@ function _hxStartHtml() {
     + '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px">Division</div>'
     + '<div style="display:flex;gap:6px">' + _HYROX_DIV.map(function (x) { return _hxChip('hxc-div-' + x[0], _hyroxDiv === x[0], '_hxSetDiv(\'' + x[0] + '\')', x[1]); }).join('') + '</div>'
     + _hxCourseDetailHtml()
-    + '<button onclick="_hxStartCircuit()" style="width:100%;border:none;border-radius:16px;padding:18px;margin-top:16px;font-family:inherit;font-weight:900;font-size:17px;cursor:pointer;color:#1a1400;background:linear-gradient(135deg,#EAB308,#CA9A04);box-shadow:0 8px 20px rgba(234,179,8,.35)">▶ Démarrer le circuit</button>'
+    + '<button onclick="_hxStartCircuit()" style="width:100%;border:none;border-radius:16px;padding:18px;margin-top:16px;font-family:inherit;font-weight:900;font-size:17px;cursor:pointer;color:#1a1400;background:linear-gradient(135deg,#FFBC13,#CA9A04);box-shadow:0 8px 20px rgba(255,188,19,.35)">▶ Démarrer le circuit</button>'
     + '</div><div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:14px;line-height:1.6">Tape « Segment suivant » à chaque transition. Le temps total tourne en continu.</div></div>';
 }
 function _hxLiveHtml() {
@@ -14581,7 +14581,7 @@ function _hxStartCircuit() {
   _hxBegin();
 }
 function _hxTick() { if (_hxPaused) return; var now = Date.now(); var c = document.getElementById('hx-clock'); if (c) c.textContent = _hyroxFmt(Math.round((now - _hxT0 - _hxPauseAcc) / 1000)); var s = document.getElementById('hx-seg'); if (s) s.textContent = _hyroxFmt(Math.round((now - _hxSegT0) / 1000)); }
-function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var n = _hxSegs.length, h = ''; for (var i = 0; i < n; i++) { var bg = i < _hxIdx ? (_hxSegs[i].run ? '#9D5FD3' : 'var(--accent)') : (i === _hxIdx ? '#EAB308' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
+function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var n = _hxSegs.length, h = ''; for (var i = 0; i < n; i++) { var bg = i < _hxIdx ? (_hxSegs[i].run ? '#9D5FD3' : 'var(--accent)') : (i === _hxIdx ? '#FFBC13' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
 function _hxRenderCur() { var n = _hxSegs.length; var sg = _hxSegs[_hxIdx] || _hxSegs[n - 1]; var last = (_hxIdx === n - 1); var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / ' + n; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier') + (sg.w && _hxWeights && _hxWeights[sg.w] ? ' · ' + _hxWeights[sg.w] + ' kg' : ''); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (last ? 'Terminer ✓' : 'Segment suivant ✓'); nx.style.background = (last ? 'var(--good)' : 'var(--accent)'); } }
 function _hxRenderSplits() { var el = document.getElementById('hx-splits'); if (!el) return; var rows = []; for (var i = 0; i < _hxIdx; i++) { var sg = _hxSegs[i]; rows.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;background:' + (sg.run ? 'rgba(157,95,211,.12);color:#9D5FD3' : 'var(--surface2);color:var(--text-muted)') + '">' + (sg.run ? '🏃' : _hxStationNo(i)) + '</span><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } el.innerHTML = rows.reverse().join(''); }
 function _hxNext() { var now = Date.now(); _hxSplits[_hxIdx] = now - _hxSegT0; _hxSegT0 = now; _hxIdx++; if (_hxIdx >= _hxSegs.length) { _hxFinish(); return; } _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); _hxTick(); }
@@ -14646,15 +14646,15 @@ function _hxAtRender() {
       var cVal = (_hxAt.cible[s.k] != null ? _hxAt.cible[s.k] : _hxCibleNum(s));
       var cIn = '<div style="flex:1"><div style="' + _lbl + '">Cible (' + unit + ')</div><input id="hxat-c-' + s.k + '" inputmode="numeric" value="' + cVal + '" style="' + _inp + ';color:var(--text)"></div>';
       var wIn = s.w ? '<div style="flex:1"><div style="' + _lbl + '">Charge (kg)</div><input id="hxat-w-' + s.k + '" inputmode="numeric" value="' + (_hxAt.weights[s.k] != null ? _hxAt.weights[s.k] : wv[s.w]) + '" style="' + _inp + ';color:#CA9A04"></div>' : '';
-      var serBtns = [1, 2, 3, 4].map(function (nn) { return '<button type="button" onclick="_hxAtSer(\'' + s.k + '\',' + nn + ')" style="flex:1;padding:9px 0;border-radius:9px;border:1.5px solid ' + (ser === nn ? '#EAB308' : 'var(--border)') + ';background:' + (ser === nn ? 'rgba(234,179,8,.14)' : 'var(--surface)') + ';font-family:inherit;font-weight:800;font-size:13px;color:' + (ser === nn ? '#CA9A04' : 'var(--text-muted)') + ';cursor:pointer">' + nn + '</button>'; }).join('');
+      var serBtns = [1, 2, 3, 4].map(function (nn) { return '<button type="button" onclick="_hxAtSer(\'' + s.k + '\',' + nn + ')" style="flex:1;padding:9px 0;border-radius:9px;border:1.5px solid ' + (ser === nn ? '#FFBC13' : 'var(--border)') + ';background:' + (ser === nn ? 'rgba(255,188,19,.14)' : 'var(--surface)') + ';font-family:inherit;font-weight:800;font-size:13px;color:' + (ser === nn ? '#CA9A04' : 'var(--text-muted)') + ';cursor:pointer">' + nn + '</button>'; }).join('');
       cfg = '<div style="padding:2px 13px 13px;border-top:1px dashed var(--border)">'
         + '<div style="display:flex;gap:8px;margin-top:11px">' + cIn + wIn + '</div>'
         + '<div style="margin-top:10px"><div style="' + _lbl + '">Séries</div><div style="display:flex;gap:5px">' + serBtns + '</div></div>'
         + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px">Officiel : ' + s.d + (s.w ? ' · ' + wv[s.w] + ' kg' : '') + '</div></div>';
     }
-    return '<div style="background:var(--surface);border:1.5px solid ' + (on ? '#EAB308' : 'var(--border)') + ';border-radius:14px;margin-bottom:9px;overflow:hidden' + (on ? ';box-shadow:0 6px 16px rgba(234,179,8,.16)' : '') + '">'
+    return '<div style="background:var(--surface);border:1.5px solid ' + (on ? '#FFBC13' : 'var(--border)') + ';border-radius:14px;margin-bottom:9px;overflow:hidden' + (on ? ';box-shadow:0 6px 16px rgba(255,188,19,.16)' : '') + '">'
       + '<div onclick="_hxAtToggle(\'' + s.k + '\')" style="display:flex;align-items:center;gap:11px;padding:11px;cursor:pointer">'
-      + '<span style="width:22px;height:22px;border-radius:7px;border:2px solid ' + (on ? '#EAB308' : 'var(--border)') + ';background:' + (on ? '#EAB308' : 'transparent') + ';flex:none;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900">' + (on ? '✓' : '') + '</span>'
+      + '<span style="width:22px;height:22px;border-radius:7px;border:2px solid ' + (on ? '#FFBC13' : 'var(--border)') + ';background:' + (on ? '#FFBC13' : 'transparent') + ';flex:none;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900">' + (on ? '✓' : '') + '</span>'
       + '<span style="flex:1;min-width:0"><span style="display:block;font-weight:800;font-size:13.5px">' + s.t + '</span><span style="display:block;font-size:10.5px;color:var(--text-subtle)">' + s.d + (s.w ? ' · ' + wv[s.w] + ' kg' : '') + '</span></span>'
       + '</div>' + cfg + '</div>';
   }).join('');
@@ -14665,7 +14665,7 @@ function _hxAtRender() {
     + '<div style="font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-subtle);margin:2px 2px 9px">Ateliers · <span style="color:#CA9A04">' + n + ' choisi' + (n > 1 ? 's' : '') + '</span></div>'
     + stations
     + '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-top:4px"><div style="font-size:12.5px;font-weight:700">Ajouter un <b style="color:#9D5FD3">Run 1 km</b> avant chaque atelier</div><button type="button" onclick="_hxAtRuns()" style="width:44px;height:26px;border-radius:999px;border:1px solid ' + (_hxAt.runs ? '#9D5FD3' : 'var(--border)') + ';background:' + (_hxAt.runs ? '#9D5FD3' : 'var(--surface2)') + ';position:relative;cursor:pointer"><i style="position:absolute;top:2px;left:' + (_hxAt.runs ? '20px' : '2px') + ';width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));transition:.15s"></i></button></div>'
-    + '<button onclick="_hxStartAtelier()" ' + (n ? '' : 'disabled') + ' style="width:100%;border:none;border-radius:15px;padding:17px;margin-top:14px;font-family:inherit;font-weight:900;font-size:16px;cursor:' + (n ? 'pointer' : 'default') + ';color:' + (n ? '#1a1400' : 'var(--text-subtle)') + ';background:' + (n ? 'linear-gradient(135deg,#EAB308,#CA9A04)' : 'var(--surface2)') + ';box-shadow:' + (n ? '0 8px 20px rgba(234,179,8,.35)' : 'none') + '">▶ Démarrer l\'atelier</button>'
+    + '<button onclick="_hxStartAtelier()" ' + (n ? '' : 'disabled') + ' style="width:100%;border:none;border-radius:15px;padding:17px;margin-top:14px;font-family:inherit;font-weight:900;font-size:16px;cursor:' + (n ? 'pointer' : 'default') + ';color:' + (n ? '#1a1400' : 'var(--text-subtle)') + ';background:' + (n ? 'linear-gradient(135deg,#FFBC13,#CA9A04)' : 'var(--surface2)') + ';box-shadow:' + (n ? '0 8px 20px rgba(255,188,19,.35)' : 'none') + '">▶ Démarrer l\'atelier</button>'
     + '<div style="font-size:11px;color:var(--text-subtle);margin-top:10px;text-align:center;line-height:1.5">Novalyz chronomètre chaque atelier et suivra ta progression dessus.</div></div>';
 }
 function _hxStartAtelier() {
