@@ -8642,8 +8642,14 @@ function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t;
 // Réinitialise le curseur de navigation à Muscu · Résumé · Semaine.
 // Appelé à chaque ouverture de l'écran Analyses (et donc après changement de compte).
 function maResetNav() {
+  // À l'ouverture de Mes Analyses : on repart du début (Muscu · Résumé · Semaine),
+  // sous-vue « Par exercice » réinitialisée, compteurs « Charger plus » à 5, et on
+  // ré-applique visuellement (sinon l'ancien sous-onglet/période restait affiché).
   _maDisc = 'muscu'; _maTab = 'resume'; _maPeriode = 'semaine';
-  _maHistMore = { muscu: 5, cardio: 5 };
+  _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
+  try { _maProgMode = 'exo'; } catch (e) {}
+  try { _maApply(); } catch (e) {}
+  try { maRenderData(); } catch (e) {}
 }
 // Sélecteur de période : met à jour l'état + re-rend les vues data. Le sélecteur
 // est désormais rendu DANS les panes (sous la Lecture Novalyz en Résumé, au-dessus
@@ -8656,17 +8662,30 @@ function maSetPeriode(p, btn) {
   try { maRenderData(); } catch (e) {}
 }
 // Ligne de sélection de période (rendue inline dans chaque pane qui en a besoin).
+// Identique partout : Semaine · Mois · 3 mois · [+] (menu 6 mois / 9 mois / Année).
 function _maPeriodHtml() {
-  var P = [['semaine', 'Sem.'], ['mois', 'Mois'], ['3mois', '3 mois'], ['6mois', '6 mois'], ['annee', 'Année']];
-  return '<div class="ma-period ma-period-inline">' + P.map(function (x) {
-    return '<button class="' + (_maPeriode === x[0] ? 'on' : '') + '" onclick="maSetPeriode(\'' + x[0] + '\')">' + x[1] + '</button>';
-  }).join('') + '</div>';
+  var isLong = ['6mois', '9mois', 'annee'].indexOf(_maPeriode) >= 0;
+  var longLbl = { '6mois': '6 mois', '9mois': '9 mois', annee: 'Année' }[_maPeriode];
+  var plusIco = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+  var btns = '<button class="' + (_maPeriode === 'semaine' ? 'on' : '') + '" onclick="maSetPeriode(\'semaine\')">Semaine</button>'
+    + '<button class="' + (_maPeriode === 'mois' ? 'on' : '') + '" onclick="maSetPeriode(\'mois\')">Mois</button>'
+    + '<button class="' + (_maPeriode === '3mois' ? 'on' : '') + '" onclick="maSetPeriode(\'3mois\')">3 mois</button>'
+    + '<button class="plus' + (isLong ? ' on' : '') + '" title="Période plus longue" onclick="maTogglePeriodMenu(this)">' + (isLong ? longLbl : plusIco) + '</button>';
+  var menu = '<div class="ma-pmenu" style="display:none"><div onclick="maSetPeriode(\'6mois\')">6 mois</div><div onclick="maSetPeriode(\'9mois\')">9 mois</div><div onclick="maSetPeriode(\'annee\')">Année</div></div>';
+  return '<div class="ma-period-wrap"><div class="ma-period ma-period-inline">' + btns + '</div>' + menu + '</div>';
+}
+// Ouvre/ferme le menu « + » relatif au bouton cliqué (pas d'id → pas de collision
+// entre panes qui rendent tous leur propre sélecteur).
+function maTogglePeriodMenu(btn) {
+  try { var w = btn.closest('.ma-period-wrap'); var m = w && w.querySelector('.ma-pmenu'); if (m) m.style.display = (m.style.display === 'block') ? 'none' : 'block'; } catch (e) {}
 }
 // Petite légende sous le sélecteur en Tendances/Résumé pour situer ce qui bouge.
 function _maPeriodHint(txt) { return '<div style="font-size:10.5px;color:var(--text-subtle);margin:-4px 2px 10px;line-height:1.4">' + txt + '</div>'; }
-// Historique (muscu/cardio) : nb d'éléments affichés, étendu par « Charger plus ».
+// Historique (muscu/cardio) + Par séance : nb d'éléments affichés, étendu par « Charger plus ».
 var _maHistMore = { muscu: 5, cardio: 5 };
+var _maSeaMore = 5;
 function maLoadMoreHist(disc) { _maHistMore[disc] = (_maHistMore[disc] || 5) + 5; try { if (disc === 'cardio') _maCardioHistorique(dernierAppData); else _maMuscuHistorique(dernierAppData); } catch (e) {} }
+function maLoadMoreSea() { _maSeaMore += 5; try { _maMuscuExercice(dernierAppData); } catch (e) {} }
 // Bouton « Charger plus » (affiché s'il reste des éléments après la tranche visible).
 function _maMoreBtn(disc, shown, total) {
   if (shown >= total) return '';
@@ -9129,8 +9148,7 @@ function _maSeaToggle(i) {
 function _maProgSea(data) {
   var sd = data.seances_detail || [];
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
-  var cut = _maCut(_maPeriode);
-  var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd.slice(0, 12);
+  // Plus de filtre par période : on montre les N dernières séances + « Charger plus ».
   var rs = {}, rsByDate = {};
   ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) {
     if (x.valeur == null) return;
@@ -9145,7 +9163,9 @@ function _maProgSea(data) {
   function prevOcc(nom, date) { var arr = occ[nom] || [], p = null; for (var i = 0; i < arr.length; i++) { if (arr[i].date < date) p = arr[i]; else break; } return p; }
   function prevTonSameType(sid, date) { var p = null; sd.forEach(function (s) { if ((s.seance_id || 'Séance') === sid && (s.date || '') < date) { if (!p || s.date > p.date) p = s; } }); return p ? (p.tonnage || 0) : null; }
   var esc = _maE;
-  var sorted = inP.slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
+  var allSorted = sd.slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
+  var nSea = Math.min(_maSeaMore || 5, allSorted.length);
+  var sorted = allSorted.slice(0, nSea);
   var cards = sorted.map(function (s, idx) {
     var sid = s.seance_id || 'Séance';
     var libre = /libre|^séance$/i.test(sid);
@@ -9190,7 +9210,8 @@ function _maProgSea(data) {
       + '<div id="ma-sea-bd-' + idx + '" style="display:' + (open ? 'block' : 'none') + '">' + exos + '</div>'
       + '</div>';
   }).join('');
-  return cards + _maCap('Chaque séance de la période, dépliable. Par exercice : ta meilleure série et son évolution vs la <b>dernière fois</b> (même exercice). Le badge d\'en-tête compare le tonnage à la même séance précédente.');
+  var moreBtn = (nSea < allSorted.length) ? '<button onclick="maLoadMoreSea()" style="width:100%;margin-top:2px;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:13px;color:var(--accent);cursor:pointer">Charger plus (' + (allSorted.length - nSea) + ' restantes)</button>' : '';
+  return cards + moreBtn + _maCap('Tes dernières séances, dépliables. Par exercice : ta meilleure série et son évolution vs la <b>dernière fois</b> (même exercice). Le badge d\'en-tête compare le tonnage à la même séance précédente.');
 }
 
 // Balance agoniste/antagoniste (contexte, sous la progression).
