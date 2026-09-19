@@ -23,6 +23,7 @@
   "homepage": "https://github.com/vincentnmz/Muscu_app#readme",
   "dependencies": {
     "@capacitor/android": "^6.2.2",
+    "@capacitor/app": "^6.0.3",
     "@capacitor/cli": "^6.2.2",
     "@capacitor/core": "^6.2.2",
     "@capacitor/push-notifications": "^6.0.5"

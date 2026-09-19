@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novalyz — Flux Entraînement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Michroma&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --text-muted:#4A5980; --text-subtle:#8595B8;
+    --accent:#1A5FFF; --accent-a08:rgba(26,95,255,.09); --accent-a15:rgba(26,95,255,.15);
+    --cardio:#0EA5E9; --cardio-a:rgba(14,165,233,.12);
+    --hyrox:#CA9A04; --hyrox-b:#EAB308;
+    --good:#00A854; --warn:#E07800;
+    --sh-sm:0 1px 2px rgba(7,11,20,.06); --sh:0 6px 20px rgba(7,11,20,.08); --sh-lg:0 16px 44px rgba(7,11,20,.14);
+    --font:'Quicksand','Helvetica Neue',Arial,sans-serif;
+    --font-h:'Michroma','Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#EAF0FF,#F9FBFF 60%);font-family:var(--font);color:var(--text);
+       min-height:100vh;padding:28px 16px 60px;-webkit-font-smoothing:antialiased}
+
+  /* ---- Intro / notice ---- */
+  .intro{max-width:760px;margin:0 auto 26px}
+  .intro .eyebrow{font-family:var(--font-h);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .intro h1{font-family:var(--font-h);font-size:23px;line-height:1.25;margin:0 0 10px;text-wrap:balance}
+  .intro p{font-size:14px;line-height:1.65;color:var(--text-muted);margin:0 0 10px;max-width:62ch}
+  .flowline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+  .flowline .step{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);
+                  border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;box-shadow:var(--sh-sm)}
+  .flowline .step b{color:var(--accent)}
+  .flowline .arw{color:var(--text-subtle);font-weight:800}
+  .note{background:var(--accent-a08);border:1px solid var(--accent-a15);border-radius:14px;padding:12px 15px;
+        font-size:12.5px;line-height:1.55;color:var(--text-muted);margin-top:14px}
+  .note b{color:var(--text)}
+
+  /* ---- Phones row ---- */
+  .stage{display:flex;flex-wrap:wrap;gap:34px;justify-content:center;align-items:flex-start}
+  .device{width:344px}
+  .device .cap{text-align:center;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+               color:var(--text-subtle);margin-bottom:10px}
+  .phone{width:344px;height:720px;background:var(--bg);border-radius:38px;border:1px solid var(--border);
+         box-shadow:var(--sh-lg);overflow:hidden;position:relative;display:flex;flex-direction:column}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:26px;background:var(--text);
+         border-radius:0 0 16px 16px;z-index:9}
+
+  .app{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .scr{flex:1;overflow-y:auto;overflow-x:hidden;padding:38px 15px 14px}
+  .scr::-webkit-scrollbar{width:0}
+
+  .apphd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .apphd .t{font-family:var(--font-h);font-size:16px}
+  .apphd .av{width:30px;height:30px;border-radius:999px;background:var(--surface2);display:grid;place-items:center;
+             font-size:12px;font-weight:800;color:var(--accent)}
+
+  /* segment */
+  .seg{display:flex;gap:5px;background:var(--surface2);border-radius:13px;padding:5px;margin-bottom:16px}
+  .seg button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:700;font-size:12.5px;
+              color:var(--text-muted);padding:10px 0;border-radius:9px;display:flex;align-items:center;justify-content:center;
+              gap:6px;cursor:pointer;white-space:nowrap}
+  .seg button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .seg button.on{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm)}
+  .seg button.on.cx{color:#0b7fb4}
+  .seg button.on.hx{color:var(--hyrox)}
+
+  .sec{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-subtle);
+       margin:2px 2px 10px}
+
+  /* activity card */
+  .act{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;margin-bottom:9px;overflow:hidden;
+       transition:border-color .15s,box-shadow .15s}
+  .act.on{border-color:var(--cardio);box-shadow:0 6px 18px rgba(14,165,233,.14)}
+  .act .head{display:flex;align-items:center;gap:10px;padding:11px;cursor:pointer}
+  .act .ic{width:36px;height:36px;border-radius:10px;background:var(--surface2);color:var(--cardio);display:grid;
+           place-items:center;flex:none}
+  .act.on .ic{background:var(--cardio);color:#fff}
+  .act .ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .act .tt{flex:1;min-width:0}
+  .act .tt .a{font-weight:800;font-size:13.5px;line-height:1.15}
+  .act .tt .b{font-size:10.5px;color:var(--text-subtle);margin-top:1px}
+  .act .chev{color:var(--text-subtle);transition:transform .2s;flex:none}
+  .act.on .chev{transform:rotate(180deg);color:var(--cardio)}
+
+  .body{display:none;padding:0 13px 14px;border-top:1px dashed var(--border);margin-top:-1px}
+  .act.on .body{display:block;animation:pop .22s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+  .lbl{font-size:11px;font-weight:700;color:var(--text-muted);margin:13px 2px 7px;display:flex;justify-content:space-between}
+  .lbl .opt{color:var(--text-subtle);font-weight:600}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:1.5px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:10px;
+        padding:8px 12px;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer}
+  .chip.on{border-color:var(--cardio);background:var(--cardio-a);color:#0b7fb4}
+  .fieldrow{display:flex;gap:8px;margin-top:2px}
+  .field{flex:1}
+  .field input{width:100%;padding:11px;border-radius:11px;border:1.5px solid var(--border);background:var(--surface2);
+               font-family:inherit;font-size:15px;font-weight:700;color:var(--text);text-align:center}
+  .field .u{font-size:10px;color:var(--text-subtle);text-align:center;margin-top:3px;font-weight:700}
+  .hint{font-size:11px;color:var(--text-subtle);margin-top:9px;line-height:1.5}
+
+  .startbtn{display:flex;align-items:center;justify-content:center;gap:9px;height:52px;border-radius:14px;
+            background:var(--cardio);color:#fff;border:none;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;
+            box-shadow:0 6px 16px rgba(14,165,233,.32);width:100%;margin-top:8px}
+  .startbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .startbtn.dim{background:var(--surface2);color:var(--text-subtle);box-shadow:none;cursor:default}
+
+  /* ---- Screen 2 : séance en cours ---- */
+  .runhd{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .iconbtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);
+           display:grid;place-items:center;cursor:pointer;flex:none}
+  .iconbtn svg{width:17px;height:17px;fill:none;stroke:var(--text-muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .runtag{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--cardio)}
+
+  .clock{text-align:center;margin:10px 0 4px}
+  .clock .k{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-subtle)}
+  .clock .v{font-family:ui-monospace,Menlo,monospace;font-size:52px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.05}
+  .obj{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);padding:15px;margin:12px 0}
+  .obj .top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .obj .top .ic{width:40px;height:40px;border-radius:12px;background:var(--cardio);color:#fff;display:grid;place-items:center;flex:none}
+  .obj .top .ic svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .obj .top .nm{font-weight:800;font-size:16px}
+  .obj .top .sb{font-size:11.5px;color:var(--text-subtle)}
+  .bar{height:10px;border-radius:999px;background:var(--surface2);overflow:hidden}
+  .bar i{display:block;height:100%;width:62%;background:linear-gradient(90deg,var(--cardio),#38bdf8);border-radius:999px}
+  .barlbl{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text-muted);margin-top:7px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:4px}
+  .cell{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px}
+  .cell .k{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin-bottom:5px}
+  .cell input{width:100%;border:none;background:transparent;font-family:inherit;font-size:22px;font-weight:800;color:var(--text);padding:0}
+  .cell input::placeholder{color:var(--border)}
+  .cell .u{font-size:10px;color:var(--text-subtle);font-weight:700}
+  .finish{display:flex;align-items:center;justify-content:center;gap:9px;height:54px;border-radius:14px;background:var(--good);
+          color:#fff;border:none;font-family:inherit;font-weight:800;font-size:16px;cursor:pointer;width:100%;margin-top:14px;
+          box-shadow:0 6px 16px rgba(0,168,84,.3)}
+
+  /* bottom nav */
+  .nav{display:flex;border-top:1px solid var(--border);background:var(--surface);padding:8px 6px 12px}
+  .nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;font-weight:700;
+         color:var(--text-subtle);text-decoration:none}
+  .nav a.on{color:var(--accent)}
+  .nav a svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .toast{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);background:var(--text);color:#fff;
+         font-size:12.5px;font-weight:700;padding:11px 16px;border-radius:12px;box-shadow:var(--sh-lg);opacity:0;
+         transition:opacity .25s;pointer-events:none;white-space:nowrap;z-index:20}
+  .toast.show{opacity:1}
+  @media(max-width:760px){.device,.phone{width:100%;max-width:344px}}
+</style>
+</head>
+<body>
+
+  <div class="intro">
+    <div class="eyebrow">Maquette · à valider</div>
+    <h1>Entraînement — choisir, régler, puis démarrer</h1>
+    <p>Aujourd'hui : tu choisis une activité (juste une carte), tu tapes « Démarrer », et c'est <em>seulement après</em> que tu vois les champs. Proposition : chaque activité se <b>déplie avec ses réglages</b> (objectif, durée/distance cible, intensité), tu ajustes, <b>puis</b> « Démarrer » ouvre l'écran <b>séance en cours</b> avec ces détails.</p>
+    <div class="flowline">
+      <span class="step"><b>1.</b> Choisir & régler l'activité</span>
+      <span class="arw">→</span>
+      <span class="step"><b>2.</b> Démarrer</span>
+      <span class="arw">→</span>
+      <span class="step"><b>3.</b> Séance en cours (détails)</span>
+    </div>
+    <div class="note"><b>Hyrox</b> a déjà ce principe (écran « Course » avec le détail des 16 segments + poids réglables). <b>Musculation</b> garde son flux actuel (choix de la séance du programme). Cette maquette montre surtout le <b>Cardio</b>, là où il manque. Clique une activité pour la déplier, puis « Démarrer ».</p>
+    </div>
+  </div>
+
+  <div class="stage">
+
+    <!-- ÉCRAN 1 -->
+    <div class="device">
+      <div class="cap">Étape 1 — choisir & régler</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="app">
+          <div class="scr" id="scr1">
+            <div class="apphd"><div class="t">Entraînement</div><div class="av">VP</div></div>
+
+            <div class="seg">
+              <button><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
+              <button class="on cx"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
+              <button><svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7z"/><path d="M9 12h6M12 9v6"/></svg>Hyrox</button>
+            </div>
+
+            <div class="sec">Choisis ton activité</div>
+            <div id="acts"></div>
+
+            <button class="startbtn dim" id="cta" onclick="demarrer()">
+              <svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg><span>Sélectionne une activité</span>
+            </button>
+            <div class="hint" style="text-align:center">Les réglages sont un <b>objectif</b>, pas une obligation — tu peux rester en « Libre » et tout saisir à la fin.</div>
+          </div>
+
+          <div class="nav">
+            <a><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Accueil</a>
+            <a class="on"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</a>
+            <a><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-8"/></svg>Analyses</a>
+            <a><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10z"/></svg>État</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÉCRAN 2 -->
+    <div class="device">
+      <div class="cap">Étape 3 — séance en cours</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="app">
+          <div class="scr" id="scr2">
+            <div class="runhd">
+              <div class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+              <div><div class="runtag">Séance en cours</div><div style="font-family:var(--font-h);font-size:15px">Cardio</div></div>
+            </div>
+
+            <div class="clock"><div class="k">Temps</div><div class="v" id="clk">14:32</div></div>
+
+            <div class="obj">
+              <div class="top">
+                <div class="ic"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/></svg></div>
+                <div><div class="nm">Vélo</div><div class="sb">Objectif · 30 min · endurance</div></div>
+              </div>
+              <div class="bar"><i></i></div>
+              <div class="barlbl"><span>18,6 min</span><span>60 % de l'objectif</span></div>
+            </div>
+
+            <div class="sec" style="margin-top:16px">Ta séance</div>
+            <div class="grid2">
+              <div class="cell"><div class="k">Distance</div><input value="8,4"><div class="u">km</div></div>
+              <div class="cell"><div class="k">FC moyenne</div><input value="142"><div class="u">bpm</div></div>
+              <div class="cell"><div class="k">Vitesse moy.</div><input value="27,3"><div class="u">km/h</div></div>
+              <div class="cell"><div class="k">RPE ressenti</div><input value="7"><div class="u">/10</div></div>
+            </div>
+
+            <button class="finish" onclick="terminer()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17l9-11"/></svg>
+              Terminer & enregistrer
+            </button>
+            <div class="hint" style="text-align:center">Novalyz calcule ensuite la charge, la tendance et le ressenti vs l'objectif.</div>
+          </div>
+
+          <div class="nav">
+            <a><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Accueil</a>
+            <a class="on"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</a>
+            <a><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-8"/></svg>Analyses</a>
+            <a><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10z"/></svg>État</a>
+          </div>
+          <div class="toast" id="toast">✅ Séance vélo enregistrée</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  var ACTS = [
+    {t:'velo', a:'Vélo', b:'Distance · watts · FC', svg:'<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>'},
+    {t:'footing', a:'Footing', b:'Distance · allure · FC', svg:'<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>'},
+    {t:'marche', a:'Marche', b:'Distance · pas · FC', svg:'<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>'},
+    {t:'natation', a:'Natation', b:'Distance · temps · FC', svg:'<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01M9 12l4-3 3 2"/>'},
+    {t:'rameur', a:'Rameur', b:'Distance · watts · cadence', svg:'<path d="M4 20l7-7M11 13l3 3M14 10l4 4M13 5l6 6M17 3l4 4"/>'},
+    {t:'autre', a:'Autre', b:'Durée · RPE · kcal', svg:'<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>'}
+  ];
+  var sel=null, obj='libre';
+  function bodyHtml(){
+    return '<div class="lbl">Objectif de séance <span class="opt">— optionnel</span></div>'
+      + '<div class="chips" data-grp="obj">'
+      +   chip('libre','Libre')+chip('duree','Durée')+chip('distance','Distance')
+      + '</div>'
+      + '<div id="objcfg"></div>'
+      + '<div class="lbl" style="margin-top:15px">Intensité visée</div>'
+      + '<div class="chips" data-grp="int">'
+      +   chip2('Récup')+chip2('Endurance',true)+chip2('Tempo')+chip2('Intense')
+      + '</div>';
+  }
+  function objCfg(){
+    if(obj==='duree') return '<div class="lbl" style="margin-top:13px">Durée cible</div><div class="chips">'+chip2('20 min')+chip2('30 min',true)+chip2('45 min')+chip2('60 min')+'</div>';
+    if(obj==='distance') return '<div class="lbl" style="margin-top:13px">Distance cible</div><div class="fieldrow"><div class="field"><input value="10"><div class="u">km</div></div><div class="field"><input value="30" style="color:var(--text-subtle)"><div class="u">min estimé</div></div></div>';
+    return '<div class="hint">Aucun objectif fixé — tu chronomètres et tu saisis tes valeurs à la fin.</div>';
+  }
+  function chip(v,l){return '<button class="chip'+(obj===v?' on':'')+'" onclick="setObj(\''+v+'\')">'+l+'</button>';}
+  function chip2(l,on){return '<button class="chip'+(on?' on':'')+'" onclick="tog(this)">'+l+'</button>';}
+  function tog(el){var p=el.parentNode;p.querySelectorAll('.chip').forEach(function(c){c.classList.remove('on')});el.classList.add('on');}
+  function setObj(v){obj=v;render();var oc=document.getElementById('objcfg');if(oc)oc.innerHTML=objCfg();}
+  function render(){
+    var h='';
+    ACTS.forEach(function(x,i){
+      var on=(sel===i);
+      h+='<div class="act'+(on?' on':'')+'">'
+        +'<div class="head" onclick="pick('+i+')">'
+        +'<span class="ic"><svg viewBox="0 0 24 24">'+x.svg+'</svg></span>'
+        +'<span class="tt"><span class="a">'+x.a+'</span><span class="b">'+x.b+'</span></span>'
+        +'<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>'
+        +'</div>'
+        +'<div class="body">'+(on?bodyHtml():'')+'</div>'
+        +'</div>';
+    });
+    document.getElementById('acts').innerHTML=h;
+    var oc=document.getElementById('objcfg');if(oc)oc.innerHTML=objCfg();
+    var cta=document.getElementById('cta');
+    if(sel!=null){cta.classList.remove('dim');cta.querySelector('span').textContent='Démarrer la séance';}
+    else{cta.classList.add('dim');cta.querySelector('span').textContent='Sélectionne une activité';}
+  }
+  function pick(i){ sel=(sel===i?null:i); if(sel!==null)obj='libre'; render(); }
+  function demarrer(){
+    if(sel==null) return;
+    var p2=document.getElementById('scr2').closest('.phone');
+    p2.animate([{boxShadow:'var(--sh-lg)'},{boxShadow:'0 0 0 3px var(--cardio), var(--sh-lg)'},{boxShadow:'var(--sh-lg)'}],{duration:700});
+    document.getElementById('scr2').scrollTop=0;
+  }
+  function terminer(){
+    var t=document.getElementById('toast');t.classList.add('show');
+    setTimeout(function(){t.classList.remove('show')},1900);
+  }
+  render();
+  // petite animation du chrono écran 2
+  var s=14*60+32;setInterval(function(){s++;var m=Math.floor(s/60),r=s%60;var e=document.getElementById('clk');if(e)e.textContent=m+':'+String(r).padStart(2,'0');},1000);
+</script>
+</body>
+</html>

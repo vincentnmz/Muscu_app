@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novalyz — Hyrox par atelier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Michroma&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --text-muted:#4A5980; --text-subtle:#8595B8;
+    --accent:#1A5FFF;
+    --hy:#CA9A04; --hyb:#EAB308; --hy-a:rgba(234,179,8,.14);
+    --cardio:#0EA5E9; --good:#00A854;
+    --sh-sm:0 1px 2px rgba(7,11,20,.06); --sh:0 6px 20px rgba(7,11,20,.08); --sh-lg:0 16px 44px rgba(7,11,20,.14);
+    --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --font-h:'Michroma','Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#FBF3DC,#F9FBFF 55%);font-family:var(--font);color:var(--text);
+       min-height:100vh;padding:28px 16px 60px;-webkit-font-smoothing:antialiased}
+  .intro{max-width:760px;margin:0 auto 26px}
+  .intro .eyebrow{font-family:var(--font-h);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--hy);margin-bottom:8px}
+  .intro h1{font-family:var(--font-h);font-size:23px;line-height:1.25;margin:0 0 10px;text-wrap:balance}
+  .intro p{font-size:14px;line-height:1.65;color:var(--text-muted);margin:0 0 10px;max-width:62ch}
+  .note{background:var(--hy-a);border:1px solid rgba(234,179,8,.3);border-radius:14px;padding:12px 15px;
+        font-size:12.5px;line-height:1.55;color:var(--text-muted);margin-top:12px}
+  .note b{color:var(--text)}
+
+  .stage{display:flex;flex-wrap:wrap;gap:34px;justify-content:center;align-items:flex-start}
+  .device{width:344px}
+  .device .cap{text-align:center;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin-bottom:10px}
+  .phone{width:344px;height:740px;background:var(--bg);border-radius:38px;border:1px solid var(--border);
+         box-shadow:var(--sh-lg);overflow:hidden;position:relative;display:flex;flex-direction:column}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:26px;background:var(--text);border-radius:0 0 16px 16px;z-index:9}
+  .app{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .scr{flex:1;overflow-y:auto;overflow-x:hidden;padding:38px 15px 14px}
+  .scr::-webkit-scrollbar{width:0}
+  .apphd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .apphd .t{font-family:var(--font-h);font-size:16px}
+  .apphd .av{width:30px;height:30px;border-radius:999px;background:var(--surface2);display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--accent)}
+
+  .seg{display:flex;gap:5px;background:var(--surface2);border-radius:13px;padding:5px;margin-bottom:14px}
+  .seg button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);
+              padding:10px 0;border-radius:9px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap}
+  .seg button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .seg button.on{background:var(--surface);box-shadow:var(--sh-sm)}
+  .seg button.on.cx{color:#0b7fb4}.seg button.on.hx{color:var(--hy)}.seg button.on.mu{color:var(--accent)}
+
+  /* mode sub-toggle */
+  .modes{display:flex;gap:8px;margin-bottom:14px}
+  .modes button{flex:1;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;padding:11px 8px;
+                font-family:inherit;cursor:pointer;text-align:left}
+  .modes button .m{font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px}
+  .modes button .d{font-size:10px;color:var(--text-subtle);margin-top:2px}
+  .modes button.on{border-color:var(--hyb);background:var(--hy-a)}
+  .modes button.on .m{color:var(--hy)}
+
+  .lead{font-size:12.5px;color:var(--text-muted);line-height:1.5;margin:2px 2px 12px}
+  .sec{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-subtle);margin:14px 2px 9px;display:flex;justify-content:space-between}
+  .sec .n{color:var(--hy)}
+
+  .st{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;margin-bottom:9px;overflow:hidden}
+  .st.on{border-color:var(--hyb);box-shadow:0 6px 16px rgba(234,179,8,.16)}
+  .st .head{display:flex;align-items:center;gap:11px;padding:11px;cursor:pointer}
+  .st .box{width:22px;height:22px;border-radius:7px;border:2px solid var(--border);flex:none;display:grid;place-items:center;color:#fff}
+  .st.on .box{background:var(--hyb);border-color:var(--hyb)}
+  .st .box svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+  .st.on .box svg{opacity:1}
+  .st .nm{flex:1;min-width:0}
+  .st .nm .a{font-weight:800;font-size:13.5px}
+  .st .nm .b{font-size:10.5px;color:var(--text-subtle);margin-top:1px}
+  .st .pr{font-size:10px;font-weight:800;color:var(--good);background:rgba(0,168,84,.1);border-radius:6px;padding:3px 7px;flex:none}
+  .cfg{display:none;padding:2px 13px 14px;border-top:1px dashed var(--border)}
+  .st.on .cfg{display:block;animation:pop .2s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1}}
+  .cline{display:flex;gap:8px;margin-top:11px}
+  .cf{flex:1}
+  .cf .l{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-subtle);margin-bottom:5px}
+  .cf input{width:100%;padding:9px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);
+            font-family:inherit;font-size:15px;font-weight:800;color:var(--text);text-align:center}
+  .cf.w input{color:var(--hy)}
+
+  .runrow{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);
+          border-radius:12px;padding:11px 13px;margin-top:4px}
+  .runrow .tx{font-size:12.5px;font-weight:700}
+  .runrow .tx b{color:var(--cardio)}
+  .sw{width:44px;height:26px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);position:relative;cursor:pointer}
+  .sw i{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:var(--sh-sm);transition:.18s}
+  .sw.on{background:var(--cardio);border-color:var(--cardio)}.sw.on i{left:20px}
+
+  .summary{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 15px;margin-top:14px;
+           display:flex;justify-content:space-between;align-items:center}
+  .summary .k{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-subtle)}
+  .summary .v{font-family:var(--font-h);font-size:15px;color:var(--hy)}
+
+  .startbtn{display:flex;align-items:center;justify-content:center;gap:9px;height:54px;border-radius:15px;
+            background:linear-gradient(135deg,var(--hyb),var(--hy));color:#1a1400;border:none;font-family:inherit;font-weight:900;
+            font-size:16px;cursor:pointer;box-shadow:0 8px 20px rgba(234,179,8,.35);width:100%;margin-top:14px}
+  .startbtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .hint{font-size:11px;color:var(--text-subtle);margin-top:10px;line-height:1.5;text-align:center}
+
+  .nav{display:flex;border-top:1px solid var(--border);background:var(--surface);padding:8px 6px 12px}
+  .nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:var(--text-subtle);text-decoration:none}
+  .nav a.on{color:var(--accent)}
+  .nav a svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  @media(max-width:760px){.device,.phone{width:100%;max-width:344px}}
+</style>
+</head>
+<body>
+
+  <div class="intro">
+    <div class="eyebrow">Maquette · à valider</div>
+    <h1>Hyrox — « Par atelier » : progresser sans tout le circuit</h1>
+    <p>Dans Hyrox, en plus du <b>Circuit complet</b> (les 8 × Run + atelier chronométrés), on ajoute un mode <b>Par atelier</b> : tu <b>choisis les ateliers</b> que tu veux travailler, tu règles la cible et la charge, et tu fais une séance ciblée — utile quand tu bosses juste 2-3 mouvements pour progresser dessus.</p>
+    <div class="note"><b>Rappel point 1 :</b> côté Cardio, <b>toutes</b> les activités restent modifiables (chaque activité se déplie avec ses réglages). Ici c'est le mode <b>personnalisé Hyrox</b>. Clique les ateliers pour les activer et les régler.</div>
+  </div>
+
+  <div class="stage">
+
+    <div class="device">
+      <div class="cap">Hyrox — mode « Par atelier »</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="app">
+          <div class="scr">
+            <div class="apphd"><div class="t">Entraînement</div><div class="av">VP</div></div>
+
+            <div class="seg">
+              <button class="mu"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
+              <button class="cx"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
+              <button class="on hx"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7z"/><path d="M9 12h6M12 9v6"/></svg>Hyrox</button>
+            </div>
+
+            <div class="modes">
+              <button onclick="setMode('circuit')" id="m-circuit"><div class="m">🏁 Circuit complet</div><div class="d">8 × Run + atelier, chrono</div></button>
+              <button class="on" onclick="setMode('atelier')" id="m-atelier"><div class="m">🎯 Par atelier</div><div class="d">Choisis tes ateliers</div></button>
+            </div>
+
+            <div class="lead">Sélectionne les ateliers à travailler aujourd'hui. Pas besoin de tout faire.</div>
+
+            <div class="sec">Ateliers Hyrox <span class="n" id="cnt">2 choisis</span></div>
+            <div id="sts"></div>
+
+            <div class="runrow">
+              <div class="tx">Ajouter des <b>runs</b> entre les ateliers</div>
+              <div class="sw" id="runsw" onclick="this.classList.toggle('on')"><i></i></div>
+            </div>
+
+            <div class="summary"><span class="k">Séance ciblée</span><span class="v" id="sum">2 ateliers</span></div>
+
+            <button class="startbtn"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>Démarrer l'atelier</button>
+            <div class="hint">Novalyz suit ta <b>progression atelier par atelier</b> (temps, charge, reps) pour voir où tu montes.</div>
+          </div>
+
+          <div class="nav">
+            <a><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Accueil</a>
+            <a class="on"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</a>
+            <a><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-8"/></svg>Analyses</a>
+            <a><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10z"/></svg>État</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  var STATIONS=[
+    {k:'ski', a:'SkiErg', b:'1000 m', unit:'m', tgt:'1000', w:null, pr:'-4 s'},
+    {k:'push', a:'Sled Push', b:'50 m', unit:'m', tgt:'50', w:152, pr:null},
+    {k:'pull', a:'Sled Pull', b:'50 m', unit:'m', tgt:'50', w:103, pr:null},
+    {k:'burp', a:'Burpee Broad Jump', b:'80 m', unit:'m', tgt:'80', w:null, pr:null},
+    {k:'row', a:'Rowing', b:'1000 m', unit:'m', tgt:'1000', w:null, pr:null},
+    {k:'farm', a:'Farmers Carry', b:'200 m', unit:'m', tgt:'200', w:24, pr:null},
+    {k:'lunge', a:'Sandbag Lunges', b:'100 m', unit:'m', tgt:'100', w:20, pr:null},
+    {k:'wall', a:'Wall Balls', b:'100 reps', unit:'reps', tgt:'100', w:6, pr:'+6 reps'}
+  ];
+  var chosen={push:true, wall:true};
+  function render(){
+    var h='';
+    STATIONS.forEach(function(s){
+      var on=!!chosen[s.k];
+      h+='<div class="st'+(on?' on':'')+'">'
+        +'<div class="head" onclick="tog(\''+s.k+'\')">'
+        +'<span class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-11"/></svg></span>'
+        +'<span class="nm"><span class="a">'+s.a+'</span><span class="b">'+s.b+(s.w?' · '+s.w+' kg':'')+'</span></span>'
+        +(s.pr?'<span class="pr">▲ '+s.pr+'</span>':'')
+        +'</div>'
+        +'<div class="cfg">'
+        +'<div class="cline">'
+        +'<div class="cf"><div class="l">Cible</div><input value="'+s.tgt+'"></div>'
+        +(s.w!==null?'<div class="cf w"><div class="l">Charge (kg)</div><input value="'+s.w+'"></div>':'<div class="cf"><div class="l">Séries</div><input value="1"></div>')
+        +'<div class="cf"><div class="l">Séries</div><input value="'+(s.w!==null?'2':'1')+'"></div>'
+        +'</div></div>'
+        +'</div>';
+    });
+    document.getElementById('sts').innerHTML=h;
+    var n=Object.keys(chosen).filter(function(k){return chosen[k]}).length;
+    document.getElementById('cnt').textContent=n+' choisi'+(n>1?'s':'');
+    document.getElementById('sum').textContent=n+' atelier'+(n>1?'s':'');
+  }
+  function tog(k){ if(chosen[k])delete chosen[k]; else chosen[k]=true; render(); }
+  function setMode(m){
+    document.getElementById('m-circuit').classList.toggle('on',m==='circuit');
+    document.getElementById('m-atelier').classList.toggle('on',m==='atelier');
+  }
+  render();
+</script>
+</body>
+</html>
