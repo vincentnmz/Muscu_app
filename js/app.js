@@ -9452,7 +9452,13 @@ function _maCroise(data) {
   var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
   var mot = data.moteur || {};
   var verdict = '<div class="ma-verdict cr"><span class="ma-vic" style="background:#931F1D">' + _maSvg('<path d="M12 3v18M3 12h18"/>', 14) + '</span><div><div class="vh">Vue d\'ensemble</div><div class="vd">' + _maE(tot ? ('Charge muscu + cardio combinée. Disponibilité : ' + ((mot.disponibilite && mot.disponibilite.niveau) || '—') + ' · récup ' + (mot.recup || '—') + '.') : 'Ajoute des séances muscu et cardio pour croiser tes données.') + '</div></div></div>';
-  var rep = tot ? ('<div class="ma-card ma-vol"><div class="ma-volrow"><div class="lh"><span class="n">Musculation</span><span class="p">' + mPct + '%</span></div><div class="ma-vt"><span style="width:' + mPct + '%"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Cardio</span><span class="p">' + (100 - mPct) + '%</span></div><div class="ma-vt"><span style="width:' + (100 - mPct) + '%;background:#9D5FD3"></span></div></div></div>') : _maEmpty('Répartition dispo dès que tu as des deux.');
+  // Répartition muscu/cardio en UNE seule ligne (même forme que la Balance
+  // musculaire) : remplissage bleu = muscu, fond lilas = cardio.
+  var rep = tot ? ('<div class="ma-card ma-bal2"><div class="ma-b2row">'
+    + '<div class="ma-b2h"><span class="l">Musculation ' + mPct + '%</span><span class="r" style="color:#9D5FD3">' + (100 - mPct) + '% Cardio</span></div>'
+    + '<div class="ma-b2bar" style="background:#9D5FD3"><span style="width:' + mPct + '%"></span></div>'
+    + '<div class="ma-b2sub"><span>Force / masse</span><span>charge combinée</span><span>Endurance</span></div>'
+    + '</div></div>') : _maEmpty('Répartition dispo dès que tu as des deux.');
   var be = (data.bien_etre && data.bien_etre[0]) || null;
   var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
   _maSet('ma-croise-resume', _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
