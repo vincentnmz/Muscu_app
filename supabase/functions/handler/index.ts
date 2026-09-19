@@ -435,6 +435,10 @@ const CORE_NIVEAUX = [
 const CORE_FIABILITE = {
   histoMin: 28,          // jours d'historique de charge min pour un ACWR fiable
   joursActifsMin: 6,     // jours actifs min sur 28 (chronique non trouée) — décision métier
+  joursActifsChroniqueMin: 4, // jours actifs min HORS semaine aiguë (jours 7→27). En dessous, la
+                              // base chronique est creuse (reprise/vacances) → l'ACWR flambe même
+                              // pour un volume normal → NON interprétable. Auto-détection sans
+                              // que l'athlète ait à déclarer « retour vacances ».
   confJoursFaible: 7,    // < 7 j d'historique → confiance faible
   confJoursMoyen: 21,    // < 21 j → confiance moyenne
   wellnessMin: 3,        // < 3 mesures bien-être → confiance moyenne
@@ -501,24 +505,28 @@ function calculerChargeSport(sport: string, rows: any[]): { chargeParJour: Recor
 function normaliserCharge(x: { chargeParJour: Record<string, number>; premiere: string | null }) { return x }
 
 // C. Ratio ACWR couplé + nb de jours actifs sur 28 j (pour la fiabilité chronique).
-function calculerACWR(chargeParJour: Record<string, number>, now: Date): { ratio: number | null; aigue: number; chronique: number; joursActifs28: number } {
-  let aigue = 0, somme28 = 0, joursActifs28 = 0
+function calculerACWR(chargeParJour: Record<string, number>, now: Date): { ratio: number | null; aigue: number; chronique: number; joursActifs28: number; joursActifsChronique: number } {
+  let aigue = 0, somme28 = 0, joursActifs28 = 0, joursActifsChronique = 0
   for (let d = 0; d < 28; d++) {
     const v = chargeParJour[fmtYMD(minus(now, d))] || 0
     somme28 += v
-    if (v > 0) joursActifs28++
+    if (v > 0) { joursActifs28++; if (d >= 7) joursActifsChronique++ }  // jours actifs HORS semaine aiguë (base chronique réelle)
     if (d < 7) aigue += v
   }
   const chronique = somme28 / 4
-  return { ratio: chronique > 0 ? Math.round(aigue / chronique * 100) / 100 : null, aigue, chronique, joursActifs28 }
+  return { ratio: chronique > 0 ? Math.round(aigue / chronique * 100) / 100 : null, aigue, chronique, joursActifs28, joursActifsChronique }
 }
 
 // Garde-fou FIABILITÉ centralisé (une seule copie) : historique < 28 j, reprise vacances < 28 j,
 // OU chronique trouée (jours actifs insuffisants). Retourne false = ACWR non interprétable.
-function fiabiliteACWR(premiere: string | null, ctxObj: any, now: Date, joursActifs28: number): boolean {
+function fiabiliteACWR(premiere: string | null, ctxObj: any, now: Date, joursActifs28: number, joursActifsChronique = 99): boolean {
   const histo = _joursDepuis(premiere, now)
   if (histo == null || histo < CORE_FIABILITE.histoMin) return false
   if (joursActifs28 < CORE_FIABILITE.joursActifsMin) return false
+  // Auto-détection reprise / layoff : si la base chronique (jours actifs hors semaine
+  // aiguë) est trop creuse, l'ACWR n'est PAS interprétable — un volume normal après
+  // une coupure ferait flamber le ratio (ex. 2.99) et fausserait le point du jour.
+  if (joursActifsChronique < CORE_FIABILITE.joursActifsChroniqueMin) return false
   if (ctxObj && String(ctxObj.etat || '') === 'retour_vacances') {
     const rd = _joursDepuis(ctxObj.date_debut, now)
     if (rd != null && rd >= 0 && rd < CORE_CONTEXTES.retour_vacances.acwrRepriseJours) return false
@@ -1485,6 +1493,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   } else {
     constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${Math.round(dist28 * 10) / 10} km au total)` : ''}.` })
     if (chEvol != null && chEvol >= 50) constats.push({ ton: 'attention', texte: `Ta charge cardio a fortement augmenté (+${chEvol}% sur 4 semaines) — hausse rapide.` })
+    else if (chEvol != null && chEvol <= -50) constats.push({ ton: 'attention', texte: `Forte baisse de ton activité cardio (${chEvol}% sur 4 semaines) — si l'endurance est un objectif, reprends progressivement.` })
     else if (chEvol != null && chEvol <= -40) constats.push({ ton: 'neutre', texte: `Ta charge cardio a baissé (${chEvol}% sur 4 semaines).` })
     // Efficience : FC moyenne 1re vs 2de moitié — MAIS seulement « à effort comparable »,
     // càd si le RPE moyen des deux moitiés est proche (sinon une FC plus basse peut venir
@@ -1876,7 +1885,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const seances7M = new Set(perfs.filter(r => (normDate(r.date) || '') >= c7).map(r => normDate(r.date))).size
     const histoM = _joursDepuis(premiereP, now)
     const etatM = evaluerEtatAthlete({
-      acwr, acwrFiable: fiabiliteACWR(premiereP, ctxObjM, now, acwrCalcA.joursActifs28), seances7: seances7M,
+      acwr, acwrFiable: fiabiliteACWR(premiereP, ctxObjM, now, acwrCalcA.joursActifs28, acwrCalcA.joursActifsChronique), seances7: seances7M,
       // Verdict athlète : fatigue = MOYENNE récente (readiness), pas le pire jour.
       douleur: sigM.douleur, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, courbatures: null,
       injStatut: null, ctxEtat: ctxEtatM,
@@ -2428,7 +2437,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       const acwr = acwrCalc.ratio
       const inj = injByAth[j.athlete_id] || null
       const histoDays = _joursDepuis(a.premiere, now)
-      const acwrFiable = fiabiliteACWR(a.premiere, ctxObjOf(j.athlete_id), now, acwrCalc.joursActifs28)
+      const acwrFiable = fiabiliteACWR(a.premiere, ctxObjOf(j.athlete_id), now, acwrCalc.joursActifs28, acwrCalc.joursActifsChronique)
 
       // Signaux agrégés (fenêtre 7 j) — MÊME agrégation que la fiche (_aggSignaux).
       const sig = _aggSignaux(beRawByAth[j.athlete_id] || [], now, 7)
@@ -2663,7 +2672,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     const beFoot = (beAll || []).filter(rb => { const dI = normDate(rb.date); return dI ? !renfoKeys.has(`${dI}|${String(rb.seance_id || '')}`) : true })
     const sig7 = _aggSignaux(beFoot, now, 7)
     const histoDaysF = _joursDepuis(premiereCharge, now)
-    const acwrFiableF = fiabiliteACWR(premiereCharge, contexte, now, acwrCalcF.joursActifs28)
+    const acwrFiableF = fiabiliteACWR(premiereCharge, contexte, now, acwrCalcF.joursActifs28, acwrCalcF.joursActifsChronique)
     const etat = evaluerEtatAthlete({
       acwr, acwrFiable: acwrFiableF, seances7: seances7f,
       douleur: sig7.douleur, fatigue: sig7.fatigue, sommeil: sig7.sommeil,

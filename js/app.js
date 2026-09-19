@@ -8634,8 +8634,12 @@ var _maTab = 'resume';   // 'resume' | 'detail' | 'tendances' | 'historique'
 var _MA_TABS = { muscu: ['resume', 'detail', 'tendances', 'historique'], cardio: ['resume', 'detail', 'tendances', 'historique'], croise: ['resume', 'tendances'] };
 function maSetDisc(d) {
   _maDisc = (['muscu', 'cardio', 'croise'].indexOf(d) >= 0) ? d : 'muscu';
-  if (_MA_TABS[_maDisc].indexOf(_maTab) < 0) _maTab = 'resume';
+  // Changement de discipline = on repart du début : Résumé · Semaine, sous-vues et
+  // compteurs « Charger plus » réinitialisés (demande porteur : cohérent partout).
+  _maTab = 'resume'; _maPeriode = 'semaine'; _maProgMode = 'exo';
+  _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
   _maApply();
+  try { maRenderData(); } catch (e) {}
   try { window.scrollTo(0, 0); } catch (e) {}
 }
 function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
@@ -9009,8 +9013,10 @@ function _maMuscuExercice(data) {
   var mode = _maProgMode;
   var MODES = [['exo', 'Par exercice', '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>'], ['grp', 'Par groupe', '<circle cx="12" cy="5" r="2.5"/><path d="M12 8v6M8 20l4-6 4 6"/>'], ['sea', 'Par séance', '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>']];
   var head = _maSec('Progression', '3 vues au choix', 'progression') + '<div class="ma-modesel">' + MODES.map(function (mm) { return '<button class="' + (mm[0] === mode ? 'on' : '') + '" onclick="maSetProgMode(\'' + mm[0] + '\')">' + _maSvg(mm[2], 14) + mm[1] + '</button>'; }).join('') + '</div>';
+  // Par exercice / Par groupe = filtrés par période → sélecteur. Par séance = « 5 derniers + Charger plus » (pas de sélecteur).
+  var periodSel = (mode === 'sea') ? '' : _maPeriodHtml();
   var body = (mode === 'grp') ? _maProgGrp(data) : (mode === 'sea') ? _maProgSea(data) : _maProgExo(data);
-  _maSet('ma-muscu-detail', head + body + _maSec('Records personnels') + _maRecords(data));
+  _maSet('ma-muscu-detail', head + periodSel + body + _maSec('Records personnels') + _maRecords(data));
 }
 
 var _maExoSel = null, _maExoMetric = '1rm';
