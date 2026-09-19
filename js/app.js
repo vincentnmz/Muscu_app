@@ -9445,20 +9445,33 @@ function _maCardioHistorique(data) {
 function _maCroise(data) {
   var r = (data.recent && data.recent[_maRecentWin(_maPeriode)]) || {};
   var muscuT = r.tonnage_kg || 0;
-  var hist = (data.cardio && data.cardio.history) || [], cut = _maCut(_maPeriode), cardioUA = 0;
-  hist.forEach(function (s) { if ((s.date || '') >= cut && +s.rpe && +s.duree) cardioUA += (+s.rpe) * (+s.duree); });
-  var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les 2 comparables
-  var tot = muscuUA + cardioUA;
+  // Charge cardio (UA = RPE × durée), Hyrox comptabilisé À PART (3e catégorie).
+  var hist = (data.cardio && data.cardio.history) || [], cut = _maCut(_maPeriode), cardioUA = 0, hyroxUA = 0;
+  hist.forEach(function (s) { if ((s.date || '') < cut || !+s.rpe || !+s.duree) return; var ua = (+s.rpe) * (+s.duree); if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
+  var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les charges comparables
+  var tot = muscuUA + cardioUA + hyroxUA;
   var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
+  var hPct = tot ? Math.round(hyroxUA / tot * 100) : 0;
+  var cPct = tot ? Math.max(0, 100 - mPct - hPct) : 0;   // absorbe l'arrondi (= part cardio)
   var mot = data.moteur || {};
-  var verdict = '<div class="ma-verdict cr"><span class="ma-vic" style="background:#931F1D">' + _maSvg('<path d="M12 3v18M3 12h18"/>', 14) + '</span><div><div class="vh">Vue d\'ensemble</div><div class="vd">' + _maE(tot ? ('Charge muscu + cardio combinée. Disponibilité : ' + ((mot.disponibilite && mot.disponibilite.niveau) || '—') + ' · récup ' + (mot.recup || '—') + '.') : 'Ajoute des séances muscu et cardio pour croiser tes données.') + '</div></div></div>';
-  // Répartition muscu/cardio en UNE seule ligne (même forme que la Balance
-  // musculaire) : remplissage bleu = muscu, fond lilas = cardio.
-  var rep = tot ? ('<div class="ma-card ma-bal2"><div class="ma-b2row">'
-    + '<div class="ma-b2h"><span class="l">Musculation ' + mPct + '%</span><span class="r" style="color:#9D5FD3">' + (100 - mPct) + '% Cardio</span></div>'
-    + '<div class="ma-b2bar" style="background:#9D5FD3"><span style="width:' + mPct + '%"></span></div>'
-    + '<div class="ma-b2sub"><span>Force / masse</span><span>charge combinée</span><span>Endurance</span></div>'
-    + '</div></div>') : _maEmpty('Répartition dispo dès que tu as des deux.');
+  var verdict = '<div class="ma-verdict cr"><span class="ma-vic" style="background:#931F1D">' + _maSvg('<path d="M12 3v18M3 12h18"/>', 14) + '</span><div><div class="vh">Vue d\'ensemble</div><div class="vd">' + _maE(tot ? ('Charge d\'entraînement combinée (muscu · cardio · Hyrox). Disponibilité : ' + ((mot.disponibilite && mot.disponibilite.niveau) || '—') + ' · récup ' + (mot.recup || '—') + '.') : 'Ajoute des séances muscu et cardio pour croiser tes données.') + '</div></div></div>';
+  // Répartition en UNE seule barre (même esprit que la Balance musculaire) :
+  // muscu (bleu) · cardio (lilas) · Hyrox (#FFBC13). Le segment/pastille Hyrox
+  // n'apparaît que s'il y a de la charge Hyrox sur la période.
+  var hasHx = hPct > 0;
+  var legend = '<div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;font-weight:800;margin-bottom:7px">'
+    + '<span style="color:#1A5FFF">■ Muscu ' + mPct + '%</span>'
+    + '<span style="color:#9D5FD3">■ Cardio ' + cPct + '%</span>'
+    + (hasHx ? '<span style="color:#CA9A04">■ Hyrox ' + hPct + '%</span>' : '')
+    + '</div>';
+  var bar = '<div style="display:flex;height:13px;border-radius:999px;overflow:hidden;background:var(--surface2)">'
+    + '<span style="width:' + mPct + '%;background:#1A5FFF"></span>'
+    + '<span style="width:' + cPct + '%;background:#9D5FD3"></span>'
+    + (hasHx ? '<span style="width:' + hPct + '%;background:#FFBC13"></span>' : '')
+    + '</div>';
+  var rep = tot ? ('<div class="ma-card ma-bal2">' + legend + bar
+    + '<div class="ma-b2sub" style="margin-top:6px"><span>Force / masse</span><span>charge combinée</span><span>Endurance</span></div>'
+    + '</div>') : _maEmpty('Répartition dispo dès que tu as des séances.');
   var be = (data.bien_etre && data.bien_etre[0]) || null;
   var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
   _maSet('ma-croise-resume', _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
