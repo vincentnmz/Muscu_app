@@ -9348,6 +9348,20 @@ function _maCardioAgg(hist, days, cutOverride) {
   });
   return by;
 }
+// Liste « Mes Hyrox » (tappable → écran d'analyse) pour l'écran Analyses.
+function _maHyroxList(data, limit) {
+  var hx = ((data.cardio && data.cardio.history) || []).filter(function (s) { return (s.type_cardio || '') === 'hyrox'; })
+    .slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
+  if (!hx.length) return '';
+  var rows = hx.slice(0, limit || 5).map(function (s) {
+    var tot = Number(s.hyrox_total) || (Number(s.duree) || 0) * 60;
+    var dd = new Date((s.date || '') + 'T00:00:00'), dstr = isNaN(dd.getTime()) ? '' : (dd.getDate() + ' ' + _MA_MON[dd.getMonth()]);
+    var mode = (s.hyrox_mode === 'atelier') ? 'Par atelier' : (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Circuit';
+    var nseg = _hxSegmentsOf(s).length;
+    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:36px;height:36px;border-radius:11px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:15px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11px;color:var(--text-subtle)">' + dstr + ' · ' + nseg + ' segment' + (nseg > 1 ? 's' : '') + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
+  }).join('');
+  return _maSec('Mes Hyrox', 'touche pour analyser') + rows;
+}
 function _maCardioResume(data) {
   var hist = (data.cardio && data.cardio.history) || [];
   var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode));
@@ -9379,7 +9393,7 @@ function _maCardioResume(data) {
   }
   _maSet('ma-cardio-resume', _maSyntheseCardio(data) + verdict
     + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change les chiffres & graphiques ci-dessous selon la période.')
-    + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml);
+    + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + _maHyroxList(data) + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml);
 }
 function _maCardioParSport(data) {
   var hist = (data.cardio && data.cardio.history) || [];
@@ -9437,8 +9451,10 @@ function _maCardioHistorique(data) {
   var hist = all.slice(0, n);
   var rows = hist.map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc'][dd.getMonth()], m = _maCM(s.type_cardio);
-    var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h');
-    return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><span class="ma-spic" style="width:30px;height:30px;background:' + m[1] + '">' + _maSvg(m[2], 16) + '</span><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
+    var isHx = (s.type_cardio || '') === 'hyrox';
+    var parts = []; if (isHx) { parts.push(_hyroxFmt(Number(s.hyrox_total) || (Number(s.duree) || 0) * 60)); } else { if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); }
+    var tap = isHx ? ' onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="padding:11px 14px;cursor:pointer;' : ' style="padding:11px 14px;';
+    return '<div class="ma-hhd"' + tap + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><span class="ma-spic" style="width:30px;height:30px;background:' + m[1] + '">' + _maSvg(m[2], 16) + '</span><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + (isHx ? '<span style="color:var(--text-subtle);margin-left:6px">›</span>' : '') + '</div>';
   }).join('');
   _maSet('ma-cardio-historique', '<div class="ma-card">' + rows + '</div>' + _maMoreBtn('cardio', n, all.length));
 }
@@ -14452,9 +14468,11 @@ async function sauvegarderHyrox() {
   var rpe = (document.getElementById('cardio-rpe') || {}).value || '';
   var btnSave = document.getElementById('hx-manuel-save') || document.getElementById('btn-save-cardio');
   if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ Envoi…'; }
+  var savedSid = null;
   try {
     var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveHyrox', athlete_id: athlete.athlete_id, date: date, mode: _hyroxMode, division: _hyroxDiv, segments: segs, poids: poids, total_sec: tot, rpe: rpe }) });
     var res = await r.json(); if (res && res.error) throw new Error(res.error);
+    savedSid = (res && res.seance_id) || null;
   } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✅ Enregistrer la Hyrox'; } return; }
   if (manuelOpen) {
     fermerHyroxManuel();
@@ -14464,6 +14482,8 @@ async function sauvegarderHyrox() {
     if (cardioEl) cardioEl.innerHTML = '<div class="card"><div class="card-title" style="color:var(--good)">✅ Hyrox enregistrée !</div><div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">' + (_hyroxMode === 'course' ? 'Course / simulation' : 'Entraînement') + ' · ' + n + '/16 segments</div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:26px;color:var(--accent);margin-bottom:14px">' + _hyroxFmt(tot) + '</div><button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button></div>';
   }
   if (typeof chargerAppData === 'function') chargerAppData();
+  // Bilan de séance (ressenti / douleur) après la Hyrox.
+  try { ouvrirBilanSeance('cardio', savedSid, date); } catch (e) {}
 }
 
 // ── HYROX : univers dédié dans l'onglet Cardio + chrono live ──
@@ -14517,7 +14537,146 @@ function ouvrirSaisieHyrox() {
   try { _hyroxRecalcTotal(); } catch (e) {}
 }
 function fermerHyroxManuel() { var ov = document.getElementById('hyrox-manuel-overlay'); if (ov) ov.style.display = 'none'; }
-function ouvrirHyroxDetail(sid) { try { showToast('Analyse détaillée de la Hyrox : bientôt (étape 2).'); } catch (e) {} }
+// ── HYROX · écran d'analyse d'une séance (étape 2) ──────────────────────────
+// Ouvert depuis « Mes Hyrox » (Entraînement) ET depuis Mes Analyses. Tout est
+// calculé à partir de la séance (s) + de l'historique Hyrox (progression).
+function _hxAllHistory() {
+  var h = ((typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.cardio && dernierAppData.cardio.history) || []).filter(function (s) { return (s.type_cardio || '') === 'hyrox'; });
+  return h.slice().sort(function (a, b) { return (a.date < b.date) ? -1 : (a.date > b.date ? 1 : 0); });
+}
+function _hxTotalOf(s) { return Number(s.hyrox_total) || (Number(s.duree) || 0) * 60; }
+function _hxDivLabel(d) { for (var i = 0; i < _HYROX_DIV.length; i++) { if (_HYROX_DIV[i][0] === d) return _HYROX_DIV[i][1]; } return '♂ Open'; }
+// Ordre officiel d'un segment (pour trier même en mode « Par atelier »).
+function _hxSegOrder(k) {
+  for (var i = 0; i < _HYROX_SEG.length; i++) { if (_HYROX_SEG[i].k === k) return i * 10; }
+  var m = k.match(/^([a-z]+)(?:_(\d+))?$/);
+  if (m) { for (var j = 0; j < _HYROX_SEG.length; j++) { if (_HYROX_SEG[j].k === m[1]) return j * 10 + (m[2] ? Number(m[2]) : 0); } }
+  if (k.indexOf('run') === 0) { var mr = k.match(/(\d+)/); return mr ? Number(mr[1]) : 0; }
+  return 999;
+}
+// Segments chronométrés d'une Hyrox : scanne les clés hyrox_* (hors total/mode/division/poids).
+function _hxSegmentsOf(s) {
+  var base = {}; _HYROX_SEG.forEach(function (sg) { base[sg.k] = sg; });
+  var out = [];
+  Object.keys(s || {}).forEach(function (key) {
+    if (key.indexOf('hyrox_') !== 0) return;
+    var k = key.slice(6);
+    if (k === 'total' || k === 'mode' || k === 'division' || k.indexOf('poids_') === 0) return;
+    var sec = Number(s[key]); if (!(sec > 0)) return;
+    var run = k.indexOf('run') === 0, def = base[k], title;
+    if (def) { title = def.t; run = !!def.run; }
+    else if (run) { var mr = k.match(/(\d+)/); title = 'Run' + (mr ? ' ' + mr[1] : ''); }
+    else { var mm = k.match(/^([a-z]+)(?:_(\d+))?$/); var bd = mm && base[mm[1]]; title = bd ? (bd.t + (mm[2] ? ' · série ' + mm[2] : '')) : k; if (bd) run = !!bd.run; }
+    out.push({ k: k, t: title, sec: sec, run: run, ord: _hxSegOrder(k) });
+  });
+  out.sort(function (a, b) { return a.ord - b.ord; });
+  return out;
+}
+// Sparkline SVG (temps total au fil des Hyrox). pts = tableau de secondes, cur = index du point courant.
+function _hxSpark(pts, cur) {
+  var w = 320, h = 116, pad = 10;
+  var mn = Math.min.apply(null, pts), mx = Math.max.apply(null, pts), rng = (mx - mn) || 1;
+  var P = pts.map(function (v, i) { var x = pad + (pts.length > 1 ? i * (w - 2 * pad) / (pts.length - 1) : (w - 2 * pad) / 2); var y = pad + (mx - v) / rng * (h - 2 * pad); return [x, y]; });
+  var d = P.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
+  var area = d + ' L' + P[P.length - 1][0].toFixed(1) + ' ' + (h - pad) + ' L' + P[0][0].toFixed(1) + ' ' + (h - pad) + ' Z';
+  var cp = P[cur] || P[P.length - 1];
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="display:block;width:100%;height:116px">'
+    + '<path d="' + area + '" fill="rgba(255,188,19,.16)"/>'
+    + '<path d="' + d + '" fill="none" stroke="#CA9A04" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<circle cx="' + cp[0].toFixed(1) + '" cy="' + cp[1].toFixed(1) + '" r="4" fill="#CA9A04"/></svg>';
+}
+function _hxAnalyseHtml(s, prev, all, idx) {
+  var segs = _hxSegmentsOf(s), total = _hxTotalOf(s);
+  var runs = segs.filter(function (x) { return x.run; }), stations = segs.filter(function (x) { return !x.run; });
+  var runSec = runs.reduce(function (a, x) { return a + x.sec; }, 0);
+  var staSec = stations.reduce(function (a, x) { return a + x.sec; }, 0);
+  var mx = Math.max.apply(null, segs.map(function (x) { return x.sec; }).concat([1]));
+  var mode = (s.hyrox_mode === 'atelier') ? 'Par atelier' : (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Circuit officiel';
+  var dd = new Date((s.date || '') + 'T00:00:00'), dstr = isNaN(dd.getTime()) ? '' : (dd.getDate() + ' ' + _MA_MON[dd.getMonth()] + '. ' + dd.getFullYear());
+  var sub = mode + ' · ' + _hxDivLabel(s.hyrox_division) + (dstr ? ' · ' + dstr : '');
+  // Hero + comparaison à la Hyrox précédente
+  var delta = prev ? (total - _hxTotalOf(prev)) : null;
+  var cmp = (delta == null) ? '' : (delta < 0 ? '▼ −' + _hyroxFmt(-delta) + ' vs préc.' : delta > 0 ? '▲ +' + _hyroxFmt(delta) + ' vs préc.' : '= vs précédente');
+  var hero = '<div style="border-radius:20px;padding:18px;background:linear-gradient(135deg,#FFBC13,#CA9A04);color:#1a1400;box-shadow:0 8px 24px rgba(255,188,19,.34)">'
+    + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.8">Temps total</div>'
+    + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:44px;font-weight:800;line-height:1;margin:4px 0 2px;font-variant-numeric:tabular-nums">' + _hyroxFmt(total) + '</div>'
+    + '<div style="font-size:12px;font-weight:700;opacity:.85">' + segs.length + ' segment' + (segs.length > 1 ? 's' : '') + ' chronométré' + (segs.length > 1 ? 's' : '') + (runs.length && stations.length ? ' · ' + runs.length + ' run + ' + stations.length + ' ateliers' : '') + '</div>'
+    + (cmp ? '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;background:rgba(26,20,0,.14);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:800">' + cmp + '</div>' : '')
+    + '</div>';
+  // Course vs ateliers (uniquement si on a des runs ET des ateliers)
+  var cv = '';
+  if (runSec > 0 && staSec > 0) {
+    var tt = runSec + staSec, rp = Math.round(runSec / tt * 100), sp = 100 - rp;
+    cv = '<div class="cx-sec" style="margin-top:18px">Course vs ateliers</div>'
+      + '<div class="card" style="padding:14px 15px">'
+      + '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:7px"><span style="color:#9D5FD3">Course ' + _hyroxFmt(runSec) + '</span><span style="color:#CA9A04">' + _hyroxFmt(staSec) + ' Ateliers</span></div>'
+      + '<div style="height:13px;border-radius:999px;overflow:hidden;display:flex;background:var(--surface2)"><span style="height:100%;width:' + rp + '%;background:#9D5FD3"></span><span style="height:100%;width:' + sp + '%;background:#FFBC13"></span></div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-subtle);margin-top:5px"><span>' + runs.length + ' run · ' + _hyroxFmt(Math.round(runSec / runs.length)) + ' moy.</span><span>' + stations.length + ' ateliers · ' + _hyroxFmt(Math.round(staSec / stations.length)) + ' moy.</span></div>'
+      + '</div>';
+  }
+  // Point faible : atelier le plus lent (si ≥ 2 ateliers)
+  var slow = '';
+  if (stations.length >= 2) {
+    var worst = stations.reduce(function (a, b) { return b.sec > a.sec ? b : a; });
+    var avg = staSec / stations.length, pct = Math.round((worst.sec / avg - 1) * 100);
+    slow = '<div class="cx-sec" style="margin-top:18px">Point faible</div>'
+      + '<div style="display:flex;align-items:center;gap:12px;background:rgba(220,53,69,.06);border:1px solid rgba(220,53,69,.25);border-radius:14px;padding:13px 14px">'
+      + '<div style="width:40px;height:40px;border-radius:12px;background:#DC3545;color:#fff;display:grid;place-items:center;flex:none;font-size:20px;font-weight:800">!</div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#DC3545">Atelier le plus lent</div><div style="font-size:15px;font-weight:800">' + worst.t + ' — ' + _hyroxFmt(worst.sec) + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:1px">' + (pct > 0 ? '+' + pct + ' % vs la moyenne de tes ateliers · ' : '') + 'à travailler en priorité (mode « Par atelier »).</div></div></div>';
+  }
+  // Tous les splits
+  var worstSeg = segs.length ? segs.reduce(function (a, b) { return b.sec > a.sec ? b : a; }) : null;
+  var splitRows = segs.map(function (x, i) {
+    var isW = worstSeg && x.k === worstSeg.k;
+    var ic = x.run ? '<span style="width:24px;height:24px;border-radius:7px;background:rgba(157,95,211,.14);color:#9D5FD3;display:grid;place-items:center;font-size:11px;flex:none">🏃</span>'
+      : '<span style="width:24px;height:24px;border-radius:7px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none">' + (i + 1) + '</span>';
+    var barCol = isW ? '#DC3545' : (x.run ? '#9D5FD3' : '#FFBC13');
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:' + (i ? '1px solid var(--border)' : 'none') + '">' + ic
+      + '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">' + x.t + (isW ? '<span style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#DC3545;background:rgba(220,53,69,.12);border-radius:5px;padding:2px 5px;margin-left:5px">le + lent</span>' : '') + '</div>'
+      + '<div style="height:5px;border-radius:999px;background:var(--surface2);margin-top:4px;overflow:hidden"><i style="display:block;height:100%;border-radius:999px;width:' + Math.round(x.sec / mx * 100) + '%;background:' + barCol + '"></i></div></div>'
+      + '<span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;flex:none' + (isW ? ';color:#DC3545' : '') + '">' + _hyroxFmt(x.sec) + '</span></div>';
+  }).join('');
+  var splits = '<div class="cx-sec" style="margin-top:18px">Tous les splits <span style="float:right;font-weight:600;color:var(--text-subtle);text-transform:none;letter-spacing:0">m:ss</span></div><div class="card" style="padding:2px 15px">' + splitRows + '</div>';
+  // Progression du temps total (jusqu'à cette Hyrox incluse), ≥ 2 points
+  var prog = '';
+  var upto = all.slice(0, idx + 1); if (upto.length > 10) upto = upto.slice(upto.length - 10);
+  if (upto.length >= 2) {
+    var Ts = upto.map(function (x) { return _hxTotalOf(x); });
+    var first = Ts[0], best = Math.min.apply(null, Ts);
+    var trend = total <= first;
+    prog = '<div class="cx-sec" style="margin-top:18px">Progression du temps total <span style="float:right;font-weight:600;color:var(--text-subtle);text-transform:none;letter-spacing:0">' + upto.length + ' dernières</span></div>'
+      + '<div class="card" style="padding:14px 15px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font-size:11.5px;color:var(--text-muted);font-weight:700">Temps total / Hyrox</span><span style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px;color:#CA9A04">' + _hyroxFmt(total) + ' <span style="font-size:9.5px;font-family:inherit;color:' + (trend ? '#00A854' : '#DC3545') + '">' + (trend ? '▼ mieux' : '▲') + '</span></span></div>'
+      + _hxSpark(Ts, upto.length - 1)
+      + '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-subtle);margin-top:4px"><span>il y a ' + (upto.length - 1) + ' Hyrox</span><span>' + (idx === all.length - 1 ? 'aujourd\'hui' : 'cette Hyrox') + '</span></div>'
+      + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px;line-height:1.5">Chaque point = 1 Hyrox. Meilleur temps : ' + _hyroxFmt(best) + '.</div></div>';
+  }
+  // Progression par atelier (vs Hyrox précédente)
+  var byAt = '';
+  if (prev) {
+    var pMap = {}; _hxSegmentsOf(prev).forEach(function (x) { pMap[x.k] = x.sec; });
+    var pills = stations.filter(function (x) { return pMap[x.k] != null; }).map(function (x) {
+      var d = x.sec - pMap[x.k]; var col = d < 0 ? '#00A854' : d > 0 ? '#DC3545' : 'var(--text-muted)';
+      var lbl = d === 0 ? '=' : (d < 0 ? '▼ −' : '▲ +') + Math.abs(d) + ' s';
+      return '<span style="font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:999px;padding:5px 11px;color:var(--text-muted)">' + x.t + ' <b style="color:' + col + '">' + lbl + '</b></span>';
+    }).join('');
+    if (pills) byAt = '<div class="cx-sec" style="margin-top:18px">Progression par atelier</div><div class="card" style="padding:14px 15px"><div style="display:flex;gap:7px;flex-wrap:wrap">' + pills + '</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px;line-height:1.5">Évolution de chaque atelier vs ta Hyrox précédente.</div></div>';
+  }
+  var header = '<div style="display:flex;align-items:center;gap:12px;padding:16px 2px 10px">'
+    + '<button onclick="fermerHyroxAnalyse()" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;flex:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1">‹</button>'
+    + '<div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Analyse Hyrox</div><div style="font-size:11.5px;color:var(--text-subtle)">' + sub + '</div></div></div>';
+  return '<div style="max-width:460px;margin:0 auto">' + header + hero + cv + slow + splits + prog + byAt + '</div>';
+}
+function fermerHyroxAnalyse() { var ov = document.getElementById('hyrox-analyse-overlay'); if (ov) ov.style.display = 'none'; }
+function ouvrirHyroxDetail(sid) {
+  var all = _hxAllHistory();
+  var idx = -1; for (var i = 0; i < all.length; i++) { if (String(all[i].seance_id) === String(sid)) { idx = i; break; } }
+  if (idx < 0) { try { showToast('Hyrox introuvable'); } catch (e) {} return; }
+  var ov = document.getElementById('hyrox-analyse-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-analyse-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 46px;'; document.body.appendChild(ov); }
+  ov.style.display = 'block'; ov.scrollTop = 0;
+  ov.innerHTML = _hxAnalyseHtml(all[idx], idx > 0 ? all[idx - 1] : null, all, idx);
+}
 // Chrono live : un temps total en continu + split par segment (« Segment suivant »).
 var _hxTimer = null, _hxT0 = 0, _hxSegT0 = 0, _hxIdx = 0, _hxSplits = [], _hxPaused = false, _hxPausedAt = 0, _hxPauseAcc = 0, _hxWeights = null;
 // Liste des segments ACTIFS du chrono en cours : le circuit officiel complet
@@ -14593,7 +14752,12 @@ function _hxBegin() {
   _hxIdx = 0; _hxSplits = []; _hxPaused = false; _hxPauseAcc = 0; _hxT0 = Date.now(); _hxSegT0 = Date.now(); var ov = _hxOv(); if (ov) ov.innerHTML = _hxLiveHtml(); _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); if (_hxTimer) clearInterval(_hxTimer); _hxTimer = setInterval(_hxTick, 200); _hxTick();
 }
 // Circuit OFFICIEL : les 16 segments, poids officiels de la division (non modifiés).
+// Avant de lancer : état du jour (readiness) si pas encore fait aujourd'hui.
 function _hxStartCircuit() {
+  if (typeof athlete !== 'undefined' && athlete && !_bienEtreFaitAujourdhui()) { ouvrirEtatDuJour({ then: _hxStartCircuitGo }); return; }
+  _hxStartCircuitGo();
+}
+function _hxStartCircuitGo() {
   _hxSegs = _HYROX_SEG.slice();
   _hyroxMode = 'course';
   _hxWeights = Object.assign({}, _HYROX_W[_hyroxDiv] || _HYROX_W.mo);
@@ -14617,6 +14781,8 @@ async function _hxFinish() {
     var res = await r.json(); if (res && res.error) throw new Error(res.error);
     if (ov) ov.innerHTML = _hxDoneHtml(total, 'ok');
     if (typeof chargerAppData === 'function') chargerAppData();
+    // Bilan de séance (ressenti / douleur) après la Hyrox.
+    try { ouvrirBilanSeance('cardio', (res && res.seance_id) || null, _hxTodayISO()); } catch (e) {}
   } catch (e) { if (ov) ov.innerHTML = _hxDoneHtml(total, 'err'); }
 }
 function _hxDoneHtml(total, state) {
@@ -14688,6 +14854,14 @@ function _hxAtRender() {
     + '<div style="font-size:11px;color:var(--text-subtle);margin-top:10px;text-align:center;line-height:1.5">Novalyz chronomètre chaque atelier et suivra ta progression dessus.</div></div>';
 }
 function _hxStartAtelier() {
+  if (!_hxAtCount()) return;
+  // Avant de lancer : état du jour (readiness) si pas encore fait aujourd'hui.
+  // L'overlay atelier reste affiché sous la modale, on relit ses valeurs après.
+  _hxAtCapture();
+  if (typeof athlete !== 'undefined' && athlete && !_bienEtreFaitAujourdhui()) { ouvrirEtatDuJour({ then: _hxStartAtelierGo }); return; }
+  _hxStartAtelierGo();
+}
+function _hxStartAtelierGo() {
   if (!_hxAtCount()) return;
   var wv = _HYROX_W[_hyroxDiv] || _HYROX_W.mo, weights = {}, segs = [], runN = 0;
   _HYROX_STATIONS.forEach(function (s) {
