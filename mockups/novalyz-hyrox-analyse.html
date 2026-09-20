@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novalyz — Analyse Hyrox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Michroma&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --text-muted:#4A5980; --text-subtle:#8595B8;
+    --accent:#1A5FFF; --good:#00A854; --bad:#DC3545;
+    --hy:#CA9A04; --hyb:#FFBC13; --hy-a:rgba(255,188,19,.16);
+    --run:#9D5FD3; --run-a:rgba(157,95,211,.14);
+    --sh-sm:0 1px 2px rgba(7,11,20,.06); --sh:0 6px 20px rgba(7,11,20,.08); --sh-lg:0 16px 44px rgba(7,11,20,.14);
+    --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --font-h:'Michroma','Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#FBF3DC,#F9FBFF 55%);font-family:var(--font);color:var(--text);
+       min-height:100vh;padding:26px 16px 60px;-webkit-font-smoothing:antialiased}
+  .intro{max-width:430px;margin:0 auto 22px}
+  .intro .eyebrow{font-family:var(--font-h);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--hy);margin-bottom:7px}
+  .intro h1{font-family:var(--font-h);font-size:20px;line-height:1.3;margin:0 0 8px}
+  .intro p{font-size:13.5px;line-height:1.6;color:var(--text-muted);margin:0}
+
+  .phone{width:400px;max-width:100%;margin:0 auto;background:var(--bg);border-radius:34px;border:1px solid var(--border);
+         box-shadow:var(--sh-lg);overflow:hidden;position:relative}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:24px;background:var(--text);border-radius:0 0 15px 15px;z-index:9}
+  .scr{padding:34px 15px 22px}
+
+  .hd{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .iconbtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;flex:none}
+  .iconbtn svg{width:17px;height:17px;fill:none;stroke:var(--text-muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .hd .t{font-family:var(--font-h);font-size:15px}
+  .hd .d{font-size:11.5px;color:var(--text-subtle)}
+
+  /* hero */
+  .hero{border-radius:20px;padding:18px;background:linear-gradient(135deg,var(--hyb),var(--hy));color:#1a1400;box-shadow:0 8px 24px rgba(255,188,19,.34)}
+  .hero .tag{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.8}
+  .hero .big{font-family:ui-monospace,Menlo,monospace;font-size:46px;font-weight:800;line-height:1;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+  .hero .sub{font-size:12px;font-weight:700;opacity:.85}
+  .hero .cmp{display:inline-flex;align-items:center;gap:5px;margin-top:10px;background:rgba(26,20,0,.14);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:800}
+
+  .sec{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-subtle);margin:18px 2px 9px;display:flex;justify-content:space-between;align-items:baseline}
+  .sec .r{letter-spacing:0;text-transform:none;font-weight:600;color:var(--text-subtle);font-size:11px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);padding:14px 15px}
+
+  /* course vs ateliers */
+  .cvh{display:flex;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:7px}
+  .cvh .l{color:var(--run)} .cvh .r{color:var(--hy)}
+  .cvbar{height:13px;border-radius:999px;overflow:hidden;display:flex;background:var(--surface2)}
+  .cvbar span{display:block;height:100%}
+  .cvsub{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-subtle);margin-top:5px}
+
+  /* slowest callout */
+  .slow{display:flex;align-items:center;gap:12px;background:rgba(220,53,69,.06);border:1px solid rgba(220,53,69,.25);border-radius:14px;padding:13px 14px}
+  .slow .ic{width:40px;height:40px;border-radius:12px;background:var(--bad);color:#fff;display:grid;place-items:center;flex:none;font-size:19px}
+  .slow .a{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--bad)}
+  .slow .b{font-size:15px;font-weight:800}
+  .slow .c{font-size:11.5px;color:var(--text-muted);margin-top:1px}
+
+  /* splits */
+  .splits{display:flex;flex-direction:column}
+  .srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border)}
+  .srow:first-child{border-top:none}
+  .srow .n{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+  .srow.run .n{background:var(--run-a);color:var(--run)}
+  .srow.sta .n{background:var(--hy-a);color:var(--hy)}
+  .srow .nm{flex:1;min-width:0}
+  .srow .nm .a{font-size:12.5px;font-weight:700}
+  .srow .nm .track{height:5px;border-radius:999px;background:var(--surface2);margin-top:4px;overflow:hidden}
+  .srow .nm .track i{display:block;height:100%;border-radius:999px}
+  .srow.run .track i{background:var(--run)} .srow.sta .track i{background:var(--hyb)}
+  .srow.worst .track i{background:var(--bad)}
+  .srow .tm{font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;flex:none}
+  .srow.worst .tm{color:var(--bad)}
+  .badge{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--bad);background:rgba(220,53,69,.12);border-radius:5px;padding:2px 5px;margin-left:5px}
+
+  /* progression chart */
+  .chart{position:relative}
+  .chart .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .chart .top .v{font-family:var(--font-h);font-size:15px;color:var(--hy)}
+  svg{display:block;width:100%;height:120px}
+  .axis{display:flex;justify-content:space-between;font-size:10px;color:var(--text-subtle);margin-top:4px}
+  .cap{font-size:10.5px;color:var(--text-subtle);margin-top:8px;line-height:1.5}
+
+  .pillrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
+  .pill{font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:999px;padding:5px 11px;color:var(--text-muted)}
+  .pill b{color:var(--text)}
+</style>
+</head>
+<body>
+
+  <div class="intro">
+    <div class="eyebrow">Maquette · à valider</div>
+    <h1>Analyse d'une Hyrox</h1>
+    <p>L'écran qui s'ouvre quand on tape une Hyrox dans « Mes Hyrox ». Objectif : voir <b>où on perd du temps</b> (station la plus lente), la répartition course/ateliers, tous les splits, et la <b>progression</b> de ton temps total au fil des Hyrox.</p>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="scr">
+      <div class="hd">
+        <div class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <div><div class="t">Analyse Hyrox</div><div class="d">Circuit officiel · ♂ Open · 14 sept. 2026</div></div>
+      </div>
+
+      <div class="hero">
+        <div class="tag">Temps total</div>
+        <div class="big">1:16:42</div>
+        <div class="sub">8 × (Run 1 km + atelier) · 16/16 segments</div>
+        <div class="cmp">▼ −2:18 vs Hyrox précédente</div>
+      </div>
+
+      <div class="sec">Course vs ateliers</div>
+      <div class="card">
+        <div class="cvh"><span class="l">Course 42:10</span><span class="r">34:32 Ateliers</span></div>
+        <div class="cvbar"><span style="width:55%;background:var(--run)"></span><span style="width:45%;background:var(--hyb)"></span></div>
+        <div class="cvsub"><span>8 runs · 5:16 / km moy.</span><span>8 ateliers · 4:19 moy.</span></div>
+      </div>
+
+      <div class="sec">Point faible</div>
+      <div class="slow">
+        <div class="ic">🧱</div>
+        <div style="flex:1"><div class="a">Station la plus lente</div><div class="b">Wall Balls — 6:10</div><div class="c">+41 % vs la moyenne de tes ateliers · à travailler en priorité (mode « Par atelier »).</div></div>
+      </div>
+
+      <div class="sec">Tous les splits <span class="r">m:ss</span></div>
+      <div class="card splits" id="splits"></div>
+
+      <div class="sec">Progression du temps total <span class="r">10 dernières</span></div>
+      <div class="card chart">
+        <div class="top"><span style="font-size:11.5px;color:var(--text-muted);font-weight:700">Temps total / Hyrox</span><span class="v">1:16:42 <span style="font-size:9.5px;color:var(--good);font-family:var(--font)">▼ mieux</span></span></div>
+        <svg id="spark" viewBox="0 0 320 120" preserveAspectRatio="none"></svg>
+        <div class="axis"><span>il y a 10 Hyrox</span><span>aujourd'hui</span></div>
+        <div class="cap">Ton temps total baisse régulièrement (−16 min sur ~1 an) : tu progresses. Chaque point = 1 Hyrox.</div>
+      </div>
+
+      <div class="sec">Progression par atelier</div>
+      <div class="card">
+        <div class="pillrow">
+          <span class="pill">Wall Balls <b style="color:var(--good)">▼ −22 s</b></span>
+          <span class="pill">Sled Push <b style="color:var(--good)">▼ −15 s</b></span>
+          <span class="pill">SkiErg <b style="color:var(--bad)">▲ +6 s</b></span>
+          <span class="pill">Farmers <b style="color:var(--good)">▼ −9 s</b></span>
+        </div>
+        <div class="cap">Évolution de chaque atelier vs ta Hyrox précédente. Touche un atelier pour voir sa courbe (à faire).</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Splits (m:ss). worst = wall balls.
+  var SEG = [
+    ['run','🏃','Run 1',305],['sta','1','SkiErg',250],['run','🏃','Run 2',318],['sta','2','Sled Push',335],
+    ['run','🏃','Run 3',322],['sta','3','Sled Pull',295],['run','🏃','Run 4',315],['sta','4','Burpees',302],
+    ['run','🏃','Run 5',330],['sta','5','Rowing',260],['run','🏃','Run 6',325],['sta','6','Farmers',225],
+    ['run','🏃','Run 7',320],['sta','7','Lunges',290],['run','🏃','Run 8',340],['sta','8','Wall Balls',370]
+  ];
+  var mx = Math.max.apply(null, SEG.map(function(s){return s[3]}));
+  var worst = SEG.reduce(function(a,b){return b[3]>a[3]?b:a});
+  function fmt(s){var m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0');}
+  document.getElementById('splits').innerHTML = SEG.map(function(s){
+    var isW = s===worst;
+    return '<div class="srow '+s[0]+(isW?' worst':'')+'">'
+      +'<span class="n">'+s[1]+'</span>'
+      +'<div class="nm"><div class="a">'+s[2]+(isW?'<span class="badge">le + lent</span>':'')+'</div><div class="track"><i style="width:'+(s[3]/mx*100)+'%"></i></div></div>'
+      +'<span class="tm">'+fmt(s[3])+'</span></div>';
+  }).join('');
+
+  // Sparkline : total time over last 10 Hyrox (decreasing, in minutes)
+  var T=[92,90,89,87,88,85,83,82,80,77];
+  var w=320,h=120,mn=Math.min.apply(null,T),mxT=Math.max.apply(null,T),pad=10;
+  var pts=T.map(function(v,i){var x=pad+i*(w-2*pad)/(T.length-1);var y=pad+(mxT-v)/(mxT-mn)*(h-2*pad);return [x,y];});
+  var d=pts.map(function(p,i){return (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)}).join(' ');
+  var area=d+' L'+pts[pts.length-1][0].toFixed(1)+' '+(h-pad)+' L'+pad+' '+(h-pad)+' Z';
+  document.getElementById('spark').innerHTML =
+    '<path d="'+area+'" fill="rgba(255,188,19,.16)"/>'
+    +'<path d="'+d+'" fill="none" stroke="#CA9A04" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    +'<circle cx="'+pts[pts.length-1][0].toFixed(1)+'" cy="'+pts[pts.length-1][1].toFixed(1)+'" r="4" fill="#CA9A04"/>';
+</script>
+</body>
+</html>
