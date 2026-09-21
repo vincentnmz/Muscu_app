@@ -9418,7 +9418,16 @@ function _maCardioParSport(data) {
   var metricMenu = '<div id="ma-cx-metric-menu" style="display:none;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">'
     + METRICS.map(function (x, i) { return '<div onclick="maSetCardioMetric(\'' + x[0] + '\')" style="padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (x[0] === curM[0] ? 'color:#9D5FD3;background:var(--surface2);' : '') + '">' + x[1] + ' (' + x[2] + ')</div>'; }).join('') + '</div>';
   var lastPS = wk.length ? wk[wk.length - 1] : 0;
-  var chart = wk.some(function (v) { return v > 0; }) ? ('<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip" style="cursor:pointer" onclick="maToggleMenu(\'ma-cx-metric-menu\')">' + curM[1] + ' ▾</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/sem.</span></span></div>' + metricMenu + _maArea(wk, m[1], 'rgba(157,95,211,.12)') + _maTrendAxis(nwPS) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée. ' + nwPS + ' semaines (suit la période choisie) · chaque point = 1 semaine.')) : '';
+  // Le sélecteur de métrique reste TOUJOURS affiché (même si la donnée choisie n'a
+  // aucune valeur pour ce sport, ex. « vitesse » sur une Hyrox) — sinon on se
+  // retrouve bloqué sur une métrique vide, sans moyen d'en changer.
+  var hasData = wk.some(function (v) { return v > 0; });
+  var chartHead = '<div class="ma-ctop"><span class="ma-chip" style="cursor:pointer" onclick="maToggleMenu(\'ma-cx-metric-menu\')">' + curM[1] + ' ▾</span>'
+    + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/sem.</span></span>' : '') + '</div>';
+  var chartBody = hasData
+    ? (_maArea(wk, m[1], 'rgba(157,95,211,.12)') + _maTrendAxis(nwPS) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée. ' + nwPS + ' semaines (suit la période choisie) · chaque point = 1 semaine.'))
+    : '<div style="padding:20px 6px;text-align:center;color:var(--text-subtle);font-size:12.5px;line-height:1.5">Pas de donnée « ' + curM[1] + ' » pour ' + _maE(m[0]) + '.<br>Choisis une autre donnée ci-dessus.</div>';
+  var chart = '<div class="ma-chart">' + chartHead + metricMenu + chartBody + '</div>';
   var lastArr = sesss.filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
   var last = lastArr.slice(0, 6).map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
