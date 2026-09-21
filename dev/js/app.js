@@ -1803,6 +1803,7 @@ function seDeconnecter() {
   document.getElementById('btn-logout').style.display = 'none';
   { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'none'; }
   { var _br = document.getElementById('btn-reglages-hdr'); if (_br) _br.style.display = 'none'; }
+  { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'none'; }
   document.getElementById('inp-login').value = '';
   document.getElementById('inp-password').value = '';
   document.getElementById('login-error').textContent = '';
@@ -6733,6 +6734,7 @@ async function ouvrirApp() {
   document.getElementById('btn-logout').style.display = 'block';
   document.getElementById('btn-reglages-hdr').style.display = 'block';
   { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'block'; }
+  { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'block'; }
   // Restore saved theme
   const savedTheme = localStorage.getItem('muscu_theme');
   if (savedTheme === 'light') document.body.classList.add('light-mode');
@@ -14111,6 +14113,7 @@ async function autoSyncGoogleHealth() {
 var _ALERTE_COL = { haute: 'var(--danger)', moyenne: 'var(--warn)', basse: 'var(--text-muted)' };
 var _ALERTE_RELI = { bonne: 'fiable', haute: 'fiable', moyenne: 'fiabilité moyenne', faible: 'peu fiable', non_interpretable: 'données insuffisantes' };
 function renderAlertes(data) {
+  try { renderAlerteBell(data); } catch (e) {}   // cloche + badge (global, tous écrans)
   const sec  = document.getElementById('dash-alertes-sec');
   const card = document.getElementById('dash-alertes-card');
   const cont = document.getElementById('dash-alertes-content');
@@ -14149,9 +14152,70 @@ async function marquerAlerteLue(id) {
   } catch (e) {}
   try { renderAlertes(dernierAppData); } catch (e) {}
   try { renderAujourdhui(dernierAppData); } catch (e) {}
+  try { if (document.getElementById('centre-alertes-overlay') && document.getElementById('centre-alertes-overlay').style.display !== 'none') _renderCentreAlertes(dernierAppData); } catch (e) {}
   try {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'marquerAlerteLue', athlete_id: athlete.athlete_id, id: id }) });
   } catch (e) {}
+}
+// ── Cloche + badge (global) : nombre d'alertes non lues, visible sur tous les écrans.
+function renderAlerteBell(data) {
+  var btn = document.getElementById('btn-alertes-hdr'), badge = document.getElementById('badge-alertes');
+  if (!btn || !badge) return;
+  var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre : [];
+  var enPause = false; try { enPause = estEnPause(data && data.pause); } catch (e) {}
+  var n = enPause ? 0 : centre.filter(function (a) { return a && !a.read; }).length;
+  if (n > 0) { badge.textContent = n > 9 ? '9+' : String(n); badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+}
+// ── Centre d'alertes (panneau ouvert par la cloche) : liste complète, non lues en
+// tête, puis lues (grisées). Même source unique (alertes_centre), même wording.
+function ouvrirCentreAlertes() {
+  var ov = document.getElementById('centre-alertes-overlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'centre-alertes-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1250;overflow:auto;padding:0 16px 46px;';
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'block'; ov.scrollTop = 0;
+  _renderCentreAlertes(dernierAppData);
+}
+function fermerCentreAlertes() { var ov = document.getElementById('centre-alertes-overlay'); if (ov) ov.style.display = 'none'; }
+function _alerteCentreItemHtml(a, read) {
+  var col = read ? 'var(--text-subtle)' : (_ALERTE_COL[a.severity] || 'var(--warn)');
+  var meta = [a.context, _ALERTE_RELI[a.reliability]].filter(Boolean).join(' · ');
+  return '<div style="display:flex;gap:11px;align-items:flex-start;padding:13px 14px;border:1px solid var(--border);border-radius:14px;margin-top:9px;background:var(--surface);' + (read ? 'opacity:.62;' : '') + '">'
+    + '<div style="flex:0 0 4px;align-self:stretch;background:' + col + ';border-radius:2px;min-height:38px;"></div>'
+    + '<div style="min-width:0;flex:1;">'
+    + '<div style="font-size:13.5px;font-weight:800;color:' + col + ';">' + escapeHtml(a.title || '') + '</div>'
+    + (a.evidence ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">' + escapeHtml(a.evidence) + '</div>' : '')
+    + (a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.45;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '')
+    + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')
+    + '</div>'
+    + (read
+      ? '<span style="flex:none;align-self:center;font-size:10px;font-weight:800;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.05em">lu</span>'
+      : '<button onclick="marquerAlerteLue(' + JSON.stringify(a.id) + ')" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>')
+    + '</div>';
+}
+function _renderCentreAlertes(data) {
+  var ov = document.getElementById('centre-alertes-overlay'); if (!ov) return;
+  var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.slice() : [];
+  var enPause = false; try { enPause = estEnPause(data && data.pause); } catch (e) {}
+  var header = '<div style="display:flex;align-items:center;gap:12px;max-width:460px;margin:0 auto;padding:16px 2px 12px">'
+    + '<button onclick="fermerCentreAlertes()" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;flex:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1">‹</button>'
+    + '<div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Mes alertes</div><div style="font-size:11.5px;color:var(--text-subtle)">Ce que le moteur a repéré · touche ✓ quand c\'est vu</div></div></div>';
+  var body;
+  if (enPause) {
+    body = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted)"><div style="font-size:34px">🌴</div><div style="font-size:14px;font-weight:700;margin-top:8px">Mode coupure activé</div><div style="font-size:12.5px;color:var(--text-subtle);margin-top:4px">Les alertes reprendront à ton retour.</div></div>';
+  } else if (!centre.length) {
+    body = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted)"><div style="font-size:34px">✅</div><div style="font-size:14px;font-weight:700;margin-top:8px">Rien à signaler</div><div style="font-size:12.5px;color:var(--text-subtle);margin-top:4px">Pas d\'alerte en cours — continue comme ça.</div></div>';
+  } else {
+    var unread = centre.filter(function (a) { return !a.read; }), read = centre.filter(function (a) { return a.read; });
+    body = '';
+    if (unread.length) body += '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:4px 2px 2px">À regarder (' + unread.length + ')</div>' + unread.map(function (a) { return _alerteCentreItemHtml(a, false); }).join('');
+    if (read.length) body += '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:18px 2px 2px">Déjà vues</div>' + read.map(function (a) { return _alerteCentreItemHtml(a, true); }).join('');
+    if (!unread.length && read.length) body = '<div style="text-align:center;padding:22px 20px 6px;color:var(--text-muted)"><div style="font-size:28px">✅</div><div style="font-size:13.5px;font-weight:700;margin-top:6px">Tout est à jour</div><div style="font-size:12px;color:var(--text-subtle);margin-top:3px">Tu as traité toutes tes alertes.</div></div>' + body;
+  }
+  ov.innerHTML = header + '<div style="max-width:460px;margin:0 auto">' + body + '</div>';
 }
 
 // =====================================================================
