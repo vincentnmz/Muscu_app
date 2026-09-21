@@ -1584,10 +1584,16 @@ function buildAlertesCentre(moteur: any, comparison: any): any[] {
     out.push({ type, severity: severity || 'moyenne', source: source || 'moteur', title: TITRES[type] || type, evidence: evidence || '', context, reliability, action: ACTIONS[type] || '' })
   ;((moteur && moteur.alertes) || []).forEach((a: any) => push(a.type, a.severite, a.message, 'moteur'))
   // Stagnation : ≥3 exercices en baisse cette semaine (depuis comparison), si non couvert.
+  // FIABILITÉ (anti-fausse-alerte) : on NE crie PAS « stagnation » quand le contexte
+  // EXPLIQUE la baisse (deload / retour de vacances / retour de blessure — la baisse
+  // est voulue ou attendue), ni quand les données sont trop maigres pour l'affirmer
+  // (confiance faible ou non interprétable). Sinon on accuse à tort une régression.
+  const ctxAmnistieStag = context === 'deload' || context === 'retour_vacances' || context === 'retour_blessure'
+  const fiabInsuffisanteStag = reliability === 'faible' || reliability === 'non_interpretable'
   const det = (comparison && comparison.j7_vs_j7prec && comparison.j7_vs_j7prec.charge_details) || []
   const baisseAll = det.filter((d: any) => d && d.down)
   const baisseExos = baisseAll.map((d: any) => d.exercice).filter(Boolean)
-  if (baisseAll.length >= 3 && !out.some(a => a.type === 'stagnation')) {
+  if (baisseAll.length >= 3 && !out.some(a => a.type === 'stagnation') && !ctxAmnistieStag && !fiabInsuffisanteStag) {
     // On NOMME les exercices concernés (sinon « 3 exercices en baisse » sans détail).
     const liste = baisseExos.slice(0, 6).join(', ')
     const ev = baisseExos.length ? `${baisseAll.length} exercices en baisse cette semaine : ${liste}.` : `${baisseAll.length} exercices en baisse cette semaine.`
