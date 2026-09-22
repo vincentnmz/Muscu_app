@@ -14243,7 +14243,7 @@ function renderAlertes(data) {
       + (a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '')
       + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')
       + '</div>'
-      + '<button onclick="marquerAlerteLue(' + JSON.stringify(a.id) + ')" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
+      + '<button onclick="marquerAlerteLue(&quot;' + escapeHtml(String(a.id)) + '&quot;)" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
       + '</div>';
   }).join('');
   if (sec) sec.style.display = '';
@@ -14300,7 +14300,7 @@ function _alerteCentreItemHtml(a, read) {
     + '</div>'
     + (read
       ? '<span style="flex:none;align-self:center;font-size:10px;font-weight:800;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.05em">lu</span>'
-      : '<button onclick="marquerAlerteLue(' + JSON.stringify(a.id) + ')" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>')
+      : '<button onclick="marquerAlerteLue(&quot;' + escapeHtml(String(a.id)) + '&quot;)" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>')
     + '</div>';
 }
 function _renderCentreAlertes(data) {
