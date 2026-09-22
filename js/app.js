@@ -835,7 +835,7 @@ function renderCockpitCharge(data){
   var t28o = comp.j28_vs_j28prec && comp.j28_vs_j28prec.tonnage;
   var t28 = (t28o && t28o.j28 != null) ? _ckT(t28o.j28) : '—';
   var t28evol = t28o ? t28o.evol_pct : null;
-  var seances7 = (reg.seances_j7 != null) ? reg.seances_j7 : ((rec.j7 && rec.j7.seances != null) ? rec.j7.seances : '—');
+  var seances7 = (reg.seances_j7 != null || reg.seances_semaine != null) ? _seancesFaites(reg) : ((rec.j7 && rec.j7.seances != null) ? rec.j7.seances : '—');
   var rpe = (rec.j7 && rec.j7.rpe_moyen != null) ? String(rec.j7.rpe_moyen).replace('.', ',') : '—';
   var regSub = (reg.seances_prevues != null) ? (seances7 + '/' + reg.seances_prevues + ' objectif') : null;
   // Variabilité (monotonie) + charge accumulée (strain) — valeurs BRUTES déjà
@@ -4032,7 +4032,7 @@ async function renderCoachSynthese(athletes) {
     const rpe = (d.recent && d.recent.j7 && d.recent.j7.rpe_moyen != null) ? d.recent.j7.rpe_moyen
               : (d.dashboard && d.dashboard.recuperation ? d.dashboard.recuperation.rpe_moyen : null);
     const _reg = d.dashboard && d.dashboard.regularite ? d.dashboard.regularite : null;
-    const seancesSem = _reg ? (_reg.seances_semaine != null ? _reg.seances_semaine : _reg.seances_j7) : null;
+    const seancesSem = _reg ? _seancesFaites(_reg) : null;
     let spark = [];
     const _vpj = (d.recent && d.recent.volume_par_jour) ? d.recent.volume_par_jour
                : (d.historique && d.historique.volume_par_jour ? d.historique.volume_par_jour : null);
@@ -4580,7 +4580,7 @@ function renderCoachOverview(data) {
 
   // Régularité
   const reg = dash.regularite || {};
-  const faites = reg.seances_semaine != null ? reg.seances_semaine : (reg.seances_j7 || 0);
+  const faites = _seancesFaites(reg);
   const prevues = reg.seances_prevues || 0;
   const pct = prevues > 0 ? Math.min(100, Math.round(faites/prevues*100)) : 0;
   document.getElementById('cd-reg-faites').textContent = faites;
@@ -4952,7 +4952,7 @@ function computeMarqueursCoach(data, a) {
 
   // 4. Régularité (prorata des jours écoulés)
   const reg = dash.regularite || {};
-  const faites = reg.seances_semaine != null ? reg.seances_semaine : (reg.seances_j7 || 0);
+  const faites = _seancesFaites(reg);
   const prevues = reg.seances_prevues || 0;
   let regColor, regLabel;
   if (prevues === 0) { regColor = '#aaa'; regLabel = 'N/A'; }
@@ -8769,6 +8769,14 @@ async function setSemaineType(v) {
 }
 // Réglage « semaine d'entraînement » : calendaire (lundi→dim., reset lundi) ou glissante (7 j).
 function _maSemaineType() { try { return (dernierAppData && dernierAppData.semaine_type === 'glissant') ? 'glissant' : 'calendaire'; } catch (e) { return 'calendaire'; } }
+// Séances « faites » pour l'anneau d'objectif, selon la préférence de semaine
+// d'entraînement (Réglages) : glissant = 7 derniers jours ; calendaire = depuis
+// lundi (remise à zéro chaque lundi). Source unique → comptage cohérent partout.
+function _seancesFaites(reg) {
+  if (!reg) return 0;
+  if (_maSemaineType() === 'glissant') return (reg.seances_j7 != null) ? Number(reg.seances_j7) : Number(reg.seances_semaine || 0);
+  return (reg.seances_semaine != null) ? Number(reg.seances_semaine) : Number(reg.seances_j7 || 0);
+}
 function _maLastMondayISO() { var d = new Date(); d.setHours(0, 0, 0, 0); var off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 // Clé de fenêtre `recent` selon la période (semaine calendaire → 'semaineCal').
 function _maRecentWin(p) { return (p === 'semaine' && _maSemaineType() === 'calendaire') ? 'semaineCal' : _MA_WIN[p]; }
@@ -10748,7 +10756,7 @@ function renderAujourdhui(data) {
   } catch (e) {}
   try {
     var reg = (data && data.dashboard && data.dashboard.regularite) || {};
-    var faites = (reg.seances_semaine != null) ? reg.seances_semaine : (reg.seances_j7 || 0);
+    var faites = _seancesFaites(reg);
     var prevues = reg.seances_prevues || 4;
     var elR = document.getElementById('tj-reg'); if (elR) elR.textContent = faites + ' / ' + prevues + ' cette semaine';
     var elW = document.getElementById('tj-reg-week');
@@ -10916,7 +10924,7 @@ function renderAujourdhui(data) {
       if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records';
     }
     var reg2 = dashb.regularite || {};
-    var done2 = (reg2.seances_semaine != null) ? Number(reg2.seances_semaine) : Number(reg2.seances_j7 || 0);
+    var done2 = _seancesFaites(reg2);
     var goal2 = Number(reg2.seances_prevues || 4) || 4;
     var elMg = document.getElementById('tj-mgoal'); if (elMg) elMg.textContent = goal2 + ' séances';
     var elMd = document.getElementById('tj-mdone'); if (elMd) elMd.textContent = done2;
@@ -11869,7 +11877,7 @@ function renderEntrainement(data) {
     var subEl = document.getElementById('en-prog-sub');
     if (subEl) subEl.textContent = _enOrder.length ? ((strat || 'Programme personnalisé') + ' · ' + prog.length + ' exercice' + (prog.length > 1 ? 's' : '')) : 'Crée ton programme pour commencer';
     var reg = (data.dashboard && data.dashboard.regularite) || {};
-    var done = (reg.seances_semaine != null) ? Number(reg.seances_semaine) : Number(reg.seances_j7 || 0);
+    var done = _seancesFaites(reg);
     var goal = Number(reg.seances_prevues || 4) || 4;
     var pct = goal ? Math.max(0, Math.min(100, Math.round(done / goal * 100))) : 0;
     var barEl = document.getElementById('en-adh-bar'); if (barEl) requestAnimationFrame(function () { barEl.style.width = pct + '%'; });
@@ -11989,7 +11997,7 @@ function _appliquerAppData(data) {
 
       const regEl = document.getElementById('regularite-content');
       if (regEl) {
-        const faites2 = data.dashboard.regularite.seances_semaine != null ? data.dashboard.regularite.seances_semaine : (data.dashboard.regularite.seances_j7 || 0);
+        const faites2 = _seancesFaites(data.dashboard.regularite);
         const prevues2 = data.dashboard.regularite.seances_prevues || 0;
         const manque2 = Math.max(0, prevues2 - faites2);
         const pct2 = prevues2 > 0 ? Math.min(100, Math.round(faites2/prevues2*100)) : 0;

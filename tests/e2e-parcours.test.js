@@ -81,7 +81,7 @@ function loadFront() {
   const APP = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
   const gf = (n) => { const m = APP.match(new RegExp('function\\s+' + n + '\\s*\\(')); let i = APP.indexOf('{', m.index), d = 0, j = i; for (; j < APP.length; j++) { const c = APP[j]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) { j++; break; } } } return APP.slice(m.index, j); };
   const gb = (n, o, c) => { const m = APP.match(new RegExp('(?:const|var|let)\\s+' + n + '\\s*=\\s*')); const i = APP.indexOf(o, m.index); let d = 0, j = i; for (; j < APP.length; j++) { const ch = APP[j]; if (ch === o) d++; else if (ch === c) { d--; if (d === 0) { j++; break; } } } return 'const ' + n + ' = ' + APP.slice(i, j) + ';'; };
-  const FN = ['escapeHtml', 'couleurStatut', '_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', '_ckKpi', '_ckKpiC', '_ckWbColor', '_ckFormeQuestionnaire', '_ckT', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'wqPositif', 'tendance1RM',
+  const FN = ['escapeHtml', 'couleurStatut', '_maSemaineType', '_seancesFaites', '_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', '_ckKpi', '_ckKpiC', '_ckWbColor', '_ckFormeQuestionnaire', '_ckT', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'wqPositif', 'tendance1RM',
     'renderCockpitEtat', 'renderCockpitCharge', 'renderCockpitBienEtre', 'renderCockpitPerformance', 'renderCockpitEvolution', 'renderCockpitHistorique', 'renderCockpit',
     '_ckFr', 'renderCockpitBienEtreFoot', 'renderCockpitChargeFoot', 'renderCockpitEvolutionFoot', 'renderCockpitPerformanceFoot', 'renderCockpitHistoriqueFoot', 'renderCockpitFoot'];
   const store = {};
