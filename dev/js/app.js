@@ -8528,6 +8528,7 @@ function majObjectifCard(obj) {
   const icoEl = document.getElementById('obj-icon');
   if (nomEl) nomEl.textContent = obj || 'Non défini';
   if (icoEl) icoEl.textContent = objIconFor(obj);
+  try { _objMajSeancesUI(); } catch (e) {}
   // « Ce que ça change pour toi » : rend l'objectif visible comme colonne
   // vertébrale (programme conseillé + priorité + façon dont les analyses le lisent).
   const detEl = document.getElementById('obj-actuel');
@@ -8549,16 +8550,40 @@ function toggleObjectifEdit(on) {
   const e = document.getElementById('obj-card-edit');
   if (v) v.style.display = on ? 'none' : 'flex';
   if (e) e.style.display = on ? 'block' : 'none';
+  if (on) { try { _objMajSeancesUI(); } catch (e2) {} }   // pré-remplit le stepper avec la cible actuelle
+}
+// Objectif de séances/semaine : stepper 1–7. La valeur alimente l'anneau « X/N »
+// (regularite.seances_prevues) une fois enregistrée (table objectif.seances_semaine).
+function _objSeancesInc(d) {
+  var el = document.getElementById('sel-seances-sem'); if (!el) return;
+  var v = (parseInt(el.getAttribute('data-val'), 10) || 4) + d;
+  v = Math.max(1, Math.min(7, v));
+  el.setAttribute('data-val', v); el.textContent = v;
+}
+// Cible de séances/sem actuelle (explicite si réglée, sinon dérivée du programme).
+function _objSeancesCible() {
+  try { var r = dernierAppData && dernierAppData.dashboard && dernierAppData.dashboard.regularite; var v = r && r.seances_prevues; return (v != null && v > 0) ? Number(v) : 4; } catch (e) { return 4; }
+}
+// Met à jour l'affichage (ligne de la carte + valeur du stepper) depuis la cible.
+function _objMajSeancesUI() {
+  var cible = _objSeancesCible();
+  var sv = document.getElementById('obj-seances-view'); if (sv) sv.textContent = '🗓️ Objectif : ' + cible + ' séance' + (cible > 1 ? 's' : '') + ' / semaine';
+  var st = document.getElementById('sel-seances-sem'); if (st) { st.setAttribute('data-val', cible); st.textContent = cible; }
 }
 async function sauvegarderObjectif() {
   const obj = document.getElementById('sel-objectif').value;
+  var stEl = document.getElementById('sel-seances-sem');
+  var seancesSem = stEl ? (parseInt(stEl.getAttribute('data-val'), 10) || 4) : null;
   await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({action:'saveObjectif', athlete_id:athlete.athlete_id, objectif:obj}) });
+    body: JSON.stringify({action:'saveObjectif', athlete_id:athlete.athlete_id, objectif:obj, seances_semaine:seancesSem}) });
   athlete.objectif = obj;
   localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
+  // Maj optimiste de la cible affichée (avant le prochain chargerAppData).
+  try { if (dernierAppData && dernierAppData.dashboard && dernierAppData.dashboard.regularite && seancesSem) dernierAppData.dashboard.regularite.seances_prevues = seancesSem; } catch (e) {}
   majObjectifCard(obj);
   toggleObjectifEdit(false);
   showToast('✅ Objectif sauvegardé !');
+  if (typeof chargerAppData === 'function') chargerAppData();
 }
 
 async function sauvegarderPoids() {
