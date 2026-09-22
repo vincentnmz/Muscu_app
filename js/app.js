@@ -5631,7 +5631,41 @@ function _progReadonly()   { return !!(progCtx && progCtx.readonly); }   // joue
 
 // Programme hybride : activités cardio proposées à l'ajout d'un item cardio.
 // exercice stocké = le libellé (ex. « Footing ») ; type='cardio' distingue du muscu.
-var _PROG_CARDIO = [['Footing', '🏃'], ['Vélo', '🚴'], ['Marche', '🚶'], ['Rameur', '🚣'], ['Elliptique', '🌀'], ['HIIT', '🔥'], ['Natation', '🏊'], ['Boxe', '🥊']];
+// ═══════════ CATALOGUE CARDIO — source de vérité unique ═══════════
+// Toutes les listes d'activités cardio (sélecteur Entraînement, saisie manuelle,
+// programme hybride, analyses, icônes, libellés, champs) DÉRIVENT de ce catalogue.
+// Ajouter une activité = UNE entrée ici (rien d'autre à toucher).
+// champs : key · label · ico(emoji) · color · svg · hint · spec(champs saisie) ·
+//          noDist(effort à la durée, pas de distance) · en(sélecteur Entraînement) ·
+//          prog(programme hybride) · special('hyrox' = saisie structurée dédiée).
+var _F_FC = function (ph) { return { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: ph || '140', optional: true }; };
+var _CARDIO_CATALOG = [
+  { key: 'footing', label: 'Footing', ico: '🏃', color: '#6366F1', hint: 'Distance · vitesse · FC', svg: '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true }, _F_FC('145')], noDist: false, en: true, prog: true },
+  { key: 'velo', label: 'Vélo', ico: '🚴', color: '#9D5FD3', hint: 'Distance · watts · FC', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '85' }, { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true }, _F_FC('140')], noDist: false, en: true, prog: true },
+  { key: 'marche_normale', label: 'Marche', ico: '🚶', color: '#22D3EE', hint: 'Distance · pas · FC', svg: '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true }, _F_FC('110')], noDist: false, en: true, prog: true },
+  { key: 'marche_inclinee', label: 'Marche inclinée', ico: '🥾', color: '#10B981', hint: 'Pente · distance', svg: '<path d="M3 20h18M5 20 16 6M9 10l3 2"/>', spec: [{ id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true }, { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '6', step: '0.1', calc: true }, _F_FC('130')], noDist: false, en: true, prog: true },
+  { key: 'natation', label: 'Natation', ico: '🏊', color: '#8B5CF6', hint: 'Distance · temps · FC', svg: '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01M9 12l4-3 3 2"/>', spec: [_F_FC('140')], noDist: false, en: true, prog: true },
+  { key: 'rameur', label: 'Rameur', ico: '🚣', color: '#14B8A6', hint: 'Distance · puissance · FC', svg: '<path d="M2 12h20M6 9l-2 3 2 3M18 9l2 3-2 3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '150', optional: true }, { id: 'cadence', label: 'Cadence (coups/min)', placeholder: '26' }, _F_FC('145')], noDist: false, en: true, prog: true },
+  { key: 'hiit', label: 'HIIT', ico: '🔥', color: '#EF4444', hint: 'Durée · FC', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('155')], noDist: true, en: true, prog: true },
+  { key: 'elliptique', label: 'Elliptique', ico: '🌀', color: '#D946EF', hint: 'Durée · watts · FC', svg: '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '120', optional: true }, _F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'boxe', label: 'Boxe', ico: '🥊', color: '#F43F5E', hint: 'Durée · FC', svg: '<path d="M7 7h7a3 3 0 0 1 3 3v3a4 4 0 0 1-4 4H9a2 2 0 0 1-2-2V7z"/>', spec: [_F_FC('150')], noDist: true, en: true, prog: true },
+  { key: 'corde_a_sauter', label: 'Corde à sauter', ico: '🪢', color: '#F97316', hint: 'Durée · FC', svg: '<path d="M6 3v9a6 6 0 0 0 12 0V3"/><circle cx="6" cy="3" r="1.5"/><circle cx="18" cy="3" r="1.5"/>', spec: [_F_FC('150')], noDist: true, en: true, prog: true },
+  { key: 'escaliers', label: 'Escaliers', ico: '🪜', color: '#0EA5E9', hint: 'Durée · FC', svg: '<path d="M3 20h4v-4h4v-4h4v-4h4"/>', spec: [_F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'spinning', label: 'Spinning / Vélo d\'appart', ico: '🚲', color: '#7C3AED', hint: 'Durée · watts · FC', svg: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17 10 8h4M14 8l3 9"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '160', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '90' }, _F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'aquabike', label: 'Aquabike', ico: '💦', color: '#06B6D4', hint: 'Durée · FC', svg: '<path d="M3 18c2 0 2-1.5 4-1.5S9 18 11 18s2-1.5 4-1.5S17 18 19 18M9 14l3-5 3 2M13 8a2 2 0 1 0 0-.01"/>', spec: [_F_FC('130')], noDist: true, en: true, prog: true },
+  { key: 'ski_fond', label: 'Ski de fond', ico: '🎿', color: '#38BDF8', hint: 'Distance · FC', svg: '<path d="M3 20 21 8M7 6l10 10M6 18l2 2"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '12', step: '0.1', calc: true }, _F_FC('150')], noDist: false, en: true, prog: true },
+  { key: 'hyrox', label: 'Hyrox', ico: '🟨', color: '#FFBC13', hint: '8 × (Run + atelier)', svg: '<path d="M4 7h16M4 12h16M4 17h16"/>', spec: [], noDist: false, en: false, prog: false, special: 'hyrox' },
+  { key: 'autre', label: 'Autre', ico: '⚡', color: '#F59E0B', hint: 'Durée · RPE · kcal', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('135')], noDist: false, en: true, prog: false }
+];
+var _CARDIO_CAT_BY_KEY = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a; return m; }, {});
+function _cardioNoDist(key) { var a = _CARDIO_CAT_BY_KEY[key]; return !!(a && a.noDist); }
+// Programme hybride : activités proposées (libellé + icône), dérivées du catalogue.
+var _PROG_CARDIO = _CARDIO_CATALOG.filter(function (a) { return a.prog; }).map(function (a) { return [a.label, a.ico]; });
+// Peuple dynamiquement le <select id="cardio-type"> (saisie manuelle) depuis le catalogue.
+function _buildCardioTypeOptions() {
+  var sel = document.getElementById('cardio-type'); if (!sel || sel.options.length) return;
+  sel.innerHTML = _CARDIO_CATALOG.map(function (a) { return '<option value="' + a.key + '">' + a.label + '</option>'; }).join('');
+}
 function _progCardioIco(nom) { var a = _PROG_CARDIO.find(function (x) { return x[0] === nom; }); return a ? a[1] : '🫀'; }
 function _progCardioCibleTxt(l) { if ((l.cardio_unite || 'min') === 'libre') return 'libre'; return (l.cardio_cible != null) ? (l.cardio_cible + ' ' + (l.cardio_unite === 'km' ? 'km' : 'min')) : '—'; }
 // Persistance d'une ligne de programme (muscu OU cardio) — envoie tous les champs.
@@ -8941,18 +8975,8 @@ function _maWeekly(dict, nWeeks, agg) {
   return out;
 }
 
-var _MA_CARDIO_META = {
-  velo: ['Vélo', '#9D5FD3', '<path d="M3 12h4l2.5-6 5 12 2.5-6H21"/>'],
-  footing: ['Footing', '#6366F1', '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>'],
-  marche_normale: ['Marche', '#22D3EE', '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>'],
-  marche_inclinee: ['Marche inclinée', '#10B981', '<path d="M3 20h18M5 20 16 6"/>'],
-  natation: ['Natation', '#8B5CF6', '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01"/>'],
-  rameur: ['Rameur', '#14B8A6', '<path d="M4 12h16"/>'], hiit: ['HIIT', '#EF4444', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>'],
-  elliptique: ['Elliptique', '#D946EF', '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>'],
-  boxe: ['Boxe', '#F43F5E', '<path d="M7 7h7a3 3 0 0 1 3 3v3a4 4 0 0 1-4 4H9a2 2 0 0 1-2-2V7z"/>'],
-  hyrox: ['Hyrox', '#FFBC13', '<path d="M4 7h16M4 12h16M4 17h16"/>'],
-  autre: ['Autre', '#F59E0B', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>']
-};
+// Méta analyses (label · couleur · svg) — dérivée du catalogue cardio unique.
+var _MA_CARDIO_META = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = [a.label, a.color, a.svg]; return m; }, {});
 function _maCM(t) { return _MA_CARDIO_META[t] || [t || 'Autre', '#F59E0B', _MA_CARDIO_META.autre[2]]; }
 function _maHMS(min) { min = Math.round(min || 0); var h = Math.floor(min / 60); return h ? (h + 'h' + String(min % 60).padStart(2, '0')) : (min + ' min'); }
 var _maCardioSport = null;      // sport sélectionné dans « Par sport » (null = auto)
@@ -11838,14 +11862,9 @@ var _enMode = 'muscu';
 var _enSelSeance = null;
 var _enSelActivite = 'velo';
 var _enOrder = [], _enByS = {};
-var _EN_ACTS = [
-  { t: 'velo', label: 'Vélo', hint: 'Distance · watts · FC', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>' },
-  { t: 'footing', label: 'Footing', hint: 'Distance · vitesse · FC', svg: '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>' },
-  { t: 'marche_normale', label: 'Marche', hint: 'Distance · pas · FC', svg: '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>' },
-  { t: 'marche_inclinee', label: 'Marche inclinée', hint: 'Pente · distance', svg: '<path d="M3 20h18M5 20 16 6M9 10l3 2"/>' },
-  { t: 'natation', label: 'Natation', hint: 'Distance · temps · FC', svg: '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01M9 12l4-3 3 2"/>' },
-  { t: 'autre', label: 'Autre', hint: 'Durée · RPE · kcal', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>' }
-];
+// Sélecteur cardio de l'écran Entraînement — dérivé du catalogue (toutes les
+// activités « en:true », donc plus de listes divergentes).
+var _EN_ACTS = _CARDIO_CATALOG.filter(function (a) { return a.en; }).map(function (a) { return { t: a.key, label: a.label, hint: a.hint, svg: a.svg }; });
 function _enSetMode(m) {
   _enMode = m;
   var bm = document.getElementById('en-seg-muscu'), bc = document.getElementById('en-seg-cardio'), bh = document.getElementById('en-seg-hyrox');
@@ -11929,7 +11948,7 @@ function _enDemarrerNow() {
     ouvrirSeancePage();
     try { if (typeof switchModeSeance === 'function') switchModeSeance('cardio'); } catch (e) {}
     try { _seanceChronoStart(); } catch (e) {}
-    try { var ct = document.getElementById('cardio-type'); if (ct) { ct.value = _enSelActivite; if (typeof renderCardioFields === 'function') renderCardioFields(); } } catch (e) {}
+    try { _buildCardioTypeOptions(); var ct = document.getElementById('cardio-type'); if (ct) { ct.value = _enSelActivite; if (typeof renderCardioFields === 'function') renderCardioFields(); } } catch (e) {}
     try { var cd = document.getElementById('cardio-date'); if (cd && !cd.value) { var t = new Date(); cd.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); } } catch (e) {}
     try { _majSeancePageTitre(); } catch (e) {}
   } else {
@@ -14526,48 +14545,8 @@ function switchModeSeance(mode) {
   }
 }
 
-var _CARDIO_SPEC = {
-  footing: [
-    { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true },
-    { id: 'fc_moy',      label: 'FC moy. (bpm)',        placeholder: '145', optional: true }
-  ],
-  velo: [
-    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true },
-    { id: 'cadence',       label: 'Cadence (rpm)',       placeholder: '85' },
-    { id: 'vitesse_moy',   label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true },
-    { id: 'fc_moy',        label: 'FC moy. (bpm)',       placeholder: '140', optional: true }
-  ],
-  marche_normale: [
-    { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true },
-    { id: 'fc_moy',      label: 'FC moy. (bpm)',  placeholder: '110', optional: true }
-  ],
-  marche_inclinee: [
-    { id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true },
-    { id: 'vitesse_moy', label: 'Vitesse (km/h)',  placeholder: '6',  step: '0.1', calc: true },
-    { id: 'fc_moy',      label: 'FC moy. (bpm)',   placeholder: '130', optional: true }
-  ],
-  natation: [
-    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '140', optional: true }
-  ],
-  rameur: [
-    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '150', optional: true },
-    { id: 'cadence',       label: 'Cadence (coups/min)', placeholder: '26' },
-    { id: 'fc_moy',        label: 'FC moy. (bpm)',        placeholder: '145', optional: true }
-  ],
-  hiit: [
-    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '155', optional: true }
-  ],
-  elliptique: [
-    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '120', optional: true },
-    { id: 'fc_moy',        label: 'FC moy. (bpm)',        placeholder: '140', optional: true }
-  ],
-  boxe: [
-    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '150', optional: true }
-  ],
-  autre: [
-    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '135', optional: true }
-  ]
-};
+// Champs de saisie par activité — dérivés du catalogue cardio unique.
+var _CARDIO_SPEC = _CARDIO_CATALOG.reduce(function (m, a) { if (a.spec && a.spec.length) m[a.key] = a.spec; return m; }, {});
 
 var _FC_HINT = ' <span style="font-size:9px;color:var(--text-muted);font-weight:500;">📡 optionnel</span>';
 
@@ -15073,6 +15052,7 @@ function renderCardioFields() {
   var typeEl = document.getElementById('cardio-type');
   var el = document.getElementById('cardio-fields-content');
   if (!el || !typeEl) return;
+  _buildCardioTypeOptions();   // peuple le <select> depuis le catalogue si vide
   var type = typeEl.value;
   // Nom de l'activité dans l'en-tête « séance en cours ».
   var actEl = document.getElementById('cardio-live-act');
@@ -15097,7 +15077,7 @@ function renderCardioFields() {
     + '<input type="number" id="cardio-poids-saisie" placeholder="ex: 62" inputmode="decimal" step="0.5" min="30" max="200" oninput="calcAutoCardio()" style="margin-top:6px;">'
     + '</div>';
   // Distance sans intérêt pour ces disciplines (effort à la durée) → champ masqué.
-  var noDist = (type === 'hiit' || type === 'boxe' || type === 'elliptique');
+  var noDist = _cardioNoDist(type);
   var dureeInput = '<div><label>Durée (min)</label><input type="number" id="cardio-duree" placeholder="45" min="1" inputmode="numeric" oninput="calcAutoCardio()"></div>';
   var distInput = '<div><label>Distance (km) <span id="cardio-dist-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label><input type="number" id="cardio-distance" placeholder="auto" step="0.1" min="0" inputmode="decimal" data-auto="" oninput="this.dataset.auto=\'0\';document.getElementById(\'cardio-dist-hint\').textContent=\'\';calcAutoCardio()"></div>';
   var dureeDistHtml = noDist
@@ -15291,7 +15271,8 @@ async function sauvegarderCardio() {
 // ── Repère cardio pendant l'exécution d'une séance hybride ───────────────────
 // Les items cardio du programme s'affichent sous la liste muscu, avec un bouton
 // qui ouvre une saisie pré-remplie (activité + cible) enregistrée dans le cardio.
-var _CARDIO_LBL2KEY = { 'Footing': 'footing', 'Vélo': 'velo', 'Marche': 'marche_normale', 'Rameur': 'rameur', 'Elliptique': 'elliptique', 'HIIT': 'hiit', 'Natation': 'natation', 'Boxe': 'boxe' };
+// Libellé (stocké dans le programme) → clé d'activité — dérivé du catalogue.
+var _CARDIO_LBL2KEY = _CARDIO_CATALOG.reduce(function (m, a) { m[a.label] = a.key; return m; }, {});
 var _seanceCardioRep = [];
 var _cardioRepDone = {};
 function _renderSeanceCardioReperes(seanceId, reperes) {
@@ -15393,14 +15374,8 @@ function nouvelleSeanceCardio() {
   renderCardioFields();
 }
 
-var _CARDIO_TYPE_LABELS = {
-  footing: 'Footing', velo: 'Vélo',
-  marche_normale: 'Marche', marche_inclinee: 'Marche inclinée',
-  natation: 'Natation',
-  rameur: 'Rameur', hiit: 'HIIT', elliptique: 'Elliptique', boxe: 'Boxe',
-  hyrox: 'Hyrox',
-  autre: 'Autre'
-};
+// Libellés d'activité — dérivés du catalogue cardio unique.
+var _CARDIO_TYPE_LABELS = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.label; return m; }, {});
 
 var _dashCardioPeriod  = 30;
 var _dashCardioWindows = null;
@@ -15524,7 +15499,7 @@ function _cardioSmoothPath(pts) {
   return d;
 }
 
-var _CH_ICO = { footing: '🏃', velo: '🚴', marche_normale: '🚶', marche_inclinee: '🥾', natation: '🏊', rameur: '🚣', hiit: '🔥', elliptique: '🌀', boxe: '🥊', hyrox: '🟨', autre: '⚡' };
+var _CH_ICO = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.ico; return m; }, {});
 var _CH_CLR = { footing: '#6366f1', velo: '#9D5FD3', marche_normale: '#22d3ee', marche_inclinee: '#10b981', natation: '#8b5cf6', rameur: '#14b8a6', hiit: '#ef4444', elliptique: '#a855f7', boxe: '#f97316', autre: '#f59e0b' };
 var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(157,95,211,.14)', marche_normale: 'rgba(34,211,238,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', rameur: 'rgba(20,184,166,.14)', hiit: 'rgba(239,68,68,.14)', elliptique: 'rgba(168,85,247,.14)', boxe: 'rgba(249,115,22,.14)', autre: 'rgba(245,158,11,.14)' };
 
