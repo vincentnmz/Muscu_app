@@ -1789,6 +1789,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     jour: r.jour != null ? Number(r.jour) : null,   // jour conseillé (1=lun … 7=dim), null = non planifié
     charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null,   // cible : % du 1RM
     rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null,                  // cible : RPE
+    type: r.type || null,                                                         // 'cardio' = item cardio (hybride), sinon muscu
+    cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null,         // valeur de la cible cardio
+    cardio_unite: r.cardio_unite || null,                                         // 'min' | 'km' | 'libre'
   }))
 
   const bien_etre = (beRows || []).map(r => ({
@@ -2099,7 +2102,7 @@ async function handleGetCoachProgramme(params: URLSearchParams): Promise<Respons
   const athleteId = params.get('athlete_id')
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
   const { data } = await sb().from('programme').select('*').eq('athlete_id', athleteId).order('groupe_id').order('id')
-  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null, charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null, rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null }))
+  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null, charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null, rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null, type: r.type || null, cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null, cardio_unite: r.cardio_unite || null }))
   // le front lit data.lignes ; on garde aussi "programme" par rétro-compat
   return jsonResp({ ok: true, lignes, programme: lignes })
 }
@@ -3675,11 +3678,19 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
   // cibles (phase 2) : % du 1RM + RPE cible. '' → null (efface).
   const pctIn = (body.charge_pct_1rm === '' || body.charge_pct_1rm == null) ? null : Number(body.charge_pct_1rm)
   const rpeIn = (body.rpe_cible === '' || body.rpe_cible == null) ? null : Number(body.rpe_cible)
+  // Item CARDIO (programme hybride) : type='cardio', exercice = activité, cible =
+  // (valeur, unité 'min'|'km'|'libre'). Les champs muscu (séries/reps…) restent nuls.
+  const typeIn = (body.type === 'cardio') ? 'cardio' : (body.type === 'muscu' ? 'muscu' : null)
+  const cibleIn = (body.cardio_cible === '' || body.cardio_cible == null) ? null : Number(body.cardio_cible)
+  const uniteIn = (body.cardio_unite === '' || body.cardio_unite == null) ? null : String(body.cardio_unite)
   if (row_index) {
     const patch: any = { seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id }
     if (body.jour !== undefined) patch.jour = jourIn
     if (body.charge_pct_1rm !== undefined) patch.charge_pct_1rm = pctIn
     if (body.rpe_cible !== undefined) patch.rpe_cible = rpeIn
+    if (body.type !== undefined) patch.type = typeIn
+    if (body.cardio_cible !== undefined) patch.cardio_cible = cibleIn
+    if (body.cardio_unite !== undefined) patch.cardio_unite = uniteIn
     const { error } = await sb().from('programme').update(patch).eq('id', row_index)
     if (error) return jsonResp({ erreur: error.message })
   } else {
@@ -3689,7 +3700,7 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
       const { data: sib } = await sb().from('programme').select('jour').eq('athlete_id', athlete_id).eq('seance_id', seance_id).not('jour', 'is', null).limit(1)
       if (sib && sib.length && sib[0].jour != null) jour = Number(sib[0].jour)
     }
-    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour, charge_pct_1rm: pctIn, rpe_cible: rpeIn })
+    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour, charge_pct_1rm: pctIn, rpe_cible: rpeIn, type: typeIn, cardio_cible: cibleIn, cardio_unite: uniteIn })
     if (error) return jsonResp({ erreur: error.message })
   }
   return jsonResp({ ok: true })
