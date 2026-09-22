@@ -3885,6 +3885,7 @@ async function handleSaveHyrox(body: any): Promise<Response> {
   Object.keys(poids).forEach(k => { if (num(poids[k]) != null) rows.push(R('hyrox_poids_' + k, String(Number(poids[k])), 'kg')) })
   const { error } = await sb().from('indicateurs').insert(rows)
   if (error) return jsonResp({ success: false, error: error.message })
+  try { await rebuildActivites(athlete_id) } catch (_) {}   // P0.2 : entité Activité à jour
   return jsonResp({ ok: true, success: true, seance_id: sid, total_sec: total })
 }
 
@@ -4107,7 +4108,87 @@ async function handleSaveCardio(body: any): Promise<Response> {
     const { error } = await sb().from('indicateurs').insert(rows)
     if (error) return jsonResp({ success: false, error: error.message })
   }
+  try { await rebuildActivites(athlete_id) } catch (_) {}   // P0.2 : tenir l'entité Activité à jour
   return jsonResp({ success: true, seance_id: sid })
+}
+
+// ═══════════ P0.2 — Entité Activité canonique (socle multi-source) ═══════════
+// (Re)construit `activites` + `activite_sources` à partir des séances cardio
+// existantes (indicateurs cardio_%). Idempotent : upsert sur (athlete_id, seance_id)
+// → l'activity_id reste STABLE, pour que le GPS et les autres sources s'y rattachent
+// plus tard sans casser les liens. N'affecte pas le moteur (table à part).
+async function rebuildActivites(athlete_id: string): Promise<{ built: number; error?: string }> {
+  const { data: rows, error } = await sb().from('indicateurs')
+    .select('date, seance_id, cle, valeur, source').eq('athlete_id', athlete_id).like('seance_id', 'cardio_%')
+  if (error) return { built: 0, error: error.message }
+  const bySid: Record<string, { date: string; cles: Record<string, string>; source: string }> = {}
+  for (const r of (rows || [])) {
+    const sid = String(r.seance_id)
+    if (!bySid[sid]) bySid[sid] = { date: normDate(r.date), cles: {}, source: '' }
+    bySid[sid].cles[String(r.cle)] = String(r.valeur)
+    if (r.source && !bySid[sid].source) bySid[sid].source = String(r.source)
+  }
+  const srcMeta: Record<string, string> = {}
+  const actRows = Object.keys(bySid).map((sid) => {
+    const b = bySid[sid]
+    const isHyrox = sid.indexOf('cardio_hyrox_') === 0 || b.cles['type_cardio'] === 'hyrox'
+    const type = isHyrox ? 'hyrox' : (b.cles['type_cardio'] || 'autre')
+    const dureeS = isHyrox
+      ? (Number(b.cles['hyrox_total']) || (Number(b.cles['duree']) || 0) * 60)
+      : (Number(b.cles['duree']) || 0) * 60
+    const distM = (Number(b.cles['distance']) || 0) * 1000
+    const debut = b.date ? new Date(b.date + 'T00:00:00Z').toISOString() : null
+    const src = (b.source === 'fitbit') ? 'google_health' : 'manual'
+    srcMeta[sid] = src
+    return {
+      athlete_id, seance_id: sid, type, debut, fin: null,
+      duree_s: dureeS || null, distance_m: distM || null,
+      source_primaire: src, statut: 'complete', updated_at: new Date().toISOString(),
+    }
+  })
+  if (!actRows.length) return { built: 0 }
+  const { data: upserted, error: upErr } = await sb().from('activites')
+    .upsert(actRows, { onConflict: 'athlete_id,seance_id' }).select('id, seance_id')
+  if (upErr) return { built: 0, error: upErr.message }
+  const srcRows = (upserted || []).map((a: any) => ({
+    activity_id: a.id, source: srcMeta[String(a.seance_id)] || 'manual',
+    source_ref: String(a.seance_id), imported_at: new Date().toISOString(),
+  }))
+  if (srcRows.length) {
+    const { error: sErr } = await sb().from('activite_sources').upsert(srcRows, { onConflict: 'activity_id,source' })
+    if (sErr) return { built: actRows.length, error: sErr.message }
+  }
+  return { built: actRows.length }
+}
+
+async function handleRebuildActivites(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const r = await rebuildActivites(athlete_id)
+  if (r.error) return jsonResp({ success: false, error: r.error, built: r.built })
+  return jsonResp({ success: true, built: r.built })
+}
+
+async function handleGetActivites(params: URLSearchParams): Promise<Response> {
+  const athlete_id = params.get('athlete_id') || ''
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const { data: acts, error } = await sb().from('activites')
+    .select('*').eq('athlete_id', athlete_id).order('debut', { ascending: false }).limit(500)
+  if (error) return jsonResp({ success: false, error: error.message })
+  const ids = (acts || []).map((a: any) => a.id)
+  let sources: any[] = []
+  if (ids.length) {
+    const { data: srcs } = await sb().from('activite_sources').select('activity_id, source, source_ref').in('activity_id', ids)
+    sources = srcs || []
+  }
+  const byAct: Record<string, string[]> = {}
+  for (const s of sources) { (byAct[String(s.activity_id)] = byAct[String(s.activity_id)] || []).push(String(s.source)) }
+  const activites = (acts || []).map((a: any) => ({
+    id: a.id, seance_id: a.seance_id, type: a.type, debut: a.debut, duree_s: a.duree_s,
+    distance_m: a.distance_m != null ? Number(a.distance_m) : null,
+    source_primaire: a.source_primaire, statut: a.statut, sources: byAct[String(a.id)] || [],
+  }))
+  return jsonResp({ success: true, activites })
 }
 
 // Supprime une séance muscu = toutes les lignes performances pour un athlète, un
@@ -4196,6 +4277,7 @@ Deno.serve(async (req: Request) => {
         case 'getAppData':            return handleGetAppData(params)
         case 'getLastPerf':           return handleGetLastPerf(params)
         case 'getPoids':              return handleGetPoids(params)
+        case 'getActivites':          return handleGetActivites(params)
         case 'exercices':             return handleGetExercices()
         case 'loginCoach':            return handleLoginCoach(params)
         case 'getCoachAthletes':      return handleGetCoachAthletes(params)
@@ -4254,6 +4336,7 @@ Deno.serve(async (req: Request) => {
         case 'marquerCommentairesLus':   return handleMarquerCommentairesLus(body)
         case 'supprimerCommentaire':     return handleSupprimerCommentaire(body)
         case 'saveObjectif':             return handleSaveObjectif(body)
+        case 'rebuildActivites':         return handleRebuildActivites(body)
         case 'savePoids':                return handleSavePoids(body)
         case 'saveNote':                 return handleSaveNote(body)
         case 'saveProgrammeLigne':       return handleSaveProgrammeLigne(body)
