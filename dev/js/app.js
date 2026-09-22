@@ -7265,6 +7265,8 @@ async function demarrerSeance() {
   // on les exclut de l'exécution muscu (repère cardio géré à part, à venir).
   const progSource = dernierAppData ? dernierAppData.programme || [] : [];
   programmeSeance = progSource.filter(p => p.seance_id === seanceId && p.type !== 'cardio');
+  // Items CARDIO du programme (hybride) → bloc repère + bouton d'enregistrement.
+  try { _renderSeanceCardioReperes(seanceId, progSource.filter(p => p.seance_id === seanceId && p.type === 'cardio')); } catch (e) {}
 
   const resPerf = await fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=${encodeURIComponent(seanceId)}`);
   const dataPerf = await resPerf.json();
@@ -15283,6 +15285,72 @@ async function sauvegarderCardio() {
   // La séance est déjà enregistrée ; le bilan s'y rattache via son seance_id.
   var _sidCardio = (typeof res !== 'undefined' && res && res.seance_id) ? res.seance_id : null;
   setTimeout(function () { ouvrirBilanSeance('cardio', _sidCardio, date); }, 350);
+}
+
+// ── Repère cardio pendant l'exécution d'une séance hybride ───────────────────
+// Les items cardio du programme s'affichent sous la liste muscu, avec un bouton
+// qui ouvre une saisie pré-remplie (activité + cible) enregistrée dans le cardio.
+var _CARDIO_LBL2KEY = { 'Footing': 'footing', 'Vélo': 'velo', 'Marche': 'marche_normale', 'Rameur': 'rameur', 'Elliptique': 'elliptique', 'HIIT': 'hiit', 'Natation': 'natation', 'Boxe': 'boxe' };
+var _seanceCardioRep = [];
+var _cardioRepDone = {};
+function _renderSeanceCardioReperes(seanceId, reperes) {
+  _seanceCardioRep = reperes || [];
+  var host = document.getElementById('card-liste-seance');
+  var box = document.getElementById('seance-cardio-reperes');
+  if (!host || !_seanceCardioRep.length) { if (box) box.remove(); return; }
+  if (!box) { box = document.createElement('div'); box.id = 'seance-cardio-reperes'; host.parentNode.insertBefore(box, host.nextSibling); }
+  box.style.cssText = 'margin-top:12px;padding:14px;border:1px solid var(--border);border-left:4px solid #9D5FD3;border-radius:14px;background:var(--surface)';
+  box.innerHTML = '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#9D5FD3;margin-bottom:4px">🫀 Cardio prévu</div>'
+    + _seanceCardioRep.map(function (r, i) {
+      var cible = (r.cardio_unite === 'libre') ? 'allure libre' : ((r.cardio_cible != null ? r.cardio_cible : '') + ' ' + (r.cardio_unite === 'km' ? 'km' : 'min'));
+      var done = !!_cardioRepDone[seanceId + '|' + r.exercice];
+      return '<div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--border)">'
+        + '<span style="width:34px;height:34px;border-radius:10px;background:rgba(157,95,211,.13);color:#9D5FD3;display:grid;place-items:center;font-size:15px;flex:none">' + _progCardioIco(r.exercice) + '</span>'
+        + '<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800">' + escapeHtml(r.exercice) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">Cible : ' + cible + '</div></div>'
+        + (done
+          ? '<span style="font-size:12px;font-weight:800;color:var(--good);white-space:nowrap">✓ enregistré</span>'
+          : '<button onclick="ouvrirSaisieCardioPrevu(' + i + ')" style="border:none;background:#9D5FD3;color:#fff;border-radius:10px;padding:9px 13px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap">Enregistrer</button>')
+        + '</div>';
+    }).join('');
+}
+function fermerSaisieCardioPrevu() { var ov = document.getElementById('scp-overlay'); if (ov) ov.style.display = 'none'; }
+function ouvrirSaisieCardioPrevu(idx) {
+  if (!athlete) return;
+  var r = _seanceCardioRep[idx]; if (!r) return;
+  var ov = document.getElementById('scp-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'scp-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1250;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
+  var isKm = r.cardio_unite === 'km';
+  var dureeVal = (r.cardio_unite === 'min' && r.cardio_cible != null) ? r.cardio_cible : '';
+  var distVal = (isKm && r.cardio_cible != null) ? r.cardio_cible : '';
+  var fld = function (id, val, ph, unit) { return '<div style="flex:1"><label style="font-size:11px;color:var(--text-muted);font-weight:700">' + unit + '</label><input id="' + id + '" type="number" inputmode="decimal" value="' + val + '" placeholder="' + ph + '" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:15px;font-weight:700;text-align:center;margin-top:5px"></div>'; };
+  ov.style.display = 'block'; ov.scrollTop = 0;
+  ov.innerHTML = '<div style="max-width:460px;margin:0 auto">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Enregistrer le cardio</div><button onclick="fermerSaisieCardioPrevu()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="display:flex;align-items:center;gap:11px;background:rgba(157,95,211,.10);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:14px"><span style="width:40px;height:40px;border-radius:12px;background:#9D5FD3;color:#fff;display:grid;place-items:center;font-size:19px;flex:none">' + _progCardioIco(r.exercice) + '</span><div><div style="font-size:15px;font-weight:800">' + escapeHtml(r.exercice) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">Prévu : ' + (r.cardio_unite === 'libre' ? 'allure libre' : ((r.cardio_cible != null ? r.cardio_cible : '') + ' ' + (isKm ? 'km' : 'min'))) + '</div></div></div>'
+    + '<label style="font-size:11px;color:var(--text-muted);font-weight:700">Date</label>'
+    + '<input type="date" id="scp-date" value="' + _todayLocalStr() + '" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;margin:5px 0 12px">'
+    + '<div style="display:flex;gap:10px">' + fld('scp-duree', dureeVal, '20', 'Durée (min)') + fld('scp-distance', distVal, '5', 'Distance (km)') + '</div>'
+    + '<div style="margin-top:12px">' + fld('scp-rpe', '', '7', 'RPE (intensité, 1-10)') + '</div>'
+    + '<button id="scp-save" onclick="_saveCardioPrevu(' + idx + ')" class="btn btn-accent" style="width:100%;margin-top:16px;padding:15px;font-size:15px;background:#9D5FD3">✅ Enregistrer le cardio</button>'
+    + '</div>';
+}
+async function _saveCardioPrevu(idx) {
+  if (!athlete) return;
+  var r = _seanceCardioRep[idx]; if (!r) return;
+  var type = _CARDIO_LBL2KEY[r.exercice] || 'footing';
+  var gv = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+  var date = gv('scp-date') || _todayLocalStr(), duree = gv('scp-duree'), distance = gv('scp-distance'), rpe = gv('scp-rpe');
+  if (!duree && !distance) { showToast('Renseigne au moins la durée', 'var(--warn)'); return; }
+  var btn = document.getElementById('scp-save'); if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
+  try {
+    var resp = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: date, type_cardio: type, duree: duree, distance: distance, rpe: rpe }) });
+    var res = await resp.json(); if (res && res.error) throw new Error(res.error);
+  } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btn) { btn.disabled = false; btn.textContent = '✅ Enregistrer le cardio'; } return; }
+  _cardioRepDone[r.seance_id + '|' + r.exercice] = true;
+  fermerSaisieCardioPrevu();
+  showToast('✅ Cardio enregistré · ' + r.exercice);
+  try { _renderSeanceCardioReperes(r.seance_id, _seanceCardioRep); } catch (e) {}
+  if (typeof chargerAppData === 'function') chargerAppData();
 }
 
 function nouvelleSeanceCardio() {
