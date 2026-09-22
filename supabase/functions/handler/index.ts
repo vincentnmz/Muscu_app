@@ -2299,9 +2299,15 @@ function evaluerEtatAthlete(s: EtatInput): any {
   let niveau: number
   if (s.injStatut === 'indispo') niveau = 2
   else {
-    const haute = alertesEtat.some(a => a.severite === 'haute')
+    // ACWR = signal, pas verdict : une surcharge ACWR SEULE ne fait plus passer la
+    // journée en rouge (l'indicateur est incertain et ne doit pas donner le ton). Il
+    // faut un signal RESSENTI concordant (douleur / fatigue / sommeil) pour le rouge.
+    // Seule → elle reste une alerte (→ Vigilance orange via `mid`).
+    const signalRessentiConcordant = douleurGene || fatigueHaute || sommeilBas
+    const chargeRouge = surchargeN >= 2 && signalRessentiConcordant
+    const haute = alertesEtat.some(a => a.severite === 'haute' && a.type !== 'surcharge')
     const combo = fatigueHaute && sommeilBas && chargeHaute        // §16 : combinaison de signaux
-    const bad = haute || risqueBlessureN === 2 || recFaibleConcordante || combo
+    const bad = haute || chargeRouge || risqueBlessureN === 2 || recFaibleConcordante || combo
     const mid = alertesEtat.length > 0 || risqueBlessureN === 1 || recFaible || s.injStatut === 'retour_progressif'
     niveau = bad ? 2 : mid ? 1 : 0
   }

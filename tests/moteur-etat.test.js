@@ -121,9 +121,13 @@ function reproductionEtat(s) {
   let niveau;
   if (s.injStatut === 'indispo') niveau = 2;
   else {
-    const haute = tagsEtat.some(a => a.endsWith(':h'));
+    // ACWR = signal, pas verdict : surcharge ACWR seule → Vigilance (pas rouge) ;
+    // le rouge exige un ressenti concordant (douleur/fatigue/sommeil).
+    const signalRessentiConcordant = douleurGene || fatigueHaute || sommeilBas;
+    const chargeRouge = surchargeN >= 2 && signalRessentiConcordant;
+    const haute = tagsEtat.some(a => a.endsWith(':h') && a !== 'surcharge:h');
     const combo = fatigueHaute && sommeilBas && chargeHaute;
-    const bad = haute || risqueBlessureN === 2 || recFaibleConcordante || combo;
+    const bad = haute || chargeRouge || risqueBlessureN === 2 || recFaibleConcordante || combo;
     const mid = tagsEtat.length > 0 || risqueBlessureN === 1 || recFaible || s.injStatut === 'retour_progressif';
     niveau = bad ? 2 : mid ? 1 : 0;
   }
@@ -158,8 +162,10 @@ const CAS = [
     exp: { niveau: 0, statut: 'vert', dispo: 'Prêt', surcharge: 'Faible', risque_blessure: 'Faible', recup: 'Excellent', confiance: 'haute', acwr_fiable: true, acwr_categorie: 'normal', reco: 'RAS — maintenir la charge actuelle.', tags: [] } },
   { nom: 'A2 fatigue seule → orange', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 4, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 1, statut: 'orange', dispo: 'Vigilance', surcharge: 'Faible', risque_blessure: 'Modéré', recup: 'Bon', confiance: 'haute', acwr_categorie: 'normal', reco: 'Vigilance — surveiller les sensations, ne pas surcharger.', tags: ['fatigue:m'] } },
-  { nom: 'A3 surcharge haute → rouge', in: { acwr: 1.6, acwrFiable: true, seances7: 4, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
-    exp: { niveau: 2, statut: 'rouge', dispo: 'À surveiller', surcharge: 'Élevé', risque_blessure: 'Modéré', recup: 'Excellent', confiance: 'haute', acwr_categorie: 'eleve', reco: 'Charge aiguë élevée (ACWR 1.60) — réduire le volume 48 h.', tags: ['surcharge:h'] } },
+  { nom: 'A3 surcharge ACWR seule → Vigilance (orange), pas rouge', in: { acwr: 1.6, acwrFiable: true, seances7: 4, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    exp: { niveau: 1, statut: 'orange', dispo: 'Vigilance', surcharge: 'Élevé', risque_blessure: 'Modéré', recup: 'Excellent', confiance: 'haute', acwr_categorie: 'eleve', reco: 'Charge aiguë élevée (ACWR 1.60) — réduire le volume 48 h.', tags: ['surcharge:h'] } },
+  { nom: 'A3bis surcharge ACWR + fatigue (ressenti concordant) → rouge', in: { acwr: 1.6, acwrFiable: true, seances7: 4, douleur: 0, fatigue: 4, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    exp: { niveau: 2, statut: 'rouge', dispo: 'À surveiller', surcharge: 'Élevé', acwr_categorie: 'eleve', tags: ['fatigue:m', 'surcharge:h'] } },
 
   // B. Frontières ACWR (x<seuil, x=seuil, x>seuil) — seuils 1.3 / 1.5 / 0.8
   { nom: 'B1 ACWR = 1.30 (=optMax) → pas de charge', in: { acwr: 1.3, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
@@ -168,8 +174,8 @@ const CAS = [
     exp: { niveau: 1, statut: 'orange', surcharge: 'Modéré', risque_blessure: 'Modéré', acwr_categorie: 'vigilance', tags: ['charge:m'] } },
   { nom: 'B3 ACWR = 1.50 (=haut) → charge (pas surcharge)', in: { acwr: 1.5, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 1, statut: 'orange', surcharge: 'Modéré', acwr_categorie: 'vigilance', tags: ['charge:m'] } },
-  { nom: 'B4 ACWR = 1.51 (>haut) → surcharge', in: { acwr: 1.51, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
-    exp: { niveau: 2, statut: 'rouge', surcharge: 'Élevé', acwr_categorie: 'eleve', tags: ['surcharge:h'], reco: 'Charge aiguë élevée (ACWR 1.51) — réduire le volume 48 h.' } },
+  { nom: 'B4 ACWR = 1.51 (>haut) → surcharge (Vigilance seule)', in: { acwr: 1.51, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    exp: { niveau: 1, statut: 'orange', surcharge: 'Élevé', acwr_categorie: 'eleve', tags: ['surcharge:h'], reco: 'Charge aiguë élevée (ACWR 1.51) — réduire le volume 48 h.' } },
   { nom: 'B5 ACWR = 0.80 (=bas) → pas de sous-charge', in: { acwr: 0.8, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 0, statut: 'vert', acwr_categorie: 'normal', tags: [], reco: 'RAS — maintenir la charge actuelle.' } },
   { nom: 'B6 ACWR = 0.79 (<bas) + séances → sous-charge', in: { acwr: 0.79, acwrFiable: true, seances7: 2, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
@@ -202,8 +208,8 @@ const CAS = [
   // E. Contexte
   { nom: 'F1 deload atténue surcharge (2→1)', in: { acwr: 1.6, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'deload', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 1, statut: 'orange', surcharge: 'Modéré', risque_blessure: 'Modéré', contexte_tag: 'deload', acwr_categorie: 'eleve', tags: ['charge:m'], reco: 'Vigilance — surveiller les sensations, ne pas surcharger.' } },
-  { nom: 'F2 retour_vacances aggrave surcharge (1→2)', in: { acwr: 1.4, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'retour_vacances', q: { jours: 60, wellnessN: 5, hasCharge: true } },
-    exp: { niveau: 2, statut: 'rouge', surcharge: 'Élevé', contexte_tag: 'retour_vacances', acwr_categorie: 'vigilance', tags: ['surcharge:h'], reco: 'Charge aiguë élevée (ACWR 1.40) — réduire le volume 48 h.' } },
+  { nom: 'F2 retour_vacances aggrave surcharge (1→2) → Vigilance (ACWR seul, pas rouge)', in: { acwr: 1.4, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'retour_vacances', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    exp: { niveau: 1, statut: 'orange', surcharge: 'Élevé', contexte_tag: 'retour_vacances', acwr_categorie: 'vigilance', tags: ['surcharge:h'], reco: 'Charge aiguë élevée (ACWR 1.40) — réduire le volume 48 h.' } },
   { nom: 'F3 retour_blessure : niveauMin + risqueDelta', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'retour_blessure', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 1, statut: 'orange', risque_blessure: 'Modéré', contexte_tag: 'retour_blessure', tags: [], reco: 'Vigilance — surveiller les sensations, ne pas surcharger.' } },
   { nom: 'F4 intensification : neutre mais tagué', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'intensification', q: { jours: 60, wellnessN: 5, hasCharge: true } },
