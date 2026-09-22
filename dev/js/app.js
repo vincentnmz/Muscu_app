@@ -1087,7 +1087,8 @@ function renderCockpitEvolution(data){
       + '<div style="font-size:24px;font-weight:800;color:' + cat.c + ';line-height:1;">' + (ratio != null ? ratio.toFixed(2) : '—') + '</div>'
       + '<div style="font-size:12px;font-weight:700;color:' + cat.c + ';">' + escapeHtml(cat.l) + '</div></div>'
       + (pos == null ? '' : '<div style="position:relative;height:6px;border-radius:5px;background:var(--surface2);margin-top:9px;"><span style="position:absolute;top:-2px;left:' + (Math.round(pos * 10) / 10) + '%;width:3px;height:10px;border-radius:2px;background:' + cat.c + ';transform:translateX(-50%);"></span></div>')
-      + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">dernière valeur transmise par le moteur</div>';
+      + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">Dernière valeur du moteur · ' + (m.confiance === 'haute' ? 'fiabilité élevée' : m.confiance === 'faible' ? 'fiabilité faible' : 'fiabilité moyenne') + '</div>'
+      + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">Repère de <b>charge</b>, pas un verdict : il ne pèse sur ta disponibilité du jour que s\'il est <b>confirmé par tes sensations</b> (douleur, fatigue, sommeil).</div>';
   }
 
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
