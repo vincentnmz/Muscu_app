@@ -15367,11 +15367,154 @@ function nouvelleSeanceCardio() {
         </div>
       </div>
       <div id="cardio-fields-content"></div>
-      <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:16px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
+      <button id="btn-gps-cardio" class="btn" onclick="ouvrirEnregistrementGPS()" style="margin-top:16px;padding:13px;background:#6366F1;color:#fff;font-size:14px;font-weight:700;">📍 Enregistrer au GPS (extérieur)</button>
+      <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:8px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
     </div>`;
   var di = document.getElementById('cardio-date');
   if (di) { var t = new Date(); di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0'); }
   renderCardioFields();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GPS foreground (P1 · étape 1) — enregistrement d'une séance cardio au téléphone.
+ * Mesure distance + durée + allure EN DIRECT (écran allumé, appli au 1er plan),
+ * puis PRÉ-REMPLIT le formulaire cardio existant : l'utilisateur vérifie le type
+ * et le RPE, puis enregistre via sauvegarderCardio() → action saveCardio.
+ * → Aucun backend nouveau : la mesure remplace juste une saisie manuelle.
+ * Natif : window.Capacitor.Plugins.Geolocation. Web/PWA : navigator.geolocation.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+var _gps = { id: null, native: false, pts: [], distM: 0, t0: 0, timer: null, prev: null };
+
+// Distance entre deux points GPS (mètres) — formule de haversine.
+function _gpsHaversine(aLat, aLng, bLat, bLng) {
+  var R = 6371000, toR = Math.PI / 180;
+  var dLat = (bLat - aLat) * toR, dLng = (bLng - aLng) * toR;
+  var s1 = Math.sin(dLat / 2), s2 = Math.sin(dLng / 2);
+  var h = s1 * s1 + Math.cos(aLat * toR) * Math.cos(bLat * toR) * s2 * s2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function _gpsFmtDur(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  var m = Math.floor(sec / 60), s = sec % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+function _gpsFmtPace(distM, sec) {
+  if (distM < 20 || sec < 5) return '—';
+  var p = sec / (distM / 1000);           // secondes par km
+  if (!isFinite(p) || p > 5940) return '—';
+  var m = Math.floor(p / 60), s = Math.round(p % 60);
+  if (s === 60) { m++; s = 0; }
+  return m + ':' + (s < 10 ? '0' : '') + s + ' /km';
+}
+function _gpsSetStatus(txt, col) {
+  var s = document.getElementById('gps-status');
+  if (s) { s.textContent = txt; s.style.color = col || 'var(--text-muted)'; }
+}
+function _gpsRender() {
+  var sec = (Date.now() - _gps.t0) / 1000, km = _gps.distM / 1000;
+  var de = document.getElementById('gps-dist'); if (de) de.textContent = km.toFixed(2).replace('.', ',');
+  var te = document.getElementById('gps-time'); if (te) te.textContent = _gpsFmtDur(sec);
+  var pe = document.getElementById('gps-pace'); if (pe) pe.textContent = _gpsFmtPace(_gps.distM, sec);
+}
+function _gpsOnPos(lat, lng, acc) {
+  // Ignore les points trop imprécis (dérive GPS au démarrage / en intérieur).
+  if (acc != null && acc > 40) { _gpsSetStatus('📶 Signal GPS faible…', 'var(--warn)'); return; }
+  _gpsSetStatus('📍 Enregistrement en cours', 'var(--good)');
+  var now = Date.now();
+  if (_gps.prev) {
+    var d = _gpsHaversine(_gps.prev.lat, _gps.prev.lng, lat, lng);
+    var dt = (now - _gps.prev.t) / 1000;
+    // Anti-bruit : ignore < 3 m (immobile) et > 40 m/s ≈ 144 km/h (saut aberrant).
+    if (d >= 3 && (dt <= 0 || d / dt <= 40)) _gps.distM += d;
+  }
+  _gps.prev = { lat: lat, lng: lng, t: now };
+  _gps.pts.push([lat, lng]);
+  _gpsRender();
+}
+function _gpsPermDenied() {
+  _gpsSetStatus('❌ Localisation refusée. Autorise-la dans les réglages du téléphone, puis réessaie.', 'var(--bad)');
+}
+async function _gpsStart() {
+  _gps = { id: null, native: false, pts: [], distM: 0, t0: Date.now(), timer: null, prev: null };
+  try {
+    var Geo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+    if (Geo && typeof _estAppNative === 'function' && _estAppNative()) {
+      _gps.native = true;
+      try {
+        var perm = await Geo.requestPermissions();
+        var st = perm && (perm.location || perm.coarseLocation);
+        if (st && st !== 'granted') { _gpsPermDenied(); return false; }
+      } catch (e) {}
+      _gps.id = await Geo.watchPosition({ enableHighAccuracy: true, timeout: 15000 }, function (pos, err) {
+        if (err || !pos || !pos.coords) return;
+        _gpsOnPos(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+      });
+    } else if (navigator.geolocation) {
+      _gps.id = navigator.geolocation.watchPosition(
+        function (pos) { _gpsOnPos(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy); },
+        function (err) { if (err && err.code === 1) _gpsPermDenied(); else _gpsSetStatus('📶 En attente du signal GPS…', 'var(--warn)'); },
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 }
+      );
+    } else {
+      _gpsSetStatus('❌ Géolocalisation indisponible sur cet appareil.', 'var(--bad)');
+      return false;
+    }
+  } catch (e) {
+    _gpsSetStatus('❌ Impossible de démarrer le GPS : ' + (e && e.message ? e.message : e), 'var(--bad)');
+    return false;
+  }
+  _gps.timer = setInterval(_gpsRender, 1000);
+  return true;
+}
+function _gpsClearWatch() {
+  try {
+    if (_gps.id != null) {
+      if (_gps.native && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+        window.Capacitor.Plugins.Geolocation.clearWatch({ id: _gps.id });
+      } else if (navigator.geolocation) {
+        navigator.geolocation.clearWatch(_gps.id);
+      }
+    }
+  } catch (e) {}
+  if (_gps.timer) { clearInterval(_gps.timer); _gps.timer = null; }
+  _gps.id = null;
+}
+function ouvrirEnregistrementGPS() {
+  if (!athlete) return;
+  var ov = document.getElementById('gps-overlay');
+  if (!ov) return;
+  var de = document.getElementById('gps-dist'); if (de) de.textContent = '0,00';
+  var te = document.getElementById('gps-time'); if (te) te.textContent = '0:00';
+  var pe = document.getElementById('gps-pace'); if (pe) pe.textContent = '—';
+  _gpsSetStatus('⏳ Recherche du signal GPS…', 'var(--text-muted)');
+  ov.style.display = 'flex';
+  _gpsStart();
+}
+function annulerEnregistrementGPS() {
+  _gpsClearWatch();
+  var ov = document.getElementById('gps-overlay'); if (ov) ov.style.display = 'none';
+}
+function terminerEnregistrementGPS() {
+  var sec = (Date.now() - _gps.t0) / 1000, km = _gps.distM / 1000;
+  _gpsClearWatch();
+  var ov = document.getElementById('gps-overlay'); if (ov) ov.style.display = 'none';
+  if (sec < 10 || km < 0.01) { showToast('Trace trop courte — rien enregistré', 'var(--warn)'); return; }
+  // Reconstruit un formulaire cardio propre, puis le pré-remplit avec la mesure.
+  if (typeof nouvelleSeanceCardio === 'function') nouvelleSeanceCardio();
+  var mins = Math.max(1, Math.round(sec / 60));
+  var vitesse = sec > 0 ? Math.round((km / (sec / 3600)) * 10) / 10 : 0;
+  var typeSel = document.getElementById('cardio-type');
+  if (typeSel && _cardioNoDist(typeSel.value)) typeSel.value = 'footing';   // GPS ⇒ activité avec distance
+  if (typeof renderCardioFields === 'function') renderCardioFields();
+  var setV = function (id, v) { var el = document.getElementById(id); if (el) { el.value = v; if (el.dataset) el.dataset.auto = '0'; } };
+  setV('cardio-duree', mins);
+  setV('cardio-distance', km.toFixed(2));
+  setV('cardio-vitesse_moy', vitesse);
+  try { if (typeof calcAutoCardio === 'function') calcAutoCardio(); } catch (e) {}
+  var act = document.getElementById('cardio-live-act'); if (act) act.textContent = '📍 Séance GPS · ' + km.toFixed(2).replace('.', ',') + ' km';
+  var clock = document.getElementById('cardio-live-clock'); if (clock) clock.textContent = _gpsFmtDur(sec);
+  showToast('Séance GPS terminée — vérifie le type puis enregistre', 'var(--good)');
+  var b = document.getElementById('btn-save-cardio'); if (b) { try { b.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }
 }
 
 // Libellés d'activité — dérivés du catalogue cardio unique.

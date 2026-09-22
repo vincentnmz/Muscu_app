@@ -1105,8 +1105,28 @@
               </div>
             </div>
             <div id="cardio-fields-content"></div>
-            <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:16px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
+            <button id="btn-gps-cardio" class="btn" onclick="ouvrirEnregistrementGPS()" style="margin-top:16px;padding:13px;background:#6366F1;color:#fff;font-size:14px;font-weight:700;">📍 Enregistrer au GPS (extérieur)</button>
+            <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:8px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
           </div>
+        </div>
+
+        <!-- Overlay enregistrement GPS (P1 foreground) : distance · durée · allure en direct -->
+        <div id="gps-overlay" style="display:none;position:fixed;inset:0;z-index:1400;background:var(--bg,#0b0b0f);flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--text-subtle);">Enregistrement GPS</div>
+          <div id="gps-status" style="margin:10px 0 22px;font-size:13px;color:var(--text-muted);min-height:18px;">⏳ Recherche du signal GPS…</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;line-height:1;">
+            <span id="gps-dist" style="font-size:18vw;font-weight:800;color:#6366F1;">0,00</span>
+            <span style="font-size:6vw;color:var(--text-muted);font-weight:800;">km</span>
+          </div>
+          <div style="display:flex;gap:36px;margin:26px 0 34px;">
+            <div><div id="gps-time" style="font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;">0:00</div><div style="font-size:11px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.08em;">Durée</div></div>
+            <div><div id="gps-pace" style="font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;">—</div><div style="font-size:11px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.08em;">Allure</div></div>
+          </div>
+          <div style="display:flex;gap:12px;width:100%;max-width:420px;">
+            <button onclick="annulerEnregistrementGPS()" class="btn" style="flex:1;padding:15px;background:var(--surface2);border:1px solid var(--border);color:var(--text);">Annuler</button>
+            <button onclick="terminerEnregistrementGPS()" class="btn" style="flex:2;padding:15px;background:var(--good);color:#fff;font-weight:800;">⏹ Terminer</button>
+          </div>
+          <div style="margin-top:18px;font-size:11px;color:var(--text-subtle);max-width:320px;">Garde l'écran allumé et l'appli au premier plan pendant la séance.</div>
         </div>
 
         <!-- RECAP après validation -->
