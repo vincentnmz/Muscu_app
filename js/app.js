@@ -835,7 +835,7 @@ function renderCockpitCharge(data){
   var t28o = comp.j28_vs_j28prec && comp.j28_vs_j28prec.tonnage;
   var t28 = (t28o && t28o.j28 != null) ? _ckT(t28o.j28) : '—';
   var t28evol = t28o ? t28o.evol_pct : null;
-  var seances7 = (reg.seances_j7 != null) ? reg.seances_j7 : ((rec.j7 && rec.j7.seances != null) ? rec.j7.seances : '—');
+  var seances7 = (reg.seances_j7 != null || reg.seances_semaine != null) ? _seancesFaites(reg) : ((rec.j7 && rec.j7.seances != null) ? rec.j7.seances : '—');
   var rpe = (rec.j7 && rec.j7.rpe_moyen != null) ? String(rec.j7.rpe_moyen).replace('.', ',') : '—';
   var regSub = (reg.seances_prevues != null) ? (seances7 + '/' + reg.seances_prevues + ' objectif') : null;
   // Variabilité (monotonie) + charge accumulée (strain) — valeurs BRUTES déjà
@@ -1087,7 +1087,8 @@ function renderCockpitEvolution(data){
       + '<div style="font-size:24px;font-weight:800;color:' + cat.c + ';line-height:1;">' + (ratio != null ? ratio.toFixed(2) : '—') + '</div>'
       + '<div style="font-size:12px;font-weight:700;color:' + cat.c + ';">' + escapeHtml(cat.l) + '</div></div>'
       + (pos == null ? '' : '<div style="position:relative;height:6px;border-radius:5px;background:var(--surface2);margin-top:9px;"><span style="position:absolute;top:-2px;left:' + (Math.round(pos * 10) / 10) + '%;width:3px;height:10px;border-radius:2px;background:' + cat.c + ';transform:translateX(-50%);"></span></div>')
-      + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">dernière valeur transmise par le moteur</div>';
+      + '<div style="font-size:10px;color:var(--text-subtle);margin-top:5px;">Dernière valeur du moteur · ' + (m.confiance === 'haute' ? 'fiabilité élevée' : m.confiance === 'faible' ? 'fiabilité faible' : 'fiabilité moyenne') + '</div>'
+      + '<div style="font-size:10.5px;color:var(--text-muted);margin-top:6px;line-height:1.45;">Repère de <b>charge</b>, pas un verdict : il ne pèse sur ta disponibilité du jour que s\'il est <b>confirmé par tes sensations</b> (douleur, fatigue, sommeil).</div>';
   }
 
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
@@ -1803,6 +1804,7 @@ function seDeconnecter() {
   document.getElementById('btn-logout').style.display = 'none';
   { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'none'; }
   { var _br = document.getElementById('btn-reglages-hdr'); if (_br) _br.style.display = 'none'; }
+  { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'none'; }
   document.getElementById('inp-login').value = '';
   document.getElementById('inp-password').value = '';
   document.getElementById('login-error').textContent = '';
@@ -2811,7 +2813,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
     </div>` : '';
 
   // Heatmap SVG (6×3 zones) — onglet Match
-  const heatCol = v => v>=75?'#ef4444':(v>=50?'#f97316':(v>=28?'#eab308':'#22c55e'));
+  const heatCol = v => v>=75?'#ef4444':(v>=50?'#f97316':(v>=28?'#FFBC13':'#22c55e'));
   // Heatmap thème clair : vraie pelouse claire + tracés, chaleur lissée (dégradé)
   // au lieu de la grille de carrés (fond sombre) — plus lisible sur l'app claire.
   const buildHeat = zones => {
@@ -2832,7 +2834,7 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
         <rect x="${PAD}" y="${cy-46}" width="44" height="92"/><rect x="${W-PAD-44}" y="${cy-46}" width="44" height="92"/>
         <rect x="${PAD}" y="${cy-20}" width="16" height="40"/><rect x="${W-PAD-16}" y="${cy-20}" width="16" height="40"/>
       </g></svg>
-      <div style="display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--text-muted);margin-top:9px;"><span>Faible</span><span style="flex:1;height:8px;border-radius:5px;background:linear-gradient(90deg,#22c55e,#eab308,#f97316,#ef4444);"></span><span>Forte</span><span style="margin-left:auto;font-weight:700;">sens du jeu →</span></div>`;
+      <div style="display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--text-muted);margin-top:9px;"><span>Faible</span><span style="flex:1;height:8px;border-radius:5px;background:linear-gradient(90deg,#22c55e,#FFBC13,#f97316,#ef4444);"></span><span>Forte</span><span style="margin-left:auto;font-weight:700;">sens du jeu →</span></div>`;
   };
 
   // Radar SVG par poste (thème clair) — polygone joueur (accent, plein) + polygone
@@ -4031,7 +4033,7 @@ async function renderCoachSynthese(athletes) {
     const rpe = (d.recent && d.recent.j7 && d.recent.j7.rpe_moyen != null) ? d.recent.j7.rpe_moyen
               : (d.dashboard && d.dashboard.recuperation ? d.dashboard.recuperation.rpe_moyen : null);
     const _reg = d.dashboard && d.dashboard.regularite ? d.dashboard.regularite : null;
-    const seancesSem = _reg ? (_reg.seances_semaine != null ? _reg.seances_semaine : _reg.seances_j7) : null;
+    const seancesSem = _reg ? _seancesFaites(_reg) : null;
     let spark = [];
     const _vpj = (d.recent && d.recent.volume_par_jour) ? d.recent.volume_par_jour
                : (d.historique && d.historique.volume_par_jour ? d.historique.volume_par_jour : null);
@@ -4579,7 +4581,7 @@ function renderCoachOverview(data) {
 
   // Régularité
   const reg = dash.regularite || {};
-  const faites = reg.seances_semaine != null ? reg.seances_semaine : (reg.seances_j7 || 0);
+  const faites = _seancesFaites(reg);
   const prevues = reg.seances_prevues || 0;
   const pct = prevues > 0 ? Math.min(100, Math.round(faites/prevues*100)) : 0;
   document.getElementById('cd-reg-faites').textContent = faites;
@@ -4951,7 +4953,7 @@ function computeMarqueursCoach(data, a) {
 
   // 4. Régularité (prorata des jours écoulés)
   const reg = dash.regularite || {};
-  const faites = reg.seances_semaine != null ? reg.seances_semaine : (reg.seances_j7 || 0);
+  const faites = _seancesFaites(reg);
   const prevues = reg.seances_prevues || 0;
   let regColor, regLabel;
   if (prevues === 0) { regColor = '#aaa'; regLabel = 'N/A'; }
@@ -5627,6 +5629,67 @@ function _progAthleteId()  { return progCtx.athleteId || (coachAthleteCourant &&
 function _progAthleteNom() { return progCtx.athleteNom || (coachAthleteCourant && coachAthleteCourant.nom) || ''; }
 function _progReadonly()   { return !!(progCtx && progCtx.readonly); }   // joueur = consultation seule
 
+// Programme hybride : activités cardio proposées à l'ajout d'un item cardio.
+// exercice stocké = le libellé (ex. « Footing ») ; type='cardio' distingue du muscu.
+// ═══════════ CATALOGUE CARDIO — source de vérité unique ═══════════
+// Toutes les listes d'activités cardio (sélecteur Entraînement, saisie manuelle,
+// programme hybride, analyses, icônes, libellés, champs) DÉRIVENT de ce catalogue.
+// Ajouter une activité = UNE entrée ici (rien d'autre à toucher).
+// champs : key · label · ico(emoji) · color · svg · hint · spec(champs saisie) ·
+//          noDist(effort à la durée, pas de distance) · en(sélecteur Entraînement) ·
+//          prog(programme hybride) · special('hyrox' = saisie structurée dédiée).
+var _F_FC = function (ph) { return { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: ph || '140', optional: true }; };
+var _CARDIO_CATALOG = [
+  { key: 'footing', label: 'Footing', ico: '🏃', color: '#6366F1', hint: 'Distance · vitesse · FC', svg: '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true }, _F_FC('145')], noDist: false, en: true, prog: true },
+  { key: 'velo', label: 'Vélo', ico: '🚴', color: '#9D5FD3', hint: 'Distance · watts · FC', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '85' }, { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true }, _F_FC('140')], noDist: false, en: true, prog: true },
+  { key: 'marche_normale', label: 'Marche', ico: '🚶', color: '#22D3EE', hint: 'Distance · pas · FC', svg: '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true }, _F_FC('110')], noDist: false, en: true, prog: true },
+  { key: 'marche_inclinee', label: 'Marche inclinée', ico: '🥾', color: '#10B981', hint: 'Pente · distance', svg: '<path d="M3 20h18M5 20 16 6M9 10l3 2"/>', spec: [{ id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true }, { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '6', step: '0.1', calc: true }, _F_FC('130')], noDist: false, en: true, prog: true },
+  { key: 'natation', label: 'Natation', ico: '🏊', color: '#8B5CF6', hint: 'Distance · temps · FC', svg: '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01M9 12l4-3 3 2"/>', spec: [_F_FC('140')], noDist: false, en: true, prog: true },
+  { key: 'rameur', label: 'Rameur', ico: '🚣', color: '#14B8A6', hint: 'Distance · puissance · FC', svg: '<path d="M2 12h20M6 9l-2 3 2 3M18 9l2 3-2 3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '150', optional: true }, { id: 'cadence', label: 'Cadence (coups/min)', placeholder: '26' }, _F_FC('145')], noDist: false, en: true, prog: true },
+  { key: 'hiit', label: 'HIIT', ico: '🔥', color: '#EF4444', hint: 'Durée · FC', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('155')], noDist: true, en: true, prog: true },
+  { key: 'elliptique', label: 'Elliptique', ico: '🌀', color: '#D946EF', hint: 'Durée · watts · FC', svg: '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '120', optional: true }, _F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'boxe', label: 'Boxe', ico: '🥊', color: '#F43F5E', hint: 'Durée · FC', svg: '<path d="M7 7h7a3 3 0 0 1 3 3v3a4 4 0 0 1-4 4H9a2 2 0 0 1-2-2V7z"/>', spec: [_F_FC('150')], noDist: true, en: true, prog: true },
+  { key: 'corde_a_sauter', label: 'Corde à sauter', ico: '🪢', color: '#F97316', hint: 'Durée · FC', svg: '<path d="M6 3v9a6 6 0 0 0 12 0V3"/><circle cx="6" cy="3" r="1.5"/><circle cx="18" cy="3" r="1.5"/>', spec: [_F_FC('150')], noDist: true, en: true, prog: true },
+  { key: 'escaliers', label: 'Escaliers', ico: '🪜', color: '#0EA5E9', hint: 'Durée · FC', svg: '<path d="M3 20h4v-4h4v-4h4v-4h4"/>', spec: [_F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'spinning', label: 'Spinning / Vélo d\'appart', ico: '🚲', color: '#7C3AED', hint: 'Durée · watts · FC', svg: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17 10 8h4M14 8l3 9"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '160', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '90' }, _F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'aquabike', label: 'Aquabike', ico: '💦', color: '#06B6D4', hint: 'Durée · FC', svg: '<path d="M3 18c2 0 2-1.5 4-1.5S9 18 11 18s2-1.5 4-1.5S17 18 19 18M9 14l3-5 3 2M13 8a2 2 0 1 0 0-.01"/>', spec: [_F_FC('130')], noDist: true, en: true, prog: true },
+  { key: 'ski_fond', label: 'Ski de fond', ico: '🎿', color: '#38BDF8', hint: 'Distance · FC', svg: '<path d="M3 20 21 8M7 6l10 10M6 18l2 2"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '12', step: '0.1', calc: true }, _F_FC('150')], noDist: false, en: true, prog: true },
+  { key: 'hyrox', label: 'Hyrox', ico: '🟨', color: '#FFBC13', hint: '8 × (Run + atelier)', svg: '<path d="M4 7h16M4 12h16M4 17h16"/>', spec: [], noDist: false, en: false, prog: false, special: 'hyrox' },
+  { key: 'autre', label: 'Autre', ico: '⚡', color: '#F59E0B', hint: 'Durée · RPE · kcal', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('135')], noDist: false, en: true, prog: false }
+];
+var _CARDIO_CAT_BY_KEY = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a; return m; }, {});
+function _cardioNoDist(key) { var a = _CARDIO_CAT_BY_KEY[key]; return !!(a && a.noDist); }
+// Programme hybride : activités proposées (libellé + icône), dérivées du catalogue.
+var _PROG_CARDIO = _CARDIO_CATALOG.filter(function (a) { return a.prog; }).map(function (a) { return [a.label, a.ico]; });
+// Peuple dynamiquement le <select id="cardio-type"> (saisie manuelle) depuis le catalogue.
+function _buildCardioTypeOptions() {
+  var sel = document.getElementById('cardio-type'); if (!sel || sel.options.length) return;
+  sel.innerHTML = _CARDIO_CATALOG.map(function (a) { return '<option value="' + a.key + '">' + a.label + '</option>'; }).join('');
+}
+function _progCardioIco(nom) { var a = _PROG_CARDIO.find(function (x) { return x[0] === nom; }); return a ? a[1] : '🫀'; }
+function _progCardioCibleTxt(l) { if ((l.cardio_unite || 'min') === 'libre') return 'libre'; return (l.cardio_cible != null) ? (l.cardio_cible + ' ' + (l.cardio_unite === 'km' ? 'km' : 'min')) : '—'; }
+// Persistance d'une ligne de programme (muscu OU cardio) — envoie tous les champs.
+function _cdPersistLigne(ligne) {
+  return fetch(SCRIPT_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({
+      action: 'saveProgrammeLigne', row_index: ligne.row_index, athlete_id: _progAthleteId(),
+      seance_id: ligne.seance_id, exercice: ligne.exercice,
+      series_prevues: ligne.series_prevues, reps_mini: ligne.reps_mini, reps_max: ligne.reps_max,
+      repos_sec: ligne.repos_sec, groupe_id: ligne.groupe_id || '',
+      charge_pct_1rm: (ligne.charge_pct_1rm == null ? null : Number(ligne.charge_pct_1rm)),
+      rpe_cible: (ligne.rpe_cible == null ? null : Number(ligne.rpe_cible)),
+      type: ligne.type || null,
+      cardio_cible: (ligne.cardio_cible == null ? null : Number(ligne.cardio_cible)),
+      cardio_unite: ligne.cardio_unite || null
+    })
+  });
+}
+// Setters d'un item cardio dans le builder.
+function cdSetCardioActivite(rowIndex, val) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.exercice = val; cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l); }
+function cdSetCardioUnite(rowIndex, u) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.cardio_unite = u; if (u === 'libre') l.cardio_cible = null; cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l); }
+function cdSetCardioCible(rowIndex, val) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.cardio_cible = (val === '' ? null : Number(val)); _cdPersistLigne(l); }
+
 // Recharge le programme du contexte courant (progCtx doit être positionné avant
 // le 1er appel par l'ouvreur ; les rafraîchissements internes le réutilisent).
 async function chargerProgrammeCoach() {
@@ -5684,6 +5747,17 @@ function renderProgrammeCoach() {
     </div>
     ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">🎯 Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}`;
 
+  // Champs éditables d'un item CARDIO : activité + mode de cible (durée/distance/libre) + valeur.
+  const champsExoCardio = (l) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <select onchange="cdSetCardioActivite(${l.row_index}, this.value)" style="font-size:14px;padding:9px 10px;flex:1;min-width:0;margin-bottom:0;font-weight:700">${_PROG_CARDIO.map(a => `<option value="${a[0]}"${a[0] === l.exercice ? ' selected' : ''}>${a[1]} ${a[0]}</option>`).join('')}</select>
+      <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="ico"><use href="#i-trash"/></svg></button>
+    </div>
+    <div style="display:flex;gap:7px;margin-bottom:10px">
+      ${['min', 'km', 'libre'].map(u => { const lbl = { min: '⏱️ Durée', km: '📏 Distance', libre: 'Libre' }[u]; const on = (l.cardio_unite || 'min') === u; return `<button onclick="cdSetCardioUnite(${l.row_index},'${u}')" style="flex:1;border:1px solid ${on ? '#9D5FD3' : 'var(--border)'};background:${on ? 'rgba(157,95,211,.13)' : 'var(--surface)'};color:${on ? '#9D5FD3' : 'var(--text-muted)'};border-radius:10px;padding:9px 0;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">${lbl}</button>`; }).join('')}
+    </div>
+    ${(l.cardio_unite === 'libre') ? '<div style="font-size:11px;color:var(--text-subtle)">Allure/durée libres — juste un repère cardio dans la séance.</div>' : `<div style="display:flex;align-items:center;gap:8px"><input type="number" value="${l.cardio_cible != null ? l.cardio_cible : ''}" placeholder="${l.cardio_unite === 'km' ? '5' : '20'}" onchange="cdSetCardioCible(${l.row_index},this.value)" style="font-size:15px;padding:9px 8px;width:96px;text-align:center;margin-bottom:0"><span style="font-size:13px;color:var(--text-muted);font-weight:700">${l.cardio_unite === 'km' ? 'km' : 'minutes'}</span></div>`}`;
+
   // Dropdown pour lier un exercice (ajoute au superset ancré sur ligneAncre)
   const selLier = (ligneAncre, seanceId, exclus) => `
     <select onchange="if(this.value){cdLierExerciceParNom(${ligneAncre.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:13px;padding:8px 10px;width:auto;min-width:150px;margin-bottom:0;margin-top:10px" title="Lier à un exercice (superset)">
@@ -5702,6 +5776,17 @@ function renderProgrammeCoach() {
   // Ligne compacte (mode lecture) — le crayon ouvre le bloc d'édition.
   // En lecture seule (joueur) : pas de clic ni de crayon, simple consultation.
   const ligneLecture = (l, accent) => {
+    if (l.type === 'cardio') {
+      return `
+      <div ${ro ? '' : `onclick="cdToggleExo(${l.row_index})"`} style="display:flex;align-items:center;gap:11px;padding:10px 4px;${ro ? '' : 'cursor:pointer'}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:700;color:#9D5FD3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_progCardioIco(l.exercice)} ${l.exercice}</div>
+          <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-top:2px">Cardio</div>
+        </div>
+        <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;color:#9D5FD3">${_progCardioCibleTxt(l)}</span>
+        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>`}
+      </div>`;
+    }
     const mus = muscleDe(l.exercice);
     return `
       <div ${ro ? '' : `onclick="cdToggleExo(${l.row_index})"`} style="display:flex;align-items:center;gap:11px;padding:10px 4px;${ro ? '' : 'cursor:pointer'}">
@@ -5733,17 +5818,18 @@ function renderProgrammeCoach() {
     const blocEdit = (l, seanceId, extraBtn, extraSel) => {
       const ouvertExo = !!cdExoOpen[l.row_index];
       return `<div id="exo-edit-${l.row_index}" style="border-top:1px solid var(--border);padding-top:10px;margin-top:2px;${ouvertExo?'':'display:none'}">
-          ${champsExo(l, seanceId, extraBtn)}
+          ${l.type === 'cardio' ? champsExoCardio(l) : champsExo(l, seanceId, extraBtn)}
           ${extraSel || ''}
         </div>`;
     };
     const cartes = unites.map(u => {
       if (u.type === 'single') {
         const l = u.ligne;
+        const isCard = l.type === 'cardio';
         return `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
+        <div style="background:var(--surface);border:1px solid var(--border);${isCard ? 'border-left:4px solid #9D5FD3;' : ''}border-radius:10px;padding:4px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
           ${ligneLecture(l)}
-          ${ro ? '' : blocEdit(l, seanceId, null, selLier(l, seanceId, [l.exercice]))}
+          ${ro ? '' : blocEdit(l, seanceId, null, isCard ? '' : selLier(l, seanceId, [l.exercice]))}
         </div>`;
       }
       // Superset : une seule carte avec tous les membres empilés
@@ -5893,17 +5979,7 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
   if (rpeCible !== undefined && rpeCible !== null) { ligne.rpe_cible = (rpeCible === '' ? null : Number(rpeCible)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); }
   if (groupeId !== null) { ligne.groupe_id = groupeId.trim().toUpperCase(); renderProgrammeCoach(); }
   else if (exercice !== null) { cdExoOpen[rowIndex] = true; renderProgrammeCoach(); } // MAJ live du nom/muscle affiché
-  return fetch(SCRIPT_URL, {
-    method: 'POST', headers: {'Content-Type': 'text/plain'},
-    body: JSON.stringify({
-      action: 'saveProgrammeLigne', row_index: rowIndex, athlete_id: _progAthleteId(),
-      seance_id: ligne.seance_id, exercice: ligne.exercice,
-      series_prevues: ligne.series_prevues, reps_mini: ligne.reps_mini, reps_max: ligne.reps_max,
-      repos_sec: ligne.repos_sec, groupe_id: ligne.groupe_id || '',
-      charge_pct_1rm: (ligne.charge_pct_1rm == null ? null : Number(ligne.charge_pct_1rm)),
-      rpe_cible: (ligne.rpe_cible == null ? null : Number(ligne.rpe_cible))
-    })
-  });
+  return _cdPersistLigne(ligne);
 }
 
 function genGroupeId(seanceId) {
@@ -5962,15 +6038,47 @@ async function cdLierExerciceParNom(rowIndex, seanceId, exerciceNom) {
   }
 }
 
-async function cdAjouterExercice(seanceId) {
+// Ajout d'un item au programme : on choisit d'abord Muscu ou Cardio (programme hybride).
+function cdAjouterExercice(seanceId) {
+  var ov = document.getElementById('cd-add-chooser');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'cd-add-chooser'; ov.style.cssText = 'position:fixed;inset:0;background:rgba(3,6,14,.55);z-index:1400;display:flex;align-items:flex-end;justify-content:center'; document.body.appendChild(ov); }
+  var sid = String(seanceId).replace(/'/g, "\\'");
+  ov.innerHTML = '<div style="background:var(--surface);border-radius:20px 20px 0 0;max-width:480px;width:100%;padding:16px 16px 26px">'
+    + '<div style="width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 14px"></div>'
+    + '<div style="font-weight:800;text-align:center;margin-bottom:14px;font-size:15px">Ajouter à ' + escapeHtml(String(seanceId)) + '</div>'
+    + '<div style="display:flex;gap:10px">'
+    + '<button onclick="_cdAddMuscu(\'' + sid + '\')" style="flex:1;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:16px 10px;cursor:pointer;font-family:inherit;color:var(--text)"><div style="font-size:24px">🏋️</div><div style="font-weight:800;margin-top:6px">Muscu</div><div style="font-size:11px;color:var(--text-subtle);margin-top:2px">exercice + séries</div></button>'
+    + '<button onclick="_cdAddCardio(\'' + sid + '\')" style="flex:1;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:16px 10px;cursor:pointer;font-family:inherit;color:var(--text)"><div style="font-size:24px">🫀</div><div style="font-weight:800;margin-top:6px">Cardio</div><div style="font-size:11px;color:var(--text-subtle);margin-top:2px">activité + cible</div></button>'
+    + '</div>'
+    + '<button onclick="cdCloseAddChooser()" style="width:100%;margin-top:12px;border:none;background:none;color:var(--text-muted);font-weight:700;padding:8px;cursor:pointer;font-family:inherit">Annuler</button></div>';
+  ov.style.display = 'flex';
+  ov.onclick = function (e) { if (e.target === ov) cdCloseAddChooser(); };
+}
+function cdCloseAddChooser() { var ov = document.getElementById('cd-add-chooser'); if (ov) ov.style.display = 'none'; }
+async function _cdAddMuscu(seanceId) {
+  cdCloseAddChooser();
+  if (exercicesData.length === 0) { try { await chargerExercices(); } catch (e) {} }
   if (exercicesData.length === 0) return;
   const exo = exercicesData[0];
   const body = {
     action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
     athlete_nom: _progAthleteNom(), seance_id: seanceId, exercice: exo.exercice,
-    series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: ''
+    series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: '', type: 'muscu'
   };
   await fetch(SCRIPT_URL, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
+  cdProgOpen[seanceId] = true;
+  chargerProgrammeCoach();
+}
+async function _cdAddCardio(seanceId) {
+  cdCloseAddChooser();
+  const body = {
+    action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
+    athlete_nom: _progAthleteNom(), seance_id: seanceId, exercice: 'Footing',
+    series_prevues: null, reps_mini: null, reps_max: null, repos_sec: null, groupe_id: '',
+    type: 'cardio', cardio_cible: 20, cardio_unite: 'min'
+  };
+  await fetch(SCRIPT_URL, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
+  cdProgOpen[seanceId] = true;
   chargerProgrammeCoach();
 }
 
@@ -6733,6 +6841,7 @@ async function ouvrirApp() {
   document.getElementById('btn-logout').style.display = 'block';
   document.getElementById('btn-reglages-hdr').style.display = 'block';
   { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'block'; }
+  { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'block'; }
   // Restore saved theme
   const savedTheme = localStorage.getItem('muscu_theme');
   if (savedTheme === 'light') document.body.classList.add('light-mode');
@@ -7186,9 +7295,13 @@ async function demarrerSeance() {
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
   document.getElementById('card-liste-seance').style.display = 'block';
 
-  // Utiliser le programme déjà chargé + charger seulement les perfs
+  // Utiliser le programme déjà chargé + charger seulement les perfs.
+  // Les items CARDIO du programme (hybride) ne sont pas des exercices muscu :
+  // on les exclut de l'exécution muscu (repère cardio géré à part, à venir).
   const progSource = dernierAppData ? dernierAppData.programme || [] : [];
-  programmeSeance = progSource.filter(p => p.seance_id === seanceId);
+  programmeSeance = progSource.filter(p => p.seance_id === seanceId && p.type !== 'cardio');
+  // Items CARDIO du programme (hybride) → bloc repère + bouton d'enregistrement.
+  try { _renderSeanceCardioReperes(seanceId, progSource.filter(p => p.seance_id === seanceId && p.type === 'cardio')); } catch (e) {}
 
   const resPerf = await fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=${encodeURIComponent(seanceId)}`);
   const dataPerf = await resPerf.json();
@@ -8526,6 +8639,7 @@ function majObjectifCard(obj) {
   const icoEl = document.getElementById('obj-icon');
   if (nomEl) nomEl.textContent = obj || 'Non défini';
   if (icoEl) icoEl.textContent = objIconFor(obj);
+  try { _objMajSeancesUI(); } catch (e) {}
   // « Ce que ça change pour toi » : rend l'objectif visible comme colonne
   // vertébrale (programme conseillé + priorité + façon dont les analyses le lisent).
   const detEl = document.getElementById('obj-actuel');
@@ -8547,16 +8661,40 @@ function toggleObjectifEdit(on) {
   const e = document.getElementById('obj-card-edit');
   if (v) v.style.display = on ? 'none' : 'flex';
   if (e) e.style.display = on ? 'block' : 'none';
+  if (on) { try { _objMajSeancesUI(); } catch (e2) {} }   // pré-remplit le stepper avec la cible actuelle
+}
+// Objectif de séances/semaine : stepper 1–7. La valeur alimente l'anneau « X/N »
+// (regularite.seances_prevues) une fois enregistrée (table objectif.seances_semaine).
+function _objSeancesInc(d) {
+  var el = document.getElementById('sel-seances-sem'); if (!el) return;
+  var v = (parseInt(el.getAttribute('data-val'), 10) || 4) + d;
+  v = Math.max(1, Math.min(7, v));
+  el.setAttribute('data-val', v); el.textContent = v;
+}
+// Cible de séances/sem actuelle (explicite si réglée, sinon dérivée du programme).
+function _objSeancesCible() {
+  try { var r = dernierAppData && dernierAppData.dashboard && dernierAppData.dashboard.regularite; var v = r && r.seances_prevues; return (v != null && v > 0) ? Number(v) : 4; } catch (e) { return 4; }
+}
+// Met à jour l'affichage (ligne de la carte + valeur du stepper) depuis la cible.
+function _objMajSeancesUI() {
+  var cible = _objSeancesCible();
+  var sv = document.getElementById('obj-seances-view'); if (sv) sv.textContent = '🗓️ Objectif : ' + cible + ' séance' + (cible > 1 ? 's' : '') + ' / semaine';
+  var st = document.getElementById('sel-seances-sem'); if (st) { st.setAttribute('data-val', cible); st.textContent = cible; }
 }
 async function sauvegarderObjectif() {
   const obj = document.getElementById('sel-objectif').value;
+  var stEl = document.getElementById('sel-seances-sem');
+  var seancesSem = stEl ? (parseInt(stEl.getAttribute('data-val'), 10) || 4) : null;
   await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({action:'saveObjectif', athlete_id:athlete.athlete_id, objectif:obj}) });
+    body: JSON.stringify({action:'saveObjectif', athlete_id:athlete.athlete_id, objectif:obj, seances_semaine:seancesSem}) });
   athlete.objectif = obj;
   localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
+  // Maj optimiste de la cible affichée (avant le prochain chargerAppData).
+  try { if (dernierAppData && dernierAppData.dashboard && dernierAppData.dashboard.regularite && seancesSem) dernierAppData.dashboard.regularite.seances_prevues = seancesSem; } catch (e) {}
   majObjectifCard(obj);
   toggleObjectifEdit(false);
   showToast('✅ Objectif sauvegardé !');
+  if (typeof chargerAppData === 'function') chargerAppData();
 }
 
 async function sauvegarderPoids() {
@@ -8634,45 +8772,72 @@ var _maTab = 'resume';   // 'resume' | 'detail' | 'tendances' | 'historique'
 var _MA_TABS = { muscu: ['resume', 'detail', 'tendances', 'historique'], cardio: ['resume', 'detail', 'tendances', 'historique'], croise: ['resume', 'tendances'] };
 function maSetDisc(d) {
   _maDisc = (['muscu', 'cardio', 'croise'].indexOf(d) >= 0) ? d : 'muscu';
-  if (_MA_TABS[_maDisc].indexOf(_maTab) < 0) _maTab = 'resume';
+  // Changement de discipline = on repart du début : Résumé · Semaine, sous-vues et
+  // compteurs « Charger plus » réinitialisés (demande porteur : cohérent partout).
+  _maTab = 'resume'; _maPeriode = 'semaine'; _maProgMode = 'exo';
+  _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
   _maApply();
+  try { maRenderData(); } catch (e) {}
   try { window.scrollTo(0, 0); } catch (e) {}
 }
 function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
 // Réinitialise le curseur de navigation à Muscu · Résumé · Semaine.
 // Appelé à chaque ouverture de l'écran Analyses (et donc après changement de compte).
 function maResetNav() {
+  // À l'ouverture de Mes Analyses : on repart du début (Muscu · Résumé · Semaine),
+  // sous-vue « Par exercice » réinitialisée, compteurs « Charger plus » à 5, et on
+  // ré-applique visuellement (sinon l'ancien sous-onglet/période restait affiché).
   _maDisc = 'muscu'; _maTab = 'resume'; _maPeriode = 'semaine';
-  try {
-    var row = document.getElementById('ma-period');
-    if (row) row.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); });
-    var sem = document.getElementById('ma-per-semaine'); if (sem) sem.classList.add('on');
-    var menu = document.getElementById('ma-period-menu'); if (menu) menu.style.display = 'none';
-    var plus = document.getElementById('ma-per-plus');
-    if (plus) plus.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
-  } catch (e) {}
+  _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
+  try { _maProgMode = 'exo'; } catch (e) {}
+  try { _maApply(); } catch (e) {}
+  try { maRenderData(); } catch (e) {}
 }
-// Sélecteur de période : met à jour l'état + re-rend les vues data.
+// Sélecteur de période : met à jour l'état + re-rend les vues data. Le sélecteur
+// est désormais rendu DANS les panes (sous la Lecture Novalyz en Résumé, au-dessus
+// du graphique en Tendances) via _maPeriodHtml() — plus de barre partagée en haut.
 function maSetPeriode(p, btn) {
-  if (p === 'plus') { maToggleMenu('ma-period-menu'); return; }
   if (_MA_PERIODS.indexOf(p) < 0) return;
   _maPeriode = p;
-  try {
-    var row = document.getElementById('ma-period');
-    if (row) row.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); });
-    var menu = document.getElementById('ma-period-menu'); if (menu) menu.style.display = 'none';
-    var isLong = ['6mois', '9mois', 'annee'].indexOf(p) >= 0;
-    var plus = document.getElementById('ma-per-plus');
-    if (isLong && plus) { plus.classList.add('on'); plus.textContent = ({ '6mois': '6 mois', '9mois': '9 mois', annee: 'Année' })[p]; }
-    else { if (plus) plus.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>'; if (btn) btn.classList.add('on'); }
-  } catch (e) {}
+  // Pas de scroll : on garde la position pour VOIR le graphique/chiffres se mettre
+  // à jour juste sous le sélecteur.
   try { maRenderData(); } catch (e) {}
+}
+// Ligne de sélection de période (rendue inline dans chaque pane qui en a besoin).
+// Identique partout : Semaine · Mois · 3 mois · [+] (menu 6 mois / 9 mois / Année).
+function _maPeriodHtml() {
+  var isLong = ['6mois', '9mois', 'annee'].indexOf(_maPeriode) >= 0;
+  var longLbl = { '6mois': '6 mois', '9mois': '9 mois', annee: 'Année' }[_maPeriode];
+  var plusIco = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+  var btns = '<button class="' + (_maPeriode === 'semaine' ? 'on' : '') + '" onclick="maSetPeriode(\'semaine\')">Semaine</button>'
+    + '<button class="' + (_maPeriode === 'mois' ? 'on' : '') + '" onclick="maSetPeriode(\'mois\')">Mois</button>'
+    + '<button class="' + (_maPeriode === '3mois' ? 'on' : '') + '" onclick="maSetPeriode(\'3mois\')">3 mois</button>'
+    + '<button class="plus' + (isLong ? ' on' : '') + '" title="Période plus longue" onclick="maTogglePeriodMenu(this)">' + (isLong ? longLbl : plusIco) + '</button>';
+  var menu = '<div class="ma-pmenu" style="display:none"><div onclick="maSetPeriode(\'6mois\')">6 mois</div><div onclick="maSetPeriode(\'9mois\')">9 mois</div><div onclick="maSetPeriode(\'annee\')">Année</div></div>';
+  return '<div class="ma-period-wrap"><div class="ma-period ma-period-inline">' + btns + '</div>' + menu + '</div>';
+}
+// Ouvre/ferme le menu « + » relatif au bouton cliqué (pas d'id → pas de collision
+// entre panes qui rendent tous leur propre sélecteur).
+function maTogglePeriodMenu(btn) {
+  try { var w = btn.closest('.ma-period-wrap'); var m = w && w.querySelector('.ma-pmenu'); if (m) m.style.display = (m.style.display === 'block') ? 'none' : 'block'; } catch (e) {}
+}
+// Petite légende sous le sélecteur en Tendances/Résumé pour situer ce qui bouge.
+function _maPeriodHint(txt) { return '<div style="font-size:10.5px;color:var(--text-subtle);margin:-4px 2px 10px;line-height:1.4">' + txt + '</div>'; }
+// Historique (muscu/cardio) + Par séance : nb d'éléments affichés, étendu par « Charger plus ».
+var _maHistMore = { muscu: 5, cardio: 5 };
+var _maSeaMore = 5;
+function maLoadMoreHist(disc) { _maHistMore[disc] = (_maHistMore[disc] || 5) + 5; try { if (disc === 'cardio') _maCardioHistorique(dernierAppData); else _maMuscuHistorique(dernierAppData); } catch (e) {} }
+function maLoadMoreSea() { _maSeaMore += 5; try { _maMuscuExercice(dernierAppData); } catch (e) {} }
+// Bouton « Charger plus » (affiché s'il reste des éléments après la tranche visible).
+function _maMoreBtn(disc, shown, total) {
+  if (shown >= total) return '';
+  return '<button onclick="maLoadMoreHist(\'' + disc + '\')" style="width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:13px;color:var(--accent);cursor:pointer">Charger plus (' + (total - shown) + ' restantes)</button>';
 }
 function _maApply() {
   // Toggle discipline (Muscu / Cardio / Croisé)
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
     var b = document.getElementById('ma-sw-' + d);
-    if (b) { b.classList.toggle('on', d === _maDisc); b.classList.toggle('cx', d === _maDisc && d === 'cardio'); }
+    if (b) { b.classList.toggle('on', d === _maDisc); b.classList.toggle('cx', d === _maDisc && d === 'cardio'); b.classList.toggle('cr', d === _maDisc && d === 'croise'); }
   });
   // Le 2e sous-onglet change de libellé selon la discipline
   var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Par exercice';
@@ -8680,7 +8845,7 @@ function _maApply() {
   var dispo = _MA_TABS[_maDisc];
   ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
     var b = document.getElementById('ma-tab-' + t);
-    if (b) { var av = dispo.indexOf(t) >= 0; b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); }
+    if (b) { var av = dispo.indexOf(t) >= 0; b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
   });
   // Panes visibles
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
@@ -8715,6 +8880,14 @@ async function setSemaineType(v) {
 }
 // Réglage « semaine d'entraînement » : calendaire (lundi→dim., reset lundi) ou glissante (7 j).
 function _maSemaineType() { try { return (dernierAppData && dernierAppData.semaine_type === 'glissant') ? 'glissant' : 'calendaire'; } catch (e) { return 'calendaire'; } }
+// Séances « faites » pour l'anneau d'objectif, selon la préférence de semaine
+// d'entraînement (Réglages) : glissant = 7 derniers jours ; calendaire = depuis
+// lundi (remise à zéro chaque lundi). Source unique → comptage cohérent partout.
+function _seancesFaites(reg) {
+  if (!reg) return 0;
+  if (_maSemaineType() === 'glissant') return (reg.seances_j7 != null) ? Number(reg.seances_j7) : Number(reg.seances_semaine || 0);
+  return (reg.seances_semaine != null) ? Number(reg.seances_semaine) : Number(reg.seances_j7 || 0);
+}
 function _maLastMondayISO() { var d = new Date(); d.setHours(0, 0, 0, 0); var off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 // Clé de fenêtre `recent` selon la période (semaine calendaire → 'semaineCal').
 function _maRecentWin(p) { return (p === 'semaine' && _maSemaineType() === 'calendaire') ? 'semaineCal' : _MA_WIN[p]; }
@@ -8802,18 +8975,8 @@ function _maWeekly(dict, nWeeks, agg) {
   return out;
 }
 
-var _MA_CARDIO_META = {
-  velo: ['Vélo', '#0EA5E9', '<path d="M3 12h4l2.5-6 5 12 2.5-6H21"/>'],
-  footing: ['Footing', '#6366F1', '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>'],
-  marche_normale: ['Marche', '#22D3EE', '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>'],
-  marche_inclinee: ['Marche inclinée', '#10B981', '<path d="M3 20h18M5 20 16 6"/>'],
-  natation: ['Natation', '#8B5CF6', '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01"/>'],
-  rameur: ['Rameur', '#14B8A6', '<path d="M4 12h16"/>'], hiit: ['HIIT', '#EF4444', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>'],
-  elliptique: ['Elliptique', '#D946EF', '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>'],
-  boxe: ['Boxe', '#F43F5E', '<path d="M7 7h7a3 3 0 0 1 3 3v3a4 4 0 0 1-4 4H9a2 2 0 0 1-2-2V7z"/>'],
-  hyrox: ['Hyrox', '#EAB308', '<path d="M4 7h16M4 12h16M4 17h16"/>'],
-  autre: ['Autre', '#F59E0B', '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>']
-};
+// Méta analyses (label · couleur · svg) — dérivée du catalogue cardio unique.
+var _MA_CARDIO_META = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = [a.label, a.color, a.svg]; return m; }, {});
 function _maCM(t) { return _MA_CARDIO_META[t] || [t || 'Autre', '#F59E0B', _MA_CARDIO_META.autre[2]]; }
 function _maHMS(min) { min = Math.round(min || 0); var h = Math.floor(min / 60); return h ? (h + 'h' + String(min % 60).padStart(2, '0')) : (min + ' min'); }
 var _maCardioSport = null;      // sport sélectionné dans « Par sport » (null = auto)
@@ -8888,8 +9051,8 @@ function _maSyntheseBloc(s) {
   }).join('');
   var reco = s.reco ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(s.reco.texte) + '</div></div></div>') : '';
   var conf = s.confiance ? '<div style="text-align:right;font-size:10px;color:var(--text-subtle)">fiabilité : ' + _maE(s.confiance) + '</div>' : '';
-  return '<div class="ma-sec">Lecture Novalyz' + head + '</div>'
-    + '<div class="ma-card" style="display:flex;flex-direction:column;gap:9px">' + constats + reco + conf
+  return '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz' + head + '</div>'
+    + '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;margin:8px 0 16px">' + constats + reco + conf
     + '<div style="font-size:10px;color:var(--text-subtle);text-align:right">Synthèse sur tes 4 dernières semaines (indépendante du filtre de période).</div></div>';
 }
 // « Est-ce bien fait » (période) : pour chaque exo du programme portant une cible,
@@ -8967,7 +9130,9 @@ function _maMuscuResume(data) {
       + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
   var ptitle = _MA_PLABEL[p].charAt(0).toUpperCase() + _MA_PLABEL[p].slice(1);
-  _maSet('ma-muscu-resume', _maSynthese(data) + verdict + _maSec(ptitle, null, 'tonnage')
+  _maSet('ma-muscu-resume', _maSynthese(data) + verdict
+    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change les chiffres & graphiques ci-dessous selon la période.')
+    + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
     + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'ressenti') + rsHtml
@@ -8984,8 +9149,10 @@ function _maMuscuExercice(data) {
   var mode = _maProgMode;
   var MODES = [['exo', 'Par exercice', '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>'], ['grp', 'Par groupe', '<circle cx="12" cy="5" r="2.5"/><path d="M12 8v6M8 20l4-6 4 6"/>'], ['sea', 'Par séance', '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>']];
   var head = _maSec('Progression', '3 vues au choix', 'progression') + '<div class="ma-modesel">' + MODES.map(function (mm) { return '<button class="' + (mm[0] === mode ? 'on' : '') + '" onclick="maSetProgMode(\'' + mm[0] + '\')">' + _maSvg(mm[2], 14) + mm[1] + '</button>'; }).join('') + '</div>';
+  // Par exercice / Par groupe = filtrés par période → sélecteur. Par séance = « 5 derniers + Charger plus » (pas de sélecteur).
+  var periodSel = (mode === 'sea') ? '' : _maPeriodHtml();
   var body = (mode === 'grp') ? _maProgGrp(data) : (mode === 'sea') ? _maProgSea(data) : _maProgExo(data);
-  _maSet('ma-muscu-detail', head + body + _maSec('Records personnels') + _maRecords(data));
+  _maSet('ma-muscu-detail', head + periodSel + body + _maSec('Records personnels') + _maRecords(data));
 }
 
 var _maExoSel = null, _maExoMetric = '1rm';
@@ -9123,8 +9290,7 @@ function _maSeaToggle(i) {
 function _maProgSea(data) {
   var sd = data.seances_detail || [];
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
-  var cut = _maCut(_maPeriode);
-  var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd.slice(0, 12);
+  // Plus de filtre par période : on montre les N dernières séances + « Charger plus ».
   var rs = {}, rsByDate = {};
   ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) {
     if (x.valeur == null) return;
@@ -9139,7 +9305,9 @@ function _maProgSea(data) {
   function prevOcc(nom, date) { var arr = occ[nom] || [], p = null; for (var i = 0; i < arr.length; i++) { if (arr[i].date < date) p = arr[i]; else break; } return p; }
   function prevTonSameType(sid, date) { var p = null; sd.forEach(function (s) { if ((s.seance_id || 'Séance') === sid && (s.date || '') < date) { if (!p || s.date > p.date) p = s; } }); return p ? (p.tonnage || 0) : null; }
   var esc = _maE;
-  var sorted = inP.slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
+  var allSorted = sd.slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
+  var nSea = Math.min(_maSeaMore || 5, allSorted.length);
+  var sorted = allSorted.slice(0, nSea);
   var cards = sorted.map(function (s, idx) {
     var sid = s.seance_id || 'Séance';
     var libre = /libre|^séance$/i.test(sid);
@@ -9184,7 +9352,8 @@ function _maProgSea(data) {
       + '<div id="ma-sea-bd-' + idx + '" style="display:' + (open ? 'block' : 'none') + '">' + exos + '</div>'
       + '</div>';
   }).join('');
-  return cards + _maCap('Chaque séance de la période, dépliable. Par exercice : ta meilleure série et son évolution vs la <b>dernière fois</b> (même exercice). Le badge d\'en-tête compare le tonnage à la même séance précédente.');
+  var moreBtn = (nSea < allSorted.length) ? '<button onclick="maLoadMoreSea()" style="width:100%;margin-top:2px;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:13px;color:var(--accent);cursor:pointer">Charger plus (' + (allSorted.length - nSea) + ' restantes)</button>' : '';
+  return cards + moreBtn + _maCap('Tes dernières séances, dépliables. Par exercice : ta meilleure série et son évolution vs la <b>dernière fois</b> (même exercice). Le badge d\'en-tête compare le tonnage à la même séance précédente.');
 }
 
 // Balance agoniste/antagoniste (contexte, sous la progression).
@@ -9239,16 +9408,18 @@ function _maProgAgg(sd) {
 }
 
 function _maMuscuTendances(data) {
+  var W = _maTrendWeeks();   // nb de semaines selon la période sélectionnée
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
-  var wt = _maWeekly(vpj, 8, 'sum').map(function (v) { return Math.round(v / 100) / 10; });   // tonnage (t)
-  var ws = _maWeekly(vpj, 8, 'count');                                                        // séances/sem
+  var wt = _maWeekly(vpj, W, 'sum').map(function (v) { return Math.round(v / 100) / 10; });   // tonnage (t)
+  var ws = _maWeekly(vpj, W, 'count');                                                        // séances/sem
   var hasW = wt.some(function (v) { return v > 0; });
-  var out = '';
+  // Sélecteur juste au-dessus du graphique → on voit la courbe s'ajuster.
+  var out = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie (' + W + ' semaines).');
   if (hasW) {
-    out += _maSec('Tonnage soulevé', 'par semaine · 8 sem.', 'tonnage')
-      + _maChartBlock('Tonnage / semaine', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', 'il y a 8 sem.', 'Total charge × reps de chaque semaine. La courbe qui monte = tu soulèves plus de volume au fil du temps → c\'est le moteur n°1 de progression.');
-    out += _maSec('Régularité', 'par semaine · 8 sem.', 'regularite')
-      + _maChartBlock('Séances / semaine', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', 'il y a 8 sem.', 'Combien de séances tu fais chaque semaine. La régularité prime sur tout le reste.');
+    out += _maSec('Tonnage soulevé', 'par semaine · ' + W + ' sem.', 'tonnage')
+      + _maChartBlock('Tonnage / semaine', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', 'il y a ' + W + ' sem.', 'Total charge × reps de chaque semaine. La courbe qui monte = tu soulèves plus de volume au fil du temps → c\'est le moteur n°1 de progression.');
+    out += _maSec('Régularité', 'par semaine · ' + W + ' sem.', 'regularite')
+      + _maChartBlock('Séances / semaine', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', 'il y a ' + W + ' sem.', 'Combien de séances tu fais chaque semaine. La régularité prime sur tout le reste.');
   } else { out += _maEmpty('Pas assez d\'historique pour une tendance (besoin de plusieurs semaines).'); }
   var cmp = data.comparison || {}, rows = '';
   try { var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents</span><span class="v" style="color:' + (t.evol_pct >= 0 ? '#00A854' : '#DC3545') + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>'; } catch (e) {}
@@ -9282,10 +9453,12 @@ function _maFmtExo(exo) {
   return { nom: exo.nom, s: n + '×' + reps + ' · ' + charge + ' kg' + (rep ? ' · repos ' + rep : '') + (rpe ? ' · RPE ' + rpe : '') };
 }
 function _maMuscuHistorique(data) {
-  var ds = (data.seances_detail || []).filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); });
-  if (!ds.length) ds = (data.seances_detail || []).slice(0, 6);   // fallback : dernières séances
+  // Plus de filtre par période : on montre les N dernières séances + « Charger plus ».
+  var all = (data.seances_detail || []).slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
+  if (!all.length) { _maSet('ma-muscu-historique', _maEmpty('Aucune séance enregistrée pour l\'instant.')); return; }
+  var n = Math.min(_maHistMore.muscu || 5, all.length);
+  var ds = all.slice(0, n);
   var rs = {}; ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + x.date] = x.valeur; });
-  if (!ds.length) { _maSet('ma-muscu-historique', _maEmpty('Aucune séance sur la période.')); return; }
   var html = ds.map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
     var rv = rs[s.seance_id + '|' + s.date] || null;
@@ -9295,7 +9468,7 @@ function _maMuscuHistorique(data) {
       + '<div class="ma-hmain"><div class="a">' + _maE(s.seance_id || 'Séance') + '</div><div class="b">' + (s.exercices ? s.exercices.length : 0) + ' exos · ' + (s.nb_series || 0) + ' séries · ' + (Math.round((s.tonnage || 0) / 100) / 10) + ' t</div></div>'
       + dot + '<span id="ma-hs-chev-' + i + '" style="color:var(--text-subtle);margin-left:2px">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
       + '<div class="ma-hdet" id="ma-hs-' + i + '" style="display:none">' + det + '</div></div>';
-  }).join('');
+  }).join('') + _maMoreBtn('muscu', n, all.length);
   _maSet('ma-muscu-historique', html);
 }
 function maToggleHS(i) { var d = document.getElementById('ma-hs-' + i), c = document.getElementById('ma-hs-chev-' + i); if (d) { var open = d.style.display === 'none'; d.style.display = open ? 'flex' : 'none'; if (c) c.style.transform = open ? 'rotate(180deg)' : ''; } }
@@ -9310,6 +9483,20 @@ function _maCardioAgg(hist, days, cutOverride) {
     if (+s.vitesse_moy) { o.vit += +s.vitesse_moy; o.vn++; } if (+s.rpe) { o.rpe += +s.rpe; o.rn++; } if (+s.fc_moy) { o.fc += +s.fc_moy; o.fn++; } if (+s.puissance_moy) { o.w += +s.puissance_moy; o.wn++; }
   });
   return by;
+}
+// Liste « Mes Hyrox » (tappable → écran d'analyse) pour l'écran Analyses.
+function _maHyroxList(data, limit) {
+  var hx = ((data.cardio && data.cardio.history) || []).filter(function (s) { return (s.type_cardio || '') === 'hyrox'; })
+    .slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
+  if (!hx.length) return '';
+  var rows = hx.slice(0, limit || 5).map(function (s) {
+    var tot = Number(s.hyrox_total) || (Number(s.duree) || 0) * 60;
+    var dd = new Date((s.date || '') + 'T00:00:00'), dstr = isNaN(dd.getTime()) ? '' : (dd.getDate() + ' ' + _MA_MON[dd.getMonth()]);
+    var mode = (s.hyrox_mode === 'atelier') ? 'Par atelier' : (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Circuit';
+    var nseg = _hxSegmentsOf(s).length;
+    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:36px;height:36px;border-radius:11px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:15px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11px;color:var(--text-subtle)">' + dstr + ' · ' + nseg + ' segment' + (nseg > 1 ? 's' : '') + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
+  }).join('');
+  return _maSec('Mes Hyrox', 'touche pour analyser') + rows;
 }
 function _maCardioResume(data) {
   var hist = (data.cardio && data.cardio.history) || [];
@@ -9326,12 +9513,12 @@ function _maCardioResume(data) {
   var pas = (data.pas_quotidiens || []).filter(function (x) { return (x.date || '') >= pasCut; }).slice().sort(function (a, b) { return (a.date < b.date) ? -1 : 1; });
   if (pas.length > 30) pas = pas.slice(pas.length - 30);
   var pasMax = Math.max.apply(null, pas.map(function (y) { return y.pas || 1; }).concat([1]));
-  var pasHtml = pas.length ? ('<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / jour</span><span style="font-size:11px;font-weight:700;color:#0EA5E9">Ø ' + Math.round(pas.reduce(function (s, x) { return s + (x.pas || 0); }, 0) / pas.length).toLocaleString('fr-FR') + '</span></div><div class="ma-bars2">' + pas.map(function (x) { return '<span style="height:' + Math.round((x.pas || 0) / pasMax * 100) + '%;background:#0EA5E9"></span>'; }).join('') + '</div><div class="ma-axis"><span>' + _maShortDate(pas[0].date) + '</span><span>' + _maShortDate(pas[pas.length - 1].date) + '</span></div></div>') : '';
+  var pasHtml = pas.length ? ('<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / jour</span><span style="font-size:11px;font-weight:700;color:#9D5FD3">Ø ' + Math.round(pas.reduce(function (s, x) { return s + (x.pas || 0); }, 0) / pas.length).toLocaleString('fr-FR') + '</span></div><div class="ma-bars2">' + pas.map(function (x) { return '<span style="height:' + Math.round((x.pas || 0) / pasMax * 100) + '%;background:#9D5FD3"></span>'; }).join('') + '</div><div class="ma-axis"><span>' + _maShortDate(pas[0].date) + '</span><span>' + _maShortDate(pas[pas.length - 1].date) + '</span></div></div>') : '';
   // Charge cardio hebdo (UA = RPE × durée), nb de semaines piloté par la période.
   var chDict = {}; hist.forEach(function (s) { if (+s.rpe && +s.duree) chDict[s.date] = (chDict[s.date] || 0) + (+s.rpe) * (+s.duree); });
   var nwCh = _maTrendWeeks();
   var chW = _maWeekly(chDict, nwCh, 'sum');
-  var chargeHtml = chW.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / sem. · ' + nwCh + ' sem.', 'charge_cardio') + _maChartBlock('Charge (UA)', chW, 'UA', '#0EA5E9', 'rgba(14,165,233,.12)', _maTrendFirst(nwCh), 'Chaque point = 1 semaine (nombre de semaines selon la période). Une montée trop brutale peut signaler un risque de surmenage.')) : '';
+  var chargeHtml = chW.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / sem. · ' + nwCh + ' sem.', 'charge_cardio') + _maChartBlock('Charge (UA)', chW, 'UA', '#9D5FD3', 'rgba(157,95,211,.12)', _maTrendFirst(nwCh), 'Chaque point = 1 semaine (nombre de semaines selon la période). Une montée trop brutale peut signaler un risque de surmenage.')) : '';
   // Ressenti des sorties cardio (bilan de séance) sur la période — miroir du ressenti muscu.
   var cCut = _maCut(_maPeriode);
   var rsC = (data.analyses && data.analyses.ressenti_cardio) ? data.analyses.ressenti_cardio.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= cCut; }) : [];
@@ -9340,7 +9527,9 @@ function _maCardioResume(data) {
     var recC = rsC.slice(0, 14).reverse();
     rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _MA_PLABEL[_maPeriode], 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   }
-  _maSet('ma-cardio-resume', _maSyntheseCardio(data) + verdict + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml);
+  _maSet('ma-cardio-resume', _maSyntheseCardio(data) + verdict
+    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change les chiffres & graphiques ci-dessous selon la période.')
+    + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + _maHyroxList(data) + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml);
 }
 function _maCardioParSport(data) {
   var hist = (data.cardio && data.cardio.history) || [];
@@ -9363,16 +9552,25 @@ function _maCardioParSport(data) {
   var nwPS = _maTrendWeeks();
   var wk = _maSportWeekly(sesss, curM[0], nwPS);
   var metricMenu = '<div id="ma-cx-metric-menu" style="display:none;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">'
-    + METRICS.map(function (x, i) { return '<div onclick="maSetCardioMetric(\'' + x[0] + '\')" style="padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (x[0] === curM[0] ? 'color:#0EA5E9;background:var(--surface2);' : '') + '">' + x[1] + ' (' + x[2] + ')</div>'; }).join('') + '</div>';
+    + METRICS.map(function (x, i) { return '<div onclick="maSetCardioMetric(\'' + x[0] + '\')" style="padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (x[0] === curM[0] ? 'color:#9D5FD3;background:var(--surface2);' : '') + '">' + x[1] + ' (' + x[2] + ')</div>'; }).join('') + '</div>';
   var lastPS = wk.length ? wk[wk.length - 1] : 0;
-  var chart = wk.some(function (v) { return v > 0; }) ? ('<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip" style="cursor:pointer" onclick="maToggleMenu(\'ma-cx-metric-menu\')">' + curM[1] + ' ▾</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#0EA5E9">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/sem.</span></span></div>' + metricMenu + _maArea(wk, m[1], 'rgba(14,165,233,.12)') + _maTrendAxis(nwPS) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée. ' + nwPS + ' semaines (suit la période choisie) · chaque point = 1 semaine.')) : '';
+  // Le sélecteur de métrique reste TOUJOURS affiché (même si la donnée choisie n'a
+  // aucune valeur pour ce sport, ex. « vitesse » sur une Hyrox) — sinon on se
+  // retrouve bloqué sur une métrique vide, sans moyen d'en changer.
+  var hasData = wk.some(function (v) { return v > 0; });
+  var chartHead = '<div class="ma-ctop"><span class="ma-chip" style="cursor:pointer" onclick="maToggleMenu(\'ma-cx-metric-menu\')">' + curM[1] + ' ▾</span>'
+    + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/sem.</span></span>' : '') + '</div>';
+  var chartBody = hasData
+    ? (_maArea(wk, m[1], 'rgba(157,95,211,.12)') + _maTrendAxis(nwPS) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée. ' + nwPS + ' semaines (suit la période choisie) · chaque point = 1 semaine.'))
+    : '<div style="padding:20px 6px;text-align:center;color:var(--text-subtle);font-size:12.5px;line-height:1.5">Pas de donnée « ' + curM[1] + ' » pour ' + _maE(m[0]) + '.<br>Choisis une autre donnée ci-dessus.</div>';
+  var chart = '<div class="ma-chart">' + chartHead + metricMenu + chartBody + '</div>';
   var lastArr = sesss.filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
   var last = lastArr.slice(0, 6).map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
     var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); if (+s.fc_moy) parts.push(Math.round(s.fc_moy) + ' bpm');
     return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
   }).join('');
-  _maSet('ma-cardio-detail', _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _MA_PLABEL[_maPeriode], o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>');
+  _maSet('ma-cardio-detail', _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _MA_PLABEL[_maPeriode], o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>');
 }
 function maSetCardioSport(t) { _maCardioSport = t; try { _maCardioParSport(dernierAppData); } catch (e) {} }
 function maSetCardioMetric(m) { _maCardioMetric = m; try { _maCardioParSport(dernierAppData); } catch (e) {} }
@@ -9387,36 +9585,59 @@ function _maCardioTendances(data) {
   var nwEff = _maTrendWeeks();
   var fcW = _maSportWeekly(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy', nwEff);
   var fcFirst = fcW.find(function (x) { return x; }) || 0, fcLast = 0; for (var _fi = fcW.length - 1; _fi >= 0; _fi--) { if (fcW[_fi]) { fcLast = fcW[_fi]; break; } }
-  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / sem. · ' + nwEff + ' sem.', 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#0EA5E9">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maArea(fcW.map(function (v) { return v || fcFirst; }), '#0EA5E9', 'rgba(14,165,233,.12)') + _maTrendAxis(nwEff) + _maCap('Chaque point = 1 semaine. À lire à effort comparable (RPE proche).')) : '';
-  _maSet('ma-cardio-tendances', _maSec('Volume par sport', _MA_PLABEL[_maPeriode] + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff);
+  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / sem. · ' + nwEff + ' sem.', 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maArea(fcW.map(function (v) { return v || fcFirst; }), '#9D5FD3', 'rgba(157,95,211,.12)') + _maTrendAxis(nwEff) + _maCap('Chaque point = 1 semaine. À lire à effort comparable (RPE proche).')) : '';
+  _maSet('ma-cardio-tendances', _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + _maSec('Volume par sport', _MA_PLABEL[_maPeriode] + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff);
 }
 function _maCardioHistorique(data) {
-  var all = (data.cardio && data.cardio.history) || [];
-  var hist = all.filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); });
-  if (!hist.length) hist = all.slice(0, 20);
-  if (!hist.length) { _maSet('ma-cardio-historique', _maEmpty('Aucune séance cardio enregistrée.')); return; }
-  hist = hist.slice(0, 25);
+  // Plus de filtre par période : N dernières sorties + « Charger plus ».
+  var all = ((data.cardio && data.cardio.history) || []).slice().sort(function (a, b) { return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0); });
+  if (!all.length) { _maSet('ma-cardio-historique', _maEmpty('Aucune séance cardio enregistrée.')); return; }
+  var n = Math.min(_maHistMore.cardio || 5, all.length);
+  var hist = all.slice(0, n);
   var rows = hist.map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc'][dd.getMonth()], m = _maCM(s.type_cardio);
-    var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h');
-    return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><span class="ma-spic" style="width:30px;height:30px;background:' + m[1] + '">' + _maSvg(m[2], 16) + '</span><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
+    var isHx = (s.type_cardio || '') === 'hyrox';
+    var parts = []; if (isHx) { parts.push(_hyroxFmt(Number(s.hyrox_total) || (Number(s.duree) || 0) * 60)); } else { if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); }
+    var tap = isHx ? ' onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="padding:11px 14px;cursor:pointer;' : ' style="padding:11px 14px;';
+    return '<div class="ma-hhd"' + tap + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><span class="ma-spic" style="width:30px;height:30px;background:' + m[1] + '">' + _maSvg(m[2], 16) + '</span><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + (isHx ? '<span style="color:var(--text-subtle);margin-left:6px">›</span>' : '') + '</div>';
   }).join('');
-  _maSet('ma-cardio-historique', '<div class="ma-card">' + rows + '</div>');
+  _maSet('ma-cardio-historique', '<div class="ma-card">' + rows + '</div>' + _maMoreBtn('cardio', n, all.length));
 }
 function _maCroise(data) {
   var r = (data.recent && data.recent[_maRecentWin(_maPeriode)]) || {};
   var muscuT = r.tonnage_kg || 0;
-  var hist = (data.cardio && data.cardio.history) || [], cut = _maCut(_maPeriode), cardioUA = 0;
-  hist.forEach(function (s) { if ((s.date || '') >= cut && +s.rpe && +s.duree) cardioUA += (+s.rpe) * (+s.duree); });
-  var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les 2 comparables
-  var tot = muscuUA + cardioUA;
+  // Charge cardio (UA = RPE × durée), Hyrox comptabilisé À PART (3e catégorie).
+  var hist = (data.cardio && data.cardio.history) || [], cut = _maCut(_maPeriode), cardioUA = 0, hyroxUA = 0;
+  hist.forEach(function (s) { if ((s.date || '') < cut || !+s.rpe || !+s.duree) return; var ua = (+s.rpe) * (+s.duree); if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
+  var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les charges comparables
+  var tot = muscuUA + cardioUA + hyroxUA;
   var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
+  var hPct = tot ? Math.round(hyroxUA / tot * 100) : 0;
+  var cPct = tot ? Math.max(0, 100 - mPct - hPct) : 0;   // absorbe l'arrondi (= part cardio)
   var mot = data.moteur || {};
-  var verdict = '<div class="ma-verdict acc"><span class="ma-vic">' + _maSvg('<path d="M12 3v18M3 12h18"/>', 14) + '</span><div><div class="vh">Vue d\'ensemble</div><div class="vd">' + _maE(tot ? ('Charge muscu + cardio combinée. Disponibilité : ' + ((mot.disponibilite && mot.disponibilite.niveau) || '—') + ' · récup ' + (mot.recup || '—') + '.') : 'Ajoute des séances muscu et cardio pour croiser tes données.') + '</div></div></div>';
-  var rep = tot ? ('<div class="ma-card ma-vol"><div class="ma-volrow"><div class="lh"><span class="n">Musculation</span><span class="p">' + mPct + '%</span></div><div class="ma-vt"><span style="width:' + mPct + '%"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Cardio</span><span class="p">' + (100 - mPct) + '%</span></div><div class="ma-vt"><span style="width:' + (100 - mPct) + '%;background:#0EA5E9"></span></div></div></div>') : _maEmpty('Répartition dispo dès que tu as des deux.');
+  var verdict = '<div class="ma-verdict cr"><span class="ma-vic" style="background:#931F1D">' + _maSvg('<path d="M12 3v18M3 12h18"/>', 14) + '</span><div><div class="vh">Vue d\'ensemble</div><div class="vd">' + _maE(tot ? ('Charge d\'entraînement combinée (muscu · cardio · Hyrox). Disponibilité : ' + ((mot.disponibilite && mot.disponibilite.niveau) || '—') + ' · récup ' + (mot.recup || '—') + '.') : 'Ajoute des séances muscu et cardio pour croiser tes données.') + '</div></div></div>';
+  // Répartition en UNE seule barre (même esprit que la Balance musculaire) :
+  // muscu (bleu) · cardio (lilas) · Hyrox (#FFBC13). Le segment/pastille Hyrox
+  // n'apparaît que s'il y a de la charge Hyrox sur la période.
+  var hasHx = hPct > 0;
+  var legend = '<div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;font-weight:800;margin-bottom:7px">'
+    + '<span style="color:#1A5FFF">■ Muscu ' + mPct + '%</span>'
+    + '<span style="color:#9D5FD3">■ Cardio ' + cPct + '%</span>'
+    + (hasHx ? '<span style="color:#CA9A04">■ Hyrox ' + hPct + '%</span>' : '')
+    + '</div>';
+  var bar = '<div style="display:flex;height:13px;border-radius:999px;overflow:hidden;background:var(--surface2)">'
+    + '<span style="width:' + mPct + '%;background:#1A5FFF"></span>'
+    + '<span style="width:' + cPct + '%;background:#9D5FD3"></span>'
+    + (hasHx ? '<span style="width:' + hPct + '%;background:#FFBC13"></span>' : '')
+    + '</div>';
+  var rep = tot ? ('<div class="ma-card ma-bal2">' + legend + bar
+    + '<div class="ma-b2sub" style="margin-top:6px"><span>Force / masse</span><span>charge combinée</span><span>Endurance</span></div>'
+    + '</div>') : _maEmpty('Répartition dispo dès que tu as des séances.');
   var be = (data.bien_etre && data.bien_etre[0]) || null;
   var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
-  _maSet('ma-croise-resume', _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _MA_PLABEL[_maPeriode], 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : ''));
+  _maSet('ma-croise-resume', _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
+    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change la répartition ci-dessous selon la période.')
+    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _MA_PLABEL[_maPeriode], 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : ''));
   // Tendances croisées : charge globale (muscu + cardio) + indice de forme (bien-être).
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
   var nwX = _maTrendWeeks();
@@ -9427,14 +9648,14 @@ function _maCroise(data) {
   var beD = {}; ((data.bien_etre) || []).forEach(function (b) { var d = _maFRtoDate(b.date); if (!d) return; var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); beD[iso] = (Number(b.sommeil) || 0) + (Number(b.energie) || 0) + (6 - (Number(b.fatigue) || 3)); });
   // Indice de forme ramené sur 100 (au lieu de /15, peu parlant) : (sommeil+énergie+(6−fatigue))/15×100.
   var beW = _maWeekly(beD, nwX, 'avg').map(function (v) { return Math.round(v / 15 * 100); });
-  var out = '';
+  var body = '';
   if (totalW.some(function (v) { return v > 0; })) {
-    out += _maSec('Charge globale', 'muscu + cardio · UA/sem. · ' + nwX + ' sem.', 'charge_globale') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine. Une hausse trop rapide peut signaler un risque de surmenage.');
+    body += _maSec('Charge globale', 'muscu + cardio · UA/sem. · ' + nwX + ' sem.', 'charge_globale') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine. Une hausse trop rapide peut signaler un risque de surmenage.');
   }
   if (beW.some(function (v) { return v > 0; })) {
-    out += _maSec('Indice de forme', 'bien-être · ' + nwX + ' sem.', 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.');
+    body += _maSec('Indice de forme', 'bien-être · ' + nwX + ' sem.', 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.');
   }
-  _maSet('ma-croise-tendances', out || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.'));
+  _maSet('ma-croise-tendances', _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + (body || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.')));
 }
 
 // Ressenti de séance (1 Facile → 4 Très dur) : distribution + mini-timeline.
@@ -10636,7 +10857,7 @@ function renderAujourdhui(data) {
   } catch (e) {}
   try {
     var reg = (data && data.dashboard && data.dashboard.regularite) || {};
-    var faites = (reg.seances_semaine != null) ? reg.seances_semaine : (reg.seances_j7 || 0);
+    var faites = _seancesFaites(reg);
     var prevues = reg.seances_prevues || 4;
     var elR = document.getElementById('tj-reg'); if (elR) elR.textContent = faites + ' / ' + prevues + ' cette semaine';
     var elW = document.getElementById('tj-reg-week');
@@ -10804,7 +11025,7 @@ function renderAujourdhui(data) {
       if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records';
     }
     var reg2 = dashb.regularite || {};
-    var done2 = (reg2.seances_semaine != null) ? Number(reg2.seances_semaine) : Number(reg2.seances_j7 || 0);
+    var done2 = _seancesFaites(reg2);
     var goal2 = Number(reg2.seances_prevues || 4) || 4;
     var elMg = document.getElementById('tj-mgoal'); if (elMg) elMg.textContent = goal2 + ' séances';
     var elMd = document.getElementById('tj-mdone'); if (elMd) elMd.textContent = done2;
@@ -11641,14 +11862,9 @@ var _enMode = 'muscu';
 var _enSelSeance = null;
 var _enSelActivite = 'velo';
 var _enOrder = [], _enByS = {};
-var _EN_ACTS = [
-  { t: 'velo', label: 'Vélo', hint: 'Distance · watts · FC', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>' },
-  { t: 'footing', label: 'Footing', hint: 'Distance · vitesse · FC', svg: '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>' },
-  { t: 'marche_normale', label: 'Marche', hint: 'Distance · pas · FC', svg: '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>' },
-  { t: 'marche_inclinee', label: 'Marche inclinée', hint: 'Pente · distance', svg: '<path d="M3 20h18M5 20 16 6M9 10l3 2"/>' },
-  { t: 'natation', label: 'Natation', hint: 'Distance · temps · FC', svg: '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01M9 12l4-3 3 2"/>' },
-  { t: 'autre', label: 'Autre', hint: 'Durée · RPE · kcal', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>' }
-];
+// Sélecteur cardio de l'écran Entraînement — dérivé du catalogue (toutes les
+// activités « en:true », donc plus de listes divergentes).
+var _EN_ACTS = _CARDIO_CATALOG.filter(function (a) { return a.en; }).map(function (a) { return { t: a.key, label: a.label, hint: a.hint, svg: a.svg }; });
 function _enSetMode(m) {
   _enMode = m;
   var bm = document.getElementById('en-seg-muscu'), bc = document.getElementById('en-seg-cardio'), bh = document.getElementById('en-seg-hyrox');
@@ -11732,7 +11948,7 @@ function _enDemarrerNow() {
     ouvrirSeancePage();
     try { if (typeof switchModeSeance === 'function') switchModeSeance('cardio'); } catch (e) {}
     try { _seanceChronoStart(); } catch (e) {}
-    try { var ct = document.getElementById('cardio-type'); if (ct) { ct.value = _enSelActivite; if (typeof renderCardioFields === 'function') renderCardioFields(); } } catch (e) {}
+    try { _buildCardioTypeOptions(); var ct = document.getElementById('cardio-type'); if (ct) { ct.value = _enSelActivite; if (typeof renderCardioFields === 'function') renderCardioFields(); } } catch (e) {}
     try { var cd = document.getElementById('cardio-date'); if (cd && !cd.value) { var t = new Date(); cd.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); } } catch (e) {}
     try { _majSeancePageTitre(); } catch (e) {}
   } else {
@@ -11757,7 +11973,7 @@ function renderEntrainement(data) {
     var subEl = document.getElementById('en-prog-sub');
     if (subEl) subEl.textContent = _enOrder.length ? ((strat || 'Programme personnalisé') + ' · ' + prog.length + ' exercice' + (prog.length > 1 ? 's' : '')) : 'Crée ton programme pour commencer';
     var reg = (data.dashboard && data.dashboard.regularite) || {};
-    var done = (reg.seances_semaine != null) ? Number(reg.seances_semaine) : Number(reg.seances_j7 || 0);
+    var done = _seancesFaites(reg);
     var goal = Number(reg.seances_prevues || 4) || 4;
     var pct = goal ? Math.max(0, Math.min(100, Math.round(done / goal * 100))) : 0;
     var barEl = document.getElementById('en-adh-bar'); if (barEl) requestAnimationFrame(function () { barEl.style.width = pct + '%'; });
@@ -11877,7 +12093,7 @@ function _appliquerAppData(data) {
 
       const regEl = document.getElementById('regularite-content');
       if (regEl) {
-        const faites2 = data.dashboard.regularite.seances_semaine != null ? data.dashboard.regularite.seances_semaine : (data.dashboard.regularite.seances_j7 || 0);
+        const faites2 = _seancesFaites(data.dashboard.regularite);
         const prevues2 = data.dashboard.regularite.seances_prevues || 0;
         const manque2 = Math.max(0, prevues2 - faites2);
         const pct2 = prevues2 > 0 ? Math.min(100, Math.round(faites2/prevues2*100)) : 0;
@@ -14026,6 +14242,7 @@ async function autoSyncGoogleHealth() {
 var _ALERTE_COL = { haute: 'var(--danger)', moyenne: 'var(--warn)', basse: 'var(--text-muted)' };
 var _ALERTE_RELI = { bonne: 'fiable', haute: 'fiable', moyenne: 'fiabilité moyenne', faible: 'peu fiable', non_interpretable: 'données insuffisantes' };
 function renderAlertes(data) {
+  try { renderAlerteBell(data); } catch (e) {}   // cloche + badge (global, tous écrans)
   const sec  = document.getElementById('dash-alertes-sec');
   const card = document.getElementById('dash-alertes-card');
   const cont = document.getElementById('dash-alertes-content');
@@ -14048,7 +14265,7 @@ function renderAlertes(data) {
       + (a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '')
       + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')
       + '</div>'
-      + '<button onclick="marquerAlerteLue(' + JSON.stringify(a.id) + ')" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
+      + '<button onclick="marquerAlerteLue(&quot;' + escapeHtml(String(a.id)) + '&quot;)" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
       + '</div>';
   }).join('');
   if (sec) sec.style.display = '';
@@ -14064,9 +14281,70 @@ async function marquerAlerteLue(id) {
   } catch (e) {}
   try { renderAlertes(dernierAppData); } catch (e) {}
   try { renderAujourdhui(dernierAppData); } catch (e) {}
+  try { if (document.getElementById('centre-alertes-overlay') && document.getElementById('centre-alertes-overlay').style.display !== 'none') _renderCentreAlertes(dernierAppData); } catch (e) {}
   try {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'marquerAlerteLue', athlete_id: athlete.athlete_id, id: id }) });
   } catch (e) {}
+}
+// ── Cloche + badge (global) : nombre d'alertes non lues, visible sur tous les écrans.
+function renderAlerteBell(data) {
+  var btn = document.getElementById('btn-alertes-hdr'), badge = document.getElementById('badge-alertes');
+  if (!btn || !badge) return;
+  var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre : [];
+  var enPause = false; try { enPause = estEnPause(data && data.pause); } catch (e) {}
+  var n = enPause ? 0 : centre.filter(function (a) { return a && !a.read; }).length;
+  if (n > 0) { badge.textContent = n > 9 ? '9+' : String(n); badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+}
+// ── Centre d'alertes (panneau ouvert par la cloche) : liste complète, non lues en
+// tête, puis lues (grisées). Même source unique (alertes_centre), même wording.
+function ouvrirCentreAlertes() {
+  var ov = document.getElementById('centre-alertes-overlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'centre-alertes-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1250;overflow:auto;padding:0 16px 46px;';
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'block'; ov.scrollTop = 0;
+  _renderCentreAlertes(dernierAppData);
+}
+function fermerCentreAlertes() { var ov = document.getElementById('centre-alertes-overlay'); if (ov) ov.style.display = 'none'; }
+function _alerteCentreItemHtml(a, read) {
+  var col = read ? 'var(--text-subtle)' : (_ALERTE_COL[a.severity] || 'var(--warn)');
+  var meta = [a.context, _ALERTE_RELI[a.reliability]].filter(Boolean).join(' · ');
+  return '<div style="display:flex;gap:11px;align-items:flex-start;padding:13px 14px;border:1px solid var(--border);border-radius:14px;margin-top:9px;background:var(--surface);' + (read ? 'opacity:.62;' : '') + '">'
+    + '<div style="flex:0 0 4px;align-self:stretch;background:' + col + ';border-radius:2px;min-height:38px;"></div>'
+    + '<div style="min-width:0;flex:1;">'
+    + '<div style="font-size:13.5px;font-weight:800;color:' + col + ';">' + escapeHtml(a.title || '') + '</div>'
+    + (a.evidence ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">' + escapeHtml(a.evidence) + '</div>' : '')
+    + (a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.45;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '')
+    + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')
+    + '</div>'
+    + (read
+      ? '<span style="flex:none;align-self:center;font-size:10px;font-weight:800;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.05em">lu</span>'
+      : '<button onclick="marquerAlerteLue(&quot;' + escapeHtml(String(a.id)) + '&quot;)" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>')
+    + '</div>';
+}
+function _renderCentreAlertes(data) {
+  var ov = document.getElementById('centre-alertes-overlay'); if (!ov) return;
+  var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.slice() : [];
+  var enPause = false; try { enPause = estEnPause(data && data.pause); } catch (e) {}
+  var header = '<div style="display:flex;align-items:center;gap:12px;max-width:460px;margin:0 auto;padding:16px 2px 12px">'
+    + '<button onclick="fermerCentreAlertes()" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;flex:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1">‹</button>'
+    + '<div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Mes alertes</div><div style="font-size:11.5px;color:var(--text-subtle)">Ce que le moteur a repéré · touche ✓ quand c\'est vu</div></div></div>';
+  var body;
+  if (enPause) {
+    body = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted)"><div style="font-size:34px">🌴</div><div style="font-size:14px;font-weight:700;margin-top:8px">Mode coupure activé</div><div style="font-size:12.5px;color:var(--text-subtle);margin-top:4px">Les alertes reprendront à ton retour.</div></div>';
+  } else if (!centre.length) {
+    body = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted)"><div style="font-size:34px">✅</div><div style="font-size:14px;font-weight:700;margin-top:8px">Rien à signaler</div><div style="font-size:12.5px;color:var(--text-subtle);margin-top:4px">Pas d\'alerte en cours — continue comme ça.</div></div>';
+  } else {
+    var unread = centre.filter(function (a) { return !a.read; }), read = centre.filter(function (a) { return a.read; });
+    body = '';
+    if (unread.length) body += '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:4px 2px 2px">À regarder (' + unread.length + ')</div>' + unread.map(function (a) { return _alerteCentreItemHtml(a, false); }).join('');
+    if (read.length) body += '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:18px 2px 2px">Déjà vues</div>' + read.map(function (a) { return _alerteCentreItemHtml(a, true); }).join('');
+    if (!unread.length && read.length) body = '<div style="text-align:center;padding:22px 20px 6px;color:var(--text-muted)"><div style="font-size:28px">✅</div><div style="font-size:13.5px;font-weight:700;margin-top:6px">Tout est à jour</div><div style="font-size:12px;color:var(--text-subtle);margin-top:3px">Tu as traité toutes tes alertes.</div></div>' + body;
+  }
+  ov.innerHTML = header + '<div style="max-width:460px;margin:0 auto">' + body + '</div>';
 }
 
 // =====================================================================
@@ -14267,48 +14545,8 @@ function switchModeSeance(mode) {
   }
 }
 
-var _CARDIO_SPEC = {
-  footing: [
-    { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true },
-    { id: 'fc_moy',      label: 'FC moy. (bpm)',        placeholder: '145', optional: true }
-  ],
-  velo: [
-    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true },
-    { id: 'cadence',       label: 'Cadence (rpm)',       placeholder: '85' },
-    { id: 'vitesse_moy',   label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true },
-    { id: 'fc_moy',        label: 'FC moy. (bpm)',       placeholder: '140', optional: true }
-  ],
-  marche_normale: [
-    { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true },
-    { id: 'fc_moy',      label: 'FC moy. (bpm)',  placeholder: '110', optional: true }
-  ],
-  marche_inclinee: [
-    { id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true },
-    { id: 'vitesse_moy', label: 'Vitesse (km/h)',  placeholder: '6',  step: '0.1', calc: true },
-    { id: 'fc_moy',      label: 'FC moy. (bpm)',   placeholder: '130', optional: true }
-  ],
-  natation: [
-    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '140', optional: true }
-  ],
-  rameur: [
-    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '150', optional: true },
-    { id: 'cadence',       label: 'Cadence (coups/min)', placeholder: '26' },
-    { id: 'fc_moy',        label: 'FC moy. (bpm)',        placeholder: '145', optional: true }
-  ],
-  hiit: [
-    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '155', optional: true }
-  ],
-  elliptique: [
-    { id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '120', optional: true },
-    { id: 'fc_moy',        label: 'FC moy. (bpm)',        placeholder: '140', optional: true }
-  ],
-  boxe: [
-    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '150', optional: true }
-  ],
-  autre: [
-    { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: '135', optional: true }
-  ]
-};
+// Champs de saisie par activité — dérivés du catalogue cardio unique.
+var _CARDIO_SPEC = _CARDIO_CATALOG.reduce(function (m, a) { if (a.spec && a.spec.length) m[a.key] = a.spec; return m; }, {});
 
 var _FC_HINT = ' <span style="font-size:9px;color:var(--text-muted);font-weight:500;">📡 optionnel</span>';
 
@@ -14355,7 +14593,7 @@ function _hyroxFormHtml() {
   var chip = function (id, on, oc, label) { return '<button type="button" id="' + id + '" class="saisie-chip' + (on ? ' on' : '') + '" onclick="' + oc + '">' + label + '</button>'; };
   var rows = _HYROX_SEG.map(function (sg, i) {
     var ic = sg.run
-      ? '<span style="width:26px;height:26px;border-radius:8px;background:rgba(14,165,233,.14);color:#0EA5E9;display:grid;place-items:center;font-size:12px;flex:none">🏃</span>'
+      ? '<span style="width:26px;height:26px;border-radius:8px;background:rgba(157,95,211,.14);color:#9D5FD3;display:grid;place-items:center;font-size:12px;flex:none">🏃</span>'
       : '<span style="width:26px;height:26px;border-radius:8px;background:var(--surface2);color:var(--text-muted);display:grid;place-items:center;font-size:11px;font-weight:800;flex:none">' + ((i + 1) / 2) + '</span>';
     var sub = sg.w
       ? sg.d + ' · ' + (sg.wx2 ? '2 × ' : '') + '<input id="hxw-' + sg.w + '" inputmode="numeric" value="' + _HYROX_W[_hyroxDiv][sg.w] + '" style="width:42px;text-align:center;padding:2px 3px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--accent);font-weight:700;font-size:11px"> kg'
@@ -14392,9 +14630,11 @@ async function sauvegarderHyrox() {
   var rpe = (document.getElementById('cardio-rpe') || {}).value || '';
   var btnSave = document.getElementById('hx-manuel-save') || document.getElementById('btn-save-cardio');
   if (btnSave) { btnSave.disabled = true; btnSave.textContent = '⏳ Envoi…'; }
+  var savedSid = null;
   try {
     var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveHyrox', athlete_id: athlete.athlete_id, date: date, mode: _hyroxMode, division: _hyroxDiv, segments: segs, poids: poids, total_sec: tot, rpe: rpe }) });
     var res = await r.json(); if (res && res.error) throw new Error(res.error);
+    savedSid = (res && res.seance_id) || null;
   } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✅ Enregistrer la Hyrox'; } return; }
   if (manuelOpen) {
     fermerHyroxManuel();
@@ -14404,6 +14644,8 @@ async function sauvegarderHyrox() {
     if (cardioEl) cardioEl.innerHTML = '<div class="card"><div class="card-title" style="color:var(--good)">✅ Hyrox enregistrée !</div><div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">' + (_hyroxMode === 'course' ? 'Course / simulation' : 'Entraînement') + ' · ' + n + '/16 segments</div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:26px;color:var(--accent);margin-bottom:14px">' + _hyroxFmt(tot) + '</div><button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button></div>';
   }
   if (typeof chargerAppData === 'function') chargerAppData();
+  // Bilan de séance (ressenti / douleur) après la Hyrox.
+  try { ouvrirBilanSeance('cardio', savedSid, date); } catch (e) {}
 }
 
 // ── HYROX : univers dédié dans l'onglet Cardio + chrono live ──
@@ -14425,9 +14667,9 @@ function renderHyroxHome() {
     var nseg = _HYROX_SEG.filter(function (sg) { return Number(s['hyrox_' + sg.k]) > 0; }).length;
     var mode = (s.hyrox_mode === 'atelier') ? 'Par atelier' : (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Circuit';
     var segLbl = (s.hyrox_mode === 'atelier') ? (nseg + ' atelier' + (nseg > 1 ? 's' : '')) : (nseg + '/16 segments');
-    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:38px;height:38px;border-radius:11px;background:rgba(234,179,8,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:16px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">' + dstr + ' · ' + segLbl + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
+    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:38px;height:38px;border-radius:11px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:16px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">' + dstr + ' · ' + segLbl + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
   }).join('') : '<div style="padding:14px;color:var(--text-muted);font-size:12.5px">Aucune Hyrox enregistrée. Lance le circuit officiel, un atelier, ou saisis un résultat.</div>';
-  el.innerHTML = '<div style="border-radius:20px;padding:18px;background:linear-gradient(135deg,#EAB308,#CA9A04);color:#1a1400;box-shadow:0 8px 24px rgba(234,179,8,.32);margin-top:6px">'
+  el.innerHTML = '<div style="border-radius:20px;padding:18px;background:linear-gradient(135deg,#FFBC13,#CA9A04);color:#1a1400;box-shadow:0 8px 24px rgba(255,188,19,.32);margin-top:6px">'
     + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.75">Épreuve hybride</div>'
     + '<div style="font-size:26px;font-weight:900;letter-spacing:.02em;margin:2px 0">HYROX</div>'
     + '<div style="font-size:12px;font-weight:600;opacity:.82;line-height:1.4">Fais le circuit officiel chronométré, ou travaille quelques ateliers en ciblé.</div></div>'
@@ -14457,7 +14699,146 @@ function ouvrirSaisieHyrox() {
   try { _hyroxRecalcTotal(); } catch (e) {}
 }
 function fermerHyroxManuel() { var ov = document.getElementById('hyrox-manuel-overlay'); if (ov) ov.style.display = 'none'; }
-function ouvrirHyroxDetail(sid) { try { showToast('Analyse détaillée de la Hyrox : bientôt (étape 2).'); } catch (e) {} }
+// ── HYROX · écran d'analyse d'une séance (étape 2) ──────────────────────────
+// Ouvert depuis « Mes Hyrox » (Entraînement) ET depuis Mes Analyses. Tout est
+// calculé à partir de la séance (s) + de l'historique Hyrox (progression).
+function _hxAllHistory() {
+  var h = ((typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.cardio && dernierAppData.cardio.history) || []).filter(function (s) { return (s.type_cardio || '') === 'hyrox'; });
+  return h.slice().sort(function (a, b) { return (a.date < b.date) ? -1 : (a.date > b.date ? 1 : 0); });
+}
+function _hxTotalOf(s) { return Number(s.hyrox_total) || (Number(s.duree) || 0) * 60; }
+function _hxDivLabel(d) { for (var i = 0; i < _HYROX_DIV.length; i++) { if (_HYROX_DIV[i][0] === d) return _HYROX_DIV[i][1]; } return '♂ Open'; }
+// Ordre officiel d'un segment (pour trier même en mode « Par atelier »).
+function _hxSegOrder(k) {
+  for (var i = 0; i < _HYROX_SEG.length; i++) { if (_HYROX_SEG[i].k === k) return i * 10; }
+  var m = k.match(/^([a-z]+)(?:_(\d+))?$/);
+  if (m) { for (var j = 0; j < _HYROX_SEG.length; j++) { if (_HYROX_SEG[j].k === m[1]) return j * 10 + (m[2] ? Number(m[2]) : 0); } }
+  if (k.indexOf('run') === 0) { var mr = k.match(/(\d+)/); return mr ? Number(mr[1]) : 0; }
+  return 999;
+}
+// Segments chronométrés d'une Hyrox : scanne les clés hyrox_* (hors total/mode/division/poids).
+function _hxSegmentsOf(s) {
+  var base = {}; _HYROX_SEG.forEach(function (sg) { base[sg.k] = sg; });
+  var out = [];
+  Object.keys(s || {}).forEach(function (key) {
+    if (key.indexOf('hyrox_') !== 0) return;
+    var k = key.slice(6);
+    if (k === 'total' || k === 'mode' || k === 'division' || k.indexOf('poids_') === 0) return;
+    var sec = Number(s[key]); if (!(sec > 0)) return;
+    var run = k.indexOf('run') === 0, def = base[k], title;
+    if (def) { title = def.t; run = !!def.run; }
+    else if (run) { var mr = k.match(/(\d+)/); title = 'Run' + (mr ? ' ' + mr[1] : ''); }
+    else { var mm = k.match(/^([a-z]+)(?:_(\d+))?$/); var bd = mm && base[mm[1]]; title = bd ? (bd.t + (mm[2] ? ' · série ' + mm[2] : '')) : k; if (bd) run = !!bd.run; }
+    out.push({ k: k, t: title, sec: sec, run: run, ord: _hxSegOrder(k) });
+  });
+  out.sort(function (a, b) { return a.ord - b.ord; });
+  return out;
+}
+// Sparkline SVG (temps total au fil des Hyrox). pts = tableau de secondes, cur = index du point courant.
+function _hxSpark(pts, cur) {
+  var w = 320, h = 116, pad = 10;
+  var mn = Math.min.apply(null, pts), mx = Math.max.apply(null, pts), rng = (mx - mn) || 1;
+  var P = pts.map(function (v, i) { var x = pad + (pts.length > 1 ? i * (w - 2 * pad) / (pts.length - 1) : (w - 2 * pad) / 2); var y = pad + (mx - v) / rng * (h - 2 * pad); return [x, y]; });
+  var d = P.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
+  var area = d + ' L' + P[P.length - 1][0].toFixed(1) + ' ' + (h - pad) + ' L' + P[0][0].toFixed(1) + ' ' + (h - pad) + ' Z';
+  var cp = P[cur] || P[P.length - 1];
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="display:block;width:100%;height:116px">'
+    + '<path d="' + area + '" fill="rgba(255,188,19,.16)"/>'
+    + '<path d="' + d + '" fill="none" stroke="#CA9A04" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<circle cx="' + cp[0].toFixed(1) + '" cy="' + cp[1].toFixed(1) + '" r="4" fill="#CA9A04"/></svg>';
+}
+function _hxAnalyseHtml(s, prev, all, idx) {
+  var segs = _hxSegmentsOf(s), total = _hxTotalOf(s);
+  var runs = segs.filter(function (x) { return x.run; }), stations = segs.filter(function (x) { return !x.run; });
+  var runSec = runs.reduce(function (a, x) { return a + x.sec; }, 0);
+  var staSec = stations.reduce(function (a, x) { return a + x.sec; }, 0);
+  var mx = Math.max.apply(null, segs.map(function (x) { return x.sec; }).concat([1]));
+  var mode = (s.hyrox_mode === 'atelier') ? 'Par atelier' : (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Circuit officiel';
+  var dd = new Date((s.date || '') + 'T00:00:00'), dstr = isNaN(dd.getTime()) ? '' : (dd.getDate() + ' ' + _MA_MON[dd.getMonth()] + '. ' + dd.getFullYear());
+  var sub = mode + ' · ' + _hxDivLabel(s.hyrox_division) + (dstr ? ' · ' + dstr : '');
+  // Hero + comparaison à la Hyrox précédente
+  var delta = prev ? (total - _hxTotalOf(prev)) : null;
+  var cmp = (delta == null) ? '' : (delta < 0 ? '▼ −' + _hyroxFmt(-delta) + ' vs préc.' : delta > 0 ? '▲ +' + _hyroxFmt(delta) + ' vs préc.' : '= vs précédente');
+  var hero = '<div style="border-radius:20px;padding:18px;background:linear-gradient(135deg,#FFBC13,#CA9A04);color:#1a1400;box-shadow:0 8px 24px rgba(255,188,19,.34)">'
+    + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.8">Temps total</div>'
+    + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:44px;font-weight:800;line-height:1;margin:4px 0 2px;font-variant-numeric:tabular-nums">' + _hyroxFmt(total) + '</div>'
+    + '<div style="font-size:12px;font-weight:700;opacity:.85">' + segs.length + ' segment' + (segs.length > 1 ? 's' : '') + ' chronométré' + (segs.length > 1 ? 's' : '') + (runs.length && stations.length ? ' · ' + runs.length + ' run + ' + stations.length + ' ateliers' : '') + '</div>'
+    + (cmp ? '<div style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;background:rgba(26,20,0,.14);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:800">' + cmp + '</div>' : '')
+    + '</div>';
+  // Course vs ateliers (uniquement si on a des runs ET des ateliers)
+  var cv = '';
+  if (runSec > 0 && staSec > 0) {
+    var tt = runSec + staSec, rp = Math.round(runSec / tt * 100), sp = 100 - rp;
+    cv = '<div class="cx-sec" style="margin-top:18px">Course vs ateliers</div>'
+      + '<div class="card" style="padding:14px 15px">'
+      + '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:7px"><span style="color:#9D5FD3">Course ' + _hyroxFmt(runSec) + '</span><span style="color:#CA9A04">' + _hyroxFmt(staSec) + ' Ateliers</span></div>'
+      + '<div style="height:13px;border-radius:999px;overflow:hidden;display:flex;background:var(--surface2)"><span style="height:100%;width:' + rp + '%;background:#9D5FD3"></span><span style="height:100%;width:' + sp + '%;background:#FFBC13"></span></div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-subtle);margin-top:5px"><span>' + runs.length + ' run · ' + _hyroxFmt(Math.round(runSec / runs.length)) + ' moy.</span><span>' + stations.length + ' ateliers · ' + _hyroxFmt(Math.round(staSec / stations.length)) + ' moy.</span></div>'
+      + '</div>';
+  }
+  // Point faible : atelier le plus lent (si ≥ 2 ateliers)
+  var slow = '';
+  if (stations.length >= 2) {
+    var worst = stations.reduce(function (a, b) { return b.sec > a.sec ? b : a; });
+    var avg = staSec / stations.length, pct = Math.round((worst.sec / avg - 1) * 100);
+    slow = '<div class="cx-sec" style="margin-top:18px">Point faible</div>'
+      + '<div style="display:flex;align-items:center;gap:12px;background:rgba(220,53,69,.06);border:1px solid rgba(220,53,69,.25);border-radius:14px;padding:13px 14px">'
+      + '<div style="width:40px;height:40px;border-radius:12px;background:#DC3545;color:#fff;display:grid;place-items:center;flex:none;font-size:20px;font-weight:800">!</div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#DC3545">Atelier le plus lent</div><div style="font-size:15px;font-weight:800">' + worst.t + ' — ' + _hyroxFmt(worst.sec) + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:1px">' + (pct > 0 ? '+' + pct + ' % vs la moyenne de tes ateliers · ' : '') + 'à travailler en priorité (mode « Par atelier »).</div></div></div>';
+  }
+  // Tous les splits
+  var worstSeg = segs.length ? segs.reduce(function (a, b) { return b.sec > a.sec ? b : a; }) : null;
+  var splitRows = segs.map(function (x, i) {
+    var isW = worstSeg && x.k === worstSeg.k;
+    var ic = x.run ? '<span style="width:24px;height:24px;border-radius:7px;background:rgba(157,95,211,.14);color:#9D5FD3;display:grid;place-items:center;font-size:11px;flex:none">🏃</span>'
+      : '<span style="width:24px;height:24px;border-radius:7px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none">' + (i + 1) + '</span>';
+    var barCol = isW ? '#DC3545' : (x.run ? '#9D5FD3' : '#FFBC13');
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:' + (i ? '1px solid var(--border)' : 'none') + '">' + ic
+      + '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">' + x.t + (isW ? '<span style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#DC3545;background:rgba(220,53,69,.12);border-radius:5px;padding:2px 5px;margin-left:5px">le + lent</span>' : '') + '</div>'
+      + '<div style="height:5px;border-radius:999px;background:var(--surface2);margin-top:4px;overflow:hidden"><i style="display:block;height:100%;border-radius:999px;width:' + Math.round(x.sec / mx * 100) + '%;background:' + barCol + '"></i></div></div>'
+      + '<span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;flex:none' + (isW ? ';color:#DC3545' : '') + '">' + _hyroxFmt(x.sec) + '</span></div>';
+  }).join('');
+  var splits = '<div class="cx-sec" style="margin-top:18px">Tous les splits <span style="float:right;font-weight:600;color:var(--text-subtle);text-transform:none;letter-spacing:0">m:ss</span></div><div class="card" style="padding:2px 15px">' + splitRows + '</div>';
+  // Progression du temps total (jusqu'à cette Hyrox incluse), ≥ 2 points
+  var prog = '';
+  var upto = all.slice(0, idx + 1); if (upto.length > 10) upto = upto.slice(upto.length - 10);
+  if (upto.length >= 2) {
+    var Ts = upto.map(function (x) { return _hxTotalOf(x); });
+    var first = Ts[0], best = Math.min.apply(null, Ts);
+    var trend = total <= first;
+    prog = '<div class="cx-sec" style="margin-top:18px">Progression du temps total <span style="float:right;font-weight:600;color:var(--text-subtle);text-transform:none;letter-spacing:0">' + upto.length + ' dernières</span></div>'
+      + '<div class="card" style="padding:14px 15px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font-size:11.5px;color:var(--text-muted);font-weight:700">Temps total / Hyrox</span><span style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px;color:#CA9A04">' + _hyroxFmt(total) + ' <span style="font-size:9.5px;font-family:inherit;color:' + (trend ? '#00A854' : '#DC3545') + '">' + (trend ? '▼ mieux' : '▲') + '</span></span></div>'
+      + _hxSpark(Ts, upto.length - 1)
+      + '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-subtle);margin-top:4px"><span>il y a ' + (upto.length - 1) + ' Hyrox</span><span>' + (idx === all.length - 1 ? 'aujourd\'hui' : 'cette Hyrox') + '</span></div>'
+      + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px;line-height:1.5">Chaque point = 1 Hyrox. Meilleur temps : ' + _hyroxFmt(best) + '.</div></div>';
+  }
+  // Progression par atelier (vs Hyrox précédente)
+  var byAt = '';
+  if (prev) {
+    var pMap = {}; _hxSegmentsOf(prev).forEach(function (x) { pMap[x.k] = x.sec; });
+    var pills = stations.filter(function (x) { return pMap[x.k] != null; }).map(function (x) {
+      var d = x.sec - pMap[x.k]; var col = d < 0 ? '#00A854' : d > 0 ? '#DC3545' : 'var(--text-muted)';
+      var lbl = d === 0 ? '=' : (d < 0 ? '▼ −' : '▲ +') + Math.abs(d) + ' s';
+      return '<span style="font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:999px;padding:5px 11px;color:var(--text-muted)">' + x.t + ' <b style="color:' + col + '">' + lbl + '</b></span>';
+    }).join('');
+    if (pills) byAt = '<div class="cx-sec" style="margin-top:18px">Progression par atelier</div><div class="card" style="padding:14px 15px"><div style="display:flex;gap:7px;flex-wrap:wrap">' + pills + '</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px;line-height:1.5">Évolution de chaque atelier vs ta Hyrox précédente.</div></div>';
+  }
+  var header = '<div style="display:flex;align-items:center;gap:12px;padding:16px 2px 10px">'
+    + '<button onclick="fermerHyroxAnalyse()" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;flex:none;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1">‹</button>'
+    + '<div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Analyse Hyrox</div><div style="font-size:11.5px;color:var(--text-subtle)">' + sub + '</div></div></div>';
+  return '<div style="max-width:460px;margin:0 auto">' + header + hero + cv + slow + splits + prog + byAt + '</div>';
+}
+function fermerHyroxAnalyse() { var ov = document.getElementById('hyrox-analyse-overlay'); if (ov) ov.style.display = 'none'; }
+function ouvrirHyroxDetail(sid) {
+  var all = _hxAllHistory();
+  var idx = -1; for (var i = 0; i < all.length; i++) { if (String(all[i].seance_id) === String(sid)) { idx = i; break; } }
+  if (idx < 0) { try { showToast('Hyrox introuvable'); } catch (e) {} return; }
+  var ov = document.getElementById('hyrox-analyse-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-analyse-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 46px;'; document.body.appendChild(ov); }
+  ov.style.display = 'block'; ov.scrollTop = 0;
+  ov.innerHTML = _hxAnalyseHtml(all[idx], idx > 0 ? all[idx - 1] : null, all, idx);
+}
 // Chrono live : un temps total en continu + split par segment (« Segment suivant »).
 var _hxTimer = null, _hxT0 = 0, _hxSegT0 = 0, _hxIdx = 0, _hxSplits = [], _hxPaused = false, _hxPausedAt = 0, _hxPauseAcc = 0, _hxWeights = null;
 // Liste des segments ACTIFS du chrono en cours : le circuit officiel complet
@@ -14473,7 +14854,9 @@ function ouvrirHyroxChrono() {
   ov.style.display = 'block'; ov.scrollTop = 0; ov.innerHTML = _hxStartHtml();
 }
 function fermerHyroxChrono() { if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; } var ov = _hxOv(); if (ov) ov.style.display = 'none'; }
-function _hxHeader(t) { return '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">' + t + '</div><button onclick="fermerHyroxChrono()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'; }
+// Fermeture via la croix : si une Hyrox est EN COURS (chrono actif), on confirme.
+function _hxTryClose() { if (_hxTimer) { if (!confirm('Quitter la Hyrox en cours ? Les temps seront perdus.')) return; } fermerHyroxChrono(); }
+function _hxHeader(t) { return '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">' + t + '</div><button onclick="_hxTryClose()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'; }
 function _hxChip(id, on, oc, label) { return '<button type="button" id="' + id + '" class="saisie-chip' + (on ? ' on' : '') + '" onclick="' + oc + '">' + label + '</button>'; }
 // Circuit OFFICIEL : la division met à jour l'affichage (lecture seule) des poids
 // officiels — pas de saisie, ce sont les chiffres de la compétition.
@@ -14485,7 +14868,7 @@ function _hxCourseDetailHtml() {
   var rows = _HYROX_SEG.map(function (sg, i) {
     var no = 0; for (var j = 0; j <= i; j++) { if (!_HYROX_SEG[j].run) no++; }
     var ic = sg.run
-      ? '<span style="width:24px;height:24px;border-radius:7px;background:rgba(14,165,233,.14);color:#0EA5E9;display:grid;place-items:center;font-size:11px;flex:none">🏃</span>'
+      ? '<span style="width:24px;height:24px;border-radius:7px;background:rgba(157,95,211,.14);color:#9D5FD3;display:grid;place-items:center;font-size:11px;flex:none">🏃</span>'
       : '<span style="width:24px;height:24px;border-radius:7px;background:var(--surface);color:var(--text-muted);display:grid;place-items:center;font-size:10px;font-weight:800;flex:none">' + no + '</span>';
     var right = sg.w
       ? '<span style="color:var(--hy-strong,#CA9A04);font-weight:800;font-size:12px">' + (sg.wx2 ? '2 × ' : '') + '<span id="hxc-wd-' + sg.w + '">' + wv[sg.w] + '</span> kg</span>'
@@ -14507,7 +14890,7 @@ function _hxStartHtml() {
     + '<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px">Division</div>'
     + '<div style="display:flex;gap:6px">' + _HYROX_DIV.map(function (x) { return _hxChip('hxc-div-' + x[0], _hyroxDiv === x[0], '_hxSetDiv(\'' + x[0] + '\')', x[1]); }).join('') + '</div>'
     + _hxCourseDetailHtml()
-    + '<button onclick="_hxStartCircuit()" style="width:100%;border:none;border-radius:16px;padding:18px;margin-top:16px;font-family:inherit;font-weight:900;font-size:17px;cursor:pointer;color:#1a1400;background:linear-gradient(135deg,#EAB308,#CA9A04);box-shadow:0 8px 20px rgba(234,179,8,.35)">▶ Démarrer le circuit</button>'
+    + '<button onclick="_hxStartCircuit()" style="width:100%;border:none;border-radius:16px;padding:18px;margin-top:16px;font-family:inherit;font-weight:900;font-size:17px;cursor:pointer;color:#1a1400;background:linear-gradient(135deg,#FFBC13,#CA9A04);box-shadow:0 8px 20px rgba(255,188,19,.35)">▶ Démarrer le circuit</button>'
     + '</div><div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:14px;line-height:1.6">Tape « Segment suivant » à chaque transition. Le temps total tourne en continu.</div></div>';
 }
 function _hxLiveHtml() {
@@ -14531,16 +14914,21 @@ function _hxBegin() {
   _hxIdx = 0; _hxSplits = []; _hxPaused = false; _hxPauseAcc = 0; _hxT0 = Date.now(); _hxSegT0 = Date.now(); var ov = _hxOv(); if (ov) ov.innerHTML = _hxLiveHtml(); _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); if (_hxTimer) clearInterval(_hxTimer); _hxTimer = setInterval(_hxTick, 200); _hxTick();
 }
 // Circuit OFFICIEL : les 16 segments, poids officiels de la division (non modifiés).
+// Avant de lancer : état du jour (readiness) si pas encore fait aujourd'hui.
 function _hxStartCircuit() {
+  if (typeof athlete !== 'undefined' && athlete && !_bienEtreFaitAujourdhui()) { ouvrirEtatDuJour({ then: _hxStartCircuitGo }); return; }
+  _hxStartCircuitGo();
+}
+function _hxStartCircuitGo() {
   _hxSegs = _HYROX_SEG.slice();
   _hyroxMode = 'course';
   _hxWeights = Object.assign({}, _HYROX_W[_hyroxDiv] || _HYROX_W.mo);
   _hxBegin();
 }
 function _hxTick() { if (_hxPaused) return; var now = Date.now(); var c = document.getElementById('hx-clock'); if (c) c.textContent = _hyroxFmt(Math.round((now - _hxT0 - _hxPauseAcc) / 1000)); var s = document.getElementById('hx-seg'); if (s) s.textContent = _hyroxFmt(Math.round((now - _hxSegT0) / 1000)); }
-function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var n = _hxSegs.length, h = ''; for (var i = 0; i < n; i++) { var bg = i < _hxIdx ? (_hxSegs[i].run ? '#0EA5E9' : 'var(--accent)') : (i === _hxIdx ? '#EAB308' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
+function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var n = _hxSegs.length, h = ''; for (var i = 0; i < n; i++) { var bg = i < _hxIdx ? (_hxSegs[i].run ? '#9D5FD3' : 'var(--accent)') : (i === _hxIdx ? '#FFBC13' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
 function _hxRenderCur() { var n = _hxSegs.length; var sg = _hxSegs[_hxIdx] || _hxSegs[n - 1]; var last = (_hxIdx === n - 1); var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / ' + n; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier') + (sg.w && _hxWeights && _hxWeights[sg.w] ? ' · ' + _hxWeights[sg.w] + ' kg' : ''); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (last ? 'Terminer ✓' : 'Segment suivant ✓'); nx.style.background = (last ? 'var(--good)' : 'var(--accent)'); } }
-function _hxRenderSplits() { var el = document.getElementById('hx-splits'); if (!el) return; var rows = []; for (var i = 0; i < _hxIdx; i++) { var sg = _hxSegs[i]; rows.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;background:' + (sg.run ? 'rgba(14,165,233,.12);color:#0EA5E9' : 'var(--surface2);color:var(--text-muted)') + '">' + (sg.run ? '🏃' : _hxStationNo(i)) + '</span><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } el.innerHTML = rows.reverse().join(''); }
+function _hxRenderSplits() { var el = document.getElementById('hx-splits'); if (!el) return; var rows = []; for (var i = 0; i < _hxIdx; i++) { var sg = _hxSegs[i]; rows.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;background:' + (sg.run ? 'rgba(157,95,211,.12);color:#9D5FD3' : 'var(--surface2);color:var(--text-muted)') + '">' + (sg.run ? '🏃' : _hxStationNo(i)) + '</span><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } el.innerHTML = rows.reverse().join(''); }
 function _hxNext() { var now = Date.now(); _hxSplits[_hxIdx] = now - _hxSegT0; _hxSegT0 = now; _hxIdx++; if (_hxIdx >= _hxSegs.length) { _hxFinish(); return; } _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); _hxTick(); }
 function _hxPause() { var b = document.getElementById('hx-pause'); if (!_hxPaused) { _hxPaused = true; _hxPausedAt = Date.now(); if (b) b.textContent = '▶ Reprendre'; } else { _hxPaused = false; _hxPauseAcc += Date.now() - _hxPausedAt; _hxSegT0 += Date.now() - _hxPausedAt; if (b) b.textContent = '⏸ Pause'; } }
 function _hxCancel() { if (confirm('Annuler cette Hyrox ? Les splits en cours seront perdus.')) fermerHyroxChrono(); }
@@ -14555,6 +14943,8 @@ async function _hxFinish() {
     var res = await r.json(); if (res && res.error) throw new Error(res.error);
     if (ov) ov.innerHTML = _hxDoneHtml(total, 'ok');
     if (typeof chargerAppData === 'function') chargerAppData();
+    // Bilan de séance (ressenti / douleur) après la Hyrox.
+    try { ouvrirBilanSeance('cardio', (res && res.seance_id) || null, _hxTodayISO()); } catch (e) {}
   } catch (e) { if (ov) ov.innerHTML = _hxDoneHtml(total, 'err'); }
 }
 function _hxDoneHtml(total, state) {
@@ -14571,22 +14961,25 @@ function _hxDoneHtml(total, state) {
 // ── HYROX « Par atelier » : entraînement ciblé (hors circuit officiel) ───────
 // On choisit quelques ateliers, on règle charge + nb de séries, puis on lance le
 // MÊME chrono que le circuit mais sur la liste de segments choisie (_hxSegs).
-var _hxAt = { sel: {}, series: {}, weights: {}, runs: false };
+var _hxAt = { sel: {}, series: {}, weights: {}, cible: {}, runs: false };
 function _hxAtOv() { return document.getElementById('hyrox-atelier-overlay'); }
 function _hxAtCount() { return Object.keys(_hxAt.sel).filter(function (k) { return _hxAt.sel[k]; }).length; }
+// Cible d'un atelier : partie numérique (ex. 50) + unité (m / reps) depuis s.d.
+function _hxCibleUnit(s) { return String(s.d || '').replace(/[\d\s.,]/g, '') || 'm'; }
+function _hxCibleNum(s) { var m = String(s.d || '').match(/\d+/); return m ? m[0] : ''; }
 function ouvrirHyroxAtelier() {
   if (!athlete) return;
-  if (!_hxAtCount()) { _hxAt.sel = { sledpush: true, wallballs: true }; }
+  _hxAt.sel = {};   // à l'arrivée : rien de coché
   var ov = _hxAtOv();
   if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-atelier-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
   ov.style.display = 'block'; ov.scrollTop = 0; _hxAtRender();
 }
 function fermerHyroxAtelier() { var ov = _hxAtOv(); if (ov) ov.style.display = 'none'; }
-// Mémorise les poids tapés avant de re-render (sinon un re-render les réinitialise).
-function _hxAtCaptureWeights() { _HYROX_STATIONS.forEach(function (s) { if (!s.w) return; var el = document.getElementById('hxat-w-' + s.k); if (el) { var v = parseFloat(el.value); if (v > 0) _hxAt.weights[s.k] = v; } }); }
-function _hxAtToggle(k) { _hxAtCaptureWeights(); if (_hxAt.sel[k]) delete _hxAt.sel[k]; else _hxAt.sel[k] = true; _hxAtRender(); }
-function _hxAtSer(k, n) { _hxAtCaptureWeights(); _hxAt.series[k] = n; _hxAtRender(); }
-function _hxAtRuns() { _hxAtCaptureWeights(); _hxAt.runs = !_hxAt.runs; _hxAtRender(); }
+// Mémorise les valeurs tapées (poids + cible) avant un re-render, sinon il les réinitialise.
+function _hxAtCapture() { _HYROX_STATIONS.forEach(function (s) { var w = document.getElementById('hxat-w-' + s.k); if (w) { var wv = parseFloat(w.value); if (wv > 0) _hxAt.weights[s.k] = wv; } var c = document.getElementById('hxat-c-' + s.k); if (c) { var cv = parseFloat(c.value); if (cv > 0) _hxAt.cible[s.k] = cv; } }); }
+function _hxAtToggle(k) { _hxAtCapture(); if (_hxAt.sel[k]) delete _hxAt.sel[k]; else _hxAt.sel[k] = true; _hxAtRender(); }
+function _hxAtSer(k, n) { _hxAtCapture(); _hxAt.series[k] = n; _hxAtRender(); }
+function _hxAtRuns() { _hxAtCapture(); _hxAt.runs = !_hxAt.runs; _hxAtRender(); }
 function _hxAtRender() {
   var ov = _hxAtOv(); if (!ov) return;
   var wv = _HYROX_W[_hyroxDiv] || _HYROX_W.mo;
@@ -14594,15 +14987,21 @@ function _hxAtRender() {
     var on = !!_hxAt.sel[s.k], ser = _hxAt.series[s.k] || 1;
     var cfg = '';
     if (on) {
-      var wIn = s.w ? '<div style="flex:1"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin-bottom:5px">Charge (kg)</div><input id="hxat-w-' + s.k + '" inputmode="numeric" value="' + (_hxAt.weights[s.k] != null ? _hxAt.weights[s.k] : wv[s.w]) + '" style="width:100%;padding:9px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);font-family:inherit;font-size:15px;font-weight:800;color:#CA9A04;text-align:center"></div>' : '';
-      var serBtns = [1, 2, 3, 4].map(function (nn) { return '<button type="button" onclick="_hxAtSer(\'' + s.k + '\',' + nn + ')" style="flex:1;padding:9px 0;border-radius:9px;border:1.5px solid ' + (ser === nn ? '#EAB308' : 'var(--border)') + ';background:' + (ser === nn ? 'rgba(234,179,8,.14)' : 'var(--surface)') + ';font-family:inherit;font-weight:800;font-size:13px;color:' + (ser === nn ? '#CA9A04' : 'var(--text-muted)') + ';cursor:pointer">' + nn + '</button>'; }).join('');
-      cfg = '<div style="padding:2px 13px 13px;border-top:1px dashed var(--border)"><div style="display:flex;gap:8px;margin-top:11px">' + wIn
-        + '<div style="flex:1"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin-bottom:5px">Séries</div><div style="display:flex;gap:5px">' + serBtns + '</div></div></div>'
-        + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px">Cible officielle : ' + s.d + '</div></div>';
+      var _lbl = 'font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin-bottom:5px';
+      var _inp = 'width:100%;padding:9px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);font-family:inherit;font-size:15px;font-weight:800;text-align:center';
+      var unit = _hxCibleUnit(s);
+      var cVal = (_hxAt.cible[s.k] != null ? _hxAt.cible[s.k] : _hxCibleNum(s));
+      var cIn = '<div style="flex:1"><div style="' + _lbl + '">Cible (' + unit + ')</div><input id="hxat-c-' + s.k + '" inputmode="numeric" value="' + cVal + '" style="' + _inp + ';color:var(--text)"></div>';
+      var wIn = s.w ? '<div style="flex:1"><div style="' + _lbl + '">Charge (kg)</div><input id="hxat-w-' + s.k + '" inputmode="numeric" value="' + (_hxAt.weights[s.k] != null ? _hxAt.weights[s.k] : wv[s.w]) + '" style="' + _inp + ';color:#CA9A04"></div>' : '';
+      var serBtns = [1, 2, 3, 4].map(function (nn) { return '<button type="button" onclick="_hxAtSer(\'' + s.k + '\',' + nn + ')" style="flex:1;padding:9px 0;border-radius:9px;border:1.5px solid ' + (ser === nn ? '#FFBC13' : 'var(--border)') + ';background:' + (ser === nn ? 'rgba(255,188,19,.14)' : 'var(--surface)') + ';font-family:inherit;font-weight:800;font-size:13px;color:' + (ser === nn ? '#CA9A04' : 'var(--text-muted)') + ';cursor:pointer">' + nn + '</button>'; }).join('');
+      cfg = '<div style="padding:2px 13px 13px;border-top:1px dashed var(--border)">'
+        + '<div style="display:flex;gap:8px;margin-top:11px">' + cIn + wIn + '</div>'
+        + '<div style="margin-top:10px"><div style="' + _lbl + '">Séries</div><div style="display:flex;gap:5px">' + serBtns + '</div></div>'
+        + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px">Officiel : ' + s.d + (s.w ? ' · ' + wv[s.w] + ' kg' : '') + '</div></div>';
     }
-    return '<div style="background:var(--surface);border:1.5px solid ' + (on ? '#EAB308' : 'var(--border)') + ';border-radius:14px;margin-bottom:9px;overflow:hidden' + (on ? ';box-shadow:0 6px 16px rgba(234,179,8,.16)' : '') + '">'
+    return '<div style="background:var(--surface);border:1.5px solid ' + (on ? '#FFBC13' : 'var(--border)') + ';border-radius:14px;margin-bottom:9px;overflow:hidden' + (on ? ';box-shadow:0 6px 16px rgba(255,188,19,.16)' : '') + '">'
       + '<div onclick="_hxAtToggle(\'' + s.k + '\')" style="display:flex;align-items:center;gap:11px;padding:11px;cursor:pointer">'
-      + '<span style="width:22px;height:22px;border-radius:7px;border:2px solid ' + (on ? '#EAB308' : 'var(--border)') + ';background:' + (on ? '#EAB308' : 'transparent') + ';flex:none;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900">' + (on ? '✓' : '') + '</span>'
+      + '<span style="width:22px;height:22px;border-radius:7px;border:2px solid ' + (on ? '#FFBC13' : 'var(--border)') + ';background:' + (on ? '#FFBC13' : 'transparent') + ';flex:none;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900">' + (on ? '✓' : '') + '</span>'
       + '<span style="flex:1;min-width:0"><span style="display:block;font-weight:800;font-size:13.5px">' + s.t + '</span><span style="display:block;font-size:10.5px;color:var(--text-subtle)">' + s.d + (s.w ? ' · ' + wv[s.w] + ' kg' : '') + '</span></span>'
       + '</div>' + cfg + '</div>';
   }).join('');
@@ -14612,20 +15011,32 @@ function _hxAtRender() {
     + '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin:2px 2px 12px">Choisis les ateliers à travailler — pas besoin de faire tout le circuit. Règle la charge et le nombre de séries.</div>'
     + '<div style="font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-subtle);margin:2px 2px 9px">Ateliers · <span style="color:#CA9A04">' + n + ' choisi' + (n > 1 ? 's' : '') + '</span></div>'
     + stations
-    + '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-top:4px"><div style="font-size:12.5px;font-weight:700">Ajouter un <b style="color:#0EA5E9">Run 1 km</b> avant chaque atelier</div><button type="button" onclick="_hxAtRuns()" style="width:44px;height:26px;border-radius:999px;border:1px solid ' + (_hxAt.runs ? '#0EA5E9' : 'var(--border)') + ';background:' + (_hxAt.runs ? '#0EA5E9' : 'var(--surface2)') + ';position:relative;cursor:pointer"><i style="position:absolute;top:2px;left:' + (_hxAt.runs ? '20px' : '2px') + ';width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));transition:.15s"></i></button></div>'
-    + '<button onclick="_hxStartAtelier()" ' + (n ? '' : 'disabled') + ' style="width:100%;border:none;border-radius:15px;padding:17px;margin-top:14px;font-family:inherit;font-weight:900;font-size:16px;cursor:' + (n ? 'pointer' : 'default') + ';color:' + (n ? '#1a1400' : 'var(--text-subtle)') + ';background:' + (n ? 'linear-gradient(135deg,#EAB308,#CA9A04)' : 'var(--surface2)') + ';box-shadow:' + (n ? '0 8px 20px rgba(234,179,8,.35)' : 'none') + '">▶ Démarrer l\'atelier</button>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-top:4px"><div style="font-size:12.5px;font-weight:700">Ajouter un <b style="color:#9D5FD3">Run 1 km</b> avant chaque atelier</div><button type="button" onclick="_hxAtRuns()" style="width:44px;height:26px;border-radius:999px;border:1px solid ' + (_hxAt.runs ? '#9D5FD3' : 'var(--border)') + ';background:' + (_hxAt.runs ? '#9D5FD3' : 'var(--surface2)') + ';position:relative;cursor:pointer"><i style="position:absolute;top:2px;left:' + (_hxAt.runs ? '20px' : '2px') + ';width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));transition:.15s"></i></button></div>'
+    + '<button onclick="_hxStartAtelier()" ' + (n ? '' : 'disabled') + ' style="width:100%;border:none;border-radius:15px;padding:17px;margin-top:14px;font-family:inherit;font-weight:900;font-size:16px;cursor:' + (n ? 'pointer' : 'default') + ';color:' + (n ? '#1a1400' : 'var(--text-subtle)') + ';background:' + (n ? 'linear-gradient(135deg,#FFBC13,#CA9A04)' : 'var(--surface2)') + ';box-shadow:' + (n ? '0 8px 20px rgba(255,188,19,.35)' : 'none') + '">▶ Démarrer l\'atelier</button>'
     + '<div style="font-size:11px;color:var(--text-subtle);margin-top:10px;text-align:center;line-height:1.5">Novalyz chronomètre chaque atelier et suivra ta progression dessus.</div></div>';
 }
 function _hxStartAtelier() {
+  if (!_hxAtCount()) return;
+  // Avant de lancer : état du jour (readiness) si pas encore fait aujourd'hui.
+  // L'overlay atelier reste affiché sous la modale, on relit ses valeurs après.
+  _hxAtCapture();
+  if (typeof athlete !== 'undefined' && athlete && !_bienEtreFaitAujourdhui()) { ouvrirEtatDuJour({ then: _hxStartAtelierGo }); return; }
+  _hxStartAtelierGo();
+}
+function _hxStartAtelierGo() {
   if (!_hxAtCount()) return;
   var wv = _HYROX_W[_hyroxDiv] || _HYROX_W.mo, weights = {}, segs = [], runN = 0;
   _HYROX_STATIONS.forEach(function (s) {
     if (!_hxAt.sel[s.k]) return;
     if (s.w) { var el = document.getElementById('hxat-w-' + s.k); var v = el ? parseFloat(el.value) : NaN; var wgt = (v > 0) ? v : wv[s.w]; _hxAt.weights[s.k] = wgt; weights[s.w] = wgt; }
+    // Cible personnalisée (distance / reps) → libellé du segment dans le chrono.
+    var cel = document.getElementById('hxat-c-' + s.k); var cv = cel ? parseFloat(cel.value) : NaN;
+    if (cv > 0) _hxAt.cible[s.k] = cv;
+    var dLbl = (cv > 0) ? (cv + ' ' + _hxCibleUnit(s)) : s.d;
     var ser = _hxAt.series[s.k] || 1;
     for (var i = 0; i < ser; i++) {
       if (_hxAt.runs) { runN++; segs.push({ k: 'run_at' + runN, t: 'Run ' + runN, d: '1 km', run: true }); }
-      segs.push({ k: (ser > 1 ? s.k + '_' + (i + 1) : s.k), t: s.t + (ser > 1 ? ' · série ' + (i + 1) : ''), d: s.d, w: s.w, wx2: s.wx2 });
+      segs.push({ k: (ser > 1 ? s.k + '_' + (i + 1) : s.k), t: s.t + (ser > 1 ? ' · série ' + (i + 1) : ''), d: dLbl, w: s.w, wx2: s.wx2 });
     }
   });
   if (!segs.length) return;
@@ -14641,6 +15052,7 @@ function renderCardioFields() {
   var typeEl = document.getElementById('cardio-type');
   var el = document.getElementById('cardio-fields-content');
   if (!el || !typeEl) return;
+  _buildCardioTypeOptions();   // peuple le <select> depuis le catalogue si vide
   var type = typeEl.value;
   // Nom de l'activité dans l'en-tête « séance en cours ».
   var actEl = document.getElementById('cardio-live-act');
@@ -14665,7 +15077,7 @@ function renderCardioFields() {
     + '<input type="number" id="cardio-poids-saisie" placeholder="ex: 62" inputmode="decimal" step="0.5" min="30" max="200" oninput="calcAutoCardio()" style="margin-top:6px;">'
     + '</div>';
   // Distance sans intérêt pour ces disciplines (effort à la durée) → champ masqué.
-  var noDist = (type === 'hiit' || type === 'boxe' || type === 'elliptique');
+  var noDist = _cardioNoDist(type);
   var dureeInput = '<div><label>Durée (min)</label><input type="number" id="cardio-duree" placeholder="45" min="1" inputmode="numeric" oninput="calcAutoCardio()"></div>';
   var distInput = '<div><label>Distance (km) <span id="cardio-dist-hint" style="font-size:9px;color:var(--accent);font-weight:600;"></span></label><input type="number" id="cardio-distance" placeholder="auto" step="0.1" min="0" inputmode="decimal" data-auto="" oninput="this.dataset.auto=\'0\';document.getElementById(\'cardio-dist-hint\').textContent=\'\';calcAutoCardio()"></div>';
   var dureeDistHtml = noDist
@@ -14856,6 +15268,73 @@ async function sauvegarderCardio() {
   setTimeout(function () { ouvrirBilanSeance('cardio', _sidCardio, date); }, 350);
 }
 
+// ── Repère cardio pendant l'exécution d'une séance hybride ───────────────────
+// Les items cardio du programme s'affichent sous la liste muscu, avec un bouton
+// qui ouvre une saisie pré-remplie (activité + cible) enregistrée dans le cardio.
+// Libellé (stocké dans le programme) → clé d'activité — dérivé du catalogue.
+var _CARDIO_LBL2KEY = _CARDIO_CATALOG.reduce(function (m, a) { m[a.label] = a.key; return m; }, {});
+var _seanceCardioRep = [];
+var _cardioRepDone = {};
+function _renderSeanceCardioReperes(seanceId, reperes) {
+  _seanceCardioRep = reperes || [];
+  var host = document.getElementById('card-liste-seance');
+  var box = document.getElementById('seance-cardio-reperes');
+  if (!host || !_seanceCardioRep.length) { if (box) box.remove(); return; }
+  if (!box) { box = document.createElement('div'); box.id = 'seance-cardio-reperes'; host.parentNode.insertBefore(box, host.nextSibling); }
+  box.style.cssText = 'margin-top:12px;padding:14px;border:1px solid var(--border);border-left:4px solid #9D5FD3;border-radius:14px;background:var(--surface)';
+  box.innerHTML = '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#9D5FD3;margin-bottom:4px">🫀 Cardio prévu</div>'
+    + _seanceCardioRep.map(function (r, i) {
+      var cible = (r.cardio_unite === 'libre') ? 'allure libre' : ((r.cardio_cible != null ? r.cardio_cible : '') + ' ' + (r.cardio_unite === 'km' ? 'km' : 'min'));
+      var done = !!_cardioRepDone[seanceId + '|' + r.exercice];
+      return '<div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--border)">'
+        + '<span style="width:34px;height:34px;border-radius:10px;background:rgba(157,95,211,.13);color:#9D5FD3;display:grid;place-items:center;font-size:15px;flex:none">' + _progCardioIco(r.exercice) + '</span>'
+        + '<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800">' + escapeHtml(r.exercice) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">Cible : ' + cible + '</div></div>'
+        + (done
+          ? '<span style="font-size:12px;font-weight:800;color:var(--good);white-space:nowrap">✓ enregistré</span>'
+          : '<button onclick="ouvrirSaisieCardioPrevu(' + i + ')" style="border:none;background:#9D5FD3;color:#fff;border-radius:10px;padding:9px 13px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap">Enregistrer</button>')
+        + '</div>';
+    }).join('');
+}
+function fermerSaisieCardioPrevu() { var ov = document.getElementById('scp-overlay'); if (ov) ov.style.display = 'none'; }
+function ouvrirSaisieCardioPrevu(idx) {
+  if (!athlete) return;
+  var r = _seanceCardioRep[idx]; if (!r) return;
+  var ov = document.getElementById('scp-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'scp-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1250;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
+  var isKm = r.cardio_unite === 'km';
+  var dureeVal = (r.cardio_unite === 'min' && r.cardio_cible != null) ? r.cardio_cible : '';
+  var distVal = (isKm && r.cardio_cible != null) ? r.cardio_cible : '';
+  var fld = function (id, val, ph, unit) { return '<div style="flex:1"><label style="font-size:11px;color:var(--text-muted);font-weight:700">' + unit + '</label><input id="' + id + '" type="number" inputmode="decimal" value="' + val + '" placeholder="' + ph + '" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:15px;font-weight:700;text-align:center;margin-top:5px"></div>'; };
+  ov.style.display = 'block'; ov.scrollTop = 0;
+  ov.innerHTML = '<div style="max-width:460px;margin:0 auto">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Enregistrer le cardio</div><button onclick="fermerSaisieCardioPrevu()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="display:flex;align-items:center;gap:11px;background:rgba(157,95,211,.10);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:14px"><span style="width:40px;height:40px;border-radius:12px;background:#9D5FD3;color:#fff;display:grid;place-items:center;font-size:19px;flex:none">' + _progCardioIco(r.exercice) + '</span><div><div style="font-size:15px;font-weight:800">' + escapeHtml(r.exercice) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">Prévu : ' + (r.cardio_unite === 'libre' ? 'allure libre' : ((r.cardio_cible != null ? r.cardio_cible : '') + ' ' + (isKm ? 'km' : 'min'))) + '</div></div></div>'
+    + '<label style="font-size:11px;color:var(--text-muted);font-weight:700">Date</label>'
+    + '<input type="date" id="scp-date" value="' + _todayLocalStr() + '" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;margin:5px 0 12px">'
+    + '<div style="display:flex;gap:10px">' + fld('scp-duree', dureeVal, '20', 'Durée (min)') + fld('scp-distance', distVal, '5', 'Distance (km)') + '</div>'
+    + '<div style="margin-top:12px">' + fld('scp-rpe', '', '7', 'RPE (intensité, 1-10)') + '</div>'
+    + '<button id="scp-save" onclick="_saveCardioPrevu(' + idx + ')" class="btn btn-accent" style="width:100%;margin-top:16px;padding:15px;font-size:15px;background:#9D5FD3">✅ Enregistrer le cardio</button>'
+    + '</div>';
+}
+async function _saveCardioPrevu(idx) {
+  if (!athlete) return;
+  var r = _seanceCardioRep[idx]; if (!r) return;
+  var type = _CARDIO_LBL2KEY[r.exercice] || 'footing';
+  var gv = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+  var date = gv('scp-date') || _todayLocalStr(), duree = gv('scp-duree'), distance = gv('scp-distance'), rpe = gv('scp-rpe');
+  if (!duree && !distance) { showToast('Renseigne au moins la durée', 'var(--warn)'); return; }
+  var btn = document.getElementById('scp-save'); if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
+  try {
+    var resp = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: date, type_cardio: type, duree: duree, distance: distance, rpe: rpe }) });
+    var res = await resp.json(); if (res && res.error) throw new Error(res.error);
+  } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btn) { btn.disabled = false; btn.textContent = '✅ Enregistrer le cardio'; } return; }
+  _cardioRepDone[r.seance_id + '|' + r.exercice] = true;
+  fermerSaisieCardioPrevu();
+  showToast('✅ Cardio enregistré · ' + r.exercice);
+  try { _renderSeanceCardioReperes(r.seance_id, _seanceCardioRep); } catch (e) {}
+  if (typeof chargerAppData === 'function') chargerAppData();
+}
+
 function nouvelleSeanceCardio() {
   var cardioEl = document.getElementById('cardio-block');
   if (!cardioEl) return;
@@ -14865,7 +15344,7 @@ function nouvelleSeanceCardio() {
     <div class="card" id="cardio-live-head" style="text-align:center;padding:16px 16px 18px;">
       <div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-subtle);">Séance en cours</div>
       <div id="cardio-live-act" style="font-size:16px;font-weight:800;margin:3px 0 8px;">Cardio</div>
-      <div id="cardio-live-clock" style="font-family:ui-monospace,Menlo,monospace;font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;color:#0EA5E9;">0:00</div>
+      <div id="cardio-live-clock" style="font-family:ui-monospace,Menlo,monospace;font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;color:#9D5FD3;">0:00</div>
     </div>
     <div class="card">
       <div class="card-title">Ta séance</div>
@@ -14895,14 +15374,8 @@ function nouvelleSeanceCardio() {
   renderCardioFields();
 }
 
-var _CARDIO_TYPE_LABELS = {
-  footing: 'Footing', velo: 'Vélo',
-  marche_normale: 'Marche', marche_inclinee: 'Marche inclinée',
-  natation: 'Natation',
-  rameur: 'Rameur', hiit: 'HIIT', elliptique: 'Elliptique', boxe: 'Boxe',
-  hyrox: 'Hyrox',
-  autre: 'Autre'
-};
+// Libellés d'activité — dérivés du catalogue cardio unique.
+var _CARDIO_TYPE_LABELS = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.label; return m; }, {});
 
 var _dashCardioPeriod  = 30;
 var _dashCardioWindows = null;
@@ -15026,9 +15499,9 @@ function _cardioSmoothPath(pts) {
   return d;
 }
 
-var _CH_ICO = { footing: '🏃', velo: '🚴', marche_normale: '🚶', marche_inclinee: '🥾', natation: '🏊', rameur: '🚣', hiit: '🔥', elliptique: '🌀', boxe: '🥊', hyrox: '🟨', autre: '⚡' };
-var _CH_CLR = { footing: '#6366f1', velo: '#0ea5e9', marche_normale: '#22d3ee', marche_inclinee: '#10b981', natation: '#8b5cf6', rameur: '#14b8a6', hiit: '#ef4444', elliptique: '#a855f7', boxe: '#f97316', autre: '#f59e0b' };
-var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(14,165,233,.14)', marche_normale: 'rgba(34,211,238,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', rameur: 'rgba(20,184,166,.14)', hiit: 'rgba(239,68,68,.14)', elliptique: 'rgba(168,85,247,.14)', boxe: 'rgba(249,115,22,.14)', autre: 'rgba(245,158,11,.14)' };
+var _CH_ICO = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.ico; return m; }, {});
+var _CH_CLR = { footing: '#6366f1', velo: '#9D5FD3', marche_normale: '#22d3ee', marche_inclinee: '#10b981', natation: '#8b5cf6', rameur: '#14b8a6', hiit: '#ef4444', elliptique: '#a855f7', boxe: '#f97316', autre: '#f59e0b' };
+var _CH_BG  = { footing: 'rgba(99,102,241,.14)', velo: 'rgba(157,95,211,.14)', marche_normale: 'rgba(34,211,238,.14)', marche_inclinee: 'rgba(16,185,129,.14)', natation: 'rgba(139,92,246,.14)', rameur: 'rgba(20,184,166,.14)', hiit: 'rgba(239,68,68,.14)', elliptique: 'rgba(168,85,247,.14)', boxe: 'rgba(249,115,22,.14)', autre: 'rgba(245,158,11,.14)' };
 
 function renderCardioHistorique(sessions) {
   var secEl  = document.getElementById('hist-cardio-sec');
@@ -15125,7 +15598,7 @@ function _renderCardioHist() {
   }
   var pasTotKpi = Math.round(totalPas) || null;
   var kpis = kpiTile(filtered.length || null, null,    'séances',  'var(--accent)')
-    + kpiTile(Math.round(totalKm * 10) / 10 || null, 'km',   'distance', '#0ea5e9')
+    + kpiTile(Math.round(totalKm * 10) / 10 || null, 'km',   'distance', '#9D5FD3')
     + kpiTile(Math.round(totalDuree)   || null, 'min',  'durée',    '#10b981')
     + kpiTile(Math.round(totalKcal)    || null, 'kcal', 'calories', 'var(--warn)');
   var kpisRow2 = pasTotKpi ? '<div style="background:var(--surface2);border-radius:12px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'

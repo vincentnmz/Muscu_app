@@ -19,7 +19,7 @@
  *   Gris    #94a3b8 #64748b #475569 → --text-muted · #e2e8f0 → --border
  *           #f8fafc → --surface2 · #0f172a → --text
  *   Blancs sur accent  rgba(255,255,255,.12/.16/.28/.35) → var(--on-accent-a*)
- *   Types cardio  #6366f1 #0ea5e9 #22d3ee #10b981 #8b5cf6 #f59e0b → var(--c-*)
+ *   Types cardio  #6366f1 #9D5FD3 #22d3ee #10b981 #8b5cf6 #f59e0b → var(--c-*)
  * ─────────────────────────────────────────────────────────────────────────────
  * ÉCHELLE TYPO (28 tailles en dur aujourd'hui → 8 pas cibles) :
  *   5–10px  → --fs-2xs (10) · 11–11.5 → --fs-xs (11) · 12–12.5 → --fs-sm (12)
@@ -68,7 +68,7 @@
 
   /* ---- Palette catégorielle : types cardio / disciplines ---- */
   --c-run:   #6366F1;   /* footing */
-  --c-bike:  #0EA5E9;   /* vélo */
+  --c-bike:  #9D5FD3;   /* vélo */
   --c-walk:  #22D3EE;   /* marche */
   --c-hike:  #10B981;   /* marche inclinée */
   --c-swim:  #8B5CF6;   /* natation */

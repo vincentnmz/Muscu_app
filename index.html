@@ -66,6 +66,7 @@
   <h1><svg id="brand-ico" class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use id="brand-ico-use" href="#i-dumbbell"/></svg><span id="header-nom">Novalyz</span></h1>
   <div style="display:flex;align-items:center;gap:10px;">
     <button id="btn-bubble-hdr" onclick="ouvrirConversations()" title="Conversation" style="display:none;position:relative;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg><span id="badge-conseils" style="display:none;position:absolute;top:-6px;right:-6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
+    <button id="btn-alertes-hdr" onclick="ouvrirCentreAlertes()" title="Mes alertes" style="display:none;position:relative;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="badge-alertes" style="display:none;position:absolute;top:-6px;right:-6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
     <button id="btn-reglages-hdr" onclick="switchTab('reglages')" title="Réglages" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <button class="logout-btn" onclick="seDeconnecter()" style="display:none" id="btn-logout"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
   </div>
@@ -938,14 +939,14 @@
         #tab-seance .en-muted{ font-size:12px; color:var(--text-muted); padding:4px 2px; }
         #tab-seance .en-startbtn{ display:flex; align-items:center; justify-content:center; gap:9px; height:52px; border-radius:14px; background:var(--accent); color:#fff; border:none; font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; box-shadow:0 6px 16px rgba(26,95,255,.32); }
         #tab-seance .en-startbtn svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
-        #tab-seance .en-startbtn.cardio{ background:#0EA5E9; box-shadow:0 6px 16px rgba(14,165,233,.32); }
+        #tab-seance .en-startbtn.cardio{ background:#9D5FD3; box-shadow:0 6px 16px rgba(157,95,211,.32); }
         /* Toggle Muscu / Cardio */
-        #tab-seance .en-seg{ display:flex; gap:5px; background:var(--surface2); border-radius:13px; padding:5px; }
-        #tab-seance .en-seg button{ flex:1; border:none; background:transparent; font-family:inherit; font-weight:700; font-size:12.5px; color:var(--text-muted); padding:10px 0; border-radius:9px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; white-space:nowrap; }
-        #tab-seance .en-seg button.on{ background:var(--surface); color:var(--accent); box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
-        #tab-seance .en-seg button.on.cx{ color:#0b7fb4; }
-        #tab-seance .en-seg button.on.hx{ color:#CA9A04; }
-        #tab-seance .en-seg button svg{ width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-seance .en-seg{ display:flex; gap:6px; background:var(--surface2); border-radius:14px; padding:5px; }
+        #tab-seance .en-seg button{ flex:1; border:none; background:transparent; font-family:inherit; font-weight:800; font-size:13.5px; color:var(--text-muted); padding:12px 0; border-radius:11px; display:flex; align-items:center; justify-content:center; gap:7px; cursor:pointer; white-space:nowrap; transition:background .15s, color .15s; }
+        #tab-seance .en-seg button.on{ background:var(--accent); color:#fff; box-shadow:0 4px 12px rgba(26,95,255,.28); }
+        #tab-seance .en-seg button.on.cx{ background:#9D5FD3; color:#fff; box-shadow:0 4px 12px rgba(157,95,211,.30); }
+        #tab-seance .en-seg button.on.hx{ background:#FFBC13; color:#1a1400; box-shadow:0 4px 12px rgba(255,188,19,.30); }
+        #tab-seance .en-seg button svg{ width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
         /* Sélection de séance (carte + pastille radio) */
         #tab-seance .en-sel{ display:flex; align-items:center; gap:12px; background:var(--surface); border:1.5px solid var(--border); border-radius:15px; padding:13px 14px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); cursor:pointer; }
         #tab-seance .en-sel.on{ border-color:var(--accent); box-shadow:0 6px 18px rgba(26,95,255,.16); }
@@ -961,16 +962,16 @@
         /* Grille activités cardio */
         #tab-seance .en-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
         #tab-seance .en-act{ position:relative; display:flex; align-items:center; gap:9px; background:var(--surface); border:1.5px solid var(--border); border-radius:13px; padding:9px 30px 9px 9px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); cursor:pointer; }
-        #tab-seance .en-act.on{ border-color:#0EA5E9; box-shadow:0 4px 12px rgba(14,165,233,.14); }
-        #tab-seance .en-act .ic{ width:34px; height:34px; border-radius:10px; background:var(--surface2); color:#0EA5E9; display:grid; place-items:center; flex:none; }
-        #tab-seance .en-act.on .ic{ background:#0EA5E9; color:#fff; }
+        #tab-seance .en-act.on{ border-color:#9D5FD3; box-shadow:0 4px 12px rgba(157,95,211,.14); }
+        #tab-seance .en-act .ic{ width:34px; height:34px; border-radius:10px; background:var(--surface2); color:#9D5FD3; display:grid; place-items:center; flex:none; }
+        #tab-seance .en-act.on .ic{ background:#9D5FD3; color:#fff; }
         #tab-seance .en-act .ic svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
         #tab-seance .en-act .tx{ min-width:0; }
         #tab-seance .en-act .a{ font-weight:800; font-size:13px; line-height:1.15; }
         #tab-seance .en-act .b{ font-size:9.5px; color:var(--text-subtle); line-height:1.2; margin-top:1px; }
         #tab-seance .en-act .en-rad{ position:absolute; top:50%; transform:translateY(-50%); right:9px; width:16px; height:16px; border-width:1.5px; }
-        #tab-seance .en-act.on .en-rad{ border-color:#0EA5E9; }
-        #tab-seance .en-act.on .en-rad::after{ content:""; width:8px; height:8px; border-radius:999px; background:#0EA5E9; }
+        #tab-seance .en-act.on .en-rad{ border-color:#9D5FD3; }
+        #tab-seance .en-act.on .en-rad::after{ content:""; width:8px; height:8px; border-radius:999px; background:#9D5FD3; }
         /* Suivi : cette semaine (prévu/réalisé) */
         #tab-seance .en-wrow{ display:flex; align-items:center; gap:11px; padding:11px 13px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
         #tab-seance .en-st{ width:24px; height:24px; border-radius:999px; flex:none; display:grid; place-items:center; }
@@ -997,6 +998,13 @@
         #tab-seance .en-seac .nv-seancedet{ margin:0 13px 12px; }
       </style>
       <div class="en-hub">
+        <!-- Onglets Muscu / Cardio / Hyrox EN HAUT de la page -->
+        <div class="en-seg" id="en-seg">
+          <button id="en-seg-muscu" class="on" onclick="_enSetMode('muscu')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
+          <button id="en-seg-cardio" onclick="_enSetMode('cardio')"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
+          <button id="en-seg-hyrox" onclick="_enSetMode('hyrox')"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7z"/><path d="M9 12h6M12 9v6"/></svg>Hyrox</button>
+        </div>
+
         <!-- Mon programme (nb séances + stratégie + adhérence) — MUSCU uniquement -->
         <div class="en-card en-prog" id="en-prog-card">
           <div class="en-label">Mon programme</div>
@@ -1006,13 +1014,6 @@
             <div class="en-bar"><span id="en-adh-bar" style="width:0%"></span></div>
             <div class="en-adh-txt"><b id="en-adh-v">—</b> <span id="en-adh-l">cette semaine</span></div>
           </div>
-        </div>
-
-        <!-- Toggle Musculation / Cardio -->
-        <div class="en-seg" id="en-seg">
-          <button id="en-seg-muscu" class="on" onclick="_enSetMode('muscu')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
-          <button id="en-seg-cardio" onclick="_enSetMode('cardio')"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
-          <button id="en-seg-hyrox" onclick="_enSetMode('hyrox')"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7z"/><path d="M9 12h6M12 9v6"/></svg>Hyrox</button>
         </div>
 
         <!-- Sélection MUSCU -->
@@ -1087,7 +1088,7 @@
           <div class="card" id="cardio-live-head" style="text-align:center;padding:16px 16px 18px;">
             <div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-subtle);">Séance en cours</div>
             <div id="cardio-live-act" style="font-size:16px;font-weight:800;margin:3px 0 8px;">Cardio</div>
-            <div id="cardio-live-clock" style="font-family:ui-monospace,Menlo,monospace;font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;color:#0EA5E9;">0:00</div>
+            <div id="cardio-live-clock" style="font-family:ui-monospace,Menlo,monospace;font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;color:#9D5FD3;">0:00</div>
           </div>
           <div class="card">
             <div class="card-title">Ta séance</div>
@@ -1099,19 +1100,8 @@
               <div>
                 <label>Type</label>
                 <!-- Types synchronisés avec _CARDIO_TYPE_LABELS (js/app.js) -->
-                <select id="cardio-type" onchange="renderCardioFields()">
-                  <option value="footing">Footing</option>
-                  <option value="velo">Vélo</option>
-                  <option value="marche_normale">Marche</option>
-                  <option value="marche_inclinee">Marche inclinée</option>
-                  <option value="natation">Natation</option>
-                  <option value="rameur">Rameur</option>
-                  <option value="hiit">HIIT</option>
-                  <option value="elliptique">Elliptique</option>
-                  <option value="boxe">Boxe</option>
-                  <option value="hyrox">Hyrox</option>
-                  <option value="autre">Autre</option>
-                </select>
+                <!-- Options peuplées depuis _CARDIO_CATALOG via _buildCardioTypeOptions() -->
+                <select id="cardio-type" onchange="renderCardioFields()"></select>
               </div>
             </div>
             <div id="cardio-fields-content"></div>
@@ -1299,6 +1289,7 @@
             <div style="flex:1;min-width:0;">
               <div id="obj-actuel-nom" style="font-size:15px;font-weight:800;color:var(--text);">Non défini</div>
               <div style="font-size:12px;color:var(--text-muted);">Ton objectif actuel</div>
+              <div id="obj-seances-view" style="font-size:12px;color:var(--accent);font-weight:700;margin-top:3px;"></div>
             </div>
             <button onclick="toggleObjectifEdit(true)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;">Modifier</button>
           </div>
@@ -1310,7 +1301,14 @@
               <option value="Prise de masse + sèche">Prise de masse + sèche</option>
               <option value="Maintien">Maintien</option>
             </select>
-            <div style="display:flex;gap:8px;margin-top:8px;">
+            <label style="display:block;margin-top:12px;">Objectif de séances par semaine</label>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:6px;">
+              <button type="button" onclick="_objSeancesInc(-1)" style="width:38px;height:38px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:20px;font-weight:800;cursor:pointer;line-height:1;">−</button>
+              <div id="sel-seances-sem" data-val="4" style="font-size:24px;font-weight:800;min-width:30px;text-align:center;color:var(--accent);">4</div>
+              <button type="button" onclick="_objSeancesInc(1)" style="width:38px;height:38px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:20px;font-weight:800;cursor:pointer;line-height:1;">+</button>
+              <span style="font-size:12px;color:var(--text-muted);">séances / semaine</span>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px;">
               <button class="btn btn-outline" onclick="toggleObjectifEdit(false)" style="flex:1;">Annuler</button>
               <button class="btn btn-accent" onclick="sauvegarderObjectif()" style="flex:1;">Enregistrer</button>
             </div>
@@ -1530,13 +1528,19 @@
 #tab-historique .ma-switch{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
 #tab-historique .ma-switch button{flex:1;min-width:0;border:none;background:transparent;font-family:var(--head,'Michroma',sans-serif);font-size:12px;color:var(--text-muted);padding:11px 2px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap;}
 #tab-historique .ma-switch button.on{background:var(--accent);color:#fff;}
-#tab-historique .ma-switch button.on.cx{background:#0EA5E9;}
+#tab-historique .ma-switch button.on.cx{background:#9D5FD3;}
+#tab-historique .ma-switch button.on.cr{background:#931F1D;}
 #tab-historique .ma-switch svg{width:15px;height:15px;flex:none;}
 #tab-historique .ma-tabs{display:flex;gap:5px;background:var(--surface2);border-radius:12px;padding:4px;}
 #tab-historique .ma-tabs button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:700;font-size:11.5px;color:var(--text-muted);padding:8px 0;border-radius:9px;white-space:nowrap;cursor:pointer;}
 #tab-historique .ma-tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
-#tab-historique .ma-tabs button.on.cx{color:#0EA5E9;}
+#tab-historique .ma-tabs button.on.cx{color:#9D5FD3;}
+#tab-historique .ma-tabs button.on.cr{color:#931F1D;}
 #tab-historique .ma-period{display:flex;gap:4px;}
+#tab-historique .ma-period-wrap{margin:2px 0 12px;}
+#tab-historique .ma-pmenu{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));margin-top:4px;}
+#tab-historique .ma-pmenu div{padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);}
+#tab-historique .ma-pmenu div + div{border-top:1px solid var(--border);}
 #tab-historique .ma-period button{flex:1;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:11px;color:var(--text-muted);padding:7px 0;border-radius:9px;cursor:pointer;}
 #tab-historique .ma-period button.on{background:var(--accent-a10,rgba(26,95,255,.10));border-color:var(--accent);color:var(--accent);}
 #tab-historique .ma-period button.plus{flex:0 0 auto;min-width:42px;padding:7px 10px;display:flex;align-items:center;justify-content:center;color:var(--accent);white-space:nowrap;}
@@ -1544,9 +1548,9 @@
 #tab-historique .ma-sec .r{letter-spacing:0;text-transform:none;font-size:11px;color:var(--text-subtle);}
 #tab-historique .ma-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
 #tab-historique .ma-verdict{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:13px 15px;display:flex;gap:11px;align-items:flex-start;border-left:4px solid #00A854;}
-#tab-historique .ma-verdict.cx{border-left-color:#0EA5E9;} #tab-historique .ma-verdict.acc{border-left-color:var(--accent);}
+#tab-historique .ma-verdict.cx{border-left-color:#9D5FD3;} #tab-historique .ma-verdict.acc{border-left-color:var(--accent);} #tab-historique .ma-verdict.cr{border-left-color:#931F1D;}
 #tab-historique .ma-vic{width:24px;height:24px;border-radius:999px;flex:none;display:grid;place-items:center;color:#fff;background:#00A854;}
-#tab-historique .ma-verdict.cx .ma-vic{background:#0EA5E9;} #tab-historique .ma-verdict.acc .ma-vic{background:var(--accent);}
+#tab-historique .ma-verdict.cx .ma-vic{background:#9D5FD3;} #tab-historique .ma-verdict.acc .ma-vic{background:var(--accent);}
 #tab-historique .ma-verdict .vh{font-size:14px;font-weight:700;line-height:1.25;color:var(--text);}
 #tab-historique .ma-verdict .vd{font-size:12px;color:var(--text-muted);margin-top:2px;line-height:1.4;}
 #tab-historique .ma-kgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
@@ -1636,7 +1640,7 @@
 #tab-historique .ma-hdet{display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--border);padding-top:9px;}
 #tab-historique .ma-hex{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;} #tab-historique .ma-hex .n{font-weight:600;color:var(--text);} #tab-historique .ma-hex .s{color:var(--text-muted);font-variant-numeric:tabular-nums;}
 #tab-historique .ma-actsel{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));padding:12px 14px;color:var(--text-muted);}
-#tab-historique .ma-actic{width:38px;height:38px;border-radius:11px;background:rgba(14,165,233,.12);color:#0EA5E9;display:grid;place-items:center;flex:none;}
+#tab-historique .ma-actic{width:38px;height:38px;border-radius:11px;background:rgba(157,95,211,.12);color:#9D5FD3;display:grid;place-items:center;flex:none;}
 #tab-historique .ma-actsel .a{font-family:var(--head,'Michroma',sans-serif);font-size:15px;color:var(--text);} #tab-historique .ma-actsel .b{font-size:10.5px;color:var(--text-subtle);margin-top:2px;}
 #tab-historique .ma-sport{display:flex;align-items:center;gap:12px;padding:12px 14px;} #tab-historique .ma-sport + .ma-sport{border-top:1px solid var(--border);}
 #tab-historique .ma-spic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff;flex:none;}
@@ -1668,17 +1672,8 @@
           <button id="ma-tab-historique" onclick="maSetTab('historique')">Historique</button>
         </div>
 
-        <div class="ma-period" id="ma-period">
-          <button class="on" id="ma-per-semaine" onclick="maSetPeriode('semaine',this)">Semaine</button>
-          <button onclick="maSetPeriode('mois',this)">Mois</button>
-          <button onclick="maSetPeriode('3mois',this)">3 mois</button>
-          <button class="plus" id="ma-per-plus" title="Période plus longue (6 mois, 9 mois, année…)" onclick="maSetPeriode('plus',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
-        </div>
-        <div id="ma-period-menu" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));">
-          <div onclick="maSetPeriode('6mois')" style="padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);">6 mois</div>
-          <div onclick="maSetPeriode('9mois')" style="padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);border-top:1px solid var(--border);">9 mois</div>
-          <div onclick="maSetPeriode('annee')" style="padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);border-top:1px solid var(--border);">Année</div>
-        </div>
+        <!-- Le sélecteur de période est rendu DANS chaque pane (sous la Lecture en
+             Résumé, au-dessus du graphe en Tendances) via _maPeriodHtml(). -->
 
         <div id="ma-muscu-resume" class="ma-pane">
 <div class="ma-sec">Ce mois-ci</div>
@@ -1748,12 +1743,12 @@
 <div class="ma-verdict cx"><span class="ma-vic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span><div><div class="vh">Ton endurance progresse</div><div class="vd">+1,8 km/h à FC équivalente sur le mois. Charge maîtrisée (ACWR 1.0) — tu peux monter le volume.</div></div></div>
 <div class="ma-sec">Tous sports · septembre <span class="r">16 sorties</span></div>
 <div class="ma-card">
-  <div class="ma-sport"><span class="ma-spic" style="background:#0EA5E9"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div class="ma-spmain"><div class="a">Vélo</div><div class="b">8 sorties · 4h48 · RPE 6</div></div><div class="ma-spval"><div class="v">168 km</div><div class="u">27,4 km/h</div></div></div><div class="ma-sport"><span class="ma-spic" style="background:#6366F1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/></svg></span><div class="ma-spmain"><div class="a">Footing</div><div class="b">5 sorties · 3h10 · RPE 6</div></div><div class="ma-spval"><div class="v">41 km</div><div class="u">10,4 km/h</div></div></div><div class="ma-sport"><span class="ma-spic" style="background:#22D3EE"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></span><div class="ma-spmain"><div class="a">Marche</div><div class="b">3 sorties · 2h20 · RPE 6</div></div><div class="ma-spval"><div class="v">12 km</div><div class="u">5,1 km/h</div></div></div>
+  <div class="ma-sport"><span class="ma-spic" style="background:#9D5FD3"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div class="ma-spmain"><div class="a">Vélo</div><div class="b">8 sorties · 4h48 · RPE 6</div></div><div class="ma-spval"><div class="v">168 km</div><div class="u">27,4 km/h</div></div></div><div class="ma-sport"><span class="ma-spic" style="background:#6366F1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/></svg></span><div class="ma-spmain"><div class="a">Footing</div><div class="b">5 sorties · 3h10 · RPE 6</div></div><div class="ma-spval"><div class="v">41 km</div><div class="u">10,4 km/h</div></div></div><div class="ma-sport"><span class="ma-spic" style="background:#22D3EE"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></span><div class="ma-spmain"><div class="a">Marche</div><div class="b">3 sorties · 2h20 · RPE 6</div></div><div class="ma-spval"><div class="v">12 km</div><div class="u">5,1 km/h</div></div></div>
 </div>
 <div class="ma-sec">Pas quotidiens <span class="r">selon la période</span></div>
-<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / semaine</span><span style="font-size:11px;font-weight:700;color:#0EA5E9">Ø 8 940 / jour</span></div><div class="ma-bars2"><span style="height:87%;background:#0EA5E9"></span><span style="height:94%;background:#0EA5E9"></span><span style="height:90%;background:#0EA5E9"></span><span style="height:100%;background:#0EA5E9"></span></div><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span></div></div>
+<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / semaine</span><span style="font-size:11px;font-weight:700;color:#9D5FD3">Ø 8 940 / jour</span></div><div class="ma-bars2"><span style="height:87%;background:#9D5FD3"></span><span style="height:94%;background:#9D5FD3"></span><span style="height:90%;background:#9D5FD3"></span><span style="height:100%;background:#9D5FD3"></span></div><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span></div></div>
 <div class="ma-sec">Charge cardio</div>
-<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">UA / semaine</span><span style="font-size:11px;color:#00A854;font-weight:700">ACWR 1.0 · optimal</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 52 L131 68 L195 31 L260 36 L324 10 L324 90 L2 90 Z" fill="rgba(14,165,233,.12)"/><path d="M2 84 L66 52 L131 68 L195 31 L260 36 L324 10" fill="none" stroke="#0EA5E9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#0EA5E9"/></svg><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span></div></div></div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">UA / semaine</span><span style="font-size:11px;color:#00A854;font-weight:700">ACWR 1.0 · optimal</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 52 L131 68 L195 31 L260 36 L324 10 L324 90 L2 90 Z" fill="rgba(157,95,211,.12)"/><path d="M2 84 L66 52 L131 68 L195 31 L260 36 L324 10" fill="none" stroke="#9D5FD3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#9D5FD3"/></svg><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span></div></div></div>
         <div id="ma-cardio-detail" class="ma-pane" style="display:none;">
 <div class="ma-sec">Choisis ton activité</div>
 <div class="ma-actsel"><span class="ma-actic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div style="flex:1"><div class="a">Vélo</div><div class="b">Course · Marche · Natation · Hyrox · Autre</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
@@ -1761,7 +1756,7 @@
 <div class="ma-k3">
   <div class="c"><span class="v">168</span><span class="u">km</span></div><div class="c"><span class="v">5h42</span><span class="u">temps</span></div><div class="c"><span class="v">27,4</span><span class="u">km/h moy</span></div><div class="c"><span class="v">178</span><span class="u">watts moy</span></div><div class="c"><span class="v">141</span><span class="u">bpm moy</span></div><div class="c"><span class="v">6,2</span><span class="u">rpe moy</span></div>
 </div>
-<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Distance ▾</span><span style="font-size:11px;color:#00A854;font-weight:700">▲ +18% par semaine</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 72 L131 78 L195 47 L260 53 L324 10 L324 90 L2 90 Z" fill="rgba(14,165,233,.12)"/><path d="M2 84 L66 72 L131 78 L195 47 L260 53 L324 10" fill="none" stroke="#0EA5E9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#0EA5E9"/></svg><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span><span>S5</span></div></div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Distance ▾</span><span style="font-size:11px;color:#00A854;font-weight:700">▲ +18% par semaine</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 72 L131 78 L195 47 L260 53 L324 10 L324 90 L2 90 Z" fill="rgba(157,95,211,.12)"/><path d="M2 84 L66 72 L131 78 L195 47 L260 53 L324 10" fill="none" stroke="#9D5FD3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#9D5FD3"/></svg><div class="ma-axis"><span>S1</span><span>S2</span><span>S3</span><span>S4</span><span>S5</span></div></div>
 <div class="ma-sec">Dernières sorties</div>
 <div class="ma-card">
   <div class="ma-hhd" style="padding:11px 14px"><div class="ma-hdate"><div class="dd">07</div><div class="mm">sept</div></div><div class="ma-hmain"><div class="a">Sortie route</div><div class="b">42,3 km · 1h28 · 28,6 km/h · 152 bpm</div></div><span class="ma-chip">RPE 7</span></div>
@@ -1769,10 +1764,10 @@
 </div></div>
         <div id="ma-cardio-tendances" class="ma-pane" style="display:none;">
 <div class="ma-sec">Efficience aérobie <span class="r">vitesse à FC égale</span></div>
-<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">km/h @ 145 bpm</span><span style="font-size:11px;color:#00A854;font-weight:700">▲ +1,8 km/h</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 66 L131 71 L195 43 L260 36 L324 10 L324 90 L2 90 Z" fill="rgba(14,165,233,.12)"/><path d="M2 84 L66 66 L131 71 L195 43 L260 36 L324 10" fill="none" stroke="#0EA5E9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#0EA5E9"/></svg><div class="ma-axis"><span>S-6</span><span>S-4</span><span>S-2</span><span>Auj.</span></div></div>
+<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">km/h @ 145 bpm</span><span style="font-size:11px;color:#00A854;font-weight:700">▲ +1,8 km/h</span></div><svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none"><path d="M2 84 L66 66 L131 71 L195 43 L260 36 L324 10 L324 90 L2 90 Z" fill="rgba(157,95,211,.12)"/><path d="M2 84 L66 66 L131 71 L195 43 L260 36 L324 10" fill="none" stroke="#9D5FD3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="324" cy="10" r="3.4" fill="#9D5FD3"/></svg><div class="ma-axis"><span>S-6</span><span>S-4</span><span>S-2</span><span>Auj.</span></div></div>
 <div class="ma-sec">Volume par sport <span class="r">4 vs 4 sem.</span></div>
 <div class="ma-card ma-vol">
-  <div class="ma-volrow"><div class="lh"><span class="n">Vélo</span><span class="p">168 km</span></div><div class="ma-vt"><span style="width:93%;background:#0EA5E9"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Footing</span><span class="p">41 km</span></div><div class="ma-vt"><span style="width:68%;background:#6366F1"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Marche</span><span class="p">12 km</span></div><div class="ma-vt"><span style="width:40%;background:#22D3EE"></span></div></div>
+  <div class="ma-volrow"><div class="lh"><span class="n">Vélo</span><span class="p">168 km</span></div><div class="ma-vt"><span style="width:93%;background:#9D5FD3"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Footing</span><span class="p">41 km</span></div><div class="ma-vt"><span style="width:68%;background:#6366F1"></span></div></div><div class="ma-volrow"><div class="lh"><span class="n">Marche</span><span class="p">12 km</span></div><div class="ma-vt"><span style="width:40%;background:#22D3EE"></span></div></div>
 </div>
 <div class="ma-sec">Ce qui bouge</div>
 <div class="ma-trend">
@@ -1782,7 +1777,7 @@
 </div></div>
         <div id="ma-cardio-historique" class="ma-pane" style="display:none;">
 <div class="ma-card">
-  <div class="ma-hhd" style="padding:11px 14px;"><div class="ma-hdate"><div class="dd">12</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#0EA5E9"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div class="ma-hmain"><div class="a">Vélo · route</div><div class="b">32 km · 1h10 · 27,4 km/h</div></div><span class="ma-chip">RPE 6</span></div><div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">10</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#22D3EE"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></span><div class="ma-hmain"><div class="a">Marche</div><div class="b">4,2 km · 48 min · 5,1 km/h</div></div><span class="ma-chip">RPE 2</span></div><div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">08</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#6366F1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/></svg></span><div class="ma-hmain"><div class="a">Footing</div><div class="b">8,1 km · 44 min · 11,0 km/h</div></div><span class="ma-chip">RPE 7</span></div><div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">06</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#0EA5E9"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div class="ma-hmain"><div class="a">Home-trainer</div><div class="b">28 km · 58 min · 195 W</div></div><span class="ma-chip">RPE 6</span></div>
+  <div class="ma-hhd" style="padding:11px 14px;"><div class="ma-hdate"><div class="dd">12</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#9D5FD3"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div class="ma-hmain"><div class="a">Vélo · route</div><div class="b">32 km · 1h10 · 27,4 km/h</div></div><span class="ma-chip">RPE 6</span></div><div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">10</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#22D3EE"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></span><div class="ma-hmain"><div class="a">Marche</div><div class="b">4,2 km · 48 min · 5,1 km/h</div></div><span class="ma-chip">RPE 2</span></div><div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">08</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#6366F1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/></svg></span><div class="ma-hmain"><div class="a">Footing</div><div class="b">8,1 km · 44 min · 11,0 km/h</div></div><span class="ma-chip">RPE 7</span></div><div class="ma-hhd" style="padding:11px 14px;border-top:1px solid var(--border)"><div class="ma-hdate"><div class="dd">06</div><div class="mm">sept</div></div><span class="ma-spic" style="width:30px;height:30px;background:#9D5FD3"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg></span><div class="ma-hmain"><div class="a">Home-trainer</div><div class="b">28 km · 58 min · 195 W</div></div><span class="ma-chip">RPE 6</span></div>
 </div>
 <div class="ma-note">Flux chronologique <b>tous sports mélangés</b> (vs « Par sport » qui isole une activité). Filtre par période + tap = détail.</div></div>
         <div id="ma-croise-resume" class="ma-pane" style="display:none;">
@@ -1792,7 +1787,7 @@
 <div class="ma-sec">Répartition de la charge</div>
 <div class="ma-card ma-vol">
   <div class="ma-volrow"><div class="lh"><span class="n">Musculation</span><span class="p">62%</span></div><div class="ma-vt"><span style="width:62%"></span></div></div>
-  <div class="ma-volrow"><div class="lh"><span class="n">Cardio</span><span class="p">38%</span></div><div class="ma-vt"><span style="width:38%;background:#0EA5E9"></span></div></div>
+  <div class="ma-volrow"><div class="lh"><span class="n">Cardio</span><span class="p">38%</span></div><div class="ma-vt"><span style="width:38%;background:#9D5FD3"></span></div></div>
 </div>
 <div class="ma-sec">Bien-être × performance</div>
 <div class="ma-trend">
@@ -1934,7 +1929,7 @@
          sans données → état vide honnête. -->
     <div id="tab-cardio" class="tab-content">
       <style id="cx-css">
-        #tab-cardio{ --cx-accent:#0EA5E9; --cx-accent-a:rgba(14,165,233,.12); --cx-accent-strong:#0b7fb4; }
+        #tab-cardio{ --cx-accent:#9D5FD3; --cx-accent-a:rgba(157,95,211,.12); --cx-accent-strong:#7A45B0; }
         /* padding bas : dégage les boutons du bas sous la bulle FAB fixe. */
         #tab-cardio .cx-wrap{ display:flex; flex-direction:column; gap:12px; padding-bottom:104px; }
         #tab-cardio .cx-cap{ font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-subtle); font-weight:700; margin:2px 2px -6px; }
@@ -1961,7 +1956,7 @@
         #tab-cardio .cx-kpi .u{ font-size:9px; color:var(--text-subtle); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
         #tab-cardio .cx-chart{ padding:13px 15px; display:flex; flex-direction:column; gap:9px; box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08)); }
         #tab-cardio .cx-mdrop{ display:inline-flex; align-items:center; gap:6px; }
-        #tab-cardio .cx-mdrop select{ appearance:none; -webkit-appearance:none; background:var(--cx-accent-a); color:var(--cx-accent-strong); font-family:inherit; font-weight:700; font-size:12px; border:1px solid rgba(14,165,233,.25); border-radius:999px; padding:5px 26px 5px 11px; cursor:pointer; background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%229%22 height=%225%22><path d=%22M0 0l4.5 5 4.5-5z%22 fill=%22%230b7fb4%22/></svg>'); background-repeat:no-repeat; background-position:right 9px center; }
+        #tab-cardio .cx-mdrop select{ appearance:none; -webkit-appearance:none; background:var(--cx-accent-a); color:var(--cx-accent-strong); font-family:inherit; font-weight:700; font-size:12px; border:1px solid rgba(157,95,211,.25); border-radius:999px; padding:5px 26px 5px 11px; cursor:pointer; background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%229%22 height=%225%22><path d=%22M0 0l4.5 5 4.5-5z%22 fill=%22%230b7fb4%22/></svg>'); background-repeat:no-repeat; background-position:right 9px center; }
         #tab-cardio .cx-chart .trend{ font-size:10.5px; font-weight:700; }
         #tab-cardio .cx-xlab{ display:flex; justify-content:space-between; font-size:9px; color:var(--text-subtle); padding:0 2px; }
         #tab-cardio .cx-sec{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-subtle); font-weight:700; margin:4px 2px -4px; }
@@ -1977,7 +1972,7 @@
         #tab-cardio .cx-acts{ display:flex; gap:9px; }
         #tab-cardio .cx-btn{ flex:1; display:flex; align-items:center; justify-content:center; gap:7px; height:46px; border-radius:13px; font-family:inherit; font-weight:700; font-size:12.5px; border:none; cursor:pointer; }
         #tab-cardio .cx-btn svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
-        #tab-cardio .cx-btn.primary{ background:var(--cx-accent); color:#fff; box-shadow:0 6px 16px rgba(14,165,233,.3); }
+        #tab-cardio .cx-btn.primary{ background:var(--cx-accent); color:#fff; box-shadow:0 6px 16px rgba(157,95,211,.3); }
         #tab-cardio .cx-btn.ghost{ background:var(--surface); color:var(--cx-accent-strong); border:1px solid var(--border); }
         #tab-cardio .cx-muted{ font-size:12px; color:var(--text-muted); line-height:1.5; }
       </style>
@@ -2325,8 +2320,8 @@
 <div class="toast" id="toast"></div>
 
 <!-- ===== MODAL BIEN-ÊTRE PRÉ/POST SÉANCE ===== -->
-<div id="wellness-overlay" onclick="fermerWellnessModal()" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:300;"></div>
-<div id="wellness-modal" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:301;background:var(--surface);border-radius:20px 20px 0 0;max-height:92vh;flex-direction:column;">
+<div id="wellness-overlay" onclick="fermerWellnessModal()" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1300;"></div>
+<div id="wellness-modal" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:1301;background:var(--surface);border-radius:20px 20px 0 0;max-height:92vh;flex-direction:column;">
 
   <!-- Poignée + header -->
   <div style="padding:10px 16px 0;text-align:center;flex-shrink:0;">
