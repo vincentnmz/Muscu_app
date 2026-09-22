@@ -3622,12 +3622,20 @@ async function handleSaveObjectif(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const objectif = String(body.objectif ?? body.strategie ?? '')
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  // Objectif de séances/semaine (1..7) : n'est persisté que si fourni (sinon on ne
+  // touche pas la valeur existante). Alimente l'anneau d'adhérence « X/N ».
+  const ssRaw = body.seances_semaine
+  const seancesSem = (ssRaw === '' || ssRaw == null || isNaN(Number(ssRaw))) ? null : Math.max(1, Math.min(7, Math.round(Number(ssRaw))))
   // table objectif : une ligne par athlète (colonne objectif = chaîne stratégie)
   const { data: existing } = await sb().from('objectif').select('id').eq('athlete_id', athlete_id).limit(1)
   if (existing?.length) {
-    await sb().from('objectif').update({ objectif }).eq('id', existing[0].id)
+    const patch: any = { objectif }
+    if (seancesSem != null) patch.seances_semaine = seancesSem
+    await sb().from('objectif').update(patch).eq('id', existing[0].id)
   } else {
-    await sb().from('objectif').insert({ athlete_id, objectif })
+    const ins: any = { athlete_id, objectif }
+    if (seancesSem != null) ins.seances_semaine = seancesSem
+    await sb().from('objectif').insert(ins)
   }
   // garde athletes.strategie en phase (lu par la réponse de login)
   await sb().from('athletes').update({ strategie: objectif }).eq('id', athlete_id)
