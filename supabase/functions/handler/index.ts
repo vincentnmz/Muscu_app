@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 
 const CORS = {
@@ -435,6 +435,10 @@ const CORE_NIVEAUX = [
 const CORE_FIABILITE = {
   histoMin: 28,          // jours d'historique de charge min pour un ACWR fiable
   joursActifsMin: 6,     // jours actifs min sur 28 (chronique non trouée) — décision métier
+  joursActifsChroniqueMin: 4, // jours actifs min HORS semaine aiguë (jours 7→27). En dessous, la
+                              // base chronique est creuse (reprise/vacances) → l'ACWR flambe même
+                              // pour un volume normal → NON interprétable. Auto-détection sans
+                              // que l'athlète ait à déclarer « retour vacances ».
   confJoursFaible: 7,    // < 7 j d'historique → confiance faible
   confJoursMoyen: 21,    // < 21 j → confiance moyenne
   wellnessMin: 3,        // < 3 mesures bien-être → confiance moyenne
@@ -501,24 +505,28 @@ function calculerChargeSport(sport: string, rows: any[]): { chargeParJour: Recor
 function normaliserCharge(x: { chargeParJour: Record<string, number>; premiere: string | null }) { return x }
 
 // C. Ratio ACWR couplé + nb de jours actifs sur 28 j (pour la fiabilité chronique).
-function calculerACWR(chargeParJour: Record<string, number>, now: Date): { ratio: number | null; aigue: number; chronique: number; joursActifs28: number } {
-  let aigue = 0, somme28 = 0, joursActifs28 = 0
+function calculerACWR(chargeParJour: Record<string, number>, now: Date): { ratio: number | null; aigue: number; chronique: number; joursActifs28: number; joursActifsChronique: number } {
+  let aigue = 0, somme28 = 0, joursActifs28 = 0, joursActifsChronique = 0
   for (let d = 0; d < 28; d++) {
     const v = chargeParJour[fmtYMD(minus(now, d))] || 0
     somme28 += v
-    if (v > 0) joursActifs28++
+    if (v > 0) { joursActifs28++; if (d >= 7) joursActifsChronique++ }  // jours actifs HORS semaine aiguë (base chronique réelle)
     if (d < 7) aigue += v
   }
   const chronique = somme28 / 4
-  return { ratio: chronique > 0 ? Math.round(aigue / chronique * 100) / 100 : null, aigue, chronique, joursActifs28 }
+  return { ratio: chronique > 0 ? Math.round(aigue / chronique * 100) / 100 : null, aigue, chronique, joursActifs28, joursActifsChronique }
 }
 
 // Garde-fou FIABILITÉ centralisé (une seule copie) : historique < 28 j, reprise vacances < 28 j,
 // OU chronique trouée (jours actifs insuffisants). Retourne false = ACWR non interprétable.
-function fiabiliteACWR(premiere: string | null, ctxObj: any, now: Date, joursActifs28: number): boolean {
+function fiabiliteACWR(premiere: string | null, ctxObj: any, now: Date, joursActifs28: number, joursActifsChronique = 99): boolean {
   const histo = _joursDepuis(premiere, now)
   if (histo == null || histo < CORE_FIABILITE.histoMin) return false
   if (joursActifs28 < CORE_FIABILITE.joursActifsMin) return false
+  // Auto-détection reprise / layoff : si la base chronique (jours actifs hors semaine
+  // aiguë) est trop creuse, l'ACWR n'est PAS interprétable — un volume normal après
+  // une coupure ferait flamber le ratio (ex. 2.99) et fausserait le point du jour.
+  if (joursActifsChronique < CORE_FIABILITE.joursActifsChroniqueMin) return false
   if (ctxObj && String(ctxObj.etat || '') === 'retour_vacances') {
     const rd = _joursDepuis(ctxObj.date_debut, now)
     if (rd != null && rd >= 0 && rd < CORE_CONTEXTES.retour_vacances.acwrRepriseJours) return false
@@ -1485,6 +1493,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   } else {
     constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${Math.round(dist28 * 10) / 10} km au total)` : ''}.` })
     if (chEvol != null && chEvol >= 50) constats.push({ ton: 'attention', texte: `Ta charge cardio a fortement augmenté (+${chEvol}% sur 4 semaines) — hausse rapide.` })
+    else if (chEvol != null && chEvol <= -50) constats.push({ ton: 'attention', texte: `Forte baisse de ton activité cardio (${chEvol}% sur 4 semaines) — si l'endurance est un objectif, reprends progressivement.` })
     else if (chEvol != null && chEvol <= -40) constats.push({ ton: 'neutre', texte: `Ta charge cardio a baissé (${chEvol}% sur 4 semaines).` })
     // Efficience : FC moyenne 1re vs 2de moitié — MAIS seulement « à effort comparable »,
     // càd si le RPE moyen des deux moitiés est proche (sinon une FC plus basse peut venir
@@ -1575,10 +1584,16 @@ function buildAlertesCentre(moteur: any, comparison: any): any[] {
     out.push({ type, severity: severity || 'moyenne', source: source || 'moteur', title: TITRES[type] || type, evidence: evidence || '', context, reliability, action: ACTIONS[type] || '' })
   ;((moteur && moteur.alertes) || []).forEach((a: any) => push(a.type, a.severite, a.message, 'moteur'))
   // Stagnation : ≥3 exercices en baisse cette semaine (depuis comparison), si non couvert.
+  // FIABILITÉ (anti-fausse-alerte) : on NE crie PAS « stagnation » quand le contexte
+  // EXPLIQUE la baisse (deload / retour de vacances / retour de blessure — la baisse
+  // est voulue ou attendue), ni quand les données sont trop maigres pour l'affirmer
+  // (confiance faible ou non interprétable). Sinon on accuse à tort une régression.
+  const ctxAmnistieStag = context === 'deload' || context === 'retour_vacances' || context === 'retour_blessure'
+  const fiabInsuffisanteStag = reliability === 'faible' || reliability === 'non_interpretable'
   const det = (comparison && comparison.j7_vs_j7prec && comparison.j7_vs_j7prec.charge_details) || []
   const baisseAll = det.filter((d: any) => d && d.down)
   const baisseExos = baisseAll.map((d: any) => d.exercice).filter(Boolean)
-  if (baisseAll.length >= 3 && !out.some(a => a.type === 'stagnation')) {
+  if (baisseAll.length >= 3 && !out.some(a => a.type === 'stagnation') && !ctxAmnistieStag && !fiabInsuffisanteStag) {
     // On NOMME les exercices concernés (sinon « 3 exercices en baisse » sans détail).
     const liste = baisseExos.slice(0, 6).join(', ')
     const ev = baisseExos.length ? `${baisseAll.length} exercices en baisse cette semaine : ${liste}.` : `${baisseAll.length} exercices en baisse cette semaine.`
@@ -1774,6 +1789,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     jour: r.jour != null ? Number(r.jour) : null,   // jour conseillé (1=lun … 7=dim), null = non planifié
     charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null,   // cible : % du 1RM
     rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null,                  // cible : RPE
+    type: r.type || null,                                                         // 'cardio' = item cardio (hybride), sinon muscu
+    cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null,         // valeur de la cible cardio
+    cardio_unite: r.cardio_unite || null,                                         // 'min' | 'km' | 'libre'
   }))
 
   const bien_etre = (beRows || []).map(r => ({
@@ -1876,7 +1894,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const seances7M = new Set(perfs.filter(r => (normDate(r.date) || '') >= c7).map(r => normDate(r.date))).size
     const histoM = _joursDepuis(premiereP, now)
     const etatM = evaluerEtatAthlete({
-      acwr, acwrFiable: fiabiliteACWR(premiereP, ctxObjM, now, acwrCalcA.joursActifs28), seances7: seances7M,
+      acwr, acwrFiable: fiabiliteACWR(premiereP, ctxObjM, now, acwrCalcA.joursActifs28, acwrCalcA.joursActifsChronique), seances7: seances7M,
       // Verdict athlète : fatigue = MOYENNE récente (readiness), pas le pire jour.
       douleur: sigM.douleur, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, courbatures: null,
       injStatut: null, ctxEtat: ctxEtatM,
@@ -2084,7 +2102,7 @@ async function handleGetCoachProgramme(params: URLSearchParams): Promise<Respons
   const athleteId = params.get('athlete_id')
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
   const { data } = await sb().from('programme').select('*').eq('athlete_id', athleteId).order('groupe_id').order('id')
-  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null, charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null, rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null }))
+  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null, charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null, rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null, type: r.type || null, cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null, cardio_unite: r.cardio_unite || null }))
   // le front lit data.lignes ; on garde aussi "programme" par rétro-compat
   return jsonResp({ ok: true, lignes, programme: lignes })
 }
@@ -2281,9 +2299,15 @@ function evaluerEtatAthlete(s: EtatInput): any {
   let niveau: number
   if (s.injStatut === 'indispo') niveau = 2
   else {
-    const haute = alertesEtat.some(a => a.severite === 'haute')
+    // ACWR = signal, pas verdict : une surcharge ACWR SEULE ne fait plus passer la
+    // journée en rouge (l'indicateur est incertain et ne doit pas donner le ton). Il
+    // faut un signal RESSENTI concordant (douleur / fatigue / sommeil) pour le rouge.
+    // Seule → elle reste une alerte (→ Vigilance orange via `mid`).
+    const signalRessentiConcordant = douleurGene || fatigueHaute || sommeilBas
+    const chargeRouge = surchargeN >= 2 && signalRessentiConcordant
+    const haute = alertesEtat.some(a => a.severite === 'haute' && a.type !== 'surcharge')
     const combo = fatigueHaute && sommeilBas && chargeHaute        // §16 : combinaison de signaux
-    const bad = haute || risqueBlessureN === 2 || recFaibleConcordante || combo
+    const bad = haute || chargeRouge || risqueBlessureN === 2 || recFaibleConcordante || combo
     const mid = alertesEtat.length > 0 || risqueBlessureN === 1 || recFaible || s.injStatut === 'retour_progressif'
     niveau = bad ? 2 : mid ? 1 : 0
   }
@@ -2428,7 +2452,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       const acwr = acwrCalc.ratio
       const inj = injByAth[j.athlete_id] || null
       const histoDays = _joursDepuis(a.premiere, now)
-      const acwrFiable = fiabiliteACWR(a.premiere, ctxObjOf(j.athlete_id), now, acwrCalc.joursActifs28)
+      const acwrFiable = fiabiliteACWR(a.premiere, ctxObjOf(j.athlete_id), now, acwrCalc.joursActifs28, acwrCalc.joursActifsChronique)
 
       // Signaux agrégés (fenêtre 7 j) — MÊME agrégation que la fiche (_aggSignaux).
       const sig = _aggSignaux(beRawByAth[j.athlete_id] || [], now, 7)
@@ -2663,7 +2687,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     const beFoot = (beAll || []).filter(rb => { const dI = normDate(rb.date); return dI ? !renfoKeys.has(`${dI}|${String(rb.seance_id || '')}`) : true })
     const sig7 = _aggSignaux(beFoot, now, 7)
     const histoDaysF = _joursDepuis(premiereCharge, now)
-    const acwrFiableF = fiabiliteACWR(premiereCharge, contexte, now, acwrCalcF.joursActifs28)
+    const acwrFiableF = fiabiliteACWR(premiereCharge, contexte, now, acwrCalcF.joursActifs28, acwrCalcF.joursActifsChronique)
     const etat = evaluerEtatAthlete({
       acwr, acwrFiable: acwrFiableF, seances7: seances7f,
       douleur: sig7.douleur, fatigue: sig7.fatigue, sommeil: sig7.sommeil,
@@ -3607,12 +3631,20 @@ async function handleSaveObjectif(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const objectif = String(body.objectif ?? body.strategie ?? '')
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  // Objectif de séances/semaine (1..7) : n'est persisté que si fourni (sinon on ne
+  // touche pas la valeur existante). Alimente l'anneau d'adhérence « X/N ».
+  const ssRaw = body.seances_semaine
+  const seancesSem = (ssRaw === '' || ssRaw == null || isNaN(Number(ssRaw))) ? null : Math.max(1, Math.min(7, Math.round(Number(ssRaw))))
   // table objectif : une ligne par athlète (colonne objectif = chaîne stratégie)
   const { data: existing } = await sb().from('objectif').select('id').eq('athlete_id', athlete_id).limit(1)
   if (existing?.length) {
-    await sb().from('objectif').update({ objectif }).eq('id', existing[0].id)
+    const patch: any = { objectif }
+    if (seancesSem != null) patch.seances_semaine = seancesSem
+    await sb().from('objectif').update(patch).eq('id', existing[0].id)
   } else {
-    await sb().from('objectif').insert({ athlete_id, objectif })
+    const ins: any = { athlete_id, objectif }
+    if (seancesSem != null) ins.seances_semaine = seancesSem
+    await sb().from('objectif').insert(ins)
   }
   // garde athletes.strategie en phase (lu par la réponse de login)
   await sb().from('athletes').update({ strategie: objectif }).eq('id', athlete_id)
@@ -3652,11 +3684,19 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
   // cibles (phase 2) : % du 1RM + RPE cible. '' → null (efface).
   const pctIn = (body.charge_pct_1rm === '' || body.charge_pct_1rm == null) ? null : Number(body.charge_pct_1rm)
   const rpeIn = (body.rpe_cible === '' || body.rpe_cible == null) ? null : Number(body.rpe_cible)
+  // Item CARDIO (programme hybride) : type='cardio', exercice = activité, cible =
+  // (valeur, unité 'min'|'km'|'libre'). Les champs muscu (séries/reps…) restent nuls.
+  const typeIn = (body.type === 'cardio') ? 'cardio' : (body.type === 'muscu' ? 'muscu' : null)
+  const cibleIn = (body.cardio_cible === '' || body.cardio_cible == null) ? null : Number(body.cardio_cible)
+  const uniteIn = (body.cardio_unite === '' || body.cardio_unite == null) ? null : String(body.cardio_unite)
   if (row_index) {
     const patch: any = { seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id }
     if (body.jour !== undefined) patch.jour = jourIn
     if (body.charge_pct_1rm !== undefined) patch.charge_pct_1rm = pctIn
     if (body.rpe_cible !== undefined) patch.rpe_cible = rpeIn
+    if (body.type !== undefined) patch.type = typeIn
+    if (body.cardio_cible !== undefined) patch.cardio_cible = cibleIn
+    if (body.cardio_unite !== undefined) patch.cardio_unite = uniteIn
     const { error } = await sb().from('programme').update(patch).eq('id', row_index)
     if (error) return jsonResp({ erreur: error.message })
   } else {
@@ -3666,7 +3706,7 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
       const { data: sib } = await sb().from('programme').select('jour').eq('athlete_id', athlete_id).eq('seance_id', seance_id).not('jour', 'is', null).limit(1)
       if (sib && sib.length && sib[0].jour != null) jour = Number(sib[0].jour)
     }
-    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour, charge_pct_1rm: pctIn, rpe_cible: rpeIn })
+    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour, charge_pct_1rm: pctIn, rpe_cible: rpeIn, type: typeIn, cardio_cible: cibleIn, cardio_unite: uniteIn })
     if (error) return jsonResp({ erreur: error.message })
   }
   return jsonResp({ ok: true })
@@ -3845,6 +3885,7 @@ async function handleSaveHyrox(body: any): Promise<Response> {
   Object.keys(poids).forEach(k => { if (num(poids[k]) != null) rows.push(R('hyrox_poids_' + k, String(Number(poids[k])), 'kg')) })
   const { error } = await sb().from('indicateurs').insert(rows)
   if (error) return jsonResp({ success: false, error: error.message })
+  try { await rebuildActivites(athlete_id) } catch (_) {}   // P0.2 : entité Activité à jour
   return jsonResp({ ok: true, success: true, seance_id: sid, total_sec: total })
 }
 
@@ -4067,7 +4108,87 @@ async function handleSaveCardio(body: any): Promise<Response> {
     const { error } = await sb().from('indicateurs').insert(rows)
     if (error) return jsonResp({ success: false, error: error.message })
   }
+  try { await rebuildActivites(athlete_id) } catch (_) {}   // P0.2 : tenir l'entité Activité à jour
   return jsonResp({ success: true, seance_id: sid })
+}
+
+// ═══════════ P0.2 — Entité Activité canonique (socle multi-source) ═══════════
+// (Re)construit `activites` + `activite_sources` à partir des séances cardio
+// existantes (indicateurs cardio_%). Idempotent : upsert sur (athlete_id, seance_id)
+// → l'activity_id reste STABLE, pour que le GPS et les autres sources s'y rattachent
+// plus tard sans casser les liens. N'affecte pas le moteur (table à part).
+async function rebuildActivites(athlete_id: string): Promise<{ built: number; error?: string }> {
+  const { data: rows, error } = await sb().from('indicateurs')
+    .select('date, seance_id, cle, valeur, source').eq('athlete_id', athlete_id).like('seance_id', 'cardio_%')
+  if (error) return { built: 0, error: error.message }
+  const bySid: Record<string, { date: string; cles: Record<string, string>; source: string }> = {}
+  for (const r of (rows || [])) {
+    const sid = String(r.seance_id)
+    if (!bySid[sid]) bySid[sid] = { date: normDate(r.date), cles: {}, source: '' }
+    bySid[sid].cles[String(r.cle)] = String(r.valeur)
+    if (r.source && !bySid[sid].source) bySid[sid].source = String(r.source)
+  }
+  const srcMeta: Record<string, string> = {}
+  const actRows = Object.keys(bySid).map((sid) => {
+    const b = bySid[sid]
+    const isHyrox = sid.indexOf('cardio_hyrox_') === 0 || b.cles['type_cardio'] === 'hyrox'
+    const type = isHyrox ? 'hyrox' : (b.cles['type_cardio'] || 'autre')
+    const dureeS = isHyrox
+      ? (Number(b.cles['hyrox_total']) || (Number(b.cles['duree']) || 0) * 60)
+      : (Number(b.cles['duree']) || 0) * 60
+    const distM = (Number(b.cles['distance']) || 0) * 1000
+    const debut = b.date ? new Date(b.date + 'T00:00:00Z').toISOString() : null
+    const src = (b.source === 'fitbit') ? 'google_health' : 'manual'
+    srcMeta[sid] = src
+    return {
+      athlete_id, seance_id: sid, type, debut, fin: null,
+      duree_s: dureeS || null, distance_m: distM || null,
+      source_primaire: src, statut: 'complete', updated_at: new Date().toISOString(),
+    }
+  })
+  if (!actRows.length) return { built: 0 }
+  const { data: upserted, error: upErr } = await sb().from('activites')
+    .upsert(actRows, { onConflict: 'athlete_id,seance_id' }).select('id, seance_id')
+  if (upErr) return { built: 0, error: upErr.message }
+  const srcRows = (upserted || []).map((a: any) => ({
+    activity_id: a.id, source: srcMeta[String(a.seance_id)] || 'manual',
+    source_ref: String(a.seance_id), imported_at: new Date().toISOString(),
+  }))
+  if (srcRows.length) {
+    const { error: sErr } = await sb().from('activite_sources').upsert(srcRows, { onConflict: 'activity_id,source' })
+    if (sErr) return { built: actRows.length, error: sErr.message }
+  }
+  return { built: actRows.length }
+}
+
+async function handleRebuildActivites(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const r = await rebuildActivites(athlete_id)
+  if (r.error) return jsonResp({ success: false, error: r.error, built: r.built })
+  return jsonResp({ success: true, built: r.built })
+}
+
+async function handleGetActivites(params: URLSearchParams): Promise<Response> {
+  const athlete_id = params.get('athlete_id') || ''
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const { data: acts, error } = await sb().from('activites')
+    .select('*').eq('athlete_id', athlete_id).order('debut', { ascending: false }).limit(500)
+  if (error) return jsonResp({ success: false, error: error.message })
+  const ids = (acts || []).map((a: any) => a.id)
+  let sources: any[] = []
+  if (ids.length) {
+    const { data: srcs } = await sb().from('activite_sources').select('activity_id, source, source_ref').in('activity_id', ids)
+    sources = srcs || []
+  }
+  const byAct: Record<string, string[]> = {}
+  for (const s of sources) { (byAct[String(s.activity_id)] = byAct[String(s.activity_id)] || []).push(String(s.source)) }
+  const activites = (acts || []).map((a: any) => ({
+    id: a.id, seance_id: a.seance_id, type: a.type, debut: a.debut, duree_s: a.duree_s,
+    distance_m: a.distance_m != null ? Number(a.distance_m) : null,
+    source_primaire: a.source_primaire, statut: a.statut, sources: byAct[String(a.id)] || [],
+  }))
+  return jsonResp({ success: true, activites })
 }
 
 // Supprime une séance muscu = toutes les lignes performances pour un athlète, un
@@ -4156,6 +4277,7 @@ Deno.serve(async (req: Request) => {
         case 'getAppData':            return handleGetAppData(params)
         case 'getLastPerf':           return handleGetLastPerf(params)
         case 'getPoids':              return handleGetPoids(params)
+        case 'getActivites':          return handleGetActivites(params)
         case 'exercices':             return handleGetExercices()
         case 'loginCoach':            return handleLoginCoach(params)
         case 'getCoachAthletes':      return handleGetCoachAthletes(params)
@@ -4214,6 +4336,7 @@ Deno.serve(async (req: Request) => {
         case 'marquerCommentairesLus':   return handleMarquerCommentairesLus(body)
         case 'supprimerCommentaire':     return handleSupprimerCommentaire(body)
         case 'saveObjectif':             return handleSaveObjectif(body)
+        case 'rebuildActivites':         return handleRebuildActivites(body)
         case 'savePoids':                return handleSavePoids(body)
         case 'saveNote':                 return handleSaveNote(body)
         case 'saveProgrammeLigne':       return handleSaveProgrammeLigne(body)

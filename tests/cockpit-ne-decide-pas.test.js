@@ -29,7 +29,7 @@ function extractDecl(name) {
   return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', '_ckWbColor', 'wqPositif', '_ckFormeQuestionnaire', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpitHistorique', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'renderCockpitEvolution', 'renderCockpit'];
+const fnNames = ['_maSemaineType', '_seancesFaites', '_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', '_ckWbColor', 'wqPositif', '_ckFormeQuestionnaire', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpitHistorique', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'renderCockpitEvolution', 'renderCockpit'];
 const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
@@ -156,11 +156,11 @@ check('D → sparkline SVG (polyline) rendue', /<polyline/.test(html), 'présent
 check('D → ≥5 tendances bien-être + volume (≥6 polylines)', (html.match(/<polyline/g) || []).length >= 6, '>=6', (html.match(/<polyline/g) || []).length);
 check('D → libellé tendance bien-être (Sommeil)', /Sommeil/.test(html), 'présent', 'absent');
 check('D → volume hebdo (semaines glissantes)', /semaines glissantes/.test(html), 'présent', 'absent');
-check('D → ACWR : dernière valeur backend (fiable=true)', /dernière valeur transmise par le moteur/.test(html), 'présent', 'absent');
+check('D → ACWR : dernière valeur backend (fiable=true)', /Dernière valeur du moteur/.test(html), 'présent', 'absent');
 check('D → ACWR ratio backend affiché (1.12)', /1\.12/.test(html), 'présent', 'absent');
 // Respect strict de moteur.acwr_fiable : non fiable → « non interprétable », AUCUNE position/valeur suggérée
 check('D non-interp → « ACWR non interprétable »', /ACWR non interprétable/.test(htmlNI), 'présent', 'absent');
-check('D non-interp → PAS de « dernière valeur » (aucune interprétation)', !/dernière valeur transmise/.test(htmlNI), 'absent', 'PRÉSENT');
+check('D non-interp → PAS de « dernière valeur » (aucune interprétation)', !/Dernière valeur du moteur/.test(htmlNI), 'absent', 'PRÉSENT');
 // Données absentes → état neutre, rien inventé
 const htmlEvoNeutre = run(true, { sport: 'muscu', moteur: dataMuscu.moteur, dashboard: dataMuscu.dashboard }, 'dash');
 check('D sans bien_etre → « Pas assez de questionnaires »', /Pas assez de questionnaires pour une tendance/.test(htmlEvoNeutre), 'présent', 'absent');

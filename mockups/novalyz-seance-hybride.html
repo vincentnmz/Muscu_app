@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novalyz — Séance hybride</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Michroma&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --text-muted:#4A5980; --text-subtle:#8595B8;
+    --accent:#1A5FFF; --accent-a:rgba(26,95,255,.10); --good:#00A854; --bad:#DC3545;
+    --cardio:#9D5FD3; --cardio-a:rgba(157,95,211,.13);
+    --sh-sm:0 1px 2px rgba(7,11,20,.06); --sh:0 6px 20px rgba(7,11,20,.08); --sh-lg:0 16px 44px rgba(7,11,20,.14);
+    --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --font-h:'Michroma','Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#EEF3FF,#F9FBFF 55%);font-family:var(--font);color:var(--text);
+       min-height:100vh;padding:26px 16px 60px;-webkit-font-smoothing:antialiased}
+  .intro{max-width:440px;margin:0 auto 22px}
+  .intro .eyebrow{font-family:var(--font-h);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
+  .intro h1{font-family:var(--font-h);font-size:20px;line-height:1.3;margin:0 0 8px}
+  .intro p{font-size:13.5px;line-height:1.6;color:var(--text-muted);margin:0 0 10px}
+  .decis{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 15px;box-shadow:var(--sh-sm)}
+  .decis .t{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+  .decis ul{margin:0;padding-left:18px;font-size:12.5px;line-height:1.65;color:var(--text-muted)}
+  .decis b{color:var(--text)}
+
+  .phone{width:400px;max-width:100%;margin:22px auto 0;background:var(--bg);border-radius:34px;border:1px solid var(--border);
+         box-shadow:var(--sh-lg);overflow:hidden;position:relative}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:24px;background:var(--text);border-radius:0 0 15px 15px;z-index:9}
+  .scr{padding:34px 15px 22px}
+
+  .hd{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .iconbtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center;flex:none;color:var(--text-muted);font-size:18px}
+  .hd .t{font-family:var(--font-h);font-size:15px}
+  .hd .d{font-size:11.5px;color:var(--text-subtle)}
+
+  /* segmented Muscu/Cardio/Hyrox/Hybride */
+  .seg{display:flex;gap:5px;background:var(--surface2);border-radius:14px;padding:5px;margin-bottom:14px}
+  .seg button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:800;font-size:12px;color:var(--text-muted);padding:10px 0;border-radius:10px;cursor:pointer}
+  .seg button.on{background:linear-gradient(120deg,var(--accent),var(--cardio));color:#fff;box-shadow:0 4px 12px rgba(26,95,255,.28)}
+
+  /* hero */
+  .hero{border-radius:20px;padding:17px 18px;background:linear-gradient(135deg,var(--accent),var(--cardio));color:#fff;box-shadow:0 8px 24px rgba(26,95,255,.28)}
+  .hero .tag{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+  .hero .ti{font-size:22px;font-weight:900;margin:2px 0 8px}
+  .hero .row{display:flex;gap:8px}
+  .hero .st{flex:1;background:rgba(255,255,255,.16);border-radius:12px;padding:9px 10px}
+  .hero .st .v{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .hero .st .u{font-size:9.5px;font-weight:700;opacity:.85;text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+
+  .sec{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:18px 4px 8px;display:flex;align-items:center;gap:8px}
+  .sec .pin{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px;flex:none}
+  .sec .pin.m{background:var(--accent-a);color:var(--accent)}
+  .sec .pin.c{background:var(--cardio-a);color:var(--cardio)}
+  .sec .r{margin-left:auto;letter-spacing:0;text-transform:none;font-weight:700;font-size:11px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);overflow:hidden}
+  .exo{display:flex;align-items:center;gap:11px;padding:12px 14px;border-top:1px solid var(--border)}
+  .exo:first-child{border-top:none}
+  .exo .ic{width:34px;height:34px;border-radius:10px;background:var(--accent-a);color:var(--accent);display:grid;place-items:center;font-size:15px;flex:none}
+  .exo .nm{flex:1;min-width:0}
+  .exo .nm .a{font-size:13.5px;font-weight:800}
+  .exo .nm .b{font-size:11px;color:var(--text-subtle);margin-top:1px}
+  .exo .sets{font-size:12px;font-weight:800;color:var(--text-muted);font-variant-numeric:tabular-nums;text-align:right}
+  .exo .sets small{display:block;font-size:10px;font-weight:600;color:var(--text-subtle)}
+  .chev{color:var(--text-subtle);flex:none}
+
+  .add{width:100%;margin-top:9px;border:1.5px dashed var(--border);background:var(--surface);border-radius:13px;padding:12px;font-family:inherit;font-weight:800;font-size:13px;color:var(--accent);cursor:pointer}
+  .add.c{color:var(--cardio)}
+
+  /* cardio block */
+  .cblk{padding:14px}
+  .cchips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+  .cchip{font-size:12px;font-weight:700;border:1px solid var(--border);border-radius:999px;padding:7px 13px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+  .cchip.on{background:var(--cardio);border-color:var(--cardio);color:#fff}
+  .cgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .cfield{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:9px 10px;text-align:center}
+  .cfield .v{font-size:18px;font-weight:800;color:var(--cardio);font-variant-numeric:tabular-nums;line-height:1}
+  .cfield .u{font-size:9.5px;font-weight:700;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:4px}
+
+  .note{font-size:11px;color:var(--text-subtle);line-height:1.55;margin:10px 4px 0}
+  .note b{color:var(--text-muted)}
+
+  .foot{margin-top:20px}
+  .ready{display:flex;align-items:center;gap:10px;background:var(--accent-a);border:1px solid var(--border);border-radius:13px;padding:11px 13px;margin-bottom:11px}
+  .ready .k{font-size:20px;flex:none}
+  .ready .x{flex:1;font-size:11.5px;color:var(--text-muted);line-height:1.4}
+  .ready .x b{color:var(--text)}
+  .fin{width:100%;border:none;border-radius:16px;padding:18px;font-family:inherit;font-weight:900;font-size:17px;cursor:pointer;color:#fff;background:var(--good);box-shadow:0 8px 20px rgba(0,168,84,.30)}
+</style>
+</head>
+<body>
+
+  <div class="intro">
+    <div class="eyebrow">Maquette · à valider</div>
+    <h1>Séance hybride — muscu + cardio</h1>
+    <p>Une <b>seule séance</b> qui contient une partie musculation <b>et</b> un bloc cardio (ex. renfo + footing, ou une séance « mixte »). Enregistrée ensemble : 1 date, 1 état du jour avant, 1 bilan après, et elle compte pour <b>1 séance</b> dans ton adhérence.</p>
+    <div class="decis">
+      <div class="t">2 choix à valider</div>
+      <ul>
+        <li><b>Point d'entrée</b> : un 4ᵉ onglet <b>« Hybride »</b> dans Entraînement (à côté de Muscu/Cardio/Hyrox). ✔️ ou tu préfères un bouton « + ajouter du cardio » depuis une séance muscu ?</li>
+        <li><b>Le cardio</b> ici est un <b>bloc compact</b> (activité + durée + distance + RPE). ✔️ ou tu veux le formulaire cardio complet (FC, calories, allure…) ?</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="scr">
+      <div class="hd">
+        <div class="iconbtn">‹</div>
+        <div><div class="t">Séance hybride</div><div class="d">Aujourd'hui · en construction</div></div>
+      </div>
+
+      <div class="seg">
+        <button>Muscu</button>
+        <button>Cardio</button>
+        <button>Hyrox</button>
+        <button class="on">Hybride</button>
+      </div>
+
+      <div class="hero">
+        <div class="tag">Séance mixte</div>
+        <div class="ti">Full body + footing</div>
+        <div class="row">
+          <div class="st"><div class="v">4</div><div class="u">exercices</div></div>
+          <div class="st"><div class="v">6,2 t</div><div class="u">tonnage</div></div>
+          <div class="st"><div class="v">28′</div><div class="u">cardio</div></div>
+        </div>
+      </div>
+
+      <div class="sec"><span class="pin m">💪</span>Musculation <span class="r">4 exercices</span></div>
+      <div class="card">
+        <div class="exo"><span class="ic">🏋️</span><div class="nm"><div class="a">Squat</div><div class="b">Quadriceps</div></div><div class="sets">3 × 8<small>100 kg</small></div><span class="chev">›</span></div>
+        <div class="exo"><span class="ic">🏋️</span><div class="nm"><div class="a">Développé couché</div><div class="b">Pectoraux</div></div><div class="sets">3 × 9<small>80 kg</small></div><span class="chev">›</span></div>
+        <div class="exo"><span class="ic">🏋️</span><div class="nm"><div class="a">Tirage vertical</div><div class="b">Dos</div></div><div class="sets">3 × 10<small>72 kg</small></div><span class="chev">›</span></div>
+        <div class="exo"><span class="ic">🏋️</span><div class="nm"><div class="a">Curl barre</div><div class="b">Biceps</div></div><div class="sets">3 × 11<small>34 kg</small></div><span class="chev">›</span></div>
+      </div>
+      <button class="add">+ Ajouter un exercice</button>
+
+      <div class="sec"><span class="pin c">🫀</span>Cardio <span class="r">finisher</span></div>
+      <div class="card">
+        <div class="cblk">
+          <div class="cchips">
+            <span class="cchip on">🏃 Footing</span>
+            <span class="cchip">🚴 Vélo</span>
+            <span class="cchip">🚶 Marche</span>
+            <span class="cchip">🚣 Rameur</span>
+          </div>
+          <div class="cgrid">
+            <div class="cfield"><div class="v">28</div><div class="u">min</div></div>
+            <div class="cfield"><div class="v">5,2</div><div class="u">km</div></div>
+            <div class="cfield"><div class="v">7</div><div class="u">RPE</div></div>
+          </div>
+        </div>
+      </div>
+      <button class="add c">+ Changer / retirer le cardio</button>
+
+      <div class="note">Tu peux mettre le cardio <b>avant</b> ou <b>après</b> le muscu — l'ordre n'a pas d'importance pour l'enregistrement. Le muscu part dans tes performances, le cardio dans ton historique cardio, et les deux restent <b>liés à cette séance</b>.</div>
+
+      <div class="foot">
+        <div class="ready"><span class="k">🧠</span><div class="x"><b>État du jour</b> déjà rempli ce matin — on ne te le redemande pas.</div></div>
+        <button class="fin">Terminer la séance ✓</button>
+        <div class="note" style="text-align:center;margin-top:10px">Un seul bilan ressenti/douleur à la fin, pour toute la séance.</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
