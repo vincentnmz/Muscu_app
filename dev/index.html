@@ -1100,19 +1100,8 @@
               <div>
                 <label>Type</label>
                 <!-- Types synchronisés avec _CARDIO_TYPE_LABELS (js/app.js) -->
-                <select id="cardio-type" onchange="renderCardioFields()">
-                  <option value="footing">Footing</option>
-                  <option value="velo">Vélo</option>
-                  <option value="marche_normale">Marche</option>
-                  <option value="marche_inclinee">Marche inclinée</option>
-                  <option value="natation">Natation</option>
-                  <option value="rameur">Rameur</option>
-                  <option value="hiit">HIIT</option>
-                  <option value="elliptique">Elliptique</option>
-                  <option value="boxe">Boxe</option>
-                  <option value="hyrox">Hyrox</option>
-                  <option value="autre">Autre</option>
-                </select>
+                <!-- Options peuplées depuis _CARDIO_CATALOG via _buildCardioTypeOptions() -->
+                <select id="cardio-type" onchange="renderCardioFields()"></select>
               </div>
             </div>
             <div id="cardio-fields-content"></div>
