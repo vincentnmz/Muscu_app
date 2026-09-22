@@ -5628,6 +5628,33 @@ function _progAthleteId()  { return progCtx.athleteId || (coachAthleteCourant &&
 function _progAthleteNom() { return progCtx.athleteNom || (coachAthleteCourant && coachAthleteCourant.nom) || ''; }
 function _progReadonly()   { return !!(progCtx && progCtx.readonly); }   // joueur = consultation seule
 
+// Programme hybride : activités cardio proposées à l'ajout d'un item cardio.
+// exercice stocké = le libellé (ex. « Footing ») ; type='cardio' distingue du muscu.
+var _PROG_CARDIO = [['Footing', '🏃'], ['Vélo', '🚴'], ['Marche', '🚶'], ['Rameur', '🚣'], ['Elliptique', '🌀'], ['HIIT', '🔥'], ['Natation', '🏊'], ['Boxe', '🥊']];
+function _progCardioIco(nom) { var a = _PROG_CARDIO.find(function (x) { return x[0] === nom; }); return a ? a[1] : '🫀'; }
+function _progCardioCibleTxt(l) { if ((l.cardio_unite || 'min') === 'libre') return 'libre'; return (l.cardio_cible != null) ? (l.cardio_cible + ' ' + (l.cardio_unite === 'km' ? 'km' : 'min')) : '—'; }
+// Persistance d'une ligne de programme (muscu OU cardio) — envoie tous les champs.
+function _cdPersistLigne(ligne) {
+  return fetch(SCRIPT_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({
+      action: 'saveProgrammeLigne', row_index: ligne.row_index, athlete_id: _progAthleteId(),
+      seance_id: ligne.seance_id, exercice: ligne.exercice,
+      series_prevues: ligne.series_prevues, reps_mini: ligne.reps_mini, reps_max: ligne.reps_max,
+      repos_sec: ligne.repos_sec, groupe_id: ligne.groupe_id || '',
+      charge_pct_1rm: (ligne.charge_pct_1rm == null ? null : Number(ligne.charge_pct_1rm)),
+      rpe_cible: (ligne.rpe_cible == null ? null : Number(ligne.rpe_cible)),
+      type: ligne.type || null,
+      cardio_cible: (ligne.cardio_cible == null ? null : Number(ligne.cardio_cible)),
+      cardio_unite: ligne.cardio_unite || null
+    })
+  });
+}
+// Setters d'un item cardio dans le builder.
+function cdSetCardioActivite(rowIndex, val) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.exercice = val; cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l); }
+function cdSetCardioUnite(rowIndex, u) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.cardio_unite = u; if (u === 'libre') l.cardio_cible = null; cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l); }
+function cdSetCardioCible(rowIndex, val) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.cardio_cible = (val === '' ? null : Number(val)); _cdPersistLigne(l); }
+
 // Recharge le programme du contexte courant (progCtx doit être positionné avant
 // le 1er appel par l'ouvreur ; les rafraîchissements internes le réutilisent).
 async function chargerProgrammeCoach() {
@@ -5685,6 +5712,17 @@ function renderProgrammeCoach() {
     </div>
     ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">🎯 Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}`;
 
+  // Champs éditables d'un item CARDIO : activité + mode de cible (durée/distance/libre) + valeur.
+  const champsExoCardio = (l) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <select onchange="cdSetCardioActivite(${l.row_index}, this.value)" style="font-size:14px;padding:9px 10px;flex:1;min-width:0;margin-bottom:0;font-weight:700">${_PROG_CARDIO.map(a => `<option value="${a[0]}"${a[0] === l.exercice ? ' selected' : ''}>${a[1]} ${a[0]}</option>`).join('')}</select>
+      <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="ico"><use href="#i-trash"/></svg></button>
+    </div>
+    <div style="display:flex;gap:7px;margin-bottom:10px">
+      ${['min', 'km', 'libre'].map(u => { const lbl = { min: '⏱️ Durée', km: '📏 Distance', libre: 'Libre' }[u]; const on = (l.cardio_unite || 'min') === u; return `<button onclick="cdSetCardioUnite(${l.row_index},'${u}')" style="flex:1;border:1px solid ${on ? '#9D5FD3' : 'var(--border)'};background:${on ? 'rgba(157,95,211,.13)' : 'var(--surface)'};color:${on ? '#9D5FD3' : 'var(--text-muted)'};border-radius:10px;padding:9px 0;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">${lbl}</button>`; }).join('')}
+    </div>
+    ${(l.cardio_unite === 'libre') ? '<div style="font-size:11px;color:var(--text-subtle)">Allure/durée libres — juste un repère cardio dans la séance.</div>' : `<div style="display:flex;align-items:center;gap:8px"><input type="number" value="${l.cardio_cible != null ? l.cardio_cible : ''}" placeholder="${l.cardio_unite === 'km' ? '5' : '20'}" onchange="cdSetCardioCible(${l.row_index},this.value)" style="font-size:15px;padding:9px 8px;width:96px;text-align:center;margin-bottom:0"><span style="font-size:13px;color:var(--text-muted);font-weight:700">${l.cardio_unite === 'km' ? 'km' : 'minutes'}</span></div>`}`;
+
   // Dropdown pour lier un exercice (ajoute au superset ancré sur ligneAncre)
   const selLier = (ligneAncre, seanceId, exclus) => `
     <select onchange="if(this.value){cdLierExerciceParNom(${ligneAncre.row_index},'${seanceId}',this.value);this.value='';}" style="font-size:13px;padding:8px 10px;width:auto;min-width:150px;margin-bottom:0;margin-top:10px" title="Lier à un exercice (superset)">
@@ -5703,6 +5741,17 @@ function renderProgrammeCoach() {
   // Ligne compacte (mode lecture) — le crayon ouvre le bloc d'édition.
   // En lecture seule (joueur) : pas de clic ni de crayon, simple consultation.
   const ligneLecture = (l, accent) => {
+    if (l.type === 'cardio') {
+      return `
+      <div ${ro ? '' : `onclick="cdToggleExo(${l.row_index})"`} style="display:flex;align-items:center;gap:11px;padding:10px 4px;${ro ? '' : 'cursor:pointer'}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:700;color:#9D5FD3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_progCardioIco(l.exercice)} ${l.exercice}</div>
+          <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-top:2px">Cardio</div>
+        </div>
+        <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;color:#9D5FD3">${_progCardioCibleTxt(l)}</span>
+        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>`}
+      </div>`;
+    }
     const mus = muscleDe(l.exercice);
     return `
       <div ${ro ? '' : `onclick="cdToggleExo(${l.row_index})"`} style="display:flex;align-items:center;gap:11px;padding:10px 4px;${ro ? '' : 'cursor:pointer'}">
@@ -5734,17 +5783,18 @@ function renderProgrammeCoach() {
     const blocEdit = (l, seanceId, extraBtn, extraSel) => {
       const ouvertExo = !!cdExoOpen[l.row_index];
       return `<div id="exo-edit-${l.row_index}" style="border-top:1px solid var(--border);padding-top:10px;margin-top:2px;${ouvertExo?'':'display:none'}">
-          ${champsExo(l, seanceId, extraBtn)}
+          ${l.type === 'cardio' ? champsExoCardio(l) : champsExo(l, seanceId, extraBtn)}
           ${extraSel || ''}
         </div>`;
     };
     const cartes = unites.map(u => {
       if (u.type === 'single') {
         const l = u.ligne;
+        const isCard = l.type === 'cardio';
         return `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
+        <div style="background:var(--surface);border:1px solid var(--border);${isCard ? 'border-left:4px solid #9D5FD3;' : ''}border-radius:10px;padding:4px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
           ${ligneLecture(l)}
-          ${ro ? '' : blocEdit(l, seanceId, null, selLier(l, seanceId, [l.exercice]))}
+          ${ro ? '' : blocEdit(l, seanceId, null, isCard ? '' : selLier(l, seanceId, [l.exercice]))}
         </div>`;
       }
       // Superset : une seule carte avec tous les membres empilés
@@ -5894,17 +5944,7 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
   if (rpeCible !== undefined && rpeCible !== null) { ligne.rpe_cible = (rpeCible === '' ? null : Number(rpeCible)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); }
   if (groupeId !== null) { ligne.groupe_id = groupeId.trim().toUpperCase(); renderProgrammeCoach(); }
   else if (exercice !== null) { cdExoOpen[rowIndex] = true; renderProgrammeCoach(); } // MAJ live du nom/muscle affiché
-  return fetch(SCRIPT_URL, {
-    method: 'POST', headers: {'Content-Type': 'text/plain'},
-    body: JSON.stringify({
-      action: 'saveProgrammeLigne', row_index: rowIndex, athlete_id: _progAthleteId(),
-      seance_id: ligne.seance_id, exercice: ligne.exercice,
-      series_prevues: ligne.series_prevues, reps_mini: ligne.reps_mini, reps_max: ligne.reps_max,
-      repos_sec: ligne.repos_sec, groupe_id: ligne.groupe_id || '',
-      charge_pct_1rm: (ligne.charge_pct_1rm == null ? null : Number(ligne.charge_pct_1rm)),
-      rpe_cible: (ligne.rpe_cible == null ? null : Number(ligne.rpe_cible))
-    })
-  });
+  return _cdPersistLigne(ligne);
 }
 
 function genGroupeId(seanceId) {
@@ -5963,15 +6003,47 @@ async function cdLierExerciceParNom(rowIndex, seanceId, exerciceNom) {
   }
 }
 
-async function cdAjouterExercice(seanceId) {
+// Ajout d'un item au programme : on choisit d'abord Muscu ou Cardio (programme hybride).
+function cdAjouterExercice(seanceId) {
+  var ov = document.getElementById('cd-add-chooser');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'cd-add-chooser'; ov.style.cssText = 'position:fixed;inset:0;background:rgba(3,6,14,.55);z-index:1400;display:flex;align-items:flex-end;justify-content:center'; document.body.appendChild(ov); }
+  var sid = String(seanceId).replace(/'/g, "\\'");
+  ov.innerHTML = '<div style="background:var(--surface);border-radius:20px 20px 0 0;max-width:480px;width:100%;padding:16px 16px 26px">'
+    + '<div style="width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 14px"></div>'
+    + '<div style="font-weight:800;text-align:center;margin-bottom:14px;font-size:15px">Ajouter à ' + escapeHtml(String(seanceId)) + '</div>'
+    + '<div style="display:flex;gap:10px">'
+    + '<button onclick="_cdAddMuscu(\'' + sid + '\')" style="flex:1;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:16px 10px;cursor:pointer;font-family:inherit;color:var(--text)"><div style="font-size:24px">🏋️</div><div style="font-weight:800;margin-top:6px">Muscu</div><div style="font-size:11px;color:var(--text-subtle);margin-top:2px">exercice + séries</div></button>'
+    + '<button onclick="_cdAddCardio(\'' + sid + '\')" style="flex:1;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:16px 10px;cursor:pointer;font-family:inherit;color:var(--text)"><div style="font-size:24px">🫀</div><div style="font-weight:800;margin-top:6px">Cardio</div><div style="font-size:11px;color:var(--text-subtle);margin-top:2px">activité + cible</div></button>'
+    + '</div>'
+    + '<button onclick="cdCloseAddChooser()" style="width:100%;margin-top:12px;border:none;background:none;color:var(--text-muted);font-weight:700;padding:8px;cursor:pointer;font-family:inherit">Annuler</button></div>';
+  ov.style.display = 'flex';
+  ov.onclick = function (e) { if (e.target === ov) cdCloseAddChooser(); };
+}
+function cdCloseAddChooser() { var ov = document.getElementById('cd-add-chooser'); if (ov) ov.style.display = 'none'; }
+async function _cdAddMuscu(seanceId) {
+  cdCloseAddChooser();
+  if (exercicesData.length === 0) { try { await chargerExercices(); } catch (e) {} }
   if (exercicesData.length === 0) return;
   const exo = exercicesData[0];
   const body = {
     action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
     athlete_nom: _progAthleteNom(), seance_id: seanceId, exercice: exo.exercice,
-    series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: ''
+    series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: '', type: 'muscu'
   };
   await fetch(SCRIPT_URL, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
+  cdProgOpen[seanceId] = true;
+  chargerProgrammeCoach();
+}
+async function _cdAddCardio(seanceId) {
+  cdCloseAddChooser();
+  const body = {
+    action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
+    athlete_nom: _progAthleteNom(), seance_id: seanceId, exercice: 'Footing',
+    series_prevues: null, reps_mini: null, reps_max: null, repos_sec: null, groupe_id: '',
+    type: 'cardio', cardio_cible: 20, cardio_unite: 'min'
+  };
+  await fetch(SCRIPT_URL, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
+  cdProgOpen[seanceId] = true;
   chargerProgrammeCoach();
 }
 
@@ -7188,9 +7260,11 @@ async function demarrerSeance() {
   listeEl.innerHTML = '<div class="loader">Chargement...</div>';
   document.getElementById('card-liste-seance').style.display = 'block';
 
-  // Utiliser le programme déjà chargé + charger seulement les perfs
+  // Utiliser le programme déjà chargé + charger seulement les perfs.
+  // Les items CARDIO du programme (hybride) ne sont pas des exercices muscu :
+  // on les exclut de l'exécution muscu (repère cardio géré à part, à venir).
   const progSource = dernierAppData ? dernierAppData.programme || [] : [];
-  programmeSeance = progSource.filter(p => p.seance_id === seanceId);
+  programmeSeance = progSource.filter(p => p.seance_id === seanceId && p.type !== 'cardio');
 
   const resPerf = await fetch(`${SCRIPT_URL}?action=getLastPerf&athlete_id=${athlete.athlete_id}&seance_id=${encodeURIComponent(seanceId)}`);
   const dataPerf = await resPerf.json();
