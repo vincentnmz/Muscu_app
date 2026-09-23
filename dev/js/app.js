@@ -11933,14 +11933,44 @@ function _enRenderSelCardio() {
       + '<span class="en-rad"></span></div>';
   }).join('');
 }
-// « Démarrer la séance » : d'abord l'état du jour (readiness, AVANT), 1×/jour et
-// skippable ; puis on démarre réellement la séance (muscu ou cardio).
+// « Démarrer la séance » : pour un cardio À DISTANCE (footing, vélo, marche…),
+// on propose d'abord AVEC ou SANS GPS ; sinon démarrage direct. Puis, dans tous
+// les cas, l'état du jour (readiness, AVANT, 1×/jour, skippable) avant de lancer.
 function _enDemarrer() {
-  if (!_bienEtreFaitAujourdhui() && typeof athlete !== 'undefined' && athlete) {
-    ouvrirEtatDuJour({ then: _enDemarrerNow });
-  } else {
-    _enDemarrerNow();
+  if (_enMode === 'cardio' && _enSelActivite && typeof _cardioNoDist === 'function' && !_cardioNoDist(_enSelActivite)) {
+    _enChoixGPS();
+    return;
   }
+  _enDemarrerFlux(false);
+}
+function _enDemarrerFlux(withGps) {
+  var go = withGps ? _enDemarrerNowGps : _enDemarrerNow;
+  if (!_bienEtreFaitAujourdhui() && typeof athlete !== 'undefined' && athlete) {
+    ouvrirEtatDuJour({ then: go });
+  } else {
+    go();
+  }
+}
+// Démarrage cardio AVEC GPS : on prépare la page séance (sport choisi + chrono),
+// puis on ouvre l'enregistrement GPS (qui fige le chrono → un seul compteur).
+function _enDemarrerNowGps() {
+  _enDemarrerNow();
+  setTimeout(function () { try { ouvrirEnregistrementGPS(); } catch (e) {} }, 200);
+}
+// Petit choix « Avec / Sans GPS » avant de lancer un cardio à distance.
+function _enChoixGPS() {
+  var ov = document.getElementById('en-gps-choice');
+  if (!ov) { _enDemarrerFlux(false); return; }   // pas d'overlay → démarrage direct
+  var lbl = document.getElementById('en-gps-choice-act');
+  if (lbl) lbl.textContent = (_CARDIO_TYPE_LABELS[_enSelActivite] || 'Cardio');
+  ov.style.display = 'flex';
+}
+function _enChoixGPSPick(withGps) {
+  var ov = document.getElementById('en-gps-choice'); if (ov) ov.style.display = 'none';
+  _enDemarrerFlux(withGps);
+}
+function _enChoixGPSAnnuler() {
+  var ov = document.getElementById('en-gps-choice'); if (ov) ov.style.display = 'none';
 }
 function _enDemarrerNow() {
   if (_enMode === 'cardio') {
@@ -15367,8 +15397,7 @@ function nouvelleSeanceCardio() {
         </div>
       </div>
       <div id="cardio-fields-content"></div>
-      <button id="btn-gps-cardio" class="btn" onclick="ouvrirEnregistrementGPS()" style="margin-top:16px;padding:13px;background:#6366F1;color:#fff;font-size:14px;font-weight:700;">📍 Enregistrer au GPS (extérieur)</button>
-      <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:8px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
+      <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:16px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
     </div>`;
   var di = document.getElementById('cardio-date');
   if (di) { var t = new Date(); di.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0'); }
@@ -15384,6 +15413,7 @@ function nouvelleSeanceCardio() {
  * Natif : window.Capacitor.Plugins.Geolocation. Web/PWA : navigator.geolocation.
  * ═══════════════════════════════════════════════════════════════════════════ */
 var _gps = { id: null, native: false, pts: [], distM: 0, t0: 0, timer: null, prev: null };
+var _gpsResumeChrono = false;   // le chrono de séance tournait-il avant l'ouverture du GPS ?
 
 // Distance entre deux points GPS (mètres) — formule de haversine.
 function _gpsHaversine(aLat, aLng, bLat, bLng) {
@@ -15410,8 +15440,9 @@ function _gpsSetStatus(txt, col) {
   var s = document.getElementById('gps-status');
   if (s) { s.textContent = txt; s.style.color = col || 'var(--text-muted)'; }
 }
+function _gpsElapsed() { return _gps.t0 ? (Date.now() - _gps.t0) / 1000 : 0; }
 function _gpsRender() {
-  var sec = (Date.now() - _gps.t0) / 1000, km = _gps.distM / 1000;
+  var sec = _gpsElapsed(), km = _gps.distM / 1000;
   var de = document.getElementById('gps-dist'); if (de) de.textContent = km.toFixed(2).replace('.', ',');
   var te = document.getElementById('gps-time'); if (te) te.textContent = _gpsFmtDur(sec);
   var pe = document.getElementById('gps-pace'); if (pe) pe.textContent = _gpsFmtPace(_gps.distM, sec);
@@ -15419,6 +15450,9 @@ function _gpsRender() {
 function _gpsOnPos(lat, lng, acc) {
   // Ignore les points trop imprécis (dérive GPS au démarrage / en intérieur).
   if (acc != null && acc > 40) { _gpsSetStatus('📶 Signal GPS faible…', 'var(--warn)'); return; }
+  // Le chrono ne démarre qu'à la 1re position VALIDE (fin du délai d'accroche) :
+  // durée/allure/vitesse reflètent le mouvement réel, pas l'attente du signal.
+  if (!_gps.t0) _gps.t0 = Date.now();
   _gpsSetStatus('📍 Enregistrement en cours', 'var(--good)');
   var now = Date.now();
   if (_gps.prev) {
@@ -15435,7 +15469,7 @@ function _gpsPermDenied() {
   _gpsSetStatus('❌ Localisation refusée. Autorise-la dans les réglages du téléphone, puis réessaie.', 'var(--bad)');
 }
 async function _gpsStart() {
-  _gps = { id: null, native: false, pts: [], distM: 0, t0: Date.now(), timer: null, prev: null };
+  _gps = { id: null, native: false, pts: [], distM: 0, t0: 0, timer: null, prev: null };
   try {
     var Geo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
     if (Geo && typeof _estAppNative === 'function' && _estAppNative()) {
@@ -15483,6 +15517,11 @@ function ouvrirEnregistrementGPS() {
   if (!athlete) return;
   var ov = document.getElementById('gps-overlay');
   if (!ov) return;
+  // UN SEUL chrono : on fige le chrono de séance pendant l'enregistrement GPS
+  // (le GPS devient la source de la durée). On mémorise s'il tournait pour le
+  // relancer si l'utilisateur annule.
+  _gpsResumeChrono = !!(typeof _seanceChronoIv !== 'undefined' && _seanceChronoIv);
+  try { if (typeof _seanceChronoStop === 'function') _seanceChronoStop(); } catch (e) {}
   var de = document.getElementById('gps-dist'); if (de) de.textContent = '0,00';
   var te = document.getElementById('gps-time'); if (te) te.textContent = '0:00';
   var pe = document.getElementById('gps-pace'); if (pe) pe.textContent = '—';
@@ -15493,27 +15532,38 @@ function ouvrirEnregistrementGPS() {
 function annulerEnregistrementGPS() {
   _gpsClearWatch();
   var ov = document.getElementById('gps-overlay'); if (ov) ov.style.display = 'none';
+  // Annulation : on relance le chrono de séance s'il tournait avant le GPS.
+  if (_gpsResumeChrono) { try { if (typeof _seanceChronoStart === 'function') _seanceChronoStart(); } catch (e) {} }
 }
 function terminerEnregistrementGPS() {
-  var sec = (Date.now() - _gps.t0) / 1000, km = _gps.distM / 1000;
+  var sec = _gpsElapsed(), km = _gps.distM / 1000;
   _gpsClearWatch();
   var ov = document.getElementById('gps-overlay'); if (ov) ov.style.display = 'none';
-  if (sec < 10 || km < 0.01) { showToast('Trace trop courte — rien enregistré', 'var(--warn)'); return; }
-  // Reconstruit un formulaire cardio propre, puis le pré-remplit avec la mesure.
-  if (typeof nouvelleSeanceCardio === 'function') nouvelleSeanceCardio();
+  if (sec < 10 || km < 0.01) {
+    showToast('Trace trop courte — rien enregistré', 'var(--warn)');
+    if (_gpsResumeChrono) { try { if (typeof _seanceChronoStart === 'function') _seanceChronoStart(); } catch (e) {} }
+    return;
+  }
+  // Le GPS a mesuré la durée → le chrono de séance reste FIGÉ (fini le double compteur).
+  try { if (typeof _seanceChronoStop === 'function') _seanceChronoStop(); } catch (e) {}
+  try { _seanceChronoT0 = 0; } catch (e) {}
+  // Le formulaire cardio doit exister ; sinon on le construit.
+  if (!document.getElementById('cardio-type') && typeof nouvelleSeanceCardio === 'function') nouvelleSeanceCardio();
   var mins = Math.max(1, Math.round(sec / 60));
   var vitesse = sec > 0 ? Math.round((km / (sec / 3600)) * 10) / 10 : 0;
   var typeSel = document.getElementById('cardio-type');
-  if (typeSel && _cardioNoDist(typeSel.value)) typeSel.value = 'footing';   // GPS ⇒ activité avec distance
+  // On garde le sport choisi ; s'il n'a pas de distance, on bascule sur footing.
+  if (typeSel && _cardioNoDist(typeSel.value)) typeSel.value = 'footing';
   if (typeof renderCardioFields === 'function') renderCardioFields();
   var setV = function (id, v) { var el = document.getElementById(id); if (el) { el.value = v; if (el.dataset) el.dataset.auto = '0'; } };
   setV('cardio-duree', mins);
   setV('cardio-distance', km.toFixed(2));
   setV('cardio-vitesse_moy', vitesse);
   try { if (typeof calcAutoCardio === 'function') calcAutoCardio(); } catch (e) {}
-  var act = document.getElementById('cardio-live-act'); if (act) act.textContent = '📍 Séance GPS · ' + km.toFixed(2).replace('.', ',') + ' km';
+  var act = document.getElementById('cardio-live-act');
+  if (act) act.textContent = '📍 Séance GPS · ' + km.toFixed(2).replace('.', ',') + ' km · ' + vitesse.toString().replace('.', ',') + ' km/h';
   var clock = document.getElementById('cardio-live-clock'); if (clock) clock.textContent = _gpsFmtDur(sec);
-  showToast('Séance GPS terminée — vérifie le type puis enregistre', 'var(--good)');
+  showToast('Séance GPS terminée — vérifie et enregistre', 'var(--good)');
   var b = document.getElementById('btn-save-cardio'); if (b) { try { b.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }
 }
 

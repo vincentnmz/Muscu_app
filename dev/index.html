@@ -1105,8 +1105,18 @@
               </div>
             </div>
             <div id="cardio-fields-content"></div>
-            <button id="btn-gps-cardio" class="btn" onclick="ouvrirEnregistrementGPS()" style="margin-top:16px;padding:13px;background:#6366F1;color:#fff;font-size:14px;font-weight:700;">📍 Enregistrer au GPS (extérieur)</button>
-            <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:8px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
+            <button id="btn-save-cardio" class="btn" onclick="sauvegarderCardio()" style="margin-top:16px;padding:15px;background:var(--good);color:#fff;font-size:16px;">✔ Terminer &amp; enregistrer</button>
+          </div>
+        </div>
+
+        <!-- Choix Avec / Sans GPS au démarrage d'une séance cardio à distance -->
+        <div id="en-gps-choice" style="display:none;position:fixed;inset:0;z-index:1390;background:rgba(0,0,0,.55);flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+          <div class="card" style="width:100%;max-width:420px;text-align:center;">
+            <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text-subtle);">Démarrer la séance</div>
+            <div id="en-gps-choice-act" style="font-size:18px;font-weight:800;margin:4px 0 18px;">Cardio</div>
+            <button onclick="_enChoixGPSPick(true)" class="btn" style="width:100%;padding:15px;background:#6366F1;color:#fff;font-size:15px;font-weight:800;">📍 Avec GPS <span style="font-weight:500;opacity:.85;">— distance & allure mesurées</span></button>
+            <button onclick="_enChoixGPSPick(false)" class="btn" style="width:100%;margin-top:10px;padding:15px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;font-weight:800;">⏱️ Sans GPS <span style="font-weight:500;opacity:.7;">— saisie manuelle</span></button>
+            <button onclick="_enChoixGPSAnnuler()" class="btn" style="width:100%;margin-top:10px;padding:11px;background:transparent;border:none;color:var(--text-muted);font-size:13px;">Annuler</button>
           </div>
         </div>
 
