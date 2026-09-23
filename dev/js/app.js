@@ -15449,31 +15449,29 @@ function _gpsRender() {
 }
 function _gpsOnPos(lat, lng, acc) {
   var now = Date.now();
-  // 1) Précision : on ignore les points imprécis (> 25 m) — première cause de dérive.
-  if (acc != null && acc > 25) {
+  // Précision : on ignore seulement les points vraiment mauvais (> 35 m).
+  if (acc != null && acc > 35) {
     _gpsSetStatus('📶 Signal GPS faible (précision ' + Math.round(acc) + ' m)…', 'var(--warn)');
     return;
   }
-  if (!_gps.startWait) _gps.startWait = now;      // 1er fix précis reçu
   _gpsSetStatus('📍 Enregistrement en cours', 'var(--good)');
-  // 2) 1re position précise = ANCRE (aucune distance : évite le saut position-cache → réelle).
+  // Le CHRONO démarre au 1er fix accepté (durée = temps depuis l'accroche),
+  // découplé du comptage de distance : le temps tourne tout de suite.
+  if (!_gps.t0) { _gps.t0 = now; _gps.prev = { lat: lat, lng: lng, t: now }; _gpsRender(); return; }
   if (!_gps.prev) { _gps.prev = { lat: lat, lng: lng, t: now }; _gpsRender(); return; }
   var d = _gpsHaversine(_gps.prev.lat, _gps.prev.lng, lat, lng);
   var dt = (now - _gps.prev.t) / 1000;
   var v = dt > 0 ? d / dt : 999;
-  // Seuil anti-drift : il faut bouger plus que le bruit GPS (≈ précision courante,
-  // au moins 8 m). Sous ce seuil, on considère qu'on n'a pas bougé → on garde l'ancre
-  // (le déplacement s'accumule jusqu'à dépasser le bruit).
-  var seuil = Math.max(8, acc || 0);
-  // 3) Warm-up : on ignore les 3 premières secondes (le fix se stabilise).
-  var warm = (now - _gps.startWait) < 3000;
-  if (!warm && d >= seuil && v <= 14) {           // segment réel et plausible (< 14 m/s ≈ 50 km/h)
-    if (!_gps.t0) _gps.t0 = _gps.prev.t;          // le chrono démarre au 1er vrai déplacement
+  // Anti-drift : un segment compte s'il dépasse le bruit GPS (≥ 6 m) ET reste
+  // plausible (< 14 m/s ≈ 50 km/h → tue le saut cache→réel). Sous 6 m on considère
+  // qu'on n'a pas bougé : on GARDE l'ancre, le déplacement s'accumule jusqu'à dépasser
+  // le bruit (la marche lente finit par compter).
+  if (d >= 6 && v <= 14) {
     _gps.distM += d;
     _gps.prev = { lat: lat, lng: lng, t: now };
     _gps.pts.push([lat, lng]);
-  } else if (d >= seuil) {                          // saut aberrant ou warm-up : on repositionne
-    _gps.prev = { lat: lat, lng: lng, t: now };     // l'ancre SANS compter la distance
+  } else if (d >= 6) {                 // saut trop rapide (aberrant) → on repositionne l'ancre
+    _gps.prev = { lat: lat, lng: lng, t: now };
   }
   _gpsRender();
 }
