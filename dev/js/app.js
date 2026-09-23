@@ -15448,21 +15448,33 @@ function _gpsRender() {
   var pe = document.getElementById('gps-pace'); if (pe) pe.textContent = _gpsFmtPace(_gps.distM, sec);
 }
 function _gpsOnPos(lat, lng, acc) {
-  // Ignore les points trop imprécis (dérive GPS au démarrage / en intérieur).
-  if (acc != null && acc > 40) { _gpsSetStatus('📶 Signal GPS faible…', 'var(--warn)'); return; }
-  // Le chrono ne démarre qu'à la 1re position VALIDE (fin du délai d'accroche) :
-  // durée/allure/vitesse reflètent le mouvement réel, pas l'attente du signal.
-  if (!_gps.t0) _gps.t0 = Date.now();
-  _gpsSetStatus('📍 Enregistrement en cours', 'var(--good)');
   var now = Date.now();
-  if (_gps.prev) {
-    var d = _gpsHaversine(_gps.prev.lat, _gps.prev.lng, lat, lng);
-    var dt = (now - _gps.prev.t) / 1000;
-    // Anti-bruit : ignore < 3 m (immobile) et > 40 m/s ≈ 144 km/h (saut aberrant).
-    if (d >= 3 && (dt <= 0 || d / dt <= 40)) _gps.distM += d;
+  // 1) Précision : on ignore les points imprécis (> 25 m) — première cause de dérive.
+  if (acc != null && acc > 25) {
+    _gpsSetStatus('📶 Signal GPS faible (précision ' + Math.round(acc) + ' m)…', 'var(--warn)');
+    return;
   }
-  _gps.prev = { lat: lat, lng: lng, t: now };
-  _gps.pts.push([lat, lng]);
+  if (!_gps.startWait) _gps.startWait = now;      // 1er fix précis reçu
+  _gpsSetStatus('📍 Enregistrement en cours', 'var(--good)');
+  // 2) 1re position précise = ANCRE (aucune distance : évite le saut position-cache → réelle).
+  if (!_gps.prev) { _gps.prev = { lat: lat, lng: lng, t: now }; _gpsRender(); return; }
+  var d = _gpsHaversine(_gps.prev.lat, _gps.prev.lng, lat, lng);
+  var dt = (now - _gps.prev.t) / 1000;
+  var v = dt > 0 ? d / dt : 999;
+  // Seuil anti-drift : il faut bouger plus que le bruit GPS (≈ précision courante,
+  // au moins 8 m). Sous ce seuil, on considère qu'on n'a pas bougé → on garde l'ancre
+  // (le déplacement s'accumule jusqu'à dépasser le bruit).
+  var seuil = Math.max(8, acc || 0);
+  // 3) Warm-up : on ignore les 3 premières secondes (le fix se stabilise).
+  var warm = (now - _gps.startWait) < 3000;
+  if (!warm && d >= seuil && v <= 14) {           // segment réel et plausible (< 14 m/s ≈ 50 km/h)
+    if (!_gps.t0) _gps.t0 = _gps.prev.t;          // le chrono démarre au 1er vrai déplacement
+    _gps.distM += d;
+    _gps.prev = { lat: lat, lng: lng, t: now };
+    _gps.pts.push([lat, lng]);
+  } else if (d >= seuil) {                          // saut aberrant ou warm-up : on repositionne
+    _gps.prev = { lat: lat, lng: lng, t: now };     // l'ancre SANS compter la distance
+  }
   _gpsRender();
 }
 function _gpsPermDenied() {
