@@ -15447,9 +15447,9 @@ function _gpsRender() {
   var te = document.getElementById('gps-time'); if (te) te.textContent = _gpsFmtDur(sec);
   var pe = document.getElementById('gps-pace'); if (pe) pe.textContent = _gpsFmtPace(_gps.distM, sec);
 }
-function _gpsOnPos(lat, lng, acc) {
+function _gpsOnPos(lat, lng, acc, speed) {
   var now = Date.now();
-  // Précision : on ignore seulement les points vraiment mauvais (> 35 m).
+  // Précision : on ignore les points vraiment mauvais (> 35 m).
   if (acc != null && acc > 35) {
     _gpsSetStatus('📶 Signal GPS faible (précision ' + Math.round(acc) + ' m)…', 'var(--warn)');
     return;
@@ -15462,15 +15462,19 @@ function _gpsOnPos(lat, lng, acc) {
   var d = _gpsHaversine(_gps.prev.lat, _gps.prev.lng, lat, lng);
   var dt = (now - _gps.prev.t) / 1000;
   var v = dt > 0 ? d / dt : 999;
-  // Anti-drift : un segment compte s'il dépasse le bruit GPS (≥ 6 m) ET reste
-  // plausible (< 14 m/s ≈ 50 km/h → tue le saut cache→réel). Sous 6 m on considère
-  // qu'on n'a pas bougé : on GARDE l'ancre, le déplacement s'accumule jusqu'à dépasser
-  // le bruit (la marche lente finit par compter).
-  if (d >= 6 && v <= 14) {
+  // PLAFOND DUR : un seul segment > 60 m = saut GPS (signal repris après un trou).
+  // Le filtre par vitesse seul échoue quand les points sont espacés (200 m / 15 s
+  // passe sous 50 km/h) → on rejette d'office, sans compter. C'était LA cause du
+  // « 200 m d'un coup ».
+  if (d > 60) { _gps.prev = { lat: lat, lng: lng, t: now }; _gpsRender(); return; }
+  // Anti-drift : un segment compte s'il dépasse le bruit GPS (≥ 5 m) ET reste
+  // plausible (< 14 m/s ≈ 50 km/h). Sous 5 m : immobile/bruit → on garde l'ancre,
+  // le déplacement s'accumule. (speed Doppler dispo mais non requis ici.)
+  if (d >= 5 && v <= 14) {
     _gps.distM += d;
     _gps.prev = { lat: lat, lng: lng, t: now };
     _gps.pts.push([lat, lng]);
-  } else if (d >= 6) {                 // saut trop rapide (aberrant) → on repositionne l'ancre
+  } else if (d >= 5) {                 // saut rapide (aberrant) → on repositionne l'ancre
     _gps.prev = { lat: lat, lng: lng, t: now };
   }
   _gpsRender();
@@ -15481,21 +15485,26 @@ function _gpsPermDenied() {
 async function _gpsStart() {
   _gps = { id: null, native: false, pts: [], distM: 0, t0: 0, timer: null, prev: null };
   try {
-    var Geo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
-    if (Geo && typeof _estAppNative === 'function' && _estAppNative()) {
+    // Natif : plugin communautaire background-geolocation → FusedLocationProvider
+    // Android (fusion capteurs, bien plus propre que la géoloc WebView) + filtrage
+    // natif par distance. Foreground uniquement (pas de backgroundMessage).
+    var BG = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundGeolocation;
+    if (BG && typeof _estAppNative === 'function' && _estAppNative()) {
       _gps.native = true;
-      try {
-        var perm = await Geo.requestPermissions();
-        var st = perm && (perm.location || perm.coarseLocation);
-        if (st && st !== 'granted') { _gpsPermDenied(); return false; }
-      } catch (e) {}
-      _gps.id = await Geo.watchPosition({ enableHighAccuracy: true, timeout: 15000 }, function (pos, err) {
-        if (err || !pos || !pos.coords) return;
-        _gpsOnPos(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+      _gps.id = await BG.addWatcher({
+        requestPermissions: true,
+        stale: false,
+        distanceFilter: 5            // le natif ne rappelle qu'après ~5 m de déplacement réel
+      }, function (location, error) {
+        if (error) {
+          if (error.code === 'NOT_AUTHORIZED') _gpsPermDenied();
+          return;
+        }
+        if (location) _gpsOnPos(location.latitude, location.longitude, location.accuracy, location.speed);
       });
     } else if (navigator.geolocation) {
       _gps.id = navigator.geolocation.watchPosition(
-        function (pos) { _gpsOnPos(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy); },
+        function (pos) { _gpsOnPos(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, pos.coords.speed); },
         function (err) { if (err && err.code === 1) _gpsPermDenied(); else _gpsSetStatus('📶 En attente du signal GPS…', 'var(--warn)'); },
         { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 }
       );
@@ -15513,8 +15522,8 @@ async function _gpsStart() {
 function _gpsClearWatch() {
   try {
     if (_gps.id != null) {
-      if (_gps.native && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
-        window.Capacitor.Plugins.Geolocation.clearWatch({ id: _gps.id });
+      if (_gps.native && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackgroundGeolocation) {
+        window.Capacitor.Plugins.BackgroundGeolocation.removeWatcher({ id: _gps.id });
       } else if (navigator.geolocation) {
         navigator.geolocation.clearWatch(_gps.id);
       }
