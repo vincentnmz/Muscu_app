@@ -15388,114 +15388,128 @@ function _hcPlugin() { try { return window.Capacitor && window.Capacitor.Plugins
 function _hcStatus(t, c) { var s = document.getElementById('hc-status'); if (s) { s.textContent = t; s.style.color = c || 'var(--text-muted)'; } }
 function fermerImportMontre() { var ov = document.getElementById('hc-import'); if (ov) ov.style.display = 'none'; }
 
+var _hcWorkouts = [];   // dernières séances lues (import par index)
+var _hcDiag = [];       // journal technique (repliable en bas de l'écran)
+
+// Type Health Connect → clé du catalogue cardio Novalyz (best-effort).
+function _hcMapType(wt) {
+  var s = String(wt || '').toLowerCase();
+  if (s.indexOf('run') >= 0 || s.indexOf('cours') >= 0 || s.indexOf('jog') >= 0) return 'footing';
+  if (s.indexOf('bik') >= 0 || s.indexOf('cycl') >= 0 || s.indexOf('velo') >= 0 || s.indexOf('vélo') >= 0) return 'velo';
+  if (s.indexOf('walk') >= 0 || s.indexOf('hik') >= 0 || s.indexOf('march') >= 0 || s.indexOf('rand') >= 0) return 'marche_normale';
+  if (s.indexOf('swim') >= 0 || s.indexOf('nat') >= 0) return 'natation';
+  if (s.indexOf('row') >= 0 || s.indexOf('ram') >= 0) return 'rameur';
+  return 'autre';
+}
+function _hcKey(w) { return String((w && w.id) || ((w ? w.startDate : '') + '|' + ((w && w.workoutType) || ''))); }
+function _hcImportedSet() { try { return JSON.parse(localStorage.getItem('nvz_hc_imported') || '[]'); } catch (e) { return []; } }
+function _hcMarkImported(key) { try { var a = _hcImportedSet(); if (a.indexOf(key) < 0) { a.push(key); localStorage.setItem('nvz_hc_imported', JSON.stringify(a.slice(-500))); } } catch (e) {} }
+
 async function ouvrirImportMontre() {
   if (!athlete) return;
   var ov = document.getElementById('hc-import'); if (!ov) return;
   var listEl = document.getElementById('hc-list'); if (listEl) listEl.innerHTML = '';
   ov.style.display = 'flex';
+  _hcDiag = [];
   var H = _hcPlugin();
   if (!H || !(typeof _estAppNative === 'function' && _estAppNative())) {
     _hcStatus('⚠️ L\'import montre n\'est disponible que dans l\'appli Android (via Health Connect).', 'var(--warn)');
     return;
   }
-  // ── MODE DIAGNOSTIC : on affiche la vérité brute de chaque étape à l'écran ──
-  var diag = [];
-  function _diagShow() {
-    var el = document.getElementById('hc-list'); if (!el) return;
-    el.innerHTML = '<div class="card" style="padding:12px;font-size:12.5px;line-height:1.6;font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;">' + diag.map(escapeHtml).join('\n') + '</div>';
-  }
-  function _diag(line) { diag.push(line); _diagShow(); }
-  var _errStr = function (e) { return e && e.message ? e.message : String(e); };
-
-  _hcStatus('🔍 Diagnostic Health Connect en cours…', 'var(--text-muted)');
-  _diag('Plugin HealthPlugin : ' + (H ? 'présent' : 'ABSENT'));
-
-  // 1) Disponibilité
+  var errStr = function (e) { return e && e.message ? e.message : String(e); };
+  _hcStatus('⏳ Connexion à Health Connect…');
   try {
     var av = await H.isHealthAvailable();
-    _diag('isHealthAvailable → ' + JSON.stringify(av));
-    if (!av || !av.available) {
-      _diag('⛔ Health Connect indisponible/non installé sur ce téléphone.');
-      _hcStatus('❌ Health Connect indisponible (voir diagnostic).', 'var(--bad)');
-      return;
-    }
-  } catch (e) { _diag('isHealthAvailable ERREUR : ' + _errStr(e)); }
+    _hcDiag.push('isHealthAvailable → ' + JSON.stringify(av));
+    if (!av || !av.available) { _hcStatus('❌ Health Connect indisponible sur ce téléphone.', 'var(--bad)'); return; }
+    try { var p = await H.requestHealthPermissions({ permissions: _HC_PERMS }); _hcDiag.push('permissions → ' + JSON.stringify(p && p.permissions)); }
+    catch (e) { _hcDiag.push('requestPermissions ERREUR : ' + errStr(e)); }
+    var now = new Date();
+    var start30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+    var start7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+    _hcStatus('⏳ Lecture de tes données…');
+    var ws = [];
+    try { var res = await H.queryWorkouts({ startDate: start30.toISOString(), endDate: now.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: true }); ws = (res && res.workouts) || []; }
+    catch (e) { _hcDiag.push('queryWorkouts ERREUR : ' + errStr(e)); }
+    var steps = [];
+    try { var agg = await H.queryAggregated({ startDate: start7.toISOString(), endDate: now.toISOString(), dataType: 'steps', bucket: 'day' }); steps = (agg && agg.aggregatedData) || []; }
+    catch (e) { _hcDiag.push('queryAggregated ERREUR : ' + errStr(e)); }
+    _hcDiag.push('séances : ' + ws.length + ' · pas(7j) : ' + Math.round(steps.reduce(function (s, x) { return s + (x.value || 0); }, 0)));
+    _hcWorkouts = ws.slice().sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
+    _hcRenderList(_hcWorkouts, steps);
+    var tot = steps.reduce(function (s, x) { return s + (x.value || 0); }, 0);
+    if (ws.length) _hcStatus('✅ ' + ws.length + ' séance(s) lue(s). Appuie sur « Importer » pour l\'ajouter à tes analyses.', 'var(--good)');
+    else if (tot > 0) _hcStatus('✅ Connecté ! ' + Math.round(tot).toLocaleString('fr-FR') + ' pas / 7 j. Aucune SÉANCE loggée pour l\'instant — logue un run / une sortie vélo pour l\'importer ici.', 'var(--good)');
+    else _hcStatus('⚠️ Health Connect ne renvoie encore rien. Vérifie que Google Health y écrit (ses Paramètres → Health Connect).', 'var(--warn)');
+  } catch (e) {
+    _hcStatus('❌ Erreur : ' + errStr(e), 'var(--bad)');
+  }
+}
 
-  // 2) Autorisations : état avant
+// Importe une séance Health Connect → action saveCardio (aucun backend nouveau).
+async function _hcImport(i) {
+  var w = _hcWorkouts[i]; if (!w || !athlete) return;
+  var btn = document.getElementById('hc-imp-' + i); if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+  var durMin = w.duration ? Math.round(w.duration / 60) : Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000);
+  durMin = Math.max(1, durMin || 1);
+  var km = (w.distance != null) ? (Math.round(w.distance / 1000 * 100) / 100) : '';
+  var hr = (w.heartRate && w.heartRate.length) ? Math.round(w.heartRate.reduce(function (s, h) { return s + (h.bpm || 0); }, 0) / w.heartRate.length) : '';
+  var d = new Date(w.startDate);
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var dateStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  var vitesse = (km && durMin) ? Math.round(km / (durMin / 60) * 10) / 10 : '';
+  var body = {
+    action: 'saveCardio', athlete_id: athlete.athlete_id, date: dateStr,
+    type_cardio: _hcMapType(w.workoutType), duree: durMin, distance: km,
+    vitesse_moy: vitesse, fc_moy: hr, calories: (w.calories ? Math.round(w.calories) : ''),
+    rpe: '', source: 'health_connect'
+  };
   try {
-    var before = await H.checkHealthPermissions({ permissions: _HC_PERMS });
-    _diag('checkPermissions AVANT → ' + JSON.stringify(before));
-  } catch (e) { _diag('checkPermissions AVANT ERREUR : ' + _errStr(e)); }
-
-  // 3) Demande d'autorisations (doit ouvrir l'écran Health Connect)
-  try {
-    var reqd = await H.requestHealthPermissions({ permissions: _HC_PERMS });
-    _diag('requestPermissions → ' + JSON.stringify(reqd));
-  } catch (e) { _diag('requestPermissions ERREUR : ' + _errStr(e)); }
-
-  // 4) Autorisations : état après
-  try {
-    var after = await H.checkHealthPermissions({ permissions: _HC_PERMS });
-    _diag('checkPermissions APRÈS → ' + JSON.stringify(after));
-  } catch (e) { _diag('checkPermissions APRÈS ERREUR : ' + _errStr(e)); }
-
-  var now = new Date();
-  var start30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
-  var start7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
-
-  // 5) Séances
-  var ws = [];
-  try {
-    var res = await H.queryWorkouts({ startDate: start30.toISOString(), endDate: now.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: true });
-    ws = (res && res.workouts) || [];
-    _diag('queryWorkouts(30j) → ' + ws.length + ' séance(s)');
-    if (ws.length) _diag('  1re séance : ' + JSON.stringify({ type: ws[0].workoutType, src: ws[0].sourceName, dist: ws[0].distance, dur: ws[0].duration }));
-  } catch (e) { _diag('queryWorkouts ERREUR : ' + _errStr(e)); }
-
-  // 6) Pas
-  var totSteps = 0, nDays = 0;
-  try {
-    var agg = await H.queryAggregated({ startDate: start7.toISOString(), endDate: now.toISOString(), dataType: 'steps', bucket: 'day' });
-    var steps = (agg && agg.aggregatedData) || [];
-    nDays = steps.length;
-    totSteps = steps.reduce(function (s, x) { return s + (x.value || 0); }, 0);
-    _diag('queryAggregated(pas,7j) → ' + nDays + ' jour(s), total ' + Math.round(totSteps) + ' pas');
-  } catch (e) { _diag('queryAggregated(pas) ERREUR : ' + _errStr(e)); }
-
-  // Verdict
-  if (ws.length || totSteps > 0) _hcStatus('✅ Données lues ! (' + ws.length + ' séance(s), ' + Math.round(totSteps) + ' pas/7j) — voir détail.', 'var(--good)');
-  else _hcStatus('⚠️ 0 donnée lue. Le diagnostic ci-dessous dit pourquoi (autorisations ? source vide ?).', 'var(--warn)');
-  _diag('— fin du diagnostic —');
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+    var res = await r.json();
+    if (res && res.error) throw new Error(res.error);
+    _hcMarkImported(_hcKey(w));
+    if (btn) { btn.disabled = true; btn.textContent = '✓ importée'; btn.style.background = 'transparent'; btn.style.border = 'none'; btn.style.color = 'var(--good)'; }
+    showToast('Séance importée dans tes analyses ✅', 'var(--good)');
+    try { chargerAppData(); } catch (e) {}
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Réessayer'; }
+    showToast('Erreur import : ' + (e && e.message ? e.message : e), 'var(--bad)');
+  }
 }
 
 function _hcRenderList(ws, steps) {
   var el = document.getElementById('hc-list'); if (!el) return;
   var html = '';
-  // Section séances structurées.
+  var imported = _hcImportedSet();
+  // Section séances (importables).
   if (ws && ws.length) {
-    var arr = ws.slice().sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
     html += '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin:2px 0 8px;">Séances</div>';
-    html += arr.map(function (w) {
-    var hr = (w.heartRate && w.heartRate.length) ? Math.round(w.heartRate.reduce(function (s, h) { return s + (h.bpm || 0); }, 0) / w.heartRate.length) : null;
-    var durMin = w.duration ? Math.round(w.duration / 60) : ((w.startDate && w.endDate) ? Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000) : null);
-    var km = (w.distance != null) ? (w.distance / 1000) : null;
-    var d = new Date(w.startDate);
-    var dstr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' }) + ' · ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    var bits = [];
-    if (durMin != null) bits.push(durMin + ' min');
-    if (km != null) bits.push(km.toFixed(2).replace('.', ',') + ' km');
-    if (hr != null) bits.push('❤️ ' + hr + ' bpm');
-    if (w.calories) bits.push(Math.round(w.calories) + ' kcal');
-    if (w.steps) bits.push(w.steps + ' pas');
-    var hasRoute = (w.route && w.route.length) ? ' · 🗺️ tracé' : '';
-    return '<div class="card" style="padding:12px;margin-bottom:8px;">'
-      + '<div style="font-weight:800;font-size:14px;">' + escapeHtml(String(w.workoutType || 'Activité')) + hasRoute + '</div>'
-      + '<div style="font-size:11.5px;color:var(--text-subtle);margin:2px 0 6px;">' + escapeHtml(dstr) + (w.sourceName ? ' · ' + escapeHtml(String(w.sourceName)) : '') + '</div>'
-      + '<div style="font-size:13px;color:var(--text);">' + (bits.length ? bits.join(' · ') : '—') + '</div>'
-      + '</div>';
+    html += ws.map(function (w, i) {
+      var hr = (w.heartRate && w.heartRate.length) ? Math.round(w.heartRate.reduce(function (s, h) { return s + (h.bpm || 0); }, 0) / w.heartRate.length) : null;
+      var durMin = w.duration ? Math.round(w.duration / 60) : ((w.startDate && w.endDate) ? Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000) : null);
+      var km = (w.distance != null) ? (w.distance / 1000) : null;
+      var d = new Date(w.startDate);
+      var dstr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' }) + ' · ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      var bits = [];
+      if (durMin != null) bits.push(durMin + ' min');
+      if (km != null) bits.push(km.toFixed(2).replace('.', ',') + ' km');
+      if (hr != null) bits.push('❤️ ' + hr + ' bpm');
+      if (w.calories) bits.push(Math.round(w.calories) + ' kcal');
+      var hasRoute = (w.route && w.route.length) ? ' · 🗺️ tracé' : '';
+      var done = imported.indexOf(_hcKey(w)) >= 0;
+      var btn = done
+        ? '<span style="font-size:12px;font-weight:800;color:var(--good);">✓ importée</span>'
+        : '<button id="hc-imp-' + i + '" onclick="_hcImport(' + i + ')" class="btn" style="background:#10B981;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-weight:800;font-size:13px;">Importer</button>';
+      return '<div class="card" style="padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-weight:800;font-size:14px;">' + escapeHtml(String(w.workoutType || 'Activité')) + hasRoute + '</div>'
+        + '<div style="font-size:11.5px;color:var(--text-subtle);margin:2px 0 4px;">' + escapeHtml(dstr) + (w.sourceName ? ' · ' + escapeHtml(String(w.sourceName)) : '') + '</div>'
+        + '<div style="font-size:13px;color:var(--text);">' + (bits.length ? bits.join(' · ') : '—') + '</div>'
+        + '</div>' + btn + '</div>';
     }).join('');
   }
-  // Section pas quotidiens (diagnostic + utile).
+  // Section pas quotidiens (contexte).
   if (steps && steps.length) {
     var sarr = steps.slice().filter(function (x) { return (x.value || 0) > 0; }).sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
     if (sarr.length) {
@@ -15506,6 +15520,11 @@ function _hcRenderList(ws, steps) {
         return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:var(--text-muted);">' + escapeHtml(dstr) + '</span><span style="font-weight:700;">' + Math.round(x.value).toLocaleString('fr-FR') + ' pas</span></div>';
       }).join('') + '</div>';
     }
+  }
+  // Détails techniques (repliés).
+  if (_hcDiag && _hcDiag.length) {
+    html += '<details style="margin-top:14px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
+      + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);margin-top:6px;">' + _hcDiag.map(escapeHtml).join('\n') + '</div></details>';
   }
   el.innerHTML = html;
 }
