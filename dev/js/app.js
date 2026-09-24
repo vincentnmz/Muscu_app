@@ -15402,6 +15402,23 @@ function _hcMapType(wt) {
   return 'autre';
 }
 function _hcKey(w) { return String((w && w.id) || ((w ? w.startDate : '') + '|' + ((w && w.workoutType) || ''))); }
+// Libellé FR d'un type Health Connect (WALKING → Marche…).
+function _hcTypeLabel(wt) {
+  var m = { WALKING: 'Marche', RUNNING: 'Course', JOGGING: 'Footing', BIKING: 'Vélo', BIKING_STATIONARY: 'Vélo (appart.)', HIKING: 'Randonnée', SWIMMING_POOL: 'Natation', SWIMMING_OPEN_WATER: 'Natation', ROWING: 'Rameur', ROWING_MACHINE: 'Rameur', ELLIPTICAL: 'Elliptique', STAIR_CLIMBING: 'Escaliers', STAIR_CLIMBING_MACHINE: 'Escaliers', HIGH_INTENSITY_INTERVAL_TRAINING: 'HIIT', STRENGTH_TRAINING: 'Renfo', WEIGHTLIFTING: 'Muscu', YOGA: 'Yoga', PILATES: 'Pilates', BOXING: 'Boxe' };
+  var k = String(wt || '').toUpperCase();
+  if (m[k]) return m[k];
+  var s = String(wt || 'Activité').toLowerCase().replace(/_/g, ' ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+// Nom de source propre : dé-double « Versa 4Versa 4 » et préfixe la marque.
+function _hcCleanSrc(w) {
+  var s = String((w && w.sourceName) || '').trim();
+  if (s && s.length % 2 === 0 && s.slice(0, s.length / 2) === s.slice(s.length / 2)) s = s.slice(0, s.length / 2).trim();
+  var b = String((w && w.sourceBundleId) || '');
+  var brand = b.indexOf('fitbit') >= 0 ? 'Fitbit' : b.indexOf('garmin') >= 0 ? 'Garmin' : b.indexOf('polar') >= 0 ? 'Polar' : b.indexOf('strava') >= 0 ? 'Strava' : b.indexOf('coros') >= 0 ? 'Coros' : b.indexOf('google') >= 0 ? 'Google' : '';
+  if (brand && s && s.toLowerCase().indexOf(brand.toLowerCase()) < 0) return brand + ' ' + s;
+  return s || brand || '';
+}
 function _hcImportedSet() { try { return JSON.parse(localStorage.getItem('nvz_hc_imported') || '[]'); } catch (e) { return []; } }
 function _hcMarkImported(key) { try { var a = _hcImportedSet(); if (a.indexOf(key) < 0) { a.push(key); localStorage.setItem('nvz_hc_imported', JSON.stringify(a.slice(-500))); } } catch (e) {} }
 
@@ -15509,10 +15526,11 @@ function _hcRenderList(ws, steps) {
       var btn = done
         ? '<span style="font-size:12px;font-weight:800;color:var(--good);">✓ importée</span>'
         : '<button id="hc-imp-' + i + '" onclick="_hcImport(' + i + ')" class="btn" style="background:#10B981;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-weight:800;font-size:13px;">Importer</button>';
+      var src = _hcCleanSrc(w);
       return '<div class="card" style="padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">'
         + '<div style="flex:1;min-width:0;">'
-        + '<div style="font-weight:800;font-size:14px;">' + escapeHtml(String(w.workoutType || 'Activité')) + hasRoute + '</div>'
-        + '<div style="font-size:11.5px;color:var(--text-subtle);margin:2px 0 4px;">' + escapeHtml(dstr) + (w.sourceName ? ' · ' + escapeHtml(String(w.sourceName)) : '') + '</div>'
+        + '<div style="font-weight:800;font-size:14px;">' + escapeHtml(_hcTypeLabel(w.workoutType)) + hasRoute + '</div>'
+        + '<div style="font-size:11.5px;color:var(--text-subtle);margin:2px 0 4px;">' + escapeHtml(dstr) + (src ? ' · ' + escapeHtml(src) : '') + '</div>'
         + '<div style="font-size:13px;color:var(--text);">' + (bits.length ? bits.join(' · ') : '—') + '</div>'
         + '</div>' + btn + '</div>';
     }).join('');
@@ -15531,7 +15549,7 @@ function _hcRenderList(ws, steps) {
   }
   // Détails techniques (repliés).
   if (_hcDiag && _hcDiag.length) {
-    html += '<details open style="margin-top:14px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
+    html += '<details style="margin-top:14px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
       + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);margin-top:6px;">' + _hcDiag.map(escapeHtml).join('\n') + '</div></details>';
   }
   el.innerHTML = html;
