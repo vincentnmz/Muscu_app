@@ -15398,45 +15398,74 @@ async function ouvrirImportMontre() {
     _hcStatus('⚠️ L\'import montre n\'est disponible que dans l\'appli Android (via Health Connect).', 'var(--warn)');
     return;
   }
-  _hcStatus('⏳ Vérification de Health Connect…');
+  // ── MODE DIAGNOSTIC : on affiche la vérité brute de chaque étape à l'écran ──
+  var diag = [];
+  function _diagShow() {
+    var el = document.getElementById('hc-list'); if (!el) return;
+    el.innerHTML = '<div class="card" style="padding:12px;font-size:12.5px;line-height:1.6;font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;">' + diag.map(escapeHtml).join('\n') + '</div>';
+  }
+  function _diag(line) { diag.push(line); _diagShow(); }
+  var _errStr = function (e) { return e && e.message ? e.message : String(e); };
+
+  _hcStatus('🔍 Diagnostic Health Connect en cours…', 'var(--text-muted)');
+  _diag('Plugin HealthPlugin : ' + (H ? 'présent' : 'ABSENT'));
+
+  // 1) Disponibilité
   try {
     var av = await H.isHealthAvailable();
+    _diag('isHealthAvailable → ' + JSON.stringify(av));
     if (!av || !av.available) {
-      _hcStatus('❌ Health Connect n\'est pas disponible sur ce téléphone. Installe/active « Health Connect » puis réessaie.', 'var(--bad)');
+      _diag('⛔ Health Connect indisponible/non installé sur ce téléphone.');
+      _hcStatus('❌ Health Connect indisponible (voir diagnostic).', 'var(--bad)');
       return;
     }
-    _hcStatus('🔐 Demande des autorisations…');
-    var perm = null;
-    try { perm = await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
-    var now = new Date();
-    var start = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
-    // 1) Séances structurées (run, sortie vélo…).
-    _hcStatus('⏳ Lecture de tes séances (30 derniers jours)…');
-    var ws = [];
-    try {
-      var res = await H.queryWorkouts({ startDate: start.toISOString(), endDate: now.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: true });
-      ws = (res && res.workouts) || [];
-    } catch (e) {}
-    // 2) Pas quotidiens (7 j) — diagnostic : prouve que Health Connect est bien alimenté,
-    //    même sans séance structurée (marche passive = des pas, pas une « séance »).
-    var steps = [];
-    try {
-      var s7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
-      var agg = await H.queryAggregated({ startDate: s7.toISOString(), endDate: now.toISOString(), dataType: 'steps', bucket: 'day' });
-      steps = (agg && agg.aggregatedData) || [];
-    } catch (e) {}
-    _hcRenderList(ws, steps);
-    var totSteps = steps.reduce(function (s, x) { return s + (x.value || 0); }, 0);
-    if (ws.length) {
-      _hcStatus('✅ ' + ws.length + ' séance(s) trouvée(s). (Aperçu — l\'import viendra ensuite.)', 'var(--good)');
-    } else if (totSteps > 0) {
-      _hcStatus('Connexion OK ✅ — 0 séance structurée, mais tes pas sont bien là (voir ci-dessous). Pour une vraie séance : logue une sortie vélo/course.', 'var(--good)');
-    } else {
-      _hcStatus('❌ Rien reçu de Health Connect (ni séance ni pas). → tes données sont sûrement dans Google Fit mais PAS partagées vers Health Connect. À activer : appli Health Connect → Fitbit → autoriser l\'écriture.', 'var(--warn)');
-    }
-  } catch (e) {
-    _hcStatus('❌ Erreur : ' + (e && e.message ? e.message : String(e)), 'var(--bad)');
-  }
+  } catch (e) { _diag('isHealthAvailable ERREUR : ' + _errStr(e)); }
+
+  // 2) Autorisations : état avant
+  try {
+    var before = await H.checkHealthPermissions({ permissions: _HC_PERMS });
+    _diag('checkPermissions AVANT → ' + JSON.stringify(before));
+  } catch (e) { _diag('checkPermissions AVANT ERREUR : ' + _errStr(e)); }
+
+  // 3) Demande d'autorisations (doit ouvrir l'écran Health Connect)
+  try {
+    var reqd = await H.requestHealthPermissions({ permissions: _HC_PERMS });
+    _diag('requestPermissions → ' + JSON.stringify(reqd));
+  } catch (e) { _diag('requestPermissions ERREUR : ' + _errStr(e)); }
+
+  // 4) Autorisations : état après
+  try {
+    var after = await H.checkHealthPermissions({ permissions: _HC_PERMS });
+    _diag('checkPermissions APRÈS → ' + JSON.stringify(after));
+  } catch (e) { _diag('checkPermissions APRÈS ERREUR : ' + _errStr(e)); }
+
+  var now = new Date();
+  var start30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+  var start7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+
+  // 5) Séances
+  var ws = [];
+  try {
+    var res = await H.queryWorkouts({ startDate: start30.toISOString(), endDate: now.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: true });
+    ws = (res && res.workouts) || [];
+    _diag('queryWorkouts(30j) → ' + ws.length + ' séance(s)');
+    if (ws.length) _diag('  1re séance : ' + JSON.stringify({ type: ws[0].workoutType, src: ws[0].sourceName, dist: ws[0].distance, dur: ws[0].duration }));
+  } catch (e) { _diag('queryWorkouts ERREUR : ' + _errStr(e)); }
+
+  // 6) Pas
+  var totSteps = 0, nDays = 0;
+  try {
+    var agg = await H.queryAggregated({ startDate: start7.toISOString(), endDate: now.toISOString(), dataType: 'steps', bucket: 'day' });
+    var steps = (agg && agg.aggregatedData) || [];
+    nDays = steps.length;
+    totSteps = steps.reduce(function (s, x) { return s + (x.value || 0); }, 0);
+    _diag('queryAggregated(pas,7j) → ' + nDays + ' jour(s), total ' + Math.round(totSteps) + ' pas');
+  } catch (e) { _diag('queryAggregated(pas) ERREUR : ' + _errStr(e)); }
+
+  // Verdict
+  if (ws.length || totSteps > 0) _hcStatus('✅ Données lues ! (' + ws.length + ' séance(s), ' + Math.round(totSteps) + ' pas/7j) — voir détail.', 'var(--good)');
+  else _hcStatus('⚠️ 0 donnée lue. Le diagnostic ci-dessous dit pourquoi (autorisations ? source vide ?).', 'var(--warn)');
+  _diag('— fin du diagnostic —');
 }
 
 function _hcRenderList(ws, steps) {
