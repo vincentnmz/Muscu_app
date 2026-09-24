@@ -15377,6 +15377,75 @@ function nouvelleSeanceCardio() {
 // Libellés d'activité — dérivés du catalogue cardio unique.
 var _CARDIO_TYPE_LABELS = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.label; return m; }, {});
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * IMPORT MONTRE / CAPTEURS via Health Connect (Android) — Phase 1a : lecture +
+ * affichage des séances (montre Fitbit, GPS vélo, ceinture cardio…). La donnée
+ * est calculée par l'appareil → fiable. Plugin natif « HealthPlugin »
+ * (capacitor-health). Web/PWA : indisponible (nécessite l'appli Android).
+ * ═══════════════════════════════════════════════════════════════════════════ */
+var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_ROUTE'];
+function _hcPlugin() { try { return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthPlugin; } catch (e) { return null; } }
+function _hcStatus(t, c) { var s = document.getElementById('hc-status'); if (s) { s.textContent = t; s.style.color = c || 'var(--text-muted)'; } }
+function fermerImportMontre() { var ov = document.getElementById('hc-import'); if (ov) ov.style.display = 'none'; }
+
+async function ouvrirImportMontre() {
+  if (!athlete) return;
+  var ov = document.getElementById('hc-import'); if (!ov) return;
+  var listEl = document.getElementById('hc-list'); if (listEl) listEl.innerHTML = '';
+  ov.style.display = 'flex';
+  var H = _hcPlugin();
+  if (!H || !(typeof _estAppNative === 'function' && _estAppNative())) {
+    _hcStatus('⚠️ L\'import montre n\'est disponible que dans l\'appli Android (via Health Connect).', 'var(--warn)');
+    return;
+  }
+  _hcStatus('⏳ Vérification de Health Connect…');
+  try {
+    var av = await H.isHealthAvailable();
+    if (!av || !av.available) {
+      _hcStatus('❌ Health Connect n\'est pas disponible sur ce téléphone. Installe/active « Health Connect » puis réessaie.', 'var(--bad)');
+      return;
+    }
+    _hcStatus('🔐 Demande des autorisations…');
+    try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
+    _hcStatus('⏳ Lecture de tes séances (30 derniers jours)…');
+    var now = new Date();
+    var start = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+    var res = await H.queryWorkouts({ startDate: start.toISOString(), endDate: now.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: true });
+    var ws = (res && res.workouts) || [];
+    _hcRenderList(ws);
+    if (ws.length) _hcStatus('✅ ' + ws.length + ' séance(s) trouvée(s). (Aperçu — l\'import viendra ensuite.)', 'var(--good)');
+    else _hcStatus('Aucune séance sur les 30 derniers jours dans Health Connect.', 'var(--text-muted)');
+  } catch (e) {
+    _hcStatus('❌ Erreur : ' + (e && e.message ? e.message : String(e)), 'var(--bad)');
+  }
+}
+
+function _hcRenderList(ws) {
+  var el = document.getElementById('hc-list'); if (!el) return;
+  if (!ws || !ws.length) { el.innerHTML = ''; return; }
+  // Plus récentes en premier.
+  var arr = ws.slice().sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
+  el.innerHTML = arr.map(function (w) {
+    var hr = (w.heartRate && w.heartRate.length) ? Math.round(w.heartRate.reduce(function (s, h) { return s + (h.bpm || 0); }, 0) / w.heartRate.length) : null;
+    var durMin = w.duration ? Math.round(w.duration / 60) : ((w.startDate && w.endDate) ? Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000) : null);
+    var km = (w.distance != null) ? (w.distance / 1000) : null;
+    var d = new Date(w.startDate);
+    var dstr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' }) + ' · ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    var bits = [];
+    if (durMin != null) bits.push(durMin + ' min');
+    if (km != null) bits.push(km.toFixed(2).replace('.', ',') + ' km');
+    if (hr != null) bits.push('❤️ ' + hr + ' bpm');
+    if (w.calories) bits.push(Math.round(w.calories) + ' kcal');
+    if (w.steps) bits.push(w.steps + ' pas');
+    var hasRoute = (w.route && w.route.length) ? ' · 🗺️ tracé' : '';
+    return '<div class="card" style="padding:12px;margin-bottom:8px;">'
+      + '<div style="font-weight:800;font-size:14px;">' + escapeHtml(String(w.workoutType || 'Activité')) + hasRoute + '</div>'
+      + '<div style="font-size:11.5px;color:var(--text-subtle);margin:2px 0 6px;">' + escapeHtml(dstr) + (w.sourceName ? ' · ' + escapeHtml(String(w.sourceName)) : '') + '</div>'
+      + '<div style="font-size:13px;color:var(--text);">' + (bits.length ? bits.join(' · ') : '—') + '</div>'
+      + '</div>';
+  }).join('');
+}
+
 var _dashCardioPeriod  = 30;
 var _dashCardioWindows = null;
 
