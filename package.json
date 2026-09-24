@@ -22,7 +22,6 @@
   },
   "homepage": "https://github.com/vincentnmz/Muscu_app#readme",
   "dependencies": {
-    "@capacitor-community/background-geolocation": "^1.2.26",
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/cli": "^8.5.2",
