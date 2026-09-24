@@ -15425,16 +15425,24 @@ async function ouvrirImportMontre() {
     try { var p = await H.requestHealthPermissions({ permissions: _HC_PERMS }); _hcDiag.push('permissions → ' + JSON.stringify(p && p.permissions)); }
     catch (e) { _hcDiag.push('requestPermissions ERREUR : ' + errStr(e)); }
     var now = new Date();
-    var start30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+    var start365 = new Date(now.getTime() - 365 * 24 * 3600 * 1000);   // large fenêtre : on ne rate rien
+    var end1 = new Date(now.getTime() + 24 * 3600 * 1000);             // +1 j (fuseaux / séance du jour)
     var start7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
     _hcStatus('⏳ Lecture de tes données…');
     var ws = [];
-    try { var res = await H.queryWorkouts({ startDate: start30.toISOString(), endDate: now.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: true }); ws = (res && res.workouts) || []; }
-    catch (e) { _hcDiag.push('queryWorkouts ERREUR : ' + errStr(e)); }
+    try {
+      var res = await H.queryWorkouts({ startDate: start365.toISOString(), endDate: end1.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: false });
+      ws = (res && res.workouts) || [];
+      _hcDiag.push('queryWorkouts(365j) → ' + ws.length + ' séance(s)');
+      if (ws.length) _hcDiag.push('  ex : ' + JSON.stringify({ type: ws[0].workoutType, src: ws[0].sourceName, bundle: ws[0].sourceBundleId, start: ws[0].startDate, dist: ws[0].distance, dur: ws[0].duration }));
+    } catch (e) { _hcDiag.push('queryWorkouts ERREUR : ' + errStr(e)); }
     var steps = [];
-    try { var agg = await H.queryAggregated({ startDate: start7.toISOString(), endDate: now.toISOString(), dataType: 'steps', bucket: 'day' }); steps = (agg && agg.aggregatedData) || []; }
-    catch (e) { _hcDiag.push('queryAggregated ERREUR : ' + errStr(e)); }
-    _hcDiag.push('séances : ' + ws.length + ' · pas(7j) : ' + Math.round(steps.reduce(function (s, x) { return s + (x.value || 0); }, 0)));
+    try { var agg = await H.queryAggregated({ startDate: start7.toISOString(), endDate: end1.toISOString(), dataType: 'steps', bucket: 'day' }); steps = (agg && agg.aggregatedData) || []; }
+    catch (e) { _hcDiag.push('queryAggregated(pas) ERREUR : ' + errStr(e)); }
+    // Croisé : les calories actives passent-elles (autre type que les pas) ?
+    try { var kc = await H.queryAggregated({ startDate: start7.toISOString(), endDate: end1.toISOString(), dataType: 'active-calories', bucket: 'day' }); var kcd = (kc && kc.aggregatedData) || []; _hcDiag.push('calories actives(7j) → ' + kcd.length + ' jour(s), total ' + Math.round(kcd.reduce(function (s, x) { return s + (x.value || 0); }, 0))); }
+    catch (e) { _hcDiag.push('queryAggregated(calories) ERREUR : ' + errStr(e)); }
+    _hcDiag.push('pas(7j) total : ' + Math.round(steps.reduce(function (s, x) { return s + (x.value || 0); }, 0)));
     _hcWorkouts = ws.slice().sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
     _hcRenderList(_hcWorkouts, steps);
     var tot = steps.reduce(function (s, x) { return s + (x.value || 0); }, 0);
@@ -15523,7 +15531,7 @@ function _hcRenderList(ws, steps) {
   }
   // Détails techniques (repliés).
   if (_hcDiag && _hcDiag.length) {
-    html += '<details style="margin-top:14px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
+    html += '<details open style="margin-top:14px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
       + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);margin-top:6px;">' + _hcDiag.map(escapeHtml).join('\n') + '</div></details>';
   }
   el.innerHTML = html;
