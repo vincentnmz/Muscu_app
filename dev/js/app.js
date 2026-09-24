@@ -15406,26 +15406,47 @@ async function ouvrirImportMontre() {
       return;
     }
     _hcStatus('🔐 Demande des autorisations…');
-    try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
-    _hcStatus('⏳ Lecture de tes séances (30 derniers jours)…');
+    var perm = null;
+    try { perm = await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
     var now = new Date();
     var start = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
-    var res = await H.queryWorkouts({ startDate: start.toISOString(), endDate: now.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: true });
-    var ws = (res && res.workouts) || [];
-    _hcRenderList(ws);
-    if (ws.length) _hcStatus('✅ ' + ws.length + ' séance(s) trouvée(s). (Aperçu — l\'import viendra ensuite.)', 'var(--good)');
-    else _hcStatus('Aucune séance sur les 30 derniers jours dans Health Connect.', 'var(--text-muted)');
+    // 1) Séances structurées (run, sortie vélo…).
+    _hcStatus('⏳ Lecture de tes séances (30 derniers jours)…');
+    var ws = [];
+    try {
+      var res = await H.queryWorkouts({ startDate: start.toISOString(), endDate: now.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: true });
+      ws = (res && res.workouts) || [];
+    } catch (e) {}
+    // 2) Pas quotidiens (7 j) — diagnostic : prouve que Health Connect est bien alimenté,
+    //    même sans séance structurée (marche passive = des pas, pas une « séance »).
+    var steps = [];
+    try {
+      var s7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+      var agg = await H.queryAggregated({ startDate: s7.toISOString(), endDate: now.toISOString(), dataType: 'steps', bucket: 'day' });
+      steps = (agg && agg.aggregatedData) || [];
+    } catch (e) {}
+    _hcRenderList(ws, steps);
+    var totSteps = steps.reduce(function (s, x) { return s + (x.value || 0); }, 0);
+    if (ws.length) {
+      _hcStatus('✅ ' + ws.length + ' séance(s) trouvée(s). (Aperçu — l\'import viendra ensuite.)', 'var(--good)');
+    } else if (totSteps > 0) {
+      _hcStatus('Connexion OK ✅ — 0 séance structurée, mais tes pas sont bien là (voir ci-dessous). Pour une vraie séance : logue une sortie vélo/course.', 'var(--good)');
+    } else {
+      _hcStatus('❌ Rien reçu de Health Connect (ni séance ni pas). → tes données sont sûrement dans Google Fit mais PAS partagées vers Health Connect. À activer : appli Health Connect → Fitbit → autoriser l\'écriture.', 'var(--warn)');
+    }
   } catch (e) {
     _hcStatus('❌ Erreur : ' + (e && e.message ? e.message : String(e)), 'var(--bad)');
   }
 }
 
-function _hcRenderList(ws) {
+function _hcRenderList(ws, steps) {
   var el = document.getElementById('hc-list'); if (!el) return;
-  if (!ws || !ws.length) { el.innerHTML = ''; return; }
-  // Plus récentes en premier.
-  var arr = ws.slice().sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
-  el.innerHTML = arr.map(function (w) {
+  var html = '';
+  // Section séances structurées.
+  if (ws && ws.length) {
+    var arr = ws.slice().sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
+    html += '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin:2px 0 8px;">Séances</div>';
+    html += arr.map(function (w) {
     var hr = (w.heartRate && w.heartRate.length) ? Math.round(w.heartRate.reduce(function (s, h) { return s + (h.bpm || 0); }, 0) / w.heartRate.length) : null;
     var durMin = w.duration ? Math.round(w.duration / 60) : ((w.startDate && w.endDate) ? Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000) : null);
     var km = (w.distance != null) ? (w.distance / 1000) : null;
@@ -15443,7 +15464,21 @@ function _hcRenderList(ws) {
       + '<div style="font-size:11.5px;color:var(--text-subtle);margin:2px 0 6px;">' + escapeHtml(dstr) + (w.sourceName ? ' · ' + escapeHtml(String(w.sourceName)) : '') + '</div>'
       + '<div style="font-size:13px;color:var(--text);">' + (bits.length ? bits.join(' · ') : '—') + '</div>'
       + '</div>';
-  }).join('');
+    }).join('');
+  }
+  // Section pas quotidiens (diagnostic + utile).
+  if (steps && steps.length) {
+    var sarr = steps.slice().filter(function (x) { return (x.value || 0) > 0; }).sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
+    if (sarr.length) {
+      html += '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin:14px 0 8px;">Pas · 7 derniers jours</div>';
+      html += '<div class="card" style="padding:12px;">' + sarr.map(function (x) {
+        var d = new Date(x.startDate);
+        var dstr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'short' });
+        return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:var(--text-muted);">' + escapeHtml(dstr) + '</span><span style="font-weight:700;">' + Math.round(x.value).toLocaleString('fr-FR') + ' pas</span></div>';
+      }).join('') + '</div>';
+    }
+  }
+  el.innerHTML = html;
 }
 
 var _dashCardioPeriod  = 30;
