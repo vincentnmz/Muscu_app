@@ -15608,19 +15608,31 @@ function _hcRenderList(ws, steps) {
 // Bloc « Activité du jour » sur Aujourd'hui : pas du jour + mini-barres 7 j.
 // Discret et CONDITIONNEL : rendu seulement en natif, avec Health Connect ET des
 // données ; sinon retiré (pas de bloc vide pour ceux sans montre).
-async function renderDashSteps() {
+async function renderDashSteps(attempt) {
+  attempt = attempt || 0;
   var el = document.getElementById('dash-steps'); if (!el) return;
   var H = _hcPlugin();
-  if (!H || !(typeof _estAppNative === 'function' && _estAppNative())) { el.style.display = 'none'; return; }
+  var native = (typeof _estAppNative === 'function' && _estAppNative());
+  // Au démarrage À FROID, le plugin natif Health Connect (Capacitor.Plugins) et
+  // la façade NovalyzPlatform peuvent ne pas être encore prêts au moment où le
+  // dashboard se rend → sans réessai, le bloc ne réapparaîtrait qu'au prochain
+  // « resume » de l'app. On retente quelques fois tant que ce n'est pas prêt.
+  if (!native || !H) {
+    if (attempt < 8) setTimeout(function () { renderDashSteps(attempt + 1); }, 600);
+    else el.style.display = 'none';
+    return;
+  }
   var now = new Date();
   var start7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
   var endTom = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  var days = [];
-  try { var a = await H.queryAggregated({ startDate: start7.toISOString(), endDate: endTom.toISOString(), dataType: 'steps', bucket: 'day' }); days = (a && a.aggregatedData) || []; } catch (e) {}
+  var days = [], qErr = false;
+  try { var a = await H.queryAggregated({ startDate: start7.toISOString(), endDate: endTom.toISOString(), dataType: 'steps', bucket: 'day' }); days = (a && a.aggregatedData) || []; } catch (e) { qErr = true; }
   var byDay = {}; days.forEach(function (x) { byDay[new Date(x.startDate).toISOString().slice(0, 10)] = (x.value || 0); });
   var todayKey = now.toISOString().slice(0, 10);
-  var todaySteps = Math.round(byDay[todayKey] || 0);
   var total7 = days.reduce(function (s, x) { return s + (x.value || 0); }, 0);
+  // Requête en échec ou vide juste après le démarrage : un dernier réessai court
+  // (Health Connect peut renvoyer 0 le temps que la permission/liaison s'établisse).
+  if ((qErr || total7 <= 0) && attempt < 4) { setTimeout(function () { renderDashSteps(attempt + 1); }, 800); return; }
   if (total7 <= 0) { el.style.display = 'none'; return; }   // rien à montrer → on masque l'ancre
   el.style.display = '';
   var maxv = Math.max.apply(null, days.map(function (x) { return x.value || 0; }).concat([1]));
