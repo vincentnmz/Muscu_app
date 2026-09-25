@@ -15609,10 +15609,9 @@ function _hcRenderList(ws, steps) {
 // Discret et CONDITIONNEL : rendu seulement en natif, avec Health Connect ET des
 // données ; sinon retiré (pas de bloc vide pour ceux sans montre).
 async function renderDashSteps() {
-  var host = document.querySelector('#tab-accueil .tj'); if (!host) return;
-  var el = document.getElementById('dash-steps');
+  var el = document.getElementById('dash-steps'); if (!el) return;
   var H = _hcPlugin();
-  if (!H || !(typeof _estAppNative === 'function' && _estAppNative())) { if (el) el.remove(); return; }
+  if (!H || !(typeof _estAppNative === 'function' && _estAppNative())) { el.style.display = 'none'; return; }
   var now = new Date();
   var start7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
   var endTom = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -15622,22 +15621,26 @@ async function renderDashSteps() {
   var todayKey = now.toISOString().slice(0, 10);
   var todaySteps = Math.round(byDay[todayKey] || 0);
   var total7 = days.reduce(function (s, x) { return s + (x.value || 0); }, 0);
-  if (total7 <= 0) { if (el) el.remove(); return; }   // rien à montrer
-  if (!el) { el = document.createElement('div'); el.id = 'dash-steps'; el.className = 'tj-card'; el.style.padding = '13px 15px'; host.appendChild(el); }
+  if (total7 <= 0) { el.style.display = 'none'; return; }   // rien à montrer → on masque l'ancre
+  el.style.display = '';
   var maxv = Math.max.apply(null, days.map(function (x) { return x.value || 0; }).concat([1]));
+  var moy = Math.round(total7 / 7);
   var d = new Date(start7), bars = '';
   for (var k = 0; k < 7; k++) {
-    var key = d.toISOString().slice(0, 10), v = byDay[key] || 0, h = Math.max(3, Math.round(v / maxv * 34));
+    var key = d.toISOString().slice(0, 10), v = byDay[key] || 0, h = Math.max(3, Math.round(v / maxv * 60));
     var isToday = key === todayKey, lbl = ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(d.getDay() + 6) % 7];
-    bars += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><i style="width:100%;max-width:16px;height:' + h + 'px;border-radius:3px;background:' + (isToday ? 'var(--tj-accent)' : 'var(--tj-border)') + ';"></i><em style="font-size:9px;color:var(--tj-subtle);font-style:normal;">' + lbl + '</em></div>';
+    // Barres en dégradé accent (comme la page importer) ; aujourd'hui à pleine
+    // opacité, les autres légèrement estompées pour rester lisible en un coup d'œil.
+    bars += '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;"><i title="' + Math.round(v) + ' pas" style="width:100%;max-width:24px;height:' + h + 'px;border-radius:4px;background:linear-gradient(180deg,var(--tj-accent),var(--tj-accent-strong));opacity:' + (isToday ? '1' : '.78') + ';display:block;"></i><em style="font-size:9px;color:var(--tj-subtle);font-style:normal;">' + lbl + '</em></div>';
     d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
   }
-  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-    + '<div><div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;">Activité du jour</div>'
-    + '<div style="font-family:var(--tj-head);font-size:20px;color:var(--tj-text);margin-top:3px;">' + todaySteps.toLocaleString('fr-FR') + ' <span style="font-size:12px;color:var(--tj-subtle);">pas</span></div></div>'
-    + '<div style="font-size:11px;color:var(--tj-subtle);text-align:right;line-height:1.5;">7 jours<br><b style="color:var(--tj-muted);font-size:13px;">' + Math.round(total7).toLocaleString('fr-FR') + '</b></div>'
+  // Même structure que le bloc « Pas quotidiens » de la page importer.
+  el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:11px;">'
+    + '<b style="font-size:13.5px;color:var(--tj-text);">Pas quotidiens</b>'
+    + '<span style="font-size:12px;color:var(--tj-muted);">moy. ' + moy.toLocaleString('fr-FR') + ' / j</span>'
     + '</div>'
-    + '<div style="display:flex;align-items:flex-end;gap:6px;height:44px;">' + bars + '</div>';
+    + '<div style="display:flex;align-items:flex-end;gap:5px;height:66px;">' + bars + '</div>'
+    + '<div style="font-size:11px;color:var(--tj-subtle);text-align:right;margin-top:9px;">' + Math.round(total7).toLocaleString('fr-FR') + ' pas · 7 jours</div>';
 }
 
 /* ── Graphe de pas interactif (Semaine / Mois / Année + navigation + swipe) ── */
