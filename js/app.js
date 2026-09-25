@@ -15612,6 +15612,7 @@ function _hcRenderList(ws, steps) {
 // Semaine / Mois / Année + navigation + swipe + chiffre par jour. État propre,
 // indépendant du graphe de la page importer.
 var _dsGran = 'S', _dsOffset = 0, _dsTouchX = null;
+var _hcWarmed = false;   // client Health Connect lié pour cette session ?
 function _dsSetGran(g) { _dsGran = g; _dsOffset = 0; renderDashStepsChart(); }
 function _dsNav(dir) { var n = _dsOffset + dir; if (n > 0) n = 0; _dsOffset = n; renderDashStepsChart(); }
 function _dsToday() { _dsOffset = 0; renderDashStepsChart(); }
@@ -15630,11 +15631,20 @@ async function renderDashSteps(attempt) {
     else el.style.display = 'none';
     return;
   }
-  // Warm-up : lie le client Health Connect (sans dialogue si déjà accordé). Sans
-  // ça, queryAggregated renvoie vide tant que la page importer n'a pas été
-  // ouverte (elle appelle requestHealthPermissions au 1er tap) — d'où le bloc qui
-  // n'apparaissait qu'après un passage par « Importer depuis la montre ».
-  try { await H.checkHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
+  // Warm-up : lie le client Health Connect exactement comme la page importer
+  // (isHealthAvailable + requestHealthPermissions au 1er tap). Sans cette liaison,
+  // queryAggregated renvoie vide — d'où le bloc qui n'apparaissait qu'APRÈS être
+  // passé par « Importer depuis la montre ». requestHealthPermissions n'affiche
+  // pas de dialogue quand c'est déjà accordé. Une seule fois par session.
+  if (!_hcWarmed) {
+    try {
+      var av = await H.isHealthAvailable();
+      if (av && av.available) {
+        try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {}
+        _hcWarmed = true;
+      }
+    } catch (e) {}
+  }
   var now = new Date();
   var s7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
   var e1 = new Date(now.getTime() + 24 * 3600 * 1000);
