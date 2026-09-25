@@ -10921,14 +10921,23 @@ function renderAujourdhui(data) {
     }
   } catch (e) {}
 
-  // --- Le mot de Novalyz = reco RÉELLE (Lecture Novalyz muscu, sinon moteur) ---
+  // --- Le mot de Novalyz = axe PROGRESSION (Lecture Novalyz muscu, 4 sem.) ---
+  // Volontairement distinct du bandeau (#1 = état du jour) et du point d'attention
+  // (#2 = alerte). On n'affiche QUE la reco progression du moteur, et seulement si
+  // la confiance n'est pas « faible » : sinon on masque le bloc plutôt que de servir
+  // un conseil générique qui ferait doublon avec l'état du jour (règle honnêteté 6bis).
   try {
-    var novaTxt = '';
+    var elNova = document.getElementById('tj-nova');
+    var elnT = document.getElementById('tj-nova-txt');
     var sM = data && data.analyse_synthese && data.analyse_synthese.muscu;
-    if (sM && sM.reco && sM.reco.texte) novaTxt = sM.reco.texte;
-    else if (m.reco && String(m.reco).trim()) novaTxt = String(m.reco);
-    var eln = document.getElementById('tj-nova-txt');
-    if (eln && novaTxt) eln.textContent = novaTxt;
+    var novaTxt = (sM && sM.reco && sM.reco.texte && sM.confiance && sM.confiance !== 'faible')
+      ? String(sM.reco.texte) : '';
+    if (novaTxt) {
+      if (elnT) elnT.textContent = novaTxt;
+      if (elNova) elNova.style.display = '';
+    } else {
+      if (elNova) elNova.style.display = 'none';
+    }
   } catch (e) {}
 
   // --- Bien-être « point du jour » : 5 cellules depuis bien_etre[0] ---
@@ -10988,16 +10997,6 @@ function renderAujourdhui(data) {
       if (elNom) elNom.textContent = 'Séance libre';
       if (elMeta) elMeta.textContent = 'Choisis tes exercices au démarrage';
       if (elFoc) elFoc.style.display = 'none';
-    }
-  } catch (e) {}
-
-  // --- Mot de Novalyz : recommandation du moteur ---
-  try {
-    var elNv = document.getElementById('tj-nova-txt');
-    if (elNv) {
-      var reco = m.reco || null;
-      if (reco && String(reco).trim() && String(reco).indexOf('Données insuffisantes') === -1) elNv.textContent = String(reco);
-      else elNv.textContent = 'Enregistre tes séances et ton bien-être : je te donnerai des conseils personnalisés au fil des semaines.';
     }
   } catch (e) {}
 
