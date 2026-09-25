@@ -15589,23 +15589,9 @@ function _hcRenderList(ws, steps) {
     html += '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:22px 12px 6px;">Aucune séance trouvée dans Health Connect.<br><span style="font-size:12px;color:var(--text-subtle);">Logue une sortie sur ta montre, ou branche un capteur qui écrit dans Health Connect.</span></div>';
   }
 
-  // Activité · 7 jours (mini-graphe de pas).
-  if (steps && steps.length) {
-    var sarr = steps.slice().sort(function (a, b) { return new Date(a.startDate) - new Date(b.startDate); });
-    var vals = sarr.map(function (x) { return x.value || 0; });
-    var tot = vals.reduce(function (s, v) { return s + v; }, 0);
-    if (tot > 0) {
-      var maxv = Math.max.apply(null, vals.concat([1]));
-      var nPos = vals.filter(function (v) { return v > 0; }).length || 1;
-      var moy = Math.round(tot / nPos);
-      var bars = sarr.map(function (x) {
-        var h = Math.max(4, Math.round((x.value || 0) / maxv * 58));
-        var lbl = new Date(x.startDate).toLocaleDateString('fr-FR', { weekday: 'short' }).charAt(0).toUpperCase();
-        return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><i style="width:100%;height:' + h + 'px;background:linear-gradient(180deg,var(--accent),#4f46e5);border-radius:5px;display:block;"></i><em style="font-size:10px;color:var(--text-subtle);font-style:normal;">' + lbl + '</em></div>';
-      }).join('');
-      html += '<div style="margin:18px 2px 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);">Activité · 7 jours</div>';
-      html += '<div class="card" style="padding:14px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;"><b style="font-size:14px;font-weight:800;">Pas quotidiens</b><span style="font-size:12px;color:var(--text-muted);">moy. ' + moy.toLocaleString('fr-FR') + ' / j</span></div><div style="display:flex;align-items:flex-end;gap:7px;height:64px;">' + bars + '</div></div>';
-    }
+  // Activité — graphe de pas interactif (Semaine/Mois/Année), rendu après coup.
+  if (_hcPlugin() && typeof _estAppNative === 'function' && _estAppNative()) {
+    html += '<div id="hc-activity"></div>';
   }
 
   // Détails techniques (repliés).
@@ -15614,6 +15600,99 @@ function _hcRenderList(ws, steps) {
       + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);margin-top:6px;">' + _hcDiag.map(escapeHtml).join('\n') + '</div></details>';
   }
   el.innerHTML = html;
+  if (document.getElementById('hc-activity')) { try { _actRender(); } catch (e) {} }
+}
+
+/* ── Graphe de pas interactif (Semaine / Mois / Année + navigation + swipe) ── */
+var _actGran = 'S';    // 'S' semaine · 'M' mois · 'A' année
+var _actOffset = 0;    // 0 = période courante ; -1 = précédente…
+var _actTouchX = null;
+function _actSetGran(g) { _actGran = g; _actOffset = 0; _actRender(); }
+function _actNav(dir) { var n = _actOffset + dir; if (n > 0) n = 0; _actOffset = n; _actRender(); }
+function _actToday() { _actOffset = 0; _actRender(); }
+// Bornes + libellé d'une période (gran, offset).
+function _actRange(gran, offset) {
+  var now = new Date(), start, end, label;
+  if (gran === 'S') {
+    var dow = (now.getDay() + 6) % 7; // lundi = 0
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow + offset * 7);
+    end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+    var last = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1);
+    label = start.getDate() + ' – ' + last.getDate() + ' ' + last.toLocaleDateString('fr-FR', { month: 'short' });
+  } else if (gran === 'M') {
+    start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    label = start.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  } else {
+    var y = now.getFullYear() + offset;
+    start = new Date(y, 0, 1); end = new Date(y + 1, 0, 1); label = String(y);
+  }
+  return { start: start, end: end, label: label };
+}
+function _actHeaderHtml(label) {
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === _actGran;
+    return '<button onclick="_actSetGran(\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:12px;padding:8px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = _actOffset !== 0 ? '<div style="font-size:11px;margin-top:1px;"><span onclick="_actToday()" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = _actOffset >= 0;
+  return '<div style="margin:18px 2px 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);">Activité</div>'
+    + '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:11px;padding:4px;margin-bottom:8px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+    + '<button onclick="_actNav(-1)" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:14px;font-weight:800;">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_actNav(1)" ' + (nextDis ? 'disabled' : '') + ' style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div>';
+}
+async function _actRender() {
+  var host = document.getElementById('hc-activity'); if (!host) return;
+  var H = _hcPlugin(); if (!H) return;
+  var r = _actRange(_actGran, _actOffset), rp = _actRange(_actGran, _actOffset - 1);
+  host.innerHTML = _actHeaderHtml(r.label)
+    + '<div class="card" style="padding:14px;"><div id="act-chart" style="height:86px;display:flex;align-items:center;justify-content:center;color:var(--text-subtle);font-size:12px;">…</div><div id="act-cmp" style="margin-top:10px;font-size:12px;color:var(--text-muted);"></div></div>';
+  // Swipe horizontal sur la carte.
+  host.ontouchstart = function (e) { _actTouchX = e.touches[0].clientX; };
+  host.ontouchend = function (e) { if (_actTouchX == null) return; var dx = e.changedTouches[0].clientX - _actTouchX; _actTouchX = null; if (Math.abs(dx) > 50) _actNav(dx < 0 ? 1 : -1); };
+  var cur = [], prevTot = 0;
+  try { var a = await H.queryAggregated({ startDate: r.start.toISOString(), endDate: r.end.toISOString(), dataType: 'steps', bucket: 'day' }); cur = (a && a.aggregatedData) || []; } catch (e) {}
+  try { var b = await H.queryAggregated({ startDate: rp.start.toISOString(), endDate: rp.end.toISOString(), dataType: 'steps', bucket: 'day' }); prevTot = ((b && b.aggregatedData) || []).reduce(function (s, x) { return s + (x.value || 0); }, 0); } catch (e) {}
+  _actDraw(cur, prevTot, r);
+}
+function _actDraw(cur, prevTot, r) {
+  var chartEl = document.getElementById('act-chart'), cmpEl = document.getElementById('act-cmp');
+  if (!chartEl) return;
+  var byDay = {}; (cur || []).forEach(function (x) { byDay[new Date(x.startDate).toISOString().slice(0, 10)] = (x.value || 0); });
+  var buckets = [];
+  if (_actGran === 'A') {
+    var months = [0,0,0,0,0,0,0,0,0,0,0,0];
+    (cur || []).forEach(function (x) { months[new Date(x.startDate).getMonth()] += (x.value || 0); });
+    var ml = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    buckets = months.map(function (v, i) { return { label: ml[i], value: v }; });
+  } else {
+    var d = new Date(r.start);
+    while (d < r.end) {
+      var key = d.toISOString().slice(0, 10);
+      var lbl = (_actGran === 'S') ? ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(d.getDay() + 6) % 7] : String(d.getDate());
+      buckets.push({ label: lbl, value: byDay[key] || 0 });
+      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    }
+  }
+  var total = buckets.reduce(function (s, b) { return s + b.value; }, 0);
+  var maxv = Math.max.apply(null, buckets.map(function (b) { return b.value; }).concat([1]));
+  var dense = buckets.length > 16;
+  var bars = buckets.map(function (b, i) {
+    var h = Math.max(3, Math.round(b.value / maxv * 66));
+    var lab = (!dense || i % 5 === 0) ? b.label : '';
+    return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;"><i title="' + Math.round(b.value) + ' pas" style="width:100%;max-width:24px;height:' + h + 'px;background:linear-gradient(180deg,var(--accent),#4f46e5);border-radius:4px;display:block;"></i><em style="font-size:9px;color:var(--text-subtle);font-style:normal;white-space:nowrap;">' + lab + '</em></div>';
+  }).join('');
+  chartEl.outerHTML = '<div id="act-chart" style="display:flex;align-items:flex-end;gap:' + (dense ? '2' : '5') + 'px;height:86px;">' + bars + '</div>';
+  if (cmpEl) {
+    var nb = (_actGran === 'A') ? 12 : buckets.length;
+    var moy = nb ? Math.round(total / nb) : 0;
+    var delta = prevTot > 0 ? Math.round((total - prevTot) / prevTot * 100) : null;
+    var dtxt = (delta === null) ? '' : ' · <span style="color:' + (delta >= 0 ? 'var(--good)' : '#F87171') + ';font-weight:800;">' + (delta >= 0 ? '+' : '') + delta + '% vs préc.</span>';
+    cmpEl.innerHTML = '<b style="color:var(--text);">' + Math.round(total).toLocaleString('fr-FR') + ' pas</b> · moy. ' + moy.toLocaleString('fr-FR') + '/' + (_actGran === 'A' ? 'mois' : 'j') + dtxt;
+  }
 }
 
 var _dashCardioPeriod  = 30;
