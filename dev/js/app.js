@@ -15389,7 +15389,41 @@ function _hcStatus(t, c) { var s = document.getElementById('hc-status'); if (s) 
 function fermerImportMontre() { var ov = document.getElementById('hc-import'); if (ov) ov.style.display = 'none'; }
 
 var _hcWorkouts = [];   // dernières séances lues (import par index)
+var _hcSteps = [];      // derniers pas quotidiens lus (pour ré-affichage)
 var _hcDiag = [];       // journal technique (repliable en bas de l'écran)
+// Pastille d'icône par type (réutilise le catalogue cardio Novalyz).
+function _hcCardIcon(w) {
+  var a = _CARDIO_CAT_BY_KEY[_hcMapType(w.workoutType)] || {};
+  var color = a.color || '#6366F1';
+  var svg = a.svg || '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>';
+  return '<div style="width:44px;height:44px;border-radius:13px;flex:none;display:flex;align-items:center;justify-content:center;background:' + color + ';"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;">' + svg + '</svg></div>';
+}
+function _hcChip(txt, cls) { return '<span style="font-size:12px;font-weight:700;background:var(--surface2);border-radius:8px;padding:3px 8px;' + (cls === 'hr' ? 'color:#F87171;' : '') + '">' + escapeHtml(txt) + '</span>'; }
+// Une carte de séance (mode « à importer » ou « déjà importée »). i = index dans _hcWorkouts.
+function _hcCardHtml(w, i, done) {
+  var hr = (w.heartRate && w.heartRate.length) ? Math.round(w.heartRate.reduce(function (s, h) { return s + (h.bpm || 0); }, 0) / w.heartRate.length) : null;
+  var durMin = w.duration ? Math.round(w.duration / 60) : ((w.startDate && w.endDate) ? Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000) : null);
+  var km = (w.distance != null) ? (w.distance / 1000) : null;
+  var d = new Date(w.startDate);
+  var dstr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' }) + ' · ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  var chips = '';
+  if (durMin != null) chips += _hcChip(durMin + ' min');
+  if (km != null) chips += _hcChip(km.toFixed(2).replace('.', ',') + ' km');
+  if (hr != null) chips += _hcChip('❤️ ' + hr + ' bpm', 'hr');
+  if (w.calories) chips += _hcChip(Math.round(w.calories) + ' kcal');
+  var route = (w.route && w.route.length) ? '<span style="font-size:11px;color:#9D5FD3;font-weight:800;margin-left:6px;">🗺️ tracé</span>' : '';
+  var src = _hcCleanSrc(w);
+  var action = done
+    ? '<span style="flex:none;color:var(--good);font-size:13px;font-weight:800;">✓</span>'
+    : '<button id="hc-imp-' + i + '" onclick="_hcImport(' + i + ')" style="flex:none;background:#10B981;color:#04160f;border:none;border-radius:12px;padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer;">Importer</button>';
+  return '<div class="card" style="' + (done ? 'opacity:.6;' : '') + 'padding:12px;margin-bottom:9px;display:flex;align-items:center;gap:11px;">'
+    + _hcCardIcon(w)
+    + '<div style="flex:1;min-width:0;">'
+    + '<div style="font-size:15px;font-weight:800;">' + escapeHtml(_hcTypeLabel(w.workoutType)) + route + '</div>'
+    + '<div style="font-size:11.5px;color:var(--text-subtle);margin:1px 0 6px;">' + escapeHtml(dstr) + (src ? ' · ' + escapeHtml(src) : '') + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:5px;">' + (chips || '—') + '</div>'
+    + '</div>' + action + '</div>';
+}
 
 // Type Health Connect → clé du catalogue cardio Novalyz (best-effort).
 function _hcMapType(wt) {
@@ -15461,6 +15495,7 @@ async function ouvrirImportMontre() {
     catch (e) { _hcDiag.push('queryAggregated(calories) ERREUR : ' + errStr(e)); }
     _hcDiag.push('pas(7j) total : ' + Math.round(steps.reduce(function (s, x) { return s + (x.value || 0); }, 0)));
     _hcWorkouts = ws.slice().sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
+    _hcSteps = steps;
     _hcRenderList(_hcWorkouts, steps);
     var tot = steps.reduce(function (s, x) { return s + (x.value || 0); }, 0);
     if (ws.length) _hcStatus('✅ ' + ws.length + ' séance(s) lue(s). Appuie sur « Importer » pour l\'ajouter à tes analyses.', 'var(--good)');
@@ -15472,8 +15507,9 @@ async function ouvrirImportMontre() {
 }
 
 // Importe une séance Health Connect → action saveCardio (aucun backend nouveau).
-async function _hcImport(i) {
-  var w = _hcWorkouts[i]; if (!w || !athlete) return;
+// silent=true : pas de toast ni de refresh (utilisé par « Tout importer »).
+async function _hcImport(i, silent) {
+  var w = _hcWorkouts[i]; if (!w || !athlete) return false;
   var btn = document.getElementById('hc-imp-' + i); if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
   var durMin = w.duration ? Math.round(w.duration / 60) : Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000);
   durMin = Math.max(1, durMin || 1);
@@ -15495,61 +15531,86 @@ async function _hcImport(i) {
     if (res && res.error) throw new Error(res.error);
     _hcMarkImported(_hcKey(w));
     if (btn) { btn.disabled = true; btn.textContent = '✓ importée'; btn.style.background = 'transparent'; btn.style.border = 'none'; btn.style.color = 'var(--good)'; }
-    showToast('Séance importée dans tes analyses ✅', 'var(--good)');
-    try { chargerAppData(); } catch (e) {}
+    if (!silent) { showToast('Séance importée dans tes analyses ✅', 'var(--good)'); try { chargerAppData(); } catch (e) {} }
+    return true;
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Réessayer'; }
-    showToast('Erreur import : ' + (e && e.message ? e.message : e), 'var(--bad)');
+    if (!silent) showToast('Erreur import : ' + (e && e.message ? e.message : e), 'var(--bad)');
+    return false;
   }
+}
+
+// « Tout importer » : importe en série les séances pas encore importées, puis
+// rafraîchit une seule fois et ré-affiche la liste (elles passent en « déjà importées »).
+async function _hcImportAll() {
+  var imported = _hcImportedSet();
+  var todo = [];
+  for (var i = 0; i < _hcWorkouts.length; i++) { if (imported.indexOf(_hcKey(_hcWorkouts[i])) < 0) todo.push(i); }
+  if (!todo.length) return;
+  _hcStatus('⏳ Import de ' + todo.length + ' séance(s)…', 'var(--text-muted)');
+  var ok = 0;
+  for (var j = 0; j < todo.length; j++) { if (await _hcImport(todo[j], true)) ok++; }
+  try { chargerAppData(); } catch (e) {}
+  showToast(ok + ' séance(s) importée(s) ✅', 'var(--good)');
+  _hcStatus('✅ ' + ok + ' séance(s) importée(s).', 'var(--good)');
+  _hcRenderList(_hcWorkouts, _hcSteps);
 }
 
 function _hcRenderList(ws, steps) {
   var el = document.getElementById('hc-list'); if (!el) return;
-  var html = '';
   var imported = _hcImportedSet();
-  // Section séances (importables).
-  if (ws && ws.length) {
-    html += '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin:2px 0 8px;">Séances</div>';
-    html += ws.map(function (w, i) {
-      var hr = (w.heartRate && w.heartRate.length) ? Math.round(w.heartRate.reduce(function (s, h) { return s + (h.bpm || 0); }, 0) / w.heartRate.length) : null;
-      var durMin = w.duration ? Math.round(w.duration / 60) : ((w.startDate && w.endDate) ? Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000) : null);
-      var km = (w.distance != null) ? (w.distance / 1000) : null;
-      var d = new Date(w.startDate);
-      var dstr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' }) + ' · ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      var bits = [];
-      if (durMin != null) bits.push(durMin + ' min');
-      if (km != null) bits.push(km.toFixed(2).replace('.', ',') + ' km');
-      if (hr != null) bits.push('❤️ ' + hr + ' bpm');
-      if (w.calories) bits.push(Math.round(w.calories) + ' kcal');
-      var hasRoute = (w.route && w.route.length) ? ' · 🗺️ tracé' : '';
-      var done = imported.indexOf(_hcKey(w)) >= 0;
-      var btn = done
-        ? '<span style="font-size:12px;font-weight:800;color:var(--good);">✓ importée</span>'
-        : '<button id="hc-imp-' + i + '" onclick="_hcImport(' + i + ')" class="btn" style="background:#10B981;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-weight:800;font-size:13px;">Importer</button>';
-      var src = _hcCleanSrc(w);
-      return '<div class="card" style="padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">'
-        + '<div style="flex:1;min-width:0;">'
-        + '<div style="font-weight:800;font-size:14px;">' + escapeHtml(_hcTypeLabel(w.workoutType)) + hasRoute + '</div>'
-        + '<div style="font-size:11.5px;color:var(--text-subtle);margin:2px 0 4px;">' + escapeHtml(dstr) + (src ? ' · ' + escapeHtml(src) : '') + '</div>'
-        + '<div style="font-size:13px;color:var(--text);">' + (bits.length ? bits.join(' · ') : '—') + '</div>'
-        + '</div>' + btn + '</div>';
-    }).join('');
+  var toImport = [], done = [];
+  (ws || []).forEach(function (w, i) { (imported.indexOf(_hcKey(w)) >= 0 ? done : toImport).push({ w: w, i: i }); });
+  var html = '';
+
+  // Carte connexion.
+  var brand = (ws && ws.length) ? _hcCleanSrc(ws[0]) : '';
+  html += '<div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.04));border:1px solid rgba(16,185,129,.28);border-radius:16px;padding:13px 14px;margin-bottom:4px;">'
+    + '<div style="width:38px;height:38px;border-radius:50%;background:rgba(16,185,129,.16);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;">✓</div>'
+    + '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;">Connecté</div><div style="font-size:11.5px;color:var(--text-muted);">' + (brand ? escapeHtml(brand) + ' · via Health Connect' : 'Health Connect') + '</div></div>'
+    + '</div>';
+
+  // À importer.
+  if (toImport.length) {
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin:18px 2px 10px;">'
+      + '<span style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);">À importer · ' + toImport.length + '</span>'
+      + (toImport.length > 1 ? '<span onclick="_hcImportAll()" style="font-size:12.5px;font-weight:800;color:var(--good);cursor:pointer;">Tout importer</span>' : '')
+      + '</div>';
+    html += toImport.map(function (o) { return _hcCardHtml(o.w, o.i, false); }).join('');
   }
-  // Section pas quotidiens (contexte).
+
+  // Déjà importées.
+  if (done.length) {
+    html += '<div style="margin:18px 2px 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);">Déjà importées · ' + done.length + '</div>';
+    html += done.map(function (o) { return _hcCardHtml(o.w, o.i, true); }).join('');
+  }
+
+  if (!toImport.length && !done.length) {
+    html += '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:22px 12px 6px;">Aucune séance trouvée dans Health Connect.<br><span style="font-size:12px;color:var(--text-subtle);">Logue une sortie sur ta montre, ou branche un capteur qui écrit dans Health Connect.</span></div>';
+  }
+
+  // Activité · 7 jours (mini-graphe de pas).
   if (steps && steps.length) {
-    var sarr = steps.slice().filter(function (x) { return (x.value || 0) > 0; }).sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
-    if (sarr.length) {
-      html += '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);margin:14px 0 8px;">Pas · 7 derniers jours</div>';
-      html += '<div class="card" style="padding:12px;">' + sarr.map(function (x) {
-        var d = new Date(x.startDate);
-        var dstr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'short' });
-        return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span style="color:var(--text-muted);">' + escapeHtml(dstr) + '</span><span style="font-weight:700;">' + Math.round(x.value).toLocaleString('fr-FR') + ' pas</span></div>';
-      }).join('') + '</div>';
+    var sarr = steps.slice().sort(function (a, b) { return new Date(a.startDate) - new Date(b.startDate); });
+    var vals = sarr.map(function (x) { return x.value || 0; });
+    var tot = vals.reduce(function (s, v) { return s + v; }, 0);
+    if (tot > 0) {
+      var maxv = Math.max.apply(null, vals.concat([1]));
+      var nPos = vals.filter(function (v) { return v > 0; }).length || 1;
+      var moy = Math.round(tot / nPos);
+      var bars = sarr.map(function (x) {
+        var h = Math.max(4, Math.round((x.value || 0) / maxv * 58));
+        var lbl = new Date(x.startDate).toLocaleDateString('fr-FR', { weekday: 'short' }).charAt(0).toUpperCase();
+        return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><i style="width:100%;height:' + h + 'px;background:linear-gradient(180deg,var(--accent),#4f46e5);border-radius:5px;display:block;"></i><em style="font-size:10px;color:var(--text-subtle);font-style:normal;">' + lbl + '</em></div>';
+      }).join('');
+      html += '<div style="margin:18px 2px 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);">Activité · 7 jours</div>';
+      html += '<div class="card" style="padding:14px;"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;"><b style="font-size:14px;font-weight:800;">Pas quotidiens</b><span style="font-size:12px;color:var(--text-muted);">moy. ' + moy.toLocaleString('fr-FR') + ' / j</span></div><div style="display:flex;align-items:flex-end;gap:7px;height:64px;">' + bars + '</div></div>';
     }
   }
+
   // Détails techniques (repliés).
   if (_hcDiag && _hcDiag.length) {
-    html += '<details style="margin-top:14px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
+    html += '<details style="margin-top:16px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
       + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);margin-top:6px;">' + _hcDiag.map(escapeHtml).join('\n') + '</div></details>';
   }
   el.innerHTML = html;

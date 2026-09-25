@@ -1025,7 +1025,6 @@
         <div id="en-sel-cardio" style="display:none">
           <div class="en-sec">Choisis ton activité</div>
           <div class="en-grid" id="en-grid"></div>
-          <button class="en-add" id="btn-hc-import" onclick="ouvrirImportMontre()" style="margin-top:10px;border-color:#10B981;color:#10B981;background:rgba(16,185,129,.08);font-weight:800;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M12 15l-4-4M12 15l4-4M4 19h16"/></svg>Importer depuis ma montre</button>
         </div>
         <!-- Univers HYROX (rempli par renderHyroxHome) -->
         <div id="en-sel-hyrox" style="display:none"></div>
@@ -1659,6 +1658,9 @@
           <div><div class="ma-ttl">Mes analyses</div><div class="ma-sub">Le verdict, puis les chiffres.</div></div>
           <button class="ma-av" onclick="ouvrirNovalyzIA()" title="Demande à Novalyz">V</button>
         </div>
+
+        <!-- Import montre / capteurs (Health Connect) : une action « données », d'où sa place ici. -->
+        <button id="btn-hc-analyses" onclick="ouvrirImportMontre()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:12px;border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.08);color:#10B981;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M12 15l-4-4M12 15l4-4M4 19h16"/></svg>Importer mes séances (montre &amp; capteurs)</button>
 
         <div class="ma-switch">
           <button id="ma-sw-muscu" class="on" onclick="maSetDisc('muscu')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
@@ -2501,13 +2503,15 @@
   <!-- Couche native (Capacitor) : détection de plateforme + aiguillage des
        notifications (Web Push ↔ FCM). Chargées AVANT app.js. -->
   <!-- Overlay import Health Connect (montre/capteurs) — enfant direct de body -->
-  <div id="hc-import" style="display:none;position:fixed;inset:0;z-index:1400;background:var(--bg,#0b0b0f);flex-direction:column;padding:20px 16px;overflow-y:auto;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <div style="font-size:16px;font-weight:800;">📲 Importer depuis ma montre</div>
-      <button onclick="fermerImportMontre()" class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:10px;">Fermer</button>
+  <div id="hc-import" style="display:none;position:fixed;inset:0;z-index:1400;background:var(--bg,#0b0b0f);flex-direction:column;padding:0 0 40px;overflow-y:auto;">
+    <div style="position:sticky;top:0;background:var(--bg,#0b0b0f);padding:16px 16px 10px;display:flex;align-items:center;gap:12px;z-index:2;">
+      <button onclick="fermerImportMontre()" style="width:38px;height:38px;border-radius:11px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:18px;flex:none;cursor:pointer;">✕</button>
+      <div><div style="font-size:18px;font-weight:800;letter-spacing:-.01em;">Mes séances connectées</div><div style="font-size:12px;color:var(--text-muted);margin-top:1px;">Depuis ta montre et tes capteurs</div></div>
     </div>
-    <div id="hc-status" style="font-size:13px;color:var(--text-muted);margin-bottom:12px;min-height:18px;">⏳ …</div>
-    <div id="hc-list"></div>
+    <div style="padding:0 16px;">
+      <div id="hc-status" style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;min-height:16px;"></div>
+      <div id="hc-list"></div>
+    </div>
   </div>
 
   <script src="js/platform.js"></script>
