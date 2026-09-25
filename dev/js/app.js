@@ -12429,6 +12429,9 @@ function _appliquerAppData(data) {
     // ── Cardio — résumé multi-fenêtre ─────────────────────────────────────────
     _safe('dash-cardio', () => renderDashCardio(data.cardio));
 
+    // ── Activité du jour (pas montre) — bloc discret, seulement si connecté ────
+    _safe('dash-steps', () => { try { renderDashSteps(); } catch (e) {} });
+
     // ── Cardio — historique détaillé (onglet Progression) ────────────────────
     _pasQuotidiens = (data && data.pas_quotidiens) || [];
     _safe('cardio-historique', () => renderCardioHistorique(data.cardio && data.cardio.history));
@@ -15601,6 +15604,41 @@ function _hcRenderList(ws, steps) {
   }
   el.innerHTML = html;
   if (document.getElementById('hc-activity')) { try { _actRender(); } catch (e) {} }
+}
+
+// Bloc « Activité du jour » sur Aujourd'hui : pas du jour + mini-barres 7 j.
+// Discret et CONDITIONNEL : rendu seulement en natif, avec Health Connect ET des
+// données ; sinon retiré (pas de bloc vide pour ceux sans montre).
+async function renderDashSteps() {
+  var host = document.querySelector('#tab-accueil .tj'); if (!host) return;
+  var el = document.getElementById('dash-steps');
+  var H = _hcPlugin();
+  if (!H || !(typeof _estAppNative === 'function' && _estAppNative())) { if (el) el.remove(); return; }
+  var now = new Date();
+  var start7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  var endTom = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  var days = [];
+  try { var a = await H.queryAggregated({ startDate: start7.toISOString(), endDate: endTom.toISOString(), dataType: 'steps', bucket: 'day' }); days = (a && a.aggregatedData) || []; } catch (e) {}
+  var byDay = {}; days.forEach(function (x) { byDay[new Date(x.startDate).toISOString().slice(0, 10)] = (x.value || 0); });
+  var todayKey = now.toISOString().slice(0, 10);
+  var todaySteps = Math.round(byDay[todayKey] || 0);
+  var total7 = days.reduce(function (s, x) { return s + (x.value || 0); }, 0);
+  if (total7 <= 0) { if (el) el.remove(); return; }   // rien à montrer
+  if (!el) { el = document.createElement('div'); el.id = 'dash-steps'; el.className = 'tj-card'; el.style.padding = '13px 15px'; host.appendChild(el); }
+  var maxv = Math.max.apply(null, days.map(function (x) { return x.value || 0; }).concat([1]));
+  var d = new Date(start7), bars = '';
+  for (var k = 0; k < 7; k++) {
+    var key = d.toISOString().slice(0, 10), v = byDay[key] || 0, h = Math.max(3, Math.round(v / maxv * 34));
+    var isToday = key === todayKey, lbl = ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(d.getDay() + 6) % 7];
+    bars += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><i style="width:100%;max-width:16px;height:' + h + 'px;border-radius:3px;background:' + (isToday ? 'var(--tj-accent)' : 'var(--tj-border)') + ';"></i><em style="font-size:9px;color:var(--tj-subtle);font-style:normal;">' + lbl + '</em></div>';
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  }
+  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+    + '<div><div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;">Activité du jour</div>'
+    + '<div style="font-family:var(--tj-head);font-size:20px;color:var(--tj-text);margin-top:3px;">' + todaySteps.toLocaleString('fr-FR') + ' <span style="font-size:12px;color:var(--tj-subtle);">pas</span></div></div>'
+    + '<div style="font-size:11px;color:var(--tj-subtle);text-align:right;line-height:1.5;">7 jours<br><b style="color:var(--tj-muted);font-size:13px;">' + Math.round(total7).toLocaleString('fr-FR') + '</b></div>'
+    + '</div>'
+    + '<div style="display:flex;align-items:flex-end;gap:6px;height:44px;">' + bars + '</div>';
 }
 
 /* ── Graphe de pas interactif (Semaine / Mois / Année + navigation + swipe) ── */
