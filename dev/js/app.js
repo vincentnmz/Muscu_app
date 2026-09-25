@@ -15611,8 +15611,13 @@ function _hcRenderList(ws, steps) {
 // Graphe de pas interactif sur le dashboard (thème clair .tj) : périodes
 // Semaine / Mois / Année + navigation + swipe + chiffre par jour. État propre,
 // indépendant du graphe de la page importer.
-var _dsGran = 'S', _dsOffset = 0, _dsTouchX = null;
+var _dsGran = 'S', _dsOffset = 0, _dsTouchX = null, _dsBuckets = [];
 var _hcWarmed = false;   // client Health Connect lié pour cette session ?
+function _dsPick(i) {
+  var b = _dsBuckets[i]; if (!b) return;
+  var el = document.getElementById('ds-pick'); if (!el) return;
+  el.innerHTML = '<b>' + escapeHtml(b.full || b.label) + '</b> · ' + Math.round(b.value).toLocaleString('fr-FR') + ' pas';
+}
 function _dsSetGran(g) { _dsGran = g; _dsOffset = 0; renderDashStepsChart(); }
 function _dsNav(dir) { var n = _dsOffset + dir; if (n > 0) n = 0; _dsOffset = n; renderDashStepsChart(); }
 function _dsToday() { _dsOffset = 0; renderDashStepsChart(); }
@@ -15681,7 +15686,9 @@ async function renderDashStepsChart() {
   var H = _hcPlugin(); if (!H) return;
   var r = _actRange(_dsGran, _dsOffset), rp = _actRange(_dsGran, _dsOffset - 1);
   head.innerHTML = _dsHeaderHtml(r.label);
-  wrap.innerHTML = '<div id="ds-chart" style="height:92px;display:flex;align-items:center;justify-content:center;color:var(--tj-subtle);font-size:12px;">…</div><div id="ds-cmp" style="margin-top:9px;font-size:12px;color:var(--tj-muted);text-align:right;"></div>';
+  wrap.innerHTML = '<div id="ds-chart" style="height:92px;display:flex;align-items:center;justify-content:center;color:var(--tj-subtle);font-size:12px;">…</div>'
+    + '<div id="ds-pick" style="min-height:15px;margin-top:8px;font-size:12px;color:var(--tj-accent);text-align:center;"></div>'
+    + '<div id="ds-cmp" style="margin-top:4px;font-size:12px;color:var(--tj-muted);text-align:right;"></div>';
   // Swipe horizontal.
   wrap.ontouchstart = function (e) { _dsTouchX = e.touches[0].clientX; };
   wrap.ontouchend = function (e) { if (_dsTouchX == null) return; var dx = e.changedTouches[0].clientX - _dsTouchX; _dsTouchX = null; if (Math.abs(dx) > 50) _dsNav(dx < 0 ? 1 : -1); };
@@ -15701,16 +15708,18 @@ function _dsDraw(cur, prevTot, r) {
     var months = [0,0,0,0,0,0,0,0,0,0,0,0];
     (cur || []).forEach(function (x) { months[new Date(x.startDate).getMonth()] += (x.value || 0); });
     var ml = ['J','F','M','A','M','J','J','A','S','O','N','D'];
-    buckets = months.map(function (v, i) { return { label: ml[i], value: v, today: false }; });
+    var yr = r.start.getFullYear();
+    buckets = months.map(function (v, i) { return { label: ml[i], full: new Date(yr, i, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }), value: v, today: false }; });
   } else {
     var d = new Date(r.start);
     while (d < r.end) {
       var key = d.toISOString().slice(0, 10);
       var lbl = (_dsGran === 'S') ? ['L','M','M','J','V','S','D'][(d.getDay() + 6) % 7] : String(d.getDate());
-      buckets.push({ label: lbl, value: byDay[key] || 0, today: key === todayKey });
+      buckets.push({ label: lbl, full: d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }), value: byDay[key] || 0, today: key === todayKey });
       d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
     }
   }
+  _dsBuckets = buckets;
   var total = buckets.reduce(function (s, b) { return s + b.value; }, 0);
   var maxv = Math.max.apply(null, buckets.map(function (b) { return b.value; }).concat([1]));
   var dense = buckets.length > 10;      // semaine = 7 → chiffre par jour ; mois/année → trop dense
@@ -15720,8 +15729,10 @@ function _dsDraw(cur, prevTot, r) {
     var lab = (!dense || i % 5 === 0) ? b.label : '';
     // Chiffre des pas par jour (vue semaine uniquement, sinon illisible).
     var num = (!dense && b.value > 0) ? '<em style="font-size:9px;color:var(--tj-muted);font-style:normal;font-weight:700;white-space:nowrap;">' + kfmt(b.value) + '</em>' : (!dense ? '<em style="font-size:9px;font-style:normal;">&nbsp;</em>' : '');
-    return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;">' + num
-      + '<i title="' + Math.round(b.value) + ' pas" style="width:100%;max-width:24px;height:' + h + 'px;border-radius:4px;background:linear-gradient(180deg,var(--tj-accent),var(--tj-accent-strong));opacity:' + (b.today ? '1' : '.8') + ';display:block;"></i>'
+    // Toute la colonne est tappable → détail « date : X pas » (utile surtout en
+    // Mois/Année où le chiffre par barre ne tient pas).
+    return '<div onclick="_dsPick(' + i + ')" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;cursor:pointer;">' + num
+      + '<i style="width:100%;max-width:24px;height:' + h + 'px;border-radius:4px;background:linear-gradient(180deg,var(--tj-accent),var(--tj-accent-strong));opacity:' + (b.today ? '1' : '.8') + ';display:block;"></i>'
       + '<em style="font-size:9px;color:var(--tj-subtle);font-style:normal;white-space:nowrap;">' + lab + '</em></div>';
   }).join('');
   chartEl.outerHTML = '<div id="ds-chart" style="display:flex;align-items:flex-end;gap:' + (dense ? '2' : '5') + 'px;height:92px;">' + bars + '</div>';
