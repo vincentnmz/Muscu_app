@@ -7069,7 +7069,6 @@ function switchTab(tab) {
     try { majUiPause(); } catch (_) {}
     try { majUiSemaineType(); } catch (_) {}
     try { majUiPush(); } catch (_) {}
-    try { majUiGoogleHealth(); } catch (_) {}
     try { majUiCockpitPref(); } catch (_) {}
     try { prefillEmailReglages(); } catch (_) {}
     try { prefillProfilReglages(); } catch (_) {}
@@ -11047,6 +11046,7 @@ function renderEtat(data) {
   data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null) || {};
   var m = data.moteur || {};
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  try { renderEtatMontre(); } catch (e) {}
 
   // ---- HERO : score de récupération (moteur.recScore) + niveau de dispo ----
   try {
@@ -15662,6 +15662,73 @@ async function renderDashSteps(attempt) {
   el.style.display = '';
   el.innerHTML = '<div id="ds-head"></div><div id="ds-chart-wrap"></div>';
   renderDashStepsChart();
+}
+
+// Écran État — section « Ma montre » : pas (live Health Connect) + sommeil / FC
+// repos en « bientôt » (nécessitent le fork du plugin natif + un stockage serveur).
+// Thème global (pas .tj). Masquée hors app native.
+async function renderEtatMontre(attempt) {
+  attempt = attempt || 0;
+  var el = document.getElementById('et-montre'), sec = document.getElementById('et-montre-sec');
+  if (!el) return;
+  var hide = function () { el.style.display = 'none'; if (sec) sec.style.display = 'none'; };
+  var H = _hcPlugin();
+  var native = (typeof _estAppNative === 'function' && _estAppNative());
+  if (!native) { hide(); return; }             // la montre n'existe que sur l'app Android
+  if (!H) { if (attempt < 8) setTimeout(function () { renderEtatMontre(attempt + 1); }, 600); else hide(); return; }
+  if (!_hcWarmed) {
+    try { var avh = await H.isHealthAvailable(); if (avh && avh.available) { try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {} _hcWarmed = true; } } catch (e) {}
+  }
+  var now = new Date();
+  var s7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000), e1 = new Date(now.getTime() + 24 * 3600 * 1000);
+  var days = [], qErr = false;
+  try { var a = await H.queryAggregated({ startDate: s7.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' }); days = (a && a.aggregatedData) || []; } catch (e) { qErr = true; }
+  var byDay = {}; days.forEach(function (x) { byDay[new Date(x.startDate).toISOString().slice(0, 10)] = (x.value || 0); });
+  var total7 = days.reduce(function (s, x) { return s + (x.value || 0); }, 0);
+  if ((qErr || total7 <= 0) && attempt < 4) { setTimeout(function () { renderEtatMontre(attempt + 1); }, 800); return; }
+
+  // Lignes « à venir » : sommeil + FC repos.
+  var icoSleep = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  var icoHr = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 5 4-10 2 5h4"/></svg>';
+  var soon = function (label, ico) {
+    return '<div style="display:flex;align-items:center;gap:11px;padding:11px 0 2px;border-top:1px solid var(--border);margin-top:8px;">'
+      + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;color:var(--text-muted);flex:none;">' + ico + '</span>'
+      + '<span style="flex:1;font-size:13px;font-weight:700;color:var(--text);">' + label + '</span>'
+      + '<span style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);background:var(--surface2);border-radius:999px;padding:3px 9px;">Bientôt</span>'
+      + '</div>';
+  };
+
+  el.style.display = ''; if (sec) sec.style.display = '';
+
+  if (total7 <= 0) {
+    // Native mais aucune donnée pas : inviter à connecter / importer.
+    el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Pas encore de données montre</div>'
+      + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Connecte ta montre à Health Connect, puis importe tes séances.</div>'
+      + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>'
+      + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
+    return;
+  }
+
+  var todayKey = now.toISOString().slice(0, 10);
+  var todaySteps = Math.round(byDay[todayKey] || 0);
+  var moy = Math.round(total7 / 7);
+  var maxv = Math.max.apply(null, days.map(function (x) { return x.value || 0; }).concat([1]));
+  var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6), bars = '';
+  for (var k = 0; k < 7; k++) {
+    var key = d.toISOString().slice(0, 10), v = byDay[key] || 0, h = Math.max(3, Math.round(v / maxv * 42));
+    var isToday = key === todayKey, lbl = ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(d.getDay() + 6) % 7];
+    bars += '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;"><i title="' + Math.round(v) + ' pas" style="width:100%;max-width:20px;height:' + h + 'px;border-radius:4px;background:linear-gradient(180deg,var(--accent),var(--accent-strong));opacity:' + (isToday ? '1' : '.8') + ';display:block;"></i><em style="font-size:9px;color:var(--text-subtle);font-style:normal;">' + lbl + '</em></div>';
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  }
+  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+    + '<div style="display:flex;align-items:center;gap:11px;">'
+    + '<span style="width:30px;height:30px;border-radius:9px;background:var(--accent-a,rgba(26,95,255,.10));display:grid;place-items:center;color:var(--accent);flex:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></span>'
+    + '<div><div style="font-size:12px;color:var(--text-muted);font-weight:700;">Pas aujourd\'hui</div><div style="font-size:20px;font-weight:800;color:var(--text);line-height:1.1;">' + todaySteps.toLocaleString('fr-FR') + '</div></div>'
+    + '</div>'
+    + '<div style="text-align:right;font-size:11px;color:var(--text-subtle);line-height:1.5;">moy. ' + moy.toLocaleString('fr-FR') + '/j<br>' + Math.round(total7).toLocaleString('fr-FR') + ' · 7 j</div>'
+    + '</div>'
+    + '<div style="display:flex;align-items:flex-end;gap:5px;height:50px;margin-bottom:2px;">' + bars + '</div>'
+    + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
 }
 
 function _dsHeaderHtml(label) {
