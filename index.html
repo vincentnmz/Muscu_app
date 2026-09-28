@@ -1456,17 +1456,12 @@
       <div class="rg-panel" data-rg="appareils" style="display:none;">
         <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin:2px 2px 12px;">Connecte tes capteurs pour importer automatiquement tes données (cardio, distance, vitesse, puissance…).</div>
 
-        <!-- Montre connectée (Google Health / Fitbit) -->
-        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Montre connectée</h2></div>
+        <!-- Montre & capteurs (Health Connect — nouveau chemin) -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Montre &amp; capteurs</h2></div>
         <div class="card" id="gh-card">
-          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Connecte ta montre Fitbit (via ton compte Google) pour importer automatiquement tes activités dans le bloc cardio.</div>
-          <div id="gh-statut" style="display:none;font-size:13px;font-weight:700;margin-bottom:12px;"></div>
-          <div style="display:flex;gap:8px;">
-            <button id="gh-btn-on" onclick="connecterGoogleHealth()" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>
-            <button id="gh-btn-off" onclick="deconnecterGoogleHealth()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">Déconnecter</button>
-          </div>
-          <button id="gh-btn-sync" onclick="synchroniserGoogleHealth()" style="display:none;width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Synchroniser mes activités</button>
-          <div id="gh-sync-info" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:8px;line-height:1.4;"></div>
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Importe tes séances (course, marche, vélo…) et tes pas depuis ta montre et tes capteurs, via <b>Health Connect</b>.</div>
+          <button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Importer mes séances (montre &amp; capteurs)</button>
+          <div style="font-size:11.5px;color:var(--text-subtle);margin-top:8px;line-height:1.4;">Sur l'app Android : connecte d'abord ta montre à Health Connect (ex. Fitbit → Health Connect), puis importe ici ou depuis <b>Mes Analyses</b>.</div>
         </div>
 
         <!-- Compteur vélo / GPS (à venir) -->
@@ -2074,6 +2069,10 @@
         <!-- Charge & récup : ACWR réel (dashboard.acwr + moteur.acwr_*) -->
         <div class="et-sec">Charge &amp; récupération</div>
         <div class="et-card et-charge" id="et-acwr"></div>
+
+        <!-- Ma montre : données passives Health Connect (pas ; sommeil / BPM à venir) -->
+        <div class="et-sec" id="et-montre-sec" style="display:none;">Ma montre</div>
+        <div class="et-card" id="et-montre" style="display:none;padding:14px 15px;"></div>
 
         <!-- Poids : graphe complet (déplacé d'Objectif) — 1M/3M/Tout + axes + légende -->
         <div class="et-sec">Évolution du poids</div>
