@@ -16095,12 +16095,12 @@ async function _etFillRestingHr(H, now) {
 var _santeSyncing = false;
 async function _syncSanteMontre(H) {
   if (!H || typeof athlete === 'undefined' || !athlete || _santeSyncing) return;
-  var k = 'nvz_sante_sync_' + athlete.athlete_id;
+  var k = 'nvz_sante_sync2_' + athlete.athlete_id;   // v2 = fenêtre 365 j (invalide l'ancien throttle)
   try { if (Date.now() - (+(localStorage.getItem(k) || 0)) < 6 * 3600 * 1000) return; } catch (e) {}
   _santeSyncing = true;
   try {
     var now = new Date();
-    var start = new Date(now.getTime() - 60 * 24 * 3600 * 1000);
+    var start = new Date(now.getTime() - 365 * 24 * 3600 * 1000);   // large : on capte tout ce que Health Connect a
     var end = new Date(now.getTime() + 24 * 3600 * 1000);
     var byDate = {};
     var ensure = function (d) { return byDate[d] || (byDate[d] = { date: d }); };
