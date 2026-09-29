@@ -15668,8 +15668,26 @@ async function renderDashSteps(attempt) {
   if ((qErr || tot7 <= 0) && attempt < 5) { setTimeout(function () { renderDashSteps(attempt + 1); }, 800); return; }
   if (tot7 <= 0) { el.style.display = 'none'; return; }   // aucune donnée → on masque l'ancre
   el.style.display = '';
-  el.innerHTML = '<div id="ds-head"></div><div id="ds-chart-wrap"></div>';
-  renderStepsChart('ds');
+  // Version COMPACTE sur Aujourd'hui (écran "coup d'œil") : pas du jour + mini
+  // tendance 7 j + total. Le graphe interactif complet vit sur l'écran État.
+  var byDay = {}; probe.forEach(function (x) { byDay[new Date(x.startDate).toISOString().slice(0, 10)] = (x.value || 0); });
+  var todayKey = now.toISOString().slice(0, 10);
+  var todaySteps = Math.round(byDay[todayKey] || 0);
+  var moy = Math.round(tot7 / 7);
+  var maxv = Math.max.apply(null, probe.map(function (x) { return x.value || 0; }).concat([1]));
+  var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6), bars = '';
+  for (var k = 0; k < 7; k++) {
+    var key = d.toISOString().slice(0, 10), v = byDay[key] || 0, hh = Math.max(3, Math.round(v / maxv * 34));
+    var isToday = key === todayKey, lbl = ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(d.getDay() + 6) % 7];
+    bars += '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;"><i title="' + Math.round(v) + ' pas" style="width:100%;max-width:18px;height:' + hh + 'px;border-radius:3px;background:linear-gradient(180deg,var(--tj-accent),var(--tj-accent-strong));opacity:' + (isToday ? '1' : '.72') + ';display:block;"></i><em style="font-size:9px;color:var(--tj-subtle);font-style:normal;">' + lbl + '</em></div>';
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  }
+  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">'
+    + '<div><div style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;">Pas aujourd\'hui</div>'
+    + '<div style="font-family:var(--tj-head);font-size:20px;color:var(--tj-text);margin-top:2px;">' + todaySteps.toLocaleString('fr-FR') + ' <span style="font-size:11px;color:var(--tj-subtle);">pas</span></div></div>'
+    + '<div style="text-align:right;font-size:11px;color:var(--tj-subtle);line-height:1.5;">moy. ' + moy.toLocaleString('fr-FR') + '/j<br>' + Math.round(tot7).toLocaleString('fr-FR') + ' · 7 j</div>'
+    + '</div>'
+    + '<div style="display:flex;align-items:flex-end;gap:5px;height:40px;">' + bars + '</div>';
 }
 
 // Écran État — section « Ma montre » : pas (live Health Connect) + sommeil / FC
