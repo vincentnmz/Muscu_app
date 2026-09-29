@@ -16268,8 +16268,21 @@ function _nutAge() {
     return (a > 5 && a < 120) ? a : null;
   } catch (e) { return null; }
 }
+// Niveau d'activité (facteur TDEE, multiplicateurs standard Mifflin-St Jeor).
+// Choix par appareil (localStorage), défaut « Modéré ».
+var _NUT_ACT = [
+  { id: 'sed', f: 1.2, label: 'Sédentaire' },
+  { id: 'leg', f: 1.375, label: 'Léger' },
+  { id: 'mod', f: 1.55, label: 'Modéré' },
+  { id: 'act', f: 1.725, label: 'Actif' },
+  { id: 'tres', f: 1.9, label: 'Très actif' }
+];
+function _nutActId() { try { return localStorage.getItem('nvz_nut_act_' + (typeof athlete !== 'undefined' && athlete ? athlete.athlete_id : '')) || 'mod'; } catch (e) { return 'mod'; } }
+function _nutActFactor() { var id = _nutActId(); for (var i = 0; i < _NUT_ACT.length; i++) if (_NUT_ACT[i].id === id) return _NUT_ACT[i].f; return 1.55; }
+function _nutSetAct(id) { try { localStorage.setItem('nvz_nut_act_' + (athlete && athlete.athlete_id), id); } catch (e) {} try { renderNutrition(); } catch (e) {} }
+
 // Objectifs indicatifs : protéines = g/kg selon le but ; calories = Mifflin-St
-// Jeor × activité modérée, ajusté au but. Champs null si le profil est incomplet.
+// Jeor × niveau d'activité, ajusté au but. Champs null si le profil est incomplet.
 function _nutObjectifs() {
   var A = (typeof athlete !== 'undefined' && athlete) ? athlete : {};
   var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : {};
@@ -16298,8 +16311,8 @@ function _nutObjectifs() {
   var kcal = null;
   if (poids > 0 && taille > 0 && age) {
     var bmr = 10 * poids + 6.25 * taille - 5 * age + (sexe === 'F' ? -161 : 5);
-    var tdee = bmr * 1.5;
-    if (goal === 'seche') tdee *= 0.85; else if (goal === 'masse') tdee *= 1.10;   // recomp / entretien = maintien
+    var tdee = bmr * _nutActFactor();
+    if (goal === 'seche') tdee *= 0.85; else if (goal === 'masse') tdee *= 1.10; else if (goal === 'recomp') tdee *= 0.90;   // recomp = léger déficit ; entretien = maintien
     kcal = Math.round(tdee / 10) * 10;
   }
   // Répartition des macros : protéines fixées (g/kg), lipides ~27 % des kcal,
@@ -16345,13 +16358,18 @@ function renderNutrition() {
       + '<div class="nut-muted" style="margin-top:8px;">Renseigne ton <b>poids</b>, ta <b>taille</b> et ta <b>date de naissance</b> dans Réglages → Profil pour calculer tes objectifs.</div>'
       + '<button class="nut-ghost" style="margin-top:11px;" onclick="switchTab(\'reglages\')">Compléter mon profil</button></div>';
   } else {
+    var adj = obj.goal === 'seche' ? 'déficit −15 %' : obj.goal === 'masse' ? 'surplus +10 %' : obj.goal === 'recomp' ? 'recomposition, léger déficit −10 %' : 'maintien';
     var note = 'Objectif indicatif — protéines ' + obj.pf + ' g/kg';
-    note += obj.kcal != null ? ' · calories Mifflin-St Jeor (activité modérée) ; lipides ~27 % des kcal, glucides = le reste.' : ' · calories/glucides/lipides : complète taille + date de naissance dans Réglages.';
+    note += obj.kcal != null ? ' · calories Mifflin-St Jeor (' + adj + ') ; lipides ~27 % des kcal, glucides = le reste.' : ' · calories/glucides/lipides : complète taille + date de naissance dans Réglages.';
+    var actId = _nutActId();
+    var actPills = _NUT_ACT.map(function (a) { var on = a.id === actId; return '<button type="button" onclick="_nutSetAct(\'' + a.id + '\')" style="border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a10)' : 'var(--surface2)') + ';color:' + (on ? 'var(--accent)' : 'var(--text-muted)') + ';border-radius:999px;padding:6px 10px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;">' + a.label + '</button>'; }).join('');
+    var actRow = '<div style="margin-top:14px;"><div class="nut-lab" style="margin-bottom:6px;">Niveau d\'activité</div><div style="display:flex;gap:6px;flex-wrap:wrap;">' + actPills + '</div></div>';
     objCard = '<div class="nut-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div class="nut-h">Ton objectif du jour</div><span class="nut-chip">' + escapeHtml(obj.label || 'Objectif') + '</span></div>'
       + _nutProg('Protéines', tP, obj.prot, 'g', '#10B981')
       + _nutProg('Glucides', tG, obj.gluc, 'g', '#3B82F6')
       + _nutProg('Lipides', tL, obj.lip, 'g', '#A855F7')
       + _nutProg('Calories', tK, obj.kcal, 'kcal', '#F59E0B')
+      + actRow
       + '<div class="nut-muted" style="margin-top:12px;">' + note + '</div>'
       + '</div>';
   }
