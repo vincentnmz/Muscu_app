@@ -785,10 +785,20 @@
       .tj-newpr .a{font-weight:700;font-size:13px;}.tj-newpr .b{font-size:11px;color:var(--tj-subtle);margin-top:1px;}
       .tj-miles{display:flex;flex-direction:column;gap:6px;}
       .tj-miles .lh{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--tj-muted);}.tj-miles .lh b{color:var(--tj-text);}
-      .tj-mbar{height:8px;border-radius:999px;background:var(--tj-surface2);overflow:hidden;}.tj-mbar span{display:block;height:100%;background:var(--tj-gold);border-radius:999px;}
+      .tj-mbar{height:8px;border-radius:999px;background:var(--tj-surface2);overflow:hidden;}.tj-mbar span{display:block;height:100%;background:var(--tj-gold);border-radius:999px;transition:width 1s cubic-bezier(.22,1,.36,1);}
       .tj-badges{display:flex;gap:7px;}
       .tj-bdg{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:11px;padding:6px 4px;}
       .tj-bdg .n{font-size:9.5px;color:var(--tj-muted);font-weight:700;text-align:center;}.tj-bdg svg{color:var(--tj-gold);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      /* Récompenses : animation d'entrée (pop) jouée une fois par session. */
+      @keyframes tjPop{0%{opacity:0;transform:translateY(7px) scale(.94)}100%{opacity:1;transform:none}}
+      @keyframes tjMedalGlow{0%,100%{box-shadow:0 0 0 0 rgba(224,161,0,0)}50%{box-shadow:0 0 0 5px rgba(224,161,0,.14)}}
+      .tj-rew.tj-anim .tj-newpr{animation:tjPop .5s .04s both cubic-bezier(.22,1,.36,1);}
+      .tj-rew.tj-anim .tj-newpr .medal{animation:tjMedalGlow 2.2s .6s ease-in-out 2;}
+      .tj-rew.tj-anim .tj-badges .tj-bdg{animation:tjPop .5s both cubic-bezier(.22,1,.36,1);}
+      .tj-rew.tj-anim .tj-badges .tj-bdg:nth-child(1){animation-delay:.14s;}
+      .tj-rew.tj-anim .tj-badges .tj-bdg:nth-child(2){animation-delay:.22s;}
+      .tj-rew.tj-anim .tj-badges .tj-bdg:nth-child(3){animation-delay:.30s;}
+      @media (prefers-reduced-motion:reduce){.tj-rew.tj-anim .tj-newpr,.tj-rew.tj-anim .tj-badges .tj-bdg,.tj-rew.tj-anim .tj-newpr .medal{animation:none;}.tj-mbar span{transition:none;}}
       .tj-nova{display:flex;gap:12px;padding:14px 15px;align-items:flex-start;background:linear-gradient(180deg,var(--tj-accent-a),var(--tj-surface));border:1px solid rgba(26,95,255,.18);border-radius:16px;}
       .tj-nova .logo{width:32px;height:32px;border-radius:10px;background:var(--tj-accent);color:#fff;display:grid;place-items:center;flex:none;font-family:var(--tj-head);font-size:12px;}
       .tj-nova .k{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--tj-accent-strong);}
@@ -825,6 +835,14 @@
           <div><div class="t" id="tj-banner-t">Ton état du jour</div><div class="s" id="tj-banner-s">Complète ton questionnaire bien-être</div></div>
         </div>
 
+        <div class="tj-nova" id="tj-nova">
+          <span class="logo">N</span>
+          <div>
+            <div class="k">Le mot de Novalyz</div>
+            <div class="t" id="tj-nova-txt">Belle dynamique cette semaine, tu progresses au développé. Mais ta fatigue jambes monte depuis 3 séances : garde la charge sur le bas du corps et concentre-toi sur le haut aujourd'hui.</div>
+          </div>
+        </div>
+
         <div class="tj-card tj-seance">
           <div><div class="tj-label">Séance du jour</div><h2 id="tj-seance-nom">Ta séance</h2></div>
           <div class="tj-meta" id="tj-seance-meta"></div>
@@ -857,14 +875,6 @@
 
         <!-- Activité du jour (pas montre) — rempli par renderDashSteps(), masqué si pas de données -->
         <div class="tj-card" id="dash-steps" style="display:none;padding:13px 15px;"></div>
-
-        <div class="tj-nova" id="tj-nova">
-          <span class="logo">N</span>
-          <div>
-            <div class="k">Le mot de Novalyz</div>
-            <div class="t" id="tj-nova-txt">Belle dynamique cette semaine, tu progresses au développé. Mais ta fatigue jambes monte depuis 3 séances : garde la charge sur le bas du corps et concentre-toi sur le haut aujourd'hui.</div>
-          </div>
-        </div>
 
         <div class="tj-card tj-rew">
           <div class="rowh">
