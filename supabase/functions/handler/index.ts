@@ -1625,6 +1625,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: blessuresRows },
     { data: alerteLueRows },
     { data: prefRows },
+    { data: santeRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1640,6 +1641,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('blessures').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('indicateurs').select('cle').eq('athlete_id', athleteId).eq('seance_id', 'alerte_lue'),
     sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').order('date', { ascending: false }),
+    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'sante_%').order('date', { ascending: false }),
   ])
 
   const perfs = perfsAll || []
@@ -1871,6 +1873,19 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     .map((r: any) => ({ date: normDate(r.date), pas: Number(r.valeur) || 0 }))
     .filter((x: any) => x.pas > 0)
 
+  // Historique santé montre (Health Connect) : 1 objet par jour {date, sommeil_min,
+  // fc_repos, pas} agrégé depuis les lignes indicateurs seance_id 'sante_<date>'.
+  const santeMap: Record<string, any> = {}
+  for (const r of (santeRows || [])) {
+    const d = normDate(r.date); if (!d) continue
+    if (!santeMap[d]) santeMap[d] = { date: d }
+    const v = Number(r.valeur); if (isNaN(v)) continue
+    if (r.cle === 'sommeil_min') santeMap[d].sommeil_min = v
+    else if (r.cle === 'fc_repos') santeMap[d].fc_repos = v
+    else if (r.cle === 'pas') santeMap[d].pas = v
+  }
+  const sante_historique = Object.values(santeMap).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
+
   let volume_obti: any[] = []
   if (sport === 'muscu' && volObtiRows?.length) {
     volume_obti = volObtiRows.map(v => ({
@@ -1965,6 +1980,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
     prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
     pas_quotidiens,
+    sante_historique,
     blessures: (blessuresRows || []).map(r => ({
       id: String(r.id || ''), date: r.date ? fmtFR(r.date) : '',
       type: String(r.type || ''), localisation: String(r.localisation || ''),
@@ -3921,6 +3937,38 @@ async function handleSavePref(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
+// Historique santé montre (Health Connect) : le FRONT pousse un lot de jours
+// {date, sommeil_min?, fc_repos?, pas?}. Stockage 1 ligne/métrique sous
+// seance_id 'sante_<YYYYMMDD>'. Idempotent : on efface les lignes santé des dates
+// concernées puis on réinsère (préserve les autres dates de l'historique).
+async function handleSaveSante(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const entries = Array.isArray(body.entries) ? body.entries : []
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const dates = Array.from(new Set(entries.map((e: any) => normDate(e.date)).filter(Boolean)))
+  if (!dates.length) return jsonResp({ success: true, saved: 0 })
+  const sids = dates.map((d: string) => `sante_${d.replace(/-/g, '')}`)
+  try { await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).in('seance_id', sids) } catch (_) {}
+  const src = String(body.source || 'health_connect')
+  const rows: any[] = []
+  for (const e of entries) {
+    const d = normDate(e.date); if (!d) continue
+    const sid = `sante_${d.replace(/-/g, '')}`
+    const push = (cle: string, v: any, unite: string) => {
+      if (v == null || v === '' || isNaN(Number(v))) return
+      rows.push({ date: d, athlete_id, seance_id: sid, cle, valeur: String(Math.round(Number(v))), unite, source: src })
+    }
+    push('sommeil_min', e.sommeil_min, 'min')
+    push('fc_repos', e.fc_repos, 'bpm')
+    push('pas', e.pas, 'pas')
+  }
+  if (rows.length) {
+    const { error } = await sb().from('indicateurs').insert(rows)
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true, saved: rows.length })
+}
+
 async function handleSaveSemaineType(body: any): Promise<Response> {
   const { athlete_id } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
@@ -4351,6 +4399,7 @@ Deno.serve(async (req: Request) => {
         case 'marquerAlerteLue':         return handleMarquerAlerteLue(body)
         case 'saveSemaineType':          return handleSaveSemaineType(body)
         case 'savePref':                 return handleSavePref(body)
+        case 'saveSante':                return handleSaveSante(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
         case 'deleteObjectifJoueur':     return handleDeleteObjectifJoueur(body)
         case 'saveBlessure':             return handleSaveBlessure(body)

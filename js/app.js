@@ -15874,6 +15874,7 @@ async function renderDashSteps(attempt) {
   var now = new Date();
   var s7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
   var e1 = new Date(now.getTime() + 24 * 3600 * 1000);
+  try { _syncSanteMontre(H); } catch (e) {}   // historise sommeil/FC/pas côté serveur (throttlé)
   var probe = [], qErr = false;
   try { var a = await H.queryAggregated({ startDate: s7.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' }); probe = (a && a.aggregatedData) || []; } catch (e) { qErr = true; }
   var tot7 = probe.reduce(function (s, x) { return s + (x.value || 0); }, 0);
@@ -15975,6 +15976,32 @@ async function _etFillRestingHr(H, now) {
     recs.sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
     el.textContent = Math.round(recs[0].bpm) + ' bpm'; el.style.color = 'var(--text)';
   } catch (e) { el.textContent = 'Bientôt'; el.style.color = 'var(--text-subtle)'; }
+}
+
+// Historisation serveur (sommeil / FC repos / pas) : lit ~60 j de Health Connect
+// et pousse un lot vers l'action backend saveSante. Throttlé à 1×/6 h par athlète
+// (localStorage). Permet les tendances + la vue coach (données non stockées avant).
+var _santeSyncing = false;
+async function _syncSanteMontre(H) {
+  if (!H || typeof athlete === 'undefined' || !athlete || _santeSyncing) return;
+  var k = 'nvz_sante_sync_' + athlete.athlete_id;
+  try { if (Date.now() - (+(localStorage.getItem(k) || 0)) < 6 * 3600 * 1000) return; } catch (e) {}
+  _santeSyncing = true;
+  try {
+    var now = new Date();
+    var start = new Date(now.getTime() - 60 * 24 * 3600 * 1000);
+    var end = new Date(now.getTime() + 24 * 3600 * 1000);
+    var byDate = {};
+    var ensure = function (d) { return byDate[d] || (byDate[d] = { date: d }); };
+    try { var a = await H.queryAggregated({ startDate: start.toISOString(), endDate: end.toISOString(), dataType: 'steps', bucket: 'day' }); ((a && a.aggregatedData) || []).forEach(function (x) { var v = Math.round(x.value || 0); if (v > 0) ensure(new Date(x.startDate).toISOString().slice(0, 10)).pas = v; }); } catch (e) {}
+    try { var s = await H.querySleep({ startDate: start.toISOString(), endDate: end.toISOString() }); ((s && s.sessions) || []).forEach(function (w) { var d = new Date(w.endDate).toISOString().slice(0, 10); var m = Math.round(w.durationMin || 0); var c = ensure(d); if (m > 0 && !(c.sommeil_min >= m)) c.sommeil_min = m; }); } catch (e) {}
+    try { var r = await H.queryRestingHeartRate({ startDate: start.toISOString(), endDate: end.toISOString() }); ((r && r.records) || []).forEach(function (x) { ensure(new Date(x.timestamp).toISOString().slice(0, 10)).fc_repos = Math.round(x.bpm || 0); }); } catch (e) {}
+    var entries = Object.keys(byDate).map(function (d) { return byDate[d]; }).filter(function (e) { return e.sommeil_min != null || e.fc_repos != null || e.pas != null; });
+    if (entries.length) {
+      await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSante', athlete_id: athlete.athlete_id, entries: entries }) });
+      try { localStorage.setItem(k, String(Date.now())); } catch (e) {}
+    }
+  } catch (e) {} finally { _santeSyncing = false; }
 }
 
 function _dsHeaderHtml(pfx, label) {
