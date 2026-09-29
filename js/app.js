@@ -15978,7 +15978,10 @@ async function renderEtatMontre(attempt) {
     try { var avh = await H.isHealthAvailable(); if (avh && avh.available) { try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {} _hcWarmed = true; } } catch (e) {}
   }
   var now = new Date();
-  var s7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000), e1 = new Date(now.getTime() + 24 * 3600 * 1000);
+  // Fenêtre calée sur MINUIT LOCAL : sinon les tranches 'day' démarrent à l'heure
+  // actuelle et les pas du jour tombent dans la tranche d'hier (bandeau à 0).
+  var s7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  var e1 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   var days = [], qErr = false;
   try { var a = await H.queryAggregated({ startDate: s7.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' }); days = (a && a.aggregatedData) || []; } catch (e) { qErr = true; }
   var byDay = {}; days.forEach(function (x) { byDay[_ymdLocal(new Date(x.startDate))] = (x.value || 0); });
