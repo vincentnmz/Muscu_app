@@ -15933,61 +15933,91 @@ async function renderEtatMontre(attempt) {
 
   // Graphe interactif complet + lignes Sommeil / FC repos en DONNÉES RÉELLES
   // (fork du plugin) ; « — » si rien, « Bientôt » si le fork n'est pas déployé.
-  var row = function (label, ico, valId, trendId) {
-    return '<div style="padding:11px 0 3px;border-top:1px solid var(--border);margin-top:8px;">'
-      + '<div style="display:flex;align-items:center;gap:11px;">'
+  var block = function (label, ico, valId, pfx) {
+    return '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:11px;">'
+      + '<div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;">'
       + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;color:var(--text-muted);flex:none;">' + ico + '</span>'
       + '<span style="flex:1;font-size:13px;font-weight:700;color:var(--text);">' + label + '</span>'
-      + '<span id="' + valId + '" style="font-size:13px;font-weight:800;color:var(--text-muted);">…</span>'
-      + '</div><div id="' + trendId + '" style="margin-top:9px;"></div></div>';
+      + '<span id="' + valId + '" style="font-size:14px;font-weight:800;color:var(--text-muted);">…</span>'
+      + '</div><div id="' + pfx + '-head"></div><div id="' + pfx + '-body"></div></div>';
   };
   el.innerHTML = '<div id="etds-head"></div><div id="etds-chart-wrap"></div>'
-    + row('Sommeil', icoSleep, 'et-sleep-val', 'et-sleep-trend') + row('Fréquence cardiaque au repos', icoHr, 'et-hr-val', 'et-hr-trend');
+    + block('Sommeil', icoSleep, 'et-sleep-val', 'etsleep')
+    + block('Fréquence cardiaque au repos', icoHr, 'et-hr-val', 'ethr');
   renderStepsChart('etds');
   _etFillSleep(H, now);
   _etFillRestingHr(H, now);
-  try { _etRenderTrends(); } catch (e) {}
+  try { renderSanteChart('etsleep'); } catch (e) {}
+  try { renderSanteChart('ethr'); } catch (e) {}
 }
 
-// Tendances 14 j (sommeil en barres, FC repos en courbe) depuis l'historique
-// serveur sante_historique. Thème global. Message doux tant que peu de données.
-function _etRenderTrends() {
+// Graphe santé interactif (sommeil / FC repos) depuis l'historique serveur
+// (sante_historique). Semaine = détail par jour (valeur + libellé), Mois/Année =
+// moyenne seule. Navigation + swipe comme le graphe des pas. Thème global.
+var _saState = {};
+var _SA_CFG = {
+  etsleep: { metric: 'sommeil_min', kind: 'dur', c1: 'var(--accent)', c2: 'var(--accent-strong)' },
+  ethr: { metric: 'fc_repos', kind: 'bpm', c1: '#EC4899', c2: '#be185d' }
+};
+function _saSt(p) { return _saState[p] || (_saState[p] = { gran: 'S', offset: 0, touchX: null }); }
+function _saSetGran(p, g) { var s = _saSt(p); s.gran = g; s.offset = 0; renderSanteChart(p); }
+function _saNav(p, dir) { var s = _saSt(p); var n = s.offset + dir; if (n > 0) n = 0; s.offset = n; renderSanteChart(p); }
+function _saToday(p) { _saSt(p).offset = 0; renderSanteChart(p); }
+function _saFmtDur(min) { var m = Math.round(min); var h = Math.floor(m / 60), r = m % 60; return h + ' h' + (r ? ' ' + (r < 10 ? '0' + r : r) : ''); }
+function _saHeaderHtml(pfx, label) {
+  var s = _saSt(pfx);
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === s.gran;
+    return '<button onclick="_saSetGran(\'' + pfx + '\',\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:11.5px;padding:6px 0;border-radius:7px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = s.offset !== 0 ? '<div style="font-size:10.5px;margin-top:1px;"><span onclick="_saToday(\'' + pfx + '\')" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = s.offset >= 0;
+  return '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:8px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+    + '<button onclick="_saNav(\'' + pfx + '\',-1)" style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:15px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:12.5px;font-weight:800;color:var(--text);">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_saNav(\'' + pfx + '\',1)" ' + (nextDis ? 'disabled' : '') + ' style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:15px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div>';
+}
+function renderSanteChart(pfx) {
+  var head = document.getElementById(pfx + '-head'), body = document.getElementById(pfx + '-body');
+  if (!head || !body) return;
+  var s = _saSt(pfx), cfg = _SA_CFG[pfx];
+  var r = _actRange(s.gran, s.offset);
+  head.innerHTML = _saHeaderHtml(pfx, r.label);
+  body.ontouchstart = function (e) { s.touchX = e.touches[0].clientX; };
+  body.ontouchend = function (e) { if (s.touchX == null) return; var dx = e.changedTouches[0].clientX - s.touchX; s.touchX = null; if (Math.abs(dx) > 50) _saNav(pfx, dx < 0 ? 1 : -1); };
   var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
   var hist = (data && data.sante_historique) || [];
-  var byDate = {}; hist.forEach(function (x) { if (x && x.date) byDate[x.date] = x; });
-  var days = [], d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 13);
-  for (var i = 0; i < 14; i++) { var k = d.toISOString().slice(0, 10); days.push(byDate[k] || { date: k }); d.setDate(d.getDate() + 1); }
-  _etMiniBars('et-sleep-trend', days.map(function (x) { return x.sommeil_min ? Math.round(x.sommeil_min) / 60 : 0; }), 'sommeil', 'var(--accent)', 'var(--accent-strong)');
-  _etMiniLine('et-hr-trend', days.map(function (x) { return (x.fc_repos != null) ? Number(x.fc_repos) : null; }), 'bpm', '#EC4899');
-}
-function _etTrendEmpty(el) { el.innerHTML = '<div style="font-size:10.5px;color:var(--text-subtle);">La tendance se remplit au fil des jours.</div>'; }
-function _etMiniBars(id, vals, kind, c1, c2) {
-  var el = document.getElementById(id); if (!el) return;
-  var nz = vals.filter(function (v) { return v > 0; });
-  if (nz.length < 2) { _etTrendEmpty(el); return; }
-  var mx = Math.max.apply(null, vals.concat([0.1]));
-  var moy = nz.reduce(function (s, v) { return s + v; }, 0) / nz.length;
-  var fmt = function (h) { var m = Math.round(h * 60); return Math.floor(m / 60) + ' h' + ((m % 60) ? ' ' + (m % 60 < 10 ? '0' + (m % 60) : m % 60) : ''); };
-  var bars = vals.map(function (v) {
-    var h = v > 0 ? Math.max(3, Math.round(v / mx * 34)) : 2;
-    return '<div style="flex:1;min-width:0;"><i style="display:block;width:100%;max-width:9px;margin:0 auto;height:' + h + 'px;border-radius:2px;background:' + (v > 0 ? 'linear-gradient(180deg,' + c1 + ',' + c2 + ')' : 'var(--surface2)') + ';"></i></div>';
-  }).join('');
-  el.innerHTML = '<div style="display:flex;align-items:flex-end;gap:3px;height:36px;">' + bars + '</div>'
-    + '<div style="font-size:10.5px;color:var(--text-subtle);text-align:right;margin-top:4px;">moy. ' + fmt(moy) + ' · 14 j</div>';
-}
-function _etMiniLine(id, vals, unit, color) {
-  var el = document.getElementById(id); if (!el) return;
-  var pts = vals.map(function (v, i) { return { i: i, v: v }; }).filter(function (p) { return p.v != null; });
-  if (pts.length < 2) { _etTrendEmpty(el); return; }
-  var nums = pts.map(function (p) { return p.v; });
-  var mn = Math.min.apply(null, nums), mx = Math.max.apply(null, nums), rng = (mx - mn) || 1;
-  var moy = Math.round(nums.reduce(function (s, v) { return s + v; }, 0) / nums.length);
-  var W = 300, Hh = 36, n = vals.length - 1 || 1;
-  var coords = pts.map(function (p) { var x = 2 + p.i * (W - 4) / n; var y = Hh - 3 - (p.v - mn) / rng * (Hh - 6); return x.toFixed(0) + ' ' + y.toFixed(0); });
-  var last = pts[pts.length - 1];
-  var lx = (2 + last.i * (W - 4) / n).toFixed(0), ly = (Hh - 3 - (last.v - mn) / rng * (Hh - 6)).toFixed(0);
-  el.innerHTML = '<svg width="100%" height="' + Hh + '" viewBox="0 0 ' + W + ' ' + Hh + '" preserveAspectRatio="none"><path d="M' + coords.join(' L') + '" fill="none" stroke="' + color + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + lx + '" cy="' + ly + '" r="3" fill="' + color + '"/></svg>'
-    + '<div style="font-size:10.5px;color:var(--text-subtle);text-align:right;margin-top:4px;">moy. ' + moy + ' ' + unit + ' · 14 j</div>';
+  var byDate = {}; hist.forEach(function (x) { if (x && x.date && x[cfg.metric] != null && !isNaN(Number(x[cfg.metric]))) byDate[x.date] = Number(x[cfg.metric]); });
+  // Valeurs présentes dans la période (pour la moyenne).
+  var vals = [], d = new Date(r.start);
+  while (d < r.end) { var k = d.toISOString().slice(0, 10); if (byDate[k] != null) vals.push(byDate[k]); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
+  var avg = vals.length ? (vals.reduce(function (a, b) { return a + b; }, 0) / vals.length) : null;
+  var fmtAvg = function (v) { return cfg.kind === 'dur' ? _saFmtDur(v) : (Math.round(v) + ' bpm'); };
+  if (s.gran === 'S') {
+    // Détail par jour : barre + valeur + libellé jour.
+    var days = [], dd = new Date(r.start);
+    while (dd < r.end) { var kk = dd.toISOString().slice(0, 10); days.push({ lbl: ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(dd.getDay() + 6) % 7], v: (byDate[kk] != null ? byDate[kk] : null) }); dd = new Date(dd.getFullYear(), dd.getMonth(), dd.getDate() + 1); }
+    var mx = Math.max.apply(null, days.map(function (x) { return x.v || 0; }).concat([1]));
+    var bars = days.map(function (x) {
+      var h = x.v != null ? Math.max(3, Math.round(x.v / mx * 48)) : 2;
+      var num = x.v != null ? (cfg.kind === 'dur' ? (Math.round(x.v / 6) / 10 + 'h') : Math.round(x.v)) : '';
+      return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;">'
+        + '<em style="font-size:8.5px;color:var(--text-muted);font-style:normal;font-weight:700;white-space:nowrap;">' + (num || '&nbsp;') + '</em>'
+        + '<i style="width:100%;max-width:16px;height:' + h + 'px;border-radius:3px;background:' + (x.v != null ? 'linear-gradient(180deg,' + cfg.c1 + ',' + cfg.c2 + ')' : 'var(--surface2)') + ';display:block;"></i>'
+        + '<em style="font-size:9px;color:var(--text-subtle);font-style:normal;">' + x.lbl + '</em></div>';
+    }).join('');
+    body.innerHTML = '<div style="display:flex;align-items:flex-end;gap:4px;height:78px;">' + bars + '</div>'
+      + '<div style="font-size:11px;color:var(--text-subtle);text-align:right;margin-top:6px;">' + (avg != null ? 'moy. ' + fmtAvg(avg) : 'Pas encore de données') + '</div>';
+  } else {
+    // Mois / Année : moyenne seule.
+    if (avg == null) { body.innerHTML = '<div style="text-align:center;color:var(--text-subtle);font-size:12px;padding:18px 0;">Pas de données sur cette période</div>'; return; }
+    body.innerHTML = '<div style="text-align:center;padding:10px 0 6px;">'
+      + '<div style="font-size:30px;font-weight:800;color:' + cfg.c1 + ';line-height:1;">' + (cfg.kind === 'dur' ? _saFmtDur(avg) : Math.round(avg)) + (cfg.kind === 'bpm' ? '<span style="font-size:14px;color:var(--text-subtle);font-weight:700;"> bpm</span>' : '') + '</div>'
+      + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:5px;">moyenne · ' + vals.length + ' jour' + (vals.length > 1 ? 's' : '') + ' de données</div>'
+      + '</div>';
+  }
 }
 
 // Sommeil : dernière nuit (session la plus récente sur ~36 h) → durée formatée.
