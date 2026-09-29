@@ -803,6 +803,10 @@
       .tj-nova .logo{width:32px;height:32px;border-radius:10px;background:var(--tj-accent);color:#fff;display:grid;place-items:center;flex:none;font-family:var(--tj-head);font-size:12px;}
       .tj-nova .k{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--tj-accent-strong);}
       .tj-nova .t{font-size:12.5px;line-height:1.45;margin-top:3px;}
+      /* Scroll-reveal : les blocs apparaissent (fondu + montée) en entrant à l'écran. */
+      #tab-accueil .tj-reveal{opacity:0;transform:translateY(16px);transition:opacity .55s cubic-bezier(.22,1,.36,1),transform .55s cubic-bezier(.22,1,.36,1);}
+      #tab-accueil .tj-reveal.in{opacity:1;transform:none;}
+      @media (prefers-reduced-motion:reduce){#tab-accueil .tj-reveal{opacity:1 !important;transform:none !important;transition:none;}}
       .tj-row{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;}
       .tj-row .k{font-weight:700;font-size:13px;}
       .tj-week{display:flex;gap:6px;align-items:center;}.tj-wk{width:24px;height:8px;border-radius:999px;background:var(--tj-border);}.tj-wk.on{background:var(--tj-accent);}
@@ -843,7 +847,7 @@
           </div>
         </div>
 
-        <div class="tj-card tj-seance">
+        <div class="tj-card tj-seance tj-reveal">
           <div><div class="tj-label">Séance du jour</div><h2 id="tj-seance-nom">Ta séance</h2></div>
           <div class="tj-meta" id="tj-seance-meta"></div>
           <div class="tj-focus" id="tj-seance-focus" style="display:none">
@@ -855,7 +859,7 @@
         </div>
 
         <!-- Point d'attention (alerte prioritaire du centre d'alertes P0) + action -->
-        <div class="tj-card" id="tj-attention" style="display:none;padding:14px 16px;box-shadow:var(--tj-sh);border-left:4px solid var(--tj-warn);">
+        <div class="tj-card tj-reveal" id="tj-attention" style="display:none;padding:14px 16px;box-shadow:var(--tj-sh);border-left:4px solid var(--tj-warn);">
           <div style="display:flex;align-items:flex-start;gap:11px;">
             <span id="tj-att-dot" style="width:9px;height:9px;border-radius:999px;background:var(--tj-warn);margin-top:5px;flex:none;"></span>
             <div style="flex:1;min-width:0;">
@@ -868,15 +872,15 @@
           </div>
         </div>
 
-        <div class="tj-card tj-bwrap">
+        <div class="tj-card tj-bwrap tj-reveal">
           <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="ouvrirPointDuJour()">Mettre à jour ›</span></div>
           <div class="tj-bgrid" id="tj-bgrid"></div>
         </div>
 
         <!-- Activité du jour (pas montre) — rempli par renderDashSteps(), masqué si pas de données -->
-        <div class="tj-card" id="dash-steps" style="display:none;padding:13px 15px;"></div>
+        <div class="tj-card tj-reveal" id="dash-steps" style="display:none;padding:13px 15px;"></div>
 
-        <div class="tj-card tj-rew">
+        <div class="tj-card tj-rew tj-reveal">
           <div class="rowh">
             <span class="k"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg>Récompenses</span>
             <span class="prog" id="tj-prog">+12% ce mois</span>
