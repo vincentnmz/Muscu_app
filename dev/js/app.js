@@ -15981,7 +15981,7 @@ async function renderEtatMontre(attempt) {
   var s7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000), e1 = new Date(now.getTime() + 24 * 3600 * 1000);
   var days = [], qErr = false;
   try { var a = await H.queryAggregated({ startDate: s7.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' }); days = (a && a.aggregatedData) || []; } catch (e) { qErr = true; }
-  var byDay = {}; days.forEach(function (x) { byDay[new Date(x.startDate).toISOString().slice(0, 10)] = (x.value || 0); });
+  var byDay = {}; days.forEach(function (x) { byDay[_ymdLocal(new Date(x.startDate))] = (x.value || 0); });
   var total7 = days.reduce(function (s, x) { return s + (x.value || 0); }, 0);
   if ((qErr || total7 <= 0) && attempt < 4) { setTimeout(function () { renderEtatMontre(attempt + 1); }, 800); return; }
 
@@ -16009,11 +16009,10 @@ async function renderEtatMontre(attempt) {
 
   // Bandeau condensé (glance) : pas du jour / sommeil / FC repos + bouton Détails.
   if (mini) {
-    // Clé de date LOCALE (pas UTC) : sinon le bucket du jour tombe sur la mauvaise
-    // date en France (UTC+1/＋2) et le compteur du jour affichait « — ».
-    var _ymdLoc = function (d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); };
-    var _todayLoc = _ymdLoc(now), pasT = null;
-    days.forEach(function (x) { if (_ymdLoc(new Date(x.startDate)) === _todayLoc) pasT = Math.round(x.value || 0); });
+    // Clé de date LOCALE (cf. _ymdLocal) : sinon le bucket du jour tombe sur la
+    // mauvaise date en France (UTC+1/＋2) et le compteur du jour affichait « — ».
+    var _todayLoc = _ymdLocal(now), pasT = null;
+    days.forEach(function (x) { if (_ymdLocal(new Date(x.startDate)) === _todayLoc) pasT = Math.round(x.value || 0); });
     var pasTxt = (pasT != null) ? pasT.toLocaleString('fr-FR') : '—';
     var cell = function (k, v, extra) {
       return '<div style="padding:11px 6px;text-align:center;' + (extra || '') + '"><div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;">' + k + '</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--text);">' + v + '</div></div>';
@@ -16142,14 +16141,14 @@ function renderSanteChart(pfx) {
   var byDate = {}; hist.forEach(function (x) { if (x && x.date && x[cfg.metric] != null && !isNaN(Number(x[cfg.metric]))) byDate[x.date] = Number(x[cfg.metric]); });
   // Valeurs présentes dans la période (pour la moyenne).
   var vals = [], d = new Date(r.start);
-  while (d < r.end) { var k = d.toISOString().slice(0, 10); if (byDate[k] != null) vals.push(byDate[k]); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
+  while (d < r.end) { var k = _ymdLocal(d); if (byDate[k] != null) vals.push(byDate[k]); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
   var avg = vals.length ? (vals.reduce(function (a, b) { return a + b; }, 0) / vals.length) : null;
   var _unit = cfg.kind === 'bpm' ? ' bpm' : (cfg.kind === 'kcal' ? ' kcal' : (cfg.kind === 'g' ? ' g' : ''));
   var fmtAvg = function (v) { return cfg.kind === 'dur' ? _saFmtDur(v) : (Math.round(v) + _unit); };
   if (s.gran === 'S') {
     // Détail par jour : barre + valeur + libellé jour.
     var days = [], dd = new Date(r.start);
-    while (dd < r.end) { var kk = dd.toISOString().slice(0, 10); days.push({ lbl: ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(dd.getDay() + 6) % 7], v: (byDate[kk] != null ? byDate[kk] : null) }); dd = new Date(dd.getFullYear(), dd.getMonth(), dd.getDate() + 1); }
+    while (dd < r.end) { var kk = _ymdLocal(dd); days.push({ lbl: ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(dd.getDay() + 6) % 7], v: (byDate[kk] != null ? byDate[kk] : null) }); dd = new Date(dd.getFullYear(), dd.getMonth(), dd.getDate() + 1); }
     var mx = Math.max.apply(null, days.map(function (x) { return x.v || 0; }).concat([1]));
     var bars = days.map(function (x) {
       var h = x.v != null ? Math.max(3, Math.round(x.v / mx * 48)) : 2;
@@ -16221,7 +16220,7 @@ async function _syncSanteMontre(H) {
     var end = new Date(now.getTime() + 24 * 3600 * 1000);
     var byDate = {};
     var ensure = function (d) { return byDate[d] || (byDate[d] = { date: d }); };
-    try { var a = await H.queryAggregated({ startDate: start.toISOString(), endDate: end.toISOString(), dataType: 'steps', bucket: 'day' }); ((a && a.aggregatedData) || []).forEach(function (x) { var v = Math.round(x.value || 0); if (v > 0) ensure(new Date(x.startDate).toISOString().slice(0, 10)).pas = v; }); } catch (e) {}
+    try { var a = await H.queryAggregated({ startDate: start.toISOString(), endDate: end.toISOString(), dataType: 'steps', bucket: 'day' }); ((a && a.aggregatedData) || []).forEach(function (x) { var v = Math.round(x.value || 0); if (v > 0) ensure(_ymdLocal(new Date(x.startDate))).pas = v; }); } catch (e) {}
     try { var s = await H.querySleep({ startDate: start.toISOString(), endDate: end.toISOString() }); ((s && s.sessions) || []).forEach(function (w) { var d = new Date(w.endDate).toISOString().slice(0, 10); var m = Math.round(w.durationMin || 0); var c = ensure(d); if (m > 0 && !(c.sommeil_min >= m)) c.sommeil_min = m; }); } catch (e) {}
     try { var r = await H.queryRestingHeartRate({ startDate: start.toISOString(), endDate: end.toISOString() }); ((r && r.records) || []).forEach(function (x) { ensure(new Date(x.timestamp).toISOString().slice(0, 10)).fc_repos = Math.round(x.bpm || 0); }); } catch (e) {}
     var entries = Object.keys(byDate).map(function (d) { return byDate[d]; }).filter(function (e) { return e.sommeil_min != null || e.fc_repos != null || e.pas != null; });
@@ -16269,7 +16268,7 @@ function _nutObjectifs() {
   return { prot: prot, kcal: kcal, goal: goal, pf: pf, poids: poids };
 }
 function _nutTodayEntry() {
-  var today = new Date().toISOString().slice(0, 10);
+  var today = _ymdLocal(new Date());
   var hist = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.nutri_historique) || [];
   for (var i = 0; i < hist.length; i++) { if (hist[i] && hist[i].date === today) return hist[i]; }
   return null;
@@ -16334,7 +16333,7 @@ function _nutSave() {
   var prot = pEl && pEl.value !== '' ? Math.round(Number(pEl.value)) : null;
   if (kcal == null && prot == null) { showToast('Saisis au moins une valeur', '#DC3545'); return; }
   if ((kcal != null && (isNaN(kcal) || kcal < 0 || kcal > 20000)) || (prot != null && (isNaN(prot) || prot < 0 || prot > 2000))) { showToast('Valeur invalide', '#DC3545'); return; }
-  var today = new Date().toISOString().slice(0, 10);
+  var today = _ymdLocal(new Date());
   // Mise à jour optimiste locale : l'écran répond tout de suite.
   if (typeof dernierAppData !== 'undefined' && dernierAppData) {
     dernierAppData.nutri_historique = dernierAppData.nutri_historique || [];
@@ -16451,8 +16450,8 @@ function _dsDraw(pfx, cur, prevTot, r) {
   var s = _dsSt(pfx), T = _DS_THEME[pfx] || _DS_THEME.ds;
   var chartEl = document.getElementById(pfx + '-chart'), cmpEl = document.getElementById(pfx + '-cmp');
   if (!chartEl) return;
-  var todayKey = new Date().toISOString().slice(0, 10);
-  var byDay = {}; (cur || []).forEach(function (x) { byDay[new Date(x.startDate).toISOString().slice(0, 10)] = (x.value || 0); });
+  var todayKey = _ymdLocal(new Date());
+  var byDay = {}; (cur || []).forEach(function (x) { byDay[_ymdLocal(new Date(x.startDate))] = (x.value || 0); });
   var buckets = [];
   if (s.gran === 'A') {
     var months = [0,0,0,0,0,0,0,0,0,0,0,0];
@@ -16463,7 +16462,7 @@ function _dsDraw(pfx, cur, prevTot, r) {
   } else {
     var d = new Date(r.start);
     while (d < r.end) {
-      var key = d.toISOString().slice(0, 10);
+      var key = _ymdLocal(d);
       var lbl = (s.gran === 'S') ? ['L','M','M','J','V','S','D'][(d.getDay() + 6) % 7] : String(d.getDate());
       buckets.push({ label: lbl, full: d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }), value: byDay[key] || 0, today: key === todayKey });
       d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
@@ -16500,6 +16499,11 @@ function _actSetGran(g) { _actGran = g; _actOffset = 0; _actRender(); }
 function _actNav(dir) { var n = _actOffset + dir; if (n > 0) n = 0; _actOffset = n; _actRender(); }
 function _actToday() { _actOffset = 0; _actRender(); }
 // Bornes + libellé d'une période (gran, offset).
+// Clé de date LOCALE (YYYY-MM-DD) — à utiliser pour tous les graphes par jour.
+// Évite le décalage d'un jour de toISOString() (UTC) en France (UTC+1/＋2) :
+// les bornes des graphes sont en minuit LOCAL et les données santé/nutrition
+// sont datées en calendrier local.
+function _ymdLocal(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 function _actRange(gran, offset) {
   var now = new Date(), start, end, label;
   if (gran === 'S') {
@@ -16550,7 +16554,7 @@ async function _actRender() {
 function _actDraw(cur, prevTot, r) {
   var chartEl = document.getElementById('act-chart'), cmpEl = document.getElementById('act-cmp');
   if (!chartEl) return;
-  var byDay = {}; (cur || []).forEach(function (x) { byDay[new Date(x.startDate).toISOString().slice(0, 10)] = (x.value || 0); });
+  var byDay = {}; (cur || []).forEach(function (x) { byDay[_ymdLocal(new Date(x.startDate))] = (x.value || 0); });
   var buckets = [];
   if (_actGran === 'A') {
     var months = [0,0,0,0,0,0,0,0,0,0,0,0];
@@ -16560,7 +16564,7 @@ function _actDraw(cur, prevTot, r) {
   } else {
     var d = new Date(r.start);
     while (d < r.end) {
-      var key = d.toISOString().slice(0, 10);
+      var key = _ymdLocal(d);
       var lbl = (_actGran === 'S') ? ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(d.getDay() + 6) % 7] : String(d.getDate());
       buckets.push({ label: lbl, value: byDay[key] || 0 });
       d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
