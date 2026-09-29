@@ -60,6 +60,12 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Health Connect : permissions ajoutées par le fork du plugin (sommeil + FC
+         repos) — pas dans le manifest du plugin d'origine, donc déclarées ici. -->
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <uses-permission android:name="android.permission.health.READ_RESTING_HEART_RATE" />
+
+
     <!-- Health Connect : détection de l'appli Health Connect (isHealthAvailable).
          Les permissions health.READ_* sont apportées par le plugin (merge manifest). -->
     <queries>
