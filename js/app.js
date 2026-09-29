@@ -16009,8 +16009,12 @@ async function renderEtatMontre(attempt) {
 
   // Bandeau condensé (glance) : pas du jour / sommeil / FC repos + bouton Détails.
   if (mini) {
-    var pasT = byDay[now.toISOString().slice(0, 10)];
-    var pasTxt = (pasT != null && pasT > 0) ? Math.round(pasT).toLocaleString('fr-FR') : '—';
+    // Clé de date LOCALE (pas UTC) : sinon le bucket du jour tombe sur la mauvaise
+    // date en France (UTC+1/＋2) et le compteur du jour affichait « — ».
+    var _ymdLoc = function (d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); };
+    var _todayLoc = _ymdLoc(now), pasT = null;
+    days.forEach(function (x) { if (_ymdLoc(new Date(x.startDate)) === _todayLoc) pasT = Math.round(x.value || 0); });
+    var pasTxt = (pasT != null) ? pasT.toLocaleString('fr-FR') : '—';
     var cell = function (k, v, extra) {
       return '<div style="padding:11px 6px;text-align:center;' + (extra || '') + '"><div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;">' + k + '</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--text);">' + v + '</div></div>';
     };
