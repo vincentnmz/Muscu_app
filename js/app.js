@@ -15611,16 +15611,24 @@ function _hcRenderList(ws, steps) {
 // Graphe de pas interactif sur le dashboard (thème clair .tj) : périodes
 // Semaine / Mois / Année + navigation + swipe + chiffre par jour. État propre,
 // indépendant du graphe de la page importer.
-var _dsGran = 'S', _dsOffset = 0, _dsTouchX = null, _dsBuckets = [];
+// Graphe de pas interactif, INSTANCIABLE par préfixe d'ids (pfx) + thème :
+// 'ds' = dashboard (thème .tj) · 'etds' = écran État (thème global). Chaque
+// instance a son propre état (gran/offset/buckets) → indépendantes.
 var _hcWarmed = false;   // client Health Connect lié pour cette session ?
-function _dsPick(i) {
-  var b = _dsBuckets[i]; if (!b) return;
-  var el = document.getElementById('ds-pick'); if (!el) return;
+var _DS_THEME = {
+  ds:   { acc: 'var(--tj-accent)', accS: 'var(--tj-accent-strong)', s2: 'var(--tj-surface2)', bd: 'var(--tj-border)', sf: 'var(--tj-surface)', tx: 'var(--tj-text)', mu: 'var(--tj-muted)', su: 'var(--tj-subtle)', gd: 'var(--tj-good)' },
+  etds: { acc: 'var(--accent)',    accS: 'var(--accent-strong)',    s2: 'var(--surface2)',    bd: 'var(--border)',    sf: 'var(--surface)',    tx: 'var(--text)',    mu: 'var(--text-muted)', su: 'var(--text-subtle)', gd: 'var(--good)' }
+};
+var _dsState = {};
+function _dsSt(pfx) { return _dsState[pfx] || (_dsState[pfx] = { gran: 'S', offset: 0, touchX: null, buckets: [] }); }
+function _dsSetGran(pfx, g) { var s = _dsSt(pfx); s.gran = g; s.offset = 0; renderStepsChart(pfx); }
+function _dsNav(pfx, dir) { var s = _dsSt(pfx); var n = s.offset + dir; if (n > 0) n = 0; s.offset = n; renderStepsChart(pfx); }
+function _dsToday(pfx) { var s = _dsSt(pfx); s.offset = 0; renderStepsChart(pfx); }
+function _dsPick(pfx, i) {
+  var b = _dsSt(pfx).buckets[i]; if (!b) return;
+  var el = document.getElementById(pfx + '-pick'); if (!el) return;
   el.innerHTML = '<b>' + escapeHtml(b.full || b.label) + '</b> · ' + Math.round(b.value).toLocaleString('fr-FR') + ' pas';
 }
-function _dsSetGran(g) { _dsGran = g; _dsOffset = 0; renderDashStepsChart(); }
-function _dsNav(dir) { var n = _dsOffset + dir; if (n > 0) n = 0; _dsOffset = n; renderDashStepsChart(); }
-function _dsToday() { _dsOffset = 0; renderDashStepsChart(); }
 
 async function renderDashSteps(attempt) {
   attempt = attempt || 0;
@@ -15661,7 +15669,7 @@ async function renderDashSteps(attempt) {
   if (tot7 <= 0) { el.style.display = 'none'; return; }   // aucune donnée → on masque l'ancre
   el.style.display = '';
   el.innerHTML = '<div id="ds-head"></div><div id="ds-chart-wrap"></div>';
-  renderDashStepsChart();
+  renderStepsChart('ds');
 }
 
 // Écran État — section « Ma montre » : pas (live Health Connect) + sommeil / FC
@@ -15709,69 +15717,57 @@ async function renderEtatMontre(attempt) {
     return;
   }
 
-  var todayKey = now.toISOString().slice(0, 10);
-  var todaySteps = Math.round(byDay[todayKey] || 0);
-  var moy = Math.round(total7 / 7);
-  var maxv = Math.max.apply(null, days.map(function (x) { return x.value || 0; }).concat([1]));
-  var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6), bars = '';
-  for (var k = 0; k < 7; k++) {
-    var key = d.toISOString().slice(0, 10), v = byDay[key] || 0, h = Math.max(3, Math.round(v / maxv * 42));
-    var isToday = key === todayKey, lbl = ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(d.getDay() + 6) % 7];
-    bars += '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;"><i title="' + Math.round(v) + ' pas" style="width:100%;max-width:20px;height:' + h + 'px;border-radius:4px;background:linear-gradient(180deg,var(--accent),var(--accent-strong));opacity:' + (isToday ? '1' : '.8') + ';display:block;"></i><em style="font-size:9px;color:var(--text-subtle);font-style:normal;">' + lbl + '</em></div>';
-    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-  }
-  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-    + '<div style="display:flex;align-items:center;gap:11px;">'
-    + '<span style="width:30px;height:30px;border-radius:9px;background:var(--accent-a,rgba(26,95,255,.10));display:grid;place-items:center;color:var(--accent);flex:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></span>'
-    + '<div><div style="font-size:12px;color:var(--text-muted);font-weight:700;">Pas aujourd\'hui</div><div style="font-size:20px;font-weight:800;color:var(--text);line-height:1.1;">' + todaySteps.toLocaleString('fr-FR') + '</div></div>'
-    + '</div>'
-    + '<div style="text-align:right;font-size:11px;color:var(--text-subtle);line-height:1.5;">moy. ' + moy.toLocaleString('fr-FR') + '/j<br>' + Math.round(total7).toLocaleString('fr-FR') + ' · 7 j</div>'
-    + '</div>'
-    + '<div style="display:flex;align-items:flex-end;gap:5px;height:50px;margin-bottom:2px;">' + bars + '</div>'
+  // Graphe interactif complet (Semaine/Mois/Année + navigation + tap), thème
+  // global, via l'instance 'etds'. Suivi des lignes Sommeil / FC repos « bientôt ».
+  el.innerHTML = '<div id="etds-head"></div><div id="etds-chart-wrap"></div>'
     + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
+  renderStepsChart('etds');
 }
 
-function _dsHeaderHtml(label) {
+function _dsHeaderHtml(pfx, label) {
+  var s = _dsSt(pfx), T = _DS_THEME[pfx] || _DS_THEME.ds;
   var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
-    var on = g[0] === _dsGran;
-    return '<button onclick="_dsSetGran(\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--tj-accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--tj-muted)') + ';font-family:inherit;font-weight:800;font-size:12px;padding:7px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+    var on = g[0] === s.gran;
+    return '<button onclick="_dsSetGran(\'' + pfx + '\',\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? T.acc : 'transparent') + ';color:' + (on ? '#fff' : T.mu) + ';font-family:inherit;font-weight:800;font-size:12px;padding:7px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
   }).join('');
-  var today = _dsOffset !== 0 ? '<div style="font-size:11px;margin-top:1px;"><span onclick="_dsToday()" style="color:var(--tj-accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
-  var nextDis = _dsOffset >= 0;
-  return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px;"><b style="font-size:13.5px;color:var(--tj-text);">Pas quotidiens</b></div>'
-    + '<div style="display:flex;gap:4px;background:var(--tj-surface2);border-radius:11px;padding:4px;margin-bottom:9px;">' + seg + '</div>'
+  var today = s.offset !== 0 ? '<div style="font-size:11px;margin-top:1px;"><span onclick="_dsToday(\'' + pfx + '\')" style="color:' + T.acc + ';font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = s.offset >= 0;
+  return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px;"><b style="font-size:13.5px;color:' + T.tx + ';">Pas quotidiens</b></div>'
+    + '<div style="display:flex;gap:4px;background:' + T.s2 + ';border-radius:11px;padding:4px;margin-bottom:9px;">' + seg + '</div>'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">'
-    + '<button onclick="_dsNav(-1)" style="width:32px;height:32px;border-radius:10px;border:1px solid var(--tj-border);background:var(--tj-surface);color:var(--tj-text);font-size:16px;cursor:pointer;flex:none;">‹</button>'
-    + '<div style="flex:1;text-align:center;"><div style="font-size:13.5px;font-weight:800;color:var(--tj-text);">' + escapeHtml(label) + '</div>' + today + '</div>'
-    + '<button onclick="_dsNav(1)" ' + (nextDis ? 'disabled' : '') + ' style="width:32px;height:32px;border-radius:10px;border:1px solid var(--tj-border);background:var(--tj-surface);color:var(--tj-text);font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '<button onclick="_dsNav(\'' + pfx + '\',-1)" style="width:32px;height:32px;border-radius:10px;border:1px solid ' + T.bd + ';background:' + T.sf + ';color:' + T.tx + ';font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:13.5px;font-weight:800;color:' + T.tx + ';">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_dsNav(\'' + pfx + '\',1)" ' + (nextDis ? 'disabled' : '') + ' style="width:32px;height:32px;border-radius:10px;border:1px solid ' + T.bd + ';background:' + T.sf + ';color:' + T.tx + ';font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
     + '</div>';
 }
 
-async function renderDashStepsChart() {
-  var head = document.getElementById('ds-head'), wrap = document.getElementById('ds-chart-wrap');
+async function renderStepsChart(pfx) {
+  var s = _dsSt(pfx), T = _DS_THEME[pfx] || _DS_THEME.ds;
+  var head = document.getElementById(pfx + '-head'), wrap = document.getElementById(pfx + '-chart-wrap');
   if (!head || !wrap) return;
   var H = _hcPlugin(); if (!H) return;
-  var r = _actRange(_dsGran, _dsOffset), rp = _actRange(_dsGran, _dsOffset - 1);
-  head.innerHTML = _dsHeaderHtml(r.label);
-  wrap.innerHTML = '<div id="ds-chart" style="height:92px;display:flex;align-items:center;justify-content:center;color:var(--tj-subtle);font-size:12px;">…</div>'
-    + '<div id="ds-pick" style="min-height:15px;margin-top:8px;font-size:12px;color:var(--tj-accent);text-align:center;"></div>'
-    + '<div id="ds-cmp" style="margin-top:4px;font-size:12px;color:var(--tj-muted);text-align:right;"></div>';
+  var r = _actRange(s.gran, s.offset), rp = _actRange(s.gran, s.offset - 1);
+  head.innerHTML = _dsHeaderHtml(pfx, r.label);
+  wrap.innerHTML = '<div id="' + pfx + '-chart" style="height:92px;display:flex;align-items:center;justify-content:center;color:' + T.su + ';font-size:12px;">…</div>'
+    + '<div id="' + pfx + '-pick" style="min-height:15px;margin-top:8px;font-size:12px;color:' + T.acc + ';text-align:center;"></div>'
+    + '<div id="' + pfx + '-cmp" style="margin-top:4px;font-size:12px;color:' + T.mu + ';text-align:right;"></div>';
   // Swipe horizontal.
-  wrap.ontouchstart = function (e) { _dsTouchX = e.touches[0].clientX; };
-  wrap.ontouchend = function (e) { if (_dsTouchX == null) return; var dx = e.changedTouches[0].clientX - _dsTouchX; _dsTouchX = null; if (Math.abs(dx) > 50) _dsNav(dx < 0 ? 1 : -1); };
+  wrap.ontouchstart = function (e) { s.touchX = e.touches[0].clientX; };
+  wrap.ontouchend = function (e) { if (s.touchX == null) return; var dx = e.changedTouches[0].clientX - s.touchX; s.touchX = null; if (Math.abs(dx) > 50) _dsNav(pfx, dx < 0 ? 1 : -1); };
   var cur = [], prevTot = 0;
   try { var a = await H.queryAggregated({ startDate: r.start.toISOString(), endDate: r.end.toISOString(), dataType: 'steps', bucket: 'day' }); cur = (a && a.aggregatedData) || []; } catch (e) {}
-  try { var b = await H.queryAggregated({ startDate: rp.start.toISOString(), endDate: rp.end.toISOString(), dataType: 'steps', bucket: 'day' }); prevTot = ((b && b.aggregatedData) || []).reduce(function (s, x) { return s + (x.value || 0); }, 0); } catch (e) {}
-  _dsDraw(cur, prevTot, r);
+  try { var b = await H.queryAggregated({ startDate: rp.start.toISOString(), endDate: rp.end.toISOString(), dataType: 'steps', bucket: 'day' }); prevTot = ((b && b.aggregatedData) || []).reduce(function (t, x) { return t + (x.value || 0); }, 0); } catch (e) {}
+  _dsDraw(pfx, cur, prevTot, r);
 }
 
-function _dsDraw(cur, prevTot, r) {
-  var chartEl = document.getElementById('ds-chart'), cmpEl = document.getElementById('ds-cmp');
+function _dsDraw(pfx, cur, prevTot, r) {
+  var s = _dsSt(pfx), T = _DS_THEME[pfx] || _DS_THEME.ds;
+  var chartEl = document.getElementById(pfx + '-chart'), cmpEl = document.getElementById(pfx + '-cmp');
   if (!chartEl) return;
   var todayKey = new Date().toISOString().slice(0, 10);
   var byDay = {}; (cur || []).forEach(function (x) { byDay[new Date(x.startDate).toISOString().slice(0, 10)] = (x.value || 0); });
   var buckets = [];
-  if (_dsGran === 'A') {
+  if (s.gran === 'A') {
     var months = [0,0,0,0,0,0,0,0,0,0,0,0];
     (cur || []).forEach(function (x) { months[new Date(x.startDate).getMonth()] += (x.value || 0); });
     var ml = ['J','F','M','A','M','J','J','A','S','O','N','D'];
@@ -15781,34 +15777,31 @@ function _dsDraw(cur, prevTot, r) {
     var d = new Date(r.start);
     while (d < r.end) {
       var key = d.toISOString().slice(0, 10);
-      var lbl = (_dsGran === 'S') ? ['L','M','M','J','V','S','D'][(d.getDay() + 6) % 7] : String(d.getDate());
+      var lbl = (s.gran === 'S') ? ['L','M','M','J','V','S','D'][(d.getDay() + 6) % 7] : String(d.getDate());
       buckets.push({ label: lbl, full: d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }), value: byDay[key] || 0, today: key === todayKey });
       d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
     }
   }
-  _dsBuckets = buckets;
-  var total = buckets.reduce(function (s, b) { return s + b.value; }, 0);
+  s.buckets = buckets;
+  var total = buckets.reduce(function (acc, b) { return acc + b.value; }, 0);
   var maxv = Math.max.apply(null, buckets.map(function (b) { return b.value; }).concat([1]));
   var dense = buckets.length > 10;      // semaine = 7 → chiffre par jour ; mois/année → trop dense
   var kfmt = function (n) { return n >= 1000 ? (Math.round(n / 100) / 10).toLocaleString('fr-FR') + 'k' : String(Math.round(n)); };
   var bars = buckets.map(function (b, i) {
     var h = Math.max(3, Math.round(b.value / maxv * 58));
     var lab = (!dense || i % 5 === 0) ? b.label : '';
-    // Chiffre des pas par jour (vue semaine uniquement, sinon illisible).
-    var num = (!dense && b.value > 0) ? '<em style="font-size:9px;color:var(--tj-muted);font-style:normal;font-weight:700;white-space:nowrap;">' + kfmt(b.value) + '</em>' : (!dense ? '<em style="font-size:9px;font-style:normal;">&nbsp;</em>' : '');
-    // Toute la colonne est tappable → détail « date : X pas » (utile surtout en
-    // Mois/Année où le chiffre par barre ne tient pas).
-    return '<div onclick="_dsPick(' + i + ')" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;cursor:pointer;">' + num
-      + '<i style="width:100%;max-width:24px;height:' + h + 'px;border-radius:4px;background:linear-gradient(180deg,var(--tj-accent),var(--tj-accent-strong));opacity:' + (b.today ? '1' : '.8') + ';display:block;"></i>'
-      + '<em style="font-size:9px;color:var(--tj-subtle);font-style:normal;white-space:nowrap;">' + lab + '</em></div>';
+    var num = (!dense && b.value > 0) ? '<em style="font-size:9px;color:' + T.mu + ';font-style:normal;font-weight:700;white-space:nowrap;">' + kfmt(b.value) + '</em>' : (!dense ? '<em style="font-size:9px;font-style:normal;">&nbsp;</em>' : '');
+    return '<div onclick="_dsPick(\'' + pfx + '\',' + i + ')" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;cursor:pointer;">' + num
+      + '<i style="width:100%;max-width:24px;height:' + h + 'px;border-radius:4px;background:linear-gradient(180deg,' + T.acc + ',' + T.accS + ');opacity:' + (b.today ? '1' : '.8') + ';display:block;"></i>'
+      + '<em style="font-size:9px;color:' + T.su + ';font-style:normal;white-space:nowrap;">' + lab + '</em></div>';
   }).join('');
-  chartEl.outerHTML = '<div id="ds-chart" style="display:flex;align-items:flex-end;gap:' + (dense ? '2' : '5') + 'px;height:92px;">' + bars + '</div>';
+  chartEl.outerHTML = '<div id="' + pfx + '-chart" style="display:flex;align-items:flex-end;gap:' + (dense ? '2' : '5') + 'px;height:92px;">' + bars + '</div>';
   if (cmpEl) {
-    var nb = (_dsGran === 'A') ? 12 : buckets.length;
+    var nb = (s.gran === 'A') ? 12 : buckets.length;
     var moy = nb ? Math.round(total / nb) : 0;
     var delta = prevTot > 0 ? Math.round((total - prevTot) / prevTot * 100) : null;
-    var dtxt = (delta === null) ? '' : ' · <span style="color:' + (delta >= 0 ? 'var(--tj-good)' : '#DC3545') + ';font-weight:800;">' + (delta >= 0 ? '+' : '') + delta + '% vs préc.</span>';
-    cmpEl.innerHTML = '<b style="color:var(--tj-text);">' + Math.round(total).toLocaleString('fr-FR') + ' pas</b> · moy. ' + moy.toLocaleString('fr-FR') + '/' + (_dsGran === 'A' ? 'mois' : 'j') + dtxt;
+    var dtxt = (delta === null) ? '' : ' · <span style="color:' + (delta >= 0 ? T.gd : '#DC3545') + ';font-weight:800;">' + (delta >= 0 ? '+' : '') + delta + '% vs préc.</span>';
+    cmpEl.innerHTML = '<b style="color:' + T.tx + ';">' + Math.round(total).toLocaleString('fr-FR') + ' pas</b> · moy. ' + moy.toLocaleString('fr-FR') + '/' + (s.gran === 'A' ? 'mois' : 'j') + dtxt;
   }
 }
 
