@@ -1897,6 +1897,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const v = Number(r.valeur); if (isNaN(v)) continue
     if (r.cle === 'kcal') nutriMap[d].kcal = v
     else if (r.cle === 'prot') nutriMap[d].prot = v
+    else if (r.cle === 'gluc') nutriMap[d].gluc = v
+    else if (r.cle === 'lip') nutriMap[d].lip = v
   }
   const nutri_historique = Object.values(nutriMap).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
 
@@ -4006,6 +4008,8 @@ async function handleSaveNutrition(body: any): Promise<Response> {
     }
     push('kcal', e.kcal, 'kcal')
     push('prot', e.prot, 'g')
+    push('gluc', e.gluc, 'g')
+    push('lip', e.lip, 'g')
   }
   if (rows.length) {
     const { error } = await sb().from('indicateurs').insert(rows)
