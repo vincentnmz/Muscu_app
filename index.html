@@ -774,20 +774,20 @@
       .tj-bcell .nm{font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;text-align:center;}
       .tj-bcell .val{font-size:12.5px;font-weight:800;text-align:center;line-height:1.15;min-height:15px;}
       .tj-bseg{display:flex;gap:3px;width:100%;}.tj-bseg i{flex:1;height:4px;border-radius:2px;background:var(--tj-border);}
-      .tj-rew{padding:14px 15px;display:flex;flex-direction:column;gap:12px;border:1px solid rgba(224,161,0,.3);background:linear-gradient(180deg,var(--tj-gold-a),var(--tj-surface));}
+      .tj-rew{padding:12px 14px;display:flex;flex-direction:column;gap:9px;border:1px solid rgba(224,161,0,.3);background:linear-gradient(180deg,var(--tj-gold-a),var(--tj-surface));}
       .tj-rew .rowh{display:flex;align-items:center;justify-content:space-between;}
       .tj-rew .rowh .k{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;}
       .tj-rew .rowh .k svg{color:var(--tj-gold);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
       .tj-rew .prog{font-family:var(--tj-head);font-size:15px;color:var(--tj-gold);}
-      .tj-newpr{display:flex;align-items:center;gap:11px;background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:13px;padding:10px 12px;}
-      .tj-newpr .medal{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--tj-gold-a);color:var(--tj-gold);}
+      .tj-newpr{display:flex;align-items:center;gap:11px;background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:13px;padding:8px 11px;}
+      .tj-newpr .medal{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;background:var(--tj-gold-a);color:var(--tj-gold);}
       .tj-newpr .medal svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
       .tj-newpr .a{font-weight:700;font-size:13px;}.tj-newpr .b{font-size:11px;color:var(--tj-subtle);margin-top:1px;}
       .tj-miles{display:flex;flex-direction:column;gap:6px;}
       .tj-miles .lh{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--tj-muted);}.tj-miles .lh b{color:var(--tj-text);}
       .tj-mbar{height:8px;border-radius:999px;background:var(--tj-surface2);overflow:hidden;}.tj-mbar span{display:block;height:100%;background:var(--tj-gold);border-radius:999px;}
       .tj-badges{display:flex;gap:7px;}
-      .tj-bdg{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:11px;padding:8px 4px;}
+      .tj-bdg{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:11px;padding:6px 4px;}
       .tj-bdg .n{font-size:9.5px;color:var(--tj-muted);font-weight:700;text-align:center;}.tj-bdg svg{color:var(--tj-gold);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
       .tj-nova{display:flex;gap:12px;padding:14px 15px;align-items:flex-start;background:linear-gradient(180deg,var(--tj-accent-a),var(--tj-surface));border:1px solid rgba(26,95,255,.18);border-radius:16px;}
       .tj-nova .logo{width:32px;height:32px;border-radius:10px;background:var(--tj-accent);color:#fff;display:grid;place-items:center;flex:none;font-family:var(--tj-head);font-size:12px;}
@@ -858,6 +858,14 @@
         <!-- Activité du jour (pas montre) — rempli par renderDashSteps(), masqué si pas de données -->
         <div class="tj-card" id="dash-steps" style="display:none;padding:13px 15px;"></div>
 
+        <div class="tj-nova" id="tj-nova">
+          <span class="logo">N</span>
+          <div>
+            <div class="k">Le mot de Novalyz</div>
+            <div class="t" id="tj-nova-txt">Belle dynamique cette semaine, tu progresses au développé. Mais ta fatigue jambes monte depuis 3 séances : garde la charge sur le bas du corps et concentre-toi sur le haut aujourd'hui.</div>
+          </div>
+        </div>
+
         <div class="tj-card tj-rew">
           <div class="rowh">
             <span class="k"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg>Récompenses</span>
@@ -875,14 +883,6 @@
             <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="n" id="tj-bdg1">Série —</span></div>
             <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="n" id="tj-bdg2">— records</span></div>
             <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="n" id="tj-bdg3">— séances</span></div>
-          </div>
-        </div>
-
-        <div class="tj-nova" id="tj-nova">
-          <span class="logo">N</span>
-          <div>
-            <div class="k">Le mot de Novalyz</div>
-            <div class="t" id="tj-nova-txt">Belle dynamique cette semaine, tu progresses au développé. Mais ta fatigue jambes monte depuis 3 séances : garde la charge sur le bas du corps et concentre-toi sur le haut aujourd'hui.</div>
           </div>
         </div>
 
