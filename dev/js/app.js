@@ -10999,57 +10999,52 @@ function renderAujourdhui(data) {
     }
   } catch (e) {}
 
-  // --- Récompenses : chiffres réels (global + régularité + streak) ---
+  // --- Récompenses V2 : niveau (points réels) + objectif hebdo + collection ---
   try {
     var g = (data && data.global) || {};
     var dashb = (data && data.dashboard) || {};
     var totalS = Number(g.total_seances || 0);
     var rec30 = Number(g.records_30j || 0);
     var pts = totalS * 10 + rec30 * 50;
-    var elProg = document.getElementById('tj-prog');
-    var rpe = g.records_par_exo || {};
+    var reg2 = dashb.regularite || {};
+    var streak = (reg2 && reg2.streak != null) ? Number(reg2.streak) : ((dashb.streak && dashb.streak.semaines != null) ? Number(dashb.streak.semaines) : 0);
+    var recsObj = g.records_par_exo || {};
+    var hasRecords = Object.keys(recsObj).length > 0;
+
+    // Niveau dérivé des points réels.
+    var lv = _rewLevel(pts);
+    var elLvln = document.getElementById('tj-lvln'); if (elLvln) elLvln.textContent = lv.level;
+    var elLvlt = document.getElementById('tj-lvltitle'); if (elLvlt) elLvlt.textContent = lv.title;
+    var elLvlx = document.getElementById('tj-lvltxt'); if (elLvlx) elLvlx.textContent = 'Plus que ' + lv.toNext.toLocaleString('fr-FR') + ' pts avant le niveau ' + (lv.level + 1);
+
+    // Meilleur record.
     var best = null;
-    Object.keys(rpe).forEach(function (exo) {
-      var r = rpe[exo]; if (!r) return;
+    Object.keys(recsObj).forEach(function (exo) {
+      var r = recsObj[exo]; if (!r) return;
       var t = 0; try { var pp = String(r.date || '').split('/'); t = pp.length === 3 ? new Date(+pp[2], +pp[1] - 1, +pp[0]).getTime() : 0; } catch (e3) { t = 0; }
       if (!best || t > best.t) best = { exo: exo, charge: r.charge, t: t };
     });
     var elNa = document.getElementById('tj-newpr-a'), elNb = document.getElementById('tj-newpr-b');
-    if (best && best.charge != null) {
-      if (elNa) elNa.textContent = 'Ton meilleur record';
-      if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg';
+    if (best && best.charge != null) { if (elNa) elNa.textContent = 'Ton meilleur record'; if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg'; }
+    else { if (elNa) elNa.textContent = 'Records'; if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records'; }
+
+    // Collection de trophées (débloqués depuis les vraies données).
+    _renderTrophees(streak, rec30, totalS, hasRecords);
+    // Objectif de la semaine + progression réelle.
+    _renderObjectif(data);
+
+    // Cibles pour l'animation au reveal (scroll).
+    var rewCard = document.querySelector('#tab-accueil .tj-rew');
+    if (rewCard) { rewCard.setAttribute('data-pts', String(pts)); rewCard.setAttribute('data-lvlpct', String(lv.pct)); }
+    var elProg = document.getElementById('tj-prog');
+    var rg = document.getElementById('tj-lvlring');
+    if (_rewAnimated) {
+      if (elProg) { elProg.textContent = pts.toLocaleString('fr-FR'); elProg.setAttribute('data-v', String(pts)); }
+      if (rg) rg.style.strokeDashoffset = (100 - lv.pct);
     } else {
-      if (elNa) elNa.textContent = 'Records';
-      if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records';
+      if (elProg) { elProg.textContent = '0'; elProg.setAttribute('data-v', '0'); }
+      if (rg) rg.style.strokeDashoffset = 100;
     }
-    var reg2 = dashb.regularite || {};
-    var done2 = _seancesFaites(reg2);
-    var goal2 = Number(reg2.seances_prevues || 4) || 4;
-    var elMg = document.getElementById('tj-mgoal'); if (elMg) elMg.textContent = goal2 + ' séances';
-    var elMd = document.getElementById('tj-mdone'); if (elMd) elMd.textContent = done2;
-    var elMt = document.getElementById('tj-mtot'); if (elMt) elMt.textContent = goal2;
-    var barPct = Math.max(0, Math.min(100, goal2 ? Math.round(done2 / goal2 * 100) : 0));
-    var elMb = document.getElementById('tj-mbar');
-    // streak est exposé par le backend en dashboard.regularite.streak (nombre),
-    // PAS en dashboard.streak.semaines → on lit le bon chemin (sinon « Série — »).
-    var streak = (reg2 && reg2.streak != null) ? Number(reg2.streak) : ((dashb.streak && dashb.streak.semaines != null) ? Number(dashb.streak.semaines) : null);
-    var elB1 = document.getElementById('tj-bdg1'); if (elB1) elB1.textContent = (streak != null ? 'Série ' + streak + ' sem.' : 'Série —');
-    var elB2 = document.getElementById('tj-bdg2'); if (elB2) elB2.textContent = rec30 + ' record' + (rec30 > 1 ? 's' : '');
-    var elB3 = document.getElementById('tj-bdg3'); if (elB3) elB3.textContent = totalS + ' séance' + (totalS > 1 ? 's' : '');
-    // Cibles stockées sur la carte → lues au moment du reveal (scroll). Si déjà
-    // révélé cette session, on pose les valeurs finales directement.
-    try {
-      var rewCard = document.querySelector('#tab-accueil .tj-rew');
-      if (rewCard) { rewCard.setAttribute('data-pts', String(pts)); rewCard.setAttribute('data-bar', String(barPct)); }
-      if (_rewAnimated) {
-        if (elProg) { elProg.textContent = pts.toLocaleString('fr-FR') + ' pts'; elProg.setAttribute('data-v', String(pts)); }
-        if (elMb) elMb.style.width = barPct + '%';
-      } else {
-        // état initial (avant reveal) : points à 0, barre vide.
-        if (elProg) { elProg.textContent = '0 pts'; elProg.setAttribute('data-v', '0'); }
-        if (elMb) elMb.style.width = '0%';
-      }
-    } catch (e4) {}
   } catch (e) {}
   // Déclenche/rafraîchit le scroll-reveal des blocs d'Aujourd'hui.
   try { _initDashReveal(); } catch (e) {}
@@ -11057,17 +11052,19 @@ function renderAujourdhui(data) {
 
 // Compteur animé (count-up) pour un nombre affiché — respecte prefers-reduced-motion.
 var _rewAnimated = false, _dashRevealIO = null;
-// Récompenses : lance count-up (points) + remplissage de barre + pop (une fois).
+// Récompenses : lance count-up (points) + anneau de niveau + pop des trophées,
+// et ouvre le coffre si l'objectif de la semaine vient d'être atteint (une fois).
 function _revealRewards(card) {
   if (!card || _rewAnimated) return;
   _rewAnimated = true;
   card.classList.add('tj-anim');
   var elProg = document.getElementById('tj-prog');
-  var elMb = document.getElementById('tj-mbar');
   var pts = parseInt(card.getAttribute('data-pts') || '0', 10) || 0;
-  var bar = parseFloat(card.getAttribute('data-bar') || '0') || 0;
-  if (elProg) _animCount(elProg, pts, ' pts');
-  if (elMb) elMb.style.width = bar + '%';
+  var pct = parseFloat(card.getAttribute('data-lvlpct') || '0') || 0;
+  if (elProg) _animCount(elProg, pts, '');
+  var rg = document.getElementById('tj-lvlring'); if (rg) rg.style.strokeDashoffset = (100 - pct);
+  var gift = card.getAttribute('data-gift');
+  if (gift) { card.removeAttribute('data-gift'); setTimeout(function () { nvzShowGift(gift); }, 700); }
 }
 // Scroll-reveal générique des blocs d'Aujourd'hui : chaque .tj-reveal apparaît
 // (fade + montée) quand il entre à l'écran ; le bloc Récompenses lance alors ses
@@ -11102,7 +11099,7 @@ function _animCount(el, to, suffix) {
   var from = parseInt(el.getAttribute('data-v') || '0', 10) || 0;
   el.setAttribute('data-v', String(to));
   if (reduce || from === to) { el.textContent = to.toLocaleString('fr-FR') + suffix; return; }
-  var t0 = null, dur = 800;
+  var t0 = null, dur = 1400;
   function step(ts) {
     if (t0 == null) t0 = ts;
     var p = Math.min(1, (ts - t0) / dur);
@@ -11111,6 +11108,146 @@ function _animCount(el, to, suffix) {
     if (p < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
+}
+
+// ═══ Récompenses V2 : niveau, trophées, objectif hebdo, coffre ═══
+// Niveau dérivé des points RÉELS (300 pts / niveau) + titre de palier.
+function _rewLevel(pts) {
+  var STEP = 300, level = Math.floor(pts / STEP) + 1, inLvl = pts - (level - 1) * STEP;
+  var title = level >= 11 ? 'Athlète' : level >= 7 ? 'Confirmé' : level >= 4 ? 'Régulier' : level >= 2 ? 'Assidu' : 'Débutant';
+  return { level: level, title: title, pct: Math.round(inLvl / STEP * 100), toNext: STEP - inLvl };
+}
+// Semaine ISO (année-Www) — pour l'objectif hebdo (change chaque lundi).
+function _isoWeek(d) {
+  var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var day = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - day + 3);
+  var firstThu = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  var wk = 1 + Math.round(((t - firstThu) / 86400000 - 3 + ((firstThu.getUTCDay() + 6) % 7)) / 7);
+  return t.getUTCFullYear() + '-W' + (wk < 10 ? '0' + wk : wk);
+}
+var _TRO_SVG = {
+  flame: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/><path d="M12 22c3 0 5-2 5-5"/>',
+  medal: '<circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/>',
+  bars: '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  star: '<path d="M12 2 15 8l6 .9-4.5 4.3L17.7 20 12 16.8 6.3 20l1.2-6.8L3 8.9 9 8z"/>'
+};
+function _tro(cls, svg, n, l, locked) {
+  return '<div class="tro ' + (locked ? 'lock' : cls) + '">' + (locked ? '<span class="lk">🔒</span>' : '')
+    + '<svg viewBox="0 0 24 24">' + svg + '</svg><span class="tn">' + n + '</span><span class="tl">' + l + '</span></div>';
+}
+function _renderTrophees(streak, rec30, totalS, hasRecords) {
+  var grid = document.getElementById('tj-tro-grid'); if (!grid) return;
+  var items = [], unlocked = 0, total = 0;
+  var add = function (ok, html) { total++; if (ok) unlocked++; items.push(html); };
+  add(streak >= 1, _tro('c1', _TRO_SVG.flame, streak + ' sem.', 'Série', streak < 1));
+  add(hasRecords, _tro('c2', _TRO_SVG.medal, rec30, 'Records 30j', !hasRecords));
+  add(totalS >= 1, _tro('c3', _TRO_SVG.bars, totalS, 'Séances', totalS < 1));
+  add(streak >= 1 || totalS >= 3, _tro('c4', _TRO_SVG.check, '1re', 'Semaine', !(streak >= 1 || totalS >= 3)));
+  add(streak >= 10, _tro('c5', _TRO_SVG.flame, '10 sem.', 'Série pro', streak < 10));
+  add(totalS >= 100, _tro('c1', _TRO_SVG.star, '100', 'Séances', totalS < 100));
+  grid.innerHTML = items.join('');
+  var c = document.getElementById('tj-tro-count'); if (c) c.textContent = '· ' + unlocked + ' / ' + total + ' débloqués';
+}
+// Objectif de la semaine — choisi par l'athlète, stocké en local (par appareil).
+var _OBJ_OPTS = [
+  { id: 's4', em: '🏋️', label: '4 séances', type: 'seances', target: 4 },
+  { id: 's5', em: '🔥', label: '5 séances', type: 'seances', target: 5 },
+  { id: 'pas', em: '👟', label: '5 j à 10 000 pas', type: 'pas10k', target: 5 },
+  { id: 'c3', em: '🏃', label: '3 cardio', type: 'cardio', target: 3 }
+];
+function _objOptions() {
+  var native = (typeof _estAppNative === 'function' && _estAppNative());
+  return _OBJ_OPTS.filter(function (o) { return o.type !== 'pas10k' || native; });
+}
+function _objKey() { return 'nvz_obj_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
+function _objWonKey() { return 'nvz_objwon_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
+function _objChosen() {
+  var id = null; try { id = localStorage.getItem(_objKey()); } catch (e) {}
+  var opts = _objOptions();
+  for (var i = 0; i < opts.length; i++) if (opts[i].id === id) return opts[i];
+  return opts[0];
+}
+function nvzToggleObjPicker() { var p = document.getElementById('tj-obj-pick'); if (p) p.classList.toggle('on'); }
+function nvzPickObj(id) { try { localStorage.setItem(_objKey(), id); } catch (e) {} try { nvzToggleObjPicker(); } catch (e) {} try { _renderObjectif(dernierAppData); } catch (e) {} }
+// Lundi (00:00) de la semaine courante, en ISO YYYY-MM-DD.
+function _lundiISO() { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _renderObjectif(data) {
+  var obj = _objChosen();
+  var emEl = document.getElementById('tj-obj-em'); if (emEl) emEl.textContent = obj.em;
+  var txtEl = document.getElementById('tj-obj-txt'); if (txtEl) txtEl.textContent = obj.label;
+  // Chips du sélecteur.
+  var pick = document.getElementById('tj-obj-pick');
+  if (pick) pick.innerHTML = _objOptions().map(function (o) {
+    return '<span class="chip' + (o.id === obj.id ? ' sel' : '') + '" onclick="nvzPickObj(\'' + o.id + '\')">' + o.em + ' ' + o.label + '</span>';
+  }).join('');
+  // Applique une progression (done) → sous-titre + barre + coffre si atteint.
+  var apply = function (done) {
+    done = Math.max(0, Math.round(done || 0));
+    var pct = Math.max(0, Math.min(100, Math.round(done / obj.target * 100)));
+    var sub = document.getElementById('tj-obj-sub');
+    var reached = done >= obj.target;
+    if (sub) sub.innerHTML = reached ? '✅ Objectif atteint · bravo !' : ('<b>' + done + '</b>/' + obj.target + ' · ' + (obj.target - done) + ' restant' + ((obj.target - done) > 1 ? 's' : ''));
+    var bar = document.getElementById('tj-obj-bar'); if (bar) bar.style.width = pct + '%';
+    // Coffre : une fois par semaine, quand atteint. Armé pour le prochain reveal.
+    if (reached) {
+      var won = false; try { won = localStorage.getItem(_objWonKey()) === '1'; } catch (e) {}
+      if (!won) {
+        try { localStorage.setItem(_objWonKey(), '1'); } catch (e) {}
+        var card = document.querySelector('#tab-accueil .tj-rew');
+        if (card) {
+          if (_rewAnimated) nvzShowGift(obj.label);           // déjà visible → tout de suite
+          else card.setAttribute('data-gift', obj.label);      // sinon au reveal
+        }
+      }
+    }
+  };
+  var lundi = _lundiISO();
+  if (obj.type === 'seances') {
+    var reg = (data && data.dashboard && data.dashboard.regularite) || {};
+    apply(Number(reg.seances_semaine != null ? reg.seances_semaine : (reg.seances_j7 || 0)));
+  } else if (obj.type === 'cardio') {
+    var hist = (data && data.cardio && data.cardio.history) || [];
+    var n = hist.filter(function (s) { return String(s.date || '') >= lundi; }).length;
+    apply(n);
+  } else if (obj.type === 'pas10k') {
+    var H = _hcPlugin();
+    if (!H) { apply(0); return; }
+    var now = new Date(), e1 = new Date(now.getTime() + 24 * 3600 * 1000);
+    var start = new Date(lundi + 'T00:00:00');
+    H.queryAggregated({ startDate: start.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' })
+      .then(function (a) { var days = (a && a.aggregatedData) || []; apply(days.filter(function (x) { return (x.value || 0) >= 10000; }).length); })
+      .catch(function () { apply(0); });
+  } else { apply(0); }
+}
+// Coffre + confettis (objectif atteint).
+function nvzShowGift(label) {
+  var ov = document.getElementById('tj-gift-ov'), g = document.getElementById('tj-gift'), box = document.getElementById('tj-gift-box'), s = document.getElementById('tj-gift-s');
+  if (!ov || !g) return;
+  if (s) s.textContent = 'Objectif « ' + label + ' » réussi 💪';
+  ov.classList.add('on'); g.classList.remove('shake'); if (box) box.textContent = '🎁';
+  void g.offsetWidth; g.classList.add('shake');
+  var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  setTimeout(function () { if (box) box.textContent = '🎉'; if (!reduce) _nvzConfetti(46); }, reduce ? 0 : 900);
+}
+function nvzCloseGift(ev, force) {
+  var ov = document.getElementById('tj-gift-ov'); if (!ov) return;
+  if (force || (ev && ev.target === ov)) ov.classList.remove('on');
+}
+function _nvzConfetti(n) {
+  var COLORS = ['#F5C518', '#EC4899', '#1A5FFF', '#00A854', '#9D5FD3', '#F59E0B', '#22D3EE'];
+  for (var i = 0; i < n; i++) {
+    (function (idx) {
+      var c = document.createElement('div'); c.className = 'nvz-confetti';
+      c.style.left = (Math.random() * 100) + 'vw'; c.style.background = COLORS[idx % COLORS.length];
+      document.body.appendChild(c);
+      var dur = 1400 + Math.random() * 1200, x = (Math.random() * 2 - 1) * 90;
+      try {
+        c.animate([{ transform: 'translateY(0) rotate(0)', opacity: 1 }, { transform: 'translate(' + x + 'px,105vh) rotate(720deg)', opacity: .9 }], { duration: dur, easing: 'cubic-bezier(.2,.6,.4,1)' });
+      } catch (e) {}
+      setTimeout(function () { c.remove(); }, dur);
+    })(i);
+  }
 }
 /* Écran ÉTAT (onglet #tab-etat) — « Mon état ». Peuple les blocs depuis les
  * DONNÉES RÉELLES du backend (moteur.recScore / disponibilite / reco / acwr_*,
