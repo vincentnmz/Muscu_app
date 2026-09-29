@@ -774,31 +774,80 @@
       .tj-bcell .nm{font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;text-align:center;}
       .tj-bcell .val{font-size:12.5px;font-weight:800;text-align:center;line-height:1.15;min-height:15px;}
       .tj-bseg{display:flex;gap:3px;width:100%;}.tj-bseg i{flex:1;height:4px;border-radius:2px;background:var(--tj-border);}
-      .tj-rew{padding:12px 14px;display:flex;flex-direction:column;gap:9px;border:1px solid rgba(224,161,0,.3);background:linear-gradient(180deg,var(--tj-gold-a),var(--tj-surface));}
-      .tj-rew .rowh{display:flex;align-items:center;justify-content:space-between;}
-      .tj-rew .rowh .k{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;}
-      .tj-rew .rowh .k svg{color:var(--tj-gold);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-      .tj-rew .prog{font-family:var(--tj-head);font-size:15px;color:var(--tj-gold);}
-      .tj-newpr{display:flex;align-items:center;gap:11px;background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:13px;padding:8px 11px;}
-      .tj-newpr .medal{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;background:var(--tj-gold-a);color:var(--tj-gold);}
+      /* ═══ Récompenses V2 (piste B + anneau) ═══ */
+      .tj-rew{padding:0;border:1px solid rgba(224,161,0,.28);overflow:hidden;}
+      .rew-hero{padding:15px 16px 16px;position:relative;color:#fff;background:linear-gradient(135deg,#3b2f7a 0%,#6d28d9 46%,#db2777 100%);}
+      .rew-glow{position:absolute;inset:0;background:radial-gradient(70% 90% at 88% -15%,rgba(255,255,255,.26),transparent 60%);pointer-events:none;}
+      .rew-row{display:flex;align-items:center;gap:14px;position:relative;}
+      .rew-ring{width:74px;height:74px;flex:none;position:relative;}
+      .rew-ring svg{width:74px;height:74px;transform:rotate(-90deg);}
+      .rew-ring .bg{fill:none;stroke:rgba(255,255,255,.22);stroke-width:7;}
+      .rew-ring .fg{fill:none;stroke:#F5C518;stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 1.5s cubic-bezier(.22,1,.36,1);}
+      .rew-ring .rt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+      .rew-ring .rt .n{font-family:var(--tj-head);font-size:24px;line-height:1;color:#fff;}
+      .rew-ring .rt .l{font-size:8px;letter-spacing:.14em;text-transform:uppercase;opacity:.82;margin-top:2px;}
+      .rew-hm{flex:1;min-width:0;}
+      .rew-title{font-family:var(--tj-head);font-size:15px;}
+      .rew-pts{font-size:29px;font-weight:800;letter-spacing:-.02em;line-height:1.05;}
+      .rew-pts small{font-size:13px;opacity:.75;font-weight:700;}
+      .rew-next{font-size:11px;opacity:.86;margin-top:3px;}
+      .rew-body{padding:14px 15px;display:flex;flex-direction:column;gap:14px;background:var(--tj-surface);}
+      .rew-goal .gh{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+      .rew-goal .gh .k{font-size:12.5px;font-weight:800;color:var(--tj-text);}
+      .rew-goal .gh .chg{font-size:11.5px;color:var(--tj-accent);font-weight:700;cursor:pointer;}
+      .rew-goal .cur{display:flex;align-items:center;gap:11px;margin-bottom:9px;}
+      .rew-goal .cur .em{width:40px;height:40px;border-radius:12px;flex:none;display:grid;place-items:center;font-size:20px;background:linear-gradient(160deg,#FEF3C7,#FDE68A);}
+      .rew-goal .cur .t{flex:1;min-width:0;}
+      .rew-goal .cur .t b{font-size:13.5px;color:var(--tj-text);}
+      .rew-goal .cur .t .sub2{font-size:11px;color:var(--tj-muted);margin-top:1px;}
+      .tj-mbar{height:10px;border-radius:999px;background:var(--tj-surface2);overflow:hidden;}
+      .tj-mbar span{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--tj-gold),#F5C518);transition:width 1.2s cubic-bezier(.22,1,.36,1);}
+      .rew-picker{display:none;flex-wrap:wrap;gap:7px;margin-top:11px;}
+      .rew-picker.on{display:flex;}
+      .rew-picker .chip{border:1.5px solid var(--tj-border);background:var(--tj-surface);border-radius:999px;padding:8px 12px;font-size:12.5px;font-weight:700;color:var(--tj-text);cursor:pointer;}
+      .rew-picker .chip.sel{border-color:var(--tj-gold);background:var(--tj-gold-a);color:var(--tj-gold);}
+      .rew-colh{font-size:12.5px;font-weight:800;color:var(--tj-text);margin-bottom:8px;}
+      .rew-colh .c{color:var(--tj-subtle);font-weight:600;font-size:11px;}
+      .rew-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+      .tro{border-radius:14px;padding:11px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;position:relative;color:#fff;}
+      .tro svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      .tro .tn{font-family:var(--tj-head);font-size:13px;line-height:1.05;}
+      .tro .tl{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;opacity:.92;}
+      .tro.c1{background:linear-gradient(160deg,#F59E0B,#EA580C);}
+      .tro.c2{background:linear-gradient(160deg,#9D5FD3,#7c3aed);}
+      .tro.c3{background:linear-gradient(160deg,#1A5FFF,#1248D4);}
+      .tro.c4{background:linear-gradient(160deg,#EC4899,#be185d);}
+      .tro.c5{background:linear-gradient(160deg,#00A854,#047857);}
+      .tro.lock{background:var(--tj-surface2);color:var(--tj-subtle);border:1px dashed var(--tj-border);}
+      .tro.lock svg{stroke:var(--tj-subtle);}
+      .tro .lk{position:absolute;top:6px;right:7px;font-size:10px;opacity:.65;}
+      .tj-newpr{display:flex;align-items:center;gap:11px;background:var(--tj-gold-a);border:1px solid rgba(224,161,0,.3);border-radius:14px;padding:9px 12px;}
+      .tj-newpr .medal{width:32px;height:32px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--tj-surface);color:var(--tj-gold);box-shadow:var(--tj-sh-sm);}
       .tj-newpr .medal svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-      .tj-newpr .a{font-weight:700;font-size:13px;}.tj-newpr .b{font-size:11px;color:var(--tj-subtle);margin-top:1px;}
-      .tj-miles{display:flex;flex-direction:column;gap:6px;}
-      .tj-miles .lh{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--tj-muted);}.tj-miles .lh b{color:var(--tj-text);}
-      .tj-mbar{height:8px;border-radius:999px;background:var(--tj-surface2);overflow:hidden;}.tj-mbar span{display:block;height:100%;background:var(--tj-gold);border-radius:999px;transition:width 1s cubic-bezier(.22,1,.36,1);}
-      .tj-badges{display:flex;gap:7px;}
-      .tj-bdg{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--tj-surface);border:1px solid var(--tj-border);border-radius:11px;padding:6px 4px;}
-      .tj-bdg .n{font-size:9.5px;color:var(--tj-muted);font-weight:700;text-align:center;}.tj-bdg svg{color:var(--tj-gold);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-      /* Récompenses : animation d'entrée (pop) jouée une fois par session. */
-      @keyframes tjPop{0%{opacity:0;transform:translateY(7px) scale(.94)}100%{opacity:1;transform:none}}
-      @keyframes tjMedalGlow{0%,100%{box-shadow:0 0 0 0 rgba(224,161,0,0)}50%{box-shadow:0 0 0 5px rgba(224,161,0,.14)}}
-      .tj-rew.tj-anim .tj-newpr{animation:tjPop .5s .04s both cubic-bezier(.22,1,.36,1);}
-      .tj-rew.tj-anim .tj-newpr .medal{animation:tjMedalGlow 2.2s .6s ease-in-out 2;}
-      .tj-rew.tj-anim .tj-badges .tj-bdg{animation:tjPop .5s both cubic-bezier(.22,1,.36,1);}
-      .tj-rew.tj-anim .tj-badges .tj-bdg:nth-child(1){animation-delay:.14s;}
-      .tj-rew.tj-anim .tj-badges .tj-bdg:nth-child(2){animation-delay:.22s;}
-      .tj-rew.tj-anim .tj-badges .tj-bdg:nth-child(3){animation-delay:.30s;}
-      @media (prefers-reduced-motion:reduce){.tj-rew.tj-anim .tj-newpr,.tj-rew.tj-anim .tj-badges .tj-bdg,.tj-rew.tj-anim .tj-newpr .medal{animation:none;}.tj-mbar span{transition:none;}}
+      .tj-newpr .a{font-weight:800;font-size:13px;color:var(--tj-text);}.tj-newpr .b{font-size:11.5px;color:var(--tj-muted);margin-top:1px;}
+      /* Entrée (reveal) : pop des trophées avec léger rebond. */
+      @keyframes tjPop{0%{opacity:0;transform:translateY(9px) scale(.9)}60%{opacity:1;transform:translateY(0) scale(1.03)}100%{opacity:1;transform:none}}
+      .tj-rew.tj-anim .tro{animation:tjPop .55s both cubic-bezier(.34,1.56,.64,1);}
+      .tj-rew.tj-anim .tj-newpr{animation:tjPop .55s .5s both cubic-bezier(.34,1.56,.64,1);}
+      .tj-rew.tj-anim .rew-grid .tro:nth-child(1){animation-delay:.10s;}
+      .tj-rew.tj-anim .rew-grid .tro:nth-child(2){animation-delay:.18s;}
+      .tj-rew.tj-anim .rew-grid .tro:nth-child(3){animation-delay:.26s;}
+      .tj-rew.tj-anim .rew-grid .tro:nth-child(4){animation-delay:.34s;}
+      .tj-rew.tj-anim .rew-grid .tro:nth-child(5){animation-delay:.42s;}
+      .tj-rew.tj-anim .rew-grid .tro:nth-child(6){animation-delay:.50s;}
+      /* Coffre / cadeau */
+      .rew-ov{position:fixed;inset:0;background:rgba(10,8,25,.55);display:none;align-items:center;justify-content:center;z-index:9000;}
+      .rew-ov.on{display:flex;}
+      .rew-gift{background:var(--tj-surface);border-radius:22px;padding:26px 24px;width:min(320px,86vw);text-align:center;box-shadow:var(--tj-sh);transform:scale(.8);opacity:0;transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .35s;}
+      .rew-ov.on .rew-gift{transform:none;opacity:1;}
+      .rew-gift .box{font-size:62px;display:inline-block;}
+      .rew-gift.shake .box{animation:tjShake .5s ease-in-out 2;}
+      @keyframes tjShake{0%,100%{transform:rotate(0)}25%{transform:rotate(-11deg) scale(1.06)}75%{transform:rotate(11deg) scale(1.06)}}
+      .rew-gift .gt{font-family:var(--tj-head);font-size:17px;margin:10px 0 3px;color:var(--tj-text);}
+      .rew-gift .gs{font-size:13px;color:var(--tj-muted);line-height:1.4;}
+      .rew-gift .close{margin-top:16px;background:linear-gradient(135deg,#F5C518,var(--tj-gold));border:none;color:#3a2a00;font-family:inherit;font-weight:800;font-size:14px;border-radius:13px;padding:12px 18px;width:100%;cursor:pointer;}
+      .nvz-confetti{position:fixed;top:-14px;width:9px;height:14px;z-index:9100;pointer-events:none;border-radius:2px;}
+      @media (prefers-reduced-motion:reduce){.tj-rew.tj-anim .tro,.tj-rew.tj-anim .tj-newpr{animation:none;}.tj-mbar span,.rew-ring .fg{transition:none;}.rew-gift.shake .box{animation:none;}}
       .tj-nova{display:flex;gap:12px;padding:14px 15px;align-items:flex-start;background:linear-gradient(180deg,var(--tj-accent-a),var(--tj-surface));border:1px solid rgba(26,95,255,.18);border-radius:16px;}
       .tj-nova .logo{width:32px;height:32px;border-radius:10px;background:var(--tj-accent);color:#fff;display:grid;place-items:center;flex:none;font-family:var(--tj-head);font-size:12px;}
       .tj-nova .k{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--tj-accent-strong);}
@@ -881,22 +930,48 @@
         <div class="tj-card tj-reveal" id="dash-steps" style="display:none;padding:13px 15px;"></div>
 
         <div class="tj-card tj-rew tj-reveal">
-          <div class="rowh">
-            <span class="k"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg>Récompenses</span>
-            <span class="prog" id="tj-prog">+12% ce mois</span>
+          <div class="rew-hero">
+            <div class="rew-glow"></div>
+            <div class="rew-row">
+              <div class="rew-ring">
+                <svg viewBox="0 0 78 78"><circle class="bg" cx="39" cy="39" r="32.5"></circle><circle class="fg" id="tj-lvlring" cx="39" cy="39" r="32.5" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></circle></svg>
+                <div class="rt"><span class="n" id="tj-lvln">1</span><span class="l">niveau</span></div>
+              </div>
+              <div class="rew-hm">
+                <div class="rew-title" id="tj-lvltitle">Débutant</div>
+                <div class="rew-pts"><span id="tj-prog">0</span> <small>pts</small></div>
+                <div class="rew-next" id="tj-lvltxt">—</div>
+              </div>
+            </div>
           </div>
-          <div class="tj-newpr" id="tj-newpr">
-            <span class="medal"><svg width="19" height="19" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
-            <div><div class="a" id="tj-newpr-a">Records</div><div class="b" id="tj-newpr-b">—</div></div>
+          <div class="rew-body">
+            <div class="rew-goal">
+              <div class="gh"><span class="k">🎯 Objectif de la semaine</span><span class="chg" onclick="nvzToggleObjPicker()">Changer</span></div>
+              <div class="cur">
+                <span class="em" id="tj-obj-em">🎯</span>
+                <div class="t"><b id="tj-obj-txt">Choisis ton objectif</b><div class="sub2" id="tj-obj-sub">—</div></div>
+              </div>
+              <div class="tj-mbar"><span id="tj-obj-bar" style="width:0%"></span></div>
+              <div class="rew-picker" id="tj-obj-pick"></div>
+            </div>
+            <div>
+              <div class="rew-colh">🏅 Ma collection <span id="tj-tro-count" class="c"></span></div>
+              <div class="rew-grid" id="tj-tro-grid"></div>
+            </div>
+            <div class="tj-newpr" id="tj-newpr">
+              <span class="medal"><svg width="19" height="19" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
+              <div><div class="a" id="tj-newpr-a">Records</div><div class="b" id="tj-newpr-b">—</div></div>
+            </div>
           </div>
-          <div class="tj-miles">
-            <div class="lh"><span>Défi de la semaine : <b id="tj-mgoal">—</b></span><span><b id="tj-mdone">0</b>/<span id="tj-mtot">0</span></span></div>
-            <div class="tj-mbar"><span id="tj-mbar" style="width:0%"></span></div>
-          </div>
-          <div class="tj-badges">
-            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="n" id="tj-bdg1">Série —</span></div>
-            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="n" id="tj-bdg2">— records</span></div>
-            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="n" id="tj-bdg3">— séances</span></div>
+        </div>
+
+        <!-- Coffre / cadeau (objectif de la semaine atteint) -->
+        <div class="rew-ov" id="tj-gift-ov" onclick="nvzCloseGift(event)">
+          <div class="rew-gift" id="tj-gift">
+            <div class="box" id="tj-gift-box">🎁</div>
+            <div class="gt">Objectif atteint !</div>
+            <div class="gs" id="tj-gift-s">Bravo, continue comme ça 💪</div>
+            <button class="close" onclick="nvzCloseGift(event, true)">Génial !</button>
           </div>
         </div>
 
