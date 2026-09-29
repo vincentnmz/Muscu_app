@@ -15933,22 +15933,60 @@ async function renderEtatMontre(attempt) {
 
   // Graphe interactif complet + lignes Sommeil / FC repos en DONNÉES RÉELLES
   // (fork du plugin) ; « — » si rien, « Bientôt » si le fork n'est pas déployé.
-  var block = function (label, ico, valId, pfx) {
-    return '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:11px;">'
+  var icoSteps = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg>';
+  var blockH = function (label, ico, valId, bodyHtml) {
+    return '<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:11px;">'
       + '<div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;">'
       + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;color:var(--text-muted);flex:none;">' + ico + '</span>'
       + '<span style="flex:1;font-size:13px;font-weight:700;color:var(--text);">' + label + '</span>'
-      + '<span id="' + valId + '" style="font-size:14px;font-weight:800;color:var(--text-muted);">…</span>'
-      + '</div><div id="' + pfx + '-head"></div><div id="' + pfx + '-body"></div></div>';
+      + (valId ? '<span id="' + valId + '" style="font-size:14px;font-weight:800;color:var(--text-muted);">…</span>' : '')
+      + '</div>' + bodyHtml + '</div>';
   };
-  el.innerHTML = '<div id="etds-head"></div><div id="etds-chart-wrap"></div>'
-    + block('Sommeil', icoSleep, 'et-sleep-val', 'etsleep')
-    + block('Fréquence cardiaque au repos', icoHr, 'et-hr-val', 'ethr');
-  renderStepsChart('etds');
+  // Sélecteur de période UNIQUE (#etm-head) pilotant les 3 graphes.
+  el.innerHTML = '<div id="etm-head"></div>'
+    + blockH('Pas', icoSteps, null, '<div id="etds-chart-wrap"></div>')
+    + blockH('Sommeil', icoSleep, 'et-sleep-val', '<div id="etsleep-body"></div>')
+    + blockH('Fréquence cardiaque au repos', icoHr, 'et-hr-val', '<div id="ethr-body"></div>');
   _etFillSleep(H, now);
   _etFillRestingHr(H, now);
-  try { renderSanteChart('etsleep'); } catch (e) {}
-  try { renderSanteChart('ethr'); } catch (e) {}
+  _etmRenderAll();
+}
+
+// Contrôle de période PARTAGÉ de « Ma montre » : un seul Semaine/Mois/Année +
+// navigation qui pilote les 3 graphes (pas, sommeil, FC repos).
+var _etm = { gran: 'S', offset: 0, _tx: null };
+function _etmSetGran(g) { _etm.gran = g; _etm.offset = 0; _etmRenderAll(); }
+function _etmNav(dir) { var n = _etm.offset + dir; if (n > 0) n = 0; _etm.offset = n; _etmRenderAll(); }
+function _etmToday() { _etm.offset = 0; _etmRenderAll(); }
+function _etmHeaderHtml(label) {
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === _etm.gran;
+    return '<button onclick="_etmSetGran(\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:12px;padding:7px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = _etm.offset !== 0 ? '<div style="font-size:11px;margin-top:1px;"><span onclick="_etmToday()" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = _etm.offset >= 0;
+  return '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:11px;padding:4px;margin-bottom:9px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<button onclick="_etmNav(-1)" style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:13.5px;font-weight:800;color:var(--text);">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_etmNav(1)" ' + (nextDis ? 'disabled' : '') + ' style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div>';
+}
+function _etmSwipe(elx) {
+  if (!elx) return;
+  elx.ontouchstart = function (e) { _etm._tx = e.touches[0].clientX; };
+  elx.ontouchend = function (e) { if (_etm._tx == null) return; var dx = e.changedTouches[0].clientX - _etm._tx; _etm._tx = null; if (Math.abs(dx) > 50) _etmNav(dx < 0 ? 1 : -1); };
+}
+function _etmRenderAll() {
+  var head = document.getElementById('etm-head'); if (!head) return;
+  var r = _actRange(_etm.gran, _etm.offset);
+  head.innerHTML = _etmHeaderHtml(r.label);
+  try { var d = _dsSt('etds'); d.gran = _etm.gran; d.offset = _etm.offset; renderStepsChart('etds'); } catch (e) {}
+  try { var a = _saSt('etsleep'); a.gran = _etm.gran; a.offset = _etm.offset; renderSanteChart('etsleep'); } catch (e) {}
+  try { var b = _saSt('ethr'); b.gran = _etm.gran; b.offset = _etm.offset; renderSanteChart('ethr'); } catch (e) {}
+  _etmSwipe(document.getElementById('etds-chart-wrap'));
+  _etmSwipe(document.getElementById('etsleep-body'));
+  _etmSwipe(document.getElementById('ethr-body'));
 }
 
 // Graphe santé interactif (sommeil / FC repos) depuis l'historique serveur
@@ -15981,10 +16019,10 @@ function _saHeaderHtml(pfx, label) {
 }
 function renderSanteChart(pfx) {
   var head = document.getElementById(pfx + '-head'), body = document.getElementById(pfx + '-body');
-  if (!head || !body) return;
+  if (!body) return;
   var s = _saSt(pfx), cfg = _SA_CFG[pfx];
   var r = _actRange(s.gran, s.offset);
-  head.innerHTML = _saHeaderHtml(pfx, r.label);
+  if (head) head.innerHTML = _saHeaderHtml(pfx, r.label);
   body.ontouchstart = function (e) { s.touchX = e.touches[0].clientX; };
   body.ontouchend = function (e) { if (s.touchX == null) return; var dx = e.changedTouches[0].clientX - s.touchX; s.touchX = null; if (Math.abs(dx) > 50) _saNav(pfx, dx < 0 ? 1 : -1); };
   var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
@@ -16097,10 +16135,10 @@ function _dsHeaderHtml(pfx, label) {
 async function renderStepsChart(pfx) {
   var s = _dsSt(pfx), T = _DS_THEME[pfx] || _DS_THEME.ds;
   var head = document.getElementById(pfx + '-head'), wrap = document.getElementById(pfx + '-chart-wrap');
-  if (!head || !wrap) return;
+  if (!wrap) return;
   var H = _hcPlugin(); if (!H) return;
   var r = _actRange(s.gran, s.offset), rp = _actRange(s.gran, s.offset - 1);
-  head.innerHTML = _dsHeaderHtml(pfx, r.label);
+  if (head) head.innerHTML = _dsHeaderHtml(pfx, r.label);
   wrap.innerHTML = '<div id="' + pfx + '-chart" style="height:92px;display:flex;align-items:center;justify-content:center;color:' + T.su + ';font-size:12px;">…</div>'
     + '<div id="' + pfx + '-pick" style="min-height:15px;margin-top:8px;font-size:12px;color:' + T.acc + ';text-align:center;"></div>'
     + '<div id="' + pfx + '-cmp" style="margin-top:4px;font-size:12px;color:' + T.mu + ';text-align:right;"></div>';
