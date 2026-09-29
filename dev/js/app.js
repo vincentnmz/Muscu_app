@@ -15461,7 +15461,7 @@ var _CARDIO_TYPE_LABELS = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.
  * est calculée par l'appareil → fiable. Plugin natif « HealthPlugin »
  * (capacitor-health). Web/PWA : indisponible (nécessite l'appli Android).
  * ═══════════════════════════════════════════════════════════════════════════ */
-var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_ROUTE'];
+var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_ROUTE', 'READ_SLEEP', 'READ_RESTING_HEART_RATE'];
 function _hcPlugin() { try { return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthPlugin; } catch (e) { return null; } }
 function _hcStatus(t, c) { var s = document.getElementById('hc-status'); if (s) { s.textContent = t; s.style.color = c || 'var(--text-muted)'; } }
 function fermerImportMontre() { var ov = document.getElementById('hc-import'); if (ov) ov.style.display = 'none'; }
@@ -15793,11 +15793,50 @@ async function renderEtatMontre(attempt) {
     return;
   }
 
-  // Graphe interactif complet (Semaine/Mois/Année + navigation + tap), thème
-  // global, via l'instance 'etds'. Suivi des lignes Sommeil / FC repos « bientôt ».
+  // Graphe interactif complet + lignes Sommeil / FC repos en DONNÉES RÉELLES
+  // (fork du plugin) ; « — » si rien, « Bientôt » si le fork n'est pas déployé.
+  var row = function (label, ico, valId) {
+    return '<div style="display:flex;align-items:center;gap:11px;padding:11px 0 2px;border-top:1px solid var(--border);margin-top:8px;">'
+      + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;color:var(--text-muted);flex:none;">' + ico + '</span>'
+      + '<span style="flex:1;font-size:13px;font-weight:700;color:var(--text);">' + label + '</span>'
+      + '<span id="' + valId + '" style="font-size:13px;font-weight:800;color:var(--text-muted);">…</span>'
+      + '</div>';
+  };
   el.innerHTML = '<div id="etds-head"></div><div id="etds-chart-wrap"></div>'
-    + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
+    + row('Sommeil', icoSleep, 'et-sleep-val') + row('Fréquence cardiaque au repos', icoHr, 'et-hr-val');
   renderStepsChart('etds');
+  _etFillSleep(H, now);
+  _etFillRestingHr(H, now);
+}
+
+// Sommeil : dernière nuit (session la plus récente sur ~36 h) → durée formatée.
+async function _etFillSleep(H, now) {
+  var el = document.getElementById('et-sleep-val'); if (!el || !H) return;
+  try {
+    var start = new Date(now.getTime() - 36 * 3600 * 1000);
+    var end = new Date(now.getTime() + 3600 * 1000);
+    var r = await H.querySleep({ startDate: start.toISOString(), endDate: end.toISOString() });
+    var s = (r && r.sessions) || [];
+    if (!s.length) { el.textContent = '—'; el.style.color = 'var(--text-subtle)'; return; }
+    s.sort(function (a, b) { return new Date(b.endDate) - new Date(a.endDate); });
+    var mins = Math.round(s[0].durationMin || 0);
+    var h = Math.floor(mins / 60), m = mins % 60;
+    el.textContent = h + ' h' + (m ? ' ' + (m < 10 ? '0' + m : m) : ''); el.style.color = 'var(--text)';
+  } catch (e) { el.textContent = 'Bientôt'; el.style.color = 'var(--text-subtle)'; }
+}
+
+// FC au repos : mesure la plus récente sur 7 jours.
+async function _etFillRestingHr(H, now) {
+  var el = document.getElementById('et-hr-val'); if (!el || !H) return;
+  try {
+    var start = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+    var end = new Date(now.getTime() + 3600 * 1000);
+    var r = await H.queryRestingHeartRate({ startDate: start.toISOString(), endDate: end.toISOString() });
+    var recs = (r && r.records) || [];
+    if (!recs.length) { el.textContent = '—'; el.style.color = 'var(--text-subtle)'; return; }
+    recs.sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+    el.textContent = Math.round(recs[0].bpm) + ' bpm'; el.style.color = 'var(--text)';
+  } catch (e) { el.textContent = 'Bientôt'; el.style.color = 'var(--text-subtle)'; }
 }
 
 function _dsHeaderHtml(pfx, label) {
