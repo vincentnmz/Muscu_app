@@ -11006,7 +11006,7 @@ function renderAujourdhui(data) {
     var totalS = Number(g.total_seances || 0);
     var rec30 = Number(g.records_30j || 0);
     var pts = totalS * 10 + rec30 * 50;
-    var elProg = document.getElementById('tj-prog'); if (elProg) _animCount(elProg, pts, ' pts');
+    var elProg = document.getElementById('tj-prog');
     var rpe = g.records_par_exo || {};
     var best = null;
     Object.keys(rpe).forEach(function (exo) {
@@ -11028,23 +11028,71 @@ function renderAujourdhui(data) {
     var elMg = document.getElementById('tj-mgoal'); if (elMg) elMg.textContent = goal2 + ' séances';
     var elMd = document.getElementById('tj-mdone'); if (elMd) elMd.textContent = done2;
     var elMt = document.getElementById('tj-mtot'); if (elMt) elMt.textContent = goal2;
-    var elMb = document.getElementById('tj-mbar'); if (elMb) elMb.style.width = Math.max(0, Math.min(100, goal2 ? Math.round(done2 / goal2 * 100) : 0)) + '%';
+    var barPct = Math.max(0, Math.min(100, goal2 ? Math.round(done2 / goal2 * 100) : 0));
+    var elMb = document.getElementById('tj-mbar');
     // streak est exposé par le backend en dashboard.regularite.streak (nombre),
     // PAS en dashboard.streak.semaines → on lit le bon chemin (sinon « Série — »).
     var streak = (reg2 && reg2.streak != null) ? Number(reg2.streak) : ((dashb.streak && dashb.streak.semaines != null) ? Number(dashb.streak.semaines) : null);
     var elB1 = document.getElementById('tj-bdg1'); if (elB1) elB1.textContent = (streak != null ? 'Série ' + streak + ' sem.' : 'Série —');
     var elB2 = document.getElementById('tj-bdg2'); if (elB2) elB2.textContent = rec30 + ' record' + (rec30 > 1 ? 's' : '');
     var elB3 = document.getElementById('tj-bdg3'); if (elB3) elB3.textContent = totalS + ' séance' + (totalS > 1 ? 's' : '');
-    // Animation d'entrée (une fois par session) : pop des badges + du record.
+    // Cibles stockées sur la carte → lues au moment du reveal (scroll). Si déjà
+    // révélé cette session, on pose les valeurs finales directement.
     try {
       var rewCard = document.querySelector('#tab-accueil .tj-rew');
-      if (rewCard && !_rewAnimated) { _rewAnimated = true; rewCard.classList.add('tj-anim'); }
+      if (rewCard) { rewCard.setAttribute('data-pts', String(pts)); rewCard.setAttribute('data-bar', String(barPct)); }
+      if (_rewAnimated) {
+        if (elProg) { elProg.textContent = pts.toLocaleString('fr-FR') + ' pts'; elProg.setAttribute('data-v', String(pts)); }
+        if (elMb) elMb.style.width = barPct + '%';
+      } else {
+        // état initial (avant reveal) : points à 0, barre vide.
+        if (elProg) { elProg.textContent = '0 pts'; elProg.setAttribute('data-v', '0'); }
+        if (elMb) elMb.style.width = '0%';
+      }
     } catch (e4) {}
   } catch (e) {}
+  // Déclenche/rafraîchit le scroll-reveal des blocs d'Aujourd'hui.
+  try { _initDashReveal(); } catch (e) {}
 }
 
 // Compteur animé (count-up) pour un nombre affiché — respecte prefers-reduced-motion.
-var _rewAnimated = false;
+var _rewAnimated = false, _dashRevealIO = null;
+// Récompenses : lance count-up (points) + remplissage de barre + pop (une fois).
+function _revealRewards(card) {
+  if (!card || _rewAnimated) return;
+  _rewAnimated = true;
+  card.classList.add('tj-anim');
+  var elProg = document.getElementById('tj-prog');
+  var elMb = document.getElementById('tj-mbar');
+  var pts = parseInt(card.getAttribute('data-pts') || '0', 10) || 0;
+  var bar = parseFloat(card.getAttribute('data-bar') || '0') || 0;
+  if (elProg) _animCount(elProg, pts, ' pts');
+  if (elMb) elMb.style.width = bar + '%';
+}
+// Scroll-reveal générique des blocs d'Aujourd'hui : chaque .tj-reveal apparaît
+// (fade + montée) quand il entre à l'écran ; le bloc Récompenses lance alors ses
+// animations. Respecte prefers-reduced-motion (tout visible d'emblée).
+function _initDashReveal() {
+  var host = document.querySelector('#tab-accueil .tj'); if (!host) return;
+  var els = host.querySelectorAll('.tj-reveal');
+  var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  if (reduce || !('IntersectionObserver' in window)) {
+    Array.prototype.forEach.call(els, function (el) { el.classList.add('in'); if (el.classList.contains('tj-rew')) _revealRewards(el); });
+    return;
+  }
+  if (!_dashRevealIO) {
+    _dashRevealIO = new IntersectionObserver(function (ents) {
+      ents.forEach(function (en) {
+        if (en.isIntersecting) {
+          en.target.classList.add('in');
+          if (en.target.classList.contains('tj-rew')) _revealRewards(en.target);
+          _dashRevealIO.unobserve(en.target);
+        }
+      });
+    }, { threshold: 0.18 });
+  }
+  Array.prototype.forEach.call(els, function (el) { if (!el.classList.contains('in')) _dashRevealIO.observe(el); });
+}
 function _animCount(el, to, suffix) {
   if (!el) return;
   suffix = suffix || '';
