@@ -15818,7 +15818,8 @@ async function _etFillSleep(H, now) {
     var r = await H.querySleep({ startDate: start.toISOString(), endDate: end.toISOString() });
     var s = (r && r.sessions) || [];
     if (!s.length) { el.textContent = '—'; el.style.color = 'var(--text-subtle)'; return; }
-    s.sort(function (a, b) { return new Date(b.endDate) - new Date(a.endDate); });
+    // La vraie nuit = la session la plus longue (ignore les siestes courtes).
+    s.sort(function (a, b) { return (b.durationMin || 0) - (a.durationMin || 0); });
     var mins = Math.round(s[0].durationMin || 0);
     var h = Math.floor(mins / 60), m = mins % 60;
     el.textContent = h + ' h' + (m ? ' ' + (m < 10 ? '0' + m : m) : ''); el.style.color = 'var(--text)';
