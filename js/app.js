@@ -11264,6 +11264,7 @@ function renderEtat(data) {
   var m = data.moteur || {};
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   try { renderEtatMontre(); } catch (e) {}
+  try { _etRenderSuivis(data); } catch (e) {}
 
   // ---- HERO : score de récupération (moteur.recScore) + niveau de dispo ----
   try {
@@ -11485,6 +11486,76 @@ function renderEtat(data) {
       }
     }
   } catch (e) {}
+}
+
+// « Mes suivis » (écran Forme) : accès remontés aux 3 sous-écrans avec une valeur
+// vivante + une pastille de statut. Valeurs RÉELLES uniquement (règle 6bis) :
+// nutrition = saisie du jour vs objectif ; blessures = compte des non-guéries.
+function _etRenderSuivis(data) {
+  var box = document.getElementById('et-suivis'); if (!box) return;
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var ICO = {
+    nut: '<path d="M12 8c1-3 5-4 6-1 1 4-3 9-6 12-3-3-7-8-6-12 1-3 5-2 6 1z"/>',
+    obj: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/>',
+    bl: '<path d="M4 13h4l2-5 3 8 2-4h5"/>'
+  };
+  var row = function (tab, icoKey, tint, title, sub, pill) {
+    var pillHtml = pill ? '<span style="font-size:9.5px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;background:' + pill.bg + ';color:' + pill.c + ';">' + esc(pill.txt) + '</span>' : '';
+    return '<button type="button" onclick="switchTab(\'' + tab + '\')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;width:100%;text-align:left;background:transparent;border:none;border-top:1px solid var(--border);cursor:pointer;font:inherit;color:var(--text);">'
+      + '<span style="width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;background:' + tint.bg + ';color:' + tint.c + ';"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICO[icoKey] + '</svg></span>'
+      + '<span style="flex:1;min-width:0;"><span style="display:block;font-weight:800;font-size:13.5px;">' + esc(title) + '</span><span style="display:block;font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(sub) + '</span></span>'
+      + pillHtml
+      + '<span style="color:var(--text-subtle);flex:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>'
+      + '</button>';
+  };
+  // --- Nutrition : saisie du jour vs objectif ---
+  var nSub, nPill;
+  try {
+    var nObj = (typeof _nutObjectifs === 'function') ? _nutObjectifs() : { prot: null, kcal: null };
+    var nTod = (typeof _nutTodayEntry === 'function') ? _nutTodayEntry() : null;
+    var tK = nTod && nTod.kcal != null ? Number(nTod.kcal) : null;
+    var tP = nTod && nTod.prot != null ? Number(nTod.prot) : null;
+    if (tK == null && tP == null) {
+      nSub = 'Rien saisi aujourd\'hui';
+      nPill = { txt: 'à saisir', bg: 'var(--surface2)', c: 'var(--text-muted)' };
+    } else {
+      var parts = [];
+      if (tP != null) parts.push(tP + ' g prot.');
+      if (tK != null) parts.push(tK + ' kcal');
+      nSub = parts.join(' · ');
+      var okP = (nObj.prot != null && tP != null && tP >= nObj.prot);
+      nPill = okP ? { txt: 'objectif ✓', bg: 'var(--good-a)', c: 'var(--good)' } : { txt: 'en cours', bg: 'var(--accent-a10)', c: 'var(--accent)' };
+    }
+  } catch (e) { nSub = 'Calories & protéines du jour'; nPill = null; }
+  // --- Blessures : compte des non-guéries ---
+  var blSub, blPill;
+  try {
+    var inj = (data && Array.isArray(data.blessures)) ? data.blessures : [];
+    var act = inj.filter(function (b) { return b && b.statut && b.statut !== 'gueri'; });
+    if (act.length) {
+      var first = act[0];
+      var loc = first && first.localisation ? (' · ' + first.localisation) : '';
+      blSub = act.length + (act.length > 1 ? ' à suivre' : ' à suivre') + loc;
+      blPill = { txt: 'à suivre', bg: 'var(--bad-a)', c: 'var(--danger)' };
+    } else {
+      blSub = 'Aucune blessure active';
+      blPill = { txt: 'OK', bg: 'var(--good-a)', c: 'var(--good)' };
+    }
+  } catch (e) { blSub = 'Tes douleurs signalées et blessures suivies'; blPill = null; }
+
+  box.innerHTML =
+    row('nutrition', 'nut', { bg: 'rgba(16,185,129,.13)', c: '#10B981' }, 'Nutrition', nSub, nPill).replace('border-top:1px solid var(--border);', '')
+    + row('objectif', 'obj', { bg: 'var(--accent-a10)', c: 'var(--accent)' }, 'Mes objectifs', 'Suivre et fixer tes objectifs', null)
+    + row('blessures', 'bl', { bg: 'var(--bad-a)', c: 'var(--danger)' }, 'Douleurs & blessures', blSub, blPill);
+}
+
+// Repli du bloc « Ressenti & bien-être » (écran Forme).
+function _etFoldRB() {
+  var body = document.getElementById('et-rb-body'), caret = document.getElementById('et-rb-caret'), btn = document.getElementById('et-rb-toggle');
+  if (!body) return;
+  var open = (body.style.display === 'flex');   // fermé par défaut (display:none)
+  if (open) { body.style.display = 'none'; if (caret) caret.style.transform = ''; if (btn) btn.setAttribute('aria-expanded', 'false'); }
+  else { body.style.display = 'flex'; if (caret) caret.style.transform = 'rotate(180deg)'; if (btn) btn.setAttribute('aria-expanded', 'true'); }
 }
 
 /* Écran CARDIO (onglet #tab-cardio) — « Cardio ». Tout est calculé depuis
@@ -15896,8 +15967,9 @@ async function renderDashSteps(attempt) {
 async function renderEtatMontre(attempt) {
   attempt = attempt || 0;
   var el = document.getElementById('et-montre'), sec = document.getElementById('et-montre-sec');
+  var mini = document.getElementById('et-montre-mini');
   if (!el) return;
-  var hide = function () { el.style.display = 'none'; if (sec) sec.style.display = 'none'; };
+  var hide = function () { el.style.display = 'none'; if (sec) sec.style.display = 'none'; if (mini) mini.style.display = 'none'; };
   var H = _hcPlugin();
   var native = (typeof _estAppNative === 'function' && _estAppNative());
   if (!native) { hide(); return; }             // la montre n'existe que sur l'app Android
@@ -15924,16 +15996,36 @@ async function renderEtatMontre(attempt) {
       + '</div>';
   };
 
-  el.style.display = ''; if (sec) sec.style.display = '';
-
   if (total7 <= 0) {
-    // Native mais aucune donnée pas : inviter à connecter / importer.
+    // Native mais aucune donnée pas : inviter à connecter / importer (bloc visible).
+    if (mini) mini.style.display = 'none';
+    el.style.display = ''; el.style.padding = '14px 15px';
     el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Pas encore de données montre</div>'
       + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Connecte ta montre à Health Connect, puis importe tes séances.</div>'
       + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>'
       + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
     return;
   }
+
+  // Bandeau condensé (glance) : pas du jour / sommeil / FC repos + bouton Détails.
+  if (mini) {
+    var pasT = byDay[now.toISOString().slice(0, 10)];
+    var pasTxt = (pasT != null && pasT > 0) ? Math.round(pasT).toLocaleString('fr-FR') : '—';
+    var cell = function (k, v, extra) {
+      return '<div style="padding:11px 6px;text-align:center;' + (extra || '') + '"><div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;">' + k + '</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--text);">' + v + '</div></div>';
+    };
+    mini.style.display = '';
+    mini.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 15px 6px;">'
+      + '<b style="font-size:13.5px;color:var(--text);">Ma montre</b>'
+      + '<button type="button" onclick="_etMontreToggle()" style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:5px 11px;font:inherit;font-size:11.5px;font-weight:700;color:var(--text-muted);cursor:pointer;">Détails <svg id="etm-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;"><path d="M6 9l6 6 6-6"/></svg></button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);">'
+      + cell('Pas', pasTxt, '')
+      + cell('Sommeil', '<span id="etm-mini-sleep">…</span>', 'border-left:1px solid var(--border);')
+      + cell('FC repos', '<span id="etm-mini-hr">…</span>', 'border-left:1px solid var(--border);')
+      + '</div>';
+  }
+  el.style.display = 'none'; el.style.padding = '2px 15px 14px';   // détails repliés par défaut
 
   // Graphe interactif complet + lignes Sommeil / FC repos en DONNÉES RÉELLES
   // (fork du plugin) ; « — » si rien, « Bientôt » si le fork n'est pas déployé.
@@ -15954,6 +16046,15 @@ async function renderEtatMontre(attempt) {
   _etFillSleep(H, now);
   _etFillRestingHr(H, now);
   _etmRenderAll();
+}
+
+// Ouvre/replie les graphes détaillés de « Ma montre » (le bandeau reste visible).
+function _etMontreToggle() {
+  var d = document.getElementById('et-montre'), c = document.getElementById('etm-caret');
+  if (!d) return;
+  var open = (d.style.display !== 'none');
+  d.style.display = open ? 'none' : '';
+  if (c) c.style.transform = open ? '' : 'rotate(180deg)';
 }
 
 // Contrôle de période PARTAGÉ de « Ma montre » : un seul Semaine/Mois/Année +
@@ -16068,33 +16169,37 @@ function renderSanteChart(pfx) {
 
 // Sommeil : dernière nuit (session la plus récente sur ~36 h) → durée formatée.
 async function _etFillSleep(H, now) {
-  var el = document.getElementById('et-sleep-val'); if (!el || !H) return;
+  var el = document.getElementById('et-sleep-val'), mini = document.getElementById('etm-mini-sleep');
+  if (!H || (!el && !mini)) return;
+  var set = function (txt, faded) { if (el) { el.textContent = txt; el.style.color = faded ? 'var(--text-subtle)' : 'var(--text)'; } if (mini) mini.textContent = txt; };
   try {
     var start = new Date(now.getTime() - 36 * 3600 * 1000);
     var end = new Date(now.getTime() + 3600 * 1000);
     var r = await H.querySleep({ startDate: start.toISOString(), endDate: end.toISOString() });
     var s = (r && r.sessions) || [];
-    if (!s.length) { el.textContent = '—'; el.style.color = 'var(--text-subtle)'; return; }
+    if (!s.length) { set('—', true); return; }
     // La vraie nuit = la session la plus longue (ignore les siestes courtes).
     s.sort(function (a, b) { return (b.durationMin || 0) - (a.durationMin || 0); });
     var mins = Math.round(s[0].durationMin || 0);
     var h = Math.floor(mins / 60), m = mins % 60;
-    el.textContent = h + ' h' + (m ? ' ' + (m < 10 ? '0' + m : m) : ''); el.style.color = 'var(--text)';
-  } catch (e) { el.textContent = 'Bientôt'; el.style.color = 'var(--text-subtle)'; }
+    set(h + ' h' + (m ? ' ' + (m < 10 ? '0' + m : m) : ''), false);
+  } catch (e) { set('Bientôt', true); }
 }
 
 // FC au repos : mesure la plus récente sur 7 jours.
 async function _etFillRestingHr(H, now) {
-  var el = document.getElementById('et-hr-val'); if (!el || !H) return;
+  var el = document.getElementById('et-hr-val'), mini = document.getElementById('etm-mini-hr');
+  if (!H || (!el && !mini)) return;
+  var set = function (txt, faded) { if (el) { el.textContent = txt; el.style.color = faded ? 'var(--text-subtle)' : 'var(--text)'; } if (mini) mini.textContent = txt; };
   try {
     var start = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
     var end = new Date(now.getTime() + 3600 * 1000);
     var r = await H.queryRestingHeartRate({ startDate: start.toISOString(), endDate: end.toISOString() });
     var recs = (r && r.records) || [];
-    if (!recs.length) { el.textContent = '—'; el.style.color = 'var(--text-subtle)'; return; }
+    if (!recs.length) { set('—', true); return; }
     recs.sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
-    el.textContent = Math.round(recs[0].bpm) + ' bpm'; el.style.color = 'var(--text)';
-  } catch (e) { el.textContent = 'Bientôt'; el.style.color = 'var(--text-subtle)'; }
+    set(Math.round(recs[0].bpm) + ' bpm', false);
+  } catch (e) { set('Bientôt', true); }
 }
 
 // Historisation serveur (sommeil / FC repos / pas) : lit ~60 j de Health Connect

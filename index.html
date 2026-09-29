@@ -2152,19 +2152,30 @@
       </style>
 
       <div class="et-wrap">
-        <!-- Hero : score de récup (moteur.recScore) + niveau de disponibilité -->
+        <!-- ===================== ZONE 1 · AUJOURD'HUI ===================== -->
+        <div class="et-sec">Aujourd'hui</div>
+        <!-- Hero : score de récup (moteur.recScore) + niveau de disponibilité + reco -->
         <div class="et-hero" id="et-hero"></div>
 
+        <!-- Ma montre : bandeau condensé (glance) + détails repliables (renderEtatMontre).
+             #et-montre-sec conservé (masqué) pour compat ; #et-montre = charts détaillés. -->
+        <div class="et-card" id="et-montre-mini" style="display:none;"></div>
+        <div id="et-montre-sec" style="display:none;"></div>
+        <div class="et-card" id="et-montre" style="display:none;padding:2px 15px 14px;"></div>
+
+        <!-- ===================== ZONE 2 · MES SUIVIS ===================== -->
+        <!-- Accès remontés aux sous-écrans (Nutrition / Objectifs / Blessures),
+             avec valeur vivante + pastille de statut. Peuplé par _etRenderSuivis(). -->
+        <div class="et-sec">Mes suivis</div>
+        <div class="et-card" id="et-suivis" style="overflow:hidden;"></div>
+
+        <!-- ===================== ZONE 3 · MES TENDANCES ===================== -->
+        <div class="et-sec">Mes tendances</div>
+
         <!-- Charge & récup : ACWR réel (dashboard.acwr + moteur.acwr_*) -->
-        <div class="et-sec">Charge &amp; récupération</div>
         <div class="et-card et-charge" id="et-acwr"></div>
 
-        <!-- Ma montre : données passives Health Connect (pas ; sommeil / BPM à venir) -->
-        <div class="et-sec" id="et-montre-sec" style="display:none;">Ma montre</div>
-        <div class="et-card" id="et-montre" style="display:none;padding:14px 15px;"></div>
-
         <!-- Poids : graphe complet (déplacé d'Objectif) — 1M/3M/Tout + axes + légende -->
-        <div class="et-sec">Évolution du poids</div>
         <div class="et-card" style="padding:14px 15px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
             <div style="display:flex;align-items:baseline;gap:6px;">
@@ -2189,34 +2200,19 @@
           </div>
         </div>
 
-        <!-- Ressenti : dot par jour depuis bien_etre[] -->
-        <div class="et-sec">Ton ressenti · 7 derniers jours</div>
-        <div class="et-card et-days" id="et-days"></div>
-
-        <!-- Bien-être du jour : bien_etre[0] (5 dimensions) -->
-        <div class="et-sec">Bien-être du jour</div>
-        <div class="et-card" id="et-wb"></div>
-
-        <!-- Reco du jour : moteur.reco -->
-        <div class="et-reco" id="et-reco" style="display:none"></div>
-
-        <!-- Accès Nutrition (sous-écran dédié : objectif kcal/protéines + saisie + tendance) -->
-        <button class="et-goals" onclick="switchTab('nutrition')">
-          <div><div class="et-gt">Nutrition</div><div class="et-gs">Calories &amp; protéines du jour vs objectif</div></div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        <!-- Ressenti + bien-être : repliable (allège l'écran, ouvre à la demande) -->
+        <button type="button" id="et-rb-toggle" onclick="_etFoldRB()" aria-expanded="false" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;cursor:pointer;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));color:var(--text);font:inherit;">
+          <div><div style="font-weight:700;font-size:13px;">Ressenti &amp; bien-être</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">7 derniers jours · questionnaire du jour</div></div>
+          <svg id="et-rb-caret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;flex:none;"><path d="M6 9l6 6 6-6"/></svg>
         </button>
-
-        <!-- Accès Objectifs (l'onglet a quitté la barre du bas) -->
-        <button class="et-goals" onclick="switchTab('objectif')" style="margin-top:10px">
-          <div><div class="et-gt">Mes objectifs</div><div class="et-gs">Suivre et fixer tes objectifs</div></div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-        </button>
-
-        <!-- Accès Douleurs & blessures -->
-        <button class="et-goals" onclick="switchTab('blessures')" style="margin-top:10px">
-          <div><div class="et-gt">Douleurs &amp; blessures</div><div class="et-gs">Tes douleurs signalées et tes blessures suivies</div></div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-        </button>
+        <div id="et-rb-body" style="display:none;flex-direction:column;gap:12px;">
+          <!-- Ressenti : dot par jour depuis bien_etre[] -->
+          <div class="et-sec">Ton ressenti · 7 derniers jours</div>
+          <div class="et-card et-days" id="et-days"></div>
+          <!-- Bien-être du jour : bien_etre[0] (5 dimensions) -->
+          <div class="et-sec">Bien-être du jour</div>
+          <div class="et-card" id="et-wb"></div>
+        </div>
       </div>
 
       <div class="et-fabwrap">
