@@ -15933,18 +15933,61 @@ async function renderEtatMontre(attempt) {
 
   // Graphe interactif complet + lignes Sommeil / FC repos en DONNÉES RÉELLES
   // (fork du plugin) ; « — » si rien, « Bientôt » si le fork n'est pas déployé.
-  var row = function (label, ico, valId) {
-    return '<div style="display:flex;align-items:center;gap:11px;padding:11px 0 2px;border-top:1px solid var(--border);margin-top:8px;">'
+  var row = function (label, ico, valId, trendId) {
+    return '<div style="padding:11px 0 3px;border-top:1px solid var(--border);margin-top:8px;">'
+      + '<div style="display:flex;align-items:center;gap:11px;">'
       + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;color:var(--text-muted);flex:none;">' + ico + '</span>'
       + '<span style="flex:1;font-size:13px;font-weight:700;color:var(--text);">' + label + '</span>'
       + '<span id="' + valId + '" style="font-size:13px;font-weight:800;color:var(--text-muted);">…</span>'
-      + '</div>';
+      + '</div><div id="' + trendId + '" style="margin-top:9px;"></div></div>';
   };
   el.innerHTML = '<div id="etds-head"></div><div id="etds-chart-wrap"></div>'
-    + row('Sommeil', icoSleep, 'et-sleep-val') + row('Fréquence cardiaque au repos', icoHr, 'et-hr-val');
+    + row('Sommeil', icoSleep, 'et-sleep-val', 'et-sleep-trend') + row('Fréquence cardiaque au repos', icoHr, 'et-hr-val', 'et-hr-trend');
   renderStepsChart('etds');
   _etFillSleep(H, now);
   _etFillRestingHr(H, now);
+  try { _etRenderTrends(); } catch (e) {}
+}
+
+// Tendances 14 j (sommeil en barres, FC repos en courbe) depuis l'historique
+// serveur sante_historique. Thème global. Message doux tant que peu de données.
+function _etRenderTrends() {
+  var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
+  var hist = (data && data.sante_historique) || [];
+  var byDate = {}; hist.forEach(function (x) { if (x && x.date) byDate[x.date] = x; });
+  var days = [], d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 13);
+  for (var i = 0; i < 14; i++) { var k = d.toISOString().slice(0, 10); days.push(byDate[k] || { date: k }); d.setDate(d.getDate() + 1); }
+  _etMiniBars('et-sleep-trend', days.map(function (x) { return x.sommeil_min ? Math.round(x.sommeil_min) / 60 : 0; }), 'sommeil', 'var(--accent)', 'var(--accent-strong)');
+  _etMiniLine('et-hr-trend', days.map(function (x) { return (x.fc_repos != null) ? Number(x.fc_repos) : null; }), 'bpm', '#EC4899');
+}
+function _etTrendEmpty(el) { el.innerHTML = '<div style="font-size:10.5px;color:var(--text-subtle);">La tendance se remplit au fil des jours.</div>'; }
+function _etMiniBars(id, vals, kind, c1, c2) {
+  var el = document.getElementById(id); if (!el) return;
+  var nz = vals.filter(function (v) { return v > 0; });
+  if (nz.length < 2) { _etTrendEmpty(el); return; }
+  var mx = Math.max.apply(null, vals.concat([0.1]));
+  var moy = nz.reduce(function (s, v) { return s + v; }, 0) / nz.length;
+  var fmt = function (h) { var m = Math.round(h * 60); return Math.floor(m / 60) + ' h' + ((m % 60) ? ' ' + (m % 60 < 10 ? '0' + (m % 60) : m % 60) : ''); };
+  var bars = vals.map(function (v) {
+    var h = v > 0 ? Math.max(3, Math.round(v / mx * 34)) : 2;
+    return '<div style="flex:1;min-width:0;"><i style="display:block;width:100%;max-width:9px;margin:0 auto;height:' + h + 'px;border-radius:2px;background:' + (v > 0 ? 'linear-gradient(180deg,' + c1 + ',' + c2 + ')' : 'var(--surface2)') + ';"></i></div>';
+  }).join('');
+  el.innerHTML = '<div style="display:flex;align-items:flex-end;gap:3px;height:36px;">' + bars + '</div>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);text-align:right;margin-top:4px;">moy. ' + fmt(moy) + ' · 14 j</div>';
+}
+function _etMiniLine(id, vals, unit, color) {
+  var el = document.getElementById(id); if (!el) return;
+  var pts = vals.map(function (v, i) { return { i: i, v: v }; }).filter(function (p) { return p.v != null; });
+  if (pts.length < 2) { _etTrendEmpty(el); return; }
+  var nums = pts.map(function (p) { return p.v; });
+  var mn = Math.min.apply(null, nums), mx = Math.max.apply(null, nums), rng = (mx - mn) || 1;
+  var moy = Math.round(nums.reduce(function (s, v) { return s + v; }, 0) / nums.length);
+  var W = 300, Hh = 36, n = vals.length - 1 || 1;
+  var coords = pts.map(function (p) { var x = 2 + p.i * (W - 4) / n; var y = Hh - 3 - (p.v - mn) / rng * (Hh - 6); return x.toFixed(0) + ' ' + y.toFixed(0); });
+  var last = pts[pts.length - 1];
+  var lx = (2 + last.i * (W - 4) / n).toFixed(0), ly = (Hh - 3 - (last.v - mn) / rng * (Hh - 6)).toFixed(0);
+  el.innerHTML = '<svg width="100%" height="' + Hh + '" viewBox="0 0 ' + W + ' ' + Hh + '" preserveAspectRatio="none"><path d="M' + coords.join(' L') + '" fill="none" stroke="' + color + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + lx + '" cy="' + ly + '" r="3" fill="' + color + '"/></svg>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);text-align:right;margin-top:4px;">moy. ' + moy + ' ' + unit + ' · 14 j</div>';
 }
 
 // Sommeil : dernière nuit (session la plus récente sur ~36 h) → durée formatée.
