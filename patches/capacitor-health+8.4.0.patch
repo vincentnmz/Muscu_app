@@ -1,5 +1,5 @@
 diff --git a/node_modules/capacitor-health/android/src/main/java/com/fit_up/health/capacitor/HealthPlugin.kt b/node_modules/capacitor-health/android/src/main/java/com/fit_up/health/capacitor/HealthPlugin.kt
-index 5a0350f..470ed25 100644
+index 5a0350f..f4f5a12 100644
 --- a/node_modules/capacitor-health/android/src/main/java/com/fit_up/health/capacitor/HealthPlugin.kt
 +++ b/node_modules/capacitor-health/android/src/main/java/com/fit_up/health/capacitor/HealthPlugin.kt
 @@ -22,6 +22,8 @@ import androidx.health.connect.client.records.HeightRecord
@@ -47,7 +47,7 @@ index 5a0350f..470ed25 100644
      )
  
      /**
-@@ -836,4 +849,98 @@ class HealthPlugin : Plugin() {
+@@ -836,4 +849,110 @@ class HealthPlugin : Plugin() {
          83 to "YOGA"
      )
  
@@ -80,11 +80,23 @@ index 5a0350f..470ed25 100644
 +                    )
 +                    val response = healthConnectClient.readRecords(request)
 +                    for (record in response.records) {
-+                        val totalMin = java.time.Duration.between(record.startTime, record.endTime).toMinutes()
++                        val inBedMin = java.time.Duration.between(record.startTime, record.endTime).toMinutes()
++                        // Temps réellement endormi = somme des stades de sommeil (hors éveil).
++                        // Codes Health Connect : 2=SLEEPING, 4=LIGHT, 5=DEEP, 6=REM (endormi) ;
++                        // 1=AWAKE, 3=OUT_OF_BED, 7=AWAKE_IN_BED, 0=UNKNOWN (éveil). On utilise
++                        // les codes entiers pour ne dépendre d'aucune constante nommée.
++                        var asleepMin = 0L
++                        for (stage in record.stages) {
++                            val m = java.time.Duration.between(stage.startTime, stage.endTime).toMinutes()
++                            if (stage.stage == 2 || stage.stage == 4 || stage.stage == 5 || stage.stage == 6) asleepMin += m
++                        }
 +                        val obj = JSObject()
 +                        obj.put("startDate", record.startTime.toString())
 +                        obj.put("endDate", record.endTime.toString())
-+                        obj.put("durationMin", totalMin)
++                        // durationMin = temps endormi si des stades existent, sinon temps au lit.
++                        obj.put("durationMin", if (asleepMin > 0) asleepMin else inBedMin)
++                        obj.put("asleepMin", asleepMin)
++                        obj.put("inBedMin", inBedMin)
 +                        obj.put("sourceBundleId", record.metadata.dataOrigin.packageName)
 +                        obj.put("sourceName", record.metadata.device?.model ?: "")
 +                        sessions.put(obj)
