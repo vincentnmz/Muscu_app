@@ -1626,6 +1626,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: alerteLueRows },
     { data: prefRows },
     { data: santeRows },
+    { data: nutriRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1642,6 +1643,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('cle').eq('athlete_id', athleteId).eq('seance_id', 'alerte_lue'),
     sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').order('date', { ascending: false }),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'sante_%').order('date', { ascending: false }),
+    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'nutri_%').order('date', { ascending: false }),
   ])
 
   const perfs = perfsAll || []
@@ -1886,6 +1888,18 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   }
   const sante_historique = Object.values(santeMap).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
 
+  // Historique nutrition (saisie manuelle / Health Connect) : 1 objet par jour
+  // {date, kcal, prot} agrégé depuis les lignes indicateurs seance_id 'nutri_<date>'.
+  const nutriMap: Record<string, any> = {}
+  for (const r of (nutriRows || [])) {
+    const d = normDate(r.date); if (!d) continue
+    if (!nutriMap[d]) nutriMap[d] = { date: d }
+    const v = Number(r.valeur); if (isNaN(v)) continue
+    if (r.cle === 'kcal') nutriMap[d].kcal = v
+    else if (r.cle === 'prot') nutriMap[d].prot = v
+  }
+  const nutri_historique = Object.values(nutriMap).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
+
   let volume_obti: any[] = []
   if (sport === 'muscu' && volObtiRows?.length) {
     volume_obti = volObtiRows.map(v => ({
@@ -1981,6 +1995,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
     pas_quotidiens,
     sante_historique,
+    nutri_historique,
     blessures: (blessuresRows || []).map(r => ({
       id: String(r.id || ''), date: r.date ? fmtFR(r.date) : '',
       type: String(r.type || ''), localisation: String(r.localisation || ''),
@@ -3969,6 +3984,36 @@ async function handleSaveSante(body: any): Promise<Response> {
   return jsonResp({ success: true, saved: rows.length })
 }
 
+// Nutrition : upsert idempotent par jour. 1 ligne indicateurs par métrique
+// (kcal / prot) sous seance_id 'nutri_<YYYYMMDD>'. Le front envoie toujours les
+// deux champs du jour ensemble, donc supprimer-puis-insérer ne perd rien.
+async function handleSaveNutrition(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const entries = Array.isArray(body.entries) ? body.entries : []
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const dates = Array.from(new Set(entries.map((e: any) => normDate(e.date)).filter(Boolean)))
+  if (!dates.length) return jsonResp({ success: true, saved: 0 })
+  const sids = dates.map((d: string) => `nutri_${d.replace(/-/g, '')}`)
+  try { await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).in('seance_id', sids) } catch (_) {}
+  const src = String(body.source || 'manuel')
+  const rows: any[] = []
+  for (const e of entries) {
+    const d = normDate(e.date); if (!d) continue
+    const sid = `nutri_${d.replace(/-/g, '')}`
+    const push = (cle: string, v: any, unite: string) => {
+      if (v == null || v === '' || isNaN(Number(v))) return
+      rows.push({ date: d, athlete_id, seance_id: sid, cle, valeur: String(Math.round(Number(v))), unite, source: src })
+    }
+    push('kcal', e.kcal, 'kcal')
+    push('prot', e.prot, 'g')
+  }
+  if (rows.length) {
+    const { error } = await sb().from('indicateurs').insert(rows)
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true, saved: rows.length })
+}
+
 async function handleSaveSemaineType(body: any): Promise<Response> {
   const { athlete_id } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
@@ -4400,6 +4445,7 @@ Deno.serve(async (req: Request) => {
         case 'saveSemaineType':          return handleSaveSemaineType(body)
         case 'savePref':                 return handleSavePref(body)
         case 'saveSante':                return handleSaveSante(body)
+        case 'saveNutrition':            return handleSaveNutrition(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
         case 'deleteObjectifJoueur':     return handleDeleteObjectifJoueur(body)
         case 'saveBlessure':             return handleSaveBlessure(body)
