@@ -2213,7 +2213,10 @@ function prefillProfilReglages() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
   set('prof-prenom', athlete.nom);
   set('prof-taille', athlete.taille);
-  set('prof-poids', athlete.poids);
+  // Poids : source unique = dernière pesée (poids_historique), sinon champ athlete.
+  var poidsCourant = null;
+  try { var P = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.poids : null; if (P && P[0] && P[0].poids != null) poidsCourant = P[0].poids; } catch (e) {}
+  set('prof-poids', poidsCourant != null ? poidsCourant : athlete.poids);
   set('prof-annees', athlete.annees_pratique);
   var d = document.getElementById('prof-ddn'); if (d) d.value = _ddnVersISO(athlete.ddn);
   var v = document.getElementById('app-version-ath'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
@@ -2237,6 +2240,20 @@ async function enregistrerProfil() {
       if (poids !== '') athlete.poids = Number(poids);
       if (annees !== '') athlete.annees_pratique = Number(annees);
       try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+      // Poids modifié → on l'enregistre AUSSI comme pesée du jour (source unique =
+      // poids_historique), pour que graphe / nutrition / profil restent cohérents.
+      var poidsNum = poids !== '' ? Number(poids) : null;
+      var lastW = null;
+      try { var P = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.poids : null; if (P && P[0] && P[0].poids != null) lastW = Number(P[0].poids); } catch (e) {}
+      if (poidsNum != null && !isNaN(poidsNum) && poidsNum > 0 && poidsNum !== lastW) {
+        try {
+          await fetch(SCRIPT_URL, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'savePoids', athlete_id: athlete.athlete_id, athlete: athlete.nom, poids: poidsNum, date: _ymdLocal(new Date()) })
+          });
+          if (typeof chargerAppData === 'function') chargerAppData();
+        } catch (e) {}
+      }
       setMsg('✅ Profil enregistré.', 'var(--good)');
       showToast('✅ Profil enregistré');
     } else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.')); }
@@ -16107,9 +16124,11 @@ var _saState = {};
 var _SA_CFG = {
   etsleep: { metric: 'sommeil_min', kind: 'dur', c1: 'var(--accent)', c2: 'var(--accent-strong)' },
   ethr: { metric: 'fc_repos', kind: 'bpm', c1: '#EC4899', c2: '#be185d' },
-  // Nutrition (source nutri_historique) : calories + protéines saisies.
+  // Nutrition (source nutri_historique) : calories + macros P/G/L saisies.
   nutkcal: { metric: 'kcal', kind: 'kcal', src: 'nutri_historique', c1: '#F59E0B', c2: '#d97706' },
-  nutprot: { metric: 'prot', kind: 'g', src: 'nutri_historique', c1: '#10B981', c2: '#059669' }
+  nutprot: { metric: 'prot', kind: 'g', src: 'nutri_historique', c1: '#10B981', c2: '#059669' },
+  nutgluc: { metric: 'gluc', kind: 'g', src: 'nutri_historique', c1: '#3B82F6', c2: '#1d4ed8' },
+  nutlip: { metric: 'lip', kind: 'g', src: 'nutri_historique', c1: '#A855F7', c2: '#7e22ce' }
 };
 function _saSt(p) { return _saState[p] || (_saState[p] = { gran: 'S', offset: 0, touchX: null }); }
 function _saSetGran(p, g) { var s = _saSt(p); s.gran = g; s.offset = 0; renderSanteChart(p); }
@@ -16253,22 +16272,45 @@ function _nutAge() {
 // Jeor × activité modérée, ajusté au but. Champs null si le profil est incomplet.
 function _nutObjectifs() {
   var A = (typeof athlete !== 'undefined' && athlete) ? athlete : {};
-  var poids = parseFloat(A.poids) || 0;
+  var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : {};
+  // Poids : dernière pesée (poids_historique) = source la plus fraîche ; sinon
+  // poidsActuel, sinon poids de référence de l'objectif, sinon champ profil.
+  var poids = 0;
+  try { if (data.poids && data.poids[0] && data.poids[0].poids != null) poids = parseFloat(data.poids[0].poids) || 0; } catch (e) {}
+  if (!poids) poids = parseFloat(data.poidsActuel) || 0;
+  if (!poids && data.objectif && data.objectif.poids_kg != null) poids = parseFloat(data.objectif.poids_kg) || 0;
+  if (!poids) poids = parseFloat(A.poids) || 0;
   var taille = parseFloat(A.taille) || 0;
   var age = _nutAge();
   var sexe = String(A.sexe || '').toUpperCase();
-  var strat = String(A.strategie || '').toLowerCase();
-  var goal = /s[eè]che|perte|cut|affin/.test(strat) ? 'seche' : (/masse|prise|bulk|volume/.test(strat) ? 'masse' : 'entretien');
-  var pf = goal === 'seche' ? 2.2 : (goal === 'masse' ? 2.0 : 1.8);
+  // Objectif : chaîne libre (table objectif → athlete.objectif), ex. « Prise de
+  // masse + sèche » (recomposition). On mappe vers protéines g/kg + calories.
+  var objStr = String((A.objectif != null ? A.objectif : (data.objectif && data.objectif.objectif)) || '').toLowerCase();
+  var hasMasse = objStr.indexOf('masse') !== -1 || objStr.indexOf('prise') !== -1 || objStr.indexOf('volume') !== -1;
+  var hasSeche = objStr.indexOf('sèche') !== -1 || objStr.indexOf('seche') !== -1 || objStr.indexOf('perte') !== -1 || objStr.indexOf('affin') !== -1;
+  var goal, label;
+  if (hasMasse && hasSeche) { goal = 'recomp'; label = 'Recomposition'; }
+  else if (hasSeche) { goal = 'seche'; label = 'Sèche'; }
+  else if (hasMasse) { goal = 'masse'; label = 'Prise de masse'; }
+  else { goal = 'entretien'; label = 'Entretien'; }
+  var pf = (goal === 'seche' || goal === 'recomp') ? 2.2 : (goal === 'masse' ? 2.0 : 1.8);
   var prot = poids > 0 ? Math.round(poids * pf) : null;
   var kcal = null;
   if (poids > 0 && taille > 0 && age) {
     var bmr = 10 * poids + 6.25 * taille - 5 * age + (sexe === 'F' ? -161 : 5);
     var tdee = bmr * 1.5;
-    if (goal === 'seche') tdee *= 0.85; else if (goal === 'masse') tdee *= 1.10;
+    if (goal === 'seche') tdee *= 0.85; else if (goal === 'masse') tdee *= 1.10;   // recomp / entretien = maintien
     kcal = Math.round(tdee / 10) * 10;
   }
-  return { prot: prot, kcal: kcal, goal: goal, pf: pf, poids: poids };
+  // Répartition des macros : protéines fixées (g/kg), lipides ~27 % des kcal,
+  // glucides = le reste. Calculables seulement si kcal ET protéines connues.
+  var lip = null, gluc = null;
+  if (kcal != null && prot != null) {
+    lip = Math.round(kcal * 0.27 / 9);
+    var restK = kcal - prot * 4 - lip * 9;
+    gluc = restK > 0 ? Math.round(restK / 4) : 0;
+  }
+  return { prot: prot, kcal: kcal, gluc: gluc, lip: lip, goal: goal, label: label, pf: pf, poids: poids };
 }
 function _nutTodayEntry() {
   var today = _ymdLocal(new Date());
@@ -16295,26 +16337,36 @@ function renderNutrition() {
   var todayE = _nutTodayEntry();
   var tK = todayE && todayE.kcal != null ? Number(todayE.kcal) : null;
   var tP = todayE && todayE.prot != null ? Number(todayE.prot) : null;
+  var tG = todayE && todayE.gluc != null ? Number(todayE.gluc) : null;
+  var tL = todayE && todayE.lip != null ? Number(todayE.lip) : null;
   var objCard;
   if (obj.prot == null && obj.kcal == null) {
     objCard = '<div class="nut-card"><div class="nut-h">Ton objectif du jour</div>'
       + '<div class="nut-muted" style="margin-top:8px;">Renseigne ton <b>poids</b>, ta <b>taille</b> et ta <b>date de naissance</b> dans Réglages → Profil pour calculer tes objectifs.</div>'
       + '<button class="nut-ghost" style="margin-top:11px;" onclick="switchTab(\'reglages\')">Compléter mon profil</button></div>';
   } else {
-    var goalLbl = obj.goal === 'seche' ? 'Sèche' : (obj.goal === 'masse' ? 'Prise de masse' : 'Entretien');
     var note = 'Objectif indicatif — protéines ' + obj.pf + ' g/kg';
-    note += obj.kcal != null ? ' · calories estimées (Mifflin-St Jeor, activité modérée).' : ' · calories : complète taille + date de naissance dans Réglages.';
-    objCard = '<div class="nut-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div class="nut-h">Ton objectif du jour</div><span class="nut-chip">' + goalLbl + '</span></div>'
+    note += obj.kcal != null ? ' · calories Mifflin-St Jeor (activité modérée) ; lipides ~27 % des kcal, glucides = le reste.' : ' · calories/glucides/lipides : complète taille + date de naissance dans Réglages.';
+    objCard = '<div class="nut-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div class="nut-h">Ton objectif du jour</div><span class="nut-chip">' + escapeHtml(obj.label || 'Objectif') + '</span></div>'
       + _nutProg('Protéines', tP, obj.prot, 'g', '#10B981')
+      + _nutProg('Glucides', tG, obj.gluc, 'g', '#3B82F6')
+      + _nutProg('Lipides', tL, obj.lip, 'g', '#A855F7')
       + _nutProg('Calories', tK, obj.kcal, 'kcal', '#F59E0B')
       + '<div class="nut-muted" style="margin-top:12px;">' + note + '</div>'
       + '</div>';
   }
+  var inp = function (id, lab, ph, val) {
+    return '<div style="flex:1;min-width:0;"><label class="nut-lab">' + lab + '</label><input id="' + id + '" type="number" inputmode="numeric" min="0" placeholder="' + ph + '" value="' + (val != null ? val : '') + '" class="nut-inp"></div>';
+  };
   var saisieCard = '<div class="nut-card">'
     + '<div class="nut-h">Saisir aujourd\'hui</div>'
     + '<div style="display:flex;gap:10px;margin-top:11px;">'
-    + '<div style="flex:1;"><label class="nut-lab">Calories (kcal)</label><input id="nut-in-kcal" type="number" inputmode="numeric" min="0" placeholder="' + (obj.kcal != null ? obj.kcal : '—') + '" value="' + (tK != null ? tK : '') + '" class="nut-inp"></div>'
-    + '<div style="flex:1;"><label class="nut-lab">Protéines (g)</label><input id="nut-in-prot" type="number" inputmode="numeric" min="0" placeholder="' + (obj.prot != null ? obj.prot : '—') + '" value="' + (tP != null ? tP : '') + '" class="nut-inp"></div>'
+    + inp('nut-in-kcal', 'Calories (kcal)', (obj.kcal != null ? obj.kcal : '—'), tK)
+    + inp('nut-in-prot', 'Protéines (g)', (obj.prot != null ? obj.prot : '—'), tP)
+    + '</div>'
+    + '<div style="display:flex;gap:10px;margin-top:10px;">'
+    + inp('nut-in-gluc', 'Glucides (g)', (obj.gluc != null ? obj.gluc : '—'), tG)
+    + inp('nut-in-lip', 'Lipides (g)', (obj.lip != null ? obj.lip : '—'), tL)
     + '</div>'
     + '<button class="nut-save" onclick="_nutSave()">Enregistrer</button>'
     + '<div id="nut-hc" style="margin-top:9px;"></div>'
@@ -16324,6 +16376,8 @@ function renderNutrition() {
     + '<div id="nutm-head"></div>'
     + '<div class="nut-sub">Calories</div><div id="nutkcal-body" class="nut-chart"></div>'
     + '<div class="nut-sub" style="margin-top:14px;">Protéines</div><div id="nutprot-body" class="nut-chart"></div>'
+    + '<div class="nut-sub" style="margin-top:14px;">Glucides</div><div id="nutgluc-body" class="nut-chart"></div>'
+    + '<div class="nut-sub" style="margin-top:14px;">Lipides</div><div id="nutlip-body" class="nut-chart"></div>'
     + '</div>';
   body.innerHTML = objCard + saisieCard + tendCard;
   try { _nutmRenderAll(); } catch (e) {}
@@ -16331,20 +16385,19 @@ function renderNutrition() {
 }
 function _nutSave() {
   if (typeof athlete === 'undefined' || !athlete) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
-  var kEl = document.getElementById('nut-in-kcal'), pEl = document.getElementById('nut-in-prot');
-  var kcal = kEl && kEl.value !== '' ? Math.round(Number(kEl.value)) : null;
-  var prot = pEl && pEl.value !== '' ? Math.round(Number(pEl.value)) : null;
-  if (kcal == null && prot == null) { showToast('Saisis au moins une valeur', '#DC3545'); return; }
-  if ((kcal != null && (isNaN(kcal) || kcal < 0 || kcal > 20000)) || (prot != null && (isNaN(prot) || prot < 0 || prot > 2000))) { showToast('Valeur invalide', '#DC3545'); return; }
+  var num = function (id, max) { var el = document.getElementById(id); if (!el || el.value === '') return null; var v = Math.round(Number(el.value)); return (isNaN(v) || v < 0 || v > max) ? NaN : v; };
+  var kcal = num('nut-in-kcal', 20000), prot = num('nut-in-prot', 2000), gluc = num('nut-in-gluc', 3000), lip = num('nut-in-lip', 2000);
+  if ([kcal, prot, gluc, lip].some(function (v) { return isNaN(v); })) { showToast('Valeur invalide', '#DC3545'); return; }
+  if (kcal == null && prot == null && gluc == null && lip == null) { showToast('Saisis au moins une valeur', '#DC3545'); return; }
   var today = _ymdLocal(new Date());
   // Mise à jour optimiste locale : l'écran répond tout de suite.
   if (typeof dernierAppData !== 'undefined' && dernierAppData) {
     dernierAppData.nutri_historique = dernierAppData.nutri_historique || [];
     var h = dernierAppData.nutri_historique, found = false;
-    for (var i = 0; i < h.length; i++) { if (h[i] && h[i].date === today) { h[i].kcal = kcal; h[i].prot = prot; found = true; break; } }
-    if (!found) h.unshift({ date: today, kcal: kcal, prot: prot });
+    for (var i = 0; i < h.length; i++) { if (h[i] && h[i].date === today) { h[i].kcal = kcal; h[i].prot = prot; h[i].gluc = gluc; h[i].lip = lip; found = true; break; } }
+    if (!found) h.unshift({ date: today, kcal: kcal, prot: prot, gluc: gluc, lip: lip });
   }
-  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: athlete.athlete_id, entries: [{ date: today, kcal: kcal, prot: prot }] }) })
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: athlete.athlete_id, entries: [{ date: today, kcal: kcal, prot: prot, gluc: gluc, lip: lip }] }) })
     .then(function (r) { return r.json().catch(function () { return {}; }); })
     .then(function (j) { if (j && j.success) showToast('Nutrition enregistrée ✓', '#10B981'); else showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); })
     .catch(function () { showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); });
@@ -16365,16 +16418,17 @@ async function _nutFromHC() {
     var r = await H.queryNutrition({ startDate: start.toISOString(), endDate: end.toISOString() });
     var ent = (r && r.entries) || [];
     if (!ent.length) { showToast('Aucun repas dans Health Connect aujourd\'hui', '#F59E0B'); return; }
-    var kcal = 0, prot = 0, hasK = false, hasP = false;
+    var kcal = 0, prot = 0, gluc = 0, lip = 0, hasK = false, hasP = false, hasG = false, hasL = false;
     ent.forEach(function (e) {
       if (e.energyKcal != null) { kcal += Number(e.energyKcal) || 0; hasK = true; }
       var m = e.macros || {};
       if (m.proteinG != null) { prot += Number(m.proteinG) || 0; hasP = true; }
+      if (m.carbohydratesG != null) { gluc += Number(m.carbohydratesG) || 0; hasG = true; }
+      if (m.fatG != null) { lip += Number(m.fatG) || 0; hasL = true; }
     });
-    var kEl = document.getElementById('nut-in-kcal'), pEl = document.getElementById('nut-in-prot');
-    if (hasK && kEl) kEl.value = Math.round(kcal);
-    if (hasP && pEl) pEl.value = Math.round(prot);
-    if (!hasK && !hasP) { showToast('Repas sans calories/protéines', '#F59E0B'); return; }
+    var setv = function (id, on, val) { var el = document.getElementById(id); if (on && el) el.value = Math.round(val); };
+    setv('nut-in-kcal', hasK, kcal); setv('nut-in-prot', hasP, prot); setv('nut-in-gluc', hasG, gluc); setv('nut-in-lip', hasL, lip);
+    if (!hasK && !hasP && !hasG && !hasL) { showToast('Repas sans macros exploitables', '#F59E0B'); return; }
     showToast('Pré-rempli · vérifie puis enregistre', '#10B981');
   } catch (e) { showToast('Health Connect indisponible', '#DC3545'); }
 }
@@ -16407,10 +16461,10 @@ function _nutmRenderAll() {
   var head = document.getElementById('nutm-head'); if (!head) return;
   var r = _actRange(_nutm.gran, _nutm.offset);
   head.innerHTML = _nutmHeaderHtml(r.label);
-  try { var a = _saSt('nutkcal'); a.gran = _nutm.gran; a.offset = _nutm.offset; renderSanteChart('nutkcal'); } catch (e) {}
-  try { var b = _saSt('nutprot'); b.gran = _nutm.gran; b.offset = _nutm.offset; renderSanteChart('nutprot'); } catch (e) {}
-  _nutmSwipe(document.getElementById('nutkcal-body'));
-  _nutmSwipe(document.getElementById('nutprot-body'));
+  ['nutkcal', 'nutprot', 'nutgluc', 'nutlip'].forEach(function (p) {
+    try { var s = _saSt(p); s.gran = _nutm.gran; s.offset = _nutm.offset; renderSanteChart(p); } catch (e) {}
+    _nutmSwipe(document.getElementById(p + '-body'));
+  });
 }
 
 function _dsHeaderHtml(pfx, label) {
