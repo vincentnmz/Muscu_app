@@ -7020,7 +7020,7 @@ async function supprimerDemoFoot() {
   } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
 }
 
-const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'État', conseils: 'Conversation', blessures: 'Douleurs & blessures', reglages: 'Réglages' };
+const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'Forme', nutrition: 'Nutrition', conseils: 'Conversation', blessures: 'Douleurs & blessures', reglages: 'Réglages' };
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   // ⚠️ Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
@@ -7064,6 +7064,10 @@ function switchTab(tab) {
     _blForm = null;
     if (dernierAppData) renderBlessures(dernierAppData);
     else chargerAppData().then(() => renderBlessures(dernierAppData));
+  }
+  if (tab === 'nutrition') {
+    if (dernierAppData) renderNutrition();
+    else chargerAppData().then(() => renderNutrition());
   }
   if (tab === 'reglages') {
     try { majUiPause(); } catch (_) {}
@@ -15598,7 +15602,7 @@ var _CARDIO_TYPE_LABELS = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.
  * est calculée par l'appareil → fiable. Plugin natif « HealthPlugin »
  * (capacitor-health). Web/PWA : indisponible (nécessite l'appli Android).
  * ═══════════════════════════════════════════════════════════════════════════ */
-var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_ROUTE', 'READ_SLEEP', 'READ_RESTING_HEART_RATE'];
+var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_ROUTE', 'READ_SLEEP', 'READ_RESTING_HEART_RATE', 'READ_NUTRITION'];
 function _hcPlugin() { try { return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthPlugin; } catch (e) { return null; } }
 function _hcStatus(t, c) { var s = document.getElementById('hc-status'); if (s) { s.textContent = t; s.style.color = c || 'var(--text-muted)'; } }
 function fermerImportMontre() { var ov = document.getElementById('hc-import'); if (ov) ov.style.display = 'none'; }
@@ -15995,7 +15999,10 @@ function _etmRenderAll() {
 var _saState = {};
 var _SA_CFG = {
   etsleep: { metric: 'sommeil_min', kind: 'dur', c1: 'var(--accent)', c2: 'var(--accent-strong)' },
-  ethr: { metric: 'fc_repos', kind: 'bpm', c1: '#EC4899', c2: '#be185d' }
+  ethr: { metric: 'fc_repos', kind: 'bpm', c1: '#EC4899', c2: '#be185d' },
+  // Nutrition (source nutri_historique) : calories + protéines saisies.
+  nutkcal: { metric: 'kcal', kind: 'kcal', src: 'nutri_historique', c1: '#F59E0B', c2: '#d97706' },
+  nutprot: { metric: 'prot', kind: 'g', src: 'nutri_historique', c1: '#10B981', c2: '#059669' }
 };
 function _saSt(p) { return _saState[p] || (_saState[p] = { gran: 'S', offset: 0, touchX: null }); }
 function _saSetGran(p, g) { var s = _saSt(p); s.gran = g; s.offset = 0; renderSanteChart(p); }
@@ -16026,13 +16033,14 @@ function renderSanteChart(pfx) {
   body.ontouchstart = function (e) { s.touchX = e.touches[0].clientX; };
   body.ontouchend = function (e) { if (s.touchX == null) return; var dx = e.changedTouches[0].clientX - s.touchX; s.touchX = null; if (Math.abs(dx) > 50) _saNav(pfx, dx < 0 ? 1 : -1); };
   var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
-  var hist = (data && data.sante_historique) || [];
+  var hist = (data && data[cfg.src || 'sante_historique']) || [];
   var byDate = {}; hist.forEach(function (x) { if (x && x.date && x[cfg.metric] != null && !isNaN(Number(x[cfg.metric]))) byDate[x.date] = Number(x[cfg.metric]); });
   // Valeurs présentes dans la période (pour la moyenne).
   var vals = [], d = new Date(r.start);
   while (d < r.end) { var k = d.toISOString().slice(0, 10); if (byDate[k] != null) vals.push(byDate[k]); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
   var avg = vals.length ? (vals.reduce(function (a, b) { return a + b; }, 0) / vals.length) : null;
-  var fmtAvg = function (v) { return cfg.kind === 'dur' ? _saFmtDur(v) : (Math.round(v) + ' bpm'); };
+  var _unit = cfg.kind === 'bpm' ? ' bpm' : (cfg.kind === 'kcal' ? ' kcal' : (cfg.kind === 'g' ? ' g' : ''));
+  var fmtAvg = function (v) { return cfg.kind === 'dur' ? _saFmtDur(v) : (Math.round(v) + _unit); };
   if (s.gran === 'S') {
     // Détail par jour : barre + valeur + libellé jour.
     var days = [], dd = new Date(r.start);
@@ -16052,7 +16060,7 @@ function renderSanteChart(pfx) {
     // Mois / Année : moyenne seule.
     if (avg == null) { body.innerHTML = '<div style="text-align:center;color:var(--text-subtle);font-size:12px;padding:18px 0;">Pas de données sur cette période</div>'; return; }
     body.innerHTML = '<div style="text-align:center;padding:10px 0 6px;">'
-      + '<div style="font-size:30px;font-weight:800;color:' + cfg.c1 + ';line-height:1;">' + (cfg.kind === 'dur' ? _saFmtDur(avg) : Math.round(avg)) + (cfg.kind === 'bpm' ? '<span style="font-size:14px;color:var(--text-subtle);font-weight:700;"> bpm</span>' : '') + '</div>'
+      + '<div style="font-size:30px;font-weight:800;color:' + cfg.c1 + ';line-height:1;">' + (cfg.kind === 'dur' ? _saFmtDur(avg) : Math.round(avg)) + (cfg.kind !== 'dur' && _unit ? '<span style="font-size:14px;color:var(--text-subtle);font-weight:700;">' + _unit + '</span>' : '') + '</div>'
       + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:5px;">moyenne · ' + vals.length + ' jour' + (vals.length > 1 ? 's' : '') + ' de données</div>'
       + '</div>';
   }
@@ -16113,6 +16121,185 @@ async function _syncSanteMontre(H) {
       try { localStorage.setItem(k, String(Date.now())); } catch (e) {}
     }
   } catch (e) {} finally { _santeSyncing = false; }
+}
+
+// ===========================================================================
+// NUTRITION (sous-écran de « Forme ») — objectif protéines/kcal calculé depuis
+// le profil, saisie manuelle du jour (source de vérité), tendance S/M/A (moteur
+// _sa* sur nutri_historique) et pré-remplissage bonus Health Connect sur natif.
+// Stockage serveur : action saveNutrition → indicateurs 'nutri_<date>'.
+// ===========================================================================
+function _nutAge() {
+  try {
+    var iso = _ddnVersISO(typeof athlete !== 'undefined' && athlete ? athlete.ddn : ''); if (!iso) return null;
+    var b = new Date(iso); if (isNaN(b.getTime())) return null;
+    var n = new Date(), a = n.getFullYear() - b.getFullYear();
+    var m = n.getMonth() - b.getMonth(); if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--;
+    return (a > 5 && a < 120) ? a : null;
+  } catch (e) { return null; }
+}
+// Objectifs indicatifs : protéines = g/kg selon le but ; calories = Mifflin-St
+// Jeor × activité modérée, ajusté au but. Champs null si le profil est incomplet.
+function _nutObjectifs() {
+  var A = (typeof athlete !== 'undefined' && athlete) ? athlete : {};
+  var poids = parseFloat(A.poids) || 0;
+  var taille = parseFloat(A.taille) || 0;
+  var age = _nutAge();
+  var sexe = String(A.sexe || '').toUpperCase();
+  var strat = String(A.strategie || '').toLowerCase();
+  var goal = /s[eè]che|perte|cut|affin/.test(strat) ? 'seche' : (/masse|prise|bulk|volume/.test(strat) ? 'masse' : 'entretien');
+  var pf = goal === 'seche' ? 2.2 : (goal === 'masse' ? 2.0 : 1.8);
+  var prot = poids > 0 ? Math.round(poids * pf) : null;
+  var kcal = null;
+  if (poids > 0 && taille > 0 && age) {
+    var bmr = 10 * poids + 6.25 * taille - 5 * age + (sexe === 'F' ? -161 : 5);
+    var tdee = bmr * 1.5;
+    if (goal === 'seche') tdee *= 0.85; else if (goal === 'masse') tdee *= 1.10;
+    kcal = Math.round(tdee / 10) * 10;
+  }
+  return { prot: prot, kcal: kcal, goal: goal, pf: pf, poids: poids };
+}
+function _nutTodayEntry() {
+  var today = new Date().toISOString().slice(0, 10);
+  var hist = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.nutri_historique) || [];
+  for (var i = 0; i < hist.length; i++) { if (hist[i] && hist[i].date === today) return hist[i]; }
+  return null;
+}
+function _nutProg(label, now, obj, unit, c1) {
+  var has = now != null;
+  var pct = (has && obj) ? Math.max(0, Math.min(1, now / obj)) : 0;
+  var right = has ? (Math.round(now) + (obj ? ' / ' + obj : '') + ' ' + unit) : (obj ? '— / ' + obj + ' ' + unit : '—');
+  return '<div style="margin-top:13px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">'
+    + '<span style="font-size:12.5px;font-weight:700;color:var(--text);">' + label + '</span>'
+    + '<span style="font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;">' + right + '</span>'
+    + '</div>'
+    + '<div style="height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;">'
+    + '<i style="display:block;height:100%;width:' + Math.round(pct * 100) + '%;border-radius:999px;background:' + c1 + ';transition:width .6s cubic-bezier(.22,1,.36,1);"></i>'
+    + '</div></div>';
+}
+function renderNutrition() {
+  var body = document.getElementById('nut-body'); if (!body) return;
+  var obj = _nutObjectifs();
+  var todayE = _nutTodayEntry();
+  var tK = todayE && todayE.kcal != null ? Number(todayE.kcal) : null;
+  var tP = todayE && todayE.prot != null ? Number(todayE.prot) : null;
+  var objCard;
+  if (obj.prot == null && obj.kcal == null) {
+    objCard = '<div class="nut-card"><div class="nut-h">Ton objectif du jour</div>'
+      + '<div class="nut-muted" style="margin-top:8px;">Renseigne ton <b>poids</b>, ta <b>taille</b> et ta <b>date de naissance</b> dans Réglages → Profil pour calculer tes objectifs.</div>'
+      + '<button class="nut-ghost" style="margin-top:11px;" onclick="switchTab(\'reglages\')">Compléter mon profil</button></div>';
+  } else {
+    var goalLbl = obj.goal === 'seche' ? 'Sèche' : (obj.goal === 'masse' ? 'Prise de masse' : 'Entretien');
+    var note = 'Objectif indicatif — protéines ' + obj.pf + ' g/kg';
+    note += obj.kcal != null ? ' · calories estimées (Mifflin-St Jeor, activité modérée).' : ' · calories : complète taille + date de naissance dans Réglages.';
+    objCard = '<div class="nut-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div class="nut-h">Ton objectif du jour</div><span class="nut-chip">' + goalLbl + '</span></div>'
+      + _nutProg('Protéines', tP, obj.prot, 'g', '#10B981')
+      + _nutProg('Calories', tK, obj.kcal, 'kcal', '#F59E0B')
+      + '<div class="nut-muted" style="margin-top:12px;">' + note + '</div>'
+      + '</div>';
+  }
+  var saisieCard = '<div class="nut-card">'
+    + '<div class="nut-h">Saisir aujourd\'hui</div>'
+    + '<div style="display:flex;gap:10px;margin-top:11px;">'
+    + '<div style="flex:1;"><label class="nut-lab">Calories (kcal)</label><input id="nut-in-kcal" type="number" inputmode="numeric" min="0" placeholder="' + (obj.kcal != null ? obj.kcal : '—') + '" value="' + (tK != null ? tK : '') + '" class="nut-inp"></div>'
+    + '<div style="flex:1;"><label class="nut-lab">Protéines (g)</label><input id="nut-in-prot" type="number" inputmode="numeric" min="0" placeholder="' + (obj.prot != null ? obj.prot : '—') + '" value="' + (tP != null ? tP : '') + '" class="nut-inp"></div>'
+    + '</div>'
+    + '<button class="nut-save" onclick="_nutSave()">Enregistrer</button>'
+    + '<div id="nut-hc" style="margin-top:9px;"></div>'
+    + '</div>';
+  var tendCard = '<div class="nut-card">'
+    + '<div class="nut-h" style="margin-bottom:11px;">Tendance</div>'
+    + '<div id="nutm-head"></div>'
+    + '<div class="nut-sub">Calories</div><div id="nutkcal-body" class="nut-chart"></div>'
+    + '<div class="nut-sub" style="margin-top:14px;">Protéines</div><div id="nutprot-body" class="nut-chart"></div>'
+    + '</div>';
+  body.innerHTML = objCard + saisieCard + tendCard;
+  try { _nutmRenderAll(); } catch (e) {}
+  try { _nutHCButton(); } catch (e) {}
+}
+function _nutSave() {
+  if (typeof athlete === 'undefined' || !athlete) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
+  var kEl = document.getElementById('nut-in-kcal'), pEl = document.getElementById('nut-in-prot');
+  var kcal = kEl && kEl.value !== '' ? Math.round(Number(kEl.value)) : null;
+  var prot = pEl && pEl.value !== '' ? Math.round(Number(pEl.value)) : null;
+  if (kcal == null && prot == null) { showToast('Saisis au moins une valeur', '#DC3545'); return; }
+  if ((kcal != null && (isNaN(kcal) || kcal < 0 || kcal > 20000)) || (prot != null && (isNaN(prot) || prot < 0 || prot > 2000))) { showToast('Valeur invalide', '#DC3545'); return; }
+  var today = new Date().toISOString().slice(0, 10);
+  // Mise à jour optimiste locale : l'écran répond tout de suite.
+  if (typeof dernierAppData !== 'undefined' && dernierAppData) {
+    dernierAppData.nutri_historique = dernierAppData.nutri_historique || [];
+    var h = dernierAppData.nutri_historique, found = false;
+    for (var i = 0; i < h.length; i++) { if (h[i] && h[i].date === today) { h[i].kcal = kcal; h[i].prot = prot; found = true; break; } }
+    if (!found) h.unshift({ date: today, kcal: kcal, prot: prot });
+  }
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: athlete.athlete_id, entries: [{ date: today, kcal: kcal, prot: prot }] }) })
+    .then(function (r) { return r.json().catch(function () { return {}; }); })
+    .then(function (j) { if (j && j.success) showToast('Nutrition enregistrée ✓', '#10B981'); else showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); })
+    .catch(function () { showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); });
+  try { renderNutrition(); } catch (e) {}
+}
+async function _nutHCButton() {
+  var box = document.getElementById('nut-hc'); if (!box) return;
+  var H = _hcPlugin(); if (!H) { box.innerHTML = ''; return; }   // web/PWA : pas de Health Connect
+  box.innerHTML = '<button class="nut-ghost" onclick="_nutFromHC()"><svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Importer depuis Health Connect</button>';
+}
+async function _nutFromHC() {
+  var H = _hcPlugin(); if (!H) return;
+  showToast('Lecture Health Connect…', '#6b7280');
+  try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
+  try {
+    var start = new Date(); start.setHours(0, 0, 0, 0);
+    var end = new Date(start.getTime() + 24 * 3600 * 1000);
+    var r = await H.queryNutrition({ startDate: start.toISOString(), endDate: end.toISOString() });
+    var ent = (r && r.entries) || [];
+    if (!ent.length) { showToast('Aucun repas dans Health Connect aujourd\'hui', '#F59E0B'); return; }
+    var kcal = 0, prot = 0, hasK = false, hasP = false;
+    ent.forEach(function (e) {
+      if (e.energyKcal != null) { kcal += Number(e.energyKcal) || 0; hasK = true; }
+      var m = e.macros || {};
+      if (m.proteinG != null) { prot += Number(m.proteinG) || 0; hasP = true; }
+    });
+    var kEl = document.getElementById('nut-in-kcal'), pEl = document.getElementById('nut-in-prot');
+    if (hasK && kEl) kEl.value = Math.round(kcal);
+    if (hasP && pEl) pEl.value = Math.round(prot);
+    if (!hasK && !hasP) { showToast('Repas sans calories/protéines', '#F59E0B'); return; }
+    showToast('Pré-rempli · vérifie puis enregistre', '#10B981');
+  } catch (e) { showToast('Health Connect indisponible', '#DC3545'); }
+}
+// Contrôle de période PARTAGÉ de la tendance nutrition : un seul Semaine/Mois/
+// Année + navigation qui pilote les 2 graphes (calories, protéines).
+var _nutm = { gran: 'S', offset: 0, _tx: null };
+function _nutmSetGran(g) { _nutm.gran = g; _nutm.offset = 0; _nutmRenderAll(); }
+function _nutmNav(dir) { var n = _nutm.offset + dir; if (n > 0) n = 0; _nutm.offset = n; _nutmRenderAll(); }
+function _nutmToday() { _nutm.offset = 0; _nutmRenderAll(); }
+function _nutmHeaderHtml(label) {
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === _nutm.gran;
+    return '<button onclick="_nutmSetGran(\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:12px;padding:7px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = _nutm.offset !== 0 ? '<div style="font-size:11px;margin-top:1px;"><span onclick="_nutmToday()" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = _nutm.offset >= 0;
+  return '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:11px;padding:4px;margin-bottom:9px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">'
+    + '<button onclick="_nutmNav(-1)" style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:13.5px;font-weight:800;color:var(--text);">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_nutmNav(1)" ' + (nextDis ? 'disabled' : '') + ' style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div>';
+}
+function _nutmSwipe(elx) {
+  if (!elx) return;
+  elx.ontouchstart = function (e) { _nutm._tx = e.touches[0].clientX; };
+  elx.ontouchend = function (e) { if (_nutm._tx == null) return; var dx = e.changedTouches[0].clientX - _nutm._tx; _nutm._tx = null; if (Math.abs(dx) > 50) _nutmNav(dx < 0 ? 1 : -1); };
+}
+function _nutmRenderAll() {
+  var head = document.getElementById('nutm-head'); if (!head) return;
+  var r = _actRange(_nutm.gran, _nutm.offset);
+  head.innerHTML = _nutmHeaderHtml(r.label);
+  try { var a = _saSt('nutkcal'); a.gran = _nutm.gran; a.offset = _nutm.offset; renderSanteChart('nutkcal'); } catch (e) {}
+  try { var b = _saSt('nutprot'); b.gran = _nutm.gran; b.offset = _nutm.offset; renderSanteChart('nutprot'); } catch (e) {}
+  _nutmSwipe(document.getElementById('nutkcal-body'));
+  _nutmSwipe(document.getElementById('nutprot-body'));
 }
 
 function _dsHeaderHtml(pfx, label) {

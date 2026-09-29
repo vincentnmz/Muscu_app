@@ -125,7 +125,7 @@
   <button class="tab-btn active" onclick="switchTab('accueil')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg></span><span>Aujourd'hui</span></button>
   <button class="tab-btn" onclick="switchTab('seance')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg></span><span>Entraînement</span></button>
   <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg></span><span>Analyses</span></button>
-  <button class="tab-btn" onclick="switchTab('etat')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg></span><span>État</span></button>
+  <button class="tab-btn" onclick="switchTab('etat')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg></span><span>Forme</span></button>
 </div>
 
 <div class="container" id="main-container">
@@ -2200,8 +2200,14 @@
         <!-- Reco du jour : moteur.reco -->
         <div class="et-reco" id="et-reco" style="display:none"></div>
 
+        <!-- Accès Nutrition (sous-écran dédié : objectif kcal/protéines + saisie + tendance) -->
+        <button class="et-goals" onclick="switchTab('nutrition')">
+          <div><div class="et-gt">Nutrition</div><div class="et-gs">Calories &amp; protéines du jour vs objectif</div></div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+
         <!-- Accès Objectifs (l'onglet a quitté la barre du bas) -->
-        <button class="et-goals" onclick="switchTab('objectif')">
+        <button class="et-goals" onclick="switchTab('objectif')" style="margin-top:10px">
           <div><div class="et-gt">Mes objectifs</div><div class="et-gs">Suivre et fixer tes objectifs</div></div>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
         </button>
@@ -2259,6 +2265,38 @@
         <span class="bl-ttl">Douleurs &amp; blessures</span>
       </div>
       <div class="bl-body" id="bl-body"></div>
+    </div>
+
+    <!-- ONGLET NUTRITION — sous-écran plein écran (accès depuis « Forme »).
+         Objectif kcal/protéines calculé depuis le profil, saisie manuelle du jour
+         (source de vérité), tendance S/M/A, pré-remplissage Health Connect (natif).
+         Construit par renderNutrition(). -->
+    <div id="tab-nutrition" class="tab-content">
+      <style id="nut-css">
+        #tab-nutrition.tab-content{ position:fixed; top:0; left:50%; transform:translateX(-50%); width:100%; max-width:var(--app-w); bottom:calc(56px + env(safe-area-inset-bottom,0px)); background:var(--bg); z-index:40; padding:0; }
+        #tab-nutrition.tab-content.active{ display:flex; flex-direction:column; }
+        #tab-nutrition .nut-top{ display:flex; align-items:center; gap:12px; padding:calc(14px + env(safe-area-inset-top,0px)) 15px 14px; border-bottom:1px solid var(--border); background:var(--surface); flex:none; }
+        #tab-nutrition .nut-back{ width:34px; height:34px; border-radius:999px; background:var(--surface2); display:grid; place-items:center; color:var(--text-muted); flex:none; border:none; cursor:pointer; }
+        #tab-nutrition .nut-back svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-nutrition .nut-ttl{ font-family:var(--font-heading); font-size:16px; }
+        #tab-nutrition .nut-body{ flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px; }
+        #tab-nutrition .nut-card{ background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); padding:15px; }
+        #tab-nutrition .nut-h{ font-weight:800; font-size:14px; color:var(--text); }
+        #tab-nutrition .nut-sub{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-subtle); font-weight:700; margin:0 2px 8px; }
+        #tab-nutrition .nut-muted{ font-size:11.5px; color:var(--text-muted); line-height:1.5; }
+        #tab-nutrition .nut-chip{ font-size:10px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; border-radius:6px; padding:3px 8px; background:var(--accent-a10,rgba(26,95,255,.1)); color:var(--accent); flex:none; }
+        #tab-nutrition .nut-lab{ display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:5px; }
+        #tab-nutrition .nut-inp{ width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:11px; padding:11px 12px; font-size:16px; font-weight:700; color:var(--text); font-family:inherit; outline:none; text-align:center; -moz-appearance:textfield; }
+        #tab-nutrition .nut-inp::-webkit-outer-spin-button, #tab-nutrition .nut-inp::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+        #tab-nutrition .nut-save{ width:100%; margin-top:12px; height:46px; border:none; border-radius:13px; background:var(--accent); color:#fff; font-family:inherit; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 6px 16px rgba(26,95,255,.28); }
+        #tab-nutrition .nut-ghost{ width:100%; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); border-radius:11px; padding:10px 12px; font-family:inherit; font-weight:700; font-size:12.5px; cursor:pointer; }
+        #tab-nutrition .nut-chart{ padding:2px; }
+      </style>
+      <div class="nut-top">
+        <button class="nut-back" onclick="switchTab('etat')" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <span class="nut-ttl">Nutrition</span>
+      </div>
+      <div class="nut-body" id="nut-body"></div>
     </div>
 
 </div>
