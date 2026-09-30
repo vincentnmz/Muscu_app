@@ -261,6 +261,39 @@
     </div>
   </div>
 
+  <!-- Modale : Analyse morpho par photo (IA vision). Photos JAMAIS stockées :
+       envoyées pour analyse puis jetées. Consentement obligatoire. -->
+  <div id="modal-morpho" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1150;align-items:center;justify-content:center;padding:16px;">
+    <div class="dash-card" style="width:100%;max-width:400px;max-height:90vh;overflow-y:auto;padding:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+        <div style="font-family:var(--font-heading);font-size:16px;">Analyse morpho</div>
+        <button onclick="fermerMorpho()" aria-label="Fermer" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px;line-height:1;">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">Ajoute une photo de <b>face</b> et/ou de <b>dos</b> (tenue ajustée, bonne lumière). L'IA repère tes groupes en avance / en retard pour orienter ton entraînement.</div>
+
+      <div style="display:flex;gap:10px;margin-top:13px;">
+        <label style="flex:1;cursor:pointer;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;">Face</div>
+          <div id="morpho-prev-face" style="height:120px;border-radius:12px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
+          <input type="file" accept="image/*" onchange="_morphoFichier(this,'face')" style="display:none;">
+        </label>
+        <label style="flex:1;cursor:pointer;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;">Dos</div>
+          <div id="morpho-prev-dos" style="height:120px;border-radius:12px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
+          <input type="file" accept="image/*" onchange="_morphoFichier(this,'dos')" style="display:none;">
+        </label>
+      </div>
+
+      <label style="display:flex;gap:9px;align-items:flex-start;margin-top:14px;cursor:pointer;">
+        <input type="checkbox" id="morpho-consent" style="margin-top:2px;flex:none;width:17px;height:17px;">
+        <span style="font-size:11.5px;color:var(--text-muted);line-height:1.45;">J'accepte que mes photos soient envoyées à l'IA pour analyse. <b>Elles ne sont pas conservées</b> : analysées puis supprimées. Analyse à titre indicatif, non médicale.</span>
+      </label>
+
+      <button id="morpho-go" onclick="_morphoAnalyser()" style="width:100%;margin-top:14px;height:46px;border:none;border-radius:13px;background:var(--accent);color:var(--on-accent);font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;">Analyser</button>
+      <div id="morpho-result" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
   <!-- Modale : Contexte de performance (le coach pose l'état d'un athlète) -->
   <div id="modal-contexte" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1100;align-items:center;justify-content:center;padding:16px;">
     <div class="dash-card" style="width:100%;max-width:380px;padding:18px;">
@@ -1984,6 +2017,7 @@
           <div class="cv-dots" id="cv-ia-dots"></div>
         </div>
         <div class="cv-input">
+          <button class="cv-send" onclick="ouvrirMorpho()" aria-label="Analyse morpho par photo" title="Analyse morpho par photo" style="background:var(--surface2);color:var(--accent);border:1px solid var(--border);"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
           <textarea class="cv-field" id="cv-ia-input" rows="1" placeholder="Pose ta question à Novalyz…"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();cvSendIA();}"></textarea>
           <button class="cv-send" onclick="cvSendIA()" aria-label="Envoyer"><svg width="19" height="19" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>

@@ -6763,6 +6763,53 @@ function cvSendIA() {
     .catch(function () { done("Connexion impossible pour le moment. Réessaie dans un moment."); });
 }
 
+// ── Analyse morpho par photo (IA vision) — photos jamais stockées ──
+var _morphoImgs = { face: null, dos: null };
+function ouvrirMorpho() {
+  var m = document.getElementById('modal-morpho'); if (!m) return;
+  _morphoImgs = { face: null, dos: null };
+  ['face', 'dos'].forEach(function (w) { var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; } });
+  var c = document.getElementById('morpho-consent'); if (c) c.checked = false;
+  var r = document.getElementById('morpho-result'); if (r) r.innerHTML = '';
+  var g = document.getElementById('morpho-go'); if (g) { g.disabled = false; g.textContent = 'Analyser'; }
+  m.style.display = 'flex';
+}
+function fermerMorpho() { var m = document.getElementById('modal-morpho'); if (m) m.style.display = 'none'; }
+function _morphoFichier(input, which) {
+  var f = input.files && input.files[0]; if (!f) return;
+  var img = new Image(), url = URL.createObjectURL(f);
+  img.onload = function () {
+    try {
+      var max = 1024, w = img.width, h = img.height;
+      if (w > h && w > max) { h = Math.round(h * max / w); w = max; } else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+      var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      var dataUrl = cv.toDataURL('image/jpeg', 0.82);
+      _morphoImgs[which] = { media_type: 'image/jpeg', data: dataUrl.split(',')[1] };
+      var p = document.getElementById('morpho-prev-' + which); if (p) { p.style.backgroundImage = 'url(' + dataUrl + ')'; p.textContent = ''; }
+    } catch (e) {}
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = function () { URL.revokeObjectURL(url); showToast('Image illisible', '#DC3545'); };
+  img.src = url;
+}
+async function _morphoAnalyser() {
+  if (typeof athlete === 'undefined' || !athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
+  var imgs = []; if (_morphoImgs.face) imgs.push(_morphoImgs.face); if (_morphoImgs.dos) imgs.push(_morphoImgs.dos);
+  if (!imgs.length) { showToast('Ajoute au moins une photo', '#DC3545'); return; }
+  var consent = document.getElementById('morpho-consent'); if (!consent || !consent.checked) { showToast('Coche le consentement', '#DC3545'); return; }
+  var g = document.getElementById('morpho-go'); if (g) { g.disabled = true; g.textContent = 'Analyse en cours…'; }
+  var res = document.getElementById('morpho-result'); if (res) res.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">L\'IA analyse tes photos…</div>';
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'analyseMorpho', athlete_id: athlete.athlete_id, consent: true, images: imgs }) });
+    var j = await r.json().catch(function () { return {}; });
+    var txt = (j && j.analyse) ? j.analyse : 'Analyse indisponible pour le moment.';
+    var html = escapeHtml(txt).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    if (res) res.innerHTML = '<div style="font-size:12.5px;line-height:1.55;color:var(--text);white-space:pre-wrap;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;">' + html + '</div>';
+  } catch (e) { if (res) res.innerHTML = '<div style="font-size:12px;color:var(--danger);text-align:center;padding:8px;">Connexion impossible. Réessaie.</div>'; }
+  if (g) { g.disabled = false; g.textContent = 'Analyser à nouveau'; }
+}
+
 // ── Fil Coach (messagerie réelle) ──
 function cvOpenCoach(keepView) {
   cvResetSel();

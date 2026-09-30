@@ -4114,6 +4114,67 @@ ${ctxTxt}`
   return jsonResp({ success: true, reply, remaining: Math.max(0, IA_QUOTA_JOUR - (used + 1)) })
 }
 
+// Analyse morpho-anatomique par PHOTO (premium, en veille sans clé). Vision Claude
+// Sonnet 5.5. Photos JAMAIS stockées (RGPD-minimal) : analysées puis jetées, on ne
+// garde que le texte renvoyé (non persisté non plus). Consentement obligatoire.
+const MORPHO_QUOTA_JOUR = 1
+
+async function handleAnalyseMorpho(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const images = Array.isArray(body.images) ? body.images : []
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  if (!body.consent) return jsonResp({ success: false, error: 'consentement requis' })
+  if (!images.length) return jsonResp({ success: false, error: 'aucune photo' })
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+  if (!apiKey) return jsonResp({ success: true, disabled: true, analyse: "L'analyse morpho n'est pas encore activée côté serveur (clé manquante)." })
+
+  const jour = fmtYMD(new Date())
+  let used = 0
+  try { const { data: q } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athlete_id).eq('seance_id', 'morpho_quota').eq('cle', jour).limit(1); used = q?.length ? (Number(q[0].valeur) || 0) : 0 } catch (_) {}
+  if (used >= MORPHO_QUOTA_JOUR) return jsonResp({ success: true, limited: true, analyse: `Tu as atteint ta limite du jour (${MORPHO_QUOTA_JOUR} analyse morpho). La version premium (bientôt) en débloquera plus.` })
+
+  let objTxt = ''
+  try { const { data: o } = await sb().from('objectif').select('objectif').eq('athlete_id', athlete_id).limit(1); if (o?.length && o[0].objectif) objTxt = String(o[0].objectif) } catch (_) {}
+
+  const content: any[] = []
+  images.slice(0, 3).forEach((im: any) => {
+    if (im && im.data && im.media_type) content.push({ type: 'image', source: { type: 'base64', media_type: String(im.media_type), data: String(im.data) } })
+  })
+  if (!content.length) return jsonResp({ success: false, error: 'images invalides' })
+  content.push({ type: 'text', text: `Analyse la morphologie de cet athlète (photos face et/ou dos) pour orienter son ENTRAÎNEMENT.${objTxt ? ` Son objectif : ${objTxt}.` : ''}` })
+
+  const system = `Tu es un préparateur physique qui aide un athlète à orienter sa MUSCULATION à partir de photos (face / dos). But : repérer les groupes musculaires en AVANCE et en RETARD, l'équilibre gauche/droite et la posture globale, pour conseiller un FOCUS d'entraînement.
+
+RÈGLES STRICTES :
+- Reste FACTUEL, BIENVEILLANT et HUMBLE (« à titre indicatif », « d'après la photo »). JAMAIS de jugement sur le corps, ni de remarque esthétique, de poids ou de niveau de gras.
+- Tu n'es PAS médecin : aucun diagnostic, aucune pathologie. Devant un doute postural ou une douleur, invite à consulter un professionnel.
+- N'invente rien : ne devine pas ce que la photo ne montre pas ; si une vue manque ou est peu exploitable, dis-le simplement. Aucun chiffre inventé (%, mensurations).
+- Réponds en FRANÇAIS, structuré et concis :
+  **Points forts** (groupes en avance)
+  **À travailler** (groupes en retard / déséquilibres visibles)
+  **Focus conseillé** (2-3 priorités concrètes avec des exercices).`
+
+  let analyse = ''
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 1500, system, messages: [{ role: 'user', content }] }),
+    })
+    const j = await r.json()
+    if (!r.ok) return jsonResp({ success: false, error: 'ia_http_' + r.status, analyse: "L'analyse a rencontré un souci. Réessaie dans un instant." })
+    analyse = (Array.isArray(j.content) ? j.content.filter((b: any) => b && b.type === 'text').map((b: any) => b.text).join('\n') : '').trim()
+  } catch (_) {
+    return jsonResp({ success: false, error: 'ia_reseau', analyse: "Service injoignable pour le moment." })
+  }
+  if (!analyse) analyse = "Je n'ai pas pu produire d'analyse — réessaie avec des photos plus nettes (face et dos, bonne lumière, tenue ajustée)."
+
+  try { if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', athlete_id).eq('seance_id', 'morpho_quota').eq('cle', jour); else await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'morpho_quota', cle: jour, valeur: '1', unite: '', source: 'ia' }) } catch (_) {}
+
+  // Photos NON stockées : rien gardé côté serveur.
+  return jsonResp({ success: true, analyse })
+}
+
 async function handleSaveSemaineType(body: any): Promise<Response> {
   const { athlete_id } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
@@ -4547,6 +4608,7 @@ Deno.serve(async (req: Request) => {
         case 'saveSante':                return handleSaveSante(body)
         case 'saveNutrition':            return handleSaveNutrition(body)
         case 'chatIA':                   return handleChatIA(body)
+        case 'analyseMorpho':            return handleAnalyseMorpho(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
         case 'deleteObjectifJoueur':     return handleDeleteObjectifJoueur(body)
         case 'saveBlessure':             return handleSaveBlessure(body)
