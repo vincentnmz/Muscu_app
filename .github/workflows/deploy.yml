@@ -42,7 +42,7 @@ jobs:
           fi
           mkdir -p "$DEST"
           # Fichiers racine de la coquille
-          cp index.html manifest.json sw.js "$DEST"/ 2>/dev/null || true
+          cp index.html manifest.json sw.js privacy.html "$DEST"/ 2>/dev/null || true
           cp "logo novalyz.png" "$DEST"/ 2>/dev/null || true
           # Dossiers (on nettoie l'ancien contenu pour éviter les fichiers obsolètes)
           for d in css js assets; do
