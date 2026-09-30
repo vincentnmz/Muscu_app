@@ -19,7 +19,8 @@
 ### A2 · Écrans
 - Écran **Aujourd'hui** — affiner / valider.
 - Écran **Cardio** — sélecteur de sport + boutons « connecte montre » (ci-dessus).
-- Écran **État** — ajouter un **onglet Nutrition** (aide + conseils IA selon les objectifs).
+- Écran **État → « Forme »** — ✅ onglet **Nutrition** (objectifs macros P/G/L calculés depuis poids+objectif, saisie, tendance) ; ✅ réorg en 3 zones (Aujourd'hui / Mes suivis / Mes tendances) ; ✅ **Contexte de reprise** (auto-déclaration athlète + suggestion après coupure).
+- **Onboarding / visite guidée** (⏳ à faire **à la FIN**, quand tous les écrans sont stabilisés) : présentation de démarrage plus poussée qui explique **écran par écran** où se trouvent les choses (l'athlète doit savoir où est chaque fonction). Ne pas la coder avant d'avoir figé les écrans (sinon à refaire à chaque changement).
 
 ### A3 · Alertes & fiabilité (cœur analyse)
 - **Notifs d'alerte** pour l'athlète solo — ❓ où les placer (quel écran) ? (voir C2)
