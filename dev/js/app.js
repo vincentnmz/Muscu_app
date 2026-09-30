@@ -6774,6 +6774,11 @@ function ouvrirCoach() {
 function _majFabNovalyz(tab) {
   var fab = document.getElementById('fab-novalyz');
   if (!fab) return;
+  // Jamais visible hors app connectée (écran de login, déconnexion) : sans athlète,
+  // _athleteAUnCoach() renvoie false → il ne faut PAS en déduire « solo ».
+  var appActive = false;
+  try { var _va = document.getElementById('view-app'); appActive = !!(_va && _va.classList.contains('active')); } catch (e) {}
+  if (!athlete || !appActive) { fab.style.display = 'none'; return; }
   if (tab == null) {
     var act = document.querySelector('.tab-content.active');
     tab = act ? (act.id || '').replace(/^tab-/, '') : '';
