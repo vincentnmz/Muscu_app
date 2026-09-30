@@ -23,8 +23,8 @@
 - ⏳ **Onboarding / visite guidée** (à faire **à la FIN**, écrans figés) : présentation de démarrage expliquant **écran par écran** où se trouvent les fonctions. Ne pas coder avant d'avoir figé les écrans.
 
 ### A3 · Alertes & fiabilité (cœur analyse)
-- 🟡 **Notifs d'alerte** pour l'athlète solo — **chantier en cours** ; ❓ placement (voir C2).
-- ⏳ Vérifier la **fiabilité des alertes** (pas de fausses alertes).
+- ✅ **Notifs d'alerte** pour l'athlète solo — cloche header + centre d'alertes + **liste des non-lues sur Aujourd'hui** + push haute-sévérité (voir C2, tranché).
+- ✅ Vérifier la **fiabilité des alertes** — audit du moteur ; gardes confirmées (bien-être 7 j glissants, alertes charge bloquées si ACWR non fiable, stagnation avec amnistie contexte) ; faux positif corrigé (plus de « absence » pour un athlète sans historique).
 - ✅ **Contexte de performance** (retour vacances / blessure / deload) — moteur qui pondère les analyses + **auto-déclaration athlète** + **suggestion après ≥14 j sans séance** (voir C3, tranché).
 
 ### A4 · Programme & séances
@@ -66,9 +66,8 @@
 - **Règle anti-doublon** : on saisit à la main **uniquement ce que la montre n'a pas** (ex. sortie vélo sans capteur → distance/temps ; marche non déclenchée → distance/temps). Les **pas** ne viennent que du compteur de la montre.
 - Option : dédoublonnage par **chevauchement horaire** (si une activité manuelle recouvre une activité montre → on garde la montre).
 
-### C2 · Placement des alertes — 🟡 en cours
-Où l'athlète (et le coach) voit ses alertes : cloche en haut ? bloc dédié sur « Aujourd'hui » / « Forme » ? notification push + rappel dans l'app ? → **chantier en cours**.
-> Existant repéré : bouton cloche header (`#btn-alertes-hdr` → `ouvrirCentreAlertes`) + badge, `renderAlertes()`, `alertes_centre` (backend), push natif/web. À câbler/placer proprement côté athlète.
+### C2 · Placement des alertes — ✅ tranché & fait
+Décision retenue : **cloche header** (historique complet via le centre d'alertes) **+ liste des alertes non-lues en clair sur Aujourd'hui** (titre / preuve / action / « lu ») **+ push** pour la sévérité haute. Marquage « lu » persistant (`marquerAlerteLue`).
 
 ### C3 · Contexte de reprise (vacances / blessure / deload) — ✅ tranché & fait
 Décision retenue : **les deux** — l'athlète déclare lui-même son état (modale existante, source `'athlete'`) **et** Novalyz **suggère** un retour après une coupure détectée (≥14 j sans séance, jamais posé d'office). Affiché sur « Forme » (`#et-contexte`). Le moteur pondère (neutralise « régression », ACWR en pause, alertes absence/sous-charge en veille).
@@ -85,6 +84,6 @@ Fonction premium probable. ❓ **consentement / RGPD** (photos = données sensib
 1. ✅ Finir la **structure du parcours solo** (réorg Forme en 3 zones).
 2. ✅ **Montre** : sommeil/BPM + graphique pas + import par sport. *(C1 pas encore tranché, non bloquant.)*
 3. ✅ **Cardio** complet (exos cardio, séances hybrides, objectif séances/sem).
-4. 🟡 **Nutrition** ✅ + **contexte reprise** ✅ + **alertes** 🟡 *(en cours — placement C2)*.
+4. ✅ **Nutrition** + **contexte reprise** + **alertes** (placement C2 + fiabilité). *(Reste C1 anti-doublon pas, non bloquant.)*
 5. ⏳ **IA morpho** (C4) et **paiement premium** (C5) — plus lourds, après une base solide.
 6. ⏳ **Partie coach** (section B) — phase 2.
