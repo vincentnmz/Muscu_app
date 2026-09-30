@@ -41,8 +41,8 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
    (porteur, sept. 2026) : à reprendre plus tard, moteur fiable requis.
 1. **P2 — Données sportives** ⬅️ **EN COURS** : Cardio/Hyrox dédié · activités structurées · GPS ·
    Watch/Health Connect · déduplication · vélo/running/natation · séances hybrides.
-2. **P3 — Nutrition** : nutrition dans Mon état + analyse nutritionnelle (Solo puis Coach).
-3. **P4 — IA** : conversation groundée sur le moteur + IA de recommandation/explication.
+2. **P3 — Nutrition** : nutrition dans Mon état + analyse nutritionnelle (Solo puis Coach). *(Nutrition Solo ✅ livrée ; analyse interprétative + Coach = reste.)*
+3. **P4 — IA** : conversation groundée sur le moteur + IA de recommandation/explication. *(Coach IA + morpho **codés & déployés, en veille 0 €** ; IA proactive conçue, en pause.)*
 4. **P5 — Coach** : home, aujourd'hui, alertes, analyses, programme, conversation.
 5. **P6 — Business** : premium, paiement, rapports mensuels, e-mails auto.
 
@@ -89,16 +89,16 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 23. Natation — ⬜ · 24. Séances hybrides muscu/cardio — ⬜
 
 ### P3 — NUTRITION
-25. Nutrition Solo (dans Mon état, liée à l'objectif) — ⬜ · 26. Analyse nutritionnelle — ⬜
-27. Nutrition Coach — ⬜
+25. Nutrition Solo (dans Mon état, liée à l'objectif) — ✅ (onglet **Nutrition** dans « Forme » : objectifs macros **P/G/L** calculés depuis le poids réel (dernière pesée) + objectif + niveau d'activité ; saisie kcal/prot/gluc/lip ; historique `nutri_historique` ; tendance 4 courbes ; backend `saveNutrition` **déployé** ; testé)
+26. Analyse nutritionnelle (interprétation) — ⬜ (suivi + tendances livrés ; pas encore d'analyse interprétative type « Lecture Novalyz ») · 27. Nutrition Coach — ⬜
 
 ### P4 — IA
-28. Coach IA (conversation groundée sur le moteur) — 🟡 (écran conversation en place, IA à brancher)
-29. IA de recommandation / explication — ⬜ · 30. Morphologie IA (photos, premium) — ⬜
+28. Coach IA (conversation groundée sur le moteur) — 🟡 (front `cvSendIA` + backend `chatIA` **codés & déployés**, grounding `_iaContexte`, quota 2 msg/j, modèle Haiku 4.5 ; **en veille = 0 €** tant que le secret `ANTHROPIC_API_KEY` n'est pas ajouté sur Supabase)
+29. IA de recommandation / explication — ⬜ (IA **proactive** : conçue, en pause — cadence à trancher) · 30. Morphologie IA (photos, premium) — 🟡 (v1 **codée & déployée**, **page dédiée** `#tab-morpho`, vision Sonnet 5.5, **photos jamais stockées**, consentement, quota 1/j ; en veille sans clé)
 
 ### P5 — COACH (phase 2)
 31. Home Coach — 🟡 · 32. Aujourd'hui Coach — ⬜ · 33. Alertes Coach — ⬜
-34. Analyse Coach — 🟡 · 35. Programme Coach — ✅ (existant) · 36. Conversation Coach↔Athlète — 🟡
+34. Analyse Coach — 🟡 · 35. Programme Coach — ✅ (existant) · 36. Conversation Coach↔Athlète — 🟡 (messagerie texte + **photo/vidéo athlète→coach** v1 : bucket privé `coach-media`, upload signé, consentement, suppression ; reste : notif **push coach**, rétention auto)
 
 ### P6 — BUSINESS
 37. Premium — ⬜ · 38. Paiement — ⬜ · 39. Rapports mensuels — ⬜ · 40. Emails automatiques — 🟡 (Resend en place)
@@ -113,8 +113,41 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 
 ---
 
-## ✅ Journal de livraison (branche `claude/novalyz-player-profile-mockups-g4bock`)
+## ✅ Journal de livraison (travail poussé sur `dev`)
 
+### Session 30 sept. 2026 (branche `dev`)
+- **P3-25 Nutrition Solo** : onglet **Nutrition** dans « Forme ». Objectifs macros
+  **protéines / glucides / lipides** calculés depuis le **poids réel** (dernière pesée),
+  l'**objectif** de l'athlète et un **niveau d'activité** (Mifflin-St Jeor × facteur ;
+  recomposition = déficit −10 %). Saisie kcal/P/G/L, historique serveur
+  (`nutri_historique`), tendance 4 courbes. Backend `handleSaveNutrition` **déployé**.
+  Correctif : lecture du poids depuis la **dernière pesée** (et non l'objectif figé) ;
+  le changement de poids se répercute dans le profil.
+- **Réorg écran « Forme »** (ex-« État ») en **3 zones** (Aujourd'hui / Mes suivis /
+  Mes tendances) + **Contexte de reprise** : auto-déclaration athlète **et**
+  suggestion automatique après **≥ 14 j** sans séance (jamais posé d'office).
+- **Alertes athlète** : **liste des non-lues en clair sur Aujourd'hui** (titre / preuve /
+  action / « lu ») + push haute sévérité. **Fiabilité** : faux positif « absence »
+  supprimé pour un athlète **sans historique** (garde `s.q.hasCharge`) — test dédié.
+- **P4-28 Coach IA (conversation groundée)** + **P4-30 Morpho IA (photo)** — **codés &
+  déployés, EN VEILLE (0 €)** : `chatIA` (Haiku 4.5, grounding `_iaContexte`, quota
+  2/j) et `analyseMorpho` (Sonnet 5.5 vision, **photos jamais stockées**, consentement,
+  quota 1/j, **page dédiée** `#tab-morpho`). S'allument avec le secret
+  `ANTHROPIC_API_KEY` (sinon « pas encore activé », aucun appel facturé).
+- **Onglet « Coach » (5e onglet, adaptatif)** : athlète **solo** → fil IA ; athlète
+  **avec coach** → hub (messagerie + IA). Bulle « Demande à Novalyz » **unique**
+  (dédoublonnée, masquée sur conversation/morpho/saisie/login) pour le solo ; badge
+  messages coach déplacé sur l'onglet Coach.
+- **P5-36 Photo/vidéo athlète → coach (v1)** : dans le fil coach, envoi **photo ou
+  vidéo** (revue technique). Bucket privé **`coach-media`** (75 Mo), **upload signé**
+  direct client→Storage (pas de base64 → vidéos OK), colonnes `media_path`/`media_type`,
+  **URL de lecture signée** (TTL 2 h), consentement, suppression qui nettoie le Storage.
+  Rendu des 2 côtés. Backend **déployé** ; **testé OK par le porteur**. Reste : push
+  coach + rétention auto.
+- **C1 pas anti-doublon** : tranché (montre = autorité, jamais additionner ; déjà
+  respecté — `pasjour_` = fitbit only).
+
+### Sessions précédentes
 - **P2-22 Hyrox — étape 1 (saisie + enregistrement)** : type « Hyrox » dans la saisie
   cardio → formulaire structuré des 16 segments officiels (8 Run 1 km + 8 ateliers,
   termes/ordre/distances vérifiés rulebook). Mode Course/simulation ou Entraînement
