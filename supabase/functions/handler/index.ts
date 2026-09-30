@@ -4021,6 +4021,99 @@ async function handleSaveNutrition(body: any): Promise<Response> {
   return jsonResp({ success: true, saved: rows.length })
 }
 
+// ===========================================================================
+// COACH IA (chat groundé) — couche langage branchée sur le moteur. Répond
+// UNIQUEMENT à partir des données réelles de l'athlète (jamais de chiffre
+// inventé). Base gratuite = quota/jour ; au-delà = premium (à venir, C5).
+// Clé : secret Supabase ANTHROPIC_API_KEY. Modèle : Haiku 4.5 (éco).
+// ===========================================================================
+const IA_QUOTA_JOUR = 5
+
+function _iaContexte(d: any): string {
+  if (!d || d.erreur) return '(données indisponibles pour le moment)'
+  const L: string[] = []
+  const m = d.moteur || {}
+  if (m.disponibilite) L.push(`- État du jour : ${m.disponibilite.niveau || '—'} (récup ${m.recup || '—'}${m.recScore != null ? ', score ' + Math.round(m.recScore) + '/100' : ''}).`)
+  if (m.reco) L.push(`- Reco du moteur : ${m.reco}`)
+  const dash = d.dashboard || {}
+  if (dash.acwr != null) L.push(`- Charge ACWR : ${dash.acwr}${m.acwr_categorie ? ' (' + m.acwr_categorie + ')' : ''}${m.acwr_fiable === false ? ' — non fiable, historique court' : ''}.`)
+  if (dash.derniere_seance && dash.derniere_seance.date) L.push(`- Dernière séance : ${dash.derniere_seance.date}${dash.derniere_seance.nb_series ? ' · ' + dash.derniere_seance.nb_series + ' séries' : ''}${dash.derniere_seance.rpe_moyen ? ' · RPE ' + dash.derniere_seance.rpe_moyen : ''}.`)
+  const reg = dash.regularite || {}
+  if (reg.seances_prevues != null) L.push(`- Régularité : objectif ${reg.seances_prevues} séances/semaine${reg.seances_j7 != null ? ', ' + reg.seances_j7 + ' faites sur 7 j' : ''}.`)
+  if (d.objectif && d.objectif.objectif) L.push(`- Objectif : ${d.objectif.objectif}.`)
+  if (d.poids && d.poids[0] && d.poids[0].poids != null) L.push(`- Poids (dernière pesée) : ${d.poids[0].poids} kg.`)
+  const al = (d.alertes_centre || []).filter((a: any) => a && !a.read).slice(0, 4)
+  if (al.length) L.push(`- Alertes en cours : ${al.map((a: any) => a.title + (a.evidence ? ' (' + a.evidence + ')' : '')).join(' ; ')}.`)
+  if (d.contexte && d.contexte.etat && d.contexte.etat !== 'saison_normale') L.push(`- Contexte : ${d.contexte.etat}${d.contexte.jours_restants != null ? ' (' + d.contexte.jours_restants + ' j restants)' : ''}.`)
+  const be = (d.bien_etre || [])[0]
+  if (be) L.push(`- Dernier ressenti : sommeil ${be.sommeil ?? '—'}/5, énergie ${be.energie ?? '—'}/5, fatigue ${be.fatigue ?? '—'}/5.`)
+  const nut = (d.nutri_historique || [])[0]
+  if (nut) L.push(`- Nutrition récente (${nut.date}) : ${nut.kcal != null ? nut.kcal + ' kcal' : '—'}${nut.prot != null ? ', ' + nut.prot + ' g protéines' : ''}.`)
+  return L.length ? L.join('\n') : '(peu de données : encourage à enregistrer séances + bien-être)'
+}
+
+async function handleChatIA(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const msgs = Array.isArray(body.messages) ? body.messages : []
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+  if (!apiKey) return jsonResp({ success: true, reply: "L'assistant IA n'est pas encore activé côté serveur (clé manquante). Tes analyses détaillées restent dans l'onglet Analyses.", disabled: true })
+
+  // Quota jour (base gratuite) — 1 ligne indicateurs 'ia_quota' par jour.
+  const jour = fmtYMD(new Date())
+  let used = 0
+  try {
+    const { data: q } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athlete_id).eq('seance_id', 'ia_quota').eq('cle', jour).limit(1)
+    used = q?.length ? (Number(q[0].valeur) || 0) : 0
+  } catch (_) {}
+  if (used >= IA_QUOTA_JOUR) {
+    return jsonResp({ success: true, limited: true, reply: `Tu as atteint ta limite du jour (${IA_QUOTA_JOUR} échanges avec le coach IA). La version premium (bientôt) débloquera plus d'échanges. En attendant, jette un œil à l'onglet Analyses.` })
+  }
+
+  // Grounding : données réelles (moteur = source de vérité).
+  let ctxTxt = '(données indisponibles)'
+  try { const res = await handleGetAppData(new URLSearchParams({ athlete_id })); ctxTxt = _iaContexte(await res.json()) } catch (_) {}
+
+  const system = `Tu es le coach IA de Novalyz, une app d'entraînement (musculation + cardio). Tu parles à l'athlète, en français, de façon bienveillante, concrète et CONCISE (3 à 6 phrases).
+
+RÈGLES STRICTES :
+- Réponds UNIQUEMENT à partir des DONNÉES DE L'ATHLÈTE ci-dessous. N'invente JAMAIS un chiffre, une séance ou une valeur : si l'info n'y est pas, dis-le simplement.
+- Tu n'es pas médecin : aucun diagnostic ni prescription. En cas de douleur/blessure, invite à consulter un professionnel.
+- Appuie-toi sur le moteur d'analyse (état, ACWR, récupération, alertes, contexte) et ne contredis pas ses verdicts.
+- Reste sur l'entraînement / la récupération / la nutrition sportive ; recentre gentiment si on te demande autre chose.
+
+DONNÉES DE L'ATHLÈTE (aujourd'hui) :
+${ctxTxt}`
+
+  const history = msgs
+    .filter((m: any) => m && (m.role === 'user' || m.role === 'assistant') && m.content)
+    .slice(-12)
+    .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 2000) }))
+  if (!history.length || history[history.length - 1].role !== 'user') return jsonResp({ success: false, error: 'message vide' })
+
+  let reply = ''
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 700, system, messages: history }),
+    })
+    const j = await r.json()
+    if (!r.ok) return jsonResp({ success: false, error: 'ia_http_' + r.status, reply: "Désolé, l'assistant a rencontré un souci. Réessaie dans un instant." })
+    reply = (Array.isArray(j.content) ? j.content.filter((b: any) => b && b.type === 'text').map((b: any) => b.text).join('\n') : '').trim()
+  } catch (_) {
+    return jsonResp({ success: false, error: 'ia_reseau', reply: "Désolé, l'assistant est injoignable pour le moment." })
+  }
+  if (!reply) reply = "Je n'ai pas de réponse claire là-dessus — reformule ta question ?"
+
+  try {
+    if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', athlete_id).eq('seance_id', 'ia_quota').eq('cle', jour)
+    else await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'ia_quota', cle: jour, valeur: '1', unite: '', source: 'ia' })
+  } catch (_) {}
+
+  return jsonResp({ success: true, reply, remaining: Math.max(0, IA_QUOTA_JOUR - (used + 1)) })
+}
+
 async function handleSaveSemaineType(body: any): Promise<Response> {
   const { athlete_id } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
@@ -4453,6 +4546,7 @@ Deno.serve(async (req: Request) => {
         case 'savePref':                 return handleSavePref(body)
         case 'saveSante':                return handleSaveSante(body)
         case 'saveNutrition':            return handleSaveNutrition(body)
+        case 'chatIA':                   return handleChatIA(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
         case 'deleteObjectifJoueur':     return handleDeleteObjectifJoueur(body)
         case 'saveBlessure':             return handleSaveBlessure(body)

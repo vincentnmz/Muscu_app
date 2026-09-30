@@ -6623,6 +6623,7 @@ async function blSupprimer(id) {
 // (messagerie réelle existante). L'entrée sur l'onglet affiche la LISTE ; on ouvre un fil au clic.
 var _cvView = 'list';   // 'list' | 'ia' | 'coach'
 var _cvIaMsgs = [];     // messages du fil IA (session — pas encore persistés côté backend)
+var _cvIaBusy = false;  // anti double-envoi pendant que l'IA répond
 
 // Nom d'affichage du coach : déduit du dernier message côté coach (jamais le nom
 // de l'athlète lui-même), sinon générique « Ton coach ».
@@ -6739,15 +6740,27 @@ function cvSendIA() {
   var input = document.getElementById('cv-ia-input');
   if (!input) return;
   var msg = input.value.trim();
-  if (!msg) return;
+  if (!msg || _cvIaBusy) return;
+  if (typeof athlete === 'undefined' || !athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
   input.value = '';
   _cvIaMsgs.push({ role: 'me', t: msg });
+  _cvIaMsgs.push({ role: 'ia', t: '…', typing: true });   // indicateur « écrit… »
   cvRenderIa();
-  // L'IA n'est pas encore branchée sur le moteur : réponse honnête (aucun chiffre inventé).
-  setTimeout(function () {
-    _cvIaMsgs.push({ role: 'ia', t: "Je suis en cours de branchement sur ton moteur d'analyse : bientôt je répondrai à partir de tes vraies données (séances, charges, ressenti, récup). En attendant, tes analyses détaillées sont dans l'onglet Analyses, et ton coach peut te répondre ici." });
+  _cvIaBusy = true;
+  // Historique pour l'API : user/assistant, on saute le message d'accueil initial
+  // (l'API exige que le 1er message soit « user ») et l'indicateur de frappe.
+  var hist = _cvIaMsgs.filter(function (m) { return !m.typing; }).map(function (m) { return { role: m.role === 'me' ? 'user' : 'assistant', content: m.t }; });
+  while (hist.length && hist[0].role !== 'user') hist.shift();
+  var done = function (txt) {
+    _cvIaMsgs = _cvIaMsgs.filter(function (m) { return !m.typing; });
+    _cvIaMsgs.push({ role: 'ia', t: txt });
     cvRenderIa();
-  }, 500);
+    _cvIaBusy = false;
+  };
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chatIA', athlete_id: athlete.athlete_id, messages: hist }) })
+    .then(function (r) { return r.json().catch(function () { return {}; }); })
+    .then(function (j) { done((j && j.reply) ? j.reply : "Désolé, je n'ai pas pu répondre. Réessaie dans un instant."); })
+    .catch(function () { done("Connexion impossible pour le moment. Réessaie dans un moment."); });
 }
 
 // ── Fil Coach (messagerie réelle) ──
