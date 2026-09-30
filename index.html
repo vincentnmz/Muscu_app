@@ -262,36 +262,46 @@
     </div>
   </div>
 
-  <!-- Modale : Analyse morpho par photo (IA vision). Photos JAMAIS stockées :
+  <!-- ONGLET MORPHO — analyse morpho par photo (IA vision), sous-écran plein
+       écran (accès depuis le fil « Novalyz IA »). Photos JAMAIS stockées :
        envoyées pour analyse puis jetées. Consentement obligatoire. -->
-  <div id="modal-morpho" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1150;align-items:center;justify-content:center;padding:16px;">
-    <div class="dash-card" style="width:100%;max-width:400px;max-height:90vh;overflow-y:auto;padding:18px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
-        <div style="font-family:var(--font-heading);font-size:16px;">Analyse morpho</div>
-        <button onclick="fermerMorpho()" aria-label="Fermer" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px;line-height:1;">✕</button>
-      </div>
-      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">Ajoute une photo de <b>face</b> et/ou de <b>dos</b> (tenue ajustée, bonne lumière). L'IA repère tes groupes en avance / en retard pour orienter ton entraînement.</div>
+  <div id="tab-morpho" class="tab-content">
+    <style id="mo-css">
+      #tab-morpho.tab-content{ position:fixed; top:0; left:50%; transform:translateX(-50%); width:100%; max-width:var(--app-w); bottom:0; background:var(--bg); z-index:1150; padding:0; }
+      #tab-morpho.tab-content.active{ display:flex; flex-direction:column; }
+      #tab-morpho .mo-top{ display:flex; align-items:center; gap:12px; padding:calc(14px + env(safe-area-inset-top,0px)) 15px 14px; border-bottom:1px solid var(--border); background:var(--surface); flex:none; }
+      #tab-morpho .mo-back{ width:34px; height:34px; border-radius:999px; background:var(--surface2); display:grid; place-items:center; color:var(--text-muted); border:none; cursor:pointer; flex:none; }
+      #tab-morpho .mo-back svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+      #tab-morpho .mo-ttl{ font-family:var(--font-heading); font-size:16px; }
+      #tab-morpho .mo-body{ flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; }
+    </style>
+    <div class="mo-top">
+      <button class="mo-back" onclick="fermerMorpho()" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span class="mo-ttl">Analyse morpho</span>
+    </div>
+    <div class="mo-body">
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;">Ajoute une photo de <b>face</b> et/ou de <b>dos</b> (tenue ajustée, bonne lumière, fond neutre). L'IA repère tes groupes en avance / en retard pour orienter ton entraînement.</div>
 
-      <div style="display:flex;gap:10px;margin-top:13px;">
+      <div style="display:flex;gap:11px;margin-top:14px;">
         <label style="flex:1;cursor:pointer;">
           <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;">Face</div>
-          <div id="morpho-prev-face" style="height:120px;border-radius:12px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
+          <div id="morpho-prev-face" style="height:150px;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
           <input type="file" accept="image/*" onchange="_morphoFichier(this,'face')" style="display:none;">
         </label>
         <label style="flex:1;cursor:pointer;">
           <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;">Dos</div>
-          <div id="morpho-prev-dos" style="height:120px;border-radius:12px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
+          <div id="morpho-prev-dos" style="height:150px;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
           <input type="file" accept="image/*" onchange="_morphoFichier(this,'dos')" style="display:none;">
         </label>
       </div>
 
-      <label style="display:flex;gap:9px;align-items:flex-start;margin-top:14px;cursor:pointer;">
+      <label style="display:flex;gap:9px;align-items:flex-start;margin-top:16px;cursor:pointer;">
         <input type="checkbox" id="morpho-consent" style="margin-top:2px;flex:none;width:17px;height:17px;">
         <span style="font-size:11.5px;color:var(--text-muted);line-height:1.45;">J'accepte que mes photos soient envoyées à l'IA pour analyse. <b>Elles ne sont pas conservées</b> : analysées puis supprimées. Analyse à titre indicatif, non médicale.</span>
       </label>
 
-      <button id="morpho-go" onclick="_morphoAnalyser()" style="width:100%;margin-top:14px;height:46px;border:none;border-radius:13px;background:var(--accent);color:var(--on-accent);font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;">Analyser</button>
-      <div id="morpho-result" style="margin-top:14px;"></div>
+      <button id="morpho-go" onclick="_morphoAnalyser()" style="width:100%;margin-top:16px;height:48px;border:none;border-radius:14px;background:var(--accent);color:var(--on-accent);font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 6px 16px rgba(26,95,255,.28);">Analyser</button>
+      <div id="morpho-result" style="margin-top:16px;"></div>
     </div>
   </div>
 
@@ -1012,20 +1022,11 @@
         <!-- Bloc Régularité retiré : doublon avec la roue en haut de l'accueil. -->
       </div>
 
-      <div class="tj-fabwrap">
-        <span class="tj-fabtip">Demande à Novalyz</span>
-        <button class="tj-fab" onclick="ouvrirNovalyzIA()"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
-      </div>
 
     </div>
 
     <!-- ONGLET SÉANCE -->
     <div id="tab-seance" class="tab-content">
-      <!-- Bulle « Demande à Novalyz » (masquée pendant la saisie plein écran) -->
-      <div class="en-fabwrap">
-        <span class="en-fabtip">Demande à Novalyz</span>
-        <button class="en-fab" onclick="ouvrirNovalyzIA()" title="Demande à Novalyz"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
-      </div>
 
       <!-- HUB ENTRAÎNEMENT (maquette Entrainement.dc.html) — aperçu programme +
            séances. Peuplé par renderEntrainement(data). NE REMPLACE PAS le flux
@@ -1934,10 +1935,6 @@
         </div>
       </div>
 
-      <div class="ma-fabwrap">
-        <span class="ma-fabtip">Demande à Novalyz</span>
-        <button class="ma-fab" onclick="ouvrirNovalyzIA()"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
-      </div>
 
     </div>
 
@@ -2134,10 +2131,6 @@
         </div><!-- /cx-cardio-sub -->
       </div>
 
-      <div class="et-fabwrap" style="position:fixed;right:15px;bottom:calc(80px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:9px;z-index:40;">
-        <span style="background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);">Demande à Novalyz</span>
-        <button onclick="ouvrirNovalyzIA()" title="Demande à Novalyz" style="width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
-      </div>
     </div>
 
     <!-- ONGLET ÉTAT — écran « Mon état » (maquette Etat.dc.html).
@@ -2255,10 +2248,6 @@
         </div>
       </div>
 
-      <div class="et-fabwrap">
-        <span class="et-fabtip">Demande à Novalyz</span>
-        <button class="et-fab" onclick="ouvrirNovalyzIA()" title="Demande à Novalyz"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
-      </div>
     </div>
 
     <!-- ONGLET DOULEURS & BLESSURES — douleurs signalées (bilans de séance) +

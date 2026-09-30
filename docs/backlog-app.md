@@ -31,7 +31,8 @@
 - ✅ **Objectif de séances par semaine** (`objectif.seances_semaine`, affiché « X/Y objectif », utilisé dans la régularité).
 - ✅ **Séances hybrides muscu / cardio** (programme hybride : ajout d'items Muscu **ou** Cardio).
 - ✅ **Exercices cardio** (catalogue `_CARDIO_CATALOG` : activités pour le programme + l'import + les analyses).
-- 🟡 **Analyse morphologique IA par photo** (face + dos) — **v1 codée, en veille** (action `analyseMorpho`, vision **Sonnet 5.5**, photos **jamais stockées**, consentement obligatoire, quota 1/j). Accès : bouton appareil photo dans le fil « Novalyz IA ». S'allume avec la même clé `ANTHROPIC_API_KEY`. Reste à faire : **envoi photo/vidéo au coach** (média stocké), **vidéo → IA** (frames), **photo de profil / avatar** (stockée). (voir C4.)
+- 🟡 **Analyse morphologique IA par photo** (face + dos) — **v1 codée, en veille** (action `analyseMorpho`, vision **Sonnet 5.5**, photos **jamais stockées**, consentement, quota 1/j). Accès : **page dédiée** `#tab-morpho` ouverte depuis le fil « Novalyz IA » (CTA + bouton photo). S'allume avec la clé `ANTHROPIC_API_KEY`.
+- ⏳ **Médias stockés (phase 2, coach)** : **envoi de VIDÉOS d'exercices au coach** (montrer la technique / geste, revue humaine) + **photo de profil / avatar**. Nécessite Supabase Storage + rétention + suppression + consentement. (La vidéo n'est PAS pour l'IA morpho — technique = revue coach.)
 
 ### A5 · Monétisation
 - 🟡 **Coach IA conversationnel** (fil « Novalyz IA ») — **codé et prêt, en VEILLE** : front (`cvSendIA`) + backend (`action chatIA`, grounding sur le moteur, quota **2 messages/jour/athlète**, modèle Haiku 4.5). **Coût = 0 € tant que le secret Supabase `ANTHROPIC_API_KEY` n'est pas ajouté** — sans clé, l'app répond « pas encore activé », aucun appel facturé. **Pour l'allumer : ajouter `ANTHROPIC_API_KEY` (Supabase → Edge Functions → Secrets) + redéployer `index.ts`.** Freemium : gratuit = quota, au-delà = premium (lié à C5).

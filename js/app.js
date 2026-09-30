@@ -6799,15 +6799,14 @@ function cvSendIA() {
 // ── Analyse morpho par photo (IA vision) — photos jamais stockées ──
 var _morphoImgs = { face: null, dos: null };
 function ouvrirMorpho() {
-  var m = document.getElementById('modal-morpho'); if (!m) return;
   _morphoImgs = { face: null, dos: null };
+  if (typeof switchTab === 'function') switchTab('morpho');   // sous-écran plein écran
   ['face', 'dos'].forEach(function (w) { var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; } });
   var c = document.getElementById('morpho-consent'); if (c) c.checked = false;
   var r = document.getElementById('morpho-result'); if (r) r.innerHTML = '';
   var g = document.getElementById('morpho-go'); if (g) { g.disabled = false; g.textContent = 'Analyser'; }
-  m.style.display = 'flex';
 }
-function fermerMorpho() { var m = document.getElementById('modal-morpho'); if (m) m.style.display = 'none'; }
+function fermerMorpho() { _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils'); }
 function _morphoFichier(input, which) {
   var f = input.files && input.files[0]; if (!f) return;
   var img = new Image(), url = URL.createObjectURL(f);
@@ -7142,6 +7141,9 @@ function switchTab(tab) {
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
+  // Bulle « Conversation » du header : masquée sur l'onglet Coach (on y est déjà),
+  // visible ailleurs (elle porte le badge « nouveau message »).
+  { var _bub = document.getElementById('btn-bubble-hdr'); if (_bub) _bub.style.display = (tab === 'conseils') ? 'none' : 'block'; }
   // Dashboard prend toute la largeur sans padding
   const container = document.getElementById('main-container');
   container.classList.remove('no-pad');
