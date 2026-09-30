@@ -40,9 +40,14 @@
   Health Connect impose au moment de la **publication Play Store** une **déclaration
   d'usage des données de santé + revue Google** (Health Connect / Health Apps policy).
   À traiter avec la fiche Play Store, pas avant.
-- **Nettoyage optionnel (non bloquant)** : retirer le code OAuth Google Fit mort
-  (`connecterGoogleHealth`/`googleHealth*`) une fois sûr qu'aucun compte legacy n'en
-  dépend. Risque faible mais à faire proprement (pas urgent).
+- **Nettoyage code OAuth Google Fit** — ✅ **fait (30 sept. 2026)** : suppression du
+  code mort front (`connecterGoogleHealth` / `_traiterRetourGoogleHealth` /
+  `majUiGoogleHealth` / `synchroniserGoogleHealth` / `deconnecterGoogleHealth` /
+  `autoSyncGoogleHealth` + consts + appelants) et backend (`handleGoogleHealth*`,
+  `_googleAccessToken`, `GOOGLE_TOKEN_URL`, 4 routes). **Conservés** : la table
+  `google_health_tokens` (données legacy + nettoyage à la suppression de compte) et le
+  label `source:'google_health'`. Vérifié : croisement front↔backend OK, tests 41/41.
+  ⚠️ `index.ts` à **redéployer**. (Secrets `GOOGLE_CLIENT_ID/SECRET` devenus inutiles.)
 
 ### 3. Distribution des mises à jour
 - **État** : Play Store (test interne) en cours — compte dev en **validation
