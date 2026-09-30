@@ -262,8 +262,12 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 - **Réglages** : semaine calendaire/glissante · « Revoir l'intro ».
 
 ## 🚚 Distribution / MAJ auto
-- **Play Store — test interne** = vraie solution d'auto-update (compte dev en validation Google).
-  Quand validé : build **release signé (AAB)** + fiche.
+- ✅ **Compte dev validé** + **clé d'upload** + **pipeline AAB signé** (workflow
+  `build-aab.yml`, `jar verified`, publié en Release `novalyz-aab-latest`). Testé
+  30 sept. 2026.
+- ⏳ **Reste** : fiche Play Console + déclarations (données santé Health Connect) +
+  release **test interne** → lien testeurs → MAJ auto. Guide :
+  [`publication-play-store.md`](./publication-play-store.md).
 - En attendant : **PWA** (web, auto via Service Worker) ou **bannière « MAJ dispo »** in-app.
 
 ## 🐞 Bugs / correctifs à faire (backlog)

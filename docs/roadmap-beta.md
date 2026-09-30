@@ -49,11 +49,21 @@
   label `source:'google_health'`. Vérifié : croisement front↔backend OK, tests 41/41.
   ⚠️ `index.ts` à **redéployer**. (Secrets `GOOGLE_CLIENT_ID/SECRET` devenus inutiles.)
 
-### 3. Distribution des mises à jour
-- **État** : Play Store (test interne) en cours — compte dev en **validation
-  d'identité Google**. Politique de confidentialité ✅ en ligne.
-- **Suite** : générer l'**upload key** (secret, PAS committée), build **AAB**
-  signé en CI, créer la fiche + test interne, lien testeurs.
+### 3. Distribution des mises à jour — 🟡 pipeline prêt, reste la fiche Play
+- ✅ **Compte dev Google validé** (identité OK).
+- ✅ **Clé d'upload créée** (`novalyz-upload.jks`) + **4 secrets GitHub** posés
+  (`ANDROID_KEYSTORE_BASE64` / `_PASSWORD` / `ANDROID_KEY_ALIAS` / `_PASSWORD`).
+- ✅ **Pipeline AAB signé** — workflow `.github/workflows/build-aab.yml` (sur `main`,
+  lançable) : build `bundleRelease` signé via `android.injected.signing.*` (sans
+  toucher `build.gradle`), `versionCode` = n° de run (croissant). AAB publié en
+  Release `novalyz-aab-latest`. **Testé 30 sept. 2026** : run vert, `jar verified`.
+- ✅ Politique de confidentialité en ligne.
+- ⏳ **Reste (côté Play Console)** : créer la fiche app (`com.novalyz.app`, Play App
+  Signing), remplir les **déclarations** (sécurité des données + **données santé /
+  Health Connect** + classification + « pas de pub » + assets fiche), créer la
+  release **test interne** (upload de l'AAB), ajouter les testeurs → lien d'opt-in.
+  Puis (comptes perso) **test fermé ≥12 testeurs / 14 j** avant la production.
+- 📄 Guide complet pas à pas : [`publication-play-store.md`](./publication-play-store.md).
 
 ---
 
