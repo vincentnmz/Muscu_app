@@ -27,18 +27,22 @@
   (spam). Nécessite un **nom de domaine** (à acheter si pas déjà).
 - **Effort** : faible côté code (1 ligne + secret) ; le vrai travail = DNS.
 
-### 2. Montre qui se déconnecte tous les 7 jours
-- **Cause** : PAS un bug de code (le refresh existe, `index.ts:2993`). L'écran
-  de consentement **OAuth Google est en mode « Test »** → Google révoque le
-  refresh token après 7 jours.
-- **Fix** : passer la consent screen en **« Production »** (Google Cloud
-  Console). Vérifier au passage que le flux demande bien `access_type=offline`
-  + `prompt=consent` (pour toujours obtenir un refresh token).
-- **Nuance** : scopes santé = sensibles → possible écran « app non vérifiée » et
-  **vérification Google** requise au-delà de ~100 utilisateurs. À creuser selon
-  les scopes exacts utilisés.
-- **Effort** : config (pas de code) ; la vérification Google peut prendre du
-  temps si nécessaire.
+### 2. Montre qui se déconnecte tous les 7 jours — ✅ OBSOLÈTE (migration Health Connect)
+- **Mise à jour (30 sept. 2026, vérifié dans le code)** : l'app **ne passe plus par
+  OAuth Google Fit** pour la montre. Tous les boutons montre appellent
+  `ouvrirImportMontre()` → **Health Connect natif** (plugin `capacitor-health`).
+  Les fonctions OAuth (`connecterGoogleHealth`…) subsistent dans `app.js` mais
+  **aucune UI ne les appelle** (`connecterGoogleHealth` = 0 appelant) ; il reste un
+  `autoSyncGoogleHealth` best-effort pour d'anciens comptes déjà liés, sans moyen de
+  (re)connexion. → **Le problème du refresh token révoqué à 7 j ne s'applique plus**
+  (Health Connect = permissions Android persistantes, pas d'expiration OAuth).
+- **Reliquat réel (déplacé vers P0-3 Play Store)** : lire des données santé via
+  Health Connect impose au moment de la **publication Play Store** une **déclaration
+  d'usage des données de santé + revue Google** (Health Connect / Health Apps policy).
+  À traiter avec la fiche Play Store, pas avant.
+- **Nettoyage optionnel (non bloquant)** : retirer le code OAuth Google Fit mort
+  (`connecterGoogleHealth`/`googleHealth*`) une fois sûr qu'aucun compte legacy n'en
+  dépend. Risque faible mais à faire proprement (pas urgent).
 
 ### 3. Distribution des mises à jour
 - **État** : Play Store (test interne) en cours — compte dev en **validation
@@ -71,13 +75,14 @@
 
 ## Ordre de bataille proposé
 
-1. **P0-1 (mails)** + **P0-2 (montre)** : les deux « services en mode test → en
-   production ». Débloque l'accès réel pour des testeurs. *(Prérequis : un nom
-   de domaine.)*
-2. **P0-3 (Play Store)** : dès que Google valide l'identité.
-3. **P1** : solidité + onboarding + accès testeur.
-4. Puis **Produit** (réorg + IA-coach) en parallèle, une fois la base stable.
+1. ~~**P0-2 (montre OAuth)**~~ → ✅ **obsolète** (montre = Health Connect natif ;
+   plus de refresh token à 7 j).
+2. **P0-1 (mails)** : Resend domaine vérifié. *(Prérequis : un nom de domaine.)*
+3. **P0-3 (Play Store)** : dès que Google valide l'identité — inclut la **déclaration
+   Health Connect** (données santé). Côté code : **build AAB release signé en CI**.
+4. **P1** : solidité + onboarding + accès testeur.
+5. Puis **Produit** (réorg + IA-coach) en parallèle, une fois la base stable.
 
-> Thème unificateur des P0 : **faire sortir les services externes du mode
-> « test »** (Resend domaine vérifié · Google OAuth en Production · app publiée
-> sur le Store).
+> Thème unificateur des P0 restants : **faire sortir les services externes du mode
+> « test »** (Resend domaine vérifié · app publiée sur le Store). *(Le volet OAuth
+> Google est retombé avec la migration Health Connect.)*
