@@ -1,0 +1,144 @@
+# Construit l'AAB (Android App Bundle) SIGNÉ pour le Play Store — appli de PROD
+# (identifiant com.novalyz.app, nom « Novalyz »). Contrairement à l'APK debug
+# (installable directement, clé de test), l'AAB est le format que Google Play
+# EXIGE pour publier : on l'uploade sur le Play Console (test interne → prod), et
+# Google fabrique les APK optimisés par appareil.
+#
+# Signature : méthode officielle android.injected.signing.* (celle de l'assistant
+# « Generate Signed Bundle » d'Android Studio). AUCUNE modification de build.gradle :
+# la clé d'upload est injectée au build depuis les secrets GitHub. Play App Signing
+# re-signe ensuite avec la clé d'app gérée par Google — la clé ci-dessous est ta
+# clé d'UPLOAD (à garder secrète, jamais committée).
+#
+# Secrets GitHub requis (Settings → Secrets and variables → Actions) :
+#   - ANDROID_KEYSTORE_BASE64   : le fichier .jks encodé en base64 (voir README plus bas)
+#   - ANDROID_KEYSTORE_PASSWORD : mot de passe du keystore (storePassword)
+#   - ANDROID_KEY_ALIAS         : alias de la clé (ex. novalyz-upload)
+#   - ANDROID_KEY_PASSWORD      : mot de passe de la clé (keyPassword)
+#   - GOOGLE_SERVICES_JSON      : (déjà présent) config Firebase de com.novalyz.app
+#
+# Générer la clé d'upload (UNE fois, en local — garde le .jks en lieu sûr) :
+#   keytool -genkeypair -v -keystore novalyz-upload.jks -alias novalyz-upload \
+#     -keyalg RSA -keysize 2048 -validity 10000 \
+#     -storepass "MDP_STORE" -keypass "MDP_KEY" -dname "CN=Novalyz, O=Novalyz, C=FR"
+#   base64 -w0 novalyz-upload.jks > keystore.b64   # (macOS : base64 -i novalyz-upload.jks -o keystore.b64)
+#   → colle le contenu de keystore.b64 dans le secret ANDROID_KEYSTORE_BASE64.
+#
+# Déclenchement MANUEL : Actions → « Build AAB Android (Play Store) » → Run workflow.
+name: Build AAB Android (Play Store)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java (JDK 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Vérifier les secrets de signature
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KS_KEYPW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=""
+          [ -z "$KS_B64" ]   && missing="$missing ANDROID_KEYSTORE_BASE64"
+          [ -z "$KS_PW" ]    && missing="$missing ANDROID_KEYSTORE_PASSWORD"
+          [ -z "$KS_ALIAS" ] && missing="$missing ANDROID_KEY_ALIAS"
+          [ -z "$KS_KEYPW" ] && missing="$missing ANDROID_KEY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Secret(s) de signature absent(s) :$missing — ajoute-les dans Settings → Secrets → Actions (voir l'en-tête du workflow). Build stoppé."
+            exit 1
+          fi
+          echo "✓ Secrets de signature présents."
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Assembler www/ (coquille web pour Capacitor)
+        run: npm run build:www
+
+      - name: Marqueur de build (date + sha) dans l'app
+        run: |
+          BID="$(date -u +%Y-%m-%d\ %H:%M)Z-${GITHUB_SHA:0:7}"
+          sed -i "s/__BUILD_ID__/$BID/g" www/js/app.js
+          echo "BUILD_ID = $BID"
+
+      # versionCode unique et croissant : Play Store REFUSE un upload dont le
+      # versionCode n'est pas strictement supérieur au précédent. On prend le n° de
+      # run de CE workflow (croît à chaque exécution).
+      - name: versionCode unique (n° de run)
+        run: |
+          sed -i "s/versionCode 1/versionCode ${GITHUB_RUN_NUMBER}/" android/app/build.gradle
+          grep -m1 versionCode android/app/build.gradle
+
+      - name: Injecter google-services.json (config Firebase, depuis le secret)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Secret GOOGLE_SERVICES_JSON absent → Firebase non configuré. Build stoppé."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          echo "✓ google-services.json injecté ($(wc -c < android/app/google-services.json) octets)"
+
+      - name: Synchroniser Capacitor (www → android + plugins)
+        run: npx cap sync android
+
+      - name: Décoder le keystore d'upload
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-keystore.jks"
+          echo "✓ keystore décodé ($(wc -c < "$RUNNER_TEMP/upload-keystore.jks") octets)"
+
+      # Build + SIGNATURE via android.injected.signing.* (méthode officielle AGP,
+      # identique à « Generate Signed Bundle » d'Android Studio) : aucune modif de
+      # build.gradle, le release buildType reste tel quel.
+      - name: Construire l'AAB release signé
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x android/gradlew
+          cd android && ./gradlew bundleRelease --no-daemon --stacktrace \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/upload-keystore.jks" \
+            -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
+
+      - name: Vérifier que l'AAB est bien produit
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          if [ ! -f "$AAB" ]; then
+            echo "::error::AAB introuvable ($AAB) — le build a échoué."
+            exit 1
+          fi
+          echo "✓ AAB produit : $(wc -c < "$AAB") octets"
+
+      # L'AAB n'est PAS installable directement (il se dépose sur le Play Console).
+      # On le publie donc en ARTEFACT (téléchargeable depuis la page du run par le
+      # propriétaire), pas en Release publique.
+      - name: Publier l'AAB en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: novalyz-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
