@@ -10928,16 +10928,26 @@ function renderAujourdhui(data) {
     if (att) {
       var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
       if (centre.length) {
-        var top = centre[0];
         var ACOL = { haute: '#DC3545', moyenne: 'var(--tj-warn)', basse: 'var(--tj-subtle)' };
-        var acol = ACOL[top.severity] || 'var(--tj-warn)';
-        att.style.display = ''; att.style.borderLeftColor = acol;
-        var ad = document.getElementById('tj-att-dot'); if (ad) ad.style.background = acol;
-        var at = document.getElementById('tj-att-title'); if (at) at.textContent = top.title || '';
-        var ae = document.getElementById('tj-att-evidence'); if (ae) { ae.textContent = top.evidence || ''; ae.style.display = top.evidence ? '' : 'none'; }
-        var aa = document.getElementById('tj-att-action'); if (aa) { aa.textContent = top.action ? ('→ ' + top.action) : ''; aa.style.display = top.action ? '' : 'none'; }
-        var al = document.getElementById('tj-att-lu'); if (al) al.onclick = function () { marquerAlerteLue(top.id); };
-      } else { att.style.display = 'none'; }
+        var _esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+        var topCol = ACOL[centre[0].severity] || 'var(--tj-warn)';
+        var lab = centre.length > 1 ? ('Alertes · ' + centre.length) : 'Point d\'attention';
+        att.style.display = ''; att.style.borderLeftColor = topCol;
+        // Liste des alertes non lues (la cloche garde l'historique complet).
+        att.innerHTML = centre.map(function (a, i) {
+          var col = ACOL[a.severity] || 'var(--tj-warn)';
+          return '<div style="display:flex;align-items:flex-start;gap:11px;' + (i > 0 ? 'border-top:1px solid var(--tj-border);padding-top:11px;margin-top:11px;' : '') + '">'
+            + '<span style="width:9px;height:9px;border-radius:999px;background:' + col + ';margin-top:5px;flex:none;"></span>'
+            + '<div style="flex:1;min-width:0;">'
+            + (i === 0 ? '<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:3px;">' + lab + '</div>' : '')
+            + '<div style="font-size:14px;font-weight:800;color:var(--tj-text);">' + _esc(a.title || '') + '</div>'
+            + (a.evidence ? '<div style="font-size:12px;color:var(--tj-muted);line-height:1.4;margin-top:2px;">' + _esc(a.evidence) + '</div>' : '')
+            + (a.action ? '<div style="font-size:12.5px;color:var(--tj-text);line-height:1.4;margin-top:6px;font-weight:600;">→ ' + _esc(a.action) + '</div>' : '')
+            + '</div>'
+            + '<button title="Marquer comme lu" onclick="marquerAlerteLue(&quot;' + _esc(String(a.id)) + '&quot;)" style="flex:none;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--tj-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
+            + '</div>';
+        }).join('');
+      } else { att.style.display = 'none'; att.innerHTML = ''; }
     }
   } catch (e) {}
 
