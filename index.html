@@ -65,7 +65,6 @@
 <header id="app-header">
   <h1><svg id="brand-ico" class="ico" style="width:19px;height:19px;vertical-align:-3px;margin-right:7px;color:var(--accent)"><use id="brand-ico-use" href="#i-dumbbell"/></svg><span id="header-nom">Novalyz</span></h1>
   <div style="display:flex;align-items:center;gap:10px;">
-    <button id="btn-bubble-hdr" onclick="ouvrirConversations()" title="Conversation" style="display:none;position:relative;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg><span id="badge-conseils" style="display:none;position:absolute;top:-6px;right:-6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
     <button id="btn-alertes-hdr" onclick="ouvrirCentreAlertes()" title="Mes alertes" style="display:none;position:relative;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="badge-alertes" style="display:none;position:absolute;top:-6px;right:-6px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
     <button id="btn-reglages-hdr" onclick="switchTab('reglages')" title="Réglages" style="display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <button class="logout-btn" onclick="seDeconnecter()" style="display:none" id="btn-logout"><svg class="ico ico-btn"><use href="#i-logout"/></svg>Déco</button>
@@ -126,7 +125,7 @@
   <button class="tab-btn" onclick="switchTab('seance')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg></span><span>Entraînement</span></button>
   <button class="tab-btn" onclick="switchTab('historique')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg></span><span>Analyses</span></button>
   <button class="tab-btn" onclick="switchTab('etat')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg></span><span>Forme</span></button>
-  <button class="tab-btn" onclick="ouvrirCoach()"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></span><span>Coach</span></button>
+  <button class="tab-btn" onclick="ouvrirCoach()"><span class="tab-ico" style="position:relative"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg><span id="badge-conseils" style="display:none;position:absolute;top:-5px;right:-8px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></span><span>Coach</span></button>
 </div>
 
 <div class="container" id="main-container">
@@ -2667,6 +2666,15 @@
       <div id="hc-status" style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;min-height:16px;"></div>
       <div id="hc-list"></div>
     </div>
+  </div>
+
+  <!-- Bulle « Demande à Novalyz » — UNIQUE et globale (une seule dans tout le DOM).
+       Pilotée par _majFabNovalyz() : visible seulement pour l'athlète SOLO (sans
+       coach), masquée sur l'écran conversation, l'analyse morpho et pendant la
+       saisie plein écran d'une séance. L'athlète AVEC coach passe par l'onglet Coach. -->
+  <div id="fab-novalyz" style="display:none;position:fixed;right:15px;bottom:calc(80px + env(safe-area-inset-bottom,0px));align-items:center;gap:9px;z-index:1140;">
+    <span style="background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);">Demande à Novalyz</span>
+    <button onclick="ouvrirNovalyzIA()" title="Demande à Novalyz" style="width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
   </div>
 
   <script src="js/platform.js"></script>
