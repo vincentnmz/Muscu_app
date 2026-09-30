@@ -1802,7 +1802,7 @@ function seDeconnecter() {
   document.body.classList.remove('seance-active');
   try { _seanceChronoStop(); _seanceChronoT0 = 0; } catch (e) {}
   document.getElementById('btn-logout').style.display = 'none';
-  { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'none'; }
+  { var _fb = document.getElementById('fab-novalyz'); if (_fb) _fb.style.display = 'none'; }
   { var _br = document.getElementById('btn-reglages-hdr'); if (_br) _br.style.display = 'none'; }
   { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'none'; }
   document.getElementById('inp-login').value = '';
@@ -6651,11 +6651,31 @@ function ouvrirNovalyzIA() { _cvView = 'ia'; if (typeof switchTab === 'function'
 function ouvrirConversations() { _cvView = 'list'; if (typeof switchTab === 'function') switchTab('conseils'); }
 // Onglet « Coach » (adaptatif) : athlète SOLO → fil IA direct ; athlète AVEC coach
 // humain → hub (liste : messagerie coach + IA en complément, coach en avant).
+// L'athlète a-t-il un coach humain lié ? (détermine bulle flottante vs onglet Coach)
+function _athleteAUnCoach() {
+  try { var c = athlete && athlete.coach_id; return !!(c && String(c).trim() && String(c) !== 'null' && String(c) !== '0'); }
+  catch (e) { return false; }
+}
+
 function ouvrirCoach() {
-  var hasCoach = false;
-  try { var c = athlete && athlete.coach_id; hasCoach = !!(c && String(c).trim() && String(c) !== 'null' && String(c) !== '0'); } catch (e) {}
-  _cvView = hasCoach ? 'list' : 'ia';
+  _cvView = _athleteAUnCoach() ? 'list' : 'ia';
   if (typeof switchTab === 'function') switchTab('conseils');
+}
+
+// Bulle « Demande à Novalyz » UNIQUE : visible seulement pour l'athlète SOLO (sans
+// coach), jamais sur la conversation / l'analyse morpho / la saisie plein écran.
+// L'athlète AVEC coach passe par l'onglet Coach (pas de bulle flottante).
+function _majFabNovalyz(tab) {
+  var fab = document.getElementById('fab-novalyz');
+  if (!fab) return;
+  if (tab == null) {
+    var act = document.querySelector('.tab-content.active');
+    tab = act ? (act.id || '').replace(/^tab-/, '') : '';
+  }
+  var solo = !_athleteAUnCoach();
+  var ecranCache = (tab === 'conseils' || tab === 'morpho');
+  var saisieActive = document.body.classList.contains('seance-active');
+  fab.style.display = (solo && !ecranCache && !saisieActive) ? 'flex' : 'none';
 }
 
 function _cvShow(view) {
@@ -6949,8 +6969,8 @@ async function ouvrirApp() {
   document.body.classList.add('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'block';
   document.getElementById('btn-reglages-hdr').style.display = 'block';
-  { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'block'; }
   { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'block'; }
+  try { _majFabNovalyz(); } catch (e) {}
   // Restore saved theme
   const savedTheme = localStorage.getItem('muscu_theme');
   if (savedTheme === 'light') document.body.classList.add('light-mode');
@@ -7141,9 +7161,9 @@ function switchTab(tab) {
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  // Bulle « Conversation » du header : masquée sur l'onglet Coach (on y est déjà),
-  // visible ailleurs (elle porte le badge « nouveau message »).
-  { var _bub = document.getElementById('btn-bubble-hdr'); if (_bub) _bub.style.display = (tab === 'conseils') ? 'none' : 'block'; }
+  // Bulle « Demande à Novalyz » : recalculée à chaque changement d'onglet
+  // (masquée sur la conversation, visible seulement pour l'athlète solo).
+  try { _majFabNovalyz(tab); } catch (e) {}
   // Dashboard prend toute la largeur sans padding
   const container = document.getElementById('main-container');
   container.classList.remove('no-pad');
@@ -11919,6 +11939,7 @@ function _seanceChronoStop() { if (_seanceChronoIv) { clearInterval(_seanceChron
 function ouvrirSeancePage() {
   try { if (typeof switchSubTab === 'function') switchSubTab('saisie'); } catch (e) {}
   document.body.classList.add('seance-active');
+  try { _majFabNovalyz(); } catch (e) {}
   var cont = document.getElementById('subtab-saisie'); if (cont) cont.scrollTop = 0;
   window.scrollTo(0, 0);
   _majSeancePageTitre();
@@ -11949,6 +11970,7 @@ function fermerSeancePage() {
     } catch (e) {}
   }
   document.body.classList.remove('seance-active');
+  try { _majFabNovalyz(); } catch (e) {}
   _seanceChronoStop();
   _seanceChronoT0 = 0;
   var _c = document.getElementById('seance-page-chrono'); if (_c) _c.textContent = '';
