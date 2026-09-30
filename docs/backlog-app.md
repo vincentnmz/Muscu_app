@@ -31,7 +31,7 @@
 - ✅ **Objectif de séances par semaine** (`objectif.seances_semaine`, affiché « X/Y objectif », utilisé dans la régularité).
 - ✅ **Séances hybrides muscu / cardio** (programme hybride : ajout d'items Muscu **ou** Cardio).
 - ✅ **Exercices cardio** (catalogue `_CARDIO_CATALOG` : activités pour le programme + l'import + les analyses).
-- ⏳ Créer des programmes avec **analyse morphologique IA par photo** (face + dos). ❓ premium + RGPD (voir C4).
+- 🟡 **Analyse morphologique IA par photo** (face + dos) — **v1 codée, en veille** (action `analyseMorpho`, vision **Sonnet 5.5**, photos **jamais stockées**, consentement obligatoire, quota 1/j). Accès : bouton appareil photo dans le fil « Novalyz IA ». S'allume avec la même clé `ANTHROPIC_API_KEY`. Reste à faire : **envoi photo/vidéo au coach** (média stocké), **vidéo → IA** (frames), **photo de profil / avatar** (stockée). (voir C4.)
 
 ### A5 · Monétisation
 - 🟡 **Coach IA conversationnel** (fil « Novalyz IA ») — **codé et prêt, en VEILLE** : front (`cvSendIA`) + backend (`action chatIA`, grounding sur le moteur, quota **2 messages/jour/athlète**, modèle Haiku 4.5). **Coût = 0 € tant que le secret Supabase `ANTHROPIC_API_KEY` n'est pas ajouté** — sans clé, l'app répond « pas encore activé », aucun appel facturé. **Pour l'allumer : ajouter `ANTHROPIC_API_KEY` (Supabase → Edge Functions → Secrets) + redéployer `index.ts`.** Freemium : gratuit = quota, au-delà = premium (lié à C5).
@@ -74,8 +74,8 @@ Décision retenue : **cloche header** (historique complet via le centre d'alerte
 ### C3 · Contexte de reprise (vacances / blessure / deload) — ✅ tranché & fait
 Décision retenue : **les deux** — l'athlète déclare lui-même son état (modale existante, source `'athlete'`) **et** Novalyz **suggère** un retour après une coupure détectée (≥14 j sans séance, jamais posé d'office). Affiché sur « Forme » (`#et-contexte`). Le moteur pondère (neutralise « régression », ACWR en pause, alertes absence/sous-charge en veille).
 
-### C4 · Analyse morphologique IA par photo (face + dos) — ⏳
-Fonction premium probable. ❓ **consentement / RGPD** (photos = données sensibles), stockage, et quel modèle d'analyse.
+### C4 · Analyse morphologique IA par photo (face + dos) — 🟡 tranché (v1)
+Décisions retenues : **photos JAMAIS stockées** (envoyées à l'IA vision puis jetées, RGPD-minimal) · **consentement explicite** obligatoire (case à cocher) · modèle **Sonnet 5.5** (vision) · cadre **non médical / respectueux / sans jugement corporel / sans chiffre inventé** · premium (quota, en veille sans clé). À trancher plus tard : **stockage opt-in** pour l'historique/comparaison avant-après (nécessaire pour l'envoi au coach et l'avatar profil) + **vidéo** (frames).
 
 ### C5 · Paiement premium — ⏳
 ❓ modèle (abonnement mensuel ? à vie ?), **prestataire** (Stripe / RevenueCat pour le natif), et **part reversée au coach**. Impacte l'architecture (comptes, droits).
