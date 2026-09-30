@@ -6649,6 +6649,14 @@ function afficherOngletConseils() {
 function ouvrirNovalyzIA() { _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils'); }
 // Entrée sur la liste des conversations (bulle d'en-tête).
 function ouvrirConversations() { _cvView = 'list'; if (typeof switchTab === 'function') switchTab('conseils'); }
+// Onglet « Coach » (adaptatif) : athlète SOLO → fil IA direct ; athlète AVEC coach
+// humain → hub (liste : messagerie coach + IA en complément, coach en avant).
+function ouvrirCoach() {
+  var hasCoach = false;
+  try { var c = athlete && athlete.coach_id; hasCoach = !!(c && String(c).trim() && String(c) !== 'null' && String(c) !== '0'); } catch (e) {}
+  _cvView = hasCoach ? 'list' : 'ia';
+  if (typeof switchTab === 'function') switchTab('conseils');
+}
 
 function _cvShow(view) {
   _cvView = view;
@@ -6719,7 +6727,32 @@ function cvOpenIA() {
   }
   cvRenderIa();
   cvRenderSugg();
+  try { _cvRenderIntro(); } catch (e) {}
   _cvShow('ia');
+}
+// Intro du fil IA : preuve de grounding (état / ACWR / sommeil / poids RÉELS) +
+// CTA analyse morpho. Met l'IA « en avant » et montre qu'elle lit tes données.
+function _cvRenderIntro() {
+  var el = document.getElementById('cv-ia-intro'); if (!el) return;
+  var d = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : {};
+  var m = d.moteur || {}, dash = d.dashboard || {};
+  var chip = function (inner) { return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:700;color:var(--text);box-shadow:var(--shadow-sm);">' + inner + '</span>'; };
+  var chips = [];
+  if (m.disponibilite && m.disponibilite.niveau) {
+    var niv = m.disponibilite.niveau;
+    var col = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : 'var(--danger)');
+    chips.push(chip('<i style="width:7px;height:7px;border-radius:50%;background:' + col + ';"></i>' + escapeHtml(niv)));
+  }
+  if (dash.acwr != null && m.acwr_fiable !== false) chips.push(chip('ACWR <small style="color:var(--text-subtle);font-weight:600;">' + escapeHtml(String(dash.acwr)) + '</small>'));
+  try { var sh = (d.sante_historique || [])[0]; if (sh && sh.sommeil_min != null) { var hh = Math.floor(sh.sommeil_min / 60), mn = Math.round(sh.sommeil_min % 60); chips.push(chip('Sommeil <small style="color:var(--text-subtle);font-weight:600;">' + hh + ' h' + (mn ? ' ' + (mn < 10 ? '0' + mn : mn) : '') + '</small>')); } } catch (e) {}
+  try { var p = (d.poids || [])[0]; if (p && p.poids != null) chips.push(chip('<small style="color:var(--text-subtle);font-weight:600;">' + escapeHtml(String(p.poids)) + ' kg</small>')); } catch (e) {}
+  var chipsHtml = chips.length ? ('<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:0 2px 7px;">Ce que je vois de toi</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;">' + chips.join('') + '</div>') : '';
+  var morpho = '<button onclick="ouvrirMorpho()" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px;border-radius:15px;background:linear-gradient(135deg,rgba(26,95,255,.08),rgba(124,92,255,.10));border:1px solid rgba(124,92,255,.22);cursor:pointer;font:inherit;color:var(--text);margin-bottom:4px;">'
+    + '<span style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#1A5FFF,#7C5CFF);display:grid;place-items:center;color:#fff;flex:none;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>'
+    + '<span style="flex:1;min-width:0;"><span style="display:block;font-weight:800;font-size:13px;">Analyse morpho par photo</span><span style="display:block;font-size:11px;color:var(--text-muted);margin-top:2px;">Face + dos → tes groupes en avance / en retard</span></span>'
+    + '<span style="color:var(--accent);flex:none;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>'
+    + '</button>';
+  el.innerHTML = chipsHtml + morpho;
 }
 function cvRenderIa() {
   var el = document.getElementById('cv-ia-msgs');
@@ -7097,13 +7130,13 @@ async function supprimerDemoFoot() {
   } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
 }
 
-const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'Forme', nutrition: 'Nutrition', conseils: 'Conversation', blessures: 'Douleurs & blessures', reglages: 'Réglages' };
+const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'Forme', nutrition: 'Nutrition', conseils: 'Coach', blessures: 'Douleurs & blessures', reglages: 'Réglages' };
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   // ⚠️ Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
   // Aujourd'hui · Entraînement · Analyses · État. (Cardio retiré de la barre.)
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['accueil','seance','historique','etat'][i] === tab);
+    b.classList.toggle('active', ['accueil','seance','historique','etat','conseils'][i] === tab);
   });
   const hdr = document.getElementById('header-nom');
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];
