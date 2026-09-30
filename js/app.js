@@ -11282,6 +11282,7 @@ function renderEtat(data) {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   try { renderEtatMontre(); } catch (e) {}
   try { _etRenderSuivis(data); } catch (e) {}
+  try { renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'et-contexte', 'athlete', data.pause); } catch (e) {}
 
   // ---- HERO : score de récupération (moteur.recScore) + niveau de dispo ----
   try {
@@ -13686,7 +13687,10 @@ function carteContexteHTML(contexte, athlete_id, source) {
     : '';
   var aid = String(athlete_id || '');
   var src = source || 'muscu';
-  var editable = (src === 'muscu') || (src === 'foot' && typeof cdMode !== 'undefined' && cdMode === 'coach');
+  // Éditable par le coach (vue muscu / foot en mode coach) OU par l'athlète solo
+  // sur son propre écran (source 'athlete') — sinon il ne pourrait jamais radoucir
+  // ses analyses après une coupure.
+  var editable = (src === 'muscu') || (src === 'athlete') || (src === 'foot' && typeof cdMode !== 'undefined' && cdMode === 'coach');
   var boutons = editable
     ? '<div style="display:flex;gap:8px;margin-top:12px;">'
       + '<button onclick="ouvrirModaleContexte(\'' + aid + '\',\'' + src + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' + (actif ? 'Changer l\'état' : 'Poser un état') + '</button>'
@@ -13733,7 +13737,43 @@ function renderCarteContexte(contexte, athlete_id, containerId, source, pause) {
   var el = document.getElementById(containerId);
   if (!el) return;
   if (pause && estEnPause(pause)) { el.innerHTML = carteVacancesHTML(pause); return; }
-  el.innerHTML = carteContexteHTML(contexte, athlete_id, source);
+  var html = carteContexteHTML(contexte, athlete_id, source);
+  // Auto-détection (athlète solo) : coupure d'entraînement + aucun contexte actif
+  // → on SUGGÈRE de poser un retour (confirmation requise, jamais posé d'office).
+  if (source === 'athlete' && !_ctxActif(contexte) && !_ctxSuggestDismissed(athlete_id)) {
+    var gap = _ctxGapJours();
+    if (gap != null && gap >= 14) html = _ctxSuggestionHTML(gap, athlete_id) + html;
+  }
+  el.innerHTML = html;
+}
+// Nombre de jours depuis la dernière séance (null si inconnu → pas de suggestion).
+function _ctxGapJours() {
+  try {
+    var dash = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.dashboard : null;
+    var ds = dash && dash.derniere_seance && dash.derniere_seance.date;
+    if (!ds) return null;
+    var ts = parseChatDate(ds); if (!ts) return null;
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    var d = new Date(ts); d.setHours(0, 0, 0, 0);
+    return Math.round((now - d) / 86400000);
+  } catch (e) { return null; }
+}
+function _ctxSuggestKey(aid) { return 'nvz_ctx_suggest_off_' + (aid || '') + '_' + _ymdLocal(new Date()); }
+function _ctxSuggestDismissed(aid) { try { return localStorage.getItem(_ctxSuggestKey(aid)) === '1'; } catch (e) { return false; } }
+function _ctxSuggestDismiss(aid) { try { localStorage.setItem(_ctxSuggestKey(aid), '1'); } catch (e) {} try { if (typeof dernierAppData !== 'undefined' && dernierAppData) renderCarteContexte(dernierAppData.contexte, aid, 'et-contexte', 'athlete', dernierAppData.pause); } catch (e) {} }
+function _ctxSuggestionHTML(gap, aid) {
+  var a = String(aid || '');
+  return '<div class="dash-card" style="padding:13px 14px;margin-bottom:12px;border-left:3px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.09));">'
+    + '<div style="font-size:13.5px;font-weight:800;">🌴 Tu reprends après une coupure ?</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;line-height:1.45;">Aucune séance enregistrée depuis <b>' + gap + ' jours</b>. Déclare un retour pour que Novalyz adapte ses analyses (pas de « régression » injustifiée le temps de remonter).</div>'
+    + '<div style="display:flex;gap:8px;margin-top:11px;">'
+    + '<button onclick="_ctxSuggererReprise(\'' + a + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">Poser un retour</button>'
+    + '<button onclick="_ctxSuggestDismiss(\'' + a + '\')" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Plus tard</button>'
+    + '</div></div>';
+}
+function _ctxSuggererReprise(aid) {
+  ouvrirModaleContexte(aid, 'athlete');
+  try { _ctxChoisir('retour_vacances'); } catch (e) {}
 }
 
 // --- Modale de saisie (coach) --------------------------------------------
@@ -13779,7 +13819,8 @@ async function poserContexte() {
     action: 'saveContexte', athlete_id: _ctxCible.athlete_id, etat: _ctxCible.choix,
     date_debut: document.getElementById('ctx-modale-debut').value,
     date_fin: document.getElementById('ctx-modale-fin').value,
-    note: document.getElementById('ctx-modale-note').value, source: 'coach'
+    note: document.getElementById('ctx-modale-note').value,
+    source: (_ctxCible.source === 'athlete' ? 'athlete' : 'coach')
   }, _ctxCible.athlete_id, _ctxCible.source);
 }
 async function terminerContexte(athlete_id, source) {
