@@ -2294,7 +2294,10 @@ function evaluerEtatAthlete(s: EtatInput): any {
 
   // --- Signaux → alertes (le contexte peut en supprimer) ---
   const alertes: { type: string; severite: string; message: string }[] = []
-  if (s.seances7 === 0 && s.injStatut !== 'indispo' && !reposPrevu)
+  // « Absence » seulement si l'athlète a DÉJÀ un historique d'entraînement : sinon
+  // un nouveau (ou quelqu'un qui n'a jamais loggé de séance) recevrait « Absence
+  // prolongée » (haute) + push dès le 1er jour — faux positif (fiabilité).
+  if (s.seances7 === 0 && s.injStatut !== 'indispo' && !reposPrevu && s.q.hasCharge)
     alertes.push({ type: 'absence', severite: 'haute', message: 'Aucune séance depuis 7 jours' })
   if (surchargeN >= 2) alertes.push({ type: 'surcharge', severite: 'haute', message: `Charge aiguë élevée (ACWR ${s.acwr})` })
   else if (surchargeN === 1) alertes.push({ type: 'charge', severite: 'moyenne', message: `Charge en hausse (ACWR ${s.acwr})` })

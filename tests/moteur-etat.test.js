@@ -98,7 +98,7 @@ function reproductionEtat(s) {
   const chargeHaute = surchargeN >= 1, sommeilBas = som != null && som <= 2, fatigueHaute = fat >= 4;
   const douleurGene = doul >= 2, douleurForte = doul >= 3;
   const tags = [];
-  if (s.seances7 === 0 && s.injStatut !== 'indispo' && !reposPrevu) tags.push('absence:h');
+  if (s.seances7 === 0 && s.injStatut !== 'indispo' && !reposPrevu && s.q.hasCharge) tags.push('absence:h');
   if (surchargeN >= 2) tags.push('surcharge:h');
   else if (surchargeN === 1) tags.push('charge:m');
   else if (acwrOk && s.acwr < 0.8 && s.seances7 > 0 && !reposPrevu) tags.push('sous_charge:m');
@@ -193,7 +193,9 @@ const CAS = [
 
   // C. Données manquantes
   { nom: 'D1 nouvel athlète (aucune donnée) → vert forcé, non interprétable', in: { acwr: null, acwrFiable: true, seances7: 0, douleur: null, fatigue: null, sommeil: null, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 0, wellnessN: 0, hasCharge: false } },
-    exp: { niveau: 0, statut: 'vert', dispo: 'Prêt', surcharge: 'Faible', risque_blessure: 'Faible', recup: '—', confiance: 'non_interpretable', acwr_fiable: false, acwr_categorie: 'non_interpretable', reco: 'Données insuffisantes pour établir une tendance.', tags: ['absence:h'] } },
+    exp: { niveau: 0, statut: 'vert', dispo: 'Prêt', surcharge: 'Faible', risque_blessure: 'Faible', recup: '—', confiance: 'non_interpretable', acwr_fiable: false, acwr_categorie: 'non_interpretable', reco: 'Données insuffisantes pour établir une tendance.', tags: [] } },
+  { nom: 'D1b athlète AVEC historique, 0 séance/7j → absence (haute) se déclenche', in: { acwr: null, acwrFiable: true, seances7: 0, douleur: null, fatigue: null, sommeil: null, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 0, hasCharge: true } },
+    exp: { niveau: 0, statut: 'vert', confiance: 'faible', tags: ['absence:h'] } },
   { nom: 'D2 charge sans bien-être → confiance faible, vert', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: null, fatigue: null, sommeil: null, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 0, hasCharge: true } },
     exp: { niveau: 0, statut: 'vert', confiance: 'faible', recup: '—', acwr_fiable: true, acwr_categorie: 'normal', tags: [], reco: 'RAS — maintenir la charge actuelle.' } },
 
