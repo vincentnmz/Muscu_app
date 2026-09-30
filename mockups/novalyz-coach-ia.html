@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coach IA — maquette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --text-muted:#4A5980; --text-subtle:#8595B8;
+    --accent:#1A5FFF; --accent-strong:#1248D4; --accent-a10:rgba(26,95,255,.10);
+    --violet:#7C5CFF; --good:#00A854; --good-a:rgba(0,168,84,.12); --gold:#F59E0B; --danger:#DC3545;
+    --sh-sm:0 1px 2px rgba(7,11,20,.06); --sh:0 8px 24px rgba(7,11,20,.10);
+    --font:'Quicksand','Helvetica Neue',Arial,sans-serif; --head:'Michroma','Helvetica Neue',Arial,sans-serif;
+    --ai:linear-gradient(135deg,#1A5FFF,#7C5CFF);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#dce4f5;background-image:radial-gradient(circle at 20% 0%,#e9eefc,#dce4f5 60%);
+    font-family:var(--font);color:var(--text);min-height:100vh;padding:26px 16px 60px;}
+  .page-h{max-width:900px;margin:0 auto 22px;text-align:center;}
+  .page-h h1{font-family:var(--head);font-size:19px;margin:0 0 6px;color:#0f1c3a;}
+  .page-h p{margin:0;color:#3b4a6b;font-size:13px;line-height:1.5;}
+  .frames{display:flex;gap:26px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:900px;margin:0 auto;}
+  .col{width:340px;max-width:100%;}
+  .badge{display:inline-flex;align-items:center;gap:7px;background:#0f1c3a;color:#fff;font-size:12px;font-weight:700;padding:7px 14px;border-radius:999px;margin:0 auto 12px;}
+  .badge b{color:#8fb4ff;}
+  .cap{background:rgba(255,255,255,.72);border:1px solid #c8d4ee;border-radius:14px;padding:12px 14px;margin:12px 2px 0;font-size:12px;line-height:1.55;color:#33425f;}
+  .cap b{color:#0f1c3a;}
+
+  .phone{background:var(--bg);border-radius:30px;box-shadow:0 20px 50px rgba(15,28,58,.28);overflow:hidden;border:7px solid #0f1c3a;position:relative;}
+  .status{height:32px;background:var(--surface);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:11px;color:var(--text-muted);font-weight:600;}
+  .scr{max-height:672px;overflow:hidden;display:flex;flex-direction:column;}
+  .body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
+  .body::-webkit-scrollbar{width:0;}
+
+  /* header IA */
+  .hd{display:flex;align-items:center;gap:12px;padding:14px 15px;background:var(--surface);border-bottom:1px solid var(--border);}
+  .ava{width:42px;height:42px;border-radius:13px;background:var(--ai);display:grid;place-items:center;color:#fff;flex:none;box-shadow:0 6px 16px rgba(26,95,255,.32);}
+  .ava svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .hd .nm{font-family:var(--head);font-size:15px;}
+  .hd .st{font-size:11px;color:var(--good);font-weight:700;display:flex;align-items:center;gap:5px;margin-top:2px;}
+  .hd .st i{width:6px;height:6px;border-radius:50%;background:var(--good);display:inline-block;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);}
+
+  /* grounding chips */
+  .glabel{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:2px 2px -2px;}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;}
+  .chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:700;color:var(--text);box-shadow:var(--sh-sm);}
+  .chip .d{width:7px;height:7px;border-radius:50%;flex:none;}
+  .chip small{color:var(--text-subtle);font-weight:600;}
+
+  /* morpho CTA */
+  .morpho{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:linear-gradient(135deg,rgba(26,95,255,.08),rgba(124,92,255,.10));border:1px solid rgba(124,92,255,.22);}
+  .morpho .ic{width:40px;height:40px;border-radius:12px;background:var(--ai);display:grid;place-items:center;color:#fff;flex:none;}
+  .morpho .ic svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .morpho .t{font-weight:800;font-size:13.5px;}
+  .morpho .s{font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.35;}
+  .morpho .go{margin-left:auto;color:var(--accent);flex:none;}
+
+  /* chat */
+  .ai-msg{display:flex;gap:9px;align-items:flex-start;}
+  .ai-msg .av{width:28px;height:28px;border-radius:9px;background:var(--ai);color:#fff;display:grid;place-items:center;font-family:var(--head);font-size:11px;flex:none;}
+  .bub{background:var(--surface);border:1px solid var(--border);border-radius:4px 15px 15px 15px;padding:11px 13px;font-size:12.5px;line-height:1.5;box-shadow:var(--sh-sm);max-width:82%;}
+  .bub b{color:var(--accent-strong);}
+  .me-msg{display:flex;justify-content:flex-end;}
+  .me{background:var(--accent);color:#fff;border-radius:15px 15px 4px 15px;padding:10px 13px;font-size:12.5px;line-height:1.45;max-width:80%;box-shadow:0 4px 12px rgba(26,95,255,.28);}
+
+  /* suggestions + input */
+  .sugg{display:flex;gap:7px;overflow-x:auto;padding:10px 14px 0;}
+  .sugg::-webkit-scrollbar{height:0;}
+  .sg{white-space:nowrap;background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:8px 13px;font-size:12px;font-weight:700;color:var(--accent-strong);flex:none;}
+  .inbar{display:flex;align-items:center;gap:8px;padding:10px 14px calc(12px);background:var(--surface);border-top:1px solid var(--border);}
+  .icam{width:40px;height:40px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);color:var(--accent);display:grid;place-items:center;flex:none;}
+  .icam svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .field{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:13px;padding:11px 13px;font-size:12.5px;color:var(--text-subtle);}
+  .send{width:40px;height:40px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none;box-shadow:0 6px 14px rgba(26,95,255,.32);}
+  .send svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .quota{font-size:10px;color:var(--text-subtle);text-align:center;padding:6px 0 0;}
+
+  /* morpho frame */
+  .mtitle{font-family:var(--head);font-size:15px;padding:2px;}
+  .photos{display:flex;gap:11px;}
+  .ph{flex:1;height:132px;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;position:relative;overflow:hidden;}
+  .ph.filled{border-style:solid;border-color:var(--accent);background:#c9d6f2;}
+  .ph .tag{position:absolute;top:8px;left:8px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 7px;color:var(--text-muted);}
+  .ph .ppl{font-size:40px;opacity:.5;}
+  .consent{display:flex;gap:9px;align-items:flex-start;font-size:11px;color:var(--text-muted);line-height:1.45;}
+  .cbx{width:17px;height:17px;border-radius:5px;border:2px solid var(--accent);background:var(--accent);flex:none;display:grid;place-items:center;color:#fff;}
+  .cbx svg{fill:none;stroke:currentColor;stroke-width:3;}
+  .analyse{width:100%;height:46px;border-radius:13px;background:var(--accent);color:#fff;border:none;font-family:inherit;font-weight:800;font-size:14px;box-shadow:0 6px 16px rgba(26,95,255,.3);}
+  .result{background:var(--surface2);border:1px solid var(--border);border-radius:13px;padding:13px;font-size:12px;line-height:1.55;color:var(--text);}
+  .result h4{margin:0 0 3px;font-size:12px;color:var(--accent-strong);}
+  .result p{margin:0 0 10px;}
+  .result .disc{font-size:10px;color:var(--text-subtle);border-top:1px solid var(--border);padding-top:8px;margin-top:2px;}
+
+  .tabbar{display:flex;background:var(--surface);border-top:1px solid var(--border);}
+  .tb{flex:1;padding:9px 0 11px;text-align:center;color:var(--text-subtle);}
+  .tb.on{color:var(--accent);}
+  .tb svg{display:block;margin:0 auto 3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .tb.on svg path[fill]{fill:currentColor;}
+  .tb span{font-size:9px;font-weight:700;}
+  .note{font-size:10px;color:var(--text-subtle);text-align:center;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="page-h">
+  <h1>Onglet « Coach » — Novalyz IA</h1>
+  <p>5e onglet dédié à l'IA : un coach groundé sur tes vraies données + l'analyse morpho par photo. Données d'exemple.</p>
+</div>
+
+<div class="frames">
+
+  <!-- FRAME 1 : COACH IA -->
+  <div class="col">
+    <div style="text-align:center;"><span class="badge"><b>ÉCRAN 1</b> · Coach IA</span></div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>Coach</span></div>
+      <div class="scr">
+        <div class="hd">
+          <span class="ava"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 8l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="#fff" stroke="none"/></svg></span>
+          <div><div class="nm">Novalyz IA</div><div class="st"><i></i>lit tes données d'entraînement</div></div>
+        </div>
+        <div class="body">
+          <div class="glabel">Ce que je vois de toi aujourd'hui</div>
+          <div class="chips">
+            <span class="chip"><span class="d" style="background:var(--good)"></span>Prêt</span>
+            <span class="chip">ACWR <small>1,08</small></span>
+            <span class="chip">Sommeil <small>7 h 10</small></span>
+            <span class="chip">83 kg</span>
+          </div>
+
+          <div class="morpho">
+            <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+            <div><div class="t">Analyse morpho par photo</div><div class="s">Face + dos → tes groupes en avance / en retard</div></div>
+            <span class="go"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+
+          <div class="ai-msg"><span class="av">N</span><div class="bub">Salut Vincent 👋 Je vois ton suivi — séances, charge, ressenti. Ton état du jour est <b>« Prêt »</b> et ta charge est équilibrée. Pose-moi une question sur ta progression, ou lance une analyse morpho.</div></div>
+
+          <div class="me-msg"><div class="me">Je me sens un peu fatigué, je m'entraîne quand même ?</div></div>
+
+          <div class="ai-msg"><span class="av">N</span><div class="bub">Ton sommeil des 7 derniers jours est correct (7 h 10 en moyenne) et ta charge (ACWR <b>1,08</b>) est dans la zone optimale — <b>rien n'indique de surcharge</b>. Tu peux t'entraîner comme prévu, en restant à l'écoute. Si la fatigue monte pendant la séance, allège le bas du corps.</div></div>
+        </div>
+
+        <div class="sugg">
+          <span class="sg">Analyse ma progression</span>
+          <span class="sg">Quoi manger aujourd'hui ?</span>
+          <span class="sg">Mon point faible ?</span>
+        </div>
+        <div class="inbar">
+          <span class="icam"><svg width="19" height="19" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+          <div class="field">Pose ta question à Novalyz…</div>
+          <span class="send"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span>
+        </div>
+        <div class="quota">Coach IA — 2 échanges gratuits / jour · plus avec Premium</div>
+
+        <div class="tabbar">
+          <div class="tb"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg><span>Aujourd'hui</span></div>
+          <div class="tb"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span>Entraîn.</span></div>
+          <div class="tb"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg><span>Analyses</span></div>
+          <div class="tb"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg><span>Forme</span></div>
+          <div class="tb on"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 8l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="currentColor" stroke="none"/></svg><span>Coach</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>Le coach en avant.</b> En-tête « lit tes données », <b>preuve de grounding</b> (chips état/ACWR/sommeil), CTA morpho, un échange groundé, prompts suggérés + barre de saisie avec l'appareil photo. Le quota gratuit est visible (accroche premium).</div>
+  </div>
+
+  <!-- FRAME 2 : ANALYSE MORPHO -->
+  <div class="col">
+    <div style="text-align:center;"><span class="badge"><b>ÉCRAN 2</b> · Analyse morpho</span></div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>Analyse morpho</span></div>
+      <div class="scr">
+        <div class="hd" style="gap:11px;">
+          <span class="ava"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+          <div><div class="nm" style="font-size:14px;">Analyse morpho</div><div class="st" style="color:var(--text-subtle);"><i style="background:var(--text-subtle)"></i>photos non conservées</div></div>
+        </div>
+        <div class="body">
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">Ajoute une photo de <b>face</b> et/ou de <b>dos</b> (tenue ajustée, bonne lumière). L'IA repère tes groupes en avance / en retard pour orienter ton entraînement.</div>
+          <div class="photos">
+            <div class="ph filled"><span class="tag">Face</span><span class="ppl">🧍</span></div>
+            <div class="ph"><span class="tag">Dos</span>+ photo</div>
+          </div>
+          <div class="consent"><span class="cbx"><svg width="10" height="10" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><span>J'accepte que mes photos soient envoyées à l'IA pour analyse. <b>Elles ne sont pas conservées</b> : analysées puis supprimées. Analyse à titre indicatif, non médicale.</span></div>
+          <button class="analyse">Analyser</button>
+
+          <div class="result">
+            <h4>Points forts</h4>
+            <p>Épaules et trapèzes bien développés, bonne largeur de dos (vue de face).</p>
+            <h4>À travailler</h4>
+            <p>Pectoraux un peu en retrait vs les épaules ; léger déséquilibre bras droit/gauche à confirmer.</p>
+            <h4>Focus conseillé</h4>
+            <p>1) Priorité pecs (développé incliné, écartés). 2) Travail unilatéral (haltères) pour rééquilibrer. 3) Maintenir le dos en entretien.</p>
+            <div class="disc">À titre indicatif, d'après les photos — non médical. En cas de douleur, consulte un professionnel.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>Éphémère & cadré.</b> 2 photos (face/dos, compressées côté téléphone), <b>consentement obligatoire</b>, badge « photos non conservées ». Résultat structuré (forts / à travailler / focus) + rappel non médical. Modèle vision Sonnet 5.5.</div>
+  </div>
+
+</div>
+
+<div class="note">Maquettes statiques · charte Novalyz (mode clair) · l'IA reste dormante tant que la clé API n'est pas ajoutée (0 €)</div>
+
+</body>
+</html>
