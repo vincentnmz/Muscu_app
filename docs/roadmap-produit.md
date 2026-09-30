@@ -85,8 +85,26 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 > important, à faire ensuite · ③ **Hyrox** — important, **placement à décider**.
 14. Cardio (section dédiée) — 🟡 (saisie + analyses cardio existent) · 15. GPS type Strava — ⬜
 16. Activités structurées — ⬜ · 17. Multi-sources — ⬜ · 18. Déduplication (activités + pas) — ⬜
-19. Watch / Health Connect — ⬜ · 20. Vélo — ⬜ · 21. Running/marche — 🟡 · 22. Hyrox — 🔵 (saisie livrée ; analyse à venir)
+19. Watch / Health Connect — 🟡 (Android : lecture séances/pas/sommeil/FC via
+    Health Connect, **multi-marques** — voir note « Couverture montres » ci-dessous)
+    · 20. Vélo — ⬜ · 21. Running/marche — 🟡 · 22. Hyrox — 🔵 (saisie livrée ; analyse à venir)
 23. Natation — ⬜ · 24. Séances hybrides muscu/cardio — ⬜
+
+> **📌 Couverture montres / plateformes (vision porteur, sept. 2026 — « toutes les
+> marques doivent pouvoir se connecter, Apple compris »)**
+> - **Android = déjà multi-marques** via **Health Connect** (hub universel) : toute
+>   montre dont l'app compagnon écrit dans Health Connect remonte (Fitbit, Garmin,
+>   Samsung, Polar, Coros, Google Fit…). Permissions larges déjà demandées
+>   (`_HC_PERMS`), détection de marque déjà gérée (`_hcCleanSrc`). **Pas un problème
+>   de code** : la limite est l'**onboarding** (l'utilisateur doit lier son app montre
+>   → Health Connect). ⏳ À faire : **guide de connexion par marque** (confort).
+> - **Apple Watch / iPhone = NON couvert aujourd'hui** (écrit dans *Apple Santé*, pas
+>   Health Connect). ⏳ **Chantier plateforme iOS** (séparé, conséquent) : build iOS
+>   Capacitor + **plugin HealthKit** (lecture séances/pas/sommeil/FC) + compte **Apple
+>   Developer (99 $/an)** + revue App Store (dont déclaration données de santé). À
+>   planifier comme une **phase plateforme** dédiée, pas un simple item cardio.
+> - **APIs directes par marque** (Garmin/Fitbit/Polar Web API) : possible mais chaque
+>   marque = OAuth + revue propres → **évité tant que Health Connect (Android) suffit**.
 
 ### P3 — NUTRITION
 25. Nutrition Solo (dans Mon état, liée à l'objectif) — ✅ (onglet **Nutrition** dans « Forme » : objectifs macros **P/G/L** calculés depuis le poids réel (dernière pesée) + objectif + niveau d'activité ; saisie kcal/prot/gluc/lip ; historique `nutri_historique` ; tendance 4 courbes ; backend `saveNutrition` **déployé** ; testé)
