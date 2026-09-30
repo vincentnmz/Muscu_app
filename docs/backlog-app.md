@@ -14,7 +14,7 @@
 - ✅ **Sommeil + BPM** depuis la montre (Health Connect ; fork du plugin `capacitor-health` pour exposer sommeil + FC repos, affichés sur « Forme »).
 - ✅ **Graphique pas/jour** interactif (Semaine/Mois/Année) + bouton **« Connecte ta montre »** ; historisation serveur (`saveSante` / `sante_historique`).
 - ✅ **Import des sorties montre** par activité (footing/vélo GPS… via `queryWorkouts`, avec FC) — cartes « à importer / déjà importée ».
-- ⏳ ❓ **Montre ↔ saisie manuelle sans doublon** (voir C1) — décision pas encore tranchée.
+- ✅ **Montre ↔ saisie manuelle sans doublon** (voir C1) — tranché : montre = autorité pour le total du jour, jamais additionner ; déjà respecté dans le code (`pasjour_` = fitbit only, pas manuels confinés aux stats cardio).
 
 ### A2 · Écrans
 - 🟡 Écran **Aujourd'hui** — base refondue (design `.tj`, blocs pas / récompenses animées au scroll) ; reste à **affiner / valider**.
@@ -58,13 +58,14 @@
 
 ## C. ❓ Décisions de conception à trancher (avant de coder)
 
-### C1 · Montre ↔ saisie manuelle : éviter les doublons de pas — ⏳ ouvert
-**Proposition** (à valider) :
-- **Total de pas du jour = la montre fait autorité** (une seule source par jour). On ne ré-additionne jamais.
-- **Une marche / activité = un enregistrement séparé** (distance, durée, allure) qui **ne re-compte PAS ses pas** dans le total du jour.
-- Chaque donnée porte sa **`source`** (`montre` / `manuel`) — la table `indicateurs` a **déjà** ce champ.
-- **Règle anti-doublon** : on saisit à la main **uniquement ce que la montre n'a pas** (ex. sortie vélo sans capteur → distance/temps ; marche non déclenchée → distance/temps). Les **pas** ne viennent que du compteur de la montre.
-- Option : dédoublonnage par **chevauchement horaire** (si une activité manuelle recouvre une activité montre → on garde la montre).
+### C1 · Montre ↔ saisie manuelle : éviter les doublons de pas — ✅ tranché (déjà respecté)
+**Règle retenue** : **la montre fait autorité pour le total de pas du jour** ; quand elle existe, le total vient d'elle, sinon de la saisie manuelle — on **ne cumule JAMAIS** les deux. L'estimation manuelle de pas (marche) est conservée (utile sans montre) mais **n'entre pas** dans le total montre.
+**État vérifié dans le code (30 sept.)** — la règle est **déjà en place** :
+- `pas_quotidiens` / `pasjour_YYYYMMDD` = **`source:'fitbit'` uniquement** (import montre ; commenté « pour ne pas polluer les séances cardio »).
+- Total du jour (bandeau Forme + objectif « 5 j à 10 000 pas ») = **Health Connect / montre**.
+- Les pas d'une **marche manuelle** restent **confinés aux stats cardio** (« Pas totaux / sem. »), jamais additionnés au total du jour.
+- Chaque ligne porte sa **`source`** (`fitbit` / `manuel`).
+→ Aucun chiffre unique ne double-compte (ni en base, ni à l'affichage). Reste éventuel (plus tard) : dédoublonnage fin par **chevauchement horaire** si une activité manuelle recouvre une sortie montre.
 
 ### C2 · Placement des alertes — ✅ tranché & fait
 Décision retenue : **cloche header** (historique complet via le centre d'alertes) **+ liste des alertes non-lues en clair sur Aujourd'hui** (titre / preuve / action / « lu ») **+ push** pour la sévérité haute. Marquage « lu » persistant (`marquerAlerteLue`).
@@ -84,6 +85,6 @@ Fonction premium probable. ❓ **consentement / RGPD** (photos = données sensib
 1. ✅ Finir la **structure du parcours solo** (réorg Forme en 3 zones).
 2. ✅ **Montre** : sommeil/BPM + graphique pas + import par sport. *(C1 pas encore tranché, non bloquant.)*
 3. ✅ **Cardio** complet (exos cardio, séances hybrides, objectif séances/sem).
-4. ✅ **Nutrition** + **contexte reprise** + **alertes** (placement C2 + fiabilité). *(Reste C1 anti-doublon pas, non bloquant.)*
+4. ✅ **Nutrition** + **contexte reprise** + **alertes** (placement C2 + fiabilité) + **C1** anti-doublon pas (tranché, déjà respecté).
 5. ⏳ **IA morpho** (C4) et **paiement premium** (C5) — plus lourds, après une base solide.
 6. ⏳ **Partie coach** (section B) — phase 2.
