@@ -34,7 +34,8 @@
 - ⏳ Créer des programmes avec **analyse morphologique IA par photo** (face + dos). ❓ premium + RGPD (voir C4).
 
 ### A5 · Monétisation
-- ⏳ **Paiement** pour offres **premium** : IA approfondie, analyse morpho, paiement coach. ❓ modèle + prestataire (voir C5).
+- 🟡 **Coach IA conversationnel** (fil « Novalyz IA ») — **codé et prêt, en VEILLE** : front (`cvSendIA`) + backend (`action chatIA`, grounding sur le moteur, quota **2 messages/jour/athlète**, modèle Haiku 4.5). **Coût = 0 € tant que le secret Supabase `ANTHROPIC_API_KEY` n'est pas ajouté** — sans clé, l'app répond « pas encore activé », aucun appel facturé. **Pour l'allumer : ajouter `ANTHROPIC_API_KEY` (Supabase → Edge Functions → Secrets) + redéployer `index.ts`.** Freemium : gratuit = quota, au-delà = premium (lié à C5).
+- ⏳ **Paiement** pour offres **premium** : IA approfondie (quota + meilleur modèle), analyse morpho, paiement coach. ❓ modèle + prestataire (voir C5).
 
 ---
 
