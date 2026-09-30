@@ -2128,7 +2128,18 @@ async function handleGetCommentaires(params: URLSearchParams): Promise<Response>
   if (coachId) query = query.eq('coach_id', coachId)
   if (athleteId) query = query.eq('athlete_id', athleteId)
   const { data } = await query
-  return jsonResp({ commentaires: (data || []).map(r => ({ id: r.comment_id, athlete_id: r.athlete_id, coach_id: r.coach_id, coach_nom: r.coach_nom, message: r.message, date: r.date, lu: r.lu === true || String(r.lu).toUpperCase() === 'TRUE', auteur: r.auteur, auteur_nom: r.auteur_nom })) })
+  // Média (photo/vidéo athlète → coach) : on renvoie une URL de LECTURE signée
+  // (bucket privé coach-media), TTL 2 h, régénérée à chaque chargement du fil.
+  const rows = data || []
+  const paths = rows.filter(r => r.media_path).map(r => r.media_path)
+  const urlByPath: Record<string, string> = {}
+  if (paths.length) {
+    try {
+      const { data: signed } = await sb().storage.from('coach-media').createSignedUrls(paths, 7200)
+      for (const s of (signed || [])) { if (s && s.path && s.signedUrl) urlByPath[s.path] = s.signedUrl }
+    } catch (_) { /* best-effort : sans URL, la bulle affiche juste la légende */ }
+  }
+  return jsonResp({ commentaires: rows.map(r => ({ id: r.comment_id, athlete_id: r.athlete_id, coach_id: r.coach_id, coach_nom: r.coach_nom, message: r.message, date: r.date, lu: r.lu === true || String(r.lu).toUpperCase() === 'TRUE', auteur: r.auteur, auteur_nom: r.auteur_nom, media_type: r.media_type || null, media_url: r.media_path ? (urlByPath[r.media_path] || null) : null })) })
 }
 
 async function handleGetCoachProgramme(params: URLSearchParams): Promise<Response> {
@@ -3658,9 +3669,52 @@ async function handleMarquerCommentairesLus(body: any): Promise<Response> {
 async function handleSupprimerCommentaire(body: any): Promise<Response> {
   const { id } = body
   if (!id) return jsonResp({ success: false, error: 'id manquant' })
+  // Si le message portait un média (photo/vidéo), on supprime aussi le fichier
+  // du bucket privé (pas d'orphelin qui traîne).
+  try {
+    const { data: row } = await sb().from('commentaires').select('media_path').eq('comment_id', id).limit(1).single()
+    if (row && row.media_path) { try { await sb().storage.from('coach-media').remove([row.media_path]) } catch (_) {} }
+  } catch (_) {}
   const { error } = await sb().from('commentaires').delete().eq('comment_id', id)
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true })
+}
+
+// ── Médias athlète → coach (photo/vidéo, bucket privé coach-media) ─────────────
+// Upload direct client → Storage via URL d'upload SIGNÉE (pas de base64 par la
+// fonction → gros fichiers vidéo OK). 3 temps : (1) mediaUploadUrl donne un chemin
+// + une URL signée ; (2) le client PUT le fichier dessus ; (3) envoyerMediaCoach
+// crée le message. Photos/vidéos réservées au lien athlète↔coach.
+const MEDIA_EXT_OK: Record<string, string> = { jpg: 'image', jpeg: 'image', png: 'image', webp: 'image', mp4: 'video', mov: 'video', webm: 'video' }
+async function handleMediaUploadUrl(body: any): Promise<Response> {
+  const athleteId = String(body.athlete_id || '')
+  const ext = String(body.ext || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  if (!MEDIA_EXT_OK[ext]) return jsonResp({ success: false, error: 'Format non pris en charge' })
+  const path = `${athleteId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const { data, error } = await sb().storage.from('coach-media').createSignedUploadUrl(path)
+  if (error || !data) return jsonResp({ success: false, error: (error && error.message) || 'upload-url' })
+  // data = { signedUrl (URL complète à PUT), token, path }
+  return jsonResp({ success: true, path: data.path, token: data.token, signedUrl: data.signedUrl, media_type: MEDIA_EXT_OK[ext] })
+}
+
+async function handleEnvoyerMediaCoach(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const media_path = String(body.media_path || '')
+  const media_type = body.media_type === 'video' ? 'video' : 'image'
+  if (!athlete_id || !media_path) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (body.consent !== true) return jsonResp({ success: false, error: 'Consentement requis' })
+  // Le chemin doit appartenir à cet athlète (préfixe <athlete_id>/) — anti-usurpation.
+  if (!media_path.startsWith(athlete_id + '/')) return jsonResp({ success: false, error: 'Chemin invalide' })
+  const legende = String(body.message || '').trim() || (media_type === 'video' ? '🎥 Vidéo' : '📷 Photo')
+  const d = new Date()
+  const dateStr = `${fmtFR(fmtYMD(d))} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+  const comment_id = Date.now()
+  const { error } = await sb().from('commentaires').insert({ comment_id, date: dateStr, coach_id: body.coach_id || '', coach_nom: body.coach_nom || '', athlete_id, message: legende, lu: false, auteur: 'athlete', auteur_nom: body.auteur_nom || '', media_path, media_type })
+  if (error) return jsonResp({ success: false, error: error.message })
+  let media_url: string | null = null
+  try { const { data: s } = await sb().storage.from('coach-media').createSignedUrl(media_path, 7200); media_url = (s && s.signedUrl) || null } catch (_) {}
+  return jsonResp({ success: true, id: comment_id, media_type, media_url })
 }
 
 async function handleSaveObjectif(body: any): Promise<Response> {
@@ -4577,6 +4631,8 @@ Deno.serve(async (req: Request) => {
         case 'deleteSeance':             return handleDeleteSeance(body)
         case 'updateSeance':             return handleUpdateSeance(body)
         case 'saveCommentaire':          return handleSaveCommentaire(body)
+        case 'mediaUploadUrl':           return handleMediaUploadUrl(body)
+        case 'envoyerMediaCoach':        return handleEnvoyerMediaCoach(body)
         case 'savePushSub':              return handleSavePushSub(body)
         case 'deletePushSub':            return handleDeletePushSub(body)
         case 'cronPushAlertes':          return handleCronPushAlertes(body)

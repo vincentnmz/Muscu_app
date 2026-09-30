@@ -6198,8 +6198,12 @@ function renderBullesChat(commentaires, elId, isCoach) {
     const lu = (isCoach && !isMine && !estLu(c, 'muscu_lu_coach')) ? '<span style="font-size:9px;color:#f59f00;"> · non lu</span>' : '';
     const meLabel = isMine ? ' · toi' : '';
     const avatar = isMine ? '' : `<div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:color-mix(in srgb, ${themCol} 20%, transparent);color:${themCol};">${escapeHtml(themInit)}</div>`;
+    const media = (typeof _mediaBulleHTML === 'function') ? _mediaBulleHTML(c) : '';
+    const corps = media
+      ? `<div style="padding:4px;border-radius:${radius};background:${media && !isMine ? 'var(--surface2)' : 'transparent'};">${media}</div>`
+      : `<div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13.5px;white-space:pre-wrap;line-height:1.4;">${escapeHtml(c.message)}</div>`;
     const bubble = `<div style="display:flex;flex-direction:column;align-items:${isMine?'flex-end':'flex-start'};min-width:0;">
-        <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13.5px;white-space:pre-wrap;line-height:1.4;">${escapeHtml(c.message)}</div>
+        ${corps}
         <div style="font-size:9.5px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:2px;">${heure(ts)}${meLabel}${lu}${deleteBtn}</div>
       </div>`;
     const row = `<div style="display:flex;gap:8px;align-items:flex-end;max-width:85%;${isMine?'align-self:flex-end;flex-direction:row-reverse;':'align-self:flex-start;'}">${avatar}${bubble}</div>`;
@@ -6475,6 +6479,108 @@ async function envoyerMessageAthleteCoach() {
     setTimeout(async () => { await chargerMessagesCoach(); cvRenderCoachMsgs(); }, 800);
   } catch(e) {
     showToast('❌ Erreur envoi', '#ff4444');
+  }
+}
+
+// ══════════ Médias athlète → coach (photo / vidéo) ══════════
+// Envoi d'une photo ou d'une courte vidéo à son coach (revue technique). Upload
+// direct vers Supabase Storage via URL signée (pas de base64 → vidéos OK).
+// Consentement stocké une fois par appareil. Photos compressées côté client.
+var _COACH_MEDIA_CONSENT = 'muscu_coach_media_consent';
+var _coachMediaBusy = false;
+
+function _coachMediaPick() {
+  if (_coachMediaBusy) { showToast('⏳ Envoi en cours…'); return; }
+  // Consentement (une fois) : l'athlète accepte que le média soit stocké et
+  // partagé avec SON coach.
+  var okConsent = false;
+  try { okConsent = localStorage.getItem(_COACH_MEDIA_CONSENT) === '1'; } catch (e) {}
+  if (!okConsent) {
+    var ok = confirm('Envoyer une photo ou une vidéo à ton coach ?\n\nElle sera stockée de façon sécurisée et visible uniquement par ton coach (revue de ta technique). Tu peux la supprimer à tout moment.\n\nJ\'accepte.');
+    if (!ok) return;
+    try { localStorage.setItem(_COACH_MEDIA_CONSENT, '1'); } catch (e) {}
+  }
+  var inp = document.getElementById('coach-media-input');
+  if (inp) { inp.value = ''; inp.click(); }
+}
+
+function _coachMediaChoisi(input) {
+  var f = input && input.files && input.files[0];
+  if (!f) return;
+  var estImage = /^image\//.test(f.type);
+  var estVideo = /^video\//.test(f.type);
+  if (!estImage && !estVideo) { showToast('⚠️ Choisis une photo ou une vidéo', '#ff4444'); return; }
+  // Garde-fou taille (le bucket limite à 75 Mo — on prévient avant l'upload).
+  if (f.size > 75 * 1024 * 1024) { showToast('⚠️ Fichier trop lourd (max 75 Mo)', '#ff4444'); return; }
+  if (estImage) {
+    _coachMediaCompressImage(f).then(function (blob) { _coachMediaEnvoyer(blob, 'image', 'jpg'); })
+      .catch(function () { _coachMediaEnvoyer(f, 'image', (f.name.split('.').pop() || 'jpg').toLowerCase()); });
+  } else {
+    var ext = ({ 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' })[f.type] || (f.name.split('.').pop() || 'mp4').toLowerCase();
+    _coachMediaEnvoyer(f, 'video', ext);
+  }
+}
+
+// Compression photo (canvas ~1280px, JPEG 0.82) — allège l'upload et le stockage.
+function _coachMediaCompressImage(file) {
+  return new Promise(function (resolve, reject) {
+    try {
+      var img = new Image();
+      img.onload = function () {
+        var max = 1280, w = img.width, h = img.height;
+        if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+        else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+        var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        cv.toBlob(function (b) { b ? resolve(b) : reject(); }, 'image/jpeg', 0.82);
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    } catch (e) { reject(e); }
+  });
+}
+
+async function _coachMediaEnvoyer(fileOrBlob, media_type, ext) {
+  if (!athlete) return;
+  _coachMediaBusy = true;
+  var localUrl = null;
+  try {
+    showToast(media_type === 'video' ? '🎥 Envoi de la vidéo…' : '📷 Envoi de la photo…');
+    // 1) URL d'upload signée
+    var r1 = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'mediaUploadUrl', athlete_id: athlete.athlete_id, ext: ext })
+    });
+    var d1 = await r1.json();
+    if (!d1 || !d1.success || !d1.signedUrl) throw new Error(d1 && d1.error || 'upload-url');
+    // 2) PUT du fichier directement sur le Storage
+    var put = await fetch(d1.signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': (fileOrBlob.type || (media_type === 'video' ? 'video/mp4' : 'image/jpeg')) },
+      body: fileOrBlob
+    });
+    if (!put.ok) throw new Error('put-' + put.status);
+    // 3) Crée le message côté serveur
+    var r3 = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'envoyerMediaCoach', athlete_id: athlete.athlete_id,
+        auteur_nom: athlete.prenom || athlete.nom || 'Athlète',
+        coach_id: athlete.coach_id || '', media_path: d1.path, media_type: media_type, consent: true
+      })
+    });
+    var d3 = await r3.json();
+    if (!d3 || !d3.success) throw new Error(d3 && d3.error || 'envoi');
+    showToast('✅ Envoyé à ton coach');
+    // Affichage optimiste immédiat (URL locale le temps de la resync serveur)
+    try { localUrl = URL.createObjectURL(fileOrBlob); } catch (e) {}
+    messagesCoach.push({ id: d3.id || ('tmp-' + Date.now()), date: formatChatDate(new Date()), message: media_type === 'video' ? '🎥 Vidéo' : '📷 Photo', auteur: 'athlete', lu: false, media_type: media_type, media_url: d3.media_url || localUrl });
+    cvRenderCoachMsgs();
+    setTimeout(async function () { try { await chargerMessagesCoach(); cvRenderCoachMsgs(); } catch (e) {} }, 900);
+  } catch (e) {
+    showToast('❌ Échec de l\'envoi', '#ff4444');
+  } finally {
+    _coachMediaBusy = false;
   }
 }
 
@@ -6916,6 +7022,25 @@ async function cvSupprSelection() {
   cvRenderCoachMsgs();
   try { await chargerMessagesCoach(); cvRenderCoachMsgs(); } catch (e) {}
 }
+// HTML d'un média (photo/vidéo) dans une bulle de conversation. Vide si pas de média.
+function _mediaBulleHTML(c) {
+  if (!c || !c.media_url) return '';
+  var u = String(c.media_url).replace(/"/g, '&quot;');
+  if (c.media_type === 'video') {
+    return '<video src="' + u + '" controls playsinline preload="metadata" style="max-width:220px;max-height:280px;border-radius:10px;display:block;background:#000"></video>';
+  }
+  return '<img src="' + u + '" alt="média" loading="lazy" onclick="_mediaPlein(\'' + u + '\')" style="max-width:200px;max-height:260px;border-radius:10px;display:block;cursor:zoom-in;object-fit:cover">';
+}
+// Aperçu plein écran d'une image (tap pour fermer).
+function _mediaPlein(url) {
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.92);display:grid;place-items:center;padding:16px;';
+  ov.onclick = function () { try { document.body.removeChild(ov); } catch (e) {} };
+  var img = document.createElement('img');
+  img.src = url; img.style.cssText = 'max-width:100%;max-height:100%;border-radius:12px;';
+  ov.appendChild(img); document.body.appendChild(ov);
+}
+
 // Rendu du fil coach (bulles style maquette IA/coach + case à cocher en mode sélection).
 function cvRenderCoachMsgs() {
   var el = document.getElementById('conseils-content');
@@ -6930,10 +7055,12 @@ function cvRenderCoachMsgs() {
     var mine = c.auteur === 'athlete', sel = !!_cvSel[c.id], heure = _cvHeure(c.date);
     var box = _cvSelMode ? '<span style="width:20px;height:20px;border-radius:999px;border:2px solid ' + (sel ? 'var(--accent)' : 'var(--border)') + ';background:' + (sel ? 'var(--accent)' : 'transparent') + ';display:grid;place-items:center;flex:none;">' + (sel ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '') + '</span>' : '';
     var click = _cvSelMode ? ' onclick="cvToggleMsg(\'' + c.id + '\')" style="cursor:pointer;display:flex;gap:9px;align-items:center;' + (mine ? 'justify-content:flex-end;' : '') + '"' : ' style="display:flex;gap:9px;align-items:center;' + (mine ? 'justify-content:flex-end;' : '') + '"';
+    var media = _mediaBulleHTML(c);
+    var corps = media || escapeHtml(c.message);
     if (mine) {
-      return '<div' + click + '><div class="cv-me" style="margin:0">' + escapeHtml(c.message) + '<div style="font-size:9.5px;opacity:.75;margin-top:3px">' + heure + ' · toi</div></div>' + box + '</div>';
+      return '<div' + click + '><div class="cv-me" style="margin:0">' + corps + '<div style="font-size:9.5px;opacity:.75;margin-top:3px">' + heure + ' · toi</div></div>' + box + '</div>';
     }
-    return '<div' + click + '>' + box + '<div class="cv-ai" style="max-width:100%"><span class="av" style="background:#6d3fd4">' + escapeHtml(init) + '</span><div class="bub">' + escapeHtml(c.message) + '<div style="font-size:9.5px;color:var(--text-subtle);margin-top:3px">' + heure + '</div></div></div></div>';
+    return '<div' + click + '>' + box + '<div class="cv-ai" style="max-width:100%"><span class="av" style="background:#6d3fd4">' + escapeHtml(init) + '</span><div class="bub">' + corps + '<div style="font-size:9.5px;color:var(--text-subtle);margin-top:3px">' + heure + '</div></div></div></div>';
   }).join('');
   try { el.scrollTop = el.scrollHeight; } catch (e) {}
 }
