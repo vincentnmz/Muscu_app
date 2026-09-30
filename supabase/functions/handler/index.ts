@@ -4027,7 +4027,7 @@ async function handleSaveNutrition(body: any): Promise<Response> {
 // inventé). Base gratuite = quota/jour ; au-delà = premium (à venir, C5).
 // Clé : secret Supabase ANTHROPIC_API_KEY. Modèle : Haiku 4.5 (éco).
 // ===========================================================================
-const IA_QUOTA_JOUR = 5
+const IA_QUOTA_JOUR = 2
 
 function _iaContexte(d: any): string {
   if (!d || d.erreur) return '(données indisponibles pour le moment)'
