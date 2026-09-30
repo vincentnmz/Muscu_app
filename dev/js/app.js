@@ -1595,8 +1595,6 @@ window.addEventListener('load', async () => {
       if (!document.hidden) _checkNotifCache();
     });
   } catch (e) {}
-  // Retour d'autorisation Google Health (?code=…) → échange les jetons.
-  try { _traiterRetourGoogleHealth(); } catch (e) {}
   // Clic sur une notif alors que l'app était fermée : cible passée en ?notif=…
   // (Android/desktop) ou déposée dans un cache par le SW (iOS, params ignorés).
   try {
@@ -12999,8 +12997,6 @@ function _appliquerAppData(data) {
     // ── Cardio — historique détaillé (onglet Progression) ────────────────────
     _pasQuotidiens = (data && data.pas_quotidiens) || [];
     _safe('cardio-historique', () => renderCardioHistorique(data.cardio && data.cardio.history));
-    // Synchro auto de la montre à la connexion (message visible, ≥ 1×/24h), si connectée.
-    _safe('gh-autosync', () => autoSyncGoogleHealth());
 
     // Récupération d'une séance muscu laissée en cours (anti-perte de saisie).
     // Une seule fois par chargement de page (garde interne _brouillonRestaure).
@@ -14680,165 +14676,6 @@ function _checkNotifCache() {
         });
       });
     }).catch(function () {});
-  } catch (e) {}
-}
-
-// ===== Montre connectée — Google Health (Fitbit via compte Google) =========
-// Étape A : connexion OAuth. La clé publique (Client ID) n'est pas secrète.
-const GOOGLE_CLIENT_ID = '1045768686321-ln365kpvvdiqel2ssscfj096cfjcge6b.apps.googleusercontent.com';
-// Scopes de LECTURE : activités/fitness + mesures de santé (fréquence cardiaque).
-const GOOGLE_HEALTH_SCOPE = 'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly';
-
-// URI de redirection = dossier courant de l'app (retire un éventuel index.html).
-// Doit correspondre EXACTEMENT à l'URI enregistré dans la console Google.
-function _ghRedirectUri() { return location.origin + location.pathname.replace(/[^/]*$/, ''); }
-
-function connecterGoogleHealth() {
-  if (!athlete) { showToast('Connecte-toi d\'abord'); return; }
-  var state = Math.random().toString(36).slice(2) + '.' + Date.now();
-  localStorage.setItem('gh_oauth_state', state);
-  localStorage.setItem('gh_oauth_athlete', athlete.athlete_id || '');
-  var url = 'https://accounts.google.com/o/oauth2/v2/auth'
-    + '?client_id=' + encodeURIComponent(GOOGLE_CLIENT_ID)
-    + '&redirect_uri=' + encodeURIComponent(_ghRedirectUri())
-    + '&response_type=code'
-    + '&scope=' + encodeURIComponent(GOOGLE_HEALTH_SCOPE)
-    + '&access_type=offline'      // pour obtenir un refresh_token
-    + '&prompt=consent'
-    + '&include_granted_scopes=true'
-    + '&state=' + encodeURIComponent(state);
-  window.location.href = url;
-}
-
-// Traite le retour de Google (?code=…&state=…) au démarrage de l'app.
-async function _traiterRetourGoogleHealth() {
-  var params;
-  try { params = new URLSearchParams(location.search); } catch (e) { return; }
-  var code = params.get('code');
-  var state = params.get('state');
-  var err = params.get('error');
-  if (!code && !err) return;              // pas un retour Google
-  var savedState = localStorage.getItem('gh_oauth_state');
-  var aid = localStorage.getItem('gh_oauth_athlete') || (athlete && athlete.athlete_id) || '';
-  if (history.replaceState) history.replaceState(null, '', location.pathname);  // nettoie l'URL
-  if (err) { showToast('❌ Autorisation refusée', '#ff4444'); return; }
-  if (!savedState || state !== savedState) { showToast('❌ Autorisation invalide (sécurité)', '#ff4444'); return; }
-  localStorage.removeItem('gh_oauth_state');
-  try {
-    var resp = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthCallback', code: code, redirect_uri: _ghRedirectUri(), athlete_id: aid }),
-    });
-    var j = await resp.json();
-    if (j && j.success) showToast('⌚ Montre connectée !');
-    else showToast('❌ Connexion échouée' + (j && j.error ? ' : ' + j.error : ''), '#ff4444');
-  } catch (e) { showToast('❌ Erreur réseau', '#ff4444'); }
-  try { majUiGoogleHealth(); } catch (e) {}
-}
-
-async function majUiGoogleHealth() {
-  var card = document.getElementById('gh-card');
-  if (!card || !athlete) return;
-  var stat = document.getElementById('gh-statut');
-  var bOn = document.getElementById('gh-btn-on');
-  var bOff = document.getElementById('gh-btn-off');
-  try {
-    var resp = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthStatus', athlete_id: athlete.athlete_id }),
-    });
-    var j = await resp.json();
-    var bSync = document.getElementById('gh-btn-sync');
-    if (j && j.connected) {
-      if (bOn) bOn.style.display = 'none';
-      if (bOff) bOff.style.display = 'inline-block';
-      if (bSync) bSync.style.display = 'block';
-      if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '⌚ Montre connectée'; }
-    } else {
-      if (bOn) bOn.style.display = 'inline-block';
-      if (bOff) bOff.style.display = 'none';
-      if (bSync) bSync.style.display = 'none';
-      if (stat) stat.style.display = 'none';
-    }
-  } catch (e) {}
-}
-
-// Importe les activités de la montre dans le bloc cardio, puis recharge.
-async function synchroniserGoogleHealth() {
-  if (!athlete) return;
-  var info = document.getElementById('gh-sync-info');
-  var btn = document.getElementById('gh-btn-sync');
-  if (info) { info.style.display = 'block'; info.style.color = 'var(--text-muted)'; info.textContent = '⏳ Synchronisation en cours…'; }
-  if (btn) btn.disabled = true;
-  try {
-    var resp = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthSync', athlete_id: athlete.athlete_id }),
-    });
-    var j = await resp.json();
-    if (j && j.success) {
-      var n = j.imported || 0;
-      var ns = j.stepsImported || 0;
-      var msg = '✅ ' + n + ' activité' + (n > 1 ? 's' : '') + ' + ' + ns + ' jour' + (ns > 1 ? 's' : '') + ' de pas importé' + (ns > 1 ? 's' : '') + '.';
-      if (j.stepsError) msg += ' ⚠️ pas : ' + j.stepsError;
-      if (info) { info.style.color = j.stepsError ? 'var(--warn)' : 'var(--good)'; info.textContent = msg; }
-      showToast('⌚ ' + n + ' activité' + (n > 1 ? 's' : '') + ' · ' + ns + ' j de pas');
-      try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {}
-    } else {
-      if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Échec' + (j && j.error ? ' : ' + j.error : '') + '.'; }
-    }
-  } catch (e) {
-    if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau pendant la synchronisation.'; }
-  }
-  if (btn) btn.disabled = false;
-}
-
-async function deconnecterGoogleHealth() {
-  if (!athlete) return;
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthDisconnect', athlete_id: athlete.athlete_id }),
-    });
-    showToast('Montre déconnectée');
-  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
-  majUiGoogleHealth();
-}
-
-// Synchro automatique à la connexion (au plus 1×/6h par athlète, donc ≥ 1×/24h),
-// AVEC un retour visible (toast). Si la montre n'est pas connectée : rien.
-async function autoSyncGoogleHealth() {
-  if (!athlete) return;
-  var key = 'gh_last_autosync_' + athlete.athlete_id;
-  var last = +(localStorage.getItem(key) || 0);
-  if (Date.now() - last < 6 * 3600 * 1000) return;   // déjà synchronisé récemment
-  try {
-    // 1) La montre est-elle connectée ? (sinon on ne consomme pas le délai)
-    var sr = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthStatus', athlete_id: athlete.athlete_id }),
-    });
-    var sj = await sr.json();
-    if (!sj || !sj.connected) return;
-    // 2) Montre connectée → on synchronise avec un message visible.
-    localStorage.setItem(key, String(Date.now()));
-    if (typeof showToast === 'function') showToast('⌚ Synchronisation de la montre…', 'var(--text-muted)');
-    var r = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthSync', athlete_id: athlete.athlete_id }),
-    });
-    var j = await r.json();
-    if (j && j.success) {
-      var n = j.imported || 0, ns = j.stepsImported || 0;
-      if (n > 0 || ns > 0) {
-        if (typeof showToast === 'function') showToast('⌚ Montre synchronisée · ' + n + ' act. · ' + ns + ' j de pas', 'var(--good)');
-        if (typeof chargerAppData === 'function') chargerAppData();
-      } else {
-        if (typeof showToast === 'function') showToast('⌚ Montre déjà à jour', 'var(--good)');
-      }
-    } else if (typeof showToast === 'function') {
-      showToast('⌚ Synchro montre indisponible', 'var(--warn)');
-    }
   } catch (e) {}
 }
 
