@@ -15827,6 +15827,160 @@ var _CARDIO_TYPE_LABELS = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.
  * est calculée par l'appareil → fiable. Plugin natif « HealthPlugin »
  * (capacitor-health). Web/PWA : indisponible (nécessite l'appli Android).
  * ═══════════════════════════════════════════════════════════════════════════ */
+// ═══════════ Import d'activité par FICHIER (.GPX / .TCX) ═══════════
+// « Le plus pro » sans OAuth : l'athlète exporte une sortie (Strava / Garmin /
+// compteur) et l'importe. Parsing 100% CLIENT → séance cardio via l'action
+// saveCardio existante (aucun nouveau backend). .FIT (binaire) = étape suivante.
+var _impData = null;   // dernière activité parsée, en attente de confirmation
+
+function _impPick() { var i = document.getElementById('imp-file'); if (i) { i.value = ''; i.click(); } }
+function _impStatus(t, c) { var e = document.getElementById('imp-status'); if (e) { e.textContent = t || ''; e.style.color = c || 'var(--text-muted)'; } }
+function _impAnnuler() { _impData = null; var r = document.getElementById('imp-result'); if (r) r.innerHTML = ''; _impStatus(''); }
+
+function _impFichierChoisi(input) {
+  var f = input && input.files && input.files[0];
+  if (!f) return;
+  var name = (f.name || '').toLowerCase();
+  if (!/\.(gpx|tcx)$/.test(name)) {
+    if (/\.fit$/.test(name)) _impStatus('Le format .FIT arrive bientôt — exporte en .GPX ou .TCX en attendant.', 'var(--warn)');
+    else _impStatus('Format non reconnu. Choisis un fichier .GPX ou .TCX.', 'var(--bad)');
+    return;
+  }
+  if (f.size > 25 * 1024 * 1024) { _impStatus('Fichier trop volumineux (max 25 Mo).', 'var(--bad)'); return; }
+  _impStatus('⏳ Lecture du fichier…');
+  var reader = new FileReader();
+  reader.onload = function () {
+    try {
+      var data = _impParse(String(reader.result || ''), name);
+      if (!data) { _impStatus('Fichier illisible (aucune donnée de temps ni de distance).', 'var(--bad)'); return; }
+      _impData = data; _impApercu(data, f.name); _impStatus('');
+    } catch (e) { _impStatus('Erreur de lecture : ' + (e && e.message ? e.message : e), 'var(--bad)'); }
+  };
+  reader.onerror = function () { _impStatus('Impossible de lire le fichier.', 'var(--bad)'); };
+  reader.readAsText(f);
+}
+
+// Distance entre 2 points GPS (mètres).
+function _impHav(la1, lo1, la2, lo2) {
+  var R = 6371000, r = Math.PI / 180;
+  var dla = (la2 - la1) * r, dlo = (lo2 - lo1) * r;
+  var a = Math.pow(Math.sin(dla / 2), 2) + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.pow(Math.sin(dlo / 2), 2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+// Descendants par nom local (ignore les préfixes de namespace GPX/TCX).
+function _impLocal(root, name) {
+  var out = [], all = root.getElementsByTagName('*');
+  for (var i = 0; i < all.length; i++) { var ln = all[i].localName || all[i].nodeName.replace(/^.*:/, ''); if (ln === name) out.push(all[i]); }
+  return out;
+}
+function _impFirst(el, name) { var a = _impLocal(el, name); return a.length ? a[0] : null; }
+function _impTxt(el, name) { var n = _impFirst(el, name); return n ? (n.textContent || '').trim() : ''; }
+function _impMapSport(s) {
+  s = String(s || '').toLowerCase();
+  if (/bik|cycl|ride|v[ée]lo/.test(s)) return 'velo';
+  if (/run|cours|footing|jog/.test(s)) return 'footing';
+  if (/walk|march|hik|rando/.test(s)) return 'marche_normale';
+  if (/swim|natation/.test(s)) return 'natation';
+  if (/row|rameur/.test(s)) return 'rameur';
+  if (/ski/.test(s)) return 'ski_fond';
+  return '';
+}
+function _impGuessBySpeed(kmh) { if (!kmh) return 'autre'; if (kmh >= 15) return 'velo'; if (kmh >= 7) return 'footing'; return 'marche_normale'; }
+
+function _impParse(text, name) {
+  var doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return null;
+  var root = doc.documentElement; if (!root) return null;
+  var rootName = (root.localName || root.nodeName || '').toLowerCase();
+  var isTcx = rootName.indexOf('trainingcenterdatabase') >= 0 || (/\.tcx$/.test(name) && rootName.indexOf('gpx') < 0);
+  var pts = _impLocal(root, isTcx ? 'Trackpoint' : 'trkpt');
+  var coords = [], times = [], eles = [], hrs = [];
+  for (var i = 0; i < pts.length; i++) {
+    var p = pts[i], lat = NaN, lon = NaN;
+    if (isTcx) { var pos = _impFirst(p, 'Position'); if (pos) { lat = parseFloat(_impTxt(pos, 'LatitudeDegrees')); lon = parseFloat(_impTxt(pos, 'LongitudeDegrees')); } }
+    else { lat = parseFloat(p.getAttribute('lat')); lon = parseFloat(p.getAttribute('lon')); }
+    coords.push((isFinite(lat) && isFinite(lon)) ? [lat, lon] : null);
+    var t = _impTxt(p, isTcx ? 'Time' : 'time'); times.push(t ? Date.parse(t) : NaN);
+    var e = _impTxt(p, isTcx ? 'AltitudeMeters' : 'ele'); eles.push(e ? parseFloat(e) : NaN);
+    var hr = NaN;
+    if (isTcx) { var hb = _impFirst(p, 'HeartRateBpm'); if (hb) hr = parseFloat(_impTxt(hb, 'Value')); }
+    else { var h = _impFirst(p, 'hr'); if (h) hr = parseFloat((h.textContent || '').trim()); }
+    hrs.push(isFinite(hr) ? hr : NaN);
+  }
+  var distM = 0;
+  for (var j = 1; j < coords.length; j++) { if (coords[j] && coords[j - 1]) distM += _impHav(coords[j - 1][0], coords[j - 1][1], coords[j][0], coords[j][1]); }
+  var deniv = 0;
+  for (var k = 1; k < eles.length; k++) { if (isFinite(eles[k]) && isFinite(eles[k - 1])) { var dd = eles[k] - eles[k - 1]; if (dd > 0) deniv += dd; } }
+  var tValid = times.filter(function (x) { return isFinite(x); });
+  var durS = tValid.length >= 2 ? Math.round((tValid[tValid.length - 1] - tValid[0]) / 1000) : 0;
+  var startMs = tValid.length ? tValid[0] : NaN;
+  var hrValid = hrs.filter(function (x) { return isFinite(x) && x > 0; });
+  var fcMoy = hrValid.length ? Math.round(hrValid.reduce(function (s, x) { return s + x; }, 0) / hrValid.length) : 0;
+  var cal = 0, sport = '';
+  if (isTcx) {
+    var act = _impFirst(root, 'Activity'); if (act) sport = act.getAttribute('Sport') || '';
+    var laps = _impLocal(root, 'Lap'), lapSecs = 0, lapDist = 0, lapCal = 0, hrW = 0, hrWN = 0;
+    for (var l = 0; l < laps.length; l++) {
+      var ls = parseFloat(_impTxt(laps[l], 'TotalTimeSeconds')); if (isFinite(ls)) lapSecs += ls;
+      var ld = parseFloat(_impTxt(laps[l], 'DistanceMeters')); if (isFinite(ld)) lapDist += ld;
+      var lc = parseFloat(_impTxt(laps[l], 'Calories')); if (isFinite(lc)) lapCal += lc;
+      var ah = _impFirst(laps[l], 'AverageHeartRateBpm'); if (ah) { var av = parseFloat(_impTxt(ah, 'Value')); if (isFinite(av)) { hrW += av; hrWN++; } }
+    }
+    if (lapSecs > 0) durS = Math.round(lapSecs);
+    if (lapDist > 0) distM = lapDist;
+    if (lapCal > 0) cal = Math.round(lapCal);
+    if (!fcMoy && hrWN) fcMoy = Math.round(hrW / hrWN);
+  } else { sport = _impTxt(root, 'type'); }
+  if (!durS && !distM) return null;
+  var durMin = durS > 0 ? Math.max(1, Math.round(durS / 60)) : 0;
+  var distKm = distM > 0 ? Math.round(distM / 10) / 100 : 0;
+  var kmh = (durS > 0 && distM > 0) ? (distM / 1000) / (durS / 3600) : 0;
+  var vmoy = kmh ? Math.round(kmh * 10) / 10 : 0;
+  var type = _impMapSport(sport) || _impGuessBySpeed(kmh);
+  var dateObj = isFinite(startMs) ? new Date(startMs) : new Date();
+  return { type_cardio: type, duree: durMin, distance: distKm, vitesse_moy: vmoy, fc_moy: fcMoy, calories: cal, deniv: Math.round(deniv) || 0, dateISO: dateObj.toISOString(), _ymd: _ymdLocal(dateObj), nbpts: pts.length };
+}
+
+function _impApercu(d, filename) {
+  var el = document.getElementById('imp-result'); if (!el) return;
+  var opts = _CARDIO_CATALOG.filter(function (a) { return a.key !== 'hyrox'; }).map(function (a) {
+    return '<option value="' + a.key + '"' + (a.key === d.type_cardio ? ' selected' : '') + '>' + a.ico + ' ' + escapeHtml(a.label) + '</option>';
+  }).join('');
+  var dups = [];
+  try { dups = ((dernierAppData && dernierAppData.cardio && dernierAppData.cardio.history) || []).filter(function (h) { return _ymdLocal(new Date(h.date)) === d._ymd && Math.abs((+h.duree || 0) - d.duree) <= 2; }); } catch (e) {}
+  var dateFr = ''; try { var x = new Date(d.dateISO); dateFr = x.toLocaleDateString('fr-FR') + ' ' + x.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { dateFr = d._ymd; }
+  function chip(lbl, val) { return val ? ('<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 9px;font-size:12px;margin:3px 4px 0 0;">' + lbl + ' <b>' + val + '</b></span>') : ''; }
+  el.innerHTML = '<div style="margin-top:12px;border:1px solid var(--border);border-radius:14px;padding:13px;background:var(--surface);">'
+    + '<div style="font-size:11px;color:var(--text-subtle);margin-bottom:7px;word-break:break-all;">' + escapeHtml(filename) + ' · ' + dateFr + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;font-weight:700;">Type</span>'
+    + '<select id="imp-type" onchange="if(_impData)_impData.type_cardio=this.value" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;">' + opts + '</select></div>'
+    + '<div>' + chip('⏱️', d.duree ? d.duree + ' min' : '') + chip('📏', d.distance ? d.distance + ' km' : '') + chip('⚡', d.vitesse_moy ? d.vitesse_moy + ' km/h' : '') + chip('❤️', d.fc_moy ? d.fc_moy + ' bpm' : '') + chip('🔥', d.calories ? d.calories + ' kcal' : '') + chip('⛰️', d.deniv ? d.deniv + ' m D+' : '') + '</div>'
+    + (dups.length ? '<div style="margin-top:9px;font-size:12px;color:var(--warn);">⚠️ Une séance de durée proche existe déjà ce jour-là — tu peux quand même importer (doublon possible).</div>' : '')
+    + '<div style="display:flex;gap:8px;margin-top:12px;">'
+    + '<button onclick="_impConfirmer()" style="flex:1;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;">Importer la séance</button>'
+    + '<button onclick="_impAnnuler()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
+    + '</div></div>';
+}
+
+async function _impConfirmer() {
+  if (!_impData || !athlete) return;
+  var d = _impData;
+  _impStatus('⏳ Enregistrement…');
+  try {
+    var resp = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: d._ymd, type_cardio: d.type_cardio, duree: d.duree, distance: d.distance, vitesse_moy: d.vitesse_moy, fc_moy: d.fc_moy, calories: d.calories })
+    });
+    var j = await resp.json();
+    if (j && j.success) {
+      showToast('✅ Activité importée');
+      _impData = null; var r = document.getElementById('imp-result'); if (r) r.innerHTML = '';
+      _impStatus('✅ Importée. Retrouve-la dans Mes Analyses ▸ Cardio.', 'var(--good)');
+      try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {}
+    } else { _impStatus('❌ Échec : ' + (j && j.error || 'erreur serveur'), 'var(--bad)'); }
+  } catch (e) { _impStatus('❌ Erreur réseau pendant l\'enregistrement.', 'var(--bad)'); }
+}
+
 var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_SLEEP', 'READ_RESTING_HEART_RATE'];
 function _hcPlugin() { try { return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthPlugin; } catch (e) { return null; } }
 function _hcStatus(t, c) { var s = document.getElementById('hc-status'); if (s) { s.textContent = t; s.style.color = c || 'var(--text-muted)'; } }
