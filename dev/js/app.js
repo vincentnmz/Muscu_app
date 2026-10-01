@@ -16734,6 +16734,64 @@ function _nutProg(label, now, obj, unit, c1) {
     + '<i style="display:block;height:100%;width:' + Math.round(pct * 100) + '%;border-radius:999px;background:' + c1 + ';transition:width .6s cubic-bezier(.22,1,.36,1);"></i>'
     + '</div></div>';
 }
+// Analyse nutritionnelle (P3-26) — interprétation « Lecture Novalyz », déterministe :
+// compare la MOYENNE 7 j (sur les jours notés) aux cibles, pondère selon l'objectif
+// (sèche/masse/recomp/entretien), met l'accent sur les protéines, et reste honnête
+// sur le recul (nb de jours notés). Aucun chiffre inventé : tout vient des cibles
+// (_nutObjectifs) et de nutri_historique.
+function _nutAnalyse(obj) {
+  if (obj.prot == null && obj.kcal == null) return '';   // pas de cible → rien à comparer
+  var hist = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.nutri_historique) || [];
+  var cut = _ymdLocal(new Date(Date.now() - 6 * 86400000));   // 7 jours glissants
+  var last7 = hist.filter(function (h) { return h && h.date && h.date >= cut; });
+  var nDays = last7.length;
+  if (nDays === 0) {
+    return '<div class="nut-card"><div class="nut-h">Analyse nutrition</div>'
+      + '<div class="nut-muted" style="margin-top:8px;">Saisis ta nutrition quelques jours : Novalyz comparera tes apports à tes cibles et te donnera un conseil.</div></div>';
+  }
+  var avg = function (key) {
+    var v = last7.map(function (h) { return (h[key] != null) ? Number(h[key]) : null; }).filter(function (x) { return x != null && !isNaN(x); });
+    return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length) : null;
+  };
+  var aK = avg('kcal'), aP = avg('prot');
+  var items = [];
+  // Protéines — clé pour tous les objectifs sportifs.
+  if (obj.prot && aP != null) {
+    if (aP / obj.prot >= 0.9) items.push({ s: 'good', t: 'Protéines au rendez-vous (~' + aP + ' g/j, cible ' + obj.prot + ' g) — bon pour préserver et construire du muscle.' });
+    else { var manque = obj.prot - aP; items.push({ s: 'bad', t: 'Protéines insuffisantes (~' + aP + ' g/j vs cible ' + obj.prot + ' g, −' + manque + ' g). ' + (obj.goal === 'masse' ? 'Frein à la prise de muscle.' : (obj.goal === 'seche' || obj.goal === 'recomp') ? 'Risque de perdre du muscle en déficit.' : 'À relever pour soutenir la récupération.') + ' Vise ~+' + manque + ' g/j.' }); }
+  }
+  // Calories — interprétées selon l'objectif.
+  if (obj.kcal && aK != null) {
+    var dk = aK - obj.kcal, pk = Math.round(Math.abs(dk) / obj.kcal * 100);
+    if (pk <= 7) items.push({ s: 'good', t: 'Calories alignées sur ta cible (~' + aK + ' kcal/j, cible ' + obj.kcal + ').' });
+    else if (dk > 0) {
+      if (obj.goal === 'seche' || obj.goal === 'recomp') items.push({ s: 'warn', t: 'Au-dessus de ta cible (~' + aK + ' vs ' + obj.kcal + ' kcal, +' + pk + ' %) → ralentit la perte de gras. Resserre les portions / les glucides.' });
+      else if (obj.goal === 'masse') items.push({ s: 'info', t: 'Au-dessus de ta cible (+' + pk + ' %) — OK pour une prise de masse tant que le poids monte progressivement.' });
+      else items.push({ s: 'warn', t: 'Au-dessus de ta cible d\'entretien (+' + pk + ' %).' });
+    } else {
+      if (obj.goal === 'masse') items.push({ s: 'warn', t: 'En-dessous de ta cible (~' + aK + ' vs ' + obj.kcal + ' kcal, −' + pk + ' %) → limite la prise de muscle. Ajoute des glucides autour des séances.' });
+      else if (obj.goal === 'seche') items.push({ s: 'good', t: 'En léger déficit (~' + aK + ' vs ' + obj.kcal + ' kcal) — cohérent avec une sèche ; garde les protéines hautes.' });
+      else if (obj.goal === 'recomp') items.push({ s: 'good', t: 'Léger déficit (~' + aK + ' vs ' + obj.kcal + ' kcal) — cohérent avec une recomposition.' });
+      else items.push({ s: 'info', t: 'En-dessous de ta cible d\'entretien (−' + pk + ' %).' });
+    }
+  }
+  if (nDays < 5) items.push({ s: 'info', t: 'Tu as noté ' + nDays + ' jour' + (nDays > 1 ? 's' : '') + ' sur 7 — note plus régulièrement pour fiabiliser l\'analyse.' });
+  if (!items.length) return '';
+  var tone = items.some(function (x) { return x.s === 'bad'; }) ? { t: 'À ajuster', c: '#DC3545' } : items.some(function (x) { return x.s === 'warn'; }) ? { t: 'Presque', c: '#E07800' } : { t: 'Dans le vert', c: '#10B981' };
+  var reli = nDays >= 5 ? 'fiable' : nDays >= 3 ? 'fiabilité moyenne' : 'peu de recul';
+  var COL = { good: '#10B981', warn: '#E07800', bad: '#DC3545', info: 'var(--text-subtle)' };
+  var rows = items.map(function (it) {
+    return '<div style="display:flex;gap:9px;align-items:flex-start;margin-top:10px;">'
+      + '<span style="width:8px;height:8px;border-radius:999px;background:' + COL[it.s] + ';flex:none;margin-top:5px;"></span>'
+      + '<span style="font-size:12.5px;line-height:1.5;color:var(--text);">' + it.t + '</span></div>';
+  }).join('');
+  return '<div class="nut-card">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div class="nut-h">Analyse nutrition</div>'
+    + '<span class="nut-chip" style="background:color-mix(in srgb,' + tone.c + ' 14%,transparent);color:' + tone.c + ';border-color:color-mix(in srgb,' + tone.c + ' 35%,transparent);">' + tone.t + '</span></div>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:3px;">Moyenne des 7 derniers jours · ' + nDays + '/7 noté' + (nDays > 1 ? 's' : '') + ' · ' + reli + '</div>'
+    + rows
+    + '</div>';
+}
 function renderNutrition() {
   var body = document.getElementById('nut-body'); if (!body) return;
   var obj = _nutObjectifs();
@@ -16787,7 +16845,8 @@ function renderNutrition() {
     + '<div class="nut-sub" style="margin-top:14px;">Glucides</div><div id="nutgluc-body" class="nut-chart"></div>'
     + '<div class="nut-sub" style="margin-top:14px;">Lipides</div><div id="nutlip-body" class="nut-chart"></div>'
     + '</div>';
-  body.innerHTML = objCard + saisieCard + tendCard;
+  var anaCard = ''; try { anaCard = _nutAnalyse(obj); } catch (e) {}
+  body.innerHTML = objCard + anaCard + saisieCard + tendCard;
   try { _nutmRenderAll(); } catch (e) {}
   try { _nutHCButton(); } catch (e) {}
 }
