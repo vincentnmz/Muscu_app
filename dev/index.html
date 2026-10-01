@@ -1590,8 +1590,8 @@
         <!-- Compteur vélo / GPS : import de fichier d'activité (.GPX / .TCX) -->
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Compteur vélo / GPS</h2></div>
         <div class="card">
-          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Importe une sortie (vélo, course…) depuis un fichier <b>.GPX</b> ou <b>.TCX</b> exporté de Strava, Garmin ou ton compteur. Distance, vitesse, FC, calories et dénivelé sont détectés automatiquement. <span style="color:var(--text-subtle);">(.FIT bientôt)</span></div>
-          <input type="file" id="imp-file" accept=".gpx,.tcx,application/gpx+xml,application/vnd.garmin.tcx+xml,application/xml,text/xml" style="display:none" onchange="_impFichierChoisi(this)">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Importe une sortie (vélo, course…) depuis un fichier <b>.FIT</b>, <b>.GPX</b> ou <b>.TCX</b> exporté de Strava, Garmin ou ton compteur. Type, distance, vitesse, FC, calories et dénivelé sont détectés automatiquement.</div>
+          <input type="file" id="imp-file" accept=".fit,.gpx,.tcx,application/gpx+xml,application/vnd.garmin.tcx+xml,application/octet-stream,application/xml,text/xml" style="display:none" onchange="_impFichierChoisi(this)">
           <button onclick="_impPick()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Importer un fichier d'activité</button>
           <div id="imp-status" style="font-size:12px;margin-top:8px;min-height:14px;"></div>
           <div id="imp-result"></div>
