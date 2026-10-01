@@ -3083,6 +3083,8 @@ async function handleRegisterCoach(body: any): Promise<Response> {
 async function handleSupprimerCompte(body: any): Promise<Response> {
   const athleteId = body.athlete_id
   if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  // Suppression COMPLÈTE des données personnelles (RGPD + exigence Play Store).
+  // Chaque .delete() est tolérant : une table vide n'est pas une erreur.
   await Promise.all([
     sb().from('performances').delete().eq('athlete_id', athleteId),
     sb().from('bien_etre').delete().eq('athlete_id', athleteId),
@@ -3091,7 +3093,21 @@ async function handleSupprimerCompte(body: any): Promise<Response> {
     sb().from('poids_historique').delete().eq('athlete_id', athleteId),
     sb().from('tests').delete().eq('athlete_id', athleteId),
     sb().from('commentaires').delete().eq('athlete_id', athleteId),
+    sb().from('blessures').delete().eq('athlete_id', athleteId),
+    sb().from('objectif').delete().eq('athlete_id', athleteId),
+    sb().from('contexte_athlete').delete().eq('athlete_id', athleteId),
+    sb().from('native_push_tokens').delete().eq('athlete_id', String(athleteId)),
+    sb().from('password_reset_tokens').delete().eq('athlete_id', String(athleteId)),
+    sb().from('google_health_tokens').delete().eq('athlete_id', String(athleteId)),
   ])
+  // Médias coach (photos/vidéos) stockés dans le bucket privé coach-media,
+  // rangés sous le préfixe <athlete_id>/ — on liste puis on supprime.
+  try {
+    const { data: files } = await sb().storage.from('coach-media').list(String(athleteId))
+    if (files && files.length) {
+      await sb().storage.from('coach-media').remove(files.map((f: any) => `${athleteId}/${f.name}`))
+    }
+  } catch (_) { /* best-effort : pas de média ou bucket absent */ }
   await sb().from('athletes').delete().eq('id', athleteId)
   return jsonResp({ success: true })
 }
