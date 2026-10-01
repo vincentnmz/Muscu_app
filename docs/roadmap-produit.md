@@ -83,13 +83,14 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 > **Ordre P2 (porteur, sept. 2026)** : ① **Stabiliser le cardio existant** (cohérence
 > types, fiabilité) ⬅️ en cours · ② **Import d'activités (Strava / GPS / autres)** —
 > important, à faire ensuite · ③ **Hyrox** — important, **placement à décider**.
-14. Cardio (section dédiée) — 🟡 (saisie + analyses cardio existent) · 15. GPS type Strava — 🔵 **prochaine étape**
-    > **Décision (oct. 2026) — import d'activités « le plus pro »** = import **FICHIER multi-format**
-    > (**.FIT** via lib de parsing embarquée + **.TCX** + **.GPX**), parsing **côté client**,
-    > détection auto du sport + extraction (durée, distance, FC, calories, dénivelé, vitesse),
-    > intégration au flux cardio existant (`saveCardio`) avec **déduplication** vis-à-vis de
-    > Health Connect. **Pas d'OAuth** (Strava API = couche de confort ajoutée plus tard).
-    > Point d'entrée UI prévu : la carte « Compteur vélo / GPS » des Réglages (déjà annoncée « bientôt »).
+14. Cardio (section dédiée) — 🟡 (saisie + analyses cardio existent) · 15. Import d'activités (fichier) — ✅ **v1 livrée**
+    > **Import FICHIER multi-format livré (oct. 2026)** : **.FIT** (décodeur binaire maison, message
+    > « session », sans lib externe → hors-ligne) + **.TCX** + **.GPX**, parsing **100% client**,
+    > détection auto du sport + durée/distance (haversine)/vitesse/FC/calories/dénivelé, aperçu
+    > éditable, **avertissement de doublon**, enregistrement via `saveCardio` (aucun backend
+    > ajouté). Entrée : carte « Compteur vélo / GPS » des Réglages. Parsers testés (GPX/TCX via
+    > @xmldom, FIT via buffer fabriqué). **Reste** : Strava API (OAuth, confort) ; déduplication
+    > fine vs Health Connect (par chevauchement horaire) ; valider .fit réels multisport.
 16. Activités structurées — ⬜ · 17. Multi-sources — ⬜ · 18. Déduplication (activités + pas) — ⬜
 19. Watch / Health Connect — 🟡 (Android : lecture séances/pas/sommeil/FC via
     Health Connect, **multi-marques** — voir note « Couverture montres » ci-dessous)
