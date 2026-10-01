@@ -94,7 +94,7 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 16. Activités structurées — ⬜ · 17. Multi-sources — ⬜ · 18. Déduplication (activités + pas) — ⬜
 19. Watch / Health Connect — 🟡 (Android : lecture séances/pas/sommeil/FC via
     Health Connect, **multi-marques** — voir note « Couverture montres » ci-dessous)
-    · 20. Vélo — ⬜ · 21. Running/marche — 🟡 · 22. Hyrox — 🔵 (saisie livrée ; analyse à venir)
+    · 20. Vélo — ⬜ · 21. Running/marche — 🟡 · 22. Hyrox — ✅ (saisie + chrono live + **analyse** : `_hxAnalyseHtml` — hero + delta vs préc., course vs ateliers, point faible, tous les splits, progression du temps total (sparkline), progression par atelier)
 23. Natation — ⬜ · 24. Séances hybrides muscu/cardio — ⬜
 
 > **📌 Couverture montres / plateformes (vision porteur, sept. 2026 — « toutes les
