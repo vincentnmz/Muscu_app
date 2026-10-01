@@ -15841,23 +15841,20 @@ function _impFichierChoisi(input) {
   var f = input && input.files && input.files[0];
   if (!f) return;
   var name = (f.name || '').toLowerCase();
-  if (!/\.(gpx|tcx)$/.test(name)) {
-    if (/\.fit$/.test(name)) _impStatus('Le format .FIT arrive bientôt — exporte en .GPX ou .TCX en attendant.', 'var(--warn)');
-    else _impStatus('Format non reconnu. Choisis un fichier .GPX ou .TCX.', 'var(--bad)');
-    return;
-  }
+  var isFit = /\.fit$/.test(name);
+  if (!/\.(gpx|tcx|fit)$/.test(name)) { _impStatus('Format non reconnu. Choisis un fichier .GPX, .TCX ou .FIT.', 'var(--bad)'); return; }
   if (f.size > 25 * 1024 * 1024) { _impStatus('Fichier trop volumineux (max 25 Mo).', 'var(--bad)'); return; }
   _impStatus('⏳ Lecture du fichier…');
   var reader = new FileReader();
   reader.onload = function () {
     try {
-      var data = _impParse(String(reader.result || ''), name);
-      if (!data) { _impStatus('Fichier illisible (aucune donnée de temps ni de distance).', 'var(--bad)'); return; }
+      var data = isFit ? _fitParse(reader.result) : _impParse(String(reader.result || ''), name);
+      if (!data) { _impStatus(isFit ? 'FIT illisible (pas de résumé de séance « session »). Essaie l\'export .TCX ou .GPX.' : 'Fichier illisible (aucune donnée de temps ni de distance).', 'var(--bad)'); return; }
       _impData = data; _impApercu(data, f.name); _impStatus('');
     } catch (e) { _impStatus('Erreur de lecture : ' + (e && e.message ? e.message : e), 'var(--bad)'); }
   };
   reader.onerror = function () { _impStatus('Impossible de lire le fichier.', 'var(--bad)'); };
-  reader.readAsText(f);
+  if (isFit) reader.readAsArrayBuffer(f); else reader.readAsText(f);
 }
 
 // Distance entre 2 points GPS (mètres).
@@ -15939,6 +15936,96 @@ function _impParse(text, name) {
   var type = _impMapSport(sport) || _impGuessBySpeed(kmh);
   var dateObj = isFinite(startMs) ? new Date(startMs) : new Date();
   return { type_cardio: type, duree: durMin, distance: distKm, vitesse_moy: vmoy, fc_moy: fcMoy, calories: cal, deniv: Math.round(deniv) || 0, dateISO: dateObj.toISOString(), _ymd: _ymdLocal(dateObj), nbpts: pts.length };
+}
+
+// ── Décodeur FIT minimal (binaire) : extrait le message « session » (global 18),
+// qui porte le RÉSUMÉ de l'activité (sport, durée, distance, calories, FC, vitesse,
+// dénivelé). On ne décode pas chaque point — juste ce dont on a besoin. Gère les
+// messages de définition/données (en-têtes normaux + timestamp compressé),
+// l'endianness par définition et les valeurs « invalides ». Sans lib externe. ──
+function _fitBaseType(bt) {
+  switch (bt) {
+    case 0x00: return { size: 1, inv: 0xFF, kind: 'u' };          // enum
+    case 0x01: return { size: 1, inv: 0x7F, kind: 'i' };          // sint8
+    case 0x02: return { size: 1, inv: 0xFF, kind: 'u' };          // uint8
+    case 0x0A: return { size: 1, inv: 0x00, kind: 'u' };          // uint8z
+    case 0x83: return { size: 2, inv: 0x7FFF, kind: 'i' };        // sint16
+    case 0x84: return { size: 2, inv: 0xFFFF, kind: 'u' };        // uint16
+    case 0x8B: return { size: 2, inv: 0x0000, kind: 'u' };        // uint16z
+    case 0x85: return { size: 4, inv: 0x7FFFFFFF, kind: 'i' };    // sint32
+    case 0x86: return { size: 4, inv: 0xFFFFFFFF, kind: 'u' };    // uint32
+    case 0x8C: return { size: 4, inv: 0x00000000, kind: 'u' };    // uint32z
+    case 0x88: return { size: 4, inv: null, kind: 'f32' };        // float32
+    case 0x89: return { size: 8, inv: null, kind: 'f64' };        // float64
+    default:   return { size: 1, inv: 0xFF, kind: 'u' };          // enum/byte/string
+  }
+}
+function _fitRead(dv, off, size, kind, le) {
+  if (kind === 'u') { if (size === 1) return dv.getUint8(off); if (size === 2) return dv.getUint16(off, le); if (size === 4) return dv.getUint32(off, le); }
+  if (kind === 'i') { if (size === 1) return dv.getInt8(off); if (size === 2) return dv.getInt16(off, le); if (size === 4) return dv.getInt32(off, le); }
+  if (kind === 'f32' && size === 4) return dv.getFloat32(off, le);
+  if (kind === 'f64' && size === 8) return dv.getFloat64(off, le);
+  return null;
+}
+function _fitFinish(s) {
+  if (!s) return null;
+  var SPORT = { 0: 'autre', 1: 'footing', 2: 'velo', 5: 'natation', 11: 'marche_normale', 13: 'ski_fond', 15: 'rameur' };
+  var start = (s[2] != null) ? s[2] : s[253];
+  var dateObj = (start != null) ? new Date((start + 631065600) * 1000) : new Date();
+  var durS = (s[8] != null) ? s[8] / 1000 : (s[7] != null ? s[7] / 1000 : 0);
+  var distM = (s[9] != null) ? s[9] / 100 : 0;
+  var kmh = (durS > 0 && distM > 0) ? (distM / 1000) / (durS / 3600) : 0;
+  var avgSpd = (s[14] != null) ? (s[14] / 1000) * 3.6 : 0;   // m/s → km/h
+  var vmoy = avgSpd ? Math.round(avgSpd * 10) / 10 : (kmh ? Math.round(kmh * 10) / 10 : 0);
+  var type = SPORT[s[5]] || _impGuessBySpeed(kmh) || 'autre';
+  var durMin = durS > 0 ? Math.max(1, Math.round(durS / 60)) : 0;
+  var distKm = distM > 0 ? Math.round(distM / 10) / 100 : 0;
+  if (!durMin && !distKm) return null;
+  return { type_cardio: type, duree: durMin, distance: distKm, vitesse_moy: vmoy, fc_moy: Math.round(s[16] || 0) || 0, calories: Math.round(s[11] || 0) || 0, deniv: Math.round(s[22] || 0) || 0, dateISO: dateObj.toISOString(), _ymd: _ymdLocal(dateObj), nbpts: 0 };
+}
+function _fitParse(buf) {
+  var dv = new DataView(buf);
+  if (dv.byteLength < 12) return null;
+  var hSize = dv.getUint8(0);
+  if (dv.byteLength < hSize + 4) return null;
+  if (String.fromCharCode(dv.getUint8(8), dv.getUint8(9), dv.getUint8(10), dv.getUint8(11)) !== '.FIT') return null;
+  var dataSize = dv.getUint32(4, true);
+  var pos = hSize, endData = Math.min(hSize + dataSize, dv.byteLength);
+  var defs = {}, session = null;
+  var readData = function (def) {
+    if (def.global === 18 && !session) {
+      var s = {}, p = pos;
+      for (var i = 0; i < def.fields.length; i++) {
+        var fd = def.fields[i];
+        if (!fd.dev) { var bt = _fitBaseType(fd.base); var v = null; if (fd.size === bt.size) { v = _fitRead(dv, p, fd.size, bt.kind, def.le); if (v === bt.inv) v = null; } s[fd.num] = v; }
+        p += fd.size;
+      }
+      session = s;
+    }
+    return pos + def.total;
+  };
+  while (pos < endData) {
+    var rh = dv.getUint8(pos); pos += 1;
+    if (rh & 0x80) {                                  // timestamp compressé = message de données
+      var lt = (rh >> 5) & 0x3, d1 = defs[lt];
+      if (!d1) break;                                 // définition manquante → on arrête proprement
+      pos = readData(d1);
+    } else if (rh & 0x40) {                           // message de définition
+      pos += 1;                                       // reserved
+      var le = dv.getUint8(pos) === 0; pos += 1;
+      var gnum = dv.getUint16(pos, le); pos += 2;
+      var nf = dv.getUint8(pos); pos += 1;
+      var fields = [], total = 0, i2;
+      for (i2 = 0; i2 < nf; i2++) { fields.push({ num: dv.getUint8(pos), size: dv.getUint8(pos + 1), base: dv.getUint8(pos + 2) }); total += dv.getUint8(pos + 1); pos += 3; }
+      if (rh & 0x20) { var ndf = dv.getUint8(pos); pos += 1; for (i2 = 0; i2 < ndf; i2++) { fields.push({ dev: true, size: dv.getUint8(pos + 1) }); total += dv.getUint8(pos + 1); pos += 3; } }
+      defs[rh & 0x0F] = { global: gnum, le: le, fields: fields, total: total };
+    } else {                                          // message de données (en-tête normal)
+      var d2 = defs[rh & 0x0F];
+      if (!d2) break;
+      pos = readData(d2);
+    }
+  }
+  return _fitFinish(session);
 }
 
 function _impApercu(d, filename) {
