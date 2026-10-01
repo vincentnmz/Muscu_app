@@ -1800,6 +1800,7 @@ function seDeconnecter() {
   document.body.classList.remove('seance-active');
   try { _seanceChronoStop(); _seanceChronoT0 = 0; } catch (e) {}
   document.getElementById('btn-logout').style.display = 'none';
+  _tjRingLast = null;   // réinitialise l'anim de l'anneau pour la prochaine connexion
   { var _fb = document.getElementById('fab-novalyz'); if (_fb) _fb.style.display = 'none'; }
   { var _br = document.getElementById('btn-reglages-hdr'); if (_br) _br.style.display = 'none'; }
   { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'none'; }
@@ -11111,6 +11112,7 @@ function _safe(label, fn) {
 // Accueil « Aujourd'hui » (refonte maquette) : remplit les valeurs dynamiques
 // (prénom, date, régularité). Les autres blocs restent visuels pour l'instant,
 // on les branchera aux données au fil des phases.
+var _tjRingLast = null;   // dernier % animé de l'anneau Aujourd'hui (anti-rejeu)
 function renderAujourdhui(data) {
   var prenom = 'Athlète';
   try { if (athlete && athlete.nom) prenom = String(athlete.nom).trim().split(/\s+/)[0]; } catch (e) {}
@@ -11132,10 +11134,20 @@ function renderAujourdhui(data) {
     var fg = document.getElementById('tj-ring-fg');
     if (fg) {
       var pct = prevues ? Math.max(0, Math.min(100, Math.round(faites / prevues * 100))) : 0;
-      fg.style.transition = 'none';
-      fg.setAttribute('stroke-dashoffset', '100');
-      void fg.getBoundingClientRect();   // force reflow → l'anim repart de 0 à chaque rendu
-      requestAnimationFrame(function () { fg.style.transition = ''; fg.setAttribute('stroke-dashoffset', String(100 - pct)); });
+      // N'animer QU'UNE FOIS par valeur : renderAujourdhui est appelé plusieurs fois
+      // à l'ouverture (switchTab + chargement data + retour premier plan) → sans ce
+      // garde-fou, l'anneau « rejouait » son animation à chaque rendu. On ré-anime
+      // seulement si le pourcentage a changé (ex. après une séance enregistrée).
+      if (_tjRingLast === pct) {
+        fg.style.transition = 'none';
+        fg.setAttribute('stroke-dashoffset', String(100 - pct));
+      } else {
+        _tjRingLast = pct;
+        fg.style.transition = 'none';
+        fg.setAttribute('stroke-dashoffset', '100');
+        void fg.getBoundingClientRect();   // reflow → l'anim repart de 0
+        requestAnimationFrame(function () { fg.style.transition = ''; fg.setAttribute('stroke-dashoffset', String(100 - pct)); });
+      }
     }
   } catch (e) {}
 
