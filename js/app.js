@@ -15827,7 +15827,7 @@ var _CARDIO_TYPE_LABELS = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.
  * est calculée par l'appareil → fiable. Plugin natif « HealthPlugin »
  * (capacitor-health). Web/PWA : indisponible (nécessite l'appli Android).
  * ═══════════════════════════════════════════════════════════════════════════ */
-var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_ROUTE', 'READ_SLEEP', 'READ_RESTING_HEART_RATE', 'READ_NUTRITION'];
+var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_SLEEP', 'READ_RESTING_HEART_RATE'];
 function _hcPlugin() { try { return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthPlugin; } catch (e) { return null; } }
 function _hcStatus(t, c) { var s = document.getElementById('hc-status'); if (s) { s.textContent = t; s.style.color = c || 'var(--text-muted)'; } }
 function fermerImportMontre() { var ov = document.getElementById('hc-import'); if (ov) ov.style.display = 'none'; }

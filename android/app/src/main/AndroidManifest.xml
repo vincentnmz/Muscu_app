@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -64,6 +65,21 @@
          repos) — pas dans le manifest du plugin d'origine, donc déclarées ici. -->
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
     <uses-permission android:name="android.permission.health.READ_RESTING_HEART_RATE" />
+
+    <!-- Permissions santé déclarées par le plugin mais NON utilisées par Novalyz :
+         on les RETIRE du manifeste fusionné (tools:node="remove") pour respecter la
+         Health Apps policy du Play Store (ne demander que ce qu'on lit réellement).
+         L'app ne lit PAS depuis Health Connect : calories totales, étages, poids,
+         taille, masse grasse, masse maigre, nutrition (poids/nutrition = saisie
+         manuelle). Gardées (utilisées) : SLEEP, RESTING_HEART_RATE, STEPS, EXERCISE,
+         DISTANCE, ACTIVE_CALORIES_BURNED, HEART_RATE. -->
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_FLOORS_CLIMBED" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_HEIGHT" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_BODY_FAT" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_LEAN_BODY_MASS" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_NUTRITION" tools:node="remove" />
 
 
     <!-- Health Connect : détection de l'appli Health Connect (isHealthAvailable).
