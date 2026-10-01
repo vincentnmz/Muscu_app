@@ -115,7 +115,7 @@ numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
 
 ### P3 — NUTRITION
 25. Nutrition Solo (dans Mon état, liée à l'objectif) — ✅ (onglet **Nutrition** dans « Forme » : objectifs macros **P/G/L** calculés depuis le poids réel (dernière pesée) + objectif + niveau d'activité ; saisie kcal/prot/gluc/lip ; historique `nutri_historique` ; tendance 4 courbes ; backend `saveNutrition` **déployé** ; testé)
-26. Analyse nutritionnelle (interprétation) — ⬜ (suivi + tendances livrés ; pas encore d'analyse interprétative type « Lecture Novalyz ») · 27. Nutrition Coach — ⬜
+26. Analyse nutritionnelle (interprétation) — ✅ (carte « Analyse nutrition » : moyenne 7 j vs cibles, pondérée par l'objectif (sèche/masse/recomp/entretien), focus protéines, verdict + conseil concret, honnête sur le recul — déterministe, `_nutAnalyse`) · 27. Nutrition Coach — ⬜
 
 ### P4 — IA
 28. Coach IA (conversation groundée sur le moteur) — 🟡 (front `cvSendIA` + backend `chatIA` **codés & déployés**, grounding `_iaContexte`, quota 2 msg/j, modèle Haiku 4.5 ; **en veille = 0 €** tant que le secret `ANTHROPIC_API_KEY` n'est pas ajouté sur Supabase)
