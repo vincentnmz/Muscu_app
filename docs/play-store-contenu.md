@@ -86,7 +86,7 @@ Novalyz est un outil d'aide à l'entraînement et au bien-être sportif. Il ne f
 
 ## Applis de santé (Health Apps)
 - Catégories : **Activité et remise en forme** · **Gestion du sommeil** · **Nutrition et gestion du poids**. Rien de médical/clinique.
-- Permissions Health Connect déclarées = **7** (manifeste nettoyé) : READ_EXERCISE, READ_STEPS, READ_SLEEP, READ_HEART_RATE, READ_RESTING_HEART_RATE, READ_DISTANCE, READ_ACTIVE_CALORIES_BURNED. Toutes en **lecture seule**, pour l'analyse d'entraînement, **ni vendues ni partagées**.
+- Permissions Health Connect déclarées = **8** (manifeste nettoyé) : les 7 d'entraînement + **READ_NUTRITION**. Toutes en **lecture seule**, **ni vendues ni partagées**.
 ```
 READ_EXERCISE              → importer les séances de la montre pour les analyser
 READ_STEPS                 → afficher les pas quotidiens et l'objectif d'activité
@@ -95,7 +95,13 @@ READ_HEART_RATE            → FC pendant les séances (analyse de l'effort)
 READ_RESTING_HEART_RATE    → FC au repos (indicateur de récupération)
 READ_DISTANCE              → distance des séances cardio
 READ_ACTIVE_CALORIES_BURNED→ calories actives dépensées pendant les séances
+READ_NUTRITION             → importer les apports nutritionnels (kcal/macros) écrits
+                             par l'app de l'utilisateur (MyFitnessPal, Yazio,
+                             Samsung Health…) pour les comparer à ses cibles
 ```
+> ⚠️ Mise à jour (oct. 2026) : READ_NUTRITION avait été retirée puis **réintégrée**
+> car elle est utilisée par « Importer depuis Health Connect » de l'écran Nutrition.
+> Côté Play Console « Applis de santé », l'écran listera donc **8** permissions.
 
 ---
 _À tenir à jour (surtout : premium → financier + achats numériques ; IA activée → mention dans la description + déclaration contenu IA)._
