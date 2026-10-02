@@ -16873,7 +16873,8 @@ function _nutSave() {
 async function _nutHCButton() {
   var box = document.getElementById('nut-hc'); if (!box) return;
   var H = _hcPlugin(); if (!H) { box.innerHTML = ''; return; }   // web/PWA : pas de Health Connect
-  box.innerHTML = '<button class="nut-ghost" onclick="_nutFromHC()"><svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Importer depuis Health Connect</button>';
+  box.innerHTML = '<button class="nut-ghost" onclick="_nutFromHC()"><svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Importer depuis Health Connect</button>'
+    + '<div class="nut-muted" style="margin-top:6px;font-size:11px;line-height:1.45;">Depuis ton app de nutrition (MyFitnessPal, Yazio…) via Health Connect. Si des apports manquent, elle n\'a peut-être pas fini de synchroniser — rouvre-la et réessaie un peu plus tard.</div>';
 }
 async function _nutFromHC() {
   var H = _hcPlugin(); if (!H) return;
