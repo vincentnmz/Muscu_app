@@ -4050,6 +4050,7 @@ async function renderCoachSynthese(athletes) {
               : (d.dashboard && d.dashboard.recuperation ? d.dashboard.recuperation.rpe_moyen : null);
     const _reg = d.dashboard && d.dashboard.regularite ? d.dashboard.regularite : null;
     const seancesSem = _reg ? _seancesFaites(_reg) : null;
+    const regPrevues = _reg && _reg.seances_prevues != null ? _reg.seances_prevues : null;
     let spark = [];
     const _vpj = (d.recent && d.recent.volume_par_jour) ? d.recent.volume_par_jour
                : (d.historique && d.historique.volume_par_jour ? d.historique.volume_par_jour : null);
@@ -4059,7 +4060,7 @@ async function renderCoachSynthese(athletes) {
     }
     const tonnage = d.dashboard && d.dashboard.tonnage ? d.dashboard.tonnage : null;
     const streak = d.dashboard && d.dashboard.streak ? d.dashboard.streak.semaines : null;
-    return { a, i, m, rpe, seancesSem, spark, tonnage, streak, msgNonLus: msgNonLus[i] || 0, enPause: estEnPause(d.pause) };
+    return { a, i, m, rpe, seancesSem, regPrevues, spark, tonnage, streak, msgNonLus: msgNonLus[i] || 0, enPause: estEnPause(d.pause) };
   });
   enrich.sort((x, y) => {
     const rx = x.m ? x.m.statut.rank : -1, ry = y.m ? y.m.statut.rank : -1;
@@ -4119,6 +4120,21 @@ async function renderCoachSynthese(athletes) {
         </div>`).join('');
   }
 
+  // ---- Bloc « Messages non lus » ----
+  const initPf = nom => (nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+  const avecMsg = enrich.filter(e => e.msgNonLus > 0);
+  let messagesHtml = '';
+  if (avecMsg.length) {
+    const totalMsg = avecMsg.reduce((s, e) => s + e.msgNonLus, 0);
+    messagesHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-message"/></svg>Messages non lus<span style="margin-left:auto;font-size:11px;font-weight:800;color:var(--accent);">${totalMsg}</span></div></div>` +
+      avecMsg.map(e => `
+        <div onclick="ouvrirConversationDepuisMessagerie('${e.i}')" style="display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px solid var(--accent);box-shadow:var(--shadow-sm);">
+          <div style="width:40px;height:40px;border-radius:12px;background:var(--accent-a12);color:var(--accent-strong);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initPf(e.a.nom)}</div>
+          <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${e.msgNonLus} nouveau${e.msgNonLus>1?'x':''} message${e.msgNonLus>1?'s':''}</div></div>
+          <span style="min-width:20px;height:20px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;flex-shrink:0;">${e.msgNonLus}</span>
+        </div>`).join('');
+  }
+
   // ---- Bloc « Analyse Novalyz » (moteur, par athlète) ----
   let briefingHtml = '';
   if (typeof NovalyzEngine !== 'undefined') {
@@ -4146,32 +4162,43 @@ async function renderCoachSynthese(athletes) {
     }
   }
 
-  // ---- Liste complète ----
+  // ---- Liste complète (style maquette : pastille d'état, chip, régularité) ----
   const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes ${libelleSport('athletes').toLowerCase()}</div></div>` +
-    enrich.map(({ a, i, m, rpe, seancesSem, spark, tonnage, streak, enPause }) => {
+    enrich.map(({ a, i, m, rpe, seancesSem, regPrevues, tonnage, streak, enPause }) => {
     const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
+    const dotColor = enPause ? '#63b3ed' : s.color;
     const meta = [];
-    if (seancesSem != null) meta.push(`<span><b style="color:var(--text);">${seancesSem}</b> séance${seancesSem>1?'s':''}/sem</span>`);
-    if (rpe != null) meta.push(`<span>RPE <b style="color:var(--text);">${rpe}</b></span>`);
+    if (rpe != null) meta.push(`RPE <b style="color:var(--text);">${rpe}</b>`);
     const _tval = tonnage ? (tonnage.j7 != null ? tonnage.j7 : tonnage.semaine) : null;
     const _tevol = tonnage ? (tonnage.evol_pct != null ? tonnage.evol_pct : tonnage.evol) : null;
     if (_tval > 0) {
-      const tc = _tevol != null ? (_tevol >= 0 ? '#00c96e' : '#f59f00') : 'var(--text)';
+      const tc = _tevol != null ? (_tevol >= 0 ? 'var(--good)' : 'var(--warn)') : 'var(--text)';
       const tarr = _tevol != null ? ` ${_tevol >= 0 ? '▲' : '▼'}${Math.abs(_tevol)}%` : '';
-      meta.push(`<span>Tonnage <b style="color:${tc};">${_tval}t${tarr}</b></span>`);
+      meta.push(`Tonnage <b style="color:${tc};">${_tval}t${tarr}</b>`);
     }
-    if (streak != null && streak > 0) meta.push(`<span>🔥 <b style="color:#f5a524;">${streak} sem.</b></span>`);
-    if (m && m.volLabel && m.volLabel !== 'N/A') meta.push(`<span style="color:${m.volColor};font-weight:700;">${m.volLabel}</span>`);
+    if (streak != null && streak > 0) meta.push(`🔥 <b style="color:var(--warn);">${streak} sem.</b>`);
     if (m && m.progLabel && m.progLabel !== 'N/A') meta.push(`<span style="color:${m.progColor};font-weight:700;">${m.progLabel}</span>`);
-    const badgeVacances = enPause ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,179,237,.12);color:#63b3ed;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;">🏖️ Vacances</span>` : '';
-    return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface);border:1px solid ${enPause ? 'rgba(99,179,237,.3)' : 'var(--border)'};border-radius:14px;margin-bottom:9px;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='${enPause ? 'rgba(99,179,237,.3)' : 'var(--border)'}'">
-      <div style="width:44px;height:44px;border-radius:13px;background:${enPause ? 'rgba(99,179,237,.12)' : s.color+'22'};color:${enPause ? '#63b3ed' : s.color};font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${enPause ? '🏖️' : initiales(a.nom)}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>${badgeVacances}</div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;gap:9px;flex-wrap:wrap;">${enPause ? '<span style="color:#63b3ed;">Pas d\'alerte absence pendant les vacances</span>' : meta.join('<span style="opacity:.4">·</span>')}</div>
+    const metaLine = enPause
+      ? '<span style="color:#63b3ed;">Vacances · pas d\'alerte absence</span>'
+      : (meta.length ? meta.join('<span style="opacity:.4"> · </span>') : '<span style="color:var(--text-subtle);">Pas encore de données</span>');
+    // Colonne régularité (droite)
+    const regCol = (!enPause && seancesSem != null)
+      ? `<div style="text-align:center;flex-shrink:0;"><div style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text);">${seancesSem}${regPrevues != null ? '/' + regPrevues : ''}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:1px;">Régul.</div></div>`
+      : '';
+    const chip = enPause
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,179,237,.12);color:#63b3ed;padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">🏖️ Vacances</span>`
+      : `<span style="background:${s.color}1a;color:${s.color};padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">${s.label}</span>`;
+    return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:12px 13px;background:var(--surface);border:1px solid var(--border);border-radius:15px;margin-bottom:9px;cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div style="position:relative;width:44px;height:44px;flex-shrink:0;">
+        <div style="width:44px;height:44px;border-radius:13px;background:var(--surface2);color:var(--text);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">${enPause ? '🏖️' : initiales(a.nom)}</div>
+        <span style="position:absolute;right:-2px;top:-2px;width:13px;height:13px;border-radius:50%;background:${dotColor};border:2.5px solid var(--surface);"></span>
       </div>
-      ${enPause ? '' : miniSpark(spark, s.color)}
-      ${enPause ? '' : `<span style="display:inline-flex;align-items:center;gap:6px;background:${s.color}1a;color:${s.color};padding:5px 11px;border-radius:var(--radius-pill);font-size:11.5px;font-weight:800;white-space:nowrap;flex-shrink:0;"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};"></span>${s.label}</span>`}
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>${chip}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${metaLine}</div>
+      </div>
+      ${regCol}
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m9 6 6 6-6 6"/></svg>
     </div>`;
   }).join('');
 
@@ -4208,7 +4235,7 @@ async function renderCoachSynthese(athletes) {
       </div>
     </div>`;
 
-  el.innerHTML = heroHtml + prioHtml + briefingHtml + listeHtml;
+  el.innerHTML = heroHtml + prioHtml + messagesHtml + briefingHtml + listeHtml;
 }
 
 function ouvrirAthleteDepuisSelect(idx) {
