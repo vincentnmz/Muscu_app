@@ -80,6 +80,9 @@ body.has-bottom-nav { padding-bottom:64px; }
   padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px)); justify-content:center; }
 body.coach-active:not(.athlete-selected) #coach-bandeau { display:flex; }
 body.coach-active:not(.athlete-selected) #main-container { padding-bottom:84px; }
+/* Boutons du header repris par le bandeau (Messages, Réglages) : masqués en
+   mobile/tablette où le bandeau les fournit. Réaffichés en desktop (pas de bandeau). */
+@media (max-width:991px) { #coach-topbar .ct-dup { display:none; } }
 #coach-bandeau .cb-item { flex:1; max-width:calc(var(--app-w) / 5); display:flex; flex-direction:column;
   align-items:center; gap:3px; padding:4px 2px; border:none; background:none; cursor:pointer;
   color:var(--text-subtle); font-family:inherit; }
@@ -88,6 +91,17 @@ body.coach-active:not(.athlete-selected) #main-container { padding-bottom:84px; 
 #coach-bandeau .cb-item span:last-child { font-size:9.5px; font-weight:700; }
 #coach-bandeau .cb-item.on { color:var(--accent); }
 #coach-bandeau .cb-item.on span:last-child { font-weight:800; }
+
+/* ===== Recherche + filtres de la section Équipe ===== */
+.coach-eq-search { display:flex; align-items:center; gap:9px; background:var(--surface); border:1px solid var(--border);
+  border-radius:13px; padding:10px 13px; box-shadow:var(--shadow-sm); margin-bottom:11px; }
+.coach-eq-search svg { width:17px; height:17px; flex:none; fill:none; stroke:var(--text-subtle); stroke-width:2.2; stroke-linecap:round; }
+.coach-eq-search input { flex:1; min-width:0; border:none; background:none; color:var(--text); font-size:13.5px; font-family:inherit; outline:none; }
+.coach-eq-chips { display:flex; gap:7px; overflow:auto; margin-bottom:14px; padding-bottom:2px; }
+.coach-eq-chip { flex:none; font-size:12px; font-weight:700; border-radius:999px; padding:7px 13px; border:1px solid var(--border);
+  background:var(--surface); color:var(--text-muted); box-shadow:var(--shadow-sm); cursor:pointer; font-family:inherit; white-space:nowrap; }
+.coach-eq-chip.on { background:var(--accent); color:var(--on-accent); border-color:transparent; }
+.coach-eq-chip b { font-weight:900; }
 
 /* ---- Page SÉANCE plein écran : le flux de saisie (#subtab-saisie) s'ouvre
    par-dessus l'app avec son propre en-tête retour (#seance-page-hd), header
