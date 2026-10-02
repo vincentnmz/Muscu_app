@@ -5132,21 +5132,42 @@ function renderCoachIndicateurs(data) {
   const el = document.getElementById('cd-indicateurs');
   if (!el) return;
   const m = computeMarqueursCoach(data, coachAthleteCourant);
-  const indicateurs = [
-    { label: 'Progression', color: m.progColor, val: m.progLabel },
-    { label: 'Volume', color: m.volColor, val: m.volLabel },
-    { label: 'Régularité', color: m.regColor, val: m.regLabel },
-    { label: 'Récupération', color: m.recupColor, val: m.recupLabel },
-  ];
-  el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;">
-    ${indicateurs.map(ind => `
-      <div class="v2-kpi" style="display:flex;flex-direction:column;gap:6px;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span class="v2-dot" style="background:${ind.color};box-shadow:0 0 6px ${ind.color}55;"></span>
-          <span style="font-size:9.5px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;">${ind.label}</span>
-        </div>
-        <div style="font-size:14px;color:${ind.color};font-weight:800;line-height:1;">${ind.val}</div>
-      </div>`).join('')}
+  const dash = data.dashboard || {};
+
+  // Régularité (X/Y)
+  const reg = dash.regularite || {};
+  const regVal = (m.regLabel && m.regLabel !== 'N/A') ? m.regLabel : '—';
+  const regSub = (reg.seances_prevues) ? 'séances / objectif' : 'cette semaine';
+
+  // ACWR (ratio + zone) — repli factuel si < 4 semaines de données
+  let acwrVal, acwrSub, acwrColor = m.acwrColor;
+  if (m.acwrRatio != null) {
+    acwrVal = String(m.acwrRatio).replace('.', ',');
+    const r = m.acwrRatio;
+    acwrSub = (r >= 0.8 && r <= 1.3) ? 'zone optimale' : r > 1.5 ? 'zone de risque' : r > 1.3 ? 'charge élevée' : 'sous-charge';
+  } else { acwrVal = '—'; acwrSub = '< 4 semaines de données'; acwrColor = 'var(--text-subtle)'; }
+
+  // Dernière séance
+  const ds = dash.derniere_seance || null;
+  const dsVal = ds && ds.date ? ds.date : 'Jamais';
+  const dsSub = ds ? [ds.seance_id, ds.nb_series != null ? ds.nb_series + ' séries' : null].filter(Boolean).join(' · ') : '';
+
+  // Progression (comptes hausse/baisse 7j)
+  const progVal = (m.progLabel && m.progLabel !== 'N/A') ? m.progLabel : '—';
+  const progSub = (m.progLabel && m.progLabel !== 'N/A') ? '7 derniers jours' : 'pas assez de données';
+
+  const tile = (label, val, color, sub) => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 13px;box-shadow:var(--shadow-sm);min-width:0;">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-subtle);">${label}</div>
+      <div style="font-size:19px;font-weight:900;letter-spacing:-.02em;margin-top:5px;color:${color};line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${val}</div>
+      ${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(String(sub))}</div>` : ''}
+    </div>`;
+
+  el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+    ${tile('Régularité', regVal, m.regColor, regSub)}
+    ${tile('ACWR', acwrVal, acwrColor, acwrSub)}
+    ${tile('Dernière séance', dsVal, 'var(--text)', dsSub)}
+    ${tile('Progression', progVal, m.progColor, progSub)}
   </div>`;
 }
 
