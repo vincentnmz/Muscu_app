@@ -5273,57 +5273,88 @@ function seancesCardsHTML(entries) {
   if (!entries || entries.length === 0) {
     return '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>';
   }
+  // Couleur du RPE (cohérent avec la maquette : ≤7 ok, 7.5-8 modéré, ≥8.5 élevé)
+  const rpeChip = (rpe) => {
+    if (rpe == null || rpe === '' || isNaN(Number(rpe))) return '<span style="color:var(--text-subtle);font-weight:600;">—</span>';
+    const n = Number(rpe);
+    const c = n < 7.5 ? 'var(--good)' : n < 8.5 ? 'var(--warn)' : 'var(--danger)';
+    const ca = n < 7.5 ? 'var(--good-a)' : n < 8.5 ? 'var(--warn-a)' : 'var(--bad-a)';
+    return `<span style="display:inline-block;min-width:30px;border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800;background:${ca};color:${c};">${n}</span>`;
+  };
   return entries.map((s, idx) => {
-    // Normaliser en exercices -> séries
-    let ordreExo, parExo;
+    // Normaliser en exercices -> séries (+ muscle si fourni par getSeancesDetail)
+    let ordreExo, parExo, muscleExo = {};
     if (s.exos.length && s.exos[0] && Array.isArray(s.exos[0].series)) {
       // Déjà groupé (endpoint getSeancesDetail)
       ordreExo = s.exos.map(x => x.exo);
-      parExo = {}; s.exos.forEach(x => { parExo[x.exo] = x.series; });
+      parExo = {}; s.exos.forEach(x => { parExo[x.exo] = x.series; if (x.muscle) muscleExo[x.exo] = x.muscle; });
     } else {
       // Ancien format plat : une entrée par perf
       parExo = {}; ordreExo = [];
       s.exos.forEach(e => {
         if (!parExo[e.exo]) { parExo[e.exo] = []; ordreExo.push(e.exo); }
         parExo[e.exo].push(e);
+        if (e.muscle) muscleExo[e.exo] = e.muscle;
       });
     }
     const nbExos = ordreExo.length;
     const nbSeries = ordreExo.reduce((n, exo) => n + parExo[exo].length, 0);
 
+    // Récap séance : tonnage (Σ charge×reps, repli sur volume) + RPE moyen (séries renseignées)
+    let tonnage = 0, rpeSum = 0, rpeN = 0;
+    ordreExo.forEach(exo => parExo[exo].forEach(e => {
+      const ch = Number(e.charge), rp = Number(e.reps);
+      if (!isNaN(ch) && !isNaN(rp)) tonnage += ch * rp;
+      else if (!isNaN(Number(e.volume))) tonnage += Number(e.volume);
+      if (e.rpe != null && e.rpe !== '' && !isNaN(Number(e.rpe))) { rpeSum += Number(e.rpe); rpeN++; }
+    }));
+    const tonnageTxt = tonnage >= 1000 ? (tonnage / 1000).toFixed(1).replace('.', ',') + ' t' : Math.round(tonnage) + ' kg';
+    const rpeMoy = rpeN ? (rpeSum / rpeN).toFixed(1).replace('.', ',') : null;
+    const schip = (n, l) => `<div style="flex:none;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:8px 11px;text-align:center;min-width:60px;"><div style="font-size:15px;font-weight:900;letter-spacing:-.02em;">${n}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:2px;">${l}</div></div>`;
+    const recapStrip = nbExos > 0
+      ? `<div style="display:flex;gap:7px;overflow:auto;margin-bottom:12px;padding-bottom:2px;">
+          ${schip(nbExos, 'Exos')}${schip(nbSeries, 'Séries')}${tonnage > 0 ? schip(tonnageTxt, 'Tonnage') : ''}${rpeMoy != null ? schip(rpeMoy, 'RPE moy.') : ''}
+        </div>` : '';
+
     const exoBlocks = nbExos > 0
       ? ordreExo.map(exo => {
           const series = parExo[exo];
-          const seriesLignes = series.map((e, i) => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
-              <span style="font-size:11px;color:var(--accent);font-weight:700;min-width:52px;">Série ${e.serie || (i + 1)}</span>
-              <span style="font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;">${e.charge ? e.charge + ' kg' : '—'} × ${e.reps || '—'} reps${e.rpe ? ` <span style="color:var(--text-muted);font-weight:400;">· RPE ${e.rpe}</span>` : ''}</span>
-            </div>`).join('');
+          const rows = series.map((e, i) => `
+            <tr>
+              <td style="text-align:left;color:var(--text-subtle);font-weight:800;font-size:12px;padding:6px 0;border-top:1px solid var(--border);">${e.serie || (i + 1)}</td>
+              <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.charge ? e.charge + ' kg' : '—'}</td>
+              <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.reps || '—'}</td>
+              <td style="text-align:right;padding:6px 0;border-top:1px solid var(--border);">${rpeChip(e.rpe)}</td>
+            </tr>`).join('');
+          const muscleTag = muscleExo[exo] ? `<span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:var(--accent-a10);border-radius:6px;padding:3px 7px;flex-shrink:0;">${escapeHtml(String(muscleExo[exo]))}</span>` : '';
           return `
-            <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
-              <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:4px;display:flex;justify-content:space-between;">
-                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%;">${exo}</span>
-                <span style="font-size:10px;color:var(--text-muted);font-weight:600;">${series.length} série${series.length>1?'s':''}</span>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:11px 13px;margin-bottom:9px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+                <span style="font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(String(exo))}</span>
+                ${muscleTag}
               </div>
-              ${seriesLignes}
+              <table style="width:100%;border-collapse:collapse;">
+                <tr><th style="text-align:left;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Série</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Charge</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Reps</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">RPE</th></tr>
+                ${rows}
+              </table>
             </div>`;
         }).join('')
       : '<div style="font-size:11px;color:var(--text-muted);padding:6px 0;">Pas de détail disponible (données antérieures)</div>';
 
     return `
-      <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">
-        <div onclick="toggleSeanceCoach(${idx})" style="display:flex;justify-content:space-between;align-items:center;padding:12px;cursor:pointer;background:var(--surface);">
-          <div>
-            <div style="font-size:13px;font-weight:800;color:var(--accent);">${s.seance}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${s.date}</div>
+      <div style="border:1px solid var(--border);border-radius:15px;margin-bottom:9px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm);">
+        <div onclick="toggleSeanceCoach(${idx})" style="display:flex;justify-content:space-between;align-items:center;padding:13px;cursor:pointer;">
+          <div style="min-width:0;">
+            <div style="font-size:14px;font-weight:800;">${escapeHtml(String(s.seance))}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${escapeHtml(String(s.date))}</div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            ${nbExos > 0 ? `<span style="background:var(--accent-a15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">${nbExos} exo${nbExos>1?'s':''} · ${nbSeries} série${nbSeries>1?'s':''}</span>` : ''}
-            <span id="seance-arrow-${idx}" style="font-size:14px;color:var(--text-muted);transition:transform 0.2s;">›</span>
+          <div style="display:flex;align-items:center;gap:9px;flex-shrink:0;">
+            ${nbExos > 0 ? `<span style="background:var(--accent-a10);color:var(--accent);font-size:10px;font-weight:800;padding:3px 9px;border-radius:var(--radius-pill);white-space:nowrap;">${nbExos} exo${nbExos>1?'s':''} · ${nbSeries} série${nbSeries>1?'s':''}</span>` : ''}
+            <svg id="seance-arrow-${idx}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;flex-shrink:0;"><path d="m9 6 6 6-6 6"/></svg>
           </div>
         </div>
-        <div id="seance-detail-${idx}" style="display:none;padding:10px 12px 12px;">
-          ${exoBlocks}
+        <div id="seance-detail-${idx}" style="display:none;padding:2px 13px 13px;">
+          ${recapStrip}${exoBlocks}
         </div>
       </div>`;
   }).join('');
