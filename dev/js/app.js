@@ -1956,6 +1956,7 @@ function seDeconnecterCoach() {
 
 async function ouvrirEspaceCoach() {
   arreterChronoEtReinitSeance();
+  coachBandeauTab = 'aujourdhui';   // le bandeau démarre toujours sur « Aujourd'hui »
   document.body.classList.add('coach-active');
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
@@ -4033,11 +4034,13 @@ async function renderCoachSynthese(athletes) {
       return (d.commentaires || []).filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
     } catch(e) { return 0; }
   }));
-  // Badge total de messages non lus dans le header de l'accueil coach
+  // Badge total de messages non lus — header de l'accueil coach + bandeau
   (function(){
     const total = msgNonLus.reduce((s, n) => s + (n || 0), 0);
     const b = document.getElementById('coach-msg-badge');
     if (b) { b.textContent = total; b.style.display = total > 0 ? 'block' : 'none'; }
+    const bb = document.getElementById('coach-band-msg-badge');
+    if (bb) { bb.textContent = total; bb.style.display = total > 0 ? 'block' : 'none'; }
   })();
 
   const enrich = athletes.map((a, i) => {
@@ -4235,7 +4238,69 @@ async function renderCoachSynthese(athletes) {
       </div>
     </div>`;
 
-  el.innerHTML = heroHtml + prioHtml + messagesHtml + briefingHtml + listeHtml;
+  // ---- Analyses équipe (lecture transversale, données réelles) ----
+  const nbOptimal = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 0).length;
+  const nbSurv1   = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 1).length;
+  const nbAction  = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 2).length;
+  const totActifs = nbOptimal + nbSurv1 + nbAction;
+  const regParts = enrich.filter(e => !e.enPause && e.regPrevues > 0 && e.seancesSem != null)
+    .map(e => Math.min(1, e.seancesSem / e.regPrevues));
+  const regMoy = regParts.length ? Math.round(regParts.reduce((s, v) => s + v, 0) / regParts.length * 100) : null;
+  const pct = n => totActifs ? Math.round(n / totActifs * 100) : 0;
+  const aTile = (label, val, color, sub) => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px;box-shadow:var(--shadow-sm);">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-subtle);">${label}</div>
+      <div style="font-size:22px;font-weight:900;letter-spacing:-.02em;margin-top:5px;color:${color};line-height:1.1;">${val}</div>
+      ${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${sub}</div>` : ''}
+    </div>`;
+  const analysesHtml =
+    `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de l'équipe</div></div>` +
+    (totActifs ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:15px;margin-bottom:4px;">
+      <div style="display:flex;height:16px;border-radius:999px;overflow:hidden;margin-bottom:12px;background:var(--surface2);">
+        ${nbOptimal ? `<i style="display:block;height:100%;width:${pct(nbOptimal)}%;background:var(--good);"></i>` : ''}
+        ${nbSurv1 ? `<i style="display:block;height:100%;width:${pct(nbSurv1)}%;background:var(--warn);"></i>` : ''}
+        ${nbAction ? `<i style="display:block;height:100%;width:${pct(nbAction)}%;background:var(--danger);"></i>` : ''}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--good);"></span>En forme · ${nbOptimal}</span>
+        <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--warn);"></span>À surveiller · ${nbSurv1}</span>
+        <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--danger);"></span>Intervention · ${nbAction}</span>
+      </div>
+    </div>` : '<div style="color:var(--text-muted);font-size:13px;padding:4px 2px 12px;">Pas encore de données d\'état.</div>') +
+    `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Indicateurs</div></div>` +
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+      ${aTile('Régularité moy.', regMoy != null ? regMoy + ' %' : '—', regMoy != null ? (regMoy >= 80 ? 'var(--good)' : regMoy >= 60 ? 'var(--warn)' : 'var(--danger)') : 'var(--text-subtle)', 'séances / objectif')}
+      ${aTile('À surveiller', nbSurv1 + nbAction, (nbSurv1 + nbAction) ? 'var(--warn)' : 'var(--good)', 'athlète' + ((nbSurv1 + nbAction) > 1 ? 's' : ''))}
+      ${aTile('Intervention', nbAction, nbAction ? 'var(--danger)' : 'var(--good)', 'alerte' + (nbAction > 1 ? 's' : '') + ' rouge' + (nbAction > 1 ? 's' : ''))}
+      ${aTile('Absents 7j+', absents, absents ? 'var(--warn)' : 'var(--good)', 'sans séance')}
+    </div>` +
+    `<div style="font-size:11px;color:var(--text-subtle);margin-top:12px;line-height:1.4;">Lecture transversale calculée à partir de l'état de chaque athlète. Les analyses par exercice (charge, 1RM) restent dans la fiche de chaque athlète.</div>`;
+
+  // Sections pilotées par le bandeau : Aujourd'hui (triage) · Équipe (liste) · Analyses
+  el.innerHTML =
+    `<div id="coach-sec-aujourdhui">${heroHtml + prioHtml + messagesHtml + briefingHtml}</div>` +
+    `<div id="coach-sec-equipe" style="display:none">${listeHtml}</div>` +
+    `<div id="coach-sec-analyses" style="display:none">${analysesHtml}</div>`;
+  coachBandeauApply();
+}
+
+// ===== Bandeau coach (nav basse) ============================================
+var coachBandeauTab = 'aujourdhui';
+function coachBandeauApply() {
+  const secs = { aujourdhui: 'coach-sec-aujourdhui', equipe: 'coach-sec-equipe', analyses: 'coach-sec-analyses' };
+  Object.keys(secs).forEach(k => { const el = document.getElementById(secs[k]); if (el) el.style.display = (k === coachBandeauTab) ? '' : 'none'; });
+  ['aujourdhui', 'equipe', 'analyses', 'messages', 'profil'].forEach(k => {
+    const b = document.getElementById('coach-band-' + k); if (b) b.classList.toggle('on', k === coachBandeauTab);
+  });
+}
+function coachBandeauGo(tab) {
+  if (tab === 'messages') { if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
+  if (tab === 'profil')   { if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
+  // Onglets de contenu : revenir à l'accueil si on est sur une fiche athlète
+  if (document.body.classList.contains('athlete-selected')) { try { retourListeAthletesCoach(); } catch (_) {} }
+  coachBandeauTab = tab;
+  coachBandeauApply();
+  try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { try { window.scrollTo(0, 0); } catch (__) {} }
 }
 
 function ouvrirAthleteDepuisSelect(idx) {
