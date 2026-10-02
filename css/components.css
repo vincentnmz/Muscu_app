@@ -74,6 +74,21 @@ body:has(#view-login.active) header #brand-ico { display:none; }
 .tab-btn.active .tab-ico { transform:translateY(-1px); }
 body.has-bottom-nav { padding-bottom:64px; }
 
+/* ===== Bandeau coach (nav basse) — accueil coach, mobile/tablette ===== */
+#coach-bandeau { display:none; position:fixed; bottom:0; left:0; right:0; z-index:50;
+  background:var(--surface); border-top:1px solid var(--border);
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px)); justify-content:center; }
+body.coach-active:not(.athlete-selected) #coach-bandeau { display:flex; }
+body.coach-active:not(.athlete-selected) #main-container { padding-bottom:84px; }
+#coach-bandeau .cb-item { flex:1; max-width:calc(var(--app-w) / 5); display:flex; flex-direction:column;
+  align-items:center; gap:3px; padding:4px 2px; border:none; background:none; cursor:pointer;
+  color:var(--text-subtle); font-family:inherit; }
+#coach-bandeau .cb-item svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round; }
+#coach-bandeau .cb-item span:last-child { font-size:9.5px; font-weight:700; }
+#coach-bandeau .cb-item.on { color:var(--accent); }
+#coach-bandeau .cb-item.on span:last-child { font-weight:800; }
+
 /* ---- Page SÉANCE plein écran : le flux de saisie (#subtab-saisie) s'ouvre
    par-dessus l'app avec son propre en-tête retour (#seance-page-hd), header
    d'app et barre du bas masqués. Aucune logique modifiée. ---- */

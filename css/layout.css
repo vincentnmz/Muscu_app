@@ -91,6 +91,10 @@ body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coac
   body.coach-active.cd-nav { padding-bottom:0; }
   body.coach-active #cd-indicateurs > div { gap:10px; }
 
+  /* Bandeau coach : masqué en bureau (la nav passe par le header + rail) */
+  #coach-bandeau { display:none !important; }
+  body.coach-active:not(.athlete-selected) #main-container { padding-bottom:var(--coach-pad); }
+
   /* Page joueur foot en bureau : main + rail */
   .fjd-body { display:flex; align-items:flex-start; gap:22px; }
   .fjd-main { flex:2 1 0; min-width:0; }
