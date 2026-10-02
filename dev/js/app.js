@@ -16080,7 +16080,7 @@ async function _impConfirmer() {
   } catch (e) { _impStatus('❌ Erreur réseau pendant l\'enregistrement.', 'var(--bad)'); }
 }
 
-var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_SLEEP', 'READ_RESTING_HEART_RATE'];
+var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_SLEEP', 'READ_RESTING_HEART_RATE', 'READ_NUTRITION'];
 function _hcPlugin() { try { return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthPlugin; } catch (e) { return null; } }
 function _hcStatus(t, c) { var s = document.getElementById('hc-status'); if (s) { s.textContent = t; s.style.color = c || 'var(--text-muted)'; } }
 function fermerImportMontre() { var ov = document.getElementById('hc-import'); if (ov) ov.style.display = 'none'; }
