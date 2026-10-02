@@ -4166,10 +4166,18 @@ async function renderCoachSynthese(athletes) {
   }
 
   // ---- Liste complète (style maquette : pastille d'état, chip, régularité) ----
-  const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes ${libelleSport('athletes').toLowerCase()}</div></div>` +
-    enrich.map(({ a, i, m, rpe, seancesSem, regPrevues, tonnage, streak, enPause }) => {
+  // Catégories pour les filtres Équipe : prets / surveiller / inactifs / pause.
+  let nbPrets = 0, nbSurvCat = 0, nbInactifsCat = 0;
+  const rowsHtml = enrich.map(({ a, i, m, rpe, seancesSem, regPrevues, tonnage, streak, enPause }) => {
     const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
     const dotColor = enPause ? '#63b3ed' : s.color;
+    const dsAge = (m && m.derniere && m.derniere.date) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
+    let cat;
+    if (enPause) cat = 'pause';
+    else if (dsAge > 7) cat = 'inactifs';
+    else if (s.rank >= 1) cat = 'surveiller';
+    else cat = 'prets';
+    if (cat === 'prets') nbPrets++; else if (cat === 'surveiller') nbSurvCat++; else if (cat === 'inactifs') nbInactifsCat++;
     const meta = [];
     if (rpe != null) meta.push(`RPE <b style="color:var(--text);">${rpe}</b>`);
     const _tval = tonnage ? (tonnage.j7 != null ? tonnage.j7 : tonnage.semaine) : null;
@@ -4191,7 +4199,7 @@ async function renderCoachSynthese(athletes) {
     const chip = enPause
       ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,179,237,.12);color:#63b3ed;padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">🏖️ Vacances</span>`
       : `<span style="background:${s.color}1a;color:${s.color};padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">${s.label}</span>`;
-    return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:12px 13px;background:var(--surface);border:1px solid var(--border);border-radius:15px;margin-bottom:9px;cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
+    return `<div class="coach-athlete-row" data-cat="${cat}" data-nom="${escapeHtml(String(a.nom || '').toLowerCase())}" onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:12px 13px;background:var(--surface);border:1px solid var(--border);border-radius:15px;margin-bottom:9px;cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
       <div style="position:relative;width:44px;height:44px;flex-shrink:0;">
         <div style="width:44px;height:44px;border-radius:13px;background:var(--surface2);color:var(--text);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">${enPause ? '🏖️' : initiales(a.nom)}</div>
         <span style="position:absolute;right:-2px;top:-2px;width:13px;height:13px;border-radius:50%;background:${dotColor};border:2.5px solid var(--surface);"></span>
@@ -4204,6 +4212,20 @@ async function renderCoachSynthese(athletes) {
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m9 6 6 6-6 6"/></svg>
     </div>`;
   }).join('');
+
+  // Recherche + filtres (section Équipe)
+  const eqChip = (key, label, n) => `<button class="coach-eq-chip${coachEquipeCat === key ? ' on' : ''}" onclick="coachEquipeSetFilter('${key}',this)">${label} <b>${n}</b></button>`;
+  const equipeControls = `
+    <div class="coach-eq-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="coach-equipe-search" placeholder="Rechercher un athlète…" oninput="coachEquipeFilter()" autocomplete="off">
+    </div>
+    <div class="coach-eq-chips">
+      ${eqChip('all', 'Tous', athletes.length)}${eqChip('surveiller', 'À surveiller', nbSurvCat)}${eqChip('prets', 'Prêts', nbPrets)}${eqChip('inactifs', 'Inactifs', nbInactifsCat)}
+    </div>`;
+  const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes ${libelleSport('athletes').toLowerCase()}</div></div>`
+    + equipeControls + rowsHtml
+    + '<div id="coach-eq-empty" style="display:none;color:var(--text-muted);font-size:13px;text-align:center;padding:20px 10px;">Aucun athlète ne correspond.</div>';
 
   // ---- Hero « Briefing du jour » (Concept A) ----
   const total = athletes.length;
@@ -4282,6 +4304,34 @@ async function renderCoachSynthese(athletes) {
     `<div id="coach-sec-equipe" style="display:none">${listeHtml}</div>` +
     `<div id="coach-sec-analyses" style="display:none">${analysesHtml}</div>`;
   coachBandeauApply();
+  try { coachEquipeFilter(); } catch (_) {}
+}
+
+// ===== Recherche + filtres de la section Équipe =============================
+var coachEquipeCat = 'all';
+function coachEquipeSetFilter(cat, btn) {
+  coachEquipeCat = cat;
+  const chips = document.querySelectorAll('#coach-sec-equipe .coach-eq-chip');
+  chips.forEach(c => c.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  coachEquipeFilter();
+}
+function coachEquipeFilter() {
+  const input = document.getElementById('coach-equipe-search');
+  const q = (input && input.value ? input.value : '').trim().toLowerCase();
+  const rows = document.querySelectorAll('#coach-sec-equipe .coach-athlete-row');
+  let shown = 0;
+  rows.forEach(r => {
+    const cat = r.getAttribute('data-cat');
+    const nom = r.getAttribute('data-nom') || '';
+    let ok = true;
+    if (coachEquipeCat !== 'all' && cat !== coachEquipeCat) ok = false;
+    if (ok && q && nom.indexOf(q) === -1) ok = false;
+    r.style.display = ok ? '' : 'none';
+    if (ok) shown++;
+  });
+  const empty = document.getElementById('coach-eq-empty');
+  if (empty) empty.style.display = (rows.length && !shown) ? 'block' : 'none';
 }
 
 // ===== Bandeau coach (nav basse) ============================================
