@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Novalyz — Accueil coach (maquette)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --text-muted:#4A5980; --text-subtle:#8595B8;
+    --accent:#1A5FFF; --accent-dim:#5C9AFF; --accent-a10:rgba(26,95,255,.10); --accent-a14:rgba(26,95,255,.13);
+    --on-accent:#FFFFFF; --highlight:#F47CE6;
+    --good:#00A854; --good-a:rgba(0,168,84,.12);
+    --warn:#E07800; --warn-a:rgba(224,120,0,.12);
+    --danger:#DC3545; --danger-a:rgba(220,53,69,.10);
+    --sh:0 6px 20px rgba(7,11,20,.08); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+    --radius:18px;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#070B14; --surface:#0E1526; --surface2:#141D33; --border:#22304F;
+    --text:#EAF0FF; --text-muted:#9DABCC; --text-subtle:#6B7BA3;
+    --accent:#4C86FF; --accent-dim:#2F63D6; --accent-a10:rgba(76,134,255,.14); --accent-a14:rgba(76,134,255,.18);
+    --good-a:rgba(0,168,84,.18); --warn-a:rgba(224,120,0,.18); --danger-a:rgba(220,53,69,.18);
+    --sh:0 10px 30px rgba(0,0,0,.4); --sh-sm:0 1px 2px rgba(0,0,0,.3);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#070B14; --surface:#0E1526; --surface2:#141D33; --border:#22304F;
+    --text:#EAF0FF; --text-muted:#9DABCC; --text-subtle:#6B7BA3;
+    --accent:#4C86FF; --accent-dim:#2F63D6; --accent-a10:rgba(76,134,255,.14); --accent-a14:rgba(76,134,255,.18);
+    --good-a:rgba(0,168,84,.18); --warn-a:rgba(224,120,0,.18); --danger-a:rgba(220,53,69,.18);
+    --sh:0 10px 30px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:
+      radial-gradient(1100px 420px at 80% -8%, var(--accent-a10), transparent 60%),
+      var(--bg);
+    color:var(--text); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; padding:22px 14px 60px; min-height:100vh;}
+  .phone{max-width:420px; margin:0 auto;}
+  .mk-note{max-width:420px; margin:0 auto 14px; font-size:11.5px; color:var(--text-subtle); text-align:center; letter-spacing:.02em;}
+  /* Header */
+  .hd{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:4px 2px 16px;}
+  .hd .hi{font-size:12px; font-weight:700; color:var(--text-subtle); letter-spacing:.02em}
+  .hd h1{font-family:Michroma,Inter,sans-serif; font-size:22px; font-weight:400; margin:3px 0 0; letter-spacing:-.01em}
+  .hd .club{font-size:12px; color:var(--text-muted); margin-top:3px}
+  .hd .av{width:44px;height:44px;border-radius:14px;flex:none;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent-dim)); color:#fff; font-weight:800; font-size:16px; box-shadow:var(--sh-sm)}
+  /* KPI strip */
+  .kpis{display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-bottom:18px}
+  .kpi{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 12px; box-shadow:var(--sh-sm)}
+  .kpi .n{font-size:24px; font-weight:900; letter-spacing:-.02em; line-height:1}
+  .kpi .l{font-size:10.5px; font-weight:700; color:var(--text-subtle); text-transform:uppercase; letter-spacing:.06em; margin-top:5px}
+  .kpi.alert .n{color:var(--danger)}
+  /* Section title */
+  .sec{display:flex; align-items:center; justify-content:space-between; margin:4px 4px 10px}
+  .sec h2{font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--text-subtle); margin:0}
+  .sec a{font-size:12px; font-weight:800; color:var(--accent); text-decoration:none}
+  /* Alert cards */
+  .alert-card{display:flex; gap:12px; align-items:flex-start; background:var(--surface); border:1px solid var(--border);
+    border-left:3px solid var(--danger); border-radius:14px; padding:13px 14px; margin-bottom:10px; box-shadow:var(--sh-sm)}
+  .alert-card.warn{border-left-color:var(--warn)}
+  .alert-ic{width:38px;height:38px;border-radius:11px;flex:none;display:grid;place-items:center;font-size:18px;font-weight:900;color:#fff}
+  .alert-ic.d{background:var(--danger)} .alert-ic.w{background:var(--warn)}
+  .alert-card .who{font-size:14px;font-weight:800}
+  .alert-card .ev{font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px}
+  .alert-card .meta{font-size:10.5px;color:var(--text-subtle);margin-top:5px}
+  .sev{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;border-radius:6px;padding:3px 7px;white-space:nowrap}
+  .sev.d{background:var(--danger-a);color:var(--danger)} .sev.w{background:var(--warn-a);color:var(--warn)}
+  /* Athlete rows */
+  .ath{display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:12px 14px; margin-bottom:10px; box-shadow:var(--sh-sm); cursor:pointer; transition:transform .12s ease, box-shadow .12s}
+  .ath:active{transform:scale(.99)}
+  .ath .pf{width:44px;height:44px;border-radius:13px;flex:none;display:grid;place-items:center;font-weight:800;font-size:15px;color:var(--text);background:var(--surface2);position:relative}
+  .ath .dot{position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:50%;border:2.5px solid var(--surface)}
+  .dot.good{background:var(--good)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--danger)}
+  .ath .mid{flex:1;min-width:0}
+  .ath .nm{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .state{font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;border-radius:6px;padding:2px 7px}
+  .state.good{background:var(--good-a);color:var(--good)} .state.warn{background:var(--warn-a);color:var(--warn)} .state.bad{background:var(--danger-a);color:var(--danger)}
+  .ath .sub{font-size:11.5px;color:var(--text-muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap}
+  .ath .sub b{color:var(--text)}
+  .ath .chev{color:var(--text-subtle);flex:none}
+  .ring{--p:0; width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;
+    background:conic-gradient(var(--accent) calc(var(--p)*1%), var(--surface2) 0); position:relative}
+  .ring::before{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--surface)}
+  .ring span{position:relative;font-size:10.5px;font-weight:800}
+  /* Bottom nav */
+  .tabs{position:sticky; bottom:-60px; margin:22px auto 0; max-width:420px; display:flex; gap:4px;
+    background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:8px; box-shadow:var(--sh)}
+  .tab{flex:1; text-align:center; padding:8px 0; border-radius:12px; font-size:10.5px; font-weight:700; color:var(--text-subtle)}
+  .tab.on{background:var(--accent-a10); color:var(--accent)}
+  .tab svg{width:20px;height:20px;display:block;margin:0 auto 3px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+<div class="mk-note">Maquette · Accueil coach — nouveau style (à valider avant reskin)</div>
+<div class="phone">
+
+  <header class="hd">
+    <div>
+      <div class="hi">Lundi 6 octobre</div>
+      <h1>Bonjour Coach</h1>
+      <div class="club">AS Performance · 5 athlètes</div>
+    </div>
+    <div class="av">VC</div>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><div class="n">5</div><div class="l">Athlètes</div></div>
+    <div class="kpi alert"><div class="n">2</div><div class="l">À traiter</div></div>
+    <div class="kpi"><div class="n">3</div><div class="l">Prêts</div></div>
+  </div>
+
+  <div class="sec"><h2>Alertes à traiter</h2><a href="#">Tout voir</a></div>
+
+  <div class="alert-card">
+    <div class="alert-ic d">!</div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="who">Julie M.</span><span class="sev d">Haute</span></div>
+      <div class="ev">Surcharge détectée — ACWR 1,6 (zone de risque). Charge récente très au-dessus de l'habituelle.</div>
+      <div class="meta">Preuve : +58 % de charge sur 7 j · Action conseillée : alléger la prochaine séance</div>
+    </div>
+  </div>
+
+  <div class="alert-card warn">
+    <div class="alert-ic w">!</div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="who">Nora P.</span><span class="sev w">Moyenne</span></div>
+      <div class="ev">Stagnation sur le développé couché — pas de progression depuis 4 semaines.</div>
+      <div class="meta">Preuve : charge stable à 52 kg · Action : varier l'intensité / le volume</div>
+    </div>
+  </div>
+
+  <div class="sec" style="margin-top:20px"><h2>Mes athlètes</h2><a href="#">Gérer</a></div>
+
+  <div class="ath">
+    <div class="pf">JM<span class="dot bad"></span></div>
+    <div class="mid">
+      <div class="nm">Julie M. <span class="state bad">À surveiller</span></div>
+      <div class="sub"><span>Dernière séance <b>hier</b></span><span>Régularité <b>4/4</b></span></div>
+    </div>
+    <div class="ring" style="--p:100"><span>100%</span></div>
+    <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+  </div>
+
+  <div class="ath">
+    <div class="pf">TB<span class="dot warn"></span></div>
+    <div class="mid">
+      <div class="nm">Thomas B. <span class="state warn">Vigilance</span></div>
+      <div class="sub"><span>Sommeil bas <b>3 j</b></span><span>Régularité <b>2/4</b></span></div>
+    </div>
+    <div class="ring" style="--p:50"><span>50%</span></div>
+    <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+  </div>
+
+  <div class="ath">
+    <div class="pf">LD<span class="dot good"></span></div>
+    <div class="mid">
+      <div class="nm">Léa D. <span class="state good">Prêt</span></div>
+      <div class="sub"><span>Séance <b>aujourd'hui</b></span><span>Régularité <b>3/3</b></span></div>
+    </div>
+    <div class="ring" style="--p:100"><span>100%</span></div>
+    <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+  </div>
+
+  <div class="ath">
+    <div class="pf">KS<span class="dot good"></span></div>
+    <div class="mid">
+      <div class="nm">Karim S. <span class="state good">Prêt</span></div>
+      <div class="sub"><span>Dernière séance <b>il y a 2 j</b></span><span>Régularité <b>5/5</b></span></div>
+    </div>
+    <div class="ring" style="--p:100"><span>100%</span></div>
+    <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+  </div>
+
+  <div class="ath">
+    <div class="pf">NP<span class="dot warn"></span></div>
+    <div class="mid">
+      <div class="nm">Nora P. <span class="state warn">Vigilance</span></div>
+      <div class="sub"><span>Stagnation DC</span><span>Régularité <b>3/4</b></span></div>
+    </div>
+    <div class="ring" style="--p:75"><span>75%</span></div>
+    <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+  </div>
+
+  <nav class="tabs">
+    <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Accueil</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Équipe</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Messages</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>Profil</div>
+  </nav>
+
+</div>
+</body>
+</html>
