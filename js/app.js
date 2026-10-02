@@ -4495,10 +4495,8 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   document.body.classList.add('cd-nav');
   document.body.classList.add('athlete-selected');
   surlignerAthleteSidebar(a.athlete_id);
-  // Bloc « Bonjour » (onglet Aperçu) : nom + avatar (initiales) + pastilles infos.
-  var _heroNom = document.getElementById('cd-hero-name'); if (_heroNom) _heroNom.textContent = a.nom;
-  var _heroAv = document.getElementById('cd-hero-av');
-  if (_heroAv) _heroAv.textContent = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+  // Hero « État du jour » (onglet Aperçu) : placeholder neutre immédiat, puis
+  // renderCoachHeroEtat() le colore selon le statut dès que les données arrivent.
   _setSportIco('cd-sport-ico-use', a.sport);   // icône du header (haltère muscu)
   const niv = getNiveauExperience(a.annees_pratique);
   const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv];
@@ -4506,8 +4504,22 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   if (a.objectif) bits.push(a.objectif);
   bits.push(`${a.annees_pratique || 0} an${(a.annees_pratique||0)>1?'s':''}`);
   if (a.poids) bits.push(`${a.poids} kg`);
-  var _heroPills = document.getElementById('cd-hero-pills');
-  if (_heroPills) _heroPills.innerHTML = bits.filter(Boolean).map(b => `<span class="fjd-pill">${escapeHtml(String(b))}</span>`).join('');
+  const _heroEl = document.getElementById('cd-hero');
+  if (_heroEl) {
+    const _ini = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+    _heroEl.className = '';
+    _heroEl.style.cssText = 'position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:var(--accent);background-image:linear-gradient(135deg,rgba(255,255,255,.14),rgba(0,0,0,.12));';
+    _heroEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:46px;height:46px;border-radius:13px;background:var(--on-accent-a28);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${_ini}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:17px;font-weight:900;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</div>
+          <div style="font-size:11.5px;opacity:.9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${bits.filter(Boolean).map(escapeHtml).join(' · ')}</div>
+        </div>
+      </div>
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;opacity:.85;margin-top:16px;">État du jour</div>
+      <div style="font-size:13px;opacity:.9;margin-top:4px;">Analyse en cours…</div>`;
+  }
   switchCoachDetailTab(initialTab || 'overview');
   cdCalDate = new Date();
 
@@ -4613,14 +4625,81 @@ function renderCoachRecordsEtRegression(hist, glob) {
   }
 }
 
+// Hero « État du jour » (détail athlète, onglet Aperçu) — carte colorée par le
+// statut global du moteur. Réutilise computeMarqueursCoach (statut), data.moteur
+// (niveau + reco) et le dernier questionnaire bien-être (chips). Ne fabrique rien :
+// la reco vient du moteur ; sans moteur, on affiche un repère factuel (régularité).
+function renderCoachHeroEtat(data) {
+  const el = document.getElementById('cd-hero');
+  const a = coachAthleteCourant;
+  if (!el || !a) return;
+  let m = null;
+  try { m = computeMarqueursCoach(data, a); } catch (_) {}
+  const s = (m && m.statut) ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
+  const M = data.moteur || null;
+  const niveau = (M && M.disponibilite && M.disponibilite.niveau) ? M.disponibilite.niveau
+               : (s.label === 'Optimal' ? 'En forme' : s.label === 'Surveillance' ? 'À surveiller' : s.label === 'Action' ? 'À surveiller' : s.label);
+  // Raison : reco du moteur si dispo, sinon repère factuel (séances / dernière séance).
+  const dash = data.dashboard || {};
+  const reg = dash.regularite || {};
+  const faites = _seancesFaites(reg), prevues = reg.seances_prevues || 0;
+  let raison = (M && M.reco && M.reco !== '—') ? M.reco : '';
+  if (!raison) {
+    const parts = [];
+    if (prevues > 0) parts.push(`${faites}/${prevues} séance${prevues > 1 ? 's' : ''} cette semaine`);
+    else if (faites != null) parts.push(`${faites} séance${faites > 1 ? 's' : ''} cette semaine`);
+    if (dash.derniere_seance && dash.derniere_seance.date) parts.push(`dernière le ${dash.derniere_seance.date}`);
+    raison = parts.join(' · ') || 'Pas encore assez de données pour un verdict.';
+  }
+  // Chips bien-être (dernier questionnaire) — données réelles uniquement.
+  const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
+  const dernier = be[0] || null;
+  const chipDims = [
+    { key: 'sommeil', emoji: '😴' }, { key: 'energie', emoji: '🔋' },
+    { key: 'fatigue', emoji: '😮‍💨' }, { key: 'douleur', emoji: '🩹' }
+  ];
+  let chipsHtml = '';
+  if (dernier) {
+    const chips = chipDims.map(cd => {
+      const raw = (dernier[cd.key] == null || dernier[cd.key] === '' || isNaN(Number(dernier[cd.key]))) ? null : Number(dernier[cd.key]);
+      if (raw == null) return '';
+      let txt = (WQ_ANSWERS[cd.key] ? WQ_ANSWERS[cd.key][raw] : raw);
+      if (cd.key === 'douleur' && raw >= 2 && dernier.zone) txt += ' (' + dernier.zone + ')';
+      const dim = WQ_DIMS.find(d => d.key === cd.key);
+      const pos = wqPositif(dim, raw);
+      const alerte = pos != null && pos < 3;  // point faible → petit point d'alerte
+      return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">${cd.emoji} ${WQ_DIMS.find(d=>d.key===cd.key).label} : ${escapeHtml(String(txt))}${alerte ? ' <span style="width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;"></span>' : ''}</span>`;
+    }).filter(Boolean).join('');
+    if (chips) chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;">${chips}</div>`;
+  }
+  const ini = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const niv = getNiveauExperience(a.annees_pratique);
+  const nivLabel = { debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' }[niv];
+  const metaBits = [nivLabel];
+  if (a.objectif) metaBits.push(a.objectif);
+  if (data.poids && data.poids.length) metaBits.push(`${data.poids[0].poids} kg`);
+  else if (a.poids) metaBits.push(`${a.poids} kg`);
+  el.className = '';
+  el.style.cssText = `position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:${s.color};background-image:linear-gradient(135deg,rgba(255,255,255,.14),rgba(0,0,0,.20));`;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:46px;height:46px;border-radius:13px;background:var(--on-accent-a28);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${ini}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:17px;font-weight:900;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</div>
+        <div style="font-size:11.5px;opacity:.9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${metaBits.filter(Boolean).map(escapeHtml).join(' · ')}</div>
+      </div>
+    </div>
+    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;opacity:.85;margin-top:16px;">État du jour</div>
+    <div style="font-size:23px;font-weight:900;margin:3px 0 5px;">${escapeHtml(String(niveau))}</div>
+    <div style="font-size:12.5px;line-height:1.5;opacity:.96;">${escapeHtml(String(raison))}</div>
+    ${chipsHtml}`;
+}
+
 function renderCoachOverview(data) {
   const dash = data.dashboard || {};
 
-  // Enrichir le bloc « Bonjour » avec le poids réel (si connu et pas déjà présent)
-  if (data.poids && data.poids.length && coachAthleteCourant) {
-    const hp = document.getElementById('cd-hero-pills');
-    if (hp && !/kg/.test(hp.textContent)) hp.insertAdjacentHTML('beforeend', `<span class="fjd-pill">${escapeHtml(String(data.poids[0].poids))} kg</span>`);
-  }
+  // Hero « État du jour » (carte colorée) — remplace l'ancien bloc « Bonjour ».
+  try { renderCoachHeroEtat(data); } catch (_) {}
 
   // Régularité
   const reg = dash.regularite || {};
