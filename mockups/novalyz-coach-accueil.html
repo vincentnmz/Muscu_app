@@ -87,6 +87,12 @@
     background:conic-gradient(var(--accent) calc(var(--p)*1%), var(--surface2) 0); position:relative}
   .ring::before{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--surface)}
   .ring span{position:relative;font-size:10.5px;font-weight:800}
+  /* Message rows (non lus) */
+  .msg{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--sh-sm)}
+  .msg .pv{font-size:12px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .msg .nm2{font-size:14px;font-weight:800}
+  .msg .time{font-size:10.5px;color:var(--text-subtle);flex:none}
+  .unread{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;box-shadow:0 0 0 3px var(--accent-a10)}
   /* Bottom nav */
   .tabs{position:sticky; bottom:-60px; margin:22px auto 0; max-width:420px; display:flex; gap:4px;
     background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:8px; box-shadow:var(--sh)}
@@ -134,7 +140,20 @@
     </div>
   </div>
 
-  <div class="sec" style="margin-top:20px"><h2>Mes athlètes</h2><a href="#">Gérer</a></div>
+  <div class="sec" style="margin-top:20px"><h2>Messages non lus</h2><a href="#">Tout voir</a></div>
+
+  <div class="msg">
+    <div class="pf">TB<span class="dot warn"></span></div>
+    <div class="mid"><div class="nm2">Thomas B.</div><div class="pv">« Coach, j'ai mal au genou depuis hier, je fais quoi… »</div></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span class="time">09:12</span><span class="unread"></span></div>
+  </div>
+  <div class="msg">
+    <div class="pf">LD<span class="dot good"></span></div>
+    <div class="mid"><div class="nm2">Léa D.</div><div class="pv">« Séance validée 💪 nouveau record au squat ! »</div></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span class="time">08:40</span><span class="unread"></span></div>
+  </div>
+
+  <div class="sec" style="margin-top:20px"><h2>Athlètes à suivre</h2><a href="#">Gérer</a></div>
 
   <div class="ath">
     <div class="pf">JM<span class="dot bad"></span></div>
@@ -187,7 +206,7 @@
   </div>
 
   <nav class="tabs">
-    <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Accueil</div>
+    <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Aujourd'hui</div>
     <div class="tab"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 .01M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Équipe</div>
     <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</div>
     <div class="tab"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Messages</div>
