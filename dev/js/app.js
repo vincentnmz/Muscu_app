@@ -1938,6 +1938,7 @@ async function supprimerCompteCoach() {
 }
 
 function seDeconnecterCoach() {
+  try { _maCoachDetach(); } catch (e) {}
   _fermerOverlaysEtContexte();
   coach = null;
   localStorage.removeItem('muscu_coach');
@@ -4545,6 +4546,7 @@ let cdSeancesDates = {};
 let cdCalDate = new Date();
 
 function retourListeAthletesCoach() {
+  try { _maCoachDetach(); } catch (e) {}   // remet le bloc analyses à sa place
   document.getElementById('view-coach-detail').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
   document.body.classList.remove('cd-nav');
@@ -4589,7 +4591,40 @@ function switchCoachDetailTab(tab) {
     progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null }; // contexte muscu
     chargerProgrammeCoach();
   }
+  // Analyses coach = bloc « Mes analyses » déplacé ici (source = athlète consulté).
+  if (tab === 'prog') { try { _maCoachAttach(coachAthleteData); } catch (e) {} }
+  else { try { _maCoachDetach(); } catch (e) {} }
   majRailVisibilite(tab);
+}
+
+// ===== Analyses coach : réutilise le bloc « Mes analyses » (#tab-historique) =====
+// On DÉPLACE l'unique bloc analyses dans l'onglet Analyses coach (son CSS #tab-historique
+// voyage avec lui) et on pointe dernierAppData sur l'athlète consulté. Remis en place
+// à chaque sortie. Évite toute duplication d'id et toute réécriture du sous-système.
+var _maHome = null;          // {parent, next} position d'origine de #tab-historique
+var _maCoach = false;        // analyses affichées côté coach ?
+var _maPrevApp = undefined;  // dernierAppData avant swap
+function _maCoachAttach(data) {
+  var node = document.getElementById('tab-historique');
+  var host = document.getElementById('cd-analyses-host');
+  if (!node || !host || !data) return;
+  if (!_maHome) _maHome = { parent: node.parentNode, next: node.nextSibling };
+  if (node.parentNode !== host) host.appendChild(node);
+  node.style.display = 'block';
+  if (!_maCoach) _maPrevApp = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
+  dernierAppData = data;
+  _maCoach = true;
+  try { maResetNav(); } catch (e) {}
+}
+function _maCoachDetach() {
+  var node = document.getElementById('tab-historique');
+  if (node && _maHome && node.parentNode !== _maHome.parent) {
+    if (_maHome.next && _maHome.next.parentNode === _maHome.parent) _maHome.parent.insertBefore(node, _maHome.next);
+    else _maHome.parent.appendChild(node);
+    node.style.display = 'none';
+  }
+  if (_maCoach) { try { dernierAppData = _maPrevApp; } catch (e) {} }
+  _maCoach = false; _maPrevApp = undefined;
 }
 
 // Sur bureau le rail est toujours visible ; sur mobile seulement sur l'Aperçu
@@ -4608,6 +4643,7 @@ function coachNiveauKey(annees) {
 }
 
 async function ouvrirDetailAthleteCoach(a, initialTab) {
+  try { _maCoachDetach(); } catch (e) {}   // état analyses propre avant de charger un autre athlète
   coachAthleteCourant = a;
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.add('active');
@@ -9491,6 +9527,8 @@ function _maMoreBtn(disc, shown, total) {
   return '<button onclick="maLoadMoreHist(\'' + disc + '\')" style="width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:13px;color:var(--accent);cursor:pointer">Charger plus (' + (total - shown) + ' restantes)</button>';
 }
 function _maApply() {
+  // Côté coach : pas d'onglet Historique (doublon avec Entraînement)
+  if (typeof _maCoach !== 'undefined' && _maCoach && _maTab === 'historique') _maTab = 'resume';
   // Toggle discipline (Muscu / Cardio / Croisé)
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
     var b = document.getElementById('ma-sw-' + d);
@@ -9502,7 +9540,7 @@ function _maApply() {
   var dispo = _MA_TABS[_maDisc];
   ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
     var b = document.getElementById('ma-tab-' + t);
-    if (b) { var av = dispo.indexOf(t) >= 0; b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
+    if (b) { var av = dispo.indexOf(t) >= 0 && !((typeof _maCoach !== 'undefined' && _maCoach) && t === 'historique'); b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
   });
   // Panes visibles
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
