@@ -4298,9 +4298,13 @@ async function renderCoachSynthese(athletes) {
     </div>` +
     `<div style="font-size:11px;color:var(--text-subtle);margin-top:12px;line-height:1.4;">Lecture transversale calculée à partir de l'état de chaque athlète. Les analyses par exercice (charge, 1RM) restent dans la fiche de chaque athlète.</div>`;
 
-  // Sections pilotées par le bandeau : Aujourd'hui (triage) · Équipe (liste) · Analyses
+  // Liste des athlètes aussi sur « Aujourd'hui » (sans recherche/filtres) :
+  // l'accueil doit montrer TOUS les athlètes, pas seulement le triage.
+  const aujListeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes ${libelleSport('athletes').toLowerCase()}</div></div>` + rowsHtml;
+
+  // Sections pilotées par le bandeau : Aujourd'hui (triage + liste) · Équipe (liste filtrable) · Analyses
   el.innerHTML =
-    `<div id="coach-sec-aujourdhui">${heroHtml + prioHtml + messagesHtml + briefingHtml}</div>` +
+    `<div id="coach-sec-aujourdhui">${heroHtml + prioHtml + messagesHtml + briefingHtml + aujListeHtml}</div>` +
     `<div id="coach-sec-equipe" style="display:none">${listeHtml}</div>` +
     `<div id="coach-sec-analyses" style="display:none">${analysesHtml}</div>`;
   coachBandeauApply();
