@@ -196,6 +196,26 @@ body.cd-nav { padding-bottom:76px; }
 #view-coach-detail .sub-tabs { box-shadow:0 -2px 12px rgba(7,11,20,.05); }
 #view-coach-detail .card, #view-coach-detail .dash-card { border-radius:16px; }
 
+/* ===== Fiche athlète « hub » (mobile) : boutons d'action + retour ===== */
+.cd-hub-actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:14px; }
+.cd-act { display:flex; align-items:center; justify-content:center; gap:9px; background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; padding:13px 14px; box-shadow:var(--shadow-sm); font-weight:800; font-size:13px; color:var(--text); cursor:pointer; font-family:inherit; }
+.cd-act svg { width:19px; height:19px; flex:none; fill:none; stroke:var(--accent); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.cd-act-primary { grid-column:1 / -1; background:var(--accent); color:var(--on-accent); border-color:transparent; }
+.cd-act-primary svg { stroke:var(--on-accent); }
+.cd-back-hub { display:inline-flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:8px 12px; font-size:12.5px; font-weight:800; color:var(--text); cursor:pointer; font-family:inherit; margin-bottom:12px; box-shadow:var(--shadow-sm); }
+.cd-back-hub svg { width:16px; height:16px; fill:none; stroke:var(--text); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+/* Mobile/tablette : plus de barre d'onglets en bas (modèle hub) */
+@media (max-width:991px) {
+  #view-coach-detail .sub-tabs { display:none !important; }
+  body.coach-active.cd-nav { padding-bottom:24px; }
+}
+/* Desktop : la nav passe par les onglets du haut + le rail → pas de boutons hub */
+@media (min-width:992px) {
+  .cd-hub-actions, .cd-back-hub { display:none !important; }
+}
+
 /* Focus visible clavier */
 button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-visible, .nv-auth-seg button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
 
