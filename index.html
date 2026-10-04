@@ -510,6 +510,15 @@
         <div id="cd-alertes"><div class="loader">Chargement...</div></div>
       </div>
 
+      <!-- Actions (hub mobile) : centralise la nav vers les sous-écrans, juste sous les alertes. Masqué en desktop. -->
+      <div class="cd-hub-actions">
+        <button class="cd-act cd-act-primary" onclick="switchCoachDetailTab('conseils')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Envoyer un message</button>
+        <button class="cd-act" onclick="switchCoachDetailTab('seances')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</button>
+        <button class="cd-act" onclick="switchCoachDetailTab('prog')"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</button>
+        <button class="cd-act" onclick="switchCoachDetailTab('programme')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Programme</button>
+        <button class="cd-act" onclick="cdScrollEtat()"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/></svg>Son état</button>
+      </div>
+
       <!-- Repères (régularité, ACWR, dernière séance, progression) -->
       <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-gauge"/></svg>Repères</h2></div>
       <div class="dash-card" style="padding:16px;">
@@ -527,15 +536,6 @@
       <!-- Nutrition · respect des macros (si l'athlète saisit sa nutrition) -->
       <div class="v2-sec" id="cd-hub-nutrition-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Nutrition · respect des macros</h2><div class="more" style="color:var(--text-subtle);">moy. 7 j</div></div>
       <div class="dash-card" id="cd-hub-nutrition" style="padding:16px;display:none;"></div>
-
-      <!-- Actions (hub mobile) : nav vers les sous-écrans. Masqué en desktop (onglets du haut). -->
-      <div class="cd-hub-actions">
-        <button class="cd-act cd-act-primary" onclick="switchCoachDetailTab('conseils')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Envoyer un message</button>
-        <button class="cd-act" onclick="switchCoachDetailTab('seances')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</button>
-        <button class="cd-act" onclick="switchCoachDetailTab('prog')"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</button>
-        <button class="cd-act" onclick="switchCoachDetailTab('programme')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Programme</button>
-        <button class="cd-act" onclick="cdScrollEtat()"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/></svg>Son état</button>
-      </div>
 
       <!-- Réinitialisation du mot de passe (action discrète) -->
       <div style="margin:2px 0 14px;text-align:right;">
