@@ -17325,13 +17325,29 @@ async function _nutAutoImportHC() {
     // manuelle : on respecte, on ne touche pas.
     if (existing && autoDate !== today) return;
     try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
-    var start = new Date(); start.setHours(0, 0, 0, 0);
-    var end = new Date(start.getTime() + 24 * 3600 * 1000);
+    // Fenêtre large (hier → demain) puis filtrage sur la date LOCALE = aujourd'hui,
+    // pour éviter qu'un décalage de fuseau fasse entrer des repas d'un autre jour.
+    var d0 = new Date(); d0.setHours(0, 0, 0, 0);
+    var start = new Date(d0.getTime() - 24 * 3600 * 1000);
+    var end = new Date(d0.getTime() + 48 * 3600 * 1000);
     var r = await H.queryNutrition({ startDate: start.toISOString(), endDate: end.toISOString() });
     var ent = (r && r.entries) || [];
     if (!ent.length) return;
+    // Date locale (YYYY-MM-DD) d'une entrée, depuis le 1er champ date exploitable.
+    var entYmd = function (e) {
+      var d = e.startDate || e.startTime || e.date || e.endDate || e.time || null;
+      if (!d) return null;
+      var dt = new Date(d); if (isNaN(dt.getTime())) return null;
+      return _ymdLocal(dt);
+    };
+    // Sécurité : si AUCUNE entrée n'est datée, on ne peut pas garantir « aujourd'hui »
+    // → on s'abstient (pas d'écriture de données potentiellement périmées).
+    var anyDated = ent.some(function (e) { return entYmd(e) != null; });
+    if (!anyDated) return;
+    var entToday = ent.filter(function (e) { return entYmd(e) === today; });
+    if (!entToday.length) return;   // rien de daté d'aujourd'hui
     var kcal = 0, prot = 0, gluc = 0, lip = 0, hasK = false, hasP = false, hasG = false, hasL = false;
-    ent.forEach(function (e) {
+    entToday.forEach(function (e) {
       if (e.energyKcal != null) { kcal += Number(e.energyKcal) || 0; hasK = true; }
       var m = e.macros || {};
       if (m.proteinG != null) { prot += Number(m.proteinG) || 0; hasP = true; }
