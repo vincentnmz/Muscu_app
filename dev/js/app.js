@@ -4669,6 +4669,8 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    try { renderCoachHubVolume(data); } catch (_) {}      // volume par muscle (hub)
+    try { renderCoachHubSeances(data); } catch (_) {}     // dernières séances (hub)
     try { renderCoachHubNutrition(data); } catch (_) {}   // carte macros du hub
     try { renderCockpit(data, 'cd'); } catch (_) {}   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
@@ -5289,6 +5291,61 @@ function renderCoachIndicateurs(data) {
     ${tile('Dernière séance', dsVal, 'var(--text)', dsSub)}
     ${tile('Progression', progVal, m.progColor, progSub)}
   </div>`;
+}
+
+// Hub : volume par muscle (cette semaine) — barres faites / cible max (MAV).
+function renderCoachHubVolume(data) {
+  var sec = document.getElementById('cd-hub-volume-sec');
+  var el = document.getElementById('cd-hub-volume');
+  if (!el) return;
+  var vols = (data && data.historique && Array.isArray(data.historique.volume_semaine)) ? data.historique.volume_semaine : [];
+  var trained = vols.filter(function (v) { return (v.faites || 0) > 0; });
+  if (!trained.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
+  var niv = coachNiveauKey(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
+  var cibleDe = function (muscle) { var c = (typeof VOLUME_CIBLE !== 'undefined' && VOLUME_CIBLE[muscle]) ? VOLUME_CIBLE[muscle][niv] : null; return c || [10, 14]; };
+  trained.sort(function (a, b) { return (b.faites || 0) - (a.faites || 0); });
+  var sousCount = 0;
+  var rows = trained.slice(0, 6).map(function (v) {
+    var c = cibleDe(v.muscle), mev = c[0] || 0, mav = c[1] || 0, faites = v.faites || 0;
+    var sous = faites < mev; if (sous) sousCount++;
+    var color = sous ? 'var(--warn)' : 'var(--good)';
+    var pctw = mav ? Math.min(100, Math.round(faites / mav * 100)) : 0;
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">' +
+      '<span style="width:78px;flex:none;font-size:11.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(v.muscle)) + '</span>' +
+      '<div style="flex:1;height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;"><div style="height:100%;border-radius:999px;width:' + pctw + '%;background:' + color + ';"></div></div>' +
+      '<span style="width:52px;flex:none;text-align:right;font-size:11px;font-weight:800;color:' + color + ';font-variant-numeric:tabular-nums;">' + faites + ' / ' + mav + '</span></div>';
+  }).join('');
+  var status = sousCount
+    ? '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">⚠ ' + sousCount + ' muscle' + (sousCount > 1 ? 's' : '') + ' sous le volume cible</span></div>'
+    : '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--good-a);color:var(--good);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">✓ Volumes dans les cibles</span></div>';
+  el.innerHTML = rows + status;
+  if (sec) sec.style.display = ''; el.style.display = '';
+}
+
+// Hub : « Comment il s'entraîne » — 2 dernières séances (exos/séries/tonnage/RPE).
+function renderCoachHubSeances(data) {
+  var sec = document.getElementById('cd-hub-seances-sec');
+  var el = document.getElementById('cd-hub-seances');
+  if (!el) return;
+  var sd = (data && Array.isArray(data.seances_detail)) ? data.seances_detail : [];
+  if (!sd.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
+  var html = sd.slice(0, 2).map(function (s, i) {
+    var exos = s.exercices || [];
+    var nbExos = exos.length;
+    var nbSeries = s.nb_series || exos.reduce(function (n, e) { return n + ((e.series || []).length); }, 0);
+    var rpes = []; exos.forEach(function (e) { (e.series || []).forEach(function (x) { if (x.rpe != null && !isNaN(Number(x.rpe))) rpes.push(Number(x.rpe)); }); });
+    var rpeMoy = rpes.length ? (rpes.reduce(function (a, b) { return a + b; }, 0) / rpes.length) : null;
+    var rpeColor = rpeMoy == null ? 'var(--text-subtle)' : (rpeMoy < 7.5 ? 'var(--good)' : rpeMoy < 8.5 ? 'var(--warn)' : 'var(--danger)');
+    var tonn = s.tonnage != null ? (s.tonnage >= 1000 ? (s.tonnage / 1000).toFixed(1).replace('.', ',') + ' t' : Math.round(s.tonnage) + ' kg') : '—';
+    var dfr = String(s.date_fr || s.date || '').slice(0, 5);
+    return '<div style="display:flex;align-items:center;gap:11px;' + (i > 0 ? 'border-top:1px solid var(--border);padding-top:12px;margin-top:12px;' : '') + '">' +
+      '<div style="width:44px;flex:none;text-align:center;background:var(--accent-a10);color:var(--accent);border-radius:11px;padding:8px 0;font-size:11px;font-weight:900;">' + escapeHtml(dfr) + '</div>' +
+      '<div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(s.seance_id || 'Séance')) + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + nbExos + ' exo' + (nbExos > 1 ? 's' : '') + ' · ' + nbSeries + ' séries · ' + tonn + '</div></div>' +
+      '<div style="text-align:right;flex:none;"><div style="font-size:15px;font-weight:900;color:' + rpeColor + '">' + (rpeMoy != null ? rpeMoy.toFixed(1).replace('.', ',') : '—') + '</div><div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);">RPE moy</div></div></div>';
+  }).join('');
+  el.innerHTML = html;
+  if (sec) sec.style.display = ''; el.style.display = '';
 }
 
 // Fiche hub : « Son état » → défile vers la carte État de forme / bilan.
