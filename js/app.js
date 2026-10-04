@@ -8819,7 +8819,7 @@ function _bienEtreFaitAujourdhui() {
 
 var _BTN_SEC = 'flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:12px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;';
 var _BTN_MAIN = 'flex:2;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;';
-var _WQ_BLOCKS = ['wqb-sommeil', 'wqb-energie', 'wqb-fatigue', 'wqb-ressenti', 'wqb-douleur', 'wq-zone-block', 'wqb-note'];
+var _WQ_BLOCKS = ['wqb-sommeil', 'wqb-energie', 'wqb-fatigue', 'wqb-motivation', 'wqb-ressenti', 'wqb-douleur', 'wq-zone-block', 'wqb-note'];
 
 function _wqShow(ids) {
   _WQ_BLOCKS.forEach(function (id) {
