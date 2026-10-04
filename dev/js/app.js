@@ -6920,7 +6920,9 @@ function renderAlertesCoach(data) {
   // par le backend → on la calcule ici depuis la dernière séance. Ignorée en vacances.
   let absHtml = '';
   const enPauseAth = (typeof estEnPause === 'function') ? estEnPause(d && d.pause) : false;
-  if (!enPauseAth) {
+  // Ne pas doubler une alerte d'absence déjà émise par le moteur (backend).
+  const absDejaBackend = alertes.some(al => al.type === 'absence' || al.type === 'irregularite');
+  if (!enPauseAth && !absDejaBackend) {
     const dj = d && d.dashboard && d.dashboard.derniere_seance ? d.dashboard.derniere_seance.date : null;
     const tsLast = dj ? parseChatDate(dj) : null;
     const ageJ = tsLast ? Math.floor((Date.now() - tsLast) / 86400000) : null;
