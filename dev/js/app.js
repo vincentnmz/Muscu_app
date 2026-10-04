@@ -6601,53 +6601,47 @@ function construireSynthAlertes(data) {
 function renderAlertesCoach(data) {
   const el = document.getElementById('cd-alertes');
   if (!el || !coachAthleteCourant) return;
-  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
+  const couleurSeverite = { haute: 'var(--danger)', moyenne: 'var(--warn)', basse: 'var(--text-subtle)' };
   const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
 
   const d = data || coachAthleteData;
   // Alertes de synthèse non encore traitées cette semaine
   let synthAlertes = construireSynthAlertes(d).filter(s => !alerteEstTraitee(coachAthleteCourant.athlete_id, { type: s.type }));
 
+  // Carte alerte : liseré de sévérité à gauche, fond surface (style moderne).
+  const alerteCard = (stripe, icon, bodyHtml, actionsHtml) => `
+    <div style="display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-left:3px solid ${stripe};border-radius:12px;padding:11px 12px;margin-top:8px;">
+      <span style="font-size:15px;line-height:1.3;flex-shrink:0;">${icon}</span>
+      <div style="flex:1;min-width:0;">${bodyHtml}${actionsHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;">${actionsHtml}</div>` : ''}</div>
+    </div>`;
+
   const alertesHtml = alertes.map((al, idx) => {
-    const c = couleurSeverite[al.severite] || '#a3a3a3';
+    const c = couleurSeverite[al.severite] || 'var(--text-subtle)';
     const sujetRaw = sujetAlerte(al);
     const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const fait = dejaConseille(sujetRaw);
     const explicationId = `alerte-explication-${idx}`;
-    return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
-      <div style="display:flex;align-items:flex-start;gap:8px">
-        <span style="font-size:14px">⚠️</span>
-        <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:400">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</span>
-      </div>
-      <div id="${explicationId}" style="display:none;font-size:11px;color:var(--text-muted);margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">${explicationAlerte(al)}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-        <button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
+    const body = `<div style="font-size:13px;font-weight:700;color:${c};">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:500">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
+      <div id="${explicationId}" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:7px;padding:7px 9px;background:var(--surface2);border-radius:8px;line-height:1.45;">${explicationAlerte(al)}</div>`;
+    const actions = `<button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
         ${fait
-          ? `<span style="font-size:12px;color:#00c96e;font-weight:700;align-self:center">✅ Déjà conseillé</span>
+          ? `<span style="font-size:12px;color:var(--good);font-weight:700;align-self:center">✅ Déjà conseillé</span>
              <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Autre conseil</button>`
           : `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>`}
-        <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>
-      </div>
-    </div>`;
+        <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>`;
+    return alerteCard(c, '⚠️', body, actions);
   }).join('');
 
   const synthHtml = synthAlertes.map(s => {
     const sujet = s.msg.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    return `
-    <div style="padding:8px 10px;background:${s.color}1a;border-radius:8px;margin-top:6px">
-      <div style="display:flex;align-items:flex-start;gap:8px">
-        <span style="font-size:14px">📊</span>
-        <span style="font-size:13px;font-weight:600;color:${s.color};flex:1">${s.msg}</span>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-        <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>
-        <button class="btn-sm btn-outline" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>
-      </div>
-    </div>`;
+    const body = `<div style="font-size:13px;font-weight:700;color:${s.color};">${s.msg}</div>`;
+    const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>
+        <button class="btn-sm btn-outline" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>`;
+    return alerteCard(s.color, '📊', body, actions);
   }).join('');
 
   const tout = alertesHtml + synthHtml;
-  el.innerHTML = tout || '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">✅ Rien à signaler</div>';
+  el.innerHTML = tout || '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--good);font-weight:700;margin-top:6px;"><span>✅</span> Rien à signaler</div>';
 }
 
 function toggleExplicationAlerte(id) {
