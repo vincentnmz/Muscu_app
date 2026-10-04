@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Novalyz — Analyses équipe (enrichi)</title>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F9FBFF;--surface:#FFFFFF;--surface2:#EEF3FF;--border:#D8E2FF;--text:#070B14;--text-muted:#4A5980;--text-subtle:#8595B8;--accent:#1A5FFF;--accent-a10:rgba(26,95,255,.10);--good:#00A854;--good-a:rgba(0,168,84,.12);--warn:#E07800;--warn-a:rgba(224,120,0,.12);--danger:#DC3545;--danger-a:rgba(220,53,69,.10);--sh-sm:0 1px 2px rgba(7,11,20,.06)}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#070B14;--surface:#0E1526;--surface2:#141D33;--border:#22304F;--text:#EAF0FF;--text-muted:#9DABCC;--text-subtle:#6B7BA3;--accent:#4C86FF;--accent-a10:rgba(76,134,255,.14);--good-a:rgba(0,168,84,.18);--warn-a:rgba(224,120,0,.18);--danger-a:rgba(220,53,69,.18);--sh-sm:0 1px 2px rgba(0,0,0,.3)}}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:radial-gradient(1100px 420px at 80% -8%,var(--accent-a10),transparent 60%),var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:16px 14px 90px;min-height:100vh}
+  .phone{max-width:420px;margin:0 auto}.mk-note{max-width:420px;margin:0 auto 12px;font-size:11.5px;color:var(--text-subtle);text-align:center}
+  h1{font-family:Michroma,sans-serif;font-weight:400;font-size:19px;margin:2px 0 2px}.sub{font-size:12px;color:var(--text-muted);margin-bottom:14px}
+  .seg{display:flex;gap:6px;background:var(--surface2);border-radius:12px;padding:4px;margin-bottom:16px}.seg .s{flex:1;text-align:center;font-size:12px;font-weight:700;padding:7px 0;border-radius:9px;color:var(--text-muted)}.seg .s.on{background:var(--surface);color:var(--text);box-shadow:var(--sh-sm);font-weight:800}
+  .sec{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);margin:18px 4px 10px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);padding:15px}
+  .dist{display:flex;height:16px;border-radius:999px;overflow:hidden;margin-bottom:12px;background:var(--surface2)}.dist i{height:100%}
+  .leg{display:flex;flex-wrap:wrap;gap:12px}.leg .it{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600}.leg .sw{width:11px;height:11px;border-radius:3px}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px;box-shadow:var(--sh-sm)}.kpi .l{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-subtle)}.kpi .n{font-size:23px;font-weight:900;letter-spacing:-.02em;margin-top:5px}.kpi .t{font-size:11px;color:var(--text-muted);margin-top:2px}
+  .bars{display:flex;align-items:flex-end;gap:9px;height:104px;padding-top:6px}.bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}.bars .bar{width:100%;max-width:26px;border-radius:7px 7px 3px 3px;background:var(--accent)}.bars .bar.dim{background:var(--accent-a10)}.bars .bl{font-size:10px;color:var(--text-subtle);font-weight:700}
+  .axis{display:flex;justify-content:space-between;font-size:10px;color:var(--text-subtle);margin-top:7px}
+  .ath{display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid var(--border)}.ath:first-child{border-top:0}
+  .pf{width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;font-weight:800;font-size:12px;background:var(--surface2)}
+  .ath .nm{flex:1;min-width:0;font-size:13.5px;font-weight:700}.ath .nm small{display:block;font-size:11px;color:var(--text-subtle);font-weight:600;margin-top:1px}
+  .val{font-size:14px;font-weight:900;font-variant-numeric:tabular-nums}.val.bad{color:var(--danger)}.val.good{color:var(--good)}.val.warn{color:var(--warn)}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .bandeau{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;background:var(--surface);border-top:1px solid var(--border);padding:8px 6px 10px}.bandeau .in{display:flex;justify-content:space-between;width:100%;max-width:392px}
+  .bi{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text-subtle);padding:4px 0}.bi svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.bi span{font-size:9.5px;font-weight:700}.bi.on{color:var(--accent)}.bi.on span{font-weight:800}
+</style></head>
+<body>
+<div class="mk-note">Maquette · Analyses équipe ENRICHI — lecture transversale (vraies données agrégées)</div>
+<div class="phone">
+  <h1>Analyses</h1>
+  <div class="sub">Vue d'ensemble de l'équipe · 12 athlètes</div>
+  <div class="seg"><div class="s">7 jours</div><div class="s on">4 semaines</div><div class="s">3 mois</div></div>
+
+  <div class="sec">État de l'équipe</div>
+  <div class="card">
+    <div class="dist"><i style="width:58%;background:var(--good)"></i><i style="width:25%;background:var(--warn)"></i><i style="width:17%;background:var(--danger)"></i></div>
+    <div class="leg"><span class="it"><span class="sw" style="background:var(--good)"></span>En forme · 7</span><span class="it"><span class="sw" style="background:var(--warn)"></span>À surveiller · 3</span><span class="it"><span class="sw" style="background:var(--danger)"></span>Surcharge · 2</span></div>
+  </div>
+
+  <div class="sec">Indicateurs</div>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Régularité moy.</div><div class="n" style="color:var(--good)">87 %</div><div class="t">séances / objectif</div></div>
+    <div class="kpi"><div class="l">ACWR moyen</div><div class="n" style="color:var(--warn)">1,2</div><div class="t">2 en zone de risque</div></div>
+    <div class="kpi"><div class="l">Charge totale</div><div class="n">142 t</div><div class="t">+8 % vs période préc.</div></div>
+    <div class="kpi"><div class="l">Progression 1RM</div><div class="n" style="color:var(--good)">+3,1 %</div><div class="t">moyenne équipe</div></div>
+  </div>
+
+  <div class="sec">Charge collective par semaine</div>
+  <div class="card">
+    <div class="bars"><div class="b"><div class="bar dim" style="height:46%"></div><div class="bl">S-3</div></div><div class="b"><div class="bar dim" style="height:62%"></div><div class="bl">S-2</div></div><div class="b"><div class="bar dim" style="height:71%"></div><div class="bl">S-1</div></div><div class="b"><div class="bar" style="height:92%"></div><div class="bl">Cette sem.</div></div></div>
+    <div class="axis"><span>Tonnage cumulé équipe</span><span>142 t</span></div>
+  </div>
+
+  <div class="sec">Athlètes à risque</div>
+  <div class="card">
+    <div class="ath"><div class="pf">JM</div><div class="nm">Julie M.<small>Surcharge · ACWR 1,6</small></div><span class="dot" style="background:var(--danger)"></span><span class="val bad">1,6</span></div>
+    <div class="ath"><div class="pf">KN</div><div class="nm">Karim N.<small>Charge élevée · ACWR 1,45</small></div><span class="dot" style="background:var(--warn)"></span><span class="val warn">1,45</span></div>
+    <div class="ath"><div class="pf">EL</div><div class="nm">Emma L.<small>Inactif · 7 j sans séance</small></div><span class="dot" style="background:var(--text-subtle)"></span><span class="val" style="color:var(--text-subtle)">—</span></div>
+  </div>
+
+  <div class="sec">Meilleures progressions · 4 sem.</div>
+  <div class="card">
+    <div class="ath"><div class="pf">KN</div><div class="nm">Karim N.<small>Développé couché · 1RM estimé</small></div><span class="val good">+7 %</span></div>
+    <div class="ath"><div class="pf">MR</div><div class="nm">Marc R.<small>Squat · 1RM estimé</small></div><span class="val good">+5 %</span></div>
+    <div class="ath"><div class="pf">TL</div><div class="nm">Thomas L.<small>Développé couché · stagnation</small></div><span class="val bad">−1 %</span></div>
+  </div>
+</div>
+<nav class="bandeau"><div class="in">
+  <a class="bi"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg><span>Aujourd'hui</span></a>
+  <a class="bi"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Équipe</span></a>
+  <a class="bi on"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg><span>Analyses</span></a>
+  <a class="bi"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg><span>Messages</span></a>
+  <a class="bi"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg><span>Profil</span></a>
+</div></nav>
+</body></html>

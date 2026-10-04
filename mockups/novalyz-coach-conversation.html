@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Novalyz — Conversation coach (pleine page)</title>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F9FBFF;--surface:#FFFFFF;--surface2:#EEF3FF;--border:#D8E2FF;--text:#070B14;--text-muted:#4A5980;--text-subtle:#8595B8;--accent:#1A5FFF;--accent-strong:#1248D4;--accent-a10:rgba(26,95,255,.10);--good:#00A854;--sh-sm:0 1px 2px rgba(7,11,20,.06);--on-accent:#fff}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#070B14;--surface:#0E1526;--surface2:#141D33;--border:#22304F;--text:#EAF0FF;--text-muted:#9DABCC;--text-subtle:#6B7BA3;--accent:#4C86FF;--accent-strong:#2F63D6;--accent-a10:rgba(76,134,255,.14);--sh-sm:0 1px 2px rgba(0,0,0,.3)}}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+  .mk-note{font-size:11.5px;color:var(--text-subtle);text-align:center;padding:10px 14px 0}
+  .page{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+  /* top bar */
+  .top{position:sticky;top:0;display:flex;align-items:center;gap:11px;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border);z-index:5}
+  .back{width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--surface2);border:1px solid var(--border)}
+  .back svg{width:18px;height:18px;fill:none;stroke:var(--text);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .pf{width:40px;height:40px;border-radius:12px;flex:none;display:grid;place-items:center;font-weight:800;font-size:14px;background:var(--surface2)}
+  .top .nm{font-size:15.5px;font-weight:900}.top .st{font-size:11px;color:var(--good);font-weight:700;margin-top:1px}
+  /* thread */
+  .thread{flex:1;padding:16px 14px;display:flex;flex-direction:column;gap:10px;background:radial-gradient(900px 360px at 80% -10%,var(--accent-a10),transparent 60%)}
+  .day{align-self:center;font-size:10.5px;font-weight:800;color:var(--text-subtle);background:var(--surface2);border-radius:999px;padding:4px 11px;margin:4px 0}
+  .b{max-width:80%;padding:10px 13px;border-radius:16px;font-size:13.5px;line-height:1.45;box-shadow:var(--sh-sm)}
+  .b .t{font-size:9.5px;margin-top:4px;opacity:.7}
+  .in{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:5px;color:var(--text)}
+  .out{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+  .out .t{color:#fff}
+  .media{align-self:flex-start;max-width:72%;border-radius:16px;border-bottom-left-radius:5px;overflow:hidden;border:1px solid var(--border);background:var(--surface);box-shadow:var(--sh-sm)}
+  .media .ph{height:150px;background:linear-gradient(135deg,#9fb6e6,#c9d6f5);display:grid;place-items:center;color:#fff}
+  .media .ph svg{width:34px;height:34px;fill:none;stroke:#fff;stroke-width:1.6;opacity:.9}
+  .media .cap{padding:8px 11px;font-size:12.5px;color:var(--text-muted)}
+  /* input */
+  .bar{position:sticky;bottom:0;display:flex;align-items:center;gap:9px;padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--border)}
+  .att{width:40px;height:40px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--surface2);border:1px solid var(--border)}
+  .att svg{width:20px;height:20px;fill:none;stroke:var(--text-muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .field{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:22px;padding:11px 15px;font-size:13.5px;color:var(--text-subtle)}
+  .send{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--accent)}
+  .send svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style></head>
+<body>
+<div class="mk-note">Maquette · Conversation coach ↔ athlète — PLEINE PAGE (plus de tiroir)</div>
+<div class="page">
+  <div class="top">
+    <div class="back"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></div>
+    <div class="pf">JM</div>
+    <div style="flex:1;min-width:0"><div class="nm">Julie M.</div><div class="st">Recomposition · active</div></div>
+  </div>
+
+  <div class="thread">
+    <div class="day">Lundi 6 octobre</div>
+    <div class="b in">Coucou coach, séance haut du corps finie 💪<div class="t">18:58</div></div>
+    <div class="media"><div class="ph"><svg viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.5"/></svg></div><div class="cap">📷 Photo · « Ma barre penche à droite, c'est normal ? » · 19:01</div></div>
+    <div class="b out">Bien joué ! Oui léger déséquilibre — pense à bien caler l'omoplate gauche. On vérifie ça à la prochaine.<div class="t">19:12 · ✓ lu</div></div>
+    <div class="day">Aujourd'hui</div>
+    <div class="b out">Vu ta charge de la semaine, on allège un peu demain : récup active.<div class="t">08:40 · ✓ lu</div></div>
+    <div class="b in">Ok parfait, merci 🙏<div class="t">09:05</div></div>
+  </div>
+
+  <div class="bar">
+    <div class="att"><svg viewBox="0 0 24 24"><path d="M21 15V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10M8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21M17 18h6M20 15v6"/></svg></div>
+    <div class="field">Message à Julie…</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
+  </div>
+</div>
+</body></html>
