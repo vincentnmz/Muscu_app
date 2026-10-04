@@ -4937,8 +4937,14 @@ function renderCoachHeroEtat(data) {
     { key: 'sommeil', emoji: '😴' }, { key: 'energie', emoji: '🔋' },
     { key: 'fatigue', emoji: '😮‍💨' }, { key: 'douleur', emoji: '🩹' }
   ];
+  // Le ressenti n'est affiché que s'il est RÉCENT (≤ 7 j) : au-delà, il ne
+  // représente plus « l'état du jour » → on ne montre pas de chips périmées.
+  var _beTs = dernier && dernier.date ? parseChatDate(dernier.date) : null;
+  var _ageR = _beTs ? (Date.now() - _beTs) / 86400000 : null;
+  var _frais = _ageR != null && _ageR <= 7;
+  const _jd = s => (typeof joursDepuis === 'function') ? joursDepuis(s) : '';
   let chipsHtml = '';
-  if (dernier) {
+  if (dernier && _frais) {
     const chips = chipDims.map(cd => {
       const raw = (dernier[cd.key] == null || dernier[cd.key] === '' || isNaN(Number(dernier[cd.key]))) ? null : Number(dernier[cd.key]);
       if (raw == null) return '';
@@ -4949,14 +4955,12 @@ function renderCoachHeroEtat(data) {
       const alerte = pos != null && pos < 3;  // point faible → petit point d'alerte
       return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">${cd.emoji} ${WQ_DIMS.find(d=>d.key===cd.key).label} : ${escapeHtml(String(txt))}${alerte ? ' <span style="width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;"></span>' : ''}</span>`;
     }).filter(Boolean).join('');
-    if (chips) chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;">${chips}</div>`;
-  }
-  // Badge « données partielles » : pas de ressenti récent → l'état repose surtout
-  // sur l'entraînement, pas sur le vécu de l'athlète (honnêteté sur la fiabilité).
-  var _beTs = dernier && dernier.date ? parseChatDate(dernier.date) : null;
-  var _ressFrais = _beTs && (Date.now() - _beTs) / 86400000 <= 10;
-  if (!_ressFrais) {
-    chipsHtml += `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:${chipsHtml ? '7px' : '13px'};"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">⚠️ Ressenti non renseigné — état partiel</span></div>`;
+    if (chips) chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;">${chips}</div>`
+      + `<div style="font-size:10.5px;opacity:.85;margin-top:7px;">🗓️ Ressenti ${escapeHtml(_jd(dernier.date))}</div>`;
+  } else {
+    // Ressenti périmé ou absent : on l'indique au lieu d'afficher de vieilles valeurs.
+    const last = (dernier && dernier.date) ? ('dernier ' + escapeHtml(_jd(dernier.date))) : 'aucun ressenti saisi';
+    chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">⚠️ Ressenti : aucune donnée récente · ${last}</span></div>`;
   }
   const ini = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
   const niv = getNiveauExperience(a.annees_pratique);
@@ -4965,8 +4969,12 @@ function renderCoachHeroEtat(data) {
   if (a.objectif) metaBits.push(a.objectif);
   if (data.poids && data.poids.length) metaBits.push(`${data.poids[0].poids} kg`);
   else if (a.poids) metaBits.push(`${a.poids} kg`);
+  // Sans état du jour récent, on NE peut pas certifier « en forme » : un vert
+  // (optimal) est rétrogradé en orange « À confirmer ». Un orange/rouge reste.
+  let heroBg = s.color, niveauDisp = niveau;
+  if (!_frais && s.rank === 0) { heroBg = 'var(--warn)'; niveauDisp = 'À confirmer'; }
   el.className = '';
-  el.style.cssText = `position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:${s.color};background-image:linear-gradient(135deg,rgba(255,255,255,.14),rgba(0,0,0,.20));`;
+  el.style.cssText = `position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:${heroBg};background-image:linear-gradient(135deg,rgba(255,255,255,.14),rgba(0,0,0,.20));`;
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;">
       <div style="width:46px;height:46px;border-radius:13px;background:var(--on-accent-a28);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${ini}</div>
@@ -4976,7 +4984,7 @@ function renderCoachHeroEtat(data) {
       </div>
     </div>
     <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;opacity:.85;margin-top:16px;">État du jour</div>
-    <div style="font-size:23px;font-weight:900;margin:3px 0 5px;">${escapeHtml(String(niveau))}</div>
+    <div style="font-size:23px;font-weight:900;margin:3px 0 5px;">${escapeHtml(String(niveauDisp))}</div>
     <div style="font-size:12.5px;line-height:1.5;opacity:.96;">${escapeHtml(String(raison))}</div>
     ${chipsHtml}`;
 }
@@ -6946,7 +6954,7 @@ function renderAlertesCoach(data) {
   // ---- Base de fiabilité : sur quoi s'appuient ces alertes ? (règle 6bis) ----
   const beDate = (d && d.bien_etre && d.bien_etre[0] && d.bien_etre[0].date) || null;
   const beTs = beDate ? parseChatDate(beDate) : null;
-  const ressRecent = beTs && (Date.now() - beTs) / 86400000 <= 10;
+  const ressRecent = beTs && (Date.now() - beTs) / 86400000 <= 7;
   const nbSea = (d && Array.isArray(d.seances_detail)) ? d.seances_detail.length : 0;
   let fiabTxt = 'Basé sur ' + (nbSea ? nbSea + ' séance' + (nbSea > 1 ? 's' : '') + ' récente' + (nbSea > 1 ? 's' : '') : 'aucune séance');
   fiabTxt += beDate ? ' · dernier ressenti ' + escapeHtml(String(beDate)) : ' · aucun ressenti saisi';
