@@ -4103,7 +4103,7 @@ async function renderCoachSynthese(athletes) {
     // (Les messages non lus ne sont PLUS listés ici — ils remontent via l'icône 💬 du header)
     // En vacances : aucune raison de priorité (ni absence, ni alerte, ni synthèse).
     if (e.enPause) return null;
-    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color: WARN };
+    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${Math.floor(dsAge)} jours sans séance` : 'Aucune séance', color: WARN };
     const al = labelAlerteCourt(a);
     if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? BAD : WARN };
     // Intervention seulement s'il reste une alerte de synthèse rouge NON traitée
@@ -4950,6 +4950,13 @@ function renderCoachHeroEtat(data) {
       return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">${cd.emoji} ${WQ_DIMS.find(d=>d.key===cd.key).label} : ${escapeHtml(String(txt))}${alerte ? ' <span style="width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;"></span>' : ''}</span>`;
     }).filter(Boolean).join('');
     if (chips) chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;">${chips}</div>`;
+  }
+  // Badge « données partielles » : pas de ressenti récent → l'état repose surtout
+  // sur l'entraînement, pas sur le vécu de l'athlète (honnêteté sur la fiabilité).
+  var _beTs = dernier && dernier.date ? parseChatDate(dernier.date) : null;
+  var _ressFrais = _beTs && (Date.now() - _beTs) / 86400000 <= 10;
+  if (!_ressFrais) {
+    chipsHtml += `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:${chipsHtml ? '7px' : '13px'};"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">⚠️ Ressenti non renseigné — état partiel</span></div>`;
   }
   const ini = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
   const niv = getNiveauExperience(a.annees_pratique);
@@ -6936,8 +6943,18 @@ function renderAlertesCoach(data) {
     }
   }
 
+  // ---- Base de fiabilité : sur quoi s'appuient ces alertes ? (règle 6bis) ----
+  const beDate = (d && d.bien_etre && d.bien_etre[0] && d.bien_etre[0].date) || null;
+  const beTs = beDate ? parseChatDate(beDate) : null;
+  const ressRecent = beTs && (Date.now() - beTs) / 86400000 <= 10;
+  const nbSea = (d && Array.isArray(d.seances_detail)) ? d.seances_detail.length : 0;
+  let fiabTxt = 'Basé sur ' + (nbSea ? nbSea + ' séance' + (nbSea > 1 ? 's' : '') + ' récente' + (nbSea > 1 ? 's' : '') : 'aucune séance');
+  fiabTxt += beDate ? ' · dernier ressenti ' + escapeHtml(String(beDate)) : ' · aucun ressenti saisi';
+  const partiel = !ressRecent;
+  const fiabFooter = `<div style="margin-top:10px;font-size:11px;line-height:1.4;color:${partiel ? 'var(--warn)' : 'var(--text-subtle)'};">${partiel ? '⚠ Données partielles — ' : ''}${fiabTxt}${partiel ? '. Les alertes bien-être (fatigue, sommeil, douleur) ne remontent que si l\'athlète remplit son ressenti.' : '.'}</div>`;
+
   const tout = absHtml + alertesHtml + synthHtml;
-  el.innerHTML = tout || '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--good);font-weight:700;margin-top:6px;"><span>✅</span> Rien à signaler</div>';
+  el.innerHTML = (tout || '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--good);font-weight:700;margin-top:6px;"><span>✅</span> Rien à signaler</div>') + fiabFooter;
 }
 
 function toggleExplicationAlerte(id) {
