@@ -4639,6 +4639,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;opacity:.85;margin-top:16px;">État du jour</div>
       <div style="font-size:13px;opacity:.9;margin-top:4px;">Analyse en cours…</div>`;
   }
+  var _ov = document.getElementById('cdtab-overview'); if (_ov) _ov.classList.remove('etat-open');  // hub : « Son état » replié à l'ouverture
   switchCoachDetailTab(initialTab || 'overview');
   cdCalDate = new Date();
 
@@ -5348,10 +5349,12 @@ function renderCoachHubSeances(data) {
   if (sec) sec.style.display = ''; el.style.display = '';
 }
 
-// Fiche hub : « Son état » → défile vers la carte État de forme / bilan.
+// Fiche hub : « Son état » → révèle le groupe bien-être/analyse puis y défile.
 function cdScrollEtat() {
-  var el = document.getElementById('cd-recup-card') || document.getElementById('cd-etat-card') || document.getElementById('cd-analyse-card');
-  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  var ov = document.getElementById('cdtab-overview');
+  if (ov) ov.classList.add('etat-open');
+  var el = document.getElementById('cd-etat-group') || document.getElementById('cd-recup-card');
+  setTimeout(function () { if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 40);
 }
 
 // Carte « Nutrition · respect des macros » du hub coach. Apports = moyenne des 7
@@ -12995,6 +12998,8 @@ function _appliquerAppData(data) {
   dernierAppData = data;
   // Onboarding 1re connexion (une fois par session, après le 1er chargement).
   _safe('onboarding', function () { if (!_onbChecked) { _onbChecked = true; setTimeout(_maybeOnboarding, 500); } });
+  // Import nutrition auto depuis Health Connect (natif) — en silence, après le rendu.
+  _safe('nut-autoimport', function () { setTimeout(function () { try { _nutAutoImportHC(); } catch (e) {} }, 1200); });
     _safe('cockpit', () => renderCockpit(data, 'dash'));   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     _safe('seances-programme', () => peuplerSeancesProgramme());
     seancesDates = data.historique.dates_seances || {};
@@ -17300,6 +17305,58 @@ async function _nutFromHC() {
     if (!hasK && !hasP && !hasG && !hasL) { showToast('Repas sans macros exploitables', '#F59E0B'); return; }
     showToast('Pré-rempli · vérifie puis enregistre', '#10B981');
   } catch (e) { showToast('Health Connect indisponible', '#DC3545'); }
+}
+
+// Import nutrition AUTOMATIQUE à l'ouverture (natif + Health Connect).
+// Lit les apports du jour (MFP/Yazio… → Health Connect) et les enregistre en
+// silence, 1×/jour. NE PAS écraser une saisie manuelle du jour : si une entrée
+// existe sans avoir été écrite par l'auto-import, on s'abstient. Idempotent :
+// ne re-poste pas si les valeurs n'ont pas changé.
+async function _nutAutoImportHC() {
+  try {
+    if (typeof athlete === 'undefined' || !athlete) return;
+    var H = (typeof _hcPlugin === 'function') ? _hcPlugin() : null;
+    if (!H) return;                                   // web/PWA : pas de Health Connect
+    var aid = athlete.athlete_id;
+    var today = _ymdLocal(new Date());
+    var autoDate = null; try { autoDate = localStorage.getItem('nvz_nut_auto_' + aid); } catch (e) {}
+    var existing = _nutTodayEntry();
+    // Entrée du jour présente mais PAS écrite par l'auto-import aujourd'hui → saisie
+    // manuelle : on respecte, on ne touche pas.
+    if (existing && autoDate !== today) return;
+    try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
+    var start = new Date(); start.setHours(0, 0, 0, 0);
+    var end = new Date(start.getTime() + 24 * 3600 * 1000);
+    var r = await H.queryNutrition({ startDate: start.toISOString(), endDate: end.toISOString() });
+    var ent = (r && r.entries) || [];
+    if (!ent.length) return;
+    var kcal = 0, prot = 0, gluc = 0, lip = 0, hasK = false, hasP = false, hasG = false, hasL = false;
+    ent.forEach(function (e) {
+      if (e.energyKcal != null) { kcal += Number(e.energyKcal) || 0; hasK = true; }
+      var m = e.macros || {};
+      if (m.proteinG != null) { prot += Number(m.proteinG) || 0; hasP = true; }
+      if (m.carbohydratesG != null) { gluc += Number(m.carbohydratesG) || 0; hasG = true; }
+      if (m.fatG != null) { lip += Number(m.fatG) || 0; hasL = true; }
+    });
+    if (!hasK && !hasP && !hasG && !hasL) return;
+    var vK = hasK ? Math.round(kcal) : null, vP = hasP ? Math.round(prot) : null, vG = hasG ? Math.round(gluc) : null, vL = hasL ? Math.round(lip) : null;
+    // Rien de neuf par rapport à l'existant → marquer et sortir (pas de POST inutile).
+    if (existing && existing.kcal == vK && existing.prot == vP && existing.gluc == vG && existing.lip == vL) {
+      try { localStorage.setItem('nvz_nut_auto_' + aid, today); } catch (e) {}
+      return;
+    }
+    // MAJ optimiste locale
+    if (typeof dernierAppData !== 'undefined' && dernierAppData) {
+      dernierAppData.nutri_historique = dernierAppData.nutri_historique || [];
+      var h = dernierAppData.nutri_historique, f = false;
+      for (var i = 0; i < h.length; i++) { if (h[i] && h[i].date === today) { h[i].kcal = vK; h[i].prot = vP; h[i].gluc = vG; h[i].lip = vL; f = true; break; } }
+      if (!f) h.unshift({ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL });
+    }
+    try { localStorage.setItem('nvz_nut_auto_' + aid, today); } catch (e) {}
+    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: aid, entries: [{ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL }] }) }).catch(function () {});
+    try { if (document.getElementById('tab-nutrition')) renderNutrition(); } catch (e) {}
+    try { showToast('Nutrition synchronisée depuis Health Connect ✓', '#10B981'); } catch (e) {}
+  } catch (e) {}
 }
 // Contrôle de période PARTAGÉ de la tendance nutrition : un seul Semaine/Mois/
 // Année + navigation qui pilote les 2 graphes (calories, protéines).

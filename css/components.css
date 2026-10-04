@@ -210,6 +210,10 @@ body.cd-nav { padding-bottom:76px; }
 @media (max-width:991px) {
   #view-coach-detail .sub-tabs { display:none !important; }
   body.coach-active.cd-nav { padding-bottom:24px; }
+  /* Hub épuré : superflu masqué (dispo dans Analyses), « Son état » révélé au clic */
+  #cdtab-overview #cd-extra-hidden { display:none; }
+  #cdtab-overview #cd-etat-group { display:none; }
+  #cdtab-overview.etat-open #cd-etat-group { display:block; }
 }
 /* Desktop : la nav passe par les onglets du haut + le rail → pas de boutons hub */
 @media (min-width:992px) {
