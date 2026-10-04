@@ -4669,6 +4669,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    try { renderCoachHubNutrition(data); } catch (_) {}   // carte macros du hub
     try { renderCockpit(data, 'cd'); } catch (_) {}   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
@@ -5288,6 +5289,65 @@ function renderCoachIndicateurs(data) {
     ${tile('Dernière séance', dsVal, 'var(--text)', dsSub)}
     ${tile('Progression', progVal, m.progColor, progSub)}
   </div>`;
+}
+
+// Fiche hub : « Son état » → défile vers la carte État de forme / bilan.
+function cdScrollEtat() {
+  var el = document.getElementById('cd-recup-card') || document.getElementById('cd-etat-card') || document.getElementById('cd-analyse-card');
+  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Carte « Nutrition · respect des macros » du hub coach. Apports = moyenne des 7
+// derniers jours saisis (nutri_historique) ; cibles = _nutObjectifsFor (prot via
+// poids ; kcal/gluc/lip si taille+âge+sexe connus, sinon affichées sans cible).
+function renderCoachHubNutrition(data) {
+  var sec = document.getElementById('cd-hub-nutrition-sec');
+  var el = document.getElementById('cd-hub-nutrition');
+  if (!el) return;
+  var hist = (data && Array.isArray(data.nutri_historique)) ? data.nutri_historique : [];
+  if (!hist.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
+  var last = hist.slice(0, 7);
+  function avg(k) {
+    var v = last.map(function (d) { return Number(d[k]); }).filter(function (x) { return !isNaN(x) && x > 0; });
+    return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length) : null;
+  }
+  var aK = avg('kcal'), aP = avg('prot'), aG = avg('gluc'), aL = avg('lip');
+  if (aK == null && aP == null && aG == null && aL == null) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
+  var obj = {};
+  try { obj = _nutObjectifsFor(coachAthleteCourant || {}, data, 1.55) || {}; } catch (e) { obj = {}; }
+  var C = 119.4; // circonférence (r=19)
+  function ring(pct, color) {
+    var off = C * (1 - Math.max(0, Math.min(1, pct == null ? 0 : pct)));
+    return '<div style="width:46px;height:46px;position:relative;flex:none;"><svg width="46" height="46" style="transform:rotate(-90deg)"><circle cx="23" cy="23" r="19" fill="none" stroke="var(--surface2)" stroke-width="6"/>' +
+      (pct != null ? '<circle cx="23" cy="23" r="19" fill="none" stroke="' + color + '" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + off.toFixed(1) + '"/>' : '') +
+      '</svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-size:10px;font-weight:900;color:' + (pct != null ? color : 'var(--text-subtle)') + '">' + (pct != null ? Math.round(pct * 100) + '%' : '—') + '</div></div>';
+  }
+  function macCol(label, actual, target, unit) {
+    var pct = (actual != null && target) ? actual / target : null;
+    var color = pct == null ? 'var(--text-subtle)' : (pct >= 0.9 && pct <= 1.15) ? 'var(--good)' : (pct >= 0.7) ? 'var(--warn)' : 'var(--danger)';
+    return '<div style="display:flex;align-items:center;gap:11px;">' + ring(pct, color) +
+      '<div style="min-width:0;"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-subtle)">' + label + '</div>' +
+      '<div style="font-size:13px;font-weight:800;margin-top:1px">' + (actual != null ? actual : '—') + ' <small style="color:var(--text-subtle);font-weight:700">' + (target ? '/ ' + target + ' ' + unit : unit) + '</small></div></div></div>';
+  }
+  // Ligne énergie (kcal) + verdict de respect
+  var kpct = (aK != null && obj.kcal) ? aK / obj.kcal : null;
+  var kstatus;
+  if (kpct == null) kstatus = '';
+  else if (Math.abs(1 - kpct) <= 0.1) kstatus = '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--good-a);color:var(--good);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">✓ Dans la cible</span>';
+  else kstatus = '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">' + (kpct > 1 ? '▲ au-dessus' : '▼ en-dessous') + '</span>';
+  var kcalLine = '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:13px;padding-bottom:13px;border-bottom:1px solid var(--border);">' +
+    '<div><div style="font-size:24px;font-weight:900;letter-spacing:-.02em;">' + (aK != null ? aK.toLocaleString('fr') : '—') + '<small style="font-size:12px;color:var(--text-subtle);font-weight:700"> kcal</small></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);font-weight:700;">' + (obj.kcal ? 'cible ' + obj.kcal.toLocaleString('fr') + ' kcal' + (kpct != null ? ' · ' + Math.round(kpct * 100) + ' %' : '') : 'cible indisponible (profil incomplet)') + '</div></div>' +
+    (kstatus || '') + '</div>';
+  var grid = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">' +
+    macCol('Protéines', aP, obj.prot, 'g') +
+    macCol('Glucides', aG, obj.gluc, 'g') +
+    macCol('Lipides', aL, obj.lip, 'g') +
+    macCol('Énergie', aK, obj.kcal, 'kcal') +
+    '</div>';
+  el.innerHTML = kcalLine + grid;
+  if (sec) sec.style.display = '';
+  el.style.display = '';
 }
 
 function renderCoachVolume(data) {
@@ -16945,8 +17005,22 @@ function _nutSetAct(id) { try { localStorage.setItem('nvz_nut_act_' + (athlete &
 // Objectifs indicatifs : protéines = g/kg selon le but ; calories = Mifflin-St
 // Jeor × niveau d'activité, ajusté au but. Champs null si le profil est incomplet.
 function _nutObjectifs() {
-  var A = (typeof athlete !== 'undefined' && athlete) ? athlete : {};
-  var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : {};
+  return _nutObjectifsFor(
+    (typeof athlete !== 'undefined' && athlete) ? athlete : {},
+    (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : {},
+    _nutActFactor()
+  );
+}
+// Variante paramétrable : utilisable côté coach (athlète ≠ utilisateur connecté).
+// A = profil athlète {ddn,taille,sexe,objectif,poids}, data = getAppData, actF = facteur d'activité.
+function _nutObjectifsFor(A, data, actF) {
+  A = A || {}; data = data || {}; actF = actF || 1.55;
+  // Âge depuis A.ddn (indépendant de l'utilisateur connecté)
+  var age = null;
+  try {
+    var iso = _ddnVersISO(A.ddn || '');
+    if (iso) { var b = new Date(iso); if (!isNaN(b.getTime())) { var n = new Date(), a0 = n.getFullYear() - b.getFullYear(); var m0 = n.getMonth() - b.getMonth(); if (m0 < 0 || (m0 === 0 && n.getDate() < b.getDate())) a0--; if (a0 > 5 && a0 < 120) age = a0; } }
+  } catch (e) {}
   // Poids : dernière pesée (poids_historique) = source la plus fraîche ; sinon
   // poidsActuel, sinon poids de référence de l'objectif, sinon champ profil.
   var poids = 0;
@@ -16955,7 +17029,6 @@ function _nutObjectifs() {
   if (!poids && data.objectif && data.objectif.poids_kg != null) poids = parseFloat(data.objectif.poids_kg) || 0;
   if (!poids) poids = parseFloat(A.poids) || 0;
   var taille = parseFloat(A.taille) || 0;
-  var age = _nutAge();
   var sexe = String(A.sexe || '').toUpperCase();
   // Objectif : chaîne libre (table objectif → athlete.objectif), ex. « Prise de
   // masse + sèche » (recomposition). On mappe vers protéines g/kg + calories.
@@ -16972,7 +17045,7 @@ function _nutObjectifs() {
   var kcal = null;
   if (poids > 0 && taille > 0 && age) {
     var bmr = 10 * poids + 6.25 * taille - 5 * age + (sexe === 'F' ? -161 : 5);
-    var tdee = bmr * _nutActFactor();
+    var tdee = bmr * actF;
     if (goal === 'seche') tdee *= 0.85; else if (goal === 'masse') tdee *= 1.10; else if (goal === 'recomp') tdee *= 0.90;   // recomp = léger déficit ; entretien = maintien
     kcal = Math.round(tdee / 10) * 10;
   }
