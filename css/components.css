@@ -215,6 +215,8 @@ body.cd-nav { padding-bottom:76px; }
   #cdtab-overview #cd-etat-group { display:none; }
   #cdtab-overview.etat-open #cd-etat-group { display:block; }
 }
+/* Rail : « Dernière séance » et « Régularité » doublonnent les tuiles Repères → masqués */
+#cd-rail .cd-rail-dup { display:none; }
 /* Desktop : la nav passe par les onglets du haut + le rail → pas de boutons hub */
 @media (min-width:992px) {
   .cd-hub-actions, .cd-back-hub { display:none !important; }
