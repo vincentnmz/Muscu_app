@@ -186,6 +186,16 @@ body.cd-nav { padding-bottom:76px; }
 #view-coach-detail .sub-tab.cc6.active { color:var(--accent); }
 #view-coach-detail .sub-tab.active::before { content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:26px; height:3px; border-radius:0 0 var(--radius-pill) var(--radius-pill); background:var(--accent); }
 
+/* Harmonisation avec le bandeau coach (même langage visuel) : pas de marqueur
+   haut, inactif en text-subtle, icône un peu plus compacte. */
+#view-coach-detail .sub-tab { color:var(--text-subtle); }
+#view-coach-detail .sub-tab .cd-ico svg { width:22px; height:22px; }
+#view-coach-detail .sub-tab span:last-child { font-size:9.5px; font-weight:700; }
+#view-coach-detail .sub-tab.active span:last-child { font-weight:800; }
+#view-coach-detail .sub-tab.active::before { display:none; }
+#view-coach-detail .sub-tabs { box-shadow:0 -2px 12px rgba(7,11,20,.05); }
+#view-coach-detail .card, #view-coach-detail .dash-card { border-radius:16px; }
+
 /* Focus visible clavier */
 button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-visible, .nv-auth-seg button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
 

@@ -502,9 +502,9 @@
           <div class="fjd-hero-pills" id="cd-hero-pills"></div>
         </div>
       </div>
-      <!-- Gestion du compte : réinitialisation du mot de passe par le coach -->
-      <div style="margin:0 0 12px;">
-        <button class="btn btn-outline" style="width:auto;margin:0;font-size:13px;padding:9px 14px;" onclick="ouvrirResetMdp(coachAthleteCourant &amp;&amp; coachAthleteCourant.athlete_id, coachAthleteCourant &amp;&amp; coachAthleteCourant.nom)">🔐 Réinitialiser le mot de passe</button>
+      <!-- Gestion du compte : réinitialisation du mot de passe par le coach (action discrète) -->
+      <div style="margin:0 0 14px;text-align:right;">
+        <button onclick="ouvrirResetMdp(coachAthleteCourant &amp;&amp; coachAthleteCourant.athlete_id, coachAthleteCourant &amp;&amp; coachAthleteCourant.nom)" style="background:none;border:none;color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;padding:4px 2px;">🔐 Réinitialiser le mot de passe</button>
       </div>
       <!-- Cockpit (Phase 5A) — rempli par renderCockpit(data,'cd') si COCKPIT_ON. Vide sinon. -->
       <div id="cd-cockpit"></div>
