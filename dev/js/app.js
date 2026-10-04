@@ -4673,7 +4673,7 @@ function retourCoachDetail() {
   }
 }
 
-const CD_TAB_LABELS = { overview: 'Aperçu', seances: 'Séances', prog: 'Progression', volume: 'Volume', cal: 'Agenda', conseils: 'Conversation', programme: 'Programme' };
+const CD_TAB_LABELS = { overview: 'Aperçu', seances: 'Entraînement', prog: 'Analyses', volume: 'Volume', cal: 'Agenda', conseils: 'Conversation', programme: 'Programme' };
 function switchCoachDetailTab(tab) {
   if (tab === 'volume') tab = 'prog';   // Volume fusionné dans Progression
   ['overview','seances','prog','volume','cal','conseils','programme'].forEach(t => {
@@ -4719,8 +4719,15 @@ function _maCoachAttach(data) {
   if (!_maCoach) _maPrevApp = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
   dernierAppData = data;
   _maCoach = true;
+  // En-tête : côté coach, ce n'est pas « Mes analyses » mais celles de l'athlète.
+  try {
+    var t = node.querySelector('.ma-ttl'), s = node.querySelector('.ma-sub');
+    if (t) { if (_maTtlOrig == null) _maTtlOrig = t.textContent; t.textContent = (coachAthleteCourant && coachAthleteCourant.nom) ? coachAthleteCourant.nom : 'Analyses'; }
+    if (s) { if (_maSubOrig == null) _maSubOrig = s.textContent; s.textContent = 'Analyses de l\'athlète'; }
+  } catch (e) {}
   try { maResetNav(); } catch (e) {}
 }
+var _maTtlOrig = null, _maSubOrig = null;
 function _maCoachDetach() {
   var node = document.getElementById('tab-historique');
   if (node && _maHome && node.parentNode !== _maHome.parent) {
@@ -4729,6 +4736,14 @@ function _maCoachDetach() {
     node.style.display = 'none';
   }
   if (_maCoach) { try { dernierAppData = _maPrevApp; } catch (e) {} }
+  // Restaure l'en-tête athlète « Mes analyses »
+  try {
+    if (node) {
+      var t = node.querySelector('.ma-ttl'), s = node.querySelector('.ma-sub');
+      if (t && _maTtlOrig != null) t.textContent = _maTtlOrig;
+      if (s && _maSubOrig != null) s.textContent = _maSubOrig;
+    }
+  } catch (e) {}
   _maCoach = false; _maPrevApp = undefined;
 }
 
@@ -6901,7 +6916,25 @@ function renderAlertesCoach(data) {
     return alerteCard(s.color, '📊', body, actions);
   }).join('');
 
-  const tout = alertesHtml + synthHtml;
+  // Alerte d'absence : pas de séance depuis > 7 j (ou aucune). Pas toujours émise
+  // par le backend → on la calcule ici depuis la dernière séance. Ignorée en vacances.
+  let absHtml = '';
+  const enPauseAth = (typeof estEnPause === 'function') ? estEnPause(d && d.pause) : false;
+  if (!enPauseAth) {
+    const dj = d && d.dashboard && d.dashboard.derniere_seance ? d.dashboard.derniere_seance.date : null;
+    const tsLast = dj ? parseChatDate(dj) : null;
+    const ageJ = tsLast ? Math.floor((Date.now() - tsLast) / 86400000) : null;
+    if (ageJ == null || ageJ > 7) {
+      const titre = (ageJ == null) ? 'Aucune séance enregistrée' : ageJ + ' jours sans séance';
+      const sous = dj ? ('Dernière séance le ' + escapeHtml(String(dj)) + ' — relance l\'athlète ?') : 'Relance l\'athlète pour (re)démarrer.';
+      const body = `<div style="font-size:13px;font-weight:700;color:var(--warn);">${titre}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${sous}</div>`;
+      const sujet = 'absence';
+      const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Relancer l'athlète</button>`;
+      absHtml = alerteCard('var(--warn)', '💤', body, actions);
+    }
+  }
+
+  const tout = absHtml + alertesHtml + synthHtml;
   el.innerHTML = tout || '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--good);font-weight:700;margin-top:6px;"><span>✅</span> Rien à signaler</div>';
 }
 
