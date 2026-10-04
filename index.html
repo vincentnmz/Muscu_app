@@ -2520,12 +2520,12 @@
 
 <!-- Messagerie coach (liste des conversations, depuis l'accueil) -->
 <div id="coach-messagerie-overlay" onclick="fermerMessagerieCoach()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:998;"></div>
-<div id="coach-messagerie-drawer" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border);z-index:999;box-shadow:var(--shadow-lg);max-height:80vh;flex-direction:column;">
-  <div style="padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
-    <div style="font-size:16px;font-weight:800;">Conversations</div>
-    <button onclick="fermerMessagerieCoach()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;">×</button>
+<div id="coach-messagerie-drawer" style="display:none;position:fixed;inset:0;max-width:480px;margin:0 auto;background:var(--bg);z-index:999;flex-direction:column;">
+  <div style="padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--border);background:var(--surface);flex:none;">
+    <button onclick="fermerMessagerieCoach()" title="Retour" style="width:36px;height:36px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--border);cursor:pointer;color:var(--text);"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+    <div style="font-size:17px;font-weight:900;">Messages</div>
   </div>
-  <div id="coach-messagerie-liste" style="overflow-y:auto;padding:8px 10px 16px;"><div class="loader">Chargement...</div></div>
+  <div id="coach-messagerie-liste" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px calc(20px + env(safe-area-inset-bottom,0px));"><div class="loader">Chargement...</div></div>
 </div>
 
 <div class="toast" id="toast"></div>

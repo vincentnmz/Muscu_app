@@ -4261,51 +4261,156 @@ async function renderCoachSynthese(athletes) {
       </div>
     </div>`;
 
-  // ---- Analyses équipe (lecture transversale, données réelles) ----
+  // ===== Analyses équipe v2 (données réelles agrégées depuis datas) =====
   const nbOptimal = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 0).length;
   const nbSurv1   = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 1).length;
   const nbAction  = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 2).length;
   const totActifs = nbOptimal + nbSurv1 + nbAction;
-  const regParts = enrich.filter(e => !e.enPause && e.regPrevues > 0 && e.seancesSem != null)
-    .map(e => Math.min(1, e.seancesSem / e.regPrevues));
-  const regMoy = regParts.length ? Math.round(regParts.reduce((s, v) => s + v, 0) / regParts.length * 100) : null;
-  const pct = n => totActifs ? Math.round(n / totActifs * 100) : 0;
-  const aTile = (label, val, color, sub) => `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px;box-shadow:var(--shadow-sm);">
-      <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-subtle);">${label}</div>
-      <div style="font-size:22px;font-weight:900;letter-spacing:-.02em;margin-top:5px;color:${color};line-height:1.1;">${val}</div>
-      ${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${sub}</div>` : ''}
+  const pctE = n => totActifs ? Math.round(n / totActifs * 100) : 0;
+  const initz = nom => (nom || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const within7 = ts => !!ts && (Date.now() - ts) / 86400000 <= 7;
+  const pfMini = nom => `<div style="width:34px;height:34px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;background:var(--surface2);">${initz(nom)}</div>`;
+
+  // 1. Assiduité (séances/objectif, cette semaine) — trié meilleur → à relancer
+  const assidu = enrich.filter(e => !e.enPause).map(e => {
+    const prev = e.regPrevues || 0, fait = e.seancesSem != null ? e.seancesSem : 0;
+    const ratio = prev > 0 ? Math.min(1, fait / prev) : (fait > 0 ? 1 : 0);
+    return { nom: e.a.nom, fait, prev, ratio, known: prev > 0 || fait > 0 };
+  }).sort((x, y) => y.ratio - x.ratio);
+
+  // 2. Vigilance bien-être (dernier questionnaire)
+  let somSum = 0, somN = 0, fatSum = 0, fatN = 0; const bienBas = [];
+  enrich.forEach(e => {
+    const d = datas[e.i] || {}; const be = (d.bien_etre || [])[0]; if (!be) return;
+    const s = Number(be.sommeil), f = Number(be.fatigue), dl = Number(be.douleur);
+    if (!isNaN(s)) { somSum += s; somN++; } if (!isNaN(f)) { fatSum += f; fatN++; }
+    let txt = null, sev = 'warn';
+    if (!isNaN(f) && f >= 4) { txt = 'Fatigue ' + String(WQ_ANSWERS.fatigue[f] || '').toLowerCase(); sev = 'bad'; }
+    else if (!isNaN(dl) && dl >= 3) { txt = 'Douleur' + (be.zone ? ' ' + be.zone : ''); sev = dl >= 4 ? 'bad' : 'warn'; }
+    else if (!isNaN(s) && s <= 2) { txt = 'Sommeil ' + String(WQ_ANSWERS.sommeil[s] || '').toLowerCase(); sev = 'warn'; }
+    if (txt) bienBas.push({ nom: e.a.nom, txt, sev });
+  });
+  const somAvg = somN ? Math.round(somSum / somN) : null, fatAvg = fatN ? Math.round(fatSum / fatN) : null;
+
+  // 3. Blessures & douleurs actives (table blessures, statut non résolu)
+  const blessures = [];
+  enrich.forEach(e => {
+    const d = datas[e.i] || {};
+    (d.blessures || []).forEach(b => {
+      const st = String(b.statut || '').toLowerCase();
+      if (st && /(résolu|resolu|termin|guéri|gueri|clos)/.test(st)) return;
+      blessures.push({ nom: e.a.nom, zone: String(b.localisation || b.type || '—'), gravite: String(b.gravite || '') });
+    });
+  });
+
+  // 4. Progression & stagnations (meilleur Δ 1RM estimé par athlète)
+  const progA = [], stagA = [];
+  enrich.forEach(e => {
+    const d = datas[e.i] || {}; const prog = (d.historique && d.historique.progression_par_exo) || {}; let best = null;
+    Object.keys(prog).forEach(exo => {
+      const perfs = prog[exo] || []; if (perfs.length < 3) return;
+      const rmR = calc1RM(perfs[0].charge, perfs[0].reps); let bb = null;
+      for (let i = 1; i < perfs.length; i++) { const rm = calc1RM(perfs[i].charge, perfs[i].reps); if (rm != null && (bb == null || rm > bb)) bb = rm; }
+      if (rmR == null || bb == null || bb <= 0) return;
+      const delta = Math.round((rmR / bb - 1) * 100);
+      if (best == null || delta > best.delta) best = { exo, delta };
+    });
+    if (best) { if (best.delta > 0) progA.push({ nom: e.a.nom, exo: best.exo, delta: best.delta }); else stagA.push({ nom: e.a.nom, exo: best.exo, delta: best.delta }); }
+  });
+  progA.sort((a, b) => b.delta - a.delta); stagA.sort((a, b) => a.delta - b.delta);
+
+  // 6. Fiabilité des données (saisies des 7 derniers jours)
+  let ressN = 0, nutrN = 0; const sansData = [];
+  enrich.forEach(e => {
+    const d = datas[e.i] || {};
+    const hasR = (d.bien_etre || []).some(x => within7(parseChatDate(x.date)));
+    const hasN = (d.nutri_historique || []).some(x => within7(parseChatDate(x.date)));
+    if (hasR) ressN++; if (hasN) nutrN++;
+    if (!hasR && !hasN) sansData.push({ nom: e.a.nom, txt: 'Aucune saisie', sev: 'bad' });
+    else if (!hasR) sansData.push({ nom: e.a.nom, txt: 'Pas de ressenti', sev: 'warn' });
+  });
+  const totAll = enrich.length;
+
+  // ---- Carte « Résumé équipe » (répartition des états) — affichée sur Aujourd'hui ----
+  const distCard = totActifs
+    ? `<div class="dash-card" style="padding:15px;">
+        <div style="display:flex;height:16px;border-radius:999px;overflow:hidden;margin-bottom:12px;background:var(--surface2);">
+          ${nbOptimal ? `<i style="height:100%;width:${pctE(nbOptimal)}%;background:var(--good);"></i>` : ''}
+          ${nbSurv1 ? `<i style="height:100%;width:${pctE(nbSurv1)}%;background:var(--warn);"></i>` : ''}
+          ${nbAction ? `<i style="height:100%;width:${pctE(nbAction)}%;background:var(--danger);"></i>` : ''}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;">
+          <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--good);"></span>En forme · ${nbOptimal}</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--warn);"></span>À surveiller · ${nbSurv1}</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--danger);"></span>Surcharge · ${nbAction}</span>
+        </div>
+      </div>`
+    : '<div class="dash-card" style="padding:14px;color:var(--text-muted);font-size:13px;">Pas encore de données d\'état.</div>';
+  const resumeEquipeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Résumé équipe</div><div class="more" onclick="coachBandeauGo('analyses')" style="cursor:pointer;color:var(--accent);font-weight:700;font-size:11px;">Analyses →</div></div>` + distCard;
+
+  // ---- Analyses v2 ----
+  const chipSev = (txt, sev) => `<span style="font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;border-radius:5px;padding:2px 7px;margin-left:auto;white-space:nowrap;background:${sev === 'bad' ? 'var(--bad-a)' : 'var(--warn-a)'};color:${sev === 'bad' ? 'var(--danger)' : 'var(--warn)'};">${escapeHtml(txt)}</span>`;
+  // 1. Assiduité
+  const assiduRows = assidu.map(a => {
+    const color = a.ratio >= 0.99 ? 'var(--good)' : a.ratio >= 0.6 ? 'var(--warn)' : 'var(--danger)';
+    const val = a.known ? (a.fait + (a.prev ? '/' + a.prev : '')) : '—';
+    return `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--border);">
+      ${pfMini(a.nom)}
+      <span style="font-size:13px;font-weight:700;width:84px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>
+      <div style="flex:1;height:8px;border-radius:999px;background:var(--surface2);overflow:hidden;"><i style="display:block;height:100%;border-radius:999px;width:${Math.round(a.ratio * 100)}%;background:${color};"></i></div>
+      <span style="width:42px;flex:none;text-align:right;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:${color};">${val}</span>
     </div>`;
+  }).join('');
+  const assiduCard = assidu.length ? `<div class="dash-card" style="padding:4px 15px 10px;">${assiduRows}</div>` : '';
+
+  // 2. Vigilance bien-être
+  const somLabel = somAvg != null ? (WQ_ANSWERS.sommeil[somAvg] || '—') : '—';
+  const fatLabel = fatAvg != null ? (WQ_ANSWERS.fatigue[fatAvg] || '—') : '—';
+  const somCol = somAvg == null ? 'var(--text-subtle)' : somAvg >= 4 ? 'var(--good)' : somAvg >= 3 ? 'var(--warn)' : 'var(--danger)';
+  const fatCol = fatAvg == null ? 'var(--text-subtle)' : fatAvg <= 2 ? 'var(--good)' : fatAvg <= 3 ? 'var(--warn)' : 'var(--danger)';
+  const bienCard = (somN || fatN) ? `<div class="dash-card" style="padding:14px 15px;">
+      <div style="display:flex;gap:10px;margin-bottom:${bienBas.length ? '12px' : '0'};">
+        <div style="flex:1;background:var(--surface2);border-radius:13px;padding:12px;text-align:center;"><div style="font-size:18px;font-weight:900;color:${somCol};">${somLabel}</div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-top:3px;">Sommeil moy.</div></div>
+        <div style="flex:1;background:var(--surface2);border-radius:13px;padding:12px;text-align:center;"><div style="font-size:18px;font-weight:900;color:${fatCol};">${fatLabel}</div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-top:3px;">Fatigue moy.</div></div>
+      </div>
+      ${bienBas.length ? '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:2px 0 2px;">À surveiller</div>' + bienBas.slice(0, 5).map(x => `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--border);">${pfMini(x.nom)}<span style="font-size:12.5px;font-weight:600;">${escapeHtml(x.nom)}</span>${chipSev(x.txt, x.sev)}</div>`).join('') : ''}
+    </div>` : '<div class="dash-card" style="padding:14px;color:var(--text-muted);font-size:13px;">Pas encore de questionnaires bien-être.</div>';
+
+  // 3. Blessures actives
+  const grChip = g => { const gl = g || '—'; const sev = /(sév|sev|import|haute|forte)/i.test(g) ? 'bad' : 'warn'; return `<span style="font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;border-radius:5px;padding:2px 7px;margin-left:auto;white-space:nowrap;background:${sev === 'bad' ? 'var(--bad-a)' : 'var(--warn-a)'};color:${sev === 'bad' ? 'var(--danger)' : 'var(--warn)'};">${escapeHtml(gl)}</span>`; };
+  const blessCard = `<div class="dash-card" style="padding:14px 15px;">
+      <div style="display:flex;align-items:baseline;gap:7px;margin-bottom:${blessures.length ? '10px' : '0'};"><b style="font-size:24px;font-weight:900;color:${blessures.length ? 'var(--danger)' : 'var(--good)'};">${blessures.length}</b><span style="font-size:12px;color:var(--text-muted);font-weight:700;">athlète${blessures.length > 1 ? 's' : ''} concerné${blessures.length > 1 ? 's' : ''}</span></div>
+      ${blessures.slice(0, 6).map(b => `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--border);">${pfMini(b.nom)}<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">${escapeHtml(b.nom)}</div><div style="font-size:11px;color:var(--text-muted);margin-top:1px;">${escapeHtml(b.zone)}</div></div>${b.gravite ? grChip(b.gravite) : ''}</div>`).join('')}
+    </div>`;
+
+  // 4. Progression & stagnations
+  const progRow = (x, cls) => `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--border);">${pfMini(x.nom)}<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">${escapeHtml(x.nom)}</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px;">${escapeHtml(x.exo)}</div></div><span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;color:${cls};">${x.delta > 0 ? '+' : ''}${x.delta} %</span></div>`;
+  const subH = t => `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:4px 0 2px;">${t}</div>`;
+  const progCard = (progA.length || stagA.length) ? `<div class="dash-card" style="padding:4px 15px 12px;">
+      ${progA.length ? subH('Meilleures progressions') + progA.slice(0, 3).map(x => progRow(x, 'var(--good)')).join('') : ''}
+      ${stagA.length ? subH('Stagnations / régressions') + stagA.slice(0, 3).map(x => progRow(x, x.delta < 0 ? 'var(--danger)' : 'var(--text-subtle)')).join('') : ''}
+    </div>` : '<div class="dash-card" style="padding:14px;color:var(--text-muted);font-size:13px;">Pas assez de séances pour estimer la progression.</div>';
+
+  // 6. Fiabilité
+  const fiabBar = (lab, n, color) => { const p = totAll ? Math.round(n / totAll * 100) : 0; return `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--border);"><span style="width:90px;flex:none;font-size:13px;font-weight:700;">${lab}</span><div style="flex:1;height:8px;border-radius:999px;background:var(--surface2);overflow:hidden;"><i style="display:block;height:100%;border-radius:999px;width:${p}%;background:${color};"></i></div><span style="width:48px;flex:none;text-align:right;font-size:12px;font-weight:800;color:${color};">${n}/${totAll}</span></div>`; };
+  const fiabCard = `<div class="dash-card" style="padding:4px 15px 12px;">
+      ${fiabBar('Ressenti', ressN, ressN >= totAll * 0.6 ? 'var(--good)' : 'var(--warn)')}
+      ${fiabBar('Nutrition', nutrN, nutrN >= totAll * 0.6 ? 'var(--good)' : 'var(--warn)')}
+      ${sansData.length ? '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:8px 0 2px;">Sans donnée depuis 7 j</div>' + sansData.slice(0, 5).map(x => `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--border);">${pfMini(x.nom)}<span style="font-size:12.5px;font-weight:600;">${escapeHtml(x.nom)}</span>${chipSev(x.txt, x.sev)}</div>`).join('') : ''}
+      <div style="font-size:11px;color:var(--text-subtle);margin-top:9px;line-height:1.4;">Plus l'athlète saisit (ressenti, nutrition), plus les analyses ci-dessus sont fiables.</div>
+    </div>`;
+
+  const sec = (ico, titre, right) => `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#${ico}"/></svg>${titre}</div>${right ? `<div class="more" style="color:var(--text-subtle);font-size:10.5px;font-weight:700;">${right}</div>` : ''}</div>`;
   const analysesHtml =
-    `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>État de l'équipe</div></div>` +
-    (totActifs ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:15px;margin-bottom:4px;">
-      <div style="display:flex;height:16px;border-radius:999px;overflow:hidden;margin-bottom:12px;background:var(--surface2);">
-        ${nbOptimal ? `<i style="display:block;height:100%;width:${pct(nbOptimal)}%;background:var(--good);"></i>` : ''}
-        ${nbSurv1 ? `<i style="display:block;height:100%;width:${pct(nbSurv1)}%;background:var(--warn);"></i>` : ''}
-        ${nbAction ? `<i style="display:block;height:100%;width:${pct(nbAction)}%;background:var(--danger);"></i>` : ''}
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:12px;">
-        <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--good);"></span>En forme · ${nbOptimal}</span>
-        <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--warn);"></span>À surveiller · ${nbSurv1}</span>
-        <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--danger);"></span>Intervention · ${nbAction}</span>
-      </div>
-    </div>` : '<div style="color:var(--text-muted);font-size:13px;padding:4px 2px 12px;">Pas encore de données d\'état.</div>') +
-    `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Indicateurs</div></div>` +
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
-      ${aTile('Régularité moy.', regMoy != null ? regMoy + ' %' : '—', regMoy != null ? (regMoy >= 80 ? 'var(--good)' : regMoy >= 60 ? 'var(--warn)' : 'var(--danger)') : 'var(--text-subtle)', 'séances / objectif')}
-      ${aTile('À surveiller', nbSurv1 + nbAction, (nbSurv1 + nbAction) ? 'var(--warn)' : 'var(--good)', 'athlète' + ((nbSurv1 + nbAction) > 1 ? 's' : ''))}
-      ${aTile('Intervention', nbAction, nbAction ? 'var(--danger)' : 'var(--good)', 'alerte' + (nbAction > 1 ? 's' : '') + ' rouge' + (nbAction > 1 ? 's' : ''))}
-      ${aTile('Absents 7j+', absents, absents ? 'var(--warn)' : 'var(--good)', 'sans séance')}
-    </div>` +
-    `<div style="font-size:11px;color:var(--text-subtle);margin-top:12px;line-height:1.4;">Lecture transversale calculée à partir de l'état de chaque athlète. Les analyses par exercice (charge, 1RM) restent dans la fiche de chaque athlète.</div>`;
+    sec('i-gauge', 'Assiduité', 'séances / objectif') + assiduCard +
+    sec('i-activity', 'Vigilance bien-être', 'dernier ressenti') + bienCard +
+    sec('i-bell', 'Blessures & douleurs actives') + blessCard +
+    sec('i-trending', 'Progression & stagnations', '1RM estimé') + progCard +
+    sec('i-activity', 'Fiabilité des données', '7 derniers jours') + fiabCard;
 
-  // Liste des athlètes aussi sur « Aujourd'hui » (sans recherche/filtres) :
-  // l'accueil doit montrer TOUS les athlètes, pas seulement le triage.
-  const aujListeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes ${libelleSport('athletes').toLowerCase()}</div></div>` + rowsHtml;
-
-  // Sections pilotées par le bandeau : Aujourd'hui (triage + liste) · Équipe (liste filtrable) · Analyses
+  // Sections pilotées par le bandeau : Aujourd'hui (action, SANS liste) · Équipe (annuaire) · Analyses
   el.innerHTML =
-    `<div id="coach-sec-aujourdhui">${heroHtml + prioHtml + messagesHtml + briefingHtml + aujListeHtml}</div>` +
+    `<div id="coach-sec-aujourdhui">${heroHtml + resumeEquipeHtml + prioHtml + messagesHtml + briefingHtml}</div>` +
     `<div id="coach-sec-equipe" style="display:none">${listeHtml}</div>` +
     `<div id="coach-sec-analyses" style="display:none">${analysesHtml}</div>`;
   coachBandeauApply();
