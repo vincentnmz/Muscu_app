@@ -502,39 +502,12 @@
           <div class="fjd-hero-pills" id="cd-hero-pills"></div>
         </div>
       </div>
-      <!-- Actions (hub mobile) : nav vers les sous-écrans. Masqué en desktop (onglets du haut). -->
-      <div class="cd-hub-actions">
-        <button class="cd-act cd-act-primary" onclick="switchCoachDetailTab('conseils')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Envoyer un message</button>
-        <button class="cd-act" onclick="switchCoachDetailTab('seances')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</button>
-        <button class="cd-act" onclick="switchCoachDetailTab('prog')"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</button>
-        <button class="cd-act" onclick="switchCoachDetailTab('programme')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Programme</button>
-        <button class="cd-act" onclick="cdScrollEtat()"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/></svg>Son état</button>
-      </div>
-      <!-- Gestion du compte : réinitialisation du mot de passe par le coach (action discrète) -->
-      <div style="margin:0 0 14px;text-align:right;">
-        <button onclick="ouvrirResetMdp(coachAthleteCourant &amp;&amp; coachAthleteCourant.athlete_id, coachAthleteCourant &amp;&amp; coachAthleteCourant.nom)" style="background:none;border:none;color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;padding:4px 2px;">🔐 Réinitialiser le mot de passe</button>
-      </div>
-      <!-- Cockpit (Phase 5A) — rempli par renderCockpit(data,'cd') si COCKPIT_ON. Vide sinon. -->
-      <div id="cd-cockpit"></div>
-      <!-- Alertes (priorité en haut) -->
+      <!-- ===== HUB (ordre maquette) : alerte → repères → volume → séances → macros → actions ===== -->
+
+      <!-- Alertes (à traiter) -->
       <div class="dash-card" id="cd-alertes-card" style="padding:16px">
         <div class="dash-label"><svg class="ico"><use href="#i-bell"/></svg>Alertes</div>
         <div id="cd-alertes"><div class="loader">Chargement...</div></div>
-      </div>
-
-      <!-- Contexte de performance (état posé par le coach) -->
-      <div id="cd-contexte"></div>
-
-      <!-- Bilan de la dernière séance (questionnaire bien-être de l'athlète) -->
-      <div class="v2-sec" id="cd-etat-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</h2></div>
-      <div class="dash-card" id="cd-etat-card" style="padding:16px;display:none;">
-        <div id="cd-etat-content"></div>
-      </div>
-
-      <!-- Analyse (moteur Novalyz — interprétation, lecture seule) -->
-      <div class="v2-sec" id="cd-analyse-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-lightbulb"/></svg>Analyse</h2></div>
-      <div class="dash-card" id="cd-analyse-card" style="padding:16px;display:none;">
-        <div id="cd-analyse-content"></div>
       </div>
 
       <!-- Repères (régularité, ACWR, dernière séance, progression) -->
@@ -555,28 +528,61 @@
       <div class="v2-sec" id="cd-hub-nutrition-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Nutrition · respect des macros</h2><div class="more" style="color:var(--text-subtle);">moy. 7 j</div></div>
       <div class="dash-card" id="cd-hub-nutrition" style="padding:16px;display:none;"></div>
 
-      <!-- État de forme -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</h2></div>
-      <div class="dash-card" id="cd-recup-card" style="padding:16px">
-        <div id="cd-recup"><div class="loader">Chargement...</div></div>
+      <!-- Actions (hub mobile) : nav vers les sous-écrans. Masqué en desktop (onglets du haut). -->
+      <div class="cd-hub-actions">
+        <button class="cd-act cd-act-primary" onclick="switchCoachDetailTab('conseils')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Envoyer un message</button>
+        <button class="cd-act" onclick="switchCoachDetailTab('seances')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</button>
+        <button class="cd-act" onclick="switchCoachDetailTab('prog')"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</button>
+        <button class="cd-act" onclick="switchCoachDetailTab('programme')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Programme</button>
+        <button class="cd-act" onclick="cdScrollEtat()"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/></svg>Son état</button>
       </div>
 
-      <!-- ACWR — masqué (peu lisible en muscu ; à réactiver pour un module Hyrox) -->
-      <div class="v2-sec" style="display:none"><h2 class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</h2></div>
-      <div class="dash-card" id="cd-acwr-card" style="padding:16px;display:none">
-        <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
+      <!-- Réinitialisation du mot de passe (action discrète) -->
+      <div style="margin:2px 0 14px;text-align:right;">
+        <button onclick="ouvrirResetMdp(coachAthleteCourant &amp;&amp; coachAthleteCourant.athlete_id, coachAthleteCourant &amp;&amp; coachAthleteCourant.nom)" style="background:none;border:none;color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;padding:4px 2px;">🔐 Réinitialiser le mot de passe</button>
       </div>
 
-      <!-- Progression 7 jours (cliquable → détail) -->
-      <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</h2><div class="more" onclick="switchCoachDetailTab('prog')" style="cursor:pointer;">Voir tout →</div></div>
-      <div class="dash-card" id="cd-prog-card" style="padding:16px" onclick="switchCoachDetailTab('prog')" title="Voir la progression détaillée">
-        <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
+      <!-- ===== « Son état » : détail bien-être / analyse. Masqué sur mobile tant que le
+           bouton « Son état » n'est pas activé ; toujours visible en desktop. ===== -->
+      <div id="cd-etat-group">
+        <!-- Contexte de performance (état posé par le coach) -->
+        <div id="cd-contexte"></div>
+        <!-- Bilan de la dernière séance (questionnaire bien-être de l'athlète) -->
+        <div class="v2-sec" id="cd-etat-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>Bilan de la dernière séance</h2></div>
+        <div class="dash-card" id="cd-etat-card" style="padding:16px;display:none;">
+          <div id="cd-etat-content"></div>
+        </div>
+        <!-- Analyse (moteur Novalyz — interprétation, lecture seule) -->
+        <div class="v2-sec" id="cd-analyse-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-lightbulb"/></svg>Analyse</h2></div>
+        <div class="dash-card" id="cd-analyse-card" style="padding:16px;display:none;">
+          <div id="cd-analyse-content"></div>
+        </div>
+        <!-- État de forme -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-activity"/></svg>État de forme</h2></div>
+        <div class="dash-card" id="cd-recup-card" style="padding:16px">
+          <div id="cd-recup"><div class="loader">Chargement...</div></div>
+        </div>
       </div>
 
-      <!-- Exercices en régression (si présent) -->
-      <div class="dash-card" id="cd-regression-card" style="padding:16px;display:none">
-        <div class="dash-label"><svg class="ico"><use href="#i-alert"/></svg>Exercices en régression</div>
-        <div id="cd-regression"></div>
+      <!-- ===== Superflu sur mobile (accessible via l'onglet Analyses) ; visible en desktop ===== -->
+      <div id="cd-extra-hidden">
+        <!-- Cockpit (Phase 5A) — rempli par renderCockpit(data,'cd') si COCKPIT_ON. Vide sinon. -->
+        <div id="cd-cockpit"></div>
+        <!-- ACWR — masqué (peu lisible en muscu ; à réactiver pour un module Hyrox) -->
+        <div class="v2-sec" style="display:none"><h2 class="st"><svg class="ico"><use href="#i-zap"/></svg>Charge aiguë / chronique</h2></div>
+        <div class="dash-card" id="cd-acwr-card" style="padding:16px;display:none">
+          <div id="cd-acwr-content"><div class="loader">Chargement...</div></div>
+        </div>
+        <!-- Progression 7 jours (cliquable → détail) -->
+        <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-trending"/></svg>Progression · 7 jours</h2><div class="more" onclick="switchCoachDetailTab('prog')" style="cursor:pointer;">Voir tout →</div></div>
+        <div class="dash-card" id="cd-prog-card" style="padding:16px" onclick="switchCoachDetailTab('prog')" title="Voir la progression détaillée">
+          <div id="cd-prog-semaine"><div class="loader">Chargement...</div></div>
+        </div>
+        <!-- Exercices en régression (si présent) -->
+        <div class="dash-card" id="cd-regression-card" style="padding:16px;display:none">
+          <div class="dash-label"><svg class="ico"><use href="#i-alert"/></svg>Exercices en régression</div>
+          <div id="cd-regression"></div>
+        </div>
       </div>
 
     </div>
