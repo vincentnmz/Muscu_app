@@ -5317,8 +5317,15 @@ function computeMarqueursCoach(data, a) {
   const annees = a ? a.annees_pratique : 0;
 
   // 1. Progression (comptes hausse/baisse de la semaine)
+  // Le backend envoie dashboard.progression=null → on calcule depuis la comparaison
+  // 7j vs 7j (charge_details) qu'il fournit, sinon la tuile dirait toujours « N/A ».
   const prog = dash.progression || {};
-  const enProg = prog.en_progression || 0, enBaisse = prog.en_baisse || 0;
+  let enProg = prog.en_progression || 0, enBaisse = prog.en_baisse || 0;
+  if (!enProg && !enBaisse) {
+    const _det = ((data.comparison || {}).j7_vs_j7prec || {}).charge_details || [];
+    enProg = _det.filter(x => x && x.up).length;
+    enBaisse = _det.filter(x => x && x.down && !x.up).length;
+  }
   let progColor, progLabel;
   if (enProg === 0 && enBaisse === 0) { progColor = '#aaa'; progLabel = 'N/A'; }
   else if (enProg > enBaisse) { progColor = '#00c96e'; progLabel = `${enProg}↑/${enBaisse}↓`; }
@@ -13101,6 +13108,31 @@ function _enRenderSelCardio() {
       + '<span class="en-rad"></span></div>';
   }).join('');
 }
+// Questionnaire quotidien : à la 1re ouverture du jour, propose « Ton état du
+// jour » (réutilise ouvrirEtatDuJour) s'il n'est pas déjà rempli. Non bloquant,
+// 1×/jour (flag localStorage), jamais par-dessus un autre panneau. L'anti-doublon
+// avant séance est déjà géré par _enDemarrer (_bienEtreFaitAujourdhui).
+var _etatAutoChecked = false;
+function _maybeQuotidienEtat() {
+  try {
+    if (_etatAutoChecked) return;
+    if (typeof athlete === 'undefined' || !athlete) return;
+    if (_bienEtreFaitAujourdhui()) { _etatAutoChecked = true; return; }
+    var today = _todayLocalStr();
+    var key = 'nvz_etat_auto_' + athlete.athlete_id;
+    var last = null; try { last = localStorage.getItem(key); } catch (e) {}
+    if (last === today) { _etatAutoChecked = true; return; }   // déjà proposé aujourd'hui
+    // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, modales…).
+    var busy = ['onb-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
+      var e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none';
+    });
+    if (busy) return;   // on réessaiera au prochain chargement
+    _etatAutoChecked = true;
+    try { localStorage.setItem(key, today); } catch (e) {}
+    ouvrirEtatDuJour({});
+  } catch (e) {}
+}
+
 // « Démarrer la séance » : d'abord l'état du jour (readiness, AVANT), 1×/jour et
 // skippable ; puis on démarre réellement la séance (muscu ou cardio).
 function _enDemarrer() {
@@ -13203,6 +13235,8 @@ function _appliquerAppData(data) {
   _safe('onboarding', function () { if (!_onbChecked) { _onbChecked = true; setTimeout(_maybeOnboarding, 500); } });
   // Import nutrition auto depuis Health Connect (natif) — en silence, après le rendu.
   _safe('nut-autoimport', function () { setTimeout(function () { try { _nutAutoImportHC(); } catch (e) {} }, 1200); });
+  // Questionnaire quotidien « état du jour » — proposé 1×/jour à la 1re ouverture.
+  _safe('etat-auto', function () { setTimeout(function () { try { _maybeQuotidienEtat(); } catch (e) {} }, 1700); });
     _safe('cockpit', () => renderCockpit(data, 'dash'));   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     _safe('seances-programme', () => peuplerSeancesProgramme());
     seancesDates = data.historique.dates_seances || {};
@@ -15102,6 +15136,12 @@ function _installNativeResumeListener() {
   try {
     App.addListener('resume', function () {
       try { if (typeof _timerTick === 'function' && _timerTick) _timerTick(); } catch (e) {}
+      // Throttle (8 s, partagé avec visibilitychange) : au cas où l'app enchaîne des
+      // retours rapides au 1er plan (ex. écran de permission système), on ne relance
+      // pas getAppData en rafale.
+      var _now = Date.now();
+      if (_now - _lastResumeRefresh < 8000) return;
+      _lastResumeRefresh = _now;
       try {
         if (typeof athlete !== 'undefined' && athlete) {
           if (typeof chargerMessagesCoach === 'function') chargerMessagesCoach();
@@ -16944,8 +16984,8 @@ async function renderDashSteps(attempt) {
     try {
       var av = await H.isHealthAvailable();
       if (av && av.available) {
+        _hcWarmed = true;   // AVANT la demande → coupe la boucle 'resume' si l'écran de permission passe l'app en arrière-plan
         try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {}
-        _hcWarmed = true;
       }
     } catch (e) {}
   }
@@ -16978,7 +17018,7 @@ async function renderEtatMontre(attempt) {
   if (!native) { hide(); return; }             // la montre n'existe que sur l'app Android
   if (!H) { if (attempt < 8) setTimeout(function () { renderEtatMontre(attempt + 1); }, 600); else hide(); return; }
   if (!_hcWarmed) {
-    try { var avh = await H.isHealthAvailable(); if (avh && avh.available) { try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {} _hcWarmed = true; } } catch (e) {}
+    try { var avh = await H.isHealthAvailable(); if (avh && avh.available) { _hcWarmed = true; try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {} } } catch (e) {}
   }
   var now = new Date();
   // Fenêtre calée sur MINUIT LOCAL : sinon les tranches 'day' démarrent à l'heure
@@ -17515,8 +17555,15 @@ async function _nutFromHC() {
 // silence, 1×/jour. NE PAS écraser une saisie manuelle du jour : si une entrée
 // existe sans avoir été écrite par l'auto-import, on s'abstient. Idempotent :
 // ne re-poste pas si les valeurs n'ont pas changé.
+var _nutAutoImportRan = false;   // anti-boucle : au plus UNE tentative d'auto-import par exécution de l'app
 async function _nutAutoImportHC() {
   try {
+    // ⚠️ ANTI-BOUCLE (natif) : requestHealthPermissions peut ouvrir l'écran Health Connect →
+    // l'app passe en arrière-plan → l'événement Capacitor 'resume' relance chargerAppData →
+    // _appliquerAppData → _nutAutoImportHC. Sans ce verrou, on redemandait la permission à
+    // l'infini (symptôme : « serveur en démarrage » qui ne se stabilise jamais, côté athlète).
+    // On ne tente donc l'auto-import qu'UNE FOIS par exécution, et au plus une fois par jour.
+    if (_nutAutoImportRan) return;
     if (typeof athlete === 'undefined' || !athlete) return;
     var H = (typeof _hcPlugin === 'function') ? _hcPlugin() : null;
     if (!H) return;                                   // web/PWA : pas de Health Connect
@@ -17525,8 +17572,13 @@ async function _nutAutoImportHC() {
     var autoDate = null; try { autoDate = localStorage.getItem('nvz_nut_auto_' + aid); } catch (e) {}
     var existing = _nutTodayEntry();
     // Entrée du jour présente mais PAS écrite par l'auto-import aujourd'hui → saisie
-    // manuelle : on respecte, on ne touche pas.
+    // manuelle : on respecte, on ne touche pas (et aucune demande de permission).
     if (existing && autoDate !== today) return;
+    // Throttle quotidien : une seule demande de permission + requête par jour et par appareil.
+    var hcTry = null; try { hcTry = localStorage.getItem('nvz_nut_hc_try_' + aid); } catch (e) {}
+    if (hcTry === today) return;
+    _nutAutoImportRan = true;                         // marquer AVANT la demande → coupe la boucle 'resume'
+    try { localStorage.setItem('nvz_nut_hc_try_' + aid, today); } catch (e) {}
     try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
     // Fenêtre large (hier → demain) puis filtrage sur la date LOCALE = aujourd'hui,
     // pour éviter qu'un décalage de fuseau fasse entrer des repas d'un autre jour.
