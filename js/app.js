@@ -24,6 +24,46 @@
  * Extensibilité : pour ajouter une règle, on pousse un objet dans REGLES.
  *                 Aucune autre partie du moteur n'a besoin d'être modifiée.
  * ========================================================================== */
+
+/* ─── Filet global d'erreurs (monitoring minimal, P1) ────────────────────────
+ * Capte les erreurs JS NON rattrapées + promesses rejetées sans .catch : log
+ * console, historique local (ring buffer consultable via `_nvzErrLog`), et toast
+ * discret THROTTLÉ. But : qu'un bug inattendu ne laisse plus l'app muette/bloquée
+ * sans aucun signal (complète l'anti-écran-blanc). */
+var _nvzErrLog = [];
+try { _nvzErrLog = JSON.parse(localStorage.getItem('nvz_errlog') || '[]') || []; } catch (e) { _nvzErrLog = []; }
+function _nvzPushErr(kind, msg, where) {
+  try {
+    _nvzErrLog.push({ t: new Date().toISOString(), kind: kind, msg: String(msg == null ? '' : msg).slice(0, 300), where: String(where || '').slice(0, 200) });
+    if (_nvzErrLog.length > 25) _nvzErrLog.shift();
+    try { localStorage.setItem('nvz_errlog', JSON.stringify(_nvzErrLog)); } catch (e) {}
+  } catch (e) {}
+}
+var _nvzLastErrToast = 0;
+function _nvzErrToast() {
+  var now = Date.now();
+  if (now - _nvzLastErrToast < 15000) return;   // throttle : pas de spam
+  _nvzLastErrToast = now;
+  try { if (typeof showToast === 'function') showToast('Un souci est survenu — si l’écran semble bloqué, rafraîchis la page.', 'var(--warn)'); } catch (e) {}
+}
+try {
+  window.addEventListener('error', function (ev) {
+    // Ignorer les échecs de chargement de ressources (img/script/css) — pas des bugs JS.
+    if (ev && ev.target && ev.target.tagName && /^(IMG|SCRIPT|LINK|SOURCE|VIDEO|AUDIO)$/.test(ev.target.tagName)) return;
+    var m = (ev && ev.message) || (ev && ev.error && ev.error.message) || 'erreur';
+    var where = (ev && ev.filename) ? (ev.filename + ':' + (ev.lineno || '?')) : '';
+    _nvzPushErr('error', m, where);
+    _nvzErrToast();
+  }, true);
+  window.addEventListener('unhandledrejection', function (ev) {
+    var r = ev && ev.reason;
+    var m = (r && r.message) || (typeof r === 'string' ? r : 'promesse rejetée');
+    _nvzPushErr('promise', m, '');
+    // Réseau déjà géré localement (timeout/offline) → on log sans toast redondant.
+    if (!/AbortError|Failed to fetch|NetworkError|Load failed|timeout/i.test(String(m))) _nvzErrToast();
+  });
+} catch (e) {}
+
 (function (global) {
   'use strict';
 
