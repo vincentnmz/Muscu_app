@@ -2008,6 +2008,7 @@ async function ouvrirEspaceCoach() {
   document.body.classList.toggle('light-mode', coachLight);
   syncThemeUI();
   document.getElementById('header-nom-coach').textContent = coach.nom;
+  try { _promptNotifNatifCoach(); } catch (e) {}   // app native : enregistrer le token FCM du coach (alertes athlètes)
   _setSportIco('ct-sport-ico-use', coach && coach.sport);   // icône du header selon le sport
   // Identité de rôle (couleur de header + pastille) — coach / prépa
   var _role = (coach && coach.role) || 'coach';
@@ -15068,7 +15069,13 @@ function _estAppNative() {
 function _fcmFlagKey() { return 'nv_fcm_on_' + ((athlete && athlete.athlete_id) || 'x'); }
 function _fcmActif() { try { return localStorage.getItem(_fcmFlagKey()) === '1'; } catch (_) { return false; } }
 function _setFcmActif(v) { try { if (v) localStorage.setItem(_fcmFlagKey(), '1'); else localStorage.removeItem(_fcmFlagKey()); } catch (_) {} }
-function _fcmOpts() { return { athleteId: (athlete && athlete.athlete_id) || null, scriptUrl: SCRIPT_URL, fetchImpl: (typeof fetch === 'function' ? fetch : null) }; }
+// Identité pour la façade FCM : en session COACH, le token est enregistré sous
+// `coach:<coach_id>` (namespace lu par notifyCoach côté backend) ; sinon l'athlète.
+function _fcmOpts() {
+  var id = (typeof coach !== 'undefined' && coach && coach.coach_id) ? ('coach:' + coach.coach_id)
+         : ((typeof athlete !== 'undefined' && athlete && athlete.athlete_id) || null);
+  return { athleteId: id, scriptUrl: SCRIPT_URL, fetchImpl: (typeof fetch === 'function' ? fetch : null) };
+}
 function _fcmMsgErreur(r) {
   var m = {
     'permission-refusee': 'Autorisation refusée dans les réglages du téléphone',
@@ -15187,6 +15194,29 @@ async function _promptNotifNatif() {
       if (r && r.ok) _setFcmActif(true);
     }
     // 'denied' → ne rien faire (l'utilisateur peut réactiver depuis Réglages)
+  } catch (e) {}
+}
+
+// Équivalent COACH : enregistre le token FCM du coach (sous `coach:<id>`) à la 1re
+// ouverture de l'espace coach, pour recevoir les alertes « haute » de ses athlètes.
+// ⚠️ Le token FCM est unique par installation : sur un même appareil utilisé en
+// athlète ET en coach, le dernier rôle activé « possède » le token (cas limite,
+// sans impact pour un coach dédié).
+async function _promptNotifNatifCoach() {
+  if (!_estAppNative() || typeof coach === 'undefined' || !coach || !coach.coach_id) return;
+  var P = null;
+  try { P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications; } catch (e) {}
+  if (!P) return;
+  try {
+    var perm = await P.checkPermissions();
+    var etat = perm && perm.receive;
+    if (etat === 'granted') { try { await NovalyzNotifications.activer(_fcmOpts()); } catch (e) {} return; }
+    if (etat === 'prompt' || etat === 'prompt-with-rationale') {
+      var deja = false; try { deja = localStorage.getItem('nv_push_prompted_coach') === '1'; } catch (e) {}
+      if (deja) return;
+      try { localStorage.setItem('nv_push_prompted_coach', '1'); } catch (e) {}
+      try { await NovalyzNotifications.activer(_fcmOpts()); } catch (e) {}
+    }
   } catch (e) {}
 }
 
