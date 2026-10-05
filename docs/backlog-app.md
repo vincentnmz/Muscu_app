@@ -49,7 +49,7 @@
 > ✅ **Reskin complet livré en prod le 5 oct. 2026** (refonte UX + fiche athlète « hub »). Statuts détaillés ci-dessous. Reliquats = notifs push coach + fiabilité fine + liaison IA.
 
 - 🟡 **Fiabilité** du contexte de performance — alertes coach fiabilisées (dédoublonnage vs moteur, footer « basé sur N séances · dernier ressenti… », garde « données partielles », hero « état du jour » qui ne passe plus au vert sans ressenti récent). Reste à étendre la fiabilité au contexte de reprise côté coach.
-- ⏳ **Notifs d'alerte pour le coach** — le **canal push coach n'est pas encore branché** (seul l'athlète reçoit les push). À faire.
+- ✅ **Notifs d'alerte pour le coach** — le coach reçoit un push quand un de ses athlètes déclenche une alerte « haute » (cron). Tokens coach stockés sous `coach:<id>` (réutilise la plomberie push, zéro schéma) ; enregistrement natif à l'ouverture de l'espace coach (`_promptNotifNatifCoach`). ⚠️ `index.ts` à redéployer. *Reliquat v2 : Web Push coach (PWA) + deep-link de la notif vers l'alerte.*
 - ✅ **Accueil = tous ses athlètes** — via l'onglet **Équipe** (annuaire + **recherche & filtres** par catégorie). L'accueil « Aujourd'hui » ne liste **volontairement pas** tous les athlètes (action + **résumé équipe**), l'annuaire complet est sur Équipe.
 - ✅ Écran **Aujourd'hui** (refonte v2) — hero état équipe + **résumé/distribution**, **messages non lus**, **alertes prioritaires**. (Pas de détail athlète inline : le détail = la fiche.)
 - ✅ **Bloc « alertes à traiter »** — `renderAlertesCoach` (bandeau de sévérité, dédoublonnage absence, footer fiabilité).
