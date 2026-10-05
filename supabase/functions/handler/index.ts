@@ -3366,6 +3366,15 @@ async function notifyAthlete(athlete_id: string, payload: Record<string, unknown
   ])
 }
 
+// Notifie un COACH. Les tokens du coach sont stockés dans les MÊMES tables push
+// que les athlètes, sous un identifiant namespacé `coach:<coach_id>` (athlete_id
+// est un simple text sans FK) → on réutilise toute la plomberie sans schéma dédié.
+const COACH_PUSH_PREFIX = 'coach:'
+async function notifyCoach(coach_id: string, payload: Record<string, unknown>): Promise<void> {
+  if (!coach_id) return
+  await notifyAthlete(COACH_PUSH_PREFIX + coach_id, payload)
+}
+
 // ── Notifications intelligentes (cron) — roadmap #29 ──────────────────────────
 // Parcourt les athlètes abonnés au push (natif OU web), calcule leurs alertes en
 // RÉUTILISANT handleGetAppData (même logique déterministe, aucune duplication) et
@@ -3381,8 +3390,9 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
   ])
   const ids = [...new Set([...(nt || []), ...(ws || [])].map((r: any) => String(r.athlete_id)).filter(Boolean))]
   const weekKey = fmtYMD(getLundi(new Date()))
-  let pushed = 0, scanned = 0
+  let pushed = 0, pushedCoach = 0, scanned = 0
   for (const id of ids) {
+    if (id.indexOf(COACH_PUSH_PREFIX) === 0) continue   // token COACH : pas un athlète à analyser
     scanned++
     try {
       const res = await handleGetAppData(new URLSearchParams({ athlete_id: id }))
@@ -3391,14 +3401,32 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
       if (!importantes.length) continue
       const top = importantes[0]   // déjà trié par sévérité décroissante
       const key = String(top.id || (top.type + '|' + weekKey))
+      // 1) Notifier l'ATHLÈTE — anti-spam par (athlète, alerte, semaine).
       const { data: deja } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').eq('cle', key).limit(1)
-      if (deja && deja.length) continue
-      await notifyAthlete(id, { title: '⚠️ ' + (top.title || 'Alerte Novalyz'), body: top.action || top.evidence || '', tag: 'novalyz-alerte', target: 'accueil' })
-      await sb().from('indicateurs').insert({ athlete_id: id, date: fmtYMD(new Date()), seance_id: 'alerte_push', cle: key, valeur: '1', unite: '', source: 'cron' })
-      pushed++
+      if (!(deja && deja.length)) {
+        await notifyAthlete(id, { title: '⚠️ ' + (top.title || 'Alerte Novalyz'), body: top.action || top.evidence || '', tag: 'novalyz-alerte', target: 'accueil' })
+        await sb().from('indicateurs').insert({ athlete_id: id, date: fmtYMD(new Date()), seance_id: 'alerte_push', cle: key, valeur: '1', unite: '', source: 'cron' })
+        pushed++
+      }
+      // 2) Notifier le COACH de l'athlète — anti-spam DÉDIÉ (indépendant du push athlète),
+      //    pour qu'il soit prévenu même si l'athlète a déjà reçu sa notif.
+      try {
+        const { data: aRow } = await sb().from('athletes').select('coach_id,nom').eq('id', id).single()
+        const coachId = aRow && (aRow as any).coach_id ? String((aRow as any).coach_id) : ''
+        if (coachId) {
+          const ckey = 'c|' + coachId + '|' + key
+          const { data: dejaC } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push_coach').eq('cle', ckey).limit(1)
+          if (!(dejaC && dejaC.length)) {
+            const who = (aRow && (aRow as any).nom) ? String((aRow as any).nom).split(/\s+/)[0] : 'Un athlète'
+            await notifyCoach(coachId, { title: '⚠️ ' + who + ' · ' + (top.title || 'Alerte'), body: top.evidence || top.action || '', tag: 'novalyz-coach-alerte', target: 'coach' })
+            await sb().from('indicateurs').insert({ athlete_id: id, date: fmtYMD(new Date()), seance_id: 'alerte_push_coach', cle: ckey, valeur: '1', unite: '', source: 'cron' })
+            pushedCoach++
+          }
+        }
+      } catch (_) { /* coach best-effort */ }
     } catch (_) { /* best-effort : un athlète en échec ne bloque pas les autres */ }
   }
-  return jsonResp({ ok: true, scanned, pushed })
+  return jsonResp({ ok: true, scanned, pushed, pushedCoach })
 }
 
 async function handleSaveNativePushToken(body: any): Promise<Response> {
