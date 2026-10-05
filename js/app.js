@@ -2600,7 +2600,14 @@ function renderListeAthletesCoach() {
   }
 
   document.getElementById('coach-home-body').style.display = 'block';
-  renderCoachSynthese(athletesCoach); // async : charge getAppData par athlète, remplit table + KPIs
+  // async : charge getAppData par athlète, remplit table + KPIs.
+  // .catch : si le rendu échoue (réseau, données), on remplace le loader par un
+  // message + « Réessayer » plutôt que de laisser « Analyse des athlètes… » à vie.
+  renderCoachSynthese(athletesCoach).catch(function (e) {
+    console.error('renderCoachSynthese KO', e);
+    var el = document.getElementById('coach-synthese');
+    if (el) el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;line-height:1.5">Impossible de charger l\'équipe (connexion ?).<br><button onclick="renderCoachHome()" style="margin-top:10px;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer">Réessayer</button></div>';
+  });
   majSelectAthletesCoach();
 }
 
@@ -2627,14 +2634,16 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   cdJoueurCourant = athlete_id;
   cdMode = mode || 'coach';   // 'coach' (édition) ou 'athlete' (lecture seule, sa propre page)
   let d;
+  let _tSlow, _tKill;
   try {
     const _ctrl = new AbortController();
-    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
-    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    _tKill = setTimeout(() => _ctrl.abort(), 30000);
     const res = await fetch(`${SCRIPT_URL}?action=getSuiviJoueur&athlete_id=${encodeURIComponent(athlete_id)}`, { signal: _ctrl.signal });
     clearTimeout(_tSlow); clearTimeout(_tKill);
     d = await res.json();
   } catch (e) {
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
     body.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
     return;
@@ -3552,14 +3561,16 @@ async function renderCockpitPrepa() {
   cont.style.display = 'block';
   cont.innerHTML = '<div class="loader">Analyse de la charge…</div>';
   let data;
+  let _tSlow, _tKill;
   try {
     const _ctrl = new AbortController();
-    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
-    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    _tKill = setTimeout(() => _ctrl.abort(), 30000);
     const res = await fetch(`${SCRIPT_URL}?action=getSuiviEquipe&coach_id=${encodeURIComponent(coach.coach_id)}`, { signal: _ctrl.signal });
     clearTimeout(_tSlow); clearTimeout(_tKill);
     data = await res.json();
   } catch (e) {
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
     cont.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
     return;
@@ -3761,14 +3772,16 @@ async function renderSuiviEquipe() {
   const cont = document.getElementById('liste-athletes-coach');
   cont.innerHTML = '<div class="loader">Analyse de l\'équipe…</div>';
   let data;
+  let _tSlow, _tKill;
   try {
     const _ctrl = new AbortController();
-    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
-    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    _tKill = setTimeout(() => _ctrl.abort(), 30000);
     const res = await fetch(`${SCRIPT_URL}?action=getSuiviEquipe&coach_id=${encodeURIComponent(coach.coach_id)}`, { signal: _ctrl.signal });
     clearTimeout(_tSlow); clearTimeout(_tKill);
     data = await res.json();
   } catch (e) {
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
     cont.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
     return;
@@ -4023,15 +4036,14 @@ async function renderCoachSynthese(athletes) {
 
   // Charge les données de chaque athlète (mêmes calculs que la page détail)
   const datas = await Promise.all(athletes.map(async a => {
-    try { const r = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`); return await r.json(); }
+    try { return await nvFetchJSON(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`); }
     catch(e) { return null; }
   }));
 
   // Messages non lus par athlète (auteur = athlète, non lus côté coach) → notif dès l'accueil
   const msgNonLus = await Promise.all(athletes.map(async a => {
     try {
-      const r = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(a.athlete_id)}&nocache=${Date.now()}`);
-      const d = await r.json();
+      const d = await nvFetchJSON(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(a.athlete_id)}&nocache=${Date.now()}`);
       return (d.commentaires || []).filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
     } catch(e) { return 0; }
   }));
@@ -4818,8 +4830,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   chargerCommentairesCoach(a.athlete_id);
 
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
-    const data = await res.json();
+    const data = await nvFetchJSON(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
     coachAthleteData = data;
     cdProgressionData = data.historique ? (data.historique.progression_par_exo || {}) : {};
     cdTendancesData = data.historique ? (data.historique.tendances || null) : null;
@@ -4846,7 +4857,11 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderACWR(data);
     try { appliquerMasquageCockpit(); } catch (_) {}   // Étape 8 — masquage réversible des doublons coach (no-op si COCKPIT_ON=false)
   } catch(e) {
-    document.getElementById('cd-recup').innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+    console.error('ouvrirDetailAthleteCoach KO', e);
+    var _err = '<div style="padding:14px;color:var(--text-muted);font-size:13px;line-height:1.5">Impossible de charger cet athlète (connexion ?).<br><button onclick="ouvrirDetailAthleteCoach(coachAthleteCourant)" style="margin-top:10px;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer">Réessayer</button></div>';
+    var _idErr = document.getElementById('cd-indicateurs'); if (_idErr) _idErr.innerHTML = _err;
+    // Vider les autres zones encore en « Chargement… » pour ne pas laisser de spinner figé.
+    ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content','cd-cmp28-content','cd-seances-detail-content','cd-commentaires-liste'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
   }
 }
 
@@ -5894,8 +5909,7 @@ async function ouvrirRecapAthletes() {
   try {
     const results = await Promise.all((athletesCoach || []).map(async a => {
       try {
-        const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
-        const data = await res.json();
+        const data = await nvFetchJSON(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
         return { a, m: marqueurRecap(data, a) };
       } catch(e) { return { a, m: null }; }
     }));
@@ -13648,6 +13662,19 @@ function _appliquerAppData(data) {
     _safe('cockpit-layout', () => appliquerMasquageCockpit());
 }
 
+// Fetch JSON avec timeout dur (AbortController) : AUCUN appel ne doit pouvoir
+// bloquer l'UI indéfiniment (sinon « loader figé / écran blanc » quand le backend
+// rame ou ne répond pas). Lève une erreur en cas de réseau KO / timeout / non-2xx.
+async function nvFetchJSON(url, opts) {
+  opts = opts || {};
+  var ctrl = new AbortController();
+  var t = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, opts.timeoutMs || 20000);
+  try {
+    var res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } finally { clearTimeout(t); }
+}
 function _showLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'block'; }
 function _hideLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'none'; }
 
