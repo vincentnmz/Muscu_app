@@ -1595,8 +1595,6 @@ window.addEventListener('load', async () => {
       if (!document.hidden) _checkNotifCache();
     });
   } catch (e) {}
-  // Retour d'autorisation Google Health (?code=…) → échange les jetons.
-  try { _traiterRetourGoogleHealth(); } catch (e) {}
   // Clic sur une notif alors que l'app était fermée : cible passée en ?notif=…
   // (Android/desktop) ou déposée dans un cache par le SW (iOS, params ignorés).
   try {
@@ -1802,7 +1800,8 @@ function seDeconnecter() {
   document.body.classList.remove('seance-active');
   try { _seanceChronoStop(); _seanceChronoT0 = 0; } catch (e) {}
   document.getElementById('btn-logout').style.display = 'none';
-  { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'none'; }
+  _tjRingLast = null;   // réinitialise l'anim de l'anneau pour la prochaine connexion
+  { var _fb = document.getElementById('fab-novalyz'); if (_fb) _fb.style.display = 'none'; }
   { var _br = document.getElementById('btn-reglages-hdr'); if (_br) _br.style.display = 'none'; }
   { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'none'; }
   document.getElementById('inp-login').value = '';
@@ -1939,6 +1938,7 @@ async function supprimerCompteCoach() {
 }
 
 function seDeconnecterCoach() {
+  try { _maCoachDetach(); } catch (e) {}
   _fermerOverlaysEtContexte();
   coach = null;
   localStorage.removeItem('muscu_coach');
@@ -1957,6 +1957,7 @@ function seDeconnecterCoach() {
 
 async function ouvrirEspaceCoach() {
   arreterChronoEtReinitSeance();
+  coachBandeauTab = 'aujourdhui';   // le bandeau démarre toujours sur « Aujourd'hui »
   document.body.classList.add('coach-active');
   document.getElementById('view-login').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
@@ -2213,7 +2214,10 @@ function prefillProfilReglages() {
   var set = function (id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
   set('prof-prenom', athlete.nom);
   set('prof-taille', athlete.taille);
-  set('prof-poids', athlete.poids);
+  // Poids : source unique = dernière pesée (poids_historique), sinon champ athlete.
+  var poidsCourant = null;
+  try { var P = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.poids : null; if (P && P[0] && P[0].poids != null) poidsCourant = P[0].poids; } catch (e) {}
+  set('prof-poids', poidsCourant != null ? poidsCourant : athlete.poids);
   set('prof-annees', athlete.annees_pratique);
   var d = document.getElementById('prof-ddn'); if (d) d.value = _ddnVersISO(athlete.ddn);
   var v = document.getElementById('app-version-ath'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
@@ -2237,6 +2241,20 @@ async function enregistrerProfil() {
       if (poids !== '') athlete.poids = Number(poids);
       if (annees !== '') athlete.annees_pratique = Number(annees);
       try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+      // Poids modifié → on l'enregistre AUSSI comme pesée du jour (source unique =
+      // poids_historique), pour que graphe / nutrition / profil restent cohérents.
+      var poidsNum = poids !== '' ? Number(poids) : null;
+      var lastW = null;
+      try { var P = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.poids : null; if (P && P[0] && P[0].poids != null) lastW = Number(P[0].poids); } catch (e) {}
+      if (poidsNum != null && !isNaN(poidsNum) && poidsNum > 0 && poidsNum !== lastW) {
+        try {
+          await fetch(SCRIPT_URL, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'savePoids', athlete_id: athlete.athlete_id, athlete: athlete.nom, poids: poidsNum, date: _ymdLocal(new Date()) })
+          });
+          if (typeof chargerAppData === 'function') chargerAppData();
+        } catch (e) {}
+      }
       setMsg('✅ Profil enregistré.', 'var(--good)');
       showToast('✅ Profil enregistré');
     } else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.')); }
@@ -4017,11 +4035,13 @@ async function renderCoachSynthese(athletes) {
       return (d.commentaires || []).filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
     } catch(e) { return 0; }
   }));
-  // Badge total de messages non lus dans le header de l'accueil coach
+  // Badge total de messages non lus — header de l'accueil coach + bandeau
   (function(){
     const total = msgNonLus.reduce((s, n) => s + (n || 0), 0);
     const b = document.getElementById('coach-msg-badge');
     if (b) { b.textContent = total; b.style.display = total > 0 ? 'block' : 'none'; }
+    const bb = document.getElementById('coach-band-msg-badge');
+    if (bb) { bb.textContent = total; bb.style.display = total > 0 ? 'block' : 'none'; }
   })();
 
   const enrich = athletes.map((a, i) => {
@@ -4034,6 +4054,7 @@ async function renderCoachSynthese(athletes) {
               : (d.dashboard && d.dashboard.recuperation ? d.dashboard.recuperation.rpe_moyen : null);
     const _reg = d.dashboard && d.dashboard.regularite ? d.dashboard.regularite : null;
     const seancesSem = _reg ? _seancesFaites(_reg) : null;
+    const regPrevues = _reg && _reg.seances_prevues != null ? _reg.seances_prevues : null;
     let spark = [];
     const _vpj = (d.recent && d.recent.volume_par_jour) ? d.recent.volume_par_jour
                : (d.historique && d.historique.volume_par_jour ? d.historique.volume_par_jour : null);
@@ -4043,7 +4064,7 @@ async function renderCoachSynthese(athletes) {
     }
     const tonnage = d.dashboard && d.dashboard.tonnage ? d.dashboard.tonnage : null;
     const streak = d.dashboard && d.dashboard.streak ? d.dashboard.streak.semaines : null;
-    return { a, i, m, rpe, seancesSem, spark, tonnage, streak, msgNonLus: msgNonLus[i] || 0, enPause: estEnPause(d.pause) };
+    return { a, i, m, rpe, seancesSem, regPrevues, spark, tonnage, streak, msgNonLus: msgNonLus[i] || 0, enPause: estEnPause(d.pause) };
   });
   enrich.sort((x, y) => {
     const rx = x.m ? x.m.statut.rank : -1, ry = y.m ? y.m.statut.rank : -1;
@@ -4082,7 +4103,7 @@ async function renderCoachSynthese(athletes) {
     // (Les messages non lus ne sont PLUS listés ici — ils remontent via l'icône 💬 du header)
     // En vacances : aucune raison de priorité (ni absence, ni alerte, ni synthèse).
     if (e.enPause) return null;
-    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${joursDepuis(m.derniere.date)} sans séance` : 'Aucune séance', color: WARN };
+    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${Math.floor(dsAge)} jours sans séance` : 'Aucune séance', color: WARN };
     const al = labelAlerteCourt(a);
     if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? BAD : WARN };
     // Intervention seulement s'il reste une alerte de synthèse rouge NON traitée
@@ -4100,6 +4121,21 @@ async function renderCoachSynthese(athletes) {
           <div style="width:34px;height:34px;border-radius:10px;background:${p.color}22;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${p.icon}</div>
           <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div><div style="font-size:11.5px;color:var(--text-muted);">${p.txt}</div></div>
           <span style="color:var(--text-muted);font-size:18px;">›</span>
+        </div>`).join('');
+  }
+
+  // ---- Bloc « Messages non lus » ----
+  const initPf = nom => (nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+  const avecMsg = enrich.filter(e => e.msgNonLus > 0);
+  let messagesHtml = '';
+  if (avecMsg.length) {
+    const totalMsg = avecMsg.reduce((s, e) => s + e.msgNonLus, 0);
+    messagesHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-message"/></svg>Messages non lus<span style="margin-left:auto;font-size:11px;font-weight:800;color:var(--accent);">${totalMsg}</span></div></div>` +
+      avecMsg.map(e => `
+        <div onclick="ouvrirConversationDepuisMessagerie('${e.i}')" style="display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px solid var(--accent);box-shadow:var(--shadow-sm);">
+          <div style="width:40px;height:40px;border-radius:12px;background:var(--accent-a12);color:var(--accent-strong);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${initPf(e.a.nom)}</div>
+          <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${e.msgNonLus} nouveau${e.msgNonLus>1?'x':''} message${e.msgNonLus>1?'s':''}</div></div>
+          <span style="min-width:20px;height:20px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;flex-shrink:0;">${e.msgNonLus}</span>
         </div>`).join('');
   }
 
@@ -4130,34 +4166,67 @@ async function renderCoachSynthese(athletes) {
     }
   }
 
-  // ---- Liste complète ----
-  const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes ${libelleSport('athletes').toLowerCase()}</div></div>` +
-    enrich.map(({ a, i, m, rpe, seancesSem, spark, tonnage, streak, enPause }) => {
+  // ---- Liste complète (style maquette : pastille d'état, chip, régularité) ----
+  // Catégories pour les filtres Équipe : prets / surveiller / inactifs / pause.
+  let nbPrets = 0, nbSurvCat = 0, nbInactifsCat = 0;
+  const rowsHtml = enrich.map(({ a, i, m, rpe, seancesSem, regPrevues, tonnage, streak, enPause }) => {
     const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
+    const dotColor = enPause ? '#63b3ed' : s.color;
+    const dsAge = (m && m.derniere && m.derniere.date) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
+    let cat;
+    if (enPause) cat = 'pause';
+    else if (dsAge > 7) cat = 'inactifs';
+    else if (s.rank >= 1) cat = 'surveiller';
+    else cat = 'prets';
+    if (cat === 'prets') nbPrets++; else if (cat === 'surveiller') nbSurvCat++; else if (cat === 'inactifs') nbInactifsCat++;
     const meta = [];
-    if (seancesSem != null) meta.push(`<span><b style="color:var(--text);">${seancesSem}</b> séance${seancesSem>1?'s':''}/sem</span>`);
-    if (rpe != null) meta.push(`<span>RPE <b style="color:var(--text);">${rpe}</b></span>`);
+    if (rpe != null) meta.push(`RPE <b style="color:var(--text);">${rpe}</b>`);
     const _tval = tonnage ? (tonnage.j7 != null ? tonnage.j7 : tonnage.semaine) : null;
     const _tevol = tonnage ? (tonnage.evol_pct != null ? tonnage.evol_pct : tonnage.evol) : null;
     if (_tval > 0) {
-      const tc = _tevol != null ? (_tevol >= 0 ? '#00c96e' : '#f59f00') : 'var(--text)';
+      const tc = _tevol != null ? (_tevol >= 0 ? 'var(--good)' : 'var(--warn)') : 'var(--text)';
       const tarr = _tevol != null ? ` ${_tevol >= 0 ? '▲' : '▼'}${Math.abs(_tevol)}%` : '';
-      meta.push(`<span>Tonnage <b style="color:${tc};">${_tval}t${tarr}</b></span>`);
+      meta.push(`Tonnage <b style="color:${tc};">${_tval}t${tarr}</b>`);
     }
-    if (streak != null && streak > 0) meta.push(`<span>🔥 <b style="color:#f5a524;">${streak} sem.</b></span>`);
-    if (m && m.volLabel && m.volLabel !== 'N/A') meta.push(`<span style="color:${m.volColor};font-weight:700;">${m.volLabel}</span>`);
+    if (streak != null && streak > 0) meta.push(`🔥 <b style="color:var(--warn);">${streak} sem.</b>`);
     if (m && m.progLabel && m.progLabel !== 'N/A') meta.push(`<span style="color:${m.progColor};font-weight:700;">${m.progLabel}</span>`);
-    const badgeVacances = enPause ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,179,237,.12);color:#63b3ed;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;">🏖️ Vacances</span>` : '';
-    return `<div onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--surface);border:1px solid ${enPause ? 'rgba(99,179,237,.3)' : 'var(--border)'};border-radius:14px;margin-bottom:9px;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='${enPause ? 'rgba(99,179,237,.3)' : 'var(--border)'}'">
-      <div style="width:44px;height:44px;border-radius:13px;background:${enPause ? 'rgba(99,179,237,.12)' : s.color+'22'};color:${enPause ? '#63b3ed' : s.color};font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${enPause ? '🏖️' : initiales(a.nom)}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>${badgeVacances}</div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;gap:9px;flex-wrap:wrap;">${enPause ? '<span style="color:#63b3ed;">Pas d\'alerte absence pendant les vacances</span>' : meta.join('<span style="opacity:.4">·</span>')}</div>
+    const metaLine = enPause
+      ? '<span style="color:#63b3ed;">Vacances · pas d\'alerte absence</span>'
+      : (meta.length ? meta.join('<span style="opacity:.4"> · </span>') : '<span style="color:var(--text-subtle);">Pas encore de données</span>');
+    // Colonne régularité (droite)
+    const regCol = (!enPause && seancesSem != null)
+      ? `<div style="text-align:center;flex-shrink:0;"><div style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text);">${seancesSem}${regPrevues != null ? '/' + regPrevues : ''}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:1px;">Régul.</div></div>`
+      : '';
+    const chip = enPause
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,179,237,.12);color:#63b3ed;padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">🏖️ Vacances</span>`
+      : `<span style="background:${s.color}1a;color:${s.color};padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">${s.label}</span>`;
+    return `<div class="coach-athlete-row" data-cat="${cat}" data-nom="${escapeHtml(String(a.nom || '').toLowerCase())}" onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:12px 13px;background:var(--surface);border:1px solid var(--border);border-radius:15px;margin-bottom:9px;cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div style="position:relative;width:44px;height:44px;flex-shrink:0;">
+        <div style="width:44px;height:44px;border-radius:13px;background:var(--surface2);color:var(--text);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">${enPause ? '🏖️' : initiales(a.nom)}</div>
+        <span style="position:absolute;right:-2px;top:-2px;width:13px;height:13px;border-radius:50%;background:${dotColor};border:2.5px solid var(--surface);"></span>
       </div>
-      ${enPause ? '' : miniSpark(spark, s.color)}
-      ${enPause ? '' : `<span style="display:inline-flex;align-items:center;gap:6px;background:${s.color}1a;color:${s.color};padding:5px 11px;border-radius:var(--radius-pill);font-size:11.5px;font-weight:800;white-space:nowrap;flex-shrink:0;"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};"></span>${s.label}</span>`}
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>${chip}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${metaLine}</div>
+      </div>
+      ${regCol}
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m9 6 6 6-6 6"/></svg>
     </div>`;
   }).join('');
+
+  // Recherche + filtres (section Équipe)
+  const eqChip = (key, label, n) => `<button class="coach-eq-chip${coachEquipeCat === key ? ' on' : ''}" onclick="coachEquipeSetFilter('${key}',this)">${label} <b>${n}</b></button>`;
+  const equipeControls = `
+    <div class="coach-eq-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="coach-equipe-search" placeholder="Rechercher un athlète…" oninput="coachEquipeFilter()" autocomplete="off">
+    </div>
+    <div class="coach-eq-chips">
+      ${eqChip('all', 'Tous', athletes.length)}${eqChip('surveiller', 'À surveiller', nbSurvCat)}${eqChip('prets', 'Prêts', nbPrets)}${eqChip('inactifs', 'Inactifs', nbInactifsCat)}
+    </div>`;
+  const listeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-gauge"/></svg>Mes ${libelleSport('athletes').toLowerCase()}</div></div>`
+    + equipeControls + rowsHtml
+    + '<div id="coach-eq-empty" style="display:none;color:var(--text-muted);font-size:13px;text-align:center;padding:20px 10px;">Aucun athlète ne correspond.</div>';
 
   // ---- Hero « Briefing du jour » (Concept A) ----
   const total = athletes.length;
@@ -4192,7 +4261,206 @@ async function renderCoachSynthese(athletes) {
       </div>
     </div>`;
 
-  el.innerHTML = heroHtml + prioHtml + briefingHtml + listeHtml;
+  // ===== Analyses équipe v2 (données réelles agrégées depuis datas) =====
+  const nbOptimal = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 0).length;
+  const nbSurv1   = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 1).length;
+  const nbAction  = enrich.filter(e => !e.enPause && e.m && e.m.statut.rank === 2).length;
+  const totActifs = nbOptimal + nbSurv1 + nbAction;
+  const pctE = n => totActifs ? Math.round(n / totActifs * 100) : 0;
+  const initz = nom => (nom || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const within7 = ts => !!ts && (Date.now() - ts) / 86400000 <= 7;
+  const pfMini = nom => `<div style="width:34px;height:34px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;background:var(--surface2);">${initz(nom)}</div>`;
+
+  // 1. Assiduité (séances/objectif, cette semaine) — trié meilleur → à relancer
+  const assidu = enrich.filter(e => !e.enPause).map(e => {
+    const prev = e.regPrevues || 0, fait = e.seancesSem != null ? e.seancesSem : 0;
+    const ratio = prev > 0 ? Math.min(1, fait / prev) : (fait > 0 ? 1 : 0);
+    return { nom: e.a.nom, fait, prev, ratio, known: prev > 0 || fait > 0 };
+  }).sort((x, y) => y.ratio - x.ratio);
+
+  // 2. Vigilance bien-être (dernier questionnaire)
+  let somSum = 0, somN = 0, fatSum = 0, fatN = 0; const bienBas = [];
+  enrich.forEach(e => {
+    const d = datas[e.i] || {}; const be = (d.bien_etre || [])[0]; if (!be) return;
+    const s = Number(be.sommeil), f = Number(be.fatigue), dl = Number(be.douleur);
+    if (!isNaN(s)) { somSum += s; somN++; } if (!isNaN(f)) { fatSum += f; fatN++; }
+    let txt = null, sev = 'warn';
+    if (!isNaN(f) && f >= 4) { txt = 'Fatigue ' + String(WQ_ANSWERS.fatigue[f] || '').toLowerCase(); sev = 'bad'; }
+    else if (!isNaN(dl) && dl >= 3) { txt = 'Douleur' + (be.zone ? ' ' + be.zone : ''); sev = dl >= 4 ? 'bad' : 'warn'; }
+    else if (!isNaN(s) && s <= 2) { txt = 'Sommeil ' + String(WQ_ANSWERS.sommeil[s] || '').toLowerCase(); sev = 'warn'; }
+    if (txt) bienBas.push({ nom: e.a.nom, txt, sev });
+  });
+  const somAvg = somN ? Math.round(somSum / somN) : null, fatAvg = fatN ? Math.round(fatSum / fatN) : null;
+
+  // 3. Blessures & douleurs actives (table blessures, statut non résolu)
+  const blessures = [];
+  enrich.forEach(e => {
+    const d = datas[e.i] || {};
+    (d.blessures || []).forEach(b => {
+      const st = String(b.statut || '').toLowerCase();
+      if (st && /(résolu|resolu|termin|guéri|gueri|clos)/.test(st)) return;
+      blessures.push({ nom: e.a.nom, zone: String(b.localisation || b.type || '—'), gravite: String(b.gravite || '') });
+    });
+  });
+
+  // 4. Progression & stagnations (meilleur Δ 1RM estimé par athlète)
+  const progA = [], stagA = [];
+  enrich.forEach(e => {
+    const d = datas[e.i] || {}; const prog = (d.historique && d.historique.progression_par_exo) || {}; let best = null;
+    Object.keys(prog).forEach(exo => {
+      const perfs = prog[exo] || []; if (perfs.length < 3) return;
+      const rmR = calc1RM(perfs[0].charge, perfs[0].reps); let bb = null;
+      for (let i = 1; i < perfs.length; i++) { const rm = calc1RM(perfs[i].charge, perfs[i].reps); if (rm != null && (bb == null || rm > bb)) bb = rm; }
+      if (rmR == null || bb == null || bb <= 0) return;
+      const delta = Math.round((rmR / bb - 1) * 100);
+      if (best == null || delta > best.delta) best = { exo, delta };
+    });
+    if (best) { if (best.delta > 0) progA.push({ nom: e.a.nom, exo: best.exo, delta: best.delta }); else stagA.push({ nom: e.a.nom, exo: best.exo, delta: best.delta }); }
+  });
+  progA.sort((a, b) => b.delta - a.delta); stagA.sort((a, b) => a.delta - b.delta);
+
+  // 6. Fiabilité des données (saisies des 7 derniers jours)
+  let ressN = 0, nutrN = 0; const sansData = [];
+  enrich.forEach(e => {
+    const d = datas[e.i] || {};
+    const hasR = (d.bien_etre || []).some(x => within7(parseChatDate(x.date)));
+    const hasN = (d.nutri_historique || []).some(x => within7(parseChatDate(x.date)));
+    if (hasR) ressN++; if (hasN) nutrN++;
+    if (!hasR && !hasN) sansData.push({ nom: e.a.nom, txt: 'Aucune saisie', sev: 'bad' });
+    else if (!hasR) sansData.push({ nom: e.a.nom, txt: 'Pas de ressenti', sev: 'warn' });
+  });
+  const totAll = enrich.length;
+
+  // ---- Carte « Résumé équipe » (répartition des états) — affichée sur Aujourd'hui ----
+  const distCard = totActifs
+    ? `<div class="dash-card" style="padding:15px;">
+        <div style="display:flex;height:16px;border-radius:999px;overflow:hidden;margin-bottom:12px;background:var(--surface2);">
+          ${nbOptimal ? `<i style="height:100%;width:${pctE(nbOptimal)}%;background:var(--good);"></i>` : ''}
+          ${nbSurv1 ? `<i style="height:100%;width:${pctE(nbSurv1)}%;background:var(--warn);"></i>` : ''}
+          ${nbAction ? `<i style="height:100%;width:${pctE(nbAction)}%;background:var(--danger);"></i>` : ''}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;">
+          <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--good);"></span>En forme · ${nbOptimal}</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--warn);"></span>À surveiller · ${nbSurv1}</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;"><span style="width:11px;height:11px;border-radius:3px;background:var(--danger);"></span>Surcharge · ${nbAction}</span>
+        </div>
+      </div>`
+    : '<div class="dash-card" style="padding:14px;color:var(--text-muted);font-size:13px;">Pas encore de données d\'état.</div>';
+  const resumeEquipeHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Résumé équipe</div><div class="more" onclick="coachBandeauGo('analyses')" style="cursor:pointer;color:var(--accent);font-weight:700;font-size:11px;">Analyses →</div></div>` + distCard;
+
+  // ---- Analyses v2 ----
+  const chipSev = (txt, sev) => `<span style="font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;border-radius:5px;padding:2px 7px;margin-left:auto;white-space:nowrap;background:${sev === 'bad' ? 'var(--bad-a)' : 'var(--warn-a)'};color:${sev === 'bad' ? 'var(--danger)' : 'var(--warn)'};">${escapeHtml(txt)}</span>`;
+  // 1. Assiduité
+  const assiduRows = assidu.map(a => {
+    const color = a.ratio >= 0.99 ? 'var(--good)' : a.ratio >= 0.6 ? 'var(--warn)' : 'var(--danger)';
+    const val = a.known ? (a.fait + (a.prev ? '/' + a.prev : '')) : '—';
+    return `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--border);">
+      ${pfMini(a.nom)}
+      <span style="font-size:13px;font-weight:700;width:84px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>
+      <div style="flex:1;height:8px;border-radius:999px;background:var(--surface2);overflow:hidden;"><i style="display:block;height:100%;border-radius:999px;width:${Math.round(a.ratio * 100)}%;background:${color};"></i></div>
+      <span style="width:42px;flex:none;text-align:right;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:${color};">${val}</span>
+    </div>`;
+  }).join('');
+  const assiduCard = assidu.length ? `<div class="dash-card" style="padding:4px 15px 10px;">${assiduRows}</div>` : '';
+
+  // 2. Vigilance bien-être
+  const somLabel = somAvg != null ? (WQ_ANSWERS.sommeil[somAvg] || '—') : '—';
+  const fatLabel = fatAvg != null ? (WQ_ANSWERS.fatigue[fatAvg] || '—') : '—';
+  const somCol = somAvg == null ? 'var(--text-subtle)' : somAvg >= 4 ? 'var(--good)' : somAvg >= 3 ? 'var(--warn)' : 'var(--danger)';
+  const fatCol = fatAvg == null ? 'var(--text-subtle)' : fatAvg <= 2 ? 'var(--good)' : fatAvg <= 3 ? 'var(--warn)' : 'var(--danger)';
+  const bienCard = (somN || fatN) ? `<div class="dash-card" style="padding:14px 15px;">
+      <div style="display:flex;gap:10px;margin-bottom:${bienBas.length ? '12px' : '0'};">
+        <div style="flex:1;background:var(--surface2);border-radius:13px;padding:12px;text-align:center;"><div style="font-size:18px;font-weight:900;color:${somCol};">${somLabel}</div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-top:3px;">Sommeil moy.</div></div>
+        <div style="flex:1;background:var(--surface2);border-radius:13px;padding:12px;text-align:center;"><div style="font-size:18px;font-weight:900;color:${fatCol};">${fatLabel}</div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-top:3px;">Fatigue moy.</div></div>
+      </div>
+      ${bienBas.length ? '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:2px 0 2px;">À surveiller</div>' + bienBas.slice(0, 5).map(x => `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--border);">${pfMini(x.nom)}<span style="font-size:12.5px;font-weight:600;">${escapeHtml(x.nom)}</span>${chipSev(x.txt, x.sev)}</div>`).join('') : ''}
+    </div>` : '<div class="dash-card" style="padding:14px;color:var(--text-muted);font-size:13px;">Pas encore de questionnaires bien-être.</div>';
+
+  // 3. Blessures actives
+  const grChip = g => { const gl = g || '—'; const sev = /(sév|sev|import|haute|forte)/i.test(g) ? 'bad' : 'warn'; return `<span style="font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;border-radius:5px;padding:2px 7px;margin-left:auto;white-space:nowrap;background:${sev === 'bad' ? 'var(--bad-a)' : 'var(--warn-a)'};color:${sev === 'bad' ? 'var(--danger)' : 'var(--warn)'};">${escapeHtml(gl)}</span>`; };
+  const blessCard = `<div class="dash-card" style="padding:14px 15px;">
+      <div style="display:flex;align-items:baseline;gap:7px;margin-bottom:${blessures.length ? '10px' : '0'};"><b style="font-size:24px;font-weight:900;color:${blessures.length ? 'var(--danger)' : 'var(--good)'};">${blessures.length}</b><span style="font-size:12px;color:var(--text-muted);font-weight:700;">athlète${blessures.length > 1 ? 's' : ''} concerné${blessures.length > 1 ? 's' : ''}</span></div>
+      ${blessures.slice(0, 6).map(b => `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--border);">${pfMini(b.nom)}<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">${escapeHtml(b.nom)}</div><div style="font-size:11px;color:var(--text-muted);margin-top:1px;">${escapeHtml(b.zone)}</div></div>${b.gravite ? grChip(b.gravite) : ''}</div>`).join('')}
+    </div>`;
+
+  // 4. Progression & stagnations
+  const progRow = (x, cls) => `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--border);">${pfMini(x.nom)}<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">${escapeHtml(x.nom)}</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px;">${escapeHtml(x.exo)}</div></div><span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;color:${cls};">${x.delta > 0 ? '+' : ''}${x.delta} %</span></div>`;
+  const subH = t => `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:4px 0 2px;">${t}</div>`;
+  const progCard = (progA.length || stagA.length) ? `<div class="dash-card" style="padding:4px 15px 12px;">
+      ${progA.length ? subH('Meilleures progressions') + progA.slice(0, 3).map(x => progRow(x, 'var(--good)')).join('') : ''}
+      ${stagA.length ? subH('Stagnations / régressions') + stagA.slice(0, 3).map(x => progRow(x, x.delta < 0 ? 'var(--danger)' : 'var(--text-subtle)')).join('') : ''}
+    </div>` : '<div class="dash-card" style="padding:14px;color:var(--text-muted);font-size:13px;">Pas assez de séances pour estimer la progression.</div>';
+
+  // 6. Fiabilité
+  const fiabBar = (lab, n, color) => { const p = totAll ? Math.round(n / totAll * 100) : 0; return `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--border);"><span style="width:90px;flex:none;font-size:13px;font-weight:700;">${lab}</span><div style="flex:1;height:8px;border-radius:999px;background:var(--surface2);overflow:hidden;"><i style="display:block;height:100%;border-radius:999px;width:${p}%;background:${color};"></i></div><span style="width:48px;flex:none;text-align:right;font-size:12px;font-weight:800;color:${color};">${n}/${totAll}</span></div>`; };
+  const fiabCard = `<div class="dash-card" style="padding:4px 15px 12px;">
+      ${fiabBar('Ressenti', ressN, ressN >= totAll * 0.6 ? 'var(--good)' : 'var(--warn)')}
+      ${fiabBar('Nutrition', nutrN, nutrN >= totAll * 0.6 ? 'var(--good)' : 'var(--warn)')}
+      ${sansData.length ? '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:8px 0 2px;">Sans donnée depuis 7 j</div>' + sansData.slice(0, 5).map(x => `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--border);">${pfMini(x.nom)}<span style="font-size:12.5px;font-weight:600;">${escapeHtml(x.nom)}</span>${chipSev(x.txt, x.sev)}</div>`).join('') : ''}
+      <div style="font-size:11px;color:var(--text-subtle);margin-top:9px;line-height:1.4;">Plus l'athlète saisit (ressenti, nutrition), plus les analyses ci-dessus sont fiables.</div>
+    </div>`;
+
+  const sec = (ico, titre, right) => `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#${ico}"/></svg>${titre}</div>${right ? `<div class="more" style="color:var(--text-subtle);font-size:10.5px;font-weight:700;">${right}</div>` : ''}</div>`;
+  const analysesHtml =
+    sec('i-gauge', 'Assiduité', 'séances / objectif') + assiduCard +
+    sec('i-activity', 'Vigilance bien-être', 'dernier ressenti') + bienCard +
+    sec('i-bell', 'Blessures & douleurs actives') + blessCard +
+    sec('i-trending', 'Progression & stagnations', '1RM estimé') + progCard +
+    sec('i-activity', 'Fiabilité des données', '7 derniers jours') + fiabCard;
+
+  // Sections pilotées par le bandeau : Aujourd'hui (action, SANS liste) · Équipe (annuaire) · Analyses
+  el.innerHTML =
+    `<div id="coach-sec-aujourdhui">${heroHtml + resumeEquipeHtml + prioHtml + messagesHtml + briefingHtml}</div>` +
+    `<div id="coach-sec-equipe" style="display:none">${listeHtml}</div>` +
+    `<div id="coach-sec-analyses" style="display:none">${analysesHtml}</div>`;
+  coachBandeauApply();
+  try { coachEquipeFilter(); } catch (_) {}
+}
+
+// ===== Recherche + filtres de la section Équipe =============================
+var coachEquipeCat = 'all';
+function coachEquipeSetFilter(cat, btn) {
+  coachEquipeCat = cat;
+  const chips = document.querySelectorAll('#coach-sec-equipe .coach-eq-chip');
+  chips.forEach(c => c.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  coachEquipeFilter();
+}
+function coachEquipeFilter() {
+  const input = document.getElementById('coach-equipe-search');
+  const q = (input && input.value ? input.value : '').trim().toLowerCase();
+  const rows = document.querySelectorAll('#coach-sec-equipe .coach-athlete-row');
+  let shown = 0;
+  rows.forEach(r => {
+    const cat = r.getAttribute('data-cat');
+    const nom = r.getAttribute('data-nom') || '';
+    let ok = true;
+    if (coachEquipeCat !== 'all' && cat !== coachEquipeCat) ok = false;
+    if (ok && q && nom.indexOf(q) === -1) ok = false;
+    r.style.display = ok ? '' : 'none';
+    if (ok) shown++;
+  });
+  const empty = document.getElementById('coach-eq-empty');
+  if (empty) empty.style.display = (rows.length && !shown) ? 'block' : 'none';
+}
+
+// ===== Bandeau coach (nav basse) ============================================
+var coachBandeauTab = 'aujourdhui';
+function coachBandeauApply() {
+  const secs = { aujourdhui: 'coach-sec-aujourdhui', equipe: 'coach-sec-equipe', analyses: 'coach-sec-analyses' };
+  Object.keys(secs).forEach(k => { const el = document.getElementById(secs[k]); if (el) el.style.display = (k === coachBandeauTab) ? '' : 'none'; });
+  ['aujourdhui', 'equipe', 'analyses', 'messages', 'profil'].forEach(k => {
+    const b = document.getElementById('coach-band-' + k); if (b) b.classList.toggle('on', k === coachBandeauTab);
+  });
+}
+function coachBandeauGo(tab) {
+  if (tab === 'messages') { if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
+  if (tab === 'profil')   { if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
+  // Onglets de contenu : revenir à l'accueil si on est sur une fiche athlète
+  if (document.body.classList.contains('athlete-selected')) { try { retourListeAthletesCoach(); } catch (_) {} }
+  coachBandeauTab = tab;
+  coachBandeauApply();
+  try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { try { window.scrollTo(0, 0); } catch (__) {} }
 }
 
 function ouvrirAthleteDepuisSelect(idx) {
@@ -4383,6 +4651,7 @@ let cdSeancesDates = {};
 let cdCalDate = new Date();
 
 function retourListeAthletesCoach() {
+  try { _maCoachDetach(); } catch (e) {}   // remet le bloc analyses à sa place
   document.getElementById('view-coach-detail').classList.remove('active');
   document.getElementById('view-coach').classList.add('active');
   document.body.classList.remove('cd-nav');
@@ -4404,7 +4673,7 @@ function retourCoachDetail() {
   }
 }
 
-const CD_TAB_LABELS = { overview: 'Aperçu', seances: 'Séances', prog: 'Progression', volume: 'Volume', cal: 'Agenda', conseils: 'Conversation', programme: 'Programme' };
+const CD_TAB_LABELS = { overview: 'Aperçu', seances: 'Entraînement', prog: 'Analyses', volume: 'Volume', cal: 'Agenda', conseils: 'Conversation', programme: 'Programme' };
 function switchCoachDetailTab(tab) {
   if (tab === 'volume') tab = 'prog';   // Volume fusionné dans Progression
   ['overview','seances','prog','volume','cal','conseils','programme'].forEach(t => {
@@ -4427,7 +4696,55 @@ function switchCoachDetailTab(tab) {
     progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null }; // contexte muscu
     chargerProgrammeCoach();
   }
+  // Analyses coach = bloc « Mes analyses » déplacé ici (source = athlète consulté).
+  if (tab === 'prog') { try { _maCoachAttach(coachAthleteData); } catch (e) {} }
+  else { try { _maCoachDetach(); } catch (e) {} }
   majRailVisibilite(tab);
+}
+
+// ===== Analyses coach : réutilise le bloc « Mes analyses » (#tab-historique) =====
+// On DÉPLACE l'unique bloc analyses dans l'onglet Analyses coach (son CSS #tab-historique
+// voyage avec lui) et on pointe dernierAppData sur l'athlète consulté. Remis en place
+// à chaque sortie. Évite toute duplication d'id et toute réécriture du sous-système.
+var _maHome = null;          // {parent, next} position d'origine de #tab-historique
+var _maCoach = false;        // analyses affichées côté coach ?
+var _maPrevApp = undefined;  // dernierAppData avant swap
+function _maCoachAttach(data) {
+  var node = document.getElementById('tab-historique');
+  var host = document.getElementById('cd-analyses-host');
+  if (!node || !host || !data) return;
+  if (!_maHome) _maHome = { parent: node.parentNode, next: node.nextSibling };
+  if (node.parentNode !== host) host.appendChild(node);
+  node.style.display = 'block';
+  if (!_maCoach) _maPrevApp = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
+  dernierAppData = data;
+  _maCoach = true;
+  // En-tête : côté coach, ce n'est pas « Mes analyses » mais celles de l'athlète.
+  try {
+    var t = node.querySelector('.ma-ttl'), s = node.querySelector('.ma-sub');
+    if (t) { if (_maTtlOrig == null) _maTtlOrig = t.textContent; t.textContent = (coachAthleteCourant && coachAthleteCourant.nom) ? coachAthleteCourant.nom : 'Analyses'; }
+    if (s) { if (_maSubOrig == null) _maSubOrig = s.textContent; s.textContent = 'Analyses de l\'athlète'; }
+  } catch (e) {}
+  try { maResetNav(); } catch (e) {}
+}
+var _maTtlOrig = null, _maSubOrig = null;
+function _maCoachDetach() {
+  var node = document.getElementById('tab-historique');
+  if (node && _maHome && node.parentNode !== _maHome.parent) {
+    if (_maHome.next && _maHome.next.parentNode === _maHome.parent) _maHome.parent.insertBefore(node, _maHome.next);
+    else _maHome.parent.appendChild(node);
+    node.style.display = 'none';
+  }
+  if (_maCoach) { try { dernierAppData = _maPrevApp; } catch (e) {} }
+  // Restaure l'en-tête athlète « Mes analyses »
+  try {
+    if (node) {
+      var t = node.querySelector('.ma-ttl'), s = node.querySelector('.ma-sub');
+      if (t && _maTtlOrig != null) t.textContent = _maTtlOrig;
+      if (s && _maSubOrig != null) s.textContent = _maSubOrig;
+    }
+  } catch (e) {}
+  _maCoach = false; _maPrevApp = undefined;
 }
 
 // Sur bureau le rail est toujours visible ; sur mobile seulement sur l'Aperçu
@@ -4446,16 +4763,15 @@ function coachNiveauKey(annees) {
 }
 
 async function ouvrirDetailAthleteCoach(a, initialTab) {
+  try { _maCoachDetach(); } catch (e) {}   // état analyses propre avant de charger un autre athlète
   coachAthleteCourant = a;
   document.getElementById('view-coach').classList.remove('active');
   document.getElementById('view-coach-detail').classList.add('active');
   document.body.classList.add('cd-nav');
   document.body.classList.add('athlete-selected');
   surlignerAthleteSidebar(a.athlete_id);
-  // Bloc « Bonjour » (onglet Aperçu) : nom + avatar (initiales) + pastilles infos.
-  var _heroNom = document.getElementById('cd-hero-name'); if (_heroNom) _heroNom.textContent = a.nom;
-  var _heroAv = document.getElementById('cd-hero-av');
-  if (_heroAv) _heroAv.textContent = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+  // Hero « État du jour » (onglet Aperçu) : placeholder neutre immédiat, puis
+  // renderCoachHeroEtat() le colore selon le statut dès que les données arrivent.
   _setSportIco('cd-sport-ico-use', a.sport);   // icône du header (haltère muscu)
   const niv = getNiveauExperience(a.annees_pratique);
   const nivLabel = { debutant:'Débutant', intermediaire:'Intermédiaire', avance:'Avancé', expert:'Expert' }[niv];
@@ -4463,8 +4779,23 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   if (a.objectif) bits.push(a.objectif);
   bits.push(`${a.annees_pratique || 0} an${(a.annees_pratique||0)>1?'s':''}`);
   if (a.poids) bits.push(`${a.poids} kg`);
-  var _heroPills = document.getElementById('cd-hero-pills');
-  if (_heroPills) _heroPills.innerHTML = bits.filter(Boolean).map(b => `<span class="fjd-pill">${escapeHtml(String(b))}</span>`).join('');
+  const _heroEl = document.getElementById('cd-hero');
+  if (_heroEl) {
+    const _ini = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+    _heroEl.className = '';
+    _heroEl.style.cssText = 'position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:var(--accent);background-image:linear-gradient(135deg,rgba(255,255,255,.14),rgba(0,0,0,.12));';
+    _heroEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:46px;height:46px;border-radius:13px;background:var(--on-accent-a28);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${_ini}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:17px;font-weight:900;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</div>
+          <div style="font-size:11.5px;opacity:.9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${bits.filter(Boolean).map(escapeHtml).join(' · ')}</div>
+        </div>
+      </div>
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;opacity:.85;margin-top:16px;">État du jour</div>
+      <div style="font-size:13px;opacity:.9;margin-top:4px;">Analyse en cours…</div>`;
+  }
+  var _ov = document.getElementById('cdtab-overview'); if (_ov) _ov.classList.remove('etat-open');  // hub : « Son état » replié à l'ouverture
   switchCoachDetailTab(initialTab || 'overview');
   cdCalDate = new Date();
 
@@ -4495,6 +4826,9 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    try { renderCoachHubVolume(data); } catch (_) {}      // volume par muscle (hub)
+    try { renderCoachHubSeances(data); } catch (_) {}     // dernières séances (hub)
+    try { renderCoachHubNutrition(data); } catch (_) {}   // carte macros du hub
     try { renderCockpit(data, 'cd'); } catch (_) {}   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
@@ -4570,14 +4904,96 @@ function renderCoachRecordsEtRegression(hist, glob) {
   }
 }
 
+// Hero « État du jour » (détail athlète, onglet Aperçu) — carte colorée par le
+// statut global du moteur. Réutilise computeMarqueursCoach (statut), data.moteur
+// (niveau + reco) et le dernier questionnaire bien-être (chips). Ne fabrique rien :
+// la reco vient du moteur ; sans moteur, on affiche un repère factuel (régularité).
+function renderCoachHeroEtat(data) {
+  const el = document.getElementById('cd-hero');
+  const a = coachAthleteCourant;
+  if (!el || !a) return;
+  let m = null;
+  try { m = computeMarqueursCoach(data, a); } catch (_) {}
+  const s = (m && m.statut) ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
+  const M = data.moteur || null;
+  const niveau = (M && M.disponibilite && M.disponibilite.niveau) ? M.disponibilite.niveau
+               : (s.label === 'Optimal' ? 'En forme' : s.label === 'Surveillance' ? 'À surveiller' : s.label === 'Action' ? 'À surveiller' : s.label);
+  // Raison : reco du moteur si dispo, sinon repère factuel (séances / dernière séance).
+  const dash = data.dashboard || {};
+  const reg = dash.regularite || {};
+  const faites = _seancesFaites(reg), prevues = reg.seances_prevues || 0;
+  let raison = (M && M.reco && M.reco !== '—') ? M.reco : '';
+  if (!raison) {
+    const parts = [];
+    if (prevues > 0) parts.push(`${faites}/${prevues} séance${prevues > 1 ? 's' : ''} cette semaine`);
+    else if (faites != null) parts.push(`${faites} séance${faites > 1 ? 's' : ''} cette semaine`);
+    if (dash.derniere_seance && dash.derniere_seance.date) parts.push(`dernière le ${dash.derniere_seance.date}`);
+    raison = parts.join(' · ') || 'Pas encore assez de données pour un verdict.';
+  }
+  // Chips bien-être (dernier questionnaire) — données réelles uniquement.
+  const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
+  const dernier = be[0] || null;
+  const chipDims = [
+    { key: 'sommeil', emoji: '😴' }, { key: 'energie', emoji: '🔋' },
+    { key: 'fatigue', emoji: '😮‍💨' }, { key: 'douleur', emoji: '🩹' }
+  ];
+  // Le ressenti n'est affiché que s'il est RÉCENT (≤ 7 j) : au-delà, il ne
+  // représente plus « l'état du jour » → on ne montre pas de chips périmées.
+  var _beTs = dernier && dernier.date ? parseChatDate(dernier.date) : null;
+  var _ageR = _beTs ? (Date.now() - _beTs) / 86400000 : null;
+  var _frais = _ageR != null && _ageR <= 7;
+  const _jd = s => (typeof joursDepuis === 'function') ? joursDepuis(s) : '';
+  let chipsHtml = '';
+  if (dernier && _frais) {
+    const chips = chipDims.map(cd => {
+      const raw = (dernier[cd.key] == null || dernier[cd.key] === '' || isNaN(Number(dernier[cd.key]))) ? null : Number(dernier[cd.key]);
+      if (raw == null) return '';
+      let txt = (WQ_ANSWERS[cd.key] ? WQ_ANSWERS[cd.key][raw] : raw);
+      if (cd.key === 'douleur' && raw >= 2 && dernier.zone) txt += ' (' + dernier.zone + ')';
+      const dim = WQ_DIMS.find(d => d.key === cd.key);
+      const pos = wqPositif(dim, raw);
+      const alerte = pos != null && pos < 3;  // point faible → petit point d'alerte
+      return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">${cd.emoji} ${WQ_DIMS.find(d=>d.key===cd.key).label} : ${escapeHtml(String(txt))}${alerte ? ' <span style="width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;"></span>' : ''}</span>`;
+    }).filter(Boolean).join('');
+    if (chips) chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;">${chips}</div>`
+      + `<div style="font-size:10.5px;opacity:.85;margin-top:7px;">🗓️ Ressenti ${escapeHtml(_jd(dernier.date))}</div>`;
+  } else {
+    // Ressenti périmé ou absent : on l'indique au lieu d'afficher de vieilles valeurs.
+    const last = (dernier && dernier.date) ? ('dernier ' + escapeHtml(_jd(dernier.date))) : 'aucun ressenti saisi';
+    chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">⚠️ Ressenti : aucune donnée récente · ${last}</span></div>`;
+  }
+  const ini = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const niv = getNiveauExperience(a.annees_pratique);
+  const nivLabel = { debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' }[niv];
+  const metaBits = [nivLabel];
+  if (a.objectif) metaBits.push(a.objectif);
+  if (data.poids && data.poids.length) metaBits.push(`${data.poids[0].poids} kg`);
+  else if (a.poids) metaBits.push(`${a.poids} kg`);
+  // Sans état du jour récent, on NE peut pas certifier « en forme » : un vert
+  // (optimal) est rétrogradé en orange « À confirmer ». Un orange/rouge reste.
+  let heroBg = s.color, niveauDisp = niveau;
+  if (!_frais && s.rank === 0) { heroBg = 'var(--warn)'; niveauDisp = 'À confirmer'; }
+  el.className = '';
+  el.style.cssText = `position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:${heroBg};background-image:linear-gradient(135deg,rgba(255,255,255,.14),rgba(0,0,0,.20));`;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:46px;height:46px;border-radius:13px;background:var(--on-accent-a28);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${ini}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:17px;font-weight:900;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</div>
+        <div style="font-size:11.5px;opacity:.9;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${metaBits.filter(Boolean).map(escapeHtml).join(' · ')}</div>
+      </div>
+    </div>
+    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;opacity:.85;margin-top:16px;">État du jour</div>
+    <div style="font-size:23px;font-weight:900;margin:3px 0 5px;">${escapeHtml(String(niveauDisp))}</div>
+    <div style="font-size:12.5px;line-height:1.5;opacity:.96;">${escapeHtml(String(raison))}</div>
+    ${chipsHtml}`;
+}
+
 function renderCoachOverview(data) {
   const dash = data.dashboard || {};
 
-  // Enrichir le bloc « Bonjour » avec le poids réel (si connu et pas déjà présent)
-  if (data.poids && data.poids.length && coachAthleteCourant) {
-    const hp = document.getElementById('cd-hero-pills');
-    if (hp && !/kg/.test(hp.textContent)) hp.insertAdjacentHTML('beforeend', `<span class="fjd-pill">${escapeHtml(String(data.poids[0].poids))} kg</span>`);
-  }
+  // Hero « État du jour » (carte colorée) — remplace l'ancien bloc « Bonjour ».
+  try { renderCoachHeroEtat(data); } catch (_) {}
 
   // Régularité
   const reg = dash.regularite || {};
@@ -4901,8 +5317,15 @@ function computeMarqueursCoach(data, a) {
   const annees = a ? a.annees_pratique : 0;
 
   // 1. Progression (comptes hausse/baisse de la semaine)
+  // Le backend envoie dashboard.progression=null → on calcule depuis la comparaison
+  // 7j vs 7j (charge_details) qu'il fournit, sinon la tuile dirait toujours « N/A ».
   const prog = dash.progression || {};
-  const enProg = prog.en_progression || 0, enBaisse = prog.en_baisse || 0;
+  let enProg = prog.en_progression || 0, enBaisse = prog.en_baisse || 0;
+  if (!enProg && !enBaisse) {
+    const _det = ((data.comparison || {}).j7_vs_j7prec || {}).charge_details || [];
+    enProg = _det.filter(x => x && x.up).length;
+    enBaisse = _det.filter(x => x && x.down && !x.up).length;
+  }
   let progColor, progLabel;
   if (enProg === 0 && enBaisse === 0) { progColor = '#aaa'; progLabel = 'N/A'; }
   else if (enProg > enBaisse) { progColor = '#00c96e'; progLabel = `${enProg}↑/${enBaisse}↓`; }
@@ -5010,22 +5433,159 @@ function renderCoachIndicateurs(data) {
   const el = document.getElementById('cd-indicateurs');
   if (!el) return;
   const m = computeMarqueursCoach(data, coachAthleteCourant);
-  const indicateurs = [
-    { label: 'Progression', color: m.progColor, val: m.progLabel },
-    { label: 'Volume', color: m.volColor, val: m.volLabel },
-    { label: 'Régularité', color: m.regColor, val: m.regLabel },
-    { label: 'Récupération', color: m.recupColor, val: m.recupLabel },
-  ];
-  el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;">
-    ${indicateurs.map(ind => `
-      <div class="v2-kpi" style="display:flex;flex-direction:column;gap:6px;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span class="v2-dot" style="background:${ind.color};box-shadow:0 0 6px ${ind.color}55;"></span>
-          <span style="font-size:9.5px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;">${ind.label}</span>
-        </div>
-        <div style="font-size:14px;color:${ind.color};font-weight:800;line-height:1;">${ind.val}</div>
-      </div>`).join('')}
+  const dash = data.dashboard || {};
+
+  // Régularité (X/Y)
+  const reg = dash.regularite || {};
+  const regVal = (m.regLabel && m.regLabel !== 'N/A') ? m.regLabel : '—';
+  const regSub = (reg.seances_prevues) ? 'séances / objectif' : 'cette semaine';
+
+  // ACWR (ratio + zone) — repli factuel si < 4 semaines de données
+  let acwrVal, acwrSub, acwrColor = m.acwrColor;
+  if (m.acwrRatio != null) {
+    acwrVal = String(m.acwrRatio).replace('.', ',');
+    const r = m.acwrRatio;
+    acwrSub = (r >= 0.8 && r <= 1.3) ? 'zone optimale' : r > 1.5 ? 'zone de risque' : r > 1.3 ? 'charge élevée' : 'sous-charge';
+  } else { acwrVal = '—'; acwrSub = '< 4 semaines de données'; acwrColor = 'var(--text-subtle)'; }
+
+  // Dernière séance
+  const ds = dash.derniere_seance || null;
+  const dsVal = ds && ds.date ? ds.date : 'Jamais';
+  const dsSub = ds ? [ds.seance_id, ds.nb_series != null ? ds.nb_series + ' séries' : null].filter(Boolean).join(' · ') : '';
+
+  // Progression (comptes hausse/baisse 7j)
+  const progVal = (m.progLabel && m.progLabel !== 'N/A') ? m.progLabel : '—';
+  const progSub = (m.progLabel && m.progLabel !== 'N/A') ? '7 derniers jours' : 'pas assez de données';
+
+  const tile = (label, val, color, sub) => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 13px;box-shadow:var(--shadow-sm);min-width:0;">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-subtle);">${label}</div>
+      <div style="font-size:19px;font-weight:900;letter-spacing:-.02em;margin-top:5px;color:${color};line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${val}</div>
+      ${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(String(sub))}</div>` : ''}
+    </div>`;
+
+  el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+    ${tile('Régularité', regVal, m.regColor, regSub)}
+    ${tile('ACWR', acwrVal, acwrColor, acwrSub)}
+    ${tile('Dernière séance', dsVal, 'var(--text)', dsSub)}
+    ${tile('Progression', progVal, m.progColor, progSub)}
   </div>`;
+}
+
+// Hub : volume par muscle (cette semaine) — barres faites / cible max (MAV).
+function renderCoachHubVolume(data) {
+  var sec = document.getElementById('cd-hub-volume-sec');
+  var el = document.getElementById('cd-hub-volume');
+  if (!el) return;
+  var vols = (data && data.historique && Array.isArray(data.historique.volume_semaine)) ? data.historique.volume_semaine : [];
+  var trained = vols.filter(function (v) { return (v.faites || 0) > 0; });
+  if (!trained.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
+  var niv = coachNiveauKey(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0);
+  var cibleDe = function (muscle) { var c = (typeof VOLUME_CIBLE !== 'undefined' && VOLUME_CIBLE[muscle]) ? VOLUME_CIBLE[muscle][niv] : null; return c || [10, 14]; };
+  trained.sort(function (a, b) { return (b.faites || 0) - (a.faites || 0); });
+  var sousCount = 0;
+  var rows = trained.slice(0, 6).map(function (v) {
+    var c = cibleDe(v.muscle), mev = c[0] || 0, mav = c[1] || 0, faites = v.faites || 0;
+    var sous = faites < mev; if (sous) sousCount++;
+    var color = sous ? 'var(--warn)' : 'var(--good)';
+    var pctw = mav ? Math.min(100, Math.round(faites / mav * 100)) : 0;
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">' +
+      '<span style="width:78px;flex:none;font-size:11.5px;font-weight:700;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(v.muscle)) + '</span>' +
+      '<div style="flex:1;height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;"><div style="height:100%;border-radius:999px;width:' + pctw + '%;background:' + color + ';"></div></div>' +
+      '<span style="width:52px;flex:none;text-align:right;font-size:11px;font-weight:800;color:' + color + ';font-variant-numeric:tabular-nums;">' + faites + ' / ' + mav + '</span></div>';
+  }).join('');
+  var status = sousCount
+    ? '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">⚠ ' + sousCount + ' muscle' + (sousCount > 1 ? 's' : '') + ' sous le volume cible</span></div>'
+    : '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--good-a);color:var(--good);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">✓ Volumes dans les cibles</span></div>';
+  el.innerHTML = rows + status;
+  if (sec) sec.style.display = ''; el.style.display = '';
+}
+
+// Hub : « Comment il s'entraîne » — 2 dernières séances (exos/séries/tonnage/RPE).
+function renderCoachHubSeances(data) {
+  var sec = document.getElementById('cd-hub-seances-sec');
+  var el = document.getElementById('cd-hub-seances');
+  if (!el) return;
+  var sd = (data && Array.isArray(data.seances_detail)) ? data.seances_detail : [];
+  if (!sd.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
+  var html = sd.slice(0, 2).map(function (s, i) {
+    var exos = s.exercices || [];
+    var nbExos = exos.length;
+    var nbSeries = s.nb_series || exos.reduce(function (n, e) { return n + ((e.series || []).length); }, 0);
+    var rpes = []; exos.forEach(function (e) { (e.series || []).forEach(function (x) { if (x.rpe != null && !isNaN(Number(x.rpe))) rpes.push(Number(x.rpe)); }); });
+    var rpeMoy = rpes.length ? (rpes.reduce(function (a, b) { return a + b; }, 0) / rpes.length) : null;
+    var rpeColor = rpeMoy == null ? 'var(--text-subtle)' : (rpeMoy < 7.5 ? 'var(--good)' : rpeMoy < 8.5 ? 'var(--warn)' : 'var(--danger)');
+    var tonn = s.tonnage != null ? (s.tonnage >= 1000 ? (s.tonnage / 1000).toFixed(1).replace('.', ',') + ' t' : Math.round(s.tonnage) + ' kg') : '—';
+    var dfr = String(s.date_fr || s.date || '').slice(0, 5);
+    return '<div style="display:flex;align-items:center;gap:11px;' + (i > 0 ? 'border-top:1px solid var(--border);padding-top:12px;margin-top:12px;' : '') + '">' +
+      '<div style="width:44px;flex:none;text-align:center;background:var(--accent-a10);color:var(--accent);border-radius:11px;padding:8px 0;font-size:11px;font-weight:900;">' + escapeHtml(dfr) + '</div>' +
+      '<div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(String(s.seance_id || 'Séance')) + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + nbExos + ' exo' + (nbExos > 1 ? 's' : '') + ' · ' + nbSeries + ' séries · ' + tonn + '</div></div>' +
+      '<div style="text-align:right;flex:none;"><div style="font-size:15px;font-weight:900;color:' + rpeColor + '">' + (rpeMoy != null ? rpeMoy.toFixed(1).replace('.', ',') : '—') + '</div><div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);">RPE moy</div></div></div>';
+  }).join('');
+  el.innerHTML = html;
+  if (sec) sec.style.display = ''; el.style.display = '';
+}
+
+// Fiche hub : « Son état » → révèle le groupe bien-être/analyse puis y défile.
+function cdScrollEtat() {
+  var ov = document.getElementById('cdtab-overview');
+  if (ov) ov.classList.add('etat-open');
+  var el = document.getElementById('cd-etat-group') || document.getElementById('cd-recup-card');
+  setTimeout(function () { if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 40);
+}
+
+// Carte « Nutrition · respect des macros » du hub coach. Apports = moyenne des 7
+// derniers jours saisis (nutri_historique) ; cibles = _nutObjectifsFor (prot via
+// poids ; kcal/gluc/lip si taille+âge+sexe connus, sinon affichées sans cible).
+function renderCoachHubNutrition(data) {
+  var sec = document.getElementById('cd-hub-nutrition-sec');
+  var el = document.getElementById('cd-hub-nutrition');
+  if (!el) return;
+  var hist = (data && Array.isArray(data.nutri_historique)) ? data.nutri_historique : [];
+  if (!hist.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
+  var last = hist.slice(0, 7);
+  function avg(k) {
+    var v = last.map(function (d) { return Number(d[k]); }).filter(function (x) { return !isNaN(x) && x > 0; });
+    return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length) : null;
+  }
+  var aK = avg('kcal'), aP = avg('prot'), aG = avg('gluc'), aL = avg('lip');
+  if (aK == null && aP == null && aG == null && aL == null) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
+  var obj = {};
+  try { obj = _nutObjectifsFor(coachAthleteCourant || {}, data, 1.55) || {}; } catch (e) { obj = {}; }
+  var C = 119.4; // circonférence (r=19)
+  function ring(pct, color) {
+    var off = C * (1 - Math.max(0, Math.min(1, pct == null ? 0 : pct)));
+    return '<div style="width:46px;height:46px;position:relative;flex:none;"><svg width="46" height="46" style="transform:rotate(-90deg)"><circle cx="23" cy="23" r="19" fill="none" stroke="var(--surface2)" stroke-width="6"/>' +
+      (pct != null ? '<circle cx="23" cy="23" r="19" fill="none" stroke="' + color + '" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + off.toFixed(1) + '"/>' : '') +
+      '</svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-size:10px;font-weight:900;color:' + (pct != null ? color : 'var(--text-subtle)') + '">' + (pct != null ? Math.round(pct * 100) + '%' : '—') + '</div></div>';
+  }
+  function macCol(label, actual, target, unit) {
+    var pct = (actual != null && target) ? actual / target : null;
+    var color = pct == null ? 'var(--text-subtle)' : (pct >= 0.9 && pct <= 1.15) ? 'var(--good)' : (pct >= 0.7) ? 'var(--warn)' : 'var(--danger)';
+    return '<div style="display:flex;align-items:center;gap:11px;">' + ring(pct, color) +
+      '<div style="min-width:0;"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-subtle)">' + label + '</div>' +
+      '<div style="font-size:13px;font-weight:800;margin-top:1px">' + (actual != null ? actual : '—') + ' <small style="color:var(--text-subtle);font-weight:700">' + (target ? '/ ' + target + ' ' + unit : unit) + '</small></div></div></div>';
+  }
+  // Ligne énergie (kcal) + verdict de respect
+  var kpct = (aK != null && obj.kcal) ? aK / obj.kcal : null;
+  var kstatus;
+  if (kpct == null) kstatus = '';
+  else if (Math.abs(1 - kpct) <= 0.1) kstatus = '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--good-a);color:var(--good);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">✓ Dans la cible</span>';
+  else kstatus = '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">' + (kpct > 1 ? '▲ au-dessus' : '▼ en-dessous') + '</span>';
+  var kcalLine = '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:13px;padding-bottom:13px;border-bottom:1px solid var(--border);">' +
+    '<div><div style="font-size:24px;font-weight:900;letter-spacing:-.02em;">' + (aK != null ? aK.toLocaleString('fr') : '—') + '<small style="font-size:12px;color:var(--text-subtle);font-weight:700"> kcal</small></div>' +
+    '<div style="font-size:12px;color:var(--text-muted);font-weight:700;">' + (obj.kcal ? 'cible ' + obj.kcal.toLocaleString('fr') + ' kcal' + (kpct != null ? ' · ' + Math.round(kpct * 100) + ' %' : '') : 'cible indisponible (profil incomplet)') + '</div></div>' +
+    (kstatus || '') + '</div>';
+  var grid = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">' +
+    macCol('Protéines', aP, obj.prot, 'g') +
+    macCol('Glucides', aG, obj.gluc, 'g') +
+    macCol('Lipides', aL, obj.lip, 'g') +
+    macCol('Énergie', aK, obj.kcal, 'kcal') +
+    '</div>';
+  el.innerHTML = kcalLine + grid;
+  if (sec) sec.style.display = '';
+  el.style.display = '';
 }
 
 function renderCoachVolume(data) {
@@ -5151,57 +5711,88 @@ function seancesCardsHTML(entries) {
   if (!entries || entries.length === 0) {
     return '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>';
   }
+  // Couleur du RPE (cohérent avec la maquette : ≤7 ok, 7.5-8 modéré, ≥8.5 élevé)
+  const rpeChip = (rpe) => {
+    if (rpe == null || rpe === '' || isNaN(Number(rpe))) return '<span style="color:var(--text-subtle);font-weight:600;">—</span>';
+    const n = Number(rpe);
+    const c = n < 7.5 ? 'var(--good)' : n < 8.5 ? 'var(--warn)' : 'var(--danger)';
+    const ca = n < 7.5 ? 'var(--good-a)' : n < 8.5 ? 'var(--warn-a)' : 'var(--bad-a)';
+    return `<span style="display:inline-block;min-width:30px;border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800;background:${ca};color:${c};">${n}</span>`;
+  };
   return entries.map((s, idx) => {
-    // Normaliser en exercices -> séries
-    let ordreExo, parExo;
+    // Normaliser en exercices -> séries (+ muscle si fourni par getSeancesDetail)
+    let ordreExo, parExo, muscleExo = {};
     if (s.exos.length && s.exos[0] && Array.isArray(s.exos[0].series)) {
       // Déjà groupé (endpoint getSeancesDetail)
       ordreExo = s.exos.map(x => x.exo);
-      parExo = {}; s.exos.forEach(x => { parExo[x.exo] = x.series; });
+      parExo = {}; s.exos.forEach(x => { parExo[x.exo] = x.series; if (x.muscle) muscleExo[x.exo] = x.muscle; });
     } else {
       // Ancien format plat : une entrée par perf
       parExo = {}; ordreExo = [];
       s.exos.forEach(e => {
         if (!parExo[e.exo]) { parExo[e.exo] = []; ordreExo.push(e.exo); }
         parExo[e.exo].push(e);
+        if (e.muscle) muscleExo[e.exo] = e.muscle;
       });
     }
     const nbExos = ordreExo.length;
     const nbSeries = ordreExo.reduce((n, exo) => n + parExo[exo].length, 0);
 
+    // Récap séance : tonnage (Σ charge×reps, repli sur volume) + RPE moyen (séries renseignées)
+    let tonnage = 0, rpeSum = 0, rpeN = 0;
+    ordreExo.forEach(exo => parExo[exo].forEach(e => {
+      const ch = Number(e.charge), rp = Number(e.reps);
+      if (!isNaN(ch) && !isNaN(rp)) tonnage += ch * rp;
+      else if (!isNaN(Number(e.volume))) tonnage += Number(e.volume);
+      if (e.rpe != null && e.rpe !== '' && !isNaN(Number(e.rpe))) { rpeSum += Number(e.rpe); rpeN++; }
+    }));
+    const tonnageTxt = tonnage >= 1000 ? (tonnage / 1000).toFixed(1).replace('.', ',') + ' t' : Math.round(tonnage) + ' kg';
+    const rpeMoy = rpeN ? (rpeSum / rpeN).toFixed(1).replace('.', ',') : null;
+    const schip = (n, l) => `<div style="flex:none;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:8px 11px;text-align:center;min-width:60px;"><div style="font-size:15px;font-weight:900;letter-spacing:-.02em;">${n}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:2px;">${l}</div></div>`;
+    const recapStrip = nbExos > 0
+      ? `<div style="display:flex;gap:7px;overflow:auto;margin-bottom:12px;padding-bottom:2px;">
+          ${schip(nbExos, 'Exos')}${schip(nbSeries, 'Séries')}${tonnage > 0 ? schip(tonnageTxt, 'Tonnage') : ''}${rpeMoy != null ? schip(rpeMoy, 'RPE moy.') : ''}
+        </div>` : '';
+
     const exoBlocks = nbExos > 0
       ? ordreExo.map(exo => {
           const series = parExo[exo];
-          const seriesLignes = series.map((e, i) => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
-              <span style="font-size:11px;color:var(--accent);font-weight:700;min-width:52px;">Série ${e.serie || (i + 1)}</span>
-              <span style="font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;">${e.charge ? e.charge + ' kg' : '—'} × ${e.reps || '—'} reps${e.rpe ? ` <span style="color:var(--text-muted);font-weight:400;">· RPE ${e.rpe}</span>` : ''}</span>
-            </div>`).join('');
+          const rows = series.map((e, i) => `
+            <tr>
+              <td style="text-align:left;color:var(--text-subtle);font-weight:800;font-size:12px;padding:6px 0;border-top:1px solid var(--border);">${e.serie || (i + 1)}</td>
+              <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.charge ? e.charge + ' kg' : '—'}</td>
+              <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.reps || '—'}</td>
+              <td style="text-align:right;padding:6px 0;border-top:1px solid var(--border);">${rpeChip(e.rpe)}</td>
+            </tr>`).join('');
+          const muscleTag = muscleExo[exo] ? `<span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:var(--accent-a10);border-radius:6px;padding:3px 7px;flex-shrink:0;">${escapeHtml(String(muscleExo[exo]))}</span>` : '';
           return `
-            <div style="background:var(--surface2);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
-              <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:4px;display:flex;justify-content:space-between;">
-                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%;">${exo}</span>
-                <span style="font-size:10px;color:var(--text-muted);font-weight:600;">${series.length} série${series.length>1?'s':''}</span>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:11px 13px;margin-bottom:9px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+                <span style="font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(String(exo))}</span>
+                ${muscleTag}
               </div>
-              ${seriesLignes}
+              <table style="width:100%;border-collapse:collapse;">
+                <tr><th style="text-align:left;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Série</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Charge</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Reps</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">RPE</th></tr>
+                ${rows}
+              </table>
             </div>`;
         }).join('')
       : '<div style="font-size:11px;color:var(--text-muted);padding:6px 0;">Pas de détail disponible (données antérieures)</div>';
 
     return `
-      <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">
-        <div onclick="toggleSeanceCoach(${idx})" style="display:flex;justify-content:space-between;align-items:center;padding:12px;cursor:pointer;background:var(--surface);">
-          <div>
-            <div style="font-size:13px;font-weight:800;color:var(--accent);">${s.seance}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${s.date}</div>
+      <div style="border:1px solid var(--border);border-radius:15px;margin-bottom:9px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm);">
+        <div onclick="toggleSeanceCoach(${idx})" style="display:flex;justify-content:space-between;align-items:center;padding:13px;cursor:pointer;">
+          <div style="min-width:0;">
+            <div style="font-size:14px;font-weight:800;">${escapeHtml(String(s.seance))}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${escapeHtml(String(s.date))}</div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            ${nbExos > 0 ? `<span style="background:var(--accent-a15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">${nbExos} exo${nbExos>1?'s':''} · ${nbSeries} série${nbSeries>1?'s':''}</span>` : ''}
-            <span id="seance-arrow-${idx}" style="font-size:14px;color:var(--text-muted);transition:transform 0.2s;">›</span>
+          <div style="display:flex;align-items:center;gap:9px;flex-shrink:0;">
+            ${nbExos > 0 ? `<span style="background:var(--accent-a10);color:var(--accent);font-size:10px;font-weight:800;padding:3px 9px;border-radius:var(--radius-pill);white-space:nowrap;">${nbExos} exo${nbExos>1?'s':''} · ${nbSeries} série${nbSeries>1?'s':''}</span>` : ''}
+            <svg id="seance-arrow-${idx}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;flex-shrink:0;"><path d="m9 6 6 6-6 6"/></svg>
           </div>
         </div>
-        <div id="seance-detail-${idx}" style="display:none;padding:10px 12px 12px;">
-          ${exoBlocks}
+        <div id="seance-detail-${idx}" style="display:none;padding:2px 13px 13px;">
+          ${recapStrip}${exoBlocks}
         </div>
       </div>`;
   }).join('');
@@ -6181,8 +6772,12 @@ function renderBullesChat(commentaires, elId, isCoach) {
     const lu = (isCoach && !isMine && !estLu(c, 'muscu_lu_coach')) ? '<span style="font-size:9px;color:#f59f00;"> · non lu</span>' : '';
     const meLabel = isMine ? ' · toi' : '';
     const avatar = isMine ? '' : `<div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:color-mix(in srgb, ${themCol} 20%, transparent);color:${themCol};">${escapeHtml(themInit)}</div>`;
+    const media = (typeof _mediaBulleHTML === 'function') ? _mediaBulleHTML(c) : '';
+    const corps = media
+      ? `<div style="padding:4px;border-radius:${radius};background:${media && !isMine ? 'var(--surface2)' : 'transparent'};">${media}</div>`
+      : `<div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13.5px;white-space:pre-wrap;line-height:1.4;">${escapeHtml(c.message)}</div>`;
     const bubble = `<div style="display:flex;flex-direction:column;align-items:${isMine?'flex-end':'flex-start'};min-width:0;">
-        <div style="background:${bg};color:${color};padding:8px 12px;border-radius:${radius};font-size:13.5px;white-space:pre-wrap;line-height:1.4;">${escapeHtml(c.message)}</div>
+        ${corps}
         <div style="font-size:9.5px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:2px;">${heure(ts)}${meLabel}${lu}${deleteBtn}</div>
       </div>`;
     const row = `<div style="display:flex;gap:8px;align-items:flex-end;max-width:85%;${isMine?'align-self:flex-end;flex-direction:row-reverse;':'align-self:flex-start;'}">${avatar}${bubble}</div>`;
@@ -6304,53 +6899,77 @@ function construireSynthAlertes(data) {
 function renderAlertesCoach(data) {
   const el = document.getElementById('cd-alertes');
   if (!el || !coachAthleteCourant) return;
-  const couleurSeverite = { haute: '#e5484d', moyenne: '#f5a623', basse: '#a3a3a3' };
+  const couleurSeverite = { haute: 'var(--danger)', moyenne: 'var(--warn)', basse: 'var(--text-subtle)' };
   const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
 
   const d = data || coachAthleteData;
   // Alertes de synthèse non encore traitées cette semaine
   let synthAlertes = construireSynthAlertes(d).filter(s => !alerteEstTraitee(coachAthleteCourant.athlete_id, { type: s.type }));
 
+  // Carte alerte : liseré de sévérité à gauche, fond surface (style moderne).
+  const alerteCard = (stripe, icon, bodyHtml, actionsHtml) => `
+    <div style="display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-left:3px solid ${stripe};border-radius:12px;padding:11px 12px;margin-top:8px;">
+      <span style="font-size:15px;line-height:1.3;flex-shrink:0;">${icon}</span>
+      <div style="flex:1;min-width:0;">${bodyHtml}${actionsHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;">${actionsHtml}</div>` : ''}</div>
+    </div>`;
+
   const alertesHtml = alertes.map((al, idx) => {
-    const c = couleurSeverite[al.severite] || '#a3a3a3';
+    const c = couleurSeverite[al.severite] || 'var(--text-subtle)';
     const sujetRaw = sujetAlerte(al);
     const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const fait = dejaConseille(sujetRaw);
     const explicationId = `alerte-explication-${idx}`;
-    return `<div style="padding:8px 10px;background:${c}1a;border-radius:8px;margin-top:6px">
-      <div style="display:flex;align-items:flex-start;gap:8px">
-        <span style="font-size:14px">⚠️</span>
-        <span style="font-size:13px;font-weight:600;color:${c};flex:1">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:400">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</span>
-      </div>
-      <div id="${explicationId}" style="display:none;font-size:11px;color:var(--text-muted);margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">${explicationAlerte(al)}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-        <button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
+    const body = `<div style="font-size:13px;font-weight:700;color:${c};">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:500">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
+      <div id="${explicationId}" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:7px;padding:7px 9px;background:var(--surface2);border-radius:8px;line-height:1.45;">${explicationAlerte(al)}</div>`;
+    const actions = `<button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
         ${fait
-          ? `<span style="font-size:12px;color:#00c96e;font-weight:700;align-self:center">✅ Déjà conseillé</span>
+          ? `<span style="font-size:12px;color:var(--good);font-weight:700;align-self:center">✅ Déjà conseillé</span>
              <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Autre conseil</button>`
           : `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>`}
-        <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>
-      </div>
-    </div>`;
+        <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>`;
+    return alerteCard(c, '⚠️', body, actions);
   }).join('');
 
   const synthHtml = synthAlertes.map(s => {
     const sujet = s.msg.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    return `
-    <div style="padding:8px 10px;background:${s.color}1a;border-radius:8px;margin-top:6px">
-      <div style="display:flex;align-items:flex-start;gap:8px">
-        <span style="font-size:14px">📊</span>
-        <span style="font-size:13px;font-weight:600;color:${s.color};flex:1">${s.msg}</span>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-        <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>
-        <button class="btn-sm btn-outline" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>
-      </div>
-    </div>`;
+    const body = `<div style="font-size:13px;font-weight:700;color:${s.color};">${s.msg}</div>`;
+    const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>
+        <button class="btn-sm btn-outline" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>`;
+    return alerteCard(s.color, '📊', body, actions);
   }).join('');
 
-  const tout = alertesHtml + synthHtml;
-  el.innerHTML = tout || '<div style="font-size:13px;color:#00c96e;font-weight:700;margin-top:6px">✅ Rien à signaler</div>';
+  // Alerte d'absence : pas de séance depuis > 7 j (ou aucune). Pas toujours émise
+  // par le backend → on la calcule ici depuis la dernière séance. Ignorée en vacances.
+  let absHtml = '';
+  const enPauseAth = (typeof estEnPause === 'function') ? estEnPause(d && d.pause) : false;
+  // Ne pas doubler une alerte d'absence déjà émise par le moteur (backend).
+  const absDejaBackend = alertes.some(al => al.type === 'absence' || al.type === 'irregularite');
+  if (!enPauseAth && !absDejaBackend) {
+    const dj = d && d.dashboard && d.dashboard.derniere_seance ? d.dashboard.derniere_seance.date : null;
+    const tsLast = dj ? parseChatDate(dj) : null;
+    const ageJ = tsLast ? Math.floor((Date.now() - tsLast) / 86400000) : null;
+    if (ageJ == null || ageJ > 7) {
+      const titre = (ageJ == null) ? 'Aucune séance enregistrée' : ageJ + ' jours sans séance';
+      const sous = dj ? ('Dernière séance le ' + escapeHtml(String(dj)) + ' — relance l\'athlète ?') : 'Relance l\'athlète pour (re)démarrer.';
+      const body = `<div style="font-size:13px;font-weight:700;color:var(--warn);">${titre}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${sous}</div>`;
+      const sujet = 'absence';
+      const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Relancer l'athlète</button>`;
+      absHtml = alerteCard('var(--warn)', '💤', body, actions);
+    }
+  }
+
+  // ---- Base de fiabilité : sur quoi s'appuient ces alertes ? (règle 6bis) ----
+  const beDate = (d && d.bien_etre && d.bien_etre[0] && d.bien_etre[0].date) || null;
+  const beTs = beDate ? parseChatDate(beDate) : null;
+  const ressRecent = beTs && (Date.now() - beTs) / 86400000 <= 7;
+  const nbSea = (d && Array.isArray(d.seances_detail)) ? d.seances_detail.length : 0;
+  let fiabTxt = 'Basé sur ' + (nbSea ? nbSea + ' séance' + (nbSea > 1 ? 's' : '') + ' récente' + (nbSea > 1 ? 's' : '') : 'aucune séance');
+  fiabTxt += beDate ? ' · dernier ressenti ' + escapeHtml(String(beDate)) : ' · aucun ressenti saisi';
+  const partiel = !ressRecent;
+  const fiabFooter = `<div style="margin-top:10px;font-size:11px;line-height:1.4;color:${partiel ? 'var(--warn)' : 'var(--text-subtle)'};">${partiel ? '⚠ Données partielles — ' : ''}${fiabTxt}${partiel ? '. Les alertes bien-être (fatigue, sommeil, douleur) ne remontent que si l\'athlète remplit son ressenti.' : '.'}</div>`;
+
+  const tout = absHtml + alertesHtml + synthHtml;
+  el.innerHTML = (tout || '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--good);font-weight:700;margin-top:6px;"><span>✅</span> Rien à signaler</div>') + fiabFooter;
 }
 
 function toggleExplicationAlerte(id) {
@@ -6458,6 +7077,108 @@ async function envoyerMessageAthleteCoach() {
     setTimeout(async () => { await chargerMessagesCoach(); cvRenderCoachMsgs(); }, 800);
   } catch(e) {
     showToast('❌ Erreur envoi', '#ff4444');
+  }
+}
+
+// ══════════ Médias athlète → coach (photo / vidéo) ══════════
+// Envoi d'une photo ou d'une courte vidéo à son coach (revue technique). Upload
+// direct vers Supabase Storage via URL signée (pas de base64 → vidéos OK).
+// Consentement stocké une fois par appareil. Photos compressées côté client.
+var _COACH_MEDIA_CONSENT = 'muscu_coach_media_consent';
+var _coachMediaBusy = false;
+
+function _coachMediaPick() {
+  if (_coachMediaBusy) { showToast('⏳ Envoi en cours…'); return; }
+  // Consentement (une fois) : l'athlète accepte que le média soit stocké et
+  // partagé avec SON coach.
+  var okConsent = false;
+  try { okConsent = localStorage.getItem(_COACH_MEDIA_CONSENT) === '1'; } catch (e) {}
+  if (!okConsent) {
+    var ok = confirm('Envoyer une photo ou une vidéo à ton coach ?\n\nElle sera stockée de façon sécurisée et visible uniquement par ton coach (revue de ta technique). Tu peux la supprimer à tout moment.\n\nJ\'accepte.');
+    if (!ok) return;
+    try { localStorage.setItem(_COACH_MEDIA_CONSENT, '1'); } catch (e) {}
+  }
+  var inp = document.getElementById('coach-media-input');
+  if (inp) { inp.value = ''; inp.click(); }
+}
+
+function _coachMediaChoisi(input) {
+  var f = input && input.files && input.files[0];
+  if (!f) return;
+  var estImage = /^image\//.test(f.type);
+  var estVideo = /^video\//.test(f.type);
+  if (!estImage && !estVideo) { showToast('⚠️ Choisis une photo ou une vidéo', '#ff4444'); return; }
+  // Garde-fou taille (le bucket limite à 75 Mo — on prévient avant l'upload).
+  if (f.size > 75 * 1024 * 1024) { showToast('⚠️ Fichier trop lourd (max 75 Mo)', '#ff4444'); return; }
+  if (estImage) {
+    _coachMediaCompressImage(f).then(function (blob) { _coachMediaEnvoyer(blob, 'image', 'jpg'); })
+      .catch(function () { _coachMediaEnvoyer(f, 'image', (f.name.split('.').pop() || 'jpg').toLowerCase()); });
+  } else {
+    var ext = ({ 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' })[f.type] || (f.name.split('.').pop() || 'mp4').toLowerCase();
+    _coachMediaEnvoyer(f, 'video', ext);
+  }
+}
+
+// Compression photo (canvas ~1280px, JPEG 0.82) — allège l'upload et le stockage.
+function _coachMediaCompressImage(file) {
+  return new Promise(function (resolve, reject) {
+    try {
+      var img = new Image();
+      img.onload = function () {
+        var max = 1280, w = img.width, h = img.height;
+        if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+        else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+        var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        cv.toBlob(function (b) { b ? resolve(b) : reject(); }, 'image/jpeg', 0.82);
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    } catch (e) { reject(e); }
+  });
+}
+
+async function _coachMediaEnvoyer(fileOrBlob, media_type, ext) {
+  if (!athlete) return;
+  _coachMediaBusy = true;
+  var localUrl = null;
+  try {
+    showToast(media_type === 'video' ? '🎥 Envoi de la vidéo…' : '📷 Envoi de la photo…');
+    // 1) URL d'upload signée
+    var r1 = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'mediaUploadUrl', athlete_id: athlete.athlete_id, ext: ext })
+    });
+    var d1 = await r1.json();
+    if (!d1 || !d1.success || !d1.signedUrl) throw new Error(d1 && d1.error || 'upload-url');
+    // 2) PUT du fichier directement sur le Storage
+    var put = await fetch(d1.signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': (fileOrBlob.type || (media_type === 'video' ? 'video/mp4' : 'image/jpeg')) },
+      body: fileOrBlob
+    });
+    if (!put.ok) throw new Error('put-' + put.status);
+    // 3) Crée le message côté serveur
+    var r3 = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'envoyerMediaCoach', athlete_id: athlete.athlete_id,
+        auteur_nom: athlete.prenom || athlete.nom || 'Athlète',
+        coach_id: athlete.coach_id || '', media_path: d1.path, media_type: media_type, consent: true
+      })
+    });
+    var d3 = await r3.json();
+    if (!d3 || !d3.success) throw new Error(d3 && d3.error || 'envoi');
+    showToast('✅ Envoyé à ton coach');
+    // Affichage optimiste immédiat (URL locale le temps de la resync serveur)
+    try { localUrl = URL.createObjectURL(fileOrBlob); } catch (e) {}
+    messagesCoach.push({ id: d3.id || ('tmp-' + Date.now()), date: formatChatDate(new Date()), message: media_type === 'video' ? '🎥 Vidéo' : '📷 Photo', auteur: 'athlete', lu: false, media_type: media_type, media_url: d3.media_url || localUrl });
+    cvRenderCoachMsgs();
+    setTimeout(async function () { try { await chargerMessagesCoach(); cvRenderCoachMsgs(); } catch (e) {} }, 900);
+  } catch (e) {
+    showToast('❌ Échec de l\'envoi', '#ff4444');
+  } finally {
+    _coachMediaBusy = false;
   }
 }
 
@@ -6606,6 +7327,7 @@ async function blSupprimer(id) {
 // (messagerie réelle existante). L'entrée sur l'onglet affiche la LISTE ; on ouvre un fil au clic.
 var _cvView = 'list';   // 'list' | 'ia' | 'coach'
 var _cvIaMsgs = [];     // messages du fil IA (session — pas encore persistés côté backend)
+var _cvIaBusy = false;  // anti double-envoi pendant que l'IA répond
 
 // Nom d'affichage du coach : déduit du dernier message côté coach (jamais le nom
 // de l'athlète lui-même), sinon générique « Ton coach ».
@@ -6631,6 +7353,39 @@ function afficherOngletConseils() {
 function ouvrirNovalyzIA() { _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils'); }
 // Entrée sur la liste des conversations (bulle d'en-tête).
 function ouvrirConversations() { _cvView = 'list'; if (typeof switchTab === 'function') switchTab('conseils'); }
+// Onglet « Coach » (adaptatif) : athlète SOLO → fil IA direct ; athlète AVEC coach
+// humain → hub (liste : messagerie coach + IA en complément, coach en avant).
+// L'athlète a-t-il un coach humain lié ? (détermine bulle flottante vs onglet Coach)
+function _athleteAUnCoach() {
+  try { var c = athlete && athlete.coach_id; return !!(c && String(c).trim() && String(c) !== 'null' && String(c) !== '0'); }
+  catch (e) { return false; }
+}
+
+function ouvrirCoach() {
+  _cvView = _athleteAUnCoach() ? 'list' : 'ia';
+  if (typeof switchTab === 'function') switchTab('conseils');
+}
+
+// Bulle « Demande à Novalyz » UNIQUE : visible seulement pour l'athlète SOLO (sans
+// coach), jamais sur la conversation / l'analyse morpho / la saisie plein écran.
+// L'athlète AVEC coach passe par l'onglet Coach (pas de bulle flottante).
+function _majFabNovalyz(tab) {
+  var fab = document.getElementById('fab-novalyz');
+  if (!fab) return;
+  // Jamais visible hors app connectée (écran de login, déconnexion) : sans athlète,
+  // _athleteAUnCoach() renvoie false → il ne faut PAS en déduire « solo ».
+  var appActive = false;
+  try { var _va = document.getElementById('view-app'); appActive = !!(_va && _va.classList.contains('active')); } catch (e) {}
+  if (!athlete || !appActive) { fab.style.display = 'none'; return; }
+  if (tab == null) {
+    var act = document.querySelector('.tab-content.active');
+    tab = act ? (act.id || '').replace(/^tab-/, '') : '';
+  }
+  var solo = !_athleteAUnCoach();
+  var ecranCache = (tab === 'conseils' || tab === 'morpho');
+  var saisieActive = document.body.classList.contains('seance-active');
+  fab.style.display = (solo && !ecranCache && !saisieActive) ? 'flex' : 'none';
+}
 
 function _cvShow(view) {
   _cvView = view;
@@ -6701,7 +7456,32 @@ function cvOpenIA() {
   }
   cvRenderIa();
   cvRenderSugg();
+  try { _cvRenderIntro(); } catch (e) {}
   _cvShow('ia');
+}
+// Intro du fil IA : preuve de grounding (état / ACWR / sommeil / poids RÉELS) +
+// CTA analyse morpho. Met l'IA « en avant » et montre qu'elle lit tes données.
+function _cvRenderIntro() {
+  var el = document.getElementById('cv-ia-intro'); if (!el) return;
+  var d = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : {};
+  var m = d.moteur || {}, dash = d.dashboard || {};
+  var chip = function (inner) { return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:700;color:var(--text);box-shadow:var(--shadow-sm);">' + inner + '</span>'; };
+  var chips = [];
+  if (m.disponibilite && m.disponibilite.niveau) {
+    var niv = m.disponibilite.niveau;
+    var col = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : 'var(--danger)');
+    chips.push(chip('<i style="width:7px;height:7px;border-radius:50%;background:' + col + ';"></i>' + escapeHtml(niv)));
+  }
+  if (dash.acwr != null && m.acwr_fiable !== false) chips.push(chip('ACWR <small style="color:var(--text-subtle);font-weight:600;">' + escapeHtml(String(dash.acwr)) + '</small>'));
+  try { var sh = (d.sante_historique || [])[0]; if (sh && sh.sommeil_min != null) { var hh = Math.floor(sh.sommeil_min / 60), mn = Math.round(sh.sommeil_min % 60); chips.push(chip('Sommeil <small style="color:var(--text-subtle);font-weight:600;">' + hh + ' h' + (mn ? ' ' + (mn < 10 ? '0' + mn : mn) : '') + '</small>')); } } catch (e) {}
+  try { var p = (d.poids || [])[0]; if (p && p.poids != null) chips.push(chip('<small style="color:var(--text-subtle);font-weight:600;">' + escapeHtml(String(p.poids)) + ' kg</small>')); } catch (e) {}
+  var chipsHtml = chips.length ? ('<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:0 2px 7px;">Ce que je vois de toi</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;">' + chips.join('') + '</div>') : '';
+  var morpho = '<button onclick="ouvrirMorpho()" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px;border-radius:15px;background:linear-gradient(135deg,rgba(26,95,255,.08),rgba(124,92,255,.10));border:1px solid rgba(124,92,255,.22);cursor:pointer;font:inherit;color:var(--text);margin-bottom:4px;">'
+    + '<span style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#1A5FFF,#7C5CFF);display:grid;place-items:center;color:#fff;flex:none;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>'
+    + '<span style="flex:1;min-width:0;"><span style="display:block;font-weight:800;font-size:13px;">Analyse morpho par photo</span><span style="display:block;font-size:11px;color:var(--text-muted);margin-top:2px;">Face + dos → tes groupes en avance / en retard</span></span>'
+    + '<span style="color:var(--accent);flex:none;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>'
+    + '</button>';
+  el.innerHTML = chipsHtml + morpho;
 }
 function cvRenderIa() {
   var el = document.getElementById('cv-ia-msgs');
@@ -6722,15 +7502,73 @@ function cvSendIA() {
   var input = document.getElementById('cv-ia-input');
   if (!input) return;
   var msg = input.value.trim();
-  if (!msg) return;
+  if (!msg || _cvIaBusy) return;
+  if (typeof athlete === 'undefined' || !athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
   input.value = '';
   _cvIaMsgs.push({ role: 'me', t: msg });
+  _cvIaMsgs.push({ role: 'ia', t: '…', typing: true });   // indicateur « écrit… »
   cvRenderIa();
-  // L'IA n'est pas encore branchée sur le moteur : réponse honnête (aucun chiffre inventé).
-  setTimeout(function () {
-    _cvIaMsgs.push({ role: 'ia', t: "Je suis en cours de branchement sur ton moteur d'analyse : bientôt je répondrai à partir de tes vraies données (séances, charges, ressenti, récup). En attendant, tes analyses détaillées sont dans l'onglet Analyses, et ton coach peut te répondre ici." });
+  _cvIaBusy = true;
+  // Historique pour l'API : user/assistant, on saute le message d'accueil initial
+  // (l'API exige que le 1er message soit « user ») et l'indicateur de frappe.
+  var hist = _cvIaMsgs.filter(function (m) { return !m.typing; }).map(function (m) { return { role: m.role === 'me' ? 'user' : 'assistant', content: m.t }; });
+  while (hist.length && hist[0].role !== 'user') hist.shift();
+  var done = function (txt) {
+    _cvIaMsgs = _cvIaMsgs.filter(function (m) { return !m.typing; });
+    _cvIaMsgs.push({ role: 'ia', t: txt });
     cvRenderIa();
-  }, 500);
+    _cvIaBusy = false;
+  };
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chatIA', athlete_id: athlete.athlete_id, messages: hist }) })
+    .then(function (r) { return r.json().catch(function () { return {}; }); })
+    .then(function (j) { done((j && j.reply) ? j.reply : "Désolé, je n'ai pas pu répondre. Réessaie dans un instant."); })
+    .catch(function () { done("Connexion impossible pour le moment. Réessaie dans un moment."); });
+}
+
+// ── Analyse morpho par photo (IA vision) — photos jamais stockées ──
+var _morphoImgs = { face: null, dos: null };
+function ouvrirMorpho() {
+  _morphoImgs = { face: null, dos: null };
+  if (typeof switchTab === 'function') switchTab('morpho');   // sous-écran plein écran
+  ['face', 'dos'].forEach(function (w) { var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; } });
+  var c = document.getElementById('morpho-consent'); if (c) c.checked = false;
+  var r = document.getElementById('morpho-result'); if (r) r.innerHTML = '';
+  var g = document.getElementById('morpho-go'); if (g) { g.disabled = false; g.textContent = 'Analyser'; }
+}
+function fermerMorpho() { _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils'); }
+function _morphoFichier(input, which) {
+  var f = input.files && input.files[0]; if (!f) return;
+  var img = new Image(), url = URL.createObjectURL(f);
+  img.onload = function () {
+    try {
+      var max = 1024, w = img.width, h = img.height;
+      if (w > h && w > max) { h = Math.round(h * max / w); w = max; } else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+      var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      var dataUrl = cv.toDataURL('image/jpeg', 0.82);
+      _morphoImgs[which] = { media_type: 'image/jpeg', data: dataUrl.split(',')[1] };
+      var p = document.getElementById('morpho-prev-' + which); if (p) { p.style.backgroundImage = 'url(' + dataUrl + ')'; p.textContent = ''; }
+    } catch (e) {}
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = function () { URL.revokeObjectURL(url); showToast('Image illisible', '#DC3545'); };
+  img.src = url;
+}
+async function _morphoAnalyser() {
+  if (typeof athlete === 'undefined' || !athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
+  var imgs = []; if (_morphoImgs.face) imgs.push(_morphoImgs.face); if (_morphoImgs.dos) imgs.push(_morphoImgs.dos);
+  if (!imgs.length) { showToast('Ajoute au moins une photo', '#DC3545'); return; }
+  var consent = document.getElementById('morpho-consent'); if (!consent || !consent.checked) { showToast('Coche le consentement', '#DC3545'); return; }
+  var g = document.getElementById('morpho-go'); if (g) { g.disabled = true; g.textContent = 'Analyse en cours…'; }
+  var res = document.getElementById('morpho-result'); if (res) res.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">L\'IA analyse tes photos…</div>';
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'analyseMorpho', athlete_id: athlete.athlete_id, consent: true, images: imgs }) });
+    var j = await r.json().catch(function () { return {}; });
+    var txt = (j && j.analyse) ? j.analyse : 'Analyse indisponible pour le moment.';
+    var html = escapeHtml(txt).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    if (res) res.innerHTML = '<div style="font-size:12.5px;line-height:1.55;color:var(--text);white-space:pre-wrap;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;">' + html + '</div>';
+  } catch (e) { if (res) res.innerHTML = '<div style="font-size:12px;color:var(--danger);text-align:center;padding:8px;">Connexion impossible. Réessaie.</div>'; }
+  if (g) { g.disabled = false; g.textContent = 'Analyser à nouveau'; }
 }
 
 // ── Fil Coach (messagerie réelle) ──
@@ -6787,6 +7625,25 @@ async function cvSupprSelection() {
   cvRenderCoachMsgs();
   try { await chargerMessagesCoach(); cvRenderCoachMsgs(); } catch (e) {}
 }
+// HTML d'un média (photo/vidéo) dans une bulle de conversation. Vide si pas de média.
+function _mediaBulleHTML(c) {
+  if (!c || !c.media_url) return '';
+  var u = String(c.media_url).replace(/"/g, '&quot;');
+  if (c.media_type === 'video') {
+    return '<video src="' + u + '" controls playsinline preload="metadata" style="max-width:220px;max-height:280px;border-radius:10px;display:block;background:#000"></video>';
+  }
+  return '<img src="' + u + '" alt="média" loading="lazy" onclick="_mediaPlein(\'' + u + '\')" style="max-width:200px;max-height:260px;border-radius:10px;display:block;cursor:zoom-in;object-fit:cover">';
+}
+// Aperçu plein écran d'une image (tap pour fermer).
+function _mediaPlein(url) {
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.92);display:grid;place-items:center;padding:16px;';
+  ov.onclick = function () { try { document.body.removeChild(ov); } catch (e) {} };
+  var img = document.createElement('img');
+  img.src = url; img.style.cssText = 'max-width:100%;max-height:100%;border-radius:12px;';
+  ov.appendChild(img); document.body.appendChild(ov);
+}
+
 // Rendu du fil coach (bulles style maquette IA/coach + case à cocher en mode sélection).
 function cvRenderCoachMsgs() {
   var el = document.getElementById('conseils-content');
@@ -6801,10 +7658,12 @@ function cvRenderCoachMsgs() {
     var mine = c.auteur === 'athlete', sel = !!_cvSel[c.id], heure = _cvHeure(c.date);
     var box = _cvSelMode ? '<span style="width:20px;height:20px;border-radius:999px;border:2px solid ' + (sel ? 'var(--accent)' : 'var(--border)') + ';background:' + (sel ? 'var(--accent)' : 'transparent') + ';display:grid;place-items:center;flex:none;">' + (sel ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '') + '</span>' : '';
     var click = _cvSelMode ? ' onclick="cvToggleMsg(\'' + c.id + '\')" style="cursor:pointer;display:flex;gap:9px;align-items:center;' + (mine ? 'justify-content:flex-end;' : '') + '"' : ' style="display:flex;gap:9px;align-items:center;' + (mine ? 'justify-content:flex-end;' : '') + '"';
+    var media = _mediaBulleHTML(c);
+    var corps = media || escapeHtml(c.message);
     if (mine) {
-      return '<div' + click + '><div class="cv-me" style="margin:0">' + escapeHtml(c.message) + '<div style="font-size:9.5px;opacity:.75;margin-top:3px">' + heure + ' · toi</div></div>' + box + '</div>';
+      return '<div' + click + '><div class="cv-me" style="margin:0">' + corps + '<div style="font-size:9.5px;opacity:.75;margin-top:3px">' + heure + ' · toi</div></div>' + box + '</div>';
     }
-    return '<div' + click + '>' + box + '<div class="cv-ai" style="max-width:100%"><span class="av" style="background:#6d3fd4">' + escapeHtml(init) + '</span><div class="bub">' + escapeHtml(c.message) + '<div style="font-size:9.5px;color:var(--text-subtle);margin-top:3px">' + heure + '</div></div></div></div>';
+    return '<div' + click + '>' + box + '<div class="cv-ai" style="max-width:100%"><span class="av" style="background:#6d3fd4">' + escapeHtml(init) + '</span><div class="bub">' + corps + '<div style="font-size:9.5px;color:var(--text-subtle);margin-top:3px">' + heure + '</div></div></div></div>';
   }).join('');
   try { el.scrollTop = el.scrollHeight; } catch (e) {}
 }
@@ -6840,8 +7699,8 @@ async function ouvrirApp() {
   document.body.classList.add('has-bottom-nav');
   document.getElementById('btn-logout').style.display = 'block';
   document.getElementById('btn-reglages-hdr').style.display = 'block';
-  { var _bb = document.getElementById('btn-bubble-hdr'); if (_bb) _bb.style.display = 'block'; }
   { var _ba = document.getElementById('btn-alertes-hdr'); if (_ba) _ba.style.display = 'block'; }
+  try { _majFabNovalyz(); } catch (e) {}
   // Restore saved theme
   const savedTheme = localStorage.getItem('muscu_theme');
   if (savedTheme === 'light') document.body.classList.add('light-mode');
@@ -7020,18 +7879,21 @@ async function supprimerDemoFoot() {
   } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
 }
 
-const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'État', conseils: 'Conversation', blessures: 'Douleurs & blessures', reglages: 'Réglages' };
+const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'Forme', nutrition: 'Nutrition', conseils: 'Coach', blessures: 'Douleurs & blessures', reglages: 'Réglages' };
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   // ⚠️ Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
   // Aujourd'hui · Entraînement · Analyses · État. (Cardio retiré de la barre.)
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['accueil','seance','historique','etat'][i] === tab);
+    b.classList.toggle('active', ['accueil','seance','historique','etat','conseils'][i] === tab);
   });
   const hdr = document.getElementById('header-nom');
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
+  // Bulle « Demande à Novalyz » : recalculée à chaque changement d'onglet
+  // (masquée sur la conversation, visible seulement pour l'athlète solo).
+  try { _majFabNovalyz(tab); } catch (e) {}
   // Dashboard prend toute la largeur sans padding
   const container = document.getElementById('main-container');
   container.classList.remove('no-pad');
@@ -7065,11 +7927,14 @@ function switchTab(tab) {
     if (dernierAppData) renderBlessures(dernierAppData);
     else chargerAppData().then(() => renderBlessures(dernierAppData));
   }
+  if (tab === 'nutrition') {
+    if (dernierAppData) renderNutrition();
+    else chargerAppData().then(() => renderNutrition());
+  }
   if (tab === 'reglages') {
     try { majUiPause(); } catch (_) {}
     try { majUiSemaineType(); } catch (_) {}
     try { majUiPush(); } catch (_) {}
-    try { majUiGoogleHealth(); } catch (_) {}
     try { majUiCockpitPref(); } catch (_) {}
     try { prefillEmailReglages(); } catch (_) {}
     try { prefillProfilReglages(); } catch (_) {}
@@ -7961,7 +8826,7 @@ function _bienEtreFaitAujourdhui() {
 
 var _BTN_SEC = 'flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:12px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;';
 var _BTN_MAIN = 'flex:2;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;';
-var _WQ_BLOCKS = ['wqb-sommeil', 'wqb-energie', 'wqb-fatigue', 'wqb-ressenti', 'wqb-douleur', 'wq-zone-block', 'wqb-note'];
+var _WQ_BLOCKS = ['wqb-sommeil', 'wqb-energie', 'wqb-fatigue', 'wqb-motivation', 'wqb-ressenti', 'wqb-douleur', 'wq-zone-block', 'wqb-note'];
 
 function _wqShow(ids) {
   _WQ_BLOCKS.forEach(function (id) {
@@ -8834,6 +9699,8 @@ function _maMoreBtn(disc, shown, total) {
   return '<button onclick="maLoadMoreHist(\'' + disc + '\')" style="width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:13px;color:var(--accent);cursor:pointer">Charger plus (' + (total - shown) + ' restantes)</button>';
 }
 function _maApply() {
+  // Côté coach : pas d'onglet Historique (doublon avec Entraînement)
+  if (typeof _maCoach !== 'undefined' && _maCoach && _maTab === 'historique') _maTab = 'resume';
   // Toggle discipline (Muscu / Cardio / Croisé)
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
     var b = document.getElementById('ma-sw-' + d);
@@ -8845,7 +9712,7 @@ function _maApply() {
   var dispo = _MA_TABS[_maDisc];
   ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
     var b = document.getElementById('ma-tab-' + t);
-    if (b) { var av = dispo.indexOf(t) >= 0; b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
+    if (b) { var av = dispo.indexOf(t) >= 0 && !((typeof _maCoach !== 'undefined' && _maCoach) && t === 'historique'); b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
   });
   // Panes visibles
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
@@ -10846,6 +11713,7 @@ function _safe(label, fn) {
 // Accueil « Aujourd'hui » (refonte maquette) : remplit les valeurs dynamiques
 // (prénom, date, régularité). Les autres blocs restent visuels pour l'instant,
 // on les branchera aux données au fil des phases.
+var _tjRingLast = null;   // dernier % animé de l'anneau Aujourd'hui (anti-rejeu)
 function renderAujourdhui(data) {
   var prenom = 'Athlète';
   try { if (athlete && athlete.nom) prenom = String(athlete.nom).trim().split(/\s+/)[0]; } catch (e) {}
@@ -10867,10 +11735,20 @@ function renderAujourdhui(data) {
     var fg = document.getElementById('tj-ring-fg');
     if (fg) {
       var pct = prevues ? Math.max(0, Math.min(100, Math.round(faites / prevues * 100))) : 0;
-      fg.style.transition = 'none';
-      fg.setAttribute('stroke-dashoffset', '100');
-      void fg.getBoundingClientRect();   // force reflow → l'anim repart de 0 à chaque rendu
-      requestAnimationFrame(function () { fg.style.transition = ''; fg.setAttribute('stroke-dashoffset', String(100 - pct)); });
+      // N'animer QU'UNE FOIS par valeur : renderAujourdhui est appelé plusieurs fois
+      // à l'ouverture (switchTab + chargement data + retour premier plan) → sans ce
+      // garde-fou, l'anneau « rejouait » son animation à chaque rendu. On ré-anime
+      // seulement si le pourcentage a changé (ex. après une séance enregistrée).
+      if (_tjRingLast === pct) {
+        fg.style.transition = 'none';
+        fg.setAttribute('stroke-dashoffset', String(100 - pct));
+      } else {
+        _tjRingLast = pct;
+        fg.style.transition = 'none';
+        fg.setAttribute('stroke-dashoffset', '100');
+        void fg.getBoundingClientRect();   // reflow → l'anim repart de 0
+        requestAnimationFrame(function () { fg.style.transition = ''; fg.setAttribute('stroke-dashoffset', String(100 - pct)); });
+      }
     }
   } catch (e) {}
 
@@ -10908,27 +11786,46 @@ function renderAujourdhui(data) {
     if (att) {
       var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
       if (centre.length) {
-        var top = centre[0];
         var ACOL = { haute: '#DC3545', moyenne: 'var(--tj-warn)', basse: 'var(--tj-subtle)' };
-        var acol = ACOL[top.severity] || 'var(--tj-warn)';
-        att.style.display = ''; att.style.borderLeftColor = acol;
-        var ad = document.getElementById('tj-att-dot'); if (ad) ad.style.background = acol;
-        var at = document.getElementById('tj-att-title'); if (at) at.textContent = top.title || '';
-        var ae = document.getElementById('tj-att-evidence'); if (ae) { ae.textContent = top.evidence || ''; ae.style.display = top.evidence ? '' : 'none'; }
-        var aa = document.getElementById('tj-att-action'); if (aa) { aa.textContent = top.action ? ('→ ' + top.action) : ''; aa.style.display = top.action ? '' : 'none'; }
-        var al = document.getElementById('tj-att-lu'); if (al) al.onclick = function () { marquerAlerteLue(top.id); };
-      } else { att.style.display = 'none'; }
+        var _esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+        var topCol = ACOL[centre[0].severity] || 'var(--tj-warn)';
+        var lab = centre.length > 1 ? ('Alertes · ' + centre.length) : 'Point d\'attention';
+        att.style.display = ''; att.style.borderLeftColor = topCol;
+        // Liste des alertes non lues (la cloche garde l'historique complet).
+        att.innerHTML = centre.map(function (a, i) {
+          var col = ACOL[a.severity] || 'var(--tj-warn)';
+          return '<div style="display:flex;align-items:flex-start;gap:11px;' + (i > 0 ? 'border-top:1px solid var(--tj-border);padding-top:11px;margin-top:11px;' : '') + '">'
+            + '<span style="width:9px;height:9px;border-radius:999px;background:' + col + ';margin-top:5px;flex:none;"></span>'
+            + '<div style="flex:1;min-width:0;">'
+            + (i === 0 ? '<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:3px;">' + lab + '</div>' : '')
+            + '<div style="font-size:14px;font-weight:800;color:var(--tj-text);">' + _esc(a.title || '') + '</div>'
+            + (a.evidence ? '<div style="font-size:12px;color:var(--tj-muted);line-height:1.4;margin-top:2px;">' + _esc(a.evidence) + '</div>' : '')
+            + (a.action ? '<div style="font-size:12.5px;color:var(--tj-text);line-height:1.4;margin-top:6px;font-weight:600;">→ ' + _esc(a.action) + '</div>' : '')
+            + '</div>'
+            + '<button title="Marquer comme lu" onclick="marquerAlerteLue(&quot;' + _esc(String(a.id)) + '&quot;)" style="flex:none;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--tj-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
+            + '</div>';
+        }).join('');
+      } else { att.style.display = 'none'; att.innerHTML = ''; }
     }
   } catch (e) {}
 
-  // --- Le mot de Novalyz = reco RÉELLE (Lecture Novalyz muscu, sinon moteur) ---
+  // --- Le mot de Novalyz = axe PROGRESSION (Lecture Novalyz muscu, 4 sem.) ---
+  // Volontairement distinct du bandeau (#1 = état du jour) et du point d'attention
+  // (#2 = alerte). On n'affiche QUE la reco progression du moteur, et seulement si
+  // la confiance n'est pas « faible » : sinon on masque le bloc plutôt que de servir
+  // un conseil générique qui ferait doublon avec l'état du jour (règle honnêteté 6bis).
   try {
-    var novaTxt = '';
+    var elNova = document.getElementById('tj-nova');
+    var elnT = document.getElementById('tj-nova-txt');
     var sM = data && data.analyse_synthese && data.analyse_synthese.muscu;
-    if (sM && sM.reco && sM.reco.texte) novaTxt = sM.reco.texte;
-    else if (m.reco && String(m.reco).trim()) novaTxt = String(m.reco);
-    var eln = document.getElementById('tj-nova-txt');
-    if (eln && novaTxt) eln.textContent = novaTxt;
+    var novaTxt = (sM && sM.reco && sM.reco.texte && sM.confiance && sM.confiance !== 'faible')
+      ? String(sM.reco.texte) : '';
+    if (novaTxt) {
+      if (elnT) elnT.textContent = novaTxt;
+      if (elNova) elNova.style.display = '';
+    } else {
+      if (elNova) elNova.style.display = 'none';
+    }
   } catch (e) {}
 
   // --- Bien-être « point du jour » : 5 cellules depuis bien_etre[0] ---
@@ -10991,53 +11888,256 @@ function renderAujourdhui(data) {
     }
   } catch (e) {}
 
-  // --- Mot de Novalyz : recommandation du moteur ---
-  try {
-    var elNv = document.getElementById('tj-nova-txt');
-    if (elNv) {
-      var reco = m.reco || null;
-      if (reco && String(reco).trim() && String(reco).indexOf('Données insuffisantes') === -1) elNv.textContent = String(reco);
-      else elNv.textContent = 'Enregistre tes séances et ton bien-être : je te donnerai des conseils personnalisés au fil des semaines.';
-    }
-  } catch (e) {}
-
-  // --- Récompenses : chiffres réels (global + régularité + streak) ---
+  // --- Récompenses V2 : niveau (points réels) + objectif hebdo + collection ---
   try {
     var g = (data && data.global) || {};
     var dashb = (data && data.dashboard) || {};
     var totalS = Number(g.total_seances || 0);
     var rec30 = Number(g.records_30j || 0);
     var pts = totalS * 10 + rec30 * 50;
-    var elProg = document.getElementById('tj-prog'); if (elProg) elProg.textContent = pts + ' pts';
-    var rpe = g.records_par_exo || {};
+    var reg2 = dashb.regularite || {};
+    var streak = (reg2 && reg2.streak != null) ? Number(reg2.streak) : ((dashb.streak && dashb.streak.semaines != null) ? Number(dashb.streak.semaines) : 0);
+    var recsObj = g.records_par_exo || {};
+    var hasRecords = Object.keys(recsObj).length > 0;
+
+    // Niveau dérivé des points réels.
+    var lv = _rewLevel(pts);
+    var elLvln = document.getElementById('tj-lvln'); if (elLvln) elLvln.textContent = lv.level;
+    var elLvlt = document.getElementById('tj-lvltitle'); if (elLvlt) elLvlt.textContent = lv.title;
+    var elLvlx = document.getElementById('tj-lvltxt'); if (elLvlx) elLvlx.textContent = 'Plus que ' + lv.toNext.toLocaleString('fr-FR') + ' pts avant le niveau ' + (lv.level + 1);
+
+    // Meilleur record.
     var best = null;
-    Object.keys(rpe).forEach(function (exo) {
-      var r = rpe[exo]; if (!r) return;
+    Object.keys(recsObj).forEach(function (exo) {
+      var r = recsObj[exo]; if (!r) return;
       var t = 0; try { var pp = String(r.date || '').split('/'); t = pp.length === 3 ? new Date(+pp[2], +pp[1] - 1, +pp[0]).getTime() : 0; } catch (e3) { t = 0; }
       if (!best || t > best.t) best = { exo: exo, charge: r.charge, t: t };
     });
     var elNa = document.getElementById('tj-newpr-a'), elNb = document.getElementById('tj-newpr-b');
-    if (best && best.charge != null) {
-      if (elNa) elNa.textContent = 'Ton meilleur record';
-      if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg';
+    if (best && best.charge != null) { if (elNa) elNa.textContent = 'Ton meilleur record'; if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg'; }
+    else { if (elNa) elNa.textContent = 'Records'; if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records'; }
+
+    // Collection de trophées (débloqués depuis les vraies données).
+    _renderTrophees(streak, rec30, totalS, hasRecords);
+    // Objectif de la semaine + progression réelle.
+    _renderObjectif(data);
+
+    // Cibles pour l'animation au reveal (scroll).
+    var rewCard = document.querySelector('#tab-accueil .tj-rew');
+    if (rewCard) { rewCard.setAttribute('data-pts', String(pts)); rewCard.setAttribute('data-lvlpct', String(lv.pct)); }
+    var elProg = document.getElementById('tj-prog');
+    var rg = document.getElementById('tj-lvlring');
+    if (_rewAnimated) {
+      if (elProg) { elProg.textContent = pts.toLocaleString('fr-FR'); elProg.setAttribute('data-v', String(pts)); }
+      if (rg) rg.style.strokeDashoffset = (100 - lv.pct);
     } else {
-      if (elNa) elNa.textContent = 'Records';
-      if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records';
+      if (elProg) { elProg.textContent = '0'; elProg.setAttribute('data-v', '0'); }
+      if (rg) rg.style.strokeDashoffset = 100;
     }
-    var reg2 = dashb.regularite || {};
-    var done2 = _seancesFaites(reg2);
-    var goal2 = Number(reg2.seances_prevues || 4) || 4;
-    var elMg = document.getElementById('tj-mgoal'); if (elMg) elMg.textContent = goal2 + ' séances';
-    var elMd = document.getElementById('tj-mdone'); if (elMd) elMd.textContent = done2;
-    var elMt = document.getElementById('tj-mtot'); if (elMt) elMt.textContent = goal2;
-    var elMb = document.getElementById('tj-mbar'); if (elMb) elMb.style.width = Math.max(0, Math.min(100, goal2 ? Math.round(done2 / goal2 * 100) : 0)) + '%';
-    var streak = (dashb.streak && dashb.streak.semaines != null) ? Number(dashb.streak.semaines) : null;
-    var elB1 = document.getElementById('tj-bdg1'); if (elB1) elB1.textContent = (streak != null ? 'Série ' + streak + ' sem.' : 'Série —');
-    var elB2 = document.getElementById('tj-bdg2'); if (elB2) elB2.textContent = rec30 + ' record' + (rec30 > 1 ? 's' : '');
-    var elB3 = document.getElementById('tj-bdg3'); if (elB3) elB3.textContent = totalS + ' séance' + (totalS > 1 ? 's' : '');
   } catch (e) {}
+  // Déclenche/rafraîchit le scroll-reveal des blocs d'Aujourd'hui.
+  try { _initDashReveal(); } catch (e) {}
 }
 
+// Compteur animé (count-up) pour un nombre affiché — respecte prefers-reduced-motion.
+var _rewAnimated = false, _dashRevealIO = null;
+// Récompenses : lance count-up (points) + anneau de niveau + pop des trophées,
+// et ouvre le coffre si l'objectif de la semaine vient d'être atteint (une fois).
+function _revealRewards(card) {
+  if (!card || _rewAnimated) return;
+  _rewAnimated = true;
+  card.classList.add('tj-anim');
+  var elProg = document.getElementById('tj-prog');
+  var pts = parseInt(card.getAttribute('data-pts') || '0', 10) || 0;
+  var pct = parseFloat(card.getAttribute('data-lvlpct') || '0') || 0;
+  if (elProg) _animCount(elProg, pts, '');
+  var rg = document.getElementById('tj-lvlring'); if (rg) rg.style.strokeDashoffset = (100 - pct);
+  var gift = card.getAttribute('data-gift');
+  if (gift) { card.removeAttribute('data-gift'); setTimeout(function () { nvzShowGift(gift); }, 700); }
+}
+// Scroll-reveal générique des blocs d'Aujourd'hui : chaque .tj-reveal apparaît
+// (fade + montée) quand il entre à l'écran ; le bloc Récompenses lance alors ses
+// animations. Respecte prefers-reduced-motion (tout visible d'emblée).
+function _initDashReveal() {
+  var host = document.querySelector('#tab-accueil .tj'); if (!host) return;
+  var els = host.querySelectorAll('.tj-reveal');
+  var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  if (reduce || !('IntersectionObserver' in window)) {
+    Array.prototype.forEach.call(els, function (el) { el.classList.add('in'); if (el.classList.contains('tj-rew')) _revealRewards(el); });
+    return;
+  }
+  if (!_dashRevealIO) {
+    _dashRevealIO = new IntersectionObserver(function (ents) {
+      ents.forEach(function (en) {
+        if (en.isIntersecting) {
+          en.target.classList.add('in');
+          if (en.target.classList.contains('tj-rew')) _revealRewards(en.target);
+          _dashRevealIO.unobserve(en.target);
+        }
+      });
+    }, { threshold: 0.18 });
+  }
+  Array.prototype.forEach.call(els, function (el) { if (!el.classList.contains('in')) _dashRevealIO.observe(el); });
+}
+function _animCount(el, to, suffix) {
+  if (!el) return;
+  suffix = suffix || '';
+  to = Math.round(Number(to) || 0);
+  var reduce = false;
+  try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  var from = parseInt(el.getAttribute('data-v') || '0', 10) || 0;
+  el.setAttribute('data-v', String(to));
+  if (reduce || from === to) { el.textContent = to.toLocaleString('fr-FR') + suffix; return; }
+  var t0 = null, dur = 1400;
+  function step(ts) {
+    if (t0 == null) t0 = ts;
+    var p = Math.min(1, (ts - t0) / dur);
+    var v = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3)));
+    el.textContent = v.toLocaleString('fr-FR') + suffix;
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ═══ Récompenses V2 : niveau, trophées, objectif hebdo, coffre ═══
+// Niveau dérivé des points RÉELS (300 pts / niveau) + titre de palier.
+function _rewLevel(pts) {
+  var STEP = 300, level = Math.floor(pts / STEP) + 1, inLvl = pts - (level - 1) * STEP;
+  var title = level >= 11 ? 'Athlète' : level >= 7 ? 'Confirmé' : level >= 4 ? 'Régulier' : level >= 2 ? 'Assidu' : 'Débutant';
+  return { level: level, title: title, pct: Math.round(inLvl / STEP * 100), toNext: STEP - inLvl };
+}
+// Semaine ISO (année-Www) — pour l'objectif hebdo (change chaque lundi).
+function _isoWeek(d) {
+  var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var day = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - day + 3);
+  var firstThu = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  var wk = 1 + Math.round(((t - firstThu) / 86400000 - 3 + ((firstThu.getUTCDay() + 6) % 7)) / 7);
+  return t.getUTCFullYear() + '-W' + (wk < 10 ? '0' + wk : wk);
+}
+var _TRO_SVG = {
+  flame: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/><path d="M12 22c3 0 5-2 5-5"/>',
+  medal: '<circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/>',
+  bars: '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  star: '<path d="M12 2 15 8l6 .9-4.5 4.3L17.7 20 12 16.8 6.3 20l1.2-6.8L3 8.9 9 8z"/>'
+};
+function _tro(cls, svg, n, l, locked) {
+  return '<div class="tro ' + (locked ? 'lock' : cls) + '">' + (locked ? '<span class="lk">🔒</span>' : '')
+    + '<svg viewBox="0 0 24 24">' + svg + '</svg><span class="tn">' + n + '</span><span class="tl">' + l + '</span></div>';
+}
+function _renderTrophees(streak, rec30, totalS, hasRecords) {
+  var grid = document.getElementById('tj-tro-grid'); if (!grid) return;
+  var items = [], unlocked = 0, total = 0;
+  var add = function (ok, html) { total++; if (ok) unlocked++; items.push(html); };
+  add(streak >= 1, _tro('c1', _TRO_SVG.flame, streak + ' sem.', 'Série', streak < 1));
+  add(hasRecords, _tro('c2', _TRO_SVG.medal, rec30, 'Records 30j', !hasRecords));
+  add(totalS >= 1, _tro('c3', _TRO_SVG.bars, totalS, 'Séances', totalS < 1));
+  add(streak >= 1 || totalS >= 3, _tro('c4', _TRO_SVG.check, '1re', 'Semaine', !(streak >= 1 || totalS >= 3)));
+  add(streak >= 10, _tro('c5', _TRO_SVG.flame, '10 sem.', 'Série pro', streak < 10));
+  add(totalS >= 100, _tro('c1', _TRO_SVG.star, '100', 'Séances', totalS < 100));
+  grid.innerHTML = items.join('');
+  var c = document.getElementById('tj-tro-count'); if (c) c.textContent = '· ' + unlocked + ' / ' + total + ' débloqués';
+}
+// Objectif de la semaine — choisi par l'athlète, stocké en local (par appareil).
+var _OBJ_OPTS = [
+  { id: 's4', em: '🏋️', label: '4 séances', type: 'seances', target: 4 },
+  { id: 's5', em: '🔥', label: '5 séances', type: 'seances', target: 5 },
+  { id: 'pas', em: '👟', label: '5 j à 10 000 pas', type: 'pas10k', target: 5 },
+  { id: 'c3', em: '🏃', label: '3 cardio', type: 'cardio', target: 3 }
+];
+function _objOptions() {
+  var native = (typeof _estAppNative === 'function' && _estAppNative());
+  return _OBJ_OPTS.filter(function (o) { return o.type !== 'pas10k' || native; });
+}
+function _objKey() { return 'nvz_obj_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
+function _objWonKey() { return 'nvz_objwon_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
+function _objChosen() {
+  var id = null; try { id = localStorage.getItem(_objKey()); } catch (e) {}
+  var opts = _objOptions();
+  for (var i = 0; i < opts.length; i++) if (opts[i].id === id) return opts[i];
+  return opts[0];
+}
+function nvzToggleObjPicker() { var p = document.getElementById('tj-obj-pick'); if (p) p.classList.toggle('on'); }
+function nvzPickObj(id) { try { localStorage.setItem(_objKey(), id); } catch (e) {} try { nvzToggleObjPicker(); } catch (e) {} try { _renderObjectif(dernierAppData); } catch (e) {} }
+// Lundi (00:00) de la semaine courante, en ISO YYYY-MM-DD.
+function _lundiISO() { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _renderObjectif(data) {
+  var obj = _objChosen();
+  var emEl = document.getElementById('tj-obj-em'); if (emEl) emEl.textContent = obj.em;
+  var txtEl = document.getElementById('tj-obj-txt'); if (txtEl) txtEl.textContent = obj.label;
+  // Chips du sélecteur.
+  var pick = document.getElementById('tj-obj-pick');
+  if (pick) pick.innerHTML = _objOptions().map(function (o) {
+    return '<span class="chip' + (o.id === obj.id ? ' sel' : '') + '" onclick="nvzPickObj(\'' + o.id + '\')">' + o.em + ' ' + o.label + '</span>';
+  }).join('');
+  // Applique une progression (done) → sous-titre + barre + coffre si atteint.
+  var apply = function (done) {
+    done = Math.max(0, Math.round(done || 0));
+    var pct = Math.max(0, Math.min(100, Math.round(done / obj.target * 100)));
+    var sub = document.getElementById('tj-obj-sub');
+    var reached = done >= obj.target;
+    if (sub) sub.innerHTML = reached ? '✅ Objectif atteint · bravo !' : ('<b>' + done + '</b>/' + obj.target + ' · ' + (obj.target - done) + ' restant' + ((obj.target - done) > 1 ? 's' : ''));
+    var bar = document.getElementById('tj-obj-bar'); if (bar) bar.style.width = pct + '%';
+    // Coffre : une fois par semaine, quand atteint. Armé pour le prochain reveal.
+    if (reached) {
+      var won = false; try { won = localStorage.getItem(_objWonKey()) === '1'; } catch (e) {}
+      if (!won) {
+        try { localStorage.setItem(_objWonKey(), '1'); } catch (e) {}
+        var card = document.querySelector('#tab-accueil .tj-rew');
+        if (card) {
+          if (_rewAnimated) nvzShowGift(obj.label);           // déjà visible → tout de suite
+          else card.setAttribute('data-gift', obj.label);      // sinon au reveal
+        }
+      }
+    }
+  };
+  var lundi = _lundiISO();
+  if (obj.type === 'seances') {
+    var reg = (data && data.dashboard && data.dashboard.regularite) || {};
+    apply(Number(reg.seances_semaine != null ? reg.seances_semaine : (reg.seances_j7 || 0)));
+  } else if (obj.type === 'cardio') {
+    var hist = (data && data.cardio && data.cardio.history) || [];
+    var n = hist.filter(function (s) { return String(s.date || '') >= lundi; }).length;
+    apply(n);
+  } else if (obj.type === 'pas10k') {
+    var H = _hcPlugin();
+    if (!H) { apply(0); return; }
+    var now = new Date(), e1 = new Date(now.getTime() + 24 * 3600 * 1000);
+    var start = new Date(lundi + 'T00:00:00');
+    H.queryAggregated({ startDate: start.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' })
+      .then(function (a) { var days = (a && a.aggregatedData) || []; apply(days.filter(function (x) { return (x.value || 0) >= 10000; }).length); })
+      .catch(function () { apply(0); });
+  } else { apply(0); }
+}
+// Coffre + confettis (objectif atteint).
+function nvzShowGift(label) {
+  var ov = document.getElementById('tj-gift-ov'), g = document.getElementById('tj-gift'), box = document.getElementById('tj-gift-box'), s = document.getElementById('tj-gift-s');
+  if (!ov || !g) return;
+  if (s) s.textContent = 'Objectif « ' + label + ' » réussi 💪';
+  ov.classList.add('on'); g.classList.remove('shake'); if (box) box.textContent = '🎁';
+  void g.offsetWidth; g.classList.add('shake');
+  var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  setTimeout(function () { if (box) box.textContent = '🎉'; if (!reduce) _nvzConfetti(46); }, reduce ? 0 : 900);
+}
+function nvzCloseGift(ev, force) {
+  var ov = document.getElementById('tj-gift-ov'); if (!ov) return;
+  if (force || (ev && ev.target === ov)) ov.classList.remove('on');
+}
+function _nvzConfetti(n) {
+  var COLORS = ['#F5C518', '#EC4899', '#1A5FFF', '#00A854', '#9D5FD3', '#F59E0B', '#22D3EE'];
+  for (var i = 0; i < n; i++) {
+    (function (idx) {
+      var c = document.createElement('div'); c.className = 'nvz-confetti';
+      c.style.left = (Math.random() * 100) + 'vw'; c.style.background = COLORS[idx % COLORS.length];
+      document.body.appendChild(c);
+      var dur = 1400 + Math.random() * 1200, x = (Math.random() * 2 - 1) * 90;
+      try {
+        c.animate([{ transform: 'translateY(0) rotate(0)', opacity: 1 }, { transform: 'translate(' + x + 'px,105vh) rotate(720deg)', opacity: .9 }], { duration: dur, easing: 'cubic-bezier(.2,.6,.4,1)' });
+      } catch (e) {}
+      setTimeout(function () { c.remove(); }, dur);
+    })(i);
+  }
+}
 /* Écran ÉTAT (onglet #tab-etat) — « Mon état ». Peuple les blocs depuis les
  * DONNÉES RÉELLES du backend (moteur.recScore / disponibilite / reco / acwr_*,
  * data.dashboard.acwr, data.bien_etre[], data.poids[]). Aucun chiffre inventé :
@@ -11048,6 +12148,9 @@ function renderEtat(data) {
   data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : null) || {};
   var m = data.moteur || {};
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  try { renderEtatMontre(); } catch (e) {}
+  try { _etRenderSuivis(data); } catch (e) {}
+  try { renderCarteContexte(data.contexte, athlete && athlete.athlete_id, 'et-contexte', 'athlete', data.pause); } catch (e) {}
 
   // ---- HERO : score de récupération (moteur.recScore) + niveau de dispo ----
   try {
@@ -11269,6 +12372,76 @@ function renderEtat(data) {
       }
     }
   } catch (e) {}
+}
+
+// « Mes suivis » (écran Forme) : accès remontés aux 3 sous-écrans avec une valeur
+// vivante + une pastille de statut. Valeurs RÉELLES uniquement (règle 6bis) :
+// nutrition = saisie du jour vs objectif ; blessures = compte des non-guéries.
+function _etRenderSuivis(data) {
+  var box = document.getElementById('et-suivis'); if (!box) return;
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var ICO = {
+    nut: '<path d="M12 8c1-3 5-4 6-1 1 4-3 9-6 12-3-3-7-8-6-12 1-3 5-2 6 1z"/>',
+    obj: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/>',
+    bl: '<path d="M4 13h4l2-5 3 8 2-4h5"/>'
+  };
+  var row = function (tab, icoKey, tint, title, sub, pill) {
+    var pillHtml = pill ? '<span style="font-size:9.5px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;background:' + pill.bg + ';color:' + pill.c + ';">' + esc(pill.txt) + '</span>' : '';
+    return '<button type="button" onclick="switchTab(\'' + tab + '\')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;width:100%;text-align:left;background:transparent;border:none;border-top:1px solid var(--border);cursor:pointer;font:inherit;color:var(--text);">'
+      + '<span style="width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;background:' + tint.bg + ';color:' + tint.c + ';"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICO[icoKey] + '</svg></span>'
+      + '<span style="flex:1;min-width:0;"><span style="display:block;font-weight:800;font-size:13.5px;">' + esc(title) + '</span><span style="display:block;font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(sub) + '</span></span>'
+      + pillHtml
+      + '<span style="color:var(--text-subtle);flex:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>'
+      + '</button>';
+  };
+  // --- Nutrition : saisie du jour vs objectif ---
+  var nSub, nPill;
+  try {
+    var nObj = (typeof _nutObjectifs === 'function') ? _nutObjectifs() : { prot: null, kcal: null };
+    var nTod = (typeof _nutTodayEntry === 'function') ? _nutTodayEntry() : null;
+    var tK = nTod && nTod.kcal != null ? Number(nTod.kcal) : null;
+    var tP = nTod && nTod.prot != null ? Number(nTod.prot) : null;
+    if (tK == null && tP == null) {
+      nSub = 'Rien saisi aujourd\'hui';
+      nPill = { txt: 'à saisir', bg: 'var(--surface2)', c: 'var(--text-muted)' };
+    } else {
+      var parts = [];
+      if (tP != null) parts.push(tP + ' g prot.');
+      if (tK != null) parts.push(tK + ' kcal');
+      nSub = parts.join(' · ');
+      var okP = (nObj.prot != null && tP != null && tP >= nObj.prot);
+      nPill = okP ? { txt: 'objectif ✓', bg: 'var(--good-a)', c: 'var(--good)' } : { txt: 'en cours', bg: 'var(--accent-a10)', c: 'var(--accent)' };
+    }
+  } catch (e) { nSub = 'Calories & protéines du jour'; nPill = null; }
+  // --- Blessures : compte des non-guéries ---
+  var blSub, blPill;
+  try {
+    var inj = (data && Array.isArray(data.blessures)) ? data.blessures : [];
+    var act = inj.filter(function (b) { return b && b.statut && b.statut !== 'gueri'; });
+    if (act.length) {
+      var first = act[0];
+      var loc = first && first.localisation ? (' · ' + first.localisation) : '';
+      blSub = act.length + (act.length > 1 ? ' à suivre' : ' à suivre') + loc;
+      blPill = { txt: 'à suivre', bg: 'var(--bad-a)', c: 'var(--danger)' };
+    } else {
+      blSub = 'Aucune blessure active';
+      blPill = { txt: 'OK', bg: 'var(--good-a)', c: 'var(--good)' };
+    }
+  } catch (e) { blSub = 'Tes douleurs signalées et blessures suivies'; blPill = null; }
+
+  box.innerHTML =
+    row('nutrition', 'nut', { bg: 'rgba(16,185,129,.13)', c: '#10B981' }, 'Nutrition', nSub, nPill).replace('border-top:1px solid var(--border);', '')
+    + row('objectif', 'obj', { bg: 'var(--accent-a10)', c: 'var(--accent)' }, 'Mes objectifs', 'Suivre et fixer tes objectifs', null)
+    + row('blessures', 'bl', { bg: 'var(--bad-a)', c: 'var(--danger)' }, 'Douleurs & blessures', blSub, blPill);
+}
+
+// Repli du bloc « Ressenti & bien-être » (écran Forme).
+function _etFoldRB() {
+  var body = document.getElementById('et-rb-body'), caret = document.getElementById('et-rb-caret'), btn = document.getElementById('et-rb-toggle');
+  if (!body) return;
+  var open = (body.style.display === 'flex');   // fermé par défaut (display:none)
+  if (open) { body.style.display = 'none'; if (caret) caret.style.transform = ''; if (btn) btn.setAttribute('aria-expanded', 'false'); }
+  else { body.style.display = 'flex'; if (caret) caret.style.transform = 'rotate(180deg)'; if (btn) btn.setAttribute('aria-expanded', 'true'); }
 }
 
 /* Écran CARDIO (onglet #tab-cardio) — « Cardio ». Tout est calculé depuis
@@ -11509,6 +12682,7 @@ function _seanceChronoStop() { if (_seanceChronoIv) { clearInterval(_seanceChron
 function ouvrirSeancePage() {
   try { if (typeof switchSubTab === 'function') switchSubTab('saisie'); } catch (e) {}
   document.body.classList.add('seance-active');
+  try { _majFabNovalyz(); } catch (e) {}
   var cont = document.getElementById('subtab-saisie'); if (cont) cont.scrollTop = 0;
   window.scrollTo(0, 0);
   _majSeancePageTitre();
@@ -11539,6 +12713,7 @@ function fermerSeancePage() {
     } catch (e) {}
   }
   document.body.classList.remove('seance-active');
+  try { _majFabNovalyz(); } catch (e) {}
   _seanceChronoStop();
   _seanceChronoT0 = 0;
   var _c = document.getElementById('seance-page-chrono'); if (_c) _c.textContent = '';
@@ -11933,6 +13108,31 @@ function _enRenderSelCardio() {
       + '<span class="en-rad"></span></div>';
   }).join('');
 }
+// Questionnaire quotidien : à la 1re ouverture du jour, propose « Ton état du
+// jour » (réutilise ouvrirEtatDuJour) s'il n'est pas déjà rempli. Non bloquant,
+// 1×/jour (flag localStorage), jamais par-dessus un autre panneau. L'anti-doublon
+// avant séance est déjà géré par _enDemarrer (_bienEtreFaitAujourdhui).
+var _etatAutoChecked = false;
+function _maybeQuotidienEtat() {
+  try {
+    if (_etatAutoChecked) return;
+    if (typeof athlete === 'undefined' || !athlete) return;
+    if (_bienEtreFaitAujourdhui()) { _etatAutoChecked = true; return; }
+    var today = _todayLocalStr();
+    var key = 'nvz_etat_auto_' + athlete.athlete_id;
+    var last = null; try { last = localStorage.getItem(key); } catch (e) {}
+    if (last === today) { _etatAutoChecked = true; return; }   // déjà proposé aujourd'hui
+    // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, modales…).
+    var busy = ['onb-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
+      var e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none';
+    });
+    if (busy) return;   // on réessaiera au prochain chargement
+    _etatAutoChecked = true;
+    try { localStorage.setItem(key, today); } catch (e) {}
+    ouvrirEtatDuJour({});
+  } catch (e) {}
+}
+
 // « Démarrer la séance » : d'abord l'état du jour (readiness, AVANT), 1×/jour et
 // skippable ; puis on démarre réellement la séance (muscu ou cardio).
 function _enDemarrer() {
@@ -12033,6 +13233,10 @@ function _appliquerAppData(data) {
   dernierAppData = data;
   // Onboarding 1re connexion (une fois par session, après le 1er chargement).
   _safe('onboarding', function () { if (!_onbChecked) { _onbChecked = true; setTimeout(_maybeOnboarding, 500); } });
+  // Import nutrition auto depuis Health Connect (natif) — en silence, après le rendu.
+  _safe('nut-autoimport', function () { setTimeout(function () { try { _nutAutoImportHC(); } catch (e) {} }, 1200); });
+  // Questionnaire quotidien « état du jour » — proposé 1×/jour à la 1re ouverture.
+  _safe('etat-auto', function () { setTimeout(function () { try { _maybeQuotidienEtat(); } catch (e) {} }, 1700); });
     _safe('cockpit', () => renderCockpit(data, 'dash'));   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     _safe('seances-programme', () => peuplerSeancesProgramme());
     seancesDates = data.historique.dates_seances || {};
@@ -12429,11 +13633,12 @@ function _appliquerAppData(data) {
     // ── Cardio — résumé multi-fenêtre ─────────────────────────────────────────
     _safe('dash-cardio', () => renderDashCardio(data.cardio));
 
+    // ── Activité du jour (pas montre) — bloc discret, seulement si connecté ────
+    _safe('dash-steps', () => { try { renderDashSteps(); } catch (e) {} });
+
     // ── Cardio — historique détaillé (onglet Progression) ────────────────────
     _pasQuotidiens = (data && data.pas_quotidiens) || [];
     _safe('cardio-historique', () => renderCardioHistorique(data.cardio && data.cardio.history));
-    // Synchro auto de la montre à la connexion (message visible, ≥ 1×/24h), si connectée.
-    _safe('gh-autosync', () => autoSyncGoogleHealth());
 
     // Récupération d'une séance muscu laissée en cours (anti-perte de saisie).
     // Une seule fois par chargement de page (garde interne _brouillonRestaure).
@@ -13379,7 +14584,10 @@ function carteContexteHTML(contexte, athlete_id, source) {
     : '';
   var aid = String(athlete_id || '');
   var src = source || 'muscu';
-  var editable = (src === 'muscu') || (src === 'foot' && typeof cdMode !== 'undefined' && cdMode === 'coach');
+  // Éditable par le coach (vue muscu / foot en mode coach) OU par l'athlète solo
+  // sur son propre écran (source 'athlete') — sinon il ne pourrait jamais radoucir
+  // ses analyses après une coupure.
+  var editable = (src === 'muscu') || (src === 'athlete') || (src === 'foot' && typeof cdMode !== 'undefined' && cdMode === 'coach');
   var boutons = editable
     ? '<div style="display:flex;gap:8px;margin-top:12px;">'
       + '<button onclick="ouvrirModaleContexte(\'' + aid + '\',\'' + src + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' + (actif ? 'Changer l\'état' : 'Poser un état') + '</button>'
@@ -13426,7 +14634,43 @@ function renderCarteContexte(contexte, athlete_id, containerId, source, pause) {
   var el = document.getElementById(containerId);
   if (!el) return;
   if (pause && estEnPause(pause)) { el.innerHTML = carteVacancesHTML(pause); return; }
-  el.innerHTML = carteContexteHTML(contexte, athlete_id, source);
+  var html = carteContexteHTML(contexte, athlete_id, source);
+  // Auto-détection (athlète solo) : coupure d'entraînement + aucun contexte actif
+  // → on SUGGÈRE de poser un retour (confirmation requise, jamais posé d'office).
+  if (source === 'athlete' && !_ctxActif(contexte) && !_ctxSuggestDismissed(athlete_id)) {
+    var gap = _ctxGapJours();
+    if (gap != null && gap >= 14) html = _ctxSuggestionHTML(gap, athlete_id) + html;
+  }
+  el.innerHTML = html;
+}
+// Nombre de jours depuis la dernière séance (null si inconnu → pas de suggestion).
+function _ctxGapJours() {
+  try {
+    var dash = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData.dashboard : null;
+    var ds = dash && dash.derniere_seance && dash.derniere_seance.date;
+    if (!ds) return null;
+    var ts = parseChatDate(ds); if (!ts) return null;
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    var d = new Date(ts); d.setHours(0, 0, 0, 0);
+    return Math.round((now - d) / 86400000);
+  } catch (e) { return null; }
+}
+function _ctxSuggestKey(aid) { return 'nvz_ctx_suggest_off_' + (aid || '') + '_' + _ymdLocal(new Date()); }
+function _ctxSuggestDismissed(aid) { try { return localStorage.getItem(_ctxSuggestKey(aid)) === '1'; } catch (e) { return false; } }
+function _ctxSuggestDismiss(aid) { try { localStorage.setItem(_ctxSuggestKey(aid), '1'); } catch (e) {} try { if (typeof dernierAppData !== 'undefined' && dernierAppData) renderCarteContexte(dernierAppData.contexte, aid, 'et-contexte', 'athlete', dernierAppData.pause); } catch (e) {} }
+function _ctxSuggestionHTML(gap, aid) {
+  var a = String(aid || '');
+  return '<div class="dash-card" style="padding:13px 14px;margin-bottom:12px;border-left:3px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.09));">'
+    + '<div style="font-size:13.5px;font-weight:800;">🌴 Tu reprends après une coupure ?</div>'
+    + '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;line-height:1.45;">Aucune séance enregistrée depuis <b>' + gap + ' jours</b>. Déclare un retour pour que Novalyz adapte ses analyses (pas de « régression » injustifiée le temps de remonter).</div>'
+    + '<div style="display:flex;gap:8px;margin-top:11px;">'
+    + '<button onclick="_ctxSuggererReprise(\'' + a + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">Poser un retour</button>'
+    + '<button onclick="_ctxSuggestDismiss(\'' + a + '\')" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Plus tard</button>'
+    + '</div></div>';
+}
+function _ctxSuggererReprise(aid) {
+  ouvrirModaleContexte(aid, 'athlete');
+  try { _ctxChoisir('retour_vacances'); } catch (e) {}
 }
 
 // --- Modale de saisie (coach) --------------------------------------------
@@ -13472,7 +14716,8 @@ async function poserContexte() {
     action: 'saveContexte', athlete_id: _ctxCible.athlete_id, etat: _ctxCible.choix,
     date_debut: document.getElementById('ctx-modale-debut').value,
     date_fin: document.getElementById('ctx-modale-fin').value,
-    note: document.getElementById('ctx-modale-note').value, source: 'coach'
+    note: document.getElementById('ctx-modale-note').value,
+    source: (_ctxCible.source === 'athlete' ? 'athlete' : 'coach')
   }, _ctxCible.athlete_id, _ctxCible.source);
 }
 async function terminerContexte(athlete_id, source) {
@@ -13891,6 +15136,12 @@ function _installNativeResumeListener() {
   try {
     App.addListener('resume', function () {
       try { if (typeof _timerTick === 'function' && _timerTick) _timerTick(); } catch (e) {}
+      // Throttle (8 s, partagé avec visibilitychange) : au cas où l'app enchaîne des
+      // retours rapides au 1er plan (ex. écran de permission système), on ne relance
+      // pas getAppData en rafale.
+      var _now = Date.now();
+      if (_now - _lastResumeRefresh < 8000) return;
+      _lastResumeRefresh = _now;
       try {
         if (typeof athlete !== 'undefined' && athlete) {
           if (typeof chargerMessagesCoach === 'function') chargerMessagesCoach();
@@ -14073,165 +15324,6 @@ function _checkNotifCache() {
         });
       });
     }).catch(function () {});
-  } catch (e) {}
-}
-
-// ===== Montre connectée — Google Health (Fitbit via compte Google) =========
-// Étape A : connexion OAuth. La clé publique (Client ID) n'est pas secrète.
-const GOOGLE_CLIENT_ID = '1045768686321-ln365kpvvdiqel2ssscfj096cfjcge6b.apps.googleusercontent.com';
-// Scopes de LECTURE : activités/fitness + mesures de santé (fréquence cardiaque).
-const GOOGLE_HEALTH_SCOPE = 'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly';
-
-// URI de redirection = dossier courant de l'app (retire un éventuel index.html).
-// Doit correspondre EXACTEMENT à l'URI enregistré dans la console Google.
-function _ghRedirectUri() { return location.origin + location.pathname.replace(/[^/]*$/, ''); }
-
-function connecterGoogleHealth() {
-  if (!athlete) { showToast('Connecte-toi d\'abord'); return; }
-  var state = Math.random().toString(36).slice(2) + '.' + Date.now();
-  localStorage.setItem('gh_oauth_state', state);
-  localStorage.setItem('gh_oauth_athlete', athlete.athlete_id || '');
-  var url = 'https://accounts.google.com/o/oauth2/v2/auth'
-    + '?client_id=' + encodeURIComponent(GOOGLE_CLIENT_ID)
-    + '&redirect_uri=' + encodeURIComponent(_ghRedirectUri())
-    + '&response_type=code'
-    + '&scope=' + encodeURIComponent(GOOGLE_HEALTH_SCOPE)
-    + '&access_type=offline'      // pour obtenir un refresh_token
-    + '&prompt=consent'
-    + '&include_granted_scopes=true'
-    + '&state=' + encodeURIComponent(state);
-  window.location.href = url;
-}
-
-// Traite le retour de Google (?code=…&state=…) au démarrage de l'app.
-async function _traiterRetourGoogleHealth() {
-  var params;
-  try { params = new URLSearchParams(location.search); } catch (e) { return; }
-  var code = params.get('code');
-  var state = params.get('state');
-  var err = params.get('error');
-  if (!code && !err) return;              // pas un retour Google
-  var savedState = localStorage.getItem('gh_oauth_state');
-  var aid = localStorage.getItem('gh_oauth_athlete') || (athlete && athlete.athlete_id) || '';
-  if (history.replaceState) history.replaceState(null, '', location.pathname);  // nettoie l'URL
-  if (err) { showToast('❌ Autorisation refusée', '#ff4444'); return; }
-  if (!savedState || state !== savedState) { showToast('❌ Autorisation invalide (sécurité)', '#ff4444'); return; }
-  localStorage.removeItem('gh_oauth_state');
-  try {
-    var resp = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthCallback', code: code, redirect_uri: _ghRedirectUri(), athlete_id: aid }),
-    });
-    var j = await resp.json();
-    if (j && j.success) showToast('⌚ Montre connectée !');
-    else showToast('❌ Connexion échouée' + (j && j.error ? ' : ' + j.error : ''), '#ff4444');
-  } catch (e) { showToast('❌ Erreur réseau', '#ff4444'); }
-  try { majUiGoogleHealth(); } catch (e) {}
-}
-
-async function majUiGoogleHealth() {
-  var card = document.getElementById('gh-card');
-  if (!card || !athlete) return;
-  var stat = document.getElementById('gh-statut');
-  var bOn = document.getElementById('gh-btn-on');
-  var bOff = document.getElementById('gh-btn-off');
-  try {
-    var resp = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthStatus', athlete_id: athlete.athlete_id }),
-    });
-    var j = await resp.json();
-    var bSync = document.getElementById('gh-btn-sync');
-    if (j && j.connected) {
-      if (bOn) bOn.style.display = 'none';
-      if (bOff) bOff.style.display = 'inline-block';
-      if (bSync) bSync.style.display = 'block';
-      if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '⌚ Montre connectée'; }
-    } else {
-      if (bOn) bOn.style.display = 'inline-block';
-      if (bOff) bOff.style.display = 'none';
-      if (bSync) bSync.style.display = 'none';
-      if (stat) stat.style.display = 'none';
-    }
-  } catch (e) {}
-}
-
-// Importe les activités de la montre dans le bloc cardio, puis recharge.
-async function synchroniserGoogleHealth() {
-  if (!athlete) return;
-  var info = document.getElementById('gh-sync-info');
-  var btn = document.getElementById('gh-btn-sync');
-  if (info) { info.style.display = 'block'; info.style.color = 'var(--text-muted)'; info.textContent = '⏳ Synchronisation en cours…'; }
-  if (btn) btn.disabled = true;
-  try {
-    var resp = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthSync', athlete_id: athlete.athlete_id }),
-    });
-    var j = await resp.json();
-    if (j && j.success) {
-      var n = j.imported || 0;
-      var ns = j.stepsImported || 0;
-      var msg = '✅ ' + n + ' activité' + (n > 1 ? 's' : '') + ' + ' + ns + ' jour' + (ns > 1 ? 's' : '') + ' de pas importé' + (ns > 1 ? 's' : '') + '.';
-      if (j.stepsError) msg += ' ⚠️ pas : ' + j.stepsError;
-      if (info) { info.style.color = j.stepsError ? 'var(--warn)' : 'var(--good)'; info.textContent = msg; }
-      showToast('⌚ ' + n + ' activité' + (n > 1 ? 's' : '') + ' · ' + ns + ' j de pas');
-      try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {}
-    } else {
-      if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Échec' + (j && j.error ? ' : ' + j.error : '') + '.'; }
-    }
-  } catch (e) {
-    if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau pendant la synchronisation.'; }
-  }
-  if (btn) btn.disabled = false;
-}
-
-async function deconnecterGoogleHealth() {
-  if (!athlete) return;
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthDisconnect', athlete_id: athlete.athlete_id }),
-    });
-    showToast('Montre déconnectée');
-  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
-  majUiGoogleHealth();
-}
-
-// Synchro automatique à la connexion (au plus 1×/6h par athlète, donc ≥ 1×/24h),
-// AVEC un retour visible (toast). Si la montre n'est pas connectée : rien.
-async function autoSyncGoogleHealth() {
-  if (!athlete) return;
-  var key = 'gh_last_autosync_' + athlete.athlete_id;
-  var last = +(localStorage.getItem(key) || 0);
-  if (Date.now() - last < 6 * 3600 * 1000) return;   // déjà synchronisé récemment
-  try {
-    // 1) La montre est-elle connectée ? (sinon on ne consomme pas le délai)
-    var sr = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthStatus', athlete_id: athlete.athlete_id }),
-    });
-    var sj = await sr.json();
-    if (!sj || !sj.connected) return;
-    // 2) Montre connectée → on synchronise avec un message visible.
-    localStorage.setItem(key, String(Date.now()));
-    if (typeof showToast === 'function') showToast('⌚ Synchronisation de la montre…', 'var(--text-muted)');
-    var r = await fetch(SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'googleHealthSync', athlete_id: athlete.athlete_id }),
-    });
-    var j = await r.json();
-    if (j && j.success) {
-      var n = j.imported || 0, ns = j.stepsImported || 0;
-      if (n > 0 || ns > 0) {
-        if (typeof showToast === 'function') showToast('⌚ Montre synchronisée · ' + n + ' act. · ' + ns + ' j de pas', 'var(--good)');
-        if (typeof chargerAppData === 'function') chargerAppData();
-      } else {
-        if (typeof showToast === 'function') showToast('⌚ Montre déjà à jour', 'var(--good)');
-      }
-    } else if (typeof showToast === 'function') {
-      showToast('⌚ Synchro montre indisponible', 'var(--warn)');
-    }
   } catch (e) {}
 }
 
@@ -15376,6 +16468,1379 @@ function nouvelleSeanceCardio() {
 
 // Libellés d'activité — dérivés du catalogue cardio unique.
 var _CARDIO_TYPE_LABELS = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a.label; return m; }, {});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * IMPORT MONTRE / CAPTEURS via Health Connect (Android) — Phase 1a : lecture +
+ * affichage des séances (montre Fitbit, GPS vélo, ceinture cardio…). La donnée
+ * est calculée par l'appareil → fiable. Plugin natif « HealthPlugin »
+ * (capacitor-health). Web/PWA : indisponible (nécessite l'appli Android).
+ * ═══════════════════════════════════════════════════════════════════════════ */
+// ═══════════ Import d'activité par FICHIER (.GPX / .TCX) ═══════════
+// « Le plus pro » sans OAuth : l'athlète exporte une sortie (Strava / Garmin /
+// compteur) et l'importe. Parsing 100% CLIENT → séance cardio via l'action
+// saveCardio existante (aucun nouveau backend). .FIT (binaire) = étape suivante.
+var _impData = null;   // dernière activité parsée, en attente de confirmation
+
+function _impPick() { var i = document.getElementById('imp-file'); if (i) { i.value = ''; i.click(); } }
+function _impStatus(t, c) { var e = document.getElementById('imp-status'); if (e) { e.textContent = t || ''; e.style.color = c || 'var(--text-muted)'; } }
+function _impAnnuler() { _impData = null; var r = document.getElementById('imp-result'); if (r) r.innerHTML = ''; _impStatus(''); }
+
+function _impFichierChoisi(input) {
+  var f = input && input.files && input.files[0];
+  if (!f) return;
+  var name = (f.name || '').toLowerCase();
+  var isFit = /\.fit$/.test(name);
+  if (!/\.(gpx|tcx|fit)$/.test(name)) { _impStatus('Format non reconnu. Choisis un fichier .GPX, .TCX ou .FIT.', 'var(--bad)'); return; }
+  if (f.size > 25 * 1024 * 1024) { _impStatus('Fichier trop volumineux (max 25 Mo).', 'var(--bad)'); return; }
+  _impStatus('⏳ Lecture du fichier…');
+  var reader = new FileReader();
+  reader.onload = function () {
+    try {
+      var data = isFit ? _fitParse(reader.result) : _impParse(String(reader.result || ''), name);
+      if (!data) { _impStatus(isFit ? 'FIT illisible (pas de résumé de séance « session »). Essaie l\'export .TCX ou .GPX.' : 'Fichier illisible (aucune donnée de temps ni de distance).', 'var(--bad)'); return; }
+      _impData = data; _impApercu(data, f.name); _impStatus('');
+    } catch (e) { _impStatus('Erreur de lecture : ' + (e && e.message ? e.message : e), 'var(--bad)'); }
+  };
+  reader.onerror = function () { _impStatus('Impossible de lire le fichier.', 'var(--bad)'); };
+  if (isFit) reader.readAsArrayBuffer(f); else reader.readAsText(f);
+}
+
+// Distance entre 2 points GPS (mètres).
+function _impHav(la1, lo1, la2, lo2) {
+  var R = 6371000, r = Math.PI / 180;
+  var dla = (la2 - la1) * r, dlo = (lo2 - lo1) * r;
+  var a = Math.pow(Math.sin(dla / 2), 2) + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.pow(Math.sin(dlo / 2), 2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+// Descendants par nom local (ignore les préfixes de namespace GPX/TCX).
+function _impLocal(root, name) {
+  var out = [], all = root.getElementsByTagName('*');
+  for (var i = 0; i < all.length; i++) { var ln = all[i].localName || all[i].nodeName.replace(/^.*:/, ''); if (ln === name) out.push(all[i]); }
+  return out;
+}
+function _impFirst(el, name) { var a = _impLocal(el, name); return a.length ? a[0] : null; }
+function _impTxt(el, name) { var n = _impFirst(el, name); return n ? (n.textContent || '').trim() : ''; }
+function _impMapSport(s) {
+  s = String(s || '').toLowerCase();
+  if (/bik|cycl|ride|v[ée]lo/.test(s)) return 'velo';
+  if (/run|cours|footing|jog/.test(s)) return 'footing';
+  if (/walk|march|hik|rando/.test(s)) return 'marche_normale';
+  if (/swim|natation/.test(s)) return 'natation';
+  if (/row|rameur/.test(s)) return 'rameur';
+  if (/ski/.test(s)) return 'ski_fond';
+  return '';
+}
+function _impGuessBySpeed(kmh) { if (!kmh) return 'autre'; if (kmh >= 15) return 'velo'; if (kmh >= 7) return 'footing'; return 'marche_normale'; }
+
+function _impParse(text, name) {
+  var doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return null;
+  var root = doc.documentElement; if (!root) return null;
+  var rootName = (root.localName || root.nodeName || '').toLowerCase();
+  var isTcx = rootName.indexOf('trainingcenterdatabase') >= 0 || (/\.tcx$/.test(name) && rootName.indexOf('gpx') < 0);
+  var pts = _impLocal(root, isTcx ? 'Trackpoint' : 'trkpt');
+  var coords = [], times = [], eles = [], hrs = [];
+  for (var i = 0; i < pts.length; i++) {
+    var p = pts[i], lat = NaN, lon = NaN;
+    if (isTcx) { var pos = _impFirst(p, 'Position'); if (pos) { lat = parseFloat(_impTxt(pos, 'LatitudeDegrees')); lon = parseFloat(_impTxt(pos, 'LongitudeDegrees')); } }
+    else { lat = parseFloat(p.getAttribute('lat')); lon = parseFloat(p.getAttribute('lon')); }
+    coords.push((isFinite(lat) && isFinite(lon)) ? [lat, lon] : null);
+    var t = _impTxt(p, isTcx ? 'Time' : 'time'); times.push(t ? Date.parse(t) : NaN);
+    var e = _impTxt(p, isTcx ? 'AltitudeMeters' : 'ele'); eles.push(e ? parseFloat(e) : NaN);
+    var hr = NaN;
+    if (isTcx) { var hb = _impFirst(p, 'HeartRateBpm'); if (hb) hr = parseFloat(_impTxt(hb, 'Value')); }
+    else { var h = _impFirst(p, 'hr'); if (h) hr = parseFloat((h.textContent || '').trim()); }
+    hrs.push(isFinite(hr) ? hr : NaN);
+  }
+  var distM = 0;
+  for (var j = 1; j < coords.length; j++) { if (coords[j] && coords[j - 1]) distM += _impHav(coords[j - 1][0], coords[j - 1][1], coords[j][0], coords[j][1]); }
+  var deniv = 0;
+  for (var k = 1; k < eles.length; k++) { if (isFinite(eles[k]) && isFinite(eles[k - 1])) { var dd = eles[k] - eles[k - 1]; if (dd > 0) deniv += dd; } }
+  var tValid = times.filter(function (x) { return isFinite(x); });
+  var durS = tValid.length >= 2 ? Math.round((tValid[tValid.length - 1] - tValid[0]) / 1000) : 0;
+  var startMs = tValid.length ? tValid[0] : NaN;
+  var hrValid = hrs.filter(function (x) { return isFinite(x) && x > 0; });
+  var fcMoy = hrValid.length ? Math.round(hrValid.reduce(function (s, x) { return s + x; }, 0) / hrValid.length) : 0;
+  var cal = 0, sport = '';
+  if (isTcx) {
+    var act = _impFirst(root, 'Activity'); if (act) sport = act.getAttribute('Sport') || '';
+    var laps = _impLocal(root, 'Lap'), lapSecs = 0, lapDist = 0, lapCal = 0, hrW = 0, hrWN = 0;
+    for (var l = 0; l < laps.length; l++) {
+      var ls = parseFloat(_impTxt(laps[l], 'TotalTimeSeconds')); if (isFinite(ls)) lapSecs += ls;
+      var ld = parseFloat(_impTxt(laps[l], 'DistanceMeters')); if (isFinite(ld)) lapDist += ld;
+      var lc = parseFloat(_impTxt(laps[l], 'Calories')); if (isFinite(lc)) lapCal += lc;
+      var ah = _impFirst(laps[l], 'AverageHeartRateBpm'); if (ah) { var av = parseFloat(_impTxt(ah, 'Value')); if (isFinite(av)) { hrW += av; hrWN++; } }
+    }
+    if (lapSecs > 0) durS = Math.round(lapSecs);
+    if (lapDist > 0) distM = lapDist;
+    if (lapCal > 0) cal = Math.round(lapCal);
+    if (!fcMoy && hrWN) fcMoy = Math.round(hrW / hrWN);
+  } else { sport = _impTxt(root, 'type'); }
+  if (!durS && !distM) return null;
+  var durMin = durS > 0 ? Math.max(1, Math.round(durS / 60)) : 0;
+  var distKm = distM > 0 ? Math.round(distM / 10) / 100 : 0;
+  var kmh = (durS > 0 && distM > 0) ? (distM / 1000) / (durS / 3600) : 0;
+  var vmoy = kmh ? Math.round(kmh * 10) / 10 : 0;
+  var type = _impMapSport(sport) || _impGuessBySpeed(kmh);
+  var dateObj = isFinite(startMs) ? new Date(startMs) : new Date();
+  return { type_cardio: type, duree: durMin, distance: distKm, vitesse_moy: vmoy, fc_moy: fcMoy, calories: cal, deniv: Math.round(deniv) || 0, dateISO: dateObj.toISOString(), _ymd: _ymdLocal(dateObj), nbpts: pts.length };
+}
+
+// ── Décodeur FIT minimal (binaire) : extrait le message « session » (global 18),
+// qui porte le RÉSUMÉ de l'activité (sport, durée, distance, calories, FC, vitesse,
+// dénivelé). On ne décode pas chaque point — juste ce dont on a besoin. Gère les
+// messages de définition/données (en-têtes normaux + timestamp compressé),
+// l'endianness par définition et les valeurs « invalides ». Sans lib externe. ──
+function _fitBaseType(bt) {
+  switch (bt) {
+    case 0x00: return { size: 1, inv: 0xFF, kind: 'u' };          // enum
+    case 0x01: return { size: 1, inv: 0x7F, kind: 'i' };          // sint8
+    case 0x02: return { size: 1, inv: 0xFF, kind: 'u' };          // uint8
+    case 0x0A: return { size: 1, inv: 0x00, kind: 'u' };          // uint8z
+    case 0x83: return { size: 2, inv: 0x7FFF, kind: 'i' };        // sint16
+    case 0x84: return { size: 2, inv: 0xFFFF, kind: 'u' };        // uint16
+    case 0x8B: return { size: 2, inv: 0x0000, kind: 'u' };        // uint16z
+    case 0x85: return { size: 4, inv: 0x7FFFFFFF, kind: 'i' };    // sint32
+    case 0x86: return { size: 4, inv: 0xFFFFFFFF, kind: 'u' };    // uint32
+    case 0x8C: return { size: 4, inv: 0x00000000, kind: 'u' };    // uint32z
+    case 0x88: return { size: 4, inv: null, kind: 'f32' };        // float32
+    case 0x89: return { size: 8, inv: null, kind: 'f64' };        // float64
+    default:   return { size: 1, inv: 0xFF, kind: 'u' };          // enum/byte/string
+  }
+}
+function _fitRead(dv, off, size, kind, le) {
+  if (kind === 'u') { if (size === 1) return dv.getUint8(off); if (size === 2) return dv.getUint16(off, le); if (size === 4) return dv.getUint32(off, le); }
+  if (kind === 'i') { if (size === 1) return dv.getInt8(off); if (size === 2) return dv.getInt16(off, le); if (size === 4) return dv.getInt32(off, le); }
+  if (kind === 'f32' && size === 4) return dv.getFloat32(off, le);
+  if (kind === 'f64' && size === 8) return dv.getFloat64(off, le);
+  return null;
+}
+function _fitFinish(s) {
+  if (!s) return null;
+  var SPORT = { 0: 'autre', 1: 'footing', 2: 'velo', 5: 'natation', 11: 'marche_normale', 13: 'ski_fond', 15: 'rameur' };
+  var start = (s[2] != null) ? s[2] : s[253];
+  var dateObj = (start != null) ? new Date((start + 631065600) * 1000) : new Date();
+  var durS = (s[8] != null) ? s[8] / 1000 : (s[7] != null ? s[7] / 1000 : 0);
+  var distM = (s[9] != null) ? s[9] / 100 : 0;
+  var kmh = (durS > 0 && distM > 0) ? (distM / 1000) / (durS / 3600) : 0;
+  var avgSpd = (s[14] != null) ? (s[14] / 1000) * 3.6 : 0;   // m/s → km/h
+  var vmoy = avgSpd ? Math.round(avgSpd * 10) / 10 : (kmh ? Math.round(kmh * 10) / 10 : 0);
+  var type = SPORT[s[5]] || _impGuessBySpeed(kmh) || 'autre';
+  var durMin = durS > 0 ? Math.max(1, Math.round(durS / 60)) : 0;
+  var distKm = distM > 0 ? Math.round(distM / 10) / 100 : 0;
+  if (!durMin && !distKm) return null;
+  return { type_cardio: type, duree: durMin, distance: distKm, vitesse_moy: vmoy, fc_moy: Math.round(s[16] || 0) || 0, calories: Math.round(s[11] || 0) || 0, deniv: Math.round(s[22] || 0) || 0, dateISO: dateObj.toISOString(), _ymd: _ymdLocal(dateObj), nbpts: 0 };
+}
+function _fitParse(buf) {
+  var dv = new DataView(buf);
+  if (dv.byteLength < 12) return null;
+  var hSize = dv.getUint8(0);
+  if (dv.byteLength < hSize + 4) return null;
+  if (String.fromCharCode(dv.getUint8(8), dv.getUint8(9), dv.getUint8(10), dv.getUint8(11)) !== '.FIT') return null;
+  var dataSize = dv.getUint32(4, true);
+  var pos = hSize, endData = Math.min(hSize + dataSize, dv.byteLength);
+  var defs = {}, session = null;
+  var readData = function (def) {
+    if (def.global === 18 && !session) {
+      var s = {}, p = pos;
+      for (var i = 0; i < def.fields.length; i++) {
+        var fd = def.fields[i];
+        if (!fd.dev) { var bt = _fitBaseType(fd.base); var v = null; if (fd.size === bt.size) { v = _fitRead(dv, p, fd.size, bt.kind, def.le); if (v === bt.inv) v = null; } s[fd.num] = v; }
+        p += fd.size;
+      }
+      session = s;
+    }
+    return pos + def.total;
+  };
+  while (pos < endData) {
+    var rh = dv.getUint8(pos); pos += 1;
+    if (rh & 0x80) {                                  // timestamp compressé = message de données
+      var lt = (rh >> 5) & 0x3, d1 = defs[lt];
+      if (!d1) break;                                 // définition manquante → on arrête proprement
+      pos = readData(d1);
+    } else if (rh & 0x40) {                           // message de définition
+      pos += 1;                                       // reserved
+      var le = dv.getUint8(pos) === 0; pos += 1;
+      var gnum = dv.getUint16(pos, le); pos += 2;
+      var nf = dv.getUint8(pos); pos += 1;
+      var fields = [], total = 0, i2;
+      for (i2 = 0; i2 < nf; i2++) { fields.push({ num: dv.getUint8(pos), size: dv.getUint8(pos + 1), base: dv.getUint8(pos + 2) }); total += dv.getUint8(pos + 1); pos += 3; }
+      if (rh & 0x20) { var ndf = dv.getUint8(pos); pos += 1; for (i2 = 0; i2 < ndf; i2++) { fields.push({ dev: true, size: dv.getUint8(pos + 1) }); total += dv.getUint8(pos + 1); pos += 3; } }
+      defs[rh & 0x0F] = { global: gnum, le: le, fields: fields, total: total };
+    } else {                                          // message de données (en-tête normal)
+      var d2 = defs[rh & 0x0F];
+      if (!d2) break;
+      pos = readData(d2);
+    }
+  }
+  return _fitFinish(session);
+}
+
+function _impApercu(d, filename) {
+  var el = document.getElementById('imp-result'); if (!el) return;
+  var opts = _CARDIO_CATALOG.filter(function (a) { return a.key !== 'hyrox'; }).map(function (a) {
+    return '<option value="' + a.key + '"' + (a.key === d.type_cardio ? ' selected' : '') + '>' + a.ico + ' ' + escapeHtml(a.label) + '</option>';
+  }).join('');
+  var dups = [];
+  try { dups = ((dernierAppData && dernierAppData.cardio && dernierAppData.cardio.history) || []).filter(function (h) { return _ymdLocal(new Date(h.date)) === d._ymd && Math.abs((+h.duree || 0) - d.duree) <= 2; }); } catch (e) {}
+  var dateFr = ''; try { var x = new Date(d.dateISO); dateFr = x.toLocaleDateString('fr-FR') + ' ' + x.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { dateFr = d._ymd; }
+  function chip(lbl, val) { return val ? ('<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 9px;font-size:12px;margin:3px 4px 0 0;">' + lbl + ' <b>' + val + '</b></span>') : ''; }
+  el.innerHTML = '<div style="margin-top:12px;border:1px solid var(--border);border-radius:14px;padding:13px;background:var(--surface);">'
+    + '<div style="font-size:11px;color:var(--text-subtle);margin-bottom:7px;word-break:break-all;">' + escapeHtml(filename) + ' · ' + dateFr + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;font-weight:700;">Type</span>'
+    + '<select id="imp-type" onchange="if(_impData)_impData.type_cardio=this.value" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;">' + opts + '</select></div>'
+    + '<div>' + chip('⏱️', d.duree ? d.duree + ' min' : '') + chip('📏', d.distance ? d.distance + ' km' : '') + chip('⚡', d.vitesse_moy ? d.vitesse_moy + ' km/h' : '') + chip('❤️', d.fc_moy ? d.fc_moy + ' bpm' : '') + chip('🔥', d.calories ? d.calories + ' kcal' : '') + chip('⛰️', d.deniv ? d.deniv + ' m D+' : '') + '</div>'
+    + (dups.length ? '<div style="margin-top:9px;font-size:12px;color:var(--warn);">⚠️ Une séance de durée proche existe déjà ce jour-là — tu peux quand même importer (doublon possible).</div>' : '')
+    + '<div style="display:flex;gap:8px;margin-top:12px;">'
+    + '<button onclick="_impConfirmer()" style="flex:1;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;">Importer la séance</button>'
+    + '<button onclick="_impAnnuler()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
+    + '</div></div>';
+}
+
+async function _impConfirmer() {
+  if (!_impData || !athlete) return;
+  var d = _impData;
+  _impStatus('⏳ Enregistrement…');
+  try {
+    var resp = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: d._ymd, type_cardio: d.type_cardio, duree: d.duree, distance: d.distance, vitesse_moy: d.vitesse_moy, fc_moy: d.fc_moy, calories: d.calories })
+    });
+    var j = await resp.json();
+    if (j && j.success) {
+      showToast('✅ Activité importée');
+      _impData = null; var r = document.getElementById('imp-result'); if (r) r.innerHTML = '';
+      _impStatus('✅ Importée. Retrouve-la dans Mes Analyses ▸ Cardio.', 'var(--good)');
+      try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {}
+    } else { _impStatus('❌ Échec : ' + (j && j.error || 'erreur serveur'), 'var(--bad)'); }
+  } catch (e) { _impStatus('❌ Erreur réseau pendant l\'enregistrement.', 'var(--bad)'); }
+}
+
+var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_SLEEP', 'READ_RESTING_HEART_RATE', 'READ_NUTRITION'];
+function _hcPlugin() { try { return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthPlugin; } catch (e) { return null; } }
+function _hcStatus(t, c) { var s = document.getElementById('hc-status'); if (s) { s.textContent = t; s.style.color = c || 'var(--text-muted)'; } }
+function fermerImportMontre() { var ov = document.getElementById('hc-import'); if (ov) ov.style.display = 'none'; }
+
+var _hcWorkouts = [];   // dernières séances lues (import par index)
+var _hcSteps = [];      // derniers pas quotidiens lus (pour ré-affichage)
+var _hcDiag = [];       // journal technique (repliable en bas de l'écran)
+// Pastille d'icône par type (réutilise le catalogue cardio Novalyz).
+function _hcCardIcon(w) {
+  var a = _CARDIO_CAT_BY_KEY[_hcMapType(w.workoutType)] || {};
+  var color = a.color || '#6366F1';
+  var svg = a.svg || '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>';
+  return '<div style="width:44px;height:44px;border-radius:13px;flex:none;display:flex;align-items:center;justify-content:center;background:' + color + ';"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;">' + svg + '</svg></div>';
+}
+function _hcChip(txt, cls) { return '<span style="font-size:12px;font-weight:700;background:var(--surface2);border-radius:8px;padding:3px 8px;' + (cls === 'hr' ? 'color:#F87171;' : '') + '">' + escapeHtml(txt) + '</span>'; }
+// Une carte de séance (mode « à importer » ou « déjà importée »). i = index dans _hcWorkouts.
+function _hcCardHtml(w, i, done) {
+  var hr = (w.heartRate && w.heartRate.length) ? Math.round(w.heartRate.reduce(function (s, h) { return s + (h.bpm || 0); }, 0) / w.heartRate.length) : null;
+  var durMin = w.duration ? Math.round(w.duration / 60) : ((w.startDate && w.endDate) ? Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000) : null);
+  var km = (w.distance != null) ? (w.distance / 1000) : null;
+  var d = new Date(w.startDate);
+  var dstr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' }) + ' · ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  var chips = '';
+  if (durMin != null) chips += _hcChip(durMin + ' min');
+  if (km != null) chips += _hcChip(km.toFixed(2).replace('.', ',') + ' km');
+  if (hr != null) chips += _hcChip('❤️ ' + hr + ' bpm', 'hr');
+  if (w.calories) chips += _hcChip(Math.round(w.calories) + ' kcal');
+  var route = (w.route && w.route.length) ? '<span style="font-size:11px;color:#9D5FD3;font-weight:800;margin-left:6px;">🗺️ tracé</span>' : '';
+  var src = _hcCleanSrc(w);
+  var action = done
+    ? '<span style="flex:none;color:var(--good);font-size:13px;font-weight:800;">✓</span>'
+    : '<button id="hc-imp-' + i + '" onclick="_hcImport(' + i + ')" style="flex:none;background:#10B981;color:#04160f;border:none;border-radius:12px;padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer;">Importer</button>';
+  return '<div class="card" style="' + (done ? 'opacity:.6;' : '') + 'padding:12px;margin-bottom:9px;display:flex;align-items:center;gap:11px;">'
+    + _hcCardIcon(w)
+    + '<div style="flex:1;min-width:0;">'
+    + '<div style="font-size:15px;font-weight:800;">' + escapeHtml(_hcTypeLabel(w.workoutType)) + route + '</div>'
+    + '<div style="font-size:11.5px;color:var(--text-subtle);margin:1px 0 6px;">' + escapeHtml(dstr) + (src ? ' · ' + escapeHtml(src) : '') + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:5px;">' + (chips || '—') + '</div>'
+    + '</div>' + action + '</div>';
+}
+
+// Type Health Connect → clé du catalogue cardio Novalyz (best-effort).
+function _hcMapType(wt) {
+  var s = String(wt || '').toLowerCase();
+  if (s.indexOf('run') >= 0 || s.indexOf('cours') >= 0 || s.indexOf('jog') >= 0) return 'footing';
+  if (s.indexOf('bik') >= 0 || s.indexOf('cycl') >= 0 || s.indexOf('velo') >= 0 || s.indexOf('vélo') >= 0) return 'velo';
+  if (s.indexOf('walk') >= 0 || s.indexOf('hik') >= 0 || s.indexOf('march') >= 0 || s.indexOf('rand') >= 0) return 'marche_normale';
+  if (s.indexOf('swim') >= 0 || s.indexOf('nat') >= 0) return 'natation';
+  if (s.indexOf('row') >= 0 || s.indexOf('ram') >= 0) return 'rameur';
+  return 'autre';
+}
+function _hcKey(w) { return String((w && w.id) || ((w ? w.startDate : '') + '|' + ((w && w.workoutType) || ''))); }
+// Libellé FR d'un type Health Connect (WALKING → Marche…).
+function _hcTypeLabel(wt) {
+  var m = { WALKING: 'Marche', RUNNING: 'Course', JOGGING: 'Footing', BIKING: 'Vélo', BIKING_STATIONARY: 'Vélo (appart.)', HIKING: 'Randonnée', SWIMMING_POOL: 'Natation', SWIMMING_OPEN_WATER: 'Natation', ROWING: 'Rameur', ROWING_MACHINE: 'Rameur', ELLIPTICAL: 'Elliptique', STAIR_CLIMBING: 'Escaliers', STAIR_CLIMBING_MACHINE: 'Escaliers', HIGH_INTENSITY_INTERVAL_TRAINING: 'HIIT', STRENGTH_TRAINING: 'Renfo', WEIGHTLIFTING: 'Muscu', YOGA: 'Yoga', PILATES: 'Pilates', BOXING: 'Boxe' };
+  var k = String(wt || '').toUpperCase();
+  if (m[k]) return m[k];
+  var s = String(wt || 'Activité').toLowerCase().replace(/_/g, ' ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+// Nom de source propre : dé-double « Versa 4Versa 4 » et préfixe la marque.
+function _hcCleanSrc(w) {
+  var s = String((w && w.sourceName) || '').trim();
+  if (s && s.length % 2 === 0 && s.slice(0, s.length / 2) === s.slice(s.length / 2)) s = s.slice(0, s.length / 2).trim();
+  var b = String((w && w.sourceBundleId) || '');
+  var brand = b.indexOf('fitbit') >= 0 ? 'Fitbit' : b.indexOf('garmin') >= 0 ? 'Garmin' : b.indexOf('polar') >= 0 ? 'Polar' : b.indexOf('strava') >= 0 ? 'Strava' : b.indexOf('coros') >= 0 ? 'Coros' : b.indexOf('google') >= 0 ? 'Google' : '';
+  if (brand && s && s.toLowerCase().indexOf(brand.toLowerCase()) < 0) return brand + ' ' + s;
+  return s || brand || '';
+}
+function _hcImportedSet() { try { return JSON.parse(localStorage.getItem('nvz_hc_imported') || '[]'); } catch (e) { return []; } }
+function _hcMarkImported(key) { try { var a = _hcImportedSet(); if (a.indexOf(key) < 0) { a.push(key); localStorage.setItem('nvz_hc_imported', JSON.stringify(a.slice(-500))); } } catch (e) {} }
+
+async function ouvrirImportMontre() {
+  if (!athlete) return;
+  var ov = document.getElementById('hc-import'); if (!ov) return;
+  var listEl = document.getElementById('hc-list'); if (listEl) listEl.innerHTML = '';
+  ov.style.display = 'flex';
+  _hcDiag = [];
+  var H = _hcPlugin();
+  if (!H || !(typeof _estAppNative === 'function' && _estAppNative())) {
+    _hcStatus('⚠️ L\'import montre n\'est disponible que dans l\'appli Android (via Health Connect).', 'var(--warn)');
+    return;
+  }
+  var errStr = function (e) { return e && e.message ? e.message : String(e); };
+  _hcStatus('⏳ Connexion à Health Connect…');
+  try {
+    var av = await H.isHealthAvailable();
+    _hcDiag.push('isHealthAvailable → ' + JSON.stringify(av));
+    if (!av || !av.available) { _hcStatus('❌ Health Connect indisponible sur ce téléphone.', 'var(--bad)'); return; }
+    try { var p = await H.requestHealthPermissions({ permissions: _HC_PERMS }); _hcDiag.push('permissions → ' + JSON.stringify(p && p.permissions)); }
+    catch (e) { _hcDiag.push('requestPermissions ERREUR : ' + errStr(e)); }
+    var now = new Date();
+    var start365 = new Date(now.getTime() - 365 * 24 * 3600 * 1000);   // large fenêtre : on ne rate rien
+    var end1 = new Date(now.getTime() + 24 * 3600 * 1000);             // +1 j (fuseaux / séance du jour)
+    var start7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+    _hcStatus('⏳ Lecture de tes données…');
+    var ws = [];
+    try {
+      var res = await H.queryWorkouts({ startDate: start365.toISOString(), endDate: end1.toISOString(), includeHeartRate: true, includeRoute: false, includeSteps: false });
+      ws = (res && res.workouts) || [];
+      _hcDiag.push('queryWorkouts(365j) → ' + ws.length + ' séance(s)');
+      if (ws.length) _hcDiag.push('  ex : ' + JSON.stringify({ type: ws[0].workoutType, src: ws[0].sourceName, bundle: ws[0].sourceBundleId, start: ws[0].startDate, dist: ws[0].distance, dur: ws[0].duration }));
+    } catch (e) { _hcDiag.push('queryWorkouts ERREUR : ' + errStr(e)); }
+    var steps = [];
+    try { var agg = await H.queryAggregated({ startDate: start7.toISOString(), endDate: end1.toISOString(), dataType: 'steps', bucket: 'day' }); steps = (agg && agg.aggregatedData) || []; }
+    catch (e) { _hcDiag.push('queryAggregated(pas) ERREUR : ' + errStr(e)); }
+    // Croisé : les calories actives passent-elles (autre type que les pas) ?
+    try { var kc = await H.queryAggregated({ startDate: start7.toISOString(), endDate: end1.toISOString(), dataType: 'active-calories', bucket: 'day' }); var kcd = (kc && kc.aggregatedData) || []; _hcDiag.push('calories actives(7j) → ' + kcd.length + ' jour(s), total ' + Math.round(kcd.reduce(function (s, x) { return s + (x.value || 0); }, 0))); }
+    catch (e) { _hcDiag.push('queryAggregated(calories) ERREUR : ' + errStr(e)); }
+    _hcDiag.push('pas(7j) total : ' + Math.round(steps.reduce(function (s, x) { return s + (x.value || 0); }, 0)));
+    _hcWorkouts = ws.slice().sort(function (a, b) { return new Date(b.startDate) - new Date(a.startDate); });
+    _hcSteps = steps;
+    _hcRenderList(_hcWorkouts, steps);
+    var tot = steps.reduce(function (s, x) { return s + (x.value || 0); }, 0);
+    if (ws.length) _hcStatus('✅ ' + ws.length + ' séance(s) lue(s). Appuie sur « Importer » pour l\'ajouter à tes analyses.', 'var(--good)');
+    else if (tot > 0) _hcStatus('✅ Connecté ! ' + Math.round(tot).toLocaleString('fr-FR') + ' pas / 7 j. Aucune SÉANCE loggée pour l\'instant — logue un run / une sortie vélo pour l\'importer ici.', 'var(--good)');
+    else _hcStatus('⚠️ Health Connect ne renvoie encore rien. Vérifie que Google Health y écrit (ses Paramètres → Health Connect).', 'var(--warn)');
+  } catch (e) {
+    _hcStatus('❌ Erreur : ' + errStr(e), 'var(--bad)');
+  }
+}
+
+// Importe une séance Health Connect → action saveCardio (aucun backend nouveau).
+// silent=true : pas de toast ni de refresh (utilisé par « Tout importer »).
+async function _hcImport(i, silent) {
+  var w = _hcWorkouts[i]; if (!w || !athlete) return false;
+  var btn = document.getElementById('hc-imp-' + i); if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+  var durMin = w.duration ? Math.round(w.duration / 60) : Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000);
+  durMin = Math.max(1, durMin || 1);
+  var km = (w.distance != null) ? (Math.round(w.distance / 1000 * 100) / 100) : '';
+  var hr = (w.heartRate && w.heartRate.length) ? Math.round(w.heartRate.reduce(function (s, h) { return s + (h.bpm || 0); }, 0) / w.heartRate.length) : '';
+  var d = new Date(w.startDate);
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var dateStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  var vitesse = (km && durMin) ? Math.round(km / (durMin / 60) * 10) / 10 : '';
+  var body = {
+    action: 'saveCardio', athlete_id: athlete.athlete_id, date: dateStr,
+    type_cardio: _hcMapType(w.workoutType), duree: durMin, distance: km,
+    vitesse_moy: vitesse, fc_moy: hr, calories: (w.calories ? Math.round(w.calories) : ''),
+    rpe: '', source: 'health_connect'
+  };
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+    var res = await r.json();
+    if (res && res.error) throw new Error(res.error);
+    _hcMarkImported(_hcKey(w));
+    if (btn) { btn.disabled = true; btn.textContent = '✓ importée'; btn.style.background = 'transparent'; btn.style.border = 'none'; btn.style.color = 'var(--good)'; }
+    if (!silent) { showToast('Séance importée dans tes analyses ✅', 'var(--good)'); try { chargerAppData(); } catch (e) {} }
+    return true;
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Réessayer'; }
+    if (!silent) showToast('Erreur import : ' + (e && e.message ? e.message : e), 'var(--bad)');
+    return false;
+  }
+}
+
+// « Tout importer » : importe en série les séances pas encore importées, puis
+// rafraîchit une seule fois et ré-affiche la liste (elles passent en « déjà importées »).
+async function _hcImportAll() {
+  var imported = _hcImportedSet();
+  var todo = [];
+  for (var i = 0; i < _hcWorkouts.length; i++) { if (imported.indexOf(_hcKey(_hcWorkouts[i])) < 0) todo.push(i); }
+  if (!todo.length) return;
+  _hcStatus('⏳ Import de ' + todo.length + ' séance(s)…', 'var(--text-muted)');
+  var ok = 0;
+  for (var j = 0; j < todo.length; j++) { if (await _hcImport(todo[j], true)) ok++; }
+  try { chargerAppData(); } catch (e) {}
+  showToast(ok + ' séance(s) importée(s) ✅', 'var(--good)');
+  _hcStatus('✅ ' + ok + ' séance(s) importée(s).', 'var(--good)');
+  _hcRenderList(_hcWorkouts, _hcSteps);
+}
+
+function _hcRenderList(ws, steps) {
+  var el = document.getElementById('hc-list'); if (!el) return;
+  var imported = _hcImportedSet();
+  var toImport = [], done = [];
+  (ws || []).forEach(function (w, i) { (imported.indexOf(_hcKey(w)) >= 0 ? done : toImport).push({ w: w, i: i }); });
+  var html = '';
+
+  // Carte connexion.
+  var brand = (ws && ws.length) ? _hcCleanSrc(ws[0]) : '';
+  html += '<div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.04));border:1px solid rgba(16,185,129,.28);border-radius:16px;padding:13px 14px;margin-bottom:4px;">'
+    + '<div style="width:38px;height:38px;border-radius:50%;background:rgba(16,185,129,.16);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;">✓</div>'
+    + '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;">Connecté</div><div style="font-size:11.5px;color:var(--text-muted);">' + (brand ? escapeHtml(brand) + ' · via Health Connect' : 'Health Connect') + '</div></div>'
+    + '</div>';
+
+  // À importer.
+  if (toImport.length) {
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin:18px 2px 10px;">'
+      + '<span style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);">À importer · ' + toImport.length + '</span>'
+      + (toImport.length > 1 ? '<span onclick="_hcImportAll()" style="font-size:12.5px;font-weight:800;color:var(--good);cursor:pointer;">Tout importer</span>' : '')
+      + '</div>';
+    html += toImport.map(function (o) { return _hcCardHtml(o.w, o.i, false); }).join('');
+  }
+
+  // Déjà importées.
+  if (done.length) {
+    html += '<div style="margin:18px 2px 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);">Déjà importées · ' + done.length + '</div>';
+    html += done.map(function (o) { return _hcCardHtml(o.w, o.i, true); }).join('');
+  }
+
+  if (!toImport.length && !done.length) {
+    html += '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:22px 12px 6px;">Aucune séance trouvée dans Health Connect.<br><span style="font-size:12px;color:var(--text-subtle);">Logue une sortie sur ta montre, ou branche un capteur qui écrit dans Health Connect.</span></div>';
+  }
+
+  // Activité — graphe de pas interactif (Semaine/Mois/Année), rendu après coup.
+  if (_hcPlugin() && typeof _estAppNative === 'function' && _estAppNative()) {
+    html += '<div id="hc-activity"></div>';
+  }
+
+  // Détails techniques (repliés).
+  if (_hcDiag && _hcDiag.length) {
+    html += '<details style="margin-top:16px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
+      + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);margin-top:6px;">' + _hcDiag.map(escapeHtml).join('\n') + '</div></details>';
+  }
+  el.innerHTML = html;
+  if (document.getElementById('hc-activity')) { try { _actRender(); } catch (e) {} }
+}
+
+// Bloc « Activité du jour » sur Aujourd'hui : pas du jour + mini-barres 7 j.
+// Discret et CONDITIONNEL : rendu seulement en natif, avec Health Connect ET des
+// données ; sinon retiré (pas de bloc vide pour ceux sans montre).
+// Graphe de pas interactif sur le dashboard (thème clair .tj) : périodes
+// Semaine / Mois / Année + navigation + swipe + chiffre par jour. État propre,
+// indépendant du graphe de la page importer.
+// Graphe de pas interactif, INSTANCIABLE par préfixe d'ids (pfx) + thème :
+// 'ds' = dashboard (thème .tj) · 'etds' = écran État (thème global). Chaque
+// instance a son propre état (gran/offset/buckets) → indépendantes.
+var _hcWarmed = false;   // client Health Connect lié pour cette session ?
+var _DS_THEME = {
+  ds:   { acc: 'var(--tj-accent)', accS: 'var(--tj-accent-strong)', s2: 'var(--tj-surface2)', bd: 'var(--tj-border)', sf: 'var(--tj-surface)', tx: 'var(--tj-text)', mu: 'var(--tj-muted)', su: 'var(--tj-subtle)', gd: 'var(--tj-good)' },
+  etds: { acc: 'var(--accent)',    accS: 'var(--accent-strong)',    s2: 'var(--surface2)',    bd: 'var(--border)',    sf: 'var(--surface)',    tx: 'var(--text)',    mu: 'var(--text-muted)', su: 'var(--text-subtle)', gd: 'var(--good)' }
+};
+var _dsState = {};
+function _dsSt(pfx) { return _dsState[pfx] || (_dsState[pfx] = { gran: 'S', offset: 0, touchX: null, buckets: [] }); }
+function _dsSetGran(pfx, g) { var s = _dsSt(pfx); s.gran = g; s.offset = 0; renderStepsChart(pfx); }
+function _dsNav(pfx, dir) { var s = _dsSt(pfx); var n = s.offset + dir; if (n > 0) n = 0; s.offset = n; renderStepsChart(pfx); }
+function _dsToday(pfx) { var s = _dsSt(pfx); s.offset = 0; renderStepsChart(pfx); }
+function _dsPick(pfx, i) {
+  var b = _dsSt(pfx).buckets[i]; if (!b) return;
+  var el = document.getElementById(pfx + '-pick'); if (!el) return;
+  el.innerHTML = '<b>' + escapeHtml(b.full || b.label) + '</b> · ' + Math.round(b.value).toLocaleString('fr-FR') + ' pas';
+}
+
+async function renderDashSteps(attempt) {
+  attempt = attempt || 0;
+  var el = document.getElementById('dash-steps'); if (!el) return;
+  var H = _hcPlugin();
+  var native = (typeof _estAppNative === 'function' && _estAppNative());
+  // Au démarrage À FROID, le plugin natif Health Connect (Capacitor.Plugins) et
+  // la façade NovalyzPlatform peuvent ne pas être encore prêts au moment où le
+  // dashboard se rend → sans réessai, le bloc ne réapparaîtrait qu'au prochain
+  // « resume » de l'app. On retente quelques fois tant que ce n'est pas prêt.
+  if (!native || !H) {
+    if (attempt < 8) setTimeout(function () { renderDashSteps(attempt + 1); }, 600);
+    else el.style.display = 'none';
+    return;
+  }
+  // Warm-up : lie le client Health Connect exactement comme la page importer
+  // (isHealthAvailable + requestHealthPermissions au 1er tap). Sans cette liaison,
+  // queryAggregated renvoie vide — d'où le bloc qui n'apparaissait qu'APRÈS être
+  // passé par « Importer depuis la montre ». requestHealthPermissions n'affiche
+  // pas de dialogue quand c'est déjà accordé. Une seule fois par session.
+  if (!_hcWarmed) {
+    try {
+      var av = await H.isHealthAvailable();
+      if (av && av.available) {
+        _hcWarmed = true;   // AVANT la demande → coupe la boucle 'resume' si l'écran de permission passe l'app en arrière-plan
+        try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {}
+      }
+    } catch (e) {}
+  }
+  var now = new Date();
+  var s7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+  var e1 = new Date(now.getTime() + 24 * 3600 * 1000);
+  try { _syncSanteMontre(H); } catch (e) {}   // historise sommeil/FC/pas côté serveur (throttlé)
+  var probe = [], qErr = false;
+  try { var a = await H.queryAggregated({ startDate: s7.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' }); probe = (a && a.aggregatedData) || []; } catch (e) { qErr = true; }
+  var tot7 = probe.reduce(function (s, x) { return s + (x.value || 0); }, 0);
+  // Requête en échec ou vide juste après le démarrage : réessais courts.
+  if ((qErr || tot7 <= 0) && attempt < 5) { setTimeout(function () { renderDashSteps(attempt + 1); }, 800); return; }
+  if (tot7 <= 0) { el.style.display = 'none'; return; }   // aucune donnée → on masque l'ancre
+  el.style.display = '';
+  el.innerHTML = '<div id="ds-head"></div><div id="ds-chart-wrap"></div>';
+  renderStepsChart('ds');
+}
+
+// Écran État — section « Ma montre » : pas (live Health Connect) + sommeil / FC
+// repos en « bientôt » (nécessitent le fork du plugin natif + un stockage serveur).
+// Thème global (pas .tj). Masquée hors app native.
+async function renderEtatMontre(attempt) {
+  attempt = attempt || 0;
+  var el = document.getElementById('et-montre'), sec = document.getElementById('et-montre-sec');
+  var mini = document.getElementById('et-montre-mini');
+  if (!el) return;
+  var hide = function () { el.style.display = 'none'; if (sec) sec.style.display = 'none'; if (mini) mini.style.display = 'none'; };
+  var H = _hcPlugin();
+  var native = (typeof _estAppNative === 'function' && _estAppNative());
+  if (!native) { hide(); return; }             // la montre n'existe que sur l'app Android
+  if (!H) { if (attempt < 8) setTimeout(function () { renderEtatMontre(attempt + 1); }, 600); else hide(); return; }
+  if (!_hcWarmed) {
+    try { var avh = await H.isHealthAvailable(); if (avh && avh.available) { _hcWarmed = true; try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {} } } catch (e) {}
+  }
+  var now = new Date();
+  // Fenêtre calée sur MINUIT LOCAL : sinon les tranches 'day' démarrent à l'heure
+  // actuelle et les pas du jour tombent dans la tranche d'hier (bandeau à 0).
+  var s7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  var e1 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  var days = [], qErr = false;
+  try { var a = await H.queryAggregated({ startDate: s7.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' }); days = (a && a.aggregatedData) || []; } catch (e) { qErr = true; }
+  var byDay = {}; days.forEach(function (x) { byDay[_ymdLocal(new Date(x.startDate))] = (x.value || 0); });
+  var total7 = days.reduce(function (s, x) { return s + (x.value || 0); }, 0);
+  if ((qErr || total7 <= 0) && attempt < 4) { setTimeout(function () { renderEtatMontre(attempt + 1); }, 800); return; }
+
+  // Lignes « à venir » : sommeil + FC repos.
+  var icoSleep = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  var icoHr = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 5 4-10 2 5h4"/></svg>';
+  var soon = function (label, ico) {
+    return '<div style="display:flex;align-items:center;gap:11px;padding:11px 0 2px;border-top:1px solid var(--border);margin-top:8px;">'
+      + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;color:var(--text-muted);flex:none;">' + ico + '</span>'
+      + '<span style="flex:1;font-size:13px;font-weight:700;color:var(--text);">' + label + '</span>'
+      + '<span style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);background:var(--surface2);border-radius:999px;padding:3px 9px;">Bientôt</span>'
+      + '</div>';
+  };
+
+  if (total7 <= 0) {
+    // Native mais aucune donnée pas : inviter à connecter / importer (bloc visible).
+    if (mini) mini.style.display = 'none';
+    el.style.display = ''; el.style.padding = '14px 15px';
+    el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Pas encore de données montre</div>'
+      + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Connecte ta montre à Health Connect, puis importe tes séances.</div>'
+      + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>'
+      + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
+    return;
+  }
+
+  // Bandeau condensé (glance) : pas du jour / sommeil / FC repos + bouton Détails.
+  if (mini) {
+    // Clé de date LOCALE (cf. _ymdLocal) : sinon le bucket du jour tombe sur la
+    // mauvaise date en France (UTC+1/＋2) et le compteur du jour affichait « — ».
+    var _todayLoc = _ymdLocal(now), pasT = null;
+    days.forEach(function (x) { if (_ymdLocal(new Date(x.startDate)) === _todayLoc) pasT = Math.round(x.value || 0); });
+    var pasTxt = (pasT != null) ? pasT.toLocaleString('fr-FR') : '—';
+    var cell = function (k, v, extra) {
+      return '<div style="padding:11px 6px;text-align:center;' + (extra || '') + '"><div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;">' + k + '</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:var(--text);">' + v + '</div></div>';
+    };
+    mini.style.display = '';
+    mini.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 15px 6px;">'
+      + '<b style="font-size:13.5px;color:var(--text);">Ma montre</b>'
+      + '<button type="button" onclick="_etMontreToggle()" style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:5px 11px;font:inherit;font-size:11.5px;font-weight:700;color:var(--text-muted);cursor:pointer;">Détails <svg id="etm-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;"><path d="M6 9l6 6 6-6"/></svg></button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);">'
+      + cell('Pas', pasTxt, '')
+      + cell('Sommeil', '<span id="etm-mini-sleep">…</span>', 'border-left:1px solid var(--border);')
+      + cell('FC repos', '<span id="etm-mini-hr">…</span>', 'border-left:1px solid var(--border);')
+      + '</div>';
+  }
+  el.style.display = 'none'; el.style.padding = '2px 15px 14px';   // détails repliés par défaut
+
+  // Graphe interactif complet + lignes Sommeil / FC repos en DONNÉES RÉELLES
+  // (fork du plugin) ; « — » si rien, « Bientôt » si le fork n'est pas déployé.
+  var icoSteps = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg>';
+  var blockH = function (label, ico, valId, bodyHtml) {
+    return '<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:11px;">'
+      + '<div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;">'
+      + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;color:var(--text-muted);flex:none;">' + ico + '</span>'
+      + '<span style="flex:1;font-size:13px;font-weight:700;color:var(--text);">' + label + '</span>'
+      + (valId ? '<span id="' + valId + '" style="font-size:14px;font-weight:800;color:var(--text-muted);">…</span>' : '')
+      + '</div>' + bodyHtml + '</div>';
+  };
+  // Sélecteur de période UNIQUE (#etm-head) pilotant les 3 graphes.
+  el.innerHTML = '<div id="etm-head"></div>'
+    + blockH('Pas', icoSteps, null, '<div id="etds-chart-wrap"></div>')
+    + blockH('Sommeil', icoSleep, 'et-sleep-val', '<div id="etsleep-body"></div>')
+    + blockH('Fréquence cardiaque au repos', icoHr, 'et-hr-val', '<div id="ethr-body"></div>');
+  _etFillSleep(H, now);
+  _etFillRestingHr(H, now);
+  _etmRenderAll();
+}
+
+// Ouvre/replie les graphes détaillés de « Ma montre » (le bandeau reste visible).
+function _etMontreToggle() {
+  var d = document.getElementById('et-montre'), c = document.getElementById('etm-caret');
+  if (!d) return;
+  var open = (d.style.display !== 'none');
+  d.style.display = open ? 'none' : '';
+  if (c) c.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+// Contrôle de période PARTAGÉ de « Ma montre » : un seul Semaine/Mois/Année +
+// navigation qui pilote les 3 graphes (pas, sommeil, FC repos).
+var _etm = { gran: 'S', offset: 0, _tx: null };
+function _etmSetGran(g) { _etm.gran = g; _etm.offset = 0; _etmRenderAll(); }
+function _etmNav(dir) { var n = _etm.offset + dir; if (n > 0) n = 0; _etm.offset = n; _etmRenderAll(); }
+function _etmToday() { _etm.offset = 0; _etmRenderAll(); }
+function _etmHeaderHtml(label) {
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === _etm.gran;
+    return '<button onclick="_etmSetGran(\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:12px;padding:7px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = _etm.offset !== 0 ? '<div style="font-size:11px;margin-top:1px;"><span onclick="_etmToday()" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = _etm.offset >= 0;
+  return '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:11px;padding:4px;margin-bottom:9px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<button onclick="_etmNav(-1)" style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:13.5px;font-weight:800;color:var(--text);">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_etmNav(1)" ' + (nextDis ? 'disabled' : '') + ' style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div>';
+}
+function _etmSwipe(elx) {
+  if (!elx) return;
+  elx.ontouchstart = function (e) { _etm._tx = e.touches[0].clientX; };
+  elx.ontouchend = function (e) { if (_etm._tx == null) return; var dx = e.changedTouches[0].clientX - _etm._tx; _etm._tx = null; if (Math.abs(dx) > 50) _etmNav(dx < 0 ? 1 : -1); };
+}
+function _etmRenderAll() {
+  var head = document.getElementById('etm-head'); if (!head) return;
+  var r = _actRange(_etm.gran, _etm.offset);
+  head.innerHTML = _etmHeaderHtml(r.label);
+  try { var d = _dsSt('etds'); d.gran = _etm.gran; d.offset = _etm.offset; renderStepsChart('etds'); } catch (e) {}
+  try { var a = _saSt('etsleep'); a.gran = _etm.gran; a.offset = _etm.offset; renderSanteChart('etsleep'); } catch (e) {}
+  try { var b = _saSt('ethr'); b.gran = _etm.gran; b.offset = _etm.offset; renderSanteChart('ethr'); } catch (e) {}
+  _etmSwipe(document.getElementById('etds-chart-wrap'));
+  _etmSwipe(document.getElementById('etsleep-body'));
+  _etmSwipe(document.getElementById('ethr-body'));
+}
+
+// Graphe santé interactif (sommeil / FC repos) depuis l'historique serveur
+// (sante_historique). Semaine = détail par jour (valeur + libellé), Mois/Année =
+// moyenne seule. Navigation + swipe comme le graphe des pas. Thème global.
+var _saState = {};
+var _SA_CFG = {
+  etsleep: { metric: 'sommeil_min', kind: 'dur', c1: 'var(--accent)', c2: 'var(--accent-strong)' },
+  ethr: { metric: 'fc_repos', kind: 'bpm', c1: '#EC4899', c2: '#be185d' },
+  // Nutrition (source nutri_historique) : calories + macros P/G/L saisies.
+  nutkcal: { metric: 'kcal', kind: 'kcal', src: 'nutri_historique', c1: '#F59E0B', c2: '#d97706' },
+  nutprot: { metric: 'prot', kind: 'g', src: 'nutri_historique', c1: '#10B981', c2: '#059669' },
+  nutgluc: { metric: 'gluc', kind: 'g', src: 'nutri_historique', c1: '#3B82F6', c2: '#1d4ed8' },
+  nutlip: { metric: 'lip', kind: 'g', src: 'nutri_historique', c1: '#A855F7', c2: '#7e22ce' }
+};
+function _saSt(p) { return _saState[p] || (_saState[p] = { gran: 'S', offset: 0, touchX: null }); }
+function _saSetGran(p, g) { var s = _saSt(p); s.gran = g; s.offset = 0; renderSanteChart(p); }
+function _saNav(p, dir) { var s = _saSt(p); var n = s.offset + dir; if (n > 0) n = 0; s.offset = n; renderSanteChart(p); }
+function _saToday(p) { _saSt(p).offset = 0; renderSanteChart(p); }
+function _saFmtDur(min) { var m = Math.round(min); var h = Math.floor(m / 60), r = m % 60; return h + ' h' + (r ? ' ' + (r < 10 ? '0' + r : r) : ''); }
+function _saHeaderHtml(pfx, label) {
+  var s = _saSt(pfx);
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === s.gran;
+    return '<button onclick="_saSetGran(\'' + pfx + '\',\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:11.5px;padding:6px 0;border-radius:7px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = s.offset !== 0 ? '<div style="font-size:10.5px;margin-top:1px;"><span onclick="_saToday(\'' + pfx + '\')" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = s.offset >= 0;
+  return '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:8px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+    + '<button onclick="_saNav(\'' + pfx + '\',-1)" style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:15px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:12.5px;font-weight:800;color:var(--text);">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_saNav(\'' + pfx + '\',1)" ' + (nextDis ? 'disabled' : '') + ' style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:15px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div>';
+}
+function renderSanteChart(pfx) {
+  var head = document.getElementById(pfx + '-head'), body = document.getElementById(pfx + '-body');
+  if (!body) return;
+  var s = _saSt(pfx), cfg = _SA_CFG[pfx];
+  var r = _actRange(s.gran, s.offset);
+  if (head) head.innerHTML = _saHeaderHtml(pfx, r.label);
+  body.ontouchstart = function (e) { s.touchX = e.touches[0].clientX; };
+  body.ontouchend = function (e) { if (s.touchX == null) return; var dx = e.changedTouches[0].clientX - s.touchX; s.touchX = null; if (Math.abs(dx) > 50) _saNav(pfx, dx < 0 ? 1 : -1); };
+  var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
+  var hist = (data && data[cfg.src || 'sante_historique']) || [];
+  var byDate = {}; hist.forEach(function (x) { if (x && x.date && x[cfg.metric] != null && !isNaN(Number(x[cfg.metric]))) byDate[x.date] = Number(x[cfg.metric]); });
+  // Valeurs présentes dans la période (pour la moyenne).
+  var vals = [], d = new Date(r.start);
+  while (d < r.end) { var k = _ymdLocal(d); if (byDate[k] != null) vals.push(byDate[k]); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
+  var avg = vals.length ? (vals.reduce(function (a, b) { return a + b; }, 0) / vals.length) : null;
+  var _unit = cfg.kind === 'bpm' ? ' bpm' : (cfg.kind === 'kcal' ? ' kcal' : (cfg.kind === 'g' ? ' g' : ''));
+  var fmtAvg = function (v) { return cfg.kind === 'dur' ? _saFmtDur(v) : (Math.round(v) + _unit); };
+  if (s.gran === 'S') {
+    // Détail par jour : barre + valeur + libellé jour.
+    var days = [], dd = new Date(r.start);
+    while (dd < r.end) { var kk = _ymdLocal(dd); days.push({ lbl: ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(dd.getDay() + 6) % 7], v: (byDate[kk] != null ? byDate[kk] : null) }); dd = new Date(dd.getFullYear(), dd.getMonth(), dd.getDate() + 1); }
+    var mx = Math.max.apply(null, days.map(function (x) { return x.v || 0; }).concat([1]));
+    var bars = days.map(function (x) {
+      var h = x.v != null ? Math.max(3, Math.round(x.v / mx * 48)) : 2;
+      var num = x.v != null ? (cfg.kind === 'dur' ? (Math.round(x.v / 6) / 10 + 'h') : Math.round(x.v)) : '';
+      return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;">'
+        + '<em style="font-size:8.5px;color:var(--text-muted);font-style:normal;font-weight:700;white-space:nowrap;">' + (num || '&nbsp;') + '</em>'
+        + '<i style="width:100%;max-width:16px;height:' + h + 'px;border-radius:3px;background:' + (x.v != null ? 'linear-gradient(180deg,' + cfg.c1 + ',' + cfg.c2 + ')' : 'var(--surface2)') + ';display:block;"></i>'
+        + '<em style="font-size:9px;color:var(--text-subtle);font-style:normal;">' + x.lbl + '</em></div>';
+    }).join('');
+    body.innerHTML = '<div style="display:flex;align-items:flex-end;gap:4px;height:78px;">' + bars + '</div>'
+      + '<div style="font-size:11px;color:var(--text-subtle);text-align:right;margin-top:6px;">' + (avg != null ? 'moy. ' + fmtAvg(avg) : 'Pas encore de données') + '</div>';
+  } else {
+    // Mois / Année : moyenne seule.
+    if (avg == null) { body.innerHTML = '<div style="text-align:center;color:var(--text-subtle);font-size:12px;padding:18px 0;">Pas de données sur cette période</div>'; return; }
+    body.innerHTML = '<div style="text-align:center;padding:10px 0 6px;">'
+      + '<div style="font-size:30px;font-weight:800;color:' + cfg.c1 + ';line-height:1;">' + (cfg.kind === 'dur' ? _saFmtDur(avg) : Math.round(avg)) + (cfg.kind !== 'dur' && _unit ? '<span style="font-size:14px;color:var(--text-subtle);font-weight:700;">' + _unit + '</span>' : '') + '</div>'
+      + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:5px;">moyenne · ' + vals.length + ' jour' + (vals.length > 1 ? 's' : '') + ' de données</div>'
+      + '</div>';
+  }
+}
+
+// Sommeil : dernière nuit (session la plus récente sur ~36 h) → durée formatée.
+async function _etFillSleep(H, now) {
+  var el = document.getElementById('et-sleep-val'), mini = document.getElementById('etm-mini-sleep');
+  if (!H || (!el && !mini)) return;
+  var set = function (txt, faded) { if (el) { el.textContent = txt; el.style.color = faded ? 'var(--text-subtle)' : 'var(--text)'; } if (mini) mini.textContent = txt; };
+  try {
+    var start = new Date(now.getTime() - 36 * 3600 * 1000);
+    var end = new Date(now.getTime() + 3600 * 1000);
+    var r = await H.querySleep({ startDate: start.toISOString(), endDate: end.toISOString() });
+    var s = (r && r.sessions) || [];
+    if (!s.length) { set('—', true); return; }
+    // La vraie nuit = la session la plus longue (ignore les siestes courtes).
+    s.sort(function (a, b) { return (b.durationMin || 0) - (a.durationMin || 0); });
+    var mins = Math.round(s[0].durationMin || 0);
+    var h = Math.floor(mins / 60), m = mins % 60;
+    set(h + ' h' + (m ? ' ' + (m < 10 ? '0' + m : m) : ''), false);
+  } catch (e) { set('Bientôt', true); }
+}
+
+// FC au repos : mesure la plus récente sur 7 jours.
+async function _etFillRestingHr(H, now) {
+  var el = document.getElementById('et-hr-val'), mini = document.getElementById('etm-mini-hr');
+  if (!H || (!el && !mini)) return;
+  var set = function (txt, faded) { if (el) { el.textContent = txt; el.style.color = faded ? 'var(--text-subtle)' : 'var(--text)'; } if (mini) mini.textContent = txt; };
+  try {
+    var start = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+    var end = new Date(now.getTime() + 3600 * 1000);
+    var r = await H.queryRestingHeartRate({ startDate: start.toISOString(), endDate: end.toISOString() });
+    var recs = (r && r.records) || [];
+    if (!recs.length) { set('—', true); return; }
+    recs.sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+    set(Math.round(recs[0].bpm) + ' bpm', false);
+  } catch (e) { set('Bientôt', true); }
+}
+
+// Historisation serveur (sommeil / FC repos / pas) : lit ~60 j de Health Connect
+// et pousse un lot vers l'action backend saveSante. Throttlé à 1×/6 h par athlète
+// (localStorage). Permet les tendances + la vue coach (données non stockées avant).
+var _santeSyncing = false;
+async function _syncSanteMontre(H) {
+  if (!H || typeof athlete === 'undefined' || !athlete || _santeSyncing) return;
+  var k = 'nvz_sante_sync2_' + athlete.athlete_id;   // v2 = fenêtre 365 j (invalide l'ancien throttle)
+  try { if (Date.now() - (+(localStorage.getItem(k) || 0)) < 6 * 3600 * 1000) return; } catch (e) {}
+  _santeSyncing = true;
+  try {
+    var now = new Date();
+    var start = new Date(now.getTime() - 365 * 24 * 3600 * 1000);   // large : on capte tout ce que Health Connect a
+    var end = new Date(now.getTime() + 24 * 3600 * 1000);
+    var byDate = {};
+    var ensure = function (d) { return byDate[d] || (byDate[d] = { date: d }); };
+    try { var a = await H.queryAggregated({ startDate: start.toISOString(), endDate: end.toISOString(), dataType: 'steps', bucket: 'day' }); ((a && a.aggregatedData) || []).forEach(function (x) { var v = Math.round(x.value || 0); if (v > 0) ensure(_ymdLocal(new Date(x.startDate))).pas = v; }); } catch (e) {}
+    try { var s = await H.querySleep({ startDate: start.toISOString(), endDate: end.toISOString() }); ((s && s.sessions) || []).forEach(function (w) { var d = new Date(w.endDate).toISOString().slice(0, 10); var m = Math.round(w.durationMin || 0); var c = ensure(d); if (m > 0 && !(c.sommeil_min >= m)) c.sommeil_min = m; }); } catch (e) {}
+    try { var r = await H.queryRestingHeartRate({ startDate: start.toISOString(), endDate: end.toISOString() }); ((r && r.records) || []).forEach(function (x) { ensure(new Date(x.timestamp).toISOString().slice(0, 10)).fc_repos = Math.round(x.bpm || 0); }); } catch (e) {}
+    var entries = Object.keys(byDate).map(function (d) { return byDate[d]; }).filter(function (e) { return e.sommeil_min != null || e.fc_repos != null || e.pas != null; });
+    if (entries.length) {
+      await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSante', athlete_id: athlete.athlete_id, entries: entries }) });
+      try { localStorage.setItem(k, String(Date.now())); } catch (e) {}
+    }
+  } catch (e) {} finally { _santeSyncing = false; }
+}
+
+// ===========================================================================
+// NUTRITION (sous-écran de « Forme ») — objectif protéines/kcal calculé depuis
+// le profil, saisie manuelle du jour (source de vérité), tendance S/M/A (moteur
+// _sa* sur nutri_historique) et pré-remplissage bonus Health Connect sur natif.
+// Stockage serveur : action saveNutrition → indicateurs 'nutri_<date>'.
+// ===========================================================================
+function _nutAge() {
+  try {
+    var iso = _ddnVersISO(typeof athlete !== 'undefined' && athlete ? athlete.ddn : ''); if (!iso) return null;
+    var b = new Date(iso); if (isNaN(b.getTime())) return null;
+    var n = new Date(), a = n.getFullYear() - b.getFullYear();
+    var m = n.getMonth() - b.getMonth(); if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--;
+    return (a > 5 && a < 120) ? a : null;
+  } catch (e) { return null; }
+}
+// Niveau d'activité (facteur TDEE, multiplicateurs standard Mifflin-St Jeor).
+// Choix par appareil (localStorage), défaut « Modéré ».
+var _NUT_ACT = [
+  { id: 'sed', f: 1.2, label: 'Sédentaire' },
+  { id: 'leg', f: 1.375, label: 'Léger' },
+  { id: 'mod', f: 1.55, label: 'Modéré' },
+  { id: 'act', f: 1.725, label: 'Actif' },
+  { id: 'tres', f: 1.9, label: 'Très actif' }
+];
+function _nutActId() { try { return localStorage.getItem('nvz_nut_act_' + (typeof athlete !== 'undefined' && athlete ? athlete.athlete_id : '')) || 'mod'; } catch (e) { return 'mod'; } }
+function _nutActFactor() { var id = _nutActId(); for (var i = 0; i < _NUT_ACT.length; i++) if (_NUT_ACT[i].id === id) return _NUT_ACT[i].f; return 1.55; }
+function _nutSetAct(id) { try { localStorage.setItem('nvz_nut_act_' + (athlete && athlete.athlete_id), id); } catch (e) {} try { renderNutrition(); } catch (e) {} }
+
+// Objectifs indicatifs : protéines = g/kg selon le but ; calories = Mifflin-St
+// Jeor × niveau d'activité, ajusté au but. Champs null si le profil est incomplet.
+function _nutObjectifs() {
+  return _nutObjectifsFor(
+    (typeof athlete !== 'undefined' && athlete) ? athlete : {},
+    (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : {},
+    _nutActFactor()
+  );
+}
+// Variante paramétrable : utilisable côté coach (athlète ≠ utilisateur connecté).
+// A = profil athlète {ddn,taille,sexe,objectif,poids}, data = getAppData, actF = facteur d'activité.
+function _nutObjectifsFor(A, data, actF) {
+  A = A || {}; data = data || {}; actF = actF || 1.55;
+  // Âge depuis A.ddn (indépendant de l'utilisateur connecté)
+  var age = null;
+  try {
+    var iso = _ddnVersISO(A.ddn || '');
+    if (iso) { var b = new Date(iso); if (!isNaN(b.getTime())) { var n = new Date(), a0 = n.getFullYear() - b.getFullYear(); var m0 = n.getMonth() - b.getMonth(); if (m0 < 0 || (m0 === 0 && n.getDate() < b.getDate())) a0--; if (a0 > 5 && a0 < 120) age = a0; } }
+  } catch (e) {}
+  // Poids : dernière pesée (poids_historique) = source la plus fraîche ; sinon
+  // poidsActuel, sinon poids de référence de l'objectif, sinon champ profil.
+  var poids = 0;
+  try { if (data.poids && data.poids[0] && data.poids[0].poids != null) poids = parseFloat(data.poids[0].poids) || 0; } catch (e) {}
+  if (!poids) poids = parseFloat(data.poidsActuel) || 0;
+  if (!poids && data.objectif && data.objectif.poids_kg != null) poids = parseFloat(data.objectif.poids_kg) || 0;
+  if (!poids) poids = parseFloat(A.poids) || 0;
+  var taille = parseFloat(A.taille) || 0;
+  var sexe = String(A.sexe || '').toUpperCase();
+  // Objectif : chaîne libre (table objectif → athlete.objectif), ex. « Prise de
+  // masse + sèche » (recomposition). On mappe vers protéines g/kg + calories.
+  var objStr = String((A.objectif != null ? A.objectif : (data.objectif && data.objectif.objectif)) || '').toLowerCase();
+  var hasMasse = objStr.indexOf('masse') !== -1 || objStr.indexOf('prise') !== -1 || objStr.indexOf('volume') !== -1;
+  var hasSeche = objStr.indexOf('sèche') !== -1 || objStr.indexOf('seche') !== -1 || objStr.indexOf('perte') !== -1 || objStr.indexOf('affin') !== -1;
+  var goal, label;
+  if (hasMasse && hasSeche) { goal = 'recomp'; label = 'Recomposition'; }
+  else if (hasSeche) { goal = 'seche'; label = 'Sèche'; }
+  else if (hasMasse) { goal = 'masse'; label = 'Prise de masse'; }
+  else { goal = 'entretien'; label = 'Entretien'; }
+  var pf = (goal === 'seche' || goal === 'recomp') ? 2.2 : (goal === 'masse' ? 2.0 : 1.8);
+  var prot = poids > 0 ? Math.round(poids * pf) : null;
+  var kcal = null;
+  if (poids > 0 && taille > 0 && age) {
+    var bmr = 10 * poids + 6.25 * taille - 5 * age + (sexe === 'F' ? -161 : 5);
+    var tdee = bmr * actF;
+    if (goal === 'seche') tdee *= 0.85; else if (goal === 'masse') tdee *= 1.10; else if (goal === 'recomp') tdee *= 0.90;   // recomp = léger déficit ; entretien = maintien
+    kcal = Math.round(tdee / 10) * 10;
+  }
+  // Répartition des macros : protéines fixées (g/kg), lipides ~27 % des kcal,
+  // glucides = le reste. Calculables seulement si kcal ET protéines connues.
+  var lip = null, gluc = null;
+  if (kcal != null && prot != null) {
+    lip = Math.round(kcal * 0.27 / 9);
+    var restK = kcal - prot * 4 - lip * 9;
+    gluc = restK > 0 ? Math.round(restK / 4) : 0;
+  }
+  return { prot: prot, kcal: kcal, gluc: gluc, lip: lip, goal: goal, label: label, pf: pf, poids: poids };
+}
+function _nutTodayEntry() {
+  var today = _ymdLocal(new Date());
+  var hist = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.nutri_historique) || [];
+  for (var i = 0; i < hist.length; i++) { if (hist[i] && hist[i].date === today) return hist[i]; }
+  return null;
+}
+function _nutProg(label, now, obj, unit, c1) {
+  var has = now != null;
+  var pct = (has && obj) ? Math.max(0, Math.min(1, now / obj)) : 0;
+  var right = has ? (Math.round(now) + (obj ? ' / ' + obj : '') + ' ' + unit) : (obj ? '— / ' + obj + ' ' + unit : '—');
+  return '<div style="margin-top:13px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">'
+    + '<span style="font-size:12.5px;font-weight:700;color:var(--text);">' + label + '</span>'
+    + '<span style="font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;">' + right + '</span>'
+    + '</div>'
+    + '<div style="height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;">'
+    + '<i style="display:block;height:100%;width:' + Math.round(pct * 100) + '%;border-radius:999px;background:' + c1 + ';transition:width .6s cubic-bezier(.22,1,.36,1);"></i>'
+    + '</div></div>';
+}
+// Analyse nutritionnelle (P3-26) — interprétation « Lecture Novalyz », déterministe :
+// compare la MOYENNE 7 j (sur les jours notés) aux cibles, pondère selon l'objectif
+// (sèche/masse/recomp/entretien), met l'accent sur les protéines, et reste honnête
+// sur le recul (nb de jours notés). Aucun chiffre inventé : tout vient des cibles
+// (_nutObjectifs) et de nutri_historique.
+function _nutAnalyse(obj) {
+  if (obj.prot == null && obj.kcal == null) return '';   // pas de cible → rien à comparer
+  var hist = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.nutri_historique) || [];
+  var cut = _ymdLocal(new Date(Date.now() - 6 * 86400000));   // 7 jours glissants
+  var last7 = hist.filter(function (h) { return h && h.date && h.date >= cut; });
+  var nDays = last7.length;
+  if (nDays === 0) {
+    return '<div class="nut-card"><div class="nut-h">Analyse nutrition</div>'
+      + '<div class="nut-muted" style="margin-top:8px;">Saisis ta nutrition quelques jours : Novalyz comparera tes apports à tes cibles et te donnera un conseil.</div></div>';
+  }
+  var avg = function (key) {
+    var v = last7.map(function (h) { return (h[key] != null) ? Number(h[key]) : null; }).filter(function (x) { return x != null && !isNaN(x); });
+    return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length) : null;
+  };
+  var aK = avg('kcal'), aP = avg('prot');
+  var items = [];
+  // Protéines — clé pour tous les objectifs sportifs.
+  if (obj.prot && aP != null) {
+    if (aP / obj.prot >= 0.9) items.push({ s: 'good', t: 'Protéines au rendez-vous (~' + aP + ' g/j, cible ' + obj.prot + ' g) — bon pour préserver et construire du muscle.' });
+    else { var manque = obj.prot - aP; items.push({ s: 'bad', t: 'Protéines insuffisantes (~' + aP + ' g/j vs cible ' + obj.prot + ' g, −' + manque + ' g). ' + (obj.goal === 'masse' ? 'Frein à la prise de muscle.' : (obj.goal === 'seche' || obj.goal === 'recomp') ? 'Risque de perdre du muscle en déficit.' : 'À relever pour soutenir la récupération.') + ' Vise ~+' + manque + ' g/j.' }); }
+  }
+  // Calories — interprétées selon l'objectif.
+  if (obj.kcal && aK != null) {
+    var dk = aK - obj.kcal, pk = Math.round(Math.abs(dk) / obj.kcal * 100);
+    if (pk <= 7) items.push({ s: 'good', t: 'Calories alignées sur ta cible (~' + aK + ' kcal/j, cible ' + obj.kcal + ').' });
+    else if (dk > 0) {
+      if (obj.goal === 'seche' || obj.goal === 'recomp') items.push({ s: 'warn', t: 'Au-dessus de ta cible (~' + aK + ' vs ' + obj.kcal + ' kcal, +' + pk + ' %) → ralentit la perte de gras. Resserre les portions / les glucides.' });
+      else if (obj.goal === 'masse') items.push({ s: 'info', t: 'Au-dessus de ta cible (+' + pk + ' %) — OK pour une prise de masse tant que le poids monte progressivement.' });
+      else items.push({ s: 'warn', t: 'Au-dessus de ta cible d\'entretien (+' + pk + ' %).' });
+    } else {
+      if (obj.goal === 'masse') items.push({ s: 'warn', t: 'En-dessous de ta cible (~' + aK + ' vs ' + obj.kcal + ' kcal, −' + pk + ' %) → limite la prise de muscle. Ajoute des glucides autour des séances.' });
+      else if (obj.goal === 'seche') items.push({ s: 'good', t: 'En léger déficit (~' + aK + ' vs ' + obj.kcal + ' kcal) — cohérent avec une sèche ; garde les protéines hautes.' });
+      else if (obj.goal === 'recomp') items.push({ s: 'good', t: 'Léger déficit (~' + aK + ' vs ' + obj.kcal + ' kcal) — cohérent avec une recomposition.' });
+      else items.push({ s: 'info', t: 'En-dessous de ta cible d\'entretien (−' + pk + ' %).' });
+    }
+  }
+  if (nDays < 5) items.push({ s: 'info', t: 'Tu as noté ' + nDays + ' jour' + (nDays > 1 ? 's' : '') + ' sur 7 — note plus régulièrement pour fiabiliser l\'analyse.' });
+  if (!items.length) return '';
+  var tone = items.some(function (x) { return x.s === 'bad'; }) ? { t: 'À ajuster', c: '#DC3545' } : items.some(function (x) { return x.s === 'warn'; }) ? { t: 'Presque', c: '#E07800' } : { t: 'Dans le vert', c: '#10B981' };
+  var reli = nDays >= 5 ? 'fiable' : nDays >= 3 ? 'fiabilité moyenne' : 'peu de recul';
+  var COL = { good: '#10B981', warn: '#E07800', bad: '#DC3545', info: 'var(--text-subtle)' };
+  var rows = items.map(function (it) {
+    return '<div style="display:flex;gap:9px;align-items:flex-start;margin-top:10px;">'
+      + '<span style="width:8px;height:8px;border-radius:999px;background:' + COL[it.s] + ';flex:none;margin-top:5px;"></span>'
+      + '<span style="font-size:12.5px;line-height:1.5;color:var(--text);">' + it.t + '</span></div>';
+  }).join('');
+  return '<div class="nut-card">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div class="nut-h">Analyse nutrition</div>'
+    + '<span class="nut-chip" style="background:color-mix(in srgb,' + tone.c + ' 14%,transparent);color:' + tone.c + ';border-color:color-mix(in srgb,' + tone.c + ' 35%,transparent);">' + tone.t + '</span></div>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:3px;">Moyenne des 7 derniers jours · ' + nDays + '/7 noté' + (nDays > 1 ? 's' : '') + ' · ' + reli + '</div>'
+    + rows
+    + '</div>';
+}
+function renderNutrition() {
+  var body = document.getElementById('nut-body'); if (!body) return;
+  var obj = _nutObjectifs();
+  var todayE = _nutTodayEntry();
+  var tK = todayE && todayE.kcal != null ? Number(todayE.kcal) : null;
+  var tP = todayE && todayE.prot != null ? Number(todayE.prot) : null;
+  var tG = todayE && todayE.gluc != null ? Number(todayE.gluc) : null;
+  var tL = todayE && todayE.lip != null ? Number(todayE.lip) : null;
+  var objCard;
+  if (obj.prot == null && obj.kcal == null) {
+    objCard = '<div class="nut-card"><div class="nut-h">Ton objectif du jour</div>'
+      + '<div class="nut-muted" style="margin-top:8px;">Renseigne ton <b>poids</b>, ta <b>taille</b> et ta <b>date de naissance</b> dans Réglages → Profil pour calculer tes objectifs.</div>'
+      + '<button class="nut-ghost" style="margin-top:11px;" onclick="switchTab(\'reglages\')">Compléter mon profil</button></div>';
+  } else {
+    var adj = obj.goal === 'seche' ? 'déficit −15 %' : obj.goal === 'masse' ? 'surplus +10 %' : obj.goal === 'recomp' ? 'recomposition, léger déficit −10 %' : 'maintien';
+    var note = 'Objectif indicatif — protéines ' + obj.pf + ' g/kg';
+    note += obj.kcal != null ? ' · calories Mifflin-St Jeor (' + adj + ') ; lipides ~27 % des kcal, glucides = le reste.' : ' · calories/glucides/lipides : complète taille + date de naissance dans Réglages.';
+    var actId = _nutActId();
+    var actPills = _NUT_ACT.map(function (a) { var on = a.id === actId; return '<button type="button" onclick="_nutSetAct(\'' + a.id + '\')" style="border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a10)' : 'var(--surface2)') + ';color:' + (on ? 'var(--accent)' : 'var(--text-muted)') + ';border-radius:999px;padding:6px 10px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;">' + a.label + '</button>'; }).join('');
+    var actRow = '<div style="margin-top:14px;"><div class="nut-lab" style="margin-bottom:6px;">Niveau d\'activité</div><div style="display:flex;gap:6px;flex-wrap:wrap;">' + actPills + '</div></div>';
+    objCard = '<div class="nut-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div class="nut-h">Ton objectif du jour</div><span class="nut-chip">' + escapeHtml(obj.label || 'Objectif') + '</span></div>'
+      + _nutProg('Protéines', tP, obj.prot, 'g', '#10B981')
+      + _nutProg('Glucides', tG, obj.gluc, 'g', '#3B82F6')
+      + _nutProg('Lipides', tL, obj.lip, 'g', '#A855F7')
+      + _nutProg('Calories', tK, obj.kcal, 'kcal', '#F59E0B')
+      + actRow
+      + '<div class="nut-muted" style="margin-top:12px;">' + note + '</div>'
+      + '</div>';
+  }
+  var inp = function (id, lab, ph, val) {
+    return '<div style="flex:1;min-width:0;"><label class="nut-lab">' + lab + '</label><input id="' + id + '" type="number" inputmode="numeric" min="0" placeholder="' + ph + '" value="' + (val != null ? val : '') + '" class="nut-inp"></div>';
+  };
+  var saisieCard = '<div class="nut-card">'
+    + '<div class="nut-h">Saisir aujourd\'hui</div>'
+    + '<div style="display:flex;gap:10px;margin-top:11px;">'
+    + inp('nut-in-kcal', 'Calories (kcal)', (obj.kcal != null ? obj.kcal : '—'), tK)
+    + inp('nut-in-prot', 'Protéines (g)', (obj.prot != null ? obj.prot : '—'), tP)
+    + '</div>'
+    + '<div style="display:flex;gap:10px;margin-top:10px;">'
+    + inp('nut-in-gluc', 'Glucides (g)', (obj.gluc != null ? obj.gluc : '—'), tG)
+    + inp('nut-in-lip', 'Lipides (g)', (obj.lip != null ? obj.lip : '—'), tL)
+    + '</div>'
+    + '<button class="nut-save" onclick="_nutSave()">Enregistrer</button>'
+    + '<div id="nut-hc" style="margin-top:9px;"></div>'
+    + '</div>';
+  var tendCard = '<div class="nut-card">'
+    + '<div class="nut-h" style="margin-bottom:11px;">Tendance</div>'
+    + '<div id="nutm-head"></div>'
+    + '<div class="nut-sub">Calories</div><div id="nutkcal-body" class="nut-chart"></div>'
+    + '<div class="nut-sub" style="margin-top:14px;">Protéines</div><div id="nutprot-body" class="nut-chart"></div>'
+    + '<div class="nut-sub" style="margin-top:14px;">Glucides</div><div id="nutgluc-body" class="nut-chart"></div>'
+    + '<div class="nut-sub" style="margin-top:14px;">Lipides</div><div id="nutlip-body" class="nut-chart"></div>'
+    + '</div>';
+  var anaCard = ''; try { anaCard = _nutAnalyse(obj); } catch (e) {}
+  body.innerHTML = objCard + anaCard + saisieCard + tendCard;
+  try { _nutmRenderAll(); } catch (e) {}
+  try { _nutHCButton(); } catch (e) {}
+}
+function _nutSave() {
+  if (typeof athlete === 'undefined' || !athlete) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
+  var num = function (id, max) { var el = document.getElementById(id); if (!el || el.value === '') return null; var v = Math.round(Number(el.value)); return (isNaN(v) || v < 0 || v > max) ? NaN : v; };
+  var kcal = num('nut-in-kcal', 20000), prot = num('nut-in-prot', 2000), gluc = num('nut-in-gluc', 3000), lip = num('nut-in-lip', 2000);
+  if ([kcal, prot, gluc, lip].some(function (v) { return isNaN(v); })) { showToast('Valeur invalide', '#DC3545'); return; }
+  if (kcal == null && prot == null && gluc == null && lip == null) { showToast('Saisis au moins une valeur', '#DC3545'); return; }
+  var today = _ymdLocal(new Date());
+  // Mise à jour optimiste locale : l'écran répond tout de suite.
+  if (typeof dernierAppData !== 'undefined' && dernierAppData) {
+    dernierAppData.nutri_historique = dernierAppData.nutri_historique || [];
+    var h = dernierAppData.nutri_historique, found = false;
+    for (var i = 0; i < h.length; i++) { if (h[i] && h[i].date === today) { h[i].kcal = kcal; h[i].prot = prot; h[i].gluc = gluc; h[i].lip = lip; found = true; break; } }
+    if (!found) h.unshift({ date: today, kcal: kcal, prot: prot, gluc: gluc, lip: lip });
+  }
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: athlete.athlete_id, entries: [{ date: today, kcal: kcal, prot: prot, gluc: gluc, lip: lip }] }) })
+    .then(function (r) { return r.json().catch(function () { return {}; }); })
+    .then(function (j) { if (j && j.success) showToast('Nutrition enregistrée ✓', '#10B981'); else showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); })
+    .catch(function () { showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); });
+  try { renderNutrition(); } catch (e) {}
+}
+async function _nutHCButton() {
+  var box = document.getElementById('nut-hc'); if (!box) return;
+  var H = _hcPlugin(); if (!H) { box.innerHTML = ''; return; }   // web/PWA : pas de Health Connect
+  box.innerHTML = '<button class="nut-ghost" onclick="_nutFromHC()"><svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Importer depuis Health Connect</button>'
+    + '<div class="nut-muted" style="margin-top:6px;font-size:11px;line-height:1.45;">Depuis ton app de nutrition (MyFitnessPal, Yazio…) via Health Connect. Si des apports manquent, elle n\'a peut-être pas fini de synchroniser — rouvre-la et réessaie un peu plus tard.</div>';
+}
+async function _nutFromHC() {
+  var H = _hcPlugin(); if (!H) return;
+  showToast('Lecture Health Connect…', '#6b7280');
+  try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
+  try {
+    var start = new Date(); start.setHours(0, 0, 0, 0);
+    var end = new Date(start.getTime() + 24 * 3600 * 1000);
+    var r = await H.queryNutrition({ startDate: start.toISOString(), endDate: end.toISOString() });
+    var ent = (r && r.entries) || [];
+    if (!ent.length) { showToast('Aucun repas dans Health Connect aujourd\'hui', '#F59E0B'); return; }
+    var kcal = 0, prot = 0, gluc = 0, lip = 0, hasK = false, hasP = false, hasG = false, hasL = false;
+    ent.forEach(function (e) {
+      if (e.energyKcal != null) { kcal += Number(e.energyKcal) || 0; hasK = true; }
+      var m = e.macros || {};
+      if (m.proteinG != null) { prot += Number(m.proteinG) || 0; hasP = true; }
+      if (m.carbohydratesG != null) { gluc += Number(m.carbohydratesG) || 0; hasG = true; }
+      if (m.fatG != null) { lip += Number(m.fatG) || 0; hasL = true; }
+    });
+    var setv = function (id, on, val) { var el = document.getElementById(id); if (on && el) el.value = Math.round(val); };
+    setv('nut-in-kcal', hasK, kcal); setv('nut-in-prot', hasP, prot); setv('nut-in-gluc', hasG, gluc); setv('nut-in-lip', hasL, lip);
+    if (!hasK && !hasP && !hasG && !hasL) { showToast('Repas sans macros exploitables', '#F59E0B'); return; }
+    showToast('Pré-rempli · vérifie puis enregistre', '#10B981');
+  } catch (e) { showToast('Health Connect indisponible', '#DC3545'); }
+}
+
+// Import nutrition AUTOMATIQUE à l'ouverture (natif + Health Connect).
+// Lit les apports du jour (MFP/Yazio… → Health Connect) et les enregistre en
+// silence, 1×/jour. NE PAS écraser une saisie manuelle du jour : si une entrée
+// existe sans avoir été écrite par l'auto-import, on s'abstient. Idempotent :
+// ne re-poste pas si les valeurs n'ont pas changé.
+var _nutAutoImportRan = false;   // anti-boucle : au plus UNE tentative d'auto-import par exécution de l'app
+async function _nutAutoImportHC() {
+  try {
+    // ⚠️ ANTI-BOUCLE (natif) : requestHealthPermissions peut ouvrir l'écran Health Connect →
+    // l'app passe en arrière-plan → l'événement Capacitor 'resume' relance chargerAppData →
+    // _appliquerAppData → _nutAutoImportHC. Sans ce verrou, on redemandait la permission à
+    // l'infini (symptôme : « serveur en démarrage » qui ne se stabilise jamais, côté athlète).
+    // On ne tente donc l'auto-import qu'UNE FOIS par exécution, et au plus une fois par jour.
+    if (_nutAutoImportRan) return;
+    if (typeof athlete === 'undefined' || !athlete) return;
+    var H = (typeof _hcPlugin === 'function') ? _hcPlugin() : null;
+    if (!H) return;                                   // web/PWA : pas de Health Connect
+    var aid = athlete.athlete_id;
+    var today = _ymdLocal(new Date());
+    var autoDate = null; try { autoDate = localStorage.getItem('nvz_nut_auto_' + aid); } catch (e) {}
+    var existing = _nutTodayEntry();
+    // Entrée du jour présente mais PAS écrite par l'auto-import aujourd'hui → saisie
+    // manuelle : on respecte, on ne touche pas (et aucune demande de permission).
+    if (existing && autoDate !== today) return;
+    // Throttle quotidien : une seule demande de permission + requête par jour et par appareil.
+    var hcTry = null; try { hcTry = localStorage.getItem('nvz_nut_hc_try_' + aid); } catch (e) {}
+    if (hcTry === today) return;
+    _nutAutoImportRan = true;                         // marquer AVANT la demande → coupe la boucle 'resume'
+    try { localStorage.setItem('nvz_nut_hc_try_' + aid, today); } catch (e) {}
+    try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
+    // Fenêtre large (hier → demain) puis filtrage sur la date LOCALE = aujourd'hui,
+    // pour éviter qu'un décalage de fuseau fasse entrer des repas d'un autre jour.
+    var d0 = new Date(); d0.setHours(0, 0, 0, 0);
+    var start = new Date(d0.getTime() - 24 * 3600 * 1000);
+    var end = new Date(d0.getTime() + 48 * 3600 * 1000);
+    var r = await H.queryNutrition({ startDate: start.toISOString(), endDate: end.toISOString() });
+    var ent = (r && r.entries) || [];
+    if (!ent.length) return;
+    // Date locale (YYYY-MM-DD) d'une entrée, depuis le 1er champ date exploitable.
+    var entYmd = function (e) {
+      var d = e.startDate || e.startTime || e.date || e.endDate || e.time || null;
+      if (!d) return null;
+      var dt = new Date(d); if (isNaN(dt.getTime())) return null;
+      return _ymdLocal(dt);
+    };
+    // Sécurité : si AUCUNE entrée n'est datée, on ne peut pas garantir « aujourd'hui »
+    // → on s'abstient (pas d'écriture de données potentiellement périmées).
+    var anyDated = ent.some(function (e) { return entYmd(e) != null; });
+    if (!anyDated) return;
+    var entToday = ent.filter(function (e) { return entYmd(e) === today; });
+    if (!entToday.length) return;   // rien de daté d'aujourd'hui
+    var kcal = 0, prot = 0, gluc = 0, lip = 0, hasK = false, hasP = false, hasG = false, hasL = false;
+    entToday.forEach(function (e) {
+      if (e.energyKcal != null) { kcal += Number(e.energyKcal) || 0; hasK = true; }
+      var m = e.macros || {};
+      if (m.proteinG != null) { prot += Number(m.proteinG) || 0; hasP = true; }
+      if (m.carbohydratesG != null) { gluc += Number(m.carbohydratesG) || 0; hasG = true; }
+      if (m.fatG != null) { lip += Number(m.fatG) || 0; hasL = true; }
+    });
+    if (!hasK && !hasP && !hasG && !hasL) return;
+    var vK = hasK ? Math.round(kcal) : null, vP = hasP ? Math.round(prot) : null, vG = hasG ? Math.round(gluc) : null, vL = hasL ? Math.round(lip) : null;
+    // Rien de neuf par rapport à l'existant → marquer et sortir (pas de POST inutile).
+    if (existing && existing.kcal == vK && existing.prot == vP && existing.gluc == vG && existing.lip == vL) {
+      try { localStorage.setItem('nvz_nut_auto_' + aid, today); } catch (e) {}
+      return;
+    }
+    // MAJ optimiste locale
+    if (typeof dernierAppData !== 'undefined' && dernierAppData) {
+      dernierAppData.nutri_historique = dernierAppData.nutri_historique || [];
+      var h = dernierAppData.nutri_historique, f = false;
+      for (var i = 0; i < h.length; i++) { if (h[i] && h[i].date === today) { h[i].kcal = vK; h[i].prot = vP; h[i].gluc = vG; h[i].lip = vL; f = true; break; } }
+      if (!f) h.unshift({ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL });
+    }
+    try { localStorage.setItem('nvz_nut_auto_' + aid, today); } catch (e) {}
+    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: aid, entries: [{ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL }] }) }).catch(function () {});
+    try { if (document.getElementById('tab-nutrition')) renderNutrition(); } catch (e) {}
+    try { showToast('Nutrition synchronisée depuis Health Connect ✓', '#10B981'); } catch (e) {}
+  } catch (e) {}
+}
+// Contrôle de période PARTAGÉ de la tendance nutrition : un seul Semaine/Mois/
+// Année + navigation qui pilote les 2 graphes (calories, protéines).
+var _nutm = { gran: 'S', offset: 0, _tx: null };
+function _nutmSetGran(g) { _nutm.gran = g; _nutm.offset = 0; _nutmRenderAll(); }
+function _nutmNav(dir) { var n = _nutm.offset + dir; if (n > 0) n = 0; _nutm.offset = n; _nutmRenderAll(); }
+function _nutmToday() { _nutm.offset = 0; _nutmRenderAll(); }
+function _nutmHeaderHtml(label) {
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === _nutm.gran;
+    return '<button onclick="_nutmSetGran(\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:12px;padding:7px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = _nutm.offset !== 0 ? '<div style="font-size:11px;margin-top:1px;"><span onclick="_nutmToday()" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = _nutm.offset >= 0;
+  return '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:11px;padding:4px;margin-bottom:9px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">'
+    + '<button onclick="_nutmNav(-1)" style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:13.5px;font-weight:800;color:var(--text);">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_nutmNav(1)" ' + (nextDis ? 'disabled' : '') + ' style="width:32px;height:32px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div>';
+}
+function _nutmSwipe(elx) {
+  if (!elx) return;
+  elx.ontouchstart = function (e) { _nutm._tx = e.touches[0].clientX; };
+  elx.ontouchend = function (e) { if (_nutm._tx == null) return; var dx = e.changedTouches[0].clientX - _nutm._tx; _nutm._tx = null; if (Math.abs(dx) > 50) _nutmNav(dx < 0 ? 1 : -1); };
+}
+function _nutmRenderAll() {
+  var head = document.getElementById('nutm-head'); if (!head) return;
+  var r = _actRange(_nutm.gran, _nutm.offset);
+  head.innerHTML = _nutmHeaderHtml(r.label);
+  ['nutkcal', 'nutprot', 'nutgluc', 'nutlip'].forEach(function (p) {
+    try { var s = _saSt(p); s.gran = _nutm.gran; s.offset = _nutm.offset; renderSanteChart(p); } catch (e) {}
+    _nutmSwipe(document.getElementById(p + '-body'));
+  });
+}
+
+function _dsHeaderHtml(pfx, label) {
+  var s = _dsSt(pfx), T = _DS_THEME[pfx] || _DS_THEME.ds;
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === s.gran;
+    return '<button onclick="_dsSetGran(\'' + pfx + '\',\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? T.acc : 'transparent') + ';color:' + (on ? '#fff' : T.mu) + ';font-family:inherit;font-weight:800;font-size:12px;padding:7px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = s.offset !== 0 ? '<div style="font-size:11px;margin-top:1px;"><span onclick="_dsToday(\'' + pfx + '\')" style="color:' + T.acc + ';font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = s.offset >= 0;
+  return '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px;"><b style="font-size:13.5px;color:' + T.tx + ';">Pas quotidiens</b></div>'
+    + '<div style="display:flex;gap:4px;background:' + T.s2 + ';border-radius:11px;padding:4px;margin-bottom:9px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">'
+    + '<button onclick="_dsNav(\'' + pfx + '\',-1)" style="width:32px;height:32px;border-radius:10px;border:1px solid ' + T.bd + ';background:' + T.sf + ';color:' + T.tx + ';font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:13.5px;font-weight:800;color:' + T.tx + ';">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_dsNav(\'' + pfx + '\',1)" ' + (nextDis ? 'disabled' : '') + ' style="width:32px;height:32px;border-radius:10px;border:1px solid ' + T.bd + ';background:' + T.sf + ';color:' + T.tx + ';font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div>';
+}
+
+async function renderStepsChart(pfx) {
+  var s = _dsSt(pfx), T = _DS_THEME[pfx] || _DS_THEME.ds;
+  var head = document.getElementById(pfx + '-head'), wrap = document.getElementById(pfx + '-chart-wrap');
+  if (!wrap) return;
+  var H = _hcPlugin(); if (!H) return;
+  var r = _actRange(s.gran, s.offset), rp = _actRange(s.gran, s.offset - 1);
+  if (head) head.innerHTML = _dsHeaderHtml(pfx, r.label);
+  wrap.innerHTML = '<div id="' + pfx + '-chart" style="height:92px;display:flex;align-items:center;justify-content:center;color:' + T.su + ';font-size:12px;">…</div>'
+    + '<div id="' + pfx + '-pick" style="min-height:15px;margin-top:8px;font-size:12px;color:' + T.acc + ';text-align:center;"></div>'
+    + '<div id="' + pfx + '-cmp" style="margin-top:4px;font-size:12px;color:' + T.mu + ';text-align:right;"></div>';
+  // Swipe horizontal.
+  wrap.ontouchstart = function (e) { s.touchX = e.touches[0].clientX; };
+  wrap.ontouchend = function (e) { if (s.touchX == null) return; var dx = e.changedTouches[0].clientX - s.touchX; s.touchX = null; if (Math.abs(dx) > 50) _dsNav(pfx, dx < 0 ? 1 : -1); };
+  var cur = [], prevTot = 0;
+  try { var a = await H.queryAggregated({ startDate: r.start.toISOString(), endDate: r.end.toISOString(), dataType: 'steps', bucket: 'day' }); cur = (a && a.aggregatedData) || []; } catch (e) {}
+  try { var b = await H.queryAggregated({ startDate: rp.start.toISOString(), endDate: rp.end.toISOString(), dataType: 'steps', bucket: 'day' }); prevTot = ((b && b.aggregatedData) || []).reduce(function (t, x) { return t + (x.value || 0); }, 0); } catch (e) {}
+  _dsDraw(pfx, cur, prevTot, r);
+}
+
+function _dsDraw(pfx, cur, prevTot, r) {
+  var s = _dsSt(pfx), T = _DS_THEME[pfx] || _DS_THEME.ds;
+  var chartEl = document.getElementById(pfx + '-chart'), cmpEl = document.getElementById(pfx + '-cmp');
+  if (!chartEl) return;
+  var todayKey = _ymdLocal(new Date());
+  var byDay = {}; (cur || []).forEach(function (x) { byDay[_ymdLocal(new Date(x.startDate))] = (x.value || 0); });
+  var buckets = [];
+  if (s.gran === 'A') {
+    var months = [0,0,0,0,0,0,0,0,0,0,0,0];
+    (cur || []).forEach(function (x) { months[new Date(x.startDate).getMonth()] += (x.value || 0); });
+    var ml = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+    var yr = r.start.getFullYear();
+    buckets = months.map(function (v, i) { return { label: ml[i], full: new Date(yr, i, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }), value: v, today: false }; });
+  } else {
+    var d = new Date(r.start);
+    while (d < r.end) {
+      var key = _ymdLocal(d);
+      var lbl = (s.gran === 'S') ? ['L','M','M','J','V','S','D'][(d.getDay() + 6) % 7] : String(d.getDate());
+      buckets.push({ label: lbl, full: d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }), value: byDay[key] || 0, today: key === todayKey });
+      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    }
+  }
+  s.buckets = buckets;
+  var total = buckets.reduce(function (acc, b) { return acc + b.value; }, 0);
+  var maxv = Math.max.apply(null, buckets.map(function (b) { return b.value; }).concat([1]));
+  var dense = buckets.length > 10;      // semaine = 7 → chiffre par jour ; mois/année → trop dense
+  var kfmt = function (n) { return n >= 1000 ? (Math.round(n / 100) / 10).toLocaleString('fr-FR') + 'k' : String(Math.round(n)); };
+  var bars = buckets.map(function (b, i) {
+    var h = Math.max(3, Math.round(b.value / maxv * 58));
+    var lab = (!dense || i % 5 === 0) ? b.label : '';
+    var num = (!dense && b.value > 0) ? '<em style="font-size:9px;color:' + T.mu + ';font-style:normal;font-weight:700;white-space:nowrap;">' + kfmt(b.value) + '</em>' : (!dense ? '<em style="font-size:9px;font-style:normal;">&nbsp;</em>' : '');
+    return '<div onclick="_dsPick(\'' + pfx + '\',' + i + ')" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;cursor:pointer;">' + num
+      + '<i style="width:100%;max-width:24px;height:' + h + 'px;border-radius:4px;background:linear-gradient(180deg,' + T.acc + ',' + T.accS + ');opacity:' + (b.today ? '1' : '.8') + ';display:block;"></i>'
+      + '<em style="font-size:9px;color:' + T.su + ';font-style:normal;white-space:nowrap;">' + lab + '</em></div>';
+  }).join('');
+  chartEl.outerHTML = '<div id="' + pfx + '-chart" style="display:flex;align-items:flex-end;gap:' + (dense ? '2' : '5') + 'px;height:92px;">' + bars + '</div>';
+  if (cmpEl) {
+    var nb = (s.gran === 'A') ? 12 : buckets.length;
+    var moy = nb ? Math.round(total / nb) : 0;
+    var delta = prevTot > 0 ? Math.round((total - prevTot) / prevTot * 100) : null;
+    var dtxt = (delta === null) ? '' : ' · <span style="color:' + (delta >= 0 ? T.gd : '#DC3545') + ';font-weight:800;">' + (delta >= 0 ? '+' : '') + delta + '% vs préc.</span>';
+    cmpEl.innerHTML = '<b style="color:' + T.tx + ';">' + Math.round(total).toLocaleString('fr-FR') + ' pas</b> · moy. ' + moy.toLocaleString('fr-FR') + '/' + (s.gran === 'A' ? 'mois' : 'j') + dtxt;
+  }
+}
+
+/* ── Graphe de pas interactif (Semaine / Mois / Année + navigation + swipe) ── */
+var _actGran = 'S';    // 'S' semaine · 'M' mois · 'A' année
+var _actOffset = 0;    // 0 = période courante ; -1 = précédente…
+var _actTouchX = null;
+function _actSetGran(g) { _actGran = g; _actOffset = 0; _actRender(); }
+function _actNav(dir) { var n = _actOffset + dir; if (n > 0) n = 0; _actOffset = n; _actRender(); }
+function _actToday() { _actOffset = 0; _actRender(); }
+// Bornes + libellé d'une période (gran, offset).
+// Clé de date LOCALE (YYYY-MM-DD) — à utiliser pour tous les graphes par jour.
+// Évite le décalage d'un jour de toISOString() (UTC) en France (UTC+1/＋2) :
+// les bornes des graphes sont en minuit LOCAL et les données santé/nutrition
+// sont datées en calendrier local.
+function _ymdLocal(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function _actRange(gran, offset) {
+  var now = new Date(), start, end, label;
+  if (gran === 'S') {
+    var dow = (now.getDay() + 6) % 7; // lundi = 0
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow + offset * 7);
+    end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+    var last = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1);
+    label = start.getDate() + ' – ' + last.getDate() + ' ' + last.toLocaleDateString('fr-FR', { month: 'short' });
+  } else if (gran === 'M') {
+    start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    label = start.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  } else {
+    var y = now.getFullYear() + offset;
+    start = new Date(y, 0, 1); end = new Date(y + 1, 0, 1); label = String(y);
+  }
+  return { start: start, end: end, label: label };
+}
+function _actHeaderHtml(label) {
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === _actGran;
+    return '<button onclick="_actSetGran(\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:12px;padding:8px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = _actOffset !== 0 ? '<div style="font-size:11px;margin-top:1px;"><span onclick="_actToday()" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = _actOffset >= 0;
+  return '<div style="margin:18px 2px 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);">Activité</div>'
+    + '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:11px;padding:4px;margin-bottom:8px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+    + '<button onclick="_actNav(-1)" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:14px;font-weight:800;">' + escapeHtml(label) + '</div>' + today + '</div>'
+    + '<button onclick="_actNav(1)" ' + (nextDis ? 'disabled' : '') + ' style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div>';
+}
+async function _actRender() {
+  var host = document.getElementById('hc-activity'); if (!host) return;
+  var H = _hcPlugin(); if (!H) return;
+  var r = _actRange(_actGran, _actOffset), rp = _actRange(_actGran, _actOffset - 1);
+  host.innerHTML = _actHeaderHtml(r.label)
+    + '<div class="card" style="padding:14px;"><div id="act-chart" style="height:86px;display:flex;align-items:center;justify-content:center;color:var(--text-subtle);font-size:12px;">…</div><div id="act-cmp" style="margin-top:10px;font-size:12px;color:var(--text-muted);"></div></div>';
+  // Swipe horizontal sur la carte.
+  host.ontouchstart = function (e) { _actTouchX = e.touches[0].clientX; };
+  host.ontouchend = function (e) { if (_actTouchX == null) return; var dx = e.changedTouches[0].clientX - _actTouchX; _actTouchX = null; if (Math.abs(dx) > 50) _actNav(dx < 0 ? 1 : -1); };
+  var cur = [], prevTot = 0;
+  try { var a = await H.queryAggregated({ startDate: r.start.toISOString(), endDate: r.end.toISOString(), dataType: 'steps', bucket: 'day' }); cur = (a && a.aggregatedData) || []; } catch (e) {}
+  try { var b = await H.queryAggregated({ startDate: rp.start.toISOString(), endDate: rp.end.toISOString(), dataType: 'steps', bucket: 'day' }); prevTot = ((b && b.aggregatedData) || []).reduce(function (s, x) { return s + (x.value || 0); }, 0); } catch (e) {}
+  _actDraw(cur, prevTot, r);
+}
+function _actDraw(cur, prevTot, r) {
+  var chartEl = document.getElementById('act-chart'), cmpEl = document.getElementById('act-cmp');
+  if (!chartEl) return;
+  var byDay = {}; (cur || []).forEach(function (x) { byDay[_ymdLocal(new Date(x.startDate))] = (x.value || 0); });
+  var buckets = [];
+  if (_actGran === 'A') {
+    var months = [0,0,0,0,0,0,0,0,0,0,0,0];
+    (cur || []).forEach(function (x) { months[new Date(x.startDate).getMonth()] += (x.value || 0); });
+    var ml = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    buckets = months.map(function (v, i) { return { label: ml[i], value: v }; });
+  } else {
+    var d = new Date(r.start);
+    while (d < r.end) {
+      var key = _ymdLocal(d);
+      var lbl = (_actGran === 'S') ? ['L', 'M', 'M', 'J', 'V', 'S', 'D'][(d.getDay() + 6) % 7] : String(d.getDate());
+      buckets.push({ label: lbl, value: byDay[key] || 0 });
+      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    }
+  }
+  var total = buckets.reduce(function (s, b) { return s + b.value; }, 0);
+  var maxv = Math.max.apply(null, buckets.map(function (b) { return b.value; }).concat([1]));
+  var dense = buckets.length > 16;
+  var bars = buckets.map(function (b, i) {
+    var h = Math.max(3, Math.round(b.value / maxv * 66));
+    var lab = (!dense || i % 5 === 0) ? b.label : '';
+    return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;"><i title="' + Math.round(b.value) + ' pas" style="width:100%;max-width:24px;height:' + h + 'px;background:linear-gradient(180deg,var(--accent),#4f46e5);border-radius:4px;display:block;"></i><em style="font-size:9px;color:var(--text-subtle);font-style:normal;white-space:nowrap;">' + lab + '</em></div>';
+  }).join('');
+  chartEl.outerHTML = '<div id="act-chart" style="display:flex;align-items:flex-end;gap:' + (dense ? '2' : '5') + 'px;height:86px;">' + bars + '</div>';
+  if (cmpEl) {
+    var nb = (_actGran === 'A') ? 12 : buckets.length;
+    var moy = nb ? Math.round(total / nb) : 0;
+    var delta = prevTot > 0 ? Math.round((total - prevTot) / prevTot * 100) : null;
+    var dtxt = (delta === null) ? '' : ' · <span style="color:' + (delta >= 0 ? 'var(--good)' : '#F87171') + ';font-weight:800;">' + (delta >= 0 ? '+' : '') + delta + '% vs préc.</span>';
+    cmpEl.innerHTML = '<b style="color:var(--text);">' + Math.round(total).toLocaleString('fr-FR') + ' pas</b> · moy. ' + moy.toLocaleString('fr-FR') + '/' + (_actGran === 'A' ? 'mois' : 'j') + dtxt;
+  }
+}
 
 var _dashCardioPeriod  = 30;
 var _dashCardioWindows = null;

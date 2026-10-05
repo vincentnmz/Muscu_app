@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Novalyz — Questionnaire quotidien (maquette)</title>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F9FBFF;--surface:#FFFFFF;--surface2:#EEF3FF;--border:#D8E2FF;--text:#070B14;--text-muted:#4A5980;--text-subtle:#8595B8;--accent:#1A5FFF;--accent-strong:#1248D4;--accent-a10:rgba(26,95,255,.10);--good:#00A854;--good-a:rgba(0,168,84,.12);--warn:#E07800;--warn-a:rgba(224,120,0,.12);--danger:#DC3545;--sh:0 6px 20px rgba(7,11,20,.08);--sh-sm:0 1px 2px rgba(7,11,20,.06);--on-accent:#fff}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#070B14;--surface:#0E1526;--surface2:#141D33;--border:#22304F;--text:#EAF0FF;--text-muted:#9DABCC;--text-subtle:#6B7BA3;--accent:#4C86FF;--accent-strong:#2F63D6;--accent-a10:rgba(76,134,255,.14);--good-a:rgba(0,168,84,.18);--warn-a:rgba(224,120,0,.18);--sh:0 10px 30px rgba(0,0,0,.4);--sh-sm:0 1px 2px rgba(0,0,0,.3)}}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:16px 14px 40px;min-height:100vh}
+  .wrap{max-width:420px;margin:0 auto}
+  .mk-note{font-size:11.5px;color:var(--text-subtle);text-align:center;margin-bottom:14px}
+  /* scrim + sheet */
+  .scrim{background:rgba(7,11,20,.45);border-radius:22px;padding:40px 10px 10px;display:flex;align-items:flex-end;justify-content:center;min-height:620px}
+  .sheet{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--sh);overflow:hidden}
+  .sh-hd{padding:18px 18px 4px}
+  .sh-hd .t{font-size:19px;font-weight:900;letter-spacing:-.01em}
+  .sh-hd .s{font-size:12.5px;color:var(--text-muted);margin-top:3px}
+  .body{padding:8px 18px 4px}
+  .q{margin-top:16px}
+  .q .lab{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;margin-bottom:9px}
+  .scale{display:flex;gap:6px}
+  .scale button{flex:1;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);border-radius:11px;padding:11px 2px 8px;font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .scale button .em{font-size:17px;line-height:1}
+  .scale button .n{font-size:9px;font-weight:800;color:var(--text-subtle);white-space:nowrap}
+  .scale button.on{border-color:var(--accent);background:var(--accent-a10);color:var(--accent)}
+  .scale button.on .n{color:var(--accent)}
+  .foot{display:flex;gap:10px;padding:14px 18px calc(16px + env(safe-area-inset-bottom,0px))}
+  .btn{flex:1;border-radius:13px;padding:14px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;border:1px solid var(--border)}
+  .btn.sec{background:var(--surface2);color:var(--text-muted)}
+  .btn.main{flex:2;background:var(--accent);color:#fff;border-color:transparent}
+  /* flow explainer */
+  .flow{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);padding:15px;margin-top:16px}
+  .flow h3{font-family:Michroma,sans-serif;font-weight:400;font-size:13px;margin:0 0 4px}
+  .flow .sub{font-size:11.5px;color:var(--text-subtle);margin-bottom:12px}
+  .step{display:flex;gap:11px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--border)}
+  .step:first-of-type{border-top:0}
+  .step .ic{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;font-size:15px;background:var(--surface2)}
+  .step .tt{font-size:13px;font-weight:800}
+  .step .dd{font-size:11.5px;color:var(--text-muted);line-height:1.45;margin-top:2px}
+  .tag{display:inline-block;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;border-radius:5px;padding:2px 6px;margin-left:6px;vertical-align:1px}
+  .tag.ok{background:var(--good-a);color:var(--good)}
+  .tag.skip{background:var(--warn-a);color:var(--warn)}
+</style></head>
+<body>
+<div class="wrap">
+<div class="mk-note">Maquette · Questionnaire quotidien = « Ton état du jour » EXISTANT, auto-déclenché à la 1re ouverture (anti-doublon)</div>
+
+<div class="scrim">
+  <div class="sheet">
+    <div class="sh-hd">
+      <div class="t">Ton état du jour</div>
+      <div class="s">Bonjour 👋 Comment tu te sens aujourd'hui ? · 20 secondes</div>
+    </div>
+    <div class="body">
+      <div class="q">
+        <div class="lab">😴 Sommeil</div>
+        <div class="scale">
+          <button><span class="em">😵</span><span class="n">Très mauvais</span></button>
+          <button><span class="em">😕</span><span class="n">Mauvais</span></button>
+          <button class="on"><span class="em">😐</span><span class="n">Moyen</span></button>
+          <button><span class="em">🙂</span><span class="n">Bon</span></button>
+          <button><span class="em">😴</span><span class="n">Excellent</span></button>
+        </div>
+      </div>
+      <div class="q">
+        <div class="lab">😮‍💨 Fatigue</div>
+        <div class="scale">
+          <button><span class="em">💪</span><span class="n">Aucune</span></button>
+          <button class="on"><span class="em">🙂</span><span class="n">Faible</span></button>
+          <button><span class="em">😐</span><span class="n">Modérée</span></button>
+          <button><span class="em">😓</span><span class="n">Importante</span></button>
+          <button><span class="em">🥵</span><span class="n">Très</span></button>
+        </div>
+      </div>
+      <div class="q">
+        <div class="lab">🔥 Motivation</div>
+        <div class="scale">
+          <button><span class="em">😔</span><span class="n">Très faible</span></button>
+          <button><span class="em">😕</span><span class="n">Faible</span></button>
+          <button><span class="em">😐</span><span class="n">Moyenne</span></button>
+          <button class="on"><span class="em">😀</span><span class="n">Bonne</span></button>
+          <button><span class="em">🤩</span><span class="n">À fond</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn sec">Plus tard</button>
+      <button class="btn main">✅ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="flow">
+  <h3>Quand il apparaît (sans doublon)</h3>
+  <div class="sub">On réutilise les questionnaires existants, on ne les empile pas.</div>
+  <div class="step">
+    <div class="ic">🌅</div>
+    <div><div class="tt">1re ouverture du jour <span class="tag ok">Auto</span></div><div class="dd">Ce questionnaire « état du jour » s'ouvre une fois, si l'athlète ne l'a pas déjà rempli aujourd'hui. Non bloquant (« Plus tard »).</div></div>
+  </div>
+  <div class="step">
+    <div class="ic">▶️</div>
+    <div><div class="tt">Avant une séance <span class="tag skip">Pas redemandé</span></div><div class="dd">L'« état du jour » est déjà proposé avant de démarrer. S'il a été rempli le matin → on ne le redemande pas, on enchaîne direct.</div></div>
+  </div>
+  <div class="step">
+    <div class="ic">🏁</div>
+    <div><div class="tt">Fin de séance = Bilan <span class="tag ok">Différent</span></div><div class="dd">Le bilan post-séance reste distinct : ressenti de la séance + douleur. Pas de doublon avec l'état du matin.</div></div>
+  </div>
+  <div class="step">
+    <div class="ic">🧑‍🏫</div>
+    <div><div class="tt">Effet côté coach</div><div class="dd">Rempli le matin → l'« État du jour » de la fiche est vert/fiable (plus de « À confirmer »), et la Vigilance bien-être de l'équipe se nourrit.</div></div>
+  </div>
+</div>
+
+</div>
+</body></html>

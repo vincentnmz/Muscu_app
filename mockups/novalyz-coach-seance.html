@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Novalyz — Séance réalisée (coach, maquette)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --text-muted:#4A5980; --text-subtle:#8595B8;
+    --accent:#1A5FFF; --accent-dim:#5C9AFF; --accent-a10:rgba(26,95,255,.10);
+    --good:#00A854; --good-a:rgba(0,168,84,.12);
+    --warn:#E07800; --warn-a:rgba(224,120,0,.12);
+    --danger:#DC3545; --danger-a:rgba(220,53,69,.10);
+    --sh:0 6px 20px rgba(7,11,20,.08); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#070B14; --surface:#0E1526; --surface2:#141D33; --border:#22304F;
+    --text:#EAF0FF; --text-muted:#9DABCC; --text-subtle:#6B7BA3;
+    --accent:#4C86FF; --accent-dim:#2F63D6; --accent-a10:rgba(76,134,255,.14);
+    --good-a:rgba(0,168,84,.18); --warn-a:rgba(224,120,0,.18); --danger-a:rgba(220,53,69,.18);
+    --sh:0 10px 30px rgba(0,0,0,.4); --sh-sm:0 1px 2px rgba(0,0,0,.3);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#070B14; --surface:#0E1526; --surface2:#141D33; --border:#22304F;
+    --text:#EAF0FF; --text-muted:#9DABCC; --text-subtle:#6B7BA3;
+    --accent:#4C86FF; --accent-dim:#2F63D6; --accent-a10:rgba(76,134,255,.14);
+    --good-a:rgba(0,168,84,.18); --warn-a:rgba(224,120,0,.18); --danger-a:rgba(220,53,69,.18);
+    --sh:0 10px 30px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:radial-gradient(1100px 420px at 80% -8%, var(--accent-a10), transparent 60%), var(--bg);
+    color:var(--text); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; -webkit-font-smoothing:antialiased; padding:16px 14px 50px; min-height:100vh;}
+  .phone{max-width:420px; margin:0 auto;}
+  .mk-note{max-width:420px;margin:0 auto 12px;font-size:11.5px;color:var(--text-subtle);text-align:center}
+  .top{display:flex;align-items:center;gap:12px;margin:2px 0 14px}
+  .back{width:38px;height:38px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm)}
+  .back svg{width:18px;height:18px;fill:none;stroke:var(--text);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .top .ti{font-size:17px;font-weight:900;letter-spacing:-.01em}
+  .top .me{font-size:12px;color:var(--text-muted);margin-top:1px}
+  /* summary strip */
+  .sum{display:flex;gap:8px;overflow:auto;margin-bottom:6px;padding-bottom:2px}
+  .schip{flex:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 12px;box-shadow:var(--sh-sm);text-align:center;min-width:72px}
+  .schip .n{font-size:16px;font-weight:900;letter-spacing:-.02em}
+  .schip .l{font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:2px}
+  .sec{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);margin:20px 4px 10px}
+  /* exercise card */
+  .exo{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);padding:13px 15px;margin-bottom:12px}
+  .exo .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .exo .nm{font-size:14.5px;font-weight:800}
+  .exo .mu{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);background:var(--accent-a10);border-radius:6px;padding:3px 7px}
+  .cible{font-size:10.5px;color:var(--text-subtle);margin-bottom:8px}
+  .cible b{color:var(--text-muted)}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);text-align:right;padding:4px 0}
+  th:first-child{text-align:left}
+  td{font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums}
+  td:first-child{text-align:left;color:var(--text-subtle);font-weight:800}
+  .rpe{display:inline-block;min-width:30px;border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800}
+  .rpe.lo{background:var(--good-a);color:var(--good)} .rpe.md{background:var(--warn-a);color:var(--warn)} .rpe.hi{background:var(--danger-a);color:var(--danger)}
+  .tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;border-radius:999px;padding:3px 9px;margin-top:9px}
+  .tag.ok{background:var(--good-a);color:var(--good)} .tag.un{background:var(--warn-a);color:var(--warn)}
+  .verdict{display:flex;gap:11px;align-items:flex-start;background:var(--accent-a10);border:1px solid var(--border);border-radius:14px;padding:13px 14px}
+  .verdict .ic{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--accent);color:#fff;font-weight:900}
+  .verdict .t{font-size:12.5px;line-height:1.5;color:var(--text-muted)}
+  .verdict .t b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="mk-note">Maquette · Séance réalisée (vue coach) — détail exo / série / reps / RPE</div>
+<div class="phone">
+
+  <div class="top">
+    <div class="back"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></div>
+    <div style="flex:1;min-width:0">
+      <div class="ti">Haut du corps</div>
+      <div class="me">Julie M. · lundi 6 oct. · 18 h 12 → 19 h 00</div>
+    </div>
+  </div>
+
+  <div class="sum">
+    <div class="schip"><div class="n">48<span style="font-size:10px">min</span></div><div class="l">Durée</div></div>
+    <div class="schip"><div class="n">5</div><div class="l">Exos</div></div>
+    <div class="schip"><div class="n">17</div><div class="l">Séries</div></div>
+    <div class="schip"><div class="n">4,8<span style="font-size:10px">t</span></div><div class="l">Tonnage</div></div>
+    <div class="schip"><div class="n">7,8</div><div class="l">RPE moy.</div></div>
+  </div>
+
+  <div class="sec">Analyse de la séance</div>
+  <div class="verdict">
+    <div class="ic">✓</div>
+    <div class="t"><b>Bien respectée dans l'ensemble.</b> Cible atteinte sur 4 exos / 5. Le développé couché est parti un peu lourd (RPE 8,5 en fin) — attention à la récup vu la charge de la semaine.</div>
+  </div>
+
+  <div class="sec">Exercices réalisés</div>
+
+  <div class="exo">
+    <div class="hd"><span class="nm">Développé couché</span><span class="mu">Pectoraux</span></div>
+    <div class="cible">Cible programme : <b>60 kg · 8 reps · RPE 7-8</b></div>
+    <table>
+      <tr><th>Série</th><th>Charge</th><th>Reps</th><th>RPE</th></tr>
+      <tr><td>1</td><td>60 kg</td><td>8</td><td><span class="rpe lo">7</span></td></tr>
+      <tr><td>2</td><td>60 kg</td><td>8</td><td><span class="rpe md">7.5</span></td></tr>
+      <tr><td>3</td><td>60 kg</td><td>7</td><td><span class="rpe md">8</span></td></tr>
+      <tr><td>4</td><td>60 kg</td><td>6</td><td><span class="rpe hi">8.5</span></td></tr>
+    </table>
+    <span class="tag un">▲ Fin de séance au-dessus de la cible RPE</span>
+  </div>
+
+  <div class="exo">
+    <div class="hd"><span class="nm">Tirage horizontal</span><span class="mu">Dos</span></div>
+    <div class="cible">Cible programme : <b>55 kg · 10 reps · RPE 7-8</b></div>
+    <table>
+      <tr><th>Série</th><th>Charge</th><th>Reps</th><th>RPE</th></tr>
+      <tr><td>1</td><td>55 kg</td><td>10</td><td><span class="rpe lo">7</span></td></tr>
+      <tr><td>2</td><td>55 kg</td><td>10</td><td><span class="rpe md">7.5</span></td></tr>
+      <tr><td>3</td><td>55 kg</td><td>10</td><td><span class="rpe md">7.5</span></td></tr>
+    </table>
+    <span class="tag ok">✓ Dans la cible</span>
+  </div>
+
+  <div class="exo">
+    <div class="hd"><span class="nm">Développé militaire</span><span class="mu">Épaules</span></div>
+    <div class="cible">Cible programme : <b>30 kg · 10 reps · RPE 7-8</b></div>
+    <table>
+      <tr><th>Série</th><th>Charge</th><th>Reps</th><th>RPE</th></tr>
+      <tr><td>1</td><td>30 kg</td><td>10</td><td><span class="rpe md">7.5</span></td></tr>
+      <tr><td>2</td><td>30 kg</td><td>9</td><td><span class="rpe md">8</span></td></tr>
+      <tr><td>3</td><td>30 kg</td><td>9</td><td><span class="rpe md">8</span></td></tr>
+    </table>
+    <span class="tag ok">✓ Dans la cible</span>
+  </div>
+
+</div>
+</body>
+</html>

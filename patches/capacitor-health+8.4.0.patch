@@ -1,0 +1,160 @@
+diff --git a/node_modules/capacitor-health/android/src/main/java/com/fit_up/health/capacitor/HealthPlugin.kt b/node_modules/capacitor-health/android/src/main/java/com/fit_up/health/capacitor/HealthPlugin.kt
+index 5a0350f..f4f5a12 100644
+--- a/node_modules/capacitor-health/android/src/main/java/com/fit_up/health/capacitor/HealthPlugin.kt
++++ b/node_modules/capacitor-health/android/src/main/java/com/fit_up/health/capacitor/HealthPlugin.kt
+@@ -22,6 +22,8 @@ import androidx.health.connect.client.records.HeightRecord
+ import androidx.health.connect.client.records.LeanBodyMassRecord
+ import androidx.health.connect.client.records.NutritionRecord
+ import androidx.health.connect.client.records.Record
++import androidx.health.connect.client.records.RestingHeartRateRecord
++import androidx.health.connect.client.records.SleepSessionRecord
+ import androidx.health.connect.client.records.StepsRecord
+ import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+ import androidx.health.connect.client.records.WeightRecord
+@@ -51,7 +53,8 @@ import kotlin.reflect.KClass
+ 
+ enum class CapHealthPermission {
+     READ_STEPS, READ_WORKOUTS, READ_HEART_RATE, READ_ROUTE, READ_ACTIVE_CALORIES, READ_TOTAL_CALORIES, READ_DISTANCE,
+-    READ_FLIGHTS_CLIMBED, READ_WEIGHT, READ_HEIGHT, READ_BODY_FAT, READ_LEAN_BODY_MASS, READ_NUTRITION;
++    READ_FLIGHTS_CLIMBED, READ_WEIGHT, READ_HEIGHT, READ_BODY_FAT, READ_LEAN_BODY_MASS, READ_NUTRITION,
++    READ_SLEEP, READ_RESTING_HEART_RATE;
+ 
+     companion object {
+         fun from(s: String): CapHealthPermission? {
+@@ -119,6 +122,14 @@ enum class CapHealthPermission {
+         Permission(
+             alias = "READ_NUTRITION",
+             strings = ["android.permission.health.READ_NUTRITION"]
++        ),
++        Permission(
++            alias = "READ_SLEEP",
++            strings = ["android.permission.health.READ_SLEEP"]
++        ),
++        Permission(
++            alias = "READ_RESTING_HEART_RATE",
++            strings = ["android.permission.health.READ_RESTING_HEART_RATE"]
+         )
+     ]
+ )
+@@ -181,7 +192,9 @@ class HealthPlugin : Plugin() {
+         Pair(CapHealthPermission.READ_HEIGHT, "android.permission.health.READ_HEIGHT"),
+         Pair(CapHealthPermission.READ_BODY_FAT, "android.permission.health.READ_BODY_FAT"),
+         Pair(CapHealthPermission.READ_LEAN_BODY_MASS, "android.permission.health.READ_LEAN_BODY_MASS"),
+-        Pair(CapHealthPermission.READ_NUTRITION, "android.permission.health.READ_NUTRITION")
++        Pair(CapHealthPermission.READ_NUTRITION, "android.permission.health.READ_NUTRITION"),
++        Pair(CapHealthPermission.READ_SLEEP, "android.permission.health.READ_SLEEP"),
++        Pair(CapHealthPermission.READ_RESTING_HEART_RATE, "android.permission.health.READ_RESTING_HEART_RATE")
+     )
+ 
+     /**
+@@ -836,4 +849,110 @@ class HealthPlugin : Plugin() {
+         83 to "YOGA"
+     )
+ 
++    // ── Novalyz fork : sommeil + FC repos (non exposés par le plugin d'origine) ──
++    @PluginMethod
++    fun querySleep(call: PluginCall) {
++        val startDate = call.getString("startDate")
++        val endDate = call.getString("endDate")
++        if (startDate == null || endDate == null) {
++            call.reject("Missing required parameters: startDate or endDate")
++            return
++        }
++        CoroutineScope(Dispatchers.IO).launch {
++            try {
++                if (!hasPermission(CapHealthPermission.READ_SLEEP)) {
++                    call.reject("READ_SLEEP permission not granted")
++                    return@launch
++                }
++                val timeRange = TimeRangeFilter.between(Instant.parse(startDate), Instant.parse(endDate))
++                val sessions = JSArray()
++                var pageToken: String? = null
++                do {
++                    val request = ReadRecordsRequest(
++                        SleepSessionRecord::class,
++                        timeRange,
++                        emptySet(),
++                        true,
++                        1000,
++                        pageToken,
++                    )
++                    val response = healthConnectClient.readRecords(request)
++                    for (record in response.records) {
++                        val inBedMin = java.time.Duration.between(record.startTime, record.endTime).toMinutes()
++                        // Temps réellement endormi = somme des stades de sommeil (hors éveil).
++                        // Codes Health Connect : 2=SLEEPING, 4=LIGHT, 5=DEEP, 6=REM (endormi) ;
++                        // 1=AWAKE, 3=OUT_OF_BED, 7=AWAKE_IN_BED, 0=UNKNOWN (éveil). On utilise
++                        // les codes entiers pour ne dépendre d'aucune constante nommée.
++                        var asleepMin = 0L
++                        for (stage in record.stages) {
++                            val m = java.time.Duration.between(stage.startTime, stage.endTime).toMinutes()
++                            if (stage.stage == 2 || stage.stage == 4 || stage.stage == 5 || stage.stage == 6) asleepMin += m
++                        }
++                        val obj = JSObject()
++                        obj.put("startDate", record.startTime.toString())
++                        obj.put("endDate", record.endTime.toString())
++                        // durationMin = temps endormi si des stades existent, sinon temps au lit.
++                        obj.put("durationMin", if (asleepMin > 0) asleepMin else inBedMin)
++                        obj.put("asleepMin", asleepMin)
++                        obj.put("inBedMin", inBedMin)
++                        obj.put("sourceBundleId", record.metadata.dataOrigin.packageName)
++                        obj.put("sourceName", record.metadata.device?.model ?: "")
++                        sessions.put(obj)
++                    }
++                    pageToken = response.pageToken
++                } while (pageToken != null)
++                val result = JSObject()
++                result.put("sessions", sessions)
++                call.resolve(result)
++            } catch (e: Exception) {
++                call.reject("Error querying sleep: ${e.message}")
++            }
++        }
++    }
++
++    @PluginMethod
++    fun queryRestingHeartRate(call: PluginCall) {
++        val startDate = call.getString("startDate")
++        val endDate = call.getString("endDate")
++        if (startDate == null || endDate == null) {
++            call.reject("Missing required parameters: startDate or endDate")
++            return
++        }
++        CoroutineScope(Dispatchers.IO).launch {
++            try {
++                if (!hasPermission(CapHealthPermission.READ_RESTING_HEART_RATE)) {
++                    call.reject("READ_RESTING_HEART_RATE permission not granted")
++                    return@launch
++                }
++                val timeRange = TimeRangeFilter.between(Instant.parse(startDate), Instant.parse(endDate))
++                val arr = JSArray()
++                var pageToken: String? = null
++                do {
++                    val request = ReadRecordsRequest(
++                        RestingHeartRateRecord::class,
++                        timeRange,
++                        emptySet(),
++                        true,
++                        1000,
++                        pageToken,
++                    )
++                    val response = healthConnectClient.readRecords(request)
++                    for (record in response.records) {
++                        val obj = JSObject()
++                        obj.put("timestamp", record.time.toString())
++                        obj.put("bpm", record.beatsPerMinute)
++                        obj.put("sourceBundleId", record.metadata.dataOrigin.packageName)
++                        arr.put(obj)
++                    }
++                    pageToken = response.pageToken
++                } while (pageToken != null)
++                val result = JSObject()
++                result.put("records", arr)
++                call.resolve(result)
++            } catch (e: Exception) {
++                call.reject("Error querying resting heart rate: ${e.message}")
++            }
++        }
++    }
++
+ }

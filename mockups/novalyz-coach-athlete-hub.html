@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Novalyz — Fiche athlète hub (coach, maquette)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --text-muted:#4A5980; --text-subtle:#8595B8;
+    --accent:#1A5FFF; --accent-a10:rgba(26,95,255,.10); --accent-a14:rgba(26,95,255,.13); --on-accent:#fff;
+    --good:#00A854; --good-a:rgba(0,168,84,.12);
+    --warn:#E07800; --warn-a:rgba(224,120,0,.12);
+    --danger:#DC3545; --danger-a:rgba(220,53,69,.10);
+    --sh:0 6px 20px rgba(7,11,20,.08); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#070B14; --surface:#0E1526; --surface2:#141D33; --border:#22304F;
+    --text:#EAF0FF; --text-muted:#9DABCC; --text-subtle:#6B7BA3;
+    --accent:#4C86FF; --accent-a10:rgba(76,134,255,.14); --accent-a14:rgba(76,134,255,.18);
+    --good-a:rgba(0,168,84,.18); --warn-a:rgba(224,120,0,.18); --danger-a:rgba(220,53,69,.18);
+    --sh:0 10px 30px rgba(0,0,0,.4); --sh-sm:0 1px 2px rgba(0,0,0,.3);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#070B14; --surface:#0E1526; --surface2:#141D33; --border:#22304F;
+    --text:#EAF0FF; --text-muted:#9DABCC; --text-subtle:#6B7BA3;
+    --accent:#4C86FF; --accent-a10:rgba(76,134,255,.14); --accent-a14:rgba(76,134,255,.18);
+    --good-a:rgba(0,168,84,.18); --warn-a:rgba(224,120,0,.18); --danger-a:rgba(220,53,69,.18);
+    --sh:0 10px 30px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:radial-gradient(1100px 420px at 80% -8%, var(--accent-a10), transparent 60%), var(--bg);
+    color:var(--text); font-family:Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; padding:16px 14px 40px; min-height:100vh;}
+  .phone{max-width:420px; margin:0 auto;}
+  .mk-note{max-width:420px;margin:0 auto 12px;font-size:11.5px;color:var(--text-subtle);text-align:center}
+  .sec{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);margin:20px 4px 10px;display:flex;align-items:center;justify-content:space-between}
+  .sec .more{font-size:10.5px;font-weight:800;color:var(--accent);text-transform:none;letter-spacing:0}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-sm);padding:15px}
+  /* Top bar */
+  .top{display:flex;align-items:center;gap:12px;margin:2px 0 14px}
+  .back{width:38px;height:38px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm)}
+  .back svg{width:18px;height:18px;fill:none;stroke:var(--text);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .pf{width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;font-weight:800;font-size:15px;background:var(--surface2)}
+  .idn{flex:1;min-width:0}
+  .idn .nm{font-size:18px;font-weight:900;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+  .idn .meta{font-size:12px;color:var(--text-muted);margin-top:2px}
+  .state{font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;border-radius:6px;padding:3px 7px}
+  .state.bad{background:var(--danger-a);color:var(--danger)}
+  /* Hero */
+  .hero{border-radius:18px;padding:16px;color:#fff;box-shadow:var(--sh);background:linear-gradient(135deg,#DC3545,#B02433)}
+  .hero .k{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+  .hero .v{font-size:24px;font-weight:900;margin:3px 0 4px}
+  .hero .d{font-size:12.5px;line-height:1.5;opacity:.95}
+  .well{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+  .wchip{background:rgba(255,255,255,.16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;display:flex;gap:6px;align-items:center}
+  /* Alert */
+  .alert{display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--danger);border-radius:12px;padding:12px 13px}
+  .alert .ic{width:32px;height:32px;border-radius:9px;flex:none;display:grid;place-items:center;background:var(--danger);color:#fff;font-weight:900}
+  .alert .ev{font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:3px}
+  .alert .ac{font-size:11.5px;font-weight:700;color:var(--danger);margin-top:6px}
+  /* Repères tiles */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 13px;box-shadow:var(--sh-sm)}
+  .stat .l{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-subtle)}
+  .stat .n{font-size:20px;font-weight:900;letter-spacing:-.02em;margin-top:4px}
+  .stat .s{font-size:11px;color:var(--text-muted);margin-top:1px}
+  .n.bad{color:var(--danger)} .n.good{color:var(--good)} .n.warn{color:var(--warn)}
+  /* Volume bars */
+  .vol-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .vol-row:last-child{margin-bottom:0}
+  .vol-row .mn{width:74px;flex:none;font-size:11.5px;font-weight:700;color:var(--text-muted)}
+  .vol-track{flex:1;height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;position:relative}
+  .vol-fill{height:100%;border-radius:999px}
+  .vol-row .vv{width:52px;flex:none;text-align:right;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums}
+  .vstatus{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;border-radius:999px;padding:4px 10px;margin-top:2px}
+  /* Séance réalisée mini */
+  .ses{display:flex;align-items:center;gap:11px}
+  .ses .d{width:40px;height:40px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--accent-a10);color:var(--accent);font-weight:900;font-size:12px;text-align:center;line-height:1}
+  .ses .nm{font-size:13.5px;font-weight:800}
+  .ses .mt{font-size:11px;color:var(--text-muted);margin-top:2px}
+  .ses .rpe{margin-left:auto;text-align:right;flex:none}
+  .ses .rpe b{font-size:15px;font-weight:900}
+  .ses .rpe span{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);display:block}
+  /* Macros */
+  .macros{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .mac{display:flex;align-items:center;gap:11px}
+  .ring{width:46px;height:46px;flex:none;position:relative}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .c{position:absolute;inset:0;display:grid;place-items:center;font-size:10px;font-weight:900}
+  .mac .ml{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-subtle)}
+  .mac .mv{font-size:13px;font-weight:800;margin-top:1px}
+  .mac .mv small{color:var(--text-subtle);font-weight:700}
+  .kcal{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+  .kcal .big{font-size:24px;font-weight:900;letter-spacing:-.02em}
+  .kcal .tg{font-size:12px;color:var(--text-muted);font-weight:700}
+  /* Actions */
+  .acts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .act{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;box-shadow:var(--sh-sm);font-weight:800;font-size:13px;color:var(--text)}
+  .act svg{width:19px;height:19px;flex:none;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .act.primary{grid-column:1 / -1;background:var(--accent);color:#fff;justify-content:center}
+  .act.primary svg{stroke:#fff}
+</style>
+</head>
+<body>
+<div class="mk-note">Maquette · Fiche athlète « hub » (vue coach) — toutes les infos sur un seul écran, boutons d'action, sans barre du bas</div>
+<div class="phone">
+
+  <div class="top">
+    <div class="back"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></div>
+    <div class="pf">JM</div>
+    <div class="idn">
+      <div class="nm">Julie M. <span class="state bad">À surveiller</span></div>
+      <div class="meta">28 ans · 64 kg · Recomposition</div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="k">État du jour</div>
+    <div class="v">À surveiller</div>
+    <div class="d">Charge récente élevée et sommeil en baisse : privilégier la récupération avant de reprendre l'intensité.</div>
+    <div class="well">
+      <span class="wchip">😴 Sommeil 6 h 10</span>
+      <span class="wchip">😮‍💨 Fatigue importante</span>
+      <span class="wchip">🩹 Douleur épaule</span>
+    </div>
+  </div>
+
+  <div class="sec">Alerte à traiter</div>
+  <div class="alert">
+    <div class="ic">!</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13.5px;font-weight:800;color:var(--danger)">Surcharge — ACWR 1,6</div>
+      <div class="ev">Charge aiguë 7 j très au-dessus de la charge chronique (+58 %). Zone de risque de blessure.</div>
+      <div class="ac">→ Alléger la prochaine séance / jour de récup</div>
+    </div>
+  </div>
+
+  <div class="sec">Repères</div>
+  <div class="stats">
+    <div class="stat"><div class="l">Régularité</div><div class="n">4/4</div><div class="s">cette semaine</div></div>
+    <div class="stat"><div class="l">ACWR</div><div class="n bad">1,6</div><div class="s">zone de risque</div></div>
+    <div class="stat"><div class="l">Dernière séance</div><div class="n" style="font-size:16px">Hier</div><div class="s">Haut du corps</div></div>
+    <div class="stat"><div class="l">Progression 1RM</div><div class="n good">+4 %</div><div class="s">dév. couché · 4 sem.</div></div>
+  </div>
+
+  <div class="sec">Volume par muscle <span class="more">7 jours →</span></div>
+  <div class="card">
+    <div class="vol-row"><span class="mn">Pectoraux</span><div class="vol-track"><div class="vol-fill" style="width:82%;background:var(--good)"></div></div><span class="vv" style="color:var(--good)">14 / 16</span></div>
+    <div class="vol-row"><span class="mn">Dos</span><div class="vol-track"><div class="vol-fill" style="width:70%;background:var(--good)"></div></div><span class="vv" style="color:var(--good)">12 / 16</span></div>
+    <div class="vol-row"><span class="mn">Jambes</span><div class="vol-track"><div class="vol-fill" style="width:38%;background:var(--warn)"></div></div><span class="vv" style="color:var(--warn)">6 / 16</span></div>
+    <div class="vol-row"><span class="mn">Épaules</span><div class="vol-track"><div class="vol-fill" style="width:55%;background:var(--good)"></div></div><span class="vv" style="color:var(--good)">9 / 14</span></div>
+    <div style="margin-top:11px"><span class="vstatus" style="background:var(--warn-a);color:var(--warn)">⚠ Jambes sous le volume cible</span></div>
+  </div>
+
+  <div class="sec">Comment il s'entraîne <span class="more">Voir les séances →</span></div>
+  <div class="card" style="display:flex;flex-direction:column;gap:12px">
+    <div class="ses">
+      <div class="d">LUN<br>6/10</div>
+      <div style="min-width:0;flex:1"><div class="nm">Haut du corps</div><div class="mt">5 exos · 17 séries · 4,8 t · fin de séance un peu lourde</div></div>
+      <div class="rpe"><b style="color:var(--warn)">7,8</b><span>RPE moy</span></div>
+    </div>
+    <div class="ses" style="border-top:1px solid var(--border);padding-top:12px">
+      <div class="d">VEN<br>3/10</div>
+      <div style="min-width:0;flex:1"><div class="nm">Bas du corps</div><div class="mt">4 exos · 12 séries · 5,2 t · charges respectées</div></div>
+      <div class="rpe"><b style="color:var(--good)">7,1</b><span>RPE moy</span></div>
+    </div>
+  </div>
+
+  <div class="sec">Nutrition · respect des macros <span class="more">Moy. 7 j</span></div>
+  <div class="card">
+    <div class="kcal">
+      <div><div class="big">1 980<small style="font-size:12px;color:var(--text-subtle);font-weight:700"> kcal</small></div><div class="tg">cible 2 100 kcal · 94 %</div></div>
+      <span class="vstatus" style="background:var(--good-a);color:var(--good)">✓ Dans la cible</span>
+    </div>
+    <div class="macros">
+      <div class="mac">
+        <div class="ring"><svg width="46" height="46"><circle cx="23" cy="23" r="19" fill="none" stroke="var(--surface2)" stroke-width="6"/><circle cx="23" cy="23" r="19" fill="none" stroke="var(--good)" stroke-width="6" stroke-linecap="round" stroke-dasharray="119" stroke-dashoffset="12"/></svg><div class="c" style="color:var(--good)">90%</div></div>
+        <div><div class="ml">Protéines</div><div class="mv">135 <small>/ 150 g</small></div></div>
+      </div>
+      <div class="mac">
+        <div class="ring"><svg width="46" height="46"><circle cx="23" cy="23" r="19" fill="none" stroke="var(--surface2)" stroke-width="6"/><circle cx="23" cy="23" r="19" fill="none" stroke="var(--warn)" stroke-width="6" stroke-linecap="round" stroke-dasharray="119" stroke-dashoffset="48"/></svg><div class="c" style="color:var(--warn)">60%</div></div>
+        <div><div class="ml">Glucides</div><div class="mv">132 <small>/ 220 g</small></div></div>
+      </div>
+      <div class="mac">
+        <div class="ring"><svg width="46" height="46"><circle cx="23" cy="23" r="19" fill="none" stroke="var(--surface2)" stroke-width="6"/><circle cx="23" cy="23" r="19" fill="none" stroke="var(--good)" stroke-width="6" stroke-linecap="round" stroke-dasharray="119" stroke-dashoffset="18"/></svg><div class="c" style="color:var(--good)">85%</div></div>
+        <div><div class="ml">Lipides</div><div class="mv">55 <small>/ 65 g</small></div></div>
+      </div>
+      <div class="mac">
+        <div class="ring"><svg width="46" height="46"><circle cx="23" cy="23" r="19" fill="none" stroke="var(--surface2)" stroke-width="6"/><circle cx="23" cy="23" r="19" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="119" stroke-dashoffset="7"/></svg><div class="c" style="color:var(--accent)">94%</div></div>
+        <div><div class="ml">Énergie</div><div class="mv">1 980 <small>kcal</small></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">Actions</div>
+  <div class="acts">
+    <div class="act primary"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Envoyer un message</div>
+    <div class="act"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</div>
+    <div class="act"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</div>
+    <div class="act"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Programme</div>
+    <div class="act"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/></svg>Son état</div>
+  </div>
+
+</div>
+</body>
+</html>

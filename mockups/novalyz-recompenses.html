@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Récompenses — 2 pistes</title>
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --muted:#4A5980; --subtle:#8595B8;
+    --accent:#1A5FFF; --accent-strong:#1248D4;
+    --gold:#E0A100; --gold2:#F5C518; --gold-a:rgba(224,161,0,.13);
+    --good:#00A854; --purple:#9D5FD3; --pink:#EC4899; --cyan:#22D3EE;
+    --head:'Michroma','Helvetica Neue',Arial,sans-serif;
+    --font:'Quicksand','Helvetica Neue',Arial,sans-serif;
+    --sh:0 6px 20px rgba(7,11,20,.08); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:430px;margin:0 auto;padding:18px 16px 60px;}
+  h1{font-family:var(--head);font-size:16px;margin:0 0 4px;}
+  .sub{font-size:12.5px;color:var(--muted);margin:0 0 18px;line-height:1.45;}
+  .lbl{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--subtle);margin:22px 2px 9px;display:flex;align-items:center;gap:8px;}
+  .lbl b{color:var(--gold);}
+  .replay{margin:8px 0 0;display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);color:var(--accent);font-family:inherit;font-weight:700;font-size:12.5px;border-radius:11px;padding:9px 13px;cursor:pointer;box-shadow:var(--sh-sm);}
+  .card{border-radius:20px;}
+
+  /* ═════════ OPTION A — Niveau & anneau ═════════ */
+  .a{padding:15px;display:flex;flex-direction:column;gap:13px;border:1px solid rgba(224,161,0,.32);
+     background:radial-gradient(120% 90% at 100% 0%,rgba(245,197,24,.16),transparent 55%),linear-gradient(165deg,var(--gold-a),var(--surface) 68%);box-shadow:var(--sh);position:relative;overflow:hidden;}
+  .a .hero{display:flex;align-items:center;gap:15px;}
+  .ring{width:74px;height:74px;flex:none;position:relative;}
+  .ring svg{width:74px;height:74px;transform:rotate(-90deg);}
+  .ring .bg{fill:none;stroke:rgba(224,161,0,.18);stroke-width:6.5;}
+  .ring .fg{fill:none;stroke:url(#gold);stroke-width:6.5;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset 1.5s cubic-bezier(.22,1,.36,1);}
+  .ring .rt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ring .rt .n{font-family:var(--head);font-size:23px;color:var(--gold);line-height:1;}
+  .ring .rt .l{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--subtle);margin-top:2px;}
+  .a .hm{flex:1;min-width:0;}
+  .a .title{font-family:var(--head);font-size:15px;color:var(--text);}
+  .a .pts{font-size:26px;font-weight:800;color:var(--gold);letter-spacing:-.02em;line-height:1.1;}
+  .a .pts small{font-size:13px;font-weight:700;color:var(--subtle);}
+  .a .next{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .chal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;}
+  .chal .lh{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;font-weight:700;margin-bottom:8px;}
+  .chal .lh span{color:var(--muted);font-weight:600;font-size:11.5px;}
+  .bar{height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;}
+  .bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width 1.25s cubic-bezier(.22,1,.36,1);}
+  .rec{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:9px 12px;}
+  .rec .m{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--gold-a);color:var(--gold);}
+  .rec .a1{font-weight:800;font-size:13px;}.rec .b1{font-size:11.5px;color:var(--subtle);margin-top:1px;}
+  .badges{display:flex;gap:8px;}
+  .bdg{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:9px 4px;}
+  .bdg .bn{font-family:var(--head);font-size:14px;color:var(--text);}
+  .bdg .bl{font-size:9.5px;color:var(--subtle);font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+  .bdg svg{color:var(--gold);}
+  svg.ic{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* ═════════ OPTION B — Trophées & collection ═════════ */
+  .b{padding:0;border:1px solid var(--border);box-shadow:var(--sh);overflow:hidden;background:var(--surface);}
+  .b .top{padding:16px 15px 15px;background:linear-gradient(135deg,#2b2350,#4b3aa0 60%,#7c3aed);color:#fff;position:relative;overflow:hidden;}
+  .b .top .spark{position:absolute;inset:0;background:radial-gradient(60% 80% at 85% -10%,rgba(255,255,255,.22),transparent 60%);}
+  .b .top .k{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.8;position:relative;}
+  .b .top .pts{font-family:var(--head);font-size:34px;line-height:1.05;margin-top:3px;position:relative;}
+  .b .top .pts small{font-size:14px;opacity:.7;}
+  .b .top .lvl{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.16);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:800;display:flex;align-items:center;gap:6px;}
+  .b .top .lvlbar{margin-top:11px;height:7px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden;position:relative;}
+  .b .top .lvlbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#F5C518,#FDE68A);border-radius:999px;transition:width 1.3s cubic-bezier(.22,1,.36,1);}
+  .b .top .next{font-size:10.5px;opacity:.8;margin-top:6px;position:relative;}
+  .b .body{padding:14px 15px;display:flex;flex-direction:column;gap:13px;}
+  .b .streak{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .b .streak .t{font-size:12.5px;font-weight:700;}
+  .b .streak .t span{color:var(--muted);font-weight:600;display:block;font-size:11px;margin-top:1px;}
+  .b .dots{display:flex;gap:6px;}
+  .b .dots i{width:20px;height:20px;border-radius:7px;background:var(--surface2);display:grid;place-items:center;color:#fff;transform:scale(.6);opacity:0;transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .4s,background .4s;}
+  .b .dots i.on{background:linear-gradient(180deg,var(--gold2),var(--gold));transform:scale(1);opacity:1;}
+  .b .dots i.on svg{width:11px;height:11px;fill:none;stroke:#fff;stroke-width:3;}
+  .tiles{display:flex;gap:8px;}
+  .tile{flex:1;border-radius:14px;padding:11px 6px;display:flex;flex-direction:column;align-items:center;gap:5px;color:#fff;transform:translateY(9px) scale(.92);opacity:0;transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .5s;}
+  .tile .tn{font-family:var(--head);font-size:16px;line-height:1;}
+  .tile .tl{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;opacity:.9;}
+  .tile svg{width:17px;height:17px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .tile.t1{background:linear-gradient(160deg,#F59E0B,#EA580C);}
+  .tile.t2{background:linear-gradient(160deg,#9D5FD3,#7c3aed);}
+  .tile.t3{background:linear-gradient(160deg,#1A5FFF,#1248D4);}
+  .b .rec2{display:flex;align-items:center;gap:11px;background:var(--gold-a);border:1px solid rgba(224,161,0,.3);border-radius:14px;padding:10px 12px;}
+  .b .rec2 .m{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;background:#fff;color:var(--gold);box-shadow:var(--sh-sm);}
+  .b .rec2 .a1{font-weight:800;font-size:13px;}.b .rec2 .b1{font-size:11.5px;color:var(--muted);margin-top:1px;}
+
+  .anim .ring .fg{stroke-dashoffset:87;}          /* 13% */
+  .anim .a .bar i{width:75%;}
+  .anim .b .lvlbar i{width:13%;}
+  .anim .b .dots i.fill{background:linear-gradient(180deg,var(--gold2),var(--gold));transform:scale(1);opacity:1;}
+  .anim .b .dots i.empty{opacity:1;transform:scale(1);}
+  .anim .b .tile{transform:none;opacity:1;}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F5C518"/><stop offset="1" stop-color="#E0A100"/></linearGradient>
+</defs></svg>
+
+<div class="wrap">
+  <h1>Récompenses — 2 pistes</h1>
+  <p class="sub">Même données réelles (points, niveau, défi, série, records). Deux ambiances. Les animations se lancent au chargement — bouton pour rejouer.</p>
+  <button class="replay" onclick="replay()"><svg class="ic" width="15" height="15" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Rejouer les animations</button>
+
+  <!-- ══════════ OPTION A ══════════ -->
+  <div class="lbl">Piste A · <b>Niveau &amp; anneau</b></div>
+  <div class="card a">
+    <div class="hero">
+      <div class="ring">
+        <svg viewBox="0 0 74 74"><circle class="bg" cx="37" cy="37" r="31"/><circle class="fg" cx="37" cy="37" r="31" pathLength="100"/></svg>
+        <div class="rt"><span class="n">5</span><span class="l">niveau</span></div>
+      </div>
+      <div class="hm">
+        <div class="title">Régulier</div>
+        <div class="pts"><span id="ptsA">0</span> <small>pts</small></div>
+        <div class="next">Plus que <b>260 pts</b> avant le niveau 6</div>
+      </div>
+    </div>
+    <div class="chal">
+      <div class="lh"><span style="color:var(--text)">Défi de la semaine</span><span>3 / 4 séances</span></div>
+      <div class="bar"><i></i></div>
+    </div>
+    <div class="rec">
+      <span class="m"><svg class="ic" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
+      <div><div class="a1">Ton meilleur record</div><div class="b1">Développé couché · 82 kg</div></div>
+    </div>
+    <div class="badges">
+      <div class="bdg"><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="bn">6</span><span class="bl">série sem.</span></div>
+      <div class="bdg"><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="bn">3</span><span class="bl">records 30j</span></div>
+      <div class="bdg"><svg class="ic" width="17" height="17" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="bn">84</span><span class="bl">séances</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ OPTION B ══════════ -->
+  <div class="lbl">Piste B · <b>Trophées &amp; collection</b></div>
+  <div class="card b">
+    <div class="top">
+      <div class="spark"></div>
+      <div class="lvl"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" style="stroke:#F5C518"><path d="M12 2 15 8l6 .9-4.5 4.3L17.7 20 12 16.8 6.3 20l1.2-6.8L3 8.9 9 8z"/></svg>Niv. 5</div>
+      <div class="k">Récompenses</div>
+      <div class="pts"><span id="ptsB">0</span> <small>pts</small></div>
+      <div class="lvlbar"><i></i></div>
+      <div class="next">Régulier · plus que 260 pts avant le niveau 6</div>
+    </div>
+    <div class="body">
+      <div class="streak">
+        <div class="t">Défi de la semaine<span>3 séances sur 4</span></div>
+        <div class="dots" id="dots"></div>
+      </div>
+      <div class="tiles">
+        <div class="tile t1"><svg viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="tn">6</span><span class="tl">Série</span></div>
+        <div class="tile t2"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="tn">3</span><span class="tl">Records</span></div>
+        <div class="tile t3"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="tn">84</span><span class="tl">Séances</span></div>
+      </div>
+      <div class="rec2">
+        <span class="m"><svg class="ic" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
+        <div><div class="a1">Ton meilleur record</div><div class="b1">Développé couché · 82 kg</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Défi 3/4 → 4 pastilles, 3 remplies
+  var dots = document.getElementById('dots');
+  for (var i=0;i<4;i++){
+    var d=document.createElement('i');
+    if(i<3){ d.className='fill'; d.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>'; }
+    else d.className='empty';
+    dots.appendChild(d);
+  }
+  function countUp(el, to, dur){
+    var t0=null;
+    function step(ts){ if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/dur); var v=Math.round(to*(1-Math.pow(1-p,3))); el.textContent=v.toLocaleString('fr-FR'); if(p<1) requestAnimationFrame(step); }
+    requestAnimationFrame(step);
+  }
+  function play(){
+    document.body.classList.remove('anim');
+    // reset dots
+    var ds=dots.querySelectorAll('i'); ds.forEach(function(x){x.classList.remove('on');});
+    void document.body.offsetWidth;                 // reflow
+    document.body.classList.add('anim');
+    countUp(document.getElementById('ptsA'),1240,1500);
+    countUp(document.getElementById('ptsB'),1240,1500);
+    // pastilles en cascade
+    ds.forEach(function(x,idx){ if(x.classList.contains('fill')) setTimeout(function(){x.classList.add('on');}, 500+idx*140); });
+  }
+  function replay(){ play(); }
+  window.addEventListener('load', function(){ setTimeout(play, 250); });
+</script>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Récompenses V2 — B + anneau</title>
+<style>
+  :root{
+    --bg:#F9FBFF; --surface:#FFFFFF; --surface2:#EEF3FF; --border:#D8E2FF;
+    --text:#070B14; --muted:#4A5980; --subtle:#8595B8;
+    --accent:#1A5FFF; --gold:#E0A100; --gold2:#F5C518;
+    --purple:#9D5FD3; --pink:#EC4899; --cyan:#22D3EE; --green:#00A854; --orange:#F59E0B;
+    --head:'Michroma','Helvetica Neue',Arial,sans-serif;
+    --font:'Quicksand','Helvetica Neue',Arial,sans-serif;
+    --sh:0 8px 24px rgba(7,11,20,.10); --sh-sm:0 1px 2px rgba(7,11,20,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+  .wrap{max-width:430px;margin:0 auto;padding:18px 16px 70px;}
+  h1{font-family:var(--head);font-size:16px;margin:0 0 4px;}
+  .sub{font-size:12.5px;color:var(--muted);margin:0 0 16px;line-height:1.45;}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  .btn{display:inline-flex;align-items:center;gap:7px;border:none;font-family:inherit;font-weight:800;font-size:12.5px;border-radius:12px;padding:11px 14px;cursor:pointer;box-shadow:var(--sh-sm);}
+  .btn.p{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#3a2a00;}
+  .btn.s{background:var(--surface);border:1px solid var(--border);color:var(--accent);}
+
+  .card{border-radius:22px;box-shadow:var(--sh);overflow:hidden;margin-bottom:14px;}
+
+  /* Héro : bandeau coloré + anneau de niveau */
+  .hero{padding:16px 16px 17px;position:relative;color:#fff;
+    background:linear-gradient(135deg,#3b2f7a 0%,#6d28d9 45%,#db2777 100%);}
+  .hero .glow{position:absolute;inset:0;background:radial-gradient(70% 90% at 88% -15%,rgba(255,255,255,.28),transparent 60%);pointer-events:none;}
+  .hero .row{display:flex;align-items:center;gap:15px;position:relative;}
+  .ring{width:78px;height:78px;flex:none;position:relative;}
+  .ring svg{width:78px;height:78px;transform:rotate(-90deg);}
+  .ring .bg{fill:none;stroke:rgba(255,255,255,.2);stroke-width:7;}
+  .ring .fg{fill:none;stroke:url(#g);stroke-width:7;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset 1.5s cubic-bezier(.22,1,.36,1);}
+  .ring .rt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ring .rt .n{font-family:var(--head);font-size:25px;line-height:1;color:#fff;}
+  .ring .rt .l{font-size:8px;letter-spacing:.14em;text-transform:uppercase;opacity:.8;margin-top:2px;}
+  .hero .hm{flex:1;min-width:0;}
+  .hero .title{font-family:var(--head);font-size:15px;}
+  .hero .pts{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.05;}
+  .hero .pts small{font-size:14px;opacity:.75;font-weight:700;}
+  .hero .next{font-size:11px;opacity:.85;margin-top:3px;}
+
+  .body{padding:14px 15px;display:flex;flex-direction:column;gap:14px;background:var(--surface);}
+
+  /* Objectif de la semaine */
+  .goal .gh{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+  .goal .gh .k{font-size:12.5px;font-weight:800;}
+  .goal .gh .chg{font-size:11.5px;color:var(--accent);font-weight:700;cursor:pointer;}
+  .goal .cur{display:flex;align-items:center;gap:11px;}
+  .goal .cur .em{width:40px;height:40px;border-radius:12px;flex:none;display:grid;place-items:center;font-size:20px;background:linear-gradient(160deg,#FEF3C7,#FDE68A);}
+  .goal .cur .t{flex:1;min-width:0;}
+  .goal .cur .t b{font-size:13.5px;}
+  .goal .cur .t .sub2{font-size:11px;color:var(--muted);margin-top:1px;}
+  .bar{height:10px;border-radius:999px;background:var(--surface2);overflow:hidden;margin-top:9px;}
+  .bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width 1.2s cubic-bezier(.22,1,.36,1);}
+  .picker{display:none;flex-wrap:wrap;gap:7px;margin-top:10px;}
+  .picker.on{display:flex;}
+  .chip{border:1.5px solid var(--border);background:var(--surface);border-radius:999px;padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .chip.sel{border-color:var(--gold);background:var(--gold-a,rgba(224,161,0,.13));color:var(--gold);}
+
+  /* Trophées / collection */
+  .colh{font-size:12.5px;font-weight:800;margin-bottom:2px;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+  .tro{border-radius:15px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;position:relative;color:#fff;transform:translateY(9px) scale(.92);opacity:0;transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .5s;}
+  .anim .tro{transform:none;opacity:1;}
+  .tro svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .tro .tn{font-family:var(--head);font-size:13px;line-height:1.05;}
+  .tro .tl{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;opacity:.92;}
+  .tro.c1{background:linear-gradient(160deg,#F59E0B,#EA580C);}
+  .tro.c2{background:linear-gradient(160deg,#9D5FD3,#7c3aed);}
+  .tro.c3{background:linear-gradient(160deg,#1A5FFF,#1248D4);}
+  .tro.c4{background:linear-gradient(160deg,#EC4899,#be185d);}
+  .tro.c5{background:linear-gradient(160deg,#00A854,#047857);}
+  .tro.lock{background:var(--surface2);color:var(--subtle);border:1px dashed var(--border);}
+  .tro.lock svg{stroke:var(--subtle);}
+  .tro .lockico{position:absolute;top:7px;right:7px;font-size:11px;opacity:.6;}
+
+  /* Coffre / cadeau + confettis */
+  .ov{position:fixed;inset:0;background:rgba(10,8,25,.55);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:50;}
+  .ov.on{display:flex;}
+  .gift{background:var(--surface);border-radius:22px;padding:26px 24px;width:min(320px,86vw);text-align:center;box-shadow:var(--sh);transform:scale(.8);opacity:0;transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .35s;}
+  .ov.on .gift{transform:none;opacity:1;}
+  .gift .box{font-size:64px;display:inline-block;animation:none;}
+  .gift.shake .box{animation:shake .5s ease-in-out 2;}
+  @keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-11deg) scale(1.05)}75%{transform:rotate(11deg) scale(1.05)}}
+  .gift .gt{font-family:var(--head);font-size:17px;margin:10px 0 3px;}
+  .gift .gs{font-size:13px;color:var(--muted);line-height:1.4;}
+  .gift .gpts{font-family:var(--head);font-size:26px;color:var(--gold);margin:12px 0 4px;}
+  .gift .close{margin-top:16px;background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;color:#3a2a00;font-family:inherit;font-weight:800;font-size:14px;border-radius:13px;padding:12px 18px;width:100%;cursor:pointer;}
+  .confetti{position:fixed;top:-12px;width:9px;height:14px;z-index:60;pointer-events:none;border-radius:2px;}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F5C518"/><stop offset=".5" stop-color="#FDE68A"/><stop offset="1" stop-color="#fff"/></linearGradient>
+</defs></svg>
+
+<div class="wrap">
+  <h1>Récompenses V2 — B + anneau, coloré</h1>
+  <p class="sub">Bandeau coloré (piste B) + anneau de niveau (piste A). Objectif de la semaine choisi par l'athlète. Coffre + confettis quand un objectif est atteint.</p>
+  <div class="btns">
+    <button class="btn p" onclick="reward()">🎁 Simuler : objectif atteint</button>
+    <button class="btn s" onclick="play()">↻ Rejouer</button>
+  </div>
+
+  <div class="card">
+    <div class="hero">
+      <div class="glow"></div>
+      <div class="row">
+        <div class="ring">
+          <svg viewBox="0 0 78 78"><circle class="bg" cx="39" cy="39" r="32.5"/><circle class="fg" cx="39" cy="39" r="32.5" pathLength="100"/></svg>
+          <div class="rt"><span class="n">5</span><span class="l">niveau</span></div>
+        </div>
+        <div class="hm">
+          <div class="title">Régulier</div>
+          <div class="pts"><span id="pts">0</span> <small>pts</small></div>
+          <div class="next">Plus que <b>260 pts</b> avant le niveau 6</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="body">
+      <!-- Objectif de la semaine (choisi par l'athlète) -->
+      <div class="goal">
+        <div class="gh"><span class="k">🎯 Objectif de la semaine</span><span class="chg" onclick="togglePick()">Changer</span></div>
+        <div class="cur">
+          <span class="em">🏋️</span>
+          <div class="t"><b id="goalTxt">4 séances</b><div class="sub2"><b id="gDone">3</b>/<span id="gTot">4</span> faites · plus qu'une !</div></div>
+        </div>
+        <div class="bar"><i id="goalBar"></i></div>
+        <div class="picker" id="pick">
+          <span class="chip sel" onclick="pick(this,'4 séances','🏋️',3,4)">🏋️ 4 séances</span>
+          <span class="chip" onclick="pick(this,'5 séances','🔥',3,5)">🔥 5 séances</span>
+          <span class="chip" onclick="pick(this,'10 000 pas/j','👟',5,7)">👟 10 000 pas/j</span>
+          <span class="chip" onclick="pick(this,'1 record','🏆',0,1)">🏆 1 record</span>
+          <span class="chip" onclick="pick(this,'3 cardio','🏃',1,3)">🏃 3 cardio</span>
+        </div>
+      </div>
+
+      <!-- Collection de trophées -->
+      <div>
+        <div class="colh">🏅 Ma collection <span style="color:var(--subtle);font-weight:600;font-size:11px;">· 4 / 6 débloqués</span></div>
+        <div class="grid" id="grid">
+          <div class="tro c1"><svg viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="tn">6 sem.</span><span class="tl">Série 🔥</span></div>
+          <div class="tro c2"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="tn">3</span><span class="tl">Records 30j</span></div>
+          <div class="tro c3"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="tn">84</span><span class="tl">Séances</span></div>
+          <div class="tro c4"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span class="tn">1re</span><span class="tl">Semaine</span></div>
+          <div class="tro lock"><span class="lockico">🔒</span><svg viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="tn">10 sem.</span><span class="tl">Série pro</span></div>
+          <div class="tro lock"><span class="lockico">🔒</span><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="tn">100</span><span class="tl">Séances</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay coffre -->
+<div class="ov" id="ov">
+  <div class="gift" id="gift">
+    <div class="box" id="box">🎁</div>
+    <div class="gt" id="giftT">Objectif atteint !</div>
+    <div class="gs" id="giftS">4 séances cette semaine 💪</div>
+    <div class="gpts" id="giftP">+150 pts</div>
+    <button class="close" onclick="closeGift()">Génial !</button>
+  </div>
+</div>
+
+<script>
+  var TOTAL_PTS = 1240;
+  function countUp(el, to, dur){ var t0=null; function s(ts){ if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/dur); el.textContent=Math.round(to*(1-Math.pow(1-p,3))).toLocaleString('fr-FR'); if(p<1)requestAnimationFrame(s);} requestAnimationFrame(s); }
+  function play(){
+    document.body.classList.remove('anim'); void document.body.offsetWidth; document.body.classList.add('anim');
+    document.querySelector('.ring .fg').style.strokeDashoffset='87';   // niveau 5 → 13%
+    document.getElementById('goalBar').style.width='75%';              // 3/4
+    countUp(document.getElementById('pts'), TOTAL_PTS, 1500);
+  }
+  function togglePick(){ document.getElementById('pick').classList.toggle('on'); }
+  function pick(el,txt,em,done,tot){
+    document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('sel');}); el.classList.add('sel');
+    document.getElementById('goalTxt').textContent=txt;
+    document.querySelector('.goal .em').textContent=em;
+    document.getElementById('gDone').textContent=done; document.getElementById('gTot').textContent=tot;
+    document.getElementById('goalBar').style.width=Math.min(100,Math.round(done/tot*100))+'%';
+    document.querySelector('.goal .sub2').innerHTML='<b id="gDone">'+done+'</b>/<span id="gTot">'+tot+'</span> faites';
+  }
+  // Coffre + confettis
+  var COLORS=['#F5C518','#EC4899','#1A5FFF','#00A854','#9D5FD3','#F59E0B','#22D3EE'];
+  function confetti(n){
+    for(var i=0;i<n;i++){(function(){
+      var c=document.createElement('div'); c.className='confetti';
+      c.style.left=Math.random()*100+'vw'; c.style.background=COLORS[i%COLORS.length];
+      c.style.transform='rotate('+(Math.random()*360)+'deg)';
+      document.body.appendChild(c);
+      var dur=1400+Math.random()*1200, x=(Math.random()*2-1)*90;
+      c.animate([{transform:c.style.transform,top:'-12px',opacity:1},{transform:'translateX('+x+'px) rotate(720deg)',top:'105vh',opacity:.9}],{duration:dur,easing:'cubic-bezier(.2,.6,.4,1)'});
+      setTimeout(function(){c.remove();},dur);
+    })();}
+  }
+  function reward(){
+    var ov=document.getElementById('ov'), g=document.getElementById('gift'), box=document.getElementById('box');
+    ov.classList.add('on'); g.classList.remove('shake'); box.textContent='🎁';
+    void g.offsetWidth; g.classList.add('shake');
+    setTimeout(function(){ box.textContent='🎉'; confetti(46); }, 900);
+  }
+  function closeGift(){ document.getElementById('ov').classList.remove('on'); }
+  window.addEventListener('load', function(){ setTimeout(play, 250); });
+</script>
+</body>
+</html>

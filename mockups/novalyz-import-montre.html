@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Import montre — maquette</title>
+<style>
+  :root{
+    --bg:#0c0d12; --surface:#15161d; --surface2:#1d1f28; --border:#2a2c37;
+    --text:#f2f3f7; --text-muted:#9aa0ad; --text-subtle:#6b7180;
+    --accent:#6366F1; --good:#10B981; --purple:#9D5FD3; --amber:#F59E0B;
+    --run:#6366F1; --bike:#9D5FD3; --walk:#22D3EE;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .phone{max-width:430px;margin:0 auto;min-height:100vh;padding:0 0 40px}
+  /* Header */
+  .hdr{position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 70%,transparent);padding:16px 16px 10px;display:flex;align-items:center;gap:12px;z-index:5}
+  .hdr .close{width:38px;height:38px;border-radius:11px;background:var(--surface2);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .hdr h1{font-size:19px;font-weight:800;margin:0;letter-spacing:-.01em}
+  .hdr p{margin:1px 0 0;font-size:12px;color:var(--text-muted)}
+  .wrap{padding:0 16px}
+  /* Carte connexion */
+  .conn{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.04));border:1px solid rgba(16,185,129,.28);border-radius:16px;padding:13px 14px;margin-bottom:8px}
+  .conn .dot{width:38px;height:38px;border-radius:50%;background:rgba(16,185,129,.16);display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto}
+  .conn .t{flex:1;min-width:0}
+  .conn .t b{font-size:14px;font-weight:800}
+  .conn .t span{display:block;font-size:11.5px;color:var(--text-muted);margin-top:1px}
+  .conn .chev{color:var(--text-subtle);font-size:20px}
+  /* Section */
+  .sec{display:flex;align-items:center;justify-content:space-between;margin:20px 2px 10px}
+  .sec .lbl{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle)}
+  .sec .all{font-size:12.5px;font-weight:800;color:var(--accent)}
+  /* Carte séance */
+  .card{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;margin-bottom:9px}
+  .ico{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .ico svg{width:23px;height:23px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .card .body{flex:1;min-width:0}
+  .card .top{display:flex;align-items:baseline;gap:8px}
+  .card .top .ty{font-size:15px;font-weight:800}
+  .card .top .rt{font-size:11px;color:var(--purple);font-weight:800}
+  .card .meta{font-size:11.5px;color:var(--text-subtle);margin:1px 0 6px}
+  .stats{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{font-size:12px;font-weight:700;background:var(--surface2);border-radius:8px;padding:3px 8px;color:var(--text);display:inline-flex;gap:4px;align-items:center}
+  .chip.hr{color:#F87171}
+  .btn-imp{flex:0 0 auto;background:var(--good);color:#04160f;border:none;border-radius:12px;padding:10px 15px;font-weight:800;font-size:13.5px}
+  .done{flex:0 0 auto;display:flex;align-items:center;gap:5px;color:var(--good);font-size:12.5px;font-weight:800;opacity:.85}
+  .card.is-done{opacity:.6}
+  /* Bloc activité (pas) */
+  .steps{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px}
+  .steps .hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+  .steps .hd b{font-size:14px;font-weight:800}
+  .steps .hd span{font-size:12px;color:var(--text-muted)}
+  .bars{display:flex;align-items:flex-end;gap:7px;height:66px}
+  .bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .bars .b i{width:100%;background:linear-gradient(180deg,var(--accent),#4f46e5);border-radius:5px;display:block}
+  .bars .b em{font-size:10px;color:var(--text-subtle);font-style:normal}
+  .hint{font-size:11.5px;color:var(--text-subtle);text-align:center;margin-top:16px;line-height:1.5}
+  .banner{font-size:11px;color:var(--amber);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:8px 10px;margin-bottom:6px;text-align:center}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="hdr">
+    <div class="close">✕</div>
+    <div>
+      <h1>Mes séances connectées</h1>
+      <p>Depuis ta montre et tes capteurs</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- État de connexion -->
+    <div class="conn">
+      <div class="dot">✓</div>
+      <div class="t"><b>Connecté</b><span>Fitbit Versa 4 · via Health Connect</span></div>
+      <div class="chev">›</div>
+    </div>
+
+    <!-- À importer -->
+    <div class="sec"><span class="lbl">À importer · 3</span><span class="all">Tout importer</span></div>
+
+    <div class="card">
+      <div class="ico" style="background:linear-gradient(135deg,#22D3EE,#0891b2)"><svg viewBox="0 0 24 24"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></div>
+      <div class="body">
+        <div class="top"><span class="ty">Marche</span><span class="rt">🗺️ tracé</span></div>
+        <div class="meta">sam. 05 sept · 14:15 · Fitbit</div>
+        <div class="stats"><span class="chip">18 min</span><span class="chip">1,06 km</span><span class="chip hr">❤️ 112 bpm</span><span class="chip">78 kcal</span></div>
+      </div>
+      <button class="btn-imp">Importer</button>
+    </div>
+
+    <div class="card">
+      <div class="ico" style="background:linear-gradient(135deg,#6366F1,#4338ca)"><svg viewBox="0 0 24 24"><path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/></svg></div>
+      <div class="body">
+        <div class="top"><span class="ty">Course</span></div>
+        <div class="meta">jeu. 03 sept · 07:40 · Fitbit</div>
+        <div class="stats"><span class="chip">32 min</span><span class="chip">5,20 km</span><span class="chip hr">❤️ 156 bpm</span><span class="chip">402 kcal</span></div>
+      </div>
+      <button class="btn-imp">Importer</button>
+    </div>
+
+    <div class="card">
+      <div class="ico" style="background:linear-gradient(135deg,#9D5FD3,#7c3aed)"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/></svg></div>
+      <div class="body">
+        <div class="top"><span class="ty">Vélo</span><span class="rt">🗺️ tracé</span></div>
+        <div class="meta">dim. 31 août · 10:05 · Strava</div>
+        <div class="stats"><span class="chip">1 h 12</span><span class="chip">34,8 km</span><span class="chip hr">❤️ 138 bpm</span></div>
+      </div>
+      <button class="btn-imp">Importer</button>
+    </div>
+
+    <!-- Déjà importées -->
+    <div class="sec"><span class="lbl">Déjà importées · 12</span></div>
+    <div class="card is-done">
+      <div class="ico" style="background:linear-gradient(135deg,#22D3EE,#0891b2)"><svg viewBox="0 0 24 24"><path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/></svg></div>
+      <div class="body">
+        <div class="top"><span class="ty">Marche</span></div>
+        <div class="meta">ven. 29 août · 18:30 · Fitbit</div>
+        <div class="stats"><span class="chip">22 min</span><span class="chip">1,4 km</span></div>
+      </div>
+      <span class="done">✓ importée</span>
+    </div>
+
+    <!-- Activité récente (pas) -->
+    <div class="sec"><span class="lbl">Activité · 7 jours</span><span class="all" style="color:var(--text-subtle);font-weight:700">54 810 pas</span></div>
+    <div class="steps">
+      <div class="hd"><b>Pas quotidiens</b><span>moy. 7 830 / j</span></div>
+      <div class="bars">
+        <div class="b"><i style="height:38px"></i><em>L</em></div>
+        <div class="b"><i style="height:52px"></i><em>M</em></div>
+        <div class="b"><i style="height:30px"></i><em>M</em></div>
+        <div class="b"><i style="height:60px"></i><em>J</em></div>
+        <div class="b"><i style="height:46px"></i><em>V</em></div>
+        <div class="b"><i style="height:22px"></i><em>S</em></div>
+        <div class="b"><i style="height:40px"></i><em>D</em></div>
+      </div>
+    </div>
+
+    <div class="hint">Garde l'écran ouvert pendant l'import.<br>Tes prochaines séances arriveront automatiquement.</div>
+  </div>
+</div>
+</body>
+</html>

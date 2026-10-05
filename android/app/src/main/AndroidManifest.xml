@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -33,9 +34,60 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Health Connect : écran expliquant l'usage des données (obligatoire).
+             Ouvert quand l'utilisateur clique sur la politique de confidentialité
+             depuis l'écran d'autorisations Health Connect. -->
+        <activity
+            android:name="com.fit_up.health.capacitor.PermissionsRationaleActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity>
+        <activity-alias
+            android:name="ViewPermissionUsageActivity"
+            android:exported="true"
+            android:targetActivity="com.fit_up.health.capacitor.PermissionsRationaleActivity"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Health Connect : permissions ajoutées par le fork du plugin (sommeil + FC
+         repos) — pas dans le manifest du plugin d'origine, donc déclarées ici. -->
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <uses-permission android:name="android.permission.health.READ_RESTING_HEART_RATE" />
+
+    <!-- Permissions santé déclarées par le plugin mais NON utilisées par Novalyz :
+         on les RETIRE du manifeste fusionné (tools:node="remove") pour respecter la
+         Health Apps policy du Play Store (ne demander que ce qu'on lit réellement).
+         L'app ne lit PAS depuis Health Connect : calories totales, étages, poids,
+         taille, masse grasse, masse maigre, nutrition (poids/nutrition = saisie
+         manuelle). Gardées (utilisées) : SLEEP, RESTING_HEART_RATE, STEPS, EXERCISE,
+         DISTANCE, ACTIVE_CALORIES_BURNED, HEART_RATE. -->
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_FLOORS_CLIMBED" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_HEIGHT" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_BODY_FAT" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_LEAN_BODY_MASS" tools:node="remove" />
+    <!-- READ_NUTRITION : CONSERVÉE — utilisée par « Importer depuis Health Connect »
+         de l'écran Nutrition (lit les apports du jour écrits par MyFitnessPal /
+         Yazio / Samsung Health… via Health Connect). -->
+    <uses-permission android:name="android.permission.health.READ_NUTRITION" />
+
+
+    <!-- Health Connect : détection de l'appli Health Connect (isHealthAvailable).
+         Les permissions health.READ_* sont apportées par le plugin (merge manifest). -->
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
 </manifest>

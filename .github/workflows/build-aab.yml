@@ -33,6 +33,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -142,3 +144,17 @@ jobs:
           name: novalyz-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+
+      # Release à tag fixe (novalyz-aab-latest), SÉPARÉE des APK. Sert à récupérer
+      # le fichier facilement (l'AAB n'est pas installable — il s'uploade sur le
+      # Play Console). N'écrase jamais les APK (novalyz-apk-latest / -dev).
+      - name: Publier l'AAB en Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete novalyz-aab-latest --cleanup-tag --yes 2>/dev/null || true
+          gh release create novalyz-aab-latest \
+            android/app/build/outputs/bundle/release/app-release.aab \
+            --title "Novalyz — AAB Play Store" \
+            --notes "Android App Bundle signé (com.novalyz.app), construit depuis \`${{ github.ref_name }}\` (commit ${{ github.sha }}). À uploader sur le Play Console (test interne). NON installable directement." \
+            --target "${{ github.sha }}"
