@@ -331,10 +331,16 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.douleurElevee, s.volumeEleve)) return null;
-        var zone = f.valeurs.zone ? (' (' + f.valeurs.zone + ')') : '';
+        var v = f.valeurs || {};
+        var zone = v.zone ? (' (' + v.zone + ')') : '';
+        var ev = [];
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (v.zone ? ' (' + v.zone + ')' : ''));
+        if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
           titre: 'Surcharge locale probable',
-          description: 'Douleur marquée' + zone + ' alors que le volume est en forte hausse. Réduire le volume sur cette zone et surveiller.' });
+          description: 'Douleur marquée' + zone + ' alors que le volume est en forte hausse.',
+          evidence: ev.join(' · '),
+          recommandation: 'Réduis le volume sur cette zone et surveille la douleur.' });
       }
     },
     {
@@ -342,9 +348,14 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.progressionBaisse, s.volumeFaible)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.seances7j != null) ev.push(v.seances7j + ' séance' + (v.seances7j > 1 ? 's' : '') + '/7 j');
+        if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Sous-entraînement probable',
-          description: 'La progression baisse alors que le volume est faible. Le stimulus est probablement insuffisant : augmenter progressivement le volume.' });
+          description: 'La progression baisse alors que le volume est faible : le stimulus est probablement insuffisant.',
+          evidence: ev.join(' · '),
+          recommandation: 'Augmente progressivement le volume (séries par muscle et par semaine).' });
       }
     },
     {
@@ -367,9 +378,14 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.poidsBaisse, s.forceBaisse)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.poidsEvol != null) ev.push('poids ' + (v.poidsEvol > 0 ? '+' : '') + v.poidsEvol + ' kg');
+        if (v.charge28EvolPct != null) ev.push('force ' + (v.charge28EvolPct > 0 ? '+' : '') + v.charge28EvolPct + '%');
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Déficit énergétique probable',
-          description: 'Le poids diminue et la force baisse en parallèle. Vérifier les apports caloriques et protéiques.' });
+          description: 'Le poids diminue et la force baisse en parallèle.',
+          evidence: ev.join(' · '),
+          recommandation: 'Vérifie tes apports caloriques et protéiques (risque de déficit).' });
       }
     },
     {
@@ -395,9 +411,13 @@ try {
         // Ne se déclenche que si le risque combiné (règle ci-dessus) ne s'applique pas.
         if (s.acwrEleve !== true) return null;
         if (tous(s.douleurElevee, s.fatigueElevee)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.acwr != null) ev.push('ACWR ' + v.acwr);
         return analyse({ priorite: 'info', niveau: 'moyen', categorie: this.categorie,
           titre: 'Charge en hausse rapide',
-          description: 'Le ratio charge aiguë / chronique (ACWR) est élevé. Progresser plus doucement pour laisser le corps s\'adapter.' });
+          description: 'Le ratio charge aiguë / chronique (ACWR) est élevé.',
+          evidence: ev.join(' · '),
+          recommandation: 'Progresse plus doucement pour laisser le corps s\'adapter.' });
       }
     },
     {
@@ -405,9 +425,14 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.progressionHausse, s.sommeilBon, s.fatigueFaible)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.sommeil != null) ev.push('sommeil ' + v.sommeil + '/5');
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'succes', niveau: 'moyen', categorie: this.categorie,
           titre: 'Bonne adaptation à l\'entraînement',
-          description: 'Progression en hausse, bon sommeil et fatigue faible : l\'athlète encaisse bien la charge actuelle.' });
+          description: 'Progression en hausse, bon sommeil et fatigue faible : tu encaisses bien la charge actuelle.',
+          evidence: ev.join(' · '),
+          recommandation: 'Continue sur cette structure ; tu peux viser une surcharge progressive.' });
       }
     },
     {
@@ -415,9 +440,13 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.regulariteExcellente, s.progressionExcellente)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.seances7j != null && v.seancesPrevues) ev.push('séances ' + v.seances7j + '/' + v.seancesPrevues);
         return analyse({ priorite: 'succes', niveau: 'eleve', categorie: this.categorie,
           titre: 'Très bonne adhérence au programme',
-          description: 'Régularité et progression excellentes. Continuer sur cette dynamique.' });
+          description: 'Régularité et progression excellentes.',
+          evidence: ev.join(' · '),
+          recommandation: 'Continue sur cette dynamique.' });
       }
     },
     {
@@ -442,9 +471,14 @@ try {
         if (!tous(s.fatigueFaible, s.sommeilBon, s.douleurAbsente)) return null;
         // Évite le doublon avec "bonne adaptation" (qui inclut la progression).
         if (s.progressionHausse === true) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.sommeil != null) ev.push('sommeil ' + v.sommeil + '/5');
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'succes', niveau: 'faible', categorie: this.categorie,
           titre: 'Bonne récupération',
-          description: 'Les marqueurs de récupération (sommeil, fatigue, douleur) sont au vert.' });
+          description: 'Les marqueurs de récupération (sommeil, fatigue, douleur) sont au vert.',
+          evidence: ev.join(' · '),
+          recommandation: 'Tu peux t\'entraîner normalement.' });
       }
     },
     {
@@ -455,10 +489,15 @@ try {
         // Si déjà couvert par surcharge locale / risque blessure, ne pas dupliquer.
         if (s.volumeEleve === true) return null;
         if (tous(s.acwrEleve, s.fatigueElevee)) return null;
-        var zone = f.valeurs.zone ? (' · zone : ' + f.valeurs.zone) : '';
+        var v = f.valeurs || {};
+        var zone = v.zone ? (' · zone : ' + v.zone) : '';
+        var ev = [];
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (v.zone ? ' (' + v.zone + ')' : ''));
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Douleur signalée',
-          description: 'Une douleur significative a été déclarée' + zone + '. Adapter la charge et surveiller son évolution.' });
+          description: 'Une douleur significative a été déclarée' + zone + '.',
+          evidence: ev.join(' · '),
+          recommandation: 'Adapte la charge et surveille l\'évolution de la douleur.' });
       }
     },
     {
@@ -466,9 +505,13 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (s.regulariteFaible !== true) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.seances7j != null && v.seancesPrevues) ev.push('séances ' + v.seances7j + '/' + v.seancesPrevues);
         return analyse({ priorite: 'info', niveau: 'moyen', categorie: this.categorie,
           titre: 'Régularité insuffisante',
-          description: 'Le nombre de séances est en dessous de l\'objectif. Relancer l\'athlète pour maintenir la dynamique.' });
+          description: 'Le nombre de séances est en dessous de l\'objectif.',
+          evidence: ev.join(' · '),
+          recommandation: 'Replanifie tes séances pour revenir à ton objectif de régularité.' });
       }
     }
   ];
