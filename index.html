@@ -127,6 +127,27 @@
   <button class="tab-btn" onclick="switchTab('etat')"><span class="tab-ico"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg></span><span>État</span></button>
 </div>
 
+<!-- Navigation latérale DESKTOP (athlète muscu). Affichée uniquement ≥992px via
+     body.has-bottom-nav (voir css/layout.css) ; cachée sur mobile/tablette et en
+     espace coach. Remplace la bottom-nav + le header mobile sur grand écran. Les
+     boutons réutilisent switchTab()/les mêmes handlers : aucun flux JS dupliqué.
+     L'état actif est synchronisé par switchTab(). L'ORDRE des 4 premiers items
+     doit rester aligné sur #tabs-bar. -->
+<aside id="app-side" aria-label="Navigation">
+  <div class="as-brand"><span class="as-logo">N</span><span class="as-nm">Novalyz</span></div>
+  <nav class="as-nav">
+    <button class="as-item active" data-tab="accueil" onclick="switchTab('accueil')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Aujourd'hui</button>
+    <button class="as-item" data-tab="seance" onclick="switchTab('seance')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</button>
+    <button class="as-item" data-tab="historique" onclick="switchTab('historique')"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</button>
+    <button class="as-item" data-tab="etat" onclick="switchTab('etat')"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg>État</button>
+  </nav>
+  <div class="as-foot">
+    <button class="as-item as-sm" onclick="ouvrirConversations()"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Conversation<span id="as-badge-conseils" style="display:none;margin-left:auto;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 4px;"></span></button>
+    <button class="as-item as-sm" data-tab="reglages" onclick="switchTab('reglages')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Réglages</button>
+    <button class="as-item as-sm" onclick="seDeconnecter()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Déconnexion</button>
+  </div>
+</aside>
+
 <div class="container" id="main-container">
 
   <!-- LOGIN -->
@@ -799,86 +820,108 @@
       .tj-fabtip{background:var(--tj-surface);border:1px solid var(--tj-border);box-shadow:var(--tj-sh);border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--tj-text);}
       .tj-fab{width:56px;height:56px;border-radius:999px;background:var(--tj-accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;}
       .tj-fab svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      /* --- Grille responsive : mobile = 1 colonne (ordre d'origine), desktop = 2 colonnes --- */
+      /* Mobile/tablette : les wrappers s'effacent (display:contents) ; les 7 blocs
+         redeviennent enfants flex de .tj et `order` rétablit la séquence mobile. */
+      .tj-main,.tj-rail{display:contents;}
+      .tj-greet{order:1;}.tj-banner{order:2;}.tj-seance{order:3;}
+      #tj-attention{order:4;}.tj-bwrap{order:5;}.tj-rew{order:6;}.tj-nova{order:7;}
+      @media (min-width:992px){
+        #tab-accueil .tj{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;padding:4px 0 40px;}
+        /* Les wrappers redeviennent de vraies colonnes flex : hauteurs indépendantes,
+           les `order` ci-dessus ordonnent correctement chaque colonne (1-2-3-7 / 4-5-6). */
+        #tab-accueil .tj-main,#tab-accueil .tj-rail{display:flex;flex-direction:column;gap:14px;min-width:0;}
+        #tab-accueil .tj-nova{margin-top:2px;}
+      }
       </style>
 
+      <!-- DESKTOP (≥992px) : .tj devient une grille 2 colonnes (contenu principal
+           .tj-main + rail contextuel .tj-rail). Sur mobile/tablette, les deux
+           wrappers sont neutres (display:contents) et l'ordre d'origine des 7
+           blocs est rétabli par `order` dans #tj-css → MOBILE INCHANGÉ. Les IDs
+           internes ne bougent pas : renderAujourdhui() continue de tout peupler. -->
       <div class="tj">
-        <!-- Bloc d'accueil : salutation + date + roue des séances (animée). Le
-             header d'app (titre « Aujourd'hui » + bulle/réglages/déco) est
-             au-dessus, comme sur les autres onglets. -->
-        <div class="tj-card tj-greet">
-          <div>
-            <div class="tj-hi" id="tj-prenom">Bonjour</div>
-            <div class="tj-date" id="tj-date"></div>
-          </div>
-          <div class="tj-ring" id="tj-ring">
-            <svg viewBox="0 0 74 74">
-              <circle class="tj-ring-bg" cx="37" cy="37" r="32"></circle>
-              <circle class="tj-ring-fg" id="tj-ring-fg" cx="37" cy="37" r="32" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></circle>
-            </svg>
-            <div class="tj-ring-txt"><span class="tj-ring-n" id="tj-ring-n">0/0</span><span class="tj-ring-l">séances</span></div>
-          </div>
-        </div>
-
-        <div class="tj-banner" id="tj-banner">
-          <span class="tj-dot" id="tj-banner-dot"></span>
-          <div><div class="t" id="tj-banner-t">Ton état du jour</div><div class="s" id="tj-banner-s">Complète ton questionnaire bien-être</div></div>
-        </div>
-
-        <div class="tj-card tj-seance">
-          <div><div class="tj-label">Séance du jour</div><h2 id="tj-seance-nom">Ta séance</h2></div>
-          <div class="tj-meta" id="tj-seance-meta"></div>
-          <div class="tj-focus" id="tj-seance-focus" style="display:none">
-            <svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>
-            <span id="tj-seance-focus-txt"></span>
-          </div>
-          <button class="tj-cta" onclick="switchTab('seance')"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>Commencer ma séance</button>
-          <button class="tj-other" onclick="switchTab('seance')"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Voir mon entraînement</button>
-        </div>
-
-        <!-- Point d'attention (alerte prioritaire du centre d'alertes P0) + action -->
-        <div class="tj-card" id="tj-attention" style="display:none;padding:14px 16px;box-shadow:var(--tj-sh);border-left:4px solid var(--tj-warn);">
-          <div style="display:flex;align-items:flex-start;gap:11px;">
-            <span id="tj-att-dot" style="width:9px;height:9px;border-radius:999px;background:var(--tj-warn);margin-top:5px;flex:none;"></span>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;">Point d'attention</div>
-              <div id="tj-att-title" style="font-size:14px;font-weight:800;color:var(--tj-text);margin-top:3px;"></div>
-              <div id="tj-att-evidence" style="font-size:12px;color:var(--tj-muted);line-height:1.4;margin-top:2px;"></div>
-              <div id="tj-att-action" style="font-size:12.5px;color:var(--tj-text);line-height:1.4;margin-top:6px;font-weight:600;"></div>
+        <div class="tj-main">
+          <!-- Bloc d'accueil : salutation + date + roue des séances (animée). -->
+          <div class="tj-card tj-greet">
+            <div>
+              <div class="tj-hi" id="tj-prenom">Bonjour</div>
+              <div class="tj-date" id="tj-date"></div>
             </div>
-            <button id="tj-att-lu" title="Marquer comme lu" style="flex:none;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--tj-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+            <div class="tj-ring" id="tj-ring">
+              <svg viewBox="0 0 74 74">
+                <circle class="tj-ring-bg" cx="37" cy="37" r="32"></circle>
+                <circle class="tj-ring-fg" id="tj-ring-fg" cx="37" cy="37" r="32" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></circle>
+              </svg>
+              <div class="tj-ring-txt"><span class="tj-ring-n" id="tj-ring-n">0/0</span><span class="tj-ring-l">séances</span></div>
+            </div>
+          </div>
+
+          <div class="tj-banner" id="tj-banner">
+            <span class="tj-dot" id="tj-banner-dot"></span>
+            <div><div class="t" id="tj-banner-t">Ton état du jour</div><div class="s" id="tj-banner-s">Complète ton questionnaire bien-être</div></div>
+          </div>
+
+          <div class="tj-card tj-seance">
+            <div><div class="tj-label">Séance du jour</div><h2 id="tj-seance-nom">Ta séance</h2></div>
+            <div class="tj-meta" id="tj-seance-meta"></div>
+            <div class="tj-focus" id="tj-seance-focus" style="display:none">
+              <svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>
+              <span id="tj-seance-focus-txt"></span>
+            </div>
+            <button class="tj-cta" onclick="switchTab('seance')"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>Commencer ma séance</button>
+            <button class="tj-other" onclick="switchTab('seance')"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Voir mon entraînement</button>
+          </div>
+
+          <!-- nova : remonté dans le DOM (dans .tj-main) ; remis en DERNIER sur
+               mobile via order:7 (voir #tj-css). -->
+          <div class="tj-nova">
+            <span class="logo">N</span>
+            <div>
+              <div class="k">Le mot de Novalyz</div>
+              <div class="t" id="tj-nova-txt">Belle dynamique cette semaine, tu progresses au développé. Mais ta fatigue jambes monte depuis 3 séances : garde la charge sur le bas du corps et concentre-toi sur le haut aujourd'hui.</div>
+            </div>
           </div>
         </div>
 
-        <div class="tj-card tj-bwrap">
-          <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="ouvrirPointDuJour()">Mettre à jour ›</span></div>
-          <div class="tj-bgrid" id="tj-bgrid"></div>
-        </div>
+        <div class="tj-rail">
+          <!-- Point d'attention (alerte prioritaire du centre d'alertes P0) + action -->
+          <div class="tj-card" id="tj-attention" style="display:none;padding:14px 16px;box-shadow:var(--tj-sh);border-left:4px solid var(--tj-warn);">
+            <div style="display:flex;align-items:flex-start;gap:11px;">
+              <span id="tj-att-dot" style="width:9px;height:9px;border-radius:999px;background:var(--tj-warn);margin-top:5px;flex:none;"></span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;">Point d'attention</div>
+                <div id="tj-att-title" style="font-size:14px;font-weight:800;color:var(--tj-text);margin-top:3px;"></div>
+                <div id="tj-att-evidence" style="font-size:12px;color:var(--tj-muted);line-height:1.4;margin-top:2px;"></div>
+                <div id="tj-att-action" style="font-size:12.5px;color:var(--tj-text);line-height:1.4;margin-top:6px;font-weight:600;"></div>
+              </div>
+              <button id="tj-att-lu" title="Marquer comme lu" style="flex:none;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--tj-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+            </div>
+          </div>
 
-        <div class="tj-card tj-rew">
-          <div class="rowh">
-            <span class="k"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg>Récompenses</span>
-            <span class="prog" id="tj-prog">+12% ce mois</span>
+          <div class="tj-card tj-bwrap">
+            <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="ouvrirPointDuJour()">Mettre à jour ›</span></div>
+            <div class="tj-bgrid" id="tj-bgrid"></div>
           </div>
-          <div class="tj-newpr" id="tj-newpr">
-            <span class="medal"><svg width="19" height="19" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
-            <div><div class="a" id="tj-newpr-a">Records</div><div class="b" id="tj-newpr-b">—</div></div>
-          </div>
-          <div class="tj-miles">
-            <div class="lh"><span>Défi de la semaine : <b id="tj-mgoal">—</b></span><span><b id="tj-mdone">0</b>/<span id="tj-mtot">0</span></span></div>
-            <div class="tj-mbar"><span id="tj-mbar" style="width:0%"></span></div>
-          </div>
-          <div class="tj-badges">
-            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="n" id="tj-bdg1">Série —</span></div>
-            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="n" id="tj-bdg2">— records</span></div>
-            <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="n" id="tj-bdg3">— séances</span></div>
-          </div>
-        </div>
 
-        <div class="tj-nova">
-          <span class="logo">N</span>
-          <div>
-            <div class="k">Le mot de Novalyz</div>
-            <div class="t" id="tj-nova-txt">Belle dynamique cette semaine, tu progresses au développé. Mais ta fatigue jambes monte depuis 3 séances : garde la charge sur le bas du corps et concentre-toi sur le haut aujourd'hui.</div>
+          <div class="tj-card tj-rew">
+            <div class="rowh">
+              <span class="k"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg>Récompenses</span>
+              <span class="prog" id="tj-prog">+12% ce mois</span>
+            </div>
+            <div class="tj-newpr" id="tj-newpr">
+              <span class="medal"><svg width="19" height="19" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
+              <div><div class="a" id="tj-newpr-a">Records</div><div class="b" id="tj-newpr-b">—</div></div>
+            </div>
+            <div class="tj-miles">
+              <div class="lh"><span>Défi de la semaine : <b id="tj-mgoal">—</b></span><span><b id="tj-mdone">0</b>/<span id="tj-mtot">0</span></span></div>
+              <div class="tj-mbar"><span id="tj-mbar" style="width:0%"></span></div>
+            </div>
+            <div class="tj-badges">
+              <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="n" id="tj-bdg1">Série —</span></div>
+              <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="n" id="tj-bdg2">— records</span></div>
+              <div class="tj-bdg"><svg width="17" height="17" viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="n" id="tj-bdg3">— séances</span></div>
+            </div>
           </div>
         </div>
 
@@ -2010,11 +2053,6 @@
           <button class="cx-btn ghost" onclick="switchTab('reglages')"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10"/><path d="M2 12.5 7 17"/></svg>Connecter un appareil</button>
         </div>
         </div><!-- /cx-cardio-sub -->
-      </div>
-
-      <div class="et-fabwrap" style="position:fixed;right:15px;bottom:calc(80px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:9px;z-index:40;">
-        <span style="background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);">Demande à Novalyz</span>
-        <button onclick="ouvrirNovalyzIA()" title="Demande à Novalyz" style="width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
       </div>
     </div>
 

@@ -6400,6 +6400,12 @@ function majBadgeConseils() {
   } else {
     badge.style.display = 'none';
   }
+  // Miroir sur la sidebar desktop (même compteur).
+  const badgeSide = document.getElementById('as-badge-conseils');
+  if (badgeSide) {
+    if (nonLus > 0) { badgeSide.textContent = nonLus; badgeSide.style.display = 'inline-grid'; }
+    else { badgeSide.style.display = 'none'; }
+  }
 }
 
 // ══════════ Écran « Douleurs & blessures » ══════════
@@ -6918,6 +6924,10 @@ function switchTab(tab) {
   // Aujourd'hui · Entraînement · Analyses · État. (Cardio retiré de la barre.)
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
     b.classList.toggle('active', ['accueil','seance','historique','etat'][i] === tab);
+  });
+  // Sidebar desktop (athlète) : synchroniser l'item actif sur l'onglet courant.
+  document.querySelectorAll('#app-side .as-item[data-tab]').forEach((b) => {
+    b.classList.toggle('active', b.getAttribute('data-tab') === tab);
   });
   const hdr = document.getElementById('header-nom');
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];

@@ -6,108 +6,126 @@
   :root{
     --bg:#F4F7FE;--surface:#FFFFFF;--surface2:#EEF3FF;--border:#DCE5F7;--line:#E8EEFB;
     --text:#0B1020;--muted:#55628A;--subtle:#8A97BC;
-    --accent:#1A5FFF;--accent-weak:rgba(26,95,255,.10);--accent-strong:#1248D4;
-    --good:#00A854;--good-a:rgba(0,168,84,.12);--warn:#E07800;--warn-a:rgba(224,120,0,.12);--danger:#DC3545;--danger-a:rgba(220,53,69,.10);
-    --sh:0 8px 28px rgba(16,32,74,.07);--sh-sm:0 1px 2px rgba(16,32,74,.06);--radius:18px;--on-accent:#fff;
+    --accent:#1A5FFF;--accent-a:rgba(26,95,255,.10);--accent-strong:#1248D4;
+    --good:#00A854;--good-a:rgba(0,168,84,.12);--warn:#E07800;--warn-a:rgba(224,120,0,.12);--danger:#DC3545;
+    --sh:0 8px 28px rgba(16,32,74,.07);--sh-sm:0 1px 2px rgba(16,32,74,.06);--radius:18px;--head:'Michroma',sans-serif;
   }
   @media (prefers-color-scheme:dark){:root{
     --bg:#070B16;--surface:#0E1424;--surface2:#151D30;--border:#233150;--line:#1A2238;
     --text:#EAF0FF;--muted:#9AA7C9;--subtle:#637099;
-    --accent:#4C86FF;--accent-weak:rgba(76,134,255,.16);--accent-strong:#2F63D6;
-    --good-a:rgba(0,168,84,.18);--warn-a:rgba(224,120,0,.18);--danger-a:rgba(220,53,69,.18);
+    --accent:#4C86FF;--accent-a:rgba(76,134,255,.16);--accent-strong:#79A3FF;
+    --good-a:rgba(0,168,84,.18);--warn-a:rgba(224,120,0,.18);
     --sh:0 12px 34px rgba(0,0,0,.45);--sh-sm:0 1px 2px rgba(0,0,0,.3);
   }}
   *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
   .mk{font-size:11.5px;color:var(--subtle);text-align:center;padding:10px}
-  /* shell desktop : sidebar + main + rail */
-  .shell{display:grid;grid-template-columns:248px 1fr 336px;gap:0;min-height:900px;max-width:1440px;margin:0 auto;}
-  /* ---------- SIDEBAR ---------- */
-  .side{background:var(--surface);border-right:1px solid var(--border);padding:22px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;}
+  svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .shell{display:grid;grid-template-columns:248px 1fr 340px;min-height:920px;max-width:1440px;margin:0 auto;position:relative}
+  /* SIDEBAR */
+  .side{background:var(--surface);border-right:1px solid var(--border);padding:22px 16px;display:flex;flex-direction:column;gap:6px}
   .brand{display:flex;align-items:center;gap:10px;padding:4px 10px 20px}
-  .brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-strong));display:grid;place-items:center;color:#fff;font-weight:900;font-family:Michroma;font-size:15px}
-  .brand .nm{font-family:Michroma;font-size:15px;letter-spacing:.02em}
-  .nav{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+  .brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-strong));display:grid;place-items:center;color:#fff;font-family:var(--head);font-size:14px}
+  .brand .nm{font-family:var(--head);font-size:15px;letter-spacing:.02em}
+  .nav{display:flex;flex-direction:column;gap:3px}
   .nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;color:var(--muted);font-weight:600;font-size:14px;text-decoration:none;cursor:pointer}
-  .nav a .ic{width:20px;height:20px;flex:none;display:grid;place-items:center}
-  .nav a svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .nav a.on{background:var(--accent-weak);color:var(--accent);font-weight:800}
+  .nav a svg{width:19px;height:19px}
+  .nav a.on{background:var(--accent-a);color:var(--accent);font-weight:800}
   .nav a:not(.on):hover{background:var(--surface2);color:var(--text)}
-  .side .sep{flex:1}
-  .side .foot a{color:var(--subtle);font-size:13px}
-  /* ---------- MAIN ---------- */
-  .main{padding:26px 30px 40px;min-width:0}
+  .side .sep{flex:1}.side .foot a{color:var(--subtle);font-size:13px}
+  /* MAIN */
+  .main{padding:26px 30px 48px;min-width:0}
   .top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px}
-  .top h1{font-size:26px;font-weight:900;letter-spacing:-.02em;margin:0}
-  .top .date{font-size:13.5px;color:var(--muted);margin-top:4px}
+  .top h1{font-size:25px;font-weight:900;letter-spacing:-.02em;margin:0}
+  .top .date{font-size:13px;color:var(--subtle);margin-top:4px}
   .top .tools{display:flex;gap:10px;align-items:center}
   .icbtn{width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;cursor:pointer;color:var(--muted);position:relative}
-  .icbtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .icbtn svg{width:19px;height:19px}
   .dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:2px solid var(--surface)}
   .av{width:40px;height:40px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--sh-sm);padding:18px}
   .lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--subtle)}
-  /* hero row */
-  .hero{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;margin-bottom:18px}
-  .etat{background:linear-gradient(135deg,rgba(0,168,84,.14),rgba(0,168,84,.04));border:1px solid rgba(0,168,84,.28);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;justify-content:space-between}
-  .etat .top2{display:flex;align-items:center;gap:10px}
-  .etat .pil{width:12px;height:12px;border-radius:50%;background:var(--good);box-shadow:0 0 0 4px rgba(0,168,84,.18)}
-  .etat .st{font-size:20px;font-weight:900;color:var(--good);letter-spacing:-.01em}
-  .etat .sub{font-size:13px;color:var(--muted);margin-top:4px}
-  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
-  .chip{background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted)}
-  .ring{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+  /* hero : état du jour + roue séances */
+  .hero{display:grid;grid-template-columns:1fr 212px;gap:18px;margin-bottom:18px}
+  .etat{background:linear-gradient(135deg,var(--good-a),transparent);border:1px solid rgba(0,168,84,.26);border-radius:var(--radius);padding:22px;display:flex;align-items:center;gap:16px}
+  .etat .pil{width:14px;height:14px;border-radius:50%;background:var(--good);box-shadow:0 0 0 5px rgba(0,168,84,.16);flex:none}
+  .etat .st{font-size:21px;font-weight:900;color:var(--good);letter-spacing:-.01em}
+  .etat .sub{font-size:13px;color:var(--muted);margin-top:3px}
+  .ring{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
   .ring svg{transform:rotate(-90deg)}
-  .ring .n{font-size:30px;font-weight:900;letter-spacing:-.02em}
-  .ring .k{font-size:12px;color:var(--muted);font-weight:600}
-  .wk{display:flex;gap:5px;margin-top:10px}
-  .wk span{width:22px;height:6px;border-radius:3px;background:var(--surface2)}
-  .wk span.on{background:var(--accent)}
-  /* grid 2 col */
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-  .seance .ex{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
-  .seance .ex .m{color:var(--subtle);font-variant-numeric:tabular-nums}
-  .btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:12px 18px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.28);margin-top:14px}
-  .nova{background:linear-gradient(135deg,var(--accent-weak),transparent);border:1px solid var(--accent-weak)}
-  .nova .q{font-size:14px;line-height:1.55;color:var(--text);font-weight:600;margin-top:8px}
-  .spark{height:56px;width:100%;margin-top:12px}
-  .mini{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-  .mini .t{font-size:22px;font-weight:900;letter-spacing:-.02em}
-  .mini .u{font-size:11px;color:var(--subtle);font-weight:700}
-  .h2{font-size:15px;font-weight:800;margin:0}
-  .seclead{display:flex;align-items:center;justify-content:space-between;margin:26px 2px 12px}
-  .more{color:var(--accent);font-weight:700;font-size:12.5px;cursor:pointer}
-  /* ---------- RAIL ---------- */
+  .ring .n{font-family:var(--head);font-size:21px;color:var(--accent)}
+  .ring .k{font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+  /* séance du jour */
+  .seance .nom{font-size:20px;font-weight:900;letter-spacing:-.01em;margin-top:5px}
+  .seance .meta{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .seance .focus{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:12px;padding:10px 13px;margin-top:14px;font-size:12.5px;color:var(--muted)}
+  .seance .focus svg{width:16px;height:16px;color:var(--accent);flex:none}
+  .btns{display:flex;gap:10px;margin-top:16px}
+  .cta{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:13px 20px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.28)}
+  .ghost{display:inline-flex;align-items:center;gap:8px;background:var(--surface);color:var(--accent);border:1px solid var(--border);border-radius:12px;padding:13px 18px;font:inherit;font-weight:700;font-size:13.5px;cursor:pointer}
+  .cta svg,.ghost svg{width:17px;height:17px}
+  /* le mot de novalyz */
+  .nova{display:flex;gap:14px;background:linear-gradient(180deg,var(--accent-a),var(--surface));border:1px solid rgba(26,95,255,.18);margin-top:18px}
+  .nova .l{width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none;font-family:var(--head);font-size:13px}
+  .nova .k{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--accent-strong)}
+  .nova .t{font-size:13.5px;line-height:1.55;margin-top:5px;color:var(--text)}
+  /* RAIL */
   .rail{background:var(--surface);border-left:1px solid var(--border);padding:24px 20px;display:flex;flex-direction:column;gap:16px}
-  .att{border-left:4px solid var(--warn);background:var(--warn-a);border-radius:12px;padding:13px 14px}
-  .att .t{font-size:13.5px;font-weight:800}
-  .att .d{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
-  .att .a{font-size:12.5px;font-weight:700;color:var(--text);margin-top:7px}
-  .stat{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid var(--line)}
-  .stat:first-of-type{border-top:0}
-  .stat .l{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-weight:600}
-  .stat .l .e{width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;font-size:15px}
-  .stat .v{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+  .att{border-left:4px solid var(--warn);background:var(--warn-a);border-radius:12px;padding:13px 14px;display:flex;gap:11px}
+  .att .adot{width:9px;height:9px;border-radius:50%;background:var(--warn);margin-top:5px;flex:none}
+  .att .t{font-size:14px;font-weight:800;margin-top:3px}
+  .att .e{font-size:12px;color:var(--muted);line-height:1.45;margin-top:2px}
+  .att .a{font-size:12.5px;font-weight:700;margin-top:7px}
+  /* point du jour (bien-être) */
+  .brow{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .brow .k{font-size:13px;font-weight:800}.brow .u{font-size:12px;color:var(--accent);font-weight:700;cursor:pointer}
+  .bcell{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+  .bcell:first-of-type{border-top:0}
+  .bcell .ic{width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;color:var(--muted);flex:none}
+  .bcell .ic svg{width:17px;height:17px}
+  .bcell .nm{font-size:13px;font-weight:600;color:var(--muted);flex:1}
+  .bcell .val{font-size:12.5px;font-weight:800}
+  .bseg{display:flex;gap:3px;margin-left:8px}.bseg i{width:7px;height:7px;border-radius:2px;background:var(--surface2)}
+  /* récompenses */
+  .rew .rowh{display:flex;align-items:center;justify-content:space-between}
+  .rew .rowh .k{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800}
+  .rew .rowh .k svg{width:17px;height:17px;color:var(--warn)}
+  .rew .prog{font-size:12px;font-weight:800;color:var(--good);background:var(--good-a);border-radius:999px;padding:3px 10px}
+  .newpr{display:flex;align-items:center;gap:11px;background:var(--surface2);border-radius:12px;padding:11px 13px;margin-top:12px}
+  .newpr .medal{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--warn),#F4A52C);color:#fff;display:grid;place-items:center;flex:none}
+  .newpr .medal svg{width:18px;height:18px}
+  .newpr .a{font-size:11px;color:var(--subtle);font-weight:700}.newpr .b{font-size:13.5px;font-weight:800;margin-top:1px}
+  .miles{margin-top:13px}
+  .miles .lh{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .mbar{height:8px;border-radius:999px;background:var(--surface2);overflow:hidden}.mbar span{display:block;height:100%;background:var(--accent);border-radius:999px}
+  .badges{display:flex;gap:8px;margin-top:13px}
+  .bdg{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface2);border-radius:11px;padding:10px 4px;text-align:center}
+  .bdg svg{width:17px;height:17px;color:var(--accent)}.bdg .n{font-size:10.5px;font-weight:700;color:var(--muted)}
+  /* FAB */
+  .fab{position:absolute;right:360px;bottom:28px;display:flex;align-items:center;gap:10px;z-index:5}
+  .fab .tip{background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh);border-radius:999px;padding:8px 13px;font-size:12px;font-weight:700}
+  .fab .b{width:54px;height:54px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer}
+  .fab .b svg{width:25px;height:25px}
 </style></head>
 <body>
-<div class="mk">Maquette CONCEPT · Novalyz desktop — écran « Aujourd'hui » (athlète) · sidebar + contenu + rail contextuel · mobile inchangé</div>
+<div class="mk">Maquette CONCEPT · Novalyz desktop — « Aujourd'hui » (athlète) · mêmes blocs que le mobile, répartis sidebar + contenu + rail · mobile inchangé</div>
 <div class="shell">
 
   <!-- SIDEBAR -->
   <aside class="side">
     <div class="brand"><div class="logo">N</div><div class="nm">NOVALYZ</div></div>
     <nav class="nav">
-      <a class="on"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg></span>Aujourd'hui</a>
-      <a><span class="ic"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg></span>Entraînement</a>
-      <a><span class="ic"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6"/></svg></span>Cardio / Hyrox</a>
-      <a><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-10"/></svg></span>Mes analyses</a>
-      <a><span class="ic"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/></svg></span>Mon état</a>
-      <a><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>Profil</a>
+      <a class="on"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Aujourd'hui</a>
+      <a><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</a>
+      <a><svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6"/></svg>Cardio / Hyrox</a>
+      <a><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-10"/></svg>Mes analyses</a>
+      <a><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/></svg>Ma forme</a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Profil</a>
     </nav>
     <div class="sep"></div>
     <nav class="nav foot">
-      <a><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.3 1a7 7 0 0 0-1.7-1l-.3-2.5h-4l-.3 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.3-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z"/></svg></span>Réglages</a>
-      <a><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></span>Déconnexion</a>
+      <a><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7 7 0 0 0 0-2l2-1.5-2-3.5-2.3 1a7 7 0 0 0-1.7-1L15 3H9l-.4 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.5L4.6 11a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.3-1a7 7 0 0 0 1.7 1L9 21h6l.4-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.5z"/></svg>Réglages</a>
+      <a><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Déconnexion</a>
     </nav>
   </aside>
 
@@ -121,81 +139,89 @@
       </div>
     </div>
 
-    <!-- HERO -->
+    <!-- HERO : bandeau état du jour + roue séances -->
     <div class="hero">
       <div class="etat">
+        <span class="pil"></span>
         <div>
-          <div class="top2"><span class="pil"></span><span class="st">Prêt à performer</span></div>
+          <div class="st">Prêt à performer</div>
           <div class="sub">Ton état du jour est au vert — bonne séance.</div>
-          <div class="chips"><span class="chip">😴 Sommeil bon</span><span class="chip">⚡ Énergie 4/5</span><span class="chip">💪 Récup OK</span></div>
         </div>
-        <div style="font-size:11px;color:var(--subtle);margin-top:14px">Questionnaire rempli ce matin · fiabilité élevée</div>
       </div>
       <div class="card ring">
-        <div class="lbl" style="align-self:flex-start">Cette semaine</div>
-        <svg width="120" height="120" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--surface2)" stroke-width="12"/>
-          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round" stroke-dasharray="326" stroke-dashoffset="163"/>
+        <svg width="92" height="92" viewBox="0 0 92 92">
+          <circle cx="46" cy="46" r="38" fill="none" stroke="var(--surface2)" stroke-width="7"/>
+          <circle cx="46" cy="46" r="38" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="239" stroke-dashoffset="120"/>
         </svg>
-        <div class="n" style="margin-top:-78px">2/4</div>
-        <div class="k" style="margin-top:44px">séances faites</div>
-        <div class="wk"><span class="on"></span><span class="on"></span><span></span><span></span></div>
+        <div class="n" style="margin-top:-62px">2/4</div>
+        <div class="k" style="margin-top:34px">séances</div>
       </div>
     </div>
 
-    <!-- GRID -->
-    <div class="grid">
-      <div class="card seance">
-        <div style="display:flex;align-items:center;justify-content:space-between"><div class="lbl">Séance du jour</div><div class="more">Programme →</div></div>
-        <div style="font-size:19px;font-weight:900;letter-spacing:-.01em;margin-top:6px">Push · Pecs / Épaules / Triceps</div>
-        <div class="ex"><span>Développé couché</span><span class="m">4 × 8–12</span></div>
-        <div class="ex"><span>Développé militaire</span><span class="m">4 × 8–10</span></div>
-        <div class="ex"><span>Élévations latérales</span><span class="m">3 × 12–15</span></div>
-        <div class="ex"><span>Extension poulie</span><span class="m">3 × 12–15</span></div>
-        <button class="btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Démarrer la séance</button>
+    <!-- SÉANCE DU JOUR -->
+    <div class="card seance">
+      <div class="lbl">Séance du jour</div>
+      <div class="nom">Push A</div>
+      <div class="meta">4 exercices · 3 séances au programme</div>
+      <div class="focus">
+        <svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Au programme : <b>Développé couché · Développé militaire · Élévations latérales</b></span>
       </div>
-
-      <div class="card nova">
-        <div class="lbl" style="color:var(--accent)">Le mot de Novalyz</div>
-        <div class="q">Ton volume progresse (+8 % sur 4 semaines) sans hausse marquée de l'effort perçu. La progression est cohérente avec ta prise de masse — conserve la structure actuelle.</div>
-        <svg class="spark" viewBox="0 0 300 56" preserveAspectRatio="none">
-          <polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" points="4,44 54,40 104,34 154,30 204,22 254,16 296,12"/>
-          <circle cx="296" cy="12" r="3.5" fill="var(--accent)"/>
-        </svg>
+      <div class="btns">
+        <button class="cta"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z" fill="currentColor" stroke="none"/></svg>Commencer ma séance</button>
+        <button class="ghost"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Voir mon entraînement</button>
       </div>
     </div>
 
-    <div class="seclead"><div class="h2">Mes analyses — aperçu</div><div class="more">Tout voir →</div></div>
-    <div class="grid">
-      <div class="card"><div class="lbl">Volume (séries / sem.)</div><div class="mini"><div><div class="t">112</div><div class="u">séries · +6%</div></div><div><div class="t">1.0</div><div class="u">ACWR · zone OK</div></div></div></div>
-      <div class="card"><div class="lbl">Régularité (4 sem.)</div><div class="mini"><div><div class="t">3,2</div><div class="u">séances / sem.</div></div><div><div class="t" style="color:var(--good)">87%</div><div class="u">objectif tenu</div></div></div></div>
+    <!-- LE MOT DE NOVALYZ -->
+    <div class="card nova">
+      <span class="l">N</span>
+      <div>
+        <div class="k">Le mot de Novalyz</div>
+        <div class="t">Belle dynamique cette semaine, tu progresses au développé. Mais ta fatigue jambes monte depuis 3 séances : garde la charge sur le bas du corps et concentre-toi sur le haut aujourd'hui.</div>
+      </div>
     </div>
   </main>
 
   <!-- RAIL -->
   <aside class="rail">
-    <div>
-      <div class="lbl" style="margin-bottom:10px">Point d'attention</div>
-      <div class="att">
-        <div class="t">⚠️ Sommeil en baisse</div>
-        <div class="d">Tes 3 dernières nuits sont sous ta moyenne habituelle.</div>
+    <!-- Point d'attention -->
+    <div class="att">
+      <span class="adot"></span>
+      <div style="flex:1;min-width:0">
+        <div class="lbl" style="color:var(--subtle)">Point d'attention</div>
+        <div class="t">Sommeil en baisse</div>
+        <div class="e">Tes 3 dernières nuits sont sous ta moyenne habituelle.</div>
         <div class="a">→ Évite une intensification aujourd'hui.</div>
       </div>
     </div>
-    <div class="card" style="padding:4px 16px">
-      <div class="stat"><div class="l"><span class="e">👣</span>Pas aujourd'hui</div><div class="v">7 240</div></div>
-      <div class="stat"><div class="l"><span class="e">😴</span>Sommeil</div><div class="v">7 h 10</div></div>
-      <div class="stat"><div class="l"><span class="e">❤️</span>FC repos</div><div class="v">54 bpm</div></div>
-      <div class="stat"><div class="l"><span class="e">⚖️</span>Poids</div><div class="v">78,4 kg</div></div>
+
+    <!-- Ton point du jour (bien-être) -->
+    <div class="card">
+      <div class="brow"><span class="k">Ton point du jour</span><span class="u">Mettre à jour ›</span></div>
+      <div class="bcell"><span class="ic"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span class="nm">Sommeil</span><span class="val" style="color:var(--good)">Bon</span><span class="bseg"><i style="background:var(--good)"></i><i style="background:var(--good)"></i><i style="background:var(--good)"></i><i style="background:var(--good)"></i><i></i></span></div>
+      <div class="bcell"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/></svg></span><span class="nm">Fatigue</span><span class="val" style="color:var(--warn)">Modérée</span><span class="bseg"><i style="background:var(--warn)"></i><i style="background:var(--warn)"></i><i style="background:var(--warn)"></i><i></i><i></i></span></div>
+      <div class="bcell"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/><path d="M12 22c3 0 5-2 5-5"/></svg></span><span class="nm">Motivation</span><span class="val" style="color:var(--good)">Élevée</span><span class="bseg"><i style="background:var(--good)"></i><i style="background:var(--good)"></i><i style="background:var(--good)"></i><i style="background:var(--good)"></i><i></i></span></div>
     </div>
-    <div>
-      <div class="lbl" style="margin-bottom:10px">Objectif</div>
-      <div class="card" style="display:flex;align-items:center;gap:12px">
-        <div style="width:40px;height:40px;border-radius:11px;background:var(--accent-weak);display:grid;place-items:center;font-size:19px">📈</div>
-        <div><div style="font-weight:800;font-size:14px">Prise de masse</div><div style="font-size:12px;color:var(--muted)">4 séries · 8–12 reps · ~72%</div></div>
+
+    <!-- Récompenses -->
+    <div class="card rew">
+      <div class="rowh"><span class="k"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg>Récompenses</span><span class="prog">+12% ce mois</span></div>
+      <div class="newpr"><span class="medal"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span><div><div class="a">Nouveau record</div><div class="b">Développé couché · 82,5 kg</div></div></div>
+      <div class="miles"><div class="lh"><span>Défi de la semaine : <b>3 séances</b></span><span><b>2</b>/3</span></div><div class="mbar"><span style="width:66%"></span></div></div>
+      <div class="badges">
+        <div class="bdg"><svg viewBox="0 0 24 24"><path d="M12 2v6M4.5 10 12 8l7.5 2M6 21l1-9M18 21l-1-9"/></svg><span class="n">Série 5</span></div>
+        <div class="bdg"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/></svg><span class="n">3 records</span></div>
+        <div class="bdg"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg><span class="n">128 séances</span></div>
       </div>
     </div>
   </aside>
+
+  <!-- FAB Demande à Novalyz -->
+  <div class="fab">
+    <span class="tip">Demande à Novalyz</span>
+    <button class="b"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
+  </div>
 
 </div>
 </body></html>
