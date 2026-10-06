@@ -1710,6 +1710,7 @@ async function sInscrire() {
   const ddn = document.getElementById('reg-ddn').value;
   const password = document.getElementById('reg-password').value;
   const email = (document.getElementById('reg-email') ? document.getElementById('reg-email').value : '').trim();
+  const code = (document.getElementById('reg-code') ? document.getElementById('reg-code').value : '').trim();
   const errEl = document.getElementById('reg-error');
   errEl.textContent = '';
   if (!prenom || !login || !ddn || !taille) { errEl.textContent = 'Remplis tous les champs.'; return; }
@@ -1724,7 +1725,7 @@ async function sInscrire() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, annees, password, sport, email })
+      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, annees, password, sport, email, code })
     });
     const data = await res.json();
     if (data.success) {
