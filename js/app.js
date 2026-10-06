@@ -16622,6 +16622,10 @@ async function _saveCardioPrevu(idx) {
   var gv = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
   var date = gv('scp-date') || _todayLocalStr(), duree = gv('scp-duree'), distance = gv('scp-distance'), rpe = gv('scp-rpe');
   if (!duree && !distance) { showToast('Renseigne au moins la durée', 'var(--warn)'); return; }
+  // Prévention doublon (#18) : séance de durée proche déjà enregistrée ce jour-là ?
+  if (duree && _cardioDoublonProbable(date, duree).length) {
+    if (!confirm('Une séance de durée proche existe déjà ce jour-là.\nEnregistrer quand même ? (doublon possible)')) return;
+  }
   var btn = document.getElementById('scp-save'); if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
   try {
     var resp = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: date, type_cardio: type, duree: duree, distance: distance, rpe: rpe }) });
@@ -16883,13 +16887,28 @@ function _fitParse(buf) {
   return _fitFinish(session);
 }
 
+// Détection de doublon probable d'activité cardio (prévention à l'import, #18).
+// Contrainte : les activités sont stockées à la granularité JOUR (pas d'heure de
+// début) → on ne peut matcher que même jour local + durée proche (±2 min).
+// Heuristique NON bloquante : l'utilisateur garde toujours le choix d'importer.
+function _cardioDoublonProbable(ymd, duree, excludeSid) {
+  try {
+    var hist = (dernierAppData && dernierAppData.cardio && dernierAppData.cardio.history) || [];
+    var dur = +duree || 0;
+    var jour = String(ymd || '').slice(0, 10);   // compare la date au format YYYY-MM-DD (évite le piège TZ de new Date(str) en UTC)
+    return hist.filter(function (h) {
+      if (excludeSid && (h.seance_id === excludeSid || h.sid === excludeSid)) return false;
+      return String(h.date || '').slice(0, 10) === jour && Math.abs((+h.duree || 0) - dur) <= 2;
+    });
+  } catch (e) { return []; }
+}
+
 function _impApercu(d, filename) {
   var el = document.getElementById('imp-result'); if (!el) return;
   var opts = _CARDIO_CATALOG.filter(function (a) { return a.key !== 'hyrox'; }).map(function (a) {
     return '<option value="' + a.key + '"' + (a.key === d.type_cardio ? ' selected' : '') + '>' + a.ico + ' ' + escapeHtml(a.label) + '</option>';
   }).join('');
-  var dups = [];
-  try { dups = ((dernierAppData && dernierAppData.cardio && dernierAppData.cardio.history) || []).filter(function (h) { return _ymdLocal(new Date(h.date)) === d._ymd && Math.abs((+h.duree || 0) - d.duree) <= 2; }); } catch (e) {}
+  var dups = _cardioDoublonProbable(d._ymd, d.duree);
   var dateFr = ''; try { var x = new Date(d.dateISO); dateFr = x.toLocaleDateString('fr-FR') + ' ' + x.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { dateFr = d._ymd; }
   function chip(lbl, val) { return val ? ('<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 9px;font-size:12px;margin:3px 4px 0 0;">' + lbl + ' <b>' + val + '</b></span>') : ''; }
   el.innerHTML = '<div style="margin-top:12px;border:1px solid var(--border);border-radius:14px;padding:13px;background:var(--surface);">'
@@ -17050,7 +17069,6 @@ async function ouvrirImportMontre() {
 // silent=true : pas de toast ni de refresh (utilisé par « Tout importer »).
 async function _hcImport(i, silent) {
   var w = _hcWorkouts[i]; if (!w || !athlete) return false;
-  var btn = document.getElementById('hc-imp-' + i); if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
   var durMin = w.duration ? Math.round(w.duration / 60) : Math.round((new Date(w.endDate) - new Date(w.startDate)) / 60000);
   durMin = Math.max(1, durMin || 1);
   var km = (w.distance != null) ? (Math.round(w.distance / 1000 * 100) / 100) : '';
@@ -17059,6 +17077,12 @@ async function _hcImport(i, silent) {
   var pad = function (n) { return (n < 10 ? '0' : '') + n; };
   var dateStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   var vitesse = (km && durMin) ? Math.round(km / (durMin / 60) * 10) / 10 : '';
+  // Prévention doublon (#18) : en import unitaire, alerte si une séance proche existe déjà.
+  // (silent = import groupé « Tout importer » → pas de prompt, on s'appuie sur _hcImportedSet.)
+  if (!silent && _cardioDoublonProbable(dateStr, durMin).length) {
+    if (!confirm('Une séance de durée proche existe déjà le ' + dateStr + '.\nImporter quand même ? (doublon possible)')) return false;
+  }
+  var btn = document.getElementById('hc-imp-' + i); if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
   var body = {
     action: 'saveCardio', athlete_id: athlete.athlete_id, date: dateStr,
     type_cardio: _hcMapType(w.workoutType), duree: durMin, distance: km,
