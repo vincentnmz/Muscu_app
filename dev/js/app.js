@@ -286,7 +286,7 @@ try {
   var RANG_PRIORITE     = { critique: 4, important: 3, info: 2, succes: 1 };
 
   function analyse(o) {
-    return {
+    var r = {
       type:        TYPE_PAR_PRIORITE[o.priorite] || 'info',
       priorite:    o.priorite,
       niveau:      o.niveau || 'moyen',
@@ -294,6 +294,14 @@ try {
       titre:       o.titre,
       description: o.description
     };
+    // Champs structurés (roadmap P0.2/P0.3), OPTIONNELS et rétro-compatibles :
+    //   recommandation = l'action · evidence = la preuve chiffrée · confiance = fiabilité.
+    // Ajoutés seulement s'ils sont fournis → les règles non encore migrées et les
+    // rendus existants continuent de fonctionner à l'identique.
+    if (o.recommandation != null) r.recommandation = o.recommandation;
+    if (o.evidence != null)       r.evidence = o.evidence;
+    if (o.confiance != null)      r.confiance = o.confiance;
+    return r;
   }
 
   /* ---------------------------------------------------------------------------
@@ -305,11 +313,17 @@ try {
     {
       id: 'fatigue_generale', categorie: 'récupération',
       evaluer: function (f) {
-        var s = f.signaux;
+        var s = f.signaux, v = f.valeurs || {};
         if (!tous(s.sommeilFaible, s.energieFaible, s.fatigueElevee)) return null;
+        var ev = [];
+        if (v.sommeil != null) ev.push('sommeil ' + v.sommeil + '/5');
+        if (v.energie != null) ev.push('énergie ' + v.energie + '/5');
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
           titre: 'Fatigue générale probable',
-          description: 'Sommeil faible, énergie basse et fatigue musculaire élevée simultanément. Prévoir de la récupération avant de reprendre les charges lourdes.' });
+          description: 'Sommeil faible, énergie basse et fatigue musculaire élevée simultanément.',
+          evidence: ev.join(' · '),
+          recommandation: 'Allège la séance du jour (volume/intensité) et priorise le sommeil ; reprends les charges lourdes une fois récupéré.' });
       }
     },
     {
@@ -336,11 +350,16 @@ try {
     {
       id: 'surmenage', categorie: 'récupération',
       evaluer: function (f) {
-        var s = f.signaux;
+        var s = f.signaux, v = f.valeurs || {};
         if (!tous(s.progressionBaisse, s.volumeEleve, s.fatigueElevee)) return null;
+        var ev = [];
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
+        if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'critique', niveau: 'eleve', categorie: this.categorie,
           titre: 'Surmenage probable',
-          description: 'Volume élevé + fatigue élevée + progression qui baisse : signes d\'accumulation. Envisager une semaine de décharge.' });
+          description: 'Volume élevé + fatigue élevée + progression qui baisse : signes d\'accumulation.',
+          evidence: ev.join(' · '),
+          recommandation: 'Envisage une semaine de décharge (deload) ou quelques jours de repos avant de relancer.' });
       }
     },
     {
@@ -356,11 +375,17 @@ try {
     {
       id: 'risque_blessure', categorie: 'blessure',
       evaluer: function (f) {
-        var s = f.signaux;
+        var s = f.signaux, v = f.valeurs || {};
         if (!tous(s.acwrEleve, s.douleurElevee, s.fatigueElevee)) return null;
+        var ev = [];
+        if (v.acwr != null) ev.push('ACWR ' + v.acwr);
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5');
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'critique', niveau: 'eleve', categorie: this.categorie,
           titre: 'Risque accru de blessure',
-          description: 'Charge aiguë élevée (ACWR), douleur et fatigue combinées. Réduire fortement la charge sur les prochaines séances.' });
+          description: 'Charge aiguë élevée (ACWR), douleur et fatigue combinées.',
+          evidence: ev.join(' · '),
+          recommandation: 'Réduis fortement la charge sur les prochaines séances ; si la douleur persiste, consulte.' });
       }
     },
     {
@@ -398,11 +423,16 @@ try {
     {
       id: 'marge_progression', categorie: 'entraînement',
       evaluer: function (f) {
-        var s = f.signaux;
+        var s = f.signaux, v = f.valeurs || {};
         if (!tous(s.fatigueFaible, s.volumeFaible, s.progressionStable)) return null;
+        var ev = [];
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
+        if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'info', niveau: 'faible', categorie: this.categorie,
           titre: 'Possibilité d\'augmenter la charge',
-          description: 'Fatigue faible, volume faible et progression stable : il reste de la marge pour augmenter progressivement la charge.' });
+          description: 'Fatigue faible, volume faible et progression stable : il reste de la marge.',
+          evidence: ev.join(' · '),
+          recommandation: 'Augmente progressivement la charge ou le volume (surcharge progressive) sur tes prochaines séances.' });
       }
     },
     {
@@ -15002,6 +15032,8 @@ function renderAnalysesListe(data, ids, opts) {
       <div style="min-width:0;">
         <div style="font-size:13px;font-weight:800;color:${analyseCouleur(a.type)};">${analyseIcone(a.type)} ${escapeHtml(a.titre)}</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">${escapeHtml(a.description)}</div>
+        ${a.evidence ? `<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.4;margin-top:3px;">📊 ${escapeHtml(a.evidence)}</div>` : ''}
+        ${(a.recommandation && !(opts.pourAthlete && (a.type === 'critical' || a.type === 'warning'))) ? `<div style="font-size:12px;color:var(--text);line-height:1.45;margin-top:6px;font-weight:600;">→ ${escapeHtml(a.recommandation)}</div>` : ''}
         ${opts.hideCategorie ? '' : `<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;opacity:.7;">${escapeHtml(a.categorie)}</div>`}
         ${_cadrageAthlete(a)}
       </div>
