@@ -700,6 +700,7 @@ function _buildCardioRows(body: any, athlete_id: string, sid: string, date: stri
   addNum('pas', body.pas, 'pas')
   addNum('fc_moy', body.fc_moy, 'bpm')
   addNum('calories', body.calories, 'kcal')
+  addNum('deniv', body.deniv, 'm')              // dénivelé positif (D+), issu des imports .FIT/.GPX/Strava
   const dureeN = Number(body.duree), rpeN = Number(body.rpe)
   if (dureeN && rpeN) {
     addNum('rpe', body.rpe, '1-10')
@@ -735,6 +736,7 @@ function mapStravaActivite(a: any): any {
     cadence: ri(num(a.average_cadence)),                        // rpm (pédalage)
     fc_moy: ri(num(a.average_heartrate)),                       // bpm
     calories: ri(num(a.calories)),                              // kcal (détail activité uniquement)
+    deniv: ri(num(a.total_elevation_gain)),                     // m D+ (dénivelé positif)
   }
 }
 
