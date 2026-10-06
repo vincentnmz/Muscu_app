@@ -53,7 +53,7 @@
 - ✅ **Accueil = tous ses athlètes** — via l'onglet **Équipe** (annuaire + **recherche & filtres** par catégorie). L'accueil « Aujourd'hui » ne liste **volontairement pas** tous les athlètes (action + **résumé équipe**), l'annuaire complet est sur Équipe.
 - ✅ Écran **Aujourd'hui** (refonte v2) — hero état équipe + **résumé/distribution**, **messages non lus**, **alertes prioritaires**. (Pas de détail athlète inline : le détail = la fiche.)
 - ✅ **Bloc « alertes à traiter »** — `renderAlertesCoach` (bandeau de sévérité, dédoublonnage absence, footer fiabilité).
-- 🟡 Ce que l'athlète **doit faire** comme séance — prochaine séance remontée ; à confirmer/compléter côté fiche.
+- ✅ Ce que l'athlète **doit faire** comme séance — carte **« Prochaine séance à faire »** sur la fiche (nom + exercices du programme, lien Programme), sous les boutons d'action.
 - ✅ Son **état & bien-être** — hero **« État du jour »** coloré + **fraîcheur** (chips datées, « À confirmer » sans ressenti récent) ; **vigilance bien-être** au niveau équipe.
 - ✅ Écran **son entraînement** — **séances réalisées en détail** (exo / série / charge / reps / RPE) ; création / modification de programme (préexistant).
 - ✅ Écran **analyses muscu & cardio** — **port de « Mes analyses » athlète** dans l'Analyses coach + **Analyses équipe v2** (assiduité, vigilance bien-être, blessures actives, progression/stagnations, **fiabilité des données** — sans tonnage brut).
