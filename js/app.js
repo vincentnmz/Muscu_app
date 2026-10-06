@@ -16930,7 +16930,7 @@ async function _impConfirmer() {
   try {
     var resp = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: d._ymd, type_cardio: d.type_cardio, duree: d.duree, distance: d.distance, vitesse_moy: d.vitesse_moy, fc_moy: d.fc_moy, calories: d.calories })
+      body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: d._ymd, type_cardio: d.type_cardio, duree: d.duree, distance: d.distance, vitesse_moy: d.vitesse_moy, fc_moy: d.fc_moy, calories: d.calories, deniv: d.deniv })
     });
     var j = await resp.json();
     if (j && j.success) {
@@ -18573,6 +18573,12 @@ function _renderCardioHist() {
       if (s.distance)    parts.push(s.distance + ' km');
       if (s.pas)         parts.push(s.pas + ' pas');
       if (s.vitesse_moy) parts.push(s.vitesse_moy + ' km/h');
+      // Métriques spécifiques au sport (déjà stockées) + dénivelé (#19-23).
+      if (s.deniv)         parts.push(s.deniv + ' m D+');
+      if (s.puissance_moy) parts.push(s.puissance_moy + ' W');
+      if (s.cadence)       parts.push(s.cadence + ' rpm');
+      if (s.inclinaison)   parts.push(s.inclinaison + ' %');
+      if (s.fc_moy)        parts.push(s.fc_moy + ' bpm');
       recHtml += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0 7px 4px;">'
         + '<div style="width:34px;height:34px;border-radius:10px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">' + ico + '</div>'
         + '<div style="flex:1;min-width:0;">'
