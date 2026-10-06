@@ -7785,6 +7785,9 @@ document.addEventListener('visibilitychange', function () {
   if (document.hidden) return;
   // Chrono de repos : recalage immédiat (non throttlé) au retour au 1er plan.
   try { if (typeof _timerTick === 'function' && _timerTick) _timerTick(); } catch (e) {}
+  // Flush de la file hors-ligne (réseaux mobiles où l'événement 'online' ne fire pas
+  // toujours) — verrou interne anti-concurrence, donc sûr même si appelé souvent.
+  try { if (typeof flushSeancesOffline === 'function') flushSeancesOffline(); } catch (e) {}
   var now = Date.now();
   if (now - _lastResumeRefresh < 8000) return;
   _lastResumeRefresh = now;
@@ -9231,28 +9234,40 @@ function enregistrerSeanceOffline(lignes, wellness) {
   q.push({ lignes: lignes, wellness: wellness, ts: Date.now() });
   _ecrireQueueOffline(q);
 }
+var _flushingOffline = false;        // verrou anti-concurrence (online + load + resume peuvent coïncider)
+var _lastPendingToast = 0;           // throttle de la notice « en attente »
 async function flushSeancesOffline() {
   if (!navigator.onLine) return;
+  if (_flushingOffline) return;      // un flush est déjà en cours → on ne renvoie pas en double
   let q = _lireQueueOffline();
   if (!q.length) return;
-  const restantes = [];
-  for (const item of q) {
-    try {
-      // Réponse LISIBLE : on ne retire de la file QUE si le serveur confirme l'écriture.
-      const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'saveSeance', data: item.lignes }) });
-      let j = null; try { j = await res.json(); } catch (_) { j = null; }
-      const ok = res.ok && j && !j.erreur && !j.error;
-      if (!ok) { restantes.push(item); continue; }   // pas confirmé → on garde pour réessayer
-      if (item.wellness) {
-        try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(item.wellness) }); } catch (_) { /* bien-être non bloquant */ }
-      }
-    } catch (e) { restantes.push(item); }
-  }
-  _ecrireQueueOffline(restantes);
-  const envoyees = q.length - restantes.length;
-  if (envoyees > 0) showToast(`☁️ ${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`);
+  _flushingOffline = true;
+  try {
+    const restantes = [];
+    for (const item of q) {
+      try {
+        // Réponse LISIBLE : on ne retire de la file QUE si le serveur confirme l'écriture.
+        const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'saveSeance', data: item.lignes }) });
+        let j = null; try { j = await res.json(); } catch (_) { j = null; }
+        const ok = res.ok && j && !j.erreur && !j.error;
+        if (!ok) { restantes.push(item); continue; }   // pas confirmé → on garde pour réessayer
+        if (item.wellness) {
+          try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(item.wellness) }); } catch (_) { /* bien-être non bloquant */ }
+        }
+      } catch (e) { restantes.push(item); }
+    }
+    _ecrireQueueOffline(restantes);
+    const envoyees = q.length - restantes.length;
+    if (envoyees > 0) showToast(`☁️ ${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`);
+    else if (restantes.length > 0 && (Date.now() - _lastPendingToast > 30000)) {
+      // Rien n'est passé alors qu'il y a des séances en attente (serveur injoignable) :
+      // on prévient (throttlé) plutôt que de laisser l'athlète dans le flou.
+      _lastPendingToast = Date.now();
+      showToast(`⏳ ${restantes.length} séance${restantes.length > 1 ? 's' : ''} en attente — synchro au prochain réseau.`, 'var(--warn)');
+    }
+  } finally { _flushingOffline = false; }
 }
 window.addEventListener('online', () => { flushSeancesOffline(); });
 // Traite une validation hors-ligne : met en file + affiche le récap. Renvoie true si géré hors-ligne.
@@ -15233,6 +15248,7 @@ function _installNativeResumeListener() {
   try {
     App.addListener('resume', function () {
       try { if (typeof _timerTick === 'function' && _timerTick) _timerTick(); } catch (e) {}
+      try { if (typeof flushSeancesOffline === 'function') flushSeancesOffline(); } catch (e) {}   // resync hors-ligne au réveil (natif)
       // Throttle (8 s, partagé avec visibilitychange) : au cas où l'app enchaîne des
       // retours rapides au 1er plan (ex. écran de permission système), on ne relance
       // pas getAppData en rafale.
