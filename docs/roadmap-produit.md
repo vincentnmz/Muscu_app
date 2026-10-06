@@ -1,285 +1,301 @@
-# Novalyz — Roadmap produit & journal de livraison
+# NOVALYZ — ROADMAP PRODUIT & DÉVELOPPEMENT
 
-> **Fichier de suivi durable** (le contexte de session peut être compacté).
-> Source de vérité = roadmap envoyée par le porteur (reproduite ci-dessous, condensée
-> mais fidèle) + décisions de session. **À mettre à jour à chaque item livré.**
-> Voir aussi [`vision-produit.md`](./vision-produit.md), [`backlog-app.md`](./backlog-app.md),
-> [`roadmap-beta.md`](./roadmap-beta.md).
->
-> Statuts : ✅ fait · 🟡 partiel / en place à améliorer · 🔵 en cours · ⬜ à faire.
+> **Référence canonique** (dernière mise à jour : 2026-10-06). Vision produit long terme, pas une architecture technique imposée. Le code actuel reste la **source de vérité**.
 
-## 0. Vision
+## 0. Vision générale
 
-Faire évoluer Novalyz d'une app qui **affiche des données** vers une **cellule de
-performance**. Promesse **Solo** : « Je t'aide à mieux t'entraîner, comprendre si tu
-progresses et savoir quoi améliorer. » **Coach** : « Je t'aide à suivre tes athlètes,
-comprendre leur état et prendre de meilleures décisions. »
+Novalyz doit évoluer d'une application qui affiche principalement des données vers une véritable **cellule de performance personnelle et sportive**.
 
-Cœur = la chaîne : **Objectif → Programme → Exécution → Données → Analyse → Contexte →
-Recommandation → Action → Progression**. L'app doit répondre à : ① Comment m'entraîner ?
-② Est-ce bien fait ? ③ Quoi améliorer ?
+La promesse principale doit devenir :
 
-## Règle absolue de développement
+### Novalyz Solo
 
-Le **code existant = source de vérité**. La roadmap = direction produit, pas archi imposée.
-Pour chaque item : **Audit → Plan → (Validation si choix archi) → Implémentation minimale
-isolée → Tests (unit/intég/régression) → Rapport → 1 commit → STOP.**
-Interdits : refaire une fonctionnalité qui marche · 2ᵉ moteur · dupliquer données ·
-modifier le moteur sans nécessité · IA là où une règle déterministe suffit · mélanger
-plusieurs domaines · refonte visuelle pendant une étape fonctionnelle.
-Si une fonctionnalité existe déjà à 80-100 % → **ne pas la refaire**.
+> **« Je t'aide à mieux t'entraîner, à comprendre si tu progresses et à savoir quoi améliorer. »**
 
----
+### Novalyz Coach
 
-## Ordre de travail décidé (porteur, sept. 2026 — mis à jour)
+> **« Je t'aide à suivre tes athlètes, comprendre leur état et prendre de meilleures décisions de coaching. »**
 
-**Cap confirmé par le porteur : après avoir bouclé P0/P1, on avance dans l'ordre
-numérique des phases → P2, puis P3, puis P4, puis P5, puis P6.**
+Le cœur du produit n'est donc pas le programme, le GPS, les graphiques ou l'IA pris séparément.
 
-0. **P0/P1 côté athlète** : ✅ **P0-1 Objectifs livré**. Reste mineur = peaufinage
-   **P1-10 Mes analyses** (au fil de l'eau). **P1-13 adaptatif = mis de côté**
-   (porteur, sept. 2026) : à reprendre plus tard, moteur fiable requis.
-1. **P2 — Données sportives** ⬅️ **EN COURS** : Cardio/Hyrox dédié · activités structurées · GPS ·
-   Watch/Health Connect · déduplication · vélo/running/natation · séances hybrides.
-2. **P3 — Nutrition** : nutrition dans Mon état + analyse nutritionnelle (Solo puis Coach). *(Nutrition Solo ✅ livrée ; analyse interprétative + Coach = reste.)*
-3. **P4 — IA** : conversation groundée sur le moteur + IA de recommandation/explication. *(Coach IA + morpho **codés & déployés, en veille 0 €** ; IA proactive conçue, en pause.)*
-4. **P5 — Coach** : home, aujourd'hui, alertes, analyses, programme, conversation.
-5. **P6 — Business** : premium, paiement, rapports mensuels, e-mails auto.
+Le cœur est :
 
-> **Revisite visuelle** de l'app athlète : **décidé (porteur, sept. 2026)** → elle se
-> fera **avec la phase coach, tout à la fin** (une fois tout le fonctionnel terminé),
-> pas entre P0/P1 et P2.
+**Objectif → Programme → Exécution → Données → Analyse → Contexte → Recommandation → Action → Progression**
 
-## ORDRE DE PRIORITÉ (backbone de travail)
+L'application doit progressivement être capable de répondre à 3 questions :
 
-### P0 — CERVEAU
-1. **Objectifs** comme colonne vertébrale des analyses — ✅ (volet « cadré » livré :
-   écran « Mon objectif » qui explique ce que l'objectif change ; objectif profil ↔
-   générateur réconciliés (dict `OBJECTIFS`, pré-réglage du générateur) ; Maintien +
-   recomposition cadrent maintenant la Lecture Novalyz. Option « objectifs chiffrés
-   suivis » = extension possible plus tard, non retenue pour cette étape.)
-2. **Analyse des données** (données → interprétation en phrases) — ✅ Lecture Novalyz
-   (muscu · cardio · croisé)
-3. **Recommandations** (finding/priority/evidence/reco/confidence/context) — ✅ dans la synthèse
-4. **Contexte de performance** (retour vacances/blessure/deload, fiabilité affichée) — ✅
-   (système complet : l'athlète pose un état → moteur ajusté ; la carte explique
-   maintenant l'EFFET concret sur l'analyse « pourquoi Novalyz interprète différemment »)
-5. **Fiabilité** des analyses — 🟡 (confiance/reliability exposés ; tendances fiabilisées)
-6. **Alertes** (centre unifié type/severity/source/evidence/context/reliability/read/action) — ✅
-
-### P1 — SOLO
-7. **Programme côté athlète** (builder manuel, réutiliser l'existant) — ✅ (jours, charge
-   %1RM, RPE cible, supersets, prévu vs réalisé)
-8. **Aujourd'hui** (état → séance → point d'attention → action) — ✅
-9. **Mon entraînement** (prévu → réalisé → effet) — ✅
-10. **Mes analyses** (chiffres + interprétation) — 🟡 (interprétation + Lexique + « respect
-    du programme » dans la synthèse ; reste à étoffer certaines tendances)
-11. **Mon état** (donnée / analyse / recommandation distinctes) — ✅ (par signal :
-    donnée → 🔎 analyse → 💡 conseil, réutilise les alertes du moteur ; + bandeau fiabilité)
-12. **Programme proposé par Novalyz** (objectif+jours+niveau→structure) — ✅ (onboarding + génération)
-13. **Programme adaptatif** (ajustements depuis données réelles) — ⬜ **mis de côté** (à reprendre plus tard, moteur fiable requis)
-
-### P2 — DONNÉES SPORTIVES
-> **Ordre P2 (porteur, sept. 2026)** : ① **Stabiliser le cardio existant** (cohérence
-> types, fiabilité) ⬅️ en cours · ② **Import d'activités (Strava / GPS / autres)** —
-> important, à faire ensuite · ③ **Hyrox** — important, **placement à décider**.
-14. Cardio (section dédiée) — 🟡 (saisie + analyses cardio existent) · 15. Import d'activités (fichier) — ✅ **v1 livrée**
-    > **Import FICHIER multi-format livré (oct. 2026)** : **.FIT** (décodeur binaire maison, message
-    > « session », sans lib externe → hors-ligne) + **.TCX** + **.GPX**, parsing **100% client**,
-    > détection auto du sport + durée/distance (haversine)/vitesse/FC/calories/dénivelé, aperçu
-    > éditable, **avertissement de doublon**, enregistrement via `saveCardio` (aucun backend
-    > ajouté). Entrée : carte « Compteur vélo / GPS » des Réglages. Parsers testés (GPX/TCX via
-    > @xmldom, FIT via buffer fabriqué). **Reste** : Strava API (OAuth, confort) ; déduplication
-    > fine vs Health Connect (par chevauchement horaire) ; valider .fit réels multisport.
-16. Activités structurées — ⬜ · 17. Multi-sources — ⬜ · 18. Déduplication (activités + pas) — ⬜
-19. Watch / Health Connect — 🟡 (Android : lecture séances/pas/sommeil/FC via
-    Health Connect, **multi-marques** — voir note « Couverture montres » ci-dessous)
-    · 20. Vélo — ⬜ · 21. Running/marche — 🟡 · 22. Hyrox — ✅ (saisie + chrono live + **analyse** : `_hxAnalyseHtml` — hero + delta vs préc., course vs ateliers, point faible, tous les splits, progression du temps total (sparkline), progression par atelier)
-23. Natation — ⬜ · 24. Séances hybrides muscu/cardio — ⬜
-
-> **📌 Couverture montres / plateformes (vision porteur, sept. 2026 — « toutes les
-> marques doivent pouvoir se connecter, Apple compris »)**
-> - **Android = déjà multi-marques** via **Health Connect** (hub universel) : toute
->   montre dont l'app compagnon écrit dans Health Connect remonte (Fitbit, Garmin,
->   Samsung, Polar, Coros, Google Fit…). Permissions larges déjà demandées
->   (`_HC_PERMS`), détection de marque déjà gérée (`_hcCleanSrc`). **Pas un problème
->   de code** : la limite est l'**onboarding** (l'utilisateur doit lier son app montre
->   → Health Connect). ⏳ À faire : **guide de connexion par marque** (confort).
-> - **Apple Watch / iPhone = NON couvert aujourd'hui** (écrit dans *Apple Santé*, pas
->   Health Connect). ⏳ **Chantier plateforme iOS** (séparé, conséquent) : build iOS
->   Capacitor + **plugin HealthKit** (lecture séances/pas/sommeil/FC) + compte **Apple
->   Developer (99 $/an)** + revue App Store (dont déclaration données de santé). À
->   planifier comme une **phase plateforme** dédiée, pas un simple item cardio.
-> - **APIs directes par marque** (Garmin/Fitbit/Polar Web API) : possible mais chaque
->   marque = OAuth + revue propres → **évité tant que Health Connect (Android) suffit**.
-
-### P3 — NUTRITION
-25. Nutrition Solo (dans Mon état, liée à l'objectif) — ✅ (onglet **Nutrition** dans « Forme » : objectifs macros **P/G/L** calculés depuis le poids réel (dernière pesée) + objectif + niveau d'activité ; saisie kcal/prot/gluc/lip ; historique `nutri_historique` ; tendance 4 courbes ; backend `saveNutrition` **déployé** ; testé)
-26. Analyse nutritionnelle (interprétation) — ✅ (carte « Analyse nutrition » : moyenne 7 j vs cibles, pondérée par l'objectif (sèche/masse/recomp/entretien), focus protéines, verdict + conseil concret, honnête sur le recul — déterministe, `_nutAnalyse`) · 27. Nutrition Coach — ⬜
-
-### P4 — IA
-28. Coach IA (conversation groundée sur le moteur) — 🟡 (front `cvSendIA` + backend `chatIA` **codés & déployés**, grounding `_iaContexte`, quota 2 msg/j, modèle Haiku 4.5 ; **en veille = 0 €** tant que le secret `ANTHROPIC_API_KEY` n'est pas ajouté sur Supabase)
-29. IA de recommandation / explication — ⬜ (IA **proactive** : conçue, en pause — cadence à trancher) · 30. Morphologie IA (photos, premium) — 🟡 (v1 **codée & déployée**, **page dédiée** `#tab-morpho`, vision Sonnet 5.5, **photos jamais stockées**, consentement, quota 1/j ; en veille sans clé)
-
-### P5 — COACH (phase 2)
-31. Home Coach — 🟡 · 32. Aujourd'hui Coach — ⬜ · 33. Alertes Coach — ⬜
-34. Analyse Coach — 🟡 · 35. Programme Coach — ✅ (existant) · 36. Conversation Coach↔Athlète — 🟡 (messagerie texte + **photo/vidéo athlète→coach** v1 : bucket privé `coach-media`, upload signé, consentement, suppression ; reste : notif **push coach**, rétention auto)
-
-### P6 — BUSINESS
-37. Premium — ⬜ · 38. Paiement — ⬜ · 39. Rapports mensuels — ⬜ · 40. Emails automatiques — 🟡 (Resend en place)
-
-> **Alertes & notifications (Phase 8 détaillée)** : 28. Centre d'alertes ✅ ·
-> 29. **Notifications intelligentes** (push seulement si assez important) — ✅ **livré &
-> vérifié** (action `cronPushAlertes`, severity haute, anti-spam hebdo ; cron pg_cron 8h UTC
-> en place + secret `CRON_SECRET`, test OK : scanned/pushed) · 30. Notifications Coach ⬜.
-
-### Navigation cible (direction, à ne pas coder telle quelle sans audit)
-`AUJOURD'HUI · MON ENTRAÎNEMENT · CARDIO/HYROX · MES ANALYSES · MON ÉTAT · PROFIL` (+ nav Coach distincte).
+1. **Comment dois-je m'entraîner ?**
+2. **Est-ce que je m'entraîne correctement ?**
+3. **Qu'est-ce que je dois améliorer maintenant ?**
 
 ---
 
-## ✅ Journal de livraison (travail poussé sur `dev`)
+# RÈGLE ABSOLUE DE DÉVELOPPEMENT
 
-### Session 30 sept. 2026 (branche `dev`)
-- **P3-25 Nutrition Solo** : onglet **Nutrition** dans « Forme ». Objectifs macros
-  **protéines / glucides / lipides** calculés depuis le **poids réel** (dernière pesée),
-  l'**objectif** de l'athlète et un **niveau d'activité** (Mifflin-St Jeor × facteur ;
-  recomposition = déficit −10 %). Saisie kcal/P/G/L, historique serveur
-  (`nutri_historique`), tendance 4 courbes. Backend `handleSaveNutrition` **déployé**.
-  Correctif : lecture du poids depuis la **dernière pesée** (et non l'objectif figé) ;
-  le changement de poids se répercute dans le profil.
-- **Réorg écran « Forme »** (ex-« État ») en **3 zones** (Aujourd'hui / Mes suivis /
-  Mes tendances) + **Contexte de reprise** : auto-déclaration athlète **et**
-  suggestion automatique après **≥ 14 j** sans séance (jamais posé d'office).
-- **Alertes athlète** : **liste des non-lues en clair sur Aujourd'hui** (titre / preuve /
-  action / « lu ») + push haute sévérité. **Fiabilité** : faux positif « absence »
-  supprimé pour un athlète **sans historique** (garde `s.q.hasCharge`) — test dédié.
-- **P4-28 Coach IA (conversation groundée)** + **P4-30 Morpho IA (photo)** — **codés &
-  déployés, EN VEILLE (0 €)** : `chatIA` (Haiku 4.5, grounding `_iaContexte`, quota
-  2/j) et `analyseMorpho` (Sonnet 5.5 vision, **photos jamais stockées**, consentement,
-  quota 1/j, **page dédiée** `#tab-morpho`). S'allument avec le secret
-  `ANTHROPIC_API_KEY` (sinon « pas encore activé », aucun appel facturé).
-- **Onglet « Coach » (5e onglet, adaptatif)** : athlète **solo** → fil IA ; athlète
-  **avec coach** → hub (messagerie + IA). Bulle « Demande à Novalyz » **unique**
-  (dédoublonnée, masquée sur conversation/morpho/saisie/login) pour le solo ; badge
-  messages coach déplacé sur l'onglet Coach.
-- **P5-36 Photo/vidéo athlète → coach (v1)** : dans le fil coach, envoi **photo ou
-  vidéo** (revue technique). Bucket privé **`coach-media`** (75 Mo), **upload signé**
-  direct client→Storage (pas de base64 → vidéos OK), colonnes `media_path`/`media_type`,
-  **URL de lecture signée** (TTL 2 h), consentement, suppression qui nettoie le Storage.
-  Rendu des 2 côtés. Backend **déployé** ; **testé OK par le porteur**. Reste : push
-  coach + rétention auto.
-- **C1 pas anti-doublon** : tranché (montre = autorité, jamais additionner ; déjà
-  respecté — `pasjour_` = fitbit only).
+Le code actuel doit toujours être considéré comme la source de vérité.
 
-### Sessions précédentes
-- **P2-22 Hyrox — étape 1 (saisie + enregistrement)** : type « Hyrox » dans la saisie
-  cardio → formulaire structuré des 16 segments officiels (8 Run 1 km + 8 ateliers,
-  termes/ordre/distances vérifiés rulebook). Mode Course/simulation ou Entraînement
-  (segments partiels). Sélecteur de **division** (Open/Pro × H/F) pré-remplissant les
-  **poids officiels 2026/27**, chaque poids restant **éditable** (charge adaptée).
-  Total + répartition course/ateliers auto. Stockage dans l'historique cardio
-  (`cardio_hyrox_…`, type_cardio=hyrox, durée=total) → compte dans la charge cardio ;
-  16 splits + poids conservés (action backend `saveHyrox`). Maquette validée avant
-  code.
-- **P2-22 Hyrox — étape 1b (écran dédié + chrono live)** : onglet Cardio scindé en
-  **[ Cardio | Hyrox ]** (univers distincts, validé porteur). Écran Hyrox : carte
-  « Démarrer / Saisir après coup » + liste « Mes Hyrox ». **Chrono live** (overlay) :
-  un temps total en continu, « Segment suivant » capture chaque split sans couper le
-  total (esprit enchaînement), pause/annuler, écran fin → enregistrement auto via
-  `saveHyrox`. Maquette interactive validée avant code. **Analyse Hyrox = étape 2.**
+La roadmap décrit une **direction produit**, pas une architecture technique imposée.
 
-- **P2-14 Cardio — stabilisation (types cohérents)** : les 4 types déjà connus des
-  analyses/édition mais **absents de la saisie** (rameur, HIIT, elliptique, boxe) sont
-  désormais saisissables. Champs dédiés ajoutés (`_CARDIO_SPEC` : puissance/cadence/FC
-  selon le type), icônes/couleurs complétées (`_MA_CARDIO_META` : elliptique, boxe).
-  Cohérence saisie ↔ champs ↔ stockage ↔ analyses ↔ édition sur les 10 types.
-  Front-only (backend `saveCardio` accepte déjà tout type). Tests 41/41.
-  **+ Calories cohérentes** : rameur/HIIT/elliptique/boxe (sans distance naturelle)
-  reçoivent enfin une estimation à la **durée via MET** (Compendium of Physical
-  Activities) au lieu de rien ; documenté dans `docs/bases-scientifiques.md`.
-  **+ Métriques par discipline** : le champ **Distance masqué** pour HIIT / boxe /
-  elliptique (effort à la durée, distance sans intérêt) — saisie centrée sur les
-  bons marqueurs. (À suivre : natation/rameur en mètres, à traiter avec l'import.)
-  **+ Entraînement ▸ mode Cardio corrigé** : le bloc « dernières séances » affichait
-  les séances **muscu** même en cardio → il montre désormais les **sorties cardio**.
-  Les boutons de construction de programme (muscu) — « Novalyz me propose un
-  programme » + « Créer / modifier » — sont **masqués en mode cardio** (pas de plan
-  course/vélo/fractionné pour l'instant ; à réactiver quand le cardio en aura un).
-- **P0-1 Objectifs (colonne vertébrale, volet cadré)** : dict `OBJECTIFS` = source
-  unique reliant l'objectif du profil (a) au type de programme conseillé et (b) à la
-  façon dont la Lecture Novalyz cadre les analyses. Écran « Mon objectif » enrichi
-  d'un bloc « Ce que ça change pour toi » (programme conseillé · priorité · lecture
-  Novalyz). Générateur de programme **pré-réglé** sur l'objectif du profil (modifiable).
-  Backend `buildSyntheseMuscu` : **Maintien** et **recomposition** (masse + sèche)
-  cadrent désormais le wording (avant : masse/sèche seulement) + 2 tests dédiés.
-- **P0-2/3/5** Lecture Novalyz muscu/cardio/croisé (fenêtre fixe 4 sem.) + fiabilité tendances
-  (tendance robuste, « Par exercice » filtré période, ressenti « Par séance »).
-- **P0-4/5** Calibrage sévérité du verdict (fatigue en moyenne récente).
-- **P0-6** Centre d'alertes athlète (modèle unifié + état « lu » durable).
-- **P1-8** Écran Aujourd'hui (état → séance → point d'attention → action).
-- **P1-9** Mon entraînement (prévu/réalisé fusionné au sélecteur, détail en pastilles partagé).
-- **P1-7** Builder programme athlète complet : jour conseillé (non pénalisant), charge cible
-  **% du 1RM**, RPE cible.
-- **② Est-ce bien fait** : exécution vs cible (charge %1RM ±5 % · RPE ±1) en fin de séance + Analyses.
-- **P1-12** Onboarding 1re connexion (explication + parcours par profil coach/solo) + **programme
-  proposé** (génération déterministe objectif/jours/niveau). Déclenché à l'inscription.
-- **Régularité** : objectif séances/sem dérivé du programme.
-- **Notifs intelligentes (#29)** : action cron `cronPushAlertes` (réutilise getAppData ;
-  push des alertes « haute » dont l'absence ; anti-spam par type/semaine). Tap → Accueil.
-  Cron pg_cron planifié (8h UTC, voir `supabase/cron-alertes.sql`) + testé (pushed OK).
-- **P1-11 Mon état** : chaque signal bien-être (sommeil/fatigue/douleur) affiche
-  donnée → 🔎 analyse → 💡 conseil (réutilise les alertes du moteur, zéro nouveau calcul)
-  + bandeau de fiabilité des données (moteur.confiance).
-- **Questionnaire du matin** : recentré sur **Sommeil · Fatigue · Motivation** (nouveau
-  champ `motivation`, colonne DB ajoutée). Accueil « point du jour » et « ressenti 7 j »
-  alignés ; État distingue les signaux du matin des signaux post-séance (ressenti/douleur
-  = « après séance »).
-- **Fiabilité Lecture Novalyz (P0-5)** : garde-fou de base — une évolution % (muscu
-  tonnage, cardio charge) n'est affirmée que si la période précédente est une vraie
-  base (muscu ≥ 3 séances, cardio ≥ 2 sorties) → fini les % aberrants sur peu de recul ;
-  confiance recalculée sur le nb réel de séances ; efficience FC ≥ 4 bpm. Constat
-  « pas assez de recul » sinon.
-- **Centre d'alertes** : la stagnation NOMME les exercices en baisse (au lieu de
-  « 3 exercices en baisse » sans détail).
-- **État ▸ ACWR non calculable** : explication athlète (« charge récente vs habituelle »)
-  + seuil (~4 semaines / 28 j, ≥ 6 jours d'entraînement).
-- **Lecture Novalyz — respect du programme (#4)** : constat « tu es dans la cible sur X/Y
-  exercices » (exécution vs cible charge %1RM / RPE) intégré à la synthèse muscu
-  (helper backend buildRespectProgramme, réutilise la logique du front).
-- **Contexte de performance (P0-4)** : la carte contexte (Accueil) explique l'EFFET
-  concret de l'état actif sur l'analyse. **Fiabilité** : les phrases ont été VÉRIFIÉES
-  contre le moteur et la Lecture Novalyz rendue consciente du contexte (déload → baisse
-  de volume = normale, pas une régression ; intensification → hausse de RPE = attendue,
-  pas une alerte). Entrée Lexique ajoutée.
-- **« ? » par bloc + bases scientifiques** : chaque bloc d'analyse (Tonnage, Volume,
-  Balance, RPE, Progression/1RM, Exécution vs cible, Régularité, ACWR) a un « ? » qui
-  explique CE bloc (définition + calcul + **fiabilité/limite**), sans doublonner les
-  phrases (légendes raccourcies). Contenu sourcé → `docs/bases-scientifiques.md`.
-  **ACWR adouci** partout (indice à interpréter, pas un verdict — littérature à l'appui).
-  **« ? » étendu au cardio et au croisé** : Charge cardio (session-RPE/Foster),
-  Ressenti des sorties, Efficience, Répartition muscu/cardio, Charge globale,
-  Indice de forme — chacun avec sa fiabilité/limite. Le bloc « Ressenti » (muscu +
-  cardio) a désormais un « ? » exact (échelle 1–4 de difficulté de séance, pas un
-  RPE 1–10). Composites (charge globale, répartition, indice de forme) documentés
-  honnêtement comme proxys de tendance dans `docs/bases-scientifiques.md`.
-- **Lexique** (compréhensibilité) : glossaire des termes techniques (Tonnage, RPE, ACWR,
-  1RM/e1RM, surcharge, balance, efficience, récupération, fiabilité…) en langage simple,
-  accessible via « ? » dans l'en-tête des Analyses et Réglages ▸ Découverte.
-- **Réglages** : semaine calendaire/glissante · « Revoir l'intro ».
+Avant chaque étape :
 
-## 🚚 Distribution / MAJ auto
-- ✅ **Compte dev validé** + **clé d'upload** + **pipeline AAB signé** (workflow
-  `build-aab.yml`, `jar verified`, publié en Release `novalyz-aab-latest`). Testé
-  30 sept. 2026.
-- ⏳ **Reste** : fiche Play Console + déclarations (données santé Health Connect) +
-  release **test interne** → lien testeurs → MAJ auto. Guide :
-  [`publication-play-store.md`](./publication-play-store.md).
-- En attendant : **PWA** (web, auto via Service Worker) ou **bannière « MAJ dispo »** in-app.
+1. Auditer le code existant.
+2. Identifier ce qui existe déjà.
+3. Identifier ce qui peut être réutilisé.
+4. Identifier les données déjà disponibles.
+5. Identifier les routes/backend existants.
+6. Identifier les tables et structures existantes.
+7. Identifier les risques de régression.
+8. Proposer l'implémentation minimale nécessaire.
+9. Attendre validation si l'étape présente un choix architectural important.
+10. Implémenter uniquement le périmètre de l'étape.
 
-## 🐞 Bugs / correctifs à faire (backlog)
-- **Accueil « Aujourd'hui »** : à l'ouverture, l'animation du cercle de séance se
-  rejoue plusieurs fois (devrait s'animer une seule fois). — à corriger.
+### Interdictions
+
+Ne pas :
+
+* refaire une fonctionnalité déjà fonctionnelle ;
+* créer un deuxième moteur qui fait la même chose ;
+* dupliquer les données ;
+* modifier le moteur décisionnel sans nécessité ;
+* créer une nouvelle architecture complète sans justification ;
+* transformer une fonctionnalité future en fonctionnalité actuelle ;
+* ajouter de l'IA là où une règle déterministe suffit ;
+* modifier plusieurs domaines simultanément sans nécessité ;
+* faire une refonte visuelle générale pendant une étape fonctionnelle.
+
+Chaque étape doit rester **isolée, testable et réversible**.
 
 ---
-_Mettre à jour ce fichier à chaque item livré (cocher le statut + ligne de journal)._
+
+# PHASE 1 — SOCLE : OBJECTIFS + ANALYSE + RECOMMANDATIONS
+
+## 1. Objectifs sportifs comme colonne vertébrale
+
+Les analyses de Novalyz doivent être contextualisées par l'objectif de l'athlète (prise de masse, perte de gras, recomposition, force, hypertrophie, endurance, cardio, Hyrox, qualité physique, objectif personnalisé).
+
+**À auditer** : comment les objectifs sont stockés ; quelles données existent ; quelles pages les utilisent ; quelles analyses en sont indépendantes.
+
+**Direction** : l'objectif devient une donnée centrale pour interpréter les performances (ex. une hausse de charge est positive en hypertrophie mais pas forcément suffisante pour conclure à une bonne progression).
+
+**Livrable** : créer/consolider une structure d'objectif extensible. Ne pas encore créer toutes les analyses.
+
+## 2. Transformer les données en ANALYSES
+
+Novalyz ne doit plus seulement afficher (charge, volume, fréquence, RPE, poids, cardio, sommeil, fatigue, douleur, ACWR…) mais répondre : **« Qu'est-ce que ces données signifient ? »**
+
+**Architecture cible** : Données → Indicateur → Analyse → Constat → Priorité → Recommandation. Les calculs restent **déterministes** ; l'IA n'invente pas les données, elle explique ensuite en langage naturel.
+
+## 3. Système de recommandations
+
+Moteur : **Analyse → Point fort / problème → Priorité → Recommandation**. Recommandations compréhensibles, courtes, contextualisées, actionnables, liées aux données et aux objectifs. Architecture extensible (`finding / priority / evidence / recommendation / confidence / context`). Pas un système d'IA autonome.
+
+---
+
+# PHASE 2 — SOLO : APPRENDRE À L'ATHLÈTE COMMENT S'ENTRAÎNER
+
+## 4. Création de programme côté athlète
+
+Pour Novalyz Solo, l'athlète doit pouvoir créer son programme (objectif, nb séances, groupes, exercices, séries, reps, charge/RPE cibles, jours). Le programme devient la référence **prévu vs réalisé**. **Réutiliser le builder existant**, ne pas créer un 2e système.
+
+## 5. Programme proposé par Novalyz
+
+Après stabilisation du builder manuel : proposer un programme (objectif, niveau, jours, durée, matériel, préférences, contraintes, historique), modifiable par l'athlète.
+
+## 6. Programme adaptatif
+
+À terme : Programme → Exécution → Analyse → État → Progression → ajustements (charge, volume, fréquence, deload, remplacement d'exercice…). Utilise les données réelles. **Pas avant que le moteur d'analyse soit assez fiable.**
+
+---
+
+# PHASE 3 — NOUVELLE EXPÉRIENCE ATHLÈTE
+
+## 7. Écran « Aujourd'hui »
+
+Porte d'entrée quotidienne : ma séance ? mon état ? m'entraîner normalement ? point d'attention ? Structure : Bonjour → État actuel → Séance du jour → Point d'attention → Action recommandée. Hiérarchie claire (ne pas juste déplacer les anciennes cartes).
+
+## 8. Écran « Mon entraînement »
+
+Regrouper programme, séances prévues/réalisées, historique, exercices, séries, reps, charges, RPE, progression. Comprendre : prévu → réalisé → effet produit.
+
+## 9. Écran « Mes analyses »
+
+Cœur analytique. Progression, performances, régularité, volume, charges, points forts/faibles, tendances, respect du programme, qualité. **Chiffres accompagnés d'une interprétation** (pas « Volume : 12 450 kg » tout seul).
+
+## 10. Écran « Mon état »
+
+Centraliser sommeil, énergie, fatigue, douleur, ressenti, récupération, charge, ACWR, contexte, fiabilité, recommandations. Distinguer **Donnée / Analyse / Recommandation**.
+
+## 11. Contexte de performance
+
+Contextualiser les analyses (retour vacances/blessure, reprise, deload, intensification, changement de programme, manque/faible fiabilité des données). L'utilisateur doit comprendre **« pourquoi Novalyz interprète différemment aujourd'hui ? »**. Afficher la fiabilité quand ça a du sens.
+
+---
+
+# PHASE 4 — CARDIO / GPS / ACTIVITÉS
+
+## 12. Section « Cardio / Hyrox » dédiée
+Course, marche, vélo, rando, Hyrox, natation, autres. Récupérer un maximum de données pertinentes par activité.
+
+## 13. Enregistrement GPS type Strava
+Démarrer une activité ; position GPS, parcours, distance, durée, vitesse, allure, vitesse max, dénivelé, altitude, cadence, FC, puissance, calories, pauses, segments, données temporelles. Conçu comme une **activité sportive structurée**, pas « une carte ».
+
+## 14. Architecture multi-sources
+Source possible : GPS téléphone, montre, capteur, compteur vélo, Bluetooth, ANT+, import FIT/TCX/GPX/CSV/JSON, saisie manuelle. **Une seule entité activité** : `activity / source / source_data / metrics / route / segments / timestamps / reliability`.
+
+## 15. Déduplication
+Éviter de compter 2× la même activité (montre + téléphone sur la même sortie ; pas montre + marche manuelle). Conserver les sources pour la traçabilité.
+
+## 16. Données passives vs activités
+Séparer passif (pas quotidiens, sommeil, FC, FC repos) et activités explicites (course, vélo, marche, Hyrox, natation…).
+
+## 17. Montres / Health Connect / capteurs
+Health Connect, montres Android, FC, sommeil, pas, activités, capteurs vélo, Bluetooth, ANT+. Archi permettant d'ajouter des sources sans réécrire le moteur.
+
+## 18. Vélo
+Distance, durée, vitesse moy/max, altitude, dénivelé, cadence, puissance, FC, calories, GPS, parcours + import compteurs.
+
+## 19. Running / marche / Hyrox / natation
+Métriques pertinentes par sport : **activité commune + métriques spécifiques** (pas de structure rigide identique).
+
+## 20. Séances hybrides
+Une séance peut contenir plusieurs blocs (muscu + vélo + course + cardio) tout en restant une seule séance.
+
+---
+
+# PHASE 5 — WATCH / DONNÉES QUOTIDIENNES
+
+## 21. Connecter une montre
+Parcours simple « Connecter ma montre » → sommeil, pas, FC, FC repos, activités, calories, HRV selon source.
+
+## 22. Graphique quotidien minimal
+Accueil/état : évolution pas, sommeil, FC. But : « voici comment ton état évolue », pas un dashboard géant.
+
+---
+
+# PHASE 6 — NUTRITION
+
+## 23. Nutrition dans « Mon état »
+Section nutrition liée aux objectifs (perte de gras, prise de masse, recomposition, perf, endurance). Données : poids, calories, P/G/L, hydratation, adhérence.
+
+## 24. Analyse nutritionnelle
+Pas une app nutrition générique. Répondre : **« mon alimentation est-elle cohérente avec mon objectif et mon entraînement ? »**. Croiser nutrition + entraînement + récupération + progression.
+
+## 25. Nutrition côté Coach
+Le coach consulte objectif nutritionnel, poids, évolution, adhérence, calories/macros, relation perf/récup → recommandations.
+
+---
+
+# PHASE 7 — INTELLIGENCE ARTIFICIELLE
+
+## 26. Coach IA
+Espace de conversation avec accès au contexte (objectif, programme, séances, analyses, état, cardio, nutrition, progression). **Architecture obligatoire** : Données → moteur déterministe → analyses → contexte → IA → explication/conversation. L'IA **n'est pas** le moteur de calcul et n'invente pas de valeurs.
+
+## 27. Analyse morphologique par photos
+Premium potentiel. Photos face/dos/profil → proportions, asymétries, zones à développer, axes esthétiques. **Aide visuelle/esthétique uniquement** : pas de diagnostic médical, pas de mesure inventée, pas d'estimation présentée comme mesure réelle. Après le cœur analytique.
+
+---
+
+# PHASE 8 — ALERTES ET NOTIFICATIONS
+
+## 28. Centre d'alertes
+`type / severity / source / evidence / context / reliability / created_at / read / action`. Ex. récup faible, douleur, charge inhabituelle, absence, progression positive, donnée anormale, régularité.
+
+## 29. Notifications intelligentes
+Ne pas tout notifier. Une notif = « assez important pour interrompre ? ». Le secondaire reste dans l'app.
+
+## 30. Notifications Coach
+« 3 athlètes nécessitent ton attention aujourd'hui. » → athlète, problème, priorité, contexte, recommandation.
+
+---
+
+# PHASE 9 — COACH
+
+## 31. Home Coach
+« Bonjour Coach » → nb athlètes, alertes, athlètes à surveiller, séances du jour, problèmes prioritaires.
+
+## 32. Aujourd'hui Coach
+Par athlète important : état, séance prévue, dernière séance, récup, alertes, recommandation. Comprendre sans ouvrir 10 écrans.
+
+## 33. Analyse Coach
+Analyse muscu/cardio, progression, charge, récup, régularité, objectifs, nutrition.
+
+## 34. Programme Coach
+Création, modification, affectation, suivi prévu/réalisé, adaptation. Ne pas remplacer l'existant s'il fonctionne.
+
+## 35. Conversation Coach ↔ Athlète
+Communication, contexte séance, recommandations, IA d'aide au coach, historique.
+
+---
+
+# PHASE 10 — MONÉTISATION
+
+## 36. Version Premium
+Seulement quand le cœur apporte de la valeur. Premium potentiel : analyses/reco avancées, Coach IA, programmes IA, morpho, cardio avancé, historiques longs, rapports. Ne pas verrouiller les fondamentaux.
+
+## 37. Paiement
+Abonnement, gestion utilisateur, état premium, renouvellement, annulation, restauration. Architecture indépendante.
+
+---
+
+# PHASE 11 — RAPPORTS ET RÉTENTION
+
+## 38. Récapitulatif mensuel
+Bilan auto. Athlète : entraînement, progression, cardio, récup, nutrition, points forts/à améliorer, reco du mois. Coach : évolution athlètes, alertes, progression, problèmes, recommandations.
+
+## 39. Envoi par email
+Envoi auto du bilan mensuel. Pas avant que les analyses soient fiables.
+
+---
+
+# PHASE 12 — QUALITÉ / UX / COHÉRENCE
+
+## 40. Hiérarchie de l'application
+Pas « plus joli » : l'utilisateur comprend immédiatement (1) ce qu'il doit faire (programme/séance), (2) comment il va (état/récup), (3) s'il progresse (analyses), (4) ce qu'il doit améliorer (recommandations), (5) pourquoi (données + explication).
+
+### Navigation cible (direction, à ne pas coder sans audit de la nav actuelle)
+```
+AUJOURD'HUI · MON ENTRAÎNEMENT · CARDIO / HYROX · MES ANALYSES · MON ÉTAT · PROFIL
+```
+Navigation distincte et adaptée pour le Coach.
+
+---
+
+# ORDRE DE PRIORITÉ ABSOLU
+
+**P0 — CERVEAU** : 1 Objectifs · 2 Analyse des données · 3 Recommandations · 4 Contexte · 5 Fiabilité · 6 Alertes
+**P1 — SOLO** : 7 Programme athlète · 8 Aujourd'hui · 9 Mon entraînement · 10 Mes analyses · 11 Mon état · 12 Programme proposé · 13 Programme adaptatif
+**P2 — DONNÉES SPORTIVES** : 14 Cardio · 15 GPS · 16 Activités structurées · 17 Multi-sources · 18 Déduplication · 19 Watch/Health Connect · 20 Vélo · 21 Running · 22 Hyrox · 23 Natation · 24 Séances hybrides
+**P3 — NUTRITION** : 25 Nutrition Solo · 26 Analyse nutritionnelle · 27 Nutrition Coach
+**P4 — IA** : 28 Coach IA · 29 IA reco/explication · 30 Morphologie IA
+**P5 — COACH** : 31 Home · 32 Aujourd'hui · 33 Alertes · 34 Analyse · 35 Programme · 36 Conversation
+**P6 — BUSINESS** : 37 Premium · 38 Paiement · 39 Rapports mensuels · 40 Emails automatiques
+
+---
+
+# MÉTHODE DE TRAVAIL (par numéro)
+
+**A — AUDIT** (avant tout code) : fichiers, fonctions, routes, tables, données existantes, dépendances, réutilisable, risques.
+**B — PLAN** : ce qui existe · ce qui manque · ce qui sera modifié · ce qui ne le sera pas · architecture proposée · tests prévus · risques.
+**C — VALIDATION** : si décision architecturale importante → **STOP et demander validation**. Sinon, implémenter la solution minimale cohérente avec l'existant.
+**D — TESTS** : unitaires, intégration, régression, front/mobile si besoin ; vérifier routes, données, pas de double calcul ni duplication.
+**E — RAPPORT** : Étape / Statut / Audit / Modifications / Fichiers modifiés / Fichiers volontairement non modifiés / Tests X/X / Régressions / Risques restants / Décisions à prendre / Commit / Étape suivante.
+**F — COMMIT** : un commit par étape fonctionnelle, message explicite, ne pas mélanger plusieurs fonctionnalités majeures. Puis **STOP**.
+
+## Règle de priorité
+- Fonctionnalité déjà à 80-100 % → **ne pas la refaire**.
+- Existe mais architecture insuffisante → **améliorer seulement le nécessaire**.
+- N'existe pas → **construire de façon compatible avec l'existant**.
+- Dépendance importante manquante → **STOP** avant toute implémentation provisoire.
+
+---
+
+# ARCHITECTURE PRODUIT À CONSERVER EN TÊTE
+
+```
+OBJECTIF → PROGRAMME → SÉANCE → DONNÉES → MOTEUR NOVALYZ → ANALYSE → CONTEXTE
+→ RECOMMANDATION → ACTION → PROGRESSION → NOUVELLE ANALYSE
+```
+L'IA intervient : **ANALYSE + CONTEXTE → IA → EXPLICATION / DIALOGUE**. Elle ne remplace pas le moteur de performance.
+
+# OBJECTIF FINAL
+Un athlète solo ouvre Novalyz et obtient : ce qu'il doit faire aujourd'hui → comment il va → ce que ses données montrent → ce qui fonctionne → ce qui le limite → ce qu'il doit améliorer → comment Novalyz l'aide à progresser. Pour le coach : quels athlètes nécessitent son attention → pourquoi → ce qu'ils ont fait → leur état → ce que Novalyz recommande. Le produit final = une **cellule de performance sportive**, pas une collection de tableaux.
