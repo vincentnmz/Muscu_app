@@ -80,8 +80,11 @@
   *Reste (serveur) : exploiter les logs Supabase / alerter sur erreurs backend.*
 - **Onboarding premier lancement** : un nouvel utilisateur doit comprendre quoi
   faire (lié au chantier Produit : « 🏠 Aujourd'hui »).
-- **Création de compte / accès testeur** : comment un testeur obtient un compte
-  (auto-inscription ? code ? création par le coach ?). À décider.
+- ✅ **Création de compte / accès testeur** — tranché : **code d'invitation**.
+  Inscription libre-service gardée par le secret `BETA_INVITE_CODE` (si défini →
+  code exigé ; sinon ouverte). Champ `#reg-code` au front, vérif dans
+  handleRegister. ⚠️ Pour activer : poser le secret + redéployer index.ts.
+  *(Login 4 chiffres ≤10 000 comptes = OK bêta, à revoir pour l'échelle.)*
 - **Limites & abus** : rate-limit reset mail (déjà partiel), limites d'appels.
 - **Monitoring minimal** : erreurs front ✅ (filet global, cf. ci-dessus). Reste
   côté serveur : exploiter/alerter sur les logs Supabase.
