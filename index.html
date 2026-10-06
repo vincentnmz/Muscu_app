@@ -1210,6 +1210,14 @@
         #tab-seance .en-trbadge.up{ color:var(--good); }
         #tab-seance .en-trbadge.dn{ color:var(--warn); }
         #tab-seance .en-seac .nv-seancedet{ margin:0 13px 12px; }
+        /* --- Responsive : mobile = 1 colonne (ordre d'origine), desktop = 2 colonnes --- */
+        /* Mobile/tablette : les wrappers s'effacent → les blocs reprennent leur flux
+           dans .en-hub, dans l'ordre du DOM (identique à avant). */
+        #tab-seance .en-cols, #tab-seance .en-main, #tab-seance .en-rail{ display:contents; }
+        @media (min-width:992px){
+          #tab-seance .en-cols{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start; }
+          #tab-seance .en-main, #tab-seance .en-rail{ display:flex; flex-direction:column; gap:12px; min-width:0; }
+        }
       </style>
       <div class="en-hub">
         <!-- Onglets Muscu / Cardio / Hyrox EN HAUT de la page -->
@@ -1219,6 +1227,11 @@
           <button id="en-seg-hyrox" onclick="_enSetMode('hyrox')"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v10l-7 4-7-4V7z"/><path d="M9 12h6M12 9v6"/></svg>Hyrox</button>
         </div>
 
+        <!-- DESKTOP (≥992px) : le hub passe en 2 colonnes (choix de séance au centre,
+             programme/actions/suivi dans le rail). Sur mobile, .en-cols/.en-main/.en-rail
+             sont en display:contents → ordre d'origine conservé (MOBILE INCHANGÉ). -->
+        <div class="en-cols">
+        <div class="en-main">
         <!-- Mon programme (nb séances + stratégie + adhérence) — MUSCU uniquement -->
         <div class="en-card en-prog" id="en-prog-card">
           <div class="en-label">Mon programme</div>
@@ -1245,17 +1258,22 @@
 
         <!-- Démarrer -->
         <button class="en-startbtn" id="en-start" onclick="_enDemarrer()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8V4z"/></svg>Démarrer la séance</button>
+        </div><!-- /en-main -->
 
+        <div class="en-rail">
         <!-- Novalyz propose un programme (onboarding) -->
         <button class="en-add" id="en-gen" onclick="ouvrirGenProgramme()" style="border-color:var(--accent);color:var(--accent);background:var(--accent-a08);font-weight:800"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4L12 3zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/></svg>✨ Novalyz me propose un programme</button>
 
         <!-- Créer / modifier programme (muscu) -->
         <button class="en-add" id="en-creer" onclick="ouvrirEditeurProgramme()"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Créer / modifier mon programme</button>
-      </div>
 
-      <!-- Suivi : prévu vs réalisé (cette semaine) + dernières séances réalisées.
-           Peuplé par renderEnSuivi(data) depuis programme + seances_detail. -->
-      <div id="en-suivi" style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;"></div>
+        <!-- Suivi : prévu vs réalisé (cette semaine) + dernières séances réalisées.
+             Peuplé par renderEnSuivi(data) depuis programme + seances_detail. Déplacé
+             dans le rail pour le desktop ; sur mobile il reste à sa place (contents). -->
+        <div id="en-suivi" style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;"></div>
+        </div><!-- /en-rail -->
+        </div><!-- /en-cols -->
+      </div><!-- /en-hub -->
 
       <!-- AGENDA (calendrier) -->
       <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Agenda</h2></div>
