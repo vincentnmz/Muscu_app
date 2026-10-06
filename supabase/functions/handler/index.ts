@@ -1050,6 +1050,13 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   if (!login || !pwd) return jsonResp({ erreur: 'Paramètres manquants' })
   if (email && !_emailValide(email)) return jsonResp({ erreur: 'Email invalide', message: 'Email invalide' })
 
+  // Accès bêta par code d'invitation : si le secret BETA_INVITE_CODE est défini,
+  // l'inscription exige ce code. S'il est vide/absent → inscription OUVERTE
+  // (rétro-compatible : la garde ne s'active que quand tu poses le secret).
+  const code = (params.get('code') || '').trim()
+  const required = (Deno.env.get('BETA_INVITE_CODE') || '').trim()
+  if (required && code !== required) return jsonResp({ erreur: 'Code invalide', message: 'Code d\'invitation invalide ou manquant.' })
+
   const { data: existing } = await sb().from('athletes').select('id').eq('login', login).single()
   if (existing) return jsonResp({ erreur: 'Login déjà utilisé', message: 'Login déjà utilisé' })
 
@@ -4449,7 +4456,7 @@ Deno.serve(async (req: Request) => {
       const action = body.action
       switch (action) {
         case 'login':                    return handleLogin(new URLSearchParams({ login: body.login, password: body.password }))
-        case 'register':                 return handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', annees: String(body.annees || '0'), sport: body.sport || 'muscu' }))
+        case 'register':                 return handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', annees: String(body.annees || '0'), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '' }))
         case 'registerCoach':            return handleRegisterCoach(body)
         case 'seedDemoFoot':             return handleSeedDemoFoot(body)
         case 'clearDemoFoot':            return handleClearDemoFoot(body)
