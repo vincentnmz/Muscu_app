@@ -69,14 +69,22 @@
 
 ## 🟠 P1 — Solidité (avant d'ouvrir large)
 
-- **Gestion des erreurs réseau** : messages clairs si le backend ne répond pas
-  (pas d'écran blanc). Comportement hors-ligne raisonnable (PWA).
+- ✅ **Gestion des erreurs réseau** (5-6 oct. 2026) : helper `nvFetchJSON` (timeout
+  dur → aucun fetch ne pend), fallbacks « Réessayer » sur l'accueil + la fiche
+  coach (plus de loader figé), timers « serveur en démarrage » nettoyés en cas
+  d'erreur. **Hors-ligne** durci : verrou anti-doublon sur la file de séances,
+  flush au retour au 1er plan (réseaux instables), notice « en attente » si le
+  serveur reste injoignable.
+- ✅ **Monitoring minimal — volet front** : filet global `window.onerror` +
+  `unhandledrejection` (log local `nvz_errlog` + toast discret throttlé).
+  *Reste (serveur) : exploiter les logs Supabase / alerter sur erreurs backend.*
 - **Onboarding premier lancement** : un nouvel utilisateur doit comprendre quoi
   faire (lié au chantier Produit : « 🏠 Aujourd'hui »).
 - **Création de compte / accès testeur** : comment un testeur obtient un compte
   (auto-inscription ? code ? création par le coach ?). À décider.
 - **Limites & abus** : rate-limit reset mail (déjà partiel), limites d'appels.
-- **Monitoring minimal** : savoir quand ça casse (logs Supabase, erreurs front).
+- **Monitoring minimal** : erreurs front ✅ (filet global, cf. ci-dessus). Reste
+  côté serveur : exploiter/alerter sur les logs Supabase.
 
 ---
 
