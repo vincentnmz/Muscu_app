@@ -4952,6 +4952,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    try { renderCoachProchaineSeance(data); } catch (_) {}   // « prochaine séance à faire » (hub coach)
     try { renderCoachHubVolume(data); } catch (_) {}      // volume par muscle (hub)
     try { renderCoachHubSeances(data); } catch (_) {}     // dernières séances (hub)
     try { renderCoachHubNutrition(data); } catch (_) {}   // carte macros du hub
@@ -5117,6 +5118,34 @@ function renderCoachHeroEtat(data) {
     <div style="font-size:23px;font-weight:900;margin:3px 0 5px;">${escapeHtml(String(niveauDisp))}</div>
     <div style="font-size:12.5px;line-height:1.5;opacity:.96;">${escapeHtml(String(raison))}</div>
     ${chipsHtml}`;
+}
+
+// « Prochaine séance à faire » (fiche coach) : nom de la prochaine séance non faite
+// du programme (data.dashboard.prochaine_seance) + ses exercices (data.programme).
+// Front only : la donnée est déjà dans le payload getAppData. Masquée si absente.
+function renderCoachProchaineSeance(data) {
+  var el = document.getElementById('cd-prochaine'); if (!el) return;
+  var nom = (data && data.dashboard && data.dashboard.prochaine_seance) ? String(data.dashboard.prochaine_seance) : '';
+  if (!nom) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var prog = (data && Array.isArray(data.programme)) ? data.programme : [];
+  var exos = prog.filter(function (l) { return l && String(l.seance_id) === nom; });
+  var lignes = exos.map(function (l) {
+    var reps = (l.reps_mini && l.reps_max) ? (l.reps_mini + '–' + l.reps_max) : (l.reps_mini || l.reps_max || '');
+    var meta = l.series_prevues ? (l.series_prevues + ' × ' + (reps || '?')) : (reps ? (reps + ' reps') : '');
+    return '<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--border);font-size:13px;">'
+      + '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(l.exercice || '') + '</span>'
+      + '<span style="color:var(--text-muted);white-space:nowrap;flex:none;">' + esc(meta) + '</span>'
+      + '</div>';
+  }).join('');
+  el.style.display = '';
+  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--text-subtle);">Prochaine séance à faire</div>'
+    + '<div onclick="switchCoachDetailTab(\'programme\')" style="cursor:pointer;color:var(--accent);font-weight:700;font-size:11px;">Programme →</div>'
+    + '</div>'
+    + '<div style="font-size:16px;font-weight:900;letter-spacing:-.01em;">' + esc(nom) + '</div>'
+    + (lignes ? '<div style="margin-top:8px;">' + lignes + '</div>'
+              : '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Programme sans détail d\'exercices pour cette séance.</div>');
 }
 
 function renderCoachOverview(data) {
