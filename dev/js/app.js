@@ -9526,30 +9526,47 @@ function afficherProgrammeComplet() {
 // (b) à la façon dont la Lecture Novalyz cadre les analyses. Les textes `lecture`
 // décrivent EXACTEMENT le comportement de buildSyntheseMuscu (cf. index.ts) — à
 // garder synchronisés (règle 6bis : une phrase affichée = un comportement réel).
+// Chaque objectif porte une `famille` (colonne vertébrale extensible — roadmap P0.1).
+// Familles prévues : 'muscu' (câblée) ; 'force' relève de muscu ; les familles
+// 'endurance' / 'cardio' / 'hyrox' / 'perso' sont RÉSERVÉES (structure prête) mais
+// pas encore exposées comme objectif tant que l'analyse correspondante ne les
+// consomme pas (interdiction : ne pas transformer du futur en présent).
 var OBJECTIFS = {
   'Prise de masse': {
-    gen: 'hypertrophie',
+    gen: 'hypertrophie', famille: 'muscu',
     prog: '4 séries de 8–12 reps · ~70–75 % 1RM',
     focus: 'Le volume prime : viser puis dépasser ta cible de séries par muscle.',
     lecture: 'Novalyz suit ton volume : une baisse est signalée et il t\'encourage à la surcharge progressive.'
   },
   'Sèche': {
-    gen: 'hypertrophie',
+    gen: 'hypertrophie', famille: 'muscu',
     prog: '4 séries de 8–12 reps · garde tes charges',
     focus: 'Préserver le muscle en déficit : maintenir charge et volume.',
     lecture: 'Novalyz surveille davantage une baisse de volume (risque de fonte musculaire en sèche).'
   },
   'Prise de masse + sèche': {
-    gen: 'hypertrophie',
+    gen: 'hypertrophie', famille: 'muscu',
     prog: '4 séries de 8–12 reps · ~70 % 1RM',
     focus: 'Recomposition : progresser en force à poids de corps stable.',
     lecture: 'Novalyz cadre tes analyses en recomposition : construire à poids stable, sans t\'alarmer d\'une évolution de poids modérée.'
   },
   'Maintien': {
-    gen: 'remise',
+    gen: 'remise', famille: 'muscu',
     prog: '3 séries de 10–12 reps · charge confortable',
     focus: 'Entretien : la régularité prime sur l\'intensité.',
     lecture: 'Novalyz valorise ta régularité ; pas de pression pour augmenter les charges.'
+  },
+  'Force': {
+    gen: 'force', famille: 'muscu',
+    prog: '5 séries de 3–5 reps · ~85 % 1RM · repos long',
+    focus: 'Charges lourdes : progresser en force maximale, récupération longue.',
+    lecture: 'Novalyz suit l\'évolution de ton volume et de ton effort perçu, et te signale une baisse.'
+  },
+  'Tonification': {
+    gen: 'tonification', famille: 'muscu',
+    prog: '3 séries de 15–20 reps · charge légère · repos courts',
+    focus: 'Endurance musculaire : séries longues, repos courts.',
+    lecture: 'Novalyz suit l\'évolution de ton volume et de ton effort perçu, et te signale une baisse.'
   }
 };
 function _objLine(ic, k, v) {
@@ -9568,6 +9585,7 @@ function objIconFor(obj) {
   if (o.includes('sèche')) return '🔥';
   if (o.includes('maintien')) return '⚖️';
   if (o.includes('force')) return '🏋️';
+  if (o.includes('tonif')) return '🔁';
   return '🎯';
 }
 function majObjectifCard(obj) {
