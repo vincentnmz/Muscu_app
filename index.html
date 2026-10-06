@@ -128,6 +128,27 @@
   <button class="tab-btn" onclick="ouvrirCoach()"><span class="tab-ico" style="position:relative"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg><span id="badge-conseils" style="display:none;position:absolute;top:-5px;right:-8px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></span><span>Coach</span></button>
 </div>
 
+<!-- Navigation latérale DESKTOP (athlète muscu). Affichée uniquement ≥992px via
+     body.has-bottom-nav (voir css/layout.css) ; cachée sur mobile/tablette et en
+     espace coach. Remplace la bottom-nav + le header mobile sur grand écran. Les
+     boutons réutilisent les mêmes handlers (switchTab/ouvrirCoach) : aucun flux
+     JS dupliqué. L'item actif est synchronisé par switchTab(). L'ORDRE doit
+     rester aligné sur #tabs-bar. -->
+<aside id="app-side" aria-label="Navigation">
+  <div class="as-brand"><span class="as-logo">N</span><span class="as-nm">Novalyz</span></div>
+  <nav class="as-nav">
+    <button class="as-item active" data-tab="accueil" onclick="switchTab('accueil')"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5"/></svg>Aujourd'hui</button>
+    <button class="as-item" data-tab="seance" onclick="switchTab('seance')"><svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Entraînement</button>
+    <button class="as-item" data-tab="historique" onclick="switchTab('historique')"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>Analyses</button>
+    <button class="as-item" data-tab="etat" onclick="switchTab('etat')"><svg viewBox="0 0 24 24"><path d="M20.5 8.5c0 4.5-6 9-8.5 10.8C9.5 17.5 3.5 13 3.5 8.5A4 4 0 0 1 12 6a4 4 0 0 1 8.5 2.5Z"/><path d="M6 12h3l1.3-2.5 2 4 1.2-1.5H18"/></svg>Forme</button>
+    <button class="as-item" data-tab="conseils" onclick="ouvrirCoach()"><span style="position:relative;display:inline-flex"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg><span id="as-badge-conseils" style="display:none;position:absolute;top:-6px;right:-7px;background:#e5484d;color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></span>Coach</button>
+  </nav>
+  <div class="as-foot">
+    <button class="as-item as-sm" data-tab="reglages" onclick="switchTab('reglages')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Réglages</button>
+    <button class="as-item as-sm" onclick="seDeconnecter()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Déconnexion</button>
+  </div>
+</aside>
+
 <!-- BANDEAU COACH (nav basse) — visible sur l'accueil coach (mobile/tablette).
      Aujourd'hui · Équipe · Analyses basculent le contenu ; Messages · Profil
      ouvrent les panneaux existants. Masqué en fiche athlète et sur desktop. -->
@@ -955,9 +976,24 @@
       .tj-fabtip{background:var(--tj-surface);border:1px solid var(--tj-border);box-shadow:var(--tj-sh);border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--tj-text);}
       .tj-fab{width:56px;height:56px;border-radius:999px;background:var(--tj-accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;}
       .tj-fab svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      /* --- Responsive : mobile = 1 colonne (ordre d'origine), desktop = 2 colonnes --- */
+      /* Mobile/tablette : les wrappers s'effacent → les blocs reprennent leur place
+         dans le flux .tj, dans l'ordre du DOM (identique à avant). */
+      .tj-main,.tj-rail{display:contents;}
+      @media (min-width:992px){
+        #tab-accueil .tj{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start;padding:4px 0 40px;}
+        /* Vraies colonnes flex : hauteurs indépendantes, ordre = ordre du DOM. */
+        #tab-accueil .tj-main,#tab-accueil .tj-rail{display:flex;flex-direction:column;gap:14px;min-width:0;}
+      }
       </style>
 
+      <!-- DESKTOP (≥992px) : .tj devient une grille 2 colonnes (contenu principal
+           .tj-main + rail contextuel .tj-rail). Le découpage est un préfixe/suffixe
+           EXACT du DOM (main = 4 premiers blocs, rail = 4 suivants), donc sur
+           mobile/tablette les wrappers passent en display:contents et l'ordre
+           d'origine est conservé tel quel — MOBILE INCHANGÉ, sans `order`. -->
       <div class="tj">
+        <div class="tj-main">
         <!-- Bloc d'accueil : salutation + date + roue des séances (animée). Le
              header d'app (titre « Aujourd'hui » + bulle/réglages/déco) est
              au-dessus, comme sur les autres onglets. -->
@@ -998,7 +1034,9 @@
           <button class="tj-cta" onclick="switchTab('seance')"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>Commencer ma séance</button>
           <button class="tj-other" onclick="switchTab('seance')"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Voir mon entraînement</button>
         </div>
+        </div><!-- /tj-main -->
 
+        <div class="tj-rail">
         <!-- Point d'attention (alerte prioritaire du centre d'alertes P0) + action -->
         <div class="tj-card tj-reveal" id="tj-attention" style="display:none;padding:14px 16px;box-shadow:var(--tj-sh);border-left:4px solid var(--tj-warn);">
           <div style="display:flex;align-items:flex-start;gap:11px;">
@@ -1056,6 +1094,7 @@
             </div>
           </div>
         </div>
+        </div><!-- /tj-rail -->
 
         <!-- Coffre / cadeau (objectif de la semaine atteint) -->
         <div class="rew-ov" id="tj-gift-ov" onclick="nvzCloseGift(event)">
