@@ -2256,6 +2256,16 @@
         #tab-etat.tab-content{ padding-bottom:calc(112px + env(safe-area-inset-bottom,0px)); }
         #tab-etat .et-wrap{ display:flex; flex-direction:column; gap:12px; }
         #tab-etat .et-sec{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-subtle); font-weight:700; margin:4px 2px -4px; }
+        /* --- Responsive : mobile = 1 colonne (ordre d'origine via `order`), desktop = 2 colonnes --- */
+        /* Mobile/tablette : wrappers neutres → les blocs redeviennent enfants flex de
+           .et-wrap et leur `order` inline reproduit la séquence d'origine. */
+        #tab-etat .et-main, #tab-etat .et-rail{ display:contents; }
+        @media (min-width:992px){
+          #tab-etat .et-wrap{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start; }
+          #tab-etat .et-main, #tab-etat .et-rail{ display:flex; flex-direction:column; gap:12px; min-width:0; }
+          /* en desktop, l'ordre suit le flux DOM de chaque colonne (et non l'order mobile) */
+          #tab-etat .et-main > *, #tab-etat .et-rail > *{ order:0 !important; }
+        }
         #tab-etat .et-card{ background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
         #tab-etat .et-hero{ display:flex; align-items:center; gap:16px; padding:16px; border-radius:20px; box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08)); border:1px solid var(--border); background:var(--surface); }
         #tab-etat .et-ring{ width:64px; height:64px; flex:none; }
@@ -2293,36 +2303,33 @@
         #tab-etat .et-fab svg{ fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
       </style>
 
+      <!-- DESKTOP (≥992px) : les 3 zones se répartissent en 2 colonnes —
+           .et-main (Aujourd'hui + Mes tendances : hero, contexte, ACWR, poids) et
+           .et-rail (Mes suivis + montre + Ressenti). Les colonnes ne sont PAS
+           contiguës dans le DOM (le bloc « Mes suivis » est au milieu), donc chaque
+           bloc porte un `order` = sa position mobile d'origine : sur mobile les
+           wrappers sont en display:contents et l'ordre d'origine est reproduit à
+           l'identique (MOBILE INCHANGÉ) ; en desktop l'ordre est remis au flux DOM
+           de chaque colonne (voir #et-css : order:0 !important en ≥992px). -->
       <div class="et-wrap">
+        <div class="et-main">
         <!-- ===================== ZONE 1 · AUJOURD'HUI ===================== -->
-        <div class="et-sec">Aujourd'hui</div>
+        <div class="et-sec" style="order:1">Aujourd'hui</div>
         <!-- Hero : score de récup (moteur.recScore) + niveau de disponibilité + reco -->
-        <div class="et-hero" id="et-hero"></div>
+        <div class="et-hero" id="et-hero" style="order:2"></div>
 
         <!-- Contexte de performance : suggestion de reprise (coupure détectée) +
              carte d'état déclarable par l'athlète (renderCarteContexte, source 'athlete'). -->
-        <div id="et-contexte"></div>
-
-        <!-- Ma montre : bandeau condensé (glance) + détails repliables (renderEtatMontre).
-             #et-montre-sec conservé (masqué) pour compat ; #et-montre = charts détaillés. -->
-        <div class="et-card" id="et-montre-mini" style="display:none;"></div>
-        <div id="et-montre-sec" style="display:none;"></div>
-        <div class="et-card" id="et-montre" style="display:none;padding:2px 15px 14px;"></div>
-
-        <!-- ===================== ZONE 2 · MES SUIVIS ===================== -->
-        <!-- Accès remontés aux sous-écrans (Nutrition / Objectifs / Blessures),
-             avec valeur vivante + pastille de statut. Peuplé par _etRenderSuivis(). -->
-        <div class="et-sec">Mes suivis</div>
-        <div class="et-card" id="et-suivis" style="overflow:hidden;"></div>
+        <div id="et-contexte" style="order:3"></div>
 
         <!-- ===================== ZONE 3 · MES TENDANCES ===================== -->
-        <div class="et-sec">Mes tendances</div>
+        <div class="et-sec" style="order:9">Mes tendances</div>
 
         <!-- Charge & récup : ACWR réel (dashboard.acwr + moteur.acwr_*) -->
-        <div class="et-card et-charge" id="et-acwr"></div>
+        <div class="et-card et-charge" id="et-acwr" style="order:10"></div>
 
         <!-- Poids : graphe complet (déplacé d'Objectif) — 1M/3M/Tout + axes + légende -->
-        <div class="et-card" style="padding:14px 15px;">
+        <div class="et-card" style="order:11;padding:14px 15px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
             <div style="display:flex;align-items:baseline;gap:6px;">
               <span style="font-size:28px;font-weight:800;color:var(--text);" id="et-graph-poids-actuel">—</span>
@@ -2345,13 +2352,27 @@
             Poids (kg) au fil du temps · axe vertical = kg, horizontal = date · chaque point = une pesée
           </div>
         </div>
+        </div><!-- /et-main -->
+
+        <div class="et-rail">
+        <!-- ===================== ZONE 2 · MES SUIVIS ===================== -->
+        <!-- Accès remontés aux sous-écrans (Nutrition / Objectifs / Blessures),
+             avec valeur vivante + pastille de statut. Peuplé par _etRenderSuivis(). -->
+        <div class="et-sec" style="order:7">Mes suivis</div>
+        <div class="et-card" id="et-suivis" style="order:8;overflow:hidden;"></div>
+
+        <!-- Ma montre : bandeau condensé (glance) + détails repliables (renderEtatMontre).
+             #et-montre-sec conservé (masqué) pour compat ; #et-montre = charts détaillés. -->
+        <div class="et-card" id="et-montre-mini" style="order:4;display:none;"></div>
+        <div id="et-montre-sec" style="order:5;display:none;"></div>
+        <div class="et-card" id="et-montre" style="order:6;display:none;padding:2px 15px 14px;"></div>
 
         <!-- Ressenti + bien-être : repliable (allège l'écran, ouvre à la demande) -->
-        <button type="button" id="et-rb-toggle" onclick="_etFoldRB()" aria-expanded="false" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;cursor:pointer;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));color:var(--text);font:inherit;">
+        <button type="button" id="et-rb-toggle" onclick="_etFoldRB()" aria-expanded="false" style="order:12;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;cursor:pointer;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));color:var(--text);font:inherit;">
           <div><div style="font-weight:700;font-size:13px;">Ressenti &amp; bien-être</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">7 derniers jours · questionnaire du jour</div></div>
           <svg id="et-rb-caret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;flex:none;"><path d="M6 9l6 6 6-6"/></svg>
         </button>
-        <div id="et-rb-body" style="display:none;flex-direction:column;gap:12px;">
+        <div id="et-rb-body" style="order:13;display:none;flex-direction:column;gap:12px;">
           <!-- Ressenti : dot par jour depuis bien_etre[] -->
           <div class="et-sec">Ton ressenti · 7 derniers jours</div>
           <div class="et-card et-days" id="et-days"></div>
@@ -2359,6 +2380,7 @@
           <div class="et-sec">Bien-être du jour</div>
           <div class="et-card" id="et-wb"></div>
         </div>
+        </div><!-- /et-rail -->
       </div>
 
     </div>
