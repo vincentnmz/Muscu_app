@@ -24,6 +24,46 @@
  * Extensibilité : pour ajouter une règle, on pousse un objet dans REGLES.
  *                 Aucune autre partie du moteur n'a besoin d'être modifiée.
  * ========================================================================== */
+
+/* ─── Filet global d'erreurs (monitoring minimal, P1) ────────────────────────
+ * Capte les erreurs JS NON rattrapées + promesses rejetées sans .catch : log
+ * console, historique local (ring buffer consultable via `_nvzErrLog`), et toast
+ * discret THROTTLÉ. But : qu'un bug inattendu ne laisse plus l'app muette/bloquée
+ * sans aucun signal (complète l'anti-écran-blanc). */
+var _nvzErrLog = [];
+try { _nvzErrLog = JSON.parse(localStorage.getItem('nvz_errlog') || '[]') || []; } catch (e) { _nvzErrLog = []; }
+function _nvzPushErr(kind, msg, where) {
+  try {
+    _nvzErrLog.push({ t: new Date().toISOString(), kind: kind, msg: String(msg == null ? '' : msg).slice(0, 300), where: String(where || '').slice(0, 200) });
+    if (_nvzErrLog.length > 25) _nvzErrLog.shift();
+    try { localStorage.setItem('nvz_errlog', JSON.stringify(_nvzErrLog)); } catch (e) {}
+  } catch (e) {}
+}
+var _nvzLastErrToast = 0;
+function _nvzErrToast() {
+  var now = Date.now();
+  if (now - _nvzLastErrToast < 15000) return;   // throttle : pas de spam
+  _nvzLastErrToast = now;
+  try { if (typeof showToast === 'function') showToast('Un souci est survenu — si l’écran semble bloqué, rafraîchis la page.', 'var(--warn)'); } catch (e) {}
+}
+try {
+  window.addEventListener('error', function (ev) {
+    // Ignorer les échecs de chargement de ressources (img/script/css) — pas des bugs JS.
+    if (ev && ev.target && ev.target.tagName && /^(IMG|SCRIPT|LINK|SOURCE|VIDEO|AUDIO)$/.test(ev.target.tagName)) return;
+    var m = (ev && ev.message) || (ev && ev.error && ev.error.message) || 'erreur';
+    var where = (ev && ev.filename) ? (ev.filename + ':' + (ev.lineno || '?')) : '';
+    _nvzPushErr('error', m, where);
+    _nvzErrToast();
+  }, true);
+  window.addEventListener('unhandledrejection', function (ev) {
+    var r = ev && ev.reason;
+    var m = (r && r.message) || (typeof r === 'string' ? r : 'promesse rejetée');
+    _nvzPushErr('promise', m, '');
+    // Réseau déjà géré localement (timeout/offline) → on log sans toast redondant.
+    if (!/AbortError|Failed to fetch|NetworkError|Load failed|timeout/i.test(String(m))) _nvzErrToast();
+  });
+} catch (e) {}
+
 (function (global) {
   'use strict';
 
@@ -1670,6 +1710,7 @@ async function sInscrire() {
   const ddn = document.getElementById('reg-ddn').value;
   const password = document.getElementById('reg-password').value;
   const email = (document.getElementById('reg-email') ? document.getElementById('reg-email').value : '').trim();
+  const code = (document.getElementById('reg-code') ? document.getElementById('reg-code').value : '').trim();
   const errEl = document.getElementById('reg-error');
   errEl.textContent = '';
   if (!prenom || !login || !ddn || !taille) { errEl.textContent = 'Remplis tous les champs.'; return; }
@@ -1684,7 +1725,7 @@ async function sInscrire() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, annees, password, sport, email })
+      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, annees, password, sport, email, code })
     });
     const data = await res.json();
     if (data.success) {
@@ -1968,6 +2009,7 @@ async function ouvrirEspaceCoach() {
   document.body.classList.toggle('light-mode', coachLight);
   syncThemeUI();
   document.getElementById('header-nom-coach').textContent = coach.nom;
+  try { _promptNotifNatifCoach(); } catch (e) {}   // app native : enregistrer le token FCM du coach (alertes athlètes)
   _setSportIco('ct-sport-ico-use', coach && coach.sport);   // icône du header selon le sport
   // Identité de rôle (couleur de header + pastille) — coach / prépa
   var _role = (coach && coach.role) || 'coach';
@@ -2600,7 +2642,14 @@ function renderListeAthletesCoach() {
   }
 
   document.getElementById('coach-home-body').style.display = 'block';
-  renderCoachSynthese(athletesCoach); // async : charge getAppData par athlète, remplit table + KPIs
+  // async : charge getAppData par athlète, remplit table + KPIs.
+  // .catch : si le rendu échoue (réseau, données), on remplace le loader par un
+  // message + « Réessayer » plutôt que de laisser « Analyse des athlètes… » à vie.
+  renderCoachSynthese(athletesCoach).catch(function (e) {
+    console.error('renderCoachSynthese KO', e);
+    var el = document.getElementById('coach-synthese');
+    if (el) el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;line-height:1.5">Impossible de charger l\'équipe (connexion ?).<br><button onclick="renderCoachHome()" style="margin-top:10px;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer">Réessayer</button></div>';
+  });
   majSelectAthletesCoach();
 }
 
@@ -2627,14 +2676,16 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
   cdJoueurCourant = athlete_id;
   cdMode = mode || 'coach';   // 'coach' (édition) ou 'athlete' (lecture seule, sa propre page)
   let d;
+  let _tSlow, _tKill;
   try {
     const _ctrl = new AbortController();
-    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
-    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    _tKill = setTimeout(() => _ctrl.abort(), 30000);
     const res = await fetch(`${SCRIPT_URL}?action=getSuiviJoueur&athlete_id=${encodeURIComponent(athlete_id)}`, { signal: _ctrl.signal });
     clearTimeout(_tSlow); clearTimeout(_tKill);
     d = await res.json();
   } catch (e) {
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
     body.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
     return;
@@ -3552,14 +3603,16 @@ async function renderCockpitPrepa() {
   cont.style.display = 'block';
   cont.innerHTML = '<div class="loader">Analyse de la charge…</div>';
   let data;
+  let _tSlow, _tKill;
   try {
     const _ctrl = new AbortController();
-    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
-    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    _tKill = setTimeout(() => _ctrl.abort(), 30000);
     const res = await fetch(`${SCRIPT_URL}?action=getSuiviEquipe&coach_id=${encodeURIComponent(coach.coach_id)}`, { signal: _ctrl.signal });
     clearTimeout(_tSlow); clearTimeout(_tKill);
     data = await res.json();
   } catch (e) {
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
     cont.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
     return;
@@ -3761,14 +3814,16 @@ async function renderSuiviEquipe() {
   const cont = document.getElementById('liste-athletes-coach');
   cont.innerHTML = '<div class="loader">Analyse de l\'équipe…</div>';
   let data;
+  let _tSlow, _tKill;
   try {
     const _ctrl = new AbortController();
-    const _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
-    const _tKill = setTimeout(() => _ctrl.abort(), 30000);
+    _tSlow = setTimeout(() => showToast('Serveur en démarrage, quelques secondes…', 'var(--warn)'), 6000);
+    _tKill = setTimeout(() => _ctrl.abort(), 30000);
     const res = await fetch(`${SCRIPT_URL}?action=getSuiviEquipe&coach_id=${encodeURIComponent(coach.coach_id)}`, { signal: _ctrl.signal });
     clearTimeout(_tSlow); clearTimeout(_tKill);
     data = await res.json();
   } catch (e) {
+    clearTimeout(_tSlow); clearTimeout(_tKill);
     const msg = e.name === 'AbortError' ? 'Délai dépassé (30 s). Rafraîchis la page.' : 'Erreur de chargement.';
     cont.innerHTML = `<div style="color:var(--text-muted);padding:12px">${msg}</div>`;
     return;
@@ -4023,15 +4078,14 @@ async function renderCoachSynthese(athletes) {
 
   // Charge les données de chaque athlète (mêmes calculs que la page détail)
   const datas = await Promise.all(athletes.map(async a => {
-    try { const r = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`); return await r.json(); }
+    try { return await nvFetchJSON(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`); }
     catch(e) { return null; }
   }));
 
   // Messages non lus par athlète (auteur = athlète, non lus côté coach) → notif dès l'accueil
   const msgNonLus = await Promise.all(athletes.map(async a => {
     try {
-      const r = await fetch(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(a.athlete_id)}&nocache=${Date.now()}`);
-      const d = await r.json();
+      const d = await nvFetchJSON(`${SCRIPT_URL}?action=getCommentaires&athlete_id=${encodeURIComponent(a.athlete_id)}&nocache=${Date.now()}`);
       return (d.commentaires || []).filter(c => c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach')).length;
     } catch(e) { return 0; }
   }));
@@ -4818,8 +4872,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   chargerCommentairesCoach(a.athlete_id);
 
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
-    const data = await res.json();
+    const data = await nvFetchJSON(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
     coachAthleteData = data;
     cdProgressionData = data.historique ? (data.historique.progression_par_exo || {}) : {};
     cdTendancesData = data.historique ? (data.historique.tendances || null) : null;
@@ -4846,7 +4899,11 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderACWR(data);
     try { appliquerMasquageCockpit(); } catch (_) {}   // Étape 8 — masquage réversible des doublons coach (no-op si COCKPIT_ON=false)
   } catch(e) {
-    document.getElementById('cd-recup').innerHTML = '<div class="error-msg">Erreur de chargement</div>';
+    console.error('ouvrirDetailAthleteCoach KO', e);
+    var _err = '<div style="padding:14px;color:var(--text-muted);font-size:13px;line-height:1.5">Impossible de charger cet athlète (connexion ?).<br><button onclick="ouvrirDetailAthleteCoach(coachAthleteCourant)" style="margin-top:10px;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer">Réessayer</button></div>';
+    var _idErr = document.getElementById('cd-indicateurs'); if (_idErr) _idErr.innerHTML = _err;
+    // Vider les autres zones encore en « Chargement… » pour ne pas laisser de spinner figé.
+    ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content','cd-cmp28-content','cd-seances-detail-content','cd-commentaires-liste'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
   }
 }
 
@@ -5894,8 +5951,7 @@ async function ouvrirRecapAthletes() {
   try {
     const results = await Promise.all((athletesCoach || []).map(async a => {
       try {
-        const res = await fetch(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
-        const data = await res.json();
+        const data = await nvFetchJSON(`${SCRIPT_URL}?action=getAppData&athlete_id=${encodeURIComponent(a.athlete_id)}`);
         return { a, m: marqueurRecap(data, a) };
       } catch(e) { return { a, m: null }; }
     }));
@@ -7730,6 +7786,9 @@ document.addEventListener('visibilitychange', function () {
   if (document.hidden) return;
   // Chrono de repos : recalage immédiat (non throttlé) au retour au 1er plan.
   try { if (typeof _timerTick === 'function' && _timerTick) _timerTick(); } catch (e) {}
+  // Flush de la file hors-ligne (réseaux mobiles où l'événement 'online' ne fire pas
+  // toujours) — verrou interne anti-concurrence, donc sûr même si appelé souvent.
+  try { if (typeof flushSeancesOffline === 'function') flushSeancesOffline(); } catch (e) {}
   var now = Date.now();
   if (now - _lastResumeRefresh < 8000) return;
   _lastResumeRefresh = now;
@@ -9176,28 +9235,40 @@ function enregistrerSeanceOffline(lignes, wellness) {
   q.push({ lignes: lignes, wellness: wellness, ts: Date.now() });
   _ecrireQueueOffline(q);
 }
+var _flushingOffline = false;        // verrou anti-concurrence (online + load + resume peuvent coïncider)
+var _lastPendingToast = 0;           // throttle de la notice « en attente »
 async function flushSeancesOffline() {
   if (!navigator.onLine) return;
+  if (_flushingOffline) return;      // un flush est déjà en cours → on ne renvoie pas en double
   let q = _lireQueueOffline();
   if (!q.length) return;
-  const restantes = [];
-  for (const item of q) {
-    try {
-      // Réponse LISIBLE : on ne retire de la file QUE si le serveur confirme l'écriture.
-      const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'saveSeance', data: item.lignes }) });
-      let j = null; try { j = await res.json(); } catch (_) { j = null; }
-      const ok = res.ok && j && !j.erreur && !j.error;
-      if (!ok) { restantes.push(item); continue; }   // pas confirmé → on garde pour réessayer
-      if (item.wellness) {
-        try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(item.wellness) }); } catch (_) { /* bien-être non bloquant */ }
-      }
-    } catch (e) { restantes.push(item); }
-  }
-  _ecrireQueueOffline(restantes);
-  const envoyees = q.length - restantes.length;
-  if (envoyees > 0) showToast(`☁️ ${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`);
+  _flushingOffline = true;
+  try {
+    const restantes = [];
+    for (const item of q) {
+      try {
+        // Réponse LISIBLE : on ne retire de la file QUE si le serveur confirme l'écriture.
+        const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'saveSeance', data: item.lignes }) });
+        let j = null; try { j = await res.json(); } catch (_) { j = null; }
+        const ok = res.ok && j && !j.erreur && !j.error;
+        if (!ok) { restantes.push(item); continue; }   // pas confirmé → on garde pour réessayer
+        if (item.wellness) {
+          try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(item.wellness) }); } catch (_) { /* bien-être non bloquant */ }
+        }
+      } catch (e) { restantes.push(item); }
+    }
+    _ecrireQueueOffline(restantes);
+    const envoyees = q.length - restantes.length;
+    if (envoyees > 0) showToast(`☁️ ${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`);
+    else if (restantes.length > 0 && (Date.now() - _lastPendingToast > 30000)) {
+      // Rien n'est passé alors qu'il y a des séances en attente (serveur injoignable) :
+      // on prévient (throttlé) plutôt que de laisser l'athlète dans le flou.
+      _lastPendingToast = Date.now();
+      showToast(`⏳ ${restantes.length} séance${restantes.length > 1 ? 's' : ''} en attente — synchro au prochain réseau.`, 'var(--warn)');
+    }
+  } finally { _flushingOffline = false; }
 }
 window.addEventListener('online', () => { flushSeancesOffline(); });
 // Traite une validation hors-ligne : met en file + affiche le récap. Renvoie true si géré hors-ligne.
@@ -13648,6 +13719,19 @@ function _appliquerAppData(data) {
     _safe('cockpit-layout', () => appliquerMasquageCockpit());
 }
 
+// Fetch JSON avec timeout dur (AbortController) : AUCUN appel ne doit pouvoir
+// bloquer l'UI indéfiniment (sinon « loader figé / écran blanc » quand le backend
+// rame ou ne répond pas). Lève une erreur en cas de réseau KO / timeout / non-2xx.
+async function nvFetchJSON(url, opts) {
+  opts = opts || {};
+  var ctrl = new AbortController();
+  var t = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, opts.timeoutMs || 20000);
+  try {
+    var res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } finally { clearTimeout(t); }
+}
 function _showLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'block'; }
 function _hideLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'none'; }
 
@@ -15001,7 +15085,13 @@ function _estAppNative() {
 function _fcmFlagKey() { return 'nv_fcm_on_' + ((athlete && athlete.athlete_id) || 'x'); }
 function _fcmActif() { try { return localStorage.getItem(_fcmFlagKey()) === '1'; } catch (_) { return false; } }
 function _setFcmActif(v) { try { if (v) localStorage.setItem(_fcmFlagKey(), '1'); else localStorage.removeItem(_fcmFlagKey()); } catch (_) {} }
-function _fcmOpts() { return { athleteId: (athlete && athlete.athlete_id) || null, scriptUrl: SCRIPT_URL, fetchImpl: (typeof fetch === 'function' ? fetch : null) }; }
+// Identité pour la façade FCM : en session COACH, le token est enregistré sous
+// `coach:<coach_id>` (namespace lu par notifyCoach côté backend) ; sinon l'athlète.
+function _fcmOpts() {
+  var id = (typeof coach !== 'undefined' && coach && coach.coach_id) ? ('coach:' + coach.coach_id)
+         : ((typeof athlete !== 'undefined' && athlete && athlete.athlete_id) || null);
+  return { athleteId: id, scriptUrl: SCRIPT_URL, fetchImpl: (typeof fetch === 'function' ? fetch : null) };
+}
 function _fcmMsgErreur(r) {
   var m = {
     'permission-refusee': 'Autorisation refusée dans les réglages du téléphone',
@@ -15123,6 +15213,29 @@ async function _promptNotifNatif() {
   } catch (e) {}
 }
 
+// Équivalent COACH : enregistre le token FCM du coach (sous `coach:<id>`) à la 1re
+// ouverture de l'espace coach, pour recevoir les alertes « haute » de ses athlètes.
+// ⚠️ Le token FCM est unique par installation : sur un même appareil utilisé en
+// athlète ET en coach, le dernier rôle activé « possède » le token (cas limite,
+// sans impact pour un coach dédié).
+async function _promptNotifNatifCoach() {
+  if (!_estAppNative() || typeof coach === 'undefined' || !coach || !coach.coach_id) return;
+  var P = null;
+  try { P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications; } catch (e) {}
+  if (!P) return;
+  try {
+    var perm = await P.checkPermissions();
+    var etat = perm && perm.receive;
+    if (etat === 'granted') { try { await NovalyzNotifications.activer(_fcmOpts()); } catch (e) {} return; }
+    if (etat === 'prompt' || etat === 'prompt-with-rationale') {
+      var deja = false; try { deja = localStorage.getItem('nv_push_prompted_coach') === '1'; } catch (e) {}
+      if (deja) return;
+      try { localStorage.setItem('nv_push_prompted_coach', '1'); } catch (e) {}
+      try { await NovalyzNotifications.activer(_fcmOpts()); } catch (e) {}
+    }
+  } catch (e) {}
+}
+
 // Rafraîchit messages + badge au RETOUR au premier plan, via l'événement 'resume'
 // du plugin @capacitor/app — le signal FIABLE en natif (visibilitychange ne fire
 // pas toujours au réveil de la WebView). Installé une seule fois.
@@ -15136,6 +15249,7 @@ function _installNativeResumeListener() {
   try {
     App.addListener('resume', function () {
       try { if (typeof _timerTick === 'function' && _timerTick) _timerTick(); } catch (e) {}
+      try { if (typeof flushSeancesOffline === 'function') flushSeancesOffline(); } catch (e) {}   // resync hors-ligne au réveil (natif)
       // Throttle (8 s, partagé avec visibilitychange) : au cas où l'app enchaîne des
       // retours rapides au 1er plan (ex. écran de permission système), on ne relance
       // pas getAppData en rafale.

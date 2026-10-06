@@ -4,7 +4,8 @@
 > Légende statut : ✅ fait · 🟡 en cours · ⏳ à venir · ❓ décision à trancher (section C).
 > 🟢 Athlète = priorité (parcours solo) · 🔵 Coach = **phase 2**.
 > Voir aussi [`vision-produit.md`](./vision-produit.md) et [`roadmap-beta.md`](./roadmap-beta.md).
-> **Dernière passe de statut : 30 sept. 2026.**
+> **Dernière passe de statut : 5 oct. 2026.**
+> **MAJ 5 oct. 2026** : reskin complet de la **partie coach** (section B) livré en **prod** (`main`) ; **questionnaire quotidien « état du jour »** (auto 1×/jour) ; **import nutrition auto Health Connect** ; **correctif critique** de la boucle de permission Health Connect côté athlète (« serveur en démarrage »).
 
 ---
 
@@ -15,12 +16,15 @@
 - ✅ **Graphique pas/jour** interactif (Semaine/Mois/Année) + bouton **« Connecte ta montre »** ; historisation serveur (`saveSante` / `sante_historique`).
 - ✅ **Import des sorties montre** par activité (footing/vélo GPS… via `queryWorkouts`, avec FC) — cartes « à importer / déjà importée ».
 - ✅ **Montre ↔ saisie manuelle sans doublon** (voir C1) — tranché : montre = autorité pour le total du jour, jamais additionner ; déjà respecté dans le code (`pasjour_` = fitbit only, pas manuels confinés aux stats cardio).
+- ✅ **Import nutrition auto depuis Health Connect** (natif, 1×/jour) : agrège les repas du jour (kcal/P/G/L) et les écrit via `saveNutrition`, en respectant une saisie manuelle existante.
+- ✅ **Correctif critique (5 oct. 2026)** : boucle de permission Health Connect côté athlète (`_nutAutoImportHC` + warm-up pas/montre re-demandaient la permission à chaque chargement → écran système → `resume` → re-fetch en boucle → « serveur en démarrage »). Verrou 1 tentative/session + throttle quotidien + flag posé avant la demande ; refetch `resume` throttlé 8 s. **Déployé en prod.**
 
 ### A2 · Écrans
 - 🟡 Écran **Aujourd'hui** — base refondue (design `.tj`, blocs pas / récompenses animées au scroll) ; reste à **affiner / valider**.
 - ✅ Écran **Cardio** — sélecteur de sport (Muscu/Cardio/Hyrox) + grille d'activités + import montre + saisie + écran d'analyse.
 - ✅ Écran **État → « Forme »** — onglet **Nutrition** (objectifs macros P/G/L calculés depuis poids+objectif, niveau d'activité, saisie, tendance) ; réorg en 3 zones (Aujourd'hui / Mes suivis / Mes tendances) ; **Contexte de reprise**.
-- ⏳ **Onboarding / visite guidée** (à faire **à la FIN**, écrans figés) : présentation de démarrage expliquant **écran par écran** où se trouvent les fonctions. Ne pas coder avant d'avoir figé les écrans.
+- ✅ **Questionnaire quotidien « État du jour »** (auto à la 1re ouverture du jour, 1×/jour, non bloquant) : sommeil / fatigue / motivation, anti-doublon avec les questionnaires avant/après séance. Alimente la fraîcheur de l'« état du jour » (hero athlète + vigilance bien-être côté coach).
+- ⏳ **Onboarding / visite guidée** (à faire **à la FIN**, écrans figés) : présentation de démarrage expliquant **écran par écran** où se trouvent les fonctions. Ne pas coder avant d'avoir figé les écrans. *(Les écrans coach + Forme sont désormais quasi figés → se rapproche.)*
 
 ### A3 · Alertes & fiabilité (cœur analyse)
 - ✅ **Notifs d'alerte** pour l'athlète solo — cloche header + centre d'alertes + **liste des non-lues sur Aujourd'hui** + push haute-sévérité (voir C2, tranché).
@@ -42,19 +46,20 @@
 
 ## B. COACH (phase 2 — rendu de la partie coach)
 
-> ⏳ **Reporté en fin de roadmap** (décision du porteur). Détail conservé ci-dessous.
+> ✅ **Reskin complet livré en prod le 5 oct. 2026** (refonte UX + fiche athlète « hub »). Statuts détaillés ci-dessous. Reliquats = notifs push coach + fiabilité fine + liaison IA.
 
-- **Fiabilité** du contexte de performance.
-- **Notifs d'alerte** pour le coach.
-- **Accueil** = tous ses athlètes.
-- Écran **Aujourd'hui** : « Bonjour coach » + détail de l'athlète sélectionné.
-- **Bloc « alertes à traiter »**.
-- Ce que l'athlète **doit faire** comme séance.
-- Son **état & bien-être**.
-- Écran **son entraînement** : séances faites (détail série / exo / rep / RPE) + **création / modification de programme**.
-- Écran **analyses muscu & cardio**.
-- Écran **conversation** (IA + athlète).
-- Écran **État** + onglet **Nutrition** (conseils selon objectifs) + vue coach des données santé (sommeil/FC/pas).
+- 🟡 **Fiabilité** du contexte de performance — alertes coach fiabilisées (dédoublonnage vs moteur, footer « basé sur N séances · dernier ressenti… », garde « données partielles », hero « état du jour » qui ne passe plus au vert sans ressenti récent). Reste à étendre la fiabilité au contexte de reprise côté coach.
+- ✅ **Notifs d'alerte pour le coach** — le coach reçoit un push quand un de ses athlètes déclenche une alerte « haute » (cron). Tokens coach stockés sous `coach:<id>` (réutilise la plomberie push, zéro schéma) ; enregistrement natif à l'ouverture de l'espace coach (`_promptNotifNatifCoach`). ⚠️ `index.ts` à redéployer. *Reliquat v2 : Web Push coach (PWA) + deep-link de la notif vers l'alerte.*
+- ✅ **Accueil = tous ses athlètes** — via l'onglet **Équipe** (annuaire + **recherche & filtres** par catégorie). L'accueil « Aujourd'hui » ne liste **volontairement pas** tous les athlètes (action + **résumé équipe**), l'annuaire complet est sur Équipe.
+- ✅ Écran **Aujourd'hui** (refonte v2) — hero état équipe + **résumé/distribution**, **messages non lus**, **alertes prioritaires**. (Pas de détail athlète inline : le détail = la fiche.)
+- ✅ **Bloc « alertes à traiter »** — `renderAlertesCoach` (bandeau de sévérité, dédoublonnage absence, footer fiabilité).
+- 🟡 Ce que l'athlète **doit faire** comme séance — prochaine séance remontée ; à confirmer/compléter côté fiche.
+- ✅ Son **état & bien-être** — hero **« État du jour »** coloré + **fraîcheur** (chips datées, « À confirmer » sans ressenti récent) ; **vigilance bien-être** au niveau équipe.
+- ✅ Écran **son entraînement** — **séances réalisées en détail** (exo / série / charge / reps / RPE) ; création / modification de programme (préexistant).
+- ✅ Écran **analyses muscu & cardio** — **port de « Mes analyses » athlète** dans l'Analyses coach + **Analyses équipe v2** (assiduité, vigilance bien-être, blessures actives, progression/stagnations, **fiabilité des données** — sans tonnage brut).
+- ✅ Écran **conversation** — **messagerie pleine page** (athlète lié). Volet **IA** = lié à A5 (en veille tant que `ANTHROPIC_API_KEY` absente).
+- ✅ Écran **État / Nutrition** — intégré à la **fiche « hub »** : volume par muscle, dernières séances inline, **macros/nutrition**. Vue coach des données santé (pas/sommeil/FC) **dépend de Health Connect alimenté** côté athlète.
+- ✅ **Fiche athlète = hub** — un seul écran : boutons d'action (Message / Entraînement / Analyses / Programme / Son état), alerte, **repères en tuiles** (Régularité / ACWR / Dernière séance / Progression), volume, séances, macros.
 
 ---
 
@@ -88,5 +93,6 @@ Décisions retenues : **photos JAMAIS stockées** (envoyées à l'IA vision puis
 2. ✅ **Montre** : sommeil/BPM + graphique pas + import par sport. *(C1 pas encore tranché, non bloquant.)*
 3. ✅ **Cardio** complet (exos cardio, séances hybrides, objectif séances/sem).
 4. ✅ **Nutrition** + **contexte reprise** + **alertes** (placement C2 + fiabilité) + **C1** anti-doublon pas (tranché, déjà respecté).
-5. ⏳ **IA morpho** (C4) et **paiement premium** (C5) — plus lourds, après une base solide.
-6. ⏳ **Partie coach** (section B) — phase 2.
+5. ✅ **Partie coach** (section B) — reskin complet livré en prod (5 oct. 2026).
+6. ⏳ **Route bêta** (voir [`roadmap-beta.md`](./roadmap-beta.md)) : **P0-1 emails de reset** (domaine Resend) + **P0-3 Play Store** (fiche + déclaration Health Connect) → **P1** (erreurs réseau, accès testeur, **onboarding**).
+7. ⏳ **IA morpho** (C4) + **Coach IA** (A5, attend `ANTHROPIC_API_KEY`) + **paiement premium** (C5) — après la base bêta stable.
