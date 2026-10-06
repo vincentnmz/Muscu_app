@@ -286,7 +286,7 @@ try {
   var RANG_PRIORITE     = { critique: 4, important: 3, info: 2, succes: 1 };
 
   function analyse(o) {
-    return {
+    var r = {
       type:        TYPE_PAR_PRIORITE[o.priorite] || 'info',
       priorite:    o.priorite,
       niveau:      o.niveau || 'moyen',
@@ -294,6 +294,14 @@ try {
       titre:       o.titre,
       description: o.description
     };
+    // Champs structurés (roadmap P0.2/P0.3), OPTIONNELS et rétro-compatibles :
+    //   recommandation = l'action · evidence = la preuve chiffrée · confiance = fiabilité.
+    // Ajoutés seulement s'ils sont fournis → les règles non encore migrées et les
+    // rendus existants continuent de fonctionner à l'identique.
+    if (o.recommandation != null) r.recommandation = o.recommandation;
+    if (o.evidence != null)       r.evidence = o.evidence;
+    if (o.confiance != null)      r.confiance = o.confiance;
+    return r;
   }
 
   /* ---------------------------------------------------------------------------
@@ -305,11 +313,17 @@ try {
     {
       id: 'fatigue_generale', categorie: 'récupération',
       evaluer: function (f) {
-        var s = f.signaux;
+        var s = f.signaux, v = f.valeurs || {};
         if (!tous(s.sommeilFaible, s.energieFaible, s.fatigueElevee)) return null;
+        var ev = [];
+        if (v.sommeil != null) ev.push('sommeil ' + v.sommeil + '/5');
+        if (v.energie != null) ev.push('énergie ' + v.energie + '/5');
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
           titre: 'Fatigue générale probable',
-          description: 'Sommeil faible, énergie basse et fatigue musculaire élevée simultanément. Prévoir de la récupération avant de reprendre les charges lourdes.' });
+          description: 'Sommeil faible, énergie basse et fatigue musculaire élevée simultanément.',
+          evidence: ev.join(' · '),
+          recommandation: 'Allège la séance du jour (volume/intensité) et priorise le sommeil ; reprends les charges lourdes une fois récupéré.' });
       }
     },
     {
@@ -317,10 +331,16 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.douleurElevee, s.volumeEleve)) return null;
-        var zone = f.valeurs.zone ? (' (' + f.valeurs.zone + ')') : '';
+        var v = f.valeurs || {};
+        var zone = v.zone ? (' (' + v.zone + ')') : '';
+        var ev = [];
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (v.zone ? ' (' + v.zone + ')' : ''));
+        if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
           titre: 'Surcharge locale probable',
-          description: 'Douleur marquée' + zone + ' alors que le volume est en forte hausse. Réduire le volume sur cette zone et surveiller.' });
+          description: 'Douleur marquée' + zone + ' alors que le volume est en forte hausse.',
+          evidence: ev.join(' · '),
+          recommandation: 'Réduis le volume sur cette zone et surveille la douleur.' });
       }
     },
     {
@@ -328,19 +348,29 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.progressionBaisse, s.volumeFaible)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.seances7j != null) ev.push(v.seances7j + ' séance' + (v.seances7j > 1 ? 's' : '') + '/7 j');
+        if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Sous-entraînement probable',
-          description: 'La progression baisse alors que le volume est faible. Le stimulus est probablement insuffisant : augmenter progressivement le volume.' });
+          description: 'La progression baisse alors que le volume est faible : le stimulus est probablement insuffisant.',
+          evidence: ev.join(' · '),
+          recommandation: 'Augmente progressivement le volume (séries par muscle et par semaine).' });
       }
     },
     {
       id: 'surmenage', categorie: 'récupération',
       evaluer: function (f) {
-        var s = f.signaux;
+        var s = f.signaux, v = f.valeurs || {};
         if (!tous(s.progressionBaisse, s.volumeEleve, s.fatigueElevee)) return null;
+        var ev = [];
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
+        if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'critique', niveau: 'eleve', categorie: this.categorie,
           titre: 'Surmenage probable',
-          description: 'Volume élevé + fatigue élevée + progression qui baisse : signes d\'accumulation. Envisager une semaine de décharge.' });
+          description: 'Volume élevé + fatigue élevée + progression qui baisse : signes d\'accumulation.',
+          evidence: ev.join(' · '),
+          recommandation: 'Envisage une semaine de décharge (deload) ou quelques jours de repos avant de relancer.' });
       }
     },
     {
@@ -348,19 +378,30 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.poidsBaisse, s.forceBaisse)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.poidsEvol != null) ev.push('poids ' + (v.poidsEvol > 0 ? '+' : '') + v.poidsEvol + ' kg');
+        if (v.charge28EvolPct != null) ev.push('force ' + (v.charge28EvolPct > 0 ? '+' : '') + v.charge28EvolPct + '%');
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Déficit énergétique probable',
-          description: 'Le poids diminue et la force baisse en parallèle. Vérifier les apports caloriques et protéiques.' });
+          description: 'Le poids diminue et la force baisse en parallèle.',
+          evidence: ev.join(' · '),
+          recommandation: 'Vérifie tes apports caloriques et protéiques (risque de déficit).' });
       }
     },
     {
       id: 'risque_blessure', categorie: 'blessure',
       evaluer: function (f) {
-        var s = f.signaux;
+        var s = f.signaux, v = f.valeurs || {};
         if (!tous(s.acwrEleve, s.douleurElevee, s.fatigueElevee)) return null;
+        var ev = [];
+        if (v.acwr != null) ev.push('ACWR ' + v.acwr);
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5');
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'critique', niveau: 'eleve', categorie: this.categorie,
           titre: 'Risque accru de blessure',
-          description: 'Charge aiguë élevée (ACWR), douleur et fatigue combinées. Réduire fortement la charge sur les prochaines séances.' });
+          description: 'Charge aiguë élevée (ACWR), douleur et fatigue combinées.',
+          evidence: ev.join(' · '),
+          recommandation: 'Réduis fortement la charge sur les prochaines séances ; si la douleur persiste, consulte.' });
       }
     },
     {
@@ -370,9 +411,13 @@ try {
         // Ne se déclenche que si le risque combiné (règle ci-dessus) ne s'applique pas.
         if (s.acwrEleve !== true) return null;
         if (tous(s.douleurElevee, s.fatigueElevee)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.acwr != null) ev.push('ACWR ' + v.acwr);
         return analyse({ priorite: 'info', niveau: 'moyen', categorie: this.categorie,
           titre: 'Charge en hausse rapide',
-          description: 'Le ratio charge aiguë / chronique (ACWR) est élevé. Progresser plus doucement pour laisser le corps s\'adapter.' });
+          description: 'Le ratio charge aiguë / chronique (ACWR) est élevé.',
+          evidence: ev.join(' · '),
+          recommandation: 'Progresse plus doucement pour laisser le corps s\'adapter.' });
       }
     },
     {
@@ -380,9 +425,14 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.progressionHausse, s.sommeilBon, s.fatigueFaible)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.sommeil != null) ev.push('sommeil ' + v.sommeil + '/5');
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'succes', niveau: 'moyen', categorie: this.categorie,
           titre: 'Bonne adaptation à l\'entraînement',
-          description: 'Progression en hausse, bon sommeil et fatigue faible : l\'athlète encaisse bien la charge actuelle.' });
+          description: 'Progression en hausse, bon sommeil et fatigue faible : tu encaisses bien la charge actuelle.',
+          evidence: ev.join(' · '),
+          recommandation: 'Continue sur cette structure ; tu peux viser une surcharge progressive.' });
       }
     },
     {
@@ -390,19 +440,28 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (!tous(s.regulariteExcellente, s.progressionExcellente)) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.seances7j != null && v.seancesPrevues) ev.push('séances ' + v.seances7j + '/' + v.seancesPrevues);
         return analyse({ priorite: 'succes', niveau: 'eleve', categorie: this.categorie,
           titre: 'Très bonne adhérence au programme',
-          description: 'Régularité et progression excellentes. Continuer sur cette dynamique.' });
+          description: 'Régularité et progression excellentes.',
+          evidence: ev.join(' · '),
+          recommandation: 'Continue sur cette dynamique.' });
       }
     },
     {
       id: 'marge_progression', categorie: 'entraînement',
       evaluer: function (f) {
-        var s = f.signaux;
+        var s = f.signaux, v = f.valeurs || {};
         if (!tous(s.fatigueFaible, s.volumeFaible, s.progressionStable)) return null;
+        var ev = [];
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
+        if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'info', niveau: 'faible', categorie: this.categorie,
           titre: 'Possibilité d\'augmenter la charge',
-          description: 'Fatigue faible, volume faible et progression stable : il reste de la marge pour augmenter progressivement la charge.' });
+          description: 'Fatigue faible, volume faible et progression stable : il reste de la marge.',
+          evidence: ev.join(' · '),
+          recommandation: 'Augmente progressivement la charge ou le volume (surcharge progressive) sur tes prochaines séances.' });
       }
     },
     {
@@ -412,9 +471,14 @@ try {
         if (!tous(s.fatigueFaible, s.sommeilBon, s.douleurAbsente)) return null;
         // Évite le doublon avec "bonne adaptation" (qui inclut la progression).
         if (s.progressionHausse === true) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.sommeil != null) ev.push('sommeil ' + v.sommeil + '/5');
+        if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'succes', niveau: 'faible', categorie: this.categorie,
           titre: 'Bonne récupération',
-          description: 'Les marqueurs de récupération (sommeil, fatigue, douleur) sont au vert.' });
+          description: 'Les marqueurs de récupération (sommeil, fatigue, douleur) sont au vert.',
+          evidence: ev.join(' · '),
+          recommandation: 'Tu peux t\'entraîner normalement.' });
       }
     },
     {
@@ -425,10 +489,15 @@ try {
         // Si déjà couvert par surcharge locale / risque blessure, ne pas dupliquer.
         if (s.volumeEleve === true) return null;
         if (tous(s.acwrEleve, s.fatigueElevee)) return null;
-        var zone = f.valeurs.zone ? (' · zone : ' + f.valeurs.zone) : '';
+        var v = f.valeurs || {};
+        var zone = v.zone ? (' · zone : ' + v.zone) : '';
+        var ev = [];
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (v.zone ? ' (' + v.zone + ')' : ''));
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Douleur signalée',
-          description: 'Une douleur significative a été déclarée' + zone + '. Adapter la charge et surveiller son évolution.' });
+          description: 'Une douleur significative a été déclarée' + zone + '.',
+          evidence: ev.join(' · '),
+          recommandation: 'Adapte la charge et surveille l\'évolution de la douleur.' });
       }
     },
     {
@@ -436,9 +505,13 @@ try {
       evaluer: function (f) {
         var s = f.signaux;
         if (s.regulariteFaible !== true) return null;
+        var v = f.valeurs || {}, ev = [];
+        if (v.seances7j != null && v.seancesPrevues) ev.push('séances ' + v.seances7j + '/' + v.seancesPrevues);
         return analyse({ priorite: 'info', niveau: 'moyen', categorie: this.categorie,
           titre: 'Régularité insuffisante',
-          description: 'Le nombre de séances est en dessous de l\'objectif. Relancer l\'athlète pour maintenir la dynamique.' });
+          description: 'Le nombre de séances est en dessous de l\'objectif.',
+          evidence: ev.join(' · '),
+          recommandation: 'Replanifie tes séances pour revenir à ton objectif de régularité.' });
       }
     }
   ];
@@ -9526,30 +9599,47 @@ function afficherProgrammeComplet() {
 // (b) à la façon dont la Lecture Novalyz cadre les analyses. Les textes `lecture`
 // décrivent EXACTEMENT le comportement de buildSyntheseMuscu (cf. index.ts) — à
 // garder synchronisés (règle 6bis : une phrase affichée = un comportement réel).
+// Chaque objectif porte une `famille` (colonne vertébrale extensible — roadmap P0.1).
+// Familles prévues : 'muscu' (câblée) ; 'force' relève de muscu ; les familles
+// 'endurance' / 'cardio' / 'hyrox' / 'perso' sont RÉSERVÉES (structure prête) mais
+// pas encore exposées comme objectif tant que l'analyse correspondante ne les
+// consomme pas (interdiction : ne pas transformer du futur en présent).
 var OBJECTIFS = {
   'Prise de masse': {
-    gen: 'hypertrophie',
+    gen: 'hypertrophie', famille: 'muscu',
     prog: '4 séries de 8–12 reps · ~70–75 % 1RM',
     focus: 'Le volume prime : viser puis dépasser ta cible de séries par muscle.',
     lecture: 'Novalyz suit ton volume : une baisse est signalée et il t\'encourage à la surcharge progressive.'
   },
   'Sèche': {
-    gen: 'hypertrophie',
+    gen: 'hypertrophie', famille: 'muscu',
     prog: '4 séries de 8–12 reps · garde tes charges',
     focus: 'Préserver le muscle en déficit : maintenir charge et volume.',
     lecture: 'Novalyz surveille davantage une baisse de volume (risque de fonte musculaire en sèche).'
   },
   'Prise de masse + sèche': {
-    gen: 'hypertrophie',
+    gen: 'hypertrophie', famille: 'muscu',
     prog: '4 séries de 8–12 reps · ~70 % 1RM',
     focus: 'Recomposition : progresser en force à poids de corps stable.',
     lecture: 'Novalyz cadre tes analyses en recomposition : construire à poids stable, sans t\'alarmer d\'une évolution de poids modérée.'
   },
   'Maintien': {
-    gen: 'remise',
+    gen: 'remise', famille: 'muscu',
     prog: '3 séries de 10–12 reps · charge confortable',
     focus: 'Entretien : la régularité prime sur l\'intensité.',
     lecture: 'Novalyz valorise ta régularité ; pas de pression pour augmenter les charges.'
+  },
+  'Force': {
+    gen: 'force', famille: 'muscu',
+    prog: '5 séries de 3–5 reps · ~85 % 1RM · repos long',
+    focus: 'Charges lourdes : progresser en force maximale, récupération longue.',
+    lecture: 'Novalyz suit l\'évolution de ton volume et de ton effort perçu, et te signale une baisse.'
+  },
+  'Tonification': {
+    gen: 'tonification', famille: 'muscu',
+    prog: '3 séries de 15–20 reps · charge légère · repos courts',
+    focus: 'Endurance musculaire : séries longues, repos courts.',
+    lecture: 'Novalyz suit l\'évolution de ton volume et de ton effort perçu, et te signale une baisse.'
   }
 };
 function _objLine(ic, k, v) {
@@ -9568,6 +9658,7 @@ function objIconFor(obj) {
   if (o.includes('sèche')) return '🔥';
   if (o.includes('maintien')) return '⚖️';
   if (o.includes('force')) return '🏋️';
+  if (o.includes('tonif')) return '🔁';
   return '🎯';
 }
 function majObjectifCard(obj) {
@@ -14984,6 +15075,8 @@ function renderAnalysesListe(data, ids, opts) {
       <div style="min-width:0;">
         <div style="font-size:13px;font-weight:800;color:${analyseCouleur(a.type)};">${analyseIcone(a.type)} ${escapeHtml(a.titre)}</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">${escapeHtml(a.description)}</div>
+        ${a.evidence ? `<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.4;margin-top:3px;">📊 ${escapeHtml(a.evidence)}</div>` : ''}
+        ${(a.recommandation && !(opts.pourAthlete && (a.type === 'critical' || a.type === 'warning'))) ? `<div style="font-size:12px;color:var(--text);line-height:1.45;margin-top:6px;font-weight:600;">→ ${escapeHtml(a.recommandation)}</div>` : ''}
         ${opts.hideCategorie ? '' : `<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;opacity:.7;">${escapeHtml(a.categorie)}</div>`}
         ${_cadrageAthlete(a)}
       </div>
