@@ -10753,7 +10753,7 @@ function _maCardioParSport(data) {
   var hist = (data.cardio && data.cardio.history) || [];
   var allBy = _maCardioAgg(hist, 3650);
   var types = Object.keys(allBy).sort(function (a, b) { return allBy[b].n - allBy[a].n; });
-  if (!types.length) { _maSet('ma-cardio-detail', _maEmpty('Aucune séance cardio pour l\'instant.')); return; }
+  if (!types.length) { _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _maEmpty('Aucune séance cardio pour l\'instant.') + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>'); return; }
   var sel = (_maCardioSport && types.indexOf(_maCardioSport) >= 0) ? _maCardioSport : types[0];
   var m = _maCM(sel);
   var o = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode))[sel] || { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0 };
@@ -10797,7 +10797,13 @@ function _maCardioTendances(data) {
   var hist = (data.cardio && data.cardio.history) || [];
   var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode));
   var types = Object.keys(by).sort(function (a, b) { return by[b].dist - by[a].dist; });
-  if (!types.length) { _maSet('ma-cardio-tendances', _maEmpty('Pas encore de cardio à analyser sur la période.')); return; }
+  // Vide sur la période choisie : on GARDE le sélecteur de période (sinon on reste
+  // bloqué sur « Semaine » sans pouvoir élargir) + le rail (Novalyz).
+  if (!types.length) {
+    var _ctEmpty = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + _maEmpty('Pas encore de cardio à analyser sur cette période. Élargis la période ci-dessus.');
+    _maSet('ma-cardio-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _ctEmpty + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
+    return;
+  }
   var mx = Math.max.apply(null, types.map(function (t) { return by[t].dist || 0; }).concat([1]));
   var vol = '<div class="ma-card ma-vol">' + types.map(function (t) { var m = _maCM(t); return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(m[0]) + '</span><span class="p">' + (Math.round(by[t].dist * 10) / 10) + ' km · ' + by[t].n + ' sorties</span></div><div class="ma-vt"><span style="width:' + Math.round(by[t].dist / mx * 100) + '%;background:' + m[1] + '"></span></div></div>'; }).join('') + '</div>';
   // FC moyenne à effort (RPE) égal — proxy d'efficience : plus la FC baisse à RPE constant, mieux c'est.
@@ -17451,6 +17457,40 @@ function _renderPasWeb(hostId, pfx) {
   return true;
 }
 
+// Fallback WEB : « Ma montre » DÉTAILLÉE (pas + sommeil + FC repos) depuis
+// l'historique serveur (sante_historique). Chaque métrique a son mini-graphe
+// S/M/A (renderSanteChart). Le live Health Connect reste natif-only, mais tout
+// ce qui a été historisé par l'app est consultable sur le web. Renvoie false si
+// aucune donnée montre.
+function _renderMontreWeb(hostId) {
+  var el = document.getElementById(hostId); if (!el) return false;
+  var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
+  var hist = (data && data.sante_historique) || [];
+  var hasPas = hist.some(function (x) { return x && x.pas != null && Number(x.pas) > 0; });
+  var hasSleep = hist.some(function (x) { return x && x.sommeil_min != null && Number(x.sommeil_min) > 0; });
+  var hasFc = hist.some(function (x) { return x && x.fc_repos != null && Number(x.fc_repos) > 0; });
+  if (!hasPas && !hasSleep && !hasFc) { el.style.display = 'none'; return false; }
+  el.style.display = ''; el.classList.add('in'); el.style.padding = '14px 15px';
+  var sec = function (pfx, emoji, label, note, first) {
+    return '<div style="' + (first ? '' : 'margin-top:14px;padding-top:14px;border-top:1px solid var(--border);') + '">'
+      + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:' + (note ? '4' : '10') + 'px;">'
+      + '<span style="width:28px;height:28px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;flex:none;font-size:15px;">' + emoji + '</span>'
+      + '<span style="font-weight:800;font-size:13px;color:var(--text);">' + label + '</span></div>'
+      + (note ? '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.4;margin:0 0 9px 37px;">' + note + '</div>' : '')
+      + '<div id="' + pfx + '-head"></div><div id="' + pfx + '-body"></div></div>';
+  };
+  var head = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;"><span style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#fff;display:grid;place-items:center;flex:none;font-size:15px;">⌚</span><span style="font-weight:800;font-size:14px;color:var(--text);">Ma montre</span></div>';
+  var body = '', firstDone = false;
+  if (hasPas) { body += sec('etpas', '👣', 'Mes pas', 'Relevés par ta montre, synchronisés via l\'app — ouvre l\'app pour actualiser le jour en cours.', !firstDone); firstDone = true; }
+  if (hasSleep) { body += sec('etsleep', '😴', 'Sommeil', '', !firstDone); firstDone = true; }
+  if (hasFc) { body += sec('ethr', '❤️', 'FC au repos', '', !firstDone); firstDone = true; }
+  el.innerHTML = head + body;
+  if (hasPas) try { renderSanteChart('etpas'); } catch (e) {}
+  if (hasSleep) try { renderSanteChart('etsleep'); } catch (e) {}
+  if (hasFc) try { renderSanteChart('ethr'); } catch (e) {}
+  return true;
+}
+
 async function renderDashSteps(attempt) {
   attempt = attempt || 0;
   var el = document.getElementById('dash-steps'); if (!el) return;
@@ -17509,10 +17549,11 @@ async function renderEtatMontre(attempt) {
   var H = _hcPlugin();
   var native = (typeof _estAppNative === 'function' && _estAppNative());
   if (!native) {
-    // WEB : la montre live n'existe pas, mais on affiche les pas historisés côté
-    // serveur dans le bandeau condensé (#et-montre-mini). Détails live masqués.
+    // WEB : la montre live n'existe pas, mais TOUT ce que l'app a historisé côté
+    // serveur (pas + sommeil + FC repos) est consultable → on rend « Ma montre »
+    // détaillée dans #et-montre-mini. Le live Health Connect reste natif-only.
     el.style.display = 'none'; if (sec) sec.style.display = 'none';
-    if (mini && !_renderPasWeb('et-montre-mini', 'etpas')) mini.style.display = 'none';
+    if (mini && !_renderMontreWeb('et-montre-mini')) mini.style.display = 'none';
     return;
   }
   if (!H) { if (attempt < 8) setTimeout(function () { renderEtatMontre(attempt + 1); }, 600); else hide(); return; }
