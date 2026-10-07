@@ -10207,9 +10207,13 @@ function _maMuscuResume(data) {
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
-    + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'ressenti') + rsHtml
-    + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries', 'volume') + volHtml
-    + _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.')
+    // Desktop (≥992px) : Ressenti et Volume côte à côte via .ma-cols (2 colonnes).
+    // Mobile : .ma-cols/.ma-colcard sont en display:contents → ordre d'origine inchangé.
+    + '<div class="ma-cols">'
+    +   '<div class="ma-colcard">' + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'ressenti') + rsHtml + '</div>'
+    +   '<div class="ma-colcard">' + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries', 'volume') + volHtml
+    +     _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.') + '</div>'
+    + '</div>'
     + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p], 'balance') + _maBalance(data)
     + _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.'));
 }
