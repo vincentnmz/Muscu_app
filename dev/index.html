@@ -1859,13 +1859,11 @@
   #tab-historique .ma-kgrid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
   #tab-historique .ma-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
   /* Détail/Tendances : colonne principale large + rail droit (chart moins écrasé) */
-  /* Rail plein-hauteur : la colonne s'étire à la hauteur du contenu principal
-     (align-items:stretch) et le bloc Novalyz est ANCRÉ EN BAS (margin-top:auto),
-     comme une carte normale — pas un gros panneau bleu étiré. L'espace au milieu
-     reste transparent (contenu en haut, Novalyz en bas). */
-  #tab-historique .ma-cols2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:stretch;}
+  /* Rail COLLANT (sticky) : la colonne de droite reste visible quand on fait
+     défiler le contenu principal (plus de blocs qui « descendent/remontent »).
+     align-self:start pour que le sticky prenne la hauteur du contenu. */
+  #tab-historique .ma-cols2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;}
   #tab-historique .ma-colmain, #tab-historique .ma-colrail{display:flex;flex-direction:column;gap:12px;min-width:0;}
-  #tab-historique .ma-colrail > .nvz-ask{margin-top:auto;}
   #tab-historique .ma-colcard{display:flex;flex-direction:column;gap:10px;min-width:0;}
   #tab-historique .ma-colcard .ma-sec{margin:0 2px;}
   /* Ressenti (pleine largeur) : barres plus hautes + boîte plafonnée pour que
@@ -2353,6 +2351,11 @@
           #tab-etat .et-main, #tab-etat .et-rail{ display:flex; flex-direction:column; gap:12px; min-width:0; }
           /* en desktop, l'ordre suit le flux DOM de chaque colonne (et non l'order mobile) */
           #tab-etat .et-main > *, #tab-etat .et-rail > *{ order:0 !important; }
+          /* Ressenti & bien-être = au centre, affiché EN ENTIER (plus de repli) ;
+             le graphe Poids est passé dans le rail. */
+          #tab-etat #et-rb-body{ display:flex !important; }
+          #tab-etat #et-rb-toggle{ cursor:default; }
+          #tab-etat #et-rb-caret{ display:none; }
         }
         #tab-etat .et-card{ background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06)); }
         #tab-etat .et-hero{ display:flex; align-items:center; gap:16px; padding:16px; border-radius:20px; box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08)); border:1px solid var(--border); background:var(--surface); }
@@ -2416,6 +2419,35 @@
         <!-- Charge & récup : ACWR réel (dashboard.acwr + moteur.acwr_*) -->
         <div class="et-card et-charge" id="et-acwr" style="order:10"></div>
 
+        <!-- Ressenti + bien-être : repliable (allège l'écran, ouvre à la demande) -->
+        <button type="button" id="et-rb-toggle" onclick="_etFoldRB()" aria-expanded="false" style="order:12;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;cursor:pointer;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));color:var(--text);font:inherit;">
+          <div><div style="font-weight:700;font-size:13px;">Ressenti &amp; bien-être</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">7 derniers jours · questionnaire du jour</div></div>
+          <svg id="et-rb-caret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;flex:none;"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div id="et-rb-body" style="order:13;display:none;flex-direction:column;gap:12px;">
+          <!-- Ressenti : dot par jour depuis bien_etre[] -->
+          <div class="et-sec">Ton ressenti · 7 derniers jours</div>
+          <div class="et-card et-days" id="et-days"></div>
+          <!-- Bien-être du jour : bien_etre[0] (5 dimensions) -->
+          <div class="et-sec">Bien-être du jour</div>
+          <div class="et-card" id="et-wb"></div>
+        </div>
+
+        </div><!-- /et-main -->
+
+        <div class="et-rail">
+        <!-- ===================== ZONE 2 · MES SUIVIS ===================== -->
+        <!-- Accès remontés aux sous-écrans (Nutrition / Objectifs / Blessures),
+             avec valeur vivante + pastille de statut. Peuplé par _etRenderSuivis(). -->
+        <div class="et-sec" style="order:7">Mes suivis</div>
+        <div class="et-card" id="et-suivis" style="order:8;overflow:hidden;"></div>
+
+        <!-- Ma montre : bandeau condensé (glance) + détails repliables (renderEtatMontre).
+             #et-montre-sec conservé (masqué) pour compat ; #et-montre = charts détaillés. -->
+        <div class="et-card" id="et-montre-mini" style="order:4;display:none;"></div>
+        <div id="et-montre-sec" style="order:5;display:none;"></div>
+        <div class="et-card" id="et-montre" style="order:6;display:none;padding:2px 15px 14px;"></div>
+
         <!-- Poids : graphe complet (déplacé d'Objectif) — 1M/3M/Tout + axes + légende -->
         <div class="et-card" style="order:11;padding:14px 15px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
@@ -2440,35 +2472,6 @@
             Poids (kg) au fil du temps · axe vertical = kg, horizontal = date · chaque point = une pesée
           </div>
         </div>
-        </div><!-- /et-main -->
-
-        <div class="et-rail">
-        <!-- ===================== ZONE 2 · MES SUIVIS ===================== -->
-        <!-- Accès remontés aux sous-écrans (Nutrition / Objectifs / Blessures),
-             avec valeur vivante + pastille de statut. Peuplé par _etRenderSuivis(). -->
-        <div class="et-sec" style="order:7">Mes suivis</div>
-        <div class="et-card" id="et-suivis" style="order:8;overflow:hidden;"></div>
-
-        <!-- Ma montre : bandeau condensé (glance) + détails repliables (renderEtatMontre).
-             #et-montre-sec conservé (masqué) pour compat ; #et-montre = charts détaillés. -->
-        <div class="et-card" id="et-montre-mini" style="order:4;display:none;"></div>
-        <div id="et-montre-sec" style="order:5;display:none;"></div>
-        <div class="et-card" id="et-montre" style="order:6;display:none;padding:2px 15px 14px;"></div>
-
-        <!-- Ressenti + bien-être : repliable (allège l'écran, ouvre à la demande) -->
-        <button type="button" id="et-rb-toggle" onclick="_etFoldRB()" aria-expanded="false" style="order:12;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;cursor:pointer;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));color:var(--text);font:inherit;">
-          <div><div style="font-weight:700;font-size:13px;">Ressenti &amp; bien-être</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">7 derniers jours · questionnaire du jour</div></div>
-          <svg id="et-rb-caret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;flex:none;"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div id="et-rb-body" style="order:13;display:none;flex-direction:column;gap:12px;">
-          <!-- Ressenti : dot par jour depuis bien_etre[] -->
-          <div class="et-sec">Ton ressenti · 7 derniers jours</div>
-          <div class="et-card et-days" id="et-days"></div>
-          <!-- Bien-être du jour : bien_etre[0] (5 dimensions) -->
-          <div class="et-sec">Bien-être du jour</div>
-          <div class="et-card" id="et-wb"></div>
-        </div>
-
         <!-- Bloc « Demande à Novalyz » (rail desktop ; masqué en mobile) -->
         <div class="nvz-ask" style="order:20">
           <div class="nvz-ask-hd"><span class="nvz-ask-l">N</span><div><div class="nvz-ask-ti">Demande à Novalyz</div><div class="nvz-ask-sb">Ton coach IA, branché sur tes données</div></div></div>
