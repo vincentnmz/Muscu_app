@@ -1859,8 +1859,13 @@
   #tab-historique .ma-kgrid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
   #tab-historique .ma-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
   /* Détail/Tendances : colonne principale large + rail droit (chart moins écrasé) */
-  #tab-historique .ma-cols2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;}
+  /* Rail plein-hauteur : la colonne s'étire à la hauteur du contenu principal
+     (align-items:stretch) et le bloc Novalyz est ANCRÉ EN BAS (margin-top:auto),
+     comme une carte normale — pas un gros panneau bleu étiré. L'espace au milieu
+     reste transparent (contenu en haut, Novalyz en bas). */
+  #tab-historique .ma-cols2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:stretch;}
   #tab-historique .ma-colmain, #tab-historique .ma-colrail{display:flex;flex-direction:column;gap:12px;min-width:0;}
+  #tab-historique .ma-colrail > .nvz-ask{margin-top:auto;}
   #tab-historique .ma-colcard{display:flex;flex-direction:column;gap:10px;min-width:0;}
   #tab-historique .ma-colcard .ma-sec{margin:0 2px;}
   /* Ressenti (pleine largeur) : barres plus hautes + boîte plafonnée pour que
