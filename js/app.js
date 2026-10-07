@@ -10350,7 +10350,7 @@ function _maMuscuExercice(data) {
     + '</div>');
 }
 
-var _maExoSel = null, _maExoMetric = '1rm';
+var _maExoSel = null, _maExoMetric = 'charge';
 // Échappe une chaîne pour un littéral JS entre apostrophes DANS un attribut onclick à guillemets.
 function _maOnc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 function maSetExo(e) { _maExoSel = e; try { _maMuscuExercice(dernierAppData); } catch (x) {} }
@@ -10397,9 +10397,11 @@ function _maProgExo(data) {
   var muscle = ''; try { (data.seances_detail || []).some(function (s) { return (s.exercices || []).some(function (e) { if (e.nom === sel) { muscle = e.muscle || ''; return true; } return false; }); }); } catch (e) {}
   var menu = '<div id="ma-exo-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;max-height:250px;overflow:auto;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">' + exos.map(function (e, i) { return '<div onclick="maSetExo(\'' + _maOnc(e) + '\')" style="padding:10px 13px;font-size:13px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (e === sel ? 'background:var(--surface2);' : '') + '">' + _maE(e) + '</div>'; }).join('') + '</div>';
   var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + prog[sel].length + ' séance' + (prog[sel].length > 1 ? 's' : '') + ' suivie' + (prog[sel].length > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
-  var MET = [['1rm', '1RM estimé', 'kg'], ['charge', 'Charge max', 'kg'], ['volume', 'Volume', 'kg']];
+  // Charge en premier (c'est la valeur la plus parlante au quotidien) ; 1RM et
+  // Volume ensuite. Onglets soulignés (≠ pastilles pleines de la période).
+  var MET = [['charge', 'Charge max', 'kg'], ['1rm', '1RM estimé', 'kg'], ['volume', 'Volume', 'kg']];
   var met = MET.filter(function (x) { return x[0] === _maExoMetric; })[0] || MET[0];
-  var seg = '<div class="ma-seg">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div>';
+  var seg = '<div class="ma-mtab-wrap"><span class="ma-mtab-lbl">Afficher</span><div class="ma-mtab">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>';
   var series = pts.map(function (p) { return met[0] === '1rm' ? _maE1RM(p) : met[0] === 'charge' ? (p.charge || 0) : (p.volume || ((p.charge || 0) * (p.reps || 0))); });
   var last = series[series.length - 1] || 0, first = series[0] || 0, delta = Math.round((last - first) * 10) / 10;
   var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span>';
