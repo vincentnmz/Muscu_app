@@ -10207,15 +10207,16 @@ function _maMuscuResume(data) {
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
-    // Desktop (≥992px) : Ressenti et Volume côte à côte via .ma-cols (2 colonnes).
-    // Mobile : .ma-cols/.ma-colcard sont en display:contents → ordre d'origine inchangé.
+    // Ressenti : pleine largeur.
+    + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'ressenti') + rsHtml
+    // Desktop (≥992px) : Volume et Balance musculaire côte à côte via .ma-cols
+    // (2 colonnes). Mobile : .ma-cols/.ma-colcard en display:contents → ordre inchangé.
     + '<div class="ma-cols">'
-    +   '<div class="ma-colcard">' + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'ressenti') + rsHtml + '</div>'
     +   '<div class="ma-colcard">' + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries', 'volume') + volHtml
     +     _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.') + '</div>'
-    + '</div>'
-    + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p], 'balance') + _maBalance(data)
-    + _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.'));
+    +   '<div class="ma-colcard">' + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p], 'balance') + _maBalance(data)
+    +     _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.') + '</div>'
+    + '</div>');
 }
 
 function _maMuscuExercice(data) {
@@ -17571,8 +17572,11 @@ async function _etFillRestingHr(H, now) {
 var _santeSyncing = false;
 async function _syncSanteMontre(H) {
   if (!H || typeof athlete === 'undefined' || !athlete || _santeSyncing) return;
-  var k = 'nvz_sante_sync2_' + athlete.athlete_id;   // v2 = fenêtre 365 j (invalide l'ancien throttle)
-  try { if (Date.now() - (+(localStorage.getItem(k) || 0)) < 6 * 3600 * 1000) return; } catch (e) {}
+  var k = 'nvz_sante_sync3_' + athlete.athlete_id;   // v3 = throttle court (≈ à chaque ouverture)
+  // Avant : 1×/6 h → les pas du jour n'arrivaient sur le serveur (donc sur le web)
+  // qu'avec un gros décalage. Maintenant 15 min : à chaque ouverture/retour au
+  // premier plan de l'app native, les pas récents sont poussés quasi aussitôt.
+  try { if (Date.now() - (+(localStorage.getItem(k) || 0)) < 15 * 60 * 1000) return; } catch (e) {}
   _santeSyncing = true;
   try {
     var now = new Date();

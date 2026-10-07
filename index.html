@@ -1811,8 +1811,10 @@
   #tab-historique .ma-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
   #tab-historique .ma-colcard{display:flex;flex-direction:column;gap:10px;min-width:0;}
   #tab-historique .ma-colcard .ma-sec{margin:0 2px;}
-  /* Ressenti : barres plus hautes en bureau (sinon trop petit à côté du Volume).
-     Sélecteur via .ma-rsbox pour battre la règle de base .ma-rsbars (ordre CSS). */
+  /* Ressenti (pleine largeur) : barres plus hautes + boîte plafonnée pour que
+     les barres restent bien visibles (pas aplaties/étirées) et alignées avec
+     leur axe. Sélecteur via .ma-rsbox pour battre la règle de base (ordre CSS). */
+  #tab-historique .ma-rsbox{max-width:760px;}
   #tab-historique .ma-rsbox .ma-rsbars{height:150px;}
   /* Bouton « Importer mes séances » : plus compact, centré. */
   #tab-historique #btn-hc-analyses{max-width:380px;margin-left:auto;margin-right:auto;}
