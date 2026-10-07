@@ -17432,9 +17432,13 @@ function _renderPasWeb(hostId, pfx) {
   if (!has) { el.style.display = 'none'; return false; }
   el.style.display = '';
   el.classList.add('in');   // #dash-steps a la classe tj-reveal (opacity:0) → forcer l'affichage
-  el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">'
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:4px;">'
     + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;flex:none;font-size:16px;">👣</span>'
     + '<span style="font-weight:800;font-size:13.5px;color:var(--text);">Mes pas</span></div>'
+    // Honnêteté : sur le web, les pas ne sont PAS en direct (Health Connect =
+    // téléphone uniquement). On affiche le dernier relevé poussé par l'app mobile ;
+    // le jour en cours / tout récent peut être partiel tant que l'app n'a pas resynchro.
+    + '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.4;margin:0 0 9px 39px;">Relevés par ta montre, synchronisés via l\'app mobile — ouvre l\'app pour actualiser le jour en cours.</div>'
     + '<div id="' + pfx + '-head"></div><div id="' + pfx + '-body"></div>';
   try { renderSanteChart(pfx); } catch (e) {}
   return true;
