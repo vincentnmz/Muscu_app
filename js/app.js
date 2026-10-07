@@ -7515,6 +7515,22 @@ function afficherOngletConseils() {
 }
 // Entrée directe sur le fil Novalyz IA (boutons « Demande à Novalyz »).
 function ouvrirNovalyzIA() { _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils'); }
+// Bloc « Demande à Novalyz » (rail bureau) : on écrit dans le champ puis on ouvre
+// le fil IA et on envoie directement la question saisie (pas juste une redirection).
+function nvzAskSend(inp) {
+  var t = (inp && inp.value || '').trim();
+  if (inp) inp.value = '';
+  ouvrirNovalyzIA();
+  if (!t) return;
+  setTimeout(function () { var i = document.getElementById('cv-ia-input'); if (i) { i.value = t; if (typeof cvSendIA === 'function') cvSendIA(); } }, 40);
+}
+// Suggestion cliquée : pré-remplit la question et l'envoie.
+function nvzAskChip(btn) {
+  var t = btn ? (btn.getAttribute('data-q') || btn.textContent || '').trim() : '';
+  ouvrirNovalyzIA();
+  if (!t) return;
+  setTimeout(function () { var i = document.getElementById('cv-ia-input'); if (i) { i.value = t; if (typeof cvSendIA === 'function') cvSendIA(); } }, 40);
+}
 // Entrée sur la liste des conversations (bulle d'en-tête).
 function ouvrirConversations() { _cvView = 'list'; if (typeof switchTab === 'function') switchTab('conseils'); }
 // Onglet « Coach » (adaptatif) : athlète SOLO → fil IA direct ; athlète AVEC coach
@@ -10022,6 +10038,20 @@ function _maArea(pts, color, fill) {
   var line = xs.map(function (x, i) { return (i ? 'L' : 'M') + x.toFixed(0) + ' ' + ys[i].toFixed(0); }).join(' ');
   return '<svg width="100%" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><path d="' + line + ' L' + xs[xs.length - 1].toFixed(0) + ' ' + h + ' L' + xs[0].toFixed(0) + ' ' + h + ' Z" fill="' + fill + '"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + xs[xs.length - 1].toFixed(0) + '" cy="' + ys[ys.length - 1].toFixed(0) + '" r="3.4" fill="' + color + '"/></svg>';
 }
+// Bloc « Demande à Novalyz » pour le rail des panneaux Analyses (généré en JS).
+// Réutilise la CSS .nvz-ask (desktop-only : masqué en mobile), donc inoffensif sur
+// mobile où .ma-colrail passe en display:contents.
+function _maNovaAsk() {
+  return '<div class="nvz-ask">'
+    + '<div class="nvz-ask-hd"><span class="nvz-ask-l">N</span><div><div class="nvz-ask-ti">Demande à Novalyz</div><div class="nvz-ask-sb">Ton coach IA, branché sur tes données</div></div></div>'
+    + '<div class="nvz-ask-chips">'
+    + '<button class="nvz-ask-chip" onclick="nvzAskChip(this)">Analyse ma progression<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>'
+    + '<button class="nvz-ask-chip" onclick="nvzAskChip(this)">Où je stagne ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>'
+    + '<button class="nvz-ask-chip" onclick="nvzAskChip(this)">Que travailler en priorité ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>'
+    + '</div>'
+    + '<div class="nvz-ask-field"><input class="nvz-ask-inp" type="text" placeholder="Pose ta question…" onkeydown="if(event.key===\'Enter\')nvzAskSend(this)"><button class="nvz-ask-send" onclick="nvzAskSend(this.previousElementSibling)" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button></div>'
+    + '</div>';
+}
 function _maSet(id, html) { var el = document.getElementById(id); if (el) el.innerHTML = html; }
 function _maEmpty(msg) { return '<div class="ma-note" style="background:var(--surface2);border-color:var(--border);color:var(--text-muted)">' + msg + '</div>'; }
 function _maFRtoDate(s) { var m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; }
@@ -10068,6 +10098,19 @@ function _maRsAxis(rec, p) {
 // Bloc graphique standard, lisible : label + valeur actuelle + axe clair (2 bornes).
 function _maChartBlock(label, pts, unit, color, fill, axisFirst, note) {
   var last = pts.length ? pts[pts.length - 1] : 0;
+  // Bureau : courbe riche (axes + grille + étiquettes) pour ne pas aplatir la série
+  // hebdo. On synthétise des dates de fin de semaine (pas de 7 jours) pour l'axe X.
+  if (_maIsDesktop() && pts.length >= 2) {
+    var n = pts.length, dts = [], now = new Date(); now.setHours(0, 0, 0, 0);
+    for (var i = n - 1; i >= 0; i--) {
+      var d = new Date(now); d.setDate(d.getDate() - (n - 1 - i) * 7);
+      dts.unshift(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
+    }
+    return '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + label + '</span>'
+      + '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:' + color + '">' + String(last).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + unit + '</span></span></div>'
+      + _maLineRich(pts, dts, unit, color)
+      + (note ? _maCap(note) : '') + '</div>';
+  }
   return '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + label + '</span>'
     + '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:' + color + '">' + String(last).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + unit + '</span></span></div>'
     + _maArea(pts, color, fill)
@@ -10241,21 +10284,23 @@ function _maMuscuResume(data) {
       + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
   var ptitle = _MA_PLABEL[p].charAt(0).toUpperCase() + _MA_PLABEL[p].slice(1);
-  _maSet('ma-muscu-resume', _maSynthese(data) + verdict
+  // Colonne principale : synthèse + chiffres + ressenti + Volume/Balance côte à côte.
+  // Rail droit (bureau) : Records perso + bloc Novalyz. Mobile : .ma-cols2/.ma-col*
+  // en display:contents → ordre d'origine inchangé.
+  var main = _maSynthese(data) + verdict
     + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change les chiffres & graphiques ci-dessous selon la période.')
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
-    // Ressenti : pleine largeur.
     + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'ressenti') + rsHtml
-    // Desktop (≥992px) : Volume et Balance musculaire côte à côte via .ma-cols
-    // (2 colonnes). Mobile : .ma-cols/.ma-colcard en display:contents → ordre inchangé.
     + '<div class="ma-cols">'
     +   '<div class="ma-colcard">' + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries', 'volume') + volHtml
     +     _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.') + '</div>'
     +   '<div class="ma-colcard">' + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p], 'balance') + _maBalance(data)
     +     _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.') + '</div>'
-    + '</div>');
+    + '</div>';
+  var rail = _maSec('Records personnels') + _maRecords(data) + _maNovaAsk();
+  _maSet('ma-muscu-resume', '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>');
 }
 
 function _maMuscuExercice(data) {
@@ -10274,7 +10319,7 @@ function _maMuscuExercice(data) {
   _maSet('ma-muscu-detail', head + periodSel
     + '<div class="ma-cols2">'
     +   '<div class="ma-colmain">' + body + '</div>'
-    +   '<div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + '</div>'
+    +   '<div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maNovaAsk() + '</div>'
     + '</div>');
 }
 
@@ -10544,19 +10589,24 @@ function _maMuscuTendances(data) {
   var ws = _maWeekly(vpj, W, 'count');                                                        // séances/sem
   var hasW = wt.some(function (v) { return v > 0; });
   // Sélecteur juste au-dessus du graphique → on voit la courbe s'ajuster.
-  var out = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie (' + W + ' semaines).');
+  var head = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie (' + W + ' semaines).');
+  var main = '';
   if (hasW) {
-    out += _maSec('Tonnage soulevé', 'par semaine · ' + W + ' sem.', 'tonnage')
+    main += _maSec('Tonnage soulevé', 'par semaine · ' + W + ' sem.', 'tonnage')
       + _maChartBlock('Tonnage / semaine', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', 'il y a ' + W + ' sem.', 'Total charge × reps de chaque semaine. La courbe qui monte = tu soulèves plus de volume au fil du temps → c\'est le moteur n°1 de progression.');
-    out += _maSec('Régularité', 'par semaine · ' + W + ' sem.', 'regularite')
+    main += _maSec('Régularité', 'par semaine · ' + W + ' sem.', 'regularite')
       + _maChartBlock('Séances / semaine', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', 'il y a ' + W + ' sem.', 'Combien de séances tu fais chaque semaine. La régularité prime sur tout le reste.');
-  } else { out += _maEmpty('Pas assez d\'historique pour une tendance (besoin de plusieurs semaines).'); }
+  } else { main += _maEmpty('Pas assez d\'historique pour une tendance (besoin de plusieurs semaines).'); }
   var cmp = data.comparison || {}, rows = '';
   try { var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents</span><span class="v" style="color:' + (t.evol_pct >= 0 ? '#00A854' : '#DC3545') + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>'; } catch (e) {}
   var reg = (data.dashboard && data.dashboard.regularite) || {};
   if (reg.seances_semaine != null) rows += '<div class="ma-trow"><span>Régularité (séances/sem.)</span><span class="v">' + reg.seances_semaine + '</span></div>';
   var mr = (data.global && data.global.mean_rpe); if (mr) rows += '<div class="ma-trow"><span>RPE moyen (global)</span><span class="v">' + String(mr).replace('.', ',') + '</span></div>';
-  if (rows) out += _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>';
+  // Rail droit (bureau) : résumé « Ce qui bouge » + bloc Novalyz. En mobile,
+  // .ma-cols2/.ma-col* passent en display:contents → suite verticale inchangée,
+  // juste précédée du résumé comme avant.
+  var rail = (rows ? _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>' : '') + _maNovaAsk();
+  var out = head + '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>';
   _maSet('ma-muscu-tendances', out);
 }
 
@@ -10599,7 +10649,7 @@ function _maMuscuHistorique(data) {
       + dot + '<span id="ma-hs-chev-' + i + '" style="color:var(--text-subtle);margin-left:2px">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
       + '<div class="ma-hdet" id="ma-hs-' + i + '" style="display:none">' + det + '</div></div>';
   }).join('') + _maMoreBtn('muscu', n, all.length);
-  _maSet('ma-muscu-historique', html);
+  _maSet('ma-muscu-historique', '<div class="ma-cols2"><div class="ma-colmain">' + html + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
 }
 function maToggleHS(i) { var d = document.getElementById('ma-hs-' + i), c = document.getElementById('ma-hs-chev-' + i); if (d) { var open = d.style.display === 'none'; d.style.display = open ? 'flex' : 'none'; if (c) c.style.transform = open ? 'rotate(180deg)' : ''; } }
 
@@ -10657,9 +10707,10 @@ function _maCardioResume(data) {
     var recC = rsC.slice(0, 14).reverse();
     rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _MA_PLABEL[_maPeriode], 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   }
-  _maSet('ma-cardio-resume', _maSyntheseCardio(data) + verdict
+  var _crMain = _maSyntheseCardio(data) + verdict
     + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change les chiffres & graphiques ci-dessous selon la période.')
-    + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + _maHyroxList(data) + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml);
+    + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + _maHyroxList(data) + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml;
+  _maSet('ma-cardio-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _crMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
 }
 function _maCardioParSport(data) {
   var hist = (data.cardio && data.cardio.history) || [];
@@ -10700,7 +10751,8 @@ function _maCardioParSport(data) {
     var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); if (+s.fc_moy) parts.push(Math.round(s.fc_moy) + ' bpm');
     return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
   }).join('');
-  _maSet('ma-cardio-detail', _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _MA_PLABEL[_maPeriode], o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>');
+  var _cdMain = _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _MA_PLABEL[_maPeriode], o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>';
+  _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _cdMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
 }
 function maSetCardioSport(t) { _maCardioSport = t; try { _maCardioParSport(dernierAppData); } catch (e) {} }
 function maSetCardioMetric(m) { _maCardioMetric = m; try { _maCardioParSport(dernierAppData); } catch (e) {} }
@@ -10716,7 +10768,8 @@ function _maCardioTendances(data) {
   var fcW = _maSportWeekly(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy', nwEff);
   var fcFirst = fcW.find(function (x) { return x; }) || 0, fcLast = 0; for (var _fi = fcW.length - 1; _fi >= 0; _fi--) { if (fcW[_fi]) { fcLast = fcW[_fi]; break; } }
   var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / sem. · ' + nwEff + ' sem.', 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maArea(fcW.map(function (v) { return v || fcFirst; }), '#9D5FD3', 'rgba(157,95,211,.12)') + _maTrendAxis(nwEff) + _maCap('Chaque point = 1 semaine. À lire à effort comparable (RPE proche).')) : '';
-  _maSet('ma-cardio-tendances', _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + _maSec('Volume par sport', _MA_PLABEL[_maPeriode] + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff);
+  var _ctMain = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + _maSec('Volume par sport', _MA_PLABEL[_maPeriode] + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff;
+  _maSet('ma-cardio-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _ctMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
 }
 function _maCardioHistorique(data) {
   // Plus de filtre par période : N dernières sorties + « Charger plus ».
@@ -10731,7 +10784,7 @@ function _maCardioHistorique(data) {
     var tap = isHx ? ' onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="padding:11px 14px;cursor:pointer;' : ' style="padding:11px 14px;';
     return '<div class="ma-hhd"' + tap + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><span class="ma-spic" style="width:30px;height:30px;background:' + m[1] + '">' + _maSvg(m[2], 16) + '</span><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + (isHx ? '<span style="color:var(--text-subtle);margin-left:6px">›</span>' : '') + '</div>';
   }).join('');
-  _maSet('ma-cardio-historique', '<div class="ma-card">' + rows + '</div>' + _maMoreBtn('cardio', n, all.length));
+  _maSet('ma-cardio-historique', '<div class="ma-cols2"><div class="ma-colmain">' + ('<div class="ma-card">' + rows + '</div>' + _maMoreBtn('cardio', n, all.length)) + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
 }
 function _maCroise(data) {
   var r = (data.recent && data.recent[_maRecentWin(_maPeriode)]) || {};
@@ -10765,9 +10818,10 @@ function _maCroise(data) {
     + '</div>') : _maEmpty('Répartition dispo dès que tu as des séances.');
   var be = (data.bien_etre && data.bien_etre[0]) || null;
   var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
-  _maSet('ma-croise-resume', _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
+  var _xrMain = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
     + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change la répartition ci-dessous selon la période.')
-    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _MA_PLABEL[_maPeriode], 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : ''));
+    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _MA_PLABEL[_maPeriode], 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : '');
+  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
   // Tendances croisées : charge globale (muscu + cardio) + indice de forme (bien-être).
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
   var nwX = _maTrendWeeks();
@@ -10785,7 +10839,8 @@ function _maCroise(data) {
   if (beW.some(function (v) { return v > 0; })) {
     body += _maSec('Indice de forme', 'bien-être · ' + nwX + ' sem.', 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.');
   }
-  _maSet('ma-croise-tendances', _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + (body || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.')));
+  var _xtMain = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + (body || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.'));
+  _maSet('ma-croise-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _xtMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
 }
 
 // Ressenti de séance (1 Facile → 4 Très dur) : distribution + mini-timeline.

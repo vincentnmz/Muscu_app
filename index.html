@@ -993,7 +993,7 @@
       #tab-accueil #dash-steps{order:7;}
       #tab-accueil .tj-rew{order:8;}
       @media (min-width:992px){
-        #tab-accueil .tj{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start;padding:4px 0 40px;}
+        #tab-accueil .tj{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:stretch;padding:4px 0 40px;}
         /* Vraies colonnes flex ; en desktop l'ordre suit le flux DOM de chaque colonne. */
         #tab-accueil .tj-main,#tab-accueil .tj-rail{display:flex;flex-direction:column;gap:14px;min-width:0;}
         #tab-accueil .tj-main>*,#tab-accueil .tj-rail>*{order:0 !important;}
@@ -1118,11 +1118,11 @@
         <div class="nvz-ask">
           <div class="nvz-ask-hd"><span class="nvz-ask-l">N</span><div><div class="nvz-ask-ti">Demande à Novalyz</div><div class="nvz-ask-sb">Ton coach IA, branché sur tes données</div></div></div>
           <div class="nvz-ask-chips">
-            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Puis-je m'entraîner à fond aujourd'hui ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Comment mieux progresser ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Analyse ma semaine<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="nvzAskChip(this)">Puis-je m'entraîner à fond aujourd'hui ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="nvzAskChip(this)">Comment mieux progresser ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="nvzAskChip(this)">Analyse ma semaine<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
           </div>
-          <button class="nvz-ask-field" onclick="ouvrirNovalyzIA()"><span>Pose ta question…</span><span class="nvz-ask-send"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span></button>
+          <div class="nvz-ask-field"><input class="nvz-ask-inp" type="text" placeholder="Pose ta question…" onkeydown="if(event.key==='Enter')nvzAskSend(this)"><button class="nvz-ask-send" onclick="nvzAskSend(this.previousElementSibling)" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button></div>
         </div>
         </div><!-- /tj-rail -->
 
@@ -1245,7 +1245,7 @@
            dans .en-hub, dans l'ordre du DOM (identique à avant). */
         #tab-seance .en-cols, #tab-seance .en-main, #tab-seance .en-rail{ display:contents; }
         @media (min-width:992px){
-          #tab-seance .en-cols{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start; }
+          #tab-seance .en-cols{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:stretch; }
           #tab-seance .en-main, #tab-seance .en-rail{ display:flex; flex-direction:column; gap:12px; min-width:0; }
         }
       </style>
@@ -1335,11 +1335,11 @@
         <div class="nvz-ask">
           <div class="nvz-ask-hd"><span class="nvz-ask-l">N</span><div><div class="nvz-ask-ti">Demande à Novalyz</div><div class="nvz-ask-sb">Ton coach IA, branché sur tes données</div></div></div>
           <div class="nvz-ask-chips">
-            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Quelle séance faire aujourd'hui ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Mon programme est-il équilibré ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Dois-je augmenter les charges ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="nvzAskChip(this)">Quelle séance faire aujourd'hui ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="nvzAskChip(this)">Mon programme est-il équilibré ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="nvzAskChip(this)">Dois-je augmenter les charges ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
           </div>
-          <button class="nvz-ask-field" onclick="ouvrirNovalyzIA()"><span>Pose ta question…</span><span class="nvz-ask-send"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span></button>
+          <div class="nvz-ask-field"><input class="nvz-ask-inp" type="text" placeholder="Pose ta question…" onkeydown="if(event.key==='Enter')nvzAskSend(this)"><button class="nvz-ask-send" onclick="nvzAskSend(this.previousElementSibling)" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button></div>
         </div>
         </div><!-- /en-rail -->
         </div><!-- /en-cols -->
@@ -1843,7 +1843,7 @@
   #tab-historique .ma-kgrid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
   #tab-historique .ma-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
   /* Détail/Tendances : colonne principale large + rail droit (chart moins écrasé) */
-  #tab-historique .ma-cols2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;}
+  #tab-historique .ma-cols2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:stretch;}
   #tab-historique .ma-colmain, #tab-historique .ma-colrail{display:flex;flex-direction:column;gap:12px;min-width:0;}
   #tab-historique .ma-colcard{display:flex;flex-direction:column;gap:10px;min-width:0;}
   #tab-historique .ma-colcard .ma-sec{margin:0 2px;}
@@ -2328,7 +2328,7 @@
            .et-wrap et leur `order` inline reproduit la séquence d'origine. */
         #tab-etat .et-main, #tab-etat .et-rail{ display:contents; }
         @media (min-width:992px){
-          #tab-etat .et-wrap{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start; }
+          #tab-etat .et-wrap{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:stretch; }
           #tab-etat .et-main, #tab-etat .et-rail{ display:flex; flex-direction:column; gap:12px; min-width:0; }
           /* en desktop, l'ordre suit le flux DOM de chaque colonne (et non l'order mobile) */
           #tab-etat .et-main > *, #tab-etat .et-rail > *{ order:0 !important; }
@@ -2452,11 +2452,11 @@
         <div class="nvz-ask" style="order:20">
           <div class="nvz-ask-hd"><span class="nvz-ask-l">N</span><div><div class="nvz-ask-ti">Demande à Novalyz</div><div class="nvz-ask-sb">Ton coach IA, branché sur tes données</div></div></div>
           <div class="nvz-ask-chips">
-            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Suis-je en forme pour m'entraîner ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Comment améliorer ma récupération ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Mon poids évolue-t-il bien ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="nvzAskChip(this)">Suis-je en forme pour m'entraîner ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="nvzAskChip(this)">Comment améliorer ma récupération ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="nvzAskChip(this)">Mon poids évolue-t-il bien ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
           </div>
-          <button class="nvz-ask-field" onclick="ouvrirNovalyzIA()"><span>Pose ta question…</span><span class="nvz-ask-send"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span></button>
+          <div class="nvz-ask-field"><input class="nvz-ask-inp" type="text" placeholder="Pose ta question…" onkeydown="if(event.key==='Enter')nvzAskSend(this)"><button class="nvz-ask-send" onclick="nvzAskSend(this.previousElementSibling)" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button></div>
         </div>
         </div><!-- /et-rail -->
       </div>
