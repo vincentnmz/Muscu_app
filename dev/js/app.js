@@ -10334,7 +10334,7 @@ function _maMuscuResume(data) {
     +   '<div class="ma-colcard">' + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p], 'balance') + _maBalance(data)
     +     _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.') + '</div>'
     + '</div>';
-  var rail = _maSec('Records personnels') + _maRecords(data) + _maNovaAsk();
+  var rail = _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk();
   _maSet('ma-muscu-resume', '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>');
 }
 
@@ -10354,7 +10354,7 @@ function _maMuscuExercice(data) {
   _maSet('ma-muscu-detail', head + periodSel
     + '<div class="ma-cols2">'
     +   '<div class="ma-colmain">' + body + '</div>'
-    +   '<div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maNovaAsk() + '</div>'
+    +   '<div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk() + '</div>'
     + '</div>');
 }
 
@@ -10686,7 +10686,7 @@ function _maMuscuHistorique(data) {
       + dot + '<span id="ma-hs-chev-' + i + '" style="color:var(--text-subtle);margin-left:2px">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
       + '<div class="ma-hdet" id="ma-hs-' + i + '" style="display:none">' + det + '</div></div>';
   }).join('') + _maMoreBtn('muscu', n, all.length);
-  _maSet('ma-muscu-historique', '<div class="ma-cols2"><div class="ma-colmain">' + html + '</div><div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maNovaAsk() + '</div></div>');
+  _maSet('ma-muscu-historique', '<div class="ma-cols2"><div class="ma-colmain">' + html + '</div><div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
 }
 function maToggleHS(i) { var d = document.getElementById('ma-hs-' + i), c = document.getElementById('ma-hs-chev-' + i); if (d) { var open = d.style.display === 'none'; d.style.display = open ? 'flex' : 'none'; if (c) c.style.transform = open ? 'rotate(180deg)' : ''; } }
 
@@ -12742,7 +12742,14 @@ function renderEtat(data) {
         if (!isNaN(doul) && doul > 1 && be0.zone) {
           zone = '<div class="et-er"><span class="et-lab" style="font-weight:600;color:var(--text-muted);font-size:11.5px">📍 Zone : <b style="color:var(--text)">' + esc(be0.zone) + '</b></span></div>';
         }
-        elW2.innerHTML = fiabHtml + rowsHtml + zone;
+        // Date du relevé affiché : « du jour » peut en fait dater de la dernière
+        // séance renseignée → on l'indique clairement (honnêteté : pas forcément
+        // aujourd'hui). Les champs « après séance » restent vides tant qu'aucun
+        // bilan de fin de séance n'a été rempli.
+        var _beDisp = String(be0.date || '');
+        var _beM = _beDisp.match(/^(\d{4})-(\d{2})-(\d{2})/); if (_beM) _beDisp = _beM[3] + '/' + _beM[2] + '/' + _beM[1];
+        var dateHtml = _beDisp ? '<div style="padding:9px 12px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-muted)">Dernier relevé · <b style="color:var(--text)">' + esc(_beDisp) + '</b></div>' : '';
+        elW2.innerHTML = dateHtml + fiabHtml + rowsHtml + zone;
       }
     }
   } catch (e) {}
