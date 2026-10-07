@@ -10152,6 +10152,17 @@ function _maChartBlock(label, pts, unit, color, fill, axisFirst, note) {
     + '<div class="ma-axis"><span>' + axisFirst + '</span><span>cette sem.</span></div>'
     + (note ? _maCap(note) : '') + '</div>';
 }
+// Courbe hebdo nue (sans en-tête) : RICHE avec dates en bureau (_maLineRich),
+// compacte (_maArea + axe « il y a N sem. → cette sem. ») en mobile. Utilisée par
+// les graphes cardio (Par sport, Efficience) qui ont leur propre en-tête.
+function _maWeeklySvg(pts, unit, color, fill, nWeeks) {
+  if (_maIsDesktop() && pts && pts.length >= 2) {
+    var n = pts.length, dts = [], now = new Date(); now.setHours(0, 0, 0, 0);
+    for (var i = n - 1; i >= 0; i--) { var d = new Date(now); d.setDate(d.getDate() - (n - 1 - i) * 7); dts.unshift(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')); }
+    return _maLineRich(pts, dts, unit, color);
+  }
+  return _maArea(pts, color, fill) + _maTrendAxis(nWeeks || (pts ? pts.length : 0));
+}
 // Série-temporelle hebdo générique depuis un dict {isoDate: valeur} → N dernières semaines.
 function _maWeekly(dict, nWeeks, agg) {
   var now = new Date(); now.setHours(0, 0, 0, 0); var out = [];
@@ -10187,7 +10198,10 @@ function _maVolTargets() {
 }
 // Nombre de semaines des graphes de tendance, piloté par la période choisie
 // (pour que les courbes réagissent au sélecteur Semaine/Mois/3 mois…).
-var _MA_TWEEKS = { semaine: 4, mois: 8, '3mois': 13, '6mois': 26, '9mois': 39, annee: 52 };
+// Nb de semaines affichées sur les courbes de tendance, aligné sur la durée réelle
+// de la période (mois ≈ 4 sem., 3 mois ≈ 13…). « Semaine » = 2 sem. (plancher pour
+// tracer une courbe). Avant : semaine=4 (affichait un mois) / mois=8 (deux mois).
+var _MA_TWEEKS = { semaine: 2, mois: 4, '3mois': 13, '6mois': 26, '9mois': 39, annee: 52 };
 function _maTrendWeeks() { return _MA_TWEEKS[_maPeriode] || 8; }
 // Libellé de gauche d'un axe de tendance : date de début de la 1re semaine affichée.
 function _maTrendFirst(nWeeks) {
@@ -10779,7 +10793,7 @@ function _maCardioParSport(data) {
   var chartHead = '<div class="ma-ctop"><span class="ma-chip" style="cursor:pointer" onclick="maToggleMenu(\'ma-cx-metric-menu\')">' + curM[1] + ' ▾</span>'
     + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/sem.</span></span>' : '') + '</div>';
   var chartBody = hasData
-    ? (_maArea(wk, m[1], 'rgba(157,95,211,.12)') + _maTrendAxis(nwPS) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée. ' + nwPS + ' semaines (suit la période choisie) · chaque point = 1 semaine.'))
+    ? (_maWeeklySvg(wk, curM[2], m[1], 'rgba(157,95,211,.12)', nwPS) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée. ' + nwPS + ' semaines (suit la période choisie) · chaque point = 1 semaine.'))
     : '<div style="padding:20px 6px;text-align:center;color:var(--text-subtle);font-size:12.5px;line-height:1.5">Pas de donnée « ' + curM[1] + ' » pour ' + _maE(m[0]) + '.<br>Choisis une autre donnée ci-dessus.</div>';
   var chart = '<div class="ma-chart">' + chartHead + metricMenu + chartBody + '</div>';
   var lastArr = sesss.filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
@@ -10810,7 +10824,7 @@ function _maCardioTendances(data) {
   var nwEff = _maTrendWeeks();
   var fcW = _maSportWeekly(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy', nwEff);
   var fcFirst = fcW.find(function (x) { return x; }) || 0, fcLast = 0; for (var _fi = fcW.length - 1; _fi >= 0; _fi--) { if (fcW[_fi]) { fcLast = fcW[_fi]; break; } }
-  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / sem. · ' + nwEff + ' sem.', 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maArea(fcW.map(function (v) { return v || fcFirst; }), '#9D5FD3', 'rgba(157,95,211,.12)') + _maTrendAxis(nwEff) + _maCap('Chaque point = 1 semaine. À lire à effort comparable (RPE proche).')) : '';
+  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / sem. · ' + nwEff + ' sem.', 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maWeeklySvg(fcW.map(function (v) { return v || fcFirst; }), 'bpm', '#9D5FD3', 'rgba(157,95,211,.12)', nwEff) + _maCap('Chaque point = 1 semaine. À lire à effort comparable (RPE proche).') + '</div>') : '';
   var _ctMain = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + _maSec('Volume par sport', _MA_PLABEL[_maPeriode] + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff;
   _maSet('ma-cardio-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _ctMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
