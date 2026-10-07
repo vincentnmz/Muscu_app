@@ -17771,7 +17771,14 @@ async function _syncSanteMontre(H) {
   _santeSyncing = true;
   try {
     var now = new Date();
-    var start = new Date(now.getTime() - 365 * 24 * 3600 * 1000);   // large : on capte tout ce que Health Connect a
+    // Fenêtre bornée à ~45 j pour les TROIS métriques. Raison : l'agrégation par
+    // tranches « jour » des pas (Health Connect) est limitée dans le temps — sur
+    // 365 j elle échouait, donc les jours récents n'étaient JAMAIS poussés (mardi
+    // figé à 2003, mercredi absent) alors que sommeil & FC passaient. On garde la
+    // même fenêtre pour tout : ainsi saveSante (supprime-puis-réinsère par date)
+    // ne touche QUE les 45 derniers jours et n'efface aucun pas plus ancien déjà
+    // historisé.
+    var start = new Date(now.getTime() - 45 * 24 * 3600 * 1000);
     var end = new Date(now.getTime() + 24 * 3600 * 1000);
     var byDate = {};
     var ensure = function (d) { return byDate[d] || (byDate[d] = { date: d }); };
