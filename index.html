@@ -2433,23 +2433,8 @@
           <div class="et-card" id="et-wb"></div>
         </div>
 
-        </div><!-- /et-main -->
-
-        <div class="et-rail">
-        <!-- ===================== ZONE 2 · MES SUIVIS ===================== -->
-        <!-- Accès remontés aux sous-écrans (Nutrition / Objectifs / Blessures),
-             avec valeur vivante + pastille de statut. Peuplé par _etRenderSuivis(). -->
-        <div class="et-sec" style="order:7">Mes suivis</div>
-        <div class="et-card" id="et-suivis" style="order:8;overflow:hidden;"></div>
-
-        <!-- Ma montre : bandeau condensé (glance) + détails repliables (renderEtatMontre).
-             #et-montre-sec conservé (masqué) pour compat ; #et-montre = charts détaillés. -->
-        <div class="et-card" id="et-montre-mini" style="order:4;display:none;"></div>
-        <div id="et-montre-sec" style="order:5;display:none;"></div>
-        <div class="et-card" id="et-montre" style="order:6;display:none;padding:2px 15px 14px;"></div>
-
         <!-- Poids : graphe complet (déplacé d'Objectif) — 1M/3M/Tout + axes + légende -->
-        <div class="et-card" style="order:11;padding:14px 15px;">
+        <div class="et-card" style="order:14;padding:14px 15px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
             <div style="display:flex;align-items:baseline;gap:6px;">
               <span style="font-size:28px;font-weight:800;color:var(--text);" id="et-graph-poids-actuel">—</span>
@@ -2472,6 +2457,21 @@
             Poids (kg) au fil du temps · axe vertical = kg, horizontal = date · chaque point = une pesée
           </div>
         </div>
+        </div><!-- /et-main -->
+
+        <div class="et-rail">
+        <!-- ===================== ZONE 2 · MES SUIVIS ===================== -->
+        <!-- Accès remontés aux sous-écrans (Nutrition / Objectifs / Blessures),
+             avec valeur vivante + pastille de statut. Peuplé par _etRenderSuivis(). -->
+        <div class="et-sec" style="order:7">Mes suivis</div>
+        <div class="et-card" id="et-suivis" style="order:8;overflow:hidden;"></div>
+
+        <!-- Ma montre : bandeau condensé (glance) + détails repliables (renderEtatMontre).
+             #et-montre-sec conservé (masqué) pour compat ; #et-montre = charts détaillés. -->
+        <div class="et-card" id="et-montre-mini" style="order:4;display:none;"></div>
+        <div id="et-montre-sec" style="order:5;display:none;"></div>
+        <div class="et-card" id="et-montre" style="order:6;display:none;padding:2px 15px 14px;"></div>
+
         <!-- Bloc « Demande à Novalyz » (rail desktop ; masqué en mobile) -->
         <div class="nvz-ask" style="order:20">
           <div class="nvz-ask-hd"><span class="nvz-ask-l">N</span><div><div class="nvz-ask-ti">Demande à Novalyz</div><div class="nvz-ask-sb">Ton coach IA, branché sur tes données</div></div></div>
