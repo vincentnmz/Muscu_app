@@ -9975,6 +9975,43 @@ function _maSpark(pts, color) {
   var ys = pts.map(function (v) { return h - 3 - ((v - mn) / ((mx - mn) || 1)) * (h - 6); });
   return '<svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="' + xs.map(function (x, i) { return (i ? 'L' : 'M') + x.toFixed(0) + ' ' + ys[i].toFixed(0); }).join(' ') + '" stroke="' + color + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
+function _maIsDesktop() { try { return window.innerWidth >= 992; } catch (e) { return false; } }
+// Date courte JJ/MM depuis "AAAA-MM-JJ" ou "JJ/MM/AAAA".
+function _maShortDate(s) {
+  s = String(s || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) { var p = s.split('-'); return (+p[2]) + '/' + (+p[1]); }
+  var m = s.match(/^(\d{1,2})[\/](\d{1,2})/); return m ? (+m[1]) + '/' + (+m[2]) : s;
+}
+// Graphe courbe RICHE (desktop) : axes + grille + étiquettes de données + dernier
+// point mis en avant. Ratio préservé (pas de preserveAspectRatio:none) → PAS aplati.
+// Utilisé seulement en bureau ; sur mobile on garde _maArea (compact, inchangé).
+function _maLineRich(series, dates, unit, color) {
+  var n = series.length; color = color || '#1A5FFF';
+  if (n < 2) return _maArea(series, color, 'rgba(26,95,255,.12)');
+  var W = 640, H = 260, pL = 46, pR = 16, pT = 26, pB = 30;
+  var mn = Math.min.apply(null, series), mx = Math.max.apply(null, series);
+  if (mn === mx) { mn = mn - 1; mx = mx + 1; }
+  var rng = mx - mn || 1;
+  var X = function (i) { return pL + i * (W - pL - pR) / (n - 1); };
+  var Y = function (v) { return pT + (1 - (v - mn) / rng) * (H - pT - pB); };
+  var grid = '', ylab = '';
+  for (var g = 0; g <= 4; g++) {
+    var yy = pT + g * (H - pT - pB) / 4, val = mx - g * rng / 4;
+    grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
+    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="11" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
+  }
+  var line = series.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ');
+  var area = 'M' + X(0).toFixed(1) + ' ' + Y(series[0]).toFixed(1) + ' ' + series.map(function (v, i) { return 'L' + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + (H - pB) + ' L' + X(0).toFixed(1) + ' ' + (H - pB) + ' Z';
+  var step = n > 12 ? Math.ceil(n / 10) : 1, dots = '';
+  series.forEach(function (v, i) {
+    var xx = X(i), yv = Y(v), last = (i === n - 1);
+    dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yv.toFixed(1) + '" r="' + (last ? 5 : 3.4) + '" fill="' + (last ? '#00A854' : color) + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
+    if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + (Math.round(v * 10) / 10) + '</text>';
+  });
+  var xi = [0, Math.floor((n - 1) / 2), n - 1].filter(function (v, i, a) { return a.indexOf(v) === i; });
+  var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="10.5" fill="var(--text-subtle)">' + _maE(i === n - 1 ? 'Auj.' : _maShortDate(dates[i])) + '</text>'; }).join('');
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + ylab + '<path d="' + area + '" fill="' + color + '" opacity="0.08"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' + dots + xlab + '</svg>';
+}
 function _maArea(pts, color, fill) {
   if (!pts || pts.length < 2) pts = [0, 0];
   var w = 326, h = 90, xs = pts.map(function (p, i) { return 2 + i * (w - 4) / (pts.length - 1); });
@@ -10229,7 +10266,14 @@ function _maMuscuExercice(data) {
   // Par exercice / Par groupe = filtrés par période → sélecteur. Par séance = « 5 derniers + Charger plus » (pas de sélecteur).
   var periodSel = (mode === 'sea') ? '' : _maPeriodHtml();
   var body = (mode === 'grp') ? _maProgGrp(data) : (mode === 'sea') ? _maProgSea(data) : _maProgExo(data);
-  _maSet('ma-muscu-detail', head + periodSel + body + _maSec('Records personnels') + _maRecords(data));
+  // Desktop (≥992px) : graphe/exercice dans la colonne principale, Records dans le
+  // rail droit (via .ma-cols2). Mobile : .ma-cols2/.ma-col* en display:contents →
+  // ordre d'origine (body puis Records) inchangé.
+  _maSet('ma-muscu-detail', head + periodSel
+    + '<div class="ma-cols2">'
+    +   '<div class="ma-colmain">' + body + '</div>'
+    +   '<div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + '</div>'
+    + '</div>');
 }
 
 var _maExoSel = null, _maExoMetric = '1rm';
@@ -10286,7 +10330,14 @@ function _maProgExo(data) {
   var last = series[series.length - 1] || 0, first = series[0] || 0, delta = Math.round((last - first) * 10) / 10;
   var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span>';
   var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + met[2]);
-  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + met[1] + ' (' + met[2] + ')</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + last + ' ' + dspan + '</span></div>' + _maArea(series, '#1A5FFF', 'rgba(26,95,255,.12)') + '<div class="ma-axis"><span>' + pts.length + ' séance' + (pts.length > 1 ? 's' : '') + '</span><span>aujourd\'hui</span></div></div>';
+  var chartBody, legend = '';
+  if (_maIsDesktop()) {
+    chartBody = _maLineRich(series, pts.map(function (p) { return p.date; }), met[2], '#1A5FFF');
+    legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>' + met[1] + ' (' + met[2] + ')</span><span><b style="background:#00A854"></b>Dernier point</span><span class="mut">Axe vertical = ' + met[2] + ' · horizontal = date</span></div>';
+  } else {
+    chartBody = _maArea(series, '#1A5FFF', 'rgba(26,95,255,.12)') + '<div class="ma-axis"><span>' + pts.length + ' séance' + (pts.length > 1 ? 's' : '') + '</span><span>aujourd\'hui</span></div>';
+  }
+  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + met[1] + ' (' + met[2] + ')</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + last + ' ' + dspan + '</span></div>' + chartBody + legend + '</div>';
   var best = pts.reduce(function (a, b) { return (b.charge || 0) > (a.charge || 0) ? b : a; }, pts[0]);
   var recCharge = (data.global && data.global.records_par_exo && data.global.records_par_exo[sel] && data.global.records_par_exo[sel].charge) || best.charge || 0;
   var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">1RM estimé</div></div><div class="c"><div class="v">' + (best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + dstat + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + recCharge + ' kg</div><div class="u">record charge</div></div></div>';
