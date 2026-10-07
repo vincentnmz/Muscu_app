@@ -176,9 +176,12 @@ body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coac
  * le point d'entrée IA sur petit écran).
  * ============================================================ */
 .nvz-ask{ display:none; }
-@media (min-width:992px){ body.has-bottom-nav .nvz-ask{ display:block; } }
+/* Desktop : panneau d'assistant qui REMPLIT le rail sur toute la hauteur
+   (flex:1 posé par chaque rail ci-dessous), en-tête + suggestions en haut,
+   champ de saisie ancré en bas (margin-top:auto). */
+@media (min-width:992px){ body.has-bottom-nav .nvz-ask{ display:flex; flex-direction:column; } }
 .nvz-ask{ background:linear-gradient(135deg,var(--accent),var(--accent-strong)); color:#fff;
-          border:none; border-radius:18px; padding:16px; box-shadow:0 10px 26px rgba(26,95,255,.30); }
+          border:none; border-radius:18px; padding:16px; box-shadow:0 10px 26px rgba(26,95,255,.30); min-height:0; }
 .nvz-ask-hd{ display:flex; align-items:center; gap:11px; }
 .nvz-ask-l{ width:38px; height:38px; border-radius:11px; background:rgba(255,255,255,.18);
             display:grid; place-items:center; font-family:'Michroma','Helvetica Neue',Arial,sans-serif; font-size:13px; flex:none; }
@@ -190,8 +193,21 @@ body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coac
                border-radius:12px; padding:10px 13px; font:inherit; font-size:12.5px; font-weight:600; color:#fff; cursor:pointer; }
 .nvz-ask-chip svg{ width:15px; height:15px; opacity:.85; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
 .nvz-ask-chip:hover{ background:rgba(255,255,255,.24); }
+/* Champ de saisie : vrai <input> (on écrit directement). Ancré en bas du panneau. */
 .nvz-ask-field{ display:flex; align-items:center; gap:9px; margin-top:14px; width:100%;
-                background:#fff; border:none; border-radius:999px; padding:5px 5px 5px 15px; cursor:pointer; }
-.nvz-ask-field span:first-child{ flex:1; text-align:left; font:inherit; font-size:13px; color:#8A97BC; }
-.nvz-ask-send{ width:38px; height:38px; border-radius:999px; background:var(--accent); color:#fff; display:grid; place-items:center; flex:none; }
+                background:#fff; border:none; border-radius:999px; padding:5px 5px 5px 15px; }
+.nvz-ask-inp{ flex:1; min-width:0; border:none; outline:none; background:transparent; font:inherit; font-size:13px; color:#13203f; padding:7px 0; }
+.nvz-ask-inp::placeholder{ color:#8A97BC; }
+.nvz-ask-send{ width:38px; height:38px; border-radius:999px; background:var(--accent); color:#fff; display:grid; place-items:center; flex:none; border:none; cursor:pointer; padding:0; }
 .nvz-ask-send svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+/* Le panneau Novalyz remplit la hauteur du rail (colonne de droite « tout le long »). */
+@media (min-width:992px){
+  body.has-bottom-nav .tj-rail .nvz-ask,
+  body.has-bottom-nav .en-rail .nvz-ask,
+  body.has-bottom-nav .et-rail .nvz-ask,
+  body.has-bottom-nav .ma-colrail .nvz-ask{ flex:1 1 auto; }
+  body.has-bottom-nav .tj-rail .nvz-ask .nvz-ask-field,
+  body.has-bottom-nav .en-rail .nvz-ask .nvz-ask-field,
+  body.has-bottom-nav .et-rail .nvz-ask .nvz-ask-field,
+  body.has-bottom-nav .ma-colrail .nvz-ask .nvz-ask-field{ margin-top:auto; }
+}
