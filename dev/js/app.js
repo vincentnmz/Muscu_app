@@ -9867,8 +9867,8 @@ function maSetDisc(d) {
   try { window.scrollTo(0, 0); } catch (e) {}
 }
 // Période par défaut selon la vue : Résumé = instantané hebdo ; Par exercice/sport
-// et Tendances = 3 mois (sinon 1-2 points par exo → aucune évolution visible).
-function _maDefaultPeriode(t) { return (t === 'detail' || t === 'tendances') ? '3mois' : 'semaine'; }
+// et Tendances = sur le mois (dates à chaque semaine, évolution lisible).
+function _maDefaultPeriode(t) { return (t === 'detail' || t === 'tendances') ? 'mois' : 'semaine'; }
 function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; if (!_maPeriodeTouched) _maPeriode = _maDefaultPeriode(t); _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
 // Réinitialise le curseur de navigation à Muscu · Résumé · Semaine.
 // Appelé à chaque ouverture de l'écran Analyses (et donc après changement de compte).
@@ -10030,8 +10030,12 @@ function _maLineRich(series, dates, unit, color) {
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yv.toFixed(1) + '" r="' + (last ? 5 : 3.4) + '" fill="' + (last ? '#00A854' : color) + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
     if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + (Math.round(v * 10) / 10) + (last && unit ? ' ' + unit : '') + '</text>';
   });
-  var xi = [0, Math.floor((n - 1) / 2), n - 1].filter(function (v, i, a) { return a.indexOf(v) === i; });
-  var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="10.5" fill="var(--text-subtle)">' + _maE(i === n - 1 ? 'Auj.' : _maShortDate(dates[i])) + '</text>'; }).join('');
+  // Une étiquette de date à CHAQUE point tant que ça reste lisible (≤ 9), sinon on
+  // éclaircit. On affiche la vraie date partout (pas « Auj. ») — demande porteur.
+  var xstep = n <= 9 ? 1 : Math.ceil(n / 8), xi = [];
+  for (var _xi = 0; _xi < n; _xi += xstep) xi.push(_xi);
+  if (xi[xi.length - 1] !== n - 1) xi.push(n - 1);
+  var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="10" fill="var(--text-subtle)">' + _maE(_maShortDate(dates[i])) + '</text>'; }).join('');
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + ylab + '<path d="' + area + '" fill="' + color + '" opacity="0.08"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' + dots + xlab + '</svg>';
 }
 function _maArea(pts, color, fill) {
@@ -10403,7 +10407,7 @@ function _maProgExo(data) {
   var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + prog[sel].length + ' séance' + (prog[sel].length > 1 ? 's' : '') + ' suivie' + (prog[sel].length > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
   // Charge en premier (c'est la valeur la plus parlante au quotidien) ; 1RM et
   // Répétitions ensuite. Onglets soulignés (≠ pastilles pleines de la période).
-  var MET = [['charge', 'Charge max', 'kg'], ['1rm', '1RM estimé', 'kg'], ['reps', 'Répétitions', 'reps']];
+  var MET = [['charge', 'Charge max', 'kg'], ['reps', 'Répétitions', 'reps'], ['1rm', '1RM estimé', 'kg']];
   var met = MET.filter(function (x) { return x[0] === _maExoMetric; })[0] || MET[0];
   var seg = '<div class="ma-mtab-wrap"><span class="ma-mtab-lbl">Afficher</span><div class="ma-mtab">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>';
   var series = pts.map(function (p) { return met[0] === '1rm' ? _maE1RM(p) : met[0] === 'charge' ? (p.charge || 0) : (p.reps || 0); });
