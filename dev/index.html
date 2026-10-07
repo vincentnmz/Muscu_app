@@ -993,7 +993,7 @@
       #tab-accueil #dash-steps{order:7;}
       #tab-accueil .tj-rew{order:8;}
       @media (min-width:992px){
-        #tab-accueil .tj{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:stretch;padding:4px 0 40px;}
+        #tab-accueil .tj{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start;padding:4px 0 40px;}
         /* Vraies colonnes flex ; en desktop l'ordre suit le flux DOM de chaque colonne. */
         #tab-accueil .tj-main,#tab-accueil .tj-rail{display:flex;flex-direction:column;gap:14px;min-width:0;}
         #tab-accueil .tj-main>*,#tab-accueil .tj-rail>*{order:0 !important;}
@@ -1111,6 +1111,11 @@
           <div class="tj-brow"><span class="k">Ton point du jour</span><span class="u" onclick="ouvrirPointDuJour()">Mettre à jour ›</span></div>
           <div class="tj-bgrid" id="tj-bgrid"></div>
         </div>
+
+        <!-- Ma forme en un coup d'œil (rail BUREAU uniquement, voir .rail-only) :
+             disponibilité / récup / ACWR / sommeil montre — rempli par
+             renderTjFormeRail() depuis le moteur. Masqué si aucune donnée. -->
+        <div class="tj-card tj-reveal rail-only" id="tj-forme-rail" style="display:none;padding:14px 16px;"></div>
 
         <!-- Bloc « Demande à Novalyz » — rail DESKTOP (remplace la bulle flottante
              en bureau). Masqué en mobile (desktop-only, voir .nvz-ask dans
@@ -1245,7 +1250,7 @@
            dans .en-hub, dans l'ordre du DOM (identique à avant). */
         #tab-seance .en-cols, #tab-seance .en-main, #tab-seance .en-rail{ display:contents; }
         @media (min-width:992px){
-          #tab-seance .en-cols{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:stretch; }
+          #tab-seance .en-cols{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start; }
           #tab-seance .en-main, #tab-seance .en-rail{ display:flex; flex-direction:column; gap:12px; min-width:0; }
         }
       </style>
@@ -1843,7 +1848,7 @@
   #tab-historique .ma-kgrid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
   #tab-historique .ma-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
   /* Détail/Tendances : colonne principale large + rail droit (chart moins écrasé) */
-  #tab-historique .ma-cols2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:stretch;}
+  #tab-historique .ma-cols2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;}
   #tab-historique .ma-colmain, #tab-historique .ma-colrail{display:flex;flex-direction:column;gap:12px;min-width:0;}
   #tab-historique .ma-colcard{display:flex;flex-direction:column;gap:10px;min-width:0;}
   #tab-historique .ma-colcard .ma-sec{margin:0 2px;}
@@ -2328,7 +2333,7 @@
            .et-wrap et leur `order` inline reproduit la séquence d'origine. */
         #tab-etat .et-main, #tab-etat .et-rail{ display:contents; }
         @media (min-width:992px){
-          #tab-etat .et-wrap{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:stretch; }
+          #tab-etat .et-wrap{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start; }
           #tab-etat .et-main, #tab-etat .et-rail{ display:flex; flex-direction:column; gap:12px; min-width:0; }
           /* en desktop, l'ordre suit le flux DOM de chaque colonne (et non l'order mobile) */
           #tab-etat .et-main > *, #tab-etat .et-rail > *{ order:0 !important; }
