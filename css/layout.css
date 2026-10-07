@@ -217,3 +217,15 @@ body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coac
 .rail-row:first-of-type{ border-top:none; }
 .rail-row .rk{ color:var(--text-muted); font-weight:600; }
 .rail-row .rv{ font-weight:800; color:var(--text); }
+
+/* Rails COLLANTS en bureau : la colonne de droite reste visible pendant qu'on
+   fait défiler le contenu principal (plus de blocs qui descendent/remontent).
+   align-self:start pour sortir du stretch de grille et coller en haut. */
+@media (min-width:992px){
+  body.has-bottom-nav .tj-rail,
+  body.has-bottom-nav .en-rail,
+  body.has-bottom-nav .et-rail,
+  body.has-bottom-nav .ma-colrail{
+    position:sticky; top:16px; align-self:start; max-height:calc(100vh - 32px); overflow:auto;
+  }
+}
