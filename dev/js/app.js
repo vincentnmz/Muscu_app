@@ -17239,11 +17239,34 @@ function _dsPick(pfx, i) {
   el.innerHTML = '<b>' + escapeHtml(b.full || b.label) + '</b> · ' + Math.round(b.value).toLocaleString('fr-FR') + ' pas';
 }
 
+// Fallback WEB (hors app native) : affiche les PAS depuis l'historique serveur
+// (sante_historique, historisé par l'app native via saveSante) au lieu du live
+// Health Connect, inexistant en navigateur. Rend un mini-graphe (S/M/A) via
+// renderSanteChart(). Renvoie true si des pas ont été rendus, false sinon (masqué).
+function _renderPasWeb(hostId, pfx) {
+  var el = document.getElementById(hostId); if (!el) return false;
+  var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
+  var hist = (data && data.sante_historique) || [];
+  var has = hist.some(function (x) { return x && x.pas != null && !isNaN(Number(x.pas)) && Number(x.pas) > 0; });
+  if (!has) { el.style.display = 'none'; return false; }
+  el.style.display = '';
+  el.classList.add('in');   // #dash-steps a la classe tj-reveal (opacity:0) → forcer l'affichage
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">'
+    + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;flex:none;font-size:16px;">👣</span>'
+    + '<span style="font-weight:800;font-size:13.5px;color:var(--text);">Mes pas</span></div>'
+    + '<div id="' + pfx + '-head"></div><div id="' + pfx + '-body"></div>';
+  try { renderSanteChart(pfx); } catch (e) {}
+  return true;
+}
+
 async function renderDashSteps(attempt) {
   attempt = attempt || 0;
   var el = document.getElementById('dash-steps'); if (!el) return;
-  var H = _hcPlugin();
   var native = (typeof _estAppNative === 'function' && _estAppNative());
+  // WEB (navigateur) : pas de Health Connect → on affiche les pas historisés
+  // côté serveur (sante_historique) plutôt que de masquer le bloc.
+  if (!native) { _renderPasWeb('dash-steps', 'dspas'); return; }
+  var H = _hcPlugin();
   // Au démarrage À FROID, le plugin natif Health Connect (Capacitor.Plugins) et
   // la façade NovalyzPlatform peuvent ne pas être encore prêts au moment où le
   // dashboard se rend → sans réessai, le bloc ne réapparaîtrait qu'au prochain
@@ -17293,7 +17316,13 @@ async function renderEtatMontre(attempt) {
   var hide = function () { el.style.display = 'none'; if (sec) sec.style.display = 'none'; if (mini) mini.style.display = 'none'; };
   var H = _hcPlugin();
   var native = (typeof _estAppNative === 'function' && _estAppNative());
-  if (!native) { hide(); return; }             // la montre n'existe que sur l'app Android
+  if (!native) {
+    // WEB : la montre live n'existe pas, mais on affiche les pas historisés côté
+    // serveur dans le bandeau condensé (#et-montre-mini). Détails live masqués.
+    el.style.display = 'none'; if (sec) sec.style.display = 'none';
+    if (mini && !_renderPasWeb('et-montre-mini', 'etpas')) mini.style.display = 'none';
+    return;
+  }
   if (!H) { if (attempt < 8) setTimeout(function () { renderEtatMontre(attempt + 1); }, 600); else hide(); return; }
   if (!_hcWarmed) {
     try { var avh = await H.isHealthAvailable(); if (avh && avh.available) { _hcWarmed = true; try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {} } } catch (e) {}
@@ -17432,7 +17461,12 @@ var _SA_CFG = {
   nutkcal: { metric: 'kcal', kind: 'kcal', src: 'nutri_historique', c1: '#F59E0B', c2: '#d97706' },
   nutprot: { metric: 'prot', kind: 'g', src: 'nutri_historique', c1: '#10B981', c2: '#059669' },
   nutgluc: { metric: 'gluc', kind: 'g', src: 'nutri_historique', c1: '#3B82F6', c2: '#1d4ed8' },
-  nutlip: { metric: 'lip', kind: 'g', src: 'nutri_historique', c1: '#A855F7', c2: '#7e22ce' }
+  nutlip: { metric: 'lip', kind: 'g', src: 'nutri_historique', c1: '#A855F7', c2: '#7e22ce' },
+  // Pas (source sante_historique) : utilisé par le fallback WEB (hors app native),
+  // où le live Health Connect n'existe pas. Deux préfixes = états de nav séparés
+  // pour l'accueil (dspas) et l'écran Forme (etpas).
+  dspas: { metric: 'pas', kind: 'pas', c1: '#00A854', c2: '#059669' },
+  etpas: { metric: 'pas', kind: 'pas', c1: '#00A854', c2: '#059669' }
 };
 function _saSt(p) { return _saState[p] || (_saState[p] = { gran: 'S', offset: 0, touchX: null }); }
 function _saSetGran(p, g) { var s = _saSt(p); s.gran = g; s.offset = 0; renderSanteChart(p); }
