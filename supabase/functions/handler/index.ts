@@ -3873,7 +3873,6 @@ async function handleSaveSante(body: any): Promise<Response> {
   const dates = Array.from(new Set(entries.map((e: any) => normDate(e.date)).filter(Boolean)))
   if (!dates.length) return jsonResp({ success: true, saved: 0 })
   const sids = dates.map((d: string) => `sante_${d.replace(/-/g, '')}`)
-  try { await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).in('seance_id', sids) } catch (_) {}
   const src = String(body.source || 'health_connect')
   const rows: any[] = []
   for (const e of entries) {
@@ -3886,6 +3885,14 @@ async function handleSaveSante(body: any): Promise<Response> {
     push('sommeil_min', e.sommeil_min, 'min')
     push('fc_repos', e.fc_repos, 'bpm')
     push('pas', e.pas, 'pas')
+  }
+  // Supprime-puis-réinsère UNIQUEMENT les clés réellement fournies (idempotent par
+  // métrique). IMPORTANT : si un lot n'apporte pas les pas (ex. la requête pas de
+  // Health Connect a échoué), on ne doit PAS effacer les pas déjà stockés de ces
+  // jours — sinon chaque synchro « sommeil+FC seuls » viderait l'historique des pas.
+  const clesPresent = Array.from(new Set(rows.map((r: any) => r.cle)))
+  for (const cle of clesPresent) {
+    try { await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('cle', cle).in('seance_id', sids) } catch (_) {}
   }
   if (rows.length) {
     const { error } = await sb().from('indicateurs').insert(rows)
