@@ -10000,13 +10000,15 @@ function _maLineRich(series, dates, unit, color) {
     grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
     ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="11" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
   }
+  // Unité de l'axe Y (ex. « kg ») en tête, pour lever toute ambiguïté.
+  if (unit) ylab += '<text x="' + (pL - 7) + '" y="' + (pT - 9) + '" text-anchor="end" font-size="10" font-weight="800" fill="var(--text-muted)">' + unit + '</text>';
   var line = series.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ');
   var area = 'M' + X(0).toFixed(1) + ' ' + Y(series[0]).toFixed(1) + ' ' + series.map(function (v, i) { return 'L' + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + (H - pB) + ' L' + X(0).toFixed(1) + ' ' + (H - pB) + ' Z';
   var step = n > 12 ? Math.ceil(n / 10) : 1, dots = '';
   series.forEach(function (v, i) {
     var xx = X(i), yv = Y(v), last = (i === n - 1);
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yv.toFixed(1) + '" r="' + (last ? 5 : 3.4) + '" fill="' + (last ? '#00A854' : color) + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
-    if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + (Math.round(v * 10) / 10) + '</text>';
+    if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + (Math.round(v * 10) / 10) + (last && unit ? ' ' + unit : '') + '</text>';
   });
   var xi = [0, Math.floor((n - 1) / 2), n - 1].filter(function (v, i, a) { return a.indexOf(v) === i; });
   var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="10.5" fill="var(--text-subtle)">' + _maE(i === n - 1 ? 'Auj.' : _maShortDate(dates[i])) + '</text>'; }).join('');
