@@ -142,6 +142,18 @@ body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coac
   body.has-bottom-nav #main-container {
     width:auto; max-width:1500px; margin:0 auto 0 248px; padding:26px 34px 48px;
   }
-  /* FAB « Demande à Novalyz » : plus de bottom-nav → on la remonte */
-  body.has-bottom-nav #tab-accueil .tj-fabwrap { bottom:28px; right:28px; }
+  /* Bulle « Demande à Novalyz » (élément global #fab-novalyz) : plus de
+     bottom-nav en bureau → on la cale en bas à droite de la zone de contenu. */
+  body.has-bottom-nav #fab-novalyz { bottom:28px !important; right:28px !important; }
+
+  /* Sous-écrans plein écran (Objectif / Conversation / Blessures / Nutrition) :
+     en mobile ils sont centrés sur tout l'écran (left:50% + translateX). En
+     bureau ils passaient SOUS la sidebar fixe → on les cale à droite d'elle
+     (de 248px au bord droit), sans translation ni centrage viewport. */
+  body.has-bottom-nav #tab-objectif.tab-content,
+  body.has-bottom-nav #tab-conseils.tab-content,
+  body.has-bottom-nav #tab-blessures.tab-content,
+  body.has-bottom-nav #tab-nutrition.tab-content {
+    left:248px; right:0; width:auto; max-width:none; transform:none; bottom:0;
+  }
 }

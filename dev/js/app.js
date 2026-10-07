@@ -7548,7 +7548,11 @@ function _majFabNovalyz(tab) {
   var solo = !_athleteAUnCoach();
   var ecranCache = (tab === 'conseils' || tab === 'morpho');
   var saisieActive = document.body.classList.contains('seance-active');
-  fab.style.display = (solo && !ecranCache && !saisieActive) ? 'flex' : 'none';
+  // Bulle visible : pour l'athlète solo (comme avant) ET pour tous en BUREAU
+  // (≥992px), où la bulle doit être présente sur chaque écran sauf conversation.
+  // Mobile inchangé : un athlète AVEC coach n'y voit toujours pas la bulle.
+  var desktop = (typeof window !== 'undefined' && window.innerWidth >= 992);
+  fab.style.display = ((solo || desktop) && !ecranCache && !saisieActive) ? 'flex' : 'none';
 }
 
 function _cvShow(view) {
