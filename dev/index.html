@@ -1330,6 +1330,17 @@
             <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--accent);border-radius:3px;"></div><span style="font-size:10px;color:var(--text-muted);">Aujourd'hui</span></div>
           </div>
         </div>
+
+        <!-- Bloc « Demande à Novalyz » (rail desktop ; masqué en mobile) -->
+        <div class="nvz-ask">
+          <div class="nvz-ask-hd"><span class="nvz-ask-l">N</span><div><div class="nvz-ask-ti">Demande à Novalyz</div><div class="nvz-ask-sb">Ton coach IA, branché sur tes données</div></div></div>
+          <div class="nvz-ask-chips">
+            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Quelle séance faire aujourd'hui ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Mon programme est-il équilibré ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Dois-je augmenter les charges ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+          </div>
+          <button class="nvz-ask-field" onclick="ouvrirNovalyzIA()"><span>Pose ta question…</span><span class="nvz-ask-send"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span></button>
+        </div>
         </div><!-- /en-rail -->
         </div><!-- /en-cols -->
       </div><!-- /en-hub -->
@@ -2435,6 +2446,17 @@
           <!-- Bien-être du jour : bien_etre[0] (5 dimensions) -->
           <div class="et-sec">Bien-être du jour</div>
           <div class="et-card" id="et-wb"></div>
+        </div>
+
+        <!-- Bloc « Demande à Novalyz » (rail desktop ; masqué en mobile) -->
+        <div class="nvz-ask" style="order:20">
+          <div class="nvz-ask-hd"><span class="nvz-ask-l">N</span><div><div class="nvz-ask-ti">Demande à Novalyz</div><div class="nvz-ask-sb">Ton coach IA, branché sur tes données</div></div></div>
+          <div class="nvz-ask-chips">
+            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Suis-je en forme pour m'entraîner ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Comment améliorer ma récupération ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button class="nvz-ask-chip" onclick="ouvrirNovalyzIA()">Mon poids évolue-t-il bien ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+          </div>
+          <button class="nvz-ask-field" onclick="ouvrirNovalyzIA()"><span>Pose ta question…</span><span class="nvz-ask-send"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span></button>
         </div>
         </div><!-- /et-rail -->
       </div>
