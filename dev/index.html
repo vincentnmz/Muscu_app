@@ -1815,7 +1815,7 @@
 #tab-historique .ma-tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
 #tab-historique .ma-tabs button.on.cx{color:#9D5FD3;}
 #tab-historique .ma-tabs button.on.cr{color:#931F1D;}
-#tab-historique .ma-period{display:flex;gap:4px;background:var(--surface2);border-radius:11px;padding:4px;}
+#tab-historique .ma-period{display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:4px;}
 #tab-historique .ma-period-wrap{margin:2px 0 12px;}
 /* Petit intitulé pour lever l'ambiguïté avec le sélecteur de métrique. */
 #tab-historique .ma-period-wrap::before{content:"Période";display:block;font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text-subtle);margin:0 2px 5px;}
@@ -1823,9 +1823,11 @@
 #tab-historique .ma-pmenu div{padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);}
 #tab-historique .ma-pmenu div + div{border-top:1px solid var(--border);}
 #tab-historique .ma-period button{flex:1;border:none;background:transparent;font-family:inherit;font-weight:800;font-size:12px;color:var(--text-muted);padding:7px 0;border-radius:8px;cursor:pointer;}
-#tab-historique .ma-period button.on{background:var(--accent);color:#fff;}
+/* Actif = pastille BLANCHE surélevée + texte accent (style « segmented »),
+   volontairement différent du bleu plein des onglets Par exercice/groupe/séance. */
+#tab-historique .ma-period button.on{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(7,11,20,.13);}
 #tab-historique .ma-period button.plus{flex:0 0 auto;min-width:40px;padding:7px 10px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);white-space:nowrap;}
-#tab-historique .ma-period button.plus.on{background:var(--accent);color:#fff;}
+#tab-historique .ma-period button.plus.on{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(7,11,20,.13);}
 /* Sélecteur de MÉTRIQUE (Charge / 1RM / Volume) : onglets SOULIGNÉS, volontairement
    différents des pastilles pleines de la période (pour ne plus les confondre). */
 #tab-historique .ma-mtab-wrap{margin:6px 0 2px;}

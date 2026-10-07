@@ -9860,20 +9860,23 @@ function maSetDisc(d) {
   _maDisc = (['muscu', 'cardio', 'croise'].indexOf(d) >= 0) ? d : 'muscu';
   // Changement de discipline = on repart du début : Résumé · Semaine, sous-vues et
   // compteurs « Charger plus » réinitialisés (demande porteur : cohérent partout).
-  _maTab = 'resume'; _maPeriode = 'semaine'; _maProgMode = 'exo';
+  _maTab = 'resume'; _maPeriodeTouched = false; _maPeriode = _maDefaultPeriode('resume'); _maProgMode = 'exo';
   _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
   _maApply();
   try { maRenderData(); } catch (e) {}
   try { window.scrollTo(0, 0); } catch (e) {}
 }
-function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
+// Période par défaut selon la vue : Résumé = instantané hebdo ; Par exercice/sport
+// et Tendances = 3 mois (sinon 1-2 points par exo → aucune évolution visible).
+function _maDefaultPeriode(t) { return (t === 'detail' || t === 'tendances') ? '3mois' : 'semaine'; }
+function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; if (!_maPeriodeTouched) _maPeriode = _maDefaultPeriode(t); _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
 // Réinitialise le curseur de navigation à Muscu · Résumé · Semaine.
 // Appelé à chaque ouverture de l'écran Analyses (et donc après changement de compte).
 function maResetNav() {
   // À l'ouverture de Mes Analyses : on repart du début (Muscu · Résumé · Semaine),
   // sous-vue « Par exercice » réinitialisée, compteurs « Charger plus » à 5, et on
   // ré-applique visuellement (sinon l'ancien sous-onglet/période restait affiché).
-  _maDisc = 'muscu'; _maTab = 'resume'; _maPeriode = 'semaine';
+  _maDisc = 'muscu'; _maTab = 'resume'; _maPeriodeTouched = false; _maPeriode = _maDefaultPeriode('resume');
   _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
   try { _maProgMode = 'exo'; } catch (e) {}
   try { _maApply(); } catch (e) {}
@@ -9884,7 +9887,7 @@ function maResetNav() {
 // du graphique en Tendances) via _maPeriodHtml() — plus de barre partagée en haut.
 function maSetPeriode(p, btn) {
   if (_MA_PERIODS.indexOf(p) < 0) return;
-  _maPeriode = p;
+  _maPeriode = p; _maPeriodeTouched = true;
   // Pas de scroll : on garde la position pour VOIR le graphique/chiffres se mettre
   // à jour juste sous le sélecteur.
   try { maRenderData(); } catch (e) {}
@@ -9946,6 +9949,7 @@ function _maApply() {
 
 // ═══════════════ Écran Analyses : câblage données réelles ═══════════════
 var _maPeriode = 'semaine';   // semaine|mois|3mois|6mois|9mois|annee
+var _maPeriodeTouched = false;   // l'utilisateur a-t-il choisi la période à la main ?
 var _MA_WIN = { semaine: 'j7', mois: 'j28', '3mois': 'j90', '6mois': 'j180', '9mois': 'j270', annee: 'j365' };
 var _MA_DAYS = { semaine: 7, mois: 28, '3mois': 90, '6mois': 180, '9mois': 270, annee: 365 };
 var _MA_PLABEL = { semaine: 'cette semaine', mois: 'ce mois-ci', '3mois': 'ces 3 mois', '6mois': 'ces 6 mois', '9mois': 'ces 9 mois', annee: 'cette année' };
