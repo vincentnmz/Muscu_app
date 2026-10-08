@@ -6464,6 +6464,36 @@ var _progTab = 0;          // onglet jour actif (mobile)
 var _progView = 'semaine'; // 'semaine' (colonnes) | 'liste' (pile) — desktop
 function progSetTab(i) { _progTab = i; renderProgrammeCoach(); }
 function progSetView(v) { _progView = v; renderProgrammeCoach(); }
+// Déplace un exercice vers un autre jour (change seance_id). Le backend
+// handleSaveProgrammeLigne écrit seance_id dans le patch quand row_index est
+// fourni → pas de nouvelle route. On renvoie TOUS les champs de la ligne pour
+// ne rien écraser, et on hérite du jour conseillé de la séance de destination.
+async function cdDeplacerLigne(rowIndex, targetSeanceId) {
+  var l = (cdProgrammeLignes || []).find(function (x) { return String(x.row_index) === String(rowIndex) || String(x.id) === String(rowIndex); });
+  if (!l || !targetSeanceId) return;
+  if (String(l.seance_id) === String(targetSeanceId)) return;
+  var tgtJour = null;
+  (cdProgrammeLignes || []).forEach(function (x) { if (String(x.seance_id) === String(targetSeanceId) && x.jour != null) tgtJour = x.jour; });
+  var body = {
+    action: 'saveProgrammeLigne', row_index: l.row_index, athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(),
+    seance_id: targetSeanceId, exercice: l.exercice,
+    series_prevues: l.series_prevues, reps_mini: l.reps_mini, reps_max: l.reps_max, repos_sec: l.repos_sec,
+    groupe_id: l.groupe_id || '', jour: (tgtJour != null ? tgtJour : ''),
+    charge_pct_1rm: (l.charge_pct_1rm != null ? l.charge_pct_1rm : ''), rpe_cible: (l.rpe_cible != null ? l.rpe_cible : ''),
+    type: l.type || 'muscu', cardio_cible: (l.cardio_cible != null ? l.cardio_cible : ''), cardio_unite: l.cardio_unite || ''
+  };
+  try { l.seance_id = targetSeanceId; if (tgtJour != null) l.jour = tgtJour; } catch (e) {}
+  renderProgrammeCoach();   // retour visuel immédiat
+  try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }); } catch (e) {}
+  chargerProgrammeCoach();
+}
+// Glisser-déposer (desktop) entre colonnes-jours.
+var _progDragRow = null;
+function progDragStart(e, row) { _progDragRow = row; try { e.dataTransfer.setData('text/plain', String(row)); e.dataTransfer.effectAllowed = 'move'; } catch (_) {} }
+function progDragOver(e) { e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (_) {} var c = e.currentTarget; if (c && c.classList) c.classList.add('prog-col-drop'); }
+function progDragLeave(e) { var c = e.currentTarget; if (c && c.classList) c.classList.remove('prog-col-drop'); }
+function progDrop(e, seanceId) { e.preventDefault(); var c = e.currentTarget; if (c && c.classList) c.classList.remove('prog-col-drop'); var row = _progDragRow; _progDragRow = null; if (row != null) cdDeplacerLigne(row, seanceId); }
+
 // Palette par jour (séparation visuelle des colonnes) + couleur par groupe musculaire.
 var _PROG_DAYCOLS = ['#1A5FFF', '#7C5CFF', '#00A854', '#E07800', '#EC4899', '#0EA5A3', '#F59F00'];
 function _progDayCol(si) { return _PROG_DAYCOLS[si % _PROG_DAYCOLS.length]; }
@@ -6631,28 +6661,37 @@ function renderProgrammeCoach() {
         + (l.type === 'cardio' ? champsExoCardio(l) : champsExo(l, seanceId, extraBtn)) + (extraSel || '') + '</div>';
     };
     var statBox = function (v, lab, tone) { return '<div class="prog-sb prog-sb-' + tone + '"><div class="prog-sb-v">' + v + '</div><div class="prog-sb-l">' + lab + '</div></div>'; };
+    var gripSvg = '<span class="prog-grip" title="Glisser vers un autre jour"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg></span>';
+    var moveSel = function (l, seanceId) {
+      var others = ordreE.filter(function (s) { return String(s) !== String(seanceId); });
+      if (!others.length) return '';
+      return '<select class="prog-move-sel" onchange="if(this.value){cdDeplacerLigne(' + l.row_index + ',this.value);}" title="Déplacer vers un autre jour"><option value="">↕ Déplacer vers…</option>'
+        + others.map(function (s) { return '<option value="' + escapeHtml(String(s)).replace(/"/g, '&quot;') + '">' + escapeHtml(String(s)) + '</option>'; }).join('') + '</select>';
+    };
     var carteMuscu = function (l, seanceId) {
       var mus = muscleDe(l.exercice);
       var gcol = _progMuscleCol(mus);
       var reps = (l.reps_mini && l.reps_max) ? (String(l.reps_mini) === String(l.reps_max) ? String(l.reps_mini) : (l.reps_mini + '–' + l.reps_max)) : (l.reps_mini || l.reps_max || '–');
       var charge = (l.charge_pct_1rm != null && l.charge_pct_1rm !== '') ? (l.charge_pct_1rm + '%') : '–';
       var repos = (l.repos_sec != null && l.repos_sec !== '') ? (l.repos_sec + 's') : '–';
-      return '<div class="prog-exc" style="border-left:4px solid ' + gcol + '">'
-        + '<div class="prog-exc-top" onclick="cdToggleExo(' + l.row_index + ')">'
-        +   '<div class="prog-exc-nm"><div class="a">' + l.exercice + '</div>' + (mus ? '<span class="prog-exc-tag" style="color:' + gcol + ';background:' + gcol + '1f">' + mus + '</span>' : '') + '</div>'
-        +   '<span class="prog-exc-pen">✎</span>'
+      return '<div class="prog-exc" draggable="true" ondragstart="progDragStart(event,' + l.row_index + ')" style="border-left:4px solid ' + gcol + '">'
+        + '<div class="prog-exc-top">'
+        +   gripSvg
+        +   '<div class="prog-exc-nm" onclick="cdToggleExo(' + l.row_index + ')"><div class="a">' + l.exercice + '</div>' + (mus ? '<span class="prog-exc-tag" style="color:' + gcol + ';background:' + gcol + '1f">' + mus + '</span>' : '') + '</div>'
+        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')">✎</span>'
         + '</div>'
         + '<div class="prog-sets">' + statBox(l.series_prevues || '–', 'Séries', 'ser') + statBox(reps, 'Reps', 'rep') + statBox(charge, 'Charge', 'chg') + statBox(repos, 'Repos', 'rst') + '</div>'
-        + blocEditE(l, seanceId, null, selLier(l, seanceId, [l.exercice]))
+        + blocEditE(l, seanceId, null, selLier(l, seanceId, [l.exercice]) + moveSel(l, seanceId))
         + '</div>';
     };
     var carteCardio = function (l, seanceId) {
-      return '<div class="prog-exc prog-exc-cardio" style="border-left:4px solid #9D5FD3">'
-        + '<div class="prog-exc-top" onclick="cdToggleExo(' + l.row_index + ')">'
-        +   '<div class="prog-exc-nm"><div class="a" style="color:#9D5FD3">' + _progCardioIco(l.exercice) + ' ' + l.exercice + '</div><span class="prog-exc-tag" style="color:#9D5FD3;background:#9D5FD31f">Cardio · ' + _progCardioCibleTxt(l) + '</span></div>'
-        +   '<span class="prog-exc-pen">✎</span>'
+      return '<div class="prog-exc prog-exc-cardio" draggable="true" ondragstart="progDragStart(event,' + l.row_index + ')" style="border-left:4px solid #9D5FD3">'
+        + '<div class="prog-exc-top">'
+        +   gripSvg
+        +   '<div class="prog-exc-nm" onclick="cdToggleExo(' + l.row_index + ')"><div class="a" style="color:#9D5FD3">' + _progCardioIco(l.exercice) + ' ' + l.exercice + '</div><span class="prog-exc-tag" style="color:#9D5FD3;background:#9D5FD31f">Cardio · ' + _progCardioCibleTxt(l) + '</span></div>'
+        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')">✎</span>'
         + '</div>'
-        + blocEditE(l, seanceId, null, '')
+        + blocEditE(l, seanceId, null, moveSel(l, seanceId))
         + '</div>';
     };
     var cols = ordreE.map(function (seanceId, si) {
@@ -6674,7 +6713,7 @@ function renderProgrammeCoach() {
       var sidEsc = JSON.stringify(seanceId);
       var sidJs = String(seanceId).replace(/'/g, "\\'");
       var dcol = _progDayCol(si);
-      return '<div class="prog-col" data-i="' + si + '"' + (si === _progTab ? '' : ' data-off="1"') + ' style="border-top:3px solid ' + dcol + '">'
+      return '<div class="prog-col" data-i="' + si + '"' + (si === _progTab ? '' : ' data-off="1"') + ' ondragover="progDragOver(event)" ondragleave="progDragLeave(event)" ondrop=\'progDrop(event,' + sidEsc + ')\' style="border-top:3px solid ' + dcol + '">'
         + '<div class="prog-colhd" style="background:' + dcol + '14;border:1px solid ' + dcol + '33">'
         +   '<div class="prog-colhd-t"><span class="prog-colbar" style="background:' + dcol + '"></span><div><div class="dn" style="color:' + dcol + '">' + escapeHtml(String(seanceId)) + '</div><div class="ds">' + lignes.length + ' exo' + (lignes.length > 1 ? 's' : '') + (jour ? ' · ' + _PROG_JOURS_LONG[jour - 1] : '') + '</div></div></div>'
         +   '<button class="prog-col-del" onclick=\'cdSupprimerSeance(' + sidEsc + ')\' title="Supprimer la séance">🗑</button></div>'
