@@ -405,3 +405,87 @@ body.prog-editor-open{ overflow:hidden; }
   #prog-editor-overlay .pb-volchip{ font-size:11.5px; font-weight:700; border:1px solid; border-radius:20px; padding:3px 9px; background:var(--surface); }
   #prog-editor-overlay .pb-volchip b{ font-weight:800; }
 }
+
+/* ═══════════════ ESPACE COACH — SHELL DESKTOP (≥992px) ═══════════════ */
+/* Superposé (position:fixed) au-dessus de la vue coach mobile, qui reste intacte. */
+#coach-shell{ display:none; }
+@media (min-width:992px){
+  body.coach-active:not(.athlete-selected) #coach-shell{ display:flex; position:fixed; inset:0; z-index:60; background:var(--surface2); }
+  body.coach-active:not(.athlete-selected) #coach-topbar,
+  body.coach-active:not(.athlete-selected) #coach-bandeau{ display:none !important; }
+
+  /* Sidebar sombre */
+  #coach-shell .cs-side{ width:248px; flex:none; background:#0f1726; color:#c7d0e0; display:flex; flex-direction:column; gap:4px; padding:20px 14px; overflow-y:auto; }
+  #coach-shell .cs-brand{ display:flex; align-items:center; gap:10px; padding:4px 8px 16px; }
+  #coach-shell .cs-logo{ width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,var(--accent),#7C5CFF); display:grid; place-items:center; color:#fff; font-weight:800; font-family:'Michroma',sans-serif; font-size:14px; }
+  #coach-shell .cs-brand b{ font-family:'Michroma',sans-serif; font-size:15px; color:#fff; display:block; }
+  #coach-shell .cs-brand span{ font-size:10px; color:#7f8da6; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  #coach-shell .cs-nav{ display:flex; flex-direction:column; gap:3px; }
+  #coach-shell .cs-item{ display:flex; align-items:center; gap:11px; padding:10px 11px; border-radius:11px; color:#c7d0e0; cursor:pointer; font-weight:700; font-size:13.5px; border:none; background:none; font-family:inherit; text-align:left; width:100%; }
+  #coach-shell .cs-item svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  #coach-shell .cs-item:hover{ background:#1b2740; }
+  #coach-shell .cs-item.on{ background:var(--accent); color:#fff; }
+  #coach-shell .cs-bdg{ margin-left:auto; background:var(--danger); color:#fff; font-size:10px; font-weight:800; border-radius:20px; padding:1px 7px; }
+  #coach-shell .cs-me{ margin-top:auto; display:flex; align-items:center; gap:10px; padding:12px 8px 2px; border-top:1px solid #20304d; }
+  #coach-shell .cs-av{ width:34px; height:34px; border-radius:50%; background:#243049; display:grid; place-items:center; color:#9fb2d6; font-weight:800; font-size:12px; flex:none; }
+  #coach-shell .cs-me b{ font-size:13px; color:#fff; display:block; }
+  #coach-shell .cs-me span{ font-size:11px; color:#7f8da6; }
+
+  /* Zone principale */
+  #coach-shell .cs-main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  #coach-shell .cs-top{ display:flex; align-items:center; gap:14px; padding:16px 26px; border-bottom:1px solid var(--border); background:var(--surface); flex:none; }
+  #coach-shell .cs-top h1{ font-size:19px; font-family:'Michroma',sans-serif; margin:0; }
+  #coach-shell .cs-search{ margin-left:auto; display:flex; align-items:center; gap:8px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:0 12px; width:240px; color:var(--text-subtle); }
+  #coach-shell .cs-search svg{ width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; flex:none; }
+  #coach-shell .cs-search input{ border:none; background:none; outline:none; font:inherit; font-size:12.5px; color:var(--text); padding:9px 0; width:100%; margin:0; }
+  #coach-shell .cs-btn{ border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:10px; padding:9px 14px; font-weight:800; font-size:12.5px; cursor:pointer; font-family:inherit; }
+  #coach-shell .cs-btn.p{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  #coach-shell .cs-body{ flex:1; overflow:auto; padding:22px 26px; }
+
+  /* KPIs */
+  #coach-shell .cs-kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  #coach-shell .cs-kpi{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:15px 16px; position:relative; overflow:hidden; }
+  #coach-shell .cs-kstrip{ position:absolute; left:0; top:0; bottom:0; width:4px; }
+  #coach-shell .cs-kv{ font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1; }
+  #coach-shell .cs-kl{ font-size:11.5px; color:var(--text-muted); font-weight:700; margin-top:5px; }
+
+  #coach-shell .cs-grid2{ display:grid; grid-template-columns:1.5fr 1fr; gap:18px; align-items:start; }
+  #coach-shell .cs-sec{ font-size:14px; font-weight:800; margin:4px 0 12px; }
+  #coach-shell .cs-watch{ display:flex; flex-direction:column; gap:9px; }
+  #coach-shell .cs-wrow{ display:flex; align-items:center; gap:13px; background:var(--surface); border:1px solid var(--border); border-radius:13px; padding:12px 14px; cursor:pointer; }
+  #coach-shell .cs-wrow:hover{ border-color:var(--accent); }
+  #coach-shell .cs-av2{ width:40px; height:40px; border-radius:50%; background:var(--surface2); display:grid; place-items:center; font-weight:800; color:var(--text-muted); flex:none; font-size:13px; }
+  #coach-shell .cs-wn{ flex:1; min-width:0; }
+  #coach-shell .cs-wn b{ font-size:14px; font-weight:800; display:block; }
+  #coach-shell .cs-wal{ display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  #coach-shell .cs-chip{ font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:20px; }
+  #coach-shell .cs-chev{ color:var(--text-subtle); }
+  #coach-shell .cs-empty{ color:var(--text-muted); font-size:13px; padding:14px; text-align:center; }
+  #coach-shell .cs-panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px; }
+  #coach-shell .cs-pt{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--text-subtle); margin-bottom:11px; }
+  #coach-shell .cs-act{ display:flex; gap:11px; padding:9px 0; border-bottom:1px solid var(--surface2); font-size:12.5px; }
+  #coach-shell .cs-act:last-child{ border-bottom:none; }
+  #coach-shell .cs-ad{ width:8px; height:8px; border-radius:50%; margin-top:5px; flex:none; }
+  #coach-shell .cs-act b{ font-weight:800; }
+  #coach-shell .cs-lec{ font-size:13px; color:var(--text); line-height:1.5; }
+
+  /* Table Équipe */
+  #coach-shell .cs-table{ width:100%; border-collapse:collapse; font-size:13px; background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  #coach-shell .cs-table thead th{ font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-subtle); font-weight:800; text-align:left; padding:11px 14px; background:var(--surface2); border-bottom:1px solid var(--border); }
+  #coach-shell .cs-table tbody td{ padding:12px 14px; border-bottom:1px solid var(--surface2); font-weight:600; }
+  #coach-shell .cs-table tbody tr:last-child td{ border-bottom:none; }
+  #coach-shell .cs-trow{ cursor:pointer; }
+  #coach-shell .cs-trow:hover{ background:var(--surface2); }
+  #coach-shell .cs-tn{ display:flex; align-items:center; gap:10px; }
+  #coach-shell .cs-tav{ width:32px; height:32px; border-radius:50%; background:var(--surface2); display:grid; place-items:center; font-weight:800; color:var(--text-muted); font-size:12px; }
+  #coach-shell .cs-tn b{ font-weight:800; }
+
+  /* Analyses */
+  #coach-shell .cs-g3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  #coach-shell .cs-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:15px; }
+  #coach-shell .cs-ct{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--text-subtle); margin-bottom:10px; }
+  #coach-shell .cs-big{ font-size:30px; font-weight:800; }
+  #coach-shell .cs-mrow{ display:flex; align-items:center; justify-content:space-between; padding:6px 0; font-size:13px; }
+  #coach-shell .cs-mrow b{ font-weight:800; font-variant-numeric:tabular-nums; }
+  #coach-shell .cs-note{ font-size:12px; color:var(--text-muted); background:var(--surface); border:1px dashed var(--border); border-radius:12px; padding:12px 14px; margin-top:16px; }
+}
