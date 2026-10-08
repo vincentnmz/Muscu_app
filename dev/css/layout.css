@@ -226,3 +226,33 @@ body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coac
   body.has-bottom-nav .hx-overlay > div{ max-width:600px !important; }
 }
 
+/* ============================================================
+ * Sélecteur d'exercices (séance libre) — filtres groupes + fréquents +
+ * multi-sélection. Mobile par défaut ; liste en 2 colonnes en bureau.
+ * ============================================================ */
+.exo-chips{ display:flex; gap:7px; overflow-x:auto; padding:10px 0 4px; scrollbar-width:none; }
+.exo-chips::-webkit-scrollbar{ display:none; }
+.exo-chip{ flex:none; display:inline-flex; align-items:center; gap:6px; border:1.5px solid var(--border); background:var(--surface); border-radius:999px; padding:7px 13px; font:inherit; font-size:12.5px; font-weight:700; color:var(--text-muted); cursor:pointer; white-space:nowrap; }
+.exo-chip .d{ width:9px; height:9px; border-radius:999px; }
+.exo-chip.on{ border-color:transparent; color:#fff; }
+.exo-freq-lab{ font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--text-subtle); margin:8px 2px 7px; }
+.exo-freqs{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:6px; }
+.exo-fchip{ display:inline-flex; align-items:center; gap:6px; background:var(--accent-a08,rgba(26,95,255,.08)); border:1px solid var(--accent-a15,rgba(26,95,255,.16)); color:var(--accent); border-radius:10px; padding:7px 11px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+.exo-fchip svg{ width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:2.6; flex:none; }
+.exo-card{ display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:7px; cursor:pointer; }
+.exo-card.sel{ border-color:var(--accent); background:var(--accent-a08,rgba(26,95,255,.08)); }
+.exo-card .ck{ width:23px; height:23px; border-radius:7px; border:2px solid var(--border); flex:none; display:grid; place-items:center; }
+.exo-card.sel .ck{ background:var(--accent); border-color:var(--accent); }
+.exo-card .ck svg{ width:13px; height:13px; fill:none; stroke:#fff; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; opacity:0; }
+.exo-card.sel .ck svg{ opacity:1; }
+.exo-card .nm{ flex:1; min-width:0; }
+.exo-card .nm .a{ font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.exo-card .nm .b{ font-size:11px; color:var(--text-subtle); margin-top:1px; }
+.exo-card .mt{ font-size:9.5px; font-weight:800; padding:2px 7px; border-radius:999px; color:#fff; white-space:nowrap; flex:none; }
+.exo-card .already{ font-size:10px; font-weight:800; color:var(--good); flex:none; }
+.exo-addbtn{ width:100%; border:none; border-radius:13px; padding:14px; font:inherit; font-weight:800; font-size:14.5px; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-strong,#0a46d6)); cursor:pointer; box-shadow:0 6px 16px rgba(26,95,255,.28); }
+@media (min-width:992px){
+  body.has-bottom-nav #liste-exos-libres{ display:grid; grid-template-columns:1fr 1fr; gap:7px; max-height:460px; align-content:start; }
+  body.has-bottom-nav #liste-exos-libres .exo-card{ margin-bottom:0; }
+}
+

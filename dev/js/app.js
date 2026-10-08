@@ -8736,32 +8736,88 @@ function toggleExoHorsProgramme(forceOpen) {
     // Scroll vers le haut de la liste
     const listeCard = document.getElementById('card-liste-seance');
     if (listeCard) scrollVersTitre(listeCard);
+    _exoSel = {}; _exoFiltreGrp = null;   // repartir propre à chaque ouverture
     const _re1=document.getElementById('rech-exo'); if(_re1)_re1.value=''; remplirListeExosLibres('');
   }
 }
 
 // Recherche d'exercice (remplace le double menu muscle→exercice)
 function _norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+// ===== Sélecteur d'exercices (séance libre) : groupes musculaires + fréquents +
+// multi-sélection. Mappe les muscles précis du catalogue vers 6 familles. =====
+var _EXO_GROUPES = [
+  { k: 'pecs', label: 'Pecs', col: '#1A5FFF', kw: ['pector', 'pec'] },
+  { k: 'dos', label: 'Dos', col: '#7C5CFF', kw: ['dos', 'dorsal', 'trapez', 'lombaire', 'rhombo'] },
+  { k: 'jambes', label: 'Jambes', col: '#00A854', kw: ['jambe', 'quadri', 'ischio', 'fessier', 'mollet', 'cuisse', 'adducteur', 'abducteur'] },
+  { k: 'epaules', label: 'Épaules', col: '#E07800', kw: ['epaule', 'delto'] },
+  { k: 'bras', label: 'Bras', col: '#EC4899', kw: ['biceps', 'triceps', 'bras'] },
+  { k: 'core', label: 'Core', col: '#0EA5A3', kw: ['abdo', 'gainage', 'core', 'oblique', 'sangle'] }
+];
+var _exoFiltreGrp = null;     // null = tous
+var _exoSel = {};             // multi-sélection : { "id|nom|muscle": true }
+function _exoGrpOf(muscle) { var m = _norm(muscle); for (var i = 0; i < _EXO_GROUPES.length; i++) { if (_EXO_GROUPES[i].kw.some(function (w) { return m.indexOf(_norm(w)) >= 0; })) return _EXO_GROUPES[i].k; } return null; }
+function _exoGrpMeta(k) { for (var i = 0; i < _EXO_GROUPES.length; i++) if (_EXO_GROUPES[i].k === k) return _EXO_GROUPES[i]; return null; }
+function exoSetGrp(k) { _exoFiltreGrp = (_exoFiltreGrp === k) ? null : k; filtrerExosLibres(); }
+function _exoFrequents() {
+  try {
+    var prog = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.historique && dernierAppData.historique.progression_par_exo) || {};
+    return Object.keys(prog).sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; }).slice(0, 10)
+      .map(function (nom) { var e = (exercicesData || []).find(function (x) { return x.exercice === nom; }); return { nom: nom, muscle: e ? (e.muscle || '') : '', id: (e && e.exercice_id != null) ? e.exercice_id : '' }; });
+  } catch (e) { return []; }
+}
+function _exoAttr(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;'); }
 function remplirListeExosLibres(filtre) {
-  const el = document.getElementById('liste-exos-libres');
-  if (!el) return;
-  const f = _norm(filtre);
-  const dejaNoms = seance.map(e => e.exerciceNom);
-  const items = exercicesData
-    .filter(e => !f || _norm(e.exercice).includes(f) || _norm(e.muscle).includes(f))
-    .sort((a, b) => String(a.muscle).localeCompare(String(b.muscle)) || String(a.exercice).localeCompare(String(b.exercice)));
-  if (items.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:10px;text-align:center">Aucun exercice trouvé</div>'; return; }
-  el.innerHTML = items.slice(0, 60).map(e => {
-    const deja = dejaNoms.includes(e.exercice);
-    const id = (e.exercice_id != null ? e.exercice_id : '') + '|' + e.exercice + '|' + (e.muscle || '');
-    return `<button type="button" onclick="choisirExoDirect(this.dataset.v)" data-v="${id.replace(/"/g, '&quot;')}" style="width:100%;text-align:left;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:6px;cursor:pointer;">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.exercice}</div>
-        <div style="font-size:11px;color:var(--text-muted)">${e.muscle || ''}</div>
-      </div>
-      ${deja ? '<span style="font-size:10px;font-weight:700;color:var(--good)">déjà ajouté</span>' : '<span style="color:var(--accent);font-size:20px;font-weight:700">+</span>'}
-    </button>`;
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var f = _norm(filtre);
+  // --- Chips de groupes musculaires ---
+  var chipsEl = document.getElementById('exo-chips');
+  if (chipsEl) {
+    chipsEl.innerHTML = '<button type="button" class="exo-chip' + (!_exoFiltreGrp ? ' on' : '') + '"' + (!_exoFiltreGrp ? ' style="background:linear-gradient(135deg,var(--accent),var(--accent-strong,#0a46d6))"' : '') + ' onclick="exoSetGrp(null)">Tous</button>'
+      + _EXO_GROUPES.map(function (g) { var on = _exoFiltreGrp === g.k; return '<button type="button" class="exo-chip' + (on ? ' on' : '') + '"' + (on ? ' style="background:' + g.col + '"' : '') + ' onclick="exoSetGrp(\'' + g.k + '\')">' + (on ? '' : '<span class="d" style="background:' + g.col + '"></span>') + g.label + '</button>'; }).join('');
+  }
+  // --- Exercices fréquents (si pas de recherche texte) ---
+  var freqEl = document.getElementById('exo-freq');
+  if (freqEl) {
+    var fr = (!f) ? _exoFrequents().filter(function (x) { return !_exoFiltreGrp || _exoGrpOf(x.muscle) === _exoFiltreGrp; }) : [];
+    freqEl.innerHTML = fr.length ? ('<div class="exo-freq-lab">Tes exercices fréquents</div><div class="exo-freqs">' + fr.map(function (x) { return '<button type="button" class="exo-fchip" data-v="' + _exoAttr(x.id + '|' + x.nom + '|' + x.muscle) + '" onclick="choisirExoDirect(this.dataset.v)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>' + esc(x.nom) + '</button>'; }).join('') + '</div>') : '';
+  }
+  // --- Liste principale (cartes multi-sélection) ---
+  var el = document.getElementById('liste-exos-libres'); if (!el) return;
+  var dejaNoms = seance.map(function (e) { return e.exerciceNom; });
+  var items = (exercicesData || [])
+    .filter(function (e) { if (_exoFiltreGrp && _exoGrpOf(e.muscle) !== _exoFiltreGrp) return false; return !f || _norm(e.exercice).includes(f) || _norm(e.muscle).includes(f); })
+    .sort(function (a, b) { return String(a.muscle).localeCompare(String(b.muscle)) || String(a.exercice).localeCompare(String(b.exercice)); });
+  if (!items.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:14px;text-align:center">Aucun exercice trouvé</div>'; _exoRenderAddbar(); return; }
+  el.innerHTML = items.slice(0, 80).map(function (e) {
+    var val = (e.exercice_id != null ? e.exercice_id : '') + '|' + e.exercice + '|' + (e.muscle || '');
+    var deja = dejaNoms.indexOf(e.exercice) >= 0;
+    var sel = !!_exoSel[val];
+    var grp = _exoGrpOf(e.muscle); var meta = grp ? _exoGrpMeta(grp) : null; var col = meta ? meta.col : 'var(--text-subtle)';
+    return '<div class="exo-card' + (sel ? ' sel' : '') + '" data-v="' + _exoAttr(val) + '" onclick="exoToggleSel(this.dataset.v)">'
+      + '<span class="ck"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>'
+      + '<div class="nm"><div class="a">' + esc(e.exercice) + '</div><div class="b">' + esc(e.muscle || '') + '</div></div>'
+      + (deja ? '<span class="already">déjà ✓</span>' : '<span class="mt" style="background:' + col + '">' + (meta ? meta.label : '—') + '</span>')
+      + '</div>';
   }).join('');
+  _exoRenderAddbar();
+}
+function exoToggleSel(val) { if (_exoSel[val]) delete _exoSel[val]; else _exoSel[val] = true; var inp = document.getElementById('rech-exo'); remplirListeExosLibres(inp ? inp.value : ''); }
+function _exoRenderAddbar() {
+  var bar = document.getElementById('exo-addbar'); if (!bar) return;
+  var n = Object.keys(_exoSel).length;
+  if (!n) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'block';
+  bar.innerHTML = '<button type="button" class="exo-addbtn" onclick="exoAddSelected()">Ajouter ' + n + ' exercice' + (n > 1 ? 's' : '') + ' à ma séance</button>';
+}
+function exoAddSelected() {
+  var vals = Object.keys(_exoSel); if (!vals.length) return;
+  var added = 0;
+  vals.forEach(function (val) { var p = String(val).split('|'); var nom = p[1]; if (!seance.find(function (e) { return e.exerciceNom === nom; })) { seance.push({ muscle: p[2] || '', exerciceId: p[0], exerciceNom: nom, series: [] }); added++; } });
+  _exoSel = {}; _exoFiltreGrp = null;
+  var card = document.getElementById('card-hors-programme'); if (card) card.style.display = 'none';
+  var inp = document.getElementById('rech-exo'); if (inp) inp.value = '';
+  afficherListeSeance();
+  showToast('✅ ' + added + ' exercice' + (added > 1 ? 's' : '') + ' ajouté' + (added > 1 ? 's' : ''));
 }
 function filtrerExosLibres() {
   const inp = document.getElementById('rech-exo');
