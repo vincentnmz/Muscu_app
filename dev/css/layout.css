@@ -407,29 +407,36 @@ body.prog-editor-open{ overflow:hidden; }
 }
 
 /* ═══════════════ ESPACE COACH — SHELL DESKTOP (≥992px) ═══════════════ */
-/* Superposé (position:fixed) au-dessus de la vue coach mobile, qui reste intacte. */
-#coach-shell{ display:none; }
+/* #coach-rail = barre latérale sombre persistante (accueil + fiche).
+   #coach-shell = plan de travail de l'accueil. Mobile : les deux cachés. */
+#coach-shell, #coach-rail{ display:none; }
 @media (min-width:992px){
-  body.coach-active:not(.athlete-selected) #coach-shell{ display:flex; position:fixed; inset:0; z-index:60; background:var(--surface2); }
+  /* Rail sombre persistant (présent aussi sur la fiche athlète) */
+  body.coach-active #coach-rail{ display:flex; position:fixed; top:0; left:0; bottom:0; width:248px; z-index:62; background:#0f1726; }
+  body.coach-active #coach-rail .cs-side{ width:100%; flex:1; background:#0f1726; color:#c7d0e0; display:flex; flex-direction:column; gap:4px; padding:20px 14px; overflow-y:auto; }
+  /* Plan de travail de l'accueil, à droite du rail */
+  body.coach-active:not(.athlete-selected) #coach-shell{ display:flex; position:fixed; top:0; left:248px; right:0; bottom:0; z-index:60; background:var(--surface2); }
   body.coach-active:not(.athlete-selected) #coach-topbar,
-  body.coach-active:not(.athlete-selected) #coach-bandeau{ display:none !important; }
+  body.coach-active #coach-bandeau{ display:none !important; }
+  /* Fiche athlète : réutilise #view-coach-detail, décalée à droite du rail */
+  body.coach-active.athlete-selected #main-container{ margin-left:248px; }
+  body.coach-active.athlete-selected #cd-header{ margin-left:248px; z-index:9; }
 
-  /* Sidebar sombre */
-  #coach-shell .cs-side{ width:248px; flex:none; background:#0f1726; color:#c7d0e0; display:flex; flex-direction:column; gap:4px; padding:20px 14px; overflow-y:auto; }
-  #coach-shell .cs-brand{ display:flex; align-items:center; gap:10px; padding:4px 8px 16px; }
-  #coach-shell .cs-logo{ width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,var(--accent),#7C5CFF); display:grid; place-items:center; color:#fff; font-weight:800; font-family:'Michroma',sans-serif; font-size:14px; }
-  #coach-shell .cs-brand b{ font-family:'Michroma',sans-serif; font-size:15px; color:#fff; display:block; }
-  #coach-shell .cs-brand span{ font-size:10px; color:#7f8da6; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-  #coach-shell .cs-nav{ display:flex; flex-direction:column; gap:3px; }
-  #coach-shell .cs-item{ display:flex; align-items:center; gap:11px; padding:10px 11px; border-radius:11px; color:#c7d0e0; cursor:pointer; font-weight:700; font-size:13.5px; border:none; background:none; font-family:inherit; text-align:left; width:100%; }
-  #coach-shell .cs-item svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
-  #coach-shell .cs-item:hover{ background:#1b2740; }
-  #coach-shell .cs-item.on{ background:var(--accent); color:#fff; }
-  #coach-shell .cs-bdg{ margin-left:auto; background:var(--danger); color:#fff; font-size:10px; font-weight:800; border-radius:20px; padding:1px 7px; }
-  #coach-shell .cs-me{ margin-top:auto; display:flex; align-items:center; gap:10px; padding:12px 8px 2px; border-top:1px solid #20304d; }
-  #coach-shell .cs-av{ width:34px; height:34px; border-radius:50%; background:#243049; display:grid; place-items:center; color:#9fb2d6; font-weight:800; font-size:12px; flex:none; }
-  #coach-shell .cs-me b{ font-size:13px; color:#fff; display:block; }
-  #coach-shell .cs-me span{ font-size:11px; color:#7f8da6; }
+  /* Sidebar sombre (rendue dans #coach-rail) */
+  #coach-rail .cs-brand{ display:flex; align-items:center; gap:10px; padding:4px 8px 16px; }
+  #coach-rail .cs-logo{ width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,var(--accent),#7C5CFF); display:grid; place-items:center; color:#fff; font-weight:800; font-family:'Michroma',sans-serif; font-size:14px; }
+  #coach-rail .cs-brand b{ font-family:'Michroma',sans-serif; font-size:15px; color:#fff; display:block; }
+  #coach-rail .cs-brand span{ font-size:10px; color:#7f8da6; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  #coach-rail .cs-nav{ display:flex; flex-direction:column; gap:3px; }
+  #coach-rail .cs-item{ display:flex; align-items:center; gap:11px; padding:10px 11px; border-radius:11px; color:#c7d0e0; cursor:pointer; font-weight:700; font-size:13.5px; border:none; background:none; font-family:inherit; text-align:left; width:100%; }
+  #coach-rail .cs-item svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  #coach-rail .cs-item:hover{ background:#1b2740; }
+  #coach-rail .cs-item.on{ background:var(--accent); color:#fff; }
+  #coach-rail .cs-bdg{ margin-left:auto; background:var(--danger); color:#fff; font-size:10px; font-weight:800; border-radius:20px; padding:1px 7px; }
+  #coach-rail .cs-me{ margin-top:auto; display:flex; align-items:center; gap:10px; padding:12px 8px 2px; border-top:1px solid #20304d; }
+  #coach-rail .cs-av{ width:34px; height:34px; border-radius:50%; background:#243049; display:grid; place-items:center; color:#9fb2d6; font-weight:800; font-size:12px; flex:none; }
+  #coach-rail .cs-me b{ font-size:13px; color:#fff; display:block; }
+  #coach-rail .cs-me span{ font-size:11px; color:#7f8da6; }
 
   /* Zone principale */
   #coach-shell .cs-main{ flex:1; min-width:0; display:flex; flex-direction:column; }
