@@ -6464,6 +6464,18 @@ var _progTab = 0;          // onglet jour actif (mobile)
 var _progView = 'semaine'; // 'semaine' (colonnes) | 'liste' (pile) — desktop
 function progSetTab(i) { _progTab = i; renderProgrammeCoach(); }
 function progSetView(v) { _progView = v; renderProgrammeCoach(); }
+// Bascule mobile↔desktop (builder) au redimensionnement : on re-render si l'éditeur est ouvert.
+(function () {
+  if (typeof window === 'undefined' || window._progResizeBound) return;
+  window._progResizeBound = true; var _pt = null, _wasDesk = null;
+  window.addEventListener('resize', function () {
+    var ov = document.getElementById('prog-editor-overlay');
+    if (!ov || ov.style.display === 'none') return;
+    var d = !!(window.matchMedia && window.matchMedia('(min-width:992px)').matches);
+    if (d === _wasDesk) return; _wasDesk = d;
+    clearTimeout(_pt); _pt = setTimeout(function () { if (typeof renderProgrammeCoach === 'function') renderProgrammeCoach(); }, 160);
+  });
+})();
 // Déplace un exercice vers un autre jour (change seance_id). Le backend
 // handleSaveProgrammeLigne écrit seance_id dans le patch quand row_index est
 // fourni → pas de nouvelle route. On renvoie TOUS les champs de la ligne pour
@@ -6694,6 +6706,10 @@ function renderProgrammeCoach() {
         + blocEditE(l, seanceId, null, moveSel(l, seanceId))
         + '</div>';
     };
+    // ═══ DESKTOP : Builder pro (rail des jours · plan central · inspecteur) ═══
+    var _desktop = !!(window.matchMedia && window.matchMedia('(min-width:992px)').matches);
+    if (_desktop) { _progRenderBuilder(elE, seancesE, ordreE, blocEditE, gripSvg); return; }
+
     var cols = ordreE.map(function (seanceId, si) {
       var lignes = seancesE[seanceId];
       var unites = []; var vus = {};
@@ -6734,6 +6750,81 @@ function renderProgrammeCoach() {
       + '<div class="prog-cols' + (_progView === 'liste' ? ' liste' : '') + '">' + cols
       +   '<button class="prog-addday" onclick="cdAjouterSeance()"><svg class="ico" style="width:18px;height:18px"><use href="#i-plus"/></svg> Ajouter une séance</button>'
       + '</div>';
+  }
+  // ═══ Builder pro (desktop) : 3 panneaux rail/plan/inspecteur — réutilise la CRUD ═══
+  function _progRenderBuilder(elB, seancesB, ordreB, blocEditE, gripSvg) {
+    if (_progTab >= ordreB.length) _progTab = 0;
+    var esc = escapeHtml;
+    var exoOptions = function (sel) { return exercicesData.map(function (e) { return '<option value="' + esc(e.exercice).replace(/"/g, '&quot;') + '"' + (e.exercice === sel ? ' selected' : '') + '>' + esc(e.exercice) + '</option>'; }).join(''); };
+    var bNum = function (val, ph, handler) { return '<input type="number" class="pb-in" value="' + (val == null || val === '' ? '' : val) + '" placeholder="' + ph + '" onchange="' + handler + '">'; };
+    var musColOf = function (lg) { for (var i = 0; i < lg.length; i++) { if (lg[i].type !== 'cardio') return _progMuscleCol(muscleDe(lg[i].exercice)); } return '#9D5FD3'; };
+    var rowMuscu = function (l, sid) {
+      var mus = muscleDe(l.exercice), gcol = _progMuscleCol(mus), sj = String(sid).replace(/'/g, "\\'"), ri = l.row_index;
+      return '<div class="pb-row" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
+        + gripSvg
+        + '<div class="pb-exn"><span class="dot" style="background:' + gcol + '"></span><div class="pb-exn-c">'
+        +   '<select class="pb-exo" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',this.value,null,null,null,null,null)">' + exoOptions(l.exercice) + '</select>'
+        +   (mus ? '<small style="color:' + gcol + '">' + esc(mus) + '</small>' : '') + '</div></div>'
+        + '<div class="pb-fld"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
+        + '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div></div>'
+        + '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
+        + '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
+        + '<button class="pb-del" onclick="cdSupprimerLigne(' + ri + ')" title="Supprimer">✕</button>'
+        + '</div>';
+    };
+    var rowCardio = function (l, sid) {
+      var ri = l.row_index;
+      var actOpts = _PROG_CARDIO.map(function (a) { return '<option value="' + esc(a[0]).replace(/"/g, '&quot;') + '"' + (a[0] === l.exercice ? ' selected' : '') + '>' + a[1] + ' ' + esc(a[0]) + '</option>'; }).join('');
+      var modes = ['min', 'km', 'libre'].map(function (u) { var on = (l.cardio_unite || 'min') === u; var lbl = { min: '⏱ Durée', km: '📏 Dist.', libre: 'Libre' }[u]; return '<button class="' + (on ? 'on' : '') + '" onclick="cdSetCardioUnite(' + ri + ',\'' + u + '\')">' + lbl + '</button>'; }).join('');
+      var cible = (l.cardio_unite === 'libre') ? '<span class="pb-cardio-libre">Allure libre</span>' : (bNum(l.cardio_cible, (l.cardio_unite === 'km' ? '5' : '20'), 'cdSetCardioCible(' + ri + ',this.value)') + '<span class="pb-unit">' + (l.cardio_unite === 'km' ? 'km' : 'min') + '</span>');
+      return '<div class="pb-row pb-row-cardio" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
+        + gripSvg
+        + '<div class="pb-exn"><span class="dot" style="background:#9D5FD3"></span><div class="pb-exn-c"><select class="pb-exo" onchange="cdSetCardioActivite(' + ri + ',this.value)">' + actOpts + '</select><small style="color:#9D5FD3">Cardio</small></div></div>'
+        + '<div class="pb-cardio-mode">' + modes + '</div>'
+        + '<div class="pb-fld pb-cardio-cible">' + cible + '</div>'
+        + '<button class="pb-del" onclick="cdSupprimerLigne(' + ri + ')" title="Supprimer">✕</button>'
+        + '</div>';
+    };
+    var renderUnites = function (lignes, sid) {
+      var unites = [], vus = {};
+      lignes.forEach(function (l) {
+        if (l.groupe_id) { if (vus[l.groupe_id]) return; vus[l.groupe_id] = true; unites.push({ type: 'groupe', groupeId: l.groupe_id, membres: lignes.filter(function (o) { return o.groupe_id === l.groupe_id; }) }); }
+        else unites.push({ type: 'single', ligne: l });
+      });
+      return unites.map(function (u) {
+        if (u.type === 'single') return u.ligne.type === 'cardio' ? rowCardio(u.ligne, sid) : rowMuscu(u.ligne, sid);
+        var coul = couleurGroupe(u.groupeId);
+        return '<div class="pb-superset" style="border-left:3px solid ' + coul + '"><div class="pb-superset-h" style="color:' + coul + '">🔗 Superset · ' + u.membres.length + ' exos</div>'
+          + u.membres.map(function (m) { return rowMuscu(m, sid); }).join('')
+          + '<div class="pb-superset-lier">' + selLier(u.membres[0], sid, u.membres.map(function (m) { return m.exercice; })) + '</div></div>';
+      }).join('');
+    };
+    // ── Rail des jours ──
+    var rail = '<div class="pb-rail"><div class="pb-rail-t">Mes séances</div>'
+      + ordreB.map(function (sid, si) {
+          var lg = seancesB[sid], jr = lg[0] && lg[0].jour, sj = JSON.stringify(sid);
+          return '<div class="pb-dayrow' + (si === _progTab ? ' on' : '') + '" onclick="progSetTab(' + si + ')" ondragover="progDragOver(event)" ondragleave="progDragLeave(event)" ondrop=\'progDrop(event,' + sj + ')\'>'
+            + '<span class="dot" style="background:' + musColOf(lg) + '"></span><div class="nm"><b>' + esc(String(sid)) + '</b><span>' + (jr ? _PROG_JOURS_LONG[jr - 1] : 'non planifié') + '</span></div><span class="ct">' + lg.length + '</span></div>';
+        }).join('')
+      + '<button class="pb-railadd" onclick="cdAjouterSeance()"><svg class="ico" style="width:15px;height:15px"><use href="#i-plus"/></svg> Nouvelle séance</button></div>';
+    // ── Plan central (séance active) ──
+    var activeSid = ordreB[_progTab], activeLignes = seancesB[activeSid] || [];
+    var aJour = activeLignes[0] && activeLignes[0].jour, aMcol = musColOf(activeLignes);
+    var canvas = '<div class="pb-canvas"><div class="pb-ctop"><span class="dot" style="width:12px;height:12px;background:' + aMcol + '"></span><h3>' + esc(String(activeSid)) + '</h3>'
+      + '<span class="pb-sub">' + (aJour ? '· ' + _PROG_JOURS_LONG[aJour - 1] + ' ' : '') + '· ' + activeLignes.length + ' exercice' + (activeLignes.length > 1 ? 's' : '') + '</span>'
+      + '<button class="pb-seance-del" onclick=\'cdSupprimerSeance(' + JSON.stringify(activeSid) + ')\' title="Supprimer la séance"><svg class="ico" style="width:17px;height:17px"><use href="#i-trash"/></svg></button></div>'
+      + '<div class="pb-rows">' + renderUnites(activeLignes, activeSid)
+      +   '<button class="pb-addexo" onclick="cdAjouterExercice(\'' + String(activeSid).replace(/'/g, "\\'") + '\')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg> Ajouter un exercice</button></div></div>';
+    // ── Inspecteur ──
+    var vol = {}, tot = 0;
+    activeLignes.forEach(function (l) { if (l.type === 'cardio') return; var s = Number(l.series_prevues) || 0; tot += s; var mg = _exoGrpOf(muscleDe(l.exercice)); var meta = mg ? _exoGrpMeta(mg) : null; var key = meta ? meta.label : (muscleDe(l.exercice) || 'Autre'); var col = meta ? meta.col : '#8a94a6'; (vol[key] = vol[key] || { s: 0, col: col }).s += s; });
+    var volRows = Object.keys(vol).map(function (k) { return '<span class="pb-volchip" style="border-color:' + vol[k].col + '66;color:' + vol[k].col + '"><b>' + vol[k].s + '</b> ' + esc(k) + '</span>'; }).join('');
+    var insp = '<div class="pb-insp">'
+      + '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>'
+      + '<div class="pb-card">' + _progJourPicker(activeSid, activeLignes) + '</div>'
+      + '<div class="pb-card"><div class="pb-card-t">Volume de la séance</div><div class="pb-voltot">' + tot + ' séries</div><div class="pb-volwrap">' + (volRows || '<span style="color:var(--text-subtle);font-size:12px">—</span>') + '</div></div>'
+      + '</div>';
+    elB.innerHTML = '<div class="pb-builder">' + rail + canvas + insp + '</div>';
   }
   if (_editorMode) { _progRenderEditor(el, seances, ordre); return; }
 

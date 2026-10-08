@@ -334,3 +334,74 @@ body.prog-editor-open{ overflow:hidden; }
 @media (min-width:992px) and (max-width:1200px){
   #prog-editor-overlay .prog-cols{ grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* ═══════════ ÉDITEUR PROGRAMME — Builder pro (desktop, piste A) ═══════════ */
+@media (min-width:992px){
+  /* Plein écran : les panneaux défilent eux-mêmes → scrollbar au bord de la fenêtre. */
+  #prog-editor-overlay .prog-editor-scroll:has(.pb-builder){ max-width:none !important; padding:0 !important; overflow:hidden !important; }
+  #prog-editor-overlay .pb-builder{ display:grid; grid-template-columns:236px minmax(0,1fr) 300px; height:100%; }
+
+  /* Rail des jours */
+  #prog-editor-overlay .pb-rail{ background:var(--surface2); border-right:1px solid var(--border); padding:16px 12px; display:flex; flex-direction:column; gap:6px; overflow:auto; }
+  #prog-editor-overlay .pb-rail-t{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--text-subtle); margin:2px 6px 6px; }
+  #prog-editor-overlay .pb-dayrow{ display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:12px; cursor:pointer; border:1px solid transparent; }
+  #prog-editor-overlay .pb-dayrow:hover{ background:var(--surface); }
+  #prog-editor-overlay .pb-dayrow.on{ background:var(--surface); border-color:var(--border); box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  #prog-editor-overlay .pb-dayrow .nm{ flex:1; min-width:0; }
+  #prog-editor-overlay .pb-dayrow .nm b{ display:block; font-size:13.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #prog-editor-overlay .pb-dayrow .nm span{ display:block; font-size:11px; color:var(--text-subtle); }
+  #prog-editor-overlay .pb-dayrow .ct{ font-size:11px; font-weight:800; color:var(--text-muted); background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:1px 8px; }
+  #prog-editor-overlay .pb-dayrow.on .ct{ background:var(--accent-a14); color:var(--accent); border-color:transparent; }
+  #prog-editor-overlay .pb-railadd{ margin-top:8px; border:1.5px dashed var(--border); background:transparent; color:var(--text-muted); border-radius:12px; padding:11px; font:inherit; font-weight:800; font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; }
+  #prog-editor-overlay .pb-railadd:hover{ border-color:var(--accent); color:var(--accent); }
+  #prog-editor-overlay .pb-dayrow.prog-col-drop{ outline:2px dashed var(--accent); outline-offset:2px; background:var(--accent-a08); }
+
+  /* Plan central */
+  #prog-editor-overlay .pb-canvas{ overflow:auto; }
+  #prog-editor-overlay .pb-ctop{ position:sticky; top:0; background:var(--surface); border-bottom:1px solid var(--border); padding:16px 22px; display:flex; align-items:center; gap:10px; z-index:2; }
+  #prog-editor-overlay .pb-ctop h3{ font-size:17px; }
+  #prog-editor-overlay .pb-ctop .pb-sub{ font-size:12px; color:var(--text-subtle); font-weight:700; }
+  #prog-editor-overlay .pb-seance-del{ margin-left:auto; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); border-radius:9px; width:34px; height:34px; display:grid; place-items:center; cursor:pointer; }
+  #prog-editor-overlay .pb-seance-del:hover{ border-color:var(--danger); color:var(--danger); }
+  #prog-editor-overlay .pb-rows{ padding:14px 22px 24px; display:flex; flex-direction:column; gap:8px; }
+  #prog-editor-overlay .pb-row{ display:grid; grid-template-columns:18px minmax(120px,1fr) auto auto auto auto 30px; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:9px 12px; }
+  #prog-editor-overlay .pb-row:hover{ box-shadow:0 1px 4px rgba(0,0,0,.08); }
+  #prog-editor-overlay .pb-row .prog-grip{ display:inline-flex; }
+  #prog-editor-overlay .pb-exn{ display:flex; align-items:center; gap:9px; min-width:0; }
+  #prog-editor-overlay .pb-exn-c{ min-width:0; flex:1; }
+  #prog-editor-overlay .pb-exo{ font-weight:800; font-size:13.5px; border:1px solid transparent; background:transparent; padding:3px 4px; border-radius:7px; width:100%; margin:0; cursor:pointer; color:var(--text); }
+  #prog-editor-overlay .pb-exo:hover{ border-color:var(--border); background:var(--surface2); }
+  #prog-editor-overlay .pb-exn-c small{ display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; padding-left:4px; }
+  #prog-editor-overlay .pb-fld{ text-align:center; }
+  #prog-editor-overlay .pb-fld .pb-l{ display:block; font-size:9px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-subtle); font-weight:700; margin-bottom:3px; }
+  #prog-editor-overlay .pb-in{ width:58px; text-align:center; font-weight:800; font-size:13.5px; font-variant-numeric:tabular-nums; border:1px solid var(--border); border-radius:8px; padding:6px 4px; margin:0; background:var(--surface2); }
+  #prog-editor-overlay .pb-reps-in{ display:flex; align-items:center; gap:3px; justify-content:center; }
+  #prog-editor-overlay .pb-reps-in .pb-in{ width:40px; }
+  #prog-editor-overlay .pb-reps-in i{ color:var(--text-subtle); font-style:normal; }
+  #prog-editor-overlay .pb-del{ border:none; background:none; color:#c0c8d4; font-size:15px; cursor:pointer; }
+  #prog-editor-overlay .pb-del:hover{ color:var(--danger); }
+  #prog-editor-overlay .pb-addexo{ border:1.5px dashed var(--accent); background:var(--accent-a08); border-radius:12px; padding:12px; color:var(--accent); font:inherit; font-weight:800; font-size:13.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; margin-top:4px; }
+  #prog-editor-overlay .pb-row-cardio{ grid-template-columns:18px minmax(120px,1fr) auto auto 30px; }
+  #prog-editor-overlay .pb-cardio-mode{ display:flex; gap:4px; }
+  #prog-editor-overlay .pb-cardio-mode button{ border:1px solid var(--border); background:var(--surface); color:var(--text-muted); border-radius:8px; padding:6px 9px; font-size:11px; font-weight:800; cursor:pointer; font-family:inherit; }
+  #prog-editor-overlay .pb-cardio-mode button.on{ border-color:#9D5FD3; background:#9D5FD31a; color:#9D5FD3; }
+  #prog-editor-overlay .pb-cardio-cible{ display:flex; align-items:center; gap:6px; }
+  #prog-editor-overlay .pb-cardio-cible .pb-unit{ font-size:12px; font-weight:800; color:var(--text-muted); }
+  #prog-editor-overlay .pb-cardio-libre{ font-size:12px; color:var(--text-subtle); }
+  #prog-editor-overlay .pb-superset{ background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:10px 10px 10px 12px; display:flex; flex-direction:column; gap:7px; }
+  #prog-editor-overlay .pb-superset-h{ font-size:11px; font-weight:800; letter-spacing:.3px; }
+  #prog-editor-overlay .pb-superset .pb-row{ background:var(--surface); }
+
+  /* Inspecteur */
+  #prog-editor-overlay .pb-insp{ background:var(--surface2); border-left:1px solid var(--border); padding:16px; overflow:auto; display:flex; flex-direction:column; gap:14px; }
+  #prog-editor-overlay .pb-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; }
+  #prog-editor-overlay .pb-card-t{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--text-subtle); margin-bottom:9px; }
+  #prog-editor-overlay .pb-iacard{ background:linear-gradient(135deg,var(--accent-a08),var(--surface)); border-color:rgba(26,95,255,.25); }
+  #prog-editor-overlay .pb-iacard h4{ font-size:14.5px; margin:0 0 4px; }
+  #prog-editor-overlay .pb-iacard p{ font-size:12px; color:var(--text-muted); margin:0 0 11px; line-height:1.45; }
+  #prog-editor-overlay .pb-iabtn{ width:100%; border:none; border-radius:11px; padding:11px; background:var(--accent); color:#fff; font:inherit; font-weight:800; font-size:13px; cursor:pointer; }
+  #prog-editor-overlay .pb-voltot{ font-size:20px; font-weight:800; margin-bottom:9px; }
+  #prog-editor-overlay .pb-volwrap{ display:flex; flex-wrap:wrap; gap:6px; }
+  #prog-editor-overlay .pb-volchip{ font-size:11.5px; font-weight:700; border:1px solid; border-radius:20px; padding:3px 9px; background:var(--surface); }
+  #prog-editor-overlay .pb-volchip b{ font-weight:800; }
+}
