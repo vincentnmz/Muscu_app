@@ -6457,17 +6457,90 @@ async function chargerProgrammeCoach() {
   }
 }
 
+// ═══════════ ÉDITEUR DE PROGRAMME ATHLÈTE — refonte « vue semaine » ═══════════
+// Isolée au seul éditeur athlète muscu (progCtx.el === 'prog-editor-content').
+// Les vues coach / joueur / foot conservent le rendu accordéon d'origine.
+var _progTab = 0;          // onglet jour actif (mobile)
+var _progView = 'semaine'; // 'semaine' (colonnes) | 'liste' (pile) — desktop
+function progSetTab(i) { _progTab = i; renderProgrammeCoach(); }
+function progSetView(v) { _progView = v; renderProgrammeCoach(); }
+// Palette par jour (séparation visuelle des colonnes) + couleur par groupe musculaire.
+var _PROG_DAYCOLS = ['#1A5FFF', '#7C5CFF', '#00A854', '#E07800', '#EC4899', '#0EA5A3', '#F59F00'];
+function _progDayCol(si) { return _PROG_DAYCOLS[si % _PROG_DAYCOLS.length]; }
+function _progMuscleCol(muscle) {
+  try { var k = _exoGrpOf(muscle); var m = k ? _exoGrpMeta(k) : null; if (m && m.col) return m.col; } catch (e) {}
+  return '#1A5FFF';
+}
+
+// Écran de départ : choisir un point de départ (générateur, vierge, modèles).
+function _progStartHTML() {
+  var tpl = function (cls, bg, ico, a, b, onclick) {
+    return '<button class="prog-tpl' + (cls ? ' ' + cls : '') + '" onclick="' + onclick + '">'
+      + '<span class="prog-tpl-ic" style="background:' + bg + '">' + ico + '</span>'
+      + '<span class="prog-tpl-tt"><span class="a">' + a + '</span><span class="b">' + b + '</span></span>'
+      + '<span class="prog-tpl-chev">›</span></button>';
+  };
+  return '<div class="prog-start">'
+    + '<div class="prog-start-lab">Partir de…</div>'
+    + tpl('ia', 'linear-gradient(135deg,var(--accent),#7C5CFF)', '✦', 'Novalyz me le construit', 'Objectif → jours → niveau, en 30 s', 'ouvrirGenProgramme()')
+    + tpl('', 'var(--text-subtle)', '＋', 'Programme vierge', 'Je construis tout moi-même', 'cdAjouterSeance()')
+    + '<div class="prog-start-lab" style="margin-top:16px">Modèles prêts à l\'emploi</div>'
+    + tpl('', '#00A854', '3', 'Full-body · 3 jours', 'Tout le corps à chaque séance', '_progModele(\'fullbody3\')')
+    + tpl('', '#7C5CFF', 'P', 'Push / Pull / Legs', '3 jours · classique prise de muscle', '_progModele(\'ppl\')')
+    + tpl('', '#E07800', 'U', 'Upper / Lower', '4 jours · haut / bas du corps', '_progModele(\'upperlower\')')
+    + '</div>';
+}
+
+// Applique un modèle prêt à l'emploi : construit des lignes à partir du catalogue
+// réel (mêmes groupes/choix que le générateur) puis écrase via genererProgramme.
+async function _progModele(key) {
+  if (exercicesData.length === 0 && typeof chargerExercices === 'function') { try { await chargerExercices(); } catch (e) {} }
+  if (exercicesData.length === 0) { showToast('Catalogue indisponible, réessaie'); return; }
+  var defs = {
+    fullbody3: { jours: [1, 3, 5], split: [
+      ['Full body A', ['quad', 'pecs', 'dos', 'epaule', 'ischio', 'abdos']],
+      ['Full body B', ['fessier', 'dos', 'pecs', 'epaule', 'biceps', 'triceps']],
+      ['Full body C', ['quad', 'ischio', 'pecs', 'dos', 'epaule', 'mollet']]
+    ] },
+    ppl: { jours: (typeof _GEN_JOURS !== 'undefined' ? _GEN_JOURS[3] : [1, 3, 5]), split: (typeof _GEN_SPLITS !== 'undefined' ? _GEN_SPLITS[3] : null) },
+    upperlower: { jours: (typeof _GEN_JOURS !== 'undefined' ? _GEN_JOURS[4] : [1, 2, 4, 5]), split: (typeof _GEN_SPLITS !== 'undefined' ? _GEN_SPLITS[4] : null) }
+  };
+  var m = defs[key]; if (!m || !m.split) { showToast('Modèle indisponible'); return; }
+  var o = (typeof _GEN_OBJ !== 'undefined' && _GEN_OBJ.hypertrophie) ? _GEN_OBJ.hypertrophie : { s: 4, rmin: 8, rmax: 12, pct: 72, rpe: 8, repos: 90 };
+  var lignes = [];
+  m.split.forEach(function (sc, si) {
+    var sid = sc[0], used = {}, jour = m.jours[si];
+    sc[1].forEach(function (gk) {
+      var g = (typeof _GEN_G !== 'undefined') ? _GEN_G[gk] : null; if (!g) return;
+      var ex = _genPick(exercicesData, g, used); if (!ex) return; used[ex.exercice] = 1;
+      lignes.push({ seance_id: sid, exercice: ex.exercice, series_prevues: o.s, reps_mini: o.rmin, reps_max: o.rmax, repos_sec: o.repos, groupe_id: '', jour: jour, charge_pct_1rm: o.pct, rpe_cible: o.rpe });
+    });
+  });
+  if (!lignes.length) { showToast('Catalogue indisponible, réessaie'); return; }
+  var existant = Array.isArray(cdProgrammeLignes) && cdProgrammeLignes.length > 0;
+  if (existant && !confirm('Remplacer le programme actuel par ce modèle ? (l\'ancien sera supprimé)')) return;
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'genererProgramme', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), remplacer: true, lignes: lignes }) });
+    _progTab = 0;
+    showToast('✅ Modèle appliqué');
+    chargerProgrammeCoach();
+  } catch (e) { showToast('Erreur réseau'); }
+}
+
 function renderProgrammeCoach() {
   const el = _progEl();
   if (!el) return;
   const ro = _progReadonly();   // lecture seule (joueur) : pas d'édition
+  // Refonte « vue semaine » : uniquement l'éditeur athlète muscu (isolé du coach/joueur).
+  const _editorMode = !ro && progCtx && progCtx.el === 'prog-editor-content';
   const seances = {};
   const ordre = [];
   cdProgrammeLignes.forEach(l => {
     if (!seances[l.seance_id]) { seances[l.seance_id] = []; ordre.push(l.seance_id); }
     seances[l.seance_id].push(l);
   });
-  if (ordre.length === 0) {
+  if (ordre.length === 0 && !_editorMode) {
     el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Aucune séance dans le programme.</div>';
     return;
   }
@@ -6547,6 +6620,81 @@ function renderProgrammeCoach() {
         ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>`}
       </div>`;
   };
+
+  // ─── Rendu éditeur athlète (vue semaine) — réutilise les helpers ci-dessus ───
+  function _progRenderEditor(elE, seancesE, ordreE) {
+    if (ordreE.length === 0) { elE.innerHTML = _progStartHTML(); return; }
+    if (_progTab >= ordreE.length) _progTab = 0;
+    var blocEditE = function (l, seanceId, extraBtn, extraSel) {
+      var ouvertExo = !!cdExoOpen[l.row_index];
+      return '<div id="exo-edit-' + l.row_index + '" style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px;' + (ouvertExo ? '' : 'display:none') + '">'
+        + (l.type === 'cardio' ? champsExoCardio(l) : champsExo(l, seanceId, extraBtn)) + (extraSel || '') + '</div>';
+    };
+    var statBox = function (v, lab, tone) { return '<div class="prog-sb prog-sb-' + tone + '"><div class="prog-sb-v">' + v + '</div><div class="prog-sb-l">' + lab + '</div></div>'; };
+    var carteMuscu = function (l, seanceId) {
+      var mus = muscleDe(l.exercice);
+      var gcol = _progMuscleCol(mus);
+      var reps = (l.reps_mini && l.reps_max) ? (String(l.reps_mini) === String(l.reps_max) ? String(l.reps_mini) : (l.reps_mini + '–' + l.reps_max)) : (l.reps_mini || l.reps_max || '–');
+      var charge = (l.charge_pct_1rm != null && l.charge_pct_1rm !== '') ? (l.charge_pct_1rm + '%') : '–';
+      var repos = (l.repos_sec != null && l.repos_sec !== '') ? (l.repos_sec + 's') : '–';
+      return '<div class="prog-exc" style="border-left:4px solid ' + gcol + '">'
+        + '<div class="prog-exc-top" onclick="cdToggleExo(' + l.row_index + ')">'
+        +   '<div class="prog-exc-nm"><div class="a">' + l.exercice + '</div>' + (mus ? '<span class="prog-exc-tag" style="color:' + gcol + ';background:' + gcol + '1f">' + mus + '</span>' : '') + '</div>'
+        +   '<span class="prog-exc-pen">✎</span>'
+        + '</div>'
+        + '<div class="prog-sets">' + statBox(l.series_prevues || '–', 'Séries', 'ser') + statBox(reps, 'Reps', 'rep') + statBox(charge, 'Charge', 'chg') + statBox(repos, 'Repos', 'rst') + '</div>'
+        + blocEditE(l, seanceId, null, selLier(l, seanceId, [l.exercice]))
+        + '</div>';
+    };
+    var carteCardio = function (l, seanceId) {
+      return '<div class="prog-exc prog-exc-cardio" style="border-left:4px solid #9D5FD3">'
+        + '<div class="prog-exc-top" onclick="cdToggleExo(' + l.row_index + ')">'
+        +   '<div class="prog-exc-nm"><div class="a" style="color:#9D5FD3">' + _progCardioIco(l.exercice) + ' ' + l.exercice + '</div><span class="prog-exc-tag" style="color:#9D5FD3;background:#9D5FD31f">Cardio · ' + _progCardioCibleTxt(l) + '</span></div>'
+        +   '<span class="prog-exc-pen">✎</span>'
+        + '</div>'
+        + blocEditE(l, seanceId, null, '')
+        + '</div>';
+    };
+    var cols = ordreE.map(function (seanceId, si) {
+      var lignes = seancesE[seanceId];
+      var unites = []; var vus = {};
+      lignes.forEach(function (l) {
+        if (l.groupe_id) { if (vus[l.groupe_id]) return; vus[l.groupe_id] = true; unites.push({ type: 'groupe', groupeId: l.groupe_id, membres: lignes.filter(function (o) { return o.groupe_id === l.groupe_id; }) }); }
+        else unites.push({ type: 'single', ligne: l });
+      });
+      var cartes = unites.map(function (u) {
+        if (u.type === 'single') return u.ligne.type === 'cardio' ? carteCardio(u.ligne, seanceId) : carteMuscu(u.ligne, seanceId);
+        var coul = couleurGroupe(u.groupeId); var noms = u.membres.map(function (m) { return m.exercice; });
+        return '<div class="prog-exc" style="border-left:4px solid ' + coul + '">'
+          + '<div style="font-size:11px;font-weight:800;color:' + coul + ';margin-bottom:6px;letter-spacing:.3px">🔗 SUPERSET · ' + u.membres.length + ' exos</div>'
+          + u.membres.map(function (m, i) { return (i > 0 ? '<div style="text-align:center;color:' + coul + ';font-size:15px;font-weight:800;margin:-2px 0 4px">↓</div>' : '') + '<div style="background:var(--surface2);border-radius:8px;padding:2px 9px;margin-bottom:7px">' + ligneLecture(m, coul) + blocEditE(m, seanceId, '<button onclick="cdRetirerDuGroupe(' + m.row_index + ',\'' + String(seanceId).replace(/'/g, "\\'") + '\')" title="Retirer du superset" style="background:' + coul + '1a;border:1px solid ' + coul + ';color:' + coul + ';border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;flex-shrink:0;font-weight:700">✕</button>') + '</div>'; }).join('')
+          + selLier(u.membres[0], seanceId, noms) + '</div>';
+      }).join('');
+      var jour = lignes[0] && lignes[0].jour;
+      var sidEsc = JSON.stringify(seanceId);
+      var sidJs = String(seanceId).replace(/'/g, "\\'");
+      var dcol = _progDayCol(si);
+      return '<div class="prog-col" data-i="' + si + '"' + (si === _progTab ? '' : ' data-off="1"') + ' style="border-top:3px solid ' + dcol + '">'
+        + '<div class="prog-colhd" style="background:' + dcol + '14;border:1px solid ' + dcol + '33">'
+        +   '<div class="prog-colhd-t"><span class="prog-colbar" style="background:' + dcol + '"></span><div><div class="dn" style="color:' + dcol + '">' + escapeHtml(String(seanceId)) + '</div><div class="ds">' + lignes.length + ' exo' + (lignes.length > 1 ? 's' : '') + (jour ? ' · ' + _PROG_JOURS_LONG[jour - 1] : '') + '</div></div></div>'
+        +   '<button class="prog-col-del" onclick=\'cdSupprimerSeance(' + sidEsc + ')\' title="Supprimer la séance">🗑</button></div>'
+        + _progJourPicker(seanceId, lignes)
+        + cartes
+        + '<button class="prog-addexo" onclick="cdAjouterExercice(\'' + sidJs + '\')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg> Ajouter un exercice</button>'
+        + '</div>';
+    }).join('');
+    var tabs = ordreE.map(function (seanceId, si) {
+      return '<button class="prog-tab' + (si === _progTab ? ' on' : '') + '" onclick="progSetTab(' + si + ')">J' + (si + 1) + '<small>' + escapeHtml(String(seanceId)) + '</small></button>';
+    }).join('') + '<button class="prog-tab prog-tab-add" onclick="cdAjouterSeance()">＋<small>Jour</small></button>';
+    var head = '<div class="prog-head">'
+      + '<div class="prog-seg"><button class="' + (_progView === 'semaine' ? 'on' : '') + '" onclick="progSetView(\'semaine\')">Vue semaine</button><button class="' + (_progView === 'liste' ? 'on' : '') + '" onclick="progSetView(\'liste\')">Liste</button></div>'
+      + '<button class="prog-btn-ia" onclick="ouvrirGenProgramme()">✦ Novalyz propose</button>'
+      + '</div>';
+    elE.innerHTML = head
+      + '<div class="prog-tabs">' + tabs + '</div>'
+      + '<div class="prog-cols' + (_progView === 'liste' ? ' liste' : '') + '">' + cols + '</div>';
+  }
+  if (_editorMode) { _progRenderEditor(el, seances, ordre); return; }
 
   el.innerHTML = ordre.map((seanceId, si) => {
     // Regrouper les exercices en unités : soit seuls, soit en superset (même groupe_id)
