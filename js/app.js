@@ -4361,6 +4361,8 @@ async function renderCoachSynthese(athletes) {
   const nbSurveiller = enrich.filter(e => e.m && e.m.statut.rank >= 1).length;
   const nbInterv = enrich.filter(e => e.m && e.m.statut.rank === 2).length;
   const pctAJour = total ? Math.round((total - aVoir) / total * 100) : 0;
+  // Shell coach desktop (≥992px) : réutilise les données déjà calculées ici (mobile inchangé).
+  try { _coachDeskStore(enrich, prioritaires, datas, { total: total, surveiller: nbSurveiller, intervention: nbInterv, absents: absents }); } catch (e) {}
   const dateFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const svgRing = (pct, size, stroke, color, track) => {
     const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
@@ -6357,6 +6359,97 @@ function renderCoachAthleteGrid(athletes) {
       </div>`;
   }).join('');
 }
+
+// ═══════════════ ESPACE COACH — SHELL DESKTOP (≥992px) ═══════════════
+// Superposé au-dessus de la vue coach mobile (position:fixed via CSS). Réutilise
+// les données calculées par renderCoachSynthese (aucun recalcul réseau).
+var _coachDesk = null;
+var coachDeskSection = 'aujourdhui';
+function _coachDeskOn() { try { return window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active') && !document.body.classList.contains('athlete-selected'); } catch (e) { return false; } }
+function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enrich: enrich, prioritaires: prioritaires, datas: datas, kpis: kpis }; if (_coachDeskOn()) renderCoachDesktop(); }
+function coachDeskGo(sec) {
+  if (sec === 'messages') { if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
+  if (sec === 'profil')   { if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
+  coachDeskSection = sec; renderCoachDesktop();
+}
+var _COACH_NIVLBL = { debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' };
+function _coachDeskInit(nom) { return (nom || '?').split(/\s+/).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase(); }
+function _coachDeskAgo(ds) { var ts = parseChatDate(ds); if (!ts) return '—'; var days = Math.floor((Date.now() - ts) / 86400000); if (days <= 0) return "Aujourd'hui"; if (days === 1) return 'Hier'; return 'Il y a ' + days + ' j'; }
+function _coachDeskLecture() {
+  var d = _coachDesk; if (!d || typeof NovalyzEngine === 'undefined') return '<div class="cs-lec">—</div>';
+  var best = null;
+  (d.enrich || []).forEach(function (e) { var ana = []; try { ana = NovalyzEngine.analyser(d.datas[e.i] || {}) || []; } catch (_) {} var top = ana.find(function (x) { return x.type === 'critical' || x.type === 'warning'; }); if (top && (!best || (top.priorite || 0) > (best.top.priorite || 0))) best = { e: e, top: top }; });
+  if (!best) return '<div class="cs-lec">Rien de prioritaire aujourd\'hui.</div>';
+  return '<div class="cs-lec"><b>' + escapeHtml(best.e.a.nom) + '</b> — ' + escapeHtml(best.top.titre) + '. ' + escapeHtml(best.top.description || '') + '</div>';
+}
+function _coachDeskAujourdhui() {
+  var d = _coachDesk, k = d.kpis || {};
+  var tile = function (v, l, col) { return '<div class="cs-kpi"><span class="cs-kstrip" style="background:' + col + '"></span><div class="cs-kv" style="color:' + col + '">' + v + '</div><div class="cs-kl">' + l + '</div></div>'; };
+  var kpis = '<div class="cs-kpis">' + tile(k.total || 0, 'Athlètes', 'var(--accent)') + tile(k.surveiller || 0, 'À surveiller', 'var(--warn)') + tile(k.intervention || 0, 'Intervention', 'var(--danger)') + tile(k.absents || 0, 'Absents 7 j+', 'var(--text-muted)') + '</div>';
+  var watch = (d.prioritaires || []).map(function (x) { var e = x.e, p = x.p; return '<div class="cs-wrow" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><span class="cs-av2">' + (e.enPause ? '🏖️' : _coachDeskInit(e.a.nom)) + '</span><div class="cs-wn"><b>' + escapeHtml(e.a.nom) + '</b><div class="cs-wal"><span class="cs-chip" style="background:' + p.color + '1f;color:' + p.color + '">' + p.icon + ' ' + escapeHtml(p.txt) + '</span></div></div><span class="cs-chev">›</span></div>'; }).join('') || '<div class="cs-empty">Tout le monde est à jour 🎉</div>';
+  var msgs = (d.enrich || []).filter(function (e) { return e.msgNonLus > 0; }).map(function (e) { return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--accent)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>' + e.msgNonLus + ' message' + (e.msgNonLus > 1 ? 's' : '') + ' non lu' + (e.msgNonLus > 1 ? 's' : '') + '</span></div></div>'; }).join('') || '<div class="cs-act"><span class="cs-ad" style="background:var(--text-muted)"></span><div><span style="color:var(--text-muted)">Aucun message non lu.</span></div></div>';
+  return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch">' + watch + '</div></div>'
+    + '<aside><div class="cs-panel"><div class="cs-pt">Messages non lus</div>' + msgs + '</div>'
+    + '<div class="cs-panel"><div class="cs-pt">Lecture Novalyz · équipe</div>' + _coachDeskLecture() + '</div></aside></div>';
+}
+function _coachDeskEquipe() {
+  var d = _coachDesk;
+  var rows = (d.enrich || []).map(function (e) {
+    var niv = _COACH_NIVLBL[getNiveauExperience(e.a.annees_pratique)] || '—';
+    var s = e.m ? e.m.statut : null;
+    var etat = e.enPause ? '<span class="cs-chip" style="background:rgba(99,179,237,.14);color:#63b3ed">Vacances</span>'
+      : s ? '<span class="cs-chip" style="background:' + s.color + '1a;color:' + s.color + '">' + escapeHtml(s.label) + '</span>' : '—';
+    var ass = (e.seancesSem != null) ? (e.seancesSem + (e.regPrevues != null ? '/' + e.regPrevues : '')) : '—';
+    var dern = (e.m && e.m.derniere && e.m.derniere.date) ? _coachDeskAgo(e.m.derniere.date) : '—';
+    return '<tr class="cs-trow" data-nom="' + escapeHtml(String(e.a.nom || '').toLowerCase()) + '" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><td><div class="cs-tn"><span class="cs-tav">' + _coachDeskInit(e.a.nom) + '</span><b>' + escapeHtml(e.a.nom) + '</b></div></td><td>' + niv + '</td><td>' + etat + '</td><td>' + ass + '</td><td>' + dern + '</td></tr>';
+  }).join('');
+  return '<table class="cs-table"><thead><tr><th>Athlète</th><th>Niveau</th><th>État</th><th>Assiduité</th><th>Dernière séance</th></tr></thead><tbody id="cs-tbody">' + rows + '</tbody></table><div id="cs-eq-empty" class="cs-empty" style="display:none">Aucun athlète ne correspond.</div>';
+}
+function _coachDeskAnalyses() {
+  var d = _coachDesk, en = d.enrich || [];
+  var ok = en.filter(function (e) { return e.m && e.m.statut.rank === 0 && !e.enPause; }).length;
+  var surv = en.filter(function (e) { return e.m && e.m.statut.rank === 1 && !e.enPause; }).length;
+  var act = en.filter(function (e) { return e.m && e.m.statut.rank === 2 && !e.enPause; }).length;
+  var rr = []; en.forEach(function (e) { if (e.enPause) return; var prev = e.regPrevues || 0, fait = e.seancesSem || 0; if (prev > 0) rr.push(Math.min(1, fait / prev)); });
+  var ass = rr.length ? Math.round(rr.reduce(function (a, b) { return a + b; }, 0) / rr.length * 100) : 0;
+  return '<div class="cs-g3">'
+    + '<div class="cs-card"><div class="cs-ct">Assiduité moyenne · 7 j</div><div class="cs-big">' + ass + ' %</div></div>'
+    + '<div class="cs-card"><div class="cs-ct">Répartition des états</div><div class="cs-mrow"><span>🟢 OK</span><b>' + ok + '</b></div><div class="cs-mrow"><span>🟠 À surveiller</span><b>' + surv + '</b></div><div class="cs-mrow"><span>🔴 Intervention</span><b>' + act + '</b></div></div>'
+    + '<div class="cs-card"><div class="cs-ct">Athlètes suivis</div><div class="cs-big">' + (d.kpis.total || 0) + '</div></div>'
+    + '</div><div class="cs-note">Vue équipe de départ — courbes d\'assiduité et charge interne à enrichir ensuite.</div>';
+}
+function coachDeskSearch(q) {
+  q = (q || '').toLowerCase().trim();
+  var tb = document.getElementById('cs-tbody'); if (!tb) return;
+  var n = 0; tb.querySelectorAll('.cs-trow').forEach(function (r) { var ok = !q || r.getAttribute('data-nom').indexOf(q) >= 0; r.style.display = ok ? '' : 'none'; if (ok) n++; });
+  var em = document.getElementById('cs-eq-empty'); if (em) em.style.display = n ? 'none' : 'block';
+}
+function renderCoachDesktop() {
+  var shell = document.getElementById('coach-shell'); if (!shell || !_coachDesk) return;
+  var d = _coachDesk, k = d.kpis || {};
+  var I = {
+    aujourdhui: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+    equipe: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>',
+    analyses: '<svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>',
+    messages: '<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>',
+    profil: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>'
+  };
+  var totalMsg = (d.enrich || []).reduce(function (s, e) { return s + (e.msgNonLus || 0); }, 0);
+  var navItem = function (sec, label) { return '<button class="cs-item' + (coachDeskSection === sec ? ' on' : '') + '" onclick="coachDeskGo(\'' + sec + '\')">' + I[sec] + '<span>' + label + '</span>' + (sec === 'messages' && totalMsg ? '<span class="cs-bdg">' + totalMsg + '</span>' : '') + '</button>'; };
+  var coachNom = (typeof coach !== 'undefined' && coach && coach.nom) ? coach.nom : 'Coach';
+  var side = '<aside class="cs-side"><div class="cs-brand"><span class="cs-logo">N</span><div><b>Novalyz</b><span>Espace coach</span></div></div>'
+    + '<nav class="cs-nav">' + navItem('aujourdhui', "Aujourd'hui") + navItem('equipe', 'Équipe') + navItem('analyses', 'Analyses') + navItem('messages', 'Messages') + navItem('profil', 'Profil') + '</nav>'
+    + '<div class="cs-me"><span class="cs-av">' + _coachDeskInit(coachNom) + '</span><div><b>' + escapeHtml(coachNom) + '</b><span>Coach · ' + (k.total || 0) + ' athlète' + ((k.total || 0) > 1 ? 's' : '') + '</span></div></div></aside>';
+  var titles = { aujourdhui: "Aujourd'hui", equipe: 'Équipe', analyses: 'Analyses' };
+  var action = (coachDeskSection === 'equipe') ? '<button class="cs-btn p" onclick="ouvrirModalLierAthlete()">+ Inviter</button>' : '';
+  var body = coachDeskSection === 'equipe' ? _coachDeskEquipe() : coachDeskSection === 'analyses' ? _coachDeskAnalyses() : _coachDeskAujourdhui();
+  var main = '<div class="cs-main"><header class="cs-top"><h1>' + (titles[coachDeskSection] || '') + '</h1>'
+    + '<div class="cs-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Rechercher un athlète…" oninput="coachDeskSearch(this.value)" autocomplete="off"></div>'
+    + action + '</header><div class="cs-body">' + body + '</div></div>';
+  shell.innerHTML = side + main;
+}
+// Bascule mobile↔desktop coach au redimensionnement.
+(function () { if (typeof window === 'undefined' || window._coachDeskResize) return; window._coachDeskResize = true; var t = null, prev = null; window.addEventListener('resize', function () { var on = _coachDeskOn(); if (on === prev) return; prev = on; clearTimeout(t); t = setTimeout(function () { if (on && _coachDesk) renderCoachDesktop(); }, 160); }); })();
 
 function surlignerAthleteSidebar(athleteId) {
   document.querySelectorAll('.coach-athlete-card').forEach(c => {
