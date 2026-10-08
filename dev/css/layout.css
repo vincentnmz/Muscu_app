@@ -284,7 +284,10 @@ body.prog-editor-open{ overflow:hidden; }
 #prog-editor-overlay .prog-exc-nm{ flex:1; min-width:0; }
 #prog-editor-overlay .prog-exc-nm .a{ font-weight:800; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #prog-editor-overlay .prog-exc-nm .b{ font-size:11px; color:var(--text-subtle); margin-top:1px; }
-#prog-editor-overlay .prog-exc-pen{ border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); width:32px; height:32px; border-radius:9px; font-size:13px; display:flex; align-items:center; justify-content:center; flex:none; }
+#prog-editor-overlay .prog-exc-pen{ border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); width:32px; height:32px; border-radius:9px; font-size:13px; display:flex; align-items:center; justify-content:center; flex:none; cursor:pointer; }
+#prog-editor-overlay .prog-grip{ display:none; color:var(--text-subtle); cursor:grab; flex:none; align-items:center; }
+#prog-editor-overlay .prog-grip:active{ cursor:grabbing; }
+#prog-editor-overlay .prog-move-sel{ font-size:13px; padding:8px 10px; width:auto; min-width:160px; margin-top:10px; margin-bottom:0; }
 #prog-editor-overlay .prog-sets{ display:flex; gap:8px; margin-top:10px; }
 #prog-editor-overlay .prog-sb{ flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:7px 3px; text-align:center; }
 #prog-editor-overlay .prog-sb-v{ font-weight:800; font-size:15px; font-variant-numeric:tabular-nums; }
@@ -325,6 +328,8 @@ body.prog-editor-open{ overflow:hidden; }
   #prog-editor-overlay .prog-addday{ display:flex; align-items:center; justify-content:center; gap:8px; align-self:stretch; min-height:120px; border:1.5px dashed var(--border); background:transparent; border-radius:16px; color:var(--text-subtle); font-weight:800; font-size:13.5px; cursor:pointer; font-family:inherit; }
   #prog-editor-overlay .prog-addday:hover{ border-color:var(--accent); color:var(--accent); }
   #prog-editor-overlay .prog-cols.liste .prog-addday{ width:100%; min-height:0; padding:14px; margin-top:4px; }
+  #prog-editor-overlay .prog-grip{ display:inline-flex; }
+  #prog-editor-overlay .prog-col-drop{ outline:2px dashed var(--accent); outline-offset:3px; background:var(--accent-a08); }
 }
 @media (min-width:992px) and (max-width:1200px){
   #prog-editor-overlay .prog-cols{ grid-template-columns:repeat(2,minmax(0,1fr)); }
