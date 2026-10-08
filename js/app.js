@@ -6692,7 +6692,9 @@ function renderProgrammeCoach() {
       + '</div>';
     elE.innerHTML = head
       + '<div class="prog-tabs">' + tabs + '</div>'
-      + '<div class="prog-cols' + (_progView === 'liste' ? ' liste' : '') + '">' + cols + '</div>';
+      + '<div class="prog-cols' + (_progView === 'liste' ? ' liste' : '') + '">' + cols
+      +   '<button class="prog-addday" onclick="cdAjouterSeance()"><svg class="ico" style="width:18px;height:18px"><use href="#i-plus"/></svg> Ajouter une séance</button>'
+      + '</div>';
   }
   if (_editorMode) { _progRenderEditor(el, seances, ordre); return; }
 
@@ -13385,11 +13387,13 @@ function ouvrirEditeurProgramme() {
   } catch (e) { return; }
   var ov = document.getElementById('prog-editor-overlay');
   if (ov) ov.style.display = 'flex';
+  try { document.body.classList.add('prog-editor-open'); } catch (e) {}
   if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
 }
 function fermerEditeurProgramme() {
   var ov = document.getElementById('prog-editor-overlay');
   if (ov) ov.style.display = 'none';
+  try { document.body.classList.remove('prog-editor-open'); } catch (e) {}
   // Le programme a pu changer → recharger pour rafraîchir le hub et le sélecteur.
   if (typeof chargerAppData === 'function') chargerAppData();
 }
