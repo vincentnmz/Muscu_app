@@ -365,8 +365,11 @@
   </div>
 
   <!-- VUE COACH -->
-  <!-- ESPACE COACH — SHELL DESKTOP (≥992px, superposé ; mobile strictement inchangé).
-       Rempli par renderCoachDesktop() à partir des données de renderCoachSynthese. -->
+  <!-- ESPACE COACH — SHELL DESKTOP (≥992px ; mobile strictement inchangé).
+       #coach-rail = barre latérale sombre persistante (accueil + fiche).
+       #coach-shell = plan de travail de l'accueil (Aujourd'hui/Équipe/Analyses).
+       La fiche athlète réutilise #view-coach-detail, décalée à droite du rail. -->
+  <div id="coach-rail"></div>
   <div id="coach-shell"></div>
 
   <div id="view-coach" class="view">

@@ -4789,6 +4789,7 @@ function retourListeAthletesCoach() {
   localStorage.removeItem('muscu_coach_vue');
   const sel = document.getElementById('coach-select-athlete');
   if (sel) sel.value = '';
+  try { if (_coachDeskAny()) renderCoachDesktop(); } catch (e) {}   // desktop : réaffiche l'accueil dans le shell
 }
 
 // Retour contextuel : depuis un onglet -> Aperçu ; depuis l'Aperçu -> liste des athlètes
@@ -4899,6 +4900,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   document.body.classList.add('cd-nav');
   document.body.classList.add('athlete-selected');
   surlignerAthleteSidebar(a.athlete_id);
+  try { if (_coachDeskAny()) renderCoachRail(); } catch (e) {}   // rail desktop : onglet Équipe actif
   // Hero « État du jour » (onglet Aperçu) : placeholder neutre immédiat, puis
   // renderCoachHeroEtat() le colore selon le statut dès que les données arrivent.
   _setSportIco('cd-sport-ico-use', a.sport);   // icône du header (haltère muscu)
@@ -6365,11 +6367,13 @@ function renderCoachAthleteGrid(athletes) {
 // les données calculées par renderCoachSynthese (aucun recalcul réseau).
 var _coachDesk = null;
 var coachDeskSection = 'aujourdhui';
-function _coachDeskOn() { try { return window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active') && !document.body.classList.contains('athlete-selected'); } catch (e) { return false; } }
-function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enrich: enrich, prioritaires: prioritaires, datas: datas, kpis: kpis }; if (_coachDeskOn()) renderCoachDesktop(); }
+function _coachDeskAny() { try { return window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active'); } catch (e) { return false; } }
+function _coachDeskOn() { return _coachDeskAny() && !document.body.classList.contains('athlete-selected'); }
+function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enrich: enrich, prioritaires: prioritaires, datas: datas, kpis: kpis }; if (_coachDeskAny()) renderCoachDesktop(); }
 function coachDeskGo(sec) {
   if (sec === 'messages') { if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
   if (sec === 'profil')   { if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
+  if (document.body.classList.contains('athlete-selected')) { try { retourListeAthletesCoach(); } catch (_) {} }
   coachDeskSection = sec; renderCoachDesktop();
 }
 var _COACH_NIVLBL = { debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' };
@@ -6424,32 +6428,38 @@ function coachDeskSearch(q) {
   var n = 0; tb.querySelectorAll('.cs-trow').forEach(function (r) { var ok = !q || r.getAttribute('data-nom').indexOf(q) >= 0; r.style.display = ok ? '' : 'none'; if (ok) n++; });
   var em = document.getElementById('cs-eq-empty'); if (em) em.style.display = n ? 'none' : 'block';
 }
-function renderCoachDesktop() {
-  var shell = document.getElementById('coach-shell'); if (!shell || !_coachDesk) return;
+var _COACH_NAVICO = {
+  aujourdhui: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  equipe: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>',
+  analyses: '<svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>',
+  messages: '<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>',
+  profil: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>'
+};
+// Barre latérale sombre persistante (accueil + fiche athlète).
+function renderCoachRail() {
+  var rail = document.getElementById('coach-rail'); if (!rail || !_coachDesk) return;
   var d = _coachDesk, k = d.kpis || {};
-  var I = {
-    aujourdhui: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
-    equipe: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>',
-    analyses: '<svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>',
-    messages: '<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>',
-    profil: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>'
-  };
   var totalMsg = (d.enrich || []).reduce(function (s, e) { return s + (e.msgNonLus || 0); }, 0);
-  var navItem = function (sec, label) { return '<button class="cs-item' + (coachDeskSection === sec ? ' on' : '') + '" onclick="coachDeskGo(\'' + sec + '\')">' + I[sec] + '<span>' + label + '</span>' + (sec === 'messages' && totalMsg ? '<span class="cs-bdg">' + totalMsg + '</span>' : '') + '</button>'; };
+  var activeSec = document.body.classList.contains('athlete-selected') ? 'equipe' : coachDeskSection;
+  var navItem = function (sec, label) { return '<button class="cs-item' + (activeSec === sec ? ' on' : '') + '" onclick="coachDeskGo(\'' + sec + '\')">' + _COACH_NAVICO[sec] + '<span>' + label + '</span>' + (sec === 'messages' && totalMsg ? '<span class="cs-bdg">' + totalMsg + '</span>' : '') + '</button>'; };
   var coachNom = (typeof coach !== 'undefined' && coach && coach.nom) ? coach.nom : 'Coach';
-  var side = '<aside class="cs-side"><div class="cs-brand"><span class="cs-logo">N</span><div><b>Novalyz</b><span>Espace coach</span></div></div>'
+  rail.innerHTML = '<aside class="cs-side"><div class="cs-brand"><span class="cs-logo">N</span><div><b>Novalyz</b><span>Espace coach</span></div></div>'
     + '<nav class="cs-nav">' + navItem('aujourdhui', "Aujourd'hui") + navItem('equipe', 'Équipe') + navItem('analyses', 'Analyses') + navItem('messages', 'Messages') + navItem('profil', 'Profil') + '</nav>'
     + '<div class="cs-me"><span class="cs-av">' + _coachDeskInit(coachNom) + '</span><div><b>' + escapeHtml(coachNom) + '</b><span>Coach · ' + (k.total || 0) + ' athlète' + ((k.total || 0) > 1 ? 's' : '') + '</span></div></div></aside>';
+}
+// Plan de travail de l'accueil (Aujourd'hui / Équipe / Analyses).
+function renderCoachHome() {
+  var shell = document.getElementById('coach-shell'); if (!shell || !_coachDesk) return;
   var titles = { aujourdhui: "Aujourd'hui", equipe: 'Équipe', analyses: 'Analyses' };
   var action = (coachDeskSection === 'equipe') ? '<button class="cs-btn p" onclick="ouvrirModalLierAthlete()">+ Inviter</button>' : '';
   var body = coachDeskSection === 'equipe' ? _coachDeskEquipe() : coachDeskSection === 'analyses' ? _coachDeskAnalyses() : _coachDeskAujourdhui();
-  var main = '<div class="cs-main"><header class="cs-top"><h1>' + (titles[coachDeskSection] || '') + '</h1>'
+  shell.innerHTML = '<div class="cs-main"><header class="cs-top"><h1>' + (titles[coachDeskSection] || '') + '</h1>'
     + '<div class="cs-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Rechercher un athlète…" oninput="coachDeskSearch(this.value)" autocomplete="off"></div>'
     + action + '</header><div class="cs-body">' + body + '</div></div>';
-  shell.innerHTML = side + main;
 }
+function renderCoachDesktop() { if (!_coachDeskAny()) return; renderCoachRail(); if (!document.body.classList.contains('athlete-selected')) renderCoachHome(); }
 // Bascule mobile↔desktop coach au redimensionnement.
-(function () { if (typeof window === 'undefined' || window._coachDeskResize) return; window._coachDeskResize = true; var t = null, prev = null; window.addEventListener('resize', function () { var on = _coachDeskOn(); if (on === prev) return; prev = on; clearTimeout(t); t = setTimeout(function () { if (on && _coachDesk) renderCoachDesktop(); }, 160); }); })();
+(function () { if (typeof window === 'undefined' || window._coachDeskResize) return; window._coachDeskResize = true; var t = null, prev = null; window.addEventListener('resize', function () { var on = _coachDeskAny(); if (on === prev) return; prev = on; clearTimeout(t); t = setTimeout(function () { if (on && _coachDesk) renderCoachDesktop(); }, 160); }); })();
 
 function surlignerAthleteSidebar(athleteId) {
   document.querySelectorAll('.coach-athlete-card').forEach(c => {
