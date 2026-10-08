@@ -218,3 +218,11 @@ body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coac
 .rail-row .rk{ color:var(--text-muted); font-weight:600; }
 .rail-row .rv{ font-weight:800; color:var(--text); }
 
+/* Pages Hyrox (overlays plein écran : circuit, atelier, détail, saisie). En bureau,
+   on les cale à DROITE de la sidebar (nav visible) et on élargit un peu la colonne
+   de contenu — avant : elles couvraient tout l'écran, colonne centrée de travers. */
+@media (min-width:992px){
+  body.has-bottom-nav .hx-overlay{ left:248px !important; }
+  body.has-bottom-nav .hx-overlay > div{ max-width:600px !important; }
+}
+
