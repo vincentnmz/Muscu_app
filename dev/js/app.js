@@ -17833,8 +17833,12 @@ async function _syncSanteMontre(H) {
     // même fenêtre pour tout : ainsi saveSante (supprime-puis-réinsère par date)
     // ne touche QUE les 45 derniers jours et n'efface aucun pas plus ancien déjà
     // historisé.
-    var start = new Date(now.getTime() - 45 * 24 * 3600 * 1000);
-    var end = new Date(now.getTime() + 24 * 3600 * 1000);
+    // IMPORTANT : bornes alignées sur MINUIT LOCAL (comme le graphe _actRange).
+    // Avant : now - 45 j à l'heure courante → Health Connect créait des tranches
+    // « jour » décalées (ex. 8h→8h) qui mélangeaient deux jours → total faux (mardi
+    // 9978 au lieu de 12,4k). Avec minuit local, chaque tranche = une vraie journée.
+    var start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 45);
+    var end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     var byDate = {};
     var ensure = function (d) { return byDate[d] || (byDate[d] = { date: d }); };
     try { var a = await H.queryAggregated({ startDate: start.toISOString(), endDate: end.toISOString(), dataType: 'steps', bucket: 'day' }); ((a && a.aggregatedData) || []).forEach(function (x) { var v = Math.round(x.value || 0); if (v > 0) ensure(_ymdLocal(new Date(x.startDate))).pas = v; }); } catch (e) {}
