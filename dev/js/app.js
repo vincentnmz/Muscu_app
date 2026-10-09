@@ -5057,6 +5057,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCoachChargeCard(data); } catch (_) {}    // Aperçu v3 : Charge & assiduité (RPE/tonnage/régul./ACWR)
     try { renderCoachMontreDetail(data); } catch (_) {}  // Aperçu v3 : Ma montre détaillée (pas/sommeil/FC)
     try { _cdAsideDeskLayout(); } catch (_) {}           // colonne droite : reparente contexte + prochaine
+    try { _cdV3Grid(); } catch (_) {}                    // Aperçu v3 : 6 cartes égales dans la grille
     renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique, data.global);
     renderCoachIndicateurs(data);
@@ -5754,7 +5755,7 @@ function renderCoachHubVolume(data) {
   var status = sousCount
     ? '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">⚠ ' + sousCount + ' muscle' + (sousCount > 1 ? 's' : '') + ' sous le volume cible</span></div>'
     : '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--good-a);color:var(--good);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">✓ Volumes dans les cibles</span></div>';
-  el.innerHTML = rows + status;
+  el.innerHTML = '<div class="dash-label cd-deskonly">Volume par muscle · 7 j</div>' + rows + status;
   if (sec) sec.style.display = ''; el.style.display = '';
 }
 
@@ -5780,7 +5781,7 @@ function renderCoachHubSeances(data) {
       '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + nbExos + ' exo' + (nbExos > 1 ? 's' : '') + ' · ' + nbSeries + ' séries · ' + tonn + '</div></div>' +
       '<div style="text-align:right;flex:none;"><div style="font-size:15px;font-weight:900;color:' + rpeColor + '">' + (rpeMoy != null ? rpeMoy.toFixed(1).replace('.', ',') : '—') + '</div><div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);">RPE moy</div></div></div>';
   }).join('');
-  el.innerHTML = html;
+  el.innerHTML = '<div class="dash-label cd-deskonly">Dernières séances</div>' + html;
   if (sec) sec.style.display = ''; el.style.display = '';
 }
 
@@ -5840,7 +5841,7 @@ function renderCoachHubNutrition(data) {
     macCol('Lipides', aL, obj.lip, 'g') +
     macCol('Énergie', aK, obj.kcal, 'kcal') +
     '</div>';
-  el.innerHTML = kcalLine + grid;
+  el.innerHTML = '<div class="dash-label cd-deskonly">Nutrition · 7 j</div>' + kcalLine + grid;
   if (sec) sec.style.display = '';
   el.style.display = '';
 }
@@ -6683,7 +6684,7 @@ function _cdOverviewDeskPrep() {
   } catch (e) {}
 }
 // Bascule mobile↔desktop coach au redimensionnement.
-(function () { if (typeof window === 'undefined' || window._coachDeskResize) return; window._coachDeskResize = true; var t = null, prev = null; window.addEventListener('resize', function () { var on = _coachDeskAny(); if (on === prev) return; prev = on; clearTimeout(t); t = setTimeout(function () { if (on && _coachDesk) renderCoachDesktop(); try { _cdAsideDeskLayout(); } catch (e) {} }, 160); }); })();
+(function () { if (typeof window === 'undefined' || window._coachDeskResize) return; window._coachDeskResize = true; var t = null, prev = null; window.addEventListener('resize', function () { var on = _coachDeskAny(); if (on === prev) return; prev = on; clearTimeout(t); t = setTimeout(function () { if (on && _coachDesk) renderCoachDesktop(); try { _cdAsideDeskLayout(); } catch (e) {} try { _cdV3Grid(); } catch (e) {} }, 160); }); })();
 
 function surlignerAthleteSidebar(athleteId) {
   document.querySelectorAll('.coach-athlete-card').forEach(c => {
@@ -16161,20 +16162,20 @@ function renderCoachMontreDetail(data) {
   var host = document.getElementById('cd-montre-detail'); if (!host) return;
   var hist = (data && Array.isArray(data.sante_historique)) ? data.sante_historique.slice() : [];
   hist.sort(function (a, b) { return (parseChatDate(a.date) || 0) - (parseChatDate(b.date) || 0); });
+  // Cohérence : les 3 métriques sont des MOYENNES sur 7 j (sparkline 7 j aussi).
   var defs = [
-    { key: 'pas', emoji: '👣', label: 'Pas', avg: true, fmt: function (v) { return Math.round(v).toLocaleString('fr-FR'); } },
-    { key: 'sommeil_min', emoji: '😴', label: 'Sommeil', avg: true, fmt: function (v) { var m = Math.round(v); return Math.floor(m / 60) + ' h' + ((m % 60) ? ' ' + ((m % 60) < 10 ? '0' : '') + (m % 60) : ''); } },
-    { key: 'fc_repos', emoji: '❤️', label: 'FC au repos', avg: false, fmt: function (v) { return Math.round(v) + ' bpm'; } }
+    { key: 'pas', emoji: '👣', label: 'Pas', fmt: function (v) { return Math.round(v).toLocaleString('fr-FR'); } },
+    { key: 'sommeil_min', emoji: '😴', label: 'Sommeil', fmt: function (v) { var m = Math.round(v); return Math.floor(m / 60) + ' h' + ((m % 60) ? ' ' + ((m % 60) < 10 ? '0' : '') + (m % 60) : ''); } },
+    { key: 'fc_repos', emoji: '❤️', label: 'FC au repos', fmt: function (v) { return Math.round(v) + ' bpm'; } }
   ];
   var any = false;
   var rows = defs.map(function (m) {
-    var vals = hist.map(function (x) { return Number(x[m.key]); }).filter(function (v) { return !isNaN(v) && v > 0; }).slice(-14);
+    var vals = hist.map(function (x) { return Number(x[m.key]); }).filter(function (v) { return !isNaN(v) && v > 0; }).slice(-7);
     if (!vals.length) return '';
     any = true;
     var last = vals[vals.length - 1];
-    var a7 = vals.slice(-7); var moy = a7.reduce(function (s, v) { return s + v; }, 0) / a7.length;
-    var mainV = m.avg ? m.fmt(moy) : m.fmt(last);
-    var mainL = m.avg ? 'moy. 7 j' : 'dernière';
+    var moy = vals.reduce(function (s, v) { return s + v; }, 0) / vals.length;
+    var mainV = m.fmt(moy);
     var spark = '';
     if (vals.length > 1) {
       var W = 130, H = 30, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), sp = (mx - mn) || 1;
@@ -16182,10 +16183,10 @@ function renderCoachMontreDetail(data) {
       var dd = vals.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' L');
       spark = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="M' + dd + '" fill="none" stroke="var(--accent-strong)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + X(vals.length - 1).toFixed(1) + '" cy="' + Y(last).toFixed(1) + '" r="2.6" fill="var(--accent-strong)"/></svg>';
     }
-    return '<div class="cd-md-row"><span class="cd-md-ic">' + m.emoji + '</span><div class="cd-md-nm"><b>' + m.label + '</b><span>' + mainL + '</span></div><div class="cd-md-spark">' + spark + '</div><div class="cd-md-v">' + mainV + '</div></div>';
+    return '<div class="cd-md-row"><span class="cd-md-ic">' + m.emoji + '</span><div class="cd-md-nm"><b>' + m.label + '</b></div><div class="cd-md-spark">' + spark + '</div><div class="cd-md-v">' + mainV + '</div></div>';
   }).join('');
   if (!any) { _cfCardShow('cd-montre-card', false); host.innerHTML = ''; return; }
-  host.innerHTML = '<div class="dash-label">⌚ Ma montre<span class="cd-forme-tag" style="color:var(--text-subtle);background:var(--surface2)">14 j</span></div>'
+  host.innerHTML = '<div class="dash-label">⌚ Ma montre<span class="cd-forme-tag" style="color:var(--text-subtle);background:var(--surface2)">moy. 7 j</span></div>'
     + rows
     + '<div class="cd-md-note">Relevés par la montre de l\'athlète (Health Connect), synchronisés via son app.</div>';
   _cfCardShow('cd-montre-card', true);
@@ -16201,6 +16202,29 @@ function _cdAsideDeskLayout() {
   if (!_cdAsideMoved) { _cdAsideMoved = []; [ctx, proch].forEach(function (n) { if (n) _cdAsideMoved.push({ node: n, parent: n.parentNode, next: n.nextSibling }); }); }
   if (desk) { if (proch) slots.appendChild(proch); if (ctx) slots.appendChild(ctx); }
   else { _cdAsideMoved.forEach(function (m) { try { if (m.next && m.next.parentNode === m.parent) m.parent.insertBefore(m.node, m.next); else m.parent.appendChild(m.node); } catch (e) {} }); }
+}
+
+// Aperçu v3 : les 6 cartes d'analyse (sous Alertes) sont regroupées dans une
+// grille à cellules ÉGALES (#cd-ov-grid). Reparentage desktop-only, restauré en
+// mobile (les cartes retrouvent leur place d'origine dans #cdtab-overview).
+var _cdGridMoved = null;
+var _CD_GRID_IDS = ['cd-forme-recup', 'cd-charge-card', 'cd-montre-card', 'cd-hub-volume', 'cd-hub-seances', 'cd-hub-nutrition'];
+function _cdV3Grid() {
+  var ov = document.getElementById('cdtab-overview'); if (!ov) return;
+  var desk = false; try { desk = window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active') && document.body.classList.contains('athlete-selected'); } catch (e) {}
+  var grid = document.getElementById('cd-ov-grid');
+  if (desk) {
+    if (!grid) {
+      grid = document.createElement('div'); grid.id = 'cd-ov-grid';
+      var anchor = document.getElementById('cd-alertes-card');
+      if (anchor && anchor.parentNode === ov) ov.insertBefore(grid, anchor.nextSibling); else ov.appendChild(grid);
+    }
+    if (!_cdGridMoved) { _cdGridMoved = []; _CD_GRID_IDS.forEach(function (id) { var n = document.getElementById(id); if (n) _cdGridMoved.push({ node: n, parent: n.parentNode, next: n.nextSibling }); }); }
+    _CD_GRID_IDS.forEach(function (id) { var n = document.getElementById(id); if (n && n.parentNode !== grid) grid.appendChild(n); });
+  } else {
+    if (_cdGridMoved) _cdGridMoved.forEach(function (m) { try { if (m.next && m.next.parentNode === m.parent) m.parent.insertBefore(m.node, m.next); else m.parent.appendChild(m.node); } catch (e) {} });
+    if (grid && grid.parentNode) grid.parentNode.removeChild(grid);
+  }
 }
 
 // Carte « Analyse » (moteur Novalyz) — interprétation en lecture seule, côté coach
