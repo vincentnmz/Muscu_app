@@ -678,16 +678,19 @@ body.prog-editor-open{ overflow:hidden; }
   body.coach-active.athlete-selected #cd-rail .cd-rail-weight{ display:none !important; }
 }
 
-/* ═══ APERÇU COACH v3 — masonry, sans doublon (surcharge les règles v2 ci-dessus) ═══ */
+/* ═══ APERÇU COACH v3 — 6 cartes égales sous Alertes (surcharge les règles v2) ═══ */
 @media (min-width:992px){
-  /* Zone d'analyse en colonnes « masonry » : les cartes se calent sans trou. */
-  body.coach-active.athlete-selected #cdtab-overview[style*="block"]{ display:block !important; columns:2; column-gap:14px; }
-  body.coach-active.athlete-selected #cdtab-overview > .dash-card{ break-inside:avoid; margin:0 0 14px !important; grid-column:auto; }
-  /* Cartes pleine largeur : haut (hero/IA/alertes) + Lecture (groupe état) en bas. */
+  /* Pile verticale : hero/IA/alertes, puis la grille des 6 cartes, puis Lecture. */
+  body.coach-active.athlete-selected #cdtab-overview[style*="block"]{ display:block !important; columns:auto; }
   body.coach-active.athlete-selected #cdtab-overview > #cd-hero,
   body.coach-active.athlete-selected #cdtab-overview > #cd-ia-card,
   body.coach-active.athlete-selected #cdtab-overview > #cd-alertes-card,
-  body.coach-active.athlete-selected #cdtab-overview > #cd-etat-group{ column-span:all; grid-column:auto; margin:0 0 14px; break-inside:avoid; }
+  body.coach-active.athlete-selected #cdtab-overview > #cd-etat-group{ margin:0 0 14px !important; }
+  /* Grille des 6 cartes d'analyse (reparentées dans #cd-ov-grid par _cdV3Grid) :
+     2 colonnes de largeur égale + rangées de hauteur égale (grid-auto-rows:1fr)
+     → toutes les cartes font exactement la même taille. */
+  body.coach-active.athlete-selected #cd-ov-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; grid-auto-rows:1fr; margin:0 0 14px; align-items:stretch; }
+  body.coach-active.athlete-selected #cd-ov-grid > .dash-card{ margin:0 !important; height:auto; break-inside:auto; }
   /* Le groupe « état » ne garde que la Lecture Novalyz (analyse) en pleine largeur. */
   body.coach-active.athlete-selected #cd-etat-group{ display:block; grid-template-columns:none; }
   body.coach-active.athlete-selected #cd-etat-group > #cd-recup-card{ display:none !important; }
