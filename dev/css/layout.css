@@ -535,3 +535,25 @@ body.prog-editor-open{ overflow:hidden; }
     color:var(--text-subtle); margin-bottom:11px; align-items:center; gap:7px;
   }
 }
+
+/* Bloc IA coach (fiche athlète) — desktop uniquement */
+#cd-ia-card{ display:none; }
+@media (min-width:992px){
+  body.coach-active.athlete-selected #cd-ia-card{
+    display:block; grid-column:1 / -1;
+    background:linear-gradient(135deg,var(--accent-a08),var(--surface));
+    border:1px solid var(--accent-dim);
+  }
+  #cd-ia-card .cd-ia-msgs{ max-height:260px; overflow:auto; display:flex; flex-direction:column; gap:8px; margin:4px 0 10px; }
+  #cd-ia-card .cd-ia-hint{ font-size:12.5px; color:var(--text-muted); line-height:1.5; }
+  #cd-ia-card .cd-ia-b{ max-width:85%; padding:9px 13px; border-radius:13px; font-size:13px; line-height:1.5; }
+  #cd-ia-card .cd-ia-me{ align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+  #cd-ia-card .cd-ia-ia{ align-self:flex-start; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-bottom-left-radius:4px; white-space:normal; }
+  #cd-ia-card .cd-ia-typing{ letter-spacing:2px; color:var(--text-subtle); }
+  #cd-ia-card .cd-ia-chips{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; }
+  #cd-ia-card .cd-ia-chips button{ border:1px solid var(--border); background:var(--surface); color:var(--text-muted); border-radius:20px; padding:6px 12px; font-size:12px; font-weight:800; cursor:pointer; font-family:inherit; }
+  #cd-ia-card .cd-ia-chips button:hover{ border-color:var(--accent); color:var(--accent); }
+  #cd-ia-card .cd-ia-field{ display:flex; gap:8px; align-items:center; }
+  #cd-ia-card .cd-ia-field input{ flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:11px 13px; font:inherit; font-size:13.5px; color:var(--text); margin:0; }
+  #cd-ia-card .cd-ia-field button{ flex:none; width:42px; height:42px; border:none; border-radius:11px; background:var(--accent); color:#fff; display:grid; place-items:center; cursor:pointer; }
+}
