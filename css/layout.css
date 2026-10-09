@@ -378,9 +378,16 @@ body.prog-editor-open{ overflow:hidden; }
   #prog-editor-overlay .pb-exn-c small{ display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; padding-left:4px; }
   #prog-editor-overlay .pb-fld{ text-align:center; }
   #prog-editor-overlay .pb-fld .pb-l{ display:block; font-size:9px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-subtle); font-weight:700; margin-bottom:3px; }
-  #prog-editor-overlay .pb-in{ width:58px; text-align:center; font-weight:800; font-size:13.5px; font-variant-numeric:tabular-nums; border:1px solid var(--border); border-radius:8px; padding:6px 4px; margin:0; background:var(--surface2); }
+  #prog-editor-overlay .pb-in{ width:54px; text-align:center; font-weight:800; font-size:13.5px; font-variant-numeric:tabular-nums; border:1px solid var(--border); border-radius:8px; padding:6px 4px; margin:0; background:var(--surface2); }
+  /* Masque les flèches du spinner number (elles rognaient les nombres ≥ 2 chiffres). */
+  #prog-editor-overlay .pb-in::-webkit-outer-spin-button,
+  #prog-editor-overlay .pb-in::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  #prog-editor-overlay .pb-in{ -moz-appearance:textfield; appearance:textfield; }
+  /* Séries = 1 chiffre le plus souvent → case plus étroite ; Reps = min–max (jusqu'à
+     2 chiffres chacun) → cases un peu plus larges pour ne pas couper « 12 ». */
+  #prog-editor-overlay .pb-series .pb-in{ width:44px; }
   #prog-editor-overlay .pb-reps-in{ display:flex; align-items:center; gap:3px; justify-content:center; }
-  #prog-editor-overlay .pb-reps-in .pb-in{ width:40px; }
+  #prog-editor-overlay .pb-reps-in .pb-in{ width:50px; }
   #prog-editor-overlay .pb-reps-in i{ color:var(--text-subtle); font-style:normal; }
   #prog-editor-overlay .pb-del{ border:none; background:none; color:#c0c8d4; font-size:15px; cursor:pointer; }
   #prog-editor-overlay .pb-del:hover{ color:var(--danger); }
@@ -549,7 +556,9 @@ body.prog-editor-open{ overflow:hidden; }
   /* Évite tout débordement horizontal qui ferait passer le contenu sous le rail. */
   body.coach-active.athlete-selected #view-coach-detail{ overflow-x:hidden; }
   /* Grille principale de l'Aperçu (actif = inline display:block → override !important) */
-  body.coach-active.athlete-selected #cdtab-overview[style*="block"]{ display:grid !important; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+  /* align-items:stretch → les 2 cartes d'une même ligne prennent la même hauteur
+     (pas de « trou » à côté d'une carte plus courte) ; dense → remplit les vides. */
+  body.coach-active.athlete-selected #cdtab-overview[style*="block"]{ display:grid !important; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; grid-auto-flow:row dense; }
   body.coach-active.athlete-selected #cdtab-overview > .fjd-hero,
   body.coach-active.athlete-selected #cdtab-overview > .cd-hub-actions,
   body.coach-active.athlete-selected #cdtab-overview > #cd-alertes-card,
