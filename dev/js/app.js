@@ -7091,7 +7091,7 @@ function renderProgrammeCoach() {
         + '<div class="pb-exn"><span class="dot" style="background:' + gcol + '"></span><div class="pb-exn-c">'
         +   '<select class="pb-exo" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',this.value,null,null,null,null,null)">' + exoOptions(l.exercice) + '</select>'
         +   (mus ? '<small style="color:' + gcol + '">' + esc(mus) + '</small>' : '') + '</div></div>'
-        + '<div class="pb-fld"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
+        + '<div class="pb-fld pb-series"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
         + '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div></div>'
         + '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
         + '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
