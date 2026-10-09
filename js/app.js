@@ -4901,6 +4901,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   document.body.classList.add('athlete-selected');
   surlignerAthleteSidebar(a.athlete_id);
   try { if (_coachDeskAny()) renderCoachRail(); } catch (e) {}   // rail desktop : onglet Équipe actif
+  try { _cdOverviewDeskPrep(); } catch (e) {}                    // fiche desktop : grille 2 colonnes
   // Hero « État du jour » (onglet Aperçu) : placeholder neutre immédiat, puis
   // renderCoachHeroEtat() le colore selon le statut dès que les données arrivent.
   _setSportIco('cd-sport-ico-use', a.sport);   // icône du header (haltère muscu)
@@ -6458,6 +6459,28 @@ function renderCoachHome() {
     + action + '</header><div class="cs-body">' + body + '</div></div>';
 }
 function renderCoachDesktop() { if (!_coachDeskAny()) return; renderCoachRail(); if (!document.body.classList.contains('athlete-selected')) renderCoachHome(); }
+// Fiche athlète desktop (nouvelle identité) : replie chaque titre de section
+// « .v2-sec » dans sa carte comme label (visible seulement en desktop via CSS),
+// pour permettre une grille 2 colonnes propre. Idempotent ; mobile intact
+// (les labels .cd-deskonly et la grille ne s'activent qu'au ≥992px).
+var _cdOvPrepped = false;
+function _cdOverviewDeskPrep() {
+  if (_cdOvPrepped) return;
+  var ov = document.getElementById('cdtab-overview'); if (!ov) return;
+  try {
+    ov.querySelectorAll('.v2-sec').forEach(function (sec) {
+      var card = sec.nextElementSibling;
+      if (!card || !card.classList || !card.classList.contains('dash-card')) return;
+      var h2 = sec.querySelector('h2'); if (!h2) return;
+      if (card.querySelector('.cd-deskonly')) return;
+      var lbl = document.createElement('div');
+      lbl.className = 'dash-label cd-deskonly';
+      lbl.innerHTML = h2.innerHTML;
+      card.insertBefore(lbl, card.firstChild);
+    });
+    _cdOvPrepped = true;
+  } catch (e) {}
+}
 // Bascule mobile↔desktop coach au redimensionnement.
 (function () { if (typeof window === 'undefined' || window._coachDeskResize) return; window._coachDeskResize = true; var t = null, prev = null; window.addEventListener('resize', function () { var on = _coachDeskAny(); if (on === prev) return; prev = on; clearTimeout(t); t = setTimeout(function () { if (on && _coachDesk) renderCoachDesktop(); }, 160); }); })();
 
