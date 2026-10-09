@@ -4908,6 +4908,7 @@ function switchCoachDetailTab(tab) {
     if (_deskProg && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant) {
       ouvrirEditeurProgrammeCoach();
     } else {
+      try { _progRestoreOverlayHome(); var _ovm = document.getElementById('prog-editor-overlay'); if (_ovm) _ovm.style.display = 'none'; } catch (e) {}
       progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null }; // contexte muscu (mobile : accordéon)
       chargerProgrammeCoach();
     }
@@ -13846,6 +13847,18 @@ function ouvrirEditeurProgramme() {
   if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
 }
 // Même éditeur (Builder) côté COACH, pointé sur l'athlète courant du coach.
+// Position d'origine de #prog-editor-overlay (pour le ramener hors de la fiche).
+var _progOvHome = null;
+function _progOvRememberHome(ov) { if (!_progOvHome && ov) _progOvHome = { parent: ov.parentNode, next: ov.nextSibling }; }
+function _progRestoreOverlayHome() {
+  var ov = document.getElementById('prog-editor-overlay'); if (!ov) return;
+  ov.classList.remove('prog-inline');
+  var tab = document.getElementById('cdtab-programme'); if (tab) tab.classList.remove('prog-has-inline');
+  if (_progOvHome && ov.parentNode !== _progOvHome.parent) {
+    if (_progOvHome.next && _progOvHome.next.parentNode === _progOvHome.parent) _progOvHome.parent.insertBefore(ov, _progOvHome.next);
+    else _progOvHome.parent.appendChild(ov);
+  }
+}
 function ouvrirEditeurProgrammeCoach() {
   if (typeof coachAthleteCourant === 'undefined' || !coachAthleteCourant) return;
   try { cdProgOpen = {}; } catch (e) {}
@@ -13853,9 +13866,21 @@ function ouvrirEditeurProgrammeCoach() {
   try {
     progCtx = { el: 'prog-editor-content', athleteId: coachAthleteCourant.athlete_id, athleteNom: coachAthleteCourant.nom || '', readonly: false };
   } catch (e) { return; }
-  var ov = document.getElementById('prog-editor-overlay');
-  if (ov) ov.style.display = 'flex';
-  try { document.body.classList.add('prog-editor-open'); } catch (e) {}
+  var ov = document.getElementById('prog-editor-overlay'); if (!ov) return;
+  _progOvRememberHome(ov);
+  var deskCoach = false; try { deskCoach = window.matchMedia('(min-width:992px)').matches; } catch (e) {}
+  if (deskCoach) {
+    // INLINE : le Builder se place DANS l'onglet Programme (sous les sous-onglets),
+    // comme les autres onglets — plus de « page » plein écran ni de flèche.
+    var host = document.getElementById('cdtab-programme');
+    if (host) { host.classList.add('prog-has-inline'); if (ov.parentNode !== host) host.appendChild(ov); }
+    ov.classList.add('prog-inline');
+    try { document.body.classList.remove('prog-editor-open'); } catch (e) {}
+  } else {
+    _progRestoreOverlayHome();
+    try { document.body.classList.add('prog-editor-open'); } catch (e) {}
+  }
+  ov.style.display = 'flex';
   var t = document.getElementById('prog-editor-title'); if (t) t.textContent = 'Programme · ' + (coachAthleteCourant.nom || '');
   if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
 }

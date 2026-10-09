@@ -722,7 +722,20 @@ body.prog-editor-open{ overflow:hidden; }
   body.coach-active #prog-editor-overlay .pe-tabs button.on{ color:var(--accent); border-bottom-color:var(--accent); }
 }
 
-/* Éditeur de programme (Builder) côté coach : décalé à droite du rail. */
+/* Éditeur de programme (Builder) côté coach : décalé à droite du rail (overlay). */
 @media (min-width:992px){
   body.coach-active #prog-editor-overlay{ left:248px !important; }
+
+  /* INLINE : le Builder se place DANS l'onglet Programme, comme les autres
+     onglets (plus de page plein écran). On masque l'en-tête (les sous-onglets
+     de la fiche sont au-dessus) et on borne la hauteur pour que les 3 volets
+     scrollent à l'intérieur. */
+  body.coach-active #cdtab-programme.prog-has-inline > *:not(#prog-editor-overlay){ display:none !important; }
+  body.coach-active #prog-editor-overlay.prog-inline{
+    position:static !important; inset:auto !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
+    z-index:auto !important; width:auto !important; max-width:none !important;
+    border:1px solid var(--border); border-radius:16px; overflow:hidden; background:var(--surface);
+    height:calc(100vh - 210px); min-height:540px; margin-top:4px;
+  }
+  body.coach-active #prog-editor-overlay.prog-inline > header{ display:none !important; }
 }
