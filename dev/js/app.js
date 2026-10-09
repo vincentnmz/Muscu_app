@@ -5053,8 +5053,9 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCockpit(data, 'cd'); } catch (_) {}   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
-    try { renderCoachFormeCards(data); } catch (_) {}   // Aperçu desktop : cartes Forme (récup + poids)
-    try { renderCoachMontre(data); } catch (_) {}        // colonne droite : bloc Ma montre (pas/sommeil/FC)
+    try { renderCoachFormeCards(data); } catch (_) {}   // Aperçu v3 : carte Récupération (Poids masqué)
+    try { renderCoachChargeCard(data); } catch (_) {}    // Aperçu v3 : Charge & assiduité (RPE/tonnage/régul./ACWR)
+    try { renderCoachMontreDetail(data); } catch (_) {}  // Aperçu v3 : Ma montre détaillée (pas/sommeil/FC)
     try { _cdAsideDeskLayout(); } catch (_) {}           // colonne droite : reparente contexte + prochaine
     renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique, data.global);
@@ -16125,6 +16126,71 @@ function renderCoachMontre(data) {
   el.style.display = '';
 }
 
+// ── Aperçu v3 : carte « Charge & assiduité » (fusionne l'ancien « État de forme »
+// + régularité + ACWR). Chaque tuile n'apparaît que si la donnée existe. ──
+function renderCoachChargeCard(data) {
+  var el = document.getElementById('cd-charge-content'); if (!el) return;
+  var dash = (data && data.dashboard) || {}, mot = (data && data.moteur) || {};
+  var tiles = [];
+  var tile = function (v, l, col) { return '<div class="cd-k"><div class="cd-kv"' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</div><div class="cd-kl">' + l + '</div></div>'; };
+  var rpe = (dash.recuperation && dash.recuperation.rpe_moyen != null) ? dash.recuperation.rpe_moyen
+          : (data.recent && data.recent.j7 && data.recent.j7.rpe_moyen != null ? data.recent.j7.rpe_moyen : null);
+  if (rpe != null && rpe !== 'N/A') { var rc = rpe >= 8.5 ? 'var(--danger)' : rpe >= 7.5 ? 'var(--warn)' : 'var(--text)'; tiles.push(tile(String(rpe).replace('.', ','), 'RPE moy · 7j', rc)); }
+  if (dash.tonnage) {
+    var tv = dash.tonnage.j7 != null ? dash.tonnage.j7 : dash.tonnage.semaine;
+    if (tv != null) {
+      var ev = dash.tonnage.evol_pct != null ? dash.tonnage.evol_pct : dash.tonnage.evol;
+      var sub = (ev != null) ? ' <small style="font-size:10px;color:' + (ev >= 0 ? 'var(--good)' : 'var(--warn)') + '">' + (ev >= 0 ? '▲' : '▼') + Math.abs(ev) + '%</small>' : '';
+      tiles.push(tile(String(tv).replace('.', ',') + ' t' + sub, 'Tonnage 7j'));
+    }
+  }
+  var reg = dash.regularite;
+  if (reg) { var f = _seancesFaites(reg), pv = reg.seances_prevues; if (f != null) tiles.push(tile(f + (pv != null ? '/' + pv : ''), 'Régularité')); }
+  if (dash.acwr != null && mot.acwr_fiable !== false) tiles.push(tile(String(dash.acwr).replace('.', ','), 'ACWR'));
+  if (!tiles.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Pas encore assez de séances.</div>'; _cfCardShow('cd-charge-card', true); return; }
+  var streak = dash.streak && dash.streak.semaines;
+  el.innerHTML = '<div class="cd-k4">' + tiles.join('') + '</div>'
+    + (streak ? '<div class="cd-charge-streak"><span>🔥 Série de semaines</span><b>' + streak + ' sem.</b></div>' : '');
+  _cfCardShow('cd-charge-card', true);
+}
+
+// ── Aperçu v3 : carte « Ma montre » DÉTAILLÉE — pas + sommeil + FC repos de
+// l'athlète (sante_historique) avec sparkline 14 j. Autonome (ne dépend pas de
+// renderSanteChart/dernierAppData). Masquée si aucune donnée. ──
+function renderCoachMontreDetail(data) {
+  var host = document.getElementById('cd-montre-detail'); if (!host) return;
+  var hist = (data && Array.isArray(data.sante_historique)) ? data.sante_historique.slice() : [];
+  hist.sort(function (a, b) { return (parseChatDate(a.date) || 0) - (parseChatDate(b.date) || 0); });
+  var defs = [
+    { key: 'pas', emoji: '👣', label: 'Pas', avg: true, fmt: function (v) { return Math.round(v).toLocaleString('fr-FR'); } },
+    { key: 'sommeil_min', emoji: '😴', label: 'Sommeil', avg: true, fmt: function (v) { var m = Math.round(v); return Math.floor(m / 60) + ' h' + ((m % 60) ? ' ' + ((m % 60) < 10 ? '0' : '') + (m % 60) : ''); } },
+    { key: 'fc_repos', emoji: '❤️', label: 'FC au repos', avg: false, fmt: function (v) { return Math.round(v) + ' bpm'; } }
+  ];
+  var any = false;
+  var rows = defs.map(function (m) {
+    var vals = hist.map(function (x) { return Number(x[m.key]); }).filter(function (v) { return !isNaN(v) && v > 0; }).slice(-14);
+    if (!vals.length) return '';
+    any = true;
+    var last = vals[vals.length - 1];
+    var a7 = vals.slice(-7); var moy = a7.reduce(function (s, v) { return s + v; }, 0) / a7.length;
+    var mainV = m.avg ? m.fmt(moy) : m.fmt(last);
+    var mainL = m.avg ? 'moy. 7 j' : 'dernière';
+    var spark = '';
+    if (vals.length > 1) {
+      var W = 130, H = 30, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), sp = (mx - mn) || 1;
+      var X = function (i) { return (i / (vals.length - 1)) * W; }, Y = function (v) { return H - 3 - ((v - mn) / sp) * (H - 6); };
+      var dd = vals.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' L');
+      spark = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="M' + dd + '" fill="none" stroke="var(--accent-strong)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + X(vals.length - 1).toFixed(1) + '" cy="' + Y(last).toFixed(1) + '" r="2.6" fill="var(--accent-strong)"/></svg>';
+    }
+    return '<div class="cd-md-row"><span class="cd-md-ic">' + m.emoji + '</span><div class="cd-md-nm"><b>' + m.label + '</b><span>' + mainL + '</span></div><div class="cd-md-spark">' + spark + '</div><div class="cd-md-v">' + mainV + '</div></div>';
+  }).join('');
+  if (!any) { _cfCardShow('cd-montre-card', false); host.innerHTML = ''; return; }
+  host.innerHTML = '<div class="dash-label">⌚ Ma montre<span class="cd-forme-tag" style="color:var(--text-subtle);background:var(--surface2)">14 j</span></div>'
+    + rows
+    + '<div class="cd-md-note">Relevés par la montre de l\'athlète (Health Connect), synchronisés via son app.</div>';
+  _cfCardShow('cd-montre-card', true);
+}
+
 // Colonne de droite desktop : reparente « Contexte de perf. » et « Prochaine
 // séance » dans le rail (#cd-aside-slots), restaurés à leur place en mobile.
 var _cdAsideMoved = null;
@@ -16133,7 +16199,7 @@ function _cdAsideDeskLayout() {
   var desk = false; try { desk = window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active'); } catch (e) {}
   var ctx = document.getElementById('cd-contexte'), proch = document.getElementById('cd-prochaine');
   if (!_cdAsideMoved) { _cdAsideMoved = []; [ctx, proch].forEach(function (n) { if (n) _cdAsideMoved.push({ node: n, parent: n.parentNode, next: n.nextSibling }); }); }
-  if (desk) { if (ctx) slots.appendChild(ctx); if (proch) slots.appendChild(proch); }
+  if (desk) { if (proch) slots.appendChild(proch); if (ctx) slots.appendChild(ctx); }
   else { _cdAsideMoved.forEach(function (m) { try { if (m.next && m.next.parentNode === m.parent) m.parent.insertBefore(m.node, m.next); else m.parent.appendChild(m.node); } catch (e) {} }); }
 }
 

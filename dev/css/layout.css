@@ -678,6 +678,45 @@ body.prog-editor-open{ overflow:hidden; }
   body.coach-active.athlete-selected #cd-rail .cd-rail-weight{ display:none !important; }
 }
 
+/* ═══ APERÇU COACH v3 — masonry, sans doublon (surcharge les règles v2 ci-dessus) ═══ */
+@media (min-width:992px){
+  /* Zone d'analyse en colonnes « masonry » : les cartes se calent sans trou. */
+  body.coach-active.athlete-selected #cdtab-overview[style*="block"]{ display:block !important; columns:2; column-gap:14px; }
+  body.coach-active.athlete-selected #cdtab-overview > .dash-card{ break-inside:avoid; margin:0 0 14px !important; grid-column:auto; }
+  /* Cartes pleine largeur : haut (hero/IA/alertes) + Lecture (groupe état) en bas. */
+  body.coach-active.athlete-selected #cdtab-overview > #cd-hero,
+  body.coach-active.athlete-selected #cdtab-overview > #cd-ia-card,
+  body.coach-active.athlete-selected #cdtab-overview > #cd-alertes-card,
+  body.coach-active.athlete-selected #cdtab-overview > #cd-etat-group{ column-span:all; grid-column:auto; margin:0 0 14px; break-inside:avoid; }
+  /* Le groupe « état » ne garde que la Lecture Novalyz (analyse) en pleine largeur. */
+  body.coach-active.athlete-selected #cd-etat-group{ display:block; grid-template-columns:none; }
+  body.coach-active.athlete-selected #cd-etat-group > #cd-recup-card{ display:none !important; }
+  /* Cartes retirées de l'Aperçu v3 (doublons / déplacées ailleurs). */
+  body.coach-active.athlete-selected #cdtab-overview > #cd-forme-poids{ display:none !important; }
+  body.coach-active.athlete-selected #cd-rail .cd-aside-montre,
+  body.coach-active.athlete-selected #cd-rail #cd-reperes-card{ display:none !important; }
+
+  /* Carte « Charge & assiduité » : 4 tuiles + streak. */
+  #cd-charge-card .cd-k4{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  #cd-charge-card .cd-k{ background:var(--surface2); border:1px solid var(--border); border-radius:11px; padding:10px; text-align:center; }
+  #cd-charge-card .cd-kv{ font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; }
+  #cd-charge-card .cd-kl{ font-size:9.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-subtle); font-weight:800; margin-top:3px; }
+  #cd-charge-card .cd-charge-streak{ display:flex; align-items:center; justify-content:space-between; font-size:12.5px; color:var(--text-muted); margin-top:11px; }
+  #cd-charge-card .cd-charge-streak b{ font-weight:800; color:var(--warn); }
+
+  /* Carte « Ma montre » détaillée : 3 lignes (pas/sommeil/FC) + sparkline. */
+  #cd-montre-card .cd-md-row{ display:flex; align-items:center; gap:11px; padding:10px 0; border-top:1px solid var(--surface2); }
+  #cd-montre-card .cd-md-row:first-of-type{ border-top:none; }
+  #cd-montre-card .cd-md-ic{ width:30px; height:30px; border-radius:9px; background:var(--surface2); display:grid; place-items:center; font-size:15px; flex:none; }
+  #cd-montre-card .cd-md-nm{ flex:none; width:92px; }
+  #cd-montre-card .cd-md-nm b{ display:block; font-size:13px; font-weight:800; }
+  #cd-montre-card .cd-md-nm span{ font-size:10px; color:var(--text-subtle); text-transform:uppercase; letter-spacing:.03em; font-weight:700; }
+  #cd-montre-card .cd-md-spark{ flex:1; min-width:0; display:flex; justify-content:center; }
+  #cd-montre-card .cd-md-spark svg{ width:100%; max-width:130px; height:30px; }
+  #cd-montre-card .cd-md-v{ flex:none; font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; text-align:right; min-width:58px; }
+  #cd-montre-card .cd-md-note{ font-size:10.5px; color:var(--text-subtle); line-height:1.4; margin-top:10px; }
+}
+
 /* ═══ Colonne de droite coach (Aperçu v2) — desktop uniquement ═══ */
 .cd-aside{ display:none; }
 @media (min-width:992px){
