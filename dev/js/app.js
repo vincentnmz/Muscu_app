@@ -4604,12 +4604,19 @@ function fermerMessagerieCoach() {
   document.getElementById('coach-messagerie-drawer').style.display = 'none';
 }
 async function ouvrirMessagerieCoach() {
+  // Desktop : 2 volets (liste + fil côte à côte). Mobile : tiroir existant.
+  if (_msg2IsDesktop()) { return ouvrirMessagerie2(); }
   const overlay = document.getElementById('coach-messagerie-overlay');
   const drawer  = document.getElementById('coach-messagerie-drawer');
   const liste   = document.getElementById('coach-messagerie-liste');
   if (!drawer || !liste) return;
   overlay.style.display = 'block';
   drawer.style.display = 'flex';
+  await _msgFillList();
+}
+async function _msgFillList() {
+  const liste = document.getElementById('coach-messagerie-liste');
+  if (!liste) return;
   liste.innerHTML = '<div class="loader">Chargement...</div>';
   const athletes = athletesCoach || [];
   if (!athletes.length) { liste.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">Aucun athlète.</div>'; return; }
@@ -4642,7 +4649,68 @@ async function ouvrirMessagerieCoach() {
     </div>`;
   }).join('');
 }
+
+// ═══════════ MESSAGERIE COACH — 2 VOLETS (desktop) ═══════════
+// Réutilise la liste (#coach-messagerie-liste) et la carte conversation
+// (#cd-commentaires-card, avec son fil + composer + affichage des médias) en
+// les déplaçant dans un écran 2 colonnes. Restaurées pour la fiche/mobile.
+var _msg2Active = false;
+var _msg2CardHome = null, _msg2ListHome = null;
+function _msg2IsDesktop() { try { return window.matchMedia('(min-width:992px)').matches; } catch (e) { return false; } }
+function ouvrirMessagerie2() {
+  var m2 = document.getElementById('coach-msg2'); if (!m2) return;
+  _msg2Active = true;
+  // liste → volet gauche
+  var liste = document.getElementById('coach-messagerie-liste');
+  var listHost = document.getElementById('msg2-list');
+  if (liste && listHost && liste.parentNode !== listHost) {
+    if (!_msg2ListHome) _msg2ListHome = { p: liste.parentNode, n: liste.nextSibling };
+    listHost.appendChild(liste);
+  }
+  m2.style.display = 'flex';
+  var head = document.getElementById('msg2-thread-head'); if (head) head.style.display = 'none';
+  var empty = document.getElementById('msg2-thread-empty'); if (empty) empty.style.display = 'flex';
+  _msgFillList();
+}
+function fermerMessagerie2() {
+  var m2 = document.getElementById('coach-msg2'); if (m2) m2.style.display = 'none';
+  if (!_msg2Active) return;
+  _msg2Active = false;
+  // Carte conversation → retour à la fiche (sinon l'onglet Conversation serait vide)
+  var card = document.getElementById('cd-commentaires-card');
+  if (card && _msg2CardHome && _msg2CardHome.p) { try { _msg2CardHome.p.insertBefore(card, _msg2CardHome.n); } catch (e) {} }
+  // liste → retour au tiroir
+  var liste = document.getElementById('coach-messagerie-liste');
+  if (liste && _msg2ListHome && _msg2ListHome.p) { try { _msg2ListHome.p.insertBefore(liste, _msg2ListHome.n); } catch (e) {} }
+}
+function _msg2Open(idx) {
+  var a = athletesCoach[Number(idx)]; if (!a) return;
+  coachAthleteCourant = a;
+  var nm = document.getElementById('msg2-name'); if (nm) nm.textContent = a.nom;
+  var av = document.getElementById('msg2-av'); if (av) av.textContent = _coachDeskInit(a.nom);
+  var head = document.getElementById('msg2-thread-head'); if (head) head.style.display = 'flex';
+  var empty = document.getElementById('msg2-thread-empty'); if (empty) empty.style.display = 'none';
+  var card = document.getElementById('cd-commentaires-card');
+  var host = document.getElementById('msg2-thread');
+  if (card && host && card.parentNode !== host) {
+    if (!_msg2CardHome) _msg2CardHome = { p: card.parentNode, n: card.nextSibling };
+    host.appendChild(card);
+  }
+  Promise.resolve(chargerCommentairesCoach(a.athlete_id)).then(function () { _msg2MarkRead(); _msgFillList(); });
+}
+function _msg2MarkRead() {
+  try {
+    var nonLus = (commentairesAthleteActuel || []).filter(function (c) { return c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach'); }).map(function (c) { return c.id; });
+    if (!nonLus.length) return;
+    ajouterLusLocaux('muscu_lu_coach', nonLus);
+    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLus }) });
+    (commentairesAthleteActuel || []).forEach(function (c) { if (nonLus.indexOf(c.id) >= 0) c.lu = true; });
+    if (typeof majBadgeConseilsCoach === 'function') majBadgeConseilsCoach(0);
+  } catch (e) {}
+}
+
 function ouvrirConversationDepuisMessagerie(idx) {
+  if (_msg2Active && _msg2IsDesktop()) { _msg2Open(idx); return; }
   fermerMessagerieCoach();
   const a = athletesCoach[Number(idx)];
   if (!a) return;
@@ -4893,6 +4961,7 @@ function coachNiveauKey(annees) {
 }
 
 async function ouvrirDetailAthleteCoach(a, initialTab) {
+  try { fermerMessagerie2(); } catch (e) {}  // rend la carte conversation à la fiche
   try { _maCoachDetach(); } catch (e) {}   // état analyses propre avant de charger un autre athlète
   coachAthleteCourant = a;
   document.getElementById('view-coach').classList.remove('active');
@@ -6373,6 +6442,7 @@ function _coachDeskAny() { try { return window.matchMedia('(min-width:992px)').m
 function _coachDeskOn() { return _coachDeskAny() && !document.body.classList.contains('athlete-selected'); }
 function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enrich: enrich, prioritaires: prioritaires, datas: datas, kpis: kpis }; if (_coachDeskAny()) renderCoachDesktop(); }
 function coachDeskGo(sec) {
+  try { if (sec !== 'messages') fermerMessagerie2(); } catch (e) {}
   if (sec === 'messages') { if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
   if (sec === 'profil')   { if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
   if (document.body.classList.contains('athlete-selected')) { try { retourListeAthletesCoach(); } catch (_) {} }
@@ -6447,7 +6517,9 @@ function renderCoachRail() {
   var coachNom = (typeof coach !== 'undefined' && coach && coach.nom) ? coach.nom : 'Coach';
   rail.innerHTML = '<aside class="cs-side"><div class="cs-brand"><span class="cs-logo">N</span><div><b>Novalyz</b><span>Espace coach</span></div></div>'
     + '<nav class="cs-nav">' + navItem('aujourdhui', "Aujourd'hui") + navItem('equipe', 'Équipe') + navItem('analyses', 'Analyses') + navItem('messages', 'Messages') + navItem('profil', 'Profil') + '</nav>'
-    + '<div class="cs-me"><span class="cs-av">' + _coachDeskInit(coachNom) + '</span><div><b>' + escapeHtml(coachNom) + '</b><span>Coach · ' + (k.total || 0) + ' athlète' + ((k.total || 0) > 1 ? 's' : '') + '</span></div></div></aside>';
+    + '<div class="cs-me"><span class="cs-av">' + _coachDeskInit(coachNom) + '</span><div style="flex:1;min-width:0"><b>' + escapeHtml(coachNom) + '</b><span>Coach · ' + (k.total || 0) + ' athlète' + ((k.total || 0) > 1 ? 's' : '') + '</span></div></div>'
+    + '<button class="cs-logout" onclick="seDeconnecterCoach()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Déconnexion</button>'
+    + '</aside>';
 }
 // Plan de travail de l'accueil (Aujourd'hui / Équipe / Analyses).
 function renderCoachHome() {

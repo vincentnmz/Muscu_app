@@ -565,3 +565,27 @@ body.prog-editor-open{ overflow:hidden; }
     width:380px; max-width:380px; border-right:1px solid var(--border); box-shadow:2px 0 24px rgba(13,23,38,.08);
   }
 }
+
+/* Bouton Déconnexion dans le rail coach */
+@media (min-width:992px){
+  #coach-rail .cs-logout{ display:flex; align-items:center; gap:10px; margin-top:8px; padding:10px 11px; border-radius:11px; border:none; background:none; color:#e5737a; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; width:100%; text-align:left; }
+  #coach-rail .cs-logout svg{ width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  #coach-rail .cs-logout:hover{ background:rgba(229,72,77,.14); color:#ff8a90; }
+}
+
+/* ═══ Messagerie coach — 2 volets (desktop) ═══ */
+#coach-msg2{ display:none; }
+@media (min-width:992px){
+  body.coach-active #coach-msg2{ display:flex; position:fixed; top:0; left:248px; right:0; bottom:0; z-index:61; background:var(--surface2); }
+  #coach-msg2 .msg2-list-pane{ width:340px; flex:none; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; min-height:0; }
+  #coach-msg2 .msg2-list-hd{ padding:16px 18px; font-family:'Michroma',sans-serif; font-size:15px; border-bottom:1px solid var(--border); flex:none; }
+  #coach-msg2 .msg2-list-host{ flex:1; overflow:auto; padding:10px; min-height:0; }
+  #coach-msg2 .msg2-thread-pane{ flex:1; min-width:0; display:flex; flex-direction:column; position:relative; min-height:0; }
+  #coach-msg2 .msg2-head{ display:flex; align-items:center; gap:11px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface); flex:none; }
+  #coach-msg2 .msg2-av{ width:40px; height:40px; border-radius:50%; background:var(--surface2); display:grid; place-items:center; font-weight:800; color:var(--text-muted); flex:none; }
+  #coach-msg2 .msg2-name{ font-size:15px; font-weight:800; }
+  #coach-msg2 .msg2-thread-host{ flex:1; min-height:0; display:flex; flex-direction:column; }
+  #coach-msg2 #cd-commentaires-card{ flex:1; display:flex; flex-direction:column; height:100%; border:none !important; border-radius:0 !important; box-shadow:none !important; margin:0 !important; background:transparent; }
+  #coach-msg2 #cd-commentaires-liste{ max-height:none !important; flex:1; }
+  #coach-msg2 .msg2-empty{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-subtle); font-weight:700; font-size:14px; }
+}
