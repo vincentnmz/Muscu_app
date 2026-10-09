@@ -565,7 +565,19 @@
         <div class="dash-label">Récupération &amp; bien-être<span class="cd-forme-tag">Forme</span></div>
         <div id="cd-forme-recup-content"></div>
       </div>
-      <div class="dash-card cd-forme-card" id="cd-forme-poids" style="padding:16px;">
+      <!-- Charge & assiduité (v3) : fusionne l'ancien « État de forme » (RPE/tonnage/
+           streak) + régularité + ACWR. Rempli par renderCoachChargeCard(data). -->
+      <div class="dash-card cd-forme-card" id="cd-charge-card" style="padding:16px;">
+        <div class="dash-label">Charge &amp; assiduité</div>
+        <div id="cd-charge-content"></div>
+      </div>
+      <!-- Ma montre détaillée (v3) : pas + sommeil + FC repos de l'athlète, avec
+           mini-tendances. Rempli par renderCoachMontreDetail(data). -->
+      <div class="dash-card cd-forme-card" id="cd-montre-card" style="padding:16px;">
+        <div id="cd-montre-detail"></div>
+      </div>
+      <!-- Poids : sorti de l'Aperçu en v3 (reste dans l'onglet Progression). Masqué. -->
+      <div class="dash-card cd-forme-card" id="cd-forme-poids" style="padding:16px;display:none">
         <div class="dash-label">Poids<span class="cd-forme-tag">Forme</span></div>
         <div id="cd-forme-poids-content"></div>
       </div>
@@ -616,7 +628,7 @@
           <div id="cd-etat-content"></div>
         </div>
         <!-- Analyse (moteur Novalyz — interprétation, lecture seule) -->
-        <div class="v2-sec" id="cd-analyse-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-lightbulb"/></svg>Analyse</h2></div>
+        <div class="v2-sec" id="cd-analyse-sec" style="display:none;"><h2 class="st"><svg class="ico"><use href="#i-lightbulb"/></svg>Lecture Novalyz</h2></div>
         <div class="dash-card" id="cd-analyse-card" style="padding:16px;display:none;">
           <div id="cd-analyse-content"></div>
         </div>
@@ -839,8 +851,9 @@
       </div>
       <!-- Ma montre : pas · sommeil · FC repos de l'athlète (renderCoachMontre). -->
       <div class="dash-card cd-aside" id="cd-aside-montre" style="padding:15px;margin-bottom:12px;display:none"></div>
-      <!-- Repères : dernière séance + régularité (IDs utilisés par renderCoachOverview). -->
-      <div class="dash-card cd-aside" style="padding:15px;margin-bottom:12px">
+      <!-- Repères : dernière séance + régularité (IDs utilisés par renderCoachOverview).
+           Masquée en Aperçu v3 (dernière séance → « Dernières séances », régularité → « Charge »). -->
+      <div class="dash-card cd-aside" id="cd-reperes-card" style="padding:15px;margin-bottom:12px">
         <div class="dash-label">Repères</div>
         <div class="cd-rep-row"><span>Dernière séance</span><b id="cd-derniere-date">—</b></div>
         <div id="cd-derniere-nom" class="cd-rep-sub"></div>
