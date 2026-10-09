@@ -557,3 +557,11 @@ body.prog-editor-open{ overflow:hidden; }
   #cd-ia-card .cd-ia-field input{ flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:11px; padding:11px 13px; font:inherit; font-size:13.5px; color:var(--text); margin:0; }
   #cd-ia-card .cd-ia-field button{ flex:none; width:42px; height:42px; border:none; border-radius:11px; background:var(--accent); color:#fff; display:grid; place-items:center; cursor:pointer; }
 }
+
+/* Messages coach (desktop) : panneau liste ancré à droite du rail (pas centré). */
+@media (min-width:992px){
+  body.coach-active #coach-messagerie-drawer{
+    left:248px !important; right:auto !important; margin:0 !important;
+    width:380px; max-width:380px; border-right:1px solid var(--border); box-shadow:2px 0 24px rgba(13,23,38,.08);
+  }
+}
