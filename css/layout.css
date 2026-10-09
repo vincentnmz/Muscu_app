@@ -503,7 +503,7 @@ body.prog-editor-open{ overflow:hidden; }
   body.coach-active #coach-reglages-drawer,
   body.coach-active #coach-reglages-overlay,
   body.coach-active #coach-messagerie-drawer,
-  body.coach-active #coach-messagerie-overlay{ left:248px; }
+  body.coach-active #coach-messagerie-overlay{ left:248px !important; }
 }
 
 /* ═══ Fiche athlète coach — nouvelle identité (grille 2 colonnes desktop) ═══ */
@@ -576,7 +576,9 @@ body.prog-editor-open{ overflow:hidden; }
 /* ═══ Messagerie coach — 2 volets (desktop) ═══ */
 #coach-msg2{ display:none; }
 @media (min-width:992px){
-  body.coach-active #coach-msg2{ display:flex; position:fixed; top:0; left:248px; right:0; bottom:0; z-index:61; background:var(--surface2); }
+  /* Affiché uniquement via JS (ouvrirMessagerie2) — sinon il recouvrirait tout. */
+  body.coach-active #coach-msg2{ position:fixed; top:0; left:248px; right:0; bottom:0; z-index:61; background:var(--surface2); }
+  body.coach-active #coach-msg2[style*="flex"]{ display:flex; }
   #coach-msg2 .msg2-list-pane{ width:340px; flex:none; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; min-height:0; }
   #coach-msg2 .msg2-list-hd{ padding:16px 18px; font-family:'Michroma',sans-serif; font-size:15px; border-bottom:1px solid var(--border); flex:none; }
   #coach-msg2 .msg2-list-host{ flex:1; overflow:auto; padding:10px; min-height:0; }
@@ -588,4 +590,16 @@ body.prog-editor-open{ overflow:hidden; }
   #coach-msg2 #cd-commentaires-card{ flex:1; display:flex; flex-direction:column; height:100%; border:none !important; border-radius:0 !important; box-shadow:none !important; margin:0 !important; background:transparent; }
   #coach-msg2 #cd-commentaires-liste{ max-height:none !important; flex:1; }
   #coach-msg2 .msg2-empty{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-subtle); font-weight:700; font-size:14px; }
+}
+
+/* Fiche Aperçu coach allégée (desktop) : on masque le secondaire — il reste
+   accessible via les onglets Progression/Séances. Garde l'essentiel façon
+   maquette : hero, IA, alertes, repères, volume, séances, nutrition, analyse,
+   état de forme. */
+@media (min-width:992px){
+  body.coach-active.athlete-selected #cdtab-overview > #cd-extra-hidden,
+  body.coach-active.athlete-selected #cdtab-overview > #cd-prochaine,
+  body.coach-active.athlete-selected #cdtab-overview > div[style*="text-align:right"],
+  body.coach-active.athlete-selected #cd-etat-group > #cd-etat-sec,
+  body.coach-active.athlete-selected #cd-etat-group > #cd-etat-card{ display:none !important; }
 }
