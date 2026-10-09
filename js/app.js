@@ -5755,7 +5755,8 @@ function renderCoachHubVolume(data) {
   var status = sousCount
     ? '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">⚠ ' + sousCount + ' muscle' + (sousCount > 1 ? 's' : '') + ' sous le volume cible</span></div>'
     : '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--good-a);color:var(--good);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">✓ Volumes dans les cibles</span></div>';
-  el.innerHTML = '<div class="dash-label cd-deskonly">Volume par muscle · 7 j</div>' + rows + status;
+  el.innerHTML = '<div class="dash-label cd-deskonly cd-cardlink">Volume par muscle · 7 j<span class="cd-voir">Voir tout →</span></div>' + rows + status;
+  try { el.style.cursor = 'pointer'; el.onclick = function () { switchCoachDetailTab('prog'); }; } catch (e) {}
   if (sec) sec.style.display = ''; el.style.display = '';
 }
 
@@ -5766,7 +5767,7 @@ function renderCoachHubSeances(data) {
   if (!el) return;
   var sd = (data && Array.isArray(data.seances_detail)) ? data.seances_detail : [];
   if (!sd.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
-  var html = sd.slice(0, 2).map(function (s, i) {
+  var html = sd.slice(0, 3).map(function (s, i) {
     var exos = s.exercices || [];
     var nbExos = exos.length;
     var nbSeries = s.nb_series || exos.reduce(function (n, e) { return n + ((e.series || []).length); }, 0);
@@ -5781,7 +5782,8 @@ function renderCoachHubSeances(data) {
       '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + nbExos + ' exo' + (nbExos > 1 ? 's' : '') + ' · ' + nbSeries + ' séries · ' + tonn + '</div></div>' +
       '<div style="text-align:right;flex:none;"><div style="font-size:15px;font-weight:900;color:' + rpeColor + '">' + (rpeMoy != null ? rpeMoy.toFixed(1).replace('.', ',') : '—') + '</div><div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);">RPE moy</div></div></div>';
   }).join('');
-  el.innerHTML = '<div class="dash-label cd-deskonly">Dernières séances</div>' + html;
+  el.innerHTML = '<div class="dash-label cd-deskonly cd-cardlink">Dernières séances<span class="cd-voir">Voir tout →</span></div>' + html;
+  try { el.style.cursor = 'pointer'; el.onclick = function () { switchCoachDetailTab('seances'); }; } catch (e) {}
   if (sec) sec.style.display = ''; el.style.display = '';
 }
 

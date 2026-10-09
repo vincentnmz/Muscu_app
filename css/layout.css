@@ -691,6 +691,13 @@ body.prog-editor-open{ overflow:hidden; }
      → toutes les cartes font exactement la même taille. */
   body.coach-active.athlete-selected #cd-ov-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; grid-auto-rows:1fr; margin:0 0 14px; align-items:stretch; }
   body.coach-active.athlete-selected #cd-ov-grid > .dash-card{ margin:0 !important; height:auto; break-inside:auto; }
+  /* Cartes cliquables (Dernières séances, Volume → onglet détaillé). */
+  body.coach-active.athlete-selected #cd-ov-grid > #cd-hub-seances,
+  body.coach-active.athlete-selected #cd-ov-grid > #cd-hub-volume{ transition:border-color .15s; }
+  body.coach-active.athlete-selected #cd-ov-grid > #cd-hub-seances:hover,
+  body.coach-active.athlete-selected #cd-ov-grid > #cd-hub-volume:hover{ border-color:var(--accent); }
+  .cd-cardlink{ display:flex; align-items:center; }
+  .cd-cardlink .cd-voir{ margin-left:auto; font-size:10px; font-weight:800; color:var(--accent); text-transform:none; letter-spacing:0; }
   /* Le groupe « état » ne garde que la Lecture Novalyz (analyse) en pleine largeur. */
   body.coach-active.athlete-selected #cd-etat-group{ display:block; grid-template-columns:none; }
   body.coach-active.athlete-selected #cd-etat-group > #cd-recup-card{ display:none !important; }
