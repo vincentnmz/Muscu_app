@@ -605,3 +605,16 @@ body.prog-editor-open{ overflow:hidden; }
   body.coach-active.athlete-selected #cd-etat-group > #cd-etat-sec,
   body.coach-active.athlete-selected #cd-etat-group > #cd-etat-card{ display:none !important; }
 }
+
+/* Fiche coach : le rail (poids/actions) n'est utile que sur l'Aperçu.
+   Sur les autres onglets, on le masque et le contenu prend toute la largeur
+   (évite la « 3e colonne » sur Progression, Séances, Conversation…). */
+@media (min-width:992px){
+  body.coach-active.athlete-selected #cd-body[data-tab]:not([data-tab="overview"]) #cd-rail{ display:none !important; }
+  body.coach-active.athlete-selected #cd-body[data-tab]:not([data-tab="overview"]) #cd-main{ flex:1 1 100%; }
+}
+
+/* Éditeur de programme (Builder) côté coach : décalé à droite du rail. */
+@media (min-width:992px){
+  body.coach-active #prog-editor-overlay{ left:248px !important; }
+}

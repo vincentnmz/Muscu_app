@@ -4878,6 +4878,9 @@ function switchCoachDetailTab(tab) {
     const el = document.getElementById('cdtab-' + t); if (el) el.style.display = t === tab ? 'block' : 'none';
     const btn = document.getElementById('cdtab-btn-' + t); if (btn) btn.classList.toggle('active', t === tab);
   });
+  // Onglet actif exposé sur #cd-body → le rail « poids/actions » n'est gardé que
+  // sur l'Aperçu (sinon il crée une 3e colonne sur Progression/Séances/etc.).
+  const cdBody = document.getElementById('cd-body'); if (cdBody) cdBody.setAttribute('data-tab', tab);
   const ttl = document.getElementById('cd-tab-title');
   if (ttl && CD_TAB_LABELS[tab]) ttl.textContent = CD_TAB_LABELS[tab];
   const cdH = document.getElementById('cd-header'); if (cdH) cdH.style.transform = 'translateY(0)'; // header visible au changement d'onglet
@@ -4891,8 +4894,14 @@ function switchCoachDetailTab(tab) {
     try { localStorage.setItem('muscu_coach_vue', JSON.stringify({ athlete_id: coachAthleteCourant.athlete_id, tab: tab })); } catch(e) {}
   }
   if (tab === 'programme') {
-    progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null }; // contexte muscu
-    chargerProgrammeCoach();
+    // Desktop : on ouvre le nouveau Builder (plein écran, à droite du rail).
+    var _deskProg = false; try { _deskProg = window.matchMedia('(min-width:992px)').matches; } catch (e) {}
+    if (_deskProg && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant) {
+      ouvrirEditeurProgrammeCoach();
+    } else {
+      progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null }; // contexte muscu (mobile : accordéon)
+      chargerProgrammeCoach();
+    }
   }
   // Analyses coach = bloc « Mes analyses » déplacé ici (source = athlète consulté).
   if (tab === 'prog') { try { _maCoachAttach(coachAthleteData); } catch (e) {} }
@@ -13752,10 +13761,30 @@ function ouvrirEditeurProgramme() {
   try { document.body.classList.add('prog-editor-open'); } catch (e) {}
   if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
 }
+// Même éditeur (Builder) côté COACH, pointé sur l'athlète courant du coach.
+function ouvrirEditeurProgrammeCoach() {
+  if (typeof coachAthleteCourant === 'undefined' || !coachAthleteCourant) return;
+  try { cdProgOpen = {}; } catch (e) {}
+  try { _progTab = 0; } catch (e) {}
+  try {
+    progCtx = { el: 'prog-editor-content', athleteId: coachAthleteCourant.athlete_id, athleteNom: coachAthleteCourant.nom || '', readonly: false };
+  } catch (e) { return; }
+  var ov = document.getElementById('prog-editor-overlay');
+  if (ov) ov.style.display = 'flex';
+  try { document.body.classList.add('prog-editor-open'); } catch (e) {}
+  var t = document.getElementById('prog-editor-title'); if (t) t.textContent = 'Programme · ' + (coachAthleteCourant.nom || '');
+  if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
+}
 function fermerEditeurProgramme() {
   var ov = document.getElementById('prog-editor-overlay');
   if (ov) ov.style.display = 'none';
   try { document.body.classList.remove('prog-editor-open'); } catch (e) {}
+  // Contexte COACH : on recharge l'onglet Programme inline de la fiche (pas l'app athlète).
+  if (typeof coach !== 'undefined' && coach && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant) {
+    try { progCtx = { el: 'cd-programme-content', athleteId: coachAthleteCourant.athlete_id, athleteNom: coachAthleteCourant.nom || '' }; } catch (e) {}
+    if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
+    return;
+  }
   // Le programme a pu changer → recharger pour rafraîchir le hub et le sélecteur.
   if (typeof chargerAppData === 'function') chargerAppData();
 }
