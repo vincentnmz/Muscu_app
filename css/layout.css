@@ -530,6 +530,9 @@ body.prog-editor-open{ overflow:hidden; }
   body.coach-active #coach-reglages-overlay,
   body.coach-active #coach-messagerie-drawer,
   body.coach-active #coach-messagerie-overlay{ left:248px !important; }
+  /* Profil : la navigation se fait par le rail → la flèche « retour » n'a pas
+     lieu d'être en desktop (et donnait l'impression d'être bloqué dessus). */
+  body.coach-active #coach-reglages-drawer .crg-back{ display:none !important; }
 }
 
 /* ═══ Fiche athlète coach — nouvelle identité (grille 2 colonnes desktop) ═══ */
