@@ -337,12 +337,15 @@ body.prog-editor-open{ overflow:hidden; }
 
 /* ═══════════ ÉDITEUR PROGRAMME — Builder pro (desktop, piste A) ═══════════ */
 @media (min-width:992px){
-  /* Plein écran : les panneaux défilent eux-mêmes → scrollbar au bord de la fenêtre. */
-  #prog-editor-overlay .prog-editor-scroll:has(.pb-builder){ max-width:none !important; padding:0 !important; overflow:hidden !important; }
-  #prog-editor-overlay .pb-builder{ display:grid; grid-template-columns:236px minmax(0,1fr) 300px; height:100%; }
+  /* Plein écran : les panneaux défilent eux-mêmes → scrollbar au bord de la fenêtre.
+     Chaîne flex jusqu'au builder pour que sa hauteur soit BORNÉE (sinon #prog-editor-content
+     est en hauteur auto → height:100% ne contraint rien et le volet central ne scrolle pas). */
+  #prog-editor-overlay .prog-editor-scroll:has(.pb-builder){ max-width:none !important; padding:0 !important; overflow:hidden !important; display:flex; flex-direction:column; min-height:0; }
+  #prog-editor-overlay .prog-editor-scroll:has(.pb-builder) > #prog-editor-content{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+  #prog-editor-overlay .pb-builder{ display:grid; grid-template-columns:236px minmax(0,1fr) 300px; flex:1 1 auto; min-height:0; }
 
   /* Rail des jours */
-  #prog-editor-overlay .pb-rail{ background:var(--surface2); border-right:1px solid var(--border); padding:16px 12px; display:flex; flex-direction:column; gap:6px; overflow:auto; }
+  #prog-editor-overlay .pb-rail{ background:var(--surface2); border-right:1px solid var(--border); padding:16px 12px; display:flex; flex-direction:column; gap:6px; overflow:auto; min-height:0; }
   #prog-editor-overlay .pb-rail-t{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--text-subtle); margin:2px 6px 6px; }
   #prog-editor-overlay .pb-dayrow{ display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:12px; cursor:pointer; border:1px solid transparent; }
   #prog-editor-overlay .pb-dayrow:hover{ background:var(--surface); }
@@ -357,7 +360,7 @@ body.prog-editor-open{ overflow:hidden; }
   #prog-editor-overlay .pb-dayrow.prog-col-drop{ outline:2px dashed var(--accent); outline-offset:2px; background:var(--accent-a08); }
 
   /* Plan central */
-  #prog-editor-overlay .pb-canvas{ overflow:auto; }
+  #prog-editor-overlay .pb-canvas{ overflow:auto; min-height:0; }
   #prog-editor-overlay .pb-ctop{ position:sticky; top:0; background:var(--surface); border-bottom:1px solid var(--border); padding:16px 22px; display:flex; align-items:center; gap:10px; z-index:2; }
   #prog-editor-overlay .pb-ctop h3{ font-size:17px; }
   #prog-editor-overlay .pb-ctop .pb-sub{ font-size:12px; color:var(--text-subtle); font-weight:700; }
@@ -393,7 +396,7 @@ body.prog-editor-open{ overflow:hidden; }
   #prog-editor-overlay .pb-superset .pb-row{ background:var(--surface); }
 
   /* Inspecteur */
-  #prog-editor-overlay .pb-insp{ background:var(--surface2); border-left:1px solid var(--border); padding:16px; overflow:auto; display:flex; flex-direction:column; gap:14px; }
+  #prog-editor-overlay .pb-insp{ background:var(--surface2); border-left:1px solid var(--border); padding:16px; overflow:auto; display:flex; flex-direction:column; gap:14px; min-height:0; }
   #prog-editor-overlay .pb-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; }
   #prog-editor-overlay .pb-card-t{ font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--text-subtle); margin-bottom:9px; }
   #prog-editor-overlay .pb-iacard{ background:linear-gradient(135deg,var(--accent-a08),var(--surface)); border-color:rgba(26,95,255,.25); }
@@ -650,9 +653,18 @@ body.prog-editor-open{ overflow:hidden; }
 @media (min-width:992px){
   body.coach-active.athlete-selected #cdtab-overview > #cd-extra-hidden,
   body.coach-active.athlete-selected #cdtab-overview > #cd-prochaine,
+  body.coach-active.athlete-selected #cdtab-overview > .cd-hub-actions,
   body.coach-active.athlete-selected #cdtab-overview > div[style*="text-align:right"],
   body.coach-active.athlete-selected #cd-etat-group > #cd-etat-sec,
   body.coach-active.athlete-selected #cd-etat-group > #cd-etat-card{ display:none !important; }
+  /* Hero « État du jour » : sa classe .fjd-hero est vidée au rendu → on le cible
+     par son ID pour qu'il reste pleine largeur (sinon il passe en 1/2 colonne). */
+  body.coach-active.athlete-selected #cdtab-overview > #cd-hero{ grid-column:1 / -1; }
+  /* Rail droit (sidebar) : repères compacts visibles (dernière séance +
+     régularité), et on masque « Évolution du poids » — doublon de la carte
+     Forme Poids de l'Aperçu. */
+  body.coach-active.athlete-selected #cd-rail .cd-rail-dup{ display:block; }
+  body.coach-active.athlete-selected #cd-rail .cd-rail-weight{ display:none !important; }
 }
 
 /* Fiche coach : le rail (poids/actions) n'est utile que sur l'Aperçu.
@@ -661,6 +673,17 @@ body.prog-editor-open{ overflow:hidden; }
 @media (min-width:992px){
   body.coach-active.athlete-selected #cd-body[data-tab]:not([data-tab="overview"]) #cd-rail{ display:none !important; }
   body.coach-active.athlete-selected #cd-body[data-tab]:not([data-tab="overview"]) #cd-main{ flex:1 1 100%; }
+}
+
+/* En-tête de l'éditeur Programme : onglets de la fiche (desktop uniquement). */
+.pe-tabs{ display:none; }
+@media (min-width:992px){
+  body.coach-active #cd-header .cd-back{ display:none !important; }   /* fiche : nav par le rail, pas de flèche */
+  body.coach-active #prog-editor-overlay .pe-back{ display:none !important; } /* Programme : nav par les onglets, pas de flèche */
+  body.coach-active #prog-editor-overlay .pe-tabs{ display:flex; gap:4px; margin-left:18px; }
+  body.coach-active #prog-editor-overlay .pe-tabs button{ border:none; background:none; font:inherit; font-weight:800; font-size:13px; color:var(--text-muted); padding:8px 13px; border-radius:9px; cursor:pointer; border-bottom:2.5px solid transparent; }
+  body.coach-active #prog-editor-overlay .pe-tabs button:hover{ color:var(--text); }
+  body.coach-active #prog-editor-overlay .pe-tabs button.on{ color:var(--accent); border-bottom-color:var(--accent); }
 }
 
 /* Éditeur de programme (Builder) côté coach : décalé à droite du rail. */
