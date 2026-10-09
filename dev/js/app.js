@@ -6462,6 +6462,7 @@ function _coachDeskOn() { return _coachDeskAny() && !document.body.classList.con
 function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enrich: enrich, prioritaires: prioritaires, datas: datas, kpis: kpis }; if (_coachDeskAny()) renderCoachDesktop(); }
 function coachDeskGo(sec) {
   try { if (sec !== 'messages') fermerMessagerie2(); } catch (e) {}
+  try { if (sec !== 'profil') fermerReglagesCoach(); } catch (e) {}   // sinon le panneau Profil reste par-dessus
   if (sec === 'messages') { if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
   if (sec === 'profil')   { if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
   if (document.body.classList.contains('athlete-selected')) { try { retourListeAthletesCoach(); } catch (_) {} }
