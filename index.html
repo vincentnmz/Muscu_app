@@ -2741,6 +2741,21 @@
   <div id="coach-messagerie-liste" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px calc(20px + env(safe-area-inset-bottom,0px));"><div class="loader">Chargement...</div></div>
 </div>
 
+<!-- Messagerie coach — 2 volets (desktop uniquement) : liste + fil côte à côte.
+     La liste (#coach-messagerie-liste) et la carte conversation
+     (#cd-commentaires-card) y sont déplacées à l'ouverture, puis restaurées. -->
+<div id="coach-msg2">
+  <div class="msg2-list-pane">
+    <div class="msg2-list-hd">Conversations</div>
+    <div id="msg2-list" class="msg2-list-host"></div>
+  </div>
+  <div class="msg2-thread-pane">
+    <div id="msg2-thread-head" class="msg2-head" style="display:none;"><span id="msg2-av" class="msg2-av"></span><div id="msg2-name" class="msg2-name">Messages</div></div>
+    <div id="msg2-thread" class="msg2-thread-host"></div>
+    <div id="msg2-thread-empty" class="msg2-empty"><div style="text-align:center"><div style="font-size:34px;margin-bottom:8px">💬</div>Choisis une conversation</div></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- ===== MODAL BIEN-ÊTRE PRÉ/POST SÉANCE ===== -->
