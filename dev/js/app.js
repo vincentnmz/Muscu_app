@@ -5053,6 +5053,8 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
     try { renderCoachFormeCards(data); } catch (_) {}   // Aperçu desktop : cartes Forme (récup + poids)
+    try { renderCoachMontre(data); } catch (_) {}        // colonne droite : bloc Ma montre (pas/sommeil/FC)
+    try { _cdAsideDeskLayout(); } catch (_) {}           // colonne droite : reparente contexte + prochaine
     renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique, data.global);
     renderCoachIndicateurs(data);
@@ -6679,7 +6681,7 @@ function _cdOverviewDeskPrep() {
   } catch (e) {}
 }
 // Bascule mobile↔desktop coach au redimensionnement.
-(function () { if (typeof window === 'undefined' || window._coachDeskResize) return; window._coachDeskResize = true; var t = null, prev = null; window.addEventListener('resize', function () { var on = _coachDeskAny(); if (on === prev) return; prev = on; clearTimeout(t); t = setTimeout(function () { if (on && _coachDesk) renderCoachDesktop(); }, 160); }); })();
+(function () { if (typeof window === 'undefined' || window._coachDeskResize) return; window._coachDeskResize = true; var t = null, prev = null; window.addEventListener('resize', function () { var on = _coachDeskAny(); if (on === prev) return; prev = on; clearTimeout(t); t = setTimeout(function () { if (on && _coachDesk) renderCoachDesktop(); try { _cdAsideDeskLayout(); } catch (e) {} }, 160); }); })();
 
 function surlignerAthleteSidebar(athleteId) {
   document.querySelectorAll('.coach-athlete-card').forEach(c => {
@@ -16072,6 +16074,44 @@ function _cfPoids(data) {
   _cfCardShow('cd-forme-poids', true);
 }
 
+// ── Bloc « Ma montre » de la colonne de droite coach (Aperçu desktop) ─────────
+// Pas · sommeil · FC repos de l'athlète, depuis sante_historique (historisé par
+// son app). Pas et sommeil = moyenne/jour sur 7 j ; FC repos = dernière mesure.
+// Chaque métrique s'affiche indépendamment ; la carte est masquée si aucune donnée.
+function renderCoachMontre(data) {
+  var el = document.getElementById('cd-aside-montre'); if (!el) return;
+  var hist = (data && Array.isArray(data.sante_historique)) ? data.sante_historique : [];
+  var now = Date.now();
+  var recent = hist.filter(function (x) { var t = parseChatDate(x && x.date); return t && (now - t) / 86400000 <= 8; });
+  var pasArr = recent.map(function (x) { return Number(x.pas); }).filter(function (v) { return !isNaN(v) && v > 0; });
+  var slpArr = recent.map(function (x) { return Number(x.sommeil_min); }).filter(function (v) { return !isNaN(v) && v > 0; });
+  var fcRec = hist.filter(function (x) { return x && x.fc_repos != null && !isNaN(Number(x.fc_repos)) && Number(x.fc_repos) > 0; })
+                  .sort(function (a, b) { return (parseChatDate(b.date) || 0) - (parseChatDate(a.date) || 0); });
+  if (!pasArr.length && !slpArr.length && !fcRec.length) { el.style.display = 'none'; return; }
+  var avg = function (a) { return a.length ? Math.round(a.reduce(function (s, v) { return s + v; }, 0) / a.length) : null; };
+  var pasV = avg(pasArr), slpV = avg(slpArr), fcV = fcRec.length ? Math.round(Number(fcRec[0].fc_repos)) : null;
+  var cell = function (k, v) { return '<div class="cd-montre-cell"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; };
+  var pasTxt = pasV != null ? pasV.toLocaleString('fr-FR') : '—';
+  var slpTxt = slpV != null ? (Math.floor(slpV / 60) + ' h' + ((slpV % 60) ? ' <small>' + (slpV % 60 < 10 ? '0' : '') + (slpV % 60) + '</small>' : '')) : '—';
+  var fcTxt = fcV != null ? (fcV + ' <small>bpm</small>') : '—';
+  el.innerHTML = '<div class="cd-montre-top"><span class="ic">⌚</span><b>Ma montre</b><span class="per">moy. 7 j</span></div>'
+    + '<div class="cd-montre-grid">' + cell('Pas', pasTxt) + cell('Sommeil', slpTxt) + cell('FC repos', fcTxt) + '</div>'
+    + '<div class="cd-montre-note">Relevés par la montre de l\'athlète (Health Connect), synchronisés via son app.</div>';
+  el.style.display = '';
+}
+
+// Colonne de droite desktop : reparente « Contexte de perf. » et « Prochaine
+// séance » dans le rail (#cd-aside-slots), restaurés à leur place en mobile.
+var _cdAsideMoved = null;
+function _cdAsideDeskLayout() {
+  var slots = document.getElementById('cd-aside-slots'); if (!slots) return;
+  var desk = false; try { desk = window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active'); } catch (e) {}
+  var ctx = document.getElementById('cd-contexte'), proch = document.getElementById('cd-prochaine');
+  if (!_cdAsideMoved) { _cdAsideMoved = []; [ctx, proch].forEach(function (n) { if (n) _cdAsideMoved.push({ node: n, parent: n.parentNode, next: n.nextSibling }); }); }
+  if (desk) { if (ctx) slots.appendChild(ctx); if (proch) slots.appendChild(proch); }
+  else { _cdAsideMoved.forEach(function (m) { try { if (m.next && m.next.parentNode === m.parent) m.parent.insertBefore(m.node, m.next); else m.parent.appendChild(m.node); } catch (e) {} }); }
+}
+
 // Carte « Analyse » (moteur Novalyz) — interprétation en lecture seule, côté coach
 // Couleur / icône d'une analyse du moteur (partagé)
 function analyseCouleur(t) { return t === 'critical' ? 'var(--danger)' : t === 'warning' ? 'var(--warn)' : t === 'success' ? 'var(--good)' : 'var(--accent)'; }
@@ -18365,7 +18405,10 @@ async function renderEtatMontre(attempt) {
   try { var a = await H.queryAggregated({ startDate: s7.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' }); days = (a && a.aggregatedData) || []; } catch (e) { qErr = true; }
   var byDay = {}; days.forEach(function (x) { byDay[_ymdLocal(new Date(x.startDate))] = (x.value || 0); });
   var total7 = days.reduce(function (s, x) { return s + (x.value || 0); }, 0);
-  if ((qErr || total7 <= 0) && attempt < 4) { setTimeout(function () { renderEtatMontre(attempt + 1); }, 800); return; }
+  // Réessais courts au démarrage (HC se « réchauffe »). On insiste sur une vraie
+  // erreur de requête ; pour « 0 pas » on ne retente qu'une fois (le sommeil/FC
+  // peut exister sans pas → ne pas bloquer leur affichage trop longtemps).
+  if ((qErr && attempt < 4) || (total7 <= 0 && attempt < 2)) { setTimeout(function () { renderEtatMontre(attempt + 1); }, 800); return; }
 
   // Lignes « à venir » : sommeil + FC repos.
   var icoSleep = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
@@ -18378,15 +18421,26 @@ async function renderEtatMontre(attempt) {
       + '</div>';
   };
 
+  // Pas de pas ≠ pas de montre : le sommeil et la FC repos peuvent exister même
+  // quand les pas manquent (montre qui ne compte pas les pas, perm. pas accordée,
+  // sync partielle). On ne fait PLUS disparaître sommeil + FC avec les pas : on
+  // sonde les deux, et on n'affiche l'invite « connecter » que si les TROIS manquent.
   if (total7 <= 0) {
-    // Native mais aucune donnée pas : inviter à connecter / importer (bloc visible).
-    if (mini) mini.style.display = 'none';
-    el.style.display = ''; el.style.padding = '14px 15px';
-    el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Pas encore de données montre</div>'
-      + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Connecte ta montre à Health Connect, puis importe tes séances.</div>'
-      + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>'
-      + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
-    return;
+    var _sleepN = 0, _hrN = 0;
+    try { var _sp = await H.querySleep({ startDate: new Date(now.getTime() - 36 * 3600 * 1000).toISOString(), endDate: new Date(now.getTime() + 3600 * 1000).toISOString() }); _sleepN = ((_sp && _sp.sessions) || []).length; } catch (e) {}
+    try { var _hp = await H.queryRestingHeartRate({ startDate: new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString(), endDate: new Date(now.getTime() + 3600 * 1000).toISOString() }); _hrN = ((_hp && _hp.records) || []).length; } catch (e) {}
+    if (!_sleepN && !_hrN) {
+      // Vraiment aucune donnée montre (ni pas, ni sommeil, ni FC) → invite à connecter.
+      if (mini) mini.style.display = 'none';
+      el.style.display = ''; el.style.padding = '14px 15px';
+      el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Pas encore de données montre</div>'
+        + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Connecte ta montre à Health Connect, puis importe tes séances.</div>'
+        + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>'
+        + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
+      return;
+    }
+    // Sinon : on poursuit le rendu normal — le bandeau affiche Pas « — » mais
+    // Sommeil et FC repos sont bien remplis par _etFillSleep / _etFillRestingHr.
   }
 
   // Bandeau condensé (glance) : pas du jour / sommeil / FC repos + bouton Détails.

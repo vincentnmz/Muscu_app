@@ -584,7 +584,7 @@
 
       <!-- Repères (régularité, ACWR, dernière séance, progression) -->
       <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-gauge"/></svg>Repères</h2></div>
-      <div class="dash-card" style="padding:16px;">
+      <div class="dash-card" id="cd-indicateurs-card" style="padding:16px;">
         <div id="cd-indicateurs"><div class="loader">Chargement...</div></div>
       </div>
 
@@ -827,16 +827,29 @@
 
     <!-- COLONNE DROITE (rail) -->
     <aside id="cd-rail">
-      <div class="dash-card cd-rail-dup" style="padding:14px;margin-bottom:12px">
-        <div class="dash-label">🗓️ Dernière séance</div>
-        <div style="font-size:16px;font-weight:800;margin-top:4px" id="cd-derniere-date">—</div>
-        <div style="font-size:11px;color:var(--text-muted)" id="cd-derniere-nom"></div>
+      <!-- Colonne d'action & suivi (desktop coach — maquette Aperçu v2). Les cartes
+           .cd-aside ne s'affichent qu'au ≥992px ; le mobile garde son hub. -->
+      <div class="dash-card cd-aside" style="padding:15px;margin-bottom:12px">
+        <div class="dash-label">Actions</div>
+        <div class="cd-aside-qa">
+          <button class="p" onclick="switchCoachDetailTab('conseils')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Envoyer un message</button>
+          <button onclick="switchCoachDetailTab('programme')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Modifier le programme</button>
+          <button onclick="repondreAlerte('fatigue élevée')"><svg viewBox="0 0 24 24"><path d="M2 15h20M4 15V9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6M8 11h8"/></svg>Proposer un déload</button>
+        </div>
       </div>
-      <div class="dash-card cd-rail-dup" style="padding:14px;margin-bottom:12px">
-        <div class="dash-label"><svg class="ico"><use href="#i-calendar"/></svg>Régularité semaine</div>
-        <div class="dash-big-num"><span id="cd-reg-faites">—</span><span style="font-size:12px;color:#999;font-weight:400"> / <span id="cd-reg-prevues">—</span></span></div>
-        <div class="dash-bar-bg" style="background:var(--surface2);border-radius:20px;height:6px;margin-top:6px"><div id="cd-reg-bar" style="background:var(--accent);height:100%;width:0%;border-radius:20px"></div></div>
+      <!-- Ma montre : pas · sommeil · FC repos de l'athlète (renderCoachMontre). -->
+      <div class="dash-card cd-aside" id="cd-aside-montre" style="padding:15px;margin-bottom:12px;display:none"></div>
+      <!-- Repères : dernière séance + régularité (IDs utilisés par renderCoachOverview). -->
+      <div class="dash-card cd-aside" style="padding:15px;margin-bottom:12px">
+        <div class="dash-label">Repères</div>
+        <div class="cd-rep-row"><span>Dernière séance</span><b id="cd-derniere-date">—</b></div>
+        <div id="cd-derniere-nom" class="cd-rep-sub"></div>
+        <div class="cd-rep-hr"></div>
+        <div class="cd-rep-row"><span>Régularité</span><b><span id="cd-reg-faites">—</span><span style="color:var(--text-subtle);font-weight:600"> / <span id="cd-reg-prevues">—</span></span></b></div>
+        <div class="dash-bar-bg" style="background:var(--surface2);border-radius:20px;height:6px;margin-top:7px"><div id="cd-reg-bar" style="background:var(--accent);height:100%;width:0%;border-radius:20px"></div></div>
       </div>
+      <!-- Contexte de perf. + Prochaine séance : reparentés ici par JS (desktop). -->
+      <div id="cd-aside-slots"></div>
       <div class="dash-card cd-rail-weight" style="padding:14px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
           <div>

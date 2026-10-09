@@ -78,8 +78,9 @@ body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coac
   /* Détail athlète : centre 2/3 + rail droit 1/3 */
   body.coach-active.athlete-selected #view-coach.view { display:none !important; }
   body.coach-active #cd-body  { display:flex; align-items:flex-start; gap:24px; }
-  body.coach-active #cd-main  { flex:2 1 0; min-width:0; }
-  body.coach-active #cd-rail  { flex:1 1 0; min-width:0; position:sticky; top:78px; display:block !important; }
+  body.coach-active #cd-main  { flex:1 1 auto; min-width:0; }
+  /* Colonne de droite : largeur fixe (maquette Aperçu v2) */
+  body.coach-active #cd-rail  { flex:0 0 320px; width:320px; max-width:320px; min-width:0; position:sticky; top:78px; display:block !important; }
 
   /* Sous-onglets coach : barre horizontale (plus de barre fixe bas) */
   body.coach-active #view-coach-detail .sub-tabs {
@@ -655,6 +656,7 @@ body.prog-editor-open{ overflow:hidden; }
   body.coach-active.athlete-selected #cdtab-overview > #cd-prochaine,
   body.coach-active.athlete-selected #cdtab-overview > .cd-hub-actions,
   body.coach-active.athlete-selected #cdtab-overview > div[style*="text-align:right"],
+  body.coach-active.athlete-selected #cdtab-overview > #cd-indicateurs-card,
   body.coach-active.athlete-selected #cd-etat-group > #cd-etat-sec,
   body.coach-active.athlete-selected #cd-etat-group > #cd-etat-card{ display:none !important; }
   /* Hero « État du jour » : sa classe .fjd-hero est vidée au rendu → on le cible
@@ -665,6 +667,40 @@ body.prog-editor-open{ overflow:hidden; }
      Forme Poids de l'Aperçu. */
   body.coach-active.athlete-selected #cd-rail .cd-rail-dup{ display:block; }
   body.coach-active.athlete-selected #cd-rail .cd-rail-weight{ display:none !important; }
+}
+
+/* ═══ Colonne de droite coach (Aperçu v2) — desktop uniquement ═══ */
+.cd-aside{ display:none; }
+@media (min-width:992px){
+  body.coach-active.athlete-selected #cd-rail .cd-aside{ display:block; }
+  #cd-rail .cd-aside .dash-label{ margin-bottom:11px; }
+  /* Actions */
+  #cd-rail .cd-aside-qa{ display:flex; flex-direction:column; gap:8px; }
+  #cd-rail .cd-aside-qa button{ display:flex; align-items:center; gap:9px; border:1px solid var(--border); background:var(--surface); border-radius:11px; padding:11px 13px; font:inherit; font-weight:800; font-size:13px; color:var(--text); text-align:left; cursor:pointer; }
+  #cd-rail .cd-aside-qa button svg{ width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  #cd-rail .cd-aside-qa button:hover{ border-color:var(--accent); }
+  #cd-rail .cd-aside-qa button.p{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  /* Repères */
+  #cd-rail .cd-rep-row{ display:flex; align-items:center; justify-content:space-between; font-size:13px; }
+  #cd-rail .cd-rep-row span{ color:var(--text-muted); }
+  #cd-rail .cd-rep-row b{ font-weight:800; font-variant-numeric:tabular-nums; }
+  #cd-rail .cd-rep-sub{ font-size:11px; color:var(--text-muted); text-align:right; margin-top:1px; }
+  #cd-rail .cd-rep-hr{ height:1px; background:var(--border); margin:10px 0; }
+  /* Ma montre */
+  #cd-rail .cd-montre-top{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  #cd-rail .cd-montre-top .ic{ width:30px; height:30px; border-radius:9px; background:var(--surface2); display:grid; place-items:center; font-size:15px; flex:none; }
+  #cd-rail .cd-montre-top b{ font-size:13.5px; }
+  #cd-rail .cd-montre-top .per{ margin-left:auto; font-size:10px; color:var(--text-subtle); font-weight:700; }
+  #cd-rail .cd-montre-grid{ display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--border); border-radius:11px; overflow:hidden; }
+  #cd-rail .cd-montre-cell{ padding:11px 6px; text-align:center; }
+  #cd-rail .cd-montre-cell + .cd-montre-cell{ border-left:1px solid var(--border); }
+  #cd-rail .cd-montre-cell .k{ font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-subtle); font-weight:800; }
+  #cd-rail .cd-montre-cell .v{ font-size:17px; font-weight:800; margin-top:3px; color:var(--text); }
+  #cd-rail .cd-montre-cell .v small{ font-size:11px; color:var(--text-subtle); font-weight:700; }
+  #cd-rail .cd-montre-note{ font-size:10.5px; color:var(--text-subtle); line-height:1.4; margin-top:9px; }
+  /* Contexte / Prochaine reparentés : espacement comme les cartes du rail */
+  #cd-rail #cd-aside-slots > *{ margin-bottom:12px; }
+  #cd-rail #cd-aside-slots #cd-contexte:empty{ display:none; }
 }
 
 /* Fiche coach : le rail (poids/actions) n'est utile que sur l'Aperçu.
