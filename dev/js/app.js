@@ -6463,6 +6463,7 @@ function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enr
 function coachDeskGo(sec) {
   try { if (sec !== 'messages') fermerMessagerie2(); } catch (e) {}
   try { if (sec !== 'profil') fermerReglagesCoach(); } catch (e) {}   // sinon le panneau Profil reste par-dessus
+  try { var _pe = document.getElementById('prog-editor-overlay'); if (_pe && _pe.style.display !== 'none') { _pe.style.display = 'none'; document.body.classList.remove('prog-editor-open'); } } catch (e) {}
   if (sec === 'messages') { if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
   if (sec === 'profil')   { if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
   if (document.body.classList.contains('athlete-selected')) { try { retourListeAthletesCoach(); } catch (_) {} }
@@ -13855,6 +13856,19 @@ function ouvrirEditeurProgrammeCoach() {
   try { document.body.classList.add('prog-editor-open'); } catch (e) {}
   var t = document.getElementById('prog-editor-title'); if (t) t.textContent = 'Programme · ' + (coachAthleteCourant.nom || '');
   if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
+}
+// Navigation depuis l'en-tête de l'éditeur Programme (desktop coach) : on quitte
+// le Builder et on va directement sur l'onglet voulu de la fiche — pas besoin de
+// « flèche retour ».
+function progEdNav(tab) {
+  var ov = document.getElementById('prog-editor-overlay');
+  if (tab === 'programme') return;   // déjà sur Programme
+  if (ov) ov.style.display = 'none';
+  try { document.body.classList.remove('prog-editor-open'); } catch (e) {}
+  try {
+    if (tab === 'conseils') { if (typeof ouvrirConversationCoach === 'function') return ouvrirConversationCoach(); }
+    if (typeof switchCoachDetailTab === 'function') switchCoachDetailTab(tab);
+  } catch (e) {}
 }
 function fermerEditeurProgramme() {
   var ov = document.getElementById('prog-editor-overlay');
