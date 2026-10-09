@@ -4460,6 +4460,15 @@ async function renderCoachSynthese(athletes) {
   });
   const totAll = enrich.length;
 
+  // Capture pour l'écran Analyses desktop (≥992px) — réutilise ces agrégats déjà
+  // calculés ici (aucun recalcul réseau ; mobile inchangé).
+  try {
+    if (_coachDesk) {
+      _coachDesk.analyses = { assidu, bienBas, somAvg, fatAvg, blessures, progA, stagA, ressN, nutrN, totAll };
+      if (_coachDeskAny() && coachDeskSection === 'analyses' && !document.body.classList.contains('athlete-selected')) renderCoachHome();
+    }
+  } catch (e) {}
+
   // ---- Carte « Résumé équipe » (répartition des états) — affichée sur Aujourd'hui ----
   const distCard = totActifs
     ? `<div class="dash-card" style="padding:15px;">
@@ -5043,6 +5052,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCockpit(data, 'cd'); } catch (_) {}   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
+    try { renderCoachFormeCards(data); } catch (_) {}   // Aperçu desktop : cartes Forme (récup + poids)
     renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique, data.global);
     renderCoachIndicateurs(data);
@@ -6491,17 +6501,87 @@ function _coachDeskEquipe() {
   return '<table class="cs-table"><thead><tr><th>Athlète</th><th>Niveau</th><th>État</th><th>Assiduité</th><th>Dernière séance</th></tr></thead><tbody id="cs-tbody">' + rows + '</tbody></table><div id="cs-eq-empty" class="cs-empty" style="display:none">Aucun athlète ne correspond.</div>';
 }
 function _coachDeskAnalyses() {
-  var d = _coachDesk, en = d.enrich || [];
-  var ok = en.filter(function (e) { return e.m && e.m.statut.rank === 0 && !e.enPause; }).length;
-  var surv = en.filter(function (e) { return e.m && e.m.statut.rank === 1 && !e.enPause; }).length;
-  var act = en.filter(function (e) { return e.m && e.m.statut.rank === 2 && !e.enPause; }).length;
-  var rr = []; en.forEach(function (e) { if (e.enPause) return; var prev = e.regPrevues || 0, fait = e.seancesSem || 0; if (prev > 0) rr.push(Math.min(1, fait / prev)); });
-  var ass = rr.length ? Math.round(rr.reduce(function (a, b) { return a + b; }, 0) / rr.length * 100) : 0;
-  return '<div class="cs-g3">'
-    + '<div class="cs-card"><div class="cs-ct">Assiduité moyenne · 7 j</div><div class="cs-big">' + ass + ' %</div></div>'
-    + '<div class="cs-card"><div class="cs-ct">Répartition des états</div><div class="cs-mrow"><span>🟢 OK</span><b>' + ok + '</b></div><div class="cs-mrow"><span>🟠 À surveiller</span><b>' + surv + '</b></div><div class="cs-mrow"><span>🔴 Intervention</span><b>' + act + '</b></div></div>'
-    + '<div class="cs-card"><div class="cs-ct">Athlètes suivis</div><div class="cs-big">' + (d.kpis.total || 0) + '</div></div>'
-    + '</div><div class="cs-note">Vue équipe de départ — courbes d\'assiduité et charge interne à enrichir ensuite.</div>';
+  var d = _coachDesk, en = d.enrich || [], an = d.analyses || {};
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  // ── États (hors pause) ──
+  var ok = 0, surv = 0, act = 0;
+  en.forEach(function (e) { if (e.enPause || !e.m) return; var r = e.m.statut.rank; if (r <= 0) ok++; else if (r === 1) surv++; else act++; });
+  var totE = ok + surv + act;
+  // ── Assiduité moyenne (athlètes avec objectif de séances connu) ──
+  var assidu = an.assidu || [];
+  var known = assidu.filter(function (a) { return a.prev > 0; });
+  var assMoy = known.length ? Math.round(known.reduce(function (s, a) { return s + a.ratio; }, 0) / known.length * 100) : null;
+  // ── RPE ressenti moyen ──
+  var rpes = en.map(function (e) { return (e.rpe != null && !isNaN(Number(e.rpe))) ? Number(e.rpe) : null; }).filter(function (v) { return v != null; });
+  var rpeMoy = rpes.length ? (rpes.reduce(function (s, v) { return s + v; }, 0) / rpes.length) : null;
+  var blessures = an.blessures || [];
+  var progA = an.progA || [], stagA = an.stagA || [], bienBas = an.bienBas || [];
+  var nb = function (n, s) { return (n != null ? n : 0) + ' ' + s + ((n > 1) ? 's' : ''); };
+
+  // ── KPIs ──
+  var tile = function (v, l, sub, col) { return '<div class="cs-kpi"><span class="cs-kstrip" style="background:' + col + '"></span><div class="cs-kv" style="color:' + col + '">' + v + '</div><div class="cs-kl">' + l + '</div>' + (sub ? '<div class="cs-ksub">' + sub + '</div>' : '') + '</div>'; };
+  var kpis = '<div class="cs-kpis">'
+    + tile(assMoy != null ? (assMoy + '<small> %</small>') : '—', 'Assiduité moyenne', (known.length ? 'séances réalisées / prévues' : 'objectif non défini'), 'var(--good)')
+    + tile(rpeMoy != null ? ('RPE ' + rpeMoy.toFixed(1).replace('.', ',')) : '—', 'Charge ressentie moy.', (rpes.length + ' athlète' + (rpes.length > 1 ? 's' : '') + ' · 7 j'), 'var(--warn)')
+    + tile(d.kpis.total || 0, 'Athlètes suivis', (totE + ' avec un état calculé'), 'var(--accent)')
+    + tile('<span style="color:' + (blessures.length ? 'var(--danger)' : 'var(--good)') + '">' + blessures.length + '</span>', 'Blessures / douleurs actives', (blessures.length ? 'table blessures' : 'aucune en cours'), blessures.length ? 'var(--danger)' : 'var(--good)')
+    + '</div>';
+
+  // ── Donut répartition des états ──
+  var pOk = totE ? Math.round(ok / totE * 100) : 0;
+  var pSurv = totE ? Math.round(surv / totE * 100) : 0;
+  var pAct = totE ? Math.max(0, 100 - pOk - pSurv) : 0;
+  var ring = function (p, color, off) { return '<circle cx="21" cy="21" r="15.9" fill="none" stroke="' + color + '" stroke-width="7" stroke-dasharray="' + p + ' ' + (100 - p) + '" stroke-dashoffset="' + off + '" transform="rotate(-90 21 21)"/>'; };
+  var donut = '<div class="cs-card"><div class="cs-ct">Répartition des états</div>'
+    + (totE ? '<div class="cs-donut"><svg width="128" height="128" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--surface2)" stroke-width="7"/>'
+        + ring(pOk, 'var(--good)', 0) + ring(pSurv, 'var(--warn)', -pOk) + ring(pAct, 'var(--danger)', -(pOk + pSurv)) + '</svg>'
+        + '<div class="cs-dleg">'
+        + '<div class="cs-dl"><span><i style="background:var(--good)"></i>En forme</span><b>' + nb(ok, 'athlète') + '</b></div>'
+        + '<div class="cs-dl"><span><i style="background:var(--warn)"></i>À surveiller</span><b>' + nb(surv, 'athlète') + '</b></div>'
+        + '<div class="cs-dl"><span><i style="background:var(--danger)"></i>Intervention</span><b>' + nb(act, 'athlète') + '</b></div>'
+        + '</div></div>'
+      : '<div class="cs-empty">Pas encore de données d\'état.</div>') + '</div>';
+
+  // ── Assiduité par athlète (barres) ──
+  var assCard = '<div class="cs-card"><div class="cs-ct">Assiduité par athlète · 7 j</div>'
+    + (assidu.length ? assidu.slice(0, 8).map(function (a) {
+        var col = a.ratio >= 0.99 ? 'var(--good)' : a.ratio >= 0.6 ? 'var(--warn)' : 'var(--danger)';
+        var val = a.known ? (a.fait + (a.prev ? '/' + a.prev : '')) : '—';
+        return '<div class="cs-arow"><span class="cs-abn">' + esc(a.nom) + '</span><div class="cs-abar"><i style="width:' + Math.round(a.ratio * 100) + '%;background:' + col + '"></i></div><span class="cs-abv" style="color:' + col + '">' + val + '</span></div>';
+      }).join('')
+      : '<div class="cs-empty">Pas de données d\'assiduité.</div>') + '</div>';
+
+  // ── Listes d'action ──
+  var arow = function (nom, sub, chip, chipCls) {
+    return '<div class="cs-lrow"><span class="cs-lav">' + _coachDeskInit(nom) + '</span><div class="cs-ln"><b>' + esc(nom) + '</b><span>' + esc(sub) + '</span></div>'
+      + (chip ? '<span class="cs-lchip ' + chipCls + '">' + esc(chip) + '</span>' : '') + '</div>';
+  };
+  // Meilleure progression (Δ 1RM estimé le plus fort)
+  var progCard = '<div class="cs-card"><div class="cs-ct">Meilleure progression · 1RM estimé</div>'
+    + (progA.length ? progA.slice(0, 4).map(function (x) { return arow(x.nom, x.exo, '▲ +' + x.delta + ' %', 'good'); }).join('')
+      : '<div class="cs-empty">Pas assez de séances pour l\'estimer.</div>') + '</div>';
+  // À relancer (assiduité la plus basse, hors objectif non défini)
+  var relance = known.filter(function (a) { return a.ratio < 1; }).sort(function (a, b) { return a.ratio - b.ratio; });
+  var relanceCard = '<div class="cs-card"><div class="cs-ct">À relancer · assiduité</div>'
+    + (relance.length ? relance.slice(0, 4).map(function (a) {
+        var pct = Math.round(a.ratio * 100);
+        return arow(a.nom, a.fait + ' / ' + a.prev + ' séances', pct + ' %', pct < 50 ? 'bad' : 'warn');
+      }).join('')
+      : '<div class="cs-empty">Tout le monde est à l\'objectif 🎉</div>') + '</div>';
+  // Vigilance bien-être (dernier questionnaire)
+  var bienCard = '<div class="cs-card"><div class="cs-ct">Vigilance bien-être · dernier questionnaire</div>'
+    + (bienBas.length ? bienBas.slice(0, 5).map(function (x) { return arow(x.nom, x.txt, x.sev === 'bad' ? 'Alerte' : 'Vigilance', x.sev === 'bad' ? 'bad' : 'warn'); }).join('')
+      : '<div class="cs-empty">Rien à signaler sur les derniers ressentis.</div>') + '</div>';
+  // Blessures & douleurs actives
+  var blessCard = '<div class="cs-card"><div class="cs-ct">Blessures &amp; douleurs actives</div>'
+    + (blessures.length ? blessures.slice(0, 6).map(function (b) { var bad = /(sév|sev|import|haute|forte)/i.test(b.gravite || ''); return arow(b.nom, b.zone + (b.gravite ? ' · ' + b.gravite : ''), 'En cours', bad ? 'bad' : 'warn'); }).join('')
+      : '<div class="cs-empty">Aucune blessure active déclarée.</div>') + '</div>';
+
+  return kpis
+    + '<div class="cs-an-g2">' + donut + assCard + '</div>'
+    + '<div class="cs-an-g2">' + progCard + relanceCard + '</div>'
+    + '<div class="cs-an-g2">' + bienCard + blessCard + '</div>'
+    + '<div class="cs-note">Données agrégées depuis les fiches athlètes (assiduité, états du moteur, Δ 1RM estimé, bien-être du dernier questionnaire, table blessures). Rien n\'est recalculé ici.</div>';
 }
 function coachDeskSearch(q) {
   q = (q || '').toLowerCase().trim();
@@ -15889,6 +15969,92 @@ function renderEtatDuJour(data, ids) {
 // Version coach du bloc « Bilan de la dernière séance » (mêmes calculs, cibles cd-*)
 function renderEtatDuJourCoach(data) {
   renderEtatDuJour(data, { sec: 'cd-etat-sec', card: 'cd-etat-card', cont: 'cd-etat-content' });
+}
+
+// ── Cartes « Forme » de l'Aperçu coach (desktop) ──────────────────────────
+// Reprennent les données de l'écran Forme de l'athlète : (1) récupération +
+// bien-être du dernier questionnaire (mêmes calculs que renderEtatDuJour), et
+// (2) courbe de poids + tendance sur 30 j. Rien d'inventé : chaque carte reste
+// masquée tant que la donnée n'existe pas (classe .has-data). Mobile inchangé
+// (les cartes .cd-forme-card ne s'affichent qu'au ≥992px via CSS).
+function renderCoachFormeCards(data) {
+  try { _cfRecup(data); } catch (e) {}
+  try { _cfPoids(data); } catch (e) {}
+}
+function _cfCardShow(id, on) { var c = document.getElementById(id); if (c) c.classList.toggle('has-data', !!on); }
+function _cfRecup(data) {
+  var cont = document.getElementById('cd-forme-recup-content'); if (!cont) return;
+  var be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
+  if (!be.length) { _cfCardShow('cd-forme-recup', false); return; }
+  var dernier = be[0];
+  var rens = WQ_DIMS.map(function (d) { return wqPositif(d, dernier[d.key]); }).filter(function (v) { return v != null; });
+  if (!rens.length) { _cfCardShow('cd-forme-recup', false); return; }
+  var moy = rens.reduce(function (a, b) { return a + b; }, 0) / rens.length;
+  var score100 = Math.round((moy - 1) / 4 * 100);
+  var col = moy >= 3.4 ? 'var(--good)' : moy >= 2.6 ? 'var(--warn)' : 'var(--danger)';
+  var label = moy >= 4.2 ? 'Excellente forme' : moy >= 3.4 ? 'Bonne forme' : moy >= 2.6 ? 'Forme correcte' : moy >= 1.8 ? 'Vigilance' : 'Récup conseillée';
+  var dimDef = {}; WQ_DIMS.forEach(function (d) { dimDef[d.key] = d; });
+  // Courbatures = dimension « fatigue » (musculaire) — vocabulaire validé en maquette.
+  var pick = [
+    { key: 'sommeil', label: 'Sommeil', icon: '😴' },
+    { key: 'energie', label: 'Énergie', icon: '⚡' },
+    { key: 'fatigue', label: 'Courbatures', icon: '💪' },
+    { key: 'douleur', label: 'Douleur', icon: '🤕' }
+  ];
+  var cells = pick.map(function (p) {
+    var d = dimDef[p.key];
+    var raw = (dernier[p.key] == null || dernier[p.key] === '' || isNaN(Number(dernier[p.key]))) ? null : Number(dernier[p.key]);
+    var txt = raw != null ? (WQ_ANSWERS[p.key] ? WQ_ANSWERS[p.key][raw] : raw) : '—';
+    if (p.key === 'douleur' && raw != null && raw >= 2 && dernier.zone) txt = txt + ' · ' + dernier.zone;
+    var c = 'var(--text-subtle)';
+    if (raw != null && d) { var bon = d.invert ? raw <= 2 : raw >= 4; var moyen = raw === 3; c = bon ? 'var(--good)' : moyen ? 'var(--warn)' : 'var(--danger)'; }
+    return '<div class="cd-forme-wq"><div class="k">' + p.icon + ' ' + p.label + '</div><div class="v" style="color:' + c + '">' + escapeHtml(String(txt)) + '</div></div>';
+  }).join('');
+  cont.innerHTML =
+    '<div class="cd-forme-score"><span class="big" style="color:' + col + '">' + score100 + '</span><span class="u">/100 · ' + label + '</span></div>'
+    + '<div class="cd-forme-bar"><i style="width:' + Math.max(0, Math.min(100, score100)) + '%;background:' + col + '"></i></div>'
+    + '<div class="cd-forme-grid">' + cells + '</div>'
+    + (dernier.date ? '<div class="cd-forme-dt">Dernier questionnaire · ' + escapeHtml(String(dernier.date)) + '</div>' : '');
+  _cfCardShow('cd-forme-recup', true);
+}
+function _cfPoids(data) {
+  var cont = document.getElementById('cd-forme-poids-content'); if (!cont) return;
+  var pes = (data && Array.isArray(data.poids)) ? data.poids : [];
+  var pts = pes.map(function (p) { return parseFloat(p.poids); }).filter(function (v) { return !isNaN(v); });
+  if (pts.length < 1) { _cfCardShow('cd-forme-poids', false); return; }
+  var chrono = pts.slice().reverse();  // ordre chronologique pour la courbe
+  var spark = '';
+  if (chrono.length >= 2) {
+    var W = 300, H = 72, min = Math.min.apply(null, chrono), max = Math.max.apply(null, chrono), span = (max - min) || 1;
+    var X = function (i) { return (i / (chrono.length - 1)) * W; };
+    var Y = function (v) { return H - 8 - ((v - min) / span) * (H - 18); };
+    var line = chrono.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' L');
+    var lx = X(chrono.length - 1).toFixed(1), ly = Y(chrono[chrono.length - 1]).toFixed(1);
+    spark = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="72" preserveAspectRatio="none">'
+      + '<defs><linearGradient id="cfwgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".22"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'
+      + '<path d="M' + line + ' L' + lx + ',' + H + ' L0,' + H + ' Z" fill="url(#cfwgrad)"/>'
+      + '<path d="M' + line + '" fill="none" stroke="var(--accent-strong)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
+      + '<circle cx="' + lx + '" cy="' + ly + '" r="3.4" fill="var(--accent-strong)" stroke="var(--surface)" stroke-width="2"/></svg>';
+  }
+  var last = pts[0];  // poids[0] = pesée la plus récente
+  var parseD = function (s) { var q = String(s || '').split('/'); return q.length === 3 ? new Date(q[2] + '-' + q[1] + '-' + q[0]).getTime() : NaN; };
+  var lastTs = pes[0] ? parseD(pes[0].date) : NaN;
+  var deltaHtml = '';
+  if (!isNaN(lastTs)) {
+    var cutoff = lastTs - 30 * 86400000;
+    var win = pes.filter(function (p) { var t = parseD(p.date); return !isNaN(t) && t >= cutoff; });  // ordre : + récent → + ancien
+    if (win.length >= 2) {
+      var ov = parseFloat(win[win.length - 1].poids);
+      if (!isNaN(ov)) {
+        var dlt = last - ov;
+        var arr = dlt > 0.05 ? '▲' : dlt < -0.05 ? '▼' : '→';
+        deltaHtml = '<b>' + arr + ' ' + (dlt >= 0 ? '+' : '') + dlt.toFixed(1).replace('.', ',') + ' kg / 30 j</b>';
+      }
+    }
+  }
+  cont.innerHTML = (spark || '<div class="cd-forme-dt" style="margin:0 0 6px;">Une seule pesée — pas encore de courbe.</div>')
+    + '<div class="cd-forme-wrow"><span style="color:var(--text-muted)">' + last.toFixed(1).replace('.', ',') + ' kg</span>' + deltaHtml + '</div>';
+  _cfCardShow('cd-forme-poids', true);
 }
 
 // Carte « Analyse » (moteur Novalyz) — interprétation en lecture seule, côté coach

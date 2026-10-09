@@ -557,6 +557,19 @@
         <div id="cd-alertes"><div class="loader">Chargement...</div></div>
       </div>
 
+      <!-- Forme de l'athlète (reprise de l'écran Forme : récup + bien-être du
+           dernier questionnaire, et poids). Desktop uniquement (sur mobile, la
+           Forme reste accessible via le hub « Son état »). Remplies par
+           renderCoachFormeCards(data). -->
+      <div class="dash-card cd-forme-card" id="cd-forme-recup" style="padding:16px;">
+        <div class="dash-label">Récupération &amp; bien-être<span class="cd-forme-tag">Forme</span></div>
+        <div id="cd-forme-recup-content"></div>
+      </div>
+      <div class="dash-card cd-forme-card" id="cd-forme-poids" style="padding:16px;">
+        <div class="dash-label">Poids<span class="cd-forme-tag">Forme</span></div>
+        <div id="cd-forme-poids-content"></div>
+      </div>
+
       <!-- Actions (hub mobile) : centralise la nav vers les sous-écrans, juste sous les alertes. Masqué en desktop. -->
       <div class="cd-hub-actions">
         <button class="cd-act cd-act-primary" onclick="switchCoachDetailTab('conseils')"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>Envoyer un message</button>
