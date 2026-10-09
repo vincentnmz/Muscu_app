@@ -4902,6 +4902,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   surlignerAthleteSidebar(a.athlete_id);
   try { if (_coachDeskAny()) renderCoachRail(); } catch (e) {}   // rail desktop : onglet Équipe actif
   try { _cdOverviewDeskPrep(); } catch (e) {}                    // fiche desktop : grille 2 colonnes
+  try { coachIaReset(); } catch (e) {}                           // bloc IA : repart vierge pour ce client
   // Hero « État du jour » (onglet Aperçu) : placeholder neutre immédiat, puis
   // renderCoachHeroEtat() le colore selon le statut dès que les données arrivent.
   _setSportIco('cd-sport-ico-use', a.sport);   // icône du header (haltère muscu)
@@ -6463,6 +6464,39 @@ function renderCoachDesktop() { if (!_coachDeskAny()) return; renderCoachRail();
 // « .v2-sec » dans sa carte comme label (visible seulement en desktop via CSS),
 // pour permettre une grille 2 colonnes propre. Idempotent ; mobile intact
 // (les labels .cd-deskonly et la grille ne s'activent qu'au ≥992px).
+// ── Bloc IA coach (fiche athlète) : réutilise l'endpoint chatIA, nourri des
+// données de l'athlète sélectionné (coachAthleteCourant). Front-only. ──
+var _coachIaMsgs = [];
+var _coachIaBusy = false;
+function _coachIaRender() {
+  var el = document.getElementById('cd-ia-msgs'); if (!el) return;
+  if (!_coachIaMsgs.length) { el.innerHTML = '<div class="cd-ia-hint">Demande une analyse, une priorité de travail ou un avis sur le risque — l\'IA s\'appuie sur les données de cet athlète.</div>'; return; }
+  el.innerHTML = _coachIaMsgs.map(function (m) {
+    var body = m.typing ? '<span class="cd-ia-typing">●●●</span>' : escapeHtml(m.t).replace(/\n/g, '<br>');
+    return '<div class="cd-ia-b cd-ia-' + (m.role === 'me' ? 'me' : 'ia') + '">' + body + '</div>';
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+function coachIaReset() { _coachIaMsgs = []; _coachIaBusy = false; _coachIaRender(); }
+function coachIaChip(b) { var i = document.getElementById('cd-ia-input'); if (i) { i.value = (b && b.getAttribute('data-q')) || ''; coachIaSend(); } }
+function coachIaSend() {
+  var input = document.getElementById('cd-ia-input'); if (!input) return;
+  var msg = (input.value || '').trim(); if (!msg || _coachIaBusy) return;
+  var a = (typeof coachAthleteCourant !== 'undefined') ? coachAthleteCourant : null;
+  if (!a || !a.athlete_id) { try { showToast('Sélectionne un athlète'); } catch (e) {} return; }
+  input.value = '';
+  _coachIaMsgs.push({ role: 'me', t: msg });
+  _coachIaMsgs.push({ role: 'ia', t: '…', typing: true });
+  _coachIaRender(); _coachIaBusy = true;
+  var hist = _coachIaMsgs.filter(function (m) { return !m.typing; }).map(function (m) { return { role: m.role === 'me' ? 'user' : 'assistant', content: m.t }; });
+  while (hist.length && hist[0].role !== 'user') hist.shift();
+  var done = function (txt) { _coachIaMsgs = _coachIaMsgs.filter(function (m) { return !m.typing; }); _coachIaMsgs.push({ role: 'ia', t: txt }); _coachIaRender(); _coachIaBusy = false; };
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chatIA', athlete_id: a.athlete_id, messages: hist }) })
+    .then(function (r) { return r.json().catch(function () { return {}; }); })
+    .then(function (j) { done((j && j.reply) ? j.reply : "Désolé, je n'ai pas pu répondre. Réessaie dans un instant."); })
+    .catch(function () { done("Connexion impossible pour le moment. Réessaie dans un moment."); });
+}
+
 var _cdOvPrepped = false;
 function _cdOverviewDeskPrep() {
   if (_cdOvPrepped) return;

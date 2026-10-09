@@ -532,6 +532,23 @@
           <div class="fjd-hero-pills" id="cd-hero-pills"></div>
         </div>
       </div>
+      <!-- Bloc IA coach (desktop) : pose des questions sur CE client ; l'IA est
+           nourrie des données de l'athlète (action chatIA). Caché en mobile. -->
+      <div class="dash-card cd-ia-card" id="cd-ia-card">
+        <div class="dash-label"><span style="color:var(--accent)">✦</span> Analyse Novalyz · ce client</div>
+        <div id="cd-ia-msgs" class="cd-ia-msgs"></div>
+        <div class="cd-ia-chips">
+          <button type="button" onclick="coachIaChip(this)" data-q="Résume l'état de forme de cet athlète et ce qu'il faut surveiller.">État &amp; vigilance</button>
+          <button type="button" onclick="coachIaChip(this)" data-q="Que devrait-il travailler en priorité cette semaine ?">Priorité semaine</button>
+          <button type="button" onclick="coachIaChip(this)" data-q="Y a-t-il un risque de surcharge ou de blessure ?">Risque</button>
+          <button type="button" onclick="coachIaChip(this)" data-q="Comment adapter son programme vu ses dernières séances ?">Adapter le programme</button>
+        </div>
+        <div class="cd-ia-field">
+          <input id="cd-ia-input" type="text" placeholder="Pose une question sur ce client…" onkeydown="if(event.key==='Enter')coachIaSend()" autocomplete="off">
+          <button type="button" onclick="coachIaSend()" aria-label="Envoyer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+        </div>
+      </div>
+
       <!-- ===== HUB (ordre maquette) : alerte → repères → volume → séances → macros → actions ===== -->
 
       <!-- Alertes (à traiter) -->
