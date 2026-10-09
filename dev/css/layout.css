@@ -496,3 +496,42 @@ body.prog-editor-open{ overflow:hidden; }
   #coach-shell .cs-mrow b{ font-weight:800; font-variant-numeric:tabular-nums; }
   #coach-shell .cs-note{ font-size:12px; color:var(--text-muted); background:var(--surface); border:1px dashed var(--border); border-radius:12px; padding:12px 14px; margin-top:16px; }
 }
+
+/* Coach desktop : Profil (réglages) et Messages gardent le rail visible
+   → on décale leurs tiroirs/overlays à droite de la barre latérale (248px). */
+@media (min-width:992px){
+  body.coach-active #coach-reglages-drawer,
+  body.coach-active #coach-reglages-overlay,
+  body.coach-active #coach-messagerie-drawer,
+  body.coach-active #coach-messagerie-overlay{ left:248px; }
+}
+
+/* ═══ Fiche athlète coach — nouvelle identité (grille 2 colonnes desktop) ═══ */
+/* Mobile intact : .cd-deskonly caché et pas de grille < 992px. */
+.cd-deskonly{ display:none; }
+@media (min-width:992px){
+  .cd-deskonly{ display:flex; }
+  /* Fiche décalée à droite du rail : occupe toute la largeur restante */
+  body.coach-active.athlete-selected #main-container{ max-width:none; margin-right:0; }
+  /* Grille principale de l'Aperçu (actif = inline display:block → override !important) */
+  body.coach-active.athlete-selected #cdtab-overview[style*="block"]{ display:grid !important; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+  body.coach-active.athlete-selected #cdtab-overview > .fjd-hero,
+  body.coach-active.athlete-selected #cdtab-overview > .cd-hub-actions,
+  body.coach-active.athlete-selected #cdtab-overview > #cd-alertes-card,
+  body.coach-active.athlete-selected #cdtab-overview > #cd-etat-group,
+  body.coach-active.athlete-selected #cdtab-overview > #cd-extra-hidden,
+  body.coach-active.athlete-selected #cdtab-overview > div[style*="text-align:right"]{ grid-column:1 / -1; }
+  body.coach-active.athlete-selected #cdtab-overview .v2-sec{ display:none !important; }
+  body.coach-active.athlete-selected #cdtab-overview > .dash-card{ margin:0; }
+  /* Sous-blocs « état » et « extra » : également en grille */
+  body.coach-active.athlete-selected #cd-etat-group,
+  body.coach-active.athlete-selected #cd-extra-hidden{ display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; margin-top:0; }
+  body.coach-active.athlete-selected #cd-etat-group > .dash-card,
+  body.coach-active.athlete-selected #cd-extra-hidden > .dash-card{ margin:0; }
+  body.coach-active.athlete-selected #cd-etat-group > #cd-contexte:not(:empty){ grid-column:1 / -1; }
+  /* Carte : identité plus nette (titres en label, coins doux déjà en place) */
+  body.coach-active.athlete-selected #cdtab-overview .dash-card .dash-label.cd-deskonly{
+    font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--text-subtle); margin-bottom:11px; align-items:center; gap:7px;
+  }
+}
