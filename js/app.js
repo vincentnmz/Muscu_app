@@ -10589,8 +10589,12 @@ function _maMoreBtn(disc, shown, total) {
   return '<button onclick="maLoadMoreHist(\'' + disc + '\')" style="width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:13px;color:var(--accent);cursor:pointer">Charger plus (' + (total - shown) + ' restantes)</button>';
 }
 function _maApply() {
-  // Côté coach : pas d'onglet Historique (doublon avec Entraînement)
-  if (typeof _maCoach !== 'undefined' && _maCoach && _maTab === 'historique') _maTab = 'resume';
+  // Côté coach (onglet « Progression ») : on ne garde que « Par exercice » +
+  // « Tendances ». Résumé (→ carte « Charge & assiduité » de l'Aperçu) et
+  // Historique (→ onglet Séances) sont masqués → défaut sur « Par exercice ».
+  if (typeof _maCoach !== 'undefined' && _maCoach && (_maTab === 'historique' || _maTab === 'resume')) {
+    _maTab = (_MA_TABS[_maDisc].indexOf('detail') >= 0) ? 'detail' : 'tendances';
+  }
   // Toggle discipline (Muscu / Cardio / Croisé)
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
     var b = document.getElementById('ma-sw-' + d);
@@ -10602,7 +10606,7 @@ function _maApply() {
   var dispo = _MA_TABS[_maDisc];
   ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
     var b = document.getElementById('ma-tab-' + t);
-    if (b) { var av = dispo.indexOf(t) >= 0 && !((typeof _maCoach !== 'undefined' && _maCoach) && t === 'historique'); b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
+    if (b) { var av = dispo.indexOf(t) >= 0 && !((typeof _maCoach !== 'undefined' && _maCoach) && (t === 'historique' || t === 'resume')); b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
   });
   // Panes visibles
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
