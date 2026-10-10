@@ -4376,7 +4376,7 @@ async function renderCoachSynthese(athletes) {
   const nbSurveiller = aVoir - nbInterv;   // le reste des prioritaires = surveillance
   const pctAJour = total ? Math.round((total - aVoir) / total * 100) : 0;
   // Shell coach desktop (≥992px) : mêmes chiffres que le mobile (alignement).
-  try { _coachDeskStore(enrich, prioritaires, datas, { total: total, surveiller: nbSurveiller, intervention: nbInterv, absents: absents }); } catch (e) {}
+  try { _coachDeskStore(enrich, prioritaires, datas, { total: total, surveiller: nbSurveiller, intervention: nbInterv, absents: absents, aVoir: aVoir, pctAJour: pctAJour }); } catch (e) {}
   const dateFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const svgRing = (pct, size, stroke, color, track) => {
     const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
@@ -4559,9 +4559,38 @@ async function renderCoachSynthese(athletes) {
     sec('i-trending', 'Progression & stagnations', '1RM estimé') + progCard +
     sec('i-activity', 'Fiabilité des données', '7 derniers jours') + fiabCard;
 
+  // ---- Bloc « Questionnaires bien-être » (répondu 7j + à relancer) ----
+  // Unifié avec le desktop : même source (dernier bien_etre par athlète, fenêtre 7j).
+  const _qRep = enrich.map(e => {
+    const dd = datas[e.i] || {}; const be = (dd.bien_etre || [])[0];
+    if (!be || !be.date) return null;
+    const ts = parseChatDate(be.date); if (!ts || (Date.now() - ts) / 86400000 > 7) return null;
+    const f = Number(be.fatigue); const sig = !isNaN(f) ? 'fatigue ' + f + '/5' : '';
+    const col = !isNaN(f) ? (f >= 4 ? 'var(--bad)' : f >= 3 ? 'var(--warn)' : 'var(--good)') : 'var(--good)';
+    return { e, ts, ago: (typeof _coachDeskAgo === 'function' ? _coachDeskAgo(be.date) : be.date), sig, col };
+  }).filter(Boolean).sort((a, b) => b.ts - a.ts);
+  const _qSet = {}; _qRep.forEach(q => { _qSet[q.e.i] = true; });
+  const _qNon = enrich.filter(e => !e.enPause && !_qSet[e.i]);
+  const _qRepRows = _qRep.length ? _qRep.slice(0, 6).map(q => `
+        <div onclick="ouvrirAthleteDepuisSelect('${q.e.i}')" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-sm);">
+          <span style="width:34px;height:34px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">${initPf(q.e.a.nom)}</span>
+          <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">${escapeHtml(q.e.a.nom)} <span style="color:var(--text-muted);font-weight:600;">a répondu</span></div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px;">${q.ago}</div></div>
+          ${q.sig ? `<span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap;background:${q.col}1a;color:${q.col};">${q.sig}</span>` : ''}
+        </div>`).join('') : `<div style="color:var(--text-muted);font-size:12.5px;padding:2px 2px 8px;">Aucun questionnaire sur 7 jours.</div>`;
+  const _qNonHead = _qNon.length ? `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:6px 2px 7px;">À relancer · ${_qNon.length}</div>` : '';
+  const _qNonRows = _qNon.slice(0, 8).map(e => `
+        <div onclick="ouvrirAthleteDepuisSelect('${e.i}')" style="display:flex;align-items:center;gap:11px;padding:10px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px dashed var(--border);">
+          <span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${initPf(e.a.nom)}</span>
+          <div style="flex:1;min-width:0;font-size:12.5px;"><b>${escapeHtml(e.a.nom)}</b> <span style="color:var(--text-subtle);">pas de ressenti · <span style="color:var(--accent);font-weight:700;">relancer →</span></span></div>
+        </div>`).join('');
+  const questHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Questionnaires bien-être<span style="margin-left:auto;font-size:11px;font-weight:800;color:var(--accent);">${_qRep.length}/${total} · 7 j</span></div></div>`
+    + _qRepRows + _qNonHead + _qNonRows;
+
   // Sections pilotées par le bandeau : Aujourd'hui (action, SANS liste) · Équipe (annuaire) · Analyses
+  // Ordre unifié avec le desktop : Briefing → À traiter en priorité → Questionnaires → Messages → Lecture Novalyz.
+  // (« Résumé équipe » retiré d'ici : l'info de répartition reste dans l'onglet Analyses.)
   el.innerHTML =
-    `<div id="coach-sec-aujourdhui">${heroHtml + resumeEquipeHtml + prioHtml + messagesHtml + briefingHtml}</div>` +
+    `<div id="coach-sec-aujourdhui">${heroHtml + prioHtml + questHtml + messagesHtml + briefingHtml}</div>` +
     `<div id="coach-sec-equipe" style="display:none">${listeHtml}</div>` +
     `<div id="coach-sec-analyses" style="display:none">${analysesHtml}</div>`;
   coachBandeauApply();
@@ -6629,8 +6658,22 @@ function _coachDeskLecture() {
 }
 function _coachDeskAujourdhui() {
   var d = _coachDesk, k = d.kpis || {};
-  var tile = function (v, l, col) { return '<div class="cs-kpi"><span class="cs-kstrip" style="background:' + col + '"></span><div class="cs-kv" style="color:' + col + '">' + v + '</div><div class="cs-kl">' + l + '</div></div>'; };
-  var kpis = '<div class="cs-kpis">' + tile(k.total || 0, 'Athlètes', 'var(--accent)') + tile(k.surveiller || 0, 'À surveiller', 'var(--warn)') + tile(k.intervention || 0, 'Intervention', 'var(--danger)') + tile(k.absents || 0, 'Absents 7 j+', 'var(--text-muted)') + '</div>';
+  // Briefing unifié avec le mobile : anneau « % à jour » + « à voir » + 2 pastilles
+  // (à surveiller / intervention) qui somment à « à voir ». Remplace les 4 KPI secs.
+  var pct = k.pctAJour != null ? Math.max(0, Math.min(100, k.pctAJour)) : 0;
+  var _av = k.aVoir != null ? k.aVoir : 0, _tot = k.total || 0;
+  var _r = 27, _c = 2 * Math.PI * _r, _off = _c * (1 - pct / 100);
+  var ring = '<svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + _r + '" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="6"/><circle cx="32" cy="32" r="' + _r + '" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + _c.toFixed(1) + '" stroke-dashoffset="' + _off.toFixed(1) + '" transform="rotate(-90 32 32)"/></svg>';
+  var dFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  var bpill = function (n, l) { return '<div class="cs-bpill"><div class="n">' + (n || 0) + '</div><div class="l">' + l + '</div></div>'; };
+  var kpis = '<div class="cs-brief">'
+    + '<div class="cs-brief-hello">Bonjour ' + escapeHtml(typeof coach !== 'undefined' && coach ? coach.nom : 'Coach') + '</div>'
+    + '<div class="cs-brief-date">' + dFR + ' · ' + _tot + ' athlète' + (_tot > 1 ? 's' : '') + ' suivi' + (_tot > 1 ? 's' : '') + '</div>'
+    + '<div class="cs-brief-row">'
+    + '<div class="cs-ring">' + ring + '<div class="cs-ring-v"><b>' + pct + '%</b><s>à jour</s></div></div>'
+    + '<div class="cs-brief-big"><div class="n">' + _av + '</div><div class="l">' + (_av === 0 ? 'tout le monde est à jour 🎉' : 'athlète' + (_av > 1 ? 's' : '') + ' à voir aujourd\'hui') + '</div></div>'
+    + '<div class="cs-brief-pills">' + bpill(k.surveiller, 'à surveiller') + bpill(k.intervention, 'intervention') + '</div>'
+    + '</div></div>';
   var watch = (d.prioritaires || []).map(function (x) { var e = x.e, p = x.p; return '<div class="cs-wrow" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><span class="cs-av2">' + (e.enPause ? '🏖️' : _coachDeskInit(e.a.nom)) + '</span><div class="cs-wn"><b>' + escapeHtml(e.a.nom) + '</b><div class="cs-wal"><span class="cs-chip" style="background:' + p.color + '1f;color:' + p.color + '">' + p.icon + ' ' + escapeHtml(p.txt) + '</span></div></div><span class="cs-chev">›</span></div>'; }).join('') || '<div class="cs-empty">Tout le monde est à jour 🎉</div>';
   var msgs = (d.enrich || []).filter(function (e) { return e.msgNonLus > 0; }).map(function (e) { return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--accent)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>' + e.msgNonLus + ' message' + (e.msgNonLus > 1 ? 's' : '') + ' non lu' + (e.msgNonLus > 1 ? 's' : '') + '</span></div></div>'; }).join('') || '<div class="cs-act"><span class="cs-ad" style="background:var(--text-muted)"></span><div><span style="color:var(--text-muted)">Aucun message non lu.</span></div></div>';
   // Questionnaires bien-être récents (qui a répondu, quand, + signal fatigue).
