@@ -4221,20 +4221,29 @@ async function renderCoachSynthese(athletes) {
     return `<svg width="56" height="26" viewBox="0 0 ${W} ${H}" style="flex-shrink:0;"><path d="M${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   };
 
-  // Détermine la raison de priorité d'un athlète
+  // Couleurs de priorité en HEX (alpha ${color}14 impossible avec un var()).
+  // Partagées par infoPrio ET par la décomposition du hero plus bas → les
+  // pastilles « à surveiller »/« intervention » somment exactement à « à voir ».
+  const PRIO_WARN = '#f59f00', PRIO_BAD = '#f0505a';
+  // Détermine la raison de priorité d'un athlète (null = pas prioritaire)
   const infoPrio = (e) => {
     const { a, m } = e;
-    const dsAge = (m && m.derniere) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
-    // Couleurs en HEX (nécessaire pour l'ajout d'alpha ${color}14 — un var() ne le permet pas)
-    const WARN = '#f59f00', BAD = '#f0505a';
+    const connue = !!(m && m.derniere && m.derniere.date);   // a-t-on une dernière séance connue ?
+    const dsAge = connue ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
     // (Les messages non lus ne sont PLUS listés ici — ils remontent via l'icône 💬 du header)
     // En vacances : aucune raison de priorité (ni absence, ni alerte, ni synthèse).
     if (e.enPause) return null;
-    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${Math.floor(dsAge)} jours sans séance` : 'Aucune séance', color: WARN };
+    if (dsAge > 7) {
+      // Arrêt prolongé (>14 j, séance connue) = intervention ; sinon surveillance.
+      // « Aucune séance » (jamais entraîné / pas de programme) reste surveillance,
+      // pas une urgence — le coach voit le détail dans la liste.
+      const col = (connue && dsAge > 14) ? PRIO_BAD : PRIO_WARN;
+      return { icon:'💤', txt: connue ? `${Math.floor(dsAge)} jours sans séance` : 'Aucune séance', color: col };
+    }
     const al = labelAlerteCourt(a);
-    if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? BAD : WARN };
+    if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? PRIO_BAD : PRIO_WARN };
     // Intervention seulement s'il reste une alerte de synthèse rouge NON traitée
-    if (m && m.statut.rank===2 && synthAlertesActivesCoach(a.athlete_id, m).length) return { icon:'⚠', txt:'Intervention conseillée', color: BAD };
+    if (m && m.statut.rank===2 && synthAlertesActivesCoach(a.athlete_id, m).length) return { icon:'⚠', txt:'Intervention conseillée', color: PRIO_BAD };
     return null;
   };
 
@@ -4358,10 +4367,15 @@ async function renderCoachSynthese(athletes) {
   // ---- Hero « Briefing du jour » (Concept A) ----
   const total = athletes.length;
   const aVoir = prioritaires.length;
-  const nbSurveiller = enrich.filter(e => e.m && e.m.statut.rank >= 1).length;
-  const nbInterv = enrich.filter(e => e.m && e.m.statut.rank === 2).length;
+  // COHÉRENCE : les deux pastilles décomposent la population « à voir » par
+  // sévérité de la raison de priorité (rouge = intervention, orange = à
+  // surveiller) → « à surveiller » + « intervention » == « à voir », toujours.
+  // (Avant : comptes basés sur le statut moteur, qui ne voyait pas les absences
+  //  ni les athlètes sans programme → chiffres qui ne se recoupaient pas.)
+  const nbInterv = prioritaires.filter(x => x.p.color === PRIO_BAD).length;
+  const nbSurveiller = aVoir - nbInterv;   // le reste des prioritaires = surveillance
   const pctAJour = total ? Math.round((total - aVoir) / total * 100) : 0;
-  // Shell coach desktop (≥992px) : réutilise les données déjà calculées ici (mobile inchangé).
+  // Shell coach desktop (≥992px) : mêmes chiffres que le mobile (alignement).
   try { _coachDeskStore(enrich, prioritaires, datas, { total: total, surveiller: nbSurveiller, intervention: nbInterv, absents: absents }); } catch (e) {}
   const dateFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const svgRing = (pct, size, stroke, color, track) => {
@@ -4385,7 +4399,6 @@ async function renderCoachSynthese(athletes) {
         <div style="display:flex;gap:8px;margin-top:14px;">
           ${heroPill(nbSurveiller, 'à surveiller')}
           ${heroPill(nbInterv, 'intervention')}
-          ${heroPill(absents, 'absents')}
         </div>
       </div>
     </div>`;
