@@ -42,6 +42,26 @@
 /* ===== Template : authentification ===== */
 #view-login { max-width:var(--auth-w); margin:0 auto; }
 
+/* Hero logo (option 1) : bandeau dégradé avec le logo en évidence. */
+.nv-login-hero { position:relative; overflow:hidden; text-align:center; padding:30px 20px 26px; margin-bottom:18px;
+  background:linear-gradient(135deg, var(--accent), #6D4BFF); border-radius:0 0 26px 26px; }
+.nv-login-hero::after { content:""; position:absolute; right:-54px; top:-54px; width:190px; height:190px; border-radius:50%; background:rgba(255,255,255,.12); }
+.nv-hero-tile { position:relative; display:inline-block; background:#fff; border-radius:18px; padding:14px 20px; box-shadow:0 12px 30px rgba(7,15,35,.22); }
+.nv-hero-tile img { display:block; width:210px !important; max-width:58vw; height:auto; margin:0 !important; border-radius:6px !important; }
+.nv-hero-tag { position:relative; color:#fff; font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; opacity:.9; margin-top:14px; }
+.nv-login-body { padding:0 2px; }
+
+/* Desktop (≥992px) : écran de connexion « split » — hero à gauche, formulaire à droite.
+   On relâche la contrainte --auth-w (sinon colonne étroite) et on centre le bloc. */
+@media (min-width:992px) {
+  #view-login { max-width:940px; display:flex; align-items:stretch; gap:0; margin:44px auto;
+    background:var(--surface); border:1px solid var(--border); border-radius:22px; overflow:hidden; box-shadow:var(--shadow); }
+  #view-login .nv-login-hero { flex:0 0 42%; margin:0; border-radius:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:48px 30px; }
+  #view-login .nv-hero-tile img { width:230px !important; max-width:100%; }
+  #view-login .nv-login-body { flex:1; min-width:0; padding:46px 48px; display:flex; flex-direction:column; justify-content:center; }
+}
+
 /* Note : les barres de nav fixes (.tabs-bar, #view-coach-detail .sub-tabs)
  * lisent directement --app-w dans components.css → largeur alignée sur le conteneur. */
 
