@@ -5962,15 +5962,50 @@ function renderCoachSeancesDetail(data) {
 
   if (entries.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>'; return; }
 
-  el.innerHTML = seancesCardsHTML(entries);
+  el.innerHTML = seancesCardsHTML(entries, (data && data.programme) || []);
+}
+
+// Index des cibles du programme : { seanceId(min) : { exo(min) : ligne } }.
+function _progCibleIndex(prog) {
+  var idx = {};
+  (prog || []).forEach(function (l) {
+    if (!l || !l.seance_id || !l.exercice) return;
+    var sk = String(l.seance_id).trim().toLowerCase(), ek = String(l.exercice).trim().toLowerCase();
+    (idx[sk] || (idx[sk] = {}))[ek] = l;
+  });
+  return idx;
+}
+// Texte de la cible d'un exercice : « 4 × 8–12 · RPE 8 · repos 90s » (RPE prioritaire ;
+// %1RM en secondaire seulement s'il est renseigné sans RPE).
+function _cibleTxtSeance(t) {
+  if (!t) return '';
+  var mn = t.reps_mini, mx = t.reps_max, reps = (mn && mx) ? (String(mn) === String(mx) ? String(mn) : mn + '–' + mx) : (mn || mx || '');
+  var parts = [((t.series_prevues ? t.series_prevues + ' × ' : '') + (reps || '?'))];
+  if (t.rpe_cible != null && t.rpe_cible !== '') parts.push('RPE ' + t.rpe_cible);
+  else if (t.charge_pct_1rm != null && t.charge_pct_1rm !== '') parts.push(t.charge_pct_1rm + ' % 1RM');
+  if (t.repos_sec != null && t.repos_sec !== '') parts.push('repos ' + t.repos_sec + ' s');
+  return parts.join(' · ');
+}
+// Reps réalisées vs fourchette cible : 'ok' | 'sous' | 'sur' | null (pas de cible reps).
+function _repsVsCible(reps, t) {
+  if (!t) return null;
+  var r = Number(reps); if (isNaN(r)) return null;
+  var mn = Number(t.reps_mini), mx = Number(t.reps_max);
+  var hasMn = !isNaN(mn) && mn > 0, hasMx = !isNaN(mx) && mx > 0;
+  if (!hasMn && !hasMx) return null;
+  if (hasMn && r < mn) return 'sous';
+  if (hasMx && r > mx) return 'sur';
+  return 'ok';
 }
 
 // Rendu commun : entries = [{date, seance, exos:[{exo, series:[{charge,reps,rpe}]}]}]
 // (accepte aussi l'ancien format exos:[{exo,charge,reps,rpe}] -> regroupé ici)
-function seancesCardsHTML(entries) {
+// prog = data.programme (cibles du coach) pour afficher « réalisé vs prévu ».
+function seancesCardsHTML(entries, prog) {
   if (!entries || entries.length === 0) {
     return '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>';
   }
+  var progIdx = _progCibleIndex(prog);
   // Couleur du RPE (cohérent avec la maquette : ≤7 ok, 7.5-8 modéré, ≥8.5 élevé)
   const rpeChip = (rpe) => {
     if (rpe == null || rpe === '' || isNaN(Number(rpe))) return '<span style="color:var(--text-subtle);font-weight:600;">—</span>';
@@ -5997,6 +6032,9 @@ function seancesCardsHTML(entries) {
     }
     const nbExos = ordreExo.length;
     const nbSeries = ordreExo.reduce((n, exo) => n + parExo[exo].length, 0);
+    const seanceKey = String(s.seance || '').trim().toLowerCase();
+    const targets = progIdx[seanceKey] || null;
+    const tgtOf = exo => (targets ? (targets[String(exo).trim().toLowerCase()] || null) : null);
 
     // Récap séance : tonnage (Σ charge×reps, repli sur volume) + RPE moyen (séries renseignées)
     let tonnage = 0, rpeSum = 0, rpeN = 0;
@@ -6008,36 +6046,81 @@ function seancesCardsHTML(entries) {
     }));
     const tonnageTxt = tonnage >= 1000 ? (tonnage / 1000).toFixed(1).replace('.', ',') + ' t' : Math.round(tonnage) + ' kg';
     const rpeMoy = rpeN ? (rpeSum / rpeN).toFixed(1).replace('.', ',') : null;
-    const schip = (n, l) => `<div style="flex:none;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:8px 11px;text-align:center;min-width:60px;"><div style="font-size:15px;font-weight:900;letter-spacing:-.02em;">${n}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:2px;">${l}</div></div>`;
-    const recapStrip = nbExos > 0
-      ? `<div style="display:flex;gap:7px;overflow:auto;margin-bottom:12px;padding-bottom:2px;">
-          ${schip(nbExos, 'Exos')}${schip(nbSeries, 'Séries')}${tonnage > 0 ? schip(tonnageTxt, 'Tonnage') : ''}${rpeMoy != null ? schip(rpeMoy, 'RPE moy.') : ''}
-        </div>` : '';
+
+    // Compteurs « réalisé vs prévu » (remplis pendant la construction des blocs exo)
+    let repsInCible = 0, repsWithCible = 0;
+    const exosMatched = ordreExo.filter(exo => tgtOf(exo)).length;
+    const prevExos = targets ? Object.keys(targets).length : 0;
+
+    const cibleBox = t => `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:#7C5CFF;background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.22);border-radius:9px;padding:6px 10px;margin:5px 0 9px;">🎯 Cible : ${escapeHtml(_cibleTxtSeance(t))}</div>`;
+    const th = (lbl, al) => `<th style="text-align:${al};font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">${lbl}</th>`;
 
     const exoBlocks = nbExos > 0
       ? ordreExo.map(exo => {
           const series = parExo[exo];
-          const rows = series.map((e, i) => `
+          const tgt = tgtOf(exo);
+          const hasRange = tgt && (tgt.reps_mini || tgt.reps_max);
+          const rows = series.map((e, i) => {
+            const chk = _repsVsCible(e.reps, tgt);
+            if (chk === 'ok') { repsInCible++; repsWithCible++; } else if (chk === 'sous' || chk === 'sur') { repsWithCible++; }
+            const chkCell = chk === 'ok' ? '<span style="color:var(--good);font-weight:800;">✓</span>'
+              : chk === 'sous' ? '<span style="color:var(--warn);font-weight:800;">▼</span>'
+              : chk === 'sur' ? '<span style="color:var(--danger);font-weight:800;">▲</span>'
+              : '<span style="color:var(--text-subtle);">—</span>';
+            return `
             <tr>
               <td style="text-align:left;color:var(--text-subtle);font-weight:800;font-size:12px;padding:6px 0;border-top:1px solid var(--border);">${e.serie || (i + 1)}</td>
               <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.charge ? e.charge + ' kg' : '—'}</td>
               <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.reps || '—'}</td>
+              <td style="text-align:center;padding:6px 0;border-top:1px solid var(--border);">${chkCell}</td>
               <td style="text-align:right;padding:6px 0;border-top:1px solid var(--border);">${rpeChip(e.rpe)}</td>
-            </tr>`).join('');
-          const muscleTag = muscleExo[exo] ? `<span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:var(--accent-a10);border-radius:6px;padding:3px 7px;flex-shrink:0;">${escapeHtml(String(muscleExo[exo]))}</span>` : '';
+            </tr>`;
+          }).join('');
+          const tag = tgt
+            ? (muscleExo[exo] ? `<span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:var(--accent-a10);border-radius:6px;padding:3px 7px;flex-shrink:0;">${escapeHtml(String(muscleExo[exo]))}</span>` : '')
+            : `<span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 7px;flex-shrink:0;">Hors prog.</span>`;
+          // Pied : séries réalisées/prévues + reps réelles (cible) + RPE réalisé vs cible
+          let foot = '';
+          if (tgt) {
+            const doneCount = series.length;
+            const prevCount = (tgt.series_prevues != null && tgt.series_prevues !== '') ? Number(tgt.series_prevues) : null;
+            const rv = series.map(e => Number(e.reps)).filter(v => !isNaN(v) && v > 0);
+            const repsRange = rv.length ? (Math.min.apply(null, rv) === Math.max.apply(null, rv) ? String(Math.min.apply(null, rv)) : Math.min.apply(null, rv) + '–' + Math.max.apply(null, rv)) : null;
+            const rp = series.map(e => Number(e.rpe)).filter(v => !isNaN(v));
+            const rpeAvg = rp.length ? (rp.reduce((a, b) => a + b, 0) / rp.length) : null;
+            const serCol = (prevCount != null && doneCount < prevCount) ? 'var(--warn)' : 'var(--text)';
+            const parts = [`<b style="color:${serCol};font-weight:800;">${doneCount}${prevCount != null ? '/' + prevCount : ''} série${doneCount > 1 ? 's' : ''}</b>`];
+            if (repsRange != null && hasRange) { const cr = (tgt.reps_mini && tgt.reps_max) ? (String(tgt.reps_mini) === String(tgt.reps_max) ? tgt.reps_mini : tgt.reps_mini + '–' + tgt.reps_max) : (tgt.reps_mini || tgt.reps_max); parts.push(`reps ${repsRange} <span style="color:var(--text-subtle);">(cible ${cr})</span>`); }
+            if (rpeAvg != null && tgt.rpe_cible != null && tgt.rpe_cible !== '') { const dr = rpeAvg - Number(tgt.rpe_cible); const mark = Math.abs(dr) <= 1 ? '<span style="color:var(--good);font-weight:800;">✓</span>' : (dr > 0 ? '<span style="color:var(--danger);font-weight:800;">▲ plus dur</span>' : '<span style="color:var(--warn);font-weight:800;">▼ plus facile</span>'); parts.push(`RPE ${rpeAvg.toFixed(1).replace('.', ',')} <span style="color:var(--text-subtle);">(cible ${tgt.rpe_cible})</span> ${mark}`); }
+            foot = `<div style="margin-top:8px;font-size:11.5px;color:var(--text-muted);line-height:1.5;">${parts.join(' · ')}</div>`;
+          } else {
+            foot = `<div style="margin-top:8px;font-size:11px;color:var(--text-subtle);">Ajouté par l'athlète (hors programme du jour)</div>`;
+          }
           return `
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:11px 13px;margin-bottom:9px;">
+            <div style="background:var(--surface);border:1px ${tgt ? 'solid' : 'dashed'} var(--border);border-radius:13px;padding:11px 13px;margin-bottom:9px;">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
                 <span style="font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(String(exo))}</span>
-                ${muscleTag}
+                ${tag}
               </div>
+              ${tgt ? cibleBox(tgt) : ''}
               <table style="width:100%;border-collapse:collapse;">
-                <tr><th style="text-align:left;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Série</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Charge</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Reps</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">RPE</th></tr>
+                <tr>${th('Série', 'left')}${th('Charge', 'right')}${th('Reps', 'right')}${th('Cible', 'center')}${th('RPE', 'right')}</tr>
                 ${rows}
               </table>
+              ${foot}
             </div>`;
         }).join('')
       : '<div style="font-size:11px;color:var(--text-muted);padding:6px 0;">Pas de détail disponible (données antérieures)</div>';
+
+    // Récap séance (construit APRÈS les blocs pour disposer de repsInCible)
+    const pctCible = repsWithCible ? Math.round(repsInCible / repsWithCible * 100) : null;
+    const schip = (n, l, col) => `<div style="flex:none;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:8px 11px;text-align:center;min-width:60px;"><div style="font-size:15px;font-weight:900;letter-spacing:-.02em;${col ? 'color:' + col + ';' : ''}">${n}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:2px;">${l}</div></div>`;
+    const exosChip = prevExos ? schip(exosMatched + '<small style="font-size:10px;color:var(--text-subtle);font-weight:700;">/' + prevExos + '</small>', 'Exos prévus') : schip(nbExos, 'Exos');
+    const pctCol = pctCible == null ? null : (pctCible >= 80 ? 'var(--good)' : pctCible >= 50 ? 'var(--warn)' : 'var(--danger)');
+    const recapStrip = nbExos > 0
+      ? `<div style="display:flex;gap:7px;overflow:auto;margin-bottom:12px;padding-bottom:2px;">
+          ${exosChip}${schip(nbSeries, 'Séries')}${tonnage > 0 ? schip(tonnageTxt, 'Tonnage') : ''}${rpeMoy != null ? schip(rpeMoy, 'RPE moy.') : ''}${pctCible != null ? schip(pctCible + ' %', 'Reps ds cible', pctCol) : ''}
+        </div>` : '';
 
     return `
       <div style="border:1px solid var(--border);border-radius:15px;margin-bottom:9px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm);">
@@ -6071,7 +6154,7 @@ async function chargerSeancesDetailCoach(athlete_id, dataFallback) {
       .map(s => ({ date: s.date, seance: s.seance_id || 'Séance', exos: s.exos || [], tri: tri(s.date) }))
       .sort((a, b) => b.tri - a.tri)
       .slice(0, 20);
-    if (el) el.innerHTML = seancesCardsHTML(entries);
+    if (el) el.innerHTML = seancesCardsHTML(entries, (dataFallback && dataFallback.programme) || (typeof coachAthleteData !== 'undefined' && coachAthleteData && coachAthleteData.programme) || []);
   } catch(e) {
     renderCoachSeancesDetail(dataFallback);
   }
