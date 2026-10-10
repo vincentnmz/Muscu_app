@@ -11325,43 +11325,34 @@ function _maTrendBadgeVs(pct) {
 // par point. Rappel : chaque point = la série la plus lourde du jour (backend).
 function _maChargeRepsRich(pts) {
   var n = pts.length; if (!n) return _maArea([0], '#1A5FFF', 'rgba(26,95,255,.12)');
-  var W = 640, H = 300, pL = 46, pR = 42;
-  var cTop = 44, cBot = 182, barBase = 262, barTopMax = 196;
+  var W = 640, H = 264, pL = 46, pR = 18;
+  var cTop = 48, cBot = 218;   // la ligne de charge occupe toute la hauteur (plus de barres)
   var charges = pts.map(function (p) { return Number(p.charge) || 0; });
   var reps = pts.map(function (p) { return Number(p.reps) || 0; });
   var cMin = Math.min.apply(null, charges), cMax = Math.max.apply(null, charges);
   if (cMin === cMax) { cMin -= 2; cMax += 2; }
   var cRng = cMax - cMin || 1;
-  var rMax = Math.max.apply(null, reps.concat([1]));
   var X = function (i) { return n === 1 ? (pL + (W - pL - pR) / 2) : (pL + i * (W - pL - pR) / (n - 1)); };
   var Yc = function (v) { return cTop + (1 - (v - cMin) / cRng) * (cBot - cTop); };
-  var barH = function (v) { return (v / rMax) * (barBase - barTopMax); };
   var e = function (x) { return (typeof _maE === 'function') ? _maE(x) : x; };
   var grid = '', yl = '';
-  for (var g = 0; g <= 3; g++) {
-    var yy = cTop + g * (cBot - cTop) / 3, val = cMax - g * cRng / 3;
+  for (var g = 0; g <= 4; g++) {
+    var yy = cTop + g * (cBot - cTop) / 4, val = cMax - g * cRng / 4;
     grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="#eef2f8" stroke-width="1"/>';
     yl += '<text x="' + (pL - 6) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="10" fill="#8a94a6">' + (Math.round(val * 10) / 10) + '</text>';
   }
-  yl += '<text x="' + (pL - 6) + '" y="' + (cTop - 16) + '" text-anchor="end" font-size="10" font-weight="800" fill="#1A5FFF">kg</text>';
-  yl += '<text x="' + (W - pR + 6) + '" y="' + (cTop - 16) + '" text-anchor="start" font-size="10" font-weight="800" fill="#E8930C">reps</text>';
-  var bw = Math.max(10, Math.min(28, (W - pL - pR) / n * 0.5));
-  var bars = '', barLab = '';
-  reps.forEach(function (v, i) {
-    var h = barH(v), x = X(i) - bw / 2, y = barBase - h;
-    bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3" fill="rgba(232,147,12,.20)"/>';
-    barLab += '<text x="' + X(i).toFixed(1) + '" y="' + (y - 5).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="800" fill="#E8930C">' + v + '</text>';
-  });
+  yl += '<text x="' + (pL - 6) + '" y="' + (cTop - 18) + '" text-anchor="end" font-size="10" font-weight="800" fill="#1A5FFF">kg</text>';
   var pline = charges.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ');
+  var areaEl = (n >= 2) ? '<path d="M' + X(0).toFixed(1) + ' ' + Yc(charges[0]).toFixed(1) + ' ' + charges.map(function (v, i) { return 'L' + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + cBot + ' L' + X(0).toFixed(1) + ' ' + cBot + ' Z" fill="#1A5FFF" opacity="0.07"/>' : '';
   var dots = '', clab = '', xlab = '';
   charges.forEach(function (v, i) {
     var xx = X(i), yy = Yc(v), last = (i === n - 1);
-    dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yy.toFixed(1) + '" r="' + (last ? 5 : 3.5) + '" fill="#1A5FFF"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
-    clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 9).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="800" fill="#0f1726">' + v + '×' + reps[i] + '</text>';
-    xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10" fill="#8a94a6">' + e(_maShortDate(pts[i].date)) + '</text>';
+    dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yy.toFixed(1) + '" r="' + (last ? 5 : 3.5) + '" fill="' + (last ? '#00A854' : '#1A5FFF') + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
+    clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="11.5" font-weight="800" fill="' + (last ? '#00A854' : '#0f1726') + '">' + v + '×' + reps[i] + '</text>';
+    xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="#8a94a6">' + e(_maShortDate(pts[i].date)) + '</text>';
   });
   var lineEl = (n >= 2) ? '<path d="' + pline + '" fill="none" stroke="#1A5FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' : '';
-  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + yl + bars + barLab + lineEl + dots + clab + xlab + '</svg>';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + yl + areaEl + lineEl + dots + clab + xlab + '</svg>';
 }
 function _maProgExo(data) {
   var progAll = (data.historique && data.historique.progression_par_exo) || {};
@@ -11392,7 +11383,7 @@ function _maProgExo(data) {
   if (isCR) {
     // Charge (ligne, kg axe gauche) + reps à cette charge (barres, axe droit) + étiquette charge×reps.
     chartBody = _maChargeRepsRich(pts);
-    legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>Charge max (kg) — axe gauche</span><span><b style="background:rgba(232,147,12,.5)"></b>Reps à cette charge — axe droit</span><span class="mut">Étiquette = charge × reps</span></div>';
+    legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>Charge (kg)</span><span class="mut">Étiquette = charge × reps · dernier point en vert</span></div>';
   } else if (np === 1) {
     // 1 seule séance sur la période : rendu point-unique (valeur + date) des deux
     // côtés, sinon desktop montrait une ligne plate vide et mobile un aplat à 0.
