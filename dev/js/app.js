@@ -5585,7 +5585,13 @@ function computeMarqueursCoach(data, a) {
     enBaisse = _det.filter(x => x && x.down && !x.up).length;
   }
   let progColor, progLabel;
-  if (enProg === 0 && enBaisse === 0) { progColor = '#aaa'; progLabel = 'N/A'; }
+  const nbCompar = enProg + enBaisse;   // exos réellement comparables 7j vs 7j
+  if (nbCompar === 0) { progColor = '#aaa'; progLabel = 'N/A'; }
+  else if (nbCompar < 3) {
+    // (B) Base trop faible (1-2 exos, ou rotation d'exercices) → on affiche le compte
+    // mais on NE déclenche PAS d'alerte rouge/orange (gris = informatif).
+    progColor = '#aaa'; progLabel = `${enProg}↑/${enBaisse}↓`;
+  }
   else if (enProg > enBaisse) { progColor = '#00c96e'; progLabel = `${enProg}↑/${enBaisse}↓`; }
   else if (enProg === enBaisse) { progColor = '#f59f00'; progLabel = `${enProg}↑/${enBaisse}↓`; }
   else { progColor = '#e5484d'; progLabel = `${enProg}↑/${enBaisse}↓`; }
@@ -5619,12 +5625,19 @@ function computeMarqueursCoach(data, a) {
   if (volTrained.length === 0 && volSem.length > 0) {
     volColor = '#e5484d'; volLabel = 'Aucune séance';
   } else if (volTrained.length > 0) {
+    // (A) Prorata temporel : le MEV est une cible de SEMAINE PLEINE. En début de
+    // semaine les séries ne sont pas encore faites → on compare le volume réalisé
+    // au MEV *proratisé* sur les jours écoulés (comme la Régularité §4), sinon on
+    // affichait « Trop peu de séries » (rouge) dès le lundi. « Volume optimal »
+    // reste jugé sur le MAV plein (on ne le proclame pas à mi-semaine).
+    const _jsVol = (new Date().getDay() + 6) % 7 + 1;   // 1 (lundi) … 7 (dimanche)
+    const _proVol = _jsVol / 7;
     let belowMev = false, aboveMav = true;
     volTrained.forEach(v => {
       const cibleArr = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
       const mev = cibleArr[0] || 0, mav = cibleArr[1] || 0;
       const faites = v.faites || 0;
-      if (faites < mev) belowMev = true;
+      if (faites < mev * _proVol) belowMev = true;   // MEV proratisé (jours écoulés)
       if (faites < mav) aboveMav = false;
     });
     if (belowMev) { volColor = 'var(--bad)'; volLabel = 'Trop peu de séries'; }
@@ -5650,15 +5663,24 @@ function computeMarqueursCoach(data, a) {
   // 5. Récupération — Phase 2A : verdict = MOTEUR CENTRAL (bien-être) si dispo.
   //    Le RPE reste un signal séance (affiché ailleurs), pas la décision de récup.
   const M = data.moteur;   // sortie backend evaluerEtatAthlete (null si non redéployé)
-  const recupObj = buildRecupFromData(data) || dash.recuperation || {};   // ANCIEN (RPE) conservé
+  const _recupRPE = buildRecupFromData(data);   // verdict RPE-seul (null si pas de RPE)
+  const recupObj = _recupRPE || dash.recuperation || {};   // ANCIEN (RPE) conservé
+  const _recupFromRPE = !!_recupRPE && recupObj === _recupRPE;   // source = RPE uniquement ?
   let recupColor, recupLabel;
   if (M && M.recup && M.recup !== '—') {
-    // Décision d'état → moteur central. Excellent/Bon = OK, Moyen = surveillance, Faible = fatigue.
+    // Décision d'état → moteur central (grounded bien-être). Excellent/Bon = OK, Moyen = surveillance, Faible = fatigue.
     recupColor = (M.recup === 'Excellent' || M.recup === 'Bon') ? '#00c96e' : M.recup === 'Moyen' ? '#f59f00' : '#e5484d';
     recupLabel = M.recup;
   } else if (!recupObj.statut) { recupColor = '#aaa'; recupLabel = 'N/A'; }
   else if (recupObj.statut === 'optimal') { recupColor = '#00c96e'; recupLabel = 'Récup OK'; }
   else if (recupObj.statut === 'modere') { recupColor = '#f59f00'; recupLabel = 'Modérée'; }
+  else if (_recupFromRPE) {
+    // (C) Fatigue estimée sur le SEUL RPE (pas de moteur bien-être pour corroborer).
+    // Le RPE est un signal de charge, pas un verdict de récupération : on plafonne
+    // en orange (surveillance) au lieu de rouge, pour ne pas faire basculer le
+    // statut global en « Action » (rank 2) ni déclencher l'alerte synth-recup rouge.
+    recupColor = '#f59f00'; recupLabel = 'Fatigue (RPE)';
+  }
   else { recupColor = '#e5484d'; recupLabel = 'Fatigue'; }
 
   // Statut global — Phase 2A : vient du MOTEUR CENTRAL (disponibilité) si dispo,
