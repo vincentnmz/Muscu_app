@@ -4307,7 +4307,7 @@ async function renderCoachSynthese(athletes) {
   let nbPrets = 0, nbSurvCat = 0, nbInactifsCat = 0;
   const rowsHtml = enrich.map(({ a, i, m, rpe, seancesSem, regPrevues, tonnage, streak, enPause }) => {
     const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
-    const dotColor = enPause ? '#63b3ed' : s.color;
+    const stripe = enPause ? '#63b3ed' : (s.color || 'var(--text-muted)');
     const dsAge = (m && m.derniere && m.derniere.date) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
     let cat;
     if (enPause) cat = 'pause';
@@ -4315,38 +4315,44 @@ async function renderCoachSynthese(athletes) {
     else if (s.rank >= 1) cat = 'surveiller';
     else cat = 'prets';
     if (cat === 'prets') nbPrets++; else if (cat === 'surveiller') nbSurvCat++; else if (cat === 'inactifs') nbInactifsCat++;
-    const meta = [];
-    if (rpe != null) meta.push(`RPE <b style="color:var(--text);">${rpe}</b>`);
+    // ---- Carte A : bandeau d'état + 4 stats chiffrées (RPE · Tonnage · Régul. · Progr./Série) ----
     const _tval = tonnage ? (tonnage.j7 != null ? tonnage.j7 : tonnage.semaine) : null;
     const _tevol = tonnage ? (tonnage.evol_pct != null ? tonnage.evol_pct : tonnage.evol) : null;
+    const _dash = '<div class="v" style="color:var(--text-subtle)">—</div>';
+    const rpeCell = (rpe != null) ? `<div class="v">${rpe}</div>` : _dash;
+    let tonCell = _dash;
     if (_tval > 0) {
       const tc = _tevol != null ? (_tevol >= 0 ? 'var(--good)' : 'var(--warn)') : 'var(--text)';
-      const tarr = _tevol != null ? ` ${_tevol >= 0 ? '▲' : '▼'}${Math.abs(_tevol)}%` : '';
-      meta.push(`Tonnage <b style="color:${tc};">${_tval}t${tarr}</b>`);
+      const tarr = _tevol != null ? (_tevol >= 0 ? ' ▲' : ' ▼') : '';
+      tonCell = `<div class="v" style="color:${tc}">${_tval}t${tarr}</div>`;
     }
-    if (streak != null && streak > 0) meta.push(`🔥 <b style="color:var(--warn);">${streak} sem.</b>`);
-    if (m && m.progLabel && m.progLabel !== 'N/A') meta.push(`<span style="color:${m.progColor};font-weight:700;">${m.progLabel}</span>`);
-    const metaLine = enPause
-      ? '<span style="color:#63b3ed;">Vacances · pas d\'alerte absence</span>'
-      : (meta.length ? meta.join('<span style="opacity:.4"> · </span>') : '<span style="color:var(--text-subtle);">Pas encore de données</span>');
-    // Colonne régularité (droite)
-    const regCol = (!enPause && seancesSem != null)
-      ? `<div style="text-align:center;flex-shrink:0;"><div style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text);">${seancesSem}${regPrevues != null ? '/' + regPrevues : ''}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:1px;">Régul.</div></div>`
-      : '';
+    let regCell = _dash;
+    if (seancesSem != null) {
+      const rc = (m && (m.regColor === '#e5484d' || m.regColor === '#f59f00')) ? m.regColor : 'var(--text)';
+      regCell = `<div class="v" style="color:${rc}">${seancesSem}${regPrevues != null ? '/' + regPrevues : ''}</div>`;
+    }
+    let c4v = _dash, c4l = 'Progr.';
+    if (m && m.progLabel && m.progLabel !== 'N/A') { c4v = `<div class="v" style="color:${m.progColor}">${m.progLabel}</div>`; c4l = 'Progr.'; }
+    else if (streak != null && streak > 0) { c4v = `<div class="v" style="color:var(--warn)">🔥${streak}</div>`; c4l = 'Série'; }
     const chip = enPause
-      ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,179,237,.12);color:#63b3ed;padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">🏖️ Vacances</span>`
-      : `<span style="background:${s.color}1a;color:${s.color};padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">${s.label}</span>`;
-    return `<div class="coach-athlete-row" data-cat="${cat}" data-nom="${escapeHtml(String(a.nom || '').toLowerCase())}" onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:12px 13px;background:var(--surface);border:1px solid var(--border);border-radius:15px;margin-bottom:9px;cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
-      <div style="position:relative;width:44px;height:44px;flex-shrink:0;">
-        <div style="width:44px;height:44px;border-radius:13px;background:var(--surface2);color:var(--text);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">${enPause ? '🏖️' : initiales(a.nom)}</div>
-        <span style="position:absolute;right:-2px;top:-2px;width:13px;height:13px;border-radius:50%;background:${dotColor};border:2.5px solid var(--surface);"></span>
+      ? `<span class="cae-chip" style="background:rgba(99,179,237,.14);color:#63b3ed;">🏖️ Vacances</span>`
+      : `<span class="cae-chip" style="background:${s.color}1a;color:${s.color};">${s.label}</span>`;
+    const body = enPause
+      ? `<div class="cae-vac">Vacances · pas d'alerte absence, reprise à la fin</div>`
+      : `<div class="cae-stats">
+          <div class="cae-st">${rpeCell}<div class="l">RPE 7j</div></div>
+          <div class="cae-st">${tonCell}<div class="l">Tonnage</div></div>
+          <div class="cae-st">${regCell}<div class="l">Régul.</div></div>
+          <div class="cae-st">${c4v}<div class="l">${c4l}</div></div>
+        </div>`;
+    return `<div class="coach-athlete-row" data-cat="${cat}" data-nom="${escapeHtml(String(a.nom || '').toLowerCase())}" onclick="ouvrirAthleteDepuisSelect('${i}')" style="position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;padding:12px 13px 11px;cursor:pointer;box-shadow:var(--shadow-sm);">
+      <span class="cae-stripe" style="background:${stripe};"></span>
+      <div class="cae-top">
+        <div class="cae-av">${enPause ? '🏖️' : initiales(a.nom)}</div>
+        <div class="cae-nm"><b>${escapeHtml(a.nom)}</b>${chip}</div>
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="m9 6 6 6-6 6"/></svg>
       </div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>${chip}</div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${metaLine}</div>
-      </div>
-      ${regCol}
-      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m9 6 6 6-6 6"/></svg>
+      ${body}
     </div>`;
   }).join('');
 
@@ -5750,16 +5756,30 @@ function computeMarqueursCoach(data, a) {
     else statut = { rank: 0, color: '#00c96e', label: 'Optimal' };
   }
 
-  // Garde-fou « sans activité » : un athlète qui n'a JAMAIS fait de séance ne
-  // peut pas être « Optimal » (vert) — aucune donnée ne le justifie et le coach
-  // doit le contacter. On escalade en surveillance (orange) avec un libellé
-  // d'action clair, sans jamais rétrograder un statut déjà plus grave.
+  // ===== STATUT UNIFIÉ « à agir » : Forme ⊕ Assiduité =====
+  // Le statut ci-dessus = la FORME (disponibilité moteur, ou repli marqueurs) :
+  // « est-il prêt physiquement ? ». Mais un athlète frais (« Prêt ») qui ne suit
+  // pas le programme doit AUSSI être signalé — sinon il apparaît « Optimal » en
+  // Équipe alors qu'il est en alerte dans Aujourd'hui. On calcule donc l'axe
+  // ASSIDUITÉ (régularité + absence) et le statut final = le PIRE des deux, avec
+  // un libellé d'action quand l'assiduité domine. L'assiduité n'escalade que si
+  // elle est strictement plus grave (on ne masque pas un verdict de forme égal).
   // (Les athlètes en vacances sont filtrés en amont — chip « Vacances » gagne.)
-  const jamaisSeance = !dash.derniere_seance;
-  if (jamaisSeance && statut.rank < 1) {
-    const sansProgramme = prevues === 0;
-    statut = { rank: 1, color: '#f5a623', label: sansProgramme ? 'À programmer' : 'À relancer' };
+  const _dsObj = dash.derniere_seance;
+  const _dsTs = (_dsObj && _dsObj.date) ? parseChatDate(_dsObj.date) : null;
+  const _dsAge = _dsTs ? (Date.now() - _dsTs) / 86400000 : Infinity;
+  let assid = null;
+  if (!_dsObj) {
+    // Jamais aucune séance : à programmer (pas de programme) ou à relancer.
+    assid = { rank: 1, color: '#f5a623', label: prevues === 0 ? 'À programmer' : 'À relancer' };
+  } else if (_dsAge > 14) {
+    // Arrêt prolongé (> 14 j) : inactif, le coach doit intervenir.
+    assid = { rank: 2, color: '#e5484d', label: 'Inactif' };
+  } else if (regColor === '#e5484d') {
+    // Régularité très insuffisante cette semaine (prorata jours écoulés) → relancer.
+    assid = { rank: 1, color: '#f5a623', label: 'À relancer' };
   }
+  if (assid && assid.rank > statut.rank) statut = assid;
 
   return {
     progColor, progLabel, acwrColor, acwrLabel, acwrRatio,
