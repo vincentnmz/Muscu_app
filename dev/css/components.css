@@ -451,6 +451,21 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .nv-auth-seg button { flex:1; padding:11px; border:none; background:none; color:var(--text-muted); font-size:13px; font-weight:700; border-radius:9px; cursor:pointer; transition:all 0.2s; }
 .nv-auth-seg button.auth-seg-active { background:var(--accent); color:var(--on-accent); }
 
+/* Bascule de rôle à la connexion (piste A) : athlète / coach·prépa au même niveau. */
+.nv-role-switch { display:flex; gap:9px; margin:0 0 16px; }
+.nv-role { flex:1; display:flex; align-items:center; gap:10px; border:1.5px solid var(--border); background:var(--surface);
+  border-radius:14px; padding:11px 12px; cursor:pointer; font-family:inherit; text-align:left; transition:border-color .15s, background .15s, box-shadow .15s; }
+.nv-role .ic { font-size:19px; flex:none; line-height:1; }
+.nv-role .tx { display:flex; flex-direction:column; line-height:1.15; min-width:0; }
+.nv-role .tx b { font-size:13px; font-weight:800; color:var(--text); }
+.nv-role .tx small { font-size:9.5px; color:var(--text-subtle); font-weight:600; }
+#roletab-athlete.on { border-color:var(--accent); background:rgba(26,95,255,.08); box-shadow:0 0 0 3px rgba(26,95,255,.10); }
+#roletab-coach.on { border-color:#6D4BFF; background:rgba(109,75,255,.08); box-shadow:0 0 0 3px rgba(109,75,255,.10); }
+#roletab-coach.on .tx b { color:#5733E0; }
+/* Accent violet quand le rôle coach·prépa est actif (boutons + onglet actif). */
+#view-login.role-coach .btn-accent { background:#6D4BFF; }
+#view-login.role-coach .nv-auth-seg button.auth-seg-active { background:#6D4BFF; }
+
 .error-msg { color:var(--danger); font-size:13px; text-align:center; margin-top:4px; min-height:20px; }
 
 /* =============================================================================
