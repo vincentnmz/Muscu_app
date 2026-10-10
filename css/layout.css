@@ -42,16 +42,12 @@
 /* ===== Template : authentification ===== */
 #view-login { max-width:var(--auth-w); margin:0 auto; }
 
-/* Écran de connexion : fond NOIR pleine page, logo centré AU-DESSUS du formulaire
-   (comme avant), formulaire inchangé. Pas de hero dégradé, pas de split desktop. */
-body:has(#view-login.active) { background:#000; }
-#view-login.active { min-height:100vh; }
-.nv-login-hero { text-align:center; padding:38px 0 22px; background:none; }
-.nv-login-hero .nv-hero-tile { display:inline-block; background:none; box-shadow:none; padding:0; }
-.nv-login-hero .nv-hero-tile img { display:block; width:240px; max-width:78%; height:auto; margin:0 auto; }
+/* Écran de connexion — 1re version : logo centré au-dessus du formulaire sur
+   fond clair (pas de hero dégradé, pas de fond noir, pas de split desktop). */
+.nv-login-hero { text-align:center; padding:34px 0 22px; }
+.nv-login-hero .nv-hero-tile { display:inline-block; }
+.nv-login-hero .nv-hero-tile img { display:block; width:240px; max-width:80%; height:auto; margin:0 auto; }
 .nv-login-body { padding:0 2px; }
-/* Texte directement sur le fond noir (liens de pied de page) lisible. */
-body:has(#view-login.active) #view-login .nv-login-body > div:last-child a { color:#9aa4b2; }
 
 /* Note : les barres de nav fixes (.tabs-bar, #view-coach-detail .sub-tabs)
  * lisent directement --app-w dans components.css → largeur alignée sur le conteneur. */
