@@ -4929,6 +4929,11 @@ function switchCoachDetailTab(tab) {
   // Analyses coach = bloc « Mes analyses » déplacé ici (source = athlète consulté).
   if (tab === 'prog') { try { _maCoachAttach(coachAthleteData); } catch (e) {} }
   else { try { _maCoachDetach(); } catch (e) {} }
+  // Onglet Conseils/Conversation : rendre le bloc « Alertes de la semaine »
+  // (#cd-conv-alertes), sinon il reste figé sur « Chargement… » quand on arrive
+  // par la navigation par onglet (ex. depuis la messagerie), car seul
+  // ouvrirConversationCoach() le rendait jusqu'ici.
+  if (tab === 'conseils') { try { renderConversationAlertes(); } catch (e) {} }
   majRailVisibilite(tab);
 }
 
@@ -5075,6 +5080,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderCoachRecordsEtRegression(data.historique, data.global);
     renderCoachIndicateurs(data);
     renderAlertesCoach(data);
+    try { renderConversationAlertes(); } catch (_) {}   // bloc « Alertes de la semaine » de l'onglet Conseils (synthèse ← données)
     afficherGraphiquePoidsCoach(data.poids || []);
     renderCoachVolume(data);
     afficherCoachTendances(4);
@@ -5089,7 +5095,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     var _err = '<div style="padding:14px;color:var(--text-muted);font-size:13px;line-height:1.5">Impossible de charger cet athlète (connexion ?).<br><button onclick="ouvrirDetailAthleteCoach(coachAthleteCourant)" style="margin-top:10px;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer">Réessayer</button></div>';
     var _idErr = document.getElementById('cd-indicateurs'); if (_idErr) _idErr.innerHTML = _err;
     // Vider les autres zones encore en « Chargement… » pour ne pas laisser de spinner figé.
-    ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content','cd-cmp28-content','cd-seances-detail-content','cd-commentaires-liste'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
+    ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content','cd-cmp28-content','cd-seances-detail-content','cd-commentaires-liste','cd-conv-alertes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
   }
 }
 
@@ -5713,6 +5719,17 @@ function computeMarqueursCoach(data, a) {
     if (couleurs.includes('#e5484d') || alerteGrave) statut = { rank: 2, color: '#e5484d', label: 'Action' };
     else if (couleurs.includes('#f59f00') || alertes.length > 0) statut = { rank: 1, color: '#f5a623', label: 'Surveillance' };
     else statut = { rank: 0, color: '#00c96e', label: 'Optimal' };
+  }
+
+  // Garde-fou « sans activité » : un athlète qui n'a JAMAIS fait de séance ne
+  // peut pas être « Optimal » (vert) — aucune donnée ne le justifie et le coach
+  // doit le contacter. On escalade en surveillance (orange) avec un libellé
+  // d'action clair, sans jamais rétrograder un statut déjà plus grave.
+  // (Les athlètes en vacances sont filtrés en amont — chip « Vacances » gagne.)
+  const jamaisSeance = !dash.derniere_seance;
+  if (jamaisSeance && statut.rank < 1) {
+    const sansProgramme = prevues === 0;
+    statut = { rank: 1, color: '#f5a623', label: sansProgramme ? 'À programmer' : 'À relancer' };
   }
 
   return {
