@@ -1786,11 +1786,11 @@ async function sInscrire() {
   const code = (document.getElementById('reg-code') ? document.getElementById('reg-code').value : '').trim();
   const errEl = document.getElementById('reg-error');
   errEl.textContent = '';
-  if (!prenom || !login || !ddn || !taille) { errEl.textContent = 'Remplis tous les champs.'; return; }
+  if (!prenom || !login || !ddn || !taille || !email) { errEl.textContent = 'Remplis tous les champs (email inclus).'; return; }
   if (sport === 'muscu' && annees === '') { errEl.textContent = 'Indique tes années de pratique.'; return; }
   if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
-  if (email && !emailValideFront(email)) { errEl.textContent = 'Email invalide (ou laisse le champ vide).'; return; }
+  if (!emailValideFront(email)) { errEl.textContent = 'Email invalide.'; return; }
   if (!document.getElementById('reg-consent').checked) { errEl.textContent = 'Tu dois accepter la politique de confidentialité.'; return; }
   errEl.textContent = 'Création...';
   try {
@@ -8817,27 +8817,28 @@ function switchCoachAuthMode(mode) {
 // Le rôle « prépa » n'existe pas en muscu (le coach y fait déjà la prépa).
 // On masque l'option quand le sport est la muscu et on retombe sur « coach ».
 function majRoleSelonSport() {
-  var sp = document.getElementById('reg-coach-sport');
+  // Préparateur physique disponible pour TOUS les sports (le choix du sport étant
+  // en fin de formulaire, masquer « prépa » en muscu n'était pas évident).
   var rl = document.getElementById('reg-coach-role');
-  if (!sp || !rl) return;
-  var estMuscu = (sp.value === 'muscu');
+  if (!rl) return;
   var prepaOpt = rl.querySelector('option[value="prepa"]');
-  if (prepaOpt) prepaOpt.style.display = estMuscu ? 'none' : '';
-  if (estMuscu && rl.value === 'prepa') rl.value = 'coach';
+  if (prepaOpt) prepaOpt.style.display = '';
 }
 
 async function sInscrireCoach() {
   const nom = document.getElementById('reg-coach-nom').value.trim();
   const login = document.getElementById('reg-coach-login').value.trim();
+  const email = (document.getElementById('reg-coach-email') ? document.getElementById('reg-coach-email').value : '').trim();
   const password = document.getElementById('reg-coach-password').value;
   const sportSel = document.getElementById('reg-coach-sport');
   const sport = sportSel ? sportSel.value : 'muscu';
   const roleSel = document.getElementById('reg-coach-role');
-  // Pas de prépa en muscu (le coach y fait déjà la prépa) → on force « coach ».
-  const role = (sport === 'muscu') ? 'coach' : (roleSel ? roleSel.value : 'coach');
+  // Rôle choisi par l'utilisateur (coach ou préparateur), quel que soit le sport.
+  const role = (roleSel && (roleSel.value === 'coach' || roleSel.value === 'prepa')) ? roleSel.value : 'coach';
   const errEl = document.getElementById('reg-coach-error');
   errEl.textContent = '';
-  if (!nom || !login) { errEl.textContent = 'Remplis tous les champs.'; return; }
+  if (!nom || !login || !email) { errEl.textContent = 'Remplis tous les champs (email inclus).'; return; }
+  if (!emailValideFront(email)) { errEl.textContent = 'Email invalide.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
   if (!document.getElementById('reg-coach-consent').checked) { errEl.textContent = 'Tu dois accepter la politique de confidentialité.'; return; }
   errEl.textContent = 'Création...';
@@ -8845,7 +8846,7 @@ async function sInscrireCoach() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'registerCoach', nom, login, password, sport, role })
+      body: JSON.stringify({ action: 'registerCoach', nom, login, email, password, sport, role })
     });
     const data = await res.json();
     if (data.success) {
@@ -11319,6 +11320,49 @@ function _maTrendBadgeVs(pct) {
   return '<span class="t ' + (pct >= 0 ? 'ma-up' : 'ma-dn') + '">tonnage ' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>';
 }
 // PAR EXERCICE : sélecteur d'exercice + graphe (1RM/charge/volume) + stats + séances.
+// Graphe combiné « Charge + Reps » (Par exercice) : ligne de charge (kg, axe
+// gauche) + barres de reps à cette charge (axe droit) + étiquette « charge×reps »
+// par point. Rappel : chaque point = la série la plus lourde du jour (backend).
+function _maChargeRepsRich(pts) {
+  var n = pts.length; if (!n) return _maArea([0], '#1A5FFF', 'rgba(26,95,255,.12)');
+  var W = 640, H = 300, pL = 46, pR = 42;
+  var cTop = 44, cBot = 182, barBase = 262, barTopMax = 196;
+  var charges = pts.map(function (p) { return Number(p.charge) || 0; });
+  var reps = pts.map(function (p) { return Number(p.reps) || 0; });
+  var cMin = Math.min.apply(null, charges), cMax = Math.max.apply(null, charges);
+  if (cMin === cMax) { cMin -= 2; cMax += 2; }
+  var cRng = cMax - cMin || 1;
+  var rMax = Math.max.apply(null, reps.concat([1]));
+  var X = function (i) { return n === 1 ? (pL + (W - pL - pR) / 2) : (pL + i * (W - pL - pR) / (n - 1)); };
+  var Yc = function (v) { return cTop + (1 - (v - cMin) / cRng) * (cBot - cTop); };
+  var barH = function (v) { return (v / rMax) * (barBase - barTopMax); };
+  var e = function (x) { return (typeof _maE === 'function') ? _maE(x) : x; };
+  var grid = '', yl = '';
+  for (var g = 0; g <= 3; g++) {
+    var yy = cTop + g * (cBot - cTop) / 3, val = cMax - g * cRng / 3;
+    grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="#eef2f8" stroke-width="1"/>';
+    yl += '<text x="' + (pL - 6) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="10" fill="#8a94a6">' + (Math.round(val * 10) / 10) + '</text>';
+  }
+  yl += '<text x="' + (pL - 6) + '" y="' + (cTop - 16) + '" text-anchor="end" font-size="10" font-weight="800" fill="#1A5FFF">kg</text>';
+  yl += '<text x="' + (W - pR + 6) + '" y="' + (cTop - 16) + '" text-anchor="start" font-size="10" font-weight="800" fill="#E8930C">reps</text>';
+  var bw = Math.max(10, Math.min(28, (W - pL - pR) / n * 0.5));
+  var bars = '', barLab = '';
+  reps.forEach(function (v, i) {
+    var h = barH(v), x = X(i) - bw / 2, y = barBase - h;
+    bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3" fill="rgba(232,147,12,.20)"/>';
+    barLab += '<text x="' + X(i).toFixed(1) + '" y="' + (y - 5).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="800" fill="#E8930C">' + v + '</text>';
+  });
+  var pline = charges.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ');
+  var dots = '', clab = '', xlab = '';
+  charges.forEach(function (v, i) {
+    var xx = X(i), yy = Yc(v), last = (i === n - 1);
+    dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yy.toFixed(1) + '" r="' + (last ? 5 : 3.5) + '" fill="#1A5FFF"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
+    clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 9).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="800" fill="#0f1726">' + v + '×' + reps[i] + '</text>';
+    xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10" fill="#8a94a6">' + e(_maShortDate(pts[i].date)) + '</text>';
+  });
+  var lineEl = (n >= 2) ? '<path d="' + pline + '" fill="none" stroke="#1A5FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' : '';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + yl + bars + barLab + lineEl + dots + clab + xlab + '</svg>';
+}
 function _maProgExo(data) {
   var progAll = (data.historique && data.historique.progression_par_exo) || {};
   var cut = _maCut(_maPeriode);
@@ -11336,15 +11380,20 @@ function _maProgExo(data) {
   var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + prog[sel].length + ' séance' + (prog[sel].length > 1 ? 's' : '') + ' suivie' + (prog[sel].length > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
   // Charge en premier (c'est la valeur la plus parlante au quotidien) ; 1RM et
   // Répétitions ensuite. Onglets soulignés (≠ pastilles pleines de la période).
-  var MET = [['charge', 'Charge max', 'kg'], ['reps', 'Répétitions', 'reps'], ['1rm', '1RM estimé', 'kg']];
+  var MET = [['charge', 'Charge max', 'kg'], ['reps', 'Répétitions', 'reps'], ['cr', 'Charge + Reps', ''], ['1rm', '1RM estimé', 'kg']];
   var met = MET.filter(function (x) { return x[0] === _maExoMetric; })[0] || MET[0];
   var seg = '<div class="ma-mtab-wrap"><span class="ma-mtab-lbl">Afficher</span><div class="ma-mtab">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>';
-  var series = pts.map(function (p) { return met[0] === '1rm' ? _maE1RM(p) : met[0] === 'charge' ? (p.charge || 0) : (p.reps || 0); });
+  var isCR = (met[0] === 'cr');   // vue combinée charge + reps
+  var series = pts.map(function (p) { return met[0] === '1rm' ? _maE1RM(p) : (met[0] === 'charge' || isCR) ? (p.charge || 0) : (p.reps || 0); });
   var last = series[series.length - 1] || 0, first = series[0] || 0, delta = Math.round((last - first) * 10) / 10;
   var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span>';
-  var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + met[2]);
+  var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + (isCR ? 'kg' : met[2]));
   var chartBody, legend = '';
-  if (np === 1) {
+  if (isCR) {
+    // Charge (ligne, kg axe gauche) + reps à cette charge (barres, axe droit) + étiquette charge×reps.
+    chartBody = _maChargeRepsRich(pts);
+    legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>Charge max (kg) — axe gauche</span><span><b style="background:rgba(232,147,12,.5)"></b>Reps à cette charge — axe droit</span><span class="mut">Étiquette = charge × reps</span></div>';
+  } else if (np === 1) {
     // 1 seule séance sur la période : rendu point-unique (valeur + date) des deux
     // côtés, sinon desktop montrait une ligne plate vide et mobile un aplat à 0.
     chartBody = _maSingleRich(series[0], pts[0] && pts[0].date, met[2], '#1A5FFF');
@@ -11355,7 +11404,9 @@ function _maProgExo(data) {
   } else {
     chartBody = _maArea(series, '#1A5FFF', 'rgba(26,95,255,.12)') + '<div class="ma-axis"><span>' + pts.length + ' séance' + (pts.length > 1 ? 's' : '') + '</span><span>aujourd\'hui</span></div>';
   }
-  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + met[1] + ' (' + met[2] + ')</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + last + ' ' + dspan + '</span></div>' + chartBody + legend + '</div>';
+  var _chipTxt = isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')');
+  var _topVal = isCR ? ((pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last;
+  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + _chipTxt + '</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + _topVal + ' ' + dspan + '</span></div>' + chartBody + legend + '</div>';
   var best = pts.reduce(function (a, b) { return (b.charge || 0) > (a.charge || 0) ? b : a; }, pts[0]);
   var recCharge = (data.global && data.global.records_par_exo && data.global.records_par_exo[sel] && data.global.records_par_exo[sel].charge) || best.charge || 0;
   var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">1RM estimé</div></div><div class="c"><div class="v">' + (best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + dstat + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + recCharge + ' kg</div><div class="u">record charge</div></div></div>';

@@ -3076,6 +3076,7 @@ const STAFF_ROLES = ['coach', 'prepa']   // (kine plus tard) ; l'ancien "coach_s
 async function handleRegisterCoach(body: any): Promise<Response> {
   const login = body.login?.trim(), pwd = body.password?.trim(), nom = body.nom?.trim() || body.login, sport = body.sport || 'muscu'
   const role = STAFF_ROLES.includes(String(body.role || '')) ? String(body.role) : 'coach'
+  const email = String(body.email || '').trim() || null
   if (!login || !pwd) return jsonResp({ success: false, error: 'Paramètres manquants' })
   const { data: existing } = await sb().from('coachs').select('coach_id').eq('login', login).single()
   if (existing) return jsonResp({ success: false, error: 'Cet identifiant coach est déjà utilisé.' })
@@ -3084,9 +3085,9 @@ async function handleRegisterCoach(body: any): Promise<Response> {
   let maxCoach = 0
   for (const r of allCoachs || []) { const n = Number(r.coach_id); if (!isNaN(n) && n > maxCoach) maxCoach = n }
   const newId = String(maxCoach + 1)
-  const { data, error } = await sb().from('coachs').insert({ coach_id: newId, login, nom, password_hash: hash, sport, role }).select().single()
+  const { data, error } = await sb().from('coachs').insert({ coach_id: newId, login, nom, email, password_hash: hash, sport, role }).select().single()
   if (error) return jsonResp({ success: false, error: error.message })
-  return jsonResp({ success: true, coach: { coach_id: data.coach_id, nom: data.nom, sport: String(sport || '').trim() || 'muscu', role } })
+  return jsonResp({ success: true, coach: { coach_id: data.coach_id, nom: data.nom, email: data.email || '', sport: String(sport || '').trim() || 'muscu', role } })
 }
 
 async function handleSupprimerCompte(body: any): Promise<Response> {

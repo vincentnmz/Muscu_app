@@ -54,12 +54,17 @@
 /* Desktop (≥992px) : écran de connexion « split » — hero à gauche, formulaire à droite.
    On relâche la contrainte --auth-w (sinon colonne étroite) et on centre le bloc. */
 @media (min-width:992px) {
-  #view-login { max-width:940px; display:flex; align-items:stretch; gap:0; margin:44px auto;
-    background:var(--surface); border:1px solid var(--border); border-radius:22px; overflow:hidden; box-shadow:var(--shadow); }
-  #view-login .nv-login-hero { flex:0 0 42%; margin:0; border-radius:0; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; padding:48px 30px; }
-  #view-login .nv-hero-tile img { width:230px !important; max-width:100%; }
-  #view-login .nv-login-body { flex:1; min-width:0; padding:46px 48px; display:flex; flex-direction:column; justify-content:center; }
+  /* Login plein écran (split) : on masque le header d'app et on remplit le viewport.
+     IMPORTANT : règle conditionnée à .active (spécificité #id écrase .view{display:none},
+     sinon le login resterait visible par-dessus les autres vues après connexion). */
+  body:has(#view-login.active) #app-header { display:none; }
+  #view-login.active { max-width:none; margin:0; display:flex; align-items:stretch; min-height:100vh;
+    background:var(--surface); border:0; border-radius:0; box-shadow:none; }
+  #view-login .nv-login-hero { flex:0 0 46%; margin:0; border-radius:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:48px 40px; }
+  #view-login .nv-hero-tile img { width:260px !important; max-width:100%; }
+  #view-login .nv-login-body { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; padding:40px 56px; }
+  #view-login .nv-login-body > * { width:100%; max-width:420px; margin-left:auto; margin-right:auto; }
 }
 
 /* Note : les barres de nav fixes (.tabs-bar, #view-coach-detail .sub-tabs)
