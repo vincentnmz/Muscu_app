@@ -5981,11 +5981,17 @@ function _cibleTxtSeance(t) {
   if (!t) return '';
   var mn = t.reps_mini, mx = t.reps_max, reps = (mn && mx) ? (String(mn) === String(mx) ? String(mn) : mn + '–' + mx) : (mn || mx || '');
   var parts = [((t.series_prevues ? t.series_prevues + ' × ' : '') + (reps || '?'))];
-  if (t.rpe_cible != null && t.rpe_cible !== '') parts.push('RPE ' + t.rpe_cible);
+  if (t.rpe_cible != null && t.rpe_cible !== '') parts.push('RPE ' + t.rpe_cible + ' · ' + _rirLong(t.rpe_cible));
   else if (t.charge_pct_1rm != null && t.charge_pct_1rm !== '') parts.push(t.charge_pct_1rm + ' % 1RM');
   if (t.repos_sec != null && t.repos_sec !== '') parts.push('repos ' + t.repos_sec + ' s');
   return parts.join(' · ');
 }
+// RIR (reps en réserve) ≈ 10 − RPE. « échec » à RPE 10. Deux formats : court (chip)
+// et long (cible). Le RPE reste la saisie ; le RIR est juste sa traduction.
+function _rirVal(rpe) { var n = Number(rpe); if (isNaN(n)) return null; return Math.max(0, Math.round((10 - n) * 10) / 10); }
+function _rirShort(rpe) { var n = Number(rpe); if (isNaN(n)) return ''; if (n >= 10) return 'échec'; var r = _rirVal(rpe); return (Number.isInteger(r) ? r : String(r).replace('.', ',')) + ' rés.'; }
+function _rirLong(rpe) { var n = Number(rpe); if (isNaN(n)) return ''; if (n >= 10) return 'échec'; var r = _rirVal(rpe); return (Number.isInteger(r) ? r : String(r).replace('.', ',')) + ' en réserve'; }
+
 // Reps réalisées vs fourchette cible : 'ok' | 'sous' | 'sur' | null (pas de cible reps).
 function _repsVsCible(reps, t) {
   if (!t) return null;
@@ -6012,7 +6018,7 @@ function seancesCardsHTML(entries, prog) {
     const n = Number(rpe);
     const c = n < 7.5 ? 'var(--good)' : n < 8.5 ? 'var(--warn)' : 'var(--danger)';
     const ca = n < 7.5 ? 'var(--good-a)' : n < 8.5 ? 'var(--warn-a)' : 'var(--bad-a)';
-    return `<span style="display:inline-block;min-width:30px;border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800;background:${ca};color:${c};">${n}</span>`;
+    return `<span style="display:inline-block;min-width:30px;border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800;background:${ca};color:${c};">${n}</span><div style="font-size:8.5px;color:var(--text-subtle);font-weight:700;margin-top:2px;white-space:nowrap;">${_rirShort(n)}</div>`;
   };
   return entries.map((s, idx) => {
     // Normaliser en exercices -> séries (+ muscle si fourni par getSeancesDetail)
