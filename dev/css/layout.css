@@ -42,30 +42,16 @@
 /* ===== Template : authentification ===== */
 #view-login { max-width:var(--auth-w); margin:0 auto; }
 
-/* Hero logo (option 1) : bandeau dégradé avec le logo en évidence. */
-.nv-login-hero { position:relative; overflow:hidden; text-align:center; padding:30px 20px 26px; margin-bottom:18px;
-  background:linear-gradient(135deg, var(--accent), #6D4BFF); border-radius:0 0 26px 26px; }
-.nv-login-hero::after { content:""; position:absolute; right:-54px; top:-54px; width:190px; height:190px; border-radius:50%; background:rgba(255,255,255,.12); }
-.nv-hero-tile { position:relative; display:inline-block; background:#fff; border-radius:18px; padding:14px 20px; box-shadow:0 12px 30px rgba(7,15,35,.22); }
-.nv-hero-tile img { display:block; width:210px !important; max-width:58vw; height:auto; margin:0 !important; border-radius:6px !important; }
-.nv-hero-tag { position:relative; color:#fff; font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; opacity:.9; margin-top:14px; }
+/* Écran de connexion : fond NOIR pleine page, logo centré AU-DESSUS du formulaire
+   (comme avant), formulaire inchangé. Pas de hero dégradé, pas de split desktop. */
+body:has(#view-login.active) { background:#000; }
+#view-login.active { min-height:100vh; }
+.nv-login-hero { text-align:center; padding:38px 0 22px; background:none; }
+.nv-login-hero .nv-hero-tile { display:inline-block; background:none; box-shadow:none; padding:0; }
+.nv-login-hero .nv-hero-tile img { display:block; width:240px; max-width:78%; height:auto; margin:0 auto; }
 .nv-login-body { padding:0 2px; }
-
-/* Desktop (≥992px) : écran de connexion « split » — hero à gauche, formulaire à droite.
-   On relâche la contrainte --auth-w (sinon colonne étroite) et on centre le bloc. */
-@media (min-width:992px) {
-  /* Login plein écran (split) : on masque le header d'app et on remplit le viewport.
-     IMPORTANT : règle conditionnée à .active (spécificité #id écrase .view{display:none},
-     sinon le login resterait visible par-dessus les autres vues après connexion). */
-  body:has(#view-login.active) #app-header { display:none; }
-  #view-login.active { max-width:none; margin:0; display:flex; align-items:stretch; min-height:100vh;
-    background:var(--surface); border:0; border-radius:0; box-shadow:none; }
-  #view-login .nv-login-hero { flex:0 0 46%; margin:0; border-radius:0; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; padding:48px 40px; }
-  #view-login .nv-hero-tile img { width:260px !important; max-width:100%; }
-  #view-login .nv-login-body { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; padding:40px 56px; }
-  #view-login .nv-login-body > * { width:100%; max-width:420px; margin-left:auto; margin-right:auto; }
-}
+/* Texte directement sur le fond noir (liens de pied de page) lisible. */
+body:has(#view-login.active) #view-login .nv-login-body > div:last-child a { color:#9aa4b2; }
 
 /* Note : les barres de nav fixes (.tabs-bar, #view-coach-detail .sub-tabs)
  * lisent directement --app-w dans components.css → largeur alignée sur le conteneur. */
