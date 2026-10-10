@@ -1932,23 +1932,27 @@ function seDeconnecter() {
 let coach = null;
 let athletesCoach = [];
 
-function toggleEspaceCoach(ev) {
-  if (ev) ev.preventDefault();
-  // Bascule vers la vue coach seule (on masque tout le bloc athlète)
-  document.getElementById('auth-seg-athlete').style.display = 'none';
-  document.getElementById('auth-login').style.display = 'none';
-  document.getElementById('auth-signup').style.display = 'none';
-  document.getElementById('lien-espace-coach-wrap').style.display = 'none';
-  document.getElementById('card-login-coach').style.display = 'block';
+// Bascule de rôle sur l'écran de connexion (piste A) : athlète (défaut) ↔ coach·prépa.
+// Les deux rôles sont au même niveau (plus de lien caché) ; accent violet pour le coach.
+function switchRole(role) {
+  var isCoach = role === 'coach';
+  var ta = document.getElementById('roletab-athlete'), tc = document.getElementById('roletab-coach');
+  if (ta) ta.classList.toggle('on', !isCoach);
+  if (tc) tc.classList.toggle('on', isCoach);
+  var seg = document.getElementById('auth-seg-athlete'); if (seg) seg.style.display = isCoach ? 'none' : '';
+  var coachCard = document.getElementById('card-login-coach'); if (coachCard) coachCard.style.display = isCoach ? 'block' : 'none';
+  try { document.getElementById('view-login').classList.toggle('role-coach', isCoach); } catch (e) {}
+  if (isCoach) {
+    document.getElementById('auth-login').style.display = 'none';
+    document.getElementById('auth-signup').style.display = 'none';
+    switchCoachAuthMode('login');
+  } else {
+    switchAuthMode('login'); // ré-affiche le bloc login athlète
+  }
 }
-
-function retourEspaceAthlete(ev) {
-  if (ev) ev.preventDefault();
-  document.getElementById('card-login-coach').style.display = 'none';
-  document.getElementById('auth-seg-athlete').style.display = '';
-  document.getElementById('lien-espace-coach-wrap').style.display = '';
-  switchAuthMode('login'); // ré-affiche le bloc login athlète
-}
+// Compat : anciens appels éventuels délèguent à la bascule de rôle.
+function toggleEspaceCoach(ev) { if (ev) ev.preventDefault(); switchRole('coach'); }
+function retourEspaceAthlete(ev) { if (ev) ev.preventDefault(); switchRole('athlete'); }
 
 async function seConnecterCoach() {
   const login = document.getElementById('inp-login-coach').value.trim();
