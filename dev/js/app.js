@@ -10834,12 +10834,28 @@ function _maShortDate(s) {
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) { var p = s.split('-'); return (+p[2]) + '/' + (+p[1]); }
   var m = s.match(/^(\d{1,2})[\/](\d{1,2})/); return m ? (+m[1]) + '/' + (+m[2]) : s;
 }
+// Point UNIQUE (ex. 1 séance sur la période) : une ligne/aire ne montrerait rien
+// — et une charge nulle (poids du corps) donnerait une ligne plate à 0. On rend
+// donc le point centré avec sa VALEUR et sa DATE, pour que le graphe porte une
+// info exploitable même avec une seule séance. Utilisé desktop ET mobile.
+function _maSingleRich(value, date, unit, color) {
+  color = color || '#1A5FFF';
+  var W = 640, H = 180, cx = W / 2, cy = 84, v = Math.round((Number(value) || 0) * 10) / 10;
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">'
+    + '<line x1="46" y1="' + cy + '" x2="' + (W - 16) + '" y2="' + cy + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="5 5"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="6.5" fill="#00A854" stroke="#fff" stroke-width="2.5"/>'
+    + '<text x="' + cx + '" y="' + (cy - 15) + '" text-anchor="middle" font-size="16" font-weight="800" fill="#00A854">' + v + (unit ? ' ' + unit : '') + '</text>'
+    + '<text x="' + cx + '" y="' + (cy + 26) + '" text-anchor="middle" font-size="11.5" fill="var(--text-subtle)">' + _maE(_maShortDate(date)) + '</text>'
+    + '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="var(--text-muted)">1 séance sur la période · la courbe apparaît dès 2 séances</text>'
+    + '</svg>';
+}
 // Graphe courbe RICHE (desktop) : axes + grille + étiquettes de données + dernier
 // point mis en avant. Ratio préservé (pas de preserveAspectRatio:none) → PAS aplati.
 // Utilisé seulement en bureau ; sur mobile on garde _maArea (compact, inchangé).
 function _maLineRich(series, dates, unit, color) {
   var n = series.length; color = color || '#1A5FFF';
-  if (n < 2) return _maArea(series, color, 'rgba(26,95,255,.12)');
+  if (n === 1) return _maSingleRich(series[0], dates && dates[0], unit, color);
+  if (n < 1) return _maArea(series, color, 'rgba(26,95,255,.12)');
   var W = 640, H = 260, pL = 46, pR = 16, pT = 26, pB = 30;
   var mn = Math.min.apply(null, series), mx = Math.max.apply(null, series);
   if (mn === mx) { mn = mn - 1; mx = mx + 1; }
@@ -11261,7 +11277,12 @@ function _maProgExo(data) {
   var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span>';
   var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + met[2]);
   var chartBody, legend = '';
-  if (_maIsDesktop()) {
+  if (np === 1) {
+    // 1 seule séance sur la période : rendu point-unique (valeur + date) des deux
+    // côtés, sinon desktop montrait une ligne plate vide et mobile un aplat à 0.
+    chartBody = _maSingleRich(series[0], pts[0] && pts[0].date, met[2], '#1A5FFF');
+    if (_maIsDesktop()) legend = '<div class="ma-rclegend"><span><i style="background:#00A854"></i>' + met[1] + ' (' + met[2] + ')</span><span class="mut">Axe horizontal = date · détail des séries ci-dessous</span></div>';
+  } else if (_maIsDesktop()) {
     chartBody = _maLineRich(series, pts.map(function (p) { return p.date; }), met[2], '#1A5FFF');
     legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>' + met[1] + ' (' + met[2] + ')</span><span><b style="background:#00A854"></b>Dernier point</span><span class="mut">Axe vertical = ' + met[2] + ' · horizontal = date</span></div>';
   } else {
