@@ -103,6 +103,19 @@ body.coach-active:not(.athlete-selected) #main-container { padding-bottom:84px; 
 .coach-eq-chip.on { background:var(--accent); color:var(--on-accent); border-color:transparent; }
 .coach-eq-chip b { font-weight:900; }
 
+/* Carte athlète Équipe (piste A : bandeau d'état + 4 stats chiffrées) */
+.cae-stripe { position:absolute; left:0; top:0; bottom:0; width:4px; }
+.cae-top { display:flex; align-items:center; gap:10px; padding-left:4px; }
+.cae-av { width:40px; height:40px; border-radius:12px; background:var(--surface2); color:var(--text); font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; flex:none; }
+.cae-nm { flex:1; min-width:0; display:flex; align-items:center; gap:7px; }
+.cae-nm b { font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cae-chip { font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.03em; padding:2px 7px; border-radius:5px; white-space:nowrap; flex:none; }
+.cae-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin-top:11px; background:var(--border); border-radius:9px; overflow:hidden; }
+.cae-st { background:var(--surface2); padding:7px 3px 6px; text-align:center; }
+.cae-st .v { font-size:13px; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; }
+.cae-st .l { font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; color:var(--text-subtle); margin-top:3px; }
+.cae-vac { margin-top:9px; padding-left:4px; font-size:11.5px; color:#63b3ed; font-weight:600; }
+
 /* ---- Page SÉANCE plein écran : le flux de saisie (#subtab-saisie) s'ouvre
    par-dessus l'app avec son propre en-tête retour (#seance-page-hd), header
    d'app et barre du bas masqués. Aucune logique modifiée. ---- */
