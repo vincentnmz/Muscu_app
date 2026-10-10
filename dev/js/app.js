@@ -6504,7 +6504,14 @@ function _coachDeskAujourdhui() {
   var questRows = quest.length ? quest.slice(0, 6).map(function (q) {
     return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + q.e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:' + q.col + '"></span><div><b>' + escapeHtml(q.e.a.nom) + '</b> <span>a répondu au questionnaire</span><br><small style="color:var(--text-subtle)">' + q.ago + (q.sig ? ' · ' + q.sig : '') + '</small></div></div>';
   }).join('') : '<div class="cs-act"><span class="cs-ad" style="background:var(--text-muted)"></span><div><span style="color:var(--text-muted)">Aucun questionnaire sur 7 jours.</span></div></div>';
-  var questPanel = '<div class="cs-panel"><div class="cs-pt">Questionnaires bien-être<span class="cs-pt-ct">' + quest.length + '/' + total + ' · 7 j</span></div>' + questRows + '</div>';
+  // Qui n'a PAS répondu sur 7 j (hors vacances) → à relancer en 1 clic.
+  var repSet = {}; quest.forEach(function (q) { repSet[q.e.i] = true; });
+  var nonRep = (d.enrich || []).filter(function (e) { return !e.enPause && !repSet[e.i]; });
+  var nonRows = nonRep.slice(0, 8).map(function (e) {
+    return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--text-muted)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>pas de ressenti · <span style="color:var(--accent);font-weight:700">relancer →</span></span></div></div>';
+  }).join('');
+  var nonBloc = nonRep.length ? '<div class="cs-subh">À relancer · ' + nonRep.length + '</div>' + nonRows : '';
+  var questPanel = '<div class="cs-panel"><div class="cs-pt">Questionnaires bien-être<span class="cs-pt-ct">' + quest.length + '/' + total + ' · 7 j</span></div>' + questRows + nonBloc + '</div>';
   return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch">' + watch + '</div></div>'
     + '<aside>' + questPanel
     + '<div class="cs-panel"><div class="cs-pt">Messages non lus</div>' + msgs + '</div>'
