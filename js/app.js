@@ -14637,7 +14637,7 @@ function nvTourStart(steps, key) {
   _tourLockScroll(true);
   _tourRender();
 }
-function nvTourEnd() { var o = document.getElementById('nvt-ov'); if (o) o.classList.remove('on'); _tourLiftNav(false); _tourClearNavCur(); _tourLockScroll(false); if (_tour.key) _tourMark(_tour.key); }
+function nvTourEnd() { var o = document.getElementById('nvt-ov'); if (o) o.classList.remove('on'); _tourLiftNav(false); _tourClearNavCur(); _tourLockScroll(false); _tourStopRO(); if (_tour.key) _tourMark(_tour.key); }
 // Barre de nav : on la garde VISIBLE au-dessus du voile pendant la visite (sinon
 // elle est assombrie, on ne voit plus sur quel écran on est) + on entoure l'onglet actif.
 function _tourLiftNav(on) {
@@ -14675,7 +14675,25 @@ function _tourElFor(step) {
   }
   return null;
 }
+// Recadrage auto du spotlight quand la cible change de taille/position (données
+// chargées en différé). Un seul observateur actif à la fois.
+function _tourStopRO() {
+  try { if (_tour._ro) { _tour._ro.disconnect(); _tour._ro = null; } } catch (e) {}
+}
+function _tourObserve(el, spot, bub, arrow) {
+  _tourStopRO();
+  if (typeof ResizeObserver === 'undefined') return;
+  try {
+    var raf = 0;
+    _tour._ro = new ResizeObserver(function () {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(function () { if (_tourVisible(el)) _tourPlace(el, spot, bub, arrow); });
+    });
+    _tour._ro.observe(el);
+  } catch (e) {}
+}
 function _tourRender() {
+  _tourStopRO();
   var s = _tour.steps[_tour.i]; if (!s) return;
   if (s.before) { try { s.before(); } catch (e) {} }
   var spot = document.getElementById('nvt-spot'), bub = document.getElementById('nvt-bub'), arrow = document.getElementById('nvt-arrow');
@@ -14711,6 +14729,10 @@ function _tourRender() {
         try { el.scrollIntoView({ block: 'center' }); } catch (e) {}
         setTimeout(function () { var e2 = _tourElFor(s); if (e2) _tourPlace(e2, spot, bub, arrow); }, 140);
         setTimeout(function () { var e2 = _tourElFor(s); if (e2) _tourPlace(e2, spot, bub, arrow); }, 440);
+        // Certaines cibles (IA coach, état du jour) grandissent APRÈS un rendu
+        // asynchrone (données chargées) → on recadre le spotlight à chaque
+        // changement de taille/position, le temps que la carte se stabilise.
+        _tourObserve(el, spot, bub, arrow);
       } else if (tries++ < 12) {
         setTimeout(attempt, 70);
       } else {
