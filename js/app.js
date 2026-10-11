@@ -1690,6 +1690,10 @@ window.addEventListener('load', async () => {
         }
       }
     } catch (e) {}
+    // App native installée via Google Play : si une nouvelle version est en ligne,
+    // propose la mise à jour (API officielle Play In-App Updates). No-op si l'app
+    // vient d'ailleurs (sideload) ou si le plugin est absent.
+    setTimeout(function () { try { _verifierMajNative(); } catch (e) {} }, 1500);
   } else if ('serviceWorker' in navigator) {
     try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
     // Clic sur une notif alors que l'app est déjà ouverte → le SW nous demande
@@ -17264,6 +17268,45 @@ function _installNativeResumeListener() {
       } catch (e) {}
     });
   } catch (e) {}
+}
+
+// ── Mise à jour in-app (Google Play In-App Updates, via @capawesome/capacitor-app-update) ──
+// Affiche la fenêtre native « Mettre à jour » quand une version plus récente est
+// EN LIGNE sur la piste Play où l'app est installée. Ne marche que pour une app
+// installée depuis Google Play (un APK sideloadé lève une erreur → ignorée). Le
+// plugin n'existe que côté natif : accès via window.Capacitor.Plugins.AppUpdate.
+var _majNativeChecked = false;
+async function _verifierMajNative() {
+  if (_majNativeChecked || !_estAppNative()) return;
+  _majNativeChecked = true;
+  var AU = null;
+  try { AU = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppUpdate; } catch (e) {}
+  if (!AU || typeof AU.getAppUpdateInfo !== 'function') return;   // vieille APK sans le plugin → rien
+  try {
+    var info = await AU.getAppUpdateInfo();
+    // AppUpdateAvailability.UPDATE_AVAILABLE === 2
+    if (!info || Number(info.updateAvailability) !== 2) return;
+    // 1) Mise à jour « immédiate » (écran Google plein cadre, gère tout) si permise.
+    if (info.immediateUpdateAllowed) {
+      try { await AU.performImmediateUpdate(); return; } catch (e) { /* refusée/annulée → on tente le mode souple */ }
+    }
+    // 2) Sinon « souple » : dialogue Google + téléchargement en fond, puis on
+    //    finalise (redémarrage) dès que c'est téléchargé.
+    if (info.flexibleUpdateAllowed) {
+      try {
+        if (typeof AU.addListener === 'function') {
+          AU.addListener('onFlexibleUpdateStateChange', function (st) {
+            // FlexibleUpdateInstallStatus.DOWNLOADED === 11
+            if (st && Number(st.installStatus) === 11) {
+              try { showToast('Mise à jour prête — installation…'); } catch (e) {}
+              try { AU.completeFlexibleUpdate(); } catch (e) {}
+            }
+          });
+        }
+        await AU.startFlexibleUpdate();
+      } catch (e) {}
+    }
+  } catch (e) { /* app non issue de Play, hors-ligne, etc. → silencieux */ }
 }
 
 async function activerNotifications() {
