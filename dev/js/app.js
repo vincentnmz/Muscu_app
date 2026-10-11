@@ -14611,7 +14611,7 @@ function _stepsAthlete() {
   S.push({ scr: A, sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' });
   S.push({ scr: A, sel: '#tab-accueil .tj-bwrap', before: go('accueil'), t: 'Ton point du jour', x: 'Mets à jour ton ressenti (sommeil, énergie, douleurs) en quelques secondes, chaque jour.' });
   S.push({ scr: A, sel: '#tab-accueil .tj-rew', before: go('accueil'), t: 'Tes récompenses', x: 'Gagne des points et des niveaux, débloque des trophées et vise ton objectif de la semaine.' });
-  if (!hasCoach) S.push({ scr: A, sel: '#fab-novalyz', before: go('accueil'), t: 'Demande à Novalyz', x: 'Ton coach IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
+  if (!hasCoach) S.push({ scr: A, sel: ['#tab-accueil .nvz-ask', '#fab-novalyz'], before: go('accueil'), t: 'Demande à Novalyz', x: 'Ton coach IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
   // ─── ENTRAÎNEMENT ───
   if (!hasCoach) S.push({ scr: E, sel: '#en-gen', before: goSeanceMuscu, t: 'Un programme par l’IA', x: '✨ Novalyz t’assemble un programme de départ adapté en répondant à 3 questions.' });
   S.push({ scr: E, sel: '#en-creer', before: goSeanceMuscu, t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
