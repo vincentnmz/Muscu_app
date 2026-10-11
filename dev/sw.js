@@ -4,7 +4,7 @@
  * jamais mis en cache : ils passent au réseau, et l'app gère le hors-ligne
  * (file d'attente des séances) de son côté.
  */
-const CACHE = 'novalyz-shell-v310';
+const CACHE = 'novalyz-shell-v311';
 const ASSETS = [
   './',
   './index.html',
