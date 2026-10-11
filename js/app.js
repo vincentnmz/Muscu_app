@@ -8400,14 +8400,14 @@ function _majFabNovalyz(tab) {
     var act = document.querySelector('.tab-content.active');
     tab = act ? (act.id || '').replace(/^tab-/, '') : '';
   }
-  var solo = !_athleteAUnCoach();
   var ecranCache = (tab === 'conseils' || tab === 'morpho');
   var saisieActive = document.body.classList.contains('seance-active');
   // En BUREAU (≥992px), la bulle est remplacée par le bloc « Demande à Novalyz »
-  // du rail (voir .nvz-ask) → bulle masquée. En MOBILE, comportement d'origine :
-  // bulle visible pour l'athlète solo uniquement.
+  // du rail (voir .nvz-ask) → bulle masquée. En MOBILE, bulle visible pour TOUS
+  // les athlètes (l'assistant Novalyz IA est une fonctionnalité commune, plus
+  // seulement « solo » — un athlète coaché peut aussi vouloir interroger l'IA).
   var desktop = (typeof window !== 'undefined' && window.innerWidth >= 992);
-  fab.style.display = (solo && !desktop && !ecranCache && !saisieActive) ? 'flex' : 'none';
+  fab.style.display = (!desktop && !ecranCache && !saisieActive) ? 'flex' : 'none';
 }
 
 function _cvShow(view) {
@@ -14611,7 +14611,7 @@ function _stepsAthlete() {
   S.push({ scr: A, sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' });
   S.push({ scr: A, sel: '#tab-accueil .tj-bwrap', before: go('accueil'), t: 'Ton point du jour', x: 'Mets à jour ton ressenti (sommeil, énergie, douleurs) en quelques secondes, chaque jour.' });
   S.push({ scr: A, sel: '#tab-accueil .tj-rew', before: go('accueil'), t: 'Tes récompenses', x: 'Gagne des points et des niveaux, débloque des trophées et vise ton objectif de la semaine.' });
-  if (!hasCoach) S.push({ scr: A, sel: ['#tab-accueil .nvz-ask', '#fab-novalyz'], before: go('accueil'), t: 'Demande à Novalyz', x: 'Ton coach IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
+  S.push({ scr: A, sel: ['#tab-accueil .nvz-ask', '#fab-novalyz'], before: go('accueil'), t: 'Demande à Novalyz', x: 'Ton assistant IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
   // ─── ENTRAÎNEMENT ───
   if (!hasCoach) S.push({ scr: E, sel: '#en-gen', before: goSeanceMuscu, t: 'Un programme par l’IA', x: '✨ Novalyz t’assemble un programme de départ adapté en répondant à 3 questions.' });
   S.push({ scr: E, sel: '#en-creer', before: goSeanceMuscu, t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
@@ -14634,6 +14634,8 @@ function _stepsAthlete() {
       ? 'Échange avec ton coach : messages, photos et vidéos de ta technique. Toi comme lui pouvez lancer une analyse morpho par IA à partir de tes photos (groupes en avance / en retard).'
       : 'Lance une analyse morpho par IA à partir de tes photos (groupes en avance / en retard) et pose tes questions à l’assistant Novalyz. Tu pourras lier un coach plus tard pour échanger messages, photos et vidéos.'
   });
+  // ─── FIN : gratuit vs Premium (sensibilisation, sans paywall) ───
+  S.push({ sel: '#__nvt_none__', t: 'Gratuit — et encore plus en Premium', x: 'Tout ton suivi et tes analyses de base sont gratuits. Les fonctions IA avancées (programme & analyse morpho par IA, assistant illimité) et les analyses poussées seront en Premium — à débloquer quand tu voudras. Bonne route avec Novalyz 💪' });
   return S;
 }
 function _stepsCoach() {
@@ -14654,7 +14656,8 @@ function _stepsCoach() {
     { scr: FI, sel: '#cdtab-btn-programme', before: openFiche, t: 'Son programme', x: 'Onglet Programme : tu construis et modifies son programme toi-même (séances, charges, cibles) — ou tu laisses Novalyz le proposer, puis tu ajustes.' },
     { scr: FI, sel: '#cd-ia-card', before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
     { scr: ME, sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
-    { scr: AN, sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' }
+    { scr: AN, sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' },
+    { sel: '#__nvt_none__', t: 'Gratuit — et encore plus en Premium', x: 'Ton espace coach est gratuit pour démarrer. L’IA coach avancée et le suivi au-delà d’un certain nombre d’athlètes passeront en Premium — à activer quand tu voudras.' }
   ];
 }
 function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvTourStart(_stepsAthlete(), 'tour_ath_vu'); }
