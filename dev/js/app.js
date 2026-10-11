@@ -13293,6 +13293,8 @@ function renderAujourdhui(data) {
     _renderTrophees(streak, rec30, totalS, hasRecords);
     // Objectif de la semaine + progression réelle.
     _renderObjectif(data);
+    // Boutique récompenses (points dépensables).
+    _renderBoutique(data);
 
     // Cibles pour l'animation au reveal (scroll).
     var rewCard = document.querySelector('#tab-accueil .tj-rew');
@@ -13481,6 +13483,47 @@ function _renderObjectif(data) {
       .catch(function () { apply(0); });
   } else { apply(0); }
 }
+// ═══ Boutique récompenses (points dépensables) ═══
+// Catalogue d'AFFICHAGE (les coûts font foi côté serveur via RECOMPENSES_CATALOGUE
+// dans index.ts). Les collabs seront ajoutées ici (type 'collab') + côté serveur.
+var _RECOMPENSES = [
+  { id: 'badge_pionnier', titre: 'Badge Pionnier', desc: 'Le badge de tes débuts.', cout: 100, icon: '🔰' },
+  { id: 'badge_assidu', titre: 'Badge Assidu', desc: 'Pour ta régularité.', cout: 250, icon: '🔥' },
+  { id: 'skin_gold', titre: 'Thème Doré', desc: 'Une touche dorée sur ton app.', cout: 400, icon: '✨' },
+  { id: 'badge_machine', titre: 'Badge Machine', desc: 'Le badge des gros volumes.', cout: 500, icon: '🏆' }
+];
+function _renderBoutique(data) {
+  var cont = document.getElementById('tj-boutique'); if (!cont) return;
+  var rec = (data && data.recompenses) || { solde: 0, claims: [] };
+  var owned = {}; (rec.claims || []).forEach(function (c) { owned[c.id] = true; });
+  var solde = Number(rec.solde) || 0;
+  var cards = _RECOMPENSES.map(function (r) {
+    var has = !!owned[r.id];
+    var canBuy = !has && solde >= r.cout;
+    var right = has
+      ? '<span class="bq-owned">Obtenu ✓</span>'
+      : '<button class="bq-buy' + (canBuy ? '' : ' off') + '"' + (canBuy ? (' onclick="nvzAcheterRecompense(\'' + r.id + '\')"') : ' disabled') + '>' + r.cout + ' pts</button>';
+    return '<div class="bq-card' + (has ? ' has' : '') + '"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + r.desc + '</span></div>' + right + '</div>';
+  }).join('');
+  cont.innerHTML = '<div class="bq-h">🛍️ Boutique <span class="bq-solde">' + solde.toLocaleString('fr-FR') + ' pts dispo</span></div>' + cards;
+}
+function nvzAcheterRecompense(id) {
+  var r = null; for (var i = 0; i < _RECOMPENSES.length; i++) if (_RECOMPENSES[i].id === id) r = _RECOMPENSES[i];
+  if (!r || !athlete || !athlete.athlete_id) return;
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'claimRecompense', athlete_id: athlete.athlete_id, reward_id: id }) })
+    .then(function (x) { return x.json(); })
+    .then(function (res) {
+      if (res && res.success) {
+        try { if (dernierAppData && dernierAppData.recompenses) { dernierAppData.recompenses.claims.push({ id: id, cout: r.cout, date: '' }); dernierAppData.recompenses.depenses += r.cout; dernierAppData.recompenses.solde = res.solde; } } catch (e) {}
+        try { _renderBoutique(dernierAppData); } catch (e) {}
+        try { nvzShowGift(r.titre); } catch (e) {}
+      } else {
+        try { showToast((res && res.error) || 'Achat impossible'); } catch (e) {}
+      }
+    })
+    .catch(function () { try { showToast('Erreur réseau'); } catch (e) {} });
+}
+
 // Coffre + confettis (objectif atteint).
 function nvzShowGift(label) {
   var ov = document.getElementById('tj-gift-ov'), g = document.getElementById('tj-gift'), box = document.getElementById('tj-gift-box'), s = document.getElementById('tj-gift-s');
