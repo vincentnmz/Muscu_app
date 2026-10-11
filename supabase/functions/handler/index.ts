@@ -3499,7 +3499,7 @@ function _chipStatut(statut: string): string {
 // Pages. Choix e-mail : une image PNG s'affiche dans TOUS les clients (Gmail,
 // Outlook…), contrairement au SVG/CSS. Les assets sont dans assets/roues/ (livrés
 // avec le front). ⚠️ visibles seulement une fois la branche déployée sur Pages.
-const ROUE_BASE = 'https://vincentnmz.github.io/Muscu_app/assets/roues/'
+const ROUE_BASE = Deno.env.get('ROUE_BASE') || 'https://vincentnmz.github.io/Muscu_app/assets/roues/'
 function _roueImg(pct: number, size = 118): string {
   const p = Math.max(0, Math.min(100, Math.round(pct || 0)))
   return `<img src="${ROUE_BASE}roue-${p}.png" width="${size}" height="${size}" alt="${p}%" style="display:block;margin:0 auto;border:0">`
