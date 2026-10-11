@@ -622,5 +622,6 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 #nvt-arrow{position:absolute;width:14px;height:14px;background:var(--surface);border-left:1px solid var(--border);border-top:1px solid var(--border)}
 /* Pendant la visite : barre de nav au-dessus du voile + onglet courant entouré */
 .nvt-navlift{z-index:4001 !important}
-.nvt-navcur{outline:2.5px solid var(--accent);outline-offset:-3px;border-radius:12px;position:relative}
+.nvt-navdim{opacity:.28;transition:opacity .2s}
+.nvt-navcur{opacity:1 !important;outline:2.5px solid var(--accent);outline-offset:-3px;border-radius:12px;position:relative}
 #nvt-ov.nvt-dim{background:rgba(4,6,11,.72)}

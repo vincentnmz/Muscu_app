@@ -14512,10 +14512,15 @@ function _tourLiftNav(on) {
   ['tabs-bar', 'app-side', 'coach-rail'].forEach(function (id) { var e = document.getElementById(id); if (e) e.classList.toggle('nvt-navlift', !!on); });
   if (!on) _tourClearNavCur();
 }
-function _tourClearNavCur() { try { document.querySelectorAll('.nvt-navcur').forEach(function (e) { e.classList.remove('nvt-navcur'); }); } catch (e) {} }
+function _tourClearNavCur() { try { document.querySelectorAll('.nvt-navcur, .nvt-navdim').forEach(function (e) { e.classList.remove('nvt-navcur', 'nvt-navdim'); }); } catch (e) {} }
 function _tourMarkNavCur() {
   _tourClearNavCur();
-  try { document.querySelectorAll('.tab-btn.active, .as-item.active, .cs-item.on').forEach(function (e) { if (e.offsetParent !== null) e.classList.add('nvt-navcur'); }); } catch (e) {}
+  try {
+    // Estompe tous les onglets visibles, puis remet en avant SEULEMENT celui de
+    // l'écran courant → seul le nom de l'écran où on est ressort.
+    document.querySelectorAll('.tab-btn, .as-item, .cs-item').forEach(function (e) { if (e.offsetParent !== null) e.classList.add('nvt-navdim'); });
+    document.querySelectorAll('.tab-btn.active, .as-item.active, .cs-item.on').forEach(function (e) { if (e.offsetParent !== null) { e.classList.remove('nvt-navdim'); e.classList.add('nvt-navcur'); } });
+  } catch (e) {}
 }
 function nvTourNext() { if (_tour.i < _tour.steps.length - 1) { _tour.i++; _tourRender(); } else nvTourEnd(); }
 function nvTourPrev() { if (_tour.i > 0) { _tour.i--; _tourRender(); } }
