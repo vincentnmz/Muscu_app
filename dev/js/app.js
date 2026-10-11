@@ -14521,13 +14521,17 @@ function _tourRender() {
   document.getElementById('nvt-next').textContent = _tour.i === _tour.steps.length - 1 ? 'Terminer' : 'Suivant';
   document.getElementById('nvt-dots').innerHTML = _tour.steps.map(function (_, k) { return '<i class="nvt-dot' + (k === _tour.i ? ' on' : '') + '"></i>'; }).join('');
   var ov = document.getElementById('nvt-ov');
+  // Forcer l'affichage des blocs « reveal » (sinon ils sont translatés/transparents
+  // pendant leur animation → le cadre tombe à côté / mauvaise taille).
+  try { document.querySelectorAll('#tab-accueil .tj-reveal:not(.in)').forEach(function (e) { e.classList.add('in'); }); } catch (e) {}
   var el = _tourElFor(s);
   if (el) {
     ov.classList.remove('nvt-dim');
-    try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
-    // Re-mesure après la navigation (before) + le scroll : la cible peut avoir
-    // bougé ou être re-rendue. On replace une 2e fois pour fiabiliser.
-    setTimeout(function () { var e2 = _tourElFor(s); _tourPlace(e2 || el, spot, bub, arrow); }, 340);
+    // Scroll INSTANTANÉ (pas smooth) → le rect est stable tout de suite, on mesure
+    // la vraie taille du bloc. Double placement pour absorber un re-render/layout.
+    try { el.scrollIntoView({ block: 'center' }); } catch (e) {}
+    setTimeout(function () { _tourPlace(_tourElFor(s) || el, spot, bub, arrow); }, 130);
+    setTimeout(function () { _tourPlace(_tourElFor(s) || el, spot, bub, arrow); }, 430);
   } else {
     // Cible absente/masquée (ex. coach sur mobile) → carte centrée sur fond assombri.
     ov.classList.add('nvt-dim');
@@ -14556,18 +14560,39 @@ window.addEventListener('resize', function () { var o = document.getElementById(
 
 function _stepsAthlete() {
   var go = function (t) { return function () { try { switchTab(t); } catch (e) {} }; };
-  return [
-    { sel: '#tab-accueil .tj-greet', before: go('accueil'), t: 'Ton tableau du jour', x: 'En un coup d’œil : ton état de forme du jour, ta séance et ce qu’il faut regarder.' },
-    { sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' },
-    { sel: '#tab-accueil .tj-rew', before: go('accueil'), t: 'Tes récompenses', x: 'Gagne des points et des niveaux, débloque des trophées et vise ton objectif de la semaine — un coffre t’attend à la clé.' },
-    { sel: '[data-tab="seance"]', before: go('seance'), t: 'Entraînement', x: 'Tes séances et ton programme — muscu, cardio et Hyrox. Tu peux suivre un programme ou saisir en libre.' },
-    { sel: '[data-tab="historique"]', before: go('historique'), t: 'Analyses', x: 'Tes stats (tonnage, volume, progression, charge) et la « Lecture Novalyz » qui t’explique quoi progresser.' },
-    { sel: '[data-tab="etat"]', before: go('etat'), t: 'Forme', x: 'Déclare ton ressenti — sommeil, énergie, fatigue, douleurs. Novalyz le croise avec tes données.' },
-    { sel: '#hc-card', before: function () { try { switchTab('reglages'); } catch (e) {} try { switchReglagesTab('appareils'); } catch (e) {} }, t: 'Montre, capteurs & nutrition', x: 'Connecte ta montre via Health Connect pour importer tes pas, ton sommeil et ta fréquence cardiaque — et ta nutrition depuis MyFitnessPal, Yazio ou Samsung Health.' },
-    // NB : étape « Novalyz IA & analyse morpho » volontairement RETIRÉE pour l'instant
-    // (IA en veille) — à réintégrer au moment des tests utilisateurs.
-    { sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} }, t: 'Coach', x: 'Échange avec ton coach (ou l’assistant) : messages, photos et vidéos de ta technique.' }
-  ];
+  var hasCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
+  var S = [];
+  // ─── AUJOURD'HUI ───
+  S.push({ sel: '#tab-accueil .tj-greet', before: go('accueil'), t: 'Ton tableau du jour', x: 'Ton « Aujourd’hui » : état de forme, séance, alertes. Tu reviens toujours ici pour l’essentiel.' });
+  S.push({ sel: '#tj-banner', before: go('accueil'), t: 'Ton état du jour', x: 'Complète ton questionnaire bien-être (1 min) : il nourrit toutes les analyses et la reco du jour.' });
+  S.push({ sel: '#tj-nova', before: go('accueil'), t: 'La Lecture Novalyz', x: 'Ce qu’il faut retenir aujourd’hui, expliqué en clair — pas juste des graphiques.' });
+  S.push({ sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' });
+  S.push({ sel: '#tab-accueil .tj-bwrap', before: go('accueil'), t: 'Ton point du jour', x: 'Mets à jour ton ressenti (sommeil, énergie, douleurs) en quelques secondes, chaque jour.' });
+  S.push({ sel: '#tab-accueil .tj-rew', before: go('accueil'), t: 'Tes récompenses', x: 'Gagne des points et des niveaux, débloque des trophées et vise ton objectif de la semaine.' });
+  if (!hasCoach) S.push({ sel: '#fab-novalyz', before: go('accueil'), t: 'Demande à Novalyz', x: 'Ton coach IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
+  // ─── ENTRAÎNEMENT ───
+  if (!hasCoach) S.push({ sel: '#en-gen', before: go('seance'), t: 'Un programme par l’IA', x: '✨ Novalyz t’assemble un programme de départ adapté en répondant à 3 questions.' });
+  S.push({ sel: '#en-creer', before: go('seance'), t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
+  S.push({ sel: '[data-tour="ath-agenda"]', before: go('seance'), t: 'Ton agenda', x: 'Planifie tes séances et visualise d’un coup d’œil ce qui est prévu et ce qui est fait.' });
+  // ─── ANALYSES ───
+  S.push({ sel: '#tab-historique .ma-switch', before: go('historique'), t: 'Analyses par discipline', x: 'Bascule entre muscu, cardio et Hyrox, et choisis ta période et ta métrique (charge, 1RM, volume).' });
+  S.push({ sel: '#tab-historique .ma-verdict', before: go('historique'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de tes stats + tes chiffres clés (tonnage, progression, charge ACWR, monotonie).' });
+  // ─── FORME ───
+  S.push({ sel: '#et-hero', before: go('etat'), t: 'Ta forme & récupération', x: 'Ton score de récupération et ta disponibilité du jour (Prêt / Vigilance / À surveiller).' });
+  S.push({ sel: '#et-contexte', before: go('etat'), t: 'Ton contexte', x: 'Déclare un contexte — retour de vacances, de blessure, semaine de décharge : l’analyse s’adapte au lieu de crier à la régression.' });
+  S.push({ sel: '#et-montre-mini', before: go('etat'), t: 'Ta montre & tes capteurs', x: 'Tes pas, ton sommeil et ta FC importés de ta montre (via Health Connect), croisés avec ton entraînement. La connexion se fait dans Réglages — tu peux aussi importer ta nutrition depuis MyFitnessPal.' });
+  S.push({ sel: '#et-rb-toggle', before: go('etat'), t: 'Ressenti & bien-être', x: 'L’historique de ton ressenti sur 7 jours et ton questionnaire du jour.' });
+  S.push({ sel: '[data-tour="ath-poids"]', before: go('etat'), t: 'Ta pesée', x: 'Enregistre ton poids et suis sa tendance dans le temps.' });
+  S.push({ sel: '#et-suivis', before: go('etat'), t: 'Tes suivis', x: 'Accès direct à ta nutrition (calories & macros), tes objectifs et tes blessures.' });
+  // ─── COACH / CONVERSATION ───
+  S.push({
+    sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} },
+    t: hasCoach ? 'Ton coach' : 'Coach & conversation',
+    x: hasCoach
+      ? 'Échange avec ton coach : messages, photos et vidéos de ta technique. Il peut aussi lancer une analyse morpho par IA à partir de tes photos (groupes en avance / en retard).'
+      : 'Lie un coach pour échanger (messages, photos, vidéos) — et débloque l’analyse morpho par IA à partir de tes photos.'
+  });
+  return S;
 }
 function _stepsCoach() {
   var go = function (s) { return function () { try { coachDeskGo(s); } catch (e) {} }; };
