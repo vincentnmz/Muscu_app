@@ -621,7 +621,10 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 #nvt-skip{position:absolute;top:12px;right:14px;background:none;border:0;color:var(--text-muted);font-size:12px;cursor:pointer;padding:0}
 #nvt-arrow{position:absolute;width:14px;height:14px;background:var(--surface);border-left:1px solid var(--border);border-top:1px solid var(--border)}
 /* Pendant la visite : barre de nav au-dessus du voile + onglet courant entouré */
-.nvt-navlift{z-index:4001 !important}
-.nvt-navdim{opacity:.28;transition:opacity .2s}
-.nvt-navcur{opacity:1 !important;outline:2.5px solid var(--accent);outline-offset:-3px;border-radius:12px;position:relative}
+/* Barre de nav pendant la visite : au-dessus du voile, FOND SOMBRE, et seul
+   l'onglet de l'écran courant est éclairé (le reste disparaît dans le sombre). */
+.nvt-navlift{z-index:4001 !important;background:#0a0d16 !important;border-color:#1b2233 !important;box-shadow:0 -1px 0 rgba(255,255,255,.05)}
+.nvt-navdim{opacity:.16;transition:opacity .2s}
+.nvt-navcur{opacity:1 !important;background:rgba(26,95,255,.18);outline:2.5px solid var(--accent);outline-offset:-3px;border-radius:12px;position:relative;color:#eaf2ff !important}
+.nvt-navcur span,.nvt-navcur svg{color:#eaf2ff !important}
 #nvt-ov.nvt-dim{background:rgba(4,6,11,.72)}
