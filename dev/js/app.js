@@ -14559,10 +14559,12 @@ function _stepsAthlete() {
   return [
     { sel: '#tab-accueil .tj-greet', before: go('accueil'), t: 'Ton tableau du jour', x: 'En un coup d’œil : ton état de forme du jour, ta séance et ce qu’il faut regarder.' },
     { sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' },
+    { sel: '#tab-accueil .tj-rew', before: go('accueil'), t: 'Tes récompenses', x: 'Gagne des points et des niveaux, débloque des trophées et vise ton objectif de la semaine — un coffre t’attend à la clé.' },
     { sel: '[data-tab="seance"]', before: go('seance'), t: 'Entraînement', x: 'Tes séances et ton programme — muscu, cardio et Hyrox. Tu peux suivre un programme ou saisir en libre.' },
     { sel: '[data-tab="historique"]', before: go('historique'), t: 'Analyses', x: 'Tes stats (tonnage, volume, progression, charge) et la « Lecture Novalyz » qui t’explique quoi progresser.' },
     { sel: '[data-tab="etat"]', before: go('etat'), t: 'Forme', x: 'Déclare ton ressenti — sommeil, énergie, fatigue, douleurs. Novalyz le croise avec tes données.' },
     { sel: '#hc-card', before: function () { try { switchTab('reglages'); } catch (e) {} try { switchReglagesTab('appareils'); } catch (e) {} }, t: 'Montre, capteurs & nutrition', x: 'Connecte ta montre via Health Connect pour importer tes pas, ton sommeil et ta fréquence cardiaque — et ta nutrition depuis MyFitnessPal, Yazio ou Samsung Health.' },
+    { sel: '#fab-novalyz', before: go('accueil'), t: 'Novalyz IA & analyse morpho', x: 'Pose tes questions à l’assistant Novalyz (il lit tes données d’entraînement), et lance une analyse morpho par photo pour repérer tes groupes en avance et en retard.' },
     { sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} }, t: 'Coach', x: 'Échange avec ton coach (ou l’assistant) : messages, photos et vidéos de ta technique.' }
   ];
 }
