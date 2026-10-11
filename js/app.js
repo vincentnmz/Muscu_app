@@ -6719,7 +6719,7 @@ function _coachDeskAujourdhui() {
     return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--text-muted)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>pas de ressenti · <span style="color:var(--accent);font-weight:700">relancer →</span></span></div></div>';
   }).join('');
   var nonBloc = nonRep.length ? '<div class="cs-subh">À relancer · ' + nonRep.length + '</div>' + nonRows : '';
-  var questPanel = '<div class="cs-panel"><div class="cs-pt">Questionnaires bien-être<span class="cs-pt-ct">' + quest.length + '/' + total + ' · 7 j</span></div>' + questRows + nonBloc + '</div>';
+  var questPanel = '<div class="cs-panel" data-tour="co-quest"><div class="cs-pt">Questionnaires bien-être<span class="cs-pt-ct">' + quest.length + '/' + total + ' · 7 j</span></div>' + questRows + nonBloc + '</div>';
   return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch" data-tour="co-watch">' + watch + '</div></div>'
     + '<aside>' + questPanel
     + '<div class="cs-panel"><div class="cs-pt">Messages non lus</div>' + msgs + '</div>'
@@ -6736,7 +6736,7 @@ function _coachDeskEquipe() {
     var dern = (e.m && e.m.derniere && e.m.derniere.date) ? _coachDeskAgo(e.m.derniere.date) : '—';
     return '<tr class="cs-trow" data-nom="' + escapeHtml(String(e.a.nom || '').toLowerCase()) + '" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><td><div class="cs-tn"><span class="cs-tav">' + _coachDeskInit(e.a.nom) + '</span><b>' + escapeHtml(e.a.nom) + '</b></div></td><td>' + niv + '</td><td>' + etat + '</td><td>' + ass + '</td><td>' + dern + '</td></tr>';
   }).join('');
-  return '<table class="cs-table"><thead><tr><th>Athlète</th><th>Niveau</th><th>État</th><th>Assiduité</th><th>Dernière séance</th></tr></thead><tbody id="cs-tbody">' + rows + '</tbody></table><div id="cs-eq-empty" class="cs-empty" style="display:none">Aucun athlète ne correspond.</div>';
+  return '<table class="cs-table" data-tour="co-equipe-table"><thead><tr><th>Athlète</th><th>Niveau</th><th>État</th><th>Assiduité</th><th>Dernière séance</th></tr></thead><tbody id="cs-tbody">' + rows + '</tbody></table><div id="cs-eq-empty" class="cs-empty" style="display:none">Aucun athlète ne correspond.</div>';
 }
 function _coachDeskAnalyses() {
   var d = _coachDesk, en = d.enrich || [], an = d.analyses || {};
@@ -6852,7 +6852,7 @@ function renderCoachRail() {
 function renderCoachHome() {
   var shell = document.getElementById('coach-shell'); if (!shell || !_coachDesk) return;
   var titles = { aujourdhui: "Aujourd'hui", equipe: 'Équipe', analyses: 'Analyses' };
-  var action = (coachDeskSection === 'equipe') ? '<button class="cs-btn p" onclick="ouvrirModalLierAthlete()">+ Inviter</button>' : '';
+  var action = (coachDeskSection === 'equipe') ? '<button class="cs-btn p" data-tour="co-inviter" onclick="ouvrirModalLierAthlete()">+ Inviter</button>' : '';
   var body = coachDeskSection === 'equipe' ? _coachDeskEquipe() : coachDeskSection === 'analyses' ? _coachDeskAnalyses() : _coachDeskAujourdhui();
   shell.innerHTML = '<div class="cs-main"><header class="cs-top"><h1>' + (titles[coachDeskSection] || '') + '</h1>'
     + '<div class="cs-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Rechercher un athlète…" oninput="coachDeskSearch(this.value)" autocomplete="off"></div>'
@@ -14502,9 +14502,21 @@ function nvTourStart(steps, key) {
   _tour.steps = steps; _tour.i = 0; _tour.key = key || null; _tour.lastScr = null;
   _tourEnsureDom();
   document.getElementById('nvt-ov').classList.add('on');
+  _tourLiftNav(true);
   _tourRender();
 }
-function nvTourEnd() { var o = document.getElementById('nvt-ov'); if (o) o.classList.remove('on'); if (_tour.key) _tourMark(_tour.key); }
+function nvTourEnd() { var o = document.getElementById('nvt-ov'); if (o) o.classList.remove('on'); _tourLiftNav(false); _tourClearNavCur(); if (_tour.key) _tourMark(_tour.key); }
+// Barre de nav : on la garde VISIBLE au-dessus du voile pendant la visite (sinon
+// elle est assombrie, on ne voit plus sur quel écran on est) + on entoure l'onglet actif.
+function _tourLiftNav(on) {
+  ['tabs-bar', 'app-side', 'coach-rail'].forEach(function (id) { var e = document.getElementById(id); if (e) e.classList.toggle('nvt-navlift', !!on); });
+  if (!on) _tourClearNavCur();
+}
+function _tourClearNavCur() { try { document.querySelectorAll('.nvt-navcur').forEach(function (e) { e.classList.remove('nvt-navcur'); }); } catch (e) {} }
+function _tourMarkNavCur() {
+  _tourClearNavCur();
+  try { document.querySelectorAll('.tab-btn.active, .as-item.active, .cs-item.on').forEach(function (e) { if (e.offsetParent !== null) e.classList.add('nvt-navcur'); }); } catch (e) {}
+}
 function nvTourNext() { if (_tour.i < _tour.steps.length - 1) { _tour.i++; _tourRender(); } else nvTourEnd(); }
 function nvTourPrev() { if (_tour.i > 0) { _tour.i--; _tourRender(); } }
 function _tourElFor(step) {
@@ -14528,6 +14540,7 @@ function _tourRender() {
   try { document.querySelectorAll('#tab-accueil .tj-reveal:not(.in)').forEach(function (e) { e.classList.add('in'); }); } catch (e) {}
   // Placement du spotlight + bulle sur la cible (ou carte centrée si absente).
   var place = function () {
+    _tourMarkNavCur();
     var el = _tourElFor(s);
     if (el) {
       ov.classList.remove('nvt-dim');
@@ -14620,13 +14633,23 @@ function _stepsAthlete() {
 }
 function _stepsCoach() {
   var go = function (s) { return function () { try { coachDeskGo(s); } catch (e) {} }; };
+  // Ouvre la fiche du 1er athlète (si l'effectif n'est pas vide) pour montrer la
+  // fiche + l'IA coach. Sans athlète → l'étape bascule en carte centrée.
+  var openFiche = function () { try { var e = _coachDesk && _coachDesk.enrich && _coachDesk.enrich[0]; if (e && e.i != null) ouvrirAthleteDepuisSelect(String(e.i)); } catch (_) {} };
+  var AU = "Aujourd’hui", EQ = 'Équipe', FI = 'Fiche athlète', ME = 'Messages', AN = 'Analyses';
   return [
-    { sel: '[data-tour="co-aujourdhui"]', before: go('aujourdhui'), t: 'Aujourd’hui', x: 'Ton point de départ chaque jour : qui a besoin de toi, tout de suite.' },
-    { sel: '[data-tour="co-brief"]', before: go('aujourdhui'), t: 'Briefing équipe', x: 'L’état global de ton effectif : athlètes à jour, à voir, dynamique.' },
-    { sel: '[data-tour="co-watch"]', before: go('aujourdhui'), t: 'À surveiller', x: 'Les athlètes à relancer ou à surveiller, triés par priorité, avec le motif.' },
-    { sel: '[data-tour="co-equipe"]', before: go('equipe'), t: 'Équipe', x: 'Tout ton effectif : statut, niveau, assiduité, dernière séance.' },
-    { sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
-    { sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' }
+    { scr: AU, sel: '[data-tour="co-aujourdhui"]', before: go('aujourdhui'), t: 'Aujourd’hui', x: 'Ton point de départ chaque jour : qui a besoin de toi, tout de suite.' },
+    { scr: AU, sel: '[data-tour="co-brief"]', before: go('aujourdhui'), t: 'Briefing équipe', x: 'L’état global de ton effectif : à jour, à voir, dynamique.' },
+    { scr: AU, sel: '[data-tour="co-quest"]', before: go('aujourdhui'), t: 'Qui a répondu au questionnaire', x: 'Vois qui a rempli son questionnaire bien-être (7 j) — et qui relancer d’un clic.' },
+    { scr: AU, sel: '[data-tour="co-watch"]', before: go('aujourdhui'), t: 'À surveiller', x: 'Les athlètes à relancer ou à surveiller, triés par priorité, avec le motif.' },
+    { scr: EQ, sel: '[data-tour="co-equipe"]', before: go('equipe'), t: 'Ton équipe', x: 'Tout ton effectif : statut, niveau, assiduité, dernière séance.' },
+    { scr: EQ, sel: '[data-tour="co-inviter"]', before: go('equipe'), t: 'Enregistrer un athlète', x: 'Ajoute un athlète : invite-le à te rejoindre, ou crée directement son compte.' },
+    { scr: EQ, sel: '[data-tour="co-equipe-table"]', before: go('equipe'), t: 'Ouvrir une fiche', x: 'Clique un athlète dans la liste pour ouvrir sa fiche détaillée.' },
+    { scr: FI, sel: '#cd-hero', before: openFiche, t: 'La fiche athlète', x: 'Tout sur ton athlète : profil, état du jour, analyses, données d’entraînement, objectifs et blessures. Les sous-onglets (Aperçu · Progression · Séances · Programme · Conversation) organisent tout ça.' },
+    { scr: FI, sel: '#cdtab-btn-programme', before: openFiche, t: 'Son programme', x: 'Onglet Programme : tu construis et modifies son programme toi-même (séances, charges, cibles) — ou tu laisses Novalyz le proposer, puis tu ajustes.' },
+    { scr: FI, sel: '#cd-ia-card', before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
+    { scr: ME, sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
+    { scr: AN, sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' }
   ];
 }
 function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvTourStart(_stepsAthlete(), 'tour_ath_vu'); }
