@@ -1231,6 +1231,29 @@ async function _invaliderTokensReset(athlete_id: string): Promise<void> {
 }
 
 // Envoie l'email de reset via Resend. Ne logue jamais la clé ni le token.
+// Envoi e-mail générique (Resend) — UNE source unique pour tous les e-mails
+// transactionnels (reset de mot de passe, résumés coach/athlète…). Renvoie true
+// si Resend a accepté l'envoi.
+// ⚠️ Bac à sable Resend : tant qu'aucun domaine n'est vérifié (from =
+//    onboarding@resend.dev), Resend ne délivre QU'À l'adresse du compte
+//    propriétaire. Les autres destinataires ne reçoivent rien (cf. roadmap P0-1).
+async function _envoyerEmail(to: string, subject: string, html: string): Promise<boolean> {
+  const key = Deno.env.get('RESEND_API_KEY')
+  if (!key) { console.error('email: RESEND_API_KEY absente'); return false }
+  const dest = String(to || '').trim()
+  if (!dest || !_emailValide(dest)) { console.error('email: destinataire invalide'); return false }
+  const from = Deno.env.get('RESEND_FROM') || 'Novalyz <onboarding@resend.dev>'
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [dest], subject, html }),
+    })
+    if (!r.ok) { console.error('email: envoi refusé (HTTP ' + r.status + ')'); return false }
+    return true
+  } catch (_) { console.error('email: erreur réseau envoi'); return false }
+}
+
 async function _envoyerEmailReset(email: string, rawToken: string): Promise<boolean> {
   const key = Deno.env.get('RESEND_API_KEY')
   if (!key) { console.error('reset: RESEND_API_KEY absente'); return false }
@@ -1245,15 +1268,7 @@ async function _envoyerEmailReset(email: string, rawToken: string): Promise<bool
       </p>
       <p style="color:#8b96b0;font-size:13px;line-height:1.5">Ce lien est valable <b>1 heure</b>. Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email — votre mot de passe reste inchangé.</p>
     </div></body></html>`
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'Novalyz <onboarding@resend.dev>', to: [email], subject: 'Réinitialisation de votre mot de passe Novalyz', html }),
-    })
-    if (!r.ok) { console.error('reset: envoi email refusé (HTTP ' + r.status + ')'); return false }
-    return true
-  } catch (_) { console.error('reset: erreur réseau envoi email'); return false }
+  return _envoyerEmail(email, 'Réinitialisation de votre mot de passe Novalyz', html)
 }
 
 async function handleRequestPasswordReset(body: any): Promise<Response> {
@@ -3439,6 +3454,197 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
   return jsonResp({ ok: true, scanned, pushed, pushedCoach })
 }
 
+// ── Résumés e-mail (cron) — coach (équipe) + athlète (bilan) ─────────────────
+// Envoie, pour une période ('semaine' | 'mois'), UN e-mail HTML riche :
+//   • à chaque COACH ayant un e-mail → résumé de son équipe (effectif, statuts,
+//     athlètes à surveiller, blessés) — RÉUTILISE handleGetSuiviEquipe (source unique) ;
+//   • à chaque ATHLÈTE ayant un e-mail → bilan perso (séances, tonnage, RPE,
+//     records, forme) — RÉUTILISE handleGetBilanPDF.
+// Format : e-mail HTML (pas de pièce jointe PDF). Protégé par CRON_SECRET.
+// ⚠️ Délivrabilité : en bac à sable Resend (from onboarding@resend.dev), seul le
+//    propriétaire du compte Resend reçoit réellement les e-mails (roadmap P0-1).
+function _escHtml(s: unknown): string {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+// Coquille e-mail commune (thème sombre Novalyz, identique au mail de reset).
+function _emailShell(titre: string, sousTitre: string, corps: string): string {
+  return `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:24px">
+    <div style="max-width:620px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:24px 22px">
+      <div style="font-size:13px;color:#37d3b5;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Novalyz</div>
+      <h2 style="margin:0 0 4px;font-size:20px">${_escHtml(titre)}</h2>
+      <p style="margin:0 0 18px;color:#8b96b0;font-size:13px">${_escHtml(sousTitre)}</p>
+      ${corps}
+      <p style="color:#5f6b85;font-size:12px;line-height:1.5;margin:22px 0 0;border-top:1px solid #2a3450;padding-top:14px">Résumé automatique Novalyz. Vous le recevez car une adresse e-mail est associée à votre compte.</p>
+    </div></body></html>`
+}
+
+function _chipStatut(statut: string): string {
+  const map: Record<string, { bg: string; fg: string; txt: string }> = {
+    rouge:  { bg: '#3a1418', fg: '#ff6b74', txt: 'À agir' },
+    orange: { bg: '#3a2c12', fg: '#f5a623', txt: 'À surveiller' },
+    vert:   { bg: '#0f2e24', fg: '#37d3b5', txt: 'Optimal' },
+  }
+  const c = map[statut] || map.vert
+  return `<span style="display:inline-block;background:${c.bg};color:${c.fg};font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px">${c.txt}</span>`
+}
+
+function _emailResumeEquipeHTML(coachNom: string, periodeLabel: string, d: any): string {
+  const eq = (d && d.equipe) || {}
+  const joueurs: any[] = (d && d.joueurs) || []
+  const blesses: any[] = (d && d.blesses) || []
+  const total = eq.total || joueurs.length || 0
+  const stat = (label: string, val: unknown, color: string) =>
+    `<td style="padding:10px 6px;text-align:center;background:#0f1522;border:1px solid #243049;border-radius:10px">
+       <div style="font-size:22px;font-weight:800;color:${color};line-height:1">${_escHtml(val)}</div>
+       <div style="font-size:11px;color:#8b96b0;margin-top:3px">${_escHtml(label)}</div></td>`
+  const spacer = `<td style="width:8px"></td>`
+  const statsRow = `<table role="presentation" width="100%" style="border-collapse:separate;margin:0 0 16px"><tr>
+      ${stat('Effectif', total, '#e9eef8')}${spacer}
+      ${stat('Optimal', eq.vert || 0, '#37d3b5')}${spacer}
+      ${stat('À surveiller', eq.orange || 0, '#f5a623')}${spacer}
+      ${stat('À agir', eq.rouge || 0, '#ff6b74')}
+    </tr></table>`
+
+  // Athlètes à surveiller (rouge/orange) — déjà triés par gravité par le moteur.
+  const aSuivre = joueurs.filter(j => j.statut === 'rouge' || j.statut === 'orange')
+  let listeHtml = ''
+  if (aSuivre.length) {
+    const lignes = aSuivre.map(j => {
+      const nbAl = Array.isArray(j.alertes) ? j.alertes.length : 0
+      const alTxt = nbAl ? `${nbAl} alerte${nbAl > 1 ? 's' : ''}` : '—'
+      const ds = j.derniere_seance ? `dernière séance ${_escHtml(j.derniere_seance)}` : 'aucune séance'
+      return `<tr>
+        <td style="padding:10px 2px;border-bottom:1px solid #223049">
+          <div style="font-weight:700;font-size:14px">${_escHtml(j.nom || '—')}</div>
+          <div style="font-size:12px;color:#8b96b0;margin-top:2px">${ds} · ${_escHtml(j.seances_7j || 0)} séa./7j · ${_escHtml(alTxt)}</div>
+        </td>
+        <td style="padding:10px 2px;border-bottom:1px solid #223049;text-align:right;white-space:nowrap">${_chipStatut(j.statut)}</td>
+      </tr>`
+    }).join('')
+    listeHtml = `<h3 style="font-size:15px;margin:4px 0 6px">À surveiller cette ${periodeLabel === 'mois' ? 'période' : 'semaine'}</h3>
+      <table role="presentation" width="100%" style="border-collapse:collapse;margin:0 0 16px">${lignes}</table>`
+  } else {
+    listeHtml = `<p style="background:#0f2e24;border:1px solid #1f5b4a;color:#9fe6d2;border-radius:10px;padding:12px;font-size:13px;margin:0 0 16px">✅ Aucun athlète en alerte sur la période — effectif au vert.</p>`
+  }
+
+  let blessesHtml = ''
+  if (blesses.length) {
+    const lignes = blesses.map(b => `<li style="margin:3px 0">${_escHtml(b.nom || '—')} — ${_escHtml(b.type || 'blessure')}${b.localisation ? ' (' + _escHtml(b.localisation) + ')' : ''}${b.statut === 'indispo' ? ' · indisponible' : ' · retour progressif'}</li>`).join('')
+    blessesHtml = `<h3 style="font-size:15px;margin:4px 0 6px">Infirmerie (${blesses.length})</h3>
+      <ul style="margin:0 0 8px;padding-left:18px;color:#cdd6ea;font-size:13px;line-height:1.5">${lignes}</ul>`
+  }
+
+  const corps = statsRow + listeHtml + blessesHtml
+  const sous = `Résumé de la ${periodeLabel} · effectif de ${total} athlète${total > 1 ? 's' : ''}`
+  return _emailShell('Bonjour ' + (coachNom || 'coach'), sous, corps)
+}
+
+function _emailBilanAthleteHTML(prenom: string, periodeLabel: string, winKey: string, d: any): string {
+  const g = (d && d.global) || {}
+  const w = (d && d.recent && d.recent[winKey]) || {}
+  const be: any[] = (d && d.bien_etre) || []
+  const poids: any[] = (d && d.poids) || []
+  const stat = (label: string, val: unknown, unite = '') =>
+    `<td style="padding:10px 6px;text-align:center;background:#0f1522;border:1px solid #243049;border-radius:10px">
+       <div style="font-size:20px;font-weight:800;color:#e9eef8;line-height:1">${_escHtml(val)}<span style="font-size:12px;color:#8b96b0;font-weight:600"> ${_escHtml(unite)}</span></div>
+       <div style="font-size:11px;color:#8b96b0;margin-top:3px">${_escHtml(label)}</div></td>`
+  const spacer = `<td style="width:8px"></td>`
+  const tonnage = w.tonnage_kg != null ? w.tonnage_kg : 0
+  const rpe = w.rpe_moyen != null ? w.rpe_moyen : '—'
+  const statsRow = `<table role="presentation" width="100%" style="border-collapse:separate;margin:0 0 10px"><tr>
+      ${stat('Séances', w.seances || 0)}${spacer}
+      ${stat('Tonnage', tonnage, 'kg')}${spacer}
+      ${stat('Séries', w.series || 0)}${spacer}
+      ${stat('RPE moy.', rpe)}
+    </tr></table>`
+
+  // Records (top 4 par charge) depuis le global.
+  const recs = g.records || {}
+  const recArr = Object.keys(recs).map(k => ({ exo: k, ...recs[k] })).sort((a, b) => (b.charge || 0) - (a.charge || 0)).slice(0, 4)
+  let recHtml = ''
+  if (recArr.length) {
+    const lignes = recArr.map(r => `<tr>
+        <td style="padding:7px 2px;border-bottom:1px solid #223049;font-size:13px">${_escHtml(r.exo)}</td>
+        <td style="padding:7px 2px;border-bottom:1px solid #223049;text-align:right;font-size:13px;font-weight:700;color:#37d3b5">${_escHtml(r.charge)} kg × ${_escHtml(r.reps)}</td>
+      </tr>`).join('')
+    recHtml = `<h3 style="font-size:15px;margin:14px 0 6px">Tes records</h3>
+      <table role="presentation" width="100%" style="border-collapse:collapse;margin:0 0 6px">${lignes}</table>`
+  }
+
+  // Forme récente (moyennes sommeil / énergie / fatigue sur les derniers relevés).
+  let formeHtml = ''
+  if (be.length) {
+    const avg = (key: string) => {
+      const vals = be.map(r => Number(r[key])).filter(v => !isNaN(v) && v !== 0)
+      return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length * 10) / 10 : null
+    }
+    const som = avg('sommeil'), ene = avg('energie'), fat = avg('fatigue')
+    const parts: string[] = []
+    if (som != null) parts.push(`sommeil ${som}/5`)
+    if (ene != null) parts.push(`énergie ${ene}/5`)
+    if (fat != null) parts.push(`fatigue ${fat}/5`)
+    if (parts.length) formeHtml = `<h3 style="font-size:15px;margin:14px 0 6px">Ta forme</h3>
+      <p style="margin:0 0 6px;color:#cdd6ea;font-size:13px">${_escHtml(parts.join(' · '))} (moyenne récente)</p>`
+  }
+
+  let poidsHtml = ''
+  if (poids.length && poids[0] && poids[0].poids) {
+    poidsHtml = `<p style="margin:6px 0 0;color:#8b96b0;font-size:12px">Dernier poids relevé : <b style="color:#e9eef8">${_escHtml(poids[0].poids)} kg</b> (${_escHtml(poids[0].date)})</p>`
+  }
+
+  const corps = statsRow + recHtml + formeHtml + poidsHtml +
+    `<p style="margin:16px 0 0;color:#8b96b0;font-size:12px;line-height:1.5">Ouvre Novalyz pour l'analyse détaillée de ta ${periodeLabel}.</p>`
+  const sous = `Ton bilan de la ${periodeLabel}`
+  return _emailShell('Bonjour ' + (prenom || 'athlète'), sous, corps)
+}
+
+async function handleCronResumes(body: any): Promise<Response> {
+  const secret = Deno.env.get('CRON_SECRET')
+  if (!secret || String(body.secret || '') !== secret) return jsonResp({ error: 'unauthorized' }, 401)
+  const periode = String(body.periode || 'semaine') === 'mois' ? 'mois' : 'semaine'
+  const periodeLabel = periode === 'mois' ? 'du mois' : 'de la semaine'
+  const winKey = periode === 'mois' ? 'j28' : 'j7'
+
+  let coachsOk = 0, coachsSkip = 0, athletesOk = 0, athletesSkip = 0
+
+  // 1) Coachs — un résumé d'équipe par coach ayant un e-mail.
+  try {
+    const { data: coachs } = await sb().from('coachs').select('coach_id,nom,email')
+    for (const c of coachs || []) {
+      const email = String((c as any).email || '').trim()
+      if (!email) { coachsSkip++; continue }
+      try {
+        const res = await handleGetSuiviEquipe(new URLSearchParams({ coach_id: String((c as any).coach_id) }))
+        const data: any = await res.json()
+        const prenom = String((c as any).nom || '').split(/\s+/)[0]
+        const html = _emailResumeEquipeHTML(prenom, periode, data)
+        const sujet = `Novalyz — Résumé ${periodeLabel} de ton équipe`
+        if (await _envoyerEmail(email, sujet, html)) coachsOk++; else coachsSkip++
+      } catch (_) { coachsSkip++ }
+    }
+  } catch (_) { /* best-effort */ }
+
+  // 2) Athlètes — un bilan perso par athlète ayant un e-mail.
+  try {
+    const { data: aths } = await sb().from('athletes').select('id,nom,email')
+    for (const a of aths || []) {
+      const email = String((a as any).email || '').trim()
+      if (!email) { athletesSkip++; continue }
+      try {
+        const res = await handleGetBilanPDF(new URLSearchParams({ athlete_id: String((a as any).id), periode }))
+        const data: any = await res.json()
+        const prenom = String((a as any).nom || '').split(/\s+/)[0]
+        const html = _emailBilanAthleteHTML(prenom, periode, winKey, data)
+        const sujet = `Novalyz — Ton bilan ${periodeLabel}`
+        if (await _envoyerEmail(email, sujet, html)) athletesOk++; else athletesSkip++
+      } catch (_) { athletesSkip++ }
+    }
+  } catch (_) { /* best-effort */ }
+
+  return jsonResp({ ok: true, periode, coachsOk, coachsSkip, athletesOk, athletesSkip })
+}
+
 async function handleSaveNativePushToken(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const token = String(body.token || '')
@@ -4495,6 +4701,7 @@ Deno.serve(async (req: Request) => {
         case 'savePushSub':              return handleSavePushSub(body)
         case 'deletePushSub':            return handleDeletePushSub(body)
         case 'cronPushAlertes':          return handleCronPushAlertes(body)
+        case 'cronResumes':              return handleCronResumes(body)
         case 'saveNativePushToken':      return handleSaveNativePushToken(body)
         case 'deleteNativePushToken':    return handleDeleteNativePushToken(body)
         case 'testPush':                 return handleTestPush(body)
