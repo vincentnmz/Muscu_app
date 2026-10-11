@@ -1651,6 +1651,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: prefRows },
     { data: santeRows },
     { data: nutriRows },
+    { data: recompRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1668,6 +1669,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').order('date', { ascending: false }),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'sante_%').order('date', { ascending: false }),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'nutri_%').order('date', { ascending: false }),
+    sb().from('indicateurs').select('cle,valeur,date').eq('athlete_id', athleteId).eq('seance_id', 'recompense'),
   ])
 
   const perfs = perfsAll || []
@@ -2019,6 +2021,15 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Onboarding : intro vue une fois + proposition auto de programme coupée par l'athlète.
     onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
     prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
+    // Récompenses : solde de points (gagnés − dépensés) + récompenses déjà réclamées.
+    // Gagnés = total_seances×10 + records_30j×50 (déterministe). Dépenses = somme des
+    // claims (seance_id='recompense', valeur = coût). Source unique front↔back.
+    recompenses: (() => {
+      const gagnes = (globalData.total_seances || 0) * 10 + records30j * 50
+      const claims = (recompRows || []).map((r: any) => ({ id: String(r.cle), cout: Number(r.valeur) || 0, date: r.date ? fmtFR(r.date) : '' }))
+      const depenses = claims.reduce((s: number, c: any) => s + c.cout, 0)
+      return { gagnes, depenses, solde: gagnes - depenses, claims }
+    })(),
     pas_quotidiens,
     sante_historique,
     nutri_historique,
@@ -4244,6 +4255,47 @@ async function handleSetPauseAthlete(body: any): Promise<Response> {
 // Marque une alerte athlète comme lue (état durable, stocké dans indicateurs
 // sous seance_id='alerte_lue', cle=<id> où id = type|semaine). Idempotent.
 // Préférence « semaine d'entraînement » (calendaire lundi→dim. / glissante 7 j).
+// ── Récompenses : catalogue (source de vérité des COÛTS côté serveur) ──────────
+// Le front a le catalogue d'affichage (titres/descriptions/icônes) ; ici on ne garde
+// que ce qui est nécessaire à la VALIDATION d'un achat (coût + type). Les collabs
+// seront ajoutées ici comme nouvelles entrées (type:'collab', + code à servir plus tard).
+const RECOMPENSES_CATALOGUE: Record<string, { cout: number; type: string }> = {
+  badge_pionnier: { cout: 100, type: 'badge' },
+  badge_assidu:   { cout: 250, type: 'badge' },
+  badge_machine:  { cout: 500, type: 'badge' },
+  skin_gold:      { cout: 400, type: 'skin' },
+}
+
+// Réclamer / acheter une récompense : vérifie le solde (gagnés − dépensés) côté
+// SERVEUR (jamais confiance au client pour le coût) + l'unicité, puis enregistre
+// le claim (indicateurs seance_id='recompense', valeur = coût).
+async function handleClaimRecompense(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const reward_id = String(body.reward_id || '')
+  if (!athlete_id || !reward_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const item = RECOMPENSES_CATALOGUE[reward_id]
+  if (!item) return jsonResp({ success: false, error: 'Récompense inconnue' })
+
+  const [{ data: perfs }, { data: claims }] = await Promise.all([
+    sb().from('performances').select('date,exercice,charge,reps').eq('athlete_id', athlete_id),
+    sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athlete_id).eq('seance_id', 'recompense'),
+  ])
+  if ((claims || []).some((c: any) => String(c.cle) === reward_id)) return jsonResp({ success: false, error: 'Déjà débloquée' })
+
+  const now = new Date()
+  const g = computeGlobal(perfs || [])
+  const c30 = fmtYMD(minus(now, 30))
+  const rec30 = Object.values(g.records || {}).filter((r: any) => { const d = parseFR(r.date); return d ? fmtYMD(d) >= c30 : false }).length
+  const gagnes = (g.total_seances || 0) * 10 + rec30 * 50
+  const depenses = (claims || []).reduce((s: number, c: any) => s + (Number(c.valeur) || 0), 0)
+  const solde = gagnes - depenses
+  if (solde < item.cout) return jsonResp({ success: false, error: 'Solde insuffisant', solde })
+
+  const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(now), seance_id: 'recompense', cle: reward_id, valeur: String(item.cout), unite: 'pts', source: 'app' })
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true, reward_id, cout: item.cout, type: item.type, solde: solde - item.cout })
+}
+
 // Stockée dans indicateurs (seance_id='pref', cle='semaine_type'). Idempotente.
 // Préférences d'onboarding (drapeaux 0/1) stockées dans indicateurs (seance_id='pref').
 // cle ∈ {onboarding_vu, prog_auto_off}. Idempotent.
@@ -4917,6 +4969,7 @@ Deno.serve(async (req: Request) => {
         case 'marquerAlerteLue':         return handleMarquerAlerteLue(body)
         case 'saveSemaineType':          return handleSaveSemaineType(body)
         case 'savePref':                 return handleSavePref(body)
+        case 'claimRecompense':          return handleClaimRecompense(body)
         case 'saveSante':                return handleSaveSante(body)
         case 'saveNutrition':            return handleSaveNutrition(body)
         case 'chatIA':                   return handleChatIA(body)
