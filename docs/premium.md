@@ -28,11 +28,10 @@
 | Conversation avec un coach | ✅ | |
 | Récompenses / objectifs / badges | ✅ | |
 | Export de ses données (CSV) · **bilan PDF de base** | ✅ | |
-| **Programme généré par l'IA** | | 💎 |
-| **Assistant Novalyz IA** (Demande à Novalyz) | | 💎 |
-| **Analyse morpho anatomique IA** | | 💎 |
+| **Assistant Novalyz IA** (Demande à Novalyz) | ✅ **3 messages / jour** | 💎 illimité (ou quota élevé) |
+| **Programme généré par l'IA** | ✅ **1 programme** offert | 💎 régénérations / multi-programmes |
+| **Analyse morpho IA** (vision — coûteuse) | 💎 (ou **1 essai**) | 💎 |
 | **Analyses avancées** (historique long 6-12 mois, monotonie / strain, comparaisons) | | 💎 |
-| Multi-programmes | | 💎 |
 | **Bilan PDF enrichi IA** / rapports e-mail auto (hebdo / mensuel) | | 💎 |
 
 ## Coach (B2B — axe séparé)
@@ -40,8 +39,32 @@
 Le coaching est plutôt un **abonnement coach** (par nombre d'athlètes suivis).
 L'**IA coach** (bloc « Analyse Novalyz · ce client », `#cd-ia-card`) relève de ce palier pro.
 
-- ⏳ **À trancher** : coach **gratuit au début** (amorcer l'acquisition, bâtir la base de
-  coachs) puis payant par paliers d'athlètes, **ou** payant dès le départ.
+- **Modèle validé** : coach **gratuit au début** (amorcer l'acquisition) · **IA coach
+  3 questions / jour** gratuit, 💎 au-delà · **tarification par nombre d'athlètes** suivis.
+- ⏳ **À fixer** : les **paliers d'athlètes** et le **prix** (référence marché Ekklo ≈ 24-79 €/mois).
+
+## Modèle IA & maîtrise des coûts (« ne pas perdre d'argent »)
+
+L'IA coûte à l'appel → quota **différencié par type**, pas un quota unique :
+
+| Type d'IA | Coût / appel | Gratuit |
+|---|:--:|---|
+| **Assistant texte** (Demande à Novalyz · IA coach) | faible | **3 messages / jour**, au-delà 💎 |
+| **Programme généré IA** | ponctuel, moyen | **1 offert**, régénérations 💎 |
+| **Morpho IA (vision)** | **élevé** | hors quota texte → 💎 (ou **1 essai**) |
+
+**Règles anti-dérapage (obligatoires à l'implémentation) :**
+1. **Quota compté côté serveur** (backend), jamais côté app → sinon contournable (facture qui explose).
+2. **Cap aussi en premium** (fair-use) pour borner le coût d'un gros utilisateur.
+3. **Modèle moins cher pour le gratuit** (ex. Haiku) vs modèle plus fort en premium.
+4. **IA groundée sur le moteur déterministe** (prompts courts, moins chers) + **cache** des réponses répétées.
+
+### Benchmark — Ekklo (oct. 2026)
+Outil **pour coachs** (B2B) : essai 14 j gratuit puis abonnement (~24 / 49 / 79 €/mois selon
+sources). IA « Pacco » (programmes + nutrition) incluse dans les offres, branchable sur
+ChatGPT/Claude. **Pas de tier athlète gratuit avec IA** → le freemium B2C de Novalyz (IA en
+quota) est plus généreux pour l'acquisition. Différenciateur Novalyz : Ekklo **n'ajuste pas la
+séance selon l'état du jour** ; Novalyz, si (données + ressenti).
 
 ## Règles d'implémentation (pour plus tard)
 
