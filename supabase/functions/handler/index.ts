@@ -1212,6 +1212,30 @@ async function handleExportEquipe(body: any): Promise<Response> {
   return jsonResp({ success: true, data: { export: 'novalyz', type: 'equipe', date: new Date().toISOString(), coach_id, athletes } })
 }
 
+// Bilan d'UN client à la demande (même contenu que le bilan auto envoyé par e-mail,
+// mais téléchargeable/imprimable quand le coach le veut). Vérifie que l'athlète
+// appartient bien au coach avant de servir quoi que ce soit.
+async function handleBilanClient(body: any): Promise<Response> {
+  const coach_id = String(body.coach_id || '')
+  const athlete_id = String(body.athlete_id || '')
+  const periode = String(body.periode || 'semaine') === 'mois' ? 'mois' : 'semaine'
+  if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const { data: rows } = await sb().from('athletes').select('id,nom,coach_id').eq('id', athlete_id)
+  const aRow: any = (rows || [])[0]
+  if (!aRow || String(aRow.coach_id) !== coach_id) return jsonResp({ success: false, error: 'Athlète introuvable' })
+  const now = new Date()
+  const [{ data: perfs }, { data: prog }, { data: be }, { data: sante }] = await Promise.all([
+    sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,seance_id').eq('athlete_id', athlete_id),
+    sb().from('programme').select('seance_id,series_prevues').eq('athlete_id', athlete_id),
+    sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
+    sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
+  ])
+  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode)
+  const prenom = String(aRow.nom || '').split(/\s+/)[0]
+  const html = _emailBilanAthleteHTML(prenom, periode, bilan)
+  return jsonResp({ success: true, html, nom: aRow.nom || '' })
+}
+
 // ── Reset de mot de passe par email (P2 — backend seul) ───────────────────────
 // Réponse TOUJOURS générique pour un email valide (anti-énumération) : on ne
 // révèle jamais si un compte existe. Le token brut n'existe QUE dans le lien de
@@ -4259,11 +4283,14 @@ async function handleSetPauseAthlete(body: any): Promise<Response> {
 // Le front a le catalogue d'affichage (titres/descriptions/icônes) ; ici on ne garde
 // que ce qui est nécessaire à la VALIDATION d'un achat (coût + type). Les collabs
 // seront ajoutées ici comme nouvelles entrées (type:'collab', + code à servir plus tard).
-const RECOMPENSES_CATALOGUE: Record<string, { cout: number; type: string }> = {
-  badge_pionnier: { cout: 100, type: 'badge' },
-  badge_assidu:   { cout: 250, type: 'badge' },
-  badge_machine:  { cout: 500, type: 'badge' },
-  skin_gold:      { cout: 400, type: 'skin' },
+const RECOMPENSES_CATALOGUE: Record<string, { cout: number; type: string; dispo?: boolean }> = {
+  badge_pionnier:    { cout: 50,  type: 'badge' },
+  badge_assidu:      { cout: 150, type: 'badge' },
+  skin_gold:         { cout: 300, type: 'skin' },
+  badge_machine:     { cout: 600, type: 'badge' },
+  // Collabs — teasers, pas encore achetables (aucun partenaire branché).
+  collab_partenaire: { cout: 800,  type: 'collab', dispo: false },
+  collab_programme:  { cout: 1000, type: 'collab', dispo: false },
 }
 
 // Réclamer / acheter une récompense : vérifie le solde (gagnés − dépensés) côté
@@ -4275,6 +4302,7 @@ async function handleClaimRecompense(body: any): Promise<Response> {
   if (!athlete_id || !reward_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
   const item = RECOMPENSES_CATALOGUE[reward_id]
   if (!item) return jsonResp({ success: false, error: 'Récompense inconnue' })
+  if (item.dispo === false) return jsonResp({ success: false, error: 'Bientôt disponible' })
 
   const [{ data: perfs }, { data: claims }] = await Promise.all([
     sb().from('performances').select('date,exercice,charge,reps').eq('athlete_id', athlete_id),
@@ -4933,6 +4961,7 @@ Deno.serve(async (req: Request) => {
         case 'saveClubCoach':            return handleSaveClubCoach(body)
         case 'exportAthlete':            return handleExportAthlete(body)
         case 'exportEquipe':             return handleExportEquipe(body)
+        case 'bilanClient':              return handleBilanClient(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
