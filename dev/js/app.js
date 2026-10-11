@@ -14564,7 +14564,8 @@ function _stepsAthlete() {
     { sel: '[data-tab="historique"]', before: go('historique'), t: 'Analyses', x: 'Tes stats (tonnage, volume, progression, charge) et la « Lecture Novalyz » qui t’explique quoi progresser.' },
     { sel: '[data-tab="etat"]', before: go('etat'), t: 'Forme', x: 'Déclare ton ressenti — sommeil, énergie, fatigue, douleurs. Novalyz le croise avec tes données.' },
     { sel: '#hc-card', before: function () { try { switchTab('reglages'); } catch (e) {} try { switchReglagesTab('appareils'); } catch (e) {} }, t: 'Montre, capteurs & nutrition', x: 'Connecte ta montre via Health Connect pour importer tes pas, ton sommeil et ta fréquence cardiaque — et ta nutrition depuis MyFitnessPal, Yazio ou Samsung Health.' },
-    { sel: '#fab-novalyz', before: go('accueil'), t: 'Novalyz IA & analyse morpho', x: 'Pose tes questions à l’assistant Novalyz (il lit tes données d’entraînement), et lance une analyse morpho par photo pour repérer tes groupes en avance et en retard.' },
+    // NB : étape « Novalyz IA & analyse morpho » volontairement RETIRÉE pour l'instant
+    // (IA en veille) — à réintégrer au moment des tests utilisateurs.
     { sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} }, t: 'Coach', x: 'Échange avec ton coach (ou l’assistant) : messages, photos et vidéos de ta technique.' }
   ];
 }
