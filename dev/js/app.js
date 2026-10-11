@@ -2386,6 +2386,7 @@ async function enregistrerProfil() {
 function switchCoachReglagesTab(tab) {
   document.querySelectorAll('#coach-reglages-drawer .sub-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.crg === tab); });
   document.querySelectorAll('#coach-reglages-drawer .crg-panel').forEach(function (p) { p.style.display = (p.dataset.crg === tab) ? 'flex' : 'none'; });
+  if (tab === 'data') { try { _remplirSelectBilanClient(); } catch (e) {} }
 }
 
 function prefillCoachReglages() {
@@ -2395,6 +2396,10 @@ function prefillCoachReglages() {
   set('coach-prof-email', coach.email);
   set('coach-club', coach.club);
   set('coach-cat', coach.categorie_defaut);
+  // Démo "joueurs de foot" réservée aux coachs de sports collectifs — inutile (et
+  // source de données parasites) pour un coach muscu.
+  var demo = document.getElementById('crg-demo-foot');
+  if (demo) { var sp = (coach && coach.sport) ? coach.sport : 'muscu'; demo.style.display = (sp === 'muscu') ? 'none' : 'flex'; }
   var v = document.getElementById('app-version-coach'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
 }
 
@@ -2524,6 +2529,48 @@ async function exporterEquipe(format) {
     }
     setMsg(okDl ? '✅ Téléchargement lancé.' : '❌ Téléchargement non supporté ici (utilise la version web).', okDl ? 'var(--good)' : 'var(--danger)');
   } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+
+// Remplit le sélecteur d'athlètes du bilan-client (onglet Données).
+function _remplirSelectBilanClient() {
+  var sel = document.getElementById('bilan-client-select'); if (!sel) return;
+  var cur = sel.value;
+  var liste = (athletesCoach || []).slice().sort(function (a, b) { return String(a.nom || '').localeCompare(String(b.nom || '')); });
+  sel.innerHTML = liste.length
+    ? liste.map(function (a) { return '<option value="' + a.athlete_id + '">' + escapeHtml(a.nom || ('Athlète ' + a.athlete_id)) + '</option>'; }).join('')
+    : '<option value="">Aucun athlète</option>';
+  if (cur) sel.value = cur;
+}
+
+// Bilan détaillé d'un client à la demande : récupère le HTML (même rendu que
+// l'e-mail auto) et l'ouvre dans une fenêtre imprimable (→ « Enregistrer en PDF »).
+async function ouvrirBilanClient() {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  var msg = document.getElementById('bilan-client-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  var sel = document.getElementById('bilan-client-select');
+  var per = document.getElementById('bilan-client-periode');
+  var athlete_id = sel ? sel.value : '';
+  var periode = per ? per.value : 'semaine';
+  if (!athlete_id) { setMsg('Choisis un athlète.'); return; }
+  setMsg('⏳ Génération du bilan…', 'var(--text-muted)');
+  // Ouvre la fenêtre AVANT l'await (sinon bloquée comme popup sur mobile/Safari).
+  var win = null; try { win = window.open('', '_blank'); } catch (e) {}
+  if (win) { try { win.document.write('<!doctype html><meta charset="utf-8"><title>Bilan…</title><body style="font-family:system-ui;padding:24px;color:#555;">Génération du bilan…</body>'); } catch (e) {} }
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'bilanClient', coach_id: coach.coach_id, athlete_id: athlete_id, periode: periode }) });
+    var data = await res.json();
+    if (!data || !data.success) { if (win) { try { win.close(); } catch (e) {} } setMsg('❌ ' + ((data && data.error) || 'Échec du bilan.')); return; }
+    if (win) {
+      try { win.document.open(); win.document.write(data.html); win.document.close(); } catch (e) { win = null; }
+      setMsg('✅ Bilan ouvert dans un nouvel onglet.', 'var(--good)');
+    } else {
+      // Fallback (popup bloquée) : téléchargement du HTML.
+      var stamp = new Date().toISOString().slice(0, 10);
+      var okDl = _telecharger('novalyz-bilan-' + (data.nom || 'client').replace(/\s+/g, '-').toLowerCase() + '-' + stamp + '.html', data.html, 'text/html;charset=utf-8');
+      setMsg(okDl ? '✅ Bilan téléchargé (ouvre le fichier .html).' : '❌ Impossible d\'ouvrir le bilan ici.', okDl ? 'var(--good)' : 'var(--danger)');
+    }
+  } catch (e) { if (win) { try { win.close(); } catch (_) {} } setMsg('❌ Erreur réseau. Réessaie.'); }
 }
 /* __EXPORT_RGPD_END__ */
 
@@ -13486,11 +13533,17 @@ function _renderObjectif(data) {
 // ═══ Boutique récompenses (points dépensables) ═══
 // Catalogue d'AFFICHAGE (les coûts font foi côté serveur via RECOMPENSES_CATALOGUE
 // dans index.ts). Les collabs seront ajoutées ici (type 'collab') + côté serveur.
+// Coûts rééquilibrés : première récompense atteignable vite (≈1 semaine), puis
+// progression. Gains = nb_séances×10 + records_30j×50 (cf. index.ts).
+// Les collabs (type:'collab') sont des TEASERS « Bientôt » : non achetables tant
+// qu'un partenaire réel n'est pas branché (refus côté serveur aussi).
 var _RECOMPENSES = [
-  { id: 'badge_pionnier', titre: 'Badge Pionnier', desc: 'Le badge de tes débuts.', cout: 100, icon: '🔰' },
-  { id: 'badge_assidu', titre: 'Badge Assidu', desc: 'Pour ta régularité.', cout: 250, icon: '🔥' },
-  { id: 'skin_gold', titre: 'Thème Doré', desc: 'Une touche dorée sur ton app.', cout: 400, icon: '✨' },
-  { id: 'badge_machine', titre: 'Badge Machine', desc: 'Le badge des gros volumes.', cout: 500, icon: '🏆' }
+  { id: 'badge_pionnier', titre: 'Badge Pionnier', desc: 'Le badge de tes débuts.', cout: 50, icon: '🔰' },
+  { id: 'badge_assidu', titre: 'Badge Assidu', desc: 'Pour ta régularité.', cout: 150, icon: '🔥' },
+  { id: 'skin_gold', titre: 'Thème Doré', desc: 'Une touche dorée sur ton app.', cout: 300, icon: '✨' },
+  { id: 'badge_machine', titre: 'Badge Machine', desc: 'Le badge des gros volumes.', cout: 600, icon: '🏆' },
+  { id: 'collab_partenaire', titre: 'Réduction partenaire', desc: 'Un bon plan chez un partenaire Novalyz.', cout: 800, icon: '🤝', collab: true },
+  { id: 'collab_programme', titre: 'Programme coach partenaire', desc: 'Un programme signé par un coach partenaire.', cout: 1000, icon: '🎓', collab: true }
 ];
 function _renderBoutique(data) {
   var cont = document.getElementById('tj-boutique'); if (!cont) return;
@@ -13499,11 +13552,16 @@ function _renderBoutique(data) {
   var solde = Number(rec.solde) || 0;
   var cards = _RECOMPENSES.map(function (r) {
     var has = !!owned[r.id];
-    var canBuy = !has && solde >= r.cout;
-    var right = has
-      ? '<span class="bq-owned">Obtenu ✓</span>'
-      : '<button class="bq-buy' + (canBuy ? '' : ' off') + '"' + (canBuy ? (' onclick="nvzAcheterRecompense(\'' + r.id + '\')"') : ' disabled') + '>' + r.cout + ' pts</button>';
-    return '<div class="bq-card' + (has ? ' has' : '') + '"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + r.desc + '</span></div>' + right + '</div>';
+    var right;
+    if (r.collab) {
+      right = '<span class="bq-soon">Bientôt</span>';
+    } else if (has) {
+      right = '<span class="bq-owned">Obtenu ✓</span>';
+    } else {
+      var canBuy = solde >= r.cout;
+      right = '<button class="bq-buy' + (canBuy ? '' : ' off') + '"' + (canBuy ? (' onclick="nvzAcheterRecompense(\'' + r.id + '\')"') : ' disabled') + '>' + r.cout + ' pts</button>';
+    }
+    return '<div class="bq-card' + (has ? ' has' : '') + (r.collab ? ' collab' : '') + '"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + r.desc + '</span></div>' + right + '</div>';
   }).join('');
   cont.innerHTML = '<div class="bq-h">🛍️ Boutique <span class="bq-solde">' + solde.toLocaleString('fr-FR') + ' pts dispo</span></div>' + cards;
 }

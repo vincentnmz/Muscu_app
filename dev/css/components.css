@@ -649,3 +649,5 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 #tab-accueil .bq-buy{flex:none;background:var(--tj-accent);color:#fff;border:none;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;}
 #tab-accueil .bq-buy.off{background:var(--tj-surface2);color:var(--tj-subtle);cursor:not-allowed;}
 #tab-accueil .bq-owned{flex:none;font-size:12px;font-weight:800;color:var(--tj-good);}
+#tab-accueil .bq-card.collab{border-style:dashed;opacity:.92;}
+#tab-accueil .bq-soon{flex:none;font-size:11px;font-weight:800;color:var(--tj-muted);background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:999px;padding:5px 11px;white-space:nowrap;}

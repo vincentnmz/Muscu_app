@@ -2689,9 +2689,10 @@
 
 <div id="coach-reglages-overlay" onclick="fermerReglagesCoach()" style="display:none;position:fixed;inset:0;background:rgba(3,6,14,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:998;"></div>
 <div id="coach-reglages-drawer" style="display:none;position:fixed;inset:0;background:var(--surface);z-index:999;flex-direction:column;overflow:hidden;">
-  <header style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top,0px)) 12px 12px;border-bottom:1px solid var(--border);background:var(--surface);">
-    <button class="crg-back" onclick="fermerReglagesCoach()" aria-label="Retour" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:18px;line-height:1;">←</button>
-    <div style="font-size:17px;font-weight:800;">Réglages</div>
+  <header style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top,0px)) 12px 13px;background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:var(--on-accent);">
+    <button class="crg-back" onclick="fermerReglagesCoach()" aria-label="Retour" style="background:var(--on-accent-a16);border:1px solid var(--on-accent-a28);color:var(--on-accent);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:18px;line-height:1;">←</button>
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+    <div style="font-size:17px;font-weight:800;">Mon profil</div>
   </header>
   <div style="flex:1;overflow-y:auto;padding:16px 20px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch;max-width:640px;margin:0 auto;width:100%;box-sizing:border-box;">
 
@@ -2706,6 +2707,9 @@
 
     <!-- MON COMPTE -->
     <div class="crg-panel" data-crg="compte" style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="fermerReglagesCoach();setTimeout(function(){nvTourCoach(true);},320);" style="width:100%;display:flex;align-items:center;gap:10px;background:var(--accent-a12);border:1px solid var(--accent-dim);color:var(--accent);border-radius:12px;padding:12px 14px;font-size:13px;font-weight:800;cursor:pointer;">
+        <span style="font-size:18px;line-height:1;">🧭</span><span style="flex:1;text-align:left;">Revoir la visite guidée</span><span style="font-size:15px;">↺</span>
+      </button>
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Profil coach</div>
       <div class="card" style="padding:14px 16px;margin:0;">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;" id="coach-reglages-nom">—</div>
@@ -2750,10 +2754,12 @@
         <button onclick="enregistrerClubCoach()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer</button>
         <div id="coach-club-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
       </div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Démo</div>
-      <button onclick="genererDemoFoot()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">👥 Générer 14 joueurs de démo (foot)</button>
-      <button onclick="supprimerDemoFoot()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;">Supprimer les joueurs de démo</button>
-      <div id="demo-foot-info" style="display:none;font-size:11.5px;color:var(--text-muted);line-height:1.4;"></div>
+      <div id="crg-demo-foot" style="display:none;flex-direction:column;gap:10px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Démo</div>
+        <button onclick="genererDemoFoot()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">👥 Générer 14 joueurs de démo (foot)</button>
+        <button onclick="supprimerDemoFoot()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;">Supprimer les joueurs de démo</button>
+        <div id="demo-foot-info" style="display:none;font-size:11.5px;color:var(--text-muted);line-height:1.4;"></div>
+      </div>
     </div>
 
     <!-- DONNÉES -->
@@ -2766,6 +2772,19 @@
           <button onclick="exporterEquipe('csv')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Séances (CSV)</button>
         </div>
         <div id="export-coach-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Bilan d'un client</div>
+      <div class="card" style="padding:14px 16px;margin:0;">
+        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Génère le bilan détaillé d'un athlète (le même que le bilan auto par e-mail) pour le sortir quand tu veux. Ouvre une page imprimable → « Enregistrer en PDF ».</div>
+        <label>Athlète</label>
+        <select id="bilan-client-select" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:14px;box-sizing:border-box;"></select>
+        <label style="display:block;margin-top:8px;">Période</label>
+        <select id="bilan-client-periode" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:14px;box-sizing:border-box;">
+          <option value="semaine">Semaine</option>
+          <option value="mois">Mois</option>
+        </select>
+        <button onclick="ouvrirBilanClient()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">📄 Ouvrir le bilan</button>
+        <div id="bilan-client-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
       </div>
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--danger);">Zone dangereuse</div>
       <button onclick="supprimerCompteCoach()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte coach</button>
@@ -2795,8 +2814,9 @@
 <!-- Messagerie coach (liste des conversations, depuis l'accueil) -->
 <div id="coach-messagerie-overlay" onclick="fermerMessagerieCoach()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:998;"></div>
 <div id="coach-messagerie-drawer" style="display:none;position:fixed;inset:0;max-width:480px;margin:0 auto;background:var(--bg);z-index:999;flex-direction:column;">
-  <div style="padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--border);background:var(--surface);flex:none;">
-    <button onclick="fermerMessagerieCoach()" title="Retour" style="width:36px;height:36px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--border);cursor:pointer;color:var(--text);"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+  <div style="padding:calc(12px + env(safe-area-inset-top,0px)) 14px 13px;display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:var(--on-accent);flex:none;">
+    <button onclick="fermerMessagerieCoach()" title="Retour" style="width:36px;height:36px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--on-accent-a16);border:1px solid var(--on-accent-a28);cursor:pointer;color:var(--on-accent);"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>
     <div style="font-size:17px;font-weight:900;">Messages</div>
   </div>
   <div id="coach-messagerie-liste" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px calc(20px + env(safe-area-inset-bottom,0px));"><div class="loader">Chargement...</div></div>
