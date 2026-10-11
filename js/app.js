@@ -6660,7 +6660,7 @@ var _coachDesk = null;
 var coachDeskSection = 'aujourdhui';
 function _coachDeskAny() { try { return window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active'); } catch (e) { return false; } }
 function _coachDeskOn() { return _coachDeskAny() && !document.body.classList.contains('athlete-selected'); }
-function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enrich: enrich, prioritaires: prioritaires, datas: datas, kpis: kpis }; if (_coachDeskAny()) renderCoachDesktop(); }
+function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enrich: enrich, prioritaires: prioritaires, datas: datas, kpis: kpis }; if (_coachDeskAny()) renderCoachDesktop(); try { _maybeCoachTour(); } catch (e) {} }
 function coachDeskGo(sec) {
   try { if (sec !== 'messages') fermerMessagerie2(); } catch (e) {}
   try { if (sec !== 'profil') fermerReglagesCoach(); } catch (e) {}   // sinon le panneau Profil reste par-dessus
@@ -6690,7 +6690,7 @@ function _coachDeskAujourdhui() {
   var ring = '<svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + _r + '" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="6"/><circle cx="32" cy="32" r="' + _r + '" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + _c.toFixed(1) + '" stroke-dashoffset="' + _off.toFixed(1) + '" transform="rotate(-90 32 32)"/></svg>';
   var dFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   var bpill = function (n, l) { return '<div class="cs-bpill"><div class="n">' + (n || 0) + '</div><div class="l">' + l + '</div></div>'; };
-  var kpis = '<div class="cs-brief">'
+  var kpis = '<div class="cs-brief" data-tour="co-brief">'
     + '<div class="cs-brief-hello">Bonjour ' + escapeHtml(typeof coach !== 'undefined' && coach ? coach.nom : 'Coach') + '</div>'
     + '<div class="cs-brief-date">' + dFR + ' · ' + _tot + ' athlète' + (_tot > 1 ? 's' : '') + ' suivi' + (_tot > 1 ? 's' : '') + '</div>'
     + '<div class="cs-brief-row">'
@@ -6720,7 +6720,7 @@ function _coachDeskAujourdhui() {
   }).join('');
   var nonBloc = nonRep.length ? '<div class="cs-subh">À relancer · ' + nonRep.length + '</div>' + nonRows : '';
   var questPanel = '<div class="cs-panel"><div class="cs-pt">Questionnaires bien-être<span class="cs-pt-ct">' + quest.length + '/' + total + ' · 7 j</span></div>' + questRows + nonBloc + '</div>';
-  return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch">' + watch + '</div></div>'
+  return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch" data-tour="co-watch">' + watch + '</div></div>'
     + '<aside>' + questPanel
     + '<div class="cs-panel"><div class="cs-pt">Messages non lus</div>' + msgs + '</div>'
     + '<div class="cs-panel"><div class="cs-pt">Lecture Novalyz · équipe</div>' + _coachDeskLecture() + '</div></aside></div>';
@@ -6840,7 +6840,7 @@ function renderCoachRail() {
   var d = _coachDesk, k = d.kpis || {};
   var totalMsg = (d.enrich || []).reduce(function (s, e) { return s + (e.msgNonLus || 0); }, 0);
   var activeSec = document.body.classList.contains('athlete-selected') ? 'equipe' : coachDeskSection;
-  var navItem = function (sec, label) { return '<button class="cs-item' + (activeSec === sec ? ' on' : '') + '" onclick="coachDeskGo(\'' + sec + '\')">' + _COACH_NAVICO[sec] + '<span>' + label + '</span>' + (sec === 'messages' && totalMsg ? '<span class="cs-bdg">' + totalMsg + '</span>' : '') + '</button>'; };
+  var navItem = function (sec, label) { return '<button class="cs-item' + (activeSec === sec ? ' on' : '') + '" data-tour="co-' + sec + '" onclick="coachDeskGo(\'' + sec + '\')">' + _COACH_NAVICO[sec] + '<span>' + label + '</span>' + (sec === 'messages' && totalMsg ? '<span class="cs-bdg">' + totalMsg + '</span>' : '') + '</button>'; };
   var coachNom = (typeof coach !== 'undefined' && coach && coach.nom) ? coach.nom : 'Coach';
   rail.innerHTML = '<aside class="cs-side"><div class="cs-brand"><span class="cs-logo">N</span><div><b>Novalyz</b><span>Espace coach</span></div></div>'
     + '<nav class="cs-nav">' + navItem('aujourdhui', "Aujourd'hui") + navItem('equipe', 'Équipe') + navItem('analyses', 'Analyses') + navItem('messages', 'Messages') + navItem('profil', 'Profil') + '</nav>'
@@ -14410,12 +14410,16 @@ function _maybeOnboarding() {
   var hasProg = Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0;
   if (!dernierAppData.onboarding_vu) { ouvrirOnboarding(); return; }
   // Intro déjà vue : reproposer un programme si pertinent (pas de coach, pas coupé, aucun programme).
-  if (!hasProg && !hasCoach && !dernierAppData.prog_auto_off) { ouvrirGenProgramme(); }
+  if (!hasProg && !hasCoach && !dernierAppData.prog_auto_off) { ouvrirGenProgramme(); return; }
+  // Sinon : visite guidée contextuelle (une fois, drapeau localStorage).
+  nvTourAthlete();
 }
 function ouvrirOnboarding() {
   if (!athlete) return;
   var hasCoach = !!(athlete && athlete.coach_id);
-  _onbSteps = hasCoach ? ['promesse', 'marche', 'diff', 'nav', 'coachinfo'] : ['promesse', 'marche', 'diff', 'nav', 'profil'];
+  // 'nav' (slide statique « Où trouver quoi ») retiré : remplacé par la visite
+  // guidée contextuelle (nvTourAthlete) lancée à la fin de l'intro.
+  _onbSteps = hasCoach ? ['promesse', 'marche', 'diff', 'coachinfo'] : ['promesse', 'marche', 'diff', 'profil'];
   _onbI = 0;
   var ov = document.getElementById('onb-overlay');
   if (!ov) {
@@ -14437,7 +14441,7 @@ function _onbChoix(c) {
   else if (c === 'mine') { _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme 👍'); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
   else if (c === 'coach') { _onbSteps = ['coachinfo']; _onbI = 0; _onbRender(); }
 }
-function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); }
+function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); setTimeout(function () { nvTourAthlete(); }, 450); }
 function _onbContent(step) {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var prenom = 'toi'; try { if (athlete && athlete.nom) prenom = String(athlete.nom).trim().split(/\s+/)[0]; } catch (e) {}
@@ -14468,6 +14472,115 @@ function _onbRender() {
     + '<button onclick="_onbFini()" style="background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;font-weight:600">Passer</button></div>';
   var btn = c.primary ? '<button onclick="' + (c.onPrimary || '_onbNext()') + '" style="width:100%;margin-top:16px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">' + c.primary + '</button>' : '';
   inner.innerHTML = top + '<div style="flex:1;display:flex;flex-direction:column">' + c.html + '</div>' + btn;
+}
+
+/* ═══════════════ VISITE GUIDÉE (tour contextuel) ═══════════════
+ * Surligne les VRAIS éléments de l'interface, étape par étape (spotlight + bulle).
+ * Réutilisé athlète ET coach, mobile et desktop. Si une cible est absente/masquée
+ * (variante d'écran), l'étape bascule en carte centrée (dégradation propre).
+ * Drapeau « vu » en localStorage (nicety par appareil → aucun appel backend).
+ */
+var _tour = { steps: [], i: 0, key: null };
+function _tourSeen(key) { try { return localStorage.getItem('nvz_' + key) === '1'; } catch (e) { return false; } }
+function _tourMark(key) { try { localStorage.setItem('nvz_' + key, '1'); } catch (e) {} }
+function _tourEnsureDom() {
+  if (document.getElementById('nvt-ov')) return;
+  var ov = document.createElement('div'); ov.id = 'nvt-ov';
+  ov.innerHTML = '<div id="nvt-spot"></div>'
+    + '<div id="nvt-bub"><button id="nvt-skip" onclick="nvTourEnd()">Passer ✕</button>'
+    + '<div id="nvt-arrow"></div><div id="nvt-t"></div><div id="nvt-x"></div>'
+    + '<div class="nvt-row"><div id="nvt-dots"></div><div class="nvt-btns">'
+    + '<button id="nvt-prev" class="nvt-ghost" onclick="nvTourPrev()">Précédent</button>'
+    + '<button id="nvt-next" class="nvt-prim" onclick="nvTourNext()">Suivant</button>'
+    + '</div></div></div>';
+  document.body.appendChild(ov);
+}
+function nvTourStart(steps, key) {
+  if (!steps || !steps.length) return;
+  _tour.steps = steps; _tour.i = 0; _tour.key = key || null;
+  _tourEnsureDom();
+  document.getElementById('nvt-ov').classList.add('on');
+  _tourRender();
+}
+function nvTourEnd() { var o = document.getElementById('nvt-ov'); if (o) o.classList.remove('on'); if (_tour.key) _tourMark(_tour.key); }
+function nvTourNext() { if (_tour.i < _tour.steps.length - 1) { _tour.i++; _tourRender(); } else nvTourEnd(); }
+function nvTourPrev() { if (_tour.i > 0) { _tour.i--; _tourRender(); } }
+function _tourElFor(step) {
+  var sels = Array.isArray(step.sel) ? step.sel : [step.sel];
+  for (var k = 0; k < sels.length; k++) { var el = null; try { el = document.querySelector(sels[k]); } catch (e) {} if (el && el.offsetParent !== null) return el; }
+  return null;
+}
+function _tourRender() {
+  var s = _tour.steps[_tour.i]; if (!s) return;
+  if (s.before) { try { s.before(); } catch (e) {} }
+  var spot = document.getElementById('nvt-spot'), bub = document.getElementById('nvt-bub'), arrow = document.getElementById('nvt-arrow');
+  document.getElementById('nvt-t').textContent = s.t;
+  document.getElementById('nvt-x').textContent = s.x;
+  document.getElementById('nvt-prev').style.visibility = _tour.i === 0 ? 'hidden' : 'visible';
+  document.getElementById('nvt-next').textContent = _tour.i === _tour.steps.length - 1 ? 'Terminer' : 'Suivant';
+  document.getElementById('nvt-dots').innerHTML = _tour.steps.map(function (_, k) { return '<i class="nvt-dot' + (k === _tour.i ? ' on' : '') + '"></i>'; }).join('');
+  var ov = document.getElementById('nvt-ov');
+  var el = _tourElFor(s);
+  if (el) {
+    ov.classList.remove('nvt-dim');
+    try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+    setTimeout(function () { _tourPlace(el, spot, bub, arrow); }, 240);
+  } else {
+    // Cible absente/masquée (ex. coach sur mobile) → carte centrée sur fond assombri.
+    ov.classList.add('nvt-dim');
+    spot.style.display = 'none';
+    arrow.style.display = 'none';
+    bub.style.left = '50%'; bub.style.top = '50%'; bub.style.transform = 'translate(-50%,-50%)';
+  }
+}
+function _tourPlace(el, spot, bub, arrow) {
+  var pad = 6, r = el.getBoundingClientRect();
+  spot.style.display = 'block';
+  spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
+  spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
+  bub.style.transform = 'none'; arrow.style.display = 'block';
+  var bw = bub.offsetWidth || 280, bh = bub.offsetHeight || 150, gap = 14;
+  var cx = r.left + r.width / 2;
+  var left = Math.max(10, Math.min(cx - bw / 2, window.innerWidth - bw - 10));
+  var below = (r.bottom + gap + bh) < window.innerHeight;
+  var top = below ? (r.bottom + gap) : Math.max(10, r.top - gap - bh);
+  bub.style.left = left + 'px'; bub.style.top = top + 'px';
+  arrow.style.left = (Math.min(Math.max(cx - left - 7, 16), bw - 30)) + 'px';
+  if (below) { arrow.style.top = '-7px'; arrow.style.transform = 'rotate(45deg)'; }
+  else { arrow.style.top = (bh - 7) + 'px'; arrow.style.transform = 'rotate(225deg)'; }
+}
+window.addEventListener('resize', function () { var o = document.getElementById('nvt-ov'); if (o && o.classList.contains('on')) _tourRender(); });
+
+function _stepsAthlete() {
+  return [
+    { sel: '#tab-accueil .tj-greet', t: 'Ton tableau du jour', x: 'En un coup d’œil : ton état de forme, ta séance du jour et ce qu’il faut regarder.' },
+    { sel: '#tab-accueil .tj-seance', t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges au fur et à mesure.' },
+    { sel: '[data-tab="accueil"]', t: 'Accueil', x: 'Ton « aujourd’hui » : tu reviens toujours ici pour l’essentiel.' },
+    { sel: '[data-tab="seance"]', t: 'Entraînement', x: 'Tes séances et ton programme (muscu, cardio, Hyrox).' },
+    { sel: '[data-tab="historique"]', t: 'Analyses', x: 'Tes stats et la « Lecture Novalyz » qui t’explique quoi progresser.' },
+    { sel: '[data-tab="etat"]', t: 'Forme', x: 'Sommeil, énergie, fatigue, douleurs : ton ressenti croisé à tes données.' },
+    { sel: '[data-tab="conseils"]', t: 'Coach', x: 'Échange avec ton coach (ou l’assistant) : messages, photos, vidéos.' }
+  ];
+}
+function _stepsCoach() {
+  return [
+    { sel: '[data-tour="co-aujourdhui"]', t: 'Aujourd’hui', x: 'Ton point de départ chaque jour : qui a besoin de toi, tout de suite.' },
+    { sel: '[data-tour="co-brief"]', t: 'Briefing équipe', x: 'L’état global de ton effectif : athlètes à jour, à voir, dynamique.' },
+    { sel: '[data-tour="co-watch"]', t: 'À surveiller', x: 'Les athlètes à relancer ou à surveiller, triés par priorité, avec le motif.' },
+    { sel: '[data-tour="co-equipe"]', t: 'Équipe', x: 'Tout ton effectif : statut, niveau, assiduité, dernière séance.' },
+    { sel: '[data-tour="co-messages"]', t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
+    { sel: '[data-tour="co-analyses"]', t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' }
+  ];
+}
+function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvTourStart(_stepsAthlete(), 'tour_ath_vu'); }
+function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; nvTourStart(_stepsCoach(), 'tour_coach_vu'); }
+var _coachTourTried = false;
+function _maybeCoachTour() {
+  if (_coachTourTried || _tourSeen('tour_coach_vu')) return;
+  if (!document.body.classList.contains('coach-active')) return;
+  if (document.body.classList.contains('athlete-selected')) return;
+  _coachTourTried = true;
+  setTimeout(function () { if (document.body.classList.contains('coach-active') && !document.body.classList.contains('athlete-selected')) nvTourCoach(); }, 700);
 }
 
 // État de l'écran Entraînement (Option A) : mode (muscu/cardio) + sélection.

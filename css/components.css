@@ -597,3 +597,22 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .nv-trend svg     { flex:none; }
 .nv-trend.up      { background:rgba(0,168,84,.10); color:var(--good); }
 .nv-trend.dn      { background:rgba(224,120,0,.10); color:var(--warn); }
+
+/* ===== Visite guidée (tour contextuel) — spotlight + bulle ===== */
+#nvt-ov{position:fixed;inset:0;z-index:4000;display:none}
+#nvt-ov.on{display:block}
+#nvt-spot{position:absolute;border-radius:14px;box-shadow:0 0 0 9999px rgba(4,6,11,.74);border:2px solid var(--accent);transition:all .28s cubic-bezier(.4,0,.2,1);pointer-events:none}
+#nvt-bub{position:absolute;width:280px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.45);transition:left .28s,top .28s;color:var(--text)}
+#nvt-t{font-size:15px;font-weight:800;margin:0 0 6px;padding-right:62px}
+#nvt-x{font-size:13px;color:var(--text-muted);line-height:1.5;margin:0 0 14px}
+.nvt-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#nvt-dots{display:flex;gap:6px}
+.nvt-dot{width:7px;height:7px;border-radius:999px;background:var(--border);display:inline-block}
+.nvt-dot.on{background:var(--accent)}
+.nvt-btns{display:flex;gap:8px}
+#nvt-bub button{border:0;border-radius:9px;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer}
+.nvt-ghost{background:none;color:var(--text-muted)}
+.nvt-prim{background:var(--accent);color:#fff}
+#nvt-skip{position:absolute;top:12px;right:14px;background:none;border:0;color:var(--text-muted);font-size:12px;cursor:pointer;padding:0}
+#nvt-arrow{position:absolute;width:14px;height:14px;background:var(--surface);border-left:1px solid var(--border);border-top:1px solid var(--border)}
+#nvt-ov.nvt-dim{background:rgba(4,6,11,.72)}
