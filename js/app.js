@@ -14489,10 +14489,11 @@ function _tourEnsureDom() {
   ov.innerHTML = '<div id="nvt-spot"></div>'
     + '<div id="nvt-bub"><button id="nvt-skip" onclick="nvTourEnd()">Passer ✕</button>'
     + '<div id="nvt-arrow"></div><div id="nvt-t"></div><div id="nvt-x"></div>'
-    + '<div class="nvt-row"><div id="nvt-dots"></div><div class="nvt-btns">'
+    + '<div id="nvt-dots"></div>'
+    + '<div class="nvt-row">'
     + '<button id="nvt-prev" class="nvt-ghost" onclick="nvTourPrev()">Précédent</button>'
     + '<button id="nvt-next" class="nvt-prim" onclick="nvTourNext()">Suivant</button>'
-    + '</div></div></div>';
+    + '</div></div>';
   document.body.appendChild(ov);
 }
 function nvTourStart(steps, key) {
@@ -14524,7 +14525,9 @@ function _tourRender() {
   if (el) {
     ov.classList.remove('nvt-dim');
     try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
-    setTimeout(function () { _tourPlace(el, spot, bub, arrow); }, 240);
+    // Re-mesure après la navigation (before) + le scroll : la cible peut avoir
+    // bougé ou être re-rendue. On replace une 2e fois pour fiabiliser.
+    setTimeout(function () { var e2 = _tourElFor(s); _tourPlace(e2 || el, spot, bub, arrow); }, 340);
   } else {
     // Cible absente/masquée (ex. coach sur mobile) → carte centrée sur fond assombri.
     ov.classList.add('nvt-dim');
@@ -14552,24 +14555,26 @@ function _tourPlace(el, spot, bub, arrow) {
 window.addEventListener('resize', function () { var o = document.getElementById('nvt-ov'); if (o && o.classList.contains('on')) _tourRender(); });
 
 function _stepsAthlete() {
+  var go = function (t) { return function () { try { switchTab(t); } catch (e) {} }; };
   return [
-    { sel: '#tab-accueil .tj-greet', t: 'Ton tableau du jour', x: 'En un coup d’œil : ton état de forme, ta séance du jour et ce qu’il faut regarder.' },
-    { sel: '#tab-accueil .tj-seance', t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges au fur et à mesure.' },
-    { sel: '[data-tab="accueil"]', t: 'Accueil', x: 'Ton « aujourd’hui » : tu reviens toujours ici pour l’essentiel.' },
-    { sel: '[data-tab="seance"]', t: 'Entraînement', x: 'Tes séances et ton programme (muscu, cardio, Hyrox).' },
-    { sel: '[data-tab="historique"]', t: 'Analyses', x: 'Tes stats et la « Lecture Novalyz » qui t’explique quoi progresser.' },
-    { sel: '[data-tab="etat"]', t: 'Forme', x: 'Sommeil, énergie, fatigue, douleurs : ton ressenti croisé à tes données.' },
-    { sel: '[data-tab="conseils"]', t: 'Coach', x: 'Échange avec ton coach (ou l’assistant) : messages, photos, vidéos.' }
+    { sel: '#tab-accueil .tj-greet', before: go('accueil'), t: 'Ton tableau du jour', x: 'En un coup d’œil : ton état de forme du jour, ta séance et ce qu’il faut regarder.' },
+    { sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' },
+    { sel: '[data-tab="seance"]', before: go('seance'), t: 'Entraînement', x: 'Tes séances et ton programme — muscu, cardio et Hyrox. Tu peux suivre un programme ou saisir en libre.' },
+    { sel: '[data-tab="historique"]', before: go('historique'), t: 'Analyses', x: 'Tes stats (tonnage, volume, progression, charge) et la « Lecture Novalyz » qui t’explique quoi progresser.' },
+    { sel: '[data-tab="etat"]', before: go('etat'), t: 'Forme', x: 'Déclare ton ressenti — sommeil, énergie, fatigue, douleurs. Novalyz le croise avec tes données.' },
+    { sel: '#hc-card', before: function () { try { switchTab('reglages'); } catch (e) {} try { switchReglagesTab('appareils'); } catch (e) {} }, t: 'Montre, capteurs & nutrition', x: 'Connecte ta montre via Health Connect pour importer tes pas, ton sommeil et ta fréquence cardiaque — et ta nutrition depuis MyFitnessPal, Yazio ou Samsung Health.' },
+    { sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} }, t: 'Coach', x: 'Échange avec ton coach (ou l’assistant) : messages, photos et vidéos de ta technique.' }
   ];
 }
 function _stepsCoach() {
+  var go = function (s) { return function () { try { coachDeskGo(s); } catch (e) {} }; };
   return [
-    { sel: '[data-tour="co-aujourdhui"]', t: 'Aujourd’hui', x: 'Ton point de départ chaque jour : qui a besoin de toi, tout de suite.' },
-    { sel: '[data-tour="co-brief"]', t: 'Briefing équipe', x: 'L’état global de ton effectif : athlètes à jour, à voir, dynamique.' },
-    { sel: '[data-tour="co-watch"]', t: 'À surveiller', x: 'Les athlètes à relancer ou à surveiller, triés par priorité, avec le motif.' },
-    { sel: '[data-tour="co-equipe"]', t: 'Équipe', x: 'Tout ton effectif : statut, niveau, assiduité, dernière séance.' },
-    { sel: '[data-tour="co-messages"]', t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
-    { sel: '[data-tour="co-analyses"]', t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' }
+    { sel: '[data-tour="co-aujourdhui"]', before: go('aujourdhui'), t: 'Aujourd’hui', x: 'Ton point de départ chaque jour : qui a besoin de toi, tout de suite.' },
+    { sel: '[data-tour="co-brief"]', before: go('aujourdhui'), t: 'Briefing équipe', x: 'L’état global de ton effectif : athlètes à jour, à voir, dynamique.' },
+    { sel: '[data-tour="co-watch"]', before: go('aujourdhui'), t: 'À surveiller', x: 'Les athlètes à relancer ou à surveiller, triés par priorité, avec le motif.' },
+    { sel: '[data-tour="co-equipe"]', before: go('equipe'), t: 'Équipe', x: 'Tout ton effectif : statut, niveau, assiduité, dernière séance.' },
+    { sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
+    { sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' }
   ];
 }
 function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvTourStart(_stepsAthlete(), 'tour_ath_vu'); }

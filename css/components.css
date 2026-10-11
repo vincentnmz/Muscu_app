@@ -605,8 +605,8 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 #nvt-bub{position:absolute;width:280px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 16px 40px rgba(0,0,0,.45);transition:left .28s,top .28s;color:var(--text)}
 #nvt-t{font-size:15px;font-weight:800;margin:0 0 6px;padding-right:62px}
 #nvt-x{font-size:13px;color:var(--text-muted);line-height:1.5;margin:0 0 14px}
+#nvt-dots{display:flex;gap:6px;justify-content:center;margin:0 0 12px}
 .nvt-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-#nvt-dots{display:flex;gap:6px}
 .nvt-dot{width:7px;height:7px;border-radius:999px;background:var(--border);display:inline-block}
 .nvt-dot.on{background:var(--accent)}
 .nvt-btns{display:flex;gap:8px}
