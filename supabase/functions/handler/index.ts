@@ -3414,7 +3414,11 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
     sb().from('push_subscriptions').select('athlete_id'),
   ])
   const ids = [...new Set([...(nt || []), ...(ws || [])].map((r: any) => String(r.athlete_id)).filter(Boolean))]
-  const weekKey = fmtYMD(getLundi(new Date()))
+  // Rappel QUOTIDIEN : tant qu'une alerte « haute » reste active, on re-notifie
+  // chaque jour (1 push/jour/athlète, la plus sévère). Clé anti-doublon par JOUR
+  // (avant : par semaine → une seule notif/semaine, d'où l'impression « ça ne
+  //  notifie plus »). Dès que l'alerte est résolue, plus de clé → plus de push.
+  const dayKey = fmtYMD(new Date())
   let pushed = 0, pushedCoach = 0, scanned = 0
   for (const id of ids) {
     if (id.indexOf(COACH_PUSH_PREFIX) === 0) continue   // token COACH : pas un athlète à analyser
@@ -3425,8 +3429,10 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
       const importantes = ((data && data.alertes_centre) || []).filter((a: any) => a && a.severity === 'haute' && !a.read)
       if (!importantes.length) continue
       const top = importantes[0]   // déjà trié par sévérité décroissante
-      const key = String(top.id || (top.type + '|' + weekKey))
-      // 1) Notifier l'ATHLÈTE — anti-spam par (athlète, alerte, semaine).
+      // Clé par TYPE + JOUR (pas top.id, qui est stable → bloquerait le rappel
+      // quotidien). Une alerte active re-notifie donc chaque jour.
+      const key = top.type + '|' + dayKey
+      // 1) Notifier l'ATHLÈTE — anti-spam par (athlète, alerte, jour).
       const { data: deja } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').eq('cle', key).limit(1)
       if (!(deja && deja.length)) {
         await notifyAthlete(id, { title: '⚠️ ' + (top.title || 'Alerte Novalyz'), body: top.action || top.evidence || '', tag: 'novalyz-alerte', target: 'accueil' })
