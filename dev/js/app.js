@@ -14535,7 +14535,9 @@ function _tourRender() {
   var spot = document.getElementById('nvt-spot'), bub = document.getElementById('nvt-bub'), arrow = document.getElementById('nvt-arrow');
   var scrEl = document.getElementById('nvt-scr'); if (scrEl) scrEl.textContent = s.scr ? ('Écran · ' + s.scr) : '';
   document.getElementById('nvt-t').textContent = s.t;
-  document.getElementById('nvt-x').textContent = s.x;
+  var xEl = document.getElementById('nvt-x');
+  if (s.html) xEl.innerHTML = s.html; else xEl.textContent = s.x;   // s.html = contenu riche (ex. tableau Premium)
+  bub.classList.toggle('nvt-big', !!s.big);                          // carte élargie (tableau)
   document.getElementById('nvt-prev').style.visibility = _tour.i === 0 ? 'hidden' : 'visible';
   document.getElementById('nvt-next').textContent = _tour.i === _tour.steps.length - 1 ? 'Terminer' : 'Suivant';
   document.getElementById('nvt-dots').innerHTML = _tour.steps.map(function (_, k) { return '<i class="nvt-dot' + (k === _tour.i ? ' on' : '') + '"></i>'; }).join('');
@@ -14601,6 +14603,9 @@ function _stepsAthlete() {
   // Entraînement : les boutons programme (#en-gen/#en-creer) ne s'affichent qu'en
   // mode muscu → on force ce mode avant de les surligner.
   var goSeanceMuscu = function () { try { switchTab('seance'); } catch (e) {} try { _enSetMode('muscu'); } catch (e) {} };
+  // Analyses : va sur l'onglet + sélectionne la sous-vue (Résumé / Par exercice /
+  // Tendances) pour que l'élément à surligner soit bien affiché.
+  var goAna = function (t) { return function () { try { switchTab('historique'); } catch (e) {} try { maSetTab(t); } catch (e) {} }; };
   var hasCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
   var S = [];
   var A = "Aujourd’hui", E = 'Entraînement', AN = 'Analyses', F = 'Forme', C = 'Coach';
@@ -14617,15 +14622,18 @@ function _stepsAthlete() {
   S.push({ scr: E, sel: '#en-creer', before: goSeanceMuscu, t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
   S.push({ scr: E, sel: '[data-tour="ath-agenda"]', before: go('seance'), t: 'Ton agenda', x: 'Planifie tes séances et visualise d’un coup d’œil ce qui est prévu et ce qui est fait.' });
   // ─── ANALYSES ───
-  S.push({ scr: AN, sel: '#tab-historique .ma-switch', before: go('historique'), t: 'Analyses par discipline', x: 'Bascule entre muscu, cardio et Hyrox, et choisis ta période et ta métrique (charge, 1RM, volume).' });
-  S.push({ scr: AN, sel: '#tab-historique .ma-verdict', before: go('historique'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de tes stats + tes chiffres clés (tonnage, progression, charge ACWR, monotonie).' });
-  // ─── FORME ───
-  S.push({ scr: F, sel: '#et-hero', before: go('etat'), t: 'Ta forme & récupération', x: 'Ton score de récupération et ta disponibilité du jour (Prêt / Vigilance / À surveiller).' });
+  S.push({ scr: AN, sel: '#tab-historique .ma-switch', before: goAna('resume'), t: 'Discipline', x: 'Choisis la discipline analysée : muscu, cardio ou croisé.' });
+  S.push({ scr: AN, sel: '#tab-historique .ma-verdict', before: goAna('resume'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de ton résumé : ce qu’il faut retenir + tes chiffres clés (tonnage, charge ACWR, monotonie).' });
+  S.push({ scr: AN, sel: '#ma-tab-detail', before: goAna('detail'), t: 'Par exercice', x: 'Vue « Par exercice » : la progression détaillée de chaque mouvement — charge, 1RM estimé, volume.' });
+  S.push({ scr: AN, sel: '#tab-historique .ma-period-wrap', before: goAna('detail'), t: 'Les périodes', x: 'Choisis la fenêtre d’analyse : semaine, mois, 3 / 6 / 9 mois, année.' });
+  S.push({ scr: AN, sel: '#ma-tab-tendances', before: goAna('tendances'), t: 'Tendances', x: 'Vue « Tendances » : l’évolution d’ensemble de ta charge, ton volume et ta forme dans le temps.' });
+  // ─── FORME ─── (récup/« prêt » et ressenti/bien-être sont déjà vus dans Aujourd'hui → non répétés)
   S.push({ scr: F, sel: '#et-contexte', before: go('etat'), t: 'Ton contexte', x: 'Déclare un contexte — retour de vacances, de blessure, semaine de décharge : l’analyse s’adapte au lieu de crier à la régression.' });
-  S.push({ scr: F, sel: '#et-montre-mini', before: go('etat'), t: 'Ta montre & tes capteurs', x: 'Tes pas, ton sommeil et ta FC importés de ta montre (via Health Connect), croisés avec ton entraînement. La connexion se fait dans Réglages — tu peux aussi importer ta nutrition depuis MyFitnessPal.' });
-  S.push({ scr: F, sel: '#et-rb-toggle', before: go('etat'), t: 'Ressenti & bien-être', x: 'L’historique de ton ressenti sur 7 jours et ton questionnaire du jour.' });
+  S.push({ scr: F, sel: '#et-montre-mini', before: go('etat'), t: 'Ta montre & tes capteurs', x: 'Tes pas, ton sommeil et ta FC importés de ta montre, croisés avec ton entraînement (la connexion se fait dans Réglages, étape suivante).' });
   S.push({ scr: F, sel: '[data-tour="ath-poids"]', before: go('etat'), t: 'Ta pesée', x: 'Enregistre ton poids et suis sa tendance dans le temps.' });
   S.push({ scr: F, sel: '#et-suivis', before: go('etat'), t: 'Tes suivis', x: 'Accès direct à ta nutrition (calories & macros), tes objectifs et tes blessures.' });
+  // ─── RÉGLAGES ───
+  S.push({ scr: 'Réglages', sel: '#hc-card', before: function () { try { switchTab('reglages'); } catch (e) {} try { switchReglagesTab('appareils'); } catch (e) {} }, t: 'Connexion montre & capteurs', x: 'Réglages ▸ Appareils : connecte ta montre via Health Connect (pas, sommeil, FC) et importe ta nutrition depuis MyFitnessPal, Yazio, Samsung Health…' });
   // ─── COACH / CONVERSATION ───
   S.push({
     scr: C, sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} },
@@ -14635,7 +14643,7 @@ function _stepsAthlete() {
       : 'Lance une analyse morpho par IA à partir de tes photos (groupes en avance / en retard) et pose tes questions à l’assistant Novalyz. Tu pourras lier un coach plus tard pour échanger messages, photos et vidéos.'
   });
   // ─── FIN : gratuit vs Premium (sensibilisation, sans paywall) ───
-  S.push({ sel: '#__nvt_none__', t: 'Gratuit — et encore plus en Premium', x: 'Tout ton suivi et tes analyses de base sont gratuits. Les fonctions IA avancées (programme & analyse morpho par IA, assistant illimité) et les analyses poussées seront en Premium — à débloquer quand tu voudras. Bonne route avec Novalyz 💪' });
+  S.push({ sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Tout ton suivi et tes analyses de base sont <b>gratuits</b>. Les fonctions avancées (surtout l’IA) seront <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Suivi · forme · montre · analyses de base</td><td>✅</td><td>✅</td></tr><tr><td>Export de tes données</td><td>✅</td><td>✅</td></tr><tr><td>Assistant Novalyz IA</td><td>3 / jour</td><td>illimité</td></tr><tr><td>Programme &amp; analyse morpho par IA</td><td>—</td><td>💎</td></tr><tr><td>Analyses avancées · rapports auto</td><td>—</td><td>💎</td></tr></table><span style="color:var(--text-muted)">À débloquer quand tu veux. Bonne route 💪</span>' });
   return S;
 }
 function _stepsCoach() {
@@ -14657,7 +14665,7 @@ function _stepsCoach() {
     { scr: FI, sel: '#cd-ia-card', before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
     { scr: ME, sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
     { scr: AN, sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' },
-    { sel: '#__nvt_none__', t: 'Gratuit — et encore plus en Premium', x: 'Ton espace coach est gratuit pour démarrer. L’IA coach avancée et le suivi au-delà d’un certain nombre d’athlètes passeront en Premium — à activer quand tu voudras.' }
+    { sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Ton espace coach est <b>gratuit pour démarrer</b>. L’IA et le volume d’athlètes passent en <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Cockpit · suivi d’équipe · fiches</td><td>✅</td><td>✅</td></tr><tr><td>IA coach (par client)</td><td>3 questions / jour</td><td>illimité</td></tr><tr><td>Nombre d’athlètes suivis</td><td>limité</td><td>étendu 💎</td></tr><tr><td>Analyses avancées · rapports</td><td>—</td><td>💎</td></tr></table><span style="color:var(--text-muted)">À activer quand tu veux.</span>' }
   ];
 }
 function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvTourStart(_stepsAthlete(), 'tour_ath_vu'); }
