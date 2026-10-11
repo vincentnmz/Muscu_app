@@ -14587,10 +14587,10 @@ function _stepsAthlete() {
   // ─── COACH / CONVERSATION ───
   S.push({
     sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} },
-    t: hasCoach ? 'Ton coach' : 'Coach & conversation',
+    t: hasCoach ? 'Ton coach' : 'Analyse morpho & assistant',
     x: hasCoach
-      ? 'Échange avec ton coach : messages, photos et vidéos de ta technique. Il peut aussi lancer une analyse morpho par IA à partir de tes photos (groupes en avance / en retard).'
-      : 'Lie un coach pour échanger (messages, photos, vidéos) — et débloque l’analyse morpho par IA à partir de tes photos.'
+      ? 'Échange avec ton coach : messages, photos et vidéos de ta technique. Toi comme lui pouvez lancer une analyse morpho par IA à partir de tes photos (groupes en avance / en retard).'
+      : 'Lance une analyse morpho par IA à partir de tes photos (groupes en avance / en retard) et pose tes questions à l’assistant Novalyz. Tu pourras lier un coach plus tard pour échanger messages, photos et vidéos.'
   });
   return S;
 }
