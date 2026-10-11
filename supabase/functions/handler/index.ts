@@ -3495,21 +3495,152 @@ function _chipStatut(statut: string): string {
   return `<span style="display:inline-block;background:${c.bg};color:${c.fg};font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px">${c.txt}</span>`
 }
 
-function _emailResumeEquipeHTML(coachNom: string, periodeLabel: string, d: any): string {
+// Roues « pourcentage » = PNG statiques pré-rendus (0..100), hébergés sur GitHub
+// Pages. Choix e-mail : une image PNG s'affiche dans TOUS les clients (Gmail,
+// Outlook…), contrairement au SVG/CSS. Les assets sont dans assets/roues/ (livrés
+// avec le front). ⚠️ visibles seulement une fois la branche déployée sur Pages.
+const ROUE_BASE = 'https://vincentnmz.github.io/Muscu_app/assets/roues/'
+function _roueImg(pct: number, size = 118): string {
+  const p = Math.max(0, Math.min(100, Math.round(pct || 0)))
+  return `<img src="${ROUE_BASE}roue-${p}.png" width="${size}" height="${size}" alt="${p}%" style="display:block;margin:0 auto;border:0">`
+}
+function _fmtDuree(min: number): string {
+  const h = Math.floor(min / 60), m = Math.round(min % 60)
+  return h > 0 ? `${h} h ${m.toString().padStart(2, '0')}` : `${m} min`
+}
+
+// Données du bilan athlète (PUR — aucune BDD, testable). Toutes les valeurs sont
+// tracées à une source réelle : perfs (séances/séries/tonnage/RPE, volume/muscle,
+// progression 1RM Epley fenêtre vs précédente), programme (prévu), bien_etre
+// (ressenti /5), indicateurs sante_ (montre : pas, sommeil_min, fc_repos).
+function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: any[], now: Date, periode: string): any {
+  const days = periode === 'mois' ? 28 : 7
+  const weeks = days / 7
+  const cut = fmtYMD(minus(now, days))
+  const cutPrev = fmtYMD(minus(now, days * 2))
+  const inWin = (perfs || []).filter(r => normDate(r.date) >= cut)
+  const inPrev = (perfs || []).filter(r => { const dd = normDate(r.date); return dd >= cutPrev && dd < cut })
+
+  const seancesFaites = new Set(inWin.map(r => normDate(r.date))).size
+  const seancesProg = new Set((programme || []).map((p: any) => String(p.seance_id ?? '')).filter(Boolean)).size
+  const seancesPrevues = Math.round(seancesProg * weeks)
+  const seriesFaites = inWin.length
+  const seriesProgSem = (programme || []).reduce((s: number, p: any) => s + (Number(p.series_prevues) || 0), 0)
+  const seriesPrevues = Math.round(seriesProgSem * weeks)
+
+  let tonnage = 0, reps = 0, rpeSum = 0, rpeN = 0
+  const volMus: Record<string, number> = {}
+  for (const r of inWin) {
+    const c = Number(r.charge) || 0, rp = Number(r.reps) || 0
+    tonnage += c * rp; reps += rp
+    if (r.rpe) { rpeSum += Number(r.rpe); rpeN++ }
+    if (r.muscle) volMus[r.muscle] = (volMus[r.muscle] || 0) + c * rp
+  }
+  const totVol = Object.values(volMus).reduce((s, v) => s + v, 0) || 1
+  const balance = Object.keys(volMus).map(m => ({ muscle: m, pct: Math.round(volMus[m] / totVol * 100) }))
+    .sort((a, b) => b.pct - a.pct).slice(0, 6)
+
+  // Progression par exercice : meilleur 1RM estimé (Epley = charge·(1+reps/30)),
+  // fenêtre courante vs fenêtre précédente de même durée. Exos présents dans LES
+  // DEUX fenêtres seulement (comparables) → pas de faux + / faux −.
+  const bestEpley = (rows: any[]) => {
+    const m: Record<string, number> = {}
+    for (const r of rows) {
+      const c = Number(r.charge) || 0, rp = Number(r.reps) || 0
+      if (c <= 0 || rp <= 0) continue
+      const e = c * (1 + rp / 30)
+      if (m[r.exercice] == null || e > m[r.exercice]) m[r.exercice] = e
+    }
+    return m
+  }
+  const bW = bestEpley(inWin), bP = bestEpley(inPrev)
+  const prog: any[] = []
+  for (const exo in bW) {
+    if (bP[exo] != null && bP[exo] > 0) prog.push({ exo, pct: Math.round((bW[exo] - bP[exo]) / bP[exo] * 100) })
+  }
+  const enProgres = prog.filter(p => p.pct >= 3).sort((a, b) => b.pct - a.pct).slice(0, 3)
+  const enRecul = prog.filter(p => p.pct <= -3).sort((a, b) => a.pct - b.pct).slice(0, 3)
+
+  // Records (meilleure charge par exo, tous temps).
+  const recMap: Record<string, { charge: number; reps: number }> = {}
+  for (const r of (perfs || [])) {
+    const c = Number(r.charge) || 0, rp = Number(r.reps) || 0
+    if (c <= 0) continue
+    const cur = recMap[r.exercice]
+    if (!cur || c > cur.charge || (c === cur.charge && rp > cur.reps)) recMap[r.exercice] = { charge: c, reps: rp }
+  }
+  const records = Object.keys(recMap).map(e => ({ exo: e, charge: recMap[e].charge, reps: recMap[e].reps }))
+    .sort((a, b) => b.charge - a.charge).slice(0, 4)
+
+  const sWin = (sante || []).filter((r: any) => normDate(r.date) >= cut)
+  const avgKey = (cle: string) => {
+    const v = sWin.filter((r: any) => r.cle === cle).map((r: any) => Number(r.valeur)).filter((n: number) => !isNaN(n))
+    return v.length ? v.reduce((s: number, x: number) => s + x, 0) / v.length : null
+  }
+  const pas = avgKey('pas'), somMin = avgKey('sommeil_min'), fc = avgKey('fc_repos')
+
+  const beWin = (bienEtre || []).filter((r: any) => normDate(r.date) >= cut)
+  const avgBe = (k: string) => {
+    const v = beWin.map((r: any) => Number(r[k])).filter((n: number) => !isNaN(n) && n > 0)
+    return v.length ? Math.round(v.reduce((s: number, x: number) => s + x, 0) / v.length * 10) / 10 : null
+  }
+
+  return {
+    seancesFaites, seancesPrevues, seriesFaites, seriesPrevues,
+    tonnageKg: Math.round(tonnage), reps, rpeMoyen: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null,
+    balance, enProgres, enRecul, records,
+    montre: { pas: pas != null ? Math.round(pas) : null, sommeilMin: somMin != null ? Math.round(somMin) : null, fcRepos: fc != null ? Math.round(fc) : null },
+    ressenti: { sommeil: avgBe('sommeil'), energie: avgBe('energie'), fatigue: avgBe('fatigue_musculaire') },
+  }
+}
+
+function _emailResumeEquipeHTML(coachNom: string, periode: string, d: any): string {
   const eq = (d && d.equipe) || {}
   const joueurs: any[] = (d && d.joueurs) || []
   const blesses: any[] = (d && d.blesses) || []
   const total = eq.total || joueurs.length || 0
-  const stat = (label: string, val: unknown, color: string) =>
-    `<td style="padding:10px 6px;text-align:center;background:#0f1522;border:1px solid #243049;border-radius:10px">
-       <div style="font-size:22px;font-weight:800;color:${color};line-height:1">${_escHtml(val)}</div>
-       <div style="font-size:11px;color:#8b96b0;margin-top:3px">${_escHtml(label)}</div></td>`
-  const spacer = `<td style="width:8px"></td>`
-  const statsRow = `<table role="presentation" width="100%" style="border-collapse:separate;margin:0 0 16px"><tr>
-      ${stat('Effectif', total, '#e9eef8')}${spacer}
-      ${stat('Optimal', eq.vert || 0, '#37d3b5')}${spacer}
-      ${stat('À surveiller', eq.orange || 0, '#f5a623')}${spacer}
-      ${stat('À agir', eq.rouge || 0, '#ff6b74')}
+  const periodeLabel = periode === 'mois' ? 'du mois' : 'de la semaine'
+  const ceLabel = periode === 'mois' ? 'ce mois' : 'cette semaine'
+
+  // Roue « effectif actif » = part des athlètes ayant ≥ 1 séance sur 7 j.
+  const actifs = joueurs.filter(j => Number(j.seances_7j) > 0).length
+  const pctActif = total > 0 ? Math.round(100 * actifs / total) : 0
+  // Barre de statut (segments vert/orange/rouge) — plus lisible qu'un camembert
+  // pour une répartition à 3 catégories, et compatible tous clients mail.
+  const v = eq.vert || 0, o = eq.orange || 0, r = eq.rouge || 0
+  const tot3 = (v + o + r) || 1
+  const seg = (n: number, bg: string) => n > 0 ? `<td width="${Math.round(100 * n / tot3)}%" style="background:${bg};height:30px;text-align:center;color:#06231c;font-size:12px;font-weight:700;font-family:Arial,sans-serif">${n}</td>` : ''
+  const barre = `<table role="presentation" width="100%" style="border-collapse:collapse;border-radius:9px;overflow:hidden;margin:10px 0 4px"><tr>
+      ${seg(v, '#0ca30c')}${seg(o, '#fab219')}${seg(r, '#d03b3b')}
+    </tr></table>
+    <table role="presentation" width="100%" style="font-size:12px;color:#8b96b0"><tr>
+      <td>🟢 Optimal ${v}</td><td style="text-align:center">🟡 À surveiller ${o}</td><td style="text-align:right">🔴 À agir ${r}</td></tr></table>`
+
+  const hero = `<table role="presentation" width="100%" style="border-collapse:separate"><tr>
+      <td width="140" valign="middle" style="background:#0f1522;border:1px solid #243049;border-radius:14px;padding:12px;text-align:center">
+        ${_roueImg(pctActif, 110)}
+        <div style="font-size:11px;color:#8b96b0;margin-top:6px">Effectif actif ${ceLabel}</div>
+        <div style="font-size:11px;color:#5f6b85">${actifs}/${total} athlète${total > 1 ? 's' : ''}</div>
+      </td>
+      <td style="width:12px"></td>
+      <td valign="middle" style="background:#0f1522;border:1px solid #243049;border-radius:14px;padding:12px 14px">
+        <div style="font-size:12px;color:#8b96b0;margin-bottom:2px">Répartition de l'effectif (${total})</div>
+        ${barre}
+      </td>
+    </tr></table>`
+
+  const stat = (label: string, val: unknown, unite = '') =>
+    `<td align="center" style="background:#0f1522;border:1px solid #243049;border-radius:12px;padding:12px 6px">
+       <div style="font-size:19px;font-weight:800;color:#e9eef8;line-height:1">${_escHtml(val)}<span style="font-size:12px;color:#8b96b0;font-weight:600">${unite ? ' ' + _escHtml(unite) : ''}</span></div>
+       <div style="font-size:11px;color:#8b96b0;margin-top:4px">${_escHtml(label)}</div></td>`
+  const ch = eq.charge_equipe != null ? Math.round(eq.charge_equipe) : '—'
+  const ft = eq.fatigue_moyenne != null ? (Math.round(eq.fatigue_moyenne * 10) / 10) : '—'
+  const be = eq.bienetre_moyen != null ? (Math.round(eq.bienetre_moyen * 10) / 10) : '—'
+  const statsRow = `<table role="presentation" width="100%" style="border-collapse:separate;border-spacing:8px 0;margin:12px 0 4px"><tr>
+      ${stat('Effectif', total)}
+      ${stat('Charge équipe', ch, 'UA')}
+      ${stat('Fatigue moy.', ft, '/5')}
+      ${stat('Bien-être', be, '/5')}
     </tr></table>`
 
   // Athlètes à surveiller (rouge/orange) — déjà triés par gravité par le moteur.
@@ -3528,80 +3659,130 @@ function _emailResumeEquipeHTML(coachNom: string, periodeLabel: string, d: any):
         <td style="padding:10px 2px;border-bottom:1px solid #223049;text-align:right;white-space:nowrap">${_chipStatut(j.statut)}</td>
       </tr>`
     }).join('')
-    listeHtml = `<h3 style="font-size:15px;margin:4px 0 6px">À surveiller cette ${periodeLabel === 'mois' ? 'période' : 'semaine'}</h3>
-      <table role="presentation" width="100%" style="border-collapse:collapse;margin:0 0 16px">${lignes}</table>`
+    listeHtml = `<h3 style="font-size:15px;margin:22px 0 6px">À surveiller ${ceLabel}</h3>
+      <table role="presentation" width="100%" style="border-collapse:collapse">${lignes}</table>`
   } else {
-    listeHtml = `<p style="background:#0f2e24;border:1px solid #1f5b4a;color:#9fe6d2;border-radius:10px;padding:12px;font-size:13px;margin:0 0 16px">✅ Aucun athlète en alerte sur la période — effectif au vert.</p>`
+    listeHtml = `<p style="background:#0f2e24;border:1px solid #1f5b4a;color:#9fe6d2;border-radius:10px;padding:12px;font-size:13px;margin:16px 0 0">✅ Aucun athlète en alerte sur la période — effectif au vert.</p>`
+  }
+
+  // Dynamique : en progression vs en régression (tests / charges).
+  let dynHtml = ''
+  const prog = Number(eq.en_progression) || 0, reg = Number(eq.en_regression) || 0
+  if (prog + reg > 0) {
+    const t = prog + reg
+    dynHtml = `<h3 style="font-size:15px;margin:22px 0 6px">Dynamique de l'effectif</h3>
+      <table role="presentation" width="100%" style="border-collapse:collapse;border-radius:9px;overflow:hidden"><tr>
+        ${prog > 0 ? `<td width="${Math.round(100 * prog / t)}%" style="background:#0ca30c;height:30px;text-align:center;color:#06231c;font-size:12px;font-weight:700">▲ ${prog} en progrès</td>` : ''}
+        ${reg > 0 ? `<td width="${Math.round(100 * reg / t)}%" style="background:#fab219;height:30px;text-align:center;color:#3a2c12;font-size:12px;font-weight:700">▼ ${reg} en recul</td>` : ''}
+      </tr></table>`
   }
 
   let blessesHtml = ''
   if (blesses.length) {
     const lignes = blesses.map(b => `<li style="margin:3px 0">${_escHtml(b.nom || '—')} — ${_escHtml(b.type || 'blessure')}${b.localisation ? ' (' + _escHtml(b.localisation) + ')' : ''}${b.statut === 'indispo' ? ' · indisponible' : ' · retour progressif'}</li>`).join('')
-    blessesHtml = `<h3 style="font-size:15px;margin:4px 0 6px">Infirmerie (${blesses.length})</h3>
-      <ul style="margin:0 0 8px;padding-left:18px;color:#cdd6ea;font-size:13px;line-height:1.5">${lignes}</ul>`
+    blessesHtml = `<h3 style="font-size:15px;margin:22px 0 6px">Infirmerie (${blesses.length})</h3>
+      <ul style="margin:0;padding-left:18px;color:#cdd6ea;font-size:13px;line-height:1.6">${lignes}</ul>`
   }
 
-  const corps = statsRow + listeHtml + blessesHtml
-  const sous = `Résumé de la ${periodeLabel} · effectif de ${total} athlète${total > 1 ? 's' : ''}`
+  const corps = hero + statsRow + listeHtml + dynHtml + blessesHtml
+  const sous = `Résumé ${periodeLabel} · effectif de ${total} athlète${total > 1 ? 's' : ''}`
   return _emailShell('Bonjour ' + (coachNom || 'coach'), sous, corps)
 }
 
-function _emailBilanAthleteHTML(prenom: string, periodeLabel: string, winKey: string, d: any): string {
-  const g = (d && d.global) || {}
-  const w = (d && d.recent && d.recent[winKey]) || {}
-  const be: any[] = (d && d.bien_etre) || []
-  const poids: any[] = (d && d.poids) || []
-  const stat = (label: string, val: unknown, unite = '') =>
-    `<td style="padding:10px 6px;text-align:center;background:#0f1522;border:1px solid #243049;border-radius:10px">
-       <div style="font-size:20px;font-weight:800;color:#e9eef8;line-height:1">${_escHtml(val)}<span style="font-size:12px;color:#8b96b0;font-weight:600"> ${_escHtml(unite)}</span></div>
-       <div style="font-size:11px;color:#8b96b0;margin-top:3px">${_escHtml(label)}</div></td>`
-  const spacer = `<td style="width:8px"></td>`
-  const tonnage = w.tonnage_kg != null ? w.tonnage_kg : 0
-  const rpe = w.rpe_moyen != null ? w.rpe_moyen : '—'
-  const statsRow = `<table role="presentation" width="100%" style="border-collapse:separate;margin:0 0 10px"><tr>
-      ${stat('Séances', w.seances || 0)}${spacer}
-      ${stat('Tonnage', tonnage, 'kg')}${spacer}
-      ${stat('Séries', w.series || 0)}${spacer}
-      ${stat('RPE moy.', rpe)}
+function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string {
+  const ceLabel = periode === 'mois' ? 'ce mois' : 'cette semaine'
+  const perLabel = periode === 'mois' ? 'du mois' : 'de la semaine'
+
+  // --- 2 roues : réalisé vs prévu ---
+  const pctSea = b.seancesPrevues > 0 ? Math.round(100 * b.seancesFaites / b.seancesPrevues) : null
+  const pctSer = b.seriesPrevues > 0 ? Math.round(100 * b.seriesFaites / b.seriesPrevues) : null
+  const gaugeCell = (pct: number | null, faites: number, prevues: number, titre: string, unite: string) => {
+    const inner = pct != null
+      ? _roueImg(pct)
+      : `<div style="font-size:32px;font-weight:800;color:#37d3b5;padding:38px 0 34px">${faites}</div>`
+    const vs = prevues > 0 ? `${faites} / ${prevues} ${unite} · vs prévu` : `${faites} ${unite} · pas de programme`
+    return `<td width="50%" valign="top" style="background:#0f1522;border:1px solid #243049;border-radius:14px;padding:14px 8px 12px;text-align:center">
+      ${inner}
+      <div style="font-size:12px;color:#8b96b0;margin-top:8px">${titre}</div>
+      <div style="font-size:11px;color:#5f6b85;margin-top:1px">${vs}</div></td>`
+  }
+  const rouesRow = `<table role="presentation" width="100%" style="border-collapse:separate;border-spacing:10px 0;margin:0 0 4px"><tr>
+      ${gaugeCell(pctSea, b.seancesFaites, b.seancesPrevues, 'Séances réalisées', 'séances')}
+      ${gaugeCell(pctSer, b.seriesFaites, b.seriesPrevues, 'Volume réalisé (séries)', 'séries')}
     </tr></table>`
 
-  // Records (top 4 par charge) depuis le global.
-  const recs = g.records || {}
-  const recArr = Object.keys(recs).map(k => ({ exo: k, ...recs[k] })).sort((a, b) => (b.charge || 0) - (a.charge || 0)).slice(0, 4)
-  let recHtml = ''
-  if (recArr.length) {
-    const lignes = recArr.map(r => `<tr>
-        <td style="padding:7px 2px;border-bottom:1px solid #223049;font-size:13px">${_escHtml(r.exo)}</td>
-        <td style="padding:7px 2px;border-bottom:1px solid #223049;text-align:right;font-size:13px;font-weight:700;color:#37d3b5">${_escHtml(r.charge)} kg × ${_escHtml(r.reps)}</td>
+  // --- tuiles absolues ---
+  const stat = (label: string, val: unknown, unite = '') =>
+    `<td align="center" style="background:#0f1522;border:1px solid #243049;border-radius:12px;padding:12px 6px">
+       <div style="font-size:19px;font-weight:800;color:#e9eef8;line-height:1">${_escHtml(val)}<span style="font-size:12px;color:#8b96b0;font-weight:600">${unite ? ' ' + _escHtml(unite) : ''}</span></div>
+       <div style="font-size:11px;color:#8b96b0;margin-top:4px">${_escHtml(label)}</div></td>`
+  const statsRow = `<table role="presentation" width="100%" style="border-collapse:separate;border-spacing:8px 0;margin:10px 0 4px"><tr>
+      ${stat('Tonnage', b.tonnageKg || 0, 'kg')}
+      ${stat('Séries', b.seriesFaites || 0)}
+      ${stat('Reps', b.reps || 0)}
+      ${stat('RPE moy.', b.rpeMoyen != null ? b.rpeMoyen : '—')}
+    </tr></table>`
+
+  // --- balance musculaire (part du volume) ---
+  let balanceHtml = ''
+  if (b.balance && b.balance.length) {
+    const lignes = b.balance.map((m: any) => `<tr>
+        <td style="width:92px;font-size:13px;color:#cdd6ea;padding:4px 8px 4px 0">${_escHtml(m.muscle)}</td>
+        <td style="padding:4px 0"><table role="presentation" width="100%" style="border-collapse:collapse;background:#0f1522;border-radius:7px"><tr><td style="width:${Math.max(3, Math.min(100, m.pct))}%;background:#37d3b5;height:14px;border-radius:7px;font-size:0">&nbsp;</td><td></td></tr></table></td>
+        <td style="width:38px;text-align:right;font-size:12px;color:#8b96b0">${m.pct}%</td>
       </tr>`).join('')
-    recHtml = `<h3 style="font-size:15px;margin:14px 0 6px">Tes records</h3>
-      <table role="presentation" width="100%" style="border-collapse:collapse;margin:0 0 6px">${lignes}</table>`
+    balanceHtml = `<h3 style="font-size:15px;margin:18px 0 8px">Balance musculaire <span style="font-weight:400;font-size:12px;color:#5f6b85">part du volume</span></h3>
+      <table role="presentation" width="100%" style="border-collapse:collapse">${lignes}</table>`
   }
 
-  // Forme récente (moyennes sommeil / énergie / fatigue sur les derniers relevés).
-  let formeHtml = ''
-  if (be.length) {
-    const avg = (key: string) => {
-      const vals = be.map(r => Number(r[key])).filter(v => !isNaN(v) && v !== 0)
-      return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length * 10) / 10 : null
+  // --- exercices en progrès / recul ---
+  let progHtml = ''
+  if ((b.enProgres && b.enProgres.length) || (b.enRecul && b.enRecul.length)) {
+    const col = (titre: string, color: string, arr: any[], signe: string) => {
+      const items = (arr && arr.length)
+        ? arr.map(p => `<div style="display:block;font-size:13px;padding:5px 0;border-bottom:1px solid #1c2740">${_escHtml(p.exo)} <span style="float:right;font-weight:700;color:${color}">${signe}${Math.abs(p.pct)}%</span></div>`).join('')
+        : `<div style="font-size:12px;color:#5f6b85;padding:5px 0">—</div>`
+      return `<td width="50%" valign="top" style="background:#0f1522;border:1px solid #243049;border-radius:12px;padding:12px 13px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:${color};margin-bottom:6px">${titre}</div>${items}</td>`
     }
-    const som = avg('sommeil'), ene = avg('energie'), fat = avg('fatigue')
-    const parts: string[] = []
-    if (som != null) parts.push(`sommeil ${som}/5`)
-    if (ene != null) parts.push(`énergie ${ene}/5`)
-    if (fat != null) parts.push(`fatigue ${fat}/5`)
-    if (parts.length) formeHtml = `<h3 style="font-size:15px;margin:14px 0 6px">Ta forme</h3>
-      <p style="margin:0 0 6px;color:#cdd6ea;font-size:13px">${_escHtml(parts.join(' · '))} (moyenne récente)</p>`
+    progHtml = `<h3 style="font-size:15px;margin:18px 0 8px">Exercices · dynamique <span style="font-weight:400;font-size:12px;color:#5f6b85">1RM estimé vs période précédente</span></h3>
+      <table role="presentation" width="100%" style="border-collapse:separate;border-spacing:10px 0"><tr>
+        ${col('▲ En progrès', '#0ca30c', b.enProgres, '+')}
+        ${col('▼ À relancer', '#fab219', b.enRecul, '−')}
+      </tr></table>`
   }
 
-  let poidsHtml = ''
-  if (poids.length && poids[0] && poids[0].poids) {
-    poidsHtml = `<p style="margin:6px 0 0;color:#8b96b0;font-size:12px">Dernier poids relevé : <b style="color:#e9eef8">${_escHtml(poids[0].poids)} kg</b> (${_escHtml(poids[0].date)})</p>`
+  // --- forme / montre ---
+  let formeHtml = ''
+  const mt = b.montre || {}, rs = b.ressenti || {}
+  const hcards: string[] = []
+  if (mt.pas != null) hcards.push(`<td align="center" style="background:#0f1522;border:1px solid #243049;border-radius:12px;padding:12px 6px"><div style="font-size:16px">👟</div><div style="font-size:17px;font-weight:800;margin-top:3px">${mt.pas.toLocaleString('fr-FR')}</div><div style="font-size:11px;color:#8b96b0;margin-top:2px">Pas / jour</div></td>`)
+  if (mt.sommeilMin != null) hcards.push(`<td align="center" style="background:#0f1522;border:1px solid #243049;border-radius:12px;padding:12px 6px"><div style="font-size:16px">😴</div><div style="font-size:17px;font-weight:800;margin-top:3px">${_fmtDuree(mt.sommeilMin)}</div><div style="font-size:11px;color:#8b96b0;margin-top:2px">Sommeil</div></td>`)
+  if (mt.fcRepos != null) hcards.push(`<td align="center" style="background:#0f1522;border:1px solid #243049;border-radius:12px;padding:12px 6px"><div style="font-size:16px">❤️</div><div style="font-size:17px;font-weight:800;margin-top:3px">${mt.fcRepos}</div><div style="font-size:11px;color:#8b96b0;margin-top:2px">FC repos (bpm)</div></td>`)
+  const ress: string[] = []
+  if (rs.sommeil != null) ress.push(stat('Sommeil ressenti', rs.sommeil, '/5'))
+  if (rs.energie != null) ress.push(stat('Énergie', rs.energie, '/5'))
+  if (rs.fatigue != null) ress.push(stat('Fatigue', rs.fatigue, '/5'))
+  if (hcards.length || ress.length) {
+    formeHtml = `<h3 style="font-size:15px;margin:18px 0 8px">Ta forme <span style="font-weight:400;font-size:12px;color:#5f6b85">moyenne ${perLabel} · montre</span></h3>`
+    if (hcards.length) formeHtml += `<table role="presentation" width="100%" style="border-collapse:separate;border-spacing:8px 0"><tr>${hcards.join('')}</tr></table>`
+    if (ress.length) formeHtml += `<table role="presentation" width="100%" style="border-collapse:separate;border-spacing:8px 0;margin-top:8px"><tr>${ress.join('')}</tr></table>`
   }
 
-  const corps = statsRow + recHtml + formeHtml + poidsHtml +
-    `<p style="margin:16px 0 0;color:#8b96b0;font-size:12px;line-height:1.5">Ouvre Novalyz pour l'analyse détaillée de ta ${periodeLabel}.</p>`
-  const sous = `Ton bilan de la ${periodeLabel}`
+  // --- records ---
+  let recHtml = ''
+  if (b.records && b.records.length) {
+    const lignes = b.records.map((rec: any) => `<tr>
+        <td style="padding:7px 2px;border-bottom:1px solid #223049;font-size:13px">${_escHtml(rec.exo)}</td>
+        <td style="padding:7px 2px;border-bottom:1px solid #223049;text-align:right;font-size:13px;font-weight:700;color:#37d3b5">${_escHtml(rec.charge)} kg × ${_escHtml(rec.reps)}</td>
+      </tr>`).join('')
+    recHtml = `<h3 style="font-size:15px;margin:18px 0 8px">Tes records</h3>
+      <table role="presentation" width="100%" style="border-collapse:collapse">${lignes}</table>`
+  }
+
+  const corps = rouesRow + statsRow + balanceHtml + progHtml + formeHtml + recHtml +
+    `<p style="margin:18px 0 0;color:#8b96b0;font-size:12px;line-height:1.5">Ouvre Novalyz pour l'analyse détaillée de ta ${perLabel.replace('du ', '').replace('de la ', '')}.</p>`
+  const sous = `Ton bilan ${perLabel}`
   return _emailShell('Bonjour ' + (prenom || 'athlète'), sous, corps)
 }
 
@@ -3610,7 +3791,7 @@ async function handleCronResumes(body: any): Promise<Response> {
   if (!secret || String(body.secret || '') !== secret) return jsonResp({ error: 'unauthorized' }, 401)
   const periode = String(body.periode || 'semaine') === 'mois' ? 'mois' : 'semaine'
   const periodeLabel = periode === 'mois' ? 'du mois' : 'de la semaine'
-  const winKey = periode === 'mois' ? 'j28' : 'j7'
+  const now = new Date()
 
   let coachsOk = 0, coachsSkip = 0, athletesOk = 0, athletesSkip = 0
 
@@ -3637,11 +3818,18 @@ async function handleCronResumes(body: any): Promise<Response> {
     for (const a of aths || []) {
       const email = String((a as any).email || '').trim()
       if (!email) { athletesSkip++; continue }
+      const aid = String((a as any).id)
       try {
-        const res = await handleGetBilanPDF(new URLSearchParams({ athlete_id: String((a as any).id), periode }))
-        const data: any = await res.json()
+        // Sources réelles pour le bilan (mêmes tables que la fiche athlète).
+        const [{ data: perfs }, { data: prog }, { data: be }, { data: sante }] = await Promise.all([
+          sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,seance_id').eq('athlete_id', aid),
+          sb().from('programme').select('seance_id,series_prevues').eq('athlete_id', aid),
+          sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', aid),
+          sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', aid).like('seance_id', 'sante_%'),
+        ])
+        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode)
         const prenom = String((a as any).nom || '').split(/\s+/)[0]
-        const html = _emailBilanAthleteHTML(prenom, periode, winKey, data)
+        const html = _emailBilanAthleteHTML(prenom, periode, bilan)
         const sujet = `Novalyz — Ton bilan ${periodeLabel}`
         if (await _envoyerEmail(email, sujet, html)) athletesOk++; else athletesSkip++
       } catch (_) { athletesSkip++ }
