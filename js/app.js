@@ -2026,6 +2026,7 @@ async function enregistrerSportCoach() {
 function fermerReglagesCoach() {
   document.getElementById('coach-reglages-overlay').style.display = 'none';
   document.getElementById('coach-reglages-drawer').style.display = 'none';
+  if (coachDeskOverlay === 'profil') { coachDeskOverlay = null; try { renderCoachRail(); } catch (e) {} }
 }
 
 async function supprimerCompteCoach() {
@@ -4710,6 +4711,7 @@ function ouvrirAthleteDepuisSelect(idx) {
 function fermerMessagerieCoach() {
   document.getElementById('coach-messagerie-overlay').style.display = 'none';
   document.getElementById('coach-messagerie-drawer').style.display = 'none';
+  if (coachDeskOverlay === 'messages') { coachDeskOverlay = null; try { renderCoachRail(); } catch (e) {} }
 }
 async function ouvrirMessagerieCoach() {
   // Desktop : 2 volets (liste + fil côte à côte). Mobile : tiroir existant.
@@ -6705,6 +6707,7 @@ function renderCoachAthleteGrid(athletes) {
 // les données calculées par renderCoachSynthese (aucun recalcul réseau).
 var _coachDesk = null;
 var coachDeskSection = 'aujourdhui';
+var coachDeskOverlay = null;   // 'messages' | 'profil' | null — pour colorer l'item du rail sans changer la section de contenu.
 function _coachDeskAny() { try { return window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active'); } catch (e) { return false; } }
 function _coachDeskOn() { return _coachDeskAny() && !document.body.classList.contains('athlete-selected'); }
 function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enrich: enrich, prioritaires: prioritaires, datas: datas, kpis: kpis }; if (_coachDeskAny()) renderCoachDesktop(); try { _maybeCoachTour(); } catch (e) {} }
@@ -6712,8 +6715,12 @@ function coachDeskGo(sec) {
   try { if (sec !== 'messages') fermerMessagerie2(); } catch (e) {}
   try { if (sec !== 'profil') fermerReglagesCoach(); } catch (e) {}   // sinon le panneau Profil reste par-dessus
   try { var _pe = document.getElementById('prog-editor-overlay'); if (_pe && _pe.style.display !== 'none') { _pe.style.display = 'none'; document.body.classList.remove('prog-editor-open'); } } catch (e) {}
-  if (sec === 'messages') { if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
-  if (sec === 'profil')   { if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
+  // Messages / Profil : allume l'item du rail (leur écran est décalé à droite du
+  // rail en desktop → il reste visible). On n'altère PAS coachDeskSection (le
+  // contenu réel derrière) : un drapeau dédié gère juste la couleur.
+  if (sec === 'messages') { coachDeskOverlay = 'messages'; try { renderCoachRail(); } catch (e) {} if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
+  if (sec === 'profil')   { coachDeskOverlay = 'profil'; try { renderCoachRail(); } catch (e) {} if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
+  coachDeskOverlay = null;
   if (document.body.classList.contains('athlete-selected')) { try { retourListeAthletesCoach(); } catch (_) {} }
   coachDeskSection = sec; renderCoachDesktop();
 }
@@ -6886,7 +6893,11 @@ function renderCoachRail() {
   var rail = document.getElementById('coach-rail'); if (!rail || !_coachDesk) return;
   var d = _coachDesk, k = d.kpis || {};
   var totalMsg = (d.enrich || []).reduce(function (s, e) { return s + (e.msgNonLus || 0); }, 0);
-  var activeSec = document.body.classList.contains('athlete-selected') ? 'equipe' : coachDeskSection;
+  // Messages/Profil (drapeau overlay) priment ; sinon une fiche athlète ouverte
+  // garde "Équipe" allumé.
+  var activeSec = coachDeskOverlay
+    ? coachDeskOverlay
+    : (document.body.classList.contains('athlete-selected') ? 'equipe' : coachDeskSection);
   var navItem = function (sec, label) { return '<button class="cs-item' + (activeSec === sec ? ' on' : '') + '" data-tour="co-' + sec + '" onclick="coachDeskGo(\'' + sec + '\')">' + _COACH_NAVICO[sec] + '<span>' + label + '</span>' + (sec === 'messages' && totalMsg ? '<span class="cs-bdg">' + totalMsg + '</span>' : '') + '</button>'; };
   var coachNom = (typeof coach !== 'undefined' && coach && coach.nom) ? coach.nom : 'Coach';
   rail.innerHTML = '<aside class="cs-side"><div class="cs-brand"><span class="cs-logo">N</span><div><b>Novalyz</b><span>Espace coach</span></div></div>'
@@ -14598,15 +14609,35 @@ function _tourEnsureDom() {
     + '</div></div>';
   document.body.appendChild(ov);
 }
+// Verrou de scroll : on bloque le scroll UTILISATEUR (molette/tactile) pendant la
+// visite — mais pas le scroll programmatique (scrollIntoView continue de marcher),
+// ni le scroll À L'INTÉRIEUR de la bulle si son contenu déborde.
+function _tourScrollBlocker(e) {
+  var bub = document.getElementById('nvt-bub');
+  if (bub && bub.contains(e.target) && bub.scrollHeight > bub.clientHeight) return;
+  if (e.cancelable) e.preventDefault();
+}
+function _tourLockScroll(on) {
+  try {
+    if (on) {
+      document.addEventListener('wheel', _tourScrollBlocker, { passive: false, capture: true });
+      document.addEventListener('touchmove', _tourScrollBlocker, { passive: false, capture: true });
+    } else {
+      document.removeEventListener('wheel', _tourScrollBlocker, { capture: true });
+      document.removeEventListener('touchmove', _tourScrollBlocker, { capture: true });
+    }
+  } catch (e) {}
+}
 function nvTourStart(steps, key) {
   if (!steps || !steps.length) return;
   _tour.steps = steps; _tour.i = 0; _tour.key = key || null; _tour.lastScr = null;
   _tourEnsureDom();
   document.getElementById('nvt-ov').classList.add('on');
   _tourLiftNav(true);
+  _tourLockScroll(true);
   _tourRender();
 }
-function nvTourEnd() { var o = document.getElementById('nvt-ov'); if (o) o.classList.remove('on'); _tourLiftNav(false); _tourClearNavCur(); if (_tour.key) _tourMark(_tour.key); }
+function nvTourEnd() { var o = document.getElementById('nvt-ov'); if (o) o.classList.remove('on'); _tourLiftNav(false); _tourClearNavCur(); _tourLockScroll(false); if (_tour.key) _tourMark(_tour.key); }
 // Barre de nav : on la garde VISIBLE au-dessus du voile pendant la visite (sinon
 // elle est assombrie, on ne voit plus sur quel écran on est) + on entoure l'onglet actif.
 function _tourLiftNav(on) {
@@ -14625,9 +14656,23 @@ function _tourMarkNavCur() {
 }
 function nvTourNext() { if (_tour.i < _tour.steps.length - 1) { _tour.i++; _tourRender(); } else nvTourEnd(); }
 function nvTourPrev() { if (_tour.i > 0) { _tour.i--; _tourRender(); } }
+// Visibilité RÉELLE (pas via offsetParent : un élément position:fixed — ex. le FAB
+// « Demande à Novalyz » — a offsetParent null tout en étant parfaitement visible).
+function _tourVisible(el) {
+  if (!el) return false;
+  var cs; try { cs = getComputedStyle(el); } catch (e) { return false; }
+  if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+  var r = el.getBoundingClientRect();
+  return r.width > 1 && r.height > 1;
+}
+// Parcourt TOUS les éléments qui matchent (pas seulement le premier) et renvoie le
+// premier réellement visible — utile quand plusieurs vues rendent le même sélecteur.
 function _tourElFor(step) {
   var sels = Array.isArray(step.sel) ? step.sel : [step.sel];
-  for (var k = 0; k < sels.length; k++) { var el = null; try { el = document.querySelector(sels[k]); } catch (e) {} if (el && el.offsetParent !== null) return el; }
+  for (var k = 0; k < sels.length; k++) {
+    var list = []; try { list = document.querySelectorAll(sels[k]); } catch (e) {}
+    for (var j = 0; j < list.length; j++) { if (_tourVisible(list[j])) return list[j]; }
+  }
   return null;
 }
 function _tourRender() {
@@ -14647,20 +14692,32 @@ function _tourRender() {
   // pendant leur animation → le cadre tombe à côté / mauvaise taille).
   try { document.querySelectorAll('#tab-accueil .tj-reveal:not(.in)').forEach(function (e) { e.classList.add('in'); }); } catch (e) {}
   // Placement du spotlight + bulle sur la cible (ou carte centrée si absente).
+  // La cible peut n'apparaître qu'après un rendu asynchrone (changement de sous-vue
+  // Analyses, de sous-onglet Réglages…) → on RÉESSAIE un court instant avant de
+  // retomber sur la carte centrée (sinon « pas de surbrillance »).
+  var centrer = function () {
+    ov.classList.add('nvt-dim');
+    spot.style.display = 'none'; arrow.style.display = 'none';
+    bub.style.left = '50%'; bub.style.top = '50%'; bub.style.transform = 'translate(-50%,-50%)';
+  };
   var place = function () {
     _tourMarkNavCur();
-    var el = _tourElFor(s);
-    if (el) {
-      ov.classList.remove('nvt-dim');
-      try { el.scrollIntoView({ block: 'center' }); } catch (e) {}
-      setTimeout(function () { _tourPlace(_tourElFor(s) || el, spot, bub, arrow); }, 130);
-      setTimeout(function () { _tourPlace(_tourElFor(s) || el, spot, bub, arrow); }, 430);
-    } else {
-      ov.classList.add('nvt-dim');
-      spot.style.display = 'none';
-      arrow.style.display = 'none';
-      bub.style.left = '50%'; bub.style.top = '50%'; bub.style.transform = 'translate(-50%,-50%)';
-    }
+    var tries = 0;
+    var attempt = function () {
+      if (_tour.i !== _tour.steps.indexOf(s) && _tour.steps[_tour.i] !== s) return; // step changé entre-temps
+      var el = _tourElFor(s);
+      if (el) {
+        ov.classList.remove('nvt-dim');
+        try { el.scrollIntoView({ block: 'center' }); } catch (e) {}
+        setTimeout(function () { var e2 = _tourElFor(s); if (e2) _tourPlace(e2, spot, bub, arrow); }, 140);
+        setTimeout(function () { var e2 = _tourElFor(s); if (e2) _tourPlace(e2, spot, bub, arrow); }, 440);
+      } else if (tries++ < 12) {
+        setTimeout(attempt, 70);
+      } else {
+        centrer();
+      }
+    };
+    attempt();
   };
   // On change d'écran ? → flash « Écran X » plein cadre, le temps que la nouvelle
   // page se mette en place, puis on affiche la bulle (on la masque pendant le flash).
@@ -14681,20 +14738,44 @@ function _tourFlash(name) {
   f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
   setTimeout(function () { f.classList.remove('on'); }, 1100);
 }
+// Bornes de la zone où la bulle peut s'afficher, en EXCLUANT la nav « liftée »
+// (z-index au-dessus du voile) : barre du bas en mobile, rail gauche en desktop —
+// sinon la bulle (et son bouton Suivant) passe DESSOUS et devient inaccessible.
+function _tourSafeBounds() {
+  var b = { left: 10, right: window.innerWidth - 10, top: 10, bottom: window.innerHeight - 10 };
+  var vis = function (el) { return el && _tourVisible(el); };
+  try {
+    var bar = document.getElementById('tabs-bar');          // barre d'onglets (mobile)
+    if (vis(bar)) { var rb = bar.getBoundingClientRect(); if (rb.top < b.bottom) b.bottom = rb.top - 10; }
+    ['app-side', 'coach-rail'].forEach(function (id) {       // rail latéral (desktop)
+      var e = document.getElementById(id);
+      if (vis(e)) { var re = e.getBoundingClientRect(); if (re.right > b.left && re.right < window.innerWidth * 0.5) b.left = re.right + 10; }
+    });
+  } catch (e) {}
+  return b;
+}
 function _tourPlace(el, spot, bub, arrow) {
-  var pad = 6, r = el.getBoundingClientRect();
+  var pad = 6, r = el.getBoundingClientRect(), sb = _tourSafeBounds();
   spot.style.display = 'block';
   spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
   spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
-  bub.style.transform = 'none'; arrow.style.display = 'block';
+  bub.style.transform = 'none';
   var bw = bub.offsetWidth || 280, bh = bub.offsetHeight || 150, gap = 14;
   var cx = r.left + r.width / 2;
-  var left = Math.max(10, Math.min(cx - bw / 2, window.innerWidth - bw - 10));
-  var below = (r.bottom + gap + bh) < window.innerHeight;
-  var top = below ? (r.bottom + gap) : Math.max(10, r.top - gap - bh);
+  var left = Math.max(sb.left, Math.min(cx - bw / 2, sb.right - bw));
+  // Essaie dessous, puis dessus — dans la zone sûre. Si aucun ne tient, on place
+  // dans la zone sûre (collé au bord dispo) sans flèche.
+  var fitsBelow = (r.bottom + gap + bh) <= sb.bottom;
+  var fitsAbove = (r.top - gap - bh) >= sb.top;
+  var top, mode;
+  if (fitsBelow) { top = r.bottom + gap; mode = 'below'; }
+  else if (fitsAbove) { top = r.top - gap - bh; mode = 'above'; }
+  else { top = Math.max(sb.top, Math.min(sb.bottom - bh, r.bottom + gap)); mode = 'none'; }
   bub.style.left = left + 'px'; bub.style.top = top + 'px';
+  if (mode === 'none') { arrow.style.display = 'none'; return; }
+  arrow.style.display = 'block';
   arrow.style.left = (Math.min(Math.max(cx - left - 7, 16), bw - 30)) + 'px';
-  if (below) { arrow.style.top = '-7px'; arrow.style.transform = 'rotate(45deg)'; }
+  if (mode === 'below') { arrow.style.top = '-7px'; arrow.style.transform = 'rotate(45deg)'; }
   else { arrow.style.top = (bh - 7) + 'px'; arrow.style.transform = 'rotate(225deg)'; }
 }
 window.addEventListener('resize', function () { var o = document.getElementById('nvt-ov'); if (o && o.classList.contains('on')) _tourRender(); });
@@ -14717,7 +14798,9 @@ function _stepsAthlete() {
   S.push({ scr: A, sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' });
   S.push({ scr: A, sel: '#tab-accueil .tj-bwrap', before: go('accueil'), t: 'Ton point du jour', x: 'Mets à jour ton ressenti (sommeil, énergie, douleurs) en quelques secondes, chaque jour.' });
   S.push({ scr: A, sel: '#tab-accueil .tj-rew', before: go('accueil'), t: 'Tes récompenses', x: 'Gagne des points et des niveaux, débloque des trophées et vise ton objectif de la semaine.' });
-  S.push({ scr: A, sel: ['#tab-accueil .nvz-ask', '#fab-novalyz'], before: go('accueil'), t: 'Demande à Novalyz', x: 'Ton assistant IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
+  // Mobile : l'entrée est le FAB (position:fixed) ; desktop : le bloc .nvz-ask. On
+  // s'assure que le FAB est bien affiché avant de le surligner.
+  S.push({ scr: A, sel: ['#tab-accueil .nvz-ask', '#fab-novalyz'], before: function () { try { switchTab('accueil'); } catch (e) {} try { _majFabNovalyz(); } catch (e) {} }, t: 'Demande à Novalyz', x: 'Ton assistant IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
   // ─── ENTRAÎNEMENT ───
   if (!hasCoach) S.push({ scr: E, sel: '#en-gen', before: goSeanceMuscu, t: 'Un programme par l’IA', x: '✨ Novalyz t’assemble un programme de départ adapté en répondant à 3 questions.' });
   S.push({ scr: E, sel: '#en-creer', before: goSeanceMuscu, t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
