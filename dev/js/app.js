@@ -5110,7 +5110,11 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   if (_heroEl) {
     const _ini = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
     _heroEl.className = '';
-    _heroEl.style.cssText = 'position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:var(--accent);background-image:linear-gradient(135deg,rgba(255,255,255,.14),rgba(0,0,0,.12));';
+    // Placeholder NEUTRE (gris) pendant le chargement : la couleur de statut
+    // (vert/orange/rouge) n'est posée qu'une fois les données arrivées, par
+    // renderCoachHeroEtat → évite le flash « bleu → rouge » (on ne colore pas
+    // avant de savoir).
+    _heroEl.style.cssText = 'position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:#64748b;background-image:linear-gradient(135deg,rgba(255,255,255,.12),rgba(0,0,0,.14));';
     _heroEl.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="width:46px;height:46px;border-radius:13px;background:var(--on-accent-a28);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${_ini}</div>
