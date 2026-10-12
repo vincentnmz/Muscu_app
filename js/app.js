@@ -14914,7 +14914,7 @@ function _stepsAthlete() {
   // ─── ENTRAÎNEMENT ───
   if (!hasCoach) S.push({ scr: E, sel: '#en-gen', before: goSeanceMuscu, t: 'Un programme par l’IA', x: '✨ Novalyz t’assemble un programme de départ adapté en répondant à 3 questions.' });
   S.push({ scr: E, sel: '#en-creer', before: goSeanceMuscu, t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
-  S.push({ scr: E, sel: '[data-tour="ath-agenda"]', before: go('seance'), t: 'Ton agenda', x: 'Planifie tes séances et visualise d’un coup d’œil ce qui est prévu et ce qui est fait.' });
+  S.push({ scr: E, sel: '[data-tour="ath-agenda"]', before: go('seance'), t: 'Ton agenda', x: 'Retrouve tes séances faites d’un coup d’œil : muscu en vert, cardio en rouge. Touche un jour pour voir le détail.' });
   // ─── ANALYSES ───
   S.push({ scr: AN, sel: '#tab-historique .ma-switch', before: goAna('resume'), t: 'Discipline', x: 'Choisis la discipline analysée : muscu, cardio ou croisé.' });
   S.push({ scr: AN, sel: '#tab-historique .ma-verdict', before: goAna('resume'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de ton résumé : ce qu’il faut retenir + tes chiffres clés (tonnage, charge ACWR, monotonie).' });
