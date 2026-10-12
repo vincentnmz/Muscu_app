@@ -202,16 +202,17 @@ check('tendances null si < 2 semaines complètes',
   computeTendances([{ date: '2026-08-10', exercice: 'Squat', charge: 100, reps: 5, rpe: 7 }], NOW).s4 === null, 'null', 'non-null');
 
 // =============================================================================
-// buildProgressionParExo — 1 point par DATE (meilleure série du jour), 8 récents
+// buildProgressionParExo — 1 point/DATE : meilleure série + volTotal (toutes séries), 30 récents
 // =============================================================================
 const perfsProg = [
   // 10/08 : 2 séries le même jour → la MEILLEURE (charge la plus haute) est retenue
+  // pour charge/reps/1RM ; volTotal = SOMME des deux séries.
   { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 100, reps: 5 },
   { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 90,  reps: 8 },
   { date: '2026-08-17', seance_id: 'A', exercice: 'Squat', charge: 105, reps: 5 },
   { date: '2026-08-20', seance_id: 'A', exercice: 'Squat', charge: 102, reps: 5 },
 ];
-// 9 dates distinctes pour « Curl » → doit être plafonné à 8 points
+// 9 dates distinctes pour « Curl » → sous le plafond (30) → toutes gardées
 for (let d = 1; d <= 9; d++) perfsProg.push({ date: `2026-08-0${d}`, seance_id: 'B', exercice: 'Curl', charge: 20, reps: 10 });
 const prog = buildProgressionParExo(perfsProg);
 eq('progression Squat = 3 points (1 par date)', prog.Squat.length, 3);
@@ -220,11 +221,18 @@ eq('Squat[0].charge = 102', prog.Squat[0].charge, 102);
 eq('Squat[1].charge = 105 (17/08)', prog.Squat[1].charge, 105);
 eq('Squat[2] = meilleure série du 10/08 = 100×5 (pas 90×8)', prog.Squat[2].charge, 100);
 eq('Squat[2].reps = 5 (charge prioritaire sur volume)', prog.Squat[2].reps, 5);
-eq('Squat[2].volume = 500 (100×5)', prog.Squat[2].volume, 500);
-eq('progression Curl plafonnée à 8 points (sur 9 dates)', prog.Curl.length, 8);
+eq('Squat[2].volume = 500 (meilleure série 100×5)', prog.Squat[2].volume, 500);
+eq('Squat[2].volTotal = 1220 (toutes séries : 100×5 + 90×8)', prog.Squat[2].volTotal, 1220);
+eq('progression Curl = 9 points (sous le plafond de 30)', prog.Curl.length, 9);
 eq('Curl[0] = date la plus récente 09/08/2026', prog.Curl[0].date, '09/08/2026');
-eq('Curl[7] = 02/08/2026 (8 plus récentes → 01/08 exclue)', prog.Curl[7].date, '02/08/2026');
-check('Curl exclut bien la plus ancienne (01/08)', !prog.Curl.some(p => p.date === '01/08/2026'), 'absente', 'PRÉSENTE');
+check('Curl garde la plus ancienne quand < 30 (01/08)', prog.Curl.some(p => p.date === '01/08/2026'), 'présente', 'ABSENTE');
+// Plafond à 30 : 32 dates consécutives → 30 points, les 2 plus anciennes exclues.
+const perfsCap = [];
+const _base = new Date('2026-06-01T00:00:00Z');
+for (let d = 0; d < 32; d++) { const dt = new Date(_base); dt.setUTCDate(_base.getUTCDate() + d); perfsCap.push({ date: dt.toISOString().slice(0, 10), seance_id: 'C', exercice: 'Dev', charge: 50, reps: 10 }); }
+const progCap = buildProgressionParExo(perfsCap);
+eq('progression Dev plafonnée à 30 points (sur 32 dates)', progCap.Dev.length, 30);
+check('Dev exclut les 2 plus anciennes (01/06, 02/06)', !progCap.Dev.some(p => p.date === '01/06/2026' || p.date === '02/06/2026'), 'absentes', 'PRÉSENTES');
 
 // =============================================================================
 // buildVolumeSemaineParMuscle — séries/muscle de la SEMAINE (source UNIQUE

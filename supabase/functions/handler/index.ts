@@ -761,22 +761,28 @@ async function buildCardioAll(athleteId: string): Promise<any> {
 
 // ── Progression par exo ───────────────────────────────────────────────────────
 function buildProgressionParExo(perfs: any[]): Record<string, any[]> {
-  // 1 point par DATE (meilleure série du jour), 8 plus récentes — comme Code.gs (évite les doublons)
+  // 1 point par DATE : meilleure série du jour (charge/reps/1RM) + volTotal = volume
+  // de TOUTES les séries de l'exo ce jour-là (pour la vue « Volume toutes séries »).
+  // 30 dates les plus récentes (assez pour une vraie tendance sur longues périodes).
   const byExo: Record<string, Record<string, any>> = {}
   for (const r of perfs) {
     const exo = r.exercice; if (!exo) continue
     const dmy = fmtFR(r.date)
     const charge = Number(r.charge) || 0, reps = Number(r.reps) || 0
     if (!byExo[exo]) byExo[exo] = {}
-    const cur = byExo[exo][dmy]
-    if (!cur || charge > cur.charge || (charge === cur.charge && reps > cur.reps)) {
-      // le front lit p.seance (p.seance.substring(...)) → indispensable
-      byExo[exo][dmy] = { date: dmy, seance: String(r.seance_id || ''), charge, reps, volume: charge * reps }
+    let cur = byExo[exo][dmy]
+    // le front lit p.seance (p.seance.substring(...)) → indispensable
+    if (!cur) { cur = byExo[exo][dmy] = { date: dmy, seance: String(r.seance_id || ''), charge, reps, volume: charge * reps, volTotal: 0 } }
+    // meilleure série du jour (charge, puis reps à charge égale)
+    if (charge > cur.charge || (charge === cur.charge && reps > cur.reps)) {
+      cur.charge = charge; cur.reps = reps; cur.volume = charge * reps
+      if (r.seance_id) cur.seance = String(r.seance_id)
     }
+    cur.volTotal += charge * reps   // somme de TOUTES les séries du jour (travail total)
   }
   const out: Record<string, any[]> = {}
   for (const exo of Object.keys(byExo)) {
-    out[exo] = Object.values(byExo[exo]).sort((a, b) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0)).slice(0, 8)
+    out[exo] = Object.values(byExo[exo]).sort((a, b) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0)).slice(0, 30)
   }
   return out
 }
