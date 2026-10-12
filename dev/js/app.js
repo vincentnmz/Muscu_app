@@ -11420,7 +11420,7 @@ function _maMuscuExercice(data) {
     + '</div>');
 }
 
-var _maExoSel = null, _maExoMetric = 'charge';
+var _maExoSel = null, _maExoMetric = 'cr';
 // Échappe une chaîne pour un littéral JS entre apostrophes DANS un attribut onclick à guillemets.
 function _maOnc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 function maSetExo(e) { _maExoSel = e; try { _maMuscuExercice(dernierAppData); } catch (x) {} }
@@ -11503,11 +11503,18 @@ function _maProgExo(data) {
   var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + prog[sel].length + ' séance' + (prog[sel].length > 1 ? 's' : '') + ' suivie' + (prog[sel].length > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
   // Charge en premier (c'est la valeur la plus parlante au quotidien) ; 1RM et
   // Répétitions ensuite. Onglets soulignés (≠ pastilles pleines de la période).
-  var MET = [['charge', 'Charge max', 'kg'], ['reps', 'Répétitions', 'reps'], ['cr', 'Charge + Reps', ''], ['1rm', '1RM estimé', 'kg']];
+  // 3 métriques : « Charge + reps » (défaut, lecture concrète), « 1RM estimé »
+  // (progrès à charge égale), « Volume (toutes séries) » (travail total du jour).
+  var MET = [['cr', 'Charge + reps', 'kg'], ['1rm', '1RM estimé', 'kg'], ['vol', 'Volume (toutes séries)', 'kg']];
   var met = MET.filter(function (x) { return x[0] === _maExoMetric; })[0] || MET[0];
   var seg = '<div class="ma-mtab-wrap"><span class="ma-mtab-lbl">Afficher</span><div class="ma-mtab">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>';
   var isCR = (met[0] === 'cr');   // vue combinée charge + reps
-  var series = pts.map(function (p) { return met[0] === '1rm' ? _maE1RM(p) : (met[0] === 'charge' || isCR) ? (p.charge || 0) : (p.reps || 0); });
+  var isVol = (met[0] === 'vol');
+  var series = pts.map(function (p) {
+    if (met[0] === '1rm') return _maE1RM(p);
+    if (isVol) return (p.volTotal != null ? p.volTotal : ((p.charge || 0) * (p.reps || 0)));
+    return (p.charge || 0);   // cr → la ligne suit la charge (étiquette = charge × reps)
+  });
   var last = series[series.length - 1] || 0, first = series[0] || 0, delta = Math.round((last - first) * 10) / 10;
   var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span>';
   var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + (isCR ? 'kg' : met[2]));
@@ -11534,7 +11541,14 @@ function _maProgExo(data) {
   var recCharge = (data.global && data.global.records_par_exo && data.global.records_par_exo[sel] && data.global.records_par_exo[sel].charge) || best.charge || 0;
   var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">1RM estimé</div></div><div class="c"><div class="v">' + (best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + dstat + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + recCharge + ' kg</div><div class="u">record charge</div></div></div>';
   var recent = pts.slice().reverse().slice(0, 6).map(function (p) { return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + (p.charge || 0) + ' kg × ' + (p.reps || 0) + '</span><span class="r">' + _maE1RM(p) + '</span></div>'; }).join('');
-  return pick + seg + chart + stats + _maCap('Colonne de droite des séances = 1RM estimé de la série (formule d\'Epley). Le graphe suit la métrique choisie ci-dessus.') + _maSec('Dernières séances') + '<div class="ma-card">' + recent + '</div>';
+  // Explication de la métrique affichée (sous le graphe) — reprend la maquette validée.
+  var EXPL = {
+    cr: '<b>Charge + reps</b> de ta meilleure série (ex. 90×5) : la lecture la plus concrète. La courbe suit la charge, l\'étiquette montre charge × reps — tu vois d\'un coup si tu montes en charge ou en répétitions.',
+    '1rm': '<b>1RM estimé</b> = la charge que tu pousserais sur <b>1 seule répétition max</b>, calculée depuis ta meilleure série (formule d\'Epley). Un seul chiffre qui combine charge ET reps : 90×5 → 90×8, la charge ne bouge pas mais ton 1RM estimé monte.',
+    vol: '<b>Volume de l\'exercice</b> = somme de <b>TOUTES tes séries</b> (charge × reps) ce jour-là. La mesure du <b>travail total</b>, utile pour l\'hypertrophie.'
+  };
+  var explBox = '<div style="font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;padding:10px 12px;background:var(--surface2);border-radius:11px;line-height:1.45">' + (EXPL[met[0]] || '') + '</div>';
+  return pick + seg + chart + explBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recent + '</div>';
 }
 
 // Normalisation de texte (minuscule, sans accents) et clé muscle (tolère le pluriel).
