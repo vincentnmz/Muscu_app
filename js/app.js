@@ -6154,6 +6154,16 @@ function _cibleTxtSeance(t) {
 function _rirVal(rpe) { var n = Number(rpe); if (isNaN(n)) return null; return Math.max(0, Math.round((10 - n) * 10) / 10); }
 function _rirShort(rpe) { var n = Number(rpe); if (isNaN(n)) return ''; if (n >= 10) return 'échec'; var r = _rirVal(rpe); return (Number.isInteger(r) ? r : String(r).replace('.', ',')) + ' rés.'; }
 function _rirLong(rpe) { var n = Number(rpe); if (isNaN(n)) return ''; if (n >= 10) return 'échec'; var r = _rirVal(rpe); return (Number.isInteger(r) ? r : String(r).replace('.', ',')) + ' en réserve'; }
+// Options du sélecteur de RPE cible (éditeur de programme) : chaque RPE expliqué
+// en reps en réserve. La valeur stockée reste le nombre RPE (pas de changement back).
+function _rpeOptions(cur) {
+  var c = (cur == null) ? '' : String(cur);
+  var o = ['<option value=""' + (c === '' ? ' selected' : '') + '>— RPE</option>'];
+  [6, 7, 8, 9, 10].forEach(function (r) {
+    o.push('<option value="' + r + '"' + (c === String(r) ? ' selected' : '') + '>RPE ' + r + ' (' + _rirLong(r) + ')</option>');
+  });
+  return o.join('');
+}
 
 // Reps réalisées vs fourchette cible : 'ok' | 'sous' | 'sur' | null (pas de cible reps).
 function _repsVsCible(reps, t) {
@@ -7235,7 +7245,10 @@ function renderProgrammeCoach() {
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       ${champNum(l.charge_pct_1rm != null ? l.charge_pct_1rm : '', '75', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,this.value,null)`, '% du 1RM')}
-      ${champNum(l.rpe_cible != null ? l.rpe_cible : '', '8', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,null,this.value)`, 'RPE cible')}
+      <div style="flex:1;min-width:64px">
+        <label style="font-size:9px;color:var(--text-muted);margin-bottom:3px;display:block;text-transform:none;letter-spacing:0">RPE cible (effort)</label>
+        <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,null,this.value)" style="font-size:13px;padding:9px 6px;width:100%;min-width:0;text-align:center;margin-bottom:0;font-weight:700">${_rpeOptions(l.rpe_cible)}</select>
+      </div>
     </div>
     ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">🎯 Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}`;
 
@@ -7396,6 +7409,7 @@ function renderProgrammeCoach() {
         + '<div class="pb-fld pb-series"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
         + '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div></div>'
         + '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
+        + '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
         + '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
         + '<button class="pb-del" onclick="cdSupprimerLigne(' + ri + ')" title="Supprimer">✕</button>'
         + '</div>';
@@ -7620,8 +7634,39 @@ function _cibleVerdictHtml(vc) {
   if (!vc) return '';
   var parts = [];
   if (vc.charge) parts.push('<span style="color:' + _CIBLE_CH[vc.charge.v][0] + '">🎯 Charge ' + vc.charge.real + ' kg / cible ≈ ' + vc.charge.tgt + ' kg — ' + _CIBLE_CH[vc.charge.v][1] + '</span>');
-  if (vc.rpe) parts.push('<span style="color:' + _CIBLE_RP[vc.rpe.v][0] + '">RPE ' + vc.rpe.real + ' / cible ' + vc.rpe.tgt + ' — ' + _CIBLE_RP[vc.rpe.v][1] + '</span>');
+  if (vc.rpe) parts.push('<span style="color:' + _CIBLE_RP[vc.rpe.v][0] + '">Effort RPE ' + vc.rpe.real + ' (≈ ' + _rirLong(vc.rpe.real) + ') / cible ' + vc.rpe.tgt + ' — ' + _CIBLE_RP[vc.rpe.v][1] + '</span>');
   return parts.length ? '<div style="font-size:12px;margin-top:3px;display:flex;flex-direction:column;gap:2px;font-weight:600">' + parts.join('') + '</div>' : '';
+}
+// Verdict GLOBAL de la séance à partir des verdicts par exercice (_cibleVerdict).
+// Agrège charge + effort vs cibles du programme. null si aucun exo n'a de cible.
+function _verdictSeanceGlobal(seanceArr, progSeance) {
+  if (!seanceArr || !seanceArr.length || !progSeance || !progSeance.length) return null;
+  var nEval = 0, nSur = 0, nSous = 0, offExos = [];
+  seanceArr.forEach(function (exo) {
+    var p = progSeance.find(function (pr) { return pr.exercice === exo.exerciceNom; });
+    if (!p) return;
+    var vc = _cibleVerdict(p, exo.series || []);
+    if (!vc) return;
+    var off = false;
+    ['charge', 'rpe'].forEach(function (k) { if (vc[k]) { nEval++; if (vc[k].v === 'sur') { nSur++; off = true; } else if (vc[k].v === 'sous') { nSous++; off = true; } } });
+    if (off) offExos.push(exo.exerciceNom);
+  });
+  if (!nEval) return null;
+  var cls, titre, desc, reco;
+  if (nSur > 0 && nSur >= nSous) {
+    cls = 'hard'; titre = '🔥 Séance trop dure';
+    desc = 'Tu es allé au-delà de tes cibles sur ' + offExos.length + ' exercice' + (offExos.length > 1 ? 's' : '') + '. Attention à la récupération.';
+    reco = 'Reviens aux charges et à l\'effort prévus la prochaine fois (tu as dépassé la cible), et priorise la récup d\'ici la prochaine séance.';
+  } else if (nSous > 0 && nSous > nSur) {
+    cls = 'light'; titre = '🟠 Séance un peu légère';
+    desc = 'Tu avais de la marge sur ' + offExos.length + ' exercice' + (offExos.length > 1 ? 's' : '') + ' par rapport à tes cibles.';
+    reco = 'Tu peux pousser un peu plus la prochaine fois : ajoute de la charge ou des reps sur ' + (offExos[0] || 'ces exercices') + ' pour te rapprocher de la cible.';
+  } else {
+    cls = 'ok'; titre = '✅ Séance conforme';
+    desc = 'Tu as respecté tes cibles (charge / effort). Bon dosage.';
+    reco = 'Bon dosage — tu peux viser une petite surcharge progressive (un peu de charge ou de reps) aux prochaines séances.';
+  }
+  return { cls: cls, titre: titre, desc: desc, reco: reco };
 }
 function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec, groupeId, chargePct, rpeCible) {
   const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
@@ -10563,6 +10608,30 @@ function afficherRecap() {
       ${recordsBattus.map(r => `<div style="font-size:13px;font-weight:700;color:var(--text);">${r.nom} — <span style="color:var(--good)">${r.charge}kg</span></div>`).join('')}`;
     recap.insertBefore(recBlock, recap.firstChild);
   }
+
+  // Verdict GLOBAL de la séance (hero coloré en tête du récap) — si le programme
+  // a des cibles (% 1RM et/ou RPE). Sinon rien (on ne juge pas sans référence).
+  try {
+    const vg = _verdictSeanceGlobal(seance, programmeSeance);
+    if (vg) {
+      const rpesAll = [];
+      seance.forEach(e => e.series.forEach(s => { if (Number(s.rpe) > 0) rpesAll.push(Number(s.rpe)); }));
+      const rpeMoy = rpesAll.length ? Math.round(rpesAll.reduce((a, b) => a + b, 0) / rpesAll.length * 10) / 10 : null;
+      const tonT = Math.round(totalVol / 100) / 10;
+      const COLV = { ok: ['#00A854', '#007a3a'], light: ['#E07800', '#b35f00'], hard: ['#DC3545', '#a82633'] };
+      const cv = COLV[vg.cls];
+      const tile = (n, l) => `<div style="flex:1;background:rgba(255,255,255,.16);border-radius:10px;padding:8px 4px;text-align:center"><div style="font-size:15px;font-weight:900">${n}</div><div style="font-size:9px;opacity:.85;text-transform:uppercase;letter-spacing:.03em">${l}</div></div>`;
+      const hero = document.createElement('div');
+      hero.style.cssText = `border-radius:18px;padding:18px 16px;margin-bottom:12px;color:#fff;background:linear-gradient(135deg,${cv[0]},${cv[1]});box-shadow:0 8px 22px rgba(7,11,20,.14)`;
+      hero.innerHTML =
+        `<div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.85">${escapeHtml(seanceType)}${_seanceDureeMin > 0 ? ' · ⏱ ' + _seanceDureeMin + ' min' : ''}</div>`
+        + `<div style="font-size:23px;font-weight:900;margin:3px 0 5px;letter-spacing:-.01em">${vg.titre}</div>`
+        + `<div style="font-size:12.5px;opacity:.96;line-height:1.5">${escapeHtml(vg.desc)}</div>`
+        + `<div style="display:flex;gap:7px;margin-top:14px">${tile(tonT + ' t', 'Tonnage')}${tile(totalSeries, 'Séries')}${rpeMoy != null ? tile(String(rpeMoy).replace('.', ','), 'RPE moy') : ''}</div>`
+        + (vg.reco ? `<div style="margin-top:12px;font-size:12.5px;background:rgba(255,255,255,.14);border-radius:11px;padding:10px 12px;line-height:1.5">💡 ${escapeHtml(vg.reco)}</div>` : '');
+      recap.insertBefore(hero, recap.firstChild);
+    }
+  } catch (e) {}
 
   afficherProgrammeVsRealise(seanceType);
   window.scrollTo(0,0);
