@@ -7709,18 +7709,83 @@ function cdAjouterExercice(seanceId) {
   ov.onclick = function (e) { if (e.target === ov) cdCloseAddChooser(); };
 }
 function cdCloseAddChooser() { var ov = document.getElementById('cd-add-chooser'); if (ov) ov.style.display = 'none'; }
+// Sélecteur d'exercices MULTIPLE, groupé par muscle (coche plusieurs → ajout en 1 fois).
+var _cdPickSel = {};     // nom -> true (exercices cochés)
+var _cdPickSid = null;   // séance cible
+var _cdPickQuery = '';   // filtre de recherche
 async function _cdAddMuscu(seanceId) {
   cdCloseAddChooser();
   if (exercicesData.length === 0) { try { await chargerExercices(); } catch (e) {} }
-  if (exercicesData.length === 0) return;
-  const exo = exercicesData[0];
-  const body = {
-    action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
-    athlete_nom: _progAthleteNom(), seance_id: seanceId, exercice: exo.exercice,
-    series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: '', type: 'muscu'
-  };
-  await fetch(SCRIPT_URL, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
-  cdProgOpen[seanceId] = true;
+  if (exercicesData.length === 0) { showToast('Catalogue indisponible, réessaie'); return; }
+  _cdPickSel = {}; _cdPickSid = seanceId; _cdPickQuery = '';
+  var ov = document.getElementById('cd-exo-picker');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'cd-exo-picker'; ov.style.cssText = 'position:fixed;inset:0;background:rgba(3,6,14,.55);z-index:1400;display:flex;align-items:flex-end;justify-content:center'; document.body.appendChild(ov); }
+  ov.innerHTML = '<div style="background:var(--surface);border-radius:20px 20px 0 0;max-width:480px;width:100%;max-height:86vh;display:flex;flex-direction:column;overflow:hidden">'
+    + '<div style="padding:14px 16px 10px;flex:none;">'
+    +   '<div style="width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 12px"></div>'
+    +   '<div style="font-weight:800;text-align:center;font-size:15px;margin-bottom:10px">Ajouter des exercices à ' + escapeHtml(String(seanceId)) + '</div>'
+    +   '<input id="cd-pick-q" type="text" placeholder="🔍 Rechercher un exercice…" oninput="_cdPickFilter(this.value)" autocomplete="off" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px 12px;box-sizing:border-box;margin:0;">'
+    + '</div>'
+    + '<div id="cd-pick-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 8px;"></div>'
+    + '<div style="flex:none;padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);display:flex;gap:10px;background:var(--surface);">'
+    +   '<button onclick="_cdPickClose()" style="flex:none;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:12px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Annuler</button>'
+    +   '<button id="cd-pick-add" onclick="_cdPickConfirm()" disabled style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;opacity:.5">Ajouter</button>'
+    + '</div></div>';
+  ov.style.display = 'flex';
+  ov.onclick = function (e) { if (e.target === ov) _cdPickClose(); };
+  _cdPickRenderList();
+}
+function _cdPickClose() { var ov = document.getElementById('cd-exo-picker'); if (ov) ov.style.display = 'none'; }
+function _cdPickFilter(q) { _cdPickQuery = String(q || ''); _cdPickRenderList(); }
+function _cdPickToggle(nom, checked) {
+  if (checked) _cdPickSel[nom] = true; else delete _cdPickSel[nom];
+  var n = Object.keys(_cdPickSel).length;
+  var btn = document.getElementById('cd-pick-add');
+  if (btn) { btn.disabled = !n; btn.style.opacity = n ? '1' : '.5'; btn.textContent = n ? ('Ajouter (' + n + ')') : 'Ajouter'; }
+}
+function _cdPickRenderList() {
+  var host = document.getElementById('cd-pick-list'); if (!host) return;
+  var q = _normTxt(_cdPickQuery);
+  // Regroupe par muscle, filtré par la recherche (sur le nom ou le muscle).
+  var groups = {};
+  (exercicesData || []).forEach(function (e) {
+    if (!e || !e.exercice) return;
+    if (q && _normTxt(e.exercice).indexOf(q) < 0 && _normTxt(e.muscle || '').indexOf(q) < 0) return;
+    var mus = _musCap(e.muscle || 'Autres') || 'Autres';
+    (groups[mus] = groups[mus] || []).push(e.exercice);
+  });
+  var muscles = Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, 'fr'); });
+  if (!muscles.length) { host.innerHTML = '<div style="padding:24px 8px;text-align:center;color:var(--text-muted);font-size:13px">Aucun exercice trouvé.</div>'; return; }
+  var esc = function (x) { return escapeHtml(String(x == null ? '' : x)); };
+  host.innerHTML = muscles.map(function (m) {
+    var exos = groups[m].slice().sort(function (a, b) { return a.localeCompare(b, 'fr'); });
+    var rows = exos.map(function (nom) {
+      var checked = _cdPickSel[nom] ? ' checked' : '';
+      var attr = esc(nom).replace(/"/g, '&quot;');
+      return '<label style="display:flex;align-items:center;gap:11px;padding:11px 10px;border-radius:10px;cursor:pointer;">'
+        + '<input type="checkbox"' + checked + ' onchange="_cdPickToggle(this.getAttribute(\'data-nom\'),this.checked)" data-nom="' + attr + '" style="width:20px;height:20px;flex:none;accent-color:var(--accent);cursor:pointer;">'
+        + '<span style="font-size:14px;font-weight:600;color:var(--text)">' + esc(nom) + '</span></label>';
+    }).join('');
+    return '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);padding:12px 10px 4px;">' + esc(m) + '</div>' + rows;
+  }).join('');
+}
+async function _cdPickConfirm() {
+  var noms = Object.keys(_cdPickSel); if (!noms.length) return;
+  var sid = _cdPickSid;
+  var btn = document.getElementById('cd-pick-add');
+  if (btn) { btn.disabled = true; btn.textContent = 'Ajout…'; btn.style.opacity = '.7'; }
+  // Ajout séquentiel (conserve l'ordre de la liste, évite les collisions de lignes).
+  for (var i = 0; i < noms.length; i++) {
+    var body = {
+      action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
+      athlete_nom: _progAthleteNom(), seance_id: sid, exercice: noms[i],
+      series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: '', type: 'muscu'
+    };
+    try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); } catch (e) {}
+  }
+  _cdPickClose();
+  cdProgOpen[sid] = true;
+  try { showToast('✅ ' + noms.length + ' exercice' + (noms.length > 1 ? 's' : '') + ' ajouté' + (noms.length > 1 ? 's' : '')); } catch (e) {}
   chargerProgrammeCoach();
 }
 async function _cdAddCardio(seanceId) {
@@ -11115,9 +11180,10 @@ function _maRsAxis(rec, p) {
 // Bloc graphique standard, lisible : label + valeur actuelle + axe clair (2 bornes).
 function _maChartBlock(label, pts, unit, color, fill, axisFirst, note) {
   var last = pts.length ? pts[pts.length - 1] : 0;
-  // Bureau : courbe riche (axes + grille + étiquettes) pour ne pas aplatir la série
-  // hebdo. On synthétise des dates de fin de semaine (pas de 7 jours) pour l'axe X.
-  if (_maIsDesktop() && pts.length >= 2) {
+  // Courbe riche (axes + grille + étiquettes de dates et de valeurs) en desktop ET
+  // mobile — demande porteur : voir dates + données partout. On synthétise des dates
+  // de fin de semaine (pas de 7 jours) pour l'axe X.
+  if (pts.length >= 2) {
     var n = pts.length, dts = [], now = new Date(); now.setHours(0, 0, 0, 0);
     for (var i = n - 1; i >= 0; i--) {
       var d = new Date(now); d.setDate(d.getDate() - (n - 1 - i) * 7);
@@ -11454,12 +11520,12 @@ function _maProgExo(data) {
     // 1 seule séance sur la période : rendu point-unique (valeur + date) des deux
     // côtés, sinon desktop montrait une ligne plate vide et mobile un aplat à 0.
     chartBody = _maSingleRich(series[0], pts[0] && pts[0].date, met[2], '#1A5FFF');
-    if (_maIsDesktop()) legend = '<div class="ma-rclegend"><span><i style="background:#00A854"></i>' + met[1] + ' (' + met[2] + ')</span><span class="mut">Axe horizontal = date · détail des séries ci-dessous</span></div>';
-  } else if (_maIsDesktop()) {
+    legend = '<div class="ma-rclegend"><span><i style="background:#00A854"></i>' + met[1] + ' (' + met[2] + ')</span><span class="mut">Axe horizontal = date · détail des séries ci-dessous</span></div>';
+  } else {
+    // Courbe riche (dates + valeurs à chaque point) en desktop ET mobile — demande
+    // porteur : dates et données visibles sur toutes les périodes et tous les onglets.
     chartBody = _maLineRich(series, pts.map(function (p) { return p.date; }), met[2], '#1A5FFF');
     legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>' + met[1] + ' (' + met[2] + ')</span><span><b style="background:#00A854"></b>Dernier point</span><span class="mut">Axe vertical = ' + met[2] + ' · horizontal = date</span></div>';
-  } else {
-    chartBody = _maArea(series, '#1A5FFF', 'rgba(26,95,255,.12)') + '<div class="ma-axis"><span>' + pts.length + ' séance' + (pts.length > 1 ? 's' : '') + '</span><span>aujourd\'hui</span></div>';
   }
   var _chipTxt = isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')');
   var _topVal = isCR ? ((pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last;
