@@ -4351,6 +4351,7 @@ async function renderCoachSynthese(athletes) {
               <div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div>
               <div style="font-size:12.5px;font-weight:700;color:${c};margin-top:2px;">${analyseIcone(top.type)} ${escapeHtml(top.titre)}</div>
               <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:2px;">${escapeHtml(top.description)}</div>
+              ${top.recommandation ? `<div style="font-size:12px;font-weight:700;color:var(--accent);line-height:1.4;margin-top:4px;">👉 ${escapeHtml(top.recommandation)}</div>` : ''}
             </div>
             <span style="color:var(--text-muted);font-size:18px;flex-shrink:0;">›</span>
           </div>`;
@@ -6740,7 +6741,9 @@ function _coachDeskLecture() {
   var best = null;
   (d.enrich || []).forEach(function (e) { var ana = []; try { ana = NovalyzEngine.analyser(d.datas[e.i] || {}) || []; } catch (_) {} var top = ana.find(function (x) { return x.type === 'critical' || x.type === 'warning'; }); if (top && (!best || (top.priorite || 0) > (best.top.priorite || 0))) best = { e: e, top: top }; });
   if (!best) return '<div class="cs-lec">Rien de prioritaire aujourd\'hui.</div>';
-  return '<div class="cs-lec"><b>' + escapeHtml(best.e.a.nom) + '</b> — ' + escapeHtml(best.top.titre) + '. ' + escapeHtml(best.top.description || '') + '</div>';
+  return '<div class="cs-lec"><b>' + escapeHtml(best.e.a.nom) + '</b> — ' + escapeHtml(best.top.titre) + '. ' + escapeHtml(best.top.description || '')
+    + (best.top.recommandation ? '<span style="display:block;margin-top:5px;font-weight:700;color:var(--accent)">👉 ' + escapeHtml(best.top.recommandation) + '</span>' : '')
+    + '</div>';
 }
 function _coachDeskAujourdhui() {
   var d = _coachDesk, k = d.kpis || {};
