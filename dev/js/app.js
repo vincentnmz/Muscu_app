@@ -11039,7 +11039,7 @@ function _maShortDate(s) {
 // info exploitable même avec une seule séance. Utilisé desktop ET mobile.
 function _maSingleRich(value, date, unit, color) {
   color = color || '#1A5FFF';
-  var W = 640, H = 180, cx = W / 2, cy = 84, v = Math.round((Number(value) || 0) * 10) / 10;
+  var W = 470, H = 180, cx = W / 2, cy = 84, v = Math.round((Number(value) || 0) * 10) / 10;
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">'
     + '<line x1="46" y1="' + cy + '" x2="' + (W - 16) + '" y2="' + cy + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="5 5"/>'
     + '<circle cx="' + cx + '" cy="' + cy + '" r="6.5" fill="#00A854" stroke="#fff" stroke-width="2.5"/>'
@@ -11055,7 +11055,7 @@ function _maLineRich(series, dates, unit, color) {
   var n = series.length; color = color || '#1A5FFF';
   if (n === 1) return _maSingleRich(series[0], dates && dates[0], unit, color);
   if (n < 1) return _maArea(series, color, 'rgba(26,95,255,.12)');
-  var W = 640, H = 260, pL = 46, pR = 16, pT = 26, pB = 30;
+  var W = 470, H = 260, pL = 46, pR = 16, pT = 26, pB = 30;
   var mn = Math.min.apply(null, series), mx = Math.max.apply(null, series);
   if (mn === mx) { mn = mn - 1; mx = mx + 1; }
   var rng = mx - mn || 1;
@@ -11065,7 +11065,7 @@ function _maLineRich(series, dates, unit, color) {
   for (var g = 0; g <= 4; g++) {
     var yy = pT + g * (H - pT - pB) / 4, val = mx - g * rng / 4;
     grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
-    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="11" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
+    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12.5" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
   }
   // Unité de l'axe Y (ex. « kg ») en tête, pour lever toute ambiguïté.
   if (unit) ylab += '<text x="' + (pL - 7) + '" y="' + (pT - 9) + '" text-anchor="end" font-size="10" font-weight="800" fill="var(--text-muted)">' + unit + '</text>';
@@ -11075,14 +11075,14 @@ function _maLineRich(series, dates, unit, color) {
   series.forEach(function (v, i) {
     var xx = X(i), yv = Y(v), last = (i === n - 1);
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yv.toFixed(1) + '" r="' + (last ? 5 : 3.4) + '" fill="' + (last ? '#00A854' : color) + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
-    if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + (Math.round(v * 10) / 10) + (last && unit ? ' ' + unit : '') + '</text>';
+    if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + (Math.round(v * 10) / 10) + (last && unit ? ' ' + unit : '') + '</text>';
   });
   // Une étiquette de date à CHAQUE point tant que ça reste lisible (≤ 9), sinon on
   // éclaircit. On affiche la vraie date partout (pas « Auj. ») — demande porteur.
   var xstep = n <= 9 ? 1 : Math.ceil(n / 8), xi = [];
   for (var _xi = 0; _xi < n; _xi += xstep) xi.push(_xi);
   if (xi[xi.length - 1] !== n - 1) xi.push(n - 1);
-  var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="10" fill="var(--text-subtle)">' + _maE(_maShortDate(dates[i])) + '</text>'; }).join('');
+  var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + _maE(_maShortDate(dates[i])) + '</text>'; }).join('');
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + ylab + '<path d="' + area + '" fill="' + color + '" opacity="0.08"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' + dots + xlab + '</svg>';
 }
 function _maArea(pts, color, fill) {
@@ -11457,7 +11457,7 @@ function _maTrendBadgeVs(pct) {
 // par point. Rappel : chaque point = la série la plus lourde du jour (backend).
 function _maChargeRepsRich(pts) {
   var n = pts.length; if (!n) return _maArea([0], '#1A5FFF', 'rgba(26,95,255,.12)');
-  var W = 640, H = 264, pL = 46, pR = 18;
+  var W = 470, H = 264, pL = 46, pR = 18;
   var cTop = 48, cBot = 218;   // la ligne de charge occupe toute la hauteur (plus de barres)
   var charges = pts.map(function (p) { return Number(p.charge) || 0; });
   var reps = pts.map(function (p) { return Number(p.reps) || 0; });
@@ -11470,18 +11470,18 @@ function _maChargeRepsRich(pts) {
   var grid = '', yl = '';
   for (var g = 0; g <= 4; g++) {
     var yy = cTop + g * (cBot - cTop) / 4, val = cMax - g * cRng / 4;
-    grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="#eef2f8" stroke-width="1"/>';
-    yl += '<text x="' + (pL - 6) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="10" fill="#8a94a6">' + (Math.round(val * 10) / 10) + '</text>';
+    grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
+    yl += '<text x="' + (pL - 6) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
   }
-  yl += '<text x="' + (pL - 6) + '" y="' + (cTop - 18) + '" text-anchor="end" font-size="10" font-weight="800" fill="#1A5FFF">kg</text>';
+  yl += '<text x="' + (pL - 6) + '" y="' + (cTop - 18) + '" text-anchor="end" font-size="12" font-weight="800" fill="var(--accent)">kg</text>';
   var pline = charges.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ');
   var areaEl = (n >= 2) ? '<path d="M' + X(0).toFixed(1) + ' ' + Yc(charges[0]).toFixed(1) + ' ' + charges.map(function (v, i) { return 'L' + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + cBot + ' L' + X(0).toFixed(1) + ' ' + cBot + ' Z" fill="#1A5FFF" opacity="0.07"/>' : '';
   var dots = '', clab = '', xlab = '';
   charges.forEach(function (v, i) {
     var xx = X(i), yy = Yc(v), last = (i === n - 1);
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yy.toFixed(1) + '" r="' + (last ? 5 : 3.5) + '" fill="' + (last ? '#00A854' : '#1A5FFF') + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
-    clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="11.5" font-weight="800" fill="' + (last ? '#00A854' : '#0f1726') + '">' + v + '×' + reps[i] + '</text>';
-    xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="#8a94a6">' + e(_maShortDate(pts[i].date)) + '</text>';
+    clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="13.5" font-weight="800" fill="' + (last ? '#00A854' : 'var(--text)') + '">' + v + '×' + reps[i] + '</text>';
+    xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + e(_maShortDate(pts[i].date)) + '</text>';
   });
   var lineEl = (n >= 2) ? '<path d="' + pline + '" fill="none" stroke="#1A5FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' : '';
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + yl + areaEl + lineEl + dots + clab + xlab + '</svg>';
@@ -11537,10 +11537,25 @@ function _maProgExo(data) {
   var _chipTxt = isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')');
   var _topVal = isCR ? ((pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last;
   var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + _chipTxt + '</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + _topVal + ' ' + dspan + '</span></div>' + chartBody + legend + '</div>';
-  var best = pts.reduce(function (a, b) { return (b.charge || 0) > (a.charge || 0) ? b : a; }, pts[0]);
+  // Meilleure série = charge max, puis reps max à charge égale (sinon une dernière
+  // séance qui ajoute des reps à charge identique n'était pas prise en compte).
+  var best = pts.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, pts[0]);
   var recCharge = (data.global && data.global.records_par_exo && data.global.records_par_exo[sel] && data.global.records_par_exo[sel].charge) || best.charge || 0;
   var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">1RM estimé</div></div><div class="c"><div class="v">' + (best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + dstat + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + recCharge + ' kg</div><div class="u">record charge</div></div></div>';
-  var recent = pts.slice().reverse().slice(0, 6).map(function (p) { return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + (p.charge || 0) + ' kg × ' + (p.reps || 0) + '</span><span class="r">' + _maE1RM(p) + '</span></div>'; }).join('');
+  // « Dernières séances » : TOUTES les séries du jour (depuis seances_detail), +
+  // 1RM estimé du jour LABELLISÉ (sinon on ne comprend pas le chiffre de droite).
+  var sdByDate = {};
+  (data.seances_detail || []).forEach(function (s) {
+    var ex = (s.exercices || []).filter(function (e) { return e.nom === sel; })[0];
+    if (ex && ex.series && ex.series.length) sdByDate[s.date_fr || s.date] = ex.series;
+  });
+  var recentHead = '<div class="ma-sess ma-sess-h"><span class="dt">Date</span><span class="s">Séries (charge × reps)</span><span class="r">1RM</span></div>';
+  var recent = pts.slice().reverse().slice(0, 6).map(function (p) {
+    var series = sdByDate[p.date] || [{ charge: p.charge, reps: p.reps }];
+    var setsTxt = series.map(function (x) { return (x.charge || 0) + '×' + (x.reps || 0); }).join(' · ');
+    var bd = series.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, series[0]);
+    return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + setsTxt + '</span><span class="r">' + _maE1RM({ charge: bd.charge, reps: bd.reps }) + ' kg</span></div>';
+  }).join('');
   // Explication de la métrique affichée (sous le graphe) — reprend la maquette validée.
   var EXPL = {
     cr: '<b>Charge + reps</b> de ta meilleure série (ex. 90×5) : la lecture la plus concrète. La courbe suit la charge, l\'étiquette montre charge × reps — tu vois d\'un coup si tu montes en charge ou en répétitions.',
@@ -11548,7 +11563,7 @@ function _maProgExo(data) {
     vol: '<b>Volume de l\'exercice</b> = somme de <b>TOUTES tes séries</b> (charge × reps) ce jour-là. La mesure du <b>travail total</b>, utile pour l\'hypertrophie.'
   };
   var explBox = '<div style="font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;padding:10px 12px;background:var(--surface2);border-radius:11px;line-height:1.45">' + (EXPL[met[0]] || '') + '</div>';
-  return pick + seg + chart + explBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recent + '</div>';
+  return pick + seg + chart + explBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
 }
 
 // Normalisation de texte (minuscule, sans accents) et clé muscle (tolère le pluriel).
@@ -14253,11 +14268,31 @@ function _cxRender() {
 // Ouvre le flux de saisie en PAGE PLEIN ÉCRAN (body.seance-active) — l'en-tête
 // d'app et la barre du bas sont masqués, un bouton retour apparaît. Aucune
 // logique de saisie modifiée.
+// ── Maintien de l'écran allumé (Screen Wake Lock) pendant un chrono ──────────
+// Pendant une séance muscu ou une Hyrox chronométrée, l'écran ne doit pas
+// s'éteindre (sinon il faut le rallumer pour valider un segment). Le verrou est
+// relâché à l'arrêt du chrono, et ré-acquis au retour au premier plan (le système
+// le libère quand l'onglet est caché / l'écran s'éteint).
+var _nvWake = null, _nvWakeWant = false;
+async function _nvWakeOn() {
+  _nvWakeWant = true;
+  try { if (navigator.wakeLock && !_nvWake) { _nvWake = await navigator.wakeLock.request('screen'); _nvWake.addEventListener('release', function () { _nvWake = null; }); } } catch (e) {}
+}
+function _nvWakeOff() {
+  _nvWakeWant = false;
+  try { if (_nvWake) { _nvWake.release(); _nvWake = null; } } catch (e) {}
+}
+try {
+  document.addEventListener('visibilitychange', function () {
+    if (_nvWakeWant && document.visibilityState === 'visible') { _nvWakeOn(); }
+  });
+} catch (e) {}
+
 var _seanceChronoT0 = 0, _seanceChronoIv = null, _seanceDureeMin = 0;
 function _seanceChronoFmt(ms) { var s = Math.floor(ms / 1000), m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }
 function _seanceChronoTick() { var t = _seanceChronoT0 ? _seanceChronoFmt(Date.now() - _seanceChronoT0) : ''; var el = document.getElementById('seance-page-chrono'); if (el) el.textContent = t; var cc = document.getElementById('cardio-live-clock'); if (cc) cc.textContent = t || '0:00'; }
-function _seanceChronoStart() { if (!_seanceChronoT0) _seanceChronoT0 = Date.now(); _seanceChronoTick(); if (_seanceChronoIv) clearInterval(_seanceChronoIv); _seanceChronoIv = setInterval(_seanceChronoTick, 1000); }
-function _seanceChronoStop() { if (_seanceChronoIv) { clearInterval(_seanceChronoIv); _seanceChronoIv = null; } }
+function _seanceChronoStart() { if (!_seanceChronoT0) _seanceChronoT0 = Date.now(); _seanceChronoTick(); if (_seanceChronoIv) clearInterval(_seanceChronoIv); _seanceChronoIv = setInterval(_seanceChronoTick, 1000); try { _nvWakeOn(); } catch (e) {} }
+function _seanceChronoStop() { if (_seanceChronoIv) { clearInterval(_seanceChronoIv); _seanceChronoIv = null; } try { _nvWakeOff(); } catch (e) {} }
 function ouvrirSeancePage() {
   try { if (typeof switchSubTab === 'function') switchSubTab('saisie'); } catch (e) {}
   document.body.classList.add('seance-active');
@@ -18182,7 +18217,7 @@ function ouvrirHyroxChrono() {
   if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-chrono-overlay'; ov.className = 'hx-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
   ov.style.display = 'block'; ov.scrollTop = 0; ov.innerHTML = _hxStartHtml();
 }
-function fermerHyroxChrono() { if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; } var ov = _hxOv(); if (ov) ov.style.display = 'none'; }
+function fermerHyroxChrono() { if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; } try { _nvWakeOff(); } catch (e) {} var ov = _hxOv(); if (ov) ov.style.display = 'none'; }
 // Fermeture via la croix : si une Hyrox est EN COURS (chrono actif), on confirme.
 function _hxTryClose() { if (_hxTimer) { if (!confirm('Quitter la Hyrox en cours ? Les temps seront perdus.')) return; } fermerHyroxChrono(); }
 // Bouton RETOUR (flèche ‹) — remplace la croix sur les pages Hyrox (demande porteur).
@@ -18242,7 +18277,7 @@ function _hxLiveHtml() {
 // Les poids (_hxWeights), le mode (_hyroxMode) et les segments (_hxSegs) sont posés
 // par l'appelant : _hxStartCircuit() ou _hxStartAtelier().
 function _hxBegin() {
-  _hxIdx = 0; _hxSplits = []; _hxPaused = false; _hxPauseAcc = 0; _hxT0 = Date.now(); _hxSegT0 = Date.now(); var ov = _hxOv(); if (ov) ov.innerHTML = _hxLiveHtml(); _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); if (_hxTimer) clearInterval(_hxTimer); _hxTimer = setInterval(_hxTick, 200); _hxTick();
+  _hxIdx = 0; _hxSplits = []; _hxPaused = false; _hxPauseAcc = 0; _hxT0 = Date.now(); _hxSegT0 = Date.now(); var ov = _hxOv(); if (ov) ov.innerHTML = _hxLiveHtml(); _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); if (_hxTimer) clearInterval(_hxTimer); _hxTimer = setInterval(_hxTick, 200); _hxTick(); try { _nvWakeOn(); } catch (e) {}
 }
 // Circuit OFFICIEL : les 16 segments, poids officiels de la division (non modifiés).
 // Avant de lancer : état du jour (readiness) si pas encore fait aujourd'hui.
@@ -18265,6 +18300,7 @@ function _hxPause() { var b = document.getElementById('hx-pause'); if (!_hxPause
 function _hxCancel() { if (confirm('Annuler cette Hyrox ? Les splits en cours seront perdus.')) fermerHyroxChrono(); }
 async function _hxFinish() {
   if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; }
+  try { _nvWakeOff(); } catch (e) {}
   var total = Math.round((Date.now() - _hxT0 - _hxPauseAcc) / 1000);
   var segments = {}; _hxSegs.forEach(function (sg, i) { if (_hxSplits[i] != null) segments[sg.k] = Math.round(_hxSplits[i] / 1000); });
   var poids = {}, w = _HYROX_W[_hyroxDiv] || _HYROX_W.mo; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { poids[k] = (_hxWeights && _hxWeights[k] > 0) ? _hxWeights[k] : w[k]; });
