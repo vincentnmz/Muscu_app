@@ -6164,6 +6164,32 @@ function _rpeOptions(cur) {
   });
   return o.join('');
 }
+// Prescription anti-stagnation (P2) : à partir de l'historique de l'exo + sa
+// fourchette de reps programmée → piste d'action concrète. null si pas d'historique.
+// Déterministe : reps au plafond → +charge · marge en reps → +reps · sinon générique.
+function _prescriptionStag(exoNom) {
+  if (!exoNom) return null;
+  var d = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
+  if (!d) return null;
+  var pts = (d.historique && d.historique.progression_par_exo && d.historique.progression_par_exo[exoNom]) || [];
+  if (!pts.length) return null;
+  var r = Number(pts[0].reps) || 0;   // pts[0] = séance la plus récente (tri desc backend)
+  var prog = (d.programme || []).filter(function (l) { return l && l.exercice === exoNom; })[0];
+  var rmax = (prog && prog.reps_max != null && prog.reps_max !== '') ? Number(prog.reps_max) : null;
+  var rmin = (prog && prog.reps_mini != null && prog.reps_mini !== '') ? Number(prog.reps_mini) : null;
+  var act, why;
+  if (rmax && r >= rmax) {
+    act = 'Monte la charge d\'un petit cran (+2,5 kg) et redescends vers ' + (rmin ? rmin + ' reps' : 'le bas de ta fourchette') + ', puis remonte les reps séance après séance.';
+    why = 'Tu plafonnes en haut de ta fourchette de reps → c\'est le moment d\'ajouter de la charge (double progression).';
+  } else if (rmax && r < rmax) {
+    act = 'Garde la charge et ajoute des reps : vise ' + rmax + ' reps avant de remonter la charge.';
+    why = 'Il te reste de la marge en répétitions : progresse en volume avant d\'alourdir.';
+  } else {
+    act = 'Ajoute des reps tant que tu as de la marge, puis +2,5 kg quand tu plafonnes — ou varie l\'exercice pour un nouveau stimulus.';
+    why = 'Pas de fourchette de reps définie : règle générale de double progression.';
+  }
+  return { act: act, why: why };
+}
 
 // Reps réalisées vs fourchette cible : 'ok' | 'sous' | 'sur' | null (pas de cible reps).
 function _repsVsCible(reps, t) {
@@ -8095,7 +8121,10 @@ function renderAlertesCoach(data) {
     const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const fait = dejaConseille(sujetRaw);
     const explicationId = `alerte-explication-${idx}`;
+    const stagExo = (al.type === 'stagnation' && al.message && al.message.indexOf(' : aucun progrès') >= 0) ? al.message.split(' : aucun progrès')[0].trim() : null;
+    const presc = stagExo ? _prescriptionStag(stagExo) : null;
     const body = `<div style="font-size:13px;font-weight:700;color:${c};">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:500">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
+      ${presc ? `<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:5px;">👉 ${escapeHtml(presc.act)}</div>` : ''}
       <div id="${explicationId}" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:7px;padding:7px 9px;background:var(--surface2);border-radius:8px;line-height:1.45;">${explicationAlerte(al)}</div>`;
     const actions = `<button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
         ${fait
@@ -11635,7 +11664,20 @@ function _maProgExo(data) {
     vol: '<b>Volume de l\'exercice</b> = somme de <b>TOUTES tes séries</b> (charge × reps) ce jour-là. La mesure du <b>travail total</b>, utile pour l\'hypertrophie.'
   };
   var explBox = '<div style="font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;padding:10px 12px;background:var(--surface2);border-radius:11px;line-height:1.45">' + (EXPL[met[0]] || '') + '</div>';
-  return pick + seg + chart + explBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
+  // Prescription anti-stagnation (P2) : affichée si le moteur a flaggé CET exo en
+  // stagnation (source unique : alertes_centre), sous le graphe.
+  var stagBox = '';
+  try {
+    var _isStag = (data.alertes_centre || []).some(function (a) { return a && a.type === 'stagnation' && String(a.evidence || '').indexOf(sel) >= 0; });
+    if (_isStag) {
+      var _pr = _prescriptionStag(sel);
+      if (_pr) stagBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:12px;padding:12px 14px;margin-top:10px">'
+        + '<div style="font-size:13px;font-weight:800;color:var(--warn)">⚠️ Stagnation sur cet exercice</div>'
+        + '<div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-top:7px;line-height:1.45">👉 ' + _maE(_pr.act) + '</div>'
+        + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.4">' + _maE(_pr.why) + '</div></div>';
+    }
+  } catch (e) {}
+  return pick + seg + chart + explBox + stagBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
 }
 
 // Normalisation de texte (minuscule, sans accents) et clé muscle (tolère le pluriel).
@@ -17698,7 +17740,14 @@ function renderAlertes(data) {
       + '<div style="min-width:0;flex:1;">'
       + '<div style="font-size:13px;font-weight:800;color:' + col + ';">' + escapeHtml(a.title || '') + '</div>'
       + (a.evidence ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px;">' + escapeHtml(a.evidence) + '</div>' : '')
-      + (a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '')
+      + (function () {
+          // Stagnation : remplace l'action générique par une prescription concrète
+          // (reps plafond → +charge · marge → +reps), calculée depuis l'historique de l'exo.
+          var ex = (a.type === 'stagnation' && a.evidence && a.evidence.indexOf(' : aucun progrès') >= 0) ? a.evidence.split(' : aucun progrès')[0].trim() : null;
+          var pr = ex ? _prescriptionStag(ex) : null;
+          if (pr) return '<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:4px;">👉 ' + escapeHtml(pr.act) + '</div>';
+          return a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '';
+        })()
       + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')
       + '</div>'
       + '<button onclick="marquerAlerteLue(&quot;' + escapeHtml(String(a.id)) + '&quot;)" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
