@@ -29,13 +29,27 @@ function extractFn(name) {
 
 const WINDOWS_SRC = SRC.match(/const WINDOWS = \{[^}]*\}/)[0] + ';';   // { ACUTE:7, MID:14, CHRONIC:28, LONG:56 }
 const FN_NAMES = ['fmtYMD', 'minus', 'parseFR', 'fmtFR', 'normDate', 'isoWeek', 'prevIsoWeek', 'getLundi',
-  'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'computeTendances', 'buildProgressionParExo', 'buildVolumeSemaineParMuscle'];
+  'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'computeTendances', 'buildProgressionParExo', 'buildVolumeSemaineParMuscle', 'buildDailyMuscu'];
 const tsCode = WINDOWS_SRC + '\n\n' + FN_NAMES.map(extractFn).join('\n\n');
 const jsCode = stripTypeScriptTypes(tsCode);           // retire les types → JS exécutable
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext(jsCode + '\n' + FN_NAMES.map(n => `this.${n} = ${n};`).join(''), sandbox);
-const { computeGlobal, computeRecent, computeComparison, computeStreak, computeTendances, buildProgressionParExo, buildVolumeSemaineParMuscle } = sandbox;
+const { computeGlobal, computeRecent, computeComparison, computeStreak, computeTendances, buildProgressionParExo, buildVolumeSemaineParMuscle, buildDailyMuscu } = sandbox;
+
+// Réplique côté client de _maMuscuAgg (app.js) : somme daily_muscu sur [startISO,endISO).
+function maMuscuAggLike(daily, startISO, endISO) {
+  let seances = 0, series = 0, reps = 0, tonnage = 0, rpeSum = 0, rpeN = 0; const spm = {};
+  Object.keys(daily || {}).forEach(d => {
+    if (d >= startISO && d < endISO) {
+      const o = daily[d]; if (!o) return;
+      if ((o.series || 0) > 0) seances++;
+      series += o.series || 0; reps += o.reps || 0; tonnage += o.tonnage_kg || 0; rpeSum += o.rpe_sum || 0; rpeN += o.rpe_n || 0;
+      Object.keys(o.spm || {}).forEach(m => { spm[m] = (spm[m] || 0) + o.spm[m]; });
+    }
+  });
+  return { seances, series, reps, tonnage_kg: Math.round(tonnage), rpe_moyen: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null, series_par_muscle: spm };
+}
 
 let ok = 0, ko = 0;
 const check = (n, cond, att, obt) => { if (cond) ok++; else { ko++; console.log('  ❌ ' + n + ' — attendu ' + att + ', obtenu ' + obt); } };
@@ -134,6 +148,29 @@ eq('recent vide → j7.seances 0', recVide.j7.seances, 0);
 eq('recent vide → j7.monotonie null', recVide.j7.monotonie, null);
 eq('recent vide → j7.strain null', recVide.j7.strain, null);
 eq('recent vide → j7.rpe_moyen null', recVide.j7.rpe_moyen, null);
+
+// =============================================================================
+// buildDailyMuscu — agrégat journalier complet (fenêtres navigables côté front).
+// Claim vérifié : sur une MÊME fenêtre, la somme des jours == computeRecent.
+// =============================================================================
+const daily = buildDailyMuscu(perfsRecent);
+eq('daily_muscu : 4 jours d\'entraînement', Object.keys(daily).length, 4);
+eq('daily_muscu[2026-08-14].series = 1', daily['2026-08-14'].series, 1);
+eq('daily_muscu[2026-08-14].tonnage_kg = 500', daily['2026-08-14'].tonnage_kg, 500);
+eq('daily_muscu[2026-08-14].spm.Jambes = 1', daily['2026-08-14'].spm.Jambes, 1);
+// Fenêtre glissante 7 j = [2026-08-14, 2026-08-21) → doit égaler recent.j7.
+const aggJ7 = maMuscuAggLike(daily, '2026-08-14', '2026-08-21');
+eq('daily agg j7.seances == recent.j7.seances', aggJ7.seances, rec.j7.seances);
+eq('daily agg j7.tonnage_kg == recent.j7', aggJ7.tonnage_kg, rec.j7.tonnage_kg);
+eq('daily agg j7.series == recent.j7', aggJ7.series, rec.j7.series);
+eq('daily agg j7.reps == recent.j7', aggJ7.reps, rec.j7.reps);
+eq('daily agg j7.rpe_moyen == recent.j7', aggJ7.rpe_moyen, rec.j7.rpe_moyen);
+eq('daily agg j7.spm.Jambes == recent.j7', aggJ7.series_par_muscle.Jambes, rec.j7.series_par_muscle.Jambes);
+// Fenêtre 28 j = [2026-07-23, 2026-08-21) → doit égaler recent.j28.
+const aggJ28 = maMuscuAggLike(daily, '2026-07-23', '2026-08-21');
+eq('daily agg j28.seances == recent.j28', aggJ28.seances, rec.j28.seances);
+eq('daily agg j28.tonnage_kg == recent.j28', aggJ28.tonnage_kg, rec.j28.tonnage_kg);
+eq('daily agg j28.rpe_moyen == recent.j28', aggJ28.rpe_moyen, rec.j28.rpe_moyen);
 
 // =============================================================================
 // computeComparison — 7 j vs 7 j précédents / 28 j vs 28 j précédents

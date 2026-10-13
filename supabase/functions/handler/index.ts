@@ -797,6 +797,28 @@ function buildVolumeSemaineHisto(perfs: any[]): Record<string, number> {
   return r
 }
 
+// Agrégat muscu par JOUR d'entraînement (historique COMPLET). Permet au front de
+// recalculer n'importe quelle fenêtre calendaire (semaine/mois/année navigables
+// avec flèches) en SOMMANT les jours — mêmes définitions que computeRecent
+// (seances = jours distincts, series = nb de lignes, tonnage = Σ charge×reps…),
+// donc à offset 0 les chiffres coïncident avec les fenêtres glissantes du backend.
+// Valeurs NON arrondies par jour → le front arrondit la somme (cohérent avec recent).
+function buildDailyMuscu(perfs: any[]): Record<string, any> {
+  const out: Record<string, any> = {}
+  for (const r of perfs) {
+    const d = normDate(r.date); if (!d) continue
+    const charge = Number(r.charge) || 0, reps = Number(r.reps) || 0
+    let o = out[d]
+    if (!o) o = out[d] = { series: 0, reps: 0, tonnage_kg: 0, rpe_sum: 0, rpe_n: 0, spm: {} as Record<string, number>, vpm: {} as Record<string, number> }
+    o.series++
+    o.reps += reps
+    o.tonnage_kg += charge * reps
+    if (r.rpe) { o.rpe_sum += Number(r.rpe); o.rpe_n++ }
+    if (r.muscle) { o.spm[r.muscle] = (o.spm[r.muscle] || 0) + 1; o.vpm[r.muscle] = (o.vpm[r.muscle] || 0) + charge * reps }
+  }
+  return out
+}
+
 function buildVolumeParJour(perfs: any[]): Record<string, number> {
   // clés ISO yyyy-mm-dd (comme Code.gs volumeParJour) → heatmap d'activité (front)
   const r: Record<string, number> = {}
@@ -836,7 +858,7 @@ function buildSeancesDetail(perfs: any[]): any[] {
   }
   return Object.values(map)
     .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
-    .slice(0, 20)
+    .slice(0, 40)   // 40 séances : assez pour naviguer plusieurs mois en arrière (Par groupe / Par séance / Historique)
     .map((s: any) => ({ date: s.date, date_fr: s.date_fr, seance_id: s.seance_id, tonnage: Math.round(s.tonnage), nb_series: s.series, exercices: Object.values(s.exos) }))
 }
 
@@ -2023,6 +2045,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       progression_par_exo: buildProgressionParExo(perfs),
       volume_semaine: buildVolumeSemaineParMuscle(perfs, now),
       volume_par_jour: buildVolumeParJour(perfs),
+      daily_muscu: buildDailyMuscu(perfs),
       tendances: computeTendances(perfs, now),
     },
     poids,
