@@ -11479,6 +11479,18 @@ function maRenderData() {
 
 // Bloc « Lecture Novalyz » : constats + reco orientés objectif (backend
 // analyse_synthese.muscu). Tolérant : si absent (backend pas encore redéployé), rien.
+// « Mot de Novalyz » : fait TOURNER la reco parmi le pool (un levier par jour) au
+// lieu d'un message figé. Déterministe (index = numéro de jour), honnête (rien si
+// confiance faible, sauf allowAllConf pour la Lecture Analyses qui montre toujours).
+function _novaPickReco(s, allowAllConf) {
+  if (!s) return '';
+  if (!allowAllConf && s.confiance === 'faible') return '';
+  var pool = (s.reco_pool && s.reco_pool.length) ? s.reco_pool : (s.reco ? [s.reco] : []);
+  if (!pool.length) return '';
+  var di = Math.floor(Date.now() / 86400000);   // index de jour → change chaque jour
+  var r = pool[((di % pool.length) + pool.length) % pool.length];
+  return String((r && r.texte) || '');
+}
 function _maSynthese(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.muscu); }
 function _maSyntheseCardio(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.cardio); }
 function _maSyntheseBloc(s) {
@@ -11491,7 +11503,8 @@ function _maSyntheseBloc(s) {
   var constats = (s.constats || []).map(function (c) {
     return '<div style="display:flex;gap:9px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:999px;background:' + (TON[c.ton] || 'var(--text-subtle)') + ';margin-top:6px;flex:none"></span><span style="font-size:13px;line-height:1.45">' + _maE(c.texte) + '</span></div>';
   }).join('');
-  var reco = s.reco ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(s.reco.texte) + '</div></div></div>') : '';
+  var _recoTxt = _novaPickReco(s, true) || (s.reco && s.reco.texte) || '';
+  var reco = _recoTxt ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(_recoTxt) + '</div></div></div>') : '';
   var conf = s.confiance ? '<div style="text-align:right;font-size:10px;color:var(--text-subtle)">fiabilité : ' + _maE(s.confiance) + '</div>' : '';
   return '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz' + head + '</div>'
     + '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;margin:8px 0 16px">' + constats + reco + conf
@@ -13496,6 +13509,7 @@ function renderAujourdhui(data) {
     var faites = _seancesFaites(reg);
     var prevues = reg.seances_prevues || 4;
     var elR = document.getElementById('tj-reg'); if (elR) elR.textContent = faites + ' / ' + prevues + ' cette semaine';
+    var elRd = document.getElementById('tj-reg-d'); if (elRd) elRd.textContent = faites + ' / ' + prevues + ' séances cette semaine';
     var elW = document.getElementById('tj-reg-week');
     if (elW) { var n = Math.max(prevues || 0, 4), h = ''; for (var i = 0; i < n; i++) { h += '<span class="tj-wk' + (i < faites ? ' on' : '') + '"></span>'; } elW.innerHTML = h; }
     // Roue des séances (bloc d'accueil) : anneau animé qui « monte » vers faites/prevues.
@@ -13517,6 +13531,39 @@ function renderAujourdhui(data) {
         void fg.getBoundingClientRect();   // reflow → l'anim repart de 0
         requestAnimationFrame(function () { fg.style.transition = ''; fg.setAttribute('stroke-dashoffset', String(100 - pct)); });
       }
+    }
+  } catch (e) {}
+
+  // --- Badge : meilleur trophée débloqué, dans le header (animé), avec pastille NEW ---
+  // Mêmes conditions que la collection de trophées (_renderTrophees) : rien d'inventé,
+  // juste la mise en avant du plus haut palier atteint. Au tap → scrolle vers la carte
+  // Récompenses (où vit la collection complète).
+  try {
+    var _bg = (data && data.global) || {}, _bd = (data && data.dashboard) || {};
+    var _tS = Number(_bg.total_seances || 0);
+    var _stk = (_bd.regularite && _bd.regularite.streak != null) ? Number(_bd.regularite.streak) : ((_bd.streak && _bd.streak.semaines != null) ? Number(_bd.streak.semaines) : 0);
+    var _hasRec = _bg.records_par_exo && Object.keys(_bg.records_par_exo).length > 0;
+    var SVGf = '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>', SVGm = '<circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/>', SVGb = '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>', SVGs = '<path d="M12 2 15 8l6 .9-4.5 4.3L17.7 20 12 16.8 6.3 20l1.2-6.8L3 8.9 9 8z"/>', SVGc = '<path d="M20 6 9 17l-5-5"/>';
+    // Du plus prestigieux au plus simple : on prend le 1er atteint.
+    var _cand = [
+      { k: 's100', ok: _tS >= 100, svg: SVGs, lab: '100 séances' },
+      { k: 'str10', ok: _stk >= 10, svg: SVGf, lab: _stk + ' semaines de série' },
+      { k: 'rec', ok: !!_hasRec, svg: SVGm, lab: 'Records battus' },
+      { k: 'sea', ok: _tS >= 1, svg: SVGb, lab: _tS + ' séance' + (_tS > 1 ? 's' : '') },
+      { k: 'str', ok: _stk >= 1, svg: SVGf, lab: _stk + ' semaine' + (_stk > 1 ? 's' : '') + ' de série' },
+      { k: 'w1', ok: (_stk >= 1 || _tS >= 3), svg: SVGc, lab: 'Première semaine' }
+    ];
+    var _best = null; for (var _bi = 0; _bi < _cand.length; _bi++) { if (_cand[_bi].ok) { _best = _cand[_bi]; break; } }
+    var bEl = document.getElementById('tj-badge');
+    if (bEl) {
+      if (_best) {
+        var _bk = 'nvz_badge_' + ((typeof athlete !== 'undefined' && athlete && athlete.athlete_id) || 'x');
+        var _seen = ''; try { _seen = localStorage.getItem(_bk) || ''; } catch (e2) {}
+        var _isNew = _seen !== _best.k;
+        bEl.style.display = ''; bEl.title = 'Trophée débloqué : ' + _best.lab;
+        bEl.innerHTML = (_isNew ? '<span class="nw">NEW</span>' : '') + '<svg viewBox="0 0 24 24">' + _best.svg + '</svg>';
+        try { localStorage.setItem(_bk, _best.k); } catch (e3) {}
+      } else { bEl.style.display = 'none'; bEl.innerHTML = ''; }
     }
   } catch (e) {}
 
@@ -13586,8 +13633,8 @@ function renderAujourdhui(data) {
     var elNova = document.getElementById('tj-nova');
     var elnT = document.getElementById('tj-nova-txt');
     var sM = data && data.analyse_synthese && data.analyse_synthese.muscu;
-    var novaTxt = (sM && sM.reco && sM.reco.texte && sM.confiance && sM.confiance !== 'faible')
-      ? String(sM.reco.texte) : '';
+    // Rotation : un levier du pool par jour (plus de message figé). Masqué si confiance faible.
+    var novaTxt = _novaPickReco(sM);
     if (novaTxt) {
       if (elnT) elnT.textContent = novaTxt;
       if (elNova) elNova.style.display = '';

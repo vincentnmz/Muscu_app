@@ -1530,13 +1530,31 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   else if (progOk) reco = { texte: maintien ? `Tu es même au-dessus d'un simple maintien : garde cette charge, inutile de forcer la surcharge.` : `Conserve la structure actuelle et poursuis la surcharge progressive (petites hausses de charge ou de reps).`, priorite: 'info' }
   else reco = { texte: `Continue et enregistre régulièrement tes séances : les analyses s'affinent avec les données.`, priorite: 'info' }
 
+  // ── Pool de recommandations : plusieurs LEVIERS applicables, pas un message figé.
+  // Le front en affiche un par jour (rotation) → « le mot de Novalyz » tourne.
+  // Chaque entrée reste une règle TRACÉE sur l'état mesuré, jamais un chiffre inventé ;
+  // on n'ajoute un levier que si sa condition est vraie. (CLAUDE.md §5/§6bis)
+  const reco_pool: any[] = []
+  const pushReco = (t: string, p: string) => { if (t && !reco_pool.some(x => x.texte === t)) reco_pool.push({ texte: t, priorite: p }) }
+  // 1) Le levier prioritaire du jour (reco principale déjà calculée).
+  pushReco(reco.texte, reco.priorite)
+  // 2) Leviers de PROGRESSION selon l'état mesuré (uniquement si pas de contrainte/vigilance).
+  if (!contrainte && !etatVigilance) {
+    if (progOk) pushReco(`Tu progresses : pour continuer, ajoute une petite surcharge (+1 rep, ou +2,5 kg) sur un exercice clé dès que ta dernière série passe bien.`, 'moyenne')
+    if (tonEvol != null && !aBaisse && !progOk) pushReco(`Ton volume est stable : relance la progression en visant +1 rep sur tes exos principaux, puis +2,5 kg une fois le haut de ta fourchette atteint.`, 'moyenne')
+    if (tonEvol != null && !aBaisse) pushReco(`Cible un muscle en retard : ajoute 1 à 2 séries par semaine là où ton volume est sous ta cible, pour équilibrer ton développement.`, 'moyenne')
+    // 3) Leviers d'AIDE transverses (toujours utiles, non chiffrés → priorité info).
+    pushReco(`Soigne l'exécution avant la charge : tempo contrôlé et amplitude complète rendent chaque série plus efficace.`, 'info')
+    pushReco(`Varie tes exercices toutes les 6 à 8 semaines : un nouveau stimulus relance la progression quand elle plafonne.`, 'info')
+    pushReco(`Enregistre ton RPE à chaque série : plus tes données sont complètes, plus les analyses et les cibles de charge sont justes.`, 'info')
+  }
   // Confiance = profondeur réelle des données (nb de séances) + présence d'une base
   // de comparaison fiable — plus honnête que « un % existe donc c'est bon ».
   let confiance: string
   if (nCur == null || nCur < 2) confiance = 'faible'
   else if (!baseFiable) confiance = 'moyenne'
   else confiance = (nCur >= 6) ? 'bonne' : 'moyenne'
-  return { objectif: objectif || null, constats: constats.slice(0, 3), reco, confiance }
+  return { objectif: objectif || null, constats: constats.slice(0, 3), reco, reco_pool, confiance }
 }
 
 // « Lecture Novalyz » (cardio) : régularité + charge cardio (RPE×durée) 28j vs 28j
