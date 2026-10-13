@@ -11172,7 +11172,7 @@ function _maLineRich(series, dates, unit, color) {
   if (unit) ylab += '<text x="' + (pL - 7) + '" y="' + (pT - 9) + '" text-anchor="end" font-size="10" font-weight="800" fill="var(--text-muted)">' + unit + '</text>';
   var line = series.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ');
   var area = 'M' + X(0).toFixed(1) + ' ' + Y(series[0]).toFixed(1) + ' ' + series.map(function (v, i) { return 'L' + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + (H - pB) + ' L' + X(0).toFixed(1) + ' ' + (H - pB) + ' Z';
-  var step = n > 12 ? Math.ceil(n / 10) : 1, dots = '';
+  var step = Math.max(1, Math.ceil(n / 8)), dots = '';
   series.forEach(function (v, i) {
     var xx = X(i), yv = Y(v), last = (i === n - 1);
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yv.toFixed(1) + '" r="' + (last ? 5 : 3.4) + '" fill="' + (last ? '#00A854' : color) + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
@@ -11180,7 +11180,7 @@ function _maLineRich(series, dates, unit, color) {
   });
   // Une étiquette de date à CHAQUE point tant que ça reste lisible (≤ 9), sinon on
   // éclaircit. On affiche la vraie date partout (pas « Auj. ») — demande porteur.
-  var xstep = n <= 9 ? 1 : Math.ceil(n / 8), xi = [];
+  var xstep = Math.max(1, Math.ceil(n / 5)), xi = [];
   for (var _xi = 0; _xi < n; _xi += xstep) xi.push(_xi);
   if (xi[xi.length - 1] !== n - 1) xi.push(n - 1);
   var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + _maE(_maShortDate(dates[i])) + '</text>'; }).join('');
@@ -11578,11 +11578,13 @@ function _maChargeRepsRich(pts) {
   var pline = charges.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ');
   var areaEl = (n >= 2) ? '<path d="M' + X(0).toFixed(1) + ' ' + Yc(charges[0]).toFixed(1) + ' ' + charges.map(function (v, i) { return 'L' + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + cBot + ' L' + X(0).toFixed(1) + ' ' + cBot + ' Z" fill="#1A5FFF" opacity="0.07"/>' : '';
   var dots = '', clab = '', xlab = '';
+  // Étiquettes espacées quand beaucoup de points (ex. 3 mois) → pas de chevauchement.
+  var cstep = Math.max(1, Math.ceil(n / 7)), xstepCR = Math.max(1, Math.ceil(n / 5));
   charges.forEach(function (v, i) {
     var xx = X(i), yy = Yc(v), last = (i === n - 1);
     dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yy.toFixed(1) + '" r="' + (last ? 5 : 3.5) + '" fill="' + (last ? '#00A854' : '#1A5FFF') + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
-    clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="13.5" font-weight="800" fill="' + (last ? '#00A854' : 'var(--text)') + '">' + v + '×' + reps[i] + '</text>';
-    xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + e(_maShortDate(pts[i].date)) + '</text>';
+    if (last || i % cstep === 0) clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="13.5" font-weight="800" fill="' + (last ? '#00A854' : 'var(--text)') + '">' + v + '×' + reps[i] + '</text>';
+    if (last || i % xstepCR === 0) xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + e(_maShortDate(pts[i].date)) + '</text>';
   });
   var lineEl = (n >= 2) ? '<path d="' + pline + '" fill="none" stroke="#1A5FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' : '';
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + yl + areaEl + lineEl + dots + clab + xlab + '</svg>';
