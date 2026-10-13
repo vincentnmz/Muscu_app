@@ -6190,6 +6190,30 @@ function _prescriptionStag(exoNom) {
   }
   return { act: act, why: why };
 }
+// Prescription de charge (P4) : charge à viser (1RM estimé × % programmé) + règle de
+// progression PILOTÉE PAR LE PROGRAMME (fourchette de reps de l'exo) et adaptée au
+// niveau/stratégie. null si aucune cible exploitable.
+function _chargeAViser(prog) {
+  if (!prog) return null;
+  var pct = (prog.charge_pct_1rm != null && prog.charge_pct_1rm !== '') ? Number(prog.charge_pct_1rm) : null;
+  var kg = (pct != null) ? _cibleKg(prog.exercice, pct) : null;
+  var rmin = (prog.reps_mini != null && prog.reps_mini !== '') ? Number(prog.reps_mini) : null;
+  var rmax = (prog.reps_max != null && prog.reps_max !== '') ? Number(prog.reps_max) : null;
+  var rpe = (prog.rpe_cible != null && prog.rpe_cible !== '') ? Number(prog.rpe_cible) : null;
+  if (kg == null && rmin == null && rmax == null && rpe == null) return null;
+  var niv = 'debutant'; try { niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
+  var strat = (niv === 'debutant') ? 'Progression linéaire' : (niv === 'intermediaire') ? 'Double progression' : 'Progression avancée';
+  var bas = rmin || 'le bas de ta fourchette', haut = rmax;
+  var txt;
+  if (niv === 'debutant') {
+    txt = haut ? ('Monte les reps vers ' + haut + '. À ' + haut + ' partout → +2,5 kg et repars du bas (' + bas + ').') : 'Ajoute un petit cran de charge dès que tes séries passent facilement.';
+  } else if (niv === 'intermediaire') {
+    txt = haut ? ('Ajoute 1 rep quand tu es à l\'aise (≈ toutes les 3-4 séances) jusqu\'à ' + haut + '. À ' + haut + ' partout → +2,5 kg, retour vers ' + bas + '.') : 'Gagne des reps quand tu es à l\'aise, puis +2,5 kg.';
+  } else {
+    txt = 'Micro-progression : gagne les reps de ta fourchette lentement, puis +1,25-2,5 kg — pas à chaque séance.';
+  }
+  return { kg: kg, rmin: rmin, rmax: rmax, rpe: rpe, strat: strat, prog: txt };
+}
 
 // Reps réalisées vs fourchette cible : 'ok' | 'sous' | 'sur' | null (pas de cible reps).
 function _repsVsCible(reps, t) {
@@ -11679,7 +11703,30 @@ function _maProgExo(data) {
         + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.4">' + _maE(_pr.why) + '</div></div>';
     }
   } catch (e) {}
-  return pick + seg + chart + explBox + stagBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
+  // Charge à viser (P4) — athlète uniquement (1RM estimé = le sien) : cible du
+  // programme + progression adaptée au niveau. Masqué en vue coach.
+  var aimBox = '';
+  try {
+    var _coachView = (typeof _maCoach !== 'undefined' && _maCoach);
+    if (!_coachView && typeof athlete !== 'undefined' && athlete) {
+      var _pl = (data.programme || []).filter(function (l) { return l && l.exercice === sel; })[0];
+      var _ca = _chargeAViser(_pl);
+      if (_ca) {
+        var rangeTxt = (_ca.rmin && _ca.rmax) ? (_ca.rmin + '-' + _ca.rmax) : (_ca.rmax || _ca.rmin || '');
+        var rpeTxt = (_ca.rpe != null) ? ('RPE ' + _ca.rpe + ' · ' + _rirLong(_ca.rpe)) : '';
+        aimBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;margin-top:10px">'
+          + '<div style="font-size:13px;font-weight:800">🎯 Charge à viser</div>'
+          + '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px">'
+          + (_ca.kg != null ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:20px;color:var(--accent)">' + _ca.kg + ' kg</span>' : '<span style="font-size:12.5px;color:var(--text-muted)">cible en % (1RM pas encore fiable)</span>')
+          + (rangeTxt ? '<span style="font-size:13px;font-weight:800">× ' + rangeTxt + '</span>' : '')
+          + (rpeTxt ? '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;text-align:right">' + rpeTxt + '</span>' : '')
+          + '</div>'
+          + '<div style="font-size:12px;color:var(--text);margin-top:8px;line-height:1.45">📈 ' + _maE(_ca.prog) + '</div>'
+          + '<div style="font-size:10px;color:var(--text-subtle);margin-top:6px;text-transform:uppercase;letter-spacing:.03em">Stratégie : ' + _maE(_ca.strat) + '</div></div>';
+      }
+    }
+  } catch (e) {}
+  return pick + seg + chart + explBox + stagBox + aimBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
 }
 
 // Normalisation de texte (minuscule, sans accents) et clé muscle (tolère le pluriel).
