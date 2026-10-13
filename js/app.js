@@ -15383,8 +15383,15 @@ function _maybeQuotidienEtat() {
     var key = 'nvz_etat_auto_' + athlete.athlete_id;
     var last = null; try { last = localStorage.getItem(key); } catch (e) {}
     if (last === today) { _etatAutoChecked = true; return; }   // déjà proposé aujourd'hui
-    // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, modales…).
-    var busy = ['onb-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
+    // Parcours de 1re connexion : NE PAS ouvrir le questionnaire par-dessus l'intro,
+    // l'écran « proposer un programme » ou la visite guidée (sinon deux panneaux en
+    // même temps). Tant que l'intro n'est pas vue, on s'efface (on réessaiera plus tard).
+    if (!dernierAppData.onboarding_vu) return;
+    var _tourOv = document.getElementById('nvt-ov');
+    if (_tourOv && _tourOv.classList.contains('on')) return;   // visite guidée active
+    // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, génération de
+    // programme, modales…).
+    var busy = ['onb-overlay', 'gen-prog-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
       var e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none';
     });
     if (busy) return;   // on réessaiera au prochain chargement
