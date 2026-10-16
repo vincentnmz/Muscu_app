@@ -15422,8 +15422,6 @@ function _stepsAthlete() {
   S.push({ scr: A, sel: '#tj-banner', before: go('accueil'), t: 'Ton état du jour', x: 'Complète ton questionnaire bien-être (1 min) : il nourrit toutes les analyses et la reco du jour.' });
   S.push({ scr: A, sel: '#tj-nova', before: go('accueil'), t: 'La Lecture Novalyz', x: 'Ce qu’il faut retenir aujourd’hui, expliqué en clair — pas juste des graphiques.' });
   S.push({ scr: A, sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' });
-  S.push({ scr: A, sel: '#tab-accueil .tj-bwrap', before: go('accueil'), t: 'Ton point du jour', x: 'Mets à jour ton ressenti (sommeil, énergie, douleurs) en quelques secondes, chaque jour.' });
-  S.push({ scr: A, sel: '#tab-accueil .tj-rew', before: go('accueil'), t: 'Tes récompenses', x: 'Gagne des points et des niveaux, débloque des trophées et vise ton objectif de la semaine.' });
   // Mobile : l'entrée est le FAB (position:fixed) ; desktop : le bloc .nvz-ask. On
   // s'assure que le FAB est bien affiché avant de le surligner.
   S.push({ scr: A, sel: ['#tab-accueil .nvz-ask', '#fab-novalyz'], before: function () { try { switchTab('accueil'); } catch (e) {} try { _majFabNovalyz(); } catch (e) {} }, t: 'Demande à Novalyz', x: 'Ton assistant IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
@@ -15432,18 +15430,14 @@ function _stepsAthlete() {
   S.push({ scr: E, sel: '#en-creer', before: goSeanceMuscu, t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
   S.push({ scr: E, sel: '[data-tour="ath-agenda"]', before: go('seance'), t: 'Ton agenda', x: 'Retrouve tes séances faites d’un coup d’œil : muscu en vert, cardio en rouge. Touche un jour pour voir le détail.' });
   // ─── ANALYSES ───
-  S.push({ scr: AN, sel: '#tab-historique .ma-switch', before: goAna('resume'), t: 'Discipline', x: 'Choisis la discipline analysée : muscu, cardio ou croisé.' });
-  S.push({ scr: AN, sel: '#tab-historique .ma-verdict', before: goAna('resume'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de ton résumé : ce qu’il faut retenir + tes chiffres clés (tonnage, charge ACWR, monotonie).' });
-  S.push({ scr: AN, sel: '#ma-tab-detail', before: goAna('detail'), t: 'Par exercice', x: 'Vue « Par exercice » : la progression détaillée de chaque mouvement — charge, 1RM estimé, volume.' });
-  S.push({ scr: AN, sel: '#tab-historique .ma-period-wrap', before: goAna('detail'), t: 'Les périodes', x: 'Choisis la fenêtre d’analyse : semaine, mois, 3 / 6 / 9 mois, année.' });
-  S.push({ scr: AN, sel: '#ma-tab-tendances', before: goAna('tendances'), t: 'Tendances', x: 'Vue « Tendances » : l’évolution d’ensemble de ta charge, ton volume et ta forme dans le temps.' });
+  S.push({ scr: AN, sel: '#tab-historique .ma-verdict', before: goAna('resume'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de ton résumé : ce qu’il faut retenir + tes chiffres clés (tonnage, charge ACWR, monotonie). Choisis la discipline analysée en haut (muscu, cardio, croisé).' });
+  S.push({ scr: AN, sel: '#ma-tab-detail', before: goAna('detail'), t: 'Par exercice', x: 'Vue « Par exercice » : la progression de chaque mouvement (charge, 1RM estimé, volume). La vue « Tendances » montre l’évolution d’ensemble.' });
+  S.push({ scr: AN, sel: '#tab-historique .ma-period-wrap', before: goAna('detail'), t: 'Les périodes', x: 'Choisis la fenêtre d’analyse : semaine, mois, année — avec les flèches pour naviguer dans le temps.' });
   // ─── FORME ─── (récup/« prêt » et ressenti/bien-être sont déjà vus dans Aujourd'hui → non répétés)
   S.push({ scr: F, sel: '#et-contexte', before: go('etat'), t: 'Ton contexte', x: 'Déclare un contexte — retour de vacances, de blessure, semaine de décharge : l’analyse s’adapte au lieu de crier à la régression.' });
-  S.push({ scr: F, sel: '#et-montre-mini', before: go('etat'), t: 'Ta montre & tes capteurs', x: 'Tes pas, ton sommeil et ta FC importés de ta montre, croisés avec ton entraînement (la connexion se fait dans Réglages, étape suivante).' });
-  S.push({ scr: F, sel: '[data-tour="ath-poids"]', before: go('etat'), t: 'Ta pesée', x: 'Enregistre ton poids et suis sa tendance dans le temps.' });
-  S.push({ scr: F, sel: '#et-suivis', before: go('etat'), t: 'Tes suivis', x: 'Accès direct à ta nutrition (calories & macros), tes objectifs et tes blessures.' });
+  S.push({ scr: F, sel: '#et-montre-mini', before: go('etat'), t: 'Ta montre & tes capteurs', x: 'Tes pas, ton sommeil et ta FC importés de ta montre, croisés avec ton entraînement. La connexion (Health Connect) + l’import nutrition se font dans Réglages ▸ Appareils.' });
+  S.push({ scr: F, sel: '#et-suivis', before: go('etat'), t: 'Tes suivis', x: 'Accès direct à ta pesée, ta nutrition (calories & macros), tes objectifs et tes blessures.' });
   // ─── RÉGLAGES ───
-  S.push({ scr: 'Réglages', sel: '#hc-card', before: function () { try { switchTab('reglages'); } catch (e) {} try { switchReglagesTab('appareils'); } catch (e) {} }, t: 'Connexion montre & capteurs', x: 'Réglages ▸ Appareils : connecte ta montre via Health Connect (pas, sommeil, FC) et importe ta nutrition depuis MyFitnessPal, Yazio, Samsung Health…' });
   // ─── COACH / CONVERSATION ───
   S.push({
     scr: C, sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} },
