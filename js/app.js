@@ -11152,7 +11152,7 @@ function _maApply() {
     if (b) { b.classList.toggle('on', d === _maDisc); b.classList.toggle('cx', d === _maDisc && d === 'cardio'); b.classList.toggle('cr', d === _maDisc && d === 'croise'); }
   });
   // Le 2e sous-onglet change de libellé selon la discipline
-  var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Par exercice';
+  var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Évolution';
   // Sous-onglets : dispo (Croisé masque Détail + Historique) + actif
   var dispo = _MA_TABS[_maDisc];
   ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
@@ -11623,7 +11623,7 @@ function _maMuscuExercice(data) {
   _maSet('ma-muscu-detail', head + periodSel
     + '<div class="ma-cols2">'
     +   '<div class="ma-colmain">' + body + '</div>'
-    +   '<div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk() + '</div>'
+    +   '<div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div>'
     + '</div>');
 }
 
@@ -15366,7 +15366,7 @@ function _guideAthleteCards() {
       feats: ['<b>Agenda</b> : muscu, cardio et <b>Hyrox</b>', '<b>Démarre une séance</b> : saisie série par série (charge, reps, RPE) + <b>chrono de repos</b>',
         hasCoach ? 'Ton <b>coach construit ton programme</b> : tu le suis et l’exécutes ici' : '<b>Crée ton programme</b> (séances, % du 1RM, RPE cible) ou laisse <b>Novalyz te le proposer</b> en 3 questions'] },
     { ic: 'chart', scr: 'Analyses', t: 'Analyses', lead: 'Comprendre ce que disent tes données.', go: aGo('historique'),
-      feats: ['<b>Résumé</b> : le verdict en clair + tes chiffres clés', '<b>Par exercice</b> : charge, <b>1RM estimé</b>, volume, charge à viser', '<b>Tendances</b> + <b>sélecteur de période</b> (semaine / mois / année, avec flèches)', 'Vue <b>Croisé</b> : muscu + cardio'] },
+      feats: ['<b>Résumé</b> : le verdict en clair + tes chiffres clés', '<b>Évolution</b> : charge, <b>1RM estimé</b>, volume, charge à viser', '<b>Tendances</b> + <b>sélecteur de période</b> (semaine / mois / année, avec flèches)', 'Vue <b>Croisé</b> : muscu + cardio'] },
     { ic: 'heart', scr: 'Forme', t: 'Forme', lead: 'Ton ressenti, croisé avec l’entraînement.', go: aGo('etat'),
       feats: ['<b>Questionnaire bien-être</b> (sommeil, énergie, fatigue, douleur)', '<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte', 'Ta <b>pesée</b> + tendance du poids', '<b>Nutrition</b> (calories &amp; macros), <b>objectifs</b> et <b>blessures</b>'] },
     { ic: 'watch', scr: 'Réglages ▸ Appareils', t: 'Montre &amp; capteurs', lead: 'Tes données santé importées automatiquement.', go: aGo('reglages', function () { try { switchReglagesTab('appareils'); } catch (e) {} }),
@@ -15431,7 +15431,7 @@ function _stepsAthlete() {
   S.push({ scr: E, sel: '[data-tour="ath-agenda"]', before: go('seance'), t: 'Ton agenda', x: 'Retrouve tes séances faites d’un coup d’œil : muscu en vert, cardio en rouge. Touche un jour pour voir le détail.' });
   // ─── ANALYSES ───
   S.push({ scr: AN, sel: '#tab-historique .ma-verdict', before: goAna('resume'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de ton résumé : ce qu’il faut retenir + tes chiffres clés (tonnage, charge ACWR, monotonie). Choisis la discipline analysée en haut (muscu, cardio, croisé).' });
-  S.push({ scr: AN, sel: '#ma-tab-detail', before: goAna('detail'), t: 'Par exercice', x: 'Vue « Par exercice » : la progression de chaque mouvement (charge, 1RM estimé, volume). La vue « Tendances » montre l’évolution d’ensemble.' });
+  S.push({ scr: AN, sel: '#ma-tab-detail', before: goAna('detail'), t: 'Évolution', x: 'Vue « Évolution » : la progression de chaque mouvement (charge, 1RM estimé, volume). La vue « Tendances » montre l’évolution d’ensemble.' });
   S.push({ scr: AN, sel: '#tab-historique .ma-period-wrap', before: goAna('detail'), t: 'Les périodes', x: 'Choisis la fenêtre d’analyse : semaine, mois, année — avec les flèches pour naviguer dans le temps.' });
   // ─── FORME ─── (récup/« prêt » et ressenti/bien-être sont déjà vus dans Aujourd'hui → non répétés)
   S.push({ scr: F, sel: '#et-contexte', before: go('etat'), t: 'Ton contexte', x: 'Déclare un contexte — retour de vacances, de blessure, semaine de décharge : l’analyse s’adapte au lieu de crier à la régression.' });
@@ -19719,11 +19719,8 @@ function _hcRenderList(ws, steps) {
     html += '<div id="hc-activity"></div>';
   }
 
-  // Détails techniques (repliés).
-  if (_hcDiag && _hcDiag.length) {
-    html += '<details style="margin-top:16px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
-      + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);margin-top:6px;">' + _hcDiag.map(escapeHtml).join('\n') + '</div></details>';
-  }
+  // (« Détails techniques » retiré de la page Import — journal conservé en interne
+  // via _hcDiag pour le diagnostic, mais plus affiché à l'utilisateur.)
   el.innerHTML = html;
   if (document.getElementById('hc-activity')) { try { _actRender(); } catch (e) {} }
 }

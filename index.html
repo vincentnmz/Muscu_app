@@ -1881,14 +1881,6 @@
       <div class="rg-panel" data-rg="data" style="display:none;">
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Mes données</h2></div>
         <div class="card">
-          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Télécharge tout ton historique (séances, poids, ressentis, objectifs, blessures). JSON = tout ; CSV = tes séances.</div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="exporterMesDonnees('json')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Exporter (JSON)</button>
-            <button onclick="exporterMesDonnees('csv')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Séances (CSV)</button>
-          </div>
-          <div id="export-ath-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
-        </div>
-        <div class="card">
           <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;">Politique de confidentialité &amp; mes droits</a>
         </div>
         <div class="v2-sec"><h2 class="st" style="color:var(--danger);"><svg class="ico"><use href="#i-alert"/></svg>Zone dangereuse</h2></div>
@@ -1923,6 +1915,8 @@
 #tab-historique .ma-ttl{font-family:var(--head,'Michroma',sans-serif);font-size:17px;letter-spacing:.02em;color:var(--text);}
 #tab-historique .ma-sub{font-size:11.5px;color:var(--text-subtle);margin-top:3px;}
 #tab-historique .ma-av{width:38px;height:38px;border-radius:999px;background:var(--surface2);color:var(--accent);font-family:var(--head,'Michroma',sans-serif);font-size:13px;display:grid;place-items:center;border:1px solid var(--border);flex:none;cursor:pointer;}
+/* Barre discipline + sous-onglets collante : on change de vue sans remonter. */
+#tab-historique .ma-sticky{position:sticky;top:0;z-index:30;display:flex;flex-direction:column;gap:12px;background:var(--bg);padding:8px 0 8px;margin-bottom:2px;}
 #tab-historique .ma-switch{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
 #tab-historique .ma-switch button{flex:1;min-width:0;border:none;background:transparent;font-family:var(--head,'Michroma',sans-serif);font-size:12px;color:var(--text-muted);padding:11px 2px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap;}
 #tab-historique .ma-switch button.on{background:var(--accent);color:#fff;}
@@ -2105,6 +2099,8 @@
         <!-- Import montre / capteurs (Health Connect) : une action « données », d'où sa place ici. -->
         <button id="btn-hc-analyses" onclick="ouvrirImportMontre()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:12px;border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.08);color:#10B981;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M12 15l-4-4M12 15l4-4M4 19h16"/></svg>Importer mes séances (montre &amp; capteurs)</button>
 
+        <!-- Barre discipline + sous-onglets : STICKY → on peut changer sans remonter. -->
+        <div class="ma-sticky">
         <div class="ma-switch">
           <button id="ma-sw-muscu" class="on" onclick="maSetDisc('muscu')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
           <button id="ma-sw-cardio" onclick="maSetDisc('cardio')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
@@ -2113,9 +2109,10 @@
 
         <div class="ma-tabs">
           <button id="ma-tab-resume" class="on" onclick="maSetTab('resume')">Résumé</button>
-          <button id="ma-tab-detail" onclick="maSetTab('detail')">Par exercice</button>
+          <button id="ma-tab-detail" onclick="maSetTab('detail')">Évolution</button>
           <button id="ma-tab-tendances" onclick="maSetTab('tendances')">Tendances</button>
           <button id="ma-tab-historique" onclick="maSetTab('historique')">Historique</button>
+        </div>
         </div>
 
         <!-- Le sélecteur de période est rendu DANS chaque pane (sous la Lecture en
@@ -2802,16 +2799,7 @@
 
     <!-- DONNÉES -->
     <div class="crg-panel" data-crg="data" style="display:none;flex-direction:column;gap:10px;">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Données de l'équipe</div>
-      <div class="card" style="padding:14px 16px;margin:0;">
-        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Historique complet de tes athlètes (séances, indicateurs, blessures…). JSON = tout ; CSV = toutes les séances.</div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="exporterEquipe('json')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Exporter (JSON)</button>
-          <button onclick="exporterEquipe('csv')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Séances (CSV)</button>
-        </div>
-        <div id="export-coach-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
-      </div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Bilan d'un client</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Bilan d'un client</div>
       <div class="card" style="padding:14px 16px;margin:0;">
         <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Génère le bilan détaillé d'un athlète (le même que le bilan auto par e-mail) pour le sortir quand tu veux. Ouvre une page imprimable → « Enregistrer en PDF ».</div>
         <label>Athlète</label>
