@@ -15186,9 +15186,13 @@ function _tourSafeBounds() {
 }
 function _tourPlace(el, spot, bub, arrow) {
   var pad = 6, r = el.getBoundingClientRect(), sb = _tourSafeBounds();
+  // Cap de hauteur par étape (spotMaxH) : certaines cartes (ex. IA coach) sont très
+  // hautes → le spotlight couvre alors le HAUT du bloc (label + chips) sans déborder.
+  var cur = _tour.steps[_tour.i] || {};
+  var sh = (cur.spotMaxH && r.height > cur.spotMaxH) ? cur.spotMaxH : r.height;
   spot.style.display = 'block';
   spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
-  spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
+  spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (sh + pad * 2) + 'px';
   bub.style.transform = 'none';
   var bw = bub.offsetWidth || 280, bh = bub.offsetHeight || 150, gap = 14;
   var cx = r.left + r.width / 2;
@@ -15468,17 +15472,18 @@ function _stepsCoach() {
     { scr: EQ, sel: '[data-tour="co-equipe-table"]', before: go('equipe'), t: 'Ouvrir une fiche', x: 'Clique un athlète dans la liste pour ouvrir sa fiche détaillée.' },
     { scr: FI, sel: '#cd-hero', before: openFiche, t: 'La fiche athlète', x: 'Tout sur ton athlète : profil, état du jour, analyses, données d’entraînement, objectifs et blessures. Les sous-onglets (Aperçu · Progression · Séances · Programme · Conversation) organisent tout ça.' },
     { scr: FI, sel: '#cdtab-btn-programme', before: openFiche, t: 'Son programme', x: 'Onglet Programme : tu construis et modifies son programme toi-même (séances, charges, cibles) — ou tu laisses Novalyz le proposer, puis tu ajustes.' },
-    { scr: FI, sel: '#cd-ia-card', before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
+    { scr: FI, sel: '#cd-ia-card', spotMaxH: 230, before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
     { scr: ME, sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
     { scr: AN, sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' },
     { sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Ton espace coach est <b>gratuit pour démarrer</b>. L’IA et le volume d’athlètes passent en <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Cockpit · suivi d’équipe · fiches</td><td>✅</td><td>✅</td></tr><tr><td>IA coach (par client)</td><td>3 questions / jour</td><td>illimité</td></tr><tr><td>Nombre d’athlètes suivis</td><td>limité</td><td>étendu 💎</td></tr><tr><td>Analyses avancées · rapports</td><td>—</td><td>💎</td></tr></table><span style="color:var(--text-muted)">À activer quand tu veux.</span>' }
   ];
 }
-// Visite = nouveau guide « 1 carte = 1 écran » (nvGuide), robuste mobile + desktop.
-// Les anciennes _stepsAthlete/_stepsCoach (spotlights) sont conservées mais plus
-// utilisées comme entrée.
-function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvGuideStart(_guideAthleteCards(), 'tour_ath_vu'); }
-function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; nvGuideStart(_guideCoachCards(), 'tour_coach_vu'); }
+// Visite viewport-aware : DESKTOP = ancienne visite à surbrillance sur les blocs
+// (spotlights, _steps*) ; MOBILE = nouveau guide « 1 carte = 1 écran » (nvGuide),
+// robuste (plus de spotlight mal placé sur petit écran).
+function _nvIsDesktop() { try { return window.matchMedia('(min-width:992px)').matches; } catch (e) { return false; } }
+function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; if (_nvIsDesktop()) nvTourStart(_stepsAthlete(), 'tour_ath_vu'); else nvGuideStart(_guideAthleteCards(), 'tour_ath_vu'); }
+function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; if (_nvIsDesktop()) nvTourStart(_stepsCoach(), 'tour_coach_vu'); else nvGuideStart(_guideCoachCards(), 'tour_coach_vu'); }
 var _coachTourTried = false;
 function _maybeCoachTour() {
   if (_coachTourTried || _tourSeen('tour_coach_vu')) return;
