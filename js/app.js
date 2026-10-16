@@ -15210,6 +15210,198 @@ function _tourPlace(el, spot, bub, arrow) {
 }
 window.addEventListener('resize', function () { var o = document.getElementById('nvt-ov'); if (o && o.classList.contains('on')) _tourRender(); });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// GUIDE « 1 carte = 1 écran » — remplace la visite à spotlights (fragile mobile).
+// Chaque carte présente un écran entier + ses fonctions, pendant que l'app y
+// navigue réellement (la nav réelle met la barre du bas en surbrillance → plus de
+// bug). Robuste mobile ET desktop : aucun positionnement de spotlight.
+// ═══════════════════════════════════════════════════════════════════════════
+var _NVG_IC = {
+  home: '<path d="M3 11l9-8 9 8M5 10v10h14V10"/>',
+  dumb: '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>',
+  chart: '<path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6"/>',
+  heart: '<path d="M20 6a5 5 0 0 0-8-1 5 5 0 0 0-8 1c0 4 8 10 8 10s8-6 8-10z"/>',
+  watch: '<rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 2h6M9 22h6M12 9v3l2 1"/>',
+  body: '<circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M8 21l4-6 4 6M7 11l5-1 5 1"/>',
+  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  gift: '<rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M3 12h18M12 8v13"/>',
+  team: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5c2.5 0 5 1.5 5 4.5"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  clip: '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 11h6M9 15h4"/>',
+  spark: '<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2zM9 21h6"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'
+};
+var _nvg = { cards: [], i: 0, key: null };
+function _nvgCss() {
+  if (document.getElementById('nvg-css')) return;
+  var s = document.createElement('style'); s.id = 'nvg-css';
+  s.textContent = 'body.nvg-open{overflow:hidden!important}'
+    + '#nvg-ov{position:fixed;inset:0;z-index:1200;background:rgba(7,11,20,.55);display:flex;align-items:flex-end;justify-content:center;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}'
+    + '.nvg-sheet{background:var(--surface);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(7,11,20,.3);animation:nvgUp .3s ease;max-height:88vh;overflow:auto}'
+    + '@keyframes nvgUp{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}'
+    + '.nvg-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}'
+    + '.nvg-step{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);background:var(--accent-a10,rgba(26,95,255,.1));border-radius:999px;padding:4px 10px}'
+    + '.nvg-skip{background:none;border:none;color:var(--text-subtle);font:inherit;font-size:12px;cursor:pointer}'
+    + '.nvg-ic{width:52px;height:52px;border-radius:15px;background:var(--accent-a10,rgba(26,95,255,.1));display:grid;place-items:center;margin-bottom:10px}'
+    + '.nvg-ic svg{width:27px;height:27px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}'
+    + '.nvg-t{font-family:var(--font-heading,"Michroma",sans-serif);font-size:16px;margin:0 0 4px}'
+    + '.nvg-lead{font-size:12.5px;color:var(--text-muted);margin:0 0 11px;line-height:1.45}'
+    + '.nvg-feat{list-style:none;margin:0 0 2px;padding:0;display:flex;flex-direction:column;gap:9px}'
+    + '.nvg-feat li{display:flex;gap:9px;font-size:13px;line-height:1.4}'
+    + '.nvg-feat li svg{width:16px;height:16px;flex:none;margin-top:2px;fill:none;stroke:var(--good,#00A854);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}'
+    + '.nvg-feat li b{font-weight:700}'
+    + '.nvg-dots{display:flex;gap:5px;justify-content:center;margin:15px 0 13px;flex-wrap:wrap}'
+    + '.nvg-dots span{width:6px;height:6px;border-radius:999px;background:var(--border)}'
+    + '.nvg-dots span.on{background:var(--accent);width:18px}'
+    + '.nvg-nav{display:flex;align-items:center;justify-content:space-between;gap:10px}'
+    + '.nvg-prev{background:var(--surface2);border:1px solid var(--border);color:var(--text);font:inherit;font-weight:700;font-size:13px;border-radius:12px;padding:11px 16px;cursor:pointer}'
+    + '.nvg-next{flex:1;background:var(--accent);border:none;color:#fff;font:inherit;font-weight:800;font-size:14px;border-radius:12px;padding:12px;cursor:pointer}'
+    // Barre du bas (mobile) / rail gauche (desktop) remontés au-dessus du voile +
+    // écran courant mis en avant (le reste estompé). pointer-events coupés : on
+    // navigue via la carte uniquement.
+    + '.nvg-navlift{z-index:1250!important;pointer-events:none!important}'
+    + '.nvg-navdim{opacity:.38!important;transition:opacity .2s}'
+    + '.nvg-navcur{opacity:1!important;position:relative}'
+    + '.nvg-navcur::after{content:"";position:absolute;inset:-3px;border:2px solid var(--accent);border-radius:12px;animation:nvgPulse 1.6s ease-out infinite;pointer-events:none}'
+    + '@keyframes nvgPulse{0%{opacity:.7;transform:scale(.98)}70%{opacity:0;transform:scale(1.12)}100%{opacity:0}}'
+    + '@media (prefers-reduced-motion:reduce){.nvg-sheet{animation:none}.nvg-navcur::after{animation:none;opacity:.7}}';
+  document.head.appendChild(s);
+}
+function nvGuideStart(cards, key) {
+  if (!cards || !cards.length) return;
+  _nvgCss();
+  _nvg = { cards: cards, i: 0, key: key || null };
+  var ov = document.getElementById('nvg-ov');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'nvg-ov'; document.body.appendChild(ov); }
+  document.body.classList.add('nvg-open');
+  _nvgRender();
+}
+function nvGuideEnd() {
+  var ov = document.getElementById('nvg-ov'); if (ov) ov.parentNode.removeChild(ov);
+  document.body.classList.remove('nvg-open');
+  _nvgClearNav();
+  if (_nvg.key) _tourMark(_nvg.key);
+}
+// Nettoie les emphases de nav (remise à zéro z-index / opacité).
+function _nvgClearNav() {
+  try { [].forEach.call(document.querySelectorAll('.nvg-navlift'), function (e) { e.classList.remove('nvg-navlift'); }); } catch (e) {}
+  try { [].forEach.call(document.querySelectorAll('.nvg-navcur,.nvg-navdim'), function (e) { e.classList.remove('nvg-navcur', 'nvg-navdim'); }); } catch (e) {}
+}
+// Remonte la barre basse (mobile) OU le rail gauche (desktop) au-dessus du voile,
+// surligne l'écran courant (l'item déjà « actif » posé par la vraie nav), estompe
+// le reste, et décale la feuille pour ne pas masquer une barre basse.
+function _nvgLiftNav() {
+  _nvgClearNav();
+  var bottom = null;
+  ['tabs-bar', 'coach-bandeau', 'app-side', 'coach-rail'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && el.offsetParent !== null) { el.classList.add('nvg-navlift'); if (id === 'tabs-bar' || id === 'coach-bandeau') bottom = el; }
+  });
+  try {
+    [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn, .nvg-navlift .as-item, .nvg-navlift .cs-item, .nvg-navlift .cb-item'), function (e) { e.classList.add('nvg-navdim'); });
+    [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn.active, .nvg-navlift .as-item.active, .nvg-navlift .cs-item.on, .nvg-navlift .cb-item.on'), function (e) { e.classList.remove('nvg-navdim'); e.classList.add('nvg-navcur'); });
+  } catch (e) {}
+  try { var sheet = document.querySelector('.nvg-sheet'); if (sheet) sheet.style.marginBottom = bottom ? (bottom.offsetHeight + 'px') : '0'; } catch (e) {}
+}
+function nvGuidePrev() { if (_nvg.i > 0) { _nvg.i--; _nvgRender(); } }
+function nvGuideNext() { if (_nvg.i < _nvg.cards.length - 1) { _nvg.i++; _nvgRender(); } else nvGuideEnd(); }
+function _nvgRender() {
+  var c = _nvg.cards[_nvg.i]; if (!c) return;
+  try { if (c.go) c.go(); } catch (e) {}
+  var ov = document.getElementById('nvg-ov'); if (!ov) return;
+  var n = _nvg.cards.length;
+  var feats = (c.feats || []).map(function (t) { return '<li><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span>' + t + '</span></li>'; }).join('');
+  var dots = _nvg.cards.map(function (_c, j) { return '<span class="' + (j === _nvg.i ? 'on' : '') + '"></span>'; }).join('');
+  var last = _nvg.i === n - 1;
+  ov.innerHTML = '<div class="nvg-sheet">'
+    + '<div class="nvg-hd"><span class="nvg-step">Écran ' + (_nvg.i + 1) + '/' + n + (c.scr ? ' · ' + c.scr : '') + '</span><button class="nvg-skip" onclick="nvGuideEnd()">Passer ✕</button></div>'
+    + '<div class="nvg-ic"><svg viewBox="0 0 24 24">' + (_NVG_IC[c.ic] || '') + '</svg></div>'
+    + '<h3 class="nvg-t">' + c.t + '</h3>'
+    + (c.lead ? '<p class="nvg-lead">' + c.lead + '</p>' : '')
+    + (feats ? '<ul class="nvg-feat">' + feats + '</ul>' : '')
+    + '<div class="nvg-dots">' + dots + '</div>'
+    + '<div class="nvg-nav">' + (_nvg.i > 0 ? '<button class="nvg-prev" onclick="nvGuidePrev()">Précédent</button>' : '<span></span>')
+    + '<button class="nvg-next" onclick="nvGuideNext()">' + (last ? 'C’est parti 💪' : 'Suivant ›') + '</button></div>'
+    + '</div>';
+  try { ov.querySelector('.nvg-sheet').scrollTop = 0; } catch (e) {}
+  // La vraie nav (switchTab / coachBandeauGo / renderCoachDesktop) a déjà posé l'item
+  // actif → on le remonte au-dessus du voile et on le met en avant.
+  try { _nvgLiftNav(); } catch (e) {}
+}
+// Navigation coach pour le guide (viewport-aware) : sections de contenu via la vraie
+// nav (surligne la barre) ; Messages/Profil → on surligne SANS ouvrir l'overlay (pas
+// de piège pendant la visite).
+function _guideCoachGo(sec) {
+  try { if (document.body.classList.contains('athlete-selected')) retourListeAthletesCoach(); } catch (e) {}
+  var desk = (typeof _coachDeskAny === 'function') && _coachDeskAny();
+  if (sec === 'messages' || sec === 'profil') {
+    if (desk) { coachDeskOverlay = sec; try { renderCoachRail(); } catch (e) {} }
+    else { coachBandeauTab = sec; try { coachBandeauApply(); } catch (e) {} }
+    return;
+  }
+  coachDeskOverlay = null;
+  if (desk) { coachDeskSection = sec; try { renderCoachDesktop(); } catch (e) {} }
+  else { try { coachBandeauGo(sec); } catch (e) {} }
+}
+function _guideCoachFiche(subtab) {
+  try {
+    if (!document.body.classList.contains('athlete-selected')) {
+      var a = (typeof athletesCoach !== 'undefined' && athletesCoach && athletesCoach[0]) ? athletesCoach[0] : null;
+      if (a) ouvrirDetailAthleteCoach(a, subtab);
+    }
+  } catch (e) {}
+}
+// Deck ATHLÈTE (branché : a un coach ou non → Entraînement + Coach/assistant changent).
+function _guideAthleteCards() {
+  var hasCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
+  var aGo = function (t, extra) { return function () { try { switchTab(t); } catch (e) {} if (extra) try { extra(); } catch (e) {} }; };
+  return [
+    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton tableau de bord quotidien — tu reviens toujours ici.', go: aGo('accueil'),
+      feats: ['Ton <b>état du jour</b> (prêt / vigilance) + le <b>mot de Novalyz</b> (reco qui change chaque jour)', 'Ta <b>séance du jour</b> à lancer en un geste', 'Ton <b>point d’attention</b> (alertes) et ta <b>régularité</b>', 'Tes <b>badges &amp; récompenses</b>', 'Le bouton <b>« Demande à Novalyz »</b> (assistant IA)'] },
+    { ic: 'dumb', scr: 'Entraînement', t: 'Entraînement', lead: 'Ton programme et tes séances.', go: aGo('seance'),
+      feats: ['<b>Agenda</b> : muscu, cardio et <b>Hyrox</b>', '<b>Démarre une séance</b> : saisie série par série (charge, reps, RPE) + <b>chrono de repos</b>',
+        hasCoach ? 'Ton <b>coach construit ton programme</b> : tu le suis et l’exécutes ici' : '<b>Crée ton programme</b> (séances, % du 1RM, RPE cible) ou laisse <b>Novalyz te le proposer</b> en 3 questions'] },
+    { ic: 'chart', scr: 'Analyses', t: 'Analyses', lead: 'Comprendre ce que disent tes données.', go: aGo('historique'),
+      feats: ['<b>Résumé</b> : le verdict en clair + tes chiffres clés', '<b>Par exercice</b> : charge, <b>1RM estimé</b>, volume, charge à viser', '<b>Tendances</b> + <b>sélecteur de période</b> (semaine / mois / année, avec flèches)', 'Vue <b>Croisé</b> : muscu + cardio'] },
+    { ic: 'heart', scr: 'Forme', t: 'Forme', lead: 'Ton ressenti, croisé avec l’entraînement.', go: aGo('etat'),
+      feats: ['<b>Questionnaire bien-être</b> (sommeil, énergie, fatigue, douleur)', '<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte', 'Ta <b>pesée</b> + tendance du poids', '<b>Nutrition</b> (calories &amp; macros), <b>objectifs</b> et <b>blessures</b>'] },
+    { ic: 'watch', scr: 'Réglages ▸ Appareils', t: 'Montre &amp; capteurs', lead: 'Tes données santé importées automatiquement.', go: aGo('reglages', function () { try { switchReglagesTab('appareils'); } catch (e) {} }),
+      feats: ['Connexion <b>Health Connect</b> : <b>pas</b>, <b>sommeil</b>, <b>FC au repos</b>', 'Import <b>nutrition</b> : MyFitnessPal, Yazio, Samsung Health…', 'Tout est <b>croisé avec ton entraînement</b> pour juger ta forme'] },
+    { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: 'Analyse morpho &amp; assistant IA', lead: '', go: aGo('conseils'),
+      feats: hasCoach
+        ? ['<b>Messagerie</b> avec ton coach : messages, photos, vidéos de ta technique', '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Toi comme ton coach pouvez la lancer']
+        : ['<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Tu pourras <b>lier un coach</b> plus tard'] },
+    { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Tout ton suivi de base est gratuit.', go: aGo('accueil'),
+      feats: ['Suivi · forme · montre · analyses de base + <b>export de tes données</b> : gratuit', 'Assistant IA : <b>3/jour</b> gratuit, illimité en Premium', 'Programme &amp; analyse morpho IA, analyses avancées : <b>Premium</b>', '<b>Rapports automatiques</b> (ton bilan envoyé par e-mail) : <b>Premium</b>'] }
+  ];
+}
+// Deck COACH (détaillé).
+function _guideCoachCards() {
+  var G = function (s) { return function () { _guideCoachGo(s); }; };
+  var F = function (sub) { return function () { _guideCoachFiche(sub); }; };
+  return [
+    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton point de départ chaque jour : qui a besoin de toi.', go: G('aujourdhui'),
+      feats: ['<b>Briefing équipe</b> : % à jour, athlètes à voir', '<b>Qui a répondu</b> au questionnaire bien-être (7 j) + relance', '<b>À surveiller</b> : athlètes triés par priorité + motif', '<b>Messages non lus</b> en un coup d’œil'] },
+    { ic: 'team', scr: 'Équipe', t: 'Équipe', lead: 'Tout ton effectif.', go: G('equipe'),
+      feats: ['Statut, niveau, <b>assiduité</b>, dernière séance par athlète', '<b>Enregistrer un athlète</b> : invitation ou création du compte', 'Clique une ligne pour <b>ouvrir sa fiche</b>'] },
+    { ic: 'folder', scr: 'Fiche athlète', t: 'Fiche athlète', lead: 'Tout sur un athlète, en sous-onglets.', go: F('apercu'),
+      feats: ['<b>Aperçu · Progression · Séances · Programme · Conversation</b>', 'État du jour, données d’entraînement, <b>objectifs</b> &amp; <b>blessures</b>', '<b>Export du bilan</b> client à la demande'] },
+    { ic: 'clip', scr: 'Fiche ▸ Programme', t: 'Son programme', lead: 'Dans la fiche, onglet Programme.', go: F('programme'),
+      feats: ['<b>Construis / modifies</b> ses séances : charges en % du 1RM, <b>RPE cible</b>', 'Groupé par muscle, sélection multiple d’exercices', 'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste'] },
+    { ic: 'spark', scr: 'Fiche ▸ IA', t: 'L’IA coach (bloc IA)', lead: 'Ton assistant sur CE client, branché sur ses données.', go: F('apercu'),
+      feats: ['<b>Résumé d’état &amp; vigilance</b> du client', '<b>Priorités de la semaine</b> + <b>risque de surcharge</b>', '<b>Comment adapter son programme</b> — jamais de chiffre inventé'] },
+    { ic: 'body', scr: 'Fiche ▸ Morpho', t: 'Analyse morphologique IA', lead: 'À partir des photos de l’athlète.', go: F('apercu'),
+      feats: ['Détecte les <b>groupes en avance / en retard</b>', 'Lançable par <b>toi ou l’athlète</b>', 'Oriente tes choix de programme (points faibles)'] },
+    { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Tes échanges avec les athlètes.', go: G('messages'),
+      feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
+    { ic: 'chart', scr: 'Analyses', t: 'Analyses équipe', lead: 'Les tendances en profondeur.', go: G('analyses'),
+      feats: ['Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>', 'Charge, volume, forme dans le temps'] },
+    { ic: 'gear', scr: 'Profil', t: 'Profil &amp; données', lead: 'Ton espace coach.', go: G('profil'),
+      feats: ['Tes préférences et ton profil coach', '<b>Export</b> des données de tes clients', '<b>Revoir la visite</b> à tout moment'] },
+    { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Ton espace coach démarre gratuit.', go: G('aujourdhui'),
+      feats: ['Cockpit · suivi d’équipe · fiches : gratuit', 'IA coach : <b>3 questions/jour</b>, illimité en Premium', 'Plus d’athlètes · analyses avancées : <b>Premium</b>', '<b>Envoi de rapports</b> à tes athlètes (bilans auto par e-mail) : <b>Premium</b>'] }
+  ];
+}
 function _stepsAthlete() {
   var go = function (t) { return function () { try { switchTab(t); } catch (e) {} }; };
   // Entraînement : les boutons programme (#en-gen/#en-creer) ne s'affichent qu'en
@@ -15282,8 +15474,11 @@ function _stepsCoach() {
     { sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Ton espace coach est <b>gratuit pour démarrer</b>. L’IA et le volume d’athlètes passent en <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Cockpit · suivi d’équipe · fiches</td><td>✅</td><td>✅</td></tr><tr><td>IA coach (par client)</td><td>3 questions / jour</td><td>illimité</td></tr><tr><td>Nombre d’athlètes suivis</td><td>limité</td><td>étendu 💎</td></tr><tr><td>Analyses avancées · rapports</td><td>—</td><td>💎</td></tr></table><span style="color:var(--text-muted)">À activer quand tu veux.</span>' }
   ];
 }
-function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvTourStart(_stepsAthlete(), 'tour_ath_vu'); }
-function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; nvTourStart(_stepsCoach(), 'tour_coach_vu'); }
+// Visite = nouveau guide « 1 carte = 1 écran » (nvGuide), robuste mobile + desktop.
+// Les anciennes _stepsAthlete/_stepsCoach (spotlights) sont conservées mais plus
+// utilisées comme entrée.
+function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvGuideStart(_guideAthleteCards(), 'tour_ath_vu'); }
+function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; nvGuideStart(_guideCoachCards(), 'tour_coach_vu'); }
 var _coachTourTried = false;
 function _maybeCoachTour() {
   if (_coachTourTried || _tourSeen('tour_coach_vu')) return;
