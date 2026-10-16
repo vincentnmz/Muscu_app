@@ -6185,8 +6185,8 @@ function _prescriptionStag(exoNom) {
     act = 'Garde la charge et ajoute des reps : vise ' + rmax + ' reps avant de remonter la charge.';
     why = 'Il te reste de la marge en répétitions : progresse en volume avant d\'alourdir.';
   } else {
-    act = 'Ajoute des reps tant que tu as de la marge, puis +2,5 kg quand tu plafonnes — ou varie l\'exercice pour un nouveau stimulus.';
-    why = 'Pas de fourchette de reps définie : règle générale de double progression.';
+    act = 'Ajoute des reps tant que tu as de la marge, puis +2,5 kg quand tu plafonnes. Pousse l\'intensité (séries proches de l\'échec), garde 2-3 min de repos entre séries, et soigne ton sommeil. Si tu es à ton max, persévère.';
+    why = 'La progression vient de l\'intensité, du temps de repos et de la récupération — pas du changement d\'exercice.';
   }
   return { act: act, why: why };
 }

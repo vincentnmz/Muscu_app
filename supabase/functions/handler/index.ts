@@ -1289,6 +1289,14 @@ async function _invaliderTokensReset(athlete_id: string): Promise<void> {
 // ⚠️ Bac à sable Resend : tant qu'aucun domaine n'est vérifié (from =
 //    onboarding@resend.dev), Resend ne délivre QU'À l'adresse du compte
 //    propriétaire. Les autres destinataires ne reçoivent rien (cf. roadmap P0-1).
+// En-tête e-mail : logo Novalyz + nom (image absolue, compatible clients mail).
+const MAIL_LOGO_URL = Deno.env.get('MAIL_LOGO_URL') || 'https://vincentnmz.github.io/Muscu_app/logo%20novalyz.png'
+function _mailHeader(): string {
+  return `<div style="max-width:480px;margin:0 auto 16px;text-align:center">
+    <img src="${MAIL_LOGO_URL}" width="54" height="54" alt="Novalyz" style="display:inline-block;border:0;border-radius:14px;vertical-align:middle">
+    <div style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;letter-spacing:.08em;color:#eaf0fa;margin-top:8px">NOVALYZ</div>
+  </div>`
+}
 async function _envoyerEmail(to: string, subject: string, html: string): Promise<boolean> {
   const key = Deno.env.get('RESEND_API_KEY')
   if (!key) { console.error('email: RESEND_API_KEY absente'); return false }
@@ -1312,6 +1320,7 @@ async function _envoyerEmailReset(email: string, rawToken: string): Promise<bool
   const baseUrl = Deno.env.get('APP_BASE_URL') || 'https://vincentnmz.github.io/Muscu_app/dev/'
   const lien = baseUrl + (baseUrl.indexOf('?') !== -1 ? '&' : '?') + 'reset_token=' + rawToken
   const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:24px">
+    ${_mailHeader()}
     <div style="max-width:480px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:24px">
       <h2 style="margin:0 0 12px">Réinitialisation de votre mot de passe</h2>
       <p style="color:#8b96b0;line-height:1.5">Une demande de réinitialisation de votre mot de passe Novalyz a été effectuée. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.</p>
@@ -1544,8 +1553,13 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     if (tonEvol != null && !aBaisse && !progOk) pushReco(`Ton volume est stable : relance la progression en visant +1 rep sur tes exos principaux, puis +2,5 kg une fois le haut de ta fourchette atteint.`, 'moyenne')
     if (tonEvol != null && !aBaisse) pushReco(`Cible un muscle en retard : ajoute 1 à 2 séries par semaine là où ton volume est sous ta cible, pour équilibrer ton développement.`, 'moyenne')
     // 3) Leviers d'AIDE transverses (toujours utiles, non chiffrés → priorité info).
+    //    Philosophie : on ne change PAS d'exercice — on progresse par l'intensité, la
+    //    surcharge progressive, la récupération et la nutrition (demande porteur).
+    pushReco(`Mets de l'intensité : tes dernières séries doivent finir proches de l'échec (1-2 reps en réserve) — c'est le signal qui déclenche la progression.`, 'info')
+    pushReco(`Progresse une variable à la fois et garde les mêmes exercices : d'abord les reps jusqu'au haut de ta fourchette, puis la charge — c'est comme ça qu'on mesure vraiment les progrès.`, 'info')
+    pushReco(`Soigne ta récupération : vise 7-9 h de sommeil et un repos suffisant entre séries (2-3 min sur les gros exercices) pour pousser fort la séance d'après.`, 'info')
+    pushReco(`Assure l'apport : assez de protéines (~1,6 à 2 g/kg/jour) et évite un déficit calorique prolongé si ton objectif est de gagner force et muscle.`, 'info')
     pushReco(`Soigne l'exécution avant la charge : tempo contrôlé et amplitude complète rendent chaque série plus efficace.`, 'info')
-    pushReco(`Varie tes exercices toutes les 6 à 8 semaines : un nouveau stimulus relance la progression quand elle plafonne.`, 'info')
     pushReco(`Enregistre ton RPE à chaque série : plus tes données sont complètes, plus les analyses et les cibles de charge sont justes.`, 'info')
   }
   // Confiance = profondeur réelle des données (nb de séances) + présence d'une base
@@ -1669,7 +1683,7 @@ function buildAlertesCentre(moteur: any, comparison: any): any[] {
     douleur: "Adapte la charge sur la zone et surveille ; avis kiné si ça persiste.",
     fatigue: "Priorise le sommeil et la récupération ; évite d'intensifier.",
     sommeil: "Améliore ton sommeil ; séance normale mais pas d'intensification.",
-    stagnation: 'Varie les exercices ou introduis une semaine plus légère.',
+    stagnation: "Mets plus d'intensité (séries proches de l'échec) et progresse en charge/reps. Pense aussi au temps de repos : trop court entre séries, tu ne peux pas pousser — vise 2-3 min sur les gros exercices. Si tu es déjà à ton max, persévère et soigne ta récupération (sommeil).",
   }
   const reliability = (moteur && moteur.confiance) || 'moyenne'
   const context = (moteur && moteur.contexte_tag) || null
@@ -3558,8 +3572,8 @@ function _escHtml(s: unknown): string {
 // Coquille e-mail commune (thème sombre Novalyz, identique au mail de reset).
 function _emailShell(titre: string, sousTitre: string, corps: string): string {
   return `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:24px">
+    ${_mailHeader()}
     <div style="max-width:620px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:24px 22px">
-      <div style="font-size:13px;color:#37d3b5;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Novalyz</div>
       <h2 style="margin:0 0 4px;font-size:20px">${_escHtml(titre)}</h2>
       <p style="margin:0 0 18px;color:#8b96b0;font-size:13px">${_escHtml(sousTitre)}</p>
       ${corps}
