@@ -11610,6 +11610,37 @@ function _maExecVsCible(data) {
   return _maSec('Exécution vs cible', head, 'execcible') + rows.join('')
     + _maCap('Ta dernière exécution de chaque exercice à cible.');
 }
+// Courbe du tonnage PAR SÉANCE sur la période navigable (1 point = 1 séance).
+// Source : seances_detail (tonnage réel par séance). Trend = moyenne 1re moitié vs
+// 2de (robuste au bruit). ≥ 2 séances requises pour tracer.
+function _maTonnageSeanceChart(data) {
+  var w = _maWin();
+  var sd = (data.seances_detail || []).filter(function (s) { var d = s.date || ''; return d >= w.startISO && d < w.endISO && (s.tonnage || 0) > 0; })
+    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  if (sd.length < 2) return _maEmpty('La courbe apparaît dès 2 séances sur la période.');
+  var tons = sd.map(function (s) { return (s.tonnage || 0) / 1000; });   // kg → tonnes
+  var max = Math.max.apply(null, tons), min = Math.min.apply(null, tons);
+  var W = 326, H = 90, pad = 8, span = (max - min) || 1;
+  var xs = function (i) { return sd.length === 1 ? W / 2 : (pad + i * (W - 2 * pad) / (sd.length - 1)); };
+  var ys = function (v) { return (H - 6) - ((v - min) / span) * (H - 20); };
+  var pts = sd.map(function (s, i) { return xs(i).toFixed(1) + ' ' + ys(tons[i]).toFixed(1); });
+  var line = 'M' + pts.join(' L');
+  var area = line + ' L' + xs(sd.length - 1).toFixed(1) + ' ' + H + ' L' + xs(0).toFixed(1) + ' ' + H + ' Z';
+  var dots = sd.map(function (s, i) {
+    var last = i === sd.length - 1;
+    return '<circle cx="' + xs(i).toFixed(1) + '" cy="' + ys(tons[i]).toFixed(1) + '" r="' + (last ? 3.4 : 2.2) + '" fill="#1A5FFF"/>';
+  }).join('');
+  var fmt = function (d) { var dd = new Date((d || '') + 'T00:00:00'); return isNaN(dd.getTime()) ? '' : dd.getDate() + ' ' + _MA_MON[dd.getMonth()]; };
+  var lastT = String(Math.round(tons[tons.length - 1] * 10) / 10).replace('.', ',');
+  return '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Tonnage / séance</span>'
+    + '<span style="font-size:11px;color:var(--text-muted);font-weight:700">dernière ' + lastT + ' t ' + _maTrendBadge(tons) + '</span></div>'
+    + '<svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none">'
+    + '<path d="' + area + '" fill="rgba(26,95,255,.12)"/>'
+    + '<path d="' + line + '" fill="none" stroke="#1A5FFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
+    + dots + '</svg>'
+    + '<div class="ma-axis"><span>' + fmt(sd[0].date) + '</span><span>' + fmt(sd[sd.length - 1].date) + '</span></div></div>';
+}
+
 function _maMuscuResume(data) {
   var p = _maPeriode, w = _maWin(), days = w.days;
   // KPI de la fenêtre NAVIGABLE calculés depuis daily_muscu (historique complet) —
@@ -11670,6 +11701,9 @@ function _maMuscuResume(data) {
     + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change les chiffres & graphiques ci-dessous.')
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
+    + _maSec('Tonnage par séance', w.plabel + ' · tonnes', 'tonnage')
+    + _maTonnageSeanceChart(data)
+    + _maCap('Chaque point = une séance (charge × reps, en tonnes). La tendance compare la 1re moitié de la période à la 2de.')
     + _maExecVsCible(data)
     + _maSec('Ressenti des séances', 'sur ' + w.plabel, 'ressenti') + rsHtml
     + '<div class="ma-cols">'
