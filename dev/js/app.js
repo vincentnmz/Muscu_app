@@ -11790,20 +11790,6 @@ function _maForceChart(data) {
       'Moyenne du 1RM estimé (Epley) de tes exercices à chaque séance. La courbe qui monte = tu gagnes en force.', dts);
 }
 
-// Courbe du tonnage PAR SÉANCE sur la période navigable (1 point = 1 séance).
-// Même rendu que les autres courbes (_maChartBlock → _maLineRich) pour l'homogénéité.
-function _maTonnageSeanceChart(data) {
-  var w = _maWin();
-  var sd = (data.seances_detail || []).filter(function (s) { var d = s.date || ''; return d >= w.startISO && d < w.endISO && (s.tonnage || 0) > 0; })
-    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
-  if (sd.length < 2) return _maSec('Tonnage par séance', w.plabel + ' · tonnes', 'tonnage') + _maEmpty('La courbe apparaît dès 2 séances sur la période.');
-  var pts = sd.map(function (s) { return Math.round((s.tonnage || 0) / 100) / 10; });   // tonnes, 1 décimale
-  var dts = sd.map(function (s) { return s.date; });
-  return _maSec('Tonnage par séance', w.plabel + ' · tonnes', 'tonnage')
-    + _maChartBlock('Tonnage / séance', pts, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(dts[0]),
-      'Chaque point = une séance (charge × reps, en tonnes).', dts);
-}
-
 function _maMuscuResume(data) {
   var p = _maPeriode, w = _maWin(), days = w.days;
   // KPI de la fenêtre NAVIGABLE calculés depuis daily_muscu (historique complet) —
@@ -11878,7 +11864,6 @@ function _maMuscuResume(data) {
     + _maPeriodHtml() + _maPeriodHint('Le détail ci-dessous suit le sélecteur (Semaine / Mois / Année + flèches). La décision ci-dessus reste sur tes 4 dernières semaines.')
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
-    + _maTonnageSeanceChart(data)
     + _maExecVsCible(data)
     + _maSec('Ressenti des séances', 'sur ' + w.plabel, 'ressenti') + rsHtml
     + '<div class="ma-cols">'
