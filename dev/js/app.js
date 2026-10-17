@@ -12318,12 +12318,17 @@ function _maMuscuTendances(data) {
   var ws = tdC.pts;                                                          // jours entraînés par bucket
   var hasW = wt.some(function (v) { return v > 0; });
   var bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  // Tonnage : on ne trace QUE les jours (buckets) d'entraînement → les jours de
+  // repos (tonnage 0) ne créent plus de creux à zéro qui écrase la courbe.
+  var wtF = [], wtD = [];
+  wt.forEach(function (v, i) { if (v > 0) { wtF.push(v); wtD.push(tdT.dates[i]); } });
   // Sélecteur juste au-dessus du graphique → on voit la courbe s'ajuster.
   var head = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie (par ' + bNoun + ').');
   var main = '';
   if (hasW) {
-    main += _maSec('Tonnage soulevé', 'par ' + bNoun + ' · ' + _maPLabel(), 'tonnage')
-      + _maChartBlock('Tonnage', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(tdT.dates[0]), 'Total charge × reps par ' + bNoun + '. La courbe qui monte = tu soulèves plus de volume → c\'est le moteur n°1 de progression.', tdT.dates);
+    var tonLbl = _maGran === 'S' ? 'jours d\'entraînement' : 'par ' + bNoun;
+    main += _maSec('Tonnage soulevé', tonLbl + ' · ' + _maPLabel(), 'tonnage')
+      + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Total charge × reps — seuls les jours d\'entraînement sont tracés (les jours de repos ne comptent pas). La courbe qui monte = tu soulèves plus de volume.', wtD);
     main += _maSec('Régularité', 'par ' + bNoun + ' · ' + _maPLabel(), 'regularite')
       + _maChartBlock('Séances', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdC.dates[0]), 'Nombre de jours d\'entraînement par ' + bNoun + '. La régularité prime sur tout le reste.', tdC.dates);
   } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
