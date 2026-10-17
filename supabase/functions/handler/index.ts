@@ -1264,6 +1264,33 @@ async function handleBilanClient(body: any): Promise<Response> {
   return jsonResp({ success: true, html, nom: aRow.nom || '' })
 }
 
+// Coach : envoi À LA DEMANDE du bilan d'un athlète par e-mail (bouton Réglages coach).
+// Même contenu que le bilan auto / la page imprimable, envoyé à l'e-mail de l'athlète.
+async function handleEnvoyerBilanMail(body: any): Promise<Response> {
+  const coach_id = String(body.coach_id || '')
+  const athlete_id = String(body.athlete_id || '')
+  const periode = ['mois', '3mois'].indexOf(String(body.periode || '')) >= 0 ? String(body.periode) : 'semaine'
+  if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  const { data: rows } = await sb().from('athletes').select('id,nom,email,coach_id').eq('id', athlete_id)
+  const aRow: any = (rows || [])[0]
+  if (!aRow || String(aRow.coach_id) !== coach_id) return jsonResp({ success: false, error: 'Athlète introuvable' })
+  const email = String(aRow.email || '').trim()
+  if (!email) return jsonResp({ success: false, error: "Cet athlète n'a pas renseigné d'e-mail." })
+  const now = new Date()
+  const [{ data: perfs }, { data: prog }, { data: be }, { data: sante }] = await Promise.all([
+    sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,seance_id').eq('athlete_id', athlete_id),
+    sb().from('programme').select('seance_id,series_prevues').eq('athlete_id', athlete_id),
+    sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
+    sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
+  ])
+  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode)
+  const prenom = String(aRow.nom || '').split(/\s+/)[0]
+  const html = _emailBilanAthleteHTML(prenom, periode, bilan)
+  const label = periode === '3mois' ? 'des 3 derniers mois' : periode === 'mois' ? 'du mois' : 'de la semaine'
+  const sent = await _envoyerEmail(email, `Novalyz — Ton bilan ${label}`, html)
+  return jsonResp({ success: sent, email, error: sent ? null : "Échec de l'envoi (réessaie)." })
+}
+
 // ── Reset de mot de passe par email (P2 — backend seul) ───────────────────────
 // Réponse TOUJOURS générique pour un email valide (anti-énumération) : on ne
 // révèle jamais si un compte existe. Le token brut n'existe QUE dans le lien de
@@ -1292,9 +1319,9 @@ async function _invaliderTokensReset(athlete_id: string): Promise<void> {
 // En-tête e-mail : logo Novalyz + nom (image absolue, compatible clients mail).
 const MAIL_LOGO_URL = Deno.env.get('MAIL_LOGO_URL') || 'https://vincentnmz.github.io/Muscu_app/logo%20novalyz.png'
 function _mailHeader(): string {
-  return `<div style="max-width:480px;margin:0 auto 16px;text-align:center">
-    <img src="${MAIL_LOGO_URL}" width="54" height="54" alt="Novalyz" style="display:inline-block;border:0;border-radius:14px;vertical-align:middle">
-    <div style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;letter-spacing:.08em;color:#eaf0fa;margin-top:8px">NOVALYZ</div>
+  return `<div style="max-width:620px;margin:0 auto 18px;text-align:center">
+    <img src="${MAIL_LOGO_URL}" width="96" height="96" alt="Novalyz" style="display:inline-block;border:0;border-radius:22px;vertical-align:middle">
+    <div style="font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:800;letter-spacing:.1em;color:#eaf0fa;margin-top:10px">NOVALYZ</div>
   </div>`
 }
 async function _envoyerEmail(to: string, subject: string, html: string): Promise<boolean> {
@@ -1319,9 +1346,9 @@ async function _envoyerEmailReset(email: string, rawToken: string): Promise<bool
   if (!key) { console.error('reset: RESEND_API_KEY absente'); return false }
   const baseUrl = Deno.env.get('APP_BASE_URL') || 'https://vincentnmz.github.io/Muscu_app/dev/'
   const lien = baseUrl + (baseUrl.indexOf('?') !== -1 ? '&' : '?') + 'reset_token=' + rawToken
-  const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:24px">
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:Arial,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:16px">
     ${_mailHeader()}
-    <div style="max-width:480px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:24px">
+    <div style="max-width:480px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:20px 16px">
       <h2 style="margin:0 0 12px">Réinitialisation de votre mot de passe</h2>
       <p style="color:#8b96b0;line-height:1.5">Une demande de réinitialisation de votre mot de passe Novalyz a été effectuée. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.</p>
       <p style="text-align:center;margin:24px 0">
@@ -3571,9 +3598,9 @@ function _escHtml(s: unknown): string {
 
 // Coquille e-mail commune (thème sombre Novalyz, identique au mail de reset).
 function _emailShell(titre: string, sousTitre: string, corps: string): string {
-  return `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:24px">
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font-family:Arial,Helvetica,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:16px">
     ${_mailHeader()}
-    <div style="max-width:620px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:24px 22px">
+    <div style="max-width:620px;margin:0 auto;background:#141a28;border:1px solid #2a3450;border-radius:14px;padding:18px 16px">
       <h2 style="margin:0 0 4px;font-size:20px">${_escHtml(titre)}</h2>
       <p style="margin:0 0 18px;color:#8b96b0;font-size:13px">${_escHtml(sousTitre)}</p>
       ${corps}
@@ -3610,7 +3637,7 @@ function _fmtDuree(min: number): string {
 // progression 1RM Epley fenêtre vs précédente), programme (prévu), bien_etre
 // (ressenti /5), indicateurs sante_ (montre : pas, sommeil_min, fc_repos).
 function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: any[], now: Date, periode: string): any {
-  const days = periode === 'mois' ? 28 : 7
+  const days = periode === '3mois' ? 90 : periode === 'mois' ? 28 : 7
   const weeks = days / 7
   const cut = fmtYMD(minus(now, days))
   const cutPrev = fmtYMD(minus(now, days * 2))
@@ -3635,6 +3662,26 @@ function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: a
   const totVol = Object.values(volMus).reduce((s, v) => s + v, 0) || 1
   const balance = Object.keys(volMus).map(m => ({ muscle: m, pct: Math.round(volMus[m] / totVol * 100) }))
     .sort((a, b) => b.pct - a.pct).slice(0, 6)
+  // Vraie balance agoniste / antagoniste : poussée vs tirage (pecs/dos), avant vs
+  // arrière cuisse (quadri/ischios), flexion vs extension bras (biceps/triceps).
+  // Volume (charge×reps) par muscle, matching par mots-clés (tolère pluriels/accents).
+  const _normM = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const _sumK = (keys: string[], excl: string[] = []) => {
+    let t = 0
+    for (const m in volMus) { const n = _normM(m); if (keys.some(k => n.indexOf(k) >= 0) && !excl.some(e => n.indexOf(e) >= 0)) t += volMus[m] }
+    return t
+  }
+  const _pairDefs = [
+    { la: 'Pectoraux', ka: ['pector'], lb: 'Dos', kb: ['dos', 'dorsa'] },
+    { la: 'Quadriceps', ka: ['quadri'], lb: 'Ischios', kb: ['ischio', 'femor'] },
+    { la: 'Biceps', ka: ['biceps'], xa: ['femor'], lb: 'Triceps', kb: ['triceps'] },
+  ]
+  const balancePairs = _pairDefs.map(p => {
+    const a = _sumK(p.ka, (p as any).xa || []), b2 = _sumK(p.kb), t = a + b2
+    if (t <= 0) return null
+    const pa = Math.round(a / t * 100)
+    return { la: p.la, lb: p.lb, pa, pb: 100 - pa }
+  }).filter(Boolean)
 
   // Progression par exercice : meilleur 1RM estimé (Epley = charge·(1+reps/30)),
   // fenêtre courante vs fenêtre précédente de même durée. Exos présents dans LES
@@ -3695,8 +3742,8 @@ function _emailResumeEquipeHTML(coachNom: string, periode: string, d: any): stri
   const joueurs: any[] = (d && d.joueurs) || []
   const blesses: any[] = (d && d.blesses) || []
   const total = eq.total || joueurs.length || 0
-  const periodeLabel = periode === 'mois' ? 'du mois' : 'de la semaine'
-  const ceLabel = periode === 'mois' ? 'ce mois' : 'cette semaine'
+  const periodeLabel = periode === '3mois' ? 'des 3 derniers mois' : periode === 'mois' ? 'du mois' : 'de la semaine'
+  const ceLabel = periode === '3mois' ? 'ces 3 mois' : periode === 'mois' ? 'ce mois' : 'cette semaine'
 
   // Roue « effectif actif » = part des athlètes ayant ≥ 1 séance sur 7 j.
   const actifs = joueurs.filter(j => Number(j.seances_7j) > 0).length
@@ -3786,26 +3833,27 @@ function _emailResumeEquipeHTML(coachNom: string, periode: string, d: any): stri
 }
 
 function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string {
-  const ceLabel = periode === 'mois' ? 'ce mois' : 'cette semaine'
+  const ceLabel = periode === '3mois' ? 'ces 3 mois' : periode === 'mois' ? 'ce mois' : 'cette semaine'
   const perLabel = periode === 'mois' ? 'du mois' : 'de la semaine'
 
-  // --- 2 roues : réalisé vs prévu ---
-  const pctSea = b.seancesPrevues > 0 ? Math.round(100 * b.seancesFaites / b.seancesPrevues) : null
-  const pctSer = b.seriesPrevues > 0 ? Math.round(100 * b.seriesFaites / b.seriesPrevues) : null
-  const gaugeCell = (pct: number | null, faites: number, prevues: number, titre: string, unite: string) => {
-    const inner = pct != null
-      ? _roueImg(pct)
-      : `<div style="font-size:32px;font-weight:800;color:#37d3b5;padding:38px 0 34px">${faites}</div>`
-    const vs = prevues > 0 ? `${faites} / ${prevues} ${unite} · vs prévu` : `${faites} ${unite} · pas de programme`
-    return `<td width="50%" valign="top" style="background:#0f1522;border:1px solid #243049;border-radius:14px;padding:14px 8px 12px;text-align:center">
-      ${inner}
-      <div style="font-size:12px;color:#8b96b0;margin-top:8px">${titre}</div>
-      <div style="font-size:11px;color:#5f6b85;margin-top:1px">${vs}</div></td>`
+  // --- Réalisé vs prévu : BARRES HTML (plus d'images distantes bloquées par les
+  //     clients mail) · pleine largeur → jamais écrasé sur mobile. ---
+  const barGauge = (faites: number, prevues: number, titre: string, unite: string) => {
+    const pct = prevues > 0 ? Math.round(100 * faites / prevues) : null
+    const w = pct != null ? Math.max(3, Math.min(100, pct)) : 100
+    const col = pct == null ? '#37d3b5' : pct >= 90 ? '#0ca30c' : pct >= 60 ? '#fab219' : '#d03b3b'
+    const right = prevues > 0 ? `${faites} / ${prevues} ${unite} · ${pct}%` : `${faites} ${unite}`
+    return `<div style="margin:0 0 11px">
+      <table role="presentation" width="100%" style="border-collapse:collapse;font-family:Arial,sans-serif"><tr>
+        <td style="font-size:13px;color:#cdd6ea">${titre}</td>
+        <td style="text-align:right;font-size:12px;color:#8b96b0">${right}</td></tr></table>
+      <table role="presentation" width="100%" style="border-collapse:collapse;background:#0f1522;border-radius:7px;margin-top:4px"><tr>
+        <td width="${w}%" style="background:${col};height:16px;border-radius:7px;font-size:0;line-height:0">&nbsp;</td><td></td></tr></table>
+    </div>`
   }
-  const rouesRow = `<table role="presentation" width="100%" style="border-collapse:separate;border-spacing:10px 0;margin:0 0 4px"><tr>
-      ${gaugeCell(pctSea, b.seancesFaites, b.seancesPrevues, 'Séances réalisées', 'séances')}
-      ${gaugeCell(pctSer, b.seriesFaites, b.seriesPrevues, 'Volume réalisé (séries)', 'séries')}
-    </tr></table>`
+  const rouesRow = `<h3 style="font-size:15px;margin:2px 0 10px;font-family:Arial,sans-serif">Réalisé vs prévu <span style="font-weight:400;font-size:12px;color:#5f6b85">${ceLabel}</span></h3>`
+    + barGauge(b.seancesFaites, b.seancesPrevues, 'Séances', 'séances')
+    + barGauge(b.seriesFaites, b.seriesPrevues, 'Volume (séries)', 'séries')
 
   // --- tuiles absolues ---
   const stat = (label: string, val: unknown, unite = '') =>
@@ -3819,9 +3867,21 @@ function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string
       ${stat('RPE moy.', b.rpeMoyen != null ? b.rpeMoyen : '—')}
     </tr></table>`
 
-  // --- balance musculaire (part du volume) ---
+  // --- Vraie balance musculaire : paires agoniste / antagoniste (barres 2 côtés). ---
   let balanceHtml = ''
-  if (b.balance && b.balance.length) {
+  if (b.balancePairs && b.balancePairs.length) {
+    const rows = b.balancePairs.map((p: any) => `<div style="margin:0 0 12px">
+        <table role="presentation" width="100%" style="border-collapse:collapse;font-family:Arial,sans-serif"><tr>
+          <td style="font-size:12.5px;color:#cdd6ea">${_escHtml(p.la)} <b style="color:#e9eef8">${p.pa}%</b></td>
+          <td style="text-align:right;font-size:12.5px;color:#cdd6ea"><b style="color:#e9eef8">${p.pb}%</b> ${_escHtml(p.lb)}</td></tr></table>
+        <table role="presentation" width="100%" style="border-collapse:collapse;border-radius:7px;overflow:hidden;margin-top:4px"><tr>
+          <td width="${p.pa}%" style="background:#1A5FFF;height:16px;font-size:0;line-height:0">&nbsp;</td>
+          <td width="${p.pb}%" style="background:#9D5FD3;height:16px;font-size:0;line-height:0">&nbsp;</td></tr></table>
+      </div>`).join('')
+    balanceHtml = `<h3 style="font-size:15px;margin:18px 0 8px;font-family:Arial,sans-serif">Balance musculaire <span style="font-weight:400;font-size:12px;color:#5f6b85">agoniste / antagoniste</span></h3>${rows}
+      <div style="font-size:11px;color:#5f6b85;margin-top:2px;font-family:Arial,sans-serif">Vise ~50 / 50. Un écart marqué et durable = point faible à travailler.</div>`
+  } else if (b.balance && b.balance.length) {
+    // Repli : part du volume par muscle (si aucune paire calculable).
     const lignes = b.balance.map((m: any) => `<tr>
         <td style="width:92px;font-size:13px;color:#cdd6ea;padding:4px 8px 4px 0">${_escHtml(m.muscle)}</td>
         <td style="padding:4px 0"><table role="presentation" width="100%" style="border-collapse:collapse;background:#0f1522;border-radius:7px"><tr><td style="width:${Math.max(3, Math.min(100, m.pct))}%;background:#37d3b5;height:14px;border-radius:7px;font-size:0">&nbsp;</td><td></td></tr></table></td>
@@ -3885,8 +3945,8 @@ function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string
 async function handleCronResumes(body: any): Promise<Response> {
   const secret = Deno.env.get('CRON_SECRET')
   if (!secret || String(body.secret || '') !== secret) return jsonResp({ error: 'unauthorized' }, 401)
-  const periode = String(body.periode || 'semaine') === 'mois' ? 'mois' : 'semaine'
-  const periodeLabel = periode === 'mois' ? 'du mois' : 'de la semaine'
+  const periode = ['mois', '3mois'].indexOf(String(body.periode || '')) >= 0 ? String(body.periode) : 'semaine'
+  const periodeLabel = periode === '3mois' ? 'des 3 derniers mois' : periode === 'mois' ? 'du mois' : 'de la semaine'
   const now = new Date()
 
   let coachsOk = 0, coachsSkip = 0, athletesOk = 0, athletesSkip = 0
@@ -5023,6 +5083,7 @@ Deno.serve(async (req: Request) => {
         case 'exportAthlete':            return handleExportAthlete(body)
         case 'exportEquipe':             return handleExportEquipe(body)
         case 'bilanClient':              return handleBilanClient(body)
+        case 'envoyerBilanMail':         return handleEnvoyerBilanMail(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)

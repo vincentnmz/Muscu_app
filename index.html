@@ -2808,8 +2808,10 @@
         <select id="bilan-client-periode" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:14px;box-sizing:border-box;">
           <option value="semaine">Semaine</option>
           <option value="mois">Mois</option>
+          <option value="3mois">3 mois</option>
         </select>
         <button onclick="ouvrirBilanClient()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">📄 Ouvrir le bilan</button>
+        <button onclick="envoyerBilanClientMail()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">📧 Envoyer le rapport par e-mail à l'athlète</button>
         <div id="bilan-client-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
       </div>
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--danger);">Zone dangereuse</div>

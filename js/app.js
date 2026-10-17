@@ -2265,6 +2265,9 @@ async function enregistrerEmailAthlete() {
       try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
       setMsg(email ? '✅ Email enregistré.' : '✅ Email retiré.', 'var(--good)');
       showToast('✅ Email enregistré');
+      // Le message de confirmation s'efface tout seul (sinon il « reste » et laisse
+      // croire qu'une action est en attente).
+      try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
     } else {
       setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
     }
@@ -2576,6 +2579,24 @@ async function ouvrirBilanClient() {
       setMsg(okDl ? '✅ Bilan téléchargé (ouvre le fichier .html).' : '❌ Impossible d\'ouvrir le bilan ici.', okDl ? 'var(--good)' : 'var(--danger)');
     }
   } catch (e) { if (win) { try { win.close(); } catch (_) {} } setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+// Coach : envoie le rapport de l'athlète sélectionné par e-mail (à son adresse).
+async function envoyerBilanClientMail() {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  var msg = document.getElementById('bilan-client-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  var sel = document.getElementById('bilan-client-select');
+  var per = document.getElementById('bilan-client-periode');
+  var athlete_id = sel ? sel.value : '';
+  var periode = per ? per.value : 'mois';
+  if (!athlete_id) { setMsg('Choisis un athlète.'); return; }
+  setMsg('⏳ Envoi du rapport…', 'var(--text-muted)');
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerBilanMail', coach_id: coach.coach_id, athlete_id: athlete_id, periode: periode }) });
+    var data = await res.json();
+    if (data && data.success) { setMsg('✅ Rapport envoyé à ' + (data.email || 'l\'athlète') + '.', 'var(--good)'); showToast('✅ Rapport envoyé'); setTimeout(function () { setMsg('', ''); }, 5000); }
+    else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'envoi.')); }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
 }
 /* __EXPORT_RGPD_END__ */
 
