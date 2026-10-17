@@ -11566,7 +11566,47 @@ function _novaPickReco(s, allowAllConf) {
   var r = pool[((di % pool.length) + pool.length) % pool.length];
   return String((r && r.texte) || '');
 }
-function _maSynthese(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.muscu); }
+// Constats SUPPLÉMENTAIRES calculés côté front pour enrichir la Lecture Novalyz :
+// la force (1RM estimé, exos en progrès/recul) et les muscles sous leur cible de
+// volume — déterministes, mêmes fenêtres que la Lecture (4 sem.). Tracés aux données.
+function _maLectureExtras(data) {
+  var constats = [];
+  try {
+    var d = _maProgRegData(data);
+    if (d.nPair && d.forcePct != null) {
+      var fp = d.forcePct, ton = fp >= 3 ? 'positif' : fp <= -3 ? 'attention' : 'neutre';
+      var mot = fp >= 3 ? 'en hausse' : fp <= -3 ? 'en baisse' : 'stable';
+      var det = '';
+      if (d.prog.length || d.reg.length) det = ' — ' + (d.prog.length ? d.prog.length + ' exo' + (d.prog.length > 1 ? 's' : '') + ' en progrès' : '') + (d.prog.length && d.reg.length ? ', ' : '') + (d.reg.length ? d.reg.length + ' en recul' : '');
+      constats.push({ ton: ton, texte: 'Force ' + mot + ' : 1RM estimé moyen ' + (fp >= 0 ? '+' : '') + fp + ' %' + det + '.' });
+    }
+  } catch (e) {}
+  try {
+    var rw = _maRecent4wISO(), daily = (data.historique && data.historique.daily_muscu) || {};
+    var spm = (_maMuscuAgg(daily, rw.startISO, rw.endISO).series_par_muscle) || {};
+    var TGT = _maVolTargets(), MEV = TGT.min * 4;
+    var vals = Object.keys(spm).map(function (m) { return { m: m, v: spm[m] }; }).filter(function (x) { return x.v > 0; });
+    var sous = vals.filter(function (x) { return x.v < MEV; }).sort(function (a, b) { return a.v - b.v; });
+    // On ne pointe un retard que s'il y a un VRAI déséquilibre (au moins un muscle à sa cible).
+    if (sous.length && vals.some(function (x) { return x.v >= MEV; })) {
+      var names = sous.slice(0, 2).map(function (x) { return x.m; });
+      var joined = names.length === 1 ? names[0] : names[0] + ' et ' + names[1];
+      constats.push({ ton: 'attention', texte: joined + ' sous ta cible de volume — à renforcer pour équilibrer.' });
+    }
+  } catch (e) {}
+  return constats;
+}
+function _maSynthese(data) {
+  var s = data && data.analyse_synthese && data.analyse_synthese.muscu;
+  if (!s) return _maSyntheseBloc(s);
+  var extras = _maLectureExtras(data);
+  if (extras.length) {
+    var base = (s.constats || []).slice();
+    // Force + muscles insérés après le 1er constat (volume) : volume → force → cible → reste.
+    s = Object.assign({}, s, { constats: base.slice(0, 1).concat(extras, base.slice(1)) });
+  }
+  return _maSyntheseBloc(s);
+}
 function _maSyntheseCardio(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.cardio); }
 function _maSyntheseBloc(s) {
   if (!s || (!(s.constats && s.constats.length) && !s.reco)) return '';
@@ -11580,9 +11620,10 @@ function _maSyntheseBloc(s) {
   }).join('');
   var _recoTxt = _novaPickReco(s, true) || (s.reco && s.reco.texte) || '';
   var reco = _recoTxt ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(_recoTxt) + '</div></div></div>') : '';
-  var conf = s.confiance ? '<div style="text-align:right;font-size:10px;color:var(--text-subtle)">fiabilité : ' + _maE(s.confiance) + '</div>' : '';
+  // Plus de petit mot « fiabilité : … » ici : la fiabilité a désormais son bloc
+  // chiffré dédié (0-100) juste en dessous dans le Résumé muscu.
   return '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz' + head + '</div>'
-    + '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;margin:8px 0 16px">' + constats + reco + conf
+    + '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;margin:8px 0 16px">' + constats + reco
     + '<div style="font-size:10px;color:var(--text-subtle);text-align:right">Synthèse sur tes 4 dernières semaines (indépendante du filtre de période).</div></div>';
 }
 // « Est-ce bien fait » (période) : pour chaque exo du programme portant une cible,
@@ -11610,35 +11651,183 @@ function _maExecVsCible(data) {
   return _maSec('Exécution vs cible', head, 'execcible') + rows.join('')
     + _maCap('Ta dernière exécution de chaque exercice à cible.');
 }
-// Courbe du tonnage PAR SÉANCE sur la période navigable (1 point = 1 séance).
-// Source : seances_detail (tonnage réel par séance). Trend = moyenne 1re moitié vs
-// 2de (robuste au bruit). ≥ 2 séances requises pour tracer.
-function _maTonnageSeanceChart(data) {
-  var w = _maWin();
-  var sd = (data.seances_detail || []).filter(function (s) { var d = s.date || ''; return d >= w.startISO && d < w.endISO && (s.tonnage || 0) > 0; })
-    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
-  if (sd.length < 2) return _maEmpty('La courbe apparaît dès 2 séances sur la période.');
-  var tons = sd.map(function (s) { return (s.tonnage || 0) / 1000; });   // kg → tonnes
-  var max = Math.max.apply(null, tons), min = Math.min.apply(null, tons);
-  var W = 326, H = 90, pad = 8, span = (max - min) || 1;
-  var xs = function (i) { return sd.length === 1 ? W / 2 : (pad + i * (W - 2 * pad) / (sd.length - 1)); };
-  var ys = function (v) { return (H - 6) - ((v - min) / span) * (H - 20); };
-  var pts = sd.map(function (s, i) { return xs(i).toFixed(1) + ' ' + ys(tons[i]).toFixed(1); });
-  var line = 'M' + pts.join(' L');
-  var area = line + ' L' + xs(sd.length - 1).toFixed(1) + ' ' + H + ' L' + xs(0).toFixed(1) + ' ' + H + ' Z';
-  var dots = sd.map(function (s, i) {
-    var last = i === sd.length - 1;
-    return '<circle cx="' + xs(i).toFixed(1) + '" cy="' + ys(tons[i]).toFixed(1) + '" r="' + (last ? 3.4 : 2.2) + '" fill="#1A5FFF"/>';
+// ════════════ Analyses « cœur » : décision + vraies analyses ════════════
+// Tout est DÉTERMINISTE et tracé aux données réelles (daily_muscu / seances_detail
+// sur la fenêtre navigable) — aucune valeur inventée (CLAUDE.md §5/§6bis).
+
+// Fenêtre PRÉCÉDENTE de même granularité (pour base de comparaison / progression).
+function _maPrevWinISO() {
+  var r = _actRange(_maGran, _maOffset - 1);
+  return { startISO: _ymdLocal(r.start), endISO: _ymdLocal(r.end) };
+}
+function _maFiabCol(p) { return p >= 75 ? '#00A854' : p >= 50 ? '#E07800' : '#DC3545'; }
+
+// FIABILITÉ chiffrée (0-100) : score honnête = profondeur réelle des données.
+//  base comparaison 25 · profondeur 25 · RPE renseigné 20 · bien-être 15 · cibles 15.
+function _maRecent4wISO() {
+  var t = new Date();
+  var end = _ymdLocal(new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1));
+  var curStart = _ymdLocal(new Date(t.getFullYear(), t.getMonth(), t.getDate() - 27));
+  var prevEnd = curStart;
+  var prevStart = _ymdLocal(new Date(t.getFullYear(), t.getMonth(), t.getDate() - 55));
+  return { startISO: curStart, endISO: end, prevStartISO: prevStart, prevEndISO: prevEnd };
+}
+function _maFiabilite(data) {
+  var rw = _maRecent4wISO(), daily = (data.historique && data.historique.daily_muscu) || {};
+  var weeks = 4;
+  var cur = _maMuscuAgg(daily, rw.startISO, rw.endISO);
+  var prev = _maMuscuAgg(daily, rw.prevStartISO, rw.prevEndISO);
+  // RPE : couverture = séries avec RPE / séries totales sur la fenêtre.
+  var sumN = 0, sumS = 0, nBE = 0;
+  Object.keys(daily).forEach(function (d) {
+    if (d >= rw.startISO && d < rw.endISO) { var o = daily[d]; if (o) { sumN += o.rpe_n || 0; sumS += o.series || 0; } }
+  });
+  var rpeCov = sumS ? Math.min(1, sumN / sumS) : 0;
+  // Bien-être : jours avec un ressenti de séance sur la fenêtre / nb de séances.
+  var beDates = {};
+  ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) {
+    if (x && x.valeur >= 1 && (x.date || '') >= rw.startISO && (x.date || '') < rw.endISO) beDates[x.date] = 1;
+  });
+  nBE = Object.keys(beDates).length;
+  var beCov = cur.seances ? Math.min(1, nBE / cur.seances) : 0;
+  var hasCible = ((data && data.programme) || []).some(function (p) { return p && (p.charge_pct_1rm != null || p.rpe_cible != null); });
+  var depthTarget = Math.max(2, Math.round(1.5 * weeks));
+  var pBase = Math.round(Math.min(prev.seances, 3) / 3 * 25);
+  var pDepth = Math.round(Math.min(cur.seances, depthTarget) / depthTarget * 25);
+  var pRpe = Math.round(rpeCov * 20);
+  var pBE = Math.round(beCov * 15);
+  var pCible = hasCible ? 15 : 0;
+  var pct = pBase + pDepth + pRpe + pBE + pCible;
+  var st = function (g, m) { return g >= m ? 'ok' : g > 0 ? 'part' : 'ko'; };
+  var rows = [
+    { l: 'Base de comparaison (' + prev.seances + ' séance' + (prev.seances > 1 ? 's' : '') + ' avant)', g: pBase, m: 25, s: st(pBase, 25) },
+    { l: 'Profondeur (' + cur.seances + ' séance' + (cur.seances > 1 ? 's' : '') + ')', g: pDepth, m: 25, s: st(pDepth, 25) },
+    { l: 'RPE renseigné (' + Math.round(rpeCov * 100) + ' %)', g: pRpe, m: 20, s: st(pRpe, 20) },
+    { l: 'Questionnaire bien-être', g: pBE, m: 15, s: st(pBE, 15) },
+    { l: 'Cibles de programme définies', g: pCible, m: 15, s: st(pCible, 15) }
+  ];
+  // Conseils pour atteindre 100 % (uniquement les critères non pleins).
+  var tips = [];
+  if (pRpe < 20) tips.push('renseigne ton RPE à chaque série (+' + (20 - pRpe) + ')');
+  if (pBE < 15) tips.push('fais ton questionnaire du jour (+' + (15 - pBE) + ')');
+  if (pCible < 15) tips.push('définis des cibles dans ton programme (+15)');
+  if (pDepth < 25) tips.push('enregistre plus de séances sur la période (+' + (25 - pDepth) + ')');
+  return { pct: pct, rows: rows, tips: tips };
+}
+function _maFiabiliteBloc(data) {
+  var f = _maFiabilite(data), col = _maFiabCol(f.pct);
+  var lib = f.pct >= 75 ? 'fiable' : f.pct >= 50 ? 'à compléter' : 'incomplet';
+  var dash = Math.max(0, Math.min(100, f.pct));
+  var ring = '<div style="position:relative;width:76px;height:76px;flex:none">'
+    + '<svg width="76" height="76" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--surface2)" stroke-width="4"/>'
+    + '<circle cx="21" cy="21" r="15.9" fill="none" stroke="' + col + '" stroke-width="4" stroke-dasharray="' + dash + ' 100" stroke-dashoffset="25" stroke-linecap="round" transform="rotate(-90 21 21)"/></svg>'
+    + '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:19px;font-weight:800;color:' + col + '">' + f.pct + '%</div><div style="font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">' + lib + '</div></div></div>';
+  var ic = { ok: '<span style="color:#00A854">✓</span>', part: '<span style="color:#E07800">◑</span>', ko: '<span style="color:var(--text-subtle)">○</span>' };
+  var list = f.rows.map(function (r) {
+    return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0"><span style="width:14px;flex:none;text-align:center">' + (ic[r.s] || ic.ko) + '</span><span style="flex:1;min-width:0">' + _maE(r.l) + '</span><span style="color:var(--text-subtle);font-size:11px;font-variant-numeric:tabular-nums;flex:none">' + r.g + '/' + r.m + '</span></div>';
   }).join('');
-  var fmt = function (d) { var dd = new Date((d || '') + 'T00:00:00'); return isNaN(dd.getTime()) ? '' : dd.getDate() + ' ' + _MA_MON[dd.getMonth()]; };
-  var lastT = String(Math.round(tons[tons.length - 1] * 10) / 10).replace('.', ',');
-  return '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Tonnage / séance</span>'
-    + '<span style="font-size:11px;color:var(--text-muted);font-weight:700">dernière ' + lastT + ' t ' + _maTrendBadge(tons) + '</span></div>'
-    + '<svg width="100%" height="90" viewBox="0 0 326 90" preserveAspectRatio="none">'
-    + '<path d="' + area + '" fill="rgba(26,95,255,.12)"/>'
-    + '<path d="' + line + '" fill="none" stroke="#1A5FFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
-    + dots + '</svg>'
-    + '<div class="ma-axis"><span>' + fmt(sd[0].date) + '</span><span>' + fmt(sd[sd.length - 1].date) + '</span></div></div>';
+  var tip = f.tips.length ? '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.5"><b style="color:var(--text)">Pour atteindre 100 %</b> : ' + _maE(f.tips.join(' · ')) + '.</div>'
+    : '<div style="font-size:11px;color:#00A854;margin-top:8px">✓ Données complètes — fiabilité maximale.</div>';
+  return _maSec('Fiabilité des données', f.pct + ' / 100', 'fiabilite')
+    + '<div class="ma-card" style="padding:14px 15px"><div style="display:flex;gap:14px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + list + '</div></div>' + tip + '</div>';
+}
+
+// PROGRESSION / RÉGRESSION (e1RM Epley) : fenêtre courante vs précédente.
+function _maProgRegData(data) {
+  var rw = _maRecent4wISO(), sd = (data.seances_detail || []);
+  function bestE1(a, b) {
+    var m = {};
+    sd.forEach(function (s) {
+      if ((s.date || '') >= a && (s.date || '') < b) (s.exercices || []).forEach(function (e) {
+        var bs = _maBestSet(e); if (bs && bs.charge > 0 && bs.reps > 0) { var e1 = bs.charge * (1 + bs.reps / 30); if (m[e.nom] == null || e1 > m[e.nom]) m[e.nom] = e1; }
+      });
+    });
+    return m;
+  }
+  var cW = bestE1(rw.startISO, rw.endISO), cP = bestE1(rw.prevStartISO, rw.prevEndISO);
+  var prog = [], reg = [], sumC = 0, sumP = 0, nPair = 0;
+  Object.keys(cW).forEach(function (exo) {
+    if (cP[exo] > 0) { var pct = Math.round((cW[exo] - cP[exo]) / cP[exo] * 100); sumC += cW[exo]; sumP += cP[exo]; nPair++; if (pct >= 3) prog.push({ exo: exo, pct: pct }); else if (pct <= -3) reg.push({ exo: exo, pct: pct }); }
+  });
+  prog.sort(function (a, b) { return b.pct - a.pct; });
+  reg.sort(function (a, b) { return a.pct - b.pct; });
+  var forcePct = (nPair && sumP) ? Math.round((sumC - sumP) / sumP * 100) : null;
+  return { prog: prog.slice(0, 3), reg: reg.slice(0, 3), forcePct: forcePct, nPair: nPair };
+}
+function _maProgRegBloc(data) {
+  var d = _maProgRegData(data);
+  if (!d.nPair) return _maSec('Progression · régression', null, 'progression') + _maEmpty('Au moins 2 périodes avec les mêmes exercices pour comparer la force.');
+  var col = function (titre, color, arr, signe) {
+    var items = arr.length ? arr.map(function (p) { return '<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-top:1px solid var(--border)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(p.exo) + '</span><b style="color:' + color + ';flex:none;margin-left:8px">' + signe + Math.abs(p.pct) + '%</b></div>'; }).join('')
+      : '<div style="font-size:12px;color:var(--text-subtle);padding:4px 0">—</div>';
+    return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 12px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:' + color + ';margin-bottom:5px">' + titre + '</div>' + items + '</div>';
+  };
+  var forceLine = d.forcePct != null ? ('<div style="font-size:12.5px;margin-bottom:9px">Force estimée (1RM) : <b style="color:' + (d.forcePct >= 0 ? '#00A854' : '#E07800') + '">' + (d.forcePct >= 0 ? '+' : '') + d.forcePct + '%</b> vs période précédente</div>') : '';
+  return _maSec('Progression · régression', 'force e1RM', 'progression')
+    + '<div class="ma-card" style="padding:13px">' + forceLine
+    + '<div style="display:flex;gap:10px">' + col('▲ En progrès', '#00A854', d.prog, '+') + col('▼ À relancer', '#E07800', d.reg, '−') + '</div></div>'
+    + _maCap('1RM estimé (Epley) vs la période précédente de même durée. Exercices présents dans les deux fenêtres.');
+}
+
+// FRÉQUENCE par muscle (jours distincts / semaine) — cible ≥ 2×/sem (hypertrophie).
+function _maFreqMuscleBloc(data) {
+  var w = _maWin(), daily = (data.historique && data.historique.daily_muscu) || {};
+  var weeks = Math.max(1, Math.round(w.days / 7)), dayc = {};
+  Object.keys(daily).forEach(function (d) {
+    if (d >= w.startISO && d < w.endISO) { var o = daily[d]; if (o && o.spm) Object.keys(o.spm).forEach(function (m) { if (o.spm[m] > 0) dayc[m] = (dayc[m] || 0) + 1; }); }
+  });
+  var rows = Object.keys(dayc).map(function (m) { return { m: m, f: dayc[m] / weeks }; }).sort(function (a, b) { return b.f - a.f; });
+  if (!rows.length) return _maSec('Fréquence par muscle', null, 'frequence') + _maEmpty('Pas encore de séances sur la période.');
+  var html = rows.map(function (r) {
+    var C = r.f >= 2 ? '#00A854' : r.f >= 1 ? '#E07800' : '#DC3545';
+    var ft = (Math.round(r.f * 10) / 10).toString().replace('.', ',');
+    return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(r.m) + '</span><span class="p" style="color:' + C + '">' + ft + '×/sem</span></div>'
+      + '<div class="ma-vtrack"><div class="ma-vfill" style="width:' + Math.min(100, r.f / 3 * 100).toFixed(0) + '%;background:' + C + '"></div></div></div>';
+  }).join('');
+  return _maSec('Fréquence par muscle', w.plabel, 'frequence') + '<div class="ma-card ma-vol">' + html + '</div>'
+    + _maCap('Nombre de séances distinctes où le muscle est travaillé, ramené à la semaine. Pour l\'hypertrophie, viser ≥ 2×/semaine par muscle.');
+}
+
+// RÉPARTITION d'intensité : séries par zone de reps (lourd <6 · moyen 6-12 · léger >12).
+function _maIntensiteBloc(data) {
+  var w = _maWin(), sd = (data.seances_detail || []);
+  var lo = 0, mi = 0, hi = 0;
+  sd.forEach(function (s) {
+    if ((s.date || '') >= w.startISO && (s.date || '') < w.endISO) (s.exercices || []).forEach(function (e) {
+      (e.series || []).forEach(function (x) { var rp = Number(x.reps) || 0; if (rp <= 0) return; if (rp < 6) lo++; else if (rp <= 12) mi++; else hi++; });
+    });
+  });
+  var tot = lo + mi + hi;
+  if (!tot) return _maSec('Répartition d\'intensité', null, 'intensite') + _maEmpty('Pas encore de séries enregistrées sur la période.');
+  var pL = Math.round(lo / tot * 100), pM = Math.round(mi / tot * 100), pH = 100 - pL - pM;
+  var bar = '<div style="display:flex;height:16px;border-radius:8px;overflow:hidden">'
+    + (pL ? '<span style="width:' + pL + '%;background:#DC3545"></span>' : '')
+    + (pM ? '<span style="width:' + pM + '%;background:#1A5FFF"></span>' : '')
+    + (pH ? '<span style="width:' + pH + '%;background:#9D5FD3"></span>' : '') + '</div>';
+  var leg = '<div class="ma-rsleg" style="margin-top:9px">'
+    + '<span class="ma-rspill"><span class="ma-rsdot" style="background:#DC3545"></span>Lourd &lt;6 reps · ' + pL + '%</span>'
+    + '<span class="ma-rspill"><span class="ma-rsdot" style="background:#1A5FFF"></span>Moyen 6-12 · ' + pM + '%</span>'
+    + '<span class="ma-rspill"><span class="ma-rsdot" style="background:#9D5FD3"></span>Léger &gt;12 · ' + pH + '%</span></div>';
+  return _maSec('Répartition d\'intensité', tot + ' séries', 'intensite') + '<div class="ma-card" style="padding:14px 15px">' + bar + leg + '</div>'
+    + _maCap('Répartition de tes séries par zone de répétitions. Pour l\'hypertrophie, le gros du volume en 6-12 reps est idéal ; le lourd (<6) développe la force, le léger (>12) l\'endurance musculaire.');
+}
+
+// TENDANCE de force e1RM : moyenne du 1RM estimé par séance sur la période.
+// Même rendu que les autres courbes (_maChartBlock → _maLineRich) pour l'homogénéité.
+function _maForceChart(data) {
+  var w = _maWin();
+  var sd = (data.seances_detail || []).filter(function (s) { return (s.date || '') >= w.startISO && (s.date || '') < w.endISO; })
+    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  var pts = [], dts = [];
+  sd.forEach(function (s) {
+    var es = [];
+    (s.exercices || []).forEach(function (e) { var b = _maBestSet(e); if (b && b.charge > 0 && b.reps > 0) es.push(b.charge * (1 + b.reps / 30)); });
+    if (es.length) { pts.push(Math.round(es.reduce(function (a, b) { return a + b; }, 0) / es.length)); dts.push(s.date); }
+  });
+  if (pts.length < 2) return _maSec('Tendance de force', null, 'force') + _maEmpty('La courbe de force apparaît dès 2 séances sur la période.');
+  return _maSec('Tendance de force', w.plabel + ' · 1RM estimé moyen', 'force')
+    + _maChartBlock('Force e1RM', pts, 'kg', '#9D5FD3', 'rgba(157,95,211,.14)', _maShortDate(dts[0]),
+      'Moyenne du 1RM estimé (Epley) de tes exercices à chaque séance. La courbe qui monte = tu gagnes en force.', dts);
 }
 
 function _maMuscuResume(data) {
@@ -11682,28 +11871,39 @@ function _maMuscuResume(data) {
   var weeks = Math.max(1, Math.round(days / 7));
   var TGT = _maVolTargets();
   var vs = Object.keys(spm).map(function (m) { return { muscle: m, tot: spm[m] }; }).sort(function (a, b) { return b.tot - a.tot; });
+  // Repères MEV (mini efficace) / MAV (cible optimale) / MRV (max récupérable).
   var volHtml;
   if (vs.length) {
     volHtml = '<div class="ma-card ma-vol">' + vs.map(function (v) {
       var o = obti[v.muscle], optW = (o && o.series_opt) || TGT.opt, minW = (o && o.series_min) || TGT.min;
-      var opt = optW * weeks, min = minW * weeks, scale = opt * 1.3, C;
-      if (v.tot >= opt) { C = '#00A854'; } else if (v.tot >= min) { C = '#E07800'; } else { C = '#DC3545'; }
-      return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + v.tot + ' / ' + opt + ' séries</span></div>'
-        + '<div class="ma-vtrack"><div class="ma-vfill" style="width:' + Math.min(100, v.tot / scale * 100).toFixed(0) + '%;background:' + C + '"></div></div></div>';
+      var MEV = minW * weeks, MAV = optW * weeks, MRV = Math.round(optW * 1.5) * weeks, scale = MRV || 1, C, stat;
+      if (v.tot < MEV) { C = '#DC3545'; stat = 'Sous-MEV'; }
+      else if (v.tot < MAV) { C = '#E07800'; stat = 'Suffisant'; }
+      else if (v.tot <= MRV) { C = '#00A854'; stat = 'Optimal'; }
+      else { C = '#9D5FD3'; stat = 'Au-delà'; }
+      var fw = Math.min(100, v.tot / scale * 100).toFixed(0);
+      var mevX = Math.min(100, MEV / scale * 100).toFixed(0), mavX = Math.min(100, MAV / scale * 100).toFixed(0);
+      return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(v.muscle) + '</span><span class="p" style="color:' + C + '">' + v.tot + ' séries · ' + stat + '</span></div>'
+        + '<div class="ma-vtrack" style="position:relative"><div class="ma-vfill" style="width:' + fw + '%;background:' + C + '"></div>'
+        + '<span style="position:absolute;top:-1px;bottom:-1px;left:' + mevX + '%;width:2px;background:rgba(255,255,255,.3)"></span>'
+        + '<span style="position:absolute;top:-1px;bottom:-1px;left:' + mavX + '%;width:2px;background:rgba(255,255,255,.6)"></span>'
+        + '</div></div>';
     }).join('')
-      + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+      + '<div class="ma-rsleg" style="margin-top:6px">' + [['#DC3545', 'Sous-MEV'], ['#E07800', 'Suffisant'], ['#00A854', 'Optimal'], ['#9D5FD3', 'Au-delà']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
   var ptitle = w.plabel.charAt(0).toUpperCase() + w.plabel.slice(1);
   // Colonne principale : synthèse + chiffres + ressenti + Volume/Balance côte à côte.
   // Rail droit (bureau) : Records perso + bloc Novalyz. Mobile : .ma-cols2/.ma-col*
   // en display:contents → ordre d'origine inchangé.
   var main = _maSynthese(data) + verdict
-    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change les chiffres & graphiques ci-dessous.')
+    // ── ZONE DÉCISION (fenêtre fixe 4 sem.) : fiabilité + progression/régression ──
+    + _maFiabiliteBloc(data)
+    + _maProgRegBloc(data)
+    + '<div onclick="maSetTab(\'tendances\')" style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:10px;font-size:12.5px;font-weight:700;color:var(--accent);cursor:pointer;margin:2px 0 14px">Voir l\'analyse détaillée (fréquence, intensité, force) →</div>'
+    // ── ZONE DÉTAIL (fenêtre navigable) ──
+    + _maPeriodHtml() + _maPeriodHint('Le détail ci-dessous suit le sélecteur (Semaine / Mois / Année + flèches). La décision ci-dessus reste sur tes 4 dernières semaines.')
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
-    + _maSec('Tonnage par séance', w.plabel + ' · tonnes', 'tonnage')
-    + _maTonnageSeanceChart(data)
-    + _maCap('Chaque point = une séance (charge × reps, en tonnes). La tendance compare la 1re moitié de la période à la 2de.')
     + _maExecVsCible(data)
     + _maSec('Ressenti des séances', 'sur ' + w.plabel, 'ressenti') + rsHtml
     + '<div class="ma-cols">'
@@ -12118,15 +12318,22 @@ function _maMuscuTendances(data) {
   var ws = tdC.pts;                                                          // jours entraînés par bucket
   var hasW = wt.some(function (v) { return v > 0; });
   var bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  // Tonnage : on ne trace QUE les jours (buckets) d'entraînement → les jours de
+  // repos (tonnage 0) ne créent plus de creux à zéro qui écrase la courbe.
+  var wtF = [], wtD = [];
+  wt.forEach(function (v, i) { if (v > 0) { wtF.push(v); wtD.push(tdT.dates[i]); } });
   // Sélecteur juste au-dessus du graphique → on voit la courbe s'ajuster.
   var head = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie (par ' + bNoun + ').');
   var main = '';
   if (hasW) {
-    main += _maSec('Tonnage soulevé', 'par ' + bNoun + ' · ' + _maPLabel(), 'tonnage')
-      + _maChartBlock('Tonnage', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(tdT.dates[0]), 'Total charge × reps par ' + bNoun + '. La courbe qui monte = tu soulèves plus de volume → c\'est le moteur n°1 de progression.', tdT.dates);
+    var tonLbl = _maGran === 'S' ? 'jours d\'entraînement' : 'par ' + bNoun;
+    main += _maSec('Tonnage soulevé', tonLbl + ' · ' + _maPLabel(), 'tonnage')
+      + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Total charge × reps — seuls les jours d\'entraînement sont tracés (les jours de repos ne comptent pas). La courbe qui monte = tu soulèves plus de volume.', wtD);
     main += _maSec('Régularité', 'par ' + bNoun + ' · ' + _maPLabel(), 'regularite')
       + _maChartBlock('Séances', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdC.dates[0]), 'Nombre de jours d\'entraînement par ' + bNoun + '. La régularité prime sur tout le reste.', tdC.dates);
   } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
+  // ── Vraies analyses (ajouts) : force e1RM, fréquence/muscle, répartition d'intensité ──
+  main += _maForceChart(data) + _maFreqMuscleBloc(data) + _maIntensiteBloc(data);
   var cmp = data.comparison || {}, rows = '';
   try { var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents</span><span class="v" style="color:' + (t.evol_pct >= 0 ? '#00A854' : '#DC3545') + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>'; } catch (e) {}
   var reg = (data.dashboard && data.dashboard.regularite) || {};
