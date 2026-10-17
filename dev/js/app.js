@@ -2027,6 +2027,31 @@ async function enregistrerSportCoach() {
   }
 }
 
+// Enregistre la fréquence du résumé d'équipe par e-mail choisie par le coach.
+async function enregistrerRecapFreqCoach() {
+  const sel = document.getElementById('coach-recap-freq');
+  const msg = document.getElementById('coach-recap-msg');
+  if (!sel || !coach || !coach.coach_id) return;
+  const freq = sel.value;
+  const setMsg = (t, col) => { if (msg) { msg.textContent = t; msg.style.color = col || 'var(--danger)'; } };
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveRecapFreq', coach_id: coach.coach_id, freq }),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      coach.recap_freq = freq;
+      const LBL = { off: 'Aucun résumé e-mail.', semaine: 'Résumé chaque semaine.', mois: 'Résumé chaque mois.', '3mois': 'Résumé tous les 3 mois.' };
+      setMsg('✅ ' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
+      if (freq !== 'off' && !(coach.email)) setMsg('✅ Enregistré — ajoute un e-mail à ton compte coach pour recevoir le résumé.', 'var(--warn)');
+      try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+    }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+
 function fermerReglagesCoach() {
   document.getElementById('coach-reglages-overlay').style.display = 'none';
   document.getElementById('coach-reglages-drawer').style.display = 'none';
@@ -2265,6 +2290,9 @@ async function enregistrerEmailAthlete() {
       try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
       setMsg(email ? '✅ Email enregistré.' : '✅ Email retiré.', 'var(--good)');
       showToast('✅ Email enregistré');
+      // Le message de confirmation s'efface tout seul (sinon il « reste » et laisse
+      // croire qu'une action est en attente).
+      try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
     } else {
       setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
     }
@@ -2275,6 +2303,34 @@ async function enregistrerEmailAthlete() {
 function prefillEmailReglages() {
   const inp = document.getElementById('reglages-email');
   if (inp && athlete) inp.value = athlete.email || '';
+  const sel = document.getElementById('reglages-recap-freq');
+  if (sel && athlete) sel.value = athlete.recap_freq || 'off';
+}
+
+// Enregistre la fréquence de recap e-mail choisie par l'athlète.
+async function enregistrerRecapFreqAthlete() {
+  if (!athlete || !athlete.athlete_id) return;
+  const sel = document.getElementById('reglages-recap-freq');
+  const msg = document.getElementById('reglages-recap-msg');
+  const freq = sel ? sel.value : 'off';
+  const setMsg = (t, col) => { if (msg) { msg.textContent = t; msg.style.color = col || 'var(--danger)'; } };
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveRecapFreq', athlete_id: athlete.athlete_id, freq }),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      athlete.recap_freq = freq;
+      try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+      const LBL = { off: 'Aucun rapport e-mail.', semaine: 'Rapport chaque semaine.', mois: 'Rapport chaque mois.', '3mois': 'Rapport tous les 3 mois.' };
+      setMsg('✅ ' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
+      if (freq !== 'off' && !(athlete.email)) setMsg('✅ Préférence enregistrée — pense à renseigner un e-mail ci-dessus.', 'var(--warn)');
+      try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+    }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
 }
 /* __EMAIL_ATHLETE_END__ */
 
@@ -2401,6 +2457,7 @@ function prefillCoachReglages() {
   set('coach-prof-email', coach.email);
   set('coach-club', coach.club);
   set('coach-cat', coach.categorie_defaut);
+  var rf = document.getElementById('coach-recap-freq'); if (rf) rf.value = coach.recap_freq || 'off';
   // Démo "joueurs de foot" réservée aux coachs de sports collectifs — inutile (et
   // source de données parasites) pour un coach muscu.
   var demo = document.getElementById('crg-demo-foot');
@@ -2576,6 +2633,24 @@ async function ouvrirBilanClient() {
       setMsg(okDl ? '✅ Bilan téléchargé (ouvre le fichier .html).' : '❌ Impossible d\'ouvrir le bilan ici.', okDl ? 'var(--good)' : 'var(--danger)');
     }
   } catch (e) { if (win) { try { win.close(); } catch (_) {} } setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+// Coach : envoie le rapport de l'athlète sélectionné par e-mail (à son adresse).
+async function envoyerBilanClientMail() {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  var msg = document.getElementById('bilan-client-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  var sel = document.getElementById('bilan-client-select');
+  var per = document.getElementById('bilan-client-periode');
+  var athlete_id = sel ? sel.value : '';
+  var periode = per ? per.value : 'mois';
+  if (!athlete_id) { setMsg('Choisis un athlète.'); return; }
+  setMsg('⏳ Envoi du rapport…', 'var(--text-muted)');
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerBilanMail', coach_id: coach.coach_id, athlete_id: athlete_id, periode: periode }) });
+    var data = await res.json();
+    if (data && data.success) { setMsg('✅ Rapport envoyé à ' + (data.email || 'l\'athlète') + '.', 'var(--good)'); showToast('✅ Rapport envoyé'); setTimeout(function () { setMsg('', ''); }, 5000); }
+    else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'envoi.')); }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
 }
 /* __EXPORT_RGPD_END__ */
 
@@ -6185,8 +6260,8 @@ function _prescriptionStag(exoNom) {
     act = 'Garde la charge et ajoute des reps : vise ' + rmax + ' reps avant de remonter la charge.';
     why = 'Il te reste de la marge en répétitions : progresse en volume avant d\'alourdir.';
   } else {
-    act = 'Ajoute des reps tant que tu as de la marge, puis +2,5 kg quand tu plafonnes — ou varie l\'exercice pour un nouveau stimulus.';
-    why = 'Pas de fourchette de reps définie : règle générale de double progression.';
+    act = 'Ajoute des reps tant que tu as de la marge, puis +2,5 kg quand tu plafonnes. Pousse l\'intensité (séries proches de l\'échec), garde 2-3 min de repos entre séries, et soigne ton sommeil. Si tu es à ton max, persévère.';
+    why = 'La progression vient de l\'intensité, du temps de repos et de la récupération — pas du changement d\'exercice.';
   }
   return { act: act, why: why };
 }
@@ -11012,23 +11087,24 @@ function maSetDisc(d) {
   _maDisc = (['muscu', 'cardio', 'croise'].indexOf(d) >= 0) ? d : 'muscu';
   // Changement de discipline = on repart du début : Résumé · Semaine, sous-vues et
   // compteurs « Charger plus » réinitialisés (demande porteur : cohérent partout).
-  _maTab = 'resume'; _maPeriodeTouched = false; _maPeriode = _maDefaultPeriode('resume'); _maProgMode = 'exo';
+  _maTab = 'resume'; _maPeriodeTouched = false; _maGran = _maDefaultGran('resume'); _maOffset = 0; _maSyncPeriode(); _maProgMode = 'exo';
   _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
   _maApply();
   try { maRenderData(); } catch (e) {}
   try { window.scrollTo(0, 0); } catch (e) {}
 }
-// Période par défaut selon la vue : Résumé = instantané hebdo ; Par exercice/sport
-// et Tendances = sur le mois (dates à chaque semaine, évolution lisible).
-function _maDefaultPeriode(t) { return (t === 'detail' || t === 'tendances') ? 'mois' : 'semaine'; }
-function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; if (!_maPeriodeTouched) _maPeriode = _maDefaultPeriode(t); _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
+// Granularité par défaut selon la vue : Résumé = semaine (instantané) ; Par
+// exercice/sport et Tendances = mois (courbe lisible). L'utilisateur peut ensuite
+// naviguer (flèches) ou changer Semaine/Mois/Année.
+function _maDefaultGran(t) { return (t === 'detail' || t === 'tendances') ? 'M' : 'S'; }
+function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; if (!_maPeriodeTouched) { _maGran = _maDefaultGran(t); _maOffset = 0; _maSyncPeriode(); } _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
 // Réinitialise le curseur de navigation à Muscu · Résumé · Semaine.
 // Appelé à chaque ouverture de l'écran Analyses (et donc après changement de compte).
 function maResetNav() {
   // À l'ouverture de Mes Analyses : on repart du début (Muscu · Résumé · Semaine),
   // sous-vue « Par exercice » réinitialisée, compteurs « Charger plus » à 5, et on
   // ré-applique visuellement (sinon l'ancien sous-onglet/période restait affiché).
-  _maDisc = 'muscu'; _maTab = 'resume'; _maPeriodeTouched = false; _maPeriode = _maDefaultPeriode('resume');
+  _maDisc = 'muscu'; _maTab = 'resume'; _maPeriodeTouched = false; _maGran = _maDefaultGran('resume'); _maOffset = 0; _maSyncPeriode();
   _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
   try { _maProgMode = 'exo'; } catch (e) {}
   try { _maApply(); } catch (e) {}
@@ -11037,33 +11113,97 @@ function maResetNav() {
 // Sélecteur de période : met à jour l'état + re-rend les vues data. Le sélecteur
 // est désormais rendu DANS les panes (sous la Lecture Novalyz en Résumé, au-dessus
 // du graphique en Tendances) via _maPeriodHtml() — plus de barre partagée en haut.
-function maSetPeriode(p, btn) {
-  if (_MA_PERIODS.indexOf(p) < 0) return;
-  _maPeriode = p; _maPeriodeTouched = true;
-  // Pas de scroll : on garde la position pour VOIR le graphique/chiffres se mettre
-  // à jour juste sous le sélecteur.
-  try { maRenderData(); } catch (e) {}
+// ─── Sélecteur de période UNIFIÉ (même modèle que la montre/pas : Semaine · Mois ·
+// Année en segments + flèches ‹ › pour reculer/avancer + « Aujourd'hui »). État =
+// granularité (_maGran ∈ S|M|A) + offset (_maOffset ≤ 0). La fenêtre est calendaire
+// (semaine lun→dim, mois civil, année civile) via _actRange (réutilisé de la montre).
+function maSetGran(g) { if (['S', 'M', 'A'].indexOf(g) < 0) return; _maGran = g; _maOffset = 0; _maPeriodeTouched = true; _maSyncPeriode(); try { maRenderData(); } catch (e) {} }
+function maNavPeriode(dir) { var n = _maOffset + dir; if (n > 0) n = 0; _maOffset = n; _maPeriodeTouched = true; try { maRenderData(); } catch (e) {} }
+function maTodayPeriode() { _maOffset = 0; _maPeriodeTouched = true; try { maRenderData(); } catch (e) {} }
+// Compat : _maPeriode (grossier) reste synchronisé pour les lectures héritées (axes…).
+function _maSyncPeriode() { _maPeriode = (_maGran === 'S') ? 'semaine' : (_maGran === 'M') ? 'mois' : 'annee'; }
+// Fenêtre calendaire courante : { start, end (Date, exclusif), startISO, endISO,
+// days, label, plabel, gran, offset, isCurrent }.
+function _maWin() {
+  var r = _actRange(_maGran, _maOffset);
+  var startISO = _ymdLocal(r.start), endISO = _ymdLocal(r.end);
+  var days = Math.max(1, Math.round((r.end - r.start) / 86400000));
+  var cur = _maOffset === 0, plabel;
+  if (_maGran === 'S') plabel = cur ? 'cette semaine' : ('semaine du ' + r.start.getDate() + '/' + (r.start.getMonth() + 1));
+  else if (_maGran === 'M') plabel = cur ? 'ce mois-ci' : r.label;
+  else plabel = cur ? 'cette année' : r.label;
+  return { start: r.start, end: r.end, startISO: startISO, endISO: endISO, days: days, label: r.label, plabel: plabel, gran: _maGran, offset: _maOffset, isCurrent: cur };
 }
-// Ligne de sélection de période (rendue inline dans chaque pane qui en a besoin).
-// Identique partout : Semaine · Mois · 3 mois · [+] (menu 6 mois / 9 mois / Année).
+function _maPLabel() { return _maWin().plabel; }
+// Ligne de sélection (rendue inline dans chaque pane) — allure identique à la montre.
 function _maPeriodHtml() {
-  var isLong = ['6mois', '9mois', 'annee'].indexOf(_maPeriode) >= 0;
-  var longLbl = { '6mois': '6 mois', '9mois': '9 mois', annee: 'Année' }[_maPeriode];
-  var plusIco = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
-  var btns = '<button class="' + (_maPeriode === 'semaine' ? 'on' : '') + '" onclick="maSetPeriode(\'semaine\')">Semaine</button>'
-    + '<button class="' + (_maPeriode === 'mois' ? 'on' : '') + '" onclick="maSetPeriode(\'mois\')">Mois</button>'
-    + '<button class="' + (_maPeriode === '3mois' ? 'on' : '') + '" onclick="maSetPeriode(\'3mois\')">3 mois</button>'
-    + '<button class="plus' + (isLong ? ' on' : '') + '" title="Période plus longue" onclick="maTogglePeriodMenu(this)">' + (isLong ? longLbl : plusIco) + '</button>';
-  var menu = '<div class="ma-pmenu" style="display:none"><div onclick="maSetPeriode(\'6mois\')">6 mois</div><div onclick="maSetPeriode(\'9mois\')">9 mois</div><div onclick="maSetPeriode(\'annee\')">Année</div></div>';
-  return '<div class="ma-period-wrap"><div class="ma-period ma-period-inline">' + btns + '</div>' + menu + '</div>';
-}
-// Ouvre/ferme le menu « + » relatif au bouton cliqué (pas d'id → pas de collision
-// entre panes qui rendent tous leur propre sélecteur).
-function maTogglePeriodMenu(btn) {
-  try { var w = btn.closest('.ma-period-wrap'); var m = w && w.querySelector('.ma-pmenu'); if (m) m.style.display = (m.style.display === 'block') ? 'none' : 'block'; } catch (e) {}
+  var w = _maWin();
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === _maGran;
+    return '<button onclick="maSetGran(\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:12px;padding:7px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = _maOffset !== 0 ? '<div style="font-size:10.5px;margin-top:1px;"><span onclick="maTodayPeriode()" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = _maOffset >= 0;
+  return '<div class="ma-period-wrap" style="margin-bottom:10px;">'
+    + '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:11px;padding:4px;margin-bottom:7px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<button onclick="maNavPeriode(-1)" aria-label="Période précédente" style="width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:13px;font-weight:800;color:var(--text);">' + _maE(w.label) + '</div>' + today + '</div>'
+    + '<button onclick="maNavPeriode(1)" ' + (nextDis ? 'disabled' : '') + ' aria-label="Période suivante" style="width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div></div>';
 }
 // Petite légende sous le sélecteur en Tendances/Résumé pour situer ce qui bouge.
 function _maPeriodHint(txt) { return '<div style="font-size:10.5px;color:var(--text-subtle);margin:-4px 2px 10px;line-height:1.4">' + txt + '</div>'; }
+// Buckets de tendance selon la granularité : S→7 jours · M→semaines du mois · A→12 mois.
+// Retourne { pts:[valeurs], dates:[ISO de début de bucket] } sur la fenêtre courante.
+function _maTrendData(dict, agg) {
+  dict = dict || {};
+  var w = _maWin(), buckets = [], i, m, cur, e, d;
+  if (w.gran === 'S') {
+    for (i = 0; i < 7; i++) { d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate() + i); buckets.push([d, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)]); }
+  } else if (w.gran === 'M') {
+    cur = new Date(w.start);
+    while (cur < w.end) { e = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7); if (e > w.end) e = new Date(w.end); buckets.push([new Date(cur), e]); cur = e; }
+  } else {
+    for (m = 0; m < 12; m++) buckets.push([new Date(w.start.getFullYear(), m, 1), new Date(w.start.getFullYear(), m + 1, 1)]);
+  }
+  var pts = [], dates = [];
+  buckets.forEach(function (b) {
+    var vals = [], dd = new Date(b[0]);
+    while (dd < b[1]) { var k = _ymdLocal(dd); if (dict[k] != null) vals.push(dict[k]); dd = new Date(dd.getFullYear(), dd.getMonth(), dd.getDate() + 1); }
+    var sum = vals.reduce(function (a, v) { return a + v; }, 0);
+    pts.push(agg === 'count' ? vals.length : agg === 'avg' ? (vals.length ? Math.round(sum / vals.length * 10) / 10 : 0) : sum);
+    dates.push(_ymdLocal(b[0]));
+  });
+  return { pts: pts, dates: dates };
+}
+// Tendance cardio d'une métrique (somme ou moyenne) sur les mêmes buckets.
+function _maSportTrend(sesss, metric) {
+  var avgM = { vitesse_moy: 1, fc_moy: 1 }, byDate = {};
+  (sesss || []).forEach(function (s) { if (+s[metric]) (byDate[s.date] = byDate[s.date] || []).push(+s[metric]); });
+  var dict = {};
+  Object.keys(byDate).forEach(function (k) { var a = byDate[k]; dict[k] = avgM[metric] ? (a.reduce(function (x, y) { return x + y; }, 0) / a.length) : a.reduce(function (x, y) { return x + y; }, 0); });
+  var td = _maTrendData(dict, avgM[metric] ? 'avg' : 'sum');
+  return { pts: td.pts.map(function (v) { return Math.round(v * 10) / 10; }), dates: td.dates };
+}
+// Agrégat muscu sur la fenêtre [startISO,endISO) depuis daily_muscu (historique
+// complet). Mêmes définitions que computeRecent (backend) → à offset 0, les chiffres
+// coïncident avec les fenêtres glissantes. seances = jours distincts d'entraînement.
+function _maMuscuAgg(daily, startISO, endISO) {
+  daily = daily || {};
+  var seances = 0, series = 0, reps = 0, tonnage = 0, rpeSum = 0, rpeN = 0, spm = {}, vpm = {};
+  Object.keys(daily).forEach(function (d) {
+    if (d >= startISO && d < endISO) {
+      var o = daily[d]; if (!o) return;
+      if ((o.series || 0) > 0) seances++;
+      series += o.series || 0; reps += o.reps || 0; tonnage += o.tonnage_kg || 0;
+      rpeSum += o.rpe_sum || 0; rpeN += o.rpe_n || 0;
+      Object.keys(o.spm || {}).forEach(function (mm) { spm[mm] = (spm[mm] || 0) + o.spm[mm]; });
+      Object.keys(o.vpm || {}).forEach(function (mm) { vpm[mm] = (vpm[mm] || 0) + o.vpm[mm]; });
+    }
+  });
+  return { seances: seances, series: series, reps: reps, tonnage_kg: Math.round(tonnage), tonnage: Math.round(tonnage / 100) / 10, rpe_moyen: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null, series_par_muscle: spm, volume_par_muscle: vpm };
+}
 // Historique (muscu/cardio) + Par séance : nb d'éléments affichés, étendu par « Charger plus ».
 var _maHistMore = { muscu: 5, cardio: 5 };
 var _maSeaMore = 5;
@@ -11087,7 +11227,7 @@ function _maApply() {
     if (b) { b.classList.toggle('on', d === _maDisc); b.classList.toggle('cx', d === _maDisc && d === 'cardio'); b.classList.toggle('cr', d === _maDisc && d === 'croise'); }
   });
   // Le 2e sous-onglet change de libellé selon la discipline
-  var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Par exercice';
+  var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Évolution';
   // Sous-onglets : dispo (Croisé masque Détail + Historique) + actif
   var dispo = _MA_TABS[_maDisc];
   ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
@@ -11104,7 +11244,9 @@ function _maApply() {
 }
 
 // ═══════════════ Écran Analyses : câblage données réelles ═══════════════
-var _maPeriode = 'semaine';   // semaine|mois|3mois|6mois|9mois|annee
+var _maGran = 'S';            // 'S' semaine | 'M' mois | 'A' année (modèle montre)
+var _maOffset = 0;            // décalage ≤ 0 (0 = période courante, -1 = précédente…)
+var _maPeriode = 'semaine';   // compat (grossier) : semaine|mois|annee, synchronisé via _maSyncPeriode
 var _maPeriodeTouched = false;   // l'utilisateur a-t-il choisi la période à la main ?
 var _MA_WIN = { semaine: 'j7', mois: 'j28', '3mois': 'j90', '6mois': 'j180', '9mois': 'j270', annee: 'j365' };
 var _MA_DAYS = { semaine: 7, mois: 28, '3mois': 90, '6mois': 180, '9mois': 270, annee: 365 };
@@ -11303,17 +11445,15 @@ function _maRsAxis(rec, p) {
   return '<div class="ma-axis" style="margin-top:6px">' + idxs.map(function (i) { return '<span>' + fmt(rec[i].date) + '</span>'; }).join('') + '</div>';
 }
 // Bloc graphique standard, lisible : label + valeur actuelle + axe clair (2 bornes).
-function _maChartBlock(label, pts, unit, color, fill, axisFirst, note) {
+function _maChartBlock(label, pts, unit, color, fill, axisFirst, note, datesOverride) {
   var last = pts.length ? pts[pts.length - 1] : 0;
   // Courbe riche (axes + grille + étiquettes de dates et de valeurs) en desktop ET
-  // mobile — demande porteur : voir dates + données partout. On synthétise des dates
-  // de fin de semaine (pas de 7 jours) pour l'axe X.
+  // mobile — demande porteur : voir dates + données partout. Dates explicites
+  // (buckets du sélecteur) si fournies, sinon synthèse par pas de 7 jours.
   if (pts.length >= 2) {
-    var n = pts.length, dts = [], now = new Date(); now.setHours(0, 0, 0, 0);
-    for (var i = n - 1; i >= 0; i--) {
-      var d = new Date(now); d.setDate(d.getDate() - (n - 1 - i) * 7);
-      dts.unshift(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
-    }
+    var n = pts.length, dts;
+    if (datesOverride && datesOverride.length === n) { dts = datesOverride; }
+    else { dts = []; var now = new Date(); now.setHours(0, 0, 0, 0); for (var i = n - 1; i >= 0; i--) { var d = new Date(now); d.setDate(d.getDate() - (n - 1 - i) * 7); dts.unshift(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')); } }
     return '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + label + '</span>'
       + '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:' + color + '">' + String(last).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + unit + '</span></span></div>'
       + _maLineRich(pts, dts, unit, color)
@@ -11328,10 +11468,11 @@ function _maChartBlock(label, pts, unit, color, fill, axisFirst, note) {
 // Courbe hebdo nue (sans en-tête) : RICHE avec dates en bureau (_maLineRich),
 // compacte (_maArea + axe « il y a N sem. → cette sem. ») en mobile. Utilisée par
 // les graphes cardio (Par sport, Efficience) qui ont leur propre en-tête.
-function _maWeeklySvg(pts, unit, color, fill, nWeeks) {
-  if (_maIsDesktop() && pts && pts.length >= 2) {
-    var n = pts.length, dts = [], now = new Date(); now.setHours(0, 0, 0, 0);
-    for (var i = n - 1; i >= 0; i--) { var d = new Date(now); d.setDate(d.getDate() - (n - 1 - i) * 7); dts.unshift(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')); }
+function _maWeeklySvg(pts, unit, color, fill, nWeeks, datesOverride) {
+  if (pts && pts.length >= 2) {
+    var n = pts.length, dts;
+    if (datesOverride && datesOverride.length === n) { dts = datesOverride; }
+    else { dts = []; var now = new Date(); now.setHours(0, 0, 0, 0); for (var i = n - 1; i >= 0; i--) { var d = new Date(now); d.setDate(d.getDate() - (n - 1 - i) * 7); dts.unshift(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')); } }
     return _maLineRich(pts, dts, unit, color);
   }
   return _maArea(pts, color, fill) + _maTrendAxis(nWeeks || (pts ? pts.length : 0));
@@ -11413,6 +11554,18 @@ function maRenderData() {
 
 // Bloc « Lecture Novalyz » : constats + reco orientés objectif (backend
 // analyse_synthese.muscu). Tolérant : si absent (backend pas encore redéployé), rien.
+// « Mot de Novalyz » : fait TOURNER la reco parmi le pool (un levier par jour) au
+// lieu d'un message figé. Déterministe (index = numéro de jour), honnête (rien si
+// confiance faible, sauf allowAllConf pour la Lecture Analyses qui montre toujours).
+function _novaPickReco(s, allowAllConf) {
+  if (!s) return '';
+  if (!allowAllConf && s.confiance === 'faible') return '';
+  var pool = (s.reco_pool && s.reco_pool.length) ? s.reco_pool : (s.reco ? [s.reco] : []);
+  if (!pool.length) return '';
+  var di = Math.floor(Date.now() / 86400000);   // index de jour → change chaque jour
+  var r = pool[((di % pool.length) + pool.length) % pool.length];
+  return String((r && r.texte) || '');
+}
 function _maSynthese(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.muscu); }
 function _maSyntheseCardio(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.cardio); }
 function _maSyntheseBloc(s) {
@@ -11425,7 +11578,8 @@ function _maSyntheseBloc(s) {
   var constats = (s.constats || []).map(function (c) {
     return '<div style="display:flex;gap:9px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:999px;background:' + (TON[c.ton] || 'var(--text-subtle)') + ';margin-top:6px;flex:none"></span><span style="font-size:13px;line-height:1.45">' + _maE(c.texte) + '</span></div>';
   }).join('');
-  var reco = s.reco ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(s.reco.texte) + '</div></div></div>') : '';
+  var _recoTxt = _novaPickReco(s, true) || (s.reco && s.reco.texte) || '';
+  var reco = _recoTxt ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(_recoTxt) + '</div></div></div>') : '';
   var conf = s.confiance ? '<div style="text-align:right;font-size:10px;color:var(--text-subtle)">fiabilité : ' + _maE(s.confiance) + '</div>' : '';
   return '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz' + head + '</div>'
     + '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;margin:8px 0 16px">' + constats + reco + conf
@@ -11438,8 +11592,8 @@ function _maExecVsCible(data) {
   var prog = (data && data.programme) || [];
   var cibles = prog.filter(function (p) { return p && (p.charge_pct_1rm != null || p.rpe_cible != null); });
   if (!cibles.length) return '';
-  var cut = _maCut(_maPeriode);
-  var sd = ((data && data.seances_detail) || []).filter(function (s) { return (s.date || '') >= cut; });
+  var _w = _maWin();
+  var sd = ((data && data.seances_detail) || []).filter(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; });
   var rows = [], nOk = 0, nEval = 0, seen = {};
   cibles.forEach(function (p) {
     if (seen[p.exercice]) return; seen[p.exercice] = 1;
@@ -11457,7 +11611,10 @@ function _maExecVsCible(data) {
     + _maCap('Ta dernière exécution de chaque exercice à cible.');
 }
 function _maMuscuResume(data) {
-  var p = _maPeriode, r = (data.recent && data.recent[_maRecentWin(p)]) || {}, days = _MA_DAYS[p];
+  var p = _maPeriode, w = _maWin(), days = w.days;
+  // KPI de la fenêtre NAVIGABLE calculés depuis daily_muscu (historique complet) —
+  // mêmes définitions que les fenêtres glissantes backend, donc cohérents à offset 0.
+  var r = _maMuscuAgg((data.historique && data.historique.daily_muscu), w.startISO, w.endISO);
   var mot = data.moteur || {};
   var niv = (mot.disponibilite && mot.disponibilite.niveau) || null;
   var VB = { 'Prêt': ['acc', 'var(--accent)', 'Prêt à performer', 'Charge et régularité au rendez-vous, le moteur te voit prêt.'],
@@ -11469,8 +11626,8 @@ function _maMuscuResume(data) {
   var seances = r.seances != null ? r.seances : 0;
   var tMoy = seances ? (Math.round((r.tonnage_kg || 0) / seances / 100) / 10) : null;
   var recs = data.global && data.global.records_par_exo ? data.global.records_par_exo : {};
-  var cut = _maCut(p), nRec = 0;
-  Object.keys(recs).forEach(function (k) { var d = _maFRtoDate(recs[k].date); if (d) { var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (iso >= cut) nRec++; } });
+  var nRec = 0;
+  Object.keys(recs).forEach(function (k) { var d = _maFRtoDate(recs[k].date); if (d) { var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (iso >= w.startISO && iso < w.endISO) nRec++; } });
   var kpi = [
     ['Tonnage moyen', (tMoy != null ? String(tMoy).replace('.', ',') : '—'), 't / séance'],
     ['Séances', String(seances), ''],
@@ -11480,7 +11637,7 @@ function _maMuscuResume(data) {
     ['Records battus', String(nRec), '']
   ].map(function (k) { return '<div class="ma-kpi"><span class="u">' + k[0] + '</span><span class="v">' + k[1] + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</span></div>'; }).join('');
   // Ressenti (période)
-  var rsArr = (data.analyses && data.analyses.ressenti_muscu) ? data.analyses.ressenti_muscu.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= cut; }) : [];
+  var rsArr = (data.analyses && data.analyses.ressenti_muscu) ? data.analyses.ressenti_muscu.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= w.startISO && (x.date || '') < w.endISO; }) : [];
   var rsHtml;
   if (rsArr.length) {
     var rec = rsArr.slice(0, 14).reverse();
@@ -11505,20 +11662,20 @@ function _maMuscuResume(data) {
     }).join('')
       + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
-  var ptitle = _MA_PLABEL[p].charAt(0).toUpperCase() + _MA_PLABEL[p].slice(1);
+  var ptitle = w.plabel.charAt(0).toUpperCase() + w.plabel.slice(1);
   // Colonne principale : synthèse + chiffres + ressenti + Volume/Balance côte à côte.
   // Rail droit (bureau) : Records perso + bloc Novalyz. Mobile : .ma-cols2/.ma-col*
   // en display:contents → ordre d'origine inchangé.
   var main = _maSynthese(data) + verdict
-    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change les chiffres & graphiques ci-dessous selon la période.')
+    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change les chiffres & graphiques ci-dessous.')
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
-    + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'ressenti') + rsHtml
+    + _maSec('Ressenti des séances', 'sur ' + w.plabel, 'ressenti') + rsHtml
     + '<div class="ma-cols">'
-    +   '<div class="ma-colcard">' + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries', 'volume') + volHtml
+    +   '<div class="ma-colcard">' + _maSec('Volume musculaire', w.plabel + ' · séries', 'volume') + volHtml
     +     _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.') + '</div>'
-    +   '<div class="ma-colcard">' + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p], 'balance') + _maBalance(data)
+    +   '<div class="ma-colcard">' + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + w.plabel, 'balance') + _maBalance(data)
     +     _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.') + '</div>'
     + '</div>';
   var rail = _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk();
@@ -11541,7 +11698,7 @@ function _maMuscuExercice(data) {
   _maSet('ma-muscu-detail', head + periodSel
     + '<div class="ma-cols2">'
     +   '<div class="ma-colmain">' + body + '</div>'
-    +   '<div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk() + '</div>'
+    +   '<div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div>'
     + '</div>');
 }
 
@@ -11615,13 +11772,13 @@ function _maChargeRepsRich(pts) {
 }
 function _maProgExo(data) {
   var progAll = (data.historique && data.historique.progression_par_exo) || {};
-  var cut = _maCut(_maPeriode);
+  var _w = _maWin();
   function _isoOf(p) { var d = String(p.date || ''); return d.indexOf('/') !== -1 ? d.split('/').reverse().join('-') : d; }
-  // Période : ne garder que les points dont la date >= début de période (comme Par groupe / Par séance).
+  // Période navigable : points dont la date ∈ [début, fin) de la fenêtre choisie.
   var prog = {};
-  Object.keys(progAll).forEach(function (k) { var kept = (progAll[k] || []).filter(function (p) { return _isoOf(p) >= cut; }); if (kept.length) prog[k] = kept; });
+  Object.keys(progAll).forEach(function (k) { var kept = (progAll[k] || []).filter(function (p) { var i = _isoOf(p); return i >= _w.startISO && i < _w.endISO; }); if (kept.length) prog[k] = kept; });
   var exos = Object.keys(prog).filter(function (k) { return (prog[k] || []).length >= 1; }).sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; });
-  if (!exos.length) return _maEmpty('Aucun exercice suivi sur ' + (_MA_PLABEL[_maPeriode] || 'la période') + '.');
+  if (!exos.length) return _maEmpty('Aucun exercice suivi sur ' + (_w.plabel || 'la période') + '.');
   var sel = (_maExoSel && exos.indexOf(_maExoSel) >= 0) ? _maExoSel : exos[0];
   var pts = prog[sel].slice().reverse();   // chrono
   var np = pts.length;
@@ -11738,8 +11895,8 @@ function _musCap(s) { s = String(s || '').trim(); return s ? s.charAt(0).toUpper
 function _maProgGrp(data) {
   var sd = data.seances_detail || [];
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
-  var days = _MA_DAYS[_maPeriode], cut = _maCut(_maPeriode), weeks = Math.max(1, Math.round(days / 7));
-  var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd.slice(0, 12);
+  var _w = _maWin(), days = _w.days, cut = _w.startISO, cutEnd = _w.endISO, weeks = Math.max(1, Math.round(days / 7));
+  var inP = sd.filter(function (s) { return (s.date || '') >= cut && (s.date || '') < cutEnd; }); if (!inP.length) inP = sd.slice(0, 12);
   var prevCut = cut; try { var _pc = new Date(cut + 'T00:00:00'); _pc.setDate(_pc.getDate() - days); prevCut = _pc.getFullYear() + '-' + String(_pc.getMonth() + 1).padStart(2, '0') + '-' + String(_pc.getDate()).padStart(2, '0'); } catch (e) {}
   // Muscle secondaire par exercice (catalogue) → volume indirect.
   var secOf = {}; try { (exercicesData || []).forEach(function (x) { if (x && x.exercice && x.muscle_secondaire) secOf[_normTxt(x.exercice)] = x.muscle_secondaire; }); } catch (e) {}
@@ -11872,8 +12029,9 @@ function _maProgSea(data) {
 // Robuste aux variantes d'orthographe du muscle (Ischio / Ischios / Ischio-jambiers,
 // Dos / Dorsaux / Grand dorsal…) : on somme par mot-clé normalisé, pas par égalité stricte.
 function _maBalance(data) {
-  // Séries par muscle sur la période sélectionnée → la balance évolue dans le temps.
-  var r = (data.recent && data.recent[_maRecentWin(_maPeriode)]) || {};
+  // Séries par muscle sur la période NAVIGABLE sélectionnée → la balance évolue.
+  var _w = _maWin();
+  var r = _maMuscuAgg((data.historique && data.historique.daily_muscu), _w.startISO, _w.endISO);
   var vs = r.series_par_muscle || {};
   function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, ''); }
   // Somme des séries dont le muscle contient un des mots-clés (hors exclusions).
@@ -11920,20 +12078,21 @@ function _maProgAgg(sd) {
 }
 
 function _maMuscuTendances(data) {
-  var W = _maTrendWeeks();   // nb de semaines selon la période sélectionnée
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
-  var wt = _maWeekly(vpj, W, 'sum').map(function (v) { return Math.round(v / 100) / 10; });   // tonnage (t)
-  var ws = _maWeekly(vpj, W, 'count');                                                        // séances/sem
+  var tdT = _maTrendData(vpj, 'sum'), tdC = _maTrendData(vpj, 'count');
+  var wt = tdT.pts.map(function (v) { return Math.round(v / 100) / 10; });   // tonnage (t) par bucket
+  var ws = tdC.pts;                                                          // jours entraînés par bucket
   var hasW = wt.some(function (v) { return v > 0; });
+  var bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
   // Sélecteur juste au-dessus du graphique → on voit la courbe s'ajuster.
-  var head = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie (' + W + ' semaines).');
+  var head = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie (par ' + bNoun + ').');
   var main = '';
   if (hasW) {
-    main += _maSec('Tonnage soulevé', 'par semaine · ' + W + ' sem.', 'tonnage')
-      + _maChartBlock('Tonnage / semaine', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', 'il y a ' + W + ' sem.', 'Total charge × reps de chaque semaine. La courbe qui monte = tu soulèves plus de volume au fil du temps → c\'est le moteur n°1 de progression.');
-    main += _maSec('Régularité', 'par semaine · ' + W + ' sem.', 'regularite')
-      + _maChartBlock('Séances / semaine', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', 'il y a ' + W + ' sem.', 'Combien de séances tu fais chaque semaine. La régularité prime sur tout le reste.');
-  } else { main += _maEmpty('Pas assez d\'historique pour une tendance (besoin de plusieurs semaines).'); }
+    main += _maSec('Tonnage soulevé', 'par ' + bNoun + ' · ' + _maPLabel(), 'tonnage')
+      + _maChartBlock('Tonnage', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(tdT.dates[0]), 'Total charge × reps par ' + bNoun + '. La courbe qui monte = tu soulèves plus de volume → c\'est le moteur n°1 de progression.', tdT.dates);
+    main += _maSec('Régularité', 'par ' + bNoun + ' · ' + _maPLabel(), 'regularite')
+      + _maChartBlock('Séances', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdC.dates[0]), 'Nombre de jours d\'entraînement par ' + bNoun + '. La régularité prime sur tout le reste.', tdC.dates);
+  } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
   var cmp = data.comparison || {}, rows = '';
   try { var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents</span><span class="v" style="color:' + (t.evol_pct >= 0 ? '#00A854' : '#DC3545') + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>'; } catch (e) {}
   var reg = (data.dashboard && data.dashboard.regularite) || {};
@@ -11990,10 +12149,10 @@ function _maMuscuHistorique(data) {
 }
 function maToggleHS(i) { var d = document.getElementById('ma-hs-' + i), c = document.getElementById('ma-hs-chev-' + i); if (d) { var open = d.style.display === 'none'; d.style.display = open ? 'flex' : 'none'; if (c) c.style.transform = open ? 'rotate(180deg)' : ''; } }
 
-function _maCardioAgg(hist, days, cutOverride) {
-  var cut = cutOverride || _maCutISO(days), by = {};
+function _maCardioAgg(hist, days, cutOverride, cutEndOverride) {
+  var cut = cutOverride || _maCutISO(days), end = cutEndOverride || '9999-12-31', by = {};
   (hist || []).forEach(function (s) {
-    if ((s.date || '') < cut) return;
+    if ((s.date || '') < cut || (s.date || '') >= end) return;
     var t = s.type_cardio || 'autre';
     if (!by[t]) by[t] = { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0, cal: 0 };
     var o = by[t]; o.n++; o.dist += (+s.distance || 0); o.duree += (+s.duree || 0); o.cal += (+s.calories || 0);
@@ -12017,36 +12176,35 @@ function _maHyroxList(data, limit) {
 }
 function _maCardioResume(data) {
   var hist = (data.cardio && data.cardio.history) || [];
-  var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode));
+  var _w = _maWin();
+  var by = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO);
   var types = Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; });
   var total = types.reduce(function (s, t) { return s + by[t].n; }, 0);
-  var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _MA_PLABEL[_maPeriode] : 'Pas encore de cardio') + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' enregistrée' + (total > 1 ? 's' : '') + '. Continue pour bâtir ta base d\'endurance.') : 'Enregistre une séance cardio pour voir tes analyses ici.') + '</div></div></div>';
+  var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _w.plabel : 'Pas encore de cardio') + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' enregistrée' + (total > 1 ? 's' : '') + '. Continue pour bâtir ta base d\'endurance.') : 'Enregistre une séance cardio pour voir tes analyses ici.') + '</div></div></div>';
   var listHtml = types.length ? ('<div class="ma-card">' + types.map(function (t) {
     var m = _maCM(t), o = by[t];
     return '<div class="ma-sport"><span class="ma-spic" style="background:' + m[1] + '">' + _maSvg(m[2], 17) + '</span><div class="ma-spmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + o.n + ' sortie' + (o.n > 1 ? 's' : '') + ' · ' + _maHMS(o.duree) + (o.rn ? ' · RPE ' + (Math.round(o.rpe / o.rn * 10) / 10) : '') + '</div></div><div class="ma-spval"><div class="v">' + (Math.round(o.dist * 10) / 10) + ' km</div><div class="u">' + (o.vn ? (Math.round(o.vit / o.vn * 10) / 10) + ' km/h' : '') + '</div></div></div>';
   }).join('') + '</div>') : _maEmpty('Aucune sortie sur la période.');
   // Pas quotidiens sur la période choisie (max 30 barres) + axe daté.
-  var pasCut = _maCut(_maPeriode);
-  var pas = (data.pas_quotidiens || []).filter(function (x) { return (x.date || '') >= pasCut; }).slice().sort(function (a, b) { return (a.date < b.date) ? -1 : 1; });
+  var pas = (data.pas_quotidiens || []).filter(function (x) { return (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; }).slice().sort(function (a, b) { return (a.date < b.date) ? -1 : 1; });
   if (pas.length > 30) pas = pas.slice(pas.length - 30);
   var pasMax = Math.max.apply(null, pas.map(function (y) { return y.pas || 1; }).concat([1]));
   var pasHtml = pas.length ? ('<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / jour</span><span style="font-size:11px;font-weight:700;color:#9D5FD3">Ø ' + Math.round(pas.reduce(function (s, x) { return s + (x.pas || 0); }, 0) / pas.length).toLocaleString('fr-FR') + '</span></div><div class="ma-bars2">' + pas.map(function (x) { return '<span style="height:' + Math.round((x.pas || 0) / pasMax * 100) + '%;background:#9D5FD3"></span>'; }).join('') + '</div><div class="ma-axis"><span>' + _maShortDate(pas[0].date) + '</span><span>' + _maShortDate(pas[pas.length - 1].date) + '</span></div></div>') : '';
   // Charge cardio hebdo (UA = RPE × durée), nb de semaines piloté par la période.
   var chDict = {}; hist.forEach(function (s) { if (+s.rpe && +s.duree) chDict[s.date] = (chDict[s.date] || 0) + (+s.rpe) * (+s.duree); });
-  var nwCh = _maTrendWeeks();
-  var chW = _maWeekly(chDict, nwCh, 'sum');
-  var chargeHtml = chW.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / sem. · ' + nwCh + ' sem.', 'charge_cardio') + _maChartBlock('Charge (UA)', chW, 'UA', '#9D5FD3', 'rgba(157,95,211,.12)', _maTrendFirst(nwCh), 'Chaque point = 1 semaine (nombre de semaines selon la période). Une montée trop brutale peut signaler un risque de surmenage.')) : '';
+  var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var tdCh = _maTrendData(chDict, 'sum');
+  var chargeHtml = tdCh.pts.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / ' + _bNoun + ' · ' + _w.plabel, 'charge_cardio') + _maChartBlock('Charge (UA)', tdCh.pts, 'UA', '#9D5FD3', 'rgba(157,95,211,.12)', _maShortDate(tdCh.dates[0]), 'Charge interne (RPE × durée) par ' + _bNoun + '. Une montée trop brutale peut signaler un risque de surmenage.', tdCh.dates)) : '';
   // Ressenti des sorties cardio (bilan de séance) sur la période — miroir du ressenti muscu.
-  var cCut = _maCut(_maPeriode);
-  var rsC = (data.analyses && data.analyses.ressenti_cardio) ? data.analyses.ressenti_cardio.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= cCut; }) : [];
+  var rsC = (data.analyses && data.analyses.ressenti_cardio) ? data.analyses.ressenti_cardio.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; }) : [];
   var rsCardioHtml = '';
   if (rsC.length) {
     var recC = rsC.slice(0, 14).reverse();
-    rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _MA_PLABEL[_maPeriode], 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+    rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _w.plabel, 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   }
   var _crMain = _maSyntheseCardio(data) + verdict
-    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change les chiffres & graphiques ci-dessous selon la période.')
-    + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + _maHyroxList(data) + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml;
+    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change les chiffres & graphiques ci-dessous.')
+    + _maSec('Tous sports · ' + _w.plabel, total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + _maHyroxList(data) + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml;
   _maSet('ma-cardio-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _crMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
 function _maCardioParSport(data) {
@@ -12056,7 +12214,8 @@ function _maCardioParSport(data) {
   if (!types.length) { _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _maEmpty('Aucune séance cardio pour l\'instant.') + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>'); return; }
   var sel = (_maCardioSport && types.indexOf(_maCardioSport) >= 0) ? _maCardioSport : types[0];
   var m = _maCM(sel);
-  var o = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode))[sel] || { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0 };
+  var _w = _maWin();
+  var o = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO)[sel] || { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0 };
   // Sélecteur de sport (liste déroulante)
   var sportMenu = '<div id="ma-cx-sport-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">'
     + types.map(function (t, i) { var mm = _maCM(t); return '<div onclick="maSetCardioSport(\'' + t + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (t === sel ? 'background:var(--surface2);' : '') + '"><span style="color:' + mm[1] + '">' + _maSvg(mm[2], 16) + '</span><span style="font-weight:700;font-size:13px">' + _maE(mm[0]) + '</span><span style="margin-left:auto;font-size:11px;color:var(--text-subtle)">' + allBy[t].n + ' sorties</span></div>'; }).join('') + '</div>';
@@ -12067,8 +12226,9 @@ function _maCardioParSport(data) {
   var METRICS = [['distance', 'Distance', 'km'], ['vitesse_moy', 'Vitesse', 'km/h'], ['fc_moy', 'FC moy', 'bpm'], ['calories', 'Calories', 'kcal'], ['duree', 'Durée', 'min']];
   var curM = METRICS.filter(function (x) { return x[0] === _maCardioMetric; })[0] || METRICS[0];
   var sesss = hist.filter(function (s) { return (s.type_cardio || 'autre') === sel; });
-  var nwPS = _maTrendWeeks();
-  var wk = _maSportWeekly(sesss, curM[0], nwPS);
+  var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var tdPS = _maSportTrend(sesss, curM[0]);
+  var wk = tdPS.pts;
   var metricMenu = '<div id="ma-cx-metric-menu" style="display:none;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">'
     + METRICS.map(function (x, i) { return '<div onclick="maSetCardioMetric(\'' + x[0] + '\')" style="padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (x[0] === curM[0] ? 'color:#9D5FD3;background:var(--surface2);' : '') + '">' + x[1] + ' (' + x[2] + ')</div>'; }).join('') + '</div>';
   var lastPS = wk.length ? wk[wk.length - 1] : 0;
@@ -12077,25 +12237,26 @@ function _maCardioParSport(data) {
   // retrouve bloqué sur une métrique vide, sans moyen d'en changer.
   var hasData = wk.some(function (v) { return v > 0; });
   var chartHead = '<div class="ma-ctop"><span class="ma-chip" style="cursor:pointer" onclick="maToggleMenu(\'ma-cx-metric-menu\')">' + curM[1] + ' ▾</span>'
-    + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/sem.</span></span>' : '') + '</div>';
+    + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/' + _bNoun + '</span></span>' : '') + '</div>';
   var chartBody = hasData
-    ? (_maWeeklySvg(wk, curM[2], m[1], 'rgba(157,95,211,.12)', nwPS) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée. ' + nwPS + ' semaines (suit la période choisie) · chaque point = 1 semaine.'))
+    ? (_maWeeklySvg(wk, curM[2], m[1], 'rgba(157,95,211,.12)', wk.length, tdPS.dates) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée · chaque point = 1 ' + _bNoun + ' (suit la période choisie).'))
     : '<div style="padding:20px 6px;text-align:center;color:var(--text-subtle);font-size:12.5px;line-height:1.5">Pas de donnée « ' + curM[1] + ' » pour ' + _maE(m[0]) + '.<br>Choisis une autre donnée ci-dessus.</div>';
   var chart = '<div class="ma-chart">' + chartHead + metricMenu + chartBody + '</div>';
-  var lastArr = sesss.filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
+  var lastArr = sesss.filter(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
   var last = lastArr.slice(0, 6).map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
     var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); if (+s.fc_moy) parts.push(Math.round(s.fc_moy) + ' bpm');
     return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
   }).join('');
-  var _cdMain = _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _MA_PLABEL[_maPeriode], o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>';
+  var _cdMain = _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _w.plabel, o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>';
   _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _cdMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
 function maSetCardioSport(t) { _maCardioSport = t; try { _maCardioParSport(dernierAppData); } catch (e) {} }
 function maSetCardioMetric(m) { _maCardioMetric = m; try { _maCardioParSport(dernierAppData); } catch (e) {} }
 function _maCardioTendances(data) {
   var hist = (data.cardio && data.cardio.history) || [];
-  var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode));
+  var _w = _maWin();
+  var by = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO);
   var types = Object.keys(by).sort(function (a, b) { return by[b].dist - by[a].dist; });
   // Vide sur la période choisie : on GARDE le sélecteur de période (sinon on reste
   // bloqué sur « Semaine » sans pouvoir élargir) + le rail (Novalyz).
@@ -12107,11 +12268,12 @@ function _maCardioTendances(data) {
   var mx = Math.max.apply(null, types.map(function (t) { return by[t].dist || 0; }).concat([1]));
   var vol = '<div class="ma-card ma-vol">' + types.map(function (t) { var m = _maCM(t); return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(m[0]) + '</span><span class="p">' + (Math.round(by[t].dist * 10) / 10) + ' km · ' + by[t].n + ' sorties</span></div><div class="ma-vt"><span style="width:' + Math.round(by[t].dist / mx * 100) + '%;background:' + m[1] + '"></span></div></div>'; }).join('') + '</div>';
   // FC moyenne à effort (RPE) égal — proxy d'efficience : plus la FC baisse à RPE constant, mieux c'est.
-  var nwEff = _maTrendWeeks();
-  var fcW = _maSportWeekly(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy', nwEff);
+  var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var tdFc = _maSportTrend(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy');
+  var fcW = tdFc.pts;
   var fcFirst = fcW.find(function (x) { return x; }) || 0, fcLast = 0; for (var _fi = fcW.length - 1; _fi >= 0; _fi--) { if (fcW[_fi]) { fcLast = fcW[_fi]; break; } }
-  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / sem. · ' + nwEff + ' sem.', 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maWeeklySvg(fcW.map(function (v) { return v || fcFirst; }), 'bpm', '#9D5FD3', 'rgba(157,95,211,.12)', nwEff) + _maCap('Chaque point = 1 semaine. À lire à effort comparable (RPE proche).') + '</div>') : '';
-  var _ctMain = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + _maSec('Volume par sport', _MA_PLABEL[_maPeriode] + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff;
+  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / ' + _bNoun + ' · ' + _w.plabel, 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maWeeklySvg(fcW.map(function (v) { return v || fcFirst; }), 'bpm', '#9D5FD3', 'rgba(157,95,211,.12)', fcW.length, tdFc.dates) + _maCap('Chaque point = 1 ' + _bNoun + '. À lire à effort comparable (RPE proche).') + '</div>') : '';
+  var _ctMain = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie.') + _maSec('Volume par sport', _w.plabel + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff;
   _maSet('ma-cardio-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _ctMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
 function _maCardioHistorique(data) {
@@ -12130,11 +12292,12 @@ function _maCardioHistorique(data) {
   _maSet('ma-cardio-historique', '<div class="ma-cols2"><div class="ma-colmain">' + ('<div class="ma-card">' + rows + '</div>' + _maMoreBtn('cardio', n, all.length)) + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
 function _maCroise(data) {
-  var r = (data.recent && data.recent[_maRecentWin(_maPeriode)]) || {};
+  var _w = _maWin();
+  var r = _maMuscuAgg((data.historique && data.historique.daily_muscu), _w.startISO, _w.endISO);
   var muscuT = r.tonnage_kg || 0;
   // Charge cardio (UA = RPE × durée), Hyrox comptabilisé À PART (3e catégorie).
-  var hist = (data.cardio && data.cardio.history) || [], cut = _maCut(_maPeriode), cardioUA = 0, hyroxUA = 0;
-  hist.forEach(function (s) { if ((s.date || '') < cut || !+s.rpe || !+s.duree) return; var ua = (+s.rpe) * (+s.duree); if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
+  var hist = (data.cardio && data.cardio.history) || [], cardioUA = 0, hyroxUA = 0;
+  hist.forEach(function (s) { if ((s.date || '') < _w.startISO || (s.date || '') >= _w.endISO || !+s.rpe || !+s.duree) return; var ua = (+s.rpe) * (+s.duree); if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
   var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les charges comparables
   var tot = muscuUA + cardioUA + hyroxUA;
   var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
@@ -12162,25 +12325,25 @@ function _maCroise(data) {
   var be = (data.bien_etre && data.bien_etre[0]) || null;
   var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
   var _xrMain = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
-    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change la répartition ci-dessous selon la période.')
-    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _MA_PLABEL[_maPeriode], 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : '');
+    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change la répartition ci-dessous.')
+    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : '');
   _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
   // Tendances croisées : charge globale (muscu + cardio) + indice de forme (bien-être).
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
-  var nwX = _maTrendWeeks();
-  var muscuW = _maWeekly(vpj, nwX, 'sum').map(function (v) { return Math.round(v / 50); });
+  var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var tdM = _maTrendData(vpj, 'sum'), muscuW = tdM.pts.map(function (v) { return Math.round(v / 50); });
   var chD = {}; ((data.cardio && data.cardio.history) || []).forEach(function (s) { if (+s.rpe && +s.duree) chD[s.date] = (chD[s.date] || 0) + (+s.rpe) * (+s.duree); });
-  var cardioW = _maWeekly(chD, nwX, 'sum');
+  var cardioW = _maTrendData(chD, 'sum').pts;
   var totalW = muscuW.map(function (v, i) { return Math.round(v + (cardioW[i] || 0)); });
   var beD = {}; ((data.bien_etre) || []).forEach(function (b) { var d = _maFRtoDate(b.date); if (!d) return; var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); beD[iso] = (Number(b.sommeil) || 0) + (Number(b.energie) || 0) + (6 - (Number(b.fatigue) || 3)); });
   // Indice de forme ramené sur 100 (au lieu de /15, peu parlant) : (sommeil+énergie+(6−fatigue))/15×100.
-  var beW = _maWeekly(beD, nwX, 'avg').map(function (v) { return Math.round(v / 15 * 100); });
+  var beW = _maTrendData(beD, 'avg').pts.map(function (v) { return Math.round(v / 15 * 100); });
   var body = '';
   if (totalW.some(function (v) { return v > 0; })) {
-    body += _maSec('Charge globale', 'muscu + cardio · UA/sem. · ' + nwX + ' sem.', 'charge_globale') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine. Une hausse trop rapide peut signaler un risque de surmenage.');
+    body += _maSec('Charge globale', 'muscu + cardio · UA/' + _bNoun + ' · ' + _w.plabel, 'charge_globale') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(tdM.dates[0]), 'Charge combinée par ' + _bNoun + '. Une hausse trop rapide peut signaler un risque de surmenage.', tdM.dates);
   }
   if (beW.some(function (v) { return v > 0; })) {
-    body += _maSec('Indice de forme', 'bien-être · ' + nwX + ' sem.', 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.');
+    body += _maSec('Indice de forme', 'bien-être · ' + _w.plabel, 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdM.dates[0]), 'Indice de forme par ' + _bNoun + ' (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.', tdM.dates);
   }
   var _xtMain = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + (body || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.'));
   _maSet('ma-croise-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _xtMain + '</div><div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
@@ -13421,6 +13584,7 @@ function renderAujourdhui(data) {
     var faites = _seancesFaites(reg);
     var prevues = reg.seances_prevues || 4;
     var elR = document.getElementById('tj-reg'); if (elR) elR.textContent = faites + ' / ' + prevues + ' cette semaine';
+    var elRd = document.getElementById('tj-reg-d'); if (elRd) elRd.textContent = faites + ' / ' + prevues + ' séances cette semaine';
     var elW = document.getElementById('tj-reg-week');
     if (elW) { var n = Math.max(prevues || 0, 4), h = ''; for (var i = 0; i < n; i++) { h += '<span class="tj-wk' + (i < faites ? ' on' : '') + '"></span>'; } elW.innerHTML = h; }
     // Roue des séances (bloc d'accueil) : anneau animé qui « monte » vers faites/prevues.
@@ -13442,6 +13606,39 @@ function renderAujourdhui(data) {
         void fg.getBoundingClientRect();   // reflow → l'anim repart de 0
         requestAnimationFrame(function () { fg.style.transition = ''; fg.setAttribute('stroke-dashoffset', String(100 - pct)); });
       }
+    }
+  } catch (e) {}
+
+  // --- Badge : meilleur trophée débloqué, dans le header (animé), avec pastille NEW ---
+  // Mêmes conditions que la collection de trophées (_renderTrophees) : rien d'inventé,
+  // juste la mise en avant du plus haut palier atteint. Au tap → scrolle vers la carte
+  // Récompenses (où vit la collection complète).
+  try {
+    var _bg = (data && data.global) || {}, _bd = (data && data.dashboard) || {};
+    var _tS = Number(_bg.total_seances || 0);
+    var _stk = (_bd.regularite && _bd.regularite.streak != null) ? Number(_bd.regularite.streak) : ((_bd.streak && _bd.streak.semaines != null) ? Number(_bd.streak.semaines) : 0);
+    var _hasRec = _bg.records_par_exo && Object.keys(_bg.records_par_exo).length > 0;
+    var SVGf = '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>', SVGm = '<circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/>', SVGb = '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>', SVGs = '<path d="M12 2 15 8l6 .9-4.5 4.3L17.7 20 12 16.8 6.3 20l1.2-6.8L3 8.9 9 8z"/>', SVGc = '<path d="M20 6 9 17l-5-5"/>';
+    // Du plus prestigieux au plus simple : on prend le 1er atteint.
+    var _cand = [
+      { k: 's100', ok: _tS >= 100, svg: SVGs, lab: '100 séances' },
+      { k: 'str10', ok: _stk >= 10, svg: SVGf, lab: _stk + ' semaines de série' },
+      { k: 'rec', ok: !!_hasRec, svg: SVGm, lab: 'Records battus' },
+      { k: 'sea', ok: _tS >= 1, svg: SVGb, lab: _tS + ' séance' + (_tS > 1 ? 's' : '') },
+      { k: 'str', ok: _stk >= 1, svg: SVGf, lab: _stk + ' semaine' + (_stk > 1 ? 's' : '') + ' de série' },
+      { k: 'w1', ok: (_stk >= 1 || _tS >= 3), svg: SVGc, lab: 'Première semaine' }
+    ];
+    var _best = null; for (var _bi = 0; _bi < _cand.length; _bi++) { if (_cand[_bi].ok) { _best = _cand[_bi]; break; } }
+    var bEl = document.getElementById('tj-badge');
+    if (bEl) {
+      if (_best) {
+        var _bk = 'nvz_badge_' + ((typeof athlete !== 'undefined' && athlete && athlete.athlete_id) || 'x');
+        var _seen = ''; try { _seen = localStorage.getItem(_bk) || ''; } catch (e2) {}
+        var _isNew = _seen !== _best.k;
+        bEl.style.display = ''; bEl.title = 'Trophée débloqué : ' + _best.lab;
+        bEl.innerHTML = (_isNew ? '<span class="nw">NEW</span>' : '') + '<svg viewBox="0 0 24 24">' + _best.svg + '</svg>';
+        try { localStorage.setItem(_bk, _best.k); } catch (e3) {}
+      } else { bEl.style.display = 'none'; bEl.innerHTML = ''; }
     }
   } catch (e) {}
 
@@ -13511,8 +13708,8 @@ function renderAujourdhui(data) {
     var elNova = document.getElementById('tj-nova');
     var elnT = document.getElementById('tj-nova-txt');
     var sM = data && data.analyse_synthese && data.analyse_synthese.muscu;
-    var novaTxt = (sM && sM.reco && sM.reco.texte && sM.confiance && sM.confiance !== 'faible')
-      ? String(sM.reco.texte) : '';
+    // Rotation : un levier du pool par jour (plus de message figé). Masqué si confiance faible.
+    var novaTxt = _novaPickReco(sM);
     if (novaTxt) {
       if (elnT) elnT.textContent = novaTxt;
       if (elNova) elNova.style.display = '';
@@ -15064,9 +15261,13 @@ function _tourSafeBounds() {
 }
 function _tourPlace(el, spot, bub, arrow) {
   var pad = 6, r = el.getBoundingClientRect(), sb = _tourSafeBounds();
+  // Cap de hauteur par étape (spotMaxH) : certaines cartes (ex. IA coach) sont très
+  // hautes → le spotlight couvre alors le HAUT du bloc (label + chips) sans déborder.
+  var cur = _tour.steps[_tour.i] || {};
+  var sh = (cur.spotMaxH && r.height > cur.spotMaxH) ? cur.spotMaxH : r.height;
   spot.style.display = 'block';
   spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
-  spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
+  spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (sh + pad * 2) + 'px';
   bub.style.transform = 'none';
   var bw = bub.offsetWidth || 280, bh = bub.offsetHeight || 150, gap = 14;
   var cx = r.left + r.width / 2;
@@ -15088,6 +15289,198 @@ function _tourPlace(el, spot, bub, arrow) {
 }
 window.addEventListener('resize', function () { var o = document.getElementById('nvt-ov'); if (o && o.classList.contains('on')) _tourRender(); });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// GUIDE « 1 carte = 1 écran » — remplace la visite à spotlights (fragile mobile).
+// Chaque carte présente un écran entier + ses fonctions, pendant que l'app y
+// navigue réellement (la nav réelle met la barre du bas en surbrillance → plus de
+// bug). Robuste mobile ET desktop : aucun positionnement de spotlight.
+// ═══════════════════════════════════════════════════════════════════════════
+var _NVG_IC = {
+  home: '<path d="M3 11l9-8 9 8M5 10v10h14V10"/>',
+  dumb: '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>',
+  chart: '<path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6"/>',
+  heart: '<path d="M20 6a5 5 0 0 0-8-1 5 5 0 0 0-8 1c0 4 8 10 8 10s8-6 8-10z"/>',
+  watch: '<rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 2h6M9 22h6M12 9v3l2 1"/>',
+  body: '<circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M8 21l4-6 4 6M7 11l5-1 5 1"/>',
+  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  gift: '<rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M3 12h18M12 8v13"/>',
+  team: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5c2.5 0 5 1.5 5 4.5"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  clip: '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 11h6M9 15h4"/>',
+  spark: '<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2zM9 21h6"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'
+};
+var _nvg = { cards: [], i: 0, key: null };
+function _nvgCss() {
+  if (document.getElementById('nvg-css')) return;
+  var s = document.createElement('style'); s.id = 'nvg-css';
+  s.textContent = 'body.nvg-open{overflow:hidden!important}'
+    + '#nvg-ov{position:fixed;inset:0;z-index:1200;background:rgba(7,11,20,.55);display:flex;align-items:flex-end;justify-content:center;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}'
+    + '.nvg-sheet{background:var(--surface);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(7,11,20,.3);animation:nvgUp .3s ease;max-height:88vh;overflow:auto}'
+    + '@keyframes nvgUp{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}'
+    + '.nvg-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}'
+    + '.nvg-step{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);background:var(--accent-a10,rgba(26,95,255,.1));border-radius:999px;padding:4px 10px}'
+    + '.nvg-skip{background:none;border:none;color:var(--text-subtle);font:inherit;font-size:12px;cursor:pointer}'
+    + '.nvg-ic{width:52px;height:52px;border-radius:15px;background:var(--accent-a10,rgba(26,95,255,.1));display:grid;place-items:center;margin-bottom:10px}'
+    + '.nvg-ic svg{width:27px;height:27px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}'
+    + '.nvg-t{font-family:var(--font-heading,"Michroma",sans-serif);font-size:16px;margin:0 0 4px}'
+    + '.nvg-lead{font-size:12.5px;color:var(--text-muted);margin:0 0 11px;line-height:1.45}'
+    + '.nvg-feat{list-style:none;margin:0 0 2px;padding:0;display:flex;flex-direction:column;gap:9px}'
+    + '.nvg-feat li{display:flex;gap:9px;font-size:13px;line-height:1.4}'
+    + '.nvg-feat li svg{width:16px;height:16px;flex:none;margin-top:2px;fill:none;stroke:var(--good,#00A854);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}'
+    + '.nvg-feat li b{font-weight:700}'
+    + '.nvg-dots{display:flex;gap:5px;justify-content:center;margin:15px 0 13px;flex-wrap:wrap}'
+    + '.nvg-dots span{width:6px;height:6px;border-radius:999px;background:var(--border)}'
+    + '.nvg-dots span.on{background:var(--accent);width:18px}'
+    + '.nvg-nav{display:flex;align-items:center;justify-content:space-between;gap:10px}'
+    + '.nvg-prev{background:var(--surface2);border:1px solid var(--border);color:var(--text);font:inherit;font-weight:700;font-size:13px;border-radius:12px;padding:11px 16px;cursor:pointer}'
+    + '.nvg-next{flex:1;background:var(--accent);border:none;color:#fff;font:inherit;font-weight:800;font-size:14px;border-radius:12px;padding:12px;cursor:pointer}'
+    // Barre du bas (mobile) / rail gauche (desktop) remontés au-dessus du voile +
+    // écran courant mis en avant (le reste estompé). pointer-events coupés : on
+    // navigue via la carte uniquement.
+    + '.nvg-navlift{z-index:1250!important;pointer-events:none!important}'
+    + '.nvg-navdim{opacity:.38!important;transition:opacity .2s}'
+    + '.nvg-navcur{opacity:1!important;position:relative}'
+    + '.nvg-navcur::after{content:"";position:absolute;inset:-3px;border:2px solid var(--accent);border-radius:12px;animation:nvgPulse 1.6s ease-out infinite;pointer-events:none}'
+    + '@keyframes nvgPulse{0%{opacity:.7;transform:scale(.98)}70%{opacity:0;transform:scale(1.12)}100%{opacity:0}}'
+    + '@media (prefers-reduced-motion:reduce){.nvg-sheet{animation:none}.nvg-navcur::after{animation:none;opacity:.7}}';
+  document.head.appendChild(s);
+}
+function nvGuideStart(cards, key) {
+  if (!cards || !cards.length) return;
+  _nvgCss();
+  _nvg = { cards: cards, i: 0, key: key || null };
+  var ov = document.getElementById('nvg-ov');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'nvg-ov'; document.body.appendChild(ov); }
+  document.body.classList.add('nvg-open');
+  _nvgRender();
+}
+function nvGuideEnd() {
+  var ov = document.getElementById('nvg-ov'); if (ov) ov.parentNode.removeChild(ov);
+  document.body.classList.remove('nvg-open');
+  _nvgClearNav();
+  if (_nvg.key) _tourMark(_nvg.key);
+}
+// Nettoie les emphases de nav (remise à zéro z-index / opacité).
+function _nvgClearNav() {
+  try { [].forEach.call(document.querySelectorAll('.nvg-navlift'), function (e) { e.classList.remove('nvg-navlift'); }); } catch (e) {}
+  try { [].forEach.call(document.querySelectorAll('.nvg-navcur,.nvg-navdim'), function (e) { e.classList.remove('nvg-navcur', 'nvg-navdim'); }); } catch (e) {}
+}
+// Remonte la barre basse (mobile) OU le rail gauche (desktop) au-dessus du voile,
+// surligne l'écran courant (l'item déjà « actif » posé par la vraie nav), estompe
+// le reste, et décale la feuille pour ne pas masquer une barre basse.
+function _nvgLiftNav() {
+  _nvgClearNav();
+  var bottom = null;
+  ['tabs-bar', 'coach-bandeau', 'app-side', 'coach-rail'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && el.offsetParent !== null) { el.classList.add('nvg-navlift'); if (id === 'tabs-bar' || id === 'coach-bandeau') bottom = el; }
+  });
+  try {
+    [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn, .nvg-navlift .as-item, .nvg-navlift .cs-item, .nvg-navlift .cb-item'), function (e) { e.classList.add('nvg-navdim'); });
+    [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn.active, .nvg-navlift .as-item.active, .nvg-navlift .cs-item.on, .nvg-navlift .cb-item.on'), function (e) { e.classList.remove('nvg-navdim'); e.classList.add('nvg-navcur'); });
+  } catch (e) {}
+  try { var sheet = document.querySelector('.nvg-sheet'); if (sheet) sheet.style.marginBottom = bottom ? (bottom.offsetHeight + 'px') : '0'; } catch (e) {}
+}
+function nvGuidePrev() { if (_nvg.i > 0) { _nvg.i--; _nvgRender(); } }
+function nvGuideNext() { if (_nvg.i < _nvg.cards.length - 1) { _nvg.i++; _nvgRender(); } else nvGuideEnd(); }
+function _nvgRender() {
+  var c = _nvg.cards[_nvg.i]; if (!c) return;
+  try { if (c.go) c.go(); } catch (e) {}
+  var ov = document.getElementById('nvg-ov'); if (!ov) return;
+  var n = _nvg.cards.length;
+  var feats = (c.feats || []).map(function (t) { return '<li><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span>' + t + '</span></li>'; }).join('');
+  var dots = _nvg.cards.map(function (_c, j) { return '<span class="' + (j === _nvg.i ? 'on' : '') + '"></span>'; }).join('');
+  var last = _nvg.i === n - 1;
+  ov.innerHTML = '<div class="nvg-sheet">'
+    + '<div class="nvg-hd"><span class="nvg-step">Écran ' + (_nvg.i + 1) + '/' + n + (c.scr ? ' · ' + c.scr : '') + '</span><button class="nvg-skip" onclick="nvGuideEnd()">Passer ✕</button></div>'
+    + '<div class="nvg-ic"><svg viewBox="0 0 24 24">' + (_NVG_IC[c.ic] || '') + '</svg></div>'
+    + '<h3 class="nvg-t">' + c.t + '</h3>'
+    + (c.lead ? '<p class="nvg-lead">' + c.lead + '</p>' : '')
+    + (feats ? '<ul class="nvg-feat">' + feats + '</ul>' : '')
+    + '<div class="nvg-dots">' + dots + '</div>'
+    + '<div class="nvg-nav">' + (_nvg.i > 0 ? '<button class="nvg-prev" onclick="nvGuidePrev()">Précédent</button>' : '<span></span>')
+    + '<button class="nvg-next" onclick="nvGuideNext()">' + (last ? 'C’est parti 💪' : 'Suivant ›') + '</button></div>'
+    + '</div>';
+  try { ov.querySelector('.nvg-sheet').scrollTop = 0; } catch (e) {}
+  // La vraie nav (switchTab / coachBandeauGo / renderCoachDesktop) a déjà posé l'item
+  // actif → on le remonte au-dessus du voile et on le met en avant.
+  try { _nvgLiftNav(); } catch (e) {}
+}
+// Navigation coach pour le guide (viewport-aware) : sections de contenu via la vraie
+// nav (surligne la barre) ; Messages/Profil → on surligne SANS ouvrir l'overlay (pas
+// de piège pendant la visite).
+function _guideCoachGo(sec) {
+  try { if (document.body.classList.contains('athlete-selected')) retourListeAthletesCoach(); } catch (e) {}
+  var desk = (typeof _coachDeskAny === 'function') && _coachDeskAny();
+  if (sec === 'messages' || sec === 'profil') {
+    if (desk) { coachDeskOverlay = sec; try { renderCoachRail(); } catch (e) {} }
+    else { coachBandeauTab = sec; try { coachBandeauApply(); } catch (e) {} }
+    return;
+  }
+  coachDeskOverlay = null;
+  if (desk) { coachDeskSection = sec; try { renderCoachDesktop(); } catch (e) {} }
+  else { try { coachBandeauGo(sec); } catch (e) {} }
+}
+function _guideCoachFiche(subtab) {
+  try {
+    if (!document.body.classList.contains('athlete-selected')) {
+      var a = (typeof athletesCoach !== 'undefined' && athletesCoach && athletesCoach[0]) ? athletesCoach[0] : null;
+      if (a) ouvrirDetailAthleteCoach(a, subtab);
+    }
+  } catch (e) {}
+}
+// Deck ATHLÈTE (branché : a un coach ou non → Entraînement + Coach/assistant changent).
+function _guideAthleteCards() {
+  var hasCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
+  var aGo = function (t, extra) { return function () { try { switchTab(t); } catch (e) {} if (extra) try { extra(); } catch (e) {} }; };
+  return [
+    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton tableau de bord quotidien — tu reviens toujours ici.', go: aGo('accueil'),
+      feats: ['Ton <b>état du jour</b> (prêt / vigilance) + le <b>mot de Novalyz</b> (reco qui change chaque jour)', 'Ta <b>séance du jour</b> à lancer en un geste', 'Ton <b>point d’attention</b> (alertes) et ta <b>régularité</b>', 'Tes <b>badges &amp; récompenses</b>', 'Le bouton <b>« Demande à Novalyz »</b> (assistant IA)'] },
+    { ic: 'dumb', scr: 'Entraînement', t: 'Entraînement', lead: 'Ton programme et tes séances.', go: aGo('seance'),
+      feats: ['<b>Agenda</b> : muscu, cardio et <b>Hyrox</b>', '<b>Démarre une séance</b> : saisie série par série (charge, reps, RPE) + <b>chrono de repos</b>',
+        hasCoach ? 'Ton <b>coach construit ton programme</b> : tu le suis et l’exécutes ici' : '<b>Crée ton programme</b> (séances, % du 1RM, RPE cible) ou laisse <b>Novalyz te le proposer</b> en 3 questions'] },
+    { ic: 'chart', scr: 'Analyses', t: 'Analyses', lead: 'Comprendre ce que disent tes données.', go: aGo('historique'),
+      feats: ['<b>Résumé</b> : le verdict en clair + tes chiffres clés', '<b>Évolution</b> : charge, <b>1RM estimé</b>, volume, charge à viser', '<b>Tendances</b> + <b>sélecteur de période</b> (semaine / mois / année, avec flèches)', 'Vue <b>Croisé</b> : muscu + cardio'] },
+    { ic: 'heart', scr: 'Forme', t: 'Forme', lead: 'Ton ressenti, croisé avec l’entraînement.', go: aGo('etat'),
+      feats: ['<b>Questionnaire bien-être</b> (sommeil, énergie, fatigue, douleur)', '<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte', 'Ta <b>pesée</b> + tendance du poids', '<b>Nutrition</b> (calories &amp; macros), <b>objectifs</b> et <b>blessures</b>'] },
+    { ic: 'watch', scr: 'Réglages ▸ Appareils', t: 'Montre &amp; capteurs', lead: 'Tes données santé importées automatiquement.', go: aGo('reglages', function () { try { switchReglagesTab('appareils'); } catch (e) {} }),
+      feats: ['Connexion <b>Health Connect</b> : <b>pas</b>, <b>sommeil</b>, <b>FC au repos</b>', 'Import <b>nutrition</b> : MyFitnessPal, Yazio, Samsung Health…', 'Tout est <b>croisé avec ton entraînement</b> pour juger ta forme'] },
+    { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: 'Analyse morpho &amp; assistant IA', lead: '', go: aGo('conseils'),
+      feats: hasCoach
+        ? ['<b>Messagerie</b> avec ton coach : messages, photos, vidéos de ta technique', '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Toi comme ton coach pouvez la lancer']
+        : ['<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Tu pourras <b>lier un coach</b> plus tard'] },
+    { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Tout ton suivi de base est gratuit.', go: aGo('accueil'),
+      feats: ['Suivi · forme · montre · analyses de base + <b>export de tes données</b> : gratuit', 'Assistant IA : <b>3/jour</b> gratuit, illimité en Premium', 'Programme &amp; analyse morpho IA, analyses avancées : <b>Premium</b>', '<b>Rapports automatiques</b> (ton bilan envoyé par e-mail) : <b>Premium</b>'] }
+  ];
+}
+// Deck COACH (détaillé).
+function _guideCoachCards() {
+  var G = function (s) { return function () { _guideCoachGo(s); }; };
+  var F = function (sub) { return function () { _guideCoachFiche(sub); }; };
+  return [
+    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton point de départ chaque jour : qui a besoin de toi.', go: G('aujourdhui'),
+      feats: ['<b>Briefing équipe</b> : % à jour, athlètes à voir', '<b>Qui a répondu</b> au questionnaire bien-être (7 j) + relance', '<b>À surveiller</b> : athlètes triés par priorité + motif', '<b>Messages non lus</b> en un coup d’œil'] },
+    { ic: 'team', scr: 'Équipe', t: 'Équipe', lead: 'Tout ton effectif.', go: G('equipe'),
+      feats: ['Statut, niveau, <b>assiduité</b>, dernière séance par athlète', '<b>Enregistrer un athlète</b> : invitation ou création du compte', 'Clique une ligne pour <b>ouvrir sa fiche</b>'] },
+    { ic: 'folder', scr: 'Fiche athlète', t: 'Fiche athlète', lead: 'Tout sur un athlète, en sous-onglets.', go: F('apercu'),
+      feats: ['<b>Aperçu · Progression · Séances · Programme · Conversation</b>', 'État du jour, données d’entraînement, <b>objectifs</b> &amp; <b>blessures</b>', '<b>Export du bilan</b> client à la demande'] },
+    { ic: 'clip', scr: 'Fiche ▸ Programme', t: 'Son programme', lead: 'Dans la fiche, onglet Programme.', go: F('programme'),
+      feats: ['<b>Construis / modifies</b> ses séances : charges en % du 1RM, <b>RPE cible</b>', 'Groupé par muscle, sélection multiple d’exercices', 'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste'] },
+    { ic: 'spark', scr: 'Fiche ▸ IA', t: 'L’IA coach (bloc IA)', lead: 'Ton assistant sur CE client, branché sur ses données.', go: F('apercu'),
+      feats: ['<b>Résumé d’état &amp; vigilance</b> du client', '<b>Priorités de la semaine</b> + <b>risque de surcharge</b>', '<b>Comment adapter son programme</b> — jamais de chiffre inventé'] },
+    { ic: 'body', scr: 'Fiche ▸ Morpho', t: 'Analyse morphologique IA', lead: 'À partir des photos de l’athlète.', go: F('apercu'),
+      feats: ['Détecte les <b>groupes en avance / en retard</b>', 'Lançable par <b>toi ou l’athlète</b>', 'Oriente tes choix de programme (points faibles)'] },
+    { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Tes échanges avec les athlètes.', go: G('messages'),
+      feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
+    { ic: 'chart', scr: 'Analyses', t: 'Analyses équipe', lead: 'Les tendances en profondeur.', go: G('analyses'),
+      feats: ['Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>', 'Charge, volume, forme dans le temps'] },
+    { ic: 'gear', scr: 'Profil', t: 'Profil &amp; données', lead: 'Ton espace coach.', go: G('profil'),
+      feats: ['Tes préférences et ton profil coach', '<b>Export</b> des données de tes clients', '<b>Revoir la visite</b> à tout moment'] },
+    { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Ton espace coach démarre gratuit.', go: G('aujourdhui'),
+      feats: ['Cockpit · suivi d’équipe · fiches : gratuit', 'IA coach : <b>3 questions/jour</b>, illimité en Premium', 'Plus d’athlètes · analyses avancées : <b>Premium</b>', '<b>Envoi de rapports</b> à tes athlètes (bilans auto par e-mail) : <b>Premium</b>'] }
+  ];
+}
 function _stepsAthlete() {
   var go = function (t) { return function () { try { switchTab(t); } catch (e) {} }; };
   // Entraînement : les boutons programme (#en-gen/#en-creer) ne s'affichent qu'en
@@ -15104,8 +15497,6 @@ function _stepsAthlete() {
   S.push({ scr: A, sel: '#tj-banner', before: go('accueil'), t: 'Ton état du jour', x: 'Complète ton questionnaire bien-être (1 min) : il nourrit toutes les analyses et la reco du jour.' });
   S.push({ scr: A, sel: '#tj-nova', before: go('accueil'), t: 'La Lecture Novalyz', x: 'Ce qu’il faut retenir aujourd’hui, expliqué en clair — pas juste des graphiques.' });
   S.push({ scr: A, sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' });
-  S.push({ scr: A, sel: '#tab-accueil .tj-bwrap', before: go('accueil'), t: 'Ton point du jour', x: 'Mets à jour ton ressenti (sommeil, énergie, douleurs) en quelques secondes, chaque jour.' });
-  S.push({ scr: A, sel: '#tab-accueil .tj-rew', before: go('accueil'), t: 'Tes récompenses', x: 'Gagne des points et des niveaux, débloque des trophées et vise ton objectif de la semaine.' });
   // Mobile : l'entrée est le FAB (position:fixed) ; desktop : le bloc .nvz-ask. On
   // s'assure que le FAB est bien affiché avant de le surligner.
   S.push({ scr: A, sel: ['#tab-accueil .nvz-ask', '#fab-novalyz'], before: function () { try { switchTab('accueil'); } catch (e) {} try { _majFabNovalyz(); } catch (e) {} }, t: 'Demande à Novalyz', x: 'Ton assistant IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
@@ -15114,18 +15505,14 @@ function _stepsAthlete() {
   S.push({ scr: E, sel: '#en-creer', before: goSeanceMuscu, t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
   S.push({ scr: E, sel: '[data-tour="ath-agenda"]', before: go('seance'), t: 'Ton agenda', x: 'Retrouve tes séances faites d’un coup d’œil : muscu en vert, cardio en rouge. Touche un jour pour voir le détail.' });
   // ─── ANALYSES ───
-  S.push({ scr: AN, sel: '#tab-historique .ma-switch', before: goAna('resume'), t: 'Discipline', x: 'Choisis la discipline analysée : muscu, cardio ou croisé.' });
-  S.push({ scr: AN, sel: '#tab-historique .ma-verdict', before: goAna('resume'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de ton résumé : ce qu’il faut retenir + tes chiffres clés (tonnage, charge ACWR, monotonie).' });
-  S.push({ scr: AN, sel: '#ma-tab-detail', before: goAna('detail'), t: 'Par exercice', x: 'Vue « Par exercice » : la progression détaillée de chaque mouvement — charge, 1RM estimé, volume.' });
-  S.push({ scr: AN, sel: '#tab-historique .ma-period-wrap', before: goAna('detail'), t: 'Les périodes', x: 'Choisis la fenêtre d’analyse : semaine, mois, 3 / 6 / 9 mois, année.' });
-  S.push({ scr: AN, sel: '#ma-tab-tendances', before: goAna('tendances'), t: 'Tendances', x: 'Vue « Tendances » : l’évolution d’ensemble de ta charge, ton volume et ta forme dans le temps.' });
+  S.push({ scr: AN, sel: '#tab-historique .ma-verdict', before: goAna('resume'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de ton résumé : ce qu’il faut retenir + tes chiffres clés (tonnage, charge ACWR, monotonie). Choisis la discipline analysée en haut (muscu, cardio, croisé).' });
+  S.push({ scr: AN, sel: '#ma-tab-detail', before: goAna('detail'), t: 'Évolution', x: 'Vue « Évolution » : la progression de chaque mouvement (charge, 1RM estimé, volume). La vue « Tendances » montre l’évolution d’ensemble.' });
+  S.push({ scr: AN, sel: '#tab-historique .ma-period-wrap', before: goAna('detail'), t: 'Les périodes', x: 'Choisis la fenêtre d’analyse : semaine, mois, année — avec les flèches pour naviguer dans le temps.' });
   // ─── FORME ─── (récup/« prêt » et ressenti/bien-être sont déjà vus dans Aujourd'hui → non répétés)
   S.push({ scr: F, sel: '#et-contexte', before: go('etat'), t: 'Ton contexte', x: 'Déclare un contexte — retour de vacances, de blessure, semaine de décharge : l’analyse s’adapte au lieu de crier à la régression.' });
-  S.push({ scr: F, sel: '#et-montre-mini', before: go('etat'), t: 'Ta montre & tes capteurs', x: 'Tes pas, ton sommeil et ta FC importés de ta montre, croisés avec ton entraînement (la connexion se fait dans Réglages, étape suivante).' });
-  S.push({ scr: F, sel: '[data-tour="ath-poids"]', before: go('etat'), t: 'Ta pesée', x: 'Enregistre ton poids et suis sa tendance dans le temps.' });
-  S.push({ scr: F, sel: '#et-suivis', before: go('etat'), t: 'Tes suivis', x: 'Accès direct à ta nutrition (calories & macros), tes objectifs et tes blessures.' });
+  S.push({ scr: F, sel: '#et-montre-mini', before: go('etat'), t: 'Ta montre & tes capteurs', x: 'Tes pas, ton sommeil et ta FC importés de ta montre, croisés avec ton entraînement. La connexion (Health Connect) + l’import nutrition se font dans Réglages ▸ Appareils.' });
+  S.push({ scr: F, sel: '#et-suivis', before: go('etat'), t: 'Tes suivis', x: 'Accès direct à ta pesée, ta nutrition (calories & macros), tes objectifs et tes blessures.' });
   // ─── RÉGLAGES ───
-  S.push({ scr: 'Réglages', sel: '#hc-card', before: function () { try { switchTab('reglages'); } catch (e) {} try { switchReglagesTab('appareils'); } catch (e) {} }, t: 'Connexion montre & capteurs', x: 'Réglages ▸ Appareils : connecte ta montre via Health Connect (pas, sommeil, FC) et importe ta nutrition depuis MyFitnessPal, Yazio, Samsung Health…' });
   // ─── COACH / CONVERSATION ───
   S.push({
     scr: C, sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} },
@@ -15154,14 +15541,18 @@ function _stepsCoach() {
     { scr: EQ, sel: '[data-tour="co-equipe-table"]', before: go('equipe'), t: 'Ouvrir une fiche', x: 'Clique un athlète dans la liste pour ouvrir sa fiche détaillée.' },
     { scr: FI, sel: '#cd-hero', before: openFiche, t: 'La fiche athlète', x: 'Tout sur ton athlète : profil, état du jour, analyses, données d’entraînement, objectifs et blessures. Les sous-onglets (Aperçu · Progression · Séances · Programme · Conversation) organisent tout ça.' },
     { scr: FI, sel: '#cdtab-btn-programme', before: openFiche, t: 'Son programme', x: 'Onglet Programme : tu construis et modifies son programme toi-même (séances, charges, cibles) — ou tu laisses Novalyz le proposer, puis tu ajustes.' },
-    { scr: FI, sel: '#cd-ia-card', before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
+    { scr: FI, sel: '#cd-ia-card', spotMaxH: 230, before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
     { scr: ME, sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
     { scr: AN, sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' },
     { sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Ton espace coach est <b>gratuit pour démarrer</b>. L’IA et le volume d’athlètes passent en <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Cockpit · suivi d’équipe · fiches</td><td>✅</td><td>✅</td></tr><tr><td>IA coach (par client)</td><td>3 questions / jour</td><td>illimité</td></tr><tr><td>Nombre d’athlètes suivis</td><td>limité</td><td>étendu 💎</td></tr><tr><td>Analyses avancées · rapports</td><td>—</td><td>💎</td></tr></table><span style="color:var(--text-muted)">À activer quand tu veux.</span>' }
   ];
 }
-function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvTourStart(_stepsAthlete(), 'tour_ath_vu'); }
-function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; nvTourStart(_stepsCoach(), 'tour_coach_vu'); }
+// Visite viewport-aware : DESKTOP = ancienne visite à surbrillance sur les blocs
+// (spotlights, _steps*) ; MOBILE = nouveau guide « 1 carte = 1 écran » (nvGuide),
+// robuste (plus de spotlight mal placé sur petit écran).
+function _nvIsDesktop() { try { return window.matchMedia('(min-width:992px)').matches; } catch (e) { return false; } }
+function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; if (_nvIsDesktop()) nvTourStart(_stepsAthlete(), 'tour_ath_vu'); else nvGuideStart(_guideAthleteCards(), 'tour_ath_vu'); }
+function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; if (_nvIsDesktop()) nvTourStart(_stepsCoach(), 'tour_coach_vu'); else nvGuideStart(_guideCoachCards(), 'tour_coach_vu'); }
 var _coachTourTried = false;
 function _maybeCoachTour() {
   if (_coachTourTried || _tourSeen('tour_coach_vu')) return;
@@ -15261,8 +15652,15 @@ function _maybeQuotidienEtat() {
     var key = 'nvz_etat_auto_' + athlete.athlete_id;
     var last = null; try { last = localStorage.getItem(key); } catch (e) {}
     if (last === today) { _etatAutoChecked = true; return; }   // déjà proposé aujourd'hui
-    // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, modales…).
-    var busy = ['onb-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
+    // Parcours de 1re connexion : NE PAS ouvrir le questionnaire par-dessus l'intro,
+    // l'écran « proposer un programme » ou la visite guidée (sinon deux panneaux en
+    // même temps). Tant que l'intro n'est pas vue, on s'efface (on réessaiera plus tard).
+    if (!dernierAppData.onboarding_vu) return;
+    var _tourOv = document.getElementById('nvt-ov');
+    if (_tourOv && _tourOv.classList.contains('on')) return;   // visite guidée active
+    // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, génération de
+    // programme, modales…).
+    var busy = ['onb-overlay', 'gen-prog-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
       var e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none';
     });
     if (busy) return;   // on réessaiera au prochain chargement
@@ -19396,11 +19794,8 @@ function _hcRenderList(ws, steps) {
     html += '<div id="hc-activity"></div>';
   }
 
-  // Détails techniques (repliés).
-  if (_hcDiag && _hcDiag.length) {
-    html += '<details style="margin-top:16px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
-      + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);margin-top:6px;">' + _hcDiag.map(escapeHtml).join('\n') + '</div></details>';
-  }
+  // (« Détails techniques » retiré de la page Import — journal conservé en interne
+  // via _hcDiag pour le diagnostic, mais plus affiché à l'utilisateur.)
   el.innerHTML = html;
   if (document.getElementById('hc-activity')) { try { _actRender(); } catch (e) {} }
 }

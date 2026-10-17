@@ -1058,20 +1058,43 @@
          sont des enfants flex de .tj) : greet·banner·nova·séance·attention·point
          du jour·pas·récompenses. #dash-steps est dans .tj-main (desktop) mais garde
          sa place mobile (order:7) ici. */
+      /* P5 : cockpit décision d'abord (greet·état·reco·action·alerte), puis « Le
+         détail » (régularité·bien-être·pas), puis récompenses tout en bas. */
       #tab-accueil .tj-greet{order:1;}
       #tab-accueil .tj-banner{order:2;}
       #tab-accueil #tj-nova{order:3;}
       #tab-accueil .tj-seance{order:4;}
       #tab-accueil #tj-attention{order:5;}
-      #tab-accueil .tj-bwrap{order:6;}
-      #tab-accueil #dash-steps{order:7;}
-      #tab-accueil .tj-rew{order:8;}
+      #tab-accueil .tj-sep{order:6;}
+      #tab-accueil .tj-reg{order:7;}
+      #tab-accueil .tj-bwrap{order:8;}
+      #tab-accueil #dash-steps{order:9;}
+      #tab-accueil .tj-rew{order:10;}
       @media (min-width:992px){
         #tab-accueil .tj{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start;padding:4px 0 40px;}
         /* Vraies colonnes flex ; en desktop l'ordre suit le flux DOM de chaque colonne. */
         #tab-accueil .tj-main,#tab-accueil .tj-rail{display:flex;flex-direction:column;gap:14px;min-width:0;}
         #tab-accueil .tj-main>*,#tab-accueil .tj-rail>*{order:0 !important;}
+        #tab-accueil .tj-sep{display:none;}   /* repère de hiérarchie mobile uniquement */
       }
+      /* P5 — Badge trophée animé dans le header d'accueil */
+      .tj-greet{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+      .tj-badge{position:relative;width:44px;height:44px;border-radius:13px;flex:none;display:grid;place-items:center;cursor:pointer;
+        background:linear-gradient(145deg,#FFD35C,#E79A00);box-shadow:0 3px 12px rgba(231,154,0,.42);animation:tjBadgePop .6s ease both;}
+      .tj-badge svg{width:23px;height:23px;fill:none;stroke:#5a3c00;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+      .tj-badge::after{content:"";position:absolute;inset:-3px;border-radius:16px;border:2px solid rgba(255,211,92,.65);animation:tjBadgeRing 2.6s ease-out infinite;}
+      .tj-badge .nw{position:absolute;top:-7px;right:-7px;font-size:8px;font-weight:800;background:var(--tj-accent);color:#fff;border-radius:999px;padding:2px 5px;letter-spacing:.04em;}
+      @keyframes tjBadgePop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+      @keyframes tjBadgeRing{0%{transform:scale(1);opacity:.7}70%{transform:scale(1.5);opacity:0}100%{opacity:0}}
+      @media (prefers-reduced-motion:reduce){.tj-badge,.tj-badge::after{animation:none;}}
+      /* P5 — Séparateur « Le détail » (mobile) */
+      .tj-sep{display:flex;align-items:center;gap:10px;margin:6px 2px 0;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--tj-subtle);}
+      .tj-sep::after{content:"";flex:1;height:1px;background:var(--tj-border);}
+      /* P5 — Carte Régularité (roue descendue sous le cockpit) */
+      .tj-reg{display:flex;align-items:center;gap:15px;padding:14px 16px;}
+      .tj-reg .tj-ring{margin:0;flex:none;}
+      .tj-reg-main .t{font-size:14px;font-weight:800;}
+      .tj-reg-main .d{font-size:12.5px;color:var(--tj-muted);margin-top:2px;}
       </style>
 
       <!-- DESKTOP (≥992px) : .tj devient une grille 2 colonnes (contenu principal
@@ -1089,13 +1112,9 @@
             <div class="tj-hi" id="tj-prenom">Bonjour</div>
             <div class="tj-date" id="tj-date"></div>
           </div>
-          <div class="tj-ring" id="tj-ring">
-            <svg viewBox="0 0 74 74">
-              <circle class="tj-ring-bg" cx="37" cy="37" r="32"></circle>
-              <circle class="tj-ring-fg" id="tj-ring-fg" cx="37" cy="37" r="32" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></circle>
-            </svg>
-            <div class="tj-ring-txt"><span class="tj-ring-n" id="tj-ring-n">0/0</span><span class="tj-ring-l">séances</span></div>
-          </div>
+          <!-- Meilleur badge débloqué (trophée) — rempli/animé par renderAujourdhui().
+               Masqué tant qu'aucun trophée n'est débloqué. -->
+          <div class="tj-badge" id="tj-badge" style="display:none" title="" onclick="switchTab('accueil');var r=document.querySelector('#tab-accueil .tj-rew');if(r)r.scrollIntoView({behavior:'smooth',block:'center'});"></div>
         </div>
 
         <div class="tj-banner" id="tj-banner">
@@ -1120,6 +1139,24 @@
           </div>
           <button class="tj-cta" onclick="switchTab('seance')"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>Commencer ma séance</button>
           <button class="tj-other" onclick="switchTab('seance')"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Voir mon entraînement</button>
+        </div>
+
+        <!-- P5 : séparateur visuel « Le détail » — bascule du cockpit décision
+             (état/reco/action/alerte au-dessus) vers la consultation. Mobile only. -->
+        <div class="tj-sep" id="tj-sep">Le détail</div>
+
+        <!-- Régularité : roue des séances faites/prévues. Descendue sous le cockpit
+             (consultation, pas décision immédiate). Les ids tj-ring* sont conservés
+             → renderAujourdhui continue de la remplir/animer. -->
+        <div class="tj-card tj-reg tj-reveal">
+          <div class="tj-ring" id="tj-ring">
+            <svg viewBox="0 0 74 74">
+              <circle class="tj-ring-bg" cx="37" cy="37" r="32"></circle>
+              <circle class="tj-ring-fg" id="tj-ring-fg" cx="37" cy="37" r="32" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></circle>
+            </svg>
+            <div class="tj-ring-txt"><span class="tj-ring-n" id="tj-ring-n">0/0</span><span class="tj-ring-l">séances</span></div>
+          </div>
+          <div class="tj-reg-main"><div class="t">Régularité</div><div class="d" id="tj-reg-d">Tes séances de la semaine</div></div>
         </div>
 
         <!-- Activité du jour (pas montre) — rempli par renderDashSteps(), masqué si pas
@@ -1736,6 +1773,15 @@
           <input type="email" id="reglages-email" placeholder="ton@email.com" autocomplete="email" inputmode="email" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
           <button onclick="enregistrerEmailAthlete()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer l'email</button>
           <div id="reglages-email-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+          <label style="margin-top:14px;">Rapport par e-mail</label>
+          <select id="reglages-recap-freq" onchange="enregistrerRecapFreqAthlete()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 12px;font-size:14px;font-weight:600;cursor:pointer;box-sizing:border-box;">
+            <option value="off">Jamais</option>
+            <option value="semaine">Chaque semaine (lundi)</option>
+            <option value="mois">Chaque mois (le 1er)</option>
+            <option value="3mois">Tous les 3 mois</option>
+          </select>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">Reçois ton bilan (séances, volume, balance, progression…) par e-mail à la fréquence choisie. Nécessite un e-mail enregistré.</div>
+          <div id="reglages-recap-msg" style="font-size:12px;margin-top:6px;line-height:1.4;"></div>
         </div>
 
         <!-- Mot de passe -->
@@ -1844,14 +1890,6 @@
       <div class="rg-panel" data-rg="data" style="display:none;">
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Mes données</h2></div>
         <div class="card">
-          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Télécharge tout ton historique (séances, poids, ressentis, objectifs, blessures). JSON = tout ; CSV = tes séances.</div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="exporterMesDonnees('json')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Exporter (JSON)</button>
-            <button onclick="exporterMesDonnees('csv')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Séances (CSV)</button>
-          </div>
-          <div id="export-ath-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
-        </div>
-        <div class="card">
           <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;">Politique de confidentialité &amp; mes droits</a>
         </div>
         <div class="v2-sec"><h2 class="st" style="color:var(--danger);"><svg class="ico"><use href="#i-alert"/></svg>Zone dangereuse</h2></div>
@@ -1886,6 +1924,8 @@
 #tab-historique .ma-ttl{font-family:var(--head,'Michroma',sans-serif);font-size:17px;letter-spacing:.02em;color:var(--text);}
 #tab-historique .ma-sub{font-size:11.5px;color:var(--text-subtle);margin-top:3px;}
 #tab-historique .ma-av{width:38px;height:38px;border-radius:999px;background:var(--surface2);color:var(--accent);font-family:var(--head,'Michroma',sans-serif);font-size:13px;display:grid;place-items:center;border:1px solid var(--border);flex:none;cursor:pointer;}
+/* Barre discipline + sous-onglets collante : on change de vue sans remonter. */
+#tab-historique .ma-sticky{position:sticky;top:0;z-index:30;display:flex;flex-direction:column;gap:12px;background:var(--bg);padding:8px 0 8px;margin-bottom:2px;}
 #tab-historique .ma-switch{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06));}
 #tab-historique .ma-switch button{flex:1;min-width:0;border:none;background:transparent;font-family:var(--head,'Michroma',sans-serif);font-size:12px;color:var(--text-muted);padding:11px 2px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap;}
 #tab-historique .ma-switch button.on{background:var(--accent);color:#fff;}
@@ -2068,6 +2108,8 @@
         <!-- Import montre / capteurs (Health Connect) : une action « données », d'où sa place ici. -->
         <button id="btn-hc-analyses" onclick="ouvrirImportMontre()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:12px;border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.08);color:#10B981;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M12 15l-4-4M12 15l4-4M4 19h16"/></svg>Importer mes séances (montre &amp; capteurs)</button>
 
+        <!-- Barre discipline + sous-onglets : STICKY → on peut changer sans remonter. -->
+        <div class="ma-sticky">
         <div class="ma-switch">
           <button id="ma-sw-muscu" class="on" onclick="maSetDisc('muscu')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>Muscu</button>
           <button id="ma-sw-cardio" onclick="maSetDisc('cardio')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6H21"/></svg>Cardio</button>
@@ -2076,9 +2118,10 @@
 
         <div class="ma-tabs">
           <button id="ma-tab-resume" class="on" onclick="maSetTab('resume')">Résumé</button>
-          <button id="ma-tab-detail" onclick="maSetTab('detail')">Par exercice</button>
+          <button id="ma-tab-detail" onclick="maSetTab('detail')">Évolution</button>
           <button id="ma-tab-tendances" onclick="maSetTab('tendances')">Tendances</button>
           <button id="ma-tab-historique" onclick="maSetTab('historique')">Historique</button>
+        </div>
         </div>
 
         <!-- Le sélecteur de période est rendu DANS chaque pane (sous la Lecture en
@@ -2741,6 +2784,15 @@
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Sport</div>
       <select id="coach-sport-select" onchange="enregistrerSportCoach()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;"></select>
       <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Adapte le vocabulaire de l'app (athlètes / joueurs…) et, plus tard, les indicateurs suivis.</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Résumé d'équipe par e-mail</div>
+      <select id="coach-recap-freq" onchange="enregistrerRecapFreqCoach()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">
+        <option value="off">Jamais</option>
+        <option value="semaine">Chaque semaine (lundi)</option>
+        <option value="mois">Chaque mois (le 1er)</option>
+        <option value="3mois">Tous les 3 mois</option>
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Reçois le résumé de ton effectif (charge, à surveiller, dynamique…) par e-mail. Nécessite un e-mail sur ton compte coach.</div>
+      <div id="coach-recap-msg" style="font-size:12px;line-height:1.4;"></div>
     </div>
 
     <!-- ÉQUIPE -->
@@ -2765,16 +2817,7 @@
 
     <!-- DONNÉES -->
     <div class="crg-panel" data-crg="data" style="display:none;flex-direction:column;gap:10px;">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Données de l'équipe</div>
-      <div class="card" style="padding:14px 16px;margin:0;">
-        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Historique complet de tes athlètes (séances, indicateurs, blessures…). JSON = tout ; CSV = toutes les séances.</div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="exporterEquipe('json')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Exporter (JSON)</button>
-          <button onclick="exporterEquipe('csv')" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Séances (CSV)</button>
-        </div>
-        <div id="export-coach-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
-      </div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Bilan d'un client</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Bilan d'un client</div>
       <div class="card" style="padding:14px 16px;margin:0;">
         <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Génère le bilan détaillé d'un athlète (le même que le bilan auto par e-mail) pour le sortir quand tu veux. Ouvre une page imprimable → « Enregistrer en PDF ».</div>
         <label>Athlète</label>
@@ -2783,8 +2826,10 @@
         <select id="bilan-client-periode" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:14px;box-sizing:border-box;">
           <option value="semaine">Semaine</option>
           <option value="mois">Mois</option>
+          <option value="3mois">3 mois</option>
         </select>
         <button onclick="ouvrirBilanClient()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">📄 Ouvrir le bilan</button>
+        <button onclick="envoyerBilanClientMail()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">📧 Envoyer le rapport par e-mail à l'athlète</button>
         <div id="bilan-client-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
       </div>
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--danger);">Zone dangereuse</div>
