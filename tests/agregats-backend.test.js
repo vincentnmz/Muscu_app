@@ -29,13 +29,27 @@ function extractFn(name) {
 
 const WINDOWS_SRC = SRC.match(/const WINDOWS = \{[^}]*\}/)[0] + ';';   // { ACUTE:7, MID:14, CHRONIC:28, LONG:56 }
 const FN_NAMES = ['fmtYMD', 'minus', 'parseFR', 'fmtFR', 'normDate', 'isoWeek', 'prevIsoWeek', 'getLundi',
-  'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'computeTendances', 'buildProgressionParExo', 'buildVolumeSemaineParMuscle'];
+  'computeGlobal', 'computeRecent', 'computeComparison', 'computeStreak', 'computeTendances', 'buildProgressionParExo', 'buildVolumeSemaineParMuscle', 'buildDailyMuscu'];
 const tsCode = WINDOWS_SRC + '\n\n' + FN_NAMES.map(extractFn).join('\n\n');
 const jsCode = stripTypeScriptTypes(tsCode);           // retire les types → JS exécutable
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext(jsCode + '\n' + FN_NAMES.map(n => `this.${n} = ${n};`).join(''), sandbox);
-const { computeGlobal, computeRecent, computeComparison, computeStreak, computeTendances, buildProgressionParExo, buildVolumeSemaineParMuscle } = sandbox;
+const { computeGlobal, computeRecent, computeComparison, computeStreak, computeTendances, buildProgressionParExo, buildVolumeSemaineParMuscle, buildDailyMuscu } = sandbox;
+
+// Réplique côté client de _maMuscuAgg (app.js) : somme daily_muscu sur [startISO,endISO).
+function maMuscuAggLike(daily, startISO, endISO) {
+  let seances = 0, series = 0, reps = 0, tonnage = 0, rpeSum = 0, rpeN = 0; const spm = {};
+  Object.keys(daily || {}).forEach(d => {
+    if (d >= startISO && d < endISO) {
+      const o = daily[d]; if (!o) return;
+      if ((o.series || 0) > 0) seances++;
+      series += o.series || 0; reps += o.reps || 0; tonnage += o.tonnage_kg || 0; rpeSum += o.rpe_sum || 0; rpeN += o.rpe_n || 0;
+      Object.keys(o.spm || {}).forEach(m => { spm[m] = (spm[m] || 0) + o.spm[m]; });
+    }
+  });
+  return { seances, series, reps, tonnage_kg: Math.round(tonnage), rpe_moyen: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null, series_par_muscle: spm };
+}
 
 let ok = 0, ko = 0;
 const check = (n, cond, att, obt) => { if (cond) ok++; else { ko++; console.log('  ❌ ' + n + ' — attendu ' + att + ', obtenu ' + obt); } };
@@ -136,6 +150,29 @@ eq('recent vide → j7.strain null', recVide.j7.strain, null);
 eq('recent vide → j7.rpe_moyen null', recVide.j7.rpe_moyen, null);
 
 // =============================================================================
+// buildDailyMuscu — agrégat journalier complet (fenêtres navigables côté front).
+// Claim vérifié : sur une MÊME fenêtre, la somme des jours == computeRecent.
+// =============================================================================
+const daily = buildDailyMuscu(perfsRecent);
+eq('daily_muscu : 4 jours d\'entraînement', Object.keys(daily).length, 4);
+eq('daily_muscu[2026-08-14].series = 1', daily['2026-08-14'].series, 1);
+eq('daily_muscu[2026-08-14].tonnage_kg = 500', daily['2026-08-14'].tonnage_kg, 500);
+eq('daily_muscu[2026-08-14].spm.Jambes = 1', daily['2026-08-14'].spm.Jambes, 1);
+// Fenêtre glissante 7 j = [2026-08-14, 2026-08-21) → doit égaler recent.j7.
+const aggJ7 = maMuscuAggLike(daily, '2026-08-14', '2026-08-21');
+eq('daily agg j7.seances == recent.j7.seances', aggJ7.seances, rec.j7.seances);
+eq('daily agg j7.tonnage_kg == recent.j7', aggJ7.tonnage_kg, rec.j7.tonnage_kg);
+eq('daily agg j7.series == recent.j7', aggJ7.series, rec.j7.series);
+eq('daily agg j7.reps == recent.j7', aggJ7.reps, rec.j7.reps);
+eq('daily agg j7.rpe_moyen == recent.j7', aggJ7.rpe_moyen, rec.j7.rpe_moyen);
+eq('daily agg j7.spm.Jambes == recent.j7', aggJ7.series_par_muscle.Jambes, rec.j7.series_par_muscle.Jambes);
+// Fenêtre 28 j = [2026-07-23, 2026-08-21) → doit égaler recent.j28.
+const aggJ28 = maMuscuAggLike(daily, '2026-07-23', '2026-08-21');
+eq('daily agg j28.seances == recent.j28', aggJ28.seances, rec.j28.seances);
+eq('daily agg j28.tonnage_kg == recent.j28', aggJ28.tonnage_kg, rec.j28.tonnage_kg);
+eq('daily agg j28.rpe_moyen == recent.j28', aggJ28.rpe_moyen, rec.j28.rpe_moyen);
+
+// =============================================================================
 // computeComparison — 7 j vs 7 j précédents / 28 j vs 28 j précédents
 // =============================================================================
 const cmp = computeComparison(perfsRecent, NOW);
@@ -202,16 +239,17 @@ check('tendances null si < 2 semaines complètes',
   computeTendances([{ date: '2026-08-10', exercice: 'Squat', charge: 100, reps: 5, rpe: 7 }], NOW).s4 === null, 'null', 'non-null');
 
 // =============================================================================
-// buildProgressionParExo — 1 point par DATE (meilleure série du jour), 8 récents
+// buildProgressionParExo — 1 point/DATE : meilleure série + volTotal (toutes séries), 30 récents
 // =============================================================================
 const perfsProg = [
   // 10/08 : 2 séries le même jour → la MEILLEURE (charge la plus haute) est retenue
+  // pour charge/reps/1RM ; volTotal = SOMME des deux séries.
   { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 100, reps: 5 },
   { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 90,  reps: 8 },
   { date: '2026-08-17', seance_id: 'A', exercice: 'Squat', charge: 105, reps: 5 },
   { date: '2026-08-20', seance_id: 'A', exercice: 'Squat', charge: 102, reps: 5 },
 ];
-// 9 dates distinctes pour « Curl » → doit être plafonné à 8 points
+// 9 dates distinctes pour « Curl » → sous le plafond (30) → toutes gardées
 for (let d = 1; d <= 9; d++) perfsProg.push({ date: `2026-08-0${d}`, seance_id: 'B', exercice: 'Curl', charge: 20, reps: 10 });
 const prog = buildProgressionParExo(perfsProg);
 eq('progression Squat = 3 points (1 par date)', prog.Squat.length, 3);
@@ -220,11 +258,18 @@ eq('Squat[0].charge = 102', prog.Squat[0].charge, 102);
 eq('Squat[1].charge = 105 (17/08)', prog.Squat[1].charge, 105);
 eq('Squat[2] = meilleure série du 10/08 = 100×5 (pas 90×8)', prog.Squat[2].charge, 100);
 eq('Squat[2].reps = 5 (charge prioritaire sur volume)', prog.Squat[2].reps, 5);
-eq('Squat[2].volume = 500 (100×5)', prog.Squat[2].volume, 500);
-eq('progression Curl plafonnée à 8 points (sur 9 dates)', prog.Curl.length, 8);
+eq('Squat[2].volume = 500 (meilleure série 100×5)', prog.Squat[2].volume, 500);
+eq('Squat[2].volTotal = 1220 (toutes séries : 100×5 + 90×8)', prog.Squat[2].volTotal, 1220);
+eq('progression Curl = 9 points (sous le plafond de 30)', prog.Curl.length, 9);
 eq('Curl[0] = date la plus récente 09/08/2026', prog.Curl[0].date, '09/08/2026');
-eq('Curl[7] = 02/08/2026 (8 plus récentes → 01/08 exclue)', prog.Curl[7].date, '02/08/2026');
-check('Curl exclut bien la plus ancienne (01/08)', !prog.Curl.some(p => p.date === '01/08/2026'), 'absente', 'PRÉSENTE');
+check('Curl garde la plus ancienne quand < 30 (01/08)', prog.Curl.some(p => p.date === '01/08/2026'), 'présente', 'ABSENTE');
+// Plafond à 30 : 32 dates consécutives → 30 points, les 2 plus anciennes exclues.
+const perfsCap = [];
+const _base = new Date('2026-06-01T00:00:00Z');
+for (let d = 0; d < 32; d++) { const dt = new Date(_base); dt.setUTCDate(_base.getUTCDate() + d); perfsCap.push({ date: dt.toISOString().slice(0, 10), seance_id: 'C', exercice: 'Dev', charge: 50, reps: 10 }); }
+const progCap = buildProgressionParExo(perfsCap);
+eq('progression Dev plafonnée à 30 points (sur 32 dates)', progCap.Dev.length, 30);
+check('Dev exclut les 2 plus anciennes (01/06, 02/06)', !progCap.Dev.some(p => p.date === '01/06/2026' || p.date === '02/06/2026'), 'absentes', 'PRÉSENTES');
 
 // =============================================================================
 // buildVolumeSemaineParMuscle — séries/muscle de la SEMAINE (source UNIQUE

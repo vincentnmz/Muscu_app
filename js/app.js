@@ -1690,6 +1690,10 @@ window.addEventListener('load', async () => {
         }
       }
     } catch (e) {}
+    // App native installée via Google Play : si une nouvelle version est en ligne,
+    // propose la mise à jour (API officielle Play In-App Updates). No-op si l'app
+    // vient d'ailleurs (sideload) ou si le plugin est absent.
+    setTimeout(function () { try { _verifierMajNative(); } catch (e) {} }, 1500);
   } else if ('serviceWorker' in navigator) {
     try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
     // Clic sur une notif alors que l'app est déjà ouverte → le SW nous demande
@@ -1786,11 +1790,11 @@ async function sInscrire() {
   const code = (document.getElementById('reg-code') ? document.getElementById('reg-code').value : '').trim();
   const errEl = document.getElementById('reg-error');
   errEl.textContent = '';
-  if (!prenom || !login || !ddn || !taille) { errEl.textContent = 'Remplis tous les champs.'; return; }
+  if (!prenom || !login || !ddn || !taille || !email) { errEl.textContent = 'Remplis tous les champs (email inclus).'; return; }
   if (sport === 'muscu' && annees === '') { errEl.textContent = 'Indique tes années de pratique.'; return; }
   if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
-  if (email && !emailValideFront(email)) { errEl.textContent = 'Email invalide (ou laisse le champ vide).'; return; }
+  if (!emailValideFront(email)) { errEl.textContent = 'Email invalide.'; return; }
   if (!document.getElementById('reg-consent').checked) { errEl.textContent = 'Tu dois accepter la politique de confidentialité.'; return; }
   errEl.textContent = 'Création...';
   try {
@@ -1932,23 +1936,27 @@ function seDeconnecter() {
 let coach = null;
 let athletesCoach = [];
 
-function toggleEspaceCoach(ev) {
-  if (ev) ev.preventDefault();
-  // Bascule vers la vue coach seule (on masque tout le bloc athlète)
-  document.getElementById('auth-seg-athlete').style.display = 'none';
-  document.getElementById('auth-login').style.display = 'none';
-  document.getElementById('auth-signup').style.display = 'none';
-  document.getElementById('lien-espace-coach-wrap').style.display = 'none';
-  document.getElementById('card-login-coach').style.display = 'block';
+// Bascule de rôle sur l'écran de connexion (piste A) : athlète (défaut) ↔ coach·prépa.
+// Les deux rôles sont au même niveau (plus de lien caché) ; accent violet pour le coach.
+function switchRole(role) {
+  var isCoach = role === 'coach';
+  var ta = document.getElementById('roletab-athlete'), tc = document.getElementById('roletab-coach');
+  if (ta) ta.classList.toggle('on', !isCoach);
+  if (tc) tc.classList.toggle('on', isCoach);
+  var seg = document.getElementById('auth-seg-athlete'); if (seg) seg.style.display = isCoach ? 'none' : '';
+  var coachCard = document.getElementById('card-login-coach'); if (coachCard) coachCard.style.display = isCoach ? 'block' : 'none';
+  try { document.getElementById('view-login').classList.toggle('role-coach', isCoach); } catch (e) {}
+  if (isCoach) {
+    document.getElementById('auth-login').style.display = 'none';
+    document.getElementById('auth-signup').style.display = 'none';
+    switchCoachAuthMode('login');
+  } else {
+    switchAuthMode('login'); // ré-affiche le bloc login athlète
+  }
 }
-
-function retourEspaceAthlete(ev) {
-  if (ev) ev.preventDefault();
-  document.getElementById('card-login-coach').style.display = 'none';
-  document.getElementById('auth-seg-athlete').style.display = '';
-  document.getElementById('lien-espace-coach-wrap').style.display = '';
-  switchAuthMode('login'); // ré-affiche le bloc login athlète
-}
+// Compat : anciens appels éventuels délèguent à la bascule de rôle.
+function toggleEspaceCoach(ev) { if (ev) ev.preventDefault(); switchRole('coach'); }
+function retourEspaceAthlete(ev) { if (ev) ev.preventDefault(); switchRole('athlete'); }
 
 async function seConnecterCoach() {
   const login = document.getElementById('inp-login-coach').value.trim();
@@ -2019,9 +2027,35 @@ async function enregistrerSportCoach() {
   }
 }
 
+// Enregistre la fréquence du résumé d'équipe par e-mail choisie par le coach.
+async function enregistrerRecapFreqCoach() {
+  const sel = document.getElementById('coach-recap-freq');
+  const msg = document.getElementById('coach-recap-msg');
+  if (!sel || !coach || !coach.coach_id) return;
+  const freq = sel.value;
+  const setMsg = (t, col) => { if (msg) { msg.textContent = t; msg.style.color = col || 'var(--danger)'; } };
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveRecapFreq', coach_id: coach.coach_id, freq }),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      coach.recap_freq = freq;
+      const LBL = { off: 'Aucun résumé e-mail.', semaine: 'Résumé chaque semaine.', mois: 'Résumé chaque mois.', '3mois': 'Résumé tous les 3 mois.' };
+      setMsg('✅ ' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
+      if (freq !== 'off' && !(coach.email)) setMsg('✅ Enregistré — ajoute un e-mail à ton compte coach pour recevoir le résumé.', 'var(--warn)');
+      try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+    }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+
 function fermerReglagesCoach() {
   document.getElementById('coach-reglages-overlay').style.display = 'none';
   document.getElementById('coach-reglages-drawer').style.display = 'none';
+  if (coachDeskOverlay === 'profil') { coachDeskOverlay = null; try { renderCoachRail(); } catch (e) {} }
 }
 
 async function supprimerCompteCoach() {
@@ -2256,6 +2290,9 @@ async function enregistrerEmailAthlete() {
       try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
       setMsg(email ? '✅ Email enregistré.' : '✅ Email retiré.', 'var(--good)');
       showToast('✅ Email enregistré');
+      // Le message de confirmation s'efface tout seul (sinon il « reste » et laisse
+      // croire qu'une action est en attente).
+      try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
     } else {
       setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
     }
@@ -2266,6 +2303,34 @@ async function enregistrerEmailAthlete() {
 function prefillEmailReglages() {
   const inp = document.getElementById('reglages-email');
   if (inp && athlete) inp.value = athlete.email || '';
+  const sel = document.getElementById('reglages-recap-freq');
+  if (sel && athlete) sel.value = athlete.recap_freq || 'off';
+}
+
+// Enregistre la fréquence de recap e-mail choisie par l'athlète.
+async function enregistrerRecapFreqAthlete() {
+  if (!athlete || !athlete.athlete_id) return;
+  const sel = document.getElementById('reglages-recap-freq');
+  const msg = document.getElementById('reglages-recap-msg');
+  const freq = sel ? sel.value : 'off';
+  const setMsg = (t, col) => { if (msg) { msg.textContent = t; msg.style.color = col || 'var(--danger)'; } };
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveRecapFreq', athlete_id: athlete.athlete_id, freq }),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      athlete.recap_freq = freq;
+      try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+      const LBL = { off: 'Aucun rapport e-mail.', semaine: 'Rapport chaque semaine.', mois: 'Rapport chaque mois.', '3mois': 'Rapport tous les 3 mois.' };
+      setMsg('✅ ' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
+      if (freq !== 'off' && !(athlete.email)) setMsg('✅ Préférence enregistrée — pense à renseigner un e-mail ci-dessus.', 'var(--warn)');
+      try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+    }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
 }
 /* __EMAIL_ATHLETE_END__ */
 
@@ -2382,6 +2447,7 @@ async function enregistrerProfil() {
 function switchCoachReglagesTab(tab) {
   document.querySelectorAll('#coach-reglages-drawer .sub-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.crg === tab); });
   document.querySelectorAll('#coach-reglages-drawer .crg-panel').forEach(function (p) { p.style.display = (p.dataset.crg === tab) ? 'flex' : 'none'; });
+  if (tab === 'data') { try { _remplirSelectBilanClient(); } catch (e) {} }
 }
 
 function prefillCoachReglages() {
@@ -2391,6 +2457,11 @@ function prefillCoachReglages() {
   set('coach-prof-email', coach.email);
   set('coach-club', coach.club);
   set('coach-cat', coach.categorie_defaut);
+  var rf = document.getElementById('coach-recap-freq'); if (rf) rf.value = coach.recap_freq || 'off';
+  // Démo "joueurs de foot" réservée aux coachs de sports collectifs — inutile (et
+  // source de données parasites) pour un coach muscu.
+  var demo = document.getElementById('crg-demo-foot');
+  if (demo) { var sp = (coach && coach.sport) ? coach.sport : 'muscu'; demo.style.display = (sp === 'muscu') ? 'none' : 'flex'; }
   var v = document.getElementById('app-version-coach'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
 }
 
@@ -2519,6 +2590,66 @@ async function exporterEquipe(format) {
       okDl = _telecharger('novalyz-equipe-' + stamp + '.json', JSON.stringify(d, null, 2), 'application/json');
     }
     setMsg(okDl ? '✅ Téléchargement lancé.' : '❌ Téléchargement non supporté ici (utilise la version web).', okDl ? 'var(--good)' : 'var(--danger)');
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+
+// Remplit le sélecteur d'athlètes du bilan-client (onglet Données).
+function _remplirSelectBilanClient() {
+  var sel = document.getElementById('bilan-client-select'); if (!sel) return;
+  var cur = sel.value;
+  var liste = (athletesCoach || []).slice().sort(function (a, b) { return String(a.nom || '').localeCompare(String(b.nom || '')); });
+  sel.innerHTML = liste.length
+    ? liste.map(function (a) { return '<option value="' + a.athlete_id + '">' + escapeHtml(a.nom || ('Athlète ' + a.athlete_id)) + '</option>'; }).join('')
+    : '<option value="">Aucun athlète</option>';
+  if (cur) sel.value = cur;
+}
+
+// Bilan détaillé d'un client à la demande : récupère le HTML (même rendu que
+// l'e-mail auto) et l'ouvre dans une fenêtre imprimable (→ « Enregistrer en PDF »).
+async function ouvrirBilanClient() {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  var msg = document.getElementById('bilan-client-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  var sel = document.getElementById('bilan-client-select');
+  var per = document.getElementById('bilan-client-periode');
+  var athlete_id = sel ? sel.value : '';
+  var periode = per ? per.value : 'semaine';
+  if (!athlete_id) { setMsg('Choisis un athlète.'); return; }
+  setMsg('⏳ Génération du bilan…', 'var(--text-muted)');
+  // Ouvre la fenêtre AVANT l'await (sinon bloquée comme popup sur mobile/Safari).
+  var win = null; try { win = window.open('', '_blank'); } catch (e) {}
+  if (win) { try { win.document.write('<!doctype html><meta charset="utf-8"><title>Bilan…</title><body style="font-family:system-ui;padding:24px;color:#555;">Génération du bilan…</body>'); } catch (e) {} }
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'bilanClient', coach_id: coach.coach_id, athlete_id: athlete_id, periode: periode }) });
+    var data = await res.json();
+    if (!data || !data.success) { if (win) { try { win.close(); } catch (e) {} } setMsg('❌ ' + ((data && data.error) || 'Échec du bilan.')); return; }
+    if (win) {
+      try { win.document.open(); win.document.write(data.html); win.document.close(); } catch (e) { win = null; }
+      setMsg('✅ Bilan ouvert dans un nouvel onglet.', 'var(--good)');
+    } else {
+      // Fallback (popup bloquée) : téléchargement du HTML.
+      var stamp = new Date().toISOString().slice(0, 10);
+      var okDl = _telecharger('novalyz-bilan-' + (data.nom || 'client').replace(/\s+/g, '-').toLowerCase() + '-' + stamp + '.html', data.html, 'text/html;charset=utf-8');
+      setMsg(okDl ? '✅ Bilan téléchargé (ouvre le fichier .html).' : '❌ Impossible d\'ouvrir le bilan ici.', okDl ? 'var(--good)' : 'var(--danger)');
+    }
+  } catch (e) { if (win) { try { win.close(); } catch (_) {} } setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+// Coach : envoie le rapport de l'athlète sélectionné par e-mail (à son adresse).
+async function envoyerBilanClientMail() {
+  if (!coach || !coach.coach_id) { showToast('Connecte-toi en coach'); return; }
+  var msg = document.getElementById('bilan-client-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  var sel = document.getElementById('bilan-client-select');
+  var per = document.getElementById('bilan-client-periode');
+  var athlete_id = sel ? sel.value : '';
+  var periode = per ? per.value : 'mois';
+  if (!athlete_id) { setMsg('Choisis un athlète.'); return; }
+  setMsg('⏳ Envoi du rapport…', 'var(--text-muted)');
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerBilanMail', coach_id: coach.coach_id, athlete_id: athlete_id, periode: periode }) });
+    var data = await res.json();
+    if (data && data.success) { setMsg('✅ Rapport envoyé à ' + (data.email || 'l\'athlète') + '.', 'var(--good)'); showToast('✅ Rapport envoyé'); setTimeout(function () { setMsg('', ''); }, 5000); }
+    else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'envoi.')); }
   } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
 }
 /* __EXPORT_RGPD_END__ */
@@ -4221,20 +4352,29 @@ async function renderCoachSynthese(athletes) {
     return `<svg width="56" height="26" viewBox="0 0 ${W} ${H}" style="flex-shrink:0;"><path d="M${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   };
 
-  // Détermine la raison de priorité d'un athlète
+  // Couleurs de priorité en HEX (alpha ${color}14 impossible avec un var()).
+  // Partagées par infoPrio ET par la décomposition du hero plus bas → les
+  // pastilles « à surveiller »/« intervention » somment exactement à « à voir ».
+  const PRIO_WARN = '#f59f00', PRIO_BAD = '#f0505a';
+  // Détermine la raison de priorité d'un athlète (null = pas prioritaire)
   const infoPrio = (e) => {
     const { a, m } = e;
-    const dsAge = (m && m.derniere) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
-    // Couleurs en HEX (nécessaire pour l'ajout d'alpha ${color}14 — un var() ne le permet pas)
-    const WARN = '#f59f00', BAD = '#f0505a';
+    const connue = !!(m && m.derniere && m.derniere.date);   // a-t-on une dernière séance connue ?
+    const dsAge = connue ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
     // (Les messages non lus ne sont PLUS listés ici — ils remontent via l'icône 💬 du header)
     // En vacances : aucune raison de priorité (ni absence, ni alerte, ni synthèse).
     if (e.enPause) return null;
-    if (dsAge > 7) return { icon:'💤', txt: (m && m.derniere) ? `${Math.floor(dsAge)} jours sans séance` : 'Aucune séance', color: WARN };
+    if (dsAge > 7) {
+      // Arrêt prolongé (>14 j, séance connue) = intervention ; sinon surveillance.
+      // « Aucune séance » (jamais entraîné / pas de programme) reste surveillance,
+      // pas une urgence — le coach voit le détail dans la liste.
+      const col = (connue && dsAge > 14) ? PRIO_BAD : PRIO_WARN;
+      return { icon:'💤', txt: connue ? `${Math.floor(dsAge)} jours sans séance` : 'Aucune séance', color: col };
+    }
     const al = labelAlerteCourt(a);
-    if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? BAD : WARN };
+    if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? PRIO_BAD : PRIO_WARN };
     // Intervention seulement s'il reste une alerte de synthèse rouge NON traitée
-    if (m && m.statut.rank===2 && synthAlertesActivesCoach(a.athlete_id, m).length) return { icon:'⚠', txt:'Intervention conseillée', color: BAD };
+    if (m && m.statut.rank===2 && synthAlertesActivesCoach(a.athlete_id, m).length) return { icon:'⚠', txt:'Intervention conseillée', color: PRIO_BAD };
     return null;
   };
 
@@ -4286,6 +4426,7 @@ async function renderCoachSynthese(athletes) {
               <div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div>
               <div style="font-size:12.5px;font-weight:700;color:${c};margin-top:2px;">${analyseIcone(top.type)} ${escapeHtml(top.titre)}</div>
               <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:2px;">${escapeHtml(top.description)}</div>
+              ${top.recommandation ? `<div style="font-size:12px;font-weight:700;color:var(--accent);line-height:1.4;margin-top:4px;">👉 ${escapeHtml(top.recommandation)}</div>` : ''}
             </div>
             <span style="color:var(--text-muted);font-size:18px;flex-shrink:0;">›</span>
           </div>`;
@@ -4298,7 +4439,7 @@ async function renderCoachSynthese(athletes) {
   let nbPrets = 0, nbSurvCat = 0, nbInactifsCat = 0;
   const rowsHtml = enrich.map(({ a, i, m, rpe, seancesSem, regPrevues, tonnage, streak, enPause }) => {
     const s = m ? m.statut : { color: 'var(--text-muted)', label: '—', rank: -1 };
-    const dotColor = enPause ? '#63b3ed' : s.color;
+    const stripe = enPause ? '#63b3ed' : (s.color || 'var(--text-muted)');
     const dsAge = (m && m.derniere && m.derniere.date) ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
     let cat;
     if (enPause) cat = 'pause';
@@ -4306,38 +4447,44 @@ async function renderCoachSynthese(athletes) {
     else if (s.rank >= 1) cat = 'surveiller';
     else cat = 'prets';
     if (cat === 'prets') nbPrets++; else if (cat === 'surveiller') nbSurvCat++; else if (cat === 'inactifs') nbInactifsCat++;
-    const meta = [];
-    if (rpe != null) meta.push(`RPE <b style="color:var(--text);">${rpe}</b>`);
+    // ---- Carte A : bandeau d'état + 4 stats chiffrées (RPE · Tonnage · Régul. · Progr./Série) ----
     const _tval = tonnage ? (tonnage.j7 != null ? tonnage.j7 : tonnage.semaine) : null;
     const _tevol = tonnage ? (tonnage.evol_pct != null ? tonnage.evol_pct : tonnage.evol) : null;
+    const _dash = '<div class="v" style="color:var(--text-subtle)">—</div>';
+    const rpeCell = (rpe != null) ? `<div class="v">${rpe}</div>` : _dash;
+    let tonCell = _dash;
     if (_tval > 0) {
       const tc = _tevol != null ? (_tevol >= 0 ? 'var(--good)' : 'var(--warn)') : 'var(--text)';
-      const tarr = _tevol != null ? ` ${_tevol >= 0 ? '▲' : '▼'}${Math.abs(_tevol)}%` : '';
-      meta.push(`Tonnage <b style="color:${tc};">${_tval}t${tarr}</b>`);
+      const tarr = _tevol != null ? (_tevol >= 0 ? ' ▲' : ' ▼') : '';
+      tonCell = `<div class="v" style="color:${tc}">${_tval}t${tarr}</div>`;
     }
-    if (streak != null && streak > 0) meta.push(`🔥 <b style="color:var(--warn);">${streak} sem.</b>`);
-    if (m && m.progLabel && m.progLabel !== 'N/A') meta.push(`<span style="color:${m.progColor};font-weight:700;">${m.progLabel}</span>`);
-    const metaLine = enPause
-      ? '<span style="color:#63b3ed;">Vacances · pas d\'alerte absence</span>'
-      : (meta.length ? meta.join('<span style="opacity:.4"> · </span>') : '<span style="color:var(--text-subtle);">Pas encore de données</span>');
-    // Colonne régularité (droite)
-    const regCol = (!enPause && seancesSem != null)
-      ? `<div style="text-align:center;flex-shrink:0;"><div style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text);">${seancesSem}${regPrevues != null ? '/' + regPrevues : ''}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:1px;">Régul.</div></div>`
-      : '';
+    let regCell = _dash;
+    if (seancesSem != null) {
+      const rc = (m && (m.regColor === '#e5484d' || m.regColor === '#f59f00')) ? m.regColor : 'var(--text)';
+      regCell = `<div class="v" style="color:${rc}">${seancesSem}${regPrevues != null ? '/' + regPrevues : ''}</div>`;
+    }
+    let c4v = _dash, c4l = 'Progr.';
+    if (m && m.progLabel && m.progLabel !== 'N/A') { c4v = `<div class="v" style="color:${m.progColor}">${m.progLabel}</div>`; c4l = 'Progr.'; }
+    else if (streak != null && streak > 0) { c4v = `<div class="v" style="color:var(--warn)">🔥${streak}</div>`; c4l = 'Série'; }
     const chip = enPause
-      ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,179,237,.12);color:#63b3ed;padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">🏖️ Vacances</span>`
-      : `<span style="background:${s.color}1a;color:${s.color};padding:2px 7px;border-radius:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;">${s.label}</span>`;
-    return `<div class="coach-athlete-row" data-cat="${cat}" data-nom="${escapeHtml(String(a.nom || '').toLowerCase())}" onclick="ouvrirAthleteDepuisSelect('${i}')" style="display:flex;align-items:center;gap:12px;padding:12px 13px;background:var(--surface);border:1px solid var(--border);border-radius:15px;margin-bottom:9px;cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--accent-dim)'" onmouseleave="this.style.borderColor='var(--border)'">
-      <div style="position:relative;width:44px;height:44px;flex-shrink:0;">
-        <div style="width:44px;height:44px;border-radius:13px;background:var(--surface2);color:var(--text);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">${enPause ? '🏖️' : initiales(a.nom)}</div>
-        <span style="position:absolute;right:-2px;top:-2px;width:13px;height:13px;border-radius:50%;background:${dotColor};border:2.5px solid var(--surface);"></span>
+      ? `<span class="cae-chip" style="background:rgba(99,179,237,.14);color:#63b3ed;">🏖️ Vacances</span>`
+      : `<span class="cae-chip" style="background:${s.color}1a;color:${s.color};">${s.label}</span>`;
+    const body = enPause
+      ? `<div class="cae-vac">Vacances · pas d'alerte absence, reprise à la fin</div>`
+      : `<div class="cae-stats">
+          <div class="cae-st">${rpeCell}<div class="l">RPE 7j</div></div>
+          <div class="cae-st">${tonCell}<div class="l">Tonnage</div></div>
+          <div class="cae-st">${regCell}<div class="l">Régul.</div></div>
+          <div class="cae-st">${c4v}<div class="l">${c4l}</div></div>
+        </div>`;
+    return `<div class="coach-athlete-row" data-cat="${cat}" data-nom="${escapeHtml(String(a.nom || '').toLowerCase())}" onclick="ouvrirAthleteDepuisSelect('${i}')" style="position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;padding:12px 13px 11px;cursor:pointer;box-shadow:var(--shadow-sm);">
+      <span class="cae-stripe" style="background:${stripe};"></span>
+      <div class="cae-top">
+        <div class="cae-av">${enPause ? '🏖️' : initiales(a.nom)}</div>
+        <div class="cae-nm"><b>${escapeHtml(a.nom)}</b>${chip}</div>
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="m9 6 6 6-6 6"/></svg>
       </div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}</span>${chip}</div>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${metaLine}</div>
-      </div>
-      ${regCol}
-      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m9 6 6 6-6 6"/></svg>
+      ${body}
     </div>`;
   }).join('');
 
@@ -4358,9 +4505,16 @@ async function renderCoachSynthese(athletes) {
   // ---- Hero « Briefing du jour » (Concept A) ----
   const total = athletes.length;
   const aVoir = prioritaires.length;
-  const nbSurveiller = enrich.filter(e => e.m && e.m.statut.rank >= 1).length;
-  const nbInterv = enrich.filter(e => e.m && e.m.statut.rank === 2).length;
+  // COHÉRENCE : les deux pastilles décomposent la population « à voir » par
+  // sévérité de la raison de priorité (rouge = intervention, orange = à
+  // surveiller) → « à surveiller » + « intervention » == « à voir », toujours.
+  // (Avant : comptes basés sur le statut moteur, qui ne voyait pas les absences
+  //  ni les athlètes sans programme → chiffres qui ne se recoupaient pas.)
+  const nbInterv = prioritaires.filter(x => x.p.color === PRIO_BAD).length;
+  const nbSurveiller = aVoir - nbInterv;   // le reste des prioritaires = surveillance
   const pctAJour = total ? Math.round((total - aVoir) / total * 100) : 0;
+  // Shell coach desktop (≥992px) : mêmes chiffres que le mobile (alignement).
+  try { _coachDeskStore(enrich, prioritaires, datas, { total: total, surveiller: nbSurveiller, intervention: nbInterv, absents: absents, aVoir: aVoir, pctAJour: pctAJour }); } catch (e) {}
   const dateFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const svgRing = (pct, size, stroke, color, track) => {
     const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
@@ -4383,7 +4537,6 @@ async function renderCoachSynthese(athletes) {
         <div style="display:flex;gap:8px;margin-top:14px;">
           ${heroPill(nbSurveiller, 'à surveiller')}
           ${heroPill(nbInterv, 'intervention')}
-          ${heroPill(absents, 'absents')}
         </div>
       </div>
     </div>`;
@@ -4457,6 +4610,15 @@ async function renderCoachSynthese(athletes) {
     else if (!hasR) sansData.push({ nom: e.a.nom, txt: 'Pas de ressenti', sev: 'warn' });
   });
   const totAll = enrich.length;
+
+  // Capture pour l'écran Analyses desktop (≥992px) — réutilise ces agrégats déjà
+  // calculés ici (aucun recalcul réseau ; mobile inchangé).
+  try {
+    if (_coachDesk) {
+      _coachDesk.analyses = { assidu, bienBas, somAvg, fatAvg, blessures, progA, stagA, ressN, nutrN, totAll };
+      if (_coachDeskAny() && coachDeskSection === 'analyses' && !document.body.classList.contains('athlete-selected')) renderCoachHome();
+    }
+  } catch (e) {}
 
   // ---- Carte « Résumé équipe » (répartition des états) — affichée sur Aujourd'hui ----
   const distCard = totActifs
@@ -4535,9 +4697,38 @@ async function renderCoachSynthese(athletes) {
     sec('i-trending', 'Progression & stagnations', '1RM estimé') + progCard +
     sec('i-activity', 'Fiabilité des données', '7 derniers jours') + fiabCard;
 
+  // ---- Bloc « Questionnaires bien-être » (répondu 7j + à relancer) ----
+  // Unifié avec le desktop : même source (dernier bien_etre par athlète, fenêtre 7j).
+  const _qRep = enrich.map(e => {
+    const dd = datas[e.i] || {}; const be = (dd.bien_etre || [])[0];
+    if (!be || !be.date) return null;
+    const ts = parseChatDate(be.date); if (!ts || (Date.now() - ts) / 86400000 > 7) return null;
+    const f = Number(be.fatigue); const sig = !isNaN(f) ? 'fatigue ' + f + '/5' : '';
+    const col = !isNaN(f) ? (f >= 4 ? 'var(--bad)' : f >= 3 ? 'var(--warn)' : 'var(--good)') : 'var(--good)';
+    return { e, ts, ago: (typeof _coachDeskAgo === 'function' ? _coachDeskAgo(be.date) : be.date), sig, col };
+  }).filter(Boolean).sort((a, b) => b.ts - a.ts);
+  const _qSet = {}; _qRep.forEach(q => { _qSet[q.e.i] = true; });
+  const _qNon = enrich.filter(e => !e.enPause && !_qSet[e.i]);
+  const _qRepRows = _qRep.length ? _qRep.slice(0, 6).map(q => `
+        <div onclick="ouvrirAthleteDepuisSelect('${q.e.i}')" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-sm);">
+          <span style="width:34px;height:34px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">${initPf(q.e.a.nom)}</span>
+          <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">${escapeHtml(q.e.a.nom)} <span style="color:var(--text-muted);font-weight:600;">a répondu</span></div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px;">${q.ago}</div></div>
+          ${q.sig ? `<span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap;background:${q.col}1a;color:${q.col};">${q.sig}</span>` : ''}
+        </div>`).join('') : `<div style="color:var(--text-muted);font-size:12.5px;padding:2px 2px 8px;">Aucun questionnaire sur 7 jours.</div>`;
+  const _qNonHead = _qNon.length ? `<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:6px 2px 7px;">À relancer · ${_qNon.length}</div>` : '';
+  const _qNonRows = _qNon.slice(0, 8).map(e => `
+        <div onclick="ouvrirAthleteDepuisSelect('${e.i}')" style="display:flex;align-items:center;gap:11px;padding:10px 14px;border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--surface);border:1px dashed var(--border);">
+          <span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${initPf(e.a.nom)}</span>
+          <div style="flex:1;min-width:0;font-size:12.5px;"><b>${escapeHtml(e.a.nom)}</b> <span style="color:var(--text-subtle);">pas de ressenti · <span style="color:var(--accent);font-weight:700;">relancer →</span></span></div>
+        </div>`).join('');
+  const questHtml = `<div class="v2-sec"><div class="st"><svg class="ico"><use href="#i-activity"/></svg>Questionnaires bien-être<span style="margin-left:auto;font-size:11px;font-weight:800;color:var(--accent);">${_qRep.length}/${total} · 7 j</span></div></div>`
+    + _qRepRows + _qNonHead + _qNonRows;
+
   // Sections pilotées par le bandeau : Aujourd'hui (action, SANS liste) · Équipe (annuaire) · Analyses
+  // Ordre unifié avec le desktop : Briefing → À traiter en priorité → Questionnaires → Messages → Lecture Novalyz.
+  // (« Résumé équipe » retiré d'ici : l'info de répartition reste dans l'onglet Analyses.)
   el.innerHTML =
-    `<div id="coach-sec-aujourdhui">${heroHtml + resumeEquipeHtml + prioHtml + messagesHtml + briefingHtml}</div>` +
+    `<div id="coach-sec-aujourdhui">${heroHtml + prioHtml + questHtml + messagesHtml + briefingHtml}</div>` +
     `<div id="coach-sec-equipe" style="display:none">${listeHtml}</div>` +
     `<div id="coach-sec-analyses" style="display:none">${analysesHtml}</div>`;
   coachBandeauApply();
@@ -4600,14 +4791,22 @@ function ouvrirAthleteDepuisSelect(idx) {
 function fermerMessagerieCoach() {
   document.getElementById('coach-messagerie-overlay').style.display = 'none';
   document.getElementById('coach-messagerie-drawer').style.display = 'none';
+  if (coachDeskOverlay === 'messages') { coachDeskOverlay = null; try { renderCoachRail(); } catch (e) {} }
 }
 async function ouvrirMessagerieCoach() {
+  // Desktop : 2 volets (liste + fil côte à côte). Mobile : tiroir existant.
+  if (_msg2IsDesktop()) { return ouvrirMessagerie2(); }
   const overlay = document.getElementById('coach-messagerie-overlay');
   const drawer  = document.getElementById('coach-messagerie-drawer');
   const liste   = document.getElementById('coach-messagerie-liste');
   if (!drawer || !liste) return;
   overlay.style.display = 'block';
   drawer.style.display = 'flex';
+  await _msgFillList();
+}
+async function _msgFillList() {
+  const liste = document.getElementById('coach-messagerie-liste');
+  if (!liste) return;
   liste.innerHTML = '<div class="loader">Chargement...</div>';
   const athletes = athletesCoach || [];
   if (!athletes.length) { liste.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">Aucun athlète.</div>'; return; }
@@ -4640,7 +4839,68 @@ async function ouvrirMessagerieCoach() {
     </div>`;
   }).join('');
 }
+
+// ═══════════ MESSAGERIE COACH — 2 VOLETS (desktop) ═══════════
+// Réutilise la liste (#coach-messagerie-liste) et la carte conversation
+// (#cd-commentaires-card, avec son fil + composer + affichage des médias) en
+// les déplaçant dans un écran 2 colonnes. Restaurées pour la fiche/mobile.
+var _msg2Active = false;
+var _msg2CardHome = null, _msg2ListHome = null;
+function _msg2IsDesktop() { try { return window.matchMedia('(min-width:992px)').matches; } catch (e) { return false; } }
+function ouvrirMessagerie2() {
+  var m2 = document.getElementById('coach-msg2'); if (!m2) return;
+  _msg2Active = true;
+  // liste → volet gauche
+  var liste = document.getElementById('coach-messagerie-liste');
+  var listHost = document.getElementById('msg2-list');
+  if (liste && listHost && liste.parentNode !== listHost) {
+    if (!_msg2ListHome) _msg2ListHome = { p: liste.parentNode, n: liste.nextSibling };
+    listHost.appendChild(liste);
+  }
+  m2.style.display = 'flex';
+  var head = document.getElementById('msg2-thread-head'); if (head) head.style.display = 'none';
+  var empty = document.getElementById('msg2-thread-empty'); if (empty) empty.style.display = 'flex';
+  _msgFillList();
+}
+function fermerMessagerie2() {
+  var m2 = document.getElementById('coach-msg2'); if (m2) m2.style.display = 'none';
+  if (!_msg2Active) return;
+  _msg2Active = false;
+  // Carte conversation → retour à la fiche (sinon l'onglet Conversation serait vide)
+  var card = document.getElementById('cd-commentaires-card');
+  if (card && _msg2CardHome && _msg2CardHome.p) { try { _msg2CardHome.p.insertBefore(card, _msg2CardHome.n); } catch (e) {} }
+  // liste → retour au tiroir
+  var liste = document.getElementById('coach-messagerie-liste');
+  if (liste && _msg2ListHome && _msg2ListHome.p) { try { _msg2ListHome.p.insertBefore(liste, _msg2ListHome.n); } catch (e) {} }
+}
+function _msg2Open(idx) {
+  var a = athletesCoach[Number(idx)]; if (!a) return;
+  coachAthleteCourant = a;
+  var nm = document.getElementById('msg2-name'); if (nm) nm.textContent = a.nom;
+  var av = document.getElementById('msg2-av'); if (av) av.textContent = _coachDeskInit(a.nom);
+  var head = document.getElementById('msg2-thread-head'); if (head) head.style.display = 'flex';
+  var empty = document.getElementById('msg2-thread-empty'); if (empty) empty.style.display = 'none';
+  var card = document.getElementById('cd-commentaires-card');
+  var host = document.getElementById('msg2-thread');
+  if (card && host && card.parentNode !== host) {
+    if (!_msg2CardHome) _msg2CardHome = { p: card.parentNode, n: card.nextSibling };
+    host.appendChild(card);
+  }
+  Promise.resolve(chargerCommentairesCoach(a.athlete_id)).then(function () { _msg2MarkRead(); _msgFillList(); });
+}
+function _msg2MarkRead() {
+  try {
+    var nonLus = (commentairesAthleteActuel || []).filter(function (c) { return c.auteur === 'athlete' && !estLu(c, 'muscu_lu_coach'); }).map(function (c) { return c.id; });
+    if (!nonLus.length) return;
+    ajouterLusLocaux('muscu_lu_coach', nonLus);
+    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'marquerCommentairesLus', ids: nonLus }) });
+    (commentairesAthleteActuel || []).forEach(function (c) { if (nonLus.indexOf(c.id) >= 0) c.lu = true; });
+    if (typeof majBadgeConseilsCoach === 'function') majBadgeConseilsCoach(0);
+  } catch (e) {}
+}
+
 function ouvrirConversationDepuisMessagerie(idx) {
+  if (_msg2Active && _msg2IsDesktop()) { _msg2Open(idx); return; }
   fermerMessagerieCoach();
   const a = athletesCoach[Number(idx)];
   if (!a) return;
@@ -4787,6 +5047,7 @@ function retourListeAthletesCoach() {
   localStorage.removeItem('muscu_coach_vue');
   const sel = document.getElementById('coach-select-athlete');
   if (sel) sel.value = '';
+  try { if (_coachDeskAny()) renderCoachDesktop(); } catch (e) {}   // desktop : réaffiche l'accueil dans le shell
 }
 
 // Retour contextuel : depuis un onglet -> Aperçu ; depuis l'Aperçu -> liste des athlètes
@@ -4807,6 +5068,9 @@ function switchCoachDetailTab(tab) {
     const el = document.getElementById('cdtab-' + t); if (el) el.style.display = t === tab ? 'block' : 'none';
     const btn = document.getElementById('cdtab-btn-' + t); if (btn) btn.classList.toggle('active', t === tab);
   });
+  // Onglet actif exposé sur #cd-body → le rail « poids/actions » n'est gardé que
+  // sur l'Aperçu (sinon il crée une 3e colonne sur Progression/Séances/etc.).
+  const cdBody = document.getElementById('cd-body'); if (cdBody) cdBody.setAttribute('data-tab', tab);
   const ttl = document.getElementById('cd-tab-title');
   if (ttl && CD_TAB_LABELS[tab]) ttl.textContent = CD_TAB_LABELS[tab];
   const cdH = document.getElementById('cd-header'); if (cdH) cdH.style.transform = 'translateY(0)'; // header visible au changement d'onglet
@@ -4820,12 +5084,24 @@ function switchCoachDetailTab(tab) {
     try { localStorage.setItem('muscu_coach_vue', JSON.stringify({ athlete_id: coachAthleteCourant.athlete_id, tab: tab })); } catch(e) {}
   }
   if (tab === 'programme') {
-    progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null }; // contexte muscu
-    chargerProgrammeCoach();
+    // Desktop : on ouvre le nouveau Builder (plein écran, à droite du rail).
+    var _deskProg = false; try { _deskProg = window.matchMedia('(min-width:992px)').matches; } catch (e) {}
+    if (_deskProg && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant) {
+      ouvrirEditeurProgrammeCoach();
+    } else {
+      try { _progRestoreOverlayHome(); var _ovm = document.getElementById('prog-editor-overlay'); if (_ovm) _ovm.style.display = 'none'; } catch (e) {}
+      progCtx = { el: 'cd-programme-content', athleteId: null, athleteNom: null }; // contexte muscu (mobile : accordéon)
+      chargerProgrammeCoach();
+    }
   }
   // Analyses coach = bloc « Mes analyses » déplacé ici (source = athlète consulté).
   if (tab === 'prog') { try { _maCoachAttach(coachAthleteData); } catch (e) {} }
   else { try { _maCoachDetach(); } catch (e) {} }
+  // Onglet Conseils/Conversation : rendre le bloc « Alertes de la semaine »
+  // (#cd-conv-alertes), sinon il reste figé sur « Chargement… » quand on arrive
+  // par la navigation par onglet (ex. depuis la messagerie), car seul
+  // ouvrirConversationCoach() le rendait jusqu'ici.
+  if (tab === 'conseils') { try { renderConversationAlertes(); } catch (e) {} }
   majRailVisibilite(tab);
 }
 
@@ -4890,6 +5166,7 @@ function coachNiveauKey(annees) {
 }
 
 async function ouvrirDetailAthleteCoach(a, initialTab) {
+  try { fermerMessagerie2(); } catch (e) {}  // rend la carte conversation à la fiche
   try { _maCoachDetach(); } catch (e) {}   // état analyses propre avant de charger un autre athlète
   coachAthleteCourant = a;
   document.getElementById('view-coach').classList.remove('active');
@@ -4897,6 +5174,9 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   document.body.classList.add('cd-nav');
   document.body.classList.add('athlete-selected');
   surlignerAthleteSidebar(a.athlete_id);
+  try { if (_coachDeskAny()) renderCoachRail(); } catch (e) {}   // rail desktop : onglet Équipe actif
+  try { _cdOverviewDeskPrep(); } catch (e) {}                    // fiche desktop : grille 2 colonnes
+  try { coachIaReset(); } catch (e) {}                           // bloc IA : repart vierge pour ce client
   // Hero « État du jour » (onglet Aperçu) : placeholder neutre immédiat, puis
   // renderCoachHeroEtat() le colore selon le statut dès que les données arrivent.
   _setSportIco('cd-sport-ico-use', a.sport);   // icône du header (haltère muscu)
@@ -4910,7 +5190,11 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
   if (_heroEl) {
     const _ini = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
     _heroEl.className = '';
-    _heroEl.style.cssText = 'position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:var(--accent);background-image:linear-gradient(135deg,rgba(255,255,255,.14),rgba(0,0,0,.12));';
+    // Placeholder NEUTRE (gris) pendant le chargement : la couleur de statut
+    // (vert/orange/rouge) n'est posée qu'une fois les données arrivées, par
+    // renderCoachHeroEtat → évite le flash « bleu → rouge » (on ne colore pas
+    // avant de savoir).
+    _heroEl.style.cssText = 'position:relative;border-radius:var(--radius-lg);padding:16px;overflow:hidden;color:#fff;box-shadow:var(--shadow);margin-bottom:14px;background:#64748b;background-image:linear-gradient(135deg,rgba(255,255,255,.12),rgba(0,0,0,.14));';
     _heroEl.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="width:46px;height:46px;border-radius:13px;background:var(--on-accent-a28);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${_ini}</div>
@@ -4959,10 +5243,16 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCockpit(data, 'cd'); } catch (_) {}   // Phase 5A — présentation (no-op si COCKPIT_ON=false)
     try { renderCarteContexte(data.contexte, coachAthleteCourant && coachAthleteCourant.athlete_id, 'cd-contexte', 'muscu'); } catch (_) {}
     renderEtatDuJourCoach(data);
+    try { renderCoachFormeCards(data); } catch (_) {}   // Aperçu v3 : carte Récupération (Poids masqué)
+    try { renderCoachChargeCard(data); } catch (_) {}    // Aperçu v3 : Charge & assiduité (RPE/tonnage/régul./ACWR)
+    try { renderCoachMontreDetail(data); } catch (_) {}  // Aperçu v3 : Ma montre détaillée (pas/sommeil/FC)
+    try { _cdAsideDeskLayout(); } catch (_) {}           // colonne droite : reparente contexte + prochaine
+    try { _cdV3Grid(); } catch (_) {}                    // Aperçu v3 : 6 cartes égales dans la grille
     renderAnalyseCoach(data);
     renderCoachRecordsEtRegression(data.historique, data.global);
     renderCoachIndicateurs(data);
     renderAlertesCoach(data);
+    try { renderConversationAlertes(); } catch (_) {}   // bloc « Alertes de la semaine » de l'onglet Conseils (synthèse ← données)
     afficherGraphiquePoidsCoach(data.poids || []);
     renderCoachVolume(data);
     afficherCoachTendances(4);
@@ -4977,7 +5267,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     var _err = '<div style="padding:14px;color:var(--text-muted);font-size:13px;line-height:1.5">Impossible de charger cet athlète (connexion ?).<br><button onclick="ouvrirDetailAthleteCoach(coachAthleteCourant)" style="margin-top:10px;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer">Réessayer</button></div>';
     var _idErr = document.getElementById('cd-indicateurs'); if (_idErr) _idErr.innerHTML = _err;
     // Vider les autres zones encore en « Chargement… » pour ne pas laisser de spinner figé.
-    ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content','cd-cmp28-content','cd-seances-detail-content','cd-commentaires-liste'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
+    ['cd-recup','cd-prog-semaine','cd-muscle','cd-volume-content','cd-tendances-content','cd-acwr-content','cd-cmp28-content','cd-seances-detail-content','cd-commentaires-liste','cd-conv-alertes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
   }
 }
 
@@ -5486,7 +5776,13 @@ function computeMarqueursCoach(data, a) {
     enBaisse = _det.filter(x => x && x.down && !x.up).length;
   }
   let progColor, progLabel;
-  if (enProg === 0 && enBaisse === 0) { progColor = '#aaa'; progLabel = 'N/A'; }
+  const nbCompar = enProg + enBaisse;   // exos réellement comparables 7j vs 7j
+  if (nbCompar === 0) { progColor = '#aaa'; progLabel = 'N/A'; }
+  else if (nbCompar < 3) {
+    // (B) Base trop faible (1-2 exos, ou rotation d'exercices) → on affiche le compte
+    // mais on NE déclenche PAS d'alerte rouge/orange (gris = informatif).
+    progColor = '#aaa'; progLabel = `${enProg}↑/${enBaisse}↓`;
+  }
   else if (enProg > enBaisse) { progColor = '#00c96e'; progLabel = `${enProg}↑/${enBaisse}↓`; }
   else if (enProg === enBaisse) { progColor = '#f59f00'; progLabel = `${enProg}↑/${enBaisse}↓`; }
   else { progColor = '#e5484d'; progLabel = `${enProg}↑/${enBaisse}↓`; }
@@ -5520,12 +5816,19 @@ function computeMarqueursCoach(data, a) {
   if (volTrained.length === 0 && volSem.length > 0) {
     volColor = '#e5484d'; volLabel = 'Aucune séance';
   } else if (volTrained.length > 0) {
+    // (A) Prorata temporel : le MEV est une cible de SEMAINE PLEINE. En début de
+    // semaine les séries ne sont pas encore faites → on compare le volume réalisé
+    // au MEV *proratisé* sur les jours écoulés (comme la Régularité §4), sinon on
+    // affichait « Trop peu de séries » (rouge) dès le lundi. « Volume optimal »
+    // reste jugé sur le MAV plein (on ne le proclame pas à mi-semaine).
+    const _jsVol = (new Date().getDay() + 6) % 7 + 1;   // 1 (lundi) … 7 (dimanche)
+    const _proVol = _jsVol / 7;
     let belowMev = false, aboveMav = true;
     volTrained.forEach(v => {
       const cibleArr = VOLUME_CIBLE[v.muscle] ? VOLUME_CIBLE[v.muscle][niveauKey] : [10, 14];
       const mev = cibleArr[0] || 0, mav = cibleArr[1] || 0;
       const faites = v.faites || 0;
-      if (faites < mev) belowMev = true;
+      if (faites < mev * _proVol) belowMev = true;   // MEV proratisé (jours écoulés)
       if (faites < mav) aboveMav = false;
     });
     if (belowMev) { volColor = 'var(--bad)'; volLabel = 'Trop peu de séries'; }
@@ -5551,15 +5854,24 @@ function computeMarqueursCoach(data, a) {
   // 5. Récupération — Phase 2A : verdict = MOTEUR CENTRAL (bien-être) si dispo.
   //    Le RPE reste un signal séance (affiché ailleurs), pas la décision de récup.
   const M = data.moteur;   // sortie backend evaluerEtatAthlete (null si non redéployé)
-  const recupObj = buildRecupFromData(data) || dash.recuperation || {};   // ANCIEN (RPE) conservé
+  const _recupRPE = buildRecupFromData(data);   // verdict RPE-seul (null si pas de RPE)
+  const recupObj = _recupRPE || dash.recuperation || {};   // ANCIEN (RPE) conservé
+  const _recupFromRPE = !!_recupRPE && recupObj === _recupRPE;   // source = RPE uniquement ?
   let recupColor, recupLabel;
   if (M && M.recup && M.recup !== '—') {
-    // Décision d'état → moteur central. Excellent/Bon = OK, Moyen = surveillance, Faible = fatigue.
+    // Décision d'état → moteur central (grounded bien-être). Excellent/Bon = OK, Moyen = surveillance, Faible = fatigue.
     recupColor = (M.recup === 'Excellent' || M.recup === 'Bon') ? '#00c96e' : M.recup === 'Moyen' ? '#f59f00' : '#e5484d';
     recupLabel = M.recup;
   } else if (!recupObj.statut) { recupColor = '#aaa'; recupLabel = 'N/A'; }
   else if (recupObj.statut === 'optimal') { recupColor = '#00c96e'; recupLabel = 'Récup OK'; }
   else if (recupObj.statut === 'modere') { recupColor = '#f59f00'; recupLabel = 'Modérée'; }
+  else if (_recupFromRPE) {
+    // (C) Fatigue estimée sur le SEUL RPE (pas de moteur bien-être pour corroborer).
+    // Le RPE est un signal de charge, pas un verdict de récupération : on plafonne
+    // en orange (surveillance) au lieu de rouge, pour ne pas faire basculer le
+    // statut global en « Action » (rank 2) ni déclencher l'alerte synth-recup rouge.
+    recupColor = '#f59f00'; recupLabel = 'Fatigue (RPE)';
+  }
   else { recupColor = '#e5484d'; recupLabel = 'Fatigue'; }
 
   // Statut global — Phase 2A : vient du MOTEUR CENTRAL (disponibilité) si dispo,
@@ -5580,6 +5892,31 @@ function computeMarqueursCoach(data, a) {
     else if (couleurs.includes('#f59f00') || alertes.length > 0) statut = { rank: 1, color: '#f5a623', label: 'Surveillance' };
     else statut = { rank: 0, color: '#00c96e', label: 'Optimal' };
   }
+
+  // ===== STATUT UNIFIÉ « à agir » : Forme ⊕ Assiduité =====
+  // Le statut ci-dessus = la FORME (disponibilité moteur, ou repli marqueurs) :
+  // « est-il prêt physiquement ? ». Mais un athlète frais (« Prêt ») qui ne suit
+  // pas le programme doit AUSSI être signalé — sinon il apparaît « Optimal » en
+  // Équipe alors qu'il est en alerte dans Aujourd'hui. On calcule donc l'axe
+  // ASSIDUITÉ (régularité + absence) et le statut final = le PIRE des deux, avec
+  // un libellé d'action quand l'assiduité domine. L'assiduité n'escalade que si
+  // elle est strictement plus grave (on ne masque pas un verdict de forme égal).
+  // (Les athlètes en vacances sont filtrés en amont — chip « Vacances » gagne.)
+  const _dsObj = dash.derniere_seance;
+  const _dsTs = (_dsObj && _dsObj.date) ? parseChatDate(_dsObj.date) : null;
+  const _dsAge = _dsTs ? (Date.now() - _dsTs) / 86400000 : Infinity;
+  let assid = null;
+  if (!_dsObj) {
+    // Jamais aucune séance : à programmer (pas de programme) ou à relancer.
+    assid = { rank: 1, color: '#f5a623', label: prevues === 0 ? 'À programmer' : 'À relancer' };
+  } else if (_dsAge > 14) {
+    // Arrêt prolongé (> 14 j) : inactif, le coach doit intervenir.
+    assid = { rank: 2, color: '#e5484d', label: 'Inactif' };
+  } else if (regColor === '#e5484d') {
+    // Régularité très insuffisante cette semaine (prorata jours écoulés) → relancer.
+    assid = { rank: 1, color: '#f5a623', label: 'À relancer' };
+  }
+  if (assid && assid.rank > statut.rank) statut = assid;
 
   return {
     progColor, progLabel, acwrColor, acwrLabel, acwrRatio,
@@ -5656,7 +5993,8 @@ function renderCoachHubVolume(data) {
   var status = sousCount
     ? '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">⚠ ' + sousCount + ' muscle' + (sousCount > 1 ? 's' : '') + ' sous le volume cible</span></div>'
     : '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--good-a);color:var(--good);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">✓ Volumes dans les cibles</span></div>';
-  el.innerHTML = rows + status;
+  el.innerHTML = '<div class="dash-label cd-deskonly cd-cardlink">Volume par muscle · 7 j<span class="cd-voir">Voir tout →</span></div>' + rows + status;
+  try { el.style.cursor = 'pointer'; el.onclick = function () { switchCoachDetailTab('prog'); }; } catch (e) {}
   if (sec) sec.style.display = ''; el.style.display = '';
 }
 
@@ -5667,7 +6005,7 @@ function renderCoachHubSeances(data) {
   if (!el) return;
   var sd = (data && Array.isArray(data.seances_detail)) ? data.seances_detail : [];
   if (!sd.length) { if (sec) sec.style.display = 'none'; el.style.display = 'none'; return; }
-  var html = sd.slice(0, 2).map(function (s, i) {
+  var html = sd.slice(0, 3).map(function (s, i) {
     var exos = s.exercices || [];
     var nbExos = exos.length;
     var nbSeries = s.nb_series || exos.reduce(function (n, e) { return n + ((e.series || []).length); }, 0);
@@ -5682,7 +6020,8 @@ function renderCoachHubSeances(data) {
       '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + nbExos + ' exo' + (nbExos > 1 ? 's' : '') + ' · ' + nbSeries + ' séries · ' + tonn + '</div></div>' +
       '<div style="text-align:right;flex:none;"><div style="font-size:15px;font-weight:900;color:' + rpeColor + '">' + (rpeMoy != null ? rpeMoy.toFixed(1).replace('.', ',') : '—') + '</div><div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);">RPE moy</div></div></div>';
   }).join('');
-  el.innerHTML = html;
+  el.innerHTML = '<div class="dash-label cd-deskonly cd-cardlink">Dernières séances<span class="cd-voir">Voir tout →</span></div>' + html;
+  try { el.style.cursor = 'pointer'; el.onclick = function () { switchCoachDetailTab('seances'); }; } catch (e) {}
   if (sec) sec.style.display = ''; el.style.display = '';
 }
 
@@ -5742,7 +6081,7 @@ function renderCoachHubNutrition(data) {
     macCol('Lipides', aL, obj.lip, 'g') +
     macCol('Énergie', aK, obj.kcal, 'kcal') +
     '</div>';
-  el.innerHTML = kcalLine + grid;
+  el.innerHTML = '<div class="dash-label cd-deskonly">Nutrition · 7 j</div>' + kcalLine + grid;
   if (sec) sec.style.display = '';
   el.style.display = '';
 }
@@ -5861,22 +6200,123 @@ function renderCoachSeancesDetail(data) {
 
   if (entries.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>'; return; }
 
-  el.innerHTML = seancesCardsHTML(entries);
+  el.innerHTML = seancesCardsHTML(entries, (data && data.programme) || []);
+}
+
+// Index des cibles du programme : { seanceId(min) : { exo(min) : ligne } }.
+function _progCibleIndex(prog) {
+  var idx = {};
+  (prog || []).forEach(function (l) {
+    if (!l || !l.seance_id || !l.exercice) return;
+    var sk = String(l.seance_id).trim().toLowerCase(), ek = String(l.exercice).trim().toLowerCase();
+    (idx[sk] || (idx[sk] = {}))[ek] = l;
+  });
+  return idx;
+}
+// Texte de la cible d'un exercice : « 4 × 8–12 · RPE 8 · repos 90s » (RPE prioritaire ;
+// %1RM en secondaire seulement s'il est renseigné sans RPE).
+function _cibleTxtSeance(t) {
+  if (!t) return '';
+  var mn = t.reps_mini, mx = t.reps_max, reps = (mn && mx) ? (String(mn) === String(mx) ? String(mn) : mn + '–' + mx) : (mn || mx || '');
+  var parts = [((t.series_prevues ? t.series_prevues + ' × ' : '') + (reps || '?'))];
+  if (t.rpe_cible != null && t.rpe_cible !== '') parts.push('RPE ' + t.rpe_cible + ' · ' + _rirLong(t.rpe_cible));
+  else if (t.charge_pct_1rm != null && t.charge_pct_1rm !== '') parts.push(t.charge_pct_1rm + ' % 1RM');
+  if (t.repos_sec != null && t.repos_sec !== '') parts.push('repos ' + t.repos_sec + ' s');
+  return parts.join(' · ');
+}
+// RIR (reps en réserve) ≈ 10 − RPE. « échec » à RPE 10. Deux formats : court (chip)
+// et long (cible). Le RPE reste la saisie ; le RIR est juste sa traduction.
+function _rirVal(rpe) { var n = Number(rpe); if (isNaN(n)) return null; return Math.max(0, Math.round((10 - n) * 10) / 10); }
+function _rirShort(rpe) { var n = Number(rpe); if (isNaN(n)) return ''; if (n >= 10) return 'échec'; var r = _rirVal(rpe); return (Number.isInteger(r) ? r : String(r).replace('.', ',')) + ' rés.'; }
+function _rirLong(rpe) { var n = Number(rpe); if (isNaN(n)) return ''; if (n >= 10) return 'échec'; var r = _rirVal(rpe); return (Number.isInteger(r) ? r : String(r).replace('.', ',')) + ' en réserve'; }
+// Options du sélecteur de RPE cible (éditeur de programme) : chaque RPE expliqué
+// en reps en réserve. La valeur stockée reste le nombre RPE (pas de changement back).
+function _rpeOptions(cur) {
+  var c = (cur == null) ? '' : String(cur);
+  var o = ['<option value=""' + (c === '' ? ' selected' : '') + '>— RPE</option>'];
+  [6, 7, 8, 9, 10].forEach(function (r) {
+    o.push('<option value="' + r + '"' + (c === String(r) ? ' selected' : '') + '>RPE ' + r + ' (' + _rirLong(r) + ')</option>');
+  });
+  return o.join('');
+}
+// Prescription anti-stagnation (P2) : à partir de l'historique de l'exo + sa
+// fourchette de reps programmée → piste d'action concrète. null si pas d'historique.
+// Déterministe : reps au plafond → +charge · marge en reps → +reps · sinon générique.
+function _prescriptionStag(exoNom) {
+  if (!exoNom) return null;
+  var d = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
+  if (!d) return null;
+  var pts = (d.historique && d.historique.progression_par_exo && d.historique.progression_par_exo[exoNom]) || [];
+  if (!pts.length) return null;
+  var r = Number(pts[0].reps) || 0;   // pts[0] = séance la plus récente (tri desc backend)
+  var prog = (d.programme || []).filter(function (l) { return l && l.exercice === exoNom; })[0];
+  var rmax = (prog && prog.reps_max != null && prog.reps_max !== '') ? Number(prog.reps_max) : null;
+  var rmin = (prog && prog.reps_mini != null && prog.reps_mini !== '') ? Number(prog.reps_mini) : null;
+  var act, why;
+  if (rmax && r >= rmax) {
+    act = 'Monte la charge d\'un petit cran (+2,5 kg) et redescends vers ' + (rmin ? rmin + ' reps' : 'le bas de ta fourchette') + ', puis remonte les reps séance après séance.';
+    why = 'Tu plafonnes en haut de ta fourchette de reps → c\'est le moment d\'ajouter de la charge (double progression).';
+  } else if (rmax && r < rmax) {
+    act = 'Garde la charge et ajoute des reps : vise ' + rmax + ' reps avant de remonter la charge.';
+    why = 'Il te reste de la marge en répétitions : progresse en volume avant d\'alourdir.';
+  } else {
+    act = 'Ajoute des reps tant que tu as de la marge, puis +2,5 kg quand tu plafonnes. Pousse l\'intensité (séries proches de l\'échec), garde 2-3 min de repos entre séries, et soigne ton sommeil. Si tu es à ton max, persévère.';
+    why = 'La progression vient de l\'intensité, du temps de repos et de la récupération — pas du changement d\'exercice.';
+  }
+  return { act: act, why: why };
+}
+// Prescription de charge (P4) : charge à viser (1RM estimé × % programmé) + règle de
+// progression PILOTÉE PAR LE PROGRAMME (fourchette de reps de l'exo) et adaptée au
+// niveau/stratégie. null si aucune cible exploitable.
+function _chargeAViser(prog) {
+  if (!prog) return null;
+  var pct = (prog.charge_pct_1rm != null && prog.charge_pct_1rm !== '') ? Number(prog.charge_pct_1rm) : null;
+  var kg = (pct != null) ? _cibleKg(prog.exercice, pct) : null;
+  var rmin = (prog.reps_mini != null && prog.reps_mini !== '') ? Number(prog.reps_mini) : null;
+  var rmax = (prog.reps_max != null && prog.reps_max !== '') ? Number(prog.reps_max) : null;
+  var rpe = (prog.rpe_cible != null && prog.rpe_cible !== '') ? Number(prog.rpe_cible) : null;
+  if (kg == null && rmin == null && rmax == null && rpe == null) return null;
+  var niv = 'debutant'; try { niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
+  var strat = (niv === 'debutant') ? 'Progression linéaire' : (niv === 'intermediaire') ? 'Double progression' : 'Progression avancée';
+  var bas = rmin || 'le bas de ta fourchette', haut = rmax;
+  var txt;
+  if (niv === 'debutant') {
+    txt = haut ? ('Monte les reps vers ' + haut + '. À ' + haut + ' partout → +2,5 kg et repars du bas (' + bas + ').') : 'Ajoute un petit cran de charge dès que tes séries passent facilement.';
+  } else if (niv === 'intermediaire') {
+    txt = haut ? ('Ajoute 1 rep quand tu es à l\'aise (≈ toutes les 3-4 séances) jusqu\'à ' + haut + '. À ' + haut + ' partout → +2,5 kg, retour vers ' + bas + '.') : 'Gagne des reps quand tu es à l\'aise, puis +2,5 kg.';
+  } else {
+    txt = 'Micro-progression : gagne les reps de ta fourchette lentement, puis +1,25-2,5 kg — pas à chaque séance.';
+  }
+  return { kg: kg, rmin: rmin, rmax: rmax, rpe: rpe, strat: strat, prog: txt };
+}
+
+// Reps réalisées vs fourchette cible : 'ok' | 'sous' | 'sur' | null (pas de cible reps).
+function _repsVsCible(reps, t) {
+  if (!t) return null;
+  var r = Number(reps); if (isNaN(r)) return null;
+  var mn = Number(t.reps_mini), mx = Number(t.reps_max);
+  var hasMn = !isNaN(mn) && mn > 0, hasMx = !isNaN(mx) && mx > 0;
+  if (!hasMn && !hasMx) return null;
+  if (hasMn && r < mn) return 'sous';
+  if (hasMx && r > mx) return 'sur';
+  return 'ok';
 }
 
 // Rendu commun : entries = [{date, seance, exos:[{exo, series:[{charge,reps,rpe}]}]}]
 // (accepte aussi l'ancien format exos:[{exo,charge,reps,rpe}] -> regroupé ici)
-function seancesCardsHTML(entries) {
+// prog = data.programme (cibles du coach) pour afficher « réalisé vs prévu ».
+function seancesCardsHTML(entries, prog) {
   if (!entries || entries.length === 0) {
     return '<div style="color:var(--text-muted);font-size:13px;">Aucune séance enregistrée</div>';
   }
+  var progIdx = _progCibleIndex(prog);
   // Couleur du RPE (cohérent avec la maquette : ≤7 ok, 7.5-8 modéré, ≥8.5 élevé)
   const rpeChip = (rpe) => {
     if (rpe == null || rpe === '' || isNaN(Number(rpe))) return '<span style="color:var(--text-subtle);font-weight:600;">—</span>';
     const n = Number(rpe);
     const c = n < 7.5 ? 'var(--good)' : n < 8.5 ? 'var(--warn)' : 'var(--danger)';
     const ca = n < 7.5 ? 'var(--good-a)' : n < 8.5 ? 'var(--warn-a)' : 'var(--bad-a)';
-    return `<span style="display:inline-block;min-width:30px;border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800;background:${ca};color:${c};">${n}</span>`;
+    return `<span style="display:inline-block;min-width:30px;border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800;background:${ca};color:${c};">${n}</span><div style="font-size:8.5px;color:var(--text-subtle);font-weight:700;margin-top:2px;white-space:nowrap;">${_rirShort(n)}</div>`;
   };
   return entries.map((s, idx) => {
     // Normaliser en exercices -> séries (+ muscle si fourni par getSeancesDetail)
@@ -5896,6 +6336,9 @@ function seancesCardsHTML(entries) {
     }
     const nbExos = ordreExo.length;
     const nbSeries = ordreExo.reduce((n, exo) => n + parExo[exo].length, 0);
+    const seanceKey = String(s.seance || '').trim().toLowerCase();
+    const targets = progIdx[seanceKey] || null;
+    const tgtOf = exo => (targets ? (targets[String(exo).trim().toLowerCase()] || null) : null);
 
     // Récap séance : tonnage (Σ charge×reps, repli sur volume) + RPE moyen (séries renseignées)
     let tonnage = 0, rpeSum = 0, rpeN = 0;
@@ -5907,36 +6350,81 @@ function seancesCardsHTML(entries) {
     }));
     const tonnageTxt = tonnage >= 1000 ? (tonnage / 1000).toFixed(1).replace('.', ',') + ' t' : Math.round(tonnage) + ' kg';
     const rpeMoy = rpeN ? (rpeSum / rpeN).toFixed(1).replace('.', ',') : null;
-    const schip = (n, l) => `<div style="flex:none;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:8px 11px;text-align:center;min-width:60px;"><div style="font-size:15px;font-weight:900;letter-spacing:-.02em;">${n}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:2px;">${l}</div></div>`;
-    const recapStrip = nbExos > 0
-      ? `<div style="display:flex;gap:7px;overflow:auto;margin-bottom:12px;padding-bottom:2px;">
-          ${schip(nbExos, 'Exos')}${schip(nbSeries, 'Séries')}${tonnage > 0 ? schip(tonnageTxt, 'Tonnage') : ''}${rpeMoy != null ? schip(rpeMoy, 'RPE moy.') : ''}
-        </div>` : '';
+
+    // Compteurs « réalisé vs prévu » (remplis pendant la construction des blocs exo)
+    let repsInCible = 0, repsWithCible = 0;
+    const exosMatched = ordreExo.filter(exo => tgtOf(exo)).length;
+    const prevExos = targets ? Object.keys(targets).length : 0;
+
+    const cibleBox = t => `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:#7C5CFF;background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.22);border-radius:9px;padding:6px 10px;margin:5px 0 9px;">🎯 Cible : ${escapeHtml(_cibleTxtSeance(t))}</div>`;
+    const th = (lbl, al) => `<th style="text-align:${al};font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">${lbl}</th>`;
 
     const exoBlocks = nbExos > 0
       ? ordreExo.map(exo => {
           const series = parExo[exo];
-          const rows = series.map((e, i) => `
+          const tgt = tgtOf(exo);
+          const hasRange = tgt && (tgt.reps_mini || tgt.reps_max);
+          const rows = series.map((e, i) => {
+            const chk = _repsVsCible(e.reps, tgt);
+            if (chk === 'ok') { repsInCible++; repsWithCible++; } else if (chk === 'sous' || chk === 'sur') { repsWithCible++; }
+            const chkCell = chk === 'ok' ? '<span style="color:var(--good);font-weight:800;">✓</span>'
+              : chk === 'sous' ? '<span style="color:var(--warn);font-weight:800;">▼</span>'
+              : chk === 'sur' ? '<span style="color:var(--danger);font-weight:800;">▲</span>'
+              : '<span style="color:var(--text-subtle);">—</span>';
+            return `
             <tr>
               <td style="text-align:left;color:var(--text-subtle);font-weight:800;font-size:12px;padding:6px 0;border-top:1px solid var(--border);">${e.serie || (i + 1)}</td>
               <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.charge ? e.charge + ' kg' : '—'}</td>
               <td style="text-align:right;font-weight:700;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;">${e.reps || '—'}</td>
+              <td style="text-align:center;padding:6px 0;border-top:1px solid var(--border);">${chkCell}</td>
               <td style="text-align:right;padding:6px 0;border-top:1px solid var(--border);">${rpeChip(e.rpe)}</td>
-            </tr>`).join('');
-          const muscleTag = muscleExo[exo] ? `<span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:var(--accent-a10);border-radius:6px;padding:3px 7px;flex-shrink:0;">${escapeHtml(String(muscleExo[exo]))}</span>` : '';
+            </tr>`;
+          }).join('');
+          const tag = tgt
+            ? (muscleExo[exo] ? `<span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:var(--accent-a10);border-radius:6px;padding:3px 7px;flex-shrink:0;">${escapeHtml(String(muscleExo[exo]))}</span>` : '')
+            : `<span style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 7px;flex-shrink:0;">Hors prog.</span>`;
+          // Pied : séries réalisées/prévues + reps réelles (cible) + RPE réalisé vs cible
+          let foot = '';
+          if (tgt) {
+            const doneCount = series.length;
+            const prevCount = (tgt.series_prevues != null && tgt.series_prevues !== '') ? Number(tgt.series_prevues) : null;
+            const rv = series.map(e => Number(e.reps)).filter(v => !isNaN(v) && v > 0);
+            const repsRange = rv.length ? (Math.min.apply(null, rv) === Math.max.apply(null, rv) ? String(Math.min.apply(null, rv)) : Math.min.apply(null, rv) + '–' + Math.max.apply(null, rv)) : null;
+            const rp = series.map(e => Number(e.rpe)).filter(v => !isNaN(v));
+            const rpeAvg = rp.length ? (rp.reduce((a, b) => a + b, 0) / rp.length) : null;
+            const serCol = (prevCount != null && doneCount < prevCount) ? 'var(--warn)' : 'var(--text)';
+            const parts = [`<b style="color:${serCol};font-weight:800;">${doneCount}${prevCount != null ? '/' + prevCount : ''} série${doneCount > 1 ? 's' : ''}</b>`];
+            if (repsRange != null && hasRange) { const cr = (tgt.reps_mini && tgt.reps_max) ? (String(tgt.reps_mini) === String(tgt.reps_max) ? tgt.reps_mini : tgt.reps_mini + '–' + tgt.reps_max) : (tgt.reps_mini || tgt.reps_max); parts.push(`reps ${repsRange} <span style="color:var(--text-subtle);">(cible ${cr})</span>`); }
+            if (rpeAvg != null && tgt.rpe_cible != null && tgt.rpe_cible !== '') { const dr = rpeAvg - Number(tgt.rpe_cible); const mark = Math.abs(dr) <= 1 ? '<span style="color:var(--good);font-weight:800;">✓</span>' : (dr > 0 ? '<span style="color:var(--danger);font-weight:800;">▲ plus dur</span>' : '<span style="color:var(--warn);font-weight:800;">▼ plus facile</span>'); parts.push(`RPE ${rpeAvg.toFixed(1).replace('.', ',')} <span style="color:var(--text-subtle);">(cible ${tgt.rpe_cible})</span> ${mark}`); }
+            foot = `<div style="margin-top:8px;font-size:11.5px;color:var(--text-muted);line-height:1.5;">${parts.join(' · ')}</div>`;
+          } else {
+            foot = `<div style="margin-top:8px;font-size:11px;color:var(--text-subtle);">Ajouté par l'athlète (hors programme du jour)</div>`;
+          }
           return `
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:11px 13px;margin-bottom:9px;">
+            <div style="background:var(--surface);border:1px ${tgt ? 'solid' : 'dashed'} var(--border);border-radius:13px;padding:11px 13px;margin-bottom:9px;">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
                 <span style="font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(String(exo))}</span>
-                ${muscleTag}
+                ${tag}
               </div>
+              ${tgt ? cibleBox(tgt) : ''}
               <table style="width:100%;border-collapse:collapse;">
-                <tr><th style="text-align:left;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Série</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Charge</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">Reps</th><th style="text-align:right;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">RPE</th></tr>
+                <tr>${th('Série', 'left')}${th('Charge', 'right')}${th('Reps', 'right')}${th('Cible', 'center')}${th('RPE', 'right')}</tr>
                 ${rows}
               </table>
+              ${foot}
             </div>`;
         }).join('')
       : '<div style="font-size:11px;color:var(--text-muted);padding:6px 0;">Pas de détail disponible (données antérieures)</div>';
+
+    // Récap séance (construit APRÈS les blocs pour disposer de repsInCible)
+    const pctCible = repsWithCible ? Math.round(repsInCible / repsWithCible * 100) : null;
+    const schip = (n, l, col) => `<div style="flex:none;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:8px 11px;text-align:center;min-width:60px;"><div style="font-size:15px;font-weight:900;letter-spacing:-.02em;${col ? 'color:' + col + ';' : ''}">${n}</div><div style="font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-subtle);margin-top:2px;">${l}</div></div>`;
+    const exosChip = prevExos ? schip(exosMatched + '<small style="font-size:10px;color:var(--text-subtle);font-weight:700;">/' + prevExos + '</small>', 'Exos prévus') : schip(nbExos, 'Exos');
+    const pctCol = pctCible == null ? null : (pctCible >= 80 ? 'var(--good)' : pctCible >= 50 ? 'var(--warn)' : 'var(--danger)');
+    const recapStrip = nbExos > 0
+      ? `<div style="display:flex;gap:7px;overflow:auto;margin-bottom:12px;padding-bottom:2px;">
+          ${exosChip}${schip(nbSeries, 'Séries')}${tonnage > 0 ? schip(tonnageTxt, 'Tonnage') : ''}${rpeMoy != null ? schip(rpeMoy, 'RPE moy.') : ''}${pctCible != null ? schip(pctCible + ' %', 'Reps ds cible', pctCol) : ''}
+        </div>` : '';
 
     return `
       <div style="border:1px solid var(--border);border-radius:15px;margin-bottom:9px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm);">
@@ -5970,7 +6458,7 @@ async function chargerSeancesDetailCoach(athlete_id, dataFallback) {
       .map(s => ({ date: s.date, seance: s.seance_id || 'Séance', exos: s.exos || [], tri: tri(s.date) }))
       .sort((a, b) => b.tri - a.tri)
       .slice(0, 20);
-    if (el) el.innerHTML = seancesCardsHTML(entries);
+    if (el) el.innerHTML = seancesCardsHTML(entries, (dataFallback && dataFallback.programme) || (typeof coachAthleteData !== 'undefined' && coachAthleteData && coachAthleteData.programme) || []);
   } catch(e) {
     renderCoachSeancesDetail(dataFallback);
   }
@@ -6358,6 +6846,281 @@ function renderCoachAthleteGrid(athletes) {
   }).join('');
 }
 
+// ═══════════════ ESPACE COACH — SHELL DESKTOP (≥992px) ═══════════════
+// Superposé au-dessus de la vue coach mobile (position:fixed via CSS). Réutilise
+// les données calculées par renderCoachSynthese (aucun recalcul réseau).
+var _coachDesk = null;
+var coachDeskSection = 'aujourdhui';
+var coachDeskOverlay = null;   // 'messages' | 'profil' | null — pour colorer l'item du rail sans changer la section de contenu.
+function _coachDeskAny() { try { return window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active'); } catch (e) { return false; } }
+function _coachDeskOn() { return _coachDeskAny() && !document.body.classList.contains('athlete-selected'); }
+function _coachDeskStore(enrich, prioritaires, datas, kpis) { _coachDesk = { enrich: enrich, prioritaires: prioritaires, datas: datas, kpis: kpis }; if (_coachDeskAny()) renderCoachDesktop(); try { _maybeCoachTour(); } catch (e) {} }
+function coachDeskGo(sec) {
+  try { if (sec !== 'messages') fermerMessagerie2(); } catch (e) {}
+  try { if (sec !== 'profil') fermerReglagesCoach(); } catch (e) {}   // sinon le panneau Profil reste par-dessus
+  try { var _pe = document.getElementById('prog-editor-overlay'); if (_pe && _pe.style.display !== 'none') { _pe.style.display = 'none'; document.body.classList.remove('prog-editor-open'); } } catch (e) {}
+  // Messages / Profil : allume l'item du rail (leur écran est décalé à droite du
+  // rail en desktop → il reste visible). On n'altère PAS coachDeskSection (le
+  // contenu réel derrière) : un drapeau dédié gère juste la couleur.
+  if (sec === 'messages') { coachDeskOverlay = 'messages'; try { renderCoachRail(); } catch (e) {} if (typeof ouvrirMessagerieCoach === 'function') ouvrirMessagerieCoach(); return; }
+  if (sec === 'profil')   { coachDeskOverlay = 'profil'; try { renderCoachRail(); } catch (e) {} if (typeof ouvrirReglagesCoach === 'function') ouvrirReglagesCoach(); return; }
+  coachDeskOverlay = null;
+  if (document.body.classList.contains('athlete-selected')) { try { retourListeAthletesCoach(); } catch (_) {} }
+  coachDeskSection = sec; renderCoachDesktop();
+}
+var _COACH_NIVLBL = { debutant: 'Débutant', intermediaire: 'Intermédiaire', avance: 'Avancé', expert: 'Expert' };
+function _coachDeskInit(nom) { return (nom || '?').split(/\s+/).map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase(); }
+function _coachDeskAgo(ds) { var ts = parseChatDate(ds); if (!ts) return '—'; var days = Math.floor((Date.now() - ts) / 86400000); if (days <= 0) return "Aujourd'hui"; if (days === 1) return 'Hier'; return 'Il y a ' + days + ' j'; }
+function _coachDeskLecture() {
+  var d = _coachDesk; if (!d || typeof NovalyzEngine === 'undefined') return '<div class="cs-lec">—</div>';
+  var best = null;
+  (d.enrich || []).forEach(function (e) { var ana = []; try { ana = NovalyzEngine.analyser(d.datas[e.i] || {}) || []; } catch (_) {} var top = ana.find(function (x) { return x.type === 'critical' || x.type === 'warning'; }); if (top && (!best || (top.priorite || 0) > (best.top.priorite || 0))) best = { e: e, top: top }; });
+  if (!best) return '<div class="cs-lec">Rien de prioritaire aujourd\'hui.</div>';
+  return '<div class="cs-lec"><b>' + escapeHtml(best.e.a.nom) + '</b> — ' + escapeHtml(best.top.titre) + '. ' + escapeHtml(best.top.description || '')
+    + (best.top.recommandation ? '<span style="display:block;margin-top:5px;font-weight:700;color:var(--accent)">👉 ' + escapeHtml(best.top.recommandation) + '</span>' : '')
+    + '</div>';
+}
+function _coachDeskAujourdhui() {
+  var d = _coachDesk, k = d.kpis || {};
+  // Briefing unifié avec le mobile : anneau « % à jour » + « à voir » + 2 pastilles
+  // (à surveiller / intervention) qui somment à « à voir ». Remplace les 4 KPI secs.
+  var pct = k.pctAJour != null ? Math.max(0, Math.min(100, k.pctAJour)) : 0;
+  var _av = k.aVoir != null ? k.aVoir : 0, _tot = k.total || 0;
+  var _r = 27, _c = 2 * Math.PI * _r, _off = _c * (1 - pct / 100);
+  var ring = '<svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="' + _r + '" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="6"/><circle cx="32" cy="32" r="' + _r + '" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + _c.toFixed(1) + '" stroke-dashoffset="' + _off.toFixed(1) + '" transform="rotate(-90 32 32)"/></svg>';
+  var dFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  var bpill = function (n, l) { return '<div class="cs-bpill"><div class="n">' + (n || 0) + '</div><div class="l">' + l + '</div></div>'; };
+  var kpis = '<div class="cs-brief" data-tour="co-brief">'
+    + '<div class="cs-brief-hello">Bonjour ' + escapeHtml(typeof coach !== 'undefined' && coach ? coach.nom : 'Coach') + '</div>'
+    + '<div class="cs-brief-date">' + dFR + ' · ' + _tot + ' athlète' + (_tot > 1 ? 's' : '') + ' suivi' + (_tot > 1 ? 's' : '') + '</div>'
+    + '<div class="cs-brief-row">'
+    + '<div class="cs-ring">' + ring + '<div class="cs-ring-v"><b>' + pct + '%</b><s>à jour</s></div></div>'
+    + '<div class="cs-brief-big"><div class="n">' + _av + '</div><div class="l">' + (_av === 0 ? 'tout le monde est à jour 🎉' : 'athlète' + (_av > 1 ? 's' : '') + ' à voir aujourd\'hui') + '</div></div>'
+    + '<div class="cs-brief-pills">' + bpill(k.surveiller, 'à surveiller') + bpill(k.intervention, 'intervention') + '</div>'
+    + '</div></div>';
+  var watch = (d.prioritaires || []).map(function (x) { var e = x.e, p = x.p; return '<div class="cs-wrow" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><span class="cs-av2">' + (e.enPause ? '🏖️' : _coachDeskInit(e.a.nom)) + '</span><div class="cs-wn"><b>' + escapeHtml(e.a.nom) + '</b><div class="cs-wal"><span class="cs-chip" style="background:' + p.color + '1f;color:' + p.color + '">' + p.icon + ' ' + escapeHtml(p.txt) + '</span></div></div><span class="cs-chev">›</span></div>'; }).join('') || '<div class="cs-empty">Tout le monde est à jour 🎉</div>';
+  var msgs = (d.enrich || []).filter(function (e) { return e.msgNonLus > 0; }).map(function (e) { return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--accent)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>' + e.msgNonLus + ' message' + (e.msgNonLus > 1 ? 's' : '') + ' non lu' + (e.msgNonLus > 1 ? 's' : '') + '</span></div></div>'; }).join('') || '<div class="cs-act"><span class="cs-ad" style="background:var(--text-muted)"></span><div><span style="color:var(--text-muted)">Aucun message non lu.</span></div></div>';
+  // Questionnaires bien-être récents (qui a répondu, quand, + signal fatigue).
+  var quest = (d.enrich || []).map(function (e) {
+    var dd = d.datas[e.i] || {}; var be = (dd.bien_etre || [])[0]; if (!be || !be.date) return null;
+    var ts = parseChatDate(be.date); if (!ts || (Date.now() - ts) / 86400000 > 7) return null;
+    var f = Number(be.fatigue); var sig = !isNaN(f) ? 'fatigue ' + f + '/5' : '';
+    var col = !isNaN(f) ? (f >= 4 ? 'var(--danger)' : f >= 3 ? 'var(--warn)' : 'var(--good)') : 'var(--good)';
+    return { e: e, ts: ts, ago: _coachDeskAgo(be.date), sig: sig, col: col };
+  }).filter(Boolean).sort(function (a, b) { return b.ts - a.ts; });
+  var total = (d.enrich || []).length;
+  var questRows = quest.length ? quest.slice(0, 6).map(function (q) {
+    return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + q.e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:' + q.col + '"></span><div><b>' + escapeHtml(q.e.a.nom) + '</b> <span>a répondu au questionnaire</span><br><small style="color:var(--text-subtle)">' + q.ago + (q.sig ? ' · ' + q.sig : '') + '</small></div></div>';
+  }).join('') : '<div class="cs-act"><span class="cs-ad" style="background:var(--text-muted)"></span><div><span style="color:var(--text-muted)">Aucun questionnaire sur 7 jours.</span></div></div>';
+  // Qui n'a PAS répondu sur 7 j (hors vacances) → à relancer en 1 clic.
+  var repSet = {}; quest.forEach(function (q) { repSet[q.e.i] = true; });
+  var nonRep = (d.enrich || []).filter(function (e) { return !e.enPause && !repSet[e.i]; });
+  var nonRows = nonRep.slice(0, 8).map(function (e) {
+    return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--text-muted)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>pas de ressenti · <span style="color:var(--accent);font-weight:700">relancer →</span></span></div></div>';
+  }).join('');
+  var nonBloc = nonRep.length ? '<div class="cs-subh">À relancer · ' + nonRep.length + '</div>' + nonRows : '';
+  var questPanel = '<div class="cs-panel" data-tour="co-quest"><div class="cs-pt">Questionnaires bien-être<span class="cs-pt-ct">' + quest.length + '/' + total + ' · 7 j</span></div>' + questRows + nonBloc + '</div>';
+  return kpis + '<div class="cs-grid2"><div><div class="cs-sec">À surveiller en priorité</div><div class="cs-watch" data-tour="co-watch">' + watch + '</div></div>'
+    + '<aside>' + questPanel
+    + '<div class="cs-panel"><div class="cs-pt">Messages non lus</div>' + msgs + '</div>'
+    + '<div class="cs-panel"><div class="cs-pt">Lecture Novalyz · équipe</div>' + _coachDeskLecture() + '</div></aside></div>';
+}
+function _coachDeskEquipe() {
+  var d = _coachDesk;
+  var rows = (d.enrich || []).map(function (e) {
+    var niv = _COACH_NIVLBL[getNiveauExperience(e.a.annees_pratique)] || '—';
+    var s = e.m ? e.m.statut : null;
+    var etat = e.enPause ? '<span class="cs-chip" style="background:rgba(99,179,237,.14);color:#63b3ed">Vacances</span>'
+      : s ? '<span class="cs-chip" style="background:' + s.color + '1a;color:' + s.color + '">' + escapeHtml(s.label) + '</span>' : '—';
+    var ass = (e.seancesSem != null) ? (e.seancesSem + (e.regPrevues != null ? '/' + e.regPrevues : '')) : '—';
+    var dern = (e.m && e.m.derniere && e.m.derniere.date) ? _coachDeskAgo(e.m.derniere.date) : '—';
+    return '<tr class="cs-trow" data-nom="' + escapeHtml(String(e.a.nom || '').toLowerCase()) + '" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><td><div class="cs-tn"><span class="cs-tav">' + _coachDeskInit(e.a.nom) + '</span><b>' + escapeHtml(e.a.nom) + '</b></div></td><td>' + niv + '</td><td>' + etat + '</td><td>' + ass + '</td><td>' + dern + '</td></tr>';
+  }).join('');
+  return '<table class="cs-table" data-tour="co-equipe-table"><thead><tr><th>Athlète</th><th>Niveau</th><th>État</th><th>Assiduité</th><th>Dernière séance</th></tr></thead><tbody id="cs-tbody">' + rows + '</tbody></table><div id="cs-eq-empty" class="cs-empty" style="display:none">Aucun athlète ne correspond.</div>';
+}
+function _coachDeskAnalyses() {
+  var d = _coachDesk, en = d.enrich || [], an = d.analyses || {};
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  // ── États (hors pause) ──
+  var ok = 0, surv = 0, act = 0;
+  en.forEach(function (e) { if (e.enPause || !e.m) return; var r = e.m.statut.rank; if (r <= 0) ok++; else if (r === 1) surv++; else act++; });
+  var totE = ok + surv + act;
+  // ── Assiduité moyenne (athlètes avec objectif de séances connu) ──
+  var assidu = an.assidu || [];
+  var known = assidu.filter(function (a) { return a.prev > 0; });
+  var assMoy = known.length ? Math.round(known.reduce(function (s, a) { return s + a.ratio; }, 0) / known.length * 100) : null;
+  // ── RPE ressenti moyen ──
+  var rpes = en.map(function (e) { return (e.rpe != null && !isNaN(Number(e.rpe))) ? Number(e.rpe) : null; }).filter(function (v) { return v != null; });
+  var rpeMoy = rpes.length ? (rpes.reduce(function (s, v) { return s + v; }, 0) / rpes.length) : null;
+  var blessures = an.blessures || [];
+  var progA = an.progA || [], stagA = an.stagA || [], bienBas = an.bienBas || [];
+  var nb = function (n, s) { return (n != null ? n : 0) + ' ' + s + ((n > 1) ? 's' : ''); };
+
+  // ── KPIs ──
+  var tile = function (v, l, sub, col) { return '<div class="cs-kpi"><span class="cs-kstrip" style="background:' + col + '"></span><div class="cs-kv" style="color:' + col + '">' + v + '</div><div class="cs-kl">' + l + '</div>' + (sub ? '<div class="cs-ksub">' + sub + '</div>' : '') + '</div>'; };
+  var kpis = '<div class="cs-kpis">'
+    + tile(assMoy != null ? (assMoy + '<small> %</small>') : '—', 'Assiduité moyenne', (known.length ? 'séances réalisées / prévues' : 'objectif non défini'), 'var(--good)')
+    + tile(rpeMoy != null ? ('RPE ' + rpeMoy.toFixed(1).replace('.', ',')) : '—', 'Charge ressentie moy.', (rpes.length + ' athlète' + (rpes.length > 1 ? 's' : '') + ' · 7 j'), 'var(--warn)')
+    + tile(d.kpis.total || 0, 'Athlètes suivis', (totE + ' avec un état calculé'), 'var(--accent)')
+    + tile('<span style="color:' + (blessures.length ? 'var(--danger)' : 'var(--good)') + '">' + blessures.length + '</span>', 'Blessures / douleurs actives', (blessures.length ? 'table blessures' : 'aucune en cours'), blessures.length ? 'var(--danger)' : 'var(--good)')
+    + '</div>';
+
+  // ── Donut répartition des états ──
+  var pOk = totE ? Math.round(ok / totE * 100) : 0;
+  var pSurv = totE ? Math.round(surv / totE * 100) : 0;
+  var pAct = totE ? Math.max(0, 100 - pOk - pSurv) : 0;
+  var ring = function (p, color, off) { return '<circle cx="21" cy="21" r="15.9" fill="none" stroke="' + color + '" stroke-width="7" stroke-dasharray="' + p + ' ' + (100 - p) + '" stroke-dashoffset="' + off + '" transform="rotate(-90 21 21)"/>'; };
+  var donut = '<div class="cs-card"><div class="cs-ct">Répartition des états</div>'
+    + (totE ? '<div class="cs-donut"><svg width="128" height="128" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--surface2)" stroke-width="7"/>'
+        + ring(pOk, 'var(--good)', 0) + ring(pSurv, 'var(--warn)', -pOk) + ring(pAct, 'var(--danger)', -(pOk + pSurv)) + '</svg>'
+        + '<div class="cs-dleg">'
+        + '<div class="cs-dl"><span><i style="background:var(--good)"></i>En forme</span><b>' + nb(ok, 'athlète') + '</b></div>'
+        + '<div class="cs-dl"><span><i style="background:var(--warn)"></i>À surveiller</span><b>' + nb(surv, 'athlète') + '</b></div>'
+        + '<div class="cs-dl"><span><i style="background:var(--danger)"></i>Intervention</span><b>' + nb(act, 'athlète') + '</b></div>'
+        + '</div></div>'
+      : '<div class="cs-empty">Pas encore de données d\'état.</div>') + '</div>';
+
+  // ── Assiduité par athlète (barres) ──
+  var assCard = '<div class="cs-card"><div class="cs-ct">Assiduité par athlète · 7 j</div>'
+    + (assidu.length ? assidu.slice(0, 8).map(function (a) {
+        var col = a.ratio >= 0.99 ? 'var(--good)' : a.ratio >= 0.6 ? 'var(--warn)' : 'var(--danger)';
+        var val = a.known ? (a.fait + (a.prev ? '/' + a.prev : '')) : '—';
+        return '<div class="cs-arow"><span class="cs-abn">' + esc(a.nom) + '</span><div class="cs-abar"><i style="width:' + Math.round(a.ratio * 100) + '%;background:' + col + '"></i></div><span class="cs-abv" style="color:' + col + '">' + val + '</span></div>';
+      }).join('')
+      : '<div class="cs-empty">Pas de données d\'assiduité.</div>') + '</div>';
+
+  // ── Listes d'action ──
+  var arow = function (nom, sub, chip, chipCls) {
+    return '<div class="cs-lrow"><span class="cs-lav">' + _coachDeskInit(nom) + '</span><div class="cs-ln"><b>' + esc(nom) + '</b><span>' + esc(sub) + '</span></div>'
+      + (chip ? '<span class="cs-lchip ' + chipCls + '">' + esc(chip) + '</span>' : '') + '</div>';
+  };
+  // Meilleure progression (Δ 1RM estimé le plus fort)
+  var progCard = '<div class="cs-card"><div class="cs-ct">Meilleure progression · 1RM estimé</div>'
+    + (progA.length ? progA.slice(0, 4).map(function (x) { return arow(x.nom, x.exo, '▲ +' + x.delta + ' %', 'good'); }).join('')
+      : '<div class="cs-empty">Pas assez de séances pour l\'estimer.</div>') + '</div>';
+  // À relancer (assiduité la plus basse, hors objectif non défini)
+  var relance = known.filter(function (a) { return a.ratio < 1; }).sort(function (a, b) { return a.ratio - b.ratio; });
+  var relanceCard = '<div class="cs-card"><div class="cs-ct">À relancer · assiduité</div>'
+    + (relance.length ? relance.slice(0, 4).map(function (a) {
+        var pct = Math.round(a.ratio * 100);
+        return arow(a.nom, a.fait + ' / ' + a.prev + ' séances', pct + ' %', pct < 50 ? 'bad' : 'warn');
+      }).join('')
+      : '<div class="cs-empty">Tout le monde est à l\'objectif 🎉</div>') + '</div>';
+  // Vigilance bien-être (dernier questionnaire)
+  var bienCard = '<div class="cs-card"><div class="cs-ct">Vigilance bien-être · dernier questionnaire</div>'
+    + (bienBas.length ? bienBas.slice(0, 5).map(function (x) { return arow(x.nom, x.txt, x.sev === 'bad' ? 'Alerte' : 'Vigilance', x.sev === 'bad' ? 'bad' : 'warn'); }).join('')
+      : '<div class="cs-empty">Rien à signaler sur les derniers ressentis.</div>') + '</div>';
+  // Blessures & douleurs actives
+  var blessCard = '<div class="cs-card"><div class="cs-ct">Blessures &amp; douleurs actives</div>'
+    + (blessures.length ? blessures.slice(0, 6).map(function (b) { var bad = /(sév|sev|import|haute|forte)/i.test(b.gravite || ''); return arow(b.nom, b.zone + (b.gravite ? ' · ' + b.gravite : ''), 'En cours', bad ? 'bad' : 'warn'); }).join('')
+      : '<div class="cs-empty">Aucune blessure active déclarée.</div>') + '</div>';
+
+  return kpis
+    + '<div class="cs-an-g2">' + donut + assCard + '</div>'
+    + '<div class="cs-an-g2">' + progCard + relanceCard + '</div>'
+    + '<div class="cs-an-g2">' + bienCard + blessCard + '</div>'
+    + '<div class="cs-note">Données agrégées depuis les fiches athlètes (assiduité, états du moteur, Δ 1RM estimé, bien-être du dernier questionnaire, table blessures). Rien n\'est recalculé ici.</div>';
+}
+function coachDeskSearch(q) {
+  q = (q || '').toLowerCase().trim();
+  var tb = document.getElementById('cs-tbody'); if (!tb) return;
+  var n = 0; tb.querySelectorAll('.cs-trow').forEach(function (r) { var ok = !q || r.getAttribute('data-nom').indexOf(q) >= 0; r.style.display = ok ? '' : 'none'; if (ok) n++; });
+  var em = document.getElementById('cs-eq-empty'); if (em) em.style.display = n ? 'none' : 'block';
+}
+var _COACH_NAVICO = {
+  aujourdhui: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  equipe: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>',
+  analyses: '<svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></svg>',
+  messages: '<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.5L3 20l1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>',
+  profil: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>'
+};
+// Barre latérale sombre persistante (accueil + fiche athlète).
+function renderCoachRail() {
+  var rail = document.getElementById('coach-rail'); if (!rail || !_coachDesk) return;
+  var d = _coachDesk, k = d.kpis || {};
+  var totalMsg = (d.enrich || []).reduce(function (s, e) { return s + (e.msgNonLus || 0); }, 0);
+  // Messages/Profil (drapeau overlay) priment ; sinon une fiche athlète ouverte
+  // garde "Équipe" allumé.
+  var activeSec = coachDeskOverlay
+    ? coachDeskOverlay
+    : (document.body.classList.contains('athlete-selected') ? 'equipe' : coachDeskSection);
+  var navItem = function (sec, label) { return '<button class="cs-item' + (activeSec === sec ? ' on' : '') + '" data-tour="co-' + sec + '" onclick="coachDeskGo(\'' + sec + '\')">' + _COACH_NAVICO[sec] + '<span>' + label + '</span>' + (sec === 'messages' && totalMsg ? '<span class="cs-bdg">' + totalMsg + '</span>' : '') + '</button>'; };
+  var coachNom = (typeof coach !== 'undefined' && coach && coach.nom) ? coach.nom : 'Coach';
+  rail.innerHTML = '<aside class="cs-side"><div class="cs-brand"><span class="cs-logo">N</span><div><b>Novalyz</b><span>Espace coach</span></div></div>'
+    + '<nav class="cs-nav">' + navItem('aujourdhui', "Aujourd'hui") + navItem('equipe', 'Équipe') + navItem('analyses', 'Analyses') + navItem('messages', 'Messages') + navItem('profil', 'Profil') + '</nav>'
+    + '<div class="cs-me"><span class="cs-av">' + _coachDeskInit(coachNom) + '</span><div style="flex:1;min-width:0"><b>' + escapeHtml(coachNom) + '</b><span>Coach · ' + (k.total || 0) + ' athlète' + ((k.total || 0) > 1 ? 's' : '') + '</span></div></div>'
+    + '<button class="cs-logout" onclick="seDeconnecterCoach()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Déconnexion</button>'
+    + '</aside>';
+}
+// Plan de travail de l'accueil (Aujourd'hui / Équipe / Analyses).
+function renderCoachHome() {
+  var shell = document.getElementById('coach-shell'); if (!shell || !_coachDesk) return;
+  var titles = { aujourdhui: "Aujourd'hui", equipe: 'Équipe', analyses: 'Analyses' };
+  var action = (coachDeskSection === 'equipe') ? '<button class="cs-btn p" data-tour="co-inviter" onclick="ouvrirModalLierAthlete()">+ Inviter</button>' : '';
+  var body = coachDeskSection === 'equipe' ? _coachDeskEquipe() : coachDeskSection === 'analyses' ? _coachDeskAnalyses() : _coachDeskAujourdhui();
+  shell.innerHTML = '<div class="cs-main"><header class="cs-top"><h1>' + (titles[coachDeskSection] || '') + '</h1>'
+    + '<div class="cs-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Rechercher un athlète…" oninput="coachDeskSearch(this.value)" autocomplete="off"></div>'
+    + action + '</header><div class="cs-body">' + body + '</div></div>';
+}
+function renderCoachDesktop() { if (!_coachDeskAny()) return; renderCoachRail(); if (!document.body.classList.contains('athlete-selected')) renderCoachHome(); }
+// Fiche athlète desktop (nouvelle identité) : replie chaque titre de section
+// « .v2-sec » dans sa carte comme label (visible seulement en desktop via CSS),
+// pour permettre une grille 2 colonnes propre. Idempotent ; mobile intact
+// (les labels .cd-deskonly et la grille ne s'activent qu'au ≥992px).
+// ── Bloc IA coach (fiche athlète) : réutilise l'endpoint chatIA, nourri des
+// données de l'athlète sélectionné (coachAthleteCourant). Front-only. ──
+var _coachIaMsgs = [];
+var _coachIaBusy = false;
+function _coachIaRender() {
+  var el = document.getElementById('cd-ia-msgs'); if (!el) return;
+  if (!_coachIaMsgs.length) { el.innerHTML = '<div class="cd-ia-hint">Demande une analyse, une priorité de travail ou un avis sur le risque — l\'IA s\'appuie sur les données de cet athlète.</div>'; return; }
+  el.innerHTML = _coachIaMsgs.map(function (m) {
+    var body = m.typing ? '<span class="cd-ia-typing">●●●</span>' : escapeHtml(m.t).replace(/\n/g, '<br>');
+    return '<div class="cd-ia-b cd-ia-' + (m.role === 'me' ? 'me' : 'ia') + '">' + body + '</div>';
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+function coachIaReset() { _coachIaMsgs = []; _coachIaBusy = false; _coachIaRender(); }
+function coachIaChip(b) { var i = document.getElementById('cd-ia-input'); if (i) { i.value = (b && b.getAttribute('data-q')) || ''; coachIaSend(); } }
+function coachIaSend() {
+  var input = document.getElementById('cd-ia-input'); if (!input) return;
+  var msg = (input.value || '').trim(); if (!msg || _coachIaBusy) return;
+  var a = (typeof coachAthleteCourant !== 'undefined') ? coachAthleteCourant : null;
+  if (!a || !a.athlete_id) { try { showToast('Sélectionne un athlète'); } catch (e) {} return; }
+  input.value = '';
+  _coachIaMsgs.push({ role: 'me', t: msg });
+  _coachIaMsgs.push({ role: 'ia', t: '…', typing: true });
+  _coachIaRender(); _coachIaBusy = true;
+  var hist = _coachIaMsgs.filter(function (m) { return !m.typing; }).map(function (m) { return { role: m.role === 'me' ? 'user' : 'assistant', content: m.t }; });
+  while (hist.length && hist[0].role !== 'user') hist.shift();
+  var done = function (txt) { _coachIaMsgs = _coachIaMsgs.filter(function (m) { return !m.typing; }); _coachIaMsgs.push({ role: 'ia', t: txt }); _coachIaRender(); _coachIaBusy = false; };
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chatIA', athlete_id: a.athlete_id, messages: hist }) })
+    .then(function (r) { return r.json().catch(function () { return {}; }); })
+    .then(function (j) { done((j && j.reply) ? j.reply : "Désolé, je n'ai pas pu répondre. Réessaie dans un instant."); })
+    .catch(function () { done("Connexion impossible pour le moment. Réessaie dans un moment."); });
+}
+
+var _cdOvPrepped = false;
+function _cdOverviewDeskPrep() {
+  if (_cdOvPrepped) return;
+  var ov = document.getElementById('cdtab-overview'); if (!ov) return;
+  try {
+    ov.querySelectorAll('.v2-sec').forEach(function (sec) {
+      var card = sec.nextElementSibling;
+      if (!card || !card.classList || !card.classList.contains('dash-card')) return;
+      var h2 = sec.querySelector('h2'); if (!h2) return;
+      if (card.querySelector('.cd-deskonly')) return;
+      var lbl = document.createElement('div');
+      lbl.className = 'dash-label cd-deskonly';
+      lbl.innerHTML = h2.innerHTML;
+      card.insertBefore(lbl, card.firstChild);
+    });
+    _cdOvPrepped = true;
+  } catch (e) {}
+}
+// Bascule mobile↔desktop coach au redimensionnement.
+(function () { if (typeof window === 'undefined' || window._coachDeskResize) return; window._coachDeskResize = true; var t = null, prev = null; window.addEventListener('resize', function () { var on = _coachDeskAny(); if (on === prev) return; prev = on; clearTimeout(t); t = setTimeout(function () { if (on && _coachDesk) renderCoachDesktop(); try { _cdAsideDeskLayout(); } catch (e) {} try { _cdV3Grid(); } catch (e) {} }, 160); }); })();
+
 function surlignerAthleteSidebar(athleteId) {
   document.querySelectorAll('.coach-athlete-card').forEach(c => {
     const actif = String(c.getAttribute('data-athlete-id')) === String(athleteId);
@@ -6457,17 +7220,132 @@ async function chargerProgrammeCoach() {
   }
 }
 
+// ═══════════ ÉDITEUR DE PROGRAMME ATHLÈTE — refonte « vue semaine » ═══════════
+// Isolée au seul éditeur athlète muscu (progCtx.el === 'prog-editor-content').
+// Les vues coach / joueur / foot conservent le rendu accordéon d'origine.
+var _progTab = 0;          // onglet jour actif (mobile)
+var _progView = 'semaine'; // 'semaine' (colonnes) | 'liste' (pile) — desktop
+function progSetTab(i) { _progTab = i; renderProgrammeCoach(); }
+function progSetView(v) { _progView = v; renderProgrammeCoach(); }
+// Bascule mobile↔desktop (builder) au redimensionnement : on re-render si l'éditeur est ouvert.
+(function () {
+  if (typeof window === 'undefined' || window._progResizeBound) return;
+  window._progResizeBound = true; var _pt = null, _wasDesk = null;
+  window.addEventListener('resize', function () {
+    var ov = document.getElementById('prog-editor-overlay');
+    if (!ov || ov.style.display === 'none') return;
+    var d = !!(window.matchMedia && window.matchMedia('(min-width:992px)').matches);
+    if (d === _wasDesk) return; _wasDesk = d;
+    clearTimeout(_pt); _pt = setTimeout(function () { if (typeof renderProgrammeCoach === 'function') renderProgrammeCoach(); }, 160);
+  });
+})();
+// Déplace un exercice vers un autre jour (change seance_id). Le backend
+// handleSaveProgrammeLigne écrit seance_id dans le patch quand row_index est
+// fourni → pas de nouvelle route. On renvoie TOUS les champs de la ligne pour
+// ne rien écraser, et on hérite du jour conseillé de la séance de destination.
+async function cdDeplacerLigne(rowIndex, targetSeanceId) {
+  var l = (cdProgrammeLignes || []).find(function (x) { return String(x.row_index) === String(rowIndex) || String(x.id) === String(rowIndex); });
+  if (!l || !targetSeanceId) return;
+  if (String(l.seance_id) === String(targetSeanceId)) return;
+  var tgtJour = null;
+  (cdProgrammeLignes || []).forEach(function (x) { if (String(x.seance_id) === String(targetSeanceId) && x.jour != null) tgtJour = x.jour; });
+  var body = {
+    action: 'saveProgrammeLigne', row_index: l.row_index, athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(),
+    seance_id: targetSeanceId, exercice: l.exercice,
+    series_prevues: l.series_prevues, reps_mini: l.reps_mini, reps_max: l.reps_max, repos_sec: l.repos_sec,
+    groupe_id: l.groupe_id || '', jour: (tgtJour != null ? tgtJour : ''),
+    charge_pct_1rm: (l.charge_pct_1rm != null ? l.charge_pct_1rm : ''), rpe_cible: (l.rpe_cible != null ? l.rpe_cible : ''),
+    type: l.type || 'muscu', cardio_cible: (l.cardio_cible != null ? l.cardio_cible : ''), cardio_unite: l.cardio_unite || ''
+  };
+  try { l.seance_id = targetSeanceId; if (tgtJour != null) l.jour = tgtJour; } catch (e) {}
+  renderProgrammeCoach();   // retour visuel immédiat
+  try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }); } catch (e) {}
+  chargerProgrammeCoach();
+}
+// Glisser-déposer (desktop) entre colonnes-jours.
+var _progDragRow = null;
+function progDragStart(e, row) { _progDragRow = row; try { e.dataTransfer.setData('text/plain', String(row)); e.dataTransfer.effectAllowed = 'move'; } catch (_) {} }
+function progDragOver(e) { e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (_) {} var c = e.currentTarget; if (c && c.classList) c.classList.add('prog-col-drop'); }
+function progDragLeave(e) { var c = e.currentTarget; if (c && c.classList) c.classList.remove('prog-col-drop'); }
+function progDrop(e, seanceId) { e.preventDefault(); var c = e.currentTarget; if (c && c.classList) c.classList.remove('prog-col-drop'); var row = _progDragRow; _progDragRow = null; if (row != null) cdDeplacerLigne(row, seanceId); }
+
+// Palette par jour (séparation visuelle des colonnes) + couleur par groupe musculaire.
+var _PROG_DAYCOLS = ['#1A5FFF', '#7C5CFF', '#00A854', '#E07800', '#EC4899', '#0EA5A3', '#F59F00'];
+function _progDayCol(si) { return _PROG_DAYCOLS[si % _PROG_DAYCOLS.length]; }
+function _progMuscleCol(muscle) {
+  try { var k = _exoGrpOf(muscle); var m = k ? _exoGrpMeta(k) : null; if (m && m.col) return m.col; } catch (e) {}
+  return '#1A5FFF';
+}
+
+// Écran de départ : choisir un point de départ (générateur, vierge, modèles).
+function _progStartHTML() {
+  var tpl = function (cls, bg, ico, a, b, onclick) {
+    return '<button class="prog-tpl' + (cls ? ' ' + cls : '') + '" onclick="' + onclick + '">'
+      + '<span class="prog-tpl-ic" style="background:' + bg + '">' + ico + '</span>'
+      + '<span class="prog-tpl-tt"><span class="a">' + a + '</span><span class="b">' + b + '</span></span>'
+      + '<span class="prog-tpl-chev">›</span></button>';
+  };
+  return '<div class="prog-start">'
+    + '<div class="prog-start-lab">Partir de…</div>'
+    + tpl('ia', 'linear-gradient(135deg,var(--accent),#7C5CFF)', '✦', 'Novalyz me le construit', 'Objectif → jours → niveau, en 30 s', 'ouvrirGenProgramme()')
+    + tpl('', 'var(--text-subtle)', '＋', 'Programme vierge', 'Je construis tout moi-même', 'cdAjouterSeance()')
+    + '<div class="prog-start-lab" style="margin-top:16px">Modèles prêts à l\'emploi</div>'
+    + tpl('', '#00A854', '3', 'Full-body · 3 jours', 'Tout le corps à chaque séance', '_progModele(\'fullbody3\')')
+    + tpl('', '#7C5CFF', 'P', 'Push / Pull / Legs', '3 jours · classique prise de muscle', '_progModele(\'ppl\')')
+    + tpl('', '#E07800', 'U', 'Upper / Lower', '4 jours · haut / bas du corps', '_progModele(\'upperlower\')')
+    + '</div>';
+}
+
+// Applique un modèle prêt à l'emploi : construit des lignes à partir du catalogue
+// réel (mêmes groupes/choix que le générateur) puis écrase via genererProgramme.
+async function _progModele(key) {
+  if (exercicesData.length === 0 && typeof chargerExercices === 'function') { try { await chargerExercices(); } catch (e) {} }
+  if (exercicesData.length === 0) { showToast('Catalogue indisponible, réessaie'); return; }
+  var defs = {
+    fullbody3: { jours: [1, 3, 5], split: [
+      ['Full body A', ['quad', 'pecs', 'dos', 'epaule', 'ischio', 'abdos']],
+      ['Full body B', ['fessier', 'dos', 'pecs', 'epaule', 'biceps', 'triceps']],
+      ['Full body C', ['quad', 'ischio', 'pecs', 'dos', 'epaule', 'mollet']]
+    ] },
+    ppl: { jours: (typeof _GEN_JOURS !== 'undefined' ? _GEN_JOURS[3] : [1, 3, 5]), split: (typeof _GEN_SPLITS !== 'undefined' ? _GEN_SPLITS[3] : null) },
+    upperlower: { jours: (typeof _GEN_JOURS !== 'undefined' ? _GEN_JOURS[4] : [1, 2, 4, 5]), split: (typeof _GEN_SPLITS !== 'undefined' ? _GEN_SPLITS[4] : null) }
+  };
+  var m = defs[key]; if (!m || !m.split) { showToast('Modèle indisponible'); return; }
+  var o = (typeof _GEN_OBJ !== 'undefined' && _GEN_OBJ.hypertrophie) ? _GEN_OBJ.hypertrophie : { s: 4, rmin: 8, rmax: 12, pct: 72, rpe: 8, repos: 90 };
+  var lignes = [];
+  m.split.forEach(function (sc, si) {
+    var sid = sc[0], used = {}, jour = m.jours[si];
+    sc[1].forEach(function (gk) {
+      var g = (typeof _GEN_G !== 'undefined') ? _GEN_G[gk] : null; if (!g) return;
+      var ex = _genPick(exercicesData, g, used); if (!ex) return; used[ex.exercice] = 1;
+      lignes.push({ seance_id: sid, exercice: ex.exercice, series_prevues: o.s, reps_mini: o.rmin, reps_max: o.rmax, repos_sec: o.repos, groupe_id: '', jour: jour, charge_pct_1rm: o.pct, rpe_cible: o.rpe });
+    });
+  });
+  if (!lignes.length) { showToast('Catalogue indisponible, réessaie'); return; }
+  var existant = Array.isArray(cdProgrammeLignes) && cdProgrammeLignes.length > 0;
+  if (existant && !confirm('Remplacer le programme actuel par ce modèle ? (l\'ancien sera supprimé)')) return;
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'genererProgramme', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), remplacer: true, lignes: lignes }) });
+    _progTab = 0;
+    showToast('✅ Modèle appliqué');
+    chargerProgrammeCoach();
+  } catch (e) { showToast('Erreur réseau'); }
+}
+
 function renderProgrammeCoach() {
   const el = _progEl();
   if (!el) return;
   const ro = _progReadonly();   // lecture seule (joueur) : pas d'édition
+  // Refonte « vue semaine » : uniquement l'éditeur athlète muscu (isolé du coach/joueur).
+  const _editorMode = !ro && progCtx && progCtx.el === 'prog-editor-content';
   const seances = {};
   const ordre = [];
   cdProgrammeLignes.forEach(l => {
     if (!seances[l.seance_id]) { seances[l.seance_id] = []; ordre.push(l.seance_id); }
     seances[l.seance_id].push(l);
   });
-  if (ordre.length === 0) {
+  if (ordre.length === 0 && !_editorMode) {
     el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Aucune séance dans le programme.</div>';
     return;
   }
@@ -6492,7 +7370,10 @@ function renderProgrammeCoach() {
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       ${champNum(l.charge_pct_1rm != null ? l.charge_pct_1rm : '', '75', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,this.value,null)`, '% du 1RM')}
-      ${champNum(l.rpe_cible != null ? l.rpe_cible : '', '8', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,null,this.value)`, 'RPE cible')}
+      <div style="flex:1;min-width:64px">
+        <label style="font-size:9px;color:var(--text-muted);margin-bottom:3px;display:block;text-transform:none;letter-spacing:0">RPE cible (effort)</label>
+        <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,null,this.value)" style="font-size:13px;padding:9px 6px;width:100%;min-width:0;text-align:center;margin-bottom:0;font-weight:700">${_rpeOptions(l.rpe_cible)}</select>
+      </div>
     </div>
     ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">🎯 Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}`;
 
@@ -6547,6 +7428,172 @@ function renderProgrammeCoach() {
         ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>`}
       </div>`;
   };
+
+  // ─── Rendu éditeur athlète (vue semaine) — réutilise les helpers ci-dessus ───
+  function _progRenderEditor(elE, seancesE, ordreE) {
+    if (ordreE.length === 0) { elE.innerHTML = _progStartHTML(); return; }
+    if (_progTab >= ordreE.length) _progTab = 0;
+    var blocEditE = function (l, seanceId, extraBtn, extraSel) {
+      var ouvertExo = !!cdExoOpen[l.row_index];
+      return '<div id="exo-edit-' + l.row_index + '" style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px;' + (ouvertExo ? '' : 'display:none') + '">'
+        + (l.type === 'cardio' ? champsExoCardio(l) : champsExo(l, seanceId, extraBtn)) + (extraSel || '') + '</div>';
+    };
+    var statBox = function (v, lab, tone) { return '<div class="prog-sb prog-sb-' + tone + '"><div class="prog-sb-v">' + v + '</div><div class="prog-sb-l">' + lab + '</div></div>'; };
+    var gripSvg = '<span class="prog-grip" title="Glisser vers un autre jour"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg></span>';
+    var moveSel = function (l, seanceId) {
+      var others = ordreE.filter(function (s) { return String(s) !== String(seanceId); });
+      if (!others.length) return '';
+      return '<select class="prog-move-sel" onchange="if(this.value){cdDeplacerLigne(' + l.row_index + ',this.value);}" title="Déplacer vers un autre jour"><option value="">↕ Déplacer vers…</option>'
+        + others.map(function (s) { return '<option value="' + escapeHtml(String(s)).replace(/"/g, '&quot;') + '">' + escapeHtml(String(s)) + '</option>'; }).join('') + '</select>';
+    };
+    var carteMuscu = function (l, seanceId) {
+      var mus = muscleDe(l.exercice);
+      var gcol = _progMuscleCol(mus);
+      var reps = (l.reps_mini && l.reps_max) ? (String(l.reps_mini) === String(l.reps_max) ? String(l.reps_mini) : (l.reps_mini + '–' + l.reps_max)) : (l.reps_mini || l.reps_max || '–');
+      var charge = (l.charge_pct_1rm != null && l.charge_pct_1rm !== '') ? (l.charge_pct_1rm + '%') : '–';
+      var repos = (l.repos_sec != null && l.repos_sec !== '') ? (l.repos_sec + 's') : '–';
+      return '<div class="prog-exc" draggable="true" ondragstart="progDragStart(event,' + l.row_index + ')" style="border-left:4px solid ' + gcol + '">'
+        + '<div class="prog-exc-top">'
+        +   gripSvg
+        +   '<div class="prog-exc-nm" onclick="cdToggleExo(' + l.row_index + ')"><div class="a">' + l.exercice + '</div>' + (mus ? '<span class="prog-exc-tag" style="color:' + gcol + ';background:' + gcol + '1f">' + mus + '</span>' : '') + '</div>'
+        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')">✎</span>'
+        + '</div>'
+        + '<div class="prog-sets">' + statBox(l.series_prevues || '–', 'Séries', 'ser') + statBox(reps, 'Reps', 'rep') + statBox(charge, 'Charge', 'chg') + statBox(repos, 'Repos', 'rst') + '</div>'
+        + blocEditE(l, seanceId, null, selLier(l, seanceId, [l.exercice]) + moveSel(l, seanceId))
+        + '</div>';
+    };
+    var carteCardio = function (l, seanceId) {
+      return '<div class="prog-exc prog-exc-cardio" draggable="true" ondragstart="progDragStart(event,' + l.row_index + ')" style="border-left:4px solid #9D5FD3">'
+        + '<div class="prog-exc-top">'
+        +   gripSvg
+        +   '<div class="prog-exc-nm" onclick="cdToggleExo(' + l.row_index + ')"><div class="a" style="color:#9D5FD3">' + _progCardioIco(l.exercice) + ' ' + l.exercice + '</div><span class="prog-exc-tag" style="color:#9D5FD3;background:#9D5FD31f">Cardio · ' + _progCardioCibleTxt(l) + '</span></div>'
+        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')">✎</span>'
+        + '</div>'
+        + blocEditE(l, seanceId, null, moveSel(l, seanceId))
+        + '</div>';
+    };
+    // ═══ DESKTOP : Builder pro (rail des jours · plan central · inspecteur) ═══
+    var _desktop = !!(window.matchMedia && window.matchMedia('(min-width:992px)').matches);
+    if (_desktop) { _progRenderBuilder(elE, seancesE, ordreE, blocEditE, gripSvg); return; }
+
+    var cols = ordreE.map(function (seanceId, si) {
+      var lignes = seancesE[seanceId];
+      var unites = []; var vus = {};
+      lignes.forEach(function (l) {
+        if (l.groupe_id) { if (vus[l.groupe_id]) return; vus[l.groupe_id] = true; unites.push({ type: 'groupe', groupeId: l.groupe_id, membres: lignes.filter(function (o) { return o.groupe_id === l.groupe_id; }) }); }
+        else unites.push({ type: 'single', ligne: l });
+      });
+      var cartes = unites.map(function (u) {
+        if (u.type === 'single') return u.ligne.type === 'cardio' ? carteCardio(u.ligne, seanceId) : carteMuscu(u.ligne, seanceId);
+        var coul = couleurGroupe(u.groupeId); var noms = u.membres.map(function (m) { return m.exercice; });
+        return '<div class="prog-exc" style="border-left:4px solid ' + coul + '">'
+          + '<div style="font-size:11px;font-weight:800;color:' + coul + ';margin-bottom:6px;letter-spacing:.3px">🔗 SUPERSET · ' + u.membres.length + ' exos</div>'
+          + u.membres.map(function (m, i) { return (i > 0 ? '<div style="text-align:center;color:' + coul + ';font-size:15px;font-weight:800;margin:-2px 0 4px">↓</div>' : '') + '<div style="background:var(--surface2);border-radius:8px;padding:2px 9px;margin-bottom:7px">' + ligneLecture(m, coul) + blocEditE(m, seanceId, '<button onclick="cdRetirerDuGroupe(' + m.row_index + ',\'' + String(seanceId).replace(/'/g, "\\'") + '\')" title="Retirer du superset" style="background:' + coul + '1a;border:1px solid ' + coul + ';color:' + coul + ';border-radius:8px;width:38px;height:38px;padding:0;cursor:pointer;flex-shrink:0;font-weight:700">✕</button>') + '</div>'; }).join('')
+          + selLier(u.membres[0], seanceId, noms) + '</div>';
+      }).join('');
+      var jour = lignes[0] && lignes[0].jour;
+      var sidEsc = JSON.stringify(seanceId);
+      var sidJs = String(seanceId).replace(/'/g, "\\'");
+      var dcol = _progDayCol(si);
+      return '<div class="prog-col" data-i="' + si + '"' + (si === _progTab ? '' : ' data-off="1"') + ' ondragover="progDragOver(event)" ondragleave="progDragLeave(event)" ondrop=\'progDrop(event,' + sidEsc + ')\' style="border-top:3px solid ' + dcol + '">'
+        + '<div class="prog-colhd" style="background:' + dcol + '14;border:1px solid ' + dcol + '33">'
+        +   '<div class="prog-colhd-t"><span class="prog-colbar" style="background:' + dcol + '"></span><div><div class="dn" style="color:' + dcol + '">' + escapeHtml(String(seanceId)) + '</div><div class="ds">' + lignes.length + ' exo' + (lignes.length > 1 ? 's' : '') + (jour ? ' · ' + _PROG_JOURS_LONG[jour - 1] : '') + '</div></div></div>'
+        +   '<button class="prog-col-del" onclick=\'cdSupprimerSeance(' + sidEsc + ')\' title="Supprimer la séance">🗑</button></div>'
+        + _progJourPicker(seanceId, lignes)
+        + cartes
+        + '<button class="prog-addexo" onclick="cdAjouterExercice(\'' + sidJs + '\')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg> Ajouter un exercice</button>'
+        + '</div>';
+    }).join('');
+    var tabs = ordreE.map(function (seanceId, si) {
+      return '<button class="prog-tab' + (si === _progTab ? ' on' : '') + '" onclick="progSetTab(' + si + ')">J' + (si + 1) + '<small>' + escapeHtml(String(seanceId)) + '</small></button>';
+    }).join('') + '<button class="prog-tab prog-tab-add" onclick="cdAjouterSeance()">＋<small>Jour</small></button>';
+    var head = '<div class="prog-head">'
+      + '<div class="prog-seg"><button class="' + (_progView === 'semaine' ? 'on' : '') + '" onclick="progSetView(\'semaine\')">Vue semaine</button><button class="' + (_progView === 'liste' ? 'on' : '') + '" onclick="progSetView(\'liste\')">Liste</button></div>'
+      + '<button class="prog-btn-ia" onclick="ouvrirGenProgramme()">✦ Novalyz propose</button>'
+      + '</div>';
+    elE.innerHTML = head
+      + '<div class="prog-tabs">' + tabs + '</div>'
+      + '<div class="prog-cols' + (_progView === 'liste' ? ' liste' : '') + '">' + cols
+      +   '<button class="prog-addday" onclick="cdAjouterSeance()"><svg class="ico" style="width:18px;height:18px"><use href="#i-plus"/></svg> Ajouter une séance</button>'
+      + '</div>';
+  }
+  // ═══ Builder pro (desktop) : 3 panneaux rail/plan/inspecteur — réutilise la CRUD ═══
+  function _progRenderBuilder(elB, seancesB, ordreB, blocEditE, gripSvg) {
+    if (_progTab >= ordreB.length) _progTab = 0;
+    var esc = escapeHtml;
+    var exoOptions = function (sel) { return exercicesData.map(function (e) { return '<option value="' + esc(e.exercice).replace(/"/g, '&quot;') + '"' + (e.exercice === sel ? ' selected' : '') + '>' + esc(e.exercice) + '</option>'; }).join(''); };
+    var bNum = function (val, ph, handler) { return '<input type="number" class="pb-in" value="' + (val == null || val === '' ? '' : val) + '" placeholder="' + ph + '" onchange="' + handler + '">'; };
+    var musColOf = function (lg) { for (var i = 0; i < lg.length; i++) { if (lg[i].type !== 'cardio') return _progMuscleCol(muscleDe(lg[i].exercice)); } return '#9D5FD3'; };
+    var rowMuscu = function (l, sid) {
+      var mus = muscleDe(l.exercice), gcol = _progMuscleCol(mus), sj = String(sid).replace(/'/g, "\\'"), ri = l.row_index;
+      return '<div class="pb-row" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
+        + gripSvg
+        + '<div class="pb-exn"><span class="dot" style="background:' + gcol + '"></span><div class="pb-exn-c">'
+        +   '<select class="pb-exo" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',this.value,null,null,null,null,null)">' + exoOptions(l.exercice) + '</select>'
+        +   (mus ? '<small style="color:' + gcol + '">' + esc(mus) + '</small>' : '') + '</div></div>'
+        + '<div class="pb-fld pb-series"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
+        + '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div></div>'
+        + '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
+        + '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
+        + '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
+        + '<button class="pb-del" onclick="cdSupprimerLigne(' + ri + ')" title="Supprimer">✕</button>'
+        + '</div>';
+    };
+    var rowCardio = function (l, sid) {
+      var ri = l.row_index;
+      var actOpts = _PROG_CARDIO.map(function (a) { return '<option value="' + esc(a[0]).replace(/"/g, '&quot;') + '"' + (a[0] === l.exercice ? ' selected' : '') + '>' + a[1] + ' ' + esc(a[0]) + '</option>'; }).join('');
+      var modes = ['min', 'km', 'libre'].map(function (u) { var on = (l.cardio_unite || 'min') === u; var lbl = { min: '⏱ Durée', km: '📏 Dist.', libre: 'Libre' }[u]; return '<button class="' + (on ? 'on' : '') + '" onclick="cdSetCardioUnite(' + ri + ',\'' + u + '\')">' + lbl + '</button>'; }).join('');
+      var cible = (l.cardio_unite === 'libre') ? '<span class="pb-cardio-libre">Allure libre</span>' : (bNum(l.cardio_cible, (l.cardio_unite === 'km' ? '5' : '20'), 'cdSetCardioCible(' + ri + ',this.value)') + '<span class="pb-unit">' + (l.cardio_unite === 'km' ? 'km' : 'min') + '</span>');
+      return '<div class="pb-row pb-row-cardio" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
+        + gripSvg
+        + '<div class="pb-exn"><span class="dot" style="background:#9D5FD3"></span><div class="pb-exn-c"><select class="pb-exo" onchange="cdSetCardioActivite(' + ri + ',this.value)">' + actOpts + '</select><small style="color:#9D5FD3">Cardio</small></div></div>'
+        + '<div class="pb-cardio-mode">' + modes + '</div>'
+        + '<div class="pb-fld pb-cardio-cible">' + cible + '</div>'
+        + '<button class="pb-del" onclick="cdSupprimerLigne(' + ri + ')" title="Supprimer">✕</button>'
+        + '</div>';
+    };
+    var renderUnites = function (lignes, sid) {
+      var unites = [], vus = {};
+      lignes.forEach(function (l) {
+        if (l.groupe_id) { if (vus[l.groupe_id]) return; vus[l.groupe_id] = true; unites.push({ type: 'groupe', groupeId: l.groupe_id, membres: lignes.filter(function (o) { return o.groupe_id === l.groupe_id; }) }); }
+        else unites.push({ type: 'single', ligne: l });
+      });
+      return unites.map(function (u) {
+        if (u.type === 'single') return u.ligne.type === 'cardio' ? rowCardio(u.ligne, sid) : rowMuscu(u.ligne, sid);
+        var coul = couleurGroupe(u.groupeId);
+        return '<div class="pb-superset" style="border-left:3px solid ' + coul + '"><div class="pb-superset-h" style="color:' + coul + '">🔗 Superset · ' + u.membres.length + ' exos</div>'
+          + u.membres.map(function (m) { return rowMuscu(m, sid); }).join('')
+          + '<div class="pb-superset-lier">' + selLier(u.membres[0], sid, u.membres.map(function (m) { return m.exercice; })) + '</div></div>';
+      }).join('');
+    };
+    // ── Rail des jours ──
+    var rail = '<div class="pb-rail"><div class="pb-rail-t">Mes séances</div>'
+      + ordreB.map(function (sid, si) {
+          var lg = seancesB[sid], jr = lg[0] && lg[0].jour, sj = JSON.stringify(sid);
+          return '<div class="pb-dayrow' + (si === _progTab ? ' on' : '') + '" onclick="progSetTab(' + si + ')" ondragover="progDragOver(event)" ondragleave="progDragLeave(event)" ondrop=\'progDrop(event,' + sj + ')\'>'
+            + '<span class="dot" style="background:' + musColOf(lg) + '"></span><div class="nm"><b>' + esc(String(sid)) + '</b><span>' + (jr ? _PROG_JOURS_LONG[jr - 1] : 'non planifié') + '</span></div><span class="ct">' + lg.length + '</span></div>';
+        }).join('')
+      + '<button class="pb-railadd" onclick="cdAjouterSeance()"><svg class="ico" style="width:15px;height:15px"><use href="#i-plus"/></svg> Nouvelle séance</button></div>';
+    // ── Plan central (séance active) ──
+    var activeSid = ordreB[_progTab], activeLignes = seancesB[activeSid] || [];
+    var aJour = activeLignes[0] && activeLignes[0].jour, aMcol = musColOf(activeLignes);
+    var canvas = '<div class="pb-canvas"><div class="pb-ctop"><span class="dot" style="width:12px;height:12px;background:' + aMcol + '"></span><h3>' + esc(String(activeSid)) + '</h3>'
+      + '<span class="pb-sub">' + (aJour ? '· ' + _PROG_JOURS_LONG[aJour - 1] + ' ' : '') + '· ' + activeLignes.length + ' exercice' + (activeLignes.length > 1 ? 's' : '') + '</span>'
+      + '<button class="pb-seance-del" onclick=\'cdSupprimerSeance(' + JSON.stringify(activeSid) + ')\' title="Supprimer la séance"><svg class="ico" style="width:17px;height:17px"><use href="#i-trash"/></svg></button></div>'
+      + '<div class="pb-rows">' + renderUnites(activeLignes, activeSid)
+      +   '<button class="pb-addexo" onclick="cdAjouterExercice(\'' + String(activeSid).replace(/'/g, "\\'") + '\')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg> Ajouter un exercice</button></div></div>';
+    // ── Inspecteur ──
+    var vol = {}, tot = 0;
+    activeLignes.forEach(function (l) { if (l.type === 'cardio') return; var s = Number(l.series_prevues) || 0; tot += s; var mg = _exoGrpOf(muscleDe(l.exercice)); var meta = mg ? _exoGrpMeta(mg) : null; var key = meta ? meta.label : (muscleDe(l.exercice) || 'Autre'); var col = meta ? meta.col : '#8a94a6'; (vol[key] = vol[key] || { s: 0, col: col }).s += s; });
+    var volRows = Object.keys(vol).map(function (k) { return '<span class="pb-volchip" style="border-color:' + vol[k].col + '66;color:' + vol[k].col + '"><b>' + vol[k].s + '</b> ' + esc(k) + '</span>'; }).join('');
+    var insp = '<div class="pb-insp">'
+      + '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>'
+      + '<div class="pb-card">' + _progJourPicker(activeSid, activeLignes) + '</div>'
+      + '<div class="pb-card"><div class="pb-card-t">Volume de la séance</div><div class="pb-voltot">' + tot + ' séries</div><div class="pb-volwrap">' + (volRows || '<span style="color:var(--text-subtle);font-size:12px">—</span>') + '</div></div>'
+      + '</div>';
+    elB.innerHTML = '<div class="pb-builder">' + rail + canvas + insp + '</div>';
+  }
+  if (_editorMode) { _progRenderEditor(el, seances, ordre); return; }
 
   el.innerHTML = ordre.map((seanceId, si) => {
     // Regrouper les exercices en unités : soit seuls, soit en superset (même groupe_id)
@@ -6712,8 +7759,39 @@ function _cibleVerdictHtml(vc) {
   if (!vc) return '';
   var parts = [];
   if (vc.charge) parts.push('<span style="color:' + _CIBLE_CH[vc.charge.v][0] + '">🎯 Charge ' + vc.charge.real + ' kg / cible ≈ ' + vc.charge.tgt + ' kg — ' + _CIBLE_CH[vc.charge.v][1] + '</span>');
-  if (vc.rpe) parts.push('<span style="color:' + _CIBLE_RP[vc.rpe.v][0] + '">RPE ' + vc.rpe.real + ' / cible ' + vc.rpe.tgt + ' — ' + _CIBLE_RP[vc.rpe.v][1] + '</span>');
+  if (vc.rpe) parts.push('<span style="color:' + _CIBLE_RP[vc.rpe.v][0] + '">Effort RPE ' + vc.rpe.real + ' (≈ ' + _rirLong(vc.rpe.real) + ') / cible ' + vc.rpe.tgt + ' — ' + _CIBLE_RP[vc.rpe.v][1] + '</span>');
   return parts.length ? '<div style="font-size:12px;margin-top:3px;display:flex;flex-direction:column;gap:2px;font-weight:600">' + parts.join('') + '</div>' : '';
+}
+// Verdict GLOBAL de la séance à partir des verdicts par exercice (_cibleVerdict).
+// Agrège charge + effort vs cibles du programme. null si aucun exo n'a de cible.
+function _verdictSeanceGlobal(seanceArr, progSeance) {
+  if (!seanceArr || !seanceArr.length || !progSeance || !progSeance.length) return null;
+  var nEval = 0, nSur = 0, nSous = 0, offExos = [];
+  seanceArr.forEach(function (exo) {
+    var p = progSeance.find(function (pr) { return pr.exercice === exo.exerciceNom; });
+    if (!p) return;
+    var vc = _cibleVerdict(p, exo.series || []);
+    if (!vc) return;
+    var off = false;
+    ['charge', 'rpe'].forEach(function (k) { if (vc[k]) { nEval++; if (vc[k].v === 'sur') { nSur++; off = true; } else if (vc[k].v === 'sous') { nSous++; off = true; } } });
+    if (off) offExos.push(exo.exerciceNom);
+  });
+  if (!nEval) return null;
+  var cls, titre, desc, reco;
+  if (nSur > 0 && nSur >= nSous) {
+    cls = 'hard'; titre = '🔥 Séance trop dure';
+    desc = 'Tu es allé au-delà de tes cibles sur ' + offExos.length + ' exercice' + (offExos.length > 1 ? 's' : '') + '. Attention à la récupération.';
+    reco = 'Reviens aux charges et à l\'effort prévus la prochaine fois (tu as dépassé la cible), et priorise la récup d\'ici la prochaine séance.';
+  } else if (nSous > 0 && nSous > nSur) {
+    cls = 'light'; titre = '🟠 Séance un peu légère';
+    desc = 'Tu avais de la marge sur ' + offExos.length + ' exercice' + (offExos.length > 1 ? 's' : '') + ' par rapport à tes cibles.';
+    reco = 'Tu peux pousser un peu plus la prochaine fois : ajoute de la charge ou des reps sur ' + (offExos[0] || 'ces exercices') + ' pour te rapprocher de la cible.';
+  } else {
+    cls = 'ok'; titre = '✅ Séance conforme';
+    desc = 'Tu as respecté tes cibles (charge / effort). Bon dosage.';
+    reco = 'Bon dosage — tu peux viser une petite surcharge progressive (un peu de charge ou de reps) aux prochaines séances.';
+  }
+  return { cls: cls, titre: titre, desc: desc, reco: reco };
 }
 function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, reposSec, groupeId, chargePct, rpeCible) {
   const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
@@ -6804,18 +7882,83 @@ function cdAjouterExercice(seanceId) {
   ov.onclick = function (e) { if (e.target === ov) cdCloseAddChooser(); };
 }
 function cdCloseAddChooser() { var ov = document.getElementById('cd-add-chooser'); if (ov) ov.style.display = 'none'; }
+// Sélecteur d'exercices MULTIPLE, groupé par muscle (coche plusieurs → ajout en 1 fois).
+var _cdPickSel = {};     // nom -> true (exercices cochés)
+var _cdPickSid = null;   // séance cible
+var _cdPickQuery = '';   // filtre de recherche
 async function _cdAddMuscu(seanceId) {
   cdCloseAddChooser();
   if (exercicesData.length === 0) { try { await chargerExercices(); } catch (e) {} }
-  if (exercicesData.length === 0) return;
-  const exo = exercicesData[0];
-  const body = {
-    action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
-    athlete_nom: _progAthleteNom(), seance_id: seanceId, exercice: exo.exercice,
-    series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: '', type: 'muscu'
-  };
-  await fetch(SCRIPT_URL, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body)});
-  cdProgOpen[seanceId] = true;
+  if (exercicesData.length === 0) { showToast('Catalogue indisponible, réessaie'); return; }
+  _cdPickSel = {}; _cdPickSid = seanceId; _cdPickQuery = '';
+  var ov = document.getElementById('cd-exo-picker');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'cd-exo-picker'; ov.style.cssText = 'position:fixed;inset:0;background:rgba(3,6,14,.55);z-index:1400;display:flex;align-items:flex-end;justify-content:center'; document.body.appendChild(ov); }
+  ov.innerHTML = '<div style="background:var(--surface);border-radius:20px 20px 0 0;max-width:480px;width:100%;max-height:86vh;display:flex;flex-direction:column;overflow:hidden">'
+    + '<div style="padding:14px 16px 10px;flex:none;">'
+    +   '<div style="width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 12px"></div>'
+    +   '<div style="font-weight:800;text-align:center;font-size:15px;margin-bottom:10px">Ajouter des exercices à ' + escapeHtml(String(seanceId)) + '</div>'
+    +   '<input id="cd-pick-q" type="text" placeholder="🔍 Rechercher un exercice…" oninput="_cdPickFilter(this.value)" autocomplete="off" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px 12px;box-sizing:border-box;margin:0;">'
+    + '</div>'
+    + '<div id="cd-pick-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 8px;"></div>'
+    + '<div style="flex:none;padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);display:flex;gap:10px;background:var(--surface);">'
+    +   '<button onclick="_cdPickClose()" style="flex:none;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:12px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Annuler</button>'
+    +   '<button id="cd-pick-add" onclick="_cdPickConfirm()" disabled style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;opacity:.5">Ajouter</button>'
+    + '</div></div>';
+  ov.style.display = 'flex';
+  ov.onclick = function (e) { if (e.target === ov) _cdPickClose(); };
+  _cdPickRenderList();
+}
+function _cdPickClose() { var ov = document.getElementById('cd-exo-picker'); if (ov) ov.style.display = 'none'; }
+function _cdPickFilter(q) { _cdPickQuery = String(q || ''); _cdPickRenderList(); }
+function _cdPickToggle(nom, checked) {
+  if (checked) _cdPickSel[nom] = true; else delete _cdPickSel[nom];
+  var n = Object.keys(_cdPickSel).length;
+  var btn = document.getElementById('cd-pick-add');
+  if (btn) { btn.disabled = !n; btn.style.opacity = n ? '1' : '.5'; btn.textContent = n ? ('Ajouter (' + n + ')') : 'Ajouter'; }
+}
+function _cdPickRenderList() {
+  var host = document.getElementById('cd-pick-list'); if (!host) return;
+  var q = _normTxt(_cdPickQuery);
+  // Regroupe par muscle, filtré par la recherche (sur le nom ou le muscle).
+  var groups = {};
+  (exercicesData || []).forEach(function (e) {
+    if (!e || !e.exercice) return;
+    if (q && _normTxt(e.exercice).indexOf(q) < 0 && _normTxt(e.muscle || '').indexOf(q) < 0) return;
+    var mus = _musCap(e.muscle || 'Autres') || 'Autres';
+    (groups[mus] = groups[mus] || []).push(e.exercice);
+  });
+  var muscles = Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, 'fr'); });
+  if (!muscles.length) { host.innerHTML = '<div style="padding:24px 8px;text-align:center;color:var(--text-muted);font-size:13px">Aucun exercice trouvé.</div>'; return; }
+  var esc = function (x) { return escapeHtml(String(x == null ? '' : x)); };
+  host.innerHTML = muscles.map(function (m) {
+    var exos = groups[m].slice().sort(function (a, b) { return a.localeCompare(b, 'fr'); });
+    var rows = exos.map(function (nom) {
+      var checked = _cdPickSel[nom] ? ' checked' : '';
+      var attr = esc(nom).replace(/"/g, '&quot;');
+      return '<label style="display:flex;align-items:center;gap:11px;padding:11px 10px;border-radius:10px;cursor:pointer;">'
+        + '<input type="checkbox"' + checked + ' onchange="_cdPickToggle(this.getAttribute(\'data-nom\'),this.checked)" data-nom="' + attr + '" style="width:20px;height:20px;flex:none;accent-color:var(--accent);cursor:pointer;">'
+        + '<span style="font-size:14px;font-weight:600;color:var(--text)">' + esc(nom) + '</span></label>';
+    }).join('');
+    return '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);padding:12px 10px 4px;">' + esc(m) + '</div>' + rows;
+  }).join('');
+}
+async function _cdPickConfirm() {
+  var noms = Object.keys(_cdPickSel); if (!noms.length) return;
+  var sid = _cdPickSid;
+  var btn = document.getElementById('cd-pick-add');
+  if (btn) { btn.disabled = true; btn.textContent = 'Ajout…'; btn.style.opacity = '.7'; }
+  // Ajout séquentiel (conserve l'ordre de la liste, évite les collisions de lignes).
+  for (var i = 0; i < noms.length; i++) {
+    var body = {
+      action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
+      athlete_nom: _progAthleteNom(), seance_id: sid, exercice: noms[i],
+      series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: '', type: 'muscu'
+    };
+    try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); } catch (e) {}
+  }
+  _cdPickClose();
+  cdProgOpen[sid] = true;
+  try { showToast('✅ ' + noms.length + ' exercice' + (noms.length > 1 ? 's' : '') + ' ajouté' + (noms.length > 1 ? 's' : '')); } catch (e) {}
   chargerProgrammeCoach();
 }
 async function _cdAddCardio(seanceId) {
@@ -7077,7 +8220,10 @@ function renderAlertesCoach(data) {
     const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const fait = dejaConseille(sujetRaw);
     const explicationId = `alerte-explication-${idx}`;
+    const stagExo = (al.type === 'stagnation' && al.message && al.message.indexOf(' : aucun progrès') >= 0) ? al.message.split(' : aucun progrès')[0].trim() : null;
+    const presc = stagExo ? _prescriptionStag(stagExo) : null;
     const body = `<div style="font-size:13px;font-weight:700;color:${c};">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:500">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
+      ${presc ? `<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:5px;">👉 ${escapeHtml(presc.act)}</div>` : ''}
       <div id="${explicationId}" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:7px;padding:7px 9px;background:var(--surface2);border-radius:8px;line-height:1.45;">${explicationAlerte(al)}</div>`;
     const actions = `<button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
         ${fait
@@ -7387,6 +8533,12 @@ function majBadgeConseils() {
   } else {
     badge.style.display = 'none';
   }
+  // Miroir sur la sidebar desktop (même compteur, item « Coach »).
+  const badgeSide = document.getElementById('as-badge-conseils');
+  if (badgeSide) {
+    if (nonLus > 0) { badgeSide.textContent = nonLus; badgeSide.style.display = 'grid'; }
+    else { badgeSide.style.display = 'none'; }
+  }
 }
 
 // ══════════ Écran « Douleurs & blessures » ══════════
@@ -7509,6 +8661,22 @@ function afficherOngletConseils() {
 }
 // Entrée directe sur le fil Novalyz IA (boutons « Demande à Novalyz »).
 function ouvrirNovalyzIA() { _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils'); }
+// Bloc « Demande à Novalyz » (rail bureau) : on écrit dans le champ puis on ouvre
+// le fil IA et on envoie directement la question saisie (pas juste une redirection).
+function nvzAskSend(inp) {
+  var t = (inp && inp.value || '').trim();
+  if (inp) inp.value = '';
+  ouvrirNovalyzIA();
+  if (!t) return;
+  setTimeout(function () { var i = document.getElementById('cv-ia-input'); if (i) { i.value = t; if (typeof cvSendIA === 'function') cvSendIA(); } }, 40);
+}
+// Suggestion cliquée : pré-remplit la question et l'envoie.
+function nvzAskChip(btn) {
+  var t = btn ? (btn.getAttribute('data-q') || btn.textContent || '').trim() : '';
+  ouvrirNovalyzIA();
+  if (!t) return;
+  setTimeout(function () { var i = document.getElementById('cv-ia-input'); if (i) { i.value = t; if (typeof cvSendIA === 'function') cvSendIA(); } }, 40);
+}
 // Entrée sur la liste des conversations (bulle d'en-tête).
 function ouvrirConversations() { _cvView = 'list'; if (typeof switchTab === 'function') switchTab('conseils'); }
 // Onglet « Coach » (adaptatif) : athlète SOLO → fil IA direct ; athlète AVEC coach
@@ -7539,10 +8707,14 @@ function _majFabNovalyz(tab) {
     var act = document.querySelector('.tab-content.active');
     tab = act ? (act.id || '').replace(/^tab-/, '') : '';
   }
-  var solo = !_athleteAUnCoach();
   var ecranCache = (tab === 'conseils' || tab === 'morpho');
   var saisieActive = document.body.classList.contains('seance-active');
-  fab.style.display = (solo && !ecranCache && !saisieActive) ? 'flex' : 'none';
+  // En BUREAU (≥992px), la bulle est remplacée par le bloc « Demande à Novalyz »
+  // du rail (voir .nvz-ask) → bulle masquée. En MOBILE, bulle visible pour TOUS
+  // les athlètes (l'assistant Novalyz IA est une fonctionnalité commune, plus
+  // seulement « solo » — un athlète coaché peut aussi vouloir interroger l'IA).
+  var desktop = (typeof window !== 'undefined' && window.innerWidth >= 992);
+  fab.style.display = (!desktop && !ecranCache && !saisieActive) ? 'flex' : 'none';
 }
 
 function _cvShow(view) {
@@ -7952,27 +9124,28 @@ function switchCoachAuthMode(mode) {
 // Le rôle « prépa » n'existe pas en muscu (le coach y fait déjà la prépa).
 // On masque l'option quand le sport est la muscu et on retombe sur « coach ».
 function majRoleSelonSport() {
-  var sp = document.getElementById('reg-coach-sport');
+  // Préparateur physique disponible pour TOUS les sports (le choix du sport étant
+  // en fin de formulaire, masquer « prépa » en muscu n'était pas évident).
   var rl = document.getElementById('reg-coach-role');
-  if (!sp || !rl) return;
-  var estMuscu = (sp.value === 'muscu');
+  if (!rl) return;
   var prepaOpt = rl.querySelector('option[value="prepa"]');
-  if (prepaOpt) prepaOpt.style.display = estMuscu ? 'none' : '';
-  if (estMuscu && rl.value === 'prepa') rl.value = 'coach';
+  if (prepaOpt) prepaOpt.style.display = '';
 }
 
 async function sInscrireCoach() {
   const nom = document.getElementById('reg-coach-nom').value.trim();
   const login = document.getElementById('reg-coach-login').value.trim();
+  const email = (document.getElementById('reg-coach-email') ? document.getElementById('reg-coach-email').value : '').trim();
   const password = document.getElementById('reg-coach-password').value;
   const sportSel = document.getElementById('reg-coach-sport');
   const sport = sportSel ? sportSel.value : 'muscu';
   const roleSel = document.getElementById('reg-coach-role');
-  // Pas de prépa en muscu (le coach y fait déjà la prépa) → on force « coach ».
-  const role = (sport === 'muscu') ? 'coach' : (roleSel ? roleSel.value : 'coach');
+  // Rôle choisi par l'utilisateur (coach ou préparateur), quel que soit le sport.
+  const role = (roleSel && (roleSel.value === 'coach' || roleSel.value === 'prepa')) ? roleSel.value : 'coach';
   const errEl = document.getElementById('reg-coach-error');
   errEl.textContent = '';
-  if (!nom || !login) { errEl.textContent = 'Remplis tous les champs.'; return; }
+  if (!nom || !login || !email) { errEl.textContent = 'Remplis tous les champs (email inclus).'; return; }
+  if (!emailValideFront(email)) { errEl.textContent = 'Email invalide.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
   if (!document.getElementById('reg-coach-consent').checked) { errEl.textContent = 'Tu dois accepter la politique de confidentialité.'; return; }
   errEl.textContent = 'Création...';
@@ -7980,7 +9153,7 @@ async function sInscrireCoach() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'registerCoach', nom, login, password, sport, role })
+      body: JSON.stringify({ action: 'registerCoach', nom, login, email, password, sport, role })
     });
     const data = await res.json();
     if (data.success) {
@@ -8047,6 +9220,10 @@ function switchTab(tab) {
   // Aujourd'hui · Entraînement · Analyses · État. (Cardio retiré de la barre.)
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
     b.classList.toggle('active', ['accueil','seance','historique','etat','conseils'][i] === tab);
+  });
+  // Sidebar desktop (athlète) : synchroniser l'item actif sur l'onglet courant.
+  document.querySelectorAll('#app-side .as-item[data-tab]').forEach((b) => {
+    b.classList.toggle('active', b.getAttribute('data-tab') === tab);
   });
   const hdr = document.getElementById('header-nom');
   if (hdr && TAB_LABELS[tab]) hdr.textContent = TAB_LABELS[tab];
@@ -8706,32 +9883,88 @@ function toggleExoHorsProgramme(forceOpen) {
     // Scroll vers le haut de la liste
     const listeCard = document.getElementById('card-liste-seance');
     if (listeCard) scrollVersTitre(listeCard);
+    _exoSel = {}; _exoFiltreGrp = null;   // repartir propre à chaque ouverture
     const _re1=document.getElementById('rech-exo'); if(_re1)_re1.value=''; remplirListeExosLibres('');
   }
 }
 
 // Recherche d'exercice (remplace le double menu muscle→exercice)
 function _norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+// ===== Sélecteur d'exercices (séance libre) : groupes musculaires + fréquents +
+// multi-sélection. Mappe les muscles précis du catalogue vers 6 familles. =====
+var _EXO_GROUPES = [
+  { k: 'pecs', label: 'Pecs', col: '#1A5FFF', kw: ['pector', 'pec'] },
+  { k: 'dos', label: 'Dos', col: '#7C5CFF', kw: ['dos', 'dorsal', 'trapez', 'lombaire', 'rhombo'] },
+  { k: 'jambes', label: 'Jambes', col: '#00A854', kw: ['jambe', 'quadri', 'ischio', 'fessier', 'mollet', 'cuisse', 'adducteur', 'abducteur'] },
+  { k: 'epaules', label: 'Épaules', col: '#E07800', kw: ['epaule', 'delto'] },
+  { k: 'bras', label: 'Bras', col: '#EC4899', kw: ['biceps', 'triceps', 'bras'] },
+  { k: 'core', label: 'Core', col: '#0EA5A3', kw: ['abdo', 'gainage', 'core', 'oblique', 'sangle'] }
+];
+var _exoFiltreGrp = null;     // null = tous
+var _exoSel = {};             // multi-sélection : { "id|nom|muscle": true }
+function _exoGrpOf(muscle) { var m = _norm(muscle); for (var i = 0; i < _EXO_GROUPES.length; i++) { if (_EXO_GROUPES[i].kw.some(function (w) { return m.indexOf(_norm(w)) >= 0; })) return _EXO_GROUPES[i].k; } return null; }
+function _exoGrpMeta(k) { for (var i = 0; i < _EXO_GROUPES.length; i++) if (_EXO_GROUPES[i].k === k) return _EXO_GROUPES[i]; return null; }
+function exoSetGrp(k) { _exoFiltreGrp = (_exoFiltreGrp === k) ? null : k; filtrerExosLibres(); }
+function _exoFrequents() {
+  try {
+    var prog = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.historique && dernierAppData.historique.progression_par_exo) || {};
+    return Object.keys(prog).sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; }).slice(0, 10)
+      .map(function (nom) { var e = (exercicesData || []).find(function (x) { return x.exercice === nom; }); return { nom: nom, muscle: e ? (e.muscle || '') : '', id: (e && e.exercice_id != null) ? e.exercice_id : '' }; });
+  } catch (e) { return []; }
+}
+function _exoAttr(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;'); }
 function remplirListeExosLibres(filtre) {
-  const el = document.getElementById('liste-exos-libres');
-  if (!el) return;
-  const f = _norm(filtre);
-  const dejaNoms = seance.map(e => e.exerciceNom);
-  const items = exercicesData
-    .filter(e => !f || _norm(e.exercice).includes(f) || _norm(e.muscle).includes(f))
-    .sort((a, b) => String(a.muscle).localeCompare(String(b.muscle)) || String(a.exercice).localeCompare(String(b.exercice)));
-  if (items.length === 0) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:10px;text-align:center">Aucun exercice trouvé</div>'; return; }
-  el.innerHTML = items.slice(0, 60).map(e => {
-    const deja = dejaNoms.includes(e.exercice);
-    const id = (e.exercice_id != null ? e.exercice_id : '') + '|' + e.exercice + '|' + (e.muscle || '');
-    return `<button type="button" onclick="choisirExoDirect(this.dataset.v)" data-v="${id.replace(/"/g, '&quot;')}" style="width:100%;text-align:left;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:6px;cursor:pointer;">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.exercice}</div>
-        <div style="font-size:11px;color:var(--text-muted)">${e.muscle || ''}</div>
-      </div>
-      ${deja ? '<span style="font-size:10px;font-weight:700;color:var(--good)">déjà ajouté</span>' : '<span style="color:var(--accent);font-size:20px;font-weight:700">+</span>'}
-    </button>`;
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var f = _norm(filtre);
+  // --- Chips de groupes musculaires ---
+  var chipsEl = document.getElementById('exo-chips');
+  if (chipsEl) {
+    chipsEl.innerHTML = '<button type="button" class="exo-chip' + (!_exoFiltreGrp ? ' on' : '') + '"' + (!_exoFiltreGrp ? ' style="background:linear-gradient(135deg,var(--accent),var(--accent-strong,#0a46d6))"' : '') + ' onclick="exoSetGrp(null)">Tous</button>'
+      + _EXO_GROUPES.map(function (g) { var on = _exoFiltreGrp === g.k; return '<button type="button" class="exo-chip' + (on ? ' on' : '') + '"' + (on ? ' style="background:' + g.col + '"' : '') + ' onclick="exoSetGrp(\'' + g.k + '\')">' + (on ? '' : '<span class="d" style="background:' + g.col + '"></span>') + g.label + '</button>'; }).join('');
+  }
+  // --- Exercices fréquents (si pas de recherche texte) ---
+  var freqEl = document.getElementById('exo-freq');
+  if (freqEl) {
+    var fr = (!f) ? _exoFrequents().filter(function (x) { return !_exoFiltreGrp || _exoGrpOf(x.muscle) === _exoFiltreGrp; }) : [];
+    freqEl.innerHTML = fr.length ? ('<div class="exo-freq-lab">Tes exercices fréquents</div><div class="exo-freqs">' + fr.map(function (x) { return '<button type="button" class="exo-fchip" data-v="' + _exoAttr(x.id + '|' + x.nom + '|' + x.muscle) + '" onclick="choisirExoDirect(this.dataset.v)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>' + esc(x.nom) + '</button>'; }).join('') + '</div>') : '';
+  }
+  // --- Liste principale (cartes multi-sélection) ---
+  var el = document.getElementById('liste-exos-libres'); if (!el) return;
+  var dejaNoms = seance.map(function (e) { return e.exerciceNom; });
+  var items = (exercicesData || [])
+    .filter(function (e) { if (_exoFiltreGrp && _exoGrpOf(e.muscle) !== _exoFiltreGrp) return false; return !f || _norm(e.exercice).includes(f) || _norm(e.muscle).includes(f); })
+    .sort(function (a, b) { return String(a.muscle).localeCompare(String(b.muscle)) || String(a.exercice).localeCompare(String(b.exercice)); });
+  if (!items.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:14px;text-align:center">Aucun exercice trouvé</div>'; _exoRenderAddbar(); return; }
+  el.innerHTML = items.slice(0, 80).map(function (e) {
+    var val = (e.exercice_id != null ? e.exercice_id : '') + '|' + e.exercice + '|' + (e.muscle || '');
+    var deja = dejaNoms.indexOf(e.exercice) >= 0;
+    var sel = !!_exoSel[val];
+    var grp = _exoGrpOf(e.muscle); var meta = grp ? _exoGrpMeta(grp) : null; var col = meta ? meta.col : 'var(--text-subtle)';
+    return '<div class="exo-card' + (sel ? ' sel' : '') + '" data-v="' + _exoAttr(val) + '" onclick="exoToggleSel(this.dataset.v)">'
+      + '<span class="ck"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>'
+      + '<div class="nm"><div class="a">' + esc(e.exercice) + '</div><div class="b">' + esc(e.muscle || '') + '</div></div>'
+      + (deja ? '<span class="already">déjà ✓</span>' : '<span class="mt" style="background:' + col + '">' + (meta ? meta.label : '—') + '</span>')
+      + '</div>';
   }).join('');
+  _exoRenderAddbar();
+}
+function exoToggleSel(val) { if (_exoSel[val]) delete _exoSel[val]; else _exoSel[val] = true; var inp = document.getElementById('rech-exo'); remplirListeExosLibres(inp ? inp.value : ''); }
+function _exoRenderAddbar() {
+  var bar = document.getElementById('exo-addbar'); if (!bar) return;
+  var n = Object.keys(_exoSel).length;
+  if (!n) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'block';
+  bar.innerHTML = '<button type="button" class="exo-addbtn" onclick="exoAddSelected()">Ajouter ' + n + ' exercice' + (n > 1 ? 's' : '') + ' à ma séance</button>';
+}
+function exoAddSelected() {
+  var vals = Object.keys(_exoSel); if (!vals.length) return;
+  var added = 0;
+  vals.forEach(function (val) { var p = String(val).split('|'); var nom = p[1]; if (!seance.find(function (e) { return e.exerciceNom === nom; })) { seance.push({ muscle: p[2] || '', exerciceId: p[0], exerciceNom: nom, series: [] }); added++; } });
+  _exoSel = {}; _exoFiltreGrp = null;
+  var card = document.getElementById('card-hors-programme'); if (card) card.style.display = 'none';
+  var inp = document.getElementById('rech-exo'); if (inp) inp.value = '';
+  afficherListeSeance();
+  showToast('✅ ' + added + ' exercice' + (added > 1 ? 's' : '') + ' ajouté' + (added > 1 ? 's' : ''));
 }
 function filtrerExosLibres() {
   const inp = document.getElementById('rech-exo');
@@ -9504,6 +10737,30 @@ function afficherRecap() {
     recap.insertBefore(recBlock, recap.firstChild);
   }
 
+  // Verdict GLOBAL de la séance (hero coloré en tête du récap) — si le programme
+  // a des cibles (% 1RM et/ou RPE). Sinon rien (on ne juge pas sans référence).
+  try {
+    const vg = _verdictSeanceGlobal(seance, programmeSeance);
+    if (vg) {
+      const rpesAll = [];
+      seance.forEach(e => e.series.forEach(s => { if (Number(s.rpe) > 0) rpesAll.push(Number(s.rpe)); }));
+      const rpeMoy = rpesAll.length ? Math.round(rpesAll.reduce((a, b) => a + b, 0) / rpesAll.length * 10) / 10 : null;
+      const tonT = Math.round(totalVol / 100) / 10;
+      const COLV = { ok: ['#00A854', '#007a3a'], light: ['#E07800', '#b35f00'], hard: ['#DC3545', '#a82633'] };
+      const cv = COLV[vg.cls];
+      const tile = (n, l) => `<div style="flex:1;background:rgba(255,255,255,.16);border-radius:10px;padding:8px 4px;text-align:center"><div style="font-size:15px;font-weight:900">${n}</div><div style="font-size:9px;opacity:.85;text-transform:uppercase;letter-spacing:.03em">${l}</div></div>`;
+      const hero = document.createElement('div');
+      hero.style.cssText = `border-radius:18px;padding:18px 16px;margin-bottom:12px;color:#fff;background:linear-gradient(135deg,${cv[0]},${cv[1]});box-shadow:0 8px 22px rgba(7,11,20,.14)`;
+      hero.innerHTML =
+        `<div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.85">${escapeHtml(seanceType)}${_seanceDureeMin > 0 ? ' · ⏱ ' + _seanceDureeMin + ' min' : ''}</div>`
+        + `<div style="font-size:23px;font-weight:900;margin:3px 0 5px;letter-spacing:-.01em">${vg.titre}</div>`
+        + `<div style="font-size:12.5px;opacity:.96;line-height:1.5">${escapeHtml(vg.desc)}</div>`
+        + `<div style="display:flex;gap:7px;margin-top:14px">${tile(tonT + ' t', 'Tonnage')}${tile(totalSeries, 'Séries')}${rpeMoy != null ? tile(String(rpeMoy).replace('.', ','), 'RPE moy') : ''}</div>`
+        + (vg.reco ? `<div style="margin-top:12px;font-size:12.5px;background:rgba(255,255,255,.14);border-radius:11px;padding:10px 12px;line-height:1.5">💡 ${escapeHtml(vg.reco)}</div>` : '');
+      recap.insertBefore(hero, recap.firstChild);
+    }
+  } catch (e) {}
+
   afficherProgrammeVsRealise(seanceType);
   window.scrollTo(0,0);
 }
@@ -9830,20 +11087,24 @@ function maSetDisc(d) {
   _maDisc = (['muscu', 'cardio', 'croise'].indexOf(d) >= 0) ? d : 'muscu';
   // Changement de discipline = on repart du début : Résumé · Semaine, sous-vues et
   // compteurs « Charger plus » réinitialisés (demande porteur : cohérent partout).
-  _maTab = 'resume'; _maPeriode = 'semaine'; _maProgMode = 'exo';
+  _maTab = 'resume'; _maPeriodeTouched = false; _maGran = _maDefaultGran('resume'); _maOffset = 0; _maSyncPeriode(); _maProgMode = 'exo';
   _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
   _maApply();
   try { maRenderData(); } catch (e) {}
   try { window.scrollTo(0, 0); } catch (e) {}
 }
-function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
+// Granularité par défaut selon la vue : Résumé = semaine (instantané) ; Par
+// exercice/sport et Tendances = mois (courbe lisible). L'utilisateur peut ensuite
+// naviguer (flèches) ou changer Semaine/Mois/Année.
+function _maDefaultGran(t) { return (t === 'detail' || t === 'tendances') ? 'M' : 'S'; }
+function maSetTab(t) { if (_MA_TABS[_maDisc].indexOf(t) < 0) return; _maTab = t; if (!_maPeriodeTouched) { _maGran = _maDefaultGran(t); _maOffset = 0; _maSyncPeriode(); } _maApply(); try { window.scrollTo(0, 0); } catch (e) {} }
 // Réinitialise le curseur de navigation à Muscu · Résumé · Semaine.
 // Appelé à chaque ouverture de l'écran Analyses (et donc après changement de compte).
 function maResetNav() {
   // À l'ouverture de Mes Analyses : on repart du début (Muscu · Résumé · Semaine),
   // sous-vue « Par exercice » réinitialisée, compteurs « Charger plus » à 5, et on
   // ré-applique visuellement (sinon l'ancien sous-onglet/période restait affiché).
-  _maDisc = 'muscu'; _maTab = 'resume'; _maPeriode = 'semaine';
+  _maDisc = 'muscu'; _maTab = 'resume'; _maPeriodeTouched = false; _maGran = _maDefaultGran('resume'); _maOffset = 0; _maSyncPeriode();
   _maHistMore = { muscu: 5, cardio: 5 }; _maSeaMore = 5;
   try { _maProgMode = 'exo'; } catch (e) {}
   try { _maApply(); } catch (e) {}
@@ -9852,33 +11113,97 @@ function maResetNav() {
 // Sélecteur de période : met à jour l'état + re-rend les vues data. Le sélecteur
 // est désormais rendu DANS les panes (sous la Lecture Novalyz en Résumé, au-dessus
 // du graphique en Tendances) via _maPeriodHtml() — plus de barre partagée en haut.
-function maSetPeriode(p, btn) {
-  if (_MA_PERIODS.indexOf(p) < 0) return;
-  _maPeriode = p;
-  // Pas de scroll : on garde la position pour VOIR le graphique/chiffres se mettre
-  // à jour juste sous le sélecteur.
-  try { maRenderData(); } catch (e) {}
+// ─── Sélecteur de période UNIFIÉ (même modèle que la montre/pas : Semaine · Mois ·
+// Année en segments + flèches ‹ › pour reculer/avancer + « Aujourd'hui »). État =
+// granularité (_maGran ∈ S|M|A) + offset (_maOffset ≤ 0). La fenêtre est calendaire
+// (semaine lun→dim, mois civil, année civile) via _actRange (réutilisé de la montre).
+function maSetGran(g) { if (['S', 'M', 'A'].indexOf(g) < 0) return; _maGran = g; _maOffset = 0; _maPeriodeTouched = true; _maSyncPeriode(); try { maRenderData(); } catch (e) {} }
+function maNavPeriode(dir) { var n = _maOffset + dir; if (n > 0) n = 0; _maOffset = n; _maPeriodeTouched = true; try { maRenderData(); } catch (e) {} }
+function maTodayPeriode() { _maOffset = 0; _maPeriodeTouched = true; try { maRenderData(); } catch (e) {} }
+// Compat : _maPeriode (grossier) reste synchronisé pour les lectures héritées (axes…).
+function _maSyncPeriode() { _maPeriode = (_maGran === 'S') ? 'semaine' : (_maGran === 'M') ? 'mois' : 'annee'; }
+// Fenêtre calendaire courante : { start, end (Date, exclusif), startISO, endISO,
+// days, label, plabel, gran, offset, isCurrent }.
+function _maWin() {
+  var r = _actRange(_maGran, _maOffset);
+  var startISO = _ymdLocal(r.start), endISO = _ymdLocal(r.end);
+  var days = Math.max(1, Math.round((r.end - r.start) / 86400000));
+  var cur = _maOffset === 0, plabel;
+  if (_maGran === 'S') plabel = cur ? 'cette semaine' : ('semaine du ' + r.start.getDate() + '/' + (r.start.getMonth() + 1));
+  else if (_maGran === 'M') plabel = cur ? 'ce mois-ci' : r.label;
+  else plabel = cur ? 'cette année' : r.label;
+  return { start: r.start, end: r.end, startISO: startISO, endISO: endISO, days: days, label: r.label, plabel: plabel, gran: _maGran, offset: _maOffset, isCurrent: cur };
 }
-// Ligne de sélection de période (rendue inline dans chaque pane qui en a besoin).
-// Identique partout : Semaine · Mois · 3 mois · [+] (menu 6 mois / 9 mois / Année).
+function _maPLabel() { return _maWin().plabel; }
+// Ligne de sélection (rendue inline dans chaque pane) — allure identique à la montre.
 function _maPeriodHtml() {
-  var isLong = ['6mois', '9mois', 'annee'].indexOf(_maPeriode) >= 0;
-  var longLbl = { '6mois': '6 mois', '9mois': '9 mois', annee: 'Année' }[_maPeriode];
-  var plusIco = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
-  var btns = '<button class="' + (_maPeriode === 'semaine' ? 'on' : '') + '" onclick="maSetPeriode(\'semaine\')">Semaine</button>'
-    + '<button class="' + (_maPeriode === 'mois' ? 'on' : '') + '" onclick="maSetPeriode(\'mois\')">Mois</button>'
-    + '<button class="' + (_maPeriode === '3mois' ? 'on' : '') + '" onclick="maSetPeriode(\'3mois\')">3 mois</button>'
-    + '<button class="plus' + (isLong ? ' on' : '') + '" title="Période plus longue" onclick="maTogglePeriodMenu(this)">' + (isLong ? longLbl : plusIco) + '</button>';
-  var menu = '<div class="ma-pmenu" style="display:none"><div onclick="maSetPeriode(\'6mois\')">6 mois</div><div onclick="maSetPeriode(\'9mois\')">9 mois</div><div onclick="maSetPeriode(\'annee\')">Année</div></div>';
-  return '<div class="ma-period-wrap"><div class="ma-period ma-period-inline">' + btns + '</div>' + menu + '</div>';
-}
-// Ouvre/ferme le menu « + » relatif au bouton cliqué (pas d'id → pas de collision
-// entre panes qui rendent tous leur propre sélecteur).
-function maTogglePeriodMenu(btn) {
-  try { var w = btn.closest('.ma-period-wrap'); var m = w && w.querySelector('.ma-pmenu'); if (m) m.style.display = (m.style.display === 'block') ? 'none' : 'block'; } catch (e) {}
+  var w = _maWin();
+  var seg = [['S', 'Semaine'], ['M', 'Mois'], ['A', 'Année']].map(function (g) {
+    var on = g[0] === _maGran;
+    return '<button onclick="maSetGran(\'' + g[0] + '\')" style="flex:1;border:none;background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text-muted)') + ';font-family:inherit;font-weight:800;font-size:12px;padding:7px 0;border-radius:8px;cursor:pointer;">' + g[1] + '</button>';
+  }).join('');
+  var today = _maOffset !== 0 ? '<div style="font-size:10.5px;margin-top:1px;"><span onclick="maTodayPeriode()" style="color:var(--accent);font-weight:800;cursor:pointer;">Aujourd\'hui</span></div>' : '';
+  var nextDis = _maOffset >= 0;
+  return '<div class="ma-period-wrap" style="margin-bottom:10px;">'
+    + '<div style="display:flex;gap:4px;background:var(--surface2);border-radius:11px;padding:4px;margin-bottom:7px;">' + seg + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<button onclick="maNavPeriode(-1)" aria-label="Période précédente" style="width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;">‹</button>'
+    + '<div style="flex:1;text-align:center;"><div style="font-size:13px;font-weight:800;color:var(--text);">' + _maE(w.label) + '</div>' + today + '</div>'
+    + '<button onclick="maNavPeriode(1)" ' + (nextDis ? 'disabled' : '') + ' aria-label="Période suivante" style="width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none;opacity:' + (nextDis ? '.35' : '1') + ';">›</button>'
+    + '</div></div>';
 }
 // Petite légende sous le sélecteur en Tendances/Résumé pour situer ce qui bouge.
 function _maPeriodHint(txt) { return '<div style="font-size:10.5px;color:var(--text-subtle);margin:-4px 2px 10px;line-height:1.4">' + txt + '</div>'; }
+// Buckets de tendance selon la granularité : S→7 jours · M→semaines du mois · A→12 mois.
+// Retourne { pts:[valeurs], dates:[ISO de début de bucket] } sur la fenêtre courante.
+function _maTrendData(dict, agg) {
+  dict = dict || {};
+  var w = _maWin(), buckets = [], i, m, cur, e, d;
+  if (w.gran === 'S') {
+    for (i = 0; i < 7; i++) { d = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate() + i); buckets.push([d, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)]); }
+  } else if (w.gran === 'M') {
+    cur = new Date(w.start);
+    while (cur < w.end) { e = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7); if (e > w.end) e = new Date(w.end); buckets.push([new Date(cur), e]); cur = e; }
+  } else {
+    for (m = 0; m < 12; m++) buckets.push([new Date(w.start.getFullYear(), m, 1), new Date(w.start.getFullYear(), m + 1, 1)]);
+  }
+  var pts = [], dates = [];
+  buckets.forEach(function (b) {
+    var vals = [], dd = new Date(b[0]);
+    while (dd < b[1]) { var k = _ymdLocal(dd); if (dict[k] != null) vals.push(dict[k]); dd = new Date(dd.getFullYear(), dd.getMonth(), dd.getDate() + 1); }
+    var sum = vals.reduce(function (a, v) { return a + v; }, 0);
+    pts.push(agg === 'count' ? vals.length : agg === 'avg' ? (vals.length ? Math.round(sum / vals.length * 10) / 10 : 0) : sum);
+    dates.push(_ymdLocal(b[0]));
+  });
+  return { pts: pts, dates: dates };
+}
+// Tendance cardio d'une métrique (somme ou moyenne) sur les mêmes buckets.
+function _maSportTrend(sesss, metric) {
+  var avgM = { vitesse_moy: 1, fc_moy: 1 }, byDate = {};
+  (sesss || []).forEach(function (s) { if (+s[metric]) (byDate[s.date] = byDate[s.date] || []).push(+s[metric]); });
+  var dict = {};
+  Object.keys(byDate).forEach(function (k) { var a = byDate[k]; dict[k] = avgM[metric] ? (a.reduce(function (x, y) { return x + y; }, 0) / a.length) : a.reduce(function (x, y) { return x + y; }, 0); });
+  var td = _maTrendData(dict, avgM[metric] ? 'avg' : 'sum');
+  return { pts: td.pts.map(function (v) { return Math.round(v * 10) / 10; }), dates: td.dates };
+}
+// Agrégat muscu sur la fenêtre [startISO,endISO) depuis daily_muscu (historique
+// complet). Mêmes définitions que computeRecent (backend) → à offset 0, les chiffres
+// coïncident avec les fenêtres glissantes. seances = jours distincts d'entraînement.
+function _maMuscuAgg(daily, startISO, endISO) {
+  daily = daily || {};
+  var seances = 0, series = 0, reps = 0, tonnage = 0, rpeSum = 0, rpeN = 0, spm = {}, vpm = {};
+  Object.keys(daily).forEach(function (d) {
+    if (d >= startISO && d < endISO) {
+      var o = daily[d]; if (!o) return;
+      if ((o.series || 0) > 0) seances++;
+      series += o.series || 0; reps += o.reps || 0; tonnage += o.tonnage_kg || 0;
+      rpeSum += o.rpe_sum || 0; rpeN += o.rpe_n || 0;
+      Object.keys(o.spm || {}).forEach(function (mm) { spm[mm] = (spm[mm] || 0) + o.spm[mm]; });
+      Object.keys(o.vpm || {}).forEach(function (mm) { vpm[mm] = (vpm[mm] || 0) + o.vpm[mm]; });
+    }
+  });
+  return { seances: seances, series: series, reps: reps, tonnage_kg: Math.round(tonnage), tonnage: Math.round(tonnage / 100) / 10, rpe_moyen: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null, series_par_muscle: spm, volume_par_muscle: vpm };
+}
 // Historique (muscu/cardio) + Par séance : nb d'éléments affichés, étendu par « Charger plus ».
 var _maHistMore = { muscu: 5, cardio: 5 };
 var _maSeaMore = 5;
@@ -9890,20 +11215,24 @@ function _maMoreBtn(disc, shown, total) {
   return '<button onclick="maLoadMoreHist(\'' + disc + '\')" style="width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-weight:700;font-size:13px;color:var(--accent);cursor:pointer">Charger plus (' + (total - shown) + ' restantes)</button>';
 }
 function _maApply() {
-  // Côté coach : pas d'onglet Historique (doublon avec Entraînement)
-  if (typeof _maCoach !== 'undefined' && _maCoach && _maTab === 'historique') _maTab = 'resume';
+  // Côté coach (onglet « Progression ») : on ne garde que « Par exercice » +
+  // « Tendances ». Résumé (→ carte « Charge & assiduité » de l'Aperçu) et
+  // Historique (→ onglet Séances) sont masqués → défaut sur « Par exercice ».
+  if (typeof _maCoach !== 'undefined' && _maCoach && (_maTab === 'historique' || _maTab === 'resume')) {
+    _maTab = (_MA_TABS[_maDisc].indexOf('detail') >= 0) ? 'detail' : 'tendances';
+  }
   // Toggle discipline (Muscu / Cardio / Croisé)
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
     var b = document.getElementById('ma-sw-' + d);
     if (b) { b.classList.toggle('on', d === _maDisc); b.classList.toggle('cx', d === _maDisc && d === 'cardio'); b.classList.toggle('cr', d === _maDisc && d === 'croise'); }
   });
   // Le 2e sous-onglet change de libellé selon la discipline
-  var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Par exercice';
+  var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Évolution';
   // Sous-onglets : dispo (Croisé masque Détail + Historique) + actif
   var dispo = _MA_TABS[_maDisc];
   ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
     var b = document.getElementById('ma-tab-' + t);
-    if (b) { var av = dispo.indexOf(t) >= 0 && !((typeof _maCoach !== 'undefined' && _maCoach) && t === 'historique'); b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
+    if (b) { var av = dispo.indexOf(t) >= 0 && !((typeof _maCoach !== 'undefined' && _maCoach) && (t === 'historique' || t === 'resume')); b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
   });
   // Panes visibles
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
@@ -9915,7 +11244,10 @@ function _maApply() {
 }
 
 // ═══════════════ Écran Analyses : câblage données réelles ═══════════════
-var _maPeriode = 'semaine';   // semaine|mois|3mois|6mois|9mois|annee
+var _maGran = 'S';            // 'S' semaine | 'M' mois | 'A' année (modèle montre)
+var _maOffset = 0;            // décalage ≤ 0 (0 = période courante, -1 = précédente…)
+var _maPeriode = 'semaine';   // compat (grossier) : semaine|mois|annee, synchronisé via _maSyncPeriode
+var _maPeriodeTouched = false;   // l'utilisateur a-t-il choisi la période à la main ?
 var _MA_WIN = { semaine: 'j7', mois: 'j28', '3mois': 'j90', '6mois': 'j180', '9mois': 'j270', annee: 'j365' };
 var _MA_DAYS = { semaine: 7, mois: 28, '3mois': 90, '6mois': 180, '9mois': 270, annee: 365 };
 var _MA_PLABEL = { semaine: 'cette semaine', mois: 'ce mois-ci', '3mois': 'ces 3 mois', '6mois': 'ces 6 mois', '9mois': 'ces 9 mois', annee: 'cette année' };
@@ -9961,6 +11293,65 @@ function _maSpark(pts, color) {
   var ys = pts.map(function (v) { return h - 3 - ((v - mn) / ((mx - mn) || 1)) * (h - 6); });
   return '<svg width="60" height="24" viewBox="0 0 60 24" fill="none"><path d="' + xs.map(function (x, i) { return (i ? 'L' : 'M') + x.toFixed(0) + ' ' + ys[i].toFixed(0); }).join(' ') + '" stroke="' + color + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
+function _maIsDesktop() { try { return window.innerWidth >= 992; } catch (e) { return false; } }
+// Date courte JJ/MM depuis "AAAA-MM-JJ" ou "JJ/MM/AAAA".
+function _maShortDate(s) {
+  s = String(s || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) { var p = s.split('-'); return (+p[2]) + '/' + (+p[1]); }
+  var m = s.match(/^(\d{1,2})[\/](\d{1,2})/); return m ? (+m[1]) + '/' + (+m[2]) : s;
+}
+// Point UNIQUE (ex. 1 séance sur la période) : une ligne/aire ne montrerait rien
+// — et une charge nulle (poids du corps) donnerait une ligne plate à 0. On rend
+// donc le point centré avec sa VALEUR et sa DATE, pour que le graphe porte une
+// info exploitable même avec une seule séance. Utilisé desktop ET mobile.
+function _maSingleRich(value, date, unit, color) {
+  color = color || '#1A5FFF';
+  var W = 470, H = 180, cx = W / 2, cy = 84, v = Math.round((Number(value) || 0) * 10) / 10;
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">'
+    + '<line x1="46" y1="' + cy + '" x2="' + (W - 16) + '" y2="' + cy + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="5 5"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="6.5" fill="#00A854" stroke="#fff" stroke-width="2.5"/>'
+    + '<text x="' + cx + '" y="' + (cy - 15) + '" text-anchor="middle" font-size="16" font-weight="800" fill="#00A854">' + v + (unit ? ' ' + unit : '') + '</text>'
+    + '<text x="' + cx + '" y="' + (cy + 26) + '" text-anchor="middle" font-size="11.5" fill="var(--text-subtle)">' + _maE(_maShortDate(date)) + '</text>'
+    + '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="var(--text-muted)">1 séance sur la période · la courbe apparaît dès 2 séances</text>'
+    + '</svg>';
+}
+// Graphe courbe RICHE (desktop) : axes + grille + étiquettes de données + dernier
+// point mis en avant. Ratio préservé (pas de preserveAspectRatio:none) → PAS aplati.
+// Utilisé seulement en bureau ; sur mobile on garde _maArea (compact, inchangé).
+function _maLineRich(series, dates, unit, color) {
+  var n = series.length; color = color || '#1A5FFF';
+  if (n === 1) return _maSingleRich(series[0], dates && dates[0], unit, color);
+  if (n < 1) return _maArea(series, color, 'rgba(26,95,255,.12)');
+  var W = 470, H = 260, pL = 46, pR = 16, pT = 26, pB = 30;
+  var mn = Math.min.apply(null, series), mx = Math.max.apply(null, series);
+  if (mn === mx) { mn = mn - 1; mx = mx + 1; }
+  var rng = mx - mn || 1;
+  var X = function (i) { return pL + i * (W - pL - pR) / (n - 1); };
+  var Y = function (v) { return pT + (1 - (v - mn) / rng) * (H - pT - pB); };
+  var grid = '', ylab = '';
+  for (var g = 0; g <= 4; g++) {
+    var yy = pT + g * (H - pT - pB) / 4, val = mx - g * rng / 4;
+    grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
+    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12.5" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
+  }
+  // Unité de l'axe Y (ex. « kg ») en tête, pour lever toute ambiguïté.
+  if (unit) ylab += '<text x="' + (pL - 7) + '" y="' + (pT - 9) + '" text-anchor="end" font-size="10" font-weight="800" fill="var(--text-muted)">' + unit + '</text>';
+  var line = series.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ');
+  var area = 'M' + X(0).toFixed(1) + ' ' + Y(series[0]).toFixed(1) + ' ' + series.map(function (v, i) { return 'L' + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + (H - pB) + ' L' + X(0).toFixed(1) + ' ' + (H - pB) + ' Z';
+  var step = Math.max(1, Math.ceil(n / 8)), dots = '';
+  series.forEach(function (v, i) {
+    var xx = X(i), yv = Y(v), last = (i === n - 1);
+    dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yv.toFixed(1) + '" r="' + (last ? 5 : 3.4) + '" fill="' + (last ? '#00A854' : color) + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
+    if (last || i % step === 0) dots += '<text x="' + xx.toFixed(1) + '" y="' + (yv - 9).toFixed(1) + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + (last ? '#00A854' : 'var(--text-muted)') + '">' + (Math.round(v * 10) / 10) + (last && unit ? ' ' + unit : '') + '</text>';
+  });
+  // Une étiquette de date à CHAQUE point tant que ça reste lisible (≤ 9), sinon on
+  // éclaircit. On affiche la vraie date partout (pas « Auj. ») — demande porteur.
+  var xstep = Math.max(1, Math.ceil(n / 5)), xi = [];
+  for (var _xi = 0; _xi < n; _xi += xstep) xi.push(_xi);
+  if (xi[xi.length - 1] !== n - 1) xi.push(n - 1);
+  var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + _maE(_maShortDate(dates[i])) + '</text>'; }).join('');
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + ylab + '<path d="' + area + '" fill="' + color + '" opacity="0.08"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' + dots + xlab + '</svg>';
+}
 function _maArea(pts, color, fill) {
   if (!pts || pts.length < 2) pts = [0, 0];
   var w = 326, h = 90, xs = pts.map(function (p, i) { return 2 + i * (w - 4) / (pts.length - 1); });
@@ -9968,6 +11359,47 @@ function _maArea(pts, color, fill) {
   var ys = pts.map(function (v) { return h - 6 - ((v - mn) / ((mx - mn) || 1)) * (h - 16); });
   var line = xs.map(function (x, i) { return (i ? 'L' : 'M') + x.toFixed(0) + ' ' + ys[i].toFixed(0); }).join(' ');
   return '<svg width="100%" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><path d="' + line + ' L' + xs[xs.length - 1].toFixed(0) + ' ' + h + ' L' + xs[0].toFixed(0) + ' ' + h + ' Z" fill="' + fill + '"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + xs[xs.length - 1].toFixed(0) + '" cy="' + ys[ys.length - 1].toFixed(0) + '" r="3.4" fill="' + color + '"/></svg>';
+}
+// Tuile compacte pour les rails Analyses (bureau). v = valeur, u = unité.
+function _maRailTile(k, v, u, dotCol) {
+  return '<div class="rail-tile"><div class="k">' + (dotCol ? '<span class="dot" style="background:' + dotCol + '"></span>' : '') + k + '</div><div class="v"' + (String(v).length > 7 ? ' style="font-size:14px"' : '') + '>' + v + (u ? '<small> ' + u + '</small>' : '') + '</div></div>';
+}
+// Rail « Équilibre & dispo » (croisé) : disponibilité + récup + ACWR (si fiable).
+// Signaux DÉJÀ produits par le moteur — rien d'inventé.
+function _maMoteurTiles(data) {
+  var m = (data && data.moteur) || {}, dash = (data && data.dashboard) || {}, tiles = [];
+  var niv = m.disponibilite && m.disponibilite.niveau;
+  if (niv) { var dc = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : 'var(--danger)'); tiles.push(_maRailTile('Disponibilité', _maE(niv), '', dc)); }
+  if (m.recup && m.recup !== '—') tiles.push(_maRailTile('Récupération', _maE(String(m.recup)), ''));
+  if (dash.acwr != null && m.acwr_fiable !== false) tiles.push(_maRailTile('ACWR', _maE(String(dash.acwr)), ''));
+  if (!tiles.length) return '';
+  return '<div class="rail-hd">Ma forme</div><div class="rail-snap-grid">' + tiles.join('') + '</div>';
+}
+// Rail « Mes repères cardio » : agrégats neutres sur 30 j + charge 7 j (UA).
+// Pas de « meilleure allure » (trompeur entre sports) — que des sommes/compteurs.
+function _maCardioRail(data) {
+  var hist = (data && data.cardio && data.cardio.history) || []; if (!hist.length) return '';
+  var cut30 = _maCutISO(30), cut7 = _maCutISO(7), n30 = 0, km30 = 0, ua7 = 0;
+  hist.forEach(function (s) {
+    if ((s.date || '') >= cut30) { n30++; if (+s.distance) km30 += +s.distance; }
+    if ((s.date || '') >= cut7 && +s.rpe && +s.duree) ua7 += (+s.rpe) * (+s.duree);
+  });
+  var tiles = [_maRailTile('Sorties 30 j', n30, ''), _maRailTile('Distance 30 j', Math.round(km30 * 10) / 10, 'km'), _maRailTile('Charge 7 j', Math.round(ua7), 'UA')];
+  return '<div class="rail-hd">Mes repères cardio</div><div class="rail-snap-grid">' + tiles.join('') + '</div>';
+}
+// Bloc « Demande à Novalyz » pour le rail des panneaux Analyses (généré en JS).
+// Réutilise la CSS .nvz-ask (desktop-only : masqué en mobile), donc inoffensif sur
+// mobile où .ma-colrail passe en display:contents.
+function _maNovaAsk() {
+  return '<div class="nvz-ask">'
+    + '<div class="nvz-ask-hd"><span class="nvz-ask-l">N</span><div><div class="nvz-ask-ti">Demande à Novalyz</div><div class="nvz-ask-sb">Ton coach IA, branché sur tes données</div></div></div>'
+    + '<div class="nvz-ask-chips">'
+    + '<button class="nvz-ask-chip" onclick="nvzAskChip(this)">Analyse ma progression<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>'
+    + '<button class="nvz-ask-chip" onclick="nvzAskChip(this)">Où je stagne ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>'
+    + '<button class="nvz-ask-chip" onclick="nvzAskChip(this)">Que travailler en priorité ?<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>'
+    + '</div>'
+    + '<div class="nvz-ask-field"><input class="nvz-ask-inp" type="text" placeholder="Pose ta question…" onkeydown="if(event.key===\'Enter\')nvzAskSend(this)"><button class="nvz-ask-send" onclick="nvzAskSend(this.previousElementSibling)" aria-label="Envoyer"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button></div>'
+    + '</div>';
 }
 function _maSet(id, html) { var el = document.getElementById(id); if (el) el.innerHTML = html; }
 function _maEmpty(msg) { return '<div class="ma-note" style="background:var(--surface2);border-color:var(--border);color:var(--text-muted)">' + msg + '</div>'; }
@@ -10013,13 +11445,37 @@ function _maRsAxis(rec, p) {
   return '<div class="ma-axis" style="margin-top:6px">' + idxs.map(function (i) { return '<span>' + fmt(rec[i].date) + '</span>'; }).join('') + '</div>';
 }
 // Bloc graphique standard, lisible : label + valeur actuelle + axe clair (2 bornes).
-function _maChartBlock(label, pts, unit, color, fill, axisFirst, note) {
+function _maChartBlock(label, pts, unit, color, fill, axisFirst, note, datesOverride) {
   var last = pts.length ? pts[pts.length - 1] : 0;
+  // Courbe riche (axes + grille + étiquettes de dates et de valeurs) en desktop ET
+  // mobile — demande porteur : voir dates + données partout. Dates explicites
+  // (buckets du sélecteur) si fournies, sinon synthèse par pas de 7 jours.
+  if (pts.length >= 2) {
+    var n = pts.length, dts;
+    if (datesOverride && datesOverride.length === n) { dts = datesOverride; }
+    else { dts = []; var now = new Date(); now.setHours(0, 0, 0, 0); for (var i = n - 1; i >= 0; i--) { var d = new Date(now); d.setDate(d.getDate() - (n - 1 - i) * 7); dts.unshift(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')); } }
+    return '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + label + '</span>'
+      + '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:' + color + '">' + String(last).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + unit + '</span></span></div>'
+      + _maLineRich(pts, dts, unit, color)
+      + (note ? _maCap(note) : '') + '</div>';
+  }
   return '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + label + '</span>'
     + '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:' + color + '">' + String(last).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + unit + '</span></span></div>'
     + _maArea(pts, color, fill)
     + '<div class="ma-axis"><span>' + axisFirst + '</span><span>cette sem.</span></div>'
     + (note ? _maCap(note) : '') + '</div>';
+}
+// Courbe hebdo nue (sans en-tête) : RICHE avec dates en bureau (_maLineRich),
+// compacte (_maArea + axe « il y a N sem. → cette sem. ») en mobile. Utilisée par
+// les graphes cardio (Par sport, Efficience) qui ont leur propre en-tête.
+function _maWeeklySvg(pts, unit, color, fill, nWeeks, datesOverride) {
+  if (pts && pts.length >= 2) {
+    var n = pts.length, dts;
+    if (datesOverride && datesOverride.length === n) { dts = datesOverride; }
+    else { dts = []; var now = new Date(); now.setHours(0, 0, 0, 0); for (var i = n - 1; i >= 0; i--) { var d = new Date(now); d.setDate(d.getDate() - (n - 1 - i) * 7); dts.unshift(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')); } }
+    return _maLineRich(pts, dts, unit, color);
+  }
+  return _maArea(pts, color, fill) + _maTrendAxis(nWeeks || (pts ? pts.length : 0));
 }
 // Série-temporelle hebdo générique depuis un dict {isoDate: valeur} → N dernières semaines.
 function _maWeekly(dict, nWeeks, agg) {
@@ -10056,7 +11512,10 @@ function _maVolTargets() {
 }
 // Nombre de semaines des graphes de tendance, piloté par la période choisie
 // (pour que les courbes réagissent au sélecteur Semaine/Mois/3 mois…).
-var _MA_TWEEKS = { semaine: 4, mois: 8, '3mois': 13, '6mois': 26, '9mois': 39, annee: 52 };
+// Nb de semaines affichées sur les courbes de tendance, aligné sur la durée réelle
+// de la période (mois ≈ 4 sem., 3 mois ≈ 13…). « Semaine » = 2 sem. (plancher pour
+// tracer une courbe). Avant : semaine=4 (affichait un mois) / mois=8 (deux mois).
+var _MA_TWEEKS = { semaine: 2, mois: 4, '3mois': 13, '6mois': 26, '9mois': 39, annee: 52 };
 function _maTrendWeeks() { return _MA_TWEEKS[_maPeriode] || 8; }
 // Libellé de gauche d'un axe de tendance : date de début de la 1re semaine affichée.
 function _maTrendFirst(nWeeks) {
@@ -10095,6 +11554,18 @@ function maRenderData() {
 
 // Bloc « Lecture Novalyz » : constats + reco orientés objectif (backend
 // analyse_synthese.muscu). Tolérant : si absent (backend pas encore redéployé), rien.
+// « Mot de Novalyz » : fait TOURNER la reco parmi le pool (un levier par jour) au
+// lieu d'un message figé. Déterministe (index = numéro de jour), honnête (rien si
+// confiance faible, sauf allowAllConf pour la Lecture Analyses qui montre toujours).
+function _novaPickReco(s, allowAllConf) {
+  if (!s) return '';
+  if (!allowAllConf && s.confiance === 'faible') return '';
+  var pool = (s.reco_pool && s.reco_pool.length) ? s.reco_pool : (s.reco ? [s.reco] : []);
+  if (!pool.length) return '';
+  var di = Math.floor(Date.now() / 86400000);   // index de jour → change chaque jour
+  var r = pool[((di % pool.length) + pool.length) % pool.length];
+  return String((r && r.texte) || '');
+}
 function _maSynthese(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.muscu); }
 function _maSyntheseCardio(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.cardio); }
 function _maSyntheseBloc(s) {
@@ -10107,7 +11578,8 @@ function _maSyntheseBloc(s) {
   var constats = (s.constats || []).map(function (c) {
     return '<div style="display:flex;gap:9px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:999px;background:' + (TON[c.ton] || 'var(--text-subtle)') + ';margin-top:6px;flex:none"></span><span style="font-size:13px;line-height:1.45">' + _maE(c.texte) + '</span></div>';
   }).join('');
-  var reco = s.reco ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(s.reco.texte) + '</div></div></div>') : '';
+  var _recoTxt = _novaPickReco(s, true) || (s.reco && s.reco.texte) || '';
+  var reco = _recoTxt ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(_recoTxt) + '</div></div></div>') : '';
   var conf = s.confiance ? '<div style="text-align:right;font-size:10px;color:var(--text-subtle)">fiabilité : ' + _maE(s.confiance) + '</div>' : '';
   return '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz' + head + '</div>'
     + '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;margin:8px 0 16px">' + constats + reco + conf
@@ -10120,8 +11592,8 @@ function _maExecVsCible(data) {
   var prog = (data && data.programme) || [];
   var cibles = prog.filter(function (p) { return p && (p.charge_pct_1rm != null || p.rpe_cible != null); });
   if (!cibles.length) return '';
-  var cut = _maCut(_maPeriode);
-  var sd = ((data && data.seances_detail) || []).filter(function (s) { return (s.date || '') >= cut; });
+  var _w = _maWin();
+  var sd = ((data && data.seances_detail) || []).filter(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; });
   var rows = [], nOk = 0, nEval = 0, seen = {};
   cibles.forEach(function (p) {
     if (seen[p.exercice]) return; seen[p.exercice] = 1;
@@ -10139,7 +11611,10 @@ function _maExecVsCible(data) {
     + _maCap('Ta dernière exécution de chaque exercice à cible.');
 }
 function _maMuscuResume(data) {
-  var p = _maPeriode, r = (data.recent && data.recent[_maRecentWin(p)]) || {}, days = _MA_DAYS[p];
+  var p = _maPeriode, w = _maWin(), days = w.days;
+  // KPI de la fenêtre NAVIGABLE calculés depuis daily_muscu (historique complet) —
+  // mêmes définitions que les fenêtres glissantes backend, donc cohérents à offset 0.
+  var r = _maMuscuAgg((data.historique && data.historique.daily_muscu), w.startISO, w.endISO);
   var mot = data.moteur || {};
   var niv = (mot.disponibilite && mot.disponibilite.niveau) || null;
   var VB = { 'Prêt': ['acc', 'var(--accent)', 'Prêt à performer', 'Charge et régularité au rendez-vous, le moteur te voit prêt.'],
@@ -10151,8 +11626,8 @@ function _maMuscuResume(data) {
   var seances = r.seances != null ? r.seances : 0;
   var tMoy = seances ? (Math.round((r.tonnage_kg || 0) / seances / 100) / 10) : null;
   var recs = data.global && data.global.records_par_exo ? data.global.records_par_exo : {};
-  var cut = _maCut(p), nRec = 0;
-  Object.keys(recs).forEach(function (k) { var d = _maFRtoDate(recs[k].date); if (d) { var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (iso >= cut) nRec++; } });
+  var nRec = 0;
+  Object.keys(recs).forEach(function (k) { var d = _maFRtoDate(recs[k].date); if (d) { var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (iso >= w.startISO && iso < w.endISO) nRec++; } });
   var kpi = [
     ['Tonnage moyen', (tMoy != null ? String(tMoy).replace('.', ',') : '—'), 't / séance'],
     ['Séances', String(seances), ''],
@@ -10162,7 +11637,7 @@ function _maMuscuResume(data) {
     ['Records battus', String(nRec), '']
   ].map(function (k) { return '<div class="ma-kpi"><span class="u">' + k[0] + '</span><span class="v">' + k[1] + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</span></div>'; }).join('');
   // Ressenti (période)
-  var rsArr = (data.analyses && data.analyses.ressenti_muscu) ? data.analyses.ressenti_muscu.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= cut; }) : [];
+  var rsArr = (data.analyses && data.analyses.ressenti_muscu) ? data.analyses.ressenti_muscu.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= w.startISO && (x.date || '') < w.endISO; }) : [];
   var rsHtml;
   if (rsArr.length) {
     var rec = rsArr.slice(0, 14).reverse();
@@ -10187,17 +11662,24 @@ function _maMuscuResume(data) {
     }).join('')
       + '<div class="ma-rsleg" style="margin-top:6px">' + [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + a[0] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   } else { volHtml = _maEmpty('Pas encore de volume sur la période.'); }
-  var ptitle = _MA_PLABEL[p].charAt(0).toUpperCase() + _MA_PLABEL[p].slice(1);
-  _maSet('ma-muscu-resume', _maSynthese(data) + verdict
-    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change les chiffres & graphiques ci-dessous selon la période.')
+  var ptitle = w.plabel.charAt(0).toUpperCase() + w.plabel.slice(1);
+  // Colonne principale : synthèse + chiffres + ressenti + Volume/Balance côte à côte.
+  // Rail droit (bureau) : Records perso + bloc Novalyz. Mobile : .ma-cols2/.ma-col*
+  // en display:contents → ordre d'origine inchangé.
+  var main = _maSynthese(data) + verdict
+    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change les chiffres & graphiques ci-dessous.')
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
-    + _maSec('Ressenti des séances', 'sur ' + _MA_PLABEL[p], 'ressenti') + rsHtml
-    + _maSec('Volume musculaire', _MA_PLABEL[p] + ' · séries', 'volume') + volHtml
-    + _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.')
-    + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + _MA_PLABEL[p], 'balance') + _maBalance(data)
-    + _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.'));
+    + _maSec('Ressenti des séances', 'sur ' + w.plabel, 'ressenti') + rsHtml
+    + '<div class="ma-cols">'
+    +   '<div class="ma-colcard">' + _maSec('Volume musculaire', w.plabel + ' · séries', 'volume') + volHtml
+    +     _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.') + '</div>'
+    +   '<div class="ma-colcard">' + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + w.plabel, 'balance') + _maBalance(data)
+    +     _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.') + '</div>'
+    + '</div>';
+  var rail = _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk();
+  _maSet('ma-muscu-resume', '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>');
 }
 
 function _maMuscuExercice(data) {
@@ -10210,10 +11692,17 @@ function _maMuscuExercice(data) {
   // Par exercice / Par groupe = filtrés par période → sélecteur. Par séance = « 5 derniers + Charger plus » (pas de sélecteur).
   var periodSel = (mode === 'sea') ? '' : _maPeriodHtml();
   var body = (mode === 'grp') ? _maProgGrp(data) : (mode === 'sea') ? _maProgSea(data) : _maProgExo(data);
-  _maSet('ma-muscu-detail', head + periodSel + body + _maSec('Records personnels') + _maRecords(data));
+  // Desktop (≥992px) : graphe/exercice dans la colonne principale, Records dans le
+  // rail droit (via .ma-cols2). Mobile : .ma-cols2/.ma-col* en display:contents →
+  // ordre d'origine (body puis Records) inchangé.
+  _maSet('ma-muscu-detail', head + periodSel
+    + '<div class="ma-cols2">'
+    +   '<div class="ma-colmain">' + body + '</div>'
+    +   '<div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div>'
+    + '</div>');
 }
 
-var _maExoSel = null, _maExoMetric = '1rm';
+var _maExoSel = null, _maExoMetric = 'cr';
 // Échappe une chaîne pour un littéral JS entre apostrophes DANS un attribut onclick à guillemets.
 function _maOnc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 function maSetExo(e) { _maExoSel = e; try { _maMuscuExercice(dernierAppData); } catch (x) {} }
@@ -10245,34 +11734,156 @@ function _maTrendBadgeVs(pct) {
   return '<span class="t ' + (pct >= 0 ? 'ma-up' : 'ma-dn') + '">tonnage ' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>';
 }
 // PAR EXERCICE : sélecteur d'exercice + graphe (1RM/charge/volume) + stats + séances.
+// Graphe combiné « Charge + Reps » (Par exercice) : ligne de charge (kg, axe
+// gauche) + barres de reps à cette charge (axe droit) + étiquette « charge×reps »
+// par point. Rappel : chaque point = la série la plus lourde du jour (backend).
+function _maChargeRepsRich(pts) {
+  var n = pts.length; if (!n) return _maArea([0], '#1A5FFF', 'rgba(26,95,255,.12)');
+  var W = 470, H = 264, pL = 46, pR = 18;
+  var cTop = 48, cBot = 218;   // la ligne de charge occupe toute la hauteur (plus de barres)
+  var charges = pts.map(function (p) { return Number(p.charge) || 0; });
+  var reps = pts.map(function (p) { return Number(p.reps) || 0; });
+  var cMin = Math.min.apply(null, charges), cMax = Math.max.apply(null, charges);
+  if (cMin === cMax) { cMin -= 2; cMax += 2; }
+  var cRng = cMax - cMin || 1;
+  var X = function (i) { return n === 1 ? (pL + (W - pL - pR) / 2) : (pL + i * (W - pL - pR) / (n - 1)); };
+  var Yc = function (v) { return cTop + (1 - (v - cMin) / cRng) * (cBot - cTop); };
+  var e = function (x) { return (typeof _maE === 'function') ? _maE(x) : x; };
+  var grid = '', yl = '';
+  for (var g = 0; g <= 4; g++) {
+    var yy = cTop + g * (cBot - cTop) / 4, val = cMax - g * cRng / 4;
+    grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
+    yl += '<text x="' + (pL - 6) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
+  }
+  yl += '<text x="' + (pL - 6) + '" y="' + (cTop - 18) + '" text-anchor="end" font-size="12" font-weight="800" fill="var(--accent)">kg</text>';
+  var pline = charges.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ');
+  var areaEl = (n >= 2) ? '<path d="M' + X(0).toFixed(1) + ' ' + Yc(charges[0]).toFixed(1) + ' ' + charges.map(function (v, i) { return 'L' + X(i).toFixed(1) + ' ' + Yc(v).toFixed(1); }).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + cBot + ' L' + X(0).toFixed(1) + ' ' + cBot + ' Z" fill="#1A5FFF" opacity="0.07"/>' : '';
+  var dots = '', clab = '', xlab = '';
+  // Étiquettes espacées quand beaucoup de points (ex. 3 mois) → pas de chevauchement.
+  var cstep = Math.max(1, Math.ceil(n / 7)), xstepCR = Math.max(1, Math.ceil(n / 5));
+  charges.forEach(function (v, i) {
+    var xx = X(i), yy = Yc(v), last = (i === n - 1);
+    dots += '<circle cx="' + xx.toFixed(1) + '" cy="' + yy.toFixed(1) + '" r="' + (last ? 5 : 3.5) + '" fill="' + (last ? '#00A854' : '#1A5FFF') + '"' + (last ? ' stroke="#fff" stroke-width="2"' : '') + '/>';
+    if (last || i % cstep === 0) clab += '<text x="' + xx.toFixed(1) + '" y="' + (yy - 11).toFixed(1) + '" text-anchor="middle" font-size="13.5" font-weight="800" fill="' + (last ? '#00A854' : 'var(--text)') + '">' + v + '×' + reps[i] + '</text>';
+    if (last || i % xstepCR === 0) xlab += '<text x="' + xx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + e(_maShortDate(pts[i].date)) + '</text>';
+  });
+  var lineEl = (n >= 2) ? '<path d="' + pline + '" fill="none" stroke="#1A5FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' : '';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + yl + areaEl + lineEl + dots + clab + xlab + '</svg>';
+}
 function _maProgExo(data) {
   var progAll = (data.historique && data.historique.progression_par_exo) || {};
-  var cut = _maCut(_maPeriode);
+  var _w = _maWin();
   function _isoOf(p) { var d = String(p.date || ''); return d.indexOf('/') !== -1 ? d.split('/').reverse().join('-') : d; }
-  // Période : ne garder que les points dont la date >= début de période (comme Par groupe / Par séance).
+  // Période navigable : points dont la date ∈ [début, fin) de la fenêtre choisie.
   var prog = {};
-  Object.keys(progAll).forEach(function (k) { var kept = (progAll[k] || []).filter(function (p) { return _isoOf(p) >= cut; }); if (kept.length) prog[k] = kept; });
+  Object.keys(progAll).forEach(function (k) { var kept = (progAll[k] || []).filter(function (p) { var i = _isoOf(p); return i >= _w.startISO && i < _w.endISO; }); if (kept.length) prog[k] = kept; });
   var exos = Object.keys(prog).filter(function (k) { return (prog[k] || []).length >= 1; }).sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; });
-  if (!exos.length) return _maEmpty('Aucun exercice suivi sur ' + (_MA_PLABEL[_maPeriode] || 'la période') + '.');
+  if (!exos.length) return _maEmpty('Aucun exercice suivi sur ' + (_w.plabel || 'la période') + '.');
   var sel = (_maExoSel && exos.indexOf(_maExoSel) >= 0) ? _maExoSel : exos[0];
   var pts = prog[sel].slice().reverse();   // chrono
   var np = pts.length;
   var muscle = ''; try { (data.seances_detail || []).some(function (s) { return (s.exercices || []).some(function (e) { if (e.nom === sel) { muscle = e.muscle || ''; return true; } return false; }); }); } catch (e) {}
   var menu = '<div id="ma-exo-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;max-height:250px;overflow:auto;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">' + exos.map(function (e, i) { return '<div onclick="maSetExo(\'' + _maOnc(e) + '\')" style="padding:10px 13px;font-size:13px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (e === sel ? 'background:var(--surface2);' : '') + '">' + _maE(e) + '</div>'; }).join('') + '</div>';
   var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + prog[sel].length + ' séance' + (prog[sel].length > 1 ? 's' : '') + ' suivie' + (prog[sel].length > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
-  var MET = [['1rm', '1RM estimé', 'kg'], ['charge', 'Charge max', 'kg'], ['volume', 'Volume', 'kg']];
+  // Charge en premier (c'est la valeur la plus parlante au quotidien) ; 1RM et
+  // Répétitions ensuite. Onglets soulignés (≠ pastilles pleines de la période).
+  // 3 métriques : « Charge + reps » (défaut, lecture concrète), « 1RM estimé »
+  // (progrès à charge égale), « Volume (toutes séries) » (travail total du jour).
+  var MET = [['cr', 'Charge + reps', 'kg'], ['1rm', '1RM estimé', 'kg'], ['vol', 'Volume (toutes séries)', 'kg']];
   var met = MET.filter(function (x) { return x[0] === _maExoMetric; })[0] || MET[0];
-  var seg = '<div class="ma-seg">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div>';
-  var series = pts.map(function (p) { return met[0] === '1rm' ? _maE1RM(p) : met[0] === 'charge' ? (p.charge || 0) : (p.volume || ((p.charge || 0) * (p.reps || 0))); });
+  var seg = '<div class="ma-mtab-wrap"><span class="ma-mtab-lbl">Afficher</span><div class="ma-mtab">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>';
+  var isCR = (met[0] === 'cr');   // vue combinée charge + reps
+  var isVol = (met[0] === 'vol');
+  var series = pts.map(function (p) {
+    if (met[0] === '1rm') return _maE1RM(p);
+    if (isVol) return (p.volTotal != null ? p.volTotal : ((p.charge || 0) * (p.reps || 0)));
+    return (p.charge || 0);   // cr → la ligne suit la charge (étiquette = charge × reps)
+  });
   var last = series[series.length - 1] || 0, first = series[0] || 0, delta = Math.round((last - first) * 10) / 10;
   var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span>';
-  var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + met[2]);
-  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + met[1] + ' (' + met[2] + ')</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + last + ' ' + dspan + '</span></div>' + _maArea(series, '#1A5FFF', 'rgba(26,95,255,.12)') + '<div class="ma-axis"><span>' + pts.length + ' séance' + (pts.length > 1 ? 's' : '') + '</span><span>aujourd\'hui</span></div></div>';
-  var best = pts.reduce(function (a, b) { return (b.charge || 0) > (a.charge || 0) ? b : a; }, pts[0]);
+  var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + (isCR ? 'kg' : met[2]));
+  var chartBody, legend = '';
+  if (isCR) {
+    // Charge (ligne, kg axe gauche) + reps à cette charge (barres, axe droit) + étiquette charge×reps.
+    chartBody = _maChargeRepsRich(pts);
+    legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>Charge (kg)</span><span class="mut">Étiquette = charge × reps · dernier point en vert</span></div>';
+  } else if (np === 1) {
+    // 1 seule séance sur la période : rendu point-unique (valeur + date) des deux
+    // côtés, sinon desktop montrait une ligne plate vide et mobile un aplat à 0.
+    chartBody = _maSingleRich(series[0], pts[0] && pts[0].date, met[2], '#1A5FFF');
+    legend = '<div class="ma-rclegend"><span><i style="background:#00A854"></i>' + met[1] + ' (' + met[2] + ')</span><span class="mut">Axe horizontal = date · détail des séries ci-dessous</span></div>';
+  } else {
+    // Courbe riche (dates + valeurs à chaque point) en desktop ET mobile — demande
+    // porteur : dates et données visibles sur toutes les périodes et tous les onglets.
+    chartBody = _maLineRich(series, pts.map(function (p) { return p.date; }), met[2], '#1A5FFF');
+    legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>' + met[1] + ' (' + met[2] + ')</span><span><b style="background:#00A854"></b>Dernier point</span><span class="mut">Axe vertical = ' + met[2] + ' · horizontal = date</span></div>';
+  }
+  var _chipTxt = isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')');
+  var _topVal = isCR ? ((pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last;
+  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + _chipTxt + '</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + _topVal + ' ' + dspan + '</span></div>' + chartBody + legend + '</div>';
+  // Meilleure série = charge max, puis reps max à charge égale (sinon une dernière
+  // séance qui ajoute des reps à charge identique n'était pas prise en compte).
+  var best = pts.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, pts[0]);
   var recCharge = (data.global && data.global.records_par_exo && data.global.records_par_exo[sel] && data.global.records_par_exo[sel].charge) || best.charge || 0;
   var stats = '<div class="ma-stat4"><div class="c"><div class="v">' + _maE1RM(pts[pts.length - 1]) + ' kg</div><div class="u">1RM estimé</div></div><div class="c"><div class="v">' + (best.charge || 0) + '×' + (best.reps || 0) + '</div><div class="u">meilleure série</div></div><div class="c"><div class="v">' + dstat + '</div><div class="u">sur la période</div></div><div class="c"><div class="v">' + recCharge + ' kg</div><div class="u">record charge</div></div></div>';
-  var recent = pts.slice().reverse().slice(0, 6).map(function (p) { return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + (p.charge || 0) + ' kg × ' + (p.reps || 0) + '</span><span class="r">' + _maE1RM(p) + '</span></div>'; }).join('');
-  return pick + seg + chart + stats + _maCap('Colonne de droite des séances = 1RM estimé de la série (formule d\'Epley). Le graphe suit la métrique choisie ci-dessus.') + _maSec('Dernières séances') + '<div class="ma-card">' + recent + '</div>';
+  // « Dernières séances » : TOUTES les séries du jour (depuis seances_detail), +
+  // 1RM estimé du jour LABELLISÉ (sinon on ne comprend pas le chiffre de droite).
+  var sdByDate = {};
+  (data.seances_detail || []).forEach(function (s) {
+    var ex = (s.exercices || []).filter(function (e) { return e.nom === sel; })[0];
+    if (ex && ex.series && ex.series.length) sdByDate[s.date_fr || s.date] = ex.series;
+  });
+  var recentHead = '<div class="ma-sess ma-sess-h"><span class="dt">Date</span><span class="s">Séries (charge × reps)</span><span class="r">1RM</span></div>';
+  var recent = pts.slice().reverse().slice(0, 6).map(function (p) {
+    var series = sdByDate[p.date] || [{ charge: p.charge, reps: p.reps }];
+    var setsTxt = series.map(function (x) { return (x.charge || 0) + '×' + (x.reps || 0); }).join(' · ');
+    var bd = series.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, series[0]);
+    return '<div class="ma-sess"><span class="dt">' + _maE(p.date || '') + '</span><span class="s">' + setsTxt + '</span><span class="r">' + _maE1RM({ charge: bd.charge, reps: bd.reps }) + ' kg</span></div>';
+  }).join('');
+  // Explication de la métrique affichée (sous le graphe) — reprend la maquette validée.
+  var EXPL = {
+    cr: '<b>Charge + reps</b> de ta meilleure série (ex. 90×5) : la lecture la plus concrète. La courbe suit la charge, l\'étiquette montre charge × reps — tu vois d\'un coup si tu montes en charge ou en répétitions.',
+    '1rm': '<b>1RM estimé</b> = la charge que tu pousserais sur <b>1 seule répétition max</b>, calculée depuis ta meilleure série (formule d\'Epley). Un seul chiffre qui combine charge ET reps : 90×5 → 90×8, la charge ne bouge pas mais ton 1RM estimé monte.',
+    vol: '<b>Volume de l\'exercice</b> = somme de <b>TOUTES tes séries</b> (charge × reps) ce jour-là. La mesure du <b>travail total</b>, utile pour l\'hypertrophie.'
+  };
+  var explBox = '<div style="font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;padding:10px 12px;background:var(--surface2);border-radius:11px;line-height:1.45">' + (EXPL[met[0]] || '') + '</div>';
+  // Prescription anti-stagnation (P2) : affichée si le moteur a flaggé CET exo en
+  // stagnation (source unique : alertes_centre), sous le graphe.
+  var stagBox = '';
+  try {
+    var _isStag = (data.alertes_centre || []).some(function (a) { return a && a.type === 'stagnation' && String(a.evidence || '').indexOf(sel) >= 0; });
+    if (_isStag) {
+      var _pr = _prescriptionStag(sel);
+      if (_pr) stagBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:12px;padding:12px 14px;margin-top:10px">'
+        + '<div style="font-size:13px;font-weight:800;color:var(--warn)">⚠️ Stagnation sur cet exercice</div>'
+        + '<div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-top:7px;line-height:1.45">👉 ' + _maE(_pr.act) + '</div>'
+        + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.4">' + _maE(_pr.why) + '</div></div>';
+    }
+  } catch (e) {}
+  // Charge à viser (P4) — athlète uniquement (1RM estimé = le sien) : cible du
+  // programme + progression adaptée au niveau. Masqué en vue coach.
+  var aimBox = '';
+  try {
+    var _coachView = (typeof _maCoach !== 'undefined' && _maCoach);
+    if (!_coachView && typeof athlete !== 'undefined' && athlete) {
+      var _pl = (data.programme || []).filter(function (l) { return l && l.exercice === sel; })[0];
+      var _ca = _chargeAViser(_pl);
+      if (_ca) {
+        var rangeTxt = (_ca.rmin && _ca.rmax) ? (_ca.rmin + '-' + _ca.rmax) : (_ca.rmax || _ca.rmin || '');
+        var rpeTxt = (_ca.rpe != null) ? ('RPE ' + _ca.rpe + ' · ' + _rirLong(_ca.rpe)) : '';
+        aimBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;margin-top:10px">'
+          + '<div style="font-size:13px;font-weight:800">🎯 Charge à viser</div>'
+          + '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px">'
+          + (_ca.kg != null ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:20px;color:var(--accent)">' + _ca.kg + ' kg</span>' : '<span style="font-size:12.5px;color:var(--text-muted)">cible en % (1RM pas encore fiable)</span>')
+          + (rangeTxt ? '<span style="font-size:13px;font-weight:800">× ' + rangeTxt + '</span>' : '')
+          + (rpeTxt ? '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;text-align:right">' + rpeTxt + '</span>' : '')
+          + '</div>'
+          + '<div style="font-size:12px;color:var(--text);margin-top:8px;line-height:1.45">📈 ' + _maE(_ca.prog) + '</div>'
+          + '<div style="font-size:10px;color:var(--text-subtle);margin-top:6px;text-transform:uppercase;letter-spacing:.03em">Stratégie : ' + _maE(_ca.strat) + '</div></div>';
+      }
+    }
+  } catch (e) {}
+  return pick + seg + chart + explBox + stagBox + aimBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
 }
 
 // Normalisation de texte (minuscule, sans accents) et clé muscle (tolère le pluriel).
@@ -10284,8 +11895,8 @@ function _musCap(s) { s = String(s || '').trim(); return s ? s.charAt(0).toUpper
 function _maProgGrp(data) {
   var sd = data.seances_detail || [];
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
-  var days = _MA_DAYS[_maPeriode], cut = _maCut(_maPeriode), weeks = Math.max(1, Math.round(days / 7));
-  var inP = sd.filter(function (s) { return (s.date || '') >= cut; }); if (!inP.length) inP = sd.slice(0, 12);
+  var _w = _maWin(), days = _w.days, cut = _w.startISO, cutEnd = _w.endISO, weeks = Math.max(1, Math.round(days / 7));
+  var inP = sd.filter(function (s) { return (s.date || '') >= cut && (s.date || '') < cutEnd; }); if (!inP.length) inP = sd.slice(0, 12);
   var prevCut = cut; try { var _pc = new Date(cut + 'T00:00:00'); _pc.setDate(_pc.getDate() - days); prevCut = _pc.getFullYear() + '-' + String(_pc.getMonth() + 1).padStart(2, '0') + '-' + String(_pc.getDate()).padStart(2, '0'); } catch (e) {}
   // Muscle secondaire par exercice (catalogue) → volume indirect.
   var secOf = {}; try { (exercicesData || []).forEach(function (x) { if (x && x.exercice && x.muscle_secondaire) secOf[_normTxt(x.exercice)] = x.muscle_secondaire; }); } catch (e) {}
@@ -10418,8 +12029,9 @@ function _maProgSea(data) {
 // Robuste aux variantes d'orthographe du muscle (Ischio / Ischios / Ischio-jambiers,
 // Dos / Dorsaux / Grand dorsal…) : on somme par mot-clé normalisé, pas par égalité stricte.
 function _maBalance(data) {
-  // Séries par muscle sur la période sélectionnée → la balance évolue dans le temps.
-  var r = (data.recent && data.recent[_maRecentWin(_maPeriode)]) || {};
+  // Séries par muscle sur la période NAVIGABLE sélectionnée → la balance évolue.
+  var _w = _maWin();
+  var r = _maMuscuAgg((data.historique && data.historique.daily_muscu), _w.startISO, _w.endISO);
   var vs = r.series_par_muscle || {};
   function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, ''); }
   // Somme des séries dont le muscle contient un des mots-clés (hors exclusions).
@@ -10466,25 +12078,31 @@ function _maProgAgg(sd) {
 }
 
 function _maMuscuTendances(data) {
-  var W = _maTrendWeeks();   // nb de semaines selon la période sélectionnée
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
-  var wt = _maWeekly(vpj, W, 'sum').map(function (v) { return Math.round(v / 100) / 10; });   // tonnage (t)
-  var ws = _maWeekly(vpj, W, 'count');                                                        // séances/sem
+  var tdT = _maTrendData(vpj, 'sum'), tdC = _maTrendData(vpj, 'count');
+  var wt = tdT.pts.map(function (v) { return Math.round(v / 100) / 10; });   // tonnage (t) par bucket
+  var ws = tdC.pts;                                                          // jours entraînés par bucket
   var hasW = wt.some(function (v) { return v > 0; });
+  var bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
   // Sélecteur juste au-dessus du graphique → on voit la courbe s'ajuster.
-  var out = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie (' + W + ' semaines).');
+  var head = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie (par ' + bNoun + ').');
+  var main = '';
   if (hasW) {
-    out += _maSec('Tonnage soulevé', 'par semaine · ' + W + ' sem.', 'tonnage')
-      + _maChartBlock('Tonnage / semaine', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', 'il y a ' + W + ' sem.', 'Total charge × reps de chaque semaine. La courbe qui monte = tu soulèves plus de volume au fil du temps → c\'est le moteur n°1 de progression.');
-    out += _maSec('Régularité', 'par semaine · ' + W + ' sem.', 'regularite')
-      + _maChartBlock('Séances / semaine', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', 'il y a ' + W + ' sem.', 'Combien de séances tu fais chaque semaine. La régularité prime sur tout le reste.');
-  } else { out += _maEmpty('Pas assez d\'historique pour une tendance (besoin de plusieurs semaines).'); }
+    main += _maSec('Tonnage soulevé', 'par ' + bNoun + ' · ' + _maPLabel(), 'tonnage')
+      + _maChartBlock('Tonnage', wt, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(tdT.dates[0]), 'Total charge × reps par ' + bNoun + '. La courbe qui monte = tu soulèves plus de volume → c\'est le moteur n°1 de progression.', tdT.dates);
+    main += _maSec('Régularité', 'par ' + bNoun + ' · ' + _maPLabel(), 'regularite')
+      + _maChartBlock('Séances', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdC.dates[0]), 'Nombre de jours d\'entraînement par ' + bNoun + '. La régularité prime sur tout le reste.', tdC.dates);
+  } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
   var cmp = data.comparison || {}, rows = '';
   try { var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents</span><span class="v" style="color:' + (t.evol_pct >= 0 ? '#00A854' : '#DC3545') + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>'; } catch (e) {}
   var reg = (data.dashboard && data.dashboard.regularite) || {};
   if (reg.seances_semaine != null) rows += '<div class="ma-trow"><span>Régularité (séances/sem.)</span><span class="v">' + reg.seances_semaine + '</span></div>';
   var mr = (data.global && data.global.mean_rpe); if (mr) rows += '<div class="ma-trow"><span>RPE moyen (global)</span><span class="v">' + String(mr).replace('.', ',') + '</span></div>';
-  if (rows) out += _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>';
+  // Rail droit (bureau) : résumé « Ce qui bouge » + bloc Novalyz. En mobile,
+  // .ma-cols2/.ma-col* passent en display:contents → suite verticale inchangée,
+  // juste précédée du résumé comme avant.
+  var rail = (rows ? _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>' : '') + _maNovaAsk();
+  var out = head + '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>';
   _maSet('ma-muscu-tendances', out);
 }
 
@@ -10527,14 +12145,14 @@ function _maMuscuHistorique(data) {
       + dot + '<span id="ma-hs-chev-' + i + '" style="color:var(--text-subtle);margin-left:2px">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
       + '<div class="ma-hdet" id="ma-hs-' + i + '" style="display:none">' + det + '</div></div>';
   }).join('') + _maMoreBtn('muscu', n, all.length);
-  _maSet('ma-muscu-historique', html);
+  _maSet('ma-muscu-historique', '<div class="ma-cols2"><div class="ma-colmain">' + html + '</div><div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
 }
 function maToggleHS(i) { var d = document.getElementById('ma-hs-' + i), c = document.getElementById('ma-hs-chev-' + i); if (d) { var open = d.style.display === 'none'; d.style.display = open ? 'flex' : 'none'; if (c) c.style.transform = open ? 'rotate(180deg)' : ''; } }
 
-function _maCardioAgg(hist, days, cutOverride) {
-  var cut = cutOverride || _maCutISO(days), by = {};
+function _maCardioAgg(hist, days, cutOverride, cutEndOverride) {
+  var cut = cutOverride || _maCutISO(days), end = cutEndOverride || '9999-12-31', by = {};
   (hist || []).forEach(function (s) {
-    if ((s.date || '') < cut) return;
+    if ((s.date || '') < cut || (s.date || '') >= end) return;
     var t = s.type_cardio || 'autre';
     if (!by[t]) by[t] = { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0, cal: 0 };
     var o = by[t]; o.n++; o.dist += (+s.distance || 0); o.duree += (+s.duree || 0); o.cal += (+s.calories || 0);
@@ -10558,45 +12176,46 @@ function _maHyroxList(data, limit) {
 }
 function _maCardioResume(data) {
   var hist = (data.cardio && data.cardio.history) || [];
-  var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode));
+  var _w = _maWin();
+  var by = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO);
   var types = Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; });
   var total = types.reduce(function (s, t) { return s + by[t].n; }, 0);
-  var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _MA_PLABEL[_maPeriode] : 'Pas encore de cardio') + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' enregistrée' + (total > 1 ? 's' : '') + '. Continue pour bâtir ta base d\'endurance.') : 'Enregistre une séance cardio pour voir tes analyses ici.') + '</div></div></div>';
+  var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _w.plabel : 'Pas encore de cardio') + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' enregistrée' + (total > 1 ? 's' : '') + '. Continue pour bâtir ta base d\'endurance.') : 'Enregistre une séance cardio pour voir tes analyses ici.') + '</div></div></div>';
   var listHtml = types.length ? ('<div class="ma-card">' + types.map(function (t) {
     var m = _maCM(t), o = by[t];
     return '<div class="ma-sport"><span class="ma-spic" style="background:' + m[1] + '">' + _maSvg(m[2], 17) + '</span><div class="ma-spmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + o.n + ' sortie' + (o.n > 1 ? 's' : '') + ' · ' + _maHMS(o.duree) + (o.rn ? ' · RPE ' + (Math.round(o.rpe / o.rn * 10) / 10) : '') + '</div></div><div class="ma-spval"><div class="v">' + (Math.round(o.dist * 10) / 10) + ' km</div><div class="u">' + (o.vn ? (Math.round(o.vit / o.vn * 10) / 10) + ' km/h' : '') + '</div></div></div>';
   }).join('') + '</div>') : _maEmpty('Aucune sortie sur la période.');
   // Pas quotidiens sur la période choisie (max 30 barres) + axe daté.
-  var pasCut = _maCut(_maPeriode);
-  var pas = (data.pas_quotidiens || []).filter(function (x) { return (x.date || '') >= pasCut; }).slice().sort(function (a, b) { return (a.date < b.date) ? -1 : 1; });
+  var pas = (data.pas_quotidiens || []).filter(function (x) { return (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; }).slice().sort(function (a, b) { return (a.date < b.date) ? -1 : 1; });
   if (pas.length > 30) pas = pas.slice(pas.length - 30);
   var pasMax = Math.max.apply(null, pas.map(function (y) { return y.pas || 1; }).concat([1]));
   var pasHtml = pas.length ? ('<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / jour</span><span style="font-size:11px;font-weight:700;color:#9D5FD3">Ø ' + Math.round(pas.reduce(function (s, x) { return s + (x.pas || 0); }, 0) / pas.length).toLocaleString('fr-FR') + '</span></div><div class="ma-bars2">' + pas.map(function (x) { return '<span style="height:' + Math.round((x.pas || 0) / pasMax * 100) + '%;background:#9D5FD3"></span>'; }).join('') + '</div><div class="ma-axis"><span>' + _maShortDate(pas[0].date) + '</span><span>' + _maShortDate(pas[pas.length - 1].date) + '</span></div></div>') : '';
   // Charge cardio hebdo (UA = RPE × durée), nb de semaines piloté par la période.
   var chDict = {}; hist.forEach(function (s) { if (+s.rpe && +s.duree) chDict[s.date] = (chDict[s.date] || 0) + (+s.rpe) * (+s.duree); });
-  var nwCh = _maTrendWeeks();
-  var chW = _maWeekly(chDict, nwCh, 'sum');
-  var chargeHtml = chW.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / sem. · ' + nwCh + ' sem.', 'charge_cardio') + _maChartBlock('Charge (UA)', chW, 'UA', '#9D5FD3', 'rgba(157,95,211,.12)', _maTrendFirst(nwCh), 'Chaque point = 1 semaine (nombre de semaines selon la période). Une montée trop brutale peut signaler un risque de surmenage.')) : '';
+  var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var tdCh = _maTrendData(chDict, 'sum');
+  var chargeHtml = tdCh.pts.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / ' + _bNoun + ' · ' + _w.plabel, 'charge_cardio') + _maChartBlock('Charge (UA)', tdCh.pts, 'UA', '#9D5FD3', 'rgba(157,95,211,.12)', _maShortDate(tdCh.dates[0]), 'Charge interne (RPE × durée) par ' + _bNoun + '. Une montée trop brutale peut signaler un risque de surmenage.', tdCh.dates)) : '';
   // Ressenti des sorties cardio (bilan de séance) sur la période — miroir du ressenti muscu.
-  var cCut = _maCut(_maPeriode);
-  var rsC = (data.analyses && data.analyses.ressenti_cardio) ? data.analyses.ressenti_cardio.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= cCut; }) : [];
+  var rsC = (data.analyses && data.analyses.ressenti_cardio) ? data.analyses.ressenti_cardio.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; }) : [];
   var rsCardioHtml = '';
   if (rsC.length) {
     var recC = rsC.slice(0, 14).reverse();
-    rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _MA_PLABEL[_maPeriode], 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+    rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _w.plabel, 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   }
-  _maSet('ma-cardio-resume', _maSyntheseCardio(data) + verdict
-    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change les chiffres & graphiques ci-dessous selon la période.')
-    + _maSec('Tous sports · ' + _MA_PLABEL[_maPeriode], total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + _maHyroxList(data) + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml);
+  var _crMain = _maSyntheseCardio(data) + verdict
+    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change les chiffres & graphiques ci-dessous.')
+    + _maSec('Tous sports · ' + _w.plabel, total + ' sortie' + (total > 1 ? 's' : '')) + listHtml + _maHyroxList(data) + rsCardioHtml + (pasHtml ? _maSec('Pas quotidiens') + pasHtml : '') + chargeHtml;
+  _maSet('ma-cardio-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _crMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
 function _maCardioParSport(data) {
   var hist = (data.cardio && data.cardio.history) || [];
   var allBy = _maCardioAgg(hist, 3650);
   var types = Object.keys(allBy).sort(function (a, b) { return allBy[b].n - allBy[a].n; });
-  if (!types.length) { _maSet('ma-cardio-detail', _maEmpty('Aucune séance cardio pour l\'instant.')); return; }
+  if (!types.length) { _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _maEmpty('Aucune séance cardio pour l\'instant.') + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>'); return; }
   var sel = (_maCardioSport && types.indexOf(_maCardioSport) >= 0) ? _maCardioSport : types[0];
   var m = _maCM(sel);
-  var o = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode))[sel] || { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0 };
+  var _w = _maWin();
+  var o = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO)[sel] || { n: 0, dist: 0, duree: 0, vit: 0, vn: 0, rpe: 0, rn: 0, fc: 0, fn: 0, w: 0, wn: 0 };
   // Sélecteur de sport (liste déroulante)
   var sportMenu = '<div id="ma-cx-sport-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">'
     + types.map(function (t, i) { var mm = _maCM(t); return '<div onclick="maSetCardioSport(\'' + t + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (t === sel ? 'background:var(--surface2);' : '') + '"><span style="color:' + mm[1] + '">' + _maSvg(mm[2], 16) + '</span><span style="font-weight:700;font-size:13px">' + _maE(mm[0]) + '</span><span style="margin-left:auto;font-size:11px;color:var(--text-subtle)">' + allBy[t].n + ' sorties</span></div>'; }).join('') + '</div>';
@@ -10607,8 +12226,9 @@ function _maCardioParSport(data) {
   var METRICS = [['distance', 'Distance', 'km'], ['vitesse_moy', 'Vitesse', 'km/h'], ['fc_moy', 'FC moy', 'bpm'], ['calories', 'Calories', 'kcal'], ['duree', 'Durée', 'min']];
   var curM = METRICS.filter(function (x) { return x[0] === _maCardioMetric; })[0] || METRICS[0];
   var sesss = hist.filter(function (s) { return (s.type_cardio || 'autre') === sel; });
-  var nwPS = _maTrendWeeks();
-  var wk = _maSportWeekly(sesss, curM[0], nwPS);
+  var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var tdPS = _maSportTrend(sesss, curM[0]);
+  var wk = tdPS.pts;
   var metricMenu = '<div id="ma-cx-metric-menu" style="display:none;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">'
     + METRICS.map(function (x, i) { return '<div onclick="maSetCardioMetric(\'' + x[0] + '\')" style="padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (x[0] === curM[0] ? 'color:#9D5FD3;background:var(--surface2);' : '') + '">' + x[1] + ' (' + x[2] + ')</div>'; }).join('') + '</div>';
   var lastPS = wk.length ? wk[wk.length - 1] : 0;
@@ -10617,34 +12237,44 @@ function _maCardioParSport(data) {
   // retrouve bloqué sur une métrique vide, sans moyen d'en changer.
   var hasData = wk.some(function (v) { return v > 0; });
   var chartHead = '<div class="ma-ctop"><span class="ma-chip" style="cursor:pointer" onclick="maToggleMenu(\'ma-cx-metric-menu\')">' + curM[1] + ' ▾</span>'
-    + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/sem.</span></span>' : '') + '</div>';
+    + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/' + _bNoun + '</span></span>' : '') + '</div>';
   var chartBody = hasData
-    ? (_maArea(wk, m[1], 'rgba(157,95,211,.12)') + _maTrendAxis(nwPS) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée. ' + nwPS + ' semaines (suit la période choisie) · chaque point = 1 semaine.'))
+    ? (_maWeeklySvg(wk, curM[2], m[1], 'rgba(157,95,211,.12)', wk.length, tdPS.dates) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée · chaque point = 1 ' + _bNoun + ' (suit la période choisie).'))
     : '<div style="padding:20px 6px;text-align:center;color:var(--text-subtle);font-size:12.5px;line-height:1.5">Pas de donnée « ' + curM[1] + ' » pour ' + _maE(m[0]) + '.<br>Choisis une autre donnée ci-dessus.</div>';
   var chart = '<div class="ma-chart">' + chartHead + metricMenu + chartBody + '</div>';
-  var lastArr = sesss.filter(function (s) { return (s.date || '') >= _maCut(_maPeriode); }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
+  var lastArr = sesss.filter(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
   var last = lastArr.slice(0, 6).map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
     var parts = []; if (+s.distance) parts.push((Math.round(s.distance * 10) / 10) + ' km'); if (+s.duree) parts.push(_maHMS(s.duree)); if (+s.vitesse_moy) parts.push((Math.round(s.vitesse_moy * 10) / 10) + ' km/h'); if (+s.fc_moy) parts.push(Math.round(s.fc_moy) + ' bpm');
     return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
   }).join('');
-  _maSet('ma-cardio-detail', _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _MA_PLABEL[_maPeriode], o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>');
+  var _cdMain = _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _w.plabel, o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>';
+  _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _cdMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
 function maSetCardioSport(t) { _maCardioSport = t; try { _maCardioParSport(dernierAppData); } catch (e) {} }
 function maSetCardioMetric(m) { _maCardioMetric = m; try { _maCardioParSport(dernierAppData); } catch (e) {} }
 function _maCardioTendances(data) {
   var hist = (data.cardio && data.cardio.history) || [];
-  var by = _maCardioAgg(hist, _MA_DAYS[_maPeriode], _maCut(_maPeriode));
+  var _w = _maWin();
+  var by = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO);
   var types = Object.keys(by).sort(function (a, b) { return by[b].dist - by[a].dist; });
-  if (!types.length) { _maSet('ma-cardio-tendances', _maEmpty('Pas encore de cardio à analyser sur la période.')); return; }
+  // Vide sur la période choisie : on GARDE le sélecteur de période (sinon on reste
+  // bloqué sur « Semaine » sans pouvoir élargir) + le rail (Novalyz).
+  if (!types.length) {
+    var _ctEmpty = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + _maEmpty('Pas encore de cardio à analyser sur cette période. Élargis la période ci-dessus.');
+    _maSet('ma-cardio-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _ctEmpty + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
+    return;
+  }
   var mx = Math.max.apply(null, types.map(function (t) { return by[t].dist || 0; }).concat([1]));
   var vol = '<div class="ma-card ma-vol">' + types.map(function (t) { var m = _maCM(t); return '<div class="ma-volrow"><div class="lh"><span class="n">' + _maE(m[0]) + '</span><span class="p">' + (Math.round(by[t].dist * 10) / 10) + ' km · ' + by[t].n + ' sorties</span></div><div class="ma-vt"><span style="width:' + Math.round(by[t].dist / mx * 100) + '%;background:' + m[1] + '"></span></div></div>'; }).join('') + '</div>';
   // FC moyenne à effort (RPE) égal — proxy d'efficience : plus la FC baisse à RPE constant, mieux c'est.
-  var nwEff = _maTrendWeeks();
-  var fcW = _maSportWeekly(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy', nwEff);
+  var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var tdFc = _maSportTrend(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy');
+  var fcW = tdFc.pts;
   var fcFirst = fcW.find(function (x) { return x; }) || 0, fcLast = 0; for (var _fi = fcW.length - 1; _fi >= 0; _fi--) { if (fcW[_fi]) { fcLast = fcW[_fi]; break; } }
-  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / sem. · ' + nwEff + ' sem.', 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maArea(fcW.map(function (v) { return v || fcFirst; }), '#9D5FD3', 'rgba(157,95,211,.12)') + _maTrendAxis(nwEff) + _maCap('Chaque point = 1 semaine. À lire à effort comparable (RPE proche).')) : '';
-  _maSet('ma-cardio-tendances', _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + _maSec('Volume par sport', _MA_PLABEL[_maPeriode] + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff);
+  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / ' + _bNoun + ' · ' + _w.plabel, 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maWeeklySvg(fcW.map(function (v) { return v || fcFirst; }), 'bpm', '#9D5FD3', 'rgba(157,95,211,.12)', fcW.length, tdFc.dates) + _maCap('Chaque point = 1 ' + _bNoun + '. À lire à effort comparable (RPE proche).') + '</div>') : '';
+  var _ctMain = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie.') + _maSec('Volume par sport', _w.plabel + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff;
+  _maSet('ma-cardio-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _ctMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
 function _maCardioHistorique(data) {
   // Plus de filtre par période : N dernières sorties + « Charger plus ».
@@ -10659,14 +12289,15 @@ function _maCardioHistorique(data) {
     var tap = isHx ? ' onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="padding:11px 14px;cursor:pointer;' : ' style="padding:11px 14px;';
     return '<div class="ma-hhd"' + tap + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><span class="ma-spic" style="width:30px;height:30px;background:' + m[1] + '">' + _maSvg(m[2], 16) + '</span><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + (isHx ? '<span style="color:var(--text-subtle);margin-left:6px">›</span>' : '') + '</div>';
   }).join('');
-  _maSet('ma-cardio-historique', '<div class="ma-card">' + rows + '</div>' + _maMoreBtn('cardio', n, all.length));
+  _maSet('ma-cardio-historique', '<div class="ma-cols2"><div class="ma-colmain">' + ('<div class="ma-card">' + rows + '</div>' + _maMoreBtn('cardio', n, all.length)) + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
 function _maCroise(data) {
-  var r = (data.recent && data.recent[_maRecentWin(_maPeriode)]) || {};
+  var _w = _maWin();
+  var r = _maMuscuAgg((data.historique && data.historique.daily_muscu), _w.startISO, _w.endISO);
   var muscuT = r.tonnage_kg || 0;
   // Charge cardio (UA = RPE × durée), Hyrox comptabilisé À PART (3e catégorie).
-  var hist = (data.cardio && data.cardio.history) || [], cut = _maCut(_maPeriode), cardioUA = 0, hyroxUA = 0;
-  hist.forEach(function (s) { if ((s.date || '') < cut || !+s.rpe || !+s.duree) return; var ua = (+s.rpe) * (+s.duree); if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
+  var hist = (data.cardio && data.cardio.history) || [], cardioUA = 0, hyroxUA = 0;
+  hist.forEach(function (s) { if ((s.date || '') < _w.startISO || (s.date || '') >= _w.endISO || !+s.rpe || !+s.duree) return; var ua = (+s.rpe) * (+s.duree); if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
   var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les charges comparables
   var tot = muscuUA + cardioUA + hyroxUA;
   var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
@@ -10693,27 +12324,29 @@ function _maCroise(data) {
     + '</div>') : _maEmpty('Répartition dispo dès que tu as des séances.');
   var be = (data.bien_etre && data.bien_etre[0]) || null;
   var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
-  _maSet('ma-croise-resume', _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
-    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur change la répartition ci-dessous selon la période.')
-    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _MA_PLABEL[_maPeriode], 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : ''));
+  var _xrMain = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
+    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change la répartition ci-dessous.')
+    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : '');
+  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
   // Tendances croisées : charge globale (muscu + cardio) + indice de forme (bien-être).
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
-  var nwX = _maTrendWeeks();
-  var muscuW = _maWeekly(vpj, nwX, 'sum').map(function (v) { return Math.round(v / 50); });
+  var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var tdM = _maTrendData(vpj, 'sum'), muscuW = tdM.pts.map(function (v) { return Math.round(v / 50); });
   var chD = {}; ((data.cardio && data.cardio.history) || []).forEach(function (s) { if (+s.rpe && +s.duree) chD[s.date] = (chD[s.date] || 0) + (+s.rpe) * (+s.duree); });
-  var cardioW = _maWeekly(chD, nwX, 'sum');
+  var cardioW = _maTrendData(chD, 'sum').pts;
   var totalW = muscuW.map(function (v, i) { return Math.round(v + (cardioW[i] || 0)); });
   var beD = {}; ((data.bien_etre) || []).forEach(function (b) { var d = _maFRtoDate(b.date); if (!d) return; var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); beD[iso] = (Number(b.sommeil) || 0) + (Number(b.energie) || 0) + (6 - (Number(b.fatigue) || 3)); });
   // Indice de forme ramené sur 100 (au lieu de /15, peu parlant) : (sommeil+énergie+(6−fatigue))/15×100.
-  var beW = _maWeekly(beD, nwX, 'avg').map(function (v) { return Math.round(v / 15 * 100); });
+  var beW = _maTrendData(beD, 'avg').pts.map(function (v) { return Math.round(v / 15 * 100); });
   var body = '';
   if (totalW.some(function (v) { return v > 0; })) {
-    body += _maSec('Charge globale', 'muscu + cardio · UA/sem. · ' + nwX + ' sem.', 'charge_globale') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine. Une hausse trop rapide peut signaler un risque de surmenage.');
+    body += _maSec('Charge globale', 'muscu + cardio · UA/' + _bNoun + ' · ' + _w.plabel, 'charge_globale') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(tdM.dates[0]), 'Charge combinée par ' + _bNoun + '. Une hausse trop rapide peut signaler un risque de surmenage.', tdM.dates);
   }
   if (beW.some(function (v) { return v > 0; })) {
-    body += _maSec('Indice de forme', 'bien-être · ' + nwX + ' sem.', 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maTrendFirst(nwX), 'Chaque point = 1 semaine (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.');
+    body += _maSec('Indice de forme', 'bien-être · ' + _w.plabel, 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdM.dates[0]), 'Indice de forme par ' + _bNoun + ' (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.', tdM.dates);
   }
-  _maSet('ma-croise-tendances', _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + (body || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.')));
+  var _xtMain = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + (body || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.'));
+  _maSet('ma-croise-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _xtMain + '</div><div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
 }
 
 // Ressenti de séance (1 Facile → 4 Très dur) : distribution + mini-timeline.
@@ -11097,6 +12730,38 @@ function renderPoidsSpark(poids) {
     <path d="M${line}" fill="none" stroke="var(--accent-strong)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="${lastX}" cy="${lastY}" r="3.4" fill="var(--accent-strong)" stroke="var(--surface)" stroke-width="2"/>
   </svg>`;
+}
+
+// Carte « Ma forme en un coup d'œil » du rail Aujourd'hui (bureau). Reprend des
+// signaux DÉJÀ calculés par le moteur (disponibilité, récup, ACWR) + sommeil
+// montre. Rien d'inventé : chaque tuile n'apparaît que si la valeur existe, et
+// l'ACWR seulement s'il est jugé fiable par le moteur (acwr_fiable !== false).
+function renderTjFormeRail(data) {
+  var el = document.getElementById('tj-forme-rail'); if (!el) return;
+  var m = (data && data.moteur) || {}, dash = (data && data.dashboard) || {};
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var tiles = [];
+  var niv = m.disponibilite && m.disponibilite.niveau;
+  if (niv) {
+    var dc = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : 'var(--danger)');
+    tiles.push('<div class="rail-tile"><div class="k"><span class="dot" style="background:' + dc + '"></span>Disponibilité</div><div class="v" style="font-size:14px">' + esc(niv) + '</div></div>');
+  }
+  if (m.recup && m.recup !== '—') {
+    tiles.push('<div class="rail-tile"><div class="k">Récupération</div><div class="v" style="font-size:14px">' + esc(String(m.recup)) + '</div></div>');
+  }
+  if (dash.acwr != null && m.acwr_fiable !== false) {
+    tiles.push('<div class="rail-tile"><div class="k">ACWR</div><div class="v">' + esc(String(dash.acwr)) + '</div></div>');
+  }
+  try {
+    var sh = (data && data.sante_historique || [])[0];
+    if (sh && sh.sommeil_min != null) {
+      var hh = Math.floor(sh.sommeil_min / 60), mn = Math.round(sh.sommeil_min % 60);
+      tiles.push('<div class="rail-tile"><div class="k">Sommeil (montre)</div><div class="v">' + hh + '<small> h' + (mn ? ' ' + (mn < 10 ? '0' + mn : mn) : '') + '</small></div></div>');
+    }
+  } catch (e) {}
+  if (!tiles.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = '<div class="rail-hd">Ma forme en un coup d\'œil</div><div class="rail-snap-grid">' + tiles.join('') + '</div>';
 }
 
 // Barres de volume par muscle (accueil athlète & aperçu coach) — réutilise VOLUME_CIBLE
@@ -11919,6 +13584,7 @@ function renderAujourdhui(data) {
     var faites = _seancesFaites(reg);
     var prevues = reg.seances_prevues || 4;
     var elR = document.getElementById('tj-reg'); if (elR) elR.textContent = faites + ' / ' + prevues + ' cette semaine';
+    var elRd = document.getElementById('tj-reg-d'); if (elRd) elRd.textContent = faites + ' / ' + prevues + ' séances cette semaine';
     var elW = document.getElementById('tj-reg-week');
     if (elW) { var n = Math.max(prevues || 0, 4), h = ''; for (var i = 0; i < n; i++) { h += '<span class="tj-wk' + (i < faites ? ' on' : '') + '"></span>'; } elW.innerHTML = h; }
     // Roue des séances (bloc d'accueil) : anneau animé qui « monte » vers faites/prevues.
@@ -11940,6 +13606,39 @@ function renderAujourdhui(data) {
         void fg.getBoundingClientRect();   // reflow → l'anim repart de 0
         requestAnimationFrame(function () { fg.style.transition = ''; fg.setAttribute('stroke-dashoffset', String(100 - pct)); });
       }
+    }
+  } catch (e) {}
+
+  // --- Badge : meilleur trophée débloqué, dans le header (animé), avec pastille NEW ---
+  // Mêmes conditions que la collection de trophées (_renderTrophees) : rien d'inventé,
+  // juste la mise en avant du plus haut palier atteint. Au tap → scrolle vers la carte
+  // Récompenses (où vit la collection complète).
+  try {
+    var _bg = (data && data.global) || {}, _bd = (data && data.dashboard) || {};
+    var _tS = Number(_bg.total_seances || 0);
+    var _stk = (_bd.regularite && _bd.regularite.streak != null) ? Number(_bd.regularite.streak) : ((_bd.streak && _bd.streak.semaines != null) ? Number(_bd.streak.semaines) : 0);
+    var _hasRec = _bg.records_par_exo && Object.keys(_bg.records_par_exo).length > 0;
+    var SVGf = '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>', SVGm = '<circle cx="12" cy="9" r="5"/><path d="M9 13l-1 8 4-2 4 2-1-8"/>', SVGb = '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>', SVGs = '<path d="M12 2 15 8l6 .9-4.5 4.3L17.7 20 12 16.8 6.3 20l1.2-6.8L3 8.9 9 8z"/>', SVGc = '<path d="M20 6 9 17l-5-5"/>';
+    // Du plus prestigieux au plus simple : on prend le 1er atteint.
+    var _cand = [
+      { k: 's100', ok: _tS >= 100, svg: SVGs, lab: '100 séances' },
+      { k: 'str10', ok: _stk >= 10, svg: SVGf, lab: _stk + ' semaines de série' },
+      { k: 'rec', ok: !!_hasRec, svg: SVGm, lab: 'Records battus' },
+      { k: 'sea', ok: _tS >= 1, svg: SVGb, lab: _tS + ' séance' + (_tS > 1 ? 's' : '') },
+      { k: 'str', ok: _stk >= 1, svg: SVGf, lab: _stk + ' semaine' + (_stk > 1 ? 's' : '') + ' de série' },
+      { k: 'w1', ok: (_stk >= 1 || _tS >= 3), svg: SVGc, lab: 'Première semaine' }
+    ];
+    var _best = null; for (var _bi = 0; _bi < _cand.length; _bi++) { if (_cand[_bi].ok) { _best = _cand[_bi]; break; } }
+    var bEl = document.getElementById('tj-badge');
+    if (bEl) {
+      if (_best) {
+        var _bk = 'nvz_badge_' + ((typeof athlete !== 'undefined' && athlete && athlete.athlete_id) || 'x');
+        var _seen = ''; try { _seen = localStorage.getItem(_bk) || ''; } catch (e2) {}
+        var _isNew = _seen !== _best.k;
+        bEl.style.display = ''; bEl.title = 'Trophée débloqué : ' + _best.lab;
+        bEl.innerHTML = (_isNew ? '<span class="nw">NEW</span>' : '') + '<svg viewBox="0 0 24 24">' + _best.svg + '</svg>';
+        try { localStorage.setItem(_bk, _best.k); } catch (e3) {}
+      } else { bEl.style.display = 'none'; bEl.innerHTML = ''; }
     }
   } catch (e) {}
 
@@ -12009,8 +13708,8 @@ function renderAujourdhui(data) {
     var elNova = document.getElementById('tj-nova');
     var elnT = document.getElementById('tj-nova-txt');
     var sM = data && data.analyse_synthese && data.analyse_synthese.muscu;
-    var novaTxt = (sM && sM.reco && sM.reco.texte && sM.confiance && sM.confiance !== 'faible')
-      ? String(sM.reco.texte) : '';
+    // Rotation : un levier du pool par jour (plus de message figé). Masqué si confiance faible.
+    var novaTxt = _novaPickReco(sM);
     if (novaTxt) {
       if (elnT) elnT.textContent = novaTxt;
       if (elNova) elNova.style.display = '';
@@ -12054,6 +13753,9 @@ function renderAujourdhui(data) {
       }).join('');
     }
   } catch (e) {}
+
+  // --- Ma forme en un coup d'œil (rail bureau) ---
+  try { renderTjFormeRail(data); } catch (e) {}
 
   // --- Séance du jour : 1re séance du programme (pas de planification par jour) ---
   try {
@@ -12112,6 +13814,8 @@ function renderAujourdhui(data) {
     _renderTrophees(streak, rec30, totalS, hasRecords);
     // Objectif de la semaine + progression réelle.
     _renderObjectif(data);
+    // Boutique récompenses (points dépensables).
+    _renderBoutique(data);
 
     // Cibles pour l'animation au reveal (scroll).
     var rewCard = document.querySelector('#tab-accueil .tj-rew');
@@ -12300,6 +14004,58 @@ function _renderObjectif(data) {
       .catch(function () { apply(0); });
   } else { apply(0); }
 }
+// ═══ Boutique récompenses (points dépensables) ═══
+// Catalogue d'AFFICHAGE (les coûts font foi côté serveur via RECOMPENSES_CATALOGUE
+// dans index.ts). Les collabs seront ajoutées ici (type 'collab') + côté serveur.
+// Coûts rééquilibrés : première récompense atteignable vite (≈1 semaine), puis
+// progression. Gains = nb_séances×10 + records_30j×50 (cf. index.ts).
+// Les collabs (type:'collab') sont des TEASERS « Bientôt » : non achetables tant
+// qu'un partenaire réel n'est pas branché (refus côté serveur aussi).
+var _RECOMPENSES = [
+  { id: 'badge_pionnier', titre: 'Badge Pionnier', desc: 'Le badge de tes débuts.', cout: 50, icon: '🔰' },
+  { id: 'badge_assidu', titre: 'Badge Assidu', desc: 'Pour ta régularité.', cout: 150, icon: '🔥' },
+  { id: 'skin_gold', titre: 'Thème Doré', desc: 'Une touche dorée sur ton app.', cout: 300, icon: '✨' },
+  { id: 'badge_machine', titre: 'Badge Machine', desc: 'Le badge des gros volumes.', cout: 600, icon: '🏆' },
+  { id: 'collab_partenaire', titre: 'Réduction partenaire', desc: 'Un bon plan chez un partenaire Novalyz.', cout: 800, icon: '🤝', collab: true },
+  { id: 'collab_programme', titre: 'Programme coach partenaire', desc: 'Un programme signé par un coach partenaire.', cout: 1000, icon: '🎓', collab: true }
+];
+function _renderBoutique(data) {
+  var cont = document.getElementById('tj-boutique'); if (!cont) return;
+  var rec = (data && data.recompenses) || { solde: 0, claims: [] };
+  var owned = {}; (rec.claims || []).forEach(function (c) { owned[c.id] = true; });
+  var solde = Number(rec.solde) || 0;
+  var cards = _RECOMPENSES.map(function (r) {
+    var has = !!owned[r.id];
+    var right;
+    if (r.collab) {
+      right = '<span class="bq-soon">Bientôt</span>';
+    } else if (has) {
+      right = '<span class="bq-owned">Obtenu ✓</span>';
+    } else {
+      var canBuy = solde >= r.cout;
+      right = '<button class="bq-buy' + (canBuy ? '' : ' off') + '"' + (canBuy ? (' onclick="nvzAcheterRecompense(\'' + r.id + '\')"') : ' disabled') + '>' + r.cout + ' pts</button>';
+    }
+    return '<div class="bq-card' + (has ? ' has' : '') + (r.collab ? ' collab' : '') + '"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + r.desc + '</span></div>' + right + '</div>';
+  }).join('');
+  cont.innerHTML = '<div class="bq-h">🛍️ Boutique <span class="bq-solde">' + solde.toLocaleString('fr-FR') + ' pts dispo</span></div>' + cards;
+}
+function nvzAcheterRecompense(id) {
+  var r = null; for (var i = 0; i < _RECOMPENSES.length; i++) if (_RECOMPENSES[i].id === id) r = _RECOMPENSES[i];
+  if (!r || !athlete || !athlete.athlete_id) return;
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'claimRecompense', athlete_id: athlete.athlete_id, reward_id: id }) })
+    .then(function (x) { return x.json(); })
+    .then(function (res) {
+      if (res && res.success) {
+        try { if (dernierAppData && dernierAppData.recompenses) { dernierAppData.recompenses.claims.push({ id: id, cout: r.cout, date: '' }); dernierAppData.recompenses.depenses += r.cout; dernierAppData.recompenses.solde = res.solde; } } catch (e) {}
+        try { _renderBoutique(dernierAppData); } catch (e) {}
+        try { nvzShowGift(r.titre); } catch (e) {}
+      } else {
+        try { showToast((res && res.error) || 'Achat impossible'); } catch (e) {}
+      }
+    })
+    .catch(function () { try { showToast('Erreur réseau'); } catch (e) {} });
+}
+
 // Coffre + confettis (objectif atteint).
 function nvzShowGift(label) {
   var ov = document.getElementById('tj-gift-ov'), g = document.getElementById('tj-gift'), box = document.getElementById('tj-gift-box'), s = document.getElementById('tj-gift-s');
@@ -12543,7 +14299,14 @@ function renderEtat(data) {
         if (!isNaN(doul) && doul > 1 && be0.zone) {
           zone = '<div class="et-er"><span class="et-lab" style="font-weight:600;color:var(--text-muted);font-size:11.5px">📍 Zone : <b style="color:var(--text)">' + esc(be0.zone) + '</b></span></div>';
         }
-        elW2.innerHTML = fiabHtml + rowsHtml + zone;
+        // Date du relevé affiché : « du jour » peut en fait dater de la dernière
+        // séance renseignée → on l'indique clairement (honnêteté : pas forcément
+        // aujourd'hui). Les champs « après séance » restent vides tant qu'aucun
+        // bilan de fin de séance n'a été rempli.
+        var _beDisp = String(be0.date || '');
+        var _beM = _beDisp.match(/^(\d{4})-(\d{2})-(\d{2})/); if (_beM) _beDisp = _beM[3] + '/' + _beM[2] + '/' + _beM[1];
+        var dateHtml = _beDisp ? '<div style="padding:9px 12px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-muted)">Dernier relevé · <b style="color:var(--text)">' + esc(_beDisp) + '</b></div>' : '';
+        elW2.innerHTML = dateHtml + fiabHtml + rowsHtml + zone;
       }
     }
   } catch (e) {}
@@ -12865,11 +14628,31 @@ function _cxRender() {
 // Ouvre le flux de saisie en PAGE PLEIN ÉCRAN (body.seance-active) — l'en-tête
 // d'app et la barre du bas sont masqués, un bouton retour apparaît. Aucune
 // logique de saisie modifiée.
+// ── Maintien de l'écran allumé (Screen Wake Lock) pendant un chrono ──────────
+// Pendant une séance muscu ou une Hyrox chronométrée, l'écran ne doit pas
+// s'éteindre (sinon il faut le rallumer pour valider un segment). Le verrou est
+// relâché à l'arrêt du chrono, et ré-acquis au retour au premier plan (le système
+// le libère quand l'onglet est caché / l'écran s'éteint).
+var _nvWake = null, _nvWakeWant = false;
+async function _nvWakeOn() {
+  _nvWakeWant = true;
+  try { if (navigator.wakeLock && !_nvWake) { _nvWake = await navigator.wakeLock.request('screen'); _nvWake.addEventListener('release', function () { _nvWake = null; }); } } catch (e) {}
+}
+function _nvWakeOff() {
+  _nvWakeWant = false;
+  try { if (_nvWake) { _nvWake.release(); _nvWake = null; } } catch (e) {}
+}
+try {
+  document.addEventListener('visibilitychange', function () {
+    if (_nvWakeWant && document.visibilityState === 'visible') { _nvWakeOn(); }
+  });
+} catch (e) {}
+
 var _seanceChronoT0 = 0, _seanceChronoIv = null, _seanceDureeMin = 0;
 function _seanceChronoFmt(ms) { var s = Math.floor(ms / 1000), m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }
 function _seanceChronoTick() { var t = _seanceChronoT0 ? _seanceChronoFmt(Date.now() - _seanceChronoT0) : ''; var el = document.getElementById('seance-page-chrono'); if (el) el.textContent = t; var cc = document.getElementById('cardio-live-clock'); if (cc) cc.textContent = t || '0:00'; }
-function _seanceChronoStart() { if (!_seanceChronoT0) _seanceChronoT0 = Date.now(); _seanceChronoTick(); if (_seanceChronoIv) clearInterval(_seanceChronoIv); _seanceChronoIv = setInterval(_seanceChronoTick, 1000); }
-function _seanceChronoStop() { if (_seanceChronoIv) { clearInterval(_seanceChronoIv); _seanceChronoIv = null; } }
+function _seanceChronoStart() { if (!_seanceChronoT0) _seanceChronoT0 = Date.now(); _seanceChronoTick(); if (_seanceChronoIv) clearInterval(_seanceChronoIv); _seanceChronoIv = setInterval(_seanceChronoTick, 1000); try { _nvWakeOn(); } catch (e) {} }
+function _seanceChronoStop() { if (_seanceChronoIv) { clearInterval(_seanceChronoIv); _seanceChronoIv = null; } try { _nvWakeOff(); } catch (e) {} }
 function ouvrirSeancePage() {
   try { if (typeof switchSubTab === 'function') switchSubTab('saisie'); } catch (e) {}
   document.body.classList.add('seance-active');
@@ -12955,11 +14738,70 @@ function ouvrirEditeurProgramme() {
   } catch (e) { return; }
   var ov = document.getElementById('prog-editor-overlay');
   if (ov) ov.style.display = 'flex';
+  try { document.body.classList.add('prog-editor-open'); } catch (e) {}
   if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
+}
+// Même éditeur (Builder) côté COACH, pointé sur l'athlète courant du coach.
+// Position d'origine de #prog-editor-overlay (pour le ramener hors de la fiche).
+var _progOvHome = null;
+function _progOvRememberHome(ov) { if (!_progOvHome && ov) _progOvHome = { parent: ov.parentNode, next: ov.nextSibling }; }
+function _progRestoreOverlayHome() {
+  var ov = document.getElementById('prog-editor-overlay'); if (!ov) return;
+  ov.classList.remove('prog-inline');
+  var tab = document.getElementById('cdtab-programme'); if (tab) tab.classList.remove('prog-has-inline');
+  if (_progOvHome && ov.parentNode !== _progOvHome.parent) {
+    if (_progOvHome.next && _progOvHome.next.parentNode === _progOvHome.parent) _progOvHome.parent.insertBefore(ov, _progOvHome.next);
+    else _progOvHome.parent.appendChild(ov);
+  }
+}
+function ouvrirEditeurProgrammeCoach() {
+  if (typeof coachAthleteCourant === 'undefined' || !coachAthleteCourant) return;
+  try { cdProgOpen = {}; } catch (e) {}
+  try { _progTab = 0; } catch (e) {}
+  try {
+    progCtx = { el: 'prog-editor-content', athleteId: coachAthleteCourant.athlete_id, athleteNom: coachAthleteCourant.nom || '', readonly: false };
+  } catch (e) { return; }
+  var ov = document.getElementById('prog-editor-overlay'); if (!ov) return;
+  _progOvRememberHome(ov);
+  var deskCoach = false; try { deskCoach = window.matchMedia('(min-width:992px)').matches; } catch (e) {}
+  if (deskCoach) {
+    // INLINE : le Builder se place DANS l'onglet Programme (sous les sous-onglets),
+    // comme les autres onglets — plus de « page » plein écran ni de flèche.
+    var host = document.getElementById('cdtab-programme');
+    if (host) { host.classList.add('prog-has-inline'); if (ov.parentNode !== host) host.appendChild(ov); }
+    ov.classList.add('prog-inline');
+    try { document.body.classList.remove('prog-editor-open'); } catch (e) {}
+  } else {
+    _progRestoreOverlayHome();
+    try { document.body.classList.add('prog-editor-open'); } catch (e) {}
+  }
+  ov.style.display = 'flex';
+  var t = document.getElementById('prog-editor-title'); if (t) t.textContent = 'Programme · ' + (coachAthleteCourant.nom || '');
+  if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
+}
+// Navigation depuis l'en-tête de l'éditeur Programme (desktop coach) : on quitte
+// le Builder et on va directement sur l'onglet voulu de la fiche — pas besoin de
+// « flèche retour ».
+function progEdNav(tab) {
+  var ov = document.getElementById('prog-editor-overlay');
+  if (tab === 'programme') return;   // déjà sur Programme
+  if (ov) ov.style.display = 'none';
+  try { document.body.classList.remove('prog-editor-open'); } catch (e) {}
+  try {
+    if (tab === 'conseils') { if (typeof ouvrirConversationCoach === 'function') return ouvrirConversationCoach(); }
+    if (typeof switchCoachDetailTab === 'function') switchCoachDetailTab(tab);
+  } catch (e) {}
 }
 function fermerEditeurProgramme() {
   var ov = document.getElementById('prog-editor-overlay');
   if (ov) ov.style.display = 'none';
+  try { document.body.classList.remove('prog-editor-open'); } catch (e) {}
+  // Contexte COACH : on recharge l'onglet Programme inline de la fiche (pas l'app athlète).
+  if (typeof coach !== 'undefined' && coach && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant) {
+    try { progCtx = { el: 'cd-programme-content', athleteId: coachAthleteCourant.athlete_id, athleteNom: coachAthleteCourant.nom || '' }; } catch (e) {}
+    if (typeof chargerProgrammeCoach === 'function') chargerProgrammeCoach();
+    return;
+  }
   // Le programme a pu changer → recharger pour rafraîchir le hub et le sélecteur.
   if (typeof chargerAppData === 'function') chargerAppData();
 }
@@ -13163,12 +15005,16 @@ function _maybeOnboarding() {
   var hasProg = Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0;
   if (!dernierAppData.onboarding_vu) { ouvrirOnboarding(); return; }
   // Intro déjà vue : reproposer un programme si pertinent (pas de coach, pas coupé, aucun programme).
-  if (!hasProg && !hasCoach && !dernierAppData.prog_auto_off) { ouvrirGenProgramme(); }
+  if (!hasProg && !hasCoach && !dernierAppData.prog_auto_off) { ouvrirGenProgramme(); return; }
+  // Sinon : visite guidée contextuelle (une fois, drapeau localStorage).
+  nvTourAthlete();
 }
 function ouvrirOnboarding() {
   if (!athlete) return;
   var hasCoach = !!(athlete && athlete.coach_id);
-  _onbSteps = hasCoach ? ['promesse', 'marche', 'diff', 'nav', 'coachinfo'] : ['promesse', 'marche', 'diff', 'nav', 'profil'];
+  // 'nav' (slide statique « Où trouver quoi ») retiré : remplacé par la visite
+  // guidée contextuelle (nvTourAthlete) lancée à la fin de l'intro.
+  _onbSteps = hasCoach ? ['promesse', 'marche', 'diff', 'coachinfo'] : ['promesse', 'marche', 'diff', 'profil'];
   _onbI = 0;
   var ov = document.getElementById('onb-overlay');
   if (!ov) {
@@ -13190,7 +15036,7 @@ function _onbChoix(c) {
   else if (c === 'mine') { _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme 👍'); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
   else if (c === 'coach') { _onbSteps = ['coachinfo']; _onbI = 0; _onbRender(); }
 }
-function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); }
+function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); setTimeout(function () { nvTourAthlete(); }, 450); }
 function _onbContent(step) {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var prenom = 'toi'; try { if (athlete && athlete.nom) prenom = String(athlete.nom).trim().split(/\s+/)[0]; } catch (e) {}
@@ -13221,6 +15067,499 @@ function _onbRender() {
     + '<button onclick="_onbFini()" style="background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;font-weight:600">Passer</button></div>';
   var btn = c.primary ? '<button onclick="' + (c.onPrimary || '_onbNext()') + '" style="width:100%;margin-top:16px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">' + c.primary + '</button>' : '';
   inner.innerHTML = top + '<div style="flex:1;display:flex;flex-direction:column">' + c.html + '</div>' + btn;
+}
+
+/* ═══════════════ VISITE GUIDÉE (tour contextuel) ═══════════════
+ * Surligne les VRAIS éléments de l'interface, étape par étape (spotlight + bulle).
+ * Réutilisé athlète ET coach, mobile et desktop. Si une cible est absente/masquée
+ * (variante d'écran), l'étape bascule en carte centrée (dégradation propre).
+ * Drapeau « vu » en localStorage (nicety par appareil → aucun appel backend).
+ */
+var _tour = { steps: [], i: 0, key: null };
+function _tourSeen(key) { try { return localStorage.getItem('nvz_' + key) === '1'; } catch (e) { return false; } }
+function _tourMark(key) { try { localStorage.setItem('nvz_' + key, '1'); } catch (e) {} }
+function _tourEnsureDom() {
+  if (document.getElementById('nvt-ov')) return;
+  var ov = document.createElement('div'); ov.id = 'nvt-ov';
+  ov.innerHTML = '<div id="nvt-spot"></div>'
+    + '<div id="nvt-flash"><span class="lbl"></span></div>'
+    + '<div id="nvt-bub"><button id="nvt-skip" onclick="nvTourEnd()">Passer ✕</button>'
+    + '<div id="nvt-arrow"></div><div id="nvt-scr"></div><div id="nvt-t"></div><div id="nvt-x"></div>'
+    + '<div id="nvt-dots"></div>'
+    + '<div class="nvt-row">'
+    + '<button id="nvt-prev" class="nvt-ghost" onclick="nvTourPrev()">Précédent</button>'
+    + '<button id="nvt-next" class="nvt-prim" onclick="nvTourNext()">Suivant</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+}
+// Verrou de scroll : on bloque le scroll UTILISATEUR (molette/tactile) pendant la
+// visite — mais pas le scroll programmatique (scrollIntoView continue de marcher),
+// ni le scroll À L'INTÉRIEUR de la bulle si son contenu déborde.
+function _tourScrollBlocker(e) {
+  var bub = document.getElementById('nvt-bub');
+  if (bub && bub.contains(e.target) && bub.scrollHeight > bub.clientHeight) return;
+  if (e.cancelable) e.preventDefault();
+}
+function _tourLockScroll(on) {
+  try {
+    if (on) {
+      document.addEventListener('wheel', _tourScrollBlocker, { passive: false, capture: true });
+      document.addEventListener('touchmove', _tourScrollBlocker, { passive: false, capture: true });
+    } else {
+      document.removeEventListener('wheel', _tourScrollBlocker, { capture: true });
+      document.removeEventListener('touchmove', _tourScrollBlocker, { capture: true });
+    }
+  } catch (e) {}
+}
+function nvTourStart(steps, key) {
+  if (!steps || !steps.length) return;
+  _tour.steps = steps; _tour.i = 0; _tour.key = key || null; _tour.lastScr = null;
+  _tourEnsureDom();
+  document.getElementById('nvt-ov').classList.add('on');
+  _tourLiftNav(true);
+  _tourLockScroll(true);
+  _tourRender();
+}
+function nvTourEnd() { var o = document.getElementById('nvt-ov'); if (o) o.classList.remove('on'); _tourLiftNav(false); _tourClearNavCur(); _tourLockScroll(false); _tourStopRO(); if (_tour.key) _tourMark(_tour.key); }
+// Barre de nav : on la garde VISIBLE au-dessus du voile pendant la visite (sinon
+// elle est assombrie, on ne voit plus sur quel écran on est) + on entoure l'onglet actif.
+function _tourLiftNav(on) {
+  ['tabs-bar', 'app-side', 'coach-rail'].forEach(function (id) { var e = document.getElementById(id); if (e) e.classList.toggle('nvt-navlift', !!on); });
+  if (!on) _tourClearNavCur();
+}
+function _tourClearNavCur() { try { document.querySelectorAll('.nvt-navcur, .nvt-navdim').forEach(function (e) { e.classList.remove('nvt-navcur', 'nvt-navdim'); }); } catch (e) {} }
+function _tourMarkNavCur() {
+  _tourClearNavCur();
+  try {
+    // Estompe tous les onglets visibles, puis remet en avant SEULEMENT celui de
+    // l'écran courant → seul le nom de l'écran où on est ressort.
+    document.querySelectorAll('.tab-btn, .as-item, .cs-item').forEach(function (e) { if (e.offsetParent !== null) e.classList.add('nvt-navdim'); });
+    document.querySelectorAll('.tab-btn.active, .as-item.active, .cs-item.on').forEach(function (e) { if (e.offsetParent !== null) { e.classList.remove('nvt-navdim'); e.classList.add('nvt-navcur'); } });
+  } catch (e) {}
+}
+function nvTourNext() { if (_tour.i < _tour.steps.length - 1) { _tour.i++; _tourRender(); } else nvTourEnd(); }
+function nvTourPrev() { if (_tour.i > 0) { _tour.i--; _tourRender(); } }
+// Visibilité RÉELLE (pas via offsetParent : un élément position:fixed — ex. le FAB
+// « Demande à Novalyz » — a offsetParent null tout en étant parfaitement visible).
+function _tourVisible(el) {
+  if (!el) return false;
+  var cs; try { cs = getComputedStyle(el); } catch (e) { return false; }
+  if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+  var r = el.getBoundingClientRect();
+  return r.width > 1 && r.height > 1;
+}
+// Parcourt TOUS les éléments qui matchent (pas seulement le premier) et renvoie le
+// premier réellement visible — utile quand plusieurs vues rendent le même sélecteur.
+function _tourElFor(step) {
+  var sels = Array.isArray(step.sel) ? step.sel : [step.sel];
+  for (var k = 0; k < sels.length; k++) {
+    var list = []; try { list = document.querySelectorAll(sels[k]); } catch (e) {}
+    for (var j = 0; j < list.length; j++) { if (_tourVisible(list[j])) return list[j]; }
+  }
+  return null;
+}
+// Recadrage auto du spotlight quand la cible change de taille/position (données
+// chargées en différé). Un seul observateur actif à la fois.
+function _tourStopRO() {
+  try { if (_tour._ro) { _tour._ro.disconnect(); _tour._ro = null; } } catch (e) {}
+}
+function _tourObserve(el, spot, bub, arrow) {
+  _tourStopRO();
+  if (typeof ResizeObserver === 'undefined') return;
+  try {
+    var raf = 0;
+    _tour._ro = new ResizeObserver(function () {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(function () { if (_tourVisible(el)) _tourPlace(el, spot, bub, arrow); });
+    });
+    _tour._ro.observe(el);
+  } catch (e) {}
+}
+function _tourRender() {
+  _tourStopRO();
+  var s = _tour.steps[_tour.i]; if (!s) return;
+  if (s.before) { try { s.before(); } catch (e) {} }
+  var spot = document.getElementById('nvt-spot'), bub = document.getElementById('nvt-bub'), arrow = document.getElementById('nvt-arrow');
+  var scrEl = document.getElementById('nvt-scr'); if (scrEl) scrEl.textContent = s.scr ? ('Écran · ' + s.scr) : '';
+  document.getElementById('nvt-t').textContent = s.t;
+  var xEl = document.getElementById('nvt-x');
+  if (s.html) xEl.innerHTML = s.html; else xEl.textContent = s.x;   // s.html = contenu riche (ex. tableau Premium)
+  bub.classList.toggle('nvt-big', !!s.big);                          // carte élargie (tableau)
+  document.getElementById('nvt-prev').style.visibility = _tour.i === 0 ? 'hidden' : 'visible';
+  document.getElementById('nvt-next').textContent = _tour.i === _tour.steps.length - 1 ? 'Terminer' : 'Suivant';
+  document.getElementById('nvt-dots').innerHTML = _tour.steps.map(function (_, k) { return '<i class="nvt-dot' + (k === _tour.i ? ' on' : '') + '"></i>'; }).join('');
+  var ov = document.getElementById('nvt-ov');
+  // Forcer l'affichage des blocs « reveal » (sinon ils sont translatés/transparents
+  // pendant leur animation → le cadre tombe à côté / mauvaise taille).
+  try { document.querySelectorAll('#tab-accueil .tj-reveal:not(.in)').forEach(function (e) { e.classList.add('in'); }); } catch (e) {}
+  // Placement du spotlight + bulle sur la cible (ou carte centrée si absente).
+  // La cible peut n'apparaître qu'après un rendu asynchrone (changement de sous-vue
+  // Analyses, de sous-onglet Réglages…) → on RÉESSAIE un court instant avant de
+  // retomber sur la carte centrée (sinon « pas de surbrillance »).
+  var centrer = function () {
+    ov.classList.add('nvt-dim');
+    spot.style.display = 'none'; arrow.style.display = 'none';
+    bub.style.left = '50%'; bub.style.top = '50%'; bub.style.transform = 'translate(-50%,-50%)';
+  };
+  var place = function () {
+    _tourMarkNavCur();
+    var tries = 0;
+    var attempt = function () {
+      if (_tour.i !== _tour.steps.indexOf(s) && _tour.steps[_tour.i] !== s) return; // step changé entre-temps
+      var el = _tourElFor(s);
+      if (el) {
+        ov.classList.remove('nvt-dim');
+        try { el.scrollIntoView({ block: 'center' }); } catch (e) {}
+        setTimeout(function () { var e2 = _tourElFor(s); if (e2) _tourPlace(e2, spot, bub, arrow); }, 140);
+        setTimeout(function () { var e2 = _tourElFor(s); if (e2) _tourPlace(e2, spot, bub, arrow); }, 440);
+        // Certaines cibles (IA coach, état du jour) grandissent APRÈS un rendu
+        // asynchrone (données chargées) → on recadre le spotlight à chaque
+        // changement de taille/position, le temps que la carte se stabilise.
+        _tourObserve(el, spot, bub, arrow);
+      } else if (tries++ < 12) {
+        setTimeout(attempt, 70);
+      } else {
+        centrer();
+      }
+    };
+    attempt();
+  };
+  // On change d'écran ? → flash « Écran X » plein cadre, le temps que la nouvelle
+  // page se mette en place, puis on affiche la bulle (on la masque pendant le flash).
+  var changed = !!s.scr && s.scr !== _tour.lastScr;
+  if (s.scr) _tour.lastScr = s.scr;
+  if (changed) {
+    bub.style.opacity = '0';
+    _tourFlash(s.scr);
+    setTimeout(function () { bub.style.opacity = '1'; place(); }, 720);
+  } else {
+    bub.style.opacity = '1';
+    place();
+  }
+}
+function _tourFlash(name) {
+  var f = document.getElementById('nvt-flash'); if (!f) return;
+  var lbl = f.querySelector('.lbl'); if (lbl) lbl.textContent = 'Écran · ' + name;
+  f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  setTimeout(function () { f.classList.remove('on'); }, 1100);
+}
+// Bornes de la zone où la bulle peut s'afficher, en EXCLUANT la nav « liftée »
+// (z-index au-dessus du voile) : barre du bas en mobile, rail gauche en desktop —
+// sinon la bulle (et son bouton Suivant) passe DESSOUS et devient inaccessible.
+function _tourSafeBounds() {
+  var b = { left: 10, right: window.innerWidth - 10, top: 10, bottom: window.innerHeight - 10 };
+  var vis = function (el) { return el && _tourVisible(el); };
+  try {
+    var bar = document.getElementById('tabs-bar');          // barre d'onglets (mobile)
+    if (vis(bar)) { var rb = bar.getBoundingClientRect(); if (rb.top < b.bottom) b.bottom = rb.top - 10; }
+    ['app-side', 'coach-rail'].forEach(function (id) {       // rail latéral (desktop)
+      var e = document.getElementById(id);
+      if (vis(e)) { var re = e.getBoundingClientRect(); if (re.right > b.left && re.right < window.innerWidth * 0.5) b.left = re.right + 10; }
+    });
+  } catch (e) {}
+  return b;
+}
+function _tourPlace(el, spot, bub, arrow) {
+  var pad = 6, r = el.getBoundingClientRect(), sb = _tourSafeBounds();
+  // Cap de hauteur par étape (spotMaxH) : certaines cartes (ex. IA coach) sont très
+  // hautes → le spotlight couvre alors le HAUT du bloc (label + chips) sans déborder.
+  var cur = _tour.steps[_tour.i] || {};
+  var sh = (cur.spotMaxH && r.height > cur.spotMaxH) ? cur.spotMaxH : r.height;
+  spot.style.display = 'block';
+  spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
+  spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (sh + pad * 2) + 'px';
+  bub.style.transform = 'none';
+  var bw = bub.offsetWidth || 280, bh = bub.offsetHeight || 150, gap = 14;
+  var cx = r.left + r.width / 2;
+  var left = Math.max(sb.left, Math.min(cx - bw / 2, sb.right - bw));
+  // Essaie dessous, puis dessus — dans la zone sûre. Si aucun ne tient, on place
+  // dans la zone sûre (collé au bord dispo) sans flèche.
+  var fitsBelow = (r.bottom + gap + bh) <= sb.bottom;
+  var fitsAbove = (r.top - gap - bh) >= sb.top;
+  var top, mode;
+  if (fitsBelow) { top = r.bottom + gap; mode = 'below'; }
+  else if (fitsAbove) { top = r.top - gap - bh; mode = 'above'; }
+  else { top = Math.max(sb.top, Math.min(sb.bottom - bh, r.bottom + gap)); mode = 'none'; }
+  bub.style.left = left + 'px'; bub.style.top = top + 'px';
+  if (mode === 'none') { arrow.style.display = 'none'; return; }
+  arrow.style.display = 'block';
+  arrow.style.left = (Math.min(Math.max(cx - left - 7, 16), bw - 30)) + 'px';
+  if (mode === 'below') { arrow.style.top = '-7px'; arrow.style.transform = 'rotate(45deg)'; }
+  else { arrow.style.top = (bh - 7) + 'px'; arrow.style.transform = 'rotate(225deg)'; }
+}
+window.addEventListener('resize', function () { var o = document.getElementById('nvt-ov'); if (o && o.classList.contains('on')) _tourRender(); });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GUIDE « 1 carte = 1 écran » — remplace la visite à spotlights (fragile mobile).
+// Chaque carte présente un écran entier + ses fonctions, pendant que l'app y
+// navigue réellement (la nav réelle met la barre du bas en surbrillance → plus de
+// bug). Robuste mobile ET desktop : aucun positionnement de spotlight.
+// ═══════════════════════════════════════════════════════════════════════════
+var _NVG_IC = {
+  home: '<path d="M3 11l9-8 9 8M5 10v10h14V10"/>',
+  dumb: '<path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/>',
+  chart: '<path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6"/>',
+  heart: '<path d="M20 6a5 5 0 0 0-8-1 5 5 0 0 0-8 1c0 4 8 10 8 10s8-6 8-10z"/>',
+  watch: '<rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 2h6M9 22h6M12 9v3l2 1"/>',
+  body: '<circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M8 21l4-6 4 6M7 11l5-1 5 1"/>',
+  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  gift: '<rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M3 12h18M12 8v13"/>',
+  team: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5c2.5 0 5 1.5 5 4.5"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  clip: '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 11h6M9 15h4"/>',
+  spark: '<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2zM9 21h6"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'
+};
+var _nvg = { cards: [], i: 0, key: null };
+function _nvgCss() {
+  if (document.getElementById('nvg-css')) return;
+  var s = document.createElement('style'); s.id = 'nvg-css';
+  s.textContent = 'body.nvg-open{overflow:hidden!important}'
+    + '#nvg-ov{position:fixed;inset:0;z-index:1200;background:rgba(7,11,20,.55);display:flex;align-items:flex-end;justify-content:center;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}'
+    + '.nvg-sheet{background:var(--surface);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(7,11,20,.3);animation:nvgUp .3s ease;max-height:88vh;overflow:auto}'
+    + '@keyframes nvgUp{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}'
+    + '.nvg-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}'
+    + '.nvg-step{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);background:var(--accent-a10,rgba(26,95,255,.1));border-radius:999px;padding:4px 10px}'
+    + '.nvg-skip{background:none;border:none;color:var(--text-subtle);font:inherit;font-size:12px;cursor:pointer}'
+    + '.nvg-ic{width:52px;height:52px;border-radius:15px;background:var(--accent-a10,rgba(26,95,255,.1));display:grid;place-items:center;margin-bottom:10px}'
+    + '.nvg-ic svg{width:27px;height:27px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}'
+    + '.nvg-t{font-family:var(--font-heading,"Michroma",sans-serif);font-size:16px;margin:0 0 4px}'
+    + '.nvg-lead{font-size:12.5px;color:var(--text-muted);margin:0 0 11px;line-height:1.45}'
+    + '.nvg-feat{list-style:none;margin:0 0 2px;padding:0;display:flex;flex-direction:column;gap:9px}'
+    + '.nvg-feat li{display:flex;gap:9px;font-size:13px;line-height:1.4}'
+    + '.nvg-feat li svg{width:16px;height:16px;flex:none;margin-top:2px;fill:none;stroke:var(--good,#00A854);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}'
+    + '.nvg-feat li b{font-weight:700}'
+    + '.nvg-dots{display:flex;gap:5px;justify-content:center;margin:15px 0 13px;flex-wrap:wrap}'
+    + '.nvg-dots span{width:6px;height:6px;border-radius:999px;background:var(--border)}'
+    + '.nvg-dots span.on{background:var(--accent);width:18px}'
+    + '.nvg-nav{display:flex;align-items:center;justify-content:space-between;gap:10px}'
+    + '.nvg-prev{background:var(--surface2);border:1px solid var(--border);color:var(--text);font:inherit;font-weight:700;font-size:13px;border-radius:12px;padding:11px 16px;cursor:pointer}'
+    + '.nvg-next{flex:1;background:var(--accent);border:none;color:#fff;font:inherit;font-weight:800;font-size:14px;border-radius:12px;padding:12px;cursor:pointer}'
+    // Barre du bas (mobile) / rail gauche (desktop) remontés au-dessus du voile +
+    // écran courant mis en avant (le reste estompé). pointer-events coupés : on
+    // navigue via la carte uniquement.
+    + '.nvg-navlift{z-index:1250!important;pointer-events:none!important}'
+    + '.nvg-navdim{opacity:.38!important;transition:opacity .2s}'
+    + '.nvg-navcur{opacity:1!important;position:relative}'
+    + '.nvg-navcur::after{content:"";position:absolute;inset:-3px;border:2px solid var(--accent);border-radius:12px;animation:nvgPulse 1.6s ease-out infinite;pointer-events:none}'
+    + '@keyframes nvgPulse{0%{opacity:.7;transform:scale(.98)}70%{opacity:0;transform:scale(1.12)}100%{opacity:0}}'
+    + '@media (prefers-reduced-motion:reduce){.nvg-sheet{animation:none}.nvg-navcur::after{animation:none;opacity:.7}}';
+  document.head.appendChild(s);
+}
+function nvGuideStart(cards, key) {
+  if (!cards || !cards.length) return;
+  _nvgCss();
+  _nvg = { cards: cards, i: 0, key: key || null };
+  var ov = document.getElementById('nvg-ov');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'nvg-ov'; document.body.appendChild(ov); }
+  document.body.classList.add('nvg-open');
+  _nvgRender();
+}
+function nvGuideEnd() {
+  var ov = document.getElementById('nvg-ov'); if (ov) ov.parentNode.removeChild(ov);
+  document.body.classList.remove('nvg-open');
+  _nvgClearNav();
+  if (_nvg.key) _tourMark(_nvg.key);
+}
+// Nettoie les emphases de nav (remise à zéro z-index / opacité).
+function _nvgClearNav() {
+  try { [].forEach.call(document.querySelectorAll('.nvg-navlift'), function (e) { e.classList.remove('nvg-navlift'); }); } catch (e) {}
+  try { [].forEach.call(document.querySelectorAll('.nvg-navcur,.nvg-navdim'), function (e) { e.classList.remove('nvg-navcur', 'nvg-navdim'); }); } catch (e) {}
+}
+// Remonte la barre basse (mobile) OU le rail gauche (desktop) au-dessus du voile,
+// surligne l'écran courant (l'item déjà « actif » posé par la vraie nav), estompe
+// le reste, et décale la feuille pour ne pas masquer une barre basse.
+function _nvgLiftNav() {
+  _nvgClearNav();
+  var bottom = null;
+  ['tabs-bar', 'coach-bandeau', 'app-side', 'coach-rail'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && el.offsetParent !== null) { el.classList.add('nvg-navlift'); if (id === 'tabs-bar' || id === 'coach-bandeau') bottom = el; }
+  });
+  try {
+    [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn, .nvg-navlift .as-item, .nvg-navlift .cs-item, .nvg-navlift .cb-item'), function (e) { e.classList.add('nvg-navdim'); });
+    [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn.active, .nvg-navlift .as-item.active, .nvg-navlift .cs-item.on, .nvg-navlift .cb-item.on'), function (e) { e.classList.remove('nvg-navdim'); e.classList.add('nvg-navcur'); });
+  } catch (e) {}
+  try { var sheet = document.querySelector('.nvg-sheet'); if (sheet) sheet.style.marginBottom = bottom ? (bottom.offsetHeight + 'px') : '0'; } catch (e) {}
+}
+function nvGuidePrev() { if (_nvg.i > 0) { _nvg.i--; _nvgRender(); } }
+function nvGuideNext() { if (_nvg.i < _nvg.cards.length - 1) { _nvg.i++; _nvgRender(); } else nvGuideEnd(); }
+function _nvgRender() {
+  var c = _nvg.cards[_nvg.i]; if (!c) return;
+  try { if (c.go) c.go(); } catch (e) {}
+  var ov = document.getElementById('nvg-ov'); if (!ov) return;
+  var n = _nvg.cards.length;
+  var feats = (c.feats || []).map(function (t) { return '<li><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span>' + t + '</span></li>'; }).join('');
+  var dots = _nvg.cards.map(function (_c, j) { return '<span class="' + (j === _nvg.i ? 'on' : '') + '"></span>'; }).join('');
+  var last = _nvg.i === n - 1;
+  ov.innerHTML = '<div class="nvg-sheet">'
+    + '<div class="nvg-hd"><span class="nvg-step">Écran ' + (_nvg.i + 1) + '/' + n + (c.scr ? ' · ' + c.scr : '') + '</span><button class="nvg-skip" onclick="nvGuideEnd()">Passer ✕</button></div>'
+    + '<div class="nvg-ic"><svg viewBox="0 0 24 24">' + (_NVG_IC[c.ic] || '') + '</svg></div>'
+    + '<h3 class="nvg-t">' + c.t + '</h3>'
+    + (c.lead ? '<p class="nvg-lead">' + c.lead + '</p>' : '')
+    + (feats ? '<ul class="nvg-feat">' + feats + '</ul>' : '')
+    + '<div class="nvg-dots">' + dots + '</div>'
+    + '<div class="nvg-nav">' + (_nvg.i > 0 ? '<button class="nvg-prev" onclick="nvGuidePrev()">Précédent</button>' : '<span></span>')
+    + '<button class="nvg-next" onclick="nvGuideNext()">' + (last ? 'C’est parti 💪' : 'Suivant ›') + '</button></div>'
+    + '</div>';
+  try { ov.querySelector('.nvg-sheet').scrollTop = 0; } catch (e) {}
+  // La vraie nav (switchTab / coachBandeauGo / renderCoachDesktop) a déjà posé l'item
+  // actif → on le remonte au-dessus du voile et on le met en avant.
+  try { _nvgLiftNav(); } catch (e) {}
+}
+// Navigation coach pour le guide (viewport-aware) : sections de contenu via la vraie
+// nav (surligne la barre) ; Messages/Profil → on surligne SANS ouvrir l'overlay (pas
+// de piège pendant la visite).
+function _guideCoachGo(sec) {
+  try { if (document.body.classList.contains('athlete-selected')) retourListeAthletesCoach(); } catch (e) {}
+  var desk = (typeof _coachDeskAny === 'function') && _coachDeskAny();
+  if (sec === 'messages' || sec === 'profil') {
+    if (desk) { coachDeskOverlay = sec; try { renderCoachRail(); } catch (e) {} }
+    else { coachBandeauTab = sec; try { coachBandeauApply(); } catch (e) {} }
+    return;
+  }
+  coachDeskOverlay = null;
+  if (desk) { coachDeskSection = sec; try { renderCoachDesktop(); } catch (e) {} }
+  else { try { coachBandeauGo(sec); } catch (e) {} }
+}
+function _guideCoachFiche(subtab) {
+  try {
+    if (!document.body.classList.contains('athlete-selected')) {
+      var a = (typeof athletesCoach !== 'undefined' && athletesCoach && athletesCoach[0]) ? athletesCoach[0] : null;
+      if (a) ouvrirDetailAthleteCoach(a, subtab);
+    }
+  } catch (e) {}
+}
+// Deck ATHLÈTE (branché : a un coach ou non → Entraînement + Coach/assistant changent).
+function _guideAthleteCards() {
+  var hasCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
+  var aGo = function (t, extra) { return function () { try { switchTab(t); } catch (e) {} if (extra) try { extra(); } catch (e) {} }; };
+  return [
+    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton tableau de bord quotidien — tu reviens toujours ici.', go: aGo('accueil'),
+      feats: ['Ton <b>état du jour</b> (prêt / vigilance) + le <b>mot de Novalyz</b> (reco qui change chaque jour)', 'Ta <b>séance du jour</b> à lancer en un geste', 'Ton <b>point d’attention</b> (alertes) et ta <b>régularité</b>', 'Tes <b>badges &amp; récompenses</b>', 'Le bouton <b>« Demande à Novalyz »</b> (assistant IA)'] },
+    { ic: 'dumb', scr: 'Entraînement', t: 'Entraînement', lead: 'Ton programme et tes séances.', go: aGo('seance'),
+      feats: ['<b>Agenda</b> : muscu, cardio et <b>Hyrox</b>', '<b>Démarre une séance</b> : saisie série par série (charge, reps, RPE) + <b>chrono de repos</b>',
+        hasCoach ? 'Ton <b>coach construit ton programme</b> : tu le suis et l’exécutes ici' : '<b>Crée ton programme</b> (séances, % du 1RM, RPE cible) ou laisse <b>Novalyz te le proposer</b> en 3 questions'] },
+    { ic: 'chart', scr: 'Analyses', t: 'Analyses', lead: 'Comprendre ce que disent tes données.', go: aGo('historique'),
+      feats: ['<b>Résumé</b> : le verdict en clair + tes chiffres clés', '<b>Évolution</b> : charge, <b>1RM estimé</b>, volume, charge à viser', '<b>Tendances</b> + <b>sélecteur de période</b> (semaine / mois / année, avec flèches)', 'Vue <b>Croisé</b> : muscu + cardio'] },
+    { ic: 'heart', scr: 'Forme', t: 'Forme', lead: 'Ton ressenti, croisé avec l’entraînement.', go: aGo('etat'),
+      feats: ['<b>Questionnaire bien-être</b> (sommeil, énergie, fatigue, douleur)', '<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte', 'Ta <b>pesée</b> + tendance du poids', '<b>Nutrition</b> (calories &amp; macros), <b>objectifs</b> et <b>blessures</b>'] },
+    { ic: 'watch', scr: 'Réglages ▸ Appareils', t: 'Montre &amp; capteurs', lead: 'Tes données santé importées automatiquement.', go: aGo('reglages', function () { try { switchReglagesTab('appareils'); } catch (e) {} }),
+      feats: ['Connexion <b>Health Connect</b> : <b>pas</b>, <b>sommeil</b>, <b>FC au repos</b>', 'Import <b>nutrition</b> : MyFitnessPal, Yazio, Samsung Health…', 'Tout est <b>croisé avec ton entraînement</b> pour juger ta forme'] },
+    { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: 'Analyse morpho &amp; assistant IA', lead: '', go: aGo('conseils'),
+      feats: hasCoach
+        ? ['<b>Messagerie</b> avec ton coach : messages, photos, vidéos de ta technique', '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Toi comme ton coach pouvez la lancer']
+        : ['<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Tu pourras <b>lier un coach</b> plus tard'] },
+    { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Tout ton suivi de base est gratuit.', go: aGo('accueil'),
+      feats: ['Suivi · forme · montre · analyses de base + <b>export de tes données</b> : gratuit', 'Assistant IA : <b>3/jour</b> gratuit, illimité en Premium', 'Programme &amp; analyse morpho IA, analyses avancées : <b>Premium</b>', '<b>Rapports automatiques</b> (ton bilan envoyé par e-mail) : <b>Premium</b>'] }
+  ];
+}
+// Deck COACH (détaillé).
+function _guideCoachCards() {
+  var G = function (s) { return function () { _guideCoachGo(s); }; };
+  var F = function (sub) { return function () { _guideCoachFiche(sub); }; };
+  return [
+    { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton point de départ chaque jour : qui a besoin de toi.', go: G('aujourdhui'),
+      feats: ['<b>Briefing équipe</b> : % à jour, athlètes à voir', '<b>Qui a répondu</b> au questionnaire bien-être (7 j) + relance', '<b>À surveiller</b> : athlètes triés par priorité + motif', '<b>Messages non lus</b> en un coup d’œil'] },
+    { ic: 'team', scr: 'Équipe', t: 'Équipe', lead: 'Tout ton effectif.', go: G('equipe'),
+      feats: ['Statut, niveau, <b>assiduité</b>, dernière séance par athlète', '<b>Enregistrer un athlète</b> : invitation ou création du compte', 'Clique une ligne pour <b>ouvrir sa fiche</b>'] },
+    { ic: 'folder', scr: 'Fiche athlète', t: 'Fiche athlète', lead: 'Tout sur un athlète, en sous-onglets.', go: F('apercu'),
+      feats: ['<b>Aperçu · Progression · Séances · Programme · Conversation</b>', 'État du jour, données d’entraînement, <b>objectifs</b> &amp; <b>blessures</b>', '<b>Export du bilan</b> client à la demande'] },
+    { ic: 'clip', scr: 'Fiche ▸ Programme', t: 'Son programme', lead: 'Dans la fiche, onglet Programme.', go: F('programme'),
+      feats: ['<b>Construis / modifies</b> ses séances : charges en % du 1RM, <b>RPE cible</b>', 'Groupé par muscle, sélection multiple d’exercices', 'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste'] },
+    { ic: 'spark', scr: 'Fiche ▸ IA', t: 'L’IA coach (bloc IA)', lead: 'Ton assistant sur CE client, branché sur ses données.', go: F('apercu'),
+      feats: ['<b>Résumé d’état &amp; vigilance</b> du client', '<b>Priorités de la semaine</b> + <b>risque de surcharge</b>', '<b>Comment adapter son programme</b> — jamais de chiffre inventé'] },
+    { ic: 'body', scr: 'Fiche ▸ Morpho', t: 'Analyse morphologique IA', lead: 'À partir des photos de l’athlète.', go: F('apercu'),
+      feats: ['Détecte les <b>groupes en avance / en retard</b>', 'Lançable par <b>toi ou l’athlète</b>', 'Oriente tes choix de programme (points faibles)'] },
+    { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Tes échanges avec les athlètes.', go: G('messages'),
+      feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
+    { ic: 'chart', scr: 'Analyses', t: 'Analyses équipe', lead: 'Les tendances en profondeur.', go: G('analyses'),
+      feats: ['Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>', 'Charge, volume, forme dans le temps'] },
+    { ic: 'gear', scr: 'Profil', t: 'Profil &amp; données', lead: 'Ton espace coach.', go: G('profil'),
+      feats: ['Tes préférences et ton profil coach', '<b>Export</b> des données de tes clients', '<b>Revoir la visite</b> à tout moment'] },
+    { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Ton espace coach démarre gratuit.', go: G('aujourdhui'),
+      feats: ['Cockpit · suivi d’équipe · fiches : gratuit', 'IA coach : <b>3 questions/jour</b>, illimité en Premium', 'Plus d’athlètes · analyses avancées : <b>Premium</b>', '<b>Envoi de rapports</b> à tes athlètes (bilans auto par e-mail) : <b>Premium</b>'] }
+  ];
+}
+function _stepsAthlete() {
+  var go = function (t) { return function () { try { switchTab(t); } catch (e) {} }; };
+  // Entraînement : les boutons programme (#en-gen/#en-creer) ne s'affichent qu'en
+  // mode muscu → on force ce mode avant de les surligner.
+  var goSeanceMuscu = function () { try { switchTab('seance'); } catch (e) {} try { _enSetMode('muscu'); } catch (e) {} };
+  // Analyses : va sur l'onglet + sélectionne la sous-vue (Résumé / Par exercice /
+  // Tendances) pour que l'élément à surligner soit bien affiché.
+  var goAna = function (t) { return function () { try { switchTab('historique'); } catch (e) {} try { maSetTab(t); } catch (e) {} }; };
+  var hasCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
+  var S = [];
+  var A = "Aujourd’hui", E = 'Entraînement', AN = 'Analyses', F = 'Forme', C = 'Coach';
+  // ─── AUJOURD'HUI ───
+  S.push({ scr: A, sel: '#tab-accueil .tj-greet', before: go('accueil'), t: 'Ton tableau du jour', x: 'Ton « Aujourd’hui » : état de forme, séance, alertes. Tu reviens toujours ici pour l’essentiel.' });
+  S.push({ scr: A, sel: '#tj-banner', before: go('accueil'), t: 'Ton état du jour', x: 'Complète ton questionnaire bien-être (1 min) : il nourrit toutes les analyses et la reco du jour.' });
+  S.push({ scr: A, sel: '#tj-nova', before: go('accueil'), t: 'La Lecture Novalyz', x: 'Ce qu’il faut retenir aujourd’hui, expliqué en clair — pas juste des graphiques.' });
+  S.push({ scr: A, sel: '#tab-accueil .tj-seance', before: go('accueil'), t: 'Ta séance du jour', x: 'La séance prévue par ton programme. Tu la démarres ici et tu notes tes charges série par série.' });
+  // Mobile : l'entrée est le FAB (position:fixed) ; desktop : le bloc .nvz-ask. On
+  // s'assure que le FAB est bien affiché avant de le surligner.
+  S.push({ scr: A, sel: ['#tab-accueil .nvz-ask', '#fab-novalyz'], before: function () { try { switchTab('accueil'); } catch (e) {} try { _majFabNovalyz(); } catch (e) {} }, t: 'Demande à Novalyz', x: 'Ton assistant IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
+  // ─── ENTRAÎNEMENT ───
+  if (!hasCoach) S.push({ scr: E, sel: '#en-gen', before: goSeanceMuscu, t: 'Un programme par l’IA', x: '✨ Novalyz t’assemble un programme de départ adapté en répondant à 3 questions.' });
+  S.push({ scr: E, sel: '#en-creer', before: goSeanceMuscu, t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
+  S.push({ scr: E, sel: '[data-tour="ath-agenda"]', before: go('seance'), t: 'Ton agenda', x: 'Retrouve tes séances faites d’un coup d’œil : muscu en vert, cardio en rouge. Touche un jour pour voir le détail.' });
+  // ─── ANALYSES ───
+  S.push({ scr: AN, sel: '#tab-historique .ma-verdict', before: goAna('resume'), t: 'Le verdict en clair', x: 'La Lecture Novalyz de ton résumé : ce qu’il faut retenir + tes chiffres clés (tonnage, charge ACWR, monotonie). Choisis la discipline analysée en haut (muscu, cardio, croisé).' });
+  S.push({ scr: AN, sel: '#ma-tab-detail', before: goAna('detail'), t: 'Évolution', x: 'Vue « Évolution » : la progression de chaque mouvement (charge, 1RM estimé, volume). La vue « Tendances » montre l’évolution d’ensemble.' });
+  S.push({ scr: AN, sel: '#tab-historique .ma-period-wrap', before: goAna('detail'), t: 'Les périodes', x: 'Choisis la fenêtre d’analyse : semaine, mois, année — avec les flèches pour naviguer dans le temps.' });
+  // ─── FORME ─── (récup/« prêt » et ressenti/bien-être sont déjà vus dans Aujourd'hui → non répétés)
+  S.push({ scr: F, sel: '#et-contexte', before: go('etat'), t: 'Ton contexte', x: 'Déclare un contexte — retour de vacances, de blessure, semaine de décharge : l’analyse s’adapte au lieu de crier à la régression.' });
+  S.push({ scr: F, sel: '#et-montre-mini', before: go('etat'), t: 'Ta montre & tes capteurs', x: 'Tes pas, ton sommeil et ta FC importés de ta montre, croisés avec ton entraînement. La connexion (Health Connect) + l’import nutrition se font dans Réglages ▸ Appareils.' });
+  S.push({ scr: F, sel: '#et-suivis', before: go('etat'), t: 'Tes suivis', x: 'Accès direct à ta pesée, ta nutrition (calories & macros), tes objectifs et tes blessures.' });
+  // ─── RÉGLAGES ───
+  // ─── COACH / CONVERSATION ───
+  S.push({
+    scr: C, sel: '[data-tab="conseils"]', before: function () { try { ouvrirCoach(); } catch (e) {} },
+    t: hasCoach ? 'Ton coach' : 'Analyse morpho & assistant',
+    x: hasCoach
+      ? 'Échange avec ton coach : messages, photos et vidéos de ta technique. Toi comme lui pouvez lancer une analyse morpho par IA à partir de tes photos (groupes en avance / en retard).'
+      : 'Lance une analyse morpho par IA à partir de tes photos (groupes en avance / en retard) et pose tes questions à l’assistant Novalyz. Tu pourras lier un coach plus tard pour échanger messages, photos et vidéos.'
+  });
+  // ─── FIN : gratuit vs Premium (sensibilisation, sans paywall) ───
+  S.push({ sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Tout ton suivi et tes analyses de base sont <b>gratuits</b>. Les fonctions avancées (surtout l’IA) seront <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Suivi · forme · montre · analyses de base</td><td>✅</td><td>✅</td></tr><tr><td>Export de tes données</td><td>✅</td><td>✅</td></tr><tr><td>Assistant Novalyz IA</td><td>3 / jour</td><td>illimité</td></tr><tr><td>Programme &amp; analyse morpho par IA</td><td>—</td><td>💎</td></tr><tr><td>Analyses avancées · rapports auto</td><td>—</td><td>💎</td></tr></table><span style="color:var(--text-muted)">À débloquer quand tu veux. Bonne route 💪</span>' });
+  return S;
+}
+function _stepsCoach() {
+  var go = function (s) { return function () { try { coachDeskGo(s); } catch (e) {} }; };
+  // Ouvre la fiche du 1er athlète (si l'effectif n'est pas vide) pour montrer la
+  // fiche + l'IA coach. Sans athlète → l'étape bascule en carte centrée.
+  var openFiche = function () { try { var e = _coachDesk && _coachDesk.enrich && _coachDesk.enrich[0]; if (e && e.i != null) ouvrirAthleteDepuisSelect(String(e.i)); } catch (_) {} };
+  var AU = "Aujourd’hui", EQ = 'Équipe', FI = 'Fiche athlète', ME = 'Messages', AN = 'Analyses';
+  return [
+    { scr: AU, sel: '[data-tour="co-aujourdhui"]', before: go('aujourdhui'), t: 'Aujourd’hui', x: 'Ton point de départ chaque jour : qui a besoin de toi, tout de suite.' },
+    { scr: AU, sel: '[data-tour="co-brief"]', before: go('aujourdhui'), t: 'Briefing équipe', x: 'L’état global de ton effectif : à jour, à voir, dynamique.' },
+    { scr: AU, sel: '[data-tour="co-quest"]', before: go('aujourdhui'), t: 'Qui a répondu au questionnaire', x: 'Vois qui a rempli son questionnaire bien-être (7 j) — et qui relancer d’un clic.' },
+    { scr: AU, sel: '[data-tour="co-watch"]', before: go('aujourdhui'), t: 'À surveiller', x: 'Les athlètes à relancer ou à surveiller, triés par priorité, avec le motif.' },
+    { scr: EQ, sel: '[data-tour="co-equipe"]', before: go('equipe'), t: 'Ton équipe', x: 'Tout ton effectif : statut, niveau, assiduité, dernière séance.' },
+    { scr: EQ, sel: '[data-tour="co-inviter"]', before: go('equipe'), t: 'Enregistrer un athlète', x: 'Ajoute un athlète : invite-le à te rejoindre, ou crée directement son compte.' },
+    { scr: EQ, sel: '[data-tour="co-equipe-table"]', before: go('equipe'), t: 'Ouvrir une fiche', x: 'Clique un athlète dans la liste pour ouvrir sa fiche détaillée.' },
+    { scr: FI, sel: '#cd-hero', before: openFiche, t: 'La fiche athlète', x: 'Tout sur ton athlète : profil, état du jour, analyses, données d’entraînement, objectifs et blessures. Les sous-onglets (Aperçu · Progression · Séances · Programme · Conversation) organisent tout ça.' },
+    { scr: FI, sel: '#cdtab-btn-programme', before: openFiche, t: 'Son programme', x: 'Onglet Programme : tu construis et modifies son programme toi-même (séances, charges, cibles) — ou tu laisses Novalyz le proposer, puis tu ajustes.' },
+    { scr: FI, sel: '#cd-ia-card', spotMaxH: 230, before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
+    { scr: ME, sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
+    { scr: AN, sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' },
+    { sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Ton espace coach est <b>gratuit pour démarrer</b>. L’IA et le volume d’athlètes passent en <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Cockpit · suivi d’équipe · fiches</td><td>✅</td><td>✅</td></tr><tr><td>IA coach (par client)</td><td>3 questions / jour</td><td>illimité</td></tr><tr><td>Nombre d’athlètes suivis</td><td>limité</td><td>étendu 💎</td></tr><tr><td>Analyses avancées · rapports</td><td>—</td><td>💎</td></tr></table><span style="color:var(--text-muted)">À activer quand tu veux.</span>' }
+  ];
+}
+// Visite viewport-aware : DESKTOP = ancienne visite à surbrillance sur les blocs
+// (spotlights, _steps*) ; MOBILE = nouveau guide « 1 carte = 1 écran » (nvGuide),
+// robuste (plus de spotlight mal placé sur petit écran).
+function _nvIsDesktop() { try { return window.matchMedia('(min-width:992px)').matches; } catch (e) { return false; } }
+function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; if (_nvIsDesktop()) nvTourStart(_stepsAthlete(), 'tour_ath_vu'); else nvGuideStart(_guideAthleteCards(), 'tour_ath_vu'); }
+function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; if (_nvIsDesktop()) nvTourStart(_stepsCoach(), 'tour_coach_vu'); else nvGuideStart(_guideCoachCards(), 'tour_coach_vu'); }
+var _coachTourTried = false;
+function _maybeCoachTour() {
+  if (_coachTourTried || _tourSeen('tour_coach_vu')) return;
+  if (!document.body.classList.contains('coach-active')) return;
+  if (document.body.classList.contains('athlete-selected')) return;
+  _coachTourTried = true;
+  setTimeout(function () { if (document.body.classList.contains('coach-active') && !document.body.classList.contains('athlete-selected')) nvTourCoach(); }, 700);
 }
 
 // État de l'écran Entraînement (Option A) : mode (muscu/cardio) + sélection.
@@ -13313,8 +15652,15 @@ function _maybeQuotidienEtat() {
     var key = 'nvz_etat_auto_' + athlete.athlete_id;
     var last = null; try { last = localStorage.getItem(key); } catch (e) {}
     if (last === today) { _etatAutoChecked = true; return; }   // déjà proposé aujourd'hui
-    // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, modales…).
-    var busy = ['onb-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
+    // Parcours de 1re connexion : NE PAS ouvrir le questionnaire par-dessus l'intro,
+    // l'écran « proposer un programme » ou la visite guidée (sinon deux panneaux en
+    // même temps). Tant que l'intro n'est pas vue, on s'efface (on réessaiera plus tard).
+    if (!dernierAppData.onboarding_vu) return;
+    var _tourOv = document.getElementById('nvt-ov');
+    if (_tourOv && _tourOv.classList.contains('on')) return;   // visite guidée active
+    // Ne pas s'ouvrir par-dessus un panneau existant (onboarding, génération de
+    // programme, modales…).
+    var busy = ['onb-overlay', 'gen-prog-overlay', 'wellness-overlay', 'reset-overlay', 'forgot-overlay', 'coach-messagerie-overlay'].some(function (id) {
       var e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none';
     });
     if (busy) return;   // on réessaiera au prochain chargement
@@ -15066,6 +17412,218 @@ function renderEtatDuJourCoach(data) {
   renderEtatDuJour(data, { sec: 'cd-etat-sec', card: 'cd-etat-card', cont: 'cd-etat-content' });
 }
 
+// ── Cartes « Forme » de l'Aperçu coach (desktop) ──────────────────────────
+// Reprennent les données de l'écran Forme de l'athlète : (1) récupération +
+// bien-être du dernier questionnaire (mêmes calculs que renderEtatDuJour), et
+// (2) courbe de poids + tendance sur 30 j. Rien d'inventé : chaque carte reste
+// masquée tant que la donnée n'existe pas (classe .has-data). Mobile inchangé
+// (les cartes .cd-forme-card ne s'affichent qu'au ≥992px via CSS).
+function renderCoachFormeCards(data) {
+  try { _cfRecup(data); } catch (e) {}
+  try { _cfPoids(data); } catch (e) {}
+}
+function _cfCardShow(id, on) { var c = document.getElementById(id); if (c) c.classList.toggle('has-data', !!on); }
+function _cfRecup(data) {
+  var cont = document.getElementById('cd-forme-recup-content'); if (!cont) return;
+  var be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
+  if (!be.length) { _cfCardShow('cd-forme-recup', false); return; }
+  var dernier = be[0];
+  var rens = WQ_DIMS.map(function (d) { return wqPositif(d, dernier[d.key]); }).filter(function (v) { return v != null; });
+  if (!rens.length) { _cfCardShow('cd-forme-recup', false); return; }
+  var moy = rens.reduce(function (a, b) { return a + b; }, 0) / rens.length;
+  var score100 = Math.round((moy - 1) / 4 * 100);
+  var col = moy >= 3.4 ? 'var(--good)' : moy >= 2.6 ? 'var(--warn)' : 'var(--danger)';
+  var label = moy >= 4.2 ? 'Excellente forme' : moy >= 3.4 ? 'Bonne forme' : moy >= 2.6 ? 'Forme correcte' : moy >= 1.8 ? 'Vigilance' : 'Récup conseillée';
+  var dimDef = {}; WQ_DIMS.forEach(function (d) { dimDef[d.key] = d; });
+  // Courbatures = dimension « fatigue » (musculaire) — vocabulaire validé en maquette.
+  var pick = [
+    { key: 'sommeil', label: 'Sommeil', icon: '😴' },
+    { key: 'energie', label: 'Énergie', icon: '⚡' },
+    { key: 'fatigue', label: 'Courbatures', icon: '💪' },
+    { key: 'douleur', label: 'Douleur', icon: '🤕' }
+  ];
+  var cells = pick.map(function (p) {
+    var d = dimDef[p.key];
+    var raw = (dernier[p.key] == null || dernier[p.key] === '' || isNaN(Number(dernier[p.key]))) ? null : Number(dernier[p.key]);
+    var txt = raw != null ? (WQ_ANSWERS[p.key] ? WQ_ANSWERS[p.key][raw] : raw) : '—';
+    if (p.key === 'douleur' && raw != null && raw >= 2 && dernier.zone) txt = txt + ' · ' + dernier.zone;
+    var c = 'var(--text-subtle)';
+    if (raw != null && d) { var bon = d.invert ? raw <= 2 : raw >= 4; var moyen = raw === 3; c = bon ? 'var(--good)' : moyen ? 'var(--warn)' : 'var(--danger)'; }
+    return '<div class="cd-forme-wq"><div class="k">' + p.icon + ' ' + p.label + '</div><div class="v" style="color:' + c + '">' + escapeHtml(String(txt)) + '</div></div>';
+  }).join('');
+  cont.innerHTML =
+    '<div class="cd-forme-score"><span class="big" style="color:' + col + '">' + score100 + '</span><span class="u">/100 · ' + label + '</span></div>'
+    + '<div class="cd-forme-bar"><i style="width:' + Math.max(0, Math.min(100, score100)) + '%;background:' + col + '"></i></div>'
+    + '<div class="cd-forme-grid">' + cells + '</div>'
+    + (dernier.date ? '<div class="cd-forme-dt">Dernier questionnaire · ' + escapeHtml(String(dernier.date)) + '</div>' : '');
+  _cfCardShow('cd-forme-recup', true);
+}
+function _cfPoids(data) {
+  var cont = document.getElementById('cd-forme-poids-content'); if (!cont) return;
+  var pes = (data && Array.isArray(data.poids)) ? data.poids : [];
+  var pts = pes.map(function (p) { return parseFloat(p.poids); }).filter(function (v) { return !isNaN(v); });
+  if (pts.length < 1) { _cfCardShow('cd-forme-poids', false); return; }
+  var chrono = pts.slice().reverse();  // ordre chronologique pour la courbe
+  var spark = '';
+  if (chrono.length >= 2) {
+    var W = 300, H = 72, min = Math.min.apply(null, chrono), max = Math.max.apply(null, chrono), span = (max - min) || 1;
+    var X = function (i) { return (i / (chrono.length - 1)) * W; };
+    var Y = function (v) { return H - 8 - ((v - min) / span) * (H - 18); };
+    var line = chrono.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' L');
+    var lx = X(chrono.length - 1).toFixed(1), ly = Y(chrono[chrono.length - 1]).toFixed(1);
+    spark = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="72" preserveAspectRatio="none">'
+      + '<defs><linearGradient id="cfwgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".22"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'
+      + '<path d="M' + line + ' L' + lx + ',' + H + ' L0,' + H + ' Z" fill="url(#cfwgrad)"/>'
+      + '<path d="M' + line + '" fill="none" stroke="var(--accent-strong)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
+      + '<circle cx="' + lx + '" cy="' + ly + '" r="3.4" fill="var(--accent-strong)" stroke="var(--surface)" stroke-width="2"/></svg>';
+  }
+  var last = pts[0];  // poids[0] = pesée la plus récente
+  var parseD = function (s) { var q = String(s || '').split('/'); return q.length === 3 ? new Date(q[2] + '-' + q[1] + '-' + q[0]).getTime() : NaN; };
+  var lastTs = pes[0] ? parseD(pes[0].date) : NaN;
+  var deltaHtml = '';
+  if (!isNaN(lastTs)) {
+    var cutoff = lastTs - 30 * 86400000;
+    var win = pes.filter(function (p) { var t = parseD(p.date); return !isNaN(t) && t >= cutoff; });  // ordre : + récent → + ancien
+    if (win.length >= 2) {
+      var ov = parseFloat(win[win.length - 1].poids);
+      if (!isNaN(ov)) {
+        var dlt = last - ov;
+        var arr = dlt > 0.05 ? '▲' : dlt < -0.05 ? '▼' : '→';
+        deltaHtml = '<b>' + arr + ' ' + (dlt >= 0 ? '+' : '') + dlt.toFixed(1).replace('.', ',') + ' kg / 30 j</b>';
+      }
+    }
+  }
+  cont.innerHTML = (spark || '<div class="cd-forme-dt" style="margin:0 0 6px;">Une seule pesée — pas encore de courbe.</div>')
+    + '<div class="cd-forme-wrow"><span style="color:var(--text-muted)">' + last.toFixed(1).replace('.', ',') + ' kg</span>' + deltaHtml + '</div>';
+  _cfCardShow('cd-forme-poids', true);
+}
+
+// ── Bloc « Ma montre » de la colonne de droite coach (Aperçu desktop) ─────────
+// Pas · sommeil · FC repos de l'athlète, depuis sante_historique (historisé par
+// son app). Pas et sommeil = moyenne/jour sur 7 j ; FC repos = dernière mesure.
+// Chaque métrique s'affiche indépendamment ; la carte est masquée si aucune donnée.
+function renderCoachMontre(data) {
+  var el = document.getElementById('cd-aside-montre'); if (!el) return;
+  var hist = (data && Array.isArray(data.sante_historique)) ? data.sante_historique : [];
+  var now = Date.now();
+  var recent = hist.filter(function (x) { var t = parseChatDate(x && x.date); return t && (now - t) / 86400000 <= 8; });
+  var pasArr = recent.map(function (x) { return Number(x.pas); }).filter(function (v) { return !isNaN(v) && v > 0; });
+  var slpArr = recent.map(function (x) { return Number(x.sommeil_min); }).filter(function (v) { return !isNaN(v) && v > 0; });
+  var fcRec = hist.filter(function (x) { return x && x.fc_repos != null && !isNaN(Number(x.fc_repos)) && Number(x.fc_repos) > 0; })
+                  .sort(function (a, b) { return (parseChatDate(b.date) || 0) - (parseChatDate(a.date) || 0); });
+  if (!pasArr.length && !slpArr.length && !fcRec.length) { el.style.display = 'none'; return; }
+  var avg = function (a) { return a.length ? Math.round(a.reduce(function (s, v) { return s + v; }, 0) / a.length) : null; };
+  var pasV = avg(pasArr), slpV = avg(slpArr), fcV = fcRec.length ? Math.round(Number(fcRec[0].fc_repos)) : null;
+  var cell = function (k, v) { return '<div class="cd-montre-cell"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; };
+  var pasTxt = pasV != null ? pasV.toLocaleString('fr-FR') : '—';
+  var slpTxt = slpV != null ? (Math.floor(slpV / 60) + ' h' + ((slpV % 60) ? ' <small>' + (slpV % 60 < 10 ? '0' : '') + (slpV % 60) + '</small>' : '')) : '—';
+  var fcTxt = fcV != null ? (fcV + ' <small>bpm</small>') : '—';
+  el.innerHTML = '<div class="cd-montre-top"><span class="ic">⌚</span><b>Ma montre</b><span class="per">moy. 7 j</span></div>'
+    + '<div class="cd-montre-grid">' + cell('Pas', pasTxt) + cell('Sommeil', slpTxt) + cell('FC repos', fcTxt) + '</div>'
+    + '<div class="cd-montre-note">Relevés par la montre de l\'athlète (Health Connect), synchronisés via son app.</div>';
+  el.style.display = '';
+}
+
+// ── Aperçu v3 : carte « Charge & assiduité » (fusionne l'ancien « État de forme »
+// + régularité + ACWR). Chaque tuile n'apparaît que si la donnée existe. ──
+function renderCoachChargeCard(data) {
+  var el = document.getElementById('cd-charge-content'); if (!el) return;
+  var dash = (data && data.dashboard) || {}, mot = (data && data.moteur) || {};
+  var tiles = [];
+  var tile = function (v, l, col) { return '<div class="cd-k"><div class="cd-kv"' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</div><div class="cd-kl">' + l + '</div></div>'; };
+  var rpe = (dash.recuperation && dash.recuperation.rpe_moyen != null) ? dash.recuperation.rpe_moyen
+          : (data.recent && data.recent.j7 && data.recent.j7.rpe_moyen != null ? data.recent.j7.rpe_moyen : null);
+  if (rpe != null && rpe !== 'N/A') { var rc = rpe >= 8.5 ? 'var(--danger)' : rpe >= 7.5 ? 'var(--warn)' : 'var(--text)'; tiles.push(tile(String(rpe).replace('.', ','), 'RPE moy · 7j', rc)); }
+  if (dash.tonnage) {
+    var tv = dash.tonnage.j7 != null ? dash.tonnage.j7 : dash.tonnage.semaine;
+    if (tv != null) {
+      var ev = dash.tonnage.evol_pct != null ? dash.tonnage.evol_pct : dash.tonnage.evol;
+      var sub = (ev != null) ? ' <small style="font-size:10px;color:' + (ev >= 0 ? 'var(--good)' : 'var(--warn)') + '">' + (ev >= 0 ? '▲' : '▼') + Math.abs(ev) + '%</small>' : '';
+      tiles.push(tile(String(tv).replace('.', ',') + ' t' + sub, 'Tonnage 7j'));
+    }
+  }
+  var reg = dash.regularite;
+  if (reg) { var f = _seancesFaites(reg), pv = reg.seances_prevues; if (f != null) tiles.push(tile(f + (pv != null ? '/' + pv : ''), 'Régularité')); }
+  if (dash.acwr != null && mot.acwr_fiable !== false) tiles.push(tile(String(dash.acwr).replace('.', ','), 'ACWR'));
+  if (!tiles.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Pas encore assez de séances.</div>'; _cfCardShow('cd-charge-card', true); return; }
+  var streak = dash.streak && dash.streak.semaines;
+  el.innerHTML = '<div class="cd-k4">' + tiles.join('') + '</div>'
+    + (streak ? '<div class="cd-charge-streak"><span>🔥 Série de semaines</span><b>' + streak + ' sem.</b></div>' : '');
+  _cfCardShow('cd-charge-card', true);
+}
+
+// ── Aperçu v3 : carte « Ma montre » DÉTAILLÉE — pas + sommeil + FC repos de
+// l'athlète (sante_historique) avec sparkline 14 j. Autonome (ne dépend pas de
+// renderSanteChart/dernierAppData). Masquée si aucune donnée. ──
+function renderCoachMontreDetail(data) {
+  var host = document.getElementById('cd-montre-detail'); if (!host) return;
+  var hist = (data && Array.isArray(data.sante_historique)) ? data.sante_historique.slice() : [];
+  hist.sort(function (a, b) { return (parseChatDate(a.date) || 0) - (parseChatDate(b.date) || 0); });
+  // Cohérence : les 3 métriques sont des MOYENNES sur 7 j (sparkline 7 j aussi).
+  var defs = [
+    { key: 'pas', emoji: '👣', label: 'Pas', fmt: function (v) { return Math.round(v).toLocaleString('fr-FR'); } },
+    { key: 'sommeil_min', emoji: '😴', label: 'Sommeil', fmt: function (v) { var m = Math.round(v); return Math.floor(m / 60) + ' h' + ((m % 60) ? ' ' + ((m % 60) < 10 ? '0' : '') + (m % 60) : ''); } },
+    { key: 'fc_repos', emoji: '❤️', label: 'FC au repos', fmt: function (v) { return Math.round(v) + ' bpm'; } }
+  ];
+  var any = false;
+  var rows = defs.map(function (m) {
+    var vals = hist.map(function (x) { return Number(x[m.key]); }).filter(function (v) { return !isNaN(v) && v > 0; }).slice(-7);
+    if (!vals.length) return '';
+    any = true;
+    var last = vals[vals.length - 1];
+    var moy = vals.reduce(function (s, v) { return s + v; }, 0) / vals.length;
+    var mainV = m.fmt(moy);
+    var spark = '';
+    if (vals.length > 1) {
+      var W = 130, H = 30, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), sp = (mx - mn) || 1;
+      var X = function (i) { return (i / (vals.length - 1)) * W; }, Y = function (v) { return H - 3 - ((v - mn) / sp) * (H - 6); };
+      var dd = vals.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' L');
+      spark = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="M' + dd + '" fill="none" stroke="var(--accent-strong)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + X(vals.length - 1).toFixed(1) + '" cy="' + Y(last).toFixed(1) + '" r="2.6" fill="var(--accent-strong)"/></svg>';
+    }
+    return '<div class="cd-md-row"><span class="cd-md-ic">' + m.emoji + '</span><div class="cd-md-nm"><b>' + m.label + '</b></div><div class="cd-md-spark">' + spark + '</div><div class="cd-md-v">' + mainV + '</div></div>';
+  }).join('');
+  if (!any) { _cfCardShow('cd-montre-card', false); host.innerHTML = ''; return; }
+  host.innerHTML = '<div class="dash-label">⌚ Ma montre<span class="cd-forme-tag" style="color:var(--text-subtle);background:var(--surface2)">moy. 7 j</span></div>'
+    + rows
+    + '<div class="cd-md-note">Relevés par la montre de l\'athlète (Health Connect), synchronisés via son app.</div>';
+  _cfCardShow('cd-montre-card', true);
+}
+
+// Colonne de droite desktop : reparente « Contexte de perf. » et « Prochaine
+// séance » dans le rail (#cd-aside-slots), restaurés à leur place en mobile.
+var _cdAsideMoved = null;
+function _cdAsideDeskLayout() {
+  var slots = document.getElementById('cd-aside-slots'); if (!slots) return;
+  var desk = false; try { desk = window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active'); } catch (e) {}
+  var ctx = document.getElementById('cd-contexte'), proch = document.getElementById('cd-prochaine');
+  if (!_cdAsideMoved) { _cdAsideMoved = []; [ctx, proch].forEach(function (n) { if (n) _cdAsideMoved.push({ node: n, parent: n.parentNode, next: n.nextSibling }); }); }
+  if (desk) { if (proch) slots.appendChild(proch); if (ctx) slots.appendChild(ctx); }
+  else { _cdAsideMoved.forEach(function (m) { try { if (m.next && m.next.parentNode === m.parent) m.parent.insertBefore(m.node, m.next); else m.parent.appendChild(m.node); } catch (e) {} }); }
+}
+
+// Aperçu v3 : les 6 cartes d'analyse (sous Alertes) sont regroupées dans une
+// grille à cellules ÉGALES (#cd-ov-grid). Reparentage desktop-only, restauré en
+// mobile (les cartes retrouvent leur place d'origine dans #cdtab-overview).
+var _cdGridMoved = null;
+var _CD_GRID_IDS = ['cd-forme-recup', 'cd-charge-card', 'cd-montre-card', 'cd-hub-volume', 'cd-hub-seances', 'cd-hub-nutrition'];
+function _cdV3Grid() {
+  var ov = document.getElementById('cdtab-overview'); if (!ov) return;
+  var desk = false; try { desk = window.matchMedia('(min-width:992px)').matches && document.body.classList.contains('coach-active') && document.body.classList.contains('athlete-selected'); } catch (e) {}
+  var grid = document.getElementById('cd-ov-grid');
+  if (desk) {
+    if (!grid) {
+      grid = document.createElement('div'); grid.id = 'cd-ov-grid';
+      var anchor = document.getElementById('cd-alertes-card');
+      if (anchor && anchor.parentNode === ov) ov.insertBefore(grid, anchor.nextSibling); else ov.appendChild(grid);
+    }
+    if (!_cdGridMoved) { _cdGridMoved = []; _CD_GRID_IDS.forEach(function (id) { var n = document.getElementById(id); if (n) _cdGridMoved.push({ node: n, parent: n.parentNode, next: n.nextSibling }); }); }
+    _CD_GRID_IDS.forEach(function (id) { var n = document.getElementById(id); if (n && n.parentNode !== grid) grid.appendChild(n); });
+  } else {
+    if (_cdGridMoved) _cdGridMoved.forEach(function (m) { try { if (m.next && m.next.parentNode === m.parent) m.parent.insertBefore(m.node, m.next); else m.parent.appendChild(m.node); } catch (e) {} });
+    if (grid && grid.parentNode) grid.parentNode.removeChild(grid);
+  }
+}
+
 // Carte « Analyse » (moteur Novalyz) — interprétation en lecture seule, côté coach
 // Couleur / icône d'une analyse du moteur (partagé)
 function analyseCouleur(t) { return t === 'critical' ? 'var(--danger)' : t === 'warning' ? 'var(--warn)' : t === 'success' ? 'var(--good)' : 'var(--accent)'; }
@@ -15388,6 +17946,45 @@ function _installNativeResumeListener() {
   } catch (e) {}
 }
 
+// ── Mise à jour in-app (Google Play In-App Updates, via @capawesome/capacitor-app-update) ──
+// Affiche la fenêtre native « Mettre à jour » quand une version plus récente est
+// EN LIGNE sur la piste Play où l'app est installée. Ne marche que pour une app
+// installée depuis Google Play (un APK sideloadé lève une erreur → ignorée). Le
+// plugin n'existe que côté natif : accès via window.Capacitor.Plugins.AppUpdate.
+var _majNativeChecked = false;
+async function _verifierMajNative() {
+  if (_majNativeChecked || !_estAppNative()) return;
+  _majNativeChecked = true;
+  var AU = null;
+  try { AU = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppUpdate; } catch (e) {}
+  if (!AU || typeof AU.getAppUpdateInfo !== 'function') return;   // vieille APK sans le plugin → rien
+  try {
+    var info = await AU.getAppUpdateInfo();
+    // AppUpdateAvailability.UPDATE_AVAILABLE === 2
+    if (!info || Number(info.updateAvailability) !== 2) return;
+    // 1) Mise à jour « immédiate » (écran Google plein cadre, gère tout) si permise.
+    if (info.immediateUpdateAllowed) {
+      try { await AU.performImmediateUpdate(); return; } catch (e) { /* refusée/annulée → on tente le mode souple */ }
+    }
+    // 2) Sinon « souple » : dialogue Google + téléchargement en fond, puis on
+    //    finalise (redémarrage) dès que c'est téléchargé.
+    if (info.flexibleUpdateAllowed) {
+      try {
+        if (typeof AU.addListener === 'function') {
+          AU.addListener('onFlexibleUpdateStateChange', function (st) {
+            // FlexibleUpdateInstallStatus.DOWNLOADED === 11
+            if (st && Number(st.installStatus) === 11) {
+              try { showToast('Mise à jour prête — installation…'); } catch (e) {}
+              try { AU.completeFlexibleUpdate(); } catch (e) {}
+            }
+          });
+        }
+        await AU.startFlexibleUpdate();
+      } catch (e) {}
+    }
+  } catch (e) { /* app non issue de Play, hors-ligne, etc. → silencieux */ }
+}
+
 async function activerNotifications() {
   if (!athlete) { showToast('Connecte-toi d\'abord'); return; }
   // App native : FCM via la façade (Web Push absent en WebView).
@@ -15590,7 +18187,14 @@ function renderAlertes(data) {
       + '<div style="min-width:0;flex:1;">'
       + '<div style="font-size:13px;font-weight:800;color:' + col + ';">' + escapeHtml(a.title || '') + '</div>'
       + (a.evidence ? '<div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-top:2px;">' + escapeHtml(a.evidence) + '</div>' : '')
-      + (a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '')
+      + (function () {
+          // Stagnation : remplace l'action générique par une prescription concrète
+          // (reps plafond → +charge · marge → +reps), calculée depuis l'historique de l'exo.
+          var ex = (a.type === 'stagnation' && a.evidence && a.evidence.indexOf(' : aucun progrès') >= 0) ? a.evidence.split(' : aucun progrès')[0].trim() : null;
+          var pr = ex ? _prescriptionStag(ex) : null;
+          if (pr) return '<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:4px;">👉 ' + escapeHtml(pr.act) + '</div>';
+          return a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '';
+        })()
       + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')
       + '</div>'
       + '<button onclick="marquerAlerteLue(&quot;' + escapeHtml(String(a.id)) + '&quot;)" title="Marquer comme lu" style="flex:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--text-muted);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
@@ -16015,10 +18619,10 @@ function renderHyroxHome() {
 function ouvrirSaisieHyrox() {
   if (!athlete) return;
   var ov = document.getElementById('hyrox-manuel-overlay');
-  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-manuel-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
+  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-manuel-overlay'; ov.className = 'hx-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
   ov.style.display = 'block'; ov.scrollTop = 0;
   ov.innerHTML = '<div style="max-width:460px;margin:0 auto">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Saisir une Hyrox</div><button onclick="fermerHyroxManuel()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="display:flex;align-items:center;gap:6px;padding:16px 2px 8px">' + _hxBackBtn('fermerHyroxManuel()') + '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Saisir une Hyrox</div></div>'
     + '<div class="saisie-lbl">Date</div>'
     + '<input type="date" id="hx-date" value="' + _hxTodayISO() + '" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;margin-top:6px">'
     + _hyroxFormHtml()
@@ -16163,7 +18767,7 @@ function ouvrirHyroxDetail(sid) {
   var idx = -1; for (var i = 0; i < all.length; i++) { if (String(all[i].seance_id) === String(sid)) { idx = i; break; } }
   if (idx < 0) { try { showToast('Hyrox introuvable'); } catch (e) {} return; }
   var ov = document.getElementById('hyrox-analyse-overlay');
-  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-analyse-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 46px;'; document.body.appendChild(ov); }
+  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-analyse-overlay'; ov.className = 'hx-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 46px;'; document.body.appendChild(ov); }
   ov.style.display = 'block'; ov.scrollTop = 0;
   ov.innerHTML = _hxAnalyseHtml(all[idx], idx > 0 ? all[idx - 1] : null, all, idx);
 }
@@ -16178,13 +18782,15 @@ function _hxStationNo(i) { var n = 0; for (var j = 0; j <= i && j < _hxSegs.leng
 function _hxOv() { return document.getElementById('hyrox-chrono-overlay'); }
 function ouvrirHyroxChrono() {
   var ov = _hxOv();
-  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-chrono-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
+  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-chrono-overlay'; ov.className = 'hx-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
   ov.style.display = 'block'; ov.scrollTop = 0; ov.innerHTML = _hxStartHtml();
 }
-function fermerHyroxChrono() { if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; } var ov = _hxOv(); if (ov) ov.style.display = 'none'; }
+function fermerHyroxChrono() { if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; } try { _nvWakeOff(); } catch (e) {} var ov = _hxOv(); if (ov) ov.style.display = 'none'; }
 // Fermeture via la croix : si une Hyrox est EN COURS (chrono actif), on confirme.
 function _hxTryClose() { if (_hxTimer) { if (!confirm('Quitter la Hyrox en cours ? Les temps seront perdus.')) return; } fermerHyroxChrono(); }
-function _hxHeader(t) { return '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">' + t + '</div><button onclick="_hxTryClose()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'; }
+// Bouton RETOUR (flèche ‹) — remplace la croix sur les pages Hyrox (demande porteur).
+function _hxBackBtn(onclick) { return '<button onclick="' + onclick + '" aria-label="Retour" style="background:none;border:none;color:var(--text-muted);cursor:pointer;line-height:1;padding:4px 8px 4px 0;display:grid;place-items:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>'; }
+function _hxHeader(t) { return '<div style="display:flex;align-items:center;gap:6px;padding:16px 2px 8px">' + _hxBackBtn('_hxTryClose()') + '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">' + t + '</div></div>'; }
 function _hxChip(id, on, oc, label) { return '<button type="button" id="' + id + '" class="saisie-chip' + (on ? ' on' : '') + '" onclick="' + oc + '">' + label + '</button>'; }
 // Circuit OFFICIEL : la division met à jour l'affichage (lecture seule) des poids
 // officiels — pas de saisie, ce sont les chiffres de la compétition.
@@ -16239,7 +18845,7 @@ function _hxLiveHtml() {
 // Les poids (_hxWeights), le mode (_hyroxMode) et les segments (_hxSegs) sont posés
 // par l'appelant : _hxStartCircuit() ou _hxStartAtelier().
 function _hxBegin() {
-  _hxIdx = 0; _hxSplits = []; _hxPaused = false; _hxPauseAcc = 0; _hxT0 = Date.now(); _hxSegT0 = Date.now(); var ov = _hxOv(); if (ov) ov.innerHTML = _hxLiveHtml(); _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); if (_hxTimer) clearInterval(_hxTimer); _hxTimer = setInterval(_hxTick, 200); _hxTick();
+  _hxIdx = 0; _hxSplits = []; _hxPaused = false; _hxPauseAcc = 0; _hxT0 = Date.now(); _hxSegT0 = Date.now(); var ov = _hxOv(); if (ov) ov.innerHTML = _hxLiveHtml(); _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); if (_hxTimer) clearInterval(_hxTimer); _hxTimer = setInterval(_hxTick, 200); _hxTick(); try { _nvWakeOn(); } catch (e) {}
 }
 // Circuit OFFICIEL : les 16 segments, poids officiels de la division (non modifiés).
 // Avant de lancer : état du jour (readiness) si pas encore fait aujourd'hui.
@@ -16262,6 +18868,7 @@ function _hxPause() { var b = document.getElementById('hx-pause'); if (!_hxPause
 function _hxCancel() { if (confirm('Annuler cette Hyrox ? Les splits en cours seront perdus.')) fermerHyroxChrono(); }
 async function _hxFinish() {
   if (_hxTimer) { clearInterval(_hxTimer); _hxTimer = null; }
+  try { _nvWakeOff(); } catch (e) {}
   var total = Math.round((Date.now() - _hxT0 - _hxPauseAcc) / 1000);
   var segments = {}; _hxSegs.forEach(function (sg, i) { if (_hxSplits[i] != null) segments[sg.k] = Math.round(_hxSplits[i] / 1000); });
   var poids = {}, w = _HYROX_W[_hyroxDiv] || _HYROX_W.mo; ['push', 'pull', 'farm', 'sand', 'wall'].forEach(function (k) { poids[k] = (_hxWeights && _hxWeights[k] > 0) ? _hxWeights[k] : w[k]; });
@@ -16299,7 +18906,7 @@ function ouvrirHyroxAtelier() {
   if (!athlete) return;
   _hxAt.sel = {};   // à l'arrivée : rien de coché
   var ov = _hxAtOv();
-  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-atelier-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
+  if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-atelier-overlay'; ov.className = 'hx-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 40px;'; document.body.appendChild(ov); }
   ov.style.display = 'block'; ov.scrollTop = 0; _hxAtRender();
 }
 function fermerHyroxAtelier() { var ov = _hxAtOv(); if (ov) ov.style.display = 'none'; }
@@ -16335,7 +18942,7 @@ function _hxAtRender() {
   }).join('');
   var n = _hxAtCount();
   ov.innerHTML = '<div style="max-width:460px;margin:0 auto">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 2px 8px"><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Par atelier</div><button onclick="fermerHyroxAtelier()" style="background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="display:flex;align-items:center;gap:6px;padding:16px 2px 8px">' + _hxBackBtn('fermerHyroxAtelier()') + '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Par atelier</div></div>'
     + '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin:2px 2px 12px">Choisis les ateliers à travailler — pas besoin de faire tout le circuit. Règle la charge et le nombre de séries.</div>'
     + '<div style="font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-subtle);margin:2px 2px 9px">Ateliers · <span style="color:#CA9A04">' + n + ' choisi' + (n > 1 ? 's' : '') + '</span></div>'
     + stations
@@ -17187,11 +19794,8 @@ function _hcRenderList(ws, steps) {
     html += '<div id="hc-activity"></div>';
   }
 
-  // Détails techniques (repliés).
-  if (_hcDiag && _hcDiag.length) {
-    html += '<details style="margin-top:16px;"><summary style="font-size:11px;color:var(--text-subtle);cursor:pointer;">Détails techniques</summary>'
-      + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);margin-top:6px;">' + _hcDiag.map(escapeHtml).join('\n') + '</div></details>';
-  }
+  // (« Détails techniques » retiré de la page Import — journal conservé en interne
+  // via _hcDiag pour le diagnostic, mais plus affiché à l'utilisateur.)
   el.innerHTML = html;
   if (document.getElementById('hc-activity')) { try { _actRender(); } catch (e) {} }
 }
@@ -17221,11 +19825,72 @@ function _dsPick(pfx, i) {
   el.innerHTML = '<b>' + escapeHtml(b.full || b.label) + '</b> · ' + Math.round(b.value).toLocaleString('fr-FR') + ' pas';
 }
 
+// Fallback WEB (hors app native) : affiche les PAS depuis l'historique serveur
+// (sante_historique, historisé par l'app native via saveSante) au lieu du live
+// Health Connect, inexistant en navigateur. Rend un mini-graphe (S/M/A) via
+// renderSanteChart(). Renvoie true si des pas ont été rendus, false sinon (masqué).
+function _renderPasWeb(hostId, pfx) {
+  var el = document.getElementById(hostId); if (!el) return false;
+  var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
+  var hist = (data && data.sante_historique) || [];
+  var has = hist.some(function (x) { return x && x.pas != null && !isNaN(Number(x.pas)) && Number(x.pas) > 0; });
+  if (!has) { el.style.display = 'none'; return false; }
+  el.style.display = '';
+  el.classList.add('in');   // #dash-steps a la classe tj-reveal (opacity:0) → forcer l'affichage
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:4px;">'
+    + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;flex:none;font-size:16px;">👣</span>'
+    + '<span style="font-weight:800;font-size:13.5px;color:var(--text);">Mes pas</span></div>'
+    // Honnêteté : sur le web, les pas ne sont PAS en direct (Health Connect =
+    // téléphone uniquement). On affiche le dernier relevé poussé par l'app mobile ;
+    // le jour en cours / tout récent peut être partiel tant que l'app n'a pas resynchro.
+    + '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.4;margin:0 0 9px 39px;">Relevés par ta montre, synchronisés via l\'app mobile — ouvre l\'app pour actualiser le jour en cours.</div>'
+    + '<div id="' + pfx + '-head"></div><div id="' + pfx + '-body"></div>';
+  try { renderSanteChart(pfx); } catch (e) {}
+  return true;
+}
+
+// Fallback WEB : « Ma montre » DÉTAILLÉE (pas + sommeil + FC repos) depuis
+// l'historique serveur (sante_historique). Chaque métrique a son mini-graphe
+// S/M/A (renderSanteChart). Le live Health Connect reste natif-only, mais tout
+// ce qui a été historisé par l'app est consultable sur le web. Renvoie false si
+// aucune donnée montre.
+function _renderMontreWeb(hostId) {
+  var el = document.getElementById(hostId); if (!el) return false;
+  var data = (typeof dernierAppData !== 'undefined' && dernierAppData) ? dernierAppData : null;
+  var hist = (data && data.sante_historique) || [];
+  var hasPas = hist.some(function (x) { return x && x.pas != null && Number(x.pas) > 0; });
+  var hasSleep = hist.some(function (x) { return x && x.sommeil_min != null && Number(x.sommeil_min) > 0; });
+  var hasFc = hist.some(function (x) { return x && x.fc_repos != null && Number(x.fc_repos) > 0; });
+  if (!hasPas && !hasSleep && !hasFc) { el.style.display = 'none'; return false; }
+  el.style.display = ''; el.classList.add('in'); el.style.padding = '14px 15px';
+  var sec = function (pfx, emoji, label, note, first) {
+    return '<div style="' + (first ? '' : 'margin-top:14px;padding-top:14px;border-top:1px solid var(--border);') + '">'
+      + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:' + (note ? '4' : '10') + 'px;">'
+      + '<span style="width:28px;height:28px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;flex:none;font-size:15px;">' + emoji + '</span>'
+      + '<span style="font-weight:800;font-size:13px;color:var(--text);">' + label + '</span></div>'
+      + (note ? '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.4;margin:0 0 9px 37px;">' + note + '</div>' : '')
+      + '<div id="' + pfx + '-head"></div><div id="' + pfx + '-body"></div></div>';
+  };
+  var head = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;"><span style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#fff;display:grid;place-items:center;flex:none;font-size:15px;">⌚</span><span style="font-weight:800;font-size:14px;color:var(--text);">Ma montre</span></div>';
+  var body = '', firstDone = false;
+  if (hasPas) { body += sec('etpas', '👣', 'Mes pas', 'Relevés par ta montre, synchronisés via l\'app — ouvre l\'app pour actualiser le jour en cours.', !firstDone); firstDone = true; }
+  if (hasSleep) { body += sec('etsleep', '😴', 'Sommeil', '', !firstDone); firstDone = true; }
+  if (hasFc) { body += sec('ethr', '❤️', 'FC au repos', '', !firstDone); firstDone = true; }
+  el.innerHTML = head + body;
+  if (hasPas) try { renderSanteChart('etpas'); } catch (e) {}
+  if (hasSleep) try { renderSanteChart('etsleep'); } catch (e) {}
+  if (hasFc) try { renderSanteChart('ethr'); } catch (e) {}
+  return true;
+}
+
 async function renderDashSteps(attempt) {
   attempt = attempt || 0;
   var el = document.getElementById('dash-steps'); if (!el) return;
-  var H = _hcPlugin();
   var native = (typeof _estAppNative === 'function' && _estAppNative());
+  // WEB (navigateur) : pas de Health Connect → on affiche les pas historisés
+  // côté serveur (sante_historique) plutôt que de masquer le bloc.
+  if (!native) { _renderPasWeb('dash-steps', 'dspas'); return; }
+  var H = _hcPlugin();
   // Au démarrage À FROID, le plugin natif Health Connect (Capacitor.Plugins) et
   // la façade NovalyzPlatform peuvent ne pas être encore prêts au moment où le
   // dashboard se rend → sans réessai, le bloc ne réapparaîtrait qu'au prochain
@@ -17275,7 +19940,14 @@ async function renderEtatMontre(attempt) {
   var hide = function () { el.style.display = 'none'; if (sec) sec.style.display = 'none'; if (mini) mini.style.display = 'none'; };
   var H = _hcPlugin();
   var native = (typeof _estAppNative === 'function' && _estAppNative());
-  if (!native) { hide(); return; }             // la montre n'existe que sur l'app Android
+  if (!native) {
+    // WEB : la montre live n'existe pas, mais TOUT ce que l'app a historisé côté
+    // serveur (pas + sommeil + FC repos) est consultable → on rend « Ma montre »
+    // détaillée dans #et-montre-mini. Le live Health Connect reste natif-only.
+    el.style.display = 'none'; if (sec) sec.style.display = 'none';
+    if (mini && !_renderMontreWeb('et-montre-mini')) mini.style.display = 'none';
+    return;
+  }
   if (!H) { if (attempt < 8) setTimeout(function () { renderEtatMontre(attempt + 1); }, 600); else hide(); return; }
   if (!_hcWarmed) {
     try { var avh = await H.isHealthAvailable(); if (avh && avh.available) { _hcWarmed = true; try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {} } } catch (e) {}
@@ -17289,7 +19961,10 @@ async function renderEtatMontre(attempt) {
   try { var a = await H.queryAggregated({ startDate: s7.toISOString(), endDate: e1.toISOString(), dataType: 'steps', bucket: 'day' }); days = (a && a.aggregatedData) || []; } catch (e) { qErr = true; }
   var byDay = {}; days.forEach(function (x) { byDay[_ymdLocal(new Date(x.startDate))] = (x.value || 0); });
   var total7 = days.reduce(function (s, x) { return s + (x.value || 0); }, 0);
-  if ((qErr || total7 <= 0) && attempt < 4) { setTimeout(function () { renderEtatMontre(attempt + 1); }, 800); return; }
+  // Réessais courts au démarrage (HC se « réchauffe »). On insiste sur une vraie
+  // erreur de requête ; pour « 0 pas » on ne retente qu'une fois (le sommeil/FC
+  // peut exister sans pas → ne pas bloquer leur affichage trop longtemps).
+  if ((qErr && attempt < 4) || (total7 <= 0 && attempt < 2)) { setTimeout(function () { renderEtatMontre(attempt + 1); }, 800); return; }
 
   // Lignes « à venir » : sommeil + FC repos.
   var icoSleep = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
@@ -17302,15 +19977,26 @@ async function renderEtatMontre(attempt) {
       + '</div>';
   };
 
+  // Pas de pas ≠ pas de montre : le sommeil et la FC repos peuvent exister même
+  // quand les pas manquent (montre qui ne compte pas les pas, perm. pas accordée,
+  // sync partielle). On ne fait PLUS disparaître sommeil + FC avec les pas : on
+  // sonde les deux, et on n'affiche l'invite « connecter » que si les TROIS manquent.
   if (total7 <= 0) {
-    // Native mais aucune donnée pas : inviter à connecter / importer (bloc visible).
-    if (mini) mini.style.display = 'none';
-    el.style.display = ''; el.style.padding = '14px 15px';
-    el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Pas encore de données montre</div>'
-      + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Connecte ta montre à Health Connect, puis importe tes séances.</div>'
-      + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>'
-      + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
-    return;
+    var _sleepN = 0, _hrN = 0;
+    try { var _sp = await H.querySleep({ startDate: new Date(now.getTime() - 36 * 3600 * 1000).toISOString(), endDate: new Date(now.getTime() + 3600 * 1000).toISOString() }); _sleepN = ((_sp && _sp.sessions) || []).length; } catch (e) {}
+    try { var _hp = await H.queryRestingHeartRate({ startDate: new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString(), endDate: new Date(now.getTime() + 3600 * 1000).toISOString() }); _hrN = ((_hp && _hp.records) || []).length; } catch (e) {}
+    if (!_sleepN && !_hrN) {
+      // Vraiment aucune donnée montre (ni pas, ni sommeil, ni FC) → invite à connecter.
+      if (mini) mini.style.display = 'none';
+      el.style.display = ''; el.style.padding = '14px 15px';
+      el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Pas encore de données montre</div>'
+        + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Connecte ta montre à Health Connect, puis importe tes séances.</div>'
+        + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>'
+        + soon('Sommeil', icoSleep) + soon('Fréquence cardiaque au repos', icoHr);
+      return;
+    }
+    // Sinon : on poursuit le rendu normal — le bandeau affiche Pas « — » mais
+    // Sommeil et FC repos sont bien remplis par _etFillSleep / _etFillRestingHr.
   }
 
   // Bandeau condensé (glance) : pas du jour / sommeil / FC repos + bouton Détails.
@@ -17414,7 +20100,12 @@ var _SA_CFG = {
   nutkcal: { metric: 'kcal', kind: 'kcal', src: 'nutri_historique', c1: '#F59E0B', c2: '#d97706' },
   nutprot: { metric: 'prot', kind: 'g', src: 'nutri_historique', c1: '#10B981', c2: '#059669' },
   nutgluc: { metric: 'gluc', kind: 'g', src: 'nutri_historique', c1: '#3B82F6', c2: '#1d4ed8' },
-  nutlip: { metric: 'lip', kind: 'g', src: 'nutri_historique', c1: '#A855F7', c2: '#7e22ce' }
+  nutlip: { metric: 'lip', kind: 'g', src: 'nutri_historique', c1: '#A855F7', c2: '#7e22ce' },
+  // Pas (source sante_historique) : utilisé par le fallback WEB (hors app native),
+  // où le live Health Connect n'existe pas. Deux préfixes = états de nav séparés
+  // pour l'accueil (dspas) et l'écran Forme (etpas).
+  dspas: { metric: 'pas', kind: 'pas', c1: '#00A854', c2: '#059669' },
+  etpas: { metric: 'pas', kind: 'pas', c1: '#00A854', c2: '#059669' }
 };
 function _saSt(p) { return _saState[p] || (_saState[p] = { gran: 'S', offset: 0, touchX: null }); }
 function _saSetGran(p, g) { var s = _saSt(p); s.gran = g; s.offset = 0; renderSanteChart(p); }
@@ -17519,13 +20210,27 @@ async function _etFillRestingHr(H, now) {
 var _santeSyncing = false;
 async function _syncSanteMontre(H) {
   if (!H || typeof athlete === 'undefined' || !athlete || _santeSyncing) return;
-  var k = 'nvz_sante_sync2_' + athlete.athlete_id;   // v2 = fenêtre 365 j (invalide l'ancien throttle)
-  try { if (Date.now() - (+(localStorage.getItem(k) || 0)) < 6 * 3600 * 1000) return; } catch (e) {}
+  var k = 'nvz_sante_sync3_' + athlete.athlete_id;   // v3 = throttle court (≈ à chaque ouverture)
+  // Avant : 1×/6 h → les pas du jour n'arrivaient sur le serveur (donc sur le web)
+  // qu'avec un gros décalage. Maintenant 15 min : à chaque ouverture/retour au
+  // premier plan de l'app native, les pas récents sont poussés quasi aussitôt.
+  try { if (Date.now() - (+(localStorage.getItem(k) || 0)) < 15 * 60 * 1000) return; } catch (e) {}
   _santeSyncing = true;
   try {
     var now = new Date();
-    var start = new Date(now.getTime() - 365 * 24 * 3600 * 1000);   // large : on capte tout ce que Health Connect a
-    var end = new Date(now.getTime() + 24 * 3600 * 1000);
+    // Fenêtre bornée à ~45 j pour les TROIS métriques. Raison : l'agrégation par
+    // tranches « jour » des pas (Health Connect) est limitée dans le temps — sur
+    // 365 j elle échouait, donc les jours récents n'étaient JAMAIS poussés (mardi
+    // figé à 2003, mercredi absent) alors que sommeil & FC passaient. On garde la
+    // même fenêtre pour tout : ainsi saveSante (supprime-puis-réinsère par date)
+    // ne touche QUE les 45 derniers jours et n'efface aucun pas plus ancien déjà
+    // historisé.
+    // IMPORTANT : bornes alignées sur MINUIT LOCAL (comme le graphe _actRange).
+    // Avant : now - 45 j à l'heure courante → Health Connect créait des tranches
+    // « jour » décalées (ex. 8h→8h) qui mélangeaient deux jours → total faux (mardi
+    // 9978 au lieu de 12,4k). Avec minuit local, chaque tranche = une vraie journée.
+    var start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 45);
+    var end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     var byDate = {};
     var ensure = function (d) { return byDate[d] || (byDate[d] = { date: d }); };
     try { var a = await H.queryAggregated({ startDate: start.toISOString(), endDate: end.toISOString(), dataType: 'steps', bucket: 'day' }); ((a && a.aggregatedData) || []).forEach(function (x) { var v = Math.round(x.value || 0); if (v > 0) ensure(_ymdLocal(new Date(x.startDate))).pas = v; }); } catch (e) {}

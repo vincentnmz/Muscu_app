@@ -28,6 +28,7 @@
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/push-notifications": "^8.1.2",
+    "@capawesome/capacitor-app-update": "^8.1.0",
     "capacitor-health": "^8.4.0"
   },
   "devDependencies": {
