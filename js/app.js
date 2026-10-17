@@ -11580,9 +11580,10 @@ function _maSyntheseBloc(s) {
   }).join('');
   var _recoTxt = _novaPickReco(s, true) || (s.reco && s.reco.texte) || '';
   var reco = _recoTxt ? ('<div style="margin-top:4px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px;display:flex;gap:9px;align-items:flex-start"><span style="color:var(--accent);flex:none">' + _maSvg('<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>', 16) + '</span><div><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + _maE(_recoTxt) + '</div></div></div>') : '';
-  var conf = s.confiance ? '<div style="text-align:right;font-size:10px;color:var(--text-subtle)">fiabilité : ' + _maE(s.confiance) + '</div>' : '';
+  // Plus de petit mot « fiabilité : … » ici : la fiabilité a désormais son bloc
+  // chiffré dédié (0-100) juste en dessous dans le Résumé muscu.
   return '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz' + head + '</div>'
-    + '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;margin:8px 0 16px">' + constats + reco + conf
+    + '<div class="ma-card" style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;margin:8px 0 16px">' + constats + reco
     + '<div style="font-size:10px;color:var(--text-subtle);text-align:right">Synthèse sur tes 4 dernières semaines (indépendante du filtre de période).</div></div>';
 }
 // « Est-ce bien fait » (période) : pour chaque exo du programme portant une cible,
