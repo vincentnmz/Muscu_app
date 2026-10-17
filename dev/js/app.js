@@ -11566,7 +11566,47 @@ function _novaPickReco(s, allowAllConf) {
   var r = pool[((di % pool.length) + pool.length) % pool.length];
   return String((r && r.texte) || '');
 }
-function _maSynthese(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.muscu); }
+// Constats SUPPLÉMENTAIRES calculés côté front pour enrichir la Lecture Novalyz :
+// la force (1RM estimé, exos en progrès/recul) et les muscles sous leur cible de
+// volume — déterministes, mêmes fenêtres que la Lecture (4 sem.). Tracés aux données.
+function _maLectureExtras(data) {
+  var constats = [];
+  try {
+    var d = _maProgRegData(data);
+    if (d.nPair && d.forcePct != null) {
+      var fp = d.forcePct, ton = fp >= 3 ? 'positif' : fp <= -3 ? 'attention' : 'neutre';
+      var mot = fp >= 3 ? 'en hausse' : fp <= -3 ? 'en baisse' : 'stable';
+      var det = '';
+      if (d.prog.length || d.reg.length) det = ' — ' + (d.prog.length ? d.prog.length + ' exo' + (d.prog.length > 1 ? 's' : '') + ' en progrès' : '') + (d.prog.length && d.reg.length ? ', ' : '') + (d.reg.length ? d.reg.length + ' en recul' : '');
+      constats.push({ ton: ton, texte: 'Force ' + mot + ' : 1RM estimé moyen ' + (fp >= 0 ? '+' : '') + fp + ' %' + det + '.' });
+    }
+  } catch (e) {}
+  try {
+    var rw = _maRecent4wISO(), daily = (data.historique && data.historique.daily_muscu) || {};
+    var spm = (_maMuscuAgg(daily, rw.startISO, rw.endISO).series_par_muscle) || {};
+    var TGT = _maVolTargets(), MEV = TGT.min * 4;
+    var vals = Object.keys(spm).map(function (m) { return { m: m, v: spm[m] }; }).filter(function (x) { return x.v > 0; });
+    var sous = vals.filter(function (x) { return x.v < MEV; }).sort(function (a, b) { return a.v - b.v; });
+    // On ne pointe un retard que s'il y a un VRAI déséquilibre (au moins un muscle à sa cible).
+    if (sous.length && vals.some(function (x) { return x.v >= MEV; })) {
+      var names = sous.slice(0, 2).map(function (x) { return x.m; });
+      var joined = names.length === 1 ? names[0] : names[0] + ' et ' + names[1];
+      constats.push({ ton: 'attention', texte: joined + ' sous ta cible de volume — à renforcer pour équilibrer.' });
+    }
+  } catch (e) {}
+  return constats;
+}
+function _maSynthese(data) {
+  var s = data && data.analyse_synthese && data.analyse_synthese.muscu;
+  if (!s) return _maSyntheseBloc(s);
+  var extras = _maLectureExtras(data);
+  if (extras.length) {
+    var base = (s.constats || []).slice();
+    // Force + muscles insérés après le 1er constat (volume) : volume → force → cible → reste.
+    s = Object.assign({}, s, { constats: base.slice(0, 1).concat(extras, base.slice(1)) });
+  }
+  return _maSyntheseBloc(s);
+}
 function _maSyntheseCardio(data) { return _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.cardio); }
 function _maSyntheseBloc(s) {
   if (!s || (!(s.constats && s.constats.length) && !s.reco)) return '';
