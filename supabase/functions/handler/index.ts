@@ -1248,7 +1248,7 @@ async function handleBilanClient(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const periode = String(body.periode || 'semaine') === 'mois' ? 'mois' : 'semaine'
   if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
-  const { data: rows } = await sb().from('athletes').select('id,nom,coach_id').eq('id', athlete_id)
+  const { data: rows } = await sb().from('athletes').select('id,nom,coach_id,annees').eq('id', athlete_id)
   const aRow: any = (rows || [])[0]
   if (!aRow || String(aRow.coach_id) !== coach_id) return jsonResp({ success: false, error: 'Athlète introuvable' })
   const now = new Date()
@@ -1258,7 +1258,7 @@ async function handleBilanClient(body: any): Promise<Response> {
     sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
   ])
-  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode)
+  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, Number(aRow.annees) || 0)
   const prenom = String(aRow.nom || '').split(/\s+/)[0]
   const html = _emailBilanAthleteHTML(prenom, periode, bilan)
   return jsonResp({ success: true, html, nom: aRow.nom || '' })
@@ -1271,7 +1271,7 @@ async function handleEnvoyerBilanMail(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const periode = ['mois', '3mois'].indexOf(String(body.periode || '')) >= 0 ? String(body.periode) : 'semaine'
   if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
-  const { data: rows } = await sb().from('athletes').select('id,nom,email,coach_id').eq('id', athlete_id)
+  const { data: rows } = await sb().from('athletes').select('id,nom,email,coach_id,annees').eq('id', athlete_id)
   const aRow: any = (rows || [])[0]
   if (!aRow || String(aRow.coach_id) !== coach_id) return jsonResp({ success: false, error: 'Athlète introuvable' })
   const email = String(aRow.email || '').trim()
@@ -1283,7 +1283,7 @@ async function handleEnvoyerBilanMail(body: any): Promise<Response> {
     sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
   ])
-  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode)
+  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, Number(aRow.annees) || 0)
   const prenom = String(aRow.nom || '').split(/\s+/)[0]
   const html = _emailBilanAthleteHTML(prenom, periode, bilan)
   const label = periode === '3mois' ? 'des 3 derniers mois' : periode === 'mois' ? 'du mois' : 'de la semaine'
@@ -3623,9 +3623,11 @@ function _chipStatut(statut: string): string {
 // Outlook…), contrairement au SVG/CSS. Les assets sont dans assets/roues/ (livrés
 // avec le front). ⚠️ visibles seulement une fois la branche déployée sur Pages.
 const ROUE_BASE = Deno.env.get('ROUE_BASE') || 'https://vincentnmz.github.io/Muscu_app/assets/roues/'
-function _roueImg(pct: number, size = 118): string {
+function _roueImg(pct: number, size = 118, variant = '', alt?: string): string {
   const p = Math.max(0, Math.min(100, Math.round(pct || 0)))
-  return `<img src="${ROUE_BASE}roue-${p}.png" width="${size}" height="${size}" alt="${p}%" style="display:block;margin:0 auto;border:0">`
+  const pre = variant ? variant + '-' : ''   // '' = turquoise (défaut), 'b' = bleu, 'v' = violet
+  const a = alt != null ? alt : (p + '%')
+  return `<img src="${ROUE_BASE}roue-${pre}${p}.png" width="${size}" height="${size}" alt="${_escHtml(a)}" style="display:block;margin:0 auto;border:0">`
 }
 function _fmtDuree(min: number): string {
   const h = Math.floor(min / 60), m = Math.round(min % 60)
@@ -3636,7 +3638,7 @@ function _fmtDuree(min: number): string {
 // tracées à une source réelle : perfs (séances/séries/tonnage/RPE, volume/muscle,
 // progression 1RM Epley fenêtre vs précédente), programme (prévu), bien_etre
 // (ressenti /5), indicateurs sante_ (montre : pas, sommeil_min, fc_repos).
-function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: any[], now: Date, periode: string): any {
+function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: any[], now: Date, periode: string, annees = 0): any {
   const days = periode === '3mois' ? 90 : periode === 'mois' ? 28 : 7
   const weeks = days / 7
   const cut = fmtYMD(minus(now, days))
@@ -3652,13 +3654,31 @@ function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: a
   const seriesPrevues = Math.round(seriesProgSem * weeks)
 
   let tonnage = 0, reps = 0, rpeSum = 0, rpeN = 0
-  const volMus: Record<string, number> = {}
+  const volMus: Record<string, number> = {}        // volume = charge×reps (balance)
+  const serMus: Record<string, number> = {}        // nb de SÉRIES par muscle (bloc Volume)
   for (const r of inWin) {
     const c = Number(r.charge) || 0, rp = Number(r.reps) || 0
     tonnage += c * rp; reps += rp
     if (r.rpe) { rpeSum += Number(r.rpe); rpeN++ }
-    if (r.muscle) volMus[r.muscle] = (volMus[r.muscle] || 0) + c * rp
+    if (r.muscle) {
+      volMus[r.muscle] = (volMus[r.muscle] || 0) + c * rp
+      serMus[r.muscle] = (serMus[r.muscle] || 0) + 1   // 1 ligne perf = 1 série
+    }
   }
+  // Volume musculaire en SÉRIES vs cible (identique au bloc Résumé muscu de l'app).
+  // Cibles séries/muscle/semaine par niveau (années de pratique) — mêmes seuils que
+  // _maVolTargets() côté front : débutant 8/12, intermédiaire 10/16, avancé 12/20.
+  const _tgt = annees > 9 ? { min: 12, opt: 20, label: 'avancé' }
+    : annees >= 4 ? { min: 10, opt: 16, label: 'intermédiaire' }
+    : { min: 8, opt: 12, label: 'débutant' }
+  const volMuscu = Object.keys(serMus)
+    .map(m => {
+      const tot = serMus[m], opt = _tgt.opt * weeks, min = _tgt.min * weeks
+      const statut = tot >= opt ? 'opt' : tot >= min ? 'sous' : 'insuf'
+      const pct = Math.min(100, Math.round(tot / (opt * 1.3) * 100))   // barre (cible à ~77%)
+      return { muscle: m, series: tot, opt: Math.round(opt), min: Math.round(min), statut, pct }
+    })
+    .sort((a, b) => b.series - a.series)
   const totVol = Object.values(volMus).reduce((s, v) => s + v, 0) || 1
   const balance = Object.keys(volMus).map(m => ({ muscle: m, pct: Math.round(volMus[m] / totVol * 100) }))
     .sort((a, b) => b.pct - a.pct).slice(0, 6)
@@ -3731,7 +3751,7 @@ function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: a
   return {
     seancesFaites, seancesPrevues, seriesFaites, seriesPrevues,
     tonnageKg: Math.round(tonnage), reps, rpeMoyen: rpeN ? Math.round(rpeSum / rpeN * 10) / 10 : null,
-    balance, enProgres, enRecul, records,
+    balance, balancePairs, volMuscu, volLevel: _tgt.label, enProgres, enRecul, records,
     montre: { pas: pas != null ? Math.round(pas) : null, sommeilMin: somMin != null ? Math.round(somMin) : null, fcRepos: fc != null ? Math.round(fc) : null },
     ressenti: { sommeil: avgBe('sommeil'), energie: avgBe('energie'), fatigue: avgBe('fatigue_musculaire') },
   }
@@ -3836,24 +3856,28 @@ function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string
   const ceLabel = periode === '3mois' ? 'ces 3 mois' : periode === 'mois' ? 'ce mois' : 'cette semaine'
   const perLabel = periode === 'mois' ? 'du mois' : 'de la semaine'
 
-  // --- Réalisé vs prévu : BARRES HTML (plus d'images distantes bloquées par les
-  //     clients mail) · pleine largeur → jamais écrasé sur mobile. ---
-  const barGauge = (faites: number, prevues: number, titre: string, unite: string) => {
-    const pct = prevues > 0 ? Math.round(100 * faites / prevues) : null
-    const w = pct != null ? Math.max(3, Math.min(100, pct)) : 100
-    const col = pct == null ? '#37d3b5' : pct >= 90 ? '#0ca30c' : pct >= 60 ? '#fab219' : '#d03b3b'
-    const right = prevues > 0 ? `${faites} / ${prevues} ${unite} · ${pct}%` : `${faites} ${unite}`
-    return `<div style="margin:0 0 11px">
-      <table role="presentation" width="100%" style="border-collapse:collapse;font-family:Arial,sans-serif"><tr>
-        <td style="font-size:13px;color:#cdd6ea">${titre}</td>
-        <td style="text-align:right;font-size:12px;color:#8b96b0">${right}</td></tr></table>
-      <table role="presentation" width="100%" style="border-collapse:collapse;background:#0f1522;border-radius:7px;margin-top:4px"><tr>
-        <td width="${w}%" style="background:${col};height:16px;border-radius:7px;font-size:0;line-height:0">&nbsp;</td><td></td></tr></table>
-    </div>`
-  }
-  const rouesRow = `<h3 style="font-size:15px;margin:2px 0 10px;font-family:Arial,sans-serif">Réalisé vs prévu <span style="font-weight:400;font-size:12px;color:#5f6b85">${ceLabel}</span></h3>`
-    + barGauge(b.seancesFaites, b.seancesPrevues, 'Séances', 'séances')
-    + barGauge(b.seriesFaites, b.seriesPrevues, 'Volume (séries)', 'séries')
+  // --- Ta charge d'entraînement : 2 ROUES (images PNG, robustes en mail) ---
+  //   bleu = Séances réalisées/prévues · violet = Intensité (RPE moyen /10).
+  const pctSeances = b.seancesPrevues > 0 ? Math.round(100 * b.seancesFaites / b.seancesPrevues) : null
+  const pctRpe = b.rpeMoyen != null ? Math.round(b.rpeMoyen / 10 * 100) : null
+  const roueCell = (inner: string) =>
+    `<td width="50%" valign="top" align="center" style="background:#0f1522;border:1px solid #243049;border-radius:14px;padding:14px 8px 12px">${inner}</td>`
+  const seancesInner = pctSeances != null
+    ? `${_roueImg(pctSeances, 112, 'b', pctSeances + '%')}
+       <div style="font-size:13px;font-weight:700;color:#e9eef8;margin-top:9px;font-family:Arial,sans-serif">Séances</div>
+       <div style="font-size:11px;color:#8b96b0;font-family:Arial,sans-serif">${b.seancesFaites} / ${b.seancesPrevues} réalisées</div>`
+    : `<div style="font-size:30px;font-weight:800;color:#4d82ff">${b.seancesFaites}</div>
+       <div style="font-size:13px;font-weight:700;color:#e9eef8;margin-top:6px;font-family:Arial,sans-serif">Séances</div>
+       <div style="font-size:11px;color:#8b96b0;font-family:Arial,sans-serif">réalisées ${ceLabel}</div>`
+  const rpeInner = pctRpe != null
+    ? `${_roueImg(pctRpe, 112, 'v', b.rpeMoyen + '/10')}
+       <div style="font-size:13px;font-weight:700;color:#e9eef8;margin-top:9px;font-family:Arial,sans-serif">Intensité</div>
+       <div style="font-size:11px;color:#8b96b0;font-family:Arial,sans-serif">RPE moyen / 10</div>`
+    : `<div style="font-size:30px;font-weight:800;color:#b47ee0">—</div>
+       <div style="font-size:13px;font-weight:700;color:#e9eef8;margin-top:6px;font-family:Arial,sans-serif">Intensité</div>
+       <div style="font-size:11px;color:#8b96b0;font-family:Arial,sans-serif">RPE non renseigné</div>`
+  const rouesRow = `<h3 style="font-size:15px;margin:2px 0 10px;font-family:Arial,sans-serif">Ta charge d'entraînement <span style="font-weight:400;font-size:12px;color:#5f6b85">${ceLabel}</span></h3>`
+    + `<table role="presentation" width="100%" style="border-collapse:separate;border-spacing:8px 0"><tr>${roueCell(seancesInner)}${roueCell(rpeInner)}</tr></table>`
 
   // --- tuiles absolues ---
   const stat = (label: string, val: unknown, unite = '') =>
@@ -3866,6 +3890,29 @@ function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string
       ${stat('Reps', b.reps || 0)}
       ${stat('RPE moy.', b.rpeMoyen != null ? b.rpeMoyen : '—')}
     </tr></table>`
+
+  // --- Volume musculaire : séries par muscle vs cible (identique au bloc de
+  //     l'écran Résumé muscu). Vert = cible atteinte, orange = sous-optimal, rouge
+  //     = insuffisant. Cible selon le niveau (années de pratique). ---
+  let volumeHtml = ''
+  if (b.volMuscu && b.volMuscu.length) {
+    const VC: Record<string, string> = { opt: '#00A854', sous: '#E07800', insuf: '#DC3545' }
+    const rows = b.volMuscu.map((v: any) => {
+      const col = VC[v.statut] || VC.opt
+      return `<div style="margin:0 0 9px">
+        <table role="presentation" width="100%" style="border-collapse:collapse;font-family:Arial,sans-serif"><tr>
+          <td style="font-size:13px;color:#cdd6ea">${_escHtml(v.muscle)}</td>
+          <td style="text-align:right;font-size:12px;font-weight:700;color:${col}">${v.series} / ${v.opt} séries</td></tr></table>
+        <table role="presentation" width="100%" style="border-collapse:collapse;background:#0f1522;border-radius:7px;margin-top:4px"><tr>
+          <td width="${Math.max(3, v.pct)}%" style="background:${col};height:14px;border-radius:7px;font-size:0;line-height:0">&nbsp;</td><td></td></tr></table>
+      </div>`
+    }).join('')
+    const leg = [['#00A854', 'Optimal'], ['#E07800', 'Sous-optimal'], ['#DC3545', 'Insuffisant']]
+      .map(a => `<span style="font-size:11px;color:#8b96b0;margin-right:12px;white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${a[0]};vertical-align:middle;margin-right:4px"></span>${a[1]}</span>`).join('')
+    volumeHtml = `<h3 style="font-size:15px;margin:18px 0 8px;font-family:Arial,sans-serif">Volume musculaire <span style="font-weight:400;font-size:12px;color:#5f6b85">${ceLabel} · séries</span></h3>${rows}
+      <div style="margin-top:8px">${leg}</div>
+      <div style="font-size:11px;color:#5f6b85;margin-top:6px;font-family:Arial,sans-serif">À droite : ta cible (niveau ${_escHtml(b.volLevel || 'intermédiaire')}). Barre verte = atteinte.</div>`
+  }
 
   // --- Vraie balance musculaire : paires agoniste / antagoniste (barres 2 côtés). ---
   let balanceHtml = ''
@@ -3880,15 +3927,6 @@ function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string
       </div>`).join('')
     balanceHtml = `<h3 style="font-size:15px;margin:18px 0 8px;font-family:Arial,sans-serif">Balance musculaire <span style="font-weight:400;font-size:12px;color:#5f6b85">agoniste / antagoniste</span></h3>${rows}
       <div style="font-size:11px;color:#5f6b85;margin-top:2px;font-family:Arial,sans-serif">Vise ~50 / 50. Un écart marqué et durable = point faible à travailler.</div>`
-  } else if (b.balance && b.balance.length) {
-    // Repli : part du volume par muscle (si aucune paire calculable).
-    const lignes = b.balance.map((m: any) => `<tr>
-        <td style="width:92px;font-size:13px;color:#cdd6ea;padding:4px 8px 4px 0">${_escHtml(m.muscle)}</td>
-        <td style="padding:4px 0"><table role="presentation" width="100%" style="border-collapse:collapse;background:#0f1522;border-radius:7px"><tr><td style="width:${Math.max(3, Math.min(100, m.pct))}%;background:#37d3b5;height:14px;border-radius:7px;font-size:0">&nbsp;</td><td></td></tr></table></td>
-        <td style="width:38px;text-align:right;font-size:12px;color:#8b96b0">${m.pct}%</td>
-      </tr>`).join('')
-    balanceHtml = `<h3 style="font-size:15px;margin:18px 0 8px">Balance musculaire <span style="font-weight:400;font-size:12px;color:#5f6b85">part du volume</span></h3>
-      <table role="presentation" width="100%" style="border-collapse:collapse">${lignes}</table>`
   }
 
   // --- exercices en progrès / recul ---
@@ -3936,7 +3974,7 @@ function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string
       <table role="presentation" width="100%" style="border-collapse:collapse">${lignes}</table>`
   }
 
-  const corps = rouesRow + statsRow + balanceHtml + progHtml + formeHtml + recHtml +
+  const corps = rouesRow + statsRow + volumeHtml + balanceHtml + progHtml + formeHtml + recHtml +
     `<p style="margin:18px 0 0;color:#8b96b0;font-size:12px;line-height:1.5">Ouvre Novalyz pour l'analyse détaillée de ta ${perLabel.replace('du ', '').replace('de la ', '')}.</p>`
   const sous = `Ton bilan ${perLabel}`
   return _emailShell('Bonjour ' + (prenom || 'athlète'), sous, corps)
@@ -3970,7 +4008,7 @@ async function handleCronResumes(body: any): Promise<Response> {
 
   // 2) Athlètes — un bilan perso par athlète ayant un e-mail.
   try {
-    const { data: aths } = await sb().from('athletes').select('id,nom,email')
+    const { data: aths } = await sb().from('athletes').select('id,nom,email,annees')
     for (const a of aths || []) {
       const email = String((a as any).email || '').trim()
       if (!email) { athletesSkip++; continue }
@@ -3983,7 +4021,7 @@ async function handleCronResumes(body: any): Promise<Response> {
           sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', aid),
           sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', aid).like('seance_id', 'sante_%'),
         ])
-        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode)
+        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, Number((a as any).annees) || 0)
         const prenom = String((a as any).nom || '').split(/\s+/)[0]
         const html = _emailBilanAthleteHTML(prenom, periode, bilan)
         const sujet = `Novalyz — Ton bilan ${periodeLabel}`
