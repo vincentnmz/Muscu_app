@@ -11760,7 +11760,7 @@ function _maProgRegBloc(data) {
   var col = function (titre, color, arr, signe) {
     var items = arr.length ? arr.map(function (p) { return '<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-top:1px solid var(--border)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(p.exo) + '</span><b style="color:' + color + ';flex:none;margin-left:8px">' + signe + Math.abs(p.pct) + '%</b></div>'; }).join('')
       : '<div style="font-size:12px;color:var(--text-subtle);padding:4px 0">—</div>';
-    return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 12px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:' + color + ';margin-bottom:5px">' + titre + '</div>' + items + '</div>';
+    return '<div style="flex:1;min-width:0;overflow:hidden;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 12px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:' + color + ';margin-bottom:5px">' + titre + '</div>' + items + '</div>';
   };
   var forceLine = d.forcePct != null ? ('<div style="font-size:12.5px;margin-bottom:9px">Force estimée (1RM) : <b style="color:' + (d.forcePct >= 0 ? '#00A854' : '#E07800') + '">' + (d.forcePct >= 0 ? '+' : '') + d.forcePct + '%</b> vs période précédente</div>') : '';
   return _maSec('Progression · régression', 'force e1RM', 'progression')
