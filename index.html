@@ -1773,6 +1773,15 @@
           <input type="email" id="reglages-email" placeholder="ton@email.com" autocomplete="email" inputmode="email" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
           <button onclick="enregistrerEmailAthlete()" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer l'email</button>
           <div id="reglages-email-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+          <label style="margin-top:14px;">Rapport par e-mail</label>
+          <select id="reglages-recap-freq" onchange="enregistrerRecapFreqAthlete()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 12px;font-size:14px;font-weight:600;cursor:pointer;box-sizing:border-box;">
+            <option value="off">Jamais</option>
+            <option value="semaine">Chaque semaine (lundi)</option>
+            <option value="mois">Chaque mois (le 1er)</option>
+            <option value="3mois">Tous les 3 mois</option>
+          </select>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">Reçois ton bilan (séances, volume, balance, progression…) par e-mail à la fréquence choisie. Nécessite un e-mail enregistré.</div>
+          <div id="reglages-recap-msg" style="font-size:12px;margin-top:6px;line-height:1.4;"></div>
         </div>
 
         <!-- Mot de passe -->
@@ -2775,6 +2784,15 @@
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Sport</div>
       <select id="coach-sport-select" onchange="enregistrerSportCoach()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;"></select>
       <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Adapte le vocabulaire de l'app (athlètes / joueurs…) et, plus tard, les indicateurs suivis.</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:6px;">Résumé d'équipe par e-mail</div>
+      <select id="coach-recap-freq" onchange="enregistrerRecapFreqCoach()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">
+        <option value="off">Jamais</option>
+        <option value="semaine">Chaque semaine (lundi)</option>
+        <option value="mois">Chaque mois (le 1er)</option>
+        <option value="3mois">Tous les 3 mois</option>
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">Reçois le résumé de ton effectif (charge, à surveiller, dynamique…) par e-mail. Nécessite un e-mail sur ton compte coach.</div>
+      <div id="coach-recap-msg" style="font-size:12px;line-height:1.4;"></div>
     </div>
 
     <!-- ÉQUIPE -->

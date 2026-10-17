@@ -2027,6 +2027,31 @@ async function enregistrerSportCoach() {
   }
 }
 
+// Enregistre la fréquence du résumé d'équipe par e-mail choisie par le coach.
+async function enregistrerRecapFreqCoach() {
+  const sel = document.getElementById('coach-recap-freq');
+  const msg = document.getElementById('coach-recap-msg');
+  if (!sel || !coach || !coach.coach_id) return;
+  const freq = sel.value;
+  const setMsg = (t, col) => { if (msg) { msg.textContent = t; msg.style.color = col || 'var(--danger)'; } };
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveRecapFreq', coach_id: coach.coach_id, freq }),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      coach.recap_freq = freq;
+      const LBL = { off: 'Aucun résumé e-mail.', semaine: 'Résumé chaque semaine.', mois: 'Résumé chaque mois.', '3mois': 'Résumé tous les 3 mois.' };
+      setMsg('✅ ' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
+      if (freq !== 'off' && !(coach.email)) setMsg('✅ Enregistré — ajoute un e-mail à ton compte coach pour recevoir le résumé.', 'var(--warn)');
+      try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+    }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+}
+
 function fermerReglagesCoach() {
   document.getElementById('coach-reglages-overlay').style.display = 'none';
   document.getElementById('coach-reglages-drawer').style.display = 'none';
@@ -2278,6 +2303,34 @@ async function enregistrerEmailAthlete() {
 function prefillEmailReglages() {
   const inp = document.getElementById('reglages-email');
   if (inp && athlete) inp.value = athlete.email || '';
+  const sel = document.getElementById('reglages-recap-freq');
+  if (sel && athlete) sel.value = athlete.recap_freq || 'off';
+}
+
+// Enregistre la fréquence de recap e-mail choisie par l'athlète.
+async function enregistrerRecapFreqAthlete() {
+  if (!athlete || !athlete.athlete_id) return;
+  const sel = document.getElementById('reglages-recap-freq');
+  const msg = document.getElementById('reglages-recap-msg');
+  const freq = sel ? sel.value : 'off';
+  const setMsg = (t, col) => { if (msg) { msg.textContent = t; msg.style.color = col || 'var(--danger)'; } };
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'saveRecapFreq', athlete_id: athlete.athlete_id, freq }),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      athlete.recap_freq = freq;
+      try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+      const LBL = { off: 'Aucun rapport e-mail.', semaine: 'Rapport chaque semaine.', mois: 'Rapport chaque mois.', '3mois': 'Rapport tous les 3 mois.' };
+      setMsg('✅ ' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
+      if (freq !== 'off' && !(athlete.email)) setMsg('✅ Préférence enregistrée — pense à renseigner un e-mail ci-dessus.', 'var(--warn)');
+      try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
+    } else {
+      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+    }
+  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
 }
 /* __EMAIL_ATHLETE_END__ */
 
@@ -2404,6 +2457,7 @@ function prefillCoachReglages() {
   set('coach-prof-email', coach.email);
   set('coach-club', coach.club);
   set('coach-cat', coach.categorie_defaut);
+  var rf = document.getElementById('coach-recap-freq'); if (rf) rf.value = coach.recap_freq || 'off';
   // Démo "joueurs de foot" réservée aux coachs de sports collectifs — inutile (et
   // source de données parasites) pour un coach muscu.
   var demo = document.getElementById('crg-demo-foot');

@@ -1059,6 +1059,7 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
     taille: (ath.taille != null && ath.taille !== '') ? Number(ath.taille) : null,
     ddn: ath.ddn ? fmtFR(ath.ddn) : '',
     email: ath.email || '',
+    recap_freq: ath.recap_freq || 'off',
   }})
 }
 
@@ -2224,7 +2225,7 @@ async function handleLoginCoach(params: URLSearchParams): Promise<Response> {
   if (!ok) return jsonResp({ success: false, error: 'Login ou mot de passe incorrect.' })
   if (upgrade) await sb().from('coachs').update({ password_hash: upgrade }).eq('coach_id', coach.coach_id)
 
-  return jsonResp({ success: true, coach: { coach_id: coach.coach_id, nom: coach.nom, sport: String(coach.sport || '').trim() || 'muscu', role: String(coach.role || '').trim() || 'coach', email: coach.email || '', club: coach.club || '', categorie_defaut: coach.categorie_defaut || '' } })
+  return jsonResp({ success: true, coach: { coach_id: coach.coach_id, nom: coach.nom, sport: String(coach.sport || '').trim() || 'muscu', role: String(coach.role || '').trim() || 'coach', email: coach.email || '', club: coach.club || '', categorie_defaut: coach.categorie_defaut || '', recap_freq: coach.recap_freq || 'off' } })
 }
 
 async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response> {
@@ -3725,8 +3726,9 @@ function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: a
   const enRecul = prog.filter(p => p.pct <= -3).sort((a, b) => a.pct - b.pct).slice(0, 3)
 
   // Records (meilleure charge par exo, tous temps).
+  // Records SUR LA PÉRIODE (meilleure charge par exo dans la fenêtre choisie).
   const recMap: Record<string, { charge: number; reps: number }> = {}
-  for (const r of (perfs || [])) {
+  for (const r of inWin) {
     const c = Number(r.charge) || 0, rp = Number(r.reps) || 0
     if (c <= 0) continue
     const cur = recMap[r.exercice]
@@ -3970,7 +3972,7 @@ function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string
         <td style="padding:7px 2px;border-bottom:1px solid #223049;font-size:13px">${_escHtml(rec.exo)}</td>
         <td style="padding:7px 2px;border-bottom:1px solid #223049;text-align:right;font-size:13px;font-weight:700;color:#37d3b5">${_escHtml(rec.charge)} kg × ${_escHtml(rec.reps)}</td>
       </tr>`).join('')
-    recHtml = `<h3 style="font-size:15px;margin:18px 0 8px">Tes records</h3>
+    recHtml = `<h3 style="font-size:15px;margin:18px 0 8px">Tes records <span style="font-weight:400;font-size:12px;color:#5f6b85">meilleures charges · ${ceLabel}</span></h3>
       <table role="presentation" width="100%" style="border-collapse:collapse">${lignes}</table>`
   }
 
@@ -3980,27 +3982,49 @@ function _emailBilanAthleteHTML(prenom: string, periode: string, b: any): string
   return _emailShell('Bonjour ' + (prenom || 'athlète'), sous, corps)
 }
 
+function _periodeLabel(periode: string): string {
+  return periode === '3mois' ? 'des 3 derniers mois' : periode === 'mois' ? 'du mois' : 'de la semaine'
+}
+// Envoi des résumés par e-mail. Deux modes :
+//  • MANUEL (défaut) : envoie à TOUS ceux qui ont un e-mail, avec la `periode` donnée
+//    (utilisé pour les tests à la demande).
+//  • AUTO (`auto:true`, appelé chaque jour par le cron) : n'envoie qu'aux comptes
+//    dont la fréquence choisie (recap_freq) tombe AUJOURD'HUI, et avec la période
+//    correspondante. Hebdo = lundi · Mensuel = le 1er du mois · Trimestriel =
+//    le 1er de janv/avr/juil/oct. Pas d'état « dernier envoi » : le calendrier suffit.
 async function handleCronResumes(body: any): Promise<Response> {
   const secret = Deno.env.get('CRON_SECRET')
   if (!secret || String(body.secret || '') !== secret) return jsonResp({ error: 'unauthorized' }, 401)
+  const auto = body.auto === true || String(body.auto) === 'true'
   const periode = ['mois', '3mois'].indexOf(String(body.periode || '')) >= 0 ? String(body.periode) : 'semaine'
-  const periodeLabel = periode === '3mois' ? 'des 3 derniers mois' : periode === 'mois' ? 'du mois' : 'de la semaine'
   const now = new Date()
+  const dom = now.getUTCDate(), dow = now.getUTCDay(), mon = now.getUTCMonth() + 1
+  const isWeekly = dow === 1, isMonthly = dom === 1, isQuarterly = dom === 1 && [1, 4, 7, 10].indexOf(mon) >= 0
+  // Fréquence d'un compte → période à envoyer aujourd'hui (null = rien aujourd'hui).
+  const periodeFor = (freq: string): string | null => {
+    if (!auto) return periode                      // mode manuel : on envoie toujours
+    const f = String(freq || 'off')
+    if (f === 'semaine') return isWeekly ? 'semaine' : null
+    if (f === 'mois') return isMonthly ? 'mois' : null
+    if (f === '3mois') return isQuarterly ? '3mois' : null
+    return null                                     // 'off' / inconnu → jamais
+  }
 
   let coachsOk = 0, coachsSkip = 0, athletesOk = 0, athletesSkip = 0
 
   // 1) Coachs — un résumé d'équipe par coach ayant un e-mail.
   try {
-    const { data: coachs } = await sb().from('coachs').select('coach_id,nom,email')
+    const { data: coachs } = await sb().from('coachs').select('coach_id,nom,email,recap_freq')
     for (const c of coachs || []) {
       const email = String((c as any).email || '').trim()
-      if (!email) { coachsSkip++; continue }
+      const per = periodeFor((c as any).recap_freq)
+      if (!email || !per) { coachsSkip++; continue }
       try {
         const res = await handleGetSuiviEquipe(new URLSearchParams({ coach_id: String((c as any).coach_id) }))
         const data: any = await res.json()
         const prenom = String((c as any).nom || '').split(/\s+/)[0]
-        const html = _emailResumeEquipeHTML(prenom, periode, data)
-        const sujet = `Novalyz — Résumé ${periodeLabel} de ton équipe`
+        const html = _emailResumeEquipeHTML(prenom, per, data)
+        const sujet = `Novalyz — Résumé ${_periodeLabel(per)} de ton équipe`
         if (await _envoyerEmail(email, sujet, html)) coachsOk++; else coachsSkip++
       } catch (_) { coachsSkip++ }
     }
@@ -4008,10 +4032,11 @@ async function handleCronResumes(body: any): Promise<Response> {
 
   // 2) Athlètes — un bilan perso par athlète ayant un e-mail.
   try {
-    const { data: aths } = await sb().from('athletes').select('id,nom,email,annees')
+    const { data: aths } = await sb().from('athletes').select('id,nom,email,annees,recap_freq')
     for (const a of aths || []) {
       const email = String((a as any).email || '').trim()
-      if (!email) { athletesSkip++; continue }
+      const per = periodeFor((a as any).recap_freq)
+      if (!email || !per) { athletesSkip++; continue }
       const aid = String((a as any).id)
       try {
         // Sources réelles pour le bilan (mêmes tables que la fiche athlète).
@@ -4021,16 +4046,37 @@ async function handleCronResumes(body: any): Promise<Response> {
           sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', aid),
           sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', aid).like('seance_id', 'sante_%'),
         ])
-        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, Number((a as any).annees) || 0)
+        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, per, Number((a as any).annees) || 0)
         const prenom = String((a as any).nom || '').split(/\s+/)[0]
-        const html = _emailBilanAthleteHTML(prenom, periode, bilan)
-        const sujet = `Novalyz — Ton bilan ${periodeLabel}`
+        const html = _emailBilanAthleteHTML(prenom, per, bilan)
+        const sujet = `Novalyz — Ton bilan ${_periodeLabel(per)}`
         if (await _envoyerEmail(email, sujet, html)) athletesOk++; else athletesSkip++
       } catch (_) { athletesSkip++ }
     }
   } catch (_) { /* best-effort */ }
 
-  return jsonResp({ ok: true, periode, coachsOk, coachsSkip, athletesOk, athletesSkip })
+  return jsonResp({ ok: true, auto, periode, coachsOk, coachsSkip, athletesOk, athletesSkip })
+}
+
+// Enregistre la fréquence de recap choisie (athlète OU coach). Valeurs acceptées :
+// 'off' | 'semaine' | 'mois' | '3mois'. Le front envoie athlete_id OU coach_id.
+async function handleSaveRecapFreq(body: any): Promise<Response> {
+  const freq = ['off', 'semaine', 'mois', '3mois'].indexOf(String(body.freq || '')) >= 0 ? String(body.freq) : null
+  if (!freq) return jsonResp({ success: false, error: 'Fréquence invalide' })
+  const athlete_id = String(body.athlete_id || '')
+  const coach_id = String(body.coach_id || '')
+  try {
+    if (athlete_id) {
+      const { error } = await sb().from('athletes').update({ recap_freq: freq }).eq('id', athlete_id)
+      if (error) return jsonResp({ success: false, error: error.message })
+    } else if (coach_id) {
+      const { error } = await sb().from('coachs').update({ recap_freq: freq }).eq('coach_id', coach_id)
+      if (error) return jsonResp({ success: false, error: error.message })
+    } else {
+      return jsonResp({ success: false, error: 'Identifiant manquant' })
+    }
+  } catch (e) { return jsonResp({ success: false, error: String(e) }) }
+  return jsonResp({ success: true, freq })
 }
 
 async function handleSaveNativePushToken(body: any): Promise<Response> {
@@ -5122,6 +5168,7 @@ Deno.serve(async (req: Request) => {
         case 'exportEquipe':             return handleExportEquipe(body)
         case 'bilanClient':              return handleBilanClient(body)
         case 'envoyerBilanMail':         return handleEnvoyerBilanMail(body)
+        case 'saveRecapFreq':            return handleSaveRecapFreq(body)
         case 'requestPasswordReset':     return handleRequestPasswordReset(body)
         case 'resetPassword':            return handleResetPassword(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
@@ -5137,6 +5184,7 @@ Deno.serve(async (req: Request) => {
         case 'deletePushSub':            return handleDeletePushSub(body)
         case 'cronPushAlertes':          return handleCronPushAlertes(body)
         case 'cronResumes':              return handleCronResumes(body)
+        case 'cronResumesAuto':          return handleCronResumes({ ...body, auto: true })
         case 'saveNativePushToken':      return handleSaveNativePushToken(body)
         case 'deleteNativePushToken':    return handleDeleteNativePushToken(body)
         case 'testPush':                 return handleTestPush(body)
