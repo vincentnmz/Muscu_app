@@ -946,7 +946,7 @@ function _ckFraicheurHeader(m, dash){
     + '<div style="font-size:26px;font-weight:800;color:' + frC + ';line-height:1;">' + frL + '</div>'
     + '<div><div style="font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Fraîcheur ' + (tsbPct >= 0 ? '+' : '') + tsbPct + '%' + fiabTag + '</div>'
     + '<div style="font-size:12.5px;font-weight:700;color:' + frC + ';">' + frSub + '</div></div></div>'
-    + '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Forme de fond <b style="color:var(--text)">' + ctl + '</b> · Fatigue récente <b style="color:var(--text)">' + atl + '</b> <span style="opacity:.75">· ' + escapeHtml(acwrSec) + '</span></div>';
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Forme de fond <b style="color:var(--text)">' + ctl + '</b> · Fatigue récente <b style="color:var(--text)">' + atl + '</b>' + (cf.source === 'srpe' ? ' <span style="opacity:.75">· via sRPE (RPE×durée)</span>' : '') + ' <span style="opacity:.75">· ' + escapeHtml(acwrSec) + '</span></div>';
 }
 function renderCockpitCharge(data){
   var m = data.moteur || {};
@@ -10378,7 +10378,9 @@ function _bilanPayload(type, seanceId, dateSeance) {
   return {
     action: 'saveBilanSeance', athlete_id: athlete.athlete_id, type: type,
     seance_id: seanceId || null, date: dateSeance,
-    rpe: wellnessState.rpe, douleur: wellnessState.douleur, zone: zone
+    // Durée mesurée par le chrono de séance (muscu) → charge interne sRPE = RPE × durée.
+    rpe: wellnessState.rpe, duree: (type === 'muscu' && _seanceDureeMin > 0) ? _seanceDureeMin : null,
+    douleur: wellnessState.douleur, zone: zone
   };
 }
 
@@ -14679,6 +14681,8 @@ function renderEtat(data) {
         else if (tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; frBg = 'var(--surface2)'; frD = 'Ta charge récente est proche de ton habitude.'; }
         else { frL = 'Fatigue'; frC = 'var(--warn)'; frBg = 'var(--warn-a)'; frD = 'Tu as plus chargé que d\'habitude — soigne la récup.'; }
         var fiabF = (cfe.fiable === true) ? '' : '<span style="color:var(--text-subtle);font-weight:600;font-size:10px"> · indicatif</span>';
+        var srcF = (cfe.source === 'srpe') ? '<span style="color:var(--text-subtle);font-weight:600;font-size:10px"> · sRPE</span>' : '';
+        fiabF = fiabF + srcF;
         // Jauge fraîcheur (TSB %) : -40 (fatigue) → +20 (frais), 0 = équilibre au centre.
         var lo = -40, hi = 20, posF = Math.max(0, Math.min(100, (tsbPct - lo) / (hi - lo) * 100));
         var zbarF = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,rgba(224,120,0,.45) 0 46%,rgba(80,110,160,.35) 46% 62%,rgba(0,168,84,.45) 62% 100%)">'
