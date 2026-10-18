@@ -1290,7 +1290,14 @@ function renderCockpitBienEtreFoot(data){
       + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🫀 Bien-être</div>'
       + '<div style="font-size:12px;color:var(--text-muted);">Aucun questionnaire récent.</div></div>';
   }
-  var DIMS = WQ_DIMS.filter(function(d){ return ['sommeil', 'energie', 'fatigue', 'douleur'].indexOf(d.key) !== -1; });
+  // Foot : readiness via indicateurs (sommeil/energie/fatigue/douleur) — liste propre,
+  // indépendante de WQ_DIMS (muscu = Hooper).
+  var DIMS = [
+    { key: 'sommeil', label: 'Sommeil', invert: false },
+    { key: 'energie', label: 'Énergie', invert: false },
+    { key: 'fatigue', label: 'Fatigue', invert: true },
+    { key: 'douleur', label: 'Douleur', invert: true }
+  ];
   var ICO = { sommeil:'😴', energie:'⚡', fatigue:'💪', douleur:'🤕' };
   var cells = DIMS.map(function(dim){
     var raw = be[dim.key];
@@ -1357,7 +1364,12 @@ function renderCockpitChargeFoot(data){
 function renderCockpitEvolutionFoot(data){
   var m = data.moteur || {};
   var well = Array.isArray(data.wellness) ? data.wellness.slice(-10) : [];
-  var DIMS = WQ_DIMS.filter(function(d){ return ['sommeil', 'energie', 'fatigue', 'douleur'].indexOf(d.key) !== -1; });
+  var DIMS = [
+    { key: 'sommeil', label: 'Sommeil', invert: false },
+    { key: 'energie', label: 'Énergie', invert: false },
+    { key: 'fatigue', label: 'Fatigue', invert: true },
+    { key: 'douleur', label: 'Douleur', invert: true }
+  ];
   var beRows = DIMS.map(function(dim){
     var serie = well.map(function(x){ return x[dim.key]; }).filter(function(v){ return v != null && v !== '' && !isNaN(Number(v)); }).map(Number);
     if (serie.length < 2) return '';
@@ -10205,7 +10217,7 @@ const WELLNESS_CONFIG = {
 // Valeur "sans douleur" = 5 (Aucune). Zone s'affiche quand douleur < 5.
 const WELLNESS_NO_PAIN_VAL = '1';
 
-const wellnessState = { sommeil: null, energie: null, fatigue: null, motivation: null, douleur: null, zone: null, ressenti: null };
+const wellnessState = { sommeil: null, energie: null, fatigue: null, motivation: null, stress: null, courbatures: null, rpe: null, douleur: null, zone: null, ressenti: null };
 
 // ── Questionnaires (Phase 1) ────────────────────────────────────────────────
 // DEUX questionnaires distincts, à DEUX moments :
@@ -10227,15 +10239,15 @@ function _bienEtreFaitAujourdhui() {
   try {
     var be = (dernierAppData && Array.isArray(dernierAppData.bien_etre) && dernierAppData.bien_etre[0]) ? dernierAppData.bien_etre[0] : null;
     if (!be || !be.date) return false;
-    // « fait » = au moins un signal readiness renseigné aujourd'hui
-    var hasReadiness = ['sommeil', 'energie', 'fatigue', 'motivation'].some(function (k) { return be[k] != null && be[k] !== '' && !isNaN(Number(be[k])); });
+    // « fait » = au moins un signal readiness renseigné aujourd'hui (Hooper)
+    var hasReadiness = ['sommeil', 'fatigue', 'stress', 'courbatures'].some(function (k) { return be[k] != null && be[k] !== '' && !isNaN(Number(be[k])); });
     return hasReadiness && _normDateDDMM(be.date) === _normDateDDMM(_todayLocalStr());
   } catch (e) { return false; }
 }
 
 var _BTN_SEC = 'flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:12px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;';
 var _BTN_MAIN = 'flex:2;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;';
-var _WQ_BLOCKS = ['wqb-sommeil', 'wqb-energie', 'wqb-fatigue', 'wqb-motivation', 'wqb-ressenti', 'wqb-douleur', 'wq-zone-block', 'wqb-note'];
+var _WQ_BLOCKS = ['wqb-sommeil', 'wqb-fatigue', 'wqb-stress', 'wqb-courbatures', 'wqb-rpe', 'wqb-douleur', 'wq-zone-block', 'wqb-note'];
 
 function _wqShow(ids) {
   _WQ_BLOCKS.forEach(function (id) {
@@ -10247,6 +10259,8 @@ function _wqShow(ids) {
 function _wqResetForm() {
   Object.keys(wellnessState).forEach(k => wellnessState[k] = null);
   document.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.wq-cr').forEach(c => c.classList.remove('selected'));
+  var rd = document.getElementById('wq-rpe-desc'); if (rd) rd.textContent = 'Touche pour noter · 0 = repos complet, 10 = effort maximal';
   var n = document.getElementById('wq-note'); if (n) n.value = '';
   var zt = document.getElementById('wq-zone-text'); if (zt) zt.value = '';
 }
@@ -10280,9 +10294,9 @@ function ouvrirEtatDuJour(opts) {
   _wqMode = 'etat';
   _wqDate = opts.date || null;
   _wqResetForm();
-  _wqShow(['wqb-sommeil', 'wqb-fatigue', 'wqb-motivation']);
+  _wqShow(['wqb-sommeil', 'wqb-fatigue', 'wqb-stress', 'wqb-courbatures']);
   var title = document.getElementById('wq-title'); if (title) title.textContent = 'Ton état du jour';
-  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = _wqThen ? 'Avant de commencer · 20 secondes' : 'Comment tu te sens aujourd’hui ? · 20 secondes';
+  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = _wqThen ? 'Avant de commencer · 15 secondes' : 'Comment tu te sens aujourd’hui ? · 15 secondes';
   var footer = document.getElementById('wq-footer');
   if (footer) footer.innerHTML =
     '<button onclick="_etatSkip()" style="' + _BTN_SEC + '">' + (_wqThen ? 'Passer' : 'Fermer') + '</button>'
@@ -10303,7 +10317,7 @@ function _wqPrefillEtat() {
   try {
     if (!_bienEtreFaitAujourdhui()) return;
     var be = dernierAppData.bien_etre[0];
-    ['sommeil', 'energie', 'fatigue', 'motivation'].forEach(function (k) {
+    ['sommeil', 'fatigue', 'stress', 'courbatures'].forEach(function (k) {
       var v = be[k];
       if (v == null || v === '' || isNaN(Number(v))) return;
       var cont = document.getElementById('wq-' + k); if (!cont) return;
@@ -10323,8 +10337,8 @@ async function enregistrerEtatDuJour() {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveBienEtre', athlete_id: athlete.athlete_id, date: dateEnvoi, seance_id: null,
-        sommeil: wellnessState.sommeil, energie: wellnessState.energie, fatigue: wellnessState.fatigue,
-        motivation: wellnessState.motivation
+        sommeil: wellnessState.sommeil, fatigue: wellnessState.fatigue,
+        stress: wellnessState.stress, courbatures: wellnessState.courbatures
       })
     });
     showToast('État du jour enregistré ✅');
@@ -10346,10 +10360,10 @@ function ouvrirBilanSeance(type, seanceId, date) {
   _wqSeanceId = seanceId || null;
   _wqDate = date || _todayLocalStr();
   _wqResetForm();
-  _wqShow(['wqb-ressenti', 'wqb-douleur', 'wqb-note']); // zone conditionnelle
+  _wqShow(['wqb-rpe', 'wqb-douleur', 'wqb-note']); // zone conditionnelle
   var zb = document.getElementById('wq-zone-block'); if (zb) zb.style.display = 'none';
   var title = document.getElementById('wq-title'); if (title) title.textContent = 'Bilan de ta séance';
-  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = 'Comment ça s’est passé ? · optionnel';
+  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = 'À quel point c’était dur ? · échelle 0-10';
   var footer = document.getElementById('wq-footer');
   if (footer) footer.innerHTML =
     '<button onclick="_bilanSkip()" style="' + _BTN_SEC + '">Passer</button>'
@@ -10364,7 +10378,7 @@ function _bilanPayload(type, seanceId, dateSeance) {
   return {
     action: 'saveBilanSeance', athlete_id: athlete.athlete_id, type: type,
     seance_id: seanceId || null, date: dateSeance,
-    ressenti: wellnessState.ressenti, douleur: wellnessState.douleur, zone: zone
+    rpe: wellnessState.rpe, douleur: wellnessState.douleur, zone: zone
   };
 }
 
@@ -10443,6 +10457,22 @@ function selectWQ(question, btn) {
       document.querySelectorAll('#wq-zone .wq-chip').forEach(c => c.classList.remove('selected'));
       var zt = document.getElementById('wq-zone-text'); if (zt) zt.value = '';
     }
+  }
+}
+
+// RPE de séance — échelle CR-10 de Foster (0 = repos, 10 = effort maximal).
+var _CR10_DESC = ['Repos complet', 'Très très facile', 'Très facile', 'Facile', 'Un peu dur',
+  'Modéré', 'Soutenu', 'Difficile', 'Très difficile', 'Presque maximal', 'Effort maximal'];
+function selectRPE(btn) {
+  var cont = document.getElementById('wq-rpe'); if (!cont) return;
+  cont.querySelectorAll('.wq-cr').forEach(function (c) { c.classList.remove('selected'); });
+  btn.classList.add('selected');
+  var v = Number(btn.dataset.val);
+  wellnessState.rpe = v;
+  var d = document.getElementById('wq-rpe-desc');
+  if (d) {
+    var col = btn.style.getPropertyValue('--c') || 'var(--text)';
+    d.innerHTML = '<b style="color:' + col + '">' + v + '/10 · ' + (_CR10_DESC[v] || '') + '</b>';
   }
 }
 
@@ -11299,6 +11329,22 @@ function _maRecentWin(p) { return (p === 'semaine' && _maSemaineType() === 'cale
 // Date de coupe pour filtrer par période (semaine calendaire → depuis lundi).
 function _maCut(p) { return (p === 'semaine' && _maSemaineType() === 'calendaire') ? _maLastMondayISO() : _maCutISO(_MA_DAYS[p]); }
 var _MA_RSC = { 1: '#00A854', 2: '#8FBF3F', 3: '#E07800', 4: '#DC3545' };
+// Couleur d'un RPE CR-10 (0..10) : vert → rouge par zone d'effort.
+function _maRpeCol(v) { return v <= 3 ? '#00A854' : v <= 5 ? '#8FBF3F' : v <= 7 ? '#E07800' : '#DC3545'; }
+// Série « effort de séance » 0..10 : préfère rpe_<disc> (CR-10). Repli = legacy
+// ressenti_<disc> (difficulté 1..4) converti en RPE approché (1→3,2→5,3→7,4→9).
+function _maEffortSeries(data, disc) {
+  var a = (data && data.analyses) || {};
+  var out = (a['rpe_' + disc] || []).filter(function (x) { return x && x.valeur != null; })
+    .map(function (x) { return { date: x.date, seance_id: x.seance_id, valeur: Number(x.valeur) }; });
+  var seen = {}; out.forEach(function (x) { seen[x.date + '|' + x.seance_id] = 1; });
+  var MAP = { 1: 3, 2: 5, 3: 7, 4: 9 };
+  (a['ressenti_' + disc] || []).forEach(function (x) {
+    if (!x || x.valeur == null) return; var k = x.date + '|' + x.seance_id;
+    if (!seen[k] && x.valeur >= 1 && x.valeur <= 4) out.push({ date: x.date, seance_id: x.seance_id, valeur: MAP[x.valeur] || 5 });
+  });
+  return out;
+}
 function _maE(x) { return (typeof escapeHtml === 'function') ? escapeHtml(String(x == null ? '' : x)) : String(x == null ? '' : x); }
 function _maSvg(p, w) { w = w || 15; return '<svg width="' + w + '" height="' + w + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>'; }
 function _maSpark(pts, color) {
@@ -11436,7 +11482,7 @@ var _MA_INFO = {
   tonnage: { t: 'Tonnage', d: 'Le tonnage = charge × répétitions, additionné sur toutes tes séries. C\'est une mesure du volume de travail soulevé, que Novalyz somme par séance et par semaine pour suivre ta charge globale.', fiab: 'Fiable comme suivi de charge, mais ce n\'est pas une mesure d\'intensité : un gros tonnage peut venir de beaucoup de répétitions légères.' },
   volume: { t: 'Volume (séries par semaine)', d: 'Le volume utile pour prendre du muscle se compte surtout en nombre de séries par groupe musculaire et par semaine. Novalyz compare tes séries/sem à une cible adaptée à ton niveau.', fiab: 'Bien étayé : les méta-analyses montrent une relation dose-réponse (~10 séries/sem par muscle comme repère, davantage selon le niveau).' },
   balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
-  ressenti: { t: 'Ressenti des séances', d: 'Après chaque séance tu notes sa difficulté globale de 1 (Facile) à 4 (Très dur). Ce bloc suit l\'évolution de ce ressenti sur la période — un moyen simple de repérer une fatigue qui s\'installe.', fiab: 'Auto-évaluation subjective (proche du RPE de séance, validé — Borg / Foster). Elle dépend de ton humeur du jour : lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
+  ressenti: { t: 'Effort des séances (RPE)', d: 'Après chaque séance tu notes son intensité sur l\'échelle CR-10 de Foster (0 = repos, 10 = effort maximal). Ce bloc suit l\'évolution de ton effort perçu sur la période — un moyen simple de repérer une charge qui s\'installe.', fiab: 'Méthode reconnue (session-RPE, Borg / Foster) : l\'échelle CR-10 est validée pour quantifier l\'effort. Multipliée par la durée, elle donne la charge interne (sRPE). Lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
   acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: '⚠️ Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
   fraicheur: { t: 'Charge & fraîcheur (fitness-fatigue)', d: 'Modèle fitness-fatigue de Banister. Ta charge d\'entraînement alimente deux moyennes : la FORME de fond (CTL, lissée sur 42 jours) et la FATIGUE récente (ATL, sur 7 jours). La FRAÎCHEUR = forme − fatigue : positive = reposé/affûté, négative = tu as plus chargé que d\'habitude. « Charge récente » = ta charge des 7 derniers jours vs ton habitude.', fiab: 'Méthode reconnue et largement utilisée (Banister, base de TrainingPeaks TSB/CTL/ATL ; charge interne via le session-RPE de Foster). Repère SECONDAIRE chez Novalyz : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. Interprétable après ~4 semaines d\'historique.' },
   progression: { t: 'Progression / 1RM estimé', d: 'Le 1RM estimé (formule d\'Epley : charge × (1 + reps/30)) approxime la charge que tu soulèverais 1 fois, sans tester ton maximum. Novalyz suit son évolution pour juger ta progression de force.', fiab: 'Fiable surtout en dessous de ~10 répétitions ; l\'erreur d\'estimation grandit au-delà.' },
@@ -11446,7 +11492,7 @@ var _MA_INFO = {
   charge_cardio: { t: 'Charge cardio (interne)', d: 'La charge interne d\'une sortie = RPE × durée (en minutes), additionnée par semaine en UA (unités arbitraires). Elle mesure ce que la séance t\'a coûté, pas seulement la distance parcourue.', fiab: 'Méthode reconnue (session-RPE, Foster 2001) : simple et fiable pour suivre l\'évolution de ta charge. Une hausse trop rapide d\'une semaine à l\'autre invite à la prudence.' },
   charge_globale: { t: 'Charge globale (muscu + cardio)', d: 'Additionne ta charge muscu et ta charge cardio sur une même échelle (UA) pour voir ta charge totale par semaine. La muscu (tonnage) est convertie via un ratio approché pour la rendre comparable au cardio (RPE × durée).', fiab: 'La partie cardio (session-RPE) est bien établie ; la mise à la même échelle que la muscu repose sur une conversion approximative. Lis la tendance (monte / descend), pas le chiffre exact.' },
   equilibre_mc: { t: 'Répartition muscu / cardio', d: 'La part de ta charge totale qui vient de la muscu vs du cardio, sur la période. Utile pour voir si tu équilibres les deux selon ton objectif.', fiab: 'Repère indicatif : la muscu est ramenée à la même échelle que le cardio via une conversion approximative — regarde la tendance, pas le pourcentage au point près.' },
-  forme: { t: 'Indice de forme', d: 'Un indice sur 100 qui résume ton bien-être : (sommeil + énergie − fatigue) ramené sur 100, moyenné par semaine (100 = parfaitement récupéré). À croiser avec ta charge.', fiab: 'Indicateur maison, basé sur ton ressenti déclaré (non validé cliniquement). Il vaut surtout par sa tendance : si la forme chute quand la charge monte, c\'est un signal pour lever le pied.' }
+  forme: { t: 'Indice de forme', d: 'Un indice sur 100 qui résume ta readiness : sommeil + fatigue + stress + courbatures (indice de Hooper), ramené sur 100 (100 = parfaitement récupéré). À croiser avec ta charge.', fiab: 'Basé sur l\'indice de Hooper-Mackinnon (readiness), reconnu en prépa physique. Déclaratif : il vaut surtout par sa tendance — si la forme chute quand la charge monte, c\'est un signal pour lever le pied.' }
 };
 function _maInfoOpen(k) {
   var e = _MA_INFO[k]; if (!e) return;
@@ -11705,10 +11751,10 @@ function _maFiabilite(data) {
     if (d >= rw.startISO && d < rw.endISO) { var o = daily[d]; if (o) { sumN += o.rpe_n || 0; sumS += o.series || 0; } }
   });
   var rpeCov = sumS ? Math.min(1, sumN / sumS) : 0;
-  // Bien-être : jours avec un ressenti de séance sur la fenêtre / nb de séances.
+  // Bien-être : jours avec un RPE de séance (ou legacy ressenti) sur la fenêtre / nb de séances.
   var beDates = {};
-  ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) {
-    if (x && x.valeur >= 1 && (x.date || '') >= rw.startISO && (x.date || '') < rw.endISO) beDates[x.date] = 1;
+  _maEffortSeries(data, 'muscu').forEach(function (x) {
+    if (x && x.valeur != null && (x.date || '') >= rw.startISO && (x.date || '') < rw.endISO) beDates[x.date] = 1;
   });
   nBE = Object.keys(beDates).length;
   var beCov = cur.seances ? Math.min(1, nBE / cur.seances) : 0;
@@ -11970,14 +12016,14 @@ function _maMuscuResume(data) {
     ['Records battus', String(nRec), '']
   ].map(function (k) { return '<div class="ma-kpi"><span class="u">' + k[0] + '</span><span class="v">' + k[1] + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</span></div>'; }).join('');
   // Ressenti (période)
-  var rsArr = (data.analyses && data.analyses.ressenti_muscu) ? data.analyses.ressenti_muscu.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= w.startISO && (x.date || '') < w.endISO; }) : [];
+  var rsArr = _maEffortSeries(data, 'muscu').filter(function (x) { return x.valeur != null && (x.date || '') >= w.startISO && (x.date || '') < w.endISO; });
   var rsHtml;
   if (rsArr.length) {
     var rec = rsArr.slice(0, 14).reverse();
-    rsHtml = '<div class="ma-rsbox"><div class="ma-rsbars">' + rec.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>'
+    rsHtml = '<div class="ma-rsbox"><div class="ma-rsbars">' + rec.map(function (x) { return '<div class="b" title="RPE ' + x.valeur + '/10" style="height:' + Math.max(8, x.valeur / 10 * 100) + '%;background:' + _maRpeCol(x.valeur) + '"></div>'; }).join('') + '</div>'
       + _maRsAxis(rec, p)
-      + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
-  } else { rsHtml = _maEmpty('Aucun ressenti sur la période — il se remplit après tes bilans de séance.'); }
+      + '<div class="ma-rsleg">' + [[2, 'Facile'], [5, 'Modéré'], [7, 'Difficile'], [9, 'Max']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _maRpeCol(a[0]) + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+  } else { rsHtml = _maEmpty('Aucun RPE sur la période — il se remplit après tes bilans de séance.'); }
   // Volume musculaire en SÉRIES sur la période + statut coloré (objectifs ou défauts).
   var spm = r.series_par_muscle || {};
   var obti = {}; (data.volume_obti || []).forEach(function (o) { obti[o.muscle] = o; });
@@ -12016,7 +12062,7 @@ function _maMuscuResume(data) {
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
-    + _maSec('Ressenti des séances', 'sur ' + w.plabel, 'ressenti') + rsHtml
+    + _maSec('Effort des séances (RPE)', 'sur ' + w.plabel, 'ressenti') + rsHtml
     + '<div class="ma-cols">'
     +   '<div class="ma-colcard">' + _maSec('Volume musculaire', w.plabel + ' · séries', 'volume') + volHtml
     +     _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.') + '</div>'
@@ -12306,12 +12352,11 @@ function _maProgSea(data) {
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
   // Plus de filtre par période : on montre les N dernières séances + « Charger plus ».
   var rs = {}, rsByDate = {};
-  ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) {
+  _maEffortSeries(data, 'muscu').forEach(function (x) {
     if (x.valeur == null) return;
     if (x.seance_id != null && x.seance_id !== '') rs[x.seance_id + '|' + x.date] = x.valeur;
     if (x.date) rsByDate[x.date] = x.valeur;
   });
-  var RSL = { 1: 'Facile', 2: 'Moyen', 3: 'Difficile', 4: 'Très dur' };
   // Occurrences par exercice (1 par séance) triées chrono → « la fois précédente ».
   var occ = {};
   sd.forEach(function (s) { (s.exercices || []).forEach(function (e) { var b = _maBestSet(e); if (!b) return; (occ[e.nom] = occ[e.nom] || []).push({ date: s.date, charge: b.charge, reps: b.reps, e1: b.charge * (1 + b.reps / 30) }); }); });
@@ -12359,7 +12404,7 @@ function _maProgSea(data) {
     return '<div class="ma-card" id="ma-sea-' + idx + '" data-open="' + (open ? '1' : '0') + '" style="padding:0;overflow:hidden;margin-bottom:10px">'
       + '<div onclick="_maSeaToggle(' + idx + ')" style="display:flex;align-items:center;gap:11px;padding:13px 14px;cursor:pointer">'
       + '<div style="width:42px;flex:none;text-align:center;background:var(--surface2);border-radius:10px;padding:5px 0"><div style="font-size:15px;font-weight:800;line-height:1">' + day + '</div><div style="font-size:8px;text-transform:uppercase;color:var(--text-subtle);margin-top:1px">' + mon + '</div></div>'
-      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + esc(sid) + '</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px">' + ton + ' t · ~' + dur + ' min · ' + nSeries + ' séries' + (rv ? ' · ' + RSL[rv] : '') + '</div></div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + esc(sid) + '</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px">' + ton + ' t · ~' + dur + ' min · ' + nSeries + ' séries' + (rv != null ? ' · RPE ' + rv + '/10' : '') + '</div></div>'
       + badge
       + '<span id="ma-sea-ch-' + idx + '" style="color:var(--text-subtle);transition:transform .2s;flex:none' + (open ? ';transform:rotate(180deg)' : '') + '">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span>'
       + '</div>'
@@ -12486,11 +12531,11 @@ function _maMuscuHistorique(data) {
   if (!all.length) { _maSet('ma-muscu-historique', _maEmpty('Aucune séance enregistrée pour l\'instant.')); return; }
   var n = Math.min(_maHistMore.muscu || 5, all.length);
   var ds = all.slice(0, n);
-  var rs = {}; ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + x.date] = x.valeur; });
+  var rs = {}; _maEffortSeries(data, 'muscu').forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + x.date] = x.valeur; });
   var html = ds.map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
-    var rv = rs[s.seance_id + '|' + s.date] || null;
-    var dot = rv ? '<div class="ma-rdot" style="background:' + _MA_RSC[rv] + '">' + rv + '</div>' : '<div class="ma-rdot" style="background:var(--surface2);color:var(--text-subtle)">–</div>';
+    var rv = rs[s.seance_id + '|' + s.date]; if (rv == null) rv = null;
+    var dot = (rv != null) ? '<div class="ma-rdot" title="RPE ' + rv + '/10" style="background:' + _maRpeCol(rv) + '">' + rv + '</div>' : '<div class="ma-rdot" style="background:var(--surface2);color:var(--text-subtle)">–</div>';
     var det = '<div class="nv-seancedet">' + _nvExoRows(s.exercices) + '</div>';
     return '<div class="ma-hcard"><div class="ma-hhd" style="cursor:pointer" onclick="maToggleHS(' + i + ')"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div>'
       + '<div class="ma-hmain"><div class="a">' + _maE(s.seance_id || 'Séance') + '</div><div class="b">' + (s.exercices ? s.exercices.length : 0) + ' exos · ' + (s.nb_series || 0) + ' séries · ' + (Math.round((s.tonnage || 0) / 100) / 10) + ' t</div></div>'
@@ -12548,11 +12593,11 @@ function _maCardioResume(data) {
   var tdCh = _maTrendData(chDict, 'sum');
   var chargeHtml = tdCh.pts.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / ' + _bNoun + ' · ' + _w.plabel, 'charge_cardio') + _maChartBlock('Charge (UA)', tdCh.pts, 'UA', '#9D5FD3', 'rgba(157,95,211,.12)', _maShortDate(tdCh.dates[0]), 'Charge interne (RPE × durée) par ' + _bNoun + '. Une montée trop brutale peut signaler un risque de surmenage.', tdCh.dates)) : '';
   // Ressenti des sorties cardio (bilan de séance) sur la période — miroir du ressenti muscu.
-  var rsC = (data.analyses && data.analyses.ressenti_cardio) ? data.analyses.ressenti_cardio.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; }) : [];
+  var rsC = _maEffortSeries(data, 'cardio').filter(function (x) { return x.valeur != null && (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; });
   var rsCardioHtml = '';
   if (rsC.length) {
     var recC = rsC.slice(0, 14).reverse();
-    rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _w.plabel, 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+    rsCardioHtml = _maSec('Effort des sorties (RPE)', 'sur ' + _w.plabel, 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" title="RPE ' + x.valeur + '/10" style="height:' + Math.max(8, x.valeur / 10 * 100) + '%;background:' + _maRpeCol(x.valeur) + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[2, 'Facile'], [5, 'Modéré'], [7, 'Difficile'], [9, 'Max']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _maRpeCol(a[0]) + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   }
   var _crMain = _maSyntheseCardio(data) + verdict
     + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change les chiffres & graphiques ci-dessous.')
@@ -13963,7 +14008,7 @@ function renderChargeFatigueJour(data) {
       if (be0) {
         var parts = [];
         if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) parts.push('sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
-        if (be0.energie != null && !isNaN(Number(be0.energie))) parts.push('énergie ' + String(WQ_ANSWERS.energie[Number(be0.energie)] || '').toLowerCase());
+        if (be0.fatigue != null && !isNaN(Number(be0.fatigue))) parts.push('fatigue ' + String(WQ_ANSWERS.fatigue[Number(be0.fatigue)] || '').toLowerCase());
         rd = parts.length ? ' (' + parts.join(', ') + ')' : '';
       }
     } catch (e) {}
@@ -14016,7 +14061,7 @@ function renderChargeFatigueJour(data) {
     try {
       if (be0) {
         if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) sp.push('Sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
-        if (be0.energie != null && !isNaN(Number(be0.energie))) sp.push('énergie ' + String(WQ_ANSWERS.energie[Number(be0.energie)] || '').toLowerCase());
+        if (be0.fatigue != null && !isNaN(Number(be0.fatigue))) sp.push('fatigue ' + String(WQ_ANSWERS.fatigue[Number(be0.fatigue)] || '').toLowerCase());
       }
       if (hasRecup) sp.push('récup ' + String(m.recup).toLowerCase());
       // Charge élevée mais récup bonne (verdict Prêt) : on l'affiche dans la sous-ligne
@@ -14191,15 +14236,17 @@ function renderAujourdhui(data) {
         sommeil: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
         ressenti: '<path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/>',
         energie: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>',
-        fatigue: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>',
+        fatigue: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+        stress: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        courbatures: '<path d="M20.5 7.5 16 12l-4-4 4.5-4.5a3.5 3.5 0 0 1 4 4z"/><path d="M8 12l-4.5 4.5a3.5 3.5 0 0 0 4 4L12 16z"/>',
         motivation: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/><path d="M12 22c3 0 5-2 5-5"/>',
         douleur: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
       };
-      // Point du jour = ce qu'on renseigne le MATIN (sommeil/fatigue/motivation).
+      // Point du jour = readiness Hooper du MATIN (sommeil / fatigue / stress).
       var CELLS = [
         { key: 'sommeil', nm: 'Sommeil', invert: false },
         { key: 'fatigue', nm: 'Fatigue', invert: true },
-        { key: 'motivation', nm: 'Motivation', invert: false }
+        { key: 'stress', nm: 'Stress', invert: true }
       ];
       var escB = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
       elG.innerHTML = CELLS.map(function (c) {
@@ -14672,8 +14719,8 @@ function renderEtat(data) {
         });
       });
       var DIMS = [
-        { key: 'sommeil', invert: false }, { key: 'energie', invert: false }, { key: 'motivation', invert: false },
-        { key: 'fatigue', invert: true }, { key: 'douleur', invert: true }, { key: 'ressenti', invert: false }
+        { key: 'sommeil', invert: false }, { key: 'fatigue', invert: true }, { key: 'stress', invert: true },
+        { key: 'courbatures', invert: true }, { key: 'douleur', invert: true }
       ];
       var JOURS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
       var htmlD = '', today = new Date(); today.setHours(0, 0, 0, 0);
@@ -14719,16 +14766,19 @@ function renderEtat(data) {
         sommeil: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
         ressenti: '<path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/>',
         energie: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>',
-        fatigue: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>',
+        fatigue: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+        stress: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        courbatures: '<path d="M20.5 7.5 16 12l-4-4 4.5-4.5a3.5 3.5 0 0 1 4 4z"/><path d="M8 12l-4.5 4.5a3.5 3.5 0 0 0 4 4L12 16z"/>',
         motivation: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/><path d="M12 22c3 0 5-2 5-5"/>',
         douleur: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
       };
-      // Matin : sommeil/fatigue/motivation. 'post' = renseigné APRÈS la séance (bilan).
+      // Readiness Hooper du matin (sommeil/fatigue/stress/courbatures). 'post' =
+      // renseigné APRÈS la séance (bilan). Le RPE de séance (0-10) a son propre bloc.
       var ROWS = [
         { key: 'sommeil', label: 'Sommeil', invert: false },
-        { key: 'fatigue', label: 'Fatigue musculaire', invert: true },
-        { key: 'motivation', label: 'Motivation', invert: false },
-        { key: 'ressenti', label: 'Ressenti (difficulté séance)', invert: false, post: true },
+        { key: 'fatigue', label: 'Fatigue générale', invert: true },
+        { key: 'stress', label: 'Stress / tension', invert: true },
+        { key: 'courbatures', label: 'Courbatures', invert: true },
         { key: 'douleur', label: 'Douleur', invert: true, post: true }
       ];
       // Analyse → reco PAR SIGNAL : réutilise les alertes du moteur (type → title/action).
@@ -17529,22 +17579,26 @@ function terminerExercice() {
 // Dimensions PRISES EN COMPTE dans le score bien-être (moyenne des signaux présents).
 // On garde 'energie' (données historiques) ET on ajoute 'motivation' (nouveau matin) :
 // un signal absent est simplement exclu de la moyenne → rétro-compatible.
+// Readiness = indice de Hooper : sommeil + fatigue + stress + courbatures.
+// (energie/motivation/ressenti conservés dans WQ_ANSWERS pour l'historique legacy.)
 const WQ_DIMS = [
-  { key: 'sommeil',    label: 'Sommeil',    invert: false },
-  { key: 'energie',    label: 'Énergie',    invert: false },
-  { key: 'fatigue',    label: 'Fatigue',    invert: true  },
-  { key: 'motivation', label: 'Motivation', invert: false },
-  { key: 'douleur',    label: 'Douleur',    invert: true  },
-  { key: 'ressenti',   label: 'Ressenti',   invert: false }
+  { key: 'sommeil',     label: 'Sommeil',     invert: false },
+  { key: 'fatigue',     label: 'Fatigue',     invert: true  },
+  { key: 'stress',      label: 'Stress',      invert: true  },
+  { key: 'courbatures', label: 'Courbatures', invert: true  },
+  { key: 'douleur',     label: 'Douleur',     invert: true  }
 ];
 
 // Réponses textuelles indexées par la note brute 1..5 (barème du questionnaire)
 const WQ_ANSWERS = {
   sommeil:  ['—', 'Très mauvais', 'Mauvais', 'Moyen', 'Bon', 'Excellent'],
-  energie:  ['—', 'Très faible', 'Faible', 'Normal', 'Élevé', 'Très élevé'],
   fatigue:  ['—', 'Aucune', 'Faible', 'Modérée', 'Importante', 'Très importante'],
-  motivation: ['—', 'Très faible', 'Faible', 'Moyenne', 'Bonne', 'À fond'],
+  stress:   ['—', 'Aucun', 'Faible', 'Modéré', 'Élevé', 'Très élevé'],
+  courbatures: ['—', 'Aucune', 'Légères', 'Modérées', 'Importantes', 'Très importantes'],
   douleur:  ['—', 'Aucune', 'Légère', 'Modérée', 'Forte', 'Très forte'],
+  // Legacy (ancien questionnaire) — pour relire les données déjà enregistrées.
+  energie:  ['—', 'Très faible', 'Faible', 'Normal', 'Élevé', 'Très élevé'],
+  motivation: ['—', 'Très faible', 'Faible', 'Moyenne', 'Bonne', 'À fond'],
   ressenti: ['—', 'Très difficile', 'Difficile', 'Normale', 'Facile', 'Très facile']
 };
 

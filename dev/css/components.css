@@ -413,7 +413,14 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 
 /* ===== Bien-être — chips questionnaire ===== */
 .wq-block { padding:12px 0; border-bottom:1px solid var(--border); }
-.wq-label { font-size:13px; font-weight:700; color:var(--text); margin-bottom:10px; }
+.wq-label { font-size:13px; font-weight:700; color:var(--text); margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+.wq-ic { width:18px; height:18px; flex:none; fill:none; stroke:var(--text-muted); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+/* RPE CR-10 (session-RPE Foster) : 11 cases 0..10, dégradé vert→rouge via --c. */
+.wq-rpe-desc { font-size:11.5px; color:var(--text-muted); margin:-2px 0 10px; line-height:1.4; }
+.wq-cr10 { display:flex; gap:4px; }
+.wq-cr { flex:1; min-width:0; border:none; border-radius:9px; padding:13px 0; font-size:14px; font-weight:800; color:#fff; background:var(--c,var(--surface2)); opacity:.34; cursor:pointer; transition:opacity .12s, transform .12s; }
+.wq-cr.selected { opacity:1; transform:translateY(-2px); box-shadow:0 3px 10px rgba(0,0,0,.35); }
+.wq-cr-scale { display:flex; justify-content:space-between; font-size:9.5px; color:var(--text-subtle); margin-top:6px; }
 .wq-chips { display:flex; gap:7px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
 .wq-chips::-webkit-scrollbar { display:none; }
 .wq-chips-wrap { flex-wrap:wrap; overflow-x:visible; }
@@ -432,10 +439,10 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
   white-space:nowrap;
 }
 .wq-chip.selected { background:var(--accent-a14); border-color:var(--accent); color:var(--accent); }
-.wq-seg .wq-chip { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 2px 6px; border-radius:12px; white-space:normal; }
+.wq-seg .wq-chip { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 2px; border-radius:12px; white-space:normal; }
 .wq-seg { display:flex; gap:5px; overflow:visible; }
 .wq-seg .wq-chip .wq-emo { font-size:20px; line-height:1; filter:grayscale(.55); transition:transform .15s, filter .15s; }
-.wq-seg .wq-chip .wq-cap { font-size:8.5px; font-weight:700; color:var(--text-muted); text-align:center; line-height:1.1; }
+.wq-seg .wq-chip .wq-cap { font-size:10px; font-weight:700; color:var(--text-muted); text-align:center; line-height:1.15; }
 .wq-seg .wq-chip.selected { background:var(--accent-a14); border-color:var(--accent); }
 .wq-seg .wq-chip.selected .wq-emo { filter:none; transform:scale(1.18); }
 .wq-seg .wq-chip.selected .wq-cap { color:var(--accent); }
