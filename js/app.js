@@ -13079,8 +13079,15 @@ function renderTjFormeRail(data) {
   if (m.recup && m.recup !== '—') {
     tiles.push('<div class="rail-tile"><div class="k">Récupération</div><div class="v" style="font-size:14px">' + esc(String(m.recup)) + '</div></div>');
   }
-  if (dash.acwr != null && m.acwr_fiable !== false) {
-    tiles.push('<div class="rail-tile"><div class="k">ACWR</div><div class="v">' + esc(String(dash.acwr)) + '</div></div>');
+  // Fraîcheur (modèle fitness-fatigue de Banister, TSB %) — remplace l'ancienne
+  // tuile ACWR (repère secondaire peu fiable en muscu). Jamais rouge : max orange.
+  var cf = m.charge_fatigue || null;
+  if (cf && cf.tsbPct != null) {
+    var frL, frC;
+    if (cf.tsbPct >= 5) { frL = 'Frais'; frC = 'var(--good)'; }
+    else if (cf.tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; }
+    else { frL = 'Fatigue'; frC = 'var(--warn)'; }
+    tiles.push('<div class="rail-tile"><div class="k">Fraîcheur</div><div class="v" style="font-size:14px;color:' + frC + '">' + frL + '</div></div>');
   }
   try {
     var sh = (data && data.sante_historique || [])[0];
@@ -13907,9 +13914,15 @@ function renderChargeFatigueJour(data) {
   var el = document.getElementById('tj-chargefatigue'); if (!el) return;
   var m = (data && data.moteur) || {};
   var cf = m.charge_fatigue || null;
-  if (!cf || cf.ratio == null) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  var hasCf = !!(cf && cf.ratio != null);
   var be0 = (data && Array.isArray(data.bien_etre) && data.bien_etre[0]) ? data.bien_etre[0] : null;
-  var tsbPct = cf.tsbPct, ratio = cf.ratio, fiable = cf.fiable;
+  var niv0 = (m.disponibilite && m.disponibilite.niveau) || null;
+  var hasRecup = !!(m.recup && m.recup !== '—');
+  // Bloc UNIQUE : affiché dès qu'il y a un verdict, une charge/fatigue, une récup,
+  // une reco ou un point de vigilance — sinon masqué.
+  var _c0 = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
+  if (!niv0 && !hasCf && !_c0.length && !hasRecup && !m.reco) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  var tsbPct = hasCf ? cf.tsbPct : null, ratio = hasCf ? cf.ratio : null, fiable = hasCf ? cf.fiable : false;
   // Fraîcheur (TSB %) → libellé grand public, jamais rouge (max orange).
   var fr, frc, frTxt;
   if (tsbPct == null) { fr = '—'; frc = 'var(--tj-subtle)'; frTxt = 'pas encore assez de données'; }
@@ -13920,7 +13933,7 @@ function renderChargeFatigueJour(data) {
 
   // --- « Ce que Novalyz lit » : fatigue · récup · charge (bullets) ---
   var bullets = [];
-  bullets.push({ c: frc === 'var(--tj-good)' ? 'var(--tj-good)' : (frc === 'var(--tj-warn)' ? 'var(--tj-warn)' : 'var(--tj-subtle)'), t: '<b>' + fr + '</b> : ' + frTxt + '.' });
+  if (hasCf) bullets.push({ c: frc === 'var(--tj-good)' ? 'var(--tj-good)' : (frc === 'var(--tj-warn)' ? 'var(--tj-warn)' : 'var(--tj-subtle)'), t: '<b>' + fr + '</b> : ' + frTxt + '.' });
   if (m.recup && m.recup !== '—') {
     var rc = (m.recup === 'Faible' || m.recup === 'Moyen') ? 'var(--tj-warn)' : 'var(--tj-good)';
     var rd = '';
@@ -13934,7 +13947,7 @@ function renderChargeFatigueJour(data) {
     } catch (e) {}
     bullets.push({ c: rc, t: '<b>Récupération ' + String(m.recup).toLowerCase() + '</b>' + rd + '.' });
   }
-  bullets.push({ c: ratio > 1.15 ? 'var(--tj-warn)' : 'var(--tj-subtle)', t: 'Charge des 7 derniers jours <b>' + ch + '</b> par rapport à ton habitude.' });
+  if (hasCf) bullets.push({ c: ratio > 1.15 ? 'var(--tj-warn)' : 'var(--tj-subtle)', t: 'Charge des 7 derniers jours <b>' + ch + '</b> par rapport à ton habitude.' });
   var bulletsHtml = bullets.map(function (b) {
     return '<div style="display:flex;gap:9px;align-items:flex-start;margin:0 0 8px"><span style="width:7px;height:7px;border-radius:999px;background:' + b.c + ';margin-top:6px;flex:none"></span><span style="font-size:13px;color:var(--tj-text);line-height:1.45">' + b.t + '</span></div>';
   }).join('');
@@ -13963,9 +13976,40 @@ function renderChargeFatigueJour(data) {
     }
   } catch (e) {}
 
-  var fiabTxt = fiable ? '' : ' <span style="color:var(--tj-subtle);font-weight:600">· indicatif</span>';
-  var reco = m.reco ? String(m.reco) : '';
+  var fiabTxt = (hasCf && !fiable) ? ' <span style="color:var(--tj-subtle);font-weight:600">· indicatif</span>' : '';
+  // Reco : on retire toute mention « (ACWR x) » du texte affiché — l'ACWR est
+  // un repère secondaire peu fiable, pas le motif à mettre en avant (modèle
+  // fitness-fatigue = référence). L'action (ex. « réduire le volume 48 h ») reste.
+  var reco = m.reco ? String(m.reco).replace(/\s*\(\s*ACWR[^)]*\)/gi, '').replace(/\s{2,}/g, ' ').trim() : '';
   var recoHtml = reco ? ('<div style="margin-top:12px;background:rgba(26,95,255,.08);border:1px solid rgba(26,95,255,.18);border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--tj-accent,#4d82ff);margin-bottom:2px">💡 Reco du jour</div><div style="font-size:13px;color:var(--tj-text);line-height:1.45">' + (typeof escapeHtml === 'function' ? escapeHtml(reco) : reco) + '</div></div>') : '';
+
+  // --- Verdict d'état du jour (ex-bandeau « Reste vigilant ») INTÉGRÉ au bloc ---
+  var verdictHtml = '';
+  if (niv0) {
+    var VB = { 'Prêt': ['var(--tj-good)', 'rgba(0,168,84,.12)', 'rgba(0,168,84,.28)', 'Prêt à performer'],
+      'Vigilance': ['var(--tj-warn)', 'rgba(224,120,0,.12)', 'rgba(224,120,0,.28)', 'Reste vigilant'],
+      'À surveiller': ['#DC3545', 'rgba(220,53,69,.10)', 'rgba(220,53,69,.28)', 'À surveiller'] };
+    var vb = VB[niv0] || ['var(--tj-subtle)', 'var(--tj-surface2)', 'var(--tj-border)', 'Ton état du jour'];
+    var sp = [];
+    try {
+      if (be0) {
+        if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) sp.push('Sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
+        if (be0.energie != null && !isNaN(Number(be0.energie))) sp.push('énergie ' + String(WQ_ANSWERS.energie[Number(be0.energie)] || '').toLowerCase());
+      }
+      if (hasRecup) sp.push('récup ' + String(m.recup).toLowerCase());
+    } catch (e) {}
+    var _escS = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+    verdictHtml = '<div style="display:flex;gap:10px;align-items:center;background:' + vb[1] + ';border:1px solid ' + vb[2] + ';border-radius:12px;padding:10px 13px;margin:0 0 12px">'
+      + '<span style="width:9px;height:9px;border-radius:999px;background:' + vb[0] + ';flex:none"></span>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:' + vb[0] + '">' + vb[3] + '</div>'
+      + (sp.length ? '<div style="font-size:11.5px;color:var(--tj-muted);margin-top:1px">' + _escS(sp.join(' · ')) + '</div>' : '') + '</div></div>';
+  }
+
+  var subTxt = hasCf ? 'Ton état du jour : récup · charge · fatigue' : 'Ton état du jour';
+  var fraicheurWidget = hasCf ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
+    +   '<div style="text-align:center;flex:none;min-width:56px"><div style="font-size:18px;font-weight:800;color:' + frc + ';line-height:1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
+    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = ta forme de fond moins ta fatigue récente (modèle fitness-fatigue). Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
+    + '</div>') : '';
 
   el.style.display = '';
   el.innerHTML = ''
@@ -13973,14 +14017,11 @@ function renderChargeFatigueJour(data) {
     +   '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700">Lecture Novalyz · Aujourd\'hui' + fiabTxt + '</div>'
     +   '<span onclick="ouvrirInfoChargeFatigue()" title="Comprendre" style="width:19px;height:19px;border-radius:999px;border:1px solid var(--tj-border);color:var(--tj-muted);font-size:11px;display:inline-grid;place-items:center;cursor:pointer;flex:none">?</span>'
     + '</div>'
-    + '<div style="font-size:11.5px;color:var(--tj-muted);margin-bottom:11px">Ton état du jour : récup · charge · fatigue</div>'
+    + '<div style="font-size:11.5px;color:var(--tj-muted);margin-bottom:11px">' + subTxt + '</div>'
+    + verdictHtml
     + vigHtml
     + bulletsHtml
-    // Repère « fraîcheur » compact (secondaire, pédagogique)
-    + '<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
-    +   '<div style="text-align:center;flex:none;min-width:56px"><div style="font-size:18px;font-weight:800;color:' + frc + ';line-height:1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
-    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = ta forme de fond moins ta fatigue récente (modèle fitness-fatigue). Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
-    + '</div>'
+    + fraicheurWidget
     + recoHtml;
 }
 function ouvrirInfoChargeFatigue() {
@@ -14068,29 +14109,10 @@ function renderAujourdhui(data) {
   var be0 = (data && Array.isArray(data.bien_etre) && data.bien_etre[0]) ? data.bien_etre[0] : null;
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
 
-  // --- Bandeau : état du jour (moteur.disponibilite + résumé bien-être) ---
-  try {
-    var niv = (m.disponibilite && m.disponibilite.niveau) || null;
-    var BAN = {
-      'Prêt':         { t: 'Prêt à performer', bg: 'rgba(0,168,84,.12)',  bd: 'rgba(0,168,84,.28)',  c: 'var(--tj-good)', dot: 'var(--tj-good)' },
-      'Vigilance':    { t: 'Reste vigilant',   bg: 'rgba(224,120,0,.12)', bd: 'rgba(224,120,0,.28)', c: 'var(--tj-warn)', dot: 'var(--tj-warn)' },
-      'À surveiller': { t: 'À surveiller',      bg: 'rgba(220,53,69,.10)', bd: 'rgba(220,53,69,.28)', c: '#DC3545',        dot: '#DC3545' }
-    };
-    var ban = BAN[niv] || { t: 'Ton état du jour', bg: 'var(--tj-surface2)', bd: 'var(--tj-border)', c: 'var(--tj-text)', dot: 'var(--tj-subtle)' };
-    var elBan = document.getElementById('tj-banner'); if (elBan) elBan.setAttribute('style', 'background:' + ban.bg + ';border-color:' + ban.bd + ';');
-    var elBt = document.getElementById('tj-banner-t'); if (elBt) { elBt.textContent = ban.t; elBt.style.color = ban.c; }
-    var elDot = document.getElementById('tj-banner-dot'); if (elDot) elDot.style.background = ban.dot;
-    var elBs = document.getElementById('tj-banner-s');
-    if (elBs) {
-      var sp = [];
-      if (be0) {
-        if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) sp.push('Sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
-        if (be0.energie != null && !isNaN(Number(be0.energie))) sp.push('énergie ' + String(WQ_ANSWERS.energie[Number(be0.energie)] || '').toLowerCase());
-      }
-      if (m.recup && m.recup !== '—') sp.push('récup ' + String(m.recup).toLowerCase());
-      elBs.textContent = sp.length ? sp.join(' · ') : 'Complète ton questionnaire bien-être';
-    }
-  } catch (e) {}
+  // --- Bandeau état du jour : FUSIONNÉ dans le bloc « Lecture Novalyz · Aujourd'hui »
+  //     (le verdict « Reste vigilant / Prêt / À surveiller » est désormais en tête
+  //     de ce bloc, cf. renderChargeFatigueJour). On masque donc le bandeau séparé. ---
+  try { var elBan = document.getElementById('tj-banner'); if (elBan) { elBan.style.display = 'none'; } } catch (e) {}
 
   // --- Lecture « Aujourd'hui » : charge & fatigue (modèle Banister, secondaire) ---
   try { renderChargeFatigueJour(data); } catch (e) {}
