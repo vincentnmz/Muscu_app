@@ -543,6 +543,39 @@ function interpreterACWR(ratio: number | null, fiable: boolean): string {
   return 'normal'
 }
 
+// ── Modèle fitness-fatigue de Banister (standard TrainingPeaks) ───────────────
+// Sur la charge quotidienne (sRPE pour cardio/foot, tonnage pour muscu) :
+//   ATL (fatigue)      = moyenne exponentielle 7 j
+//   CTL (forme/fond)   = moyenne exponentielle 42 j
+//   TSB (fraîcheur)    = CTL − ATL            (négatif = fatigue, positif = frais)
+// On expose aussi des indicateurs INDÉPENDANTS DE L'UNITÉ (comparables tonnage ↔
+// sRPE) : tsbPct = (CTL−ATL)/CTL·100 et ratio = ATL/CTL (= EWMA-ACWR, version
+// recherche de l'ACWR, plus robuste au bruit que les fenêtres fixes).
+// Amorçage sur la 1re charge (charge constante → ratio 1 / tsbPct 0) : évite le
+// biais de démarrage quand l'historique est court.
+function calculerFitnessFatigue(chargeParJour: Record<string, number>, now: Date): {
+  ctl: number; atl: number; tsb: number; tsbPct: number | null; ratio: number | null; joursActifs42: number
+} {
+  const keys = Object.keys(chargeParJour).filter(k => (chargeParJour[k] || 0) > 0).sort()
+  if (!keys.length) return { ctl: 0, atl: 0, tsb: 0, tsbPct: null, ratio: null, joursActifs42: 0 }
+  const LA = 2 / (7 + 1), LC = 2 / (42 + 1)
+  const span = Math.max(0, _joursDepuis(keys[0], now) ?? 0)
+  let ewmaA = chargeParJour[keys[0]], ewmaC = chargeParJour[keys[0]], joursActifs42 = 0
+  for (let d = span; d >= 0; d--) {
+    const v = chargeParJour[fmtYMD(minus(now, d))] || 0
+    if (d < 42 && v > 0) joursActifs42++
+    if (d === span) continue            // jour d'amorçage déjà posé
+    ewmaA = v * LA + (1 - LA) * ewmaA
+    ewmaC = v * LC + (1 - LC) * ewmaC
+  }
+  return {
+    ctl: Math.round(ewmaC), atl: Math.round(ewmaA), tsb: Math.round(ewmaC - ewmaA),
+    tsbPct: ewmaC > 0 ? Math.round((ewmaC - ewmaA) / ewmaC * 100) : null,
+    ratio: ewmaC > 0 ? Math.round(ewmaA / ewmaC * 100) / 100 : null,
+    joursActifs42,
+  }
+}
+
 // ── Alertes ───────────────────────────────────────────────────────────────────
 // Porté fidèlement de Code.gs calculerAlertes : champs { type, severite, message }
 function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: number, enPause: boolean): any[] {
