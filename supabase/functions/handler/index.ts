@@ -2028,18 +2028,20 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // pour la douleur, unite = zone). Triés récent → ancien.
   // rpe_muscu/rpe_cardio = RPE de séance CR-10 (0..10, nouveau). ressenti_* = legacy
   // (difficulté 1..4) conservé pour l'historique. Le front préfère rpe_* si présent.
-  let analyses: any = { ressenti_muscu: [], ressenti_cardio: [], rpe_muscu: [], rpe_cardio: [], douleurs_muscu: [], douleurs_cardio: [] }
+  let analyses: any = { ressenti_muscu: [], ressenti_cardio: [], rpe_muscu: [], rpe_cardio: [], duree_muscu: [], duree_cardio: [], douleurs_muscu: [], douleurs_cardio: [] }
   {
     const { data: bilanRows } = await sb().from('indicateurs').select('*')
       .eq('athlete_id', athleteId)
-      .in('cle', ['ressenti_muscu', 'ressenti_cardio', 'rpe_muscu', 'rpe_cardio', 'douleur_muscu', 'douleur_cardio'])
-      .order('date', { ascending: false }).limit(300)
+      .in('cle', ['ressenti_muscu', 'ressenti_cardio', 'rpe_muscu', 'rpe_cardio', 'duree_muscu', 'duree_cardio', 'douleur_muscu', 'douleur_cardio'])
+      .order('date', { ascending: false }).limit(400)
     for (const r of (bilanRows || [])) {
       const base = { date: normDate(r.date), seance_id: r.seance_id, valeur: Number(r.valeur) || null }
       if (r.cle === 'ressenti_muscu') analyses.ressenti_muscu.push(base)
       else if (r.cle === 'ressenti_cardio') analyses.ressenti_cardio.push(base)
       else if (r.cle === 'rpe_muscu') analyses.rpe_muscu.push(base)
       else if (r.cle === 'rpe_cardio') analyses.rpe_cardio.push(base)
+      else if (r.cle === 'duree_muscu') analyses.duree_muscu.push(base)
+      else if (r.cle === 'duree_cardio') analyses.duree_cardio.push(base)
       else if (r.cle === 'douleur_muscu') analyses.douleurs_muscu.push({ ...base, zone: r.unite || '' })
       else if (r.cle === 'douleur_cardio') analyses.douleurs_cardio.push({ ...base, zone: r.unite || '' })
     }
@@ -2104,8 +2106,26 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // le verdict car il est désormais le SIGNAL DE CHARGE PRIMAIRE (ACWR = secondaire).
     // Forme (CTL) / fatigue (ATL) / fraîcheur (TSB) + ratio ATL/CTL. Fiable si assez
     // d'historique (≥ 28 j et ≥ 8 jours actifs sur 42) — sinon affiché comme indicatif.
-    const ffA = calculerFitnessFatigue(chSportA.chargeParJour, now)
-    const ffFiable = histoM != null && histoM >= 28 && ffA.joursActifs42 >= 8
+    // sRPE (charge interne de Foster) = Σ RPE(CR-10) × durée(min) par jour. On apparie
+    // rpe_muscu + duree_muscu par (date|seance_id). Modèle HYBRIDE : on bascule la
+    // fraîcheur sur le sRPE dès qu'il y a ≥ 28 j d'historique sRPE et ≥ 8 jours actifs
+    // /42 ; sinon on garde le tonnage (continuité avec l'historique existant).
+    const _dureeByKey: Record<string, number> = {}
+    for (const x of (analyses.duree_muscu || [])) { if (x && x.valeur != null && x.date) _dureeByKey[x.date + '|' + (x.seance_id || '')] = x.valeur }
+    const srpeParJour: Record<string, number> = {}
+    let srpePremiere: string | null = null
+    for (const x of (analyses.rpe_muscu || [])) {
+      if (!x || x.valeur == null || !x.date) continue
+      const dur = _dureeByKey[x.date + '|' + (x.seance_id || '')]
+      if (dur == null || dur <= 0) continue
+      srpeParJour[x.date] = (srpeParJour[x.date] || 0) + x.valeur * dur
+      if (!srpePremiere || x.date < srpePremiere) srpePremiere = x.date
+    }
+    const ffSRPE = calculerFitnessFatigue(srpeParJour, now)
+    const srpeSpan = srpePremiere ? (_joursDepuis(srpePremiere, now) ?? 0) : 0
+    const useSRPE = srpeSpan >= 28 && ffSRPE.joursActifs42 >= 8
+    const ffA = useSRPE ? ffSRPE : calculerFitnessFatigue(chSportA.chargeParJour, now)
+    const ffFiable = useSRPE ? true : (histoM != null && histoM >= 28 && ffA.joursActifs42 >= 8)
     const etatM = evaluerEtatAthlete({
       acwr, acwrFiable: fiabiliteACWR(premiereP, ctxObjM, now, acwrCalcA.joursActifs28, acwrCalcA.joursActifsChronique),
       // Charge PRIMAIRE = fitness-fatigue ; ACWR conservé (repli + affichage secondaire).
@@ -2120,7 +2140,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
       recScore: etatM.recScore, recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
       acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
-      charge_fatigue: { ctl: ffA.ctl, atl: ffA.atl, tsb: ffA.tsb, tsbPct: ffA.tsbPct, ratio: ffA.ratio, fiable: ffFiable },
+      charge_fatigue: { ctl: ffA.ctl, atl: ffA.atl, tsb: ffA.tsb, tsbPct: ffA.tsbPct, ratio: ffA.ratio, fiable: ffFiable, source: useSRPE ? 'srpe' : 'tonnage' },
       seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
     }
     if (etatM.acwr_note) moteur.acwr_note = etatM.acwr_note
@@ -4486,6 +4506,7 @@ async function handleSaveBilanSeance(body: any): Promise<Response> {
   const sid = body.seance_id ? String(body.seance_id) : `${type}_${Date.now()}`
   const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
   const rpe = num(body.rpe)             // 0..10 — RPE de séance CR-10 (session-RPE Foster)
+  const duree = num(body.duree)         // minutes (chrono de séance) → charge interne sRPE = RPE × durée
   const ressenti = num(body.ressenti)   // LEGACY 1..4 (1 = Facile … 4 = Très dur)
   const douleur = num(body.douleur)     // 1..4 (1 = aucune)
   const zone = (body.zone != null && body.zone !== '') ? String(body.zone) : ''
@@ -4494,6 +4515,8 @@ async function handleSaveBilanSeance(body: any): Promise<Response> {
   // Nouveau : RPE CR-10 (cle rpe_<type>). Repli legacy : ancien ressenti 1..4.
   if (rpe != null) rows.push({ date: d, athlete_id, seance_id: sid, cle: `rpe_${type}`, valeur: String(rpe), unite: 'cr10', source: 'saisie' })
   else if (ressenti != null) rows.push({ date: d, athlete_id, seance_id: sid, cle: `ressenti_${type}`, valeur: String(ressenti), unite: '', source: 'saisie' })
+  // Durée de séance (pour le sRPE = charge interne). Stockée même si RPE absent.
+  if (duree != null && duree > 0) rows.push({ date: d, athlete_id, seance_id: sid, cle: `duree_${type}`, valeur: String(duree), unite: 'min', source: 'saisie' })
   if (douleur != null && douleur > 1) rows.push({ date: d, athlete_id, seance_id: sid, cle: `douleur_${type}`, valeur: String(douleur), unite: zone, source: 'saisie' })
   if (rows.length) {
     const { error } = await sb().from('indicateurs').insert(rows)
