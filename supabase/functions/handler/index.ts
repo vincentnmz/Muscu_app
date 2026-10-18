@@ -2552,18 +2552,22 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // régularité — ils restent des ALERTES (coach, reco) mais ne dégradent PAS la
   // disponibilité du jour (readiness). De plus, « récup moyenne » seule (<60) ne
   // suffit plus à passer en Vigilance : il faut « récup faible » (<45) ou un cumul.
-  const alertesEtat = alertes.filter(a => a.type !== 'sous_charge' && a.type !== 'absence')
+  // RÈGLE CHARGE (demande porteur) : une CHARGE récente élevée SEULE — quand la
+  // récupération est bonne — NE dégrade PAS le verdict du jour. Elle reste un
+  // REPÈRE informatif (bullet + reco « ne surcharge pas »), pas une alerte. La
+  // Vigilance vient des signaux de READINESS (fatigue, sommeil, récup faible,
+  // douleur/gêne, courbatures, retour progressif), ou de la charge COMBINÉE à l'un
+  // d'eux. => on exclut charge/surcharge (comme sous_charge/absence) du verdict.
+  const courbHaute = s.courbatures != null && courb >= CORE_SEUILS.courbatures.haut
+  const readinessFlag = fatigueHaute || sommeilBas || recFaible || douleurGene || courbHaute || s.injStatut === 'retour_progressif'
+  const alertesEtat = alertes.filter(a => a.type !== 'sous_charge' && a.type !== 'absence' && a.type !== 'charge' && a.type !== 'surcharge')
   let niveau: number
   // RÈGLE DE SÉVÉRITÉ (demande porteur) : le ROUGE (niveau 2) est RÉSERVÉ à une
   // BLESSURE modérée/grave (ou indispo) ou une DOULEUR FORTE. Tout le reste —
-  // charge/ACWR, fatigue/TSB, récupération, sommeil, combinaison de signaux —
-  // PLAFONNE à ORANGE (Vigilance). La charge & fatigue ne dramatise jamais.
+  // fatigue/TSB, récupération, sommeil, combinaison de signaux — PLAFONNE à ORANGE
+  // (Vigilance). La charge haute seule n'orange même plus : elle est informative.
   if (s.injStatut === 'indispo' || s.blessureGrave === true || douleurForte) niveau = 2
-  else {
-    const mid = alertesEtat.length > 0 || risqueBlessureN >= 1 || recFaible || chargeHaute
-      || fatigueHaute || sommeilBas || s.injStatut === 'retour_progressif'
-    niveau = mid ? 1 : 0
-  }
+  else niveau = (alertesEtat.length > 0 || readinessFlag) ? 1 : 0
   if (eff.niveauMin != null && niveau < eff.niveauMin) niveau = eff.niveauMin
   if (confiance === 'non_interpretable') niveau = 0   // nouvel athlète : pas de fausse alerte
 
@@ -2571,12 +2575,15 @@ function evaluerEtatAthlete(s: EtatInput): any {
   let reco: string
   if (s.injStatut === 'indispo') reco = 'Indisponible — poursuivre la réathlétisation.'
   else if (confiance === 'non_interpretable') reco = 'Données insuffisantes pour établir une tendance.'
-  else if (surchargeN >= 2) reco = `Charge récente élevée — réduire le volume 48 h.`
   else if (douleurForte) reco = 'Douleur signalée — évaluer avant de charger.'
   else if (douleurGene) reco = 'Gêne récente — surveiller, avis kiné si besoin.'
   else if (recFaibleConcordante) reco = 'Récupération faible + autre signal — alléger et surveiller de près.'
   else if (recFaible) reco = 'Récupération faible — vigilance, alléger si ça persiste.'
   else if (s.injStatut === 'retour_progressif') reco = 'Retour progressif — respecter la progressivité de charge.'
+  // Charge élevée COMBINÉE à un signe de fatigue (→ Vigilance) : on allège.
+  else if (chargeHaute && niveau === 1) reco = 'Charge récente élevée et un signe de fatigue — allège le volume et priorise la récupération.'
+  // Charge élevée SEULE (récup bonne → Prêt) : repère informatif, pas un ordre.
+  else if (chargeHaute) reco = 'Charge en forte hausse récemment — évite d\'empiler encore du volume ; si tu te sens frais, entraîne-toi normalement.'
   else if (niveau === 1) reco = 'Vigilance — surveiller les sensations, ne pas surcharger.'
   else reco = 'RAS — maintenir la charge actuelle.'
 

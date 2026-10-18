@@ -11919,7 +11919,7 @@ function _maLectureNovalyzBloc(data) {
     +   '<span onclick="ouvrirInfoLectureAnalyses()" title="Comprendre" style="width:19px;height:19px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);font-size:11px;display:inline-grid;place-items:center;cursor:pointer;flex:none">?</span>'
     + '</div>'
     + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:-6px">Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)</div>'
-    + verdict + litHtml + fiabBox + progBox + recoHtml + '</div>';
+    + verdict + litHtml + recoHtml + fiabBox + progBox + '</div>';
 }
 
 function _maMuscuResume(data) {
@@ -13998,6 +13998,9 @@ function renderChargeFatigueJour(data) {
         if (be0.energie != null && !isNaN(Number(be0.energie))) sp.push('énergie ' + String(WQ_ANSWERS.energie[Number(be0.energie)] || '').toLowerCase());
       }
       if (hasRecup) sp.push('récup ' + String(m.recup).toLowerCase());
+      // Charge élevée mais récup bonne (verdict Prêt) : on l'affiche dans la sous-ligne
+      // pour que le bandeau vert soit transparent (le repère « Fatigue » dessous s'explique).
+      if (hasCf && tsbPct != null && tsbPct < -12) sp.push('charge récente élevée');
     } catch (e) {}
     var _escS = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
     verdictHtml = '<div style="display:flex;gap:10px;align-items:center;background:' + vb[1] + ';border:1px solid ' + vb[2] + ';border-radius:12px;padding:10px 13px;margin:0 0 12px">'
