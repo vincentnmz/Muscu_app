@@ -11830,6 +11830,97 @@ function _maForceChart(data) {
       'Moyenne du 1RM estimé (Epley) de tes exercices à chaque séance. La courbe qui monte = tu gagnes en force.', dts);
 }
 
+// ════════ BLOC UNIQUE « Lecture Novalyz · Analyses » (entraînement) ════════
+// Regroupe en UNE carte : verdict d'entraînement + ce que Novalyz lit (constats
+// volume/force/cible) + fiabilité chiffrée (0-100) + progression/régression e1RM
+// + reco d'entraînement. Pendant « Analyses » du bloc « Aujourd'hui » (récup/
+// charge/fatigue). Fenêtre FIXE 4 sem., déterministe, tracé aux données.
+// Secondaire : pas d'alerte rouge ici (le rouge état-du-jour vit sur Aujourd'hui).
+function ouvrirInfoLectureAnalyses() {
+  var txt = 'Cette lecture porte sur ton ENTRAÎNEMENT (volume, force, régularité) sur tes 4 dernières semaines, '
+    + 'indépendamment du filtre de période en dessous. « Ce que Novalyz lit » = les constats déterministes tirés de tes séances '
+    + '(volume par muscle vs cible, force estimée 1RM, exécution). La « fiabilité » dit à quel point ces constats reposent sur assez de données '
+    + '(plus tu renseignes RPE, bien-être et cibles, plus elle monte). La « progression » compare ta force estimée (1RM Epley) à la période précédente. '
+    + 'Pour ton état du jour (récup, charge, fatigue), vois le bloc « Lecture Novalyz » de l\'écran Aujourd\'hui.';
+  try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Lecture Novalyz · Analyses', txt); } catch (e) {}
+  try { alert(txt); } catch (e) {}
+}
+function _maLectureNovalyzBloc(data) {
+  var mot = data.moteur || {};
+  var niv = (mot.disponibilite && mot.disponibilite.niveau) || null;
+  // Constats = synthèse muscu enrichie (volume → force → cible → reste).
+  var s = data && data.analyse_synthese && data.analyse_synthese.muscu;
+  var constats = (s && s.constats) ? s.constats.slice() : [];
+  try { var ex = _maLectureExtras(data); if (ex.length) constats = constats.slice(0, 1).concat(ex, constats.slice(1)); } catch (e) {}
+  var f = _maFiabilite(data);
+  var pr = _maProgRegData(data);
+  var reco = '';
+  try { reco = s ? (_novaPickReco(s, true) || (s.reco && s.reco.texte) || '') : ''; } catch (e) {}
+  // Rien à montrer (nouvel athlète sans aucune donnée) → on masque le bloc.
+  if (!constats.length && !pr.nPair && f.pct <= 0) return '';
+
+  var TON = { positif: '#00A854', neutre: 'var(--text-subtle)', attention: '#E07800' };
+  // ── Verdict d'entraînement (jamais rouge ici : état-du-jour rouge → Aujourd'hui) ──
+  var VB = { 'Prêt': ['#00A854', 'Sur la bonne voie'], 'Vigilance': ['#E07800', 'Ajuste le tir'],
+    'À surveiller': ['#E07800', 'Ajuste le tir'] };
+  var vb = VB[niv] || ['var(--accent)', 'Ta lecture d\'entraînement'];
+  var verdict = '<div style="display:flex;gap:10px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-left:3px solid ' + vb[0] + ';border-radius:12px;padding:10px 13px">'
+    + '<span style="width:26px;height:26px;border-radius:999px;background:' + vb[0] + ';color:#fff;display:grid;place-items:center;flex:none">' + _maSvg('<path d="M20 6 9 17l-5-5"/>', 15) + '</span>'
+    + '<div style="font-size:14px;font-weight:800;color:var(--text)">' + vb[1] + '</div></div>';
+
+  // ── Ce que Novalyz lit : constats (volume / force / cible) ──
+  var litHtml = constats.length ? ('<div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:8px">Ce que Novalyz lit</div>'
+    + constats.map(function (c) {
+      return '<div style="display:flex;gap:9px;align-items:flex-start;margin:0 0 8px"><span style="width:7px;height:7px;border-radius:999px;background:' + (TON[c.ton] || 'var(--text-subtle)') + ';margin-top:6px;flex:none"></span><span style="font-size:13px;color:var(--text);line-height:1.45">' + _maE(c.texte) + '</span></div>';
+    }).join('') + '</div>') : '';
+
+  // ── Fiabilité (anneau compact + mini-liste) — sous-box ──
+  var col = _maFiabCol(f.pct), lib = f.pct >= 75 ? 'fiable' : f.pct >= 50 ? 'à compléter' : 'incomplet';
+  var dash = Math.max(0, Math.min(100, f.pct));
+  var ring = '<div style="position:relative;width:64px;height:64px;flex:none">'
+    + '<svg width="64" height="64" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--surface)" stroke-width="4"/>'
+    + '<circle cx="21" cy="21" r="15.9" fill="none" stroke="' + col + '" stroke-width="4" stroke-dasharray="' + dash + ' 100" stroke-dashoffset="25" stroke-linecap="round" transform="rotate(-90 21 21)"/></svg>'
+    + '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:16px;font-weight:800;color:' + col + '">' + f.pct + '</div><div style="font-size:7px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em">' + lib + '</div></div></div>';
+  var ic = { ok: '<span style="color:#00A854">✓</span>', part: '<span style="color:#E07800">◑</span>', ko: '<span style="color:var(--text-subtle)">○</span>' };
+  var flist = f.rows.map(function (r) {
+    return '<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;padding:2px 0"><span style="width:12px;flex:none;text-align:center">' + (ic[r.s] || ic.ko) + '</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(r.l) + '</span><span style="color:var(--text-subtle);font-size:10.5px;font-variant-numeric:tabular-nums;flex:none">' + r.g + '/' + r.m + '</span></div>';
+  }).join('');
+  var ftip = f.tips.length ? '<div style="font-size:11px;color:var(--text-muted);margin-top:7px;line-height:1.5"><b style="color:var(--text)">Pour fiabiliser</b> : ' + _maE(f.tips.join(' · ')) + '.</div>'
+    : '<div style="font-size:11px;color:#00A854;margin-top:7px">✓ Données complètes — fiabilité maximale.</div>';
+  var fiabBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
+    + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Fiabilité des données · ' + f.pct + '/100</div>'
+    + '<div style="display:flex;gap:13px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + flist + '</div></div>' + ftip + '</div>';
+
+  // ── Progression / régression (force e1RM) — sous-box ──
+  var progBox;
+  if (pr.nPair) {
+    var colc = function (titre, color, arr, signe) {
+      var items = arr.length ? arr.map(function (x) { return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-top:1px solid var(--border)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(x.exo) + '</span><b style="color:' + color + ';flex:none;margin-left:8px">' + signe + Math.abs(x.pct) + '%</b></div>'; }).join('')
+        : '<div style="font-size:11.5px;color:var(--text-subtle);padding:3px 0">—</div>';
+      return '<div style="flex:1;min-width:0;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 11px"><div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:' + color + ';margin-bottom:4px">' + titre + '</div>' + items + '</div>';
+    };
+    var forceLine = pr.forcePct != null ? ('<div style="font-size:12.5px;margin-bottom:9px;color:var(--text)">Force estimée (1RM) : <b style="color:' + (pr.forcePct >= 0 ? '#00A854' : '#E07800') + '">' + (pr.forcePct >= 0 ? '+' : '') + pr.forcePct + '%</b> vs période précédente</div>') : '';
+    progBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
+      + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Progression · régression</div>'
+      + forceLine + '<div style="display:flex;gap:9px">' + colc('▲ En progrès', '#00A854', pr.prog, '+') + colc('▼ À relancer', '#E07800', pr.reg, '−') + '</div></div>';
+  } else {
+    progBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
+      + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:6px">Progression · régression</div>'
+      + '<div style="font-size:12px;color:var(--text-subtle)">Au moins 2 périodes avec les mêmes exercices pour comparer la force.</div></div>';
+  }
+
+  // ── Reco d'entraînement ──
+  var recoHtml = reco ? ('<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">💡 Reco entraînement</div><div style="font-size:13px;color:var(--text);line-height:1.45">' + _maE(reco) + '</div></div>') : '';
+
+  return '<div class="ma-card" style="display:flex;flex-direction:column;gap:12px;padding:14px 15px;margin:6px 0 16px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center">'
+    +   '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700">Lecture Novalyz · Analyses</div>'
+    +   '<span onclick="ouvrirInfoLectureAnalyses()" title="Comprendre" style="width:19px;height:19px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);font-size:11px;display:inline-grid;place-items:center;cursor:pointer;flex:none">?</span>'
+    + '</div>'
+    + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:-6px">Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)</div>'
+    + verdict + litHtml + fiabBox + progBox + recoHtml + '</div>';
+}
+
 function _maMuscuResume(data) {
   var p = _maPeriode, w = _maWin(), days = w.days;
   // KPI de la fenêtre NAVIGABLE calculés depuis daily_muscu (historique complet) —
@@ -11895,10 +11986,8 @@ function _maMuscuResume(data) {
   // Colonne principale : synthèse + chiffres + ressenti + Volume/Balance côte à côte.
   // Rail droit (bureau) : Records perso + bloc Novalyz. Mobile : .ma-cols2/.ma-col*
   // en display:contents → ordre d'origine inchangé.
-  var main = _maSynthese(data) + verdict
-    // ── ZONE DÉCISION (fenêtre fixe 4 sem.) : fiabilité + progression/régression ──
-    + _maFiabiliteBloc(data)
-    + _maProgRegBloc(data)
+  var main = _maLectureNovalyzBloc(data)
+    // ── ZONE DÉCISION (fenêtre fixe 4 sem.) : tout regroupé dans le bloc unique ci-dessus ──
     + '<div onclick="maSetTab(\'tendances\')" style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:10px;font-size:12.5px;font-weight:700;color:var(--accent);cursor:pointer;margin:2px 0 14px">Voir l\'analyse détaillée (fréquence, intensité, force) →</div>'
     // ── ZONE DÉTAIL (fenêtre navigable) ──
     + _maPeriodHtml() + _maPeriodHint('Le détail ci-dessous suit le sélecteur (Semaine / Mois / Année + flèches). La décision ci-dessus reste sur tes 4 dernières semaines.')
@@ -13816,29 +13905,83 @@ function _safe(label, fn) {
 // avec le « ? » pédagogique. Caché si pas de données.
 function renderChargeFatigueJour(data) {
   var el = document.getElementById('tj-chargefatigue'); if (!el) return;
-  var cf = (data && data.moteur && data.moteur.charge_fatigue) || null;
+  var m = (data && data.moteur) || {};
+  var cf = m.charge_fatigue || null;
   if (!cf || cf.ratio == null) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  var be0 = (data && Array.isArray(data.bien_etre) && data.bien_etre[0]) ? data.bien_etre[0] : null;
   var tsbPct = cf.tsbPct, ratio = cf.ratio, fiable = cf.fiable;
   // Fraîcheur (TSB %) → libellé grand public, jamais rouge (max orange).
-  var fr, frc, frd;
-  if (tsbPct == null) { fr = '—'; frc = 'var(--tj-subtle)'; frd = ''; }
-  else if (tsbPct >= 5) { fr = 'Frais'; frc = 'var(--tj-good)'; frd = 'Tu es reposé — bon moment pour pousser.'; }
-  else if (tsbPct >= -12) { fr = 'Équilibré'; frc = 'var(--tj-text)'; frd = 'Ta charge récente est proche de ton habitude.'; }
-  else { fr = 'Fatigue'; frc = 'var(--tj-warn)'; frd = 'Tu as plus chargé que d\'habitude ces jours-ci — soigne la récup.'; }
+  var fr, frc, frTxt;
+  if (tsbPct == null) { fr = '—'; frc = 'var(--tj-subtle)'; frTxt = 'pas encore assez de données'; }
+  else if (tsbPct >= 5) { fr = 'Frais'; frc = 'var(--tj-good)'; frTxt = 'tu es reposé, bon moment pour pousser'; }
+  else if (tsbPct >= -12) { fr = 'Équilibré'; frc = 'var(--tj-text)'; frTxt = 'ta charge récente est proche de ton habitude'; }
+  else { fr = 'Fatigue'; frc = 'var(--tj-warn)'; frTxt = 'tu as plus chargé que d\'habitude ces jours-ci, soigne la récup'; }
   var ch = ratio > 1.15 ? 'élevée' : ratio < 0.85 ? 'en baisse' : 'régulière';
-  var chc = ratio > 1.15 ? 'var(--tj-warn)' : 'var(--tj-text)';
+
+  // --- « Ce que Novalyz lit » : fatigue · récup · charge (bullets) ---
+  var bullets = [];
+  bullets.push({ c: frc === 'var(--tj-good)' ? 'var(--tj-good)' : (frc === 'var(--tj-warn)' ? 'var(--tj-warn)' : 'var(--tj-subtle)'), t: '<b>' + fr + '</b> : ' + frTxt + '.' });
+  if (m.recup && m.recup !== '—') {
+    var rc = (m.recup === 'Faible' || m.recup === 'Moyen') ? 'var(--tj-warn)' : 'var(--tj-good)';
+    var rd = '';
+    try {
+      if (be0) {
+        var parts = [];
+        if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) parts.push('sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
+        if (be0.energie != null && !isNaN(Number(be0.energie))) parts.push('énergie ' + String(WQ_ANSWERS.energie[Number(be0.energie)] || '').toLowerCase());
+        rd = parts.length ? ' (' + parts.join(', ') + ')' : '';
+      }
+    } catch (e) {}
+    bullets.push({ c: rc, t: '<b>Récupération ' + String(m.recup).toLowerCase() + '</b>' + rd + '.' });
+  }
+  bullets.push({ c: ratio > 1.15 ? 'var(--tj-warn)' : 'var(--tj-subtle)', t: 'Charge des 7 derniers jours <b>' + ch + '</b> par rapport à ton habitude.' });
+  var bulletsHtml = bullets.map(function (b) {
+    return '<div style="display:flex;gap:9px;align-items:flex-start;margin:0 0 8px"><span style="width:7px;height:7px;border-radius:999px;background:' + b.c + ';margin-top:6px;flex:none"></span><span style="font-size:13px;color:var(--tj-text);line-height:1.45">' + b.t + '</span></div>';
+  }).join('');
+
+  // --- Point de vigilance : alertes non lues, INTÉGRÉ au bloc (plus de carte séparée) ---
+  var vigHtml = '';
+  try {
+    var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
+    if (centre.length) {
+      var ACOL = { haute: '#DC3545', moyenne: 'var(--tj-warn)', basse: 'var(--tj-subtle)' };
+      var _e = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+      var lab = centre.length > 1 ? ('Points de vigilance · ' + centre.length) : 'Point de vigilance';
+      var rows = centre.map(function (a, i) {
+        var col = ACOL[a.severity] || 'var(--tj-warn)';
+        return '<div style="display:flex;align-items:flex-start;gap:10px;' + (i > 0 ? 'border-top:1px solid var(--tj-border);padding-top:9px;margin-top:9px;' : '') + '">'
+          + '<span style="width:8px;height:8px;border-radius:999px;background:' + col + ';margin-top:5px;flex:none"></span>'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="font-size:13px;font-weight:800;color:var(--tj-text)">' + _e(a.title || '') + '</div>'
+          + (a.action ? '<div style="font-size:12px;color:var(--tj-muted);line-height:1.4;margin-top:3px">→ ' + _e(a.action) + '</div>' : '')
+          + '</div>'
+          + '<button title="Marquer comme lu" onclick="marquerAlerteLue(&quot;' + _e(String(a.id)) + '&quot;)" style="flex:none;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:8px;width:28px;height:28px;display:grid;place-items:center;cursor:pointer;color:var(--tj-muted)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
+          + '</div>';
+      }).join('');
+      vigHtml = '<div style="background:var(--tj-surface2);border:1px solid var(--tj-border);border-left:3px solid ' + (ACOL[centre[0].severity] || 'var(--tj-warn)') + ';border-radius:12px;padding:11px 13px;margin:0 0 12px">'
+        + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:7px">' + lab + '</div>' + rows + '</div>';
+    }
+  } catch (e) {}
+
   var fiabTxt = fiable ? '' : ' <span style="color:var(--tj-subtle);font-weight:600">· indicatif</span>';
+  var reco = m.reco ? String(m.reco) : '';
+  var recoHtml = reco ? ('<div style="margin-top:12px;background:rgba(26,95,255,.08);border:1px solid rgba(26,95,255,.18);border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--tj-accent,#4d82ff);margin-bottom:2px">💡 Reco du jour</div><div style="font-size:13px;color:var(--tj-text);line-height:1.45">' + (typeof escapeHtml === 'function' ? escapeHtml(reco) : reco) + '</div></div>') : '';
+
   el.style.display = '';
   el.innerHTML = ''
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">'
-    +   '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700">Charge &amp; fatigue' + fiabTxt + '</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+    +   '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700">Lecture Novalyz · Aujourd\'hui' + fiabTxt + '</div>'
     +   '<span onclick="ouvrirInfoChargeFatigue()" title="Comprendre" style="width:19px;height:19px;border-radius:999px;border:1px solid var(--tj-border);color:var(--tj-muted);font-size:11px;display:inline-grid;place-items:center;cursor:pointer;flex:none">?</span>'
     + '</div>'
-    + '<div style="display:flex;gap:13px;align-items:center">'
-    +   '<div style="text-align:center;flex:none;min-width:58px"><div style="font-size:19px;font-weight:800;color:' + frc + ';line-height:1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
-    +   '<div style="flex:1;min-width:0;font-size:12.5px;color:var(--tj-muted);line-height:1.45">' + frd + ' <b style="color:' + chc + '">Charge récente ' + ch + '</b>.</div>'
+    + '<div style="font-size:11.5px;color:var(--tj-muted);margin-bottom:11px">Ton état du jour : récup · charge · fatigue</div>'
+    + vigHtml
+    + bulletsHtml
+    // Repère « fraîcheur » compact (secondaire, pédagogique)
+    + '<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
+    +   '<div style="text-align:center;flex:none;min-width:56px"><div style="font-size:18px;font-weight:800;color:' + frc + ';line-height:1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
+    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = ta forme de fond moins ta fatigue récente (modèle fitness-fatigue). Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
     + '</div>'
-    + '<div style="font-size:11px;color:var(--tj-subtle);margin-top:10px;line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = ta forme de fond moins ta fatigue récente. Repère <b>secondaire</b> : il n\'alerte jamais en rouge.</div>';
+    + recoHtml;
 }
 function ouvrirInfoChargeFatigue() {
   var txt = 'Fraîcheur = ta forme de fond (ce que ton corps encaisse d\'habitude) moins ta fatigue récente. '
@@ -13952,8 +14095,10 @@ function renderAujourdhui(data) {
   // --- Lecture « Aujourd'hui » : charge & fatigue (modèle Banister, secondaire) ---
   try { renderChargeFatigueJour(data); } catch (e) {}
 
-  // --- Point d'attention : alerte prioritaire non lue (centre d'alertes P0) ---
-  try {
+  // --- Point d'attention : DÉSORMAIS intégré au bloc « Lecture Novalyz · Aujourd'hui »
+  //     (renderChargeFatigueJour). On masque donc la carte séparée. ---
+  try { var _att0 = document.getElementById('tj-attention'); if (_att0) { _att0.style.display = 'none'; _att0.innerHTML = ''; } } catch (e) {}
+  if (false) {
     var att = document.getElementById('tj-attention');
     if (att) {
       var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
@@ -13979,26 +14124,17 @@ function renderAujourdhui(data) {
         }).join('');
       } else { att.style.display = 'none'; att.innerHTML = ''; }
     }
-  } catch (e) {}
+  }
 
   // --- Le mot de Novalyz = axe PROGRESSION (Lecture Novalyz muscu, 4 sem.) ---
   // Volontairement distinct du bandeau (#1 = état du jour) et du point d'attention
   // (#2 = alerte). On n'affiche QUE la reco progression du moteur, et seulement si
   // la confiance n'est pas « faible » : sinon on masque le bloc plutôt que de servir
   // un conseil générique qui ferait doublon avec l'état du jour (règle honnêteté 6bis).
-  try {
-    var elNova = document.getElementById('tj-nova');
-    var elnT = document.getElementById('tj-nova-txt');
-    var sM = data && data.analyse_synthese && data.analyse_synthese.muscu;
-    // Rotation : un levier du pool par jour (plus de message figé). Masqué si confiance faible.
-    var novaTxt = _novaPickReco(sM);
-    if (novaTxt) {
-      if (elnT) elnT.textContent = novaTxt;
-      if (elNova) elNova.style.display = '';
-    } else {
-      if (elNova) elNova.style.display = 'none';
-    }
-  } catch (e) {}
+  // Séparation des 2 lectures : la lecture ENTRAÎNEMENT / progression vit désormais
+  // dans le bloc « Lecture Novalyz · Analyses ». Sur Aujourd'hui, on ne garde que
+  // l'état du jour (récup / charge / fatigue / bien-être) → on masque le mot progression.
+  try { var elNova = document.getElementById('tj-nova'); if (elNova) { elNova.style.display = 'none'; } } catch (e) {}
 
   // --- Bien-être « point du jour » : 5 cellules depuis bien_etre[0] ---
   try {
