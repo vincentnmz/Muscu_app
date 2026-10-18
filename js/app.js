@@ -13810,6 +13810,44 @@ function _safe(label, fn) {
 // Accueil « Aujourd'hui » (refonte maquette) : remplit les valeurs dynamiques
 // (prénom, date, régularité). Les autres blocs restent visuels pour l'instant,
 // on les branchera aux données au fil des phases.
+// Lecture « Aujourd'hui » — Charge & fatigue (modèle fitness-fatigue de Banister).
+// Lit moteur.charge_fatigue (CTL/ATL/TSB, tsbPct, ratio). SECONDAIRE : n'alerte
+// jamais en rouge, vocabulaire grand public (« fraîcheur », « charge récente »),
+// avec le « ? » pédagogique. Caché si pas de données.
+function renderChargeFatigueJour(data) {
+  var el = document.getElementById('tj-chargefatigue'); if (!el) return;
+  var cf = (data && data.moteur && data.moteur.charge_fatigue) || null;
+  if (!cf || cf.ratio == null) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  var tsbPct = cf.tsbPct, ratio = cf.ratio, fiable = cf.fiable;
+  // Fraîcheur (TSB %) → libellé grand public, jamais rouge (max orange).
+  var fr, frc, frd;
+  if (tsbPct == null) { fr = '—'; frc = 'var(--tj-subtle)'; frd = ''; }
+  else if (tsbPct >= 5) { fr = 'Frais'; frc = 'var(--tj-good)'; frd = 'Tu es reposé — bon moment pour pousser.'; }
+  else if (tsbPct >= -12) { fr = 'Équilibré'; frc = 'var(--tj-text)'; frd = 'Ta charge récente est proche de ton habitude.'; }
+  else { fr = 'Fatigue'; frc = 'var(--tj-warn)'; frd = 'Tu as plus chargé que d\'habitude ces jours-ci — soigne la récup.'; }
+  var ch = ratio > 1.15 ? 'élevée' : ratio < 0.85 ? 'en baisse' : 'régulière';
+  var chc = ratio > 1.15 ? 'var(--tj-warn)' : 'var(--tj-text)';
+  var fiabTxt = fiable ? '' : ' <span style="color:var(--tj-subtle);font-weight:600">· indicatif</span>';
+  el.style.display = '';
+  el.innerHTML = ''
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">'
+    +   '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700">Charge &amp; fatigue' + fiabTxt + '</div>'
+    +   '<span onclick="ouvrirInfoChargeFatigue()" title="Comprendre" style="width:19px;height:19px;border-radius:999px;border:1px solid var(--tj-border);color:var(--tj-muted);font-size:11px;display:inline-grid;place-items:center;cursor:pointer;flex:none">?</span>'
+    + '</div>'
+    + '<div style="display:flex;gap:13px;align-items:center">'
+    +   '<div style="text-align:center;flex:none;min-width:58px"><div style="font-size:19px;font-weight:800;color:' + frc + ';line-height:1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
+    +   '<div style="flex:1;min-width:0;font-size:12.5px;color:var(--tj-muted);line-height:1.45">' + frd + ' <b style="color:' + chc + '">Charge récente ' + ch + '</b>.</div>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--tj-subtle);margin-top:10px;line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = ta forme de fond moins ta fatigue récente. Repère <b>secondaire</b> : il n\'alerte jamais en rouge.</div>';
+}
+function ouvrirInfoChargeFatigue() {
+  var txt = 'Fraîcheur = ta forme de fond (ce que ton corps encaisse d\'habitude) moins ta fatigue récente. '
+    + 'Positif = reposé/affûté ; négatif = fatigué. « Charge récente » = ton volume des 7 derniers jours vs ton habitude. '
+    + 'Méthode reconnue : modèle fitness-fatigue de Banister sur la charge d\'entraînement (sRPE de Foster). '
+    + 'C\'est un repère secondaire : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge.';
+  try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Charge & fatigue', txt); } catch (e) {}
+  try { alert(txt); } catch (e) {}
+}
 var _tjRingLast = null;   // dernier % animé de l'anneau Aujourd'hui (anti-rejeu)
 function renderAujourdhui(data) {
   var prenom = 'Athlète';
@@ -13910,6 +13948,9 @@ function renderAujourdhui(data) {
       elBs.textContent = sp.length ? sp.join(' · ') : 'Complète ton questionnaire bien-être';
     }
   } catch (e) {}
+
+  // --- Lecture « Aujourd'hui » : charge & fatigue (modèle Banister, secondaire) ---
+  try { renderChargeFatigueJour(data); } catch (e) {}
 
   // --- Point d'attention : alerte prioritaire non lue (centre d'alertes P0) ---
   try {
