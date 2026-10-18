@@ -919,29 +919,44 @@ function _ckKpi(k, v, sub, evolPct){
     + '</div>';
 }
 // Bloc B — Charge. Lit dashboard.* / comparison.* / recent.* / moteur.acwr_*. AUCUN calcul ACWR.
+// En-tête « Charge & fraîcheur » (fitness-fatigue) partagé par les cartes charge
+// du Cockpit coach (muscu + foot). Fraîcheur (TSB) = signal primaire ; forme (CTL)
+// + fatigue (ATL) ; ACWR relégué en mention secondaire « indice ». Jamais rouge.
+function _ckFraicheurHeader(m, dash){
+  m = m || {}; dash = dash || {};
+  var cf = m.charge_fatigue || null;
+  var tsbPct = (cf && cf.tsbPct != null) ? Number(cf.tsbPct) : null;
+  var acwrRatio = (dash.acwr != null && !isNaN(Number(dash.acwr))) ? Number(dash.acwr) : null;
+  var acwrSec = (acwrRatio != null && m.acwr_fiable === true)
+    ? 'ACWR ' + acwrRatio.toFixed(2) + ' · indice secondaire'
+    : 'ACWR non interprétable';
+  if (tsbPct == null) {
+    return '<div style="display:flex;align-items:center;gap:10px;">'
+      + '<div style="font-size:26px;font-weight:800;color:var(--text-muted);line-height:1;">—</div>'
+      + '<div><div style="font-size:12.5px;font-weight:700;color:var(--text-muted);">Fraîcheur non calculable</div>'
+      + '<div style="font-size:10.5px;color:var(--text-muted);">~4 semaines d\'historique nécessaires. <span style="opacity:.75">' + escapeHtml(acwrSec) + '</span></div></div></div>';
+  }
+  var frL, frC, frSub;
+  if (tsbPct >= 5) { frL = 'Frais'; frC = '#00c96e'; frSub = 'Reposé / affûté'; }
+  else if (tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; frSub = 'Charge proche de l\'habitude'; }
+  else { frL = 'Fatigue'; frC = '#f5a623'; frSub = 'Charge récente élevée'; }
+  var ctl = (cf.ctl != null) ? String(cf.ctl) : '—', atl = (cf.atl != null) ? String(cf.atl) : '—';
+  var fiabTag = (cf.fiable === true) ? '' : ' · indicatif';
+  return '<div style="display:flex;align-items:center;gap:12px;">'
+    + '<div style="font-size:26px;font-weight:800;color:' + frC + ';line-height:1;">' + frL + '</div>'
+    + '<div><div style="font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Fraîcheur ' + (tsbPct >= 0 ? '+' : '') + tsbPct + '%' + fiabTag + '</div>'
+    + '<div style="font-size:12.5px;font-weight:700;color:' + frC + ';">' + frSub + '</div></div></div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Forme de fond <b style="color:var(--text)">' + ctl + '</b> · Fatigue récente <b style="color:var(--text)">' + atl + '</b> <span style="opacity:.75">· ' + escapeHtml(acwrSec) + '</span></div>';
+}
 function renderCockpitCharge(data){
   var m = data.moteur || {};
   var dash = data.dashboard || {};
   var comp = data.comparison || {};
   var rec = data.recent || {};
   var reg = dash.regularite || {};
-  // --- ACWR (backend-first ; jamais recalculé ici) ---
-  var acwrHtml;
-  if (m.acwr_fiable !== true) {
-    var note = m.acwr_note || 'ACWR non interprétable — données insuffisantes.';
-    acwrHtml = '<div style="display:flex;align-items:center;gap:10px;">'
-      + '<div style="font-size:26px;font-weight:800;color:var(--text-muted);line-height:1;">—</div>'
-      + '<div><div style="font-size:12.5px;font-weight:700;color:var(--text-muted);">ACWR non interprétable</div>'
-      + '<div style="font-size:10.5px;color:var(--text-muted);">' + escapeHtml(String(note)) + '</div></div></div>';
-  } else {
-    var catMap = { normal:{l:'Zone optimale',c:'#00c96e'}, vigilance:{l:'Vigilance',c:'#f5a623'}, eleve:{l:'Charge élevée',c:'#e5484d'}, sous_charge:{l:'Sous-charge',c:'#00c9ff'} };
-    var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)' };
-    var ratio = (dash.acwr != null) ? Number(dash.acwr) : null;
-    acwrHtml = '<div style="display:flex;align-items:center;gap:12px;">'
-      + '<div style="font-size:28px;font-weight:800;color:' + cat.c + ';line-height:1;">' + (ratio != null ? ratio.toFixed(2) : '—') + '</div>'
-      + '<div><div style="font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Ratio ACWR</div>'
-      + '<div style="font-size:12.5px;font-weight:700;color:' + cat.c + ';">' + escapeHtml(cat.l) + '</div></div></div>';
-  }
+  // --- CHARGE & FRAÎCHEUR (modèle fitness-fatigue de Banister) — signal PRIMAIRE.
+  //     L'ACWR devient une mention secondaire (indice, pas un verdict). ---
+  var acwrHtml = _ckFraicheurHeader(m, dash);
   // --- KPI charge (données déjà présentes ; sinon —) ---
   var t7 = (dash.tonnage && dash.tonnage.j7 != null) ? _ckT(dash.tonnage.j7) : '—';
   var t7evol = dash.tonnage ? dash.tonnage.evol_pct : null;
@@ -11371,7 +11386,13 @@ function _maMoteurTiles(data) {
   var niv = m.disponibilite && m.disponibilite.niveau;
   if (niv) { var dc = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : 'var(--danger)'); tiles.push(_maRailTile('Disponibilité', _maE(niv), '', dc)); }
   if (m.recup && m.recup !== '—') tiles.push(_maRailTile('Récupération', _maE(String(m.recup)), ''));
-  if (dash.acwr != null && m.acwr_fiable !== false) tiles.push(_maRailTile('ACWR', _maE(String(dash.acwr)), ''));
+  // Fraîcheur (fitness-fatigue) remplace l'ancienne tuile ACWR. Jamais rouge.
+  var cf = m.charge_fatigue || null;
+  if (cf && cf.tsbPct != null) {
+    var frL = cf.tsbPct >= 5 ? 'Frais' : cf.tsbPct >= -12 ? 'Équilibré' : 'Fatigue';
+    var frC = cf.tsbPct >= 5 ? 'var(--good)' : cf.tsbPct >= -12 ? null : 'var(--warn)';
+    tiles.push(_maRailTile('Fraîcheur', _maE(frL), '', frC));
+  }
   if (!tiles.length) return '';
   return '<div class="rail-hd">Ma forme</div><div class="rail-snap-grid">' + tiles.join('') + '</div>';
 }
