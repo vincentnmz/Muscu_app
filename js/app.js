@@ -11417,6 +11417,7 @@ var _MA_INFO = {
   balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
   ressenti: { t: 'Ressenti des séances', d: 'Après chaque séance tu notes sa difficulté globale de 1 (Facile) à 4 (Très dur). Ce bloc suit l\'évolution de ce ressenti sur la période — un moyen simple de repérer une fatigue qui s\'installe.', fiab: 'Auto-évaluation subjective (proche du RPE de séance, validé — Borg / Foster). Elle dépend de ton humeur du jour : lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
   acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: '⚠️ Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
+  fraicheur: { t: 'Charge & fraîcheur (fitness-fatigue)', d: 'Modèle fitness-fatigue de Banister. Ta charge d\'entraînement alimente deux moyennes : la FORME de fond (CTL, lissée sur 42 jours) et la FATIGUE récente (ATL, sur 7 jours). La FRAÎCHEUR = forme − fatigue : positive = reposé/affûté, négative = tu as plus chargé que d\'habitude. « Charge récente » = ta charge des 7 derniers jours vs ton habitude.', fiab: 'Méthode reconnue et largement utilisée (Banister, base de TrainingPeaks TSB/CTL/ATL ; charge interne via le session-RPE de Foster). Repère SECONDAIRE chez Novalyz : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. Interprétable après ~4 semaines d\'historique.' },
   progression: { t: 'Progression / 1RM estimé', d: 'Le 1RM estimé (formule d\'Epley : charge × (1 + reps/30)) approxime la charge que tu soulèverais 1 fois, sans tester ton maximum. Novalyz suit son évolution pour juger ta progression de force.', fiab: 'Fiable surtout en dessous de ~10 répétitions ; l\'erreur d\'estimation grandit au-delà.' },
   execcible: { t: 'Exécution vs cible', d: 'Compare ce que tu as réalisé aux cibles posées sur l\'exercice. Charge : réalisé vs % de ton 1RM estimé (tolérance ±5 %). RPE : moyenne vs cible (±1).', fiab: 'Indicatif : « sous la cible » n\'est pas forcément un échec (deload, répétitions plus hautes…). La cible en kg dépend d\'un 1RM estimé.' },
   regularite: { t: 'Régularité', d: 'Le nombre de séances réalisées par semaine, comparé à ton objectif (déduit de ton programme).', fiab: 'La régularité sur la durée est l\'un des premiers facteurs de progression.' },
@@ -14558,9 +14559,11 @@ function renderEtat(data) {
       };
       var tint = TINT[niv] || { bg: 'var(--surface)', bd: 'var(--border)' };
       var titre = niv || 'En attente de données';
-      // Explication : la reco réelle du moteur (data-driven) → cohérente avec l'ACWR
-      // affiché dessous (ex. « Vigilance » à cause du sommeil/fatigue, pas de la charge).
-      var ex = (m.reco && String(m.reco).trim()) ? String(m.reco) : (EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.');
+      // Explication : la reco réelle du moteur (data-driven), cohérente avec le bloc
+      // « Charge & fraîcheur » ci-dessous. On retire toute mention « (ACWR x) » du texte
+      // affiché (repère secondaire) — filet de sécurité si un ancien backend tourne encore.
+      var recoHero = (m.reco && String(m.reco).trim()) ? String(m.reco).replace(/\s*\(\s*ACWR[^)]*\)/gi, '').replace(/\s{2,}/g, ' ').trim() : '';
+      var ex = recoHero || (EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.');
       var dashArc = (score != null) ? (score + ' 100') : '0 100';
       var ringTxt = (score != null) ? String(score) : '—';
       el.setAttribute('style', 'background:' + tint.bg + ';border-color:' + tint.bd + ';');
@@ -14575,44 +14578,51 @@ function renderEtat(data) {
     }
   } catch (e) {}
 
-  // ---- ACWR : dernière valeur fiable uniquement (jamais recalculée ici) ----
+  // ---- CHARGE & FRAÎCHEUR (modèle fitness-fatigue de Banister) ----
+  // Remplace l'ancienne jauge ACWR. Signal de charge PRIMAIRE (CTL/ATL/TSB). L'ACWR
+  // n'est plus qu'une mention secondaire « indicatif ». Jamais rouge (max orange).
   try {
     var elA = document.getElementById('et-acwr');
     if (elA) {
       var dashd = data.dashboard || {};
-      var fiable = (m.acwr_fiable === true);
-      var ratio = (dashd.acwr != null && !isNaN(Number(dashd.acwr))) ? Number(dashd.acwr) : null;
-      if (!fiable || ratio == null) {
-        var note = m.acwr_note || 'Données insuffisantes pour interpréter la charge.';
+      var cfe = m.charge_fatigue || null;
+      var tsbPct = (cfe && cfe.tsbPct != null) ? Number(cfe.tsbPct) : null;
+      // Mention ACWR secondaire (si dispo) — affichée en petit, jamais décisionnelle.
+      var acwrRatio = (dashd.acwr != null && !isNaN(Number(dashd.acwr))) ? Number(dashd.acwr) : null;
+      var acwrLine = (acwrRatio != null && m.acwr_fiable === true)
+        ? '<div style="margin-top:10px;font-size:11px;color:var(--text-subtle)">ACWR ' + acwrRatio.toFixed(2) + ' <span style="opacity:.8">· indice secondaire (à interpréter avec prudence)</span></div>'
+        : '';
+      if (!cfe || tsbPct == null) {
+        var noteF = 'Il faut ~4 semaines d\'entraînement (28 jours d\'historique) avec assez de séances. Continue d\'enregistrer : la fraîcheur s\'activera toute seule.';
         elA.innerHTML =
-          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span>' + _maInfoBtn('acwr') + '<span class="et-chip" style="color:var(--text-muted);background:var(--surface2)">ACWR —</span></div>'
+          '<div class="et-rowh"><span class="et-k">Charge &amp; fraîcheur</span>' + _maInfoBtn('fraicheur') + '<span class="et-chip" style="color:var(--text-muted);background:var(--surface2)">—</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
           + '<span class="et-big" style="color:var(--text-muted)">—</span>'
-          + '<span class="et-muted"><b>Pas encore calculable.</b><br>' + esc(note) + '</span></div>'
+          + '<span class="et-muted"><b>Pas encore calculable.</b><br>' + esc(noteF) + '</span></div>'
           + '<div style="margin-top:11px;padding:11px 12px;background:var(--surface2);border-radius:11px;font-size:11.5px;color:var(--text-muted);line-height:1.5">'
-          + '<b style="color:var(--text)">C\'est quoi l\'ACWR ?</b> C\'est le rapport entre ta charge <b>récente</b> (7 derniers jours) et ta charge <b>habituelle</b> (moyenne sur 4 semaines). En clair : est-ce que tu en fais <b>beaucoup plus que d\'habitude</b> ? Rester dans une zone d\'équilibre (≈ 0,8–1,3) aide à progresser sans te blesser.'
-          + '<br><br><b style="color:var(--text)">Calculable à partir de quand ?</b> Il faut <b>~4 semaines d\'entraînement</b> (28 jours d\'historique) avec au moins <b>6 jours d\'entraînement</b> sur cette période. Continue d\'enregistrer tes séances : il s\'activera tout seul.'
-          + '</div>';
+          + '<b style="color:var(--text)">C\'est quoi la fraîcheur ?</b> Ta charge nourrit deux moyennes : ta <b>forme de fond</b> (sur ~6 semaines) et ta <b>fatigue récente</b> (sur 1 semaine). La <b>fraîcheur = forme − fatigue</b> : positive = reposé, négative = tu charges plus que d\'habitude. Méthode reconnue (modèle fitness-fatigue de Banister).'
+          + '</div>' + acwrLine;
       } else {
-        var catMap = {
-          normal: { l: 'Zone optimale', c: 'var(--good)', bg: 'var(--good-a)' },
-          vigilance: { l: 'Vigilance', c: 'var(--warn)', bg: 'var(--warn-a)' },
-          eleve: { l: 'Charge élevée', c: 'var(--danger)', bg: 'var(--bad-a)' },
-          sous_charge: { l: 'Sous-charge', c: 'var(--accent)', bg: 'var(--accent-a10)' }
-        };
-        var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)', bg: 'var(--surface2)' };
-        // Jauge de zone ACWR : 0 → 2.0. Zones 0-0.8 sous-charge · 0.8-1.3 optimal · 1.3-1.5 vigilance · >1.5 élevé.
-        var pos = Math.max(0, Math.min(100, ratio / 2 * 100));
-        var zbar = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,rgba(26,95,255,.30) 0 40%,rgba(0,168,84,.45) 40% 65%,rgba(224,120,0,.45) 65% 75%,rgba(220,53,69,.45) 75% 100%)">'
-          + '<div style="position:absolute;top:-3px;left:' + pos.toFixed(0) + '%;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)"></div></div>'
-          + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:4px"><span>sous-charge</span><span>optimal 0,8–1,3</span><span>élevé &gt;1,5</span></div></div>';
+        var frL, frC, frBg, frD;
+        if (tsbPct >= 5) { frL = 'Frais'; frC = 'var(--good)'; frBg = 'var(--good-a)'; frD = 'Tu es reposé — bon moment pour pousser.'; }
+        else if (tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; frBg = 'var(--surface2)'; frD = 'Ta charge récente est proche de ton habitude.'; }
+        else { frL = 'Fatigue'; frC = 'var(--warn)'; frBg = 'var(--warn-a)'; frD = 'Tu as plus chargé que d\'habitude — soigne la récup.'; }
+        var fiabF = (cfe.fiable === true) ? '' : '<span style="color:var(--text-subtle);font-weight:600;font-size:10px"> · indicatif</span>';
+        // Jauge fraîcheur (TSB %) : -40 (fatigue) → +20 (frais), 0 = équilibre au centre.
+        var lo = -40, hi = 20, posF = Math.max(0, Math.min(100, (tsbPct - lo) / (hi - lo) * 100));
+        var zbarF = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,rgba(224,120,0,.45) 0 46%,rgba(80,110,160,.35) 46% 62%,rgba(0,168,84,.45) 62% 100%)">'
+          + '<div style="position:absolute;top:-3px;left:' + posF.toFixed(0) + '%;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)"></div></div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:4px"><span>fatigue</span><span>équilibre</span><span>frais</span></div></div>';
+        var ctlTxt = (cfe.ctl != null) ? String(cfe.ctl) : '—', atlTxt = (cfe.atl != null) ? String(cfe.atl) : '—';
         elA.innerHTML =
-          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span>' + _maInfoBtn('acwr') + ''
-          + '<span class="et-chip" style="color:' + cat.c + ';background:' + cat.bg + '">ACWR ' + ratio.toFixed(2) + '</span></div>'
+          '<div class="et-rowh"><span class="et-k">Charge &amp; fraîcheur</span>' + _maInfoBtn('fraicheur')
+          + '<span class="et-chip" style="color:' + frC + ';background:' + frBg + '">' + frL + fiabF + '</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
-          + '<span class="et-big" style="color:' + cat.c + '">' + ratio.toFixed(2) + '</span>'
-          + '<span class="et-muted"><b style="color:' + cat.c + '">' + esc(cat.l) + '</b><br>Rapport charge aiguë (7 j) / chronique (28 j).</span></div>'
-          + zbar;
+          + '<span class="et-big" style="color:' + frC + '">' + frL + '</span>'
+          + '<span class="et-muted"><b style="color:' + frC + '">' + (tsbPct >= 0 ? '+' : '') + tsbPct + '%</b> de fraîcheur<br>' + esc(frD) + '</span></div>'
+          + zbarF
+          + '<div style="display:flex;gap:16px;margin-top:11px;font-size:11px;color:var(--text-muted)"><span>Forme de fond <b style="color:var(--text)">' + ctlTxt + '</b></span><span>Fatigue récente <b style="color:var(--text)">' + atlTxt + '</b></span></div>'
+          + acwrLine;
       }
     }
   } catch (e) {}
