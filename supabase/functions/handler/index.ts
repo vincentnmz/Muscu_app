@@ -1972,6 +1972,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const bien_etre = (beRows || []).map(r => ({
     date: fmtFR(r.date), sommeil: r.sommeil, energie: r.energie,
     fatigue: r.fatigue_musculaire, motivation: r.motivation, douleur: r.douleur,
+    stress: r.stress, courbatures: r.courbatures,
     zone: r.zone_douloureuse, ressenti: r.ressenti_global, note: r.note,
   }))
 
@@ -2025,16 +2026,20 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // Bilans de séance (ressenti perçu + douleurs), muscu vs cardio SÉPARÉS → onglet
   // Analyses. Lignes indicateurs `ressenti_<type>` / `douleur_<type>` (valeur 1..4 ;
   // pour la douleur, unite = zone). Triés récent → ancien.
-  let analyses: any = { ressenti_muscu: [], ressenti_cardio: [], douleurs_muscu: [], douleurs_cardio: [] }
+  // rpe_muscu/rpe_cardio = RPE de séance CR-10 (0..10, nouveau). ressenti_* = legacy
+  // (difficulté 1..4) conservé pour l'historique. Le front préfère rpe_* si présent.
+  let analyses: any = { ressenti_muscu: [], ressenti_cardio: [], rpe_muscu: [], rpe_cardio: [], douleurs_muscu: [], douleurs_cardio: [] }
   {
     const { data: bilanRows } = await sb().from('indicateurs').select('*')
       .eq('athlete_id', athleteId)
-      .in('cle', ['ressenti_muscu', 'ressenti_cardio', 'douleur_muscu', 'douleur_cardio'])
+      .in('cle', ['ressenti_muscu', 'ressenti_cardio', 'rpe_muscu', 'rpe_cardio', 'douleur_muscu', 'douleur_cardio'])
       .order('date', { ascending: false }).limit(300)
     for (const r of (bilanRows || [])) {
       const base = { date: normDate(r.date), seance_id: r.seance_id, valeur: Number(r.valeur) || null }
       if (r.cle === 'ressenti_muscu') analyses.ressenti_muscu.push(base)
       else if (r.cle === 'ressenti_cardio') analyses.ressenti_cardio.push(base)
+      else if (r.cle === 'rpe_muscu') analyses.rpe_muscu.push(base)
+      else if (r.cle === 'rpe_cardio') analyses.rpe_cardio.push(base)
       else if (r.cle === 'douleur_muscu') analyses.douleurs_muscu.push({ ...base, zone: r.unite || '' })
       else if (r.cle === 'douleur_cardio') analyses.douleurs_cardio.push({ ...base, zone: r.unite || '' })
     }
@@ -2107,7 +2112,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       ffTsbPct: ffA.tsbPct, ffRatio: ffA.ratio, ffFiable,
       seances7: seances7M,
       // Verdict athlète : fatigue = MOYENNE récente (readiness), pas le pire jour.
-      douleur: sigM.douleur, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, courbatures: null,
+      douleur: sigM.douleur, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, stress: sigM.stress, courbatures: sigM.courbatures,
       injStatut: null, ctxEtat: ctxEtatM,
       q: { jours: histoM != null ? histoM : (perfs.length ? 7 : 0), wellnessN: sigM.wellnessN, hasCharge: perfs.length > 0 },
     })
@@ -2429,21 +2434,24 @@ async function handleLierAthlete(params: URLSearchParams): Promise<Response> {
 //   douleur = MAX récent · fatigue = MAX récent · sommeil = MOYENNE récente.
 // (max pour la douleur/fatigue = orienté prévention ; moyenne sommeil = §16, une
 //  seule mauvaise nuit ne doit pas suffire.)
-function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; wellnessN: number } {
+function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number } {
   const cut = fmtYMD(minus(now, days))
-  const doul: number[] = [], fat: number[] = [], som: number[] = []
+  const doul: number[] = [], fat: number[] = [], som: number[] = [], str: number[] = [], courb: number[] = []
   for (const r of rows || []) {
     const dIso = normDate(r.date); if (!dIso || dIso < cut) continue
     if (r.douleur != null && r.douleur !== '') doul.push(Number(r.douleur))
     if (r.fatigue_musculaire != null && r.fatigue_musculaire !== '') fat.push(Number(r.fatigue_musculaire))
     if (r.sommeil != null && r.sommeil !== '') som.push(Number(r.sommeil))
+    if (r.stress != null && r.stress !== '') str.push(Number(r.stress))
+    if (r.courbatures != null && r.courbatures !== '') courb.push(Number(r.courbatures))
   }
   const mx = (a: number[]) => a.length ? Math.max(...a) : null
   const mn = (a: number[]) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null
   // `fatigue` = MAX (prévention, lu par le coach — figé). `fatigueMoy` = moyenne
   // récente, utilisée par le VERDICT athlète (readiness) pour qu'un seul jour
   // fatigué ne plombe pas la semaine. Ajout non cassant.
-  return { douleur: mx(doul), fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), wellnessN: Math.max(doul.length, fat.length, som.length) }
+  // Hooper : on ajoute stress (moyenne récente) et courbatures/DOMS (MAX, prévention).
+  return { douleur: mx(doul), fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), stress: mn(str), courbatures: mx(courb), wellnessN: Math.max(doul.length, fat.length, som.length, str.length, courb.length) }
 }
 
 interface EtatInput {
@@ -2459,7 +2467,8 @@ interface EtatInput {
   douleur: number | null       // agrégé (max récent)
   fatigue: number | null       // agrégé (max récent)
   sommeil: number | null       // agrégé (moyenne récente)
-  courbatures: number | null   // muscu (indicateurs) sinon null
+  stress: number | null        // readiness Hooper (1..5, 5 = détendu) — moyenne récente
+  courbatures: number | null   // readiness Hooper (DOMS) / muscu — max récent
   injStatut: 'indispo' | 'retour_progressif' | null
   blessureGrave?: boolean       // blessure active modérée/grave (muscu : table blessures)
   ctxEtat: string
@@ -2503,7 +2512,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
   }
   if (chargeOk && eff.surchargeDelta) surchargeN = clampNiv(surchargeN + eff.surchargeDelta)
 
-  const doul = s.douleur ?? 0, fat = s.fatigue ?? 0, som = s.sommeil, courb = s.courbatures ?? 0
+  const doul = s.douleur ?? 0, fat = s.fatigue ?? 0, som = s.sommeil, courb = s.courbatures ?? 0, str = s.stress ?? 0
   const chargeHaute = surchargeN >= 1
   const sommeilBas = som != null && som <= CORE_SEUILS.sommeil.bas
   const fatigueHaute = fat >= CORE_SEUILS.fatigue.haute
@@ -2534,9 +2543,12 @@ function evaluerEtatAthlete(s: EtatInput): any {
   if (eff.risqueDelta) risqueBlessureN = clampNiv(risqueBlessureN + eff.risqueDelta)
 
   // --- Récupération (score bien-être) ---
+  // Readiness = indice de Hooper : sommeil + fatigue + stress + courbatures (DOMS).
+  // Items « invert » (fatigue/stress/courbatures) : 5 = mauvais → (6 - v)/5.
   const recArr: number[] = []
   if (som != null) recArr.push(som / 5)
   if (s.fatigue != null) recArr.push((6 - fat) / 5)
+  if (s.stress != null) recArr.push((6 - str) / 5)
   if (s.courbatures != null) recArr.push((6 - courb) / 5)
   const recScore = recArr.length ? (recArr.reduce((a, b) => a + b, 0) / recArr.length) * 100 : null
   const recup = recScore == null ? '—' : recScore >= CORE_SEUILS.recup.bon ? 'Excellent' : recScore >= CORE_SEUILS.recup.moyen ? 'Bon' : recScore >= CORE_SEUILS.recup.faible ? 'Moyen' : 'Faible'
@@ -2720,7 +2732,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       // >>> MOTEUR CENTRAL — statut, alertes, dispo, risque, récup, reco, confiance <<<
       const etat = evaluerEtatAthlete({
         acwr, acwrFiable, seances7,
-        douleur: sig.douleur, fatigue: sig.fatigue, sommeil: sig.sommeil, courbatures: null,
+        douleur: sig.douleur, fatigue: sig.fatigue, sommeil: sig.sommeil, stress: null, courbatures: null,
         injStatut: inj ? inj.statut : null,
         ctxEtat: ctxEtatOf(j.athlete_id),
         q: { jours: histoDays != null ? histoDays : (a.charge7 > 0 || sig.wellnessN > 0 ? 7 : 0), wellnessN: sig.wellnessN, hasCharge: a.charge7 > 0 || a.charge28 > 0 },
@@ -2951,7 +2963,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     const etat = evaluerEtatAthlete({
       acwr, acwrFiable: acwrFiableF, seances7: seances7f,
       douleur: sig7.douleur, fatigue: sig7.fatigue, sommeil: sig7.sommeil,
-      courbatures: _n(bienetre.courbatures),
+      stress: _n(bienetre.stress), courbatures: _n(bienetre.courbatures),
       injStatut: injActive ? (injActive.statut as any) : null,
       ctxEtat,
       q: { jours: histoDaysF != null ? histoDaysF : (charge7 > 0 || sig7.wellnessN > 0 ? 7 : 0), wellnessN: sig7.wellnessN, hasCharge: charge7 > 0 || charge28 > 0 },
@@ -4425,7 +4437,7 @@ async function handleDeleteCoach(body: any): Promise<Response> {
 }
 
 async function handleSaveBienEtre(body: any): Promise<Response> {
-  const { athlete_id, seance_id, date, sommeil, energie, fatigue, motivation, douleur, zone, ressenti, note } = body
+  const { athlete_id, seance_id, date, sommeil, energie, fatigue, motivation, stress, courbatures, douleur, zone, ressenti, note } = body
   if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
   // colonnes numériques : '' ou texte → null (sinon Postgres rejette tout l'insert)
   const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
@@ -4433,6 +4445,8 @@ async function handleSaveBienEtre(body: any): Promise<Response> {
   const row: any = {
     date: d, seance_id: seance_id || null, athlete_id,
     sommeil: num(sommeil), energie: num(energie), fatigue_musculaire: num(fatigue), motivation: num(motivation), douleur: num(douleur),
+    // Readiness Hooper : stress + courbatures (DOMS) — colonnes ajoutées (migration SQL).
+    stress: num(stress), courbatures: num(courbatures),
     zone_douloureuse: zone != null && zone !== '' ? String(zone) : null,
     ressenti_global: ressenti != null && ressenti !== '' ? String(ressenti) : null,
     note: num(note),
@@ -4471,12 +4485,15 @@ async function handleSaveBilanSeance(body: any): Promise<Response> {
   const d = normDate(body.date) || fmtYMD(new Date())
   const sid = body.seance_id ? String(body.seance_id) : `${type}_${Date.now()}`
   const num = (v: any) => (v === '' || v == null || isNaN(Number(v))) ? null : Number(v)
-  const ressenti = num(body.ressenti)   // 1..4 (1 = Facile … 4 = Très dur)
+  const rpe = num(body.rpe)             // 0..10 — RPE de séance CR-10 (session-RPE Foster)
+  const ressenti = num(body.ressenti)   // LEGACY 1..4 (1 = Facile … 4 = Très dur)
   const douleur = num(body.douleur)     // 1..4 (1 = aucune)
   const zone = (body.zone != null && body.zone !== '') ? String(body.zone) : ''
 
   const rows: any[] = []
-  if (ressenti != null) rows.push({ date: d, athlete_id, seance_id: sid, cle: `ressenti_${type}`, valeur: String(ressenti), unite: '', source: 'saisie' })
+  // Nouveau : RPE CR-10 (cle rpe_<type>). Repli legacy : ancien ressenti 1..4.
+  if (rpe != null) rows.push({ date: d, athlete_id, seance_id: sid, cle: `rpe_${type}`, valeur: String(rpe), unite: 'cr10', source: 'saisie' })
+  else if (ressenti != null) rows.push({ date: d, athlete_id, seance_id: sid, cle: `ressenti_${type}`, valeur: String(ressenti), unite: '', source: 'saisie' })
   if (douleur != null && douleur > 1) rows.push({ date: d, athlete_id, seance_id: sid, cle: `douleur_${type}`, valeur: String(douleur), unite: zone, source: 'saisie' })
   if (rows.length) {
     const { error } = await sb().from('indicateurs').insert(rows)

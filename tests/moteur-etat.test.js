@@ -118,8 +118,10 @@ function reproductionEtat(s) {
   let risqueBlessureN = rbPts >= 3 ? 2 : rbPts >= 1 ? 1 : 0;
   if (ctx === 'retour_blessure') risqueBlessureN = Math.min(2, risqueBlessureN + 1);
   const recArr = [];
+  const str = s.stress ?? 0;
   if (som != null) recArr.push(som / 5);
   if (s.fatigue != null) recArr.push((6 - fat) / 5);
+  if (s.stress != null) recArr.push((6 - str) / 5);
   if (s.courbatures != null) recArr.push((6 - courb) / 5);
   const recScore = recArr.length ? (recArr.reduce((a, b) => a + b, 0) / recArr.length) * 100 : null;
   const recFaible = recScore != null && recScore < 45;
@@ -202,6 +204,13 @@ const CAS = [
     exp: { niveau: 0, statut: 'vert', surcharge: 'Faible', acwr_categorie: 'normal', tags: ['sous_charge:m'], reco: 'RAS — maintenir la charge actuelle.' } },
   { nom: 'FF5 FF non fiable → repli ACWR (1.6 → surcharge) mais reste vert (récup bonne)', in: { acwr: 1.6, acwrFiable: true, ffTsbPct: -5, ffRatio: 1.05, ffFiable: false, seances7: 4, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 0, statut: 'vert', surcharge: 'Élevé', acwr_categorie: 'eleve', tags: ['surcharge:h'], reco: 'Charge en forte hausse récemment — évite d\'empiler encore du volume ; si tu te sens frais, entraîne-toi normalement.' } },
+
+  // Readiness Hooper : le STRESS entre dans le score de récupération.
+  { nom: 'HO1 stress élevé seul (Hooper) baisse la récup, reste vert', in: { acwr: 1.0, acwrFiable: true, stress: 5, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    // recArr = [sommeil 0.8, (6-2)/5=0.8, (6-5)/5=0.2] → 60/100 (vs 80 sans le stress).
+    exp: { niveau: 0, statut: 'vert', recScore: 60, acwr_categorie: 'normal', tags: [] } },
+  { nom: 'HO2 stress + sommeil bas + fatigue → récup faible → Vigilance', in: { acwr: 1.0, acwrFiable: true, stress: 5, courbatures: 4, seances7: 3, douleur: 0, fatigue: 4, sommeil: 2, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    exp: { niveau: 1, statut: 'orange', dispo: 'Vigilance' } },
 
   // Frontières douleur (gene=2 / forte=3) et sommeil (bas=2)
   { nom: 'C1 douleur = 2 (=gene) → gêne', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 2, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
