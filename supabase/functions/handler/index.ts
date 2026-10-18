@@ -2102,10 +2102,16 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       injStatut: null, ctxEtat: ctxEtatM,
       q: { jours: histoM != null ? histoM : (perfs.length ? 7 : 0), wellnessN: sigM.wellnessN, hasCharge: perfs.length > 0 },
     })
+    // Modèle fitness-fatigue (Banister) sur la charge muscu (tonnage). Additif :
+    // forme (CTL) / fatigue (ATL) / fraîcheur (TSB) + ratio ATL/CTL. Fiable si assez
+    // d'historique (≥ 28 j et ≥ 8 jours actifs sur 42) — sinon affiché comme indicatif.
+    const ffA = calculerFitnessFatigue(chSportA.chargeParJour, now)
+    const ffFiable = histoM != null && histoM >= 28 && ffA.joursActifs42 >= 8
     moteur = {
       disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
       recScore: etatM.recScore, recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
       acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
+      charge_fatigue: { ctl: ffA.ctl, atl: ffA.atl, tsb: ffA.tsb, tsbPct: ffA.tsbPct, ratio: ffA.ratio, fiable: ffFiable },
       seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
     }
     if (etatM.acwr_note) moteur.acwr_note = etatM.acwr_note
@@ -2445,6 +2451,7 @@ interface EtatInput {
   sommeil: number | null       // agrégé (moyenne récente)
   courbatures: number | null   // muscu (indicateurs) sinon null
   injStatut: 'indispo' | 'retour_progressif' | null
+  blessureGrave?: boolean       // blessure active modérée/grave (muscu : table blessures)
   ctxEtat: string
   q: { jours: number; wellnessN: number; hasCharge: boolean }
 }
@@ -2525,19 +2532,15 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // suffit plus à passer en Vigilance : il faut « récup faible » (<45) ou un cumul.
   const alertesEtat = alertes.filter(a => a.type !== 'sous_charge' && a.type !== 'absence')
   let niveau: number
-  if (s.injStatut === 'indispo') niveau = 2
+  // RÈGLE DE SÉVÉRITÉ (demande porteur) : le ROUGE (niveau 2) est RÉSERVÉ à une
+  // BLESSURE modérée/grave (ou indispo) ou une DOULEUR FORTE. Tout le reste —
+  // charge/ACWR, fatigue/TSB, récupération, sommeil, combinaison de signaux —
+  // PLAFONNE à ORANGE (Vigilance). La charge & fatigue ne dramatise jamais.
+  if (s.injStatut === 'indispo' || s.blessureGrave === true || douleurForte) niveau = 2
   else {
-    // ACWR = signal, pas verdict : une surcharge ACWR SEULE ne fait plus passer la
-    // journée en rouge (l'indicateur est incertain et ne doit pas donner le ton). Il
-    // faut un signal RESSENTI concordant (douleur / fatigue / sommeil) pour le rouge.
-    // Seule → elle reste une alerte (→ Vigilance orange via `mid`).
-    const signalRessentiConcordant = douleurGene || fatigueHaute || sommeilBas
-    const chargeRouge = surchargeN >= 2 && signalRessentiConcordant
-    const haute = alertesEtat.some(a => a.severite === 'haute' && a.type !== 'surcharge')
-    const combo = fatigueHaute && sommeilBas && chargeHaute        // §16 : combinaison de signaux
-    const bad = haute || chargeRouge || risqueBlessureN === 2 || recFaibleConcordante || combo
-    const mid = alertesEtat.length > 0 || risqueBlessureN === 1 || recFaible || s.injStatut === 'retour_progressif'
-    niveau = bad ? 2 : mid ? 1 : 0
+    const mid = alertesEtat.length > 0 || risqueBlessureN >= 1 || recFaible || chargeHaute
+      || fatigueHaute || sommeilBas || s.injStatut === 'retour_progressif'
+    niveau = mid ? 1 : 0
   }
   if (eff.niveauMin != null && niveau < eff.niveauMin) niveau = eff.niveauMin
   if (confiance === 'non_interpretable') niveau = 0   // nouvel athlète : pas de fausse alerte

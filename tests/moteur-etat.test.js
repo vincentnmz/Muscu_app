@@ -119,17 +119,13 @@ function reproductionEtat(s) {
   // de disponibilité ; « récup moyenne » seule ne déclenche plus Vigilance.
   const tagsEtat = tags.filter(t => !t.startsWith('sous_charge') && !t.startsWith('absence'));
   let niveau;
-  if (s.injStatut === 'indispo') niveau = 2;
+  // Règle de sévérité (miroir prod) : ROUGE réservé à blessure modérée/grave
+  // (ou indispo) ou douleur forte. Charge/ACWR/fatigue/récup/sommeil → ORANGE max.
+  if (s.injStatut === 'indispo' || s.blessureGrave === true || douleurForte) niveau = 2;
   else {
-    // ACWR = signal, pas verdict : surcharge ACWR seule → Vigilance (pas rouge) ;
-    // le rouge exige un ressenti concordant (douleur/fatigue/sommeil).
-    const signalRessentiConcordant = douleurGene || fatigueHaute || sommeilBas;
-    const chargeRouge = surchargeN >= 2 && signalRessentiConcordant;
-    const haute = tagsEtat.some(a => a.endsWith(':h') && a !== 'surcharge:h');
-    const combo = fatigueHaute && sommeilBas && chargeHaute;
-    const bad = haute || chargeRouge || risqueBlessureN === 2 || recFaibleConcordante || combo;
-    const mid = tagsEtat.length > 0 || risqueBlessureN === 1 || recFaible || s.injStatut === 'retour_progressif';
-    niveau = bad ? 2 : mid ? 1 : 0;
+    const mid = tagsEtat.length > 0 || risqueBlessureN >= 1 || recFaible || chargeHaute
+      || fatigueHaute || sommeilBas || s.injStatut === 'retour_progressif';
+    niveau = mid ? 1 : 0;
   }
   if (ctx === 'retour_blessure' && niveau === 0) niveau = 1;
   if (confiance === 'non_interpretable') niveau = 0;
@@ -164,8 +160,9 @@ const CAS = [
     exp: { niveau: 1, statut: 'orange', dispo: 'Vigilance', surcharge: 'Faible', risque_blessure: 'Modéré', recup: 'Bon', confiance: 'haute', acwr_categorie: 'normal', reco: 'Vigilance — surveiller les sensations, ne pas surcharger.', tags: ['fatigue:m'] } },
   { nom: 'A3 surcharge ACWR seule → Vigilance (orange), pas rouge', in: { acwr: 1.6, acwrFiable: true, seances7: 4, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 1, statut: 'orange', dispo: 'Vigilance', surcharge: 'Élevé', risque_blessure: 'Modéré', recup: 'Excellent', confiance: 'haute', acwr_categorie: 'eleve', reco: 'Charge aiguë élevée (ACWR 1.60) — réduire le volume 48 h.', tags: ['surcharge:h'] } },
-  { nom: 'A3bis surcharge ACWR + fatigue (ressenti concordant) → rouge', in: { acwr: 1.6, acwrFiable: true, seances7: 4, douleur: 0, fatigue: 4, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
-    exp: { niveau: 2, statut: 'rouge', dispo: 'À surveiller', surcharge: 'Élevé', acwr_categorie: 'eleve', tags: ['fatigue:m', 'surcharge:h'] } },
+  // Règle de sévérité : charge+fatigue (sans blessure ni douleur forte) → ORANGE max (plus de rouge).
+  { nom: 'A3bis surcharge ACWR + fatigue (sans blessure/douleur forte) → orange', in: { acwr: 1.6, acwrFiable: true, seances7: 4, douleur: 0, fatigue: 4, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    exp: { niveau: 1, statut: 'orange', dispo: 'Vigilance', surcharge: 'Élevé', acwr_categorie: 'eleve', tags: ['fatigue:m', 'surcharge:h'] } },
 
   // B. Frontières ACWR (x<seuil, x=seuil, x>seuil) — seuils 1.3 / 1.5 / 0.8
   { nom: 'B1 ACWR = 1.30 (=optMax) → pas de charge', in: { acwr: 1.3, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
@@ -228,8 +225,8 @@ const CAS = [
   // G. Récupération : faible ISOLÉE → orange ; faible + signal concordant → rouge
   { nom: 'H1 récup faible ISOLÉE → orange (pas rouge)', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 3, sommeil: 1, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 1, statut: 'orange', recup: 'Faible', risque_blessure: 'Faible', tags: ['sommeil:m'], reco: 'Récupération faible — vigilance, alléger si ça persiste.' } },
-  { nom: 'H2 récup faible + charge concordante → rouge', in: { acwr: 1.4, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 3, sommeil: 1, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
-    exp: { niveau: 2, statut: 'rouge', recup: 'Faible', risque_blessure: 'Modéré', tags: ['charge:m', 'sommeil:m'], reco: 'Récupération faible + autre signal — alléger et surveiller de près.' } },
+  { nom: 'H2 récup faible + charge concordante (sans blessure/douleur forte) → orange', in: { acwr: 1.4, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 3, sommeil: 1, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    exp: { niveau: 1, statut: 'orange', recup: 'Faible', risque_blessure: 'Modéré', tags: ['charge:m', 'sommeil:m'], reco: 'Récupération faible + autre signal — alléger et surveiller de près.' } },
 
   // H. sous-charge active en saison normale
   { nom: 'I1 sous-charge active (ACWR 0.5, saison normale)', in: { acwr: 0.5, acwrFiable: true, seances7: 2, douleur: 0, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
