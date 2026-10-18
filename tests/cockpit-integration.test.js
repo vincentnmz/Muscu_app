@@ -41,7 +41,7 @@ const dataMuscu = {
   dashboard: { acwr: 1.12, tonnage: { j7: 12.4, evol_pct: 8 }, regularite: { seances_j7: 4 }, streak: { semaines: 5 } },
   comparison: { j28_vs_j28prec: { tonnage: { j28: 46.2, evol_pct: 4 } } },
   recent: { j7: { seances: 4, rpe_moyen: 7.8 } },
-  bien_etre: [{ sommeil: 2, energie: 3, fatigue: 4, douleur: 2, zone: 'Genou', ressenti: 3, note: 'x' }, { sommeil: 3, energie: 3, fatigue: 3, douleur: 1, ressenti: 4 }],
+  bien_etre: [{ sommeil: 2, energie: 3, fatigue: 4, stress: 3, courbatures: 4, douleur: 2, zone: 'Genou', ressenti: 3, note: 'x' }, { sommeil: 3, energie: 3, fatigue: 3, stress: 2, courbatures: 2, douleur: 1, ressenti: 4 }],
   historique: { progression_par_exo: { Squat: [{ charge: 100, reps: 5 }] }, volume_semaine: [{ muscle: 'Quadriceps', faites: 12 }], volume_par_jour: { '2026-08-10': 5000, '2026-08-24': 6000 } },
   global: { records_30j: 2, total_seances: 37, tonnage_total_kg: 128400, dernieres_seances: [{ date: '30/08', tonnage: 8200, exercices: ['Squat'] }] },
   poids: [{ date: '30/08', poids: 82 }, { date: '01/07', poids: 84 }],

@@ -61,9 +61,9 @@ const dataMuscu = {
   comparison: { j28_vs_j28prec: { tonnage: { j28: 46.2, evol_pct: 4 } } },
   recent: { j7: { seances: 4, rpe_moyen: 7.8, monotonie: 1.4, strain: 933 } },
   bien_etre: [
-    { date: '01/09', sommeil: 2, energie: 3, fatigue: 4, douleur: 2, zone: 'Genou droit', ressenti: 3, note: 'Nuit courte, genou tire.' },
-    { date: '29/08', sommeil: 3, energie: 3, fatigue: 3, douleur: 1, ressenti: 4, note: '' },
-    { date: '27/08', sommeil: 4, energie: 4, fatigue: 2, douleur: 1, ressenti: 4, note: '' },
+    { date: '01/09', sommeil: 2, energie: 3, fatigue: 4, stress: 3, courbatures: 4, douleur: 2, zone: 'Genou droit', ressenti: 3, note: 'Nuit courte, genou tire.' },
+    { date: '29/08', sommeil: 3, energie: 3, fatigue: 3, stress: 2, courbatures: 3, douleur: 1, ressenti: 4, note: '' },
+    { date: '27/08', sommeil: 4, energie: 4, fatigue: 2, stress: 2, courbatures: 2, douleur: 1, ressenti: 4, note: '' },
   ],
   historique: { progression_par_exo: { 'Squat': [{ charge: 100, reps: 5 }, { charge: 105, reps: 5 }] }, volume_semaine: [{ muscle: 'Quadriceps', faites: 12 }, { muscle: 'Pectoraux', faites: 8 }], volume_par_jour: { '2026-08-10': 5000, '2026-08-24': 6000 } },
   global: { records_30j: 2, total_seances: 37, tonnage_total_kg: 128400, dernieres_seances: [{ date: '30/08', tonnage: 8200, exercices: ['Squat', 'Développé'] }, { date: '28/08', tonnage: 7600, exercices: ['Tractions'] }] },
@@ -113,7 +113,7 @@ check('C → fatigue=4 libellé « Importante »', /Importante/.test(html), 'pr�
 check('C → zone affichée (douleur≠1 + zone)', /Genou droit/.test(html), 'présent', 'absent');
 check('C → note affichée', /Nuit courte/.test(html), 'présent', 'absent');
 // Rapatriement (Étape 8 bis) : synthèse questionnaire (score /100 + point faible) — descriptif, pas un verdict
-check('C → synthèse questionnaire score /100 (45/100)', /45\/100/.test(html), 'présent', 'absent');
+check('C → synthèse questionnaire score /100 (40/100)', /40\/100/.test(html), 'présent', 'absent');
 check('C → point faible dominant (Sommeil)', /point faible : <b[^>]*>Sommeil/.test(html), 'présent', 'absent');
 check('C → synthèse absente si aucune dimension (rien inventé)', !/\/100/.test(run(true, { sport: 'muscu', moteur: dataMuscu.moteur, bien_etre: [{ note: 'rien' }] }, 'dash')), 'absent', 'PRÉSENT');
 // Données absentes → gestion propre, rien inventé

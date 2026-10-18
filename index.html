@@ -2903,81 +2903,90 @@
   <!-- Contenu scrollable -->
   <div style="overflow-y:auto;padding:0 16px;flex:1;">
 
-    <!-- ===== ÉTAT DU JOUR (avant séance / accueil) ===== -->
+    <!-- ===== ÉTAT DU JOUR (readiness — indice de Hooper) ===== -->
     <!-- Q1 : Sommeil -->
     <div class="wq-block" id="wqb-sommeil">
-      <div class="wq-label">😴 Qualité du sommeil</div>
+      <div class="wq-label"><svg class="wq-ic" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>Qualité du sommeil</div>
       <div class="wq-chips wq-seg" id="wq-sommeil">
-        <button class="wq-chip" data-val="1" onclick="selectWQ('sommeil',this)"><span class="wq-emo">😫</span><span class="wq-cap">Très mauv.</span></button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('sommeil',this)"><span class="wq-emo">😔</span><span class="wq-cap">Mauvais</span></button>
-        <button class="wq-chip" data-val="3" onclick="selectWQ('sommeil',this)"><span class="wq-emo">😐</span><span class="wq-cap">Moyen</span></button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('sommeil',this)"><span class="wq-emo">🙂</span><span class="wq-cap">Bon</span></button>
-        <button class="wq-chip" data-val="5" onclick="selectWQ('sommeil',this)"><span class="wq-emo">😃</span><span class="wq-cap">Excellent</span></button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('sommeil',this)"><span class="wq-cap">Très mauv.</span></button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('sommeil',this)"><span class="wq-cap">Mauvais</span></button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('sommeil',this)"><span class="wq-cap">Moyen</span></button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('sommeil',this)"><span class="wq-cap">Bon</span></button>
+        <button class="wq-chip" data-val="5" onclick="selectWQ('sommeil',this)"><span class="wq-cap">Excellent</span></button>
       </div>
     </div>
 
-    <!-- Q2 : Énergie -->
-    <div class="wq-block" id="wqb-energie">
-      <div class="wq-label">⚡ Niveau d'énergie</div>
-      <div class="wq-chips wq-seg" id="wq-energie">
-        <button class="wq-chip" data-val="1" onclick="selectWQ('energie',this)"><span class="wq-emo">🥱</span><span class="wq-cap">Très faible</span></button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('energie',this)"><span class="wq-emo">😴</span><span class="wq-cap">Faible</span></button>
-        <button class="wq-chip" data-val="3" onclick="selectWQ('energie',this)"><span class="wq-emo">😐</span><span class="wq-cap">Normal</span></button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('energie',this)"><span class="wq-emo">🙂</span><span class="wq-cap">Élevé</span></button>
-        <button class="wq-chip" data-val="5" onclick="selectWQ('energie',this)"><span class="wq-emo">⚡</span><span class="wq-cap">Très élevé</span></button>
-      </div>
-    </div>
-
-    <!-- Q3 : Fatigue musculaire -->
+    <!-- Q2 : Fatigue générale -->
     <div class="wq-block" id="wqb-fatigue">
-      <div class="wq-label">💪 Fatigue musculaire</div>
+      <div class="wq-label"><svg class="wq-ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Fatigue générale</div>
       <div class="wq-chips wq-seg" id="wq-fatigue">
-        <button class="wq-chip" data-val="1" onclick="selectWQ('fatigue',this)"><span class="wq-emo">💪</span><span class="wq-cap">Aucune</span></button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('fatigue',this)"><span class="wq-emo">🙂</span><span class="wq-cap">Faible</span></button>
-        <button class="wq-chip" data-val="3" onclick="selectWQ('fatigue',this)"><span class="wq-emo">😐</span><span class="wq-cap">Modérée</span></button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('fatigue',this)"><span class="wq-emo">😓</span><span class="wq-cap">Importante</span></button>
-        <button class="wq-chip" data-val="5" onclick="selectWQ('fatigue',this)"><span class="wq-emo">🥵</span><span class="wq-cap">Très imp.</span></button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('fatigue',this)"><span class="wq-cap">Aucune</span></button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('fatigue',this)"><span class="wq-cap">Faible</span></button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('fatigue',this)"><span class="wq-cap">Modérée</span></button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('fatigue',this)"><span class="wq-cap">Importante</span></button>
+        <button class="wq-chip" data-val="5" onclick="selectWQ('fatigue',this)"><span class="wq-cap">Très imp.</span></button>
       </div>
     </div>
 
-    <!-- Q3b : Motivation (état du jour, avant la séance) -->
-    <div class="wq-block" id="wqb-motivation">
-      <div class="wq-label">🔥 Motivation du jour</div>
-      <div class="wq-chips wq-seg" id="wq-motivation">
-        <button class="wq-chip" data-val="1" onclick="selectWQ('motivation',this)"><span class="wq-emo">😩</span><span class="wq-cap">Très faible</span></button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('motivation',this)"><span class="wq-emo">😕</span><span class="wq-cap">Faible</span></button>
-        <button class="wq-chip" data-val="3" onclick="selectWQ('motivation',this)"><span class="wq-emo">😐</span><span class="wq-cap">Moyenne</span></button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('motivation',this)"><span class="wq-emo">🙂</span><span class="wq-cap">Bonne</span></button>
-        <button class="wq-chip" data-val="5" onclick="selectWQ('motivation',this)"><span class="wq-emo">🔥</span><span class="wq-cap">À fond</span></button>
+    <!-- Q3 : Stress / tension (Hooper) -->
+    <div class="wq-block" id="wqb-stress">
+      <div class="wq-label"><svg class="wq-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Stress / tension</div>
+      <div class="wq-chips wq-seg" id="wq-stress">
+        <button class="wq-chip" data-val="1" onclick="selectWQ('stress',this)"><span class="wq-cap">Aucun</span></button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('stress',this)"><span class="wq-cap">Faible</span></button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('stress',this)"><span class="wq-cap">Modéré</span></button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('stress',this)"><span class="wq-cap">Élevé</span></button>
+        <button class="wq-chip" data-val="5" onclick="selectWQ('stress',this)"><span class="wq-cap">Très élevé</span></button>
+      </div>
+    </div>
+
+    <!-- Q4 : Courbatures / DOMS (Hooper) -->
+    <div class="wq-block" id="wqb-courbatures">
+      <div class="wq-label"><svg class="wq-ic" viewBox="0 0 24 24"><path d="M20.5 7.5 16 12l-4-4 4.5-4.5a3.5 3.5 0 0 1 4 4z"/><path d="M8 12l-4.5 4.5a3.5 3.5 0 0 0 4 4L12 16z"/></svg>Courbatures (muscles)</div>
+      <div class="wq-chips wq-seg" id="wq-courbatures">
+        <button class="wq-chip" data-val="1" onclick="selectWQ('courbatures',this)"><span class="wq-cap">Aucune</span></button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('courbatures',this)"><span class="wq-cap">Légères</span></button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('courbatures',this)"><span class="wq-cap">Modérées</span></button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('courbatures',this)"><span class="wq-cap">Importantes</span></button>
+        <button class="wq-chip" data-val="5" onclick="selectWQ('courbatures',this)"><span class="wq-cap">Très imp.</span></button>
       </div>
     </div>
 
     <!-- ===== BILAN DE SÉANCE (après validation) ===== -->
-    <!-- B1 : Ressenti de la séance (difficulté perçue) -->
-    <div class="wq-block" id="wqb-ressenti">
-      <div class="wq-label" id="wq-lbl-ressenti">😊 Ressenti de la séance</div>
-      <div class="wq-chips wq-seg" id="wq-ressenti">
-        <button class="wq-chip" data-val="1" onclick="selectWQ('ressenti',this)"><span class="wq-emo">🙂</span><span class="wq-cap">Facile</span></button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('ressenti',this)"><span class="wq-emo">😐</span><span class="wq-cap">Moyen</span></button>
-        <button class="wq-chip" data-val="3" onclick="selectWQ('ressenti',this)"><span class="wq-emo">😓</span><span class="wq-cap">Difficile</span></button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('ressenti',this)"><span class="wq-emo">🥵</span><span class="wq-cap">Très dur</span></button>
+    <!-- B1 : RPE de séance — échelle CR-10 de Foster (session-RPE) -->
+    <div class="wq-block" id="wqb-rpe">
+      <div class="wq-label"><svg class="wq-ic" viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>Intensité de la séance (RPE)</div>
+      <div class="wq-rpe-desc" id="wq-rpe-desc">Touche pour noter · 0 = repos complet, 10 = effort maximal</div>
+      <div class="wq-cr10" id="wq-rpe">
+        <button class="wq-cr" data-val="0"  onclick="selectRPE(this)" style="--c:#3a7d44">0</button>
+        <button class="wq-cr" data-val="1"  onclick="selectRPE(this)" style="--c:#2e7d32">1</button>
+        <button class="wq-cr" data-val="2"  onclick="selectRPE(this)" style="--c:#43a047">2</button>
+        <button class="wq-cr" data-val="3"  onclick="selectRPE(this)" style="--c:#7cb342">3</button>
+        <button class="wq-cr" data-val="4"  onclick="selectRPE(this)" style="--c:#c0ca33">4</button>
+        <button class="wq-cr" data-val="5"  onclick="selectRPE(this)" style="--c:#e0b000">5</button>
+        <button class="wq-cr" data-val="6"  onclick="selectRPE(this)" style="--c:#fb8c00">6</button>
+        <button class="wq-cr" data-val="7"  onclick="selectRPE(this)" style="--c:#f4511e">7</button>
+        <button class="wq-cr" data-val="8"  onclick="selectRPE(this)" style="--c:#e53935">8</button>
+        <button class="wq-cr" data-val="9"  onclick="selectRPE(this)" style="--c:#c62828">9</button>
+        <button class="wq-cr" data-val="10" onclick="selectRPE(this)" style="--c:#b71c1c">10</button>
       </div>
+      <div class="wq-cr-scale"><span>Repos</span><span>Modéré</span><span>Difficile</span><span>Max</span></div>
     </div>
 
     <!-- B2 : Douleurs pendant la séance -->
     <div class="wq-block" id="wqb-douleur">
-      <div class="wq-label">🤕 Des douleurs pendant la séance ?</div>
+      <div class="wq-label"><svg class="wq-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Une douleur à signaler ?</div>
       <div class="wq-chips wq-seg" id="wq-douleur">
-        <button class="wq-chip" data-val="1" onclick="selectWQ('douleur',this)"><span class="wq-emo">✅</span><span class="wq-cap">Non</span></button>
-        <button class="wq-chip" data-val="2" onclick="selectWQ('douleur',this)"><span class="wq-emo">🩹</span><span class="wq-cap">Légère</span></button>
-        <button class="wq-chip" data-val="3" onclick="selectWQ('douleur',this)"><span class="wq-emo">😣</span><span class="wq-cap">Modérée</span></button>
-        <button class="wq-chip" data-val="4" onclick="selectWQ('douleur',this)"><span class="wq-emo">🤕</span><span class="wq-cap">Forte</span></button>
+        <button class="wq-chip" data-val="1" onclick="selectWQ('douleur',this)"><span class="wq-cap">Non</span></button>
+        <button class="wq-chip" data-val="2" onclick="selectWQ('douleur',this)"><span class="wq-cap">Légère</span></button>
+        <button class="wq-chip" data-val="3" onclick="selectWQ('douleur',this)"><span class="wq-cap">Modérée</span></button>
+        <button class="wq-chip" data-val="4" onclick="selectWQ('douleur',this)"><span class="wq-cap">Forte</span></button>
       </div>
     </div>
 
     <!-- B2b : Zone douloureuse (conditionnelle si douleur) -->
     <div class="wq-block" id="wq-zone-block" style="display:none;">
-      <div class="wq-label" style="font-size:12px;color:var(--text-muted);">📍 Où ?</div>
+      <div class="wq-label" style="font-size:12px;color:var(--text-muted);">Où exactement ?</div>
       <div class="wq-chips wq-chips-wrap" id="wq-zone">
         <button class="wq-chip" data-val="nuque"      onclick="selectWQ('zone',this)">Nuque / cou</button>
         <button class="wq-chip" data-val="epaule"     onclick="selectWQ('zone',this)">Épaule</button>
