@@ -1062,6 +1062,9 @@
          détail » (régularité·bien-être·pas), puis récompenses tout en bas. */
       #tab-accueil .tj-greet{order:1;}
       #tab-accueil .tj-banner{order:2;}
+      /* Bloc charge/fatigue unifié : sans order il héritait de 0 → il passait AVANT
+         le « Bonjour » sur mobile. On le place juste après le greet (cockpit). */
+      #tab-accueil #tj-chargefatigue{order:2;}
       #tab-accueil #tj-nova{order:3;}
       #tab-accueil .tj-seance{order:4;}
       #tab-accueil #tj-attention{order:5;}
@@ -1591,6 +1594,8 @@
               <div class="exo-actuel-perf" id="exo-actuel-perf"></div>
               <div class="exo-actuel-cible" id="exo-actuel-cible"></div>
               <div id="exo-actuel-suggestion"></div>
+              <!-- #4 : checklist des séries prévues (cochées au fur et à mesure) -->
+              <div id="plan-series-actuel"></div>
             </div>
 
             <!-- Séries déjà faites -->
