@@ -7220,10 +7220,113 @@ function _cdPersistLigne(ligne) {
       rpe_cible: (ligne.rpe_cible == null ? null : Number(ligne.rpe_cible)),
       type: ligne.type || null,
       cardio_cible: (ligne.cardio_cible == null ? null : Number(ligne.cardio_cible)),
-      cardio_unite: ligne.cardio_unite || null
+      cardio_unite: ligne.cardio_unite || null,
+      // #4 schéma de séries : schema + back-off % (topbackoff) + cibles par série (pyramidal)
+      schema: ligne.schema || null,
+      backoff_pct: (ligne.backoff_pct == null || ligne.backoff_pct === '' ? null : Number(ligne.backoff_pct)),
+      series_json: (Array.isArray(ligne.series_json) && ligne.series_json.length ? ligne.series_json : null)
     })
   });
 }
+// ═══ #4 — Schéma de séries : dérivation + contrôles d'édition + handlers ═══
+// Fourchette de reps lisible (« 8 », « 8–12 », « ? »).
+function _repsRange(a, b) {
+  var ha = (a != null && a !== ''), hb = (b != null && b !== '');
+  if (ha && hb) return String(a) === String(b) ? String(a) : (a + '–' + b);
+  return ha ? String(a) : (hb ? String(b) : '?');
+}
+// Dérive les cibles PAR SÉRIE d'une ligne de programme selon son schéma. rm = 1RM
+// estimé (kg) ou null. PURE : lit UNIQUEMENT la ligne (aucune invention — règle 6bis).
+// Retourne { series:[{serie,reps,pct,kg,rpe,tag}], note }.
+function _derivePlanSeries(l, rm) {
+  if (!l) return { series: [], note: '' };
+  var schema = l.schema || 'fixe';
+  var n = Number(l.series_prevues) || 0;
+  var repsTxt = _repsRange(l.reps_mini, l.reps_max);
+  var kgOf = function (pct) { return (rm && pct != null) ? Math.round(rm * pct / 100 / 2.5) * 2.5 : null; };
+  var out = [];
+  if (schema === 'pyramidal' && Array.isArray(l.series_json) && l.series_json.length) {
+    l.series_json.slice(0, 12).forEach(function (s, i) {
+      out.push({ serie: i + 1, reps: (s && s.reps != null ? String(s.reps) : repsTxt), pct: (s && s.pct != null ? Number(s.pct) : null), kg: kgOf(s && s.pct != null ? Number(s.pct) : null), rpe: (s && s.rpe != null ? Number(s.rpe) : null), tag: '' });
+    });
+    return { series: out, note: 'Pyramidal : charge et reps propres à chaque série.' };
+  }
+  if (schema === 'topbackoff' && n > 0) {
+    var bo = (l.backoff_pct != null && l.backoff_pct !== '') ? Number(l.backoff_pct) : 10;
+    var topPct = l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null;
+    var boPct = topPct != null ? Math.round(topPct * (1 - bo / 100)) : null;
+    out.push({ serie: 1, reps: (l.reps_mini != null && l.reps_mini !== '' ? String(l.reps_mini) : repsTxt), pct: topPct, kg: kgOf(topPct), rpe: (l.rpe_cible != null ? Number(l.rpe_cible) : null), tag: 'lourde' });
+    for (var k = 2; k <= n; k++) out.push({ serie: k, reps: (l.reps_max != null && l.reps_max !== '' ? String(l.reps_max) : repsTxt), pct: boPct, kg: kgOf(boPct), rpe: null, tag: 'back-off' });
+    return { series: out, note: 'Top-set + back-off : 1 série lourde, puis −' + bo + '% en volume.' };
+  }
+  // fixe / double : même cible pour toutes les séries
+  var pctF = l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null;
+  for (var j = 1; j <= n; j++) out.push({ serie: j, reps: repsTxt, pct: pctF, kg: kgOf(pctF), rpe: (l.rpe_cible != null ? Number(l.rpe_cible) : null), tag: '' });
+  return { series: out, note: schema === 'double' ? 'Double progression : monte d\'abord les reps, puis la charge.' : '' };
+}
+// Libellé court d'une charge dérivée (kg si 1RM connu, sinon % 1RM).
+function _planLoadTxt(s) { return s.kg != null ? (s.kg + ' kg') : (s.pct != null ? (s.pct + ' %') : ''); }
+
+var _SCHEMA_OPTS = [['fixe', 'Séries fixes'], ['double', 'Double progression'], ['topbackoff', 'Top-set + back-off'], ['pyramidal', 'Pyramidal']];
+// Bloc de contrôles « Schéma » injecté dans l'éditeur (builder desktop ET mobile).
+// Classes génériques (non scopées à l'overlay) → même rendu partout.
+function _schemaControlsHtml(l, seanceId) {
+  if (!l || l.type === 'cardio') return '';
+  var sj = String(seanceId).replace(/'/g, "\\'"), ri = l.row_index, sch = l.schema || 'fixe';
+  var sel = '<label class="sch-sel"><span class="sch-l">Schéma de séries</span>'
+    + '<select onchange="cdSetSchema(' + ri + ',\'' + sj + '\',this.value)">'
+    + _SCHEMA_OPTS.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === sch ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
+    + '</select></label>';
+  var extra = '';
+  if (sch === 'topbackoff') {
+    var bo = (l.backoff_pct != null && l.backoff_pct !== '') ? l.backoff_pct : 10;
+    extra = '<label class="sch-sel sch-bo"><span class="sch-l">Back-off (−% sur les séries de volume)</span>'
+      + '<input type="number" value="' + bo + '" min="0" max="50" onchange="cdSetBackoff(' + ri + ',\'' + sj + '\',this.value)"></label>';
+  }
+  var table = '';
+  if (sch === 'pyramidal') {
+    var n = Number(l.series_prevues) || (Array.isArray(l.series_json) ? l.series_json.length : 0) || 3;
+    var arr = Array.isArray(l.series_json) ? l.series_json : [];
+    var rows = '';
+    for (var k = 0; k < n; k++) {
+      var s = arr[k] || {};
+      rows += '<div class="sch-pyr-row"><span class="sch-pyr-s">S' + (k + 1) + '</span>'
+        + '<input type="number" placeholder="% 1RM" value="' + (s.pct != null ? s.pct : '') + '" onchange="cdSetPyramidCell(' + ri + ',\'' + sj + '\',' + k + ',\'pct\',this.value)">'
+        + '<input type="number" placeholder="reps" value="' + (s.reps != null ? s.reps : '') + '" onchange="cdSetPyramidCell(' + ri + ',\'' + sj + '\',' + k + ',\'reps\',this.value)">'
+        + '</div>';
+    }
+    table = '<div class="sch-pyr"><div class="sch-pyr-hd">Cible par série (% 1RM · reps)</div>' + rows + '</div>';
+  }
+  // Aperçu dérivé (ce que verra l'athlète au démarrage).
+  var plan = _derivePlanSeries(l, _est1RM(l.exercice));
+  var prev = plan.series.length ? '<div class="sch-prev">' + plan.series.map(function (s) {
+    var load = _planLoadTxt(s);
+    return '<span class="sch-chip' + (s.tag === 'lourde' ? ' top' : '') + '">S' + s.serie + ' <small>' + escapeHtml([s.reps + ' reps', load].filter(Boolean).join(' · ')) + '</small></span>';
+  }).join('') + '</div>' : '';
+  return '<div class="sch-wrap">' + sel + extra + table + prev + '</div>';
+}
+function cdSetSchema(rowIndex, seanceId, val) {
+  var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
+  l.schema = (['fixe', 'double', 'topbackoff', 'pyramidal'].indexOf(val) >= 0) ? val : 'fixe';
+  if (l.schema === 'pyramidal' && (!Array.isArray(l.series_json) || !l.series_json.length)) {
+    var n = Number(l.series_prevues) || 3; l.series_json = [];
+    for (var k = 0; k < n; k++) l.series_json.push({ pct: (l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null), reps: (l.reps_mini != null ? Number(l.reps_mini) : null), rpe: null });
+  }
+  if (l.schema === 'topbackoff' && (l.backoff_pct == null || l.backoff_pct === '')) l.backoff_pct = 10;
+  cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l);
+}
+function cdSetBackoff(rowIndex, seanceId, val) {
+  var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
+  l.backoff_pct = (val === '' ? null : Number(val)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l);
+}
+function cdSetPyramidCell(rowIndex, seanceId, idx, field, val) {
+  var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
+  if (!Array.isArray(l.series_json)) l.series_json = [];
+  while (l.series_json.length <= idx) l.series_json.push({ pct: null, reps: null, rpe: null });
+  l.series_json[idx][field] = (val === '' ? null : Number(val));
+  cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l);
+}
+
 // Setters d'un item cardio dans le builder.
 function cdSetCardioActivite(rowIndex, val) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.exercice = val; cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l); }
 function cdSetCardioUnite(rowIndex, u) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.cardio_unite = u; if (u === 'libre') l.cardio_cible = null; cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l); }
@@ -7402,7 +7505,8 @@ function renderProgrammeCoach() {
         <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,null,this.value)" style="font-size:13px;padding:9px 6px;width:100%;min-width:0;text-align:center;margin-bottom:0;font-weight:700">${_rpeOptions(l.rpe_cible)}</select>
       </div>
     </div>
-    ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}`;
+    ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}
+    ${_schemaControlsHtml(l, seanceId)}`;
 
   // Champs éditables d'un item CARDIO : activité + mode de cible (durée/distance/libre) + valeur.
   const champsExoCardio = (l) => `
@@ -7569,6 +7673,7 @@ function renderProgrammeCoach() {
         +   '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
         +   '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
         + '</div>'
+        + _schemaControlsHtml(l, sid)
         + '</div>';
     };
     var rowCardio = function (l, sid) {
@@ -10207,23 +10312,22 @@ function majSeriesActuel() {
 function majPlanSeries() {
   var el = document.getElementById('plan-series-actuel'); if (!el) return;
   var pProg = exoEnCours ? programmeSeance.find(function (p) { return p.exercice === exoEnCours.exerciceNom; }) : null;
-  var n = pProg ? (Number(pProg.series_prevues) || 0) : 0;
-  if (!pProg || n <= 0) { el.innerHTML = ''; return; }
-  if (n > 12) n = 12;   // garde-fou lisibilité
+  if (!pProg) { el.innerHTML = ''; return; }
+  // Cibles PAR SÉRIE dérivées du schéma (fixe/double/top-set+back-off/pyramidal).
+  var plan = _derivePlanSeries(pProg, _est1RM(exoEnCours.exerciceNom));
+  var ps = plan.series; if (!ps.length) { el.innerHTML = ''; return; }
   var done = exoEnCours ? exoEnCours.series.length : 0;
-  var repsTxt = (pProg.reps_mini != null && pProg.reps_mini !== '' && pProg.reps_max != null && pProg.reps_max !== '')
-    ? (pProg.reps_mini + '-' + pProg.reps_max)
-    : (pProg.reps_mini != null && pProg.reps_mini !== '' ? ('' + pProg.reps_mini) : (pProg.reps_max != null && pProg.reps_max !== '' ? ('' + pProg.reps_max) : '?'));
-  var chips = '';
-  for (var k = 1; k <= n; k++) {
+  var chips = ps.map(function (s, i) {
+    var k = i + 1;
     var st = (k <= done) ? 'done' : (k === done + 1 ? 'cur' : 'todo');
     var mark = (st === 'done') ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '';
-    chips += '<span class="plan-chip ' + st + '">' + mark + 'S' + k + ' <small>' + repsTxt + '</small></span>';
-  }
-  var cible = _cibleTxt(pProg, true);
+    var load = _planLoadTxt(s);
+    var detail = [s.reps + ' reps', load, (s.rpe != null ? 'RPE ' + s.rpe : ''), (s.tag || '')].filter(Boolean).join(' · ');
+    return '<span class="plan-chip ' + st + (s.tag === 'lourde' ? ' top' : '') + '">' + mark + 'S' + k + ' <small>' + escapeHtml(detail) + '</small></span>';
+  }).join('');
   var reposTxt = (pProg.repos_sec != null && pProg.repos_sec !== '') ? (pProg.repos_sec + 's repos') : '';
-  var sub = [cible, reposTxt].filter(Boolean).join(' · ');
-  el.innerHTML = '<div class="plan-hd">Séries prévues · ' + done + '/' + n + '</div>'
+  var sub = [plan.note, reposTxt].filter(Boolean).join(' · ');
+  el.innerHTML = '<div class="plan-hd">Séries prévues · ' + done + '/' + ps.length + '</div>'
     + '<div class="plan-chips">' + chips + '</div>'
     + (sub ? '<div class="plan-sub">' + escapeHtml(sub) + '</div>' : '');
 }

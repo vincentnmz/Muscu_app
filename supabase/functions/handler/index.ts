@@ -2023,6 +2023,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     type: r.type || null,                                                         // 'cardio' = item cardio (hybride), sinon muscu
     cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null,         // valeur de la cible cardio
     cardio_unite: r.cardio_unite || null,                                         // 'min' | 'km' | 'libre'
+    // Schéma de séries (#4) : 'fixe'(défaut) | 'double' | 'topbackoff' | 'pyramidal'.
+    schema: r.schema || null, backoff_pct: r.backoff_pct != null ? Number(r.backoff_pct) : null,
+    series_json: r.series_json != null ? r.series_json : null,   // pyramidal : [{pct,reps,rpe}]
   }))
 
   const bien_etre = (beRows || []).map(r => ({
@@ -2426,7 +2429,7 @@ async function handleGetCoachProgramme(params: URLSearchParams): Promise<Respons
   const athleteId = params.get('athlete_id')
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
   const { data } = await sb().from('programme').select('*').eq('athlete_id', athleteId).order('groupe_id').order('id')
-  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null, charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null, rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null, type: r.type || null, cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null, cardio_unite: r.cardio_unite || null }))
+  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null, charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null, rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null, type: r.type || null, cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null, cardio_unite: r.cardio_unite || null, schema: r.schema || null, backoff_pct: r.backoff_pct != null ? Number(r.backoff_pct) : null, series_json: r.series_json != null ? r.series_json : null }))
   // le front lit data.lignes ; on garde aussi "programme" par rétro-compat
   return jsonResp({ ok: true, lignes, programme: lignes })
 }
@@ -4432,6 +4435,11 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
   const typeIn = (body.type === 'cardio') ? 'cardio' : (body.type === 'muscu' ? 'muscu' : null)
   const cibleIn = (body.cardio_cible === '' || body.cardio_cible == null) ? null : Number(body.cardio_cible)
   const uniteIn = (body.cardio_unite === '' || body.cardio_unite == null) ? null : String(body.cardio_unite)
+  // Schéma de séries (#4) : valeur contrôlée ; backoff_pct (top-set+back-off) ; series_json (pyramidal).
+  const _SCHEMAS = ['fixe', 'double', 'topbackoff', 'pyramidal']
+  const schemaIn = _SCHEMAS.includes(String(body.schema)) ? String(body.schema) : null
+  const backoffIn = (body.backoff_pct === '' || body.backoff_pct == null) ? null : Number(body.backoff_pct)
+  const seriesJsonIn = _parseSeriesJson(body.series_json)
   if (row_index) {
     const patch: any = { seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id }
     if (body.jour !== undefined) patch.jour = jourIn
@@ -4440,6 +4448,9 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
     if (body.type !== undefined) patch.type = typeIn
     if (body.cardio_cible !== undefined) patch.cardio_cible = cibleIn
     if (body.cardio_unite !== undefined) patch.cardio_unite = uniteIn
+    if (body.schema !== undefined) patch.schema = schemaIn
+    if (body.backoff_pct !== undefined) patch.backoff_pct = backoffIn
+    if (body.series_json !== undefined) patch.series_json = seriesJsonIn
     const { error } = await sb().from('programme').update(patch).eq('id', row_index)
     if (error) return jsonResp({ erreur: error.message })
   } else {
@@ -4449,10 +4460,24 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
       const { data: sib } = await sb().from('programme').select('jour').eq('athlete_id', athlete_id).eq('seance_id', seance_id).not('jour', 'is', null).limit(1)
       if (sib && sib.length && sib[0].jour != null) jour = Number(sib[0].jour)
     }
-    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour, charge_pct_1rm: pctIn, rpe_cible: rpeIn, type: typeIn, cardio_cible: cibleIn, cardio_unite: uniteIn })
+    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour, charge_pct_1rm: pctIn, rpe_cible: rpeIn, type: typeIn, cardio_cible: cibleIn, cardio_unite: uniteIn, schema: schemaIn, backoff_pct: backoffIn, series_json: seriesJsonIn })
     if (error) return jsonResp({ erreur: error.message })
   }
   return jsonResp({ ok: true })
+}
+
+// Pyramidal : tableau de cibles par série [{pct, reps, rpe}]. Accepte un array JS
+// (client supabase → jsonb) OU une chaîne JSON. Nettoie/typé ; null si vide/invalide.
+function _parseSeriesJson(v: any): any[] | null {
+  let arr = v
+  if (typeof v === 'string') { if (!v.trim()) return null; try { arr = JSON.parse(v) } catch { return null } }
+  if (!Array.isArray(arr) || !arr.length) return null
+  const out = arr.slice(0, 12).map((s: any) => ({
+    pct: (s && s.pct != null && s.pct !== '') ? Number(s.pct) : null,
+    reps: (s && s.reps != null && s.reps !== '') ? Number(s.reps) : null,
+    rpe: (s && s.rpe != null && s.rpe !== '') ? Number(s.rpe) : null,
+  }))
+  return out.length ? out : null
 }
 
 // Jour conseillé d'une séance (Lun=1 … Dim=7, null = non planifié) : appliqué à
@@ -4492,6 +4517,9 @@ async function handleGenererProgramme(body: any): Promise<Response> {
     jour: num(l.jour),
     charge_pct_1rm: num(l.charge_pct_1rm),
     rpe_cible: num(l.rpe_cible),
+    schema: ['fixe', 'double', 'topbackoff', 'pyramidal'].includes(String(l.schema)) ? String(l.schema) : null,
+    backoff_pct: num(l.backoff_pct),
+    series_json: _parseSeriesJson(l.series_json),
   })).filter((r: any) => r.exercice && r.seance_id)
   if (!rows.length) return jsonResp({ erreur: 'Lignes invalides' })
   if (body.remplacer) {
