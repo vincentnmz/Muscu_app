@@ -1776,7 +1776,7 @@ function togglePwd(id, btn) {
   var el = document.getElementById(id); if (!el) return;
   var reveal = el.type === 'password';
   el.type = reveal ? 'text' : 'password';
-  if (btn) { btn.textContent = reveal ? '' : '👁'; btn.setAttribute('aria-label', reveal ? 'Masquer le mot de passe' : 'Afficher le mot de passe'); }
+  if (btn) { btn.innerHTML = reveal ? '<i class=nv-ic-eye-off></i>' : '<i class=nv-ic-eye></i>'; btn.setAttribute('aria-label', reveal ? 'Masquer le mot de passe' : 'Afficher le mot de passe'); }
 }
 
 async function seConnecter() {
@@ -2229,7 +2229,7 @@ function toggleResetMdpVisibility() {
   if (!inp) return;
   const masque = inp.type === 'password';
   inp.type = masque ? 'text' : 'password';
-  if (eye) eye.textContent = masque ? '' : '👁';
+  if (eye) eye.innerHTML = masque ? '<i class=nv-ic-eye></i>' : '<i class=nv-ic-eye-off></i>';
 }
 
 function copierResetMdp() {
@@ -2248,7 +2248,7 @@ function ouvrirResetMdp(athlete_id, nom) {
   _resetMdpEnCours = false;
   const nomEl = document.getElementById('reset-mdp-nom'); if (nomEl) nomEl.textContent = nom || 'cet athlète';
   const inp = document.getElementById('reset-mdp-input'); if (inp) { inp.type = 'password'; inp.value = ''; }
-  const eye = document.getElementById('reset-mdp-eye'); if (eye) eye.textContent = '👁';
+  const eye = document.getElementById('reset-mdp-eye'); if (eye) eye.innerHTML = '<i class=nv-ic-eye></i>';
   const msg = document.getElementById('reset-mdp-msg'); if (msg) { msg.textContent = ''; msg.style.color = ''; }
   const btn = document.getElementById('reset-mdp-confirm'); if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
   const ov = document.getElementById('reset-mdp-overlay'); if (ov) ov.style.display = 'flex';
@@ -2280,7 +2280,7 @@ async function confirmerResetMdp() {
       if (inp) inp.type = 'text';   // laisse le coach lire / copier le nouveau mdp
       setMsg('Mot de passe réinitialisé. Nouveau mot de passe : ' + mdp + ' — communique-le à l\'athlète.', 'var(--good)');
       if (btn) { btn.disabled = true; btn.textContent = 'Terminé'; }
-      showToast('🔐 Mot de passe réinitialisé');
+      showToast('Mot de passe réinitialisé');
     } else {
       setMsg('' + ((data && data.error) || 'Échec de la réinitialisation.'));
       if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
@@ -2385,7 +2385,7 @@ async function changerMonMotDePasse() {
     if (data && data.success) {
       setMsg('Mot de passe modifié.', 'var(--good)');
       if (a) a.value = ''; if (n) n.value = '';
-      showToast('🔐 Mot de passe modifié');
+      showToast('Mot de passe modifié');
     } else {
       setMsg('' + ((data && data.error) || 'Échec de la modification.'));
     }
@@ -2531,7 +2531,7 @@ async function changerMotDePasseCoach() {
       body: JSON.stringify({ action: 'changePasswordCoach', coach_id: coach.coach_id, ancien_mdp: ancien, nouveau_mdp: nouveau }),
     });
     var data = await res.json();
-    if (data && data.success) { if (a) a.value = ''; if (n) n.value = ''; setMsg('Mot de passe modifié.', 'var(--good)'); showToast('🔐 Mot de passe modifié'); }
+    if (data && data.success) { if (a) a.value = ''; if (n) n.value = ''; setMsg('Mot de passe modifié.', 'var(--good)'); showToast('Mot de passe modifié'); }
     else { setMsg('' + ((data && data.error) || 'Échec de la modification.')); }
   } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
@@ -7179,20 +7179,20 @@ function _progReadonly()   { return !!(progCtx && progCtx.readonly); }   // joue
 //          prog(programme hybride) · special('hyrox' = saisie structurée dédiée).
 var _F_FC = function (ph) { return { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: ph || '140', optional: true }; };
 var _CARDIO_CATALOG = [
-  { key: 'footing', label: 'Footing', ico: '🏃', color: '#6366F1', hint: 'Distance · vitesse · FC', svg: '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true }, _F_FC('145')], noDist: false, en: true, prog: true },
-  { key: 'velo', label: 'Vélo', ico: '🚴', color: '#9D5FD3', hint: 'Distance · watts · FC', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '85' }, { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true }, _F_FC('140')], noDist: false, en: true, prog: true },
-  { key: 'marche_normale', label: 'Marche', ico: '🚶', color: '#22D3EE', hint: 'Distance · pas · FC', svg: '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true }, _F_FC('110')], noDist: false, en: true, prog: true },
-  { key: 'marche_inclinee', label: 'Marche inclinée', ico: '🥾', color: '#10B981', hint: 'Pente · distance', svg: '<path d="M3 20h18M5 20 16 6M9 10l3 2"/>', spec: [{ id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true }, { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '6', step: '0.1', calc: true }, _F_FC('130')], noDist: false, en: true, prog: true },
+  { key: 'footing', label: 'Footing', ico: '', color: '#6366F1', hint: 'Distance · vitesse · FC', svg: '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true }, _F_FC('145')], noDist: false, en: true, prog: true },
+  { key: 'velo', label: 'Vélo', ico: '', color: '#9D5FD3', hint: 'Distance · watts · FC', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '85' }, { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true }, _F_FC('140')], noDist: false, en: true, prog: true },
+  { key: 'marche_normale', label: 'Marche', ico: '', color: '#22D3EE', hint: 'Distance · pas · FC', svg: '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true }, _F_FC('110')], noDist: false, en: true, prog: true },
+  { key: 'marche_inclinee', label: 'Marche inclinée', ico: '', color: '#10B981', hint: 'Pente · distance', svg: '<path d="M3 20h18M5 20 16 6M9 10l3 2"/>', spec: [{ id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true }, { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '6', step: '0.1', calc: true }, _F_FC('130')], noDist: false, en: true, prog: true },
   { key: 'natation', label: 'Natation', ico: '🏊', color: '#8B5CF6', hint: 'Distance · temps · FC', svg: '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01M9 12l4-3 3 2"/>', spec: [_F_FC('140')], noDist: false, en: true, prog: true },
-  { key: 'rameur', label: 'Rameur', ico: '🚣', color: '#14B8A6', hint: 'Distance · puissance · FC', svg: '<path d="M2 12h20M6 9l-2 3 2 3M18 9l2 3-2 3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '150', optional: true }, { id: 'cadence', label: 'Cadence (coups/min)', placeholder: '26' }, _F_FC('145')], noDist: false, en: true, prog: true },
+  { key: 'rameur', label: 'Rameur', ico: '', color: '#14B8A6', hint: 'Distance · puissance · FC', svg: '<path d="M2 12h20M6 9l-2 3 2 3M18 9l2 3-2 3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '150', optional: true }, { id: 'cadence', label: 'Cadence (coups/min)', placeholder: '26' }, _F_FC('145')], noDist: false, en: true, prog: true },
   { key: 'hiit', label: 'HIIT', ico: '', color: '#EF4444', hint: 'Durée · FC', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('155')], noDist: true, en: true, prog: true },
-  { key: 'elliptique', label: 'Elliptique', ico: '🌀', color: '#D946EF', hint: 'Durée · watts · FC', svg: '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '120', optional: true }, _F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'elliptique', label: 'Elliptique', ico: '', color: '#D946EF', hint: 'Durée · watts · FC', svg: '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '120', optional: true }, _F_FC('140')], noDist: true, en: true, prog: true },
   { key: 'boxe', label: 'Boxe', ico: '🥊', color: '#F43F5E', hint: 'Durée · FC', svg: '<path d="M7 7h7a3 3 0 0 1 3 3v3a4 4 0 0 1-4 4H9a2 2 0 0 1-2-2V7z"/>', spec: [_F_FC('150')], noDist: true, en: true, prog: true },
   { key: 'corde_a_sauter', label: 'Corde à sauter', ico: '🪢', color: '#F97316', hint: 'Durée · FC', svg: '<path d="M6 3v9a6 6 0 0 0 12 0V3"/><circle cx="6" cy="3" r="1.5"/><circle cx="18" cy="3" r="1.5"/>', spec: [_F_FC('150')], noDist: true, en: true, prog: true },
   { key: 'escaliers', label: 'Escaliers', ico: '🪜', color: '#0EA5E9', hint: 'Durée · FC', svg: '<path d="M3 20h4v-4h4v-4h4v-4h4"/>', spec: [_F_FC('140')], noDist: true, en: true, prog: true },
-  { key: 'spinning', label: 'Spinning / Vélo d\'appart', ico: '🚲', color: '#7C3AED', hint: 'Durée · watts · FC', svg: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17 10 8h4M14 8l3 9"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '160', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '90' }, _F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'spinning', label: 'Spinning / Vélo d\'appart', ico: '', color: '#7C3AED', hint: 'Durée · watts · FC', svg: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17 10 8h4M14 8l3 9"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '160', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '90' }, _F_FC('140')], noDist: true, en: true, prog: true },
   { key: 'aquabike', label: 'Aquabike', ico: '💦', color: '#06B6D4', hint: 'Durée · FC', svg: '<path d="M3 18c2 0 2-1.5 4-1.5S9 18 11 18s2-1.5 4-1.5S17 18 19 18M9 14l3-5 3 2M13 8a2 2 0 1 0 0-.01"/>', spec: [_F_FC('130')], noDist: true, en: true, prog: true },
-  { key: 'ski_fond', label: 'Ski de fond', ico: '🎿', color: '#38BDF8', hint: 'Distance · FC', svg: '<path d="M3 20 21 8M7 6l10 10M6 18l2 2"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '12', step: '0.1', calc: true }, _F_FC('150')], noDist: false, en: true, prog: true },
+  { key: 'ski_fond', label: 'Ski de fond', ico: '', color: '#38BDF8', hint: 'Distance · FC', svg: '<path d="M3 20 21 8M7 6l10 10M6 18l2 2"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '12', step: '0.1', calc: true }, _F_FC('150')], noDist: false, en: true, prog: true },
   { key: 'hyrox', label: 'Hyrox', ico: '', color: '#FFBC13', hint: '8 × (Run + atelier)', svg: '<path d="M4 7h16M4 12h16M4 17h16"/>', spec: [], noDist: false, en: false, prog: false, special: 'hyrox' },
   { key: 'autre', label: 'Autre', ico: '', color: '#F59E0B', hint: 'Durée · RPE · kcal', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('135')], noDist: false, en: true, prog: false }
 ];
@@ -7441,7 +7441,7 @@ function renderProgrammeCoach() {
           <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-top:2px">Cardio</div>
         </div>
         <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;color:#9D5FD3">${_progCardioCibleTxt(l)}</span>
-        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>`}
+        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class=nv-ic-pencil></i></span>`}
       </div>`;
     }
     const mus = muscleDe(l.exercice);
@@ -7452,7 +7452,7 @@ function renderProgrammeCoach() {
           ${mus ? `<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-top:2px">${mus}</div>` : ''}
         </div>
         <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap">${resumeQty(l)}</span>
-        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>`}
+        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class=nv-ic-pencil></i></span>`}
       </div>`;
   };
 
@@ -7483,7 +7483,7 @@ function renderProgrammeCoach() {
         + '<div class="prog-exc-top">'
         +   gripSvg
         +   '<div class="prog-exc-nm" onclick="cdToggleExo(' + l.row_index + ')"><div class="a">' + l.exercice + '</div>' + (mus ? '<span class="prog-exc-tag" style="color:' + gcol + ';background:' + gcol + '1f">' + mus + '</span>' : '') + '</div>'
-        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')">✎</span>'
+        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')"><i class=nv-ic-pencil></i></span>'
         + '</div>'
         + '<div class="prog-sets">' + statBox(l.series_prevues || '–', 'Séries', 'ser') + statBox(reps, 'Reps', 'rep') + statBox(charge, 'Charge', 'chg') + statBox(repos, 'Repos', 'rst') + '</div>'
         + blocEditE(l, seanceId, null, selLier(l, seanceId, [l.exercice]) + moveSel(l, seanceId))
@@ -7494,7 +7494,7 @@ function renderProgrammeCoach() {
         + '<div class="prog-exc-top">'
         +   gripSvg
         +   '<div class="prog-exc-nm" onclick="cdToggleExo(' + l.row_index + ')"><div class="a" style="color:#9D5FD3">' + _progCardioIco(l.exercice) + ' ' + l.exercice + '</div><span class="prog-exc-tag" style="color:#9D5FD3;background:#9D5FD31f">Cardio · ' + _progCardioCibleTxt(l) + '</span></div>'
-        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')">✎</span>'
+        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')"><i class=nv-ic-pencil></i></span>'
         + '</div>'
         + blocEditE(l, seanceId, null, moveSel(l, seanceId))
         + '</div>';
@@ -7525,7 +7525,7 @@ function renderProgrammeCoach() {
       return '<div class="prog-col" data-i="' + si + '"' + (si === _progTab ? '' : ' data-off="1"') + ' ondragover="progDragOver(event)" ondragleave="progDragLeave(event)" ondrop=\'progDrop(event,' + sidEsc + ')\' style="border-top:3px solid ' + dcol + '">'
         + '<div class="prog-colhd" style="background:' + dcol + '14;border:1px solid ' + dcol + '33">'
         +   '<div class="prog-colhd-t"><span class="prog-colbar" style="background:' + dcol + '"></span><div><div class="dn" style="color:' + dcol + '">' + escapeHtml(String(seanceId)) + '</div><div class="ds">' + lignes.length + ' exo' + (lignes.length > 1 ? 's' : '') + (jour ? ' · ' + _PROG_JOURS_LONG[jour - 1] : '') + '</div></div></div>'
-        +   '<button class="prog-col-del" onclick=\'cdSupprimerSeance(' + sidEsc + ')\' title="Supprimer la séance">🗑</button></div>'
+        +   '<button class="prog-col-del" onclick=\'cdSupprimerSeance(' + sidEsc + ')\' title="Supprimer la séance"><i class=nv-ic-trash></i></button></div>'
         + _progJourPicker(seanceId, lignes)
         + cartes
         + '<button class="prog-addexo" onclick="cdAjouterExercice(\'' + sidJs + '\')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg> Ajouter un exercice</button>'
@@ -7678,7 +7678,7 @@ function renderProgrammeCoach() {
         <div style="font-size:15px;font-weight:800;color:var(--accent);display:flex;align-items:center;gap:8px"><svg class="ico"><use href="#i-clipboard"/></svg>${seanceId}</div>
         <div style="display:flex;align-items:center;gap:9px">
           <span style="font-size:11px;font-weight:800;background:var(--accent-a14);color:var(--accent);padding:2px 9px;border-radius:20px">${lignes.length} exo${lignes.length>1?'s':''}</span>
-          ${ro ? '' : `<button onclick='event.stopPropagation();cdSupprimerSeance(${JSON.stringify(seanceId)})' title="Supprimer la séance" style="background:var(--bad-a);border:1px solid var(--danger);color:var(--danger);border-radius:8px;width:30px;height:30px;padding:0;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;">🗑</button>`}
+          ${ro ? '' : `<button onclick='event.stopPropagation();cdSupprimerSeance(${JSON.stringify(seanceId)})' title="Supprimer la séance" style="background:var(--bad-a);border:1px solid var(--danger);color:var(--danger);border-radius:8px;width:30px;height:30px;padding:0;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;"><i class=nv-ic-trash></i></button>`}
           <span id="prog-arrow-${si}" style="font-size:15px;color:var(--text-muted);transition:transform .2s;transform:${ouvert?'rotate(90deg)':'none'}">›</span>
         </div>
       </div>
@@ -7924,7 +7924,7 @@ async function _cdAddMuscu(seanceId) {
     + '<div style="padding:14px 16px 10px;flex:none;">'
     +   '<div style="width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 12px"></div>'
     +   '<div style="font-weight:800;text-align:center;font-size:15px;margin-bottom:10px">Ajouter des exercices à ' + escapeHtml(String(seanceId)) + '</div>'
-    +   '<input id="cd-pick-q" type="text" placeholder="🔍 Rechercher un exercice…" oninput="_cdPickFilter(this.value)" autocomplete="off" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px 12px;box-sizing:border-box;margin:0;">'
+    +   '<input id="cd-pick-q" type="text" placeholder="Rechercher un exercice…" oninput="_cdPickFilter(this.value)" autocomplete="off" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px 12px;box-sizing:border-box;margin:0;">'
     + '</div>'
     + '<div id="cd-pick-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 8px;"></div>'
     + '<div style="flex:none;padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);display:flex;gap:10px;background:var(--surface);">'
@@ -8474,7 +8474,7 @@ async function _coachMediaEnvoyer(fileOrBlob, media_type, ext) {
   _coachMediaBusy = true;
   var localUrl = null;
   try {
-    showToast(media_type === 'video' ? '🎥 Envoi de la vidéo…' : '📷 Envoi de la photo…');
+    showToast(media_type === 'video' ? 'Envoi de la vidéo…' : 'Envoi de la photo…');
     // 1) URL d'upload signée
     var r1 = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -8521,7 +8521,7 @@ async function supprimerCommentaireCoach(id) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'supprimerCommentaire', id: id })
     });
-    showToast('🗑 Conseil supprimé');
+    showToast('Conseil supprimé');
     setTimeout(() => chargerCommentairesCoach(coachAthleteCourant.athlete_id), 800);
   } catch(e) {
     showToast('Erreur suppression', '#ff4444');
@@ -8653,7 +8653,7 @@ async function blSupprimer(id) {
   if (!confirm('Supprimer cette blessure ?')) return;
   try {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteBlessure', id: id }) });
-    showToast('🗑 Supprimée');
+    showToast('Supprimée');
   } catch (e) { showToast('Erreur', '#ff4444'); }
   try { await chargerAppData(); } catch (e) {}
   renderBlessures(dernierAppData);
@@ -8976,7 +8976,7 @@ async function cvSupprSelection() {
       return fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'supprimerCommentaire', id: id }) });
     }));
     messagesCoach = (messagesCoach || []).filter(function (c) { return !_cvSel[c.id]; });
-    if (typeof showToast === 'function') showToast('🗑 ' + ids.length + (ids.length > 1 ? ' messages supprimés' : ' message supprimé'));
+    if (typeof showToast === 'function') showToast('' + ids.length + (ids.length > 1 ? ' messages supprimés' : ' message supprimé'));
   } catch (e) { if (typeof showToast === 'function') showToast('Erreur suppression', '#ff4444'); }
   cvResetSel();
   cvRenderCoachMsgs();
@@ -9232,7 +9232,7 @@ async function supprimerDemoFoot() {
     if (j && j.success) {
       if (info) {
         if (j.restants && j.restants > 0) { info.style.color = 'var(--warn)'; info.textContent = '' + j.supprimes + ' supprimés, ' + j.restants + ' restants (données liées ?).'; }
-        else { info.style.color = 'var(--good)'; info.textContent = '🗑 ' + j.supprimes + ' joueurs de démo supprimés.'; }
+        else { info.style.color = 'var(--good)'; info.textContent = '' + j.supprimes + ' joueurs de démo supprimés.'; }
       }
       showToast('Démos supprimés');
       if (typeof ouvrirEspaceCoach === 'function') ouvrirEspaceCoach();
@@ -9648,7 +9648,7 @@ function avancerSuperset(reposVal) {
   if (supersetIdx < supersetGroupe.length) {
     // Exercice suivant du même tour : on enchaîne, sans repos
     chargerExoSuperset();
-    showToast('➡ ' + supersetGroupe[supersetIdx].exercice);
+    showToast('' + supersetGroupe[supersetIdx].exercice);
     setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) scrollVersTitre(c); }, 50);
   } else {
     // Tour terminé
@@ -10114,7 +10114,7 @@ async function signalerGene() {
     });
     input.value = '';
     document.getElementById('gene-form').style.display = 'none';
-    showToast('Signalé au coach ✓');
+    showToast('Signalé au coach ');
   } catch (e) { showToast('Erreur envoi', '#ff4444'); }
 }
 
@@ -10660,7 +10660,7 @@ function _gererValidationHorsLigne(bilanPayload) {
   const lignes = _construireLignesSeance();
   enregistrerSeanceOffline(lignes, bilanPayload || null);
   afficherRecap();
-  showToast('📴 Hors-ligne : séance enregistrée, elle se synchronisera au retour du réseau');
+  showToast('Hors-ligne : séance enregistrée, elle se synchronisera au retour du réseau');
   return true;
 }
 
@@ -14816,7 +14816,7 @@ function renderEtat(data) {
           if (al && has) {
             var sev = (al.severity === 'haute') ? 'var(--danger)' : 'var(--warn)';
             anz = '<div style="margin:2px 0 8px 30px;padding:8px 11px;border-left:2px solid ' + sev + ';background:var(--surface2);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:3px">'
-              + '<span style="font-size:11.5px;color:var(--text)"><b style="color:' + sev + '">🔎 Analyse —</b> ' + esc(al.title || '') + '</span>'
+              + '<span style="font-size:11.5px;color:var(--text)"><b style="color:' + sev + '"><i class=nv-ic-search></i> Analyse —</b> ' + esc(al.title || '') + '</span>'
               + (al.action ? '<span style="font-size:11.5px;color:var(--text-muted)"><b>Conseil —</b> ' + esc(al.action) + '</span>' : '')
               + '</div>';
           }
@@ -15561,7 +15561,7 @@ function _onbBack() { if (_onbI > 0) { _onbI--; _onbRender(); } }
 function _onbChoix(c) {
   _savePref('onboarding_vu', 1);
   if (c === 'novalyz') { fermerOnboarding(); ouvrirGenProgramme(); }
-  else if (c === 'mine') { _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme 👍'); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
+  else if (c === 'mine') { _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme '); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
   else if (c === 'coach') { _onbSteps = ['coachinfo']; _onbI = 0; _onbRender(); }
 }
 function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); setTimeout(function () { nvTourAthlete(); }, 450); }
@@ -18344,7 +18344,7 @@ async function majUiPush() {
     if (actif) {
       if (bOn) bOn.style.display = 'none';
       if (bOff) bOff.style.display = 'inline-block';
-      if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '🔔 Notifications activées'; }
+      if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = 'Notifications activées'; }
       if (hint) hint.textContent = '';
     } else {
       if (bOn) { bOn.style.display = 'inline-block'; bOn.textContent = 'Activer les notifications'; }
@@ -18383,7 +18383,7 @@ async function majUiPush() {
     if (bOn) bOn.style.display = 'none';
     if (bOff) bOff.style.display = 'inline-block';
     if (bTest) bTest.style.display = 'block';
-    if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '🔔 Notifications activées'; }
+    if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = 'Notifications activées'; }
     if (hint) hint.textContent = '';
   } else {
     if (bOn) { bOn.style.display = 'inline-block'; bOn.textContent = 'Activer les notifications'; }
@@ -18523,7 +18523,7 @@ async function activerNotifications() {
   if (_estAppNative()) {
     try {
       const r = await NovalyzNotifications.activer(_fcmOpts());
-      if (r && r.ok) { _setFcmActif(true); showToast('🔔 Notifications activées'); }
+      if (r && r.ok) { _setFcmActif(true); showToast('Notifications activées'); }
       else { showToast('' + _fcmMsgErreur(r), '#f59f00'); }
     } catch (e) { showToast('Impossible d\'activer', '#ff4444'); }
     majUiPush();
@@ -18554,7 +18554,7 @@ async function activerNotifications() {
     let ok = false;
     try { const j = await resp.json(); ok = !!j.success; if (!ok && j.error) console.warn('savePushSub:', j.error); } catch (_) {}
     if (!ok) { showToast('Enregistrement serveur échoué', '#ff4444'); majUiPush(); return; }
-    showToast('🔔 Notifications activées');
+    showToast('Notifications activées');
     majUiPush();
   } catch (e) {
     showToast('Impossible d\'activer', '#ff4444');
@@ -18683,7 +18683,7 @@ function _checkNotifCache() {
           try { c.delete('pending-target'); } catch (e) {}
           if (t) {
             _notifPending = t;
-            if (typeof showToast === 'function') showToast('🔔 Ouverture : ' + t);  // diag (temporaire)
+            if (typeof showToast === 'function') showToast('Ouverture : ' + t);  // diag (temporaire)
             _consommerNotifPending();
           }
         });
@@ -19142,7 +19142,7 @@ function renderHyroxHome() {
     + '<button onclick="ouvrirHyroxChrono()" style="flex:1;text-align:left;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;padding:14px 13px;cursor:pointer;font-family:inherit"><div style="font-size:20px"></div><div style="font-weight:800;font-size:13.5px;margin-top:5px">Circuit officiel</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:1px">8 × Run + atelier, chrono</div></button>'
     + '<button onclick="ouvrirHyroxAtelier()" style="flex:1;text-align:left;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;padding:14px 13px;cursor:pointer;font-family:inherit"><div style="font-size:20px"></div><div style="font-weight:800;font-size:13.5px;margin-top:5px">Par atelier</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:1px">Choisis tes exercices</div></button>'
     + '</div>'
-    + '<button onclick="ouvrirSaisieHyrox()" style="width:100%;margin-top:9px;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:11px;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);cursor:pointer">✎ Saisir un résultat après coup</button>'
+    + '<button onclick="ouvrirSaisieHyrox()" style="width:100%;margin-top:9px;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:11px;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);cursor:pointer"><i class=nv-ic-pencil></i> Saisir un résultat après coup</button>'
     + '<div class="cx-sec" style="margin-top:16px">Mes Hyrox</div>' + list;
 }
 // « Saisir après coup » : overlay dédié (univers Hyrox, indépendant de la page
@@ -19393,7 +19393,7 @@ function _hxStartCircuitGo() {
 }
 function _hxTick() { if (_hxPaused) return; var now = Date.now(); var c = document.getElementById('hx-clock'); if (c) c.textContent = _hyroxFmt(Math.round((now - _hxT0 - _hxPauseAcc) / 1000)); var s = document.getElementById('hx-seg'); if (s) s.textContent = _hyroxFmt(Math.round((now - _hxSegT0) / 1000)); }
 function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var n = _hxSegs.length, h = ''; for (var i = 0; i < n; i++) { var bg = i < _hxIdx ? (_hxSegs[i].run ? '#9D5FD3' : 'var(--accent)') : (i === _hxIdx ? '#FFBC13' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
-function _hxRenderCur() { var n = _hxSegs.length; var sg = _hxSegs[_hxIdx] || _hxSegs[n - 1]; var last = (_hxIdx === n - 1); var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / ' + n; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier') + (sg.w && _hxWeights && _hxWeights[sg.w] ? ' · ' + _hxWeights[sg.w] + ' kg' : ''); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (last ? 'Terminer ✓' : 'Segment suivant ✓'); nx.style.background = (last ? 'var(--good)' : 'var(--accent)'); } }
+function _hxRenderCur() { var n = _hxSegs.length; var sg = _hxSegs[_hxIdx] || _hxSegs[n - 1]; var last = (_hxIdx === n - 1); var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / ' + n; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier') + (sg.w && _hxWeights && _hxWeights[sg.w] ? ' · ' + _hxWeights[sg.w] + ' kg' : ''); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (last ? 'Terminer ' : 'Segment suivant '); nx.style.background = (last ? 'var(--good)' : 'var(--accent)'); } }
 function _hxRenderSplits() { var el = document.getElementById('hx-splits'); if (!el) return; var rows = []; for (var i = 0; i < _hxIdx; i++) { var sg = _hxSegs[i]; rows.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;background:' + (sg.run ? 'rgba(157,95,211,.12);color:#9D5FD3' : 'var(--surface2);color:var(--text-muted)') + '">' + (sg.run ? '🏃' : _hxStationNo(i)) + '</span><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } el.innerHTML = rows.reverse().join(''); }
 function _hxNext() { var now = Date.now(); _hxSplits[_hxIdx] = now - _hxSegT0; _hxSegT0 = now; _hxIdx++; if (_hxIdx >= _hxSegs.length) { _hxFinish(); return; } _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); _hxTick(); }
 function _hxPause() { var b = document.getElementById('hx-pause'); if (!_hxPaused) { _hxPaused = true; _hxPausedAt = Date.now(); if (b) b.textContent = '▶ Reprendre'; } else { _hxPaused = false; _hxPauseAcc += Date.now() - _hxPausedAt; _hxSegT0 += Date.now() - _hxPausedAt; if (b) b.textContent = '⏸ Pause'; } }
@@ -19582,7 +19582,7 @@ function calcAutoCardio() {
     distEl.value = Math.round(vitesse * duree / 60 * 10) / 10;
     distEl.dataset.auto = '1';
     var dh = document.getElementById('cardio-dist-hint');
-    if (dh) dh.textContent = '✦ calculé';
+    if (dh) dh.textContent = 'calculé';
   }
   var dist = parseFloat((distEl || {}).value) || 0;
 
@@ -19601,7 +19601,7 @@ function calcAutoCardio() {
       pasPrev.textContent = pas.toLocaleString('fr-FR') + ' pas';
       pasPrev.style.color = pasRef ? 'var(--text-muted)' : 'var(--accent)';
       var ph = document.getElementById('cardio-pas-hint');
-      if (ph) ph.textContent = pasRef ? '~ réf. 4.5 km/h' : '✦ estimé';
+      if (ph) ph.textContent = pasRef ? '~ réf. 4.5 km/h' : 'estimé';
     } else {
       pasPrev.textContent = '— durée requise';
       pasPrev.style.color = 'var(--text-muted)';
@@ -19643,7 +19643,7 @@ function calcAutoCardio() {
     calEl.value = calAuto;
     calEl.dataset.auto = '1';
     var ch = document.getElementById('cardio-cal-hint');
-    if (ch) ch.textContent = '✦ estimé';
+    if (ch) ch.textContent = 'estimé';
   }
 }
 
@@ -19705,7 +19705,7 @@ async function sauvegarderCardio() {
     if (res && res.error) throw new Error(res.error);
   } catch (err) {
     showToast('Erreur : ' + (err.message || 'réseau'), 'var(--bad)');
-    if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✔ Terminer & enregistrer'; }
+    if (btnSave) { btnSave.disabled = false; btnSave.textContent = 'Terminer & enregistrer'; }
     return;
   }
   // Récap
@@ -20262,7 +20262,7 @@ async function _hcImport(i, silent) {
     var res = await r.json();
     if (res && res.error) throw new Error(res.error);
     _hcMarkImported(_hcKey(w));
-    if (btn) { btn.disabled = true; btn.textContent = '✓ importée'; btn.style.background = 'transparent'; btn.style.border = 'none'; btn.style.color = 'var(--good)'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'importée'; btn.style.background = 'transparent'; btn.style.border = 'none'; btn.style.color = 'var(--good)'; }
     if (!silent) { showToast('Séance importée dans tes analyses', 'var(--good)'); try { chargerAppData(); } catch (e) {} }
     return true;
   } catch (e) {
@@ -21012,7 +21012,7 @@ function _nutSave() {
   }
   fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: athlete.athlete_id, entries: [{ date: today, kcal: kcal, prot: prot, gluc: gluc, lip: lip }] }) })
     .then(function (r) { return r.json().catch(function () { return {}; }); })
-    .then(function (j) { if (j && j.success) showToast('Nutrition enregistrée ✓', '#10B981'); else showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); })
+    .then(function (j) { if (j && j.success) showToast('Nutrition enregistrée ', '#10B981'); else showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); })
     .catch(function () { showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); });
   try { renderNutrition(); } catch (e) {}
 }
@@ -21123,7 +21123,7 @@ async function _nutAutoImportHC() {
     try { localStorage.setItem('nvz_nut_auto_' + aid, today); } catch (e) {}
     fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: aid, entries: [{ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL }] }) }).catch(function () {});
     try { if (document.getElementById('tab-nutrition')) renderNutrition(); } catch (e) {}
-    try { showToast('Nutrition synchronisée depuis Health Connect ✓', '#10B981'); } catch (e) {}
+    try { showToast('Nutrition synchronisée depuis Health Connect ', '#10B981'); } catch (e) {}
   } catch (e) {}
 }
 // Contrôle de période PARTAGÉ de la tendance nutrition : un seul Semaine/Mois/
@@ -21856,8 +21856,8 @@ function _renderCardioHist() {
             + '<div style="font-size:8px;font-weight:700;color:var(--warn);opacity:.8;">kcal</div>'
           + '</div>' : '')
         + '<div style="display:flex;gap:4px;flex-shrink:0;margin-left:2px;">'
-          + '<button onclick="_cardioModifier(\'' + s.sid + '\')" style="background:var(--accent-a10);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Modifier">✏</button>'
-          + '<button onclick="_cardioSupprimer(\'' + s.sid + '\')" style="background:var(--bad-a);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Supprimer">🗑</button>'
+          + '<button onclick="_cardioModifier(\'' + s.sid + '\')" style="background:var(--accent-a10);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Modifier"><i class=nv-ic-pencil></i></button>'
+          + '<button onclick="_cardioSupprimer(\'' + s.sid + '\')" style="background:var(--bad-a);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Supprimer"><i class=nv-ic-trash></i></button>'
         + '</div>'
         + '</div>';
     });
@@ -21953,7 +21953,7 @@ function _renderCardioHist() {
       var pasLeg = (hasSaisie && hasMontre)
         ? '<div style="display:flex;gap:14px;justify-content:center;margin-top:4px;">'
           + '<span style="font-size:9.5px;color:var(--text-muted);font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i style="width:8px;height:8px;border-radius:2px;background:' + CY + ';display:inline-block;"></i>⌚ Montre</span>'
-          + '<span style="font-size:9.5px;color:var(--text-muted);font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i style="width:8px;height:8px;border-radius:2px;background:' + VIO + ';display:inline-block;"></i>✍ Saisie</span>'
+          + '<span style="font-size:9.5px;color:var(--text-muted);font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i style="width:8px;height:8px;border-radius:2px;background:' + VIO + ';display:inline-block;"></i><i class=nv-ic-pencil></i> Saisie</span>'
           + '</div>' : '';
       var chartP = '<svg class="pas-chart" viewBox="0 0 ' + Wp + ' ' + Hp + '" width="100%" style="display:block;overflow:visible;touch-action:pan-y;">' + svgP + '</svg>'
         + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;font-weight:600;margin:4px 0 2px;">Pas par jour · ' + nDays + ' derniers jours</div>' + pasLeg
@@ -22001,7 +22001,7 @@ function _attachPasTip() {
   var show = function(t) {
     var r = t.getBoundingClientRect();
     var src = t.getAttribute('data-src');
-    var stag = src === 'montre' ? ' · ⌚ montre' : src === 'saisie' ? ' · ✍ saisie' : '';
+    var stag = src === 'montre' ? ' · ⌚ montre' : src === 'saisie' ? ' · <i class=nv-ic-pencil></i> saisie' : '';
     var dd = new Date(t.getAttribute('data-date') + 'T00:00:00');
     var pas = Number(t.getAttribute('data-pas')).toLocaleString('fr-FR');
     tip.innerHTML = pas + ' pas<span style="display:block;font-weight:600;opacity:.75;font-size:9.5px;">' + dd.getDate() + '/' + (dd.getMonth() + 1) + stag + '</span>';
@@ -22037,7 +22037,7 @@ function _cardioSupprimer(sid) {
     + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">' + ico + ' ' + escapeHtml(lbl) + ' · ' + (s.date || '') + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<button onclick="document.getElementById(\'_cardio-confirm-overlay\').remove()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
-      + '<button onclick="_cardioConfirmSupprimer(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--bad);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🗑 Supprimer</button>'
+      + '<button onclick="_cardioConfirmSupprimer(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--bad);color:#fff;font-size:13px;font-weight:700;cursor:pointer;"><i class=nv-ic-trash></i> Supprimer</button>'
     + '</div>'
     + '</div>';
   ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
@@ -22148,7 +22148,7 @@ async function _cardioSauvegarderModif(sid) {
     });
     var res = await r.json();
     if (res.success) {
-      showToast('Séance modifiée ✓', 'var(--good)');
+      showToast('Séance modifiée ', 'var(--good)');
       chargerAppData();
     } else {
       showToast('Erreur : ' + (res.error || 'inconnue'), 'var(--bad)');
