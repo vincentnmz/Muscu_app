@@ -9639,7 +9639,9 @@ async function demarrerSeance() {
   // Les items CARDIO du programme (hybride) ne sont pas des exercices muscu :
   // on les exclut de l'exécution muscu (repère cardio géré à part, à venir).
   const progSource = dernierAppData ? dernierAppData.programme || [] : [];
-  programmeSeance = progSource.filter(p => p.seance_id === seanceId && p.type !== 'cardio');
+  // Copies de travail (#13) : on peut REMPLACER un exo pour CETTE séance sans toucher
+  // le programme stocké ni le cache global (les lignes partagent sinon la référence).
+  programmeSeance = progSource.filter(p => p.seance_id === seanceId && p.type !== 'cardio').map(p => ({ ...p }));
   // Items CARDIO du programme (hybride) → bloc repère + bouton d'enregistrement.
   try { _renderSeanceCardioReperes(seanceId, progSource.filter(p => p.seance_id === seanceId && p.type === 'cardio')); } catch (e) {}
 
@@ -9871,13 +9873,15 @@ function afficherListeSeance() {
     const subTxt = exoS
       ? `${seriesFaites} / ${p.series_prevues} séries`
       : `Objectif : ${p.series_prevues} × ${p.reps_mini}-${p.reps_max} reps`;
+    const swapHint = p._remplace ? ` <span style="color:var(--accent);font-weight:700">· ⇄ remplace ${escapeHtml(p._remplace)}</span>` : '';
     const div = document.createElement('div');
     div.className = 'sc-exo ' + stCls;
     div.style.cssText = groupeStyle;
     div.innerHTML = `
       <span class="sc-ico">${icoInner}</span>
-      <div class="sc-nm"><div class="a">${p.exercice}</div><div class="b">${subTxt}</div></div>
+      <div class="sc-nm"><div class="a">${p.exercice}</div><div class="b">${subTxt}${swapHint}</div></div>
       ${chip}
+      ${!exoS ? `<button class="btn-sm swap-exo sc-del" title="Remplacer cet exercice"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10 4 13l3 3M4 13h11M17 14l3-3-3-3M20 11H9"/></svg></button>` : ''}
       ${exoS ? `<button class="btn-sm reset-exo sc-del" title="Effacer les séries faites"><svg class="ico"><use href="#i-trash"/></svg></button>` : ''}
     `;
     const estGroupe = p.groupe_id && programmeSeance.filter(o => o.groupe_id === p.groupe_id).length >= 2;
@@ -9886,6 +9890,8 @@ function afficherListeSeance() {
       : selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
     const rb = div.querySelector('.reset-exo');
     if (rb) rb.addEventListener('click', (ev) => { ev.stopPropagation(); resetExoSeance(p.exercice); });
+    const sb = div.querySelector('.swap-exo');
+    if (sb) sb.addEventListener('click', (ev) => { ev.stopPropagation(); remplacerExoSeance(p.row_index); });
     listeEl.appendChild(div);
     if (isNext) prochainEl = div;
     if (p.groupe_id) {
@@ -10011,6 +10017,34 @@ function retourListeSeance() {
   setTimeout(() => { const c = document.getElementById('card-liste-seance'); if (c) scrollVersTitre(c); }, 50);
 }
 
+// #13 — Remplacer un exercice EN COURS DE SÉANCE (slot du programme → autre mouvement),
+// sans toucher le programme stocké. On réutilise le sélecteur hors-programme en « mode
+// remplacement » : le prochain exercice choisi remplace l'exo cible (séries/reps/schéma
+// du slot conservés ; la charge kg se recalcule sur l'historique du nouvel exo).
+var _replaceExoTarget = null;
+function remplacerExoSeance(rowIndex) {
+  toggleExoHorsProgramme(true);          // ouvre le sélecteur (réinitialise _replaceExoTarget)
+  _replaceExoTarget = rowIndex;          // …puis on arme le mode remplacement
+  var l = programmeSeance.find(function (x) { return x.row_index === rowIndex; });
+  try { showToast('Choisis le remplaçant' + (l ? ' de ' + l.exercice : '')); } catch (e) {}
+}
+function _applyReplace(val) {
+  var parts = String(val).split('|'), exoId = parts[0], nom = parts[1], muscle = parts[2] || '';
+  var l = programmeSeance.find(function (x) { return x.row_index === _replaceExoTarget; });
+  var target = _replaceExoTarget; _replaceExoTarget = null;
+  _exoSel = {}; _exoFiltreGrp = null;
+  var card = document.getElementById('card-hors-programme'); if (card) card.style.display = 'none';
+  var inp = document.getElementById('rech-exo'); if (inp) inp.value = '';
+  if (!l) { afficherListeSeance(); return; }
+  var ancien = l.exercice;
+  // Séance uniquement : on efface d'éventuelles séries déjà saisies sous l'ancien nom
+  // (normalement 0, le bouton n'apparaît que sur un exo non commencé).
+  seance = seance.filter(function (e) { return e.exerciceNom !== ancien; });
+  l.exercice = nom; l.muscle = muscle; if (exoId) l.exercice_id = exoId;
+  l._remplace = ancien;
+  afficherListeSeance();
+  try { showToast(ancien + ' remplacé par ' + nom); } catch (e) {}
+}
 function toggleExoHorsProgramme(forceOpen) {
   const card = document.getElementById('card-hors-programme');
   const isOpen = card.style.display !== 'none';
@@ -10020,9 +10054,9 @@ function toggleExoHorsProgramme(forceOpen) {
     // Scroll vers le haut de la liste
     const listeCard = document.getElementById('card-liste-seance');
     if (listeCard) scrollVersTitre(listeCard);
-    _exoSel = {}; _exoFiltreGrp = null;   // repartir propre à chaque ouverture
+    _exoSel = {}; _exoFiltreGrp = null; _replaceExoTarget = null;   // repartir propre (hors mode remplacement)
     const _re1=document.getElementById('rech-exo'); if(_re1)_re1.value=''; remplirListeExosLibres('');
-  }
+  } else { _replaceExoTarget = null; }
 }
 
 // Recherche d'exercice (remplace le double menu muscle→exercice)
@@ -10085,7 +10119,7 @@ function remplirListeExosLibres(filtre) {
   }).join('');
   _exoRenderAddbar();
 }
-function exoToggleSel(val) { if (_exoSel[val]) delete _exoSel[val]; else _exoSel[val] = true; var inp = document.getElementById('rech-exo'); remplirListeExosLibres(inp ? inp.value : ''); }
+function exoToggleSel(val) { if (_replaceExoTarget != null) { _applyReplace(val); return; } if (_exoSel[val]) delete _exoSel[val]; else _exoSel[val] = true; var inp = document.getElementById('rech-exo'); remplirListeExosLibres(inp ? inp.value : ''); }
 function _exoRenderAddbar() {
   var bar = document.getElementById('exo-addbar'); if (!bar) return;
   var n = Object.keys(_exoSel).length;
@@ -10108,6 +10142,7 @@ function filtrerExosLibres() {
   remplirListeExosLibres(inp ? inp.value : '');
 }
 function choisirExoDirect(val) {
+  if (_replaceExoTarget != null) { _applyReplace(val); return; }
   const parts = String(val).split('|');
   const exoId = parts[0], exoNom = parts[1], muscle = parts[2] || '';
   const dejaPresent = seance.find(e => e.exerciceNom === exoNom);
