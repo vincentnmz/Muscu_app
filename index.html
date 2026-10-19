@@ -1062,6 +1062,9 @@
          détail » (régularité·bien-être·pas), puis récompenses tout en bas. */
       #tab-accueil .tj-greet{order:1;}
       #tab-accueil .tj-banner{order:2;}
+      /* Bloc charge/fatigue unifié : sans order il héritait de 0 → il passait AVANT
+         le « Bonjour » sur mobile. On le place juste après le greet (cockpit). */
+      #tab-accueil #tj-chargefatigue{order:2;}
       #tab-accueil #tj-nova{order:3;}
       #tab-accueil .tj-seance{order:4;}
       #tab-accueil #tj-attention{order:5;}
