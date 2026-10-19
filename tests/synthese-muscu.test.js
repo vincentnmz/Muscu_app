@@ -101,6 +101,22 @@ let q = buildSyntheseMuscu('Maintien', cmp(10, 0), { recup: 'Bon' }, reg(3, 3));
 check('Q: maintien → reco ne pousse pas la surcharge progressive', !/surcharge progressive/i.test(q.reco.texte));
 check('Q: maintien → reco parle bien de maintien', /maintien|maintenir/i.test(q.reco.texte));
 
+// R — Leviers de récupération ciblés (readiness Hooper) : poussés UNIQUEMENT si le
+// signal mesuré (moteur.signaux) est réellement sous-optimal. Sinon absents.
+const poolTxt = (s) => (s.reco_pool || []).map(x => x.texte).join(' ⟂ ');
+let r1 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 2.4, stress: 1, courbatures: 1 } }, reg(3, 3));
+check('R1: sommeil faible → levier sommeil', /sommeil est en dessous/i.test(poolTxt(r1)));
+let r2 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 4, stress: 4, courbatures: 1 } }, reg(3, 3));
+check('R2: stress élevé → levier stress', /stress est élevé/i.test(poolTxt(r2)));
+let r2b = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 2, stress: 4, courbatures: 1 } }, reg(3, 3));
+check('R2b: sommeil faible + stress élevé → levier combiné', /Sommeil et stress/i.test(poolTxt(r2b)));
+let r3 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 4, stress: 1, courbatures: 5 } }, reg(3, 3));
+check('R3: courbatures marquées → levier courbatures', /Courbatures marquées/i.test(poolTxt(r3)));
+let r4 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 4, stress: 1, courbatures: 1 } }, reg(3, 3));
+check('R4: signaux bons → aucun levier récup forcé', !/sommeil est en dessous|stress est élevé|Courbatures marquées|Sommeil et stress/i.test(poolTxt(r4)));
+let r5 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon' }, reg(3, 3));
+check('R5: pas de signaux → pas de crash, aucun levier récup', !/sommeil est en dessous|stress est élevé|Courbatures marquées/i.test(poolTxt(r5)));
+
 // ── Cardio ──────────────────────────────────────────────────────────────────
 // F — aucun cardio → constat neutre + reco info
 let f = buildSyntheseCardio({ history: [] }, null, NOW);

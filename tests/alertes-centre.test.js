@@ -29,7 +29,7 @@ const moteur = {
   confiance: 'haute', contexte_tag: 'intensification',
   alertes: [
     { type: 'fatigue', severite: 'moyenne', message: 'Fatigue élevée (4/5)' },
-    { type: 'surcharge', severite: 'haute', message: 'Charge aiguë élevée (ACWR 1.8)' },
+    { type: 'surcharge', severite: 'haute', message: 'Charge récente élevée' },
   ],
 };
 const a = buildAlertesCentre(moteur, null);
@@ -37,7 +37,7 @@ check('A: 2 alertes', a.length === 2);
 check('A: triées par sévérité (haute en 1er)', a[0].severity === 'haute' && a[0].type === 'surcharge');
 check('A: schéma complet', a[0].type && a[0].severity && a[0].source && a[0].title && a[0].action !== undefined && a[0].reliability === 'haute' && a[0].context === 'intensification');
 check('A: evidence = message moteur', a[1].evidence === 'Fatigue élevée (4/5)');
-check('A: title lisible', a[0].title === 'Charge aiguë élevée');
+check('A: title lisible', a[0].title === 'Charge récente élevée');
 
 // B — stagnation ajoutée depuis comparison (≥3 exos en baisse), avec NOMS des exos
 const cmp = { j7_vs_j7prec: { charge_details: [

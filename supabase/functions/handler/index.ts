@@ -1608,6 +1608,24 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   const pushReco = (t: string, p: string) => { if (t && !reco_pool.some(x => x.texte === t)) reco_pool.push({ texte: t, priorite: p }) }
   // 1) Le levier prioritaire du jour (reco principale déjà calculée).
   pushReco(reco.texte, reco.priorite)
+  // 1bis) Leviers de RÉCUPÉRATION ciblés (readiness Hooper) — poussés UNIQUEMENT si le
+  //   signal est RÉELLEMENT sous-optimal sur la moyenne/le max récent (moteur.signaux),
+  //   jamais un conseil de récup générique. Tracé sur la donnée mesurée. (CLAUDE.md §5/§6bis)
+  const sig = (moteur && moteur.signaux) || {}
+  const somMoy = sig.sommeil, strMoy = sig.stress, courbMx = sig.courbatures
+  const sommeilFaible = somMoy != null && somMoy < 3              // moyenne récente < « Moyen » (3/5)
+  const stressEleve = strMoy != null && strMoy >= 3.5            // moyenne récente ≥ « Modéré/Élevé »
+  const courbHautes = courbMx != null && courbMx >= 4  // DOMS marqués (= CORE_SEUILS.courbatures.haut)
+  if (sommeilFaible && stressEleve) {
+    pushReco(`Sommeil et stress pèsent sur ta récupération en ce moment : vise 7-9 h de sommeil régulier et un temps calme avant de dormir — c'est là que ton corps encaisse la charge d'entraînement.`, 'moyenne')
+  } else if (sommeilFaible) {
+    pushReco(`Ton sommeil est en dessous ces jours-ci : vise 7-9 h et des horaires réguliers — c'est le 1er facteur de récupération et de progression.`, 'moyenne')
+  } else if (stressEleve) {
+    pushReco(`Ton stress est élevé ces jours-ci : il freine la récupération. Garde l'entraînement (il aide à décompresser), mais baisse l'intensité si besoin et ménage-toi des temps de pause.`, 'moyenne')
+  }
+  if (courbHautes) {
+    pushReco(`Courbatures marquées : échauffe-toi bien, garde une amplitude contrôlée, et laisse ~48 h à un muscle très courbaturé avant de le recharger fort.`, 'moyenne')
+  }
   // 2) Leviers de PROGRESSION selon l'état mesuré (uniquement si pas de contrainte/vigilance).
   if (!contrainte && !etatVigilance) {
     if (progOk) pushReco(`Tu progresses : pour continuer, ajoute une petite surcharge (+1 rep, ou +2,5 kg) sur un exercice clé dès que ta dernière série passe bien.`, 'moyenne')
@@ -1748,7 +1766,7 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
 function buildAlertesCentre(moteur: any, comparison: any): any[] {
   const SEV: Record<string, number> = { haute: 3, moyenne: 2, basse: 1 }
   const TITRES: Record<string, string> = {
-    absence: 'Absence prolongée', charge: 'Charge en hausse', surcharge: 'Charge aiguë élevée',
+    absence: 'Absence prolongée', charge: 'Charge en hausse', surcharge: 'Charge récente élevée',
     sous_charge: 'Sous-charge', douleur: 'Douleur signalée', fatigue: 'Fatigue élevée',
     sommeil: 'Sommeil dégradé', stagnation: 'Stagnation',
   }
@@ -2155,6 +2173,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     moteur = {
       disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
       recScore: etatM.recScore, recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
+      signaux: etatM.signaux,   // readiness Hooper agrégé (sommeil/stress/courbatures…) → leviers ciblés tracés
       acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
       charge_fatigue: { ctl: ffA.ctl, atl: ffA.atl, tsb: ffA.tsb, tsbPct: ffA.tsbPct, ratio: ffA.ratio, fiable: ffFiable, source: useSRPE ? 'srpe' : 'tonnage' },
       seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
@@ -2503,7 +2522,7 @@ interface EtatInput {
   douleur: number | null       // agrégé (max récent)
   fatigue: number | null       // agrégé (max récent)
   sommeil: number | null       // agrégé (moyenne récente)
-  stress: number | null        // readiness Hooper (1..5, 5 = détendu) — moyenne récente
+  stress: number | null        // readiness Hooper (1..5, 5 = TRÈS stressé, item invert) — moyenne récente
   courbatures: number | null   // readiness Hooper (DOMS) / muscu — max récent
   injStatut: 'indispo' | 'retour_progressif' | null
   blessureGrave?: boolean       // blessure active modérée/grave (muscu : table blessures)
@@ -2651,7 +2670,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
     acwr_fiable: acwrOk,
     donnees_utilisees: donnees,
     contexte_tag: ctx !== 'saison_normale' ? ctx : null,
-    signaux: { acwr: acwrOk ? s.acwr : null, douleur: s.douleur, fatigue: s.fatigue, sommeil: s.sommeil, seances7: s.seances7 },
+    signaux: { acwr: acwrOk ? s.acwr : null, douleur: s.douleur, fatigue: s.fatigue, sommeil: s.sommeil, stress: s.stress, courbatures: s.courbatures, seances7: s.seances7 },
     acwr_categorie: interpreterACWR(s.acwr ?? null, acwrOk),
   }
   // Note générique : couvre historique < 28 j, reprise vacances < 28 j, chronique trouée
