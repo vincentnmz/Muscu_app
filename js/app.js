@@ -10191,6 +10191,36 @@ function majSeriesActuel() {
     }
   }
   majProgressionSeance();
+  majPlanSeries();   // #4 : rafraîchit la checklist des séries prévues (coche l'avancement)
+}
+
+// #4 — Checklist des séries PRÉVUES au démarrage / pendant un exo. Le programme est
+// « plat » (même cible pour toutes les séries) : on rend simplement visible COMBIEN
+// de séries sont prévues et leur objectif (reps + charge/RPE + repos), coché au fur
+// et à mesure. Tout vient de la ligne de programme (rien d'inventé — règle 6bis).
+// Exo hors programme (pas de pProg) → rien affiché.
+function majPlanSeries() {
+  var el = document.getElementById('plan-series-actuel'); if (!el) return;
+  var pProg = exoEnCours ? programmeSeance.find(function (p) { return p.exercice === exoEnCours.exerciceNom; }) : null;
+  var n = pProg ? (Number(pProg.series_prevues) || 0) : 0;
+  if (!pProg || n <= 0) { el.innerHTML = ''; return; }
+  if (n > 12) n = 12;   // garde-fou lisibilité
+  var done = exoEnCours ? exoEnCours.series.length : 0;
+  var repsTxt = (pProg.reps_mini != null && pProg.reps_mini !== '' && pProg.reps_max != null && pProg.reps_max !== '')
+    ? (pProg.reps_mini + '-' + pProg.reps_max)
+    : (pProg.reps_mini != null && pProg.reps_mini !== '' ? ('' + pProg.reps_mini) : (pProg.reps_max != null && pProg.reps_max !== '' ? ('' + pProg.reps_max) : '?'));
+  var chips = '';
+  for (var k = 1; k <= n; k++) {
+    var st = (k <= done) ? 'done' : (k === done + 1 ? 'cur' : 'todo');
+    var mark = (st === 'done') ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '';
+    chips += '<span class="plan-chip ' + st + '">' + mark + 'S' + k + ' <small>' + repsTxt + '</small></span>';
+  }
+  var cible = _cibleTxt(pProg, true);
+  var reposTxt = (pProg.repos_sec != null && pProg.repos_sec !== '') ? (pProg.repos_sec + 's repos') : '';
+  var sub = [cible, reposTxt].filter(Boolean).join(' · ');
+  el.innerHTML = '<div class="plan-hd">Séries prévues · ' + done + '/' + n + '</div>'
+    + '<div class="plan-chips">' + chips + '</div>'
+    + (sub ? '<div class="plan-sub">' + escapeHtml(sub) + '</div>' : '');
 }
 
 function supprimerSerie(index) {
