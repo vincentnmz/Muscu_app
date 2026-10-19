@@ -377,6 +377,15 @@ body.prog-editor-open{ overflow:hidden; }
   #prog-editor-overlay .pb-rows{ padding:14px 22px 24px; display:flex; flex-direction:column; gap:8px; }
   #prog-editor-overlay .pb-row{ display:grid; grid-template-columns:18px minmax(120px,1fr) auto auto auto auto 30px; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:9px 12px; }
   #prog-editor-overlay .pb-row:hover{ box-shadow:0 1px 4px rgba(0,0,0,.08); }
+  /* Ligne muscu : nom complet + suppr sur la 1re ligne, paramètres (séries/reps/%/RPE/repos)
+     sur une 2e ligne qui s'enroule → fin des débordements (RPE/repos) et nom lisible. */
+  #prog-editor-overlay .pb-row-muscu{ display:flex; flex-wrap:wrap; align-items:center; column-gap:10px; row-gap:10px; }
+  #prog-editor-overlay .pb-row-muscu .pb-exn{ flex:1 1 auto; }
+  #prog-editor-overlay .pb-row-muscu .pb-exo{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #prog-editor-overlay .pb-row-muscu .pb-del{ margin-left:auto; align-self:center; flex:0 0 auto; }
+  #prog-editor-overlay .pb-row-muscu .pb-flds{ flex:1 1 100%; display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; }
+  #prog-editor-overlay .pb-row-muscu .pb-fld{ flex:0 0 auto; }
+  #prog-editor-overlay .pb-row-muscu .pb-rpe .pb-in{ width:74px; }
   #prog-editor-overlay .pb-row .prog-grip{ display:inline-flex; }
   #prog-editor-overlay .pb-exn{ display:flex; align-items:center; gap:9px; min-width:0; }
   #prog-editor-overlay .pb-exn-c{ min-width:0; flex:1; }

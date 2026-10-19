@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schéma de séries — maquette</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-dim:#2a3650; --accent-a:rgba(26,95,255,.14);
+    --good:#00c96e; --good-a:rgba(0,201,110,.14); --warn:#f59e0b; --warn-a:rgba(245,158,11,.14);
+    --s1:#1a5fff; --s2:#f59e0b; --s3:#8b5cf6; --s4:#ec4899;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:22px 16px 48px}
+  .wrap{max-width:560px;margin:0 auto}
+  h1{font-size:20px;font-weight:900;letter-spacing:-.01em;margin:0 0 4px}
+  .lead{font-size:13px;color:var(--muted);margin:0 0 18px}
+  .lead b{color:var(--accent2)}
+  .tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+  .tab{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:9px 10px;cursor:pointer;text-align:center;white-space:nowrap;transition:.15s}
+  .tab:hover{color:var(--text)}
+  .tab.on{background:var(--accent-a);border-color:var(--accent-dim);color:var(--accent2)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px 15px 16px;margin-bottom:14px}
+  .step{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 11px;display:flex;align-items:center;gap:8px}
+  .step .n{width:19px;height:19px;border-radius:7px;background:var(--accent-a);color:var(--accent2);display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+  .exo-nm{font-size:16px;font-weight:800}
+  .exo-sub{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .sel-row{display:flex;align-items:center;gap:9px;margin:13px 0 4px}
+  .sel-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .sel{flex:1;background:var(--surface2);border:1px solid var(--accent-dim);border-radius:10px;padding:9px 11px;font-size:13px;font-weight:700;color:var(--accent2);display:flex;justify-content:space-between;align-items:center}
+  .fields{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .fld{flex:1 1 72px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+  .fld .l{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .fld .v{font-size:15px;font-weight:800;margin-top:2px}
+  .fld .v small{font-size:10px;color:var(--muted);font-weight:700}
+  .ramp{margin-top:12px;border:1px solid var(--border);border-radius:11px;overflow:hidden}
+  .ramp .r{display:flex;align-items:center;gap:10px;padding:9px 12px;font-size:13px;border-top:1px solid var(--border)}
+  .ramp .r:first-child{border-top:0;background:var(--surface2);font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .ramp .r .s{width:30px;font-weight:800}
+  .ramp .r .c{flex:1;font-weight:700}
+  .ramp .r .rp{color:var(--muted);font-weight:700}
+  .plan-hd{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:2px 0 9px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{display:inline-flex;flex-direction:column;gap:1px;font-size:12px;font-weight:800;border-radius:11px;padding:8px 11px;border:1px solid var(--border);background:var(--surface2);color:var(--text);min-width:64px}
+  .chip .top{display:flex;align-items:center;gap:5px}
+  .chip .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .chip small{font-size:10.5px;font-weight:700;color:var(--muted)}
+  .chip.cur{box-shadow:0 0 0 1px var(--accent-dim) inset;border-color:var(--accent-dim)}
+  .rule{margin-top:13px;font-size:11.5px;line-height:1.5;color:var(--muted);background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 11px 11px 0;padding:10px 12px}
+  .rule b{color:var(--accent2)}
+  .rule.good{border-left-color:var(--good)} .rule.good b{color:var(--good)}
+  .foot{font-size:11px;color:var(--subtle);margin-top:18px;text-align:center}
+  .pill{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:999px;background:var(--good-a);color:var(--good);margin-left:7px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Schéma de séries par exercice</h1>
+  <p class="lead">Maquette. Principe : une seule <b>ancre</b> (ta référence du jour), dont le moteur <b>dérive</b> les cibles de chaque série selon le schéma choisi. Rien n'est inventé série par série — c'est la façon dont on programme vraiment.</p>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="card">
+    <div class="step"><span class="n">1</span>Dans l'éditeur de programme</div>
+    <div class="exo-nm">Développé couché <span class="exo-sub" style="display:inline">· 1RM estimé ≈ 107 kg</span></div>
+    <div class="sel-row">
+      <span class="sel-lbl">Schéma</span>
+      <span class="sel"><span id="sel-name">Séries fixes</span><span style="color:var(--muted)">▾</span></span>
+    </div>
+    <div id="editor"></div>
+  </div>
+
+  <div class="card">
+    <div class="step"><span class="n">2</span>Au démarrage de l'exo — checklist dérivée</div>
+    <div class="plan-hd" id="plan-hd">Séries prévues · 0/4</div>
+    <div class="chips" id="chips"></div>
+    <div class="rule" id="rule"></div>
+  </div>
+
+  <div class="foot">Maquette Novalyz — valeurs d'exemple (DC, 1RM ≈ 107 kg). Le défaut reste « Séries fixes » : la complexité n'apparaît que si le schéma la justifie.</div>
+</div>
+
+<script>
+var SC = ['#1a5fff','#f59e0b','#8b5cf6','#ec4899'];
+var SCHEMES = {
+  straight: {
+    name:'Séries fixes',
+    editor:[['Séries','4'],['Reps','6–10'],['Charge','75% <small>1RM</small>'],['Repos','120 s']],
+    chips:[['S1','80 kg','6–10'],['S2','80 kg','6–10'],['S3','80 kg','6–10'],['S4','80 kg','6–10']],
+    n:4,
+    rule:'Même cible pour les 4 séries : <b>80 kg × 6–10</b>. La plus simple et la plus fiable pour la majorité des cas. Progression manuelle : tu montes quand ça devient facile.'
+  },
+  double: {
+    name:'Double progression',
+    editor:[['Séries','4'],['Reps','6→10'],['Charge','75% <small>1RM</small>'],['Repos','120 s']],
+    chips:[['S1','80 kg','6→10'],['S2','80 kg','6→10'],['S3','80 kg','6→10'],['S4','80 kg','6→10']],
+    n:4,
+    ruleGood:true,
+    rule:'Cible identique, mais règle automatique : <b>quand les 4 séries atteignent 10 reps → +2,5 kg et retour à 6</b>. C\'est la progression « par défaut » la plus solide (reps d\'abord, puis charge).'
+  },
+  topbackoff: {
+    name:'Série lourde + allégées',
+    editor:[['Série lourde','RPE 8'],['Charge','≈ 87 kg'],['Allégées','3 × −10%'],['Repos','150 / 120 s']],
+    chips:[['S1','87 kg','6 · RPE 8'],['S2','78 kg','8 · allégée'],['S3','78 kg','8 · allégée'],['S4','78 kg','8 · allégée']],
+    n:4,
+    rule:'Une série lourde « ancre » au <b>RPE 8 (≈ 87 kg × 6)</b>, puis 3 séries allégées de volume à <b>−10% (≈ 78 kg × 8)</b>. Les séries allégées sont <b>dérivées de la série lourde</b>, pas fixées à la main.'
+  },
+  pyramidal: {
+    name:'Pyramidal',
+    editor:[['Séries','4'],['Charge','↑ montante'],['Reps','↓ descendantes'],['Repos','120–180 s']],
+    chips:[['S1','70 kg','12'],['S2','80 kg','8'],['S3','90 kg','5'],['S4','95 kg','3']],
+    n:4,
+    rule:'La charge <b>monte</b> et les reps <b>descendent</b> à chaque série (70→95 kg, 12→3). Les cibles par série sont voulues par le schéma — c\'est le seul cas où « différent par série » est vraiment juste.'
+  }
+};
+var ORDER = ['straight','double','topbackoff','pyramidal'];
+var cur = 'straight';
+
+function render(){
+  var s = SCHEMES[cur];
+  document.getElementById('sel-name').textContent = s.name;
+  // editor
+  if(cur==='pyramidal'){
+    var rows = '<div class="r"><span class="s">Série</span><span class="c">Charge</span><span class="rp">Reps</span></div>';
+    s.chips.forEach(function(c){ rows += '<div class="r"><span class="s">'+c[0]+'</span><span class="c">'+c[1]+'</span><span class="rp">'+c[2]+' reps</span></div>'; });
+    document.getElementById('editor').innerHTML = '<div class="ramp">'+rows+'</div>';
+  } else {
+    document.getElementById('editor').innerHTML = '<div class="fields">'+ s.editor.map(function(f){
+      return '<div class="fld"><div class="l">'+f[0]+'</div><div class="v">'+f[1]+'</div></div>';
+    }).join('') +'</div>';
+  }
+  // checklist (S1 marquée « en cours » pour montrer l'état)
+  document.getElementById('plan-hd').textContent = 'Séries prévues · 0/'+s.n;
+  document.getElementById('chips').innerHTML = s.chips.map(function(c,i){
+    return '<span class="chip'+(i===0?' cur':'')+'"><span class="top"><span class="dot" style="background:'+SC[i]+'"></span>'+c[0]+'</span>'+c[1]+'<small>'+c[2]+'</small></span>';
+  }).join('');
+  var r = document.getElementById('rule');
+  r.className = 'rule' + (s.ruleGood ? ' good' : '');
+  r.innerHTML = s.rule;
+}
+
+var tabs = document.getElementById('tabs');
+ORDER.forEach(function(k){
+  var b = document.createElement('div');
+  b.className = 'tab' + (k===cur?' on':'');
+  b.textContent = SCHEMES[k].name;
+  b.onclick = function(){ cur=k; [].forEach.call(tabs.children,function(c){c.classList.remove('on')}); b.classList.add('on'); render(); };
+  tabs.appendChild(b);
+});
+render();
+</script>
+</body>
+</html>

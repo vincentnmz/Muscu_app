@@ -7553,17 +7553,22 @@ function renderProgrammeCoach() {
     var musColOf = function (lg) { for (var i = 0; i < lg.length; i++) { if (lg[i].type !== 'cardio') return _progMuscleCol(muscleDe(lg[i].exercice)); } return '#9D5FD3'; };
     var rowMuscu = function (l, sid) {
       var mus = muscleDe(l.exercice), gcol = _progMuscleCol(mus), sj = String(sid).replace(/'/g, "\\'"), ri = l.row_index;
-      return '<div class="pb-row" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
+      // Ligne en 2 niveaux : (1) nom complet + suppr ; (2) paramètres (séries/reps/%/RPE/repos)
+      // sur leur propre ligne qui peut s'enrouler → plus de débordement desktop (case RPE /
+      // repos) et le nom reste lisible en entier.
+      return '<div class="pb-row pb-row-muscu" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
         + gripSvg
         + '<div class="pb-exn"><span class="dot" style="background:' + gcol + '"></span><div class="pb-exn-c">'
         +   '<select class="pb-exo" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',this.value,null,null,null,null,null)">' + exoOptions(l.exercice) + '</select>'
         +   (mus ? '<small style="color:' + gcol + '">' + esc(mus) + '</small>' : '') + '</div></div>'
-        + '<div class="pb-fld pb-series"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
-        + '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div></div>'
-        + '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
-        + '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
-        + '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
         + '<button class="pb-del" onclick="cdSupprimerLigne(' + ri + ')" title="Supprimer">✕</button>'
+        + '<div class="pb-flds">'
+        +   '<div class="pb-fld pb-series"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
+        +   '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div></div>'
+        +   '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
+        +   '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
+        +   '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
+        + '</div>'
         + '</div>';
     };
     var rowCardio = function (l, sid) {
