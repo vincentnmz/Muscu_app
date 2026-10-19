@@ -8334,72 +8334,74 @@ function construireSynthAlertes(data) {
   return out.filter(s => !(enPause && s.type === 'synth-regularite'));
 }
 
+// #18 — Catégorie métier d'une alerte (pastille) à partir de son type (backend/synthèse).
+function _catAlerte(type) {
+  switch (String(type || '')) {
+    case 'douleur': return { label: 'Douleur', cls: 'douleur' };
+    case 'surcharge': case 'charge': case 'sous_charge': case 'synth-volume': return { label: 'Charge', cls: 'charge' };
+    case 'fatigue': case 'sommeil': case 'synth-recup': return { label: 'Bien-être', cls: 'bien' };
+    case 'stagnation': case 'synth-progression': return { label: 'Progression', cls: 'prog' };
+    case 'absence': case 'irregularite': case 'synth-regularite': return { label: 'Régularité', cls: 'reg' };
+    default: return { label: 'Alerte', cls: 'neutre' };
+  }
+}
+// Priorité d'affichage : 'haute' = prioritaire (rouge) ; le reste = à surveiller.
+function _sevGroupe(sev) { return sev === 'haute' ? 'haute' : 'moyenne'; }
+
+// #18 — Bloc « alertes à traiter » (fiche athlète, vue coach) : triage par priorité +
+// catégorie, prescription moteur visible, 1 action primaire + secondaires discrètes.
+// Mêmes handlers qu'avant (repondreAlerte / traiterAlerteDepuisDetail / toggleExplication
+// / traiterSyntheseAlerteCoach) — on ne change que la présentation.
 function renderAlertesCoach(data) {
   const el = document.getElementById('cd-alertes');
   if (!el || !coachAthleteCourant) return;
-  const couleurSeverite = { haute: 'var(--danger)', moyenne: 'var(--warn)', basse: 'var(--text-subtle)' };
-  const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
-
   const d = data || coachAthleteData;
-  // Alertes de synthèse non encore traitées cette semaine
-  let synthAlertes = construireSynthAlertes(d).filter(s => !alerteEstTraitee(coachAthleteCourant.athlete_id, { type: s.type }));
+  const aid = coachAthleteCourant.athlete_id;
 
-  // Carte alerte : liseré de sévérité à gauche, fond surface (style moderne).
-  const alerteCard = (stripe, icon, bodyHtml, actionsHtml) => `
-    <div style="display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-left:3px solid ${stripe};border-radius:12px;padding:11px 12px;margin-top:8px;">
-      <span style="font-size:15px;line-height:1.3;flex-shrink:0;">${icon}</span>
-      <div style="flex:1;min-width:0;">${bodyHtml}${actionsHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;">${actionsHtml}</div>` : ''}</div>
-    </div>`;
-
-  const alertesHtml = alertes.map((al, idx) => {
-    const c = couleurSeverite[al.severite] || 'var(--text-subtle)';
+  // --- Collecte normalisée : backend + synthèse + absence calculée ---
+  const items = [];   // { sev, cat:{label,cls}, msg, rec, presc, explic, actions }
+  const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(aid, al));
+  alertes.forEach((al, idx) => {
     const sujetRaw = sujetAlerte(al);
     const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const fait = dejaConseille(sujetRaw);
     const explicationId = `alerte-explication-${idx}`;
     const stagExo = (al.type === 'stagnation' && al.message && al.message.indexOf(' : aucun progrès') >= 0) ? al.message.split(' : aucun progrès')[0].trim() : null;
     const presc = stagExo ? _prescriptionStag(stagExo) : null;
-    const body = `<div style="font-size:13px;font-weight:700;color:${c};">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:500">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
-      ${presc ? `<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:5px;">${escapeHtml(presc.act)}</div>` : ''}
-      <div id="${explicationId}" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:7px;padding:7px 9px;background:var(--surface2);border-radius:8px;line-height:1.45;">${explicationAlerte(al)}</div>`;
-    const actions = `<button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ Pourquoi ?</button>
-        ${fait
-          ? `<span style="font-size:12px;color:var(--good);font-weight:700;align-self:center">Déjà conseillé</span>
-             <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Autre conseil</button>`
-          : `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>`}
-        <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>`;
-    return alerteCard(c, '', body, actions);
-  }).join('');
-
-  const synthHtml = synthAlertes.map(s => {
+    const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">${fait ? 'Autre conseil' : "Répondre à l'athlète"}</button>`
+      + `<button class="cda-btn cda-ghost" onclick="toggleExplicationAlerte('${explicationId}')">Pourquoi ?</button>`
+      + `<button class="cda-btn cda-ok" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>`
+      + (fait ? `<span class="cda-done-tag">Déjà conseillé</span>` : '');
+    items.push({
+      sev: _sevGroupe(al.severite), cat: _catAlerte(al.type), msg: al.message,
+      rec: (al.recurrence_semaines > 1) ? ('🔁 ' + al.recurrence_semaines + ' sem') : '',
+      presc: presc ? presc.act : '',
+      explic: `<div id="${explicationId}" class="cda-explic" style="display:none">${explicationAlerte(al)}</div>`,
+      actions
+    });
+  });
+  construireSynthAlertes(d).filter(s => !alerteEstTraitee(aid, { type: s.type })).forEach(s => {
     const sujet = s.msg.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    const body = `<div style="font-size:13px;font-weight:700;color:${s.color};">${s.msg}</div>`;
-    const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>
-        <button class="btn-sm btn-outline" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>`;
-    return alerteCard(s.color, '', body, actions);
-  }).join('');
-
-  // Alerte d'absence : pas de séance depuis > 7 j (ou aucune). Pas toujours émise
-  // par le backend → on la calcule ici depuis la dernière séance. Ignorée en vacances.
-  let absHtml = '';
+    const sev = (s.color === '#e5484d' || s.color === 'var(--bad)' || s.color === 'var(--danger)') ? 'haute' : 'moyenne';
+    const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">Répondre</button>`
+      + `<button class="cda-btn cda-ok" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>`;
+    items.push({ sev, cat: _catAlerte(s.type), msg: s.msg, rec: '', presc: '', explic: '', actions });
+  });
+  // Absence (si non émise par le moteur et hors pause) — calculée depuis la dernière séance.
   const enPauseAth = (typeof estEnPause === 'function') ? estEnPause(d && d.pause) : false;
-  // Ne pas doubler une alerte d'absence déjà émise par le moteur (backend).
   const absDejaBackend = alertes.some(al => al.type === 'absence' || al.type === 'irregularite');
   if (!enPauseAth && !absDejaBackend) {
     const dj = d && d.dashboard && d.dashboard.derniere_seance ? d.dashboard.derniere_seance.date : null;
     const tsLast = dj ? parseChatDate(dj) : null;
     const ageJ = tsLast ? Math.floor((Date.now() - tsLast) / 86400000) : null;
     if (ageJ == null || ageJ > 7) {
-      const titre = (ageJ == null) ? 'Aucune séance enregistrée' : ageJ + ' jours sans séance';
-      const sous = dj ? ('Dernière séance le ' + escapeHtml(String(dj)) + ' — relance l\'athlète ?') : 'Relance l\'athlète pour (re)démarrer.';
-      const body = `<div style="font-size:13px;font-weight:700;color:var(--warn);">${titre}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${sous}</div>`;
-      const sujet = 'absence';
-      const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Relancer l'athlète</button>`;
-      absHtml = alerteCard('var(--warn)', '', body, actions);
+      const msg = ((ageJ == null) ? 'Aucune séance enregistrée' : ageJ + ' jours sans séance') + (dj ? (' — dernière le ' + escapeHtml(String(dj))) : '');
+      items.push({ sev: 'moyenne', cat: _catAlerte('absence'), msg, rec: '', presc: '', explic: '',
+        actions: `<button class="cda-btn cda-primary" onclick="repondreAlerte('absence')">Relancer l'athlète</button>` });
     }
   }
 
-  // ---- Base de fiabilité : sur quoi s'appuient ces alertes ? (règle 6bis) ----
+  // --- Fiabilité (règle 6bis) ---
   const beDate = (d && d.bien_etre && d.bien_etre[0] && d.bien_etre[0].date) || null;
   const beTs = beDate ? parseChatDate(beDate) : null;
   const ressRecent = beTs && (Date.now() - beTs) / 86400000 <= 7;
@@ -8407,10 +8409,37 @@ function renderAlertesCoach(data) {
   let fiabTxt = 'Basé sur ' + (nbSea ? nbSea + ' séance' + (nbSea > 1 ? 's' : '') + ' récente' + (nbSea > 1 ? 's' : '') : 'aucune séance');
   fiabTxt += beDate ? ' · dernier ressenti ' + escapeHtml(String(beDate)) : ' · aucun ressenti saisi';
   const partiel = !ressRecent;
-  const fiabFooter = `<div style="margin-top:10px;font-size:11px;line-height:1.4;color:${partiel ? 'var(--warn)' : 'var(--text-subtle)'};">${partiel ? 'Données partielles — ' : ''}${fiabTxt}${partiel ? '. Les alertes bien-être (fatigue, sommeil, douleur) ne remontent que si l\'athlète remplit son ressenti.' : '.'}</div>`;
+  const triIcon = '<svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
+  const fiabFooter = `<div class="cda-foot${partiel ? ' partial' : ''}">${partiel ? triIcon : ''}<span>${partiel ? 'Données partielles — ' : ''}${fiabTxt}${partiel ? '. Les alertes bien-être (fatigue, sommeil, douleur) ne remontent que si l\'athlète remplit son ressenti.' : '.'}</span></div>`;
 
-  const tout = absHtml + alertesHtml + synthHtml;
-  el.innerHTML = (tout || '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--good);font-weight:700;margin-top:6px;"><span></span> Rien à signaler</div>') + fiabFooter;
+  // --- État vide ---
+  if (!items.length) {
+    el.innerHTML = '<div class="cda-empty"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>'
+      + '<div><div class="t">Rien à signaler</div><div class="s">Aucune alerte cette semaine.</div></div></div>' + fiabFooter;
+    return;
+  }
+
+  // --- Rendu triage ---
+  const prio = items.filter(x => x.sev === 'haute');
+  const surv = items.filter(x => x.sev !== 'haute');
+  const card = (x) => `<div class="cda-al ${x.sev === 'haute' ? 'prio' : 'surv'}">`
+    + `<div class="cda-top"><span class="cda-pill ${x.cat.cls}">${x.cat.label}</span>${x.rec ? `<span class="cda-rec">${x.rec}</span>` : ''}</div>`
+    + `<div class="cda-msg">${x.msg}</div>`
+    + (x.presc ? `<div class="cda-presc">↳ ${escapeHtml(x.presc)}</div>` : '')
+    + (x.explic || '')
+    + `<div class="cda-acts">${x.actions}</div></div>`;
+  const grp = (list, cls, label, color) => list.length
+    ? `<div class="cda-grp ${cls}"><span class="dot" style="background:${color}"></span>${label}</div>` + list.map(card).join('')
+    : '';
+  const breakdown = `<div class="cda-breakdown">`
+    + (prio.length ? `<span class="b"><span class="dot" style="background:var(--danger)"></span>${prio.length} prioritaire${prio.length > 1 ? 's' : ''}</span>` : '')
+    + (surv.length ? `<span class="b"><span class="dot" style="background:var(--warn)"></span>${surv.length} à surveiller</span>` : '')
+    + `</div>`;
+  const head = `<div class="cda-head"><span class="cda-title">Alertes à traiter</span><span class="cda-count">${items.length} à traiter</span></div>` + breakdown;
+  el.innerHTML = head
+    + grp(prio, 'prio', 'Prioritaire', 'var(--danger)')
+    + grp(surv, 'surv', 'À surveiller', 'var(--warn)')
+    + fiabFooter;
 }
 
 function toggleExplicationAlerte(id) {
