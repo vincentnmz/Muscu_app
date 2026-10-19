@@ -192,7 +192,7 @@
         <label>Login (4 chiffres)</label>
         <input type="text" id="inp-login" maxlength="4" placeholder="1234" inputmode="numeric" autocomplete="username">
         <label>Mot de passe</label>
-        <div class="pwd-wrap"><input type="password" id="inp-password" placeholder="Mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('inp-password',this)" aria-label="Afficher le mot de passe">👁</button></div>
+        <div class="pwd-wrap"><input type="password" id="inp-password" placeholder="Mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('inp-password',this)" aria-label="Afficher le mot de passe"><i class=nv-ic-eye></i></button></div>
         <div id="login-error" class="error-msg"></div>
         <button class="btn btn-accent" onclick="seConnecter()">Se connecter</button>
         <div style="text-align:center;margin-top:10px;"><a href="#" onclick="ouvrirMdpOublie(event)" style="font-size:12.5px;color:var(--accent);font-weight:600;text-decoration:none;">Mot de passe oublié ?</a></div>
@@ -228,7 +228,7 @@
         <label>Email</label>
         <input type="email" id="reg-email" placeholder="Pour récupérer ton mot de passe" autocomplete="email" inputmode="email" required>
         <label>Mot de passe</label>
-        <div class="pwd-wrap"><input type="password" id="reg-password" placeholder="Choisis un mot de passe" autocomplete="new-password"><button type="button" class="pwd-eye" onclick="togglePwd('reg-password',this)" aria-label="Afficher le mot de passe">👁</button></div>
+        <div class="pwd-wrap"><input type="password" id="reg-password" placeholder="Choisis un mot de passe" autocomplete="new-password"><button type="button" class="pwd-eye" onclick="togglePwd('reg-password',this)" aria-label="Afficher le mot de passe"><i class=nv-ic-eye></i></button></div>
         <label>Code d'invitation <span style="color:var(--text-muted);font-weight:600;text-transform:none;letter-spacing:0;">(bêta)</span></label>
         <input type="text" id="reg-code" placeholder="Code reçu pour la bêta" autocomplete="off" autocapitalize="characters">
         <label style="display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:12px;color:var(--text-muted);font-weight:500;line-height:1.4;cursor:pointer;text-transform:none;letter-spacing:0;">
@@ -250,7 +250,7 @@
         <label>Identifiant</label>
         <input type="text" id="inp-login-coach" placeholder="Ton identifiant" autocomplete="username">
         <label>Mot de passe</label>
-        <div class="pwd-wrap"><input type="password" id="inp-password-coach" placeholder="Mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('inp-password-coach',this)" aria-label="Afficher le mot de passe">👁</button></div>
+        <div class="pwd-wrap"><input type="password" id="inp-password-coach" placeholder="Mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('inp-password-coach',this)" aria-label="Afficher le mot de passe"><i class=nv-ic-eye></i></button></div>
         <div id="login-coach-error" class="error-msg"></div>
         <button class="btn btn-accent" onclick="seConnecterCoach()">Se connecter</button>
       </div>
@@ -268,7 +268,7 @@
         <label>Login coach</label>
         <input type="text" id="reg-coach-login" placeholder="Choisis un identifiant" autocomplete="username">
         <label>Mot de passe</label>
-        <div class="pwd-wrap"><input type="password" id="reg-coach-password" placeholder="Choisis un mot de passe" autocomplete="new-password"><button type="button" class="pwd-eye" onclick="togglePwd('reg-coach-password',this)" aria-label="Afficher le mot de passe">👁</button></div>
+        <div class="pwd-wrap"><input type="password" id="reg-coach-password" placeholder="Choisis un mot de passe" autocomplete="new-password"><button type="button" class="pwd-eye" onclick="togglePwd('reg-coach-password',this)" aria-label="Afficher le mot de passe"><i class=nv-ic-eye></i></button></div>
         <label>Sport</label>
         <select id="reg-coach-sport" style="width:100%;" onchange="majRoleSelonSport()"></select>
         <label style="display:flex;align-items:flex-start;gap:9px;margin-top:12px;font-size:12px;color:var(--text-muted);font-weight:500;line-height:1.4;cursor:pointer;text-transform:none;letter-spacing:0;">
@@ -492,7 +492,7 @@
       <label>Nouveau mot de passe</label>
       <div style="display:flex;gap:8px;align-items:stretch;">
         <input type="password" id="reset-mdp-input" placeholder="6 caractères minimum" autocomplete="new-password" style="flex:1;min-width:0;">
-        <button type="button" class="btn" title="Afficher / masquer" onclick="toggleResetMdpVisibility()" id="reset-mdp-eye" style="width:auto;margin:0;padding:0 12px;background:var(--surface2);color:var(--text-muted);">👁</button>
+        <button type="button" class="btn" title="Afficher / masquer" onclick="toggleResetMdpVisibility()" id="reset-mdp-eye" style="width:auto;margin:0;padding:0 12px;background:var(--surface2);color:var(--text-muted);"><i class=nv-ic-eye></i></button>
       </div>
       <div style="display:flex;gap:8px;margin-top:8px;">
         <button type="button" class="btn btn-outline" onclick="genererMdpCoach()" style="flex:1;margin:0;font-size:13px;padding:9px;">🎲 Générer</button>
