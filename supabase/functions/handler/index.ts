@@ -1634,6 +1634,22 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
 
 // « Lecture Novalyz » (cardio) : régularité + charge cardio (RPE×durée) 28j vs 28j
 // précédents + efficience (FC à effort constant). Déterministe, ne recalcule que
+// Charge interne d'une sortie cardio (session-RPE de Foster = RPE × durée, en UA).
+// Si le RPE manque — cas des IMPORTS MONTRE (durée + FC mais pas de RPE ressenti) —
+// on l'ESTIME à partir de la FC moyenne (repères larges, sans FCmax individuelle →
+// prudent) ; sinon RPE modéré (5). => une activité importée pèse dans la charge au
+// lieu de compter 0 (correctif #5 : elle entre bien dans le croisé muscu/cardio).
+function chargeInterneCardio(s: any): number {
+  const duree = Number(s && s.duree) || 0
+  if (duree <= 0) return 0
+  let rpe = Number(s && s.rpe) || 0
+  if (rpe <= 0) {
+    const fc = Number(s && (s.fc_moy != null ? s.fc_moy : s.fc)) || 0
+    rpe = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5
+  }
+  return rpe * duree
+}
+
 // des agrégats simples sur cardio.history. S'aligne sur l'état du jour (récup/dispo).
 function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   const hist = (cardio && cardio.history) || []
@@ -1645,7 +1661,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   const fcPts: any[] = []
   for (const s of hist) {
     const d = String(s.date || '')
-    const ua = (Number(s.rpe) || 0) * (Number(s.duree) || 0)
+    const ua = chargeInterneCardio(s)
     if (d >= c28) { n28++; ch28 += ua; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy), rpe: Number(s.rpe) || 0 }) }
     else if (d >= c56) { n56++; ch56 += ua }
   }
@@ -1699,7 +1715,7 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
   const c28 = fmtYMD(minus(now, 28))
   let cardioUA = 0
   const hist = (cardio && cardio.history) || []
-  for (const s of hist) { if (String(s.date || '') >= c28) cardioUA += (Number(s.rpe) || 0) * (Number(s.duree) || 0) }
+  for (const s of hist) { if (String(s.date || '') >= c28) cardioUA += chargeInterneCardio(s) }
   const muscuT = (comparison && comparison.j28_vs_j28prec && comparison.j28_vs_j28prec.tonnage && comparison.j28_vs_j28prec.tonnage.j28) || 0
   const muscuUA = Math.round(muscuT / 50)   // proxy pour rendre muscu et cardio comparables
   const tot = muscuUA + cardioUA

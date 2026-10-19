@@ -21,7 +21,7 @@ function extractFn(name) {
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext([
-  extractFn('fmtYMD'), extractFn('minus'),
+  extractFn('fmtYMD'), extractFn('minus'), extractFn('chargeInterneCardio'),
   extractFn('buildSyntheseMuscu'), extractFn('buildSyntheseCardio'), extractFn('buildSyntheseCroise'),
   'this.buildSyntheseMuscu = buildSyntheseMuscu; this.buildSyntheseCardio = buildSyntheseCardio; this.buildSyntheseCroise = buildSyntheseCroise;'
 ].join('\n'), sandbox);
