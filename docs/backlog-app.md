@@ -4,8 +4,35 @@
 > Légende statut : ✅ fait · 🟡 en cours · ⏳ à venir · ❓ décision à trancher (section C).
 > 🟢 Athlète = priorité (parcours solo) · 🔵 Coach = **phase 2**.
 > Voir aussi [`vision-produit.md`](./vision-produit.md) et [`roadmap-beta.md`](./roadmap-beta.md).
-> **Dernière passe de statut : 5 oct. 2026.**
+> **Dernière passe de statut : 19 oct. 2026.**
 > **MAJ 5 oct. 2026** : reskin complet de la **partie coach** (section B) livré en **prod** (`main`) ; **questionnaire quotidien « état du jour »** (auto 1×/jour) ; **import nutrition auto Health Connect** ; **correctif critique** de la boucle de permission Health Connect côté athlète (« serveur en démarrage »).
+
+---
+
+## ★ Dump « 19 points » du porteur (sept.) — réconciliation 19 oct. 2026
+
+> Liste brute donnée par le porteur, suivie point par point. (⚠️ backend Supabase à
+> redéployer : `bien_etre_hooper.sql` puis `index.ts`.)
+
+**✅ Faits**
+- **#1** Vraie page d'analyse + calculs muscu → Analyses « cœur » (Résumé décision, Tendances fréquence/intensité/force, Volume MEV/MRV).
+- **#2** Lecture Novalyz : progression/régression + **fiabilité 0-100** (bloc unifié Analyses).
+- **#3** ACWR revu (montait trop vite) → remplacé par **fitness-fatigue de Banister** (CTL/ATL/TSB) + **sRPE** (RPE CR-10 × durée, hybride) ; ACWR secondaire.
+- **#9** Barres sticky · **#10** « Par exercice » → **Évolution** · **#11** Records replacés · **#12** exercices ajoutés · **#17** export JSON/CSV retirés + rapport mail coach à la demande · **#19** détail technique Import retiré (Lot 1).
+- **#16** Données par mail à l'athlète (recap mail testé Vincent/Alizé ; domaine `novalyz.fr` vérifié).
+- *Bonus session* : questionnaires **Hooper** (readiness) + **RPE CR-10** (Foster) ; verdict recalibré (charge seule → Prêt) ; **passe anti-emoji** (décoratifs retirés, icônes clés en SVG).
+
+**⏳ Reste à faire (le vrai TODO)**
+- **#4** Surcharge par série : stocker/afficher **séries 2/3/4** (pas juste la 1re) — backend + histo + front.
+- **#5** Vérifier que les **activités importées** (montre/Strava) entrent dans le **croisé** muscu/cardio.
+- **#6** **Mot de Novalyz** : revoir toutes les phrases, en ajouter. · **#7** **Alertes** : idem.
+- **#8** **Orthographe** : passe globale (recos / phrases).
+- **#13** **Remplacer un exo en cours de séance** (machine prise).
+- **#14** **Récompenses adaptées à chaque athlète**.
+- **#15** **Notifications** coach & athlète : vérifier que ça marche.
+- **#18** **Fiche coach : refondre la présentation des « alertes à traiter »** (maquette d'abord).
+
+**Contexte livré par le porteur** : domaine + mails **faits**, Play Store **fait**, P1 **en partie**.
 
 ---
 
