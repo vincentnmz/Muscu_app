@@ -2802,18 +2802,21 @@ async function creerAthlete() {
   const taille = document.getElementById('crea-taille').value.trim();
   const ddn    = document.getElementById('crea-ddn').value;
   const password = document.getElementById('crea-password').value;
+  const emailEl = document.getElementById('crea-email');
+  const email  = emailEl ? emailEl.value.trim() : '';
   const sportCoach = (coach && coach.sport) ? coach.sport : 'muscu';
   const annees = (sportCoach === 'muscu') ? document.getElementById('crea-annees').value.trim() : '0';
   if (!prenom || !login || !ddn || !taille) { errEl.textContent = 'Remplis tous les champs.'; return; }
   if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'E-mail invalide.'; return; }
   if (sportCoach === 'muscu' && annees === '') { errEl.textContent = 'Indique les années de pratique.'; return; }
   errEl.textContent = 'Création...';
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'coachCreerAthlete', coach_id: coach.coach_id, prenom, login, ddn, taille, annees, password })
+      body: JSON.stringify({ action: 'coachCreerAthlete', coach_id: coach.coach_id, prenom, login, ddn, taille, annees, password, email })
     });
     const data = await res.json();
     if (data.success) {
@@ -7085,8 +7088,13 @@ function renderCoachHome() {
   var titles = { aujourdhui: "Aujourd'hui", equipe: 'Équipe', analyses: 'Analyses' };
   var action = (coachDeskSection === 'equipe') ? '<button class="cs-btn p" data-tour="co-inviter" onclick="ouvrirModalLierAthlete()">+ Inviter</button>' : '';
   var body = coachDeskSection === 'equipe' ? _coachDeskEquipe() : coachDeskSection === 'analyses' ? _coachDeskAnalyses() : _coachDeskAujourdhui();
+  // N4 : la recherche d'athlète n'a de sens que dans l'annuaire « Équipe » → on ne
+  // l'affiche que là (avant, elle était dans l'en-tête de toutes les sections).
+  var searchBox = (coachDeskSection === 'equipe')
+    ? '<div class="cs-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Rechercher un athlète…" oninput="coachDeskSearch(this.value)" autocomplete="off"></div>'
+    : '';
   shell.innerHTML = '<div class="cs-main"><header class="cs-top"><h1>' + (titles[coachDeskSection] || '') + '</h1>'
-    + '<div class="cs-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Rechercher un athlète…" oninput="coachDeskSearch(this.value)" autocomplete="off"></div>'
+    + searchBox
     + action + '</header><div class="cs-body">' + body + '</div></div>';
 }
 function renderCoachDesktop() { if (!_coachDeskAny()) return; renderCoachRail(); if (!document.body.classList.contains('athlete-selected')) renderCoachHome(); }
@@ -14978,8 +14986,10 @@ function renderEtat(data) {
         var srcF = (cfe.source === 'srpe') ? '<span style="color:var(--text-subtle);font-weight:600;font-size:10px"> · sRPE</span>' : '';
         fiabF = fiabF + srcF;
         // Jauge fraîcheur (TSB %) : -40 (fatigue) → +20 (frais), 0 = équilibre au centre.
+        // N7 : couleurs = tokens sémantiques PLEINS (gamme existante warn/neutre/good),
+        // zones alignées sur les vrais seuils (-12 → équilibre, +5 → frais).
         var lo = -40, hi = 20, posF = Math.max(0, Math.min(100, (tsbPct - lo) / (hi - lo) * 100));
-        var zbarF = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,rgba(224,120,0,.45) 0 46%,rgba(80,110,160,.35) 46% 62%,rgba(0,168,84,.45) 62% 100%)">'
+        var zbarF = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,var(--warn) 0 47%,var(--text-muted) 47% 75%,var(--good) 75% 100%)">'
           + '<div style="position:absolute;top:-3px;left:' + posF.toFixed(0) + '%;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)"></div></div>'
           + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:4px"><span>fatigue</span><span>équilibre</span><span>frais</span></div></div>';
         var ctlTxt = (cfe.ctl != null) ? String(cfe.ctl) : '—', atlTxt = (cfe.atl != null) ? String(cfe.atl) : '—';
@@ -21312,7 +21322,14 @@ function _nutSave() {
 }
 async function _nutHCButton() {
   var box = document.getElementById('nut-hc'); if (!box) return;
-  var H = _hcPlugin(); if (!H) { box.innerHTML = ''; return; }   // web/PWA : pas de Health Connect
+  // N12a : on base l'affichage sur « app native » plutôt que sur la présence immédiate
+  // du plugin (qui peut charger en retard → bouton qui « disparaît »). Sur web/PWA on
+  // affiche une info au lieu de rien (le bouton ne doit pas sembler supprimé).
+  var native = (typeof _estAppNative === 'function') && _estAppNative();
+  if (!native) {
+    box.innerHTML = '<div class="nut-muted" style="font-size:11px;line-height:1.45;">Import auto depuis ton app de nutrition (MyFitnessPal, Yazio…) : disponible dans l\'appli Android via Health Connect.</div>';
+    return;
+  }
   box.innerHTML = '<button class="nut-ghost" onclick="_nutFromHC()"><svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Importer depuis Health Connect</button>'
     + '<div class="nut-muted" style="margin-top:6px;font-size:11px;line-height:1.45;">Depuis ton app de nutrition (MyFitnessPal, Yazio…) via Health Connect. Si des apports manquent, elle n\'a peut-être pas fini de synchroniser — rouvre-la et réessaie un peu plus tard.</div>';
 }
