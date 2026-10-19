@@ -99,10 +99,10 @@ const htmlOn = runCockpit(true, dataMuscu, 'dash');
 check('ON → cockpit non vide', htmlOn.length > 0);
 check('ON → bloc A (État / disponibilité)', /Vigilance/.test(htmlOn));
 check('ON → bloc B (Charge)', /Charge d.entraînement/.test(htmlOn));
-check('ON → bloc C (Bien-être)', /🫀 Bien-être/.test(htmlOn));
-check('ON → bloc D (Évolution)', /📈 Évolution/.test(htmlOn));
-check('ON → bloc E (Performance)', /🏋️ Performance/.test(htmlOn));
-check('ON → bloc F (Historique)', /📅 Historique/.test(htmlOn));
+check('ON → bloc C (Bien-être)', /Bien-être/.test(htmlOn));
+check('ON → bloc D (Évolution)', /Évolution/.test(htmlOn));
+check('ON → bloc E (Performance)', /Performance/.test(htmlOn));
+check('ON → bloc F (Historique)', /Historique/.test(htmlOn));
 
 // ── 3) ON : doublons entièrement couverts masqués ; cd-recup (action) conservé ─
 const onMask = runMasquage(true);

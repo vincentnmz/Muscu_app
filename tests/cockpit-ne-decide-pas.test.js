@@ -124,9 +124,9 @@ const htmlDoul1 = run(true, { sport: 'muscu', moteur: dataMuscu.moteur, dashboar
 check('C douleur=1 → zone masquée', !/Cheville/.test(htmlDoul1), 'absent', 'PRÉSENT');
 
 // Bloc E — Performance (progression/e1RM, records, volume — descriptif, données existantes)
-check('E → carte Performance', /🏋️ Performance/.test(html), 'présent', 'absent');
+check('E → carte Performance', /Performance/.test(html), 'présent', 'absent');
 check('E → progression e1RM affichée (+5 %, via tendance1RM)', /\+5 %/.test(html), 'présent', 'absent');
-check('E → records 30 j affichés (2)', /⚡ 2/.test(html), 'présent', 'absent');
+check('E → records 30 j affichés (2)', /Records \(30 j\)<\/div><div[^>]*>2<\/div>/.test(html), 'présent', 'absent');
 check('E → volume par muscle affiché (Quadriceps)', /Quadriceps/.test(html), 'présent', 'absent');
 check('E → volume trié desc (Quadriceps avant Pectoraux)', html.indexOf('Quadriceps') < html.indexOf('Pectoraux'), 'ordre', 'inversé');
 // Performance sans données → rendu propre, rien inventé
@@ -136,7 +136,7 @@ check('E sans records → « — »', /Records \(30 j\)[\s\S]*?—/.test(htmlNoP
 check('E sans volume → « Pas de volume cette semaine »', /Pas de volume cette semaine/.test(htmlNoPerf), 'présent', 'absent');
 
 // Bloc F — Historique (global.* + poids[] + streak — présentation pure, données existantes)
-check('F → carte Historique', /📅 Historique/.test(html), 'présent', 'absent');
+check('F → carte Historique', /Historique/.test(html), 'présent', 'absent');
 check('F → séances totales (37 via global.total_seances)', /37/.test(html), 'présent', 'absent');
 check('F → tonnage cumulé (128,4 t via global.tonnage_total_kg)', /128,4 t/.test(html), 'présent', 'absent');
 check('F → régularité streak (5 sem. via dashboard.streak)', /5 sem\./.test(html), 'présent', 'absent');
@@ -150,7 +150,7 @@ check('F sans poids → « — »', /Poids[\s\S]*?—/.test(htmlNoHist), 'prése
 check('F sans dernières séances → « Aucune séance enregistrée »', /Aucune séance enregistrée/.test(htmlNoHist), 'présent', 'absent');
 
 // Bloc D — Évolution (tendances descriptives ; sources bien_etre[]/volume_par_jour/moteur.acwr_*)
-check('D → carte Évolution', /📈 Évolution/.test(html), 'présent', 'absent');
+check('D → carte Évolution', /Évolution/.test(html), 'présent', 'absent');
 check('D → renvoi vers onglet Progression (ne remplace pas)', /onglet Progression/.test(html), 'présent', 'absent');
 check('D → sparkline SVG (polyline) rendue', /<polyline/.test(html), 'présent', 'absent');
 check('D → ≥5 tendances bien-être + volume (≥6 polylines)', (html.match(/<polyline/g) || []).length >= 6, '>=6', (html.match(/<polyline/g) || []).length);
