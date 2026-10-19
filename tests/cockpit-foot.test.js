@@ -75,7 +75,7 @@ check('A → récup (Moyen)', /Moyen/.test(html));
 check('A → risque (Modéré)', /Modéré/.test(html));
 check('A → reco (moteur.reco)', /surveiller les sensations/.test(html));
 // Bloc B — Charge foot (UA)
-check('B → carte Charge', /📊 Charge/.test(html));
+check('B → carte Charge', /Charge/.test(html));
 check('B → unité UA (charge interne)', /UA \(charge interne\)/.test(html));
 check('B → ACWR ratio 1.12 (data.acwr)', /1\.12/.test(html));
 check('B → catégorie ACWR (Zone optimale)', /Zone optimale/.test(html));
@@ -88,12 +88,12 @@ const htmlNI = run(true, dataFootNI);
 check('B non-interp → « ACWR non interprétable »', /ACWR non interprétable/.test(htmlNI));
 check('B non-interp → ratio 1.6 NON affiché comme verdict', !/1\.60/.test(htmlNI));
 check('B non-interp → note backend affichée', /historique insuffisant/.test(htmlNI));
-check('C → carte bien-être', /🫀 Bien-être/.test(html));
+check('C → carte bien-être', /Bien-être/.test(html));
 check('C → 4 signaux /5 (sommeil/energie/fatigue/douleur)', (html.match(/\/5</g) || []).length === 4);
 check('C → sommeil=2 libellé « Mauvais » (WQ_ANSWERS)', /Mauvais/.test(html));
 check('C → source data.bienetre (dernier)', /Bien-être · dernier questionnaire/.test(html));
 // Bloc D — Évolution foot (sparklines : wellness + charge_hebdo + ACWR)
-check('D → carte Évolution', /📈 Évolution/.test(html));
+check('D → carte Évolution', /Évolution/.test(html));
 check('D → sparklines (polyline) rendues', /<polyline/.test(html));
 check('D → ≥5 tendances (4 bien-être + charge)', (html.match(/<polyline/g) || []).length >= 5);
 check('D → libellé tendance bien-être (Sommeil)', /Sommeil/.test(html));
@@ -106,7 +106,7 @@ const htmlEvoNeutre = run(true, { moteur: dataFoot.moteur, acwr: dataFoot.acwr }
 check('D sans wellness → « Pas assez de questionnaires »', /Pas assez de questionnaires pour une tendance/.test(htmlEvoNeutre));
 check('D sans charge_hebdo → « Évolution de la charge indisponible »', /Évolution de la charge indisponible/.test(htmlEvoNeutre));
 // Bloc E — Performance foot (match + GPS, métriques réelles, pas de copie muscu)
-check('E → carte Performance foot', /🏟️ Performance/.test(html));
+check('E → carte Performance foot', /Performance/.test(html));
 check('E → section Match', /Match<\/div>|>Match</.test(html));
 check('E → matchs 5 + minutes 410', /Matchs/.test(html) && /410/.test(html));
 check('E → buts 3 (match_stats)', /Buts/.test(html));
@@ -124,7 +124,7 @@ const htmlGpsOnly = run(true, { moteur: dataFoot.moteur, match_stats: { nb: 0 },
 check('E GPS seul → distance HI affichée', /Distance HI/.test(htmlGpsOnly));
 check('E GPS seul → pas de « Matchs »', !/Matchs/.test(htmlGpsOnly));
 // Bloc F — Historique foot (séances / matchs / blessures)
-check('F → carte Historique', /📅 Historique/.test(html));
+check('F → carte Historique', /Historique/.test(html));
 check('F → VRAI total séances = 12 (total_seances, pas la liste de 3)', /Séances \(total\)/.test(html) && /12/.test(html) && /enregistrées/.test(html));
 // fallback : total_seances absent → longueur de la liste (ancien payload)
 const htmlNoTotal = run(true, { moteur: dataFoot.moteur, match_stats: dataFoot.match_stats, seances: dataFoot.seances });
@@ -140,7 +140,7 @@ const htmlNoHist = run(true, { moteur: dataFoot.moteur, match_stats: { nb: 0 }, 
 check('F sans historique → « Aucun historique »', /Aucun historique/.test(htmlNoHist));
 // Repli sur wellness si pas de bienetre
 const htmlWell = run(true, { moteur: dataFoot.moteur, wellness: dataFoot.wellness });
-check('C → repli wellness (dernier point) affiché', /\/5</.test(htmlWell) && /🫀 Bien-être · dernier/.test(htmlWell));
+check('C → repli wellness (dernier point) affiché', /\/5</.test(htmlWell) && /Bien-être · dernier/.test(htmlWell));
 // Bien-être absent → message propre
 const htmlNoBE = run(true, { moteur: dataFoot.moteur });
 check('C sans bien-être → « Aucun questionnaire récent »', /Aucun questionnaire récent/.test(htmlNoBE));

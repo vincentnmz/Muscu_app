@@ -102,8 +102,8 @@ function approx(nom, obtenu, attendu, tol) {
 // =============================================================================
 // A) Score du Bilan — moyenne normalisée + inversion fatigue/douleur
 // =============================================================================
-// Barème : sommeil/energie/ressenti → 5 = bon ; fatigue/douleur → 5 = mauvais.
-// wqPositif doit inverser fatigue & douleur (6 - n), pas les autres.
+// Barème Hooper : sommeil → 5 = bon ; fatigue/stress/courbatures/douleur → 5 = mauvais.
+// wqPositif doit inverser fatigue/stress/courbatures/douleur (6 - n), pas le sommeil.
 (function testBilan() {
   const parKey = {}; WQ_DIMS.forEach(d => parKey[d.key] = d);
   // Inversion correcte
@@ -111,22 +111,23 @@ function approx(nom, obtenu, attendu, tol) {
   eq('wqPositif fatigue=5 → 1 (inversé, 5=mauvais)', wqPositif(parKey.fatigue, 5), 1);
   eq('wqPositif fatigue=1 → 5 (inversé, 1=aucune)', wqPositif(parKey.fatigue, 1), 5);
   eq('wqPositif douleur=1 → 5 (inversé, aucune douleur=bon)', wqPositif(parKey.douleur, 1), 5);
-  eq('wqPositif ressenti=3 (non inversé)', wqPositif(parKey.ressenti, 3), 3);
+  eq('wqPositif stress=1 → 5 (inversé, aucun stress=bon)', wqPositif(parKey.stress, 1), 5);
+  eq('wqPositif courbatures=5 → 1 (inversé)', wqPositif(parKey.courbatures, 5), 1);
   eq('wqPositif absent → null', wqPositif(parKey.sommeil, ''), null);
 
-  // Score global = (moyenne_positive - 1) / 4 * 100
+  // Score global = (moyenne_positive - 1) / 4 * 100 — sur les dims Hooper.
   const score = (rep) => {
     const pos = WQ_DIMS.map(d => wqPositif(d, rep[d.key])).filter(v => v != null);
     const moy = pos.reduce((a, b) => a + b, 0) / pos.length;
     return Math.round((moy - 1) / 4 * 100);
   };
-  // Tout au top : sommeil5 energie5 fatigue1 douleur1 ressenti5 → positifs tous 5 → 100
-  approx('score parfait = 100', score({ sommeil:5, energie:5, fatigue:1, douleur:1, ressenti:5 }), 100);
-  // Tout au pire : sommeil1 energie1 fatigue5 douleur5 ressenti1 → positifs tous 1 → 0
-  approx('score pire = 0', score({ sommeil:1, energie:1, fatigue:5, douleur:5, ressenti:1 }), 0);
-  // Cas réel Vincent : sommeil4 energie3 fatigue4(→2) douleur2(→4) ressenti3
-  //   positifs = [4,3,2,4,3] moy=3.2 → (3.2-1)/4*100 = 55
-  approx('score cas réel = 55', score({ sommeil:4, energie:3, fatigue:4, douleur:2, ressenti:3 }), 55);
+  // Tout au top : sommeil5 fatigue1 stress1 courbatures1 douleur1 → positifs tous 5 → 100
+  approx('score parfait = 100', score({ sommeil:5, fatigue:1, stress:1, courbatures:1, douleur:1 }), 100);
+  // Tout au pire : sommeil1 fatigue5 stress5 courbatures5 douleur5 → positifs tous 1 → 0
+  approx('score pire = 0', score({ sommeil:1, fatigue:5, stress:5, courbatures:5, douleur:5 }), 0);
+  // Cas réel : sommeil4 fatigue4(→2) stress3(→3) courbatures4(→2) douleur2(→4)
+  //   positifs = [4,2,3,2,4] moy=3 → (3-1)/4*100 = 50
+  approx('score cas réel = 50', score({ sommeil:4, fatigue:4, stress:3, courbatures:4, douleur:2 }), 50);
 })();
 
 // =============================================================================

@@ -29,7 +29,7 @@ function extractDecl(name) {
   return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_maSemaineType', '_seancesFaites', '_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', '_ckWbColor', 'wqPositif', '_ckFormeQuestionnaire', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpitHistorique', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'renderCockpitEvolution', 'renderCockpit'];
+const fnNames = ['_maSemaineType', '_seancesFaites', '_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', '_ckFraicheurHeader', 'renderCockpitCharge', '_ckWbColor', 'wqPositif', '_ckFormeQuestionnaire', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpitHistorique', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'renderCockpitEvolution', 'renderCockpit'];
 const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
@@ -61,9 +61,9 @@ const dataMuscu = {
   comparison: { j28_vs_j28prec: { tonnage: { j28: 46.2, evol_pct: 4 } } },
   recent: { j7: { seances: 4, rpe_moyen: 7.8, monotonie: 1.4, strain: 933 } },
   bien_etre: [
-    { date: '01/09', sommeil: 2, energie: 3, fatigue: 4, douleur: 2, zone: 'Genou droit', ressenti: 3, note: 'Nuit courte, genou tire.' },
-    { date: '29/08', sommeil: 3, energie: 3, fatigue: 3, douleur: 1, ressenti: 4, note: '' },
-    { date: '27/08', sommeil: 4, energie: 4, fatigue: 2, douleur: 1, ressenti: 4, note: '' },
+    { date: '01/09', sommeil: 2, energie: 3, fatigue: 4, stress: 3, courbatures: 4, douleur: 2, zone: 'Genou droit', ressenti: 3, note: 'Nuit courte, genou tire.' },
+    { date: '29/08', sommeil: 3, energie: 3, fatigue: 3, stress: 2, courbatures: 3, douleur: 1, ressenti: 4, note: '' },
+    { date: '27/08', sommeil: 4, energie: 4, fatigue: 2, stress: 2, courbatures: 2, douleur: 1, ressenti: 4, note: '' },
   ],
   historique: { progression_par_exo: { 'Squat': [{ charge: 100, reps: 5 }, { charge: 105, reps: 5 }] }, volume_semaine: [{ muscle: 'Quadriceps', faites: 12 }, { muscle: 'Pectoraux', faites: 8 }], volume_par_jour: { '2026-08-10': 5000, '2026-08-24': 6000 } },
   global: { records_30j: 2, total_seances: 37, tonnage_total_kg: 128400, dernieres_seances: [{ date: '30/08', tonnage: 8200, exercices: ['Squat', 'Développé'] }, { date: '28/08', tonnage: 7600, exercices: ['Tractions'] }] },
@@ -113,7 +113,7 @@ check('C → fatigue=4 libellé « Importante »', /Importante/.test(html), 'pr�
 check('C → zone affichée (douleur≠1 + zone)', /Genou droit/.test(html), 'présent', 'absent');
 check('C → note affichée', /Nuit courte/.test(html), 'présent', 'absent');
 // Rapatriement (Étape 8 bis) : synthèse questionnaire (score /100 + point faible) — descriptif, pas un verdict
-check('C → synthèse questionnaire score /100 (45/100)', /45\/100/.test(html), 'présent', 'absent');
+check('C → synthèse questionnaire score /100 (40/100)', /40\/100/.test(html), 'présent', 'absent');
 check('C → point faible dominant (Sommeil)', /point faible : <b[^>]*>Sommeil/.test(html), 'présent', 'absent');
 check('C → synthèse absente si aucune dimension (rien inventé)', !/\/100/.test(run(true, { sport: 'muscu', moteur: dataMuscu.moteur, bien_etre: [{ note: 'rien' }] }, 'dash')), 'absent', 'PRÉSENT');
 // Données absentes → gestion propre, rien inventé
@@ -124,9 +124,9 @@ const htmlDoul1 = run(true, { sport: 'muscu', moteur: dataMuscu.moteur, dashboar
 check('C douleur=1 → zone masquée', !/Cheville/.test(htmlDoul1), 'absent', 'PRÉSENT');
 
 // Bloc E — Performance (progression/e1RM, records, volume — descriptif, données existantes)
-check('E → carte Performance', /🏋️ Performance/.test(html), 'présent', 'absent');
+check('E → carte Performance', /Performance/.test(html), 'présent', 'absent');
 check('E → progression e1RM affichée (+5 %, via tendance1RM)', /\+5 %/.test(html), 'présent', 'absent');
-check('E → records 30 j affichés (2)', /⚡ 2/.test(html), 'présent', 'absent');
+check('E → records 30 j affichés (2)', /Records \(30 j\)<\/div><div[^>]*>2<\/div>/.test(html), 'présent', 'absent');
 check('E → volume par muscle affiché (Quadriceps)', /Quadriceps/.test(html), 'présent', 'absent');
 check('E → volume trié desc (Quadriceps avant Pectoraux)', html.indexOf('Quadriceps') < html.indexOf('Pectoraux'), 'ordre', 'inversé');
 // Performance sans données → rendu propre, rien inventé
@@ -136,7 +136,7 @@ check('E sans records → « — »', /Records \(30 j\)[\s\S]*?—/.test(htmlNoP
 check('E sans volume → « Pas de volume cette semaine »', /Pas de volume cette semaine/.test(htmlNoPerf), 'présent', 'absent');
 
 // Bloc F — Historique (global.* + poids[] + streak — présentation pure, données existantes)
-check('F → carte Historique', /📅 Historique/.test(html), 'présent', 'absent');
+check('F → carte Historique', /Historique/.test(html), 'présent', 'absent');
 check('F → séances totales (37 via global.total_seances)', /37/.test(html), 'présent', 'absent');
 check('F → tonnage cumulé (128,4 t via global.tonnage_total_kg)', /128,4 t/.test(html), 'présent', 'absent');
 check('F → régularité streak (5 sem. via dashboard.streak)', /5 sem\./.test(html), 'présent', 'absent');
@@ -150,7 +150,7 @@ check('F sans poids → « — »', /Poids[\s\S]*?—/.test(htmlNoHist), 'prése
 check('F sans dernières séances → « Aucune séance enregistrée »', /Aucune séance enregistrée/.test(htmlNoHist), 'présent', 'absent');
 
 // Bloc D — Évolution (tendances descriptives ; sources bien_etre[]/volume_par_jour/moteur.acwr_*)
-check('D → carte Évolution', /📈 Évolution/.test(html), 'présent', 'absent');
+check('D → carte Évolution', /Évolution/.test(html), 'présent', 'absent');
 check('D → renvoi vers onglet Progression (ne remplace pas)', /onglet Progression/.test(html), 'présent', 'absent');
 check('D → sparkline SVG (polyline) rendue', /<polyline/.test(html), 'présent', 'absent');
 check('D → ≥5 tendances bien-être + volume (≥6 polylines)', (html.match(/<polyline/g) || []).length >= 6, '>=6', (html.match(/<polyline/g) || []).length);

@@ -29,7 +29,7 @@ function extractDecl(name) {
   return SRC.slice(m.index, j) + ';';
 }
 
-const fnNames = ['_maSemaineType', '_seancesFaites', '_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', 'renderCockpitCharge', '_ckWbColor', 'wqPositif', '_ckFormeQuestionnaire', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpitHistorique', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'renderCockpitEvolution', 'renderCockpit', 'appliquerMasquageCockpit'];
+const fnNames = ['_maSemaineType', '_seancesFaites', '_ckColRecup', '_ckColNiv3', '_ckConf', '_ckMini', 'renderCockpitEtat', '_ckT', '_ckKpi', '_ckFraicheurHeader', 'renderCockpitCharge', '_ckWbColor', 'wqPositif', '_ckFormeQuestionnaire', 'renderCockpitBienEtre', '_ckKpiC', 'renderCockpitPerformance', 'renderCockpitHistorique', '_ckSpark', '_ckDir', '_ckWeeklyVolume', 'renderCockpitEvolution', 'renderCockpit', 'appliquerMasquageCockpit'];
 const code = extractDecl('_CK_CTX') + '\n' + extractDecl('WQ_DIMS') + '\n' + extractDecl('WQ_ANSWERS') + '\n' + extractDecl('COCKPIT_DOUBLONS_IDS') + '\n' + fnNames.map(extractFn).join('\n');
 
 let ok = 0, ko = 0;
@@ -41,7 +41,7 @@ const dataMuscu = {
   dashboard: { acwr: 1.12, tonnage: { j7: 12.4, evol_pct: 8 }, regularite: { seances_j7: 4 }, streak: { semaines: 5 } },
   comparison: { j28_vs_j28prec: { tonnage: { j28: 46.2, evol_pct: 4 } } },
   recent: { j7: { seances: 4, rpe_moyen: 7.8 } },
-  bien_etre: [{ sommeil: 2, energie: 3, fatigue: 4, douleur: 2, zone: 'Genou', ressenti: 3, note: 'x' }, { sommeil: 3, energie: 3, fatigue: 3, douleur: 1, ressenti: 4 }],
+  bien_etre: [{ sommeil: 2, energie: 3, fatigue: 4, stress: 3, courbatures: 4, douleur: 2, zone: 'Genou', ressenti: 3, note: 'x' }, { sommeil: 3, energie: 3, fatigue: 3, stress: 2, courbatures: 2, douleur: 1, ressenti: 4 }],
   historique: { progression_par_exo: { Squat: [{ charge: 100, reps: 5 }] }, volume_semaine: [{ muscle: 'Quadriceps', faites: 12 }], volume_par_jour: { '2026-08-10': 5000, '2026-08-24': 6000 } },
   global: { records_30j: 2, total_seances: 37, tonnage_total_kg: 128400, dernieres_seances: [{ date: '30/08', tonnage: 8200, exercices: ['Squat'] }] },
   poids: [{ date: '30/08', poids: 82 }, { date: '01/07', poids: 84 }],
@@ -99,10 +99,10 @@ const htmlOn = runCockpit(true, dataMuscu, 'dash');
 check('ON → cockpit non vide', htmlOn.length > 0);
 check('ON → bloc A (État / disponibilité)', /Vigilance/.test(htmlOn));
 check('ON → bloc B (Charge)', /Charge d.entraînement/.test(htmlOn));
-check('ON → bloc C (Bien-être)', /🫀 Bien-être/.test(htmlOn));
-check('ON → bloc D (Évolution)', /📈 Évolution/.test(htmlOn));
-check('ON → bloc E (Performance)', /🏋️ Performance/.test(htmlOn));
-check('ON → bloc F (Historique)', /📅 Historique/.test(htmlOn));
+check('ON → bloc C (Bien-être)', /Bien-être/.test(htmlOn));
+check('ON → bloc D (Évolution)', /Évolution/.test(htmlOn));
+check('ON → bloc E (Performance)', /Performance/.test(htmlOn));
+check('ON → bloc F (Historique)', /Historique/.test(htmlOn));
 
 // ── 3) ON : doublons entièrement couverts masqués ; cd-recup (action) conservé ─
 const onMask = runMasquage(true);
