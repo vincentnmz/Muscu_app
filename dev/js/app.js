@@ -11446,12 +11446,24 @@ function _maMoteurTiles(data) {
 }
 // Rail « Mes repères cardio » : agrégats neutres sur 30 j + charge 7 j (UA).
 // Pas de « meilleure allure » (trompeur entre sports) — que des sommes/compteurs.
+// Charge interne d'une sortie cardio (sRPE de Foster, UA). RPE manquant (import
+// montre : durée + FC sans RPE ressenti) estimé via la FC moyenne, sinon RPE 5.
+// Miroir du backend chargeInterneCardio (#5 : l'importé pèse au lieu d'être exclu).
+function _chargeInterneCardio(s) {
+  var duree = Number(s && s.duree) || 0; if (duree <= 0) return 0;
+  var rpe = Number(s && s.rpe) || 0;
+  if (rpe <= 0) {
+    var fc = Number(s && (s.fc_moy != null ? s.fc_moy : s.fc)) || 0;
+    rpe = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5;
+  }
+  return rpe * duree;
+}
 function _maCardioRail(data) {
   var hist = (data && data.cardio && data.cardio.history) || []; if (!hist.length) return '';
   var cut30 = _maCutISO(30), cut7 = _maCutISO(7), n30 = 0, km30 = 0, ua7 = 0;
   hist.forEach(function (s) {
     if ((s.date || '') >= cut30) { n30++; if (+s.distance) km30 += +s.distance; }
-    if ((s.date || '') >= cut7 && +s.rpe && +s.duree) ua7 += (+s.rpe) * (+s.duree);
+    if ((s.date || '') >= cut7) ua7 += _chargeInterneCardio(s);
   });
   var tiles = [_maRailTile('Sorties 30 j', n30, ''), _maRailTile('Distance 30 j', Math.round(km30 * 10) / 10, 'km'), _maRailTile('Charge 7 j', Math.round(ua7), 'UA')];
   return '<div class="rail-hd">Mes repères cardio</div><div class="rail-snap-grid">' + tiles.join('') + '</div>';
@@ -12590,7 +12602,7 @@ function _maCardioResume(data) {
   var pasMax = Math.max.apply(null, pas.map(function (y) { return y.pas || 1; }).concat([1]));
   var pasHtml = pas.length ? ('<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / jour</span><span style="font-size:11px;font-weight:700;color:#9D5FD3">Ø ' + Math.round(pas.reduce(function (s, x) { return s + (x.pas || 0); }, 0) / pas.length).toLocaleString('fr-FR') + '</span></div><div class="ma-bars2">' + pas.map(function (x) { return '<span style="height:' + Math.round((x.pas || 0) / pasMax * 100) + '%;background:#9D5FD3"></span>'; }).join('') + '</div><div class="ma-axis"><span>' + _maShortDate(pas[0].date) + '</span><span>' + _maShortDate(pas[pas.length - 1].date) + '</span></div></div>') : '';
   // Charge cardio hebdo (UA = RPE × durée), nb de semaines piloté par la période.
-  var chDict = {}; hist.forEach(function (s) { if (+s.rpe && +s.duree) chDict[s.date] = (chDict[s.date] || 0) + (+s.rpe) * (+s.duree); });
+  var chDict = {}; hist.forEach(function (s) { var _ua = _chargeInterneCardio(s); if (_ua > 0) chDict[s.date] = (chDict[s.date] || 0) + _ua; });
   var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
   var tdCh = _maTrendData(chDict, 'sum');
   var chargeHtml = tdCh.pts.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / ' + _bNoun + ' · ' + _w.plabel, 'charge_cardio') + _maChartBlock('Charge (UA)', tdCh.pts, 'UA', '#9D5FD3', 'rgba(157,95,211,.12)', _maShortDate(tdCh.dates[0]), 'Charge interne (RPE × durée) par ' + _bNoun + '. Une montée trop brutale peut signaler un risque de surmenage.', tdCh.dates)) : '';
@@ -12696,7 +12708,7 @@ function _maCroise(data) {
   var muscuT = r.tonnage_kg || 0;
   // Charge cardio (UA = RPE × durée), Hyrox comptabilisé À PART (3e catégorie).
   var hist = (data.cardio && data.cardio.history) || [], cardioUA = 0, hyroxUA = 0;
-  hist.forEach(function (s) { if ((s.date || '') < _w.startISO || (s.date || '') >= _w.endISO || !+s.rpe || !+s.duree) return; var ua = (+s.rpe) * (+s.duree); if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
+  hist.forEach(function (s) { if ((s.date || '') < _w.startISO || (s.date || '') >= _w.endISO) return; var ua = _chargeInterneCardio(s); if (ua <= 0) return; if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
   var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les charges comparables
   var tot = muscuUA + cardioUA + hyroxUA;
   var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
@@ -12731,7 +12743,7 @@ function _maCroise(data) {
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
   var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
   var tdM = _maTrendData(vpj, 'sum'), muscuW = tdM.pts.map(function (v) { return Math.round(v / 50); });
-  var chD = {}; ((data.cardio && data.cardio.history) || []).forEach(function (s) { if (+s.rpe && +s.duree) chD[s.date] = (chD[s.date] || 0) + (+s.rpe) * (+s.duree); });
+  var chD = {}; ((data.cardio && data.cardio.history) || []).forEach(function (s) { var _ua = _chargeInterneCardio(s); if (_ua > 0) chD[s.date] = (chD[s.date] || 0) + _ua; });
   var cardioW = _maTrendData(chD, 'sum').pts;
   var totalW = muscuW.map(function (v, i) { return Math.round(v + (cardioW[i] || 0)); });
   var beD = {}; ((data.bien_etre) || []).forEach(function (b) { var d = _maFRtoDate(b.date); if (!d) return; var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); beD[iso] = (Number(b.sommeil) || 0) + (Number(b.energie) || 0) + (6 - (Number(b.fatigue) || 3)); });
