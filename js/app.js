@@ -888,7 +888,7 @@ function renderCockpitEtat(m){
   var confHtml = conf ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:'+conf.c+';background:'+conf.c+'1a;border:1px solid '+conf.c+'33;padding:3px 9px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:'+conf.c+';"></span>'+conf.l+'</span>' : '';
   var ctxLbl = (m.contexte_tag != null) ? (_CK_CTX[m.contexte_tag] !== undefined ? _CK_CTX[m.contexte_tag] : String(m.contexte_tag)) : '';
   var ctxHtml = ctxLbl ? '<span style="font-size:10.5px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);padding:3px 9px;border-radius:999px;">'+escapeHtml(ctxLbl)+'</span>' : '';
-  var recoHtml = m.reco ? '<div style="margin-top:12px;display:flex;gap:8px;align-items:flex-start;background:var(--surface2);border-left:3px solid '+dispoCol+';border-radius:0 10px 10px 0;padding:9px 11px;font-size:12px;color:var(--text);">💡 <span>'+escapeHtml(String(m.reco))+'</span></div>' : '';
+  var recoHtml = m.reco ? '<div style="margin-top:12px;display:flex;gap:8px;align-items:flex-start;background:var(--surface2);border-left:3px solid '+dispoCol+';border-radius:0 10px 10px 0;padding:9px 11px;font-size:12px;color:var(--text);"><span>'+escapeHtml(String(m.reco))+'</span></div>' : '';
   return '<div class="dash-card" style="padding:16px;position:relative;overflow:hidden;margin-bottom:12px;">'
     +'<div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:'+dispoCol+';"></div>'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
@@ -919,29 +919,44 @@ function _ckKpi(k, v, sub, evolPct){
     + '</div>';
 }
 // Bloc B — Charge. Lit dashboard.* / comparison.* / recent.* / moteur.acwr_*. AUCUN calcul ACWR.
+// En-tête « Charge & fraîcheur » (fitness-fatigue) partagé par les cartes charge
+// du Cockpit coach (muscu + foot). Fraîcheur (TSB) = signal primaire ; forme (CTL)
+// + fatigue (ATL) ; ACWR relégué en mention secondaire « indice ». Jamais rouge.
+function _ckFraicheurHeader(m, dash){
+  m = m || {}; dash = dash || {};
+  var cf = m.charge_fatigue || null;
+  var tsbPct = (cf && cf.tsbPct != null) ? Number(cf.tsbPct) : null;
+  var acwrRatio = (dash.acwr != null && !isNaN(Number(dash.acwr))) ? Number(dash.acwr) : null;
+  var acwrSec = (acwrRatio != null && m.acwr_fiable === true)
+    ? 'ACWR ' + acwrRatio.toFixed(2) + ' · indice secondaire'
+    : 'ACWR non interprétable';
+  if (tsbPct == null) {
+    return '<div style="display:flex;align-items:center;gap:10px;">'
+      + '<div style="font-size:26px;font-weight:800;color:var(--text-muted);line-height:1;">—</div>'
+      + '<div><div style="font-size:12.5px;font-weight:700;color:var(--text-muted);">Fraîcheur non calculable</div>'
+      + '<div style="font-size:10.5px;color:var(--text-muted);">~4 semaines d\'historique nécessaires. <span style="opacity:.75">' + escapeHtml(acwrSec) + '</span></div></div></div>';
+  }
+  var frL, frC, frSub;
+  if (tsbPct >= 5) { frL = 'Frais'; frC = '#00c96e'; frSub = 'Reposé / affûté'; }
+  else if (tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; frSub = 'Charge proche de l\'habitude'; }
+  else { frL = 'Fatigue'; frC = '#f5a623'; frSub = 'Charge récente élevée'; }
+  var ctl = (cf.ctl != null) ? String(cf.ctl) : '—', atl = (cf.atl != null) ? String(cf.atl) : '—';
+  var fiabTag = (cf.fiable === true) ? '' : ' · indicatif';
+  return '<div style="display:flex;align-items:center;gap:12px;">'
+    + '<div style="font-size:26px;font-weight:800;color:' + frC + ';line-height:1;">' + frL + '</div>'
+    + '<div><div style="font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Fraîcheur ' + (tsbPct >= 0 ? '+' : '') + tsbPct + '%' + fiabTag + '</div>'
+    + '<div style="font-size:12.5px;font-weight:700;color:' + frC + ';">' + frSub + '</div></div></div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Forme de fond <b style="color:var(--text)">' + ctl + '</b> · Fatigue récente <b style="color:var(--text)">' + atl + '</b>' + (cf.source === 'srpe' ? ' <span style="opacity:.75">· via sRPE (RPE×durée)</span>' : '') + ' <span style="opacity:.75">· ' + escapeHtml(acwrSec) + '</span></div>';
+}
 function renderCockpitCharge(data){
   var m = data.moteur || {};
   var dash = data.dashboard || {};
   var comp = data.comparison || {};
   var rec = data.recent || {};
   var reg = dash.regularite || {};
-  // --- ACWR (backend-first ; jamais recalculé ici) ---
-  var acwrHtml;
-  if (m.acwr_fiable !== true) {
-    var note = m.acwr_note || 'ACWR non interprétable — données insuffisantes.';
-    acwrHtml = '<div style="display:flex;align-items:center;gap:10px;">'
-      + '<div style="font-size:26px;font-weight:800;color:var(--text-muted);line-height:1;">—</div>'
-      + '<div><div style="font-size:12.5px;font-weight:700;color:var(--text-muted);">ACWR non interprétable</div>'
-      + '<div style="font-size:10.5px;color:var(--text-muted);">' + escapeHtml(String(note)) + '</div></div></div>';
-  } else {
-    var catMap = { normal:{l:'Zone optimale',c:'#00c96e'}, vigilance:{l:'Vigilance',c:'#f5a623'}, eleve:{l:'Charge élevée',c:'#e5484d'}, sous_charge:{l:'Sous-charge',c:'#00c9ff'} };
-    var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)' };
-    var ratio = (dash.acwr != null) ? Number(dash.acwr) : null;
-    acwrHtml = '<div style="display:flex;align-items:center;gap:12px;">'
-      + '<div style="font-size:28px;font-weight:800;color:' + cat.c + ';line-height:1;">' + (ratio != null ? ratio.toFixed(2) : '—') + '</div>'
-      + '<div><div style="font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Ratio ACWR</div>'
-      + '<div style="font-size:12.5px;font-weight:700;color:' + cat.c + ';">' + escapeHtml(cat.l) + '</div></div></div>';
-  }
+  // --- CHARGE & FRAÎCHEUR (modèle fitness-fatigue de Banister) — signal PRIMAIRE.
+  //     L'ACWR devient une mention secondaire (indice, pas un verdict). ---
+  var acwrHtml = _ckFraicheurHeader(m, dash);
   // --- KPI charge (données déjà présentes ; sinon —) ---
   var t7 = (dash.tonnage && dash.tonnage.j7 != null) ? _ckT(dash.tonnage.j7) : '—';
   var t7evol = dash.tonnage ? dash.tonnage.evol_pct : null;
@@ -958,7 +973,7 @@ function renderCockpitCharge(data){
   var mono = (_j7.monotonie != null) ? String(Number(_j7.monotonie).toFixed(2)).replace('.', ',') : '—';
   var strain = (_j7.strain != null) ? Math.round(Number(_j7.strain)).toLocaleString('fr-FR') : '—';
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📊 Charge d\'entraînement</div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">Charge d\'entraînement</div>'
     + acwrHtml
     + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:14px;">'
       + _ckKpi('Tonnage 7 j', t7, (dash.tonnage && dash.tonnage.j7_prec != null) ? ('vs ' + _ckT(dash.tonnage.j7_prec)) : null, t7evol)
@@ -988,10 +1003,10 @@ function renderCockpitBienEtre(data){
   var be = (data.bien_etre && data.bien_etre[0]) || null;
   if (!be) {
     return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🫀 Bien-être</div>'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">Bien-être</div>'
       + '<div style="font-size:12px;color:var(--text-muted);">Aucun questionnaire récent.</div></div>';
   }
-  var ICO = { sommeil:'😴', energie:'⚡', fatigue:'💪', douleur:'🤕', ressenti:'😊' };
+  var ICO = { sommeil:'', energie:'', fatigue:'', douleur:'', ressenti:'' };
   var cells = WQ_DIMS.map(function(dim){
     var raw = be[dim.key];
     if (raw == null || raw === '' || isNaN(Number(raw))) {
@@ -1013,13 +1028,13 @@ function renderCockpitBienEtre(data){
   }).join('');
   var doul = Number(be.douleur);
   var zoneHtml = (!isNaN(doul) && doul !== 1 && be.zone) ? '<div style="margin-top:11px;font-size:11.5px;color:var(--text-muted);">📍 Zone : <b style="color:var(--text);">' + escapeHtml(String(be.zone)) + '</b></div>' : '';
-  var noteHtml = be.note ? '<div style="margin-top:8px;font-size:11.5px;color:var(--text-muted);font-style:italic;">📝 « ' + escapeHtml(String(be.note)) + ' »</div>' : '';
+  var noteHtml = be.note ? '<div style="margin-top:8px;font-size:11.5px;color:var(--text-muted);font-style:italic;">« ' + escapeHtml(String(be.note)) + ' »</div>' : '';
   // Synthèse questionnaire (score /100 + point faible) rapatriée depuis l'ancien
   // « Bilan de la dernière séance ». Descriptif, neutre — pas un verdict.
   var forme = _ckFormeQuestionnaire(be);
   var formeHtml = forme ? '<div style="margin-top:11px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-muted);">Synthèse questionnaire : <b style="color:var(--text);">' + forme.score + '/100</b> · point faible : <b style="color:var(--text);">' + escapeHtml(forme.faible) + '</b></div>' : '';
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🫀 Bien-être · dernier questionnaire</div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">Bien-être · dernier questionnaire</div>'
     + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">' + cells + '</div>'
     + formeHtml + zoneHtml + noteHtml + '</div>';
 }
@@ -1054,10 +1069,10 @@ function renderCockpitPerformance(data){
       + '<b style="font-variant-numeric:tabular-nums;">' + (x.faites || 0) + '</b></div>';
   }).join('') : '<div style="font-size:12px;color:var(--text-muted);">Pas de volume cette semaine.</div>';
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🏋️ Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique muscu</span></div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🏋 Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique muscu</span></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px;">'
       + _ckKpiC('Progression e1RM', '<span style="color:' + pctCol + ';">' + pctTxt + '</span>', 'tendance moyenne')
-      + _ckKpiC('Records (30 j)', (rec == null ? '—' : '⚡ ' + escapeHtml(String(rec))), 'nouveaux records')
+      + _ckKpiC('Records (30 j)', (rec == null ? '—' : '' + escapeHtml(String(rec))), 'nouveaux records')
     + '</div>'
     + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Séries par muscle · cette semaine</div>'
     + volHtml + '</div>';
@@ -1112,7 +1127,7 @@ function renderCockpitHistorique(data){
   }).join('') : '<div style="font-size:12px;color:var(--text-muted);">Aucune séance enregistrée.</div>';
 
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📅 Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;">'
       + _ckKpiC('Séances totales', (nbSeances == null ? '—' : escapeHtml(String(nbSeances))), 'cumul')
       + _ckKpiC('Tonnage cumulé', escapeHtml(tonnageTxt), 'toutes séances')
@@ -1205,7 +1220,7 @@ function renderCockpitEvolution(data){
   }
 
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">📈 Évolution <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· tendances descriptives</span></div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">Évolution <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· tendances descriptives</span></div>'
     + '<div style="font-size:10px;color:var(--text-subtle);margin-bottom:12px;">Détail exercice par exercice → onglet Progression.</div>'
     + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Bien-être</div>' + beHtml
     + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:12px 0 7px;">Volume</div>' + volHtml
@@ -1272,11 +1287,18 @@ function renderCockpitBienEtreFoot(data){
     : (Array.isArray(data && data.wellness) && data.wellness.length ? data.wellness[data.wellness.length - 1] : null);
   if (!be) {
     return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🫀 Bien-être</div>'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">Bien-être</div>'
       + '<div style="font-size:12px;color:var(--text-muted);">Aucun questionnaire récent.</div></div>';
   }
-  var DIMS = WQ_DIMS.filter(function(d){ return ['sommeil', 'energie', 'fatigue', 'douleur'].indexOf(d.key) !== -1; });
-  var ICO = { sommeil:'😴', energie:'⚡', fatigue:'💪', douleur:'🤕' };
+  // Foot : readiness via indicateurs (sommeil/energie/fatigue/douleur) — liste propre,
+  // indépendante de WQ_DIMS (muscu = Hooper).
+  var DIMS = [
+    { key: 'sommeil', label: 'Sommeil', invert: false },
+    { key: 'energie', label: 'Énergie', invert: false },
+    { key: 'fatigue', label: 'Fatigue', invert: true },
+    { key: 'douleur', label: 'Douleur', invert: true }
+  ];
+  var ICO = { sommeil:'', energie:'', fatigue:'', douleur:'' };
   var cells = DIMS.map(function(dim){
     var raw = be[dim.key];
     if (raw == null || raw === '' || isNaN(Number(raw))) {
@@ -1296,7 +1318,7 @@ function renderCockpitBienEtreFoot(data){
       + '</div>';
   }).join('');
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🫀 Bien-être · dernier questionnaire</div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">Bien-être · dernier questionnaire</div>'
     + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">' + cells + '</div></div>';
 }
 // Bloc B foot — Charge (UA / sRPE). Lit data.acwr + moteur.acwr_* (backend-first,
@@ -1326,7 +1348,7 @@ function renderCockpitChargeFoot(data){
   var mono = (kpi.monotonie != null) ? String(Number(kpi.monotonie).toFixed(2)).replace('.', ',') : '—';
   var strain = (kpi.strain != null) ? Math.round(Number(kpi.strain)).toLocaleString('fr-FR') : '—';
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📊 Charge <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· UA (charge interne)</span></div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">Charge <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· UA (charge interne)</span></div>'
     + acwrHtml
     + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:14px;">'
       + _ckKpi('Charge 7 j', c7, 'charge aiguë', null)
@@ -1342,7 +1364,12 @@ function renderCockpitChargeFoot(data){
 function renderCockpitEvolutionFoot(data){
   var m = data.moteur || {};
   var well = Array.isArray(data.wellness) ? data.wellness.slice(-10) : [];
-  var DIMS = WQ_DIMS.filter(function(d){ return ['sommeil', 'energie', 'fatigue', 'douleur'].indexOf(d.key) !== -1; });
+  var DIMS = [
+    { key: 'sommeil', label: 'Sommeil', invert: false },
+    { key: 'energie', label: 'Énergie', invert: false },
+    { key: 'fatigue', label: 'Fatigue', invert: true },
+    { key: 'douleur', label: 'Douleur', invert: true }
+  ];
   var beRows = DIMS.map(function(dim){
     var serie = well.map(function(x){ return x[dim.key]; }).filter(function(v){ return v != null && v !== '' && !isNaN(Number(v)); }).map(Number);
     if (serie.length < 2) return '';
@@ -1375,7 +1402,7 @@ function renderCockpitEvolutionFoot(data){
   }
 
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">📈 Évolution <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· tendances descriptives</span></div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">Évolution <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· tendances descriptives</span></div>'
     + '<div style="font-size:10px;color:var(--text-subtle);margin-bottom:12px;">Détail → onglets Charge & Match.</div>'
     + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:7px;">Bien-être</div>' + beHtml
     + '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin:12px 0 7px;">Charge</div>' + chHtml
@@ -1396,7 +1423,7 @@ function renderCockpitPerformanceFoot(data){
   var hasGps = (gps.n || 0) > 0 || (gps.distance_hi || 0) > 0 || (gps.sprints || 0) > 0;
   if (!hasMatch && !hasGps) {
     return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🏟️ Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique foot</span></div>'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🏟 Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique foot</span></div>'
       + '<div style="font-size:12px;color:var(--text-muted);">Aucune donnée de match ou GPS.</div></div>';
   }
   var xg = (agg.xg && agg.xg.total != null) ? agg.xg.total : null;
@@ -1425,7 +1452,7 @@ function renderCockpitPerformanceFoot(data){
       + '</div>';
   }
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🏟️ Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique foot</span></div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">🏟 Performance <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· métrique foot</span></div>'
     + matchHtml + gpsHtml + '</div>';
 }
 // Bloc F foot — Historique : synthèse descriptive (séances récentes, temps de
@@ -1442,7 +1469,7 @@ function renderCockpitHistoriqueFoot(data){
 
   if (!seances.length && !nbMatch && !bless.length) {
     return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">📅 Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
       + '<div style="font-size:12px;color:var(--text-muted);">Aucun historique.</div></div>';
   }
 
@@ -1459,12 +1486,12 @@ function renderCockpitHistoriqueFoot(data){
   if (actives.length) {
     var b0 = actives[0];
     var retour = b0.retour_terrain ? (' · retour ' + escapeHtml(String(b0.retour_terrain))) : '';
-    blessBanner = '<div style="margin-top:11px;font-size:11.5px;color:var(--text-muted);">🩹 Blessure en cours : <b style="color:var(--text);">'
+    blessBanner = '<div style="margin-top:11px;font-size:11.5px;color:var(--text-muted);">Blessure en cours : <b style="color:var(--text);">'
       + escapeHtml(String(b0.type || '—')) + (b0.localisation ? ' (' + escapeHtml(String(b0.localisation)) + ')' : '') + '</b>' + retour + '</div>';
   }
 
   return '<div class="dash-card" style="padding:16px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">📅 Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
+    + '<div style="font-size:13px;font-weight:700;margin-bottom:12px;">Historique <span style="font-size:9px;color:var(--text-subtle);font-weight:600;">· synthèse</span></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;">'
       + _ckKpi('Séances (total)', totalSeances, 'enregistrées', null)
       + _ckKpi('Matchs saison', nbMatch, 'joués', null)
@@ -1749,7 +1776,7 @@ function togglePwd(id, btn) {
   var el = document.getElementById(id); if (!el) return;
   var reveal = el.type === 'password';
   el.type = reveal ? 'text' : 'password';
-  if (btn) { btn.textContent = reveal ? '🙈' : '👁'; btn.setAttribute('aria-label', reveal ? 'Masquer le mot de passe' : 'Afficher le mot de passe'); }
+  if (btn) { btn.innerHTML = reveal ? '<i class=nv-ic-eye-off></i>' : '<i class=nv-ic-eye></i>'; btn.setAttribute('aria-label', reveal ? 'Masquer le mot de passe' : 'Afficher le mot de passe'); }
 }
 
 async function seConnecter() {
@@ -1808,7 +1835,7 @@ async function sInscrire() {
     if (data.success) {
       athlete = data.athlete;
       localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
-      showToast('✅ Bienvenue ' + prenom + ' !');
+      showToast('Bienvenue ' + prenom + ' !');
       ouvrirApp();
       // Nouveau compte → onboarding IMMÉDIAT (sans attendre le 1er chargement serveur).
       // _onbChecked évite un 2e déclenchement quand getAppData revient.
@@ -2043,13 +2070,13 @@ async function enregistrerRecapFreqCoach() {
     if (data && data.success) {
       coach.recap_freq = freq;
       const LBL = { off: 'Aucun résumé e-mail.', semaine: 'Résumé chaque semaine.', mois: 'Résumé chaque mois.', '3mois': 'Résumé tous les 3 mois.' };
-      setMsg('✅ ' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
-      if (freq !== 'off' && !(coach.email)) setMsg('✅ Enregistré — ajoute un e-mail à ton compte coach pour recevoir le résumé.', 'var(--warn)');
+      setMsg('' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
+      if (freq !== 'off' && !(coach.email)) setMsg('Enregistré — ajoute un e-mail à ton compte coach pour recevoir le résumé.', 'var(--warn)');
       try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
     } else {
-      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+      setMsg('' + ((data && data.error) || 'Échec de l\'enregistrement.'));
     }
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 
 function fermerReglagesCoach() {
@@ -2192,7 +2219,7 @@ function genererMdpCoach() {
   for (let i = 0; i < 8; i++) out += chars[rnd() % chars.length];
   const inp = document.getElementById('reset-mdp-input');
   if (inp) { inp.type = 'text'; inp.value = out; }
-  const eye = document.getElementById('reset-mdp-eye'); if (eye) eye.textContent = '🙈';
+  const eye = document.getElementById('reset-mdp-eye'); if (eye) eye.textContent = '';
   return out;
 }
 
@@ -2202,14 +2229,14 @@ function toggleResetMdpVisibility() {
   if (!inp) return;
   const masque = inp.type === 'password';
   inp.type = masque ? 'text' : 'password';
-  if (eye) eye.textContent = masque ? '🙈' : '👁';
+  if (eye) eye.innerHTML = masque ? '<i class=nv-ic-eye></i>' : '<i class=nv-ic-eye-off></i>';
 }
 
 function copierResetMdp() {
   const inp = document.getElementById('reset-mdp-input');
   if (!inp || !inp.value) { showToast('Aucun mot de passe à copier'); return; }
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(inp.value).then(() => showToast('📋 Copié')).catch(() => showToast('Copie manuelle nécessaire'));
+    navigator.clipboard.writeText(inp.value).then(() => showToast('Copié')).catch(() => showToast('Copie manuelle nécessaire'));
   } else { showToast('Copie manuelle nécessaire'); }
 }
 
@@ -2221,7 +2248,7 @@ function ouvrirResetMdp(athlete_id, nom) {
   _resetMdpEnCours = false;
   const nomEl = document.getElementById('reset-mdp-nom'); if (nomEl) nomEl.textContent = nom || 'cet athlète';
   const inp = document.getElementById('reset-mdp-input'); if (inp) { inp.type = 'password'; inp.value = ''; }
-  const eye = document.getElementById('reset-mdp-eye'); if (eye) eye.textContent = '👁';
+  const eye = document.getElementById('reset-mdp-eye'); if (eye) eye.innerHTML = '<i class=nv-ic-eye></i>';
   const msg = document.getElementById('reset-mdp-msg'); if (msg) { msg.textContent = ''; msg.style.color = ''; }
   const btn = document.getElementById('reset-mdp-confirm'); if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
   const ov = document.getElementById('reset-mdp-overlay'); if (ov) ov.style.display = 'flex';
@@ -2251,15 +2278,15 @@ async function confirmerResetMdp() {
     const data = await res.json();
     if (data && data.success) {
       if (inp) inp.type = 'text';   // laisse le coach lire / copier le nouveau mdp
-      setMsg('✅ Mot de passe réinitialisé. Nouveau mot de passe : ' + mdp + ' — communique-le à l\'athlète.', 'var(--good)');
+      setMsg('Mot de passe réinitialisé. Nouveau mot de passe : ' + mdp + ' — communique-le à l\'athlète.', 'var(--good)');
       if (btn) { btn.disabled = true; btn.textContent = 'Terminé'; }
-      showToast('🔐 Mot de passe réinitialisé');
+      showToast('Mot de passe réinitialisé');
     } else {
-      setMsg('❌ ' + ((data && data.error) || 'Échec de la réinitialisation.'));
+      setMsg('' + ((data && data.error) || 'Échec de la réinitialisation.'));
       if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
     }
   } catch (e) {
-    setMsg('❌ Erreur réseau. Réessaie.');
+    setMsg('Erreur réseau. Réessaie.');
     if (btn) { btn.disabled = false; btn.textContent = 'Confirmer'; }
   } finally {
     _resetMdpEnCours = false;
@@ -2288,15 +2315,15 @@ async function enregistrerEmailAthlete() {
     if (data && data.success) {
       athlete.email = email;
       try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
-      setMsg(email ? '✅ Email enregistré.' : '✅ Email retiré.', 'var(--good)');
-      showToast('✅ Email enregistré');
+      setMsg(email ? 'Email enregistré.' : 'Email retiré.', 'var(--good)');
+      showToast('Email enregistré');
       // Le message de confirmation s'efface tout seul (sinon il « reste » et laisse
       // croire qu'une action est en attente).
       try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
     } else {
-      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+      setMsg('' + ((data && data.error) || 'Échec de l\'enregistrement.'));
     }
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 
 // Pré-remplit le champ email des Réglages avec l'email courant de l'athlète.
@@ -2324,13 +2351,13 @@ async function enregistrerRecapFreqAthlete() {
       athlete.recap_freq = freq;
       try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
       const LBL = { off: 'Aucun rapport e-mail.', semaine: 'Rapport chaque semaine.', mois: 'Rapport chaque mois.', '3mois': 'Rapport tous les 3 mois.' };
-      setMsg('✅ ' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
-      if (freq !== 'off' && !(athlete.email)) setMsg('✅ Préférence enregistrée — pense à renseigner un e-mail ci-dessus.', 'var(--warn)');
+      setMsg('' + (LBL[freq] || 'Préférence enregistrée.'), 'var(--good)');
+      if (freq !== 'off' && !(athlete.email)) setMsg('Préférence enregistrée — pense à renseigner un e-mail ci-dessus.', 'var(--warn)');
       try { setTimeout(function () { setMsg('', ''); }, 4000); } catch (e) {}
     } else {
-      setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.'));
+      setMsg('' + ((data && data.error) || 'Échec de l\'enregistrement.'));
     }
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 /* __EMAIL_ATHLETE_END__ */
 
@@ -2356,13 +2383,13 @@ async function changerMonMotDePasse() {
     });
     const data = await res.json();
     if (data && data.success) {
-      setMsg('✅ Mot de passe modifié.', 'var(--good)');
+      setMsg('Mot de passe modifié.', 'var(--good)');
       if (a) a.value = ''; if (n) n.value = '';
-      showToast('🔐 Mot de passe modifié');
+      showToast('Mot de passe modifié');
     } else {
-      setMsg('❌ ' + ((data && data.error) || 'Échec de la modification.'));
+      setMsg('' + ((data && data.error) || 'Échec de la modification.'));
     }
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 /* __CHANGE_PWD_END__ */
 
@@ -2435,10 +2462,10 @@ async function enregistrerProfil() {
           if (typeof chargerAppData === 'function') chargerAppData();
         } catch (e) {}
       }
-      setMsg('✅ Profil enregistré.', 'var(--good)');
-      showToast('✅ Profil enregistré');
-    } else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.')); }
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+      setMsg('Profil enregistré.', 'var(--good)');
+      showToast('Profil enregistré');
+    } else { setMsg('' + ((data && data.error) || 'Échec de l\'enregistrement.')); }
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 /* __REGLAGES_V3_END__ */
 
@@ -2483,10 +2510,10 @@ async function enregistrerProfilCoach() {
       coach.email = email;
       try { localStorage.setItem('muscu_coach', JSON.stringify(coach)); } catch (e) {}
       var nEl = document.getElementById('coach-reglages-nom'); if (nEl && coach.nom) nEl.textContent = coach.nom;
-      setMsg('✅ Profil enregistré.', 'var(--good)');
-      showToast('✅ Profil enregistré');
-    } else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'enregistrement.')); }
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+      setMsg('Profil enregistré.', 'var(--good)');
+      showToast('Profil enregistré');
+    } else { setMsg('' + ((data && data.error) || 'Échec de l\'enregistrement.')); }
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 
 async function changerMotDePasseCoach() {
@@ -2504,9 +2531,9 @@ async function changerMotDePasseCoach() {
       body: JSON.stringify({ action: 'changePasswordCoach', coach_id: coach.coach_id, ancien_mdp: ancien, nouveau_mdp: nouveau }),
     });
     var data = await res.json();
-    if (data && data.success) { if (a) a.value = ''; if (n) n.value = ''; setMsg('✅ Mot de passe modifié.', 'var(--good)'); showToast('🔐 Mot de passe modifié'); }
-    else { setMsg('❌ ' + ((data && data.error) || 'Échec de la modification.')); }
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+    if (data && data.success) { if (a) a.value = ''; if (n) n.value = ''; setMsg('Mot de passe modifié.', 'var(--good)'); showToast('Mot de passe modifié'); }
+    else { setMsg('' + ((data && data.error) || 'Échec de la modification.')); }
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 
 async function enregistrerClubCoach() {
@@ -2524,9 +2551,9 @@ async function enregistrerClubCoach() {
     if (data && data.success) {
       coach.club = club; coach.categorie_defaut = cat;
       try { localStorage.setItem('muscu_coach', JSON.stringify(coach)); } catch (e) {}
-      setMsg('✅ Enregistré.', 'var(--good)'); showToast('✅ Enregistré');
-    } else { setMsg('❌ ' + ((data && data.error) || 'Échec.')); }
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+      setMsg('Enregistré.', 'var(--good)'); showToast('Enregistré');
+    } else { setMsg('' + ((data && data.error) || 'Échec.')); }
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 /* __REGLAGES_V3_COACH_END__ */
 
@@ -2564,12 +2591,12 @@ async function exporterMesDonnees(format) {
   try {
     var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'exportAthlete', athlete_id: athlete.athlete_id }) });
     var data = await res.json();
-    if (!data || !data.success) { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'export.')); return; }
+    if (!data || !data.success) { setMsg('' + ((data && data.error) || 'Échec de l\'export.')); return; }
     var d = data.data, stamp = new Date().toISOString().slice(0, 10), okDl;
     if (format === 'csv') { okDl = _telecharger('novalyz-seances-' + stamp + '.csv', _toCSV(d.performances || []), 'text/csv;charset=utf-8'); }
     else { okDl = _telecharger('novalyz-mes-donnees-' + stamp + '.json', JSON.stringify(d, null, 2), 'application/json'); }
-    setMsg(okDl ? '✅ Téléchargement lancé.' : '❌ Téléchargement non supporté ici (utilise la version web).', okDl ? 'var(--good)' : 'var(--danger)');
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+    setMsg(okDl ? 'Téléchargement lancé.' : 'Téléchargement non supporté ici (utilise la version web).', okDl ? 'var(--good)' : 'var(--danger)');
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 
 async function exporterEquipe(format) {
@@ -2580,7 +2607,7 @@ async function exporterEquipe(format) {
   try {
     var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'exportEquipe', coach_id: coach.coach_id }) });
     var data = await res.json();
-    if (!data || !data.success) { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'export.')); return; }
+    if (!data || !data.success) { setMsg('' + ((data && data.error) || 'Échec de l\'export.')); return; }
     var d = data.data, stamp = new Date().toISOString().slice(0, 10), okDl;
     if (format === 'csv') {
       var rows = [];
@@ -2589,8 +2616,8 @@ async function exporterEquipe(format) {
     } else {
       okDl = _telecharger('novalyz-equipe-' + stamp + '.json', JSON.stringify(d, null, 2), 'application/json');
     }
-    setMsg(okDl ? '✅ Téléchargement lancé.' : '❌ Téléchargement non supporté ici (utilise la version web).', okDl ? 'var(--good)' : 'var(--danger)');
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+    setMsg(okDl ? 'Téléchargement lancé.' : 'Téléchargement non supporté ici (utilise la version web).', okDl ? 'var(--good)' : 'var(--danger)');
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 
 // Remplit le sélecteur d'athlètes du bilan-client (onglet Données).
@@ -2622,17 +2649,17 @@ async function ouvrirBilanClient() {
   try {
     var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'bilanClient', coach_id: coach.coach_id, athlete_id: athlete_id, periode: periode }) });
     var data = await res.json();
-    if (!data || !data.success) { if (win) { try { win.close(); } catch (e) {} } setMsg('❌ ' + ((data && data.error) || 'Échec du bilan.')); return; }
+    if (!data || !data.success) { if (win) { try { win.close(); } catch (e) {} } setMsg('' + ((data && data.error) || 'Échec du bilan.')); return; }
     if (win) {
       try { win.document.open(); win.document.write(data.html); win.document.close(); } catch (e) { win = null; }
-      setMsg('✅ Bilan ouvert dans un nouvel onglet.', 'var(--good)');
+      setMsg('Bilan ouvert dans un nouvel onglet.', 'var(--good)');
     } else {
       // Fallback (popup bloquée) : téléchargement du HTML.
       var stamp = new Date().toISOString().slice(0, 10);
       var okDl = _telecharger('novalyz-bilan-' + (data.nom || 'client').replace(/\s+/g, '-').toLowerCase() + '-' + stamp + '.html', data.html, 'text/html;charset=utf-8');
-      setMsg(okDl ? '✅ Bilan téléchargé (ouvre le fichier .html).' : '❌ Impossible d\'ouvrir le bilan ici.', okDl ? 'var(--good)' : 'var(--danger)');
+      setMsg(okDl ? 'Bilan téléchargé (ouvre le fichier .html).' : 'Impossible d\'ouvrir le bilan ici.', okDl ? 'var(--good)' : 'var(--danger)');
     }
-  } catch (e) { if (win) { try { win.close(); } catch (_) {} } setMsg('❌ Erreur réseau. Réessaie.'); }
+  } catch (e) { if (win) { try { win.close(); } catch (_) {} } setMsg('Erreur réseau. Réessaie.'); }
 }
 // Coach : envoie le rapport de l'athlète sélectionné par e-mail (à son adresse).
 async function envoyerBilanClientMail() {
@@ -2648,9 +2675,9 @@ async function envoyerBilanClientMail() {
   try {
     var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerBilanMail', coach_id: coach.coach_id, athlete_id: athlete_id, periode: periode }) });
     var data = await res.json();
-    if (data && data.success) { setMsg('✅ Rapport envoyé à ' + (data.email || 'l\'athlète') + '.', 'var(--good)'); showToast('✅ Rapport envoyé'); setTimeout(function () { setMsg('', ''); }, 5000); }
-    else { setMsg('❌ ' + ((data && data.error) || 'Échec de l\'envoi.')); }
-  } catch (e) { setMsg('❌ Erreur réseau. Réessaie.'); }
+    if (data && data.success) { setMsg('Rapport envoyé à ' + (data.email || 'l\'athlète') + '.', 'var(--good)'); showToast('Rapport envoyé'); setTimeout(function () { setMsg('', ''); }, 5000); }
+    else { setMsg('' + ((data && data.error) || 'Échec de l\'envoi.')); }
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
 }
 /* __EXPORT_RGPD_END__ */
 
@@ -2685,12 +2712,12 @@ async function envoyerMdpOublie() {
     });
     // Réponse volontairement générique (anti-énumération) : on affiche toujours
     // le même message, qu'un compte existe ou non.
-    setMsg('✅ Si un compte correspond à cet email, tu vas recevoir un lien. Pense à vérifier tes spams.', 'var(--good)');
+    setMsg('Si un compte correspond à cet email, tu vas recevoir un lien. Pense à vérifier tes spams.', 'var(--good)');
     // Le bouton devient "Fermer" et la modale se referme d'elle-même.
     if (btn) { btn.disabled = false; btn.textContent = 'Fermer'; btn.onclick = fermerMdpOublie; }
     setTimeout(function () { try { fermerMdpOublie(); } catch (e) {} }, 4000);
   } catch (e) {
-    setMsg('❌ Erreur réseau. Réessaie.');
+    setMsg('Erreur réseau. Réessaie.');
     if (btn) { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
   }
 }
@@ -2728,15 +2755,15 @@ async function validerNouveauMdp() {
     var data = await res.json();
     if (data && data.success) {
       _resetToken = null;
-      setMsg('✅ Mot de passe modifié. Tu peux te connecter avec ton nouveau mot de passe.', 'var(--good)');
+      setMsg('Mot de passe modifié. Tu peux te connecter avec ton nouveau mot de passe.', 'var(--good)');
       if (btn) { btn.disabled = true; btn.textContent = 'Terminé'; }
       setTimeout(function () { try { fermerNouveauMdp(); } catch (e) {} }, 2200);
     } else {
-      setMsg('❌ ' + ((data && data.error) || 'Échec. Le lien est peut-être expiré ou déjà utilisé.'));
+      setMsg('' + ((data && data.error) || 'Échec. Le lien est peut-être expiré ou déjà utilisé.'));
       if (btn) { btn.disabled = false; btn.textContent = 'Valider'; }
     }
   } catch (e) {
-    setMsg('❌ Erreur réseau. Réessaie.');
+    setMsg('Erreur réseau. Réessaie.');
     if (btn) { btn.disabled = false; btn.textContent = 'Valider'; }
   }
 }
@@ -2792,7 +2819,7 @@ async function creerAthlete() {
     if (data.success) {
       fermerModalLierAthlete();
       await chargerAthletesCoach();
-      showToast('✅ ' + prenom + ' créé et rattaché');
+      showToast('' + prenom + ' créé et rattaché');
     } else {
       errEl.textContent = data.error || 'Création impossible.';
     }
@@ -3301,12 +3328,12 @@ async function ouvrirDetailJoueurFoot(athlete_id, mode) {
       <div id="fjd-hero" class="fjd-hero">
         <div class="fjd-hero-av">${d.photo ? `<img src="${escapeHtml(d.photo)}" alt="">` : escapeHtml(initiales)}</div>
         <div style="min-width:0;flex:1;">
-          <div class="fjd-hero-grt">Bonjour 👋</div>
+          <div class="fjd-hero-grt">Bonjour</div>
           <div class="fjd-hero-name">${escapeHtml(d.nom || 'Joueur')}</div>
           <div class="fjd-hero-pills">
             <span class="fjd-pill" style="background:color-mix(in srgb, ${dispo.c} 12%, transparent);border-color:color-mix(in srgb, ${dispo.c} 28%, transparent);color:${dispo.c};"><span style="width:8px;height:8px;border-radius:50%;background:${dispo.c};"></span>${escapeHtml(dispo.t)}</span>
             ${d.poste ? `<span class="fjd-pill">⚽ ${escapeHtml(d.poste)}</span>` : ''}
-            ${d.club ? `<span class="fjd-pill">🛡️ ${escapeHtml(d.club)}</span>` : ''}
+            ${d.club ? `<span class="fjd-pill">🛡 ${escapeHtml(d.club)}</span>` : ''}
             ${d.categorie ? `<span class="fjd-pill">${escapeHtml(d.categorie)}</span>` : ''}
           </div>
         </div>
@@ -3760,7 +3787,7 @@ function _briefingHero(eq, total, labelJoueurs, greetingName) {
             ${ring(pct, 64, 6, '#fff', 'rgba(255,255,255,.28)')}
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-size:16px;font-weight:800;">${pct}%</div><div style="font-size:8px;opacity:.9;text-transform:uppercase;letter-spacing:.05em;">sous contrôle</div></div>
           </div>
-          <div style="flex:1;min-width:0;"><div style="font-size:34px;font-weight:800;line-height:1;">${aGerer}</div><div style="font-size:12.5px;opacity:.92;margin-top:4px;font-weight:600;">${aGerer === 0 ? 'effectif sous contrôle 🎉' : labelAthlete + (aGerer > 1 ? 's' : '') + ' à gérer aujourd\'hui'}</div></div>
+          <div style="flex:1;min-width:0;"><div style="font-size:34px;font-weight:800;line-height:1;">${aGerer}</div><div style="font-size:12.5px;opacity:.92;margin-top:4px;font-weight:600;">${aGerer === 0 ? 'effectif sous contrôle' : labelAthlete + (aGerer > 1 ? 's' : '') + ' à gérer aujourd\'hui'}</div></div>
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;">
           ${pill(eq.orange||0, 'à surveiller')}
@@ -3853,7 +3880,7 @@ async function renderCockpitPrepa() {
         ${kpi(`<span style="color:${COL.orange}">${eq.orange||0}</span>`, 'à surveiller')}
         ${kpi(`<span style="color:${COL.rouge}">${eq.rouge||0}</span>`, 'à gérer')}
       </div>
-      ${eq.indispo ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:10px;">🩹 ${eq.indispo} indisponible${eq.indispo>1?'s':''}</div>` : ''}
+      ${eq.indispo ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:10px;">${eq.indispo} indisponible${eq.indispo>1?'s':''}</div>` : ''}
     </div>`;
 
   // ---- BLOC B — Charge de l'équipe (equipe.charge_equipe + charge_hebdo, aucun recalcul) ----
@@ -4361,7 +4388,7 @@ async function renderCoachSynthese(athletes) {
     const { a, m } = e;
     const connue = !!(m && m.derniere && m.derniere.date);   // a-t-on une dernière séance connue ?
     const dsAge = connue ? (Date.now() - (parseChatDate(m.derniere.date) || Date.now())) / 86400000 : Infinity;
-    // (Les messages non lus ne sont PLUS listés ici — ils remontent via l'icône 💬 du header)
+    // (Les messages non lus ne sont PLUS listés ici — ils remontent via l'icône du header)
     // En vacances : aucune raison de priorité (ni absence, ni alerte, ni synthèse).
     if (e.enPause) return null;
     if (dsAge > 7) {
@@ -4369,12 +4396,12 @@ async function renderCoachSynthese(athletes) {
       // « Aucune séance » (jamais entraîné / pas de programme) reste surveillance,
       // pas une urgence — le coach voit le détail dans la liste.
       const col = (connue && dsAge > 14) ? PRIO_BAD : PRIO_WARN;
-      return { icon:'💤', txt: connue ? `${Math.floor(dsAge)} jours sans séance` : 'Aucune séance', color: col };
+      return { icon:'', txt: connue ? `${Math.floor(dsAge)} jours sans séance` : 'Aucune séance', color: col };
     }
     const al = labelAlerteCourt(a);
-    if (al) return { icon:'⚠', txt: al, color: (m && m.statut.rank===2) ? PRIO_BAD : PRIO_WARN };
+    if (al) return { icon:'', txt: al, color: (m && m.statut.rank===2) ? PRIO_BAD : PRIO_WARN };
     // Intervention seulement s'il reste une alerte de synthèse rouge NON traitée
-    if (m && m.statut.rank===2 && synthAlertesActivesCoach(a.athlete_id, m).length) return { icon:'⚠', txt:'Intervention conseillée', color: PRIO_BAD };
+    if (m && m.statut.rank===2 && synthAlertesActivesCoach(a.athlete_id, m).length) return { icon:'', txt:'Intervention conseillée', color: PRIO_BAD };
     return null;
   };
 
@@ -4426,7 +4453,7 @@ async function renderCoachSynthese(athletes) {
               <div style="font-size:13.5px;font-weight:700;">${escapeHtml(e.a.nom)}</div>
               <div style="font-size:12.5px;font-weight:700;color:${c};margin-top:2px;">${analyseIcone(top.type)} ${escapeHtml(top.titre)}</div>
               <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:2px;">${escapeHtml(top.description)}</div>
-              ${top.recommandation ? `<div style="font-size:12px;font-weight:700;color:var(--accent);line-height:1.4;margin-top:4px;">👉 ${escapeHtml(top.recommandation)}</div>` : ''}
+              ${top.recommandation ? `<div style="font-size:12px;font-weight:700;color:var(--accent);line-height:1.4;margin-top:4px;">${escapeHtml(top.recommandation)}</div>` : ''}
             </div>
             <span style="color:var(--text-muted);font-size:18px;flex-shrink:0;">›</span>
           </div>`;
@@ -4465,9 +4492,9 @@ async function renderCoachSynthese(athletes) {
     }
     let c4v = _dash, c4l = 'Progr.';
     if (m && m.progLabel && m.progLabel !== 'N/A') { c4v = `<div class="v" style="color:${m.progColor}">${m.progLabel}</div>`; c4l = 'Progr.'; }
-    else if (streak != null && streak > 0) { c4v = `<div class="v" style="color:var(--warn)">🔥${streak}</div>`; c4l = 'Série'; }
+    else if (streak != null && streak > 0) { c4v = `<div class="v" style="color:var(--warn)">${streak}</div>`; c4l = 'Série'; }
     const chip = enPause
-      ? `<span class="cae-chip" style="background:rgba(99,179,237,.14);color:#63b3ed;">🏖️ Vacances</span>`
+      ? `<span class="cae-chip" style="background:rgba(99,179,237,.14);color:#63b3ed;">Vacances</span>`
       : `<span class="cae-chip" style="background:${s.color}1a;color:${s.color};">${s.label}</span>`;
     const body = enPause
       ? `<div class="cae-vac">Vacances · pas d'alerte absence, reprise à la fin</div>`
@@ -4480,7 +4507,7 @@ async function renderCoachSynthese(athletes) {
     return `<div class="coach-athlete-row" data-cat="${cat}" data-nom="${escapeHtml(String(a.nom || '').toLowerCase())}" onclick="ouvrirAthleteDepuisSelect('${i}')" style="position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;padding:12px 13px 11px;cursor:pointer;box-shadow:var(--shadow-sm);">
       <span class="cae-stripe" style="background:${stripe};"></span>
       <div class="cae-top">
-        <div class="cae-av">${enPause ? '🏖️' : initiales(a.nom)}</div>
+        <div class="cae-av">${enPause ? '' : initiales(a.nom)}</div>
         <div class="cae-nm"><b>${escapeHtml(a.nom)}</b>${chip}</div>
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--text-subtle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="m9 6 6 6-6 6"/></svg>
       </div>
@@ -4532,7 +4559,7 @@ async function renderCoachSynthese(athletes) {
             ${svgRing(pctAJour, 64, 6, '#fff', 'rgba(255,255,255,.28)')}
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-size:16px;font-weight:800;">${pctAJour}%</div><div style="font-size:8px;opacity:.9;text-transform:uppercase;letter-spacing:.05em;">à jour</div></div>
           </div>
-          <div style="flex:1;min-width:0;"><div style="font-size:34px;font-weight:800;line-height:1;">${aVoir}</div><div style="font-size:12.5px;opacity:.92;margin-top:4px;font-weight:600;">${aVoir === 0 ? 'tout le monde est à jour 🎉' : 'athlète' + (aVoir > 1 ? 's' : '') + ' à voir aujourd\'hui'}</div></div>
+          <div style="flex:1;min-width:0;"><div style="font-size:34px;font-weight:800;line-height:1;">${aVoir}</div><div style="font-size:12.5px;opacity:.92;margin-top:4px;font-weight:600;">${aVoir === 0 ? 'tout le monde est à jour' : 'athlète' + (aVoir > 1 ? 's' : '') + ' à voir aujourd\'hui'}</div></div>
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;">
           ${heroPill(nbSurveiller, 'à surveiller')}
@@ -4987,7 +5014,7 @@ function renderCoachSurveiller(athletes) {
 
   card.className = 'dash-card dash-card-accent-orange';
   const nb = aSurveiller.length;
-  titre.textContent = `⚠️ ${nb} athlète${nb>1?'s':''} à surveiller`;
+  titre.textContent = `${nb} athlète${nb>1?'s':''} à surveiller`;
 
   content.innerHTML = aSurveiller.map((a, i) => {
     const alertes = alertesActives(a);
@@ -4996,7 +5023,7 @@ function renderCoachSurveiller(athletes) {
     const couleur = couleurSeverite[sevMax];
     const lignesAlertes = alertes.map((al, j) => `
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-        <div style="flex:1;font-size:11px;color:${couleurSeverite[al.severite] || '#a3a3a3'};font-weight:600">⚠️ ${al.message}${al.recurrence_semaines > 1 ? ` <span style="color:var(--text-muted);font-weight:400">(depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
+        <div style="flex:1;font-size:11px;color:${couleurSeverite[al.severite] || '#a3a3a3'};font-weight:600">${al.message}${al.recurrence_semaines > 1 ? ` <span style="color:var(--text-muted);font-weight:400">(depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
         <button class="btn-sm btn-outline btn-traiter" data-aidx="${i}" data-jidx="${j}" style="white-space:nowrap" onclick="event.stopPropagation()">✓ Traité</button>
       </div>`).join('');
     return `
@@ -5355,8 +5382,8 @@ function renderCoachHeroEtat(data) {
   const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
   const dernier = be[0] || null;
   const chipDims = [
-    { key: 'sommeil', emoji: '😴' }, { key: 'energie', emoji: '🔋' },
-    { key: 'fatigue', emoji: '😮‍💨' }, { key: 'douleur', emoji: '🩹' }
+    { key: 'sommeil', emoji: '' }, { key: 'energie', emoji: '🔋' },
+    { key: 'fatigue', emoji: '' }, { key: 'douleur', emoji: '' }
   ];
   // Le ressenti n'est affiché que s'il est RÉCENT (≤ 7 j) : au-delà, il ne
   // représente plus « l'état du jour » → on ne montre pas de chips périmées.
@@ -5377,11 +5404,11 @@ function renderCoachHeroEtat(data) {
       return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">${cd.emoji} ${WQ_DIMS.find(d=>d.key===cd.key).label} : ${escapeHtml(String(txt))}${alerte ? ' <span style="width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;"></span>' : ''}</span>`;
     }).filter(Boolean).join('');
     if (chips) chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;">${chips}</div>`
-      + `<div style="font-size:10.5px;opacity:.85;margin-top:7px;">🗓️ Ressenti ${escapeHtml(_jd(dernier.date))}</div>`;
+      + `<div style="font-size:10.5px;opacity:.85;margin-top:7px;">Ressenti ${escapeHtml(_jd(dernier.date))}</div>`;
   } else {
     // Ressenti périmé ou absent : on l'indique au lieu d'afficher de vieilles valeurs.
     const last = (dernier && dernier.date) ? ('dernier ' + escapeHtml(_jd(dernier.date))) : 'aucun ressenti saisi';
-    chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">⚠️ Ressenti : aucune donnée récente · ${last}</span></div>`;
+    chipsHtml = `<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--on-accent-a16);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:700;">Ressenti : aucune donnée récente · ${last}</span></div>`;
   }
   const ini = (a.nom || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
   const niv = getNiveauExperience(a.annees_pratique);
@@ -5480,7 +5507,7 @@ function renderCoachOverview(data) {
     const r = recupObj;
     const sc = r.statut === 'optimal' ? 'var(--good)' : r.statut === 'modere' ? 'var(--warn)' : 'var(--v2-bad)';
     const scA = r.statut === 'optimal' ? 'var(--good-a)' : r.statut === 'modere' ? 'var(--warn-a)' : 'var(--bad-a)';
-    const se = r.statut === 'optimal' ? '💪' : r.statut === 'modere' ? '😮‍💨' : '🥵';
+    const se = r.statut === 'optimal' ? '' : r.statut === 'modere' ? '' : '';
     const sl = r.statut === 'optimal' ? 'Bien récupéré' : r.statut === 'modere' ? 'Fatigue modérée' : 'Fatigue élevée';
     recupEl.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
@@ -5490,7 +5517,7 @@ function renderCoachOverview(data) {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
         <div class="dash-stat"><div class="dash-stat-num" style="color:${r.rpe_color}">${r.rpe_moyen !== null ? r.rpe_moyen : '—'}</div><div class="dash-stat-label">RPE moy. 7j</div></div>
         <div class="dash-stat"><div class="dash-stat-num" style="color:${dash.tonnage ? ((dash.tonnage.evol_pct != null ? dash.tonnage.evol_pct : dash.tonnage.evol) >= 0 ? 'var(--good)' : 'var(--warn)') : 'var(--text-subtle)'};font-size:15px">${dash.tonnage ? (dash.tonnage.j7 != null ? dash.tonnage.j7 : dash.tonnage.semaine) + 't' : '—'}</div><div class="dash-stat-label">Tonnage 7j</div></div>
-        <div class="dash-stat"><div class="dash-stat-num" style="color:var(--warn);font-size:18px">🔥${dash.streak ? dash.streak.semaines : 0}</div><div class="dash-stat-label">Sem. d'affilée</div></div>
+        <div class="dash-stat"><div class="dash-stat-num" style="color:var(--warn);font-size:18px">${dash.streak ? dash.streak.semaines : 0}</div><div class="dash-stat-label">Sem. d'affilée</div></div>
       </div>
       <div style="border-left:3px solid ${sc};background:var(--surface2);border-radius:0 10px 10px 0;padding:9px 11px">
         <div style="font-size:11px;font-weight:700;margin-bottom:3px;color:${sc}">${ic('lightbulb')} Suggestion auto (à valider par toi)</div>
@@ -5498,7 +5525,7 @@ function renderCoachOverview(data) {
         ${(() => {
           const sujetR = r.statut === 'optimal' ? 'récupération' : r.statut === 'modere' ? 'fatigue modérée' : 'fatigue élevée';
           return dejaConseille(sujetR)
-            ? `<div style="margin-top:8px;font-size:12px;color:var(--good);font-weight:700">✅ Déjà conseillé</div>
+            ? `<div style="margin-top:8px;font-size:12px;color:var(--good);font-weight:700">Déjà conseillé</div>
                <button class="btn-sm btn-outline" style="margin-top:6px" onclick="repondreAlerte('${sujetR}')">${ic('pencil')} Ajouter un autre conseil</button>`
             : `<button class="btn-sm btn-outline" style="margin-top:8px" onclick="repondreAlerte('${sujetR}')">${ic('pencil')} En faire un conseil</button>`;
         })()}
@@ -5573,7 +5600,7 @@ function renderCoachOverview(data) {
     if (muscleEl) {
       const banner = document.createElement('div');
       banner.style.cssText = 'background:rgba(245,159,0,0.12);border:1px solid rgba(245,159,0,0.35);border-radius:8px;padding:8px 11px;margin-bottom:10px;display:flex;align-items:center;gap:8px;';
-      banner.innerHTML = `<span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${mr.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">Historique global</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${mr.series_faites} séries / ${mr.series_min} min · objectif ${mr.series_optimale} séries</div></div>`;
+      banner.innerHTML = `<span style="font-size:14px;"></span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${mr.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">Historique global</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${mr.series_faites} séries / ${mr.series_min} min · objectif ${mr.series_optimale} séries</div></div>`;
       muscleEl.insertBefore(banner, muscleEl.firstChild);
     }
   }
@@ -5718,7 +5745,7 @@ function afficherCoachTendances(semaines) {
   if (!t) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Pas assez de données sur cette période</div>'; return; }
 
   const sc = t.statut === 'positif' ? '#00c96e' : t.statut === 'plateau' ? '#f59f00' : 'var(--danger)';
-  const sl = t.statut === 'positif' ? '🟢 Adaptation positive' : t.statut === 'plateau' ? '⚠️ Plateau' : '🔴 Régression';
+  const sl = t.statut === 'positif' ? 'Adaptation positive' : t.statut === 'plateau' ? 'Plateau' : 'Régression';
   const sd = t.statut === 'positif' ? 'Volume et charges en progression' : t.statut === 'plateau' ? 'Charges stables depuis plusieurs semaines' : 'Charges en baisse ou RPE en forte hausse';
 
   const ligne = (label, vd, vf, unite, up) => {
@@ -5991,7 +6018,7 @@ function renderCoachHubVolume(data) {
       '<span style="width:52px;flex:none;text-align:right;font-size:11px;font-weight:800;color:' + color + ';font-variant-numeric:tabular-nums;">' + faites + ' / ' + mav + '</span></div>';
   }).join('');
   var status = sousCount
-    ? '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">⚠ ' + sousCount + ' muscle' + (sousCount > 1 ? 's' : '') + ' sous le volume cible</span></div>'
+    ? '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--warn-a);color:var(--warn);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">' + sousCount + ' muscle' + (sousCount > 1 ? 's' : '') + ' sous le volume cible</span></div>'
     : '<div style="margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:6px;background:var(--good-a);color:var(--good);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;">✓ Volumes dans les cibles</span></div>';
   el.innerHTML = '<div class="dash-label cd-deskonly cd-cardlink">Volume par muscle · 7 j<span class="cd-voir">Voir tout →</span></div>' + rows + status;
   try { el.style.cursor = 'pointer'; el.onclick = function () { switchCoachDetailTab('prog'); }; } catch (e) {}
@@ -6356,7 +6383,7 @@ function seancesCardsHTML(entries, prog) {
     const exosMatched = ordreExo.filter(exo => tgtOf(exo)).length;
     const prevExos = targets ? Object.keys(targets).length : 0;
 
-    const cibleBox = t => `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:#7C5CFF;background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.22);border-radius:9px;padding:6px 10px;margin:5px 0 9px;">🎯 Cible : ${escapeHtml(_cibleTxtSeance(t))}</div>`;
+    const cibleBox = t => `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:#7C5CFF;background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.22);border-radius:9px;padding:6px 10px;margin:5px 0 9px;">Cible : ${escapeHtml(_cibleTxtSeance(t))}</div>`;
     const th = (lbl, al) => `<th style="text-align:${al};font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);padding:3px 0;">${lbl}</th>`;
 
     const exoBlocks = nbExos > 0
@@ -6765,7 +6792,7 @@ function renderACWR(data) {
     <div style="margin-top:10px;background:${zone.bg};border-left:3px solid ${zone.color};border-radius:0 8px 8px 0;padding:8px 10px;font-size:12px;color:var(--text);">
       ${ic('lightbulb')} ${zone.conseil}
     </div>
-    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · Charge aiguë 7j / charge chronique ${chronicDays}j${partiel ? ' (historique partiel)' : ''} · ${exact ? '✅ Données exactes (séries réelles)' : '⚠️ Proxy (données exactes non encore chargées)'}</div>`;
+    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);">Gabbett (2016) · Charge aiguë 7j / charge chronique ${chronicDays}j${partiel ? ' (historique partiel)' : ''} · ${exact ? 'Données exactes (séries réelles)' : 'Proxy (données exactes non encore chargées)'}</div>`;
 
   renderACWRChart(volumes);
 }
@@ -6877,7 +6904,7 @@ function _coachDeskLecture() {
   (d.enrich || []).forEach(function (e) { var ana = []; try { ana = NovalyzEngine.analyser(d.datas[e.i] || {}) || []; } catch (_) {} var top = ana.find(function (x) { return x.type === 'critical' || x.type === 'warning'; }); if (top && (!best || (top.priorite || 0) > (best.top.priorite || 0))) best = { e: e, top: top }; });
   if (!best) return '<div class="cs-lec">Rien de prioritaire aujourd\'hui.</div>';
   return '<div class="cs-lec"><b>' + escapeHtml(best.e.a.nom) + '</b> — ' + escapeHtml(best.top.titre) + '. ' + escapeHtml(best.top.description || '')
-    + (best.top.recommandation ? '<span style="display:block;margin-top:5px;font-weight:700;color:var(--accent)">👉 ' + escapeHtml(best.top.recommandation) + '</span>' : '')
+    + (best.top.recommandation ? '<span style="display:block;margin-top:5px;font-weight:700;color:var(--accent)">' + escapeHtml(best.top.recommandation) + '</span>' : '')
     + '</div>';
 }
 function _coachDeskAujourdhui() {
@@ -6895,10 +6922,10 @@ function _coachDeskAujourdhui() {
     + '<div class="cs-brief-date">' + dFR + ' · ' + _tot + ' athlète' + (_tot > 1 ? 's' : '') + ' suivi' + (_tot > 1 ? 's' : '') + '</div>'
     + '<div class="cs-brief-row">'
     + '<div class="cs-ring">' + ring + '<div class="cs-ring-v"><b>' + pct + '%</b><s>à jour</s></div></div>'
-    + '<div class="cs-brief-big"><div class="n">' + _av + '</div><div class="l">' + (_av === 0 ? 'tout le monde est à jour 🎉' : 'athlète' + (_av > 1 ? 's' : '') + ' à voir aujourd\'hui') + '</div></div>'
+    + '<div class="cs-brief-big"><div class="n">' + _av + '</div><div class="l">' + (_av === 0 ? 'tout le monde est à jour' : 'athlète' + (_av > 1 ? 's' : '') + ' à voir aujourd\'hui') + '</div></div>'
     + '<div class="cs-brief-pills">' + bpill(k.surveiller, 'à surveiller') + bpill(k.intervention, 'intervention') + '</div>'
     + '</div></div>';
-  var watch = (d.prioritaires || []).map(function (x) { var e = x.e, p = x.p; return '<div class="cs-wrow" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><span class="cs-av2">' + (e.enPause ? '🏖️' : _coachDeskInit(e.a.nom)) + '</span><div class="cs-wn"><b>' + escapeHtml(e.a.nom) + '</b><div class="cs-wal"><span class="cs-chip" style="background:' + p.color + '1f;color:' + p.color + '">' + p.icon + ' ' + escapeHtml(p.txt) + '</span></div></div><span class="cs-chev">›</span></div>'; }).join('') || '<div class="cs-empty">Tout le monde est à jour 🎉</div>';
+  var watch = (d.prioritaires || []).map(function (x) { var e = x.e, p = x.p; return '<div class="cs-wrow" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')"><span class="cs-av2">' + (e.enPause ? '' : _coachDeskInit(e.a.nom)) + '</span><div class="cs-wn"><b>' + escapeHtml(e.a.nom) + '</b><div class="cs-wal"><span class="cs-chip" style="background:' + p.color + '1f;color:' + p.color + '">' + p.icon + ' ' + escapeHtml(p.txt) + '</span></div></div><span class="cs-chev">›</span></div>'; }).join('') || '<div class="cs-empty">Tout le monde est à jour</div>';
   var msgs = (d.enrich || []).filter(function (e) { return e.msgNonLus > 0; }).map(function (e) { return '<div class="cs-act" onclick="ouvrirAthleteDepuisSelect(\'' + e.i + '\')" style="cursor:pointer"><span class="cs-ad" style="background:var(--accent)"></span><div><b>' + escapeHtml(e.a.nom) + '</b> <span>' + e.msgNonLus + ' message' + (e.msgNonLus > 1 ? 's' : '') + ' non lu' + (e.msgNonLus > 1 ? 's' : '') + '</span></div></div>'; }).join('') || '<div class="cs-act"><span class="cs-ad" style="background:var(--text-muted)"></span><div><span style="color:var(--text-muted)">Aucun message non lu.</span></div></div>';
   // Questionnaires bien-être récents (qui a répondu, quand, + signal fatigue).
   var quest = (d.enrich || []).map(function (e) {
@@ -7005,7 +7032,7 @@ function _coachDeskAnalyses() {
         var pct = Math.round(a.ratio * 100);
         return arow(a.nom, a.fait + ' / ' + a.prev + ' séances', pct + ' %', pct < 50 ? 'bad' : 'warn');
       }).join('')
-      : '<div class="cs-empty">Tout le monde est à l\'objectif 🎉</div>') + '</div>';
+      : '<div class="cs-empty">Tout le monde est à l\'objectif</div>') + '</div>';
   // Vigilance bien-être (dernier questionnaire)
   var bienCard = '<div class="cs-card"><div class="cs-ct">Vigilance bien-être · dernier questionnaire</div>'
     + (bienBas.length ? bienBas.slice(0, 5).map(function (x) { return arow(x.nom, x.txt, x.sev === 'bad' ? 'Alerte' : 'Vigilance', x.sev === 'bad' ? 'bad' : 'warn'); }).join('')
@@ -7152,22 +7179,22 @@ function _progReadonly()   { return !!(progCtx && progCtx.readonly); }   // joue
 //          prog(programme hybride) · special('hyrox' = saisie structurée dédiée).
 var _F_FC = function (ph) { return { id: 'fc_moy', label: 'FC moy. (bpm)', placeholder: ph || '140', optional: true }; };
 var _CARDIO_CATALOG = [
-  { key: 'footing', label: 'Footing', ico: '🏃', color: '#6366F1', hint: 'Distance · vitesse · FC', svg: '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true }, _F_FC('145')], noDist: false, en: true, prog: true },
-  { key: 'velo', label: 'Vélo', ico: '🚴', color: '#9D5FD3', hint: 'Distance · watts · FC', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '85' }, { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true }, _F_FC('140')], noDist: false, en: true, prog: true },
-  { key: 'marche_normale', label: 'Marche', ico: '🚶', color: '#22D3EE', hint: 'Distance · pas · FC', svg: '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true }, _F_FC('110')], noDist: false, en: true, prog: true },
-  { key: 'marche_inclinee', label: 'Marche inclinée', ico: '🥾', color: '#10B981', hint: 'Pente · distance', svg: '<path d="M3 20h18M5 20 16 6M9 10l3 2"/>', spec: [{ id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true }, { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '6', step: '0.1', calc: true }, _F_FC('130')], noDist: false, en: true, prog: true },
+  { key: 'footing', label: 'Footing', ico: '', color: '#6366F1', hint: 'Distance · vitesse · FC', svg: '<path d="M13 4a2 2 0 1 0 0-.01M7 21l3-6 4 2 1-4M6 12l3-2 3 1"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '10', step: '0.1', calc: true }, _F_FC('145')], noDist: false, en: true, prog: true },
+  { key: 'velo', label: 'Vélo', ico: '', color: '#9D5FD3', hint: 'Distance · watts · FC', svg: '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5 9 8h4l3 6M9 8l2-3h3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '180', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '85' }, { id: 'vitesse_moy', label: 'Vitesse moy. (km/h)', placeholder: '28', step: '0.1', calc: true }, _F_FC('140')], noDist: false, en: true, prog: true },
+  { key: 'marche_normale', label: 'Marche', ico: '', color: '#22D3EE', hint: 'Distance · pas · FC', svg: '<path d="M4 18h16M7 18l2-9 3 2 2-5 2 12"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '5', step: '0.1', calc: true }, _F_FC('110')], noDist: false, en: true, prog: true },
+  { key: 'marche_inclinee', label: 'Marche inclinée', ico: '', color: '#10B981', hint: 'Pente · distance', svg: '<path d="M3 20h18M5 20 16 6M9 10l3 2"/>', spec: [{ id: 'inclinaison', label: 'Inclinaison (%)', placeholder: '10', max: '30', calc: true }, { id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '6', step: '0.1', calc: true }, _F_FC('130')], noDist: false, en: true, prog: true },
   { key: 'natation', label: 'Natation', ico: '🏊', color: '#8B5CF6', hint: 'Distance · temps · FC', svg: '<path d="M3 16c2 0 2-1.5 4-1.5S9 16 11 16s2-1.5 4-1.5S17 16 19 16M6 9a2 2 0 1 0 0-.01M9 12l4-3 3 2"/>', spec: [_F_FC('140')], noDist: false, en: true, prog: true },
-  { key: 'rameur', label: 'Rameur', ico: '🚣', color: '#14B8A6', hint: 'Distance · puissance · FC', svg: '<path d="M2 12h20M6 9l-2 3 2 3M18 9l2 3-2 3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '150', optional: true }, { id: 'cadence', label: 'Cadence (coups/min)', placeholder: '26' }, _F_FC('145')], noDist: false, en: true, prog: true },
-  { key: 'hiit', label: 'HIIT', ico: '🔥', color: '#EF4444', hint: 'Durée · FC', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('155')], noDist: true, en: true, prog: true },
-  { key: 'elliptique', label: 'Elliptique', ico: '🌀', color: '#D946EF', hint: 'Durée · watts · FC', svg: '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '120', optional: true }, _F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'rameur', label: 'Rameur', ico: '', color: '#14B8A6', hint: 'Distance · puissance · FC', svg: '<path d="M2 12h20M6 9l-2 3 2 3M18 9l2 3-2 3"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '150', optional: true }, { id: 'cadence', label: 'Cadence (coups/min)', placeholder: '26' }, _F_FC('145')], noDist: false, en: true, prog: true },
+  { key: 'hiit', label: 'HIIT', ico: '', color: '#EF4444', hint: 'Durée · FC', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('155')], noDist: true, en: true, prog: true },
+  { key: 'elliptique', label: 'Elliptique', ico: '', color: '#D946EF', hint: 'Durée · watts · FC', svg: '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v8"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '120', optional: true }, _F_FC('140')], noDist: true, en: true, prog: true },
   { key: 'boxe', label: 'Boxe', ico: '🥊', color: '#F43F5E', hint: 'Durée · FC', svg: '<path d="M7 7h7a3 3 0 0 1 3 3v3a4 4 0 0 1-4 4H9a2 2 0 0 1-2-2V7z"/>', spec: [_F_FC('150')], noDist: true, en: true, prog: true },
   { key: 'corde_a_sauter', label: 'Corde à sauter', ico: '🪢', color: '#F97316', hint: 'Durée · FC', svg: '<path d="M6 3v9a6 6 0 0 0 12 0V3"/><circle cx="6" cy="3" r="1.5"/><circle cx="18" cy="3" r="1.5"/>', spec: [_F_FC('150')], noDist: true, en: true, prog: true },
   { key: 'escaliers', label: 'Escaliers', ico: '🪜', color: '#0EA5E9', hint: 'Durée · FC', svg: '<path d="M3 20h4v-4h4v-4h4v-4h4"/>', spec: [_F_FC('140')], noDist: true, en: true, prog: true },
-  { key: 'spinning', label: 'Spinning / Vélo d\'appart', ico: '🚲', color: '#7C3AED', hint: 'Durée · watts · FC', svg: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17 10 8h4M14 8l3 9"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '160', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '90' }, _F_FC('140')], noDist: true, en: true, prog: true },
+  { key: 'spinning', label: 'Spinning / Vélo d\'appart', ico: '', color: '#7C3AED', hint: 'Durée · watts · FC', svg: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17 10 8h4M14 8l3 9"/>', spec: [{ id: 'puissance_moy', label: 'Puissance moy. (W)', placeholder: '160', optional: true, calc: true }, { id: 'cadence', label: 'Cadence (rpm)', placeholder: '90' }, _F_FC('140')], noDist: true, en: true, prog: true },
   { key: 'aquabike', label: 'Aquabike', ico: '💦', color: '#06B6D4', hint: 'Durée · FC', svg: '<path d="M3 18c2 0 2-1.5 4-1.5S9 18 11 18s2-1.5 4-1.5S17 18 19 18M9 14l3-5 3 2M13 8a2 2 0 1 0 0-.01"/>', spec: [_F_FC('130')], noDist: true, en: true, prog: true },
-  { key: 'ski_fond', label: 'Ski de fond', ico: '🎿', color: '#38BDF8', hint: 'Distance · FC', svg: '<path d="M3 20 21 8M7 6l10 10M6 18l2 2"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '12', step: '0.1', calc: true }, _F_FC('150')], noDist: false, en: true, prog: true },
-  { key: 'hyrox', label: 'Hyrox', ico: '🟨', color: '#FFBC13', hint: '8 × (Run + atelier)', svg: '<path d="M4 7h16M4 12h16M4 17h16"/>', spec: [], noDist: false, en: false, prog: false, special: 'hyrox' },
-  { key: 'autre', label: 'Autre', ico: '⚡', color: '#F59E0B', hint: 'Durée · RPE · kcal', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('135')], noDist: false, en: true, prog: false }
+  { key: 'ski_fond', label: 'Ski de fond', ico: '', color: '#38BDF8', hint: 'Distance · FC', svg: '<path d="M3 20 21 8M7 6l10 10M6 18l2 2"/>', spec: [{ id: 'vitesse_moy', label: 'Vitesse (km/h)', placeholder: '12', step: '0.1', calc: true }, _F_FC('150')], noDist: false, en: true, prog: true },
+  { key: 'hyrox', label: 'Hyrox', ico: '', color: '#FFBC13', hint: '8 × (Run + atelier)', svg: '<path d="M4 7h16M4 12h16M4 17h16"/>', spec: [], noDist: false, en: false, prog: false, special: 'hyrox' },
+  { key: 'autre', label: 'Autre', ico: '', color: '#F59E0B', hint: 'Durée · RPE · kcal', svg: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>', spec: [_F_FC('135')], noDist: false, en: true, prog: false }
 ];
 var _CARDIO_CAT_BY_KEY = _CARDIO_CATALOG.reduce(function (m, a) { m[a.key] = a; return m; }, {});
 function _cardioNoDist(key) { var a = _CARDIO_CAT_BY_KEY[key]; return !!(a && a.noDist); }
@@ -7178,7 +7205,7 @@ function _buildCardioTypeOptions() {
   var sel = document.getElementById('cardio-type'); if (!sel || sel.options.length) return;
   sel.innerHTML = _CARDIO_CATALOG.map(function (a) { return '<option value="' + a.key + '">' + a.label + '</option>'; }).join('');
 }
-function _progCardioIco(nom) { var a = _PROG_CARDIO.find(function (x) { return x[0] === nom; }); return a ? a[1] : '🫀'; }
+function _progCardioIco(nom) { var a = _PROG_CARDIO.find(function (x) { return x[0] === nom; }); return a ? a[1] : ''; }
 function _progCardioCibleTxt(l) { if ((l.cardio_unite || 'min') === 'libre') return 'libre'; return (l.cardio_cible != null) ? (l.cardio_cible + ' ' + (l.cardio_unite === 'km' ? 'km' : 'min')) : '—'; }
 // Persistance d'une ligne de programme (muscu OU cardio) — envoie tous les champs.
 function _cdPersistLigne(ligne) {
@@ -7328,7 +7355,7 @@ async function _progModele(key) {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'genererProgramme', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), remplacer: true, lignes: lignes }) });
     _progTab = 0;
-    showToast('✅ Modèle appliqué');
+    showToast('Modèle appliqué');
     chargerProgrammeCoach();
   } catch (e) { showToast('Erreur réseau'); }
 }
@@ -7375,7 +7402,7 @@ function renderProgrammeCoach() {
         <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,null,this.value)" style="font-size:13px;padding:9px 6px;width:100%;min-width:0;text-align:center;margin-bottom:0;font-weight:700">${_rpeOptions(l.rpe_cible)}</select>
       </div>
     </div>
-    ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">🎯 Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}`;
+    ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}`;
 
   // Champs éditables d'un item CARDIO : activité + mode de cible (durée/distance/libre) + valeur.
   const champsExoCardio = (l) => `
@@ -7384,7 +7411,7 @@ function renderProgrammeCoach() {
       <button class="btn-sm btn-danger-sm" onclick="cdSupprimerLigne(${l.row_index})" title="Supprimer" style="width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="ico"><use href="#i-trash"/></svg></button>
     </div>
     <div style="display:flex;gap:7px;margin-bottom:10px">
-      ${['min', 'km', 'libre'].map(u => { const lbl = { min: '⏱️ Durée', km: '📏 Distance', libre: 'Libre' }[u]; const on = (l.cardio_unite || 'min') === u; return `<button onclick="cdSetCardioUnite(${l.row_index},'${u}')" style="flex:1;border:1px solid ${on ? '#9D5FD3' : 'var(--border)'};background:${on ? 'rgba(157,95,211,.13)' : 'var(--surface)'};color:${on ? '#9D5FD3' : 'var(--text-muted)'};border-radius:10px;padding:9px 0;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">${lbl}</button>`; }).join('')}
+      ${['min', 'km', 'libre'].map(u => { const lbl = { min: '⏱ Durée', km: 'Distance', libre: 'Libre' }[u]; const on = (l.cardio_unite || 'min') === u; return `<button onclick="cdSetCardioUnite(${l.row_index},'${u}')" style="flex:1;border:1px solid ${on ? '#9D5FD3' : 'var(--border)'};background:${on ? 'rgba(157,95,211,.13)' : 'var(--surface)'};color:${on ? '#9D5FD3' : 'var(--text-muted)'};border-radius:10px;padding:9px 0;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">${lbl}</button>`; }).join('')}
     </div>
     ${(l.cardio_unite === 'libre') ? '<div style="font-size:11px;color:var(--text-subtle)">Allure/durée libres — juste un repère cardio dans la séance.</div>' : `<div style="display:flex;align-items:center;gap:8px"><input type="number" value="${l.cardio_cible != null ? l.cardio_cible : ''}" placeholder="${l.cardio_unite === 'km' ? '5' : '20'}" onchange="cdSetCardioCible(${l.row_index},this.value)" style="font-size:15px;padding:9px 8px;width:96px;text-align:center;margin-bottom:0"><span style="font-size:13px;color:var(--text-muted);font-weight:700">${l.cardio_unite === 'km' ? 'km' : 'minutes'}</span></div>`}`;
 
@@ -7414,7 +7441,7 @@ function renderProgrammeCoach() {
           <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-top:2px">Cardio</div>
         </div>
         <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;color:#9D5FD3">${_progCardioCibleTxt(l)}</span>
-        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>`}
+        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class=nv-ic-pencil></i></span>`}
       </div>`;
     }
     const mus = muscleDe(l.exercice);
@@ -7425,7 +7452,7 @@ function renderProgrammeCoach() {
           ${mus ? `<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-top:2px">${mus}</div>` : ''}
         </div>
         <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap">${resumeQty(l)}</span>
-        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✎</span>`}
+        ${ro ? '' : `<span class="pencil-prog" style="border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);width:32px;height:32px;border-radius:9px;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class=nv-ic-pencil></i></span>`}
       </div>`;
   };
 
@@ -7456,7 +7483,7 @@ function renderProgrammeCoach() {
         + '<div class="prog-exc-top">'
         +   gripSvg
         +   '<div class="prog-exc-nm" onclick="cdToggleExo(' + l.row_index + ')"><div class="a">' + l.exercice + '</div>' + (mus ? '<span class="prog-exc-tag" style="color:' + gcol + ';background:' + gcol + '1f">' + mus + '</span>' : '') + '</div>'
-        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')">✎</span>'
+        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')"><i class=nv-ic-pencil></i></span>'
         + '</div>'
         + '<div class="prog-sets">' + statBox(l.series_prevues || '–', 'Séries', 'ser') + statBox(reps, 'Reps', 'rep') + statBox(charge, 'Charge', 'chg') + statBox(repos, 'Repos', 'rst') + '</div>'
         + blocEditE(l, seanceId, null, selLier(l, seanceId, [l.exercice]) + moveSel(l, seanceId))
@@ -7467,7 +7494,7 @@ function renderProgrammeCoach() {
         + '<div class="prog-exc-top">'
         +   gripSvg
         +   '<div class="prog-exc-nm" onclick="cdToggleExo(' + l.row_index + ')"><div class="a" style="color:#9D5FD3">' + _progCardioIco(l.exercice) + ' ' + l.exercice + '</div><span class="prog-exc-tag" style="color:#9D5FD3;background:#9D5FD31f">Cardio · ' + _progCardioCibleTxt(l) + '</span></div>'
-        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')">✎</span>'
+        +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')"><i class=nv-ic-pencil></i></span>'
         + '</div>'
         + blocEditE(l, seanceId, null, moveSel(l, seanceId))
         + '</div>';
@@ -7498,7 +7525,7 @@ function renderProgrammeCoach() {
       return '<div class="prog-col" data-i="' + si + '"' + (si === _progTab ? '' : ' data-off="1"') + ' ondragover="progDragOver(event)" ondragleave="progDragLeave(event)" ondrop=\'progDrop(event,' + sidEsc + ')\' style="border-top:3px solid ' + dcol + '">'
         + '<div class="prog-colhd" style="background:' + dcol + '14;border:1px solid ' + dcol + '33">'
         +   '<div class="prog-colhd-t"><span class="prog-colbar" style="background:' + dcol + '"></span><div><div class="dn" style="color:' + dcol + '">' + escapeHtml(String(seanceId)) + '</div><div class="ds">' + lignes.length + ' exo' + (lignes.length > 1 ? 's' : '') + (jour ? ' · ' + _PROG_JOURS_LONG[jour - 1] : '') + '</div></div></div>'
-        +   '<button class="prog-col-del" onclick=\'cdSupprimerSeance(' + sidEsc + ')\' title="Supprimer la séance">🗑</button></div>'
+        +   '<button class="prog-col-del" onclick=\'cdSupprimerSeance(' + sidEsc + ')\' title="Supprimer la séance"><i class=nv-ic-trash></i></button></div>'
         + _progJourPicker(seanceId, lignes)
         + cartes
         + '<button class="prog-addexo" onclick="cdAjouterExercice(\'' + sidJs + '\')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg> Ajouter un exercice</button>'
@@ -7542,7 +7569,7 @@ function renderProgrammeCoach() {
     var rowCardio = function (l, sid) {
       var ri = l.row_index;
       var actOpts = _PROG_CARDIO.map(function (a) { return '<option value="' + esc(a[0]).replace(/"/g, '&quot;') + '"' + (a[0] === l.exercice ? ' selected' : '') + '>' + a[1] + ' ' + esc(a[0]) + '</option>'; }).join('');
-      var modes = ['min', 'km', 'libre'].map(function (u) { var on = (l.cardio_unite || 'min') === u; var lbl = { min: '⏱ Durée', km: '📏 Dist.', libre: 'Libre' }[u]; return '<button class="' + (on ? 'on' : '') + '" onclick="cdSetCardioUnite(' + ri + ',\'' + u + '\')">' + lbl + '</button>'; }).join('');
+      var modes = ['min', 'km', 'libre'].map(function (u) { var on = (l.cardio_unite || 'min') === u; var lbl = { min: '⏱ Durée', km: 'Dist.', libre: 'Libre' }[u]; return '<button class="' + (on ? 'on' : '') + '" onclick="cdSetCardioUnite(' + ri + ',\'' + u + '\')">' + lbl + '</button>'; }).join('');
       var cible = (l.cardio_unite === 'libre') ? '<span class="pb-cardio-libre">Allure libre</span>' : (bNum(l.cardio_cible, (l.cardio_unite === 'km' ? '5' : '20'), 'cdSetCardioCible(' + ri + ',this.value)') + '<span class="pb-unit">' + (l.cardio_unite === 'km' ? 'km' : 'min') + '</span>');
       return '<div class="pb-row pb-row-cardio" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
         + gripSvg
@@ -7651,7 +7678,7 @@ function renderProgrammeCoach() {
         <div style="font-size:15px;font-weight:800;color:var(--accent);display:flex;align-items:center;gap:8px"><svg class="ico"><use href="#i-clipboard"/></svg>${seanceId}</div>
         <div style="display:flex;align-items:center;gap:9px">
           <span style="font-size:11px;font-weight:800;background:var(--accent-a14);color:var(--accent);padding:2px 9px;border-radius:20px">${lignes.length} exo${lignes.length>1?'s':''}</span>
-          ${ro ? '' : `<button onclick='event.stopPropagation();cdSupprimerSeance(${JSON.stringify(seanceId)})' title="Supprimer la séance" style="background:var(--bad-a);border:1px solid var(--danger);color:var(--danger);border-radius:8px;width:30px;height:30px;padding:0;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;">🗑</button>`}
+          ${ro ? '' : `<button onclick='event.stopPropagation();cdSupprimerSeance(${JSON.stringify(seanceId)})' title="Supprimer la séance" style="background:var(--bad-a);border:1px solid var(--danger);color:var(--danger);border-radius:8px;width:30px;height:30px;padding:0;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;"><i class=nv-ic-trash></i></button>`}
           <span id="prog-arrow-${si}" style="font-size:15px;color:var(--text-muted);transition:transform .2s;transform:${ouvert?'rotate(90deg)':'none'}">›</span>
         </div>
       </div>
@@ -7758,7 +7785,7 @@ var _CIBLE_RP = { ok: ['var(--good)', 'effort conforme'], sous: ['var(--text-mut
 function _cibleVerdictHtml(vc) {
   if (!vc) return '';
   var parts = [];
-  if (vc.charge) parts.push('<span style="color:' + _CIBLE_CH[vc.charge.v][0] + '">🎯 Charge ' + vc.charge.real + ' kg / cible ≈ ' + vc.charge.tgt + ' kg — ' + _CIBLE_CH[vc.charge.v][1] + '</span>');
+  if (vc.charge) parts.push('<span style="color:' + _CIBLE_CH[vc.charge.v][0] + '">Charge ' + vc.charge.real + ' kg / cible ≈ ' + vc.charge.tgt + ' kg — ' + _CIBLE_CH[vc.charge.v][1] + '</span>');
   if (vc.rpe) parts.push('<span style="color:' + _CIBLE_RP[vc.rpe.v][0] + '">Effort RPE ' + vc.rpe.real + ' (≈ ' + _rirLong(vc.rpe.real) + ') / cible ' + vc.rpe.tgt + ' — ' + _CIBLE_RP[vc.rpe.v][1] + '</span>');
   return parts.length ? '<div style="font-size:12px;margin-top:3px;display:flex;flex-direction:column;gap:2px;font-weight:600">' + parts.join('') + '</div>' : '';
 }
@@ -7779,15 +7806,15 @@ function _verdictSeanceGlobal(seanceArr, progSeance) {
   if (!nEval) return null;
   var cls, titre, desc, reco;
   if (nSur > 0 && nSur >= nSous) {
-    cls = 'hard'; titre = '🔥 Séance trop dure';
+    cls = 'hard'; titre = 'Séance trop dure';
     desc = 'Tu es allé au-delà de tes cibles sur ' + offExos.length + ' exercice' + (offExos.length > 1 ? 's' : '') + '. Attention à la récupération.';
     reco = 'Reviens aux charges et à l\'effort prévus la prochaine fois (tu as dépassé la cible), et priorise la récup d\'ici la prochaine séance.';
   } else if (nSous > 0 && nSous > nSur) {
-    cls = 'light'; titre = '🟠 Séance un peu légère';
+    cls = 'light'; titre = 'Séance un peu légère';
     desc = 'Tu avais de la marge sur ' + offExos.length + ' exercice' + (offExos.length > 1 ? 's' : '') + ' par rapport à tes cibles.';
     reco = 'Tu peux pousser un peu plus la prochaine fois : ajoute de la charge ou des reps sur ' + (offExos[0] || 'ces exercices') + ' pour te rapprocher de la cible.';
   } else {
-    cls = 'ok'; titre = '✅ Séance conforme';
+    cls = 'ok'; titre = 'Séance conforme';
     desc = 'Tu as respecté tes cibles (charge / effort). Bon dosage.';
     reco = 'Bon dosage — tu peux viser une petite surcharge progressive (un peu de charge ou de reps) aux prochaines séances.';
   }
@@ -7874,8 +7901,8 @@ function cdAjouterExercice(seanceId) {
     + '<div style="width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 14px"></div>'
     + '<div style="font-weight:800;text-align:center;margin-bottom:14px;font-size:15px">Ajouter à ' + escapeHtml(String(seanceId)) + '</div>'
     + '<div style="display:flex;gap:10px">'
-    + '<button onclick="_cdAddMuscu(\'' + sid + '\')" style="flex:1;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:16px 10px;cursor:pointer;font-family:inherit;color:var(--text)"><div style="font-size:24px">🏋️</div><div style="font-weight:800;margin-top:6px">Muscu</div><div style="font-size:11px;color:var(--text-subtle);margin-top:2px">exercice + séries</div></button>'
-    + '<button onclick="_cdAddCardio(\'' + sid + '\')" style="flex:1;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:16px 10px;cursor:pointer;font-family:inherit;color:var(--text)"><div style="font-size:24px">🫀</div><div style="font-weight:800;margin-top:6px">Cardio</div><div style="font-size:11px;color:var(--text-subtle);margin-top:2px">activité + cible</div></button>'
+    + '<button onclick="_cdAddMuscu(\'' + sid + '\')" style="flex:1;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:16px 10px;cursor:pointer;font-family:inherit;color:var(--text)"><div style="font-size:24px">🏋</div><div style="font-weight:800;margin-top:6px">Muscu</div><div style="font-size:11px;color:var(--text-subtle);margin-top:2px">exercice + séries</div></button>'
+    + '<button onclick="_cdAddCardio(\'' + sid + '\')" style="flex:1;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:16px 10px;cursor:pointer;font-family:inherit;color:var(--text)"><div style="font-size:24px"></div><div style="font-weight:800;margin-top:6px">Cardio</div><div style="font-size:11px;color:var(--text-subtle);margin-top:2px">activité + cible</div></button>'
     + '</div>'
     + '<button onclick="cdCloseAddChooser()" style="width:100%;margin-top:12px;border:none;background:none;color:var(--text-muted);font-weight:700;padding:8px;cursor:pointer;font-family:inherit">Annuler</button></div>';
   ov.style.display = 'flex';
@@ -7897,7 +7924,7 @@ async function _cdAddMuscu(seanceId) {
     + '<div style="padding:14px 16px 10px;flex:none;">'
     +   '<div style="width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 12px"></div>'
     +   '<div style="font-weight:800;text-align:center;font-size:15px;margin-bottom:10px">Ajouter des exercices à ' + escapeHtml(String(seanceId)) + '</div>'
-    +   '<input id="cd-pick-q" type="text" placeholder="🔍 Rechercher un exercice…" oninput="_cdPickFilter(this.value)" autocomplete="off" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px 12px;box-sizing:border-box;margin:0;">'
+    +   '<input id="cd-pick-q" type="text" placeholder="Rechercher un exercice…" oninput="_cdPickFilter(this.value)" autocomplete="off" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px 12px;box-sizing:border-box;margin:0;">'
     + '</div>'
     + '<div id="cd-pick-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 8px;"></div>'
     + '<div style="flex:none;padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);display:flex;gap:10px;background:var(--surface);">'
@@ -7958,7 +7985,7 @@ async function _cdPickConfirm() {
   }
   _cdPickClose();
   cdProgOpen[sid] = true;
-  try { showToast('✅ ' + noms.length + ' exercice' + (noms.length > 1 ? 's' : '') + ' ajouté' + (noms.length > 1 ? 's' : '')); } catch (e) {}
+  try { showToast('' + noms.length + ' exercice' + (noms.length > 1 ? 's' : '') + ' ajouté' + (noms.length > 1 ? 's' : '')); } catch (e) {}
   chargerProgrammeCoach();
 }
 async function _cdAddCardio(seanceId) {
@@ -8037,7 +8064,7 @@ function renderBullesChat(commentaires, elId, isCoach) {
     const isAthleteView = !isCoach;
     el.innerHTML = isAthleteView
       ? `<div style="text-align:center;padding:28px 16px;">
-           <div style="font-size:28px;margin-bottom:10px;">💬</div>
+           <div style="font-size:28px;margin-bottom:10px;"></div>
            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;">Écris à ton coach</div>
            <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">Une question, une douleur, un feedback ?<br>Ton coach te répondra ici.</div>
          </div>`
@@ -8122,14 +8149,14 @@ function renderConversationAlertes() {
   const toutes = (a && a.alertes ? a.alertes.slice() : [])
     .concat(construireSynthAlertes(coachAthleteData));
   if (!toutes.length) {
-    el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;color:var(--good);font-size:13px;font-weight:700;">✅ Aucune alerte cette semaine</div>';
+    el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;color:var(--good);font-size:13px;font-weight:700;">Aucune alerte cette semaine</div>';
     return;
   }
   const traitees = toutes.filter(al => alerteEstTraitee(a.athlete_id, al));
   const aTraiter = toutes.filter(al => !alerteEstTraitee(a.athlete_id, al));
   const row = (al, done) => `
     <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);">
-      <span style="width:26px;height:26px;border-radius:8px;background:${done?'var(--good-a)':'var(--warn-a)'};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">${done?'✅':'⚠'}</span>
+      <span style="width:26px;height:26px;border-radius:8px;background:${done?'var(--good-a)':'var(--warn-a)'};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">${done?'':''}</span>
       <div style="flex:1;min-width:0;font-size:12.5px;font-weight:600;">${al.message || al.msg || 'Alerte'}</div>
       <span style="font-size:10.5px;font-weight:800;color:${done?'var(--good)':'var(--warn)'};white-space:nowrap;">${done?'Traitée':'À traiter'}</span>
     </div>`;
@@ -8223,15 +8250,15 @@ function renderAlertesCoach(data) {
     const stagExo = (al.type === 'stagnation' && al.message && al.message.indexOf(' : aucun progrès') >= 0) ? al.message.split(' : aucun progrès')[0].trim() : null;
     const presc = stagExo ? _prescriptionStag(stagExo) : null;
     const body = `<div style="font-size:13px;font-weight:700;color:${c};">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:500">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
-      ${presc ? `<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:5px;">👉 ${escapeHtml(presc.act)}</div>` : ''}
+      ${presc ? `<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:5px;">${escapeHtml(presc.act)}</div>` : ''}
       <div id="${explicationId}" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:7px;padding:7px 9px;background:var(--surface2);border-radius:8px;line-height:1.45;">${explicationAlerte(al)}</div>`;
-    const actions = `<button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ️ Pourquoi ?</button>
+    const actions = `<button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ Pourquoi ?</button>
         ${fait
-          ? `<span style="font-size:12px;color:var(--good);font-weight:700;align-self:center">✅ Déjà conseillé</span>
+          ? `<span style="font-size:12px;color:var(--good);font-weight:700;align-self:center">Déjà conseillé</span>
              <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Autre conseil</button>`
           : `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>`}
         <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>`;
-    return alerteCard(c, '⚠️', body, actions);
+    return alerteCard(c, '', body, actions);
   }).join('');
 
   const synthHtml = synthAlertes.map(s => {
@@ -8239,7 +8266,7 @@ function renderAlertesCoach(data) {
     const body = `<div style="font-size:13px;font-weight:700;color:${s.color};">${s.msg}</div>`;
     const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>
         <button class="btn-sm btn-outline" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>`;
-    return alerteCard(s.color, '📊', body, actions);
+    return alerteCard(s.color, '', body, actions);
   }).join('');
 
   // Alerte d'absence : pas de séance depuis > 7 j (ou aucune). Pas toujours émise
@@ -8258,7 +8285,7 @@ function renderAlertesCoach(data) {
       const body = `<div style="font-size:13px;font-weight:700;color:var(--warn);">${titre}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${sous}</div>`;
       const sujet = 'absence';
       const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Relancer l'athlète</button>`;
-      absHtml = alerteCard('var(--warn)', '💤', body, actions);
+      absHtml = alerteCard('var(--warn)', '', body, actions);
     }
   }
 
@@ -8270,10 +8297,10 @@ function renderAlertesCoach(data) {
   let fiabTxt = 'Basé sur ' + (nbSea ? nbSea + ' séance' + (nbSea > 1 ? 's' : '') + ' récente' + (nbSea > 1 ? 's' : '') : 'aucune séance');
   fiabTxt += beDate ? ' · dernier ressenti ' + escapeHtml(String(beDate)) : ' · aucun ressenti saisi';
   const partiel = !ressRecent;
-  const fiabFooter = `<div style="margin-top:10px;font-size:11px;line-height:1.4;color:${partiel ? 'var(--warn)' : 'var(--text-subtle)'};">${partiel ? '⚠ Données partielles — ' : ''}${fiabTxt}${partiel ? '. Les alertes bien-être (fatigue, sommeil, douleur) ne remontent que si l\'athlète remplit son ressenti.' : '.'}</div>`;
+  const fiabFooter = `<div style="margin-top:10px;font-size:11px;line-height:1.4;color:${partiel ? 'var(--warn)' : 'var(--text-subtle)'};">${partiel ? 'Données partielles — ' : ''}${fiabTxt}${partiel ? '. Les alertes bien-être (fatigue, sommeil, douleur) ne remontent que si l\'athlète remplit son ressenti.' : '.'}</div>`;
 
   const tout = absHtml + alertesHtml + synthHtml;
-  el.innerHTML = (tout || '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--good);font-weight:700;margin-top:6px;"><span>✅</span> Rien à signaler</div>') + fiabFooter;
+  el.innerHTML = (tout || '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--good);font-weight:700;margin-top:6px;"><span></span> Rien à signaler</div>') + fiabFooter;
 }
 
 function toggleExplicationAlerte(id) {
@@ -8330,7 +8357,7 @@ function repondreAlerte(contexte) {
 async function envoyerCommentaireCoach() {
   const input = document.getElementById('cd-comment-input');
   const message = input.value.trim();
-  if (!message) { showToast('⚠️ Écris un message', '#ff4444'); return; }
+  if (!message) { showToast('Écris un message', '#ff4444'); return; }
   if (!coachAthleteCourant || !coach) return;
   try {
     await fetch(SCRIPT_URL, {
@@ -8347,10 +8374,10 @@ async function envoyerCommentaireCoach() {
       })
     });
     input.value = '';
-    showToast('✅ Message envoyé !');
+    showToast('Message envoyé !');
     setTimeout(() => chargerCommentairesCoach(coachAthleteCourant.athlete_id), 800);
   } catch(e) {
-    showToast('❌ Erreur envoi', '#ff4444');
+    showToast('Erreur envoi', '#ff4444');
   }
 }
 
@@ -8358,7 +8385,7 @@ async function envoyerMessageAthleteCoach() {
   const input = document.getElementById('athlete-chat-input');
   if (!input) return;
   const message = input.value.trim();
-  if (!message) { showToast('⚠️ Écris un message', '#ff4444'); return; }
+  if (!message) { showToast('Écris un message', '#ff4444'); return; }
   if (!athlete) return;
   try {
     await fetch(SCRIPT_URL, {
@@ -8373,14 +8400,14 @@ async function envoyerMessageAthleteCoach() {
       })
     });
     input.value = '';
-    showToast('✅ Message envoyé !');
+    showToast('Message envoyé !');
     // Affichage immédiat (optimiste) dans la conversation de l'athlète
     messagesCoach.push({ id: 'tmp-' + Date.now(), date: formatChatDate(new Date()), message: message, auteur: 'athlete', lu: false });
     cvRenderCoachMsgs();
     // Puis resynchronisation avec le serveur
     setTimeout(async () => { await chargerMessagesCoach(); cvRenderCoachMsgs(); }, 800);
   } catch(e) {
-    showToast('❌ Erreur envoi', '#ff4444');
+    showToast('Erreur envoi', '#ff4444');
   }
 }
 
@@ -8411,9 +8438,9 @@ function _coachMediaChoisi(input) {
   if (!f) return;
   var estImage = /^image\//.test(f.type);
   var estVideo = /^video\//.test(f.type);
-  if (!estImage && !estVideo) { showToast('⚠️ Choisis une photo ou une vidéo', '#ff4444'); return; }
+  if (!estImage && !estVideo) { showToast('Choisis une photo ou une vidéo', '#ff4444'); return; }
   // Garde-fou taille (le bucket limite à 75 Mo — on prévient avant l'upload).
-  if (f.size > 75 * 1024 * 1024) { showToast('⚠️ Fichier trop lourd (max 75 Mo)', '#ff4444'); return; }
+  if (f.size > 75 * 1024 * 1024) { showToast('Fichier trop lourd (max 75 Mo)', '#ff4444'); return; }
   if (estImage) {
     _coachMediaCompressImage(f).then(function (blob) { _coachMediaEnvoyer(blob, 'image', 'jpg'); })
       .catch(function () { _coachMediaEnvoyer(f, 'image', (f.name.split('.').pop() || 'jpg').toLowerCase()); });
@@ -8447,7 +8474,7 @@ async function _coachMediaEnvoyer(fileOrBlob, media_type, ext) {
   _coachMediaBusy = true;
   var localUrl = null;
   try {
-    showToast(media_type === 'video' ? '🎥 Envoi de la vidéo…' : '📷 Envoi de la photo…');
+    showToast(media_type === 'video' ? 'Envoi de la vidéo…' : 'Envoi de la photo…');
     // 1) URL d'upload signée
     var r1 = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -8473,14 +8500,14 @@ async function _coachMediaEnvoyer(fileOrBlob, media_type, ext) {
     });
     var d3 = await r3.json();
     if (!d3 || !d3.success) throw new Error(d3 && d3.error || 'envoi');
-    showToast('✅ Envoyé à ton coach');
+    showToast('Envoyé à ton coach');
     // Affichage optimiste immédiat (URL locale le temps de la resync serveur)
     try { localUrl = URL.createObjectURL(fileOrBlob); } catch (e) {}
     messagesCoach.push({ id: d3.id || ('tmp-' + Date.now()), date: formatChatDate(new Date()), message: media_type === 'video' ? '🎥 Vidéo' : '📷 Photo', auteur: 'athlete', lu: false, media_type: media_type, media_url: d3.media_url || localUrl });
     cvRenderCoachMsgs();
     setTimeout(async function () { try { await chargerMessagesCoach(); cvRenderCoachMsgs(); } catch (e) {} }, 900);
   } catch (e) {
-    showToast('❌ Échec de l\'envoi', '#ff4444');
+    showToast('Échec de l\'envoi', '#ff4444');
   } finally {
     _coachMediaBusy = false;
   }
@@ -8494,10 +8521,10 @@ async function supprimerCommentaireCoach(id) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'supprimerCommentaire', id: id })
     });
-    showToast('🗑️ Conseil supprimé');
+    showToast('Conseil supprimé');
     setTimeout(() => chargerCommentairesCoach(coachAthleteCourant.athlete_id), 800);
   } catch(e) {
-    showToast('❌ Erreur suppression', '#ff4444');
+    showToast('Erreur suppression', '#ff4444');
   }
 }
 
@@ -8598,15 +8625,15 @@ function blAnnulerForm() { _blForm = null; renderBlessures(dernierAppData); }
 async function blEnregistrer() {
   if (!athlete) return;
   var v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
-  if (!v('bl-f-type')) { showToast('⚠️ Indique le type de blessure', '#f59f00'); return; }
+  if (!v('bl-f-type')) { showToast('Indique le type de blessure', '#f59f00'); return; }
   var payload = { action: 'saveBlessure', athlete_id: athlete.athlete_id, type: v('bl-f-type'), localisation: v('bl-f-loc'), gravite: v('bl-f-grav'), statut: v('bl-f-statut') };
   if (_blForm && _blForm.id) payload.id = _blForm.id;
   var dt = v('bl-f-date'); if (dt) payload.date = dt;
   var ret = v('bl-f-retour'); if (ret) payload.retour_terrain = ret;
   try {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
-    showToast('✅ Blessure enregistrée');
-  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+    showToast('Blessure enregistrée');
+  } catch (e) { showToast('Erreur', '#ff4444'); }
   _blForm = null;
   try { await chargerAppData(); } catch (e) {}
   renderBlessures(dernierAppData);
@@ -8617,8 +8644,8 @@ async function blMarquerGueri(id) {
   var ret = _blToISO(b.retour_terrain); if (ret) payload.retour_terrain = ret;
   try {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
-    showToast('✅ Marqué guéri');
-  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+    showToast('Marqué guéri');
+  } catch (e) { showToast('Erreur', '#ff4444'); }
   try { await chargerAppData(); } catch (e) {}
   renderBlessures(dernierAppData);
 }
@@ -8626,8 +8653,8 @@ async function blSupprimer(id) {
   if (!confirm('Supprimer cette blessure ?')) return;
   try {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'deleteBlessure', id: id }) });
-    showToast('🗑️ Supprimée');
-  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+    showToast('Supprimée');
+  } catch (e) { showToast('Erreur', '#ff4444'); }
   try { await chargerAppData(); } catch (e) {}
   renderBlessures(dernierAppData);
 }
@@ -8949,8 +8976,8 @@ async function cvSupprSelection() {
       return fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'supprimerCommentaire', id: id }) });
     }));
     messagesCoach = (messagesCoach || []).filter(function (c) { return !_cvSel[c.id]; });
-    if (typeof showToast === 'function') showToast('🗑️ ' + ids.length + (ids.length > 1 ? ' messages supprimés' : ' message supprimé'));
-  } catch (e) { if (typeof showToast === 'function') showToast('❌ Erreur suppression', '#ff4444'); }
+    if (typeof showToast === 'function') showToast('' + ids.length + (ids.length > 1 ? ' messages supprimés' : ' message supprimé'));
+  } catch (e) { if (typeof showToast === 'function') showToast('Erreur suppression', '#ff4444'); }
   cvResetSel();
   cvRenderCoachMsgs();
   try { await chargerMessagesCoach(); cvRenderCoachMsgs(); } catch (e) {}
@@ -8980,7 +9007,7 @@ function cvRenderCoachMsgs() {
   if (!el) return;
   var msgs = (messagesCoach || []).slice().sort(function (a, b) { return parseChatDate(a.date) - parseChatDate(b.date); });
   if (!msgs.length) {
-    el.innerHTML = '<div style="text-align:center;padding:28px 16px;"><div style="font-size:28px;margin-bottom:10px;">💬</div><div style="font-size:14px;font-weight:700;margin-bottom:6px;">Écris à ton coach</div><div style="font-size:12px;color:var(--text-muted);line-height:1.5;">Une question, une douleur, un feedback ?<br>Ton coach te répondra ici.</div></div>';
+    el.innerHTML = '<div style="text-align:center;padding:28px 16px;"><div style="font-size:28px;margin-bottom:10px;"></div><div style="font-size:14px;font-weight:700;margin-bottom:6px;">Écris à ton coach</div><div style="font-size:12px;color:var(--text-muted);line-height:1.5;">Une question, une douleur, un feedback ?<br>Ton coach te répondra ici.</div></div>';
     return;
   }
   var init = _cvInit(_cvCoachNom());
@@ -9185,14 +9212,14 @@ async function genererDemoFoot() {
         // On n'affiche l'auto-test que s'il ÉCHOUE (sinon bruit inutile).
         var _diag = '';
         if (j.login_test && !j.login_test.ok) {
-          _diag = '<div style="margin-top:6px;color:var(--danger);font-weight:700;">⚠️ Auto-test connexion ÉCHEC — login ' + (j.login_test.login||'?') + ', hash stocké len=' + (j.login_test.storedLen!=null?j.login_test.storedLen:'?') + (j.login_test.error?(' err:'+j.login_test.error):'') + '</div>';
+          _diag = '<div style="margin-top:6px;color:var(--danger);font-weight:700;">Auto-test connexion ÉCHEC — login ' + (j.login_test.login||'?') + ', hash stocké len=' + (j.login_test.storedLen!=null?j.login_test.storedLen:'?') + (j.login_test.error?(' err:'+j.login_test.error):'') + '</div>';
         }
-        info.innerHTML = '✅ ' + j.joueurs + ' joueurs créés (' + j.charges + ' charges, ' + j.blessures + ' blessures). Pense à mettre ton sport sur « Foot ».' + _creds + _diag;
+        info.innerHTML = '' + j.joueurs + ' joueurs créés (' + j.charges + ' charges, ' + j.blessures + ' blessures). Pense à mettre ton sport sur « Foot ».' + _creds + _diag;
       }
-      showToast('👥 ' + j.joueurs + ' joueurs de démo créés');
+      showToast('' + j.joueurs + ' joueurs de démo créés');
       if (typeof ouvrirEspaceCoach === 'function') ouvrirEspaceCoach();
-    } else if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ ' + ((j && j.error) || 'échec'); }
-  } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
+    } else if (info) { info.style.color = 'var(--danger)'; info.textContent = '' + ((j && j.error) || 'échec'); }
+  } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = 'Erreur réseau'; } }
 }
 async function supprimerDemoFoot() {
   if (!coach) return;
@@ -9204,19 +9231,19 @@ async function supprimerDemoFoot() {
     var j = await r.json();
     if (j && j.success) {
       if (info) {
-        if (j.restants && j.restants > 0) { info.style.color = 'var(--warn)'; info.textContent = '⚠️ ' + j.supprimes + ' supprimés, ' + j.restants + ' restants (données liées ?).'; }
-        else { info.style.color = 'var(--good)'; info.textContent = '🗑️ ' + j.supprimes + ' joueurs de démo supprimés.'; }
+        if (j.restants && j.restants > 0) { info.style.color = 'var(--warn)'; info.textContent = '' + j.supprimes + ' supprimés, ' + j.restants + ' restants (données liées ?).'; }
+        else { info.style.color = 'var(--good)'; info.textContent = '' + j.supprimes + ' joueurs de démo supprimés.'; }
       }
       showToast('Démos supprimés');
       if (typeof ouvrirEspaceCoach === 'function') ouvrirEspaceCoach();
-    } else if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ ' + ((j && j.error) || 'échec'); }
-  } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = '❌ Erreur réseau'; } }
+    } else if (info) { info.style.color = 'var(--danger)'; info.textContent = '' + ((j && j.error) || 'échec'); }
+  } catch (e) { if (info) { info.style.color = 'var(--danger)'; info.textContent = 'Erreur réseau'; } }
 }
 
 const TAB_LABELS = { accueil: 'Aujourd’hui', objectif: 'Objectif', seance: 'Entraînement', cardio: 'Cardio', historique: 'Analyses', etat: 'Forme', nutrition: 'Nutrition', conseils: 'Coach', blessures: 'Douleurs & blessures', reglages: 'Réglages' };
 function switchTab(tab) {
   window.scrollTo({ top: 0, behavior: 'instant' });
-  // ⚠️ Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
+  // Ordre aligné sur la barre de nav du bas (index.html #tabs-bar) :
   // Aujourd'hui · Entraînement · Analyses · État. (Cardio retiré de la barre.)
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
     b.classList.toggle('active', ['accueil','seance','historique','etat','conseils'][i] === tab);
@@ -9442,7 +9469,7 @@ function _afficherBandeauBrouillon(totalSeries, ts) {
   el.id = 'brouillon-banner';
   el.style.cssText = 'display:flex;align-items:center;gap:10px;background:var(--accent-a08);border:1px solid var(--accent-dim);border-radius:12px;padding:11px 13px;margin-bottom:12px;';
   el.innerHTML =
-      '<span style="font-size:18px;line-height:1">↩️</span>'
+      '<span style="font-size:18px;line-height:1">↩</span>'
     + '<div style="flex:1;min-width:0">'
       + '<div style="font-size:13px;font-weight:800;color:var(--text)">Séance récupérée</div>'
       + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + totalSeries + ' série' + (totalSeries > 1 ? 's' : '') + ' non enregistrée' + (totalSeries > 1 ? 's' : '') + (quand ? ' · ' + quand : '') + '</div>'
@@ -9556,7 +9583,7 @@ function majProgressionSeance() {
   document.getElementById('seance-progress-series').textContent = totalSeries;
   const fini = totalExos > 0 && faits >= totalExos;
   document.getElementById('seance-progress-detail').textContent =
-    `${faits} / ${totalExos} exercice${totalExos > 1 ? 's' : ''}${fini ? '  ✅ Tout est fait !' : ''}`;
+    `${faits} / ${totalExos} exercice${totalExos > 1 ? 's' : ''}${fini ? '  Tout est fait !' : ''}`;
   const pct = totalExos > 0 ? Math.round(faits / totalExos * 100) : 0;
   document.getElementById('seance-progress-bar').style.width = pct + '%';
 }
@@ -9621,7 +9648,7 @@ function avancerSuperset(reposVal) {
   if (supersetIdx < supersetGroupe.length) {
     // Exercice suivant du même tour : on enchaîne, sans repos
     chargerExoSuperset();
-    showToast('➡️ ' + supersetGroupe[supersetIdx].exercice);
+    showToast('' + supersetGroupe[supersetIdx].exercice);
     setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) scrollVersTitre(c); }, 50);
   } else {
     // Tour terminé
@@ -9632,7 +9659,7 @@ function avancerSuperset(reposVal) {
       const b = document.getElementById('superset-banner'); if (b) b.style.display = 'none';
       scrollVersProchain = true;
       retourListeSeance();
-      showToast('✅ Superset terminé !');
+      showToast('Superset terminé !');
     } else {
       chargerExoSuperset(); // premier exo du tour suivant
       setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) scrollVersTitre(c); }, 50);
@@ -9964,7 +9991,7 @@ function exoAddSelected() {
   var card = document.getElementById('card-hors-programme'); if (card) card.style.display = 'none';
   var inp = document.getElementById('rech-exo'); if (inp) inp.value = '';
   afficherListeSeance();
-  showToast('✅ ' + added + ' exercice' + (added > 1 ? 's' : '') + ' ajouté' + (added > 1 ? 's' : ''));
+  showToast('' + added + ' exercice' + (added > 1 ? 's' : '') + ' ajouté' + (added > 1 ? 's' : ''));
 }
 function filtrerExosLibres() {
   const inp = document.getElementById('rech-exo');
@@ -9979,7 +10006,7 @@ function choisirExoDirect(val) {
   const inp = document.getElementById('rech-exo'); if (inp) inp.value = '';
   afficherListeSeance();
   setTimeout(() => { const l = document.getElementById('liste-exercices-seance'); const last = l && l.lastElementChild; if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
-  showToast(dejaPresent ? exoNom + ' est déjà dans la séance' : '✅ ' + exoNom + ' ajouté');
+  showToast(dejaPresent ? exoNom + ' est déjà dans la séance' : '' + exoNom + ' ajouté');
 }
 
 // ==================== SAISIE SÉRIE ====================
@@ -10078,7 +10105,7 @@ async function signalerGene() {
   if (!txt) { showToast('Décris la gêne', '#ff4444'); return; }
   if (!athlete) return;
   const exo = exoEnCours ? exoEnCours.exerciceNom : '';
-  const message = '🚩 Gêne/douleur' + (exo ? ' — ' + exo : '') + ' : ' + txt;
+  const message = 'Gêne/douleur' + (exo ? ' — ' + exo : '') + ' : ' + txt;
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -10087,7 +10114,7 @@ async function signalerGene() {
     });
     input.value = '';
     document.getElementById('gene-form').style.display = 'none';
-    showToast('Signalé au coach ✓');
+    showToast('Signalé au coach ');
   } catch (e) { showToast('Erreur envoi', '#ff4444'); }
 }
 
@@ -10100,9 +10127,9 @@ function ajouterSerie() {
   const repos = document.getElementById('sel-repos').value;
 
   if (!date || !seanceId || !charge || !reps || !rpe) {
-    showToast('⚠️ Remplis tous les champs !', '#ff4444'); return;
+    showToast('Remplis tous les champs !', '#ff4444'); return;
   }
-  if (!exoEnCours) { showToast('⚠️ Choisis un exercice', '#ff4444'); return; }
+  if (!exoEnCours) { showToast('Choisis un exercice', '#ff4444'); return; }
 
   const chargeNum = parseFloat(charge);
   const volume = chargeNum > 0 ? chargeNum * parseInt(reps) : parseInt(reps);
@@ -10126,7 +10153,7 @@ function ajouterSerie() {
   } else if (reposVal > 0) {
     startTimer(reposVal, `Série ${serieNum-1} · ${charge}kg × ${reps} reps`);
   } else {
-    showToast(`✅ Série ${serieNum-1} ajoutée !`);
+    showToast(`Série ${serieNum-1} ajoutée !`);
   }
 }
 
@@ -10190,7 +10217,7 @@ const WELLNESS_CONFIG = {
 // Valeur "sans douleur" = 5 (Aucune). Zone s'affiche quand douleur < 5.
 const WELLNESS_NO_PAIN_VAL = '1';
 
-const wellnessState = { sommeil: null, energie: null, fatigue: null, motivation: null, douleur: null, zone: null, ressenti: null };
+const wellnessState = { sommeil: null, energie: null, fatigue: null, motivation: null, stress: null, courbatures: null, rpe: null, douleur: null, zone: null, ressenti: null };
 
 // ── Questionnaires (Phase 1) ────────────────────────────────────────────────
 // DEUX questionnaires distincts, à DEUX moments :
@@ -10212,15 +10239,15 @@ function _bienEtreFaitAujourdhui() {
   try {
     var be = (dernierAppData && Array.isArray(dernierAppData.bien_etre) && dernierAppData.bien_etre[0]) ? dernierAppData.bien_etre[0] : null;
     if (!be || !be.date) return false;
-    // « fait » = au moins un signal readiness renseigné aujourd'hui
-    var hasReadiness = ['sommeil', 'energie', 'fatigue', 'motivation'].some(function (k) { return be[k] != null && be[k] !== '' && !isNaN(Number(be[k])); });
+    // « fait » = au moins un signal readiness renseigné aujourd'hui (Hooper)
+    var hasReadiness = ['sommeil', 'fatigue', 'stress', 'courbatures'].some(function (k) { return be[k] != null && be[k] !== '' && !isNaN(Number(be[k])); });
     return hasReadiness && _normDateDDMM(be.date) === _normDateDDMM(_todayLocalStr());
   } catch (e) { return false; }
 }
 
 var _BTN_SEC = 'flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:12px;padding:13px;font-size:13px;font-weight:600;cursor:pointer;';
 var _BTN_MAIN = 'flex:2;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;';
-var _WQ_BLOCKS = ['wqb-sommeil', 'wqb-energie', 'wqb-fatigue', 'wqb-motivation', 'wqb-ressenti', 'wqb-douleur', 'wq-zone-block', 'wqb-note'];
+var _WQ_BLOCKS = ['wqb-sommeil', 'wqb-fatigue', 'wqb-stress', 'wqb-courbatures', 'wqb-rpe', 'wqb-douleur', 'wq-zone-block', 'wqb-note'];
 
 function _wqShow(ids) {
   _WQ_BLOCKS.forEach(function (id) {
@@ -10232,6 +10259,8 @@ function _wqShow(ids) {
 function _wqResetForm() {
   Object.keys(wellnessState).forEach(k => wellnessState[k] = null);
   document.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.wq-cr').forEach(c => c.classList.remove('selected'));
+  var rd = document.getElementById('wq-rpe-desc'); if (rd) rd.textContent = 'Touche pour noter · 0 = repos complet, 10 = effort maximal';
   var n = document.getElementById('wq-note'); if (n) n.value = '';
   var zt = document.getElementById('wq-zone-text'); if (zt) zt.value = '';
 }
@@ -10265,13 +10294,13 @@ function ouvrirEtatDuJour(opts) {
   _wqMode = 'etat';
   _wqDate = opts.date || null;
   _wqResetForm();
-  _wqShow(['wqb-sommeil', 'wqb-fatigue', 'wqb-motivation']);
+  _wqShow(['wqb-sommeil', 'wqb-fatigue', 'wqb-stress', 'wqb-courbatures']);
   var title = document.getElementById('wq-title'); if (title) title.textContent = 'Ton état du jour';
-  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = _wqThen ? 'Avant de commencer · 20 secondes' : 'Comment tu te sens aujourd’hui ? · 20 secondes';
+  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = _wqThen ? 'Avant de commencer · 15 secondes' : 'Comment tu te sens aujourd’hui ? · 15 secondes';
   var footer = document.getElementById('wq-footer');
   if (footer) footer.innerHTML =
     '<button onclick="_etatSkip()" style="' + _BTN_SEC + '">' + (_wqThen ? 'Passer' : 'Fermer') + '</button>'
-    + '<button onclick="enregistrerEtatDuJour()" id="btn-wellness-valider" style="' + _BTN_MAIN + '">✅ Enregistrer</button>';
+    + '<button onclick="enregistrerEtatDuJour()" id="btn-wellness-valider" style="' + _BTN_MAIN + '">Enregistrer</button>';
   _wqPrefillEtat();
   _wqOpen();
 }
@@ -10288,7 +10317,7 @@ function _wqPrefillEtat() {
   try {
     if (!_bienEtreFaitAujourdhui()) return;
     var be = dernierAppData.bien_etre[0];
-    ['sommeil', 'energie', 'fatigue', 'motivation'].forEach(function (k) {
+    ['sommeil', 'fatigue', 'stress', 'courbatures'].forEach(function (k) {
       var v = be[k];
       if (v == null || v === '' || isNaN(Number(v))) return;
       var cont = document.getElementById('wq-' + k); if (!cont) return;
@@ -10308,14 +10337,14 @@ async function enregistrerEtatDuJour() {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveBienEtre', athlete_id: athlete.athlete_id, date: dateEnvoi, seance_id: null,
-        sommeil: wellnessState.sommeil, energie: wellnessState.energie, fatigue: wellnessState.fatigue,
-        motivation: wellnessState.motivation
+        sommeil: wellnessState.sommeil, fatigue: wellnessState.fatigue,
+        stress: wellnessState.stress, courbatures: wellnessState.courbatures
       })
     });
-    showToast('État du jour enregistré ✅');
+    showToast('État du jour enregistré');
   } catch (e) {
     showToast('Réseau instable — réessaie', '#f59f00');
-    if (btn) { btn.disabled = false; btn.textContent = '✅ Enregistrer'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer'; }
     return;
   }
   var then = _wqThen; _wqThen = null;
@@ -10331,14 +10360,14 @@ function ouvrirBilanSeance(type, seanceId, date) {
   _wqSeanceId = seanceId || null;
   _wqDate = date || _todayLocalStr();
   _wqResetForm();
-  _wqShow(['wqb-ressenti', 'wqb-douleur', 'wqb-note']); // zone conditionnelle
+  _wqShow(['wqb-rpe', 'wqb-douleur', 'wqb-note']); // zone conditionnelle
   var zb = document.getElementById('wq-zone-block'); if (zb) zb.style.display = 'none';
   var title = document.getElementById('wq-title'); if (title) title.textContent = 'Bilan de ta séance';
-  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = 'Comment ça s’est passé ? · optionnel';
+  var sub = document.getElementById('wq-sub'); if (sub) sub.textContent = 'À quel point c’était dur ? · échelle 0-10';
   var footer = document.getElementById('wq-footer');
   if (footer) footer.innerHTML =
     '<button onclick="_bilanSkip()" style="' + _BTN_SEC + '">Passer</button>'
-    + '<button onclick="validerBilanSeance()" id="btn-wellness-valider" style="' + _BTN_MAIN + '">✅ Enregistrer</button>';
+    + '<button onclick="validerBilanSeance()" id="btn-wellness-valider" style="' + _BTN_MAIN + '">Enregistrer</button>';
   _wqOpen();
 }
 
@@ -10349,7 +10378,9 @@ function _bilanPayload(type, seanceId, dateSeance) {
   return {
     action: 'saveBilanSeance', athlete_id: athlete.athlete_id, type: type,
     seance_id: seanceId || null, date: dateSeance,
-    ressenti: wellnessState.ressenti, douleur: wellnessState.douleur, zone: zone
+    // Durée mesurée par le chrono de séance (muscu) → charge interne sRPE = RPE × durée.
+    rpe: wellnessState.rpe, duree: (type === 'muscu' && _seanceDureeMin > 0) ? _seanceDureeMin : null,
+    douleur: wellnessState.douleur, zone: zone
   };
 }
 
@@ -10369,7 +10400,7 @@ async function _envoyerBilan(type, seanceId, dateSeance) {
         body: JSON.stringify({
           action: 'saveCommentaire', auteur: 'athlete',
           auteur_nom: (athlete.prenom || athlete.nom || 'Athlète'), athlete_id: athlete.athlete_id,
-          message: '📝 Séance ' + (seanceId || '') + ' : ' + noteTxt
+          message: 'Séance ' + (seanceId || '') + ' : ' + noteTxt
         })
       });
     } catch (e) {}
@@ -10384,7 +10415,7 @@ async function validerBilanSeance() {
     var sid = _wqSeanceId, dt = _wqDate;
     fermerWellnessModal();
     await _envoyerBilan('cardio', sid, dt);
-    showToast('Bilan enregistré ✅');
+    showToast('Bilan enregistré');
     if (typeof chargerAppData === 'function') chargerAppData();
     return;
   }
@@ -10431,6 +10462,22 @@ function selectWQ(question, btn) {
   }
 }
 
+// RPE de séance — échelle CR-10 de Foster (0 = repos, 10 = effort maximal).
+var _CR10_DESC = ['Repos complet', 'Très très facile', 'Très facile', 'Facile', 'Un peu dur',
+  'Modéré', 'Soutenu', 'Difficile', 'Très difficile', 'Presque maximal', 'Effort maximal'];
+function selectRPE(btn) {
+  var cont = document.getElementById('wq-rpe'); if (!cont) return;
+  cont.querySelectorAll('.wq-cr').forEach(function (c) { c.classList.remove('selected'); });
+  btn.classList.add('selected');
+  var v = Number(btn.dataset.val);
+  wellnessState.rpe = v;
+  var d = document.getElementById('wq-rpe-desc');
+  if (d) {
+    var col = btn.style.getPropertyValue('--c') || 'var(--text)';
+    d.innerHTML = '<b style="color:' + col + '">' + v + '/10 · ' + (_CR10_DESC[v] || '') + '</b>';
+  }
+}
+
 async function _envoyerSeance() {
   const btn = document.getElementById('btn-valider');
   if (btn) { btn.textContent = '⏳ Envoi...'; btn.disabled = true; }
@@ -10456,10 +10503,10 @@ async function _envoyerSeance() {
     const ok = res.ok && j && !j.erreur && !j.error;
     if (ok) {
       afficherRecap();
-      showToast('🎉 Séance enregistrée !');
+      showToast('Séance enregistrée !');
     } else {
       // Le serveur a répondu mais a refusé l'écriture → on met en file plutôt que de perdre.
-      _miseEnFile('⚠️ Enregistrement refusé côté serveur — mis en file, resync auto', '#f59f00');
+      _miseEnFile('Enregistrement refusé côté serveur — mis en file, resync auto', '#f59f00');
     }
   } catch (e) {
     // Réseau instable / requête non aboutie → file d'attente (aucune perte).
@@ -10531,7 +10578,7 @@ async function _envoyerWellness(seanceId, dateSeance) {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'saveCommentaire', auteur: 'athlete',
           auteur_nom: (athlete.prenom || athlete.nom || 'Athlète'), athlete_id: athlete.athlete_id,
-          message: `📝 Note séance ${seanceId} : ${noteTxt}` })
+          message: `Note séance ${seanceId} : ${noteTxt}` })
       });
     } catch(e) { /* non bloquant */ }
   }
@@ -10596,7 +10643,7 @@ async function flushSeancesOffline() {
     }
     _ecrireQueueOffline(restantes);
     const envoyees = q.length - restantes.length;
-    if (envoyees > 0) showToast(`☁️ ${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`);
+    if (envoyees > 0) showToast(`${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`);
     else if (restantes.length > 0 && (Date.now() - _lastPendingToast > 30000)) {
       // Rien n'est passé alors qu'il y a des séances en attente (serveur injoignable) :
       // on prévient (throttlé) plutôt que de laisser l'athlète dans le flou.
@@ -10613,7 +10660,7 @@ function _gererValidationHorsLigne(bilanPayload) {
   const lignes = _construireLignesSeance();
   enregistrerSeanceOffline(lignes, bilanPayload || null);
   afficherRecap();
-  showToast('📴 Hors-ligne : séance enregistrée, elle se synchronisera au retour du réseau');
+  showToast('Hors-ligne : séance enregistrée, elle se synchronisera au retour du réseau');
   return true;
 }
 
@@ -10652,7 +10699,7 @@ function _confirmerFinSeance() {
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<button onclick="_annulerFinSeance()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">↩ Continuer</button>'
-      + '<button onclick="_validerFinSeance()" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ Terminer</button>'
+      + '<button onclick="_validerFinSeance()" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Terminer</button>'
     + '</div>'
     + '</div>';
   document.body.appendChild(ov);
@@ -10756,7 +10803,7 @@ function afficherRecap() {
         + `<div style="font-size:23px;font-weight:900;margin:3px 0 5px;letter-spacing:-.01em">${vg.titre}</div>`
         + `<div style="font-size:12.5px;opacity:.96;line-height:1.5">${escapeHtml(vg.desc)}</div>`
         + `<div style="display:flex;gap:7px;margin-top:14px">${tile(tonT + ' t', 'Tonnage')}${tile(totalSeries, 'Séries')}${rpeMoy != null ? tile(String(rpeMoy).replace('.', ','), 'RPE moy') : ''}</div>`
-        + (vg.reco ? `<div style="margin-top:12px;font-size:12.5px;background:rgba(255,255,255,.14);border-radius:11px;padding:10px 12px;line-height:1.5">💡 ${escapeHtml(vg.reco)}</div>` : '');
+        + (vg.reco ? `<div style="margin-top:12px;font-size:12.5px;background:rgba(255,255,255,.14);border-radius:11px;padding:10px 12px;line-height:1.5">${escapeHtml(vg.reco)}</div>` : '');
       recap.insertBefore(hero, recap.firstChild);
     }
   } catch (e) {}
@@ -10778,9 +10825,9 @@ async function afficherProgrammeVsRealise(seanceType) {
     const repsOk = repsMoy >= p.reps_mini;
     const nonFait = seriesFaites === 0;
     let statut, couleur;
-    if (nonFait) { statut = '⚪ Non fait'; couleur = 'var(--text-muted)'; }
-    else if (seriesOk && repsOk) { statut = '✅ Objectif atteint'; couleur = 'var(--success)'; }
-    else { statut = '🔴 Insuffisant'; couleur = 'var(--danger)'; }
+    if (nonFait) { statut = 'Non fait'; couleur = 'var(--text-muted)'; }
+    else if (seriesOk && repsOk) { statut = 'Objectif atteint'; couleur = 'var(--success)'; }
+    else { statut = 'Insuffisant'; couleur = 'var(--danger)'; }
     var cibleTxt = _cibleTxt(p, true);
     var vcHtml = _cibleVerdictHtml(_cibleVerdict(p, exoRealise ? exoRealise.series : []));
     return `
@@ -10836,7 +10883,7 @@ async function nouvelleSeance() {
   const btnValider = document.getElementById('btn-valider');
   btnValider.style.display = 'none';
   btnValider.disabled = false;
-  btnValider.textContent = '✅ Valider la séance';
+  btnValider.textContent = 'Valider la séance';
   document.getElementById('sel-seance-id').value = '';
   document.getElementById('inp-date').value = _todayLocalStr();
   majProgressionSeance();
@@ -10872,7 +10919,7 @@ function afficherProgrammeComplet() {
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
             ${p.series_prevues} séries · Rep min ${p.reps_mini} · Rep max ${p.reps_max}
           </div>
-          ${(function(){ var t = _cibleTxt(p, true); return t ? `<div style="font-size:11px;font-weight:700;color:var(--accent);margin-top:3px">🎯 ${t}</div>` : ''; })()}
+          ${(function(){ var t = _cibleTxt(p, true); return t ? `<div style="font-size:11px;font-weight:700;color:var(--accent);margin-top:3px">${t}</div>` : ''; })()}
         </div>
       `).join('')}
     </div>
@@ -10939,13 +10986,13 @@ var _OBJECTIFS_N = {}; try { Object.keys(OBJECTIFS).forEach(function (k) { _OBJE
 function _objInfo(obj) { return OBJECTIFS[obj] || _OBJECTIFS_N[_objNorm(obj)] || null; }
 function objIconFor(obj) {
   const o = (obj || '').toLowerCase();
-  if (o.includes('masse') && o.includes('sèche')) return '♻️';
-  if (o.includes('masse')) return '📈';
-  if (o.includes('sèche')) return '🔥';
-  if (o.includes('maintien')) return '⚖️';
-  if (o.includes('force')) return '🏋️';
+  if (o.includes('masse') && o.includes('sèche')) return '';
+  if (o.includes('masse')) return '';
+  if (o.includes('sèche')) return '';
+  if (o.includes('maintien')) return '';
+  if (o.includes('force')) return '🏋';
   if (o.includes('tonif')) return '🔁';
-  return '🎯';
+  return '';
 }
 function majObjectifCard(obj) {
   const nomEl = document.getElementById('obj-actuel-nom');
@@ -10962,9 +11009,9 @@ function majObjectifCard(obj) {
       detEl.style.display = 'block';
       detEl.innerHTML = '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">'
         + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:4px">Ce que ça change pour toi</div>'
-        + _objLine('🏋️', 'Programme conseillé', info.prog)
-        + _objLine('🎯', 'Priorité', info.focus)
-        + _objLine('🧠', 'Lecture Novalyz', info.lecture)
+        + _objLine('🏋', 'Programme conseillé', info.prog)
+        + _objLine('', 'Priorité', info.focus)
+        + _objLine('', 'Lecture Novalyz', info.lecture)
         + '</div>';
     } else { detEl.style.display = 'none'; detEl.innerHTML = ''; }
   }
@@ -10991,7 +11038,7 @@ function _objSeancesCible() {
 // Met à jour l'affichage (ligne de la carte + valeur du stepper) depuis la cible.
 function _objMajSeancesUI() {
   var cible = _objSeancesCible();
-  var sv = document.getElementById('obj-seances-view'); if (sv) sv.textContent = '🗓️ Objectif : ' + cible + ' séance' + (cible > 1 ? 's' : '') + ' / semaine';
+  var sv = document.getElementById('obj-seances-view'); if (sv) sv.textContent = 'Objectif : ' + cible + ' séance' + (cible > 1 ? 's' : '') + ' / semaine';
   var st = document.getElementById('sel-seances-sem'); if (st) { st.setAttribute('data-val', cible); st.textContent = cible; }
 }
 async function sauvegarderObjectif() {
@@ -11006,17 +11053,17 @@ async function sauvegarderObjectif() {
   try { if (dernierAppData && dernierAppData.dashboard && dernierAppData.dashboard.regularite && seancesSem) dernierAppData.dashboard.regularite.seances_prevues = seancesSem; } catch (e) {}
   majObjectifCard(obj);
   toggleObjectifEdit(false);
-  showToast('✅ Objectif sauvegardé !');
+  showToast('Objectif sauvegardé !');
   if (typeof chargerAppData === 'function') chargerAppData();
 }
 
 async function sauvegarderPoids() {
   const poids = document.getElementById('inp-poids').value;
   const date = document.getElementById('inp-date-poids').value;
-  if (!poids || !date) { showToast('⚠️ Remplis poids et date', '#ff4444'); return; }
+  if (!poids || !date) { showToast('Remplis poids et date', '#ff4444'); return; }
   await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify({action:'savePoids', athlete_id:athlete.athlete_id, athlete:athlete.nom, poids, date}) });
-  showToast('✅ Poids enregistré !');
+  showToast('Poids enregistré !');
   document.getElementById('inp-poids').value = '';
   // petit délai avant de relire (laisse le serveur propager l'écriture)
   setTimeout(chargerPoids, 600);
@@ -11265,7 +11312,7 @@ async function setSemaineType(v) {
   majUiSemaineType();
   try { if (typeof maRenderData === 'function') maRenderData(); } catch (e) {}
   try { if (typeof renderAujourdhui === 'function' && dernierAppData) renderAujourdhui(dernierAppData); } catch (e) {}
-  try { if (typeof showToast === 'function') showToast('✅ Préférence enregistrée'); } catch (e) {}
+  try { if (typeof showToast === 'function') showToast('Préférence enregistrée'); } catch (e) {}
   try { if (athlete) await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSemaineType', athlete_id: athlete.athlete_id, valeur: v }) }); } catch (e) {}
 }
 // Réglage « semaine d'entraînement » : calendaire (lundi→dim., reset lundi) ou glissante (7 j).
@@ -11284,6 +11331,22 @@ function _maRecentWin(p) { return (p === 'semaine' && _maSemaineType() === 'cale
 // Date de coupe pour filtrer par période (semaine calendaire → depuis lundi).
 function _maCut(p) { return (p === 'semaine' && _maSemaineType() === 'calendaire') ? _maLastMondayISO() : _maCutISO(_MA_DAYS[p]); }
 var _MA_RSC = { 1: '#00A854', 2: '#8FBF3F', 3: '#E07800', 4: '#DC3545' };
+// Couleur d'un RPE CR-10 (0..10) : vert → rouge par zone d'effort.
+function _maRpeCol(v) { return v <= 3 ? '#00A854' : v <= 5 ? '#8FBF3F' : v <= 7 ? '#E07800' : '#DC3545'; }
+// Série « effort de séance » 0..10 : préfère rpe_<disc> (CR-10). Repli = legacy
+// ressenti_<disc> (difficulté 1..4) converti en RPE approché (1→3,2→5,3→7,4→9).
+function _maEffortSeries(data, disc) {
+  var a = (data && data.analyses) || {};
+  var out = (a['rpe_' + disc] || []).filter(function (x) { return x && x.valeur != null; })
+    .map(function (x) { return { date: x.date, seance_id: x.seance_id, valeur: Number(x.valeur) }; });
+  var seen = {}; out.forEach(function (x) { seen[x.date + '|' + x.seance_id] = 1; });
+  var MAP = { 1: 3, 2: 5, 3: 7, 4: 9 };
+  (a['ressenti_' + disc] || []).forEach(function (x) {
+    if (!x || x.valeur == null) return; var k = x.date + '|' + x.seance_id;
+    if (!seen[k] && x.valeur >= 1 && x.valeur <= 4) out.push({ date: x.date, seance_id: x.seance_id, valeur: MAP[x.valeur] || 5 });
+  });
+  return out;
+}
 function _maE(x) { return (typeof escapeHtml === 'function') ? escapeHtml(String(x == null ? '' : x)) : String(x == null ? '' : x); }
 function _maSvg(p, w) { w = w || 15; return '<svg width="' + w + '" height="' + w + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>'; }
 function _maSpark(pts, color) {
@@ -11371,7 +11434,13 @@ function _maMoteurTiles(data) {
   var niv = m.disponibilite && m.disponibilite.niveau;
   if (niv) { var dc = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : 'var(--danger)'); tiles.push(_maRailTile('Disponibilité', _maE(niv), '', dc)); }
   if (m.recup && m.recup !== '—') tiles.push(_maRailTile('Récupération', _maE(String(m.recup)), ''));
-  if (dash.acwr != null && m.acwr_fiable !== false) tiles.push(_maRailTile('ACWR', _maE(String(dash.acwr)), ''));
+  // Fraîcheur (fitness-fatigue) remplace l'ancienne tuile ACWR. Jamais rouge.
+  var cf = m.charge_fatigue || null;
+  if (cf && cf.tsbPct != null) {
+    var frL = cf.tsbPct >= 5 ? 'Frais' : cf.tsbPct >= -12 ? 'Équilibré' : 'Fatigue';
+    var frC = cf.tsbPct >= 5 ? 'var(--good)' : cf.tsbPct >= -12 ? null : 'var(--warn)';
+    tiles.push(_maRailTile('Fraîcheur', _maE(frL), '', frC));
+  }
   if (!tiles.length) return '';
   return '<div class="rail-hd">Ma forme</div><div class="rail-snap-grid">' + tiles.join('') + '</div>';
 }
@@ -11415,8 +11484,9 @@ var _MA_INFO = {
   tonnage: { t: 'Tonnage', d: 'Le tonnage = charge × répétitions, additionné sur toutes tes séries. C\'est une mesure du volume de travail soulevé, que Novalyz somme par séance et par semaine pour suivre ta charge globale.', fiab: 'Fiable comme suivi de charge, mais ce n\'est pas une mesure d\'intensité : un gros tonnage peut venir de beaucoup de répétitions légères.' },
   volume: { t: 'Volume (séries par semaine)', d: 'Le volume utile pour prendre du muscle se compte surtout en nombre de séries par groupe musculaire et par semaine. Novalyz compare tes séries/sem à une cible adaptée à ton niveau.', fiab: 'Bien étayé : les méta-analyses montrent une relation dose-réponse (~10 séries/sem par muscle comme repère, davantage selon le niveau).' },
   balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
-  ressenti: { t: 'Ressenti des séances', d: 'Après chaque séance tu notes sa difficulté globale de 1 (Facile) à 4 (Très dur). Ce bloc suit l\'évolution de ce ressenti sur la période — un moyen simple de repérer une fatigue qui s\'installe.', fiab: 'Auto-évaluation subjective (proche du RPE de séance, validé — Borg / Foster). Elle dépend de ton humeur du jour : lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
-  acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: '⚠️ Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
+  ressenti: { t: 'Effort des séances (RPE)', d: 'Après chaque séance tu notes son intensité sur l\'échelle CR-10 de Foster (0 = repos, 10 = effort maximal). Ce bloc suit l\'évolution de ton effort perçu sur la période — un moyen simple de repérer une charge qui s\'installe.', fiab: 'Méthode reconnue (session-RPE, Borg / Foster) : l\'échelle CR-10 est validée pour quantifier l\'effort. Multipliée par la durée, elle donne la charge interne (sRPE). Lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
+  acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: 'Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
+  fraicheur: { t: 'Charge & fraîcheur (fitness-fatigue)', d: 'Modèle fitness-fatigue de Banister. Ta charge d\'entraînement alimente deux moyennes : la FORME de fond (CTL, lissée sur 42 jours) et la FATIGUE récente (ATL, sur 7 jours). La FRAÎCHEUR = forme − fatigue : positive = reposé/affûté, négative = tu as plus chargé que d\'habitude. « Charge récente » = ta charge des 7 derniers jours vs ton habitude.', fiab: 'Méthode reconnue et largement utilisée (Banister, base de TrainingPeaks TSB/CTL/ATL ; charge interne via le session-RPE de Foster). Repère SECONDAIRE chez Novalyz : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. Interprétable après ~4 semaines d\'historique.' },
   progression: { t: 'Progression / 1RM estimé', d: 'Le 1RM estimé (formule d\'Epley : charge × (1 + reps/30)) approxime la charge que tu soulèverais 1 fois, sans tester ton maximum. Novalyz suit son évolution pour juger ta progression de force.', fiab: 'Fiable surtout en dessous de ~10 répétitions ; l\'erreur d\'estimation grandit au-delà.' },
   execcible: { t: 'Exécution vs cible', d: 'Compare ce que tu as réalisé aux cibles posées sur l\'exercice. Charge : réalisé vs % de ton 1RM estimé (tolérance ±5 %). RPE : moyenne vs cible (±1).', fiab: 'Indicatif : « sous la cible » n\'est pas forcément un échec (deload, répétitions plus hautes…). La cible en kg dépend d\'un 1RM estimé.' },
   regularite: { t: 'Régularité', d: 'Le nombre de séances réalisées par semaine, comparé à ton objectif (déduit de ton programme).', fiab: 'La régularité sur la durée est l\'un des premiers facteurs de progression.' },
@@ -11424,7 +11494,7 @@ var _MA_INFO = {
   charge_cardio: { t: 'Charge cardio (interne)', d: 'La charge interne d\'une sortie = RPE × durée (en minutes), additionnée par semaine en UA (unités arbitraires). Elle mesure ce que la séance t\'a coûté, pas seulement la distance parcourue.', fiab: 'Méthode reconnue (session-RPE, Foster 2001) : simple et fiable pour suivre l\'évolution de ta charge. Une hausse trop rapide d\'une semaine à l\'autre invite à la prudence.' },
   charge_globale: { t: 'Charge globale (muscu + cardio)', d: 'Additionne ta charge muscu et ta charge cardio sur une même échelle (UA) pour voir ta charge totale par semaine. La muscu (tonnage) est convertie via un ratio approché pour la rendre comparable au cardio (RPE × durée).', fiab: 'La partie cardio (session-RPE) est bien établie ; la mise à la même échelle que la muscu repose sur une conversion approximative. Lis la tendance (monte / descend), pas le chiffre exact.' },
   equilibre_mc: { t: 'Répartition muscu / cardio', d: 'La part de ta charge totale qui vient de la muscu vs du cardio, sur la période. Utile pour voir si tu équilibres les deux selon ton objectif.', fiab: 'Repère indicatif : la muscu est ramenée à la même échelle que le cardio via une conversion approximative — regarde la tendance, pas le pourcentage au point près.' },
-  forme: { t: 'Indice de forme', d: 'Un indice sur 100 qui résume ton bien-être : (sommeil + énergie − fatigue) ramené sur 100, moyenné par semaine (100 = parfaitement récupéré). À croiser avec ta charge.', fiab: 'Indicateur maison, basé sur ton ressenti déclaré (non validé cliniquement). Il vaut surtout par sa tendance : si la forme chute quand la charge monte, c\'est un signal pour lever le pied.' }
+  forme: { t: 'Indice de forme', d: 'Un indice sur 100 qui résume ta readiness : sommeil + fatigue + stress + courbatures (indice de Hooper), ramené sur 100 (100 = parfaitement récupéré). À croiser avec ta charge.', fiab: 'Basé sur l\'indice de Hooper-Mackinnon (readiness), reconnu en prépa physique. Déclaratif : il vaut surtout par sa tendance — si la forme chute quand la charge monte, c\'est un signal pour lever le pied.' }
 };
 function _maInfoOpen(k) {
   var e = _MA_INFO[k]; if (!e) return;
@@ -11683,10 +11753,10 @@ function _maFiabilite(data) {
     if (d >= rw.startISO && d < rw.endISO) { var o = daily[d]; if (o) { sumN += o.rpe_n || 0; sumS += o.series || 0; } }
   });
   var rpeCov = sumS ? Math.min(1, sumN / sumS) : 0;
-  // Bien-être : jours avec un ressenti de séance sur la fenêtre / nb de séances.
+  // Bien-être : jours avec un RPE de séance (ou legacy ressenti) sur la fenêtre / nb de séances.
   var beDates = {};
-  ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) {
-    if (x && x.valeur >= 1 && (x.date || '') >= rw.startISO && (x.date || '') < rw.endISO) beDates[x.date] = 1;
+  _maEffortSeries(data, 'muscu').forEach(function (x) {
+    if (x && x.valeur != null && (x.date || '') >= rw.startISO && (x.date || '') < rw.endISO) beDates[x.date] = 1;
   });
   nBE = Object.keys(beDates).length;
   var beCov = cur.seances ? Math.min(1, nBE / cur.seances) : 0;
@@ -11830,6 +11900,97 @@ function _maForceChart(data) {
       'Moyenne du 1RM estimé (Epley) de tes exercices à chaque séance. La courbe qui monte = tu gagnes en force.', dts);
 }
 
+// ════════ BLOC UNIQUE « Lecture Novalyz · Analyses » (entraînement) ════════
+// Regroupe en UNE carte : verdict d'entraînement + ce que Novalyz lit (constats
+// volume/force/cible) + fiabilité chiffrée (0-100) + progression/régression e1RM
+// + reco d'entraînement. Pendant « Analyses » du bloc « Aujourd'hui » (récup/
+// charge/fatigue). Fenêtre FIXE 4 sem., déterministe, tracé aux données.
+// Secondaire : pas d'alerte rouge ici (le rouge état-du-jour vit sur Aujourd'hui).
+function ouvrirInfoLectureAnalyses() {
+  var txt = 'Cette lecture porte sur ton ENTRAÎNEMENT (volume, force, régularité) sur tes 4 dernières semaines, '
+    + 'indépendamment du filtre de période en dessous. « Ce que Novalyz lit » = les constats déterministes tirés de tes séances '
+    + '(volume par muscle vs cible, force estimée 1RM, exécution). La « fiabilité » dit à quel point ces constats reposent sur assez de données '
+    + '(plus tu renseignes RPE, bien-être et cibles, plus elle monte). La « progression » compare ta force estimée (1RM Epley) à la période précédente. '
+    + 'Pour ton état du jour (récup, charge, fatigue), vois le bloc « Lecture Novalyz » de l\'écran Aujourd\'hui.';
+  try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Lecture Novalyz · Analyses', txt); } catch (e) {}
+  try { alert(txt); } catch (e) {}
+}
+function _maLectureNovalyzBloc(data) {
+  var mot = data.moteur || {};
+  var niv = (mot.disponibilite && mot.disponibilite.niveau) || null;
+  // Constats = synthèse muscu enrichie (volume → force → cible → reste).
+  var s = data && data.analyse_synthese && data.analyse_synthese.muscu;
+  var constats = (s && s.constats) ? s.constats.slice() : [];
+  try { var ex = _maLectureExtras(data); if (ex.length) constats = constats.slice(0, 1).concat(ex, constats.slice(1)); } catch (e) {}
+  var f = _maFiabilite(data);
+  var pr = _maProgRegData(data);
+  var reco = '';
+  try { reco = s ? (_novaPickReco(s, true) || (s.reco && s.reco.texte) || '') : ''; } catch (e) {}
+  // Rien à montrer (nouvel athlète sans aucune donnée) → on masque le bloc.
+  if (!constats.length && !pr.nPair && f.pct <= 0) return '';
+
+  var TON = { positif: '#00A854', neutre: 'var(--text-subtle)', attention: '#E07800' };
+  // ── Verdict d'entraînement (jamais rouge ici : état-du-jour rouge → Aujourd'hui) ──
+  var VB = { 'Prêt': ['#00A854', 'Sur la bonne voie'], 'Vigilance': ['#E07800', 'Ajuste le tir'],
+    'À surveiller': ['#E07800', 'Ajuste le tir'] };
+  var vb = VB[niv] || ['var(--accent)', 'Ta lecture d\'entraînement'];
+  var verdict = '<div style="display:flex;gap:10px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-left:3px solid ' + vb[0] + ';border-radius:12px;padding:10px 13px">'
+    + '<span style="width:26px;height:26px;border-radius:999px;background:' + vb[0] + ';color:#fff;display:grid;place-items:center;flex:none">' + _maSvg('<path d="M20 6 9 17l-5-5"/>', 15) + '</span>'
+    + '<div style="font-size:14px;font-weight:800;color:var(--text)">' + vb[1] + '</div></div>';
+
+  // ── Ce que Novalyz lit : constats (volume / force / cible) ──
+  var litHtml = constats.length ? ('<div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:8px">Ce que Novalyz lit</div>'
+    + constats.map(function (c) {
+      return '<div style="display:flex;gap:9px;align-items:flex-start;margin:0 0 8px"><span style="width:7px;height:7px;border-radius:999px;background:' + (TON[c.ton] || 'var(--text-subtle)') + ';margin-top:6px;flex:none"></span><span style="font-size:13px;color:var(--text);line-height:1.45">' + _maE(c.texte) + '</span></div>';
+    }).join('') + '</div>') : '';
+
+  // ── Fiabilité (anneau compact + mini-liste) — sous-box ──
+  var col = _maFiabCol(f.pct), lib = f.pct >= 75 ? 'fiable' : f.pct >= 50 ? 'à compléter' : 'incomplet';
+  var dash = Math.max(0, Math.min(100, f.pct));
+  var ring = '<div style="position:relative;width:64px;height:64px;flex:none">'
+    + '<svg width="64" height="64" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--surface)" stroke-width="4"/>'
+    + '<circle cx="21" cy="21" r="15.9" fill="none" stroke="' + col + '" stroke-width="4" stroke-dasharray="' + dash + ' 100" stroke-dashoffset="25" stroke-linecap="round" transform="rotate(-90 21 21)"/></svg>'
+    + '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:16px;font-weight:800;color:' + col + '">' + f.pct + '</div><div style="font-size:7px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em">' + lib + '</div></div></div>';
+  var ic = { ok: '<span style="color:#00A854">✓</span>', part: '<span style="color:#E07800">◑</span>', ko: '<span style="color:var(--text-subtle)">○</span>' };
+  var flist = f.rows.map(function (r) {
+    return '<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;padding:2px 0"><span style="width:12px;flex:none;text-align:center">' + (ic[r.s] || ic.ko) + '</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(r.l) + '</span><span style="color:var(--text-subtle);font-size:10.5px;font-variant-numeric:tabular-nums;flex:none">' + r.g + '/' + r.m + '</span></div>';
+  }).join('');
+  var ftip = f.tips.length ? '<div style="font-size:11px;color:var(--text-muted);margin-top:7px;line-height:1.5"><b style="color:var(--text)">Pour fiabiliser</b> : ' + _maE(f.tips.join(' · ')) + '.</div>'
+    : '<div style="font-size:11px;color:#00A854;margin-top:7px">✓ Données complètes — fiabilité maximale.</div>';
+  var fiabBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
+    + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Fiabilité des données · ' + f.pct + '/100</div>'
+    + '<div style="display:flex;gap:13px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + flist + '</div></div>' + ftip + '</div>';
+
+  // ── Progression / régression (force e1RM) — sous-box ──
+  var progBox;
+  if (pr.nPair) {
+    var colc = function (titre, color, arr, signe) {
+      var items = arr.length ? arr.map(function (x) { return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-top:1px solid var(--border)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(x.exo) + '</span><b style="color:' + color + ';flex:none;margin-left:8px">' + signe + Math.abs(x.pct) + '%</b></div>'; }).join('')
+        : '<div style="font-size:11.5px;color:var(--text-subtle);padding:3px 0">—</div>';
+      return '<div style="flex:1;min-width:0;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 11px"><div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:' + color + ';margin-bottom:4px">' + titre + '</div>' + items + '</div>';
+    };
+    var forceLine = pr.forcePct != null ? ('<div style="font-size:12.5px;margin-bottom:9px;color:var(--text)">Force estimée (1RM) : <b style="color:' + (pr.forcePct >= 0 ? '#00A854' : '#E07800') + '">' + (pr.forcePct >= 0 ? '+' : '') + pr.forcePct + '%</b> vs période précédente</div>') : '';
+    progBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
+      + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Progression · régression</div>'
+      + forceLine + '<div style="display:flex;gap:9px">' + colc('▲ En progrès', '#00A854', pr.prog, '+') + colc('▼ À relancer', '#E07800', pr.reg, '−') + '</div></div>';
+  } else {
+    progBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
+      + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:6px">Progression · régression</div>'
+      + '<div style="font-size:12px;color:var(--text-subtle)">Au moins 2 périodes avec les mêmes exercices pour comparer la force.</div></div>';
+  }
+
+  // ── Reco d'entraînement ──
+  var recoHtml = reco ? ('<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco entraînement</div><div style="font-size:13px;color:var(--text);line-height:1.45">' + _maE(reco) + '</div></div>') : '';
+
+  return '<div class="ma-card" style="display:flex;flex-direction:column;gap:12px;padding:14px 15px;margin:6px 0 16px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center">'
+    +   '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700">Lecture Novalyz · Analyses</div>'
+    +   '<span onclick="ouvrirInfoLectureAnalyses()" title="Comprendre" style="width:19px;height:19px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);font-size:11px;display:inline-grid;place-items:center;cursor:pointer;flex:none">?</span>'
+    + '</div>'
+    + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:-6px">Ton entraînement · 4 dernières semaines (indépendant du filtre ci-dessous)</div>'
+    + verdict + litHtml + recoHtml + fiabBox + progBox + '</div>';
+}
+
 function _maMuscuResume(data) {
   var p = _maPeriode, w = _maWin(), days = w.days;
   // KPI de la fenêtre NAVIGABLE calculés depuis daily_muscu (historique complet) —
@@ -11857,14 +12018,14 @@ function _maMuscuResume(data) {
     ['Records battus', String(nRec), '']
   ].map(function (k) { return '<div class="ma-kpi"><span class="u">' + k[0] + '</span><span class="v">' + k[1] + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</span></div>'; }).join('');
   // Ressenti (période)
-  var rsArr = (data.analyses && data.analyses.ressenti_muscu) ? data.analyses.ressenti_muscu.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= w.startISO && (x.date || '') < w.endISO; }) : [];
+  var rsArr = _maEffortSeries(data, 'muscu').filter(function (x) { return x.valeur != null && (x.date || '') >= w.startISO && (x.date || '') < w.endISO; });
   var rsHtml;
   if (rsArr.length) {
     var rec = rsArr.slice(0, 14).reverse();
-    rsHtml = '<div class="ma-rsbox"><div class="ma-rsbars">' + rec.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>'
+    rsHtml = '<div class="ma-rsbox"><div class="ma-rsbars">' + rec.map(function (x) { return '<div class="b" title="RPE ' + x.valeur + '/10" style="height:' + Math.max(8, x.valeur / 10 * 100) + '%;background:' + _maRpeCol(x.valeur) + '"></div>'; }).join('') + '</div>'
       + _maRsAxis(rec, p)
-      + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
-  } else { rsHtml = _maEmpty('Aucun ressenti sur la période — il se remplit après tes bilans de séance.'); }
+      + '<div class="ma-rsleg">' + [[2, 'Facile'], [5, 'Modéré'], [7, 'Difficile'], [9, 'Max']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _maRpeCol(a[0]) + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+  } else { rsHtml = _maEmpty('Aucun RPE sur la période — il se remplit après tes bilans de séance.'); }
   // Volume musculaire en SÉRIES sur la période + statut coloré (objectifs ou défauts).
   var spm = r.series_par_muscle || {};
   var obti = {}; (data.volume_obti || []).forEach(function (o) { obti[o.muscle] = o; });
@@ -11895,17 +12056,15 @@ function _maMuscuResume(data) {
   // Colonne principale : synthèse + chiffres + ressenti + Volume/Balance côte à côte.
   // Rail droit (bureau) : Records perso + bloc Novalyz. Mobile : .ma-cols2/.ma-col*
   // en display:contents → ordre d'origine inchangé.
-  var main = _maSynthese(data) + verdict
-    // ── ZONE DÉCISION (fenêtre fixe 4 sem.) : fiabilité + progression/régression ──
-    + _maFiabiliteBloc(data)
-    + _maProgRegBloc(data)
+  var main = _maLectureNovalyzBloc(data)
+    // ── ZONE DÉCISION (fenêtre fixe 4 sem.) : tout regroupé dans le bloc unique ci-dessus ──
     + '<div onclick="maSetTab(\'tendances\')" style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:10px;font-size:12.5px;font-weight:700;color:var(--accent);cursor:pointer;margin:2px 0 14px">Voir l\'analyse détaillée (fréquence, intensité, force) →</div>'
     // ── ZONE DÉTAIL (fenêtre navigable) ──
     + _maPeriodHtml() + _maPeriodHint('Le détail ci-dessous suit le sélecteur (Semaine / Mois / Année + flèches). La décision ci-dessus reste sur tes 4 dernières semaines.')
     + _maSec(ptitle, null, 'tonnage')
     + '<div class="ma-kgrid">' + kpi + '</div>'
     + _maExecVsCible(data)
-    + _maSec('Ressenti des séances', 'sur ' + w.plabel, 'ressenti') + rsHtml
+    + _maSec('Effort des séances (RPE)', 'sur ' + w.plabel, 'ressenti') + rsHtml
     + '<div class="ma-cols">'
     +   '<div class="ma-colcard">' + _maSec('Volume musculaire', w.plabel + ' · séries', 'volume') + volHtml
     +     _maCap('Le chiffre à droite = ta cible (niveau ' + TGT.label + '). Barre verte = atteinte, orange/rouge = en dessous.') + '</div>'
@@ -12089,8 +12248,8 @@ function _maProgExo(data) {
     if (_isStag) {
       var _pr = _prescriptionStag(sel);
       if (_pr) stagBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:12px;padding:12px 14px;margin-top:10px">'
-        + '<div style="font-size:13px;font-weight:800;color:var(--warn)">⚠️ Stagnation sur cet exercice</div>'
-        + '<div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-top:7px;line-height:1.45">👉 ' + _maE(_pr.act) + '</div>'
+        + '<div style="font-size:13px;font-weight:800;color:var(--warn)">Stagnation sur cet exercice</div>'
+        + '<div style="font-size:12.5px;font-weight:700;color:var(--accent);margin-top:7px;line-height:1.45">' + _maE(_pr.act) + '</div>'
         + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.4">' + _maE(_pr.why) + '</div></div>';
     }
   } catch (e) {}
@@ -12106,13 +12265,13 @@ function _maProgExo(data) {
         var rangeTxt = (_ca.rmin && _ca.rmax) ? (_ca.rmin + '-' + _ca.rmax) : (_ca.rmax || _ca.rmin || '');
         var rpeTxt = (_ca.rpe != null) ? ('RPE ' + _ca.rpe + ' · ' + _rirLong(_ca.rpe)) : '';
         aimBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;margin-top:10px">'
-          + '<div style="font-size:13px;font-weight:800">🎯 Charge à viser</div>'
+          + '<div style="font-size:13px;font-weight:800">Charge à viser</div>'
           + '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px">'
           + (_ca.kg != null ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:20px;color:var(--accent)">' + _ca.kg + ' kg</span>' : '<span style="font-size:12.5px;color:var(--text-muted)">cible en % (1RM pas encore fiable)</span>')
           + (rangeTxt ? '<span style="font-size:13px;font-weight:800">× ' + rangeTxt + '</span>' : '')
           + (rpeTxt ? '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;text-align:right">' + rpeTxt + '</span>' : '')
           + '</div>'
-          + '<div style="font-size:12px;color:var(--text);margin-top:8px;line-height:1.45">📈 ' + _maE(_ca.prog) + '</div>'
+          + '<div style="font-size:12px;color:var(--text);margin-top:8px;line-height:1.45">' + _maE(_ca.prog) + '</div>'
           + '<div style="font-size:10px;color:var(--text-subtle);margin-top:6px;text-transform:uppercase;letter-spacing:.03em">Stratégie : ' + _maE(_ca.strat) + '</div></div>';
       }
     }
@@ -12195,12 +12354,11 @@ function _maProgSea(data) {
   if (!sd.length) return _maEmpty('Pas encore de séances détaillées.');
   // Plus de filtre par période : on montre les N dernières séances + « Charger plus ».
   var rs = {}, rsByDate = {};
-  ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) {
+  _maEffortSeries(data, 'muscu').forEach(function (x) {
     if (x.valeur == null) return;
     if (x.seance_id != null && x.seance_id !== '') rs[x.seance_id + '|' + x.date] = x.valeur;
     if (x.date) rsByDate[x.date] = x.valeur;
   });
-  var RSL = { 1: 'Facile', 2: 'Moyen', 3: 'Difficile', 4: 'Très dur' };
   // Occurrences par exercice (1 par séance) triées chrono → « la fois précédente ».
   var occ = {};
   sd.forEach(function (s) { (s.exercices || []).forEach(function (e) { var b = _maBestSet(e); if (!b) return; (occ[e.nom] = occ[e.nom] || []).push({ date: s.date, charge: b.charge, reps: b.reps, e1: b.charge * (1 + b.reps / 30) }); }); });
@@ -12248,7 +12406,7 @@ function _maProgSea(data) {
     return '<div class="ma-card" id="ma-sea-' + idx + '" data-open="' + (open ? '1' : '0') + '" style="padding:0;overflow:hidden;margin-bottom:10px">'
       + '<div onclick="_maSeaToggle(' + idx + ')" style="display:flex;align-items:center;gap:11px;padding:13px 14px;cursor:pointer">'
       + '<div style="width:42px;flex:none;text-align:center;background:var(--surface2);border-radius:10px;padding:5px 0"><div style="font-size:15px;font-weight:800;line-height:1">' + day + '</div><div style="font-size:8px;text-transform:uppercase;color:var(--text-subtle);margin-top:1px">' + mon + '</div></div>'
-      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + esc(sid) + '</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px">' + ton + ' t · ~' + dur + ' min · ' + nSeries + ' séries' + (rv ? ' · ' + RSL[rv] : '') + '</div></div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + esc(sid) + '</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px">' + ton + ' t · ~' + dur + ' min · ' + nSeries + ' séries' + (rv != null ? ' · RPE ' + rv + '/10' : '') + '</div></div>'
       + badge
       + '<span id="ma-sea-ch-' + idx + '" style="color:var(--text-subtle);transition:transform .2s;flex:none' + (open ? ';transform:rotate(180deg)' : '') + '">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span>'
       + '</div>'
@@ -12375,11 +12533,11 @@ function _maMuscuHistorique(data) {
   if (!all.length) { _maSet('ma-muscu-historique', _maEmpty('Aucune séance enregistrée pour l\'instant.')); return; }
   var n = Math.min(_maHistMore.muscu || 5, all.length);
   var ds = all.slice(0, n);
-  var rs = {}; ((data.analyses && data.analyses.ressenti_muscu) || []).forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + x.date] = x.valeur; });
+  var rs = {}; _maEffortSeries(data, 'muscu').forEach(function (x) { if (x.seance_id != null) rs[x.seance_id + '|' + x.date] = x.valeur; });
   var html = ds.map(function (s, i) {
     var dd = new Date(s.date + 'T00:00:00'), day = String(dd.getDate()).padStart(2, '0'), mon = _MA_MON[dd.getMonth()];
-    var rv = rs[s.seance_id + '|' + s.date] || null;
-    var dot = rv ? '<div class="ma-rdot" style="background:' + _MA_RSC[rv] + '">' + rv + '</div>' : '<div class="ma-rdot" style="background:var(--surface2);color:var(--text-subtle)">–</div>';
+    var rv = rs[s.seance_id + '|' + s.date]; if (rv == null) rv = null;
+    var dot = (rv != null) ? '<div class="ma-rdot" title="RPE ' + rv + '/10" style="background:' + _maRpeCol(rv) + '">' + rv + '</div>' : '<div class="ma-rdot" style="background:var(--surface2);color:var(--text-subtle)">–</div>';
     var det = '<div class="nv-seancedet">' + _nvExoRows(s.exercices) + '</div>';
     return '<div class="ma-hcard"><div class="ma-hhd" style="cursor:pointer" onclick="maToggleHS(' + i + ')"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div>'
       + '<div class="ma-hmain"><div class="a">' + _maE(s.seance_id || 'Séance') + '</div><div class="b">' + (s.exercices ? s.exercices.length : 0) + ' exos · ' + (s.nb_series || 0) + ' séries · ' + (Math.round((s.tonnage || 0) / 100) / 10) + ' t</div></div>'
@@ -12411,7 +12569,7 @@ function _maHyroxList(data, limit) {
     var dd = new Date((s.date || '') + 'T00:00:00'), dstr = isNaN(dd.getTime()) ? '' : (dd.getDate() + ' ' + _MA_MON[dd.getMonth()]);
     var mode = (s.hyrox_mode === 'atelier') ? 'Par atelier' : (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Circuit';
     var nseg = _hxSegmentsOf(s).length;
-    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:36px;height:36px;border-radius:11px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:15px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11px;color:var(--text-subtle)">' + dstr + ' · ' + nseg + ' segment' + (nseg > 1 ? 's' : '') + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
+    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:36px;height:36px;border-radius:11px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:15px"></span><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11px;color:var(--text-subtle)">' + dstr + ' · ' + nseg + ' segment' + (nseg > 1 ? 's' : '') + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
   }).join('');
   return _maSec('Mes Hyrox', 'touche pour analyser') + rows;
 }
@@ -12437,11 +12595,11 @@ function _maCardioResume(data) {
   var tdCh = _maTrendData(chDict, 'sum');
   var chargeHtml = tdCh.pts.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / ' + _bNoun + ' · ' + _w.plabel, 'charge_cardio') + _maChartBlock('Charge (UA)', tdCh.pts, 'UA', '#9D5FD3', 'rgba(157,95,211,.12)', _maShortDate(tdCh.dates[0]), 'Charge interne (RPE × durée) par ' + _bNoun + '. Une montée trop brutale peut signaler un risque de surmenage.', tdCh.dates)) : '';
   // Ressenti des sorties cardio (bilan de séance) sur la période — miroir du ressenti muscu.
-  var rsC = (data.analyses && data.analyses.ressenti_cardio) ? data.analyses.ressenti_cardio.filter(function (x) { return x && x.valeur >= 1 && x.valeur <= 4 && (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; }) : [];
+  var rsC = _maEffortSeries(data, 'cardio').filter(function (x) { return x.valeur != null && (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; });
   var rsCardioHtml = '';
   if (rsC.length) {
     var recC = rsC.slice(0, 14).reverse();
-    rsCardioHtml = _maSec('Ressenti des sorties', 'sur ' + _w.plabel, 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" style="height:' + (x.valeur / 4 * 100) + '%;background:' + _MA_RSC[x.valeur] + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[1, 'Facile'], [2, 'Moyen'], [3, 'Difficile'], [4, 'Très dur']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _MA_RSC[a[0]] + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
+    rsCardioHtml = _maSec('Effort des sorties (RPE)', 'sur ' + _w.plabel, 'ressenti') + '<div class="ma-rsbox"><div class="ma-rsbars">' + recC.map(function (x) { return '<div class="b" title="RPE ' + x.valeur + '/10" style="height:' + Math.max(8, x.valeur / 10 * 100) + '%;background:' + _maRpeCol(x.valeur) + '"></div>'; }).join('') + '</div>' + _maRsAxis(recC, _maPeriode) + '<div class="ma-rsleg">' + [[2, 'Facile'], [5, 'Modéré'], [7, 'Difficile'], [9, 'Max']].map(function (a) { return '<span class="ma-rspill"><span class="ma-rsdot" style="background:' + _maRpeCol(a[0]) + '"></span>' + a[1] + '</span>'; }).join('') + '</div></div>';
   }
   var _crMain = _maSyntheseCardio(data) + verdict
     + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change les chiffres & graphiques ci-dessous.')
@@ -12631,7 +12789,7 @@ function renderAnalyseDouleurs(containerId, arr) {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   arr = Array.isArray(arr) ? arr.filter(function (x) { return x && x.valeur >= 2; }) : [];
   if (!arr.length) {
-    el.innerHTML = '<div class="an-empty">Aucune douleur signalée. 💪</div>';
+    el.innerHTML = '<div class="an-empty">Aucune douleur signalée.</div>';
     return;
   }
   var freq = {}; arr.forEach(function (x) { var z = _anZoneLabel(x.zone || 'autre'); freq[z] = (freq[z] || 0) + 1; });
@@ -12710,7 +12868,7 @@ function renderCalDetail(dateStr, name) {
     const typeChips = Object.keys(cj.types).map(function(t) {
       const clr = (typeof _CH_CLR !== 'undefined' && _CH_CLR[t]) || '#6366f1';
       const bg  = (typeof _CH_BG !== 'undefined' && _CH_BG[t]) || 'rgba(99,102,241,.14)';
-      const ico = (typeof _CH_ICO !== 'undefined' && _CH_ICO[t]) || '⚡';
+      const ico = (typeof _CH_ICO !== 'undefined' && _CH_ICO[t]) || '';
       const lbl = (typeof _CARDIO_TYPE_LABELS !== 'undefined' && _CARDIO_TYPE_LABELS[t]) || t;
       return `<span style="font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px;color:${clr};background:${bg};">${ico} ${lbl}</span>`;
     }).join('');
@@ -12798,7 +12956,7 @@ function _modifierSeanceMuscu(dateStr, seanceId) {
     + '<div style="display:grid;grid-template-columns:18px 1fr 1fr 1fr 1fr 26px;gap:6px;font-size:var(--fs-2xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:6px;text-align:center;"><span></span><span>Charge</span><span>Reps</span><span>RPE</span><span>Repos</span><span></span></div>'
     + '<div id="edit-seance-body">' + body + '</div>'
     + '<div style="font-size:var(--fs-2xs);color:var(--text-subtle);margin:2px 0 6px;">Supprime toutes les séries pour effacer la séance.</div>'
-    + '<div class="nv-sheet-actions"><button class="btn btn-neutral" onclick="_fermerModifSeance()">Annuler</button><button class="btn btn-accent" onclick="_sauvegarderModifSeance()">✅ Enregistrer</button></div>'
+    + '<div class="nv-sheet-actions"><button class="btn btn-neutral" onclick="_fermerModifSeance()">Annuler</button><button class="btn btn-accent" onclick="_sauvegarderModifSeance()">Enregistrer</button></div>'
     + '</div>';
   ov.addEventListener('click', function (e) { if (e.target === ov) _fermerModifSeance(); });
   document.body.appendChild(ov);
@@ -12990,8 +13148,15 @@ function renderTjFormeRail(data) {
   if (m.recup && m.recup !== '—') {
     tiles.push('<div class="rail-tile"><div class="k">Récupération</div><div class="v" style="font-size:14px">' + esc(String(m.recup)) + '</div></div>');
   }
-  if (dash.acwr != null && m.acwr_fiable !== false) {
-    tiles.push('<div class="rail-tile"><div class="k">ACWR</div><div class="v">' + esc(String(dash.acwr)) + '</div></div>');
+  // Fraîcheur (modèle fitness-fatigue de Banister, TSB %) — remplace l'ancienne
+  // tuile ACWR (repère secondaire peu fiable en muscu). Jamais rouge : max orange.
+  var cf = m.charge_fatigue || null;
+  if (cf && cf.tsbPct != null) {
+    var frL, frC;
+    if (cf.tsbPct >= 5) { frL = 'Frais'; frC = 'var(--good)'; }
+    else if (cf.tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; }
+    else { frL = 'Fatigue'; frC = 'var(--warn)'; }
+    tiles.push('<div class="rail-tile"><div class="k">Fraîcheur</div><div class="v" style="font-size:14px;color:' + frC + '">' + frL + '</div></div>');
   }
   try {
     var sh = (data && data.sante_historique || [])[0];
@@ -13509,7 +13674,7 @@ function afficherTendances(semaines) {
   }
 
   const statutColor = t.statut === 'positif' ? '#00c96e' : t.statut === 'plateau' ? '#f59f00' : 'var(--danger)';
-  const statutLabel = t.statut === 'positif' ? '🟢 Adaptation positive' : t.statut === 'plateau' ? '⚠️ Plateau' : '🔴 Régression';
+  const statutLabel = t.statut === 'positif' ? 'Adaptation positive' : t.statut === 'plateau' ? 'Plateau' : 'Régression';
   const statutDesc = t.statut === 'positif' ? 'Volume et charges en progression' : t.statut === 'plateau' ? 'Charges stables depuis plusieurs semaines' : 'Charges en baisse ou RPE en forte hausse';
 
   const ligne = (label, valDebut, valFin, unite, up) => {
@@ -13558,7 +13723,7 @@ function renderVolumeOptionA(volumes, targetId, niveauKey, muscleRetard) {
   const scaleMax = Math.max(1, ...rowsVol.map(r => Math.max(r.optimal, r.faites)));
   let banner = '';
   if (muscleRetard && muscleRetard.muscle) {
-    banner = `<div style="background:rgba(245,159,0,0.12);border:1px solid rgba(245,159,0,0.35);border-radius:8px;padding:8px 11px;margin-bottom:10px;display:flex;align-items:center;gap:8px;"><span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${muscleRetard.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">Historique global</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${muscleRetard.series_faites} séries / ${muscleRetard.series_min} min · objectif ${muscleRetard.series_optimale} séries</div></div></div>`;
+    banner = `<div style="background:rgba(245,159,0,0.12);border:1px solid rgba(245,159,0,0.35);border-radius:8px;padding:8px 11px;margin-bottom:10px;display:flex;align-items:center;gap:8px;"><span style="font-size:14px;"></span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${muscleRetard.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">Historique global</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${muscleRetard.series_faites} séries / ${muscleRetard.series_min} min · objectif ${muscleRetard.series_optimale} séries</div></div></div>`;
   }
   el.innerHTML = banner
     + `<div style="font-size:10px;color:var(--text-muted);margin-bottom:12px;">Niveau : <strong style="color:var(--accent)">${niveauLabel}</strong></div>`
@@ -13604,7 +13769,7 @@ function renderBilanBalance(volumes, targetId) {
     const col = ecart <= 0.10 ? 'var(--good)' : ecart <= 0.20 ? 'var(--warn)' : 'var(--danger)';
     const msg = ecart <= 0.10 ? 'Équilibré'
               : ecart <= 0.20 ? (ratioA > 0.5 ? p.a + ' dominant' : p.b + ' dominant')
-              : (ratioA > 0.5 ? '⚠️ ' + p.a + ' trop dominant' : '⚠️ ' + p.b + ' trop dominant');
+              : (ratioA > 0.5 ? '' + p.a + ' trop dominant' : '' + p.b + ' trop dominant');
     return `
       <div style="margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -13757,7 +13922,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   const pProg = programmeSeance.find(p => p.exercice === exerciceNom);
   const partenairesActuel = pProg && pProg.groupe_id ? programmeSeance.filter(o => o !== pProg && o.groupe_id === pProg.groupe_id).map(o => o.exercice) : [];
   var _cibleProg = _cibleTxt(pProg, true);
-  document.getElementById('exo-actuel-detail').innerHTML = `${muscle} · ${repsMini}-${repsMax} reps${partenairesActuel.length > 0 ? ` <span style="color:${couleurGroupe(pProg.groupe_id)}">· Superset, alterne avec ${partenairesActuel.join(', ')}</span>` : ''}${_cibleProg ? `<br><span style="color:var(--accent);font-weight:700">🎯 Cible programme : ${_cibleProg}</span>` : ''}`;
+  document.getElementById('exo-actuel-detail').innerHTML = `${muscle} · ${repsMini}-${repsMax} reps${partenairesActuel.length > 0 ? ` <span style="color:${couleurGroupe(pProg.groupe_id)}">· Superset, alterne avec ${partenairesActuel.join(', ')}</span>` : ''}${_cibleProg ? `<br><span style="color:var(--accent);font-weight:700">Cible programme : ${_cibleProg}</span>` : ''}`;
   document.getElementById('card-exo-actuel').style.display = 'block';
   document.getElementById('card-hors-programme').style.display = 'none';
 
@@ -13794,7 +13959,7 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   }
   majSeriesActuel();
   setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) scrollVersTitre(c); }, 50);
-  showToast('✅ ' + exerciceNom + ' sélectionné');
+  showToast('' + exerciceNom + ' sélectionné');
 }
 
 // ==================== CHARGEMENT PRINCIPAL ====================
@@ -13810,6 +13975,135 @@ function _safe(label, fn) {
 // Accueil « Aujourd'hui » (refonte maquette) : remplit les valeurs dynamiques
 // (prénom, date, régularité). Les autres blocs restent visuels pour l'instant,
 // on les branchera aux données au fil des phases.
+// Lecture « Aujourd'hui » — Charge & fatigue (modèle fitness-fatigue de Banister).
+// Lit moteur.charge_fatigue (CTL/ATL/TSB, tsbPct, ratio). SECONDAIRE : n'alerte
+// jamais en rouge, vocabulaire grand public (« fraîcheur », « charge récente »),
+// avec le « ? » pédagogique. Caché si pas de données.
+function renderChargeFatigueJour(data) {
+  var el = document.getElementById('tj-chargefatigue'); if (!el) return;
+  var m = (data && data.moteur) || {};
+  var cf = m.charge_fatigue || null;
+  var hasCf = !!(cf && cf.ratio != null);
+  var be0 = (data && Array.isArray(data.bien_etre) && data.bien_etre[0]) ? data.bien_etre[0] : null;
+  var niv0 = (m.disponibilite && m.disponibilite.niveau) || null;
+  var hasRecup = !!(m.recup && m.recup !== '—');
+  // Bloc UNIQUE : affiché dès qu'il y a un verdict, une charge/fatigue, une récup,
+  // une reco ou un point de vigilance — sinon masqué.
+  var _c0 = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
+  if (!niv0 && !hasCf && !_c0.length && !hasRecup && !m.reco) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  var tsbPct = hasCf ? cf.tsbPct : null, ratio = hasCf ? cf.ratio : null, fiable = hasCf ? cf.fiable : false;
+  // Fraîcheur (TSB %) → libellé grand public, jamais rouge (max orange).
+  var fr, frc, frTxt;
+  if (tsbPct == null) { fr = '—'; frc = 'var(--tj-subtle)'; frTxt = 'pas encore assez de données'; }
+  else if (tsbPct >= 5) { fr = 'Frais'; frc = 'var(--tj-good)'; frTxt = 'tu es reposé, bon moment pour pousser'; }
+  else if (tsbPct >= -12) { fr = 'Équilibré'; frc = 'var(--tj-text)'; frTxt = 'ta charge récente est proche de ton habitude'; }
+  else { fr = 'Fatigue'; frc = 'var(--tj-warn)'; frTxt = 'tu as plus chargé que d\'habitude ces jours-ci, soigne la récup'; }
+  var ch = ratio > 1.15 ? 'élevée' : ratio < 0.85 ? 'en baisse' : 'régulière';
+
+  // --- « Ce que Novalyz lit » : fatigue · récup · charge (bullets) ---
+  var bullets = [];
+  if (hasCf) bullets.push({ c: frc === 'var(--tj-good)' ? 'var(--tj-good)' : (frc === 'var(--tj-warn)' ? 'var(--tj-warn)' : 'var(--tj-subtle)'), t: '<b>' + fr + '</b> : ' + frTxt + '.' });
+  if (m.recup && m.recup !== '—') {
+    var rc = (m.recup === 'Faible' || m.recup === 'Moyen') ? 'var(--tj-warn)' : 'var(--tj-good)';
+    var rd = '';
+    try {
+      if (be0) {
+        var parts = [];
+        if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) parts.push('sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
+        if (be0.fatigue != null && !isNaN(Number(be0.fatigue))) parts.push('fatigue ' + String(WQ_ANSWERS.fatigue[Number(be0.fatigue)] || '').toLowerCase());
+        rd = parts.length ? ' (' + parts.join(', ') + ')' : '';
+      }
+    } catch (e) {}
+    bullets.push({ c: rc, t: '<b>Récupération ' + String(m.recup).toLowerCase() + '</b>' + rd + '.' });
+  }
+  if (hasCf) bullets.push({ c: ratio > 1.15 ? 'var(--tj-warn)' : 'var(--tj-subtle)', t: 'Charge des 7 derniers jours <b>' + ch + '</b> par rapport à ton habitude.' });
+  var bulletsHtml = bullets.map(function (b) {
+    return '<div style="display:flex;gap:9px;align-items:flex-start;margin:0 0 8px"><span style="width:7px;height:7px;border-radius:999px;background:' + b.c + ';margin-top:6px;flex:none"></span><span style="font-size:13px;color:var(--tj-text);line-height:1.45">' + b.t + '</span></div>';
+  }).join('');
+
+  // --- Point de vigilance : alertes non lues, INTÉGRÉ au bloc (plus de carte séparée) ---
+  var vigHtml = '';
+  try {
+    var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
+    if (centre.length) {
+      var ACOL = { haute: '#DC3545', moyenne: 'var(--tj-warn)', basse: 'var(--tj-subtle)' };
+      var _e = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+      var lab = centre.length > 1 ? ('Points de vigilance · ' + centre.length) : 'Point de vigilance';
+      var rows = centre.map(function (a, i) {
+        var col = ACOL[a.severity] || 'var(--tj-warn)';
+        return '<div style="display:flex;align-items:flex-start;gap:10px;' + (i > 0 ? 'border-top:1px solid var(--tj-border);padding-top:9px;margin-top:9px;' : '') + '">'
+          + '<span style="width:8px;height:8px;border-radius:999px;background:' + col + ';margin-top:5px;flex:none"></span>'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="font-size:13px;font-weight:800;color:var(--tj-text)">' + _e(a.title || '') + '</div>'
+          + (a.action ? '<div style="font-size:12px;color:var(--tj-muted);line-height:1.4;margin-top:3px">→ ' + _e(a.action) + '</div>' : '')
+          + '</div>'
+          + '<button title="Marquer comme lu" onclick="marquerAlerteLue(&quot;' + _e(String(a.id)) + '&quot;)" style="flex:none;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:8px;width:28px;height:28px;display:grid;place-items:center;cursor:pointer;color:var(--tj-muted)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'
+          + '</div>';
+      }).join('');
+      vigHtml = '<div style="background:var(--tj-surface2);border:1px solid var(--tj-border);border-left:3px solid ' + (ACOL[centre[0].severity] || 'var(--tj-warn)') + ';border-radius:12px;padding:11px 13px;margin:0 0 12px">'
+        + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:7px">' + lab + '</div>' + rows + '</div>';
+    }
+  } catch (e) {}
+
+  var fiabTxt = (hasCf && !fiable) ? ' <span style="color:var(--tj-subtle);font-weight:600">· indicatif</span>' : '';
+  // Reco : on retire toute mention « (ACWR x) » du texte affiché — l'ACWR est
+  // un repère secondaire peu fiable, pas le motif à mettre en avant (modèle
+  // fitness-fatigue = référence). L'action (ex. « réduire le volume 48 h ») reste.
+  var reco = m.reco ? String(m.reco).replace(/\s*\(\s*ACWR[^)]*\)/gi, '').replace(/\s{2,}/g, ' ').trim() : '';
+  var recoHtml = reco ? ('<div style="margin-top:12px;background:rgba(26,95,255,.08);border:1px solid rgba(26,95,255,.18);border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--tj-accent,#4d82ff);margin-bottom:2px">Reco du jour</div><div style="font-size:13px;color:var(--tj-text);line-height:1.45">' + (typeof escapeHtml === 'function' ? escapeHtml(reco) : reco) + '</div></div>') : '';
+
+  // --- Verdict d'état du jour (ex-bandeau « Reste vigilant ») INTÉGRÉ au bloc ---
+  var verdictHtml = '';
+  if (niv0) {
+    var VB = { 'Prêt': ['var(--tj-good)', 'rgba(0,168,84,.12)', 'rgba(0,168,84,.28)', 'Prêt à performer'],
+      'Vigilance': ['var(--tj-warn)', 'rgba(224,120,0,.12)', 'rgba(224,120,0,.28)', 'Reste vigilant'],
+      'À surveiller': ['#DC3545', 'rgba(220,53,69,.10)', 'rgba(220,53,69,.28)', 'À surveiller'] };
+    var vb = VB[niv0] || ['var(--tj-subtle)', 'var(--tj-surface2)', 'var(--tj-border)', 'Ton état du jour'];
+    var sp = [];
+    try {
+      if (be0) {
+        if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) sp.push('Sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
+        if (be0.fatigue != null && !isNaN(Number(be0.fatigue))) sp.push('fatigue ' + String(WQ_ANSWERS.fatigue[Number(be0.fatigue)] || '').toLowerCase());
+      }
+      if (hasRecup) sp.push('récup ' + String(m.recup).toLowerCase());
+      // Charge élevée mais récup bonne (verdict Prêt) : on l'affiche dans la sous-ligne
+      // pour que le bandeau vert soit transparent (le repère « Fatigue » dessous s'explique).
+      if (hasCf && tsbPct != null && tsbPct < -12) sp.push('charge récente élevée');
+    } catch (e) {}
+    var _escS = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+    verdictHtml = '<div style="display:flex;gap:10px;align-items:center;background:' + vb[1] + ';border:1px solid ' + vb[2] + ';border-radius:12px;padding:10px 13px;margin:0 0 12px">'
+      + '<span style="width:9px;height:9px;border-radius:999px;background:' + vb[0] + ';flex:none"></span>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:' + vb[0] + '">' + vb[3] + '</div>'
+      + (sp.length ? '<div style="font-size:11.5px;color:var(--tj-muted);margin-top:1px">' + _escS(sp.join(' · ')) + '</div>' : '') + '</div></div>';
+  }
+
+  var subTxt = hasCf ? 'Ton état du jour : récup · charge · fatigue' : 'Ton état du jour';
+  var fraicheurWidget = hasCf ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
+    +   '<div style="text-align:center;flex:none;min-width:56px"><div style="font-size:18px;font-weight:800;color:' + frc + ';line-height:1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
+    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = ta forme de fond moins ta fatigue récente (modèle fitness-fatigue). Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
+    + '</div>') : '';
+
+  el.style.display = '';
+  el.innerHTML = ''
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+    +   '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700">Lecture Novalyz · Aujourd\'hui' + fiabTxt + '</div>'
+    +   '<span onclick="ouvrirInfoChargeFatigue()" title="Comprendre" style="width:19px;height:19px;border-radius:999px;border:1px solid var(--tj-border);color:var(--tj-muted);font-size:11px;display:inline-grid;place-items:center;cursor:pointer;flex:none">?</span>'
+    + '</div>'
+    + '<div style="font-size:11.5px;color:var(--tj-muted);margin-bottom:11px">' + subTxt + '</div>'
+    + verdictHtml
+    + vigHtml
+    + bulletsHtml
+    + fraicheurWidget
+    + recoHtml;
+}
+function ouvrirInfoChargeFatigue() {
+  var txt = 'Fraîcheur = ta forme de fond (ce que ton corps encaisse d\'habitude) moins ta fatigue récente. '
+    + 'Positif = reposé/affûté ; négatif = fatigué. « Charge récente » = ton volume des 7 derniers jours vs ton habitude. '
+    + 'Méthode reconnue : modèle fitness-fatigue de Banister sur la charge d\'entraînement (sRPE de Foster). '
+    + 'C\'est un repère secondaire : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge.';
+  try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Charge & fatigue', txt); } catch (e) {}
+  try { alert(txt); } catch (e) {}
+}
 var _tjRingLast = null;   // dernier % animé de l'anneau Aujourd'hui (anti-rejeu)
 function renderAujourdhui(data) {
   var prenom = 'Athlète';
@@ -13887,32 +14181,18 @@ function renderAujourdhui(data) {
   var be0 = (data && Array.isArray(data.bien_etre) && data.bien_etre[0]) ? data.bien_etre[0] : null;
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
 
-  // --- Bandeau : état du jour (moteur.disponibilite + résumé bien-être) ---
-  try {
-    var niv = (m.disponibilite && m.disponibilite.niveau) || null;
-    var BAN = {
-      'Prêt':         { t: 'Prêt à performer', bg: 'rgba(0,168,84,.12)',  bd: 'rgba(0,168,84,.28)',  c: 'var(--tj-good)', dot: 'var(--tj-good)' },
-      'Vigilance':    { t: 'Reste vigilant',   bg: 'rgba(224,120,0,.12)', bd: 'rgba(224,120,0,.28)', c: 'var(--tj-warn)', dot: 'var(--tj-warn)' },
-      'À surveiller': { t: 'À surveiller',      bg: 'rgba(220,53,69,.10)', bd: 'rgba(220,53,69,.28)', c: '#DC3545',        dot: '#DC3545' }
-    };
-    var ban = BAN[niv] || { t: 'Ton état du jour', bg: 'var(--tj-surface2)', bd: 'var(--tj-border)', c: 'var(--tj-text)', dot: 'var(--tj-subtle)' };
-    var elBan = document.getElementById('tj-banner'); if (elBan) elBan.setAttribute('style', 'background:' + ban.bg + ';border-color:' + ban.bd + ';');
-    var elBt = document.getElementById('tj-banner-t'); if (elBt) { elBt.textContent = ban.t; elBt.style.color = ban.c; }
-    var elDot = document.getElementById('tj-banner-dot'); if (elDot) elDot.style.background = ban.dot;
-    var elBs = document.getElementById('tj-banner-s');
-    if (elBs) {
-      var sp = [];
-      if (be0) {
-        if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) sp.push('Sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
-        if (be0.energie != null && !isNaN(Number(be0.energie))) sp.push('énergie ' + String(WQ_ANSWERS.energie[Number(be0.energie)] || '').toLowerCase());
-      }
-      if (m.recup && m.recup !== '—') sp.push('récup ' + String(m.recup).toLowerCase());
-      elBs.textContent = sp.length ? sp.join(' · ') : 'Complète ton questionnaire bien-être';
-    }
-  } catch (e) {}
+  // --- Bandeau état du jour : FUSIONNÉ dans le bloc « Lecture Novalyz · Aujourd'hui »
+  //     (le verdict « Reste vigilant / Prêt / À surveiller » est désormais en tête
+  //     de ce bloc, cf. renderChargeFatigueJour). On masque donc le bandeau séparé. ---
+  try { var elBan = document.getElementById('tj-banner'); if (elBan) { elBan.style.display = 'none'; } } catch (e) {}
 
-  // --- Point d'attention : alerte prioritaire non lue (centre d'alertes P0) ---
-  try {
+  // --- Lecture « Aujourd'hui » : charge & fatigue (modèle Banister, secondaire) ---
+  try { renderChargeFatigueJour(data); } catch (e) {}
+
+  // --- Point d'attention : DÉSORMAIS intégré au bloc « Lecture Novalyz · Aujourd'hui »
+  //     (renderChargeFatigueJour). On masque donc la carte séparée. ---
+  try { var _att0 = document.getElementById('tj-attention'); if (_att0) { _att0.style.display = 'none'; _att0.innerHTML = ''; } } catch (e) {}
+  if (false) {
     var att = document.getElementById('tj-attention');
     if (att) {
       var centre = (data && Array.isArray(data.alertes_centre)) ? data.alertes_centre.filter(function (a) { return !a.read; }) : [];
@@ -13938,26 +14218,17 @@ function renderAujourdhui(data) {
         }).join('');
       } else { att.style.display = 'none'; att.innerHTML = ''; }
     }
-  } catch (e) {}
+  }
 
   // --- Le mot de Novalyz = axe PROGRESSION (Lecture Novalyz muscu, 4 sem.) ---
   // Volontairement distinct du bandeau (#1 = état du jour) et du point d'attention
   // (#2 = alerte). On n'affiche QUE la reco progression du moteur, et seulement si
   // la confiance n'est pas « faible » : sinon on masque le bloc plutôt que de servir
   // un conseil générique qui ferait doublon avec l'état du jour (règle honnêteté 6bis).
-  try {
-    var elNova = document.getElementById('tj-nova');
-    var elnT = document.getElementById('tj-nova-txt');
-    var sM = data && data.analyse_synthese && data.analyse_synthese.muscu;
-    // Rotation : un levier du pool par jour (plus de message figé). Masqué si confiance faible.
-    var novaTxt = _novaPickReco(sM);
-    if (novaTxt) {
-      if (elnT) elnT.textContent = novaTxt;
-      if (elNova) elNova.style.display = '';
-    } else {
-      if (elNova) elNova.style.display = 'none';
-    }
-  } catch (e) {}
+  // Séparation des 2 lectures : la lecture ENTRAÎNEMENT / progression vit désormais
+  // dans le bloc « Lecture Novalyz · Analyses ». Sur Aujourd'hui, on ne garde que
+  // l'état du jour (récup / charge / fatigue / bien-être) → on masque le mot progression.
+  try { var elNova = document.getElementById('tj-nova'); if (elNova) { elNova.style.display = 'none'; } } catch (e) {}
 
   // --- Bien-être « point du jour » : 5 cellules depuis bien_etre[0] ---
   try {
@@ -13967,15 +14238,17 @@ function renderAujourdhui(data) {
         sommeil: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
         ressenti: '<path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/>',
         energie: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>',
-        fatigue: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>',
+        fatigue: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+        stress: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        courbatures: '<path d="M20.5 7.5 16 12l-4-4 4.5-4.5a3.5 3.5 0 0 1 4 4z"/><path d="M8 12l-4.5 4.5a3.5 3.5 0 0 0 4 4L12 16z"/>',
         motivation: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/><path d="M12 22c3 0 5-2 5-5"/>',
         douleur: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
       };
-      // Point du jour = ce qu'on renseigne le MATIN (sommeil/fatigue/motivation).
+      // Point du jour = readiness Hooper du MATIN (sommeil / fatigue / stress).
       var CELLS = [
         { key: 'sommeil', nm: 'Sommeil', invert: false },
         { key: 'fatigue', nm: 'Fatigue', invert: true },
-        { key: 'motivation', nm: 'Motivation', invert: false }
+        { key: 'stress', nm: 'Stress', invert: true }
       ];
       var escB = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
       elG.innerHTML = CELLS.map(function (c) {
@@ -14176,8 +14449,8 @@ function _renderTrophees(streak, rec30, totalS, hasRecords) {
 }
 // Objectif de la semaine — choisi par l'athlète, stocké en local (par appareil).
 var _OBJ_OPTS = [
-  { id: 's4', em: '🏋️', label: '4 séances', type: 'seances', target: 4 },
-  { id: 's5', em: '🔥', label: '5 séances', type: 'seances', target: 5 },
+  { id: 's4', em: '🏋', label: '4 séances', type: 'seances', target: 4 },
+  { id: 's5', em: '', label: '5 séances', type: 'seances', target: 5 },
   { id: 'pas', em: '👟', label: '5 j à 10 000 pas', type: 'pas10k', target: 5 },
   { id: 'c3', em: '🏃', label: '3 cardio', type: 'cardio', target: 3 }
 ];
@@ -14212,7 +14485,7 @@ function _renderObjectif(data) {
     var pct = Math.max(0, Math.min(100, Math.round(done / obj.target * 100)));
     var sub = document.getElementById('tj-obj-sub');
     var reached = done >= obj.target;
-    if (sub) sub.innerHTML = reached ? '✅ Objectif atteint · bravo !' : ('<b>' + done + '</b>/' + obj.target + ' · ' + (obj.target - done) + ' restant' + ((obj.target - done) > 1 ? 's' : ''));
+    if (sub) sub.innerHTML = reached ? 'Objectif atteint · bravo !' : ('<b>' + done + '</b>/' + obj.target + ' · ' + (obj.target - done) + ' restant' + ((obj.target - done) > 1 ? 's' : ''));
     var bar = document.getElementById('tj-obj-bar'); if (bar) bar.style.width = pct + '%';
     // Coffre : une fois par semaine, quand atteint. Armé pour le prochain reveal.
     if (reached) {
@@ -14253,12 +14526,12 @@ function _renderObjectif(data) {
 // Les collabs (type:'collab') sont des TEASERS « Bientôt » : non achetables tant
 // qu'un partenaire réel n'est pas branché (refus côté serveur aussi).
 var _RECOMPENSES = [
-  { id: 'badge_pionnier', titre: 'Badge Pionnier', desc: 'Le badge de tes débuts.', cout: 50, icon: '🔰' },
-  { id: 'badge_assidu', titre: 'Badge Assidu', desc: 'Pour ta régularité.', cout: 150, icon: '🔥' },
-  { id: 'skin_gold', titre: 'Thème Doré', desc: 'Une touche dorée sur ton app.', cout: 300, icon: '✨' },
+  { id: 'badge_pionnier', titre: 'Badge Pionnier', desc: 'Le badge de tes débuts.', cout: 50, icon: '' },
+  { id: 'badge_assidu', titre: 'Badge Assidu', desc: 'Pour ta régularité.', cout: 150, icon: '' },
+  { id: 'skin_gold', titre: 'Thème Doré', desc: 'Une touche dorée sur ton app.', cout: 300, icon: '' },
   { id: 'badge_machine', titre: 'Badge Machine', desc: 'Le badge des gros volumes.', cout: 600, icon: '🏆' },
   { id: 'collab_partenaire', titre: 'Réduction partenaire', desc: 'Un bon plan chez un partenaire Novalyz.', cout: 800, icon: '🤝', collab: true },
-  { id: 'collab_programme', titre: 'Programme coach partenaire', desc: 'Un programme signé par un coach partenaire.', cout: 1000, icon: '🎓', collab: true }
+  { id: 'collab_programme', titre: 'Programme coach partenaire', desc: 'Un programme signé par un coach partenaire.', cout: 1000, icon: '', collab: true }
 ];
 function _renderBoutique(data) {
   var cont = document.getElementById('tj-boutique'); if (!cont) return;
@@ -14278,7 +14551,7 @@ function _renderBoutique(data) {
     }
     return '<div class="bq-card' + (has ? ' has' : '') + (r.collab ? ' collab' : '') + '"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + r.desc + '</span></div>' + right + '</div>';
   }).join('');
-  cont.innerHTML = '<div class="bq-h">🛍️ Boutique <span class="bq-solde">' + solde.toLocaleString('fr-FR') + ' pts dispo</span></div>' + cards;
+  cont.innerHTML = '<div class="bq-h">Boutique <span class="bq-solde">' + solde.toLocaleString('fr-FR') + ' pts dispo</span></div>' + cards;
 }
 function nvzAcheterRecompense(id) {
   var r = null; for (var i = 0; i < _RECOMPENSES.length; i++) if (_RECOMPENSES[i].id === id) r = _RECOMPENSES[i];
@@ -14301,11 +14574,11 @@ function nvzAcheterRecompense(id) {
 function nvzShowGift(label) {
   var ov = document.getElementById('tj-gift-ov'), g = document.getElementById('tj-gift'), box = document.getElementById('tj-gift-box'), s = document.getElementById('tj-gift-s');
   if (!ov || !g) return;
-  if (s) s.textContent = 'Objectif « ' + label + ' » réussi 💪';
-  ov.classList.add('on'); g.classList.remove('shake'); if (box) box.textContent = '🎁';
+  if (s) s.textContent = 'Objectif « ' + label + ' » réussi';
+  ov.classList.add('on'); g.classList.remove('shake'); if (box) box.textContent = '';
   void g.offsetWidth; g.classList.add('shake');
   var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
-  setTimeout(function () { if (box) box.textContent = '🎉'; if (!reduce) _nvzConfetti(46); }, reduce ? 0 : 900);
+  setTimeout(function () { if (box) box.textContent = ''; if (!reduce) _nvzConfetti(46); }, reduce ? 0 : 900);
 }
 function nvzCloseGift(ev, force) {
   var ov = document.getElementById('tj-gift-ov'); if (!ov) return;
@@ -14359,9 +14632,11 @@ function renderEtat(data) {
       };
       var tint = TINT[niv] || { bg: 'var(--surface)', bd: 'var(--border)' };
       var titre = niv || 'En attente de données';
-      // Explication : la reco réelle du moteur (data-driven) → cohérente avec l'ACWR
-      // affiché dessous (ex. « Vigilance » à cause du sommeil/fatigue, pas de la charge).
-      var ex = (m.reco && String(m.reco).trim()) ? String(m.reco) : (EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.');
+      // Explication : la reco réelle du moteur (data-driven), cohérente avec le bloc
+      // « Charge & fraîcheur » ci-dessous. On retire toute mention « (ACWR x) » du texte
+      // affiché (repère secondaire) — filet de sécurité si un ancien backend tourne encore.
+      var recoHero = (m.reco && String(m.reco).trim()) ? String(m.reco).replace(/\s*\(\s*ACWR[^)]*\)/gi, '').replace(/\s{2,}/g, ' ').trim() : '';
+      var ex = recoHero || (EX[niv] || 'Renseigne ton questionnaire bien-être pour évaluer ton état.');
       var dashArc = (score != null) ? (score + ' 100') : '0 100';
       var ringTxt = (score != null) ? String(score) : '—';
       el.setAttribute('style', 'background:' + tint.bg + ';border-color:' + tint.bd + ';');
@@ -14376,44 +14651,53 @@ function renderEtat(data) {
     }
   } catch (e) {}
 
-  // ---- ACWR : dernière valeur fiable uniquement (jamais recalculée ici) ----
+  // ---- CHARGE & FRAÎCHEUR (modèle fitness-fatigue de Banister) ----
+  // Remplace l'ancienne jauge ACWR. Signal de charge PRIMAIRE (CTL/ATL/TSB). L'ACWR
+  // n'est plus qu'une mention secondaire « indicatif ». Jamais rouge (max orange).
   try {
     var elA = document.getElementById('et-acwr');
     if (elA) {
       var dashd = data.dashboard || {};
-      var fiable = (m.acwr_fiable === true);
-      var ratio = (dashd.acwr != null && !isNaN(Number(dashd.acwr))) ? Number(dashd.acwr) : null;
-      if (!fiable || ratio == null) {
-        var note = m.acwr_note || 'Données insuffisantes pour interpréter la charge.';
+      var cfe = m.charge_fatigue || null;
+      var tsbPct = (cfe && cfe.tsbPct != null) ? Number(cfe.tsbPct) : null;
+      // Mention ACWR secondaire (si dispo) — affichée en petit, jamais décisionnelle.
+      var acwrRatio = (dashd.acwr != null && !isNaN(Number(dashd.acwr))) ? Number(dashd.acwr) : null;
+      var acwrLine = (acwrRatio != null && m.acwr_fiable === true)
+        ? '<div style="margin-top:10px;font-size:11px;color:var(--text-subtle)">ACWR ' + acwrRatio.toFixed(2) + ' <span style="opacity:.8">· indice secondaire (à interpréter avec prudence)</span></div>'
+        : '';
+      if (!cfe || tsbPct == null) {
+        var noteF = 'Il faut ~4 semaines d\'entraînement (28 jours d\'historique) avec assez de séances. Continue d\'enregistrer : la fraîcheur s\'activera toute seule.';
         elA.innerHTML =
-          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span>' + _maInfoBtn('acwr') + '<span class="et-chip" style="color:var(--text-muted);background:var(--surface2)">ACWR —</span></div>'
+          '<div class="et-rowh"><span class="et-k">Charge &amp; fraîcheur</span>' + _maInfoBtn('fraicheur') + '<span class="et-chip" style="color:var(--text-muted);background:var(--surface2)">—</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
           + '<span class="et-big" style="color:var(--text-muted)">—</span>'
-          + '<span class="et-muted"><b>Pas encore calculable.</b><br>' + esc(note) + '</span></div>'
+          + '<span class="et-muted"><b>Pas encore calculable.</b><br>' + esc(noteF) + '</span></div>'
           + '<div style="margin-top:11px;padding:11px 12px;background:var(--surface2);border-radius:11px;font-size:11.5px;color:var(--text-muted);line-height:1.5">'
-          + '<b style="color:var(--text)">C\'est quoi l\'ACWR ?</b> C\'est le rapport entre ta charge <b>récente</b> (7 derniers jours) et ta charge <b>habituelle</b> (moyenne sur 4 semaines). En clair : est-ce que tu en fais <b>beaucoup plus que d\'habitude</b> ? Rester dans une zone d\'équilibre (≈ 0,8–1,3) aide à progresser sans te blesser.'
-          + '<br><br><b style="color:var(--text)">Calculable à partir de quand ?</b> Il faut <b>~4 semaines d\'entraînement</b> (28 jours d\'historique) avec au moins <b>6 jours d\'entraînement</b> sur cette période. Continue d\'enregistrer tes séances : il s\'activera tout seul.'
-          + '</div>';
+          + '<b style="color:var(--text)">C\'est quoi la fraîcheur ?</b> Ta charge nourrit deux moyennes : ta <b>forme de fond</b> (sur ~6 semaines) et ta <b>fatigue récente</b> (sur 1 semaine). La <b>fraîcheur = forme − fatigue</b> : positive = reposé, négative = tu charges plus que d\'habitude. Méthode reconnue (modèle fitness-fatigue de Banister).'
+          + '</div>' + acwrLine;
       } else {
-        var catMap = {
-          normal: { l: 'Zone optimale', c: 'var(--good)', bg: 'var(--good-a)' },
-          vigilance: { l: 'Vigilance', c: 'var(--warn)', bg: 'var(--warn-a)' },
-          eleve: { l: 'Charge élevée', c: 'var(--danger)', bg: 'var(--bad-a)' },
-          sous_charge: { l: 'Sous-charge', c: 'var(--accent)', bg: 'var(--accent-a10)' }
-        };
-        var cat = catMap[m.acwr_categorie] || { l: (m.acwr_categorie || '—'), c: 'var(--text-muted)', bg: 'var(--surface2)' };
-        // Jauge de zone ACWR : 0 → 2.0. Zones 0-0.8 sous-charge · 0.8-1.3 optimal · 1.3-1.5 vigilance · >1.5 élevé.
-        var pos = Math.max(0, Math.min(100, ratio / 2 * 100));
-        var zbar = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,rgba(26,95,255,.30) 0 40%,rgba(0,168,84,.45) 40% 65%,rgba(224,120,0,.45) 65% 75%,rgba(220,53,69,.45) 75% 100%)">'
-          + '<div style="position:absolute;top:-3px;left:' + pos.toFixed(0) + '%;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)"></div></div>'
-          + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:4px"><span>sous-charge</span><span>optimal 0,8–1,3</span><span>élevé &gt;1,5</span></div></div>';
+        var frL, frC, frBg, frD;
+        if (tsbPct >= 5) { frL = 'Frais'; frC = 'var(--good)'; frBg = 'var(--good-a)'; frD = 'Tu es reposé — bon moment pour pousser.'; }
+        else if (tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; frBg = 'var(--surface2)'; frD = 'Ta charge récente est proche de ton habitude.'; }
+        else { frL = 'Fatigue'; frC = 'var(--warn)'; frBg = 'var(--warn-a)'; frD = 'Tu as plus chargé que d\'habitude — soigne la récup.'; }
+        var fiabF = (cfe.fiable === true) ? '' : '<span style="color:var(--text-subtle);font-weight:600;font-size:10px"> · indicatif</span>';
+        var srcF = (cfe.source === 'srpe') ? '<span style="color:var(--text-subtle);font-weight:600;font-size:10px"> · sRPE</span>' : '';
+        fiabF = fiabF + srcF;
+        // Jauge fraîcheur (TSB %) : -40 (fatigue) → +20 (frais), 0 = équilibre au centre.
+        var lo = -40, hi = 20, posF = Math.max(0, Math.min(100, (tsbPct - lo) / (hi - lo) * 100));
+        var zbarF = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,rgba(224,120,0,.45) 0 46%,rgba(80,110,160,.35) 46% 62%,rgba(0,168,84,.45) 62% 100%)">'
+          + '<div style="position:absolute;top:-3px;left:' + posF.toFixed(0) + '%;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)"></div></div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:4px"><span>fatigue</span><span>équilibre</span><span>frais</span></div></div>';
+        var ctlTxt = (cfe.ctl != null) ? String(cfe.ctl) : '—', atlTxt = (cfe.atl != null) ? String(cfe.atl) : '—';
         elA.innerHTML =
-          '<div class="et-rowh"><span class="et-k">Équilibre charge / récup</span>' + _maInfoBtn('acwr') + ''
-          + '<span class="et-chip" style="color:' + cat.c + ';background:' + cat.bg + '">ACWR ' + ratio.toFixed(2) + '</span></div>'
+          '<div class="et-rowh"><span class="et-k">Charge &amp; fraîcheur</span>' + _maInfoBtn('fraicheur')
+          + '<span class="et-chip" style="color:' + frC + ';background:' + frBg + '">' + frL + fiabF + '</span></div>'
           + '<div style="display:flex;align-items:center;gap:12px;">'
-          + '<span class="et-big" style="color:' + cat.c + '">' + ratio.toFixed(2) + '</span>'
-          + '<span class="et-muted"><b style="color:' + cat.c + '">' + esc(cat.l) + '</b><br>Rapport charge aiguë (7 j) / chronique (28 j).</span></div>'
-          + zbar;
+          + '<span class="et-big" style="color:' + frC + '">' + frL + '</span>'
+          + '<span class="et-muted"><b style="color:' + frC + '">' + (tsbPct >= 0 ? '+' : '') + tsbPct + '%</b> de fraîcheur<br>' + esc(frD) + '</span></div>'
+          + zbarF
+          + '<div style="display:flex;gap:16px;margin-top:11px;font-size:11px;color:var(--text-muted)"><span>Forme de fond <b style="color:var(--text)">' + ctlTxt + '</b></span><span>Fatigue récente <b style="color:var(--text)">' + atlTxt + '</b></span></div>'
+          + acwrLine;
       }
     }
   } catch (e) {}
@@ -14439,8 +14723,8 @@ function renderEtat(data) {
         });
       });
       var DIMS = [
-        { key: 'sommeil', invert: false }, { key: 'energie', invert: false }, { key: 'motivation', invert: false },
-        { key: 'fatigue', invert: true }, { key: 'douleur', invert: true }, { key: 'ressenti', invert: false }
+        { key: 'sommeil', invert: false }, { key: 'fatigue', invert: true }, { key: 'stress', invert: true },
+        { key: 'courbatures', invert: true }, { key: 'douleur', invert: true }
       ];
       var JOURS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
       var htmlD = '', today = new Date(); today.setHours(0, 0, 0, 0);
@@ -14486,16 +14770,19 @@ function renderEtat(data) {
         sommeil: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
         ressenti: '<path d="M9 18a5 5 0 0 1-2-9.5A4.5 4.5 0 0 1 15.5 6 4 4 0 0 1 17 14"/><path d="M12 8v13"/>',
         energie: '<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8z"/>',
-        fatigue: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/>',
+        fatigue: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+        stress: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        courbatures: '<path d="M20.5 7.5 16 12l-4-4 4.5-4.5a3.5 3.5 0 0 1 4 4z"/><path d="M8 12l-4.5 4.5a3.5 3.5 0 0 0 4 4L12 16z"/>',
         motivation: '<path d="M12 2s5 4.5 5 9a5 5 0 0 1-10 0c0-1.6.7-3 1.5-4"/><path d="M12 22c3 0 5-2 5-5"/>',
         douleur: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
       };
-      // Matin : sommeil/fatigue/motivation. 'post' = renseigné APRÈS la séance (bilan).
+      // Readiness Hooper du matin (sommeil/fatigue/stress/courbatures). 'post' =
+      // renseigné APRÈS la séance (bilan). Le RPE de séance (0-10) a son propre bloc.
       var ROWS = [
         { key: 'sommeil', label: 'Sommeil', invert: false },
-        { key: 'fatigue', label: 'Fatigue musculaire', invert: true },
-        { key: 'motivation', label: 'Motivation', invert: false },
-        { key: 'ressenti', label: 'Ressenti (difficulté séance)', invert: false, post: true },
+        { key: 'fatigue', label: 'Fatigue générale', invert: true },
+        { key: 'stress', label: 'Stress / tension', invert: true },
+        { key: 'courbatures', label: 'Courbatures', invert: true },
         { key: 'douleur', label: 'Douleur', invert: true, post: true }
       ];
       // Analyse → reco PAR SIGNAL : réutilise les alertes du moteur (type → title/action).
@@ -14529,8 +14816,8 @@ function renderEtat(data) {
           if (al && has) {
             var sev = (al.severity === 'haute') ? 'var(--danger)' : 'var(--warn)';
             anz = '<div style="margin:2px 0 8px 30px;padding:8px 11px;border-left:2px solid ' + sev + ';background:var(--surface2);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:3px">'
-              + '<span style="font-size:11.5px;color:var(--text)"><b style="color:' + sev + '">🔎 Analyse —</b> ' + esc(al.title || '') + '</span>'
-              + (al.action ? '<span style="font-size:11.5px;color:var(--text-muted)"><b>💡 Conseil —</b> ' + esc(al.action) + '</span>' : '')
+              + '<span style="font-size:11.5px;color:var(--text)"><b style="color:' + sev + '"><i class=nv-ic-search></i> Analyse —</b> ' + esc(al.title || '') + '</span>'
+              + (al.action ? '<span style="font-size:11.5px;color:var(--text-muted)"><b>Conseil —</b> ' + esc(al.action) + '</span>' : '')
               + '</div>';
           }
           return dataRow + anz;
@@ -15127,7 +15414,7 @@ function ouvrirGenProgramme() {
 }
 function fermerGenProgramme() { var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; }
 // « Je gère mon programme moi-même » → coupe la proposition auto à la connexion.
-// (Reste toujours accessible via le bouton « ✨ Novalyz me propose un programme ».)
+// (Reste toujours accessible via le bouton « Novalyz me propose un programme ».)
 function _genRefuse() { _savePref('prog_auto_off', 1); fermerGenProgramme(); try { showToast('OK, tu gères ton programme. Tu pourras le générer depuis Entraînement quand tu veux.'); } catch (e) {} }
 
 // ═══════════ LEXIQUE — explique tous les termes techniques en langage simple ═══════════
@@ -15137,7 +15424,7 @@ var _LEXIQUE = [
   ['RPE', '« Effort perçu », de 1 à 10. RPE 8 ≈ il te restait environ 2 répétitions en réserve. Ça mesure à quel point une série était dure.'],
   ['1RM', 'La charge maximale que tu pourrais soulever 1 seule fois sur un exercice.'],
   ['e1RM (Epley)', '1RM estimé à partir d\'une série normale (formule d\'Epley), sans avoir à tester ton vrai maximum.'],
-  ['ACWR', 'Rapport entre ta charge récente (7 j) et ta charge habituelle (28 j). Zone de repère ≈ 0,8–1,3. ⚠️ À interpréter avec prudence, pas comme un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.'],
+  ['ACWR', 'Rapport entre ta charge récente (7 j) et ta charge habituelle (28 j). Zone de repère ≈ 0,8–1,3. À interpréter avec prudence, pas comme un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.'],
   ['Charge aiguë / chronique', 'Aiguë = ce que tu as fait récemment (7 j). Chronique = ta moyenne habituelle (28 j). L\'ACWR compare les deux.'],
   ['Surcharge progressive', 'Augmenter petit à petit la charge ou les répétitions pour continuer à progresser sans stagner.'],
   ['Balance musculaire', 'L\'équilibre entre groupes opposés (pectoraux vs dos, quadriceps vs ischios…). Proche de 50/50 = moins de déséquilibres et de risque de blessure.'],
@@ -15220,7 +15507,7 @@ async function _genGenerer() {
       body: JSON.stringify({ action: 'genererProgramme', athlete_id: athlete.athlete_id, athlete_nom: athlete.nom || '', remplacer: true, lignes: lignes }) });
     var data = await res.json();
     if (data && (data.ok || data.inserees)) {
-      showToast('✅ Programme créé (' + (data.inserees || lignes.length) + ' exercices)');
+      showToast('Programme créé (' + (data.inserees || lignes.length) + ' exercices)');
       fermerGenProgramme();
       if (typeof chargerAppData === 'function') await chargerAppData();
       if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme();
@@ -15274,7 +15561,7 @@ function _onbBack() { if (_onbI > 0) { _onbI--; _onbRender(); } }
 function _onbChoix(c) {
   _savePref('onboarding_vu', 1);
   if (c === 'novalyz') { fermerOnboarding(); ouvrirGenProgramme(); }
-  else if (c === 'mine') { _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme 👍'); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
+  else if (c === 'mine') { _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme '); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
   else if (c === 'coach') { _onbSteps = ['coachinfo']; _onbI = 0; _onbRender(); }
 }
 function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); setTimeout(function () { nvTourAthlete(); }, 450); }
@@ -15285,16 +15572,16 @@ function _onbContent(step) {
   var big = function (emoji, titre, sous) { return '<div style="text-align:center;margin:auto 0"><div style="font-size:46px;margin-bottom:14px">' + emoji + '</div><h1 style="font-size:23px;margin:0 0 10px;line-height:1.2">' + titre + '</h1><div style="font-size:14.5px;color:var(--text-muted);line-height:1.5;max-width:420px;margin:0 auto">' + sous + '</div></div>'; };
   var pt = function (n, t, s) { return '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;text-align:left"><span style="flex:none;width:26px;height:26px;border-radius:999px;background:var(--accent);color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center">' + n + '</span><div><div style="font-weight:800;font-size:14.5px">' + t + '</div><div style="font-size:13px;color:var(--text-muted);line-height:1.45">' + s + '</div></div></div>'; };
   var nav = function (emoji, t, s) { return '<div style="display:flex;gap:11px;align-items:center;padding:11px 13px;background:var(--surface2);border-radius:12px;margin-bottom:8px;text-align:left"><span style="font-size:20px;flex:none">' + emoji + '</span><div><div style="font-weight:800;font-size:13.5px">' + t + '</div><div style="font-size:12px;color:var(--text-muted)">' + s + '</div></div></div>'; };
-  if (step === 'promesse') return { primary: 'Suivant', html: big('👋', 'Bienvenue, ' + esc(prenom), 'Novalyz, c\'est ton analyste d\'entraînement. Je te donne un cadre, je regarde comment tu l\'exécutes, et je te dis ce qui va et ce qui ne va pas.') };
+  if (step === 'promesse') return { primary: 'Suivant', html: big('', 'Bienvenue, ' + esc(prenom), 'Novalyz, c\'est ton analyste d\'entraînement. Je te donne un cadre, je regarde comment tu l\'exécutes, et je te dis ce qui va et ce qui ne va pas.') };
   if (step === 'marche') return { primary: 'Suivant', html: '<div style="margin:auto 0"><h1 style="font-size:22px;margin:0 0 16px;text-align:center">Comment ça marche</h1>' + pt('①', 'Un cadre', 'Un programme : séances, charges et cibles. Tu fais tes séances et tu notes ton ressenti.') + pt('②', 'Est-ce bien fait ?', 'Novalyz compare ce que tu réalises à tes cibles et te le dit clairement.') + pt('③', 'Quoi progresser', 'Tendances, alertes et une « Lecture Novalyz » qui t\'explique la suite.') + '</div>' };
-  if (step === 'diff') return { primary: 'Suivant', html: big('🧠', 'Données + ressenti', 'Je ne regarde pas que les chiffres : je croise tes données ET ton ressenti pour décider avec toi, pas à ta place.') };
-  if (step === 'nav') return { primary: 'Suivant', html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 16px;text-align:center">Où trouver quoi</h1>' + nav('🏠', 'Accueil', 'Ton « aujourd\'hui » : état du jour, séance, alertes.') + nav('🏋️', 'Entraînement', 'Tes séances et ton programme.') + nav('📊', 'Analyses', 'Tes stats et la Lecture Novalyz.') + nav('❤️', 'État', 'Ta récupération et ton bien-être.') + nav('💬', 'Conversation', 'Ton coach ou l\'assistant.') + '</div>' };
+  if (step === 'diff') return { primary: 'Suivant', html: big('', 'Données + ressenti', 'Je ne regarde pas que les chiffres : je croise tes données ET ton ressenti pour décider avec toi, pas à ta place.') };
+  if (step === 'nav') return { primary: 'Suivant', html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 16px;text-align:center">Où trouver quoi</h1>' + nav('🏠', 'Accueil', 'Ton « aujourd\'hui » : état du jour, séance, alertes.') + nav('🏋', 'Entraînement', 'Tes séances et ton programme.') + nav('', 'Analyses', 'Tes stats et la Lecture Novalyz.') + nav('❤', 'État', 'Ta récupération et ton bien-être.') + nav('', 'Conversation', 'Ton coach ou l\'assistant.') + '</div>' };
   if (step === 'coachinfo') return { primary: 'J\'ai compris', onPrimary: '_onbFini()', html: '<div style="margin:auto 0">' + big('🤝', 'Tu as un coach', 'Ton coach te construit ton programme et suit tes analyses. Toi, tu fais tes séances et ton ressenti — Novalyz s\'occupe du reste.') + (login ? '<div style="margin-top:18px;padding:14px;background:var(--surface2);border-radius:14px;text-align:center"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Donne ce login à ton coach pour qu\'il te lie :</div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:26px;letter-spacing:.1em;color:var(--accent)">' + esc(login) + '</div></div>' : '') + '</div>' };
   // profil
   var card = function (c, emoji, t, s) { return '<button onclick="_onbChoix(\'' + c + '\')" style="text-align:left;display:flex;gap:12px;align-items:center;width:100%;padding:15px;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;margin-bottom:10px;cursor:pointer"><span style="font-size:24px;flex:none">' + emoji + '</span><div style="flex:1"><div style="font-weight:800;font-size:15px">' + t + '</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">' + s + '</div></div><span style="color:var(--accent);font-size:20px">›</span></button>'; };
   return { html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 6px;text-align:center">Comment veux-tu être suivi ?</h1><div style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:16px">Tu pourras changer d\'avis plus tard.</div>'
-    + card('novalyz', '✨', 'Novalyz me construit un programme', 'Réponds à 3 questions, j\'assemble un programme de départ adapté.')
-    + card('mine', '📝', 'Je gère mon programme moi-même', 'Tu crées tes séances. On ne te proposera plus de programme.')
+    + card('novalyz', '', 'Novalyz me construit un programme', 'Réponds à 3 questions, j\'assemble un programme de départ adapté.')
+    + card('mine', '', 'Je gère mon programme moi-même', 'Tu crées tes séances. On ne te proposera plus de programme.')
     + card('coach', '🤝', 'J\'ai un coach', 'C\'est ton coach qui te fait ton programme.')
     + '</div>' };
 }
@@ -15641,7 +15928,7 @@ function _nvgRender() {
     + (feats ? '<ul class="nvg-feat">' + feats + '</ul>' : '')
     + '<div class="nvg-dots">' + dots + '</div>'
     + '<div class="nvg-nav">' + (_nvg.i > 0 ? '<button class="nvg-prev" onclick="nvGuidePrev()">Précédent</button>' : '<span></span>')
-    + '<button class="nvg-next" onclick="nvGuideNext()">' + (last ? 'C’est parti 💪' : 'Suivant ›') + '</button></div>'
+    + '<button class="nvg-next" onclick="nvGuideNext()">' + (last ? 'C’est parti' : 'Suivant ›') + '</button></div>'
     + '</div>';
   try { ov.querySelector('.nvg-sheet').scrollTop = 0; } catch (e) {}
   // La vraie nav (switchTab / coachBandeauGo / renderCoachDesktop) a déjà posé l'item
@@ -15742,7 +16029,7 @@ function _stepsAthlete() {
   // s'assure que le FAB est bien affiché avant de le surligner.
   S.push({ scr: A, sel: ['#tab-accueil .nvz-ask', '#fab-novalyz'], before: function () { try { switchTab('accueil'); } catch (e) {} try { _majFabNovalyz(); } catch (e) {} }, t: 'Demande à Novalyz', x: 'Ton assistant IA branché sur tes données : pose-lui tes questions (« puis-je m’entraîner à fond ? », « analyse ma semaine »).' });
   // ─── ENTRAÎNEMENT ───
-  if (!hasCoach) S.push({ scr: E, sel: '#en-gen', before: goSeanceMuscu, t: 'Un programme par l’IA', x: '✨ Novalyz t’assemble un programme de départ adapté en répondant à 3 questions.' });
+  if (!hasCoach) S.push({ scr: E, sel: '#en-gen', before: goSeanceMuscu, t: 'Un programme par l’IA', x: 'Novalyz t’assemble un programme de départ adapté en répondant à 3 questions.' });
   S.push({ scr: E, sel: '#en-creer', before: goSeanceMuscu, t: hasCoach ? 'Ton programme' : 'Créer ton programme', x: hasCoach ? 'Ton coach construit ton programme ; tu le retrouves et le suis ici (muscu, cardio, Hyrox).' : 'Crée ou modifie ton programme toi-même : séances, charges en % du 1RM, RPE cible.' });
   S.push({ scr: E, sel: '[data-tour="ath-agenda"]', before: go('seance'), t: 'Ton agenda', x: 'Retrouve tes séances faites d’un coup d’œil : muscu en vert, cardio en rouge. Touche un jour pour voir le détail.' });
   // ─── ANALYSES ───
@@ -15763,7 +16050,7 @@ function _stepsAthlete() {
       : 'Lance une analyse morpho par IA à partir de tes photos (groupes en avance / en retard) et pose tes questions à l’assistant Novalyz. Tu pourras lier un coach plus tard pour échanger messages, photos et vidéos.'
   });
   // ─── FIN : gratuit vs Premium (sensibilisation, sans paywall) ───
-  S.push({ sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Tout ton suivi et tes analyses de base sont <b>gratuits</b>. Les fonctions avancées (surtout l’IA) seront <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Suivi · forme · montre · analyses de base</td><td>✅</td><td>✅</td></tr><tr><td>Export de tes données</td><td>✅</td><td>✅</td></tr><tr><td>Assistant Novalyz IA</td><td>3 / jour</td><td>illimité</td></tr><tr><td>Programme &amp; analyse morpho par IA</td><td>—</td><td>💎</td></tr><tr><td>Analyses avancées · rapports auto</td><td>—</td><td>💎</td></tr></table><span style="color:var(--text-muted)">À débloquer quand tu veux. Bonne route 💪</span>' });
+  S.push({ sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Tout ton suivi et tes analyses de base sont <b>gratuits</b>. Les fonctions avancées (surtout l’IA) seront <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Suivi · forme · montre · analyses de base</td><td></td><td></td></tr><tr><td>Export de tes données</td><td></td><td></td></tr><tr><td>Assistant Novalyz IA</td><td>3 / jour</td><td>illimité</td></tr><tr><td>Programme &amp; analyse morpho par IA</td><td>—</td><td></td></tr><tr><td>Analyses avancées · rapports auto</td><td>—</td><td></td></tr></table><span style="color:var(--text-muted)">À débloquer quand tu veux. Bonne route</span>' });
   return S;
 }
 function _stepsCoach() {
@@ -15785,7 +16072,7 @@ function _stepsCoach() {
     { scr: FI, sel: '#cd-ia-card', spotMaxH: 230, before: openFiche, t: 'L’IA coach', x: 'Dans la fiche, l’IA t’assiste sur CE client : résumé d’état & vigilance, priorités de la semaine, risque de surcharge, comment adapter son programme.' },
     { scr: ME, sel: '[data-tour="co-messages"]', before: go('messages'), t: 'Messages', x: 'Tes conversations avec les athlètes : réponds, envoie photos et vidéos.' },
     { scr: AN, sel: '[data-tour="co-analyses"]', before: go('analyses'), t: 'Analyses', x: 'Les tendances de l’équipe et de chaque athlète, en profondeur.' },
-    { sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Ton espace coach est <b>gratuit pour démarrer</b>. L’IA et le volume d’athlètes passent en <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Cockpit · suivi d’équipe · fiches</td><td>✅</td><td>✅</td></tr><tr><td>IA coach (par client)</td><td>3 questions / jour</td><td>illimité</td></tr><tr><td>Nombre d’athlètes suivis</td><td>limité</td><td>étendu 💎</td></tr><tr><td>Analyses avancées · rapports</td><td>—</td><td>💎</td></tr></table><span style="color:var(--text-muted)">À activer quand tu veux.</span>' }
+    { sel: '#__nvt_none__', big: true, t: 'Gratuit — et plus en Premium', html: 'Ton espace coach est <b>gratuit pour démarrer</b>. L’IA et le volume d’athlètes passent en <b>Premium</b> :<table class="nvt-ptab"><tr><th></th><th>Gratuit</th><th>Premium</th></tr><tr><td>Cockpit · suivi d’équipe · fiches</td><td></td><td></td></tr><tr><td>IA coach (par client)</td><td>3 questions / jour</td><td>illimité</td></tr><tr><td>Nombre d’athlètes suivis</td><td>limité</td><td>étendu</td></tr><tr><td>Analyses avancées · rapports</td><td>—</td><td></td></tr></table><span style="color:var(--text-muted)">À activer quand tu veux.</span>' }
   ];
 }
 // Visite viewport-aware : DESKTOP = ancienne visite à surbrillance sur les blocs
@@ -16002,7 +16289,7 @@ function renderEnSuivi(data) {
   // exercice vs la fois précédente). On laisse un accès discret, pas le bloc.
   var sd = (data && data.seances_detail) || [];
   el.innerHTML = sd.length
-    ? '<button onclick="switchTab(\'historique\')" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--text)"><span style="font-size:16px">📈</span><div style="flex:1;text-align:left"><div style="font-size:12.5px;font-weight:800">Voir le détail de tes séances</div><div style="font-size:11px;color:var(--text-subtle)">Mes analyses ▸ Par séance — progression par exercice</div></div><span style="color:var(--text-subtle)">›</span></button>'
+    ? '<button onclick="switchTab(\'historique\')" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--text)"><span style="font-size:16px"></span><div style="flex:1;text-align:left"><div style="font-size:12.5px;font-weight:800">Voir le détail de tes séances</div><div style="font-size:11px;color:var(--text-subtle)">Mes analyses ▸ Par séance — progression par exercice</div></div><span style="color:var(--text-subtle)">›</span></button>'
     : '';
 }
 
@@ -16083,7 +16370,7 @@ function _appliquerAppData(data) {
         regEl.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
             <div style="font-size:24px;font-weight:800;color:var(--text);">${faites2}<span style="font-size:13px;color:var(--text-muted);font-weight:400;"> / ${prevues2}</span></div>
-            <div style="font-size:13px;font-weight:700;color:${col2};">${manque2 > 0 ? '⚠️ '+manque2+' manquante'+(manque2>1?'s':'') : '✅ Objectif atteint !'}</div>
+            <div style="font-size:13px;font-weight:700;color:${col2};">${manque2 > 0 ? ''+manque2+' manquante'+(manque2>1?'s':'') : 'Objectif atteint !'}</div>
           </div>
           <div style="background:var(--surface2);border-radius:20px;height:7px;">
             <div style="background:var(--accent);height:100%;width:${pct2}%;border-radius:20px;"></div>
@@ -16188,7 +16475,7 @@ function _appliquerAppData(data) {
       if (muscleEl) {
         const banner = document.createElement('div');
         banner.style.cssText = 'background:rgba(245,159,0,0.12);border:1px solid rgba(245,159,0,0.35);border-radius:8px;padding:8px 11px;margin-bottom:10px;display:flex;align-items:center;gap:8px;';
-        banner.innerHTML = `<span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${mr.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">Historique global</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${mr.series_faites} séries / ${mr.series_min} min · objectif ${mr.series_optimale} séries</div></div>`;
+        banner.innerHTML = `<span style="font-size:14px;"></span><div><div style="font-size:11px;font-weight:700;color:var(--warn);">${mr.muscle} en retard <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-left:4px;">Historique global</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${mr.series_faites} séries / ${mr.series_min} min · objectif ${mr.series_optimale} séries</div></div>`;
         muscleEl.prepend(banner);
       }
     }
@@ -16240,7 +16527,7 @@ function _appliquerAppData(data) {
     } else {
       recupStatut = rpe7 == null ? null : rpe7 > 8.5 ? 'eleve' : rpe7 > 7.5 ? 'modere' : 'optimal';
     }
-    const recupEmoji  = recupStatut === 'eleve' ? '🥵' : recupStatut === 'modere' ? '😮‍💨' : '💪';
+    const recupEmoji  = recupStatut === 'eleve' ? '' : recupStatut === 'modere' ? '' : '';
     const recupLabel  = recupStatut === 'eleve' ? 'Fatigue élevée' : recupStatut === 'modere' ? 'Fatigue modérée' : 'Bien récupéré';
     const recupDesc   = (_Mrecup && _Mrecup.reco) ? _Mrecup.reco
       : (recupStatut === 'eleve' ? 'Repos conseillé, réduis l\'intensité.' : recupStatut === 'modere' ? 'Surveille ta récup, garde une marge.' : 'Charge et RPE maîtrisés, tu peux pousser.');
@@ -16271,7 +16558,7 @@ function _appliquerAppData(data) {
           <div class="kk">Tonnage · 7j${tonnageEvol != null ? ' <span style="font-size:10px;opacity:.7">' + (tonnageEvol > 0 ? '▲+' : '▼') + tonnageEvol + '%</span>' : ''}</div>
         </div>
         <div class="v2-kpi" style="cursor:pointer;transition:opacity .15s" onclick="allerVersRecords()" onmouseenter="this.style.opacity='.72'" onmouseleave="this.style.opacity='1'" title="Voir les records personnels">
-          <div class="kv" style="color:#00c96e;">⚡ ${records30 > 0 ? records30 : '—'}</div>
+          <div class="kv" style="color:#00c96e;">${records30 > 0 ? records30 : '—'}</div>
           <div class="kk">Records · 30j <span style="font-size:9px;opacity:.6">↗</span></div>
         </div>`;
     }
@@ -16382,7 +16669,7 @@ function _appliquerAppData(data) {
             <div style="font-size:15px;font-weight:800;color:var(--accent);">${d.seance_id}</div>
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${d.date}</div>
           </div>
-          <span class="dash-badge" style="background:#e8f8f0;border:1px solid #00c96e;color:#007a41;">✅ Complète</span>
+          <span class="dash-badge" style="background:#e8f8f0;border:1px solid #00c96e;color:#007a41;">Complète</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
           <div class="dash-stat"><div class="dash-stat-num">${d.nb_exercices}</div><div class="dash-stat-label">exos</div></div>
@@ -16404,7 +16691,7 @@ function _appliquerAppData(data) {
           <button class="dc-btn" onclick="event.stopPropagation();demarrerDepuisDashboard('${n}')">Démarrer</button>
         </div>`;
     } else {
-      nextEl.innerHTML = '<div class="dc-inner" style="background:var(--good);"><div class="dc-ico">✅</div><div class="dc-txt"><div class="dc-v">Toutes les séances faites !</div></div></div>';
+      nextEl.innerHTML = '<div class="dc-inner" style="background:var(--good);"><div class="dc-ico"></div><div class="dc-txt"><div class="dc-v">Toutes les séances faites !</div></div></div>';
     }
     }); // fin _safe('dashboard')
 
@@ -16551,7 +16838,7 @@ function startTimer(seconds, serieInfo) {
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       playBeep();
       overlay.classList.remove('active');
-      showToast('✅ Repos terminé, allons-y !');
+      showToast('Repos terminé, allons-y !');
     }
   }
 
@@ -16747,15 +17034,15 @@ function lancerExportBilanPDF() {
 async function exporterBilanPDF(periode) {
   periode = periode || 'mois';
   const athleteId = coachAthleteCourant ? coachAthleteCourant.athlete_id : null;
-  if (!athleteId) { showToast('⚠️ Athlète non sélectionné', '#ff4444'); return; }
+  if (!athleteId) { showToast('Athlète non sélectionné', '#ff4444'); return; }
   showToast('Génération du bilan…', '#3b82f6');
   try {
     const res = await fetch(`${SCRIPT_URL}?action=getBilanPDF&athlete_id=${encodeURIComponent(athleteId)}&periode=${encodeURIComponent(periode)}`);
     const bilan = await res.json();
-    if (bilan.error) { showToast('⚠️ ' + bilan.error, '#ff4444'); return; }
+    if (bilan.error) { showToast('' + bilan.error, '#ff4444'); return; }
     _rendreBilanPDF(bilan);
   } catch(err) {
-    showToast('⚠️ Erreur lors du chargement du bilan', '#ff4444');
+    showToast('Erreur lors du chargement du bilan', '#ff4444');
     console.error(err);
   }
 }
@@ -16977,7 +17264,7 @@ tbody td.r{text-align:right}
     <div class="hd-eyebrow">Novalyz · Bilan mensuel</div>
     <div class="hd-name">${nomAthlete}</div>
     <div class="hd-meta"><span>${niveauRaw}</span>${objectif ? `<span>${objectif}</span>` : ''}</div>
-    <div class="hd-badge">📅 ${moisLabel.charAt(0).toUpperCase()+moisLabel.slice(1)}</div>
+    <div class="hd-badge">${moisLabel.charAt(0).toUpperCase()+moisLabel.slice(1)}</div>
     ${strat ? `<div class="hd-strat">${strat}</div>` : ''}
   </div>
   <div class="hd-right">
@@ -17060,7 +17347,7 @@ ${volCards ? `<div class="block">
 ${(musclesFaibles || exosStables) ? `<div class="block">
   <div class="sec">Points d'attention</div>
   <div class="reco-grid">
-    ${musclesFaibles ? `<div class="reco-card danger"><div class="reco-ttl">⚠ Muscles sous-travaillés</div><div class="reco-chips">${musclesFaibles}</div></div>` : ''}
+    ${musclesFaibles ? `<div class="reco-card danger"><div class="reco-ttl">Muscles sous-travaillés</div><div class="reco-chips">${musclesFaibles}</div></div>` : ''}
     ${exosStables ? `<div class="reco-card warn"><div class="reco-ttl">→ Exercices stables</div><div class="reco-chips">${exosStables}</div></div>` : ''}
   </div>
 </div>` : ''}
@@ -17072,8 +17359,8 @@ ${(musclesFaibles || exosStables) ? `<div class="block">
 </div>
 </div>
 <div style="position:fixed;bottom:24px;right:24px;display:flex;gap:12px;z-index:9999;">
-  <button onclick="window.print()" style="background:#3b82f6;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">🖨️ Imprimer</button>
-  <button onclick="telechargerPDF()" style="background:#10b981;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">⬇️ Télécharger PDF</button>
+  <button onclick="window.print()" style="background:#3b82f6;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">🖨 Imprimer</button>
+  <button onclick="telechargerPDF()" style="background:#10b981;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">⬇ Télécharger PDF</button>
 </div>
 <script>
 (function drawTonnageChart() {
@@ -17142,7 +17429,7 @@ function telechargerPDF() {
 </body></html>`;
 
   const w = window.open('', '_blank');
-  if (!w) { showToast('⚠️ Autorise les pop-ups pour exporter', '#f59f00'); return; }
+  if (!w) { showToast('Autorise les pop-ups pour exporter', '#f59f00'); return; }
   w.document.write(html);
   w.document.close();
   w.focus();
@@ -17275,7 +17562,7 @@ function dessinerGraphPoids(pesees, periode, ids) {
 
 function terminerExercice() {
   if (!exoEnCours || exoEnCours.series.length === 0) {
-    showToast('⚠️ Ajoute au moins une série !', '#ff4444'); return;
+    showToast('Ajoute au moins une série !', '#ff4444'); return;
   }
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   document.getElementById('timer-overlay').classList.remove('active');
@@ -17284,7 +17571,7 @@ function terminerExercice() {
   const nomFini = exoEnCours.exerciceNom;
   scrollVersProchain = true;
   retourListeSeance();
-  showToast(`✅ ${nomFini} terminé !`);
+  showToast(`${nomFini} terminé !`);
 }
 
 // =====================================================================
@@ -17296,22 +17583,26 @@ function terminerExercice() {
 // Dimensions PRISES EN COMPTE dans le score bien-être (moyenne des signaux présents).
 // On garde 'energie' (données historiques) ET on ajoute 'motivation' (nouveau matin) :
 // un signal absent est simplement exclu de la moyenne → rétro-compatible.
+// Readiness = indice de Hooper : sommeil + fatigue + stress + courbatures.
+// (energie/motivation/ressenti conservés dans WQ_ANSWERS pour l'historique legacy.)
 const WQ_DIMS = [
-  { key: 'sommeil',    label: 'Sommeil',    invert: false },
-  { key: 'energie',    label: 'Énergie',    invert: false },
-  { key: 'fatigue',    label: 'Fatigue',    invert: true  },
-  { key: 'motivation', label: 'Motivation', invert: false },
-  { key: 'douleur',    label: 'Douleur',    invert: true  },
-  { key: 'ressenti',   label: 'Ressenti',   invert: false }
+  { key: 'sommeil',     label: 'Sommeil',     invert: false },
+  { key: 'fatigue',     label: 'Fatigue',     invert: true  },
+  { key: 'stress',      label: 'Stress',      invert: true  },
+  { key: 'courbatures', label: 'Courbatures', invert: true  },
+  { key: 'douleur',     label: 'Douleur',     invert: true  }
 ];
 
 // Réponses textuelles indexées par la note brute 1..5 (barème du questionnaire)
 const WQ_ANSWERS = {
   sommeil:  ['—', 'Très mauvais', 'Mauvais', 'Moyen', 'Bon', 'Excellent'],
-  energie:  ['—', 'Très faible', 'Faible', 'Normal', 'Élevé', 'Très élevé'],
   fatigue:  ['—', 'Aucune', 'Faible', 'Modérée', 'Importante', 'Très importante'],
-  motivation: ['—', 'Très faible', 'Faible', 'Moyenne', 'Bonne', 'À fond'],
+  stress:   ['—', 'Aucun', 'Faible', 'Modéré', 'Élevé', 'Très élevé'],
+  courbatures: ['—', 'Aucune', 'Légères', 'Modérées', 'Importantes', 'Très importantes'],
   douleur:  ['—', 'Aucune', 'Légère', 'Modérée', 'Forte', 'Très forte'],
+  // Legacy (ancien questionnaire) — pour relire les données déjà enregistrées.
+  energie:  ['—', 'Très faible', 'Faible', 'Normal', 'Élevé', 'Très élevé'],
+  motivation: ['—', 'Très faible', 'Faible', 'Moyenne', 'Bonne', 'À fond'],
   ressenti: ['—', 'Très difficile', 'Difficile', 'Normale', 'Facile', 'Très facile']
 };
 
@@ -17337,10 +17628,10 @@ function wqColor(pos) {
  * ========================================================================== */
 var ETATS_UI = {
   saison_normale:  { emoji: '',   couleur: 'var(--text-muted)', duree: null },
-  deload:          { emoji: '📉', couleur: 'var(--warn)',       duree: 7  },
-  retour_vacances: { emoji: '🌴', couleur: 'var(--accent)',     duree: 14 },
-  retour_blessure: { emoji: '🩹', couleur: 'var(--violet)',     duree: 21 },
-  intensification: { emoji: '🔥', couleur: 'var(--danger)',     duree: 14 }
+  deload:          { emoji: '', couleur: 'var(--warn)',       duree: 7  },
+  retour_vacances: { emoji: '', couleur: 'var(--accent)',     duree: 14 },
+  retour_blessure: { emoji: '', couleur: 'var(--violet)',     duree: 21 },
+  intensification: { emoji: '', couleur: 'var(--danger)',     duree: 14 }
 };
 function _ctxLibelle(cle) {
   var E = (typeof NovalyzContexte !== 'undefined' && NovalyzContexte.ETATS) ? NovalyzContexte.ETATS : {};
@@ -17414,7 +17705,7 @@ function carteVacancesHTML(pause) {
     + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Contexte de performance</div>'
     + '<div style="display:flex;align-items:center;gap:9px;">'
     + '<span style="width:10px;height:10px;border-radius:50%;background:' + col + ';flex-shrink:0;"></span>'
-    + '<div style="min-width:0;"><div style="font-size:15px;font-weight:800;">🏝️ En vacances</div>'
+    + '<div style="min-width:0;"><div style="font-size:15px;font-weight:800;">En vacances</div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + escapeHtml(sous || 'Alertes en pause — reprise automatique à la fin.') + '</div></div>'
     + '</div></div>';
 }
@@ -17452,7 +17743,7 @@ function _ctxSuggestDismiss(aid) { try { localStorage.setItem(_ctxSuggestKey(aid
 function _ctxSuggestionHTML(gap, aid) {
   var a = String(aid || '');
   return '<div class="dash-card" style="padding:13px 14px;margin-bottom:12px;border-left:3px solid var(--accent);background:var(--accent-a08,rgba(26,95,255,.09));">'
-    + '<div style="font-size:13.5px;font-weight:800;">🌴 Tu reprends après une coupure ?</div>'
+    + '<div style="font-size:13.5px;font-weight:800;">Tu reprends après une coupure ?</div>'
     + '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;line-height:1.45;">Aucune séance enregistrée depuis <b>' + gap + ' jours</b>. Déclare un retour pour que Novalyz adapte ses analyses (pas de « régression » injustifiée le temps de remonter).</div>'
     + '<div style="display:flex;gap:8px;margin-top:11px;">'
     + '<button onclick="_ctxSuggererReprise(\'' + a + '\')" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">Poser un retour</button>'
@@ -17678,10 +17969,10 @@ function _cfRecup(data) {
   var dimDef = {}; WQ_DIMS.forEach(function (d) { dimDef[d.key] = d; });
   // Courbatures = dimension « fatigue » (musculaire) — vocabulaire validé en maquette.
   var pick = [
-    { key: 'sommeil', label: 'Sommeil', icon: '😴' },
-    { key: 'energie', label: 'Énergie', icon: '⚡' },
-    { key: 'fatigue', label: 'Courbatures', icon: '💪' },
-    { key: 'douleur', label: 'Douleur', icon: '🤕' }
+    { key: 'sommeil', label: 'Sommeil', icon: '' },
+    { key: 'energie', label: 'Énergie', icon: '' },
+    { key: 'fatigue', label: 'Courbatures', icon: '' },
+    { key: 'douleur', label: 'Douleur', icon: '' }
   ];
   var cells = pick.map(function (p) {
     var d = dimDef[p.key];
@@ -17789,7 +18080,7 @@ function renderCoachChargeCard(data) {
   if (!tiles.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Pas encore assez de séances.</div>'; _cfCardShow('cd-charge-card', true); return; }
   var streak = dash.streak && dash.streak.semaines;
   el.innerHTML = '<div class="cd-k4">' + tiles.join('') + '</div>'
-    + (streak ? '<div class="cd-charge-streak"><span>🔥 Série de semaines</span><b>' + streak + ' sem.</b></div>' : '');
+    + (streak ? '<div class="cd-charge-streak"><span>Série de semaines</span><b>' + streak + ' sem.</b></div>' : '');
   _cfCardShow('cd-charge-card', true);
 }
 
@@ -17802,9 +18093,9 @@ function renderCoachMontreDetail(data) {
   hist.sort(function (a, b) { return (parseChatDate(a.date) || 0) - (parseChatDate(b.date) || 0); });
   // Cohérence : les 3 métriques sont des MOYENNES sur 7 j (sparkline 7 j aussi).
   var defs = [
-    { key: 'pas', emoji: '👣', label: 'Pas', fmt: function (v) { return Math.round(v).toLocaleString('fr-FR'); } },
-    { key: 'sommeil_min', emoji: '😴', label: 'Sommeil', fmt: function (v) { var m = Math.round(v); return Math.floor(m / 60) + ' h' + ((m % 60) ? ' ' + ((m % 60) < 10 ? '0' : '') + (m % 60) : ''); } },
-    { key: 'fc_repos', emoji: '❤️', label: 'FC au repos', fmt: function (v) { return Math.round(v) + ' bpm'; } }
+    { key: 'pas', emoji: '', label: 'Pas', fmt: function (v) { return Math.round(v).toLocaleString('fr-FR'); } },
+    { key: 'sommeil_min', emoji: '', label: 'Sommeil', fmt: function (v) { var m = Math.round(v); return Math.floor(m / 60) + ' h' + ((m % 60) ? ' ' + ((m % 60) < 10 ? '0' : '') + (m % 60) : ''); } },
+    { key: 'fc_repos', emoji: '❤', label: 'FC au repos', fmt: function (v) { return Math.round(v) + ' bpm'; } }
   ];
   var any = false;
   var rows = defs.map(function (m) {
@@ -17868,7 +18159,7 @@ function _cdV3Grid() {
 // Carte « Analyse » (moteur Novalyz) — interprétation en lecture seule, côté coach
 // Couleur / icône d'une analyse du moteur (partagé)
 function analyseCouleur(t) { return t === 'critical' ? 'var(--danger)' : t === 'warning' ? 'var(--warn)' : t === 'success' ? 'var(--good)' : 'var(--accent)'; }
-function analyseIcone(t) { return t === 'critical' ? '🔴' : t === 'warning' ? '🟠' : t === 'success' ? '✅' : '💡'; }
+function analyseIcone(t) { return t === 'critical' ? '' : t === 'warning' ? '' : t === 'success' ? '' : ''; }
 
 // Rendu partagé : liste d'analyses du moteur dans un conteneur (athlète ET coach)
 function renderAnalysesListe(data, ids, opts) {
@@ -17885,7 +18176,7 @@ function renderAnalysesListe(data, ids, opts) {
   let _etatAna = null;
   for (let _k = 0; _k < analyses.length; _k++) { if (analyses[_k].contexte && analyses[_k].contexte !== 'saison_normale') { _etatAna = analyses[_k].contexte; break; } }
   const _bandeauCtx = _etatAna
-    ? `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:var(--surface2);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-muted);"><span>🧠</span> Analyses ajustées pour : <b style="color:var(--text);">${escapeHtml(_ctxLibelle(_etatAna))}</b></div>`
+    ? `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:var(--surface2);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-muted);"><span></span> Analyses ajustées pour : <b style="color:var(--text);">${escapeHtml(_ctxLibelle(_etatAna))}</b></div>`
     : '';
   // Cadrage athlète (coach vs solo) : sur un signal dur (critical/warning), l'athlète
   // suivi par un coach est renvoyé vers lui (« le coach prescrit »), le solo reçoit un
@@ -17894,7 +18185,7 @@ function renderAnalysesListe(data, ids, opts) {
   function _cadrageAthlete(a) {
     if (!opts.pourAthlete) return '';
     if (a.type !== 'critical' && a.type !== 'warning') return '';
-    const txt = aUnCoach ? '💬 À voir avec ton coach' : '👀 À surveiller — allège si ça persiste';
+    const txt = aUnCoach ? 'À voir avec ton coach' : 'À surveiller — allège si ça persiste';
     return `<div style="font-size:10.5px;font-weight:700;margin-top:6px;color:var(--text-muted);">${txt}</div>`;
   }
   cont.innerHTML = _bandeauCtx + analyses.map((a, i) => `
@@ -17903,7 +18194,7 @@ function renderAnalysesListe(data, ids, opts) {
       <div style="min-width:0;">
         <div style="font-size:13px;font-weight:800;color:${analyseCouleur(a.type)};">${analyseIcone(a.type)} ${escapeHtml(a.titre)}</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:2px;">${escapeHtml(a.description)}</div>
-        ${a.evidence ? `<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.4;margin-top:3px;">📊 ${escapeHtml(a.evidence)}</div>` : ''}
+        ${a.evidence ? `<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.4;margin-top:3px;">${escapeHtml(a.evidence)}</div>` : ''}
         ${(a.recommandation && !(opts.pourAthlete && (a.type === 'critical' || a.type === 'warning'))) ? `<div style="font-size:12px;color:var(--text);line-height:1.45;margin-top:6px;font-weight:600;">→ ${escapeHtml(a.recommandation)}</div>` : ''}
         ${opts.hideCategorie ? '' : `<div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:4px;opacity:.7;">${escapeHtml(a.categorie)}</div>`}
         ${_cadrageAthlete(a)}
@@ -17950,7 +18241,7 @@ function majUiPause() {
   inpF.value = p && p.fin ? p.fin : '';
   if (estEnPause(p)) {
     stat.style.display = 'block';
-    stat.textContent = '🏝️ Pause active' + (p.fin ? ' jusqu\'au ' + p.fin.split('-').reverse().join('/') : '');
+    stat.textContent = 'Pause active' + (p.fin ? ' jusqu\'au ' + p.fin.split('-').reverse().join('/') : '');
   } else {
     stat.style.display = 'none';
   }
@@ -17959,15 +18250,15 @@ async function enregistrerPause() {
   if (!athlete) return;
   const debut = document.getElementById('pause-debut').value;
   const fin   = document.getElementById('pause-fin').value;
-  if (!debut && !fin) { showToast('⚠️ Choisis au moins une date', '#f59f00'); return; }
-  if (debut && fin && fin < debut) { showToast('⚠️ La fin est avant le début', '#f59f00'); return; }
+  if (!debut && !fin) { showToast('Choisis au moins une date', '#f59f00'); return; }
+  if (debut && fin && fin < debut) { showToast('La fin est avant le début', '#f59f00'); return; }
   try {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'setPauseAthlete', athlete_id: athlete.athlete_id, debut: debut, fin: fin }) });
     if (dernierAppData) dernierAppData.pause = { debut: debut, fin: fin };
     majUiPause();
-    showToast('🏝️ Mode vacances activé');
-  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+    showToast('Mode vacances activé');
+  } catch (e) { showToast('Erreur', '#ff4444'); }
 }
 async function annulerPause() {
   if (!athlete) return;
@@ -17977,7 +18268,7 @@ async function annulerPause() {
     if (dernierAppData) dernierAppData.pause = null;
     majUiPause();
     showToast('Pause annulée');
-  } catch (e) { showToast('❌ Erreur', '#ff4444'); }
+  } catch (e) { showToast('Erreur', '#ff4444'); }
 }
 
 // ===== Notifications push (Étape A : messages) =============================
@@ -18053,7 +18344,7 @@ async function majUiPush() {
     if (actif) {
       if (bOn) bOn.style.display = 'none';
       if (bOff) bOff.style.display = 'inline-block';
-      if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '🔔 Notifications activées'; }
+      if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = 'Notifications activées'; }
       if (hint) hint.textContent = '';
     } else {
       if (bOn) { bOn.style.display = 'inline-block'; bOn.textContent = 'Activer les notifications'; }
@@ -18076,7 +18367,7 @@ async function majUiPush() {
     if (bOn) bOn.style.display = 'none';
     if (bOff) bOff.style.display = 'none';
     if (stat) { stat.style.display = 'none'; }
-    if (hint) hint.innerHTML = '📲 Sur iPhone, ajoute d\'abord l\'app à ton écran d\'accueil (bouton Partager → « Sur l\'écran d\'accueil »), puis rouvre-la depuis l\'icône pour activer les notifications.';
+    if (hint) hint.innerHTML = 'Sur iPhone, ajoute d\'abord l\'app à ton écran d\'accueil (bouton Partager → « Sur l\'écran d\'accueil »), puis rouvre-la depuis l\'icône pour activer les notifications.';
     return;
   }
 
@@ -18092,7 +18383,7 @@ async function majUiPush() {
     if (bOn) bOn.style.display = 'none';
     if (bOff) bOff.style.display = 'inline-block';
     if (bTest) bTest.style.display = 'block';
-    if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = '🔔 Notifications activées'; }
+    if (stat) { stat.style.display = 'block'; stat.style.color = 'var(--good)'; stat.textContent = 'Notifications activées'; }
     if (hint) hint.textContent = '';
   } else {
     if (bOn) { bOn.style.display = 'inline-block'; bOn.textContent = 'Activer les notifications'; }
@@ -18136,7 +18427,7 @@ async function _promptNotifNatif() {
 
 // Équivalent COACH : enregistre le token FCM du coach (sous `coach:<id>`) à la 1re
 // ouverture de l'espace coach, pour recevoir les alertes « haute » de ses athlètes.
-// ⚠️ Le token FCM est unique par installation : sur un même appareil utilisé en
+// Le token FCM est unique par installation : sur un même appareil utilisé en
 // athlète ET en coach, le dernier rôle activé « possède » le token (cas limite,
 // sans impact pour un coach dédié).
 async function _promptNotifNatifCoach() {
@@ -18232,9 +18523,9 @@ async function activerNotifications() {
   if (_estAppNative()) {
     try {
       const r = await NovalyzNotifications.activer(_fcmOpts());
-      if (r && r.ok) { _setFcmActif(true); showToast('🔔 Notifications activées'); }
-      else { showToast('⚠️ ' + _fcmMsgErreur(r), '#f59f00'); }
-    } catch (e) { showToast('❌ Impossible d\'activer', '#ff4444'); }
+      if (r && r.ok) { _setFcmActif(true); showToast('Notifications activées'); }
+      else { showToast('' + _fcmMsgErreur(r), '#f59f00'); }
+    } catch (e) { showToast('Impossible d\'activer', '#ff4444'); }
     majUiPush();
     return;
   }
@@ -18242,7 +18533,7 @@ async function activerNotifications() {
   if (_estIOS() && !_estInstalle()) { majUiPush(); return; }
   try {
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { showToast('⚠️ Autorisation refusée', '#f59f00'); majUiPush(); return; }
+    if (perm !== 'granted') { showToast('Autorisation refusée', '#f59f00'); majUiPush(); return; }
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
@@ -18262,11 +18553,11 @@ async function activerNotifications() {
     });
     let ok = false;
     try { const j = await resp.json(); ok = !!j.success; if (!ok && j.error) console.warn('savePushSub:', j.error); } catch (_) {}
-    if (!ok) { showToast('❌ Enregistrement serveur échoué', '#ff4444'); majUiPush(); return; }
-    showToast('🔔 Notifications activées');
+    if (!ok) { showToast('Enregistrement serveur échoué', '#ff4444'); majUiPush(); return; }
+    showToast('Notifications activées');
     majUiPush();
   } catch (e) {
-    showToast('❌ Impossible d\'activer', '#ff4444');
+    showToast('Impossible d\'activer', '#ff4444');
     majUiPush();
   }
 }
@@ -18291,7 +18582,7 @@ async function desactiverNotifications() {
     }
     showToast('Notifications désactivées');
     majUiPush();
-  } catch (e) { showToast('❌ Erreur', '#ff4444'); majUiPush(); }
+  } catch (e) { showToast('Erreur', '#ff4444'); majUiPush(); }
 }
 
 // Diagnostic : demande au serveur d'envoyer une notif de test à CE compte et
@@ -18310,22 +18601,22 @@ async function testerNotifications() {
     if (_estAppNative()) {
       // App native : on lit le diagnostic FCM (bloc j.fcm), pas le Web Push.
       const f = (j && j.fcm) || {};
-      if (j && j.erreur) { txt = '❌ Erreur serveur : ' + j.erreur; }
-      else if (!f.configured) { txt = '❌ Clé serveur FCM absente : le secret FCM_SERVICE_ACCOUNT n\'est pas configuré dans Supabase (ou backend pas à jour).'; }
-      else if (!f.found) { txt = '❌ Aucun token enregistré pour ce compte. Ré-active les notifications — et vérifie que la table native_push_tokens existe dans Supabase.'; }
-      else if (f.sent > 0) { txt = '✅ Notif envoyée (token trouvé : ' + f.found + ' · envoyé : ' + f.sent + '). Mets l\'app en arrière-plan pour la voir.'; col = 'var(--good)'; }
-      else { txt = '❌ Token trouvé (' + f.found + ') mais envoi refusé par FCM' + (f.error ? ' : ' + f.error : '') + '. (ex. « fcm-auth » = compte de service invalide ou mauvais projet Firebase.)'; }
-    } else if (j && j.erreur) { txt = '❌ Erreur serveur : ' + j.erreur; }
-    else if (!j || !j.vapid) { txt = '❌ Clés VAPID absentes côté serveur (secrets Supabase à configurer).'; }
-    else if (!j.subsFound) { txt = '❌ Aucun abonnement enregistré pour ce compte. Appuie sur « Activer les notifications ».'; }
-    else if (j.sent > 0) { txt = '✅ Notif envoyée (' + j.sent + '/' + j.subsFound + '). Elle doit apparaître dans quelques secondes.'; col = 'var(--good)'; }
+      if (j && j.erreur) { txt = 'Erreur serveur : ' + j.erreur; }
+      else if (!f.configured) { txt = 'Clé serveur FCM absente : le secret FCM_SERVICE_ACCOUNT n\'est pas configuré dans Supabase (ou backend pas à jour).'; }
+      else if (!f.found) { txt = 'Aucun token enregistré pour ce compte. Ré-active les notifications — et vérifie que la table native_push_tokens existe dans Supabase.'; }
+      else if (f.sent > 0) { txt = 'Notif envoyée (token trouvé : ' + f.found + ' · envoyé : ' + f.sent + '). Mets l\'app en arrière-plan pour la voir.'; col = 'var(--good)'; }
+      else { txt = 'Token trouvé (' + f.found + ') mais envoi refusé par FCM' + (f.error ? ' : ' + f.error : '') + '. (ex. « fcm-auth » = compte de service invalide ou mauvais projet Firebase.)'; }
+    } else if (j && j.erreur) { txt = 'Erreur serveur : ' + j.erreur; }
+    else if (!j || !j.vapid) { txt = 'Clés VAPID absentes côté serveur (secrets Supabase à configurer).'; }
+    else if (!j.subsFound) { txt = 'Aucun abonnement enregistré pour ce compte. Appuie sur « Activer les notifications ».'; }
+    else if (j.sent > 0) { txt = 'Notif envoyée (' + j.sent + '/' + j.subsFound + '). Elle doit apparaître dans quelques secondes.'; col = 'var(--good)'; }
     else {
       const e = (j.results && j.results[0]) || {};
-      txt = '❌ Envoi refusé par le service push' + (e.code ? ' (code ' + e.code + ')' : '') + (e.msg ? ' : ' + e.msg : '') + '.';
+      txt = 'Envoi refusé par le service push' + (e.code ? ' (code ' + e.code + ')' : '') + (e.msg ? ' : ' + e.msg : '') + '.';
     }
     if (diag) { diag.style.color = col; diag.textContent = txt; }
   } catch (e) {
-    if (diag) { diag.style.color = 'var(--danger)'; diag.textContent = '❌ Erreur réseau pendant le test.'; }
+    if (diag) { diag.style.color = 'var(--danger)'; diag.textContent = 'Erreur réseau pendant le test.'; }
   }
 }
 
@@ -18392,7 +18683,7 @@ function _checkNotifCache() {
           try { c.delete('pending-target'); } catch (e) {}
           if (t) {
             _notifPending = t;
-            if (typeof showToast === 'function') showToast('🔔 Ouverture : ' + t);  // diag (temporaire)
+            if (typeof showToast === 'function') showToast('Ouverture : ' + t);  // diag (temporaire)
             _consommerNotifPending();
           }
         });
@@ -18433,7 +18724,7 @@ function renderAlertes(data) {
           // (reps plafond → +charge · marge → +reps), calculée depuis l'historique de l'exo.
           var ex = (a.type === 'stagnation' && a.evidence && a.evidence.indexOf(' : aucun progrès') >= 0) ? a.evidence.split(' : aucun progrès')[0].trim() : null;
           var pr = ex ? _prescriptionStag(ex) : null;
-          if (pr) return '<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:4px;">👉 ' + escapeHtml(pr.act) + '</div>';
+          if (pr) return '<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:4px;">' + escapeHtml(pr.act) + '</div>';
           return a.action ? '<div style="font-size:12px;color:var(--text);line-height:1.4;margin-top:4px;">→ ' + escapeHtml(a.action) + '</div>' : '';
         })()
       + (meta ? '<div style="font-size:10px;color:var(--text-subtle);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">' + escapeHtml(meta) + '</div>' : '')
@@ -18507,15 +18798,15 @@ function _renderCentreAlertes(data) {
     + '<div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:15px">Mes alertes</div><div style="font-size:11.5px;color:var(--text-subtle)">Ce que le moteur a repéré · touche ✓ quand c\'est vu</div></div></div>';
   var body;
   if (enPause) {
-    body = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted)"><div style="font-size:34px">🌴</div><div style="font-size:14px;font-weight:700;margin-top:8px">Mode coupure activé</div><div style="font-size:12.5px;color:var(--text-subtle);margin-top:4px">Les alertes reprendront à ton retour.</div></div>';
+    body = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted)"><div style="font-size:34px"></div><div style="font-size:14px;font-weight:700;margin-top:8px">Mode coupure activé</div><div style="font-size:12.5px;color:var(--text-subtle);margin-top:4px">Les alertes reprendront à ton retour.</div></div>';
   } else if (!centre.length) {
-    body = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted)"><div style="font-size:34px">✅</div><div style="font-size:14px;font-weight:700;margin-top:8px">Rien à signaler</div><div style="font-size:12.5px;color:var(--text-subtle);margin-top:4px">Pas d\'alerte en cours — continue comme ça.</div></div>';
+    body = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted)"><div style="font-size:34px"></div><div style="font-size:14px;font-weight:700;margin-top:8px">Rien à signaler</div><div style="font-size:12.5px;color:var(--text-subtle);margin-top:4px">Pas d\'alerte en cours — continue comme ça.</div></div>';
   } else {
     var unread = centre.filter(function (a) { return !a.read; }), read = centre.filter(function (a) { return a.read; });
     body = '';
     if (unread.length) body += '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:4px 2px 2px">À regarder (' + unread.length + ')</div>' + unread.map(function (a) { return _alerteCentreItemHtml(a, false); }).join('');
     if (read.length) body += '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:18px 2px 2px">Déjà vues</div>' + read.map(function (a) { return _alerteCentreItemHtml(a, true); }).join('');
-    if (!unread.length && read.length) body = '<div style="text-align:center;padding:22px 20px 6px;color:var(--text-muted)"><div style="font-size:28px">✅</div><div style="font-size:13.5px;font-weight:700;margin-top:6px">Tout est à jour</div><div style="font-size:12px;color:var(--text-subtle);margin-top:3px">Tu as traité toutes tes alertes.</div></div>' + body;
+    if (!unread.length && read.length) body = '<div style="text-align:center;padding:22px 20px 6px;color:var(--text-muted)"><div style="font-size:28px"></div><div style="font-size:13.5px;font-weight:700;margin-top:6px">Tout est à jour</div><div style="font-size:12px;color:var(--text-subtle);margin-top:3px">Tu as traité toutes tes alertes.</div></div>' + body;
   }
   ov.innerHTML = header + '<div style="max-width:460px;margin:0 auto">' + body + '</div>';
 }
@@ -18552,7 +18843,7 @@ function renderRecompenses(data) {
         <div style="font-size:12px;color:var(--text-muted);font-weight:600;">Ta cagnotte</div>
         <div style="font-size:28px;font-weight:800;color:var(--accent);line-height:1.1;">${pts}<span style="font-size:13px;color:var(--text-muted);font-weight:600;"> pts</span></div>
       </div>
-      <div style="font-size:34px;">🎁</div>
+      <div style="font-size:34px;"></div>
     </div>
     <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">${totalSeances} séances ×10 · ${records} records (30j) ×50</div>
 
@@ -18568,7 +18859,7 @@ function renderRecompenses(data) {
     </div>
 
     <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;display:flex;align-items:center;gap:10px;">
-      <div style="font-size:20px;">👑</div>
+      <div style="font-size:20px;"></div>
       <div style="font-size:12px;color:var(--text-muted);line-height:1.4;">Récompense personnalisée du coach — <span style="font-weight:700;">bientôt</span>.</div>
     </div>`;
 }
@@ -18613,7 +18904,7 @@ function renderHeatmapAccueil() {
   for (; wi >= 0; wi--) { if (weekHas[wi]) streak++; else break; }
   cont.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-      <span style="font-size:22px;">🔥</span>
+      <span style="font-size:22px;"></span>
       <div>
         <div style="font-size:18px;font-weight:800;color:var(--text);">${streak} semaine${streak > 1 ? 's' : ''}</div>
         <div style="font-size:11px;color:var(--text-muted);">de régularité d'affilée</div>
@@ -18721,7 +19012,7 @@ function switchModeSeance(mode) {
 // Champs de saisie par activité — dérivés du catalogue cardio unique.
 var _CARDIO_SPEC = _CARDIO_CATALOG.reduce(function (m, a) { if (a.spec && a.spec.length) m[a.key] = a.spec; return m; }, {});
 
-var _FC_HINT = ' <span style="font-size:9px;color:var(--text-muted);font-weight:500;">📡 optionnel</span>';
+var _FC_HINT = ' <span style="font-size:9px;color:var(--text-muted);font-weight:500;">optionnel</span>';
 
 // ═══════════ HYROX (P2-22) — saisie structurée dans le flux cardio ═══════════
 // 8 × (Run 1 km + 1 atelier). Stockée dans l'historique cardio (cardio_hyrox_…)
@@ -18808,13 +19099,13 @@ async function sauvegarderHyrox() {
     var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveHyrox', athlete_id: athlete.athlete_id, date: date, mode: _hyroxMode, division: _hyroxDiv, segments: segs, poids: poids, total_sec: tot, rpe: rpe }) });
     var res = await r.json(); if (res && res.error) throw new Error(res.error);
     savedSid = (res && res.seance_id) || null;
-  } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✅ Enregistrer la Hyrox'; } return; }
+  } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btnSave) { btnSave.disabled = false; btnSave.textContent = 'Enregistrer la Hyrox'; } return; }
   if (manuelOpen) {
     fermerHyroxManuel();
-    try { showToast('✅ Hyrox enregistrée · ' + n + '/16 segments · ' + _hyroxFmt(tot), 'var(--good)'); } catch (e) {}
+    try { showToast('Hyrox enregistrée · ' + n + '/16 segments · ' + _hyroxFmt(tot), 'var(--good)'); } catch (e) {}
   } else {
     var cardioEl = document.getElementById('cardio-block');
-    if (cardioEl) cardioEl.innerHTML = '<div class="card"><div class="card-title" style="color:var(--good)">✅ Hyrox enregistrée !</div><div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">' + (_hyroxMode === 'course' ? 'Course / simulation' : 'Entraînement') + ' · ' + n + '/16 segments</div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:26px;color:var(--accent);margin-bottom:14px">' + _hyroxFmt(tot) + '</div><button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button></div>';
+    if (cardioEl) cardioEl.innerHTML = '<div class="card"><div class="card-title" style="color:var(--good)">Hyrox enregistrée !</div><div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">' + (_hyroxMode === 'course' ? 'Course / simulation' : 'Entraînement') + ' · ' + n + '/16 segments</div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:26px;color:var(--accent);margin-bottom:14px">' + _hyroxFmt(tot) + '</div><button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button></div>';
   }
   if (typeof chargerAppData === 'function') chargerAppData();
   // Bilan de séance (ressenti / douleur) après la Hyrox.
@@ -18840,7 +19131,7 @@ function renderHyroxHome() {
     var nseg = _HYROX_SEG.filter(function (sg) { return Number(s['hyrox_' + sg.k]) > 0; }).length;
     var mode = (s.hyrox_mode === 'atelier') ? 'Par atelier' : (s.hyrox_mode === 'entrainement') ? 'Entraînement' : 'Circuit';
     var segLbl = (s.hyrox_mode === 'atelier') ? (nseg + ' atelier' + (nseg > 1 ? 's' : '')) : (nseg + '/16 segments');
-    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:38px;height:38px;border-radius:11px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:16px">🟨</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">' + dstr + ' · ' + segLbl + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
+    return '<div onclick="ouvrirHyroxDetail(\'' + s.seance_id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-top:8px;cursor:pointer"><span style="width:38px;height:38px;border-radius:11px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;flex:none;font-size:16px"></span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + mode + ' · ' + _hyroxFmt(tot) + '</div><div style="font-size:11.5px;color:var(--text-subtle)">' + dstr + ' · ' + segLbl + '</div></div><span style="color:var(--text-subtle)">›</span></div>';
   }).join('') : '<div style="padding:14px;color:var(--text-muted);font-size:12.5px">Aucune Hyrox enregistrée. Lance le circuit officiel, un atelier, ou saisis un résultat.</div>';
   el.innerHTML = '<div style="border-radius:20px;padding:18px;background:linear-gradient(135deg,#FFBC13,#CA9A04);color:#1a1400;box-shadow:0 8px 24px rgba(255,188,19,.32);margin-top:6px">'
     + '<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.75">Épreuve hybride</div>'
@@ -18848,10 +19139,10 @@ function renderHyroxHome() {
     + '<div style="font-size:12px;font-weight:600;opacity:.82;line-height:1.4">Fais le circuit officiel chronométré, ou travaille quelques ateliers en ciblé.</div></div>'
     // Deux entrées : circuit officiel (chiffres figés) vs par atelier (réglable).
     + '<div style="display:flex;gap:10px;margin-top:12px">'
-    + '<button onclick="ouvrirHyroxChrono()" style="flex:1;text-align:left;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;padding:14px 13px;cursor:pointer;font-family:inherit"><div style="font-size:20px">🏁</div><div style="font-weight:800;font-size:13.5px;margin-top:5px">Circuit officiel</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:1px">8 × Run + atelier, chrono</div></button>'
-    + '<button onclick="ouvrirHyroxAtelier()" style="flex:1;text-align:left;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;padding:14px 13px;cursor:pointer;font-family:inherit"><div style="font-size:20px">🎯</div><div style="font-weight:800;font-size:13.5px;margin-top:5px">Par atelier</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:1px">Choisis tes exercices</div></button>'
+    + '<button onclick="ouvrirHyroxChrono()" style="flex:1;text-align:left;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;padding:14px 13px;cursor:pointer;font-family:inherit"><div style="font-size:20px"></div><div style="font-weight:800;font-size:13.5px;margin-top:5px">Circuit officiel</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:1px">8 × Run + atelier, chrono</div></button>'
+    + '<button onclick="ouvrirHyroxAtelier()" style="flex:1;text-align:left;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;padding:14px 13px;cursor:pointer;font-family:inherit"><div style="font-size:20px"></div><div style="font-weight:800;font-size:13.5px;margin-top:5px">Par atelier</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:1px">Choisis tes exercices</div></button>'
     + '</div>'
-    + '<button onclick="ouvrirSaisieHyrox()" style="width:100%;margin-top:9px;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:11px;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);cursor:pointer">✎ Saisir un résultat après coup</button>'
+    + '<button onclick="ouvrirSaisieHyrox()" style="width:100%;margin-top:9px;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:11px;font-family:inherit;font-weight:700;font-size:12.5px;color:var(--text-muted);cursor:pointer"><i class=nv-ic-pencil></i> Saisir un résultat après coup</button>'
     + '<div class="cx-sec" style="margin-top:16px">Mes Hyrox</div>' + list;
 }
 // « Saisir après coup » : overlay dédié (univers Hyrox, indépendant de la page
@@ -18867,7 +19158,7 @@ function ouvrirSaisieHyrox() {
     + '<div class="saisie-lbl">Date</div>'
     + '<input type="date" id="hx-date" value="' + _hxTodayISO() + '" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;margin-top:6px">'
     + _hyroxFormHtml()
-    + '<button id="hx-manuel-save" onclick="sauvegarderHyrox()" class="btn btn-accent" style="width:100%;margin-top:16px;padding:15px;font-size:15px">✅ Enregistrer la Hyrox</button>'
+    + '<button id="hx-manuel-save" onclick="sauvegarderHyrox()" class="btn btn-accent" style="width:100%;margin-top:16px;padding:15px;font-size:15px">Enregistrer la Hyrox</button>'
     + '</div>';
   try { _hyroxRecalcTotal(); } catch (e) {}
 }
@@ -19102,7 +19393,7 @@ function _hxStartCircuitGo() {
 }
 function _hxTick() { if (_hxPaused) return; var now = Date.now(); var c = document.getElementById('hx-clock'); if (c) c.textContent = _hyroxFmt(Math.round((now - _hxT0 - _hxPauseAcc) / 1000)); var s = document.getElementById('hx-seg'); if (s) s.textContent = _hyroxFmt(Math.round((now - _hxSegT0) / 1000)); }
 function _hxRenderProg() { var el = document.getElementById('hx-prog'); if (!el) return; var n = _hxSegs.length, h = ''; for (var i = 0; i < n; i++) { var bg = i < _hxIdx ? (_hxSegs[i].run ? '#9D5FD3' : 'var(--accent)') : (i === _hxIdx ? '#FFBC13' : 'var(--surface2)'); h += '<i style="flex:1;height:6px;border-radius:3px;background:' + bg + '"></i>'; } el.innerHTML = h; }
-function _hxRenderCur() { var n = _hxSegs.length; var sg = _hxSegs[_hxIdx] || _hxSegs[n - 1]; var last = (_hxIdx === n - 1); var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / ' + n; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier') + (sg.w && _hxWeights && _hxWeights[sg.w] ? ' · ' + _hxWeights[sg.w] + ' kg' : ''); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (last ? 'Terminer ✓' : 'Segment suivant ✓'); nx.style.background = (last ? 'var(--good)' : 'var(--accent)'); } }
+function _hxRenderCur() { var n = _hxSegs.length; var sg = _hxSegs[_hxIdx] || _hxSegs[n - 1]; var last = (_hxIdx === n - 1); var l = document.getElementById('hx-cur-lbl'); if (l) l.textContent = 'Segment ' + (_hxIdx + 1) + ' / ' + n; var nm = document.getElementById('hx-cur-nm'); if (nm) nm.textContent = sg.t; var d = document.getElementById('hx-cur-d'); if (d) d.textContent = sg.d + ' · ' + (sg.run ? 'course' : 'atelier') + (sg.w && _hxWeights && _hxWeights[sg.w] ? ' · ' + _hxWeights[sg.w] + ' kg' : ''); var nx = document.getElementById('hx-next'); if (nx) { nx.textContent = (last ? 'Terminer ' : 'Segment suivant '); nx.style.background = (last ? 'var(--good)' : 'var(--accent)'); } }
 function _hxRenderSplits() { var el = document.getElementById('hx-splits'); if (!el) return; var rows = []; for (var i = 0; i < _hxIdx; i++) { var sg = _hxSegs[i]; rows.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;background:' + (sg.run ? 'rgba(157,95,211,.12);color:#9D5FD3' : 'var(--surface2);color:var(--text-muted)') + '">' + (sg.run ? '🏃' : _hxStationNo(i)) + '</span><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } el.innerHTML = rows.reverse().join(''); }
 function _hxNext() { var now = Date.now(); _hxSplits[_hxIdx] = now - _hxSegT0; _hxSegT0 = now; _hxIdx++; if (_hxIdx >= _hxSegs.length) { _hxFinish(); return; } _hxRenderProg(); _hxRenderCur(); _hxRenderSplits(); _hxTick(); }
 function _hxPause() { var b = document.getElementById('hx-pause'); if (!_hxPaused) { _hxPaused = true; _hxPausedAt = Date.now(); if (b) b.textContent = '▶ Reprendre'; } else { _hxPaused = false; _hxPauseAcc += Date.now() - _hxPausedAt; _hxSegT0 += Date.now() - _hxPausedAt; if (b) b.textContent = '⏸ Pause'; } }
@@ -19125,7 +19416,7 @@ async function _hxFinish() {
 }
 function _hxDoneHtml(total, state) {
   var sp = []; for (var i = 0; i < _hxSplits.length; i++) { if (_hxSplits[i] != null && _hxSegs[i]) { var sg = _hxSegs[i]; sp.push('<div style="display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;margin-top:7px"><span style="flex:1;font-size:12.5px;font-weight:700">' + sg.t + '</span><span style="font-weight:800;font-variant-numeric:tabular-nums">' + _hyroxFmt(Math.round(_hxSplits[i] / 1000)) + '</span></div>'); } }
-  var st = state === 'ok' ? '<div style="font-size:11px;font-weight:800;color:var(--good)">✅ Enregistrée</div>' : state === 'err' ? '<div style="font-size:11px;font-weight:800;color:var(--bad,#DC3545)">⚠️ Erreur — réessaie plus tard</div>' : '<div style="font-size:11px;color:var(--text-subtle)">Enregistrement…</div>';
+  var st = state === 'ok' ? '<div style="font-size:11px;font-weight:800;color:var(--good)">Enregistrée</div>' : state === 'err' ? '<div style="font-size:11px;font-weight:800;color:var(--bad,#DC3545)">Erreur — réessaie plus tard</div>' : '<div style="font-size:11px;color:var(--text-subtle)">Enregistrement…</div>';
   return '<div style="max-width:460px;margin:0 auto">' + _hxHeader('Hyrox terminée')
     + '<div style="border-radius:18px;padding:22px;text-align:center;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm,0 1px 2px rgba(7,11,20,.06))">' + st
     + '<div style="font-size:12px;color:var(--text-muted);margin-top:6px">Temps total</div>'
@@ -19248,7 +19539,7 @@ function renderCardioFields() {
   var poidsConnu = athlete && parseFloat(athlete.poids) > 0;
   var poidsHtml = poidsConnu ? '' :
     '<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);border-radius:10px;padding:10px 12px;margin-top:14px;margin-bottom:2px;">'
-    + '<div style="font-size:11px;color:var(--warn);font-weight:700;margin-bottom:6px;">⚠️ Poids non renseigné dans ton profil</div>'
+    + '<div style="font-size:11px;color:var(--warn);font-weight:700;margin-bottom:6px;">Poids non renseigné dans ton profil</div>'
     + '<label style="font-size:12px;">Ton poids (kg) <span style="font-size:10px;color:var(--text-muted);font-weight:400;">— utilisé pour estimer les calories</span></label>'
     + '<input type="number" id="cardio-poids-saisie" placeholder="ex: 62" inputmode="decimal" step="0.5" min="30" max="200" oninput="calcAutoCardio()" style="margin-top:6px;">'
     + '</div>';
@@ -19291,7 +19582,7 @@ function calcAutoCardio() {
     distEl.value = Math.round(vitesse * duree / 60 * 10) / 10;
     distEl.dataset.auto = '1';
     var dh = document.getElementById('cardio-dist-hint');
-    if (dh) dh.textContent = '✦ calculé';
+    if (dh) dh.textContent = 'calculé';
   }
   var dist = parseFloat((distEl || {}).value) || 0;
 
@@ -19310,7 +19601,7 @@ function calcAutoCardio() {
       pasPrev.textContent = pas.toLocaleString('fr-FR') + ' pas';
       pasPrev.style.color = pasRef ? 'var(--text-muted)' : 'var(--accent)';
       var ph = document.getElementById('cardio-pas-hint');
-      if (ph) ph.textContent = pasRef ? '~ réf. 4.5 km/h' : '✦ estimé';
+      if (ph) ph.textContent = pasRef ? '~ réf. 4.5 km/h' : 'estimé';
     } else {
       pasPrev.textContent = '— durée requise';
       pasPrev.style.color = 'var(--text-muted)';
@@ -19352,7 +19643,7 @@ function calcAutoCardio() {
     calEl.value = calAuto;
     calEl.dataset.auto = '1';
     var ch = document.getElementById('cardio-cal-hint');
-    if (ch) ch.textContent = '✦ estimé';
+    if (ch) ch.textContent = 'estimé';
   }
 }
 
@@ -19414,7 +19705,7 @@ async function sauvegarderCardio() {
     if (res && res.error) throw new Error(res.error);
   } catch (err) {
     showToast('Erreur : ' + (err.message || 'réseau'), 'var(--bad)');
-    if (btnSave) { btnSave.disabled = false; btnSave.textContent = '✔ Terminer & enregistrer'; }
+    if (btnSave) { btnSave.disabled = false; btnSave.textContent = 'Terminer & enregistrer'; }
     return;
   }
   // Récap
@@ -19432,7 +19723,7 @@ async function sauvegarderCardio() {
   var cardioEl = document.getElementById('cardio-block');
   if (cardioEl) cardioEl.innerHTML = `
     <div class="card">
-      <div class="card-title" style="color:var(--good);">✅ Séance enregistrée !</div>
+      <div class="card-title" style="color:var(--good);">Séance enregistrée !</div>
       <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">${escapeHtml(typeLabel)} · ${body.date}</div>
       <div style="display:grid;grid-template-columns:repeat(${Math.min(stats.length,3)},1fr);gap:8px;margin-bottom:14px;">${statsHtml}</div>
       <button class="btn btn-accent" onclick="nouvelleSeanceCardio()">+ Nouvelle séance cardio</button>
@@ -19458,7 +19749,7 @@ function _renderSeanceCardioReperes(seanceId, reperes) {
   if (!host || !_seanceCardioRep.length) { if (box) box.remove(); return; }
   if (!box) { box = document.createElement('div'); box.id = 'seance-cardio-reperes'; host.parentNode.insertBefore(box, host.nextSibling); }
   box.style.cssText = 'margin-top:12px;padding:14px;border:1px solid var(--border);border-left:4px solid #9D5FD3;border-radius:14px;background:var(--surface)';
-  box.innerHTML = '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#9D5FD3;margin-bottom:4px">🫀 Cardio prévu</div>'
+  box.innerHTML = '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#9D5FD3;margin-bottom:4px">Cardio prévu</div>'
     + _seanceCardioRep.map(function (r, i) {
       var cible = (r.cardio_unite === 'libre') ? 'allure libre' : ((r.cardio_cible != null ? r.cardio_cible : '') + ' ' + (r.cardio_unite === 'km' ? 'km' : 'min'));
       var done = !!_cardioRepDone[seanceId + '|' + r.exercice];
@@ -19489,7 +19780,7 @@ function ouvrirSaisieCardioPrevu(idx) {
     + '<input type="date" id="scp-date" value="' + _todayLocalStr() + '" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;margin:5px 0 12px">'
     + '<div style="display:flex;gap:10px">' + fld('scp-duree', dureeVal, '20', 'Durée (min)') + fld('scp-distance', distVal, '5', 'Distance (km)') + '</div>'
     + '<div style="margin-top:12px">' + fld('scp-rpe', '', '7', 'RPE (intensité, 1-10)') + '</div>'
-    + '<button id="scp-save" onclick="_saveCardioPrevu(' + idx + ')" class="btn btn-accent" style="width:100%;margin-top:16px;padding:15px;font-size:15px;background:#9D5FD3">✅ Enregistrer le cardio</button>'
+    + '<button id="scp-save" onclick="_saveCardioPrevu(' + idx + ')" class="btn btn-accent" style="width:100%;margin-top:16px;padding:15px;font-size:15px;background:#9D5FD3">Enregistrer le cardio</button>'
     + '</div>';
 }
 async function _saveCardioPrevu(idx) {
@@ -19507,10 +19798,10 @@ async function _saveCardioPrevu(idx) {
   try {
     var resp = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveCardio', athlete_id: athlete.athlete_id, date: date, type_cardio: type, duree: duree, distance: distance, rpe: rpe }) });
     var res = await resp.json(); if (res && res.error) throw new Error(res.error);
-  } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btn) { btn.disabled = false; btn.textContent = '✅ Enregistrer le cardio'; } return; }
+  } catch (e) { showToast('Erreur : ' + (e.message || 'réseau'), 'var(--bad)'); if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer le cardio'; } return; }
   _cardioRepDone[r.seance_id + '|' + r.exercice] = true;
   fermerSaisieCardioPrevu();
-  showToast('✅ Cardio enregistré · ' + r.exercice);
+  showToast('Cardio enregistré · ' + r.exercice);
   try { _renderSeanceCardioReperes(r.seance_id, _seanceCardioRep); } catch (e) {}
   if (typeof chargerAppData === 'function') chargerAppData();
 }
@@ -19792,8 +20083,8 @@ function _impApercu(d, filename) {
     + '<div style="font-size:11px;color:var(--text-subtle);margin-bottom:7px;word-break:break-all;">' + escapeHtml(filename) + ' · ' + dateFr + '</div>'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;font-weight:700;">Type</span>'
     + '<select id="imp-type" onchange="if(_impData)_impData.type_cardio=this.value" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;">' + opts + '</select></div>'
-    + '<div>' + chip('⏱️', d.duree ? d.duree + ' min' : '') + chip('📏', d.distance ? d.distance + ' km' : '') + chip('⚡', d.vitesse_moy ? d.vitesse_moy + ' km/h' : '') + chip('❤️', d.fc_moy ? d.fc_moy + ' bpm' : '') + chip('🔥', d.calories ? d.calories + ' kcal' : '') + chip('⛰️', d.deniv ? d.deniv + ' m D+' : '') + '</div>'
-    + (dups.length ? '<div style="margin-top:9px;font-size:12px;color:var(--warn);">⚠️ Une séance de durée proche existe déjà ce jour-là — tu peux quand même importer (doublon possible).</div>' : '')
+    + '<div>' + chip('⏱', d.duree ? d.duree + ' min' : '') + chip('', d.distance ? d.distance + ' km' : '') + chip('', d.vitesse_moy ? d.vitesse_moy + ' km/h' : '') + chip('❤', d.fc_moy ? d.fc_moy + ' bpm' : '') + chip('', d.calories ? d.calories + ' kcal' : '') + chip('⛰', d.deniv ? d.deniv + ' m D+' : '') + '</div>'
+    + (dups.length ? '<div style="margin-top:9px;font-size:12px;color:var(--warn);">Une séance de durée proche existe déjà ce jour-là — tu peux quand même importer (doublon possible).</div>' : '')
     + '<div style="display:flex;gap:8px;margin-top:12px;">'
     + '<button onclick="_impConfirmer()" style="flex:1;background:var(--accent);color:var(--on-accent);border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;">Importer la séance</button>'
     + '<button onclick="_impAnnuler()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
@@ -19811,12 +20102,12 @@ async function _impConfirmer() {
     });
     var j = await resp.json();
     if (j && j.success) {
-      showToast('✅ Activité importée');
+      showToast('Activité importée');
       _impData = null; var r = document.getElementById('imp-result'); if (r) r.innerHTML = '';
-      _impStatus('✅ Importée. Retrouve-la dans Mes Analyses ▸ Cardio.', 'var(--good)');
+      _impStatus('Importée. Retrouve-la dans Mes Analyses ▸ Cardio.', 'var(--good)');
       try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {}
-    } else { _impStatus('❌ Échec : ' + (j && j.error || 'erreur serveur'), 'var(--bad)'); }
-  } catch (e) { _impStatus('❌ Erreur réseau pendant l\'enregistrement.', 'var(--bad)'); }
+    } else { _impStatus('Échec : ' + (j && j.error || 'erreur serveur'), 'var(--bad)'); }
+  } catch (e) { _impStatus('Erreur réseau pendant l\'enregistrement.', 'var(--bad)'); }
 }
 
 var _HC_PERMS = ['READ_WORKOUTS', 'READ_HEART_RATE', 'READ_DISTANCE', 'READ_ACTIVE_CALORIES', 'READ_STEPS', 'READ_SLEEP', 'READ_RESTING_HEART_RATE', 'READ_NUTRITION'];
@@ -19845,9 +20136,9 @@ function _hcCardHtml(w, i, done) {
   var chips = '';
   if (durMin != null) chips += _hcChip(durMin + ' min');
   if (km != null) chips += _hcChip(km.toFixed(2).replace('.', ',') + ' km');
-  if (hr != null) chips += _hcChip('❤️ ' + hr + ' bpm', 'hr');
+  if (hr != null) chips += _hcChip('❤ ' + hr + ' bpm', 'hr');
   if (w.calories) chips += _hcChip(Math.round(w.calories) + ' kcal');
-  var route = (w.route && w.route.length) ? '<span style="font-size:11px;color:#9D5FD3;font-weight:800;margin-left:6px;">🗺️ tracé</span>' : '';
+  var route = (w.route && w.route.length) ? '<span style="font-size:11px;color:#9D5FD3;font-weight:800;margin-left:6px;">🗺 tracé</span>' : '';
   var src = _hcCleanSrc(w);
   var action = done
     ? '<span style="flex:none;color:var(--good);font-size:13px;font-weight:800;">✓</span>'
@@ -19900,7 +20191,7 @@ async function ouvrirImportMontre() {
   _hcDiag = [];
   var H = _hcPlugin();
   if (!H || !(typeof _estAppNative === 'function' && _estAppNative())) {
-    _hcStatus('⚠️ L\'import montre n\'est disponible que dans l\'appli Android (via Health Connect).', 'var(--warn)');
+    _hcStatus('L\'import montre n\'est disponible que dans l\'appli Android (via Health Connect).', 'var(--warn)');
     return;
   }
   var errStr = function (e) { return e && e.message ? e.message : String(e); };
@@ -19908,7 +20199,7 @@ async function ouvrirImportMontre() {
   try {
     var av = await H.isHealthAvailable();
     _hcDiag.push('isHealthAvailable → ' + JSON.stringify(av));
-    if (!av || !av.available) { _hcStatus('❌ Health Connect indisponible sur ce téléphone.', 'var(--bad)'); return; }
+    if (!av || !av.available) { _hcStatus('Health Connect indisponible sur ce téléphone.', 'var(--bad)'); return; }
     try { var p = await H.requestHealthPermissions({ permissions: _HC_PERMS }); _hcDiag.push('permissions → ' + JSON.stringify(p && p.permissions)); }
     catch (e) { _hcDiag.push('requestPermissions ERREUR : ' + errStr(e)); }
     var now = new Date();
@@ -19934,11 +20225,11 @@ async function ouvrirImportMontre() {
     _hcSteps = steps;
     _hcRenderList(_hcWorkouts, steps);
     var tot = steps.reduce(function (s, x) { return s + (x.value || 0); }, 0);
-    if (ws.length) _hcStatus('✅ ' + ws.length + ' séance(s) lue(s). Appuie sur « Importer » pour l\'ajouter à tes analyses.', 'var(--good)');
-    else if (tot > 0) _hcStatus('✅ Connecté ! ' + Math.round(tot).toLocaleString('fr-FR') + ' pas / 7 j. Aucune SÉANCE loggée pour l\'instant — logue un run / une sortie vélo pour l\'importer ici.', 'var(--good)');
-    else _hcStatus('⚠️ Health Connect ne renvoie encore rien. Vérifie que Google Health y écrit (ses Paramètres → Health Connect).', 'var(--warn)');
+    if (ws.length) _hcStatus('' + ws.length + ' séance(s) lue(s). Appuie sur « Importer » pour l\'ajouter à tes analyses.', 'var(--good)');
+    else if (tot > 0) _hcStatus('Connecté ! ' + Math.round(tot).toLocaleString('fr-FR') + ' pas / 7 j. Aucune SÉANCE loggée pour l\'instant — logue un run / une sortie vélo pour l\'importer ici.', 'var(--good)');
+    else _hcStatus('Health Connect ne renvoie encore rien. Vérifie que Google Health y écrit (ses Paramètres → Health Connect).', 'var(--warn)');
   } catch (e) {
-    _hcStatus('❌ Erreur : ' + errStr(e), 'var(--bad)');
+    _hcStatus('Erreur : ' + errStr(e), 'var(--bad)');
   }
 }
 
@@ -19971,8 +20262,8 @@ async function _hcImport(i, silent) {
     var res = await r.json();
     if (res && res.error) throw new Error(res.error);
     _hcMarkImported(_hcKey(w));
-    if (btn) { btn.disabled = true; btn.textContent = '✓ importée'; btn.style.background = 'transparent'; btn.style.border = 'none'; btn.style.color = 'var(--good)'; }
-    if (!silent) { showToast('Séance importée dans tes analyses ✅', 'var(--good)'); try { chargerAppData(); } catch (e) {} }
+    if (btn) { btn.disabled = true; btn.textContent = 'importée'; btn.style.background = 'transparent'; btn.style.border = 'none'; btn.style.color = 'var(--good)'; }
+    if (!silent) { showToast('Séance importée dans tes analyses', 'var(--good)'); try { chargerAppData(); } catch (e) {} }
     return true;
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Réessayer'; }
@@ -19992,8 +20283,8 @@ async function _hcImportAll() {
   var ok = 0;
   for (var j = 0; j < todo.length; j++) { if (await _hcImport(todo[j], true)) ok++; }
   try { chargerAppData(); } catch (e) {}
-  showToast(ok + ' séance(s) importée(s) ✅', 'var(--good)');
-  _hcStatus('✅ ' + ok + ' séance(s) importée(s).', 'var(--good)');
+  showToast(ok + ' séance(s) importée(s)', 'var(--good)');
+  _hcStatus('' + ok + ' séance(s) importée(s).', 'var(--good)');
   _hcRenderList(_hcWorkouts, _hcSteps);
 }
 
@@ -20079,7 +20370,7 @@ function _renderPasWeb(hostId, pfx) {
   el.style.display = '';
   el.classList.add('in');   // #dash-steps a la classe tj-reveal (opacity:0) → forcer l'affichage
   el.innerHTML = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:4px;">'
-    + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;flex:none;font-size:16px;">👣</span>'
+    + '<span style="width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;flex:none;font-size:16px;"></span>'
     + '<span style="font-weight:800;font-size:13.5px;color:var(--text);">Mes pas</span></div>'
     // Honnêteté : sur le web, les pas ne sont PAS en direct (Health Connect =
     // téléphone uniquement). On affiche le dernier relevé poussé par l'app mobile ;
@@ -20114,9 +20405,9 @@ function _renderMontreWeb(hostId) {
   };
   var head = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;"><span style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#fff;display:grid;place-items:center;flex:none;font-size:15px;">⌚</span><span style="font-weight:800;font-size:14px;color:var(--text);">Ma montre</span></div>';
   var body = '', firstDone = false;
-  if (hasPas) { body += sec('etpas', '👣', 'Mes pas', 'Relevés par ta montre, synchronisés via l\'app — ouvre l\'app pour actualiser le jour en cours.', !firstDone); firstDone = true; }
-  if (hasSleep) { body += sec('etsleep', '😴', 'Sommeil', '', !firstDone); firstDone = true; }
-  if (hasFc) { body += sec('ethr', '❤️', 'FC au repos', '', !firstDone); firstDone = true; }
+  if (hasPas) { body += sec('etpas', '', 'Mes pas', 'Relevés par ta montre, synchronisés via l\'app — ouvre l\'app pour actualiser le jour en cours.', !firstDone); firstDone = true; }
+  if (hasSleep) { body += sec('etsleep', '', 'Sommeil', '', !firstDone); firstDone = true; }
+  if (hasFc) { body += sec('ethr', '❤', 'FC au repos', '', !firstDone); firstDone = true; }
   el.innerHTML = head + body;
   if (hasPas) try { renderSanteChart('etpas'); } catch (e) {}
   if (hasSleep) try { renderSanteChart('etsleep'); } catch (e) {}
@@ -20721,7 +21012,7 @@ function _nutSave() {
   }
   fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: athlete.athlete_id, entries: [{ date: today, kcal: kcal, prot: prot, gluc: gluc, lip: lip }] }) })
     .then(function (r) { return r.json().catch(function () { return {}; }); })
-    .then(function (j) { if (j && j.success) showToast('Nutrition enregistrée ✓', '#10B981'); else showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); })
+    .then(function (j) { if (j && j.success) showToast('Nutrition enregistrée ', '#10B981'); else showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); })
     .catch(function () { showToast('Non synchronisé — réessaie plus tard', '#F59E0B'); });
   try { renderNutrition(); } catch (e) {}
 }
@@ -20764,7 +21055,7 @@ async function _nutFromHC() {
 var _nutAutoImportRan = false;   // anti-boucle : au plus UNE tentative d'auto-import par exécution de l'app
 async function _nutAutoImportHC() {
   try {
-    // ⚠️ ANTI-BOUCLE (natif) : requestHealthPermissions peut ouvrir l'écran Health Connect →
+    // ANTI-BOUCLE (natif) : requestHealthPermissions peut ouvrir l'écran Health Connect →
     // l'app passe en arrière-plan → l'événement Capacitor 'resume' relance chargerAppData →
     // _appliquerAppData → _nutAutoImportHC. Sans ce verrou, on redemandait la permission à
     // l'infini (symptôme : « serveur en démarrage » qui ne se stabilise jamais, côté athlète).
@@ -20832,7 +21123,7 @@ async function _nutAutoImportHC() {
     try { localStorage.setItem('nvz_nut_auto_' + aid, today); } catch (e) {}
     fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: aid, entries: [{ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL }] }) }).catch(function () {});
     try { if (document.getElementById('tab-nutrition')) renderNutrition(); } catch (e) {}
-    try { showToast('Nutrition synchronisée depuis Health Connect ✓', '#10B981'); } catch (e) {}
+    try { showToast('Nutrition synchronisée depuis Health Connect ', '#10B981'); } catch (e) {}
   } catch (e) {}
 }
 // Contrôle de période PARTAGÉ de la tendance nutrition : un seul Semaine/Mois/
@@ -21109,7 +21400,7 @@ function _renderDashCardioContent() {
     body += '</div>';
     if (wd.pas) {
       body += '<div style="background:var(--surface2);border-radius:10px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-        + '<span style="font-size:10px;color:var(--text-muted);font-weight:700;">👣 Pas totaux (marche)</span>'
+        + '<span style="font-size:10px;color:var(--text-muted);font-weight:700;">Pas totaux (marche)</span>'
         + '<span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;">' + wd.pas.toLocaleString('fr-FR') + '</span>'
         + '</div>';
     }
@@ -21118,7 +21409,7 @@ function _renderDashCardioContent() {
       Object.keys(wd.par_type).forEach(function(t) {
         var clr = _CH_CLR[t] || '#6366f1';
         var bg  = _CH_BG[t]  || 'rgba(99,102,241,.14)';
-        var ico = _CH_ICO[t] || '⚡';
+        var ico = _CH_ICO[t] || '';
         var lbl = _CARDIO_TYPE_LABELS[t] || t;
         body += '<span style="display:inline-flex;align-items:center;gap:4px;background:' + bg + ';color:' + clr + ';border-radius:20px;padding:3px 9px;font-size:11px;font-weight:700;">'
           + ico + ' ' + escapeHtml(lbl) + ' <span style="opacity:.65;">×' + wd.par_type[t] + '</span></span>';
@@ -21273,7 +21564,7 @@ function _renderCardioHist() {
     + kpiTile(Math.round(totalDuree)   || null, 'min',  'durée',    '#10b981')
     + kpiTile(Math.round(totalKcal)    || null, 'kcal', 'calories', 'var(--warn)');
   var kpisRow2 = pasTotKpi ? '<div style="background:var(--surface2);border-radius:12px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
-    + '<span style="font-size:10px;color:var(--text-muted);font-weight:700;">👣 Pas totaux (marche)</span>'
+    + '<span style="font-size:10px;color:var(--text-muted);font-weight:700;">Pas totaux (marche)</span>'
     + '<span style="font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;">' + pasTotKpi.toLocaleString('fr-FR') + '</span>'
     + '</div>' : '';
 
@@ -21342,7 +21633,7 @@ function _renderCardioHist() {
 
     // ── Header compact : 2 petites déroulantes (activité colorée + métrique) ──
     var actOpts = actTypes.map(function(t) {
-      return '<option value="' + t + '"' + (t === actSel ? ' selected' : '') + '>' + (_CH_ICO[t] || '⚡') + ' ' + (_CARDIO_TYPE_LABELS[t] || t) + '</option>';
+      return '<option value="' + t + '"' + (t === actSel ? ' selected' : '') + '>' + (_CH_ICO[t] || '') + ' ' + (_CARDIO_TYPE_LABELS[t] || t) + '</option>';
     }).join('');
     var CHEV = "background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%229%22 height=%225%22><path d=%22M0 0l4.5 5 4.5-5z%22 fill=%22%23FFFFFF%22/></svg>');background-repeat:no-repeat;background-position:right 7px center;";
     var CHEV_D = "background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%229%22 height=%225%22><path d=%22M0 0l4.5 5 4.5-5z%22 fill=%22%234A5980%22/></svg>');background-repeat:no-repeat;background-position:right 7px center;";
@@ -21478,7 +21769,7 @@ function _renderCardioHist() {
       var clr = _CH_CLR[t] || '#6366f1';
       var bg  = _CH_BG[t]  || 'rgba(99,102,241,.14)';
       var lbl = _CARDIO_TYPE_LABELS[t] || t;
-      var ico = _CH_ICO[t] || '⚡';
+      var ico = _CH_ICO[t] || '';
 
       function miniStat(v, u, l) {
         if (v === null) return '';
@@ -21526,7 +21817,7 @@ function _renderCardioHist() {
       var clr = _CH_CLR[t] || '#6366f1';
       var bg  = _CH_BG[t]  || 'rgba(99,102,241,.14)';
       var lbl = _CARDIO_TYPE_LABELS[t] || t;
-      var ico = _CH_ICO[t] || '⚡';
+      var ico = _CH_ICO[t] || '';
       var day = s.date ? parseInt(s.date.slice(8,10), 10) : '';
       var moI = s.date ? parseInt(s.date.slice(5,7), 10) - 1 : -1;
       var dateStr = day + ' ' + (moI >= 0 ? MOIS[moI] : '');
@@ -21565,8 +21856,8 @@ function _renderCardioHist() {
             + '<div style="font-size:8px;font-weight:700;color:var(--warn);opacity:.8;">kcal</div>'
           + '</div>' : '')
         + '<div style="display:flex;gap:4px;flex-shrink:0;margin-left:2px;">'
-          + '<button onclick="_cardioModifier(\'' + s.sid + '\')" style="background:var(--accent-a10);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Modifier">✏️</button>'
-          + '<button onclick="_cardioSupprimer(\'' + s.sid + '\')" style="background:var(--bad-a);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Supprimer">🗑️</button>'
+          + '<button onclick="_cardioModifier(\'' + s.sid + '\')" style="background:var(--accent-a10);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Modifier"><i class=nv-ic-pencil></i></button>'
+          + '<button onclick="_cardioSupprimer(\'' + s.sid + '\')" style="background:var(--bad-a);border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;" title="Supprimer"><i class=nv-ic-trash></i></button>'
         + '</div>'
         + '</div>';
     });
@@ -21662,7 +21953,7 @@ function _renderCardioHist() {
       var pasLeg = (hasSaisie && hasMontre)
         ? '<div style="display:flex;gap:14px;justify-content:center;margin-top:4px;">'
           + '<span style="font-size:9.5px;color:var(--text-muted);font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i style="width:8px;height:8px;border-radius:2px;background:' + CY + ';display:inline-block;"></i>⌚ Montre</span>'
-          + '<span style="font-size:9.5px;color:var(--text-muted);font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i style="width:8px;height:8px;border-radius:2px;background:' + VIO + ';display:inline-block;"></i>✍️ Saisie</span>'
+          + '<span style="font-size:9.5px;color:var(--text-muted);font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i style="width:8px;height:8px;border-radius:2px;background:' + VIO + ';display:inline-block;"></i><i class=nv-ic-pencil></i> Saisie</span>'
           + '</div>' : '';
       var chartP = '<svg class="pas-chart" viewBox="0 0 ' + Wp + ' ' + Hp + '" width="100%" style="display:block;overflow:visible;touch-action:pan-y;">' + svgP + '</svg>'
         + '<div style="font-size:9.5px;color:var(--text-muted);text-align:center;font-weight:600;margin:4px 0 2px;">Pas par jour · ' + nDays + ' derniers jours</div>' + pasLeg
@@ -21710,7 +22001,7 @@ function _attachPasTip() {
   var show = function(t) {
     var r = t.getBoundingClientRect();
     var src = t.getAttribute('data-src');
-    var stag = src === 'montre' ? ' · ⌚ montre' : src === 'saisie' ? ' · ✍️ saisie' : '';
+    var stag = src === 'montre' ? ' · ⌚ montre' : src === 'saisie' ? ' · <i class=nv-ic-pencil></i> saisie' : '';
     var dd = new Date(t.getAttribute('data-date') + 'T00:00:00');
     var pas = Number(t.getAttribute('data-pas')).toLocaleString('fr-FR');
     tip.innerHTML = pas + ' pas<span style="display:block;font-weight:600;opacity:.75;font-size:9.5px;">' + dd.getDate() + '/' + (dd.getMonth() + 1) + stag + '</span>';
@@ -21735,7 +22026,7 @@ function _cardioSupprimer(sid) {
   if (!s) return;
   var t   = s.type_cardio || 'autre';
   var lbl = _CARDIO_TYPE_LABELS[t] || t;
-  var ico = _CH_ICO[t] || '⚡';
+  var ico = _CH_ICO[t] || '';
   var ov  = document.createElement('div');
   ov.id   = '_cardio-confirm-overlay';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center;';
@@ -21746,7 +22037,7 @@ function _cardioSupprimer(sid) {
     + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">' + ico + ' ' + escapeHtml(lbl) + ' · ' + (s.date || '') + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<button onclick="document.getElementById(\'_cardio-confirm-overlay\').remove()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
-      + '<button onclick="_cardioConfirmSupprimer(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--bad);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🗑️ Supprimer</button>'
+      + '<button onclick="_cardioConfirmSupprimer(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--bad);color:#fff;font-size:13px;font-weight:700;cursor:pointer;"><i class=nv-ic-trash></i> Supprimer</button>'
     + '</div>'
     + '</div>';
   ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
@@ -21819,7 +22110,7 @@ function _cardioModifier(sid) {
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<button onclick="document.getElementById(\'_cardio-edit-overlay\').remove()" style="padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>'
-      + '<button onclick="_cardioSauvegarderModif(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ Enregistrer</button>'
+      + '<button onclick="_cardioSauvegarderModif(\'' + sid + '\')" style="padding:13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer</button>'
     + '</div>'
     + '</div>';
   ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
@@ -21857,7 +22148,7 @@ async function _cardioSauvegarderModif(sid) {
     });
     var res = await r.json();
     if (res.success) {
-      showToast('Séance modifiée ✓', 'var(--good)');
+      showToast('Séance modifiée ', 'var(--good)');
       chargerAppData();
     } else {
       showToast('Erreur : ' + (res.error || 'inconnue'), 'var(--bad)');
