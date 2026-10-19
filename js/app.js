@@ -11423,6 +11423,75 @@ function _maArea(pts, color, fill) {
   var line = xs.map(function (x, i) { return (i ? 'L' : 'M') + x.toFixed(0) + ' ' + ys[i].toFixed(0); }).join(' ');
   return '<svg width="100%" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><path d="' + line + ' L' + xs[xs.length - 1].toFixed(0) + ' ' + h + ' L' + xs[0].toFixed(0) + ' ' + h + ' Z" fill="' + fill + '"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + xs[xs.length - 1].toFixed(0) + '" cy="' + ys[ys.length - 1].toFixed(0) + '" r="3.4" fill="' + color + '"/></svg>';
 }
+// #4 Surcharge PAR SÉRIE — transforme les points (chacun avec p.series = [{serie,
+// charge,reps,rpe}]) en lignes traçables : une ligne par n° de série (S1, S2, S3…),
+// valeur = charge de cette série à chaque date (null si la série n'existait pas ce
+// jour-là → coupure de courbe). Plafonné à 6 séries pour rester lisible.
+function _maSeriesLines(pts) {
+  var PAL = ['#1A5FFF', '#F59E0B', '#8B5CF6', '#EC4899', '#0EA5E9', '#64748B'];
+  var maxS = 0;
+  pts.forEach(function (p) {
+    var arr = (p && p.series) || [];
+    var m = arr.reduce(function (a, s, k) { return Math.max(a, s.serie || (k + 1)); }, arr.length);
+    if (m > maxS) maxS = m;
+  });
+  if (maxS > 6) maxS = 6;
+  var lines = [];
+  for (var s = 1; s <= maxS; s++) {
+    (function (sn) {
+      var vals = pts.map(function (p) {
+        var arr = (p && p.series) || [], hit = null;
+        for (var k = 0; k < arr.length; k++) { if ((arr[k].serie || (k + 1)) === sn) { hit = arr[k]; break; } }
+        return hit ? (Number(hit.charge) || 0) : null;
+      });
+      lines.push({ label: 'S' + sn, color: PAL[(sn - 1) % PAL.length], values: vals });
+    })(s);
+  }
+  return lines;
+}
+// Graphe multi-lignes (riche) : plusieurs courbes sur le même axe. lines = [{label,
+// color, values:[num|null]}] (null = point absent → la courbe se coupe). Même gabarit
+// que _maLineRich. Pas de « dernier point vert » global : chaque série a sa couleur.
+function _maMultiLineRich(lines, dates, unit) {
+  var n = dates.length; if (n < 1 || !lines || !lines.length) return '';
+  var W = 470, H = 260, pL = 46, pR = 16, pT = 26, pB = 30;
+  var all = [];
+  lines.forEach(function (L) { L.values.forEach(function (v) { if (v != null) all.push(v); }); });
+  if (!all.length) return '';
+  var mn = Math.min.apply(null, all), mx = Math.max.apply(null, all);
+  if (mn === mx) { mn = mn - 1; mx = mx + 1; }
+  var rng = mx - mn || 1;
+  var X = function (i) { return (n === 1) ? (pL + (W - pL - pR) / 2) : (pL + i * (W - pL - pR) / (n - 1)); };
+  var Y = function (v) { return pT + (1 - (v - mn) / rng) * (H - pT - pB); };
+  var grid = '', ylab = '';
+  for (var g = 0; g <= 4; g++) {
+    var yy = pT + g * (H - pT - pB) / 4, val = mx - g * rng / 4;
+    grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
+    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12.5" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
+  }
+  if (unit) ylab += '<text x="' + (pL - 7) + '" y="' + (pT - 9) + '" text-anchor="end" font-size="10" font-weight="800" fill="var(--text-muted)">' + unit + '</text>';
+  var paths = '';
+  lines.forEach(function (L) {
+    var seg = '', started = false, lastI = -1;
+    L.values.forEach(function (v, i) {
+      if (v == null) { started = false; return; }
+      seg += (started ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' ';
+      started = true; lastI = i;
+    });
+    if (seg) paths += '<path d="' + seg.trim() + '" fill="none" stroke="' + L.color + '" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+    L.values.forEach(function (v, i) {
+      if (v == null) return;
+      var last = (i === lastI);
+      paths += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="' + (last ? 4.2 : 3) + '" fill="' + L.color + '"' + (last ? ' stroke="#fff" stroke-width="1.6"' : '') + '/>';
+      if (last) paths += '<text x="' + X(i).toFixed(1) + '" y="' + (Y(v) - 8).toFixed(1) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + L.color + '">' + (Math.round(v * 10) / 10) + '</text>';
+    });
+  });
+  var xstep = Math.max(1, Math.ceil(n / 5)), xi = [];
+  for (var _xi = 0; _xi < n; _xi += xstep) xi.push(_xi);
+  if (n > 1 && xi[xi.length - 1] !== n - 1) xi.push(n - 1);
+  var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + _maE(_maShortDate(dates[i])) + '</text>'; }).join('');
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + ylab + paths + xlab + '</svg>';
+}
 // Tuile compacte pour les rails Analyses (bureau). v = valeur, u = unité.
 function _maRailTile(k, v, u, dotCol) {
   return '<div class="rail-tile"><div class="k">' + (dotCol ? '<span class="dot" style="background:' + dotCol + '"></span>' : '') + k + '</div><div class="v"' + (String(v).length > 7 ? ' style="font-size:14px"' : '') + '>' + v + (u ? '<small> ' + u + '</small>' : '') + '</div></div>';
@@ -12194,11 +12263,12 @@ function _maProgExo(data) {
   // Répétitions ensuite. Onglets soulignés (≠ pastilles pleines de la période).
   // 3 métriques : « Charge + reps » (défaut, lecture concrète), « 1RM estimé »
   // (progrès à charge égale), « Volume (toutes séries) » (travail total du jour).
-  var MET = [['cr', 'Charge + reps', 'kg'], ['1rm', '1RM estimé', 'kg'], ['vol', 'Volume (toutes séries)', 'kg']];
+  var MET = [['cr', 'Charge + reps', 'kg'], ['1rm', '1RM estimé', 'kg'], ['vol', 'Volume (toutes séries)', 'kg'], ['srv', 'Par série', 'kg']];
   var met = MET.filter(function (x) { return x[0] === _maExoMetric; })[0] || MET[0];
   var seg = '<div class="ma-mtab-wrap"><span class="ma-mtab-lbl">Afficher</span><div class="ma-mtab">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>';
   var isCR = (met[0] === 'cr');   // vue combinée charge + reps
   var isVol = (met[0] === 'vol');
+  var isSrv = (met[0] === 'srv'); // #4 : une courbe par série (S1/S2/S3…)
   var series = pts.map(function (p) {
     if (met[0] === '1rm') return _maE1RM(p);
     if (isVol) return (p.volTotal != null ? p.volTotal : ((p.charge || 0) * (p.reps || 0)));
@@ -12207,8 +12277,15 @@ function _maProgExo(data) {
   var last = series[series.length - 1] || 0, first = series[0] || 0, delta = Math.round((last - first) * 10) / 10;
   var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span>';
   var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + (isCR ? 'kg' : met[2]));
-  var chartBody, legend = '';
-  if (isCR) {
+  var chartBody, legend = '', _srvLines = null;
+  if (isSrv) {
+    // #4 — une courbe de charge par série (S1, S2, S3…) : on voit si la surcharge
+    // touche toutes les séries ou seulement la 1re. Données = p.series (backend).
+    _srvLines = _maSeriesLines(pts);
+    chartBody = _maMultiLineRich(_srvLines, pts.map(function (p) { return p.date; }), 'kg');
+    if (!chartBody) chartBody = _maEmpty('Pas encore de détail par série sur cette période.');
+    legend = '<div class="ma-rclegend">' + _srvLines.map(function (L) { return '<span><i style="background:' + L.color + '"></i>' + L.label + '</span>'; }).join('') + '<span class="mut">Charge (kg) de chaque série · horizontal = date</span></div>';
+  } else if (isCR) {
     // Charge (ligne, kg axe gauche) + reps à cette charge (barres, axe droit) + étiquette charge×reps.
     chartBody = _maChargeRepsRich(pts);
     legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>Charge (kg)</span><span class="mut">Étiquette = charge × reps · dernier point en vert</span></div>';
@@ -12223,9 +12300,10 @@ function _maProgExo(data) {
     chartBody = _maLineRich(series, pts.map(function (p) { return p.date; }), met[2], '#1A5FFF');
     legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>' + met[1] + ' (' + met[2] + ')</span><span><b style="background:#00A854"></b>Dernier point</span><span class="mut">Axe vertical = ' + met[2] + ' · horizontal = date</span></div>';
   }
-  var _chipTxt = isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')');
-  var _topVal = isCR ? ((pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last;
-  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + _chipTxt + '</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + _topVal + ' ' + dspan + '</span></div>' + chartBody + legend + '</div>';
+  var _chipTxt = isSrv ? 'Par série' : (isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')'));
+  var _topVal = isSrv ? ((_srvLines ? _srvLines.length : 0) + ' série' + ((_srvLines && _srvLines.length > 1) ? 's' : '')) : (isCR ? ((pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last);
+  var _topTail = isSrv ? '' : (' ' + dspan);   // pas de delta global en vue « par série »
+  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + _chipTxt + '</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + _topVal + _topTail + '</span></div>' + chartBody + legend + '</div>';
   // Meilleure série = charge max, puis reps max à charge égale (sinon une dernière
   // séance qui ajoute des reps à charge identique n'était pas prise en compte).
   var best = pts.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, pts[0]);
@@ -12249,7 +12327,8 @@ function _maProgExo(data) {
   var EXPL = {
     cr: '<b>Charge + reps</b> de ta meilleure série (ex. 90×5) : la lecture la plus concrète. La courbe suit la charge, l\'étiquette montre charge × reps — tu vois d\'un coup si tu montes en charge ou en répétitions.',
     '1rm': '<b>1RM estimé</b> = la charge que tu pousserais sur <b>1 seule répétition max</b>, calculée depuis ta meilleure série (formule d\'Epley). Un seul chiffre qui combine charge ET reps : 90×5 → 90×8, la charge ne bouge pas mais ton 1RM estimé monte.',
-    vol: '<b>Volume de l\'exercice</b> = somme de <b>TOUTES tes séries</b> (charge × reps) ce jour-là. La mesure du <b>travail total</b>, utile pour l\'hypertrophie.'
+    vol: '<b>Volume de l\'exercice</b> = somme de <b>TOUTES tes séries</b> (charge × reps) ce jour-là. La mesure du <b>travail total</b>, utile pour l\'hypertrophie.',
+    srv: '<b>Par série</b> : l\'évolution de la charge de <b>chaque série</b> (S1, S2, S3…) dans le temps. Tu vois si ta surcharge touche toutes tes séries ou seulement la première — pour progresser sur l\'ensemble de ton travail, pas juste ton top set.'
   };
   var explBox = '<div style="font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;padding:10px 12px;background:var(--surface2);border-radius:11px;line-height:1.45">' + (EXPL[met[0]] || '') + '</div>';
   // Prescription anti-stagnation (P2) : affichée si le moteur a flaggé CET exo en

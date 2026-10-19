@@ -805,17 +805,23 @@ function buildProgressionParExo(perfs: any[]): Record<string, any[]> {
     if (!byExo[exo]) byExo[exo] = {}
     let cur = byExo[exo][dmy]
     // le front lit p.seance (p.seance.substring(...)) → indispensable
-    if (!cur) { cur = byExo[exo][dmy] = { date: dmy, seance: String(r.seance_id || ''), charge, reps, volume: charge * reps, volTotal: 0 } }
+    if (!cur) { cur = byExo[exo][dmy] = { date: dmy, seance: String(r.seance_id || ''), charge, reps, volume: charge * reps, volTotal: 0, series: [] } }
     // meilleure série du jour (charge, puis reps à charge égale)
     if (charge > cur.charge || (charge === cur.charge && reps > cur.reps)) {
       cur.charge = charge; cur.reps = reps; cur.volume = charge * reps
       if (r.seance_id) cur.seance = String(r.seance_id)
     }
     cur.volTotal += charge * reps   // somme de TOUTES les séries du jour (travail total)
+    // #4 Surcharge PAR SÉRIE : on conserve chaque série du jour (n° + charge/reps/rpe)
+    // pour tracer l'évolution des séries 2/3/4, pas seulement de la meilleure. Le n°
+    // de série vient de la colonne `serie` ; à défaut, l'ordre d'insertion (1-indexé).
+    cur.series.push({ serie: Number(r.serie) || (cur.series.length + 1), charge, reps, rpe: Number(r.rpe) || null })
   }
   const out: Record<string, any[]> = {}
   for (const exo of Object.keys(byExo)) {
-    out[exo] = Object.values(byExo[exo]).sort((a, b) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0)).slice(0, 30)
+    const pts = Object.values(byExo[exo])
+    for (const p of pts) p.series.sort((a: any, b: any) => (a.serie || 0) - (b.serie || 0))   // S1, S2, S3…
+    out[exo] = pts.sort((a, b) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0)).slice(0, 30)
   }
   return out
 }
