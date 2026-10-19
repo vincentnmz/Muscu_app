@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alertes coach — refonte</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.14);
+    --good:#00c96e; --good-a:rgba(0,201,110,.13);
+    --warn:#f5a623; --warn-a:rgba(245,166,35,.14);
+    --danger:#e5484d; --danger-a:rgba(229,72,77,.14);
+    --violet:#8b5cf6; --violet-a:rgba(139,92,246,.14);
+    --teal:#0ea5a3; --teal-a:rgba(14,165,163,.14);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:22px 16px 48px}
+  .wrap{max-width:560px;margin:0 auto}
+  h1{font-size:20px;font-weight:900;margin:0 0 3px}
+  .lead{font-size:13px;color:var(--muted);margin:0 0 20px}
+  .lbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);margin:22px 2px 9px;display:flex;align-items:center;gap:8px}
+  .lbl.after{color:var(--accent2)}
+  .lbl::after{content:"";flex:1;height:1px;background:var(--border)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;}
+
+  /* ---------- AVANT (flat) ---------- */
+  .old-h{font-size:13px;font-weight:800;margin-bottom:6px}
+  .old-alert{display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--danger);border-radius:12px;padding:11px 12px;margin-top:8px}
+  .old-alert.w{border-left-color:var(--warn)}
+  .old-msg{font-size:13px;font-weight:700}
+  .old-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .old-btn{font-size:12px;font-weight:700;border:1px solid var(--border);background:var(--surface2);color:var(--muted);border-radius:9px;padding:6px 10px}
+  .old-foot{margin-top:10px;font-size:11px;color:var(--subtle)}
+
+  /* ---------- APRÈS (triage) ---------- */
+  .tri-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+  .tri-title{font-size:15px;font-weight:900}
+  .tri-count{font-size:12px;font-weight:800;color:var(--warn);background:var(--warn-a);border-radius:999px;padding:3px 11px;white-space:nowrap}
+  .tri-breakdown{display:flex;gap:14px;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:12px}
+  .tri-breakdown .b{display:inline-flex;align-items:center;gap:6px}
+  .tri-breakdown .dot{width:8px;height:8px;border-radius:50%}
+  .grp{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 7px;display:flex;align-items:center;gap:7px}
+  .grp .dot{width:9px;height:9px;border-radius:50%}
+  .grp.prio{color:var(--danger)} .grp.surv{color:var(--warn)}
+  .al{border:1px solid var(--border);border-radius:13px;padding:11px 12px;margin-bottom:8px;background:var(--surface2);border-left:3px solid var(--border)}
+  .al.prio{border-left-color:var(--danger)} .al.surv{border-left-color:var(--warn)}
+  .al-top{display:flex;align-items:center;gap:8px}
+  .pill{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px;border-radius:7px;white-space:nowrap}
+  .pill.charge{background:var(--accent-a);color:var(--accent2)}
+  .pill.douleur{background:var(--danger-a);color:var(--danger)}
+  .pill.prog{background:var(--violet-a);color:var(--violet)}
+  .pill.reg{background:var(--teal-a);color:var(--teal)}
+  .pill.bien{background:var(--warn-a);color:var(--warn)}
+  .rec{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:2px 8px;white-space:nowrap}
+  .al-msg{font-size:13px;font-weight:700;margin-top:7px}
+  .al-presc{font-size:12px;font-weight:700;color:var(--accent2);margin-top:5px;line-height:1.45}
+  .al-acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+  .btn{font-size:12px;font-weight:800;border-radius:9px;padding:7px 11px;border:1px solid transparent;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--muted)}
+  .btn-ok{background:transparent;border-color:var(--border);color:var(--good)}
+  .tri-foot{margin-top:13px;padding-top:11px;border-top:1px dashed var(--border);font-size:11px;color:var(--subtle);display:flex;align-items:center;gap:7px}
+  .tri-foot.partial{color:var(--warn)}
+  .tri-foot .fi{width:14px;height:14px;flex:none}
+  .empty{display:flex;align-items:center;gap:10px;padding:6px 2px}
+  .empty .ic{width:34px;height:34px;border-radius:10px;background:var(--good-a);color:var(--good);display:grid;place-items:center;flex:none}
+  .empty .t{font-size:14px;font-weight:800;color:var(--good)} .empty .s{font-size:12px;color:var(--muted)}
+  .note{font-size:11.5px;color:var(--muted);margin:7px 2px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Alertes coach — « à traiter »</h1>
+  <p class="lead">Refonte du bloc d'alertes sur la fiche athlète. Objectif : <b>trier d'un coup d'œil</b> (priorité + catégorie) et agir en 1 geste, sans perdre la fiabilité (règle 6bis).</p>
+
+  <!-- AVANT -->
+  <div class="lbl">Avant — liste à plat</div>
+  <div class="card">
+    <div class="old-h">Alertes à traiter</div>
+    <div class="old-alert">
+      <div style="flex:1">
+        <div class="old-msg" style="color:var(--danger)">Douleur genou signalée (3/5)</div>
+        <div class="old-acts"><span class="old-btn">ℹ Pourquoi ?</span><span class="old-btn">✎ Répondre à l'athlète</span><span class="old-btn">✓ Traité</span></div>
+      </div>
+    </div>
+    <div class="old-alert w">
+      <div style="flex:1">
+        <div class="old-msg" style="color:var(--warn)">Développé couché : aucun progrès depuis 4 séances <span style="font-size:11px;color:var(--muted);font-weight:500">(🔁 depuis 2 semaines)</span></div>
+        <div class="old-acts"><span class="old-btn">ℹ Pourquoi ?</span><span class="old-btn">✎ Répondre à l'athlète</span><span class="old-btn">✓ Traité</span></div>
+      </div>
+    </div>
+    <div class="old-alert w">
+      <div style="flex:1">
+        <div class="old-msg" style="color:var(--warn)">9 jours sans séance</div>
+        <div class="old-acts"><span class="old-btn">✎ Relancer l'athlète</span></div>
+      </div>
+    </div>
+    <div class="old-foot">Basé sur 5 séances récentes · dernier ressenti 18/10/2026.</div>
+  </div>
+  <p class="note">Tout se ressemble : pas de hiérarchie de priorité, catégorie illisible, actions répétées 3× qui alourdissent.</p>
+
+  <!-- APRÈS -->
+  <div class="lbl after">Après — triage par priorité + catégorie</div>
+  <div class="card">
+    <div class="tri-head">
+      <span class="tri-title">Alertes à traiter</span>
+      <span class="tri-count">3 à traiter</span>
+    </div>
+    <div class="tri-breakdown">
+      <span class="b"><span class="dot" style="background:var(--danger)"></span>1 prioritaire</span>
+      <span class="b"><span class="dot" style="background:var(--warn)"></span>2 à surveiller</span>
+    </div>
+
+    <div class="grp prio"><span class="dot" style="background:var(--danger)"></span>Prioritaire</div>
+    <div class="al prio">
+      <div class="al-top"><span class="pill douleur">Douleur</span><span class="rec">genou</span></div>
+      <div class="al-msg">Douleur genou signalée (3/5) au squat.</div>
+      <div class="al-presc">↳ Adapter la charge sur la zone ; avis kiné si ça persiste.</div>
+      <div class="al-acts"><button class="btn btn-primary">Répondre à l'athlète</button><button class="btn btn-ghost">Pourquoi ?</button><button class="btn btn-ok">✓ Traité</button></div>
+    </div>
+
+    <div class="grp surv"><span class="dot" style="background:var(--warn)"></span>À surveiller</div>
+    <div class="al surv">
+      <div class="al-top"><span class="pill prog">Progression</span><span class="rec">🔁 2 sem</span></div>
+      <div class="al-msg">Développé couché : aucun progrès depuis 4 séances.</div>
+      <div class="al-presc">↳ Plus d'intensité (séries proches de l'échec) + vérifier le repos.</div>
+      <div class="al-acts"><button class="btn btn-primary">Répondre</button><button class="btn btn-ghost">Pourquoi ?</button><button class="btn btn-ok">✓ Traité</button></div>
+    </div>
+    <div class="al surv">
+      <div class="al-top"><span class="pill reg">Régularité</span></div>
+      <div class="al-msg">9 jours sans séance — dernière le 10/10.</div>
+      <div class="al-acts"><button class="btn btn-primary">Relancer l'athlète</button><button class="btn btn-ok">✓ Traité</button></div>
+    </div>
+
+    <div class="tri-foot partial">
+      <svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      Données partielles — 5 séances · dernier ressenti 18/10. Les alertes bien-être ne remontent qu'avec le questionnaire.
+    </div>
+  </div>
+  <p class="note">Priorité d'abord (rouge en haut), catégorie en pastille, 1 action primaire pleine + secondaires discrètes. La prescription du moteur (« ↳ ») devient visible pour agir direct.</p>
+
+  <!-- ÉTAT VIDE -->
+  <div class="lbl after">Après — rien à signaler</div>
+  <div class="card">
+    <div class="empty">
+      <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+      <div><div class="t">Rien à signaler</div><div class="s">Aucune alerte cette semaine · basé sur 6 séances + ressenti à jour.</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
