@@ -3714,7 +3714,13 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
     try {
       const res = await handleGetAppData(new URLSearchParams({ athlete_id: id }))
       const data: any = await res.json()
-      const importantes = ((data && data.alertes_centre) || []).filter((a: any) => a && a.severity === 'haute' && !a.read)
+      // Politique de notification (demande porteur) : on pousse les alertes HAUTES
+      // (douleur forte, charge très élevée, absence prolongée) ET deux cas de sévérité
+      // moyenne explicitement voulus : séance manquée / régularité, et volume trop bas
+      // (sous-charge). alertes_centre est déjà trié par sévérité → [0] = la plus grave.
+      const PUSH_TYPES = new Set(['absence', 'irregularite', 'sous_charge'])
+      const importantes = ((data && data.alertes_centre) || [])
+        .filter((a: any) => a && !a.read && (a.severity === 'haute' || PUSH_TYPES.has(a.type)))
       if (!importantes.length) continue
       const top = importantes[0]   // déjà trié par sévérité décroissante
       // Clé par TYPE + JOUR (pas top.id, qui est stable → bloquerait le rappel
