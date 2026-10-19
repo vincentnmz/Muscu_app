@@ -22,15 +22,17 @@
 - **#16** Données par mail à l'athlète (recap mail testé Vincent/Alizé ; domaine `novalyz.fr` vérifié).
 - *Bonus session* : questionnaires **Hooper** (readiness) + **RPE CR-10** (Foster) ; verdict recalibré (charge seule → Prêt) ; **passe anti-emoji** (décoratifs retirés, icônes clés en SVG).
 
-**⏳ Reste à faire (le vrai TODO)**
-- **#4** Surcharge par série : stocker/afficher **séries 2/3/4** (pas juste la 1re) — backend + histo + front.
-- **#5** Vérifier que les **activités importées** (montre/Strava) entrent dans le **croisé** muscu/cardio.
-- **#6** **Mot de Novalyz** : revoir toutes les phrases, en ajouter. · **#7** **Alertes** : idem.
-- **#8** **Orthographe** : passe globale (recos / phrases).
-- **#13** **Remplacer un exo en cours de séance** (machine prise).
-- **#14** **Récompenses adaptées à chaque athlète**.
-- **#15** **Notifications** coach & athlète : vérifier que ça marche.
-- **#18** **Fiche coach : refondre la présentation des « alertes à traiter »** (maquette d'abord).
+**⏳ Reste à faire (le vrai TODO)** — maj 19 oct. (session schéma/notifs)
+- ✅ **#4** Surcharge par série (séries 2/3/4) + **schéma de séries** (fixe / double progression / top-set+back-off / pyramidal) — backend + histo + front + checklist au démarrage.
+- ✅ **#5** Activités importées (montre) dans le croisé muscu/cardio (charge interne estimée si RPE absent).
+- ✅ **#6 / #7** Mot de Novalyz + alertes : leviers récup ciblés (sommeil/stress/courbatures), feu-vert fraîcheur, temps de repos ; harmonisation « aiguë »→« récente ».
+- ✅ **#8** Orthographe : passe faite — chaînes affichées déjà propres (les clés non accentuées sont intentionnelles).
+- ✅ **#13** Remplacer un exo en cours de séance (bouton ⇄ sur exo non commencé, swap séance-only).
+- ⏳ **#14** **Récompenses adaptées à chaque athlète** — **seul point restant du TODO.**
+- ✅ **#15** Notifications coach & athlète : diagnostiquées (base prod) + corrigées — push élargi (haute + séance manquée + volume bas) + timeout cron 120 s. Test livré OK.
+- ✅ **#18** Fiche coach : refonte « alertes à traiter » (triage priorité + catégorie, prescription visible).
+
+> Au-delà de ce TODO : **onboarding / visite guidée** (à faire **à la fin**, écrans figés), features **IA/médias en veille** (morpho photo, médias athlète→coach) en attente de `ANTHROPIC_API_KEY` / branchements, et « Aujourd'hui » à **affiner**.
 
 **Contexte livré par le porteur** : domaine + mails **faits**, Play Store **fait**, P1 **en partie**.
 
