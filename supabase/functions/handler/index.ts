@@ -1513,7 +1513,7 @@ function buildRespectProgramme(programme: any[], seancesDetail: any[], perfs: an
   }
   return { nCible, nEval, nOk }
 }
-function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any, execCible?: any): any {
+function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any, execCible?: any, extras?: any): any {
   // Normalisé SANS accents : des valeurs héritées existent (« séche » vs « sèche »),
   // la détection doit rester robuste à l'orthographe (sinon le cadrage saute).
   const obj = String(objectif || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -1628,6 +1628,22 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   }
   // 2) Leviers de PROGRESSION selon l'état mesuré (uniquement si pas de contrainte/vigilance).
   if (!contrainte && !etatVigilance) {
+    // 2a) FEU VERT fraîcheur — signal de charge PRIMAIRE (fitness-fatigue / TSB %). Quand
+    //     la fraîcheur est nettement positive (peu de fatigue résiduelle vs fond de forme)
+    //     ET fiable, c'est le moment d'oser pousser. Tracé sur moteur.charge_fatigue.
+    const cf = (moteur && moteur.charge_fatigue) || {}
+    if (cf.fiable === true && cf.tsbPct != null && cf.tsbPct >= 5) {
+      pushReco(`Tu es bien récupéré : ta fraîcheur est au vert (peu de fatigue résiduelle). C'est le bon moment pour une séance un peu plus intense ou pour tenter une charge au-dessus de ton habituel sur un exercice clé.`, 'moyenne')
+    }
+    // 2b) TEMPS DE REPOS entre séries — fait factuel mesuré (moyenne des repos loggés).
+    //     Un repos court bride la force sur les exercices lourds (force/hypertrophie) ;
+    //     on n'en parle PAS en sèche (repos court souvent voulu pour la densité). N min
+    //     pour éviter le bruit. Le chiffre affiché est vérifié ; le conseil est conditionnel.
+    const reposMoy = extras && extras.reposMoy != null ? extras.reposMoy : null
+    const reposN = (extras && extras.reposN) || 0
+    if (reposN >= 6 && reposMoy != null && reposMoy < 90 && !seche) {
+      pushReco(`Tes temps de repos sont courts en moyenne (~${reposMoy}s entre séries). Pour la force et la masse, vise plutôt 2-3 min sur tes exercices lourds — tu pousseras plus fort sur les séries suivantes.`, 'moyenne')
+    }
     if (progOk) pushReco(`Tu progresses : pour continuer, ajoute une petite surcharge (+1 rep, ou +2,5 kg) sur un exercice clé dès que ta dernière série passe bien.`, 'moyenne')
     if (tonEvol != null && !aBaisse && !progOk) pushReco(`Ton volume est stable : relance la progression en visant +1 rep sur tes exos principaux, puis +2,5 kg une fois le haut de ta fourchette atteint.`, 'moyenne')
     if (tonEvol != null && !aBaisse) pushReco(`Cible un muscle en retard : ajoute 1 à 2 séries par semaine là où ton volume est sous ta cible, pour équilibrer ton développement.`, 'moyenne')
@@ -2184,6 +2200,13 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // Calculés une fois : détail des séances + respect du programme (exécution vs cible).
   const seancesDetailArr = buildSeancesDetail(perfs)
   const execCibleMuscu = buildRespectProgramme(programme, seancesDetailArr, perfs)
+  // Temps de repos entre séries (levier B) : moyenne des repos RÉELLEMENT loggés (>0)
+  // sur 28 j. Fait factuel vérifié → alimente un levier « mot de Novalyz » conditionnel.
+  const _repCut = fmtYMD(minus(now, 28))
+  const _repVals: number[] = []
+  for (const r of perfs) { const d = normDate(r.date); if (!d || d < _repCut) continue; const rp = Number(r.repos) || 0; if (rp > 0) _repVals.push(rp) }
+  const reposMoy = _repVals.length ? Math.round(_repVals.reduce((a, b) => a + b, 0) / _repVals.length) : null
+  const synthExtras = { reposMoy, reposN: _repVals.length }
 
   return jsonResp({
     moteur,
@@ -2220,7 +2243,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     cardio,
     analyses,
     analyse_synthese: {
-      muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj, execCibleMuscu),
+      muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj, execCibleMuscu, synthExtras),
       cardio: buildSyntheseCardio(cardio, moteur, now),
       croise: buildSyntheseCroise(comparisonData, cardio, moteur, now),
     },
