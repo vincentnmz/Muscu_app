@@ -102,11 +102,11 @@ var SCHEMES = {
     rule:'Cible identique, mais règle automatique : <b>quand les 4 séries atteignent 10 reps → +2,5 kg et retour à 6</b>. C\'est la progression « par défaut » la plus solide (reps d\'abord, puis charge).'
   },
   topbackoff: {
-    name:'Série lourde + allégées',
-    editor:[['Série lourde','RPE 8'],['Charge','≈ 87 kg'],['Allégées','3 × −10%'],['Repos','150 / 120 s']],
-    chips:[['S1','87 kg','6 · RPE 8'],['S2','78 kg','8 · allégée'],['S3','78 kg','8 · allégée'],['S4','78 kg','8 · allégée']],
+    name:'Top-set + back-off',
+    editor:[['Top set','RPE 8'],['Top charge','≈ 87 kg'],['Back-off','3 × −10%'],['Repos','150 / 120 s']],
+    chips:[['S1','87 kg','6 · RPE 8'],['S2','78 kg','8 · back-off'],['S3','78 kg','8 · back-off'],['S4','78 kg','8 · back-off']],
     n:4,
-    rule:'Une série lourde « ancre » au <b>RPE 8 (≈ 87 kg × 6)</b>, puis 3 séries allégées de volume à <b>−10% (≈ 78 kg × 8)</b>. Les séries allégées sont <b>dérivées de la série lourde</b>, pas fixées à la main.'
+    rule:'Une série lourde « top set » au <b>RPE 8 (≈ 87 kg × 6)</b>, puis 3 séries de volume en <b>back-off à −10% (≈ 78 kg × 8)</b>. Les back-offs sont <b>dérivés du top set</b>, pas fixés à la main.'
   },
   pyramidal: {
     name:'Pyramidal',
