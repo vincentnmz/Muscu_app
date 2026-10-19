@@ -436,6 +436,8 @@
           </div>
           <label>Date de naissance</label>
           <input type="date" id="crea-ddn">
+          <label>E-mail <span style="color:var(--text-muted);font-weight:400">(facultatif — pour les récaps & notifs)</span></label>
+          <input type="email" id="crea-email" placeholder="athlete@exemple.com" autocomplete="off">
           <div id="crea-annees-wrap"><label>Années de pratique</label><input type="number" id="crea-annees" placeholder="Ex: 3" min="0" max="50"></div>
           <label>Mot de passe</label>
           <input type="text" id="crea-password" placeholder="Mot de passe (min. 6)">
@@ -1988,6 +1990,9 @@
 #tab-historique .ma-rclegend .mut{color:var(--text-subtle);font-weight:500;}
 @media (min-width:992px){
   #tab-historique .ma-kgrid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
+  /* N8 — Desktop : les graphes pleine colonne (progression…) s'étiraient trop.
+     On plafonne la largeur de la carte graphe (aligne à gauche), charte inchangée. */
+  #tab-historique .ma-chart{max-width:640px;}
   #tab-historique .ma-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
   /* Détail/Tendances : colonne principale large + rail droit (chart moins écrasé) */
   /* Rail COLLANT (sticky) : la colonne de droite reste visible quand on fait
@@ -2329,6 +2334,14 @@
         #tab-conseils .cv-field{ flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:22px; padding:11px 16px; font-size:13px; color:var(--text); font-family:inherit; outline:none; resize:none; max-height:96px; line-height:1.4; }
         #tab-conseils .cv-send{ width:44px; height:44px; border-radius:999px; background:var(--accent); color:#fff; display:grid; place-items:center; flex:none; border:none; cursor:pointer; box-shadow:0 6px 14px rgba(26,95,255,.32); }
         #tab-conseils .cv-send svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+        /* N6 — Desktop : le carousel de suggestions se parcourt au doigt (slots pleine
+           largeur + swipe), impossible à la souris → on affiche TOUTES les phrases
+           suggérées en les faisant s'enrouler, et on masque les points (plus de carousel). */
+        @media (min-width:992px){
+          #tab-conseils .cv-sugg{ flex-wrap:wrap; justify-content:center; gap:8px; overflow-x:visible; scroll-snap-type:none; padding:0 15px; }
+          #tab-conseils .cv-slot{ flex:0 0 auto; padding:0; scroll-snap-align:none; max-width:100%; }
+          #tab-conseils .cv-dots{ display:none; }
+        }
       </style>
 
       <!-- VUE LISTE DES CONVERSATIONS -->

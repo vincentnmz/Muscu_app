@@ -3429,12 +3429,15 @@ async function handleCoachCreerAthlete(body: any): Promise<Response> {
   const { coach_id, login, password, annees, strategie, ddn, taille, sexe } = body
   const nom = (body.prenom || body.nom || '').trim()
   if (!coach_id || !nom || !login || !password) return jsonResp({ success: false, error: 'Champs manquants' })
+  // E-mail facultatif (récaps / notifs). Normalisé ; validé seulement s'il est fourni.
+  const email = String(body.email || '').trim().toLowerCase()
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return jsonResp({ success: false, error: 'E-mail invalide.' })
   const { data: existing } = await sb().from('athletes').select('id').eq('login', login).single()
   if (existing) return jsonResp({ success: false, error: 'Ce login est déjà utilisé.' })
   const hash = await hashSalted(password, login)
   const { data: coach } = await sb().from('coachs').select('sport').eq('coach_id', coach_id).single()
   const newId = await nextAthleteId()
-  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, coach_id, sport: coach?.sport || 'muscu', annees: annees || 0, strategie: strategie || '', ddn: ddn || null, taille: taille || null, sexe: sexe || null }).select().single()
+  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, coach_id, sport: coach?.sport || 'muscu', annees: annees || 0, strategie: strategie || '', ddn: ddn || null, taille: taille || null, sexe: sexe || null, email: email || null }).select().single()
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true, id: data.id, nom: data.nom })
 }
