@@ -17,7 +17,7 @@ slot = {
   sets,                     // nb de séries
   reps: [min, max] | 'echec',
   rpe,                      // cible d'effort (défaut 8 ; 'echec' → 10)
-  repos_sec,                // défaut poly 90 / iso 60
+  repos_sec,                // composés (poly) 180 s · isolation (iso) 90 s
   charge_pct_1rm: null,     // pas de % imposé (hypertrophie) sauf indication
   exos: [principal, variante1, variante2, ...],   // interchangeables (le 1er dispo au catalogue = principal, le reste = remplaçants)
   superset_id?              // slots partageant le même id = superset enchaîné
@@ -28,7 +28,8 @@ Le **temps** garde les slots par **priorité croissante** (1 d'abord).
 ---
 
 ## ✅ PROGRAMME 1 — Full Body · 2 jours · HYPERTROPHIE  *(figé 20 oct.)*
-Défauts appliqués : **3 séries**, **RPE 8** (abdos = échec), **pas de % 1RM** (charge libre), repos poly 90 s / iso 60 s / superset enchaîné.
+Défauts appliqués : **3 séries**, **RPE 8** (abdos = échec), **pas de % 1RM** (charge libre).
+Repos (porteur) : **composés = 3 min (180 s)** · **isolation = 1 min 30 (90 s)** · superset bras = 90 s entre les tours.
 
 ### Jour A
 | Prio | Muscle | Type | Séries×Reps | Exos (principal → variantes) |
