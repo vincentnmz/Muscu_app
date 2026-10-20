@@ -38,6 +38,17 @@ function getStrategieFromAnnees(annees: number): string {
   if (niveau === 'intermediaire') return 'Double progression'
   return 'Progression avancée'
 }
+// N2 — Années de pratique EFFECTIVES = ancienneté saisie à la création + années
+// écoulées depuis la création du compte. Sans ça l'ancienneté reste FIGÉE (un « 3 ans »
+// le resterait à vie) et le niveau (débutant→expert) n'évolue jamais dans le temps.
+function anneesEffectives(base: any, created_at: any, now: Date): number {
+  const b = Number(base) || 0
+  if (!created_at) return b
+  const t = new Date(created_at).getTime()
+  if (isNaN(t)) return b
+  const ecoulees = Math.floor((now.getTime() - t) / (365.25 * 86400000))
+  return b + (ecoulees > 0 ? ecoulees : 0)
+}
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 const rateMap = new Map<string, { n: number; exp: number }>()
@@ -1083,7 +1094,10 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
   // Stratégie de surcharge progressive : si vide en base (ex. migration), on la
   // recalcule depuis les années de pratique (muscu uniquement) — auto-réparation.
   const sportL = ath.sport || 'muscu'
-  const strategieL = ath.strategie || (sportL === 'muscu' ? getStrategieFromAnnees(Number(ath.annees) || 0) : '')
+  // N2 : ancienneté EFFECTIVE (évolue avec le temps depuis la création) → pilote le
+  // niveau et la stratégie. Si une stratégie est déjà figée en base, on la respecte.
+  const anneesEffL = anneesEffectives(ath.annees, ath.created_at, new Date())
+  const strategieL = ath.strategie || (sportL === 'muscu' ? getStrategieFromAnnees(anneesEffL) : '')
 
   return jsonResp({ success: true, athlete: {
     athlete_id: ath.id,
@@ -1093,7 +1107,7 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
     strategie: strategieL,
     objectif: obj?.objectif ?? strategieL ?? '',
     strategie_progression: strategieL || 'Progression linéaire',
-    annees_pratique: Number(ath.annees) || 0,
+    annees_pratique: anneesEffL,
     poids,
     taille: (ath.taille != null && ath.taille !== '') ? Number(ath.taille) : null,
     ddn: ath.ddn ? fmtFR(ath.ddn) : '',
@@ -1288,7 +1302,7 @@ async function handleBilanClient(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const periode = String(body.periode || 'semaine') === 'mois' ? 'mois' : 'semaine'
   if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
-  const { data: rows } = await sb().from('athletes').select('id,nom,coach_id,annees').eq('id', athlete_id)
+  const { data: rows } = await sb().from('athletes').select('id,nom,coach_id,annees,created_at').eq('id', athlete_id)
   const aRow: any = (rows || [])[0]
   if (!aRow || String(aRow.coach_id) !== coach_id) return jsonResp({ success: false, error: 'Athlète introuvable' })
   const now = new Date()
@@ -1298,7 +1312,7 @@ async function handleBilanClient(body: any): Promise<Response> {
     sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
   ])
-  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, Number(aRow.annees) || 0)
+  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, anneesEffectives(aRow.annees, aRow.created_at, now))
   const prenom = String(aRow.nom || '').split(/\s+/)[0]
   const html = _emailBilanAthleteHTML(prenom, periode, bilan)
   return jsonResp({ success: true, html, nom: aRow.nom || '' })
@@ -1311,7 +1325,7 @@ async function handleEnvoyerBilanMail(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const periode = ['mois', '3mois'].indexOf(String(body.periode || '')) >= 0 ? String(body.periode) : 'semaine'
   if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
-  const { data: rows } = await sb().from('athletes').select('id,nom,email,coach_id,annees').eq('id', athlete_id)
+  const { data: rows } = await sb().from('athletes').select('id,nom,email,coach_id,annees,created_at').eq('id', athlete_id)
   const aRow: any = (rows || [])[0]
   if (!aRow || String(aRow.coach_id) !== coach_id) return jsonResp({ success: false, error: 'Athlète introuvable' })
   const email = String(aRow.email || '').trim()
@@ -1323,7 +1337,7 @@ async function handleEnvoyerBilanMail(body: any): Promise<Response> {
     sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
   ])
-  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, Number(aRow.annees) || 0)
+  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, anneesEffectives(aRow.annees, aRow.created_at, now))
   const prenom = String(aRow.nom || '').split(/\s+/)[0]
   const html = _emailBilanAthleteHTML(prenom, periode, bilan)
   const label = periode === '3mois' ? 'des 3 derniers mois' : periode === 'mois' ? 'du mois' : 'de la semaine'
@@ -1944,7 +1958,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     }
   }
 
-  const alertes = calculerAlertes(perfs, athleteId, Number(athData?.annees) || 0, enPause)
+  const alertes = calculerAlertes(perfs, athleteId, anneesEffectives(athData?.annees, athData?.created_at, now), enPause)   // N2 : ancienneté effective
 
   // le front indexe l'agenda et la vérification par clé JJ/MM/AAAA
   const datesSeances: Record<string, string> = {}
@@ -2385,9 +2399,9 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     const pauses = (pauseAll || []).filter(r => r.athlete_id === ath.id)
     const enPause = pauses.length > 0 && pauses[0].valeur !== 'fin'
     const dates = [...new Set(perfs.map(r => normDate(r.date)))].sort()
-    const alertes = calculerAlertes(perfs, ath.id, Number(ath.annees) || 0, enPause)
+    const anneesA = anneesEffectives(ath.annees, ath.created_at, now)   // N2 : ancienneté effective (évolue dans le temps)
+    const alertes = calculerAlertes(perfs, ath.id, anneesA, enPause)
     const lastBE = (beAll || []).find(r => r.athlete_id === ath.id)
-    const anneesA = Number(ath.annees) || 0
     const sportA = ath.sport || 'muscu'
     const strategieA = ath.strategie || (sportA === 'muscu' ? getStrategieFromAnnees(anneesA) : '')
     return {
@@ -4205,7 +4219,7 @@ async function handleCronResumes(body: any): Promise<Response> {
 
   // 2) Athlètes — un bilan perso par athlète ayant un e-mail.
   try {
-    const { data: aths } = await sb().from('athletes').select('id,nom,email,annees,recap_freq')
+    const { data: aths } = await sb().from('athletes').select('id,nom,email,annees,recap_freq,created_at')
     for (const a of aths || []) {
       const email = String((a as any).email || '').trim()
       const per = periodeFor((a as any).recap_freq)
@@ -4219,7 +4233,7 @@ async function handleCronResumes(body: any): Promise<Response> {
           sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', aid),
           sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', aid).like('seance_id', 'sante_%'),
         ])
-        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, per, Number((a as any).annees) || 0)
+        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, per, anneesEffectives((a as any).annees, (a as any).created_at, now))
         const prenom = String((a as any).nom || '').split(/\s+/)[0]
         const html = _emailBilanAthleteHTML(prenom, per, bilan)
         const sujet = `Novalyz — Ton bilan ${_periodeLabel(per)}`

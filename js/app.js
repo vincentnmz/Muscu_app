@@ -21432,7 +21432,9 @@ async function _nutAutoImportHC() {
       if (!f) h.unshift({ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL });
     }
     try { localStorage.setItem('nvz_nut_auto_' + aid, today); } catch (e) {}
-    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: aid, entries: [{ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL }] }) }).catch(function () {});
+    // N12b : on tague la SOURCE 'health_connect' → on peut voir en base si l'import
+    // auto (MFP/Yazio via Health Connect) produit bien des données (vs saisie manuelle).
+    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: aid, source: 'health_connect', entries: [{ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL }] }) }).catch(function () {});
     try { if (document.getElementById('tab-nutrition')) renderNutrition(); } catch (e) {}
     try { showToast('Nutrition synchronisée depuis Health Connect ', '#10B981'); } catch (e) {}
   } catch (e) {}
