@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Générateur — programmes</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.14);
+    --good:#00c96e; --warn:#f5a623;
+    --d1:#1a5fff; --d2:#7c5cff; --d3:#00a854; --d4:#e07800; --d5:#ec4899;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:22px 16px 48px}
+  .wrap{max-width:560px;margin:0 auto}
+  h1{font-size:20px;font-weight:900;margin:0 0 3px}
+  .lead{font-size:13px;color:var(--muted);margin:0 0 18px}
+  .q{margin-bottom:14px}
+  .q-l{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle);margin:0 2px 7px}
+  .opts{display:flex;flex-wrap:wrap;gap:7px}
+  .opt{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:9px 11px;cursor:pointer;text-align:center;white-space:nowrap;transition:.12s}
+  .opt small{display:block;font-weight:600;font-size:10.5px;color:var(--subtle);margin-top:2px}
+  .opt:hover{color:var(--text)}
+  .opt.on{background:var(--accent-a);border-color:var(--accent);color:var(--accent2)}
+  .opt.on small{color:var(--accent2);opacity:.85}
+  .sumline{font-size:12px;color:var(--muted);margin:16px 2px 12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
+  .sumline b{color:var(--text)}
+  .sess{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:11px;border-left:4px solid var(--accent)}
+  .sess-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:9px}
+  .sess-nm{font-size:15px;font-weight:900}
+  .sess-day{font-size:11px;font-weight:800;color:var(--muted)}
+  .ex{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border)}
+  .ex:first-of-type{border-top:none}
+  .ex-dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .ex-nm{flex:1;min-width:0;font-size:13.5px;font-weight:700}
+  .ex-nm small{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--subtle);margin-top:1px}
+  .ex-sets{font-size:12.5px;font-weight:800;color:var(--accent2);white-space:nowrap;text-align:right}
+  .ex-sets small{display:block;font-size:10px;color:var(--muted);font-weight:700}
+  .note{font-size:11.5px;color:var(--muted);margin:14px 2px 0;line-height:1.5}
+  .note b{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Programmes proposés par Novalyz</h1>
+  <p class="lead">Maquette : rejoue le générateur réel. Réponds aux <b>3 questions</b> → le programme s'affiche exercice par exercice. (Noms d'exos = exercices préférés par groupe ; le vrai générateur pioche l'équivalent dans ton catalogue.)</p>
+
+  <div class="q"><div class="q-l">1 · Objectif</div><div class="opts" id="q-obj"></div></div>
+  <div class="q"><div class="q-l">2 · Jours / semaine</div><div class="opts" id="q-jours"></div></div>
+  <div class="q"><div class="q-l">3 · Niveau</div><div class="opts" id="q-niv"></div></div>
+
+  <div class="sumline" id="sumline"></div>
+  <div id="prog"></div>
+
+  <div class="note" id="auditnote"></div>
+</div>
+
+<script>
+/* ---- Tables RÉELLES du générateur (js/app.js) ---- */
+var GEN_OBJ = {
+  hypertrophie:{label:'Hypertrophie',hint:'Prise de muscle',s:4,rmin:8,rmax:12,pct:72,rpe:8,repos:90},
+  force:{label:'Force',hint:'Charges lourdes',s:5,rmin:3,rmax:5,pct:85,rpe:8,repos:180},
+  tonification:{label:'Tonification',hint:'Endurance musc.',s:3,rmin:15,rmax:20,pct:55,rpe:7,repos:60},
+  remise:{label:'Remise en forme',hint:'Reprise douce',s:3,rmin:10,rmax:12,pct:60,rpe:7,repos:90}
+};
+var GEN_G = {
+  pecs:{col:'#1a5fff',mus:'Pecs',prefer:['Développé couché barre']},
+  dos:{col:'#7c5cff',mus:'Dos',prefer:['Traction']},
+  quad:{col:'#00a854',mus:'Quadriceps',prefer:['Squat']},
+  ischio:{col:'#00a854',mus:'Ischios',prefer:['RDL barre']},
+  fessier:{col:'#00a854',mus:'Fessiers',prefer:['Hip thrust']},
+  epaule:{col:'#e07800',mus:'Épaules',prefer:['Développé militaire']},
+  biceps:{col:'#ec4899',mus:'Biceps',prefer:['Curl barre']},
+  triceps:{col:'#ec4899',mus:'Triceps',prefer:['Extension poulie barre']},
+  mollet:{col:'#00a854',mus:'Mollets',prefer:['Mollets debout']},
+  abdos:{col:'#0ea5a3',mus:'Abdos',prefer:['Crunch']}
+};
+var GEN_SPLITS = {
+  2:[['Full body A',['quad','pecs','dos','epaule','ischio','abdos']],['Full body B',['fessier','pecs','dos','epaule','biceps','triceps']]],
+  3:[['Push',['pecs','epaule','triceps']],['Pull',['dos','biceps','abdos']],['Legs',['quad','ischio','fessier','mollet']]],
+  4:[['Haut A',['pecs','dos','epaule','biceps','triceps']],['Bas A',['quad','ischio','fessier','mollet']],['Haut B',['dos','pecs','epaule','triceps','biceps']],['Bas B',['fessier','quad','ischio','abdos']]],
+  5:[['Push',['pecs','epaule','triceps']],['Pull',['dos','biceps']],['Legs',['quad','ischio','fessier','mollet']],['Haut',['pecs','dos','epaule']],['Bas',['quad','fessier','ischio','abdos']]]
+};
+var GEN_JOURS = {2:[1,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5]};
+var JNAMES=['','Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+var JOPT=[[2,'2 j','Full body'],[3,'3 j','Push/Pull/Legs'],[4,'4 j','Haut / Bas'],[5,'5 j','PPL + H/B']];
+var NIV=[['debutant','Débutant','0-3 ans'],['intermediaire','Interméd.','4-9 ans'],['avance','Avancé','10 ans +']];
+
+var st={obj:'hypertrophie',jours:3,niv:'intermediaire'};
+
+/* ---- Logique RÉELLE _genProgramme ---- */
+function genProgramme(objectif,jours,niveau){
+  var o=GEN_OBJ[objectif]||GEN_OBJ.hypertrophie;
+  var sets=Math.max(2,o.s+(niveau==='debutant'?-1:0));
+  var split=GEN_SPLITS[jours]||GEN_SPLITS[3];
+  var jarr=GEN_JOURS[jours]||GEN_JOURS[3];
+  var maxExos=niveau==='debutant'?4:(niveau==='avance'?99:6);
+  return split.map(function(sc,si){
+    var groups=sc[1].slice(0,maxExos), used={}, out=[];
+    groups.forEach(function(gk){ var g=GEN_G[gk]; if(!g)return; if(used[gk])return; used[gk]=1;
+      out.push({nm:g.prefer[0],mus:g.mus,col:g.col,sets:sets,rmin:o.rmin,rmax:o.rmax,pct:o.pct,rpe:o.rpe,repos:o.repos}); });
+    return {nm:sc[0],day:jarr[si],exos:out};
+  });
+}
+
+function chip(container,list,cur,set,keyIdx,labIdx,subIdx){
+  var el=document.getElementById(container); el.innerHTML='';
+  list.forEach(function(it){ var k=it[keyIdx], lab=it[labIdx], sub=subIdx!=null?it[subIdx]:'';
+    var b=document.createElement('div'); b.className='opt'+(cur()===k?' on':'');
+    b.innerHTML=lab+(sub?'<small>'+sub+'</small>':'');
+    b.onclick=function(){ set(k); render(); };
+    el.appendChild(b);
+  });
+}
+function render(){
+  chip('q-obj',Object.keys(GEN_OBJ).map(function(k){return [k,GEN_OBJ[k].label,GEN_OBJ[k].hint];}),function(){return st.obj;},function(v){st.obj=v;},0,1,2);
+  chip('q-jours',JOPT,function(){return st.jours;},function(v){st.jours=v;},0,1,2);
+  chip('q-niv',NIV,function(){return st.niv;},function(v){st.niv=v;},0,1,2);
+  var o=GEN_OBJ[st.obj];
+  var sets=Math.max(2,o.s+(st.niv==='debutant'?-1:0));
+  document.getElementById('sumline').innerHTML='<b>'+o.label+'</b> · '+st.jours+' jours · '+NIV.filter(function(n){return n[0]===st.niv;})[0][1]
+    +' → <b>'+sets+' séries × '+o.rmin+'-'+o.rmax+' reps</b> · '+o.pct+'% 1RM · RPE '+o.rpe+' · repos '+o.repos+'s';
+  var prog=genProgramme(st.obj,st.jours,st.niv);
+  document.getElementById('prog').innerHTML=prog.map(function(s){
+    return '<div class="sess" style="border-left-color:var(--d'+(s.day>5?5:s.day)+')">'
+      +'<div class="sess-h"><span class="sess-nm">'+s.nm+'</span><span class="sess-day">'+JNAMES[s.day]+' · '+s.exos.length+' exos</span></div>'
+      +s.exos.map(function(e){
+        return '<div class="ex"><span class="ex-dot" style="background:'+e.col+'"></span>'
+          +'<div class="ex-nm">'+e.nm+'<small>'+e.mus+'</small></div>'
+          +'<div class="ex-sets">'+e.sets+' × '+e.rmin+'-'+e.rmax+'<small>'+e.pct+'% · RPE '+e.rpe+' · '+e.repos+'s</small></div></div>';
+      }).join('')
+      +'</div>';
+  }).join('');
+  // note d'audit contextuelle
+  var n='';
+  if(st.obj==='force'){ n='<b>⚠ Point d\'audit (N10)</b> : en « Force », les exos d\'isolation (curl biceps, extension triceps, élévations…) héritent aussi du <b>5×3-5 @ 85%</b> — peu pertinent pour l\'isolation (devrait rester en 8-15 reps).'; }
+  else if(st.niv==='avance'){ n='Note : en avancé, le volume reste <b>1 exercice par muscle/séance</b> (comme en interméd.) — souvent un peu léger pour l\'hypertrophie avancée.'; }
+  else { n='Chaque séance = 1 exercice par groupe musculaire ciblé. Débutant : max 4 exos/séance et −1 série.'; }
+  document.getElementById('auditnote').innerHTML=n;
+}
+render();
+</script>
+</body>
+</html>
