@@ -15850,7 +15850,8 @@ function _genProgrammeForce(jours) {
 }
 
 // ── Modal onboarding (3 étapes) ──
-var _genState = { step: 1, objectif: null, jours: null, niveau: null };
+// État du générateur v2 (athlète) — 2 parcours : débutant (galerie) / interméd.-avancé (configurateur).
+var _genState = { niv: 'intermediaire', obj: 'hypertrophie', org: 'ul', jours: 4, temps: 60, preset: 0 };
 var _GEN_NIV = [['debutant', 'Débutant', '0-3 ans de pratique'], ['intermediaire', 'Intermédiaire', '4-9 ans'], ['avance', 'Avancé', '10 ans et +']];
 var _GEN_JOPT = [[2, '2 jours', 'Full body'], [3, '3 jours', 'Push / Pull / Legs'], [4, '4 jours', 'Haut / Bas'], [5, '5 jours', 'PPL + Haut / Bas']];
 function ouvrirGenProgramme() {
@@ -15858,7 +15859,8 @@ function ouvrirGenProgramme() {
   // Pré-règle l'objectif du générateur depuis l'objectif du profil (une seule
   // notion) — reste modifiable à l'étape 1.
   var _objDef = null; try { var _oi = _objInfo(athlete && athlete.objectif); if (_oi) _objDef = _oi.gen; } catch (e) {}
-  _genState = { step: 1, objectif: _objDef, jours: null, niveau: null };
+  if (_objDef !== 'force' && _objDef !== 'hypertrophie') _objDef = 'hypertrophie';
+  _genState = { niv: 'intermediaire', obj: _objDef, org: 'ul', jours: 4, temps: 60, preset: 0 };
   var ov = document.getElementById('gen-prog-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -15912,10 +15914,43 @@ function ouvrirLexique() {
   ov.style.display = 'flex';
 }
 function fermerLexique() { var ov = document.getElementById('lex-overlay'); if (ov) ov.style.display = 'none'; }
-function _genSetObjectif(v) { _genState.objectif = v; _genState.step = 2; _genRender(); }
-function _genSetJours(v) { _genState.jours = Number(v); _genState.step = 3; _genRender(); }
-function _genSetNiveau(v) { _genState.niveau = v; _genRender(); }
-function _genBack() { if (_genState.step > 1) { _genState.step--; _genRender(); } }
+// ── Générateur v2 (athlète) : presets débutant + helpers de l'UI configurateur ──
+var _G2_PRESETS = [
+  { org: 'fb', jours: 2, nm: 'Full Body découverte', badge: '2 j', desc: 'Tout le corps à chaque séance. Idéal pour débuter : on apprend les mouvements, 2× / semaine.' },
+  { org: 'fb', jours: 3, nm: 'Full Body', badge: '3 j', desc: 'Même logique, une séance de plus pour progresser plus vite.' },
+  { org: 'ppl', jours: 3, nm: 'Push / Pull / Legs', badge: '3 j', desc: 'Pousser / tirer / jambes. Structure simple et complète.' },
+  { org: 'ul', jours: 4, nm: 'Upper / Lower', badge: '4 j', desc: 'Haut / bas alternés. Bon compromis volume / récupération.' },
+  { org: 'split', jours: 5, nm: 'Split — 1 muscle / jour', badge: '5 j', desc: 'Un groupe par séance. Plus de volume ciblé, pour qui vient souvent.' }
+];
+var _G2_ORGS = [['fb', 'Full Body'], ['ul', 'Upper / Lower'], ['ppl', 'PPL'], ['split', 'Split'], ['custom', 'Custom']];
+function _g2Set(k, v) {
+  _genState[k] = v;
+  if (k === 'org') { var jl = _G2_JLOGIC[v] || [2, 3, 4, 5, 6]; if (jl.indexOf(_genState.jours) < 0) _genState.jours = jl[0]; }
+  _genRender();
+}
+function _g2Chip(onclick, on, label, dis) {
+  return '<button ' + (dis ? '' : 'onclick="' + onclick + '"') + ' style="flex:1 1 auto;min-width:0;padding:9px 10px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a08)' : 'var(--surface)') + ';color:' + (dis ? 'var(--text-subtle)' : (on ? 'var(--accent)' : 'var(--text-muted)')) + ';border-radius:11px;font-weight:700;font-size:12.5px;cursor:' + (dis ? 'default' : 'pointer') + ';opacity:' + (dis ? '.4' : '1') + '">' + label + '</button>';
+}
+// Résout chaque ligne contre le catalogue réel de l'athlète : garde le 1er exo dispo
+// (principal puis variantes), met les autres dispos en variantes (pour « Remplacer »).
+function _g2Resolve(lignes) {
+  if (!exercicesData || !exercicesData.length) return lignes;
+  var names = {}; exercicesData.forEach(function (e) { names[_genNorm(e.exercice)] = e.exercice; });
+  lignes.forEach(function (l) {
+    var cands = [l.exercice].concat(l.variantes || []), chosen = null, rest = [];
+    cands.forEach(function (c) { var hit = names[_genNorm(c)]; if (hit) { if (chosen === null) chosen = hit; else rest.push(hit); } });
+    if (chosen !== null) l.exercice = chosen;
+    l.variantes = rest;
+  });
+  return lignes;
+}
+function _g2Lignes() {
+  var st = _genState, lignes;
+  if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('hypertrophie', p.org, p.jours, 75, 'debutant'); }
+  else if (st.obj === 'force') { lignes = _genProgrammeForce(st.jours); }
+  else { lignes = _genProgramme2('hypertrophie', st.org, st.jours, st.temps, st.niv); }
+  return _g2Resolve(lignes);
+}
 function _genCard(onclick, on, titre, sous) {
   return '<button onclick="' + onclick + '" style="text-align:left;display:flex;align-items:center;gap:12px;width:100%;padding:14px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a08)' : 'var(--surface)') + ';border-radius:14px;margin-bottom:8px;cursor:pointer">'
     + '<div style="flex:1"><div style="font-weight:800;font-size:14.5px;color:' + (on ? 'var(--accent)' : 'var(--text)') + '">' + titre + '</div><div style="font-size:12px;color:var(--text-subtle);margin-top:2px">' + sous + '</div></div>'
@@ -15924,39 +15959,40 @@ function _genCard(onclick, on, titre, sous) {
 function _genRender() {
   var sh = document.getElementById('gen-prog-sheet'); if (!sh) return;
   var st = _genState, esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
-  var head = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
-    + (st.step > 1 ? '<button onclick="_genBack()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:0 6px 0 0">‹</button>' : '<span></span>')
-    + '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:13px;letter-spacing:.02em">Étape ' + st.step + '/3</div>'
+  var L = function (t) { return '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:14px 2px 7px">' + t + '</div>'; };
+  var row = function (html) { return '<div style="display:flex;flex-wrap:wrap;gap:7px">' + html + '</div>'; };
+  var head = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">'
+    + '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:14px">Novalyz te propose</div>'
     + '<button onclick="fermerGenProgramme()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1">×</button></div>';
-  var body = '';
-  if (st.step === 1) {
-    var _preObj = ''; try { if (athlete && athlete.objectif && _objInfo(athlete.objectif)) _preObj = athlete.objectif; } catch (e) {}
-    body = '<h2 style="font-size:18px;margin:2px 0 4px">Ton objectif ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Ça règle les répétitions, la charge cible et le repos.</div>'
-      + (_preObj ? '<div style="font-size:11.5px;color:var(--accent);background:var(--accent-a08);border-radius:9px;padding:8px 10px;margin-bottom:10px">Pré-réglé sur ton objectif « ' + esc(_preObj) +' ». Tu peux le changer ici.</div>' : '')
-      + Object.keys(_GEN_OBJ).map(function (k) { var o = _GEN_OBJ[k]; return _genCard('_genSetObjectif(\'' + k + '\')', st.objectif === k, o.label, o.hint + ' · ' + o.s + '×' + o.rmin + '-' + o.rmax + ' · ' + o.pct + '% · RPE ' + o.rpe); }).join('')
-      + '<button onclick="_genRefuse()" style="width:100%;margin-top:6px;background:none;border:none;color:var(--text-subtle);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
-  } else if (st.step === 2) {
-    body = '<h2 style="font-size:18px;margin:2px 0 4px">Combien de jours par semaine ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Détermine la structure de tes séances.</div>'
-      + _GEN_JOPT.map(function (j) { return _genCard('_genSetJours(' + j[0] + ')', st.jours === j[0], j[1], j[2]); }).join('');
+  var NIV = [['debutant', 'Débutant'], ['intermediaire', 'Intermédiaire'], ['avance', 'Avancé']];
+  var body = L('Niveau') + row(NIV.map(function (n) { return _g2Chip('_g2Set(\'niv\',\'' + n[0] + '\')', st.niv === n[0], n[1]); }).join(''));
+  if (st.niv === 'debutant') {
+    body += L('Choisis ton programme')
+      + _G2_PRESETS.map(function (p, i) { return _genCard('_g2Set(\'preset\',' + i + ')', st.preset === i, p.nm + ' · ' + p.badge, p.desc); }).join('');
   } else {
-    body = '<h2 style="font-size:18px;margin:2px 0 4px">Ton niveau ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Ajuste le volume (nombre d\'exercices et de séries).</div>'
-      + _GEN_NIV.map(function (n) { return _genCard('_genSetNiveau(\'' + n[0] + '\')', st.niveau === n[0], n[1], n[2]); }).join('');
-    if (st.niveau) {
-      var lignes = _genProgramme(st.objectif, st.jours, st.niveau, exercicesData);
-      var parSeance = {}; lignes.forEach(function (l) { (parSeance[l.seance_id] = parSeance[l.seance_id] || []).push(l); });
-      var apercu = Object.keys(parSeance).map(function (sid) { var jr = parSeance[sid][0].jour; return '<div style="margin-bottom:8px"><div style="font-weight:800;font-size:13px;color:var(--accent)">' + esc(sid) + (jr ? ' <span style="font-weight:600;color:var(--text-subtle)">· ' + _PROG_JOURS_LONG[jr - 1] + '</span>' : '') + '</div><div style="font-size:12px;color:var(--text-muted)">' + parSeance[sid].map(function (l) { return esc(l.exercice); }).join(', ') + '</div></div>'; }).join('');
-      body += '<div style="margin-top:14px;padding:14px;background:var(--surface2);border-radius:14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:8px">Aperçu · ' + Object.keys(parSeance).length + ' séances · ' + lignes.length + ' exercices</div>' + apercu + '</div>'
-        + '<button onclick="_genGenerer()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
-        + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>';
+    body += L('Objectif') + row([['hypertrophie', 'Hypertrophie'], ['force', 'Force']].map(function (o) { return _g2Chip('_g2Set(\'obj\',\'' + o[0] + '\')', st.obj === o[0], o[1]); }).join(''));
+    if (st.obj === 'force') {
+      body += L('Jours / semaine') + row([2, 3, 4, 5, 6].map(function (j) { return _g2Chip('_g2Set(\'jours\',' + j + ')', st.jours === j, j + ' j'); }).join(''))
+        + '<div style="font-size:11.5px;color:var(--text-subtle);margin:8px 2px 0">Powerlifting : les 3 lifts (squat · développé · soulevé) + renfo. Tout reste modifiable dans l\'éditeur.</div>';
+    } else {
+      var jl = _G2_JLOGIC[st.org] || [2, 3, 4, 5, 6];
+      body += L('Organisation') + row(_G2_ORGS.map(function (o) { return _g2Chip('_g2Set(\'org\',\'' + o[0] + '\')', st.org === o[0], o[1]); }).join(''))
+        + L('Jours / semaine') + row([2, 3, 4, 5, 6].map(function (j) { return _g2Chip('_g2Set(\'jours\',' + j + ')', st.jours === j, j + ' j', jl.indexOf(j) < 0); }).join(''))
+        + L('Temps par séance') + row([45, 60, 75, 90].map(function (t) { return _g2Chip('_g2Set(\'temps\',' + t + ')', st.temps === t, t + ' min'); }).join(''));
     }
   }
+  var lignes = _g2Lignes();
+  var parSeance = {}; lignes.forEach(function (l) { (parSeance[l.seance_id] = parSeance[l.seance_id] || []).push(l); });
+  var apercu = Object.keys(parSeance).map(function (sid) { var jr = parSeance[sid][0].jour; return '<div style="margin-bottom:8px"><div style="font-weight:800;font-size:13px;color:var(--accent)">' + esc(sid) + (jr ? ' <span style="font-weight:600;color:var(--text-subtle)">· ' + _PROG_JOURS_LONG[jr - 1] + '</span>' : '') + '</div><div style="font-size:12px;color:var(--text-muted)">' + parSeance[sid].map(function (l) { return esc(l.exercice); }).join(', ') + '</div></div>'; }).join('');
+  body += '<div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:8px">Aperçu · ' + Object.keys(parSeance).length + ' séances · ' + lignes.length + ' exercices</div>' + (apercu || '<div style="font-size:12px;color:var(--text-subtle)">Choisis tes options ci-dessus.</div>') + '</div>'
+    + '<button onclick="_genGenerer()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
+    + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>'
+    + '<button onclick="_genRefuse()" style="width:100%;margin-top:4px;background:none;border:none;color:var(--text-subtle);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
   sh.innerHTML = head + body;
 }
 async function _genGenerer() {
-  var st = _genState;
-  if (!st.objectif || !st.jours || !st.niveau) return;
-  var lignes = _genProgramme(st.objectif, st.jours, st.niveau, exercicesData);
-  if (!lignes.length) { showToast('Catalogue indisponible, réessaie'); return; }
+  var lignes = _g2Lignes();
+  if (!lignes.length) { showToast('Impossible de générer (catalogue indisponible)'); return; }
   // Programme existant → demander avant d'écraser.
   var existant = (dernierAppData && Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0);
   if (existant && !confirm('Tu as déjà un programme. Le remplacer par le nouveau ? (l\'ancien sera supprimé)')) return;
