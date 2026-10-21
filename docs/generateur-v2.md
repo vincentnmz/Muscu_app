@@ -201,14 +201,33 @@ Jours : Lun / Mar / Mer / Jeu / Ven.
 
 ---
 
+## ✅ PROGRAMME 5 — PPL + Haut/Bas · 5 jours · HYPERTROPHIE  *(figé 21 oct.)*
+Le **second** programme 5 jours (l'autre = Split, Programme 4). **Réutilise** les gabarits existants :
+- **Push** = Programme 2 · Push
+- **Pull** = Programme 2 · Pull
+- **Legs** = Programme 2 · Legs
+- **Haut** = Programme 3 · **Haut B** *(autres angles, pour ne pas redoubler la semaine)*
+- **Bas** = Programme 3 · **Bas B** *(abdos inclus — seul jour avec abdos)*
+
+Conventions héritées : 3 séries · RPE S1/S2 = RIR 1, dernière = RIR 2-3 · repos composés 2-3 min / iso 90 s · superset bras (Push triceps classiques ; superset bras sur le jour Haut) · exos = catalogue réel.
+**Logique** : J1-J3 = volume par pattern (poussée/tirage/jambes) · J4-J5 = rappel Haut/Bas en fin de semaine pour les points faibles.
+Ordre par défaut Push · Pull · Legs · Haut · Bas — **l'athlète place ses jours de repos** où il veut.
+
+---
+
 ## Règles transverses (porteur)
 - **Groupé par muscle** dans chaque séance.
 - **Barre = dernier choix** (couché, militaire).
 - **≥1 variante par exercice** (liste de choix interchangeables) ; au démarrage = 1er dispo, les autres = remplaçants.
 - **Coupe par le temps** : garder d'abord **1 exercice par muscle** (le prioritaire), puis les 2ᵉ/3ᵉ si le temps reste. ✅ validé
+- **Jours de repos = libres** : le générateur propose un ordre de séances (ex. Lun/Mar/Mer/Jeu/Ven), mais **l'athlète choisit où placer ses jours de repos** dans la semaine.
+- **RPE par série** : S1 et S2 = **1 rép en réserve** (RPE 9) · dernière série = **2-3 réps en réserve** (RPE 7-8).
+- **Repos modulable au ressenti** : composés 2-3 min · iso 1 min 30 ; si fatigue, **rallonger** pour garder l'intensité sur la série suivante.
+- **Superset bras** : actif sur Full Body / PPL / Haut-Bas ; **désactivé sur le jour Bras du Split** (journée dédiée).
 
 ## À faire ensuite
 - [ ] Confirmer la règle **temps → nb d'exos**.
 - [x] Programme 3 = **Haut/Bas 4 j Hypertrophie** figé (21 oct.).
-- [ ] Programmes suivants : **5 jours** Hypertrophie, puis **Force** (exos & schéma dédiés).
+- [x] Programme 4 = **Split 5 j** figé · Programme 5 = **PPL + Haut/Bas 5 j** figé (21 oct.).
+- [ ] 6 jours ? (à décider — cf. discussion) · puis **Force** (exos & schéma dédiés).
 - [ ] Construire le moteur v2 (data model ci-dessus) + la 4e question + gestion supersets + variantes → « Remplacer » + **RPE par série** (S1/S2 = RIR 1 · dernière = RIR 2-3) + **repos modulables**.
