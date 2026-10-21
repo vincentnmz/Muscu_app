@@ -94,6 +94,57 @@ Exos = catalogue réel de l'app.
 
 ---
 
+## ✅ PROGRAMME 3 — Haut / Bas · 4 jours · HYPERTROPHIE  *(figé 21 oct.)*
+Conventions : 3 séries · **bras (biceps+triceps) en superset** · exos = catalogue réel · groupé par muscle · barre/militaire en dernier choix · écarté en 1er (pecs).
+**Repos** : composés (poly) = **2–3 min (120-180 s)** · isolation (iso) = **1 min 30 (90 s)** · superset bras = 90 s entre les tours.
+→ *à moduler au ressenti : si fatigue, rallonger le repos pour garder assez d'intensité sur la série suivante.*
+**RPE / RIR** : séries **1 et 2 = 1 rép en réserve (RPE 9)** · **dernière série = 2-3 réps en réserve (RPE 7-8)**.
+Jours : Lun / Mar / Jeu / Ven.
+
+### Haut A (pecs → dos → épaules → biceps+triceps)
+| Prio | Muscle | Type | 3× | Principal → variantes |
+|---|---|---|---|---|
+| 1 | Pecs (incliné) | poly | 8-12 | Développé incliné Hammer → Développé incliné à la Smith · Développé couché incliné haltère |
+| 2 | Pecs (écarté) | iso | 12-15 | Ecarté poulie haute → Ecarté machine |
+| 3 | Dos (vertical) | poly | 8-12 | Traction → Tirage vertical prise large · prise serrée |
+| 4 | Dos (horizontal) | poly | 8-12 | T-bar row prise basse → Rowing machine · Rowing bucheron · Rowing barre |
+| 5 | Épaules (latéral) | iso | 12-15 | Élévation latérale haltère → Elévation latérale uni à la poulie |
+| 6 | **Superset bras** (S1) | iso | 8-15 | Biceps : Curl incliné au banc → Curl incliné uni poignée à la poulie **+** Triceps : Extension poulie barre → Extension poulie corde |
+
+### Bas A (quadri → ischios → fessiers → mollets → abdos)
+| Prio | Muscle | Type | 3× | Principal → variantes |
+|---|---|---|---|---|
+| 1 | Quadriceps | poly | 6-8 | Squat → Hack squat · Belt squat |
+| 2 | Quadriceps (presse) | poly | 8-12 | Presse inclinée → Presse horizontale · Pendulum |
+| 3 | Ischios | poly | 8-12 | RDL barre → RDL haltère |
+| 4 | Fessiers | poly | 8-12 | Hip thrust → Hip thrust machine · Abduction machine · Fente bulgare |
+| 5 | Mollets | iso | 12-20 | Les extensions mollets debout → assis · à la presse |
+| 6 | Abdos | iso | échec | Crunch à la poulie → Relevé de jambe · Roulette |
+
+### Haut B (pecs → dos → épaules → biceps+triceps) — autres angles
+| Prio | Muscle | Type | 3× | Principal → variantes |
+|---|---|---|---|---|
+| 1 | Pecs (horizontal) | poly | 8-10 | Développé couché haltère → Développé machine Hammer · Développé machine · Développé couché barre |
+| 2 | Pecs (décliné) | poly | 10-12 | Développé décliné machine → Développé décliné à la Smith |
+| 3 | Dos (épaisseur/trapèzes) | poly | 10-15 | Tirage trapèze machine → T-bar row prise haute · shrugs aux haltéres · shrugs barre |
+| 4 | Dos (vertical serré) | poly | 8-12 | Tirage vertical prise serrée → Tirage vertical uni à la poulie · Traction |
+| 5 | Épaules (développé) | poly | 8-12 | Développé militaire aux haltères → Développé militaire à la Smith |
+| 6 | Épaules (arrière) | iso | 12-15 | Arrière épaule à la poulie → Arrière épaule haltère |
+| 7 | **Superset bras** (S1) | iso | 10-15 | Biceps : Curl marteau aux haltéres → Curl marteau à la poulie **+** Triceps : Extension poulie corde → Extension triceps banc · Extension dos à la poulie corde |
+
+### Bas B (quadri → ischios → fessiers → mollets → abdos) — autres angles
+| Prio | Muscle | Type | 3× | Principal → variantes |
+|---|---|---|---|---|
+| 1 | Quadriceps | poly | 8-12 | Hack squat → Belt squat · Pendulum |
+| 2 | Quadriceps (iso) | iso | 12-15 | Leg extension |
+| 3 | Ischios | poly | 8-12 | RDL haltère → Relevé de bassin |
+| 4 | Ischios (iso) | iso | 10-15 | Leg curl assis → Leg curl allongé · Leg curl debout |
+| 5 | Fessiers | poly | 10-12 | Fente bulgare → Fente longue · Kick back · Abduction machine |
+| 6 | Mollets | iso | 12-20 | Les extensions mollets assis → debout · à la presse |
+| 7 | Abdos | iso | échec | Relevé de jambe → Roulette · Crunch à la poulie |
+
+---
+
 ## Règles transverses (porteur)
 - **Groupé par muscle** dans chaque séance.
 - **Barre = dernier choix** (couché, militaire).
@@ -102,5 +153,6 @@ Exos = catalogue réel de l'app.
 
 ## À faire ensuite
 - [ ] Confirmer la règle **temps → nb d'exos**.
-- [ ] Programmes suivants : Full Body autres objectifs ? puis 3 j / 4 j / 5 j, puis **Force** (exos dédiés).
-- [ ] Construire le moteur v2 (data model ci-dessus) + la 4e question + gestion supersets + variantes → « Remplacer ».
+- [x] Programme 3 = **Haut/Bas 4 j Hypertrophie** figé (21 oct.).
+- [ ] Programmes suivants : **5 jours** Hypertrophie, puis **Force** (exos & schéma dédiés).
+- [ ] Construire le moteur v2 (data model ci-dessus) + la 4e question + gestion supersets + variantes → « Remplacer » + **RPE par série** (S1/S2 = RIR 1 · dernière = RIR 2-3) + **repos modulables**.
