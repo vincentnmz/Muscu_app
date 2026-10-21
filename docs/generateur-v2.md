@@ -3,12 +3,29 @@
 > Doc de spec vivant, rempli **par le porteur**, programme par programme.
 > Objectif : remplacer `_genProgramme`/`_GEN_*` par un moteur piloté par des gabarits riches.
 
-## Questions à la création (4)
-1. **Objectif** — Hypertrophie · Force · Tonification · Remise en forme *(Force = programme & exos à part)*
-2. **Jours / semaine** — 2 · 3 · 4 · 5
-3. **Niveau** — Débutant · Intermédiaire · Avancé
-4. **Temps par séance** *(NOUVEAU)* — coupe la liste d'exos par ordre de priorité.
-   Règle proposée (À CONFIRMER) : 30→3 exos · 45→4 · 60→5-6 · 75→6-7 · 90→8.
+## Modèle figé (21 oct.) — DEUX PARCOURS selon le niveau
+Maquette de référence : [`../mockups/novalyz-generateur-v2.html`](../mockups/novalyz-generateur-v2.html).
+
+### 🟢 Débutant → galerie de programmes « tout faits » (il choisit, il ne configure pas)
+Chaque carte a une **explication** (pour qui / combien de fois / pourquoi). Catalogue validé :
+| Programme | Orga | Jours |
+|---|---|---|
+| Full Body découverte | fb | 2 |
+| Full Body | fb | 3 |
+| Push / Pull / Legs | ppl | 3 |
+| Upper / Lower | ul | 4 |
+| Split (1 muscle/jour) | split | 5 |
+Reps modérées (10-12 / 12-15), 3 séries.
+
+### 🔵 Intermédiaire / Avancé → configurateur
+Questions : **Objectif** · **Organisation** · **Jours** · **Temps/séance**. Puis **l'athlète planifie lui-même** (quels jours, où placer les repos).
+- **Organisation** = `Full Body` · `Upper/Lower` · `PPL` · `Split` · `Custom`. Une organisation = **une règle** qui répartit les blocs muscle sur N jours (plus de splits hard-codés par nombre de jours).
+  - Jours logiques : fb `2·3·4` · ul `2·4·6` · ppl `3·4·5·6` (4-5 j = PPL + rappel Haut/Bas) · split `5·6` · custom `2→6`.
+  - **Custom** = **squelette modifiable** : base équilibrée proposée, l'athlète ajoute/retire les muscles de chaque jour.
+- **Temps/séance** — coupe la liste d'exos par priorité, en gardant d'abord **1 exo par muscle**. Plafond maquette : 45→5 · 60→7 · 75→8 · 90→10.
+- Séries : interméd. 3 · avancé 4. **6 jours réservé interméd./avancé.**
+- RPE par série : S1·S2 = 1 rép en réserve · dernière = 2-3. Repos composés 2-3 min / iso 90 s (modulable).
+- Objectif **Force** = reps/charge différentes (poly 4-6) ; **exos & schéma dédiés Force à écrire** (séries montantes, %1RM).
 
 ## Modèle de données (par slot d'exercice)
 ```
@@ -229,5 +246,7 @@ Ordre par défaut Push · Pull · Legs · Haut · Bas — **l'athlète place ses
 - [ ] Confirmer la règle **temps → nb d'exos**.
 - [x] Programme 3 = **Haut/Bas 4 j Hypertrophie** figé (21 oct.).
 - [x] Programme 4 = **Split 5 j** figé · Programme 5 = **PPL + Haut/Bas 5 j** figé (21 oct.).
-- [ ] 6 jours ? (à décider — cf. discussion) · puis **Force** (exos & schéma dédiés).
+- [x] **Modèle à 2 parcours figé** (débutant galerie / inter-avancé configurateur par organisation) + maquette `novalyz-generateur-v2.html` (21 oct.).
+- [ ] **Force** : exos & schéma dédiés (séries montantes, %1RM) — à écrire.
+- [ ] Figer la **liste des blocs muscle** (slots/angles définitifs) → source du moteur.
 - [ ] Construire le moteur v2 (data model ci-dessus) + la 4e question + gestion supersets + variantes → « Remplacer » + **RPE par série** (S1/S2 = RIR 1 · dernière = RIR 2-3) + **repos modulables**.

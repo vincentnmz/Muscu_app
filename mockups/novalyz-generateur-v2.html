@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Générateur v2 — blocs & splits</title>
+<title>Générateur v2 — 2 parcours</title>
 <style>
   :root{
     --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
@@ -16,7 +16,7 @@
   body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:22px 16px 56px}
   .wrap{max-width:600px;margin:0 auto}
   h1{font-size:20px;font-weight:900;margin:0 0 3px}
-  .lead{font-size:12.5px;color:var(--muted);margin:0 0 18px}
+  .lead{font-size:12.5px;color:var(--muted);margin:0 0 16px}
   .lead b{color:var(--text)}
   .q{margin-bottom:13px}
   .q-l{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle);margin:0 2px 7px}
@@ -27,11 +27,27 @@
   .opt:hover{color:var(--text)}
   .opt.on{background:var(--accent-a);border-color:var(--accent);color:var(--accent2)}
   .opt.on small{color:var(--accent2);opacity:.85}
-  #q-org .opt{flex:1 1 100%;text-align:left}
+  .opt.off{opacity:.3;pointer-events:none}
+  .seg{display:flex;gap:0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:3px;margin-bottom:16px}
+  .seg .opt{flex:1;border:none;background:transparent;border-radius:9px;margin:0}
+  .seg .opt.on{background:var(--accent);color:#fff}
+  .seg .opt.on small{color:#dbe4ff}
+  /* galerie débutant */
+  .gal-l{font-size:12px;color:var(--muted);margin:2px 2px 10px}
+  .card{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px 14px;margin-bottom:9px;cursor:pointer;transition:.12s}
+  .card:hover{border-color:var(--accent2)}
+  .card.on{border-color:var(--accent);background:var(--accent-a)}
+  .card-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .card-nm{font-size:14.5px;font-weight:900}
+  .card-badge{font-size:10px;font-weight:800;color:var(--accent2);background:var(--accent-a);border:1px solid var(--border);border-radius:7px;padding:2px 7px;white-space:nowrap}
+  .card-desc{font-size:11.5px;color:var(--muted);margin-top:5px}
+  /* résultat */
   .sumline{font-size:12px;color:var(--muted);margin:16px 2px 6px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
   .sumline b{color:var(--text)}
   .convnote{font-size:11px;color:var(--subtle);margin:0 2px 12px;padding:0 2px}
+  .plannote{font-size:11.5px;color:var(--accent2);margin:0 2px 12px;padding:9px 12px;background:var(--accent-a);border:1px solid var(--border);border-radius:10px;font-weight:600}
   .sess{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:11px;border-left:4px solid var(--accent)}
+  .sess.custom{border-left-style:dashed}
   .sess-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
   .sess-nm{font-size:15px;font-weight:900}
   .sess-day{font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap}
@@ -45,7 +61,9 @@
   .ex-var b{color:var(--subtle);font-weight:700}
   .ex-sets{font-size:12.5px;font-weight:800;color:var(--accent2);white-space:nowrap;text-align:right}
   .ex-sets small{display:block;font-size:9.5px;color:var(--muted);font-weight:700;margin-top:1px}
+  .ex-x{color:var(--subtle);font-size:14px;font-weight:700;padding:2px 4px;cursor:pointer;flex:none}
   .ss-tag{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#fff;background:var(--ss);border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+  .add-row{display:flex;align-items:center;gap:7px;padding:9px 0 2px;border-top:1px dashed var(--border);color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer}
   .rest-row{display:flex;align-items:center;gap:8px;margin:4px 2px 13px;font-size:11px;color:var(--subtle)}
   .rest-row span{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--border) 0 6px,transparent 6px 11px)}
   .note{font-size:11.5px;color:var(--muted);margin:16px 2px 0;line-height:1.55;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
@@ -55,19 +73,29 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Générateur v2 — blocs & splits</h1>
-  <p class="lead">Démo de la <b>nouvelle architecture</b> : on écrit <b>une fois</b> chaque bloc muscle (ses angles + variantes d'exos), puis chaque split n'est qu'une <b>affectation jour→blocs</b>. Réponds aux questions → le programme se compose tout seul. Les noms sont ceux du <b>catalogue réel</b>.</p>
+  <h1>Générateur v2 — 2 parcours</h1>
+  <p class="lead">Le <b>niveau</b> change tout le parcours : <b>Débutant</b> = galerie de programmes tout faits (expliqués) · <b>Interméd./Avancé</b> = configurateur (organisation + jours + temps), puis l'athlète <b>planifie lui-même</b>. Blocs & exos = catalogue réel.</p>
 
-  <div class="q"><div class="q-l">1 · Objectif</div><div class="opts" id="q-obj"></div></div>
-  <div class="q"><div class="q-l">2 · Jours / semaine</div><div class="opts" id="q-jours"></div></div>
-  <div class="q"><div class="q-l">3 · Niveau</div><div class="opts" id="q-niv"></div></div>
-  <div class="q"><div class="q-l">4 · Temps par séance</div><div class="opts" id="q-temps"></div></div>
-  <div class="q" id="wrap-org"><div class="q-l">5 · Organisation <em id="org-cond"></em></div><div class="opts" id="q-org"></div></div>
+  <div class="seg" id="seg-niv"></div>
+
+  <!-- Parcours débutant -->
+  <div id="path-deb" style="display:none">
+    <div class="gal-l">Choisis le programme qui te correspond — tu pourras en changer plus tard.</div>
+    <div id="gallery"></div>
+  </div>
+
+  <!-- Parcours inter/avancé -->
+  <div id="path-cfg" style="display:none">
+    <div class="q"><div class="q-l">Objectif</div><div class="opts" id="q-obj"></div></div>
+    <div class="q"><div class="q-l">Organisation</div><div class="opts" id="q-org"></div></div>
+    <div class="q"><div class="q-l">Jours / semaine <em id="j-cond"></em></div><div class="opts" id="q-jours"></div></div>
+    <div class="q"><div class="q-l">Temps par séance</div><div class="opts" id="q-temps"></div></div>
+  </div>
 
   <div class="sumline" id="sumline"></div>
   <div class="convnote" id="convnote"></div>
+  <div class="plannote" id="plannote"></div>
   <div id="prog"></div>
-
   <div class="note" id="auditnote"></div>
 </div>
 
@@ -122,160 +150,155 @@ var BLOCKS = {
   ]}
 };
 
-/* ============================ SPLITS = affectation jour→blocs ============================
-   d = n° de jour · ss = biceps+triceps en superset · [bloc, nbSlots] (coupé ensuite par le temps) */
-var SPLITS = {
-  '2|fb':{label:'Full Body',days:[
-    {nm:'Full Body A',d:1,ss:1,b:[['quad',1],['pecs',1],['dos',1],['epaules',1],['biceps',1],['triceps',1],['abdos',1]]},
-    {nm:'Full Body B',d:4,ss:1,b:[['fessiers',1],['pecs',1],['dos',1],['epaules',1],['biceps',1],['triceps',1]]}
-  ]},
-  '3|ppl':{label:'Push / Pull / Legs',days:[
-    {nm:'Push',d:1,b:[['pecs',3],['epaules',2],['triceps',2]]},
-    {nm:'Pull',d:3,b:[['dos',3],['epaules',1],['biceps',2]]},
-    {nm:'Legs',d:5,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]}
-  ]},
-  '4|hb':{label:'Haut / Bas',days:[
-    {nm:'Haut A',d:1,ss:1,b:[['pecs',2],['dos',2],['epaules',1],['biceps',1],['triceps',1]]},
-    {nm:'Bas A',d:2,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1],['abdos',1]]},
-    {nm:'Haut B',d:4,ss:1,b:[['pecs',2],['dos',2],['epaules',2],['biceps',1],['triceps',1]]},
-    {nm:'Bas B',d:5,b:[['quad',2],['ischios',2],['fessiers',1],['mollets',1],['abdos',1]]}
-  ]},
-  '4|pbde':{label:'Pec+Bras · Dos+Ép · Jambes · Upper',days:[
-    {nm:'Pec + Bras',d:1,ss:1,b:[['pecs',3],['biceps',2],['triceps',2]]},
-    {nm:'Dos + Épaules',d:2,b:[['dos',3],['epaules',3]]},
-    {nm:'Jambes',d:4,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]},
-    {nm:'Upper (rappel)',d:5,ss:1,b:[['pecs',1],['dos',1],['epaules',1],['biceps',1],['triceps',1],['abdos',1]]}
-  ]},
-  '4|pede':{label:'Pec+Ép · Dos+Bras · Jambes · Upper',days:[
-    {nm:'Pec + Épaules',d:1,b:[['pecs',3],['epaules',2]]},
-    {nm:'Dos + Bras',d:2,ss:1,b:[['dos',3],['biceps',2],['triceps',2]]},
-    {nm:'Jambes',d:4,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]},
-    {nm:'Upper (rappel)',d:5,ss:1,b:[['pecs',1],['dos',1],['epaules',1],['biceps',1],['triceps',1],['abdos',1]]}
-  ]},
-  '5|split':{label:'Split — 1 muscle / jour',days:[
-    {nm:'Pectoraux',d:1,b:[['pecs',4]]},
-    {nm:'Dos',d:2,b:[['dos',4]]},
-    {nm:'Jambes',d:3,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]},
-    {nm:'Épaules',d:4,b:[['epaules',5]]},
-    {nm:'Bras',d:5,b:[['triceps',2],['biceps',3],['abdos',1]]}
-  ]},
-  '5|pplul':{label:'PPL + Haut/Bas',days:[
-    {nm:'Push',d:1,b:[['pecs',3],['epaules',2],['triceps',2]]},
-    {nm:'Pull',d:2,b:[['dos',3],['epaules',1],['biceps',2]]},
-    {nm:'Legs',d:3,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]},
-    {nm:'Haut',d:4,ss:1,b:[['pecs',2],['dos',2],['epaules',2],['biceps',1],['triceps',1]]},
-    {nm:'Bas',d:5,b:[['quad',2],['ischios',2],['fessiers',1],['mollets',1],['abdos',1]]}
-  ]},
-  '6|ppl2':{label:'PPL ×2',days:[
-    {nm:'Push A',d:1,b:[['pecs',3],['epaules',2],['triceps',2]]},
-    {nm:'Pull A',d:2,b:[['dos',3],['epaules',1],['biceps',2]]},
-    {nm:'Legs A',d:3,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]},
-    {nm:'Push B',d:4,b:[['pecs',3],['epaules',2],['triceps',2]]},
-    {nm:'Pull B',d:5,b:[['dos',3],['epaules',1],['biceps',2]]},
-    {nm:'Legs B',d:6,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]}
-  ]},
-  '6|arnold':{label:'Arnold (Pec+Dos · Ép+Bras · Jambes) ×2',days:[
-    {nm:'Pec + Dos A',d:1,b:[['pecs',2],['dos',2]]},
-    {nm:'Épaules + Bras A',d:2,ss:1,b:[['epaules',2],['biceps',2],['triceps',2]]},
-    {nm:'Jambes A',d:3,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]},
-    {nm:'Pec + Dos B',d:4,b:[['pecs',2],['dos',2]]},
-    {nm:'Épaules + Bras B',d:5,ss:1,b:[['epaules',2],['biceps',2],['triceps',2]]},
-    {nm:'Jambes B',d:6,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]}
-  ]}
-};
-var ORG = { 2:[['fb']], 3:[['ppl']],
-  4:[['hb'],['pbde'],['pede']],
-  5:[['split'],['pplul']],
-  6:[['ppl2'],['arnold']] };
-
-var OBJ=[['hypertrophie','Hypertrophie','Prise de muscle'],['force','Force','Charges lourdes'],['tonification','Tonification','Endurance'],['remise','Remise en forme','Reprise douce']];
-var JOURS=[[2,'2 j'],[3,'3 j'],[4,'4 j'],[5,'5 j'],[6,'6 j']];
-var NIV=[['debutant','Débutant','0-3 ans'],['intermediaire','Interméd.','4-9 ans'],['avance','Avancé','10 ans +']];
-var TEMPS=[[45,'45 min'],[60,'60 min'],[75,'75 min'],[90,'90 min']];
-var CAP={45:5,60:7,75:8,90:10};
+/* ============================ GÉNÉRATEUR : organisation + jours -> séances ============================ */
+var DAYSMAP={2:[1,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5],6:[1,2,3,4,5,6]};
+var JLOGIC={fb:[2,3,4],ul:[2,4,6],ppl:[3,4,5,6],split:[5,6],custom:[2,3,4,5,6]};
+var ORGS=[['fb','Full Body'],['ul','Upper / Lower'],['ppl','PPL'],['split','Split'],['custom','Custom']];
 var JNAMES=['','Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 
-var st={obj:'hypertrophie',jours:4,niv:'intermediaire',temps:60,org:'hb'};
+function genDays(org,jours){
+  var J=DAYSMAP[jours]||DAYSMAP[3], out=[];
+  if(org==='fb'){
+    return J.map(function(dn,k){ return {nm:'Full Body '+['A','B','C','D'][k%4],d:dn,ss:1,off:k,
+      b:[['quad',1],['pecs',1],['dos',1],['epaules',1],['ischios',1],['biceps',1],['triceps',1]]}; });
+  }
+  if(org==='ul'){
+    return J.map(function(dn,k){ var up=k%2===0, tag=(Math.floor(k/2)%2===0)?'A':'B', off=Math.floor(k/2);
+      return up ? {nm:'Haut '+tag,d:dn,ss:1,off:off,b:[['pecs',2],['dos',2],['epaules',1],['biceps',1],['triceps',1]]}
+                : {nm:'Bas '+tag,d:dn,off:off,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1],['abdos',1]]}; });
+  }
+  if(org==='ppl'){
+    var base=[{nm:'Push',b:[['pecs',3],['epaules',2],['triceps',2]]},
+              {nm:'Pull',b:[['dos',3],['epaules',1],['biceps',2]]},
+              {nm:'Legs',b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]}];
+    for(var k=0;k<jours;k++){
+      if(k<3 || jours===6){ var t=base[k%3]; out.push({nm:t.nm+(jours===6?(k<3?' A':' B'):''),d:J[k],off:Math.floor(k/3),b:t.b}); }
+      else if(k===3){ out.push({nm:'Haut (rappel)',d:J[k],ss:1,b:[['pecs',2],['dos',2],['epaules',2],['biceps',1],['triceps',1]]}); }
+      else if(k===4){ out.push({nm:'Bas (rappel)',d:J[k],b:[['quad',2],['ischios',2],['fessiers',1],['mollets',1],['abdos',1]]}); }
+    }
+    return out;
+  }
+  if(org==='split'){
+    var days=[{nm:'Pectoraux',b:[['pecs',4]]},{nm:'Dos',b:[['dos',4]]},
+      {nm:'Jambes',b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]},
+      {nm:'Épaules',b:[['epaules',5]]},{nm:'Bras',b:[['triceps',2],['biceps',3],['abdos',1]]}];
+    out=days.slice(0,Math.min(jours,5)).map(function(t,k){return {nm:t.nm,d:J[k],b:t.b};});
+    if(jours===6) out.push({nm:'Points faibles',d:J[5],ss:1,b:[['epaules',2],['biceps',1],['triceps',1],['mollets',1]]});
+    return out;
+  }
+  if(org==='custom'){
+    return J.map(function(dn,k){ return {nm:'Jour '+(k+1),d:dn,custom:1,b:[['pecs',1],['dos',1],['quad',1]]}; });
+  }
+  return out;
+}
 
-/* ---- compose une séance depuis ses blocs, puis coupe par le temps ---- */
+/* ============================ GALERIE DÉBUTANT ============================ */
+var PRESETS=[
+  {org:'fb',jours:2,nm:'Full Body découverte',badge:'2 j',desc:'Tout le corps à chaque séance. Idéal pour débuter ou reprendre : on apprend les mouvements, 2 fois par semaine suffisent.'},
+  {org:'fb',jours:3,nm:'Full Body',badge:'3 j',desc:'Même logique, une séance de plus pour progresser plus vite. Angles d\'exercices qui tournent d\'une séance à l\'autre.'},
+  {org:'ppl',jours:3,nm:'Push / Pull / Legs',badge:'3 j',desc:'Pousser (pecs/épaules/triceps), tirer (dos/biceps), jambes. Structure claire et complète, 1 séance par fonction.'},
+  {org:'ul',jours:4,nm:'Upper / Lower',badge:'4 j',desc:'Haut puis bas, en alternance. Bon compromis entre volume et récupération quand tu peux venir 4 fois.'},
+  {org:'split',jours:5,nm:'Split — 1 muscle / jour',badge:'5 j',desc:'Un groupe musculaire par séance (pecs, dos, jambes, épaules, bras). Plus de volume ciblé, pour qui vient souvent.'}
+];
+
+/* ============================ ÉTAT & OUTILS ============================ */
+var OBJ=[['hypertrophie','Hypertrophie','Prise de muscle'],['force','Force','Charges lourdes'],['tonification','Tonification','Endurance'],['remise','Remise en forme','Reprise douce']];
+var TEMPS=[[45,'45 min'],[60,'60 min'],[75,'75 min'],[90,'90 min']];
+var CAP={45:5,60:7,75:8,90:10};
+var st={niv:'intermediaire',obj:'hypertrophie',org:'ul',jours:4,temps:60,preset:0};
+
 function buildSession(day,cap){
-  var full=[]; // {bk, si, blockIdx}
-  day.b.forEach(function(pair,bi){ var bk=pair[0], n=Math.min(pair[1], BLOCKS[bk].slots.length);
-    for(var i=0;i<n;i++) full.push({bk:bk,si:i,bi:bi,ord:full.length}); });
+  var full=[];
+  day.b.forEach(function(pair,bi){ var bk=pair[0], L=BLOCKS[bk].slots.length, n=Math.min(pair[1],L), off=day.off||0;
+    for(var i=0;i<n;i++) full.push({bk:bk,si:(i+off)%L,bi:bi,ord:full.length}); });
   if(full.length<=cap) return full;
-  // garder 1 slot / bloc (le 1er), puis compléter par ordre jusqu'au plafond
-  var seenB={}, mand=[], opt=[];
-  full.forEach(function(x){ if(!seenB[x.bk]){ seenB[x.bk]=1; mand.push(x); } else opt.push(x); });
-  var keep=mand.concat(opt.slice(0, Math.max(0,cap-mand.length)));
+  var seenB={},mand=[],opt=[];
+  full.forEach(function(x){ if(!seenB[x.bk]){seenB[x.bk]=1;mand.push(x);} else opt.push(x); });
+  var keep=mand.concat(opt.slice(0,Math.max(0,cap-mand.length)));
   keep.sort(function(a,b){return a.ord-b.ord;});
   return keep;
 }
 function objMod(sl){
-  // ajuste reps selon objectif (hyper = valeurs des blocs)
+  if(st.niv==='debutant') return sl.rmax===0?[0,0]:[Math.max(10,sl.rmin),Math.max(12,sl.rmax)]; // débutant : reps modérées
   if(st.obj==='force') return sl.type==='poly'?[4,6]:[8,12];
   if(st.obj==='tonification') return [15,20];
   if(st.obj==='remise') return [10,12];
   return [sl.rmin,sl.rmax];
 }
+function genRpe(sets){ if(sets<=1) return '7-8'; var a=[]; for(var i=0;i<sets-1;i++)a.push('9'); a.push('7-8'); return a.join('·'); }
 
-function chip(cid,list,cur,set){
+function chip(cid,list,cur,set,disabledFn){
   var el=document.getElementById(cid); el.innerHTML='';
-  list.forEach(function(it){ var k=it[0];
-    var b=document.createElement('div'); b.className='opt'+(cur()===k?' on':'');
+  list.forEach(function(it){ var k=it[0], dis=disabledFn&&disabledFn(k);
+    var b=document.createElement('div'); b.className='opt'+(cur()===k?' on':'')+(dis?' off':'');
     b.innerHTML=it[1]+(it[2]?'<small>'+it[2]+'</small>':'');
-    b.onclick=function(){ set(k); render(); };
+    if(!dis) b.onclick=function(){ set(k); render(); };
     el.appendChild(b);
   });
 }
-function render(){
-  chip('q-obj',OBJ,function(){return st.obj;},function(v){st.obj=v;});
-  chip('q-jours',JOURS,function(){return st.jours;},function(v){st.jours=v; var o=ORG[v]; st.org=o[0][0];});
-  chip('q-niv',NIV,function(){return st.niv;},function(v){st.niv=v;});
-  chip('q-temps',TEMPS,function(){return st.temps;},function(v){st.temps=v;});
-
-  // Question 5 conditionnelle
-  var orgs=ORG[st.jours]||[['hb']];
-  var orgList=orgs.map(function(o){ var key=st.jours+'|'+o[0]; return [o[0],SPLITS[key].label,'']; });
-  if(orgs.indexOf(st.org)===-1 && !SPLITS[st.jours+'|'+st.org]) st.org=orgs[0][0];
-  chip('q-org',orgList,function(){return st.org;},function(v){st.org=v;});
-  document.getElementById('org-cond').textContent = orgs.length>1 ? '('+orgs.length+' choix)' : '(imposé)';
-  document.getElementById('wrap-org').style.opacity = orgs.length>1 ? '1' : '.55';
-
-  var split=SPLITS[st.jours+'|'+st.org]; if(!split){ st.org=orgs[0][0]; split=SPLITS[st.jours+'|'+st.org]; }
-  var cap=CAP[st.temps];
-  var sets=Math.max(2, 3 + (st.niv==='debutant'?-1:0));
-
-  document.getElementById('sumline').innerHTML='<b>'+OBJ.filter(function(o){return o[0]===st.obj;})[0][1]+'</b> · '
-    +st.jours+' jours · '+NIV.filter(function(n){return n[0]===st.niv;})[0][1]+' · '+st.temps+' min → '
-    +'<b>'+split.label+'</b> · plafond '+cap+' exos/séance';
-  document.getElementById('convnote').innerHTML='Conventions : <b>'+sets+' séries</b> · RPE par série <b>S1·S2 = 1 rép en réserve, dernière = 2-3</b> · repos composés <b>2-3 min</b> / isolation <b>1 min 30</b> (rallongeable au ressenti) · jours de repos placés par l\'athlète.';
-
-  var html = split.days.map(function(day){
-    var ex=buildSession(day,cap);
-    var dcol='var(--d'+(day.d>6?6:day.d)+')';
+function renderProgram(days,cap,sets){
+  return days.map(function(day){
+    var ex=buildSession(day,cap), dcol='var(--d'+(day.d>6?6:day.d)+')';
     var rows=ex.map(function(x){
-      var B=BLOCKS[x.bk], sl=B.slots[x.si];
-      var rr=objMod(sl), reps=(sl.rmax===0?'échec':(rr[0]+'-'+rr[1]));
-      var repos = day.ss&&(x.bk==='biceps'||x.bk==='triceps') ? '90 s · superset'
-                : (sl.type==='poly'?'2-3 min':'90 s');
-      var isSS = day.ss&&(x.bk==='biceps'||x.bk==='triceps');
-      var vars = sl.exos.slice(1);
+      var B=BLOCKS[x.bk], sl=B.slots[x.si], rr=objMod(sl), reps=(sl.rmax===0?'échec':(rr[0]+'-'+rr[1]));
+      var isSS=day.ss&&(x.bk==='biceps'||x.bk==='triceps');
+      var repos=isSS?'90 s · superset':(sl.type==='poly'?'2-3 min':'90 s');
+      var vars=sl.exos.slice(1);
       return '<div class="ex"><span class="ex-dot" style="background:'+B.col+'"></span>'
         +'<div class="ex-main"><div class="ex-mus">'+B.mus+(sl.lab?' · '+sl.lab:'')+(isSS?'<span class="ss-tag">superset</span>':'')+'</div>'
         +'<div class="ex-nm">'+sl.exos[0]+'</div>'
-        +(vars.length?'<div class="ex-var"><b>ou&nbsp;:</b> '+vars.join(' · ')+'</div>':'')
-        +'</div>'
-        +'<div class="ex-sets">'+sets+' × '+reps+'<small>RPE 9·9·7-8 · '+repos+'</small></div></div>';
+        +(vars.length?'<div class="ex-var"><b>ou&nbsp;:</b> '+vars.join(' · ')+'</div>':'')+'</div>'
+        +'<div class="ex-sets">'+sets+' × '+reps+'<small>RPE '+genRpe(sets)+' · '+repos+'</small></div>'
+        +(day.custom?'<span class="ex-x">✕</span>':'')+'</div>';
     }).join('');
-    return '<div class="sess" style="border-left-color:'+dcol+'">'
+    return '<div class="sess'+(day.custom?' custom':'')+'" style="border-left-color:'+dcol+'">'
       +'<div class="sess-h"><span class="sess-nm">'+day.nm+'</span><span class="sess-day">'+JNAMES[day.d]+' · '+ex.length+' exos</span></div>'
-      +rows+'</div>';
+      +rows+(day.custom?'<div class="add-row">＋ ajouter un muscle</div>':'')+'</div>';
   }).join('<div class="rest-row"><span></span>repos libre<span></span></div>');
-  document.getElementById('prog').innerHTML=html;
+}
 
-  var n='';
-  if(st.obj==='force'){ n='<b>⚠ Force = programme à part.</b> Ici on garde la même carte de split mais reps/charge changent (poly 4-6, repos plus longs). Les <span class="ok">exos & schémas dédiés Force</span> (séries montantes, %1RM) restent à écrire — étape suivante.'; }
-  else { n='<b class="ok">✔ L\'idée clé</b> : les '+Object.keys(BLOCKS).length+' blocs muscle sont écrits <b>une seule fois</b>. Chaque split ci-dessus (Haut/Bas, PPL, Arnold, Pec+Bras…) n\'est qu\'une <b>carte d\'affectation jour→blocs</b>. Ajouter une variante = 1 ligne. Le <b>temps</b> coupe en gardant d\'abord 1 exo par muscle. Les <b>variantes « ou : »</b> = ce que l\'athlète pourra choisir via « Remplacer » s\'il n\'a pas la machine.'; }
+/* ============================ RENDER ============================ */
+function render(){
+  chip('seg-niv',[['debutant','Débutant'],['intermediaire','Intermédiaire'],['avance','Avancé']],function(){return st.niv;},function(v){st.niv=v;});
+  var isDeb=st.niv==='debutant';
+  document.getElementById('path-deb').style.display=isDeb?'block':'none';
+  document.getElementById('path-cfg').style.display=isDeb?'none':'block';
+  document.getElementById('plannote').style.display='block';
+
+  var days,cap,sets,sum,plan;
+  if(isDeb){
+    // galerie
+    var gal=document.getElementById('gallery'); gal.innerHTML='';
+    PRESETS.forEach(function(p,i){ var c=document.createElement('div'); c.className='card'+(st.preset===i?' on':'');
+      c.innerHTML='<div class="card-h"><span class="card-nm">'+p.nm+'</span><span class="card-badge">'+p.badge+'</span></div><div class="card-desc">'+p.desc+'</div>';
+      c.onclick=function(){ st.preset=i; render(); }; gal.appendChild(c); });
+    var p=PRESETS[st.preset];
+    days=genDays(p.org,p.jours); cap=CAP[75]; sets=3;
+    sum='<b>'+p.nm+'</b> · programme tout fait · '+p.jours+' jours';
+    plan='Programme conseillé pour débuter. Tu peux remplacer un exercice (« ou : ») si une machine manque, et placer tes séances dans la semaine comme tu veux.';
+  } else {
+    // configurateur
+    chip('q-obj',OBJ,function(){return st.obj;},function(v){st.obj=v;});
+    chip('q-org',ORGS,function(){return st.org;},function(v){st.org=v; var jl=JLOGIC[v]; if(jl.indexOf(st.jours)===-1) st.jours=jl[0];});
+    var jl=JLOGIC[st.org];
+    chip('q-jours',[[2,'2 j'],[3,'3 j'],[4,'4 j'],[5,'5 j'],[6,'6 j']],function(){return st.jours;},function(v){st.jours=v;},function(k){return jl.indexOf(k)===-1;});
+    chip('q-temps',TEMPS,function(){return st.temps;},function(v){st.temps=v;});
+    document.getElementById('j-cond').textContent='('+jl.join('·')+' pour cette organisation)';
+    days=genDays(st.org,st.jours); cap=CAP[st.temps]; sets=st.niv==='avance'?4:3;
+    sum='<b>'+OBJ.filter(function(o){return o[0]===st.obj;})[0][1]+'</b> · '+ORGS.filter(function(o){return o[0]===st.org;})[0][1]+' · '+st.jours+' j · '+st.temps+' min → plafond '+cap+' exos/séance';
+    plan = st.org==='custom'
+      ? '🧩 <b>Custom = squelette modifiable</b> : on te propose une base équilibrée, tu ajoutes/retires les muscles de chaque jour (✕ et ＋), puis tu planifies la semaine.'
+      : '🗓️ Tu <b>planifies toi-même</b> : le générateur propose les séances, à toi de choisir quels jours tu t\'entraînes et où placer tes repos.';
+  }
+
+  document.getElementById('sumline').innerHTML=sum;
+  document.getElementById('convnote').innerHTML='Conventions : <b>'+sets+' séries</b> · RPE par série <b>'+genRpe(sets)+'</b> (dernière = 2-3 réps en réserve) · repos composés <b>2-3 min</b> / isolation <b>1 min 30</b> (rallongeable au ressenti).';
+  document.getElementById('plannote').innerHTML=plan;
+  document.getElementById('prog').innerHTML=renderProgram(days,cap,sets);
+
+  var n;
+  if(!isDeb && st.obj==='force'){ n='<b>⚠ Force = programme à part.</b> Même carte d\'organisation, mais reps/charge changent (poly 4-6). Les <span class="ok">exos & schémas dédiés Force</span> (séries montantes, %1RM) restent à écrire.'; }
+  else { n='<b class="ok">✔ Architecture</b> : les '+Object.keys(BLOCKS).length+' <b>blocs muscle</b> sont écrits une fois. Une <b>organisation</b> (Full Body, UL, PPL, Split, Custom) = une règle qui répartit les blocs sur N jours. Le <b>temps</b> coupe en gardant 1 exo/muscle d\'abord. Les <b>« ou : »</b> = variantes choisies via « Remplacer ».'; }
   document.getElementById('auditnote').innerHTML=n;
 }
 render();
