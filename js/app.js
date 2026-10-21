@@ -15694,6 +15694,161 @@ function _genProgramme(objectif, jours, niveau, cat) {
   return lignes;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GÉNÉRATEUR v2 — blocs muscle + organisations (MOTEUR, fonctions pures)
+ * Spec : docs/generateur-v2.md · maquette : mockups/novalyz-generateur-v2.html
+ * Produit des `lignes` au MÊME format que _genProgramme (colonnes genererProgramme).
+ * Testé en node (tests/generateur-v2.test.js). PAS encore branché à l'UI (étape 2/3).
+ * ═══════════════════════════════════════════════════════════════════════════ */
+var _G2_BLOCKS = {
+  pecs:    { mus: 'Pectoraux', slots: [
+    { lab: 'Écarté', type: 'iso', rmin: 12, rmax: 15, exos: ['Ecarté poulie haute', 'Ecarté machine', 'Ecarté poulie basse'] },
+    { lab: 'Incliné', type: 'poly', rmin: 8, rmax: 12, exos: ['Développé incliné Hammer', 'Développé incliné à la Smith', 'Développé couché incliné haltère'] },
+    { lab: 'Horizontal', type: 'poly', rmin: 8, rmax: 10, exos: ['Développé couché haltère', 'Développé machine Hammer', 'Développé machine', 'Développé couché barre'] },
+    { lab: 'Décliné', type: 'poly', rmin: 10, rmax: 12, exos: ['Développé décliné machine', 'Développé décliné à la Smith'] } ] },
+  dos:     { mus: 'Dos', slots: [
+    { lab: 'Vertical', type: 'poly', rmin: 8, rmax: 12, exos: ['Traction', 'Tirage vertical prise large', 'Tirage vertical prise serrée'] },
+    { lab: 'Horizontal', type: 'poly', rmin: 8, rmax: 12, exos: ['T-bar row prise basse', 'Rowing machine', 'Rowing bucheron', 'Rowing barre'] },
+    { lab: 'Vertical serré', type: 'poly', rmin: 8, rmax: 12, exos: ['Tirage vertical prise serrée', 'Tirage vertical uni à la poulie'] },
+    { lab: 'Épaisseur', type: 'poly', rmin: 10, rmax: 15, exos: ['Tirage trapèze machine', 'T-bar row prise haute', 'shrugs aux haltéres', 'shrugs barre'] } ] },
+  epaules: { mus: 'Épaules', slots: [
+    { lab: 'Latéral', type: 'iso', rmin: 12, rmax: 15, exos: ['Élévation latérale haltère', 'Elévation latérale uni à la poulie'] },
+    { lab: 'Développé', type: 'poly', rmin: 8, rmax: 12, exos: ['Développé militaire aux haltères', 'Développé militaire à la Smith'] },
+    { lab: 'Frontal', type: 'iso', rmin: 10, rmax: 15, exos: ['Élévation frontale haltères', 'Élévation frontale poulie', 'Elevation frontale barre'] },
+    { lab: 'Arrière', type: 'iso', rmin: 12, rmax: 15, exos: ['Arrière épaule à la poulie', 'Arrière épaule haltère'] },
+    { lab: 'Trapèzes', type: 'iso', rmin: 10, rmax: 15, exos: ['shrugs aux haltéres', 'shrugs barre', 'Tirage trapèze machine'] } ] },
+  biceps:  { mus: 'Biceps', slots: [
+    { lab: 'Incliné', type: 'iso', rmin: 8, rmax: 12, exos: ['Curl incliné au banc', 'Curl incliné uni poignée à la poulie'] },
+    { lab: 'Marteau', type: 'iso', rmin: 10, rmax: 15, exos: ['Curl marteau aux haltéres', 'Curl marteau à la poulie'] },
+    { lab: 'Curl', type: 'iso', rmin: 8, rmax: 12, exos: ['Curl barre poulie', 'Curl barre'] } ] },
+  triceps: { mus: 'Triceps', slots: [
+    { lab: 'Extension', type: 'iso', rmin: 8, rmax: 12, exos: ['Extension poulie barre', 'Dips triceps', 'Extension poulie corde'] },
+    { lab: 'Extension', type: 'iso', rmin: 10, rmax: 15, exos: ['Extension triceps banc', 'Extension poulie corde', 'Extension dos à la poulie corde'] } ] },
+  quad:    { mus: 'Quadriceps', slots: [
+    { lab: 'Squat', type: 'poly', rmin: 6, rmax: 8, exos: ['Squat', 'Hack squat', 'Belt squat'] },
+    { lab: 'Presse', type: 'poly', rmin: 8, rmax: 12, exos: ['Presse inclinée', 'Presse horizontale', 'Presse circulaire'] },
+    { lab: 'Extension', type: 'iso', rmin: 12, rmax: 15, exos: ['Leg extension'] } ] },
+  ischios: { mus: 'Ischios', slots: [
+    { lab: 'Hip hinge', type: 'poly', rmin: 8, rmax: 12, exos: ['RDL barre', 'RDL haltère'] },
+    { lab: 'Leg curl', type: 'iso', rmin: 10, rmax: 15, exos: ['Leg curl assis', 'Leg curl allongé', 'Leg curl debout'] } ] },
+  fessiers: { mus: 'Fessiers', slots: [
+    { lab: 'Poussée', type: 'poly', rmin: 8, rmax: 12, exos: ['Hip thrust', 'Hip thrust machine', 'Abduction machine', 'Fente bulgare', 'Fente longue'] } ] },
+  mollets: { mus: 'Mollets', slots: [
+    { lab: 'Extensions', type: 'iso', rmin: 12, rmax: 20, exos: ['Les extensions mollets debout', 'Les extensions mollets assis', 'Les extensions mollets à la presse'] } ] },
+  abdos:   { mus: 'Abdos', slots: [
+    { lab: 'Gainage', type: 'iso', rmin: 0, rmax: 0, exos: ['Crunch à la poulie', 'Relevé de jambe', 'Roulette'] } ] }
+};
+var _G2_DAYSMAP = { 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6] };
+var _G2_JLOGIC = { fb: [2, 3, 4], ul: [2, 4, 6], ppl: [3, 4, 5, 6], split: [5, 6], custom: [2, 3, 4, 5, 6] };
+var _G2_CAP = { 45: 5, 60: 6, 75: 8, 90: 9 };
+
+// organisation + jours → séances [{nm, d, ss?, off?, custom?, b:[[bloc, nbSlots]]}]
+function _g2GenDays(org, jours) {
+  var J = _G2_DAYSMAP[jours] || _G2_DAYSMAP[3], out = [];
+  if (org === 'fb') {
+    return J.map(function (dn, k) { return { nm: 'Full Body ' + ['A', 'B', 'C', 'D'][k % 4], d: dn, ss: 1, off: k,
+      b: [['quad', 1], ['pecs', 1], ['dos', 1], ['epaules', 1], ['biceps', 1], ['triceps', 1], ['ischios', 1], ['mollets', 1], ['abdos', 1]] }; });
+  }
+  if (org === 'ul') {
+    return J.map(function (dn, k) { var up = k % 2 === 0, tag = (Math.floor(k / 2) % 2 === 0) ? 'A' : 'B', off = Math.floor(k / 2);
+      return up ? { nm: 'Haut ' + tag, d: dn, ss: 1, off: off, b: [['pecs', 2], ['dos', 2], ['epaules', 2], ['biceps', 2], ['triceps', 1]] }
+                : { nm: 'Bas ' + tag, d: dn, off: off, b: [['quad', 3], ['ischios', 2], ['fessiers', 1], ['mollets', 1], ['abdos', 1]] }; });
+  }
+  if (org === 'ppl') {
+    var base = [{ nm: 'Push', b: [['pecs', 3], ['epaules', 2], ['triceps', 2]] },
+                { nm: 'Pull', b: [['dos', 3], ['epaules', 1], ['biceps', 2]] },
+                { nm: 'Legs', b: [['quad', 3], ['ischios', 2], ['fessiers', 1], ['mollets', 1]] }];
+    for (var k = 0; k < jours; k++) {
+      if (k < 3 || jours === 6) { var t = base[k % 3]; out.push({ nm: t.nm + (jours === 6 ? (k < 3 ? ' A' : ' B') : ''), d: J[k], off: Math.floor(k / 3), b: t.b }); }
+      else if (k === 3) { out.push({ nm: 'Haut (rappel)', d: J[k], ss: 1, b: [['pecs', 2], ['dos', 2], ['epaules', 2], ['biceps', 1], ['triceps', 1]] }); }
+      else if (k === 4) { out.push({ nm: 'Bas (rappel)', d: J[k], b: [['quad', 2], ['ischios', 2], ['fessiers', 1], ['mollets', 1], ['abdos', 1]] }); }
+    }
+    return out;
+  }
+  if (org === 'split') {
+    var days = [{ nm: 'Pectoraux', b: [['pecs', 4]] }, { nm: 'Dos', b: [['dos', 4]] },
+      { nm: 'Jambes', b: [['quad', 3], ['ischios', 2], ['fessiers', 1], ['mollets', 1]] },
+      { nm: 'Épaules', b: [['epaules', 5]] }, { nm: 'Bras', b: [['triceps', 2], ['biceps', 3], ['abdos', 1]] }];
+    out = days.slice(0, Math.min(jours, 5)).map(function (t, k) { return { nm: t.nm, d: J[k], b: t.b }; });
+    if (jours === 6) out.push({ nm: 'Points faibles', d: J[5], ss: 1, b: [['epaules', 2], ['biceps', 1], ['triceps', 1], ['mollets', 1]] });
+    return out;
+  }
+  if (org === 'custom') {
+    var baseMap = { 2: 'fb', 3: 'ppl', 4: 'ul', 5: 'split', 6: 'ppl' };
+    var b2 = _g2GenDays(baseMap[jours] || 'fb', jours); b2.forEach(function (d) { d.custom = 1; }); return b2;
+  }
+  return out;
+}
+// coupe round-robin par priorité : 1 exo/muscle d'abord, puis 2e angle ; le TEMPS fixe le nb gardé
+function _g2Build(day, cap) {
+  var byBlock = [];
+  day.b.forEach(function (pair, bi) { var bk = pair[0], L = _G2_BLOCKS[bk].slots.length, n = Math.min(pair[1], L), off = day.off || 0;
+    var arr = []; for (var i = 0; i < n; i++) arr.push({ bk: bk, si: (i + off) % L, bi: bi, pk: i }); byBlock.push(arr); });
+  var maxN = 0; byBlock.forEach(function (a) { if (a.length > maxN) maxN = a.length; });
+  var ordered = [];
+  for (var p = 0; p < maxN; p++) { byBlock.forEach(function (a) { if (a[p]) ordered.push(a[p]); }); }
+  var keep = ordered.slice(0, cap);
+  keep.sort(function (a, b) { return a.bi - b.bi || a.pk - b.pk; });
+  return keep;
+}
+function _g2Reps(objectif, niveau, sl) {
+  if (niveau === 'debutant') return sl.rmax === 0 ? [0, 0] : [Math.max(10, sl.rmin), Math.max(12, sl.rmax)];
+  if (objectif === 'force') return sl.type === 'poly' ? [4, 6] : [8, 12];
+  return [sl.rmin, sl.rmax]; // hypertrophie
+}
+function _g2Sets(niveau) { return niveau === 'avance' ? 4 : 3; }
+
+// Hypertrophie / organisation → lignes genererProgramme
+function _genProgramme2(objectif, organisation, jours, temps, niveau) {
+  var days = _g2GenDays(organisation, jours), cap = _G2_CAP[temps] || 7, sets = _g2Sets(niveau), lignes = [];
+  days.forEach(function (day) {
+    var ex = _g2Build(day, cap);
+    var hasBi = ex.some(function (x) { return x.bk === 'biceps'; }), hasTri = ex.some(function (x) { return x.bk === 'triceps'; });
+    var pairSS = day.ss && hasBi && hasTri;
+    ex.forEach(function (x) {
+      var B = _G2_BLOCKS[x.bk], sl = B.slots[x.si], rr = _g2Reps(objectif, niveau, sl);
+      var isSS = pairSS && (x.bk === 'biceps' || x.bk === 'triceps');
+      lignes.push({ seance_id: day.nm, jour: day.d, exercice: sl.exos[0],
+        series_prevues: sets, reps_mini: rr[0], reps_max: rr[1],
+        repos_sec: isSS ? 90 : (sl.type === 'poly' ? 180 : 90),
+        groupe_id: isSS ? ('ss' + day.d) : '',
+        charge_pct_1rm: (objectif === 'force' ? 80 : null), rpe_cible: 9,
+        variantes: sl.exos.slice(1) });
+    });
+  });
+  return lignes;
+}
+
+// Force / Powerlifting → lignes (lifts en montantes + %1RM, accessoires 8-12). Squelette éditable côté UI (étape 3).
+function _g2ForceSkel(jours) {
+  var J = _G2_DAYSMAP[jours] || _G2_DAYSMAP[4];
+  var SQ = { t: 'lift', e: 'Squat', se: 5, r: 3, pct: 85 }, BP = { t: 'lift', e: 'Développé couché barre', se: 5, r: 3, pct: 85 }, DL = { t: 'lift', e: 'Soulevé de terre', se: 4, r: 3, pct: 85 };
+  var acc = function (e) { return { t: 'acc', e: e, se: 3, rmin: 8, rmax: 12 }; };
+  var renfo = function (dn) { return { nm: 'Renfo', d: dn, renfo: 1, rows: [acc('Développé couché incliné haltère'), acc('Extension poulie barre'), acc('Leg curl assis'), acc('Curl barre'), acc('Élévation latérale haltère')] }; };
+  if (jours === 2) return [{ nm: 'Les 3 lifts', d: J[0], rows: [SQ, BP, DL] }, renfo(J[1])];
+  if (jours === 3) return [{ nm: 'Squat + Développé couché', d: J[0], rows: [SQ, BP] }, { nm: 'Soulevé de terre', d: J[1], rows: [DL] }, renfo(J[2])];
+  if (jours === 4) return [{ nm: 'Squat', d: J[0], rows: [SQ] }, { nm: 'Soulevé de terre', d: J[1], rows: [DL] }, { nm: 'Développé couché', d: J[2], rows: [BP] }, renfo(J[3])];
+  if (jours === 5) return [{ nm: 'Squat', d: J[0], rows: [SQ] }, { nm: 'Soulevé de terre', d: J[1], rows: [DL] }, { nm: 'Développé couché', d: J[2], rows: [BP] },
+    { nm: 'Rappel (Développé couché)', d: J[3], rappel: 1, rows: [{ t: 'lift', e: 'Développé couché barre', se: 4, r: 5, pct: 75 }] }, renfo(J[4])];
+  return [{ nm: 'Squat', d: J[0], rows: [SQ] }, { nm: 'Soulevé de terre', d: J[1], rows: [DL] }, { nm: 'Développé couché', d: J[2], rows: [BP] },
+    { nm: 'Rappel (Squat)', d: J[3], rappel: 1, rows: [{ t: 'lift', e: 'Squat', se: 4, r: 5, pct: 70 }] },
+    { nm: 'Rappel (Développé couché)', d: J[4], rappel: 1, rows: [{ t: 'lift', e: 'Développé couché barre', se: 4, r: 5, pct: 75 }] }, renfo(J[5])];
+}
+function _genProgrammeForce(jours) {
+  var days = _g2ForceSkel(jours), lignes = [];
+  days.forEach(function (day) {
+    day.rows.forEach(function (r) {
+      if (r.t === 'lift') lignes.push({ seance_id: day.nm, jour: day.d, exercice: r.e,
+        series_prevues: r.se, reps_mini: r.r, reps_max: r.r, repos_sec: 240,
+        groupe_id: '', charge_pct_1rm: r.pct, rpe_cible: 8, schema: 'montantes', variantes: [] });
+      else lignes.push({ seance_id: day.nm, jour: day.d, exercice: r.e,
+        series_prevues: r.se, reps_mini: r.rmin, reps_max: r.rmax, repos_sec: 90,
+        groupe_id: '', charge_pct_1rm: null, rpe_cible: 8, schema: 'fixe', variantes: [] });
+    });
+  });
+  return lignes;
+}
+
 // ── Modal onboarding (3 étapes) ──
 var _genState = { step: 1, objectif: null, jours: null, niveau: null };
 var _GEN_NIV = [['debutant', 'Débutant', '0-3 ans de pratique'], ['intermediaire', 'Intermédiaire', '4-9 ans'], ['avance', 'Avancé', '10 ans et +']];
