@@ -18,7 +18,7 @@ Chaque carte a une **explication** (pour qui / combien de fois / pourquoi). Cata
 Reps modérées (10-12 / 12-15), 3 séries.
 
 ### 🔵 Intermédiaire / Avancé → configurateur
-Questions : **Objectif** · **Organisation** · **Jours** · **Temps/séance**. Puis **l'athlète planifie lui-même** (quels jours, où placer les repos).
+Questions : **Objectif** (`Hypertrophie` · `Force` — *Tonification/Remise en forme retirés*) · **Organisation** · **Jours** · **Temps/séance**. Puis **l'athlète planifie lui-même** (quels jours, où placer les repos).
 - **Organisation** = `Full Body` · `Upper/Lower` · `PPL` · `Split` · `Custom`. Une organisation = **une règle** qui répartit les blocs muscle sur N jours (plus de splits hard-codés par nombre de jours).
   - Jours logiques : fb `2·3·4` · ul `2·4·6` · ppl `3·4·5·6` (4-5 j = PPL + rappel Haut/Bas) · split `5·6` · custom `2→6`.
   - **Custom** = **squelette modifiable** : base équilibrée proposée, l'athlète ajoute/retire les muscles de chaque jour.

@@ -222,7 +222,7 @@ var PRESETS=[
 ];
 
 /* ============================ ÉTAT & OUTILS ============================ */
-var OBJ=[['hypertrophie','Hypertrophie','Prise de muscle'],['force','Force','Charges lourdes'],['tonification','Tonification','Endurance'],['remise','Remise en forme','Reprise douce']];
+var OBJ=[['hypertrophie','Hypertrophie','Prise de muscle'],['force','Force','Powerlifting']];
 var TEMPS=[[45,'45 min'],[60,'60 min'],[75,'75 min'],[90,'90 min']];
 var CAP={45:5,60:6,75:8,90:9};
 var st={niv:'intermediaire',obj:'hypertrophie',org:'ul',jours:4,temps:60,preset:0};
@@ -244,9 +244,7 @@ function buildSession(day,cap){
 function objMod(sl){
   if(st.niv==='debutant') return sl.rmax===0?[0,0]:[Math.max(10,sl.rmin),Math.max(12,sl.rmax)]; // débutant : reps modérées
   if(st.obj==='force') return sl.type==='poly'?[4,6]:[8,12];
-  if(st.obj==='tonification') return [15,20];
-  if(st.obj==='remise') return [10,12];
-  return [sl.rmin,sl.rmax];
+  return [sl.rmin,sl.rmax]; // hypertrophie
 }
 function genRpe(sets){ if(sets<=1) return '7-8'; var a=[]; for(var i=0;i<sets-1;i++)a.push('9'); a.push('7-8'); return a.join('·'); }
 
