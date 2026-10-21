@@ -238,16 +238,20 @@ Les 3 lifts existent au catalogue (`Squat`, `Développé couché barre`, `Soulev
 
 **Schéma** : lifts = **séries montantes → séries de travail** au **% du 1RM** (estimé par l'app via `tests`/`_est1RM`) · 3-5 reps · **RPE 7-8 (pas d'échec)** · repos **3-5 min**. Accessoires (renfo) = hypertrophie 8-12 reps.
 
+**Règles porteur** : **pas de notion de débutant** en Force (uniquement dans le configurateur). **À partir de 3 jours, les gros lifts sont SEULS** (pas de compléments collés) — juste un « ＋ ajouter un exercice » si l'athlète veut. **Les jours sont libres** (placement au choix, libellés indicatifs).
+
 **Squelettes pré-remplis** (modifiables) :
 | Jours | Squelette |
 |---|---|
 | 2 j | J1 les 3 lifts à la suite · J2 Renfo |
-| 3 j | J1 Dév. couché + Soulevé · J2 Squat · J3 Renfo |
-| 4 j | J1 Squat · J2 Dév. couché · J3 Soulevé · J4 Renfo |
-| 5 j | + J4 2ᵉ Dév. couché · J5 Renfo |
-| 6 j | + J4 2ᵉ Squat léger · J5 2ᵉ Dév. couché · J6 Renfo |
+| 3 j | J1 **Squat + Dév. couché** · J2 **Soulevé** · J3 Renfo |
+| 4 j | J1 Squat · J2 Soulevé · J3 Dév. couché · J4 Renfo |
+| 5 j | J1 Squat · J2 Soulevé · J3 Dév. couché · J4 Renfo · J5 Renfo |
+| 6 j | J1 Squat · J2 Soulevé · J3 Dév. couché · J4-J5-J6 Renfo |
 
-**Pools des listes déroulantes** (indicatifs, à affiner) : `lift` (3 lifts + variations lourdes) · `comp` (gros mouvements complémentaires) · `acc` (isolation/accessoires). Le **jour Renfo est optionnel** (bouton « retirer ce jour »).
+> Motif : **3 lifts seuls** (groupés si 2-3 j), puis **les jours en plus = Renfo** (optionnels). « Ainsi de suite ».
+
+**Pools des listes déroulantes** (indicatifs, à affiner) : `lift` (3 lifts + variations lourdes) · `comp` (gros mouvements complémentaires, pour le « ＋ ajouter » des jours lift) · `acc` (isolation/accessoires, jour Renfo). Le **jour Renfo est optionnel** (bouton « retirer ce jour »).
 
 ---
 

@@ -291,33 +291,29 @@ var POOL={
 function forceSkel(jours){
   var J=DAYSMAP[jours]||DAYSMAP[4];
   var SQ={t:'lift',e:'Squat',s:'montantes → 5×3',s2:'@ 82-87%'}, BP={t:'lift',e:'Développé couché barre',s:'montantes → 5×3',s2:'@ 82-87%'}, DL={t:'lift',e:'Soulevé de terre',s:'montantes → 4×3',s2:'@ 82-87%'};
-  var comp=function(e){return {t:'comp',e:e,s:'3 × 6-8',s2:''};};
   var acc=function(e){return {t:'acc',e:e,s:'3 × 8-12',s2:''};};
   var renfo=function(dn){return {nm:'Renfo',d:dn,renfo:1,rows:[acc('Développé couché incliné haltère'),acc('Extension poulie barre'),acc('Leg curl assis'),acc('Curl barre'),acc('Élévation latérale haltère')]};};
-  var bp2={t:'lift',e:'Développé couché barre',s:'4 × 5',s2:'@ ~75%'}, sq2={t:'lift',e:'Squat',s:'4 × 5',s2:'@ ~70%'};
+  // à partir de 3 jours : gros lifts SEULS (+ "ajouter un exercice" si l'athlète veut)
   if(jours===2) return [{nm:'Les 3 lifts',d:J[0],rows:[SQ,BP,DL]}, renfo(J[1])];
   if(jours===3) return [
-    {nm:'Développé + Soulevé',d:J[0],rows:[BP,DL,comp('Rowing barre')]},
-    {nm:'Squat',d:J[1],rows:[SQ,comp('Presse inclinée'),comp('RDL barre')]},
+    {nm:'Squat + Développé couché',d:J[0],rows:[SQ,BP]},
+    {nm:'Soulevé de terre',d:J[1],rows:[DL]},
     renfo(J[2])];
   if(jours===4) return [
-    {nm:'Squat',d:J[0],rows:[SQ,comp('Presse inclinée'),comp('RDL barre')]},
-    {nm:'Développé couché',d:J[1],rows:[BP,comp('Développé militaire aux haltères'),comp('Rowing barre')]},
-    {nm:'Soulevé de terre',d:J[2],rows:[DL,comp('Rowing bucheron'),comp('Traction')]},
+    {nm:'Squat',d:J[0],rows:[SQ]},
+    {nm:'Soulevé de terre',d:J[1],rows:[DL]},
+    {nm:'Développé couché',d:J[2],rows:[BP]},
     renfo(J[3])];
   if(jours===5) return [
-    {nm:'Squat',d:J[0],rows:[SQ,comp('Presse inclinée'),comp('RDL barre')]},
-    {nm:'Développé couché',d:J[1],rows:[BP,comp('Développé militaire aux haltères'),comp('Rowing barre')]},
-    {nm:'Soulevé de terre',d:J[2],rows:[DL,comp('Rowing bucheron'),comp('Traction')]},
-    {nm:'2ᵉ Développé couché',d:J[3],rows:[bp2,comp('Développé couché incliné haltère')]},
-    renfo(J[4])];
-  return [
-    {nm:'Squat',d:J[0],rows:[SQ,comp('Presse inclinée'),comp('RDL barre')]},
-    {nm:'Développé couché',d:J[1],rows:[BP,comp('Développé militaire aux haltères'),comp('Rowing barre')]},
-    {nm:'Soulevé de terre',d:J[2],rows:[DL,comp('Rowing bucheron'),comp('Traction')]},
-    {nm:'2ᵉ Squat (léger)',d:J[3],rows:[sq2,comp('Fente bulgare')]},
-    {nm:'2ᵉ Développé couché',d:J[4],rows:[bp2,comp('Développé couché incliné haltère')]},
-    renfo(J[5])];
+    {nm:'Squat',d:J[0],rows:[SQ]},
+    {nm:'Soulevé de terre',d:J[1],rows:[DL]},
+    {nm:'Développé couché',d:J[2],rows:[BP]},
+    renfo(J[3]), renfo(J[4])];
+  return [ // 6 jours : les 3 lifts seuls + jours en plus = Renfo (ainsi de suite)
+    {nm:'Squat',d:J[0],rows:[SQ]},
+    {nm:'Soulevé de terre',d:J[1],rows:[DL]},
+    {nm:'Développé couché',d:J[2],rows:[BP]},
+    renfo(J[3]), renfo(J[4]), renfo(J[5])];
 }
 function ddHtml(type,sel){
   return '<select class="dd'+(type==='lift'?' lift':'')+'">'+POOL[type].map(function(e){
@@ -383,7 +379,7 @@ function render(){
       sum='<b>Force / Powerlifting</b> · '+st.jours+' jours · squelette modifiable';
       document.getElementById('sumline').innerHTML=sum;
       document.getElementById('convnote').innerHTML='Lifts : <b>séries montantes → séries de travail</b> au % du 1RM (estimé par l\'app) · RPE 7-8 (pas d\'échec) · repos <b>3-5 min</b>. Accessoires : 8-12 reps.';
-      document.getElementById('plannote').innerHTML='🧩 <b>Tout est au choix</b> : chaque ligne est une <b>liste déroulante</b> (change l\'exo), ＋ ajoute, ✕ retire. Le <b>jour Renfo</b> est proposé mais supprimable. Rien n\'est imposé.';
+      document.getElementById('plannote').innerHTML='🧩 <b>Tout est au choix</b> : chaque ligne est une <b>liste déroulante</b> (change l\'exo), ＋ ajoute, ✕ retire. À partir de 3 jours les <b>gros lifts sont seuls</b>. Le <b>Renfo</b> est supprimable. Les jours affichés sont <b>indicatifs</b> — tu places tes séances où tu veux.';
       document.getElementById('prog').innerHTML=renderForce(st.jours);
       wireForce();
       document.getElementById('auditnote').innerHTML='<b class="ok">✔ Force = 100% custom</b> : on pré-remplit le squelette (les 3 lifts Squat · Dév. couché · Soulevé + un Renfo optionnel) selon le nombre de jours, puis l\'athlète décide tout via les menus. Les charges se calent sur le 1RM (tests de l\'app).';
