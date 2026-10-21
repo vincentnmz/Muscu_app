@@ -66,6 +66,23 @@
   .add-row{display:flex;align-items:center;gap:7px;padding:9px 0 2px;border-top:1px dashed var(--border);color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer}
   .rest-row{display:flex;align-items:center;gap:8px;margin:4px 2px 13px;font-size:11px;color:var(--subtle)}
   .rest-row span{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--border) 0 6px,transparent 6px 11px)}
+  /* Force : lignes à listes déroulantes */
+  .frow{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--border)}
+  .frow:first-of-type{border-top:none}
+  .frow-dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .dd{flex:1;min-width:0;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:8px 9px;font-size:13px;font-weight:700;font-family:inherit;appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="7" viewBox="0 0 10 7"><path d="M1 1l4 4 4-4" stroke="%238b96b0" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>');background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;cursor:pointer}
+  .dd.lift{border-color:#3a4f8a;color:#aec0ff;font-weight:800}
+  .fsch{font-size:11px;font-weight:800;color:var(--accent2);white-space:nowrap;text-align:right;min-width:92px}
+  .fsch small{display:block;font-size:9px;color:var(--muted);font-weight:700}
+  .frow-x{color:var(--subtle);font-size:15px;font-weight:700;padding:2px 3px;cursor:pointer;flex:none}
+  .frow-x:hover{color:var(--warn)}
+  .fadd{display:inline-flex;align-items:center;gap:6px;margin-top:9px;color:var(--accent2);font-size:12px;font-weight:800;cursor:pointer;background:none;border:none;padding:4px 2px}
+  .sess.renfo{border-left-style:dashed;opacity:.96}
+  .sess-rm{font-size:10.5px;font-weight:800;color:var(--subtle);cursor:pointer;border:1px solid var(--border);border-radius:7px;padding:2px 7px}
+  .sess-rm:hover{color:var(--warn);border-color:var(--warn)}
+  .ftag{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:5px;padding:1px 6px;margin-left:7px;vertical-align:middle}
+  .ftag.lift{background:#1a2d5c;color:#aec0ff}
+  .ftag.opt{background:var(--surface2);color:var(--subtle);border:1px solid var(--border)}
   .note{font-size:11.5px;color:var(--muted);margin:16px 2px 0;line-height:1.55;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
   .note b{color:var(--warn)}
   .note .ok{color:var(--good)}
@@ -87,9 +104,9 @@
   <!-- Parcours inter/avancé -->
   <div id="path-cfg" style="display:none">
     <div class="q"><div class="q-l">Objectif</div><div class="opts" id="q-obj"></div></div>
-    <div class="q"><div class="q-l">Organisation</div><div class="opts" id="q-org"></div></div>
+    <div class="q" id="wrap-orgq"><div class="q-l">Organisation</div><div class="opts" id="q-org"></div></div>
     <div class="q"><div class="q-l">Jours / semaine <em id="j-cond"></em></div><div class="opts" id="q-jours"></div></div>
-    <div class="q"><div class="q-l">Temps par séance</div><div class="opts" id="q-temps"></div></div>
+    <div class="q" id="wrap-tempsq"><div class="q-l">Temps par séance</div><div class="opts" id="q-temps"></div></div>
   </div>
 
   <div class="sumline" id="sumline"></div>
@@ -265,6 +282,76 @@ function renderProgram(days,cap,sets){
   }).join('<div class="rest-row"><span></span>repos libre<span></span></div>');
 }
 
+/* ============================ FORCE / POWERLIFTING (tout custom, listes déroulantes) ============================ */
+var POOL={
+  lift:['Squat','Hack squat','Belt squat','Squat gobelet','Développé couché barre','Développé couché haltère','Développé militaire à la Smith','Développé militaire aux haltères','Soulevé de terre','RDL barre','RDL haltère'],
+  comp:['Presse inclinée','Presse horizontale','Belt squat','Fente bulgare','Fente longue','RDL barre','RDL haltère','Rowing barre','Rowing bucheron','Rowing banc','Rowing machine','Traction','shrugs barre','Développé couché incliné haltère','Développé militaire aux haltères'],
+  acc:['Développé couché incliné haltère','Ecarté poulie haute','Extension poulie barre','Curl barre','Curl barre poulie','Élévation latérale haltère','Arrière épaule à la poulie','Leg curl assis','RDL haltère','Les extensions mollets à la presse','Fente bulgare']
+};
+function forceSkel(jours){
+  var J=DAYSMAP[jours]||DAYSMAP[4];
+  var SQ={t:'lift',e:'Squat',s:'montantes → 5×3',s2:'@ 82-87%'}, BP={t:'lift',e:'Développé couché barre',s:'montantes → 5×3',s2:'@ 82-87%'}, DL={t:'lift',e:'Soulevé de terre',s:'montantes → 4×3',s2:'@ 82-87%'};
+  var comp=function(e){return {t:'comp',e:e,s:'3 × 6-8',s2:''};};
+  var acc=function(e){return {t:'acc',e:e,s:'3 × 8-12',s2:''};};
+  var renfo=function(dn){return {nm:'Renfo',d:dn,renfo:1,rows:[acc('Développé couché incliné haltère'),acc('Extension poulie barre'),acc('Leg curl assis'),acc('Curl barre'),acc('Élévation latérale haltère')]};};
+  var bp2={t:'lift',e:'Développé couché barre',s:'4 × 5',s2:'@ ~75%'}, sq2={t:'lift',e:'Squat',s:'4 × 5',s2:'@ ~70%'};
+  if(jours===2) return [{nm:'Les 3 lifts',d:J[0],rows:[SQ,BP,DL]}, renfo(J[1])];
+  if(jours===3) return [
+    {nm:'Développé + Soulevé',d:J[0],rows:[BP,DL,comp('Rowing barre')]},
+    {nm:'Squat',d:J[1],rows:[SQ,comp('Presse inclinée'),comp('RDL barre')]},
+    renfo(J[2])];
+  if(jours===4) return [
+    {nm:'Squat',d:J[0],rows:[SQ,comp('Presse inclinée'),comp('RDL barre')]},
+    {nm:'Développé couché',d:J[1],rows:[BP,comp('Développé militaire aux haltères'),comp('Rowing barre')]},
+    {nm:'Soulevé de terre',d:J[2],rows:[DL,comp('Rowing bucheron'),comp('Traction')]},
+    renfo(J[3])];
+  if(jours===5) return [
+    {nm:'Squat',d:J[0],rows:[SQ,comp('Presse inclinée'),comp('RDL barre')]},
+    {nm:'Développé couché',d:J[1],rows:[BP,comp('Développé militaire aux haltères'),comp('Rowing barre')]},
+    {nm:'Soulevé de terre',d:J[2],rows:[DL,comp('Rowing bucheron'),comp('Traction')]},
+    {nm:'2ᵉ Développé couché',d:J[3],rows:[bp2,comp('Développé couché incliné haltère')]},
+    renfo(J[4])];
+  return [
+    {nm:'Squat',d:J[0],rows:[SQ,comp('Presse inclinée'),comp('RDL barre')]},
+    {nm:'Développé couché',d:J[1],rows:[BP,comp('Développé militaire aux haltères'),comp('Rowing barre')]},
+    {nm:'Soulevé de terre',d:J[2],rows:[DL,comp('Rowing bucheron'),comp('Traction')]},
+    {nm:'2ᵉ Squat (léger)',d:J[3],rows:[sq2,comp('Fente bulgare')]},
+    {nm:'2ᵉ Développé couché',d:J[4],rows:[bp2,comp('Développé couché incliné haltère')]},
+    renfo(J[5])];
+}
+function ddHtml(type,sel){
+  return '<select class="dd'+(type==='lift'?' lift':'')+'">'+POOL[type].map(function(e){
+    return '<option'+(e===sel?' selected':'')+'>'+e+'</option>';}).join('')+'</select>';
+}
+function frowHtml(r){
+  var col=r.t==='lift'?'#4d82ff':(r.t==='comp'?'#7c5cff':'#ec4899');
+  var sch=r.s+(r.s2?'<small>'+r.s2+'</small>':(r.t==='lift'?'':'<small>RPE 8</small>'));
+  return '<div class="frow"><span class="frow-dot" style="background:'+col+'"></span>'
+    +ddHtml(r.t,r.e)+'<span class="fsch">'+sch+'</span><span class="frow-x" title="retirer">✕</span></div>';
+}
+function renderForce(jours){
+  var days=forceSkel(jours);
+  return days.map(function(day){
+    var dcol='var(--d'+(day.d>6?6:day.d)+')';
+    var addType=day.renfo?'acc':'comp';
+    return '<div class="sess'+(day.renfo?' renfo':'')+'" style="border-left-color:'+dcol+'">'
+      +'<div class="sess-h"><span class="sess-nm">'+day.nm
+        +(day.renfo?'<span class="ftag opt">optionnel</span>':'<span class="ftag lift">lift</span>')+'</span>'
+        +(day.renfo?'<span class="sess-rm" data-rm="1">✕ retirer ce jour</span>':'<span class="sess-day">'+JNAMES[day.d]+'</span>')+'</div>'
+      +'<div class="frows">'+day.rows.map(frowHtml).join('')+'</div>'
+      +'<button class="fadd" data-add="'+addType+'">＋ ajouter un exercice</button></div>';
+  }).join('<div class="rest-row"><span></span>repos libre<span></span></div>');
+}
+function wireForce(){
+  document.querySelectorAll('#prog .frow-x').forEach(function(x){ x.onclick=function(){ var r=x.closest('.frow'); if(r)r.remove(); }; });
+  document.querySelectorAll('#prog .sess-rm').forEach(function(b){ b.onclick=function(){ var s=b.closest('.sess'); var prev=s&&s.previousElementSibling; if(prev&&prev.classList.contains('rest-row'))prev.remove(); if(s)s.remove(); }; });
+  document.querySelectorAll('#prog .fadd').forEach(function(b){ b.onclick=function(){ var t=b.getAttribute('data-add');
+    var div=document.createElement('div'); div.innerHTML=frowHtml({t:t,e:POOL[t][0],s:t==='acc'?'3 × 8-12':'3 × 6-8',s2:''});
+    var row=div.firstChild; b.parentNode.querySelector('.frows').appendChild(row);
+    row.querySelector('.frow-x').onclick=function(){ row.remove(); };
+  }; });
+}
+
 /* ============================ RENDER ============================ */
 function render(){
   chip('seg-niv',[['debutant','Débutant'],['intermediaire','Intermédiaire'],['avance','Avancé']],function(){return st.niv;},function(v){st.niv=v;});
@@ -287,6 +374,21 @@ function render(){
   } else {
     // configurateur
     chip('q-obj',OBJ,function(){return st.obj;},function(v){st.obj=v;});
+    var isForce=st.obj==='force';
+    document.getElementById('wrap-orgq').style.display=isForce?'none':'block';
+    document.getElementById('wrap-tempsq').style.display=isForce?'none':'block';
+    if(isForce){
+      chip('q-jours',[[2,'2 j'],[3,'3 j'],[4,'4 j'],[5,'5 j'],[6,'6 j']],function(){return st.jours;},function(v){st.jours=v;});
+      document.getElementById('j-cond').textContent='(powerlifting : 2 à 6)';
+      sum='<b>Force / Powerlifting</b> · '+st.jours+' jours · squelette modifiable';
+      document.getElementById('sumline').innerHTML=sum;
+      document.getElementById('convnote').innerHTML='Lifts : <b>séries montantes → séries de travail</b> au % du 1RM (estimé par l\'app) · RPE 7-8 (pas d\'échec) · repos <b>3-5 min</b>. Accessoires : 8-12 reps.';
+      document.getElementById('plannote').innerHTML='🧩 <b>Tout est au choix</b> : chaque ligne est une <b>liste déroulante</b> (change l\'exo), ＋ ajoute, ✕ retire. Le <b>jour Renfo</b> est proposé mais supprimable. Rien n\'est imposé.';
+      document.getElementById('prog').innerHTML=renderForce(st.jours);
+      wireForce();
+      document.getElementById('auditnote').innerHTML='<b class="ok">✔ Force = 100% custom</b> : on pré-remplit le squelette (les 3 lifts Squat · Dév. couché · Soulevé + un Renfo optionnel) selon le nombre de jours, puis l\'athlète décide tout via les menus. Les charges se calent sur le 1RM (tests de l\'app).';
+      return;
+    }
     chip('q-org',ORGS,function(){return st.org;},function(v){st.org=v; var jl=JLOGIC[v]; if(jl.indexOf(st.jours)===-1) st.jours=jl[0];});
     var jl=JLOGIC[st.org];
     chip('q-jours',[[2,'2 j'],[3,'3 j'],[4,'4 j'],[5,'5 j'],[6,'6 j']],function(){return st.jours;},function(v){st.jours=v;},function(k){return jl.indexOf(k)===-1;});
@@ -304,10 +406,7 @@ function render(){
   document.getElementById('plannote').innerHTML=plan;
   document.getElementById('prog').innerHTML=renderProgram(days,cap,sets);
 
-  var n;
-  if(!isDeb && st.obj==='force'){ n='<b>⚠ Force = programme à part.</b> Même carte d\'organisation, mais reps/charge changent (poly 4-6). Les <span class="ok">exos & schémas dédiés Force</span> (séries montantes, %1RM) restent à écrire.'; }
-  else { n='<b class="ok">✔ Architecture</b> : les '+Object.keys(BLOCKS).length+' <b>blocs muscle</b> sont écrits une fois. Une <b>organisation</b> (Full Body, UL, PPL, Split, Custom) = une règle qui répartit les blocs sur N jours. Le <b>temps</b> coupe en gardant 1 exo/muscle d\'abord. Les <b>« ou : »</b> = variantes choisies via « Remplacer ».'; }
-  document.getElementById('auditnote').innerHTML=n;
+  document.getElementById('auditnote').innerHTML='<b class="ok">✔ Architecture</b> : les '+Object.keys(BLOCKS).length+' <b>blocs muscle</b> sont écrits une fois. Une <b>organisation</b> (Full Body, UL, PPL, Split, Custom) = une règle qui répartit les blocs sur N jours. Le <b>temps</b> coupe en gardant 1 exo/muscle d\'abord. Les <b>« ou : »</b> = variantes choisies via « Remplacer ».';
 }
 render();
 </script>

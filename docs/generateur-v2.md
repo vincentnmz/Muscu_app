@@ -232,6 +232,25 @@ Ordre par défaut Push · Pull · Legs · Haut · Bas — **l'athlète place ses
 
 ---
 
+## ✅ FORCE / POWERLIFTING — 100 % custom (figé 21 oct.)
+**Principe porteur** : la Force = les **3 lifts** (Squat · Développé couché barre · Soulevé de terre). Comme les pratiquants varient beaucoup (certains font du renfo, d'autres non), **tout est au choix via listes déroulantes** : on **pré-remplit un squelette** selon le nombre de jours, l'athlète **décide tout** (change l'exo, ＋ ajoute, ✕ retire, supprime le jour Renfo). Rien n'est imposé.
+Les 3 lifts existent au catalogue (`Squat`, `Développé couché barre`, `Soulevé de terre`). Maquette : [`../mockups/novalyz-generateur-v2.html`](../mockups/novalyz-generateur-v2.html) (Objectif = Force).
+
+**Schéma** : lifts = **séries montantes → séries de travail** au **% du 1RM** (estimé par l'app via `tests`/`_est1RM`) · 3-5 reps · **RPE 7-8 (pas d'échec)** · repos **3-5 min**. Accessoires (renfo) = hypertrophie 8-12 reps.
+
+**Squelettes pré-remplis** (modifiables) :
+| Jours | Squelette |
+|---|---|
+| 2 j | J1 les 3 lifts à la suite · J2 Renfo |
+| 3 j | J1 Dév. couché + Soulevé · J2 Squat · J3 Renfo |
+| 4 j | J1 Squat · J2 Dév. couché · J3 Soulevé · J4 Renfo |
+| 5 j | + J4 2ᵉ Dév. couché · J5 Renfo |
+| 6 j | + J4 2ᵉ Squat léger · J5 2ᵉ Dév. couché · J6 Renfo |
+
+**Pools des listes déroulantes** (indicatifs, à affiner) : `lift` (3 lifts + variations lourdes) · `comp` (gros mouvements complémentaires) · `acc` (isolation/accessoires). Le **jour Renfo est optionnel** (bouton « retirer ce jour »).
+
+---
+
 ## Règles transverses (porteur)
 - **Groupé par muscle** dans chaque séance.
 - **Barre = dernier choix** (couché, militaire).
@@ -247,6 +266,7 @@ Ordre par défaut Push · Pull · Legs · Haut · Bas — **l'athlète place ses
 - [x] Programme 3 = **Haut/Bas 4 j Hypertrophie** figé (21 oct.).
 - [x] Programme 4 = **Split 5 j** figé · Programme 5 = **PPL + Haut/Bas 5 j** figé (21 oct.).
 - [x] **Modèle à 2 parcours figé** (débutant galerie / inter-avancé configurateur par organisation) + maquette `novalyz-generateur-v2.html` (21 oct.).
-- [ ] **Force** : exos & schéma dédiés (séries montantes, %1RM) — à écrire.
-- [ ] Figer la **liste des blocs muscle** (slots/angles définitifs) → source du moteur.
+- [x] **Force / Powerlifting** figé (21 oct.) : 100 % custom, listes déroulantes, squelettes 2→6 j, jour Renfo optionnel. Intégré à la maquette.
+- [ ] Figer la **liste des blocs muscle** (slots/angles définitifs) + **pools Force** → source du moteur.
+- [ ] Construire le **moteur v2** dans l'app (2 parcours + Force custom + blocs/organisations + backend).
 - [ ] Construire le moteur v2 (data model ci-dessus) + la 4e question + gestion supersets + variantes → « Remplacer » + **RPE par série** (S1/S2 = RIR 1 · dernière = RIR 2-3) + **repos modulables**.
