@@ -15951,6 +15951,78 @@ function _g2Lignes() {
   else { lignes = _genProgramme2('hypertrophie', st.org, st.jours, st.temps, st.niv); }
   return _g2Resolve(lignes);
 }
+
+// ── Force custom : squelette éditable à listes déroulantes (étape 3) ──
+var _G2_FPOOL = {
+  lift: ['Squat', 'Hack squat', 'Belt squat', 'Squat gobelet', 'Développé couché barre', 'Développé couché haltère', 'Développé militaire à la Smith', 'Développé militaire aux haltères', 'Soulevé de terre', 'RDL barre', 'RDL haltère'],
+  comp: ['Presse inclinée', 'Presse horizontale', 'Belt squat', 'Fente bulgare', 'Fente longue', 'RDL barre', 'RDL haltère', 'Rowing barre', 'Rowing bucheron', 'Rowing banc', 'Rowing machine', 'Traction', 'shrugs barre', 'Développé couché incliné haltère', 'Développé militaire aux haltères'],
+  acc: ['Développé couché incliné haltère', 'Ecarté poulie haute', 'Extension poulie barre', 'Curl barre', 'Curl barre poulie', 'Élévation latérale haltère', 'Arrière épaule à la poulie', 'Leg curl assis', 'RDL haltère', 'Les extensions mollets à la presse', 'Fente bulgare']
+};
+function _g2ResolveName(name) {
+  if (!exercicesData || !exercicesData.length) return name;
+  var n = _genNorm(name), hit = exercicesData.find(function (e) { return _genNorm(e.exercice) === n; });
+  return hit ? hit.exercice : name;
+}
+function _g2PoolFor(type) {
+  var pool = _G2_FPOOL[type] || [];
+  if (!exercicesData || !exercicesData.length) return pool.slice();
+  var names = {}; exercicesData.forEach(function (e) { names[_genNorm(e.exercice)] = e.exercice; });
+  var out = []; pool.forEach(function (p) { var h = names[_genNorm(p)]; if (h && out.indexOf(h) < 0) out.push(h); });
+  return out.length ? out : pool.slice();
+}
+function _g2DD(type, sel) {
+  var opts = _g2PoolFor(type), selR = _g2ResolveName(sel);
+  if (selR && opts.indexOf(selR) < 0) opts = [selR].concat(opts);
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  return '<select class="g2dd" style="flex:1;min-width:0;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 8px;font-size:12.5px;font-weight:700;font-family:inherit">'
+    + opts.map(function (e) { return '<option' + (e === selR ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select>';
+}
+function _g2ForceRowHtml(r) {
+  var sch = r.t === 'lift' ? ('montantes → ' + r.se + '×' + r.r + ' @ ' + r.pct + '%') : (r.se + ' × ' + r.rmin + '-' + r.rmax);
+  var attrs = r.t === 'lift' ? ('data-t="lift" data-se="' + r.se + '" data-r="' + r.r + '" data-pct="' + r.pct + '"')
+                             : ('data-t="' + r.t + '" data-se="' + r.se + '" data-rmin="' + r.rmin + '" data-rmax="' + r.rmax + '"');
+  return '<div class="g2frow" ' + attrs + ' style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--border)">'
+    + _g2DD(r.t, r.e) + '<span style="font-size:10px;font-weight:700;color:var(--accent);white-space:nowrap;text-align:right">' + sch + '</span>'
+    + '<span class="g2frow-x" style="color:var(--text-subtle);cursor:pointer;font-size:14px;padding:0 2px">✕</span></div>';
+}
+function _g2RowEl(r) { var d = document.createElement('div'); d.innerHTML = _g2ForceRowHtml(r); return d.firstChild; }
+function _g2ForceDayHtml(day) {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var removable = day.renfo || day.rappel;
+  var tag = day.renfo ? 'Renfo · optionnel' : (day.rappel ? 'Rappel · doubler ou renfo' : 'Lift');
+  return '<div class="g2fday" data-nm="' + esc(day.nm) + '" data-d="' + day.d + '" style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ' + (removable ? 'var(--text-subtle)' : 'var(--accent)') + ';border-radius:12px;padding:10px 12px;margin-top:8px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><div style="font-weight:800;font-size:13.5px">' + esc(day.nm) + ' <span style="font-size:9px;color:var(--text-subtle);font-weight:700;text-transform:uppercase;letter-spacing:.03em">· ' + tag + '</span></div>'
+    + (removable ? '<span class="g2day-rm" style="font-size:10px;color:var(--text-subtle);cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:2px 6px">✕ retirer</span>' : '') + '</div>'
+    + '<div class="g2frows">' + day.rows.map(_g2ForceRowHtml).join('') + '</div>'
+    + '<button class="g2fadd" data-add="' + (day.renfo ? 'acc' : 'comp') + '" style="background:none;border:none;color:var(--accent);font-size:11.5px;font-weight:700;cursor:pointer;padding:6px 0 0">＋ ajouter un exercice</button></div>';
+}
+function _g2WireForce() {
+  document.querySelectorAll('#gen-prog-sheet .g2frow-x').forEach(function (x) { x.onclick = function () { var r = x.closest('.g2frow'); if (r) r.remove(); }; });
+  document.querySelectorAll('#gen-prog-sheet .g2day-rm').forEach(function (b) { b.onclick = function () { var d = b.closest('.g2fday'); if (d) d.remove(); }; });
+  document.querySelectorAll('#gen-prog-sheet .g2fadd').forEach(function (b) { b.onclick = function () {
+    var t = b.getAttribute('data-add');
+    var r = (t === 'acc') ? { t: 'acc', e: _g2PoolFor('acc')[0], se: 3, rmin: 8, rmax: 12 } : { t: 'comp', e: _g2PoolFor('comp')[0], se: 3, rmin: 6, rmax: 8 };
+    var row = _g2RowEl(r); b.parentNode.querySelector('.g2frows').appendChild(row);
+    row.querySelector('.g2frow-x').onclick = function () { row.remove(); };
+  }; });
+}
+// Lit le squelette Force ÉDITÉ dans le DOM → lignes genererProgramme.
+function _g2ForceLignesFromDOM() {
+  var lignes = [];
+  document.querySelectorAll('#gen-prog-sheet .g2fday').forEach(function (d) {
+    var nm = d.getAttribute('data-nm'), jr = Number(d.getAttribute('data-d'));
+    d.querySelectorAll('.g2frow').forEach(function (r) {
+      var t = r.getAttribute('data-t'), exo = r.querySelector('select').value;
+      if (t === 'lift') lignes.push({ seance_id: nm, jour: jr, exercice: exo,
+        series_prevues: Number(r.getAttribute('data-se')), reps_mini: Number(r.getAttribute('data-r')), reps_max: Number(r.getAttribute('data-r')),
+        repos_sec: 240, groupe_id: '', charge_pct_1rm: Number(r.getAttribute('data-pct')), rpe_cible: 8, schema: 'montantes', variantes: [] });
+      else lignes.push({ seance_id: nm, jour: jr, exercice: exo,
+        series_prevues: Number(r.getAttribute('data-se') || 3), reps_mini: Number(r.getAttribute('data-rmin') || 8), reps_max: Number(r.getAttribute('data-rmax') || 12),
+        repos_sec: (t === 'comp' ? 180 : 90), groupe_id: '', charge_pct_1rm: null, rpe_cible: 8, schema: 'fixe', variantes: [] });
+    });
+  });
+  return lignes;
+}
 function _genCard(onclick, on, titre, sous) {
   return '<button onclick="' + onclick + '" style="text-align:left;display:flex;align-items:center;gap:12px;width:100%;padding:14px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a08)' : 'var(--surface)') + ';border-radius:14px;margin-bottom:8px;cursor:pointer">'
     + '<div style="flex:1"><div style="font-weight:800;font-size:14.5px;color:' + (on ? 'var(--accent)' : 'var(--text)') + '">' + titre + '</div><div style="font-size:12px;color:var(--text-subtle);margin-top:2px">' + sous + '</div></div>'
@@ -15973,7 +16045,14 @@ function _genRender() {
     body += L('Objectif') + row([['hypertrophie', 'Hypertrophie'], ['force', 'Force']].map(function (o) { return _g2Chip('_g2Set(\'obj\',\'' + o[0] + '\')', st.obj === o[0], o[1]); }).join(''));
     if (st.obj === 'force') {
       body += L('Jours / semaine') + row([2, 3, 4, 5, 6].map(function (j) { return _g2Chip('_g2Set(\'jours\',' + j + ')', st.jours === j, j + ' j'); }).join(''))
-        + '<div style="font-size:11.5px;color:var(--text-subtle);margin:8px 2px 0">Powerlifting : les 3 lifts (squat · développé · soulevé) + renfo. Tout reste modifiable dans l\'éditeur.</div>';
+        + '<div style="font-size:11.5px;color:var(--text-subtle);margin:8px 2px 2px">Powerlifting — squelette modifiable : change les exos (menus), ＋ ajoute, ✕ retire. Les jours Rappel / Renfo sont optionnels. Charges au % du 1RM (estimé par l\'app).</div>'
+        + _g2ForceSkel(st.jours).map(_g2ForceDayHtml).join('')
+        + '<button onclick="_genGenerer()" style="width:100%;margin-top:16px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
+        + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>'
+        + '<button onclick="_genRefuse()" style="width:100%;margin-top:4px;background:none;border:none;color:var(--text-subtle);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
+      sh.innerHTML = head + body;
+      _g2WireForce();
+      return;
     } else {
       var jl = _G2_JLOGIC[st.org] || [2, 3, 4, 5, 6];
       body += L('Organisation') + row(_G2_ORGS.map(function (o) { return _g2Chip('_g2Set(\'org\',\'' + o[0] + '\')', st.org === o[0], o[1]); }).join(''))
@@ -15991,8 +16070,8 @@ function _genRender() {
   sh.innerHTML = head + body;
 }
 async function _genGenerer() {
-  var lignes = _g2Lignes();
-  if (!lignes.length) { showToast('Impossible de générer (catalogue indisponible)'); return; }
+  var lignes = (_genState.niv !== 'debutant' && _genState.obj === 'force') ? _g2Resolve(_g2ForceLignesFromDOM()) : _g2Lignes();
+  if (!lignes.length) { showToast('Impossible de générer (ajoute au moins un exercice)'); return; }
   // Programme existant → demander avant d'écraser.
   var existant = (dernierAppData && Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0);
   if (existant && !confirm('Tu as déjà un programme. Le remplacer par le nouveau ? (l\'ancien sera supprimé)')) return;
