@@ -145,6 +145,62 @@ Jours : Lun / Mar / Jeu / Ven.
 
 ---
 
+## ✅ PROGRAMME 4 — Split (1 muscle/jour) · 5 jours · HYPERTROPHIE  *(figé 21 oct.)*
+L'un des **deux** programmes 5 jours (l'autre = PPL + Haut/Bas, cf. Programme 5).
+Conventions : 3 séries · exos = catalogue réel · groupé par muscle · barre/militaire en dernier · écarté en 1er (pecs).
+**Repos** : composés = 2-3 min · iso = 1 min 30 (rallongeable au ressenti).
+**RPE / RIR** : S1 et S2 = 1 rép en réserve (RPE 9) · dernière série = 2-3 réps en réserve (RPE 7-8).
+**Jour Bras = séries classiques (PAS de superset)** — journée dédiée, assez de temps. (Le superset bras reste sur Full Body / PPL / Haut-Bas.)
+Jours : Lun / Mar / Mer / Jeu / Ven.
+
+### J1 · Pectoraux
+| Prio | Angle | Type | 3× | Principal → variantes |
+|---|---|---|---|---|
+| 1 | Écarté | iso | 12-15 | Ecarté poulie haute → Ecarté machine · Ecarté poulie basse |
+| 2 | Incliné | poly | 8-12 | Développé incliné Hammer → Développé incliné à la Smith · Développé couché incliné haltère |
+| 3 | Horizontal | poly | 8-10 | Développé couché haltère → Développé machine Hammer · Développé machine · Développé couché barre |
+| 4 | Décliné | poly | 10-12 | Développé décliné machine → Développé décliné à la Smith |
+
+### J2 · Dos
+| Prio | Angle | Type | 3× | Principal → variantes |
+|---|---|---|---|---|
+| 1 | Vertical | poly | 8-12 | Traction → Tirage vertical prise large · prise serrée |
+| 2 | Horizontal | poly | 8-12 | T-bar row prise basse → Rowing machine · Rowing bucheron · Rowing barre |
+| 3 | Vertical serré | poly | 8-12 | Tirage vertical prise serrée → Tirage vertical uni à la poulie |
+| 4 | Épaisseur/trapèzes | poly | 10-15 | Tirage trapèze machine → T-bar row prise haute · shrugs aux haltéres · shrugs barre |
+
+### J3 · Jambes
+| Prio | Muscle | Type | 3× | Principal → variantes |
+|---|---|---|---|---|
+| 1 | Quadriceps | poly | 6-8 | Squat → Hack squat · Belt squat |
+| 2 | Quadriceps (presse) | poly | 8-12 | Presse inclinée → Presse horizontale · Pendulum |
+| 3 | Quadriceps (iso) | iso | 12-15 | Leg extension |
+| 4 | Ischios | poly | 8-12 | RDL barre → RDL haltère |
+| 5 | Ischios (iso) | iso | 10-15 | Leg curl assis → allongé · debout |
+| 6 | Fessiers | poly | 8-12 | Hip thrust → Hip thrust machine · Abduction machine · Fente bulgare · Fente longue |
+| 7 | Mollets | iso | 12-20 | Les extensions mollets debout → assis · à la presse |
+
+### J4 · Épaules
+| Prio | Faisceau | Type | 3× | Principal → variantes |
+|---|---|---|---|---|
+| 1 | Latéral | iso | 12-15 | Élévation latérale haltère → Elévation latérale uni à la poulie |
+| 2 | Développé | poly | 8-12 | Développé militaire aux haltères → Développé militaire à la Smith |
+| 3 | Frontal | iso | 10-15 | Élévation frontale haltères → Élévation frontale poulie · Élévation frontale barre |
+| 4 | Arrière | iso | 12-15 | Arrière épaule à la poulie → Arrière épaule haltère |
+| 5 | Trapèzes | iso | 10-15 | shrugs aux haltéres → shrugs barre · Tirage trapèze machine |
+
+### J5 · Bras (2 triceps + 3 biceps + abdos — séries classiques)
+| Prio | Muscle | Type | 3× | Principal → variantes |
+|---|---|---|---|---|
+| 1 | Triceps | iso | 8-12 | Extension triceps banc → Dips triceps |
+| 2 | Triceps | iso | 10-15 | Extension poulie barre → Extension poulie corde |
+| 3 | Biceps | iso | 8-12 | Curl à la poulie → Curl haltères · Curl barre |
+| 4 | Biceps | iso | 10-12 | Curl incliné au banc → Curl incliné uni poignée à la poulie |
+| 5 | Biceps | iso | 10-15 | Curl marteau aux haltéres → Curl marteau à la poulie |
+| 6 | Abdos | iso | échec | Crunch à la poulie → Relevé de jambe · Roulette |
+
+---
+
 ## Règles transverses (porteur)
 - **Groupé par muscle** dans chaque séance.
 - **Barre = dernier choix** (couché, militaire).
