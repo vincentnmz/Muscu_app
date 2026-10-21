@@ -308,12 +308,15 @@ function forceSkel(jours){
     {nm:'Squat',d:J[0],rows:[SQ]},
     {nm:'Soulevé de terre',d:J[1],rows:[DL]},
     {nm:'Développé couché',d:J[2],rows:[BP]},
-    renfo(J[3]), renfo(J[4])];
-  return [ // 6 jours : les 3 lifts seuls + jours en plus = Renfo (ainsi de suite)
+    {nm:'Rappel',d:J[3],rappel:1,rows:[{t:'lift',e:'Développé couché barre',s:'4 × 5',s2:'@ ~75%'}]},
+    renfo(J[4])];
+  return [ // 6 jours : 3 lifts + 2 rappels (doubler) OU renfo, au choix de l'athlète
     {nm:'Squat',d:J[0],rows:[SQ]},
     {nm:'Soulevé de terre',d:J[1],rows:[DL]},
     {nm:'Développé couché',d:J[2],rows:[BP]},
-    renfo(J[3]), renfo(J[4]), renfo(J[5])];
+    {nm:'Rappel',d:J[3],rappel:1,rows:[{t:'lift',e:'Squat',s:'4 × 5',s2:'@ ~70%'}]},
+    {nm:'Rappel',d:J[4],rappel:1,rows:[{t:'lift',e:'Développé couché barre',s:'4 × 5',s2:'@ ~75%'}]},
+    renfo(J[5])];
 }
 function ddHtml(type,sel){
   return '<select class="dd'+(type==='lift'?' lift':'')+'">'+POOL[type].map(function(e){
@@ -329,11 +332,11 @@ function renderForce(jours){
   var days=forceSkel(jours);
   return days.map(function(day){
     var dcol='var(--d'+(day.d>6?6:day.d)+')';
-    var addType=day.renfo?'acc':'comp';
-    return '<div class="sess'+(day.renfo?' renfo':'')+'" style="border-left-color:'+dcol+'">'
-      +'<div class="sess-h"><span class="sess-nm">'+day.nm
-        +(day.renfo?'<span class="ftag opt">optionnel</span>':'<span class="ftag lift">lift</span>')+'</span>'
-        +(day.renfo?'<span class="sess-rm" data-rm="1">✕ retirer ce jour</span>':'<span class="sess-day">'+JNAMES[day.d]+'</span>')+'</div>'
+    var removable=day.renfo||day.rappel, addType=day.renfo?'acc':'comp';
+    var tag=day.renfo?'<span class="ftag opt">optionnel</span>':(day.rappel?'<span class="ftag opt">doubler ou renfo</span>':'<span class="ftag lift">lift</span>');
+    return '<div class="sess'+(removable?' renfo':'')+'" style="border-left-color:'+dcol+'">'
+      +'<div class="sess-h"><span class="sess-nm">'+day.nm+tag+'</span>'
+        +(removable?'<span class="sess-rm" data-rm="1">✕ retirer ce jour</span>':'<span class="sess-day">'+JNAMES[day.d]+'</span>')+'</div>'
       +'<div class="frows">'+day.rows.map(frowHtml).join('')+'</div>'
       +'<button class="fadd" data-add="'+addType+'">＋ ajouter un exercice</button></div>';
   }).join('<div class="rest-row"><span></span>repos libre<span></span></div>');
@@ -379,7 +382,7 @@ function render(){
       sum='<b>Force / Powerlifting</b> · '+st.jours+' jours · squelette modifiable';
       document.getElementById('sumline').innerHTML=sum;
       document.getElementById('convnote').innerHTML='Lifts : <b>séries montantes → séries de travail</b> au % du 1RM (estimé par l\'app) · RPE 7-8 (pas d\'échec) · repos <b>3-5 min</b>. Accessoires : 8-12 reps.';
-      document.getElementById('plannote').innerHTML='🧩 <b>Tout est au choix</b> : chaque ligne est une <b>liste déroulante</b> (change l\'exo), ＋ ajoute, ✕ retire. À partir de 3 jours les <b>gros lifts sont seuls</b>. Le <b>Renfo</b> est supprimable. Les jours affichés sont <b>indicatifs</b> — tu places tes séances où tu veux.';
+      document.getElementById('plannote').innerHTML='🧩 <b>Tout est au choix</b> : chaque ligne est une <b>liste déroulante</b> (change l\'exo), ＋ ajoute, ✕ retire. Dès 3 jours les <b>gros lifts sont seuls</b>. Sur <b>5-6 jours</b>, les jours en plus = un <b>rappel de lift</b> (plus léger) que tu peux <b>doubler ou transformer en renfo</b>. Jours <b>libres</b> (placement au choix).';
       document.getElementById('prog').innerHTML=renderForce(st.jours);
       wireForce();
       document.getElementById('auditnote').innerHTML='<b class="ok">✔ Force = 100% custom</b> : on pré-remplit le squelette (les 3 lifts Squat · Dév. couché · Soulevé + un Renfo optionnel) selon le nombre de jours, puis l\'athlète décide tout via les menus. Les charges se calent sur le 1RM (tests de l\'app).';

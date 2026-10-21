@@ -246,10 +246,10 @@ Les 3 lifts existent au catalogue (`Squat`, `Développé couché barre`, `Soulev
 | 2 j | J1 les 3 lifts à la suite · J2 Renfo |
 | 3 j | J1 **Squat + Dév. couché** · J2 **Soulevé** · J3 Renfo |
 | 4 j | J1 Squat · J2 Soulevé · J3 Dév. couché · J4 Renfo |
-| 5 j | J1 Squat · J2 Soulevé · J3 Dév. couché · J4 Renfo · J5 Renfo |
-| 6 j | J1 Squat · J2 Soulevé · J3 Dév. couché · J4-J5-J6 Renfo |
+| 5 j | J1 Squat · J2 Soulevé · J3 Dév. couché · J4 **Rappel** (2ᵉ lift léger) · J5 Renfo |
+| 6 j | J1 Squat · J2 Soulevé · J3 Dév. couché · J4-J5 **Rappels** (2ᵉ Squat / 2ᵉ Dév.) · J6 Renfo |
 
-> Motif : **3 lifts seuls** (groupés si 2-3 j), puis **les jours en plus = Renfo** (optionnels). « Ainsi de suite ».
+> Motif : **3 lifts seuls** (groupés si 2-3 j). Sur **5-6 j**, les jours en plus = des **rappels** (2ᵉ séance d'un lift, plus léger) **que l'athlète peut doubler OU transformer en renfo** — au choix (chaque jour « au choix » est supprimable). Jours libres.
 
 **Pools des listes déroulantes** (indicatifs, à affiner) : `lift` (3 lifts + variations lourdes) · `comp` (gros mouvements complémentaires, pour le « ＋ ajouter » des jours lift) · `acc` (isolation/accessoires, jour Renfo). Le **jour Renfo est optionnel** (bouton « retirer ce jour »).
 
