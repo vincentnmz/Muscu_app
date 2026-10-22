@@ -81,6 +81,15 @@
   .gl-muted{color:var(--muted)}
   .note{font-size:11.5px;color:var(--muted);margin:16px 2px 0;line-height:1.55;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
   .note b{color:var(--text)} .note .k{color:var(--accent2);font-weight:700}
+  /* desktop : 2 colonnes (coup d'œil + lecture + alerte à gauche · données à droite) */
+  @media(min-width:900px){
+    .wrap{max-width:1080px}
+    .cols{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:start}
+    .main,.aside{min-width:0}
+    .glance2{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:start}
+    .aside .grid{grid-template-columns:1fr}
+    .hero{margin-bottom:16px}
+  }
 </style>
 </head>
 <body>
@@ -102,8 +111,11 @@
     </div>
   </div>
 
+  <div class="cols">
+  <div class="main">
   <!-- COUP D'ŒIL : le coach comprend en 5 secondes -->
   <div class="sl">Coup d'œil <span class="tag">comprendre en 5 s</span></div>
+  <div class="glance2">
   <div class="gl-card" style="margin-bottom:9px">
     <div class="gl-h">🏋️ Entraînement</div>
     <div class="gl-row"><span class="gl-ic" style="color:var(--good)">▲</span><div><b>Progresse</b> — Développé couché (+2,5 kg), Squat (reps en hausse)</div></div>
@@ -119,6 +131,7 @@
     <div class="gl-row"><span class="gl-ic" style="color:var(--good)">●</span><div><b>Cardio</b> <span class="gl-muted">régulier · 3×/sem, FC repos stable</span></div></div>
     <div class="gl-row"><span class="gl-ic" style="color:var(--good)">●</span><div><b>Énergie / fatigue</b> <span class="gl-muted">bonnes</span></div></div>
   </div>
+  </div><!-- /glance2 -->
 
   <!-- LECTURE NOVALYZ — EN TÊTE, ORIENTÉE COACH -->
   <div class="sl">Lecture Novalyz <span class="tag">pour le coach</span> · fiable</div>
@@ -140,6 +153,8 @@
     <div class="alert-a">→ Rééquilibrer le tirage sur les 2 prochaines séances.</div>
   </div>
 
+  </div><!-- /main -->
+  <div class="aside">
   <!-- BLOCS DE DONNÉES -->
   <div class="sl">Données d'entraînement &amp; état</div>
   <div class="grid">
@@ -195,6 +210,8 @@
     </div>
 
   </div>
+  </div><!-- /aside -->
+  </div><!-- /cols -->
 
   <div class="note"><b>Ce qui change (N13)</b> : <span class="k">① Coup d'œil</span> en tête — le coach voit <b>tout de suite</b> ce qui progresse / recule, les points forts, où ça pêche (entraînement) + l'état (sommeil, stress, douleur, cardio…). <span class="k">② Lecture Novalyz</span> juste après, formulée <b>pour le coach</b> + une <b>reco d'action</b>. <span class="k">③ Les blocs gardés</span> (charge, assiduité, récup, bien-être, ma montre, volume, dernière séance, nutrition, alerte) <b>réordonnés</b> : coup d'œil → synthèse → alerte → données. Tout vient des données réelles (progression par exo, volume/muscle, bien-être, montre, nutrition). À valider, puis implémentation.</div>
 </div>
