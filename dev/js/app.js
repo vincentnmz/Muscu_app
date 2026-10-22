@@ -5359,15 +5359,14 @@ function renderCoachRecordsEtRegression(hist, glob) {
 // N13 — « Coup d'œil » coach : synthèse scannable (entraînement + état) en tête de
 // l'Aperçu, pour que le coach comprenne en 5 s. 100 % dérivé des données déjà chargées
 // (progression_par_exo, volume_semaine, bien_etre, moteur). Aucun nouveau backend.
-function _cdCoupRow(ic, col, label, val) {
-  return '<div class="cdcp-row"><span class="cdcp-ic" style="color:' + col + '">' + ic + '</span>'
-    + '<div class="cdcp-tx"><b>' + label + '</b>' + (val ? ' <span class="cdcp-m">' + escapeHtml(val) + '</span>' : '') + '</div></div>';
+function _cdCoupRow(col, html) {
+  return '<div class="cdcp-row"><span class="cdcp-ic" style="color:' + col + '">●</span><div class="cdcp-tx">' + html + '</div></div>';
 }
 function renderCoachCoupDoeil(data) {
   var el = document.getElementById('cd-coupdoeil'); if (!el) return;
   try {
-    var hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {}, m = (data && data.moteur) || {};
-    // Entraînement — progresse / recule (1RM récent vs meilleur précédent).
+    var hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {}, m = (data && data.moteur) || {}, esc = escapeHtml;
+    // ── Entraînement : progression / régression (1RM récent vs meilleur précédent) ──
     var up = [], down = [];
     Object.keys(prog).forEach(function (exo) {
       var pts = prog[exo] || []; if (pts.length < 2) return;
@@ -5376,36 +5375,42 @@ function renderCoachCoupDoeil(data) {
       if (rec == null || best == null) return;
       if (rec >= best * 1.02) up.push(exo); else if (rec < best * 0.98) down.push(exo);
     });
-    // Entraînement — points forts / où ça pêche (volume de la semaine vs cible niveau).
-    var vols = Array.isArray(hist.volume_semaine) ? hist.volume_semaine.filter(function (v) { return (v.faites || 0) > 0; }) : [];
-    var niv = (typeof coachNiveauKey === 'function') ? coachNiveauKey(coachAthleteCourant ? coachAthleteCourant.annees_pratique : 0) : 'intermediaire';
-    var forts = [], peche = [];
-    vols.forEach(function (v) { var c = (typeof VOLUME_CIBLE !== 'undefined' && VOLUME_CIBLE[v.muscle]) ? VOLUME_CIBLE[v.muscle][niv] : null; c = c || [10, 14]; if ((v.faites || 0) < c[0]) peche.push(v.muscle); else forts.push(v.muscle); });
-    var entRows = '';
-    if (up.length) entRows += _cdCoupRow('▲', 'var(--good)', 'Progresse', up.slice(0, 3).join(', '));
-    if (down.length) entRows += _cdCoupRow('▼', 'var(--bad)', 'Recule', down.slice(0, 3).join(', '));
-    if (forts.length) entRows += _cdCoupRow('✓', 'var(--good)', 'Points forts', forts.slice(0, 3).join(', '));
-    if (peche.length) entRows += _cdCoupRow('⚠', 'var(--warn)', 'Où ça pêche', peche.slice(0, 3).join(', ') + ' (volume bas)');
-    if (!entRows) entRows = '<div class="cdcp-empty">Pas encore assez de séances pour un bilan.</div>';
-    // État — sommeil / énergie / fatigue / stress / douleur / récup.
-    var be = (data.bien_etre && data.bien_etre[0]) || null, sig = m.signaux || {};
-    var WQ = (typeof WQ_ANSWERS !== 'undefined') ? WQ_ANSWERS : null;
-    var lab = function (key, val) { return (WQ && WQ[key] && WQ[key][Number(val)]) ? String(WQ[key][Number(val)]).toLowerCase() : ''; };
-    var colv = function (val) { var n = Number(val); return n >= 4 ? 'var(--good)' : (n <= 2 ? 'var(--warn)' : 'var(--text-subtle)'); };
-    var etatRows = '';
-    if (be) {
-      if (be.sommeil != null) etatRows += _cdCoupRow('●', colv(be.sommeil), 'Sommeil', lab('sommeil', be.sommeil));
-      if (be.energie != null) etatRows += _cdCoupRow('●', colv(be.energie), 'Énergie', lab('energie', be.energie));
-      if (be.fatigue != null) etatRows += _cdCoupRow('●', colv(be.fatigue), 'Fatigue musc.', lab('fatigue', be.fatigue));
+    // ── Entraînement : couverture des 5 grands groupes sur 7 j. On regarde CE QUI MANQUE
+    //    (groupes à 0), pas seulement ce qui a été fait — corrige le faux « pecs pêchent »
+    //    alors que c'est le seul muscle travaillé. ──
+    var GR = [['Pecs', ['Pectoraux']], ['Dos', ['Dos']], ['Épaules', ['Epaule']], ['Bras', ['Biceps', 'Triceps']], ['Jambes', ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Jambe', 'Aducteur']]];
+    var volMap = {}; (Array.isArray(hist.volume_semaine) ? hist.volume_semaine : []).forEach(function (v) { volMap[v.muscle] = (volMap[v.muscle] || 0) + (v.faites || 0); });
+    var faits = [], absent = [], total7 = 0;
+    GR.forEach(function (g) { var s = g[1].reduce(function (a, mk) { return a + (volMap[mk] || 0); }, 0); total7 += s; if (s > 0) faits.push(g[0]); else absent.push(g[0]); });
+    var entr = [];
+    if (up.length && !down.length) entr.push({ c: 'var(--good)', t: '<b>Progression solide</b> : ' + up.length + ' exercice' + (up.length > 1 ? 's' : '') + ' en hausse (' + esc(up.slice(0, 3).join(', ')) + ').' });
+    else if (up.length && down.length) entr.push({ c: 'var(--warn)', t: '<b>Progression mitigée</b> : ' + up.length + ' en hausse, ' + down.length + ' en recul (' + esc(down.slice(0, 2).join(', ')) + ').' });
+    else if (down.length) entr.push({ c: 'var(--bad)', t: '<b>Attention</b> : ' + down.length + ' exercice' + (down.length > 1 ? 's' : '') + ' en régression (' + esc(down.slice(0, 3).join(', ')) + ').' });
+    if (total7 > 0) {
+      if (absent.length && absent.length < 5) entr.push({ c: 'var(--warn)', t: '<b>Travail concentré</b> sur ' + esc(faits.join(', ')) + '. Non travaillé sur 7 j : <b>' + esc(absent.join(', ')) + '</b> → à réintégrer si ce n\'est pas voulu.' });
+      else if (!absent.length) entr.push({ c: 'var(--good)', t: '<b>Répartition complète</b> : les 5 grands groupes ont été travaillés cette semaine.' });
     }
-    if (sig.stress != null) etatRows += _cdCoupRow('●', Number(sig.stress) >= 3.5 ? 'var(--warn)' : 'var(--good)', 'Stress', Number(sig.stress) >= 3.5 ? 'élevé' : 'maîtrisé');
-    if (be && be.zone_douloureuse) etatRows += _cdCoupRow('●', 'var(--warn)', 'Douleur', String(be.zone_douloureuse));
-    else if (be) etatRows += _cdCoupRow('●', 'var(--good)', 'Douleur', 'aucune');
-    if (m.recup && m.recup !== '—') etatRows += _cdCoupRow('●', (m.recup === 'Faible' || m.recup === 'Moyen') ? 'var(--warn)' : 'var(--good)', 'Récupération', String(m.recup).toLowerCase());
-    if (!etatRows) etatRows = '<div class="cdcp-empty">Pas encore de questionnaire bien-être.</div>';
-    el.innerHTML = '<div class="cdcp-lab">Coup d\'œil</div><div class="cdcp-wrap">'
-      + '<div class="dash-card cdcp-card"><div class="cdcp-h">Entraînement</div>' + entRows + '</div>'
-      + '<div class="dash-card cdcp-card"><div class="cdcp-h">État</div>' + etatRows + '</div></div>';
+    if (!entr.length) entr.push({ c: 'var(--text-subtle)', t: 'Pas encore assez de séances pour analyser l\'entraînement.' });
+    // ── État : ANALYSE (verdict récup + tendance des signaux), pas la recopie du questionnaire ──
+    var be = (data.bien_etre && data.bien_etre[0]) || null, histBE = (data.bien_etre || []).slice(1, 4), sig = m.signaux || {};
+    var etat = [];
+    if (be) {
+      var avg = function (key) { var xs = histBE.map(function (b) { return Number(b && b[key]); }).filter(function (x) { return !isNaN(x); }); return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null; };
+      var ins = [];
+      var sA = avg('sommeil'); if (be.sommeil != null && sA != null && Number(be.sommeil) < sA - 0.5) ins.push('sommeil en baisse');
+      var fA = avg('fatigue'); if (be.fatigue != null && fA != null && Number(be.fatigue) < fA - 0.5) ins.push('fatigue en hausse');
+      if (sig.stress != null && Number(sig.stress) >= 3.5) ins.push('stress élevé');
+      if (be.zone_douloureuse) ins.push('douleur ' + String(be.zone_douloureuse).toLowerCase());
+      var dispo = (m.disponibilite && m.disponibilite.niveau) || null, recup = (m.recup && m.recup !== '—') ? m.recup : null;
+      var verdict = dispo || (recup ? ('Récupération ' + String(recup).toLowerCase()) : 'État du jour');
+      var col = (dispo === 'À surveiller' || recup === 'Faible') ? 'var(--bad)' : ((dispo === 'Vigilance' || recup === 'Moyen' || ins.length) ? 'var(--warn)' : 'var(--good)');
+      etat.push({ c: col, t: '<b>' + esc(verdict) + '</b>' + (ins.length ? ' — ' + esc(ins.join(', ')) + '.' : ' — signaux bien-être au vert.') });
+      if (dispo === 'À surveiller' || recup === 'Faible') etat.push({ c: 'var(--text-muted)', t: 'Priorité récup : allège ou décale la prochaine séance.' });
+      else if (ins.length) etat.push({ c: 'var(--text-muted)', t: 'Séance possible, mais adapte si ces signaux persistent.' });
+    } else etat.push({ c: 'var(--text-subtle)', t: 'Pas encore de questionnaire bien-être renseigné.' });
+    el.innerHTML = '<div class="cdcp-lab">Coup d\'œil · analyse</div><div class="cdcp-wrap">'
+      + '<div class="dash-card cdcp-card"><div class="cdcp-h">Entraînement</div>' + entr.map(function (l) { return _cdCoupRow(l.c, l.t); }).join('') + '</div>'
+      + '<div class="dash-card cdcp-card"><div class="cdcp-h">État &amp; récupération</div>' + etat.map(function (l) { return _cdCoupRow(l.c, l.t); }).join('') + '</div></div>';
   } catch (e) { try { el.innerHTML = ''; } catch (_) {} }
 }
 
