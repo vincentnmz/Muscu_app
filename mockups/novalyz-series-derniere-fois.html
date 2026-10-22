@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Séance — poids/reps par série</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.14);
+    --good:#00c96e; --good-a:rgba(0,201,110,.12); --warn:#f5a623;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:20px 14px 48px}
+  .wrap{max-width:440px;margin:0 auto}
+  h1{font-size:18px;font-weight:900;margin:0 0 3px}
+  .lead{font-size:12px;color:var(--muted);margin:0 0 16px}
+  .seg{display:flex;gap:0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:3px;margin-bottom:16px}
+  .seg button{flex:1;border:none;background:transparent;color:var(--muted);border-radius:9px;padding:10px 8px;font-weight:800;font-size:12.5px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#fff}
+  .seg button small{display:block;font-weight:600;font-size:10px;opacity:.85;margin-top:1px}
+  /* carte exercice */
+  .exo{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px 15px 17px}
+  .exo-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:3px}
+  .exo-nm{font-size:16px;font-weight:900}
+  .exo-tg{font-size:11px;font-weight:800;color:var(--accent2);white-space:nowrap}
+  .exo-sub{font-size:11px;color:var(--subtle);margin-bottom:13px}
+  /* checklist séries prévues */
+  .plan-hd{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--subtle);margin:0 0 7px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+  .chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 8px}
+  .chip small{color:var(--subtle);font-weight:600}
+  .chip.done{color:var(--good);border-color:rgba(0,201,110,.3);background:var(--good-a)}
+  .chip.cur{color:var(--accent2);border-color:var(--accent)}
+  /* lignes séries */
+  .srow{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--border)}
+  .srow:first-of-type{border-top:none}
+  .sbadge{width:30px;height:30px;border-radius:9px;background:var(--surface2);border:1px solid var(--border);display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--muted);flex:none}
+  .sbadge.done{background:var(--good-a);border-color:rgba(0,201,110,.35);color:var(--good)}
+  .sbadge.cur{background:var(--accent-a);border-color:var(--accent);color:var(--accent2)}
+  .scol{flex:1;min-width:0}
+  /* champ saisie (aujourd'hui) */
+  .today{display:flex;align-items:center;gap:6px}
+  .fld{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:14px;font-weight:800;color:var(--text);width:58px;text-align:center}
+  .fld.cur{border-color:var(--accent)}
+  .fld.filled{color:var(--good);border-color:rgba(0,201,110,.35)}
+  .x{color:var(--subtle);font-size:12px}
+  .todo-txt{font-size:12px;color:var(--subtle)}
+  /* référence "dernière fois" */
+  .ref{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--subtle);margin-top:5px}
+  .ref b{color:var(--muted);font-weight:800}
+  .ref svg{opacity:.7}
+  .delta{font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:6px;white-space:nowrap}
+  .delta.up{color:var(--good);background:var(--good-a)}
+  .delta.eq{color:var(--subtle);background:var(--surface2)}
+  /* variante B : 2 colonnes */
+  .two{display:flex;gap:8px;align-items:stretch;margin-top:3px}
+  .cell{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:6px 9px}
+  .cell.now{border-color:rgba(0,201,110,.3)}
+  .cell.now.cur{border-color:var(--accent)}
+  .cell-l{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--subtle);margin-bottom:2px}
+  .cell-v{font-size:14px;font-weight:800}
+  .cell.now .cell-v{color:var(--good)}
+  .cell.now.cur .cell-v{color:var(--accent2)}
+  .cell-v.todo{color:var(--subtle);font-weight:700;font-size:12px}
+  .addbtn{width:100%;margin-top:15px;padding:13px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:14px;font-weight:800;cursor:pointer}
+  .note{font-size:11.5px;color:var(--muted);margin:16px 2px 0;line-height:1.5;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
+  .note b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pendant la séance — poids & reps par série</h1>
+  <p class="lead">Maquette : écran d'un exercice en cours. On ajoute ce que tu as fait <b>la dernière fois</b> série par série, pour savoir quoi viser.</p>
+
+  <div class="seg">
+    <button id="bA" class="on" onclick="setV('A')">A · La dernière fois<small>référence sous chaque série</small></button>
+    <button id="bB" onclick="setV('B')">B · Les deux<small>dernière fois + aujourd'hui</small></button>
+  </div>
+
+  <div class="exo">
+    <div class="exo-h"><span class="exo-nm">Développé couché haltère</span><span class="exo-tg">3 × 8-12</span></div>
+    <div class="exo-sub">RPE 8 · 90 s de repos · surcharge : +2 kg conseillé</div>
+
+    <div class="plan-hd">Séries prévues · <span id="prog">2/3</span></div>
+    <div class="chips" id="chips"></div>
+
+    <div id="series"></div>
+
+    <button class="addbtn" id="addbtn"></button>
+  </div>
+
+  <div class="note" id="note"></div>
+</div>
+
+<script>
+// Données d'exemple : 3 séries. "last" = séance précédente, "today" = saisi aujourd'hui.
+var SER = [
+  { s:1, last:{kg:82,reps:8}, today:{kg:84,reps:8}, done:true },
+  { s:2, last:{kg:82,reps:8}, today:{kg:84,reps:8}, done:true },
+  { s:3, last:{kg:80,reps:7}, today:null, done:false, cur:true }
+];
+var V = 'A';
+function setV(v){ V=v; document.getElementById('bA').className=(v==='A'?'on':''); document.getElementById('bB').className=(v==='B'?'on':''); render(); }
+
+function arrow(){ return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-1"/></svg>'; }
+function delta(t,l){ if(!t) return ''; var d=t.kg-l.kg; if(d>0) return '<span class="delta up">+'+d+' kg</span>'; if(d===0 && t.reps>l.reps) return '<span class="delta up">+'+(t.reps-l.reps)+' rep</span>'; return '<span class="delta eq">=</span>'; }
+
+function render(){
+  var done = SER.filter(function(s){return s.done;}).length;
+  document.getElementById('prog').textContent = done+'/'+SER.length;
+  // checklist
+  document.getElementById('chips').innerHTML = SER.map(function(s){
+    var cls = s.done?'done':(s.cur?'cur':'');
+    var check = s.done?'✓ ':'';
+    return '<span class="chip '+cls+'">'+check+'S'+s.s+' <small>8-12 · 84 kg</small></span>';
+  }).join('');
+
+  var rows = SER.map(function(s){
+    var badgeCls = s.done?'done':(s.cur?'cur':'');
+    var badge = '<div class="sbadge '+badgeCls+'">'+(s.done?'✓':'S'+s.s)+'</div>';
+    if(V==='A'){
+      // champ aujourd'hui + référence "dernière fois" dessous
+      var fld = s.today
+        ? '<span class="fld filled">'+s.today.kg+'</span><span class="x">kg ×</span><span class="fld filled">'+s.today.reps+'</span>'
+        : '<span class="fld cur">—</span><span class="x">kg ×</span><span class="fld cur">—</span>';
+      return '<div class="srow">'+badge+'<div class="scol"><div class="today">'+fld+'</div>'
+        + '<div class="ref">'+arrow()+' la dernière fois <b>'+s.last.kg+' kg × '+s.last.reps+'</b></div></div></div>';
+    } else {
+      // deux cellules : dernière fois | aujourd'hui (+ delta)
+      var now = s.today
+        ? '<div class="cell now'+(s.cur?' cur':'')+'"><div class="cell-l">Aujourd\'hui</div><div class="cell-v">'+s.today.kg+' × '+s.today.reps+'</div></div>'
+        : '<div class="cell now cur"><div class="cell-l">Aujourd\'hui</div><div class="cell-v todo">à saisir…</div></div>';
+      return '<div class="srow">'+badge+'<div class="scol"><div class="two">'
+        + '<div class="cell"><div class="cell-l">Dernière fois</div><div class="cell-v" style="color:var(--muted)">'+s.last.kg+' × '+s.last.reps+'</div></div>'
+        + now + '</div>'
+        + (s.today?'<div class="ref" style="margin-top:6px">'+delta(s.today,s.last)+' vs la dernière fois</div>':'') + '</div></div>';
+    }
+  }).join('');
+  document.getElementById('series').innerHTML = rows;
+  document.getElementById('addbtn').textContent = '+ Valider la série 3';
+  document.getElementById('note').innerHTML = V==='A'
+    ? '<b>Variante A — La dernière fois.</b> Sous chaque série, un rappel discret de ce que tu avais fait (poids × reps) à la séance précédente. Objectif : savoir quoi viser (au moins pareil, idéalement un peu plus) sans encombrer l\'écran.'
+    : '<b>Variante B — Les deux.</b> Deux colonnes par série : <b>Dernière fois</b> et <b>Aujourd\'hui</b>, avec l\'écart (+2 kg). Tu compares en direct ta progression, série par série. Un peu plus dense mais très parlant.';
+}
+render();
+</script>
+</body>
+</html>
