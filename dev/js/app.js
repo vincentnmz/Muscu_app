@@ -11778,7 +11778,7 @@ var _MA_INFO = {
   balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
   ressenti: { t: 'Effort des séances (RPE)', d: 'Après chaque séance tu notes son intensité sur l\'échelle CR-10 de Foster (0 = repos, 10 = effort maximal). Ce bloc suit l\'évolution de ton effort perçu sur la période — un moyen simple de repérer une charge qui s\'installe.', fiab: 'Méthode reconnue (session-RPE, Borg / Foster) : l\'échelle CR-10 est validée pour quantifier l\'effort. Multipliée par la durée, elle donne la charge interne (sRPE). Lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
   acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: 'Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
-  fraicheur: { t: 'Charge & fraîcheur (fitness-fatigue)', d: 'Modèle fitness-fatigue de Banister. Ta charge d\'entraînement alimente deux moyennes : la FORME de fond (CTL, lissée sur 42 jours) et la FATIGUE récente (ATL, sur 7 jours). La FRAÎCHEUR = forme − fatigue : positive = reposé/affûté, négative = tu as plus chargé que d\'habitude. « Charge récente » = ta charge des 7 derniers jours vs ton habitude.', fiab: 'Méthode reconnue et largement utilisée (Banister, base de TrainingPeaks TSB/CTL/ATL ; charge interne via le session-RPE de Foster). Repère SECONDAIRE chez Novalyz : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. Interprétable après ~4 semaines d\'historique.' },
+  fraicheur: { t: 'Fraîcheur : es-tu reposé ?', d: 'En clair : à quel point ton corps est <b>reposé</b> aujourd\'hui. Novalyz compare ce que tu encaisses <b>d\'habitude</b> (sur plusieurs semaines) à ce que tu as fait <b>ces derniers jours</b>. Si tu as fait <b>plus que d\'habitude</b> récemment → tu es plus fatigué (fraîcheur négative) ; si tu as fait <b>moins</b> → tu es reposé (fraîcheur positive). « Charge récente » = ta charge des 7 derniers jours vs ton habitude.<br><br><span style="color:var(--text-subtle)">Détail technique : forme de fond (CTL, 42 j) − fatigue récente (ATL, 7 j) = fraîcheur (TSB %).</span>', fiab: 'Méthode reconnue et largement utilisée (modèle fitness-fatigue de Banister, base du TSB/CTL/ATL de TrainingPeaks ; charge interne via le session-RPE de Foster). Repère SECONDAIRE chez Novalyz : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. Interprétable après ~4 semaines d\'historique.' },
   progression: { t: 'Progression / 1RM estimé', d: 'Le 1RM estimé (formule d\'Epley : charge × (1 + reps/30)) approxime la charge que tu soulèverais 1 fois, sans tester ton maximum. Novalyz suit son évolution pour juger ta progression de force.', fiab: 'Fiable surtout en dessous de ~10 répétitions ; l\'erreur d\'estimation grandit au-delà.' },
   execcible: { t: 'Exécution vs cible', d: 'Compare ce que tu as réalisé aux cibles posées sur l\'exercice. Charge : réalisé vs % de ton 1RM estimé (tolérance ±5 %). RPE : moyenne vs cible (±1).', fiab: 'Indicatif : « sous la cible » n\'est pas forcément un échec (deload, répétitions plus hautes…). La cible en kg dépend d\'un 1RM estimé.' },
   regularite: { t: 'Régularité', d: 'Le nombre de séances réalisées par semaine, comparé à ton objectif (déduit de ton programme).', fiab: 'La régularité sur la durée est l\'un des premiers facteurs de progression.' },
@@ -14382,7 +14382,7 @@ function renderChargeFatigueJour(data) {
   var subTxt = hasCf ? 'Ton état du jour : récup · charge · fatigue' : 'Ton état du jour';
   var fraicheurWidget = hasCf ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
     +   '<div style="text-align:center;flex:none;min-width:56px"><div style="font-size:18px;font-weight:800;color:' + frc + ';line-height:1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
-    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = ta forme de fond moins ta fatigue récente (modèle fitness-fatigue). Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
+    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = es-tu <b>reposé</b> ? On compare ta charge <b>habituelle</b> à celle de <b>ces derniers jours</b> : en avoir fait plus récemment = plus fatigué. Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
     + '</div>') : '';
 
   el.style.display = '';
@@ -14399,10 +14399,12 @@ function renderChargeFatigueJour(data) {
     + recoHtml;
 }
 function ouvrirInfoChargeFatigue() {
-  var txt = 'Fraîcheur = ta forme de fond (ce que ton corps encaisse d\'habitude) moins ta fatigue récente. '
-    + 'Positif = reposé/affûté ; négatif = fatigué. « Charge récente » = ton volume des 7 derniers jours vs ton habitude. '
-    + 'Méthode reconnue : modèle fitness-fatigue de Banister sur la charge d\'entraînement (sRPE de Foster). '
-    + 'C\'est un repère secondaire : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge.';
+  var txt = 'La fraîcheur dit si ton corps est reposé aujourd\'hui. '
+    + 'On compare ce que tu encaisses d\'habitude (sur plusieurs semaines) à ce que tu as fait ces derniers jours : '
+    + 'plus que d\'habitude récemment = fatigué (fraîcheur négative) ; moins = reposé (fraîcheur positive). '
+    + '« Charge récente » = ton volume des 7 derniers jours vs ton habitude. '
+    + 'C\'est un repère secondaire : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. '
+    + '(Méthode reconnue : modèle fitness-fatigue sur la charge d\'entraînement.)';
   try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Charge & fatigue', txt); } catch (e) {}
   try { alert(txt); } catch (e) {}
 }
@@ -14975,7 +14977,7 @@ function renderEtat(data) {
           + '<span class="et-big" style="color:var(--text-muted)">—</span>'
           + '<span class="et-muted"><b>Pas encore calculable.</b><br>' + esc(noteF) + '</span></div>'
           + '<div style="margin-top:11px;padding:11px 12px;background:var(--surface2);border-radius:11px;font-size:11.5px;color:var(--text-muted);line-height:1.5">'
-          + '<b style="color:var(--text)">C\'est quoi la fraîcheur ?</b> Ta charge nourrit deux moyennes : ta <b>forme de fond</b> (sur ~6 semaines) et ta <b>fatigue récente</b> (sur 1 semaine). La <b>fraîcheur = forme − fatigue</b> : positive = reposé, négative = tu charges plus que d\'habitude. Méthode reconnue (modèle fitness-fatigue de Banister).'
+          + '<b style="color:var(--text)">C\'est quoi la fraîcheur ?</b> En clair : es-tu <b>reposé</b> ? Novalyz compare ce que tu encaisses <b>d\'habitude</b> (~6 semaines) à ta charge des <b>derniers jours</b>. Tu as fait plus que d\'habitude récemment → <b>fatigué</b> ; moins → <b>reposé</b>. Méthode reconnue (modèle fitness-fatigue).'
           + '</div>' + acwrLine;
       } else {
         var frL, frC, frBg, frD;
@@ -15702,7 +15704,7 @@ function _genProgramme(objectif, jours, niveau, cat) {
  * ═══════════════════════════════════════════════════════════════════════════ */
 var _G2_BLOCKS = {
   pecs:    { mus: 'Pectoraux', slots: [
-    { lab: 'Écarté', type: 'iso', rmin: 12, rmax: 15, exos: ['Ecarté poulie haute', 'Ecarté machine', 'Ecarté poulie basse'] },
+    { lab: 'Écarté', type: 'iso', rmin: 12, rmax: 15, exos: ['Ecarté poulie haute', 'Ecarté machine', 'Ecarté poulie basse', 'Ecarté haltéres incliné', 'Ecarté haltéres décliné'] },
     { lab: 'Incliné', type: 'poly', rmin: 8, rmax: 12, exos: ['Développé incliné Hammer', 'Développé incliné à la Smith', 'Développé couché incliné haltère'] },
     { lab: 'Horizontal', type: 'poly', rmin: 8, rmax: 10, exos: ['Développé couché haltère', 'Développé machine Hammer', 'Développé machine', 'Développé couché barre'] },
     { lab: 'Décliné', type: 'poly', rmin: 10, rmax: 12, exos: ['Développé décliné machine', 'Développé décliné à la Smith'] } ] },
