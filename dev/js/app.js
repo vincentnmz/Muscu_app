@@ -10133,8 +10133,16 @@ function remplirListeExosLibres(filtre) {
   // --- Exercices fréquents (si pas de recherche texte) ---
   var freqEl = document.getElementById('exo-freq');
   if (freqEl) {
-    var fr = (!f) ? _exoFrequents().filter(function (x) { return !_exoFiltreGrp || _exoGrpOf(x.muscle) === _exoFiltreGrp; }) : [];
-    freqEl.innerHTML = fr.length ? ('<div class="exo-freq-lab">Tes exercices fréquents</div><div class="exo-freqs">' + fr.map(function (x) { return '<button type="button" class="exo-fchip" data-v="' + _exoAttr(x.id + '|' + x.nom + '|' + x.muscle) + '" onclick="choisirExoDirect(this.dataset.v)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>' + esc(x.nom) + '</button>'; }).join('') + '</div>') : '';
+    // En mode REMPLACEMENT : proposer d'abord les VARIANTES du même angle (générateur v2).
+    var lRepl = (_replaceExoTarget != null) ? programmeSeance.find(function (x) { return x.row_index === _replaceExoTarget; }) : null;
+    var vars = (lRepl && !f && typeof _g2VariantsFor === 'function') ? _g2VariantsFor(lRepl.exercice) : [];
+    if (lRepl && !f && vars.length) {
+      freqEl.innerHTML = '<div class="exo-freq-lab">Variantes suggérées — même angle que ' + esc(lRepl.exercice) + '</div><div class="exo-freqs">'
+        + vars.map(function (x) { return '<button type="button" class="exo-fchip" data-v="' + _exoAttr(x.id + '|' + x.nom + '|' + x.muscle) + '" onclick="choisirExoDirect(this.dataset.v)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>' + esc(x.nom) + '</button>'; }).join('') + '</div>';
+    } else {
+      var fr = (!f) ? _exoFrequents().filter(function (x) { return !_exoFiltreGrp || _exoGrpOf(x.muscle) === _exoFiltreGrp; }) : [];
+      freqEl.innerHTML = fr.length ? ('<div class="exo-freq-lab">Tes exercices fréquents</div><div class="exo-freqs">' + fr.map(function (x) { return '<button type="button" class="exo-fchip" data-v="' + _exoAttr(x.id + '|' + x.nom + '|' + x.muscle) + '" onclick="choisirExoDirect(this.dataset.v)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>' + esc(x.nom) + '</button>'; }).join('') + '</div>') : '';
+    }
   }
   // --- Liste principale (cartes multi-sélection) ---
   var el = document.getElementById('liste-exos-libres'); if (!el) return;
@@ -15989,6 +15997,32 @@ function _g2Lignes() {
   else if (st.obj === 'force') { lignes = _genProgrammeForce(st.jours); }
   else { lignes = _genProgramme2('hypertrophie', st.org, st.jours, st.temps, st.niv); }
   return _g2Resolve(lignes);
+}
+// Variantes d'un exercice = les AUTRES exos de son slot (même angle/muscle) dans les blocs
+// du générateur ou les pools Force, résolus au catalogue réel. Sert au bouton « Remplacer »
+// (étape 4) : proposer d'abord les alternatives du même angle quand une machine manque.
+function _g2VariantsFor(exoNom) {
+  if (!exoNom || typeof _genNorm !== 'function') return [];
+  var norm = _genNorm(exoNom), found = null;
+  Object.keys(_G2_BLOCKS).forEach(function (bk) {
+    _G2_BLOCKS[bk].slots.forEach(function (sl) {
+      if (!found && sl.exos.some(function (e) { return _genNorm(e) === norm; })) found = sl.exos;
+    });
+  });
+  if (!found && typeof _G2_FPOOL !== 'undefined') {
+    Object.keys(_G2_FPOOL).forEach(function (pk) {
+      if (!found && _G2_FPOOL[pk].some(function (e) { return _genNorm(e) === norm; })) found = _G2_FPOOL[pk];
+    });
+  }
+  if (!found) return [];
+  var names = {}; (exercicesData || []).forEach(function (e) { names[_genNorm(e.exercice)] = e; });
+  var out = [];
+  found.forEach(function (e) {
+    if (_genNorm(e) === norm) return;
+    var hit = names[_genNorm(e)];
+    if (hit && !out.some(function (o) { return o.nom === hit.exercice; })) out.push({ nom: hit.exercice, id: (hit.exercice_id != null ? hit.exercice_id : ''), muscle: hit.muscle || '' });
+  });
+  return out;
 }
 
 // ── Force custom : squelette éditable à listes déroulantes (étape 3) ──
