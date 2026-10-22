@@ -9918,7 +9918,7 @@ function afficherListeSeance() {
       <span class="sc-ico">${icoInner}</span>
       <div class="sc-nm"><div class="a">${p.exercice}</div><div class="b">${subTxt}${swapHint}</div></div>
       ${chip}
-      ${!exoS ? `<button class="btn-sm swap-exo sc-del" title="Remplacer cet exercice"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10 4 13l3 3M4 13h11M17 14l3-3-3-3M20 11H9"/></svg></button>` : ''}
+      ${!exoS ? `<button class="swap-exo sc-swapbtn" title="Remplacer cet exercice par un autre"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10 4 13l3 3M4 13h11M17 14l3-3-3-3M20 11H9"/></svg>Remplacer</button>` : ''}
       ${exoS ? `<button class="btn-sm reset-exo sc-del" title="Effacer les séries faites"><svg class="ico"><use href="#i-trash"/></svg></button>` : ''}
     `;
     const estGroupe = p.groupe_id && programmeSeance.filter(o => o.groupe_id === p.groupe_id).length >= 2;
