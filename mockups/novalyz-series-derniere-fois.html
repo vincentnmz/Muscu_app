@@ -86,7 +86,7 @@
     <div class="exo-h"><span class="exo-nm">Développé couché haltère</span><span class="exo-tg">3 × 8-12</span></div>
     <div class="exo-sub">RPE 8 · 90 s de repos · surcharge : +2 kg conseillé</div>
 
-    <div class="plan-hd">Tes séries · <span id="prog">2/3</span> · <span style="color:var(--muted)">dernière fois</span></div>
+    <div class="plan-hd">Tes séries · <span id="prog">2/3</span> · <span id="planlegend" style="color:var(--muted)"></span></div>
     <div class="chips" id="chips"></div>
 
     <div id="series"></div>
@@ -113,14 +113,16 @@ function delta(t,l){ if(!t) return ''; var d=t.kg-l.kg; if(d>0) return '<span cl
 function render(){
   var done = SER.filter(function(s){return s.done;}).length;
   document.getElementById('prog').textContent = done+'/'+SER.length;
-  // LES CASES S1/S2/S3 portent la DERNIÈRE FOIS (charge × reps). En variante B, on ajoute aujourd'hui.
+  // LES CASES S1/S2/S3 : dernière fois → CIBLE surcharge (variante A) · dernière fois → aujourd'hui (variante B)
+  document.getElementById('planlegend').innerHTML = V==='A' ? 'dernière fois → <span style="color:var(--accent2)">cible</span>' : 'dernière fois → <span style="color:var(--good)">aujourd\'hui</span>';
   document.getElementById('chips').innerHTML = SER.map(function(s){
     var cls = s.done?'done':(s.cur?'cur':'');
     var check = s.done?'✓ ':'';
-    var last = '<b>'+s.last.kg+' kg × '+s.last.reps+'</b>';
     var inner;
     if(V==='A'){
-      inner = 'S'+s.s+' <small>'+last+'</small>';
+      // cible surcharge = dernière fois + increment conseillé (+2 kg), mêmes reps
+      var cible = (s.last.kg + 2) + '×' + s.last.reps;
+      inner = 'S'+s.s+' <small>'+s.last.kg+'×'+s.last.reps+'</small> <span style="color:var(--subtle)">→</span> <b style="color:var(--accent2)">'+cible+'</b>';
     } else {
       var today = s.today ? ('<b style="color:var(--good)">'+s.today.kg+'×'+s.today.reps+'</b>') : '<small style="color:var(--subtle)">—</small>';
       inner = 'S'+s.s+' <small>'+s.last.kg+'×'+s.last.reps+'</small> <span style="color:var(--subtle)">→</span> '+today;
@@ -143,7 +145,7 @@ function render(){
   document.getElementById('series').innerHTML = rows;
   document.getElementById('addbtn').textContent = '+ Valider la série 3';
   document.getElementById('note').innerHTML = V==='A'
-    ? '<b>Variante A — La dernière fois.</b> Les cases <b>S1 / S2 / S3</b> affichent le poids × reps de ta <b>séance précédente</b> (ex. S1 · 82 kg × 8). Tu sais quoi viser avant même de saisir. En dessous, tu enregistres la série du jour.'
+    ? '<b>Variante A (retenue) — Dernière fois → cible.</b> Chaque case <b>S1 / S2 / S3</b> montre ce que tu as fait la <b>dernière fois</b> (82×8) puis la <b>cible de surcharge</b> à viser (<span style="color:var(--accent2)">84×8</span>, +2 kg). Tu sais exactement quoi battre, série par série. En dessous, tu enregistres la série du jour.'
     : '<b>Variante B — Les deux.</b> Les cases <b>S1 / S2 / S3</b> montrent <b>dernière fois → aujourd\'hui</b> (82×8 → 84×8), et la série en cours affiche l\'écart (+2 kg). Tu vois ta progression série par série, en direct.';
 }
 render();
