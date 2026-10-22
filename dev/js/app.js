@@ -10381,6 +10381,28 @@ function majSeriesActuel() {
 // de séries sont prévues et leur objectif (reps + charge/RPE + repos), coché au fur
 // et à mesure. Tout vient de la ligne de programme (rien d'inventé — règle 6bis).
 // Exo hors programme (pas de pProg) → rien affiché.
+// Incrément de charge conseillé pour un exercice (depuis le catalogue `increment_kg`).
+function _incrementExo(exoNom) {
+  try {
+    var e = exercicesData && exercicesData.find(function (x) { return x.exercice === exoNom; });
+    if (e && e.increment_kg) { var nums = String(e.increment_kg).match(/[0-9]+(\.[0-9]+)?/g); if (nums && nums.length) return Math.max.apply(null, nums.map(Number)); }
+  } catch (_) {}
+  return 2.5;
+}
+// Retrouve, dans les séries de la dernière séance, celle qui correspond à la série k.
+function _refSerie(series, k) {
+  if (!Array.isArray(series)) return null;
+  var byNum = series.find(function (s) { return Number(s.serie) === k; });
+  return byNum || series[k - 1] || null;
+}
+// Cible de surcharge PAR SÉRIE (double progression) : +reps tant qu'on n'a pas atteint le
+// haut de la fourchette, puis +incrément de charge et retour en bas de fourchette.
+function _cibleSerieSurcharge(ref, rmax, rmin, inc) {
+  var ch = Number(ref.charge) || 0, rp = Number(ref.reps) || 0;
+  if (rmax && rp >= rmax) return { charge: Math.round((ch + inc) * 4) / 4, reps: (rmin || rp), up: 'charge' };
+  return { charge: ch, reps: rp + 1, up: 'reps' };
+}
+
 function majPlanSeries() {
   var el = document.getElementById('plan-series-actuel'); if (!el) return;
   var pProg = exoEnCours ? programmeSeance.find(function (p) { return p.exercice === exoEnCours.exerciceNom; }) : null;
@@ -10389,16 +10411,31 @@ function majPlanSeries() {
   var plan = _derivePlanSeries(pProg, _est1RM(exoEnCours.exerciceNom));
   var ps = plan.series; if (!ps.length) { el.innerHTML = ''; return; }
   var done = exoEnCours ? exoEnCours.series.length : 0;
+  // Historique PAR SÉRIE de la dernière séance de cet exo → « dernière fois → cible ».
+  var perfHist = (typeof getPerf === 'function') ? getPerf(exoEnCours.exerciceNom) : null;
+  var lastSeries = (perfHist && Array.isArray(perfHist.series)) ? perfHist.series : null;
+  var rmaxP = (pProg.reps_max != null && pProg.reps_max !== '') ? Number(pProg.reps_max) : null;
+  var rminP = (pProg.reps_mini != null && pProg.reps_mini !== '') ? Number(pProg.reps_mini) : null;
+  var incP = _incrementExo(exoEnCours.exerciceNom);
+  var anyHist = false;
   var chips = ps.map(function (s, i) {
     var k = i + 1;
     var st = (k <= done) ? 'done' : (k === done + 1 ? 'cur' : 'todo');
     var mark = (st === 'done') ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '';
-    var load = _planLoadTxt(s);
-    var detail = [s.reps + ' reps', load, (s.rpe != null ? 'RPE ' + s.rpe : ''), (s.tag || '')].filter(Boolean).join(' · ');
-    return '<span class="plan-chip ' + st + (s.tag === 'lourde' ? ' top' : '') + '">' + mark + 'S' + k + ' <small>' + escapeHtml(detail) + '</small></span>';
+    var inner, ref = lastSeries ? _refSerie(lastSeries, k) : null;
+    if (ref && (Number(ref.charge) > 0 || Number(ref.reps) > 0)) {
+      anyHist = true;
+      var cib = _cibleSerieSurcharge(ref, rmaxP, rminP, incP);
+      inner = '<small>' + ref.charge + '×' + ref.reps + ' <span style="color:var(--text-subtle)">→</span> <b style="color:var(--accent)">' + cib.charge + '×' + cib.reps + '</b></small>';
+    } else {
+      var load = _planLoadTxt(s);
+      var detail = [s.reps + ' reps', load, (s.rpe != null ? 'RPE ' + s.rpe : ''), (s.tag || '')].filter(Boolean).join(' · ');
+      inner = '<small>' + escapeHtml(detail) + '</small>';
+    }
+    return '<span class="plan-chip ' + st + (s.tag === 'lourde' ? ' top' : '') + '">' + mark + 'S' + k + ' ' + inner + '</span>';
   }).join('');
   var reposTxt = (pProg.repos_sec != null && pProg.repos_sec !== '') ? (pProg.repos_sec + 's repos') : '';
-  var sub = [plan.note, reposTxt].filter(Boolean).join(' · ');
+  var sub = [(anyHist ? 'dernière fois → cible' : ''), plan.note, reposTxt].filter(Boolean).join(' · ');
   el.innerHTML = '<div class="plan-hd">Séries prévues · ' + done + '/' + ps.length + '</div>'
     + '<div class="plan-chips">' + chips + '</div>'
     + (sub ? '<div class="plan-sub">' + escapeHtml(sub) + '</div>' : '');
