@@ -15,7 +15,7 @@
 | **N7** | **Barre équilibre charge/récup** : couleurs **pas assez saturées** → gamme cohérente existante | Design | ✅ | Jauge fraîcheur : tokens pleins `var(--warn)`/`var(--text-muted)`/`var(--good)`, zones alignées sur les seuils (−12/+5). |
 | **N8** | **Graphiques version desktop trop gros** | Design / desktop | ✅ | `#tab-historique .ma-chart{max-width:640px}` en desktop (les graphes pleine colonne ne s'étirent plus). |
 | **N9** | **Régularité** : le graphique actuel n'est **pas très compréhensible** → explorer d'autres solutions | Athlète | ⏳ | Repenser la visualisation de la régularité (maquette d'options). |
-| **N10** | **Programmes proposés par Novalyz** : revoir **ce qui est proposé et comment c'est fait** (générateur) | Programme | 🟡 | Audité (`_genProgramme`/`_GEN_*`). Constats + pistes remis au porteur (cf. ci-dessous). Décision méthode en attente. |
+| **N10** | **Programmes proposés par Novalyz** : revoir **ce qui est proposé et comment c'est fait** (générateur) | Programme | ✅ | **Générateur v2 construit** (spec `generateur-v2.md`) : moteur blocs+organisations+Force (fonctions pures + tests), UI 2 parcours (galerie débutant / configurateur objectif-organisation-jours-temps), Force custom à listes déroulantes, variantes « ou: » → bouton Remplacer. Sur `dev`. |
 | **N11** | **Morpho-anatomie IA** : à **paramétrer** | IA | 🟡 | Dépend de `ANTHROPIC_API_KEY` / réglages (v1 déjà codée, en veille). |
 | **N12a** | **Nutrition** : le **bouton d'import MFP** a disparu | Athlète | ✅ | Affichage basé sur « app native » (robuste au chargement tardif du plugin) ; sur web une info s'affiche au lieu de rien. |
 | **N12b** | Vérifier que le **coach reçoit bien** les données nutrition MFP importées par l'athlète | Athlète ↔ Coach | ✅ | Chemin vérifié : athlète → saveNutrition → nutri_historique → coach (getAppData) → `renderCoachHubNutrition`. Auto-import HC tagué `source:'health_connect'` → vérifiable en base. (En base : seules données « manuel » pour l'instant, pas encore d'import HC réel.) |
@@ -23,8 +23,12 @@
 
 ---
 
+## Points ajoutés en cours de route (hors liste N) — sur `dev`
+- **Séance · poids/reps par série** : les cases S1/S2/S3 montrent **dernière fois → cible surcharge** (double progression). ✅
+- **Fraîcheur** : explications réécrites **grand public** (widget, pop-up, info). ✅
+- **Catalogue** : ajout **Ecarté haltéres incliné / décliné** (ids 91/92). ✅
+
 ## Regroupements / priorités (à confirmer avec le porteur)
-- **Rapides / bugs** : N1 (e-mail), N4 (recherche), N6 (scroll IA desktop), N7 (couleurs barre), N8 (graphes desktop), N12a (bouton MFP).
-- **À vérifier (données)** : N2 (années de pratique), N10 (générateur programme), N12b (MFP → coach).
-- **Maquette d'abord** : N3 (photo/mensurations), N5 (récompenses), N9 (régularité), N13 (refonte aperçu coach).
+- **Fait** : N1·N2·N4·N6·N7·N8·N10·N12a·N12b + séance/fraîcheur/écartés (tout sur `dev`, à valider puis `dev`→`main`).
+- **Reste — maquette d'abord** : N3 (photo/mensurations), N5 (récompenses bugs+barème), N9 (régularité), N13 (refonte aperçu coach).
 - **Gated / en veille** : N11 (morpho IA, clé API).
