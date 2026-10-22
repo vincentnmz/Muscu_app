@@ -160,6 +160,11 @@ body.seance-active #card-choix-seance                { border-radius:18px; }
 .sc-chip.todo{ background:var(--surface2); color:var(--text-muted); }
 .sc-del{ background:none; border:none; color:var(--text-subtle); padding:4px; cursor:pointer; flex:none; }
 .sc-del .ico{ width:16px; height:16px; }
+/* Bouton « Remplacer » (séance) : explicite (icône + libellé, teinte accent) au lieu
+   d'une icône grise anonyme qu'on ne comprenait pas. */
+.sc-swapbtn{ display:inline-flex; align-items:center; gap:4px; background:var(--accent-a08); border:1px solid var(--accent-a28,rgba(26,95,255,.28)); color:var(--accent); padding:5px 9px; border-radius:9px; font-size:11.5px; font-weight:800; cursor:pointer; flex:none; white-space:nowrap; }
+.sc-swapbtn:hover{ background:var(--accent); color:#fff; }
+.sc-swapbtn svg{ width:13px; height:13px; }
 /* Chrono d'en-tête de la page séance */
 #seance-page-chrono{ display:inline-flex; align-items:center; gap:6px; background:var(--accent-a10,rgba(26,95,255,.10)); color:var(--accent-strong,#1248D4); border-radius:999px; padding:6px 11px; font-size:13px; font-weight:800; font-variant-numeric:tabular-nums; flex:none; }
 body.has-bottom-nav .toast { bottom:84px; }
