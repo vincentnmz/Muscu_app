@@ -114,8 +114,10 @@
       <div class="m"><div class="k">Hanches</div><div class="v"><b>98</b><u>cm</u><em class="flat">– 0</em></div></div>
       <div class="m"><div class="k">Épaules</div><div class="v"><b>120</b><u>cm</u><em class="up">▲ +1</em></div></div>
       <div class="m"><div class="k">Bras G / D</div><div class="v"><b>36/37</b><u>cm</u><em class="up">▲ +1</em></div></div>
+      <div class="m"><div class="k">Avant-bras G / D</div><div class="v"><b>29/29</b><u>cm</u><em class="flat">– 0</em></div></div>
       <div class="m"><div class="k">Cuisse G / D</div><div class="v"><b>58/58</b><u>cm</u><em class="up">▲ +1</em></div></div>
       <div class="m"><div class="k">Mollet</div><div class="v"><b>39</b><u>cm</u><em class="flat">– 0</em></div></div>
+      <div class="m"><div class="k">% masse grasse</div><div class="v"><b>14,8</b><u>%</u><em class="down">▼ −1,2</em></div></div>
       <div class="m"><div class="k">Poids</div><div class="v"><b>71,2</b><u>kg</u><em class="down">▼ −1,1</em></div></div>
     </div>
 
@@ -140,20 +142,23 @@
         <div class="f"><label>Épaules</label><input inputmode="decimal" placeholder="cm"></div>
         <div class="f"><label>Bras gauche</label><input inputmode="decimal" placeholder="cm"></div>
         <div class="f"><label>Bras droit</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Avant-bras gauche</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Avant-bras droit</label><input inputmode="decimal" placeholder="cm"></div>
         <div class="f"><label>Cuisse gauche</label><input inputmode="decimal" placeholder="cm"></div>
         <div class="f"><label>Cuisse droite</label><input inputmode="decimal" placeholder="cm"></div>
         <div class="f"><label>Mollet</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>% masse grasse</label><input inputmode="decimal" placeholder="%"></div>
         <div class="f"><label>Poids</label><input inputmode="decimal" placeholder="kg"></div>
       </div>
       <button class="btn">Enregistrer les mesures</button>
     </div>
   </div>
 
-  <div class="note"><b>À valider avant que je code</b> :
-    <span class="k">① Qui saisit ?</span> Coach (et/ou l'athlète ?) pour les mensurations. Les photos : athlète qui les prend, coach qui regarde — ou les deux.
-    <span class="k">② Quelles mesures</span> : la liste ci-dessus te convient (poitrine, taille, hanches, épaules, bras G/D, cuisse G/D, mollet, poids) ou on ajoute/enlève (cou, avant-bras, % masse grasse) ?
-    <span class="k">③ Photos</span> : stockage privé (Supabase Storage). 3 angles Face/Profil/Dos. OK ?
-    <span class="k">④ Côté athlète</span> : il a le même onglet dans son app (saisie + ses photos), ou c'est coach-only ?
+  <div class="note"><b>Décisions validées</b> :
+    <span class="k">Saisie = athlète</span> (photos + mensurations) ; le coach <b>consulte</b> dans la fiche.
+    <span class="k">Mesures</span> : poitrine, tour de taille, hanches, épaules, bras G/D, <b>avant-bras G/D</b>, cuisse G/D, mollet, <b>% masse grasse</b>, poids.
+    <span class="k">Photos</span> : stockage privé (Supabase Storage), 3 angles Face/Profil/Dos.
+    <br><br><b>Placement (ma reco)</b> : côté <b>athlète</b> → dans <b>Forme</b> (où vit déjà le poids), une carte « Photos &amp; mensurations » qui ouvre cet écran. Côté <b>coach</b> → nouveau <b>sous-onglet « Suivi »</b> dans la fiche (à côté d'Aperçu / Progression / Séances / Programme), en consultation.
   </div>
 </div>
 <script>
