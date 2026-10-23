@@ -6,7 +6,7 @@
 
 ## Où en est le travail
 - Branche de travail : `claude/novalyz-player-profile-mockups-g4bock`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`.
-- **Rien en attente de redeploy backend** (`index.ts` inchangé récemment — tout le travail est front). SW = **v377** (bumper à chaque modif de `js/app.js`).
+- **Rien en attente de redeploy backend** (`index.ts` inchangé récemment — tout le travail est front). SW = **v382** (bumper à chaque modif de `js/app.js`).
 - Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**46 suites vertes** à maintenir).
 
 ## Fait récemment (tout sur `dev`)
@@ -18,12 +18,12 @@
 - **Fraîcheur** : explications grand public (`_MA_INFO.fraicheur`, `renderChargeFatigueJour`, `ouvrirInfoChargeFatigue`).
 - **Catalogue** : ajout `Ecarté haltéres incliné` (id 91) + `décliné` (id 92) dans la table `exercices` (Supabase) + au générateur.
 - **Bouton « Remplacer » (séance)** : explicite (icône + libellé, `.sc-swapbtn`) au lieu d'une icône grise.
-- **N13 (refonte Aperçu coach) — ✅ FAIT** : bloc en tête (`renderCoachCoupDoeil`, conteneur `#cd-coupdoeil`, CSS `.cdcp-*`), label **« Lecture Novalyz · pour le coach »**. ANALYSE, pas recopie :
-  - **Synthèse narrative** (1 phrase coach : « <Prénom> — prêt/à surveiller · <point entraînement clé> ») + **carte Reco d'action** (récup / rééquilibrer volume / revoir surcharge / maintenir).
-  - **Entraînement** = verdict progression (1RM) + couverture des **5 grands groupes sur 7 j** → « Non travaillé : Dos, Bras, Jambes » (groupes **à 0**). *(Bug « pecs pêchent » corrigé.)*
-  - **État & récup** = 1 ligne/signal (Récup, Sommeil, Énergie, Fatigue, Stress, Douleur) avec **niveau + tendance** (format maquette, analytique).
+- **N13 (refonte Aperçu coach) — ✅ FAIT (v3)** : bloc en tête (`renderCoachCoupDoeil`, conteneur `#cd-coupdoeil`, CSS `.cdcp-*`), 2 sections **Coup d'œil** (Entraînement + État) et **Lecture Novalyz · pour le coach**. ANALYSE, pas recopie. Maquette de référence : `mockups/novalyz-coach-coupdoeil-v3.html`.
+  - **Entraînement = charge · reps · RPE réels (plus de 1RM Epley)**, classé par exo depuis `progression_par_exo` (charge=top set, reps à cette charge, `series[].rpe`) : **★Records** (charge/reps battu ≤10 j, base ≥2 pts), **▲Progresse** (charge↑ ou reps↑ à charge égale, ≤14 j), **▼Recule** (charge ET reps↓ vs séance précédente, pas déjà reparti), **⏸Stagne** (≥3 séances même charge, reps non croissantes, RPE↑), **🔥Effort** (RPE moyen 7 j + tendance), **✓/⚠ Travaillé/Non travaillé** (5 grands groupes 7 j).
+  - **État & récup** = 1 ligne/signal (Récup, Sommeil, Énergie, Fatigue, Stress, Douleur, Pas) **niveau+tendance** + **ligne Cardio TOUJOURS affichée** : si `data.cardio.history` vide ou pas de sortie ≤7 j → « **manque de cardio** » explicite ; sinon fréquence 7 j + efficience FC à effort égal (seulement si RPE comparable & assez de données, sinon omise — règle 6bis).
+  - **Lecture Novalyz** : narratif (dynamique records+progression, stagnation, recul, volume délaissé, intensité haute RPE≥8.5, manque de cardio) + **Reco** priorisée (récup → volume → stagne → recule → cardio → maintien).
   - **Dédoublonnage** : ancienne « Lecture Novalyz » athlète (`#cd-analyse`, `renderAnalyseCoach`) **masquée** dans l'Aperçu.
-  - Maquette : `mockups/novalyz-coach-apercu-v2.html` (responsive, 2 colonnes desktop).
+  - Maquettes : `mockups/novalyz-coach-coupdoeil-v3.html` (référence v3) + `novalyz-coach-apercu-v2.html` (écran complet responsive).
 
 ## À faire (priorité)
 1. **Backlog, maquette d'abord** : **N5** (récompenses bugs+barème), **N3** (photos+mensurations), **N9** (régularité), **N11** (morpho IA, gated clé API).
