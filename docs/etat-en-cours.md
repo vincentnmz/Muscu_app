@@ -18,13 +18,14 @@
 - **Fraîcheur** : explications grand public (`_MA_INFO.fraicheur`, `renderChargeFatigueJour`, `ouvrirInfoChargeFatigue`).
 - **Catalogue** : ajout `Ecarté haltéres incliné` (id 91) + `décliné` (id 92) dans la table `exercices` (Supabase) + au générateur.
 - **Bouton « Remplacer » (séance)** : explicite (icône + libellé, `.sc-swapbtn`) au lieu d'une icône grise.
-- **N13 (refonte Aperçu coach) — en cours** : bloc **« Coup d'œil »** en tête (`renderCoachCoupDoeil`, conteneur `#cd-coupdoeil`, CSS `.cdcp-*`). C'est une **ANALYSE, pas une recopie** :
-  - Entraînement = verdict progression (1RM) + couverture des **5 grands groupes sur 7 j** → « Non travaillé : Dos, Bras, Jambes » (on regarde les groupes **à 0**, pas seulement ce qui a été fait). *(Corrige le bug « pecs pêchent » alors que c'était le seul muscle travaillé.)*
+- **N13 (refonte Aperçu coach) — quasi fini** : bloc en tête (`renderCoachCoupDoeil`, conteneur `#cd-coupdoeil`, CSS `.cdcp-*`), label **« Lecture Novalyz · pour le coach »**. **ANALYSE, pas recopie** :
+  - **Synthèse narrative** (1 phrase coach : « <Prénom> — prêt/à surveiller · <point entraînement clé> ») + **carte Reco d'action** (récup / rééquilibrer volume / revoir surcharge / maintenir). ✅ fait (N13 point a).
+  - Entraînement = verdict progression (1RM) + couverture des **5 grands groupes sur 7 j** → « Non travaillé : Dos, Bras, Jambes » (groupes **à 0**). *(Corrige le bug « pecs pêchent » alors que c'était le seul muscle travaillé.)*
   - État = verdict récup + tendance (sommeil/fatigue/stress/douleur vs historique `bien_etre`), **pas** la recopie du questionnaire.
-  - Maquette validée : `mockups/novalyz-coach-apercu-v2.html` (responsive, 2 colonnes desktop).
+  - Maquette : `mockups/novalyz-coach-apercu-v2.html` (responsive, 2 colonnes desktop).
 
 ## À faire (priorité)
-1. **Finir N13** : (a) **Lecture Novalyz NARRATIVE orientée coach + reco d'action** en tête (la Lecture plus bas est encore formulée « tu… » pour l'athlète) ; (b) **réordonner / dédoublonner** les blocs du bas (le coup d'œil reprend un peu volume/état déjà affichés).
+1. **Finir N13 — reste le point (b)** : **réordonner / dédoublonner** les blocs du bas. Il y a maintenant DEUX « Lecture Novalyz » : la nouvelle (coach, en tête) et l'ancienne plus bas (`renderAnalyseCoach`, formulée « tu… » pour l'athlète) → masquer/relabel l'ancienne et retirer les doublons (volume/état déjà repris dans le coup d'œil).
 2. **Backlog, maquette d'abord** : **N5** (récompenses bugs+barème), **N3** (photos+mensurations), **N9** (régularité), **N11** (morpho IA, gated clé API).
 3. **Promouvoir `dev` → `main`** (prod) quand l'utilisateur a validé.
 
