@@ -13031,11 +13031,77 @@ function _maProgAgg(sd) {
   return { byM: byM, byS: byS };
 }
 
+// N9 — Régularité : barres hebdo (jours entraînés) vs OBJECTIF, 12 dernières
+// semaines. Lecture immédiate : objectif atteint (vert) / sous l'objectif (orange)
+// / semaine vide (rouge), + série en cours, % de semaines à l'objectif, moyenne.
+// Données réelles : volume_par_jour (jours entraînés) + dashboard.regularite
+// (objectif seances_prevues + streak). Indépendant du sélecteur de période.
+function _maRegulariteBloc(data) {
+  var vpj = (data.historique && data.historique.volume_par_jour) || {};
+  var reg = (data.dashboard && data.dashboard.regularite) || {};
+  var obj = Number(reg.seances_prevues) || 0;
+  var WEEKS = 12;
+  var now = new Date(); now.setHours(0, 0, 0, 0);
+  var dow = (now.getDay() + 6) % 7;                       // 0 = lundi
+  var monday = new Date(now); monday.setDate(now.getDate() - dow);
+  var start = new Date(monday); start.setDate(monday.getDate() - (WEEKS - 1) * 7);
+  var counts = new Array(WEEKS).fill(0);
+  Object.keys(vpj).forEach(function (k) {
+    if (!(Number(vpj[k]) > 0)) return;                    // jour entraîné (volume > 0)
+    var d = new Date(k + 'T00:00:00'); if (isNaN(d.getTime())) return;
+    d.setHours(0, 0, 0, 0);
+    var wi = Math.floor((d - start) / 6048e5);             // 6048e5 = 7 j en ms
+    if (wi >= 0 && wi < WEEKS) counts[wi]++;
+  });
+  if (!counts.some(function (c) { return c > 0; })) {
+    return _maSec('Régularité', '', 'regularite') + _maEmpty('Pas encore de séances pour mesurer la régularité.');
+  }
+  var reached = function (c) { return obj > 0 ? c >= obj : c > 0; };
+  var atObj = counts.filter(reached).length;
+  var moy = Math.round(counts.reduce(function (a, c) { return a + c; }, 0) / WEEKS * 10) / 10;
+  // Série en cours : semaines consécutives « à l'objectif » en remontant ; la semaine
+  // en cours (dernière) ne casse pas la série si elle n'est pas encore atteinte.
+  var streak = 0;
+  for (var i = WEEKS - 1; i >= 0; i--) {
+    if (reached(counts[i])) streak++;
+    else if (i === WEEKS - 1) continue;                   // semaine en cours non finie
+    else break;
+  }
+  var maxV = Math.max(obj, Math.max.apply(null, counts), 1);
+  var bars = counts.map(function (c, i) {
+    var col = reached(c) ? 'var(--good)' : (c >= 1 ? 'var(--warn)' : 'var(--bad)');
+    var h = c > 0 ? Math.max(6, Math.round(c / maxV * 100)) : 3;
+    var last = i === WEEKS - 1;
+    return '<i title="Semaine : ' + c + ' séance' + (c > 1 ? 's' : '') + '" style="flex:1;align-self:flex-end;height:' + h + '%;background:' + col + ';border-radius:4px 4px 2px 2px;display:block;' + (last ? 'outline:2px solid ' + col + ';outline-offset:1px' : '') + '"></i>';
+  }).join('');
+  var objPct = obj > 0 ? Math.round(obj / maxV * 100) : 0;
+  var objLine = obj > 0
+    ? '<div style="position:absolute;left:0;right:0;bottom:' + objPct + '%;border-top:2px dashed var(--accent2);opacity:.6;pointer-events:none">'
+      + '<span style="position:absolute;right:0;top:-14px;font-size:9px;font-weight:800;color:var(--accent2)">obj. ' + obj + '</span></div>'
+    : '';
+  var countsRow = '<div style="display:flex;gap:4px;margin-top:5px">' + counts.map(function (c, i) {
+    var lastC = i === WEEKS - 1;
+    return '<span style="flex:1;text-align:center;font-size:9px;font-weight:' + (lastC ? '800' : '600') + ';color:' + (lastC ? 'var(--text)' : 'var(--text-subtle)') + '">' + c + '</span>';
+  }).join('') + '</div>';
+  var sub = (obj > 0 ? 'objectif ' + obj + '/sem' : 'objectif non défini') + ' · 12 semaines';
+  var tile = function (v, l, c) { return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:9px 8px;text-align:center"><b style="display:block;font-size:18px;font-weight:900;line-height:1' + (c ? ';color:' + c : '') + '">' + v + '</b><span style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.03em;font-weight:800;margin-top:3px;display:block">' + l + '</span></div>'; };
+  var stats = '<div style="display:flex;gap:8px;margin-top:12px">'
+    + tile('🔥 ' + streak, 'série (sem.)', streak > 0 ? 'var(--warn)' : 'var(--text-subtle)')
+    + tile(atObj + '/' + WEEKS, 'sem. à l\'objectif', 'var(--good)')
+    + tile(String(moy).replace('.', ','), 'séances/sem. moy.', '')
+    + '</div>';
+  return _maSec('Régularité', sub, 'regularite')
+    + '<div class="ma-card" style="padding:13px 15px">'
+    + '<div style="position:relative;height:84px;display:flex;align-items:flex-end;gap:4px">' + objLine + bars + '</div>'
+    + countsRow
+    + stats
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:9px">1 barre = jours d\'entraînement de la semaine · <span style="color:var(--good)">vert</span> objectif atteint · <span style="color:var(--warn)">orange</span> en dessous · <span style="color:var(--bad)">rouge</span> semaine vide.</div>'
+    + '</div>';
+}
 function _maMuscuTendances(data) {
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
-  var tdT = _maTrendData(vpj, 'sum'), tdC = _maTrendData(vpj, 'count');
+  var tdT = _maTrendData(vpj, 'sum');
   var wt = tdT.pts.map(function (v) { return Math.round(v / 100) / 10; });   // tonnage (t) par bucket
-  var ws = tdC.pts;                                                          // jours entraînés par bucket
   var hasW = wt.some(function (v) { return v > 0; });
   var bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
   // Tonnage : on ne trace QUE les jours (buckets) d'entraînement → les jours de
@@ -13045,12 +13111,13 @@ function _maMuscuTendances(data) {
   // Sélecteur juste au-dessus du graphique → on voit la courbe s'ajuster.
   var head = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie (par ' + bNoun + ').');
   var main = '';
+  // RÉGULARITÉ EN TÊTE (N9) : barres hebdo vs objectif sur 12 semaines (indépendant
+  // du sélecteur de période) — « la régularité prime sur tout le reste ».
+  main += _maRegulariteBloc(data);
   if (hasW) {
     var tonLbl = _maGran === 'S' ? 'jours d\'entraînement' : 'par ' + bNoun;
     main += _maSec('Tonnage soulevé', tonLbl + ' · ' + _maPLabel(), 'tonnage')
       + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Total charge × reps — seuls les jours d\'entraînement sont tracés (les jours de repos ne comptent pas). La courbe qui monte = tu soulèves plus de volume.', wtD);
-    main += _maSec('Régularité', 'par ' + bNoun + ' · ' + _maPLabel(), 'regularite')
-      + _maChartBlock('Séances', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdC.dates[0]), 'Nombre de jours d\'entraînement par ' + bNoun + '. La régularité prime sur tout le reste.', tdC.dates);
   } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
   // ── Vraies analyses (ajouts) : force e1RM, fréquence/muscle, répartition d'intensité ──
   main += _maForceChart(data) + _maFreqMuscleBloc(data) + _maIntensiteBloc(data);
