@@ -162,6 +162,7 @@ body.coach-active #main-container { max-width:var(--coach-w); padding:var(--coac
   body.has-bottom-nav #tab-conseils.tab-content,
   body.has-bottom-nav #tab-blessures.tab-content,
   body.has-bottom-nav #tab-nutrition.tab-content,
+  body.has-bottom-nav #tab-suivi.tab-content,
   body.has-bottom-nav #tab-morpho.tab-content {
     left:248px; right:0; width:auto; max-width:none; transform:none; bottom:0;
   }

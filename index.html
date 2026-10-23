@@ -1995,8 +1995,14 @@
 @media (min-width:992px){
   #tab-historique .ma-kgrid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
   /* N8 — Desktop : les graphes pleine colonne (progression…) s'étiraient trop.
-     On plafonne la largeur de la carte graphe (aligne à gauche), charte inchangée. */
-  #tab-historique .ma-chart{max-width:640px;}
+     On plafonne la largeur. MÊME plafond pour TOUTES les cartes de la colonne
+     principale (graphes, boîtes, grilles) → largeur homogène (sinon certaines à
+     640 et d'autres pleine colonne). */
+  #tab-historique .ma-chart,
+  #tab-historique .ma-card,
+  #tab-historique .ma-barc,
+  #tab-historique .ma-k3,
+  #tab-historique .ma-rsbox{max-width:680px;}
   #tab-historique .ma-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
   /* Détail/Tendances : colonne principale large + rail droit (chart moins écrasé) */
   /* Rail COLLANT (sticky) : la colonne de droite reste visible quand on fait
