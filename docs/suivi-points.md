@@ -14,7 +14,7 @@
 | **N6** | **Conversation IA athlète (desktop)** : impossible de **faire défiler les phrases pré-préparées** (carousel) | Athlète / desktop | ✅ | Desktop : les suggestions s'affichent toutes (wrap), fini le carousel au doigt + points masqués. (L'historique scrollait déjà.) |
 | **N7** | **Barre équilibre charge/récup** : couleurs **pas assez saturées** → gamme cohérente existante | Design | ✅ | Jauge fraîcheur : tokens pleins `var(--warn)`/`var(--text-muted)`/`var(--good)`, zones alignées sur les seuils (−12/+5). |
 | **N8** | **Graphiques version desktop trop gros** | Design / desktop | ✅ | `#tab-historique .ma-chart{max-width:640px}` en desktop (les graphes pleine colonne ne s'étirent plus). |
-| **N9** | **Régularité** : le graphique actuel n'est **pas très compréhensible** → explorer d'autres solutions | Athlète | ⏳ | Repenser la visualisation de la régularité (maquette d'options). |
+| **N9** | **Régularité** : le graphique actuel n'est **pas très compréhensible** → explorer d'autres solutions | Athlète | ✅ | Maquette 3 options (`mockups/novalyz-regularite-options.html`) → **Option A retenue**. Fait sur `dev` : barres hebdo (12 sem.) **vs objectif** (`seances_prevues`), vert/orange/rouge + ligne objectif + tuiles (série, X/12 à l'objectif, moyenne), **remontées en tête** de Tendances (`_maRegulariteBloc`). Remplace la courbe d'aire. |
 | **N10** | **Programmes proposés par Novalyz** : revoir **ce qui est proposé et comment c'est fait** (générateur) | Programme | ✅ | **Générateur v2 construit** (spec `generateur-v2.md`) : moteur blocs+organisations+Force (fonctions pures + tests), UI 2 parcours (galerie débutant / configurateur objectif-organisation-jours-temps), Force custom à listes déroulantes, variantes « ou: » → bouton Remplacer. Sur `dev`. |
 | **N11** | **Morpho-anatomie IA** : à **paramétrer** | IA | 🟡 | Dépend de `ANTHROPIC_API_KEY` / réglages (v1 déjà codée, en veille). |
 | **N12a** | **Nutrition** : le **bouton d'import MFP** a disparu | Athlète | ✅ | Affichage basé sur « app native » (robuste au chargement tardif du plugin) ; sur web une info s'affiche au lieu de rien. |
@@ -29,7 +29,6 @@
 - **Catalogue** : ajout **Ecarté haltéres incliné / décliné** (ids 91/92). ✅
 
 ## Regroupements / priorités (à confirmer avec le porteur)
-- **Fait** : N1·N2·N4·N5·N6·N7·N8·N10·N12a·N12b + séance/fraîcheur/écartés (tout sur `dev`, à valider puis `dev`→`main`). ⚠️ N2 **et** N5 nécessitent un **redeploy `index.ts`** sur Supabase.
-- **En cours** : N13 (refonte aperçu coach — Coup d'œil + Lecture Novalyz en tête faits ; reste la réorganisation complète des blocs).
-- **Reste — maquette d'abord** : N3 (photo/mensurations), N9 (régularité).
+- **Fait** : N1·N2·N4·N5·N6·N7·N8·N9·N10·N12a·N12b·N13 + séance/fraîcheur/écartés (tout sur `dev`, à valider puis `dev`→`main`). ⚠️ N2 **et** N5 nécessitent un **redeploy `index.ts`** sur Supabase.
+- **Reste — maquette d'abord** : N3 (photo/mensurations).
 - **Gated / en veille** : N11 (morpho IA, clé API).
