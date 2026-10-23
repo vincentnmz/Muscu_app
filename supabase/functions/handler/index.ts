@@ -1867,6 +1867,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: santeRows },
     { data: nutriRows },
     { data: recompRows },
+    { data: mensuRows },
+    { data: suiviPhotoRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1885,6 +1887,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'sante_%').order('date', { ascending: false }),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'nutri_%').order('date', { ascending: false }),
     sb().from('indicateurs').select('cle,valeur,date').eq('athlete_id', athleteId).eq('seance_id', 'recompense'),
+    sb().from('indicateurs').select('date,cle,valeur,unite').eq('athlete_id', athleteId).eq('seance_id', 'mensuration').order('date', { ascending: false }),
+    sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'suivi_photo').order('date', { ascending: false }),
   ])
 
   const perfs = perfsAll || []
@@ -2157,6 +2161,35 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   }
   const nutri_historique = Object.values(nutriMap).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
 
+  // ── Mensurations (N3) : indicateurs seance_id='mensuration', 1 ligne/mesure/date,
+  // regroupées par date. Clés : poitrine, taille, hanches, epaules, bras_g/_d,
+  // avantbras_g/_d, cuisse_g/_d, mollet, masse_grasse. Valeurs numériques (col texte).
+  const mensurations = (() => {
+    const byDate: Record<string, any> = {}
+    for (const r of (mensuRows || [])) {
+      const d = fmtFR(r.date)
+      if (!byDate[d]) byDate[d] = { date: d }
+      const n = Number(r.valeur)
+      byDate[d][String(r.cle)] = (r.valeur === '' || r.valeur == null || isNaN(n)) ? null : n
+    }
+    return Object.values(byDate).sort((a: any, b: any) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0))
+  })()
+
+  // ── Photos de suivi (N3) : indicateurs seance_id='suivi_photo' (cle=angle,
+  // valeur=chemin Storage). Bucket PRIVÉ 'suivi-photos' → URLs signées (TTL 2 h).
+  const suivi_photos = await (async () => {
+    const rows = (suiviPhotoRows || []).filter((r: any) => r.valeur)
+    if (!rows.length) return []
+    const paths = rows.map((r: any) => String(r.valeur))
+    const urls: Record<string, string> = {}
+    try {
+      const { data: signed } = await sb().storage.from('suivi-photos').createSignedUrls(paths, 7200)
+      ;(signed || []).forEach((s: any, i: number) => { if (s && s.signedUrl) urls[paths[i]] = s.signedUrl })
+    } catch (_) { /* bucket absent / pas de photo : best-effort */ }
+    return rows.map((r: any) => ({ date: fmtFR(r.date), angle: String(r.cle || 'face'), path: String(r.valeur), url: urls[String(r.valeur)] || null }))
+      .sort((a: any, b: any) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0))
+  })()
+
   let volume_obti: any[] = []
   if (sport === 'muscu' && volObtiRows?.length) {
     volume_obti = volObtiRows.map(v => ({
@@ -2300,6 +2333,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     pas_quotidiens,
     sante_historique,
     nutri_historique,
+    mensurations,
+    suivi_photos,
     blessures: (blessuresRows || []).map(r => ({
       id: String(r.id || ''), date: r.date ? fmtFR(r.date) : '',
       type: String(r.type || ''), localisation: String(r.localisation || ''),
@@ -4401,6 +4436,62 @@ async function handleEnvoyerMediaCoach(body: any): Promise<Response> {
   return jsonResp({ success: true, id: comment_id, media_type, media_url })
 }
 
+// ── Suivi corps (N3) : mensurations (indicateurs) + photos (bucket 'suivi-photos') ─
+// Saisie PAR L'ATHLÈTE ; le coach consulte via getAppData. Mensurations en cm
+// (masse_grasse en %), 1 ligne/mesure/date. Photos : upload signé direct → Storage.
+const MENSU_KEYS = ['poitrine', 'taille', 'hanches', 'epaules', 'bras_g', 'bras_d', 'avantbras_g', 'avantbras_d', 'cuisse_g', 'cuisse_d', 'mollet', 'masse_grasse']
+async function handleSaveMensuration(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const dateYMD = body.date ? fmtYMD(new Date(String(body.date))) : fmtYMD(new Date())
+  const mesures = (body.mesures && typeof body.mesures === 'object') ? body.mesures : {}
+  const rows: any[] = []
+  for (const k of MENSU_KEYS) {
+    const v = mesures[k]
+    if (v === '' || v == null || isNaN(Number(v))) continue
+    rows.push({ date: dateYMD, athlete_id, seance_id: 'mensuration', cle: k, valeur: String(Number(v)), unite: (k === 'masse_grasse' ? '%' : 'cm'), source: 'athlete' })
+  }
+  // Ré-enregistrer une date = mise à jour → on remplace les mesures de cette date.
+  await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('seance_id', 'mensuration').eq('date', dateYMD)
+  if (rows.length) { const { error } = await sb().from('indicateurs').insert(rows); if (error) return jsonResp({ success: false, error: error.message }) }
+  return jsonResp({ success: true, date: fmtFR(dateYMD), n: rows.length })
+}
+
+const SUIVI_PHOTO_EXT_OK: Record<string, boolean> = { jpg: true, jpeg: true, png: true, webp: true }
+const SUIVI_ANGLE_OK: Record<string, boolean> = { face: true, profil: true, dos: true }
+async function handleSuiviPhotoUploadUrl(body: any): Promise<Response> {
+  const athleteId = String(body.athlete_id || '')
+  const ext = String(body.ext || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  if (!SUIVI_PHOTO_EXT_OK[ext]) return jsonResp({ success: false, error: 'Format non pris en charge' })
+  const path = `${athleteId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const { data, error } = await sb().storage.from('suivi-photos').createSignedUploadUrl(path)
+  if (error || !data) return jsonResp({ success: false, error: (error && error.message) || 'upload-url' })
+  return jsonResp({ success: true, path: data.path, token: data.token, signedUrl: data.signedUrl })
+}
+async function handleSaveSuiviPhoto(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const photo_path = String(body.path || '')
+  const angle = SUIVI_ANGLE_OK[String(body.angle || '')] ? String(body.angle) : 'face'
+  if (!athlete_id || !photo_path) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (!photo_path.startsWith(athlete_id + '/')) return jsonResp({ success: false, error: 'Chemin invalide' })
+  const dateYMD = body.date ? fmtYMD(new Date(String(body.date))) : fmtYMD(new Date())
+  const { error } = await sb().from('indicateurs').insert({ date: dateYMD, athlete_id, seance_id: 'suivi_photo', cle: angle, valeur: photo_path, unite: '', source: 'athlete' })
+  if (error) return jsonResp({ success: false, error: error.message })
+  let url: string | null = null
+  try { const { data: s } = await sb().storage.from('suivi-photos').createSignedUrl(photo_path, 7200); url = (s && s.signedUrl) || null } catch (_) {}
+  return jsonResp({ success: true, date: fmtFR(dateYMD), angle, path: photo_path, url })
+}
+async function handleSupprimerSuiviPhoto(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const photo_path = String(body.path || '')
+  if (!athlete_id || !photo_path) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (!photo_path.startsWith(athlete_id + '/')) return jsonResp({ success: false, error: 'Chemin invalide' })
+  try { await sb().storage.from('suivi-photos').remove([photo_path]) } catch (_) {}
+  await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('seance_id', 'suivi_photo').eq('valeur', photo_path)
+  return jsonResp({ success: true })
+}
+
 async function handleSaveObjectif(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const objectif = String(body.objectif ?? body.strategie ?? '')
@@ -5406,6 +5497,10 @@ Deno.serve(async (req: Request) => {
         case 'saveCommentaire':          return handleSaveCommentaire(body)
         case 'mediaUploadUrl':           return handleMediaUploadUrl(body)
         case 'envoyerMediaCoach':        return handleEnvoyerMediaCoach(body)
+        case 'saveMensuration':          return handleSaveMensuration(body)
+        case 'suiviPhotoUploadUrl':      return handleSuiviPhotoUploadUrl(body)
+        case 'saveSuiviPhoto':           return handleSaveSuiviPhoto(body)
+        case 'supprimerSuiviPhoto':      return handleSupprimerSuiviPhoto(body)
         case 'savePushSub':              return handleSavePushSub(body)
         case 'deletePushSub':            return handleDeletePushSub(body)
         case 'cronPushAlertes':          return handleCronPushAlertes(body)

@@ -6,7 +6,7 @@
 
 ## Où en est le travail
 - Branche de travail : `claude/novalyz-player-profile-mockups-g4bock`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`.
-- ⚠️ **REDEPLOY `index.ts` EN ATTENTE** (N5 récompenses) : ajout `records_total` + `gagnes` basé dessus (points permanents) dans `getAppData` **et** `handleClaimRecompense`. Tant que ce n'est pas redéployé sur Supabase, le solde reste calculé sur `records_30j` (glissant) en prod ; le front a un fallback permanent (records_par_exo) uniquement si `recompenses` absent. SW = **v386** (bumper à chaque modif de `js/app.js`).
+- ⚠️ **REDEPLOY `index.ts` EN ATTENTE** (3 lots cumulés) : **N2** (années de pratique `anneesEffectives`), **N5** (récompenses : `records_total` + `gagnes` permanent dans `getAppData` ET `handleClaimRecompense`), **N3** (suivi corps : lectures `mensurations` + `suivi_photos` dans `getAppData` + handlers `saveMensuration` / `suiviPhotoUploadUrl` / `saveSuiviPhoto` / `supprimerSuiviPhoto`). Bucket Storage privé **`suivi-photos`** déjà créé en base. SW = **v388** (bumper à chaque modif de `js/app.js`).
 - Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**46 suites vertes** à maintenir).
 
 ## Fait récemment (tout sur `dev`)
