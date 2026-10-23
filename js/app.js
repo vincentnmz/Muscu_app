@@ -5361,76 +5361,91 @@ function renderCoachRecordsEtRegression(hist, glob) {
 // N13 — « Coup d'œil » coach : synthèse scannable (entraînement + état) en tête de
 // l'Aperçu, pour que le coach comprenne en 5 s. 100 % dérivé des données déjà chargées
 // (progression_par_exo, volume_semaine, bien_etre, moteur). Aucun nouveau backend.
-function _cdCoupRow(col, html) {
-  return '<div class="cdcp-row"><span class="cdcp-ic" style="color:' + col + '">●</span><div class="cdcp-tx">' + html + '</div></div>';
+function _cdCoupRow(col, icon, html) {
+  return '<div class="cdcp-row"><span class="cdcp-ic" style="color:' + col + '">' + icon + '</span><div class="cdcp-tx">' + html + '</div></div>';
 }
 function renderCoachCoupDoeil(data) {
   var el = document.getElementById('cd-coupdoeil'); if (!el) return;
   try {
-    var hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {}, m = (data && data.moteur) || {}, esc = escapeHtml;
-    // ── Entraînement : progression / régression (1RM récent vs meilleur précédent) ──
-    var up = [], down = [];
+    var esc = escapeHtml, hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {};
+    var m = (data && data.moteur) || {}, g = (data && data.global) || {}, nowT = Date.now();
+    var pd = function (s) { try { return (typeof parseChatDate === 'function') ? parseChatDate(s) : null; } catch (_) { return null; } };
+
+    // ═══ ENTRAÎNEMENT — données FIABLES (pas de 1RM-vs-record-de-tous-les-temps hasardeux) ═══
+    // Records récents : on fait confiance au comptage serveur (g.records_30j) ; les noms sont
+    // un bonus si la date parse. (Un record de charge en faibles reps ne doit JAMAIS compter
+    // comme « recul » : c'est pour ça qu'on n'utilise plus un simple 1RM Epley ici.)
+    var recs = g.records || {};
+    var recNames = Object.keys(recs).filter(function (exo) { var t = pd(recs[exo] && recs[exo].date); return t && (nowT - t) / 864e5 <= 30; });
+    var rec30 = (g.records_30j != null) ? Number(g.records_30j) : recNames.length;
+    // Régression : exos faits RÉCEMMENT (≤21 j), ≥3 points, dont le 1RM récent chute >5 % sous
+    // le meilleur. Conservateur → pas de faux positif sur du bruit ou un jour lourd.
+    var regs = [];
     Object.keys(prog).forEach(function (exo) {
-      var pts = prog[exo] || []; if (pts.length < 2) return;
+      var pts = prog[exo] || []; if (pts.length < 3) return;
+      var dt = pd(pts[0].date); if (dt == null || (nowT - dt) / 864e5 > 21) return;
       var rec = calc1RM(pts[0].charge, pts[0].reps), best = null;
       for (var i = 1; i < pts.length; i++) { var rm = calc1RM(pts[i].charge, pts[i].reps); if (rm != null && (best == null || rm > best)) best = rm; }
-      if (rec == null || best == null) return;
-      if (rec >= best * 1.02) up.push(exo); else if (rec < best * 0.98) down.push(exo);
+      if (rec != null && best != null && rec < best * 0.95) regs.push(exo);
     });
-    // ── Entraînement : couverture des 5 grands groupes sur 7 j. On regarde CE QUI MANQUE
-    //    (groupes à 0), pas seulement ce qui a été fait — corrige le faux « pecs pêchent »
-    //    alors que c'est le seul muscle travaillé. ──
+    // Couverture des 5 grands groupes sur 7 j (ce qui MANQUE, groupes à 0).
     var GR = [['Pecs', ['Pectoraux']], ['Dos', ['Dos']], ['Épaules', ['Epaule']], ['Bras', ['Biceps', 'Triceps']], ['Jambes', ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Jambe', 'Aducteur']]];
     var volMap = {}; (Array.isArray(hist.volume_semaine) ? hist.volume_semaine : []).forEach(function (v) { volMap[v.muscle] = (volMap[v.muscle] || 0) + (v.faites || 0); });
     var faits = [], absent = [], total7 = 0;
-    GR.forEach(function (g) { var s = g[1].reduce(function (a, mk) { return a + (volMap[mk] || 0); }, 0); total7 += s; if (s > 0) faits.push(g[0]); else absent.push(g[0]); });
-    var entr = [];
-    if (up.length && !down.length) entr.push({ c: 'var(--good)', t: '<b>Progression solide</b> : ' + up.length + ' exercice' + (up.length > 1 ? 's' : '') + ' en hausse (' + esc(up.slice(0, 3).join(', ')) + ').' });
-    else if (up.length && down.length) entr.push({ c: 'var(--warn)', t: '<b>Progression mitigée</b> : ' + up.length + ' en hausse, ' + down.length + ' en recul (' + esc(down.slice(0, 2).join(', ')) + ').' });
-    else if (down.length) entr.push({ c: 'var(--bad)', t: '<b>Attention</b> : ' + down.length + ' exercice' + (down.length > 1 ? 's' : '') + ' en régression (' + esc(down.slice(0, 3).join(', ')) + ').' });
-    if (total7 > 0) {
-      if (absent.length && absent.length < 5) entr.push({ c: 'var(--warn)', t: '<b>Travail concentré</b> sur ' + esc(faits.join(', ')) + '. Non travaillé sur 7 j : <b>' + esc(absent.join(', ')) + '</b> → à réintégrer si ce n\'est pas voulu.' });
-      else if (!absent.length) entr.push({ c: 'var(--good)', t: '<b>Répartition complète</b> : les 5 grands groupes ont été travaillés cette semaine.' });
-    }
-    if (!entr.length) entr.push({ c: 'var(--text-subtle)', t: 'Pas encore assez de séances pour analyser l\'entraînement.' });
-    // ── Dispo / récup (sert à l'État ET à la synthèse coach) ──
+    GR.forEach(function (gr) { var s = gr[1].reduce(function (a, mk) { return a + (volMap[mk] || 0); }, 0); total7 += s; if (s > 0) faits.push(gr[0]); else absent.push(gr[0]); });
+    var entr = '';
+    if (rec30 > 0) entr += _cdCoupRow('var(--good)', '▲', '<b>Records récents</b> — ' + rec30 + ' record' + (rec30 > 1 ? 's' : '') + ' sur 30 j' + (recNames.length ? ' (' + esc(recNames.slice(0, 3).join(', ')) + ')' : ''));
+    if (regs.length) entr += _cdCoupRow('var(--bad)', '▼', '<b>En régression</b> — ' + esc(regs.slice(0, 3).join(', ')) + ' (charge récente en baisse)');
+    if (total7 > 0 && faits.length) entr += _cdCoupRow('var(--good)', '✓', '<b>Travaillé cette semaine</b> — ' + esc(faits.join(', ')));
+    if (total7 > 0 && absent.length && absent.length < 5) entr += _cdCoupRow('var(--warn)', '⚠', '<b>Non travaillé (7 j)</b> — ' + esc(absent.join(', ')));
+    if (!entr) entr = '<div class="cdcp-empty">Pas encore assez de séances pour analyser l\'entraînement.</div>';
+
+    // ═══ ÉTAT & RÉCUP — 1 ligne par signal (niveau + tendance), + les PAS (montre) ═══
     var dispo = (m.disponibilite && m.disponibilite.niveau) || null, recup = (m.recup && m.recup !== '—') ? m.recup : null;
-    // ── État & récupération : une ligne PAR signal (comme la maquette) — niveau ET
-    //    tendance (analyse, pas le chiffre brut du questionnaire). ──
     var be = (data.bien_etre && data.bien_etre[0]) || null, histBE = (data.bien_etre || []).slice(1, 4), sig = m.signaux || {};
     var WQ = (typeof WQ_ANSWERS !== 'undefined') ? WQ_ANSWERS : null;
     var lab = function (key, val) { return (WQ && WQ[key] && WQ[key][Number(val)]) ? String(WQ[key][Number(val)]).toLowerCase() : ''; };
-    var avg = function (key) { var xs = histBE.map(function (b) { return Number(b && b[key]); }).filter(function (x) { return !isNaN(x); }); return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null; };
-    var trd = function (key, inv) { var a = avg(key); if (a == null || !be || be[key] == null) return ''; var d = Number(be[key]) - a; if (Math.abs(d) <= 0.5) return ' · stable'; return ((d > 0) !== !!inv) ? ' · en hausse' : ' · en baisse'; };
+    var avgBE = function (key) { var xs = histBE.map(function (b) { return Number(b && b[key]); }).filter(function (x) { return !isNaN(x); }); return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null; };
+    var trd = function (key, inv) { var a = avgBE(key); if (a == null || !be || be[key] == null) return ''; var d = Number(be[key]) - a; if (Math.abs(d) <= 0.5) return ' · stable'; return ((d > 0) !== !!inv) ? ' · en hausse' : ' · en baisse'; };
     var colv = function (val) { var n = Number(val); return n >= 4 ? 'var(--good)' : (n <= 2 ? 'var(--warn)' : 'var(--text-subtle)'); };
-    var etat = [];
-    if (recup) etat.push({ c: (recup === 'Faible' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)', t: '<b>Récupération</b> ' + esc(String(recup).toLowerCase()) });
+    var sh = Array.isArray(data.sante_historique) ? data.sante_historique : [];
+    var pasArr = sh.filter(function (x) { var t = pd(x && x.date); return t && (nowT - t) / 864e5 <= 8; }).map(function (x) { return Number(x.pas); }).filter(function (v) { return !isNaN(v) && v > 0; });
+    var pasAvg = pasArr.length ? Math.round(pasArr.reduce(function (a, b) { return a + b; }, 0) / pasArr.length) : null;
+    var etat = '';
+    if (recup) etat += _cdCoupRow((recup === 'Faible' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)', '●', '<b>Récupération</b> ' + esc(String(recup).toLowerCase()));
     if (be) {
-      if (be.sommeil != null) etat.push({ c: colv(be.sommeil), t: '<b>Sommeil</b> ' + esc(lab('sommeil', be.sommeil) || '—') + trd('sommeil', false) });
-      if (be.energie != null) etat.push({ c: colv(be.energie), t: '<b>Énergie</b> ' + esc(lab('energie', be.energie) || '—') + trd('energie', false) });
-      if (be.fatigue != null) etat.push({ c: colv(be.fatigue), t: '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + trd('fatigue', true) });
+      if (be.sommeil != null) etat += _cdCoupRow(colv(be.sommeil), '●', '<b>Sommeil</b> ' + esc(lab('sommeil', be.sommeil) || '—') + trd('sommeil', false));
+      if (be.energie != null) etat += _cdCoupRow(colv(be.energie), '●', '<b>Énergie</b> ' + esc(lab('energie', be.energie) || '—') + trd('energie', false));
+      if (be.fatigue != null) etat += _cdCoupRow(colv(be.fatigue), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + trd('fatigue', true));
     }
-    if (sig.stress != null) { var stv = Number(sig.stress); etat.push({ c: stv >= 3.5 ? 'var(--warn)' : 'var(--good)', t: '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé')) }); }
-    if (be && be.zone_douloureuse) etat.push({ c: 'var(--warn)', t: '<b>Douleur</b> ' + esc(String(be.zone_douloureuse).toLowerCase()) });
-    else if (be) etat.push({ c: 'var(--good)', t: '<b>Douleur</b> aucune' });
-    if (!etat.length) etat.push({ c: 'var(--text-subtle)', t: 'Pas encore de questionnaire bien-être renseigné.' });
-    // ── Lecture Novalyz (narratif coach) : 1 phrase de synthèse + 1 reco d'action.
-    //    Formulée POUR LE COACH (« L'athlète est… »), pas « tu… ». Pas de pronom genré. ──
-    var prenom = (coachAthleteCourant && coachAthleteCourant.nom) ? String(coachAthleteCourant.nom).split(/\s+/)[0] : 'L\'athlète';
-    var etatLbl = (dispo === 'À surveiller') ? 'à surveiller' : (dispo === 'Vigilance' ? 'à surveiller de près' : (dispo === 'Prêt' ? 'prêt à performer' : (recup ? ('récupération ' + String(recup).toLowerCase()) : 'état à préciser')));
-    var trainMot = down.length ? 'des signaux de régression à regarder' : ((absent.length && absent.length < 5) ? ('volume déséquilibré (' + esc(absent.join(', ')) + ' délaissés)') : (up.length ? 'bonne dynamique de progression' : ''));
-    var headline = '<b>' + esc(prenom) + '</b> — ' + etatLbl + (trainMot ? ' · ' + trainMot : '') + '.';
+    if (sig.stress != null) { var stv = Number(sig.stress); etat += _cdCoupRow(stv >= 3.5 ? 'var(--warn)' : 'var(--good)', '●', '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé'))); }
+    if (be && be.zone_douloureuse) etat += _cdCoupRow('var(--warn)', '●', '<b>Douleur</b> ' + esc(String(be.zone_douloureuse).toLowerCase()));
+    else if (be) etat += _cdCoupRow('var(--good)', '●', '<b>Douleur</b> aucune');
+    if (pasAvg != null) { var pc = pasAvg >= 8000 ? 'var(--good)' : (pasAvg >= 5000 ? 'var(--text-subtle)' : 'var(--warn)'); var pl = pasAvg >= 8000 ? 'actif' : (pasAvg >= 5000 ? 'modéré' : 'faible, plutôt sédentaire'); etat += _cdCoupRow(pc, '●', '<b>Pas</b> ' + pasAvg.toLocaleString('fr-FR') + '/j · ' + pl + ' <span style="color:var(--text-subtle)">(montre, 7 j)</span>'); }
+    if (!etat) etat = '<div class="cdcp-empty">Pas encore de questionnaire bien-être ni de données montre.</div>';
+
+    // ═══ LECTURE NOVALYZ — narratif coach (pas de « tu… », pas de pronom genré) + reco ═══
+    var prenom = (coachAthleteCourant && coachAthleteCourant.nom) ? esc(String(coachAthleteCourant.nom).split(/\s+/)[0]) : 'L\'athlète';
+    var statut = (dispo === 'À surveiller') ? 'à surveiller de près — priorité récup' : (dispo === 'Vigilance' ? 'à surveiller (récup moyenne)' : (dispo === 'Prêt' ? 'au vert, apte à une séance exigeante' : (recup ? ('récupération ' + String(recup).toLowerCase()) : 'état à préciser')));
+    var lect = '';
+    lect += _cdCoupRow((dispo === 'À surveiller' || recup === 'Faible') ? 'var(--bad)' : ((dispo === 'Vigilance' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)'), '●', '<b>' + prenom + '</b> — ' + statut + '.');
+    if (rec30 > 0) lect += _cdCoupRow('var(--good)', '●', 'Bonne dynamique : <b>' + rec30 + ' record' + (rec30 > 1 ? 's' : '') + '</b> battu' + (rec30 > 1 ? 's' : '') + ' sur 30 j.');
+    if (regs.length) lect += _cdCoupRow('var(--bad)', '●', 'Régression récente sur <b>' + esc(regs.slice(0, 2).join(', ')) + '</b> — à regarder.');
+    if (total7 > 0 && absent.length && absent.length < 5) lect += _cdCoupRow('var(--warn)', '●', 'Volume déséquilibré : <b>' + esc(absent.join(', ')) + '</b> délaissé' + (absent.length > 1 ? 's' : '') + ' cette semaine.');
+    else if (total7 > 0 && !absent.length) lect += _cdCoupRow('var(--good)', '●', 'Volume bien réparti sur les grands groupes.');
     var reco;
     if (dispo === 'À surveiller' || recup === 'Faible') reco = 'Allège ou décale la prochaine séance — priorité à la récupération.';
-    else if (absent.length && absent.length < 5) reco = 'Prochaine séance : réintègre ' + esc(absent[0]) + (absent[1] ? ' et ' + esc(absent[1]) : '') + ' pour rééquilibrer le volume.';
-    else if (down.length) reco = 'Revois la charge / surcharge sur ' + esc(down.slice(0, 2).join(', ')) + ' (consolider avant de remonter).';
+    else if (total7 > 0 && absent.length && absent.length < 5) reco = 'Prochaine séance : réintègre ' + esc(absent[0]) + (absent[1] ? ' et ' + esc(absent[1]) : '') + ' pour rééquilibrer le volume.';
+    else if (regs.length) reco = 'Revois la charge / surcharge sur ' + esc(regs.slice(0, 2).join(', ')) + ' (consolider avant de remonter).';
     else reco = 'Tout est au vert — maintiens le cap ; une petite surcharge est envisageable sur un exercice clé.';
-    el.innerHTML = '<div class="cdcp-lab"><span style="color:var(--accent)">✦</span> Lecture Novalyz · pour le coach</div>'
-      + '<div class="cdcp-head">' + headline + '</div>'
+
+    el.innerHTML = '<div class="cdcp-lab">Coup d\'œil <span class="cdcp-tag">comprendre en 5 s</span></div>'
       + '<div class="cdcp-wrap">'
-      + '<div class="dash-card cdcp-card"><div class="cdcp-h">Entraînement</div>' + entr.map(function (l) { return _cdCoupRow(l.c, l.t); }).join('') + '</div>'
-      + '<div class="dash-card cdcp-card"><div class="cdcp-h">État &amp; récupération</div>' + etat.map(function (l) { return _cdCoupRow(l.c, l.t); }).join('') + '</div></div>'
-      + '<div class="cdcp-reco"><div class="cdcp-reco-l">Reco · prochaine séance</div><div class="cdcp-reco-t">' + reco + '</div></div>';
+      + '<div class="dash-card cdcp-card"><div class="cdcp-h">🏋️ Entraînement</div>' + entr + '</div>'
+      + '<div class="dash-card cdcp-card"><div class="cdcp-h">❤️ État &amp; récup</div>' + etat + '</div></div>'
+      + '<div class="cdcp-lab"><span style="color:var(--accent)">✦</span> Lecture Novalyz <span class="cdcp-tag">pour le coach</span></div>'
+      + '<div class="dash-card cdcp-card" style="border-left:3px solid var(--accent)">' + lect
+      + '<div class="cdcp-reco"><div class="cdcp-reco-l">Reco · prochaine séance</div><div class="cdcp-reco-t">' + reco + '</div></div></div>';
   } catch (e) { try { el.innerHTML = ''; } catch (_) {} }
 }
 

@@ -176,6 +176,7 @@ body.seance-active #card-choix-seance                { border-radius:18px; }
 .cdcp-m{ color:var(--text-muted); }
 .cdcp-empty{ font-size:12px; color:var(--text-subtle); padding:2px 0; }
 .cdcp-head{ font-size:14px; line-height:1.45; margin:2px 2px 10px; }
+.cdcp-tag{ font-size:9px; font-weight:800; color:var(--accent2,#4d82ff); background:var(--accent-a08); border:1px solid var(--border); border-radius:6px; padding:1px 6px; vertical-align:middle; margin-left:4px; text-transform:none; letter-spacing:0; }
 .cdcp-reco{ margin-top:11px; margin-bottom:14px; background:var(--accent-a08); border:1px solid var(--border); border-radius:11px; padding:10px 13px; }
 .cdcp-reco-l{ font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); margin-bottom:3px; }
 .cdcp-reco-t{ font-size:13px; font-weight:600; line-height:1.45; color:var(--text); }
