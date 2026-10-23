@@ -8780,7 +8780,10 @@ async function envoyerMessageAthleteCoach() {
 var _COACH_MEDIA_CONSENT = 'muscu_coach_media_consent';
 var _coachMediaBusy = false;
 
-function _coachMediaPick() {
+// src: 'galerie' (défaut) → fichier stocké · 'cam' → prise EN DIRECT (input
+// capture="environment", ouvre la caméra sur mobile/natif). Même consentement,
+// même traitement (_coachMediaChoisi) ensuite.
+function _coachMediaPick(src) {
   if (_coachMediaBusy) { showToast('⏳ Envoi en cours…'); return; }
   // Consentement (une fois) : l'athlète accepte que le média soit stocké et
   // partagé avec SON coach.
@@ -8791,9 +8794,10 @@ function _coachMediaPick() {
     if (!ok) return;
     try { localStorage.setItem(_COACH_MEDIA_CONSENT, '1'); } catch (e) {}
   }
-  var inp = document.getElementById('coach-media-input');
+  var inp = document.getElementById(src === 'cam' ? 'coach-media-input-cam' : 'coach-media-input');
   if (inp) { inp.value = ''; inp.click(); }
 }
+function _coachMediaPickCam() { _coachMediaPick('cam'); }
 
 function _coachMediaChoisi(input) {
   var f = input && input.files && input.files[0];
