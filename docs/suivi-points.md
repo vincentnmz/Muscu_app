@@ -8,7 +8,7 @@
 |---|-------|------|--------|------|
 | **N1** | **Lier un athlète** : ajouter le champ **e-mail** dans la création | Coach | ✅ | Champ e-mail (facultatif) dans la modale « Créer », sauvé dans `athletes.email` (backend coachCreerAthlete). |
 | **N2** | Vérifier que les **années de pratique évoluent bien dans le temps** | Données | ✅ | Constat : c'était **figé**. Corrigé — `anneesEffectives()` = base + années écoulées depuis `created_at`, appliqué au login, alertes, vue coach, bilans, cron. Backend à redéployer. |
-| **N3** | **Onglet Photo** (fiche athlète, coach) : photos avant/après pour voir l'évolution **+ saisie des mensurations** (tour de taille, biceps, ventre, poitrine, etc.) | Coach | ⏳ | Nouvel onglet : galerie photos datées + formulaire mensurations historisé. |
+| **N3** | **Onglet Photo** (fiche athlète, coach) : photos avant/après pour voir l'évolution **+ saisie des mensurations** (tour de taille, biceps, ventre, poitrine, etc.) | Coach | ✅ | Fait sur `dev`. **Saisie athlète** (Forme › Mes suivis → écran `#tab-suivi` : photos Face/Profil/Dos avant/après + caméra/galerie ; mensurations poitrine/taille/hanches/épaules/bras G-D/avant-bras G-D/cuisse G-D/mollet/%MG). **Coach consulte** via Progression (onglet « Photo & mensurations », Muscu+Cardio, pas Croisé). Backend : `getAppData` (`mensurations`+`suivi_photos`) + handlers `saveMensuration`/`suiviPhoto*` ; bucket privé `suivi-photos`. ⚠️ Redeploy `index.ts`. Maquettes : `novalyz-photo-mensurations.html`, `novalyz-suivi-placement.html`. |
 | **N4** | **Recherche athlète** : la laisser **uniquement dans « Équipe »** (côté coach) | Coach | ✅ | `cs-search` desktop affichée seulement sur la section Équipe (plus sur Aujourd'hui/Analyses). |
 | **N5** | **Bloc Récompenses** : revoir les **bugs** + le barème (= ex-#14 « récompenses adaptées à chaque athlète ») | Athlète | ✅ | Fait sur `dev` : **un seul chiffre = solde** partout (accueil + boutique + onglet Objectif), **points permanents** (records à vie `records_total` au lieu de `records_30j` glissant), **transparence** gagné/dépensé + « comment je gagne ». Niveau accueil basé sur le gagné à vie. ⚠️ `index.ts` **à redéployer** (getAppData + handleClaimRecompense). Reste (plus tard) : récompense perso du coach « en vrai » (teaser pour l'instant). |
 | **N6** | **Conversation IA athlète (desktop)** : impossible de **faire défiler les phrases pré-préparées** (carousel) | Athlète / desktop | ✅ | Desktop : les suggestions s'affichent toutes (wrap), fini le carousel au doigt + points masqués. (L'historique scrollait déjà.) |
@@ -30,5 +30,5 @@
 
 ## Regroupements / priorités (à confirmer avec le porteur)
 - **Fait** : N1·N2·N4·N5·N6·N7·N8·N9·N10·N12a·N12b·N13 + séance/fraîcheur/écartés (tout sur `dev`, à valider puis `dev`→`main`). ⚠️ N2 **et** N5 nécessitent un **redeploy `index.ts`** sur Supabase.
-- **Reste — maquette d'abord** : N3 (photo/mensurations).
 - **Gated / en veille** : N11 (morpho IA, clé API).
+- **Hors liste N (sur `dev`)** : messagerie — envoi média EN DIRECT (caméra) ✅ ; onglet média dans la conversation (à préciser).
