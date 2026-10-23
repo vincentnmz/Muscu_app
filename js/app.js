@@ -4613,16 +4613,25 @@ async function renderCoachSynthese(athletes) {
     });
   });
 
-  // 4. Progression & stagnations (meilleur Δ 1RM estimé par athlète)
+  // 4. Progression & stagnations — basées sur CHARGE + REPS réels (plus de 1RM Epley :
+  // un lourd en faibles reps donnait un faux recul). Par exo : on compare la séance la
+  // plus récente (perfs[0]) à la meilleure charge précédente. Charge en hausse → Δ sur la
+  // charge ; charge égale mais plus de reps → Δ sur les reps ; charge en baisse → Δ négatif.
   const progA = [], stagA = [];
   enrich.forEach(e => {
     const d = datas[e.i] || {}; const prog = (d.historique && d.historique.progression_par_exo) || {}; let best = null;
     Object.keys(prog).forEach(exo => {
       const perfs = prog[exo] || []; if (perfs.length < 3) return;
-      const rmR = calc1RM(perfs[0].charge, perfs[0].reps); let bb = null;
-      for (let i = 1; i < perfs.length; i++) { const rm = calc1RM(perfs[i].charge, perfs[i].reps); if (rm != null && (bb == null || rm > bb)) bb = rm; }
-      if (rmR == null || bb == null || bb <= 0) return;
-      const delta = Math.round((rmR / bb - 1) * 100);
+      const recC = Number(perfs[0].charge) || 0, recR = Number(perfs[0].reps) || 0;
+      let bestC = 0, repsAtBest = 0;
+      for (let i = 1; i < perfs.length; i++) {
+        const c = Number(perfs[i].charge) || 0, r = Number(perfs[i].reps) || 0;
+        if (c > bestC) { bestC = c; repsAtBest = r; } else if (c === bestC && r > repsAtBest) { repsAtBest = r; }
+      }
+      if (bestC <= 0) return;
+      let delta;
+      if (recC === bestC && repsAtBest > 0 && recR > repsAtBest) delta = Math.round((recR / repsAtBest - 1) * 100);  // reps ↑ à charge égale
+      else delta = Math.round((recC / bestC - 1) * 100);                                                            // charge ↑ (ou ↓ si négatif)
       if (best == null || delta > best.delta) best = { exo, delta };
     });
     if (best) { if (best.delta > 0) progA.push({ nom: e.a.nom, exo: best.exo, delta: best.delta }); else stagA.push({ nom: e.a.nom, exo: best.exo, delta: best.delta }); }
@@ -5500,6 +5509,24 @@ function renderCoachCoupDoeil(data) {
         }
       }
       etat += _cdCoupRow(effCol, '●', '<b>Cardio</b> ' + cN7 + ' sortie' + (cN7 > 1 ? 's' : '') + ' /7 j' + effTxt);
+    }
+    // POIDS — toujours affiché : tendance factuelle (hausse/baisse/stable) ou « non
+    // renseigné ». Neutre : hausse/baisse n'est ni bonne ni mauvaise dans l'absolu
+    // (dépend de l'objectif prise de masse / sèche) → pas de couleur verte/rouge.
+    var pesees = (data && Array.isArray(data.poids)) ? data.poids : [];
+    var pvals = pesees.map(function (p) { return { t: pd(p.date), v: Number(p.poids), d: String(p.date || '') }; }).filter(function (x) { return !isNaN(x.v) && x.v > 0; });
+    if (!pvals.length) etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Poids</b> non renseigné');
+    else if (pvals.length === 1) etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Poids</b> ' + pvals[0].v + ' kg <span style="color:var(--text-subtle)">(1 seule pesée)</span>');
+    else {
+      var pLast = pvals[0].v, ref = null;
+      for (var pi = 1; pi < pvals.length; pi++) { if (pvals[pi].t && days(pvals[pi].t) <= 60) ref = pvals[pi]; }  // la plus ANCIENNE pesée dans 60 j
+      if (!ref) ref = pvals[pvals.length - 1];
+      var dP = Math.round((pLast - ref.v) * 10) / 10;
+      var ptxt;
+      if (Math.abs(dP) < 0.5) ptxt = pLast + ' kg · stable';
+      else if (dP > 0) ptxt = pLast + ' kg · en hausse (+' + dP + ' kg)';
+      else ptxt = pLast + ' kg · en baisse (' + dP + ' kg)';
+      etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Poids</b> ' + ptxt + (ref.d ? ' <span style="color:var(--text-subtle)">depuis le ' + esc(ref.d) + '</span>' : ''));
     }
     if (!etat) etat = '<div class="cdcp-empty">Pas encore de questionnaire bien-être ni de données montre.</div>';
 
@@ -7213,7 +7240,7 @@ function _coachDeskAnalyses() {
       + (chip ? '<span class="cs-lchip ' + chipCls + '">' + esc(chip) + '</span>' : '') + '</div>';
   };
   // Meilleure progression (Δ 1RM estimé le plus fort)
-  var progCard = '<div class="cs-card"><div class="cs-ct">Meilleure progression · 1RM estimé</div>'
+  var progCard = '<div class="cs-card"><div class="cs-ct">Meilleure progression · charge / reps</div>'
     + (progA.length ? progA.slice(0, 4).map(function (x) { return arow(x.nom, x.exo, '▲ +' + x.delta + ' %', 'good'); }).join('')
       : '<div class="cs-empty">Pas assez de séances pour l\'estimer.</div>') + '</div>';
   // À relancer (assiduité la plus basse, hors objectif non défini)
@@ -7237,7 +7264,7 @@ function _coachDeskAnalyses() {
     + '<div class="cs-an-g2">' + donut + assCard + '</div>'
     + '<div class="cs-an-g2">' + progCard + relanceCard + '</div>'
     + '<div class="cs-an-g2">' + bienCard + blessCard + '</div>'
-    + '<div class="cs-note">Données agrégées depuis les fiches athlètes (assiduité, états du moteur, Δ 1RM estimé, bien-être du dernier questionnaire, table blessures). Rien n\'est recalculé ici.</div>';
+    + '<div class="cs-note">Données agrégées depuis les fiches athlètes (assiduité, états du moteur, progression charge / reps, bien-être du dernier questionnaire, table blessures). Rien n\'est recalculé ici.</div>';
 }
 function coachDeskSearch(q) {
   q = (q || '').toLowerCase().trim();
@@ -14984,22 +15011,31 @@ function _renderTrophees(streak, rec30, totalS, hasRecords) {
   grid.innerHTML = items.join('');
   var c = document.getElementById('tj-tro-count'); if (c) c.textContent = '· ' + unlocked + ' / ' + total + ' débloqués';
 }
-// Objectif de la semaine — choisi par l'athlète, stocké en local (par appareil).
-var _OBJ_OPTS = [
-  { id: 's4', em: '🏋', label: '4 séances', type: 'seances', target: 4 },
-  { id: 's5', em: '', label: '5 séances', type: 'seances', target: 5 },
-  { id: 'pas', em: '👟', label: '5 j à 10 000 pas', type: 'pas10k', target: 5 },
-  { id: 'c3', em: '🏃', label: '3 cardio', type: 'cardio', target: 3 }
-];
-function _objOptions() {
+// Objectif de la semaine — PROPRE À CHAQUE ATHLÈTE. La cible « séances » par
+// défaut = l'objectif hebdo réel de l'athlète (objectif.seances_semaine, remonté
+// dans data.dashboard.regularite.seances_prevues). Fini le « 4 séances » codé en
+// dur, absurde pour quelqu'un qui en fait 1/sem. L'athlète peut viser +1, ou
+// choisir cardio / pas. Choix stocké en local (par appareil + semaine ISO).
+function _objSeancesCible(data) {
+  var reg = (data && data.dashboard && data.dashboard.regularite) || {};
+  var n = Number(reg.seances_prevues) || 0;
+  if (!n && reg.seances_semaine != null) n = Number(reg.seances_semaine) || 0;
+  return (n >= 1) ? n : 3;   // défaut raisonnable si l'objectif n'est pas renseigné
+}
+function _objOptions(data) {
   var native = (typeof _estAppNative === 'function' && _estAppNative());
-  return _OBJ_OPTS.filter(function (o) { return o.type !== 'pas10k' || native; });
+  var n = _objSeancesCible(data);
+  var opts = [{ id: 'seances', em: '🏋', label: n + ' séance' + (n > 1 ? 's' : ''), type: 'seances', target: n }];
+  if (n < 6) opts.push({ id: 'seances_plus', em: '🔥', label: (n + 1) + ' séances', type: 'seances', target: n + 1 });
+  if (native) opts.push({ id: 'pas', em: '👟', label: '5 j à 10 000 pas', type: 'pas10k', target: 5 });
+  opts.push({ id: 'c3', em: '🏃', label: '3 cardio', type: 'cardio', target: 3 });
+  return opts;
 }
 function _objKey() { return 'nvz_obj_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
 function _objWonKey() { return 'nvz_objwon_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
-function _objChosen() {
+function _objChosen(data) {
   var id = null; try { id = localStorage.getItem(_objKey()); } catch (e) {}
-  var opts = _objOptions();
+  var opts = _objOptions(data);
   for (var i = 0; i < opts.length; i++) if (opts[i].id === id) return opts[i];
   return opts[0];
 }
@@ -15008,12 +15044,12 @@ function nvzPickObj(id) { try { localStorage.setItem(_objKey(), id); } catch (e)
 // Lundi (00:00) de la semaine courante, en ISO YYYY-MM-DD.
 function _lundiISO() { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function _renderObjectif(data) {
-  var obj = _objChosen();
+  var obj = _objChosen(data);
   var emEl = document.getElementById('tj-obj-em'); if (emEl) emEl.textContent = obj.em;
   var txtEl = document.getElementById('tj-obj-txt'); if (txtEl) txtEl.textContent = obj.label;
   // Chips du sélecteur.
   var pick = document.getElementById('tj-obj-pick');
-  if (pick) pick.innerHTML = _objOptions().map(function (o) {
+  if (pick) pick.innerHTML = _objOptions(data).map(function (o) {
     return '<span class="chip' + (o.id === obj.id ? ' sel' : '') + '" onclick="nvzPickObj(\'' + o.id + '\')">' + o.em + ' ' + o.label + '</span>';
   }).join('');
   // Applique une progression (done) → sous-titre + barre + coffre si atteint.

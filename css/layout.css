@@ -710,10 +710,11 @@ body.prog-editor-open{ overflow:hidden; }
      par son ID pour qu'il reste pleine largeur (sinon il passe en 1/2 colonne). */
   body.coach-active.athlete-selected #cdtab-overview > #cd-hero{ grid-column:1 / -1; }
   /* Rail droit (sidebar) : repères compacts visibles (dernière séance +
-     régularité), et on masque « Évolution du poids » — doublon de la carte
-     Forme Poids de l'Aperçu. */
+     régularité) + « Évolution du poids » (la carte Forme Poids de la grille
+     restant masquée, le bloc rail est la SEULE vue du poids côté coach desktop
+     → on le réaffiche, sinon le poids disparaît complètement). */
   body.coach-active.athlete-selected #cd-rail .cd-rail-dup{ display:block; }
-  body.coach-active.athlete-selected #cd-rail .cd-rail-weight{ display:none !important; }
+  body.coach-active.athlete-selected #cd-rail .cd-rail-weight{ display:block !important; }
 }
 
 /* ═══ APERÇU COACH v3 — 6 cartes égales sous Alertes (surcharge les règles v2) ═══ */
