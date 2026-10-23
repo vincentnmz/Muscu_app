@@ -2139,11 +2139,16 @@
           <button id="ma-tab-detail" onclick="maSetTab('detail')">Évolution</button>
           <button id="ma-tab-tendances" onclick="maSetTab('tendances')">Tendances</button>
           <button id="ma-tab-historique" onclick="maSetTab('historique')">Historique</button>
+          <button id="ma-tab-suivi" onclick="maSetTab('suivi')" style="display:none">Photo &amp; mensurations</button>
         </div>
         </div>
 
         <!-- Le sélecteur de période est rendu DANS chaque pane (sous la Lecture en
              Résumé, au-dessus du graphe en Tendances) via _maPeriodHtml(). -->
+
+        <!-- Suivi corps (coach, consultation) — remplis par _maSuivi(). Même contenu. -->
+        <div id="ma-muscu-suivi" class="ma-pane" style="display:none;"></div>
+        <div id="ma-cardio-suivi" class="ma-pane" style="display:none;"></div>
 
         <div id="ma-muscu-resume" class="ma-pane">
 <div class="ma-sec">Ce mois-ci</div>
