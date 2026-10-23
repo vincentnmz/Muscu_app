@@ -5382,11 +5382,14 @@ function renderCoachCoupDoeil(data) {
     // le meilleur. Conservateur → pas de faux positif sur du bruit ou un jour lourd.
     var regs = [];
     Object.keys(prog).forEach(function (exo) {
+      if (recNames.indexOf(exo) >= 0) return;                 // un record récent → jamais « régression »
       var pts = prog[exo] || []; if (pts.length < 3) return;
       var dt = pd(pts[0].date); if (dt == null || (nowT - dt) / 864e5 > 21) return;
-      var rec = calc1RM(pts[0].charge, pts[0].reps), best = null;
-      for (var i = 1; i < pts.length; i++) { var rm = calc1RM(pts[i].charge, pts[i].reps); if (rm != null && (best == null || rm > best)) best = rm; }
-      if (rec != null && best != null && rec < best * 0.95) regs.push(exo);
+      // On compare la CHARGE réelle (top set), pas un 1RM Epley (un lourd en faibles reps
+      // ferait un faux recul). Charge récente < 92 % de la meilleure charge jamais faite.
+      var recC = Number(pts[0].charge) || 0, bestC = 0;
+      for (var i = 1; i < pts.length; i++) { var c = Number(pts[i].charge) || 0; if (c > bestC) bestC = c; }
+      if (recC > 0 && bestC > 0 && recC < bestC * 0.92) regs.push(exo);
     });
     // Couverture des 5 grands groupes sur 7 j (ce qui MANQUE, groupes à 0).
     var GR = [['Pecs', ['Pectoraux']], ['Dos', ['Dos']], ['Épaules', ['Epaule']], ['Bras', ['Biceps', 'Triceps']], ['Jambes', ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Jambe', 'Aducteur']]];
