@@ -9662,6 +9662,10 @@ function switchTab(tab) {
     if (dernierAppData) renderNutrition();
     else chargerAppData().then(() => renderNutrition());
   }
+  if (tab === 'suivi') {
+    if (dernierAppData) renderSuiviCorps(dernierAppData);
+    else chargerAppData().then(() => renderSuiviCorps(dernierAppData));
+  }
   if (tab === 'reglages') {
     try { majUiPause(); } catch (_) {}
     try { majUiSemaineType(); } catch (_) {}
@@ -15521,7 +15525,8 @@ function _etRenderSuivis(data) {
   var ICO = {
     nut: '<path d="M12 8c1-3 5-4 6-1 1 4-3 9-6 12-3-3-7-8-6-12 1-3 5-2 6 1z"/>',
     obj: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/>',
-    bl: '<path d="M4 13h4l2-5 3 8 2-4h5"/>'
+    bl: '<path d="M4 13h4l2-5 3 8 2-4h5"/>',
+    mes: '<rect x="3" y="8" width="18" height="8" rx="1.5"/><path d="M7.5 8v3M12 8v4M16.5 8v3"/>'
   };
   var row = function (tab, icoKey, tint, title, sub, pill) {
     var pillHtml = pill ? '<span style="font-size:9.5px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;background:' + pill.bg + ';color:' + pill.c + ';">' + esc(pill.txt) + '</span>' : '';
@@ -15567,8 +15572,24 @@ function _etRenderSuivis(data) {
     }
   } catch (e) { blSub = 'Tes douleurs signalées et blessures suivies'; blPill = null; }
 
+  // --- Suivi corps : photos avant/après + mensurations (N3) ---
+  var mens = (data && Array.isArray(data.mensurations)) ? data.mensurations : [];
+  var phs = (data && Array.isArray(data.suivi_photos)) ? data.suivi_photos : [];
+  var mSub, mPill;
+  if (!mens.length && !phs.length) {
+    mSub = 'Photos avant/après + mensurations';
+    mPill = { txt: 'à démarrer', bg: 'var(--surface2)', c: 'var(--text-muted)' };
+  } else {
+    var bits = [];
+    if (phs.length) bits.push(phs.length + ' photo' + (phs.length > 1 ? 's' : ''));
+    if (mens.length) bits.push('mesures maj ' + mens[0].date);
+    mSub = bits.join(' · ');
+    mPill = { txt: 'suivi', bg: 'var(--accent-a10)', c: 'var(--accent)' };
+  }
+
   box.innerHTML =
     row('nutrition', 'nut', { bg: 'rgba(16,185,129,.13)', c: '#10B981' }, 'Nutrition', nSub, nPill).replace('border-top:1px solid var(--border);', '')
+    + row('suivi', 'mes', { bg: 'var(--accent-a10)', c: 'var(--accent)' }, 'Photos & mensurations', mSub, mPill)
     + row('objectif', 'obj', { bg: 'var(--accent-a10)', c: 'var(--accent)' }, 'Mes objectifs', 'Suivre et fixer tes objectifs', null)
     + row('blessures', 'bl', { bg: 'var(--bad-a)', c: 'var(--danger)' }, 'Douleurs & blessures', blSub, blPill);
 }
@@ -15580,6 +15601,142 @@ function _etFoldRB() {
   var open = (body.style.display === 'flex');   // fermé par défaut (display:none)
   if (open) { body.style.display = 'none'; if (caret) caret.style.transform = ''; if (btn) btn.setAttribute('aria-expanded', 'false'); }
   else { body.style.display = 'flex'; if (caret) caret.style.transform = 'rotate(180deg)'; if (btn) btn.setAttribute('aria-expanded', 'true'); }
+}
+
+/* ───────── SUIVI CORPS (N3) : photos avant/après + mensurations ─────────
+ * Écran #tab-suivi (accès Forme › Mes suivis). Saisie par l'ATHLÈTE ; le coach
+ * consulte (Progression). Photos → bucket privé 'suivi-photos' (upload signé,
+ * même mécanisme que les médias coach). Mensurations → action saveMensuration.
+ * Lecture : data.suivi_photos [{date,angle,path,url}], data.mensurations [{date,<clé>}]. */
+var _svTab = 'photos', _svAngle = 'face', _svPhotoBusy = false;
+var _MENSU_DEF = [
+  { k: 'poitrine', l: 'Poitrine', u: 'cm' }, { k: 'taille', l: 'Tour de taille', u: 'cm' },
+  { k: 'hanches', l: 'Hanches', u: 'cm' }, { k: 'epaules', l: 'Épaules', u: 'cm' },
+  { k: 'bras_g', l: 'Bras gauche', u: 'cm' }, { k: 'bras_d', l: 'Bras droit', u: 'cm' },
+  { k: 'avantbras_g', l: 'Avant-bras gauche', u: 'cm' }, { k: 'avantbras_d', l: 'Avant-bras droit', u: 'cm' },
+  { k: 'cuisse_g', l: 'Cuisse gauche', u: 'cm' }, { k: 'cuisse_d', l: 'Cuisse droite', u: 'cm' },
+  { k: 'mollet', l: 'Mollet', u: 'cm' }, { k: 'masse_grasse', l: '% masse grasse', u: '%' }
+];
+function svSetTab(t) { _svTab = t; try { renderSuiviCorps(dernierAppData); } catch (e) {} }
+function svSetAngle(a) { _svAngle = a; try { renderSuiviCorps(dernierAppData); } catch (e) {} }
+function renderSuiviCorps(data) {
+  var box = document.getElementById('suivi-body'); if (!box) return;
+  data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : {}) || {};
+  var phs = Array.isArray(data.suivi_photos) ? data.suivi_photos : [];
+  var mens = Array.isArray(data.mensurations) ? data.mensurations : [];
+  var subt = '<div class="sv-subt">'
+    + '<button class="' + (_svTab === 'photos' ? 'on' : '') + '" onclick="svSetTab(\'photos\')">📷 Photos</button>'
+    + '<button class="' + (_svTab === 'mesures' ? 'on' : '') + '" onclick="svSetTab(\'mesures\')">📏 Mensurations</button>'
+    + '</div>';
+  box.innerHTML = subt + (_svTab === 'photos' ? _svPhotosHtml(phs) : _svMesuresHtml(mens, data));
+}
+function _svPhotoCard(p, label) {
+  var esc = escapeHtml;
+  return '<div class="sv-card" style="padding:0;overflow:hidden">'
+    + '<div style="aspect-ratio:3/4;background:var(--surface2);display:grid;place-items:center">' + (p.url ? '<img src="' + esc(p.url) + '" alt="" style="width:100%;height:100%;object-fit:cover">' : '<span style="color:var(--text-subtle);font-size:11px">photo</span>') + '</div>'
+    + '<div style="padding:7px 10px;font-size:11px">' + (label ? '<b style="display:block;font-size:10px;color:var(--text-subtle);text-transform:uppercase">' + label + '</b>' : '') + '<b style="font-size:12px">' + esc(p.date) + '</b></div></div>';
+}
+function _svPhotosHtml(phs) {
+  var esc = escapeHtml;
+  var angles = [['face', 'Face'], ['profil', 'Profil'], ['dos', 'Dos']];
+  var at = '<div style="display:flex;gap:6px;margin:10px 0 2px">' + angles.map(function (a) {
+    var on = _svAngle === a[0];
+    return '<span onclick="svSetAngle(\'' + a[0] + '\')" style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:999px;cursor:pointer;background:' + (on ? 'var(--accent-a10)' : 'var(--surface2)') + ';color:' + (on ? 'var(--accent)' : 'var(--text-muted)') + ';border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + '">' + a[1] + '</span>';
+  }).join('') + '</div>';
+  var list = phs.filter(function (p) { return (p.angle || 'face') === _svAngle; });   // déjà triées récent → ancien
+  var cmp;
+  if (list.length >= 2) {
+    cmp = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + _svPhotoCard(list[list.length - 1], 'Avant') + _svPhotoCard(list[0], 'Après') + '</div>';
+  } else if (list.length === 1) {
+    cmp = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + _svPhotoCard(list[0], '') + '<div class="sv-card" style="display:grid;place-items:center;color:var(--text-subtle);font-size:12px;aspect-ratio:3/4;text-align:center;padding:12px">Ajoute une 2ᵉ photo pour comparer</div></div>';
+  } else {
+    cmp = '<div class="sv-card" style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:18px">Aucune photo « ' + esc(_svAngle) + " » pour l'instant. Prends ta première photo ci-dessous.</div>";
+  }
+  var tl = list.length ? ('<div class="sv-sec">Toutes les photos<span class="r">' + esc(_svAngle) + ' · ' + list.length + '</span></div>'
+    + '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">' + list.map(function (p) {
+      return '<div style="flex:none;width:72px"><div style="width:72px;height:96px;border-radius:10px;overflow:hidden;background:var(--surface2);border:1px solid var(--border);position:relative">'
+        + (p.url ? '<img src="' + esc(p.url) + '" alt="" style="width:100%;height:100%;object-fit:cover">' : '')
+        + '<button onclick="svSupprPhoto(\'' + esc(p.path) + '\')" aria-label="Supprimer" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:999px;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:13px;cursor:pointer;line-height:1">×</button></div>'
+        + '<div style="font-size:9.5px;color:var(--text-subtle);text-align:center;margin-top:4px">' + esc(p.date) + '</div></div>';
+    }).join('') + '</div>') : '';
+  var add = '<div style="display:flex;gap:8px;margin-top:12px">'
+    + '<button onclick="_svPhotoPick(\'cam\')" style="flex:1;background:var(--accent);color:var(--on-accent,#fff);border:none;border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">📷 Prendre en direct</button>'
+    + '<button onclick="_svPhotoPick(\'gal\')" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--accent);border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">🖼 Galerie</button>'
+    + '</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:7px">Photo privée (toi + ton coach). Angle : <b>' + esc(_svAngle) + '</b>.</div>';
+  return at + cmp + tl + add;
+}
+function _svPhotoPick(src) {
+  if (_svPhotoBusy) { try { showToast('⏳ Envoi en cours…'); } catch (e) {} return; }
+  var inp = document.getElementById(src === 'cam' ? 'suivi-photo-input' : 'suivi-photo-input-gal');
+  if (inp) { inp.value = ''; inp.click(); }
+}
+function _svPhotoChoisi(input) {
+  var f = input && input.files && input.files[0]; if (!f) return;
+  if (!/^image\//.test(f.type)) { showToast('Choisis une photo', '#ff4444'); return; }
+  if (f.size > 25 * 1024 * 1024) { showToast('Photo trop lourde (max 25 Mo)', '#ff4444'); return; }
+  _coachMediaCompressImage(f).then(function (blob) { _svPhotoEnvoyer(blob, 'jpg'); })
+    .catch(function () { _svPhotoEnvoyer(f, (f.name.split('.').pop() || 'jpg').toLowerCase()); });
+}
+async function _svPhotoEnvoyer(fileOrBlob, ext) {
+  if (!athlete) return;
+  _svPhotoBusy = true;
+  try {
+    showToast('Envoi de la photo…');
+    var r1 = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'suiviPhotoUploadUrl', athlete_id: athlete.athlete_id, ext: ext }) });
+    var d1 = await r1.json();
+    if (!d1 || !d1.success || !d1.signedUrl) throw new Error('upload-url');
+    var put = await fetch(d1.signedUrl, { method: 'PUT', headers: { 'Content-Type': (fileOrBlob.type || 'image/jpeg') }, body: fileOrBlob });
+    if (!put.ok) throw new Error('put-' + put.status);
+    var r3 = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSuiviPhoto', athlete_id: athlete.athlete_id, path: d1.path, angle: _svAngle, date: _ymdLocal(new Date()) }) });
+    var d3 = await r3.json();
+    if (!d3 || !d3.success) throw new Error('save');
+    showToast('Photo ajoutée');
+    if (!dernierAppData.suivi_photos) dernierAppData.suivi_photos = [];
+    dernierAppData.suivi_photos.unshift({ date: d3.date, angle: _svAngle, path: d3.path, url: d3.url || null });
+    renderSuiviCorps(dernierAppData);
+    try { _etRenderSuivis(dernierAppData); } catch (e) {}
+  } catch (e) { showToast('Échec de l\'envoi', '#ff4444'); }
+  finally { _svPhotoBusy = false; }
+}
+function svSupprPhoto(path) {
+  if (!confirm('Supprimer cette photo ?')) return;
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'supprimerSuiviPhoto', athlete_id: athlete.athlete_id, path: path }) })
+    .then(function (x) { return x.json(); }).then(function (r) {
+      if (r && r.success) { if (dernierAppData.suivi_photos) dernierAppData.suivi_photos = dernierAppData.suivi_photos.filter(function (p) { return p.path !== path; }); renderSuiviCorps(dernierAppData); showToast('Photo supprimée'); }
+      else showToast('Suppression impossible', '#ff4444');
+    }).catch(function () { showToast('Erreur réseau', '#ff4444'); });
+}
+function _svMesuresHtml(mens, data) {
+  var esc = escapeHtml;
+  var last = mens[0] || {}, prev = mens[1] || {};
+  var cells = _MENSU_DEF.map(function (m) {
+    var v = last[m.k]; if (v == null) return '';
+    var p = prev[m.k], trend = '';
+    if (p != null) { var d = Math.round((v - p) * 10) / 10; trend = (Math.abs(d) < 0.05) ? '<span style="color:var(--text-subtle)">– 0</span>' : '<span style="color:' + (d > 0 ? 'var(--good)' : 'var(--danger)') + '">' + (d > 0 ? '▲ +' : '▼ ') + Math.abs(d) + '</span>'; }
+    return '<div class="sv-card" style="padding:10px 12px"><div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + esc(m.l) + '</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:2px"><b style="font-size:18px;font-weight:900">' + String(v).replace('.', ',') + '</b><u style="font-size:10px;color:var(--text-subtle);font-style:normal">' + m.u + '</u>' + (trend ? '<em style="margin-left:auto;font-size:10px;font-weight:800;font-style:normal">' + trend + '</em>' : '') + '</div></div>';
+  }).filter(Boolean).join('');
+  var grid = cells
+    ? ('<div class="sv-sec">Dernières mesures<span class="r">' + (last.date ? esc(last.date) : '') + '</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + cells + '</div>')
+    : '<div class="sv-card" style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:18px">Aucune mesure enregistrée. Saisis tes premières mensurations ci-dessous.</div>';
+  var fields = _MENSU_DEF.map(function (m) {
+    return '<div style="display:flex;flex-direction:column;gap:3px"><label style="font-size:10.5px;color:var(--text-subtle);font-weight:700">' + esc(m.l) + '</label><input id="sv-in-' + m.k + '" inputmode="decimal" placeholder="' + m.u + '" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px;font:inherit;font-size:13px"></div>';
+  }).join('');
+  var form = '<div class="sv-sec">Ajouter des mesures<span class="r">aujourd\'hui</span></div>'
+    + '<div class="sv-card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">' + fields + '</div>'
+    + '<button onclick="_svSaveMesures()" style="width:100%;margin-top:11px;background:var(--accent);color:var(--on-accent,#fff);border:none;border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">Enregistrer les mesures</button>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px">Le poids se saisit dans « Mes tendances » (pesée). Ré-enregistrer une date écrase ses mesures.</div></div>';
+  return grid + form;
+}
+function _svSaveMesures() {
+  if (!athlete) return;
+  var mesures = {}, any = false;
+  _MENSU_DEF.forEach(function (m) { var el = document.getElementById('sv-in-' + m.k); if (el) { var v = String(el.value || '').trim().replace(',', '.'); if (v !== '' && !isNaN(Number(v)) && Number(v) > 0) { mesures[m.k] = Number(v); any = true; } } });
+  if (!any) { showToast('Saisis au moins une mesure', '#ff4444'); return; }
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveMensuration', athlete_id: athlete.athlete_id, date: _ymdLocal(new Date()), mesures: mesures }) })
+    .then(function (x) { return x.json(); }).then(function (r) {
+      if (r && r.success) { showToast('Mesures enregistrées'); return chargerAppData().then(function () { renderSuiviCorps(dernierAppData); try { _etRenderSuivis(dernierAppData); } catch (e) {} }); }
+      showToast((r && r.error) || 'Enregistrement impossible', '#ff4444');
+    }).catch(function () { showToast('Erreur réseau', '#ff4444'); });
 }
 
 /* Écran CARDIO (onglet #tab-cardio) — « Cardio ». Tout est calculé depuis
