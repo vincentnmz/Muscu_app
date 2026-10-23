@@ -5523,7 +5523,14 @@ function renderCoachCoupDoeil(data) {
     else if (recule.length) reco = 'Revois la charge / surcharge sur ' + esc(recule.slice(0, 2).join(', ')) + ' (consolider avant de remonter).';
     else if (cardioManque) reco = 'Ajoute 1 à 2 sorties cardio par semaine pour soutenir la récupération et l\'endurance.';
     else reco = 'Tout est au vert — maintiens le cap ; une petite surcharge est envisageable sur un exercice clé.';
-    if ((dispo === 'À surveiller' || recup === 'Faible') && stagne.length) reco += ' Sur ' + esc(stagne[0].exo) + ', décharge avant de relancer.';
+    // Complément data-driven : UN seul point utile en plus, non redondant avec la reco primaire.
+    var compl = '';
+    if (!/récup|allège|décal/i.test(reco) && (dispo === 'À surveiller' || recup === 'Faible')) compl = 'Priorise aussi la récupération.';
+    else if (!/réintègre|volume/i.test(reco) && total7 > 0 && absent.length && absent.length < 5) compl = 'Pense aussi à réintégrer ' + esc(absent[0]) + ' pour le volume.';
+    else if (!/décharge|stagn|repos/i.test(reco) && stagne.length) compl = esc(stagne[0].exo) + ' stagne : allonge les repos ou place-le plus tôt dans la séance.';
+    else if (!/cardio/i.test(reco) && cardioManque) compl = 'Et 1 à 2 sorties cardio pour l\'endurance.';
+    else if (!/intensit|fatigue/i.test(reco) && rpeMoy != null && rpeMoy >= 8.5) compl = 'Intensité haute en ce moment → garde un œil sur la fatigue.';
+    if (compl) reco += ' ' + compl;
 
     el.innerHTML = '<div class="cdcp-lab">Coup d\'œil <span class="cdcp-tag">comprendre en 5 s</span></div>'
       + '<div class="cdcp-wrap">'
@@ -5537,8 +5544,10 @@ function renderCoachCoupDoeil(data) {
 
 // Hero « État du jour » (détail athlète, onglet Aperçu) — carte colorée par le
 // statut global du moteur. Réutilise computeMarqueursCoach (statut), data.moteur
-// (niveau + reco) et le dernier questionnaire bien-être (chips). Ne fabrique rien :
-// la reco vient du moteur ; sans moteur, on affiche un repère factuel (régularité).
+// (niveau) et le dernier questionnaire bien-être (chips). Ne fabrique rien.
+// IMPORTANT : le hero montre le POURQUOI FACTUEL (récup + régularité), côté COACH.
+// Il n'affiche PAS la reco-action du moteur (écrite pour l'athlète + redondante
+// avec la carte « Reco · prochaine séance » du Coup d'œil). Une seule reco = en bas.
 function renderCoachHeroEtat(data) {
   const el = document.getElementById('cd-hero');
   const a = coachAthleteCourant;
@@ -5549,18 +5558,17 @@ function renderCoachHeroEtat(data) {
   const M = data.moteur || null;
   const niveau = (M && M.disponibilite && M.disponibilite.niveau) ? M.disponibilite.niveau
                : (s.label === 'Optimal' ? 'En forme' : s.label === 'Surveillance' ? 'À surveiller' : s.label === 'Action' ? 'À surveiller' : s.label);
-  // Raison : reco du moteur si dispo, sinon repère factuel (séances / dernière séance).
+  // Raison = état FACTUEL côté coach (récup + régularité + dernière séance).
+  // Pas la reco-action du moteur (athlète + doublon avec la Reco du Coup d'œil).
   const dash = data.dashboard || {};
   const reg = dash.regularite || {};
   const faites = _seancesFaites(reg), prevues = reg.seances_prevues || 0;
-  let raison = (M && M.reco && M.reco !== '—') ? M.reco : '';
-  if (!raison) {
-    const parts = [];
-    if (prevues > 0) parts.push(`${faites}/${prevues} séance${prevues > 1 ? 's' : ''} cette semaine`);
-    else if (faites != null) parts.push(`${faites} séance${faites > 1 ? 's' : ''} cette semaine`);
-    if (dash.derniere_seance && dash.derniere_seance.date) parts.push(`dernière le ${dash.derniere_seance.date}`);
-    raison = parts.join(' · ') || 'Pas encore assez de données pour un verdict.';
-  }
+  const parts = [];
+  if (M && M.recup && M.recup !== '—') parts.push(`récup ${String(M.recup).toLowerCase()}`);
+  if (prevues > 0) parts.push(`${faites}/${prevues} séance${prevues > 1 ? 's' : ''} cette semaine`);
+  else if (faites != null) parts.push(`${faites} séance${faites > 1 ? 's' : ''} cette semaine`);
+  if (dash.derniere_seance && dash.derniere_seance.date) parts.push(`dernière le ${dash.derniere_seance.date}`);
+  let raison = parts.join(' · ') || 'Pas encore assez de données pour un verdict.';
   // Chips bien-être (dernier questionnaire) — données réelles uniquement.
   const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
   const dernier = be[0] || null;
