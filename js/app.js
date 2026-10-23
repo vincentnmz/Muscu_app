@@ -13169,11 +13169,8 @@ function _maMuscuTendances(data) {
   var wtF = [], wtD = [];
   wt.forEach(function (v, i) { if (v > 0) { wtF.push(v); wtD.push(tdT.dates[i]); } });
   // Sélecteur juste au-dessus du graphique → on voit la courbe s'ajuster.
-  var head = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie (par ' + bNoun + ').');
+  var head = _maPeriodHint('👇 Le sélecteur ci-dessous ne concerne que les graphes suivants.') + _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie (par ' + bNoun + ').');
   var main = '';
-  // RÉGULARITÉ EN TÊTE (N9) : barres hebdo vs objectif sur 12 semaines (indépendant
-  // du sélecteur de période) — « la régularité prime sur tout le reste ».
-  main += _maRegulariteBloc(data);
   if (hasW) {
     var tonLbl = _maGran === 'S' ? 'jours d\'entraînement' : 'par ' + bNoun;
     main += _maSec('Tonnage soulevé', tonLbl + ' · ' + _maPLabel(), 'tonnage')
@@ -13190,7 +13187,10 @@ function _maMuscuTendances(data) {
   // .ma-cols2/.ma-col* passent en display:contents → suite verticale inchangée,
   // juste précédée du résumé comme avant.
   var rail = (rows ? _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>' : '') + _maNovaAsk();
-  var out = head + '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>';
+  // RÉGULARITÉ EN TÊTE (N9), AU-DESSUS du sélecteur de période : barres hebdo vs
+  // objectif sur 12 semaines, FIXE (indépendant du sélecteur) → plus de confusion
+  // « pourquoi ça ne bouge pas » puisqu'elle n'est plus sous le sélecteur.
+  var out = _maRegulariteBloc(data) + head + '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>';
   _maSet('ma-muscu-tendances', out);
 }
 
