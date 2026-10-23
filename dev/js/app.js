@@ -13433,6 +13433,16 @@ function _maCroise(data) {
   var chH = _half(totalW), foH = _half(beW);
   var chUp = chH.o > 0 && (chH.r - chH.o) / chH.o > 0.15;
   var foDown = foH.o > 0 && (foH.r - foH.o) / foH.o < -0.08;
+  // GARDE-FOU #1 : la tendance charge/forme n'a de sens que sur une période assez
+  // LONGUE (≥ 4 sem.) avec assez de points (charge + bien-être). En « Semaine » (7 j),
+  // les moitiés sont minuscules → verdict instable → on ne l'affiche pas.
+  var nCharge = totalW.filter(function (v) { return v > 0; }).length;
+  var nForme = beW.filter(function (v) { return v > 0; }).length;
+  var trendOk = _w.days >= 28 && nCharge >= 4 && nForme >= 3;
+  var nWeeks = Math.max(1, Math.round(_w.days / 7));
+  // GARDE-FOU #2 : mention de fiabilité (nb de semaines + remplissage bien-être).
+  var fiab = (trendOk && muscuUA > 0 && cardioUA > 0) ? { t: 'bonne', c: 'var(--good)' }
+    : ((_w.days >= 28 || (muscuUA > 0 && cardioUA > 0)) ? { t: 'moyenne', c: 'var(--warn)' } : { t: 'faible', c: 'var(--bad)' });
 
   // ── Bilan : coach (parle AU coach) vs athlète (backend, « tu ») ──
   var coach = (typeof _maCoach !== 'undefined' && _maCoach);
@@ -13445,19 +13455,23 @@ function _maCroise(data) {
       var eq = (Math.abs(mPct - 50) <= 15) ? ('Charge bien équilibrée : <b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')
         : (mPct > 65 ? ('Charge surtout <b>muscu (' + mPct + '%)</b> — peu de cardio') : (cPct > 65 ? ('Charge surtout <b>cardio (' + cPct + '%)</b> — peu de muscu') : ('<b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')));
       var L = rc(Math.abs(mPct - 50) <= 20 ? 'var(--good)' : 'var(--warn)', eq + (hPct > 0 ? (' · Hyrox ' + hPct + '%') : '') + ' sur ' + _w.plabel + '.');
-      if (chUp && foDown) L += rc('var(--warn)', 'La <b>charge globale monte</b> alors que la <b>forme baisse</b> → accumulation à surveiller.');
+      // Tendance charge/forme : AFFICHÉE SEULEMENT si assez de recul (garde-fou #1).
+      if (!trendOk) L += rc('var(--text-subtle)', 'Tendance charge / forme : <b>pas assez de recul</b> sur cette période — à regarder sur <b>Mois</b> ou <b>Année</b>.');
+      else if (chUp && foDown) L += rc('var(--warn)', 'La <b>charge globale monte</b> alors que la <b>forme baisse</b> → accumulation à surveiller.');
       else if (chUp) L += rc('var(--accent2)', 'Charge globale en hausse, forme tenue → bonne assimilation pour l\'instant.');
       else if (foDown) L += rc('var(--warn)', 'Forme en légère baisse — vérifier sommeil / récupération.');
       else L += rc('var(--good)', 'Charge et forme stables.');
       var dispo = (mot.disponibilite && mot.disponibilite.niveau) || null;
       L += rc(dispo === 'À surveiller' ? 'var(--bad)' : dispo === 'Vigilance' ? 'var(--warn)' : 'var(--good)', who + ' : disponibilité <b>' + _maE(dispo || '—') + '</b> · récup ' + _maE(mot.recup || '—') + '.');
       // Reco PROPRE AU CROISÉ : équilibre entre filières + charge TOTALE vs récup
-      // (pas une reco muscu « surcharge/volume » ni cardio « endurance » isolée).
-      var reco = (chUp && foDown) ? 'Charge totale (muscu + cardio) trop lourde pour la récup du moment → allège une des deux filières cette semaine pour rééquilibrer charge / récupération.'
+      // (pas une reco muscu « surcharge/volume » ni cardio « endurance » isolée). La
+      // reco « deload sur tendance » n'est donnée que si la tendance est fiable.
+      var reco = (trendOk && chUp && foDown) ? 'Charge totale (muscu + cardio) trop lourde pour la récup du moment → allège une des deux filières cette semaine pour rééquilibrer charge / récupération.'
         : (mPct > 75 ? 'Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d\'endurance + meilleure récup globale) sans alourdir la charge totale.'
           : (cPct > 75 ? 'Profil déséquilibré, presque tout en cardio : ajoute du renforcement pour l\'équilibre force / endurance, en gardant la charge totale sous contrôle.'
             : 'Bon équilibre muscu / cardio et charge globale soutenable — maintiens le mix ; ajuste seulement si la forme décroche quand la charge monte.'));
-      synthese = '<div class="ma-card" style="border-left:3px solid var(--accent)">' + L
+      var fiabLine = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Fiabilité de l\'analyse : <b style="color:' + fiab.c + '">' + fiab.t + '</b> · ' + nWeeks + ' sem. de données · bien-être ' + nForme + ' relevé' + (nForme > 1 ? 's' : '') + '.</div>';
+      synthese = '<div class="ma-card" style="border-left:3px solid var(--accent)">' + L + fiabLine
         + '<div style="margin-top:9px;background:var(--accent-a10,rgba(26,95,255,.10));border:1px solid var(--border);border-radius:11px;padding:10px 13px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:3px">Reco · pour le coach</div><div style="font-size:13px;font-weight:600">' + reco + '</div></div></div>';
     }
   } else {
@@ -13473,7 +13487,7 @@ function _maCroise(data) {
     var fpts = []; beW.forEach(function (v, i) { if (v > 0) fpts.push([(i * bw + bw * 0.5), (H - pad) - (Math.max(0, Math.min(100, v)) / 100) * (H - pad)]); });
     var lineSvg = fpts.length ? ('<path d="M' + fpts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L') + '" fill="none" stroke="#00C96E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + fpts[fpts.length - 1][0].toFixed(1) + '" cy="' + fpts[fpts.length - 1][1].toFixed(1) + '" r="3.4" fill="#00C96E"/>') : '';
     var legend = '<div style="display:flex;gap:16px;margin-top:10px;font-size:11.5px;color:var(--text-muted);flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:13px;height:9px;border-radius:2px;background:#1A5FFF;display:inline-block"></i>Charge (muscu + cardio)</span><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:9px;height:9px;border-radius:50%;background:#00C96E;display:inline-block"></i>Forme / récup</span></div>';
-    var warn = (chUp && foDown) ? '<div style="font-size:11.5px;color:var(--warn);font-weight:700;margin-top:9px">⚠ Charge en hausse + forme en baisse → fenêtre de vigilance (fatigue qui s\'installe).</div>' : '';
+    var warn = (trendOk && chUp && foDown) ? '<div style="font-size:11.5px;color:var(--warn);font-weight:700;margin-top:9px">⚠ Charge en hausse + forme en baisse → fenêtre de vigilance (fatigue qui s\'installe).</div>' : '';
     chart = _maSec('Charge vs forme', 'charge + récup · par ' + _bNoun + ' · ' + _w.plabel)
       + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Charge + forme</span><span style="font-size:11px;color:var(--text-subtle)">barres = charge · courbe = forme</span></div>'
       + '<svg width="100%" height="150" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + barsSvg + lineSvg + '</svg>'
