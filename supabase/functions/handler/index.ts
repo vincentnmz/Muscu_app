@@ -2021,9 +2021,13 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const d = parseFR(rec.date)
     return d ? fmtYMD(d) >= c30 : false
   }).length
+  // records_total : nombre d'exos où l'athlète détient un record (= exos pratiqués
+  // avec charge). PERMANENT (ne décroît jamais) → base des points « records » de la
+  // boutique, pour que les points ne s'évaporent plus (fenêtre 30 j = affichage seul).
+  const recordsTotal = Object.keys(globalData.records || {}).length
 
   // Enrich globalData
-  const enrichedGlobal = { ...globalData, muscle_retard: muscleRetardObj, records_30j: records30j }
+  const enrichedGlobal = { ...globalData, muscle_retard: muscleRetardObj, records_30j: records30j, records_total: recordsTotal }
 
   const poids = (poidsRows || []).map(r => ({ date: fmtFR(r.date), poids: Number(r.poids) }))
 
@@ -2284,10 +2288,11 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
     prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
     // Récompenses : solde de points (gagnés − dépensés) + récompenses déjà réclamées.
-    // Gagnés = total_seances×10 + records_30j×50 (déterministe). Dépenses = somme des
+    // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
+    // fenêtre 30 j glissante qui faisait disparaître les points). Dépenses = somme des
     // claims (seance_id='recompense', valeur = coût). Source unique front↔back.
     recompenses: (() => {
-      const gagnes = (globalData.total_seances || 0) * 10 + records30j * 50
+      const gagnes = (globalData.total_seances || 0) * 10 + recordsTotal * 50
       const claims = (recompRows || []).map((r: any) => ({ id: String(r.cle), cout: Number(r.valeur) || 0, date: r.date ? fmtFR(r.date) : '' }))
       const depenses = claims.reduce((s: number, c: any) => s + c.cout, 0)
       return { gagnes, depenses, solde: gagnes - depenses, claims }
@@ -4737,9 +4742,10 @@ async function handleClaimRecompense(body: any): Promise<Response> {
 
   const now = new Date()
   const g = computeGlobal(perfs || [])
-  const c30 = fmtYMD(minus(now, 30))
-  const rec30 = Object.values(g.records || {}).filter((r: any) => { const d = parseFR(r.date); return d ? fmtYMD(d) >= c30 : false }).length
-  const gagnes = (g.total_seances || 0) * 10 + rec30 * 50
+  // Records À VIE (permanents) — DOIT matcher le calcul de getAppData (records_total)
+  // sinon le solde validé ici diffèrerait du solde affiché → faux « solde insuffisant ».
+  const recordsTotal = Object.keys(g.records || {}).length
+  const gagnes = (g.total_seances || 0) * 10 + recordsTotal * 50
   const depenses = (claims || []).reduce((s: number, c: any) => s + (Number(c.valeur) || 0), 0)
   const solde = gagnes - depenses
   if (solde < item.cout) return jsonResp({ success: false, error: 'Solde insuffisant', solde })

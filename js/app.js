@@ -14864,18 +14864,28 @@ function renderAujourdhui(data) {
     var g = (data && data.global) || {};
     var dashb = (data && data.dashboard) || {};
     var totalS = Number(g.total_seances || 0);
-    var rec30 = Number(g.records_30j || 0);
-    var pts = totalS * 10 + rec30 * 50;
+    var rec30 = Number(g.records_30j || 0);   // gardé pour l'étiquette « Records 30 j » (trophée)
+    // Économie de points : SOURCE UNIQUE = data.recompenses (gagné / dépensé / solde).
+    // Le SOLDE (gagné − dépensé) est le seul chiffre « dispo » affiché (ici + boutique).
+    // Records comptés À VIE (records_total) → points permanents. Fallback front sur
+    // records_par_exo (lui aussi permanent) si le backend n'est pas encore redéployé.
+    var recordsTot = Number(g.records_total != null ? g.records_total : Object.keys(g.records_par_exo || {}).length) || 0;
+    var recEco = (data && data.recompenses) || null;
+    var gagnes = (recEco && recEco.gagnes != null) ? Number(recEco.gagnes) : (totalS * 10 + recordsTot * 50);
+    var depenses = (recEco && recEco.depenses != null) ? Number(recEco.depenses) : 0;
+    var solde = (recEco && recEco.solde != null) ? Number(recEco.solde) : (gagnes - depenses);
     var reg2 = dashb.regularite || {};
     var streak = (reg2 && reg2.streak != null) ? Number(reg2.streak) : ((dashb.streak && dashb.streak.semaines != null) ? Number(dashb.streak.semaines) : 0);
     var recsObj = g.records_par_exo || {};
     var hasRecords = Object.keys(recsObj).length > 0;
 
-    // Niveau dérivé des points réels.
-    var lv = _rewLevel(pts);
+    // Niveau = points GAGNÉS à vie (ne baisse jamais, même après un achat).
+    var lv = _rewLevel(gagnes);
     var elLvln = document.getElementById('tj-lvln'); if (elLvln) elLvln.textContent = lv.level;
     var elLvlt = document.getElementById('tj-lvltitle'); if (elLvlt) elLvlt.textContent = lv.title;
-    var elLvlx = document.getElementById('tj-lvltxt'); if (elLvlx) elLvlx.textContent = 'Plus que ' + lv.toNext.toLocaleString('fr-FR') + ' pts avant le niveau ' + (lv.level + 1);
+    // Transparence : gagné / dépensé (le chiffre ci-dessus = solde dispo).
+    var elLvlx = document.getElementById('tj-lvltxt'); if (elLvlx) elLvlx.textContent = 'Gagné ' + gagnes.toLocaleString('fr-FR') + ' · Dépensé ' + depenses.toLocaleString('fr-FR');
+    var elProgLbl = document.querySelector('#tab-accueil .tj-rew .rew-pts small'); if (elProgLbl) elProgLbl.textContent = 'pts dispo';
 
     // Meilleur record.
     var best = null;
@@ -14897,11 +14907,11 @@ function renderAujourdhui(data) {
 
     // Cibles pour l'animation au reveal (scroll).
     var rewCard = document.querySelector('#tab-accueil .tj-rew');
-    if (rewCard) { rewCard.setAttribute('data-pts', String(pts)); rewCard.setAttribute('data-lvlpct', String(lv.pct)); }
+    if (rewCard) { rewCard.setAttribute('data-pts', String(solde)); rewCard.setAttribute('data-lvlpct', String(lv.pct)); }
     var elProg = document.getElementById('tj-prog');
     var rg = document.getElementById('tj-lvlring');
     if (_rewAnimated) {
-      if (elProg) { elProg.textContent = pts.toLocaleString('fr-FR'); elProg.setAttribute('data-v', String(pts)); }
+      if (elProg) { elProg.textContent = solde.toLocaleString('fr-FR'); elProg.setAttribute('data-v', String(solde)); }
       if (rg) rg.style.strokeDashoffset = (100 - lv.pct);
     } else {
       if (elProg) { elProg.textContent = '0'; elProg.setAttribute('data-v', '0'); }
@@ -19690,12 +19700,18 @@ function renderRecompenses(data) {
   if (!cont) return;
   const g = (data && data.global) || {};
   const totalSeances = Number(g.total_seances || 0);
-  const records = Number(g.records_30j || 0);
+  // Records comptés À VIE (permanents) — fini la fenêtre 30 j glissante qui faisait
+  // « évaporer » les points. Fallback front sur records_par_exo si le backend
+  // n'est pas encore redéployé (lui aussi permanent).
+  const recordsTot = Number(g.records_total != null ? g.records_total : Object.keys(g.records_par_exo || {}).length) || 0;
+  // SOURCE UNIQUE = data.recompenses (même solde que la boutique). UN SEUL chiffre.
+  const rec = (data && data.recompenses) || null;
+  const gagnes = (rec && rec.gagnes != null) ? Number(rec.gagnes) : (totalSeances * 10 + recordsTot * 50);
+  const depenses = (rec && rec.depenses != null) ? Number(rec.depenses) : 0;
+  const solde = (rec && rec.solde != null) ? Number(rec.solde) : (gagnes - depenses);
+  const fmt = n => Number(n || 0).toLocaleString('fr-FR');
 
-  // Cagnotte de points (auto) : séances ×10 + records ×50
-  const pts = totalSeances * 10 + records * 50;
-
-  // Paliers de séances
+  // Paliers d'assiduité (séances cumulées)
   const paliers = [10, 25, 50, 100, 200, 365];
   let prev = 0, next = paliers[0];
   for (let i = 0; i < paliers.length; i++) {
@@ -19709,18 +19725,20 @@ function renderRecompenses(data) {
   cont.style.textAlign = 'left';
   cont.style.padding = '0';
   cont.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;">
-      <div>
-        <div style="font-size:12px;color:var(--text-muted);font-weight:600;">Ta cagnotte</div>
-        <div style="font-size:28px;font-weight:800;color:var(--accent);line-height:1.1;">${pts}<span style="font-size:13px;color:var(--text-muted);font-weight:600;"> pts</span></div>
-      </div>
-      <div style="font-size:34px;"></div>
+    <!-- SOLDE UNIQUE (= boutique). Gagné − Dépensé, points gardés à vie. -->
+    <div style="background:linear-gradient(135deg,var(--accent),var(--accent-strong,#0a46d6));border-radius:16px;padding:14px 16px;color:var(--on-accent,#fff);">
+      <div style="font-size:11px;font-weight:700;opacity:.85;">Mon solde</div>
+      <div style="font-size:32px;font-weight:900;line-height:1.05;">${fmt(solde)}<span style="font-size:13px;font-weight:700;opacity:.8;"> pts dispo</span></div>
+      <div style="display:flex;gap:16px;margin-top:8px;font-size:11.5px;opacity:.92;"><span>Gagné <b>${fmt(gagnes)}</b></span><span>Dépensé <b>${fmt(depenses)}</b></span></div>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">${totalSeances} séances ×10 · ${records} records (30j) ×50</div>
+    <div style="font-size:11.5px;color:var(--text-muted);margin:9px 0 14px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;line-height:1.5;">
+      <b style="color:var(--text);">Comment je gagne :</b> <b>10 pts</b> / séance · <b>50 pts</b> / record (gardés à vie).
+      Ex. : ${totalSeances} séance${totalSeances > 1 ? 's' : ''} (${fmt(totalSeances * 10)}) + ${recordsTot} record${recordsTot > 1 ? 's' : ''} (${fmt(recordsTot * 50)}) = <b>${fmt(gagnes)} gagnés</b>.
+    </div>
 
     <div style="border-top:1px solid var(--border);padding-top:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:13px;font-weight:700;color:var(--text);">🏅 Prochain palier</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text);">🏅 Prochain palier d'assiduité</span>
         <span style="font-size:12px;color:var(--text-muted);font-weight:700;">${atteint ? 'Max atteint !' : restant + ' séance' + (restant > 1 ? 's' : '')}</span>
       </div>
       <div style="background:var(--surface2);border-radius:20px;height:8px;overflow:hidden;">
@@ -19730,7 +19748,7 @@ function renderRecompenses(data) {
     </div>
 
     <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;display:flex;align-items:center;gap:10px;">
-      <div style="font-size:20px;"></div>
+      <div style="font-size:20px;">🎁</div>
       <div style="font-size:12px;color:var(--text-muted);line-height:1.4;">Récompense personnalisée du coach — <span style="font-weight:700;">bientôt</span>.</div>
     </div>`;
 }
