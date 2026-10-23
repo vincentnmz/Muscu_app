@@ -5510,7 +5510,7 @@ function renderCoachCoupDoeil(data) {
     lect += _cdCoupRow((dispo === 'À surveiller' || recup === 'Faible') ? 'var(--bad)' : ((dispo === 'Vigilance' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)'), '●', '<b>' + prenom + '</b> — ' + statut + '.');
     var nDyn = records.length + progresse.length;
     if (nDyn > 0) lect += _cdCoupRow('var(--good)', '●', 'Bonne dynamique : ' + (records.length ? '<b>' + records.length + ' record' + (records.length > 1 ? 's' : '') + '</b>' : '') + (records.length && progresse.length ? ' + ' : '') + (progresse.length ? 'charges/reps en hausse sur <b>' + progresse.length + '</b> exo' + (progresse.length > 1 ? 's' : '') : '') + '.');
-    if (stagne.length) { var s0 = stagne[0]; lect += _cdCoupRow('var(--warn)', '●', '<b>' + esc(s0.exo) + ' stagne</b>' + (s0.rpeUp ? ' (même charge, RPE qui monte)' : ' (plateau charge/reps)') + ' → changer de variante ou décharger 1 semaine.'); }
+    if (stagne.length) { var s0 = stagne[0]; lect += _cdCoupRow('var(--warn)', '●', '<b>' + esc(s0.exo) + ' stagne</b>' + (s0.rpeUp ? ' (même charge, RPE qui monte)' : ' (plateau charge/reps)') + ' → décharge 1 semaine, allonge les temps de repos, ou place-le plus tôt dans la séance (plus frais).'); }
     if (recule.length) lect += _cdCoupRow('var(--bad)', '●', 'Recul sur <b>' + esc(recule.slice(0, 2).join(', ')) + '</b> (charge et reps en baisse) — à regarder.');
     if (total7 > 0 && absent.length && absent.length < 5) lect += _cdCoupRow('var(--warn)', '●', 'Volume : <b>' + esc(absent.join(' & ')) + '</b> délaissé' + (absent.length > 1 ? 's' : '') + ' cette semaine.');
     else if (total7 > 0 && !absent.length) lect += _cdCoupRow('var(--good)', '●', 'Volume bien réparti sur les grands groupes.');
@@ -5519,7 +5519,7 @@ function renderCoachCoupDoeil(data) {
     var reco;
     if (dispo === 'À surveiller' || recup === 'Faible') reco = 'Allège ou décale la prochaine séance — priorité à la récupération.';
     else if (total7 > 0 && absent.length && absent.length < 5) reco = 'Prochaine séance : réintègre ' + esc(absent[0]) + (absent[1] ? ' et ' + esc(absent[1]) : '') + ' pour rééquilibrer le volume.';
-    else if (stagne.length) reco = 'Sur ' + esc(stagne[0].exo) + ' : baisse un peu la charge pour remonter les reps (ou change d\'angle) afin de débloquer le plateau.';
+    else if (stagne.length) reco = 'Pour débloquer ' + esc(stagne[0].exo) + ' : décharge 1 semaine, allonge les temps de repos, ou place-le plus tôt dans la séance pour l\'attaquer plus frais.';
     else if (recule.length) reco = 'Revois la charge / surcharge sur ' + esc(recule.slice(0, 2).join(', ')) + ' (consolider avant de remonter).';
     else if (cardioManque) reco = 'Ajoute 1 à 2 sorties cardio par semaine pour soutenir la récupération et l\'endurance.';
     else reco = 'Tout est au vert — maintiens le cap ; une petite surcharge est envisageable sur un exercice clé.';
