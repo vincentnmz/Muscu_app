@@ -11746,7 +11746,8 @@ function _maApply() {
   // Côté coach (onglet « Progression ») : on ne garde que « Par exercice » +
   // « Tendances ». Résumé (→ carte « Charge & assiduité » de l'Aperçu) et
   // Historique (→ onglet Séances) sont masqués → défaut sur « Par exercice ».
-  if (typeof _maCoach !== 'undefined' && _maCoach && (_maTab === 'historique' || _maTab === 'resume')) {
+  // Résumé reste accessible au coach EN CROISÉ (sinon il n'y resterait que Tendances).
+  if (typeof _maCoach !== 'undefined' && _maCoach && (_maTab === 'historique' || (_maTab === 'resume' && _maDisc !== 'croise'))) {
     _maTab = (_MA_TABS[_maDisc].indexOf('detail') >= 0) ? 'detail' : 'tendances';
   }
   // Toggle discipline (Muscu / Cardio / Croisé)
@@ -11762,9 +11763,13 @@ function _maApply() {
   ['resume', 'detail', 'tendances', 'historique', 'suivi'].forEach(function (t) {
     var b = document.getElementById('ma-tab-' + t);
     if (!b) return;
-    // 'suivi' = COACH seulement ; historique/resume masqués pour le coach.
-    var av = dispo.indexOf(t) >= 0
-      && (t === 'suivi' ? isCoach : !(isCoach && (t === 'historique' || t === 'resume')));
+    // 'suivi' = COACH seulement. Côté coach : historique masqué, et resume masqué
+    // SAUF en Croisé (où il n'y a que Résumé + Tendances → sinon il ne resterait
+    // que Tendances). L'athlète voit tout normalement.
+    var av = dispo.indexOf(t) >= 0;
+    if (t === 'suivi') av = av && isCoach;
+    else if (isCoach && t === 'historique') av = false;
+    else if (isCoach && t === 'resume' && _maDisc !== 'croise') av = false;
     b.style.display = av ? '' : 'none';
     b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise');
   });
@@ -12683,7 +12688,7 @@ function _maMuscuResume(data) {
     +   '<div class="ma-colcard">' + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + w.plabel, 'balance') + _maBalance(data)
     +     _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.') + '</div>'
     + '</div>';
-  var rail = _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk();
+  var rail = _maSec('Records personnels') + _maRecords(data) + _maNovaAsk();
   _maSet('ma-muscu-resume', '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>');
 }
 
@@ -12700,10 +12705,12 @@ function _maMuscuExercice(data) {
   // Desktop (≥992px) : graphe/exercice dans la colonne principale, Records dans le
   // rail droit (via .ma-cols2). Mobile : .ma-cols2/.ma-col* en display:contents →
   // ordre d'origine (body puis Records) inchangé.
-  _maSet('ma-muscu-detail', head + periodSel
-    + '<div class="ma-cols2">'
-    +   '<div class="ma-colmain">' + body + '</div>'
-    +   '<div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div>'
+  // head + periodSel DANS la colonne principale → le rail démarre toujours en haut
+  // (même position que les autres panes), pas décalé sous les sélecteurs.
+  _maSet('ma-muscu-detail',
+    '<div class="ma-cols2">'
+    +   '<div class="ma-colmain">' + head + periodSel + body + '</div>'
+    +   '<div class="ma-colrail">' + _maNovaAsk() + '</div>'
     + '</div>');
 }
 
@@ -13233,7 +13240,7 @@ function _maMuscuHistorique(data) {
       + dot + '<span id="ma-hs-chev-' + i + '" style="color:var(--text-subtle);margin-left:2px">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
       + '<div class="ma-hdet" id="ma-hs-' + i + '" style="display:none">' + det + '</div></div>';
   }).join('') + _maMoreBtn('muscu', n, all.length);
-  _maSet('ma-muscu-historique', '<div class="ma-cols2"><div class="ma-colmain">' + html + '</div><div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
+  _maSet('ma-muscu-historique', '<div class="ma-cols2"><div class="ma-colmain">' + html + '</div><div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maNovaAsk() + '</div></div>');
 }
 function maToggleHS(i) { var d = document.getElementById('ma-hs-' + i), c = document.getElementById('ma-hs-chev-' + i); if (d) { var open = d.style.display === 'none'; d.style.display = open ? 'flex' : 'none'; if (c) c.style.transform = open ? 'rotate(180deg)' : ''; } }
 
@@ -13415,7 +13422,7 @@ function _maCroise(data) {
   var _xrMain = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
     + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change la répartition ci-dessous.')
     + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : '');
-  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
+  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
   // Tendances croisées : charge globale (muscu + cardio) + indice de forme (bien-être).
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
   var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
@@ -13434,7 +13441,7 @@ function _maCroise(data) {
     body += _maSec('Indice de forme', 'bien-être · ' + _w.plabel, 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdM.dates[0]), 'Indice de forme par ' + _bNoun + ' (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.', tdM.dates);
   }
   var _xtMain = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + (body || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.'));
-  _maSet('ma-croise-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _xtMain + '</div><div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
+  _maSet('ma-croise-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _xtMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
 }
 
 // Ressenti de séance (1 Facile → 4 Très dur) : distribution + mini-timeline.
