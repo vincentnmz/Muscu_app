@@ -11608,7 +11608,9 @@ async function chargerHistorique() {
 var _maDisc = 'muscu';   // 'muscu' | 'cardio' | 'croise'
 var _maTab = 'resume';   // 'resume' | 'detail' | 'tendances' | 'historique'
 // Sous-onglets disponibles par discipline (Croisé n'a que Résumé + Tendances).
-var _MA_TABS = { muscu: ['resume', 'detail', 'tendances', 'historique'], cardio: ['resume', 'detail', 'tendances', 'historique'], croise: ['resume', 'tendances'] };
+// 'suivi' (photos + mensurations) : présent en muscu/cardio MAIS visible seulement
+// côté COACH (consultation) — l'athlète y accède via Forme › Mes suivis. Pas en croisé.
+var _MA_TABS = { muscu: ['resume', 'detail', 'tendances', 'historique', 'suivi'], cardio: ['resume', 'detail', 'tendances', 'historique', 'suivi'], croise: ['resume', 'tendances'] };
 function maSetDisc(d) {
   _maDisc = (['muscu', 'cardio', 'croise'].indexOf(d) >= 0) ? d : 'muscu';
   // Changement de discipline = on repart du début : Résumé · Semaine, sous-vues et
@@ -11756,13 +11758,19 @@ function _maApply() {
   var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Évolution';
   // Sous-onglets : dispo (Croisé masque Détail + Historique) + actif
   var dispo = _MA_TABS[_maDisc];
-  ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
+  var isCoach = (typeof _maCoach !== 'undefined' && _maCoach);
+  ['resume', 'detail', 'tendances', 'historique', 'suivi'].forEach(function (t) {
     var b = document.getElementById('ma-tab-' + t);
-    if (b) { var av = dispo.indexOf(t) >= 0 && !((typeof _maCoach !== 'undefined' && _maCoach) && (t === 'historique' || t === 'resume')); b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
+    if (!b) return;
+    // 'suivi' = COACH seulement ; historique/resume masqués pour le coach.
+    var av = dispo.indexOf(t) >= 0
+      && (t === 'suivi' ? isCoach : !(isCoach && (t === 'historique' || t === 'resume')));
+    b.style.display = av ? '' : 'none';
+    b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise');
   });
   // Panes visibles
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
-    ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
+    ['resume', 'detail', 'tendances', 'historique', 'suivi'].forEach(function (t) {
       var p = document.getElementById('ma-' + d + '-' + t);
       if (p) p.style.display = (d === _maDisc && t === _maTab) ? '' : 'none';
     });
@@ -12180,6 +12188,50 @@ function maRenderData() {
   try { _maCardioTendances(data); } catch (e) {}
   try { _maCardioHistorique(data); } catch (e) {}
   try { _maCroise(data); } catch (e) {}
+  try { _maSuivi(data); } catch (e) {}
+}
+
+// Onglet « Photo & mensurations » CÔTÉ COACH (consultation) — même contenu dans les
+// panes muscu et cardio. Photos avant/après par angle + grille de mensurations avec
+// tendance. Lecture seule (la saisie est faite par l'athlète dans Forme). N3.
+function _maSuivi(data) {
+  var html = _maSuiviHtml(data || {});
+  try { _maSet('ma-muscu-suivi', html); } catch (e) {}
+  try { _maSet('ma-cardio-suivi', html); } catch (e) {}
+}
+function _maSuiviHtml(data) {
+  var esc = _maE;
+  var phs = Array.isArray(data.suivi_photos) ? data.suivi_photos : [];
+  var mens = Array.isArray(data.mensurations) ? data.mensurations : [];
+  var out = '';
+  var angles = [['face', 'Face'], ['profil', 'Profil'], ['dos', 'Dos']];
+  var card = function (p, lbl) {
+    return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden">'
+      + '<div style="aspect-ratio:3/4;background:#0f1626;display:grid;place-items:center">' + (p.url ? '<img src="' + esc(p.url) + '" alt="" style="width:100%;height:100%;object-fit:cover">' : '<span style="color:var(--text-subtle);font-size:11px">photo</span>') + '</div>'
+      + '<div style="padding:6px 9px;font-size:11px">' + (lbl ? '<b style="display:block;font-size:9.5px;color:var(--text-subtle);text-transform:uppercase">' + lbl + '</b>' : '') + '<b style="font-size:11.5px">' + esc(p.date) + '</b></div></div>';
+  };
+  var anyPhoto = false;
+  var blocks = angles.map(function (a) {
+    var list = phs.filter(function (p) { return (p.angle || 'face') === a[0]; });
+    if (!list.length) return '';
+    anyPhoto = true;
+    var body = (list.length >= 2)
+      ? ('<div style="display:flex;gap:9px">' + card(list[list.length - 1], 'Avant') + card(list[0], 'Après') + '</div>')
+      : ('<div style="display:flex;gap:9px">' + card(list[0], '') + '<div style="flex:1"></div></div>');
+    return _maSec('Photos · ' + a[1], String(list.length)) + '<div class="ma-card" style="padding:11px">' + body + '</div>';
+  }).join('');
+  out += anyPhoto ? blocks : (_maSec('Photos') + _maEmpty('Aucune photo de suivi pour l\'instant.'));
+  var last = mens[0] || {}, prev = mens[1] || {};
+  var cells = _MENSU_DEF.map(function (m) {
+    var v = last[m.k]; if (v == null) return '';
+    var p = prev[m.k], tr = '';
+    if (p != null) { var d = Math.round((v - p) * 10) / 10; tr = (Math.abs(d) < 0.05) ? '<span style="color:var(--text-subtle)">– 0</span>' : '<span style="color:' + (d > 0 ? '#00A854' : '#DC3545') + '">' + (d > 0 ? '▲ +' : '▼ ') + Math.abs(d) + '</span>'; }
+    return '<div class="ma-card" style="padding:9px 11px"><div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + esc(m.l) + '</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:2px"><b style="font-size:17px;font-weight:900">' + String(v).replace('.', ',') + '</b><u style="font-size:10px;color:var(--text-subtle);font-style:normal">' + m.u + '</u>' + (tr ? '<em style="margin-left:auto;font-size:10px;font-weight:800;font-style:normal">' + tr + '</em>' : '') + '</div></div>';
+  }).filter(Boolean).join('');
+  out += cells
+    ? (_maSec('Mensurations', last.date ? esc(last.date) : '') + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + cells + '</div>')
+    : (_maSec('Mensurations') + _maEmpty('Aucune mesure saisie par l\'athlète.'));
+  return out;
 }
 
 // Bloc « Lecture Novalyz » : constats + reco orientés objectif (backend
