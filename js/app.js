@@ -5364,46 +5364,100 @@ function renderCoachRecordsEtRegression(hist, glob) {
 function _cdCoupRow(col, icon, html) {
   return '<div class="cdcp-row"><span class="cdcp-ic" style="color:' + col + '">' + icon + '</span><div class="cdcp-tx">' + html + '</div></div>';
 }
+function _cdFmtKg(n) { n = Math.round((Number(n) || 0) * 10) / 10; return (n % 1 === 0) ? String(n) : String(n).replace('.', ','); }
+function _cdAvgRpe(series) {
+  if (!Array.isArray(series)) return null;
+  var xs = series.map(function (s) { return Number(s && s.rpe); }).filter(function (x) { return !isNaN(x) && x > 0; });
+  return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null;
+}
 function renderCoachCoupDoeil(data) {
   var el = document.getElementById('cd-coupdoeil'); if (!el) return;
   try {
     var esc = escapeHtml, hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {};
     var m = (data && data.moteur) || {}, g = (data && data.global) || {}, nowT = Date.now();
-    var pd = function (s) { try { return (typeof parseChatDate === 'function') ? parseChatDate(s) : null; } catch (_) { return null; } };
+    var pd = function (s) { try { return (typeof parseChatDate === 'function') ? parseChatDate(s) : 0; } catch (_) { return 0; } };
+    var num = function (x) { var n = Number(x); return isNaN(n) ? 0 : n; };
+    var days = function (t) { return (nowT - t) / 864e5; };
 
-    // ═══ ENTRAÎNEMENT — données FIABLES (pas de 1RM-vs-record-de-tous-les-temps hasardeux) ═══
-    // Records récents : on fait confiance au comptage serveur (g.records_30j) ; les noms sont
-    // un bonus si la date parse. (Un record de charge en faibles reps ne doit JAMAIS compter
-    // comme « recul » : c'est pour ça qu'on n'utilise plus un simple 1RM Epley ici.)
-    var recs = g.records || {};
-    var recNames = Object.keys(recs).filter(function (exo) { var t = pd(recs[exo] && recs[exo].date); return t && (nowT - t) / 864e5 <= 30; });
-    var rec30 = (g.records_30j != null) ? Number(g.records_30j) : recNames.length;
-    // Régression : exos faits RÉCEMMENT (≤21 j), ≥3 points, dont le 1RM récent chute >5 % sous
-    // le meilleur. Conservateur → pas de faux positif sur du bruit ou un jour lourd.
-    var regs = [];
+    // ═══ ENTRAÎNEMENT — basé sur CHARGE · REPS · RPE réels (plus de 1RM Epley hasardeux) ═══
+    // Chaque exo est classé en Records / Progresse / Recule / Stagne à partir des points
+    // de progression_par_exo (charge = top set du jour, reps à cette charge, series[].rpe).
+    var records = [], progresse = [], recule = [], stagne = [];
     Object.keys(prog).forEach(function (exo) {
-      if (recNames.indexOf(exo) >= 0) return;                 // un record récent → jamais « régression »
-      var pts = prog[exo] || []; if (pts.length < 3) return;
-      var dt = pd(pts[0].date); if (dt == null || (nowT - dt) / 864e5 > 21) return;
-      // On compare la CHARGE réelle (top set), pas un 1RM Epley (un lourd en faibles reps
-      // ferait un faux recul). Charge récente < 92 % de la meilleure charge jamais faite.
-      var recC = Number(pts[0].charge) || 0, bestC = 0;
-      for (var i = 1; i < pts.length; i++) { var c = Number(pts[i].charge) || 0; if (c > bestC) bestC = c; }
-      if (recC > 0 && bestC > 0 && recC < bestC * 0.92) regs.push(exo);
+      var pts = prog[exo] || []; if (!pts.length) return;
+      var dt0 = pd(pts[0].date); if (!dt0) return;
+      var c0 = num(pts[0].charge), r0 = num(pts[0].reps);
+      // RECORD : charge (ou reps à charge égale) battu lors d'une séance récente (≤10 j).
+      // Il faut une base de comparaison (≥2 points) ; un record exclut tout autre verdict.
+      if (days(dt0) <= 10 && pts.length >= 2) {
+        var bestC = 0, repsAtBest = 0;
+        for (var i = 1; i < pts.length; i++) { var cc = num(pts[i].charge), rr = num(pts[i].reps); if (cc > bestC) { bestC = cc; repsAtBest = rr; } else if (cc === bestC && rr > repsAtBest) { repsAtBest = rr; } }
+        if (c0 > 0 && (c0 > bestC || (c0 === bestC && r0 > repsAtBest))) { records.push({ exo: exo, c: c0, r: r0 }); return; }
+      }
+      if (pts.length < 2 || days(dt0) > 21) return;   // exo pas touché récemment → on n'en parle pas
+      var c1 = num(pts[1].charge), r1 = num(pts[1].reps);
+      // PROGRESSE (≤14 j) : charge en hausse, ou reps en hausse à charge égale.
+      if (days(dt0) <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
+      // RECULE : charge ET reps en baisse vs la séance précédente (et pas déjà reparti à la hausse).
+      if (c0 < c1 && r0 < r1) {
+        var reparti = false; if (pts.length >= 3 && c0 > num(pts[2].charge)) reparti = true;
+        if (!reparti) { recule.push(exo); return; }
+      }
+      // STAGNE : ≥3 séances même charge, reps non croissantes, et RPE qui monte (= plus dur).
+      if (pts.length >= 3) {
+        var c2 = num(pts[2].charge), r2 = num(pts[2].reps);
+        if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
+          var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
+          stagne.push({ exo: exo, c: c0, r: r0, n: pts.length, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
+        }
+      }
     });
+    // EFFORT : RPE moyen sur 7 j (toutes séries) + tendance vs les 7 j précédents.
+    var rpeNow = [], rpePrev = [];
+    Object.keys(prog).forEach(function (exo) {
+      (prog[exo] || []).forEach(function (p) {
+        var dt = pd(p.date); if (!dt) return; var d = days(dt);
+        (Array.isArray(p.series) ? p.series : []).forEach(function (s) {
+          var v = Number(s && s.rpe); if (isNaN(v) || v <= 0) return;
+          if (d <= 7) rpeNow.push(v); else if (d <= 14) rpePrev.push(v);
+        });
+      });
+    });
+    var mean = function (a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : null; };
+    var rpeMoy = mean(rpeNow), rpeMoyPrev = mean(rpePrev);
     // Couverture des 5 grands groupes sur 7 j (ce qui MANQUE, groupes à 0).
     var GR = [['Pecs', ['Pectoraux']], ['Dos', ['Dos']], ['Épaules', ['Epaule']], ['Bras', ['Biceps', 'Triceps']], ['Jambes', ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Jambe', 'Aducteur']]];
     var volMap = {}; (Array.isArray(hist.volume_semaine) ? hist.volume_semaine : []).forEach(function (v) { volMap[v.muscle] = (volMap[v.muscle] || 0) + (v.faites || 0); });
     var faits = [], absent = [], total7 = 0;
     GR.forEach(function (gr) { var s = gr[1].reduce(function (a, mk) { return a + (volMap[mk] || 0); }, 0); total7 += s; if (s > 0) faits.push(gr[0]); else absent.push(gr[0]); });
+
+    var sub = function (t) { return ' <span class="cdcp-sub">(' + t + ')</span>'; };
     var entr = '';
-    if (rec30 > 0) entr += _cdCoupRow('var(--good)', '▲', '<b>Records récents</b> — ' + rec30 + ' record' + (rec30 > 1 ? 's' : '') + ' sur 30 j' + (recNames.length ? ' (' + esc(recNames.slice(0, 3).join(', ')) + ')' : ''));
-    if (regs.length) entr += _cdCoupRow('var(--bad)', '▼', '<b>En régression</b> — ' + esc(regs.slice(0, 3).join(', ')) + ' (charge récente en baisse)');
-    if (total7 > 0 && faits.length) entr += _cdCoupRow('var(--good)', '✓', '<b>Travaillé cette semaine</b> — ' + esc(faits.join(', ')));
+    if (records.length) {
+      var rtx = records.slice(0, 3).map(function (x) { return esc(x.exo) + ' <b>' + _cdFmtKg(x.c) + ' kg × ' + x.r + '</b>'; }).join(', ');
+      if (records.length > 3) rtx += ' <span class="cdcp-sub">+' + (records.length - 3) + '</span>';
+      entr += _cdCoupRow('var(--good)', '★', '<b>Records</b> — ' + rtx + sub('charge/reps battus'));
+    }
+    if (progresse.length) {
+      var ptx = progresse.slice(0, 3).map(function (x) { return (x.c0 > x.c1) ? (esc(x.exo) + ' ' + _cdFmtKg(x.c1) + '→<b>' + _cdFmtKg(x.c0) + ' kg</b>') : (esc(x.exo) + ' ' + x.r1 + '→<b>' + x.r0 + ' reps</b>'); }).join(', ');
+      entr += _cdCoupRow('var(--good)', '▲', '<b>Progresse</b> — ' + ptx + sub('charge ou reps en hausse'));
+    }
+    if (stagne.length) {
+      var st = stagne[0];
+      entr += _cdCoupRow('var(--warn)', '⏸', '<b>Stagne</b> — ' + esc(st.exo) + ' : ' + _cdFmtKg(st.c) + ' kg × ' + st.r + ' depuis ' + st.n + ' séances' + (st.rpeUp ? ', <b>RPE en hausse</b>' : '') + sub(st.rpeUp ? 'pareil mais plus dur → à débloquer' : 'plateau à débloquer'));
+    }
+    if (recule.length) entr += _cdCoupRow('var(--bad)', '▼', '<b>Recule</b> — ' + esc(recule.slice(0, 3).join(', ')) + ' : charge <i>et</i> reps en baisse' + sub('perf réelle en baisse'));
+    if (rpeMoy != null) {
+      var rpeTxt = (Math.round(rpeMoy * 10) / 10).toString().replace('.', ',');
+      var trd2 = (rpeMoyPrev == null) ? '' : (rpeMoy - rpeMoyPrev > 0.3 ? ' · en hausse' : (rpeMoy - rpeMoyPrev < -0.3 ? ' · en baisse' : ' · stable'));
+      var effSub = rpeMoy >= 8.5 ? 'intensité très élevée → surveiller la fatigue' : (rpeMoy >= 7.5 ? 'intensité soutenue' : (rpeMoy >= 6 ? 'intensité modérée' : 'intensité légère'));
+      entr += _cdCoupRow('var(--accent2)', '🔥', '<b>Effort</b> — RPE moyen <b>' + rpeTxt + '</b> /7 j' + trd2 + sub(effSub));
+    }
+    if (total7 > 0 && faits.length) entr += _cdCoupRow('var(--good)', '✓', '<b>Travaillé (7 j)</b> — ' + esc(faits.join(', ')));
     if (total7 > 0 && absent.length && absent.length < 5) entr += _cdCoupRow('var(--warn)', '⚠', '<b>Non travaillé (7 j)</b> — ' + esc(absent.join(', ')));
     if (!entr) entr = '<div class="cdcp-empty">Pas encore assez de séances pour analyser l\'entraînement.</div>';
 
-    // ═══ ÉTAT & RÉCUP — 1 ligne par signal (niveau + tendance), + les PAS (montre) ═══
+    // ═══ ÉTAT & RÉCUP — 1 ligne par signal (niveau + tendance), + PAS (montre) + CARDIO ═══
     var dispo = (m.disponibilite && m.disponibilite.niveau) || null, recup = (m.recup && m.recup !== '—') ? m.recup : null;
     var be = (data.bien_etre && data.bien_etre[0]) || null, histBE = (data.bien_etre || []).slice(1, 4), sig = m.signaux || {};
     var WQ = (typeof WQ_ANSWERS !== 'undefined') ? WQ_ANSWERS : null;
@@ -5425,6 +5479,28 @@ function renderCoachCoupDoeil(data) {
     if (be && be.zone_douloureuse) etat += _cdCoupRow('var(--warn)', '●', '<b>Douleur</b> ' + esc(String(be.zone_douloureuse).toLowerCase()));
     else if (be) etat += _cdCoupRow('var(--good)', '●', '<b>Douleur</b> aucune');
     if (pasAvg != null) { var pc = pasAvg >= 8000 ? 'var(--good)' : (pasAvg >= 5000 ? 'var(--text-subtle)' : 'var(--warn)'); var pl = pasAvg >= 8000 ? 'actif' : (pasAvg >= 5000 ? 'modéré' : 'faible, plutôt sédentaire'); etat += _cdCoupRow(pc, '●', '<b>Pas</b> ' + pasAvg.toLocaleString('fr-FR') + '/j · ' + pl + ' <span style="color:var(--text-subtle)">(montre, 7 j)</span>'); }
+    // CARDIO — toujours affiché : si aucun historique, on le DIT (« manque de cardio »).
+    var cardio = (data && data.cardio) || {}, ch = Array.isArray(cardio.history) ? cardio.history : [];
+    var cardioManque = false, cN7 = 0, lastCardio = 0;
+    ch.forEach(function (s) { var t = pd(s.date); if (!t) return; if (!lastCardio || t > lastCardio) lastCardio = t; if (days(t) <= 7) cN7++; });
+    if (ch.length === 0) { cardioManque = true; etat += _cdCoupRow('var(--warn)', '●', '<b>Cardio</b> aucune séance enregistrée <span style="color:var(--text-subtle)">(manque de cardio)</span>'); }
+    else if (cN7 === 0) { cardioManque = true; var ddc = lastCardio ? Math.round(days(lastCardio)) : null; etat += _cdCoupRow('var(--warn)', '●', '<b>Cardio</b> pas de sortie récente' + (ddc != null ? ' (dernière il y a ' + ddc + ' j)' : '') + ' <span style="color:var(--text-subtle)">(manque de cardio)</span>'); }
+    else {
+      // Efficience (FC à effort égal) : comparée seulement si assez de données et RPE comparable.
+      var cx = ch.map(function (s) { var t = pd(s.date); return { d: t ? days(t) : 1e9, fc: Number(s.fc_moy) || 0, rpe: Number(s.rpe) || 0 }; }).filter(function (s) { return s.fc > 0 && s.rpe > 0 && s.d <= 60; });
+      var cR = cx.filter(function (s) { return s.d <= 30; }), cO = cx.filter(function (s) { return s.d > 30 && s.d <= 60; });
+      var effTxt = '', effCol = 'var(--good)';
+      if (cR.length >= 2 && cO.length >= 2) {
+        var avgk = function (a, k) { return a.reduce(function (s, x) { return s + x[k]; }, 0) / a.length; };
+        if (Math.abs(avgk(cR, 'rpe') - avgk(cO, 'rpe')) <= 1.2) {
+          var dfc = avgk(cR, 'fc') - avgk(cO, 'fc');
+          if (dfc < -2) effTxt = ' · FC à effort égal <b>▼ mieux</b>';
+          else if (dfc > 2) { effTxt = ' · FC à effort égal <b>▲</b>'; effCol = 'var(--warn)'; }
+          else effTxt = ' · FC à effort égal stable';
+        }
+      }
+      etat += _cdCoupRow(effCol, '●', '<b>Cardio</b> ' + cN7 + ' sortie' + (cN7 > 1 ? 's' : '') + ' /7 j' + effTxt);
+    }
     if (!etat) etat = '<div class="cdcp-empty">Pas encore de questionnaire bien-être ni de données montre.</div>';
 
     // ═══ LECTURE NOVALYZ — narratif coach (pas de « tu… », pas de pronom genré) + reco ═══
@@ -5432,15 +5508,22 @@ function renderCoachCoupDoeil(data) {
     var statut = (dispo === 'À surveiller') ? 'à surveiller de près — priorité récup' : (dispo === 'Vigilance' ? 'à surveiller (récup moyenne)' : (dispo === 'Prêt' ? 'au vert, apte à une séance exigeante' : (recup ? ('récupération ' + String(recup).toLowerCase()) : 'état à préciser')));
     var lect = '';
     lect += _cdCoupRow((dispo === 'À surveiller' || recup === 'Faible') ? 'var(--bad)' : ((dispo === 'Vigilance' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)'), '●', '<b>' + prenom + '</b> — ' + statut + '.');
-    if (rec30 > 0) lect += _cdCoupRow('var(--good)', '●', 'Bonne dynamique : <b>' + rec30 + ' record' + (rec30 > 1 ? 's' : '') + '</b> battu' + (rec30 > 1 ? 's' : '') + ' sur 30 j.');
-    if (regs.length) lect += _cdCoupRow('var(--bad)', '●', 'Régression récente sur <b>' + esc(regs.slice(0, 2).join(', ')) + '</b> — à regarder.');
-    if (total7 > 0 && absent.length && absent.length < 5) lect += _cdCoupRow('var(--warn)', '●', 'Volume déséquilibré : <b>' + esc(absent.join(', ')) + '</b> délaissé' + (absent.length > 1 ? 's' : '') + ' cette semaine.');
+    var nDyn = records.length + progresse.length;
+    if (nDyn > 0) lect += _cdCoupRow('var(--good)', '●', 'Bonne dynamique : ' + (records.length ? '<b>' + records.length + ' record' + (records.length > 1 ? 's' : '') + '</b>' : '') + (records.length && progresse.length ? ' + ' : '') + (progresse.length ? 'charges/reps en hausse sur <b>' + progresse.length + '</b> exo' + (progresse.length > 1 ? 's' : '') : '') + '.');
+    if (stagne.length) { var s0 = stagne[0]; lect += _cdCoupRow('var(--warn)', '●', '<b>' + esc(s0.exo) + ' stagne</b>' + (s0.rpeUp ? ' (même charge, RPE qui monte)' : ' (plateau charge/reps)') + ' → changer de variante ou décharger 1 semaine.'); }
+    if (recule.length) lect += _cdCoupRow('var(--bad)', '●', 'Recul sur <b>' + esc(recule.slice(0, 2).join(', ')) + '</b> (charge et reps en baisse) — à regarder.');
+    if (total7 > 0 && absent.length && absent.length < 5) lect += _cdCoupRow('var(--warn)', '●', 'Volume : <b>' + esc(absent.join(' & ')) + '</b> délaissé' + (absent.length > 1 ? 's' : '') + ' cette semaine.');
     else if (total7 > 0 && !absent.length) lect += _cdCoupRow('var(--good)', '●', 'Volume bien réparti sur les grands groupes.');
+    if (rpeMoy != null && rpeMoy >= 8.5) lect += _cdCoupRow('var(--warn)', '●', 'Intensité haute (RPE ' + (Math.round(rpeMoy * 10) / 10).toString().replace('.', ',') + ') → garder un œil sur la fatigue.');
+    if (cardioManque) lect += _cdCoupRow('var(--warn)', '●', 'Manque de cardio — base d\'endurance à entretenir (1 à 2 sorties/sem.).');
     var reco;
     if (dispo === 'À surveiller' || recup === 'Faible') reco = 'Allège ou décale la prochaine séance — priorité à la récupération.';
     else if (total7 > 0 && absent.length && absent.length < 5) reco = 'Prochaine séance : réintègre ' + esc(absent[0]) + (absent[1] ? ' et ' + esc(absent[1]) : '') + ' pour rééquilibrer le volume.';
-    else if (regs.length) reco = 'Revois la charge / surcharge sur ' + esc(regs.slice(0, 2).join(', ')) + ' (consolider avant de remonter).';
+    else if (stagne.length) reco = 'Sur ' + esc(stagne[0].exo) + ' : baisse un peu la charge pour remonter les reps (ou change d\'angle) afin de débloquer le plateau.';
+    else if (recule.length) reco = 'Revois la charge / surcharge sur ' + esc(recule.slice(0, 2).join(', ')) + ' (consolider avant de remonter).';
+    else if (cardioManque) reco = 'Ajoute 1 à 2 sorties cardio par semaine pour soutenir la récupération et l\'endurance.';
     else reco = 'Tout est au vert — maintiens le cap ; une petite surcharge est envisageable sur un exercice clé.';
+    if ((dispo === 'À surveiller' || recup === 'Faible') && stagne.length) reco += ' Sur ' + esc(stagne[0].exo) + ', décharge avant de relancer.';
 
     el.innerHTML = '<div class="cdcp-lab">Coup d\'œil <span class="cdcp-tag">comprendre en 5 s</span></div>'
       + '<div class="cdcp-wrap">'
