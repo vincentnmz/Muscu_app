@@ -5279,7 +5279,9 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCoachMontreDetail(data); } catch (_) {}  // Aperçu v3 : Ma montre détaillée (pas/sommeil/FC)
     try { _cdAsideDeskLayout(); } catch (_) {}           // colonne droite : reparente contexte + prochaine
     try { _cdV3Grid(); } catch (_) {}                    // Aperçu v3 : 6 cartes égales dans la grille
-    renderAnalyseCoach(data);
+    // N13 — l'ancienne « Lecture Novalyz » (phrases adressées à l'athlète, « tu… ») est
+    // remplacée par la synthèse COACH en tête (#cd-coupdoeil). On masque ce doublon.
+    try { ['cd-analyse-sec', 'cd-analyse-card'].forEach(function (id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; }); } catch (_) {}
     renderCoachRecordsEtRegression(data.historique, data.global);
     renderCoachIndicateurs(data);
     renderAlertesCoach(data);
@@ -5393,21 +5395,25 @@ function renderCoachCoupDoeil(data) {
     if (!entr.length) entr.push({ c: 'var(--text-subtle)', t: 'Pas encore assez de séances pour analyser l\'entraînement.' });
     // ── Dispo / récup (sert à l'État ET à la synthèse coach) ──
     var dispo = (m.disponibilite && m.disponibilite.niveau) || null, recup = (m.recup && m.recup !== '—') ? m.recup : null;
-    // ── État : ANALYSE (verdict récup + tendance des signaux), pas la recopie du questionnaire ──
+    // ── État & récupération : une ligne PAR signal (comme la maquette) — niveau ET
+    //    tendance (analyse, pas le chiffre brut du questionnaire). ──
     var be = (data.bien_etre && data.bien_etre[0]) || null, histBE = (data.bien_etre || []).slice(1, 4), sig = m.signaux || {};
-    var etat = [], ins = [];
+    var WQ = (typeof WQ_ANSWERS !== 'undefined') ? WQ_ANSWERS : null;
+    var lab = function (key, val) { return (WQ && WQ[key] && WQ[key][Number(val)]) ? String(WQ[key][Number(val)]).toLowerCase() : ''; };
+    var avg = function (key) { var xs = histBE.map(function (b) { return Number(b && b[key]); }).filter(function (x) { return !isNaN(x); }); return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null; };
+    var trd = function (key, inv) { var a = avg(key); if (a == null || !be || be[key] == null) return ''; var d = Number(be[key]) - a; if (Math.abs(d) <= 0.5) return ' · stable'; return ((d > 0) !== !!inv) ? ' · en hausse' : ' · en baisse'; };
+    var colv = function (val) { var n = Number(val); return n >= 4 ? 'var(--good)' : (n <= 2 ? 'var(--warn)' : 'var(--text-subtle)'); };
+    var etat = [];
+    if (recup) etat.push({ c: (recup === 'Faible' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)', t: '<b>Récupération</b> ' + esc(String(recup).toLowerCase()) });
     if (be) {
-      var avg = function (key) { var xs = histBE.map(function (b) { return Number(b && b[key]); }).filter(function (x) { return !isNaN(x); }); return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null; };
-      var sA = avg('sommeil'); if (be.sommeil != null && sA != null && Number(be.sommeil) < sA - 0.5) ins.push('sommeil en baisse');
-      var fA = avg('fatigue'); if (be.fatigue != null && fA != null && Number(be.fatigue) < fA - 0.5) ins.push('fatigue en hausse');
-      if (sig.stress != null && Number(sig.stress) >= 3.5) ins.push('stress élevé');
-      if (be.zone_douloureuse) ins.push('douleur ' + String(be.zone_douloureuse).toLowerCase());
-      var verdict = dispo || (recup ? ('Récupération ' + String(recup).toLowerCase()) : 'État du jour');
-      var colE = (dispo === 'À surveiller' || recup === 'Faible') ? 'var(--bad)' : ((dispo === 'Vigilance' || recup === 'Moyen' || ins.length) ? 'var(--warn)' : 'var(--good)');
-      etat.push({ c: colE, t: '<b>' + esc(verdict) + '</b>' + (ins.length ? ' — ' + esc(ins.join(', ')) + '.' : ' — signaux bien-être au vert.') });
-      if (dispo === 'À surveiller' || recup === 'Faible') etat.push({ c: 'var(--text-muted)', t: 'Priorité récup : allège ou décale la prochaine séance.' });
-      else if (ins.length) etat.push({ c: 'var(--text-muted)', t: 'Séance possible, mais adapte si ces signaux persistent.' });
-    } else etat.push({ c: 'var(--text-subtle)', t: 'Pas encore de questionnaire bien-être renseigné.' });
+      if (be.sommeil != null) etat.push({ c: colv(be.sommeil), t: '<b>Sommeil</b> ' + esc(lab('sommeil', be.sommeil) || '—') + trd('sommeil', false) });
+      if (be.energie != null) etat.push({ c: colv(be.energie), t: '<b>Énergie</b> ' + esc(lab('energie', be.energie) || '—') + trd('energie', false) });
+      if (be.fatigue != null) etat.push({ c: colv(be.fatigue), t: '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + trd('fatigue', true) });
+    }
+    if (sig.stress != null) { var stv = Number(sig.stress); etat.push({ c: stv >= 3.5 ? 'var(--warn)' : 'var(--good)', t: '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé')) }); }
+    if (be && be.zone_douloureuse) etat.push({ c: 'var(--warn)', t: '<b>Douleur</b> ' + esc(String(be.zone_douloureuse).toLowerCase()) });
+    else if (be) etat.push({ c: 'var(--good)', t: '<b>Douleur</b> aucune' });
+    if (!etat.length) etat.push({ c: 'var(--text-subtle)', t: 'Pas encore de questionnaire bien-être renseigné.' });
     // ── Lecture Novalyz (narratif coach) : 1 phrase de synthèse + 1 reco d'action.
     //    Formulée POUR LE COACH (« L'athlète est… »), pas « tu… ». Pas de pronom genré. ──
     var prenom = (coachAthleteCourant && coachAthleteCourant.nom) ? String(coachAthleteCourant.nom).split(/\s+/)[0] : 'L\'athlète';
