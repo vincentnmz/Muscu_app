@@ -13187,10 +13187,10 @@ function _maMuscuTendances(data) {
   // .ma-cols2/.ma-col* passent en display:contents → suite verticale inchangée,
   // juste précédée du résumé comme avant.
   var rail = (rows ? _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>' : '') + _maNovaAsk();
-  // RÉGULARITÉ EN TÊTE (N9), AU-DESSUS du sélecteur de période : barres hebdo vs
-  // objectif sur 12 semaines, FIXE (indépendant du sélecteur) → plus de confusion
-  // « pourquoi ça ne bouge pas » puisqu'elle n'est plus sous le sélecteur.
-  var out = _maRegulariteBloc(data) + head + '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>';
+  // RÉGULARITÉ EN TÊTE (N9) : dans la colonne principale (même largeur que les
+  // cartes), AU-DESSUS du sélecteur de période (fixe sur 12 sem.). Rail aligné en
+  // haut, comme les autres panes → placement cohérent.
+  var out = '<div class="ma-cols2"><div class="ma-colmain">' + _maRegulariteBloc(data) + head + main + '</div><div class="ma-colrail">' + rail + '</div></div>';
   _maSet('ma-muscu-tendances', out);
 }
 
