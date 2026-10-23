@@ -11610,7 +11610,9 @@ var _maTab = 'resume';   // 'resume' | 'detail' | 'tendances' | 'historique'
 // Sous-onglets disponibles par discipline (Croisé n'a que Résumé + Tendances).
 // 'suivi' (photos + mensurations) : présent en muscu/cardio MAIS visible seulement
 // côté COACH (consultation) — l'athlète y accède via Forme › Mes suivis. Pas en croisé.
-var _MA_TABS = { muscu: ['resume', 'detail', 'tendances', 'historique', 'suivi'], cardio: ['resume', 'detail', 'tendances', 'historique', 'suivi'], croise: ['resume', 'tendances'] };
+// Croisé = 1 seul onglet « Résumé » qui contient tout (bilan + répartition +
+// graphe charge/forme) — pas de sous-onglet Tendances séparé.
+var _MA_TABS = { muscu: ['resume', 'detail', 'tendances', 'historique', 'suivi'], cardio: ['resume', 'detail', 'tendances', 'historique', 'suivi'], croise: ['resume'] };
 function maSetDisc(d) {
   _maDisc = (['muscu', 'cardio', 'croise'].indexOf(d) >= 0) ? d : 'muscu';
   // Changement de discipline = on repart du début : Résumé · Semaine, sous-vues et
@@ -13417,31 +13419,74 @@ function _maCroise(data) {
   var rep = tot ? ('<div class="ma-card ma-bal2">' + legend + bar
     + '<div class="ma-b2sub" style="margin-top:6px"><span>Force / masse</span><span>charge combinée</span><span>Endurance</span></div>'
     + '</div>') : _maEmpty('Répartition dispo dès que tu as des séances.');
-  var be = (data.bien_etre && data.bien_etre[0]) || null;
-  var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
-  var _xrMain = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
-    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change la répartition ci-dessous.')
-    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : '');
-  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
-  // Tendances croisées : charge globale (muscu + cardio) + indice de forme (bien-être).
-  var vpj = (data.historique && data.historique.volume_par_jour) || {};
+  // ── Séries hebdo : charge combinée (muscu+cardio) + forme (bien-être /100) ──
   var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var vpj = (data.historique && data.historique.volume_par_jour) || {};
   var tdM = _maTrendData(vpj, 'sum'), muscuW = tdM.pts.map(function (v) { return Math.round(v / 50); });
-  var chD = {}; ((data.cardio && data.cardio.history) || []).forEach(function (s) { var _ua = _chargeInterneCardio(s); if (_ua > 0) chD[s.date] = (chD[s.date] || 0) + _ua; });
+  var chD = {}; hist.forEach(function (s) { var _ua = _chargeInterneCardio(s); if (_ua > 0) chD[s.date] = (chD[s.date] || 0) + _ua; });
   var cardioW = _maTrendData(chD, 'sum').pts;
   var totalW = muscuW.map(function (v, i) { return Math.round(v + (cardioW[i] || 0)); });
   var beD = {}; ((data.bien_etre) || []).forEach(function (b) { var d = _maFRtoDate(b.date); if (!d) return; var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); beD[iso] = (Number(b.sommeil) || 0) + (Number(b.energie) || 0) + (6 - (Number(b.fatigue) || 3)); });
-  // Indice de forme ramené sur 100 (au lieu de /15, peu parlant) : (sommeil+énergie+(6−fatigue))/15×100.
   var beW = _maTrendData(beD, 'avg').pts.map(function (v) { return Math.round(v / 15 * 100); });
-  var body = '';
+  // Tendances charge/forme (1re vs 2e moitié) → verdict analytique.
+  var _half = function (arr) { var n = arr.length, a = arr.slice(0, Math.floor(n / 2)), b = arr.slice(Math.floor(n / 2)); var avg = function (x) { var f = x.filter(function (v) { return v > 0; }); return f.length ? f.reduce(function (p, q) { return p + q; }, 0) / f.length : 0; }; return { o: avg(a), r: avg(b) }; };
+  var chH = _half(totalW), foH = _half(beW);
+  var chUp = chH.o > 0 && (chH.r - chH.o) / chH.o > 0.15;
+  var foDown = foH.o > 0 && (foH.r - foH.o) / foH.o < -0.08;
+
+  // ── Bilan : coach (parle AU coach) vs athlète (backend, « tu ») ──
+  var coach = (typeof _maCoach !== 'undefined' && _maCoach);
+  var who = (coach && coachAthleteCourant && coachAthleteCourant.nom) ? _maE(String(coachAthleteCourant.nom).split(/\s+/)[0]) : 'L\'athlète';
+  var synthese;
+  if (coach) {
+    var rc = function (col, html) { return '<div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:5px 0;line-height:1.45"><span style="flex:none;color:' + col + ';margin-top:1px">●</span><div>' + html + '</div></div>'; };
+    if (!tot) { synthese = _maEmpty('Pas encore assez de séances muscu + cardio pour croiser.'); }
+    else {
+      var eq = (Math.abs(mPct - 50) <= 15) ? ('Charge bien équilibrée : <b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')
+        : (mPct > 65 ? ('Charge surtout <b>muscu (' + mPct + '%)</b> — peu de cardio') : (cPct > 65 ? ('Charge surtout <b>cardio (' + cPct + '%)</b> — peu de muscu') : ('<b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')));
+      var L = rc(Math.abs(mPct - 50) <= 20 ? 'var(--good)' : 'var(--warn)', eq + (hPct > 0 ? (' · Hyrox ' + hPct + '%') : '') + ' sur ' + _w.plabel + '.');
+      if (chUp && foDown) L += rc('var(--warn)', 'La <b>charge globale monte</b> alors que la <b>forme baisse</b> → accumulation à surveiller.');
+      else if (chUp) L += rc('var(--accent2)', 'Charge globale en hausse, forme tenue → bonne assimilation pour l\'instant.');
+      else if (foDown) L += rc('var(--warn)', 'Forme en légère baisse — vérifier sommeil / récupération.');
+      else L += rc('var(--good)', 'Charge et forme stables.');
+      var dispo = (mot.disponibilite && mot.disponibilite.niveau) || null;
+      L += rc(dispo === 'À surveiller' ? 'var(--bad)' : dispo === 'Vigilance' ? 'var(--warn)' : 'var(--good)', who + ' : disponibilité <b>' + _maE(dispo || '—') + '</b> · récup ' + _maE(mot.recup || '—') + '.');
+      // Reco PROPRE AU CROISÉ : équilibre entre filières + charge TOTALE vs récup
+      // (pas une reco muscu « surcharge/volume » ni cardio « endurance » isolée).
+      var reco = (chUp && foDown) ? 'Charge totale (muscu + cardio) trop lourde pour la récup du moment → allège une des deux filières cette semaine pour rééquilibrer charge / récupération.'
+        : (mPct > 75 ? 'Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d\'endurance + meilleure récup globale) sans alourdir la charge totale.'
+          : (cPct > 75 ? 'Profil déséquilibré, presque tout en cardio : ajoute du renforcement pour l\'équilibre force / endurance, en gardant la charge totale sous contrôle.'
+            : 'Bon équilibre muscu / cardio et charge globale soutenable — maintiens le mix ; ajuste seulement si la forme décroche quand la charge monte.'));
+      synthese = '<div class="ma-card" style="border-left:3px solid var(--accent)">' + L
+        + '<div style="margin-top:9px;background:var(--accent-a10,rgba(26,95,255,.10));border:1px solid var(--border);border-radius:11px;padding:10px 13px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:3px">Reco · pour le coach</div><div style="font-size:13px;font-weight:600">' + reco + '</div></div></div>';
+    }
+  } else {
+    synthese = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict;
+  }
+
+  // ── Graphe COMBINÉ : charge (barres) + forme (courbe) sur le même axe ──
+  var chart = '';
   if (totalW.some(function (v) { return v > 0; })) {
-    body += _maSec('Charge globale', 'muscu + cardio · UA/' + _bNoun + ' · ' + _w.plabel, 'charge_globale') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(tdM.dates[0]), 'Charge combinée par ' + _bNoun + '. Une hausse trop rapide peut signaler un risque de surmenage.', tdM.dates);
+    var W = 320, H = 132, pad = 16, n = totalW.length || 1, bw = W / n;
+    var barMax = Math.max.apply(null, totalW.concat([1]));
+    var barsSvg = totalW.map(function (v, i) { var h = v > 0 ? Math.max(2, (v / barMax) * (H - pad)) : 0; return '<rect x="' + (i * bw + bw * 0.16).toFixed(1) + '" y="' + (H - pad - h).toFixed(1) + '" width="' + (bw * 0.68).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="#1A5FFF" opacity="0.82"/>'; }).join('');
+    var fpts = []; beW.forEach(function (v, i) { if (v > 0) fpts.push([(i * bw + bw * 0.5), (H - pad) - (Math.max(0, Math.min(100, v)) / 100) * (H - pad)]); });
+    var lineSvg = fpts.length ? ('<path d="M' + fpts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L') + '" fill="none" stroke="#00C96E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + fpts[fpts.length - 1][0].toFixed(1) + '" cy="' + fpts[fpts.length - 1][1].toFixed(1) + '" r="3.4" fill="#00C96E"/>') : '';
+    var legend = '<div style="display:flex;gap:16px;margin-top:10px;font-size:11.5px;color:var(--text-muted);flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:13px;height:9px;border-radius:2px;background:#1A5FFF;display:inline-block"></i>Charge (muscu + cardio)</span><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:9px;height:9px;border-radius:50%;background:#00C96E;display:inline-block"></i>Forme / récup</span></div>';
+    var warn = (chUp && foDown) ? '<div style="font-size:11.5px;color:var(--warn);font-weight:700;margin-top:9px">⚠ Charge en hausse + forme en baisse → fenêtre de vigilance (fatigue qui s\'installe).</div>' : '';
+    chart = _maSec('Charge vs forme', 'charge + récup · par ' + _bNoun + ' · ' + _w.plabel)
+      + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Charge + forme</span><span style="font-size:11px;color:var(--text-subtle)">barres = charge · courbe = forme</span></div>'
+      + '<svg width="100%" height="150" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + barsSvg + lineSvg + '</svg>'
+      + legend + warn
+      + _maCap('Barres = charge d\'entraînement de la ' + _bNoun + ' (muscu + cardio). Courbe = forme (récup, 100 = au top). Charge qui monte + forme qui baisse = fatigue à surveiller.') + '</div>';
   }
-  if (beW.some(function (v) { return v > 0; })) {
-    body += _maSec('Indice de forme', 'bien-être · ' + _w.plabel, 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdM.dates[0]), 'Indice de forme par ' + _bNoun + ' (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.', tdM.dates);
-  }
-  var _xtMain = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + (body || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.'));
-  _maSet('ma-croise-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _xtMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
+
+  var _xrMain = synthese
+    + _maPeriodHtml() + _maPeriodHint('Le sélecteur ajuste la répartition ET le graphe charge/forme ci-dessous.')
+    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep
+    + (chart || _maEmpty('Le graphe charge/forme se remplit dès ~3-4 semaines de séances + questionnaires.'));
+  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
+  try { _maSet('ma-croise-tendances', ''); } catch (e) {}
 }
 
 // Ressenti de séance (1 Facile → 4 Très dur) : distribution + mini-timeline.
