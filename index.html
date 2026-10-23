@@ -2686,6 +2686,34 @@
       <div class="bl-body" id="bl-body"></div>
     </div>
 
+    <!-- ONGLET SUIVI CORPS — photos avant/après + mensurations (accès depuis « Forme ›
+         Mes suivis »). Saisie par l'athlète ; le coach consulte (Progression). Construit
+         par renderSuiviCorps(). -->
+    <div id="tab-suivi" class="tab-content">
+      <style id="suivi-css">
+        #tab-suivi.tab-content{ position:fixed; top:0; left:50%; transform:translateX(-50%); width:100%; max-width:var(--app-w); bottom:calc(56px + env(safe-area-inset-bottom,0px)); background:var(--bg); z-index:40; padding:0; }
+        #tab-suivi.tab-content.active{ display:flex; flex-direction:column; }
+        #tab-suivi .sv-top{ display:flex; align-items:center; gap:12px; padding:calc(14px + env(safe-area-inset-top,0px)) 15px 14px; border-bottom:1px solid var(--border); background:var(--surface); flex:none; }
+        #tab-suivi .sv-back{ width:34px; height:34px; border-radius:999px; background:var(--surface2); display:grid; place-items:center; color:var(--text-muted); flex:none; border:none; cursor:pointer; }
+        #tab-suivi .sv-back svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-suivi .sv-ttl{ font-family:var(--font-heading); font-size:16px; }
+        #tab-suivi .sv-body{ flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px; }
+        #tab-suivi .sv-subt{ display:flex; gap:6px; }
+        #tab-suivi .sv-subt button{ flex:1; background:var(--surface); border:1px solid var(--border); color:var(--text-muted); border-radius:10px; padding:9px; font:inherit; font-weight:800; font-size:12.5px; cursor:pointer; }
+        #tab-suivi .sv-subt button.on{ background:var(--accent); border-color:var(--accent); color:var(--on-accent,#fff); }
+        #tab-suivi .sv-sec{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-subtle); font-weight:700; margin:6px 2px -2px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+        #tab-suivi .sv-sec .r{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:none; letter-spacing:0; }
+        #tab-suivi .sv-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:13px 14px; }
+      </style>
+      <div class="sv-top">
+        <button class="sv-back" onclick="switchTab('etat')" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <span class="sv-ttl">Photos &amp; mensurations</span>
+      </div>
+      <input type="file" id="suivi-photo-input" accept="image/*" capture="environment" style="display:none" onchange="_svPhotoChoisi(this)">
+      <input type="file" id="suivi-photo-input-gal" accept="image/*" style="display:none" onchange="_svPhotoChoisi(this)">
+      <div class="sv-body" id="suivi-body"></div>
+    </div>
+
     <!-- ONGLET NUTRITION — sous-écran plein écran (accès depuis « Forme »).
          Objectif kcal/protéines calculé depuis le profil, saisie manuelle du jour
          (source de vérité), tendance S/M/A, pré-remplissage Health Connect (natif).
