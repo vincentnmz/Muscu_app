@@ -5391,26 +5391,40 @@ function renderCoachCoupDoeil(data) {
       else if (!absent.length) entr.push({ c: 'var(--good)', t: '<b>Répartition complète</b> : les 5 grands groupes ont été travaillés cette semaine.' });
     }
     if (!entr.length) entr.push({ c: 'var(--text-subtle)', t: 'Pas encore assez de séances pour analyser l\'entraînement.' });
+    // ── Dispo / récup (sert à l'État ET à la synthèse coach) ──
+    var dispo = (m.disponibilite && m.disponibilite.niveau) || null, recup = (m.recup && m.recup !== '—') ? m.recup : null;
     // ── État : ANALYSE (verdict récup + tendance des signaux), pas la recopie du questionnaire ──
     var be = (data.bien_etre && data.bien_etre[0]) || null, histBE = (data.bien_etre || []).slice(1, 4), sig = m.signaux || {};
-    var etat = [];
+    var etat = [], ins = [];
     if (be) {
       var avg = function (key) { var xs = histBE.map(function (b) { return Number(b && b[key]); }).filter(function (x) { return !isNaN(x); }); return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null; };
-      var ins = [];
       var sA = avg('sommeil'); if (be.sommeil != null && sA != null && Number(be.sommeil) < sA - 0.5) ins.push('sommeil en baisse');
       var fA = avg('fatigue'); if (be.fatigue != null && fA != null && Number(be.fatigue) < fA - 0.5) ins.push('fatigue en hausse');
       if (sig.stress != null && Number(sig.stress) >= 3.5) ins.push('stress élevé');
       if (be.zone_douloureuse) ins.push('douleur ' + String(be.zone_douloureuse).toLowerCase());
-      var dispo = (m.disponibilite && m.disponibilite.niveau) || null, recup = (m.recup && m.recup !== '—') ? m.recup : null;
       var verdict = dispo || (recup ? ('Récupération ' + String(recup).toLowerCase()) : 'État du jour');
-      var col = (dispo === 'À surveiller' || recup === 'Faible') ? 'var(--bad)' : ((dispo === 'Vigilance' || recup === 'Moyen' || ins.length) ? 'var(--warn)' : 'var(--good)');
-      etat.push({ c: col, t: '<b>' + esc(verdict) + '</b>' + (ins.length ? ' — ' + esc(ins.join(', ')) + '.' : ' — signaux bien-être au vert.') });
+      var colE = (dispo === 'À surveiller' || recup === 'Faible') ? 'var(--bad)' : ((dispo === 'Vigilance' || recup === 'Moyen' || ins.length) ? 'var(--warn)' : 'var(--good)');
+      etat.push({ c: colE, t: '<b>' + esc(verdict) + '</b>' + (ins.length ? ' — ' + esc(ins.join(', ')) + '.' : ' — signaux bien-être au vert.') });
       if (dispo === 'À surveiller' || recup === 'Faible') etat.push({ c: 'var(--text-muted)', t: 'Priorité récup : allège ou décale la prochaine séance.' });
       else if (ins.length) etat.push({ c: 'var(--text-muted)', t: 'Séance possible, mais adapte si ces signaux persistent.' });
     } else etat.push({ c: 'var(--text-subtle)', t: 'Pas encore de questionnaire bien-être renseigné.' });
-    el.innerHTML = '<div class="cdcp-lab">Coup d\'œil · analyse</div><div class="cdcp-wrap">'
+    // ── Lecture Novalyz (narratif coach) : 1 phrase de synthèse + 1 reco d'action.
+    //    Formulée POUR LE COACH (« L'athlète est… »), pas « tu… ». Pas de pronom genré. ──
+    var prenom = (coachAthleteCourant && coachAthleteCourant.nom) ? String(coachAthleteCourant.nom).split(/\s+/)[0] : 'L\'athlète';
+    var etatLbl = (dispo === 'À surveiller') ? 'à surveiller' : (dispo === 'Vigilance' ? 'à surveiller de près' : (dispo === 'Prêt' ? 'prêt à performer' : (recup ? ('récupération ' + String(recup).toLowerCase()) : 'état à préciser')));
+    var trainMot = down.length ? 'des signaux de régression à regarder' : ((absent.length && absent.length < 5) ? ('volume déséquilibré (' + esc(absent.join(', ')) + ' délaissés)') : (up.length ? 'bonne dynamique de progression' : ''));
+    var headline = '<b>' + esc(prenom) + '</b> — ' + etatLbl + (trainMot ? ' · ' + trainMot : '') + '.';
+    var reco;
+    if (dispo === 'À surveiller' || recup === 'Faible') reco = 'Allège ou décale la prochaine séance — priorité à la récupération.';
+    else if (absent.length && absent.length < 5) reco = 'Prochaine séance : réintègre ' + esc(absent[0]) + (absent[1] ? ' et ' + esc(absent[1]) : '') + ' pour rééquilibrer le volume.';
+    else if (down.length) reco = 'Revois la charge / surcharge sur ' + esc(down.slice(0, 2).join(', ')) + ' (consolider avant de remonter).';
+    else reco = 'Tout est au vert — maintiens le cap ; une petite surcharge est envisageable sur un exercice clé.';
+    el.innerHTML = '<div class="cdcp-lab"><span style="color:var(--accent)">✦</span> Lecture Novalyz · pour le coach</div>'
+      + '<div class="cdcp-head">' + headline + '</div>'
+      + '<div class="cdcp-wrap">'
       + '<div class="dash-card cdcp-card"><div class="cdcp-h">Entraînement</div>' + entr.map(function (l) { return _cdCoupRow(l.c, l.t); }).join('') + '</div>'
-      + '<div class="dash-card cdcp-card"><div class="cdcp-h">État &amp; récupération</div>' + etat.map(function (l) { return _cdCoupRow(l.c, l.t); }).join('') + '</div></div>';
+      + '<div class="dash-card cdcp-card"><div class="cdcp-h">État &amp; récupération</div>' + etat.map(function (l) { return _cdCoupRow(l.c, l.t); }).join('') + '</div></div>'
+      + '<div class="cdcp-reco"><div class="cdcp-reco-l">Reco · prochaine séance</div><div class="cdcp-reco-t">' + reco + '</div></div>';
   } catch (e) { try { el.innerHTML = ''; } catch (_) {} }
 }
 
