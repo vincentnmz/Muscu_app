@@ -1891,6 +1891,15 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'suivi_photo').order('date', { ascending: false }),
   ])
 
+  // Agenda daté : fenêtre courte pour l'athlète (aujourd'hui → +14 j) → séances
+  // prévues, « séance du jour », rappels. Le coach navigue librement via getPlanning.
+  const _planFrom = fmtYMD(now)
+  const _planTo = fmtYMD(new Date(now.getTime() + 14 * 86400000))
+  const { data: planRows } = await sb().from('planning')
+    .select('id,date,seance_id,statut')
+    .eq('athlete_id', athleteId).gte('date', _planFrom).lte('date', _planTo)
+    .order('date', { ascending: true })
+
   const perfs = perfsAll || []
   const sport = athData?.sport || 'muscu'
   // pause active = aujourd'hui dans [debut, fin] (comme Code.gs athleteEnPause)
@@ -2296,6 +2305,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     },
     poids,
     programme,
+    planning: (planRows || []).map((r: any) => ({ id: r.id, date: fmtFR(r.date), date_iso: r.date, seance_id: r.seance_id, statut: r.statut })),
     bien_etre,
     pause: pauseObj,
     contexte,
@@ -4613,6 +4623,60 @@ async function handleSaveProgrammeJour(body: any): Promise<Response> {
   return jsonResp({ ok: true })
 }
 
+// ====================== AGENDA DATÉ (table `planning`) =====================
+// Séances du programme posées à des DATES réelles, à côté de `programme` (qui
+// garde la DÉFINITION des séances + `jour` = semaine type / modèle par défaut).
+// Plusieurs séances par jour autorisées (unique sur athlete_id+date+seance_id).
+// `statut` par défaut 'planifie' ; le calcul 'fait/manqué' viendra plus tard
+// (croisement avec `performances`). Mêmes droits que saveProgrammeJour.
+
+// Lecture d'une plage de dates (navigation par semaine, côté coach).
+async function handleGetPlanning(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const from = String(body.from || '')
+  const to = String(body.to || '')
+  if (!athlete_id || !from || !to) return jsonResp({ erreur: 'Paramètres manquants' })
+  const { data, error } = await sb().from('planning')
+    .select('id,date,seance_id,statut,source,note')
+    .eq('athlete_id', athlete_id).gte('date', from).lte('date', to)
+    .order('date', { ascending: true })
+  if (error) return jsonResp({ erreur: error.message })
+  return jsonResp({ ok: true, rows: data || [] })
+}
+
+// Poser une séance un jour donné (upsert sur l'index unique → idempotent).
+async function handlePlanSeance(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const date = String(body.date || '')
+  const seance_id = String(body.seance_id ?? '')
+  if (!athlete_id || !date || !seance_id) return jsonResp({ erreur: 'Paramètres manquants' })
+  const source = (body.source === 'athlete' || body.source === 'auto') ? body.source : 'coach'
+  const { data, error } = await sb().from('planning')
+    .upsert({ athlete_id, date, seance_id, statut: 'planifie', source }, { onConflict: 'athlete_id,date,seance_id' })
+    .select('id').single()
+  if (error) return jsonResp({ erreur: error.message })
+  return jsonResp({ ok: true, id: data?.id })
+}
+
+// Déplacer une séance posée vers une autre date (glisser-déposer / changer de jour).
+async function handleMovePlanning(body: any): Promise<Response> {
+  const id = Number(body.id)
+  const date = String(body.date || '')
+  if (!id || !date) return jsonResp({ erreur: 'Paramètres manquants' })
+  const { error } = await sb().from('planning').update({ date, updated_at: new Date().toISOString() }).eq('id', id)
+  if (error) return jsonResp({ erreur: error.message })
+  return jsonResp({ ok: true })
+}
+
+// Retirer une séance posée (jour de repos).
+async function handleUnplanPlanning(body: any): Promise<Response> {
+  const id = Number(body.id)
+  if (!id) return jsonResp({ erreur: 'Paramètres manquants' })
+  const { error } = await sb().from('planning').delete().eq('id', id)
+  if (error) return jsonResp({ erreur: error.message })
+  return jsonResp({ ok: true })
+}
+
 // Génération d'un programme de départ (onboarding). Le FRONT construit les lignes
 // (objectif + jours + niveau → structure, en piochant dans le catalogue) ; le
 // backend persiste de façon atomique : si remplacer=true, on efface d'abord tout
@@ -5517,6 +5581,10 @@ Deno.serve(async (req: Request) => {
         case 'saveNote':                 return handleSaveNote(body)
         case 'saveProgrammeLigne':       return handleSaveProgrammeLigne(body)
         case 'saveProgrammeJour':        return handleSaveProgrammeJour(body)
+        case 'getPlanning':              return handleGetPlanning(body)
+        case 'planSeance':               return handlePlanSeance(body)
+        case 'movePlanning':             return handleMovePlanning(body)
+        case 'unplanPlanning':           return handleUnplanPlanning(body)
         case 'genererProgramme':         return handleGenererProgramme(body)
         case 'supprimerProgrammeLigne':  return handleSupprimerProgrammeLigne(body)
         case 'deleteCoach':              return handleDeleteCoach(body)
