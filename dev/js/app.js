@@ -5277,6 +5277,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderCoachOverview(data);
     try { renderCoachCoupDoeil(data); } catch (_) {}         // N13 — Coup d'œil en tête (entraînement + état)
     try { renderCoachProchaineSeance(data); } catch (_) {}   // « prochaine séance à faire » (hub coach)
+    try { cdAgInit(); } catch (_) {}                         // agenda daté (rail Aperçu + onglet Programme)
     try { renderCoachHubVolume(data); } catch (_) {}      // volume par muscle (hub)
     try { renderCoachHubSeances(data); } catch (_) {}     // dernières séances (hub)
     try { renderCoachHubNutrition(data); } catch (_) {}   // carte macros du hub
@@ -5681,6 +5682,139 @@ function renderCoachProchaineSeance(data) {
     + '<div style="font-size:16px;font-weight:900;letter-spacing:-.01em;">' + esc(nom) + '</div>'
     + (lignes ? '<div style="margin-top:8px;">' + lignes + '</div>'
               : '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Programme sans détail d\'exercices pour cette séance.</div>');
+}
+
+// ===================== AGENDA DATÉ (coach) ================================
+// Planifie les séances du programme de l'athlète sur des DATES réelles (table
+// `planning`). Monté à 2 endroits : rail Aperçu (#cd-agenda-root, desktop) et
+// onglet Programme (#cd-prog-agenda-root, tous écrans). Routes : getPlanning /
+// planSeance / movePlanning / unplanPlanning. Les séances viennent de
+// coachAthleteData.programme (distinctes par seance_id) ; « À planifier » = celles
+// non posées la semaine affichée. « Pré-remplir » projette programme.jour (semaine type).
+var _cdAgOff = 0;            // décalage de semaine (0 = semaine en cours)
+var _cdAgRows = [];          // lignes planning de la semaine affichée
+var _cdAgLoading = false;
+var _cdAgDrag = null;        // {id:…} (pastille posée) | {seance_id:…} (depuis « à planifier »)
+var _cdAgSelChip = null;     // séance sélectionnée au doigt (mobile) → clic jour = poser
+var _CD_AG_PAL = ['#1A5FFF', '#00A854', '#9D5FD3', '#E07800', '#E5484D', '#0EA5E9', '#D946A6'];
+var _CD_AG_DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+var _CD_AG_ABBR = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+var _CD_AG_MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+function _cdAgMounts() { return ['cd-agenda-root', 'cd-prog-agenda-root'].map(function (id) { return document.getElementById(id); }).filter(Boolean); }
+function _cdAgMonday(off) { var d = new Date(); var k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k + off * 7); d.setHours(0, 0, 0, 0); return d; }
+function _cdAgYmd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _cdAgDateOf(i) { var m = _cdAgMonday(_cdAgOff); m.setDate(m.getDate() + i); return m; }
+function _cdAgFmt(d) { return d.getDate() + ' ' + _CD_AG_MON[d.getMonth()]; }
+function _cdAgEsc(s) { return (typeof escapeHtml === 'function') ? escapeHtml(String(s == null ? '' : s)) : String(s == null ? '' : s); }
+function _cdAgAthlete() { return (typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id) ? coachAthleteCourant.athlete_id : null; }
+
+// Séances distinctes du programme (ordre d'apparition) + nb d'exos, couleur, jour type.
+function _cdAgSeances() {
+  var prog = (typeof coachAthleteData !== 'undefined' && coachAthleteData && Array.isArray(coachAthleteData.programme)) ? coachAthleteData.programme : [];
+  var order = [], seen = {}, cnt = {}, jour = {};
+  prog.forEach(function (l) {
+    if (!l) return; var sid = String(l.seance_id || '').trim(); if (!sid) return;
+    if (!seen[sid]) { seen[sid] = 1; order.push(sid); }
+    cnt[sid] = (cnt[sid] || 0) + 1;
+    if (l.jour != null && jour[sid] == null) jour[sid] = Number(l.jour);
+  });
+  return order.map(function (sid, i) { return { id: sid, nom: sid, exos: cnt[sid], col: _CD_AG_PAL[i % _CD_AG_PAL.length], jour: (jour[sid] != null ? jour[sid] : null) }; });
+}
+function _cdAgSeanceMap() { var m = {}; _cdAgSeances().forEach(function (s) { m[s.id] = s; }); return m; }
+function _cdAgRowsForDay(iso) { return (_cdAgRows || []).filter(function (r) { return String(r.date) === iso; }); }
+function _cdAgUnplanned() { var placed = {}; (_cdAgRows || []).forEach(function (r) { placed[String(r.seance_id)] = 1; }); return _cdAgSeances().filter(function (s) { return !placed[s.id]; }); }
+
+// Chargement de la semaine affichée.
+function cdAgLoadWeek() {
+  var aid = _cdAgAthlete(); if (!aid) { _cdAgRows = []; cdAgRender(); return; }
+  var from = _cdAgYmd(_cdAgMonday(_cdAgOff)), to = _cdAgYmd(_cdAgDateOf(6));
+  _cdAgLoading = true; cdAgRender();
+  _cdPost({ action: 'getPlanning', athlete_id: aid, from: from, to: to }).then(function (r) {
+    _cdAgLoading = false; _cdAgRows = (r && r.rows) ? r.rows : []; cdAgRender();
+  }).catch(function () { _cdAgLoading = false; _cdAgRows = []; cdAgRender(); });
+}
+function cdAgInit() { _cdAgOff = 0; _cdAgSelChip = null; cdAgLoadWeek(); }
+function cdAgGo(d) { _cdAgOff += d; _cdAgSelChip = null; cdAgLoadWeek(); }
+function cdAgToday() { _cdAgOff = 0; _cdAgSelChip = null; cdAgLoadWeek(); }
+
+// Actions (puis rechargement de la semaine → re-render des 2 montages).
+function cdAgPlace(dateISO, seanceId) { var aid = _cdAgAthlete(); if (!aid) return; _cdAgSelChip = null; _cdPost({ action: 'planSeance', athlete_id: aid, date: dateISO, seance_id: seanceId, source: 'coach' }).then(cdAgLoadWeek); }
+function cdAgMove(id, dateISO) { _cdPost({ action: 'movePlanning', id: id, date: dateISO }).then(cdAgLoadWeek); }
+function cdAgRemove(id) { _cdPost({ action: 'unplanPlanning', id: id }).then(cdAgLoadWeek); }
+function cdAgPrefill() {
+  var aid = _cdAgAthlete(); if (!aid) return;
+  var placed = {}; (_cdAgRows || []).forEach(function (r) { placed[String(r.seance_id)] = 1; });
+  var todo = _cdAgSeances().filter(function (s) { return s.jour != null && s.jour >= 1 && s.jour <= 7 && !placed[s.id]; });
+  if (!todo.length) return;
+  Promise.all(todo.map(function (s) { var iso = _cdAgYmd(_cdAgDateOf(s.jour - 1)); return _cdPost({ action: 'planSeance', athlete_id: aid, date: iso, seance_id: s.id, source: 'auto' }); })).then(cdAgLoadWeek);
+}
+function _cdAgDrop(iso) {
+  if (!_cdAgDrag) return;
+  if (_cdAgDrag.seance_id) cdAgPlace(iso, _cdAgDrag.seance_id);
+  else if (_cdAgDrag.id) cdAgMove(_cdAgDrag.id, iso);
+  _cdAgDrag = null;
+}
+function _cdAgDayClick(iso) { if (_cdAgSelChip) { cdAgPlace(iso, _cdAgSelChip); } }
+
+function cdAgRender() {
+  var mounts = _cdAgMounts(); if (!mounts.length) return;
+  var smap = _cdAgSeanceMap();
+  var a = _cdAgMonday(_cdAgOff), b = _cdAgDateOf(6);
+  var lab = _cdAgOff === 0 ? 'Cette semaine' : (_cdAgOff === 1 ? 'Semaine prochaine' : (_cdAgOff === -1 ? 'Semaine dernière' : (_cdAgOff > 0 ? 'Semaine +' + _cdAgOff : 'Semaine ' + _cdAgOff)));
+  var hasProg = _cdAgSeances().length > 0;
+  var rowsHtml = '';
+  for (var i = 0; i < 7; i++) {
+    var dt = _cdAgDateOf(i), iso = _cdAgYmd(dt), dayRows = _cdAgRowsForDay(iso);
+    var pills = dayRows.map(function (r) {
+      var s = smap[String(r.seance_id)], col = s ? s.col : '#64748b', nom = s ? s.nom : String(r.seance_id), det = s ? (s.exos + ' exos') : '';
+      return '<span class="cdag-pill" draggable="true" data-pid="' + r.id + '" style="background:' + col + '">' + _cdAgEsc(nom) + (det ? ' <small>' + det + '</small>' : '') + '<span class="cdag-x" data-rm="' + r.id + '" title="Retirer">✕</span></span>';
+    }).join('');
+    rowsHtml += '<div class="cdag-day' + (dayRows.length ? ' has' : '') + '" data-iso="' + iso + '"><div class="cdag-dd"><b>' + _CD_AG_ABBR[i] + '</b><span>' + dt.getDate() + '</span></div><div class="cdag-ct">' + (pills || '<span class="cdag-empty">— repos</span>') + '</div></div>';
+  }
+  var unpl = _cdAgUnplanned();
+  var chips = unpl.length
+    ? unpl.map(function (s) { return '<span class="cdag-chip' + (_cdAgSelChip === s.id ? ' sel' : '') + '" draggable="true" data-sid="' + _cdAgEsc(s.id) + '" style="background:' + s.col + '">' + _cdAgEsc(s.nom) + '</span>'; }).join('')
+    : '<span class="cdag-sub">Tout est planifié ✓</span>';
+  var canPrefill = _cdAgSeances().some(function (s) { return s.jour != null; }) && unpl.length;
+  var html = '<div class="cdag-head">'
+    + '<button class="cdag-nav" data-nav="-1" title="Semaine précédente">‹</button>'
+    + '<div class="cdag-wl"><b>' + lab + '</b><span>' + _cdAgFmt(a) + ' – ' + _cdAgFmt(b) + '</span></div>'
+    + (_cdAgOff !== 0 ? '<button class="cdag-today" data-today="1">Aujourd\'hui</button>' : '')
+    + '<button class="cdag-nav" data-nav="1" title="Semaine suivante">›</button>'
+    + '</div>';
+  if (!hasProg) {
+    html += '<div class="cdag-sub" style="padding:8px 2px">Aucune séance dans le programme — crée des séances pour pouvoir les planifier.</div>';
+  } else {
+    html += '<div class="cdag-sub" style="margin:2px 2px 8px">Glisse une séance sur un jour · ✕ pour retirer.</div>'
+      + (_cdAgLoading ? '<div class="cdag-sub" style="padding:4px 2px">Chargement…</div>' : '')
+      + '<div class="cdag-days">' + rowsHtml + '</div>'
+      + '<div class="cdag-topl"><div class="cdag-lab">À planifier' + (canPrefill ? ' <button class="cdag-prefill" data-prefill="1">↳ Pré-remplir semaine type</button>' : '') + '</div><div class="cdag-chips">' + chips + '</div></div>';
+  }
+  mounts.forEach(function (root) { root.innerHTML = '<div class="cdag">' + html + '</div>'; _cdAgBind(root); });
+}
+
+function _cdAgBind(root) {
+  root.querySelectorAll('[data-nav]').forEach(function (bt) { bt.onclick = function (e) { e.stopPropagation(); cdAgGo(parseInt(bt.getAttribute('data-nav'), 10)); }; });
+  var tb = root.querySelector('[data-today]'); if (tb) tb.onclick = function (e) { e.stopPropagation(); cdAgToday(); };
+  var pf = root.querySelector('[data-prefill]'); if (pf) pf.onclick = function (e) { e.stopPropagation(); cdAgPrefill(); };
+  root.querySelectorAll('[data-rm]').forEach(function (x) { x.onclick = function (e) { e.stopPropagation(); cdAgRemove(parseInt(x.getAttribute('data-rm'), 10)); }; });
+  root.querySelectorAll('.cdag-pill[draggable]').forEach(function (pl) {
+    pl.addEventListener('dragstart', function (e) { _cdAgDrag = { id: parseInt(pl.getAttribute('data-pid'), 10) }; pl.classList.add('cdag-dragging'); try { e.dataTransfer.setData('text/plain', ''); } catch (_) {} });
+    pl.addEventListener('dragend', function () { pl.classList.remove('cdag-dragging'); _cdAgDrag = null; });
+  });
+  root.querySelectorAll('.cdag-chip[draggable]').forEach(function (c) {
+    c.addEventListener('dragstart', function (e) { _cdAgDrag = { seance_id: c.getAttribute('data-sid') }; try { e.dataTransfer.setData('text/plain', ''); } catch (_) {} });
+    c.addEventListener('dragend', function () { _cdAgDrag = null; });
+    c.onclick = function (e) { e.stopPropagation(); var sid = c.getAttribute('data-sid'); _cdAgSelChip = (_cdAgSelChip === sid) ? null : sid; cdAgRender(); };
+  });
+  root.querySelectorAll('.cdag-day').forEach(function (day) {
+    var iso = day.getAttribute('data-iso');
+    day.addEventListener('dragover', function (e) { e.preventDefault(); day.classList.add('cdag-dropok'); });
+    day.addEventListener('dragleave', function () { day.classList.remove('cdag-dropok'); });
+    day.addEventListener('drop', function (e) { e.preventDefault(); day.classList.remove('cdag-dropok'); _cdAgDrop(iso); });
+    day.addEventListener('click', function (e) { if (e.target.closest('.cdag-pill') || e.target.closest('[data-rm]')) return; _cdAgDayClick(iso); });
+  });
 }
 
 function renderCoachOverview(data) {
