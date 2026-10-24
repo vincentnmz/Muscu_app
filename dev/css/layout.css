@@ -828,7 +828,7 @@ body.prog-editor-open{ overflow:hidden; }
      onglets (plus de page plein écran). On masque l'en-tête (les sous-onglets
      de la fiche sont au-dessus) et on borne la hauteur pour que les 3 volets
      scrollent à l'intérieur. */
-  body.coach-active #cdtab-programme.prog-has-inline > *:not(#prog-editor-overlay){ display:none !important; }
+  body.coach-active #cdtab-programme.prog-has-inline > *:not(#prog-editor-overlay):not(#cd-prog-agenda-root){ display:none !important; }
   body.coach-active #prog-editor-overlay.prog-inline{
     position:static !important; inset:auto !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
     z-index:auto !important; width:auto !important; max-width:none !important;
