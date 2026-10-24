@@ -6,7 +6,8 @@
 
 ## Où en est le travail
 - Branche de travail : `claude/novalyz-player-profile-mockups-g4bock`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`.
-- ⚠️ **REDEPLOY `index.ts` EN ATTENTE** (3 lots cumulés) : **N2** (années de pratique `anneesEffectives`), **N5** (récompenses : `records_total` + `gagnes` permanent dans `getAppData` ET `handleClaimRecompense`), **N3** (suivi corps : lectures `mensurations` + `suivi_photos` dans `getAppData` + handlers `saveMensuration` / `suiviPhotoUploadUrl` / `saveSuiviPhoto` / `supprimerSuiviPhoto`). Bucket Storage privé **`suivi-photos`** déjà créé en base. SW = **v388** (bumper à chaque modif de `js/app.js`).
+- ✅ **`index.ts` DÉPLOYÉ** sur Supabase (N2 `anneesEffectives` + N5 `records_total`/`gagnes` permanent + N3 suivi corps : `mensurations`/`suivi_photos` + handlers). Bucket privé **`suivi-photos`** créé.
+- ✅ **PROD PROMUE** le 24 oct. : `dev → main` (merge, arbre identique à dev). Web prod à jour. APK DEV rebuild lancé. **Play Store (APK officiel) : à faire plus tard** (build depuis `main` → upload). SW = **v399** (bumper à chaque modif de `js/app.js`).
 - Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**46 suites vertes** à maintenir).
 
 ## Fait récemment (tout sur `dev`)
