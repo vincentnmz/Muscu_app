@@ -5701,7 +5701,7 @@ var _CD_AG_DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 var _CD_AG_ABBR = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 var _CD_AG_MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
-function _cdAgMounts() { return ['cd-agenda-root', 'cd-prog-agenda-root', 'cd-agenda-prog'].map(function (id) { return document.getElementById(id); }).filter(Boolean); }
+function _cdAgMounts() { return ['cd-prog-agenda-root', 'cd-agenda-prog', 'cd-agenda-progc'].map(function (id) { return document.getElementById(id); }).filter(Boolean); }
 function _cdAgMonday(off) { var d = new Date(); var k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k + off * 7); d.setHours(0, 0, 0, 0); return d; }
 function _cdAgYmd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function _cdAgDateOf(i) { var m = _cdAgMonday(_cdAgOff); m.setDate(m.getDate() + i); return m; }
@@ -13453,7 +13453,10 @@ function _maCardioParSport(data) {
   var hist = (data.cardio && data.cardio.history) || [];
   var allBy = _maCardioAgg(hist, 3650);
   var types = Object.keys(allBy).sort(function (a, b) { return allBy[b].n - allBy[a].n; });
-  if (!types.length) { _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _maEmpty('Aucune séance cardio pour l\'instant.') + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>'); return; }
+  // Rail coach de « Évolution » cardio : agenda daté (id distinct du muscu pour éviter
+  // toute collision d'id entre les 2 panes qui coexistent dans le DOM).
+  var _agC = (typeof _maCoach !== 'undefined' && _maCoach) ? '<div id="cd-agenda-progc" class="dash-card" style="padding:14px;margin-bottom:12px"></div>' : '';
+  if (!types.length) { _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _maEmpty('Aucune séance cardio pour l\'instant.') + '</div><div class="ma-colrail">' + _agC + _maNovaAsk() + '</div></div>'); if (_agC) { try { cdAgRender(); } catch (e) {} } return; }
   var sel = (_maCardioSport && types.indexOf(_maCardioSport) >= 0) ? _maCardioSport : types[0];
   var m = _maCM(sel);
   var _w = _maWin();
@@ -13491,7 +13494,8 @@ function _maCardioParSport(data) {
     return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
   }).join('');
   var _cdMain = _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _w.plabel, o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>';
-  _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _cdMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
+  _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _cdMain + '</div><div class="ma-colrail">' + _agC + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
+  if (_agC) { try { cdAgRender(); } catch (e) {} }
 }
 function maSetCardioSport(t) { _maCardioSport = t; try { _maCardioParSport(dernierAppData); } catch (e) {} }
 function maSetCardioMetric(m) { _maCardioMetric = m; try { _maCardioParSport(dernierAppData); } catch (e) {} }
