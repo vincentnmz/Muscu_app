@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agenda coach — desktop & mobile</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.12);
+    --good:#00c96e; --warn:#f5a623; --bad:#e5484d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:20px 14px 60px}
+  .wrap{max-width:420px;margin:0 auto}
+  .lead{font-size:12px;color:var(--muted);margin:0 0 14px}.lead b{color:var(--text)}
+  .vtog{display:flex;gap:6px;margin-bottom:16px}
+  .vtog button{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:9px;font:inherit;font-weight:800;font-size:12.5px;cursor:pointer}
+  .vtog button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .view{display:none}.view.on{display:block}
+  .lab{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--subtle);margin:4px 2px 9px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px 14px}
+  .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .hd .t{font-size:13px;font-weight:800}.hd .s{font-size:10.5px;color:var(--subtle)}
+  .sub{font-size:10.5px;color:var(--subtle);margin:0 0 10px}
+  /* DESKTOP : lignes jour (colonne étroite) */
+  .drail{max-width:330px}
+  .day{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);cursor:pointer;position:relative}
+  .day:first-of-type{border-top:none}
+  .day .dd{width:26px;height:26px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--muted);flex:none}
+  .day.has .dd{background:var(--accent-a);border-color:var(--accent2);color:var(--accent2)}
+  .day .ct{flex:1;min-width:0}
+  .pill{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-size:12px;font-weight:700;border-radius:8px;padding:4px 9px;color:#fff}
+  .pill small{font-weight:600;opacity:.85;font-size:10px}
+  .empty{font-size:11.5px;color:var(--subtle)}.day:hover .empty{color:var(--accent2)}
+  .x{margin-left:auto;color:var(--subtle);font-size:14px;flex:none}
+  .menu{position:absolute;left:36px;right:0;top:34px;z-index:5;background:var(--surface);border:1px solid var(--accent2);border-radius:11px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .menu div{padding:9px 12px;font-size:12.5px;font-weight:600;cursor:pointer;border-top:1px solid var(--border)}
+  .menu div:first-child{border-top:none}.menu div:hover{background:var(--surface2)}
+  .menu .mh{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--subtle);cursor:default;background:var(--surface2)}
+  .menu .rm{color:var(--bad)}
+  /* MOBILE : grille 7 jours pleine largeur */
+  .mgrid{display:flex;gap:5px}
+  .mtile{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:7px 3px 8px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:74px;justify-content:flex-start}
+  .mtile.has{border-color:var(--accent2)}
+  .mtile .md{font-size:10px;font-weight:800;color:var(--muted)}
+  .mtile.has .md{color:var(--accent2)}
+  .mtile .mblk{width:100%;border-radius:7px;color:#fff;font-size:10px;font-weight:800;padding:8px 2px;line-height:1.1}
+  .mtile .mrest{font-size:16px;color:var(--subtle);margin-top:6px}
+  .mtile:active{transform:scale(.97)}
+  /* à planifier */
+  .topl{margin-top:12px;border-top:1px solid var(--border);padding-top:11px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .chip{font-size:11.5px;font-weight:700;border-radius:8px;padding:5px 10px;color:#fff;cursor:pointer;border:2px dashed rgba(255,255,255,.35)}
+  .chip.sel{outline:2px solid #fff;outline-offset:1px}
+  /* sheet (mobile) */
+  .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:none;align-items:flex-end;justify-content:center}
+  .ov.on{display:flex}
+  .sheet{background:var(--surface);border:1px solid var(--border);border-radius:18px 18px 0 0;width:100%;max-width:420px;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.5)}
+  .sheet h4{margin:0 0 10px;font-size:14px}
+  .sheet .opt{display:flex;align-items:center;gap:10px;padding:12px 13px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface2)}
+  .sheet .opt .dot{width:12px;height:12px;border-radius:4px;flex:none}
+  .sheet .opt.rm{color:var(--bad);justify-content:center;font-weight:800}
+  .note{font-size:11.5px;color:var(--muted);margin:18px 2px 0;line-height:1.55;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
+  .note b{color:var(--text)} .note .k{color:var(--accent2);font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="lead">Maquette <b>Agenda coach</b> (Option A) — <b>desktop & mobile</b>. Le coach pose/déplace/retire les séances du programme sur la <b>semaine type</b>. Donnée = <b>programme.jour</b> (route <code>saveProgrammeJour</code>), pas de nouveau backend.</p>
+
+  <div class="vtog">
+    <button class="on" onclick="setV('d')">🖥 Desktop (colonne de droite)</button>
+    <button onclick="setV('m')">📱 Mobile</button>
+  </div>
+
+  <!-- DESKTOP -->
+  <div class="view on" id="v-d">
+    <div class="lab">Colonne de droite · fiche athlète</div>
+    <div class="card drail">
+      <div class="hd"><span class="t">📅 Semaine type</span><span class="s">clique un jour</span></div>
+      <div class="sub">Séances posées sur leurs jours. Jour vide = repos.</div>
+      <div id="week-d"></div>
+      <div class="topl">
+        <div class="lab" style="margin:0 2px 2px">À planifier</div>
+        <div class="sub" style="margin:0">Sélectionne une séance puis clique un jour.</div>
+        <div class="chips" id="unpl-d"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE -->
+  <div class="view" id="v-m">
+    <div class="lab">Fiche athlète · pleine largeur</div>
+    <div class="card">
+      <div class="hd"><span class="t">📅 Semaine type</span><span class="s">touche un jour</span></div>
+      <div class="sub">Touche un jour pour poser / changer la séance.</div>
+      <div class="mgrid" id="week-m"></div>
+      <div class="topl">
+        <div class="lab" style="margin:0 2px 2px">À planifier</div>
+        <div class="chips" id="unpl-m"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><b>Interactions</b> :
+    <span class="k">Desktop</span> — clic jour → menu (poser / déplacer / retirer) ; « À planifier » = sélection puis clic jour.
+    <span class="k">Mobile</span> — touche jour → feuille du bas (choisir la séance / retirer).
+    <br><br>Évolution possible : agenda par <b>dates réelles</b> + rappels (Option B).
+  </div>
+</div>
+
+<!-- sheet mobile -->
+<div class="ov" id="ov" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+
+<script>
+  var SEANCES = {
+    fba:{nom:'Full Body A', det:'6 exos', ini:'FBA', col:'#1A5FFF'},
+    fbb:{nom:'Full Body B', det:'6 exos', ini:'FBB', col:'#00A854'},
+    fbc:{nom:'Full Body C', det:'5 exos', ini:'FBC', col:'#9D5FD3'},
+    jbs:{nom:'Jambes', det:'5 exos', ini:'JAM', col:'#E07800'}
+  };
+  var WEEK = ['fba', null, 'fbb', null, 'fbc', null, null];
+  var UNPL = ['jbs'];
+  var DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  var ABBR = ['L','M','M','J','V','S','D'];
+  var selChip = null, openMenu = null;
+
+  function setV(v){ document.querySelectorAll('.vtog button').forEach(function(b,i){ b.classList.toggle('on',(v==='d')===(i===0)); }); document.getElementById('v-d').classList.toggle('on',v==='d'); document.getElementById('v-m').classList.toggle('on',v==='m'); closeMenu(); render(); }
+  function closeMenu(){ if(openMenu){ openMenu.remove(); openMenu=null; } }
+  document.body.addEventListener('click', closeMenu);
+
+  function render(){
+    // Desktop rows
+    var w=document.getElementById('week-d'); w.innerHTML='';
+    WEEK.forEach(function(sid,i){
+      var row=document.createElement('div'); row.className='day'+(sid?' has':'');
+      var h='<div class="dd">'+ABBR[i]+'</div><div class="ct">';
+      if(sid){var s=SEANCES[sid]; h+='<span class="pill" style="background:'+s.col+'">'+s.nom+' <small>'+s.det+'</small></span><span class="x">⋯</span>';}
+      else h+='<span class="empty">— repos · <b>+ poser une séance</b></span>';
+      row.innerHTML=h+'</div>';
+      row.onclick=function(e){ e.stopPropagation(); onDayDesk(i,row); };
+      w.appendChild(row);
+    });
+    chipsInto('unpl-d', false);
+    // Mobile grid
+    var g=document.getElementById('week-m'); g.innerHTML='';
+    WEEK.forEach(function(sid,i){
+      var t=document.createElement('div'); t.className='mtile'+(sid?' has':'');
+      var h='<div class="md">'+ABBR[i]+'</div>';
+      if(sid){var s=SEANCES[sid]; h+='<div class="mblk" style="background:'+s.col+'">'+s.ini+'</div>';}
+      else h+='<div class="mrest">+</div>';
+      t.innerHTML=h;
+      t.onclick=function(e){ e.stopPropagation(); openSheet(i); };
+      g.appendChild(t);
+    });
+    chipsInto('unpl-m', true);
+  }
+  function chipsInto(id, mobile){
+    var u=document.getElementById(id); u.innerHTML='';
+    if(!UNPL.length){ u.innerHTML='<span class="sub" style="margin:0">Tout est planifié ✓</span>'; return; }
+    UNPL.forEach(function(sid){ var s=SEANCES[sid]; var c=document.createElement('span'); c.className='chip'+(selChip===sid?' sel':''); c.style.background=s.col; c.textContent=s.nom;
+      c.onclick=function(e){ e.stopPropagation(); if(mobile){ /* sur mobile : on ouvre direct le choix du jour */ selChip=sid; openSheetPlaceDay(); } else { selChip=(selChip===sid?null:sid); render(); } };
+      u.appendChild(c); });
+  }
+
+  // ---- Desktop : menu inline ----
+  function onDayDesk(i,row){
+    closeMenu();
+    if(selChip){ if(WEEK[i]) UNPL.push(WEEK[i]); UNPL.splice(UNPL.indexOf(selChip),1); WEEK[i]=selChip; selChip=null; render(); return; }
+    var m=document.createElement('div'); m.className='menu';
+    if(WEEK[i]){ m.innerHTML='<div class="mh">'+DAYS[i]+' · '+SEANCES[WEEK[i]].nom+'</div><div data-act="move">Déplacer vers un autre jour…</div><div class="rm" data-act="rm">Retirer (jour de repos)</div>'; }
+    else { var opts=Object.keys(SEANCES).filter(function(k){return WEEK.indexOf(k)<0;}); m.innerHTML='<div class="mh">Poser le '+DAYS[i]+'</div>'+(opts.length?opts.map(function(k){return '<div data-put="'+k+'">'+SEANCES[k].nom+' · <span style="color:var(--subtle)">'+SEANCES[k].det+'</span></div>';}).join(''):'<div style="color:var(--subtle)">Aucune séance libre</div>'); }
+    m.onclick=function(e){ e.stopPropagation(); var t=e.target.closest('div[data-act],div[data-put]'); if(!t) return;
+      if(t.dataset.put){ WEEK[i]=t.dataset.put; var ui=UNPL.indexOf(t.dataset.put); if(ui>=0) UNPL.splice(ui,1); }
+      else if(t.dataset.act==='rm'){ UNPL.push(WEEK[i]); WEEK[i]=null; }
+      else if(t.dataset.act==='move'){ selChip=WEEK[i]; UNPL.push(WEEK[i]); WEEK[i]=null; }
+      closeMenu(); render();
+    };
+    row.appendChild(m); openMenu=m;
+  }
+
+  // ---- Mobile : feuille du bas ----
+  var _sheetDay=null;
+  function openSheet(i){
+    _sheetDay=i; var s=document.getElementById('sheet');
+    var h='<h4>'+DAYS[i]+'</h4>';
+    if(WEEK[i]){ var cur=SEANCES[WEEK[i]]; h+='<div class="opt" style="border-color:'+cur.col+'"><span class="dot" style="background:'+cur.col+'"></span>'+cur.nom+' · '+cur.det+'</div>'; h+='<div style="font-size:11px;color:var(--subtle);margin:6px 2px 8px">Remplacer par :</div>'; }
+    Object.keys(SEANCES).filter(function(k){return WEEK.indexOf(k)<0;}).forEach(function(k){ var sc=SEANCES[k]; h+='<div class="opt" data-put="'+k+'"><span class="dot" style="background:'+sc.col+'"></span>'+sc.nom+' · '+sc.det+'</div>'; });
+    if(WEEK[i]) h+='<div class="opt rm" data-rm="1">Retirer (jour de repos)</div>';
+    s.innerHTML=h;
+    s.onclick=function(e){ var t=e.target.closest('div[data-put],div[data-rm]'); if(!t) return;
+      if(t.dataset.put){ if(WEEK[i]) UNPL.push(WEEK[i]); WEEK[i]=t.dataset.put; var ui=UNPL.indexOf(t.dataset.put); if(ui>=0) UNPL.splice(ui,1); }
+      else { UNPL.push(WEEK[i]); WEEK[i]=null; }
+      closeSheet(); render();
+    };
+    document.getElementById('ov').classList.add('on');
+  }
+  function openSheetPlaceDay(){
+    var s=document.getElementById('sheet');
+    var sc=SEANCES[selChip];
+    var h='<h4>Poser « '+sc.nom+' » quel jour ?</h4>';
+    DAYS.forEach(function(d,i){ h+='<div class="opt" data-day="'+i+'"><span class="dot" style="background:'+(WEEK[i]?SEANCES[WEEK[i]].col:'var(--border)')+'"></span>'+d+(WEEK[i]?(' · occupé ('+SEANCES[WEEK[i]].ini+')'):' · repos')+'</div>'; });
+    s.innerHTML=h;
+    s.onclick=function(e){ var t=e.target.closest('div[data-day]'); if(!t) return; var i=+t.dataset.day; if(WEEK[i]) UNPL.push(WEEK[i]); UNPL.splice(UNPL.indexOf(selChip),1); WEEK[i]=selChip; selChip=null; closeSheet(); render(); };
+    document.getElementById('ov').classList.add('on');
+  }
+  function closeSheet(){ document.getElementById('ov').classList.remove('on'); selChip=null; }
+
+  render();
+</script>
+</body>
+</html>
