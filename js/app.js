@@ -12514,9 +12514,9 @@ function _maForceChart(data) {
     if (es.length) { pts.push(Math.round(es.reduce(function (a, b) { return a + b; }, 0) / es.length)); dts.push(s.date); }
   });
   if (pts.length < 2) return _maSec('Tendance de force', null, 'force') + _maEmpty('La courbe de force apparaît dès 2 séances sur la période.');
-  return _maSec('Tendance de force', w.plabel + ' · 1RM estimé moyen', 'force')
-    + _maChartBlock('Force e1RM', pts, 'kg', '#9D5FD3', 'rgba(157,95,211,.14)', _maShortDate(dts[0]),
-      'Moyenne du 1RM estimé (Epley) de tes exercices à chaque séance. La courbe qui monte = tu gagnes en force.', dts);
+  return _maSec('Tendance de force', w.plabel + ' · indice (1RM estimé moyen)', 'force')
+    + _maChartBlock('Indice de force', pts, 'kg', '#9D5FD3', 'rgba(157,95,211,.14)', _maShortDate(dts[0]),
+      'INDICE GLOBAL de force = moyenne du 1RM estimé (Epley) sur TOUS les exercices de la séance (ex. squat + curl…). Ce n\'est pas le 1RM d\'un exercice précis — pour ça, vois « Par exercice ». Ce qui compte : la courbe monte = tu gagnes en force.', dts);
 }
 
 // ════════ BLOC UNIQUE « Lecture Novalyz · Analyses » (entraînement) ════════
@@ -13188,7 +13188,7 @@ function _maMuscuTendances(data) {
   if (hasW) {
     var tonLbl = _maGran === 'S' ? 'jours d\'entraînement' : 'par ' + bNoun;
     main += _maSec('Tonnage soulevé', tonLbl + ' · ' + _maPLabel(), 'tonnage')
-      + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Total charge × reps — seuls les jours d\'entraînement sont tracés (les jours de repos ne comptent pas). La courbe qui monte = tu soulèves plus de volume.', wtD);
+      + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg soulevés au total ce jour, ex. 5,8 t = 5 800 kg). Seuls les jours d\'entraînement sont tracés. La courbe qui monte = plus de volume soulevé.', wtD);
   } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
   // ── Vraies analyses (ajouts) : force e1RM, fréquence/muscle, répartition d'intensité ──
   main += _maForceChart(data) + _maFreqMuscleBloc(data) + _maIntensiteBloc(data);
@@ -13476,8 +13476,8 @@ function _maCroise(data) {
           : (cPct > 75 ? 'Profil déséquilibré, presque tout en cardio : ajoute du renforcement pour l\'équilibre force / endurance, en gardant la charge totale sous contrôle.'
             : 'Bon équilibre muscu / cardio et charge globale soutenable — maintiens le mix ; ajuste seulement si la forme décroche quand la charge monte.'));
       var fiabLine = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Fiabilité de l\'analyse : <b style="color:' + fiab.c + '">' + fiab.t + '</b> · ' + nWeeks + ' sem. de données · bien-être ' + nForme + ' relevé' + (nForme > 1 ? 's' : '') + '.</div>';
-      synthese = '<div class="ma-card" style="border-left:3px solid var(--accent)">' + L + fiabLine
-        + '<div style="margin-top:9px;background:var(--accent-a10,rgba(26,95,255,.10));border:1px solid var(--border);border-radius:11px;padding:10px 13px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:3px">Reco · pour le coach</div><div style="font-size:13px;font-weight:600">' + reco + '</div></div></div>';
+      synthese = '<div class="ma-card" style="border-left:3px solid var(--accent);padding:14px 16px">' + L + fiabLine
+        + '<div style="margin-top:10px;background:var(--accent-a10,rgba(26,95,255,.10));border:1px solid var(--border);border-radius:12px;padding:13px 16px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:4px">Reco · pour le coach</div><div style="font-size:13px;font-weight:600;line-height:1.45">' + reco + '</div></div></div>';
     }
   } else {
     synthese = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict;
@@ -13489,10 +13489,14 @@ function _maCroise(data) {
   var foPct = (foH.o > 0) ? Math.round((foH.r - foH.o) / foH.o * 100) : null;
   var lastForme = (function () { for (var i = beW.length - 1; i >= 0; i--) if (beW[i] > 0) return beW[i]; return null; })();
   var tile = function (lab, big, bigCol, sub) { return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 13px"><div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + lab + '</div><div style="font-size:16px;font-weight:900;margin-top:3px;color:' + bigCol + '">' + big + '</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:2px">' + sub + '</div></div>'; };
+  var cardioN = hist.filter(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; }).length;
+  var nSea = (r.seances || 0) + cardioN;
   var chBig, chCol, chSub, foBig, foCol, foSub;
   if (!trendOk) {
-    chBig = '—'; chCol = 'var(--text-subtle)'; chSub = 'pas assez de recul';
-    foBig = (lastForme != null ? (lastForme + '/100') : '—'); foCol = 'var(--text-subtle)'; foSub = 'pas assez de recul';
+    // Pas assez de recul pour une TENDANCE → on montre quand même des valeurs
+    // CONCRÈTES de la période (nb de séances + forme actuelle), pas « — ».
+    chBig = nSea + ' séance' + (nSea > 1 ? 's' : ''); chCol = 'var(--text)'; chSub = 'sur ' + _w.plabel + ' · tendance dès ~4 sem.';
+    foBig = (lastForme != null ? (lastForme + '/100') : '—'); foCol = (lastForme != null) ? (lastForme >= 70 ? 'var(--good)' : (lastForme >= 45 ? 'var(--text)' : 'var(--warn)')) : 'var(--text-subtle)'; foSub = 'forme actuelle · tendance dès ~4 sem.';
   } else {
     chBig = chPct == null ? '—' : (chPct > 8 ? '↑ en hausse' : (chPct < -8 ? '↓ en baisse' : '→ stable'));
     chCol = chPct == null ? 'var(--text-subtle)' : (chPct > 15 ? 'var(--warn)' : 'var(--text)');
@@ -13501,7 +13505,7 @@ function _maCroise(data) {
     foCol = foPct == null ? 'var(--text-subtle)' : (foPct < -8 ? 'var(--bad)' : (foPct > 5 ? 'var(--good)' : 'var(--text)'));
     foSub = (lastForme != null ? (lastForme + '/100 · récup') : 'bien-être');
   }
-  var indic = _maSec('Charge vs forme', trendOk ? _w.plabel : 'pas assez de recul')
+  var indic = _maSec('Charge vs forme', trendOk ? _w.plabel : (_w.plabel + ' · tendance dès ~4 sem.'))
     + '<div style="display:flex;gap:9px">'
     + tile('Charge d\'entraînement', chBig, chCol, chSub)
     + tile('Forme (récupération)', foBig, foCol, foSub)
