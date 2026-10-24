@@ -12788,17 +12788,22 @@ function _maProgExo(data) {
   var progAll = (data.historique && data.historique.progression_par_exo) || {};
   var _w = _maWin();
   function _isoOf(p) { var d = String(p.date || ''); return d.indexOf('/') !== -1 ? d.split('/').reverse().join('-') : d; }
-  // Période navigable : points dont la date ∈ [début, fin) de la fenêtre choisie.
-  var prog = {};
-  Object.keys(progAll).forEach(function (k) { var kept = (progAll[k] || []).filter(function (p) { var i = _isoOf(p); return i >= _w.startISO && i < _w.endISO; }); if (kept.length) prog[k] = kept; });
-  var exos = Object.keys(prog).filter(function (k) { return (prog[k] || []).length >= 1; }).sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; });
-  if (!exos.length) return _maEmpty('Aucun exercice suivi sur ' + (_w.plabel || 'la période') + '.');
-  var sel = (_maExoSel && exos.indexOf(_maExoSel) >= 0) ? _maExoSel : exos[0];
-  var pts = prog[sel].slice().reverse();   // chrono
+  // Liste d'exos = TOUS les exos suivis (INDÉPENDANTE de la période) → naviguer dans
+  // le temps ne change plus l'exercice choisi (bug : avant, la liste était filtrée par
+  // période, donc un exo sans séance sur la fenêtre retombait sur le 1er de la liste).
+  var exosAll = Object.keys(progAll).filter(function (k) { return (progAll[k] || []).length >= 1; }).sort(function (a, b) { return (progAll[b] || []).length - (progAll[a] || []).length; });
+  if (!exosAll.length) return _maEmpty('Aucun exercice suivi pour l\'instant.');
+  var sel = (_maExoSel && exosAll.indexOf(_maExoSel) >= 0) ? _maExoSel : exosAll[0];
+  // Points de l'exo choisi DANS la fenêtre (le graphe suit la période, pas la sélection).
+  var pts = (progAll[sel] || []).filter(function (p) { var i = _isoOf(p); return i >= _w.startISO && i < _w.endISO; }).slice().reverse();   // chrono
   var np = pts.length;
+  var totalSuivi = (progAll[sel] || []).length;
   var muscle = ''; try { (data.seances_detail || []).some(function (s) { return (s.exercices || []).some(function (e) { if (e.nom === sel) { muscle = e.muscle || ''; return true; } return false; }); }); } catch (e) {}
-  var menu = '<div id="ma-exo-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;max-height:250px;overflow:auto;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">' + exos.map(function (e, i) { return '<div onclick="maSetExo(\'' + _maOnc(e) + '\')" style="padding:10px 13px;font-size:13px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (e === sel ? 'background:var(--surface2);' : '') + '">' + _maE(e) + '</div>'; }).join('') + '</div>';
-  var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + prog[sel].length + ' séance' + (prog[sel].length > 1 ? 's' : '') + ' suivie' + (prog[sel].length > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
+  var menu = '<div id="ma-exo-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;max-height:250px;overflow:auto;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">' + exosAll.map(function (e, i) { return '<div onclick="maSetExo(\'' + _maOnc(e) + '\')" style="padding:10px 13px;font-size:13px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (e === sel ? 'background:var(--surface2);' : '') + '">' + _maE(e) + '</div>'; }).join('') + '</div>';
+  var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + totalSuivi + ' séance' + (totalSuivi > 1 ? 's' : '') + ' suivie' + (totalSuivi > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
+  // 0 séance de cet exo sur la période choisie : on GARDE l'exo sélectionné et on
+  // affiche un état vide (au lieu de basculer sur un autre exercice).
+  if (np === 0) return pick + _maEmpty('Aucune séance de « ' + _maE(sel) + ' » sur ' + (_w.plabel || 'cette période') + '. Change de période (flèches) ou d\'exercice.');
   // Charge en premier (c'est la valeur la plus parlante au quotidien) ; 1RM et
   // Répétitions ensuite. Onglets soulignés (≠ pastilles pleines de la période).
   // 3 métriques : « Charge + reps » (défaut, lecture concrète), « 1RM estimé »
@@ -13478,27 +13483,36 @@ function _maCroise(data) {
     synthese = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict;
   }
 
-  // ── Graphe COMBINÉ : charge (barres) + forme (courbe) sur le même axe ──
-  var chart = '';
-  if (totalW.some(function (v) { return v > 0; })) {
-    var W = 320, H = 132, pad = 16, n = totalW.length || 1, bw = W / n;
-    var barMax = Math.max.apply(null, totalW.concat([1]));
-    var barsSvg = totalW.map(function (v, i) { var h = v > 0 ? Math.max(2, (v / barMax) * (H - pad)) : 0; return '<rect x="' + (i * bw + bw * 0.16).toFixed(1) + '" y="' + (H - pad - h).toFixed(1) + '" width="' + (bw * 0.68).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="#1A5FFF" opacity="0.82"/>'; }).join('');
-    var fpts = []; beW.forEach(function (v, i) { if (v > 0) fpts.push([(i * bw + bw * 0.5), (H - pad) - (Math.max(0, Math.min(100, v)) / 100) * (H - pad)]); });
-    var lineSvg = fpts.length ? ('<path d="M' + fpts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L') + '" fill="none" stroke="#00C96E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + fpts[fpts.length - 1][0].toFixed(1) + '" cy="' + fpts[fpts.length - 1][1].toFixed(1) + '" r="3.4" fill="#00C96E"/>') : '';
-    var legend = '<div style="display:flex;gap:16px;margin-top:10px;font-size:11.5px;color:var(--text-muted);flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:13px;height:9px;border-radius:2px;background:#1A5FFF;display:inline-block"></i>Charge (muscu + cardio)</span><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:9px;height:9px;border-radius:50%;background:#00C96E;display:inline-block"></i>Forme / récup</span></div>';
-    var warn = (trendOk && chUp && foDown) ? '<div style="font-size:11.5px;color:var(--warn);font-weight:700;margin-top:9px">⚠ Charge en hausse + forme en baisse → fenêtre de vigilance (fatigue qui s\'installe).</div>' : '';
-    chart = _maSec('Charge vs forme', 'charge + récup · par ' + _bNoun + ' · ' + _w.plabel)
-      + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">Charge + forme</span><span style="font-size:11px;color:var(--text-subtle)">barres = charge · courbe = forme</span></div>'
-      + '<svg width="100%" height="150" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + barsSvg + lineSvg + '</svg>'
-      + legend + warn
-      + _maCap('Barres = charge d\'entraînement de la ' + _bNoun + ' (muscu + cardio). Courbe = forme (récup, 100 = au top). Charge qui monte + forme qui baisse = fatigue à surveiller.') + '</div>';
+  // ── Charge vs forme : 2 TUILES claires (pas de graphe dual-axe illisible) ──
+  // En mots simples : la charge d'entraînement monte/descend/stable, la forme idem.
+  var chPct = (chH.o > 0) ? Math.round((chH.r - chH.o) / chH.o * 100) : null;
+  var foPct = (foH.o > 0) ? Math.round((foH.r - foH.o) / foH.o * 100) : null;
+  var lastForme = (function () { for (var i = beW.length - 1; i >= 0; i--) if (beW[i] > 0) return beW[i]; return null; })();
+  var tile = function (lab, big, bigCol, sub) { return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 13px"><div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + lab + '</div><div style="font-size:16px;font-weight:900;margin-top:3px;color:' + bigCol + '">' + big + '</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:2px">' + sub + '</div></div>'; };
+  var chBig, chCol, chSub, foBig, foCol, foSub;
+  if (!trendOk) {
+    chBig = '—'; chCol = 'var(--text-subtle)'; chSub = 'pas assez de recul';
+    foBig = (lastForme != null ? (lastForme + '/100') : '—'); foCol = 'var(--text-subtle)'; foSub = 'pas assez de recul';
+  } else {
+    chBig = chPct == null ? '—' : (chPct > 8 ? '↑ en hausse' : (chPct < -8 ? '↓ en baisse' : '→ stable'));
+    chCol = chPct == null ? 'var(--text-subtle)' : (chPct > 15 ? 'var(--warn)' : 'var(--text)');
+    chSub = chPct == null ? 'muscu + cardio' : ((chPct >= 0 ? '+' : '') + chPct + '% sur ' + nWeeks + ' sem.');
+    foBig = foPct == null ? '—' : (foPct > 5 ? '↑ en hausse' : (foPct < -5 ? '↓ en baisse' : '→ stable'));
+    foCol = foPct == null ? 'var(--text-subtle)' : (foPct < -8 ? 'var(--bad)' : (foPct > 5 ? 'var(--good)' : 'var(--text)'));
+    foSub = (lastForme != null ? (lastForme + '/100 · récup') : 'bien-être');
   }
+  var indic = _maSec('Charge vs forme', trendOk ? _w.plabel : 'pas assez de recul')
+    + '<div style="display:flex;gap:9px">'
+    + tile('Charge d\'entraînement', chBig, chCol, chSub)
+    + tile('Forme (récupération)', foBig, foCol, foSub)
+    + '</div>'
+    + (trendOk && chUp && foDown ? '<div style="font-size:11.5px;color:var(--warn);font-weight:700;margin-top:9px">⚠ La charge monte pendant que la forme baisse → vigilance (fatigue qui s\'installe).</div>' : '')
+    + _maCap(trendOk ? 'Charge = muscu + cardio sur la période. Forme = récupération (100 = au top). Tendance = 2ᵉ moitié vs 1ʳᵉ moitié de la période.' : 'Les tendances s\'affichent dès ~4 semaines de données (vois Mois / Année).');
 
   var _xrMain = synthese
-    + _maPeriodHtml() + _maPeriodHint('Le sélecteur ajuste la répartition ET le graphe charge/forme ci-dessous.')
+    + _maPeriodHtml() + _maPeriodHint('Le sélecteur ajuste la répartition et les tendances ci-dessous.')
     + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep
-    + (chart || _maEmpty('Le graphe charge/forme se remplit dès ~3-4 semaines de séances + questionnaires.'));
+    + indic;
   _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
   try { _maSet('ma-croise-tendances', ''); } catch (e) {}
 }
