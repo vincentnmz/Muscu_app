@@ -21,30 +21,40 @@
   .view{display:none}.view.on{display:block}
   .lab{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--subtle);margin:4px 2px 9px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px 14px}
-  .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  /* sélecteur de semaine */
+  .wsel{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+  .wsel button{width:30px;height:30px;flex:none;border-radius:9px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:15px;font-weight:800;cursor:pointer;display:grid;place-items:center}
+  .wsel button:hover{border-color:var(--accent2);color:var(--accent2)}
+  .wsel .wl{flex:1;text-align:center}.wsel .wl b{font-size:13px;font-weight:800;display:block}.wsel .wl span{font-size:10px;color:var(--subtle)}
+  .wsel .today{font-size:10px;font-weight:800;color:var(--accent2);background:var(--accent-a);border:1px solid var(--accent2);border-radius:999px;padding:3px 9px;cursor:pointer}
+  .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
   .hd .t{font-size:13px;font-weight:800}.hd .s{font-size:10.5px;color:var(--subtle)}
   .sub{font-size:10.5px;color:var(--subtle);margin:0 0 10px}
   /* DESKTOP : lignes jour (colonne étroite) */
   .drail{max-width:330px}
-  .day{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);cursor:pointer;position:relative}
+  .day{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);cursor:pointer;position:relative;border-radius:8px}
   .day:first-of-type{border-top:none}
-  .day .dd{width:26px;height:26px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--muted);flex:none}
-  .day.has .dd{background:var(--accent-a);border-color:var(--accent2);color:var(--accent2)}
-  .day .ct{flex:1;min-width:0}
-  .pill{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-size:12px;font-weight:700;border-radius:8px;padding:4px 9px;color:#fff}
+  .day.dropok{background:var(--accent-a);box-shadow:inset 0 0 0 1px var(--accent2)}
+  .day .dd{width:30px;height:30px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);display:grid;place-items:center;flex:none;line-height:1}
+  .day .dd b{font-size:11px;font-weight:800;color:var(--muted)}.day .dd span{font-size:8px;color:var(--subtle)}
+  .day.has .dd{background:var(--accent-a);border-color:var(--accent2)}.day.has .dd b{color:var(--accent2)}
+  .day .ct{flex:1;min-width:0;display:flex;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-size:12px;font-weight:700;border-radius:8px;padding:4px 9px;color:#fff;cursor:grab}
+  .pill:active{cursor:grabbing}.pill.dragging{opacity:.4}
+  .pill .gr{opacity:.7;font-size:11px;margin-right:1px}
   .pill small{font-weight:600;opacity:.85;font-size:10px}
   .empty{font-size:11.5px;color:var(--subtle)}.day:hover .empty{color:var(--accent2)}
   .x{margin-left:auto;color:var(--subtle);font-size:14px;flex:none}
-  .menu{position:absolute;left:36px;right:0;top:34px;z-index:5;background:var(--surface);border:1px solid var(--accent2);border-radius:11px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .menu{position:absolute;left:40px;right:0;top:38px;z-index:5;background:var(--surface);border:1px solid var(--accent2);border-radius:11px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .menu div{padding:9px 12px;font-size:12.5px;font-weight:600;cursor:pointer;border-top:1px solid var(--border)}
   .menu div:first-child{border-top:none}.menu div:hover{background:var(--surface2)}
   .menu .mh{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--subtle);cursor:default;background:var(--surface2)}
   .menu .rm{color:var(--bad)}
   /* MOBILE : grille 7 jours pleine largeur */
   .mgrid{display:flex;gap:5px}
-  .mtile{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:7px 3px 8px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:74px;justify-content:flex-start}
-  .mtile.has{border-color:var(--accent2)}
-  .mtile .md{font-size:10px;font-weight:800;color:var(--muted)}
+  .mtile{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:7px 3px 8px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:80px;justify-content:flex-start}
+  .mtile.has{border-color:var(--accent2)}.mtile.dropok{background:var(--accent-a);border-color:var(--accent2)}
+  .mtile .md{font-size:10px;font-weight:800;color:var(--muted);line-height:1.15}.mtile .md span{display:block;font-size:8px;color:var(--subtle);font-weight:700}
   .mtile.has .md{color:var(--accent2)}
   .mtile .mblk{width:100%;border-radius:7px;color:#fff;font-size:10px;font-weight:800;padding:8px 2px;line-height:1.1}
   .mtile .mrest{font-size:16px;color:var(--subtle);margin-top:6px}
@@ -52,7 +62,8 @@
   /* à planifier */
   .topl{margin-top:12px;border-top:1px solid var(--border);padding-top:11px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
-  .chip{font-size:11.5px;font-weight:700;border-radius:8px;padding:5px 10px;color:#fff;cursor:pointer;border:2px dashed rgba(255,255,255,.35)}
+  .chip{font-size:11.5px;font-weight:700;border-radius:8px;padding:5px 10px;color:#fff;cursor:grab;border:2px dashed rgba(255,255,255,.35)}
+  .chip:active{cursor:grabbing}
   .chip.sel{outline:2px solid #fff;outline-offset:1px}
   /* sheet (mobile) */
   .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:none;align-items:flex-end;justify-content:center}
@@ -64,11 +75,12 @@
   .sheet .opt.rm{color:var(--bad);justify-content:center;font-weight:800}
   .note{font-size:11.5px;color:var(--muted);margin:18px 2px 0;line-height:1.55;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
   .note b{color:var(--text)} .note .k{color:var(--accent2);font-weight:800}
+  .note .warn{color:var(--warn);font-weight:800}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <p class="lead">Maquette <b>Agenda coach</b> (Option A) — <b>desktop & mobile</b>. Le coach pose/déplace/retire les séances du programme sur la <b>semaine type</b>. Donnée = <b>programme.jour</b> (route <code>saveProgrammeJour</code>), pas de nouveau backend.</p>
+  <p class="lead">Maquette <b>Agenda coach</b> — <b>desktop & mobile</b>, avec <b>navigation par semaine</b> et <b>glisser-déposer</b> des séances déjà posées. Le coach planifie les séances du programme sur un <b>agenda daté</b>, semaine après semaine.</p>
 
   <div class="vtog">
     <button class="on" onclick="setV('d')">🖥 Desktop (colonne de droite)</button>
@@ -79,12 +91,13 @@
   <div class="view on" id="v-d">
     <div class="lab">Colonne de droite · fiche athlète</div>
     <div class="card drail">
-      <div class="hd"><span class="t">📅 Semaine type</span><span class="s">clique un jour</span></div>
-      <div class="sub">Séances posées sur leurs jours. Jour vide = repos.</div>
+      <div class="wsel" id="wsel-d"></div>
+      <div class="hd"><span class="t">📅 Planning</span><span class="s">glisse une séance</span></div>
+      <div class="sub">Glisse-dépose une séance d'un jour à l'autre. Clic jour vide = poser.</div>
       <div id="week-d"></div>
       <div class="topl">
-        <div class="lab" style="margin:0 2px 2px">À planifier</div>
-        <div class="sub" style="margin:0">Sélectionne une séance puis clique un jour.</div>
+        <div class="lab" style="margin:0 2px 2px">À planifier cette semaine</div>
+        <div class="sub" style="margin:0">Glisse une séance sur un jour (ou sélectionne puis clique).</div>
         <div class="chips" id="unpl-d"></div>
       </div>
     </div>
@@ -94,20 +107,22 @@
   <div class="view" id="v-m">
     <div class="lab">Fiche athlète · pleine largeur</div>
     <div class="card">
-      <div class="hd"><span class="t">📅 Semaine type</span><span class="s">touche un jour</span></div>
-      <div class="sub">Touche un jour pour poser / changer la séance.</div>
+      <div class="wsel" id="wsel-m"></div>
+      <div class="hd"><span class="t">📅 Planning</span><span class="s">touche un jour</span></div>
+      <div class="sub">Touche un jour pour poser / déplacer. Glisse un jour posé pour le bouger.</div>
       <div class="mgrid" id="week-m"></div>
       <div class="topl">
-        <div class="lab" style="margin:0 2px 2px">À planifier</div>
+        <div class="lab" style="margin:0 2px 2px">À planifier cette semaine</div>
         <div class="chips" id="unpl-m"></div>
       </div>
     </div>
   </div>
 
   <div class="note"><b>Interactions</b> :
-    <span class="k">Desktop</span> — clic jour → menu (poser / déplacer / retirer) ; « À planifier » = sélection puis clic jour.
-    <span class="k">Mobile</span> — touche jour → feuille du bas (choisir la séance / retirer).
-    <br><br>Évolution possible : agenda par <b>dates réelles</b> + rappels (Option B).
+    <span class="k">Semaine</span> — flèches ‹ › pour changer de semaine, « Aujourd'hui » pour revenir.
+    <span class="k">Glisser-déposer</span> — attrape une séance posée (ou une puce « À planifier ») et lâche-la sur un jour ; si le jour est pris, les deux s'échangent.
+    <span class="k">Mobile</span> — touche un jour → feuille du bas ; glisser-déposer aussi géré.
+    <br><br><span class="warn">⚠️ À trancher</span> : un planning <b>différent par semaine</b> = vrai <b>agenda daté</b> (une <b>date</b> par séance planifiée, petit ajout backend). L'alternative = garder une <b>semaine type</b> (<code>programme.jour</code>) identique chaque semaine, le sélecteur ne faisant que la projeter. Tu veux l'agenda daté réel ?
   </div>
 </div>
 
@@ -119,91 +134,138 @@
     fba:{nom:'Full Body A', det:'6 exos', ini:'FBA', col:'#1A5FFF'},
     fbb:{nom:'Full Body B', det:'6 exos', ini:'FBB', col:'#00A854'},
     fbc:{nom:'Full Body C', det:'5 exos', ini:'FBC', col:'#9D5FD3'},
-    jbs:{nom:'Jambes', det:'5 exos', ini:'JAM', col:'#E07800'}
+    jbs:{nom:'Jambes',      det:'5 exos', ini:'JAM', col:'#E07800'}
   };
-  var WEEK = ['fba', null, 'fbb', null, 'fbc', null, null];
-  var UNPL = ['jbs'];
+  var PROG = ['fba','fbb','fbc','jbs'];                 // séances du programme
+  // Planning par semaine (offset → 7 jours). Deux semaines différentes = démo agenda daté.
+  var PLAN = {
+    0:  ['fba', null, 'fbb', null, 'fbc', null, null],
+    1:  ['fba', null, null, 'fbb', null, 'jbs', null]
+  };
+  var curW = 0;
   var DAYS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   var ABBR = ['L','M','M','J','V','S','D'];
-  var selChip = null, openMenu = null;
+  var MON  = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  var BASE_MON = new Date(2026,9,19);                   // lundi 19 oct. 2026 = semaine 0
+  var selChip = null, openMenu = null, drag = null;
+
+  function wk(){ if(!PLAN[curW]) PLAN[curW]=[null,null,null,null,null,null,null]; return PLAN[curW]; }
+  function dateOf(i){ var d=new Date(BASE_MON); d.setDate(d.getDate()+curW*7+i); return d; }
+  function fmt(d){ return d.getDate()+' '+MON[d.getMonth()]; }
+  function unpl(){ var p=wk(); return PROG.filter(function(s){ return p.indexOf(s)<0; }); }
 
   function setV(v){ document.querySelectorAll('.vtog button').forEach(function(b,i){ b.classList.toggle('on',(v==='d')===(i===0)); }); document.getElementById('v-d').classList.toggle('on',v==='d'); document.getElementById('v-m').classList.toggle('on',v==='m'); closeMenu(); render(); }
   function closeMenu(){ if(openMenu){ openMenu.remove(); openMenu=null; } }
   document.body.addEventListener('click', closeMenu);
+  function goW(d){ curW+=d; closeMenu(); render(); }
+  function todayW(){ curW=0; closeMenu(); render(); }
+
+  function wselInto(id){
+    var e=document.getElementById(id); var a=dateOf(0), b=dateOf(6);
+    var lab = curW===0 ? 'Cette semaine' : (curW===1?'Semaine prochaine':(curW===-1?'Semaine dernière':'Semaine '+(curW>0?'+':'')+curW));
+    e.innerHTML='<button onclick="goW(-1)">‹</button>'
+      +'<div class="wl"><b>'+lab+'</b><span>'+fmt(a)+' – '+fmt(b)+'</span></div>'
+      + (curW!==0?'<span class="today" onclick="todayW()">Aujourd\'hui</span>':'')
+      +'<button onclick="goW(1)">›</button>';
+  }
 
   function render(){
+    wselInto('wsel-d'); wselInto('wsel-m');
+    var p=wk();
     // Desktop rows
     var w=document.getElementById('week-d'); w.innerHTML='';
-    WEEK.forEach(function(sid,i){
-      var row=document.createElement('div'); row.className='day'+(sid?' has':'');
-      var h='<div class="dd">'+ABBR[i]+'</div><div class="ct">';
-      if(sid){var s=SEANCES[sid]; h+='<span class="pill" style="background:'+s.col+'">'+s.nom+' <small>'+s.det+'</small></span><span class="x">⋯</span>';}
-      else h+='<span class="empty">— repos · <b>+ poser une séance</b></span>';
+    p.forEach(function(sid,i){
+      var dt=dateOf(i);
+      var row=document.createElement('div'); row.className='day'+(sid?' has':''); row.dataset.i=i;
+      var h='<div class="dd"><b>'+ABBR[i]+'</b><span>'+dt.getDate()+'</span></div><div class="ct">';
+      if(sid){var s=SEANCES[sid]; h+='<span class="pill" draggable="true" data-pi="'+i+'" style="background:'+s.col+'"><span class="gr">⠿</span>'+s.nom+' <small>'+s.det+'</small></span><span class="x">⋯</span>';}
+      else h+='<span class="empty">— repos · <b>+ poser</b></span>';
       row.innerHTML=h+'</div>';
-      row.onclick=function(e){ e.stopPropagation(); onDayDesk(i,row); };
+      row.onclick=function(e){ if(e.target.closest('.pill')) return; e.stopPropagation(); onDayDesk(i,row); };
+      row.addEventListener('dragover', function(e){ e.preventDefault(); row.classList.add('dropok'); });
+      row.addEventListener('dragleave', function(){ row.classList.remove('dropok'); });
+      row.addEventListener('drop', function(e){ e.preventDefault(); row.classList.remove('dropok'); doDrop(i); });
       w.appendChild(row);
+    });
+    w.querySelectorAll('.pill[draggable]').forEach(function(pl){
+      pl.addEventListener('dragstart', function(){ drag={from:+pl.dataset.pi}; pl.classList.add('dragging'); });
+      pl.addEventListener('dragend', function(){ pl.classList.remove('dragging'); drag=null; });
     });
     chipsInto('unpl-d', false);
     // Mobile grid
     var g=document.getElementById('week-m'); g.innerHTML='';
-    WEEK.forEach(function(sid,i){
-      var t=document.createElement('div'); t.className='mtile'+(sid?' has':'');
-      var h='<div class="md">'+ABBR[i]+'</div>';
-      if(sid){var s=SEANCES[sid]; h+='<div class="mblk" style="background:'+s.col+'">'+s.ini+'</div>';}
+    p.forEach(function(sid,i){
+      var dt=dateOf(i);
+      var t=document.createElement('div'); t.className='mtile'+(sid?' has':''); t.dataset.i=i;
+      var h='<div class="md">'+ABBR[i]+'<span>'+dt.getDate()+'</span></div>';
+      if(sid){var s=SEANCES[sid]; h+='<div class="mblk" draggable="true" data-pi="'+i+'" style="background:'+s.col+'">'+s.ini+'</div>';}
       else h+='<div class="mrest">+</div>';
       t.innerHTML=h;
-      t.onclick=function(e){ e.stopPropagation(); openSheet(i); };
+      t.onclick=function(e){ if(e.target.closest('.mblk')&&drag) return; e.stopPropagation(); openSheet(i); };
+      t.addEventListener('dragover', function(e){ e.preventDefault(); t.classList.add('dropok'); });
+      t.addEventListener('dragleave', function(){ t.classList.remove('dropok'); });
+      t.addEventListener('drop', function(e){ e.preventDefault(); t.classList.remove('dropok'); doDrop(i); });
       g.appendChild(t);
+    });
+    g.querySelectorAll('.mblk[draggable]').forEach(function(bl){
+      bl.addEventListener('dragstart', function(){ drag={from:+bl.dataset.pi}; });
+      bl.addEventListener('dragend', function(){ drag=null; });
     });
     chipsInto('unpl-m', true);
   }
+
+  function doDrop(toDay){
+    var p=wk();
+    if(!drag) return;
+    if(drag.unpl){ p[toDay]=drag.unpl; }                               // depuis « à planifier »
+    else { var from=drag.from; var tmp=p[toDay]; p[toDay]=p[from]; p[from]=tmp; }   // échange entre jours
+    drag=null; render();
+  }
+
   function chipsInto(id, mobile){
-    var u=document.getElementById(id); u.innerHTML='';
-    if(!UNPL.length){ u.innerHTML='<span class="sub" style="margin:0">Tout est planifié ✓</span>'; return; }
-    UNPL.forEach(function(sid){ var s=SEANCES[sid]; var c=document.createElement('span'); c.className='chip'+(selChip===sid?' sel':''); c.style.background=s.col; c.textContent=s.nom;
-      c.onclick=function(e){ e.stopPropagation(); if(mobile){ /* sur mobile : on ouvre direct le choix du jour */ selChip=sid; openSheetPlaceDay(); } else { selChip=(selChip===sid?null:sid); render(); } };
+    var u=document.getElementById(id); u.innerHTML=''; var list=unpl();
+    if(!list.length){ u.innerHTML='<span class="sub" style="margin:0">Tout est planifié ✓</span>'; return; }
+    list.forEach(function(sid){ var s=SEANCES[sid]; var c=document.createElement('span'); c.className='chip'+(selChip===sid?' sel':''); c.style.background=s.col; c.textContent=s.nom; c.draggable=true;
+      c.addEventListener('dragstart', function(){ drag={unpl:sid}; });
+      c.addEventListener('dragend', function(){ drag=null; });
+      c.onclick=function(e){ e.stopPropagation(); if(mobile){ selChip=sid; openSheetPlaceDay(); } else { selChip=(selChip===sid?null:sid); render(); } };
       u.appendChild(c); });
   }
 
-  // ---- Desktop : menu inline ----
+  // ---- Desktop : menu inline (poser / retirer) ----
   function onDayDesk(i,row){
-    closeMenu();
-    if(selChip){ if(WEEK[i]) UNPL.push(WEEK[i]); UNPL.splice(UNPL.indexOf(selChip),1); WEEK[i]=selChip; selChip=null; render(); return; }
+    closeMenu(); var p=wk();
+    if(selChip){ p[i]=selChip; selChip=null; render(); return; }
     var m=document.createElement('div'); m.className='menu';
-    if(WEEK[i]){ m.innerHTML='<div class="mh">'+DAYS[i]+' · '+SEANCES[WEEK[i]].nom+'</div><div data-act="move">Déplacer vers un autre jour…</div><div class="rm" data-act="rm">Retirer (jour de repos)</div>'; }
-    else { var opts=Object.keys(SEANCES).filter(function(k){return WEEK.indexOf(k)<0;}); m.innerHTML='<div class="mh">Poser le '+DAYS[i]+'</div>'+(opts.length?opts.map(function(k){return '<div data-put="'+k+'">'+SEANCES[k].nom+' · <span style="color:var(--subtle)">'+SEANCES[k].det+'</span></div>';}).join(''):'<div style="color:var(--subtle)">Aucune séance libre</div>'); }
+    if(p[i]){ m.innerHTML='<div class="mh">'+DAYS[i]+' '+dateOf(i).getDate()+' · '+SEANCES[p[i]].nom+'</div><div class="rm" data-act="rm">Retirer (repos)</div><div class="mh" style="background:none;color:var(--subtle)">Astuce : glisse la pastille pour la déplacer</div>'; }
+    else { var opts=unpl(); m.innerHTML='<div class="mh">Poser le '+DAYS[i]+' '+dateOf(i).getDate()+'</div>'+(opts.length?opts.map(function(k){return '<div data-put="'+k+'">'+SEANCES[k].nom+' · <span style="color:var(--subtle)">'+SEANCES[k].det+'</span></div>';}).join(''):'<div style="color:var(--subtle)">Toutes les séances sont déjà posées cette semaine</div>'); }
     m.onclick=function(e){ e.stopPropagation(); var t=e.target.closest('div[data-act],div[data-put]'); if(!t) return;
-      if(t.dataset.put){ WEEK[i]=t.dataset.put; var ui=UNPL.indexOf(t.dataset.put); if(ui>=0) UNPL.splice(ui,1); }
-      else if(t.dataset.act==='rm'){ UNPL.push(WEEK[i]); WEEK[i]=null; }
-      else if(t.dataset.act==='move'){ selChip=WEEK[i]; UNPL.push(WEEK[i]); WEEK[i]=null; }
+      if(t.dataset.put){ p[i]=t.dataset.put; } else if(t.dataset.act==='rm'){ p[i]=null; }
       closeMenu(); render();
     };
     row.appendChild(m); openMenu=m;
   }
 
   // ---- Mobile : feuille du bas ----
-  var _sheetDay=null;
   function openSheet(i){
-    _sheetDay=i; var s=document.getElementById('sheet');
-    var h='<h4>'+DAYS[i]+'</h4>';
-    if(WEEK[i]){ var cur=SEANCES[WEEK[i]]; h+='<div class="opt" style="border-color:'+cur.col+'"><span class="dot" style="background:'+cur.col+'"></span>'+cur.nom+' · '+cur.det+'</div>'; h+='<div style="font-size:11px;color:var(--subtle);margin:6px 2px 8px">Remplacer par :</div>'; }
-    Object.keys(SEANCES).filter(function(k){return WEEK.indexOf(k)<0;}).forEach(function(k){ var sc=SEANCES[k]; h+='<div class="opt" data-put="'+k+'"><span class="dot" style="background:'+sc.col+'"></span>'+sc.nom+' · '+sc.det+'</div>'; });
-    if(WEEK[i]) h+='<div class="opt rm" data-rm="1">Retirer (jour de repos)</div>';
+    var p=wk(); var s=document.getElementById('sheet');
+    var h='<h4>'+DAYS[i]+' '+fmt(dateOf(i))+'</h4>';
+    if(p[i]){ var cur=SEANCES[p[i]]; h+='<div class="opt" style="border-color:'+cur.col+'"><span class="dot" style="background:'+cur.col+'"></span>'+cur.nom+' · '+cur.det+'</div><div style="font-size:11px;color:var(--subtle);margin:6px 2px 8px">Remplacer par :</div>'; }
+    unpl().forEach(function(k){ var sc=SEANCES[k]; h+='<div class="opt" data-put="'+k+'"><span class="dot" style="background:'+sc.col+'"></span>'+sc.nom+' · '+sc.det+'</div>'; });
+    if(p[i]) h+='<div class="opt rm" data-rm="1">Retirer (repos)</div>';
     s.innerHTML=h;
     s.onclick=function(e){ var t=e.target.closest('div[data-put],div[data-rm]'); if(!t) return;
-      if(t.dataset.put){ if(WEEK[i]) UNPL.push(WEEK[i]); WEEK[i]=t.dataset.put; var ui=UNPL.indexOf(t.dataset.put); if(ui>=0) UNPL.splice(ui,1); }
-      else { UNPL.push(WEEK[i]); WEEK[i]=null; }
+      if(t.dataset.put){ p[i]=t.dataset.put; } else { p[i]=null; }
       closeSheet(); render();
     };
     document.getElementById('ov').classList.add('on');
   }
   function openSheetPlaceDay(){
-    var s=document.getElementById('sheet');
-    var sc=SEANCES[selChip];
+    var p=wk(); var s=document.getElementById('sheet'); var sc=SEANCES[selChip];
     var h='<h4>Poser « '+sc.nom+' » quel jour ?</h4>';
-    DAYS.forEach(function(d,i){ h+='<div class="opt" data-day="'+i+'"><span class="dot" style="background:'+(WEEK[i]?SEANCES[WEEK[i]].col:'var(--border)')+'"></span>'+d+(WEEK[i]?(' · occupé ('+SEANCES[WEEK[i]].ini+')'):' · repos')+'</div>'; });
+    DAYS.forEach(function(d,i){ h+='<div class="opt" data-day="'+i+'"><span class="dot" style="background:'+(p[i]?SEANCES[p[i]].col:'var(--border)')+'"></span>'+d+' '+dateOf(i).getDate()+(p[i]?(' · occupé ('+SEANCES[p[i]].ini+')'):' · repos')+'</div>'; });
     s.innerHTML=h;
-    s.onclick=function(e){ var t=e.target.closest('div[data-day]'); if(!t) return; var i=+t.dataset.day; if(WEEK[i]) UNPL.push(WEEK[i]); UNPL.splice(UNPL.indexOf(selChip),1); WEEK[i]=selChip; selChip=null; closeSheet(); render(); };
+    s.onclick=function(e){ var t=e.target.closest('div[data-day]'); if(!t) return; var i=+t.dataset.day; p[i]=selChip; selChip=null; closeSheet(); render(); };
     document.getElementById('ov').classList.add('on');
   }
   function closeSheet(){ document.getElementById('ov').classList.remove('on'); selChip=null; }
