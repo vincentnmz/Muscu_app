@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Générateur v2 — 2 parcours</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.14);
+    --good:#00c96e; --warn:#f5a623; --ss:#ec4899;
+    --d1:#1a5fff; --d2:#7c5cff; --d3:#00a854; --d4:#e07800; --d5:#ec4899; --d6:#0ea5a3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:22px 16px 56px}
+  .wrap{max-width:600px;margin:0 auto}
+  h1{font-size:20px;font-weight:900;margin:0 0 3px}
+  .lead{font-size:12.5px;color:var(--muted);margin:0 0 16px}
+  .lead b{color:var(--text)}
+  .q{margin-bottom:13px}
+  .q-l{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle);margin:0 2px 7px}
+  .q-l em{font-style:normal;color:var(--accent2);font-weight:800}
+  .opts{display:flex;flex-wrap:wrap;gap:7px}
+  .opt{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:9px 11px;cursor:pointer;text-align:center;transition:.12s}
+  .opt small{display:block;font-weight:600;font-size:10px;color:var(--subtle);margin-top:2px;white-space:normal}
+  .opt:hover{color:var(--text)}
+  .opt.on{background:var(--accent-a);border-color:var(--accent);color:var(--accent2)}
+  .opt.on small{color:var(--accent2);opacity:.85}
+  .opt.off{opacity:.3;pointer-events:none}
+  .seg{display:flex;gap:0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:3px;margin-bottom:16px}
+  .seg .opt{flex:1;border:none;background:transparent;border-radius:9px;margin:0}
+  .seg .opt.on{background:var(--accent);color:#fff}
+  .seg .opt.on small{color:#dbe4ff}
+  /* galerie débutant */
+  .gal-l{font-size:12px;color:var(--muted);margin:2px 2px 10px}
+  .card{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px 14px;margin-bottom:9px;cursor:pointer;transition:.12s}
+  .card:hover{border-color:var(--accent2)}
+  .card.on{border-color:var(--accent);background:var(--accent-a)}
+  .card-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .card-nm{font-size:14.5px;font-weight:900}
+  .card-badge{font-size:10px;font-weight:800;color:var(--accent2);background:var(--accent-a);border:1px solid var(--border);border-radius:7px;padding:2px 7px;white-space:nowrap}
+  .card-desc{font-size:11.5px;color:var(--muted);margin-top:5px}
+  /* résultat */
+  .sumline{font-size:12px;color:var(--muted);margin:16px 2px 6px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
+  .sumline b{color:var(--text)}
+  .convnote{font-size:11px;color:var(--subtle);margin:0 2px 12px;padding:0 2px}
+  .plannote{font-size:11.5px;color:var(--accent2);margin:0 2px 12px;padding:9px 12px;background:var(--accent-a);border:1px solid var(--border);border-radius:10px;font-weight:600}
+  .sess{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:11px;border-left:4px solid var(--accent)}
+  .sess.custom{border-left-style:dashed}
+  .sess-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .sess-nm{font-size:15px;font-weight:900}
+  .sess-day{font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap}
+  .ex{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--border)}
+  .ex:first-of-type{border-top:none}
+  .ex-dot{width:7px;height:7px;border-radius:50%;flex:none;margin-top:5px}
+  .ex-main{flex:1;min-width:0}
+  .ex-nm{font-size:13.5px;font-weight:700}
+  .ex-mus{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--subtle);margin-bottom:1px}
+  .ex-var{font-size:11px;color:var(--muted);margin-top:2px}
+  .ex-var b{color:var(--subtle);font-weight:700}
+  .ex-sets{font-size:12.5px;font-weight:800;color:var(--accent2);white-space:nowrap;text-align:right}
+  .ex-sets small{display:block;font-size:9.5px;color:var(--muted);font-weight:700;margin-top:1px}
+  .ex-x{color:var(--subtle);font-size:14px;font-weight:700;padding:2px 4px;cursor:pointer;flex:none}
+  .ss-tag{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#fff;background:var(--ss);border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+  .add-row{display:flex;align-items:center;gap:7px;padding:9px 0 2px;border-top:1px dashed var(--border);color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer}
+  .rest-row{display:flex;align-items:center;gap:8px;margin:4px 2px 13px;font-size:11px;color:var(--subtle)}
+  .rest-row span{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--border) 0 6px,transparent 6px 11px)}
+  /* Force : lignes à listes déroulantes */
+  .frow{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--border)}
+  .frow:first-of-type{border-top:none}
+  .frow-dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .dd{flex:1;min-width:0;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:8px 9px;font-size:13px;font-weight:700;font-family:inherit;appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="7" viewBox="0 0 10 7"><path d="M1 1l4 4 4-4" stroke="%238b96b0" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>');background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;cursor:pointer}
+  .dd.lift{border-color:#3a4f8a;color:#aec0ff;font-weight:800}
+  .fsch{font-size:11px;font-weight:800;color:var(--accent2);white-space:nowrap;text-align:right;min-width:92px}
+  .fsch small{display:block;font-size:9px;color:var(--muted);font-weight:700}
+  .frow-x{color:var(--subtle);font-size:15px;font-weight:700;padding:2px 3px;cursor:pointer;flex:none}
+  .frow-x:hover{color:var(--warn)}
+  .fadd{display:inline-flex;align-items:center;gap:6px;margin-top:9px;color:var(--accent2);font-size:12px;font-weight:800;cursor:pointer;background:none;border:none;padding:4px 2px}
+  .sess.renfo{border-left-style:dashed;opacity:.96}
+  .sess-rm{font-size:10.5px;font-weight:800;color:var(--subtle);cursor:pointer;border:1px solid var(--border);border-radius:7px;padding:2px 7px}
+  .sess-rm:hover{color:var(--warn);border-color:var(--warn)}
+  .ftag{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:5px;padding:1px 6px;margin-left:7px;vertical-align:middle}
+  .ftag.lift{background:#1a2d5c;color:#aec0ff}
+  .ftag.opt{background:var(--surface2);color:var(--subtle);border:1px solid var(--border)}
+  .note{font-size:11.5px;color:var(--muted);margin:16px 2px 0;line-height:1.55;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
+  .note b{color:var(--warn)}
+  .note .ok{color:var(--good)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Générateur v2 — 2 parcours</h1>
+  <p class="lead">Le <b>niveau</b> change tout le parcours : <b>Débutant</b> = galerie de programmes tout faits (expliqués) · <b>Interméd./Avancé</b> = configurateur (organisation + jours + temps), puis l'athlète <b>planifie lui-même</b>. Blocs & exos = catalogue réel.</p>
+
+  <div class="seg" id="seg-niv"></div>
+
+  <!-- Parcours débutant -->
+  <div id="path-deb" style="display:none">
+    <div class="gal-l">Choisis le programme qui te correspond — tu pourras en changer plus tard.</div>
+    <div id="gallery"></div>
+  </div>
+
+  <!-- Parcours inter/avancé -->
+  <div id="path-cfg" style="display:none">
+    <div class="q"><div class="q-l">Objectif</div><div class="opts" id="q-obj"></div></div>
+    <div class="q" id="wrap-orgq"><div class="q-l">Organisation</div><div class="opts" id="q-org"></div></div>
+    <div class="q"><div class="q-l">Jours / semaine <em id="j-cond"></em></div><div class="opts" id="q-jours"></div></div>
+    <div class="q" id="wrap-tempsq"><div class="q-l">Temps par séance</div><div class="opts" id="q-temps"></div></div>
+  </div>
+
+  <div class="sumline" id="sumline"></div>
+  <div class="convnote" id="convnote"></div>
+  <div class="plannote" id="plannote"></div>
+  <div id="prog"></div>
+  <div class="note" id="auditnote"></div>
+</div>
+
+<script>
+/* ============================ BLOCS MUSCLE (écrits 1 fois) ============================ */
+var BLOCKS = {
+  pecs:{mus:'Pectoraux',col:'var(--d1)',slots:[
+    {lab:'Écarté',type:'iso',rmin:12,rmax:15,exos:['Ecarté poulie haute','Ecarté machine','Ecarté poulie basse']},
+    {lab:'Incliné',type:'poly',rmin:8,rmax:12,exos:['Développé incliné Hammer','Développé incliné à la Smith','Développé couché incliné haltère']},
+    {lab:'Horizontal',type:'poly',rmin:8,rmax:10,exos:['Développé couché haltère','Développé machine Hammer','Développé machine','Développé couché barre']},
+    {lab:'Décliné',type:'poly',rmin:10,rmax:12,exos:['Développé décliné machine','Développé décliné à la Smith']}
+  ]},
+  dos:{mus:'Dos',col:'var(--d2)',slots:[
+    {lab:'Vertical',type:'poly',rmin:8,rmax:12,exos:['Traction','Tirage vertical prise large','Tirage vertical prise serrée']},
+    {lab:'Horizontal',type:'poly',rmin:8,rmax:12,exos:['T-bar row prise basse','Rowing machine','Rowing bucheron','Rowing barre']},
+    {lab:'Vertical serré',type:'poly',rmin:8,rmax:12,exos:['Tirage vertical prise serrée','Tirage vertical uni à la poulie']},
+    {lab:'Épaisseur',type:'poly',rmin:10,rmax:15,exos:['Tirage trapèze machine','T-bar row prise haute','shrugs aux haltéres','shrugs barre']}
+  ]},
+  epaules:{mus:'Épaules',col:'var(--d4)',slots:[
+    {lab:'Latéral',type:'iso',rmin:12,rmax:15,exos:['Élévation latérale haltère','Elévation latérale uni à la poulie']},
+    {lab:'Développé',type:'poly',rmin:8,rmax:12,exos:['Développé militaire aux haltères','Développé militaire à la Smith']},
+    {lab:'Frontal',type:'iso',rmin:10,rmax:15,exos:['Élévation frontale haltères','Élévation frontale poulie','Élévation frontale barre']},
+    {lab:'Arrière',type:'iso',rmin:12,rmax:15,exos:['Arrière épaule à la poulie','Arrière épaule haltère']},
+    {lab:'Trapèzes',type:'iso',rmin:10,rmax:15,exos:['shrugs aux haltéres','shrugs barre','Tirage trapèze machine']}
+  ]},
+  biceps:{mus:'Biceps',col:'var(--d5)',slots:[
+    {lab:'Incliné',type:'iso',rmin:8,rmax:12,exos:['Curl incliné au banc','Curl incliné uni poignée à la poulie']},
+    {lab:'Marteau',type:'iso',rmin:10,rmax:15,exos:['Curl marteau aux haltéres','Curl marteau à la poulie']},
+    {lab:'Curl',type:'iso',rmin:8,rmax:12,exos:['Curl à la poulie','Curl haltères','Curl barre']}
+  ]},
+  triceps:{mus:'Triceps',col:'var(--d5)',slots:[
+    {lab:'Extension',type:'iso',rmin:8,rmax:12,exos:['Extension poulie barre','Dips triceps','Extension poulie corde']},
+    {lab:'Extension',type:'iso',rmin:10,rmax:15,exos:['Extension triceps banc','Extension poulie corde','Extension dos à la poulie corde']}
+  ]},
+  quad:{mus:'Quadriceps',col:'var(--d3)',slots:[
+    {lab:'Squat',type:'poly',rmin:6,rmax:8,exos:['Squat','Hack squat','Belt squat']},
+    {lab:'Presse',type:'poly',rmin:8,rmax:12,exos:['Presse inclinée','Presse horizontale','Pendulum']},
+    {lab:'Extension',type:'iso',rmin:12,rmax:15,exos:['Leg extension']}
+  ]},
+  ischios:{mus:'Ischios',col:'var(--d3)',slots:[
+    {lab:'Hip hinge',type:'poly',rmin:8,rmax:12,exos:['RDL barre','RDL haltère']},
+    {lab:'Leg curl',type:'iso',rmin:10,rmax:15,exos:['Leg curl assis','Leg curl allongé','Leg curl debout']}
+  ]},
+  fessiers:{mus:'Fessiers',col:'var(--d3)',slots:[
+    {lab:'Poussée',type:'poly',rmin:8,rmax:12,exos:['Hip thrust','Hip thrust machine','Abduction machine','Fente bulgare','Fente longue']}
+  ]},
+  mollets:{mus:'Mollets',col:'var(--d3)',slots:[
+    {lab:'Extensions',type:'iso',rmin:12,rmax:20,exos:['Les extensions mollets debout','Les extensions mollets assis','à la presse']}
+  ]},
+  abdos:{mus:'Abdos',col:'var(--d6)',slots:[
+    {lab:'Gainage',type:'iso',rmin:0,rmax:0,exos:['Crunch à la poulie','Relevé de jambe','Roulette']}
+  ]}
+};
+
+/* ============================ GÉNÉRATEUR : organisation + jours -> séances ============================ */
+var DAYSMAP={2:[1,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5],6:[1,2,3,4,5,6]};
+var JLOGIC={fb:[2,3,4],ul:[2,4,6],ppl:[3,4,5,6],split:[5,6],custom:[2,3,4,5,6]};
+var ORGS=[['fb','Full Body'],['ul','Upper / Lower'],['ppl','PPL'],['split','Split'],['custom','Custom']];
+var JNAMES=['','Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+function genDays(org,jours){
+  var J=DAYSMAP[jours]||DAYSMAP[3], out=[];
+  if(org==='fb'){
+    return J.map(function(dn,k){ return {nm:'Full Body '+['A','B','C','D'][k%4],d:dn,ss:1,off:k,
+      b:[['quad',1],['pecs',1],['dos',1],['epaules',1],['biceps',1],['triceps',1],['ischios',1],['mollets',1],['abdos',1]]}; });
+  }
+  if(org==='ul'){
+    return J.map(function(dn,k){ var up=k%2===0, tag=(Math.floor(k/2)%2===0)?'A':'B', off=Math.floor(k/2);
+      return up ? {nm:'Haut '+tag,d:dn,ss:1,off:off,b:[['pecs',2],['dos',2],['epaules',2],['biceps',2],['triceps',1]]}
+                : {nm:'Bas '+tag,d:dn,off:off,b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1],['abdos',1]]}; });
+  }
+  if(org==='ppl'){
+    var base=[{nm:'Push',b:[['pecs',3],['epaules',2],['triceps',2]]},
+              {nm:'Pull',b:[['dos',3],['epaules',1],['biceps',2]]},
+              {nm:'Legs',b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]}];
+    for(var k=0;k<jours;k++){
+      if(k<3 || jours===6){ var t=base[k%3]; out.push({nm:t.nm+(jours===6?(k<3?' A':' B'):''),d:J[k],off:Math.floor(k/3),b:t.b}); }
+      else if(k===3){ out.push({nm:'Haut (rappel)',d:J[k],ss:1,b:[['pecs',2],['dos',2],['epaules',2],['biceps',1],['triceps',1]]}); }
+      else if(k===4){ out.push({nm:'Bas (rappel)',d:J[k],b:[['quad',2],['ischios',2],['fessiers',1],['mollets',1],['abdos',1]]}); }
+    }
+    return out;
+  }
+  if(org==='split'){
+    var days=[{nm:'Pectoraux',b:[['pecs',4]]},{nm:'Dos',b:[['dos',4]]},
+      {nm:'Jambes',b:[['quad',3],['ischios',2],['fessiers',1],['mollets',1]]},
+      {nm:'Épaules',b:[['epaules',5]]},{nm:'Bras',b:[['triceps',2],['biceps',3],['abdos',1]]}];
+    out=days.slice(0,Math.min(jours,5)).map(function(t,k){return {nm:t.nm,d:J[k],b:t.b};});
+    if(jours===6) out.push({nm:'Points faibles',d:J[5],ss:1,b:[['epaules',2],['biceps',1],['triceps',1],['mollets',1]]});
+    return out;
+  }
+  if(org==='custom'){
+    var baseMap={2:'fb',3:'ppl',4:'ul',5:'split',6:'ppl'};
+    var base=genDays(baseMap[jours]||'fb',jours);
+    base.forEach(function(d){ d.custom=1; });
+    return base;
+  }
+  return out;
+}
+
+/* ============================ GALERIE DÉBUTANT ============================ */
+var PRESETS=[
+  {org:'fb',jours:2,nm:'Full Body découverte',badge:'2 j',desc:'Tout le corps à chaque séance. Idéal pour débuter ou reprendre : on apprend les mouvements, 2 fois par semaine suffisent.'},
+  {org:'fb',jours:3,nm:'Full Body',badge:'3 j',desc:'Même logique, une séance de plus pour progresser plus vite. Angles d\'exercices qui tournent d\'une séance à l\'autre.'},
+  {org:'ppl',jours:3,nm:'Push / Pull / Legs',badge:'3 j',desc:'Pousser (pecs/épaules/triceps), tirer (dos/biceps), jambes. Structure claire et complète, 1 séance par fonction.'},
+  {org:'ul',jours:4,nm:'Upper / Lower',badge:'4 j',desc:'Haut puis bas, en alternance. Bon compromis entre volume et récupération quand tu peux venir 4 fois.'},
+  {org:'split',jours:5,nm:'Split — 1 muscle / jour',badge:'5 j',desc:'Un groupe musculaire par séance (pecs, dos, jambes, épaules, bras). Plus de volume ciblé, pour qui vient souvent.'}
+];
+
+/* ============================ ÉTAT & OUTILS ============================ */
+var OBJ=[['hypertrophie','Hypertrophie','Prise de muscle'],['force','Force','Powerlifting']];
+var TEMPS=[[45,'45 min'],[60,'60 min'],[75,'75 min'],[90,'90 min']];
+var CAP={45:5,60:6,75:8,90:9};
+var st={niv:'intermediaire',obj:'hypertrophie',org:'ul',jours:4,temps:60,preset:0};
+
+function buildSession(day,cap){
+  // slots demandés par bloc (séance "ambitieuse")
+  var byBlock=[];
+  day.b.forEach(function(pair,bi){ var bk=pair[0], L=BLOCKS[bk].slots.length, n=Math.min(pair[1],L), off=day.off||0;
+    var arr=[]; for(var i=0;i<n;i++) arr.push({bk:bk,si:(i+off)%L,bi:bi,pk:i}); byBlock.push(arr); });
+  // round-robin par priorité : passe 0 = 1er exo de chaque muscle, passe 1 = 2e, ...
+  var maxN=0; byBlock.forEach(function(a){ if(a.length>maxN)maxN=a.length; });
+  var ordered=[];
+  for(var p=0;p<maxN;p++){ byBlock.forEach(function(a){ if(a[p]) ordered.push(a[p]); }); }
+  // le TEMPS fixe combien on en garde ; en dessous du nb de muscles, on retire les muscles les moins prioritaires
+  var keep=ordered.slice(0,cap);
+  keep.sort(function(a,b){ return a.bi-b.bi || a.pk-b.pk; }); // regrouper par muscle
+  return keep;
+}
+function objMod(sl){
+  if(st.niv==='debutant') return sl.rmax===0?[0,0]:[Math.max(10,sl.rmin),Math.max(12,sl.rmax)]; // débutant : reps modérées
+  if(st.obj==='force') return sl.type==='poly'?[4,6]:[8,12];
+  return [sl.rmin,sl.rmax]; // hypertrophie
+}
+function genRpe(sets){ if(sets<=1) return '7-8'; var a=[]; for(var i=0;i<sets-1;i++)a.push('9'); a.push('7-8'); return a.join('·'); }
+
+function chip(cid,list,cur,set,disabledFn){
+  var el=document.getElementById(cid); el.innerHTML='';
+  list.forEach(function(it){ var k=it[0], dis=disabledFn&&disabledFn(k);
+    var b=document.createElement('div'); b.className='opt'+(cur()===k?' on':'')+(dis?' off':'');
+    b.innerHTML=it[1]+(it[2]?'<small>'+it[2]+'</small>':'');
+    if(!dis) b.onclick=function(){ set(k); render(); };
+    el.appendChild(b);
+  });
+}
+function renderProgram(days,cap,sets){
+  return days.map(function(day){
+    var ex=buildSession(day,cap), dcol='var(--d'+(day.d>6?6:day.d)+')';
+    var hasBi=ex.some(function(x){return x.bk==='biceps';}), hasTri=ex.some(function(x){return x.bk==='triceps';});
+    var pairSS=day.ss&&hasBi&&hasTri; // superset seulement si les 2 bras sont gardés
+    var rows=ex.map(function(x){
+      var B=BLOCKS[x.bk], sl=B.slots[x.si], rr=objMod(sl), reps=(sl.rmax===0?'échec':(rr[0]+'-'+rr[1]));
+      var isSS=pairSS&&(x.bk==='biceps'||x.bk==='triceps');
+      var repos=isSS?'90 s · superset':(sl.type==='poly'?'2-3 min':'90 s');
+      var vars=sl.exos.slice(1);
+      return '<div class="ex"><span class="ex-dot" style="background:'+B.col+'"></span>'
+        +'<div class="ex-main"><div class="ex-mus">'+B.mus+(sl.lab?' · '+sl.lab:'')+(isSS?'<span class="ss-tag">superset</span>':'')+'</div>'
+        +'<div class="ex-nm">'+sl.exos[0]+'</div>'
+        +(vars.length?'<div class="ex-var"><b>ou&nbsp;:</b> '+vars.join(' · ')+'</div>':'')+'</div>'
+        +'<div class="ex-sets">'+sets+' × '+reps+'<small>RPE '+genRpe(sets)+' · '+repos+'</small></div>'
+        +(day.custom?'<span class="ex-x">✕</span>':'')+'</div>';
+    }).join('');
+    return '<div class="sess'+(day.custom?' custom':'')+'" style="border-left-color:'+dcol+'">'
+      +'<div class="sess-h"><span class="sess-nm">'+day.nm+'</span><span class="sess-day">'+JNAMES[day.d]+' · '+ex.length+' exos</span></div>'
+      +rows+(day.custom?'<div class="add-row">＋ ajouter un muscle</div>':'')+'</div>';
+  }).join('<div class="rest-row"><span></span>repos libre<span></span></div>');
+}
+
+/* ============================ FORCE / POWERLIFTING (tout custom, listes déroulantes) ============================ */
+var POOL={
+  lift:['Squat','Hack squat','Belt squat','Squat gobelet','Développé couché barre','Développé couché haltère','Développé militaire à la Smith','Développé militaire aux haltères','Soulevé de terre','RDL barre','RDL haltère'],
+  comp:['Presse inclinée','Presse horizontale','Belt squat','Fente bulgare','Fente longue','RDL barre','RDL haltère','Rowing barre','Rowing bucheron','Rowing banc','Rowing machine','Traction','shrugs barre','Développé couché incliné haltère','Développé militaire aux haltères'],
+  acc:['Développé couché incliné haltère','Ecarté poulie haute','Extension poulie barre','Curl barre','Curl barre poulie','Élévation latérale haltère','Arrière épaule à la poulie','Leg curl assis','RDL haltère','Les extensions mollets à la presse','Fente bulgare']
+};
+function forceSkel(jours){
+  var J=DAYSMAP[jours]||DAYSMAP[4];
+  var SQ={t:'lift',e:'Squat',s:'montantes → 5×3',s2:'@ 82-87%'}, BP={t:'lift',e:'Développé couché barre',s:'montantes → 5×3',s2:'@ 82-87%'}, DL={t:'lift',e:'Soulevé de terre',s:'montantes → 4×3',s2:'@ 82-87%'};
+  var acc=function(e){return {t:'acc',e:e,s:'3 × 8-12',s2:''};};
+  var renfo=function(dn){return {nm:'Renfo',d:dn,renfo:1,rows:[acc('Développé couché incliné haltère'),acc('Extension poulie barre'),acc('Leg curl assis'),acc('Curl barre'),acc('Élévation latérale haltère')]};};
+  // à partir de 3 jours : gros lifts SEULS (+ "ajouter un exercice" si l'athlète veut)
+  if(jours===2) return [{nm:'Les 3 lifts',d:J[0],rows:[SQ,BP,DL]}, renfo(J[1])];
+  if(jours===3) return [
+    {nm:'Squat + Développé couché',d:J[0],rows:[SQ,BP]},
+    {nm:'Soulevé de terre',d:J[1],rows:[DL]},
+    renfo(J[2])];
+  if(jours===4) return [
+    {nm:'Squat',d:J[0],rows:[SQ]},
+    {nm:'Soulevé de terre',d:J[1],rows:[DL]},
+    {nm:'Développé couché',d:J[2],rows:[BP]},
+    renfo(J[3])];
+  if(jours===5) return [
+    {nm:'Squat',d:J[0],rows:[SQ]},
+    {nm:'Soulevé de terre',d:J[1],rows:[DL]},
+    {nm:'Développé couché',d:J[2],rows:[BP]},
+    {nm:'Rappel',d:J[3],rappel:1,rows:[{t:'lift',e:'Développé couché barre',s:'4 × 5',s2:'@ ~75%'}]},
+    renfo(J[4])];
+  return [ // 6 jours : 3 lifts + 2 rappels (doubler) OU renfo, au choix de l'athlète
+    {nm:'Squat',d:J[0],rows:[SQ]},
+    {nm:'Soulevé de terre',d:J[1],rows:[DL]},
+    {nm:'Développé couché',d:J[2],rows:[BP]},
+    {nm:'Rappel',d:J[3],rappel:1,rows:[{t:'lift',e:'Squat',s:'4 × 5',s2:'@ ~70%'}]},
+    {nm:'Rappel',d:J[4],rappel:1,rows:[{t:'lift',e:'Développé couché barre',s:'4 × 5',s2:'@ ~75%'}]},
+    renfo(J[5])];
+}
+function ddHtml(type,sel){
+  return '<select class="dd'+(type==='lift'?' lift':'')+'">'+POOL[type].map(function(e){
+    return '<option'+(e===sel?' selected':'')+'>'+e+'</option>';}).join('')+'</select>';
+}
+function frowHtml(r){
+  var col=r.t==='lift'?'#4d82ff':(r.t==='comp'?'#7c5cff':'#ec4899');
+  var sch=r.s+(r.s2?'<small>'+r.s2+'</small>':(r.t==='lift'?'':'<small>RPE 8</small>'));
+  return '<div class="frow"><span class="frow-dot" style="background:'+col+'"></span>'
+    +ddHtml(r.t,r.e)+'<span class="fsch">'+sch+'</span><span class="frow-x" title="retirer">✕</span></div>';
+}
+function renderForce(jours){
+  var days=forceSkel(jours);
+  return days.map(function(day){
+    var dcol='var(--d'+(day.d>6?6:day.d)+')';
+    var removable=day.renfo||day.rappel, addType=day.renfo?'acc':'comp';
+    var tag=day.renfo?'<span class="ftag opt">optionnel</span>':(day.rappel?'<span class="ftag opt">doubler ou renfo</span>':'<span class="ftag lift">lift</span>');
+    return '<div class="sess'+(removable?' renfo':'')+'" style="border-left-color:'+dcol+'">'
+      +'<div class="sess-h"><span class="sess-nm">'+day.nm+tag+'</span>'
+        +(removable?'<span class="sess-rm" data-rm="1">✕ retirer ce jour</span>':'<span class="sess-day">'+JNAMES[day.d]+'</span>')+'</div>'
+      +'<div class="frows">'+day.rows.map(frowHtml).join('')+'</div>'
+      +'<button class="fadd" data-add="'+addType+'">＋ ajouter un exercice</button></div>';
+  }).join('<div class="rest-row"><span></span>repos libre<span></span></div>');
+}
+function wireForce(){
+  document.querySelectorAll('#prog .frow-x').forEach(function(x){ x.onclick=function(){ var r=x.closest('.frow'); if(r)r.remove(); }; });
+  document.querySelectorAll('#prog .sess-rm').forEach(function(b){ b.onclick=function(){ var s=b.closest('.sess'); var prev=s&&s.previousElementSibling; if(prev&&prev.classList.contains('rest-row'))prev.remove(); if(s)s.remove(); }; });
+  document.querySelectorAll('#prog .fadd').forEach(function(b){ b.onclick=function(){ var t=b.getAttribute('data-add');
+    var div=document.createElement('div'); div.innerHTML=frowHtml({t:t,e:POOL[t][0],s:t==='acc'?'3 × 8-12':'3 × 6-8',s2:''});
+    var row=div.firstChild; b.parentNode.querySelector('.frows').appendChild(row);
+    row.querySelector('.frow-x').onclick=function(){ row.remove(); };
+  }; });
+}
+
+/* ============================ RENDER ============================ */
+function render(){
+  chip('seg-niv',[['debutant','Débutant'],['intermediaire','Intermédiaire'],['avance','Avancé']],function(){return st.niv;},function(v){st.niv=v;});
+  var isDeb=st.niv==='debutant';
+  document.getElementById('path-deb').style.display=isDeb?'block':'none';
+  document.getElementById('path-cfg').style.display=isDeb?'none':'block';
+  document.getElementById('plannote').style.display='block';
+
+  var days,cap,sets,sum,plan;
+  if(isDeb){
+    // galerie
+    var gal=document.getElementById('gallery'); gal.innerHTML='';
+    PRESETS.forEach(function(p,i){ var c=document.createElement('div'); c.className='card'+(st.preset===i?' on':'');
+      c.innerHTML='<div class="card-h"><span class="card-nm">'+p.nm+'</span><span class="card-badge">'+p.badge+'</span></div><div class="card-desc">'+p.desc+'</div>';
+      c.onclick=function(){ st.preset=i; render(); }; gal.appendChild(c); });
+    var p=PRESETS[st.preset];
+    days=genDays(p.org,p.jours); cap=CAP[75]; sets=3;
+    sum='<b>'+p.nm+'</b> · programme tout fait · '+p.jours+' jours';
+    plan='Programme conseillé pour débuter. Tu peux remplacer un exercice (« ou : ») si une machine manque, et placer tes séances dans la semaine comme tu veux.';
+  } else {
+    // configurateur
+    chip('q-obj',OBJ,function(){return st.obj;},function(v){st.obj=v;});
+    var isForce=st.obj==='force';
+    document.getElementById('wrap-orgq').style.display=isForce?'none':'block';
+    document.getElementById('wrap-tempsq').style.display=isForce?'none':'block';
+    if(isForce){
+      chip('q-jours',[[2,'2 j'],[3,'3 j'],[4,'4 j'],[5,'5 j'],[6,'6 j']],function(){return st.jours;},function(v){st.jours=v;});
+      document.getElementById('j-cond').textContent='(powerlifting : 2 à 6)';
+      sum='<b>Force / Powerlifting</b> · '+st.jours+' jours · squelette modifiable';
+      document.getElementById('sumline').innerHTML=sum;
+      document.getElementById('convnote').innerHTML='Lifts : <b>séries montantes → séries de travail</b> au % du 1RM (estimé par l\'app) · RPE 7-8 (pas d\'échec) · repos <b>3-5 min</b>. Accessoires : 8-12 reps.';
+      document.getElementById('plannote').innerHTML='🧩 <b>Tout est au choix</b> : chaque ligne est une <b>liste déroulante</b> (change l\'exo), ＋ ajoute, ✕ retire. Dès 3 jours les <b>gros lifts sont seuls</b>. Sur <b>5-6 jours</b>, les jours en plus = un <b>rappel de lift</b> (plus léger) que tu peux <b>doubler ou transformer en renfo</b>. Jours <b>libres</b> (placement au choix).';
+      document.getElementById('prog').innerHTML=renderForce(st.jours);
+      wireForce();
+      document.getElementById('auditnote').innerHTML='<b class="ok">✔ Force = 100% custom</b> : on pré-remplit le squelette (les 3 lifts Squat · Dév. couché · Soulevé + un Renfo optionnel) selon le nombre de jours, puis l\'athlète décide tout via les menus. Les charges se calent sur le 1RM (tests de l\'app).';
+      return;
+    }
+    chip('q-org',ORGS,function(){return st.org;},function(v){st.org=v; var jl=JLOGIC[v]; if(jl.indexOf(st.jours)===-1) st.jours=jl[0];});
+    var jl=JLOGIC[st.org];
+    chip('q-jours',[[2,'2 j'],[3,'3 j'],[4,'4 j'],[5,'5 j'],[6,'6 j']],function(){return st.jours;},function(v){st.jours=v;},function(k){return jl.indexOf(k)===-1;});
+    chip('q-temps',TEMPS,function(){return st.temps;},function(v){st.temps=v;});
+    document.getElementById('j-cond').textContent='('+jl.join('·')+' pour cette organisation)';
+    days=genDays(st.org,st.jours); cap=CAP[st.temps]; sets=st.niv==='avance'?4:3;
+    sum='<b>'+OBJ.filter(function(o){return o[0]===st.obj;})[0][1]+'</b> · '+ORGS.filter(function(o){return o[0]===st.org;})[0][1]+' · '+st.jours+' j · '+st.temps+' min → plafond '+cap+' exos/séance';
+    plan = st.org==='custom'
+      ? '🧩 <b>Custom = squelette modifiable</b> : on te propose une base équilibrée, tu ajoutes/retires les muscles de chaque jour (✕ et ＋), puis tu planifies la semaine.'
+      : '🗓️ Tu <b>planifies toi-même</b> : le générateur propose les séances, à toi de choisir quels jours tu t\'entraînes et où placer tes repos.';
+  }
+
+  document.getElementById('sumline').innerHTML=sum;
+  document.getElementById('convnote').innerHTML='Conventions : <b>'+sets+' séries</b> · RPE par série <b>'+genRpe(sets)+'</b> (dernière = 2-3 réps en réserve) · repos composés <b>2-3 min</b> / isolation <b>1 min 30</b> (rallongeable au ressenti).';
+  document.getElementById('plannote').innerHTML=plan;
+  document.getElementById('prog').innerHTML=renderProgram(days,cap,sets);
+
+  document.getElementById('auditnote').innerHTML='<b class="ok">✔ Architecture</b> : les '+Object.keys(BLOCKS).length+' <b>blocs muscle</b> sont écrits une fois. Une <b>organisation</b> (Full Body, UL, PPL, Split, Custom) = une règle qui répartit les blocs sur N jours. Le <b>temps</b> coupe en gardant 1 exo/muscle d\'abord. Les <b>« ou : »</b> = variantes choisies via « Remplacer ».';
+}
+render();
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 # Novalyz — Contexte projet (lire en premier)
 
 > Ce fichier est lu automatiquement au début de chaque session. Il évite de tout ré-expliquer.
+> **➡️ Reprise / état en cours : [`docs/etat-en-cours.md`](./docs/etat-en-cours.md)** (lire en 2ᵉ — ce qui est fait / à faire là tout de suite).
 > Réflexions de fond : [`docs/vision-produit.md`](./docs/vision-produit.md) · [`docs/backlog-app.md`](./docs/backlog-app.md) (à faire & vérifier, athlète/coach) · [`docs/roadmap-beta.md`](./docs/roadmap-beta.md) (route vers un test à grande échelle) · [`docs/animations.md`](./docs/animations.md) · archi détaillée : [`docs/`](./docs/).
 
 ## Le projet en une phrase

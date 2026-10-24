@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo & mensurations</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.12);
+    --good:#00c96e; --warn:#f5a623; --bad:#e5484d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:18px 14px 48px}
+  .wrap{max-width:460px;margin:0 auto}
+  .lead{font-size:12px;color:var(--muted);margin:0 0 14px}
+  .lead b{color:var(--text)}
+  /* sous-onglets */
+  .subt{display:flex;gap:6px;margin-bottom:16px}
+  .subt button{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:9px;font:inherit;font-weight:800;font-size:12.5px;cursor:pointer}
+  .subt button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .sec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle);margin:18px 2px 9px;display:flex;justify-content:space-between;align-items:center}
+  .sec .r{font-size:11px;font-weight:700;color:var(--muted);text-transform:none;letter-spacing:0}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px}
+  .pane{display:none} .pane.on{display:block}
+  /* angle tabs */
+  .angles{display:flex;gap:6px;margin-bottom:10px}
+  .angles span{font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);cursor:pointer}
+  .angles span.on{background:var(--accent-a);color:var(--accent2);border-color:var(--accent2)}
+  /* compare avant/après */
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .ph{background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .ph .img{aspect-ratio:3/4;display:grid;place-items:center;color:var(--subtle);font-size:11px;background:repeating-linear-gradient(135deg,#0d1424 0 12px,#0f1830 12px 24px)}
+  .ph .cap{padding:8px 10px;font-size:11px}
+  .ph .cap b{display:block;font-size:12.5px}
+  .ph .cap span{color:var(--muted)}
+  .deltabar{display:flex;justify-content:center;gap:16px;margin-top:11px;font-size:12px}
+  .deltabar b{font-weight:800}
+  .pick{display:flex;gap:8px;margin-top:11px}
+  .pick select{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:8px;font:inherit;font-size:12px}
+  /* timeline thumbs */
+  .tl{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+  .tl .t{flex:none;width:64px}
+  .tl .t .img{width:64px;height:84px;border-radius:9px;background:repeating-linear-gradient(135deg,#0d1424 0 10px,#0f1830 10px 20px);border:1px solid var(--border)}
+  .tl .t .d{font-size:9.5px;color:var(--subtle);text-align:center;margin-top:4px}
+  .btn{width:100%;margin-top:11px;background:var(--accent);color:#fff;border:none;border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer}
+  .btn.ghost{background:var(--surface);border:1px solid var(--border);color:var(--accent2)}
+  /* mensurations grid */
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .m{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+  .m .k{font-size:11px;color:var(--muted);font-weight:700}
+  .m .v{display:flex;align-items:baseline;gap:6px;margin-top:2px}
+  .m .v b{font-size:20px;font-weight:900}
+  .m .v u{font-size:11px;color:var(--subtle);font-style:normal}
+  .m .v em{font-size:11px;font-weight:800;font-style:normal;margin-left:auto}
+  .up{color:var(--good)} .down{color:var(--bad)} .flat{color:var(--subtle)}
+  /* spark */
+  .spark{margin-top:10px}
+  /* form */
+  .form{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:4px}
+  .form .f{display:flex;flex-direction:column;gap:3px}
+  .form .f label{font-size:10.5px;color:var(--subtle);font-weight:700}
+  .form .f input{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px;font:inherit;font-size:13px}
+  .form .f.full{grid-column:1 / -1}
+  .note{font-size:11.5px;color:var(--muted);margin:20px 2px 0;line-height:1.55;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
+  .note b{color:var(--text)} .note .k{color:var(--accent2);font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="lead">Maquette <b>Photo &amp; mensurations</b> — nouvel onglet de la fiche athlète (coach). Le coach <b>voit l'évolution</b> (photos avant/après) et <b>saisit les mensurations</b>, historisées pour tracer la tendance.</p>
+
+  <div class="subt">
+    <button class="on" onclick="go('ph')">📷 Photos</button>
+    <button onclick="go('me')">📏 Mensurations</button>
+  </div>
+
+  <!-- ===== PHOTOS ===== -->
+  <div class="pane on" id="pane-ph">
+    <div class="sec">Comparer <span class="r">avant / après</span></div>
+    <div class="card">
+      <div class="angles"><span class="on">Face</span><span>Profil</span><span>Dos</span></div>
+      <div class="cmp">
+        <div class="ph"><div class="img">Photo</div><div class="cap"><b>12 juin</b><span>74,0 kg</span></div></div>
+        <div class="ph"><div class="img">Photo</div><div class="cap"><b>18 oct.</b><span>71,2 kg</span></div></div>
+      </div>
+      <div class="deltabar"><span>18 sem.</span><span class="down">▼ −2,8 kg</span><span class="down">▼ −4 cm tour de taille</span></div>
+      <div class="pick">
+        <select><option>Avant — 12 juin</option><option>12 juil.</option><option>10 sept.</option></select>
+        <select><option>Après — 18 oct.</option><option>10 sept.</option></select>
+      </div>
+    </div>
+
+    <div class="sec">Toutes les photos <span class="r">Face · 5</span></div>
+    <div class="card">
+      <div class="tl">
+        <div class="t"><div class="img"></div><div class="d">12 juin</div></div>
+        <div class="t"><div class="img"></div><div class="d">12 juil.</div></div>
+        <div class="t"><div class="img"></div><div class="d">14 août</div></div>
+        <div class="t"><div class="img"></div><div class="d">10 sept.</div></div>
+        <div class="t"><div class="img"></div><div class="d">18 oct.</div></div>
+      </div>
+      <button class="btn ghost">＋ Ajouter une photo (date · angle)</button>
+    </div>
+  </div>
+
+  <!-- ===== MENSURATIONS ===== -->
+  <div class="pane" id="pane-me">
+    <div class="sec">Dernières mesures <span class="r">18 oct. · vs 10 sept.</span></div>
+    <div class="mgrid">
+      <div class="m"><div class="k">Poitrine</div><div class="v"><b>102</b><u>cm</u><em class="up">▲ +1</em></div></div>
+      <div class="m"><div class="k">Tour de taille</div><div class="v"><b>82</b><u>cm</u><em class="down">▼ −2</em></div></div>
+      <div class="m"><div class="k">Hanches</div><div class="v"><b>98</b><u>cm</u><em class="flat">– 0</em></div></div>
+      <div class="m"><div class="k">Épaules</div><div class="v"><b>120</b><u>cm</u><em class="up">▲ +1</em></div></div>
+      <div class="m"><div class="k">Bras G / D</div><div class="v"><b>36/37</b><u>cm</u><em class="up">▲ +1</em></div></div>
+      <div class="m"><div class="k">Avant-bras G / D</div><div class="v"><b>29/29</b><u>cm</u><em class="flat">– 0</em></div></div>
+      <div class="m"><div class="k">Cuisse G / D</div><div class="v"><b>58/58</b><u>cm</u><em class="up">▲ +1</em></div></div>
+      <div class="m"><div class="k">Mollet</div><div class="v"><b>39</b><u>cm</u><em class="flat">– 0</em></div></div>
+      <div class="m"><div class="k">% masse grasse</div><div class="v"><b>14,8</b><u>%</u><em class="down">▼ −1,2</em></div></div>
+      <div class="m"><div class="k">Poids</div><div class="v"><b>71,2</b><u>kg</u><em class="down">▼ −1,1</em></div></div>
+    </div>
+
+    <div class="sec">Tendance <span class="r">tour de taille</span></div>
+    <div class="card spark">
+      <svg width="100%" height="70" viewBox="0 0 320 70" preserveAspectRatio="none">
+        <path d="M2 18 L80 24 L158 34 L236 46 L318 52 L318 70 L2 70 Z" fill="rgba(0,201,110,.12)"/>
+        <path d="M2 18 L80 24 L158 34 L236 46 L318 52" fill="none" stroke="var(--good)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="318" cy="52" r="3.5" fill="var(--good)"/>
+      </svg>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--subtle);margin-top:2px"><span>12 juin</span><span>18 oct.</span></div>
+      <div style="font-size:12px;color:var(--good);font-weight:700;margin-top:6px">−4 cm en 18 semaines</div>
+    </div>
+
+    <div class="sec">Ajouter des mesures <span class="r">en cm</span></div>
+    <div class="card">
+      <div class="form">
+        <div class="f full"><label>Date</label><input type="date" value="2026-10-18"></div>
+        <div class="f"><label>Poitrine</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Tour de taille</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Hanches</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Épaules</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Bras gauche</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Bras droit</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Avant-bras gauche</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Avant-bras droit</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Cuisse gauche</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Cuisse droite</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>Mollet</label><input inputmode="decimal" placeholder="cm"></div>
+        <div class="f"><label>% masse grasse</label><input inputmode="decimal" placeholder="%"></div>
+        <div class="f"><label>Poids</label><input inputmode="decimal" placeholder="kg"></div>
+      </div>
+      <button class="btn">Enregistrer les mesures</button>
+    </div>
+  </div>
+
+  <div class="note"><b>Décisions validées</b> :
+    <span class="k">Saisie = athlète</span> (photos + mensurations) ; le coach <b>consulte</b> dans la fiche.
+    <span class="k">Mesures</span> : poitrine, tour de taille, hanches, épaules, bras G/D, <b>avant-bras G/D</b>, cuisse G/D, mollet, <b>% masse grasse</b>, poids.
+    <span class="k">Photos</span> : stockage privé (Supabase Storage), 3 angles Face/Profil/Dos.
+    <br><br><b>Placement (ma reco)</b> : côté <b>athlète</b> → dans <b>Forme</b> (où vit déjà le poids), une carte « Photos &amp; mensurations » qui ouvre cet écran. Côté <b>coach</b> → nouveau <b>sous-onglet « Suivi »</b> dans la fiche (à côté d'Aperçu / Progression / Séances / Programme), en consultation.
+  </div>
+</div>
+<script>
+  function go(k){
+    document.querySelectorAll('.subt button').forEach(function(b,i){ b.classList.toggle('on', (k==='ph')===(i===0)); });
+    document.getElementById('pane-ph').classList.toggle('on', k==='ph');
+    document.getElementById('pane-me').classList.toggle('on', k==='me');
+  }
+</script>
+</body>
+</html>

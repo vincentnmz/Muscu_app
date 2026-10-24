@@ -21,7 +21,7 @@ function extractFn(name) {
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext([
-  extractFn('fmtYMD'), extractFn('minus'),
+  extractFn('fmtYMD'), extractFn('minus'), extractFn('chargeInterneCardio'),
   extractFn('buildSyntheseMuscu'), extractFn('buildSyntheseCardio'), extractFn('buildSyntheseCroise'),
   'this.buildSyntheseMuscu = buildSyntheseMuscu; this.buildSyntheseCardio = buildSyntheseCardio; this.buildSyntheseCroise = buildSyntheseCroise;'
 ].join('\n'), sandbox);
@@ -100,6 +100,42 @@ check('P: recomp → constat mentionne la recomposition', p.constats.some(c => /
 let q = buildSyntheseMuscu('Maintien', cmp(10, 0), { recup: 'Bon' }, reg(3, 3));
 check('Q: maintien → reco ne pousse pas la surcharge progressive', !/surcharge progressive/i.test(q.reco.texte));
 check('Q: maintien → reco parle bien de maintien', /maintien|maintenir/i.test(q.reco.texte));
+
+// R — Leviers de récupération ciblés (readiness Hooper) : poussés UNIQUEMENT si le
+// signal mesuré (moteur.signaux) est réellement sous-optimal. Sinon absents.
+const poolTxt = (s) => (s.reco_pool || []).map(x => x.texte).join(' ⟂ ');
+let r1 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 2.4, stress: 1, courbatures: 1 } }, reg(3, 3));
+check('R1: sommeil faible → levier sommeil', /sommeil est en dessous/i.test(poolTxt(r1)));
+let r2 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 4, stress: 4, courbatures: 1 } }, reg(3, 3));
+check('R2: stress élevé → levier stress', /stress est élevé/i.test(poolTxt(r2)));
+let r2b = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 2, stress: 4, courbatures: 1 } }, reg(3, 3));
+check('R2b: sommeil faible + stress élevé → levier combiné', /Sommeil et stress/i.test(poolTxt(r2b)));
+let r3 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 4, stress: 1, courbatures: 5 } }, reg(3, 3));
+check('R3: courbatures marquées → levier courbatures', /Courbatures marquées/i.test(poolTxt(r3)));
+let r4 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', signaux: { sommeil: 4, stress: 1, courbatures: 1 } }, reg(3, 3));
+check('R4: signaux bons → aucun levier récup forcé', !/sommeil est en dessous|stress est élevé|Courbatures marquées|Sommeil et stress/i.test(poolTxt(r4)));
+let r5 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon' }, reg(3, 3));
+check('R5: pas de signaux → pas de crash, aucun levier récup', !/sommeil est en dessous|stress est élevé|Courbatures marquées/i.test(poolTxt(r5)));
+
+// A — Feu vert fraîcheur : TSB% nettement positif + fiable + état bon → levier « ose pousser ».
+let a1 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', charge_fatigue: { fiable: true, tsbPct: 12 } }, reg(3, 3));
+check('A1: fraîcheur au vert → levier feu vert', /fraîcheur est au vert/i.test(poolTxt(a1)));
+let a2 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', charge_fatigue: { fiable: false, tsbPct: 12 } }, reg(3, 3));
+check('A2: fraîcheur NON fiable → pas de feu vert', !/fraîcheur est au vert/i.test(poolTxt(a2)));
+let a3 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon', charge_fatigue: { fiable: true, tsbPct: -20 } }, reg(3, 3));
+check('A3: fatigue (TSB négatif) → pas de feu vert', !/fraîcheur est au vert/i.test(poolTxt(a3)));
+let a4 = buildSyntheseMuscu('Prise de masse', cmp(1, 0.9), { recup: 'Faible', charge_fatigue: { fiable: true, tsbPct: 12 } }, reg(3, 4));
+check('A4: état en contrainte → pas de feu vert même si frais', !/fraîcheur est au vert/i.test(poolTxt(a4)));
+
+// B — Temps de repos : repos moyen court (loggé) + objectif force/masse → levier repos.
+let b1 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon' }, reg(3, 3), undefined, { reposMoy: 55, reposN: 12 });
+check('B1: repos court → levier repos avec le chiffre', /temps de repos sont courts.*55\s*s/i.test(poolTxt(b1)));
+let b2 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon' }, reg(3, 3), undefined, { reposMoy: 150, reposN: 12 });
+check('B2: repos suffisant → pas de levier repos', !/temps de repos sont courts/i.test(poolTxt(b2)));
+let b3 = buildSyntheseMuscu('Prise de masse', cmp(8, 0), { recup: 'Bon' }, reg(3, 3), undefined, { reposMoy: 55, reposN: 3 });
+check('B3: trop peu de repos loggés (bruit) → pas de levier', !/temps de repos sont courts/i.test(poolTxt(b3)));
+let b4 = buildSyntheseMuscu('Sèche', cmp(8, 0), { recup: 'Bon' }, reg(3, 3), undefined, { reposMoy: 55, reposN: 12 });
+check('B4: sèche → pas de levier repos (repos court souvent voulu)', !/temps de repos sont courts/i.test(poolTxt(b4)));
 
 // ── Cardio ──────────────────────────────────────────────────────────────────
 // F — aucun cardio → constat neutre + reco info

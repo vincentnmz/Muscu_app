@@ -4,8 +4,37 @@
 > Légende statut : ✅ fait · 🟡 en cours · ⏳ à venir · ❓ décision à trancher (section C).
 > 🟢 Athlète = priorité (parcours solo) · 🔵 Coach = **phase 2**.
 > Voir aussi [`vision-produit.md`](./vision-produit.md) et [`roadmap-beta.md`](./roadmap-beta.md).
-> **Dernière passe de statut : 5 oct. 2026.**
+> **Dernière passe de statut : 19 oct. 2026.**
 > **MAJ 5 oct. 2026** : reskin complet de la **partie coach** (section B) livré en **prod** (`main`) ; **questionnaire quotidien « état du jour »** (auto 1×/jour) ; **import nutrition auto Health Connect** ; **correctif critique** de la boucle de permission Health Connect côté athlète (« serveur en démarrage »).
+
+---
+
+## ★ Dump « 19 points » du porteur (sept.) — réconciliation 19 oct. 2026
+
+> Liste brute donnée par le porteur, suivie point par point. (⚠️ backend Supabase à
+> redéployer : `bien_etre_hooper.sql` puis `index.ts`.)
+
+**✅ Faits**
+- **#1** Vraie page d'analyse + calculs muscu → Analyses « cœur » (Résumé décision, Tendances fréquence/intensité/force, Volume MEV/MRV).
+- **#2** Lecture Novalyz : progression/régression + **fiabilité 0-100** (bloc unifié Analyses).
+- **#3** ACWR revu (montait trop vite) → remplacé par **fitness-fatigue de Banister** (CTL/ATL/TSB) + **sRPE** (RPE CR-10 × durée, hybride) ; ACWR secondaire.
+- **#9** Barres sticky · **#10** « Par exercice » → **Évolution** · **#11** Records replacés · **#12** exercices ajoutés · **#17** export JSON/CSV retirés + rapport mail coach à la demande · **#19** détail technique Import retiré (Lot 1).
+- **#16** Données par mail à l'athlète (recap mail testé Vincent/Alizé ; domaine `novalyz.fr` vérifié).
+- *Bonus session* : questionnaires **Hooper** (readiness) + **RPE CR-10** (Foster) ; verdict recalibré (charge seule → Prêt) ; **passe anti-emoji** (décoratifs retirés, icônes clés en SVG).
+
+**⏳ Reste à faire (le vrai TODO)** — maj 19 oct. (session schéma/notifs)
+- ✅ **#4** Surcharge par série (séries 2/3/4) + **schéma de séries** (fixe / double progression / top-set+back-off / pyramidal) — backend + histo + front + checklist au démarrage.
+- ✅ **#5** Activités importées (montre) dans le croisé muscu/cardio (charge interne estimée si RPE absent).
+- ✅ **#6 / #7** Mot de Novalyz + alertes : leviers récup ciblés (sommeil/stress/courbatures), feu-vert fraîcheur, temps de repos ; harmonisation « aiguë »→« récente ».
+- ✅ **#8** Orthographe : passe faite — chaînes affichées déjà propres (les clés non accentuées sont intentionnelles).
+- ✅ **#13** Remplacer un exo en cours de séance (bouton ⇄ sur exo non commencé, swap séance-only).
+- ⏳ **#14** **Récompenses adaptées à chaque athlète** — **seul point restant du TODO.**
+- ✅ **#15** Notifications coach & athlète : diagnostiquées (base prod) + corrigées — push élargi (haute + séance manquée + volume bas) + timeout cron 120 s. Test livré OK.
+- ✅ **#18** Fiche coach : refonte « alertes à traiter » (triage priorité + catégorie, prescription visible).
+
+> Au-delà de ce TODO : **onboarding / visite guidée** (à faire **à la fin**, écrans figés), features **IA/médias en veille** (morpho photo, médias athlète→coach) en attente de `ANTHROPIC_API_KEY` / branchements, et « Aujourd'hui » à **affiner**.
+
+**Contexte livré par le porteur** : domaine + mails **faits**, Play Store **fait**, P1 **en partie**.
 
 ---
 

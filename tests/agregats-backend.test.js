@@ -244,10 +244,10 @@ check('tendances null si < 2 semaines complètes',
 const perfsProg = [
   // 10/08 : 2 séries le même jour → la MEILLEURE (charge la plus haute) est retenue
   // pour charge/reps/1RM ; volTotal = SOMME des deux séries.
-  { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 100, reps: 5 },
-  { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 90,  reps: 8 },
-  { date: '2026-08-17', seance_id: 'A', exercice: 'Squat', charge: 105, reps: 5 },
-  { date: '2026-08-20', seance_id: 'A', exercice: 'Squat', charge: 102, reps: 5 },
+  { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 100, reps: 5, serie: 1 },
+  { date: '2026-08-10', seance_id: 'A', exercice: 'Squat', charge: 90,  reps: 8, serie: 2 },
+  { date: '2026-08-17', seance_id: 'A', exercice: 'Squat', charge: 105, reps: 5, serie: 1 },
+  { date: '2026-08-20', seance_id: 'A', exercice: 'Squat', charge: 102, reps: 5, serie: 1 },
 ];
 // 9 dates distinctes pour « Curl » → sous le plafond (30) → toutes gardées
 for (let d = 1; d <= 9; d++) perfsProg.push({ date: `2026-08-0${d}`, seance_id: 'B', exercice: 'Curl', charge: 20, reps: 10 });
@@ -260,6 +260,12 @@ eq('Squat[2] = meilleure série du 10/08 = 100×5 (pas 90×8)', prog.Squat[2].ch
 eq('Squat[2].reps = 5 (charge prioritaire sur volume)', prog.Squat[2].reps, 5);
 eq('Squat[2].volume = 500 (meilleure série 100×5)', prog.Squat[2].volume, 500);
 eq('Squat[2].volTotal = 1220 (toutes séries : 100×5 + 90×8)', prog.Squat[2].volTotal, 1220);
+// #4 Surcharge par série : chaque point conserve TOUTES ses séries, triées par n°.
+eq('Squat[2].series = 2 séries conservées (10/08)', prog.Squat[2].series.length, 2);
+eq('Squat[2].series[0] = S1 (100 kg, trié par n°)', prog.Squat[2].series[0].charge, 100);
+eq('Squat[2].series[0].serie = 1', prog.Squat[2].series[0].serie, 1);
+eq('Squat[2].series[1] = S2 (90 kg)', prog.Squat[2].series[1].charge, 90);
+eq('Squat[0].series = 1 série (20/08)', prog.Squat[0].series.length, 1);
 eq('progression Curl = 9 points (sous le plafond de 30)', prog.Curl.length, 9);
 eq('Curl[0] = date la plus récente 09/08/2026', prog.Curl[0].date, '09/08/2026');
 check('Curl garde la plus ancienne quand < 30 (01/08)', prog.Curl.some(p => p.date === '01/08/2026'), 'présente', 'ABSENTE');

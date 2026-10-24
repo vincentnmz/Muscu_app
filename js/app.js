@@ -2802,18 +2802,21 @@ async function creerAthlete() {
   const taille = document.getElementById('crea-taille').value.trim();
   const ddn    = document.getElementById('crea-ddn').value;
   const password = document.getElementById('crea-password').value;
+  const emailEl = document.getElementById('crea-email');
+  const email  = emailEl ? emailEl.value.trim() : '';
   const sportCoach = (coach && coach.sport) ? coach.sport : 'muscu';
   const annees = (sportCoach === 'muscu') ? document.getElementById('crea-annees').value.trim() : '0';
   if (!prenom || !login || !ddn || !taille) { errEl.textContent = 'Remplis tous les champs.'; return; }
   if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'E-mail invalide.'; return; }
   if (sportCoach === 'muscu' && annees === '') { errEl.textContent = 'Indique les années de pratique.'; return; }
   errEl.textContent = 'Création...';
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'coachCreerAthlete', coach_id: coach.coach_id, prenom, login, ddn, taille, annees, password })
+      body: JSON.stringify({ action: 'coachCreerAthlete', coach_id: coach.coach_id, prenom, login, ddn, taille, annees, password, email })
     });
     const data = await res.json();
     if (data.success) {
@@ -4610,16 +4613,25 @@ async function renderCoachSynthese(athletes) {
     });
   });
 
-  // 4. Progression & stagnations (meilleur Δ 1RM estimé par athlète)
+  // 4. Progression & stagnations — basées sur CHARGE + REPS réels (plus de 1RM Epley :
+  // un lourd en faibles reps donnait un faux recul). Par exo : on compare la séance la
+  // plus récente (perfs[0]) à la meilleure charge précédente. Charge en hausse → Δ sur la
+  // charge ; charge égale mais plus de reps → Δ sur les reps ; charge en baisse → Δ négatif.
   const progA = [], stagA = [];
   enrich.forEach(e => {
     const d = datas[e.i] || {}; const prog = (d.historique && d.historique.progression_par_exo) || {}; let best = null;
     Object.keys(prog).forEach(exo => {
       const perfs = prog[exo] || []; if (perfs.length < 3) return;
-      const rmR = calc1RM(perfs[0].charge, perfs[0].reps); let bb = null;
-      for (let i = 1; i < perfs.length; i++) { const rm = calc1RM(perfs[i].charge, perfs[i].reps); if (rm != null && (bb == null || rm > bb)) bb = rm; }
-      if (rmR == null || bb == null || bb <= 0) return;
-      const delta = Math.round((rmR / bb - 1) * 100);
+      const recC = Number(perfs[0].charge) || 0, recR = Number(perfs[0].reps) || 0;
+      let bestC = 0, repsAtBest = 0;
+      for (let i = 1; i < perfs.length; i++) {
+        const c = Number(perfs[i].charge) || 0, r = Number(perfs[i].reps) || 0;
+        if (c > bestC) { bestC = c; repsAtBest = r; } else if (c === bestC && r > repsAtBest) { repsAtBest = r; }
+      }
+      if (bestC <= 0) return;
+      let delta;
+      if (recC === bestC && repsAtBest > 0 && recR > repsAtBest) delta = Math.round((recR / repsAtBest - 1) * 100);  // reps ↑ à charge égale
+      else delta = Math.round((recC / bestC - 1) * 100);                                                            // charge ↑ (ou ↓ si négatif)
       if (best == null || delta > best.delta) best = { exo, delta };
     });
     if (best) { if (best.delta > 0) progA.push({ nom: e.a.nom, exo: best.exo, delta: best.delta }); else stagA.push({ nom: e.a.nom, exo: best.exo, delta: best.delta }); }
@@ -5263,6 +5275,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     cdSeancesDates = data.historique ? (data.historique.dates_seances || {}) : {};
 
     renderCoachOverview(data);
+    try { renderCoachCoupDoeil(data); } catch (_) {}         // N13 — Coup d'œil en tête (entraînement + état)
     try { renderCoachProchaineSeance(data); } catch (_) {}   // « prochaine séance à faire » (hub coach)
     try { renderCoachHubVolume(data); } catch (_) {}      // volume par muscle (hub)
     try { renderCoachHubSeances(data); } catch (_) {}     // dernières séances (hub)
@@ -5275,7 +5288,9 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     try { renderCoachMontreDetail(data); } catch (_) {}  // Aperçu v3 : Ma montre détaillée (pas/sommeil/FC)
     try { _cdAsideDeskLayout(); } catch (_) {}           // colonne droite : reparente contexte + prochaine
     try { _cdV3Grid(); } catch (_) {}                    // Aperçu v3 : 6 cartes égales dans la grille
-    renderAnalyseCoach(data);
+    // N13 — l'ancienne « Lecture Novalyz » (phrases adressées à l'athlète, « tu… ») est
+    // remplacée par la synthèse COACH en tête (#cd-coupdoeil). On masque ce doublon.
+    try { ['cd-analyse-sec', 'cd-analyse-card'].forEach(function (id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; }); } catch (_) {}
     renderCoachRecordsEtRegression(data.historique, data.global);
     renderCoachIndicateurs(data);
     renderAlertesCoach(data);
@@ -5352,10 +5367,214 @@ function renderCoachRecordsEtRegression(hist, glob) {
   }
 }
 
+// N13 — « Coup d'œil » coach : synthèse scannable (entraînement + état) en tête de
+// l'Aperçu, pour que le coach comprenne en 5 s. 100 % dérivé des données déjà chargées
+// (progression_par_exo, volume_semaine, bien_etre, moteur). Aucun nouveau backend.
+function _cdCoupRow(col, icon, html) {
+  return '<div class="cdcp-row"><span class="cdcp-ic" style="color:' + col + '">' + icon + '</span><div class="cdcp-tx">' + html + '</div></div>';
+}
+function _cdFmtKg(n) { n = Math.round((Number(n) || 0) * 10) / 10; return (n % 1 === 0) ? String(n) : String(n).replace('.', ','); }
+function _cdAvgRpe(series) {
+  if (!Array.isArray(series)) return null;
+  var xs = series.map(function (s) { return Number(s && s.rpe); }).filter(function (x) { return !isNaN(x) && x > 0; });
+  return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null;
+}
+function renderCoachCoupDoeil(data) {
+  var el = document.getElementById('cd-coupdoeil'); if (!el) return;
+  try {
+    var esc = escapeHtml, hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {};
+    var m = (data && data.moteur) || {}, g = (data && data.global) || {}, nowT = Date.now();
+    var pd = function (s) { try { return (typeof parseChatDate === 'function') ? parseChatDate(s) : 0; } catch (_) { return 0; } };
+    var num = function (x) { var n = Number(x); return isNaN(n) ? 0 : n; };
+    var days = function (t) { return (nowT - t) / 864e5; };
+
+    // ═══ ENTRAÎNEMENT — basé sur CHARGE · REPS · RPE réels (plus de 1RM Epley hasardeux) ═══
+    // Chaque exo est classé en Records / Progresse / Recule / Stagne à partir des points
+    // de progression_par_exo (charge = top set du jour, reps à cette charge, series[].rpe).
+    var records = [], progresse = [], recule = [], stagne = [];
+    Object.keys(prog).forEach(function (exo) {
+      var pts = prog[exo] || []; if (!pts.length) return;
+      var dt0 = pd(pts[0].date); if (!dt0) return;
+      var c0 = num(pts[0].charge), r0 = num(pts[0].reps);
+      // RECORD : charge (ou reps à charge égale) battu lors d'une séance récente (≤10 j).
+      // Il faut une base de comparaison (≥2 points) ; un record exclut tout autre verdict.
+      if (days(dt0) <= 10 && pts.length >= 2) {
+        var bestC = 0, repsAtBest = 0;
+        for (var i = 1; i < pts.length; i++) { var cc = num(pts[i].charge), rr = num(pts[i].reps); if (cc > bestC) { bestC = cc; repsAtBest = rr; } else if (cc === bestC && rr > repsAtBest) { repsAtBest = rr; } }
+        if (c0 > 0 && (c0 > bestC || (c0 === bestC && r0 > repsAtBest))) { records.push({ exo: exo, c: c0, r: r0 }); return; }
+      }
+      if (pts.length < 2 || days(dt0) > 21) return;   // exo pas touché récemment → on n'en parle pas
+      var c1 = num(pts[1].charge), r1 = num(pts[1].reps);
+      // PROGRESSE (≤14 j) : charge en hausse, ou reps en hausse à charge égale.
+      if (days(dt0) <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
+      // RECULE : charge ET reps en baisse vs la séance précédente (et pas déjà reparti à la hausse).
+      if (c0 < c1 && r0 < r1) {
+        var reparti = false; if (pts.length >= 3 && c0 > num(pts[2].charge)) reparti = true;
+        if (!reparti) { recule.push(exo); return; }
+      }
+      // STAGNE : ≥3 séances même charge, reps non croissantes, et RPE qui monte (= plus dur).
+      if (pts.length >= 3) {
+        var c2 = num(pts[2].charge), r2 = num(pts[2].reps);
+        if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
+          var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
+          stagne.push({ exo: exo, c: c0, r: r0, n: pts.length, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
+        }
+      }
+    });
+    // EFFORT : RPE moyen sur 7 j (toutes séries) + tendance vs les 7 j précédents.
+    var rpeNow = [], rpePrev = [];
+    Object.keys(prog).forEach(function (exo) {
+      (prog[exo] || []).forEach(function (p) {
+        var dt = pd(p.date); if (!dt) return; var d = days(dt);
+        (Array.isArray(p.series) ? p.series : []).forEach(function (s) {
+          var v = Number(s && s.rpe); if (isNaN(v) || v <= 0) return;
+          if (d <= 7) rpeNow.push(v); else if (d <= 14) rpePrev.push(v);
+        });
+      });
+    });
+    var mean = function (a) { return a.length ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : null; };
+    var rpeMoy = mean(rpeNow), rpeMoyPrev = mean(rpePrev);
+    // Couverture des 5 grands groupes sur 7 j (ce qui MANQUE, groupes à 0).
+    var GR = [['Pecs', ['Pectoraux']], ['Dos', ['Dos']], ['Épaules', ['Epaule']], ['Bras', ['Biceps', 'Triceps']], ['Jambes', ['Quadriceps', 'Ischio', 'Fessier', 'Mollets', 'Jambe', 'Aducteur']]];
+    var volMap = {}; (Array.isArray(hist.volume_semaine) ? hist.volume_semaine : []).forEach(function (v) { volMap[v.muscle] = (volMap[v.muscle] || 0) + (v.faites || 0); });
+    var faits = [], absent = [], total7 = 0;
+    GR.forEach(function (gr) { var s = gr[1].reduce(function (a, mk) { return a + (volMap[mk] || 0); }, 0); total7 += s; if (s > 0) faits.push(gr[0]); else absent.push(gr[0]); });
+
+    var sub = function (t) { return ' <span class="cdcp-sub">(' + t + ')</span>'; };
+    var entr = '';
+    if (records.length) {
+      var rtx = records.slice(0, 3).map(function (x) { return esc(x.exo) + ' <b>' + _cdFmtKg(x.c) + ' kg × ' + x.r + '</b>'; }).join(', ');
+      if (records.length > 3) rtx += ' <span class="cdcp-sub">+' + (records.length - 3) + '</span>';
+      entr += _cdCoupRow('var(--good)', '★', '<b>Records</b> — ' + rtx + sub('charge/reps battus'));
+    }
+    if (progresse.length) {
+      var ptx = progresse.slice(0, 3).map(function (x) { return (x.c0 > x.c1) ? (esc(x.exo) + ' ' + _cdFmtKg(x.c1) + '→<b>' + _cdFmtKg(x.c0) + ' kg</b>') : (esc(x.exo) + ' ' + x.r1 + '→<b>' + x.r0 + ' reps</b>'); }).join(', ');
+      entr += _cdCoupRow('var(--good)', '▲', '<b>Progresse</b> — ' + ptx + sub('charge ou reps en hausse'));
+    }
+    if (stagne.length) {
+      var st = stagne[0];
+      entr += _cdCoupRow('var(--warn)', '⏸', '<b>Stagne</b> — ' + esc(st.exo) + ' : ' + _cdFmtKg(st.c) + ' kg × ' + st.r + ' depuis ' + st.n + ' séances' + (st.rpeUp ? ', <b>RPE en hausse</b>' : '') + sub(st.rpeUp ? 'pareil mais plus dur → à débloquer' : 'plateau à débloquer'));
+    }
+    if (recule.length) entr += _cdCoupRow('var(--bad)', '▼', '<b>Recule</b> — ' + esc(recule.slice(0, 3).join(', ')) + ' : charge <i>et</i> reps en baisse' + sub('perf réelle en baisse'));
+    if (rpeMoy != null) {
+      var rpeTxt = (Math.round(rpeMoy * 10) / 10).toString().replace('.', ',');
+      var trd2 = (rpeMoyPrev == null) ? '' : (rpeMoy - rpeMoyPrev > 0.3 ? ' · en hausse' : (rpeMoy - rpeMoyPrev < -0.3 ? ' · en baisse' : ' · stable'));
+      var effSub = rpeMoy >= 8.5 ? 'intensité très élevée → surveiller la fatigue' : (rpeMoy >= 7.5 ? 'intensité soutenue' : (rpeMoy >= 6 ? 'intensité modérée' : 'intensité légère'));
+      entr += _cdCoupRow('var(--accent2)', '🔥', '<b>Effort</b> — RPE moyen <b>' + rpeTxt + '</b> /7 j' + trd2 + sub(effSub));
+    }
+    if (total7 > 0 && faits.length) entr += _cdCoupRow('var(--good)', '✓', '<b>Travaillé (7 j)</b> — ' + esc(faits.join(', ')));
+    if (total7 > 0 && absent.length && absent.length < 5) entr += _cdCoupRow('var(--warn)', '⚠', '<b>Non travaillé (7 j)</b> — ' + esc(absent.join(', ')));
+    if (!entr) entr = '<div class="cdcp-empty">Pas encore assez de séances pour analyser l\'entraînement.</div>';
+
+    // ═══ ÉTAT & RÉCUP — 1 ligne par signal (niveau + tendance), + PAS (montre) + CARDIO ═══
+    var dispo = (m.disponibilite && m.disponibilite.niveau) || null, recup = (m.recup && m.recup !== '—') ? m.recup : null;
+    var be = (data.bien_etre && data.bien_etre[0]) || null, histBE = (data.bien_etre || []).slice(1, 4), sig = m.signaux || {};
+    var WQ = (typeof WQ_ANSWERS !== 'undefined') ? WQ_ANSWERS : null;
+    var lab = function (key, val) { return (WQ && WQ[key] && WQ[key][Number(val)]) ? String(WQ[key][Number(val)]).toLowerCase() : ''; };
+    var avgBE = function (key) { var xs = histBE.map(function (b) { return Number(b && b[key]); }).filter(function (x) { return !isNaN(x); }); return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null; };
+    var trd = function (key, inv) { var a = avgBE(key); if (a == null || !be || be[key] == null) return ''; var d = Number(be[key]) - a; if (Math.abs(d) <= 0.5) return ' · stable'; return ((d > 0) !== !!inv) ? ' · en hausse' : ' · en baisse'; };
+    var colv = function (val) { var n = Number(val); return n >= 4 ? 'var(--good)' : (n <= 2 ? 'var(--warn)' : 'var(--text-subtle)'); };
+    var sh = Array.isArray(data.sante_historique) ? data.sante_historique : [];
+    var pasArr = sh.filter(function (x) { var t = pd(x && x.date); return t && (nowT - t) / 864e5 <= 8; }).map(function (x) { return Number(x.pas); }).filter(function (v) { return !isNaN(v) && v > 0; });
+    var pasAvg = pasArr.length ? Math.round(pasArr.reduce(function (a, b) { return a + b; }, 0) / pasArr.length) : null;
+    var etat = '';
+    if (recup) etat += _cdCoupRow((recup === 'Faible' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)', '●', '<b>Récupération</b> ' + esc(String(recup).toLowerCase()));
+    if (be) {
+      if (be.sommeil != null) etat += _cdCoupRow(colv(be.sommeil), '●', '<b>Sommeil</b> ' + esc(lab('sommeil', be.sommeil) || '—') + trd('sommeil', false));
+      if (be.energie != null) etat += _cdCoupRow(colv(be.energie), '●', '<b>Énergie</b> ' + esc(lab('energie', be.energie) || '—') + trd('energie', false));
+      if (be.fatigue != null) etat += _cdCoupRow(colv(be.fatigue), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + trd('fatigue', true));
+    }
+    if (sig.stress != null) { var stv = Number(sig.stress); etat += _cdCoupRow(stv >= 3.5 ? 'var(--warn)' : 'var(--good)', '●', '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé'))); }
+    if (be && be.zone_douloureuse) etat += _cdCoupRow('var(--warn)', '●', '<b>Douleur</b> ' + esc(String(be.zone_douloureuse).toLowerCase()));
+    else if (be) etat += _cdCoupRow('var(--good)', '●', '<b>Douleur</b> aucune');
+    if (pasAvg != null) { var pc = pasAvg >= 8000 ? 'var(--good)' : (pasAvg >= 5000 ? 'var(--text-subtle)' : 'var(--warn)'); var pl = pasAvg >= 8000 ? 'actif' : (pasAvg >= 5000 ? 'modéré' : 'faible, plutôt sédentaire'); etat += _cdCoupRow(pc, '●', '<b>Pas</b> ' + pasAvg.toLocaleString('fr-FR') + '/j · ' + pl + ' <span style="color:var(--text-subtle)">(montre, 7 j)</span>'); }
+    // CARDIO — toujours affiché : si aucun historique, on le DIT (« manque de cardio »).
+    var cardio = (data && data.cardio) || {}, ch = Array.isArray(cardio.history) ? cardio.history : [];
+    var cardioManque = false, cN7 = 0, lastCardio = 0;
+    ch.forEach(function (s) { var t = pd(s.date); if (!t) return; if (!lastCardio || t > lastCardio) lastCardio = t; if (days(t) <= 7) cN7++; });
+    if (ch.length === 0) { cardioManque = true; etat += _cdCoupRow('var(--warn)', '●', '<b>Cardio</b> aucune séance enregistrée <span style="color:var(--text-subtle)">(manque de cardio)</span>'); }
+    else if (cN7 === 0) { cardioManque = true; var ddc = lastCardio ? Math.round(days(lastCardio)) : null; etat += _cdCoupRow('var(--warn)', '●', '<b>Cardio</b> pas de sortie récente' + (ddc != null ? ' (dernière il y a ' + ddc + ' j)' : '') + ' <span style="color:var(--text-subtle)">(manque de cardio)</span>'); }
+    else {
+      // Efficience (FC à effort égal) : comparée seulement si assez de données et RPE comparable.
+      var cx = ch.map(function (s) { var t = pd(s.date); return { d: t ? days(t) : 1e9, fc: Number(s.fc_moy) || 0, rpe: Number(s.rpe) || 0 }; }).filter(function (s) { return s.fc > 0 && s.rpe > 0 && s.d <= 60; });
+      var cR = cx.filter(function (s) { return s.d <= 30; }), cO = cx.filter(function (s) { return s.d > 30 && s.d <= 60; });
+      var effTxt = '', effCol = 'var(--good)';
+      if (cR.length >= 2 && cO.length >= 2) {
+        var avgk = function (a, k) { return a.reduce(function (s, x) { return s + x[k]; }, 0) / a.length; };
+        if (Math.abs(avgk(cR, 'rpe') - avgk(cO, 'rpe')) <= 1.2) {
+          var dfc = avgk(cR, 'fc') - avgk(cO, 'fc');
+          if (dfc < -2) effTxt = ' · FC à effort égal <b>▼ mieux</b>';
+          else if (dfc > 2) { effTxt = ' · FC à effort égal <b>▲</b>'; effCol = 'var(--warn)'; }
+          else effTxt = ' · FC à effort égal stable';
+        }
+      }
+      etat += _cdCoupRow(effCol, '●', '<b>Cardio</b> ' + cN7 + ' sortie' + (cN7 > 1 ? 's' : '') + ' /7 j' + effTxt);
+    }
+    // POIDS — toujours affiché : tendance factuelle (hausse/baisse/stable) ou « non
+    // renseigné ». Neutre : hausse/baisse n'est ni bonne ni mauvaise dans l'absolu
+    // (dépend de l'objectif prise de masse / sèche) → pas de couleur verte/rouge.
+    var pesees = (data && Array.isArray(data.poids)) ? data.poids : [];
+    var pvals = pesees.map(function (p) { return { t: pd(p.date), v: Number(p.poids), d: String(p.date || '') }; }).filter(function (x) { return !isNaN(x.v) && x.v > 0; });
+    if (!pvals.length) etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Poids</b> non renseigné');
+    else if (pvals.length === 1) etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Poids</b> ' + pvals[0].v + ' kg <span style="color:var(--text-subtle)">(1 seule pesée)</span>');
+    else {
+      var pLast = pvals[0].v, ref = null;
+      for (var pi = 1; pi < pvals.length; pi++) { if (pvals[pi].t && days(pvals[pi].t) <= 60) ref = pvals[pi]; }  // la plus ANCIENNE pesée dans 60 j
+      if (!ref) ref = pvals[pvals.length - 1];
+      var dP = Math.round((pLast - ref.v) * 10) / 10;
+      var ptxt;
+      if (Math.abs(dP) < 0.5) ptxt = pLast + ' kg · stable';
+      else if (dP > 0) ptxt = pLast + ' kg · en hausse (+' + dP + ' kg)';
+      else ptxt = pLast + ' kg · en baisse (' + dP + ' kg)';
+      etat += _cdCoupRow('var(--text-subtle)', '●', '<b>Poids</b> ' + ptxt + (ref.d ? ' <span style="color:var(--text-subtle)">depuis le ' + esc(ref.d) + '</span>' : ''));
+    }
+    if (!etat) etat = '<div class="cdcp-empty">Pas encore de questionnaire bien-être ni de données montre.</div>';
+
+    // ═══ LECTURE NOVALYZ — narratif coach (pas de « tu… », pas de pronom genré) + reco ═══
+    var prenom = (coachAthleteCourant && coachAthleteCourant.nom) ? esc(String(coachAthleteCourant.nom).split(/\s+/)[0]) : 'L\'athlète';
+    var statut = (dispo === 'À surveiller') ? 'à surveiller de près — priorité récup' : (dispo === 'Vigilance' ? 'à surveiller (récup moyenne)' : (dispo === 'Prêt' ? 'au vert, apte à une séance exigeante' : (recup ? ('récupération ' + String(recup).toLowerCase()) : 'état à préciser')));
+    var lect = '';
+    lect += _cdCoupRow((dispo === 'À surveiller' || recup === 'Faible') ? 'var(--bad)' : ((dispo === 'Vigilance' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)'), '●', '<b>' + prenom + '</b> — ' + statut + '.');
+    var nDyn = records.length + progresse.length;
+    if (nDyn > 0) lect += _cdCoupRow('var(--good)', '●', 'Bonne dynamique : ' + (records.length ? '<b>' + records.length + ' record' + (records.length > 1 ? 's' : '') + '</b>' : '') + (records.length && progresse.length ? ' + ' : '') + (progresse.length ? 'charges/reps en hausse sur <b>' + progresse.length + '</b> exo' + (progresse.length > 1 ? 's' : '') : '') + '.');
+    if (stagne.length) { var s0 = stagne[0]; lect += _cdCoupRow('var(--warn)', '●', '<b>' + esc(s0.exo) + ' stagne</b>' + (s0.rpeUp ? ' (même charge, RPE qui monte)' : ' (plateau charge/reps)') + ' → décharge 1 semaine, allonge les temps de repos, ou place-le plus tôt dans la séance (plus frais).'); }
+    if (recule.length) lect += _cdCoupRow('var(--bad)', '●', 'Recul sur <b>' + esc(recule.slice(0, 2).join(', ')) + '</b> (charge et reps en baisse) — à regarder.');
+    if (total7 > 0 && absent.length && absent.length < 5) lect += _cdCoupRow('var(--warn)', '●', 'Volume : <b>' + esc(absent.join(' & ')) + '</b> délaissé' + (absent.length > 1 ? 's' : '') + ' cette semaine.');
+    else if (total7 > 0 && !absent.length) lect += _cdCoupRow('var(--good)', '●', 'Volume bien réparti sur les grands groupes.');
+    if (rpeMoy != null && rpeMoy >= 8.5) lect += _cdCoupRow('var(--warn)', '●', 'Intensité haute (RPE ' + (Math.round(rpeMoy * 10) / 10).toString().replace('.', ',') + ') → garder un œil sur la fatigue.');
+    if (cardioManque) lect += _cdCoupRow('var(--warn)', '●', 'Manque de cardio — base d\'endurance à entretenir (1 à 2 sorties/sem.).');
+    var reco;
+    if (dispo === 'À surveiller' || recup === 'Faible') reco = 'Allège ou décale la prochaine séance — priorité à la récupération.';
+    else if (total7 > 0 && absent.length && absent.length < 5) reco = 'Prochaine séance : réintègre ' + esc(absent[0]) + (absent[1] ? ' et ' + esc(absent[1]) : '') + ' pour rééquilibrer le volume.';
+    else if (stagne.length) reco = 'Pour débloquer ' + esc(stagne[0].exo) + ' : décharge 1 semaine, allonge les temps de repos, ou place-le plus tôt dans la séance pour l\'attaquer plus frais.';
+    else if (recule.length) reco = 'Revois la charge / surcharge sur ' + esc(recule.slice(0, 2).join(', ')) + ' (consolider avant de remonter).';
+    else if (cardioManque) reco = 'Ajoute 1 à 2 sorties cardio par semaine pour soutenir la récupération et l\'endurance.';
+    else reco = 'Tout est au vert — maintiens le cap ; une petite surcharge est envisageable sur un exercice clé.';
+    // Complément data-driven : UN seul point utile en plus, non redondant avec la reco primaire.
+    var compl = '';
+    if (!/récup|allège|décal/i.test(reco) && (dispo === 'À surveiller' || recup === 'Faible')) compl = 'Priorise aussi la récupération.';
+    else if (!/réintègre|volume/i.test(reco) && total7 > 0 && absent.length && absent.length < 5) compl = 'Pense aussi à réintégrer ' + esc(absent[0]) + ' pour le volume.';
+    else if (!/décharge|stagn|repos/i.test(reco) && stagne.length) compl = esc(stagne[0].exo) + ' stagne : allonge les repos ou place-le plus tôt dans la séance.';
+    else if (!/cardio/i.test(reco) && cardioManque) compl = 'Et 1 à 2 sorties cardio pour l\'endurance.';
+    else if (!/intensit|fatigue/i.test(reco) && rpeMoy != null && rpeMoy >= 8.5) compl = 'Intensité haute en ce moment → garde un œil sur la fatigue.';
+    if (compl) reco += ' ' + compl;
+
+    el.innerHTML = '<div class="cdcp-lab">Coup d\'œil <span class="cdcp-tag">comprendre en 5 s</span></div>'
+      + '<div class="cdcp-wrap">'
+      + '<div class="dash-card cdcp-card"><div class="cdcp-h">🏋️ Entraînement</div>' + entr + '</div>'
+      + '<div class="dash-card cdcp-card"><div class="cdcp-h">❤️ État &amp; récup</div>' + etat + '</div></div>'
+      + '<div class="cdcp-lab"><span style="color:var(--accent)">✦</span> Lecture Novalyz <span class="cdcp-tag">pour le coach</span></div>'
+      + '<div class="dash-card cdcp-card" style="border-left:3px solid var(--accent)">' + lect
+      + '<div class="cdcp-reco"><div class="cdcp-reco-l">Reco · prochaine séance</div><div class="cdcp-reco-t">' + reco + '</div></div></div>';
+  } catch (e) { try { el.innerHTML = ''; } catch (_) {} }
+}
+
 // Hero « État du jour » (détail athlète, onglet Aperçu) — carte colorée par le
 // statut global du moteur. Réutilise computeMarqueursCoach (statut), data.moteur
-// (niveau + reco) et le dernier questionnaire bien-être (chips). Ne fabrique rien :
-// la reco vient du moteur ; sans moteur, on affiche un repère factuel (régularité).
+// (niveau) et le dernier questionnaire bien-être (chips). Ne fabrique rien.
+// IMPORTANT : le hero montre le POURQUOI FACTUEL (récup + régularité), côté COACH.
+// Il n'affiche PAS la reco-action du moteur (écrite pour l'athlète + redondante
+// avec la carte « Reco · prochaine séance » du Coup d'œil). Une seule reco = en bas.
 function renderCoachHeroEtat(data) {
   const el = document.getElementById('cd-hero');
   const a = coachAthleteCourant;
@@ -5366,18 +5585,17 @@ function renderCoachHeroEtat(data) {
   const M = data.moteur || null;
   const niveau = (M && M.disponibilite && M.disponibilite.niveau) ? M.disponibilite.niveau
                : (s.label === 'Optimal' ? 'En forme' : s.label === 'Surveillance' ? 'À surveiller' : s.label === 'Action' ? 'À surveiller' : s.label);
-  // Raison : reco du moteur si dispo, sinon repère factuel (séances / dernière séance).
+  // Raison = état FACTUEL côté coach (récup + régularité + dernière séance).
+  // Pas la reco-action du moteur (athlète + doublon avec la Reco du Coup d'œil).
   const dash = data.dashboard || {};
   const reg = dash.regularite || {};
   const faites = _seancesFaites(reg), prevues = reg.seances_prevues || 0;
-  let raison = (M && M.reco && M.reco !== '—') ? M.reco : '';
-  if (!raison) {
-    const parts = [];
-    if (prevues > 0) parts.push(`${faites}/${prevues} séance${prevues > 1 ? 's' : ''} cette semaine`);
-    else if (faites != null) parts.push(`${faites} séance${faites > 1 ? 's' : ''} cette semaine`);
-    if (dash.derniere_seance && dash.derniere_seance.date) parts.push(`dernière le ${dash.derniere_seance.date}`);
-    raison = parts.join(' · ') || 'Pas encore assez de données pour un verdict.';
-  }
+  const parts = [];
+  if (M && M.recup && M.recup !== '—') parts.push(`récup ${String(M.recup).toLowerCase()}`);
+  if (prevues > 0) parts.push(`${faites}/${prevues} séance${prevues > 1 ? 's' : ''} cette semaine`);
+  else if (faites != null) parts.push(`${faites} séance${faites > 1 ? 's' : ''} cette semaine`);
+  if (dash.derniere_seance && dash.derniere_seance.date) parts.push(`dernière le ${dash.derniere_seance.date}`);
+  let raison = parts.join(' · ') || 'Pas encore assez de données pour un verdict.';
   // Chips bien-être (dernier questionnaire) — données réelles uniquement.
   const be = (data && Array.isArray(data.bien_etre)) ? data.bien_etre : [];
   const dernier = be[0] || null;
@@ -7022,7 +7240,7 @@ function _coachDeskAnalyses() {
       + (chip ? '<span class="cs-lchip ' + chipCls + '">' + esc(chip) + '</span>' : '') + '</div>';
   };
   // Meilleure progression (Δ 1RM estimé le plus fort)
-  var progCard = '<div class="cs-card"><div class="cs-ct">Meilleure progression · 1RM estimé</div>'
+  var progCard = '<div class="cs-card"><div class="cs-ct">Meilleure progression · charge / reps</div>'
     + (progA.length ? progA.slice(0, 4).map(function (x) { return arow(x.nom, x.exo, '▲ +' + x.delta + ' %', 'good'); }).join('')
       : '<div class="cs-empty">Pas assez de séances pour l\'estimer.</div>') + '</div>';
   // À relancer (assiduité la plus basse, hors objectif non défini)
@@ -7046,7 +7264,7 @@ function _coachDeskAnalyses() {
     + '<div class="cs-an-g2">' + donut + assCard + '</div>'
     + '<div class="cs-an-g2">' + progCard + relanceCard + '</div>'
     + '<div class="cs-an-g2">' + bienCard + blessCard + '</div>'
-    + '<div class="cs-note">Données agrégées depuis les fiches athlètes (assiduité, états du moteur, Δ 1RM estimé, bien-être du dernier questionnaire, table blessures). Rien n\'est recalculé ici.</div>';
+    + '<div class="cs-note">Données agrégées depuis les fiches athlètes (assiduité, états du moteur, progression charge / reps, bien-être du dernier questionnaire, table blessures). Rien n\'est recalculé ici.</div>';
 }
 function coachDeskSearch(q) {
   q = (q || '').toLowerCase().trim();
@@ -7085,8 +7303,13 @@ function renderCoachHome() {
   var titles = { aujourdhui: "Aujourd'hui", equipe: 'Équipe', analyses: 'Analyses' };
   var action = (coachDeskSection === 'equipe') ? '<button class="cs-btn p" data-tour="co-inviter" onclick="ouvrirModalLierAthlete()">+ Inviter</button>' : '';
   var body = coachDeskSection === 'equipe' ? _coachDeskEquipe() : coachDeskSection === 'analyses' ? _coachDeskAnalyses() : _coachDeskAujourdhui();
+  // N4 : la recherche d'athlète n'a de sens que dans l'annuaire « Équipe » → on ne
+  // l'affiche que là (avant, elle était dans l'en-tête de toutes les sections).
+  var searchBox = (coachDeskSection === 'equipe')
+    ? '<div class="cs-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Rechercher un athlète…" oninput="coachDeskSearch(this.value)" autocomplete="off"></div>'
+    : '';
   shell.innerHTML = '<div class="cs-main"><header class="cs-top"><h1>' + (titles[coachDeskSection] || '') + '</h1>'
-    + '<div class="cs-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Rechercher un athlète…" oninput="coachDeskSearch(this.value)" autocomplete="off"></div>'
+    + searchBox
     + action + '</header><div class="cs-body">' + body + '</div></div>';
 }
 function renderCoachDesktop() { if (!_coachDeskAny()) return; renderCoachRail(); if (!document.body.classList.contains('athlete-selected')) renderCoachHome(); }
@@ -7220,10 +7443,113 @@ function _cdPersistLigne(ligne) {
       rpe_cible: (ligne.rpe_cible == null ? null : Number(ligne.rpe_cible)),
       type: ligne.type || null,
       cardio_cible: (ligne.cardio_cible == null ? null : Number(ligne.cardio_cible)),
-      cardio_unite: ligne.cardio_unite || null
+      cardio_unite: ligne.cardio_unite || null,
+      // #4 schéma de séries : schema + back-off % (topbackoff) + cibles par série (pyramidal)
+      schema: ligne.schema || null,
+      backoff_pct: (ligne.backoff_pct == null || ligne.backoff_pct === '' ? null : Number(ligne.backoff_pct)),
+      series_json: (Array.isArray(ligne.series_json) && ligne.series_json.length ? ligne.series_json : null)
     })
   });
 }
+// ═══ #4 — Schéma de séries : dérivation + contrôles d'édition + handlers ═══
+// Fourchette de reps lisible (« 8 », « 8–12 », « ? »).
+function _repsRange(a, b) {
+  var ha = (a != null && a !== ''), hb = (b != null && b !== '');
+  if (ha && hb) return String(a) === String(b) ? String(a) : (a + '–' + b);
+  return ha ? String(a) : (hb ? String(b) : '?');
+}
+// Dérive les cibles PAR SÉRIE d'une ligne de programme selon son schéma. rm = 1RM
+// estimé (kg) ou null. PURE : lit UNIQUEMENT la ligne (aucune invention — règle 6bis).
+// Retourne { series:[{serie,reps,pct,kg,rpe,tag}], note }.
+function _derivePlanSeries(l, rm) {
+  if (!l) return { series: [], note: '' };
+  var schema = l.schema || 'fixe';
+  var n = Number(l.series_prevues) || 0;
+  var repsTxt = _repsRange(l.reps_mini, l.reps_max);
+  var kgOf = function (pct) { return (rm && pct != null) ? Math.round(rm * pct / 100 / 2.5) * 2.5 : null; };
+  var out = [];
+  if (schema === 'pyramidal' && Array.isArray(l.series_json) && l.series_json.length) {
+    l.series_json.slice(0, 12).forEach(function (s, i) {
+      out.push({ serie: i + 1, reps: (s && s.reps != null ? String(s.reps) : repsTxt), pct: (s && s.pct != null ? Number(s.pct) : null), kg: kgOf(s && s.pct != null ? Number(s.pct) : null), rpe: (s && s.rpe != null ? Number(s.rpe) : null), tag: '' });
+    });
+    return { series: out, note: 'Pyramidal : charge et reps propres à chaque série.' };
+  }
+  if (schema === 'topbackoff' && n > 0) {
+    var bo = (l.backoff_pct != null && l.backoff_pct !== '') ? Number(l.backoff_pct) : 10;
+    var topPct = l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null;
+    var boPct = topPct != null ? Math.round(topPct * (1 - bo / 100)) : null;
+    out.push({ serie: 1, reps: (l.reps_mini != null && l.reps_mini !== '' ? String(l.reps_mini) : repsTxt), pct: topPct, kg: kgOf(topPct), rpe: (l.rpe_cible != null ? Number(l.rpe_cible) : null), tag: 'lourde' });
+    for (var k = 2; k <= n; k++) out.push({ serie: k, reps: (l.reps_max != null && l.reps_max !== '' ? String(l.reps_max) : repsTxt), pct: boPct, kg: kgOf(boPct), rpe: null, tag: 'back-off' });
+    return { series: out, note: 'Top-set + back-off : 1 série lourde, puis −' + bo + '% en volume.' };
+  }
+  // fixe / double : même cible pour toutes les séries
+  var pctF = l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null;
+  for (var j = 1; j <= n; j++) out.push({ serie: j, reps: repsTxt, pct: pctF, kg: kgOf(pctF), rpe: (l.rpe_cible != null ? Number(l.rpe_cible) : null), tag: '' });
+  return { series: out, note: schema === 'double' ? 'Double progression : monte d\'abord les reps, puis la charge.' : '' };
+}
+// Libellé court d'une charge dérivée (kg si 1RM connu, sinon % 1RM).
+function _planLoadTxt(s) { return s.kg != null ? (s.kg + ' kg') : (s.pct != null ? (s.pct + ' %') : ''); }
+
+var _SCHEMA_OPTS = [['fixe', 'Séries fixes'], ['double', 'Double progression'], ['topbackoff', 'Top-set + back-off'], ['pyramidal', 'Pyramidal']];
+// Bloc de contrôles « Schéma » injecté dans l'éditeur (builder desktop ET mobile).
+// Classes génériques (non scopées à l'overlay) → même rendu partout.
+function _schemaControlsHtml(l, seanceId) {
+  if (!l || l.type === 'cardio') return '';
+  var sj = String(seanceId).replace(/'/g, "\\'"), ri = l.row_index, sch = l.schema || 'fixe';
+  var sel = '<label class="sch-sel"><span class="sch-l">Schéma de séries</span>'
+    + '<select onchange="cdSetSchema(' + ri + ',\'' + sj + '\',this.value)">'
+    + _SCHEMA_OPTS.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === sch ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
+    + '</select></label>';
+  var extra = '';
+  if (sch === 'topbackoff') {
+    var bo = (l.backoff_pct != null && l.backoff_pct !== '') ? l.backoff_pct : 10;
+    extra = '<label class="sch-sel sch-bo"><span class="sch-l">Back-off (−% sur les séries de volume)</span>'
+      + '<input type="number" value="' + bo + '" min="0" max="50" onchange="cdSetBackoff(' + ri + ',\'' + sj + '\',this.value)"></label>';
+  }
+  var table = '';
+  if (sch === 'pyramidal') {
+    var n = Number(l.series_prevues) || (Array.isArray(l.series_json) ? l.series_json.length : 0) || 3;
+    var arr = Array.isArray(l.series_json) ? l.series_json : [];
+    var rows = '';
+    for (var k = 0; k < n; k++) {
+      var s = arr[k] || {};
+      rows += '<div class="sch-pyr-row"><span class="sch-pyr-s">S' + (k + 1) + '</span>'
+        + '<input type="number" placeholder="% 1RM" value="' + (s.pct != null ? s.pct : '') + '" onchange="cdSetPyramidCell(' + ri + ',\'' + sj + '\',' + k + ',\'pct\',this.value)">'
+        + '<input type="number" placeholder="reps" value="' + (s.reps != null ? s.reps : '') + '" onchange="cdSetPyramidCell(' + ri + ',\'' + sj + '\',' + k + ',\'reps\',this.value)">'
+        + '</div>';
+    }
+    table = '<div class="sch-pyr"><div class="sch-pyr-hd">Cible par série (% 1RM · reps)</div>' + rows + '</div>';
+  }
+  // Aperçu dérivé (ce que verra l'athlète au démarrage).
+  var plan = _derivePlanSeries(l, _est1RM(l.exercice));
+  var prev = plan.series.length ? '<div class="sch-prev">' + plan.series.map(function (s) {
+    var load = _planLoadTxt(s);
+    return '<span class="sch-chip' + (s.tag === 'lourde' ? ' top' : '') + '">S' + s.serie + ' <small>' + escapeHtml([s.reps + ' reps', load].filter(Boolean).join(' · ')) + '</small></span>';
+  }).join('') + '</div>' : '';
+  return '<div class="sch-wrap">' + sel + extra + table + prev + '</div>';
+}
+function cdSetSchema(rowIndex, seanceId, val) {
+  var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
+  l.schema = (['fixe', 'double', 'topbackoff', 'pyramidal'].indexOf(val) >= 0) ? val : 'fixe';
+  if (l.schema === 'pyramidal' && (!Array.isArray(l.series_json) || !l.series_json.length)) {
+    var n = Number(l.series_prevues) || 3; l.series_json = [];
+    for (var k = 0; k < n; k++) l.series_json.push({ pct: (l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null), reps: (l.reps_mini != null ? Number(l.reps_mini) : null), rpe: null });
+  }
+  if (l.schema === 'topbackoff' && (l.backoff_pct == null || l.backoff_pct === '')) l.backoff_pct = 10;
+  cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l);
+}
+function cdSetBackoff(rowIndex, seanceId, val) {
+  var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
+  l.backoff_pct = (val === '' ? null : Number(val)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l);
+}
+function cdSetPyramidCell(rowIndex, seanceId, idx, field, val) {
+  var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return;
+  if (!Array.isArray(l.series_json)) l.series_json = [];
+  while (l.series_json.length <= idx) l.series_json.push({ pct: null, reps: null, rpe: null });
+  l.series_json[idx][field] = (val === '' ? null : Number(val));
+  cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l);
+}
+
 // Setters d'un item cardio dans le builder.
 function cdSetCardioActivite(rowIndex, val) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.exercice = val; cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l); }
 function cdSetCardioUnite(rowIndex, u) { var l = cdProgrammeLignes.find(function (x) { return x.row_index === rowIndex; }); if (!l) return; l.cardio_unite = u; if (u === 'libre') l.cardio_cible = null; cdExoOpen[rowIndex] = true; renderProgrammeCoach(); _cdPersistLigne(l); }
@@ -7402,7 +7728,8 @@ function renderProgrammeCoach() {
         <select onchange="cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,null,this.value)" style="font-size:13px;padding:9px 6px;width:100%;min-width:0;text-align:center;margin-bottom:0;font-weight:700">${_rpeOptions(l.rpe_cible)}</select>
       </div>
     </div>
-    ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}`;
+    ${(function(){ var t = _cibleTxt(l, true); var rm = _est1RM(l.exercice); return t ? `<div style="margin-top:7px;font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px">Cible : ${t}${(l.charge_pct_1rm != null && !rm) ? ' <span style="color:var(--text-subtle);font-weight:600">(kg dispo dès que tu auras un historique sur cet exo)</span>' : ''}</div>` : ''; })()}
+    ${_schemaControlsHtml(l, seanceId)}`;
 
   // Champs éditables d'un item CARDIO : activité + mode de cible (durée/distance/libre) + valeur.
   const champsExoCardio = (l) => `
@@ -7553,17 +7880,23 @@ function renderProgrammeCoach() {
     var musColOf = function (lg) { for (var i = 0; i < lg.length; i++) { if (lg[i].type !== 'cardio') return _progMuscleCol(muscleDe(lg[i].exercice)); } return '#9D5FD3'; };
     var rowMuscu = function (l, sid) {
       var mus = muscleDe(l.exercice), gcol = _progMuscleCol(mus), sj = String(sid).replace(/'/g, "\\'"), ri = l.row_index;
-      return '<div class="pb-row" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
+      // Ligne en 2 niveaux : (1) nom complet + suppr ; (2) paramètres (séries/reps/%/RPE/repos)
+      // sur leur propre ligne qui peut s'enrouler → plus de débordement desktop (case RPE /
+      // repos) et le nom reste lisible en entier.
+      return '<div class="pb-row pb-row-muscu" draggable="true" ondragstart="progDragStart(event,' + ri + ')">'
         + gripSvg
         + '<div class="pb-exn"><span class="dot" style="background:' + gcol + '"></span><div class="pb-exn-c">'
         +   '<select class="pb-exo" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',this.value,null,null,null,null,null)">' + exoOptions(l.exercice) + '</select>'
         +   (mus ? '<small style="color:' + gcol + '">' + esc(mus) + '</small>' : '') + '</div></div>'
-        + '<div class="pb-fld pb-series"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
-        + '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div></div>'
-        + '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
-        + '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
-        + '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
         + '<button class="pb-del" onclick="cdSupprimerLigne(' + ri + ')" title="Supprimer">✕</button>'
+        + '<div class="pb-flds">'
+        +   '<div class="pb-fld pb-series"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
+        +   '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div></div>'
+        +   '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
+        +   '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
+        +   '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
+        + '</div>'
+        + _schemaControlsHtml(l, sid)
         + '</div>';
     };
     var rowCardio = function (l, sid) {
@@ -8224,72 +8557,74 @@ function construireSynthAlertes(data) {
   return out.filter(s => !(enPause && s.type === 'synth-regularite'));
 }
 
+// #18 — Catégorie métier d'une alerte (pastille) à partir de son type (backend/synthèse).
+function _catAlerte(type) {
+  switch (String(type || '')) {
+    case 'douleur': return { label: 'Douleur', cls: 'douleur' };
+    case 'surcharge': case 'charge': case 'sous_charge': case 'synth-volume': return { label: 'Charge', cls: 'charge' };
+    case 'fatigue': case 'sommeil': case 'synth-recup': return { label: 'Bien-être', cls: 'bien' };
+    case 'stagnation': case 'synth-progression': return { label: 'Progression', cls: 'prog' };
+    case 'absence': case 'irregularite': case 'synth-regularite': return { label: 'Régularité', cls: 'reg' };
+    default: return { label: 'Alerte', cls: 'neutre' };
+  }
+}
+// Priorité d'affichage : 'haute' = prioritaire (rouge) ; le reste = à surveiller.
+function _sevGroupe(sev) { return sev === 'haute' ? 'haute' : 'moyenne'; }
+
+// #18 — Bloc « alertes à traiter » (fiche athlète, vue coach) : triage par priorité +
+// catégorie, prescription moteur visible, 1 action primaire + secondaires discrètes.
+// Mêmes handlers qu'avant (repondreAlerte / traiterAlerteDepuisDetail / toggleExplication
+// / traiterSyntheseAlerteCoach) — on ne change que la présentation.
 function renderAlertesCoach(data) {
   const el = document.getElementById('cd-alertes');
   if (!el || !coachAthleteCourant) return;
-  const couleurSeverite = { haute: 'var(--danger)', moyenne: 'var(--warn)', basse: 'var(--text-subtle)' };
-  const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(coachAthleteCourant.athlete_id, al));
-
   const d = data || coachAthleteData;
-  // Alertes de synthèse non encore traitées cette semaine
-  let synthAlertes = construireSynthAlertes(d).filter(s => !alerteEstTraitee(coachAthleteCourant.athlete_id, { type: s.type }));
+  const aid = coachAthleteCourant.athlete_id;
 
-  // Carte alerte : liseré de sévérité à gauche, fond surface (style moderne).
-  const alerteCard = (stripe, icon, bodyHtml, actionsHtml) => `
-    <div style="display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-left:3px solid ${stripe};border-radius:12px;padding:11px 12px;margin-top:8px;">
-      <span style="font-size:15px;line-height:1.3;flex-shrink:0;">${icon}</span>
-      <div style="flex:1;min-width:0;">${bodyHtml}${actionsHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;">${actionsHtml}</div>` : ''}</div>
-    </div>`;
-
-  const alertesHtml = alertes.map((al, idx) => {
-    const c = couleurSeverite[al.severite] || 'var(--text-subtle)';
+  // --- Collecte normalisée : backend + synthèse + absence calculée ---
+  const items = [];   // { sev, cat:{label,cls}, msg, rec, presc, explic, actions }
+  const alertes = (coachAthleteCourant.alertes || []).filter(al => !alerteEstTraitee(aid, al));
+  alertes.forEach((al, idx) => {
     const sujetRaw = sujetAlerte(al);
     const sujet = sujetRaw.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const fait = dejaConseille(sujetRaw);
     const explicationId = `alerte-explication-${idx}`;
     const stagExo = (al.type === 'stagnation' && al.message && al.message.indexOf(' : aucun progrès') >= 0) ? al.message.split(' : aucun progrès')[0].trim() : null;
     const presc = stagExo ? _prescriptionStag(stagExo) : null;
-    const body = `<div style="font-size:13px;font-weight:700;color:${c};">${al.message}${al.recurrence_semaines > 1 ? ` <span style="font-size:11px;color:var(--text-muted);font-weight:500">(🔁 depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
-      ${presc ? `<div style="font-size:12px;color:var(--accent);font-weight:700;line-height:1.45;margin-top:5px;">${escapeHtml(presc.act)}</div>` : ''}
-      <div id="${explicationId}" style="display:none;font-size:11.5px;color:var(--text-muted);margin-top:7px;padding:7px 9px;background:var(--surface2);border-radius:8px;line-height:1.45;">${explicationAlerte(al)}</div>`;
-    const actions = `<button class="btn-sm btn-outline" onclick="toggleExplicationAlerte('${explicationId}')">ℹ Pourquoi ?</button>
-        ${fait
-          ? `<span style="font-size:12px;color:var(--good);font-weight:700;align-self:center">Déjà conseillé</span>
-             <button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Autre conseil</button>`
-          : `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>`}
-        <button class="btn-sm btn-outline" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>`;
-    return alerteCard(c, '', body, actions);
-  }).join('');
-
-  const synthHtml = synthAlertes.map(s => {
+    const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">${fait ? 'Autre conseil' : "Répondre à l'athlète"}</button>`
+      + `<button class="cda-btn cda-ghost" onclick="toggleExplicationAlerte('${explicationId}')">Pourquoi ?</button>`
+      + `<button class="cda-btn cda-ok" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>`
+      + (fait ? `<span class="cda-done-tag">Déjà conseillé</span>` : '');
+    items.push({
+      sev: _sevGroupe(al.severite), cat: _catAlerte(al.type), msg: al.message,
+      rec: (al.recurrence_semaines > 1) ? ('🔁 ' + al.recurrence_semaines + ' sem') : '',
+      presc: presc ? presc.act : '',
+      explic: `<div id="${explicationId}" class="cda-explic" style="display:none">${explicationAlerte(al)}</div>`,
+      actions
+    });
+  });
+  construireSynthAlertes(d).filter(s => !alerteEstTraitee(aid, { type: s.type })).forEach(s => {
     const sujet = s.msg.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    const body = `<div style="font-size:13px;font-weight:700;color:${s.color};">${s.msg}</div>`;
-    const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Répondre à l'athlète</button>
-        <button class="btn-sm btn-outline" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>`;
-    return alerteCard(s.color, '', body, actions);
-  }).join('');
-
-  // Alerte d'absence : pas de séance depuis > 7 j (ou aucune). Pas toujours émise
-  // par le backend → on la calcule ici depuis la dernière séance. Ignorée en vacances.
-  let absHtml = '';
+    const sev = (s.color === '#e5484d' || s.color === 'var(--bad)' || s.color === 'var(--danger)') ? 'haute' : 'moyenne';
+    const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">Répondre</button>`
+      + `<button class="cda-btn cda-ok" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>`;
+    items.push({ sev, cat: _catAlerte(s.type), msg: s.msg, rec: '', presc: '', explic: '', actions });
+  });
+  // Absence (si non émise par le moteur et hors pause) — calculée depuis la dernière séance.
   const enPauseAth = (typeof estEnPause === 'function') ? estEnPause(d && d.pause) : false;
-  // Ne pas doubler une alerte d'absence déjà émise par le moteur (backend).
   const absDejaBackend = alertes.some(al => al.type === 'absence' || al.type === 'irregularite');
   if (!enPauseAth && !absDejaBackend) {
     const dj = d && d.dashboard && d.dashboard.derniere_seance ? d.dashboard.derniere_seance.date : null;
     const tsLast = dj ? parseChatDate(dj) : null;
     const ageJ = tsLast ? Math.floor((Date.now() - tsLast) / 86400000) : null;
     if (ageJ == null || ageJ > 7) {
-      const titre = (ageJ == null) ? 'Aucune séance enregistrée' : ageJ + ' jours sans séance';
-      const sous = dj ? ('Dernière séance le ' + escapeHtml(String(dj)) + ' — relance l\'athlète ?') : 'Relance l\'athlète pour (re)démarrer.';
-      const body = `<div style="font-size:13px;font-weight:700;color:var(--warn);">${titre}</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${sous}</div>`;
-      const sujet = 'absence';
-      const actions = `<button class="btn-sm btn-outline" onclick="repondreAlerte('${sujet}')">${ic('pencil')} Relancer l'athlète</button>`;
-      absHtml = alerteCard('var(--warn)', '', body, actions);
+      const msg = ((ageJ == null) ? 'Aucune séance enregistrée' : ageJ + ' jours sans séance') + (dj ? (' — dernière le ' + escapeHtml(String(dj))) : '');
+      items.push({ sev: 'moyenne', cat: _catAlerte('absence'), msg, rec: '', presc: '', explic: '',
+        actions: `<button class="cda-btn cda-primary" onclick="repondreAlerte('absence')">Relancer l'athlète</button>` });
     }
   }
 
-  // ---- Base de fiabilité : sur quoi s'appuient ces alertes ? (règle 6bis) ----
+  // --- Fiabilité (règle 6bis) ---
   const beDate = (d && d.bien_etre && d.bien_etre[0] && d.bien_etre[0].date) || null;
   const beTs = beDate ? parseChatDate(beDate) : null;
   const ressRecent = beTs && (Date.now() - beTs) / 86400000 <= 7;
@@ -8297,10 +8632,37 @@ function renderAlertesCoach(data) {
   let fiabTxt = 'Basé sur ' + (nbSea ? nbSea + ' séance' + (nbSea > 1 ? 's' : '') + ' récente' + (nbSea > 1 ? 's' : '') : 'aucune séance');
   fiabTxt += beDate ? ' · dernier ressenti ' + escapeHtml(String(beDate)) : ' · aucun ressenti saisi';
   const partiel = !ressRecent;
-  const fiabFooter = `<div style="margin-top:10px;font-size:11px;line-height:1.4;color:${partiel ? 'var(--warn)' : 'var(--text-subtle)'};">${partiel ? 'Données partielles — ' : ''}${fiabTxt}${partiel ? '. Les alertes bien-être (fatigue, sommeil, douleur) ne remontent que si l\'athlète remplit son ressenti.' : '.'}</div>`;
+  const triIcon = '<svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
+  const fiabFooter = `<div class="cda-foot${partiel ? ' partial' : ''}">${partiel ? triIcon : ''}<span>${partiel ? 'Données partielles — ' : ''}${fiabTxt}${partiel ? '. Les alertes bien-être (fatigue, sommeil, douleur) ne remontent que si l\'athlète remplit son ressenti.' : '.'}</span></div>`;
 
-  const tout = absHtml + alertesHtml + synthHtml;
-  el.innerHTML = (tout || '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--good);font-weight:700;margin-top:6px;"><span></span> Rien à signaler</div>') + fiabFooter;
+  // --- État vide ---
+  if (!items.length) {
+    el.innerHTML = '<div class="cda-empty"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>'
+      + '<div><div class="t">Rien à signaler</div><div class="s">Aucune alerte cette semaine.</div></div></div>' + fiabFooter;
+    return;
+  }
+
+  // --- Rendu triage ---
+  const prio = items.filter(x => x.sev === 'haute');
+  const surv = items.filter(x => x.sev !== 'haute');
+  const card = (x) => `<div class="cda-al ${x.sev === 'haute' ? 'prio' : 'surv'}">`
+    + `<div class="cda-top"><span class="cda-pill ${x.cat.cls}">${x.cat.label}</span>${x.rec ? `<span class="cda-rec">${x.rec}</span>` : ''}</div>`
+    + `<div class="cda-msg">${x.msg}</div>`
+    + (x.presc ? `<div class="cda-presc">↳ ${escapeHtml(x.presc)}</div>` : '')
+    + (x.explic || '')
+    + `<div class="cda-acts">${x.actions}</div></div>`;
+  const grp = (list, cls, label, color) => list.length
+    ? `<div class="cda-grp ${cls}"><span class="dot" style="background:${color}"></span>${label}</div>` + list.map(card).join('')
+    : '';
+  const breakdown = `<div class="cda-breakdown">`
+    + (prio.length ? `<span class="b"><span class="dot" style="background:var(--danger)"></span>${prio.length} prioritaire${prio.length > 1 ? 's' : ''}</span>` : '')
+    + (surv.length ? `<span class="b"><span class="dot" style="background:var(--warn)"></span>${surv.length} à surveiller</span>` : '')
+    + `</div>`;
+  const head = `<div class="cda-head"><span class="cda-title">Alertes à traiter</span><span class="cda-count">${items.length} à traiter</span></div>` + breakdown;
+  el.innerHTML = head
+    + grp(prio, 'prio', 'Prioritaire', 'var(--danger)')
+    + grp(surv, 'surv', 'À surveiller', 'var(--warn)')
+    + fiabFooter;
 }
 
 function toggleExplicationAlerte(id) {
@@ -8418,7 +8780,10 @@ async function envoyerMessageAthleteCoach() {
 var _COACH_MEDIA_CONSENT = 'muscu_coach_media_consent';
 var _coachMediaBusy = false;
 
-function _coachMediaPick() {
+// src: 'galerie' (défaut) → fichier stocké · 'cam' → prise EN DIRECT (input
+// capture="environment", ouvre la caméra sur mobile/natif). Même consentement,
+// même traitement (_coachMediaChoisi) ensuite.
+function _coachMediaPick(src) {
   if (_coachMediaBusy) { showToast('⏳ Envoi en cours…'); return; }
   // Consentement (une fois) : l'athlète accepte que le média soit stocké et
   // partagé avec SON coach.
@@ -8429,9 +8794,10 @@ function _coachMediaPick() {
     if (!ok) return;
     try { localStorage.setItem(_COACH_MEDIA_CONSENT, '1'); } catch (e) {}
   }
-  var inp = document.getElementById('coach-media-input');
+  var inp = document.getElementById(src === 'cam' ? 'coach-media-input-cam' : 'coach-media-input');
   if (inp) { inp.value = ''; inp.click(); }
 }
+function _coachMediaPickCam() { _coachMediaPick('cam'); }
 
 function _coachMediaChoisi(input) {
   var f = input && input.files && input.files[0];
@@ -9296,6 +9662,10 @@ function switchTab(tab) {
     if (dernierAppData) renderNutrition();
     else chargerAppData().then(() => renderNutrition());
   }
+  if (tab === 'suivi') {
+    if (dernierAppData) renderSuiviCorps(dernierAppData);
+    else chargerAppData().then(() => renderSuiviCorps(dernierAppData));
+  }
   if (tab === 'reglages') {
     try { majUiPause(); } catch (_) {}
     try { majUiSemaineType(); } catch (_) {}
@@ -9529,7 +9899,9 @@ async function demarrerSeance() {
   // Les items CARDIO du programme (hybride) ne sont pas des exercices muscu :
   // on les exclut de l'exécution muscu (repère cardio géré à part, à venir).
   const progSource = dernierAppData ? dernierAppData.programme || [] : [];
-  programmeSeance = progSource.filter(p => p.seance_id === seanceId && p.type !== 'cardio');
+  // Copies de travail (#13) : on peut REMPLACER un exo pour CETTE séance sans toucher
+  // le programme stocké ni le cache global (les lignes partagent sinon la référence).
+  programmeSeance = progSource.filter(p => p.seance_id === seanceId && p.type !== 'cardio').map(p => ({ ...p }));
   // Items CARDIO du programme (hybride) → bloc repère + bouton d'enregistrement.
   try { _renderSeanceCardioReperes(seanceId, progSource.filter(p => p.seance_id === seanceId && p.type === 'cardio')); } catch (e) {}
 
@@ -9761,13 +10133,15 @@ function afficherListeSeance() {
     const subTxt = exoS
       ? `${seriesFaites} / ${p.series_prevues} séries`
       : `Objectif : ${p.series_prevues} × ${p.reps_mini}-${p.reps_max} reps`;
+    const swapHint = p._remplace ? ` <span style="color:var(--accent);font-weight:700">· ⇄ remplace ${escapeHtml(p._remplace)}</span>` : '';
     const div = document.createElement('div');
     div.className = 'sc-exo ' + stCls;
     div.style.cssText = groupeStyle;
     div.innerHTML = `
       <span class="sc-ico">${icoInner}</span>
-      <div class="sc-nm"><div class="a">${p.exercice}</div><div class="b">${subTxt}</div></div>
+      <div class="sc-nm"><div class="a">${p.exercice}</div><div class="b">${subTxt}${swapHint}</div></div>
       ${chip}
+      ${!exoS ? `<button class="swap-exo sc-swapbtn" title="Remplacer cet exercice par un autre"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10 4 13l3 3M4 13h11M17 14l3-3-3-3M20 11H9"/></svg>Remplacer</button>` : ''}
       ${exoS ? `<button class="btn-sm reset-exo sc-del" title="Effacer les séries faites"><svg class="ico"><use href="#i-trash"/></svg></button>` : ''}
     `;
     const estGroupe = p.groupe_id && programmeSeance.filter(o => o.groupe_id === p.groupe_id).length >= 2;
@@ -9776,6 +10150,8 @@ function afficherListeSeance() {
       : selectionnerExoDepuisProgramme(p.exercice, p.reps_mini, p.reps_max));
     const rb = div.querySelector('.reset-exo');
     if (rb) rb.addEventListener('click', (ev) => { ev.stopPropagation(); resetExoSeance(p.exercice); });
+    const sb = div.querySelector('.swap-exo');
+    if (sb) sb.addEventListener('click', (ev) => { ev.stopPropagation(); remplacerExoSeance(p.row_index); });
     listeEl.appendChild(div);
     if (isNext) prochainEl = div;
     if (p.groupe_id) {
@@ -9901,6 +10277,34 @@ function retourListeSeance() {
   setTimeout(() => { const c = document.getElementById('card-liste-seance'); if (c) scrollVersTitre(c); }, 50);
 }
 
+// #13 — Remplacer un exercice EN COURS DE SÉANCE (slot du programme → autre mouvement),
+// sans toucher le programme stocké. On réutilise le sélecteur hors-programme en « mode
+// remplacement » : le prochain exercice choisi remplace l'exo cible (séries/reps/schéma
+// du slot conservés ; la charge kg se recalcule sur l'historique du nouvel exo).
+var _replaceExoTarget = null;
+function remplacerExoSeance(rowIndex) {
+  toggleExoHorsProgramme(true);          // ouvre le sélecteur (réinitialise _replaceExoTarget)
+  _replaceExoTarget = rowIndex;          // …puis on arme le mode remplacement
+  var l = programmeSeance.find(function (x) { return x.row_index === rowIndex; });
+  try { showToast('Choisis le remplaçant' + (l ? ' de ' + l.exercice : '')); } catch (e) {}
+}
+function _applyReplace(val) {
+  var parts = String(val).split('|'), exoId = parts[0], nom = parts[1], muscle = parts[2] || '';
+  var l = programmeSeance.find(function (x) { return x.row_index === _replaceExoTarget; });
+  var target = _replaceExoTarget; _replaceExoTarget = null;
+  _exoSel = {}; _exoFiltreGrp = null;
+  var card = document.getElementById('card-hors-programme'); if (card) card.style.display = 'none';
+  var inp = document.getElementById('rech-exo'); if (inp) inp.value = '';
+  if (!l) { afficherListeSeance(); return; }
+  var ancien = l.exercice;
+  // Séance uniquement : on efface d'éventuelles séries déjà saisies sous l'ancien nom
+  // (normalement 0, le bouton n'apparaît que sur un exo non commencé).
+  seance = seance.filter(function (e) { return e.exerciceNom !== ancien; });
+  l.exercice = nom; l.muscle = muscle; if (exoId) l.exercice_id = exoId;
+  l._remplace = ancien;
+  afficherListeSeance();
+  try { showToast(ancien + ' remplacé par ' + nom); } catch (e) {}
+}
 function toggleExoHorsProgramme(forceOpen) {
   const card = document.getElementById('card-hors-programme');
   const isOpen = card.style.display !== 'none';
@@ -9910,9 +10314,9 @@ function toggleExoHorsProgramme(forceOpen) {
     // Scroll vers le haut de la liste
     const listeCard = document.getElementById('card-liste-seance');
     if (listeCard) scrollVersTitre(listeCard);
-    _exoSel = {}; _exoFiltreGrp = null;   // repartir propre à chaque ouverture
+    _exoSel = {}; _exoFiltreGrp = null; _replaceExoTarget = null;   // repartir propre (hors mode remplacement)
     const _re1=document.getElementById('rech-exo'); if(_re1)_re1.value=''; remplirListeExosLibres('');
-  }
+  } else { _replaceExoTarget = null; }
 }
 
 // Recherche d'exercice (remplace le double menu muscle→exercice)
@@ -9952,8 +10356,16 @@ function remplirListeExosLibres(filtre) {
   // --- Exercices fréquents (si pas de recherche texte) ---
   var freqEl = document.getElementById('exo-freq');
   if (freqEl) {
-    var fr = (!f) ? _exoFrequents().filter(function (x) { return !_exoFiltreGrp || _exoGrpOf(x.muscle) === _exoFiltreGrp; }) : [];
-    freqEl.innerHTML = fr.length ? ('<div class="exo-freq-lab">Tes exercices fréquents</div><div class="exo-freqs">' + fr.map(function (x) { return '<button type="button" class="exo-fchip" data-v="' + _exoAttr(x.id + '|' + x.nom + '|' + x.muscle) + '" onclick="choisirExoDirect(this.dataset.v)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>' + esc(x.nom) + '</button>'; }).join('') + '</div>') : '';
+    // En mode REMPLACEMENT : proposer d'abord les VARIANTES du même angle (générateur v2).
+    var lRepl = (_replaceExoTarget != null) ? programmeSeance.find(function (x) { return x.row_index === _replaceExoTarget; }) : null;
+    var vars = (lRepl && !f && typeof _g2VariantsFor === 'function') ? _g2VariantsFor(lRepl.exercice) : [];
+    if (lRepl && !f && vars.length) {
+      freqEl.innerHTML = '<div class="exo-freq-lab">Variantes suggérées — même angle que ' + esc(lRepl.exercice) + '</div><div class="exo-freqs">'
+        + vars.map(function (x) { return '<button type="button" class="exo-fchip" data-v="' + _exoAttr(x.id + '|' + x.nom + '|' + x.muscle) + '" onclick="choisirExoDirect(this.dataset.v)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>' + esc(x.nom) + '</button>'; }).join('') + '</div>';
+    } else {
+      var fr = (!f) ? _exoFrequents().filter(function (x) { return !_exoFiltreGrp || _exoGrpOf(x.muscle) === _exoFiltreGrp; }) : [];
+      freqEl.innerHTML = fr.length ? ('<div class="exo-freq-lab">Tes exercices fréquents</div><div class="exo-freqs">' + fr.map(function (x) { return '<button type="button" class="exo-fchip" data-v="' + _exoAttr(x.id + '|' + x.nom + '|' + x.muscle) + '" onclick="choisirExoDirect(this.dataset.v)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>' + esc(x.nom) + '</button>'; }).join('') + '</div>') : '';
+    }
   }
   // --- Liste principale (cartes multi-sélection) ---
   var el = document.getElementById('liste-exos-libres'); if (!el) return;
@@ -9975,7 +10387,7 @@ function remplirListeExosLibres(filtre) {
   }).join('');
   _exoRenderAddbar();
 }
-function exoToggleSel(val) { if (_exoSel[val]) delete _exoSel[val]; else _exoSel[val] = true; var inp = document.getElementById('rech-exo'); remplirListeExosLibres(inp ? inp.value : ''); }
+function exoToggleSel(val) { if (_replaceExoTarget != null) { _applyReplace(val); return; } if (_exoSel[val]) delete _exoSel[val]; else _exoSel[val] = true; var inp = document.getElementById('rech-exo'); remplirListeExosLibres(inp ? inp.value : ''); }
 function _exoRenderAddbar() {
   var bar = document.getElementById('exo-addbar'); if (!bar) return;
   var n = Object.keys(_exoSel).length;
@@ -9998,6 +10410,7 @@ function filtrerExosLibres() {
   remplirListeExosLibres(inp ? inp.value : '');
 }
 function choisirExoDirect(val) {
+  if (_replaceExoTarget != null) { _applyReplace(val); return; }
   const parts = String(val).split('|');
   const exoId = parts[0], exoNom = parts[1], muscle = parts[2] || '';
   const dejaPresent = seance.find(e => e.exerciceNom === exoNom);
@@ -10191,6 +10604,72 @@ function majSeriesActuel() {
     }
   }
   majProgressionSeance();
+  majPlanSeries();   // #4 : rafraîchit la checklist des séries prévues (coche l'avancement)
+}
+
+// #4 — Checklist des séries PRÉVUES au démarrage / pendant un exo. Le programme est
+// « plat » (même cible pour toutes les séries) : on rend simplement visible COMBIEN
+// de séries sont prévues et leur objectif (reps + charge/RPE + repos), coché au fur
+// et à mesure. Tout vient de la ligne de programme (rien d'inventé — règle 6bis).
+// Exo hors programme (pas de pProg) → rien affiché.
+// Incrément de charge conseillé pour un exercice (depuis le catalogue `increment_kg`).
+function _incrementExo(exoNom) {
+  try {
+    var e = exercicesData && exercicesData.find(function (x) { return x.exercice === exoNom; });
+    if (e && e.increment_kg) { var nums = String(e.increment_kg).match(/[0-9]+(\.[0-9]+)?/g); if (nums && nums.length) return Math.max.apply(null, nums.map(Number)); }
+  } catch (_) {}
+  return 2.5;
+}
+// Retrouve, dans les séries de la dernière séance, celle qui correspond à la série k.
+function _refSerie(series, k) {
+  if (!Array.isArray(series)) return null;
+  var byNum = series.find(function (s) { return Number(s.serie) === k; });
+  return byNum || series[k - 1] || null;
+}
+// Cible de surcharge PAR SÉRIE (double progression) : +reps tant qu'on n'a pas atteint le
+// haut de la fourchette, puis +incrément de charge et retour en bas de fourchette.
+function _cibleSerieSurcharge(ref, rmax, rmin, inc) {
+  var ch = Number(ref.charge) || 0, rp = Number(ref.reps) || 0;
+  if (rmax && rp >= rmax) return { charge: Math.round((ch + inc) * 4) / 4, reps: (rmin || rp), up: 'charge' };
+  return { charge: ch, reps: rp + 1, up: 'reps' };
+}
+
+function majPlanSeries() {
+  var el = document.getElementById('plan-series-actuel'); if (!el) return;
+  var pProg = exoEnCours ? programmeSeance.find(function (p) { return p.exercice === exoEnCours.exerciceNom; }) : null;
+  if (!pProg) { el.innerHTML = ''; return; }
+  // Cibles PAR SÉRIE dérivées du schéma (fixe/double/top-set+back-off/pyramidal).
+  var plan = _derivePlanSeries(pProg, _est1RM(exoEnCours.exerciceNom));
+  var ps = plan.series; if (!ps.length) { el.innerHTML = ''; return; }
+  var done = exoEnCours ? exoEnCours.series.length : 0;
+  // Historique PAR SÉRIE de la dernière séance de cet exo → « dernière fois → cible ».
+  var perfHist = (typeof getPerf === 'function') ? getPerf(exoEnCours.exerciceNom) : null;
+  var lastSeries = (perfHist && Array.isArray(perfHist.series)) ? perfHist.series : null;
+  var rmaxP = (pProg.reps_max != null && pProg.reps_max !== '') ? Number(pProg.reps_max) : null;
+  var rminP = (pProg.reps_mini != null && pProg.reps_mini !== '') ? Number(pProg.reps_mini) : null;
+  var incP = _incrementExo(exoEnCours.exerciceNom);
+  var anyHist = false;
+  var chips = ps.map(function (s, i) {
+    var k = i + 1;
+    var st = (k <= done) ? 'done' : (k === done + 1 ? 'cur' : 'todo');
+    var mark = (st === 'done') ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '';
+    var inner, ref = lastSeries ? _refSerie(lastSeries, k) : null;
+    if (ref && (Number(ref.charge) > 0 || Number(ref.reps) > 0)) {
+      anyHist = true;
+      var cib = _cibleSerieSurcharge(ref, rmaxP, rminP, incP);
+      inner = '<small>' + ref.charge + '×' + ref.reps + ' <span style="color:var(--text-subtle)">→</span> <b style="color:var(--accent)">' + cib.charge + '×' + cib.reps + '</b></small>';
+    } else {
+      var load = _planLoadTxt(s);
+      var detail = [s.reps + ' reps', load, (s.rpe != null ? 'RPE ' + s.rpe : ''), (s.tag || '')].filter(Boolean).join(' · ');
+      inner = '<small>' + escapeHtml(detail) + '</small>';
+    }
+    return '<span class="plan-chip ' + st + (s.tag === 'lourde' ? ' top' : '') + '">' + mark + 'S' + k + ' ' + inner + '</span>';
+  }).join('');
+  var reposTxt = (pProg.repos_sec != null && pProg.repos_sec !== '') ? (pProg.repos_sec + 's repos') : '';
+  var sub = [(anyHist ? 'dernière fois → cible' : ''), plan.note, reposTxt].filter(Boolean).join(' · ');
+  el.innerHTML = '<div class="plan-hd">Séries prévues · ' + done + '/' + ps.length + '</div>'
+    + '<div class="plan-chips">' + chips + '</div>'
+    + (sub ? '<div class="plan-sub">' + escapeHtml(sub) + '</div>' : '');
 }
 
 function supprimerSerie(index) {
@@ -11129,7 +11608,11 @@ async function chargerHistorique() {
 var _maDisc = 'muscu';   // 'muscu' | 'cardio' | 'croise'
 var _maTab = 'resume';   // 'resume' | 'detail' | 'tendances' | 'historique'
 // Sous-onglets disponibles par discipline (Croisé n'a que Résumé + Tendances).
-var _MA_TABS = { muscu: ['resume', 'detail', 'tendances', 'historique'], cardio: ['resume', 'detail', 'tendances', 'historique'], croise: ['resume', 'tendances'] };
+// 'suivi' (photos + mensurations) : présent en muscu/cardio MAIS visible seulement
+// côté COACH (consultation) — l'athlète y accède via Forme › Mes suivis. Pas en croisé.
+// Croisé = 1 seul onglet « Résumé » qui contient tout (bilan + répartition +
+// graphe charge/forme) — pas de sous-onglet Tendances séparé.
+var _MA_TABS = { muscu: ['resume', 'detail', 'tendances', 'historique', 'suivi'], cardio: ['resume', 'detail', 'tendances', 'historique', 'suivi'], croise: ['resume'] };
 function maSetDisc(d) {
   _maDisc = (['muscu', 'cardio', 'croise'].indexOf(d) >= 0) ? d : 'muscu';
   // Changement de discipline = on repart du début : Résumé · Semaine, sous-vues et
@@ -11265,7 +11748,8 @@ function _maApply() {
   // Côté coach (onglet « Progression ») : on ne garde que « Par exercice » +
   // « Tendances ». Résumé (→ carte « Charge & assiduité » de l'Aperçu) et
   // Historique (→ onglet Séances) sont masqués → défaut sur « Par exercice ».
-  if (typeof _maCoach !== 'undefined' && _maCoach && (_maTab === 'historique' || _maTab === 'resume')) {
+  // Résumé reste accessible au coach EN CROISÉ (sinon il n'y resterait que Tendances).
+  if (typeof _maCoach !== 'undefined' && _maCoach && (_maTab === 'historique' || (_maTab === 'resume' && _maDisc !== 'croise'))) {
     _maTab = (_MA_TABS[_maDisc].indexOf('detail') >= 0) ? 'detail' : 'tendances';
   }
   // Toggle discipline (Muscu / Cardio / Croisé)
@@ -11277,13 +11761,23 @@ function _maApply() {
   var t2 = document.getElementById('ma-tab-detail'); if (t2) t2.textContent = (_maDisc === 'cardio') ? 'Par sport' : 'Évolution';
   // Sous-onglets : dispo (Croisé masque Détail + Historique) + actif
   var dispo = _MA_TABS[_maDisc];
-  ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
+  var isCoach = (typeof _maCoach !== 'undefined' && _maCoach);
+  ['resume', 'detail', 'tendances', 'historique', 'suivi'].forEach(function (t) {
     var b = document.getElementById('ma-tab-' + t);
-    if (b) { var av = dispo.indexOf(t) >= 0 && !((typeof _maCoach !== 'undefined' && _maCoach) && (t === 'historique' || t === 'resume')); b.style.display = av ? '' : 'none'; b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise'); }
+    if (!b) return;
+    // 'suivi' = COACH seulement. Côté coach : historique masqué, et resume masqué
+    // SAUF en Croisé (où il n'y a que Résumé + Tendances → sinon il ne resterait
+    // que Tendances). L'athlète voit tout normalement.
+    var av = dispo.indexOf(t) >= 0;
+    if (t === 'suivi') av = av && isCoach;
+    else if (isCoach && t === 'historique') av = false;
+    else if (isCoach && t === 'resume' && _maDisc !== 'croise') av = false;
+    b.style.display = av ? '' : 'none';
+    b.classList.toggle('on', t === _maTab); b.classList.toggle('cx', t === _maTab && _maDisc === 'cardio'); b.classList.toggle('cr', t === _maTab && _maDisc === 'croise');
   });
   // Panes visibles
   ['muscu', 'cardio', 'croise'].forEach(function (d) {
-    ['resume', 'detail', 'tendances', 'historique'].forEach(function (t) {
+    ['resume', 'detail', 'tendances', 'historique', 'suivi'].forEach(function (t) {
       var p = document.getElementById('ma-' + d + '-' + t);
       if (p) p.style.display = (d === _maDisc && t === _maTab) ? '' : 'none';
     });
@@ -11423,6 +11917,75 @@ function _maArea(pts, color, fill) {
   var line = xs.map(function (x, i) { return (i ? 'L' : 'M') + x.toFixed(0) + ' ' + ys[i].toFixed(0); }).join(' ');
   return '<svg width="100%" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><path d="' + line + ' L' + xs[xs.length - 1].toFixed(0) + ' ' + h + ' L' + xs[0].toFixed(0) + ' ' + h + ' Z" fill="' + fill + '"/><path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + xs[xs.length - 1].toFixed(0) + '" cy="' + ys[ys.length - 1].toFixed(0) + '" r="3.4" fill="' + color + '"/></svg>';
 }
+// #4 Surcharge PAR SÉRIE — transforme les points (chacun avec p.series = [{serie,
+// charge,reps,rpe}]) en lignes traçables : une ligne par n° de série (S1, S2, S3…),
+// valeur = charge de cette série à chaque date (null si la série n'existait pas ce
+// jour-là → coupure de courbe). Plafonné à 6 séries pour rester lisible.
+function _maSeriesLines(pts) {
+  var PAL = ['#1A5FFF', '#F59E0B', '#8B5CF6', '#EC4899', '#0EA5E9', '#64748B'];
+  var maxS = 0;
+  pts.forEach(function (p) {
+    var arr = (p && p.series) || [];
+    var m = arr.reduce(function (a, s, k) { return Math.max(a, s.serie || (k + 1)); }, arr.length);
+    if (m > maxS) maxS = m;
+  });
+  if (maxS > 6) maxS = 6;
+  var lines = [];
+  for (var s = 1; s <= maxS; s++) {
+    (function (sn) {
+      var vals = pts.map(function (p) {
+        var arr = (p && p.series) || [], hit = null;
+        for (var k = 0; k < arr.length; k++) { if ((arr[k].serie || (k + 1)) === sn) { hit = arr[k]; break; } }
+        return hit ? (Number(hit.charge) || 0) : null;
+      });
+      lines.push({ label: 'S' + sn, color: PAL[(sn - 1) % PAL.length], values: vals });
+    })(s);
+  }
+  return lines;
+}
+// Graphe multi-lignes (riche) : plusieurs courbes sur le même axe. lines = [{label,
+// color, values:[num|null]}] (null = point absent → la courbe se coupe). Même gabarit
+// que _maLineRich. Pas de « dernier point vert » global : chaque série a sa couleur.
+function _maMultiLineRich(lines, dates, unit) {
+  var n = dates.length; if (n < 1 || !lines || !lines.length) return '';
+  var W = 470, H = 260, pL = 46, pR = 16, pT = 26, pB = 30;
+  var all = [];
+  lines.forEach(function (L) { L.values.forEach(function (v) { if (v != null) all.push(v); }); });
+  if (!all.length) return '';
+  var mn = Math.min.apply(null, all), mx = Math.max.apply(null, all);
+  if (mn === mx) { mn = mn - 1; mx = mx + 1; }
+  var rng = mx - mn || 1;
+  var X = function (i) { return (n === 1) ? (pL + (W - pL - pR) / 2) : (pL + i * (W - pL - pR) / (n - 1)); };
+  var Y = function (v) { return pT + (1 - (v - mn) / rng) * (H - pT - pB); };
+  var grid = '', ylab = '';
+  for (var g = 0; g <= 4; g++) {
+    var yy = pT + g * (H - pT - pB) / 4, val = mx - g * rng / 4;
+    grid += '<line x1="' + pL + '" y1="' + yy.toFixed(0) + '" x2="' + (W - pR) + '" y2="' + yy.toFixed(0) + '" stroke="var(--border)" stroke-width="1"/>';
+    ylab += '<text x="' + (pL - 7) + '" y="' + (yy + 3).toFixed(0) + '" text-anchor="end" font-size="12.5" fill="var(--text-subtle)">' + (Math.round(val * 10) / 10) + '</text>';
+  }
+  if (unit) ylab += '<text x="' + (pL - 7) + '" y="' + (pT - 9) + '" text-anchor="end" font-size="10" font-weight="800" fill="var(--text-muted)">' + unit + '</text>';
+  var paths = '';
+  lines.forEach(function (L) {
+    var seg = '', started = false, lastI = -1;
+    L.values.forEach(function (v, i) {
+      if (v == null) { started = false; return; }
+      seg += (started ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' ';
+      started = true; lastI = i;
+    });
+    if (seg) paths += '<path d="' + seg.trim() + '" fill="none" stroke="' + L.color + '" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+    L.values.forEach(function (v, i) {
+      if (v == null) return;
+      var last = (i === lastI);
+      paths += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="' + (last ? 4.2 : 3) + '" fill="' + L.color + '"' + (last ? ' stroke="#fff" stroke-width="1.6"' : '') + '/>';
+      if (last) paths += '<text x="' + X(i).toFixed(1) + '" y="' + (Y(v) - 8).toFixed(1) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + L.color + '">' + (Math.round(v * 10) / 10) + '</text>';
+    });
+  });
+  var xstep = Math.max(1, Math.ceil(n / 5)), xi = [];
+  for (var _xi = 0; _xi < n; _xi += xstep) xi.push(_xi);
+  if (n > 1 && xi[xi.length - 1] !== n - 1) xi.push(n - 1);
+  var xlab = xi.map(function (i) { return '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" font-size="12" fill="var(--text-subtle)">' + _maE(_maShortDate(dates[i])) + '</text>'; }).join('');
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + ylab + paths + xlab + '</svg>';
+}
 // Tuile compacte pour les rails Analyses (bureau). v = valeur, u = unité.
 function _maRailTile(k, v, u, dotCol) {
   return '<div class="rail-tile"><div class="k">' + (dotCol ? '<span class="dot" style="background:' + dotCol + '"></span>' : '') + k + '</div><div class="v"' + (String(v).length > 7 ? ' style="font-size:14px"' : '') + '>' + v + (u ? '<small> ' + u + '</small>' : '') + '</div></div>';
@@ -11446,12 +12009,24 @@ function _maMoteurTiles(data) {
 }
 // Rail « Mes repères cardio » : agrégats neutres sur 30 j + charge 7 j (UA).
 // Pas de « meilleure allure » (trompeur entre sports) — que des sommes/compteurs.
+// Charge interne d'une sortie cardio (sRPE de Foster, UA). RPE manquant (import
+// montre : durée + FC sans RPE ressenti) estimé via la FC moyenne, sinon RPE 5.
+// Miroir du backend chargeInterneCardio (#5 : l'importé pèse au lieu d'être exclu).
+function _chargeInterneCardio(s) {
+  var duree = Number(s && s.duree) || 0; if (duree <= 0) return 0;
+  var rpe = Number(s && s.rpe) || 0;
+  if (rpe <= 0) {
+    var fc = Number(s && (s.fc_moy != null ? s.fc_moy : s.fc)) || 0;
+    rpe = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5;
+  }
+  return rpe * duree;
+}
 function _maCardioRail(data) {
   var hist = (data && data.cardio && data.cardio.history) || []; if (!hist.length) return '';
   var cut30 = _maCutISO(30), cut7 = _maCutISO(7), n30 = 0, km30 = 0, ua7 = 0;
   hist.forEach(function (s) {
     if ((s.date || '') >= cut30) { n30++; if (+s.distance) km30 += +s.distance; }
-    if ((s.date || '') >= cut7 && +s.rpe && +s.duree) ua7 += (+s.rpe) * (+s.duree);
+    if ((s.date || '') >= cut7) ua7 += _chargeInterneCardio(s);
   });
   var tiles = [_maRailTile('Sorties 30 j', n30, ''), _maRailTile('Distance 30 j', Math.round(km30 * 10) / 10, 'km'), _maRailTile('Charge 7 j', Math.round(ua7), 'UA')];
   return '<div class="rail-hd">Mes repères cardio</div><div class="rail-snap-grid">' + tiles.join('') + '</div>';
@@ -11486,7 +12061,7 @@ var _MA_INFO = {
   balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
   ressenti: { t: 'Effort des séances (RPE)', d: 'Après chaque séance tu notes son intensité sur l\'échelle CR-10 de Foster (0 = repos, 10 = effort maximal). Ce bloc suit l\'évolution de ton effort perçu sur la période — un moyen simple de repérer une charge qui s\'installe.', fiab: 'Méthode reconnue (session-RPE, Borg / Foster) : l\'échelle CR-10 est validée pour quantifier l\'effort. Multipliée par la durée, elle donne la charge interne (sRPE). Lis la tendance sur plusieurs séances plutôt qu\'un point isolé.' },
   acwr: { t: 'ACWR (charge aiguë / chronique)', d: 'Compare ta charge récente (7 jours) à ta charge habituelle (28 jours). Interprétable après ~4 semaines d\'entraînement. Zone de repère ≈ 0,8–1,3.', fiab: 'Un INDICE à interpréter avec prudence, pas un verdict : la littérature récente le critique (couplage mathématique, non validé comme prédicteur de blessure). Novalyz ne s\'en sert jamais seul pour décider.' },
-  fraicheur: { t: 'Charge & fraîcheur (fitness-fatigue)', d: 'Modèle fitness-fatigue de Banister. Ta charge d\'entraînement alimente deux moyennes : la FORME de fond (CTL, lissée sur 42 jours) et la FATIGUE récente (ATL, sur 7 jours). La FRAÎCHEUR = forme − fatigue : positive = reposé/affûté, négative = tu as plus chargé que d\'habitude. « Charge récente » = ta charge des 7 derniers jours vs ton habitude.', fiab: 'Méthode reconnue et largement utilisée (Banister, base de TrainingPeaks TSB/CTL/ATL ; charge interne via le session-RPE de Foster). Repère SECONDAIRE chez Novalyz : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. Interprétable après ~4 semaines d\'historique.' },
+  fraicheur: { t: 'Fraîcheur : es-tu reposé ?', d: 'En clair : à quel point ton corps est <b>reposé</b> aujourd\'hui. Novalyz compare ce que tu encaisses <b>d\'habitude</b> (sur plusieurs semaines) à ce que tu as fait <b>ces derniers jours</b>. Si tu as fait <b>plus que d\'habitude</b> récemment → tu es plus fatigué (fraîcheur négative) ; si tu as fait <b>moins</b> → tu es reposé (fraîcheur positive). « Charge récente » = ta charge des 7 derniers jours vs ton habitude.<br><br><span style="color:var(--text-subtle)">Détail technique : forme de fond (CTL, 42 j) − fatigue récente (ATL, 7 j) = fraîcheur (TSB %).</span>', fiab: 'Méthode reconnue et largement utilisée (modèle fitness-fatigue de Banister, base du TSB/CTL/ATL de TrainingPeaks ; charge interne via le session-RPE de Foster). Repère SECONDAIRE chez Novalyz : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. Interprétable après ~4 semaines d\'historique.' },
   progression: { t: 'Progression / 1RM estimé', d: 'Le 1RM estimé (formule d\'Epley : charge × (1 + reps/30)) approxime la charge que tu soulèverais 1 fois, sans tester ton maximum. Novalyz suit son évolution pour juger ta progression de force.', fiab: 'Fiable surtout en dessous de ~10 répétitions ; l\'erreur d\'estimation grandit au-delà.' },
   execcible: { t: 'Exécution vs cible', d: 'Compare ce que tu as réalisé aux cibles posées sur l\'exercice. Charge : réalisé vs % de ton 1RM estimé (tolérance ±5 %). RPE : moyenne vs cible (±1).', fiab: 'Indicatif : « sous la cible » n\'est pas forcément un échec (deload, répétitions plus hautes…). La cible en kg dépend d\'un 1RM estimé.' },
   regularite: { t: 'Régularité', d: 'Le nombre de séances réalisées par semaine, comparé à ton objectif (déduit de ton programme).', fiab: 'La régularité sur la durée est l\'un des premiers facteurs de progression.' },
@@ -11620,6 +12195,50 @@ function maRenderData() {
   try { _maCardioTendances(data); } catch (e) {}
   try { _maCardioHistorique(data); } catch (e) {}
   try { _maCroise(data); } catch (e) {}
+  try { _maSuivi(data); } catch (e) {}
+}
+
+// Onglet « Photo & mensurations » CÔTÉ COACH (consultation) — même contenu dans les
+// panes muscu et cardio. Photos avant/après par angle + grille de mensurations avec
+// tendance. Lecture seule (la saisie est faite par l'athlète dans Forme). N3.
+function _maSuivi(data) {
+  var html = _maSuiviHtml(data || {});
+  try { _maSet('ma-muscu-suivi', html); } catch (e) {}
+  try { _maSet('ma-cardio-suivi', html); } catch (e) {}
+}
+function _maSuiviHtml(data) {
+  var esc = _maE;
+  var phs = Array.isArray(data.suivi_photos) ? data.suivi_photos : [];
+  var mens = Array.isArray(data.mensurations) ? data.mensurations : [];
+  var out = '';
+  var angles = [['face', 'Face'], ['profil', 'Profil'], ['dos', 'Dos']];
+  var card = function (p, lbl) {
+    return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden">'
+      + '<div style="aspect-ratio:3/4;background:#0f1626;display:grid;place-items:center">' + (p.url ? '<img src="' + esc(p.url) + '" alt="" style="width:100%;height:100%;object-fit:cover">' : '<span style="color:var(--text-subtle);font-size:11px">photo</span>') + '</div>'
+      + '<div style="padding:6px 9px;font-size:11px">' + (lbl ? '<b style="display:block;font-size:9.5px;color:var(--text-subtle);text-transform:uppercase">' + lbl + '</b>' : '') + '<b style="font-size:11.5px">' + esc(p.date) + '</b></div></div>';
+  };
+  var anyPhoto = false;
+  var blocks = angles.map(function (a) {
+    var list = phs.filter(function (p) { return (p.angle || 'face') === a[0]; });
+    if (!list.length) return '';
+    anyPhoto = true;
+    var body = (list.length >= 2)
+      ? ('<div style="display:flex;gap:9px">' + card(list[list.length - 1], 'Avant') + card(list[0], 'Après') + '</div>')
+      : ('<div style="display:flex;gap:9px">' + card(list[0], '') + '<div style="flex:1"></div></div>');
+    return _maSec('Photos · ' + a[1], String(list.length)) + '<div class="ma-card" style="padding:11px">' + body + '</div>';
+  }).join('');
+  out += anyPhoto ? blocks : (_maSec('Photos') + _maEmpty('Aucune photo de suivi pour l\'instant.'));
+  var last = mens[0] || {}, prev = mens[1] || {};
+  var cells = _MENSU_DEF.map(function (m) {
+    var v = last[m.k]; if (v == null) return '';
+    var p = prev[m.k], tr = '';
+    if (p != null) { var d = Math.round((v - p) * 10) / 10; tr = (Math.abs(d) < 0.05) ? '<span style="color:var(--text-subtle)">– 0</span>' : '<span style="color:' + (d > 0 ? '#00A854' : '#DC3545') + '">' + (d > 0 ? '▲ +' : '▼ ') + Math.abs(d) + '</span>'; }
+    return '<div class="ma-card" style="padding:9px 11px"><div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + esc(m.l) + '</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:2px"><b style="font-size:17px;font-weight:900">' + String(v).replace('.', ',') + '</b><u style="font-size:10px;color:var(--text-subtle);font-style:normal">' + m.u + '</u>' + (tr ? '<em style="margin-left:auto;font-size:10px;font-weight:800;font-style:normal">' + tr + '</em>' : '') + '</div></div>';
+  }).filter(Boolean).join('');
+  out += cells
+    ? (_maSec('Mensurations', last.date ? esc(last.date) : '') + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + cells + '</div>')
+    : (_maSec('Mensurations') + _maEmpty('Aucune mesure saisie par l\'athlète.'));
+  return out;
 }
 
 // Bloc « Lecture Novalyz » : constats + reco orientés objectif (backend
@@ -11895,9 +12514,9 @@ function _maForceChart(data) {
     if (es.length) { pts.push(Math.round(es.reduce(function (a, b) { return a + b; }, 0) / es.length)); dts.push(s.date); }
   });
   if (pts.length < 2) return _maSec('Tendance de force', null, 'force') + _maEmpty('La courbe de force apparaît dès 2 séances sur la période.');
-  return _maSec('Tendance de force', w.plabel + ' · 1RM estimé moyen', 'force')
-    + _maChartBlock('Force e1RM', pts, 'kg', '#9D5FD3', 'rgba(157,95,211,.14)', _maShortDate(dts[0]),
-      'Moyenne du 1RM estimé (Epley) de tes exercices à chaque séance. La courbe qui monte = tu gagnes en force.', dts);
+  return _maSec('Tendance de force', w.plabel + ' · indice (1RM estimé moyen)', 'force')
+    + _maChartBlock('Indice de force', pts, 'kg', '#9D5FD3', 'rgba(157,95,211,.14)', _maShortDate(dts[0]),
+      'INDICE GLOBAL de force = moyenne du 1RM estimé (Epley) sur TOUS les exercices de la séance (ex. squat + curl…). Ce n\'est pas le 1RM d\'un exercice précis — pour ça, vois « Par exercice ». Ce qui compte : la courbe monte = tu gagnes en force.', dts);
 }
 
 // ════════ BLOC UNIQUE « Lecture Novalyz · Analyses » (entraînement) ════════
@@ -12071,7 +12690,7 @@ function _maMuscuResume(data) {
     +   '<div class="ma-colcard">' + _maSec('Balance musculaire', 'agoniste / antagoniste · ' + w.plabel, 'balance') + _maBalance(data)
     +     _maCap('Ratio de séries entre groupes opposés sur la période. Vise ~50/50.') + '</div>'
     + '</div>';
-  var rail = _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk();
+  var rail = _maSec('Records personnels') + _maRecords(data) + _maNovaAsk();
   _maSet('ma-muscu-resume', '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>');
 }
 
@@ -12088,10 +12707,12 @@ function _maMuscuExercice(data) {
   // Desktop (≥992px) : graphe/exercice dans la colonne principale, Records dans le
   // rail droit (via .ma-cols2). Mobile : .ma-cols2/.ma-col* en display:contents →
   // ordre d'origine (body puis Records) inchangé.
-  _maSet('ma-muscu-detail', head + periodSel
-    + '<div class="ma-cols2">'
-    +   '<div class="ma-colmain">' + body + '</div>'
-    +   '<div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div>'
+  // head + periodSel DANS la colonne principale → le rail démarre toujours en haut
+  // (même position que les autres panes), pas décalé sous les sélecteurs.
+  _maSet('ma-muscu-detail',
+    '<div class="ma-cols2">'
+    +   '<div class="ma-colmain">' + head + periodSel + body + '</div>'
+    +   '<div class="ma-colrail">' + _maNovaAsk() + '</div>'
     + '</div>');
 }
 
@@ -12167,26 +12788,32 @@ function _maProgExo(data) {
   var progAll = (data.historique && data.historique.progression_par_exo) || {};
   var _w = _maWin();
   function _isoOf(p) { var d = String(p.date || ''); return d.indexOf('/') !== -1 ? d.split('/').reverse().join('-') : d; }
-  // Période navigable : points dont la date ∈ [début, fin) de la fenêtre choisie.
-  var prog = {};
-  Object.keys(progAll).forEach(function (k) { var kept = (progAll[k] || []).filter(function (p) { var i = _isoOf(p); return i >= _w.startISO && i < _w.endISO; }); if (kept.length) prog[k] = kept; });
-  var exos = Object.keys(prog).filter(function (k) { return (prog[k] || []).length >= 1; }).sort(function (a, b) { return (prog[b] || []).length - (prog[a] || []).length; });
-  if (!exos.length) return _maEmpty('Aucun exercice suivi sur ' + (_w.plabel || 'la période') + '.');
-  var sel = (_maExoSel && exos.indexOf(_maExoSel) >= 0) ? _maExoSel : exos[0];
-  var pts = prog[sel].slice().reverse();   // chrono
+  // Liste d'exos = TOUS les exos suivis (INDÉPENDANTE de la période) → naviguer dans
+  // le temps ne change plus l'exercice choisi (bug : avant, la liste était filtrée par
+  // période, donc un exo sans séance sur la fenêtre retombait sur le 1er de la liste).
+  var exosAll = Object.keys(progAll).filter(function (k) { return (progAll[k] || []).length >= 1; }).sort(function (a, b) { return (progAll[b] || []).length - (progAll[a] || []).length; });
+  if (!exosAll.length) return _maEmpty('Aucun exercice suivi pour l\'instant.');
+  var sel = (_maExoSel && exosAll.indexOf(_maExoSel) >= 0) ? _maExoSel : exosAll[0];
+  // Points de l'exo choisi DANS la fenêtre (le graphe suit la période, pas la sélection).
+  var pts = (progAll[sel] || []).filter(function (p) { var i = _isoOf(p); return i >= _w.startISO && i < _w.endISO; }).slice().reverse();   // chrono
   var np = pts.length;
+  var totalSuivi = (progAll[sel] || []).length;
   var muscle = ''; try { (data.seances_detail || []).some(function (s) { return (s.exercices || []).some(function (e) { if (e.nom === sel) { muscle = e.muscle || ''; return true; } return false; }); }); } catch (e) {}
-  var menu = '<div id="ma-exo-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;max-height:250px;overflow:auto;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">' + exos.map(function (e, i) { return '<div onclick="maSetExo(\'' + _maOnc(e) + '\')" style="padding:10px 13px;font-size:13px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (e === sel ? 'background:var(--surface2);' : '') + '">' + _maE(e) + '</div>'; }).join('') + '</div>';
-  var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + prog[sel].length + ' séance' + (prog[sel].length > 1 ? 's' : '') + ' suivie' + (prog[sel].length > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
+  var menu = '<div id="ma-exo-menu" style="display:none;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:12px;max-height:250px;overflow:auto;box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08))">' + exosAll.map(function (e, i) { return '<div onclick="maSetExo(\'' + _maOnc(e) + '\')" style="padding:10px 13px;font-size:13px;font-weight:600;cursor:pointer;' + (i ? 'border-top:1px solid var(--border);' : '') + (e === sel ? 'background:var(--surface2);' : '') + '">' + _maE(e) + '</div>'; }).join('') + '</div>';
+  var pick = '<div><div class="ma-actsel" onclick="maToggleMenu(\'ma-exo-menu\')" style="cursor:pointer"><div style="flex:1"><div class="a">' + _maE(sel) + '</div><div class="b">' + (muscle ? _maE(muscle) + ' · ' : '') + totalSuivi + ' séance' + (totalSuivi > 1 ? 's' : '') + ' suivie' + (totalSuivi > 1 ? 's' : '') + '</div></div>' + _maSvg('<path d="M6 9l6 6 6-6"/>', 18) + '</div>' + menu + '</div>';
+  // 0 séance de cet exo sur la période choisie : on GARDE l'exo sélectionné et on
+  // affiche un état vide (au lieu de basculer sur un autre exercice).
+  if (np === 0) return pick + _maEmpty('Aucune séance de « ' + _maE(sel) + ' » sur ' + (_w.plabel || 'cette période') + '. Change de période (flèches) ou d\'exercice.');
   // Charge en premier (c'est la valeur la plus parlante au quotidien) ; 1RM et
   // Répétitions ensuite. Onglets soulignés (≠ pastilles pleines de la période).
   // 3 métriques : « Charge + reps » (défaut, lecture concrète), « 1RM estimé »
   // (progrès à charge égale), « Volume (toutes séries) » (travail total du jour).
-  var MET = [['cr', 'Charge + reps', 'kg'], ['1rm', '1RM estimé', 'kg'], ['vol', 'Volume (toutes séries)', 'kg']];
+  var MET = [['cr', 'Charge + reps', 'kg'], ['1rm', '1RM estimé', 'kg'], ['vol', 'Volume (toutes séries)', 'kg'], ['srv', 'Par série', 'kg']];
   var met = MET.filter(function (x) { return x[0] === _maExoMetric; })[0] || MET[0];
   var seg = '<div class="ma-mtab-wrap"><span class="ma-mtab-lbl">Afficher</span><div class="ma-mtab">' + MET.map(function (x) { return '<button class="' + (x[0] === met[0] ? 'on' : '') + '" onclick="maSetExoMetric(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div></div>';
   var isCR = (met[0] === 'cr');   // vue combinée charge + reps
   var isVol = (met[0] === 'vol');
+  var isSrv = (met[0] === 'srv'); // #4 : une courbe par série (S1/S2/S3…)
   var series = pts.map(function (p) {
     if (met[0] === '1rm') return _maE1RM(p);
     if (isVol) return (p.volTotal != null ? p.volTotal : ((p.charge || 0) * (p.reps || 0)));
@@ -12195,8 +12822,15 @@ function _maProgExo(data) {
   var last = series[series.length - 1] || 0, first = series[0] || 0, delta = Math.round((last - first) * 10) / 10;
   var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span>';
   var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + (isCR ? 'kg' : met[2]));
-  var chartBody, legend = '';
-  if (isCR) {
+  var chartBody, legend = '', _srvLines = null;
+  if (isSrv) {
+    // #4 — une courbe de charge par série (S1, S2, S3…) : on voit si la surcharge
+    // touche toutes les séries ou seulement la 1re. Données = p.series (backend).
+    _srvLines = _maSeriesLines(pts);
+    chartBody = _maMultiLineRich(_srvLines, pts.map(function (p) { return p.date; }), 'kg');
+    if (!chartBody) chartBody = _maEmpty('Pas encore de détail par série sur cette période.');
+    legend = '<div class="ma-rclegend">' + _srvLines.map(function (L) { return '<span><i style="background:' + L.color + '"></i>' + L.label + '</span>'; }).join('') + '<span class="mut">Charge (kg) de chaque série · horizontal = date</span></div>';
+  } else if (isCR) {
     // Charge (ligne, kg axe gauche) + reps à cette charge (barres, axe droit) + étiquette charge×reps.
     chartBody = _maChargeRepsRich(pts);
     legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>Charge (kg)</span><span class="mut">Étiquette = charge × reps · dernier point en vert</span></div>';
@@ -12211,9 +12845,10 @@ function _maProgExo(data) {
     chartBody = _maLineRich(series, pts.map(function (p) { return p.date; }), met[2], '#1A5FFF');
     legend = '<div class="ma-rclegend"><span><i style="background:#1A5FFF"></i>' + met[1] + ' (' + met[2] + ')</span><span><b style="background:#00A854"></b>Dernier point</span><span class="mut">Axe vertical = ' + met[2] + ' · horizontal = date</span></div>';
   }
-  var _chipTxt = isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')');
-  var _topVal = isCR ? ((pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last;
-  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + _chipTxt + '</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + _topVal + ' ' + dspan + '</span></div>' + chartBody + legend + '</div>';
+  var _chipTxt = isSrv ? 'Par série' : (isCR ? 'Charge + Reps' : (met[1] + ' (' + met[2] + ')'));
+  var _topVal = isSrv ? ((_srvLines ? _srvLines.length : 0) + ' série' + ((_srvLines && _srvLines.length > 1) ? 's' : '')) : (isCR ? ((pts[np - 1].charge || 0) + '×' + (pts[np - 1].reps || 0)) : last);
+  var _topTail = isSrv ? '' : (' ' + dspan);   // pas de delta global en vue « par série »
+  var chart = '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">' + _chipTxt + '</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#1A5FFF">' + _topVal + _topTail + '</span></div>' + chartBody + legend + '</div>';
   // Meilleure série = charge max, puis reps max à charge égale (sinon une dernière
   // séance qui ajoute des reps à charge identique n'était pas prise en compte).
   var best = pts.reduce(function (a, b) { return (((b.charge || 0) > (a.charge || 0)) || ((b.charge || 0) === (a.charge || 0) && (b.reps || 0) > (a.reps || 0))) ? b : a; }, pts[0]);
@@ -12237,7 +12872,8 @@ function _maProgExo(data) {
   var EXPL = {
     cr: '<b>Charge + reps</b> de ta meilleure série (ex. 90×5) : la lecture la plus concrète. La courbe suit la charge, l\'étiquette montre charge × reps — tu vois d\'un coup si tu montes en charge ou en répétitions.',
     '1rm': '<b>1RM estimé</b> = la charge que tu pousserais sur <b>1 seule répétition max</b>, calculée depuis ta meilleure série (formule d\'Epley). Un seul chiffre qui combine charge ET reps : 90×5 → 90×8, la charge ne bouge pas mais ton 1RM estimé monte.',
-    vol: '<b>Volume de l\'exercice</b> = somme de <b>TOUTES tes séries</b> (charge × reps) ce jour-là. La mesure du <b>travail total</b>, utile pour l\'hypertrophie.'
+    vol: '<b>Volume de l\'exercice</b> = somme de <b>TOUTES tes séries</b> (charge × reps) ce jour-là. La mesure du <b>travail total</b>, utile pour l\'hypertrophie.',
+    srv: '<b>Par série</b> : l\'évolution de la charge de <b>chaque série</b> (S1, S2, S3…) dans le temps. Tu vois si ta surcharge touche toutes tes séries ou seulement la première — pour progresser sur l\'ensemble de ton travail, pas juste ton top set.'
   };
   var explBox = '<div style="font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;padding:10px 12px;background:var(--surface2);border-radius:11px;line-height:1.45">' + (EXPL[met[0]] || '') + '</div>';
   // Prescription anti-stagnation (P2) : affichée si le moteur a flaggé CET exo en
@@ -12469,11 +13105,77 @@ function _maProgAgg(sd) {
   return { byM: byM, byS: byS };
 }
 
+// N9 — Régularité : barres hebdo (jours entraînés) vs OBJECTIF, 12 dernières
+// semaines. Lecture immédiate : objectif atteint (vert) / sous l'objectif (orange)
+// / semaine vide (rouge), + série en cours, % de semaines à l'objectif, moyenne.
+// Données réelles : volume_par_jour (jours entraînés) + dashboard.regularite
+// (objectif seances_prevues + streak). Indépendant du sélecteur de période.
+function _maRegulariteBloc(data) {
+  var vpj = (data.historique && data.historique.volume_par_jour) || {};
+  var reg = (data.dashboard && data.dashboard.regularite) || {};
+  var obj = Number(reg.seances_prevues) || 0;
+  var WEEKS = 12;
+  var now = new Date(); now.setHours(0, 0, 0, 0);
+  var dow = (now.getDay() + 6) % 7;                       // 0 = lundi
+  var monday = new Date(now); monday.setDate(now.getDate() - dow);
+  var start = new Date(monday); start.setDate(monday.getDate() - (WEEKS - 1) * 7);
+  var counts = new Array(WEEKS).fill(0);
+  Object.keys(vpj).forEach(function (k) {
+    if (!(Number(vpj[k]) > 0)) return;                    // jour entraîné (volume > 0)
+    var d = new Date(k + 'T00:00:00'); if (isNaN(d.getTime())) return;
+    d.setHours(0, 0, 0, 0);
+    var wi = Math.floor((d - start) / 6048e5);             // 6048e5 = 7 j en ms
+    if (wi >= 0 && wi < WEEKS) counts[wi]++;
+  });
+  if (!counts.some(function (c) { return c > 0; })) {
+    return _maSec('Régularité', '', 'regularite') + _maEmpty('Pas encore de séances pour mesurer la régularité.');
+  }
+  var reached = function (c) { return obj > 0 ? c >= obj : c > 0; };
+  var atObj = counts.filter(reached).length;
+  var moy = Math.round(counts.reduce(function (a, c) { return a + c; }, 0) / WEEKS * 10) / 10;
+  // Série en cours : semaines consécutives « à l'objectif » en remontant ; la semaine
+  // en cours (dernière) ne casse pas la série si elle n'est pas encore atteinte.
+  var streak = 0;
+  for (var i = WEEKS - 1; i >= 0; i--) {
+    if (reached(counts[i])) streak++;
+    else if (i === WEEKS - 1) continue;                   // semaine en cours non finie
+    else break;
+  }
+  var maxV = Math.max(obj, Math.max.apply(null, counts), 1);
+  var bars = counts.map(function (c, i) {
+    var col = reached(c) ? 'var(--good)' : (c >= 1 ? 'var(--warn)' : 'var(--bad)');
+    var h = c > 0 ? Math.max(6, Math.round(c / maxV * 100)) : 3;
+    var last = i === WEEKS - 1;
+    return '<i title="Semaine : ' + c + ' séance' + (c > 1 ? 's' : '') + '" style="flex:1;align-self:flex-end;height:' + h + '%;background:' + col + ';border-radius:4px 4px 2px 2px;display:block;' + (last ? 'outline:2px solid ' + col + ';outline-offset:1px' : '') + '"></i>';
+  }).join('');
+  var objPct = obj > 0 ? Math.round(obj / maxV * 100) : 0;
+  var objLine = obj > 0
+    ? '<div style="position:absolute;left:0;right:0;bottom:' + objPct + '%;border-top:2px dashed var(--accent2);opacity:.6;pointer-events:none">'
+      + '<span style="position:absolute;right:0;top:-14px;font-size:9px;font-weight:800;color:var(--accent2)">obj. ' + obj + '</span></div>'
+    : '';
+  var countsRow = '<div style="display:flex;gap:4px;margin-top:5px">' + counts.map(function (c, i) {
+    var lastC = i === WEEKS - 1;
+    return '<span style="flex:1;text-align:center;font-size:9px;font-weight:' + (lastC ? '800' : '600') + ';color:' + (lastC ? 'var(--text)' : 'var(--text-subtle)') + '">' + c + '</span>';
+  }).join('') + '</div>';
+  var sub = (obj > 0 ? 'objectif ' + obj + '/sem' : 'objectif non défini') + ' · 12 semaines';
+  var tile = function (v, l, c) { return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:9px 8px;text-align:center"><b style="display:block;font-size:18px;font-weight:900;line-height:1' + (c ? ';color:' + c : '') + '">' + v + '</b><span style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.03em;font-weight:800;margin-top:3px;display:block">' + l + '</span></div>'; };
+  var stats = '<div style="display:flex;gap:8px;margin-top:12px">'
+    + tile('🔥 ' + streak, 'série (sem.)', streak > 0 ? 'var(--warn)' : 'var(--text-subtle)')
+    + tile(atObj + '/' + WEEKS, 'sem. à l\'objectif', 'var(--good)')
+    + tile(String(moy).replace('.', ','), 'séances/sem. moy.', '')
+    + '</div>';
+  return _maSec('Régularité', sub, 'regularite')
+    + '<div class="ma-card" style="padding:13px 15px">'
+    + '<div style="position:relative;height:124px;display:flex;align-items:flex-end;gap:5px">' + objLine + bars + '</div>'
+    + countsRow
+    + stats
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:9px">1 barre = jours d\'entraînement de la semaine · <span style="color:var(--good)">vert</span> objectif atteint · <span style="color:var(--warn)">orange</span> en dessous · <span style="color:var(--bad)">rouge</span> semaine vide.</div>'
+    + '</div>';
+}
 function _maMuscuTendances(data) {
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
-  var tdT = _maTrendData(vpj, 'sum'), tdC = _maTrendData(vpj, 'count');
+  var tdT = _maTrendData(vpj, 'sum');
   var wt = tdT.pts.map(function (v) { return Math.round(v / 100) / 10; });   // tonnage (t) par bucket
-  var ws = tdC.pts;                                                          // jours entraînés par bucket
   var hasW = wt.some(function (v) { return v > 0; });
   var bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
   // Tonnage : on ne trace QUE les jours (buckets) d'entraînement → les jours de
@@ -12481,14 +13183,12 @@ function _maMuscuTendances(data) {
   var wtF = [], wtD = [];
   wt.forEach(function (v, i) { if (v > 0) { wtF.push(v); wtD.push(tdT.dates[i]); } });
   // Sélecteur juste au-dessus du graphique → on voit la courbe s'ajuster.
-  var head = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie (par ' + bNoun + ').');
+  var head = _maPeriodHint('👇 Le sélecteur ci-dessous ne concerne que les graphes suivants.') + _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie (par ' + bNoun + ').');
   var main = '';
   if (hasW) {
     var tonLbl = _maGran === 'S' ? 'jours d\'entraînement' : 'par ' + bNoun;
     main += _maSec('Tonnage soulevé', tonLbl + ' · ' + _maPLabel(), 'tonnage')
-      + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Total charge × reps — seuls les jours d\'entraînement sont tracés (les jours de repos ne comptent pas). La courbe qui monte = tu soulèves plus de volume.', wtD);
-    main += _maSec('Régularité', 'par ' + bNoun + ' · ' + _maPLabel(), 'regularite')
-      + _maChartBlock('Séances', ws, 'séances', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdC.dates[0]), 'Nombre de jours d\'entraînement par ' + bNoun + '. La régularité prime sur tout le reste.', tdC.dates);
+      + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg soulevés au total ce jour, ex. 5,8 t = 5 800 kg). Seuls les jours d\'entraînement sont tracés. La courbe qui monte = plus de volume soulevé.', wtD);
   } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
   // ── Vraies analyses (ajouts) : force e1RM, fréquence/muscle, répartition d'intensité ──
   main += _maForceChart(data) + _maFreqMuscleBloc(data) + _maIntensiteBloc(data);
@@ -12501,7 +13201,10 @@ function _maMuscuTendances(data) {
   // .ma-cols2/.ma-col* passent en display:contents → suite verticale inchangée,
   // juste précédée du résumé comme avant.
   var rail = (rows ? _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>' : '') + _maNovaAsk();
-  var out = head + '<div class="ma-cols2"><div class="ma-colmain">' + main + '</div><div class="ma-colrail">' + rail + '</div></div>';
+  // RÉGULARITÉ EN TÊTE (N9) : dans la colonne principale (même largeur que les
+  // cartes), AU-DESSUS du sélecteur de période (fixe sur 12 sem.). Rail aligné en
+  // haut, comme les autres panes → placement cohérent.
+  var out = '<div class="ma-cols2"><div class="ma-colmain">' + _maRegulariteBloc(data) + head + main + '</div><div class="ma-colrail">' + rail + '</div></div>';
   _maSet('ma-muscu-tendances', out);
 }
 
@@ -12544,7 +13247,7 @@ function _maMuscuHistorique(data) {
       + dot + '<span id="ma-hs-chev-' + i + '" style="color:var(--text-subtle);margin-left:2px">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span></div>'
       + '<div class="ma-hdet" id="ma-hs-' + i + '" style="display:none">' + det + '</div></div>';
   }).join('') + _maMoreBtn('muscu', n, all.length);
-  _maSet('ma-muscu-historique', '<div class="ma-cols2"><div class="ma-colmain">' + html + '</div><div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
+  _maSet('ma-muscu-historique', '<div class="ma-cols2"><div class="ma-colmain">' + html + '</div><div class="ma-colrail">' + _maSec('Records personnels') + _maRecords(data) + _maNovaAsk() + '</div></div>');
 }
 function maToggleHS(i) { var d = document.getElementById('ma-hs-' + i), c = document.getElementById('ma-hs-chev-' + i); if (d) { var open = d.style.display === 'none'; d.style.display = open ? 'flex' : 'none'; if (c) c.style.transform = open ? 'rotate(180deg)' : ''; } }
 
@@ -12590,7 +13293,7 @@ function _maCardioResume(data) {
   var pasMax = Math.max.apply(null, pas.map(function (y) { return y.pas || 1; }).concat([1]));
   var pasHtml = pas.length ? ('<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / jour</span><span style="font-size:11px;font-weight:700;color:#9D5FD3">Ø ' + Math.round(pas.reduce(function (s, x) { return s + (x.pas || 0); }, 0) / pas.length).toLocaleString('fr-FR') + '</span></div><div class="ma-bars2">' + pas.map(function (x) { return '<span style="height:' + Math.round((x.pas || 0) / pasMax * 100) + '%;background:#9D5FD3"></span>'; }).join('') + '</div><div class="ma-axis"><span>' + _maShortDate(pas[0].date) + '</span><span>' + _maShortDate(pas[pas.length - 1].date) + '</span></div></div>') : '';
   // Charge cardio hebdo (UA = RPE × durée), nb de semaines piloté par la période.
-  var chDict = {}; hist.forEach(function (s) { if (+s.rpe && +s.duree) chDict[s.date] = (chDict[s.date] || 0) + (+s.rpe) * (+s.duree); });
+  var chDict = {}; hist.forEach(function (s) { var _ua = _chargeInterneCardio(s); if (_ua > 0) chDict[s.date] = (chDict[s.date] || 0) + _ua; });
   var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
   var tdCh = _maTrendData(chDict, 'sum');
   var chargeHtml = tdCh.pts.some(function (v) { return v > 0; }) ? (_maSec('Charge cardio', 'UA / ' + _bNoun + ' · ' + _w.plabel, 'charge_cardio') + _maChartBlock('Charge (UA)', tdCh.pts, 'UA', '#9D5FD3', 'rgba(157,95,211,.12)', _maShortDate(tdCh.dates[0]), 'Charge interne (RPE × durée) par ' + _bNoun + '. Une montée trop brutale peut signaler un risque de surmenage.', tdCh.dates)) : '';
@@ -12696,7 +13399,7 @@ function _maCroise(data) {
   var muscuT = r.tonnage_kg || 0;
   // Charge cardio (UA = RPE × durée), Hyrox comptabilisé À PART (3e catégorie).
   var hist = (data.cardio && data.cardio.history) || [], cardioUA = 0, hyroxUA = 0;
-  hist.forEach(function (s) { if ((s.date || '') < _w.startISO || (s.date || '') >= _w.endISO || !+s.rpe || !+s.duree) return; var ua = (+s.rpe) * (+s.duree); if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
+  hist.forEach(function (s) { if ((s.date || '') < _w.startISO || (s.date || '') >= _w.endISO) return; var ua = _chargeInterneCardio(s); if (ua <= 0) return; if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
   var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les charges comparables
   var tot = muscuUA + cardioUA + hyroxUA;
   var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
@@ -12721,31 +13424,101 @@ function _maCroise(data) {
   var rep = tot ? ('<div class="ma-card ma-bal2">' + legend + bar
     + '<div class="ma-b2sub" style="margin-top:6px"><span>Force / masse</span><span>charge combinée</span><span>Endurance</span></div>'
     + '</div>') : _maEmpty('Répartition dispo dès que tu as des séances.');
-  var be = (data.bien_etre && data.bien_etre[0]) || null;
-  var wb = be ? ('<div class="ma-trend"><div class="ma-trow"><span>Sommeil (dernier)</span><span class="v">' + (be.sommeil != null ? be.sommeil + '/5' : '—') + '</span></div><div class="ma-trow"><span>Énergie</span><span class="v">' + (be.energie != null ? be.energie + '/5' : '—') + '</span></div><div class="ma-trow"><span>Récupération (moteur)</span><span class="v">' + _maE(mot.recup || '—') + '</span></div></div>') : '';
-  var _xrMain = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict
-    + _maPeriodHtml() + _maPeriodHint('La Lecture ci-dessus reste sur 4 semaines. Le sélecteur (Semaine / Mois / Année + flèches) change la répartition ci-dessous.')
-    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep + (wb ? _maSec('Bien-être') + wb : '');
-  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
-  // Tendances croisées : charge globale (muscu + cardio) + indice de forme (bien-être).
-  var vpj = (data.historique && data.historique.volume_par_jour) || {};
+  // ── Séries hebdo : charge combinée (muscu+cardio) + forme (bien-être /100) ──
   var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
+  var vpj = (data.historique && data.historique.volume_par_jour) || {};
   var tdM = _maTrendData(vpj, 'sum'), muscuW = tdM.pts.map(function (v) { return Math.round(v / 50); });
-  var chD = {}; ((data.cardio && data.cardio.history) || []).forEach(function (s) { if (+s.rpe && +s.duree) chD[s.date] = (chD[s.date] || 0) + (+s.rpe) * (+s.duree); });
+  var chD = {}; hist.forEach(function (s) { var _ua = _chargeInterneCardio(s); if (_ua > 0) chD[s.date] = (chD[s.date] || 0) + _ua; });
   var cardioW = _maTrendData(chD, 'sum').pts;
   var totalW = muscuW.map(function (v, i) { return Math.round(v + (cardioW[i] || 0)); });
   var beD = {}; ((data.bien_etre) || []).forEach(function (b) { var d = _maFRtoDate(b.date); if (!d) return; var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); beD[iso] = (Number(b.sommeil) || 0) + (Number(b.energie) || 0) + (6 - (Number(b.fatigue) || 3)); });
-  // Indice de forme ramené sur 100 (au lieu de /15, peu parlant) : (sommeil+énergie+(6−fatigue))/15×100.
   var beW = _maTrendData(beD, 'avg').pts.map(function (v) { return Math.round(v / 15 * 100); });
-  var body = '';
-  if (totalW.some(function (v) { return v > 0; })) {
-    body += _maSec('Charge globale', 'muscu + cardio · UA/' + _bNoun + ' · ' + _w.plabel, 'charge_globale') + _maChartBlock('Charge combinée', totalW, 'UA', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(tdM.dates[0]), 'Charge combinée par ' + _bNoun + '. Une hausse trop rapide peut signaler un risque de surmenage.', tdM.dates);
+  // Tendances charge/forme (1re vs 2e moitié) → verdict analytique.
+  var _half = function (arr) { var n = arr.length, a = arr.slice(0, Math.floor(n / 2)), b = arr.slice(Math.floor(n / 2)); var avg = function (x) { var f = x.filter(function (v) { return v > 0; }); return f.length ? f.reduce(function (p, q) { return p + q; }, 0) / f.length : 0; }; return { o: avg(a), r: avg(b) }; };
+  var chH = _half(totalW), foH = _half(beW);
+  var chUp = chH.o > 0 && (chH.r - chH.o) / chH.o > 0.15;
+  var foDown = foH.o > 0 && (foH.r - foH.o) / foH.o < -0.08;
+  // GARDE-FOU #1 : la tendance charge/forme n'a de sens que sur une période assez
+  // LONGUE (≥ 4 sem.) avec assez de points (charge + bien-être). En « Semaine » (7 j),
+  // les moitiés sont minuscules → verdict instable → on ne l'affiche pas.
+  var nCharge = totalW.filter(function (v) { return v > 0; }).length;
+  var nForme = beW.filter(function (v) { return v > 0; }).length;
+  var trendOk = _w.days >= 28 && nCharge >= 4 && nForme >= 3;
+  var nWeeks = Math.max(1, Math.round(_w.days / 7));
+  // GARDE-FOU #2 : mention de fiabilité (nb de semaines + remplissage bien-être).
+  var fiab = (trendOk && muscuUA > 0 && cardioUA > 0) ? { t: 'bonne', c: 'var(--good)' }
+    : ((_w.days >= 28 || (muscuUA > 0 && cardioUA > 0)) ? { t: 'moyenne', c: 'var(--warn)' } : { t: 'faible', c: 'var(--bad)' });
+
+  // ── Bilan : coach (parle AU coach) vs athlète (backend, « tu ») ──
+  var coach = (typeof _maCoach !== 'undefined' && _maCoach);
+  var who = (coach && coachAthleteCourant && coachAthleteCourant.nom) ? _maE(String(coachAthleteCourant.nom).split(/\s+/)[0]) : 'L\'athlète';
+  var synthese;
+  if (coach) {
+    var rc = function (col, html) { return '<div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:5px 0;line-height:1.45"><span style="flex:none;color:' + col + ';margin-top:1px">●</span><div>' + html + '</div></div>'; };
+    if (!tot) { synthese = _maEmpty('Pas encore assez de séances muscu + cardio pour croiser.'); }
+    else {
+      var eq = (Math.abs(mPct - 50) <= 15) ? ('Charge bien équilibrée : <b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')
+        : (mPct > 65 ? ('Charge surtout <b>muscu (' + mPct + '%)</b> — peu de cardio') : (cPct > 65 ? ('Charge surtout <b>cardio (' + cPct + '%)</b> — peu de muscu') : ('<b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')));
+      var L = rc(Math.abs(mPct - 50) <= 20 ? 'var(--good)' : 'var(--warn)', eq + (hPct > 0 ? (' · Hyrox ' + hPct + '%') : '') + ' sur ' + _w.plabel + '.');
+      // Tendance charge/forme : AFFICHÉE SEULEMENT si assez de recul (garde-fou #1).
+      if (!trendOk) L += rc('var(--text-subtle)', 'Tendance charge / forme : <b>pas assez de recul</b> sur cette période — à regarder sur <b>Mois</b> ou <b>Année</b>.');
+      else if (chUp && foDown) L += rc('var(--warn)', 'La <b>charge globale monte</b> alors que la <b>forme baisse</b> → accumulation à surveiller.');
+      else if (chUp) L += rc('var(--accent2)', 'Charge globale en hausse, forme tenue → bonne assimilation pour l\'instant.');
+      else if (foDown) L += rc('var(--warn)', 'Forme en légère baisse — vérifier sommeil / récupération.');
+      else L += rc('var(--good)', 'Charge et forme stables.');
+      var dispo = (mot.disponibilite && mot.disponibilite.niveau) || null;
+      L += rc(dispo === 'À surveiller' ? 'var(--bad)' : dispo === 'Vigilance' ? 'var(--warn)' : 'var(--good)', who + ' : disponibilité <b>' + _maE(dispo || '—') + '</b> · récup ' + _maE(mot.recup || '—') + '.');
+      // Reco PROPRE AU CROISÉ : équilibre entre filières + charge TOTALE vs récup
+      // (pas une reco muscu « surcharge/volume » ni cardio « endurance » isolée). La
+      // reco « deload sur tendance » n'est donnée que si la tendance est fiable.
+      var reco = (trendOk && chUp && foDown) ? 'Charge totale (muscu + cardio) trop lourde pour la récup du moment → allège une des deux filières cette semaine pour rééquilibrer charge / récupération.'
+        : (mPct > 75 ? 'Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d\'endurance + meilleure récup globale) sans alourdir la charge totale.'
+          : (cPct > 75 ? 'Profil déséquilibré, presque tout en cardio : ajoute du renforcement pour l\'équilibre force / endurance, en gardant la charge totale sous contrôle.'
+            : 'Bon équilibre muscu / cardio et charge globale soutenable — maintiens le mix ; ajuste seulement si la forme décroche quand la charge monte.'));
+      var fiabLine = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Fiabilité de l\'analyse : <b style="color:' + fiab.c + '">' + fiab.t + '</b> · ' + nWeeks + ' sem. de données · bien-être ' + nForme + ' relevé' + (nForme > 1 ? 's' : '') + '.</div>';
+      synthese = '<div class="ma-card" style="border-left:3px solid var(--accent);padding:14px 16px">' + L + fiabLine
+        + '<div style="margin-top:10px;background:var(--accent-a10,rgba(26,95,255,.10));border:1px solid var(--border);border-radius:12px;padding:13px 16px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:4px">Reco · pour le coach</div><div style="font-size:13px;font-weight:600;line-height:1.45">' + reco + '</div></div></div>';
+    }
+  } else {
+    synthese = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict;
   }
-  if (beW.some(function (v) { return v > 0; })) {
-    body += _maSec('Indice de forme', 'bien-être · ' + _w.plabel, 'forme') + _maChartBlock('Forme', beW, '/100', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(tdM.dates[0]), 'Indice de forme par ' + _bNoun + ' (100 = parfaitement récupéré). À croiser avec la charge : si la forme chute quand la charge monte, lève le pied.', tdM.dates);
+
+  // ── Charge vs forme : 2 TUILES claires (pas de graphe dual-axe illisible) ──
+  // En mots simples : la charge d'entraînement monte/descend/stable, la forme idem.
+  var chPct = (chH.o > 0) ? Math.round((chH.r - chH.o) / chH.o * 100) : null;
+  var foPct = (foH.o > 0) ? Math.round((foH.r - foH.o) / foH.o * 100) : null;
+  var lastForme = (function () { for (var i = beW.length - 1; i >= 0; i--) if (beW[i] > 0) return beW[i]; return null; })();
+  var tile = function (lab, big, bigCol, sub) { return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 13px"><div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + lab + '</div><div style="font-size:16px;font-weight:900;margin-top:3px;color:' + bigCol + '">' + big + '</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:2px">' + sub + '</div></div>'; };
+  var cardioN = hist.filter(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; }).length;
+  var nSea = (r.seances || 0) + cardioN;
+  var chBig, chCol, chSub, foBig, foCol, foSub;
+  if (!trendOk) {
+    // Pas assez de recul pour une TENDANCE → on montre quand même des valeurs
+    // CONCRÈTES de la période (nb de séances + forme actuelle), pas « — ».
+    chBig = nSea + ' séance' + (nSea > 1 ? 's' : ''); chCol = 'var(--text)'; chSub = 'sur ' + _w.plabel + ' · tendance dès ~4 sem.';
+    foBig = (lastForme != null ? (lastForme + '/100') : '—'); foCol = (lastForme != null) ? (lastForme >= 70 ? 'var(--good)' : (lastForme >= 45 ? 'var(--text)' : 'var(--warn)')) : 'var(--text-subtle)'; foSub = 'forme actuelle · tendance dès ~4 sem.';
+  } else {
+    chBig = chPct == null ? '—' : (chPct > 8 ? '↑ en hausse' : (chPct < -8 ? '↓ en baisse' : '→ stable'));
+    chCol = chPct == null ? 'var(--text-subtle)' : (chPct > 15 ? 'var(--warn)' : 'var(--text)');
+    chSub = chPct == null ? 'muscu + cardio' : ((chPct >= 0 ? '+' : '') + chPct + '% sur ' + nWeeks + ' sem.');
+    foBig = foPct == null ? '—' : (foPct > 5 ? '↑ en hausse' : (foPct < -5 ? '↓ en baisse' : '→ stable'));
+    foCol = foPct == null ? 'var(--text-subtle)' : (foPct < -8 ? 'var(--bad)' : (foPct > 5 ? 'var(--good)' : 'var(--text)'));
+    foSub = (lastForme != null ? (lastForme + '/100 · récup') : 'bien-être');
   }
-  var _xtMain = _maPeriodHtml() + _maPeriodHint('Le graphique s\'ajuste à la période choisie.') + (body || _maEmpty('Les tendances croisées se remplissent dès ~3-4 semaines de séances + questionnaires. Avec plus d\'historique, elles montrent charge globale et forme au fil des semaines.'));
-  _maSet('ma-croise-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _xtMain + '</div><div class="ma-colrail">' + _maMoteurTiles(data) + _maNovaAsk() + '</div></div>');
+  var indic = _maSec('Charge vs forme', trendOk ? _w.plabel : (_w.plabel + ' · tendance dès ~4 sem.'))
+    + '<div style="display:flex;gap:9px">'
+    + tile('Charge d\'entraînement', chBig, chCol, chSub)
+    + tile('Forme (récupération)', foBig, foCol, foSub)
+    + '</div>'
+    + (trendOk && chUp && foDown ? '<div style="font-size:11.5px;color:var(--warn);font-weight:700;margin-top:9px">⚠ La charge monte pendant que la forme baisse → vigilance (fatigue qui s\'installe).</div>' : '')
+    + _maCap(trendOk ? 'Charge = muscu + cardio sur la période. Forme = récupération (100 = au top). Tendance = 2ᵉ moitié vs 1ʳᵉ moitié de la période.' : 'Les tendances s\'affichent dès ~4 semaines de données (vois Mois / Année).');
+
+  var _xrMain = synthese
+    + _maPeriodHtml() + _maPeriodHint('Le sélecteur ajuste la répartition et les tendances ci-dessous.')
+    + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep
+    + indic;
+  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
+  try { _maSet('ma-croise-tendances', ''); } catch (e) {}
 }
 
 // Ressenti de séance (1 Facile → 4 Très dur) : distribution + mini-timeline.
@@ -14080,7 +14853,7 @@ function renderChargeFatigueJour(data) {
   var subTxt = hasCf ? 'Ton état du jour : récup · charge · fatigue' : 'Ton état du jour';
   var fraicheurWidget = hasCf ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
     +   '<div style="text-align:center;flex:none;min-width:56px"><div style="font-size:18px;font-weight:800;color:' + frc + ';line-height:1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
-    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = ta forme de fond moins ta fatigue récente (modèle fitness-fatigue). Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
+    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = es-tu <b>reposé</b> ? On compare ta charge <b>habituelle</b> à celle de <b>ces derniers jours</b> : en avoir fait plus récemment = plus fatigué. Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
     + '</div>') : '';
 
   el.style.display = '';
@@ -14097,10 +14870,12 @@ function renderChargeFatigueJour(data) {
     + recoHtml;
 }
 function ouvrirInfoChargeFatigue() {
-  var txt = 'Fraîcheur = ta forme de fond (ce que ton corps encaisse d\'habitude) moins ta fatigue récente. '
-    + 'Positif = reposé/affûté ; négatif = fatigué. « Charge récente » = ton volume des 7 derniers jours vs ton habitude. '
-    + 'Méthode reconnue : modèle fitness-fatigue de Banister sur la charge d\'entraînement (sRPE de Foster). '
-    + 'C\'est un repère secondaire : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge.';
+  var txt = 'La fraîcheur dit si ton corps est reposé aujourd\'hui. '
+    + 'On compare ce que tu encaisses d\'habitude (sur plusieurs semaines) à ce que tu as fait ces derniers jours : '
+    + 'plus que d\'habitude récemment = fatigué (fraîcheur négative) ; moins = reposé (fraîcheur positive). '
+    + '« Charge récente » = ton volume des 7 derniers jours vs ton habitude. '
+    + 'C\'est un repère secondaire : il éclaire ta journée mais ne déclenche jamais d\'alerte rouge. '
+    + '(Méthode reconnue : modèle fitness-fatigue sur la charge d\'entraînement.)';
   try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Charge & fatigue', txt); } catch (e) {}
   try { alert(txt); } catch (e) {}
 }
@@ -14300,18 +15075,28 @@ function renderAujourdhui(data) {
     var g = (data && data.global) || {};
     var dashb = (data && data.dashboard) || {};
     var totalS = Number(g.total_seances || 0);
-    var rec30 = Number(g.records_30j || 0);
-    var pts = totalS * 10 + rec30 * 50;
+    var rec30 = Number(g.records_30j || 0);   // gardé pour l'étiquette « Records 30 j » (trophée)
+    // Économie de points : SOURCE UNIQUE = data.recompenses (gagné / dépensé / solde).
+    // Le SOLDE (gagné − dépensé) est le seul chiffre « dispo » affiché (ici + boutique).
+    // Records comptés À VIE (records_total) → points permanents. Fallback front sur
+    // records_par_exo (lui aussi permanent) si le backend n'est pas encore redéployé.
+    var recordsTot = Number(g.records_total != null ? g.records_total : Object.keys(g.records_par_exo || {}).length) || 0;
+    var recEco = (data && data.recompenses) || null;
+    var gagnes = (recEco && recEco.gagnes != null) ? Number(recEco.gagnes) : (totalS * 10 + recordsTot * 50);
+    var depenses = (recEco && recEco.depenses != null) ? Number(recEco.depenses) : 0;
+    var solde = (recEco && recEco.solde != null) ? Number(recEco.solde) : (gagnes - depenses);
     var reg2 = dashb.regularite || {};
     var streak = (reg2 && reg2.streak != null) ? Number(reg2.streak) : ((dashb.streak && dashb.streak.semaines != null) ? Number(dashb.streak.semaines) : 0);
     var recsObj = g.records_par_exo || {};
     var hasRecords = Object.keys(recsObj).length > 0;
 
-    // Niveau dérivé des points réels.
-    var lv = _rewLevel(pts);
+    // Niveau = points GAGNÉS à vie (ne baisse jamais, même après un achat).
+    var lv = _rewLevel(gagnes);
     var elLvln = document.getElementById('tj-lvln'); if (elLvln) elLvln.textContent = lv.level;
     var elLvlt = document.getElementById('tj-lvltitle'); if (elLvlt) elLvlt.textContent = lv.title;
-    var elLvlx = document.getElementById('tj-lvltxt'); if (elLvlx) elLvlx.textContent = 'Plus que ' + lv.toNext.toLocaleString('fr-FR') + ' pts avant le niveau ' + (lv.level + 1);
+    // Transparence : gagné / dépensé (le chiffre ci-dessus = solde dispo).
+    var elLvlx = document.getElementById('tj-lvltxt'); if (elLvlx) elLvlx.textContent = 'Gagné ' + gagnes.toLocaleString('fr-FR') + ' · Dépensé ' + depenses.toLocaleString('fr-FR');
+    var elProgLbl = document.querySelector('#tab-accueil .tj-rew .rew-pts small'); if (elProgLbl) elProgLbl.textContent = 'pts dispo';
 
     // Meilleur record.
     var best = null;
@@ -14333,11 +15118,11 @@ function renderAujourdhui(data) {
 
     // Cibles pour l'animation au reveal (scroll).
     var rewCard = document.querySelector('#tab-accueil .tj-rew');
-    if (rewCard) { rewCard.setAttribute('data-pts', String(pts)); rewCard.setAttribute('data-lvlpct', String(lv.pct)); }
+    if (rewCard) { rewCard.setAttribute('data-pts', String(solde)); rewCard.setAttribute('data-lvlpct', String(lv.pct)); }
     var elProg = document.getElementById('tj-prog');
     var rg = document.getElementById('tj-lvlring');
     if (_rewAnimated) {
-      if (elProg) { elProg.textContent = pts.toLocaleString('fr-FR'); elProg.setAttribute('data-v', String(pts)); }
+      if (elProg) { elProg.textContent = solde.toLocaleString('fr-FR'); elProg.setAttribute('data-v', String(solde)); }
       if (rg) rg.style.strokeDashoffset = (100 - lv.pct);
     } else {
       if (elProg) { elProg.textContent = '0'; elProg.setAttribute('data-v', '0'); }
@@ -14447,22 +15232,31 @@ function _renderTrophees(streak, rec30, totalS, hasRecords) {
   grid.innerHTML = items.join('');
   var c = document.getElementById('tj-tro-count'); if (c) c.textContent = '· ' + unlocked + ' / ' + total + ' débloqués';
 }
-// Objectif de la semaine — choisi par l'athlète, stocké en local (par appareil).
-var _OBJ_OPTS = [
-  { id: 's4', em: '🏋', label: '4 séances', type: 'seances', target: 4 },
-  { id: 's5', em: '', label: '5 séances', type: 'seances', target: 5 },
-  { id: 'pas', em: '👟', label: '5 j à 10 000 pas', type: 'pas10k', target: 5 },
-  { id: 'c3', em: '🏃', label: '3 cardio', type: 'cardio', target: 3 }
-];
-function _objOptions() {
+// Objectif de la semaine — PROPRE À CHAQUE ATHLÈTE. La cible « séances » par
+// défaut = l'objectif hebdo réel de l'athlète (objectif.seances_semaine, remonté
+// dans data.dashboard.regularite.seances_prevues). Fini le « 4 séances » codé en
+// dur, absurde pour quelqu'un qui en fait 1/sem. L'athlète peut viser +1, ou
+// choisir cardio / pas. Choix stocké en local (par appareil + semaine ISO).
+function _objSeancesCible(data) {
+  var reg = (data && data.dashboard && data.dashboard.regularite) || {};
+  var n = Number(reg.seances_prevues) || 0;
+  if (!n && reg.seances_semaine != null) n = Number(reg.seances_semaine) || 0;
+  return (n >= 1) ? n : 3;   // défaut raisonnable si l'objectif n'est pas renseigné
+}
+function _objOptions(data) {
   var native = (typeof _estAppNative === 'function' && _estAppNative());
-  return _OBJ_OPTS.filter(function (o) { return o.type !== 'pas10k' || native; });
+  var n = _objSeancesCible(data);
+  var opts = [{ id: 'seances', em: '🏋', label: n + ' séance' + (n > 1 ? 's' : ''), type: 'seances', target: n }];
+  if (n < 6) opts.push({ id: 'seances_plus', em: '🔥', label: (n + 1) + ' séances', type: 'seances', target: n + 1 });
+  if (native) opts.push({ id: 'pas', em: '👟', label: '5 j à 10 000 pas', type: 'pas10k', target: 5 });
+  opts.push({ id: 'c3', em: '🏃', label: '3 cardio', type: 'cardio', target: 3 });
+  return opts;
 }
 function _objKey() { return 'nvz_obj_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
 function _objWonKey() { return 'nvz_objwon_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
-function _objChosen() {
+function _objChosen(data) {
   var id = null; try { id = localStorage.getItem(_objKey()); } catch (e) {}
-  var opts = _objOptions();
+  var opts = _objOptions(data);
   for (var i = 0; i < opts.length; i++) if (opts[i].id === id) return opts[i];
   return opts[0];
 }
@@ -14471,12 +15265,12 @@ function nvzPickObj(id) { try { localStorage.setItem(_objKey(), id); } catch (e)
 // Lundi (00:00) de la semaine courante, en ISO YYYY-MM-DD.
 function _lundiISO() { var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function _renderObjectif(data) {
-  var obj = _objChosen();
+  var obj = _objChosen(data);
   var emEl = document.getElementById('tj-obj-em'); if (emEl) emEl.textContent = obj.em;
   var txtEl = document.getElementById('tj-obj-txt'); if (txtEl) txtEl.textContent = obj.label;
   // Chips du sélecteur.
   var pick = document.getElementById('tj-obj-pick');
-  if (pick) pick.innerHTML = _objOptions().map(function (o) {
+  if (pick) pick.innerHTML = _objOptions(data).map(function (o) {
     return '<span class="chip' + (o.id === obj.id ? ' sel' : '') + '" onclick="nvzPickObj(\'' + o.id + '\')">' + o.em + ' ' + o.label + '</span>';
   }).join('');
   // Applique une progression (done) → sous-titre + barre + coffre si atteint.
@@ -14673,7 +15467,7 @@ function renderEtat(data) {
           + '<span class="et-big" style="color:var(--text-muted)">—</span>'
           + '<span class="et-muted"><b>Pas encore calculable.</b><br>' + esc(noteF) + '</span></div>'
           + '<div style="margin-top:11px;padding:11px 12px;background:var(--surface2);border-radius:11px;font-size:11.5px;color:var(--text-muted);line-height:1.5">'
-          + '<b style="color:var(--text)">C\'est quoi la fraîcheur ?</b> Ta charge nourrit deux moyennes : ta <b>forme de fond</b> (sur ~6 semaines) et ta <b>fatigue récente</b> (sur 1 semaine). La <b>fraîcheur = forme − fatigue</b> : positive = reposé, négative = tu charges plus que d\'habitude. Méthode reconnue (modèle fitness-fatigue de Banister).'
+          + '<b style="color:var(--text)">C\'est quoi la fraîcheur ?</b> En clair : es-tu <b>reposé</b> ? Novalyz compare ce que tu encaisses <b>d\'habitude</b> (~6 semaines) à ta charge des <b>derniers jours</b>. Tu as fait plus que d\'habitude récemment → <b>fatigué</b> ; moins → <b>reposé</b>. Méthode reconnue (modèle fitness-fatigue).'
           + '</div>' + acwrLine;
       } else {
         var frL, frC, frBg, frD;
@@ -14684,8 +15478,10 @@ function renderEtat(data) {
         var srcF = (cfe.source === 'srpe') ? '<span style="color:var(--text-subtle);font-weight:600;font-size:10px"> · sRPE</span>' : '';
         fiabF = fiabF + srcF;
         // Jauge fraîcheur (TSB %) : -40 (fatigue) → +20 (frais), 0 = équilibre au centre.
+        // N7 : couleurs = tokens sémantiques PLEINS (gamme existante warn/neutre/good),
+        // zones alignées sur les vrais seuils (-12 → équilibre, +5 → frais).
         var lo = -40, hi = 20, posF = Math.max(0, Math.min(100, (tsbPct - lo) / (hi - lo) * 100));
-        var zbarF = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,rgba(224,120,0,.45) 0 46%,rgba(80,110,160,.35) 46% 62%,rgba(0,168,84,.45) 62% 100%)">'
+        var zbarF = '<div style="margin-top:12px"><div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,var(--warn) 0 47%,var(--text-muted) 47% 75%,var(--good) 75% 100%)">'
           + '<div style="position:absolute;top:-3px;left:' + posF.toFixed(0) + '%;width:3px;height:16px;background:var(--text);border-radius:2px;transform:translateX(-50%)"></div></div>'
           + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-subtle);margin-top:4px"><span>fatigue</span><span>équilibre</span><span>frais</span></div></div>';
         var ctlTxt = (cfe.ctl != null) ? String(cfe.ctl) : '—', atlTxt = (cfe.atl != null) ? String(cfe.atl) : '—';
@@ -14865,7 +15661,8 @@ function _etRenderSuivis(data) {
   var ICO = {
     nut: '<path d="M12 8c1-3 5-4 6-1 1 4-3 9-6 12-3-3-7-8-6-12 1-3 5-2 6 1z"/>',
     obj: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/>',
-    bl: '<path d="M4 13h4l2-5 3 8 2-4h5"/>'
+    bl: '<path d="M4 13h4l2-5 3 8 2-4h5"/>',
+    mes: '<rect x="3" y="8" width="18" height="8" rx="1.5"/><path d="M7.5 8v3M12 8v4M16.5 8v3"/>'
   };
   var row = function (tab, icoKey, tint, title, sub, pill) {
     var pillHtml = pill ? '<span style="font-size:9.5px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;background:' + pill.bg + ';color:' + pill.c + ';">' + esc(pill.txt) + '</span>' : '';
@@ -14911,8 +15708,24 @@ function _etRenderSuivis(data) {
     }
   } catch (e) { blSub = 'Tes douleurs signalées et blessures suivies'; blPill = null; }
 
+  // --- Suivi corps : photos avant/après + mensurations (N3) ---
+  var mens = (data && Array.isArray(data.mensurations)) ? data.mensurations : [];
+  var phs = (data && Array.isArray(data.suivi_photos)) ? data.suivi_photos : [];
+  var mSub, mPill;
+  if (!mens.length && !phs.length) {
+    mSub = 'Photos avant/après + mensurations';
+    mPill = { txt: 'à démarrer', bg: 'var(--surface2)', c: 'var(--text-muted)' };
+  } else {
+    var bits = [];
+    if (phs.length) bits.push(phs.length + ' photo' + (phs.length > 1 ? 's' : ''));
+    if (mens.length) bits.push('mesures maj ' + mens[0].date);
+    mSub = bits.join(' · ');
+    mPill = { txt: 'suivi', bg: 'var(--accent-a10)', c: 'var(--accent)' };
+  }
+
   box.innerHTML =
     row('nutrition', 'nut', { bg: 'rgba(16,185,129,.13)', c: '#10B981' }, 'Nutrition', nSub, nPill).replace('border-top:1px solid var(--border);', '')
+    + row('suivi', 'mes', { bg: 'var(--accent-a10)', c: 'var(--accent)' }, 'Photos & mensurations', mSub, mPill)
     + row('objectif', 'obj', { bg: 'var(--accent-a10)', c: 'var(--accent)' }, 'Mes objectifs', 'Suivre et fixer tes objectifs', null)
     + row('blessures', 'bl', { bg: 'var(--bad-a)', c: 'var(--danger)' }, 'Douleurs & blessures', blSub, blPill);
 }
@@ -14924,6 +15737,142 @@ function _etFoldRB() {
   var open = (body.style.display === 'flex');   // fermé par défaut (display:none)
   if (open) { body.style.display = 'none'; if (caret) caret.style.transform = ''; if (btn) btn.setAttribute('aria-expanded', 'false'); }
   else { body.style.display = 'flex'; if (caret) caret.style.transform = 'rotate(180deg)'; if (btn) btn.setAttribute('aria-expanded', 'true'); }
+}
+
+/* ───────── SUIVI CORPS (N3) : photos avant/après + mensurations ─────────
+ * Écran #tab-suivi (accès Forme › Mes suivis). Saisie par l'ATHLÈTE ; le coach
+ * consulte (Progression). Photos → bucket privé 'suivi-photos' (upload signé,
+ * même mécanisme que les médias coach). Mensurations → action saveMensuration.
+ * Lecture : data.suivi_photos [{date,angle,path,url}], data.mensurations [{date,<clé>}]. */
+var _svTab = 'photos', _svAngle = 'face', _svPhotoBusy = false;
+var _MENSU_DEF = [
+  { k: 'poitrine', l: 'Poitrine', u: 'cm' }, { k: 'taille', l: 'Tour de taille', u: 'cm' },
+  { k: 'hanches', l: 'Hanches', u: 'cm' }, { k: 'epaules', l: 'Épaules', u: 'cm' },
+  { k: 'bras_g', l: 'Bras gauche', u: 'cm' }, { k: 'bras_d', l: 'Bras droit', u: 'cm' },
+  { k: 'avantbras_g', l: 'Avant-bras gauche', u: 'cm' }, { k: 'avantbras_d', l: 'Avant-bras droit', u: 'cm' },
+  { k: 'cuisse_g', l: 'Cuisse gauche', u: 'cm' }, { k: 'cuisse_d', l: 'Cuisse droite', u: 'cm' },
+  { k: 'mollet', l: 'Mollet', u: 'cm' }, { k: 'masse_grasse', l: '% masse grasse', u: '%' }
+];
+function svSetTab(t) { _svTab = t; try { renderSuiviCorps(dernierAppData); } catch (e) {} }
+function svSetAngle(a) { _svAngle = a; try { renderSuiviCorps(dernierAppData); } catch (e) {} }
+function renderSuiviCorps(data) {
+  var box = document.getElementById('suivi-body'); if (!box) return;
+  data = data || (typeof dernierAppData !== 'undefined' ? dernierAppData : {}) || {};
+  var phs = Array.isArray(data.suivi_photos) ? data.suivi_photos : [];
+  var mens = Array.isArray(data.mensurations) ? data.mensurations : [];
+  var subt = '<div class="sv-subt">'
+    + '<button class="' + (_svTab === 'photos' ? 'on' : '') + '" onclick="svSetTab(\'photos\')">📷 Photos</button>'
+    + '<button class="' + (_svTab === 'mesures' ? 'on' : '') + '" onclick="svSetTab(\'mesures\')">📏 Mensurations</button>'
+    + '</div>';
+  box.innerHTML = subt + (_svTab === 'photos' ? _svPhotosHtml(phs) : _svMesuresHtml(mens, data));
+}
+function _svPhotoCard(p, label) {
+  var esc = escapeHtml;
+  return '<div class="sv-card" style="padding:0;overflow:hidden">'
+    + '<div style="aspect-ratio:3/4;background:var(--surface2);display:grid;place-items:center">' + (p.url ? '<img src="' + esc(p.url) + '" alt="" style="width:100%;height:100%;object-fit:cover">' : '<span style="color:var(--text-subtle);font-size:11px">photo</span>') + '</div>'
+    + '<div style="padding:7px 10px;font-size:11px">' + (label ? '<b style="display:block;font-size:10px;color:var(--text-subtle);text-transform:uppercase">' + label + '</b>' : '') + '<b style="font-size:12px">' + esc(p.date) + '</b></div></div>';
+}
+function _svPhotosHtml(phs) {
+  var esc = escapeHtml;
+  var angles = [['face', 'Face'], ['profil', 'Profil'], ['dos', 'Dos']];
+  var at = '<div style="display:flex;gap:6px;margin:10px 0 2px">' + angles.map(function (a) {
+    var on = _svAngle === a[0];
+    return '<span onclick="svSetAngle(\'' + a[0] + '\')" style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:999px;cursor:pointer;background:' + (on ? 'var(--accent-a10)' : 'var(--surface2)') + ';color:' + (on ? 'var(--accent)' : 'var(--text-muted)') + ';border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + '">' + a[1] + '</span>';
+  }).join('') + '</div>';
+  var list = phs.filter(function (p) { return (p.angle || 'face') === _svAngle; });   // déjà triées récent → ancien
+  var cmp;
+  if (list.length >= 2) {
+    cmp = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + _svPhotoCard(list[list.length - 1], 'Avant') + _svPhotoCard(list[0], 'Après') + '</div>';
+  } else if (list.length === 1) {
+    cmp = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + _svPhotoCard(list[0], '') + '<div class="sv-card" style="display:grid;place-items:center;color:var(--text-subtle);font-size:12px;aspect-ratio:3/4;text-align:center;padding:12px">Ajoute une 2ᵉ photo pour comparer</div></div>';
+  } else {
+    cmp = '<div class="sv-card" style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:18px">Aucune photo « ' + esc(_svAngle) + " » pour l'instant. Prends ta première photo ci-dessous.</div>";
+  }
+  var tl = list.length ? ('<div class="sv-sec">Toutes les photos<span class="r">' + esc(_svAngle) + ' · ' + list.length + '</span></div>'
+    + '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">' + list.map(function (p) {
+      return '<div style="flex:none;width:72px"><div style="width:72px;height:96px;border-radius:10px;overflow:hidden;background:var(--surface2);border:1px solid var(--border);position:relative">'
+        + (p.url ? '<img src="' + esc(p.url) + '" alt="" style="width:100%;height:100%;object-fit:cover">' : '')
+        + '<button onclick="svSupprPhoto(\'' + esc(p.path) + '\')" aria-label="Supprimer" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:999px;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:13px;cursor:pointer;line-height:1">×</button></div>'
+        + '<div style="font-size:9.5px;color:var(--text-subtle);text-align:center;margin-top:4px">' + esc(p.date) + '</div></div>';
+    }).join('') + '</div>') : '';
+  var add = '<div style="display:flex;gap:8px;margin-top:12px">'
+    + '<button onclick="_svPhotoPick(\'cam\')" style="flex:1;background:var(--accent);color:var(--on-accent,#fff);border:none;border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">📷 Prendre en direct</button>'
+    + '<button onclick="_svPhotoPick(\'gal\')" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--accent);border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">🖼 Galerie</button>'
+    + '</div><div style="font-size:10.5px;color:var(--text-subtle);margin-top:7px">Photo privée (toi + ton coach). Angle : <b>' + esc(_svAngle) + '</b>.</div>';
+  return at + cmp + tl + add;
+}
+function _svPhotoPick(src) {
+  if (_svPhotoBusy) { try { showToast('⏳ Envoi en cours…'); } catch (e) {} return; }
+  var inp = document.getElementById(src === 'cam' ? 'suivi-photo-input' : 'suivi-photo-input-gal');
+  if (inp) { inp.value = ''; inp.click(); }
+}
+function _svPhotoChoisi(input) {
+  var f = input && input.files && input.files[0]; if (!f) return;
+  if (!/^image\//.test(f.type)) { showToast('Choisis une photo', '#ff4444'); return; }
+  if (f.size > 25 * 1024 * 1024) { showToast('Photo trop lourde (max 25 Mo)', '#ff4444'); return; }
+  _coachMediaCompressImage(f).then(function (blob) { _svPhotoEnvoyer(blob, 'jpg'); })
+    .catch(function () { _svPhotoEnvoyer(f, (f.name.split('.').pop() || 'jpg').toLowerCase()); });
+}
+async function _svPhotoEnvoyer(fileOrBlob, ext) {
+  if (!athlete) return;
+  _svPhotoBusy = true;
+  try {
+    showToast('Envoi de la photo…');
+    var r1 = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'suiviPhotoUploadUrl', athlete_id: athlete.athlete_id, ext: ext }) });
+    var d1 = await r1.json();
+    if (!d1 || !d1.success || !d1.signedUrl) throw new Error('upload-url');
+    var put = await fetch(d1.signedUrl, { method: 'PUT', headers: { 'Content-Type': (fileOrBlob.type || 'image/jpeg') }, body: fileOrBlob });
+    if (!put.ok) throw new Error('put-' + put.status);
+    var r3 = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSuiviPhoto', athlete_id: athlete.athlete_id, path: d1.path, angle: _svAngle, date: _ymdLocal(new Date()) }) });
+    var d3 = await r3.json();
+    if (!d3 || !d3.success) throw new Error('save');
+    showToast('Photo ajoutée');
+    if (!dernierAppData.suivi_photos) dernierAppData.suivi_photos = [];
+    dernierAppData.suivi_photos.unshift({ date: d3.date, angle: _svAngle, path: d3.path, url: d3.url || null });
+    renderSuiviCorps(dernierAppData);
+    try { _etRenderSuivis(dernierAppData); } catch (e) {}
+  } catch (e) { showToast('Échec de l\'envoi', '#ff4444'); }
+  finally { _svPhotoBusy = false; }
+}
+function svSupprPhoto(path) {
+  if (!confirm('Supprimer cette photo ?')) return;
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'supprimerSuiviPhoto', athlete_id: athlete.athlete_id, path: path }) })
+    .then(function (x) { return x.json(); }).then(function (r) {
+      if (r && r.success) { if (dernierAppData.suivi_photos) dernierAppData.suivi_photos = dernierAppData.suivi_photos.filter(function (p) { return p.path !== path; }); renderSuiviCorps(dernierAppData); showToast('Photo supprimée'); }
+      else showToast('Suppression impossible', '#ff4444');
+    }).catch(function () { showToast('Erreur réseau', '#ff4444'); });
+}
+function _svMesuresHtml(mens, data) {
+  var esc = escapeHtml;
+  var last = mens[0] || {}, prev = mens[1] || {};
+  var cells = _MENSU_DEF.map(function (m) {
+    var v = last[m.k]; if (v == null) return '';
+    var p = prev[m.k], trend = '';
+    if (p != null) { var d = Math.round((v - p) * 10) / 10; trend = (Math.abs(d) < 0.05) ? '<span style="color:var(--text-subtle)">– 0</span>' : '<span style="color:' + (d > 0 ? 'var(--good)' : 'var(--danger)') + '">' + (d > 0 ? '▲ +' : '▼ ') + Math.abs(d) + '</span>'; }
+    return '<div class="sv-card" style="padding:10px 12px"><div style="font-size:10.5px;color:var(--text-muted);font-weight:700">' + esc(m.l) + '</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:2px"><b style="font-size:18px;font-weight:900">' + String(v).replace('.', ',') + '</b><u style="font-size:10px;color:var(--text-subtle);font-style:normal">' + m.u + '</u>' + (trend ? '<em style="margin-left:auto;font-size:10px;font-weight:800;font-style:normal">' + trend + '</em>' : '') + '</div></div>';
+  }).filter(Boolean).join('');
+  var grid = cells
+    ? ('<div class="sv-sec">Dernières mesures<span class="r">' + (last.date ? esc(last.date) : '') + '</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + cells + '</div>')
+    : '<div class="sv-card" style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:18px">Aucune mesure enregistrée. Saisis tes premières mensurations ci-dessous.</div>';
+  var fields = _MENSU_DEF.map(function (m) {
+    return '<div style="display:flex;flex-direction:column;gap:3px"><label style="font-size:10.5px;color:var(--text-subtle);font-weight:700">' + esc(m.l) + '</label><input id="sv-in-' + m.k + '" inputmode="decimal" placeholder="' + m.u + '" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px;font:inherit;font-size:13px"></div>';
+  }).join('');
+  var form = '<div class="sv-sec">Ajouter des mesures<span class="r">aujourd\'hui</span></div>'
+    + '<div class="sv-card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">' + fields + '</div>'
+    + '<button onclick="_svSaveMesures()" style="width:100%;margin-top:11px;background:var(--accent);color:var(--on-accent,#fff);border:none;border-radius:11px;padding:11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer">Enregistrer les mesures</button>'
+    + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:8px">Le poids se saisit dans « Mes tendances » (pesée). Ré-enregistrer une date écrase ses mesures.</div></div>';
+  return grid + form;
+}
+function _svSaveMesures() {
+  if (!athlete) return;
+  var mesures = {}, any = false;
+  _MENSU_DEF.forEach(function (m) { var el = document.getElementById('sv-in-' + m.k); if (el) { var v = String(el.value || '').trim().replace(',', '.'); if (v !== '' && !isNaN(Number(v)) && Number(v) > 0) { mesures[m.k] = Number(v); any = true; } } });
+  if (!any) { showToast('Saisis au moins une mesure', '#ff4444'); return; }
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveMensuration', athlete_id: athlete.athlete_id, date: _ymdLocal(new Date()), mesures: mesures }) })
+    .then(function (x) { return x.json(); }).then(function (r) {
+      if (r && r.success) { showToast('Mesures enregistrées'); return chargerAppData().then(function () { renderSuiviCorps(dernierAppData); try { _etRenderSuivis(dernierAppData); } catch (e) {} }); }
+      showToast((r && r.error) || 'Enregistrement impossible', '#ff4444');
+    }).catch(function () { showToast('Erreur réseau', '#ff4444'); });
 }
 
 /* Écran CARDIO (onglet #tab-cardio) — « Cardio ». Tout est calculé depuis
@@ -15390,8 +16339,164 @@ function _genProgramme(objectif, jours, niveau, cat) {
   return lignes;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * GÉNÉRATEUR v2 — blocs muscle + organisations (MOTEUR, fonctions pures)
+ * Spec : docs/generateur-v2.md · maquette : mockups/novalyz-generateur-v2.html
+ * Produit des `lignes` au MÊME format que _genProgramme (colonnes genererProgramme).
+ * Testé en node (tests/generateur-v2.test.js). PAS encore branché à l'UI (étape 2/3).
+ * ═══════════════════════════════════════════════════════════════════════════ */
+var _G2_BLOCKS = {
+  pecs:    { mus: 'Pectoraux', slots: [
+    { lab: 'Écarté', type: 'iso', rmin: 12, rmax: 15, exos: ['Ecarté poulie haute', 'Ecarté machine', 'Ecarté poulie basse', 'Ecarté haltéres incliné', 'Ecarté haltéres décliné'] },
+    { lab: 'Incliné', type: 'poly', rmin: 8, rmax: 12, exos: ['Développé incliné Hammer', 'Développé incliné à la Smith', 'Développé couché incliné haltère'] },
+    { lab: 'Horizontal', type: 'poly', rmin: 8, rmax: 10, exos: ['Développé couché haltère', 'Développé machine Hammer', 'Développé machine', 'Développé couché barre'] },
+    { lab: 'Décliné', type: 'poly', rmin: 10, rmax: 12, exos: ['Développé décliné machine', 'Développé décliné à la Smith'] } ] },
+  dos:     { mus: 'Dos', slots: [
+    { lab: 'Vertical', type: 'poly', rmin: 8, rmax: 12, exos: ['Traction', 'Tirage vertical prise large', 'Tirage vertical prise serrée'] },
+    { lab: 'Horizontal', type: 'poly', rmin: 8, rmax: 12, exos: ['T-bar row prise basse', 'Rowing machine', 'Rowing bucheron', 'Rowing barre'] },
+    { lab: 'Vertical serré', type: 'poly', rmin: 8, rmax: 12, exos: ['Tirage vertical prise serrée', 'Tirage vertical uni à la poulie'] },
+    { lab: 'Épaisseur', type: 'poly', rmin: 10, rmax: 15, exos: ['Tirage trapèze machine', 'T-bar row prise haute', 'shrugs aux haltéres', 'shrugs barre'] } ] },
+  epaules: { mus: 'Épaules', slots: [
+    { lab: 'Latéral', type: 'iso', rmin: 12, rmax: 15, exos: ['Élévation latérale haltère', 'Elévation latérale uni à la poulie'] },
+    { lab: 'Développé', type: 'poly', rmin: 8, rmax: 12, exos: ['Développé militaire aux haltères', 'Développé militaire à la Smith'] },
+    { lab: 'Frontal', type: 'iso', rmin: 10, rmax: 15, exos: ['Élévation frontale haltères', 'Élévation frontale poulie', 'Elevation frontale barre'] },
+    { lab: 'Arrière', type: 'iso', rmin: 12, rmax: 15, exos: ['Arrière épaule à la poulie', 'Arrière épaule haltère'] },
+    { lab: 'Trapèzes', type: 'iso', rmin: 10, rmax: 15, exos: ['shrugs aux haltéres', 'shrugs barre', 'Tirage trapèze machine'] } ] },
+  biceps:  { mus: 'Biceps', slots: [
+    { lab: 'Incliné', type: 'iso', rmin: 8, rmax: 12, exos: ['Curl incliné au banc', 'Curl incliné uni poignée à la poulie'] },
+    { lab: 'Marteau', type: 'iso', rmin: 10, rmax: 15, exos: ['Curl marteau aux haltéres', 'Curl marteau à la poulie'] },
+    { lab: 'Curl', type: 'iso', rmin: 8, rmax: 12, exos: ['Curl barre poulie', 'Curl barre'] } ] },
+  triceps: { mus: 'Triceps', slots: [
+    { lab: 'Extension', type: 'iso', rmin: 8, rmax: 12, exos: ['Extension poulie barre', 'Dips triceps', 'Extension poulie corde'] },
+    { lab: 'Extension', type: 'iso', rmin: 10, rmax: 15, exos: ['Extension triceps banc', 'Extension poulie corde', 'Extension dos à la poulie corde'] } ] },
+  quad:    { mus: 'Quadriceps', slots: [
+    { lab: 'Squat', type: 'poly', rmin: 6, rmax: 8, exos: ['Squat', 'Hack squat', 'Belt squat'] },
+    { lab: 'Presse', type: 'poly', rmin: 8, rmax: 12, exos: ['Presse inclinée', 'Presse horizontale', 'Presse circulaire'] },
+    { lab: 'Extension', type: 'iso', rmin: 12, rmax: 15, exos: ['Leg extension'] } ] },
+  ischios: { mus: 'Ischios', slots: [
+    { lab: 'Hip hinge', type: 'poly', rmin: 8, rmax: 12, exos: ['RDL barre', 'RDL haltère'] },
+    { lab: 'Leg curl', type: 'iso', rmin: 10, rmax: 15, exos: ['Leg curl assis', 'Leg curl allongé', 'Leg curl debout'] } ] },
+  fessiers: { mus: 'Fessiers', slots: [
+    { lab: 'Poussée', type: 'poly', rmin: 8, rmax: 12, exos: ['Hip thrust', 'Hip thrust machine', 'Abduction machine', 'Fente bulgare', 'Fente longue'] } ] },
+  mollets: { mus: 'Mollets', slots: [
+    { lab: 'Extensions', type: 'iso', rmin: 12, rmax: 20, exos: ['Les extensions mollets debout', 'Les extensions mollets assis', 'Les extensions mollets à la presse'] } ] },
+  abdos:   { mus: 'Abdos', slots: [
+    { lab: 'Gainage', type: 'iso', rmin: 0, rmax: 0, exos: ['Crunch à la poulie', 'Relevé de jambe', 'Roulette'] } ] }
+};
+var _G2_DAYSMAP = { 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6] };
+var _G2_JLOGIC = { fb: [2, 3, 4], ul: [2, 4, 6], ppl: [3, 4, 5, 6], split: [5, 6], custom: [2, 3, 4, 5, 6] };
+var _G2_CAP = { 45: 5, 60: 6, 75: 8, 90: 9 };
+
+// organisation + jours → séances [{nm, d, ss?, off?, custom?, b:[[bloc, nbSlots]]}]
+function _g2GenDays(org, jours) {
+  var J = _G2_DAYSMAP[jours] || _G2_DAYSMAP[3], out = [];
+  if (org === 'fb') {
+    return J.map(function (dn, k) { return { nm: 'Full Body ' + ['A', 'B', 'C', 'D'][k % 4], d: dn, ss: 1, off: k,
+      b: [['quad', 1], ['pecs', 1], ['dos', 1], ['epaules', 1], ['biceps', 1], ['triceps', 1], ['ischios', 1], ['mollets', 1], ['abdos', 1]] }; });
+  }
+  if (org === 'ul') {
+    return J.map(function (dn, k) { var up = k % 2 === 0, tag = (Math.floor(k / 2) % 2 === 0) ? 'A' : 'B', off = Math.floor(k / 2);
+      return up ? { nm: 'Haut ' + tag, d: dn, ss: 1, off: off, b: [['pecs', 2], ['dos', 2], ['epaules', 2], ['biceps', 2], ['triceps', 1]] }
+                : { nm: 'Bas ' + tag, d: dn, off: off, b: [['quad', 3], ['ischios', 2], ['fessiers', 1], ['mollets', 1], ['abdos', 1]] }; });
+  }
+  if (org === 'ppl') {
+    var base = [{ nm: 'Push', b: [['pecs', 3], ['epaules', 2], ['triceps', 2]] },
+                { nm: 'Pull', b: [['dos', 3], ['epaules', 1], ['biceps', 2]] },
+                { nm: 'Legs', b: [['quad', 3], ['ischios', 2], ['fessiers', 1], ['mollets', 1]] }];
+    for (var k = 0; k < jours; k++) {
+      if (k < 3 || jours === 6) { var t = base[k % 3]; out.push({ nm: t.nm + (jours === 6 ? (k < 3 ? ' A' : ' B') : ''), d: J[k], off: Math.floor(k / 3), b: t.b }); }
+      else if (k === 3) { out.push({ nm: 'Haut (rappel)', d: J[k], ss: 1, b: [['pecs', 2], ['dos', 2], ['epaules', 2], ['biceps', 1], ['triceps', 1]] }); }
+      else if (k === 4) { out.push({ nm: 'Bas (rappel)', d: J[k], b: [['quad', 2], ['ischios', 2], ['fessiers', 1], ['mollets', 1], ['abdos', 1]] }); }
+    }
+    return out;
+  }
+  if (org === 'split') {
+    var days = [{ nm: 'Pectoraux', b: [['pecs', 4]] }, { nm: 'Dos', b: [['dos', 4]] },
+      { nm: 'Jambes', b: [['quad', 3], ['ischios', 2], ['fessiers', 1], ['mollets', 1]] },
+      { nm: 'Épaules', b: [['epaules', 5]] }, { nm: 'Bras', b: [['triceps', 2], ['biceps', 3], ['abdos', 1]] }];
+    out = days.slice(0, Math.min(jours, 5)).map(function (t, k) { return { nm: t.nm, d: J[k], b: t.b }; });
+    if (jours === 6) out.push({ nm: 'Points faibles', d: J[5], ss: 1, b: [['epaules', 2], ['biceps', 1], ['triceps', 1], ['mollets', 1]] });
+    return out;
+  }
+  if (org === 'custom') {
+    var baseMap = { 2: 'fb', 3: 'ppl', 4: 'ul', 5: 'split', 6: 'ppl' };
+    var b2 = _g2GenDays(baseMap[jours] || 'fb', jours); b2.forEach(function (d) { d.custom = 1; }); return b2;
+  }
+  return out;
+}
+// coupe round-robin par priorité : 1 exo/muscle d'abord, puis 2e angle ; le TEMPS fixe le nb gardé
+function _g2Build(day, cap) {
+  var byBlock = [];
+  day.b.forEach(function (pair, bi) { var bk = pair[0], L = _G2_BLOCKS[bk].slots.length, n = Math.min(pair[1], L), off = day.off || 0;
+    var arr = []; for (var i = 0; i < n; i++) arr.push({ bk: bk, si: (i + off) % L, bi: bi, pk: i }); byBlock.push(arr); });
+  var maxN = 0; byBlock.forEach(function (a) { if (a.length > maxN) maxN = a.length; });
+  var ordered = [];
+  for (var p = 0; p < maxN; p++) { byBlock.forEach(function (a) { if (a[p]) ordered.push(a[p]); }); }
+  var keep = ordered.slice(0, cap);
+  keep.sort(function (a, b) { return a.bi - b.bi || a.pk - b.pk; });
+  return keep;
+}
+function _g2Reps(objectif, niveau, sl) {
+  if (niveau === 'debutant') return sl.rmax === 0 ? [0, 0] : [Math.max(10, sl.rmin), Math.max(12, sl.rmax)];
+  if (objectif === 'force') return sl.type === 'poly' ? [4, 6] : [8, 12];
+  return [sl.rmin, sl.rmax]; // hypertrophie
+}
+function _g2Sets(niveau) { return niveau === 'avance' ? 4 : 3; }
+
+// Hypertrophie / organisation → lignes genererProgramme
+function _genProgramme2(objectif, organisation, jours, temps, niveau) {
+  var days = _g2GenDays(organisation, jours), cap = _G2_CAP[temps] || 7, sets = _g2Sets(niveau), lignes = [];
+  days.forEach(function (day) {
+    var ex = _g2Build(day, cap);
+    var hasBi = ex.some(function (x) { return x.bk === 'biceps'; }), hasTri = ex.some(function (x) { return x.bk === 'triceps'; });
+    var pairSS = day.ss && hasBi && hasTri;
+    ex.forEach(function (x) {
+      var B = _G2_BLOCKS[x.bk], sl = B.slots[x.si], rr = _g2Reps(objectif, niveau, sl);
+      var isSS = pairSS && (x.bk === 'biceps' || x.bk === 'triceps');
+      lignes.push({ seance_id: day.nm, jour: day.d, exercice: sl.exos[0],
+        series_prevues: sets, reps_mini: rr[0], reps_max: rr[1],
+        repos_sec: isSS ? 90 : (sl.type === 'poly' ? 180 : 90),
+        groupe_id: isSS ? ('ss' + day.d) : '',
+        charge_pct_1rm: (objectif === 'force' ? 80 : null), rpe_cible: 9,
+        variantes: sl.exos.slice(1) });
+    });
+  });
+  return lignes;
+}
+
+// Force / Powerlifting → lignes (lifts en montantes + %1RM, accessoires 8-12). Squelette éditable côté UI (étape 3).
+function _g2ForceSkel(jours) {
+  var J = _G2_DAYSMAP[jours] || _G2_DAYSMAP[4];
+  var SQ = { t: 'lift', e: 'Squat', se: 5, r: 3, pct: 85 }, BP = { t: 'lift', e: 'Développé couché barre', se: 5, r: 3, pct: 85 }, DL = { t: 'lift', e: 'Soulevé de terre', se: 4, r: 3, pct: 85 };
+  var acc = function (e) { return { t: 'acc', e: e, se: 3, rmin: 8, rmax: 12 }; };
+  var renfo = function (dn) { return { nm: 'Renfo', d: dn, renfo: 1, rows: [acc('Développé couché incliné haltère'), acc('Extension poulie barre'), acc('Leg curl assis'), acc('Curl barre'), acc('Élévation latérale haltère')] }; };
+  if (jours === 2) return [{ nm: 'Les 3 lifts', d: J[0], rows: [SQ, BP, DL] }, renfo(J[1])];
+  if (jours === 3) return [{ nm: 'Squat + Développé couché', d: J[0], rows: [SQ, BP] }, { nm: 'Soulevé de terre', d: J[1], rows: [DL] }, renfo(J[2])];
+  if (jours === 4) return [{ nm: 'Squat', d: J[0], rows: [SQ] }, { nm: 'Soulevé de terre', d: J[1], rows: [DL] }, { nm: 'Développé couché', d: J[2], rows: [BP] }, renfo(J[3])];
+  if (jours === 5) return [{ nm: 'Squat', d: J[0], rows: [SQ] }, { nm: 'Soulevé de terre', d: J[1], rows: [DL] }, { nm: 'Développé couché', d: J[2], rows: [BP] },
+    { nm: 'Rappel (Développé couché)', d: J[3], rappel: 1, rows: [{ t: 'lift', e: 'Développé couché barre', se: 4, r: 5, pct: 75 }] }, renfo(J[4])];
+  return [{ nm: 'Squat', d: J[0], rows: [SQ] }, { nm: 'Soulevé de terre', d: J[1], rows: [DL] }, { nm: 'Développé couché', d: J[2], rows: [BP] },
+    { nm: 'Rappel (Squat)', d: J[3], rappel: 1, rows: [{ t: 'lift', e: 'Squat', se: 4, r: 5, pct: 70 }] },
+    { nm: 'Rappel (Développé couché)', d: J[4], rappel: 1, rows: [{ t: 'lift', e: 'Développé couché barre', se: 4, r: 5, pct: 75 }] }, renfo(J[5])];
+}
+function _genProgrammeForce(jours) {
+  var days = _g2ForceSkel(jours), lignes = [];
+  days.forEach(function (day) {
+    day.rows.forEach(function (r) {
+      if (r.t === 'lift') lignes.push({ seance_id: day.nm, jour: day.d, exercice: r.e,
+        series_prevues: r.se, reps_mini: r.r, reps_max: r.r, repos_sec: 240,
+        groupe_id: '', charge_pct_1rm: r.pct, rpe_cible: 8, schema: 'montantes', variantes: [] });
+      else lignes.push({ seance_id: day.nm, jour: day.d, exercice: r.e,
+        series_prevues: r.se, reps_mini: r.rmin, reps_max: r.rmax, repos_sec: 90,
+        groupe_id: '', charge_pct_1rm: null, rpe_cible: 8, schema: 'fixe', variantes: [] });
+    });
+  });
+  return lignes;
+}
+
 // ── Modal onboarding (3 étapes) ──
-var _genState = { step: 1, objectif: null, jours: null, niveau: null };
+// État du générateur v2 (athlète) — 2 parcours : débutant (galerie) / interméd.-avancé (configurateur).
+var _genState = { niv: 'intermediaire', obj: 'hypertrophie', org: 'ul', jours: 4, temps: 60, preset: 0 };
 var _GEN_NIV = [['debutant', 'Débutant', '0-3 ans de pratique'], ['intermediaire', 'Intermédiaire', '4-9 ans'], ['avance', 'Avancé', '10 ans et +']];
 var _GEN_JOPT = [[2, '2 jours', 'Full body'], [3, '3 jours', 'Push / Pull / Legs'], [4, '4 jours', 'Haut / Bas'], [5, '5 jours', 'PPL + Haut / Bas']];
 function ouvrirGenProgramme() {
@@ -15399,7 +16504,8 @@ function ouvrirGenProgramme() {
   // Pré-règle l'objectif du générateur depuis l'objectif du profil (une seule
   // notion) — reste modifiable à l'étape 1.
   var _objDef = null; try { var _oi = _objInfo(athlete && athlete.objectif); if (_oi) _objDef = _oi.gen; } catch (e) {}
-  _genState = { step: 1, objectif: _objDef, jours: null, niveau: null };
+  if (_objDef !== 'force' && _objDef !== 'hypertrophie') _objDef = 'hypertrophie';
+  _genState = { niv: 'intermediaire', obj: _objDef, org: 'ul', jours: 4, temps: 60, preset: 0 };
   var ov = document.getElementById('gen-prog-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -15453,10 +16559,141 @@ function ouvrirLexique() {
   ov.style.display = 'flex';
 }
 function fermerLexique() { var ov = document.getElementById('lex-overlay'); if (ov) ov.style.display = 'none'; }
-function _genSetObjectif(v) { _genState.objectif = v; _genState.step = 2; _genRender(); }
-function _genSetJours(v) { _genState.jours = Number(v); _genState.step = 3; _genRender(); }
-function _genSetNiveau(v) { _genState.niveau = v; _genRender(); }
-function _genBack() { if (_genState.step > 1) { _genState.step--; _genRender(); } }
+// ── Générateur v2 (athlète) : presets débutant + helpers de l'UI configurateur ──
+var _G2_PRESETS = [
+  { org: 'fb', jours: 2, nm: 'Full Body découverte', badge: '2 j', desc: 'Tout le corps à chaque séance. Idéal pour débuter : on apprend les mouvements, 2× / semaine.' },
+  { org: 'fb', jours: 3, nm: 'Full Body', badge: '3 j', desc: 'Même logique, une séance de plus pour progresser plus vite.' },
+  { org: 'ppl', jours: 3, nm: 'Push / Pull / Legs', badge: '3 j', desc: 'Pousser / tirer / jambes. Structure simple et complète.' },
+  { org: 'ul', jours: 4, nm: 'Upper / Lower', badge: '4 j', desc: 'Haut / bas alternés. Bon compromis volume / récupération.' },
+  { org: 'split', jours: 5, nm: 'Split — 1 muscle / jour', badge: '5 j', desc: 'Un groupe par séance. Plus de volume ciblé, pour qui vient souvent.' }
+];
+var _G2_ORGS = [['fb', 'Full Body'], ['ul', 'Upper / Lower'], ['ppl', 'PPL'], ['split', 'Split'], ['custom', 'Custom']];
+function _g2Set(k, v) {
+  _genState[k] = v;
+  if (k === 'org') { var jl = _G2_JLOGIC[v] || [2, 3, 4, 5, 6]; if (jl.indexOf(_genState.jours) < 0) _genState.jours = jl[0]; }
+  _genRender();
+}
+function _g2Chip(onclick, on, label, dis) {
+  return '<button ' + (dis ? '' : 'onclick="' + onclick + '"') + ' style="flex:1 1 auto;min-width:0;padding:9px 10px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a08)' : 'var(--surface)') + ';color:' + (dis ? 'var(--text-subtle)' : (on ? 'var(--accent)' : 'var(--text-muted)')) + ';border-radius:11px;font-weight:700;font-size:12.5px;cursor:' + (dis ? 'default' : 'pointer') + ';opacity:' + (dis ? '.4' : '1') + '">' + label + '</button>';
+}
+// Résout chaque ligne contre le catalogue réel de l'athlète : garde le 1er exo dispo
+// (principal puis variantes), met les autres dispos en variantes (pour « Remplacer »).
+function _g2Resolve(lignes) {
+  if (!exercicesData || !exercicesData.length) return lignes;
+  var names = {}; exercicesData.forEach(function (e) { names[_genNorm(e.exercice)] = e.exercice; });
+  lignes.forEach(function (l) {
+    var cands = [l.exercice].concat(l.variantes || []), chosen = null, rest = [];
+    cands.forEach(function (c) { var hit = names[_genNorm(c)]; if (hit) { if (chosen === null) chosen = hit; else rest.push(hit); } });
+    if (chosen !== null) l.exercice = chosen;
+    l.variantes = rest;
+  });
+  return lignes;
+}
+function _g2Lignes() {
+  var st = _genState, lignes;
+  if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('hypertrophie', p.org, p.jours, 75, 'debutant'); }
+  else if (st.obj === 'force') { lignes = _genProgrammeForce(st.jours); }
+  else { lignes = _genProgramme2('hypertrophie', st.org, st.jours, st.temps, st.niv); }
+  return _g2Resolve(lignes);
+}
+// Variantes d'un exercice = les AUTRES exos de son slot (même angle/muscle) dans les blocs
+// du générateur ou les pools Force, résolus au catalogue réel. Sert au bouton « Remplacer »
+// (étape 4) : proposer d'abord les alternatives du même angle quand une machine manque.
+function _g2VariantsFor(exoNom) {
+  if (!exoNom || typeof _genNorm !== 'function') return [];
+  var norm = _genNorm(exoNom), found = null;
+  Object.keys(_G2_BLOCKS).forEach(function (bk) {
+    _G2_BLOCKS[bk].slots.forEach(function (sl) {
+      if (!found && sl.exos.some(function (e) { return _genNorm(e) === norm; })) found = sl.exos;
+    });
+  });
+  if (!found && typeof _G2_FPOOL !== 'undefined') {
+    Object.keys(_G2_FPOOL).forEach(function (pk) {
+      if (!found && _G2_FPOOL[pk].some(function (e) { return _genNorm(e) === norm; })) found = _G2_FPOOL[pk];
+    });
+  }
+  if (!found) return [];
+  var names = {}; (exercicesData || []).forEach(function (e) { names[_genNorm(e.exercice)] = e; });
+  var out = [];
+  found.forEach(function (e) {
+    if (_genNorm(e) === norm) return;
+    var hit = names[_genNorm(e)];
+    if (hit && !out.some(function (o) { return o.nom === hit.exercice; })) out.push({ nom: hit.exercice, id: (hit.exercice_id != null ? hit.exercice_id : ''), muscle: hit.muscle || '' });
+  });
+  return out;
+}
+
+// ── Force custom : squelette éditable à listes déroulantes (étape 3) ──
+var _G2_FPOOL = {
+  lift: ['Squat', 'Hack squat', 'Belt squat', 'Squat gobelet', 'Développé couché barre', 'Développé couché haltère', 'Développé militaire à la Smith', 'Développé militaire aux haltères', 'Soulevé de terre', 'RDL barre', 'RDL haltère'],
+  comp: ['Presse inclinée', 'Presse horizontale', 'Belt squat', 'Fente bulgare', 'Fente longue', 'RDL barre', 'RDL haltère', 'Rowing barre', 'Rowing bucheron', 'Rowing banc', 'Rowing machine', 'Traction', 'shrugs barre', 'Développé couché incliné haltère', 'Développé militaire aux haltères'],
+  acc: ['Développé couché incliné haltère', 'Ecarté poulie haute', 'Extension poulie barre', 'Curl barre', 'Curl barre poulie', 'Élévation latérale haltère', 'Arrière épaule à la poulie', 'Leg curl assis', 'RDL haltère', 'Les extensions mollets à la presse', 'Fente bulgare']
+};
+function _g2ResolveName(name) {
+  if (!exercicesData || !exercicesData.length) return name;
+  var n = _genNorm(name), hit = exercicesData.find(function (e) { return _genNorm(e.exercice) === n; });
+  return hit ? hit.exercice : name;
+}
+function _g2PoolFor(type) {
+  var pool = _G2_FPOOL[type] || [];
+  if (!exercicesData || !exercicesData.length) return pool.slice();
+  var names = {}; exercicesData.forEach(function (e) { names[_genNorm(e.exercice)] = e.exercice; });
+  var out = []; pool.forEach(function (p) { var h = names[_genNorm(p)]; if (h && out.indexOf(h) < 0) out.push(h); });
+  return out.length ? out : pool.slice();
+}
+function _g2DD(type, sel) {
+  var opts = _g2PoolFor(type), selR = _g2ResolveName(sel);
+  if (selR && opts.indexOf(selR) < 0) opts = [selR].concat(opts);
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  return '<select class="g2dd" style="flex:1;min-width:0;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 8px;font-size:12.5px;font-weight:700;font-family:inherit">'
+    + opts.map(function (e) { return '<option' + (e === selR ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select>';
+}
+function _g2ForceRowHtml(r) {
+  var sch = r.t === 'lift' ? ('montantes → ' + r.se + '×' + r.r + ' @ ' + r.pct + '%') : (r.se + ' × ' + r.rmin + '-' + r.rmax);
+  var attrs = r.t === 'lift' ? ('data-t="lift" data-se="' + r.se + '" data-r="' + r.r + '" data-pct="' + r.pct + '"')
+                             : ('data-t="' + r.t + '" data-se="' + r.se + '" data-rmin="' + r.rmin + '" data-rmax="' + r.rmax + '"');
+  return '<div class="g2frow" ' + attrs + ' style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--border)">'
+    + _g2DD(r.t, r.e) + '<span style="font-size:10px;font-weight:700;color:var(--accent);white-space:nowrap;text-align:right">' + sch + '</span>'
+    + '<span class="g2frow-x" style="color:var(--text-subtle);cursor:pointer;font-size:14px;padding:0 2px">✕</span></div>';
+}
+function _g2RowEl(r) { var d = document.createElement('div'); d.innerHTML = _g2ForceRowHtml(r); return d.firstChild; }
+function _g2ForceDayHtml(day) {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var removable = day.renfo || day.rappel;
+  var tag = day.renfo ? 'Renfo · optionnel' : (day.rappel ? 'Rappel · doubler ou renfo' : 'Lift');
+  return '<div class="g2fday" data-nm="' + esc(day.nm) + '" data-d="' + day.d + '" style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ' + (removable ? 'var(--text-subtle)' : 'var(--accent)') + ';border-radius:12px;padding:10px 12px;margin-top:8px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><div style="font-weight:800;font-size:13.5px">' + esc(day.nm) + ' <span style="font-size:9px;color:var(--text-subtle);font-weight:700;text-transform:uppercase;letter-spacing:.03em">· ' + tag + '</span></div>'
+    + (removable ? '<span class="g2day-rm" style="font-size:10px;color:var(--text-subtle);cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:2px 6px">✕ retirer</span>' : '') + '</div>'
+    + '<div class="g2frows">' + day.rows.map(_g2ForceRowHtml).join('') + '</div>'
+    + '<button class="g2fadd" data-add="' + (day.renfo ? 'acc' : 'comp') + '" style="background:none;border:none;color:var(--accent);font-size:11.5px;font-weight:700;cursor:pointer;padding:6px 0 0">＋ ajouter un exercice</button></div>';
+}
+function _g2WireForce() {
+  document.querySelectorAll('#gen-prog-sheet .g2frow-x').forEach(function (x) { x.onclick = function () { var r = x.closest('.g2frow'); if (r) r.remove(); }; });
+  document.querySelectorAll('#gen-prog-sheet .g2day-rm').forEach(function (b) { b.onclick = function () { var d = b.closest('.g2fday'); if (d) d.remove(); }; });
+  document.querySelectorAll('#gen-prog-sheet .g2fadd').forEach(function (b) { b.onclick = function () {
+    var t = b.getAttribute('data-add');
+    var r = (t === 'acc') ? { t: 'acc', e: _g2PoolFor('acc')[0], se: 3, rmin: 8, rmax: 12 } : { t: 'comp', e: _g2PoolFor('comp')[0], se: 3, rmin: 6, rmax: 8 };
+    var row = _g2RowEl(r); b.parentNode.querySelector('.g2frows').appendChild(row);
+    row.querySelector('.g2frow-x').onclick = function () { row.remove(); };
+  }; });
+}
+// Lit le squelette Force ÉDITÉ dans le DOM → lignes genererProgramme.
+function _g2ForceLignesFromDOM() {
+  var lignes = [];
+  document.querySelectorAll('#gen-prog-sheet .g2fday').forEach(function (d) {
+    var nm = d.getAttribute('data-nm'), jr = Number(d.getAttribute('data-d'));
+    d.querySelectorAll('.g2frow').forEach(function (r) {
+      var t = r.getAttribute('data-t'), exo = r.querySelector('select').value;
+      if (t === 'lift') lignes.push({ seance_id: nm, jour: jr, exercice: exo,
+        series_prevues: Number(r.getAttribute('data-se')), reps_mini: Number(r.getAttribute('data-r')), reps_max: Number(r.getAttribute('data-r')),
+        repos_sec: 240, groupe_id: '', charge_pct_1rm: Number(r.getAttribute('data-pct')), rpe_cible: 8, schema: 'montantes', variantes: [] });
+      else lignes.push({ seance_id: nm, jour: jr, exercice: exo,
+        series_prevues: Number(r.getAttribute('data-se') || 3), reps_mini: Number(r.getAttribute('data-rmin') || 8), reps_max: Number(r.getAttribute('data-rmax') || 12),
+        repos_sec: (t === 'comp' ? 180 : 90), groupe_id: '', charge_pct_1rm: null, rpe_cible: 8, schema: 'fixe', variantes: [] });
+    });
+  });
+  return lignes;
+}
 function _genCard(onclick, on, titre, sous) {
   return '<button onclick="' + onclick + '" style="text-align:left;display:flex;align-items:center;gap:12px;width:100%;padding:14px;border:1.5px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a08)' : 'var(--surface)') + ';border-radius:14px;margin-bottom:8px;cursor:pointer">'
     + '<div style="flex:1"><div style="font-weight:800;font-size:14.5px;color:' + (on ? 'var(--accent)' : 'var(--text)') + '">' + titre + '</div><div style="font-size:12px;color:var(--text-subtle);margin-top:2px">' + sous + '</div></div>'
@@ -15465,39 +16702,47 @@ function _genCard(onclick, on, titre, sous) {
 function _genRender() {
   var sh = document.getElementById('gen-prog-sheet'); if (!sh) return;
   var st = _genState, esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
-  var head = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
-    + (st.step > 1 ? '<button onclick="_genBack()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:0 6px 0 0">‹</button>' : '<span></span>')
-    + '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:13px;letter-spacing:.02em">Étape ' + st.step + '/3</div>'
+  var L = function (t) { return '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:14px 2px 7px">' + t + '</div>'; };
+  var row = function (html) { return '<div style="display:flex;flex-wrap:wrap;gap:7px">' + html + '</div>'; };
+  var head = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">'
+    + '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:14px">Novalyz te propose</div>'
     + '<button onclick="fermerGenProgramme()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1">×</button></div>';
-  var body = '';
-  if (st.step === 1) {
-    var _preObj = ''; try { if (athlete && athlete.objectif && _objInfo(athlete.objectif)) _preObj = athlete.objectif; } catch (e) {}
-    body = '<h2 style="font-size:18px;margin:2px 0 4px">Ton objectif ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Ça règle les répétitions, la charge cible et le repos.</div>'
-      + (_preObj ? '<div style="font-size:11.5px;color:var(--accent);background:var(--accent-a08);border-radius:9px;padding:8px 10px;margin-bottom:10px">Pré-réglé sur ton objectif « ' + esc(_preObj) +' ». Tu peux le changer ici.</div>' : '')
-      + Object.keys(_GEN_OBJ).map(function (k) { var o = _GEN_OBJ[k]; return _genCard('_genSetObjectif(\'' + k + '\')', st.objectif === k, o.label, o.hint + ' · ' + o.s + '×' + o.rmin + '-' + o.rmax + ' · ' + o.pct + '% · RPE ' + o.rpe); }).join('')
-      + '<button onclick="_genRefuse()" style="width:100%;margin-top:6px;background:none;border:none;color:var(--text-subtle);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
-  } else if (st.step === 2) {
-    body = '<h2 style="font-size:18px;margin:2px 0 4px">Combien de jours par semaine ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Détermine la structure de tes séances.</div>'
-      + _GEN_JOPT.map(function (j) { return _genCard('_genSetJours(' + j[0] + ')', st.jours === j[0], j[1], j[2]); }).join('');
+  var NIV = [['debutant', 'Débutant'], ['intermediaire', 'Intermédiaire'], ['avance', 'Avancé']];
+  var body = L('Niveau') + row(NIV.map(function (n) { return _g2Chip('_g2Set(\'niv\',\'' + n[0] + '\')', st.niv === n[0], n[1]); }).join(''));
+  if (st.niv === 'debutant') {
+    body += L('Choisis ton programme')
+      + _G2_PRESETS.map(function (p, i) { return _genCard('_g2Set(\'preset\',' + i + ')', st.preset === i, p.nm + ' · ' + p.badge, p.desc); }).join('');
   } else {
-    body = '<h2 style="font-size:18px;margin:2px 0 4px">Ton niveau ?</h2><div style="font-size:12.5px;color:var(--text-subtle);margin-bottom:14px">Ajuste le volume (nombre d\'exercices et de séries).</div>'
-      + _GEN_NIV.map(function (n) { return _genCard('_genSetNiveau(\'' + n[0] + '\')', st.niveau === n[0], n[1], n[2]); }).join('');
-    if (st.niveau) {
-      var lignes = _genProgramme(st.objectif, st.jours, st.niveau, exercicesData);
-      var parSeance = {}; lignes.forEach(function (l) { (parSeance[l.seance_id] = parSeance[l.seance_id] || []).push(l); });
-      var apercu = Object.keys(parSeance).map(function (sid) { var jr = parSeance[sid][0].jour; return '<div style="margin-bottom:8px"><div style="font-weight:800;font-size:13px;color:var(--accent)">' + esc(sid) + (jr ? ' <span style="font-weight:600;color:var(--text-subtle)">· ' + _PROG_JOURS_LONG[jr - 1] + '</span>' : '') + '</div><div style="font-size:12px;color:var(--text-muted)">' + parSeance[sid].map(function (l) { return esc(l.exercice); }).join(', ') + '</div></div>'; }).join('');
-      body += '<div style="margin-top:14px;padding:14px;background:var(--surface2);border-radius:14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:8px">Aperçu · ' + Object.keys(parSeance).length + ' séances · ' + lignes.length + ' exercices</div>' + apercu + '</div>'
-        + '<button onclick="_genGenerer()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
-        + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>';
+    body += L('Objectif') + row([['hypertrophie', 'Hypertrophie'], ['force', 'Force']].map(function (o) { return _g2Chip('_g2Set(\'obj\',\'' + o[0] + '\')', st.obj === o[0], o[1]); }).join(''));
+    if (st.obj === 'force') {
+      body += L('Jours / semaine') + row([2, 3, 4, 5, 6].map(function (j) { return _g2Chip('_g2Set(\'jours\',' + j + ')', st.jours === j, j + ' j'); }).join(''))
+        + '<div style="font-size:11.5px;color:var(--text-subtle);margin:8px 2px 2px">Powerlifting — squelette modifiable : change les exos (menus), ＋ ajoute, ✕ retire. Les jours Rappel / Renfo sont optionnels. Charges au % du 1RM (estimé par l\'app).</div>'
+        + _g2ForceSkel(st.jours).map(_g2ForceDayHtml).join('')
+        + '<button onclick="_genGenerer()" style="width:100%;margin-top:16px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
+        + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>'
+        + '<button onclick="_genRefuse()" style="width:100%;margin-top:4px;background:none;border:none;color:var(--text-subtle);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
+      sh.innerHTML = head + body;
+      _g2WireForce();
+      return;
+    } else {
+      var jl = _G2_JLOGIC[st.org] || [2, 3, 4, 5, 6];
+      body += L('Organisation') + row(_G2_ORGS.map(function (o) { return _g2Chip('_g2Set(\'org\',\'' + o[0] + '\')', st.org === o[0], o[1]); }).join(''))
+        + L('Jours / semaine') + row([2, 3, 4, 5, 6].map(function (j) { return _g2Chip('_g2Set(\'jours\',' + j + ')', st.jours === j, j + ' j', jl.indexOf(j) < 0); }).join(''))
+        + L('Temps par séance') + row([45, 60, 75, 90].map(function (t) { return _g2Chip('_g2Set(\'temps\',' + t + ')', st.temps === t, t + ' min'); }).join(''));
     }
   }
+  var lignes = _g2Lignes();
+  var parSeance = {}; lignes.forEach(function (l) { (parSeance[l.seance_id] = parSeance[l.seance_id] || []).push(l); });
+  var apercu = Object.keys(parSeance).map(function (sid) { var jr = parSeance[sid][0].jour; return '<div style="margin-bottom:8px"><div style="font-weight:800;font-size:13px;color:var(--accent)">' + esc(sid) + (jr ? ' <span style="font-weight:600;color:var(--text-subtle)">· ' + _PROG_JOURS_LONG[jr - 1] + '</span>' : '') + '</div><div style="font-size:12px;color:var(--text-muted)">' + parSeance[sid].map(function (l) { return esc(l.exercice); }).join(', ') + '</div></div>'; }).join('');
+  body += '<div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:8px">Aperçu · ' + Object.keys(parSeance).length + ' séances · ' + lignes.length + ' exercices</div>' + (apercu || '<div style="font-size:12px;color:var(--text-subtle)">Choisis tes options ci-dessus.</div>') + '</div>'
+    + '<button onclick="_genGenerer()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
+    + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>'
+    + '<button onclick="_genRefuse()" style="width:100%;margin-top:4px;background:none;border:none;color:var(--text-subtle);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
   sh.innerHTML = head + body;
 }
 async function _genGenerer() {
-  var st = _genState;
-  if (!st.objectif || !st.jours || !st.niveau) return;
-  var lignes = _genProgramme(st.objectif, st.jours, st.niveau, exercicesData);
-  if (!lignes.length) { showToast('Catalogue indisponible, réessaie'); return; }
+  var lignes = (_genState.niv !== 'debutant' && _genState.obj === 'force') ? _g2Resolve(_g2ForceLignesFromDOM()) : _g2Lignes();
+  if (!lignes.length) { showToast('Impossible de générer (ajoute au moins un exercice)'); return; }
   // Programme existant → demander avant d'écraser.
   var existant = (dernierAppData && Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0);
   if (existant && !confirm('Tu as déjà un programme. Le remplacer par le nouveau ? (l\'ancien sera supprimé)')) return;
@@ -18819,12 +20064,18 @@ function renderRecompenses(data) {
   if (!cont) return;
   const g = (data && data.global) || {};
   const totalSeances = Number(g.total_seances || 0);
-  const records = Number(g.records_30j || 0);
+  // Records comptés À VIE (permanents) — fini la fenêtre 30 j glissante qui faisait
+  // « évaporer » les points. Fallback front sur records_par_exo si le backend
+  // n'est pas encore redéployé (lui aussi permanent).
+  const recordsTot = Number(g.records_total != null ? g.records_total : Object.keys(g.records_par_exo || {}).length) || 0;
+  // SOURCE UNIQUE = data.recompenses (même solde que la boutique). UN SEUL chiffre.
+  const rec = (data && data.recompenses) || null;
+  const gagnes = (rec && rec.gagnes != null) ? Number(rec.gagnes) : (totalSeances * 10 + recordsTot * 50);
+  const depenses = (rec && rec.depenses != null) ? Number(rec.depenses) : 0;
+  const solde = (rec && rec.solde != null) ? Number(rec.solde) : (gagnes - depenses);
+  const fmt = n => Number(n || 0).toLocaleString('fr-FR');
 
-  // Cagnotte de points (auto) : séances ×10 + records ×50
-  const pts = totalSeances * 10 + records * 50;
-
-  // Paliers de séances
+  // Paliers d'assiduité (séances cumulées)
   const paliers = [10, 25, 50, 100, 200, 365];
   let prev = 0, next = paliers[0];
   for (let i = 0; i < paliers.length; i++) {
@@ -18838,18 +20089,20 @@ function renderRecompenses(data) {
   cont.style.textAlign = 'left';
   cont.style.padding = '0';
   cont.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;">
-      <div>
-        <div style="font-size:12px;color:var(--text-muted);font-weight:600;">Ta cagnotte</div>
-        <div style="font-size:28px;font-weight:800;color:var(--accent);line-height:1.1;">${pts}<span style="font-size:13px;color:var(--text-muted);font-weight:600;"> pts</span></div>
-      </div>
-      <div style="font-size:34px;"></div>
+    <!-- SOLDE UNIQUE (= boutique). Gagné − Dépensé, points gardés à vie. -->
+    <div style="background:linear-gradient(135deg,var(--accent),var(--accent-strong,#0a46d6));border-radius:16px;padding:14px 16px;color:var(--on-accent,#fff);">
+      <div style="font-size:11px;font-weight:700;opacity:.85;">Mon solde</div>
+      <div style="font-size:32px;font-weight:900;line-height:1.05;">${fmt(solde)}<span style="font-size:13px;font-weight:700;opacity:.8;"> pts dispo</span></div>
+      <div style="display:flex;gap:16px;margin-top:8px;font-size:11.5px;opacity:.92;"><span>Gagné <b>${fmt(gagnes)}</b></span><span>Dépensé <b>${fmt(depenses)}</b></span></div>
     </div>
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">${totalSeances} séances ×10 · ${records} records (30j) ×50</div>
+    <div style="font-size:11.5px;color:var(--text-muted);margin:9px 0 14px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;line-height:1.5;">
+      <b style="color:var(--text);">Comment je gagne :</b> <b>10 pts</b> / séance · <b>50 pts</b> / record (gardés à vie).
+      Ex. : ${totalSeances} séance${totalSeances > 1 ? 's' : ''} (${fmt(totalSeances * 10)}) + ${recordsTot} record${recordsTot > 1 ? 's' : ''} (${fmt(recordsTot * 50)}) = <b>${fmt(gagnes)} gagnés</b>.
+    </div>
 
     <div style="border-top:1px solid var(--border);padding-top:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:13px;font-weight:700;color:var(--text);">🏅 Prochain palier</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text);">🏅 Prochain palier d'assiduité</span>
         <span style="font-size:12px;color:var(--text-muted);font-weight:700;">${atteint ? 'Max atteint !' : restant + ' séance' + (restant > 1 ? 's' : '')}</span>
       </div>
       <div style="background:var(--surface2);border-radius:20px;height:8px;overflow:hidden;">
@@ -18859,7 +20112,7 @@ function renderRecompenses(data) {
     </div>
 
     <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;display:flex;align-items:center;gap:10px;">
-      <div style="font-size:20px;"></div>
+      <div style="font-size:20px;">🎁</div>
       <div style="font-size:12px;color:var(--text-muted);line-height:1.4;">Récompense personnalisée du coach — <span style="font-weight:700;">bientôt</span>.</div>
     </div>`;
 }
@@ -21018,7 +22271,14 @@ function _nutSave() {
 }
 async function _nutHCButton() {
   var box = document.getElementById('nut-hc'); if (!box) return;
-  var H = _hcPlugin(); if (!H) { box.innerHTML = ''; return; }   // web/PWA : pas de Health Connect
+  // N12a : on base l'affichage sur « app native » plutôt que sur la présence immédiate
+  // du plugin (qui peut charger en retard → bouton qui « disparaît »). Sur web/PWA on
+  // affiche une info au lieu de rien (le bouton ne doit pas sembler supprimé).
+  var native = (typeof _estAppNative === 'function') && _estAppNative();
+  if (!native) {
+    box.innerHTML = '<div class="nut-muted" style="font-size:11px;line-height:1.45;">Import auto depuis ton app de nutrition (MyFitnessPal, Yazio…) : disponible dans l\'appli Android via Health Connect.</div>';
+    return;
+  }
   box.innerHTML = '<button class="nut-ghost" onclick="_nutFromHC()"><svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Importer depuis Health Connect</button>'
     + '<div class="nut-muted" style="margin-top:6px;font-size:11px;line-height:1.45;">Depuis ton app de nutrition (MyFitnessPal, Yazio…) via Health Connect. Si des apports manquent, elle n\'a peut-être pas fini de synchroniser — rouvre-la et réessaie un peu plus tard.</div>';
 }
@@ -21121,7 +22381,9 @@ async function _nutAutoImportHC() {
       if (!f) h.unshift({ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL });
     }
     try { localStorage.setItem('nvz_nut_auto_' + aid, today); } catch (e) {}
-    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: aid, entries: [{ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL }] }) }).catch(function () {});
+    // N12b : on tague la SOURCE 'health_connect' → on peut voir en base si l'import
+    // auto (MFP/Yazio via Health Connect) produit bien des données (vs saisie manuelle).
+    fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveNutrition', athlete_id: aid, source: 'health_connect', entries: [{ date: today, kcal: vK, prot: vP, gluc: vG, lip: vL }] }) }).catch(function () {});
     try { if (document.getElementById('tab-nutrition')) renderNutrition(); } catch (e) {}
     try { showToast('Nutrition synchronisée depuis Health Connect ', '#10B981'); } catch (e) {}
   } catch (e) {}

@@ -14,17 +14,20 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- (Ré)installe le job. Si tu relances ce script, dé-commente la ligne unschedule.
--- select cron.unschedule('novalyz-alertes-matin');
+-- (Ré)installe le job (re-lancer ce script MET À JOUR le job existant, même nom).
+-- IMPORTANT (correctif notifs) : on passe le timeout pg_net à 120 s. Par défaut il
+-- est à 5 s, or le scan de tous les athlètes (chacun = un calcul complet) dépasse
+-- 5 s → la connexion était coupée et les notifs pouvaient ne pas partir jusqu'au bout.
 
 select cron.schedule(
   'novalyz-alertes-matin',
   '0 8 * * *',
   $$
   select net.http_post(
-    url     := 'https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service',
-    headers := '{"Content-Type":"application/json"}'::jsonb,
-    body    := '{"action":"cronPushAlertes","secret":"REMPLACE_PAR_TON_CRON_SECRET"}'::jsonb
+    url                  := 'https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service',
+    headers              := '{"Content-Type":"application/json"}'::jsonb,
+    body                 := '{"action":"cronPushAlertes","secret":"REMPLACE_PAR_TON_CRON_SECRET"}'::jsonb,
+    timeout_milliseconds := 120000
   );
   $$
 );

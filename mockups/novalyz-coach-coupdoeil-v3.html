@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coup d'œil coach v3</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.12);
+    --good:#00c96e; --good-a:rgba(0,201,110,.12); --warn:#f5a623; --bad:#e5484d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:20px 14px 48px}
+  .wrap{max-width:460px;margin:0 auto}
+  .lead{font-size:12px;color:var(--muted);margin:0 0 14px}
+  .lead b{color:var(--text)}
+  .lab{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--subtle);margin:18px 2px 8px}
+  .tag{font-size:9px;font-weight:800;color:var(--accent2);background:var(--accent-a);border:1px solid var(--border);border-radius:6px;padding:1px 6px;margin-left:4px;text-transform:none;letter-spacing:0}
+  .wrap2{display:grid;grid-template-columns:1fr;gap:10px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px 14px}
+  .h{font-size:12.5px;font-weight:800;margin-bottom:7px}
+  .row{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;padding:5px 0;line-height:1.4}
+  .ic{flex:none;font-size:11px;width:15px;text-align:center;margin-top:1px}
+  .row b{font-weight:700}
+  .muted{color:var(--muted)}
+  .sub{color:var(--subtle);font-size:11px}
+  .reco{margin-top:11px;background:var(--accent-a);border:1px solid var(--border);border-radius:11px;padding:10px 13px}
+  .reco-l{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:3px}
+  .reco-t{font-size:13px;font-weight:600;line-height:1.45}
+  .lect{border-left:3px solid var(--accent)}
+  .note{font-size:11.5px;color:var(--muted);margin:18px 2px 0;line-height:1.55;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
+  .note b{color:var(--text)} .note .k{color:var(--accent2);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="lead">Maquette <b>Coup d'œil coach v3</b> — Entraînement basé sur <b>charge · reps · RPE</b> (plus de 1RM), + <b>Cardio</b> dans l'État. Chaque ligne indique entre () d'où vient la donnée.</p>
+
+  <!-- COUP D'ŒIL -->
+  <div class="lab">Coup d'œil <span class="tag">comprendre en 5 s</span></div>
+  <div class="wrap2">
+
+    <!-- ENTRAÎNEMENT -->
+    <div class="card">
+      <div class="h">🏋️ Entraînement</div>
+      <div class="row"><span class="ic" style="color:var(--good)">★</span><div><b>Records</b> — Développé couché <b>84 kg × 8</b>, Squat <b>100 kg × 10</b> <span class="sub">(charge/reps battus cette séance)</span></div></div>
+      <div class="row"><span class="ic" style="color:var(--good)">▲</span><div><b>Progresse</b> — Rowing 70→<b>75 kg</b>, Curl 12→<b>14 reps</b> <span class="sub">(charge ou reps en hausse)</span></div></div>
+      <div class="row"><span class="ic" style="color:var(--warn)">⏸</span><div><b>Stagne</b> — Développé incliné : 60 kg × 8 depuis 4 séances, <b>RPE 8→9</b> <span class="sub">(pareil mais plus dur → à débloquer)</span></div></div>
+      <div class="row"><span class="ic" style="color:var(--bad)">▼</span><div><b>Recule</b> — Tractions : charge <i>et</i> reps en baisse <span class="sub">(perf réelle ↓ sur 3 séances)</span></div></div>
+      <div class="row"><span class="ic" style="color:var(--accent2)">🔥</span><div><b>Effort</b> — RPE moyen <b>8,1</b> /7 j · en hausse <span class="sub">(intensité élevée → surveiller la fatigue)</span></div></div>
+      <div class="row"><span class="ic" style="color:var(--good)">✓</span><div><b>Travaillé (7 j)</b> — Pecs, Épaules, Dos</div></div>
+      <div class="row"><span class="ic" style="color:var(--warn)">⚠</span><div><b>Non travaillé (7 j)</b> — Jambes, Bras</div></div>
+    </div>
+
+    <!-- ÉTAT & RÉCUP -->
+    <div class="card">
+      <div class="h">❤️ État &amp; récup</div>
+      <div class="row"><span class="ic" style="color:var(--good)">●</span><div><b>Récupération</b> bonne</div></div>
+      <div class="row"><span class="ic" style="color:var(--good)">●</span><div><b>Sommeil</b> correct · stable</div></div>
+      <div class="row"><span class="ic" style="color:var(--good)">●</span><div><b>Énergie</b> bonne</div></div>
+      <div class="row"><span class="ic" style="color:var(--warn)">●</span><div><b>Fatigue musc.</b> modérée · en hausse</div></div>
+      <div class="row"><span class="ic" style="color:var(--good)">●</span><div><b>Stress</b> maîtrisé</div></div>
+      <div class="row"><span class="ic" style="color:var(--good)">●</span><div><b>Douleur</b> aucune</div></div>
+      <div class="row"><span class="ic" style="color:var(--good)">●</span><div><b>Pas</b> 8 240/j · actif <span class="sub">(montre, 7 j)</span></div></div>
+      <div class="row"><span class="ic" style="color:var(--good)">●</span><div><b>Cardio</b> 2 sorties /7 j · FC à effort égal <b>▼ mieux</b> <span class="sub">(efficience en hausse)</span></div></div>
+    </div>
+
+  </div>
+
+  <!-- LECTURE NOVALYZ -->
+  <div class="lab"><span style="color:var(--accent)">✦</span> Lecture Novalyz <span class="tag">pour le coach</span></div>
+  <div class="card lect">
+    <div class="row"><span class="ic" style="color:var(--good)">●</span><div><b>Marie</b> — au vert, apte à une séance exigeante.</div></div>
+    <div class="row"><span class="ic" style="color:var(--good)">●</span><div>Bonne dynamique : <b>2 records</b> + charges/reps en hausse sur plusieurs exos.</div></div>
+    <div class="row"><span class="ic" style="color:var(--warn)">●</span><div><b>Développé incliné stagne</b> (même charge, RPE qui monte) → décharger 1 semaine, allonger les temps de repos, ou le placer plus tôt dans la séance (plus frais).</div></div>
+    <div class="row"><span class="ic" style="color:var(--warn)">●</span><div>Volume : <b>Jambes & Bras</b> délaissés cette semaine.</div></div>
+    <div class="reco">
+      <div class="reco-l">Reco · prochaine séance</div>
+      <div class="reco-t">Réintègre les <b>jambes</b>, et sur le développé incliné : baisse un peu la charge pour remonter les reps (ou change d'angle). L'intensité est haute → garde un œil sur la fatigue.</div>
+    </div>
+  </div>
+
+  <div class="note"><b>Ce qui change (v3)</b> :
+    <span class="k">① Charge · reps · RPE</span> au cœur (fini le 1RM) : Records (charge/reps battus), Progresse (charge ou reps ↑), <b>Stagne</b> (pareil mais RPE ↑), Recule (charge <i>et</i> reps ↓).
+    <span class="k">② Effort</span> : RPE moyen 7 j + tendance.
+    <span class="k">③ Cardio</span> dans l'État : fréquence + efficience (FC à effort égal).
+    Tout vient des données réelles (performances charge/reps/rpe, volume_semaine, bien-être, montre, cardio). <b>Valide / corrige</b> (lignes, seuils, wording) avant que je code.
+  </div>
+</div>
+</body>
+</html>

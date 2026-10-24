@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Croisé coach — refonte</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.12);
+    --good:#00c96e; --warn:#f5a623; --bad:#e5484d; --lilac:#9d5fd3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:20px 14px 48px}
+  .wrap{max-width:720px;margin:0 auto}
+  .lead{font-size:12px;color:var(--muted);margin:0 0 16px}.lead b{color:var(--text)}
+  .lab{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--subtle);margin:22px 2px 9px;display:flex;align-items:center;gap:7px}
+  .pill{font-size:9px;font-weight:800;border-radius:6px;padding:2px 7px}
+  .pill.new{color:#07110a;background:var(--good)} .pill.bad{color:#fff;background:var(--bad)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 15px}
+  .sec{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--subtle);margin:16px 2px 8px}
+  .row{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;padding:5px 0;line-height:1.45}
+  .ic{flex:none;width:15px;text-align:center;margin-top:1px}
+  .row b{font-weight:700}
+  .reco{margin-top:11px;background:var(--accent-a);border:1px solid var(--border);border-radius:11px;padding:10px 13px}
+  .reco-l{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:3px}
+  .reco-t{font-size:13px;font-weight:600}
+  .lect{border-left:3px solid var(--accent)}
+  .balbar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--surface2);margin:4px 0 7px}
+  .balleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;font-weight:800}
+  /* combined chart */
+  .chartwrap{position:relative;height:150px;margin-top:6px}
+  .bars{position:absolute;inset:0 0 18px 0;display:flex;align-items:flex-end;gap:6px}
+  .bars .b{flex:1;background:var(--accent);border-radius:4px 4px 0 0;opacity:.85}
+  .fx{position:absolute;inset:0 0 18px 0;pointer-events:none}
+  .xax{position:absolute;left:0;right:0;bottom:0;display:flex;gap:6px}
+  .xax span{flex:1;text-align:center;font-size:9px;color:var(--subtle)}
+  .leg{display:flex;gap:16px;margin-top:10px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+  .leg span{display:inline-flex;align-items:center;gap:6px}
+  .leg i{width:13px;height:5px;border-radius:2px;display:inline-block}
+  .leg i.dot{width:9px;height:9px;border-radius:50%}
+  .note{font-size:11.5px;color:var(--muted);margin:22px 2px 0;line-height:1.55;padding:13px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px}
+  .note b{color:var(--text)} .note .k{color:var(--good);font-weight:800}
+  .before{opacity:.75}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="lead">Maquette <b>Croisé coach — refonte</b>. ① Résumé = <b>bilan qui parle au coach</b> (plus les phrases athlète). ② Tendances = <b>UN</b> graphe combiné <b>charge + forme</b> (fini les 2 courbes en « UA » peu parlantes).</p>
+
+  <!-- RÉSUMÉ COACH -->
+  <div class="lab"><span style="color:var(--accent)">✦</span> Croisé · Résumé <span class="pill new">parle au coach</span></div>
+  <div class="card lect">
+    <div class="row"><span class="ic" style="color:var(--good)">●</span><div><b>Charge bien équilibrée</b> : 64 % muscu · 36 % cardio sur 4 semaines. Les deux filières progressent.</div></div>
+    <div class="row"><span class="ic" style="color:var(--warn)">●</span><div>La <b>charge globale monte</b> (+22 % sur 4 sem.) pendant que la <b>forme baisse</b> légèrement (récup « moyenne ») → surveiller l'accumulation.</div></div>
+    <div class="row"><span class="ic" style="color:var(--good)">●</span><div>Disponibilité du jour : <b>Prêt</b> · sommeil correct · pas de douleur signalée.</div></div>
+    <div class="reco">
+      <div class="reco-l">Reco · pour le coach</div>
+      <div class="reco-t">Semaine de charge soutenue : garde un œil sur la récup (sommeil/RPE). Si la forme continue de baisser, planifie une semaine plus légère (deload) côté muscu <i>ou</i> cardio.</div>
+    </div>
+  </div>
+
+  <!-- RÉPARTITION -->
+  <div class="sec">Répartition de la charge · 4 sem.</div>
+  <div class="card">
+    <div class="balleg"><span style="color:var(--accent)">■ Muscu 64 %</span><span style="color:var(--lilac)">■ Cardio 36 %</span></div>
+    <div class="balbar"><span style="width:64%;background:var(--accent)"></span><span style="width:36%;background:var(--lilac)"></span></div>
+    <div style="font-size:11px;color:var(--subtle)">Part de chaque filière dans la charge d'entraînement totale (temps × intensité). ~50/50 = profil mixte.</div>
+  </div>
+
+  <!-- TENDANCES : graphe combiné -->
+  <div class="lab">Croisé · Tendances <span class="pill new">1 seul graphe lisible</span></div>
+  <div class="card">
+    <div style="font-size:12.5px;font-weight:800;margin-bottom:2px">Charge vs forme <span style="font-size:11px;color:var(--muted);font-weight:600">· 8 semaines</span></div>
+    <div style="font-size:11px;color:var(--subtle);margin-bottom:8px">Barres = charge d'entraînement de la semaine · courbe = forme (récupération). Quand la charge monte et que la forme descend → fatigue qui s'installe.</div>
+    <div class="chartwrap">
+      <div class="bars">
+        <div class="b" style="height:38%"></div><div class="b" style="height:46%"></div><div class="b" style="height:42%"></div><div class="b" style="height:58%"></div><div class="b" style="height:66%"></div><div class="b" style="height:72%"></div><div class="b" style="height:84%"></div><div class="b" style="height:92%"></div>
+      </div>
+      <svg class="fx" viewBox="0 0 320 132" preserveAspectRatio="none">
+        <path d="M20 26 L62 30 L104 28 L146 40 L188 52 L230 60 L272 78 L314 88" fill="none" stroke="var(--good)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="314" cy="88" r="3.6" fill="var(--good)"/>
+      </svg>
+      <div class="xax"><span>S-7</span><span></span><span></span><span>S-4</span><span></span><span></span><span>S-1</span><span>Sem.</span></div>
+    </div>
+    <div class="leg">
+      <span><i style="background:var(--accent)"></i>Charge (muscu + cardio)</span>
+      <span><i class="dot" style="background:var(--good)"></i>Forme / récup</span>
+    </div>
+    <div style="font-size:11.5px;color:var(--warn);font-weight:700;margin-top:9px">⚠ Charge en hausse continue + forme qui baisse depuis 3 sem. → fenêtre de vigilance.</div>
+  </div>
+
+  <!-- AVANT -->
+  <div class="lab">Avant <span class="pill bad">à remplacer</span></div>
+  <div class="card before">
+    <div style="font-size:12px;color:var(--muted)">2 graphes séparés : « Charge globale » en <b>UA/jour</b> (jargon) + « Indice de forme /100 ». On ne voit pas le lien entre les deux, et « UA » ne parle pas.</div>
+  </div>
+
+  <div class="note"><b>Ce qui change</b> :
+    <span class="k">① Résumé coach</span> : bilan + reco rédigés POUR le coach (pas « tu… »).
+    <span class="k">② Tendances</span> : un seul graphe <b>charge (barres) + forme (courbe)</b> sur le même axe temps → on lit tout de suite si la charge monte plus vite que la récup. Plus de « UA » : libellé « charge d'entraînement ».
+    <br><br>Valide (ou corrige wording / période) et je code côté coach (et je garde l'équivalent athlète en « tu »).
+  </div>
+</div>
+</body>
+</html>

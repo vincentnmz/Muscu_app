@@ -38,6 +38,17 @@ function getStrategieFromAnnees(annees: number): string {
   if (niveau === 'intermediaire') return 'Double progression'
   return 'Progression avancée'
 }
+// N2 — Années de pratique EFFECTIVES = ancienneté saisie à la création + années
+// écoulées depuis la création du compte. Sans ça l'ancienneté reste FIGÉE (un « 3 ans »
+// le resterait à vie) et le niveau (débutant→expert) n'évolue jamais dans le temps.
+function anneesEffectives(base: any, created_at: any, now: Date): number {
+  const b = Number(base) || 0
+  if (!created_at) return b
+  const t = new Date(created_at).getTime()
+  if (isNaN(t)) return b
+  const ecoulees = Math.floor((now.getTime() - t) / (365.25 * 86400000))
+  return b + (ecoulees > 0 ? ecoulees : 0)
+}
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 const rateMap = new Map<string, { n: number; exp: number }>()
@@ -805,17 +816,23 @@ function buildProgressionParExo(perfs: any[]): Record<string, any[]> {
     if (!byExo[exo]) byExo[exo] = {}
     let cur = byExo[exo][dmy]
     // le front lit p.seance (p.seance.substring(...)) → indispensable
-    if (!cur) { cur = byExo[exo][dmy] = { date: dmy, seance: String(r.seance_id || ''), charge, reps, volume: charge * reps, volTotal: 0 } }
+    if (!cur) { cur = byExo[exo][dmy] = { date: dmy, seance: String(r.seance_id || ''), charge, reps, volume: charge * reps, volTotal: 0, series: [] } }
     // meilleure série du jour (charge, puis reps à charge égale)
     if (charge > cur.charge || (charge === cur.charge && reps > cur.reps)) {
       cur.charge = charge; cur.reps = reps; cur.volume = charge * reps
       if (r.seance_id) cur.seance = String(r.seance_id)
     }
     cur.volTotal += charge * reps   // somme de TOUTES les séries du jour (travail total)
+    // #4 Surcharge PAR SÉRIE : on conserve chaque série du jour (n° + charge/reps/rpe)
+    // pour tracer l'évolution des séries 2/3/4, pas seulement de la meilleure. Le n°
+    // de série vient de la colonne `serie` ; à défaut, l'ordre d'insertion (1-indexé).
+    cur.series.push({ serie: Number(r.serie) || (cur.series.length + 1), charge, reps, rpe: Number(r.rpe) || null })
   }
   const out: Record<string, any[]> = {}
   for (const exo of Object.keys(byExo)) {
-    out[exo] = Object.values(byExo[exo]).sort((a, b) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0)).slice(0, 30)
+    const pts = Object.values(byExo[exo])
+    for (const p of pts) p.series.sort((a: any, b: any) => (a.serie || 0) - (b.serie || 0))   // S1, S2, S3…
+    out[exo] = pts.sort((a, b) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0)).slice(0, 30)
   }
   return out
 }
@@ -1077,7 +1094,10 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
   // Stratégie de surcharge progressive : si vide en base (ex. migration), on la
   // recalcule depuis les années de pratique (muscu uniquement) — auto-réparation.
   const sportL = ath.sport || 'muscu'
-  const strategieL = ath.strategie || (sportL === 'muscu' ? getStrategieFromAnnees(Number(ath.annees) || 0) : '')
+  // N2 : ancienneté EFFECTIVE (évolue avec le temps depuis la création) → pilote le
+  // niveau et la stratégie. Si une stratégie est déjà figée en base, on la respecte.
+  const anneesEffL = anneesEffectives(ath.annees, ath.created_at, new Date())
+  const strategieL = ath.strategie || (sportL === 'muscu' ? getStrategieFromAnnees(anneesEffL) : '')
 
   return jsonResp({ success: true, athlete: {
     athlete_id: ath.id,
@@ -1087,7 +1107,7 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
     strategie: strategieL,
     objectif: obj?.objectif ?? strategieL ?? '',
     strategie_progression: strategieL || 'Progression linéaire',
-    annees_pratique: Number(ath.annees) || 0,
+    annees_pratique: anneesEffL,
     poids,
     taille: (ath.taille != null && ath.taille !== '') ? Number(ath.taille) : null,
     ddn: ath.ddn ? fmtFR(ath.ddn) : '',
@@ -1282,7 +1302,7 @@ async function handleBilanClient(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const periode = String(body.periode || 'semaine') === 'mois' ? 'mois' : 'semaine'
   if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
-  const { data: rows } = await sb().from('athletes').select('id,nom,coach_id,annees').eq('id', athlete_id)
+  const { data: rows } = await sb().from('athletes').select('id,nom,coach_id,annees,created_at').eq('id', athlete_id)
   const aRow: any = (rows || [])[0]
   if (!aRow || String(aRow.coach_id) !== coach_id) return jsonResp({ success: false, error: 'Athlète introuvable' })
   const now = new Date()
@@ -1292,7 +1312,7 @@ async function handleBilanClient(body: any): Promise<Response> {
     sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
   ])
-  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, Number(aRow.annees) || 0)
+  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, anneesEffectives(aRow.annees, aRow.created_at, now))
   const prenom = String(aRow.nom || '').split(/\s+/)[0]
   const html = _emailBilanAthleteHTML(prenom, periode, bilan)
   return jsonResp({ success: true, html, nom: aRow.nom || '' })
@@ -1305,7 +1325,7 @@ async function handleEnvoyerBilanMail(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const periode = ['mois', '3mois'].indexOf(String(body.periode || '')) >= 0 ? String(body.periode) : 'semaine'
   if (!coach_id || !athlete_id) return jsonResp({ success: false, error: 'Paramètres manquants' })
-  const { data: rows } = await sb().from('athletes').select('id,nom,email,coach_id,annees').eq('id', athlete_id)
+  const { data: rows } = await sb().from('athletes').select('id,nom,email,coach_id,annees,created_at').eq('id', athlete_id)
   const aRow: any = (rows || [])[0]
   if (!aRow || String(aRow.coach_id) !== coach_id) return jsonResp({ success: false, error: 'Athlète introuvable' })
   const email = String(aRow.email || '').trim()
@@ -1317,7 +1337,7 @@ async function handleEnvoyerBilanMail(body: any): Promise<Response> {
     sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
   ])
-  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, Number(aRow.annees) || 0)
+  const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, periode, anneesEffectives(aRow.annees, aRow.created_at, now))
   const prenom = String(aRow.nom || '').split(/\s+/)[0]
   const html = _emailBilanAthleteHTML(prenom, periode, bilan)
   const label = periode === '3mois' ? 'des 3 derniers mois' : periode === 'mois' ? 'du mois' : 'de la semaine'
@@ -1513,7 +1533,7 @@ function buildRespectProgramme(programme: any[], seancesDetail: any[], perfs: an
   }
   return { nCible, nEval, nOk }
 }
-function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any, execCible?: any): any {
+function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regularite: any, execCible?: any, extras?: any): any {
   // Normalisé SANS accents : des valeurs héritées existent (« séche » vs « sèche »),
   // la détection doit rester robuste à l'orthographe (sinon le cadrage saute).
   const obj = String(objectif || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -1608,8 +1628,42 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   const pushReco = (t: string, p: string) => { if (t && !reco_pool.some(x => x.texte === t)) reco_pool.push({ texte: t, priorite: p }) }
   // 1) Le levier prioritaire du jour (reco principale déjà calculée).
   pushReco(reco.texte, reco.priorite)
+  // 1bis) Leviers de RÉCUPÉRATION ciblés (readiness Hooper) — poussés UNIQUEMENT si le
+  //   signal est RÉELLEMENT sous-optimal sur la moyenne/le max récent (moteur.signaux),
+  //   jamais un conseil de récup générique. Tracé sur la donnée mesurée. (CLAUDE.md §5/§6bis)
+  const sig = (moteur && moteur.signaux) || {}
+  const somMoy = sig.sommeil, strMoy = sig.stress, courbMx = sig.courbatures
+  const sommeilFaible = somMoy != null && somMoy < 3              // moyenne récente < « Moyen » (3/5)
+  const stressEleve = strMoy != null && strMoy >= 3.5            // moyenne récente ≥ « Modéré/Élevé »
+  const courbHautes = courbMx != null && courbMx >= 4  // DOMS marqués (= CORE_SEUILS.courbatures.haut)
+  if (sommeilFaible && stressEleve) {
+    pushReco(`Sommeil et stress pèsent sur ta récupération en ce moment : vise 7-9 h de sommeil régulier et un temps calme avant de dormir — c'est là que ton corps encaisse la charge d'entraînement.`, 'moyenne')
+  } else if (sommeilFaible) {
+    pushReco(`Ton sommeil est en dessous ces jours-ci : vise 7-9 h et des horaires réguliers — c'est le 1er facteur de récupération et de progression.`, 'moyenne')
+  } else if (stressEleve) {
+    pushReco(`Ton stress est élevé ces jours-ci : il freine la récupération. Garde l'entraînement (il aide à décompresser), mais baisse l'intensité si besoin et ménage-toi des temps de pause.`, 'moyenne')
+  }
+  if (courbHautes) {
+    pushReco(`Courbatures marquées : échauffe-toi bien, garde une amplitude contrôlée, et laisse ~48 h à un muscle très courbaturé avant de le recharger fort.`, 'moyenne')
+  }
   // 2) Leviers de PROGRESSION selon l'état mesuré (uniquement si pas de contrainte/vigilance).
   if (!contrainte && !etatVigilance) {
+    // 2a) FEU VERT fraîcheur — signal de charge PRIMAIRE (fitness-fatigue / TSB %). Quand
+    //     la fraîcheur est nettement positive (peu de fatigue résiduelle vs fond de forme)
+    //     ET fiable, c'est le moment d'oser pousser. Tracé sur moteur.charge_fatigue.
+    const cf = (moteur && moteur.charge_fatigue) || {}
+    if (cf.fiable === true && cf.tsbPct != null && cf.tsbPct >= 5) {
+      pushReco(`Tu es bien récupéré : ta fraîcheur est au vert (peu de fatigue résiduelle). C'est le bon moment pour une séance un peu plus intense ou pour tenter une charge au-dessus de ton habituel sur un exercice clé.`, 'moyenne')
+    }
+    // 2b) TEMPS DE REPOS entre séries — fait factuel mesuré (moyenne des repos loggés).
+    //     Un repos court bride la force sur les exercices lourds (force/hypertrophie) ;
+    //     on n'en parle PAS en sèche (repos court souvent voulu pour la densité). N min
+    //     pour éviter le bruit. Le chiffre affiché est vérifié ; le conseil est conditionnel.
+    const reposMoy = extras && extras.reposMoy != null ? extras.reposMoy : null
+    const reposN = (extras && extras.reposN) || 0
+    if (reposN >= 6 && reposMoy != null && reposMoy < 90 && !seche) {
+      pushReco(`Tes temps de repos sont courts en moyenne (~${reposMoy}s entre séries). Pour la force et la masse, vise plutôt 2-3 min sur tes exercices lourds — tu pousseras plus fort sur les séries suivantes.`, 'moyenne')
+    }
     if (progOk) pushReco(`Tu progresses : pour continuer, ajoute une petite surcharge (+1 rep, ou +2,5 kg) sur un exercice clé dès que ta dernière série passe bien.`, 'moyenne')
     if (tonEvol != null && !aBaisse && !progOk) pushReco(`Ton volume est stable : relance la progression en visant +1 rep sur tes exos principaux, puis +2,5 kg une fois le haut de ta fourchette atteint.`, 'moyenne')
     if (tonEvol != null && !aBaisse) pushReco(`Cible un muscle en retard : ajoute 1 à 2 séries par semaine là où ton volume est sous ta cible, pour équilibrer ton développement.`, 'moyenne')
@@ -1634,6 +1688,22 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
 
 // « Lecture Novalyz » (cardio) : régularité + charge cardio (RPE×durée) 28j vs 28j
 // précédents + efficience (FC à effort constant). Déterministe, ne recalcule que
+// Charge interne d'une sortie cardio (session-RPE de Foster = RPE × durée, en UA).
+// Si le RPE manque — cas des IMPORTS MONTRE (durée + FC mais pas de RPE ressenti) —
+// on l'ESTIME à partir de la FC moyenne (repères larges, sans FCmax individuelle →
+// prudent) ; sinon RPE modéré (5). => une activité importée pèse dans la charge au
+// lieu de compter 0 (correctif #5 : elle entre bien dans le croisé muscu/cardio).
+function chargeInterneCardio(s: any): number {
+  const duree = Number(s && s.duree) || 0
+  if (duree <= 0) return 0
+  let rpe = Number(s && s.rpe) || 0
+  if (rpe <= 0) {
+    const fc = Number(s && (s.fc_moy != null ? s.fc_moy : s.fc)) || 0
+    rpe = fc >= 165 ? 9 : fc >= 150 ? 8 : fc >= 138 ? 7 : fc >= 125 ? 6 : fc >= 110 ? 5 : fc > 0 ? 4 : 5
+  }
+  return rpe * duree
+}
+
 // des agrégats simples sur cardio.history. S'aligne sur l'état du jour (récup/dispo).
 function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   const hist = (cardio && cardio.history) || []
@@ -1645,7 +1715,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   const fcPts: any[] = []
   for (const s of hist) {
     const d = String(s.date || '')
-    const ua = (Number(s.rpe) || 0) * (Number(s.duree) || 0)
+    const ua = chargeInterneCardio(s)
     if (d >= c28) { n28++; ch28 += ua; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy), rpe: Number(s.rpe) || 0 }) }
     else if (d >= c56) { n56++; ch56 += ua }
   }
@@ -1699,7 +1769,7 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
   const c28 = fmtYMD(minus(now, 28))
   let cardioUA = 0
   const hist = (cardio && cardio.history) || []
-  for (const s of hist) { if (String(s.date || '') >= c28) cardioUA += (Number(s.rpe) || 0) * (Number(s.duree) || 0) }
+  for (const s of hist) { if (String(s.date || '') >= c28) cardioUA += chargeInterneCardio(s) }
   const muscuT = (comparison && comparison.j28_vs_j28prec && comparison.j28_vs_j28prec.tonnage && comparison.j28_vs_j28prec.tonnage.j28) || 0
   const muscuUA = Math.round(muscuT / 50)   // proxy pour rendre muscu et cardio comparables
   const tot = muscuUA + cardioUA
@@ -1732,7 +1802,7 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
 function buildAlertesCentre(moteur: any, comparison: any): any[] {
   const SEV: Record<string, number> = { haute: 3, moyenne: 2, basse: 1 }
   const TITRES: Record<string, string> = {
-    absence: 'Absence prolongée', charge: 'Charge en hausse', surcharge: 'Charge aiguë élevée',
+    absence: 'Absence prolongée', charge: 'Charge en hausse', surcharge: 'Charge récente élevée',
     sous_charge: 'Sous-charge', douleur: 'Douleur signalée', fatigue: 'Fatigue élevée',
     sommeil: 'Sommeil dégradé', stagnation: 'Stagnation',
   }
@@ -1797,6 +1867,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: santeRows },
     { data: nutriRows },
     { data: recompRows },
+    { data: mensuRows },
+    { data: suiviPhotoRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1815,6 +1887,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'sante_%').order('date', { ascending: false }),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'nutri_%').order('date', { ascending: false }),
     sb().from('indicateurs').select('cle,valeur,date').eq('athlete_id', athleteId).eq('seance_id', 'recompense'),
+    sb().from('indicateurs').select('date,cle,valeur,unite').eq('athlete_id', athleteId).eq('seance_id', 'mensuration').order('date', { ascending: false }),
+    sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'suivi_photo').order('date', { ascending: false }),
   ])
 
   const perfs = perfsAll || []
@@ -1888,7 +1962,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     }
   }
 
-  const alertes = calculerAlertes(perfs, athleteId, Number(athData?.annees) || 0, enPause)
+  const alertes = calculerAlertes(perfs, athleteId, anneesEffectives(athData?.annees, athData?.created_at, now), enPause)   // N2 : ancienneté effective
 
   // le front indexe l'agenda et la vérification par clé JJ/MM/AAAA
   const datesSeances: Record<string, string> = {}
@@ -1951,9 +2025,13 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const d = parseFR(rec.date)
     return d ? fmtYMD(d) >= c30 : false
   }).length
+  // records_total : nombre d'exos où l'athlète détient un record (= exos pratiqués
+  // avec charge). PERMANENT (ne décroît jamais) → base des points « records » de la
+  // boutique, pour que les points ne s'évaporent plus (fenêtre 30 j = affichage seul).
+  const recordsTotal = Object.keys(globalData.records || {}).length
 
   // Enrich globalData
-  const enrichedGlobal = { ...globalData, muscle_retard: muscleRetardObj, records_30j: records30j }
+  const enrichedGlobal = { ...globalData, muscle_retard: muscleRetardObj, records_30j: records30j, records_total: recordsTotal }
 
   const poids = (poidsRows || []).map(r => ({ date: fmtFR(r.date), poids: Number(r.poids) }))
 
@@ -1967,6 +2045,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     type: r.type || null,                                                         // 'cardio' = item cardio (hybride), sinon muscu
     cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null,         // valeur de la cible cardio
     cardio_unite: r.cardio_unite || null,                                         // 'min' | 'km' | 'libre'
+    // Schéma de séries (#4) : 'fixe'(défaut) | 'double' | 'topbackoff' | 'pyramidal'.
+    schema: r.schema || null, backoff_pct: r.backoff_pct != null ? Number(r.backoff_pct) : null,
+    series_json: r.series_json != null ? r.series_json : null,   // pyramidal : [{pct,reps,rpe}]
   }))
 
   const bien_etre = (beRows || []).map(r => ({
@@ -2080,6 +2161,35 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   }
   const nutri_historique = Object.values(nutriMap).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))
 
+  // ── Mensurations (N3) : indicateurs seance_id='mensuration', 1 ligne/mesure/date,
+  // regroupées par date. Clés : poitrine, taille, hanches, epaules, bras_g/_d,
+  // avantbras_g/_d, cuisse_g/_d, mollet, masse_grasse. Valeurs numériques (col texte).
+  const mensurations = (() => {
+    const byDate: Record<string, any> = {}
+    for (const r of (mensuRows || [])) {
+      const d = fmtFR(r.date)
+      if (!byDate[d]) byDate[d] = { date: d }
+      const n = Number(r.valeur)
+      byDate[d][String(r.cle)] = (r.valeur === '' || r.valeur == null || isNaN(n)) ? null : n
+    }
+    return Object.values(byDate).sort((a: any, b: any) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0))
+  })()
+
+  // ── Photos de suivi (N3) : indicateurs seance_id='suivi_photo' (cle=angle,
+  // valeur=chemin Storage). Bucket PRIVÉ 'suivi-photos' → URLs signées (TTL 2 h).
+  const suivi_photos = await (async () => {
+    const rows = (suiviPhotoRows || []).filter((r: any) => r.valeur)
+    if (!rows.length) return []
+    const paths = rows.map((r: any) => String(r.valeur))
+    const urls: Record<string, string> = {}
+    try {
+      const { data: signed } = await sb().storage.from('suivi-photos').createSignedUrls(paths, 7200)
+      ;(signed || []).forEach((s: any, i: number) => { if (s && s.signedUrl) urls[paths[i]] = s.signedUrl })
+    } catch (_) { /* bucket absent / pas de photo : best-effort */ }
+    return rows.map((r: any) => ({ date: fmtFR(r.date), angle: String(r.cle || 'face'), path: String(r.valeur), url: urls[String(r.valeur)] || null }))
+      .sort((a: any, b: any) => (parseFR(b.date)?.getTime() || 0) - (parseFR(a.date)?.getTime() || 0))
+  })()
+
   let volume_obti: any[] = []
   if (sport === 'muscu' && volObtiRows?.length) {
     volume_obti = volObtiRows.map(v => ({
@@ -2139,6 +2249,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     moteur = {
       disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
       recScore: etatM.recScore, recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
+      signaux: etatM.signaux,   // readiness Hooper agrégé (sommeil/stress/courbatures…) → leviers ciblés tracés
       acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
       charge_fatigue: { ctl: ffA.ctl, atl: ffA.atl, tsb: ffA.tsb, tsbPct: ffA.tsbPct, ratio: ffA.ratio, fiable: ffFiable, source: useSRPE ? 'srpe' : 'tonnage' },
       seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
@@ -2149,6 +2260,13 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // Calculés une fois : détail des séances + respect du programme (exécution vs cible).
   const seancesDetailArr = buildSeancesDetail(perfs)
   const execCibleMuscu = buildRespectProgramme(programme, seancesDetailArr, perfs)
+  // Temps de repos entre séries (levier B) : moyenne des repos RÉELLEMENT loggés (>0)
+  // sur 28 j. Fait factuel vérifié → alimente un levier « mot de Novalyz » conditionnel.
+  const _repCut = fmtYMD(minus(now, 28))
+  const _repVals: number[] = []
+  for (const r of perfs) { const d = normDate(r.date); if (!d || d < _repCut) continue; const rp = Number(r.repos) || 0; if (rp > 0) _repVals.push(rp) }
+  const reposMoy = _repVals.length ? Math.round(_repVals.reduce((a, b) => a + b, 0) / _repVals.length) : null
+  const synthExtras = { reposMoy, reposN: _repVals.length }
 
   return jsonResp({
     moteur,
@@ -2185,7 +2303,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     cardio,
     analyses,
     analyse_synthese: {
-      muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj, execCibleMuscu),
+      muscu: buildSyntheseMuscu((objectifRows && objectifRows[0] && objectifRows[0].objectif) || '', comparisonData, moteur, regulariteObj, execCibleMuscu, synthExtras),
       cardio: buildSyntheseCardio(cardio, moteur, now),
       croise: buildSyntheseCroise(comparisonData, cardio, moteur, now),
     },
@@ -2203,10 +2321,11 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
     prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
     // Récompenses : solde de points (gagnés − dépensés) + récompenses déjà réclamées.
-    // Gagnés = total_seances×10 + records_30j×50 (déterministe). Dépenses = somme des
+    // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
+    // fenêtre 30 j glissante qui faisait disparaître les points). Dépenses = somme des
     // claims (seance_id='recompense', valeur = coût). Source unique front↔back.
     recompenses: (() => {
-      const gagnes = (globalData.total_seances || 0) * 10 + records30j * 50
+      const gagnes = (globalData.total_seances || 0) * 10 + recordsTotal * 50
       const claims = (recompRows || []).map((r: any) => ({ id: String(r.cle), cout: Number(r.valeur) || 0, date: r.date ? fmtFR(r.date) : '' }))
       const depenses = claims.reduce((s: number, c: any) => s + c.cout, 0)
       return { gagnes, depenses, solde: gagnes - depenses, claims }
@@ -2214,6 +2333,8 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     pas_quotidiens,
     sante_historique,
     nutri_historique,
+    mensurations,
+    suivi_photos,
     blessures: (blessuresRows || []).map(r => ({
       id: String(r.id || ''), date: r.date ? fmtFR(r.date) : '',
       type: String(r.type || ''), localisation: String(r.localisation || ''),
@@ -2318,9 +2439,9 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     const pauses = (pauseAll || []).filter(r => r.athlete_id === ath.id)
     const enPause = pauses.length > 0 && pauses[0].valeur !== 'fin'
     const dates = [...new Set(perfs.map(r => normDate(r.date)))].sort()
-    const alertes = calculerAlertes(perfs, ath.id, Number(ath.annees) || 0, enPause)
+    const anneesA = anneesEffectives(ath.annees, ath.created_at, now)   // N2 : ancienneté effective (évolue dans le temps)
+    const alertes = calculerAlertes(perfs, ath.id, anneesA, enPause)
     const lastBE = (beAll || []).find(r => r.athlete_id === ath.id)
-    const anneesA = Number(ath.annees) || 0
     const sportA = ath.sport || 'muscu'
     const strategieA = ath.strategie || (sportA === 'muscu' ? getStrategieFromAnnees(anneesA) : '')
     return {
@@ -2362,7 +2483,7 @@ async function handleGetCoachProgramme(params: URLSearchParams): Promise<Respons
   const athleteId = params.get('athlete_id')
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
   const { data } = await sb().from('programme').select('*').eq('athlete_id', athleteId).order('groupe_id').order('id')
-  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null, charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null, rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null, type: r.type || null, cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null, cardio_unite: r.cardio_unite || null }))
+  const lignes = (data || []).map(r => ({ id: r.id, row_index: r.id, athlete_id: r.athlete_id, seance_id: r.seance_id, exercice: r.exercice, series_prevues: r.series_prevues, reps_mini: r.reps_mini, reps_max: r.reps_max, repos_sec: r.repos_sec, groupe_id: r.groupe_id, jour: r.jour != null ? Number(r.jour) : null, charge_pct_1rm: r.charge_pct_1rm != null ? Number(r.charge_pct_1rm) : null, rpe_cible: r.rpe_cible != null ? Number(r.rpe_cible) : null, type: r.type || null, cardio_cible: r.cardio_cible != null ? Number(r.cardio_cible) : null, cardio_unite: r.cardio_unite || null, schema: r.schema || null, backoff_pct: r.backoff_pct != null ? Number(r.backoff_pct) : null, series_json: r.series_json != null ? r.series_json : null }))
   // le front lit data.lignes ; on garde aussi "programme" par rétro-compat
   return jsonResp({ ok: true, lignes, programme: lignes })
 }
@@ -2487,7 +2608,7 @@ interface EtatInput {
   douleur: number | null       // agrégé (max récent)
   fatigue: number | null       // agrégé (max récent)
   sommeil: number | null       // agrégé (moyenne récente)
-  stress: number | null        // readiness Hooper (1..5, 5 = détendu) — moyenne récente
+  stress: number | null        // readiness Hooper (1..5, 5 = TRÈS stressé, item invert) — moyenne récente
   courbatures: number | null   // readiness Hooper (DOMS) / muscu — max récent
   injStatut: 'indispo' | 'retour_progressif' | null
   blessureGrave?: boolean       // blessure active modérée/grave (muscu : table blessures)
@@ -2635,7 +2756,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
     acwr_fiable: acwrOk,
     donnees_utilisees: donnees,
     contexte_tag: ctx !== 'saison_normale' ? ctx : null,
-    signaux: { acwr: acwrOk ? s.acwr : null, douleur: s.douleur, fatigue: s.fatigue, sommeil: s.sommeil, seances7: s.seances7 },
+    signaux: { acwr: acwrOk ? s.acwr : null, douleur: s.douleur, fatigue: s.fatigue, sommeil: s.sommeil, stress: s.stress, courbatures: s.courbatures, seances7: s.seances7 },
     acwr_categorie: interpreterACWR(s.acwr ?? null, acwrOk),
   }
   // Note générique : couvre historique < 28 j, reprise vacances < 28 j, chronique trouée
@@ -3362,12 +3483,15 @@ async function handleCoachCreerAthlete(body: any): Promise<Response> {
   const { coach_id, login, password, annees, strategie, ddn, taille, sexe } = body
   const nom = (body.prenom || body.nom || '').trim()
   if (!coach_id || !nom || !login || !password) return jsonResp({ success: false, error: 'Champs manquants' })
+  // E-mail facultatif (récaps / notifs). Normalisé ; validé seulement s'il est fourni.
+  const email = String(body.email || '').trim().toLowerCase()
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return jsonResp({ success: false, error: 'E-mail invalide.' })
   const { data: existing } = await sb().from('athletes').select('id').eq('login', login).single()
   if (existing) return jsonResp({ success: false, error: 'Ce login est déjà utilisé.' })
   const hash = await hashSalted(password, login)
   const { data: coach } = await sb().from('coachs').select('sport').eq('coach_id', coach_id).single()
   const newId = await nextAthleteId()
-  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, coach_id, sport: coach?.sport || 'muscu', annees: annees || 0, strategie: strategie || '', ddn: ddn || null, taille: taille || null, sexe: sexe || null }).select().single()
+  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, coach_id, sport: coach?.sport || 'muscu', annees: annees || 0, strategie: strategie || '', ddn: ddn || null, taille: taille || null, sexe: sexe || null, email: email || null }).select().single()
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true, id: data.id, nom: data.nom })
 }
@@ -3647,7 +3771,13 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
     try {
       const res = await handleGetAppData(new URLSearchParams({ athlete_id: id }))
       const data: any = await res.json()
-      const importantes = ((data && data.alertes_centre) || []).filter((a: any) => a && a.severity === 'haute' && !a.read)
+      // Politique de notification (demande porteur) : on pousse les alertes HAUTES
+      // (douleur forte, charge très élevée, absence prolongée) ET deux cas de sévérité
+      // moyenne explicitement voulus : séance manquée / régularité, et volume trop bas
+      // (sous-charge). alertes_centre est déjà trié par sévérité → [0] = la plus grave.
+      const PUSH_TYPES = new Set(['absence', 'irregularite', 'sous_charge'])
+      const importantes = ((data && data.alertes_centre) || [])
+        .filter((a: any) => a && !a.read && (a.severity === 'haute' || PUSH_TYPES.has(a.type)))
       if (!importantes.length) continue
       const top = importantes[0]   // déjà trié par sévérité décroissante
       // Clé par TYPE + JOUR (pas top.id, qui est stable → bloquerait le rappel
@@ -4129,7 +4259,7 @@ async function handleCronResumes(body: any): Promise<Response> {
 
   // 2) Athlètes — un bilan perso par athlète ayant un e-mail.
   try {
-    const { data: aths } = await sb().from('athletes').select('id,nom,email,annees,recap_freq')
+    const { data: aths } = await sb().from('athletes').select('id,nom,email,annees,recap_freq,created_at')
     for (const a of aths || []) {
       const email = String((a as any).email || '').trim()
       const per = periodeFor((a as any).recap_freq)
@@ -4143,7 +4273,7 @@ async function handleCronResumes(body: any): Promise<Response> {
           sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', aid),
           sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', aid).like('seance_id', 'sante_%'),
         ])
-        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, per, Number((a as any).annees) || 0)
+        const bilan = _bilanAthlete(perfs || [], prog || [], be || [], sante || [], now, per, anneesEffectives((a as any).annees, (a as any).created_at, now))
         const prenom = String((a as any).nom || '').split(/\s+/)[0]
         const html = _emailBilanAthleteHTML(prenom, per, bilan)
         const sujet = `Novalyz — Ton bilan ${_periodeLabel(per)}`
@@ -4306,6 +4436,62 @@ async function handleEnvoyerMediaCoach(body: any): Promise<Response> {
   return jsonResp({ success: true, id: comment_id, media_type, media_url })
 }
 
+// ── Suivi corps (N3) : mensurations (indicateurs) + photos (bucket 'suivi-photos') ─
+// Saisie PAR L'ATHLÈTE ; le coach consulte via getAppData. Mensurations en cm
+// (masse_grasse en %), 1 ligne/mesure/date. Photos : upload signé direct → Storage.
+const MENSU_KEYS = ['poitrine', 'taille', 'hanches', 'epaules', 'bras_g', 'bras_d', 'avantbras_g', 'avantbras_d', 'cuisse_g', 'cuisse_d', 'mollet', 'masse_grasse']
+async function handleSaveMensuration(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const dateYMD = body.date ? fmtYMD(new Date(String(body.date))) : fmtYMD(new Date())
+  const mesures = (body.mesures && typeof body.mesures === 'object') ? body.mesures : {}
+  const rows: any[] = []
+  for (const k of MENSU_KEYS) {
+    const v = mesures[k]
+    if (v === '' || v == null || isNaN(Number(v))) continue
+    rows.push({ date: dateYMD, athlete_id, seance_id: 'mensuration', cle: k, valeur: String(Number(v)), unite: (k === 'masse_grasse' ? '%' : 'cm'), source: 'athlete' })
+  }
+  // Ré-enregistrer une date = mise à jour → on remplace les mesures de cette date.
+  await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('seance_id', 'mensuration').eq('date', dateYMD)
+  if (rows.length) { const { error } = await sb().from('indicateurs').insert(rows); if (error) return jsonResp({ success: false, error: error.message }) }
+  return jsonResp({ success: true, date: fmtFR(dateYMD), n: rows.length })
+}
+
+const SUIVI_PHOTO_EXT_OK: Record<string, boolean> = { jpg: true, jpeg: true, png: true, webp: true }
+const SUIVI_ANGLE_OK: Record<string, boolean> = { face: true, profil: true, dos: true }
+async function handleSuiviPhotoUploadUrl(body: any): Promise<Response> {
+  const athleteId = String(body.athlete_id || '')
+  const ext = String(body.ext || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  if (!SUIVI_PHOTO_EXT_OK[ext]) return jsonResp({ success: false, error: 'Format non pris en charge' })
+  const path = `${athleteId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const { data, error } = await sb().storage.from('suivi-photos').createSignedUploadUrl(path)
+  if (error || !data) return jsonResp({ success: false, error: (error && error.message) || 'upload-url' })
+  return jsonResp({ success: true, path: data.path, token: data.token, signedUrl: data.signedUrl })
+}
+async function handleSaveSuiviPhoto(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const photo_path = String(body.path || '')
+  const angle = SUIVI_ANGLE_OK[String(body.angle || '')] ? String(body.angle) : 'face'
+  if (!athlete_id || !photo_path) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (!photo_path.startsWith(athlete_id + '/')) return jsonResp({ success: false, error: 'Chemin invalide' })
+  const dateYMD = body.date ? fmtYMD(new Date(String(body.date))) : fmtYMD(new Date())
+  const { error } = await sb().from('indicateurs').insert({ date: dateYMD, athlete_id, seance_id: 'suivi_photo', cle: angle, valeur: photo_path, unite: '', source: 'athlete' })
+  if (error) return jsonResp({ success: false, error: error.message })
+  let url: string | null = null
+  try { const { data: s } = await sb().storage.from('suivi-photos').createSignedUrl(photo_path, 7200); url = (s && s.signedUrl) || null } catch (_) {}
+  return jsonResp({ success: true, date: fmtFR(dateYMD), angle, path: photo_path, url })
+}
+async function handleSupprimerSuiviPhoto(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const photo_path = String(body.path || '')
+  if (!athlete_id || !photo_path) return jsonResp({ success: false, error: 'Paramètres manquants' })
+  if (!photo_path.startsWith(athlete_id + '/')) return jsonResp({ success: false, error: 'Chemin invalide' })
+  try { await sb().storage.from('suivi-photos').remove([photo_path]) } catch (_) {}
+  await sb().from('indicateurs').delete().eq('athlete_id', athlete_id).eq('seance_id', 'suivi_photo').eq('valeur', photo_path)
+  return jsonResp({ success: true })
+}
+
 async function handleSaveObjectif(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const objectif = String(body.objectif ?? body.strategie ?? '')
@@ -4368,6 +4554,11 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
   const typeIn = (body.type === 'cardio') ? 'cardio' : (body.type === 'muscu' ? 'muscu' : null)
   const cibleIn = (body.cardio_cible === '' || body.cardio_cible == null) ? null : Number(body.cardio_cible)
   const uniteIn = (body.cardio_unite === '' || body.cardio_unite == null) ? null : String(body.cardio_unite)
+  // Schéma de séries (#4) : valeur contrôlée ; backoff_pct (top-set+back-off) ; series_json (pyramidal).
+  const _SCHEMAS = ['fixe', 'double', 'topbackoff', 'pyramidal']
+  const schemaIn = _SCHEMAS.includes(String(body.schema)) ? String(body.schema) : null
+  const backoffIn = (body.backoff_pct === '' || body.backoff_pct == null) ? null : Number(body.backoff_pct)
+  const seriesJsonIn = _parseSeriesJson(body.series_json)
   if (row_index) {
     const patch: any = { seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id }
     if (body.jour !== undefined) patch.jour = jourIn
@@ -4376,6 +4567,9 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
     if (body.type !== undefined) patch.type = typeIn
     if (body.cardio_cible !== undefined) patch.cardio_cible = cibleIn
     if (body.cardio_unite !== undefined) patch.cardio_unite = uniteIn
+    if (body.schema !== undefined) patch.schema = schemaIn
+    if (body.backoff_pct !== undefined) patch.backoff_pct = backoffIn
+    if (body.series_json !== undefined) patch.series_json = seriesJsonIn
     const { error } = await sb().from('programme').update(patch).eq('id', row_index)
     if (error) return jsonResp({ erreur: error.message })
   } else {
@@ -4385,10 +4579,24 @@ async function handleSaveProgrammeLigne(body: any): Promise<Response> {
       const { data: sib } = await sb().from('programme').select('jour').eq('athlete_id', athlete_id).eq('seance_id', seance_id).not('jour', 'is', null).limit(1)
       if (sib && sib.length && sib[0].jour != null) jour = Number(sib[0].jour)
     }
-    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour, charge_pct_1rm: pctIn, rpe_cible: rpeIn, type: typeIn, cardio_cible: cibleIn, cardio_unite: uniteIn })
+    const { error } = await sb().from('programme').insert({ athlete_id, athlete_nom: athlete_nom || '', seance_id, exercice, series_prevues, reps_mini, reps_max, repos_sec, groupe_id, jour, charge_pct_1rm: pctIn, rpe_cible: rpeIn, type: typeIn, cardio_cible: cibleIn, cardio_unite: uniteIn, schema: schemaIn, backoff_pct: backoffIn, series_json: seriesJsonIn })
     if (error) return jsonResp({ erreur: error.message })
   }
   return jsonResp({ ok: true })
+}
+
+// Pyramidal : tableau de cibles par série [{pct, reps, rpe}]. Accepte un array JS
+// (client supabase → jsonb) OU une chaîne JSON. Nettoie/typé ; null si vide/invalide.
+function _parseSeriesJson(v: any): any[] | null {
+  let arr = v
+  if (typeof v === 'string') { if (!v.trim()) return null; try { arr = JSON.parse(v) } catch { return null } }
+  if (!Array.isArray(arr) || !arr.length) return null
+  const out = arr.slice(0, 12).map((s: any) => ({
+    pct: (s && s.pct != null && s.pct !== '') ? Number(s.pct) : null,
+    reps: (s && s.reps != null && s.reps !== '') ? Number(s.reps) : null,
+    rpe: (s && s.rpe != null && s.rpe !== '') ? Number(s.rpe) : null,
+  }))
+  return out.length ? out : null
 }
 
 // Jour conseillé d'une séance (Lun=1 … Dim=7, null = non planifié) : appliqué à
@@ -4428,6 +4636,9 @@ async function handleGenererProgramme(body: any): Promise<Response> {
     jour: num(l.jour),
     charge_pct_1rm: num(l.charge_pct_1rm),
     rpe_cible: num(l.rpe_cible),
+    schema: ['fixe', 'double', 'topbackoff', 'pyramidal'].includes(String(l.schema)) ? String(l.schema) : null,
+    backoff_pct: num(l.backoff_pct),
+    series_json: _parseSeriesJson(l.series_json),
   })).filter((r: any) => r.exercice && r.seance_id)
   if (!rows.length) return jsonResp({ erreur: 'Lignes invalides' })
   if (body.remplacer) {
@@ -4622,9 +4833,10 @@ async function handleClaimRecompense(body: any): Promise<Response> {
 
   const now = new Date()
   const g = computeGlobal(perfs || [])
-  const c30 = fmtYMD(minus(now, 30))
-  const rec30 = Object.values(g.records || {}).filter((r: any) => { const d = parseFR(r.date); return d ? fmtYMD(d) >= c30 : false }).length
-  const gagnes = (g.total_seances || 0) * 10 + rec30 * 50
+  // Records À VIE (permanents) — DOIT matcher le calcul de getAppData (records_total)
+  // sinon le solde validé ici diffèrerait du solde affiché → faux « solde insuffisant ».
+  const recordsTotal = Object.keys(g.records || {}).length
+  const gagnes = (g.total_seances || 0) * 10 + recordsTotal * 50
   const depenses = (claims || []).reduce((s: number, c: any) => s + (Number(c.valeur) || 0), 0)
   const solde = gagnes - depenses
   if (solde < item.cout) return jsonResp({ success: false, error: 'Solde insuffisant', solde })
@@ -5285,6 +5497,10 @@ Deno.serve(async (req: Request) => {
         case 'saveCommentaire':          return handleSaveCommentaire(body)
         case 'mediaUploadUrl':           return handleMediaUploadUrl(body)
         case 'envoyerMediaCoach':        return handleEnvoyerMediaCoach(body)
+        case 'saveMensuration':          return handleSaveMensuration(body)
+        case 'suiviPhotoUploadUrl':      return handleSuiviPhotoUploadUrl(body)
+        case 'saveSuiviPhoto':           return handleSaveSuiviPhoto(body)
+        case 'supprimerSuiviPhoto':      return handleSupprimerSuiviPhoto(body)
         case 'savePushSub':              return handleSavePushSub(body)
         case 'deletePushSub':            return handleDeletePushSub(body)
         case 'cronPushAlertes':          return handleCronPushAlertes(body)

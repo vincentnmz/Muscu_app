@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coach — Aperçu v2</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.12);
+    --good:#00c96e; --good-a:rgba(0,201,110,.12); --warn:#f5a623; --warn-a:rgba(245,166,35,.12); --bad:#e5484d;
+    --d1:#1a5fff; --d2:#7c5cff; --d3:#00a854; --d4:#e07800; --d5:#ec4899;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:20px 14px 48px}
+  .wrap{max-width:460px;margin:0 auto}
+  .lead{font-size:12px;color:var(--muted);margin:0 0 14px}
+  .lead b{color:var(--text)}
+  /* hero */
+  .hero{border-radius:16px;padding:15px 16px;color:#fff;margin-bottom:12px;background:linear-gradient(135deg,#00a854,#0a7d43)}
+  .hero.vig{background:linear-gradient(135deg,#e07800,#b35e00)}
+  .hero-top{display:flex;align-items:center;gap:12px}
+  .hero-ini{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+  .hero-nm{font-size:17px;font-weight:900}
+  .hero-sub{font-size:11.5px;opacity:.9;margin-top:1px}
+  .hero-state{margin-top:13px;display:flex;align-items:center;gap:9px}
+  .hero-badge{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;background:rgba(255,255,255,.2);border-radius:7px;padding:3px 9px}
+  .hero-state-t{font-size:13.5px;font-weight:800}
+  /* section label */
+  .sl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);margin:16px 2px 8px;display:flex;align-items:center;gap:7px}
+  .sl .tag{color:var(--accent2);background:var(--accent-a);border:1px solid var(--border);border-radius:6px;padding:1px 6px;font-size:9px}
+  /* lecture novalyz (coach) */
+  .lecture{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:14px;padding:14px 15px}
+  .lec-row{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--border)}
+  .lec-row:first-child{border-top:none;padding-top:0}
+  .lec-dot{width:7px;height:7px;border-radius:50%;margin-top:6px;flex:none}
+  .lec-t{font-size:13px;line-height:1.45}
+  .lec-t b{font-weight:800}
+  .reco{margin-top:11px;background:var(--accent-a);border:1px solid var(--border);border-radius:11px;padding:10px 12px}
+  .reco-l{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent2);margin-bottom:3px}
+  .reco-t{font-size:13px;color:var(--text);line-height:1.45;font-weight:600}
+  /* alerte */
+  .alert{background:var(--warn-a);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:12px;padding:11px 13px;margin-top:10px}
+  .alert-h{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--warn);margin-bottom:5px}
+  .alert-t{font-size:13px;font-weight:700}
+  .alert-a{font-size:12px;color:var(--muted);margin-top:2px}
+  /* grille cartes data */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px}
+  .card.wide{grid-column:1 / -1}
+  .c-l{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--subtle);margin-bottom:7px;display:flex;align-items:center;justify-content:space-between}
+  .c-big{font-size:20px;font-weight:900;line-height:1}
+  .c-unit{font-size:12px;color:var(--muted);font-weight:700}
+  .c-sub{font-size:11px;color:var(--muted);margin-top:4px}
+  .pill{font-size:9.5px;font-weight:800;border-radius:6px;padding:2px 7px}
+  .pill.good{color:var(--good);background:var(--good-a)}
+  .pill.warn{color:var(--warn);background:var(--warn-a)}
+  .pill.bad{color:var(--bad);background:rgba(229,72,77,.12)}
+  /* volume bars */
+  .vbar{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11px}
+  .vbar .n{width:54px;color:var(--muted);flex:none}
+  .vbar .track{flex:1;height:7px;border-radius:999px;background:var(--surface2);overflow:hidden}
+  .vbar .fill{height:100%;border-radius:999px}
+  .vbar .val{width:40px;text-align:right;color:var(--text);font-weight:700;flex:none}
+  /* dernière séance */
+  .ex{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-top:1px solid var(--border)}
+  .ex:first-of-type{border-top:none}
+  .ex b{font-weight:700}
+  .ex span{color:var(--muted)}
+  .macros{display:flex;gap:8px;margin-top:4px}
+  .macro{flex:1;background:var(--surface2);border-radius:9px;padding:7px 8px;text-align:center}
+  .macro-v{font-size:14px;font-weight:800}
+  .macro-l{font-size:9px;color:var(--subtle);text-transform:uppercase;letter-spacing:.03em;margin-top:1px}
+  /* coup d'œil */
+  .gl-card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px 14px}
+  .gl-h{font-size:12px;font-weight:800;margin-bottom:7px}
+  .gl-row{display:flex;align-items:flex-start;gap:8px;font-size:12px;padding:4px 0;line-height:1.4}
+  .gl-ic{flex:none;font-size:11px;width:14px;text-align:center;margin-top:1px}
+  .gl-row b{font-weight:700}
+  .gl-muted{color:var(--muted)}
+  .note{font-size:11.5px;color:var(--muted);margin:16px 2px 0;line-height:1.55;padding:12px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px}
+  .note b{color:var(--text)} .note .k{color:var(--accent2);font-weight:700}
+  /* desktop : 2 colonnes (coup d'œil + lecture + alerte à gauche · données à droite) */
+  @media(min-width:900px){
+    .wrap{max-width:1080px}
+    .cols{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:start}
+    .main,.aside{min-width:0}
+    .glance2{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:start}
+    .aside .grid{grid-template-columns:1fr}
+    .hero{margin-bottom:16px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="lead">Maquette <b>N13 — Aperçu coach v2</b>. La <b>Lecture Novalyz</b> passe <b>en tête</b> et <b>parle au coach</b> (bilan + état + reco), plus les phrases « athlète ». Les blocs de données suivent, réordonnés. (Vue mobile ; desktop = 2 colonnes.)</p>
+
+  <!-- HERO état du jour -->
+  <div class="hero">
+    <div class="hero-top">
+      <div class="hero-ini">MD</div>
+      <div style="flex:1;min-width:0">
+        <div class="hero-nm">Marie Dupont</div>
+        <div class="hero-sub">Intermédiaire · Prise de muscle · 5 ans · 62 kg</div>
+      </div>
+    </div>
+    <div class="hero-state">
+      <span class="hero-badge">État du jour</span>
+      <span class="hero-state-t">Prête à performer</span>
+    </div>
+  </div>
+
+  <div class="cols">
+  <div class="main">
+  <!-- COUP D'ŒIL : le coach comprend en 5 secondes -->
+  <div class="sl">Coup d'œil <span class="tag">comprendre en 5 s</span></div>
+  <div class="glance2">
+  <div class="gl-card" style="margin-bottom:9px">
+    <div class="gl-h">🏋️ Entraînement</div>
+    <div class="gl-row"><span class="gl-ic" style="color:var(--good)">▲</span><div><b>Progresse</b> — Développé couché (+2,5 kg), Squat (reps en hausse)</div></div>
+    <div class="gl-row"><span class="gl-ic" style="color:var(--bad)">▼</span><div><b>Recule</b> — Tractions (−1 rep depuis 2 semaines)</div></div>
+    <div class="gl-row"><span class="gl-ic" style="color:var(--good)">✓</span><div><b>Points forts</b> — Pecs &amp; jambes : volume et charge au rendez-vous</div></div>
+    <div class="gl-row"><span class="gl-ic" style="color:var(--warn)">⚠</span><div><b>Où ça pêche</b> — Dos : volume bas, déséquilibre poussée / tirage</div></div>
+  </div>
+  <div class="gl-card">
+    <div class="gl-h">❤️ État</div>
+    <div class="gl-row"><span class="gl-ic" style="color:var(--good)">●</span><div><b>Sommeil</b> <span class="gl-muted">correct · 7 h 10</span></div></div>
+    <div class="gl-row"><span class="gl-ic" style="color:var(--warn)">●</span><div><b>Stress</b> <span class="gl-muted">modéré · en légère hausse</span></div></div>
+    <div class="gl-row"><span class="gl-ic" style="color:var(--warn)">●</span><div><b>Douleur</b> <span class="gl-muted">épaule gauche, légère → à surveiller</span></div></div>
+    <div class="gl-row"><span class="gl-ic" style="color:var(--good)">●</span><div><b>Cardio</b> <span class="gl-muted">régulier · 3×/sem, FC repos stable</span></div></div>
+    <div class="gl-row"><span class="gl-ic" style="color:var(--good)">●</span><div><b>Énergie / fatigue</b> <span class="gl-muted">bonnes</span></div></div>
+  </div>
+  </div><!-- /glance2 -->
+
+  <!-- LECTURE NOVALYZ — EN TÊTE, ORIENTÉE COACH -->
+  <div class="sl">Lecture Novalyz <span class="tag">pour le coach</span> · fiable</div>
+  <div class="lecture">
+    <div class="lec-row"><span class="lec-dot" style="background:var(--good)"></span><div class="lec-t"><b>Marie est prête.</b> Récupération bonne (sommeil correct, fatigue faible) — elle peut encaisser une séance exigeante aujourd'hui.</div></div>
+    <div class="lec-row"><span class="lec-dot" style="background:var(--warn)"></span><div class="lec-t"><b>Charge récente élevée</b> (+18 % vs son habitude sur 7 j). À surveiller si ça se prolonge, mais la récup suit pour l'instant.</div></div>
+    <div class="lec-row"><span class="lec-dot" style="background:var(--warn)"></span><div class="lec-t"><b>Volume dos sous la cible</b> cette semaine : 6 séries réalisées pour ~10 visées. Déséquilibre poussée/tirage qui s'installe.</div></div>
+    <div class="lec-row"><span class="lec-dot" style="background:var(--good)"></span><div class="lec-t"><b>Assiduité régulière</b> : 3 séances sur 3 prévues, progression de charge au développé couché (+2,5 kg).</div></div>
+    <div class="reco">
+      <div class="reco-l">Reco pour ta prochaine séance avec elle</div>
+      <div class="reco-t">Maintiens l'intensité (elle est fraîche), mais <b>rééquilibre le dos</b> : ajoute 1-2 exercices de tirage. Surveille la charge si elle reste haute 7 j de plus.</div>
+    </div>
+  </div>
+
+  <!-- ALERTE -->
+  <div class="alert">
+    <div class="alert-h">⚠ Point de vigilance</div>
+    <div class="alert-t">Déséquilibre volume : dos nettement sous les pectoraux</div>
+    <div class="alert-a">→ Rééquilibrer le tirage sur les 2 prochaines séances.</div>
+  </div>
+
+  </div><!-- /main -->
+  <div class="aside">
+  <!-- BLOCS DE DONNÉES -->
+  <div class="sl">Données d'entraînement &amp; état</div>
+  <div class="grid">
+
+    <div class="card">
+      <div class="c-l">Charge &amp; assiduité</div>
+      <div class="c-big">+18<span class="c-unit">%</span> <span class="pill warn">élevée</span></div>
+      <div class="c-sub">Charge 7 j vs habitude · 3/3 séances</div>
+    </div>
+
+    <div class="card">
+      <div class="c-l">Récupération</div>
+      <div class="c-big">Bonne <span class="pill good">✓</span></div>
+      <div class="c-sub">Sommeil correct · fatigue faible</div>
+    </div>
+
+    <div class="card">
+      <div class="c-l">Bien-être</div>
+      <div class="c-big">78<span class="c-unit">/100</span></div>
+      <div class="c-sub">Hooper · stable sur 7 j</div>
+    </div>
+
+    <div class="card">
+      <div class="c-l">Ma montre</div>
+      <div class="c-big">8 240<span class="c-unit"> pas</span></div>
+      <div class="c-sub">Sommeil 7 h 10 · FC repos 58</div>
+    </div>
+
+    <div class="card wide">
+      <div class="c-l">Volume par muscle · cette semaine <span class="pill warn">dos bas</span></div>
+      <div class="vbar"><span class="n">Pecs</span><span class="track"><span class="fill" style="width:90%;background:var(--d1)"></span></span><span class="val">11</span></div>
+      <div class="vbar"><span class="n">Dos</span><span class="track"><span class="fill" style="width:50%;background:var(--warn)"></span></span><span class="val">6</span></div>
+      <div class="vbar"><span class="n">Jambes</span><span class="track"><span class="fill" style="width:80%;background:var(--d3)"></span></span><span class="val">10</span></div>
+      <div class="vbar"><span class="n">Épaules</span><span class="track"><span class="fill" style="width:70%;background:var(--d4)"></span></span><span class="val">8</span></div>
+    </div>
+
+    <div class="card wide">
+      <div class="c-l">Dernière séance <span style="color:var(--subtle);font-weight:600;text-transform:none">· lundi · Push</span></div>
+      <div class="ex"><b>Développé couché haltère</b><span>4 × 84 kg · RPE 8</span></div>
+      <div class="ex"><b>Développé incliné Hammer</b><span>3 × 60 kg · RPE 8</span></div>
+      <div class="ex"><b>Élévation latérale</b><span>3 × 10 kg · RPE 9</span></div>
+    </div>
+
+    <div class="card wide">
+      <div class="c-l">Nutrition <span style="color:var(--subtle);font-weight:600;text-transform:none">· moyenne 7 j</span></div>
+      <div class="macros">
+        <div class="macro"><div class="macro-v">1 980</div><div class="macro-l">kcal</div></div>
+        <div class="macro"><div class="macro-v" style="color:var(--d1)">118 g</div><div class="macro-l">protéines</div></div>
+        <div class="macro"><div class="macro-v" style="color:var(--d4)">190 g</div><div class="macro-l">glucides</div></div>
+        <div class="macro"><div class="macro-v" style="color:var(--d5)">68 g</div><div class="macro-l">lipides</div></div>
+      </div>
+      <div class="c-sub">Protéines un peu justes pour 62 kg (~1,9 g/kg visé).</div>
+    </div>
+
+  </div>
+  </div><!-- /aside -->
+  </div><!-- /cols -->
+
+  <div class="note"><b>Ce qui change (N13)</b> : <span class="k">① Coup d'œil</span> en tête — le coach voit <b>tout de suite</b> ce qui progresse / recule, les points forts, où ça pêche (entraînement) + l'état (sommeil, stress, douleur, cardio…). <span class="k">② Lecture Novalyz</span> juste après, formulée <b>pour le coach</b> + une <b>reco d'action</b>. <span class="k">③ Les blocs gardés</span> (charge, assiduité, récup, bien-être, ma montre, volume, dernière séance, nutrition, alerte) <b>réordonnés</b> : coup d'œil → synthèse → alerte → données. Tout vient des données réelles (progression par exo, volume/muscle, bien-être, montre, nutrition). À valider, puis implémentation.</div>
+</div>
+</body>
+</html>
