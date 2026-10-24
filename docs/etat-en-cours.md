@@ -6,11 +6,17 @@
 
 ## Où en est le travail
 - Branche de travail : `claude/novalyz-player-profile-mockups-g4bock`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`.
-- ✅ **`index.ts` DÉPLOYÉ** sur Supabase (N2 `anneesEffectives` + N5 `records_total`/`gagnes` permanent + N3 suivi corps : `mensurations`/`suivi_photos` + handlers). Bucket privé **`suivi-photos`** créé.
-- ✅ **PROD PROMUE** le 24 oct. : `dev → main` (merge, arbre identique à dev). Web prod à jour. APK DEV rebuild lancé. **Play Store (APK officiel) : à faire plus tard** (build depuis `main` → upload). SW = **v399** (bumper à chaque modif de `js/app.js`).
+- ✅ **`index.ts` DÉPLOYÉ** sur Supabase (N2 `anneesEffectives` + N5 `records_total`/`gagnes` permanent + N3 suivi corps : `mensurations`/`suivi_photos` + handlers + **AGENDA daté** : routes `getPlanning`/`planSeance`/`movePlanning`/`unplanPlanning` + `planning[]` dans `getAppData`). Buckets/tables : **`suivi-photos`** + table **`planning`** créées.
+- ✅ **PROD PROMUE** le 24 oct. : `dev → main` (merge, arbre identique à dev). Web prod à jour. APK DEV rebuild lancé. **Play Store (APK officiel) : à faire plus tard** (build depuis `main` → upload). SW = **v404** (bumper à chaque modif de `js/app.js`).
 - Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**46 suites vertes** à maintenir).
 
 ## Fait récemment (tout sur `dev`)
+- **AGENDA daté (planification des séances)** — modèle validé : **vrai agenda daté** (table `planning`, une date par séance), à côté de `programme` (qui garde la *semaine type* via `programme.jour`). Décisions : plusieurs séances/jour OK ; `statut` 'planifie' (calcul 'fait/manqué' plus tard) ; bouton « Pré-remplir semaine type ».
+  - **Backend** : `supabase/planning.sql` (DDL + doc) ; routes dans `index.ts` ; `getAppData.planning[]` (athlète, aujourd'hui → +14 j). **DÉPLOYÉ.**
+  - **Composant coach** `.cdag` (`cdAgRender`/`cdAgLoadWeek`/`cdAgPlace`/`cdAgMove`/`cdAgRemove`/`cdAgPrefill`) : sélecteur de semaine + glisser-déposer + « À planifier ». Monté à : **onglet Programme** (`#cd-prog-agenda-root`, exception CSS `prog-has-inline`), **Progression › Évolution muscu** (`#cd-agenda-prog`) et **cardio** (`#cd-agenda-progc`). **Retiré de l'Aperçu.**
+  - **Athlète** : carte lecture seule « Mes séances prévues » dans l'Accueil (`renderTjPlanning`, `#tj-planning`).
+  - Maquette de réf. : `mockups/novalyz-rail-agenda.html` (desktop + mobile, nav semaine + drag).
+  - **Reste à voir** : rail *Tendances* (non fait, à la demande) ; mention fiabilité éventuelle ; « séance du jour » athlète pourrait à terme se baser sur le planning plutôt que `programme.jour`.
 - **Générateur de programmes v2 COMPLET** (spec `generateur-v2.md`, maquette `mockups/novalyz-generateur-v2.html`) :
   - Moteur : `_G2_BLOCKS` (11 blocs muscle), `_g2GenDays` (fb/ul/ppl/split/custom), `_genProgramme2` (hypertrophie), `_genProgrammeForce` (powerlifting, listes déroulantes). Fonctions pures testées (`tests/generateur-v2.test.js`).
   - UI : modal athlète `ouvrirGenProgramme` / `_genRender` / `_genGenerer` → 2 parcours (galerie débutant `_G2_PRESETS` / configurateur objectif **Hypertrophie|Force** · organisation · jours · temps). Force = squelette éditable (`_g2ForceSkel`, `_g2ForceLignesFromDOM`, pools `_G2_FPOOL`).
