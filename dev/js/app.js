@@ -13190,8 +13190,9 @@ function _maMuscuTendances(data) {
     main += _maSec('Tonnage soulevé', tonLbl + ' · ' + _maPLabel(), 'tonnage')
       + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg soulevés au total ce jour, ex. 5,8 t = 5 800 kg). Seuls les jours d\'entraînement sont tracés. La courbe qui monte = plus de volume soulevé.', wtD);
   } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
-  // ── Vraies analyses (ajouts) : force e1RM, fréquence/muscle, répartition d'intensité ──
-  main += _maForceChart(data) + _maFreqMuscleBloc(data) + _maIntensiteBloc(data);
+  // ── Vraies analyses (ajouts) : force e1RM dans la colonne principale ;
+  // fréquence/muscle + répartition d'intensité déplacées dans le rail droit. ──
+  main += _maForceChart(data);
   var cmp = data.comparison || {}, rows = '';
   try { var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents</span><span class="v" style="color:' + (t.evol_pct >= 0 ? '#00A854' : '#DC3545') + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>'; } catch (e) {}
   var reg = (data.dashboard && data.dashboard.regularite) || {};
@@ -13200,7 +13201,8 @@ function _maMuscuTendances(data) {
   // Rail droit (bureau) : résumé « Ce qui bouge » + bloc Novalyz. En mobile,
   // .ma-cols2/.ma-col* passent en display:contents → suite verticale inchangée,
   // juste précédée du résumé comme avant.
-  var rail = (rows ? _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>' : '') + _maNovaAsk();
+  var rail = (rows ? _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>' : '')
+    + _maFreqMuscleBloc(data) + _maIntensiteBloc(data) + _maNovaAsk();
   // RÉGULARITÉ EN TÊTE (N9) : dans la colonne principale (même largeur que les
   // cartes), AU-DESSUS du sélecteur de période (fixe sur 12 sem.). Rail aligné en
   // haut, comme les autres panes → placement cohérent.
