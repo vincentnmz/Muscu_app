@@ -436,6 +436,8 @@
           </div>
           <label>Date de naissance</label>
           <input type="date" id="crea-ddn">
+          <label>E-mail <span style="color:var(--text-muted);font-weight:400">(facultatif — pour les récaps & notifs)</span></label>
+          <input type="email" id="crea-email" placeholder="athlete@exemple.com" autocomplete="off">
           <div id="crea-annees-wrap"><label>Années de pratique</label><input type="number" id="crea-annees" placeholder="Ex: 3" min="0" max="50"></div>
           <label>Mot de passe</label>
           <input type="text" id="crea-password" placeholder="Mot de passe (min. 6)">
@@ -543,6 +545,10 @@
           <div class="fjd-hero-pills" id="cd-hero-pills"></div>
         </div>
       </div>
+      <!-- N13 — « Coup d'œil » : le coach comprend en 5 s (entraînement : progresse /
+           recule / points forts / où ça pêche · état : sommeil, fatigue, stress, douleur,
+           récup). Rempli par renderCoachCoupDoeil. En tête, avant le reste. -->
+      <div id="cd-coupdoeil"></div>
       <!-- Bloc IA coach (desktop) : pose des questions sur CE client ; l'IA est
            nourrie des données de l'athlète (action chatIA). Caché en mobile. -->
       <div class="dash-card cd-ia-card" id="cd-ia-card">
@@ -1062,6 +1068,9 @@
          détail » (régularité·bien-être·pas), puis récompenses tout en bas. */
       #tab-accueil .tj-greet{order:1;}
       #tab-accueil .tj-banner{order:2;}
+      /* Bloc charge/fatigue unifié : sans order il héritait de 0 → il passait AVANT
+         le « Bonjour » sur mobile. On le place juste après le greet (cockpit). */
+      #tab-accueil #tj-chargefatigue{order:2;}
       #tab-accueil #tj-nova{order:3;}
       #tab-accueil .tj-seance{order:4;}
       #tab-accueil #tj-attention{order:5;}
@@ -1591,6 +1600,8 @@
               <div class="exo-actuel-perf" id="exo-actuel-perf"></div>
               <div class="exo-actuel-cible" id="exo-actuel-cible"></div>
               <div id="exo-actuel-suggestion"></div>
+              <!-- #4 : checklist des séries prévues (cochées au fur et à mesure) -->
+              <div id="plan-series-actuel"></div>
             </div>
 
             <!-- Séries déjà faites -->
@@ -1983,6 +1994,9 @@
 #tab-historique .ma-rclegend .mut{color:var(--text-subtle);font-weight:500;}
 @media (min-width:992px){
   #tab-historique .ma-kgrid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
+  /* Desktop : les cartes de la colonne principale remplissent la colonne (pas de
+     plafond individuel → toutes la MÊME largeur, pas de vide avec le rail).
+     La largeur est bornée par la grille .ma-cols2 (1fr + rail 340px). */
   #tab-historique .ma-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
   /* Détail/Tendances : colonne principale large + rail droit (chart moins écrasé) */
   /* Rail COLLANT (sticky) : la colonne de droite reste visible quand on fait
@@ -2125,11 +2139,16 @@
           <button id="ma-tab-detail" onclick="maSetTab('detail')">Évolution</button>
           <button id="ma-tab-tendances" onclick="maSetTab('tendances')">Tendances</button>
           <button id="ma-tab-historique" onclick="maSetTab('historique')">Historique</button>
+          <button id="ma-tab-suivi" onclick="maSetTab('suivi')" style="display:none">Photo &amp; mensurations</button>
         </div>
         </div>
 
         <!-- Le sélecteur de période est rendu DANS chaque pane (sous la Lecture en
              Résumé, au-dessus du graphe en Tendances) via _maPeriodHtml(). -->
+
+        <!-- Suivi corps (coach, consultation) — remplis par _maSuivi(). Même contenu. -->
+        <div id="ma-muscu-suivi" class="ma-pane" style="display:none;"></div>
+        <div id="ma-cardio-suivi" class="ma-pane" style="display:none;"></div>
 
         <div id="ma-muscu-resume" class="ma-pane">
 <div class="ma-sec">Ce mois-ci</div>
@@ -2324,6 +2343,14 @@
         #tab-conseils .cv-field{ flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:22px; padding:11px 16px; font-size:13px; color:var(--text); font-family:inherit; outline:none; resize:none; max-height:96px; line-height:1.4; }
         #tab-conseils .cv-send{ width:44px; height:44px; border-radius:999px; background:var(--accent); color:#fff; display:grid; place-items:center; flex:none; border:none; cursor:pointer; box-shadow:0 6px 14px rgba(26,95,255,.32); }
         #tab-conseils .cv-send svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+        /* N6 — Desktop : le carousel de suggestions se parcourt au doigt (slots pleine
+           largeur + swipe), impossible à la souris → on affiche TOUTES les phrases
+           suggérées en les faisant s'enrouler, et on masque les points (plus de carousel). */
+        @media (min-width:992px){
+          #tab-conseils .cv-sugg{ flex-wrap:wrap; justify-content:center; gap:8px; overflow-x:visible; scroll-snap-type:none; padding:0 15px; }
+          #tab-conseils .cv-slot{ flex:0 0 auto; padding:0; scroll-snap-align:none; max-width:100%; }
+          #tab-conseils .cv-dots{ display:none; }
+        }
       </style>
 
       <!-- VUE LISTE DES CONVERSATIONS -->
@@ -2371,7 +2398,9 @@
         </div>
         <div class="cv-input">
           <input type="file" id="coach-media-input" accept="image/*,video/*" style="display:none" onchange="_coachMediaChoisi(this)">
-          <button class="cv-media-btn" onclick="_coachMediaPick()" aria-label="Envoyer une photo ou vidéo" title="Photo / vidéo pour ton coach" style="flex:none;width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);display:grid;place-items:center;cursor:pointer;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.2"/></svg></button>
+          <input type="file" id="coach-media-input-cam" accept="image/*,video/*" capture="environment" style="display:none" onchange="_coachMediaChoisi(this)">
+          <button class="cv-media-btn" onclick="_coachMediaPickCam()" aria-label="Prendre une photo ou vidéo en direct" title="Prendre en direct (caméra)" style="flex:none;width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);display:grid;place-items:center;cursor:pointer;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.2"/></svg></button>
+          <button class="cv-media-btn" onclick="_coachMediaPick()" aria-label="Envoyer depuis la galerie" title="Depuis la galerie" style="flex:none;width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);display:grid;place-items:center;cursor:pointer;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg></button>
           <textarea class="cv-field" id="athlete-chat-input" rows="1" placeholder="Écrire à ton coach…"
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();envoyerMessageAthleteCoach();}"></textarea>
           <button class="cv-send" onclick="envoyerMessageAthleteCoach()" aria-label="Envoyer"><svg width="19" height="19" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
@@ -2660,6 +2689,34 @@
         <span class="bl-ttl">Douleurs &amp; blessures</span>
       </div>
       <div class="bl-body" id="bl-body"></div>
+    </div>
+
+    <!-- ONGLET SUIVI CORPS — photos avant/après + mensurations (accès depuis « Forme ›
+         Mes suivis »). Saisie par l'athlète ; le coach consulte (Progression). Construit
+         par renderSuiviCorps(). -->
+    <div id="tab-suivi" class="tab-content">
+      <style id="suivi-css">
+        #tab-suivi.tab-content{ position:fixed; top:0; left:50%; transform:translateX(-50%); width:100%; max-width:var(--app-w); bottom:calc(56px + env(safe-area-inset-bottom,0px)); background:var(--bg); z-index:40; padding:0; }
+        #tab-suivi.tab-content.active{ display:flex; flex-direction:column; }
+        #tab-suivi .sv-top{ display:flex; align-items:center; gap:12px; padding:calc(14px + env(safe-area-inset-top,0px)) 15px 14px; border-bottom:1px solid var(--border); background:var(--surface); flex:none; }
+        #tab-suivi .sv-back{ width:34px; height:34px; border-radius:999px; background:var(--surface2); display:grid; place-items:center; color:var(--text-muted); flex:none; border:none; cursor:pointer; }
+        #tab-suivi .sv-back svg{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+        #tab-suivi .sv-ttl{ font-family:var(--font-heading); font-size:16px; }
+        #tab-suivi .sv-body{ flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px; }
+        #tab-suivi .sv-subt{ display:flex; gap:6px; }
+        #tab-suivi .sv-subt button{ flex:1; background:var(--surface); border:1px solid var(--border); color:var(--text-muted); border-radius:10px; padding:9px; font:inherit; font-weight:800; font-size:12.5px; cursor:pointer; }
+        #tab-suivi .sv-subt button.on{ background:var(--accent); border-color:var(--accent); color:var(--on-accent,#fff); }
+        #tab-suivi .sv-sec{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-subtle); font-weight:700; margin:6px 2px -2px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+        #tab-suivi .sv-sec .r{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:none; letter-spacing:0; }
+        #tab-suivi .sv-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:13px 14px; }
+      </style>
+      <div class="sv-top">
+        <button class="sv-back" onclick="switchTab('etat')" aria-label="Retour"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <span class="sv-ttl">Photos &amp; mensurations</span>
+      </div>
+      <input type="file" id="suivi-photo-input" accept="image/*" capture="environment" style="display:none" onchange="_svPhotoChoisi(this)">
+      <input type="file" id="suivi-photo-input-gal" accept="image/*" style="display:none" onchange="_svPhotoChoisi(this)">
+      <div class="sv-body" id="suivi-body"></div>
     </div>
 
     <!-- ONGLET NUTRITION — sous-écran plein écran (accès depuis « Forme »).
