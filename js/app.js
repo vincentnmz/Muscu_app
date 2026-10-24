@@ -5701,7 +5701,7 @@ var _CD_AG_DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 var _CD_AG_ABBR = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 var _CD_AG_MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
-function _cdAgMounts() { return ['cd-agenda-root', 'cd-prog-agenda-root'].map(function (id) { return document.getElementById(id); }).filter(Boolean); }
+function _cdAgMounts() { return ['cd-agenda-root', 'cd-prog-agenda-root', 'cd-agenda-prog'].map(function (id) { return document.getElementById(id); }).filter(Boolean); }
 function _cdAgMonday(off) { var d = new Date(); var k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k + off * 7); d.setHours(0, 0, 0, 0); return d; }
 function _cdAgYmd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function _cdAgDateOf(i) { var m = _cdAgMonday(_cdAgOff); m.setDate(m.getDate() + i); return m; }
@@ -12843,11 +12843,15 @@ function _maMuscuExercice(data) {
   // ordre d'origine (body puis Records) inchangé.
   // head + periodSel DANS la colonne principale → le rail démarre toujours en haut
   // (même position que les autres panes), pas décalé sous les sélecteurs.
+  // Rail coach de « Évolution » : on y pose l'agenda daté (comme l'Aperçu et
+  // l'onglet Programme). Côté athlète, pas d'agenda → rail = bloc Novalyz seul.
+  var _agMount = (typeof _maCoach !== 'undefined' && _maCoach) ? '<div id="cd-agenda-prog" class="dash-card" style="padding:14px;margin-bottom:12px"></div>' : '';
   _maSet('ma-muscu-detail',
     '<div class="ma-cols2">'
     +   '<div class="ma-colmain">' + head + periodSel + body + '</div>'
-    +   '<div class="ma-colrail">' + _maNovaAsk() + '</div>'
+    +   '<div class="ma-colrail">' + _agMount + _maNovaAsk() + '</div>'
     + '</div>');
+  if (_agMount) { try { cdAgRender(); } catch (e) {} }
 }
 
 var _maExoSel = null, _maExoMetric = 'cr';
