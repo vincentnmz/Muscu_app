@@ -13166,7 +13166,7 @@ function _maRegulariteBloc(data) {
     + '</div>';
   return _maSec('Régularité', sub, 'regularite')
     + '<div class="ma-card" style="padding:13px 15px">'
-    + '<div style="position:relative;height:84px;display:flex;align-items:flex-end;gap:4px">' + objLine + bars + '</div>'
+    + '<div style="position:relative;height:124px;display:flex;align-items:flex-end;gap:5px">' + objLine + bars + '</div>'
     + countsRow
     + stats
     + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:9px">1 barre = jours d\'entraînement de la semaine · <span style="color:var(--good)">vert</span> objectif atteint · <span style="color:var(--warn)">orange</span> en dessous · <span style="color:var(--bad)">rouge</span> semaine vide.</div>'
