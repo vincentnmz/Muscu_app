@@ -1075,7 +1075,15 @@
       #tab-accueil #tj-chargefatigue{order:2;}
       #tab-accueil #tj-nova{order:3;}
       #tab-accueil .tj-seance{order:4;}
+      #tab-accueil #tj-planning{order:4;}
       #tab-accueil #tj-attention{order:5;}
+      /* Séances prévues (agenda daté, lecture seule athlète) */
+      #tab-accueil .tjp-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;margin-top:9px;}
+      #tab-accueil .tjp-item{flex:none;min-width:116px;background:var(--tj-surface2);border:1px solid var(--tj-border);border-left:3px solid var(--tj-accent);border-radius:12px;padding:9px 11px;}
+      #tab-accueil .tjp-item.today{background:var(--tj-accent-a);border-color:var(--tj-accent);}
+      #tab-accueil .tjp-d{font-size:10.5px;font-weight:800;color:var(--tj-muted);text-transform:uppercase;letter-spacing:.03em;}
+      #tab-accueil .tjp-item.today .tjp-d{color:var(--tj-accent);}
+      #tab-accueil .tjp-n{font-size:13px;font-weight:800;color:var(--tj-text);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       #tab-accueil .tj-sep{order:6;}
       #tab-accueil .tj-reg{order:7;}
       #tab-accueil .tj-bwrap{order:8;}
@@ -1155,6 +1163,9 @@
           <button class="tj-cta" onclick="switchTab('seance')"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>Commencer ma séance</button>
           <button class="tj-other" onclick="switchTab('seance')"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Voir mon entraînement</button>
         </div>
+
+        <!-- Séances prévues par le coach (agenda daté, lecture seule) — renderTjPlanning(). -->
+        <div class="tj-card tj-reveal" id="tj-planning" style="padding:14px 16px;box-shadow:var(--tj-sh);display:none"></div>
 
         <!-- P5 : séparateur visuel « Le détail » — bascule du cockpit décision
              (état/reco/action/alerte au-dessus) vers la consultation. Mobile only. -->

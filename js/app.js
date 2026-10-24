@@ -14052,6 +14052,34 @@ function renderPoidsSpark(poids) {
 // signaux DÉJÀ calculés par le moteur (disponibilité, récup, ACWR) + sommeil
 // montre. Rien d'inventé : chaque tuile n'apparaît que si la valeur existe, et
 // l'ACWR seulement s'il est jugé fiable par le moteur (acwr_fiable !== false).
+// Séances prévues (agenda daté posé par le coach) — lecture seule pour l'athlète.
+// Source : data.planning[] (getAppData, fenêtre aujourd'hui → +14 j). Masqué si vide.
+var _TJP_PAL = ['#1A5FFF', '#00A854', '#9D5FD3', '#E07800', '#E5484D', '#0EA5E9', '#D946A6'];
+var _TJP_DOW = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+var _TJP_MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+function renderTjPlanning(data) {
+  var host = document.getElementById('tj-planning'); if (!host) return;
+  var pl = (data && Array.isArray(data.planning)) ? data.planning.slice() : [];
+  if (!pl.length) { host.style.display = 'none'; host.innerHTML = ''; return; }
+  // Couleur par séance (même logique que l'agenda coach : ordre d'apparition dans le programme).
+  var order = [], seen = {};
+  (data.programme || []).forEach(function (l) { if (!l) return; var s = String(l.seance_id || '').trim(); if (s && !seen[s]) { seen[s] = 1; order.push(s); } });
+  function col(sid) { var i = order.indexOf(String(sid)); return _TJP_PAL[(i < 0 ? 0 : i) % _TJP_PAL.length]; }
+  var td = new Date(); var tiso = td.getFullYear() + '-' + String(td.getMonth() + 1).padStart(2, '0') + '-' + String(td.getDate()).padStart(2, '0');
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  pl.sort(function (a, b) { return String(a.date_iso) < String(b.date_iso) ? -1 : 1; });
+  var items = pl.slice(0, 7).map(function (p) {
+    var iso = String(p.date_iso || ''); var d = iso ? new Date(iso + 'T00:00:00') : null;
+    var isToday = iso === tiso;
+    var dlab = d ? (_TJP_DOW[d.getDay()] + ' ' + d.getDate() + ' ' + _TJP_MON[d.getMonth()]) : '';
+    return '<div class="tjp-item' + (isToday ? ' today' : '') + '" style="border-left-color:' + col(p.seance_id) + '">'
+      + '<div class="tjp-d">' + (isToday ? "Aujourd'hui" : dlab) + '</div>'
+      + '<div class="tjp-n">' + esc(p.seance_id) + '</div></div>';
+  }).join('');
+  host.style.display = '';
+  host.innerHTML = '<div class="tj-label">Mes séances prévues</div><div class="tjp-row">' + items + '</div>';
+}
+
 function renderTjFormeRail(data) {
   var el = document.getElementById('tj-forme-rail'); if (!el) return;
   var m = (data && data.moteur) || {}, dash = (data && data.dashboard) || {};
@@ -15189,6 +15217,9 @@ function renderAujourdhui(data) {
 
   // --- Ma forme en un coup d'œil (rail bureau) ---
   try { renderTjFormeRail(data); } catch (e) {}
+
+  // --- Séances prévues par le coach (agenda daté, lecture seule) ---
+  try { renderTjPlanning(data); } catch (e) {}
 
   // --- Séance du jour : 1re séance du programme (pas de planification par jour) ---
   try {
