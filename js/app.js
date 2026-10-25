@@ -5036,7 +5036,7 @@ function renderCoachSurveiller(athletes) {
     const lignesAlertes = alertes.map((al, j) => `
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
         <div style="flex:1;font-size:11px;color:${couleurSeverite[al.severite] || '#a3a3a3'};font-weight:600">${al.message}${al.recurrence_semaines > 1 ? ` <span style="color:var(--text-muted);font-weight:400">(depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
-        <button class="btn-sm btn-outline btn-traiter" data-aidx="${i}" data-jidx="${j}" style="white-space:nowrap" onclick="event.stopPropagation()">✓ Traité</button>
+        <button class="btn-sm btn-outline btn-traiter" data-aidx="${i}" data-jidx="${j}" style="white-space:nowrap" onclick="event.stopPropagation()">Marquer traité</button>
       </div>`).join('');
     return `
       <div style="padding:10px;background:${couleur}1a;border-radius:8px;margin-top:8px">
@@ -5277,6 +5277,7 @@ async function ouvrirDetailAthleteCoach(a, initialTab) {
     renderCoachOverview(data);
     try { renderCoachCoupDoeil(data); } catch (_) {}         // N13 — Coup d'œil en tête (entraînement + état)
     try { renderCoachProchaineSeance(data); } catch (_) {}   // « prochaine séance à faire » (hub coach)
+    try { cdAgInit(); } catch (_) {}                         // agenda daté (rail Aperçu + onglet Programme)
     try { renderCoachHubVolume(data); } catch (_) {}      // volume par muscle (hub)
     try { renderCoachHubSeances(data); } catch (_) {}     // dernières séances (hub)
     try { renderCoachHubNutrition(data); } catch (_) {}   // carte macros du hub
@@ -5681,6 +5682,139 @@ function renderCoachProchaineSeance(data) {
     + '<div style="font-size:16px;font-weight:900;letter-spacing:-.01em;">' + esc(nom) + '</div>'
     + (lignes ? '<div style="margin-top:8px;">' + lignes + '</div>'
               : '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Programme sans détail d\'exercices pour cette séance.</div>');
+}
+
+// ===================== AGENDA DATÉ (coach) ================================
+// Planifie les séances du programme de l'athlète sur des DATES réelles (table
+// `planning`). Monté à 2 endroits : rail Aperçu (#cd-agenda-root, desktop) et
+// onglet Programme (#cd-prog-agenda-root, tous écrans). Routes : getPlanning /
+// planSeance / movePlanning / unplanPlanning. Les séances viennent de
+// coachAthleteData.programme (distinctes par seance_id) ; « À planifier » = celles
+// non posées la semaine affichée. « Pré-remplir » projette programme.jour (semaine type).
+var _cdAgOff = 0;            // décalage de semaine (0 = semaine en cours)
+var _cdAgRows = [];          // lignes planning de la semaine affichée
+var _cdAgLoading = false;
+var _cdAgDrag = null;        // {id:…} (pastille posée) | {seance_id:…} (depuis « à planifier »)
+var _cdAgSelChip = null;     // séance sélectionnée au doigt (mobile) → clic jour = poser
+var _CD_AG_PAL = ['#1A5FFF', '#00A854', '#9D5FD3', '#E07800', '#E5484D', '#0EA5E9', '#D946A6'];
+var _CD_AG_DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+var _CD_AG_ABBR = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+var _CD_AG_MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+function _cdAgMounts() { return ['cd-prog-agenda-root', 'cd-agenda-prog', 'cd-agenda-progc'].map(function (id) { return document.getElementById(id); }).filter(Boolean); }
+function _cdAgMonday(off) { var d = new Date(); var k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k + off * 7); d.setHours(0, 0, 0, 0); return d; }
+function _cdAgYmd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _cdAgDateOf(i) { var m = _cdAgMonday(_cdAgOff); m.setDate(m.getDate() + i); return m; }
+function _cdAgFmt(d) { return d.getDate() + ' ' + _CD_AG_MON[d.getMonth()]; }
+function _cdAgEsc(s) { return (typeof escapeHtml === 'function') ? escapeHtml(String(s == null ? '' : s)) : String(s == null ? '' : s); }
+function _cdAgAthlete() { return (typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id) ? coachAthleteCourant.athlete_id : null; }
+
+// Séances distinctes du programme (ordre d'apparition) + nb d'exos, couleur, jour type.
+function _cdAgSeances() {
+  var prog = (typeof coachAthleteData !== 'undefined' && coachAthleteData && Array.isArray(coachAthleteData.programme)) ? coachAthleteData.programme : [];
+  var order = [], seen = {}, cnt = {}, jour = {};
+  prog.forEach(function (l) {
+    if (!l) return; var sid = String(l.seance_id || '').trim(); if (!sid) return;
+    if (!seen[sid]) { seen[sid] = 1; order.push(sid); }
+    cnt[sid] = (cnt[sid] || 0) + 1;
+    if (l.jour != null && jour[sid] == null) jour[sid] = Number(l.jour);
+  });
+  return order.map(function (sid, i) { return { id: sid, nom: sid, exos: cnt[sid], col: _CD_AG_PAL[i % _CD_AG_PAL.length], jour: (jour[sid] != null ? jour[sid] : null) }; });
+}
+function _cdAgSeanceMap() { var m = {}; _cdAgSeances().forEach(function (s) { m[s.id] = s; }); return m; }
+function _cdAgRowsForDay(iso) { return (_cdAgRows || []).filter(function (r) { return String(r.date) === iso; }); }
+function _cdAgUnplanned() { var placed = {}; (_cdAgRows || []).forEach(function (r) { placed[String(r.seance_id)] = 1; }); return _cdAgSeances().filter(function (s) { return !placed[s.id]; }); }
+
+// Chargement de la semaine affichée.
+function cdAgLoadWeek() {
+  var aid = _cdAgAthlete(); if (!aid) { _cdAgRows = []; cdAgRender(); return; }
+  var from = _cdAgYmd(_cdAgMonday(_cdAgOff)), to = _cdAgYmd(_cdAgDateOf(6));
+  _cdAgLoading = true; cdAgRender();
+  _cdPost({ action: 'getPlanning', athlete_id: aid, from: from, to: to }).then(function (r) {
+    _cdAgLoading = false; _cdAgRows = (r && r.rows) ? r.rows : []; cdAgRender();
+  }).catch(function () { _cdAgLoading = false; _cdAgRows = []; cdAgRender(); });
+}
+function cdAgInit() { _cdAgOff = 0; _cdAgSelChip = null; cdAgLoadWeek(); }
+function cdAgGo(d) { _cdAgOff += d; _cdAgSelChip = null; cdAgLoadWeek(); }
+function cdAgToday() { _cdAgOff = 0; _cdAgSelChip = null; cdAgLoadWeek(); }
+
+// Actions (puis rechargement de la semaine → re-render des 2 montages).
+function cdAgPlace(dateISO, seanceId) { var aid = _cdAgAthlete(); if (!aid) return; _cdAgSelChip = null; _cdPost({ action: 'planSeance', athlete_id: aid, date: dateISO, seance_id: seanceId, source: 'coach' }).then(cdAgLoadWeek); }
+function cdAgMove(id, dateISO) { _cdPost({ action: 'movePlanning', id: id, date: dateISO }).then(cdAgLoadWeek); }
+function cdAgRemove(id) { _cdPost({ action: 'unplanPlanning', id: id }).then(cdAgLoadWeek); }
+function cdAgPrefill() {
+  var aid = _cdAgAthlete(); if (!aid) return;
+  var placed = {}; (_cdAgRows || []).forEach(function (r) { placed[String(r.seance_id)] = 1; });
+  var todo = _cdAgSeances().filter(function (s) { return s.jour != null && s.jour >= 1 && s.jour <= 7 && !placed[s.id]; });
+  if (!todo.length) return;
+  Promise.all(todo.map(function (s) { var iso = _cdAgYmd(_cdAgDateOf(s.jour - 1)); return _cdPost({ action: 'planSeance', athlete_id: aid, date: iso, seance_id: s.id, source: 'auto' }); })).then(cdAgLoadWeek);
+}
+function _cdAgDrop(iso) {
+  if (!_cdAgDrag) return;
+  if (_cdAgDrag.seance_id) cdAgPlace(iso, _cdAgDrag.seance_id);
+  else if (_cdAgDrag.id) cdAgMove(_cdAgDrag.id, iso);
+  _cdAgDrag = null;
+}
+function _cdAgDayClick(iso) { if (_cdAgSelChip) { cdAgPlace(iso, _cdAgSelChip); } }
+
+function cdAgRender() {
+  var mounts = _cdAgMounts(); if (!mounts.length) return;
+  var smap = _cdAgSeanceMap();
+  var a = _cdAgMonday(_cdAgOff), b = _cdAgDateOf(6);
+  var lab = _cdAgOff === 0 ? 'Cette semaine' : (_cdAgOff === 1 ? 'Semaine prochaine' : (_cdAgOff === -1 ? 'Semaine dernière' : (_cdAgOff > 0 ? 'Semaine +' + _cdAgOff : 'Semaine ' + _cdAgOff)));
+  var hasProg = _cdAgSeances().length > 0;
+  var rowsHtml = '';
+  for (var i = 0; i < 7; i++) {
+    var dt = _cdAgDateOf(i), iso = _cdAgYmd(dt), dayRows = _cdAgRowsForDay(iso);
+    var pills = dayRows.map(function (r) {
+      var s = smap[String(r.seance_id)], col = s ? s.col : '#64748b', nom = s ? s.nom : String(r.seance_id), det = s ? (s.exos + ' exos') : '';
+      return '<span class="cdag-pill" draggable="true" data-pid="' + r.id + '" style="background:' + col + '">' + _cdAgEsc(nom) + (det ? ' <small>' + det + '</small>' : '') + '<span class="cdag-x" data-rm="' + r.id + '" title="Retirer">✕</span></span>';
+    }).join('');
+    rowsHtml += '<div class="cdag-day' + (dayRows.length ? ' has' : '') + '" data-iso="' + iso + '"><div class="cdag-dd"><b>' + _CD_AG_ABBR[i] + '</b><span>' + dt.getDate() + '</span></div><div class="cdag-ct">' + (pills || '<span class="cdag-empty">— repos</span>') + '</div></div>';
+  }
+  var unpl = _cdAgUnplanned();
+  var chips = unpl.length
+    ? unpl.map(function (s) { return '<span class="cdag-chip' + (_cdAgSelChip === s.id ? ' sel' : '') + '" draggable="true" data-sid="' + _cdAgEsc(s.id) + '" style="background:' + s.col + '">' + _cdAgEsc(s.nom) + '</span>'; }).join('')
+    : '<span class="cdag-sub">Tout est planifié ✓</span>';
+  var canPrefill = _cdAgSeances().some(function (s) { return s.jour != null; }) && unpl.length;
+  var html = '<div class="cdag-head">'
+    + '<button class="cdag-nav" data-nav="-1" title="Semaine précédente">‹</button>'
+    + '<div class="cdag-wl"><b>' + lab + '</b><span>' + _cdAgFmt(a) + ' – ' + _cdAgFmt(b) + '</span></div>'
+    + (_cdAgOff !== 0 ? '<button class="cdag-today" data-today="1">Aujourd\'hui</button>' : '')
+    + '<button class="cdag-nav" data-nav="1" title="Semaine suivante">›</button>'
+    + '</div>';
+  if (!hasProg) {
+    html += '<div class="cdag-sub" style="padding:8px 2px">Aucune séance dans le programme — crée des séances pour pouvoir les planifier.</div>';
+  } else {
+    html += '<div class="cdag-sub" style="margin:2px 2px 8px">Glisse une séance sur un jour · ✕ pour retirer.</div>'
+      + (_cdAgLoading ? '<div class="cdag-sub" style="padding:4px 2px">Chargement…</div>' : '')
+      + '<div class="cdag-days">' + rowsHtml + '</div>'
+      + '<div class="cdag-topl"><div class="cdag-lab">À planifier' + (canPrefill ? ' <button class="cdag-prefill" data-prefill="1">↳ Pré-remplir semaine type</button>' : '') + '</div><div class="cdag-chips">' + chips + '</div></div>';
+  }
+  mounts.forEach(function (root) { root.innerHTML = '<div class="cdag">' + html + '</div>'; _cdAgBind(root); });
+}
+
+function _cdAgBind(root) {
+  root.querySelectorAll('[data-nav]').forEach(function (bt) { bt.onclick = function (e) { e.stopPropagation(); cdAgGo(parseInt(bt.getAttribute('data-nav'), 10)); }; });
+  var tb = root.querySelector('[data-today]'); if (tb) tb.onclick = function (e) { e.stopPropagation(); cdAgToday(); };
+  var pf = root.querySelector('[data-prefill]'); if (pf) pf.onclick = function (e) { e.stopPropagation(); cdAgPrefill(); };
+  root.querySelectorAll('[data-rm]').forEach(function (x) { x.onclick = function (e) { e.stopPropagation(); cdAgRemove(parseInt(x.getAttribute('data-rm'), 10)); }; });
+  root.querySelectorAll('.cdag-pill[draggable]').forEach(function (pl) {
+    pl.addEventListener('dragstart', function (e) { _cdAgDrag = { id: parseInt(pl.getAttribute('data-pid'), 10) }; pl.classList.add('cdag-dragging'); try { e.dataTransfer.setData('text/plain', ''); } catch (_) {} });
+    pl.addEventListener('dragend', function () { pl.classList.remove('cdag-dragging'); _cdAgDrag = null; });
+  });
+  root.querySelectorAll('.cdag-chip[draggable]').forEach(function (c) {
+    c.addEventListener('dragstart', function (e) { _cdAgDrag = { seance_id: c.getAttribute('data-sid') }; try { e.dataTransfer.setData('text/plain', ''); } catch (_) {} });
+    c.addEventListener('dragend', function () { _cdAgDrag = null; });
+    c.onclick = function (e) { e.stopPropagation(); var sid = c.getAttribute('data-sid'); _cdAgSelChip = (_cdAgSelChip === sid) ? null : sid; cdAgRender(); };
+  });
+  root.querySelectorAll('.cdag-day').forEach(function (day) {
+    var iso = day.getAttribute('data-iso');
+    day.addEventListener('dragover', function (e) { e.preventDefault(); day.classList.add('cdag-dropok'); });
+    day.addEventListener('dragleave', function () { day.classList.remove('cdag-dropok'); });
+    day.addEventListener('drop', function (e) { e.preventDefault(); day.classList.remove('cdag-dropok'); _cdAgDrop(iso); });
+    day.addEventListener('click', function (e) { if (e.target.closest('.cdag-pill') || e.target.closest('[data-rm]')) return; _cdAgDayClick(iso); });
+  });
 }
 
 function renderCoachOverview(data) {
@@ -7940,18 +8074,22 @@ function renderProgrammeCoach() {
     var canvas = '<div class="pb-canvas"><div class="pb-ctop"><span class="dot" style="width:12px;height:12px;background:' + aMcol + '"></span><h3>' + esc(String(activeSid)) + '</h3>'
       + '<span class="pb-sub">' + (aJour ? '· ' + _PROG_JOURS_LONG[aJour - 1] + ' ' : '') + '· ' + activeLignes.length + ' exercice' + (activeLignes.length > 1 ? 's' : '') + '</span>'
       + '<button class="pb-seance-del" onclick=\'cdSupprimerSeance(' + JSON.stringify(activeSid) + ')\' title="Supprimer la séance"><svg class="ico" style="width:17px;height:17px"><use href="#i-trash"/></svg></button></div>'
+      + '<div style="padding:12px 22px 0">' + _progJourPicker(activeSid, activeLignes) + '</div>'
       + '<div class="pb-rows">' + renderUnites(activeLignes, activeSid)
       +   '<button class="pb-addexo" onclick="cdAjouterExercice(\'' + String(activeSid).replace(/'/g, "\\'") + '\')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg> Ajouter un exercice</button></div></div>';
     // ── Inspecteur ──
     var vol = {}, tot = 0;
     activeLignes.forEach(function (l) { if (l.type === 'cardio') return; var s = Number(l.series_prevues) || 0; tot += s; var mg = _exoGrpOf(muscleDe(l.exercice)); var meta = mg ? _exoGrpMeta(mg) : null; var key = meta ? meta.label : (muscleDe(l.exercice) || 'Autre'); var col = meta ? meta.col : '#8a94a6'; (vol[key] = vol[key] || { s: 0, col: col }).s += s; });
     var volRows = Object.keys(vol).map(function (k) { return '<span class="pb-volchip" style="border-color:' + vol[k].col + '66;color:' + vol[k].col + '"><b>' + vol[k].s + '</b> ' + esc(k) + '</span>'; }).join('');
+    // Agenda daté : UNIQUEMENT côté coach (fiche athlète). En tête de la colonne droite.
+    var _agCoach = (typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id);
     var insp = '<div class="pb-insp">'
+      + (_agCoach ? '<div class="pb-card" id="cd-prog-agenda-root" style="padding:14px"></div>' : '')
       + '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>'
-      + '<div class="pb-card">' + _progJourPicker(activeSid, activeLignes) + '</div>'
       + '<div class="pb-card"><div class="pb-card-t">Volume de la séance</div><div class="pb-voltot">' + tot + ' séries</div><div class="pb-volwrap">' + (volRows || '<span style="color:var(--text-subtle);font-size:12px">—</span>') + '</div></div>'
       + '</div>';
     elB.innerHTML = '<div class="pb-builder">' + rail + canvas + insp + '</div>';
+    if (_agCoach) { try { cdAgRender(); } catch (e) {} }
   }
   if (_editorMode) { _progRenderEditor(el, seances, ordre); return; }
 
@@ -8024,6 +8162,11 @@ function renderProgrammeCoach() {
       </div>
     </div>`;
   }).join('');
+  // Mobile coach (accordéon, pas le Builder desktop inline) : agenda daté en tête.
+  if (!ro && progCtx && progCtx.el === 'cd-programme-content' && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id) {
+    el.insertAdjacentHTML('afterbegin', '<div class="dash-card" id="cd-prog-agenda-root" style="padding:14px;margin-bottom:12px"></div>');
+    try { cdAgRender(); } catch (e) {}
+  }
 }
 
 // État d'ouverture des exercices (mode édition via crayon) — conservé entre les re-rendus
@@ -8593,7 +8736,7 @@ function renderAlertesCoach(data) {
     const presc = stagExo ? _prescriptionStag(stagExo) : null;
     const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">${fait ? 'Autre conseil' : "Répondre à l'athlète"}</button>`
       + `<button class="cda-btn cda-ghost" onclick="toggleExplicationAlerte('${explicationId}')">Pourquoi ?</button>`
-      + `<button class="cda-btn cda-ok" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>`
+      + `<button class="cda-btn cda-ok" onclick="traiterAlerteDepuisDetail(${idx})">Marquer traité</button>`
       + (fait ? `<span class="cda-done-tag">Déjà conseillé</span>` : '');
     items.push({
       sev: _sevGroupe(al.severite), cat: _catAlerte(al.type), msg: al.message,
@@ -8607,7 +8750,7 @@ function renderAlertesCoach(data) {
     const sujet = s.msg.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const sev = (s.color === '#e5484d' || s.color === 'var(--bad)' || s.color === 'var(--danger)') ? 'haute' : 'moyenne';
     const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">Répondre</button>`
-      + `<button class="cda-btn cda-ok" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>`;
+      + `<button class="cda-btn cda-ok" onclick="traiterSyntheseAlerteCoach('${s.type}')">Marquer traité</button>`;
     items.push({ sev, cat: _catAlerte(s.type), msg: s.msg, rec: '', presc: '', explic: '', actions });
   });
   // Absence (si non émise par le moteur et hors pause) — calculée depuis la dernière séance.
@@ -12709,11 +12852,15 @@ function _maMuscuExercice(data) {
   // ordre d'origine (body puis Records) inchangé.
   // head + periodSel DANS la colonne principale → le rail démarre toujours en haut
   // (même position que les autres panes), pas décalé sous les sélecteurs.
+  // Rail coach de « Évolution » : on y pose l'agenda daté (comme l'Aperçu et
+  // l'onglet Programme). Côté athlète, pas d'agenda → rail = bloc Novalyz seul.
+  var _agMount = (typeof _maCoach !== 'undefined' && _maCoach) ? '<div id="cd-agenda-prog" class="dash-card" style="padding:14px;margin-bottom:12px"></div>' : '';
   _maSet('ma-muscu-detail',
     '<div class="ma-cols2">'
     +   '<div class="ma-colmain">' + head + periodSel + body + '</div>'
-    +   '<div class="ma-colrail">' + _maNovaAsk() + '</div>'
+    +   '<div class="ma-colrail">' + _agMount + _maNovaAsk() + '</div>'
     + '</div>');
+  if (_agMount) { try { cdAgRender(); } catch (e) {} }
 }
 
 var _maExoSel = null, _maExoMetric = 'cr';
@@ -13190,8 +13337,9 @@ function _maMuscuTendances(data) {
     main += _maSec('Tonnage soulevé', tonLbl + ' · ' + _maPLabel(), 'tonnage')
       + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg soulevés au total ce jour, ex. 5,8 t = 5 800 kg). Seuls les jours d\'entraînement sont tracés. La courbe qui monte = plus de volume soulevé.', wtD);
   } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
-  // ── Vraies analyses (ajouts) : force e1RM, fréquence/muscle, répartition d'intensité ──
-  main += _maForceChart(data) + _maFreqMuscleBloc(data) + _maIntensiteBloc(data);
+  // ── Vraies analyses (ajouts) : force e1RM dans la colonne principale ;
+  // fréquence/muscle + répartition d'intensité déplacées dans le rail droit. ──
+  main += _maForceChart(data);
   var cmp = data.comparison || {}, rows = '';
   try { var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents</span><span class="v" style="color:' + (t.evol_pct >= 0 ? '#00A854' : '#DC3545') + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>'; } catch (e) {}
   var reg = (data.dashboard && data.dashboard.regularite) || {};
@@ -13200,7 +13348,8 @@ function _maMuscuTendances(data) {
   // Rail droit (bureau) : résumé « Ce qui bouge » + bloc Novalyz. En mobile,
   // .ma-cols2/.ma-col* passent en display:contents → suite verticale inchangée,
   // juste précédée du résumé comme avant.
-  var rail = (rows ? _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>' : '') + _maNovaAsk();
+  var rail = (rows ? _maSec('Ce qui bouge') + '<div class="ma-trend">' + rows + '</div>' : '')
+    + _maFreqMuscleBloc(data) + _maIntensiteBloc(data) + _maNovaAsk();
   // RÉGULARITÉ EN TÊTE (N9) : dans la colonne principale (même largeur que les
   // cartes), AU-DESSUS du sélecteur de période (fixe sur 12 sem.). Rail aligné en
   // haut, comme les autres panes → placement cohérent.
@@ -13313,7 +13462,10 @@ function _maCardioParSport(data) {
   var hist = (data.cardio && data.cardio.history) || [];
   var allBy = _maCardioAgg(hist, 3650);
   var types = Object.keys(allBy).sort(function (a, b) { return allBy[b].n - allBy[a].n; });
-  if (!types.length) { _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _maEmpty('Aucune séance cardio pour l\'instant.') + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>'); return; }
+  // Rail coach de « Évolution » cardio : agenda daté (id distinct du muscu pour éviter
+  // toute collision d'id entre les 2 panes qui coexistent dans le DOM).
+  var _agC = (typeof _maCoach !== 'undefined' && _maCoach) ? '<div id="cd-agenda-progc" class="dash-card" style="padding:14px;margin-bottom:12px"></div>' : '';
+  if (!types.length) { _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _maEmpty('Aucune séance cardio pour l\'instant.') + '</div><div class="ma-colrail">' + _agC + _maNovaAsk() + '</div></div>'); if (_agC) { try { cdAgRender(); } catch (e) {} } return; }
   var sel = (_maCardioSport && types.indexOf(_maCardioSport) >= 0) ? _maCardioSport : types[0];
   var m = _maCM(sel);
   var _w = _maWin();
@@ -13351,7 +13503,8 @@ function _maCardioParSport(data) {
     return '<div class="ma-hhd" style="padding:11px 14px;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div class="ma-hdate"><div class="dd">' + day + '</div><div class="mm">' + mon + '</div></div><div class="ma-hmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + parts.join(' · ') + '</div></div>' + (+s.rpe ? '<span class="ma-chip">RPE ' + s.rpe + '</span>' : '') + '</div>';
   }).join('');
   var _cdMain = _maPeriodHtml() + _maSec('Choisis ton activité') + sel2 + _maSec(m[0] + ' · ' + _w.plabel, o.n + ' sortie' + (o.n > 1 ? 's' : '')) + k3 + chart + _maSec('Dernières sorties') + '<div class="ma-card">' + last + '</div>';
-  _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _cdMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
+  _maSet('ma-cardio-detail', '<div class="ma-cols2"><div class="ma-colmain">' + _cdMain + '</div><div class="ma-colrail">' + _agC + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
+  if (_agC) { try { cdAgRender(); } catch (e) {} }
 }
 function maSetCardioSport(t) { _maCardioSport = t; try { _maCardioParSport(dernierAppData); } catch (e) {} }
 function maSetCardioMetric(m) { _maCardioMetric = m; try { _maCardioParSport(dernierAppData); } catch (e) {} }
@@ -13480,7 +13633,34 @@ function _maCroise(data) {
         + '<div style="margin-top:10px;background:var(--accent-a10,rgba(26,95,255,.10));border:1px solid var(--border);border-radius:12px;padding:13px 16px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:4px">Reco · pour le coach</div><div style="font-size:13px;font-weight:600;line-height:1.45">' + reco + '</div></div></div>';
     }
   } else {
-    synthese = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict;
+    // Lecture Novalyz CROISÉ athlète — PÉRIODE-COHÉRENTE (même fenêtre _maWin que la
+    // répartition/tuiles ci-dessous). L'ancienne version utilisait la synthèse backend
+    // figée sur 4 sem. → elle annonçait du cardio alors que la période affichée n'en
+    // avait pas (contradiction avec la barre « Cardio 0% »). On recalcule ici.
+    var rc2 = function (col, html) { return '<div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:5px 0;line-height:1.45"><span style="flex:none;color:' + col + ';margin-top:2px">●</span><div>' + html + '</div></div>'; };
+    if (!tot) {
+      synthese = '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz</div>' + _maEmpty('Pas encore assez de séances sur cette période pour croiser muscu et cardio.');
+    } else {
+      var L2 = '';
+      if (cardioUA === 0) {
+        L2 += rc2('var(--warn)', 'Sur <b>' + _w.plabel + '</b>, tu n\'as fait que de la <b>musculation</b> — aucun cardio enregistré sur la période.');
+      } else {
+        var eq2 = (Math.abs(mPct - 50) <= 15) ? ('Charge équilibrée : <b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')
+          : (mPct > 65 ? ('Charge surtout <b>muscu (' + mPct + '%)</b>, peu de cardio') : (cPct > 65 ? ('Charge surtout <b>cardio (' + cPct + '%)</b>, peu de muscu') : ('<b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')));
+        L2 += rc2(Math.abs(mPct - 50) <= 20 ? 'var(--good)' : 'var(--warn)', eq2 + (hPct > 0 ? (' · Hyrox ' + hPct + '%') : '') + ' sur ' + _w.plabel + '.');
+      }
+      if (mot.recup) L2 += rc2(mot.recup === 'Faible' ? 'var(--bad)' : (mot.recup === 'Moyen' ? 'var(--warn)' : 'var(--good)'), 'Récupération : <b>' + _maE(mot.recup) + '</b>' + ((mot.disponibilite && mot.disponibilite.niveau) ? (' · disponibilité ' + _maE(mot.disponibilite.niveau)) : '') + '.');
+      if (trendOk && chUp && foDown) L2 += rc2('var(--warn)', 'Ta <b>charge globale monte</b> alors que ta <b>forme baisse</b> → surveille la fatigue.');
+      var reco2 = (cardioUA === 0) ? 'Ajoute 1 à 2 séances de cardio par semaine pour équilibrer et soutenir ta récupération.'
+        : (trendOk && chUp && foDown) ? 'Allège une des deux filières cette semaine pour rééquilibrer charge et récupération.'
+          : (mPct > 75) ? 'Intègre 1 à 2 créneaux cardio pour ta base d\'endurance, sans alourdir la charge totale.'
+            : (cPct > 75) ? 'Ajoute du renforcement musculaire pour l\'équilibre force / endurance.'
+              : 'Bon équilibre muscu / cardio — maintiens ce mix et ajuste si ta forme décroche quand la charge monte.';
+      var fiab2 = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Fiabilité : <b style="color:' + fiab.c + '">' + fiab.t + '</b> · ' + nWeeks + ' sem. · bien-être ' + nForme + ' relevé' + (nForme > 1 ? 's' : '') + '.</div>';
+      var recoHtml2 = '<div style="margin-top:8px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + reco2 + '</div></div>';
+      synthese = '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz<span class="r" style="text-transform:none;letter-spacing:0;font-weight:600;color:var(--text-subtle)">' + _w.plabel + '</span></div>'
+        + '<div class="ma-card" style="padding:14px 15px;margin:8px 0 16px">' + L2 + fiab2 + recoHtml2 + '</div>';
+    }
   }
 
   // ── Charge vs forme : 2 TUILES claires (pas de graphe dual-axe illisible) ──
@@ -13517,7 +13697,27 @@ function _maCroise(data) {
     + _maPeriodHtml() + _maPeriodHint('Le sélecteur ajuste la répartition et les tendances ci-dessous.')
     + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep
     + indic;
-  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
+  // Rail croisé : côté COACH (fiche athlète), « Demande à Novalyz » n'a pas de sens
+  // → mini-récap « Charge combinée » (période affichée, mêmes chiffres que la barre).
+  // Côté ATHLÈTE : on garde l'accès à Novalyz.
+  var railCroise;
+  if (coach) {
+    var muscuSea = r.seances || 0;
+    var dispoTxt = (mot.disponibilite && mot.disponibilite.niveau) ? _maE(mot.disponibilite.niveau) : null;
+    var repVal = tot ? (mPct + '% / ' + cPct + '%' + (hPct > 0 ? (' / ' + hPct + '% Hx') : '')) : '—';
+    var rrows = [
+      ['Séances', (nSea || 0) + (nSea ? (' <span style="color:var(--text-subtle);font-weight:600">(' + muscuSea + ' musc · ' + cardioN + ' car)</span>') : ''), null],
+      ['Muscu / cardio', repVal, null],
+      ['Récupération', (mot.recup ? _maE(mot.recup) : '—') + (dispoTxt ? (' <span style="color:var(--text-subtle);font-weight:600">· ' + dispoTxt + '</span>') : ''), null]
+    ];
+    if (trendOk) { rrows.push(['Charge', chBig, chCol]); rrows.push(['Forme', foBig, foCol]); }
+    var rinner = rrows.map(function (rw, i) { return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;' + (i ? 'border-top:1px solid var(--border);' : '') + 'font-size:12.5px"><span style="color:var(--text-muted)">' + rw[0] + '</span><span style="font-weight:800;text-align:right' + (rw[2] ? ';color:' + rw[2] : '') + '">' + rw[1] + '</span></div>'; }).join('');
+    railCroise = _maSec('Charge combinée', _w.plabel) + '<div class="ma-card" style="padding:4px 14px 10px">' + rinner + '</div>'
+      + _maCap('Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.');
+  } else {
+    railCroise = _maNovaAsk();
+  }
+  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + railCroise + '</div></div>');
   try { _maSet('ma-croise-tendances', ''); } catch (e) {}
 }
 
@@ -13908,6 +14108,34 @@ function renderPoidsSpark(poids) {
 // signaux DÉJÀ calculés par le moteur (disponibilité, récup, ACWR) + sommeil
 // montre. Rien d'inventé : chaque tuile n'apparaît que si la valeur existe, et
 // l'ACWR seulement s'il est jugé fiable par le moteur (acwr_fiable !== false).
+// Séances prévues (agenda daté posé par le coach) — lecture seule pour l'athlète.
+// Source : data.planning[] (getAppData, fenêtre aujourd'hui → +14 j). Masqué si vide.
+var _TJP_PAL = ['#1A5FFF', '#00A854', '#9D5FD3', '#E07800', '#E5484D', '#0EA5E9', '#D946A6'];
+var _TJP_DOW = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+var _TJP_MON = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+function renderTjPlanning(data) {
+  var host = document.getElementById('tj-planning'); if (!host) return;
+  var pl = (data && Array.isArray(data.planning)) ? data.planning.slice() : [];
+  if (!pl.length) { host.style.display = 'none'; host.innerHTML = ''; return; }
+  // Couleur par séance (même logique que l'agenda coach : ordre d'apparition dans le programme).
+  var order = [], seen = {};
+  (data.programme || []).forEach(function (l) { if (!l) return; var s = String(l.seance_id || '').trim(); if (s && !seen[s]) { seen[s] = 1; order.push(s); } });
+  function col(sid) { var i = order.indexOf(String(sid)); return _TJP_PAL[(i < 0 ? 0 : i) % _TJP_PAL.length]; }
+  var td = new Date(); var tiso = td.getFullYear() + '-' + String(td.getMonth() + 1).padStart(2, '0') + '-' + String(td.getDate()).padStart(2, '0');
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  pl.sort(function (a, b) { return String(a.date_iso) < String(b.date_iso) ? -1 : 1; });
+  var items = pl.slice(0, 7).map(function (p) {
+    var iso = String(p.date_iso || ''); var d = iso ? new Date(iso + 'T00:00:00') : null;
+    var isToday = iso === tiso;
+    var dlab = d ? (_TJP_DOW[d.getDay()] + ' ' + d.getDate() + ' ' + _TJP_MON[d.getMonth()]) : '';
+    return '<div class="tjp-item' + (isToday ? ' today' : '') + '" style="border-left-color:' + col(p.seance_id) + '">'
+      + '<div class="tjp-d">' + (isToday ? "Aujourd'hui" : dlab) + '</div>'
+      + '<div class="tjp-n">' + esc(p.seance_id) + '</div></div>';
+  }).join('');
+  host.style.display = '';
+  host.innerHTML = '<div class="tj-label">Mes séances prévues</div><div class="tjp-row">' + items + '</div>';
+}
+
 function renderTjFormeRail(data) {
   var el = document.getElementById('tj-forme-rail'); if (!el) return;
   var m = (data && data.moteur) || {}, dash = (data && data.dashboard) || {};
@@ -15045,6 +15273,9 @@ function renderAujourdhui(data) {
 
   // --- Ma forme en un coup d'œil (rail bureau) ---
   try { renderTjFormeRail(data); } catch (e) {}
+
+  // --- Séances prévues par le coach (agenda daté, lecture seule) ---
+  try { renderTjPlanning(data); } catch (e) {}
 
   // --- Séance du jour : 1re séance du programme (pas de planification par jour) ---
   try {
