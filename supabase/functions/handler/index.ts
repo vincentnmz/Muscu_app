@@ -5115,43 +5115,81 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   let objTxt = ''
   try { const { data: o } = await sb().from('objectif').select('objectif').eq('athlete_id', athlete_id).limit(1); if (o?.length && o[0].objectif) objTxt = String(o[0].objectif) } catch (_) {}
 
+  // Mensurations de segments (si l'athlète en a saisi) → fiabilisent la partie proportions.
+  let mensTxt = ''
+  try {
+    const { data: m } = await sb().from('indicateurs').select('cle,valeur,unite,date').eq('athlete_id', athlete_id).eq('seance_id', 'mensuration').order('date', { ascending: false })
+    if (m?.length) {
+      const seen: Record<string, boolean> = {}; const parts: string[] = []
+      for (const r of m) { const k = String(r.cle); if (seen[k]) continue; seen[k] = true; parts.push(`${k}: ${r.valeur}${r.unite ? ' ' + r.unite : ''}`) }
+      if (parts.length) mensTxt = parts.join(' · ')
+    }
+  } catch (_) {}
+
+  // Vues étiquetées (face / profil / dos) dans l'ordre des images envoyées.
+  const views = Array.isArray(body.views) ? body.views.map((v: any) => String(v || '')) : []
   const content: any[] = []
-  images.slice(0, 3).forEach((im: any) => {
-    if (im && im.data && im.media_type) content.push({ type: 'image', source: { type: 'base64', media_type: String(im.media_type), data: String(im.data) } })
+  images.slice(0, 3).forEach((im: any, i: number) => {
+    if (im && im.data && im.media_type) {
+      content.push({ type: 'text', text: `Photo ${views[i] ? '(' + views[i] + ')' : '#' + (i + 1)} :` })
+      content.push({ type: 'image', source: { type: 'base64', media_type: String(im.media_type), data: String(im.data) } })
+    }
   })
   if (!content.length) return jsonResp({ success: false, error: 'images invalides' })
-  content.push({ type: 'text', text: `Analyse la morphologie de cet athlète (photos face et/ou dos) pour orienter son ENTRAÎNEMENT.${objTxt ? ` Son objectif : ${objTxt}.` : ''}` })
+  content.push({
+    type: 'text', text: `Analyse la morphologie pour orienter l'ENTRAÎNEMENT en musculation.${objTxt ? ` Objectif de la personne : ${objTxt}.` : ''}${mensTxt ? ` Mensurations fournies : ${mensTxt}.` : ' Aucune mensuration fournie (les proportions restent à confirmer).'}
 
-  const system = `Tu es un préparateur physique qui aide un athlète à orienter sa MUSCULATION à partir de photos (face / dos). But : repérer les groupes musculaires en AVANCE et en RETARD, l'équilibre gauche/droite et la posture globale, pour conseiller un FOCUS d'entraînement.
+Réponds UNIQUEMENT avec un objet JSON valide (aucun texte autour, aucune balise markdown), EXACTEMENT cette forme :
+{
+ "morphotype": "une courte phrase (type de carrure / répartition de la masse)",
+ "synthese": [ {"t":"constat général","c":"visible|probable|mesure"} ],
+ "equilibre": [ {"g":"nom du groupe musculaire","n":"développé|correct|moyen|en retard","ton":"good|warn|bad"} ],
+ "posture": [ {"t":"observation posturale","c":"visible|probable|mesure"} ],
+ "priorites": [ {"t":"titre court","d":"pourquoi en 1 phrase","ex":["exercice 1","exercice 2"]} ],
+ "reco": "une phrase de synthèse actionnable",
+ "mesures": "ce qu'il faudrait mesurer pour fiabiliser, ou ce que les mensurations fournies apportent"
+}`
+  })
 
-RÈGLES STRICTES :
-- Reste FACTUEL, BIENVEILLANT et HUMBLE (« à titre indicatif », « d'après la photo »). JAMAIS de jugement sur le corps, ni de remarque esthétique, de poids ou de niveau de gras.
-- Tu n'es PAS médecin : aucun diagnostic, aucune pathologie. Devant un doute postural ou une douleur, invite à consulter un professionnel.
-- N'invente rien : ne devine pas ce que la photo ne montre pas ; si une vue manque ou est peu exploitable, dis-le simplement. Aucun chiffre inventé (%, mensurations).
-- Réponds en FRANÇAIS, structuré et concis :
-  **Points forts** (groupes en avance)
-  **À travailler** (groupes en retard / déséquilibres visibles)
-  **Focus conseillé** (2-3 priorités concrètes avec des exercices).`
+  const system = `Tu es un préparateur physique. À partir de photos (face / profil / dos) et, si fournies, de mensurations de segments, tu orientes la MUSCULATION : groupes en avance / en retard, équilibre, posture globale.
 
-  let analyse = ''
+RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au format demandé :
+- Base tes constats sur des PRINCIPES RECONNUS (biomécanique, correctif postural, pratique de la musculation). N'INVENTE RIEN.
+- Niveau de confiance OBLIGATOIRE sur chaque constat de "synthese" et "posture" : "visible" (clair sur la photo), "probable" (tendance à confirmer), "mesure" (nécessite une mesure).
+- AUCUN chiffre inventé : jamais de % de masse grasse ni de longueur de segment estimée. Les proportions/longueurs ne sont affirmées QUE si des mensurations sont fournies ; sinon confiance "mesure" et dis-le dans "mesures".
+- Pas de jugement esthétique ni sur le poids / le gras. Ton factuel et bienveillant.
+- Tu n'es PAS médecin : aucun diagnostic. Un doute postural → formule « à confirmer par un bilan de mouvement ».
+- Si une vue manque ou est inexploitable, signale-le dans "mesures" et baisse la confiance des constats concernés.
+- "equilibre" : liste les principaux groupes jugeables (ex. dos, épaules, pectoraux, bras, fessiers, quadriceps, ischios, mollets). "priorites" : 2 à 4 items, chacun avec des exercices concrets.`
+
+  let raw = ''
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 1500, system, messages: [{ role: 'user', content }] }),
+      body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 1800, system, messages: [{ role: 'user', content }] }),
     })
     const j = await r.json()
     if (!r.ok) return jsonResp({ success: false, error: 'ia_http_' + r.status, analyse: "L'analyse a rencontré un souci. Réessaie dans un instant." })
-    analyse = (Array.isArray(j.content) ? j.content.filter((b: any) => b && b.type === 'text').map((b: any) => b.text).join('\n') : '').trim()
+    raw = (Array.isArray(j.content) ? j.content.filter((b: any) => b && b.type === 'text').map((b: any) => b.text).join('\n') : '').trim()
   } catch (_) {
     return jsonResp({ success: false, error: 'ia_reseau', analyse: "Service injoignable pour le moment." })
   }
-  if (!analyse) analyse = "Je n'ai pas pu produire d'analyse — réessaie avec des photos plus nettes (face et dos, bonne lumière, tenue ajustée)."
+  if (!raw) return jsonResp({ success: true, analyse: "Je n'ai pas pu produire d'analyse — réessaie avec des photos plus nettes (face, profil, dos, bonne lumière, tenue ajustée)." })
+
+  // Parse JSON structuré (tolérant : retire d'éventuelles balises ``` et texte autour).
+  let resultat: any = null
+  try {
+    let s = raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim()
+    const a = s.indexOf('{'), b = s.lastIndexOf('}')
+    if (a >= 0 && b > a) s = s.slice(a, b + 1)
+    resultat = JSON.parse(s)
+  } catch (_) { resultat = null }
 
   try { if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', athlete_id).eq('seance_id', 'morpho_quota').eq('cle', jour); else await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'morpho_quota', cle: jour, valeur: '1', unite: '', source: 'ia' }) } catch (_) {}
 
-  // Photos NON stockées : rien gardé côté serveur.
-  return jsonResp({ success: true, analyse })
+  // Photos NON stockées : rien gardé côté serveur. `resultat` = structuré (ou null → front retombe sur `analyse`).
+  return jsonResp({ success: true, resultat, analyse: (resultat && resultat.reco) ? String(resultat.reco) : raw })
 }
 
 async function handleSaveSemaineType(body: any): Promise<Response> {
