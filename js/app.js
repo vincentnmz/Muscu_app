@@ -17501,15 +17501,13 @@ function _nvgRender() {
 // nav (surligne la barre) ; Messages/Profil → on surligne SANS ouvrir l'overlay (pas
 // de piège pendant la visite).
 function _guideCoachGo(sec) {
-  try { if (document.body.classList.contains('athlete-selected')) retourListeAthletesCoach(); } catch (e) {}
   var desk = (typeof _coachDeskAny === 'function') && _coachDeskAny();
-  if (sec === 'messages' || sec === 'profil') {
-    if (desk) { coachDeskOverlay = sec; try { renderCoachRail(); } catch (e) {} }
-    else { coachBandeauTab = sec; try { coachBandeauApply(); } catch (e) {} }
-    return;
-  }
-  coachDeskOverlay = null;
-  if (desk) { coachDeskSection = sec; try { renderCoachDesktop(); } catch (e) {} }
+  // On délègue à la VRAIE nav : elle ouvre réellement l'écran (y compris Messages /
+  // Profil) ET allume le bon item du rail / bandeau → l'écran derrière correspond à
+  // la carte et l'onglet concerné est surligné.
+  if (desk) { try { coachDeskGo(sec); } catch (e) {} return; }
+  try { if (document.body.classList.contains('athlete-selected')) retourListeAthletesCoach(); } catch (e) {}
+  if (sec === 'messages' || sec === 'profil') { coachBandeauTab = sec; try { coachBandeauApply(); } catch (e) {} }
   else { try { coachBandeauGo(sec); } catch (e) {} }
 }
 function _guideCoachFiche(subtab) {
