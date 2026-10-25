@@ -9420,19 +9420,66 @@ function _morphoFichier(input, which) {
   img.onerror = function () { URL.revokeObjectURL(url); showToast('Image illisible', '#DC3545'); };
   img.src = url;
 }
+// Rendu structuré de l'analyse morpho (objet { morphotype, synthese[], equilibre[],
+// posture[], priorites[], reco, mesures }). Chaque constat porte un niveau de confiance.
+function _morphoRender(d) {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  function conf(c) {
+    c = String(c || '').toLowerCase();
+    if (c === 'visible') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(0,168,84,.14);color:var(--good)">Visible</span>';
+    if (c === 'probable') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(224,120,0,.16);color:var(--warn)">À confirmer</span>';
+    if (c === 'mesure') return '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:var(--surface2);color:var(--text-subtle)">À mesurer</span>';
+    return '';
+  }
+  function dotCol(c) { c = String(c || '').toLowerCase(); return c === 'visible' ? 'var(--good)' : c === 'mesure' ? 'var(--text-subtle)' : 'var(--warn)'; }
+  function barW(n) { n = String(n || '').toLowerCase(); return n.indexOf('dévelop') >= 0 ? 82 : n === 'correct' ? 66 : n === 'moyen' ? 50 : n.indexOf('retard') >= 0 ? 36 : 55; }
+  function tonCol(t) { t = String(t || '').toLowerCase(); return t === 'good' ? 'var(--good)' : t === 'bad' ? 'var(--bad)' : 'var(--warn)'; }
+  var card = function (title, inner) { return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px 14px;margin-bottom:11px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text-subtle);margin-bottom:9px">' + title + '</div>' + inner + '</div>'; };
+  var rowItem = function (it) { return '<div style="display:flex;gap:9px;align-items:flex-start;padding:6px 0;font-size:13px;line-height:1.45"><span style="flex:none;margin-top:6px;width:8px;height:8px;border-radius:999px;background:' + dotCol(it && it.c) + '"></span><div>' + esc(it && it.t) + conf(it && it.c) + '</div></div>'; };
+  var out = '';
+  if (d.morphotype) out += card('Vue d\'ensemble', '<div style="font-size:13.5px;font-weight:700;line-height:1.45">' + esc(d.morphotype) + '</div>' + ((d.synthese && d.synthese.length) ? '<div style="margin-top:4px">' + d.synthese.map(rowItem).join('') + '</div>' : ''));
+  else if (d.synthese && d.synthese.length) out += card('Vue d\'ensemble', d.synthese.map(rowItem).join(''));
+  if (d.equilibre && d.equilibre.length) {
+    var eq = d.equilibre.map(function (e) {
+      return '<div style="font-size:12.5px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>' + esc(e.g) + '</span><span style="font-weight:800;color:' + tonCol(e.ton) + '">' + esc(e.n) + '</span></div><div style="height:7px;border-radius:999px;background:var(--surface2);overflow:hidden"><div style="height:100%;border-radius:999px;width:' + barW(e.n) + '%;background:' + tonCol(e.ton) + '"></div></div></div>';
+    }).join('');
+    out += card('Équilibre musculaire', eq);
+  }
+  if (d.posture && d.posture.length) out += card('Posture', d.posture.map(rowItem).join(''));
+  if (d.priorites && d.priorites.length) {
+    var pr = d.priorites.map(function (p, i) {
+      var chips = (p.ex && p.ex.length) ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">' + p.ex.map(function (x) { return '<span style="font-size:10.5px;font-weight:700;border-radius:7px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text)">' + esc(x) + '</span>'; }).join('') + '</div>' : '';
+      return '<div style="display:flex;gap:11px;padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><span style="flex:none;width:24px;height:24px;border-radius:999px;background:var(--accent-a12,rgba(26,95,255,.12));color:var(--accent);font-weight:800;font-size:12px;display:grid;place-items:center">' + (i + 1) + '</span><div><div style="font-size:13px;font-weight:700">' + esc(p.t) + '</div>' + (p.d ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">' + esc(p.d) + '</div>' : '') + chips + '</div></div>';
+    }).join('');
+    out += card('Priorités d\'entraînement', pr);
+  }
+  if (d.reco) out += '<div style="background:var(--accent-a12,rgba(26,95,255,.12));border:1px solid var(--accent);border-radius:14px;padding:12px 14px;margin-bottom:11px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:3px">Reco Novalyz</div><div style="font-size:12.5px;line-height:1.5">' + esc(d.reco) + '</div></div>';
+  if (d.mesures) out += card('Fiabilité', '<div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;margin-bottom:9px"><span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted)"><i style="width:9px;height:9px;border-radius:3px;background:var(--good)"></i>Visible</span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted)"><i style="width:9px;height:9px;border-radius:3px;background:var(--warn)"></i>À confirmer</span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted)"><i style="width:9px;height:9px;border-radius:3px;background:var(--text-subtle)"></i>À mesurer</span></div><div style="font-size:11.5px;color:var(--text-muted);line-height:1.5">' + esc(d.mesures) + '</div>');
+  out += '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.5;text-align:center;margin-top:4px">Basé sur des principes reconnus (biomécanique, correctif postural, pratique de la muscu). Indicatif, non médical.</div>';
+  return out || '<div style="font-size:12px;color:var(--text-muted);padding:8px">Analyse vide — réessaie.</div>';
+}
+
 async function _morphoAnalyser() {
   if (typeof athlete === 'undefined' || !athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
-  var imgs = []; if (_morphoImgs.face) imgs.push(_morphoImgs.face); if (_morphoImgs.profil) imgs.push(_morphoImgs.profil); if (_morphoImgs.dos) imgs.push(_morphoImgs.dos);
+  var imgs = [], views = [];
+  if (_morphoImgs.face) { imgs.push(_morphoImgs.face); views.push('face'); }
+  if (_morphoImgs.profil) { imgs.push(_morphoImgs.profil); views.push('profil'); }
+  if (_morphoImgs.dos) { imgs.push(_morphoImgs.dos); views.push('dos'); }
   if (!imgs.length) { showToast('Ajoute au moins une photo', '#DC3545'); return; }
   var consent = document.getElementById('morpho-consent'); if (!consent || !consent.checked) { showToast('Coche le consentement', '#DC3545'); return; }
   var g = document.getElementById('morpho-go'); if (g) { g.disabled = true; g.textContent = 'Analyse en cours…'; }
   var res = document.getElementById('morpho-result'); if (res) res.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">L\'IA analyse tes photos…</div>';
   try {
-    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'analyseMorpho', athlete_id: athlete.athlete_id, consent: true, images: imgs }) });
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'analyseMorpho', athlete_id: athlete.athlete_id, consent: true, images: imgs, views: views }) });
     var j = await r.json().catch(function () { return {}; });
-    var txt = (j && j.analyse) ? j.analyse : 'Analyse indisponible pour le moment.';
-    var html = escapeHtml(txt).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    if (res) res.innerHTML = '<div style="font-size:12.5px;line-height:1.55;color:var(--text);white-space:pre-wrap;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;">' + html + '</div>';
+    if (res) {
+      if (j && j.resultat && typeof j.resultat === 'object') { res.innerHTML = _morphoRender(j.resultat); }
+      else {
+        var txt = (j && j.analyse) ? j.analyse : 'Analyse indisponible pour le moment.';
+        var html = escapeHtml(txt).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        res.innerHTML = '<div style="font-size:12.5px;line-height:1.55;color:var(--text);white-space:pre-wrap;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;">' + html + '</div>';
+      }
+    }
   } catch (e) { if (res) res.innerHTML = '<div style="font-size:12px;color:var(--danger);text-align:center;padding:8px;">Connexion impossible. Réessaie.</div>'; }
   if (g) { g.disabled = false; g.textContent = 'Analyser à nouveau'; }
 }
