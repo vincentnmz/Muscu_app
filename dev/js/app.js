@@ -17435,6 +17435,7 @@ function _nvgLiftNav() {
 }
 function nvGuidePrev() { if (_nvg.i > 0) { _nvg.i--; _nvgRender(); } }
 function nvGuideNext() { if (_nvg.i < _nvg.cards.length - 1) { _nvg.i++; _nvgRender(); } else nvGuideEnd(); }
+function nvGuideRevoir() { _nvg.i = 0; _nvgRender(); }
 function _nvgRender() {
   var c = _nvg.cards[_nvg.i]; if (!c) return;
   try { if (c.go) c.go(); } catch (e) {}
@@ -17450,8 +17451,8 @@ function _nvgRender() {
     + (c.lead ? '<p class="nvg-lead">' + c.lead + '</p>' : '')
     + (feats ? '<ul class="nvg-feat">' + feats + '</ul>' : '')
     + '<div class="nvg-dots">' + dots + '</div>'
-    + '<div class="nvg-nav">' + (_nvg.i > 0 ? '<button class="nvg-prev" onclick="nvGuidePrev()">Précédent</button>' : '<span></span>')
-    + '<button class="nvg-next" onclick="nvGuideNext()">' + (last ? 'C’est parti' : 'Suivant ›') + '</button></div>'
+    + '<div class="nvg-nav">' + (last ? '<button class="nvg-prev" onclick="nvGuideRevoir()">↺ Revoir</button>' : (_nvg.i > 0 ? '<button class="nvg-prev" onclick="nvGuidePrev()">Précédent</button>' : '<span></span>'))
+    + '<button class="nvg-next" onclick="nvGuideNext()">' + (last ? 'Terminer' : 'Suivant ›') + '</button></div>'
     + '</div>';
   try { ov.querySelector('.nvg-sheet').scrollTop = 0; } catch (e) {}
   // La vraie nav (switchTab / coachBandeauGo / renderCoachDesktop) a déjà posé l'item
@@ -17482,7 +17483,7 @@ function _guideCoachFiche(subtab) {
   } catch (e) {}
 }
 // Deck ATHLÈTE (branché : a un coach ou non → Entraînement + Coach/assistant changent).
-var _ONB_BT = '<span style="font-size:8.5px;font-weight:800;background:rgba(224,120,0,.14);color:#E07800;border-radius:5px;padding:1px 5px;margin-right:5px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle">Bientôt</span>';
+var _ONB_BT = '<span style="font-size:8px;font-weight:800;background:rgba(224,120,0,.14);color:#E07800;border-radius:5px;padding:1px 5px;margin-right:5px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle">Prochainement</span>';
 function _guideAthleteCards() {
   var hasCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
   var aGo = function (t, extra) { return function () { try { switchTab(t); } catch (e) {} if (extra) try { extra(); } catch (e) {} }; };
@@ -17515,15 +17516,19 @@ function _guideCoachCards() {
       feats: ['<b>Briefing équipe</b> : % à jour, athlètes à voir', '<b>Qui a répondu</b> au questionnaire bien-être (7 j) + relance', '<b>À surveiller</b> : athlètes triés par priorité + motif', '<b>Messages non lus</b> en un coup d’œil'] },
     { ic: 'team', scr: 'Équipe', t: 'Équipe', lead: 'Tout ton effectif.', go: G('equipe'),
       feats: ['Statut, niveau, <b>assiduité</b>, dernière séance par athlète', '<b>Enregistrer un athlète</b> : invitation ou création du compte', 'Clique une ligne pour <b>ouvrir sa fiche</b>'] },
-    { ic: 'folder', scr: 'Fiche athlète', t: 'Fiche athlète', lead: 'Tout sur un athlète, en sous-onglets.', go: F('apercu'),
-      feats: ['<b>Aperçu · Progression · Séances · Programme · Conversation</b>', 'État du jour, données d’entraînement, <b>objectifs</b> &amp; <b>blessures</b>', '<b>Photo &amp; mensurations</b> du client (onglet Progression)', '<b>Export du bilan</b> client à la demande'] },
-    { ic: 'clip', scr: 'Fiche ▸ Programme', t: 'Son programme', lead: 'Dans la fiche, onglet Programme.', go: F('programme'),
-      feats: ['<b>Construis / modifies</b> ses séances : charges en % du 1RM, <b>RPE cible</b>', 'Groupé par muscle, sélection multiple d’exercices', 'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste'] },
-    { ic: 'spark', scr: 'Fiche ▸ IA', t: 'L’IA coach (bloc IA)', lead: 'Arrive prochainement — ton assistant sur CE client, branché sur ses données.', go: F('apercu'),
-      feats: [_ONB_BT + '<b>Résumé d’état &amp; vigilance</b> du client', _ONB_BT + '<b>Priorités de la semaine</b> + <b>risque de surcharge</b>', _ONB_BT + '<b>Comment adapter son programme</b> — jamais de chiffre inventé'] },
-    { ic: 'body', scr: 'Fiche ▸ Morpho', t: 'Analyse morphologique IA', lead: 'Arrive prochainement — à partir des photos de l’athlète.', go: F('apercu'),
-      feats: [_ONB_BT + 'Détecte les <b>groupes en avance / en retard</b>', 'Lançable par <b>toi ou l’athlète</b>', 'Oriente tes choix de programme (points faibles)'] },
-    { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Tes échanges avec les athlètes.', go: G('messages'),
+    { ic: 'folder', scr: 'Fiche ▸ Aperçu', t: 'Fiche athlète ▸ Aperçu', lead: 'Le résumé qui parle AU COACH.', go: F('overview'),
+      feats: ['<b>Coup d’œil</b> : entraînement (charge · reps · RPE) + état du jour', '<b>Lecture Novalyz pour le coach</b> en tête (analyse + reco)', 'Cartes : récup, charge &amp; assiduité, montre, poids · <b>agenda</b> à droite', '<b>Objectifs</b> &amp; <b>blessures</b> · <b>Export du bilan</b> client'] },
+    { ic: 'chart', scr: 'Fiche ▸ Progression', t: 'Fiche ▸ Progression', lead: 'Ses analyses dans le temps.', go: F('prog'),
+      feats: ['<b>Évolution</b> &amp; <b>Tendances</b> (muscu + cardio), sélecteur de période', '<b>Agenda daté</b> dans la colonne de droite', '<b>Photo &amp; mensurations</b> du client'] },
+    { ic: 'clip', scr: 'Fiche ▸ Séances', t: 'Fiche ▸ Séances', lead: 'Ce qu’il a réellement fait.', go: F('seances'),
+      feats: ['<b>Historique</b> des séances réalisées', '<b>Détail par exercice</b> : séries · charges · reps · <b>RPE</b>', '<b>Dernière séance</b> mise en repère · « charger plus »'] },
+    { ic: 'clip', scr: 'Fiche ▸ Programme', t: 'Fiche ▸ Programme', lead: 'Construis et planifie ses séances.', go: F('programme'),
+      feats: ['<b>Builder</b> : charges en % du 1RM, <b>RPE cible</b>, groupé par muscle', '<b>Agenda daté</b> : planifie semaine par semaine, <b>glisser-déposer</b>', '<b>Jour conseillé</b> directement sur la séance', 'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste'] },
+    { ic: 'chat', scr: 'Fiche ▸ Conversation', t: 'Fiche ▸ Conversation', lead: 'Échange direct avec l’athlète.', go: F('conseils'),
+      feats: ['<b>Messages, photos, vidéos</b> (technique) + <b>caméra en direct</b>', '<b>Répondre aux alertes</b> de la semaine · <b>Marquer traité</b>', 'Conseils envoyés depuis l’analyse'] },
+    { ic: 'spark', scr: 'Fiche ▸ IA &amp; morpho', t: 'IA coach &amp; analyse morpho', lead: 'Arrive prochainement.', go: F('overview'),
+      feats: [_ONB_BT + '<b>Résumé d’état &amp; vigilance</b> + <b>priorités</b> de la semaine', _ONB_BT + '<b>Risque de surcharge</b> — jamais de chiffre inventé', _ONB_BT + '<b>Analyse morphologique</b> (photos → groupes en avance / en retard)'] },
+    { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Toutes tes conversations.', go: G('messages'),
       feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
     { ic: 'chart', scr: 'Analyses', t: 'Analyses équipe', lead: 'Les tendances en profondeur.', go: G('analyses'),
       feats: ['Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>', 'Charge, volume, forme dans le temps'] },
@@ -17603,8 +17608,11 @@ function _stepsCoach() {
 // (spotlights, _steps*) ; MOBILE = nouveau guide « 1 carte = 1 écran » (nvGuide),
 // robuste (plus de spotlight mal placé sur petit écran).
 function _nvIsDesktop() { try { return window.matchMedia('(min-width:992px)').matches; } catch (e) { return false; } }
-function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; if (_nvIsDesktop()) nvTourStart(_stepsAthlete(), 'tour_ath_vu'); else nvGuideStart(_guideAthleteCards(), 'tour_ath_vu'); }
-function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; if (_nvIsDesktop()) nvTourStart(_stepsCoach(), 'tour_coach_vu'); else nvGuideStart(_guideCoachCards(), 'tour_coach_vu'); }
+// Desktop ET mobile : même visite en DECK de cartes (noms d'onglets + fonctionnalités),
+// avec surbrillance de la vraie nav. L'ancien spotlight (_stepsAthlete/_stepsCoach) n'est
+// plus utilisé par défaut.
+function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvGuideStart(_guideAthleteCards(), 'tour_ath_vu'); }
+function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; nvGuideStart(_guideCoachCards(), 'tour_coach_vu'); }
 var _coachTourTried = false;
 function _maybeCoachTour() {
   if (_coachTourTried || _tourSeen('tour_coach_vu')) return;
