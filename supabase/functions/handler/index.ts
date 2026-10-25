@@ -5004,7 +5004,7 @@ async function handleSaveNutrition(body: any): Promise<Response> {
 // COACH IA (chat groundé) — couche langage branchée sur le moteur. Répond
 // UNIQUEMENT à partir des données réelles de l'athlète (jamais de chiffre
 // inventé). Base gratuite = quota/jour ; au-delà = premium (à venir, C5).
-// Clé : secret Supabase ANTHROPIC_API_KEY. Modèle : Haiku 4.5 (éco).
+// Clé : secret Supabase ANTHROPIC_API_KEY. Modèle : Haiku 5.5 (éco). Morpho = Sonnet 5.5 (vision fine).
 // ===========================================================================
 const IA_QUOTA_JOUR = 2
 
@@ -5075,7 +5075,7 @@ ${ctxTxt}`
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 700, system, messages: history }),
+      body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 700, system, messages: history }),
     })
     const j = await r.json()
     if (!r.ok) return jsonResp({ success: false, error: 'ia_http_' + r.status, reply: "Désolé, l'assistant a rencontré un souci. Réessaie dans un instant." })
