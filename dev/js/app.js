@@ -8074,6 +8074,7 @@ function renderProgrammeCoach() {
     var canvas = '<div class="pb-canvas"><div class="pb-ctop"><span class="dot" style="width:12px;height:12px;background:' + aMcol + '"></span><h3>' + esc(String(activeSid)) + '</h3>'
       + '<span class="pb-sub">' + (aJour ? '· ' + _PROG_JOURS_LONG[aJour - 1] + ' ' : '') + '· ' + activeLignes.length + ' exercice' + (activeLignes.length > 1 ? 's' : '') + '</span>'
       + '<button class="pb-seance-del" onclick=\'cdSupprimerSeance(' + JSON.stringify(activeSid) + ')\' title="Supprimer la séance"><svg class="ico" style="width:17px;height:17px"><use href="#i-trash"/></svg></button></div>'
+      + '<div style="padding:12px 22px 0">' + _progJourPicker(activeSid, activeLignes) + '</div>'
       + '<div class="pb-rows">' + renderUnites(activeLignes, activeSid)
       +   '<button class="pb-addexo" onclick="cdAjouterExercice(\'' + String(activeSid).replace(/'/g, "\\'") + '\')"><svg class="ico" style="width:16px;height:16px"><use href="#i-plus"/></svg> Ajouter un exercice</button></div></div>';
     // ── Inspecteur ──
@@ -8085,7 +8086,6 @@ function renderProgrammeCoach() {
     var insp = '<div class="pb-insp">'
       + (_agCoach ? '<div class="pb-card" id="cd-prog-agenda-root" style="padding:14px"></div>' : '')
       + '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>'
-      + '<div class="pb-card">' + _progJourPicker(activeSid, activeLignes) + '</div>'
       + '<div class="pb-card"><div class="pb-card-t">Volume de la séance</div><div class="pb-voltot">' + tot + ' séries</div><div class="pb-volwrap">' + (volRows || '<span style="color:var(--text-subtle);font-size:12px">—</span>') + '</div></div>'
       + '</div>';
     elB.innerHTML = '<div class="pb-builder">' + rail + canvas + insp + '</div>';
