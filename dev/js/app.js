@@ -17435,25 +17435,26 @@ function _guideCoachFiche(subtab) {
   } catch (e) {}
 }
 // Deck ATHLÈTE (branché : a un coach ou non → Entraînement + Coach/assistant changent).
+var _ONB_BT = '<span style="font-size:8.5px;font-weight:800;background:rgba(224,120,0,.14);color:#E07800;border-radius:5px;padding:1px 5px;margin-right:5px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle">Bientôt</span>';
 function _guideAthleteCards() {
   var hasCoach = !!(typeof athlete !== 'undefined' && athlete && athlete.coach_id);
   var aGo = function (t, extra) { return function () { try { switchTab(t); } catch (e) {} if (extra) try { extra(); } catch (e) {} }; };
   return [
     { ic: 'home', scr: 'Aujourd’hui', t: 'Aujourd’hui', lead: 'Ton tableau de bord quotidien — tu reviens toujours ici.', go: aGo('accueil'),
-      feats: ['Ton <b>état du jour</b> (prêt / vigilance) + le <b>mot de Novalyz</b> (reco qui change chaque jour)', 'Ta <b>séance du jour</b> à lancer en un geste', 'Ton <b>point d’attention</b> (alertes) et ta <b>régularité</b>', 'Tes <b>badges &amp; récompenses</b>', 'Le bouton <b>« Demande à Novalyz »</b> (assistant IA)'] },
+      feats: ['Ton <b>état du jour</b> (prêt / vigilance) + le <b>mot de Novalyz</b> (reco qui change chaque jour)', 'Ta <b>séance du jour</b> à lancer en un geste', 'Ton <b>point d’attention</b> (alertes) et ta <b>régularité</b>', 'Tes <b>badges &amp; récompenses</b>', _ONB_BT + 'Le bouton <b>« Demande à Novalyz »</b> (assistant IA)'] },
     { ic: 'dumb', scr: 'Entraînement', t: 'Entraînement', lead: 'Ton programme et tes séances.', go: aGo('seance'),
       feats: ['<b>Agenda</b> : muscu, cardio et <b>Hyrox</b>', '<b>Démarre une séance</b> : saisie série par série (charge, reps, RPE) + <b>chrono de repos</b>',
         hasCoach ? 'Ton <b>coach construit ton programme</b> : tu le suis et l’exécutes ici' : '<b>Crée ton programme</b> (séances, % du 1RM, RPE cible) ou laisse <b>Novalyz te le proposer</b> en 3 questions'] },
     { ic: 'chart', scr: 'Analyses', t: 'Analyses', lead: 'Comprendre ce que disent tes données.', go: aGo('historique'),
       feats: ['<b>Résumé</b> : le verdict en clair + tes chiffres clés', '<b>Évolution</b> : charge, <b>1RM estimé</b>, volume, charge à viser', '<b>Tendances</b> + <b>sélecteur de période</b> (semaine / mois / année, avec flèches)', 'Vue <b>Croisé</b> : muscu + cardio'] },
     { ic: 'heart', scr: 'Forme', t: 'Forme', lead: 'Ton ressenti, croisé avec l’entraînement.', go: aGo('etat'),
-      feats: ['<b>Questionnaire bien-être</b> (sommeil, énergie, fatigue, douleur)', '<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte', 'Ta <b>pesée</b> + tendance du poids', '<b>Nutrition</b> (calories &amp; macros), <b>objectifs</b> et <b>blessures</b>'] },
+      feats: ['<b>Questionnaire bien-être</b> (sommeil, énergie, fatigue, douleur)', '<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte', 'Ta <b>pesée</b> + tendance du poids', '<b>Mes suivis</b> : <b>photos avant/après</b> + <b>mensurations</b> (taille, bras, % masse grasse…)', '<b>Nutrition</b> (calories &amp; macros), <b>objectifs</b> et <b>blessures</b>'] },
     { ic: 'watch', scr: 'Réglages ▸ Appareils', t: 'Montre &amp; capteurs', lead: 'Tes données santé importées automatiquement.', go: aGo('reglages', function () { try { switchReglagesTab('appareils'); } catch (e) {} }),
       feats: ['Connexion <b>Health Connect</b> : <b>pas</b>, <b>sommeil</b>, <b>FC au repos</b>', 'Import <b>nutrition</b> : MyFitnessPal, Yazio, Samsung Health…', 'Tout est <b>croisé avec ton entraînement</b> pour juger ta forme'] },
-    { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: 'Analyse morpho &amp; assistant IA', lead: '', go: aGo('conseils'),
+    { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: hasCoach ? 'Ton coach &amp; l’IA' : 'Assistant IA &amp; analyse morpho', lead: 'La partie IA arrive prochainement.', go: aGo('conseils'),
       feats: hasCoach
-        ? ['<b>Messagerie</b> avec ton coach : messages, photos, vidéos de ta technique', '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Toi comme ton coach pouvez la lancer']
-        : ['<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Tu pourras <b>lier un coach</b> plus tard'] },
+        ? ['<b>Messagerie</b> avec ton coach : messages, photos, vidéos de ta technique', _ONB_BT + '<b>Assistant Novalyz IA</b> (questions branchées sur tes données)', _ONB_BT + '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)']
+        : [_ONB_BT + '<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', _ONB_BT + '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Tu pourras <b>lier un coach</b> plus tard'] },
     { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Tout ton suivi de base est gratuit.', go: aGo('accueil'),
       feats: ['Suivi · forme · montre · analyses de base + <b>export de tes données</b> : gratuit', 'Assistant IA : <b>3/jour</b> gratuit, illimité en Premium', 'Programme &amp; analyse morpho IA, analyses avancées : <b>Premium</b>', '<b>Rapports automatiques</b> (ton bilan envoyé par e-mail) : <b>Premium</b>'] }
   ];
@@ -17468,13 +17469,13 @@ function _guideCoachCards() {
     { ic: 'team', scr: 'Équipe', t: 'Équipe', lead: 'Tout ton effectif.', go: G('equipe'),
       feats: ['Statut, niveau, <b>assiduité</b>, dernière séance par athlète', '<b>Enregistrer un athlète</b> : invitation ou création du compte', 'Clique une ligne pour <b>ouvrir sa fiche</b>'] },
     { ic: 'folder', scr: 'Fiche athlète', t: 'Fiche athlète', lead: 'Tout sur un athlète, en sous-onglets.', go: F('apercu'),
-      feats: ['<b>Aperçu · Progression · Séances · Programme · Conversation</b>', 'État du jour, données d’entraînement, <b>objectifs</b> &amp; <b>blessures</b>', '<b>Export du bilan</b> client à la demande'] },
+      feats: ['<b>Aperçu · Progression · Séances · Programme · Conversation</b>', 'État du jour, données d’entraînement, <b>objectifs</b> &amp; <b>blessures</b>', '<b>Photo &amp; mensurations</b> du client (onglet Progression)', '<b>Export du bilan</b> client à la demande'] },
     { ic: 'clip', scr: 'Fiche ▸ Programme', t: 'Son programme', lead: 'Dans la fiche, onglet Programme.', go: F('programme'),
       feats: ['<b>Construis / modifies</b> ses séances : charges en % du 1RM, <b>RPE cible</b>', 'Groupé par muscle, sélection multiple d’exercices', 'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste'] },
-    { ic: 'spark', scr: 'Fiche ▸ IA', t: 'L’IA coach (bloc IA)', lead: 'Ton assistant sur CE client, branché sur ses données.', go: F('apercu'),
-      feats: ['<b>Résumé d’état &amp; vigilance</b> du client', '<b>Priorités de la semaine</b> + <b>risque de surcharge</b>', '<b>Comment adapter son programme</b> — jamais de chiffre inventé'] },
-    { ic: 'body', scr: 'Fiche ▸ Morpho', t: 'Analyse morphologique IA', lead: 'À partir des photos de l’athlète.', go: F('apercu'),
-      feats: ['Détecte les <b>groupes en avance / en retard</b>', 'Lançable par <b>toi ou l’athlète</b>', 'Oriente tes choix de programme (points faibles)'] },
+    { ic: 'spark', scr: 'Fiche ▸ IA', t: 'L’IA coach (bloc IA)', lead: 'Arrive prochainement — ton assistant sur CE client, branché sur ses données.', go: F('apercu'),
+      feats: [_ONB_BT + '<b>Résumé d’état &amp; vigilance</b> du client', _ONB_BT + '<b>Priorités de la semaine</b> + <b>risque de surcharge</b>', _ONB_BT + '<b>Comment adapter son programme</b> — jamais de chiffre inventé'] },
+    { ic: 'body', scr: 'Fiche ▸ Morpho', t: 'Analyse morphologique IA', lead: 'Arrive prochainement — à partir des photos de l’athlète.', go: F('apercu'),
+      feats: [_ONB_BT + 'Détecte les <b>groupes en avance / en retard</b>', 'Lançable par <b>toi ou l’athlète</b>', 'Oriente tes choix de programme (points faibles)'] },
     { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Tes échanges avec les athlètes.', go: G('messages'),
       feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
     { ic: 'chart', scr: 'Analyses', t: 'Analyses équipe', lead: 'Les tendances en profondeur.', go: G('analyses'),
