@@ -16777,11 +16777,21 @@ function _genProgrammeForce(jours) {
 var _genState = { niv: 'intermediaire', obj: 'hypertrophie', org: 'ul', jours: 4, temps: 60, preset: 0 };
 var _GEN_NIV = [['debutant', 'Débutant', '0-3 ans de pratique'], ['intermediaire', 'Intermédiaire', '4-9 ans'], ['avance', 'Avancé', '10 ans et +']];
 var _GEN_JOPT = [[2, '2 jours', 'Full body'], [3, '3 jours', 'Push / Pull / Legs'], [4, '4 jours', 'Haut / Bas'], [5, '5 jours', 'PPL + Haut / Bas']];
+// Cible du générateur : l'athlète connecté (session athlète) OU l'athlète de la fiche
+// ouverte (session coach). coach=true → on recharge le Builder coach après création.
+function _genCtx() {
+  if (typeof athlete !== 'undefined' && athlete && athlete.athlete_id) return { id: athlete.athlete_id, nom: athlete.nom || '', objectif: athlete.objectif || '', coach: false };
+  if (typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id) {
+    var obj = coachAthleteCourant.objectif || (typeof coachAthleteData !== 'undefined' && coachAthleteData && coachAthleteData.athlete && coachAthleteData.athlete.objectif) || '';
+    return { id: coachAthleteCourant.athlete_id, nom: coachAthleteCourant.nom || '', objectif: obj, coach: true };
+  }
+  return null;
+}
 function ouvrirGenProgramme() {
-  if (typeof athlete === 'undefined' || !athlete) return;
+  var _gc = _genCtx(); if (!_gc) { try { showToast('Athlète introuvable'); } catch (e) {} return; }
   // Pré-règle l'objectif du générateur depuis l'objectif du profil (une seule
   // notion) — reste modifiable à l'étape 1.
-  var _objDef = null; try { var _oi = _objInfo(athlete && athlete.objectif); if (_oi) _objDef = _oi.gen; } catch (e) {}
+  var _objDef = null; try { var _oi = _objInfo(_gc.objectif); if (_oi) _objDef = _oi.gen; } catch (e) {}
   if (_objDef !== 'force' && _objDef !== 'hypertrophie') _objDef = 'hypertrophie';
   _genState = { niv: 'intermediaire', obj: _objDef, org: 'ul', jours: 4, temps: 60, preset: 0 };
   var ov = document.getElementById('gen-prog-overlay');
@@ -17019,21 +17029,29 @@ function _genRender() {
   sh.innerHTML = head + body;
 }
 async function _genGenerer() {
+  var _gc = _genCtx(); if (!_gc) { showToast('Athlète introuvable'); return; }
   var lignes = (_genState.niv !== 'debutant' && _genState.obj === 'force') ? _g2Resolve(_g2ForceLignesFromDOM()) : _g2Lignes();
   if (!lignes.length) { showToast('Impossible de générer (ajoute au moins un exercice)'); return; }
-  // Programme existant → demander avant d'écraser.
-  var existant = (dernierAppData && Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0);
-  if (existant && !confirm('Tu as déjà un programme. Le remplacer par le nouveau ? (l\'ancien sera supprimé)')) return;
+  // Programme existant → demander avant d'écraser (coach : le programme chargé de la fiche).
+  var existant = _gc.coach ? (typeof cdProgrammeLignes !== 'undefined' && cdProgrammeLignes && cdProgrammeLignes.length > 0)
+    : (dernierAppData && Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0);
+  if (existant && !confirm((_gc.coach ? (_gc.nom || 'Cet athlète') + ' a déjà un programme.' : 'Tu as déjà un programme.') + ' Le remplacer par le nouveau ? (l\'ancien sera supprimé)')) return;
   var btn = document.querySelector('#gen-prog-sheet button[onclick="_genGenerer()"]'); if (btn) { btn.disabled = true; btn.textContent = '⏳ Création…'; }
   try {
     var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'genererProgramme', athlete_id: athlete.athlete_id, athlete_nom: athlete.nom || '', remplacer: true, lignes: lignes }) });
+      body: JSON.stringify({ action: 'genererProgramme', athlete_id: _gc.id, athlete_nom: _gc.nom, remplacer: true, lignes: lignes }) });
     var data = await res.json();
     if (data && (data.ok || data.inserees)) {
       showToast('Programme créé (' + (data.inserees || lignes.length) + ' exercices)');
       fermerGenProgramme();
-      if (typeof chargerAppData === 'function') await chargerAppData();
-      if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme();
+      if (_gc.coach) {
+        // Recharge le programme de l'athlète dans le Builder coach (déjà ouvert).
+        if (typeof chargerProgrammeCoach === 'function') { try { await chargerProgrammeCoach(); } catch (e) {} }
+        try { renderProgrammeCoach(); } catch (e) {}
+      } else {
+        if (typeof chargerAppData === 'function') await chargerAppData();
+        if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme();
+      }
     } else { showToast('Erreur : ' + ((data && data.erreur) || 'création impossible')); if (btn) { btn.disabled = false; btn.textContent = 'Créer mon programme'; } }
   } catch (e) { showToast('Erreur réseau'); if (btn) { btn.disabled = false; btn.textContent = 'Créer mon programme'; } }
 }
