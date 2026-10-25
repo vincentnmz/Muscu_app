@@ -17597,10 +17597,11 @@ function _guideAthleteCards() {
       feats: ['<b>Questionnaire bien-être</b> (sommeil, énergie, fatigue, douleur)', '<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte', 'Ta <b>pesée</b> + tendance du poids', '<b>Mes suivis</b> : <b>photos avant/après</b> + <b>mensurations</b> (taille, bras, % masse grasse…)', '<b>Nutrition</b> (calories &amp; macros), <b>objectifs</b> et <b>blessures</b>'] },
     { ic: 'watch', scr: 'Réglages ▸ Appareils', t: 'Montre &amp; capteurs', lead: 'Tes données santé importées automatiquement.', go: aGo('reglages', function () { try { switchReglagesTab('appareils'); } catch (e) {} }),
       feats: ['Connexion <b>Health Connect</b> : <b>pas</b>, <b>sommeil</b>, <b>FC au repos</b>', 'Import <b>nutrition</b> : MyFitnessPal, Yazio, Samsung Health…', 'Tout est <b>croisé avec ton entraînement</b> pour juger ta forme'] },
-    { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: hasCoach ? 'Ton coach &amp; l’IA' : 'Assistant IA &amp; analyse morpho', lead: 'La partie IA arrive prochainement.', go: aGo('conseils'),
+    { ic: 'body', scr: hasCoach ? 'Coach' : 'Assistant', t: hasCoach ? 'Ton coach &amp; l’IA' : 'Assistant IA &amp; analyse morpho',
+      lead: 'Tes analyses (verdict, tendances, « mot de Novalyz ») viennent du <b>moteur Novalyz</b> — ce n’est pas de l’IA, et c’est déjà actif. Ici, en plus :', go: aGo('conseils'),
       feats: hasCoach
-        ? ['<b>Messagerie</b> avec ton coach : messages, photos, vidéos de ta technique', _ONB_BT + '<b>Assistant Novalyz IA</b> (questions branchées sur tes données)', _ONB_BT + '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)']
-        : [_ONB_BT + '<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', _ONB_BT + '<b>Analyse morphologique par IA</b> (photos → groupes <b>en avance / en retard</b>)', 'Tu pourras <b>lier un coach</b> plus tard'] },
+        ? ['<b>Messagerie</b> avec ton coach : messages, photos, vidéos de ta technique', _ONB_BT + '<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', _ONB_BT + '<b>Analyse morpho par IA</b> : photos → groupes <b>en avance / en retard</b>']
+        : [_ONB_BT + '<b>Assistant Novalyz IA</b> : pose tes questions, branché sur tes données', _ONB_BT + '<b>Analyse morpho par IA</b> : photos → groupes <b>en avance / en retard</b>', 'Tu pourras <b>lier un coach</b> plus tard (messages, photos, vidéos)'] },
     { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Tout ton suivi de base est gratuit.', go: aGo('accueil'),
       feats: ['Suivi · forme · montre · analyses de base + <b>export de tes données</b> : gratuit', 'Assistant IA : <b>3/jour</b> gratuit, illimité en Premium', 'Programme &amp; analyse morpho IA, analyses avancées : <b>Premium</b>', '<b>Rapports automatiques</b> (ton bilan envoyé par e-mail) : <b>Premium</b>'] }
   ];
