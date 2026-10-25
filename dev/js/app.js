@@ -17630,8 +17630,8 @@ function _guideCoachCards() {
       feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
     { ic: 'gear', scr: 'Profil', t: 'Profil &amp; données', lead: 'Ton espace coach.', go: G('profil'),
       feats: ['Tes préférences et ton profil coach', '<b>Export</b> des données de tes clients', '<b>Revoir la visite</b> à tout moment'] },
-    { ic: 'spark', scr: 'IA &amp; morpho', t: 'IA coach &amp; analyse morpho', lead: 'Arrive prochainement — depuis la fiche de chaque athlète.',
-      feats: [_ONB_BT + '<b>Résumé d’état &amp; vigilance</b> + <b>priorités</b> de la semaine', _ONB_BT + '<b>Risque de surcharge</b> — jamais de chiffre inventé', _ONB_BT + '<b>Analyse morphologique</b> (photos → groupes en avance / en retard)'] },
+    { ic: 'spark', scr: 'IA &amp; morpho', t: 'IA coach &amp; analyse morpho', lead: 'L’<b>analyse des données</b> (état, vigilance, risque de surcharge) est faite par le <b>moteur Novalyz</b> — ce n’est pas de l’IA, et c’est déjà sur chaque fiche. En plus, deux briques <b>IA</b> arrivent :',
+      feats: [_ONB_BT + '<b>Assistant IA coach</b> : demande une analyse, une priorité de travail ou un avis sur le risque — réponse appuyée sur les données de l’athlète (jamais de chiffre inventé)', _ONB_BT + '<b>Analyse morpho-anatomique par IA</b> : photos → groupes <b>en avance / en retard</b>'] },
     { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Ton espace coach démarre gratuit.', go: G('aujourdhui'),
       feats: ['Cockpit · suivi d’équipe · fiches : gratuit', 'IA coach : <b>3 questions/jour</b>, illimité en Premium', 'Plus d’athlètes · analyses avancées : <b>Premium</b>', '<b>Envoi de rapports</b> à tes athlètes (bilans auto par e-mail) : <b>Premium</b>'] }
   ];
