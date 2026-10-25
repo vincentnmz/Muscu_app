@@ -51,10 +51,10 @@
   .ph .x svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.4}
   .ph .ph-ph{display:flex;flex-direction:column;align-items:center;gap:6px}
   .ph .ph-ph svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8}
-  .seg-wrap{display:grid;grid-template-columns:272px 1fr;gap:16px}
+  .seg-wrap{display:grid;grid-template-columns:286px 1fr;gap:16px}
   @media(max-width:600px){.seg-wrap{grid-template-columns:1fr}}
-  .fig{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;justify-content:center}
-  .fig svg{width:100%;height:auto;max-height:380px}
+  .fig{background:radial-gradient(120% 80% at 50% 0,#172138,var(--surface2));border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;justify-content:center}
+  .fig svg{width:100%;height:auto;max-height:400px}
   .mes-list{display:flex;flex-direction:column;gap:8px}
   .mes{display:flex;align-items:center;gap:10px}
   .mes .num{width:22px;height:22px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex:none}
@@ -90,7 +90,7 @@
 </style>
 </head>
 <body>
-  <div class="cap">Maquette — <b>Analyse morpho v2</b> : questionnaire préalable (fiabilité + sécurité) · schéma corps + saisie des <b>segments</b> (leviers) · suppression des photos · <b>recommandations d'exercices selon les leviers</b> (règles biomécaniques déterministes — l'IA rédige, n'invente aucun chiffre).</div>
+  <div class="cap">Maquette — <b>Analyse morpho v2</b> : questionnaire préalable (fiabilité + sécurité) · schéma corps détaillé + saisie des <b>segments</b> (leviers) · suppression des photos · <b>recommandations d'exercices selon les leviers</b> (règles biomécaniques déterministes — l'IA rédige, n'invente aucun chiffre).</div>
 
   <div class="page">
     <div class="top">
@@ -136,90 +136,156 @@
       <div class="card">
         <div class="seg-wrap">
           <div class="fig">
-            <svg viewBox="0 0 340 368" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schéma corporel face et profil avec repères de mesure">
-              <defs><style>
-                .bd{fill:#2b3858}
-                .cap2{stroke:#2b3858;stroke-width:15;stroke-linecap:round;stroke-linejoin:round;fill:none}
-                .leg{stroke:#2b3858;stroke-width:18;stroke-linecap:round;stroke-linejoin:round;fill:none}
-                .arm2{stroke:#202c46;stroke-width:11;stroke-linecap:round;fill:none}
-                .ml{stroke:#1a5fff;stroke-width:2.6;stroke-linecap:round;fill:none}
-                .hv{stroke:#7c5cff;stroke-width:2;stroke-linecap:round;fill:none}
-                .dot{fill:#1a5fff}
-                .bn{fill:#fff;font:800 10px system-ui,sans-serif;text-anchor:middle}
-                .fc{fill:#8b96b0;font:800 9px system-ui,sans-serif;text-anchor:middle;letter-spacing:.08em}
-              </style></defs>
+            <svg viewBox="0 0 345 378" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schéma corporel détaillé face et profil avec repères de mesure">
+              <defs>
+                <style>
+                  .sk{fill:#33426a}
+                  .sk2{fill:#2a3860}
+                  .ln{fill:none;stroke:#1a2340;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+                  .hl{fill:none;stroke:#47597f;stroke-width:1;stroke-linecap:round;opacity:.9}
+                  .ml{stroke:#1a5fff;stroke-width:2.6;stroke-linecap:round;fill:none}
+                  .hv{stroke:#7c5cff;stroke-width:2;stroke-linecap:round;fill:none}
+                  .dot{fill:#1a5fff}
+                  .bn{fill:#fff;font:800 10px system-ui,sans-serif;text-anchor:middle}
+                  .fc{fill:#8b96b0;font:800 9px system-ui,sans-serif;text-anchor:middle;letter-spacing:.08em}
+                </style>
+                <!-- Demi-corps DROIT (miroir pour la gauche) : muscles latéraux -->
+                <g id="fh">
+                  <!-- grand pectoral -->
+                  <path class="sk" d="M3,66 C16,63 27,70 28,84 C28,95 18,100 8,98 C4,96 3,90 3,82 Z"/>
+                  <!-- deltoïde -->
+                  <path class="sk2" d="M24,65 C37,64 42,79 38,92 C31,98 23,91 23,78 C23,71 23,67 24,65 Z"/>
+                  <!-- grand dorsal / oblique (flanc du tronc) -->
+                  <path class="sk" d="M7,97 C18,99 24,110 24,124 C24,137 18,147 9,151 L5,151 C5,131 5,112 7,97 Z"/>
+                  <!-- bras (biceps/triceps) -->
+                  <path class="sk" d="M34,88 C40,92 41,112 40,133 C40,146 37,154 32,154 C28,153 28,132 28,112 C28,99 30,90 34,88 Z"/>
+                  <!-- avant-bras -->
+                  <path class="sk2" d="M32,154 C29,170 28,190 31,208 C33,215 39,215 41,206 C43,188 42,169 39,155 C37,152 34,152 32,154 Z"/>
+                  <!-- main -->
+                  <path class="sk" d="M33,215 C31,223 32,232 37,232 C41,232 41,223 40,215 Z"/>
+                  <!-- quadriceps -->
+                  <path class="sk" d="M6,153 C18,159 23,187 20,223 C19,241 15,257 9,263 C5,259 4,233 4,207 C4,183 4,165 6,153 Z"/>
+                  <!-- genou -->
+                  <ellipse class="sk2" cx="11" cy="266" rx="9.5" ry="7.5"/>
+                  <!-- mollet -->
+                  <path class="sk" d="M7,271 C2,285 2,309 8,325 C11,332 17,330 18,319 C20,299 18,283 16,271 C13,267 10,267 7,271 Z"/>
+                  <!-- pied -->
+                  <path class="sk2" d="M6,333 C4,341 5,347 15,348 L25,348 C26,345 25,341 20,339 C14,337 11,335 10,332 Z"/>
+                  <!-- lignes de définition -->
+                  <path class="hl" d="M8,97 C16,95 24,92 28,84"/>
+                  <path class="ln" d="M25,67 C24,78 24,89 27,97"/>
+                  <path class="hl" d="M33,98 C34,114 34,132 33,152"/>
+                  <path class="hl" d="M35,158 C36,177 36,194 35,206"/>
+                  <path class="ln" d="M9,104 C16,114 20,126 20,139"/>
+                  <path class="hl" d="M13,110 L17,116 M12,120 L16,126 M12,130 L15,135"/>
+                  <path class="ln" d="M11,168 C13,192 12,222 10,252"/>
+                  <path class="hl" d="M18,182 C20,210 17,240 13,257"/>
+                  <path class="hl" d="M4,263 C8,270 15,270 18,263"/>
+                  <path class="ln" d="M12,276 C13,294 13,310 12,324"/>
+                  <path class="hl" d="M7,276 C5,298 6,316 9,325"/>
+                </g>
+              </defs>
 
               <!-- ================= FACE ================= -->
-              <g>
-                <!-- corps -->
-                <line class="cap2" x1="85" y1="41" x2="85" y2="54" style="stroke-width:10"/>
-                <circle class="bd" cx="85" cy="26" r="16"/>
-                <path class="bd" d="M61 54 L109 54 L101 151 L69 151 Z"/>
-                <path class="cap2" d="M65 60 L49 113 L43 164"/>
-                <path class="cap2" d="M105 60 L121 113 L127 164"/>
-                <path class="leg" d="M75 151 L71 246 L69 332"/>
-                <path class="leg" d="M95 151 L99 246 L101 332"/>
+              <g transform="translate(86,2)">
+                <!-- trapèzes (sous les deltoïdes) -->
+                <path class="sk2" d="M-8,44 C-22,50 -31,60 -37,70 L-24,66 C-16,56 -8,53 0,53 C8,53 16,56 24,66 L37,70 C31,60 22,50 8,44 C4,47 -4,47 -8,44 Z"/>
+                <!-- demi-corps droit + gauche -->
+                <use href="#fh"/>
+                <use href="#fh" transform="scale(-1,1)"/>
+                <!-- bassin -->
+                <path class="sk2" d="M-15,150 C-15,166 -9,179 0,183 C9,179 15,166 15,150 Z"/>
+                <!-- abdomen (grand droit) par-dessus -->
+                <path class="sk" d="M-13,97 C-13,112 -12,140 -8,151 L8,151 C12,140 13,112 13,97 C7,93 -7,93 -13,97 Z"/>
+                <!-- définition abdos + linea alba -->
+                <path class="ln" d="M0,98 L0,150"/>
+                <path class="ln" d="M-9,113 Q0,116 9,113 M-9,125 Q0,128 9,125 M-9,137 Q0,140 9,137"/>
+                <path class="ln" d="M-12,156 C-7,168 -3,174 0,178 M12,156 C7,168 3,174 0,178"/>
+                <!-- cou + sterno-cléido -->
+                <path class="sk2" d="M-9,41 C-9,50 -8,55 -6,58 L6,58 C8,55 9,50 9,41 C5,45 -5,45 -9,41 Z"/>
+                <path class="ln" d="M-5,45 C-5,52 -4,56 -2,58 M5,45 C5,52 4,56 2,58"/>
+                <!-- clavicules -->
+                <path class="hl" d="M-2,58 C-12,58 -20,62 -26,66 M2,58 C12,58 20,62 26,66"/>
+                <!-- tête -->
+                <ellipse class="sk" cx="0" cy="26" rx="14" ry="17"/>
+                <path class="ln" d="M-14,24 C-11,22 -8,22 -6,24 M14,24 C11,22 8,22 6,24"/>
 
-                <!-- ① taille (bracket gauche) -->
-                <line class="ml" x1="16" y1="12" x2="16" y2="334"/>
-                <line class="ml" x1="11" y1="12" x2="21" y2="12"/>
-                <line class="ml" x1="11" y1="334" x2="21" y2="334"/>
-                <circle class="dot" cx="16" cy="175" r="9"/><text class="bn" x="16" y="178.5">1</text>
-
+                <!-- ===== mesures ===== -->
+                <!-- ① taille -->
+                <line class="ml" x1="-66" y1="8" x2="-66" y2="350"/>
+                <line class="ml" x1="-71" y1="8" x2="-61" y2="8"/>
+                <line class="ml" x1="-71" y1="350" x2="-61" y2="350"/>
+                <circle class="dot" cx="-66" cy="180" r="9"/><text class="bn" x="-66" y="183.5">1</text>
                 <!-- ③ largeur épaules -->
-                <line class="ml" x1="61" y1="54" x2="109" y2="54"/>
-                <circle class="dot" cx="61" cy="54" r="3"/><circle class="dot" cx="109" cy="54" r="3"/>
-                <circle class="dot" cx="123" cy="52" r="9"/><text class="bn" x="123" y="55.5">3</text>
-
+                <line class="ml" x1="-37" y1="70" x2="37" y2="70"/>
+                <circle class="dot" cx="-37" cy="70" r="3"/><circle class="dot" cx="37" cy="70" r="3"/>
+                <circle class="dot" cx="51" cy="66" r="9"/><text class="bn" x="51" y="69.5">3</text>
                 <!-- ④ largeur bassin -->
-                <line class="ml" x1="69" y1="151" x2="101" y2="151"/>
-                <circle class="dot" cx="69" cy="151" r="3"/><circle class="dot" cx="101" cy="151" r="3"/>
-                <circle class="dot" cx="55" cy="151" r="9"/><text class="bn" x="55" y="154.5">4</text>
-
+                <line class="ml" x1="-15" y1="182" x2="15" y2="182"/>
+                <circle class="dot" cx="-15" cy="182" r="3"/><circle class="dot" cx="15" cy="182" r="3"/>
+                <circle class="dot" cx="30" cy="183" r="9"/><text class="bn" x="30" y="186.5">4</text>
                 <!-- ⑤ humérus (bras droit) -->
-                <line class="ml" x1="105" y1="60" x2="121" y2="113"/>
-                <circle class="dot" cx="105" cy="60" r="3"/><circle class="dot" cx="121" cy="113" r="3"/>
-                <circle class="dot" cx="135" cy="86" r="9"/><text class="bn" x="135" y="89.5">5</text>
-
+                <line class="ml" x1="37" y1="72" x2="34" y2="154"/>
+                <circle class="dot" cx="37" cy="72" r="3"/><circle class="dot" cx="34" cy="154" r="3"/>
+                <circle class="dot" cx="52" cy="112" r="9"/><text class="bn" x="52" y="115.5">5</text>
                 <!-- ⑥ avant-bras -->
-                <line class="ml" x1="121" y1="113" x2="127" y2="164"/>
-                <circle class="dot" cx="127" cy="164" r="3"/>
-                <circle class="dot" cx="141" cy="139" r="9"/><text class="bn" x="141" y="142.5">6</text>
+                <line class="ml" x1="34" y1="154" x2="37" y2="208"/>
+                <circle class="dot" cx="37" cy="208" r="3"/>
+                <circle class="dot" cx="53" cy="188" r="9"/><text class="bn" x="53" y="191.5">6</text>
+                <!-- ⑦ envergure -->
+                <line class="hv" x1="-60" y1="364" x2="60" y2="364"/>
+                <polyline class="hv" points="-53,359 -60,364 -53,369"/>
+                <polyline class="hv" points="53,359 60,364 53,369"/>
+                <circle class="dot" cx="0" cy="364" r="9" style="fill:#7c5cff"/><text class="bn" x="0" y="367.5">7</text>
 
-                <!-- ⑦ envergure (flèche bas) -->
-                <line class="hv" x1="20" y1="352" x2="150" y2="352"/>
-                <polyline class="hv" points="27,347 20,352 27,357"/>
-                <polyline class="hv" points="143,347 150,352 143,357"/>
-                <circle class="dot" cx="85" cy="352" r="9" style="fill:#7c5cff"/><text class="bn" x="85" y="355.5">7</text>
-
-                <text class="fc" x="85" y="366">FACE</text>
+                <text class="fc" x="0" y="376">FACE</text>
               </g>
 
               <!-- ================= PROFIL ================= -->
-              <g transform="translate(205,0)">
-                <line class="cap2" x1="46" y1="41" x2="45" y2="52" style="stroke-width:10"/>
-                <circle class="bd" cx="47" cy="26" r="15"/>
-                <line class="cap2" x1="44" y1="52" x2="47" y2="149" style="stroke-width:26"/>
-                <path class="arm2" d="M44 60 L42 150"/>
-                <path class="leg" d="M47 150 L54 246 L50 331"/>
+              <g transform="translate(205,2)">
+                <!-- tête de profil (avec nez) -->
+                <path class="sk" d="M30,10 C40,8 48,16 48,28 C48,33 47,36 45,39 L50,40 C52,41 53,43 51,45 L56,46 L50,49 L52,52 L49,55 C46,58 42,58 39,57 C35,56 32,52 32,46 C31,40 30,28 30,10 Z"/>
+                <ellipse class="sk2" cx="40" cy="31" rx="2.5" ry="3"/>
+                <!-- cou -->
+                <path class="sk2" d="M38,54 L48,56 L47,67 L40,67 Z"/>
+                <!-- tronc (dos + poitrine) -->
+                <path class="sk" d="M35,66 C28,76 30,98 34,120 C36,135 40,146 46,151 L58,151 C60,130 60,100 56,80 C54,71 50,66 44,66 Z"/>
+                <!-- grand fessier -->
+                <path class="sk2" d="M34,136 C29,145 29,159 38,163 C47,161 49,150 46,143 Z"/>
+                <!-- bras (devant) -->
+                <path class="sk2" d="M46,70 C49,88 49,118 47,146 C46,151 51,151 52,146 C54,118 54,88 52,72 C51,68 48,68 46,70 Z"/>
+                <!-- cuisse -->
+                <path class="sk" d="M40,150 C36,174 40,212 48,242 C50,250 57,251 59,244 C61,214 59,180 55,155 C51,150 44,150 40,150 Z"/>
+                <!-- genou -->
+                <ellipse class="sk2" cx="53" cy="252" rx="9.5" ry="7.5"/>
+                <!-- mollet -->
+                <path class="sk" d="M48,257 C44,269 44,293 48,313 C50,321 57,323 59,313 C61,293 58,273 56,257 C53,253 50,253 48,257 Z"/>
+                <!-- pied (vers l'avant) -->
+                <path class="sk2" d="M48,327 C46,335 47,342 54,343 L74,344 C76,342 75,338 70,336 L57,331 C53,330 50,329 48,327 Z"/>
+                <!-- définition -->
+                <path class="hl" d="M46,72 C52,78 54,88 52,98"/>
+                <path class="ln" d="M48,102 L48,146"/>
+                <path class="hl" d="M44,112 Q48,114 52,112 M44,124 Q48,126 52,124 M44,136 Q48,138 52,136"/>
+                <path class="ln" d="M34,82 C33,102 35,122 40,142"/>
+                <path class="hl" d="M50,162 C52,192 50,222 48,242"/>
+                <path class="hl" d="M50,266 C52,286 50,304 50,313"/>
 
+                <!-- ===== mesures ===== -->
                 <!-- ② tronc -->
-                <line class="ml" x1="20" y1="52" x2="20" y2="149"/>
-                <line class="ml" x1="15" y1="52" x2="25" y2="52"/>
-                <line class="ml" x1="15" y1="149" x2="25" y2="149"/>
-                <circle class="dot" cx="20" cy="100" r="9"/><text class="bn" x="20" y="103.5">2</text>
-
+                <line class="ml" x1="22" y1="66" x2="22" y2="151"/>
+                <line class="ml" x1="17" y1="66" x2="27" y2="66"/>
+                <line class="ml" x1="17" y1="151" x2="27" y2="151"/>
+                <circle class="dot" cx="22" cy="108" r="9"/><text class="bn" x="22" y="111.5">2</text>
                 <!-- ⑧ fémur -->
-                <line class="ml" x1="47" y1="150" x2="54" y2="246"/>
-                <circle class="dot" cx="47" cy="150" r="3"/><circle class="dot" cx="54" cy="246" r="3"/>
-                <circle class="dot" cx="68" cy="198" r="9"/><text class="bn" x="68" y="201.5">8</text>
-
+                <line class="ml" x1="46" y1="152" x2="54" y2="248"/>
+                <circle class="dot" cx="46" cy="152" r="3"/><circle class="dot" cx="54" cy="248" r="3"/>
+                <circle class="dot" cx="70" cy="200" r="9"/><text class="bn" x="70" y="203.5">8</text>
                 <!-- ⑨ tibia -->
-                <line class="ml" x1="54" y1="246" x2="50" y2="331"/>
-                <circle class="dot" cx="50" cy="331" r="3"/>
-                <circle class="dot" cx="66" cy="289" r="9"/><text class="bn" x="66" y="292.5">9</text>
+                <line class="ml" x1="54" y1="252" x2="52" y2="327"/>
+                <circle class="dot" cx="52" cy="327" r="3"/>
+                <circle class="dot" cx="70" cy="290" r="9"/><text class="bn" x="70" y="293.5">9</text>
 
-                <text class="fc" x="48" y="366">PROFIL</text>
+                <text class="fc" x="48" y="376">PROFIL</text>
               </g>
             </svg>
           </div>
