@@ -324,17 +324,35 @@
       <span class="mo-ttl">Analyse morpho</span>
     </div>
     <div class="mo-body">
-      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;">Ajoute une photo de <b>face</b> et/ou de <b>dos</b> (tenue ajustée, bonne lumière, fond neutre). L'IA repère tes groupes en avance / en retard pour orienter ton entraînement.</div>
+      <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;">Ajoute des photos de <b>face</b>, <b>profil</b> et <b>dos</b>. L'IA repère tes groupes en avance / en retard pour orienter ton entraînement. Plus les photos respectent le protocole ci-dessous, plus l'analyse est fiable.</div>
 
-      <div style="display:flex;gap:11px;margin-top:14px;">
-        <label style="flex:1;cursor:pointer;">
+      <details style="margin-top:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface2);">
+        <summary style="cursor:pointer;padding:11px 13px;font-size:12.5px;font-weight:800;color:var(--text);">📸 Comment bien prendre tes photos</summary>
+        <div style="padding:0 13px 13px;font-size:12px;color:var(--text-muted);line-height:1.65;">
+          <b>3 vues</b> : face · profil (un côté) · dos.<br>
+          • <b>Pose détendue</b> (pas contractée) : debout, pieds largeur de hanches, bras légèrement écartés (~15°), paumes vers l'avant.<br>
+          • <b>Tenue ajustée</b> (short / brassière ou torse nu) pour voir les contours musculaires.<br>
+          • <b>Cadrage</b> : corps entier (tête aux pieds), photo verticale, appareil à <b>hauteur du nombril</b> et <b>parallèle au corps</b> — pas de plongée/contre-plongée (ça déforme les proportions).<br>
+          • <b>Fond uni</b> et contrasté, <b>lumière homogène de face</b> (pas de contre-jour ni d'ombres dures).<br>
+          • <b>Repère d'échelle</b> (utile) : tiens-toi près d'une porte ou tiens une feuille A4 dans le cadre.<br>
+          • <b>Avant / après</b> : mêmes conditions à chaque fois (distance, pose, tenue, lumière), idéalement le matin à jeun.
+        </div>
+      </details>
+
+      <div style="display:flex;gap:9px;margin-top:14px;">
+        <label style="flex:1;cursor:pointer;min-width:0;">
           <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;">Face</div>
-          <div id="morpho-prev-face" style="height:150px;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
+          <div id="morpho-prev-face" style="height:135px;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
           <input type="file" accept="image/*" onchange="_morphoFichier(this,'face')" style="display:none;">
         </label>
-        <label style="flex:1;cursor:pointer;">
+        <label style="flex:1;cursor:pointer;min-width:0;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;">Profil</div>
+          <div id="morpho-prev-profil" style="height:135px;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
+          <input type="file" accept="image/*" onchange="_morphoFichier(this,'profil')" style="display:none;">
+        </label>
+        <label style="flex:1;cursor:pointer;min-width:0;">
           <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;">Dos</div>
-          <div id="morpho-prev-dos" style="height:150px;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
+          <div id="morpho-prev-dos" style="height:135px;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface2);display:grid;place-items:center;color:var(--text-subtle);font-size:12px;background-size:cover;background-position:center;">+ photo</div>
           <input type="file" accept="image/*" onchange="_morphoFichier(this,'dos')" style="display:none;">
         </label>
       </div>
