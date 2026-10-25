@@ -13688,7 +13688,27 @@ function _maCroise(data) {
     + _maPeriodHtml() + _maPeriodHint('Le sélecteur ajuste la répartition et les tendances ci-dessous.')
     + _maSec('Répartition de la charge', 'muscu vs cardio · ' + _w.plabel, 'equilibre_mc') + rep
     + indic;
-  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + _maNovaAsk() + '</div></div>');
+  // Rail croisé : côté COACH (fiche athlète), « Demande à Novalyz » n'a pas de sens
+  // → mini-récap « Charge combinée » (période affichée, mêmes chiffres que la barre).
+  // Côté ATHLÈTE : on garde l'accès à Novalyz.
+  var railCroise;
+  if (coach) {
+    var muscuSea = r.seances || 0;
+    var dispoTxt = (mot.disponibilite && mot.disponibilite.niveau) ? _maE(mot.disponibilite.niveau) : null;
+    var repVal = tot ? (mPct + '% / ' + cPct + '%' + (hPct > 0 ? (' / ' + hPct + '% Hx') : '')) : '—';
+    var rrows = [
+      ['Séances', (nSea || 0) + (nSea ? (' <span style="color:var(--text-subtle);font-weight:600">(' + muscuSea + ' musc · ' + cardioN + ' car)</span>') : ''), null],
+      ['Muscu / cardio', repVal, null],
+      ['Récupération', (mot.recup ? _maE(mot.recup) : '—') + (dispoTxt ? (' <span style="color:var(--text-subtle);font-weight:600">· ' + dispoTxt + '</span>') : ''), null]
+    ];
+    if (trendOk) { rrows.push(['Charge', chBig, chCol]); rrows.push(['Forme', foBig, foCol]); }
+    var rinner = rrows.map(function (rw, i) { return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;' + (i ? 'border-top:1px solid var(--border);' : '') + 'font-size:12.5px"><span style="color:var(--text-muted)">' + rw[0] + '</span><span style="font-weight:800;text-align:right' + (rw[2] ? ';color:' + rw[2] : '') + '">' + rw[1] + '</span></div>'; }).join('');
+    railCroise = _maSec('Charge combinée', _w.plabel) + '<div class="ma-card" style="padding:4px 14px 10px">' + rinner + '</div>'
+      + _maCap('Récap de la période affichée. Charge combinée = muscu + cardio. Tendance dès ~4 sem.');
+  } else {
+    railCroise = _maNovaAsk();
+  }
+  _maSet('ma-croise-resume', '<div class="ma-cols2"><div class="ma-colmain">' + _xrMain + '</div><div class="ma-colrail">' + railCroise + '</div></div>');
   try { _maSet('ma-croise-tendances', ''); } catch (e) {}
 }
 
