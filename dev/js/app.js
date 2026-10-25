@@ -17535,7 +17535,13 @@ function _nvgRender() {
   // mettent la vraie nav à jour de façon async → sans le re-lift différé, en « Précédent »
   // le surlignage restait sur l'onglet précédent.
   try { _nvgLiftNav(); } catch (e) {}
-  try { clearTimeout(_nvgLiftT); _nvgLiftT = setTimeout(function () { try { _nvgLiftNav(); } catch (e) {} }, 90); } catch (e) {}
+  // Cascade de re-lifts : certaines navs (ouverture de fiche via fetch) peuvent
+  // prendre quelques centaines de ms → on repasse plusieurs fois pour que le
+  // surlignage rattrape la vraie nav, y compris en « Précédent ».
+  try {
+    (_nvgLiftT || (_nvgLiftT = [])).forEach(function (t) { clearTimeout(t); });
+    _nvgLiftT = [90, 260, 550].map(function (ms) { return setTimeout(function () { try { _nvgLiftNav(); } catch (e) {} }, ms); });
+  } catch (e) {}
 }
 var _nvgLiftT = null;
 // Navigation coach pour le guide (viewport-aware) : sections de contenu via la vraie
@@ -17607,10 +17613,10 @@ function _guideCoachCards() {
       feats: ['<b>Builder</b> : charges en % du 1RM, <b>RPE cible</b>, groupé par muscle', '<b>Agenda daté</b> : planifie semaine par semaine, <b>glisser-déposer</b>', '<b>Jour conseillé</b> directement sur la séance', 'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste'] },
     { ic: 'chat', scr: 'Fiche ▸ Conversation', t: 'Fiche ▸ Conversation', lead: 'Échange direct avec l’athlète.', go: F('conseils'),
       feats: ['<b>Messages, photos, vidéos</b> (technique) + <b>caméra en direct</b>', '<b>Répondre aux alertes</b> de la semaine · <b>Marquer traité</b>', 'Conseils envoyés depuis l’analyse'] },
-    { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Toutes tes conversations.', go: G('messages'),
-      feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
     { ic: 'chart', scr: 'Analyses', t: 'Analyses équipe', lead: 'Les tendances en profondeur.', go: G('analyses'),
       feats: ['Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>', 'Charge, volume, forme dans le temps'] },
+    { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Toutes tes conversations.', go: G('messages'),
+      feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
     { ic: 'gear', scr: 'Profil', t: 'Profil &amp; données', lead: 'Ton espace coach.', go: G('profil'),
       feats: ['Tes préférences et ton profil coach', '<b>Export</b> des données de tes clients', '<b>Revoir la visite</b> à tout moment'] },
     { ic: 'spark', scr: 'IA &amp; morpho', t: 'IA coach &amp; analyse morpho', lead: 'Arrive prochainement — depuis la fiche de chaque athlète.',
