@@ -9392,11 +9392,11 @@ function cvSendIA() {
 }
 
 // ── Analyse morpho par photo (IA vision) — photos jamais stockées ──
-var _morphoImgs = { face: null, dos: null };
+var _morphoImgs = { face: null, profil: null, dos: null };
 function ouvrirMorpho() {
-  _morphoImgs = { face: null, dos: null };
+  _morphoImgs = { face: null, profil: null, dos: null };
   if (typeof switchTab === 'function') switchTab('morpho');   // sous-écran plein écran
-  ['face', 'dos'].forEach(function (w) { var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; } });
+  ['face', 'profil', 'dos'].forEach(function (w) { var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; } });
   var c = document.getElementById('morpho-consent'); if (c) c.checked = false;
   var r = document.getElementById('morpho-result'); if (r) r.innerHTML = '';
   var g = document.getElementById('morpho-go'); if (g) { g.disabled = false; g.textContent = 'Analyser'; }
@@ -9422,7 +9422,7 @@ function _morphoFichier(input, which) {
 }
 async function _morphoAnalyser() {
   if (typeof athlete === 'undefined' || !athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
-  var imgs = []; if (_morphoImgs.face) imgs.push(_morphoImgs.face); if (_morphoImgs.dos) imgs.push(_morphoImgs.dos);
+  var imgs = []; if (_morphoImgs.face) imgs.push(_morphoImgs.face); if (_morphoImgs.profil) imgs.push(_morphoImgs.profil); if (_morphoImgs.dos) imgs.push(_morphoImgs.dos);
   if (!imgs.length) { showToast('Ajoute au moins une photo', '#DC3545'); return; }
   var consent = document.getElementById('morpho-consent'); if (!consent || !consent.checked) { showToast('Coche le consentement', '#DC3545'); return; }
   var g = document.getElementById('morpho-go'); if (g) { g.disabled = true; g.textContent = 'Analyse en cours…'; }
