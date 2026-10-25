@@ -8080,12 +8080,16 @@ function renderProgrammeCoach() {
     var vol = {}, tot = 0;
     activeLignes.forEach(function (l) { if (l.type === 'cardio') return; var s = Number(l.series_prevues) || 0; tot += s; var mg = _exoGrpOf(muscleDe(l.exercice)); var meta = mg ? _exoGrpMeta(mg) : null; var key = meta ? meta.label : (muscleDe(l.exercice) || 'Autre'); var col = meta ? meta.col : '#8a94a6'; (vol[key] = vol[key] || { s: 0, col: col }).s += s; });
     var volRows = Object.keys(vol).map(function (k) { return '<span class="pb-volchip" style="border-color:' + vol[k].col + '66;color:' + vol[k].col + '"><b>' + vol[k].s + '</b> ' + esc(k) + '</span>'; }).join('');
+    // Agenda daté : UNIQUEMENT côté coach (fiche athlète). En tête de la colonne droite.
+    var _agCoach = (typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id);
     var insp = '<div class="pb-insp">'
+      + (_agCoach ? '<div class="pb-card" id="cd-prog-agenda-root" style="padding:14px"></div>' : '')
       + '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>'
       + '<div class="pb-card">' + _progJourPicker(activeSid, activeLignes) + '</div>'
       + '<div class="pb-card"><div class="pb-card-t">Volume de la séance</div><div class="pb-voltot">' + tot + ' séries</div><div class="pb-volwrap">' + (volRows || '<span style="color:var(--text-subtle);font-size:12px">—</span>') + '</div></div>'
       + '</div>';
     elB.innerHTML = '<div class="pb-builder">' + rail + canvas + insp + '</div>';
+    if (_agCoach) { try { cdAgRender(); } catch (e) {} }
   }
   if (_editorMode) { _progRenderEditor(el, seances, ordre); return; }
 
@@ -8158,6 +8162,11 @@ function renderProgrammeCoach() {
       </div>
     </div>`;
   }).join('');
+  // Mobile coach (accordéon, pas le Builder desktop inline) : agenda daté en tête.
+  if (!ro && progCtx && progCtx.el === 'cd-programme-content' && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id) {
+    el.insertAdjacentHTML('afterbegin', '<div class="dash-card" id="cd-prog-agenda-root" style="padding:14px;margin-bottom:12px"></div>');
+    try { cdAgRender(); } catch (e) {}
+  }
 }
 
 // État d'ouverture des exercices (mode édition via crayon) — conservé entre les re-rendus
