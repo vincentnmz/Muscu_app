@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding athlète — mobile</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.12);
+    --good:#00c96e; --warn:#f5a623; --bad:#e5484d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#05080f;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:20px 12px 40px;display:flex;flex-direction:column;align-items:center}
+  .cap{font-size:11px;color:var(--subtle);margin-bottom:12px;text-align:center}
+  .phone{width:100%;max-width:390px;background:var(--bg);border:1px solid var(--border);border-radius:30px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;min-height:720px}
+  .bar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px}
+  .bar .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px}
+  .bar .logo .n{width:22px;height:22px;border-radius:7px;background:var(--accent);display:grid;place-items:center;font-size:12px;color:#fff}
+  .bar .skip{font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:inherit}
+  .body{flex:1;padding:8px 18px 0;display:flex;flex-direction:column}
+  .ic{width:52px;height:52px;border-radius:15px;background:var(--accent-a);display:grid;place-items:center;font-size:26px;margin-bottom:12px}
+  .step{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--accent2)}
+  h1{font-size:23px;margin:4px 0 3px;font-weight:900;letter-spacing:-.01em}
+  .lead{font-size:13px;color:var(--muted);margin:0 0 14px}
+  .feats{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+  .feats li{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45}
+  .feats li .chk{flex:none;margin-top:1px;width:19px;height:19px;border-radius:999px;background:var(--accent-a);display:grid;place-items:center;color:var(--accent2)}
+  .feats li .chk svg{width:11px;height:11px}
+  .bt{display:inline-block;font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:5px;text-transform:uppercase;letter-spacing:.03em;background:rgba(245,166,35,.16);color:var(--warn);vertical-align:middle}
+  .foot{padding:12px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+  .dots{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+  .dots i{width:7px;height:7px;border-radius:999px;background:var(--border);transition:.2s}
+  .dots i.on{background:var(--accent);width:20px;border-radius:999px}
+  .nav{display:flex;gap:9px}
+  .nav button{flex:1;border:none;border-radius:13px;padding:13px;font:inherit;font-weight:800;font-size:14px;cursor:pointer}
+  .nav .prev{flex:none;width:52px;background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+  .nav .next{background:var(--accent);color:#fff}
+  .nav .ghost{background:var(--surface2);border:1px solid var(--border);color:var(--text)}
+  .end{text-align:center;padding-top:10px}
+  .end .big{font-size:40px}
+</style>
+</head>
+<body>
+  <div class="cap">Maquette — Onboarding <b>athlète (mobile)</b> · tous les onglets + fonctionnalités · badge « Prochainement » sur l'IA</div>
+  <div class="phone">
+    <div class="bar"><div class="logo"><span class="n">N</span>Novalyz</div><button class="skip" onclick="go(CARDS.length-1)">Passer ✕</button></div>
+    <div class="body" id="body"></div>
+    <div class="foot">
+      <div class="dots" id="dots"></div>
+      <div class="nav" id="nav"></div>
+    </div>
+  </div>
+<script>
+  var BT = ' <span class="bt">Prochainement</span>';
+  var CARDS = [
+    { ic:'🏠', t:'Aujourd’hui', lead:'Ton tableau de bord quotidien — tu reviens toujours ici.', feats:[
+      'Ton <b>état du jour</b> (prêt / vigilance) + le <b>mot de Novalyz</b>',
+      'Ta <b>séance du jour</b> à lancer en un geste',
+      'Tes <b>séances prévues</b> (agenda posé par ton coach)',
+      'Ton <b>point d’attention</b> (alertes) et ta <b>régularité</b>',
+      'Tes <b>badges &amp; récompenses</b>',
+      'Le bouton <b>« Demande à Novalyz »</b>'+BT ] },
+    { ic:'🏋️', t:'Entraînement', lead:'Ton programme et tes séances.', feats:[
+      '<b>Agenda</b> : muscu, cardio et <b>Hyrox</b>',
+      '<b>Démarre une séance</b> : charge, reps, RPE série par série + <b>chrono de repos</b>',
+      '<b>« Dernière fois → cible »</b> : surcharge progressive guidée',
+      'Laisse <b>Novalyz générer</b> un programme adapté (objectif, jours, niveau)' ] },
+    { ic:'📊', t:'Analyses', lead:'Comprendre ce que disent tes données.', feats:[
+      '<b>Résumé</b> : le verdict en clair + tes chiffres clés',
+      '<b>Évolution</b> : par exercice / groupe / séance + <b>indice de force</b>',
+      '<b>Tendances</b> + <b>sélecteur de période</b> (semaine / mois / année)',
+      'Vue <b>Croisé</b> : muscu + cardio · <b>fréquence &amp; intensité</b> par muscle' ] },
+    { ic:'❤️', t:'Forme', lead:'Ton ressenti, croisé avec l’entraînement.', feats:[
+      '<b>Questionnaire bien-être</b> (sommeil, énergie, fatigue, douleur)',
+      '<b>Contexte</b> : déload, reprise, vacances → l’analyse s’adapte',
+      'Ta <b>pesée</b> + tendance du poids',
+      '<b>Mes suivis</b> : <b>photos avant/après</b> + <b>mensurations</b>',
+      '<b>Nutrition</b> (calories &amp; macros), <b>objectifs</b>, <b>blessures</b>' ] },
+    { ic:'⌚', t:'Montre &amp; capteurs', lead:'Tes données santé importées automatiquement.', feats:[
+      'Connexion <b>Health Connect</b> : <b>pas</b>, <b>sommeil</b>, <b>FC au repos</b>',
+      'Import <b>nutrition</b> : MyFitnessPal, Yazio, Samsung Health…',
+      'Tout est <b>croisé avec ton entraînement</b> pour juger ta forme' ] },
+    { ic:'🤖', t:'Assistant IA &amp; morpho', lead:'La partie IA arrive prochainement.', feats:[
+      '<b>Assistant Novalyz</b> : pose tes questions, branché sur tes données'+BT,
+      '<b>Analyse morphologique</b> par photo → groupes en avance / en retard'+BT,
+      'Tu pourras <b>lier un coach</b> quand tu veux' ] },
+    { ic:'🎁', t:'Gratuit — et plus en Premium', lead:'Tout ton suivi de base est gratuit.', feats:[
+      'Suivi · forme · montre · analyses de base + <b>export</b> : <b>gratuit</b>',
+      'Assistant IA : <b>3/jour</b> gratuit, illimité en Premium'+BT,
+      'Programme &amp; <b>analyse morpho IA</b>, analyses avancées : <b>Premium</b>'+BT,
+      '<b>Rapports automatiques</b> par e-mail : <b>Premium</b>' ] },
+    { end:true }
+  ];
+  var i = 0;
+  function render(){
+    var c = CARDS[i], b = document.getElementById('body');
+    if (c.end){
+      b.innerHTML = '<div class="end"><div class="big">🎉</div><h1 style="margin-top:8px">C’est parti !</h1><div class="lead">Tu as fait le tour. Tu pourras <b>revoir la visite</b> à tout moment depuis Réglages.</div></div>';
+    } else {
+      b.innerHTML = '<div class="ic">'+c.ic+'</div><div class="step">'+(i+1)+' / '+(CARDS.length-1)+'</div><h1>'+c.t+'</h1><div class="lead">'+c.lead+'</div>'
+        + '<ul class="feats">'+c.feats.map(function(f){return '<li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span><span>'+f+'</span></li>';}).join('')+'</ul>';
+    }
+    var d = document.getElementById('dots'); d.innerHTML='';
+    for (var k=0;k<CARDS.length-1;k++){ var s=document.createElement('i'); if(k===i)s.className='on'; d.appendChild(s); }
+    var nav = document.getElementById('nav');
+    if (c.end){ nav.innerHTML = '<button class="ghost" onclick="go(0)">↺ Revoir</button><button class="next" onclick="alert(\'(démo) Fin de la visite\')">Commencer</button>'; }
+    else { nav.innerHTML = (i>0?'<button class="prev" onclick="go('+(i-1)+')">‹</button>':'') + '<button class="next" onclick="go('+(i+1)+')">'+(i===CARDS.length-2?'Terminer':'Suivant')+'</button>'; }
+  }
+  function go(n){ i=Math.max(0,Math.min(CARDS.length-1,n)); render(); }
+  render();
+</script>
+</body>
+</html>

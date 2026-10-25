@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding coach — desktop</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.12);
+    --good:#00c96e; --warn:#f5a623; --bad:#e5484d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#05080f;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:22px 16px 48px;display:flex;flex-direction:column;align-items:center}
+  .cap{font-size:11.5px;color:var(--subtle);margin-bottom:14px;text-align:center;max-width:900px}
+  .app{width:100%;max-width:960px;background:var(--bg);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.6);display:grid;grid-template-columns:230px 1fr;min-height:560px}
+  /* sidebar */
+  .side{background:var(--surface2);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px;padding:4px 8px 16px}
+  .brand .n{width:26px;height:26px;border-radius:8px;background:var(--accent);display:grid;place-items:center;font-size:13px;color:#fff}
+  .brand .r{font-size:9px;font-weight:800;color:var(--accent2);background:var(--accent-a);border-radius:5px;padding:2px 6px;margin-left:auto}
+  .navitem{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:3px;border:1px solid transparent}
+  .navitem .em{width:22px;text-align:center}
+  .navitem.on{background:var(--accent-a);color:var(--text);border-color:var(--accent2);font-weight:800;box-shadow:0 0 0 2px rgba(26,95,255,.25)}
+  .navitem.done{color:var(--subtle)}
+  .navitem .bt{margin-left:auto;font-size:7.5px;font-weight:800;color:var(--warn);background:rgba(245,166,35,.16);border-radius:4px;padding:1px 4px;text-transform:uppercase}
+  /* content */
+  .main{padding:26px 30px;display:flex;flex-direction:column}
+  .step{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--accent2)}
+  .main h1{font-size:26px;margin:5px 0 4px;font-weight:900;letter-spacing:-.01em}
+  .main h1 .bt{font-size:10px;font-weight:800;color:var(--warn);background:rgba(245,166,35,.16);border-radius:6px;padding:2px 8px;margin-left:8px;text-transform:uppercase;vertical-align:middle}
+  .lead{font-size:14px;color:var(--muted);margin:0 0 18px}
+  .feats{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;flex:1}
+  .feats li{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.5}
+  .feats li .chk{flex:none;margin-top:1px;width:22px;height:22px;border-radius:999px;background:var(--accent-a);display:grid;place-items:center;color:var(--accent2)}
+  .feats li .chk svg{width:12px;height:12px}
+  .inlbt{display:inline-block;font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:5px;text-transform:uppercase;letter-spacing:.03em;background:rgba(245,166,35,.16);color:var(--warn);vertical-align:middle}
+  .foot{display:flex;align-items:center;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
+  .foot .dots{display:flex;gap:6px;flex:1}
+  .foot .dots i{width:7px;height:7px;border-radius:999px;background:var(--border)}
+  .foot .dots i.on{background:var(--accent);width:20px}
+  .foot button{border:none;border-radius:11px;padding:11px 18px;font:inherit;font-weight:800;font-size:13.5px;cursor:pointer}
+  .foot .skip{background:none;color:var(--muted)}
+  .foot .prev{background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+  .foot .next{background:var(--accent);color:#fff}
+  .foot .ghost{background:var(--surface2);border:1px solid var(--border);color:var(--text)}
+  .endwrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .endwrap .big{font-size:48px}
+</style>
+</head>
+<body>
+  <div class="cap">Maquette — Onboarding <b>coach (desktop)</b> : comme le mobile (noms d'onglets + toutes les fonctionnalités), avec <b>surbrillance</b> de l'onglet décrit dans la barre latérale. IA en « Prochainement », <b>Revoir / Passer</b> à la fin.</div>
+  <div class="app">
+    <div class="side">
+      <div class="brand"><span class="n">N</span>Novalyz<span class="r">Coach</span></div>
+      <div id="nav"></div>
+    </div>
+    <div class="main">
+      <div id="content" style="display:flex;flex-direction:column;flex:1"></div>
+      <div class="foot" id="foot"></div>
+    </div>
+  </div>
+<script>
+  var BT = ' <span class="inlbt">Prochainement</span>';
+  var TABS = [
+    { em:'🏠', t:'Aujourd’hui', lead:'Ton point de départ chaque jour : qui a besoin de toi.', feats:[
+      '<b>Briefing équipe</b> : % à jour, athlètes à voir',
+      '<b>Qui a répondu</b> au bien-être (7 j) + relance',
+      '<b>À surveiller</b> : athlètes triés par priorité + motif',
+      '<b>Messages non lus</b> en un coup d’œil' ] },
+    { em:'👥', t:'Équipe', lead:'Tout ton effectif.', feats:[
+      'Statut, niveau, <b>assiduité</b>, dernière séance par athlète',
+      '<b>Enregistrer un athlète</b> : invitation ou création du compte',
+      'Clique une ligne pour <b>ouvrir sa fiche</b>' ] },
+    { em:'📂', t:'Fiche athlète', lead:'Tout sur un athlète, en sous-onglets.', feats:[
+      '<b>Aperçu</b> : Coup d’œil + <b>Lecture Novalyz pour le coach</b>',
+      '<b>Progression</b> : Évolution / Tendances + <b>agenda</b> + <b>Photo &amp; mensurations</b>',
+      '<b>Séances</b>, <b>Programme</b>, <b>Conversation</b>',
+      '<b>Objectifs</b> &amp; <b>blessures</b> · <b>Export du bilan</b> client' ] },
+    { em:'📋', t:'Programme', lead:'Construis et planifie ses séances.', feats:[
+      '<b>Builder</b> : charges en % du 1RM, <b>RPE cible</b>, groupé par muscle',
+      '<b>Agenda daté</b> : planifie semaine par semaine, <b>glisser-déposer</b>',
+      '<b>Jour conseillé</b> directement sur la séance',
+      'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste' ] },
+    { em:'💬', t:'Messages', lead:'Tes échanges avec les athlètes.', feats:[
+      'Conversations : <b>messages, photos, vidéos</b> (technique)',
+      '<b>Caméra en direct</b> (photo/vidéo sur le vif)',
+      'Notifications des non-lus' ] },
+    { em:'📊', t:'Analyses équipe', lead:'Les tendances en profondeur.', feats:[
+      'Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>',
+      'Charge, volume, forme dans le temps' ] },
+    { em:'✦', t:'IA coach &amp; morpho', bt:true, lead:'Arrive prochainement.', feats:[
+      '<b>Résumé d’état &amp; vigilance</b> du client'+BT,
+      '<b>Priorités de la semaine</b> + <b>risque de surcharge</b>'+BT,
+      '<b>Analyse morphologique</b> (photos → groupes en avance / en retard)'+BT ] },
+    { em:'⚙️', t:'Profil &amp; données', lead:'Ton espace coach.', feats:[
+      'Tes préférences et ton profil coach',
+      '<b>Export</b> des données de tes clients',
+      '<b>Revoir la visite</b> à tout moment' ] },
+    { end:true }
+  ];
+  var i = 0;
+  function render(){
+    var nav = document.getElementById('nav'); nav.innerHTML='';
+    TABS.forEach(function(tb,k){ if(tb.end) return;
+      var cls='navitem'+(k===i?' on':(k<i?' done':''));
+      nav.innerHTML += '<div class="'+cls+'" onclick="go('+k+')"><span class="em">'+tb.em+'</span><span>'+tb.t+'</span>'+(tb.bt?'<span class="bt">Bientôt</span>':'')+'</div>';
+    });
+    var c = TABS[i], ct = document.getElementById('content');
+    if (c.end){
+      ct.innerHTML = '<div class="endwrap"><div class="big">🎉</div><h1 style="margin-top:6px">Visite terminée</h1><div class="lead">Tu as vu tous les écrans. Tu peux <b>revoir la visite</b> depuis ton Profil quand tu veux.</div></div>';
+    } else {
+      ct.innerHTML = '<div class="step">Étape '+(i+1)+' / '+(TABS.length-1)+'</div><h1>'+c.t+(c.bt?'<span class="bt">Prochainement</span>':'')+'</h1><div class="lead">'+c.lead+'</div>'
+        + '<ul class="feats">'+c.feats.map(function(f){return '<li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span><span>'+f+'</span></li>';}).join('')+'</ul>';
+    }
+    var foot = document.getElementById('foot');
+    var dots = ''; for (var k2=0;k2<TABS.length-1;k2++) dots += '<i class="'+(k2===i?'on':'')+'"></i>';
+    if (c.end){ foot.innerHTML = '<div class="dots">'+dots+'</div><button class="ghost" onclick="go(0)">↺ Revoir</button><button class="next" onclick="alert(\'(démo) Fin\')">Commencer</button>'; }
+    else { foot.innerHTML = '<button class="skip" onclick="go(TABS.length-1)">Passer</button><div class="dots">'+dots+'</div>'+(i>0?'<button class="prev" onclick="go('+(i-1)+')">‹ Précédent</button>':'')+'<button class="next" onclick="go('+(i+1)+')">'+(i===TABS.length-2?'Terminer':'Suivant ›')+'</button>'; }
+  }
+  function go(n){ i=Math.max(0,Math.min(TABS.length-1,n)); render(); }
+  render();
+</script>
+</body>
+</html>
