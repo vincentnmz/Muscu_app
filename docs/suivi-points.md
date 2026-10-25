@@ -29,6 +29,21 @@
 - **Catalogue** : ajout **Ecarté haltéres incliné / décliné** (ids 91/92). ✅
 
 ## Regroupements / priorités (à confirmer avec le porteur)
-- **Fait** : N1·N2·N4·N5·N6·N7·N8·N9·N10·N12a·N12b·N13 + séance/fraîcheur/écartés (tout sur `dev`, à valider puis `dev`→`main`). ⚠️ N2 **et** N5 nécessitent un **redeploy `index.ts`** sur Supabase.
+- **Fait & EN PROD** : N1·N2·N4·N5·N6·N7·N8·N9·N10·N12a·N12b·N13 + séance/fraîcheur/écartés. **`index.ts` DÉPLOYÉ** (N2/N3/N5 OK) et **prod promue `dev`→`main` le 24 oct.** — plus de warning redeploy en attente.
 - **Gated / en veille** : N11 (morpho IA, clé API).
-- **Hors liste N (sur `dev`)** : messagerie — envoi média EN DIRECT (caméra) ✅ ; onglet média dans la conversation (à préciser).
+- **Hors liste N (sur `dev`)** : messagerie — envoi média EN DIRECT (caméra) ✅ ; onglet média dans la conversation (#43, à préciser) ⏳.
+
+## AGENDA daté (planification des séances) — gros chantier du 24-25 oct., sur `dev` ✅
+Modèle validé = **vrai agenda daté** (table `planning`, 1 date par séance), à côté de `programme` (semaine type via `programme.jour`). Décisions : plusieurs séances/jour OK · `statut` 'planifie' (fait/manqué plus tard) · bouton « Pré-remplir semaine type ».
+- **Backend DÉPLOYÉ** : table `planning` (+ `supabase/planning.sql`), routes `getPlanning`/`planSeance`/`movePlanning`/`unplanPlanning`, `getAppData.planning[]` (athlète J→J+14).
+- **Coach** (composant `.cdag`) : sélecteur de semaine + glisser-déposer + « À planifier » + pré-remplir. Emplacements : **onglet Programme** (colonne droite du Builder, desktop ; accordéon mobile), **Progression › Évolution muscu & cardio** (rails). Retiré de l'Aperçu.
+- **Athlète** : carte lecture seule « Mes séances prévues » (Accueil).
+- Maquette réf. : `mockups/novalyz-rail-agenda.html`.
+
+## Correctifs récents (25 oct., sur `dev`) ✅
+- **Croisé athlète — Lecture Novalyz** : recalculée sur la **période affichée** (plus la synthèse backend figée 4 sem.) → n'annonce plus de cardio quand la période n'en a pas.
+- **Croisé coach** : rail « Charge combinée » (récap) au lieu du rail vide.
+- **Onglet Programme coach** : agenda en colonne droite, **« Jour conseillé » déplacé sur la vue de la séance**, scroll de page (plus de scroll interne).
+- **Tendances muscu** : « fréquence par muscle » + « répartition d'intensité » déplacées dans le rail droit.
+- **Alertes coach** : bouton « ✓ Traité » vert → **« Marquer traité »** neutre (levée de confusion).
+- SW = **v409**. (Rappel : bump SW à chaque modif `js/app.js`.)
