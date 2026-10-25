@@ -9409,7 +9409,7 @@ function ouvrirMorpho(cibleId, cibleNom) {
   _morphoFromCoach = !!cibleId;
   var tm = document.getElementById('tab-morpho');
   // Coach : overlay direct (ne pas perturber la vue coach dessous). Athlète : switchTab.
-  if (_morphoFromCoach) { if (tm) tm.classList.add('active'); }
+  if (_morphoFromCoach) { if (tm) tm.classList.add('active'); try { document.body.classList.add('morpho-coach'); } catch (e) {} }
   else if (typeof switchTab === 'function') switchTab('morpho');   // sous-écran plein écran
   var ttl = document.querySelector('#tab-morpho .mo-ttl'); if (ttl) ttl.textContent = _morphoCibleNom ? ('Morpho · ' + _morphoCibleNom) : 'Analyse morpho';
   ['face', 'profil', 'dos'].forEach(function (w) { var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; } });
@@ -9420,6 +9420,7 @@ function ouvrirMorpho(cibleId, cibleNom) {
 function fermerMorpho() {
   if (_morphoFromCoach) {
     var tm = document.getElementById('tab-morpho'); if (tm) tm.classList.remove('active');
+    try { document.body.classList.remove('morpho-coach'); } catch (e) {}
     _morphoFromCoach = false; _morphoCibleId = null; _morphoCibleNom = null;
     return;   // la vue coach est restée affichée dessous
   }
@@ -17454,12 +17455,15 @@ function _nvgCss() {
     + '.sub-tab.nvg-navcur{background:var(--accent)!important;transform:scale(1.07);box-shadow:0 0 0 2px var(--accent),0 0 26px 6px rgba(26,95,255,.75)!important}'
     + '.sub-tab.nvg-navcur,.sub-tab.nvg-navcur *{color:#fff!important}'
     + '.sub-tab.nvg-navdim{opacity:.22!important;filter:grayscale(.75)}'
-    // Spotlight sur un BLOC de contenu (ex. le bloc IA de la fiche) : on le
-    // remonte au-dessus du voile (z>voile) → il ressort en pleine lumière avec
-    // un halo pulsé. pointer-events coupés (display only pendant la visite).
-    + '.nvg-spot{position:relative!important;z-index:1250!important;pointer-events:none!important;border-radius:16px;box-shadow:0 0 0 2px var(--accent),0 0 28px 7px rgba(26,95,255,.6)!important;animation:nvgSpotPulse 1.8s ease-in-out infinite}'
-    + '@keyframes nvgSpotPulse{0%,100%{box-shadow:0 0 0 2px var(--accent),0 0 14px 2px rgba(26,95,255,.45)}50%{box-shadow:0 0 0 2px var(--accent),0 0 32px 9px rgba(26,95,255,.8)}}'
-    + '@media (prefers-reduced-motion:reduce){.nvg-sheet,.nvg-navcur,.nvg-spot{animation:none}.nvg-navcur{box-shadow:0 0 0 2px var(--accent),0 0 18px 4px rgba(26,95,255,.6)!important}}';
+    // Spotlight sur un BLOC de contenu (ex. le bloc IA de la fiche) : technique
+    // du « trou ». Le voile devient transparent, et un masque sombre percé
+    // (#nvg-hole, grande ombre + anneau) révèle l'élément à sa place. La carte
+    // reste AU-DESSUS (z sup.) donc lisible (plus de recouvrement).
+    + '#nvg-ov.nvg-spotmode{background:transparent!important}'
+    + '.nvg-sheet{position:relative;z-index:2}'
+    + '#nvg-hole{position:fixed;z-index:1;border-radius:16px;pointer-events:none;box-shadow:0 0 0 9999px rgba(7,11,20,.62),0 0 0 2px var(--accent),0 0 30px 8px rgba(26,95,255,.55);transition:left .25s,top .25s,width .25s,height .25s;animation:nvgSpotPulse 1.8s ease-in-out infinite}'
+    + '@keyframes nvgSpotPulse{0%,100%{box-shadow:0 0 0 9999px rgba(7,11,20,.62),0 0 0 2px var(--accent),0 0 16px 3px rgba(26,95,255,.4)}50%{box-shadow:0 0 0 9999px rgba(7,11,20,.62),0 0 0 2px var(--accent),0 0 34px 10px rgba(26,95,255,.82)}}'
+    + '@media (prefers-reduced-motion:reduce){.nvg-sheet,.nvg-navcur,#nvg-hole{animation:none}.nvg-navcur{box-shadow:0 0 0 2px var(--accent),0 0 18px 4px rgba(26,95,255,.6)!important}}';
   document.head.appendChild(s);
 }
 function nvGuideStart(cards, key, role) {
@@ -17472,30 +17476,39 @@ function nvGuideStart(cards, key, role) {
   _nvgRender();
 }
 function nvGuideEnd() {
+  try { (_nvgLiftT || []).forEach(function (t) { clearTimeout(t); }); _nvgLiftT = []; } catch (e) {}
   var ov = document.getElementById('nvg-ov'); if (ov) ov.parentNode.removeChild(ov);
   document.body.classList.remove('nvg-open');
-  _nvgClearNav();
+  _nvgClearNav(); _nvgClearSpot();
   if (_nvg.key) _tourMark(_nvg.key);
 }
 // Nettoie les emphases de nav (remise à zéro z-index / opacité).
 function _nvgClearNav() {
   try { [].forEach.call(document.querySelectorAll('.nvg-navlift'), function (e) { e.classList.remove('nvg-navlift'); }); } catch (e) {}
   try { [].forEach.call(document.querySelectorAll('.nvg-navcur,.nvg-navdim'), function (e) { e.classList.remove('nvg-navcur', 'nvg-navdim'); }); } catch (e) {}
-  _nvgClearSpot();
 }
-// Spotlight sur un bloc de contenu (ex. le bloc IA de la fiche).
-var _nvgSpotEl = null;
+// Spotlight « trou » sur un bloc de contenu (ex. le bloc IA de la fiche) : on
+// positionne #nvg-hole sur le rect de l'élément ; sa grande ombre assombrit tout
+// le reste et l'élément ressort à sa place (la carte reste au-dessus, lisible).
 function _nvgClearSpot() {
-  try { [].forEach.call(document.querySelectorAll('.nvg-spot'), function (e) { e.classList.remove('nvg-spot'); }); } catch (e) {}
-  _nvgSpotEl = null;
+  try { var h = document.getElementById('nvg-hole'); if (h && h.parentNode) h.parentNode.removeChild(h); } catch (e) {}
+  try { var ov = document.getElementById('nvg-ov'); if (ov) ov.classList.remove('nvg-spotmode'); } catch (e) {}
 }
 function _nvgSpot(sel) {
   var el = null; try { el = document.querySelector(sel); } catch (e) {}
   if (!el || !el.getClientRects().length) return false; // pas encore affiché (nav async)
-  if (_nvgSpotEl === el) return true;                    // déjà éclairé → idempotent
-  _nvgClearSpot();
-  el.classList.add('nvg-spot'); _nvgSpotEl = el;
-  try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { try { el.scrollIntoView(); } catch (_) {} }
+  var ov = document.getElementById('nvg-ov'); if (!ov) return false;
+  ov.classList.add('nvg-spotmode');
+  var r = el.getBoundingClientRect(), pad = 8;
+  var h = document.getElementById('nvg-hole');
+  if (!h) { h = document.createElement('div'); h.id = 'nvg-hole'; ov.insertBefore(h, ov.firstChild); }
+  h.style.left = Math.max(4, r.left - pad) + 'px';
+  h.style.top = Math.max(4, r.top - pad) + 'px';
+  h.style.width = (r.width + pad * 2) + 'px';
+  h.style.height = (r.height + pad * 2) + 'px';
+  // Si l'élément est hors écran, on le ramène au centre (le rect sera recalculé
+  // au passage suivant de la cascade).
+  if (r.top < 70 || r.bottom > (window.innerHeight || 800) - 70) { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { try { el.scrollIntoView(); } catch (_) {} } }
   return true;
 }
 // Remonte la barre basse (mobile) OU le rail gauche (desktop) au-dessus du voile,
@@ -17591,17 +17604,21 @@ function _nvgRender() {
   // mettent la vraie nav à jour de façon async → sans le re-lift différé, en « Précédent »
   // le surlignage restait sur l'onglet précédent.
   try { (_nvgLiftT || (_nvgLiftT = [])).forEach(function (t) { clearTimeout(t); }); _nvgLiftT = []; } catch (e) {}
-  if (!c.hi) { try { _nvgClearSpot(); } catch (e) {} }
-  // c.hi → on éclaire un BLOC de contenu (ex. le bloc IA de la fiche) et on
-  // estompe toute la nav. Sinon : les 2 derniers écrans estompent tout (aucun
-  // onglet ne ressort) ; les autres surlignent l'onglet actif.
-  var dimAll = !!c.hi || _nvg.i >= n - 2;
-  var apply = function () { try { _nvgLiftNav(dimAll); } catch (e) {} if (c.hi) { try { _nvgSpot(c.hi); } catch (e) {} } };
+  // c.hi (desktop) → spotlight « trou » sur un BLOC (le bloc IA de la fiche),
+  // sans surlignage de nav. Sur mobile le bloc est masqué → on estompe tout.
+  // Les 2 derniers écrans estompent tout aussi ; les autres surlignent l'onglet.
+  var isDesk = (typeof window !== 'undefined' && (window.innerWidth || 0) >= 992);
+  var useSpot = !!c.hi && isDesk;
+  if (!useSpot) { try { _nvgClearSpot(); } catch (e) {} }
+  var dimAll = (!!c.hi && !isDesk) || _nvg.i >= n - 2;
+  var apply = useSpot
+    ? function () { try { _nvgClearNav(); } catch (e) {} try { _nvgSpot(c.hi); } catch (e) {} }
+    : function () { try { _nvgLiftNav(dimAll); } catch (e) {} };
   apply();
-  // Cascade de re-lifts : certaines navs (ouverture de fiche via fetch) peuvent
-  // prendre quelques centaines de ms → on repasse plusieurs fois pour que le
-  // surlignage (ou le spotlight) rattrape le DOM, y compris en « Précédent ».
-  // _nvgLiftNav / _nvgSpot sont idempotents → pas de clignotement.
+  // Cascade : certaines navs (ouverture de fiche via fetch) prennent quelques
+  // centaines de ms → on repasse pour que surlignage/spotlight rattrapent le DOM,
+  // y compris en « Précédent ». _nvgLiftNav / _nvgSpot sont idempotents → pas de
+  // clignotement.
   try { _nvgLiftT = [90, 260, 550].map(function (ms) { return setTimeout(apply, ms); }); } catch (e) {}
 }
 var _nvgLiftT = null;
