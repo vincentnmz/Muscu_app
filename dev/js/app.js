@@ -5036,7 +5036,7 @@ function renderCoachSurveiller(athletes) {
     const lignesAlertes = alertes.map((al, j) => `
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
         <div style="flex:1;font-size:11px;color:${couleurSeverite[al.severite] || '#a3a3a3'};font-weight:600">${al.message}${al.recurrence_semaines > 1 ? ` <span style="color:var(--text-muted);font-weight:400">(depuis ${al.recurrence_semaines} semaines)</span>` : ''}</div>
-        <button class="btn-sm btn-outline btn-traiter" data-aidx="${i}" data-jidx="${j}" style="white-space:nowrap" onclick="event.stopPropagation()">✓ Traité</button>
+        <button class="btn-sm btn-outline btn-traiter" data-aidx="${i}" data-jidx="${j}" style="white-space:nowrap" onclick="event.stopPropagation()">Marquer traité</button>
       </div>`).join('');
     return `
       <div style="padding:10px;background:${couleur}1a;border-radius:8px;margin-top:8px">
@@ -8736,7 +8736,7 @@ function renderAlertesCoach(data) {
     const presc = stagExo ? _prescriptionStag(stagExo) : null;
     const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">${fait ? 'Autre conseil' : "Répondre à l'athlète"}</button>`
       + `<button class="cda-btn cda-ghost" onclick="toggleExplicationAlerte('${explicationId}')">Pourquoi ?</button>`
-      + `<button class="cda-btn cda-ok" onclick="traiterAlerteDepuisDetail(${idx})">✓ Traité</button>`
+      + `<button class="cda-btn cda-ok" onclick="traiterAlerteDepuisDetail(${idx})">Marquer traité</button>`
       + (fait ? `<span class="cda-done-tag">Déjà conseillé</span>` : '');
     items.push({
       sev: _sevGroupe(al.severite), cat: _catAlerte(al.type), msg: al.message,
@@ -8750,7 +8750,7 @@ function renderAlertesCoach(data) {
     const sujet = s.msg.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const sev = (s.color === '#e5484d' || s.color === 'var(--bad)' || s.color === 'var(--danger)') ? 'haute' : 'moyenne';
     const actions = `<button class="cda-btn cda-primary" onclick="repondreAlerte('${sujet}')">Répondre</button>`
-      + `<button class="cda-btn cda-ok" onclick="traiterSyntheseAlerteCoach('${s.type}')">✓ Traité</button>`;
+      + `<button class="cda-btn cda-ok" onclick="traiterSyntheseAlerteCoach('${s.type}')">Marquer traité</button>`;
     items.push({ sev, cat: _catAlerte(s.type), msg: s.msg, rec: '', presc: '', explic: '', actions });
   });
   // Absence (si non émise par le moteur et hors pause) — calculée depuis la dernière séance.

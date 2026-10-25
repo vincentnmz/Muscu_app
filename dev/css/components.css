@@ -361,7 +361,7 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .cda-btn { font-size:12px; font-weight:800; border-radius:9px; padding:7px 11px; border:1px solid transparent; cursor:pointer; font-family:inherit; }
 .cda-primary { background:var(--accent); color:#fff; }
 .cda-ghost { background:transparent; border-color:var(--border); color:var(--text-muted); }
-.cda-ok { background:transparent; border-color:var(--border); color:var(--good); }
+.cda-ok { background:var(--surface2); border-color:var(--border); color:var(--text); }
 .cda-done-tag { font-size:11px; color:var(--good); font-weight:700; align-self:center; }
 .cda-foot { margin-top:13px; padding-top:11px; border-top:1px dashed var(--border); font-size:11px; color:var(--text-subtle); display:flex; align-items:flex-start; gap:7px; line-height:1.4; }
 .cda-foot.partial { color:var(--warn); }
