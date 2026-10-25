@@ -13,30 +13,34 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:#05080f;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:22px 16px 48px;display:flex;flex-direction:column;align-items:center}
-  .cap{font-size:11.5px;color:var(--subtle);margin-bottom:14px;text-align:center;max-width:900px}
-  .app{width:100%;max-width:960px;background:var(--bg);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.6);display:grid;grid-template-columns:230px 1fr;min-height:560px}
-  /* sidebar */
+  .cap{font-size:11.5px;color:var(--subtle);margin-bottom:14px;text-align:center;max-width:920px}
+  .app{width:100%;max-width:980px;background:var(--bg);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.6);display:grid;grid-template-columns:220px 1fr;min-height:600px}
   .side{background:var(--surface2);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column}
   .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px;padding:4px 8px 16px}
   .brand .n{width:26px;height:26px;border-radius:8px;background:var(--accent);display:grid;place-items:center;font-size:13px;color:#fff}
   .brand .r{font-size:9px;font-weight:800;color:var(--accent2);background:var(--accent-a);border-radius:5px;padding:2px 6px;margin-left:auto}
-  .navitem{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:3px;border:1px solid transparent}
+  .navitem{display:flex;align-items:center;gap:11px;padding:11px;border-radius:11px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:4px;border:1px solid transparent}
   .navitem .em{width:22px;text-align:center}
   .navitem.on{background:var(--accent-a);color:var(--text);border-color:var(--accent2);font-weight:800;box-shadow:0 0 0 2px rgba(26,95,255,.25)}
-  .navitem.done{color:var(--subtle)}
-  .navitem .bt{margin-left:auto;font-size:7.5px;font-weight:800;color:var(--warn);background:rgba(245,166,35,.16);border-radius:4px;padding:1px 4px;text-transform:uppercase}
-  /* content */
-  .main{padding:26px 30px;display:flex;flex-direction:column}
+  .navitem.parent{background:rgba(26,95,255,.06);color:var(--text);border-color:var(--border)}
+  .subhint{margin:2px 0 6px 20px;padding-left:12px;border-left:2px solid var(--accent2);font-size:11px;color:var(--accent2);font-weight:700}
+  .main{padding:22px 28px;display:flex;flex-direction:column}
+  .crumb{font-size:11px;color:var(--subtle);font-weight:700;margin-bottom:4px}
+  .crumb b{color:var(--accent2)}
+  .subtabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 16px}
+  .subtabs .st{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+  .subtabs .st.on{background:var(--accent-a);color:var(--text);border-color:var(--accent2);box-shadow:0 0 0 2px rgba(26,95,255,.2)}
+  .subtabs .st.bt::after{content:" ·bientôt";color:var(--warn);font-size:9px;font-weight:800}
   .step{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--accent2)}
-  .main h1{font-size:26px;margin:5px 0 4px;font-weight:900;letter-spacing:-.01em}
+  .main h1{font-size:25px;margin:5px 0 4px;font-weight:900;letter-spacing:-.01em}
   .main h1 .bt{font-size:10px;font-weight:800;color:var(--warn);background:rgba(245,166,35,.16);border-radius:6px;padding:2px 8px;margin-left:8px;text-transform:uppercase;vertical-align:middle}
-  .lead{font-size:14px;color:var(--muted);margin:0 0 18px}
-  .feats{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;flex:1}
-  .feats li{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.5}
+  .lead{font-size:13.5px;color:var(--muted);margin:0 0 16px}
+  .feats{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:11px;flex:1}
+  .feats li{display:flex;gap:12px;align-items:flex-start;font-size:13.5px;line-height:1.5}
   .feats li .chk{flex:none;margin-top:1px;width:22px;height:22px;border-radius:999px;background:var(--accent-a);display:grid;place-items:center;color:var(--accent2)}
   .feats li .chk svg{width:12px;height:12px}
   .inlbt{display:inline-block;font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:5px;text-transform:uppercase;letter-spacing:.03em;background:rgba(245,166,35,.16);color:var(--warn);vertical-align:middle}
-  .foot{display:flex;align-items:center;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
+  .foot{display:flex;align-items:center;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
   .foot .dots{display:flex;gap:6px;flex:1}
   .foot .dots i{width:7px;height:7px;border-radius:999px;background:var(--border)}
   .foot .dots i.on{background:var(--accent);width:20px}
@@ -50,12 +54,9 @@
 </style>
 </head>
 <body>
-  <div class="cap">Maquette — Onboarding <b>coach (desktop)</b> : comme le mobile (noms d'onglets + toutes les fonctionnalités), avec <b>surbrillance</b> de l'onglet décrit dans la barre latérale. IA en « Prochainement », <b>Revoir / Passer</b> à la fin.</div>
+  <div class="cap">Maquette — Onboarding <b>coach (desktop)</b> : sections réelles à gauche (<b>Aujourd'hui · Équipe · Analyses · Messages · Profil</b>), <b>surbrillance</b> de l'onglet décrit. La <b>fiche athlète</b> (ouverte depuis Équipe) déroule ses sous-onglets <b>Aperçu · Progression · Séances · Programme · Conversation</b>. IA « Prochainement ».</div>
   <div class="app">
-    <div class="side">
-      <div class="brand"><span class="n">N</span>Novalyz<span class="r">Coach</span></div>
-      <div id="nav"></div>
-    </div>
+    <div class="side"><div class="brand"><span class="n">N</span>Novalyz<span class="r">Coach</span></div><div id="nav"></div></div>
     <div class="main">
       <div id="content" style="display:flex;flex-direction:column;flex:1"></div>
       <div class="foot" id="foot"></div>
@@ -63,38 +64,52 @@
   </div>
 <script>
   var BT = ' <span class="inlbt">Prochainement</span>';
-  var TABS = [
-    { em:'🏠', t:'Aujourd’hui', lead:'Ton point de départ chaque jour : qui a besoin de toi.', feats:[
+  // Sections réelles de la nav coach
+  var SECTIONS = [ ['aujourdhui','🏠','Aujourd’hui'], ['equipe','👥','Équipe'], ['analyses','📊','Analyses'], ['messages','💬','Messages'], ['profil','⚙️','Profil'] ];
+  // Sous-onglets de la fiche athlète
+  var SUBS = [ ['apercu','Aperçu'], ['progression','Progression'], ['seances','Séances'], ['programme','Programme'], ['conversation','Conversation'], ['ia','IA & morpho',true] ];
+  var STEPS = [
+    { sec:'aujourdhui', t:'Aujourd’hui', lead:'Ton point de départ chaque jour : qui a besoin de toi.', feats:[
       '<b>Briefing équipe</b> : % à jour, athlètes à voir',
       '<b>Qui a répondu</b> au bien-être (7 j) + relance',
       '<b>À surveiller</b> : athlètes triés par priorité + motif',
       '<b>Messages non lus</b> en un coup d’œil' ] },
-    { em:'👥', t:'Équipe', lead:'Tout ton effectif.', feats:[
+    { sec:'equipe', t:'Équipe', lead:'Tout ton effectif.', feats:[
       'Statut, niveau, <b>assiduité</b>, dernière séance par athlète',
       '<b>Enregistrer un athlète</b> : invitation ou création du compte',
-      'Clique une ligne pour <b>ouvrir sa fiche</b>' ] },
-    { em:'📂', t:'Fiche athlète', lead:'Tout sur un athlète, en sous-onglets.', feats:[
-      '<b>Aperçu</b> : Coup d’œil + <b>Lecture Novalyz pour le coach</b>',
-      '<b>Progression</b> : Évolution / Tendances + <b>agenda</b> + <b>Photo &amp; mensurations</b>',
-      '<b>Séances</b>, <b>Programme</b>, <b>Conversation</b>',
-      '<b>Objectifs</b> &amp; <b>blessures</b> · <b>Export du bilan</b> client' ] },
-    { em:'📋', t:'Programme', lead:'Construis et planifie ses séances.', feats:[
+      'Clique une ligne pour <b>ouvrir sa fiche</b> →' ] },
+    { sec:'equipe', fiche:'apercu', t:'Fiche ▸ Aperçu', lead:'Le résumé qui parle AU COACH.', feats:[
+      '<b>Coup d’œil</b> : entraînement (charge · reps · RPE) + état du jour',
+      '<b>Lecture Novalyz pour le coach</b> en tête (analyse + reco)',
+      'Cartes : récup, charge &amp; assiduité, montre, poids · <b>agenda</b> à droite' ] },
+    { sec:'equipe', fiche:'progression', t:'Fiche ▸ Progression', lead:'Ses analyses dans le temps.', feats:[
+      '<b>Évolution</b> &amp; <b>Tendances</b> (muscu + cardio), sélecteur de période',
+      '<b>Agenda daté</b> dans la colonne de droite',
+      '<b>Photo &amp; mensurations</b> du client' ] },
+    { sec:'equipe', fiche:'seances', t:'Fiche ▸ Séances', lead:'Ce qu’il a réellement fait.', feats:[
+      '<b>Historique</b> des séances réalisées',
+      '<b>Détail par exercice</b> : séries · charges · reps · <b>RPE</b>',
+      '<b>Dernière séance</b> mise en repère · « charger plus »' ] },
+    { sec:'equipe', fiche:'programme', t:'Fiche ▸ Programme', lead:'Construis et planifie ses séances.', feats:[
       '<b>Builder</b> : charges en % du 1RM, <b>RPE cible</b>, groupé par muscle',
       '<b>Agenda daté</b> : planifie semaine par semaine, <b>glisser-déposer</b>',
       '<b>Jour conseillé</b> directement sur la séance',
       'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste' ] },
-    { em:'💬', t:'Messages', lead:'Tes échanges avec les athlètes.', feats:[
-      'Conversations : <b>messages, photos, vidéos</b> (technique)',
-      '<b>Caméra en direct</b> (photo/vidéo sur le vif)',
-      'Notifications des non-lus' ] },
-    { em:'📊', t:'Analyses équipe', lead:'Les tendances en profondeur.', feats:[
-      'Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>',
-      'Charge, volume, forme dans le temps' ] },
-    { em:'✦', t:'IA coach &amp; morpho', bt:true, lead:'Arrive prochainement.', feats:[
+    { sec:'equipe', fiche:'conversation', t:'Fiche ▸ Conversation', lead:'Échange direct avec l’athlète.', feats:[
+      '<b>Messages, photos, vidéos</b> (technique) + <b>caméra en direct</b>',
+      '<b>Répondre aux alertes</b> de la semaine · <b>Marquer traité</b>',
+      'Conseils envoyés depuis l’analyse' ] },
+    { sec:'equipe', fiche:'ia', bt:true, t:'Fiche ▸ IA coach &amp; morpho', lead:'Arrive prochainement.', feats:[
       '<b>Résumé d’état &amp; vigilance</b> du client'+BT,
       '<b>Priorités de la semaine</b> + <b>risque de surcharge</b>'+BT,
       '<b>Analyse morphologique</b> (photos → groupes en avance / en retard)'+BT ] },
-    { em:'⚙️', t:'Profil &amp; données', lead:'Ton espace coach.', feats:[
+    { sec:'analyses', t:'Analyses équipe', lead:'Les tendances en profondeur.', feats:[
+      'Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>',
+      'Charge, volume, forme dans le temps' ] },
+    { sec:'messages', t:'Messages', lead:'Toutes tes conversations.', feats:[
+      'Conversations : <b>messages, photos, vidéos</b> + <b>caméra live</b>',
+      'Notifications des <b>non-lus</b> · sélection multiple' ] },
+    { sec:'profil', t:'Profil &amp; données', lead:'Ton espace coach.', feats:[
       'Tes préférences et ton profil coach',
       '<b>Export</b> des données de tes clients',
       '<b>Revoir la visite</b> à tout moment' ] },
@@ -102,24 +117,32 @@
   ];
   var i = 0;
   function render(){
+    var c = STEPS[i];
     var nav = document.getElementById('nav'); nav.innerHTML='';
-    TABS.forEach(function(tb,k){ if(tb.end) return;
-      var cls='navitem'+(k===i?' on':(k<i?' done':''));
-      nav.innerHTML += '<div class="'+cls+'" onclick="go('+k+')"><span class="em">'+tb.em+'</span><span>'+tb.t+'</span>'+(tb.bt?'<span class="bt">Bientôt</span>':'')+'</div>';
+    SECTIONS.forEach(function(s){
+      var isParent = (!c.end && c.sec===s[0]);
+      var isActive = isParent && !c.fiche;
+      nav.innerHTML += '<div class="navitem'+(isActive?' on':(isParent?' parent':''))+'">'+'<span class="em">'+s[1]+'</span><span>'+s[2]+'</span></div>';
+      if (!c.end && c.fiche && s[0]==='equipe') nav.innerHTML += '<div class="subhint">▸ Fiche athlète</div>';
     });
-    var c = TABS[i], ct = document.getElementById('content');
+    var ct = document.getElementById('content');
     if (c.end){
       ct.innerHTML = '<div class="endwrap"><div class="big">🎉</div><h1 style="margin-top:6px">Visite terminée</h1><div class="lead">Tu as vu tous les écrans. Tu peux <b>revoir la visite</b> depuis ton Profil quand tu veux.</div></div>';
     } else {
-      ct.innerHTML = '<div class="step">Étape '+(i+1)+' / '+(TABS.length-1)+'</div><h1>'+c.t+(c.bt?'<span class="bt">Prochainement</span>':'')+'</h1><div class="lead">'+c.lead+'</div>'
+      var head = '';
+      if (c.fiche){
+        head = '<div class="crumb">Équipe › <b>Fiche · Alizé</b></div>'
+          + '<div class="subtabs">'+SUBS.map(function(su){return '<span class="st'+(su[0]===c.fiche?' on':'')+(su[2]?' bt':'')+'">'+su[1]+'</span>';}).join('')+'</div>';
+      }
+      ct.innerHTML = head + '<div class="step">Étape '+(i+1)+' / '+(STEPS.length-1)+'</div><h1>'+c.t+(c.bt?'<span class="bt">Prochainement</span>':'')+'</h1><div class="lead">'+c.lead+'</div>'
         + '<ul class="feats">'+c.feats.map(function(f){return '<li><span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span><span>'+f+'</span></li>';}).join('')+'</ul>';
     }
     var foot = document.getElementById('foot');
-    var dots = ''; for (var k2=0;k2<TABS.length-1;k2++) dots += '<i class="'+(k2===i?'on':'')+'"></i>';
+    var dots=''; for(var k=0;k<STEPS.length-1;k++) dots+='<i class="'+(k===i?'on':'')+'"></i>';
     if (c.end){ foot.innerHTML = '<div class="dots">'+dots+'</div><button class="ghost" onclick="go(0)">↺ Revoir</button><button class="next" onclick="alert(\'(démo) Fin\')">Commencer</button>'; }
-    else { foot.innerHTML = '<button class="skip" onclick="go(TABS.length-1)">Passer</button><div class="dots">'+dots+'</div>'+(i>0?'<button class="prev" onclick="go('+(i-1)+')">‹ Précédent</button>':'')+'<button class="next" onclick="go('+(i+1)+')">'+(i===TABS.length-2?'Terminer':'Suivant ›')+'</button>'; }
+    else { foot.innerHTML = '<button class="skip" onclick="go(STEPS.length-1)">Passer</button><div class="dots">'+dots+'</div>'+(i>0?'<button class="prev" onclick="go('+(i-1)+')">‹ Précédent</button>':'')+'<button class="next" onclick="go('+(i+1)+')">'+(i===STEPS.length-2?'Terminer':'Suivant ›')+'</button>'; }
   }
-  function go(n){ i=Math.max(0,Math.min(TABS.length-1,n)); render(); }
+  function go(n){ i=Math.max(0,Math.min(STEPS.length-1,n)); render(); }
   render();
 </script>
 </body>
