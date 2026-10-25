@@ -17400,9 +17400,11 @@ function _nvgCss() {
     // écran courant mis en avant (le reste estompé). pointer-events coupés : on
     // navigue via la carte uniquement.
     + '.nvg-navlift{z-index:1250!important;pointer-events:none!important}'
-    + '.nvg-navdim{opacity:.38!important;transition:opacity .2s}'
-    + '.nvg-navcur{opacity:1!important;position:relative}'
-    + '.nvg-navcur::after{content:"";position:absolute;inset:-3px;border:2px solid var(--accent);border-radius:12px;animation:nvgPulse 1.6s ease-out infinite;pointer-events:none}'
+    + '.nvg-navdim{opacity:.26!important;filter:grayscale(.6);transition:opacity .2s}'
+    + '.nvg-navcur{opacity:1!important;position:relative;z-index:1;border-radius:12px;background:var(--accent-a15,rgba(26,95,255,.16))!important;box-shadow:0 0 0 2px var(--accent),0 0 20px 3px rgba(26,95,255,.55)!important}'
+    + '.nvg-navcur,.nvg-navcur *{color:var(--accent)!important}'
+    + '.nvg-navcur svg{stroke:var(--accent)!important}'
+    + '.nvg-navcur::after{content:"";position:absolute;inset:-4px;border:2px solid var(--accent);border-radius:13px;animation:nvgPulse 1.6s ease-out infinite;pointer-events:none}'
     + '@keyframes nvgPulse{0%{opacity:.7;transform:scale(.98)}70%{opacity:0;transform:scale(1.12)}100%{opacity:0}}'
     + '@media (prefers-reduced-motion:reduce){.nvg-sheet{animation:none}.nvg-navcur::after{animation:none;opacity:.7}}';
   document.head.appendChild(s);
