@@ -17422,6 +17422,12 @@ function _nvgCss() {
     + '.nvg-navcur{opacity:1!important;position:relative;z-index:1;border-radius:12px;background:var(--accent-a15,rgba(26,95,255,.16))!important;box-shadow:0 0 0 2px var(--accent),0 0 20px 3px rgba(26,95,255,.55)!important}'
     + '.nvg-navcur,.nvg-navcur *{color:var(--accent)!important}'
     + '.nvg-navcur svg{stroke:var(--accent)!important}'
+    // Sous-onglets de la fiche (Aperçu/Progression/Séances/Programme/Conversation) :
+    // surlignage RENFORCÉ — fond plein accent, texte blanc, halo plus large + léger zoom
+    // (plus lumineux que la nav principale). Identique mobile & desktop.
+    + '.sub-tab.nvg-navcur{background:var(--accent)!important;transform:scale(1.07);box-shadow:0 0 0 2px var(--accent),0 0 26px 6px rgba(26,95,255,.75)!important}'
+    + '.sub-tab.nvg-navcur,.sub-tab.nvg-navcur *{color:#fff!important}'
+    + '.sub-tab.nvg-navdim{opacity:.22!important;filter:grayscale(.75)}'
     + '.nvg-navcur::after{content:"";position:absolute;inset:-4px;border:2px solid var(--accent);border-radius:13px;animation:nvgPulse 1.6s ease-out infinite;pointer-events:none}'
     + '@keyframes nvgPulse{0%{opacity:.7;transform:scale(.98)}70%{opacity:0;transform:scale(1.12)}100%{opacity:0}}'
     + '@media (prefers-reduced-motion:reduce){.nvg-sheet{animation:none}.nvg-navcur::after{animation:none;opacity:.7}}';
@@ -17525,8 +17531,13 @@ function _nvgRender() {
     + '</div>';
   try { ov.querySelector('.nvg-sheet').scrollTop = 0; } catch (e) {}
   // Remonte la vraie barre/rail au-dessus du voile et met l'onglet courant en avant.
+  // Immédiat + différé : certaines navigations (ouverture de fiche, switch de section)
+  // mettent la vraie nav à jour de façon async → sans le re-lift différé, en « Précédent »
+  // le surlignage restait sur l'onglet précédent.
   try { _nvgLiftNav(); } catch (e) {}
+  try { clearTimeout(_nvgLiftT); _nvgLiftT = setTimeout(function () { try { _nvgLiftNav(); } catch (e) {} }, 90); } catch (e) {}
 }
+var _nvgLiftT = null;
 // Navigation coach pour le guide (viewport-aware) : sections de contenu via la vraie
 // nav (surligne la barre) ; Messages/Profil → on surligne SANS ouvrir l'overlay (pas
 // de piège pendant la visite).
@@ -17596,14 +17607,14 @@ function _guideCoachCards() {
       feats: ['<b>Builder</b> : charges en % du 1RM, <b>RPE cible</b>, groupé par muscle', '<b>Agenda daté</b> : planifie semaine par semaine, <b>glisser-déposer</b>', '<b>Jour conseillé</b> directement sur la séance', 'Ou laisse <b>Novalyz proposer</b> un plan, puis ajuste'] },
     { ic: 'chat', scr: 'Fiche ▸ Conversation', t: 'Fiche ▸ Conversation', lead: 'Échange direct avec l’athlète.', go: F('conseils'),
       feats: ['<b>Messages, photos, vidéos</b> (technique) + <b>caméra en direct</b>', '<b>Répondre aux alertes</b> de la semaine · <b>Marquer traité</b>', 'Conseils envoyés depuis l’analyse'] },
-    { ic: 'spark', scr: 'Fiche ▸ IA &amp; morpho', t: 'IA coach &amp; analyse morpho', lead: 'Arrive prochainement.', go: F('overview'),
-      feats: [_ONB_BT + '<b>Résumé d’état &amp; vigilance</b> + <b>priorités</b> de la semaine', _ONB_BT + '<b>Risque de surcharge</b> — jamais de chiffre inventé', _ONB_BT + '<b>Analyse morphologique</b> (photos → groupes en avance / en retard)'] },
     { ic: 'chat', scr: 'Messages', t: 'Messages', lead: 'Toutes tes conversations.', go: G('messages'),
       feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
     { ic: 'chart', scr: 'Analyses', t: 'Analyses équipe', lead: 'Les tendances en profondeur.', go: G('analyses'),
       feats: ['Tendances de <b>l’équipe</b> et de <b>chaque athlète</b>', 'Charge, volume, forme dans le temps'] },
     { ic: 'gear', scr: 'Profil', t: 'Profil &amp; données', lead: 'Ton espace coach.', go: G('profil'),
       feats: ['Tes préférences et ton profil coach', '<b>Export</b> des données de tes clients', '<b>Revoir la visite</b> à tout moment'] },
+    { ic: 'spark', scr: 'IA &amp; morpho', t: 'IA coach &amp; analyse morpho', lead: 'Arrive prochainement — depuis la fiche de chaque athlète.',
+      feats: [_ONB_BT + '<b>Résumé d’état &amp; vigilance</b> + <b>priorités</b> de la semaine', _ONB_BT + '<b>Risque de surcharge</b> — jamais de chiffre inventé', _ONB_BT + '<b>Analyse morphologique</b> (photos → groupes en avance / en retard)'] },
     { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Ton espace coach démarre gratuit.', go: G('aujourdhui'),
       feats: ['Cockpit · suivi d’équipe · fiches : gratuit', 'IA coach : <b>3 questions/jour</b>, illimité en Premium', 'Plus d’athlètes · analyses avancées : <b>Premium</b>', '<b>Envoi de rapports</b> à tes athlètes (bilans auto par e-mail) : <b>Premium</b>'] }
   ];
