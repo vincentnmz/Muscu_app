@@ -17455,7 +17455,8 @@ function _nvgLiftNav() {
   var bottom = null;
   ['tabs-bar', 'coach-bandeau', 'app-side', 'coach-rail'].forEach(function (id) {
     var el = document.getElementById(id);
-    if (el && el.offsetParent !== null) { el.classList.add('nvg-navlift'); if (id === 'tabs-bar' || id === 'coach-bandeau') bottom = el; }
+    // getClientRects() = visible (gère les barres position:fixed dont offsetParent est null).
+    if (el && el.getClientRects().length) { el.classList.add('nvg-navlift'); if (id === 'tabs-bar' || id === 'coach-bandeau') bottom = el; }
   });
   try {
     [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn, .nvg-navlift .as-item, .nvg-navlift .cs-item, .nvg-navlift .cb-item'), function (e) { e.classList.add('nvg-navdim'); });
