@@ -17462,6 +17462,15 @@ function _nvgLiftNav() {
     [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn, .nvg-navlift .as-item, .nvg-navlift .cs-item, .nvg-navlift .cb-item'), function (e) { e.classList.add('nvg-navdim'); });
     [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn.active, .nvg-navlift .as-item.active, .nvg-navlift .cs-item.on, .nvg-navlift .cb-item.on'), function (e) { e.classList.remove('nvg-navdim'); e.classList.add('nvg-navcur'); });
   } catch (e) {}
+  // Sous-onglets de la fiche coach (barre .sub-tabs) : même traitement — l'actif éclairé.
+  try {
+    var sub = document.querySelector('#view-coach-detail .sub-tabs');
+    if (sub && sub.getClientRects().length) {
+      sub.classList.add('nvg-navlift');
+      [].forEach.call(sub.querySelectorAll('.sub-tab'), function (e) { e.classList.add('nvg-navdim'); });
+      [].forEach.call(sub.querySelectorAll('.sub-tab.active'), function (e) { e.classList.remove('nvg-navdim'); e.classList.add('nvg-navcur'); });
+    }
+  } catch (e) {}
   try { var sheet = document.querySelector('.nvg-sheet'); if (sheet) sheet.style.marginBottom = bottom ? (bottom.offsetHeight + 'px') : '0'; } catch (e) {}
 }
 function nvGuidePrev() { if (_nvg.i > 0) { _nvg.i--; _nvgRender(); } }
