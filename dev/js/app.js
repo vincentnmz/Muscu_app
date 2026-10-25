@@ -13624,7 +13624,34 @@ function _maCroise(data) {
         + '<div style="margin-top:10px;background:var(--accent-a10,rgba(26,95,255,.10));border:1px solid var(--border);border-radius:12px;padding:13px 16px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:4px">Reco · pour le coach</div><div style="font-size:13px;font-weight:600;line-height:1.45">' + reco + '</div></div></div>';
     }
   } else {
-    synthese = _maSyntheseBloc(data && data.analyse_synthese && data.analyse_synthese.croise) + verdict;
+    // Lecture Novalyz CROISÉ athlète — PÉRIODE-COHÉRENTE (même fenêtre _maWin que la
+    // répartition/tuiles ci-dessous). L'ancienne version utilisait la synthèse backend
+    // figée sur 4 sem. → elle annonçait du cardio alors que la période affichée n'en
+    // avait pas (contradiction avec la barre « Cardio 0% »). On recalcule ici.
+    var rc2 = function (col, html) { return '<div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:5px 0;line-height:1.45"><span style="flex:none;color:' + col + ';margin-top:2px">●</span><div>' + html + '</div></div>'; };
+    if (!tot) {
+      synthese = '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz</div>' + _maEmpty('Pas encore assez de séances sur cette période pour croiser muscu et cardio.');
+    } else {
+      var L2 = '';
+      if (cardioUA === 0) {
+        L2 += rc2('var(--warn)', 'Sur <b>' + _w.plabel + '</b>, tu n\'as fait que de la <b>musculation</b> — aucun cardio enregistré sur la période.');
+      } else {
+        var eq2 = (Math.abs(mPct - 50) <= 15) ? ('Charge équilibrée : <b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')
+          : (mPct > 65 ? ('Charge surtout <b>muscu (' + mPct + '%)</b>, peu de cardio') : (cPct > 65 ? ('Charge surtout <b>cardio (' + cPct + '%)</b>, peu de muscu') : ('<b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')));
+        L2 += rc2(Math.abs(mPct - 50) <= 20 ? 'var(--good)' : 'var(--warn)', eq2 + (hPct > 0 ? (' · Hyrox ' + hPct + '%') : '') + ' sur ' + _w.plabel + '.');
+      }
+      if (mot.recup) L2 += rc2(mot.recup === 'Faible' ? 'var(--bad)' : (mot.recup === 'Moyen' ? 'var(--warn)' : 'var(--good)'), 'Récupération : <b>' + _maE(mot.recup) + '</b>' + ((mot.disponibilite && mot.disponibilite.niveau) ? (' · disponibilité ' + _maE(mot.disponibilite.niveau)) : '') + '.');
+      if (trendOk && chUp && foDown) L2 += rc2('var(--warn)', 'Ta <b>charge globale monte</b> alors que ta <b>forme baisse</b> → surveille la fatigue.');
+      var reco2 = (cardioUA === 0) ? 'Ajoute 1 à 2 séances de cardio par semaine pour équilibrer et soutenir ta récupération.'
+        : (trendOk && chUp && foDown) ? 'Allège une des deux filières cette semaine pour rééquilibrer charge et récupération.'
+          : (mPct > 75) ? 'Intègre 1 à 2 créneaux cardio pour ta base d\'endurance, sans alourdir la charge totale.'
+            : (cPct > 75) ? 'Ajoute du renforcement musculaire pour l\'équilibre force / endurance.'
+              : 'Bon équilibre muscu / cardio — maintiens ce mix et ajuste si ta forme décroche quand la charge monte.';
+      var fiab2 = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Fiabilité : <b style="color:' + fiab.c + '">' + fiab.t + '</b> · ' + nWeeks + ' sem. · bien-être ' + nForme + ' relevé' + (nForme > 1 ? 's' : '') + '.</div>';
+      var recoHtml2 = '<div style="margin-top:8px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + reco2 + '</div></div>';
+      synthese = '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz<span class="r" style="text-transform:none;letter-spacing:0;font-weight:600;color:var(--text-subtle)">' + _w.plabel + '</span></div>'
+        + '<div class="ma-card" style="padding:14px 15px;margin:8px 0 16px">' + L2 + fiab2 + recoHtml2 + '</div>';
+    }
   }
 
   // ── Charge vs forme : 2 TUILES claires (pas de graphe dual-axe illisible) ──
