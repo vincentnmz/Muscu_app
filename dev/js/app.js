@@ -17456,7 +17456,10 @@ function _nvgClearNav() {
 // Remonte la barre basse (mobile) OU le rail gauche (desktop) au-dessus du voile,
 // surligne l'écran courant (l'item déjà « actif » posé par la vraie nav), estompe
 // le reste, et décale la feuille pour ne pas masquer une barre basse.
-function _nvgLiftNav() {
+// dimAll = true → aucun onglet éclairé : on estompe TOUT uniformément (pour les
+// écrans de fin qui ne ciblent aucun onglet — sinon l'onglet actif reste coloré
+// par le style natif de l'app, visible sous le voile).
+function _nvgLiftNav(dimAll) {
   var bottom = null, liftEls = [];
   ['tabs-bar', 'coach-bandeau', 'app-side', 'coach-rail'].forEach(function (id) {
     var el = document.getElementById(id);
@@ -17469,7 +17472,7 @@ function _nvgLiftNav() {
   liftEls.forEach(function (root) {
     try {
       [].forEach.call(root.querySelectorAll('.tab-btn, .as-item, .cs-item, .cb-item, .sub-tab'), function (e) {
-        if (e.classList.contains('active') || e.classList.contains('on')) want.push(e); else dim.push(e);
+        if (!dimAll && (e.classList.contains('active') || e.classList.contains('on'))) want.push(e); else dim.push(e);
       });
     } catch (e) {}
   });
@@ -17544,15 +17547,16 @@ function _nvgRender() {
   // le surlignage restait sur l'onglet précédent.
   try { (_nvgLiftT || (_nvgLiftT = [])).forEach(function (t) { clearTimeout(t); }); _nvgLiftT = []; } catch (e) {}
   // Les 2 derniers écrans (IA « prochainement » + Gratuit/Premium) ne ciblent
-  // aucun onglet → pas de surbrillance du tout (nav remise à plat).
-  if (_nvg.i >= n - 2) { try { _nvgClearNav(); } catch (e) {} try { var sh0 = document.querySelector('.nvg-sheet'); if (sh0) sh0.style.marginBottom = '0'; } catch (e) {} return; }
-  try { _nvgLiftNav(); } catch (e) {}
+  // aucun onglet → on remonte la nav mais on estompe TOUT (aucun onglet ne
+  // ressort, même pas l'actif natif de l'app).
+  var dimAll = _nvg.i >= n - 2;
+  try { _nvgLiftNav(dimAll); } catch (e) {}
   // Cascade de re-lifts : certaines navs (ouverture de fiche via fetch) peuvent
   // prendre quelques centaines de ms → on repasse plusieurs fois pour que le
   // surlignage rattrape la vraie nav, y compris en « Précédent ». _nvgLiftNav
-  // est idempotent → ces passages ne font rien si l'onglet est déjà le bon
-  // (donc pas de clignotement).
-  try { _nvgLiftT = [90, 260, 550].map(function (ms) { return setTimeout(function () { try { _nvgLiftNav(); } catch (e) {} }, ms); }); } catch (e) {}
+  // est idempotent → ces passages ne font rien si l'état est déjà bon (donc
+  // pas de clignotement).
+  try { _nvgLiftT = [90, 260, 550].map(function (ms) { return setTimeout(function () { try { _nvgLiftNav(dimAll); } catch (e) {} }, ms); }); } catch (e) {}
 }
 var _nvgLiftT = null;
 // Navigation coach pour le guide (viewport-aware) : sections de contenu via la vraie
