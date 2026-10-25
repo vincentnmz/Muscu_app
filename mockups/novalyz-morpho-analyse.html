@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analyse morpho — maquette</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --accent-a:rgba(26,95,255,.12);
+    --good:#00c96e; --warn:#f5a623; --bad:#e5484d; --lilac:#9d5fd3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55;padding:18px 14px 50px}
+  .wrap{max-width:440px;margin:0 auto}
+  .top{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+  .top .ic{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,rgba(26,95,255,.22),rgba(157,95,211,.22));display:grid;place-items:center;flex:none}
+  .top h1{font-size:18px;margin:0;font-weight:800}
+  .top .sub{font-size:11px;color:var(--subtle)}
+  .disc{font-size:11px;color:var(--subtle);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 11px;margin:12px 0 4px;line-height:1.5}
+  /* vignettes photos (placeholder) */
+  .shots{display:flex;gap:8px;margin:14px 0}
+  .shot{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center}
+  .shot svg{width:30px;height:46px;opacity:.5}
+  .shot .l{font-size:10.5px;font-weight:800;color:var(--muted);margin-top:4px}
+  .shot .ok{font-size:9px;color:var(--good);font-weight:700;margin-top:1px}
+  /* cartes */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 15px;margin-bottom:12px}
+  .sec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--subtle);margin:0 0 10px}
+  .row{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.45}
+  .row:first-of-type{border-top:none;padding-top:0}
+  .row .dot{flex:none;margin-top:5px;width:8px;height:8px;border-radius:999px}
+  .row b{font-weight:800}
+  .badge{display:inline-block;font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle}
+  .b-vis{background:rgba(0,201,110,.14);color:var(--good)}
+  .b-pro{background:rgba(245,166,35,.16);color:var(--warn)}
+  .b-mes{background:rgba(107,119,147,.2);color:var(--subtle)}
+  /* équilibre bars */
+  .eq{display:flex;flex-direction:column;gap:9px}
+  .eqr{font-size:12.5px}
+  .eqr .lh{display:flex;justify-content:space-between;margin-bottom:3px}
+  .eqr .lh .p{font-weight:800}
+  .track{height:7px;border-radius:999px;background:var(--surface2);overflow:hidden}
+  .fill{height:100%;border-radius:999px}
+  /* priorités */
+  .prio{counter-reset:p}
+  .pitem{display:flex;gap:11px;padding:10px 0;border-top:1px solid var(--border)}
+  .pitem:first-child{border-top:none}
+  .pnum{counter-increment:p;flex:none;width:24px;height:24px;border-radius:999px;background:var(--accent-a);color:var(--accent2);font-weight:800;font-size:12px;display:grid;place-items:center}
+  .pnum::before{content:counter(p)}
+  .pt{font-size:13px;font-weight:700}
+  .pd{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .chip{font-size:10.5px;font-weight:700;border-radius:7px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);color:var(--text)}
+  /* fiabilité */
+  .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;margin-top:4px}
+  .legend span{display:inline-flex;align-items:center;gap:5px;color:var(--muted)}
+  .legend i{width:9px;height:9px;border-radius:3px;display:inline-block}
+  .reco{background:var(--accent-a);border:1px solid var(--accent2);border-radius:12px;padding:12px 14px;margin-top:4px}
+  .reco .t{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent2);margin-bottom:3px}
+  .reco .b{font-size:12.5px;line-height:1.5}
+  .mesbox{background:var(--surface2);border:1px dashed var(--border);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--muted);line-height:1.5}
+  .mesbox b{color:var(--text)}
+  .note{font-size:11px;color:var(--subtle);margin-top:14px;line-height:1.5;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9d5fd3" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="2.4"/><path d="M12 7.4V15M6 10l6-1.5L18 10M9 21l3-6 3 6"/></svg></div>
+    <div><h1>Analyse morpho</h1><div class="sub">3 vues · 25 oct. 2026 · à titre indicatif, non médical</div></div>
+  </div>
+
+  <div class="shots">
+    <div class="shot"><svg viewBox="0 0 24 36" fill="none" stroke="var(--subtle)" stroke-width="1.6"><circle cx="12" cy="5" r="3.2"/><path d="M12 8.5v13M5 13l7-2 7 2M8 34l4-12 4 12"/></svg><div class="l">Face</div><div class="ok">✓ reçue</div></div>
+    <div class="shot"><svg viewBox="0 0 24 36" fill="none" stroke="var(--subtle)" stroke-width="1.6"><circle cx="13" cy="5" r="3.2"/><path d="M13 8.5c-1 4-1 9 0 13M13 13l-4 1M10 34l3-12 2 12"/></svg><div class="l">Profil</div><div class="ok">✓ reçue</div></div>
+    <div class="shot"><svg viewBox="0 0 24 36" fill="none" stroke="var(--subtle)" stroke-width="1.6"><circle cx="12" cy="5" r="3.2"/><path d="M12 8.5v13M5 13l7-2 7 2M8 34l4-12 4 12"/></svg><div class="l">Dos</div><div class="ok">✓ reçue</div></div>
+  </div>
+
+  <!-- VUE D'ENSEMBLE -->
+  <div class="card">
+    <div class="sec">Vue d'ensemble</div>
+    <div class="row"><span class="dot" style="background:var(--accent2)"></span><div><b>Morphotype méso-gynoïde</b> : la masse est portée sur le <b>bas du corps</b> (hanches, fessiers, cuisses), haut du corps plus léger. Taille marquée, épaules de largeur modérée.<span class="badge b-vis">Visible</span></div></div>
+    <div class="row"><span class="dot" style="background:var(--warn)"></span><div>Masse grasse <b>modérée</b> — base athlétique, potentiel de recomposition.<span class="badge b-pro">Estimé</span></div></div>
+  </div>
+
+  <!-- ÉQUILIBRE MUSCULAIRE -->
+  <div class="card">
+    <div class="sec">Équilibre musculaire</div>
+    <div class="eq">
+      <div class="eqr"><div class="lh"><span>Fessiers</span><span class="p" style="color:var(--good)">développés</span></div><div class="track"><div class="fill" style="width:82%;background:var(--good)"></div></div></div>
+      <div class="eqr"><div class="lh"><span>Cuisses (quadri / ischios)</span><span class="p" style="color:var(--good)">corrects</span></div><div class="track"><div class="fill" style="width:70%;background:var(--good)"></div></div></div>
+      <div class="eqr"><div class="lh"><span>Dos &amp; épaules</span><span class="p" style="color:var(--warn)">en retard</span></div><div class="track"><div class="fill" style="width:38%;background:var(--warn)"></div></div></div>
+      <div class="eqr"><div class="lh"><span>Mollets</span><span class="p" style="color:var(--warn)">en retard</span></div><div class="track"><div class="fill" style="width:40%;background:var(--warn)"></div></div></div>
+    </div>
+    <div class="row" style="margin-top:11px"><span class="dot" style="background:var(--good)"></span><div>Bilan : <b>haut du corps en retard sur le bas</b>. Priorité claire = dos, épaules, mollets.<span class="badge b-vis">Visible</span></div></div>
+  </div>
+
+  <!-- POSTURE -->
+  <div class="card">
+    <div class="sec">Posture (vue de profil)</div>
+    <div class="row"><span class="dot" style="background:var(--warn)"></span><div><b>Antéversion du bassin</b> + lordose lombaire : bas du dos cambré, ventre projeté en avant.<span class="badge b-pro">À confirmer</span></div></div>
+    <div class="row"><span class="dot" style="background:var(--subtle)"></span><div>Léger enroulement haut du dos / tête en avant.<span class="badge b-pro">Léger</span></div></div>
+    <div class="row"><span class="dot" style="background:var(--subtle)"></span><div>Sangle abdominale profonde à retonifier (gainage).<span class="badge b-pro">Indice</span></div></div>
+  </div>
+
+  <!-- PRIORITÉS -->
+  <div class="card">
+    <div class="sec">Priorités d'entraînement</div>
+    <div class="prio">
+      <div class="pitem"><div class="pnum"></div><div><div class="pt">Développer le haut du corps</div><div class="pd">Rééquilibre la silhouette (épaules vs hanches larges).</div><div class="chips"><span class="chip">Tirage horizontal</span><span class="chip">Tirage vertical</span><span class="chip">Élévations latérales</span></div></div></div>
+      <div class="pitem"><div class="pnum"></div><div><div class="pt">Correctif bassin &amp; gainage</div><div class="pd">Antéversion → core profond + ischios, étirer les fléchisseurs de hanche.</div><div class="chips"><span class="chip">Dead bug</span><span class="chip">Hollow / gainage</span><span class="chip">Hip thrust</span><span class="chip">Étirement psoas</span></div></div></div>
+      <div class="pitem"><div class="pnum"></div><div><div class="pt">Rattraper les mollets</div><div class="pd">En retard sur les cuisses → travail dédié.</div><div class="chips"><span class="chip">Mollets debout</span><span class="chip">Mollets assis</span></div></div></div>
+      <div class="pitem"><div class="pnum"></div><div><div class="pt">Entretenir le bas &amp; recomposition</div><div class="pd">Maintenir fessiers/quadris, équilibrer avec les ischios + nutrition.</div></div></div>
+    </div>
+  </div>
+
+  <!-- RECO SYNTHÈSE -->
+  <div class="card">
+    <div class="sec">En une phrase</div>
+    <div class="reco"><div class="t">Reco Novalyz</div><div class="b">Base solide sur le bas du corps. Mets le paquet sur le <b>dos / épaules</b> et le <b>gainage profond</b> : tu gagnes en équilibre, en posture et en silhouette.</div></div>
+  </div>
+
+  <!-- FIABILITÉ -->
+  <div class="card">
+    <div class="sec">Fiabilité de l'analyse</div>
+    <div class="legend">
+      <span><i style="background:var(--good)"></i>Visible — fiable</span>
+      <span><i style="background:var(--warn)"></i>Probable — à confirmer</span>
+      <span><i style="background:var(--subtle)"></i>À mesurer</span>
+    </div>
+    <div class="mesbox" style="margin-top:11px">
+      <b>Pour fiabiliser</b> — ajoute tes <b>mesures de segments</b> : envergure, bras / avant-bras, fémur / tibia, buste assis, largeur épaules vs hanches, tour de poignet.<br>
+      Sans mesure, les <b>longueurs de segments</b> et le <b>% de masse grasse</b> restent des estimations — pas de chiffre affirmé.
+    </div>
+  </div>
+
+  <div class="note">Analyse basée sur des principes reconnus (biomécanique, correctif postural, pratique de la musculation). Indicative, non médicale — un bilan de mouvement confirme la posture.</div>
+</div>
+</body>
+</html>
