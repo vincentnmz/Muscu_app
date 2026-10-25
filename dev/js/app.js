@@ -17457,26 +17457,34 @@ function _nvgClearNav() {
 // surligne l'écran courant (l'item déjà « actif » posé par la vraie nav), estompe
 // le reste, et décale la feuille pour ne pas masquer une barre basse.
 function _nvgLiftNav() {
-  _nvgClearNav();
-  var bottom = null;
+  var bottom = null, liftEls = [];
   ['tabs-bar', 'coach-bandeau', 'app-side', 'coach-rail'].forEach(function (id) {
     var el = document.getElementById(id);
     // getClientRects() = visible (gère les barres position:fixed dont offsetParent est null).
-    if (el && el.getClientRects().length) { el.classList.add('nvg-navlift'); if (id === 'tabs-bar' || id === 'coach-bandeau') bottom = el; }
+    if (el && el.getClientRects().length) { liftEls.push(el); if (id === 'tabs-bar' || id === 'coach-bandeau') bottom = el; }
   });
-  try {
-    [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn, .nvg-navlift .as-item, .nvg-navlift .cs-item, .nvg-navlift .cb-item'), function (e) { e.classList.add('nvg-navdim'); });
-    [].forEach.call(document.querySelectorAll('.nvg-navlift .tab-btn.active, .nvg-navlift .as-item.active, .nvg-navlift .cs-item.on, .nvg-navlift .cb-item.on'), function (e) { e.classList.remove('nvg-navdim'); e.classList.add('nvg-navcur'); });
-  } catch (e) {}
-  // Sous-onglets de la fiche coach (barre .sub-tabs) : même traitement — l'actif éclairé.
-  try {
-    var sub = document.querySelector('#view-coach-detail .sub-tabs');
-    if (sub && sub.getClientRects().length) {
-      sub.classList.add('nvg-navlift');
-      [].forEach.call(sub.querySelectorAll('.sub-tab'), function (e) { e.classList.add('nvg-navdim'); });
-      [].forEach.call(sub.querySelectorAll('.sub-tab.active'), function (e) { e.classList.remove('nvg-navdim'); e.classList.add('nvg-navcur'); });
-    }
-  } catch (e) {}
+  try { var sub = document.querySelector('#view-coach-detail .sub-tabs'); if (sub && sub.getClientRects().length) liftEls.push(sub); } catch (e) {}
+  // Items à éclairer (l'actif posé par la vraie nav) et à estomper.
+  var want = [], dim = [];
+  liftEls.forEach(function (root) {
+    try {
+      [].forEach.call(root.querySelectorAll('.tab-btn, .as-item, .cs-item, .cb-item, .sub-tab'), function (e) {
+        if (e.classList.contains('active') || e.classList.contains('on')) want.push(e); else dim.push(e);
+      });
+    } catch (e) {}
+  });
+  // IDEMPOTENT : si l'item déjà éclairé est exactement le bon, on ne retouche
+  // rien → évite le clignotement dû aux re-lifts en cascade (clear+réapplique).
+  var cur = [].slice.call(document.querySelectorAll('.nvg-navcur'));
+  var same = cur.length === want.length && cur.every(function (e) { return want.indexOf(e) >= 0; });
+  if (!same) {
+    _nvgClearNav();
+    liftEls.forEach(function (el) { el.classList.add('nvg-navlift'); });
+    dim.forEach(function (e) { e.classList.add('nvg-navdim'); });
+    want.forEach(function (e) { e.classList.remove('nvg-navdim'); e.classList.add('nvg-navcur'); });
+  } else {
+    liftEls.forEach(function (el) { el.classList.add('nvg-navlift'); });
+  }
   try { var sheet = document.querySelector('.nvg-sheet'); if (sheet) sheet.style.marginBottom = bottom ? (bottom.offsetHeight + 'px') : '0'; } catch (e) {}
 }
 function nvGuidePrev() { if (_nvg.i > 0) { _nvg.i--; _nvgRender(); } }
@@ -17534,14 +17542,17 @@ function _nvgRender() {
   // Immédiat + différé : certaines navigations (ouverture de fiche, switch de section)
   // mettent la vraie nav à jour de façon async → sans le re-lift différé, en « Précédent »
   // le surlignage restait sur l'onglet précédent.
+  try { (_nvgLiftT || (_nvgLiftT = [])).forEach(function (t) { clearTimeout(t); }); _nvgLiftT = []; } catch (e) {}
+  // Les 2 derniers écrans (IA « prochainement » + Gratuit/Premium) ne ciblent
+  // aucun onglet → pas de surbrillance du tout (nav remise à plat).
+  if (_nvg.i >= n - 2) { try { _nvgClearNav(); } catch (e) {} try { var sh0 = document.querySelector('.nvg-sheet'); if (sh0) sh0.style.marginBottom = '0'; } catch (e) {} return; }
   try { _nvgLiftNav(); } catch (e) {}
   // Cascade de re-lifts : certaines navs (ouverture de fiche via fetch) peuvent
   // prendre quelques centaines de ms → on repasse plusieurs fois pour que le
-  // surlignage rattrape la vraie nav, y compris en « Précédent ».
-  try {
-    (_nvgLiftT || (_nvgLiftT = [])).forEach(function (t) { clearTimeout(t); });
-    _nvgLiftT = [90, 260, 550].map(function (ms) { return setTimeout(function () { try { _nvgLiftNav(); } catch (e) {} }, ms); });
-  } catch (e) {}
+  // surlignage rattrape la vraie nav, y compris en « Précédent ». _nvgLiftNav
+  // est idempotent → ces passages ne font rien si l'onglet est déjà le bon
+  // (donc pas de clignotement).
+  try { _nvgLiftT = [90, 260, 550].map(function (ms) { return setTimeout(function () { try { _nvgLiftNav(); } catch (e) {} }, ms); }); } catch (e) {}
 }
 var _nvgLiftT = null;
 // Navigation coach pour le guide (viewport-aware) : sections de contenu via la vraie
