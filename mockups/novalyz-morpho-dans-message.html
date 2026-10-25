@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morpho dans la conversation — maquette</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --surface:#121a2b; --surface2:#0f1626; --border:#243049;
+    --text:#e7ecf5; --muted:#8b96b0; --subtle:#6b7793;
+    --accent:#1a5fff; --accent2:#4d82ff; --violet:#7c5cff;
+    --good:#00c96e; --warn:#f5a623;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#05080f;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:22px 12px 60px}
+  .cap{font-size:12px;color:var(--subtle);text-align:center;max-width:720px;margin:0 auto 22px}
+  .cap b{color:var(--text)}
+  .wrap{display:flex;gap:26px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .lbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--accent2)}
+  .phone{width:370px;max-width:94vw;height:740px;background:var(--bg);border:1px solid var(--border);border-radius:30px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column}
+  /* header conversation */
+  .cv-top{display:flex;align-items:center;gap:11px;padding:calc(13px) 15px;border-bottom:1px solid var(--border);background:var(--surface);flex:none}
+  .cv-back{width:30px;height:30px;border-radius:999px;background:var(--surface2);display:grid;place-items:center;color:var(--muted);flex:none}
+  .cv-back svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2}
+  .cv-ava{width:38px;height:38px;border-radius:999px;background:linear-gradient(135deg,#1a5fff,#7c5cff);display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+  .cv-id{flex:1;min-width:0}
+  .cv-id .n{font-weight:800;font-size:14.5px}
+  .cv-id .s{font-size:11px;color:var(--muted)}
+  .cv-ico{width:30px;height:30px;border-radius:999px;background:var(--surface2);display:grid;place-items:center;color:var(--muted)}
+  .cv-ico svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+  /* corps */
+  .cv-body{flex:1;overflow-y:auto;padding:14px 14px 6px;display:flex;flex-direction:column;gap:11px;background:
+    radial-gradient(1200px 400px at 50% -10%,rgba(26,95,255,.06),transparent 60%)}
+  .day{align-self:center;font-size:10.5px;color:var(--subtle);background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:3px 10px}
+  .msg{max-width:78%;padding:9px 12px;border-radius:15px;font-size:13px;line-height:1.4}
+  .msg.them{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:5px}
+  .msg.me{align-self:flex-end;background:linear-gradient(135deg,#1a5fff,#2f6bff);border-bottom-right-radius:5px}
+  .msg .t{display:block;font-size:9.5px;opacity:.6;margin-top:3px;text-align:right}
+  /* ====== LE BLOC MORPHO (l'objet de la maquette) ====== */
+  .morpho{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px;border-radius:16px;
+    background:linear-gradient(135deg,rgba(26,95,255,.12),rgba(124,92,255,.15));
+    border:1px solid rgba(124,92,255,.35);cursor:pointer;color:var(--text);
+    box-shadow:0 6px 20px rgba(124,92,255,.14)}
+  .morpho:hover{border-color:rgba(124,92,255,.6);box-shadow:0 8px 26px rgba(124,92,255,.22)}
+  .morpho .ic{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#1a5fff,#7c5cff);display:grid;place-items:center;color:#fff;flex:none}
+  .morpho .ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .morpho .tx{flex:1;min-width:0}
+  .morpho .tx .ti{display:block;font-weight:800;font-size:13px;display:flex;align-items:center;gap:7px}
+  .morpho .tx .sb{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+  .morpho .go{color:var(--violet);flex:none}
+  .morpho .go svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+  .bt{font-size:8px;font-weight:800;background:rgba(224,120,0,.16);color:#f5a623;border-radius:5px;padding:1px 6px;text-transform:uppercase;letter-spacing:.03em}
+  .pin{align-self:center;font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--subtle);margin:2px 0 -4px}
+  /* composer */
+  .cv-foot{flex:none;border-top:1px solid var(--border);background:var(--surface);padding:10px 12px calc(12px + env(safe-area-inset-bottom,0))}
+  .cv-tools{display:flex;gap:8px;margin-bottom:9px}
+  .tool{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);font-size:11.5px;font-weight:700;color:var(--text)}
+  .tool.hot{background:linear-gradient(135deg,rgba(26,95,255,.14),rgba(124,92,255,.16));border-color:rgba(124,92,255,.4);color:var(--text)}
+  .tool svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .tool .d{color:var(--violet)}
+  .cv-input{display:flex;align-items:center;gap:9px}
+  .cv-input .f{flex:1;height:40px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);padding:0 15px;display:flex;align-items:center;color:var(--subtle);font-size:12.5px}
+  .cv-input .send{width:40px;height:40px;border-radius:999px;background:var(--accent);display:grid;place-items:center;flex:none}
+  .cv-input .send svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  /* explication */
+  .note{max-width:760px;margin:30px auto 0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px}
+  .note h3{margin:0 0 10px;font-size:15px}
+  .note ul{margin:0;padding-left:18px;font-size:13px;color:var(--muted);line-height:1.7}
+  .note b{color:var(--text)}
+  .opt{display:inline-block;font-size:11px;font-weight:800;color:var(--accent2);background:rgba(26,95,255,.12);border:1px solid var(--accent2);border-radius:999px;padding:2px 9px;margin-bottom:6px}
+</style>
+</head>
+<body>
+  <div class="cap">Maquette — <b>bloc « Analyse morpho-anatomique »</b> dans la conversation. Même page que l'athlète (<b>ouvrirMorpho</b>). Deux emplacements proposés : <b>carte épinglée</b> en haut du fil + <b>bouton</b> dans la barre d'outils du message.</div>
+
+  <div class="wrap">
+    <!-- ===== COACH ===== -->
+    <div class="col">
+      <div class="lbl">Coach · Messages ▸ conversation</div>
+      <div class="phone">
+        <div class="cv-top">
+          <div class="cv-back"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+          <div class="cv-ava">Y</div>
+          <div class="cv-id"><div class="n">Yann M.</div><div class="s">Séance hier · RPE 8</div></div>
+          <div class="cv-ico"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+        </div>
+        <div class="cv-body">
+          <div class="day">Aujourd'hui</div>
+          <div class="pin">📌 Outil épinglé</div>
+          <div class="morpho" onclick="alert('→ ouvre la page Analyse morpho (ouvrirMorpho) pour Yann')">
+            <span class="ic"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+            <span class="tx"><span class="ti">Analyse morpho-anatomique <span class="bt">Prochainement</span></span><span class="sb">Photos de Yann → groupes en avance / en retard</span></span>
+            <span class="go"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="msg them">Coach, voici mes photos de face et de dos 💪<span class="t">09:12</span></div>
+          <div class="msg me">Parfait, je lance l'analyse morpho et je te dis les groupes à prioriser.<span class="t">09:15</span></div>
+          <div class="msg them">Top, merci !<span class="t">09:16</span></div>
+        </div>
+        <div class="cv-foot">
+          <div class="cv-tools">
+            <div class="tool"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Photo</div>
+            <div class="tool"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Vidéo</div>
+            <div class="tool hot"><svg class="d" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Morpho</div>
+          </div>
+          <div class="cv-input">
+            <div class="f">Écrire à Yann…</div>
+            <div class="send"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ATHLÈTE ===== -->
+    <div class="col">
+      <div class="lbl">Athlète · Conversation avec le coach</div>
+      <div class="phone">
+        <div class="cv-top">
+          <div class="cv-back"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+          <div class="cv-ava" style="background:linear-gradient(135deg,#00c96e,#1a5fff)">C</div>
+          <div class="cv-id"><div class="n">Coach Vincent</div><div class="s">En ligne</div></div>
+          <div class="cv-ico"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+        </div>
+        <div class="cv-body">
+          <div class="day">Aujourd'hui</div>
+          <div class="pin">📌 Outil épinglé</div>
+          <div class="morpho" onclick="alert('→ ouvre la page Analyse morpho (ouvrirMorpho) — mes photos')">
+            <span class="ic"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+            <span class="tx"><span class="ti">Analyse morpho-anatomique <span class="bt">Prochainement</span></span><span class="sb">Tes photos → tes groupes en avance / en retard</span></span>
+            <span class="go"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="msg me">Coach, voici mes photos de face et de dos 💪<span class="t">09:12</span></div>
+          <div class="msg them">Parfait, je lance l'analyse morpho et je te dis les groupes à prioriser.<span class="t">09:15</span></div>
+          <div class="msg me">Top, merci !<span class="t">09:16</span></div>
+        </div>
+        <div class="cv-foot">
+          <div class="cv-tools">
+            <div class="tool"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Photo</div>
+            <div class="tool"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Vidéo</div>
+            <div class="tool hot"><svg class="d" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Morpho</div>
+          </div>
+          <div class="cv-input">
+            <div class="f">Écrire au coach…</div>
+            <div class="send"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <div class="opt">Proposition d'implémentation</div>
+    <h3>Où placer le bloc</h3>
+    <ul>
+      <li><b>Carte épinglée</b> en haut du fil de conversation (visible dès l'ouverture, ne défile pas avec les messages) — <i>emplacement principal</i>.</li>
+      <li><b>Bouton « Morpho »</b> dans la barre d'outils du composer (à côté de Photo / Vidéo), toujours accessible.</li>
+    </ul>
+    <h3>Ce que ça ouvre</h3>
+    <ul>
+      <li>La <b>même page</b> que l'athlète : <b><code>ouvrirMorpho()</code></b> → écran plein <code>#tab-morpho</code> (upload face / profil / dos + consentement + Analyser).</li>
+      <li>Côté <b>coach</b>, l'analyse porte sur l'<b>athlète de la conversation</b> (<code>coachAthleteCourant</code>) ; côté <b>athlète</b>, sur ses propres photos. Petite adaptation de <code>ouvrirMorpho</code> pour cibler le bon <code>athlete_id</code>.</li>
+      <li>Badge <b>« Prochainement »</b> tant que la clé IA n'est pas branchée (sinon actif).</li>
+    </ul>
+  </div>
+</body>
+</html>
