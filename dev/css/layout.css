@@ -813,6 +813,10 @@ body.prog-editor-open{ overflow:hidden; }
 .pe-tabs{ display:none; }
 @media (min-width:992px){
   body.coach-active #cd-header .cd-back{ display:none !important; }   /* fiche : nav par le rail, pas de flèche */
+  /* Réglages / Conversation / Déco sont déjà dans le rail de gauche → on les
+     masque dans l'en-tête de la fiche sur desktop (sinon doublon, et ça fait
+     « barre athlète »). Sur mobile, ils restent (pas de rail). */
+  body.coach-active.athlete-selected #cd-header .cd-head-actions{ display:none !important; }
   body.coach-active #prog-editor-overlay .pe-back{ display:none !important; } /* Programme : nav par les onglets, pas de flèche */
   body.coach-active #prog-editor-overlay .pe-tabs{ display:flex; gap:4px; margin-left:18px; }
   body.coach-active #prog-editor-overlay .pe-tabs button{ border:none; background:none; font:inherit; font-weight:800; font-size:13px; color:var(--text-muted); padding:8px 13px; border-radius:9px; cursor:pointer; border-bottom:2.5px solid transparent; }
