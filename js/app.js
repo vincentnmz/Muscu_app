@@ -9393,15 +9393,38 @@ function cvSendIA() {
 
 // ── Analyse morpho par photo (IA vision) — photos jamais stockées ──
 var _morphoImgs = { face: null, profil: null, dos: null };
-function ouvrirMorpho() {
+// Cible de l'analyse morpho : null = l'athlète connecté (self) ; sinon un athlète
+// du coach (cibleId/cibleNom). _morphoFromCoach = ouvert depuis l'espace coach →
+// on affiche l'écran en overlay (sans switchTab athlète) et on y revient au retour.
+var _morphoCibleId = null, _morphoCibleNom = null, _morphoFromCoach = false;
+function _ouvrirMorphoCoach() {
+  var a = (typeof coachAthleteCourant !== 'undefined') ? coachAthleteCourant : null;
+  if (!a || !a.athlete_id) { try { showToast('Sélectionne un athlète'); } catch (e) {} return; }
+  ouvrirMorpho(a.athlete_id, a.nom);
+}
+function ouvrirMorpho(cibleId, cibleNom) {
   _morphoImgs = { face: null, profil: null, dos: null };
-  if (typeof switchTab === 'function') switchTab('morpho');   // sous-écran plein écran
+  _morphoCibleId = cibleId || null;
+  _morphoCibleNom = cibleNom || null;
+  _morphoFromCoach = !!cibleId;
+  var tm = document.getElementById('tab-morpho');
+  // Coach : overlay direct (ne pas perturber la vue coach dessous). Athlète : switchTab.
+  if (_morphoFromCoach) { if (tm) tm.classList.add('active'); }
+  else if (typeof switchTab === 'function') switchTab('morpho');   // sous-écran plein écran
+  var ttl = document.querySelector('#tab-morpho .mo-ttl'); if (ttl) ttl.textContent = _morphoCibleNom ? ('Morpho · ' + _morphoCibleNom) : 'Analyse morpho';
   ['face', 'profil', 'dos'].forEach(function (w) { var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; } });
   var c = document.getElementById('morpho-consent'); if (c) c.checked = false;
   var r = document.getElementById('morpho-result'); if (r) r.innerHTML = '';
   var g = document.getElementById('morpho-go'); if (g) { g.disabled = false; g.textContent = 'Analyser'; }
 }
-function fermerMorpho() { _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils'); }
+function fermerMorpho() {
+  if (_morphoFromCoach) {
+    var tm = document.getElementById('tab-morpho'); if (tm) tm.classList.remove('active');
+    _morphoFromCoach = false; _morphoCibleId = null; _morphoCibleNom = null;
+    return;   // la vue coach est restée affichée dessous
+  }
+  _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils');
+}
 function _morphoFichier(input, which) {
   var f = input.files && input.files[0]; if (!f) return;
   var img = new Image(), url = URL.createObjectURL(f);
@@ -9460,7 +9483,9 @@ function _morphoRender(d) {
 }
 
 async function _morphoAnalyser() {
-  if (typeof athlete === 'undefined' || !athlete || !athlete.athlete_id) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
+  // Cible : athlète du coach si défini, sinon l'athlète connecté.
+  var cibleId = _morphoCibleId || ((typeof athlete !== 'undefined' && athlete) ? athlete.athlete_id : null);
+  if (!cibleId) { showToast('Connecte-toi d\'abord', '#DC3545'); return; }
   var imgs = [], views = [];
   if (_morphoImgs.face) { imgs.push(_morphoImgs.face); views.push('face'); }
   if (_morphoImgs.profil) { imgs.push(_morphoImgs.profil); views.push('profil'); }
@@ -9470,7 +9495,7 @@ async function _morphoAnalyser() {
   var g = document.getElementById('morpho-go'); if (g) { g.disabled = true; g.textContent = 'Analyse en cours…'; }
   var res = document.getElementById('morpho-result'); if (res) res.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">L\'IA analyse tes photos…</div>';
   try {
-    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'analyseMorpho', athlete_id: athlete.athlete_id, consent: true, images: imgs, views: views }) });
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'analyseMorpho', athlete_id: cibleId, consent: true, images: imgs, views: views }) });
     var j = await r.json().catch(function () { return {}; });
     if (res) {
       if (j && j.resultat && typeof j.resultat === 'object') { res.innerHTML = _morphoRender(j.resultat); }
