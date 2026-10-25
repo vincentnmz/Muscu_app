@@ -17419,7 +17419,8 @@ function _nvgCss() {
     // navigue via la carte uniquement.
     + '.nvg-navlift{z-index:1250!important;pointer-events:none!important}'
     + '.nvg-navdim{opacity:.26!important;filter:grayscale(.6);transition:opacity .2s}'
-    + '.nvg-navcur{opacity:1!important;position:relative;z-index:1;border-radius:12px;background:var(--accent-a15,rgba(26,95,255,.16))!important;box-shadow:0 0 0 2px var(--accent),0 0 20px 3px rgba(26,95,255,.55)!important}'
+    + '.nvg-navcur{opacity:1!important;position:relative;z-index:1;border-radius:12px;background:var(--accent-a15,rgba(26,95,255,.16))!important;animation:nvgCurPulse 1.6s ease-in-out infinite}'
+    + '@keyframes nvgCurPulse{0%,100%{box-shadow:0 0 0 2px var(--accent),0 0 12px 2px rgba(26,95,255,.45)}50%{box-shadow:0 0 0 2px var(--accent),0 0 24px 6px rgba(26,95,255,.8)}}'
     + '.nvg-navcur,.nvg-navcur *{color:var(--accent)!important}'
     + '.nvg-navcur svg{stroke:var(--accent)!important}'
     // Sous-onglets de la fiche (Aperçu/Progression/Séances/Programme/Conversation) :
@@ -17428,9 +17429,12 @@ function _nvgCss() {
     + '.sub-tab.nvg-navcur{background:var(--accent)!important;transform:scale(1.07);box-shadow:0 0 0 2px var(--accent),0 0 26px 6px rgba(26,95,255,.75)!important}'
     + '.sub-tab.nvg-navcur,.sub-tab.nvg-navcur *{color:#fff!important}'
     + '.sub-tab.nvg-navdim{opacity:.22!important;filter:grayscale(.75)}'
-    + '.nvg-navcur::after{content:"";position:absolute;inset:-4px;border:2px solid var(--accent);border-radius:13px;animation:nvgPulse 1.6s ease-out infinite;pointer-events:none}'
-    + '@keyframes nvgPulse{0%{opacity:.7;transform:scale(.98)}70%{opacity:0;transform:scale(1.12)}100%{opacity:0}}'
-    + '@media (prefers-reduced-motion:reduce){.nvg-sheet{animation:none}.nvg-navcur::after{animation:none;opacity:.7}}';
+    // Spotlight sur un BLOC de contenu (ex. le bloc IA de la fiche) : on le
+    // remonte au-dessus du voile (z>voile) → il ressort en pleine lumière avec
+    // un halo pulsé. pointer-events coupés (display only pendant la visite).
+    + '.nvg-spot{position:relative!important;z-index:1250!important;pointer-events:none!important;border-radius:16px;box-shadow:0 0 0 2px var(--accent),0 0 28px 7px rgba(26,95,255,.6)!important;animation:nvgSpotPulse 1.8s ease-in-out infinite}'
+    + '@keyframes nvgSpotPulse{0%,100%{box-shadow:0 0 0 2px var(--accent),0 0 14px 2px rgba(26,95,255,.45)}50%{box-shadow:0 0 0 2px var(--accent),0 0 32px 9px rgba(26,95,255,.8)}}'
+    + '@media (prefers-reduced-motion:reduce){.nvg-sheet,.nvg-navcur,.nvg-spot{animation:none}.nvg-navcur{box-shadow:0 0 0 2px var(--accent),0 0 18px 4px rgba(26,95,255,.6)!important}}';
   document.head.appendChild(s);
 }
 function nvGuideStart(cards, key, role) {
@@ -17452,6 +17456,22 @@ function nvGuideEnd() {
 function _nvgClearNav() {
   try { [].forEach.call(document.querySelectorAll('.nvg-navlift'), function (e) { e.classList.remove('nvg-navlift'); }); } catch (e) {}
   try { [].forEach.call(document.querySelectorAll('.nvg-navcur,.nvg-navdim'), function (e) { e.classList.remove('nvg-navcur', 'nvg-navdim'); }); } catch (e) {}
+  _nvgClearSpot();
+}
+// Spotlight sur un bloc de contenu (ex. le bloc IA de la fiche).
+var _nvgSpotEl = null;
+function _nvgClearSpot() {
+  try { [].forEach.call(document.querySelectorAll('.nvg-spot'), function (e) { e.classList.remove('nvg-spot'); }); } catch (e) {}
+  _nvgSpotEl = null;
+}
+function _nvgSpot(sel) {
+  var el = null; try { el = document.querySelector(sel); } catch (e) {}
+  if (!el || !el.getClientRects().length) return false; // pas encore affiché (nav async)
+  if (_nvgSpotEl === el) return true;                    // déjà éclairé → idempotent
+  _nvgClearSpot();
+  el.classList.add('nvg-spot'); _nvgSpotEl = el;
+  try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { try { el.scrollIntoView(); } catch (_) {} }
+  return true;
 }
 // Remonte la barre basse (mobile) OU le rail gauche (desktop) au-dessus du voile,
 // surligne l'écran courant (l'item déjà « actif » posé par la vraie nav), estompe
@@ -17546,17 +17566,18 @@ function _nvgRender() {
   // mettent la vraie nav à jour de façon async → sans le re-lift différé, en « Précédent »
   // le surlignage restait sur l'onglet précédent.
   try { (_nvgLiftT || (_nvgLiftT = [])).forEach(function (t) { clearTimeout(t); }); _nvgLiftT = []; } catch (e) {}
-  // Les 2 derniers écrans (IA « prochainement » + Gratuit/Premium) ne ciblent
-  // aucun onglet → on remonte la nav mais on estompe TOUT (aucun onglet ne
-  // ressort, même pas l'actif natif de l'app).
-  var dimAll = _nvg.i >= n - 2;
-  try { _nvgLiftNav(dimAll); } catch (e) {}
+  if (!c.hi) { try { _nvgClearSpot(); } catch (e) {} }
+  // c.hi → on éclaire un BLOC de contenu (ex. le bloc IA de la fiche) et on
+  // estompe toute la nav. Sinon : les 2 derniers écrans estompent tout (aucun
+  // onglet ne ressort) ; les autres surlignent l'onglet actif.
+  var dimAll = !!c.hi || _nvg.i >= n - 2;
+  var apply = function () { try { _nvgLiftNav(dimAll); } catch (e) {} if (c.hi) { try { _nvgSpot(c.hi); } catch (e) {} } };
+  apply();
   // Cascade de re-lifts : certaines navs (ouverture de fiche via fetch) peuvent
   // prendre quelques centaines de ms → on repasse plusieurs fois pour que le
-  // surlignage rattrape la vraie nav, y compris en « Précédent ». _nvgLiftNav
-  // est idempotent → ces passages ne font rien si l'état est déjà bon (donc
-  // pas de clignotement).
-  try { _nvgLiftT = [90, 260, 550].map(function (ms) { return setTimeout(function () { try { _nvgLiftNav(dimAll); } catch (e) {} }, ms); }); } catch (e) {}
+  // surlignage (ou le spotlight) rattrape le DOM, y compris en « Précédent ».
+  // _nvgLiftNav / _nvgSpot sont idempotents → pas de clignotement.
+  try { _nvgLiftT = [90, 260, 550].map(function (ms) { return setTimeout(apply, ms); }); } catch (e) {}
 }
 var _nvgLiftT = null;
 // Navigation coach pour le guide (viewport-aware) : sections de contenu via la vraie
@@ -17635,7 +17656,7 @@ function _guideCoachCards() {
       feats: ['Conversations : <b>messages, photos, vidéos</b> (technique)', 'Notifications des non-lus'] },
     { ic: 'gear', scr: 'Profil', t: 'Profil &amp; données', lead: 'Ton espace coach.', go: G('profil'),
       feats: ['Tes préférences et ton profil coach', '<b>Export</b> des données de tes clients', '<b>Revoir la visite</b> à tout moment'] },
-    { ic: 'spark', scr: 'IA &amp; morpho', t: 'IA coach &amp; analyse morpho', lead: 'L’<b>analyse des données</b> (état, vigilance, risque de surcharge) est faite par le <b>moteur Novalyz</b> — ce n’est pas de l’IA, et c’est déjà sur chaque fiche. En plus, deux briques <b>IA</b> arrivent :',
+    { ic: 'spark', scr: 'Fiche ▸ IA', t: 'IA coach &amp; analyse morpho', go: F('overview'), hi: '#cd-ia-card', lead: 'Ce bloc, sur la fiche de chaque athlète. L’<b>analyse des données</b> (état, vigilance, risque de surcharge) est faite par le <b>moteur Novalyz</b> — pas de l’IA, déjà active. En plus, deux briques <b>IA</b> arrivent :',
       feats: [_ONB_BT + '<b>Assistant IA coach</b> : demande une analyse, une priorité de travail ou un avis sur le risque — réponse appuyée sur les données de l’athlète (jamais de chiffre inventé)', _ONB_BT + '<b>Analyse morpho-anatomique par IA</b> : photos → groupes <b>en avance / en retard</b>'] },
     { ic: 'gift', scr: '', t: 'Gratuit — et plus en Premium', lead: 'Ton espace coach démarre gratuit.', go: G('aujourdhui'),
       feats: ['Cockpit · suivi d’équipe · fiches : gratuit', 'IA coach : <b>3 questions/jour</b>, illimité en Premium', 'Plus d’athlètes · analyses avancées : <b>Premium</b>', '<b>Envoi de rapports</b> à tes athlètes (bilans auto par e-mail) : <b>Premium</b>'] }
