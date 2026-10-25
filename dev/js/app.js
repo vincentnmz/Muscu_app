@@ -17366,7 +17366,7 @@ function _nvgCss() {
   if (document.getElementById('nvg-css')) return;
   var s = document.createElement('style'); s.id = 'nvg-css';
   s.textContent = 'body.nvg-open{overflow:hidden!important}'
-    + '#nvg-ov{position:fixed;inset:0;z-index:1200;background:rgba(5,8,15,.86);display:flex;align-items:flex-end;justify-content:center}'
+    + '#nvg-ov{position:fixed;inset:0;z-index:1200;background:rgba(7,11,20,.5);display:flex;align-items:flex-end;justify-content:center}'
     + '.nvg-sheet{background:var(--surface);border:1px solid var(--border);width:100%;max-width:540px;border-radius:22px 22px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(7,11,20,.45);animation:nvgUp .3s ease;max-height:90vh;overflow:auto}'
     + '@media(min-width:900px){#nvg-ov{align-items:center}.nvg-sheet{border-radius:22px;max-width:600px;max-height:86vh;padding:24px 28px;box-shadow:0 24px 70px rgba(0,0,0,.6)}.nvg-t{font-size:19px}.nvg-lead{font-size:13.5px}.nvg-feat li{font-size:14px}}'
     + '.nvg-crumb{font-size:10.5px;font-weight:700;color:var(--text-subtle);margin:12px 0 2px}.nvg-crumb b{color:var(--accent)}'
@@ -17475,25 +17475,27 @@ function _nvgNavHtml(c) {
 }
 function _nvgRender() {
   var c = _nvg.cards[_nvg.i]; if (!c) return;
+  // Pilote la VRAIE app vers l'écran décrit → la vraie nav (barre du bas / rail)
+  // s'allume sur le bon onglet et l'écran derrière correspond à la carte.
+  try { if (c.go) c.go(); } catch (e) {}
   var ov = document.getElementById('nvg-ov'); if (!ov) return;
   var n = _nvg.cards.length;
-  var nav = _nvgNavHtml(c);
   var feats = (c.feats || []).map(function (t) { return '<li><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span>' + t + '</span></li>'; }).join('');
   var dots = _nvg.cards.map(function (_c, j) { return '<span class="' + (j === _nvg.i ? 'on' : '') + '"></span>'; }).join('');
   var last = _nvg.i === n - 1;
   ov.innerHTML = '<div class="nvg-sheet">'
     + '<div class="nvg-hd"><span class="nvg-step">Écran ' + (_nvg.i + 1) + '/' + n + (c.scr ? ' · ' + c.scr : '') + '</span><button class="nvg-skip" onclick="nvGuideEnd()">Passer ✕</button></div>'
-    + (nav.top || '')
     + '<div class="nvg-ic"><svg viewBox="0 0 24 24">' + (_NVG_IC[c.ic] || '') + '</svg></div>'
     + '<h3 class="nvg-t">' + c.t + '</h3>'
     + (c.lead ? '<p class="nvg-lead">' + c.lead + '</p>' : '')
     + (feats ? '<ul class="nvg-feat">' + feats + '</ul>' : '')
-    + (nav.strip || '')
     + '<div class="nvg-dots">' + dots + '</div>'
     + '<div class="nvg-nav">' + (last ? '<button class="nvg-prev" onclick="nvGuideRevoir()">↺ Revoir</button>' : (_nvg.i > 0 ? '<button class="nvg-prev" onclick="nvGuidePrev()">Précédent</button>' : '<span></span>'))
     + '<button class="nvg-next" onclick="nvGuideNext()">' + (last ? 'Terminer' : 'Suivant ›') + '</button></div>'
     + '</div>';
   try { ov.querySelector('.nvg-sheet').scrollTop = 0; } catch (e) {}
+  // Remonte la vraie barre/rail au-dessus du voile et met l'onglet courant en avant.
+  try { _nvgLiftNav(); } catch (e) {}
 }
 // Navigation coach pour le guide (viewport-aware) : sections de contenu via la vraie
 // nav (surligne la barre) ; Messages/Profil → on surligne SANS ouvrir l'overlay (pas
@@ -17512,10 +17514,14 @@ function _guideCoachGo(sec) {
 }
 function _guideCoachFiche(subtab) {
   try {
-    if (!document.body.classList.contains('athlete-selected')) {
-      var a = (typeof athletesCoach !== 'undefined' && athletesCoach && athletesCoach[0]) ? athletesCoach[0] : null;
-      if (a) ouvrirDetailAthleteCoach(a, subtab);
+    if (document.body.classList.contains('athlete-selected')) {
+      // Fiche déjà ouverte → on bascule juste le sous-onglet (sinon l'écran derrière
+      // restait figé sur le précédent → carte « Conversation » mais écran « Aperçu »).
+      if (typeof switchCoachDetailTab === 'function') switchCoachDetailTab(subtab);
+      return;
     }
+    var a = (typeof athletesCoach !== 'undefined' && athletesCoach && athletesCoach[0]) ? athletesCoach[0] : null;
+    if (a) ouvrirDetailAthleteCoach(a, subtab);
   } catch (e) {}
 }
 // Deck ATHLÈTE (branché : a un coach ou non → Entraînement + Coach/assistant changent).
