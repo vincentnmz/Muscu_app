@@ -1,7 +1,7 @@
 # État en cours — reprise de session
 
 > **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
-> Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
+> Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
 > Dernière mise à jour : **26 oct. 2026**.
 
 ## Boussole (ne pas dériver)
