@@ -7781,10 +7781,41 @@ function _progStartHTML() {
     + tpl('ia', 'linear-gradient(135deg,var(--accent),#7C5CFF)', '✦', 'Novalyz me le construit', 'Objectif → jours → niveau, en 30 s', 'ouvrirGenProgramme()')
     + tpl('', 'var(--text-subtle)', '＋', 'Programme vierge', 'Je construis tout moi-même', 'cdAjouterSeance()')
     + '<div class="prog-start-lab" style="margin-top:16px">Modèles prêts à l\'emploi</div>'
-    + tpl('', '#00A854', '3', 'Full-body · 3 jours', 'Tout le corps à chaque séance', '_progModele(\'fullbody3\')')
-    + tpl('', '#7C5CFF', 'P', 'Push / Pull / Legs', '3 jours · classique prise de muscle', '_progModele(\'ppl\')')
-    + tpl('', '#E07800', 'U', 'Upper / Lower', '4 jours · haut / bas du corps', '_progModele(\'upperlower\')')
+    + _modelesJoursHTML(_psJours, '_psSetJours', '_psModele')
     + '</div>';
+}
+// Modèles prêts à l'emploi PAR NOMBRE DE JOURS (2 → 6) — même présentation et même
+// moteur (_genProgramme2 / _g2GenDays) dans « Mon programme » et « Construis ton programme ».
+var _psJours = 3;
+function _modelesJoursHTML(n, setFn, applyFn) {
+  var esc = escapeHtml;
+  return '<div class="jg-chips">' + [2, 3, 4, 5, 6].map(function (j) { return '<button class="jg-chip' + (n === j ? ' on' : '') + '" onclick="' + setFn + '(' + j + ')">' + j + ' jours</button>'; }).join('') + '</div>'
+    + '<div class="jg-mods">' + (_JG_MODELES[n] || []).map(function (m) {
+      var days = _g2GenDays(m[0], n).map(function (d) { return d.nm; });
+      return '<button class="jg-mod" onclick="' + applyFn + '(\'' + m[0] + '\')"><span class="a">' + esc(m[1]) + '</span><span class="b">' + esc(m[2]) + '</span><span class="c">' + esc(days.join(' · ')) + '</span></button>';
+    }).join('') + '</div>';
+}
+function _psSetJours(n) { _psJours = n; renderProgrammeCoach(); }
+// Construit les lignes d'un modèle (niveau de l'athlète : session athlète ou fiche coach).
+function _modeleLignes(org, n) {
+  var ann = (typeof athlete !== 'undefined' && athlete && athlete.annees_pratique != null) ? athlete.annees_pratique
+    : ((typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.annees_pratique != null) ? coachAthleteCourant.annees_pratique : null);
+  var niv = (ann != null && typeof getNiveauExperience === 'function') ? getNiveauExperience(ann) : 'intermediaire';
+  if (niv === 'expert') niv = 'avance';
+  return _g2Resolve(_genProgramme2('masse', org, n, 60, niv));
+}
+async function _psModele(org) {
+  if (exercicesData.length === 0 && typeof chargerExercices === 'function') { try { await chargerExercices(); } catch (e) {} }
+  var lignes = _modeleLignes(org, _psJours);
+  if (!lignes.length) { showToast('Modèle indisponible'); return; }
+  if (Array.isArray(cdProgrammeLignes) && cdProgrammeLignes.length && !confirm('Remplacer le programme actuel par ce modèle ? (l\'ancien sera supprimé)')) return;
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'genererProgramme', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), remplacer: true, lignes: lignes }) });
+    _progTab = 0;
+    showToast('Modèle appliqué — tu peux l\'ajuster');
+    chargerProgrammeCoach();
+  } catch (e) { showToast('Erreur réseau'); }
 }
 
 // Applique un modèle prêt à l'emploi : construit des lignes à partir du catalogue
@@ -8727,7 +8758,7 @@ function _jgJours(n) { _jg.jours = n; _jgRender(); }
 async function _jgAppliquerModele(org) {
   var n = _jg.jours;
   if (_jg.lignes.length && !confirm('Remplacer ton programme actuel par ce modèle ? (l\'ancien sera supprimé)')) return;
-  var lignes = _g2Resolve(_genProgramme2('masse', org, n, 60, _jgNiveau()));
+  var lignes = _modeleLignes(org, n);
   if (!lignes.length) { showToast('Modèle indisponible'); return; }
   try {
     await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -8742,14 +8773,9 @@ function _jgRender() {
   // JS d'abord (\ et '), HTML ensuite : l'attribut décodé redonne une chaîne JS valide.
   var esc = escapeHtml, js = function (s) { return esc(String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); };
   if (_jg.view === 'modeles') {
-    var opts = (_JG_MODELES[_jg.jours] || []).map(function (m) {
-      var days = _g2GenDays(m[0], _jg.jours).map(function (d) { return d.nm; });
-      return '<button class="jg-mod" onclick="_jgAppliquerModele(\'' + m[0] + '\')"><span class="a">' + esc(m[1]) + '</span><span class="b">' + esc(m[2]) + '</span><span class="c">' + esc(days.join(' · ')) + '</span></button>';
-    }).join('');
     ov.innerHTML = '<div class="jg-page"><div class="xp-hd"><button class="xp-back" onclick="_jgVue(\'seances\')" aria-label="Retour">←</button><div class="xp-ti"><div class="a">Modèles prêts à l\'emploi</div><div class="b">Choisis ton nombre de jours d\'entraînement</div></div></div>'
-      + '<div class="jg-body"><div class="xp-lab">Jours par semaine</div><div class="jg-chips">'
-      + [2, 3, 4, 5, 6].map(function (n) { return '<button class="jg-chip' + (_jg.jours === n ? ' on' : '') + '" onclick="_jgJours(' + n + ')">' + n + ' jours</button>'; }).join('')
-      + '</div><div class="xp-lab">Modèles · ' + _jg.jours + ' jours</div><div class="jg-mods">' + opts + '</div>'
+      + '<div class="jg-body"><div class="xp-lab">Jours par semaine</div>'
+      + _modelesJoursHTML(_jg.jours, '_jgJours', '_jgAppliquerModele')
       + '<div class="xp-note">Le modèle remplit tes séances avec des exercices du catalogue (gros muscles d\'abord). Tu peux ensuite tout modifier.</div></div></div>';
     return;
   }
@@ -17305,7 +17331,10 @@ function ouvrirGenProgramme() {
     // UN SEUL défilement : c'est l'overlay qui défile (la page derrière est bloquée
     // via body.gen-open) ; la feuille s'élargit en bureau (2 colonnes, cf. .g2-*).
     ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:stretch;overflow-y:auto;-webkit-overflow-scrolling:touch;';
-    ov.innerHTML = '<div id="gen-prog-sheet" class="g2-sheet"></div>';
+    // En-tête commun aux pages plein écran (flèche retour + titre), collé en haut.
+    ov.innerHTML = '<div class="xp-hd g2-hd"><button class="xp-back" onclick="fermerGenProgramme()" aria-label="Retour">←</button>'
+      + '<div class="xp-ti"><div class="a">Novalyz te propose</div><div class="b">Réponds à quelques questions, Novalyz assemble ton programme</div></div></div>'
+      + '<div id="gen-prog-sheet" class="g2-sheet"></div>';
     document.body.appendChild(ov);
   }
   ov.style.display = 'flex';
@@ -17503,9 +17532,7 @@ function _genRender() {
   var st = _genState, esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var L = function (t) { return '<div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-subtle);margin:14px 2px 7px">' + t + '</div>'; };
   var row = function (html) { return '<div style="display:flex;flex-wrap:wrap;gap:7px">' + html + '</div>'; };
-  var head = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">'
-    + '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:14px">Novalyz te propose</div>'
-    + '<button onclick="fermerGenProgramme()" style="background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1">×</button></div>';
+  var head = '';   // en-tête (← + titre) rendu une fois dans l'overlay (.g2-hd), hors de la feuille
   var NIV = [['debutant', 'Débutant'], ['intermediaire', 'Intermédiaire'], ['avance', 'Avancé']];
   var body = L('Niveau') + row(NIV.map(function (n) { return _g2Chip('_g2Set(\'niv\',\'' + n[0] + '\')', st.niv === n[0], n[1]); }).join(''));
   if (st.niv === 'debutant') {
