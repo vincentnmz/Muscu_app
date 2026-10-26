@@ -314,12 +314,15 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .plan-chip small { font-weight:600; opacity:.85; }
 .plan-rpe { font-weight:700; color:var(--text-subtle); }
 /* Onboarding plein écran : la bulle « Demande à Novalyz » ne doit pas passer dessus. */
-body.onb-open #fab-novalyz, body.xp-open #fab-novalyz, body.jg-open #fab-novalyz { display:none !important; }
+body.onb-open #fab-novalyz, body.xp-open #fab-novalyz, body.jg-open #fab-novalyz, body.gen-open #fab-novalyz { display:none !important; }
+#prog-editor-title { font-family:var(--font-heading); font-weight:400 !important; font-size:15px !important; }
 
 /* Générateur « Novalyz te propose » : un seul défilement (overlay), page derrière bloquée. */
 body.gen-open, body.xp-open, body.jg-open { overflow:hidden; }
 .g2-sheet { width:100%; max-width:640px; margin:0 auto; box-sizing:border-box; padding:calc(16px + env(safe-area-inset-top,0px)) 18px calc(20px + env(safe-area-inset-bottom,0px)); background:var(--bg); }
 .g2-side { margin-top:16px; }
+.g2-hd { position:sticky; top:0; z-index:2; background:var(--surface); flex:none; }
+.g2-sheet { padding-top:4px; }
 @media (min-width:992px) {
   .g2-sheet { max-width:1180px; padding:26px 40px 32px; }
   .g2-cols { display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:36px; align-items:start; }
@@ -335,16 +338,17 @@ body.gen-open, body.xp-open, body.jg-open { overflow:hidden; }
 .xp-hd { flex:none; display:flex; align-items:center; gap:11px; padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
 .xp-back { width:36px; height:36px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); font-size:18px; cursor:pointer; flex:none; }
 .xp-ti { flex:1; min-width:0; }
-.xp-ti .a { font-weight:800; font-size:16px; color:var(--text); }
+/* Style app : titre de page en police de titre (comme « Aujourd'hui », « Novalyz te propose »). */
+.xp-ti .a { font-family:var(--font-heading); font-weight:400; font-size:15px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .xp-ti .b { font-size:11.5px; color:var(--text-muted); }
 .xp-q { width:100%; order:3; margin:2px 0 0; background:var(--surface2); border:1px solid var(--border); border-radius:11px; color:var(--text); font-size:14px; padding:10px 12px; box-sizing:border-box; }
 .xp-grid { flex:1; min-height:0; display:flex; flex-direction:column; }
 .xp-nav { flex:none; display:flex; gap:7px; overflow-x:auto; padding:10px 16px; scrollbar-width:none; border-bottom:1px solid var(--border); }
 .xp-nav::-webkit-scrollbar { display:none; }
-.xp-g { flex:none; display:inline-flex; align-items:center; gap:6px; font:inherit; font-size:12.5px; font-weight:700; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); border-radius:999px; padding:7px 13px; cursor:pointer; white-space:nowrap; }
-.xp-g.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+/* Boutons de choix = style app (cf. _g2Chip du générateur) : blanc, contour ; sélection = contour + fond bleu léger. */
+.xp-g { flex:none; display:inline-flex; align-items:center; gap:6px; font:inherit; font-size:12.5px; font-weight:700; border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); border-radius:11px; padding:8px 13px; cursor:pointer; white-space:nowrap; }
+.xp-g.on { background:var(--accent-a08); border-color:var(--accent); color:var(--accent); }
 .xp-g b { display:inline-grid; place-items:center; min-width:18px; height:18px; border-radius:9px; background:var(--accent); color:#fff; font-size:10.5px; padding:0 5px; }
-.xp-g.on b { background:#fff; color:var(--accent); }
 .xp-list { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:4px 16px 12px; }
 .xp-lab { font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--text-subtle); margin:10px 2px 8px; }
 .xp-grp { font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:var(--accent); margin:12px 2px 2px; }
@@ -372,9 +376,9 @@ body.gen-open, body.xp-open, body.jg-open { overflow:hidden; }
 .jg-body { flex:1; min-height:0; overflow-y:auto; padding:6px 16px 16px; }
 .jg-foot { flex:none; border-top:1px solid var(--border); padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px)); }
 .jg-chips { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px; }
-.jg-chip { font:inherit; font-size:12.5px; font-weight:700; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); border-radius:999px; padding:8px 13px; cursor:pointer; }
-.jg-chip.on { background:var(--accent); border-color:var(--accent); color:#fff; }
-.jg-chip.add { border-style:dashed; color:var(--accent); background:var(--surface); }
+.jg-chip { font:inherit; font-size:12.5px; font-weight:700; border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); border-radius:11px; padding:9px 13px; cursor:pointer; }
+.jg-chip.on { background:var(--accent-a08); border-color:var(--accent); color:var(--accent); }
+.jg-chip.add { border-style:dashed; color:var(--accent); }
 .jg-autre { display:inline-flex; gap:6px; }
 .jg-autre input { font:inherit; font-size:13px; border:1px solid var(--accent); border-radius:999px; padding:7px 12px; background:var(--surface); color:var(--text); width:170px; margin:0; }
 .jg-autre button { font:inherit; font-weight:800; font-size:12.5px; border:none; border-radius:999px; background:var(--accent); color:#fff; padding:7px 13px; cursor:pointer; }
