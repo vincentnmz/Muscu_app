@@ -27,7 +27,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - Défauts corrigés : bulle « Demande à Novalyz » masquée pendant l'onboarding (`body.onb-open`) ; phrase en dur retirée de `#tj-nova-txt`.
 - Mail récap mensuel : cron `novalyz-recaps-auto` (07:10 UTC) → 1er nov. Resend configuré par l'utilisateur (domaine) — vérifier `athletesOk` le 1er nov.
 - **Maquette** `mockups/novalyz-je-gere-programme.html` (mobile + bureau) — **validée et IMPLÉMENTÉE** (sur `dev`, SW v438) :
-  - `ouvrirConstruireProgramme` (« Je gère » à l'onboarding + « Programme vierge » athlète) : séances en chips (plus de `prompt`), cartes séance, **modèles prêts à l'emploi 2→6 jours** (`_JG_MODELES`, générés par `_genProgramme2`/`_g2GenDays` — même moteur que le générateur).
+  - `ouvrirConstruireProgramme` (« Je gère » à l'onboarding + « Programme vierge » athlète) : séances en chips (plus de `prompt`), cartes séance. **Modèles prêts à l'emploi 2→6 jours** (`_JG_MODELES` + `_modelesJoursHTML`, moteur `_genProgramme2`) UNIQUEMENT dans « Mon programme › Partir de… » (retirés de Construis ton programme : pas de doublon).
   - **Panneau de réglage par exercice** (option B validée, tout facultatif) : séries, reps mini/maxi, repos, %1RM, RPE cible, schéma (fixe/double/top set+back-off/pyramidal via `_schemaControlsHtml`), superset (`cdAjouterPartenaire`). `cdProgrammeLignes` partagé avec `_jg.lignes`.
   - **Page de choix plein écran** `ouvrirPickerExos` (groupes `_EXO_GROUPES` + Cardio `_CARDIO_CATALOG`, multi-sélection, gros muscles d'abord dans le lot) — remplace le tiroir partout (`cdAjouterExercice`, athlète ET coach). Bureau = 3 colonnes.
   - Coach : « nouvelle séance » dans une fenêtre au style de l'app (`#cd-newseance`), plus de `prompt`.
