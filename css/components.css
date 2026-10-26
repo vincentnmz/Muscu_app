@@ -316,6 +316,16 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 /* Onboarding plein écran : la bulle « Demande à Novalyz » ne doit pas passer dessus. */
 body.onb-open #fab-novalyz, body.xp-open #fab-novalyz, body.jg-open #fab-novalyz { display:none !important; }
 
+/* Générateur « Novalyz te propose » : un seul défilement (overlay), page derrière bloquée. */
+body.gen-open, body.xp-open, body.jg-open { overflow:hidden; }
+.g2-sheet { width:100%; max-width:640px; margin:0 auto; box-sizing:border-box; padding:calc(16px + env(safe-area-inset-top,0px)) 18px calc(20px + env(safe-area-inset-bottom,0px)); background:var(--bg); }
+.g2-side { margin-top:16px; }
+@media (min-width:992px) {
+  .g2-sheet { max-width:1180px; padding:26px 40px 32px; }
+  .g2-cols { display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:36px; align-items:start; }
+  .g2-side { margin-top:14px; position:sticky; top:0; }
+}
+
 /* ═══ Page de choix des exercices (xp-) + « Construis ton programme » (jg-) ═══
    Maquette : mockups/novalyz-je-gere-programme.html. Mobile par défaut ; ≥ 992 px = 3 colonnes. */
 .xp-ov, .jg-ov { position:fixed; inset:0; background:var(--bg,var(--surface)); display:none; flex-direction:column; }
@@ -378,6 +388,36 @@ body.onb-open #fab-novalyz, body.xp-open #fab-novalyz, body.jg-open #fab-novalyz
 .jg-x { display:flex; justify-content:space-between; gap:10px; font-size:12.5px; color:var(--text-muted); padding:6px 0; border-top:1px solid var(--surface2); }
 .jg-x:first-child { border-top:none; }
 .jg-x b { color:var(--text); font-weight:700; }
+.jg-x-ed { cursor:pointer; align-items:center; }
+.jg-x-ed > div { min-width:0; }
+.jg-x-ed small { display:block; font-size:11px; color:var(--accent); font-weight:600; margin-top:1px; }
+.jg-x-ed > span { white-space:nowrap; }
+.jg-pen { font-style:normal; color:var(--text-subtle); margin-left:4px; }
+/* Panneau de réglage d'un exercice */
+.jg-panel-ov { position:fixed; inset:0; z-index:1350; background:rgba(3,6,14,.5); display:none; align-items:stretch; justify-content:center; }
+.jg-panel { background:var(--surface); width:100%; display:flex; flex-direction:column; min-height:0; }
+.jg-pbody { flex:1; min-height:0; overflow-y:auto; padding:12px 16px 16px; }
+.jg-pfoot { flex:none; display:flex; gap:10px; border-top:1px solid var(--border); padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px)); }
+.jg-pdel { flex:none; border:1px solid var(--border); background:var(--surface2); color:#e5484d; border-radius:13px; font:inherit; font-weight:800; padding:12px 16px; cursor:pointer; }
+.jg-mus { font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--text-subtle); margin-bottom:10px; }
+.jg-fgrid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:12px; }
+.jg-f { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.jg-f span { font-size:10.5px; font-weight:700; color:var(--text-muted); text-transform:none; letter-spacing:0; }
+.jg-f input, .jg-f select { width:100%; min-width:0; margin:0; font-size:15px; padding:9px 8px; text-align:center; border:1px solid var(--border); border-radius:10px; background:var(--surface2); color:var(--text); box-sizing:border-box; }
+.jg-f select { font-size:13px; font-weight:700; }
+.jg-f-wide { margin-top:12px; }
+.jg-f-wide select { text-align:left; }
+.jg-ss { margin-top:12px; font-size:13px; color:var(--text); background:var(--surface2); border:1px solid var(--border); border-radius:11px; padding:10px 12px; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.jg-ss button { margin-left:auto; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); border-radius:9px; font:inherit; font-size:12px; font-weight:700; padding:6px 10px; cursor:pointer; }
+.jg-hint { margin-top:12px; font-size:12px; color:var(--text-muted); }
+.jg-panel-sm { margin-top:auto; border-radius:20px 20px 0 0; max-height:80vh; }
+@media (min-width:992px) { .jg-panel-sm { margin-top:0; border-radius:18px; max-width:480px; } }
+@media (max-width:991px) { .jg-fgrid > .jg-f:last-child { grid-column:1 / -1; } }   /* RPE cible : pleine largeur en mobile */
+.g2-force { max-width:860px; }
+@media (min-width:992px) {
+  .jg-panel-ov { align-items:center; }
+  .jg-panel { max-width:560px; max-height:86vh; border-radius:18px; overflow:hidden; }
+}
 .jg-addx { margin-top:10px; width:100%; border:1.5px dashed var(--accent); background:rgba(26,95,255,.07); color:var(--accent); font:inherit; font-weight:800; font-size:13px; border-radius:11px; padding:10px; cursor:pointer; }
 .jg-link { display:block; margin:16px auto 4px; border:none; background:none; color:var(--accent); font:inherit; font-weight:700; font-size:13px; cursor:pointer; text-decoration:underline; }
 .jg-mods { display:grid; grid-template-columns:1fr; gap:9px; }

@@ -8643,8 +8643,70 @@ async function _jgCharger() {
     var data = await res.json();
     _jg.lignes = data.lignes || [];
   } catch (e) { _jg.lignes = _jg.lignes || []; }
+  // MÊME tableau que l'éditeur : les setters existants (cdSetSchema, cdAjouterPartenaire,
+  // cdRetirerDuGroupe…) agissent sur cdProgrammeLignes → on partage les objets.
+  try { cdProgrammeLignes = _jg.lignes; } catch (e) {}
   _jg.lignes.forEach(function (l) { if (_jg.seances.indexOf(String(l.seance_id)) < 0) _jg.seances.push(String(l.seance_id)); });
   _jgRender();
+  if (_jgEditRow != null) _jgPanelRender();
+}
+/* Panneau de réglage d'un exercice (option B validée) : séries, reps mini/maxi,
+ * repos, % 1RM, RPE cible, schéma (fixe / double progression / top set + back-off /
+ * pyramidal) et superset. TOUT est facultatif. Réutilise les helpers de l'éditeur
+ * (_schemaControlsHtml, cdSetSchema, cdSetBackoff, cdSetPyramidCell,
+ * cdAjouterPartenaire, cdRetirerDuGroupe, _rpeOptions, _cdPersistLigne). */
+var _jgEditRow = null;
+function _jgEditer(row) { _jgEditRow = row; _jgPanelRender(); }
+function _jgFermerPanel() { _jgEditRow = null; var p = document.getElementById('jg-panel'); if (p) p.style.display = 'none'; _jgRender(); }
+function _jgSet(row, field, val) {
+  var l = _jg.lignes.find(function (x) { return x.row_index === row; }); if (!l) return;
+  l[field] = (val === '' || val == null) ? null : Number(val);
+  _cdPersistLigne(l);
+}
+async function _jgSupprimer(row) {
+  if (!confirm('Retirer cet exercice de la séance ?')) return;
+  try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'supprimerProgrammeLigne', row_index: row, athlete_id: _progAthleteId() }) }); } catch (e) {}
+  _jgEditRow = null; var p = document.getElementById('jg-panel'); if (p) p.style.display = 'none';
+  await _jgCharger();
+}
+function _jgSuperset(row, sid, partner) { if (!partner) return; cdAjouterPartenaire(row, sid, partner); _jgPanelRender(); }
+function _jgSansSuperset(row, sid) { cdRetirerDuGroupe(row, sid); _jgPanelRender(); }
+function _jgPanelRender() {
+  var l = _jg.lignes.find(function (x) { return x.row_index === _jgEditRow; });
+  var p = document.getElementById('jg-panel');
+  if (!l) { if (p) p.style.display = 'none'; return; }
+  if (!p) {
+    p = document.createElement('div'); p.id = 'jg-panel'; p.className = 'jg-panel-ov'; document.body.appendChild(p);
+    // Tout changement (y compris dans les contrôles de schéma réutilisés) → on redessine.
+    p.addEventListener('change', function () { setTimeout(function () { _jgPanelRender(); _jgRender(); }, 0); });
+    p.addEventListener('click', function (e) { if (e.target === p) _jgFermerPanel(); });
+  }
+  var esc = escapeHtml, sid = String(l.seance_id), sj = esc(sid.replace(/\\/g, '\\\\').replace(/'/g, "\\'")), ri = l.row_index;
+  var v = function (x) { return (x == null || x === '') ? '' : esc(String(x)); };
+  var num = function (lab, field, val, ph) { return '<label class="jg-f"><span>' + lab + '</span><input type="number" inputmode="decimal" value="' + v(val) + '" placeholder="' + ph + '" onchange="_jgSet(' + ri + ',\'' + field + '\',this.value)"></label>'; };
+  var body;
+  if (l.type === 'cardio') {
+    body = '<div class="jg-fgrid">' + num('Durée (min)', 'cardio_cible', l.cardio_cible, '20') + '</div>';
+  } else {
+    var mus = (function () { var e = exercicesData.find(function (x) { return x.exercice === l.exercice; }); return e && e.muscle ? String(e.muscle).trim() : ''; })();
+    var rpeSel = '<label class="jg-f"><span>RPE cible</span><select onchange="_jgSet(' + ri + ',\'rpe_cible\',this.value)">' + _rpeOptions(l.rpe_cible) + '</select></label>';
+    var autres = _jg.lignes.filter(function (o) { return String(o.seance_id) === sid && o.row_index !== ri && o.type !== 'cardio'; });
+    var membres = l.groupe_id ? _jg.lignes.filter(function (o) { return String(o.seance_id) === sid && o.groupe_id === l.groupe_id && o.row_index !== ri; }) : [];
+    var ss = membres.length
+      ? '<div class="jg-ss">🔗 En superset avec <b>' + esc(membres.map(function (m) { return String(m.exercice).trim(); }).join(', ')) + '</b> <button onclick="_jgSansSuperset(' + ri + ',\'' + sj + '\')">Retirer</button></div>'
+      : (autres.length ? '<label class="jg-f jg-f-wide"><span>Superset (enchaîner sans repos avec…)</span><select onchange="_jgSuperset(' + ri + ',\'' + sj + '\',this.value)"><option value="">— Aucun —</option>'
+          + autres.map(function (o) { return '<option value="' + o.row_index + '">' + esc(String(o.exercice).trim()) + '</option>'; }).join('') + '</select></label>'
+        : '<div class="jg-hint">Ajoute un autre exercice à cette séance pour créer un superset.</div>');
+    body = (mus ? '<div class="jg-mus">' + esc(mus) + ' · ' + esc(sid) + '</div>' : '')
+      + '<div class="jg-fgrid">' + num('Séries', 'series_prevues', l.series_prevues, '3') + num('Reps mini', 'reps_mini', l.reps_mini, '8') + num('Reps maxi', 'reps_max', l.reps_max, '12')
+      + num('Repos (s)', 'repos_sec', l.repos_sec, '90') + num('% du 1RM', 'charge_pct_1rm', l.charge_pct_1rm, '75') + rpeSel + '</div>'
+      + _schemaControlsHtml(l, sid) + ss;
+  }
+  p.innerHTML = '<div class="jg-panel">'
+    + '<div class="xp-hd"><button class="xp-back" onclick="_jgFermerPanel()" aria-label="Fermer">←</button><div class="xp-ti"><div class="a">' + esc(String(l.exercice).trim()) + '</div><div class="b">Réglages — tout est facultatif</div></div></div>'
+    + '<div class="jg-pbody">' + body + '</div>'
+    + '<div class="jg-pfoot"><button class="jg-pdel" onclick="_jgSupprimer(' + ri + ')">Retirer</button><button class="xp-add" onclick="_jgFermerPanel()">OK</button></div></div>';
+  p.style.display = 'flex';
 }
 function fermerConstruireProgramme() {
   var ov = document.getElementById('jg-overlay'); if (ov) ov.style.display = 'none';
@@ -8696,9 +8758,23 @@ function _jgRender() {
   var cards = _jg.seances.map(function (s) {
     var L = bySid[s] || [], nm = L.filter(function (l) { return l.type !== 'cardio'; }).length, nc = L.length - nm;
     var cnt = L.length ? (nm + ' exo' + (nm > 1 ? 's' : '') + (nc ? ' · ' + nc + ' cardio' : '')) : 'vide';
+    var SCH = { double: 'double progression', topbackoff: 'top set + back-off', pyramidal: 'pyramidal' };
     var rows = L.map(function (l) {
-      var right = l.type === 'cardio' ? ((l.cardio_cible || '') + ' ' + (l.cardio_unite || 'min')) : ((l.series_prevues || '') + ' × ' + (l.reps_mini || '') + (l.reps_max && l.reps_max !== l.reps_mini ? '–' + l.reps_max : ''));
-      return '<div class="jg-x"><b>' + esc(String(l.exercice || '').trim()) + '</b><span>' + esc(right) + '</span></div>';
+      var right;
+      if (l.type === 'cardio') right = (l.cardio_cible != null ? l.cardio_cible + ' ' + (l.cardio_unite || 'min') : 'libre');
+      else {
+        var reps = (l.reps_mini != null && l.reps_max != null && String(l.reps_mini) !== String(l.reps_max)) ? (l.reps_mini + '–' + l.reps_max) : (l.reps_mini != null ? l.reps_mini : (l.reps_max != null ? l.reps_max : '–'));
+        right = (l.series_prevues != null ? l.series_prevues : '–') + ' × ' + reps;
+      }
+      var tags = [];
+      if (l.type !== 'cardio') {
+        if (l.rpe_cible != null && l.rpe_cible !== '') tags.push('RPE ' + l.rpe_cible);
+        if (l.charge_pct_1rm != null && l.charge_pct_1rm !== '') tags.push(l.charge_pct_1rm + '% 1RM');
+        if (l.repos_sec != null && l.repos_sec !== '') tags.push(l.repos_sec + ' s');
+        if (SCH[l.schema]) tags.push(SCH[l.schema]);
+        if (l.groupe_id) tags.push('🔗 superset ' + l.groupe_id);
+      }
+      return '<div class="jg-x jg-x-ed" onclick="_jgEditer(' + l.row_index + ')"><div><b>' + esc(String(l.exercice || '').trim()) + '</b>' + (tags.length ? '<small>' + esc(tags.join(' · ')) + '</small>' : '') + '</div><span>' + esc(String(right)) + ' <i class="jg-pen">✎</i></span></div>';
     }).join('');
     return '<div class="jg-sess"><div class="jg-sh"><div class="jg-sn">' + esc(s) + '</div><div class="jg-sc">' + cnt + (L.length ? '' : ' <button class="jg-del" onclick="_jgRetirer(\'' + js(s) + '\')" aria-label="Retirer">✕</button>') + '</div></div>'
       + (rows ? '<div class="jg-rows">' + rows + '</div>' : '')
@@ -8718,8 +8794,23 @@ function _jgRender() {
 async function cdAjouterSeance() {
   // Athlète : page « Construis ton programme » (plus de boîte système).
   if (typeof coach === 'undefined' || !coach || !coach.coach_id) { if (typeof athlete !== 'undefined' && athlete) { try { var _peo = document.getElementById('prog-editor-overlay'); if (_peo) _peo.style.display = 'none'; document.body.classList.remove('prog-editor-open'); } catch (e) {} return ouvrirConstruireProgramme(); } }
-  const nom = prompt('Nom de la nouvelle séance (ex: Push, Pull, Jambes...)');
-  if (!nom) return;
+  // Coach : même logique qu'avant (nommer → ajouter des exercices), mais dans une
+  // fenêtre au style de l'app au lieu de la boîte système prompt().
+  var p = document.getElementById('cd-newseance');
+  if (!p) { p = document.createElement('div'); p.id = 'cd-newseance'; p.className = 'jg-panel-ov'; document.body.appendChild(p); p.addEventListener('click', function (e) { if (e.target === p) p.style.display = 'none'; }); }
+  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip" onclick="document.getElementById(\'cd-ns-in\').value=\'' + n + '\'">' + n + '</button>'; }).join('');
+  p.innerHTML = '<div class="jg-panel jg-panel-sm">'
+    + '<div class="xp-hd"><button class="xp-back" onclick="document.getElementById(\'cd-newseance\').style.display=\'none\'" aria-label="Fermer">←</button><div class="xp-ti"><div class="a">Nouvelle séance</div><div class="b">Nomme-la, puis choisis ses exercices</div></div></div>'
+    + '<div class="jg-pbody"><div class="jg-chips">' + chips + '</div>'
+    + '<label class="jg-f"><span>Nom de la séance</span><input id="cd-ns-in" type="text" placeholder="ex. Push, Pull, Jambes…" style="text-align:left" onkeydown="if(event.key===\'Enter\')_cdNouvelleSeanceOk()"></label></div>'
+    + '<div class="jg-pfoot"><button class="xp-add" onclick="_cdNouvelleSeanceOk()">Choisir les exercices</button></div></div>';
+  p.style.display = 'flex';
+  setTimeout(function () { var i = document.getElementById('cd-ns-in'); if (i) i.focus(); }, 30);
+}
+async function _cdNouvelleSeanceOk() {
+  var i = document.getElementById('cd-ns-in'); var nom = i ? String(i.value || '').trim() : '';
+  if (!nom) { if (i) i.focus(); return; }
+  var p = document.getElementById('cd-newseance'); if (p) p.style.display = 'none';
   cdProgOpen[nom] = true;   // ouvrir la nouvelle séance après rechargement (voir le +Ajouter)
   await cdAjouterExercice(nom);
 }
@@ -17211,14 +17302,17 @@ function ouvrirGenProgramme() {
     ov.id = 'gen-prog-overlay';
     // Plein écran (pas une demi-page) : panneau pleine hauteur, scroll interne,
     // centré en largeur sur desktop. Fermeture par le × de l'en-tête (_genRender).
-    ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:stretch;';
-    ov.innerHTML = '<div id="gen-prog-sheet" style="background:var(--bg);width:100%;max-width:640px;margin:0 auto;height:100%;box-sizing:border-box;padding:calc(16px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) 18px;overflow:auto;"></div>';
+    // UN SEUL défilement : c'est l'overlay qui défile (la page derrière est bloquée
+    // via body.gen-open) ; la feuille s'élargit en bureau (2 colonnes, cf. .g2-*).
+    ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:stretch;overflow-y:auto;-webkit-overflow-scrolling:touch;';
+    ov.innerHTML = '<div id="gen-prog-sheet" class="g2-sheet"></div>';
     document.body.appendChild(ov);
   }
   ov.style.display = 'flex';
+  try { document.body.classList.add('gen-open'); } catch (e) {}
   if (exercicesData.length === 0 && typeof chargerExercices === 'function') { chargerExercices().then(_genRender); } else { _genRender(); }
 }
-function fermerGenProgramme() { var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; if (_genOpeningEditor) { _genOpeningEditor = false; } else { _onbTourMaybe(); } }
+function fermerGenProgramme() { var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('gen-open'); } catch (e) {} if (_genOpeningEditor) { _genOpeningEditor = false; } else { _onbTourMaybe(); } }
 // « Je gère mon programme moi-même » → coupe la proposition auto à la connexion.
 // (Reste toujours accessible via le bouton « Novalyz me propose un programme ».)
 function _genRefuse() { _savePref('prog_auto_off', 1); fermerGenProgramme(); try { showToast('OK, tu gères ton programme. Tu pourras le générer depuis Entraînement quand tu veux.'); } catch (e) {} }
@@ -17431,7 +17525,7 @@ function _genRender() {
         + '<button onclick="_genGenerer()" style="width:100%;margin-top:16px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
         + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>'
         + '<button onclick="_genRefuse()" style="width:100%;margin-top:4px;background:none;border:none;color:var(--text-subtle);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
-      sh.innerHTML = head + body;
+      sh.innerHTML = head + '<div class="g2-force">' + body + '</div>';
       _g2WireForce();
       return;
     } else {
@@ -17444,11 +17538,12 @@ function _genRender() {
   var lignes = _g2Lignes();
   var parSeance = {}; lignes.forEach(function (l) { (parSeance[l.seance_id] = parSeance[l.seance_id] || []).push(l); });
   var apercu = Object.keys(parSeance).map(function (sid) { var jr = parSeance[sid][0].jour; return '<div style="margin-bottom:8px"><div style="font-weight:800;font-size:13px;color:var(--accent)">' + esc(sid) + (jr ? ' <span style="font-weight:600;color:var(--text-subtle)">· ' + _PROG_JOURS_LONG[jr - 1] + '</span>' : '') + '</div><div style="font-size:12px;color:var(--text-muted)">' + parSeance[sid].map(function (l) { return esc(l.exercice); }).join(', ') + '</div></div>'; }).join('');
-  body += '<div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:8px">Aperçu · ' + Object.keys(parSeance).length + ' séances · ' + lignes.length + ' exercices</div>' + (apercu || '<div style="font-size:12px;color:var(--text-subtle)">Choisis tes options ci-dessus.</div>') + '</div>'
+  // Bureau : options à gauche, aperçu + bouton à droite (colonne collante). Mobile : empilé.
+  var side = '<div style="padding:14px;background:var(--surface2);border-radius:14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:8px">Aperçu · ' + Object.keys(parSeance).length + ' séances · ' + lignes.length + ' exercices</div>' + (apercu || '<div style="font-size:12px;color:var(--text-subtle)">Choisis tes options ci-dessus.</div>') + '</div>'
     + '<button onclick="_genGenerer()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
     + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>'
     + '<button onclick="_genRefuse()" style="width:100%;margin-top:4px;background:none;border:none;color:var(--text-subtle);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
-  sh.innerHTML = head + body;
+  sh.innerHTML = head + '<div class="g2-cols"><div class="g2-opts">' + body + '</div><div class="g2-side">' + side + '</div></div>';
 }
 async function _genGenerer() {
   var _gc = _genCtx(); if (!_gc) { showToast('Athlète introuvable'); return; }
