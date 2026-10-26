@@ -64,6 +64,15 @@ séance=créneau d'équipe + participations · match=type de séance · Test≠E
 
 Le **moteur d'analyse** (`NovalyzEngine`/`evaluerEtatAthlete` + chaîne **ACWR** côté `index.ts`, `SEUILS` + `normaliser()` + règles) est **sport-agnostique**. Pour brancher un sport, on alimente `normaliser()`, on ne réécrit pas le moteur. Déjà branché sur la vue joueur foot (signaux bien-être communs).
 
+## Règles de collaboration (IMPÉRATIF — demandées par le porteur)
+
+1. **Toujours vérifier ce qui est demandé** avant de livrer : tracer jusqu'au code/au rendu réel. Pour une UI, **rendre un screenshot** (Playwright/Chromium déjà installé → `NODE_PATH=/opt/node22/lib/node_modules`, `chromium.launch()`, puis regarder le PNG) et le contrôler **soi-même** avant d'envoyer. Ne pas livrer « à l'aveugle ».
+2. **Me contredire si je me trompe** : si une demande est fausse, risquée ou sous-optimale, le dire clairement avec la raison, proposer mieux — ne pas exécuter en silence une erreur.
+3. **Si tu ne sais pas faire : chercher la solution, ne rien inventer** (web/registre npm/paquet existant/doc). Pas de valeur, d'API ni de comportement inventés.
+4. **Si tu n'y arrives pas : le dire, ne rien inventer.** Annoncer la limite franchement et proposer une alternative (ex. réutiliser un asset libre, demander un fichier) plutôt que livrer un résultat bâclé.
+
+> Où régler ma façon de faire : **ce fichier `CLAUDE.md`** (lu au début de chaque session). Règles perso/globales : `~/.claude/CLAUDE.md`. Automatismes (hooks, permissions) : `.claude/settings.json`.
+
 ## Fonctionnement de la collaboration
 
 - Avancer **par étapes validées**, expliquer les choix, proposer des options quand une décision revient à l'utilisateur.
