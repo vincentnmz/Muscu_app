@@ -8643,11 +8643,11 @@ async function _xpConfirm() {
 
 /* ═══════════ « CONSTRUIS TON PROGRAMME » (chemin « Je gère ») ═══════════
  * Page entière : nommer ses séances (chips, plus de boîte système) → « + Ajouter
- * des exercices » ouvre la page de choix. Modèles prêts à l'emploi PAR NOMBRE DE
- * JOURS (2 → 6), générés par le moteur du générateur v2 (_genProgramme2 /
- * _g2GenDays) — pas de second moteur. Une séance n'existe en base que si elle a
+ * des exercices » ouvre la page de choix. Les modèles prêts à l'emploi (2 → 6 jours,
+ * _JG_MODELES) sont proposés dans « Mon programme › Partir de… » (_modelesJoursHTML),
+ * pas ici (demande porteur : pas de doublon). Une séance n'existe en base que si elle a
  * au moins une ligne : les séances vides restent locales jusqu'au 1er ajout. */
-var _jg = { seances: [], lignes: [], view: 'seances', jours: 3, autre: false };
+var _jg = { seances: [], lignes: [], autre: false };
 var _JG_MODELES = {
   2: [['fb', 'Full Body', 'Tout le corps à chaque séance.'], ['ul', 'Haut / Bas', 'Une séance haut du corps, une séance bas du corps.']],
   3: [['fb', 'Full Body', 'Tout le corps à chaque séance.'], ['ppl', 'Push / Pull / Legs', 'Pousser · tirer · jambes.']],
@@ -8655,11 +8655,10 @@ var _JG_MODELES = {
   5: [['ppl', 'PPL + Haut / Bas', 'Push / Pull / Legs puis rappel haut et bas.'], ['split', 'Split — 1 muscle / jour', 'Un groupe par séance.']],
   6: [['ppl', 'Push / Pull / Legs × 2', 'Chaque séance 2 fois par semaine.'], ['ul', 'Haut / Bas × 3', 'Haut et bas alternés, 3 fois chacun.'], ['split', 'Split + points faibles', '5 jours split + 1 séance points faibles.']]
 };
-function _jgNiveau() { var n = (typeof getNiveauExperience === 'function' && athlete) ? getNiveauExperience(athlete.annees_pratique) : 'intermediaire'; return n === 'expert' ? 'avance' : n; }
 async function ouvrirConstruireProgramme() {
   if (typeof athlete === 'undefined' || !athlete) return;
   try { progCtx = { el: 'prog-editor-content', athleteId: athlete.athlete_id, athleteNom: athlete.nom || '', readonly: false }; } catch (e) { return; }
-  _jg = { seances: [], lignes: [], view: 'seances', jours: 3, autre: false };
+  _jg = { seances: [], lignes: [], autre: false };
   var ov = document.getElementById('jg-overlay');
   if (!ov) { ov = document.createElement('div'); ov.id = 'jg-overlay'; ov.className = 'jg-ov'; document.body.appendChild(ov); }
   ov.style.display = 'flex';
@@ -8753,32 +8752,10 @@ function _jgAddSeance(nom) {
 function _jgAutre() { _jg.autre = true; _jgRender(); setTimeout(function () { var i = document.getElementById('jg-autre-in'); if (i) i.focus(); }, 30); }
 function _jgRetirer(nom) { _jg.seances = _jg.seances.filter(function (s) { return s !== nom; }); _jgRender(); }
 function _jgAjouterExos(nom) { ouvrirPickerExos(nom, function () { _jgCharger(); }); }
-function _jgVue(v) { _jg.view = v; _jgRender(); }
-function _jgJours(n) { _jg.jours = n; _jgRender(); }
-async function _jgAppliquerModele(org) {
-  var n = _jg.jours;
-  if (_jg.lignes.length && !confirm('Remplacer ton programme actuel par ce modèle ? (l\'ancien sera supprimé)')) return;
-  var lignes = _modeleLignes(org, n);
-  if (!lignes.length) { showToast('Modèle indisponible'); return; }
-  try {
-    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'genererProgramme', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), remplacer: true, lignes: lignes }) });
-    showToast('Modèle appliqué — tu peux l\'ajuster');
-  } catch (e) { showToast('Erreur réseau'); return; }
-  _jg.seances = []; _jg.view = 'seances';
-  await _jgCharger();
-}
 function _jgRender() {
   var ov = document.getElementById('jg-overlay'); if (!ov) return;
   // JS d'abord (\ et '), HTML ensuite : l'attribut décodé redonne une chaîne JS valide.
   var esc = escapeHtml, js = function (s) { return esc(String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); };
-  if (_jg.view === 'modeles') {
-    ov.innerHTML = '<div class="jg-page"><div class="xp-hd"><button class="xp-back" onclick="_jgVue(\'seances\')" aria-label="Retour">←</button><div class="xp-ti"><div class="a">Modèles prêts à l\'emploi</div><div class="b">Choisis ton nombre de jours d\'entraînement</div></div></div>'
-      + '<div class="jg-body"><div class="xp-lab">Jours par semaine</div>'
-      + _modelesJoursHTML(_jg.jours, '_jgJours', '_jgAppliquerModele')
-      + '<div class="xp-note">Le modèle remplit tes séances avec des exercices du catalogue (gros muscles d\'abord). Tu peux ensuite tout modifier.</div></div></div>';
-    return;
-  }
   var bySid = {};
   _jg.lignes.forEach(function (l) { (bySid[l.seance_id] = bySid[l.seance_id] || []).push(l); });
   var cards = _jg.seances.map(function (s) {
@@ -8813,7 +8790,7 @@ function _jgRender() {
     + '<div class="jg-body"><div class="xp-lab">Ajoute une séance</div><div class="jg-chips">' + chips + '</div>'
     + '<div class="xp-lab">Tes séances (' + _jg.seances.length + ')</div>'
     + (cards ? '<div class="jg-grid">' + cards + '</div>' : '<div class="xp-empty">Ajoute ta première séance avec les boutons ci-dessus.</div>')
-    + '<button class="jg-link" onclick="_jgVue(\'modeles\')">Voir les modèles prêts à l\'emploi (2 à 6 jours)</button></div>'
+    + '</div>'
     + '<div class="jg-foot"><button class="xp-add" onclick="fermerConstruireProgramme()">Terminer mon programme</button></div></div>';
 }
 
