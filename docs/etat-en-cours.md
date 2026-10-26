@@ -1,47 +1,53 @@
 # État en cours — reprise de session
 
-> **But** : qu'une nouvelle conversation reparte sans rien perdre, sans dépendre d'un prompt collé.
-> Mis à jour à chaque fin de lot. Compléments : [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md).
-> Dernière mise à jour : **23 oct. 2026**.
+> **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
+> Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
+> Dernière mise à jour : **26 oct. 2026**.
 
-## Où en est le travail
-- Branche de travail : `claude/novalyz-player-profile-mockups-g4bock`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`.
-- ✅ **`index.ts` DÉPLOYÉ** sur Supabase (N2 `anneesEffectives` + N5 `records_total`/`gagnes` permanent + N3 suivi corps : `mensurations`/`suivi_photos` + handlers + **AGENDA daté** : routes `getPlanning`/`planSeance`/`movePlanning`/`unplanPlanning` + `planning[]` dans `getAppData`). Buckets/tables : **`suivi-photos`** + table **`planning`** créées.
-- ✅ **PROD PROMUE** le 24 oct. : `dev → main` (merge, arbre identique à dev). Web prod à jour. APK DEV rebuild lancé. **Play Store (APK officiel) : à faire plus tard** (build depuis `main` → upload). SW = **v409** (bumper à chaque modif de `js/app.js`).
-- Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**46 suites vertes** à maintenir).
+## Boussole (ne pas dériver)
+Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comment progresser (données + ressenti)**. Moteur déterministe = **source de vérité** ; l'IA est une *couche langage* branchée dessus, elle n'invente aucun chiffre. Segmentation **muscu B2C grand public / autres sports B2B pro** sur **un seul moteur**. Détails figés : `docs/vision-produit.md`, `docs/roadmap-produit.md`.
 
-## Fait récemment (tout sur `dev`)
-- **AGENDA daté (planification des séances)** — modèle validé : **vrai agenda daté** (table `planning`, une date par séance), à côté de `programme` (qui garde la *semaine type* via `programme.jour`). Décisions : plusieurs séances/jour OK ; `statut` 'planifie' (calcul 'fait/manqué' plus tard) ; bouton « Pré-remplir semaine type ».
-  - **Backend** : `supabase/planning.sql` (DDL + doc) ; routes dans `index.ts` ; `getAppData.planning[]` (athlète, aujourd'hui → +14 j). **DÉPLOYÉ.**
-  - **Composant coach** `.cdag` (`cdAgRender`/`cdAgLoadWeek`/`cdAgPlace`/`cdAgMove`/`cdAgRemove`/`cdAgPrefill`) : sélecteur de semaine + glisser-déposer + « À planifier ». Monté à : **onglet Programme** (`#cd-prog-agenda-root`, exception CSS `prog-has-inline`), **Progression › Évolution muscu** (`#cd-agenda-prog`) et **cardio** (`#cd-agenda-progc`). **Retiré de l'Aperçu.**
-  - **Athlète** : carte lecture seule « Mes séances prévues » dans l'Accueil (`renderTjPlanning`, `#tj-planning`).
-  - Maquette de réf. : `mockups/novalyz-rail-agenda.html` (desktop + mobile, nav semaine + drag).
-  - **Reste à voir** : rail *Tendances* (non fait, à la demande) ; « séance du jour » athlète pourrait à terme se baser sur le planning plutôt que `programme.jour`.
-- **Correctifs 25 oct.** (sur `dev`) : croisé athlète Lecture Novalyz période-cohérente (plus de cardio fantôme) ; rail croisé coach « Charge combinée » ; onglet Programme coach (agenda à droite, « Jour conseillé » sur la séance, scroll page) ; fréquence/intensité dans le rail Tendances muscu ; bouton alertes « Marquer traité » neutre.
-- **Générateur de programmes v2 COMPLET** (spec `generateur-v2.md`, maquette `mockups/novalyz-generateur-v2.html`) :
-  - Moteur : `_G2_BLOCKS` (11 blocs muscle), `_g2GenDays` (fb/ul/ppl/split/custom), `_genProgramme2` (hypertrophie), `_genProgrammeForce` (powerlifting, listes déroulantes). Fonctions pures testées (`tests/generateur-v2.test.js`).
-  - UI : modal athlète `ouvrirGenProgramme` / `_genRender` / `_genGenerer` → 2 parcours (galerie débutant `_G2_PRESETS` / configurateur objectif **Hypertrophie|Force** · organisation · jours · temps). Force = squelette éditable (`_g2ForceSkel`, `_g2ForceLignesFromDOM`, pools `_G2_FPOOL`).
-  - Variantes « ou: » → bouton **Remplacer** (`_g2VariantsFor` : autres exos du même slot, résolus au catalogue).
-- **Séance — « dernière fois → cible »** : cases S1/S2/S3 (`majPlanSeries`) montrent le poids×reps de la dernière séance (`getPerf(exo).series`) → cible surcharge (`_refSerie`, `_cibleSerieSurcharge` double progression, `_incrementExo`). Tests `tests/surcharge-serie.test.js`.
-- **Fraîcheur** : explications grand public (`_MA_INFO.fraicheur`, `renderChargeFatigueJour`, `ouvrirInfoChargeFatigue`).
-- **Catalogue** : ajout `Ecarté haltéres incliné` (id 91) + `décliné` (id 92) dans la table `exercices` (Supabase) + au générateur.
-- **Bouton « Remplacer » (séance)** : explicite (icône + libellé, `.sc-swapbtn`) au lieu d'une icône grise.
-- **N13 (refonte Aperçu coach) — ✅ FAIT (v3)** : bloc en tête (`renderCoachCoupDoeil`, conteneur `#cd-coupdoeil`, CSS `.cdcp-*`), 2 sections **Coup d'œil** (Entraînement + État) et **Lecture Novalyz · pour le coach**. ANALYSE, pas recopie. Maquette de référence : `mockups/novalyz-coach-coupdoeil-v3.html`.
-  - **Entraînement = charge · reps · RPE réels (plus de 1RM Epley)**, classé par exo depuis `progression_par_exo` (charge=top set, reps à cette charge, `series[].rpe`) : **★Records** (charge/reps battu ≤10 j, base ≥2 pts), **▲Progresse** (charge↑ ou reps↑ à charge égale, ≤14 j), **▼Recule** (charge ET reps↓ vs séance précédente, pas déjà reparti), **⏸Stagne** (≥3 séances même charge, reps non croissantes, RPE↑), **🔥Effort** (RPE moyen 7 j + tendance), **✓/⚠ Travaillé/Non travaillé** (5 grands groupes 7 j).
-  - **État & récup** = 1 ligne/signal (Récup, Sommeil, Énergie, Fatigue, Stress, Douleur, Pas) **niveau+tendance** + **ligne Cardio TOUJOURS affichée** : si `data.cardio.history` vide ou pas de sortie ≤7 j → « **manque de cardio** » explicite ; sinon fréquence 7 j + efficience FC à effort égal (seulement si RPE comparable & assez de données, sinon omise — règle 6bis).
-  - **Lecture Novalyz** : narratif (dynamique records+progression, stagnation, recul, volume délaissé, intensité haute RPE≥8.5, manque de cardio) + **Reco** priorisée (récup → volume → stagne → recule → cardio → maintien).
-  - **Dédoublonnage** : ancienne « Lecture Novalyz » athlète (`#cd-analyse`, `renderAnalyseCoach`) **masquée** dans l'Aperçu.
-  - Maquettes : `mockups/novalyz-coach-coupdoeil-v3.html` (référence v3) + `novalyz-coach-apercu-v2.html` (écran complet responsive).
+## Où en est le travail (flux + déploiement)
+- Branche de travail : `claude/novalyz-player-profile-mockups-g4bock`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`. Promotion `dev → main` (prod) quand l'utilisateur valide.
+- **SW = `novalyz-shell-v434`** (bumper `sw.js` à CHAQUE modif de `js/app.js` / `index.html` / `css`).
+- Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**46 suites vertes** à maintenir). Pour une UI : **rendre un screenshot Playwright et le relire** avant de livrer (règle CLAUDE.md).
+- **`index.ts` = déploiement MANUEL** (coller tout le fichier dans la fonction Supabase `smooth-service` → Deploy). Supabase `project_id = jhbrvgguybynzeceeceu`.
+
+## ⚠️ ACTIONS UTILISATEUR EN ATTENTE (bloquent des features déjà codées)
+1. **REDÉPLOYER `index.ts`** sur Supabase. Sans ça : (a) le **poids à l'inscription** n'est pas enregistré (le front l'envoie, l'ancien backend l'ignore) ; (b) l'**analyse morpho v2** (questionnaire + segments + reco exos + export mail) ne tourne pas.
+2. **Clé `ANTHROPIC_API_KEY`** en variable d'env Supabase → sinon morpho IA + chat IA inactifs (le moteur déterministe, lui, marche sans clé). Cf. `docs/activer-ia.md`.
+
+## Fait récemment
+
+### Lot 26 oct. (sur `dev` + branche, sw v434) — tests « nouveau compte athlète »
+- **Poids à l'inscription** : champ « Poids (kg) » à côté de la taille (`index.html` `#reg-poids`, `sInscrire` dans `app.js`, `handleRegister` dans `index.ts` → colonne `athletes.poids`). **⚠️ redeploy index.ts requis.**
+- **Fuite des pas entre comptes (critique) — CORRIGÉ en code.** Cause : Health Connect lit les pas de **l'appareil** (pas du compte) ; `_syncSanteMontre` les poussait au serveur sous le compte connecté → pollution. Fix : lecture/synchro natives **réservées au compte ayant explicitement connecté la montre** (flag local `nvz_hc_connected_<id>`, posé dans `ouvrirImportMontre`). Helpers `_hcConnected`/`_hcMarkConnected`. Sinon fallback historique serveur **propre au compte**. Backend déjà filtré par `athlete_id` (pas de fuite serveur). En prod c'est non-bloquant (1 compte/téléphone) ; utile pour partage d'appareil + tests. **Données déjà polluées : compte test « Alizé » (id 2) garde 57 j de pas de Vincent — l'utilisateur a dit de LAISSER.**
+- **Ordre des exercices garanti** : priorité musculaire `_G2_MUSRANK` (gros muscles d'abord) appliquée au rendu de chaque séance dans `_g2Build`. Vérifié : le générateur produisait **déjà** pec/dos avant bras ; c'est une sécurité pour toute régénération + custom. Un ancien programme « bras d'abord » doit être **régénéré**.
+- **Générateur en PLEIN ÉCRAN** (`ouvrirGenProgramme`, plus de demi-page) + **objectif à la création** : chips `st.but` **Prise de masse / Sèche / Maintien / Force** (`_g2Set('but',…)`, note honnête masse≈sèche à l'entraînement, maintien = volume allégé via `_genProgramme2` objectif `maintien`). Force garde le squelette éditable.
+- **Onboarding manquant** : le tour guidé (`nvTourAthlete`) démarre désormais aussi après les chemins **« Novalyz »** et **« Je gère »** (drapeau `_onbPendingTour` + `_onbTourMaybe`, déclenché à la fermeture générateur/éditeur) — avant, seulement le chemin « coach ».
+- Divers : phrases onboarding cohérentes (« Novalyz assemble », plus de « j'assemble ») ; modal bien-être (`#wellness-modal`) et générateur centrés/plein écran ; emphase boutons `#en-gen`/`#en-creer` selon présence d'un programme (`_enSetMode`).
+
+### Morpho-anatomie v2 (gros feature, FRONT livré — backend à redéployer)
+- Maquette de réf : `mockups/novalyz-morpho-v2.html` (corps anatomique **homme + femme** issu de react-native-body-highlighter MIT, 9 marqueurs de segments, point ④ = grands trochanters). Test 2 colonnes : `mockups/novalyz-morpho-analyse-test.html`. Bloc morpho en conversation : `mockups/novalyz-morpho-dans-message.html`.
+- Front (`index.html` `#tab-morpho` + `app.js` `ouvrirMorpho`…) : **questionnaire** (sexe, pathologie, grossesse, antécédents — fiabilité), **saisie segments** (schéma corps homme/femme), **photos** avec bouton supprimer ×, **analyse** → **reco exercices déterministes SI segments présents** (badges Mesuré/À nuancer/Antécédent), **export mail + PDF**. State `_morphoQ`/`_morphoSeg`/`_morphoImgs`/`_morphoLast`.
+- Backend (`index.ts`) : `recoMorphoExercices` (leviers fémur/tronc, ape index, épaules/hanches, SDT, squat stance, amplitude DC, pistes tibia/avant-bras, garde-fous antécédents), `handleAnalyseMorpho` (injecte questionnaire+segments dans le prompt Sonnet, attache `exercices`), `handleEnvoyerMorphoMail`. **À REDÉPLOYER.**
+- **Parqué** (à reprendre) : **programme sur-mesure à partir de l'analyse morpho** (maquette `mockups/novalyz-programme-sur-mesure.html`) — l'utilisateur a dit « on reviendra sur le programme à partir de l'analyse après, y a des choses à dire dessus aussi ».
+
+### Avant (rappel, déjà en prod/dev)
+- **Générateur v2 complet** (`generateur-v2.md`) : `_G2_BLOCKS`, `_g2GenDays` (fb/ul/ppl/split/custom), `_genProgramme2`, `_genProgrammeForce`. Tests `tests/generateur-v2.test.js`.
+- **Agenda daté** (table `planning`, routes `getPlanning`/`planSeance`/`movePlanning`/`unplanPlanning`, `planning[]` dans getAppData ; composant coach `.cdag`, carte athlète `renderTjPlanning`). **Déployé.**
+- **Aperçu coach v3** (`renderCoachCoupDoeil`, charge·reps·RPE réels, état+récup, Lecture Novalyz pour le coach). Nutrition (import MFP), morpho/mensurations coach, récompenses v2, etc.
 
 ## À faire (priorité)
-1. **Backlog, maquette d'abord** : **N5** (récompenses bugs+barème), **N3** (photos+mensurations), **N9** (régularité), **N11** (morpho IA, gated clé API).
-2. **Promouvoir `dev` → `main`** (prod) quand l'utilisateur a validé tout ce qui est sur dev.
-3. (option) N13 fin fine : réordonner les blocs de données du bas si besoin (le coup d'œil résume volume/état déjà affichés plus bas — garder le détail, acceptable).
-2. **Backlog, maquette d'abord** : **N5** (récompenses bugs+barème), **N3** (photos+mensurations), **N9** (régularité), **N11** (morpho IA, gated clé API).
-3. **Promouvoir `dev` → `main`** (prod) quand l'utilisateur a validé.
+1. **(Utilisateur)** Redéployer `index.ts` + poser `ANTHROPIC_API_KEY` (voir section ⚠️).
+2. **Programme sur-mesure depuis l'analyse morpho** (parqué — discuter d'abord avec l'utilisateur ce qu'il veut dire dessus).
+3. **N11 morpho IA** (`backlog-app.md`) : finaliser une fois la clé API posée + tester sur de vraies photos/segments.
+4. Backlog restant (`backlog-app.md`) : maquette d'abord pour tout gros feature.
+5. Promouvoir `dev → main` quand l'utilisateur valide le lot courant.
 
-## Règles clés (rappel, en plus de CLAUDE.md)
-- **Rule 6bis (fiabilité)** : chaque phrase affichée doit être **vraie vs les données** — jamais « recopier », toujours analyser ; se méfier des pièges (volume mi-semaine, muscle non travaillé ≠ muscle qui « pêche »). Tester sur un vrai athlète (ex. Vincent) via Supabase MCP si besoin.
-- **Méthode** : étapes validées, **maquette avant gros feature**, livrer maquettes via SendUserFile (render) + push.
+## Règles clés (en plus de CLAUDE.md)
+- **Rule 6bis (fiabilité)** : chaque phrase affichée = **vraie vs le code/les données**, jamais « recopier », chercher activement le cas où elle serait fausse (peu de données, base faible, contexte actif). Distinguer « vérifié contre le code » de « supposé ».
+- **Vérifier au rendu** : screenshot Playwright (`NODE_PATH=/opt/node22/lib/node_modules`, `chromium.launch()`) + relire le PNG avant de livrer une UI. Ne rien inventer ; si bloqué, le dire.
+- **Méthode** : étapes validées, **maquette avant gros feature**, livrer via SendUserFile (render) + push.
 - Commits : footer `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` + `Claude-Session: https://claude.ai/code/session_01Dyo8fwGQF8enz2j8mVwhAb`.
-- **APK dev** : workflow `build-apk-dev.yml` (dispatch via `gh api`, release `novalyz-apk-dev`, télécharger l'asset avec `curl -L` + `$GH_TOKEN` + `--cacert /root/.ccr/ca-bundle.crt`). Supabase `project_id = jhbrvgguybynzeceeceu`.
+- **APK dev** : workflow `build-apk-dev.yml` (dispatch via `gh api`, release `novalyz-apk-dev`). Supabase `project_id = jhbrvgguybynzeceeceu`.
