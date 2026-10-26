@@ -164,6 +164,64 @@
 
 </div>
 
+<style>
+  .desk{max-width:1120px;margin:30px auto 0}
+  .dwin{background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 14px 40px rgba(13,20,36,.10)}
+  .dbar{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border)}
+  .dgrid{display:grid;grid-template-columns:200px 1fr 290px;height:560px}
+  .dnav{border-right:1px solid var(--border);padding:14px 10px;background:var(--surface2)}
+  .dnav .g{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--muted);margin-bottom:3px}
+  .dnav .g.on{background:var(--accent);color:#fff}
+  .dnav .g b{font-size:10.5px;background:#fff;color:var(--accent);border-radius:8px;padding:1px 6px}
+  .dmain{padding:14px 18px;overflow:auto}
+  .dlist{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+  .dside{border-left:1px solid var(--border);padding:14px 16px;display:flex;flex-direction:column}
+  .dside .sx{font-size:13px;padding:8px 0;border-bottom:1px solid var(--surface2);display:flex;justify-content:space-between}
+  .dside .sx span{color:var(--subtle);cursor:pointer}
+</style>
+<div class="desk">
+  <div class="cap">④ Version BUREAU <span>— même page, en 3 colonnes (groupes · exercices · ta sélection)</span></div>
+  <div class="dwin">
+    <div class="dbar"><div class="back">←</div><div><div class="ti">Ajouter à Push</div><div class="sub">Coche plusieurs exercices — ta sélection se construit à droite</div></div><div style="flex:1"></div><div class="search" style="width:340px;margin:0">🔍 Rechercher un exercice ou une activité…</div></div>
+    <div class="dgrid">
+      <div class="dnav">
+        <div class="lbl">Groupes</div>
+        <div class="g on">Pecs <b>2</b></div><div class="g">Dos</div><div class="g">Épaules <b style="background:var(--accent);color:#fff">1</b></div><div class="g">Bras</div><div class="g">Jambes</div><div class="g">Abdos</div><div class="g">🏃 Cardio <b style="background:var(--accent);color:#fff">1</b></div>
+      </div>
+      <div class="dmain">
+        <div class="grp" style="margin-top:0">Pectoraux</div>
+        <div class="dlist">
+          <div class="it"><span class="ck on">✓</span><span class="it-n">Développé couché barre</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Développé couché haltère</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Développé couché incliné haltère</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Développé incliné à la Smith</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Développé incliné Hammer</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Développé machine</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Développé décliné machine</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Dips pectoraux</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Ecarté haltères</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Ecarté haltères incliné</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Ecarté machine</span></div>
+          <div class="it"><span class="ck on">✓</span><span class="it-n">Ecarté poulie haute</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Ecarté poulie basse</span></div>
+          <div class="it"><span class="ck"></span><span class="it-n">Pompe</span></div>
+        </div>
+      </div>
+      <div class="dside">
+        <div class="lbl">Ta sélection (4)</div>
+        <div class="sx"><b>Développé couché barre</b><span>✕</span></div>
+        <div class="sx"><b>Ecarté poulie haute</b><span>✕</span></div>
+        <div class="sx"><b>Développé militaire haltères</b><span>✕</span></div>
+        <div class="sx"><b>🏃 Footing · 20 min</b><span>✕</span></div>
+        <div class="note" style="margin-top:12px">Ajoutés en 3 × 8–12, 90 s de repos — modifiables ensuite.</div>
+        <div style="flex:1"></div>
+        <button class="btn">Ajouter (4) à Push</button>
+      </div>
+    </div>
+  </div>
+  <p class="lead" style="margin-top:10px">L'écran ① (tes séances) en bureau : même contenu, les séances en grille de 2–3 colonnes au lieu d'une liste.</p>
+</div>
+
 <div class="q">
   <h2>À trancher avant de coder</h2>
   <ol>
