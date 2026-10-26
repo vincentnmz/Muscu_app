@@ -9397,6 +9397,71 @@ var _morphoImgs = { face: null, profil: null, dos: null };
 // du coach (cibleId/cibleNom). _morphoFromCoach = ouvert depuis l'espace coach →
 // on affiche l'écran en overlay (sans switchTab athlète) et on y revient au retour.
 var _morphoCibleId = null, _morphoCibleNom = null, _morphoFromCoach = false;
+// Questionnaire préalable + mesures de segment (morpho v2). Front-only pour
+// l'instant : collecté et envoyé dans le payload d'analyse (le backend s'en
+// servira pour fiabiliser + futures recos d'exercices). Pas de persistance DB.
+var _morphoQ = { sexe: 'H', objectif: 'esthetique', exp: 'inter' };
+var _morphoSeg = {};
+// Toggle d'un groupe « segmenté » (une seule valeur active).
+function _moSeg(btn, group, val) {
+  try { var p = btn.parentNode; [].forEach.call(p.querySelectorAll('button'), function (b) { b.classList.remove('on'); }); } catch (e) {}
+  btn.classList.add('on'); _morphoQ[group] = val;
+}
+// Toggle d'une puce (multi-sélection) dans un groupe (tableau).
+function _moChip(btn, group, val) {
+  btn.classList.toggle('on');
+  if (!Array.isArray(_morphoQ[group])) _morphoQ[group] = [];
+  var i = _morphoQ[group].indexOf(val);
+  if (i >= 0) _morphoQ[group].splice(i, 1); else _morphoQ[group].push(val);
+}
+// Sexe : met à jour la valeur, la figure (homme/femme) et le bloc « spécifique femme ».
+function _moSexe(btn, fig, sexe) {
+  _moSeg(btn, 'sexe', sexe);
+  var m = document.getElementById('fig-male'), f = document.getElementById('fig-female');
+  if (m && f) { var fe = (fig === 'female'); m.style.display = fe ? 'none' : 'block'; f.style.display = fe ? 'block' : 'none'; }
+  var ff = document.getElementById('mo-femme-fld'); if (ff) ff.style.display = (sexe === 'F') ? '' : 'none';
+}
+function _moSegVal(which, v) { _morphoSeg[which] = (v === '' || v == null) ? null : Number(v); }
+// Supprime une photo (le × posé sur la vignette) sans ouvrir le sélecteur de fichier.
+function _morphoPhotoDel(ev, which) {
+  try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {}
+  _morphoImgs[which] = null;
+  var p = document.getElementById('morpho-prev-' + which); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; }
+  var ph = document.getElementById('mo-ph-' + which); if (ph) ph.classList.remove('filled');
+}
+// Supprime toutes les photos (bouton de l'en-tête).
+function _morphoResetPhotos() {
+  ['face', 'profil', 'dos'].forEach(function (w) {
+    _morphoImgs[w] = null;
+    var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; }
+    var ph = document.getElementById('mo-ph-' + w); if (ph) ph.classList.remove('filled');
+  });
+  try { showToast('Photos supprimées'); } catch (e) {}
+}
+// Remet le formulaire à zéro (inputs + puces) ; les segments à leurs défauts.
+function _morphoResetForm(sexe) {
+  try {
+    [].forEach.call(document.querySelectorAll('#tab-morpho input[type=number], #tab-morpho .mo-ta'), function (el) { el.value = ''; });
+    [].forEach.call(document.querySelectorAll('#tab-morpho .mo-chip.on'), function (el) { el.classList.remove('on'); });
+  } catch (e) {}
+  _morphoQ = { sexe: 'H', objectif: 'esthetique', exp: 'inter' };
+  _morphoSeg = {};
+  // Oriente la figure selon le sexe connu de l'athlète (défaut homme).
+  var sx = String(sexe || '').trim().toUpperCase();
+  var femme = (sx === 'F' || sx.indexOf('FEMME') === 0 || sx === 'W');
+  try {
+    var seg = document.getElementById('mo-sexe');
+    if (seg) {
+      var btns = seg.querySelectorAll('button');
+      [].forEach.call(btns, function (b) { b.classList.remove('on'); });
+      if (femme && btns[1]) { btns[1].classList.add('on'); } else if (btns[0]) { btns[0].classList.add('on'); }
+    }
+    var m = document.getElementById('fig-male'), f = document.getElementById('fig-female');
+    if (m && f) { m.style.display = femme ? 'none' : 'block'; f.style.display = femme ? 'block' : 'none'; }
+    var ff = document.getElementById('mo-femme-fld'); if (ff) ff.style.display = femme ? '' : 'none';
+  } catch (e) {}
+  _morphoQ.sexe = femme ? 'F' : 'H';
+}
 function _ouvrirMorphoCoach() {
   var a = (typeof coachAthleteCourant !== 'undefined') ? coachAthleteCourant : null;
   if (!a || !a.athlete_id) { try { showToast('Sélectionne un athlète'); } catch (e) {} return; }
@@ -9413,9 +9478,15 @@ function ouvrirMorpho(cibleId, cibleNom) {
   else if (typeof switchTab === 'function') switchTab('morpho');   // sous-écran plein écran
   var ttl = document.querySelector('#tab-morpho .mo-ttl'); if (ttl) ttl.textContent = _morphoCibleNom ? ('Morpho · ' + _morphoCibleNom) : 'Analyse morpho';
   ['face', 'profil', 'dos'].forEach(function (w) { var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; } });
+  ['face', 'profil', 'dos'].forEach(function (w) { var ph = document.getElementById('mo-ph-' + w); if (ph) ph.classList.remove('filled'); });
   var c = document.getElementById('morpho-consent'); if (c) c.checked = false;
   var r = document.getElementById('morpho-result'); if (r) r.innerHTML = '';
-  var g = document.getElementById('morpho-go'); if (g) { g.disabled = false; g.textContent = 'Analyser'; }
+  var g = document.getElementById('morpho-go'); if (g) { g.disabled = false; g.textContent = 'Analyser ma morphologie'; }
+  // Questionnaire + segments remis à zéro ; figure orientée selon le sexe connu.
+  var sexe = _morphoFromCoach
+    ? ((typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.sexe) || '')
+    : ((typeof athlete !== 'undefined' && athlete && athlete.sexe) || '');
+  try { _morphoResetForm(sexe); } catch (e) {}
 }
 function fermerMorpho() {
   if (_morphoFromCoach) {
@@ -9438,6 +9509,7 @@ function _morphoFichier(input, which) {
       var dataUrl = cv.toDataURL('image/jpeg', 0.82);
       _morphoImgs[which] = { media_type: 'image/jpeg', data: dataUrl.split(',')[1] };
       var p = document.getElementById('morpho-prev-' + which); if (p) { p.style.backgroundImage = 'url(' + dataUrl + ')'; p.textContent = ''; }
+      var ph = document.getElementById('mo-ph-' + which); if (ph) ph.classList.add('filled');
     } catch (e) {}
     URL.revokeObjectURL(url);
   };
@@ -9496,7 +9568,7 @@ async function _morphoAnalyser() {
   var g = document.getElementById('morpho-go'); if (g) { g.disabled = true; g.textContent = 'Analyse en cours…'; }
   var res = document.getElementById('morpho-result'); if (res) res.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">L\'IA analyse tes photos…</div>';
   try {
-    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'analyseMorpho', athlete_id: cibleId, consent: true, images: imgs, views: views }) });
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'analyseMorpho', athlete_id: cibleId, consent: true, images: imgs, views: views, questionnaire: _morphoQ, segments: _morphoSeg }) });
     var j = await r.json().catch(function () { return {}; });
     if (res) {
       if (j && j.resultat && typeof j.resultat === 'object') { res.innerHTML = _morphoRender(j.resultat); }
