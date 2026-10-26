@@ -1797,6 +1797,8 @@ async function seConnecter() {
     const data = await res.json();
     if (data.success) {
       athlete = data.athlete;
+      // Le login (4 chiffres) sert à se faire lier par un coach (onboarding « J'ai un coach »).
+      if (athlete && !athlete.login) athlete.login = login;
       localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
       ouvrirApp();
     } else { errEl.textContent = data.error || 'Login ou mot de passe incorrect.'; }
@@ -1835,6 +1837,7 @@ async function sInscrire() {
     const data = await res.json();
     if (data.success) {
       athlete = data.athlete;
+      if (athlete && !athlete.login) athlete.login = login;
       localStorage.setItem('muscu_athlete', JSON.stringify(athlete));
       showToast('Bienvenue ' + prenom + ' !');
       ouvrirApp();
@@ -10986,7 +10989,7 @@ function majPlanSeries() {
   var rmaxP = (pProg.reps_max != null && pProg.reps_max !== '') ? Number(pProg.reps_max) : null;
   var rminP = (pProg.reps_mini != null && pProg.reps_mini !== '') ? Number(pProg.reps_mini) : null;
   var incP = _incrementExo(exoEnCours.exerciceNom);
-  var anyHist = false;
+  var anyHist = false, anyRpe = false;
   var chips = ps.map(function (s, i) {
     var k = i + 1;
     var st = (k <= done) ? 'done' : (k === done + 1 ? 'cur' : 'todo');
@@ -10995,7 +10998,10 @@ function majPlanSeries() {
     if (ref && (Number(ref.charge) > 0 || Number(ref.reps) > 0)) {
       anyHist = true;
       var cib = _cibleSerieSurcharge(ref, rmaxP, rminP, incP);
-      inner = '<small>' + ref.charge + '×' + ref.reps + ' <span style="color:var(--text-subtle)">→</span> <b style="color:var(--accent)">' + cib.charge + '×' + cib.reps + '</b></small>';
+      // RPE de la dernière fois (si saisi) : montre l'évolution de l'effort, pas seulement kg×reps.
+      var rpeRef = (ref.rpe != null && ref.rpe !== '' && !isNaN(Number(ref.rpe))) ? Number(ref.rpe) : null;
+      if (rpeRef != null) anyRpe = true;
+      inner = '<small>' + ref.charge + '×' + ref.reps + (rpeRef != null ? ' <span class="plan-rpe">@' + rpeRef + '</span>' : '') + ' <span style="color:var(--text-subtle)">→</span> <b style="color:var(--accent)">' + cib.charge + '×' + cib.reps + '</b></small>';
     } else {
       var load = _planLoadTxt(s);
       var detail = [s.reps + ' reps', load, (s.rpe != null ? 'RPE ' + s.rpe : ''), (s.tag || '')].filter(Boolean).join(' · ');
@@ -11004,7 +11010,9 @@ function majPlanSeries() {
     return '<span class="plan-chip ' + st + (s.tag === 'lourde' ? ' top' : '') + '">' + mark + 'S' + k + ' ' + inner + '</span>';
   }).join('');
   var reposTxt = (pProg.repos_sec != null && pProg.repos_sec !== '') ? (pProg.repos_sec + 's repos') : '';
-  var sub = [(anyHist ? 'dernière fois → cible' : ''), plan.note, reposTxt].filter(Boolean).join(' · ');
+  var dRef = (perfHist && perfHist.date) ? String(perfHist.date).slice(0, 10).split('-') : null;
+  var dRefTxt = (dRef && dRef.length === 3) ? ' du ' + dRef[2] + '/' + dRef[1] : '';
+  var sub = [(anyHist ? ('dernière fois' + dRefTxt + (anyRpe ? ' (@ RPE)' : '') + ' → cible') : ''), plan.note, reposTxt].filter(Boolean).join(' · ');
   el.innerHTML = '<div class="plan-hd">Séries prévues · ' + done + '/' + ps.length + '</div>'
     + '<div class="plan-chips">' + chips + '</div>'
     + (sub ? '<div class="plan-sub">' + escapeHtml(sub) + '</div>' : '');
@@ -17302,7 +17310,21 @@ function _onbContent(step) {
   if (step === 'marche') return { primary: 'Suivant', html: '<div style="margin:auto 0"><h1 style="font-size:22px;margin:0 0 16px;text-align:center">Comment ça marche</h1>' + pt('①', 'Un cadre', 'Un programme : séances, charges et cibles. Tu fais tes séances et tu notes ton ressenti.') + pt('②', 'Est-ce bien fait ?', 'Novalyz compare ce que tu réalises à tes cibles et te le dit clairement.') + pt('③', 'Quoi progresser', 'Tendances, alertes et une « Lecture Novalyz » qui t\'explique la suite.') + '</div>' };
   if (step === 'diff') return { primary: 'Suivant', html: big('', 'Données + ressenti', 'Je ne regarde pas que les chiffres : je croise tes données ET ton ressenti pour décider avec toi, pas à ta place.') };
   if (step === 'nav') return { primary: 'Suivant', html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 16px;text-align:center">Où trouver quoi</h1>' + nav('🏠', 'Accueil', 'Ton « aujourd\'hui » : état du jour, séance, alertes.') + nav('🏋', 'Entraînement', 'Tes séances et ton programme.') + nav('', 'Analyses', 'Tes stats et la Lecture Novalyz.') + nav('❤', 'État', 'Ta récupération et ton bien-être.') + nav('', 'Conversation', 'Ton coach ou l\'assistant.') + '</div>' };
-  if (step === 'coachinfo') return { primary: 'J\'ai compris', onPrimary: '_onbFini()', html: '<div style="margin:auto 0">' + big('🤝', 'Tu as un coach', 'Ton coach te construit ton programme et suit tes analyses. Toi, tu fais tes séances et ton ressenti — Novalyz s\'occupe du reste.') + (login ? '<div style="margin-top:18px;padding:14px;background:var(--surface2);border-radius:14px;text-align:center"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Donne ce login à ton coach pour qu\'il te lie :</div><div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:26px;letter-spacing:.1em;color:var(--accent)">' + esc(login) + '</div></div>' : '') + '</div>' };
+  if (step === 'coachinfo') {
+    var dejaLie = !!(athlete && athlete.coach_id);
+    if (dejaLie) return { primary: 'J\'ai compris', onPrimary: '_onbFini()', html: big('🤝', 'Tu es suivi par ton coach', 'Ton coach construit ton programme et suit tes analyses. Toi, tu fais tes séances et tu notes ton ressenti — Novalyz s\'occupe du reste.') };
+    var loginBox = login
+      ? '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:28px;letter-spacing:.12em;color:var(--accent);margin:4px 0 2px">' + esc(login) + '</div>'
+      : '<div style="font-size:13px;font-weight:700;margin:4px 0 2px">Ton identifiant à 4 chiffres (celui avec lequel tu te connectes)</div>';
+    return { primary: 'J\'ai compris', onPrimary: '_onbFini()', html: '<div style="margin:auto 0">'
+      + big('🤝', 'Relie-toi à ton coach', 'C\'est ton coach qui construit ton programme et suit tes analyses. Pour qu\'il te voie, il doit te lier à son compte.')
+      + '<div style="margin-top:18px;padding:14px;background:var(--surface2);border-radius:14px;text-align:center"><div style="font-size:12px;color:var(--text-muted)">Donne ton login à ton coach :</div>' + loginBox + '</div>'
+      + '<div style="margin-top:14px;text-align:left">'
+      + pt('1', 'Envoie ce login à ton coach', 'Par message, en salle… c\'est tout ce dont il a besoin.')
+      + pt('2', 'Il te lie depuis son espace', 'Bouton « Lier un athlète » → il saisit ton login.')
+      + pt('3', 'Ton programme arrive ici', 'Dès qu\'il te l\'a assigné, tu le retrouves dans Entraînement.')
+      + '</div></div>' };
+  }
   // profil
   var card = function (c, emoji, t, s) { return '<button onclick="_onbChoix(\'' + c + '\')" style="text-align:left;display:flex;gap:12px;align-items:center;width:100%;padding:15px;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;margin-bottom:10px;cursor:pointer"><span style="font-size:24px;flex:none">' + emoji + '</span><div style="flex:1"><div style="font-weight:800;font-size:15px">' + t + '</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">' + s + '</div></div><span style="color:var(--accent);font-size:20px">›</span></button>'; };
   return { html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 6px;text-align:center">Comment veux-tu être suivi ?</h1><div style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:16px">Tu pourras changer d\'avis plus tard.</div>'
@@ -17330,8 +17352,15 @@ function _onbRender() {
  * Drapeau « vu » en localStorage (nicety par appareil → aucun appel backend).
  */
 var _tour = { steps: [], i: 0, key: null };
-function _tourSeen(key) { try { return localStorage.getItem('nvz_' + key) === '1'; } catch (e) { return false; } }
-function _tourMark(key) { try { localStorage.setItem('nvz_' + key, '1'); } catch (e) {} }
+// Drapeau « vu » PAR COMPTE (pas par appareil) : sinon un 2e compte sur le même
+// téléphone (test, appareil partagé) ne voyait jamais la visite guidée.
+function _tourScope() {
+  try { if (typeof coach !== 'undefined' && coach && coach.coach_id) return 'c' + coach.coach_id; } catch (e) {}
+  try { if (athlete && athlete.athlete_id != null) return 'a' + athlete.athlete_id; } catch (e) {}
+  return '';
+}
+function _tourSeen(key) { try { return localStorage.getItem('nvz_' + key + '_' + _tourScope()) === '1'; } catch (e) { return false; } }
+function _tourMark(key) { try { localStorage.setItem('nvz_' + key + '_' + _tourScope(), '1'); } catch (e) {} }
 function _tourEnsureDom() {
   if (document.getElementById('nvt-ov')) return;
   var ov = document.createElement('div'); ov.id = 'nvt-ov';

@@ -312,6 +312,7 @@ button:focus-visible, a:focus-visible, .sub-tab:focus-visible, .tab-btn:focus-vi
 .plan-chips { display:flex; flex-wrap:wrap; gap:6px; }
 .plan-chip { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:700; border-radius:9px; padding:5px 9px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); }
 .plan-chip small { font-weight:600; opacity:.85; }
+.plan-rpe { font-weight:700; color:var(--text-subtle); }
 .plan-chip.done { background:var(--good-a,rgba(0,168,84,.12)); border-color:transparent; color:var(--good,#00A854); }
 .plan-chip.cur { background:var(--accent-a14,var(--accent-a10)); border-color:var(--accent-dim); color:var(--accent); box-shadow:0 0 0 1px var(--accent-dim) inset; }
 .plan-chip.top { background:var(--warn-a,rgba(245,158,11,.14)); border-color:transparent; color:var(--warn,#f59e0b); }

@@ -1101,6 +1101,7 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
 
   return jsonResp({ success: true, athlete: {
     athlete_id: ath.id,
+    login: ath.login,
     nom: ath.nom,
     sport: sportL,
     coach_id: ath.coach_id,
@@ -1151,6 +1152,7 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   if (error) return jsonResp({ erreur: error.message, message: error.message })
   return jsonResp({ success: true, athlete: {
     athlete_id: data.id,
+    login: data.login,
     nom: data.nom,
     sport: data.sport || 'muscu',
     coach_id: null,
@@ -2389,22 +2391,22 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
 
 async function handleGetLastPerf(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')
-  const seanceId = params.get('seance_id') || ''
   if (!athleteId) return jsonResp({ perfs: {} })
 
   const { data: rows } = await sb().from('performances').select('*').eq('athlete_id', athleteId)
-  // regroupement par exercice → par date (séance courante vs tout l'historique)
-  const seancesCourantes: Record<string, Record<string, any[]>> = {}
+  // Regroupement par exercice → par date, TOUTES séances confondues : la référence
+  // « dernière fois » = la DERNIÈRE fois où l'exercice a été fait, quelle que soit la
+  // séance (avant : priorité à la même seance_id → avec un split A/B ou une séance
+  // « Libre », on comparait à une séance plus ancienne et les cibles ne suivaient pas).
+  // `seance_id` (param) n'est plus utilisé pour le choix de la référence.
   const toutesSeances: Record<string, Record<string, any[]>> = {}
   for (const r of rows || []) {
     const date = normDate(r.date)
     const exo = String(r.exercice || '')
-    const s = { serie: r.serie, charge: Number(r.charge) || 0, reps: Number(r.reps) || 0 }
+    const rpeN = (r.rpe == null || r.rpe === '') ? null : Number(r.rpe)
+    const s = { serie: r.serie, charge: Number(r.charge) || 0, reps: Number(r.reps) || 0, rpe: (rpeN != null && !isNaN(rpeN)) ? rpeN : null }
     if (!toutesSeances[exo]) toutesSeances[exo] = {}
     ;(toutesSeances[exo][date] ||= []).push(s)
-    if (String(r.seance_id) !== seanceId) continue
-    if (!seancesCourantes[exo]) seancesCourantes[exo] = {}
-    ;(seancesCourantes[exo][date] ||= []).push(s)
   }
 
   const getRef = (series: any[]) => {
@@ -2416,16 +2418,16 @@ async function handleGetLastPerf(params: URLSearchParams): Promise<Response> {
     const dates = Object.keys(byDate).sort().reverse()
     const last = dates[0], prev = dates[1], prev2 = dates[2]
     if (!last) return null
-    const rl = getRef(byDate[last])
-    const o: any = { date: last, series: byDate[last], max_reps: rl.reps, last_charge: rl.charge, prev_max_reps: null, prev_charge: null, prev2_max_reps: null, prev2_charge: null }
+    const series = byDate[last].slice().sort((a: any, b: any) => (Number(a.serie) || 0) - (Number(b.serie) || 0))
+    const rl = getRef(series)
+    const o: any = { date: last, series, max_reps: rl.reps, last_charge: rl.charge, prev_max_reps: null, prev_charge: null, prev2_max_reps: null, prev2_charge: null }
     if (prev) { const r = getRef(byDate[prev]); o.prev_max_reps = r.reps; o.prev_charge = r.charge }
     if (prev2) { const r = getRef(byDate[prev2]); o.prev2_max_reps = r.reps; o.prev2_charge = r.charge }
     return o
   }
 
   const result: Record<string, any> = {}
-  for (const exo of Object.keys(seancesCourantes)) { const o = buildForExo(seancesCourantes[exo]); if (o) result[exo] = o }
-  for (const exo of Object.keys(toutesSeances)) { if (!result[exo]) { const o = buildForExo(toutesSeances[exo]); if (o) result[exo] = o } }
+  for (const exo of Object.keys(toutesSeances)) { const o = buildForExo(toutesSeances[exo]); if (o) result[exo] = o }
   return jsonResp({ perfs: result })
 }
 
