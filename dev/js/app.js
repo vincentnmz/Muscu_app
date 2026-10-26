@@ -9592,6 +9592,8 @@ function _morphoRender(d) {
       var chips = ((e.bons || []).map(function (x) { return exChip(x, false); }).join('')) + ((e.eviter || []).map(function (x) { return exChip(x, true); }).join(''));
       var badge = (e.src === 'antecedent')
         ? '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(224,120,0,.16);color:var(--warn)">Antécédent</span>'
+        : (e.src === 'piste')
+        ? '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(139,150,176,.18);color:var(--text-subtle)">À nuancer</span>'
         : '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(0,168,84,.14);color:var(--good)">Mesuré</span>';
       return '<div style="padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div style="font-size:12.5px;font-weight:700">' + esc(e.t) + badge + '</div>' + (e.d ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">' + esc(e.d) + '</div>' : '') + (chips ? '<div style="margin-top:4px">' + chips + '</div>' : '') + '</div>';
     }).join('');
