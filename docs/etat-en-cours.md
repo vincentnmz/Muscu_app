@@ -26,7 +26,14 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - **Règle « charge + ressenti »** (validée, sources Meeusen 2013, Saw 2016, Impellizzeri 2020, Mujika 2000, Bickel 2011) : alerte charge seulement si **TSB% < -12 sur ≥ 3/5 j** (`chargeSoutenueJours`) **ET** ressenti concordant (`ressentiConcordant` : fatigue +1 / sommeil −1 vs baseline perso, ≥3 saisies récentes + ≥7 baseline ; ou RPE +1 à charge ≤ sur ≥ 2 exos). Sous-charge seulement si ratio ATL/CTL < 0.80 **chaque jour sur 14 j** (`sousChargeSoutenue`). Champs optionnels d'`EtatInput` → foot inchangé (règle historique). Push absence : J7 puis **tous les 3 jours**. Test `tests/regle-charge-ressenti.test.js`.
 - Défauts corrigés : bulle « Demande à Novalyz » masquée pendant l'onboarding (`body.onb-open`) ; phrase en dur retirée de `#tj-nova-txt`.
 - Mail récap mensuel : cron `novalyz-recaps-auto` (07:10 UTC) → 1er nov. Resend configuré par l'utilisateur (domaine) — vérifier `athletesOk` le 1er nov.
-- **Maquette** `mockups/novalyz-je-gere-programme.html` (page entière séances + picker plein écran groupes + cardio) — **en attente de validation**.
+- **Maquette** `mockups/novalyz-je-gere-programme.html` (mobile + bureau) — **validée et IMPLÉMENTÉE** (sur `dev`, SW v438) :
+  - `ouvrirConstruireProgramme` (« Je gère » à l'onboarding + « Programme vierge » athlète) : séances en chips (plus de `prompt`), cartes séance, **modèles prêts à l'emploi 2→6 jours** (`_JG_MODELES`, générés par `_genProgramme2`/`_g2GenDays` — même moteur que le générateur).
+  - **Panneau de réglage par exercice** (option B validée, tout facultatif) : séries, reps mini/maxi, repos, %1RM, RPE cible, schéma (fixe/double/top set+back-off/pyramidal via `_schemaControlsHtml`), superset (`cdAjouterPartenaire`). `cdProgrammeLignes` partagé avec `_jg.lignes`.
+  - **Page de choix plein écran** `ouvrirPickerExos` (groupes `_EXO_GROUPES` + Cardio `_CARDIO_CATALOG`, multi-sélection, gros muscles d'abord dans le lot) — remplace le tiroir partout (`cdAjouterExercice`, athlète ET coach). Bureau = 3 colonnes.
+  - Coach : « nouvelle séance » dans une fenêtre au style de l'app (`#cd-newseance`), plus de `prompt`.
+  - Générateur « Novalyz te propose » : vrai plein écran en bureau (2 colonnes, aperçu collant), **un seul défilement** (`body.gen-open`).
+- `index.ts` v187 déployé par l'utilisateur le 26 oct. 14:24 UTC — **identique au repo** (vérifié).
+- APK dev lancé depuis `dev` (run 225).
 - Parqués : tablette, programme sur-mesure morpho. ⚠️ Sécurité à traiter avant bêta : `getAppData` sans auth (n'importe qui peut lire un athlète par id) ; liaison coach par login 4 chiffres sans accord de l'athlète.
 
 ### Lot 26 oct. (sur `dev` + branche, sw v434) — tests « nouveau compte athlète »
