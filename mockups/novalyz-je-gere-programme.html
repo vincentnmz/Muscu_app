@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>« Je gère » — construire son programme</title>
+<style>
+  :root{
+    --bg:#eef2fa; --surface:#ffffff; --surface2:#f3f6fd; --border:#dde4f3;
+    --text:#0d1424; --muted:#5f6b85; --subtle:#8b96b0;
+    --accent:#1a5fff; --accent-a:rgba(26,95,255,.10); --good:#00a854; --warn:#e07800;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;padding:22px 16px 60px}
+  h1{font-size:20px;margin:0 0 4px;text-align:center}
+  .lead{font-size:13px;color:var(--muted);text-align:center;max-width:760px;margin:0 auto 22px}
+  .row{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
+  .col{width:340px}
+  .cap{font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin:0 4px 8px}
+  .cap span{color:var(--muted);text-transform:none;letter-spacing:0;font-weight:600}
+  .phone{background:var(--surface);border:1px solid var(--border);border-radius:30px;height:700px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 14px 40px rgba(13,20,36,.10);position:relative}
+  .hd{display:flex;align-items:center;gap:10px;padding:16px 16px 12px;border-bottom:1px solid var(--border);flex:none}
+  .back{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);display:grid;place-items:center;font-size:17px;color:var(--muted)}
+  .ti{font-weight:800;font-size:16px}
+  .sub{font-size:11.5px;color:var(--muted)}
+  .body{flex:1;overflow:auto;padding:14px 16px}
+  .foot{flex:none;border-top:1px solid var(--border);padding:12px 16px 16px;background:var(--surface)}
+  .btn{width:100%;border:none;border-radius:13px;background:var(--accent);color:#fff;font-weight:800;font-size:14.5px;padding:13px;box-shadow:0 6px 16px rgba(26,95,255,.25)}
+  .btn.ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);box-shadow:none}
+  .lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--subtle);margin:4px 2px 8px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+  .chip{font-size:12.5px;font-weight:700;border:1px solid var(--border);background:var(--surface2);color:var(--muted);border-radius:999px;padding:7px 12px;white-space:nowrap}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip.add{border-style:dashed;color:var(--accent);background:var(--surface)}
+  .chip b{display:inline-grid;place-items:center;min-width:17px;height:17px;border-radius:9px;background:#fff;color:var(--accent);font-size:10px;margin-left:5px;padding:0 4px}
+  .scroller{display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+  .sess{border:1px solid var(--border);border-radius:14px;padding:12px 13px;margin-bottom:10px;background:var(--surface)}
+  .sess-h{display:flex;justify-content:space-between;align-items:center}
+  .sess-n{font-weight:800;font-size:15px}
+  .sess-c{font-size:11.5px;color:var(--muted)}
+  .sess-add{margin-top:10px;width:100%;border:1.5px dashed var(--accent);background:var(--accent-a);color:var(--accent);font-weight:800;font-size:13px;border-radius:11px;padding:10px}
+  .sess-x{font-size:12.5px;color:var(--muted);padding:6px 0;border-top:1px solid var(--border);display:flex;justify-content:space-between}
+  .sess-x:first-of-type{border-top:none}
+  .sess-x b{color:var(--text);font-weight:700}
+  .search{width:100%;border:1px solid var(--border);background:var(--surface2);border-radius:11px;padding:10px 12px;font-size:13.5px;color:var(--subtle);margin-bottom:10px}
+  .grp{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin:10px 2px 2px}
+  .it{display:flex;align-items:center;gap:11px;padding:10px 4px;border-bottom:1px solid var(--surface2)}
+  .ck{width:21px;height:21px;border-radius:6px;border:2px solid var(--border);flex:none;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900}
+  .ck.on{background:var(--accent);border-color:var(--accent)}
+  .it-n{font-size:14px;font-weight:600;flex:1}
+  .it-m{font-size:11px;color:var(--subtle)}
+  .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px;flex:none}
+  .tgt{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--accent)}
+  .tgt span{width:24px;height:24px;border-radius:7px;border:1px solid var(--border);display:grid;place-items:center;color:var(--muted);background:var(--surface2)}
+  .sel{font-size:11.5px;color:var(--muted);margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sel b{color:var(--text)}
+  .note{font-size:11.5px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:9px 11px;margin-top:6px}
+  .link{font-size:12px;color:var(--accent);font-weight:700;text-align:center;margin-top:10px}
+  .q{max-width:760px;margin:26px auto 0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;font-size:13.5px}
+  .q h2{font-size:15px;margin:0 0 8px}
+  .q li{margin-bottom:6px}
+</style>
+</head>
+<body>
+<h1>« Je gère mon programme » — maquette</h1>
+<p class="lead">Parcours quand l'athlète choisit <b>« Je gère mon programme moi-même »</b> à l'onboarding. Tout réutilise l'existant : catalogue d'exercices (table <code>exercices</code>), catalogue cardio (<code>_CARDIO_CATALOG</code>), sélection multiple (<code>_cdAddMuscu</code>) et enregistrement (<code>saveProgrammeLigne</code>). Ce qui change : <b>pages entières</b>, <b>groupes clairs</b>, <b>muscu + cardio sur la même page</b>, plus de boîte système pour nommer une séance.</p>
+
+<div class="row">
+
+  <!-- ÉCRAN 1 -->
+  <div class="col">
+    <div class="cap">① Tes séances <span>— page entière</span></div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div><div class="ti">Construis ton programme</div><div class="sub">Étape 1 · crée tes séances</div></div></div>
+      <div class="body">
+        <div class="lbl">Ajoute une séance</div>
+        <div class="chips">
+          <span class="chip">Push</span><span class="chip">Pull</span><span class="chip">Jambes</span>
+          <span class="chip">Haut du corps</span><span class="chip">Bas du corps</span><span class="chip">Full body</span>
+          <span class="chip add">+ Autre nom…</span>
+        </div>
+        <div class="lbl">Tes séances (3)</div>
+        <div class="sess">
+          <div class="sess-h"><div class="sess-n">Push</div><div class="sess-c">3 exos · 1 cardio</div></div>
+          <div style="margin-top:8px">
+            <div class="sess-x"><b>Développé couché barre</b><span>3 × 8–12</span></div>
+            <div class="sess-x"><b>Développé militaire haltères</b><span>3 × 8–12</span></div>
+            <div class="sess-x"><b>Ecarté poulie haute</b><span>3 × 8–12</span></div>
+            <div class="sess-x"><b>🏃 Footing</b><span>20 min</span></div>
+          </div>
+          <button class="sess-add">+ Ajouter des exercices</button>
+        </div>
+        <div class="sess">
+          <div class="sess-h"><div class="sess-n">Pull</div><div class="sess-c">vide</div></div>
+          <button class="sess-add">+ Ajouter des exercices</button>
+        </div>
+        <div class="sess">
+          <div class="sess-h"><div class="sess-n">Jambes</div><div class="sess-c">vide</div></div>
+          <button class="sess-add">+ Ajouter des exercices</button>
+        </div>
+        <div class="link">Voir les modèles prêts à l'emploi</div>
+      </div>
+      <div class="foot"><button class="btn">Terminer mon programme</button></div>
+    </div>
+  </div>
+
+  <!-- ÉCRAN 2 -->
+  <div class="col">
+    <div class="cap">② Choix des exercices <span>— muscu</span></div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div><div class="ti">Ajouter à Push</div><div class="sub">Coche plusieurs exercices puis ajoute</div></div></div>
+      <div class="body">
+        <div class="search">🔍 Rechercher un exercice…</div>
+        <div class="scroller">
+          <span class="chip on">Pecs<b>2</b></span><span class="chip">Dos</span><span class="chip">Épaules<b>1</b></span><span class="chip">Bras</span><span class="chip">Jambes</span><span class="chip">Abdos</span><span class="chip">🏃 Cardio</span>
+        </div>
+        <div class="grp">Pectoraux</div>
+        <div class="it"><span class="ck on">✓</span><span class="it-n">Développé couché barre</span></div>
+        <div class="it"><span class="ck"></span><span class="it-n">Développé couché haltère</span></div>
+        <div class="it"><span class="ck"></span><span class="it-n">Développé couché incliné haltère</span></div>
+        <div class="it"><span class="ck"></span><span class="it-n">Développé incliné à la Smith</span></div>
+        <div class="it"><span class="ck"></span><span class="it-n">Développé machine</span></div>
+        <div class="it"><span class="ck"></span><span class="it-n">Dips pectoraux</span></div>
+        <div class="it"><span class="ck"></span><span class="it-n">Ecarté haltères</span></div>
+        <div class="it"><span class="ck on">✓</span><span class="it-n">Ecarté poulie haute</span></div>
+        <div class="it"><span class="ck"></span><span class="it-n">Ecarté machine</span></div>
+        <div class="it"><span class="ck"></span><span class="it-n">Pompe</span></div>
+      </div>
+      <div class="foot">
+        <div class="sel"><b>3 sélectionnés :</b> Développé couché barre · Ecarté poulie haute · Développé militaire haltères</div>
+        <button class="btn">Ajouter (3)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÉCRAN 3 -->
+  <div class="col">
+    <div class="cap">③ Même page <span>— onglet Cardio</span></div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div><div class="ti">Ajouter à Push</div><div class="sub">Coche plusieurs exercices puis ajoute</div></div></div>
+      <div class="body">
+        <div class="search">🔍 Rechercher un exercice ou une activité…</div>
+        <div class="scroller">
+          <span class="chip">Pecs<b>2</b></span><span class="chip">Dos</span><span class="chip">Épaules<b>1</b></span><span class="chip">Bras</span><span class="chip">Jambes</span><span class="chip">Abdos</span><span class="chip on">🏃 Cardio<b>1</b></span>
+        </div>
+        <div class="grp">Cardio · cible en minutes</div>
+        <div class="it"><span class="ck on">✓</span><span class="ic" style="background:#eef0ff">🏃</span><span class="it-n">Footing</span><span class="tgt"><span>−</span>20 min<span>+</span></span></div>
+        <div class="it"><span class="ck"></span><span class="ic" style="background:#f4edff">🚴</span><span class="it-n">Vélo</span></div>
+        <div class="it"><span class="ck"></span><span class="ic" style="background:#e6fbf7">🚣</span><span class="it-n">Rameur</span></div>
+        <div class="it"><span class="ck"></span><span class="ic" style="background:#ffeaea">⚡</span><span class="it-n">HIIT</span></div>
+        <div class="it"><span class="ck"></span><span class="ic" style="background:#fbeefe">⭕</span><span class="it-n">Elliptique</span></div>
+        <div class="it"><span class="ck"></span><span class="ic" style="background:#e7fbf2">⛰</span><span class="it-n">Marche inclinée</span></div>
+        <div class="it"><span class="ck"></span><span class="ic" style="background:#e5f8fd">🚶</span><span class="it-n">Marche</span></div>
+        <div class="it"><span class="ck"></span><span class="ic" style="background:#f1ecff">🏊</span><span class="it-n">Natation</span></div>
+        <div class="it"><span class="ck"></span><span class="ic" style="background:#fff1e6">🪢</span><span class="it-n">Corde à sauter</span></div>
+        <div class="note">Les exercices s'ajoutent avec les valeurs par défaut d'aujourd'hui (<b>3 séries × 8–12, 90 s de repos</b>), modifiables ensuite. Proposition : les ranger <b>gros muscles d'abord</b> dans la séance (aujourd'hui, seul le générateur le fait).</div>
+      </div>
+      <div class="foot">
+        <div class="sel"><b>4 sélectionnés :</b> 3 exercices + Footing 20 min</div>
+        <button class="btn">Ajouter (4)</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="q">
+  <h2>À trancher avant de coder</h2>
+  <ol>
+    <li><b>Écran ① :</b> on garde un petit lien « Voir les modèles prêts à l'emploi » (Full-body, PPL, Upper/Lower) ou on l'enlève complètement du chemin « Je gère » ?</li>
+    <li><b>Groupes :</b> Pecs · Dos · Épaules · Bras (biceps + triceps) · Jambes (quadri, ischios, fessiers, adducteurs, mollets, avec sous-titres) · Abdos · Cardio. Ça te va, ou tu veux Bras/Jambes séparés en plusieurs onglets ?</li>
+    <li><b>Ce picker plein écran</b> remplace aussi le tiroir actuel partout (éditeur de programme athlète ET coach) — d'accord ?</li>
+  </ol>
+</div>
+</body>
+</html>

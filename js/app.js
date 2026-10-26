@@ -17287,9 +17287,10 @@ function ouvrirOnboarding() {
     document.body.appendChild(ov);
   }
   ov.style.display = 'flex';
+  try { document.body.classList.add('onb-open'); } catch (e) {}   // masque la bulle « Demande à Novalyz »
   _onbRender();
 }
-function fermerOnboarding() { var ov = document.getElementById('onb-overlay'); if (ov) ov.style.display = 'none'; }
+function fermerOnboarding() { var ov = document.getElementById('onb-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('onb-open'); } catch (e) {} }
 function _onbNext() { if (_onbI < _onbSteps.length - 1) { _onbI++; _onbRender(); } }
 function _onbBack() { if (_onbI > 0) { _onbI--; _onbRender(); } }
 function _onbChoix(c) {

@@ -19,6 +19,16 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## Fait récemment
 
+### Lot 26 oct. (soir) — branche `claude/pensive-ritchie-5p62gt` (pas encore sur `dev`)
+- **Méthode réaffirmée par l'utilisateur** : TOUJOURS expliquer, poser les questions, maquette si besoin, **décider avant de coder** ; écrire en **français**.
+- **Séries prévues** (validé) : réf « dernière fois » = dernière fois que l'EXO a été fait, toutes séances confondues (avant : même `seance_id` → split A/B / séance Libre comparés à une vieille séance). `getLastPerf` renvoie aussi le **RPE** par série ; les cases affichent `7.5×10 @8 → 7.5×11` + date de réf. **index.ts à redéployer.**
+- **Onboarding coach** : le login n'était JAMAIS transmis au front (payload login/register sans `login`) → écran « Donne ton login à ton coach » jamais affiché. Corrigé front + back ; texte 3 étapes. **Visite guidée** : drapeau « vue » désormais **par compte** (`_tourScope`), avant par téléphone.
+- **Règle « charge + ressenti »** (validée, sources Meeusen 2013, Saw 2016, Impellizzeri 2020, Mujika 2000, Bickel 2011) : alerte charge seulement si **TSB% < -12 sur ≥ 3/5 j** (`chargeSoutenueJours`) **ET** ressenti concordant (`ressentiConcordant` : fatigue +1 / sommeil −1 vs baseline perso, ≥3 saisies récentes + ≥7 baseline ; ou RPE +1 à charge ≤ sur ≥ 2 exos). Sous-charge seulement si ratio ATL/CTL < 0.80 **chaque jour sur 14 j** (`sousChargeSoutenue`). Champs optionnels d'`EtatInput` → foot inchangé (règle historique). Push absence : J7 puis **tous les 3 jours**. Test `tests/regle-charge-ressenti.test.js`.
+- Défauts corrigés : bulle « Demande à Novalyz » masquée pendant l'onboarding (`body.onb-open`) ; phrase en dur retirée de `#tj-nova-txt`.
+- Mail récap mensuel : cron `novalyz-recaps-auto` (07:10 UTC) → 1er nov. Resend configuré par l'utilisateur (domaine) — vérifier `athletesOk` le 1er nov.
+- **Maquette** `mockups/novalyz-je-gere-programme.html` (page entière séances + picker plein écran groupes + cardio) — **en attente de validation**.
+- Parqués : tablette, programme sur-mesure morpho. ⚠️ Sécurité à traiter avant bêta : `getAppData` sans auth (n'importe qui peut lire un athlète par id) ; liaison coach par login 4 chiffres sans accord de l'athlète.
+
 ### Lot 26 oct. (sur `dev` + branche, sw v434) — tests « nouveau compte athlète »
 - **Poids à l'inscription** : champ « Poids (kg) » à côté de la taille (`index.html` `#reg-poids`, `sInscrire` dans `app.js`, `handleRegister` dans `index.ts` → colonne `athletes.poids`). **⚠️ redeploy index.ts requis.**
 - **Fuite des pas entre comptes (critique) — CORRIGÉ en code.** Cause : Health Connect lit les pas de **l'appareil** (pas du compte) ; `_syncSanteMontre` les poussait au serveur sous le compte connecté → pollution. Fix : lecture/synchro natives **réservées au compte ayant explicitement connecté la montre** (flag local `nvz_hc_connected_<id>`, posé dans `ouvrirImportMontre`). Helpers `_hcConnected`/`_hcMarkConnected`. Sinon fallback historique serveur **propre au compte**. Backend déjà filtré par `athlete_id` (pas de fuite serveur). En prod c'est non-bloquant (1 compte/téléphone) ; utile pour partage d'appareil + tests. **Données déjà polluées : compte test « Alizé » (id 2) garde 57 j de pas de Vincent — l'utilisateur a dit de LAISSER.**

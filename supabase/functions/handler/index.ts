@@ -587,6 +587,69 @@ function calculerFitnessFatigue(chargeParJour: Record<string, number>, now: Date
   }
 }
 
+// ── Règle « charge + ressenti » (entrées du moteur, oct. 2026) ─────────────────
+// Charge SOUTENUE : fraîcheur (TSB%) < -12 sur au moins 3 des 5 derniers jours
+// (un pic d'un jour — reprise après une pause, grosse séance — ne compte pas).
+function chargeSoutenueJours(chargeParJour: Record<string, number>, now: Date): number {
+  let n = 0
+  for (let d = 0; d < 5; d++) {
+    const f = calculerFitnessFatigue(chargeParJour, minus(now, d))
+    if (f.tsbPct != null && f.tsbPct < -12) n++
+  }
+  return n
+}
+// Sous-charge SOUTENUE : ratio ATL/CTL < 0.80 CHAQUE jour des 14 derniers jours
+// (baisse de > 20 % maintenue 2 semaines ; une semaine légère ne compte pas).
+function sousChargeSoutenue(chargeParJour: Record<string, number>, now: Date): boolean {
+  for (let d = 0; d < 14; d++) {
+    const f = calculerFitnessFatigue(chargeParJour, minus(now, d))
+    if (f.ratio == null || f.ratio >= 0.80) return false
+  }
+  return true
+}
+// Ressenti concordant. Deux sources (une suffit) :
+//  (1) bien-être : moyenne des 3 dernières saisies (≤ 7 j) vs baseline perso (saisies
+//      plus anciennes ≤ 35 j, ≥ 7 valeurs) — fatigue musculaire +1 pt (5 = très
+//      fatigué) OU sommeil −1 pt (5 = très bon) ;
+//  (2) RPE en hausse (≥ +1 pt) à charge ÉGALE ou plus basse (≤ +2,5 %) sur ≥ 2
+//      exercices, dernière séance de l'exo ≤ 10 j.
+// `evaluable` = on dispose d'assez de bien-être pour affirmer « tu encaisses bien ».
+function ressentiConcordant(beRows: any[], perfs: any[], now: Date): { degrade: boolean; evaluable: boolean; rpeExos: string[] } {
+  const c7 = fmtYMD(minus(now, 7)), c35 = fmtYMD(minus(now, 35))
+  const rows = (beRows || []).map((r: any) => ({ d: normDate(r.date), fat: (r.fatigue_musculaire == null || r.fatigue_musculaire === '') ? null : Number(r.fatigue_musculaire), som: (r.sommeil == null || r.sommeil === '') ? null : Number(r.sommeil) }))
+    .filter((r: any) => r.d && r.d >= c35).sort((a: any, b: any) => b.d.localeCompare(a.d))
+  const moy = (a: number[]) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null
+  const serie = (k: 'fat' | 'som') => {
+    const rec = rows.filter((r: any) => r.d >= c7 && r[k] != null && !isNaN(r[k])).slice(0, 3)
+    const recD = new Set(rec.map((r: any) => r.d))
+    const base = rows.filter((r: any) => !recD.has(r.d) && r[k] != null && !isNaN(r[k]))
+    return { ok: rec.length >= 3 && base.length >= 7, rec: moy(rec.map((r: any) => r[k])), base: moy(base.map((r: any) => r[k])) }
+  }
+  const F = serie('fat'), S = serie('som')
+  const fatDeg = F.ok && (F.rec as number) - (F.base as number) >= 1
+  const somDeg = S.ok && (S.base as number) - (S.rec as number) >= 1
+  // RPE à charge ≤ : par exo, top charge du jour + son RPE.
+  const parExo: Record<string, Record<string, { charge: number; rpe: number }>> = {}
+  for (const r of perfs || []) {
+    const d = normDate(r.date); const ch = Number(r.charge) || 0; const rpe = Number(r.rpe) || 0
+    if (!d || rpe <= 0) continue
+    const exo = String(r.exercice || ''); const m = (parExo[exo] ||= {})
+    if (!m[d] || ch > m[d].charge) m[d] = { charge: ch, rpe }
+  }
+  const c10 = fmtYMD(minus(now, 10)), rpeExos: string[] = []
+  for (const exo of Object.keys(parExo)) {
+    const ds = Object.keys(parExo[exo]).sort()
+    if (ds.length < 4 || ds[ds.length - 1] < c10) continue
+    const l = ds.slice(-4).map(d => parExo[exo][d])
+    const rpeAv = (l[0].rpe + l[1].rpe) / 2, rpeAp = (l[2].rpe + l[3].rpe) / 2
+    const chAv = (l[0].charge + l[1].charge) / 2, chAp = (l[2].charge + l[3].charge) / 2
+    const chPct = chAv > 0 ? (chAp - chAv) / chAv * 100 : 0
+    if (rpeAp - rpeAv >= 1 && chPct <= 2.5) rpeExos.push(exo)
+  }
+  const rpeDeg = rpeExos.length >= 2
+  return { degrade: fatDeg || somDeg || rpeDeg, evaluable: F.ok || S.ok, rpeExos }
+}
+
 // ── Alertes ───────────────────────────────────────────────────────────────────
 // Porté fidèlement de Code.gs calculerAlertes : champs { type, severite, message }
 function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: number, enPause: boolean): any[] {
@@ -2277,7 +2340,14 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     const useSRPE = srpeSpan >= 28 && ffSRPE.joursActifs42 >= 8
     const ffA = useSRPE ? ffSRPE : calculerFitnessFatigue(chSportA.chargeParJour, now)
     const ffFiable = useSRPE ? true : (histoM != null && histoM >= 28 && ffA.joursActifs42 >= 8)
+    // Règle « charge + ressenti » : mêmes données de charge que la fraîcheur affichée.
+    const chargeSrcM = useSRPE ? srpeParJour : chSportA.chargeParJour
+    const joursHautsM = chargeSoutenueJours(chargeSrcM, now)
+    const ressM = ressentiConcordant(beRows || [], perfs, now)
     const etatM = evaluerEtatAthlete({
+      chargeSoutenue: ffFiable && joursHautsM >= 3,
+      ressentiDegrade: ressM.degrade, ressentiEvaluable: ressM.evaluable,
+      sousChargeSoutenue: ffFiable && sousChargeSoutenue(chargeSrcM, now),
       acwr, acwrFiable: fiabiliteACWR(premiereP, ctxObjM, now, acwrCalcA.joursActifs28, acwrCalcA.joursActifsChronique),
       // Charge PRIMAIRE = fitness-fatigue ; ACWR conservé (repli + affichage secondaire).
       ffTsbPct: ffA.tsbPct, ffRatio: ffA.ratio, ffFiable,
@@ -2656,6 +2726,16 @@ interface EtatInput {
   blessureGrave?: boolean       // blessure active modérée/grave (muscu : table blessures)
   ctxEtat: string
   q: { jours: number; wellnessN: number; hasCharge: boolean }
+  // RÈGLE « CHARGE + RESSENTI » (oct. 2026, validée porteur). Si ces champs sont
+  // FOURNIS (muscu), une alerte de charge exige une charge SOUTENUE (TSB% < -12 sur
+  // ≥ 3 des 5 derniers jours) ET un signal ressenti concordant (fatigue/sommeil
+  // dégradés vs la baseline perso, ou RPE en hausse à charge ≤) — Meeusen 2013,
+  // Saw 2016. La sous-charge exige une baisse SOUTENUE ≥ 14 j (désentraînement
+  // après 2-3 sem. : Mujika & Padilla 2000). Non fournis (foot, ACWR) → règle historique.
+  chargeSoutenue?: boolean | null
+  ressentiDegrade?: boolean | null
+  ressentiEvaluable?: boolean | null
+  sousChargeSoutenue?: boolean | null
 }
 
 function evaluerEtatAthlete(s: EtatInput): any {
@@ -2712,9 +2792,19 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // récente » (modèle fitness-fatigue). L'action concrète reste dans buildAlertesCentre.
   const sousCharge = ffOk ? (s.ffRatio != null && (s.ffRatio as number) < 0.80)
                           : (acwrOk && (s.acwr as number) < CORE_SEUILS.acwr.bas)
-  if (surchargeN >= 2) alertes.push({ type: 'surcharge', severite: 'haute', message: 'Charge récente élevée' })
-  else if (surchargeN === 1) alertes.push({ type: 'charge', severite: 'moyenne', message: 'Charge en hausse' })
-  else if (sousCharge && s.seances7 > 0 && !reposPrevu) alertes.push({ type: 'sous_charge', severite: 'moyenne', message: 'Charge en baisse' })
+  const regleRessenti = s.chargeSoutenue != null   // muscu : règle « charge + ressenti »
+  if (regleRessenti) {
+    if (surchargeN >= 1 && s.chargeSoutenue === true && s.ressentiDegrade === true) {
+      if (surchargeN >= 2) alertes.push({ type: 'surcharge', severite: 'haute', message: 'Charge élevée depuis plusieurs jours et tu récupères moins bien : allège 1 à 2 séances.' })
+      else alertes.push({ type: 'charge', severite: 'moyenne', message: 'Ta charge monte et tu récupères moins bien depuis quelques jours : allège 1 séance.' })
+    } else if (sousCharge && s.sousChargeSoutenue === true && s.seances7 > 0 && !reposPrevu) {
+      alertes.push({ type: 'sous_charge', severite: 'moyenne', message: 'Ton volume est bas depuis 2 semaines. Au-delà de 3 semaines, on commence à perdre en force ; 1 séance par semaine suffit à maintenir.' })
+    }
+  } else {
+    if (surchargeN >= 2) alertes.push({ type: 'surcharge', severite: 'haute', message: 'Charge récente élevée' })
+    else if (surchargeN === 1) alertes.push({ type: 'charge', severite: 'moyenne', message: 'Charge en hausse' })
+    else if (sousCharge && s.seances7 > 0 && !reposPrevu) alertes.push({ type: 'sous_charge', severite: 'moyenne', message: 'Charge en baisse' })
+  }
   if (douleurForte) alertes.push({ type: 'douleur', severite: 'haute', message: 'Douleur signalée' })
   else if (douleurGene) alertes.push({ type: 'douleur', severite: 'moyenne', message: 'Gêne signalée' })
   if (fatigueHaute) alertes.push({ type: 'fatigue', severite: 'moyenne', message: `Fatigue élevée (${Math.round(fat * 10) / 10}/5)` })
@@ -2778,6 +2868,10 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // Charge élevée COMBINÉE à un signe de fatigue (→ Vigilance) : on allège.
   else if (chargeHaute && niveau === 1) reco = 'Charge récente élevée et un signe de fatigue — allège le volume et priorise la récupération.'
   // Charge élevée SEULE (récup bonne → Prêt) : repère informatif, pas un ordre.
+  // Règle ressenti : on ne dit « tu encaisses bien » QUE si le ressenti a pu être évalué.
+  else if (chargeHaute && regleRessenti && s.chargeSoutenue === true && s.ressentiDegrade === true) reco = 'Ta charge monte et tu récupères moins bien — allège 1 séance et priorise le sommeil.'
+  else if (chargeHaute && regleRessenti && s.ressentiEvaluable === true && s.ressentiDegrade !== true) reco = 'Ta charge monte et tu encaisses bien — continue, sans empiler davantage de volume.'
+  else if (chargeHaute && regleRessenti && s.ressentiEvaluable !== true && s.ressentiDegrade !== true) reco = 'Ta charge monte — renseigne ton état du jour pour qu\'on vérifie que tu récupères bien.'
   else if (chargeHaute) reco = 'Charge en forte hausse récemment — évite d\'empiler encore du volume ; si tu te sens frais, entraîne-toi normalement.'
   else if (niveau === 1) reco = 'Vigilance — surveiller les sensations, ne pas surcharger.'
   else reco = 'RAS — maintenir la charge actuelle.'
@@ -3825,6 +3919,13 @@ async function handleCronPushAlertes(body: any): Promise<Response> {
       // Clé par TYPE + JOUR (pas top.id, qui est stable → bloquerait le rappel
       // quotidien). Une alerte active re-notifie donc chaque jour.
       const key = top.type + '|' + dayKey
+      // ABSENCE / IRRÉGULARITÉ : rappel à J7 puis tous les 3 jours (plus chaque jour —
+      // validé porteur oct. 2026). On saute si un push de ce type date de < 3 jours.
+      if (top.type === 'absence' || top.type === 'irregularite') {
+        const since = fmtYMD(minus(new Date(), 2))
+        const { data: recent } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').like('cle', top.type + '|%').gte('date', since).limit(1)
+        if (recent && recent.length) continue
+      }
       // 1) Notifier l'ATHLÈTE — anti-spam par (athlète, alerte, jour).
       const { data: deja } = await sb().from('indicateurs').select('date').eq('athlete_id', id).eq('seance_id', 'alerte_push').eq('cle', key).limit(1)
       if (!(deja && deja.length)) {
