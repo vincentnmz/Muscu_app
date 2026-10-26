@@ -423,7 +423,9 @@ function computeStreak(dates: string[], now: Date): number {
 
 // --- Seuils santé / charge (agnostiques du sport) ---
 const CORE_SEUILS = {
-  douleur:     { gene: 2, forte: 3 },               // /5  (gêne ≥2, forte ≥3)
+  // Douleur /5 (1 Aucune · 2 Légère · 3 Modérée · 4 Forte · 5 Très forte) — validé porteur oct. 2026 :
+  // Légère = simple point d'attention (pas de Vigilance) ; Modérée = Vigilance ; Forte+ = rouge.
+  douleur:     { attention: 2, gene: 3, forte: 4 },
   fatigue:     { haute: 4 },                         // /5
   sommeil:     { bas: 2 },                           // /5  (moyenne récente ≤2)
   courbatures: { haut: 4 },                          // /5  (muscu)
@@ -1917,6 +1919,14 @@ function buildAlertesCentre(moteur: any, comparison: any): any[] {
   const push = (type: string, severity: string, evidence: string, source: string) =>
     out.push({ type, severity: severity || 'moyenne', source: source || 'moteur', title: TITRES[type] || type, evidence: evidence || '', context, reliability, action: ACTIONS[type] || '' })
   ;((moteur && moteur.alertes) || []).forEach((a: any) => push(a.type, a.severite, a.message, 'moteur'))
+  // Douleur : titre = message précis du moteur (intensité + zone) et conseil proportionné
+  // (une gêne légère n'appelle pas « avis kiné » — validé porteur oct. 2026).
+  out.forEach((x: any) => {
+    if (x.type !== 'douleur' || x.source !== 'moteur') return
+    if (x.evidence) x.title = x.evidence
+    if (x.severity === 'basse') x.action = 'Rien d\'alarmant : surveille-la, et note-la si elle revient ou augmente.'
+    else if (x.severity === 'haute') x.action = 'Évite de charger la zone et fais-la évaluer (médecin / kiné) avant de reprendre fort.'
+  })
   // Stagnation : ≥3 exercices en baisse cette semaine (depuis comparison), si non couvert.
   // FIABILITÉ (anti-fausse-alerte) : on NE crie PAS « stagnation » quand le contexte
   // EXPLIQUE la baisse (deload / retour de vacances / retour de blessure — la baisse
@@ -2353,13 +2363,16 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       ffTsbPct: ffA.tsbPct, ffRatio: ffA.ratio, ffFiable,
       seances7: seances7M,
       // Verdict athlète : fatigue = MOYENNE récente (readiness), pas le pire jour.
-      douleur: sigM.douleur, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, stress: sigM.stress, courbatures: sigM.courbatures,
+      douleur: sigM.douleur, douleurZone: sigM.douleurZone, douleurDate: sigM.douleurDate, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, stress: sigM.stress, courbatures: sigM.courbatures,
       injStatut: null, ctxEtat: ctxEtatM,
       q: { jours: histoM != null ? histoM : (perfs.length ? 7 : 0), wellnessN: sigM.wellnessN, hasCharge: perfs.length > 0 },
     })
     moteur = {
       disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
       recScore: etatM.recScore, recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
+      causes: etatM.causes,   // ce qui produit Vigilance/rouge (affiché sous le verdict)
+      // Règle « charge + ressenti » exposée à l'app : la carte Fraîcheur ne dit plus « Fatigue » sur la charge seule.
+      charge_ressenti: { soutenue: ffFiable && joursHautsM >= 3, jours_hauts: joursHautsM, degrade: ressM.degrade, evaluable: ressM.evaluable, rpe_exos: ressM.rpeExos },
       signaux: etatM.signaux,   // readiness Hooper agrégé (sommeil/stress/courbatures…) → leviers ciblés tracés
       acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
       charge_fatigue: { ctl: ffA.ctl, atl: ffA.atl, tsb: ffA.tsb, tsbPct: ffA.tsbPct, ratio: ffA.ratio, fiable: ffFiable, source: useSRPE ? 'srpe' : 'tonnage' },
@@ -2687,12 +2700,20 @@ async function handleLierAthlete(params: URLSearchParams): Promise<Response> {
 //   douleur = MAX récent · fatigue = MAX récent · sommeil = MOYENNE récente.
 // (max pour la douleur/fatigue = orienté prévention ; moyenne sommeil = §16, une
 //  seule mauvaise nuit ne doit pas suffire.)
-function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number } {
+function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; douleurZone: string|null; douleurDate: string|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number } {
   const cut = fmtYMD(minus(now, days))
   const doul: number[] = [], fat: number[] = [], som: number[] = [], str: number[] = [], courb: number[] = []
+  // DOULEUR = DERNIÈRE saisie (jour le plus récent ; pire valeur de ce jour-là), plus
+  // le MAX des 7 jours : une douleur passée (« Aucune » le lendemain) ne maintient
+  // plus l'athlète en Vigilance / rouge pendant une semaine (validé porteur oct. 2026).
+  let dLastDate: string | null = null, dLast: number | null = null, dZone: string | null = null
   for (const r of rows || []) {
     const dIso = normDate(r.date); if (!dIso || dIso < cut) continue
-    if (r.douleur != null && r.douleur !== '') doul.push(Number(r.douleur))
+    if (r.douleur != null && r.douleur !== '') {
+      const v = Number(r.douleur); doul.push(v)
+      if (!isNaN(v) && (dLastDate == null || dIso > dLastDate)) { dLastDate = dIso; dLast = v; dZone = r.zone_douloureuse ? String(r.zone_douloureuse) : null }
+      else if (!isNaN(v) && dIso === dLastDate && v > (dLast as number)) { dLast = v; dZone = r.zone_douloureuse ? String(r.zone_douloureuse) : dZone }
+    }
     if (r.fatigue_musculaire != null && r.fatigue_musculaire !== '') fat.push(Number(r.fatigue_musculaire))
     if (r.sommeil != null && r.sommeil !== '') som.push(Number(r.sommeil))
     if (r.stress != null && r.stress !== '') str.push(Number(r.stress))
@@ -2704,7 +2725,7 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
   // récente, utilisée par le VERDICT athlète (readiness) pour qu'un seul jour
   // fatigué ne plombe pas la semaine. Ajout non cassant.
   // Hooper : on ajoute stress (moyenne récente) et courbatures/DOMS (MAX, prévention).
-  return { douleur: mx(doul), fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), stress: mn(str), courbatures: mx(courb), wellnessN: Math.max(doul.length, fat.length, som.length, str.length, courb.length) }
+  return { douleur: dLast, douleurZone: dZone, douleurDate: dLastDate, fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), stress: mn(str), courbatures: mx(courb), wellnessN: Math.max(doul.length, fat.length, som.length, str.length, courb.length) }
 }
 
 interface EtatInput {
@@ -2732,6 +2753,8 @@ interface EtatInput {
   // dégradés vs la baseline perso, ou RPE en hausse à charge ≤) — Meeusen 2013,
   // Saw 2016. La sous-charge exige une baisse SOUTENUE ≥ 14 j (désentraînement
   // après 2-3 sem. : Mujika & Padilla 2000). Non fournis (foot, ACWR) → règle historique.
+  douleurZone?: string | null    // zone de la dernière douleur saisie (affichage de la cause)
+  douleurDate?: string | null    // date (aaaa-mm-jj) de cette saisie
   chargeSoutenue?: boolean | null
   ressentiDegrade?: boolean | null
   ressentiEvaluable?: boolean | null
@@ -2780,6 +2803,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
   const sommeilBas = som != null && som <= CORE_SEUILS.sommeil.bas
   const fatigueHaute = fat >= CORE_SEUILS.fatigue.haute
   const douleurGene = doul >= CORE_SEUILS.douleur.gene, douleurForte = doul >= CORE_SEUILS.douleur.forte
+  const douleurLegere = !douleurGene && doul >= CORE_SEUILS.douleur.attention   // point d'attention, sans Vigilance
 
   // --- Signaux → alertes (le contexte peut en supprimer) ---
   const alertes: { type: string; severite: string; message: string }[] = []
@@ -2805,8 +2829,10 @@ function evaluerEtatAthlete(s: EtatInput): any {
     else if (surchargeN === 1) alertes.push({ type: 'charge', severite: 'moyenne', message: 'Charge en hausse' })
     else if (sousCharge && s.seances7 > 0 && !reposPrevu) alertes.push({ type: 'sous_charge', severite: 'moyenne', message: 'Charge en baisse' })
   }
-  if (douleurForte) alertes.push({ type: 'douleur', severite: 'haute', message: 'Douleur signalée' })
-  else if (douleurGene) alertes.push({ type: 'douleur', severite: 'moyenne', message: 'Gêne signalée' })
+  const _zoneTxt = s.douleurZone ? ' (' + String(s.douleurZone).toLowerCase() + ')' : ''
+  if (douleurForte) alertes.push({ type: 'douleur', severite: 'haute', message: 'Douleur forte signalée' + _zoneTxt })
+  else if (douleurGene) alertes.push({ type: 'douleur', severite: 'moyenne', message: 'Douleur modérée signalée' + _zoneTxt })
+  else if (douleurLegere) alertes.push({ type: 'douleur', severite: 'basse', message: 'Gêne légère signalée' + _zoneTxt })
   if (fatigueHaute) alertes.push({ type: 'fatigue', severite: 'moyenne', message: `Fatigue élevée (${Math.round(fat * 10) / 10}/5)` })
   if (sommeilBas) alertes.push({ type: 'sommeil', severite: 'moyenne', message: `Sommeil dégradé (${Math.round((som as number) * 10) / 10}/5)` })
 
@@ -2845,7 +2871,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
   // d'eux. => on exclut charge/surcharge (comme sous_charge/absence) du verdict.
   const courbHaute = s.courbatures != null && courb >= CORE_SEUILS.courbatures.haut
   const readinessFlag = fatigueHaute || sommeilBas || recFaible || douleurGene || courbHaute || s.injStatut === 'retour_progressif'
-  const alertesEtat = alertes.filter(a => a.type !== 'sous_charge' && a.type !== 'absence' && a.type !== 'charge' && a.type !== 'surcharge')
+  const alertesEtat = alertes.filter(a => a.type !== 'sous_charge' && a.type !== 'absence' && a.type !== 'charge' && a.type !== 'surcharge' && a.severite !== 'basse')
   let niveau: number
   // RÈGLE DE SÉVÉRITÉ (demande porteur) : le ROUGE (niveau 2) est RÉSERVÉ à une
   // BLESSURE modérée/grave (ou indispo) ou une DOULEUR FORTE. Tout le reste —
@@ -2856,12 +2882,30 @@ function evaluerEtatAthlete(s: EtatInput): any {
   if (eff.niveauMin != null && niveau < eff.niveauMin) niveau = eff.niveauMin
   if (confiance === 'non_interpretable') niveau = 0   // nouvel athlète : pas de fausse alerte
 
+  // CAUSES du verdict (règle 6bis) : ce qui a RÉELLEMENT produit Vigilance / rouge,
+  // affiché tel quel sous le verdict (avant : la cause, ex. une douleur, n'apparaissait pas).
+  const causes: string[] = []
+  if (niveau >= 1) {
+    const _dz = s.douleurZone ? ' — ' + String(s.douleurZone).toLowerCase() : ''
+    const _dd = s.douleurDate ? ' (' + String(s.douleurDate).slice(8, 10) + '/' + String(s.douleurDate).slice(5, 7) + ')' : ''
+    if (s.injStatut === 'indispo') causes.push('Indisponible (blessure)')
+    else if (s.blessureGrave === true) causes.push('Blessure en cours')
+    if (douleurForte) causes.push('Douleur forte' + _dz + _dd)
+    else if (douleurGene) causes.push('Douleur modérée' + _dz + _dd)
+    if (fatigueHaute) causes.push('Fatigue élevée')
+    if (sommeilBas) causes.push('Sommeil dégradé')
+    if (recFaible) causes.push('Récupération faible')
+    if (courbHaute) causes.push('Courbatures importantes')
+    if (s.injStatut === 'retour_progressif') causes.push('Retour progressif de blessure')
+    if (!causes.length && eff.niveauMin != null) causes.push('Contexte déclaré (' + ctx.replace(/_/g, ' ') + ')')
+  }
+
   // --- Recommandation (explicable, non médicale) ---
   let reco: string
   if (s.injStatut === 'indispo') reco = 'Indisponible — poursuivre la réathlétisation.'
   else if (confiance === 'non_interpretable') reco = 'Données insuffisantes pour établir une tendance.'
   else if (douleurForte) reco = 'Douleur signalée — évaluer avant de charger.'
-  else if (douleurGene) reco = 'Gêne récente — surveiller, avis kiné si besoin.'
+  else if (douleurGene) reco = 'Douleur modérée — adapte la charge sur la zone et surveille ; avis kiné si ça persiste.'
   else if (recFaibleConcordante) reco = 'Récupération faible + autre signal — alléger et surveiller de près.'
   else if (recFaible) reco = 'Récupération faible — vigilance, alléger si ça persiste.'
   else if (s.injStatut === 'retour_progressif') reco = 'Retour progressif — respecter la progressivité de charge.'
@@ -2883,6 +2927,7 @@ function evaluerEtatAthlete(s: EtatInput): any {
 
   const out: any = {
     niveau,
+    causes,
     statut: STA[niveau],
     disponibilite: { niveau: NIV[niveau] },   // couleur retirée (Phase 3B) → mapping front
     surchargeN, surcharge: ['Faible', 'Modéré', 'Élevé'][surchargeN],
@@ -3009,7 +3054,7 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
       // >>> MOTEUR CENTRAL — statut, alertes, dispo, risque, récup, reco, confiance <<<
       const etat = evaluerEtatAthlete({
         acwr, acwrFiable, seances7,
-        douleur: sig.douleur, fatigue: sig.fatigue, sommeil: sig.sommeil, stress: null, courbatures: null,
+        douleur: sig.douleur, douleurZone: sig.douleurZone, douleurDate: sig.douleurDate, fatigue: sig.fatigue, sommeil: sig.sommeil, stress: null, courbatures: null,
         injStatut: inj ? inj.statut : null,
         ctxEtat: ctxEtatOf(j.athlete_id),
         q: { jours: histoDays != null ? histoDays : (a.charge7 > 0 || sig.wellnessN > 0 ? 7 : 0), wellnessN: sig.wellnessN, hasCharge: a.charge7 > 0 || a.charge28 > 0 },
@@ -3239,7 +3284,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     const acwrFiableF = fiabiliteACWR(premiereCharge, contexte, now, acwrCalcF.joursActifs28, acwrCalcF.joursActifsChronique)
     const etat = evaluerEtatAthlete({
       acwr, acwrFiable: acwrFiableF, seances7: seances7f,
-      douleur: sig7.douleur, fatigue: sig7.fatigue, sommeil: sig7.sommeil,
+      douleur: sig7.douleur, douleurZone: sig7.douleurZone, douleurDate: sig7.douleurDate, fatigue: sig7.fatigue, sommeil: sig7.sommeil,
       stress: _n(bienetre.stress), courbatures: _n(bienetre.courbatures),
       injStatut: injActive ? (injActive.statut as any) : null,
       ctxEtat,
@@ -3249,7 +3294,7 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
     const moteur: any = {
       disponibilite: etat.disponibilite,
       surcharge: etat.surcharge, risque_blessure: etat.risque_blessure, recup: etat.recup,
-      reco: etat.reco, confiance: etat.confiance, alertes: etat.alertes,
+      reco: etat.reco, confiance: etat.confiance, alertes: etat.alertes, causes: etat.causes,
       acwr_fiable: etat.acwr_fiable, acwr_categorie: etat.acwr_categorie,
       seuils_sante: seuilsSanteAPI(),   // Phase 4C-A : CORE_SEUILS → API → NovalyzEngine
     }

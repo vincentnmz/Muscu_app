@@ -42,7 +42,7 @@ const eq = (n, got, exp) => check(n, got === exp, JSON.stringify(exp), JSON.stri
 
 const NOW = new Date('2026-08-20T12:00:00Z');   // fenêtre 7 j : dIso ≥ 2026-08-13
 
-// ── A. _aggSignaux — douleur=MAX, fatigue=MAX, sommeil=MOYENNE, fenêtre 7 j ──
+// ── A. _aggSignaux — douleur=DERNIÈRE saisie (oct. 2026), fatigue=MAX, sommeil=MOYENNE, fenêtre 7 j ──
 const be = (date, d, f, s) => ({ date, douleur: d, fatigue_musculaire: f, sommeil: s });
 const s0 = _aggSignaux([], NOW);
 eq('aucun wellness → douleur null', s0.douleur, null);
@@ -55,13 +55,13 @@ eq('1 wellness → fatigue 3', s1.fatigue, 3);
 eq('1 wellness → sommeil 4', s1.sommeil, 4);
 eq('1 wellness → wellnessN 1', s1.wellnessN, 1);
 const sN = _aggSignaux([be('2026-08-19', 2, 3, 4), be('2026-08-15', 3, 5, 2)], NOW);
-eq('plusieurs → douleur = MAX (3)', sN.douleur, 3);
+eq('plusieurs → douleur = DERNIÈRE saisie (08-19 → 2), plus le max', sN.douleur, 2);
 eq('plusieurs → fatigue = MAX (5)', sN.fatigue, 5);
 eq('plusieurs → fatigueMoy = MOYENNE ((3+5)/2 = 4)', sN.fatigueMoy, 4);
 eq('plusieurs → sommeil = MOYENNE ((4+2)/2 = 3)', sN.sommeil, 3);
 eq('plusieurs → wellnessN 2', sN.wellnessN, 2);
 const sHors = _aggSignaux([be('2026-08-19', 2, 3, 4), be('2026-08-15', 3, 5, 2), be('2026-08-10', 5, 5, 5)], NOW);
-eq('donnée hors fenêtre (08-10) ignorée → douleur reste 3', sHors.douleur, 3);
+eq('donnée hors fenêtre (08-10) ignorée → douleur reste la dernière (2)', sHors.douleur, 2);
 eq('hors fenêtre ignorée → wellnessN reste 2', sHors.wellnessN, 2);
 const sMiss = _aggSignaux([{ date: '2026-08-19', douleur: '', fatigue_musculaire: 2, sommeil: null }], NOW);
 eq('valeurs manquantes : douleur "" ignorée → null', sMiss.douleur, null);

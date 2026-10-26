@@ -28,7 +28,7 @@ const check = (nom, cond, att, obt) => { if (cond) ok++; else { ko++; console.lo
 console.log('=== Inventaire SEUILS front (figé) ===');
 const INV = {
   sommeilFaible: 2, sommeilBon: 4, energieFaible: 2, energieBonne: 4,
-  fatigueElevee: 4, fatigueFaible: 2, douleurElevee: 3, ressentiDur: 2, ressentiFacile: 4,
+  fatigueElevee: 4, fatigueFaible: 2, douleurElevee: 4, ressentiDur: 2, ressentiFacile: 4,
   acwrEleve: 1.5, acwrBas: 0.8, acwrOptMin: 0.8, acwrOptMax: 1.3,
   tonnageHaussePct: 15, tonnageBaissePct: -15, chargeVarPct: 3,
   seancesFaible: 1, seancesEleve: 5, poidsVar: 0.3, progExcellenteUp: 3, progExcellenteDownMax: 1,

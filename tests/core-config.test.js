@@ -42,8 +42,9 @@ const CORE_CONTEXTES = extraireLitteral(SRC, 'CORE_CONTEXTES');
 
 console.log('=== 1. Valeurs de configuration = valeurs canoniques 3A ===');
 // Seuils santé/charge
-check('douleur.gene', CORE_SEUILS.douleur.gene === 2, 2, CORE_SEUILS.douleur.gene);
-check('douleur.forte', CORE_SEUILS.douleur.forte === 3, 3, CORE_SEUILS.douleur.forte);
+check('douleur.attention', CORE_SEUILS.douleur.attention === 2, 2, CORE_SEUILS.douleur.attention);
+check('douleur.gene', CORE_SEUILS.douleur.gene === 3, 3, CORE_SEUILS.douleur.gene);
+check('douleur.forte', CORE_SEUILS.douleur.forte === 4, 4, CORE_SEUILS.douleur.forte);
 check('fatigue.haute', CORE_SEUILS.fatigue.haute === 4, 4, CORE_SEUILS.fatigue.haute);
 check('sommeil.bas', CORE_SEUILS.sommeil.bas === 2, 2, CORE_SEUILS.sommeil.bas);
 check('courbatures.haut', CORE_SEUILS.courbatures.haut === 4, 4, CORE_SEUILS.courbatures.haut);

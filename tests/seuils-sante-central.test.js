@@ -1,6 +1,6 @@
 /* =============================================================================
  * PHASE 4C — Verrou des seuils santé + frontières (AVANT tout câblage).
- * 1. verrouille les valeurs Core : sommeil.bas=2, fatigue.haute=4, douleur.forte=3 ;
+ * 1. verrouille les valeurs Core : sommeil.bas=2, fatigue.haute=4, douleur.forte=4 (oct. 2026) ;
  * 2. vérifie via le VRAI NovalyzEngine que les frontières des signaux santé sont
  *    exactement <=2 / >=4 / >=3 (référence « Avant ») ;
  * 3. verrouille l'override contextuel intensification.fatigueElevee = 5 (≠ Core).
@@ -36,7 +36,7 @@ const check = (nom, cond, att, obt) => { if (cond) ok++; else { ko++; console.lo
 console.log('=== 1. Valeurs Core verrouillées ===');
 check('CORE_SEUILS.sommeil.bas', CORE_SEUILS.sommeil.bas === 2, 2, CORE_SEUILS.sommeil.bas);
 check('CORE_SEUILS.fatigue.haute', CORE_SEUILS.fatigue.haute === 4, 4, CORE_SEUILS.fatigue.haute);
-check('CORE_SEUILS.douleur.forte', CORE_SEUILS.douleur.forte === 3, 3, CORE_SEUILS.douleur.forte);
+check('CORE_SEUILS.douleur.forte', CORE_SEUILS.douleur.forte === 4, 4, CORE_SEUILS.douleur.forte);
 
 console.log('=== 2. Frontières des signaux santé (NovalyzEngine réel) ===');
 const CAS = [
@@ -45,8 +45,8 @@ const CAS = [
   ['sommeil 3 → PAS faible',  sig({ sommeil: 3 }).sommeilFaible === false, false],
   ['fatigue 3 → PAS élevée',  sig({ fatigue: 3 }).fatigueElevee === false, false],
   ['fatigue 4 → élevée',      sig({ fatigue: 4 }).fatigueElevee === true,  true],
-  ['douleur 2 → PAS élevée',  sig({ douleur: 2 }).douleurElevee === false, false],
-  ['douleur 3 → élevée',      sig({ douleur: 3 }).douleurElevee === true,  true],
+  ['douleur 3 → PAS élevée',  sig({ douleur: 3 }).douleurElevee === false, false],
+  ['douleur 4 → élevée',      sig({ douleur: 4 }).douleurElevee === true,  true],
 ];
 for (const [nom, cond] of CAS) { check(nom, cond, 'ok', 'ko'); console.log(`  ${(nom + '                      ').slice(0, 24)} ${cond ? '✅' : '❌'}`); }
 
@@ -56,14 +56,14 @@ const idsDe = (d) => (Engine.analyser(d) || []).map(r => r.id).sort();
 // Sans seuils_sante → fallback 2/4/3 → fatigue_generale se déclenche.
 const sansBS = idsDe(dataFat);
 // Avec seuils_sante backend = défaut (2/4/3) → PARITÉ stricte avec le fallback.
-const avecDefaut = idsDe({ ...dataFat, seuils_sante: { sommeilBas: 2, fatigueHaute: 4, douleurForte: 3 } });
+const avecDefaut = idsDe({ ...dataFat, seuils_sante: { sommeilBas: 2, fatigueHaute: 4, douleurForte: 4 } });
 check('parité fallback ↔ backend défaut', JSON.stringify(sansBS) === JSON.stringify(avecDefaut), sansBS.join(','), avecDefaut.join(','));
 check('fatigue_generale présent (fatigue 4 ≥ 4)', sansBS.includes('fatigue_generale'), 'présent', sansBS.join(','));
 // Preuve que le backend PILOTE réellement : fatigueHaute=99 → fatigue 4 ne déclenche plus.
-const avec99 = idsDe({ ...dataFat, seuils_sante: { sommeilBas: 2, fatigueHaute: 99, douleurForte: 3 } });
+const avec99 = idsDe({ ...dataFat, seuils_sante: { sommeilBas: 2, fatigueHaute: 99, douleurForte: 4 } });
 check('backend fatigueHaute=99 consommé → fatigue_generale absent', !avec99.includes('fatigue_generale'), 'absent', avec99.join(','));
 console.log(`  sans BS: [${sansBS.join(', ')}]`);
-console.log(`  BS défaut (2/4/3): [${avecDefaut.join(', ')}] — parité ✅`);
+console.log(`  BS défaut (2/4/4): [${avecDefaut.join(', ')}] — parité ✅`);
 console.log(`  BS fatigueHaute=99: [${avec99.join(', ')}] — backend piloté ✅`);
 
 console.log('=== 4. Override contextuel intensification (≠ Core) ===');

@@ -103,7 +103,7 @@ function reproductionEtat(s) {
   }
   const doul = s.douleur ?? 0, fat = s.fatigue ?? 0, som = s.sommeil, courb = s.courbatures ?? 0;
   const chargeHaute = surchargeN >= 1, sommeilBas = som != null && som <= 2, fatigueHaute = fat >= 4;
-  const douleurGene = doul >= 2, douleurForte = doul >= 3;
+  const douleurGene = doul >= 3, douleurForte = doul >= 4, douleurLegere = !douleurGene && doul >= 2;
   const courbHaute = s.courbatures != null && courb >= 4;
   const sousCharge = ffOk ? (s.ffRatio != null && s.ffRatio < 0.80) : (acwrOk && s.acwr < 0.8);
   const tags = [];
@@ -111,7 +111,7 @@ function reproductionEtat(s) {
   if (surchargeN >= 2) tags.push('surcharge:h');
   else if (surchargeN === 1) tags.push('charge:m');
   else if (sousCharge && s.seances7 > 0 && !reposPrevu) tags.push('sous_charge:m');
-  if (douleurForte) tags.push('douleur:h'); else if (douleurGene) tags.push('douleur:m');
+  if (douleurForte) tags.push('douleur:h'); else if (douleurGene) tags.push('douleur:m'); else if (douleurLegere) tags.push('douleur:b');
   if (fatigueHaute) tags.push('fatigue:m');
   if (sommeilBas) tags.push('sommeil:m');
   const rbPts = surchargeN + (douleurForte ? 2 : douleurGene ? 1 : 0) + (fatigueHaute ? 1 : 0) + (courb >= 4 ? 1 : 0);
@@ -131,7 +131,7 @@ function reproductionEtat(s) {
   // La Vigilance vient des signaux de READINESS (fatigue, sommeil, récup faible,
   // douleur/gêne, courbatures, retour progressif).
   const readinessFlag = fatigueHaute || sommeilBas || recFaible || douleurGene || courbHaute || s.injStatut === 'retour_progressif';
-  const tagsEtat = tags.filter(t => !t.startsWith('sous_charge') && !t.startsWith('absence') && !t.startsWith('charge') && !t.startsWith('surcharge'));
+  const tagsEtat = tags.filter(t => !t.startsWith('sous_charge') && !t.startsWith('absence') && !t.startsWith('charge') && !t.startsWith('surcharge') && !t.endsWith(':b'));
   let niveau;
   // Règle de sévérité (miroir prod) : ROUGE réservé à blessure modérée/grave
   // (ou indispo) ou douleur forte. Charge haute seule → n'orange plus.
@@ -212,10 +212,12 @@ const CAS = [
   { nom: 'HO2 stress + sommeil bas + fatigue → récup faible → Vigilance', in: { acwr: 1.0, acwrFiable: true, stress: 5, courbatures: 4, seances7: 3, douleur: 0, fatigue: 4, sommeil: 2, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 1, statut: 'orange', dispo: 'Vigilance' } },
 
-  // Frontières douleur (gene=2 / forte=3) et sommeil (bas=2)
-  { nom: 'C1 douleur = 2 (=gene) → gêne', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 2, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
-    exp: { niveau: 1, statut: 'orange', risque_blessure: 'Modéré', recup: 'Excellent', acwr_categorie: 'normal', tags: ['douleur:m'], reco: 'Gêne récente — surveiller, avis kiné si besoin.' } },
-  { nom: 'C2 douleur = 3 (=forte) → rouge', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 3, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+  // Frontières douleur (oct. 2026 : attention=2 / gene=3 / forte=4) et sommeil (bas=2)
+  { nom: 'C0 douleur = 2 (Légère) → point d\'attention, reste Prêt', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 2, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    exp: { niveau: 0, statut: 'vert', dispo: 'Prêt', risque_blessure: 'Faible', recup: 'Excellent', acwr_categorie: 'normal', tags: ['douleur:b'] } },
+  { nom: 'C1 douleur = 3 (Modérée) → Vigilance', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 3, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
+    exp: { niveau: 1, statut: 'orange', risque_blessure: 'Modéré', recup: 'Excellent', acwr_categorie: 'normal', tags: ['douleur:m'], reco: 'Douleur modérée — adapte la charge sur la zone et surveille ; avis kiné si ça persiste.' } },
+  { nom: 'C2 douleur = 4 (Forte) → rouge', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 4, fatigue: 2, sommeil: 4, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 2, statut: 'rouge', risque_blessure: 'Modéré', acwr_categorie: 'normal', tags: ['douleur:h'], reco: 'Douleur signalée — évaluer avant de charger.' } },
   { nom: 'C3 sommeil = 2 (=bas) → orange', in: { acwr: 1.0, acwrFiable: true, seances7: 3, douleur: 0, fatigue: 2, sommeil: 2, courbatures: null, injStatut: null, ctxEtat: 'saison_normale', q: { jours: 60, wellnessN: 5, hasCharge: true } },
     exp: { niveau: 1, statut: 'orange', recup: 'Bon', risque_blessure: 'Faible', acwr_categorie: 'normal', tags: ['sommeil:m'], reco: 'Vigilance — surveiller les sensations, ne pas surcharger.' } },
