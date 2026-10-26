@@ -1345,6 +1345,35 @@ async function handleEnvoyerBilanMail(body: any): Promise<Response> {
   return jsonResp({ success: sent, email, error: sent ? null : "Échec de l'envoi (réessaie)." })
 }
 
+// Envoi de l'analyse morpho par e-mail. HTML construit SERVEUR à partir du
+// résultat structuré (chaînes échappées) → pas d'injection. Bac à sable Resend :
+// seul l'e-mail du compte propriétaire est délivré tant qu'un domaine n'est pas vérifié.
+function _mEsc(s: any): string { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+function _morphoMailHTML(nom: string, r: any, seg: any): string {
+  r = r || {}
+  const card = (title: string, inner: string) => `<div style="background:#141a28;border:1px solid #2a3450;border-radius:12px;padding:12px 14px;margin:0 0 12px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#8b96b0;margin-bottom:8px">${title}</div>${inner}</div>`
+  let b = ''
+  if (r.morphotype) b += card("Vue d'ensemble", `<div style="font-size:14px;color:#e9eef8">${_mEsc(r.morphotype)}</div>`)
+  if (Array.isArray(r.equilibre) && r.equilibre.length) b += card('Équilibre musculaire', r.equilibre.map((e: any) => `<div style="font-size:13px;color:#e9eef8;margin:3px 0">${_mEsc(e.g)} — <b>${_mEsc(e.n)}</b></div>`).join(''))
+  if (Array.isArray(r.priorites) && r.priorites.length) b += card("Priorités d'entraînement", r.priorites.map((p: any, i: number) => `<div style="font-size:13px;color:#e9eef8;margin:5px 0"><b>${i + 1}. ${_mEsc(p.t)}</b>${p.d ? ` — <span style="color:#8b96b0">${_mEsc(p.d)}</span>` : ''}${Array.isArray(p.ex) && p.ex.length ? `<div style="color:#8b96b0;font-size:12px">${p.ex.map((x: any) => _mEsc(x)).join(' · ')}</div>` : ''}</div>`).join(''))
+  if (Array.isArray(r.exercices) && r.exercices.length) b += card('Exercices selon les leviers', r.exercices.map((e: any) => `<div style="font-size:13px;color:#e9eef8;margin:6px 0"><b>${_mEsc(e.t)}</b>${e.d ? ` — <span style="color:#8b96b0">${_mEsc(e.d)}</span>` : ''}${Array.isArray(e.bons) && e.bons.length ? `<div style="color:#37d3b5;font-size:12px">À privilégier : ${e.bons.map((x: any) => _mEsc(x)).join(', ')}</div>` : ''}${Array.isArray(e.eviter) && e.eviter.length ? `<div style="color:#ff8a8d;font-size:12px">À éviter : ${e.eviter.map((x: any) => _mEsc(x)).join(', ')}</div>` : ''}</div>`).join(''))
+  if (r.reco) b += card('Reco Novalyz', `<div style="font-size:13px;color:#e9eef8">${_mEsc(r.reco)}</div>`)
+  const SL: Record<string, string> = { taille: 'Taille', tronc: 'Tronc', epaules: 'Épaules', hanches: 'Hanches', humerus: 'Humérus', avantbras: 'Avant-bras', envergure: 'Envergure', femur: 'Fémur', tibia: 'Tibia' }
+  const sp = Object.keys(SL).filter(k => seg && seg[k] != null && Number(seg[k]) > 0).map(k => `${SL[k]} ${Number(seg[k])} cm`)
+  if (sp.length) b += card('Mesures de segment', `<div style="font-size:12px;color:#8b96b0">${sp.map(x => _mEsc(x)).join(' · ')}</div>`)
+  return `<!doctype html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,Helvetica,sans-serif;background:#0b0e14;color:#e9eef8;margin:0;padding:16px">${_mailHeader()}<div style="max-width:620px;margin:0 auto"><h2 style="margin:0 0 4px">Analyse morpho-anatomique${nom ? ` — ${_mEsc(nom)}` : ''}</h2><div style="color:#8b96b0;font-size:12px;margin-bottom:14px">Indicatif, non médical. Généré par Novalyz.</div>${b || '<div style="color:#8b96b0">Analyse vide.</div>'}</div></body></html>`
+}
+async function handleEnvoyerMorphoMail(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  let to = String(body.to || '').trim()
+  if (!to && athlete_id) { try { const { data } = await sb().from('athletes').select('email').eq('id', athlete_id); if (data?.length && data[0].email) to = String(data[0].email).trim() } catch (_) {} }
+  if (!to && athlete_id) { try { const { data } = await sb().from('athletes_email').select('email').eq('athlete_id', athlete_id).limit(1); if (data?.length && data[0].email) to = String(data[0].email).trim() } catch (_) {} }
+  if (!to || !_emailValide(to)) return jsonResp({ success: false, error: "Aucune adresse e-mail valide (renseigne-la d'abord)." })
+  const html = _morphoMailHTML(String(body.nom || ''), body.resultat || {}, body.segments || {})
+  const sent = await _envoyerEmail(to, 'Novalyz — Analyse morphologique', html)
+  return jsonResp({ success: sent, email: to, error: sent ? null : "Échec de l'envoi. (Bac à sable Resend : seul l'e-mail du compte est délivré pour l'instant.)" })
+}
+
 // ── Reset de mot de passe par email (P2 — backend seul) ───────────────────────
 // Réponse TOUJOURS générique pour un email valide (anti-énumération) : on ne
 // révèle jamais si un compte existe. Le token brut n'existe QUE dans le lien de
@@ -5098,6 +5127,55 @@ ${ctxTxt}`
 // garde que le texte renvoyé (non persisté non plus). Consentement obligatoire.
 const MORPHO_QUOTA_JOUR = 1
 
+// Recommandations d'exercices DÉTERMINISTES à partir des leviers (segments mesurés)
+// et des antécédents déclarés. Règles biomécaniques figées — AUCUNE invention, aucun
+// chiffre sorti du chapeau : on ne déduit que ce que les ratios de leviers impliquent.
+// Chaque item : { t, d, bons[], eviter[], src:'mesure'|'antecedent' }.
+function recoMorphoExercices(seg: any, q: any): any[] {
+  const num = (x: any) => { const v = Number(x); return (x != null && isFinite(v) && v > 0) ? v : null }
+  const taille = num(seg?.taille), tronc = num(seg?.tronc), femur = num(seg?.femur), tibia = num(seg?.tibia)
+  const humerus = num(seg?.humerus), avant = num(seg?.avantbras), envergure = num(seg?.envergure)
+  const epaules = num(seg?.epaules), hanches = num(seg?.hanches)
+  const out: any[] = []
+
+  // 1) Squat : rapport fémur / tronc (à défaut fémur / tibia)
+  if (femur && tronc) {
+    const r = femur / tronc
+    if (r >= 0.82) out.push({ t: 'Fémurs longs vs tronc', d: "En squat, ton buste penchera davantage vers l'avant : privilégie des variantes qui gardent le dos sûr et le genou libre.", bons: ['Squat gobelet', 'Hack squat', 'Squat barre haute + talons surélevés', 'Presse à cuisses'], eviter: ['Good morning lourd', 'Squat barre basse très large au départ'], src: 'mesure' })
+    else if (r <= 0.72) out.push({ t: 'Tronc long / fémurs courts', d: 'Tes leviers autorisent un squat plus vertical, dos droit.', bons: ['Back squat barre basse', 'Front squat', 'Squat barre haute'], eviter: [], src: 'mesure' })
+    else out.push({ t: 'Leviers de squat équilibrés', d: 'Pas de contrainte marquée : les variantes de squat te conviennent.', bons: ['Back squat', 'Front squat'], eviter: [], src: 'mesure' })
+  } else if (femur && tibia) {
+    if (femur / tibia >= 1.15) out.push({ t: 'Fémurs longs (vs tibias)', d: 'Buste plus penché en squat : garde le dos neutre.', bons: ['Squat gobelet', 'Hack squat', 'Talons surélevés'], eviter: ['Good morning lourd'], src: 'mesure' })
+  }
+
+  // 2) Bras : ape index (envergure − taille), à défaut (humérus+avant-bras)/taille
+  const bras = (humerus && avant) ? (humerus + avant) : null
+  let longArms = false, shortArms = false
+  if (envergure && taille) { const ape = envergure - taille; if (ape >= 3) longArms = true; else if (ape <= -3) shortArms = true }
+  else if (bras && taille) { const r = bras / taille; if (r >= 0.455) longArms = true; else if (r <= 0.40) shortArms = true }
+  if (longArms) out.push({ t: 'Bras longs', d: 'Avantage au soulevé de terre (course courte) ; amplitude plus longue au développé couché.', bons: ['Soulevé de terre', 'Développé couché prise modérée', 'Écarté (pecs)', 'Rowing'], eviter: ['Développé couché prise très large'], src: 'mesure' })
+  else if (shortArms) out.push({ t: 'Bras courts', d: 'Développé couché favorisé ; au soulevé de terre la course est un peu plus longue (un départ surélevé peut aider).', bons: ['Développé couché', 'Dips', 'Rack pull / SDT surélevé'], eviter: [], src: 'mesure' })
+
+  // 3) Épaules vs hanches
+  if (epaules && hanches) {
+    const r = epaules / hanches
+    if (r >= 1.45) out.push({ t: 'Carrure large (épaules ≫ hanches)', d: 'Atout pour un visuel en V : entretiens dos et épaules.', bons: ['Tractions', 'Développé épaules', 'Rowing'], eviter: [], src: 'mesure' })
+    else if (r <= 1.15) out.push({ t: 'Bassin large vs épaules', d: 'Élargir les épaules équilibre la silhouette ; au squat, un stance un peu plus large peut être plus naturel.', bons: ['Développé épaules', 'Élévations latérales', 'Tirage'], eviter: [], src: 'mesure' })
+  }
+
+  // 4) Garde-fous — antécédents / état (sécurité, sans avis médical)
+  const ant: string[] = Array.isArray(q?.antecedents) ? q.antecedents.map((x: any) => String(x)) : []
+  const femmeFlags: string[] = Array.isArray(q?.femme) ? q.femme.map((x: any) => String(x)) : []
+  const has = (k: string) => ant.indexOf(k) >= 0
+  if (has('hernie') || has('blessure')) out.push({ t: 'Garde-fou — dos sensible', d: 'On écarte la flexion lombaire chargée ; variantes avec appui / dos neutre.', bons: ['Hip thrust', 'Presse à cuisses', 'Squat gobelet', 'Tirage poitrine appuyé'], eviter: ['Soulevé de terre lourd dos rond', 'Good morning'], src: 'antecedent' })
+  if (has('epaule')) out.push({ t: 'Garde-fou — épaule sensible', d: "On protège l'articulation : amplitude maîtrisée, prise neutre.", bons: ['Développé haltères prise neutre', 'Face pull', 'Élévations légères'], eviter: ['Développé nuque', 'Dips profonds', 'Développé très large'], src: 'antecedent' })
+  if (has('cardiaque') || has('hta')) out.push({ t: 'Garde-fou — cœur / tension', d: "Éviter l'hyperpression (blocage respiratoire) : respire, séries modérées. Avis médical recommandé.", bons: ['Séries 8–15 reps', 'Récupération suffisante'], eviter: ['Charges maximales en apnée (Valsalva)', 'Isométries longues maximales'], src: 'antecedent' })
+  if (has('prothese')) out.push({ t: 'Garde-fou — arthrose / prothèse', d: 'Travail sans douleur, amplitudes maîtrisées.', bons: ['Machines guidées', 'Amplitudes confortables'], eviter: ['Chocs / sauts', 'Amplitudes extrêmes douloureuses'], src: 'antecedent' })
+  if (femmeFlags.indexOf('grossesse') >= 0 || femmeFlags.indexOf('postpartum') >= 0) out.push({ t: 'Garde-fou — grossesse / post-partum', d: 'Priorité sécurité : avis médical / sage-femme requis (rien de médical ici).', bons: ['Renforcement doux', 'Plancher pelvien', 'Travail debout'], eviter: ['Décubitus dorsal prolongé', 'Hyperpression abdominale', 'Charges maximales'], src: 'antecedent' })
+
+  return out
+}
+
 async function handleAnalyseMorpho(body: any): Promise<Response> {
   const athlete_id = String(body.athlete_id || '')
   const images = Array.isArray(body.images) ? body.images : []
@@ -5126,6 +5204,23 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
     }
   } catch (_) {}
 
+  // Questionnaire + mesures de segment (morpho v2) : adaptent l'analyse (homme/femme),
+  // fiabilisent les proportions, et alimentent les recos d'exercices déterministes.
+  const q = (body.questionnaire && typeof body.questionnaire === 'object') ? body.questionnaire : {}
+  const seg = (body.segments && typeof body.segments === 'object') ? body.segments : {}
+  const SEG_LBL: Record<string, string> = { taille: 'taille', tronc: 'tronc (buste)', epaules: "largeur d'épaules", hanches: 'largeur de hanches', humerus: 'bras (humérus)', avantbras: 'avant-bras', envergure: 'envergure', femur: 'fémur', tibia: 'tibia' }
+  const segParts: string[] = []
+  for (const k of Object.keys(SEG_LBL)) { const v = Number((seg as any)[k]); if ((seg as any)[k] != null && isFinite(v) && v > 0) segParts.push(`${SEG_LBL[k]} ${v} cm`) }
+  const segTxt = segParts.join(' · ')
+  const sexe = String((q as any).sexe || '')
+  const sexeTxt = sexe === 'F' ? 'une femme' : sexe === 'H' ? 'un homme' : ''
+  const ANT_LBL: Record<string, string> = { hernie: 'hernie discale', scoliose: 'scoliose', epaule: 'épaule sensible', prothese: 'prothèse/arthrose', cardiaque: 'problème cardiaque', hta: 'hypertension', chirurgie: 'chirurgie récente', blessure: 'blessure en cours' }
+  const FEM_LBL: Record<string, string> = { grossesse: 'grossesse en cours', postpartum: 'post-partum récent', diastasis: 'diastasis' }
+  const antList = Array.isArray((q as any).antecedents) ? (q as any).antecedents.map((x: any) => ANT_LBL[String(x)] || String(x)) : []
+  const femList = Array.isArray((q as any).femme) ? (q as any).femme.map((x: any) => FEM_LBL[String(x)] || String(x)) : []
+  const antTxt = [...antList, ...femList].join(', ')
+  const exercices = recoMorphoExercices(seg, q)
+
   // Vues étiquetées (face / profil / dos) dans l'ordre des images envoyées.
   const views = Array.isArray(body.views) ? body.views.map((v: any) => String(v || '')) : []
   const content: any[] = []
@@ -5137,7 +5232,7 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   })
   if (!content.length) return jsonResp({ success: false, error: 'images invalides' })
   content.push({
-    type: 'text', text: `Analyse la morphologie pour orienter l'ENTRAÎNEMENT en musculation.${objTxt ? ` Objectif de la personne : ${objTxt}.` : ''}${mensTxt ? ` Mensurations fournies : ${mensTxt}.` : ' Aucune mensuration fournie (les proportions restent à confirmer).'}
+    type: 'text', text: `Analyse la morphologie pour orienter l'ENTRAÎNEMENT en musculation.${sexeTxt ? ` La personne est ${sexeTxt}.` : ''}${objTxt ? ` Objectif : ${objTxt}.` : ''}${segTxt ? ` Longueurs de segments fournies (cm) : ${segTxt} — tu PEUX donc affirmer les proportions correspondantes (confiance "mesure").` : (mensTxt ? ` Mensurations fournies : ${mensTxt}.` : ' Aucune mesure de segment fournie (les proportions restent à confirmer, confiance "mesure").')}${antTxt ? ` Antécédents/état signalés : ${antTxt} — tiens-en compte avec prudence (jamais d'avis médical).` : ''}
 
 Réponds UNIQUEMENT avec un objet JSON valide (aucun texte autour, aucune balise markdown), EXACTEMENT cette forme :
 {
@@ -5147,8 +5242,9 @@ Réponds UNIQUEMENT avec un objet JSON valide (aucun texte autour, aucune balise
  "posture": [ {"t":"observation posturale","c":"visible|probable|mesure"} ],
  "priorites": [ {"t":"titre court","d":"pourquoi en 1 phrase","ex":["exercice 1","exercice 2"]} ],
  "reco": "une phrase de synthèse actionnable",
- "mesures": "ce qu'il faudrait mesurer pour fiabiliser, ou ce que les mensurations fournies apportent"
-}`
+ "mesures": "ce qu'il faudrait mesurer pour fiabiliser, ou ce que les segments/mensurations fournis apportent"
+}
+N'inclus PAS de recommandations d'exercices basées sur les LEVIERS (longueurs de segments) dans ce JSON : elles sont calculées séparément de façon déterministe. "priorites" reste ta lecture issue des PHOTOS (groupes en retard à travailler).`
   })
 
   const system = `Tu es un préparateur physique. À partir de photos (face / profil / dos) et, si fournies, de mensurations de segments, tu orientes la MUSCULATION : groupes en avance / en retard, équilibre, posture globale.
@@ -5160,7 +5256,8 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
 - Pas de jugement esthétique ni sur le poids / le gras. Ton factuel et bienveillant.
 - Tu n'es PAS médecin : aucun diagnostic. Un doute postural → formule « à confirmer par un bilan de mouvement ».
 - Si une vue manque ou est inexploitable, signale-le dans "mesures" et baisse la confiance des constats concernés.
-- "equilibre" : liste les principaux groupes jugeables (ex. dos, épaules, pectoraux, bras, fessiers, quadriceps, ischios, mollets). "priorites" : 2 à 4 items, chacun avec des exercices concrets.`
+- "equilibre" : liste les principaux groupes jugeables (ex. dos, épaules, pectoraux, bras, fessiers, quadriceps, ischios, mollets). "priorites" : 2 à 4 items, chacun avec des exercices concrets.
+- Si le sexe est précisé, adopte la lecture anatomique correspondante (homme / femme). Si des antécédents/état sont signalés, reste prudent (adaptation, jamais de diagnostic).`
 
   let raw = ''
   try {
@@ -5185,6 +5282,10 @@ RÈGLES STRICTES — réponds en FRANÇAIS, UNIQUEMENT en JSON conforme au forma
     if (a >= 0 && b > a) s = s.slice(a, b + 1)
     resultat = JSON.parse(s)
   } catch (_) { resultat = null }
+
+  // Recos d'exercices DÉTERMINISTES (leviers + antécédents) attachées au résultat.
+  // Source de vérité = les règles ci-dessus, pas l'IA.
+  if (exercices.length) { if (!resultat) resultat = {}; (resultat as any).exercices = exercices }
 
   try { if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', athlete_id).eq('seance_id', 'morpho_quota').eq('cle', jour); else await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'morpho_quota', cle: jour, valeur: '1', unite: '', source: 'ia' }) } catch (_) {}
 
@@ -5638,6 +5739,7 @@ Deno.serve(async (req: Request) => {
         case 'saveNutrition':            return handleSaveNutrition(body)
         case 'chatIA':                   return handleChatIA(body)
         case 'analyseMorpho':            return handleAnalyseMorpho(body)
+        case 'envoyerMorphoMail':        return handleEnvoyerMorphoMail(body)
         case 'saveObjectifJoueur':       return handleSaveObjectifJoueur(body)
         case 'deleteObjectifJoueur':     return handleDeleteObjectifJoueur(body)
         case 'saveBlessure':             return handleSaveBlessure(body)

@@ -9462,6 +9462,40 @@ function _morphoResetForm(sexe) {
   } catch (e) {}
   _morphoQ.sexe = femme ? 'F' : 'H';
 }
+// Dernier résultat structuré (pour export PDF / e-mail).
+var _morphoLast = null;
+function _morphoExportBarHTML() {
+  return '<div class="mo-exportbar" style="display:flex;gap:8px;margin-top:14px">'
+    + '<button type="button" onclick="_morphoExportPDF()" style="flex:1;height:42px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font:inherit;font-weight:700;font-size:13px;border-radius:12px;cursor:pointer">🖨 PDF / Imprimer</button>'
+    + '<button type="button" onclick="_morphoExportMail()" style="flex:1;height:42px;border:none;background:var(--accent);color:var(--on-accent,#fff);font:inherit;font-weight:800;font-size:13px;border-radius:12px;cursor:pointer">✉ Envoyer par e-mail</button>'
+    + '</div>';
+}
+// Export PDF = fenêtre d'impression (l'utilisateur « Enregistrer au format PDF »).
+function _morphoExportPDF() {
+  var res = document.getElementById('morpho-result'); if (!res) return;
+  var nom = _morphoCibleNom || ((typeof athlete !== 'undefined' && athlete && athlete.nom) || '');
+  var date = new Date().toLocaleDateString('fr-FR');
+  var clone = res.cloneNode(true);
+  try { var bar = clone.querySelector('.mo-exportbar'); if (bar) bar.parentNode.removeChild(bar); } catch (e) {}
+  var w = window.open('', '_blank');
+  if (!w) { try { showToast('Autorise les pop-ups pour générer le PDF'); } catch (e) {} return; }
+  var light = ':root{--surface:#f6f8fc;--surface2:#eef2f9;--border:#dde3ee;--text:#111;--on-accent:#fff;--text-muted:#555;--text-subtle:#888;--accent:#1a5fff;--accent-a10:rgba(26,95,255,.1);--accent-a12:rgba(26,95,255,.12);--good:#0a8f4f;--warn:#b26a00;--danger:#c0343a;--bad:#c0343a}';
+  w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Analyse morpho' + (nom ? ' - ' + nom : '') + '</title><style>' + light + 'body{font-family:system-ui,Arial,sans-serif;background:#fff;color:#111;padding:24px;max-width:720px;margin:0 auto}h1{font-size:20px;margin:0 0 2px}.hd{color:#666;font-size:13px;margin-bottom:16px}</style></head><body><h1>Analyse morpho-anatomique' + (nom ? ' — ' + nom : '') + '</h1><div class="hd">' + date + ' · Novalyz · indicatif, non médical</div>' + clone.innerHTML + '<scr' + 'ipt>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},300);};</scr' + 'ipt></body></html>');
+  w.document.close();
+}
+// Envoi de l'analyse par e-mail (backend Resend, HTML construit serveur).
+async function _morphoExportMail() {
+  if (!_morphoLast) { try { showToast('Lance d’abord l’analyse'); } catch (e) {} return; }
+  var cibleId = _morphoCibleId || ((typeof athlete !== 'undefined' && athlete && athlete.athlete_id) || '');
+  var nom = _morphoCibleNom || ((typeof athlete !== 'undefined' && athlete && athlete.nom) || '');
+  try { showToast('Envoi en cours…'); } catch (e) {}
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'envoyerMorphoMail', athlete_id: cibleId, nom: nom, resultat: _morphoLast, segments: _morphoSeg }) });
+    var j = await r.json().catch(function () { return {}; });
+    if (j && j.success) { try { showToast('Analyse envoyée à ' + (j.email || 'ton e-mail')); } catch (e) {} }
+    else { try { showToast((j && j.error) || 'Échec de l’envoi', '#DC3545'); } catch (e) {} }
+  } catch (e) { try { showToast('Connexion impossible', '#DC3545'); } catch (_) {} }
+}
 function _ouvrirMorphoCoach() {
   var a = (typeof coachAthleteCourant !== 'undefined') ? coachAthleteCourant : null;
   if (!a || !a.athlete_id) { try { showToast('Sélectionne un athlète'); } catch (e) {} return; }
@@ -9480,7 +9514,7 @@ function ouvrirMorpho(cibleId, cibleNom) {
   ['face', 'profil', 'dos'].forEach(function (w) { var p = document.getElementById('morpho-prev-' + w); if (p) { p.style.backgroundImage = ''; p.textContent = '+ photo'; } });
   ['face', 'profil', 'dos'].forEach(function (w) { var ph = document.getElementById('mo-ph-' + w); if (ph) ph.classList.remove('filled'); });
   var c = document.getElementById('morpho-consent'); if (c) c.checked = false;
-  var r = document.getElementById('morpho-result'); if (r) r.innerHTML = '';
+  var r = document.getElementById('morpho-result'); if (r) r.innerHTML = ''; _morphoLast = null;
   var g = document.getElementById('morpho-go'); if (g) { g.disabled = false; g.textContent = 'Analyser ma morphologie'; }
   // Questionnaire + segments remis à zéro ; figure orientée selon le sexe connu.
   var sexe = _morphoFromCoach
@@ -9551,6 +9585,18 @@ function _morphoRender(d) {
   }
   if (d.reco) out += '<div style="background:var(--accent-a12,rgba(26,95,255,.12));border:1px solid var(--accent);border-radius:14px;padding:12px 14px;margin-bottom:11px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:3px">Reco Novalyz</div><div style="font-size:12.5px;line-height:1.5">' + esc(d.reco) + '</div></div>';
   if (d.mesures) out += card('Fiabilité', '<div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;margin-bottom:9px"><span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted)"><i style="width:9px;height:9px;border-radius:3px;background:var(--good)"></i>Visible</span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted)"><i style="width:9px;height:9px;border-radius:3px;background:var(--warn)"></i>À confirmer</span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted)"><i style="width:9px;height:9px;border-radius:3px;background:var(--text-subtle)"></i>À mesurer</span></div><div style="font-size:11.5px;color:var(--text-muted);line-height:1.5">' + esc(d.mesures) + '</div>');
+  // Exercices selon les leviers (segments) + garde-fous antécédents — DÉTERMINISTE (backend).
+  if (d.exercices && d.exercices.length) {
+    var exChip = function (x, bad) { return '<span style="font-size:10.5px;font-weight:700;border-radius:7px;padding:3px 8px;margin:4px 4px 0 0;display:inline-block;background:' + (bad ? 'rgba(229,72,77,.1)' : 'rgba(0,168,84,.12)') + ';border:1px solid ' + (bad ? 'rgba(229,72,77,.35)' : 'rgba(0,168,84,.35)') + ';color:' + (bad ? '#ff8a8d' : 'var(--good)') + ';' + (bad ? 'text-decoration:line-through' : '') + '">' + esc(x) + '</span>'; };
+    var lev = d.exercices.map(function (e, i) {
+      var chips = ((e.bons || []).map(function (x) { return exChip(x, false); }).join('')) + ((e.eviter || []).map(function (x) { return exChip(x, true); }).join(''));
+      var badge = (e.src === 'antecedent')
+        ? '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(224,120,0,.16);color:var(--warn)">Antécédent</span>'
+        : '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(0,168,84,.14);color:var(--good)">Mesuré</span>';
+      return '<div style="padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div style="font-size:12.5px;font-weight:700">' + esc(e.t) + badge + '</div>' + (e.d ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">' + esc(e.d) + '</div>' : '') + (chips ? '<div style="margin-top:4px">' + chips + '</div>' : '') + '</div>';
+    }).join('');
+    out += '<div style="background:linear-gradient(135deg,rgba(26,95,255,.08),rgba(124,92,255,.10));border:1px solid rgba(124,92,255,.3);border-radius:16px;padding:13px 14px;margin-bottom:11px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:2px">Exercices selon tes leviers</div><div style="font-size:10.5px;color:var(--text-subtle);margin-bottom:4px">Déduits de tes segments (règles biomécaniques) + antécédents — aucune valeur inventée.</div>' + lev + '</div>';
+  }
   out += '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.5;text-align:center;margin-top:4px">Basé sur des principes reconnus (biomécanique, correctif postural, pratique de la muscu). Indicatif, non médical.</div>';
   return out || '<div style="font-size:12px;color:var(--text-muted);padding:8px">Analyse vide — réessaie.</div>';
 }
@@ -9571,11 +9617,12 @@ async function _morphoAnalyser() {
     var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'analyseMorpho', athlete_id: cibleId, consent: true, images: imgs, views: views, questionnaire: _morphoQ, segments: _morphoSeg }) });
     var j = await r.json().catch(function () { return {}; });
     if (res) {
-      if (j && j.resultat && typeof j.resultat === 'object') { res.innerHTML = _morphoRender(j.resultat); }
+      if (j && j.resultat && typeof j.resultat === 'object') { _morphoLast = j.resultat; res.innerHTML = _morphoRender(j.resultat) + _morphoExportBarHTML(); }
       else {
         var txt = (j && j.analyse) ? j.analyse : 'Analyse indisponible pour le moment.';
         var html = escapeHtml(txt).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        res.innerHTML = '<div style="font-size:12.5px;line-height:1.55;color:var(--text);white-space:pre-wrap;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;">' + html + '</div>';
+        _morphoLast = { reco: txt };
+        res.innerHTML = '<div style="font-size:12.5px;line-height:1.55;color:var(--text);white-space:pre-wrap;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;">' + html + '</div>' + ((j && (j.disabled || j.limited)) ? '' : _morphoExportBarHTML());
       }
     }
   } catch (e) { if (res) res.innerHTML = '<div style="font-size:12px;color:var(--danger);text-align:center;padding:8px;">Connexion impossible. Réessaie.</div>'; }
