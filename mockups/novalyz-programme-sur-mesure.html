@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Programme sur mesure — maquette</title>
+<style>
+  :root{
+    --bg:#0b0f1a;--surface:#121a2b;--surface2:#0f1626;--border:#243049;
+    --text:#e7ecf5;--muted:#8b96b0;--subtle:#6b7793;
+    --accent:#1a5fff;--accent2:#4d82ff;--violet:#7c5cff;
+    --good:#00c96e;--warn:#f5a623;--bad:#e5484d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#05080f;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;padding:20px 12px 60px}
+  .cap{font-size:12px;color:var(--subtle);text-align:center;max-width:720px;margin:0 auto 16px}
+  .cap b{color:var(--text)}
+  .page{max-width:720px;margin:0 auto;background:var(--bg);border:1px solid var(--border);border-radius:22px;overflow:hidden}
+  .top{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid var(--border);background:var(--surface)}
+  .top .ic{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#1a5fff,#7c5cff);display:grid;place-items:center;flex:none}
+  .top .ic svg{width:21px;height:21px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .top h1{font-size:17px;margin:0}
+  .top .sub{font-size:11.5px;color:var(--muted)}
+  .prem{margin-left:auto;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:rgba(124,92,255,.16);color:#b9a6ff;border:1px solid rgba(124,92,255,.4);border-radius:7px;padding:4px 8px}
+  .body{padding:16px}
+  .why{background:linear-gradient(135deg,rgba(26,95,255,.08),rgba(124,92,255,.10));border:1px solid rgba(124,92,255,.3);border-radius:16px;padding:14px;margin-bottom:16px}
+  .why h3{margin:0 0 9px;font-size:13px}
+  .why .row{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--border);font-size:12.5px}
+  .why .row:first-of-type{border-top:none}
+  .why .row .k{flex:none;width:118px;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding-top:1px}
+  .why .row .v b{color:var(--text)}
+  .sec{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--accent2);margin:18px 2px 10px}
+  .week{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .day{flex:1;min-width:150px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+  .day .n{font-size:10px;font-weight:800;color:var(--subtle);text-transform:uppercase}
+  .day .t{font-size:13px;font-weight:800;margin-top:2px}
+  .day .f{font-size:11px;color:var(--muted);margin-top:2px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:14px}
+  .card .hd{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .card .hd .b{width:26px;height:26px;border-radius:8px;background:var(--accent);color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none}
+  .card .hd .t{font-weight:800;font-size:14px}
+  .card .hd .s{font-size:11px;color:var(--muted);margin-left:auto}
+  .ex{display:flex;align-items:flex-start;gap:11px;padding:11px 14px;border-top:1px solid var(--border)}
+  .ex:first-child{border-top:none}
+  .ex .nm{flex:1;min-width:0}
+  .ex .nm .name{font-size:13.5px;font-weight:700}
+  .ex .nm .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+  .tag{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;border-radius:5px;padding:2px 6px}
+  .tag.lev{background:rgba(0,201,110,.14);color:var(--good)}
+  .tag.ret{background:rgba(26,95,255,.14);color:var(--accent2)}
+  .tag.gf{background:rgba(224,120,0,.16);color:var(--warn)}
+  .tag.nu{background:rgba(139,150,176,.18);color:var(--subtle)}
+  .tag.base{background:var(--surface2);color:var(--text-subtle,#6b7793);border:1px solid var(--border)}
+  .ex .set{flex:none;text-align:right}
+  .ex .set .sr{font-size:14px;font-weight:800}
+  .ex .set .ld{font-size:10.5px;color:var(--subtle);margin-top:2px}
+  .note{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-top:4px;line-height:1.5}
+  .note svg{width:15px;height:15px;flex:none;margin-top:1px;fill:none;stroke:var(--warn);stroke-width:2}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:10.5px;color:var(--muted);margin:10px 2px 0}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:9px;height:9px;border-radius:3px;display:inline-block}
+  .cta{display:flex;gap:9px;margin-top:16px}
+  .cta button{flex:1;height:46px;border-radius:13px;font:inherit;font-weight:800;font-size:13.5px;cursor:pointer;border:none}
+  .cta .edit{background:var(--surface2);border:1px solid var(--border);color:var(--text)}
+  .cta .go{background:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+  <div class="cap">Maquette — <b>Programme sur mesure</b> généré depuis l'analyse morpho (Premium). Chaque exercice est <b>tagué</b> : <b>Levier</b> (ta biomécanique) · <b>À rattraper</b> (groupe en retard) · <b>Sécurité</b> (antécédent) · <b>À nuancer</b> · <b>Base</b>. Le moteur décide, l'IA rédige le « pourquoi ».</div>
+
+  <div class="page">
+    <div class="top">
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg></div>
+      <div><h1>Ton programme sur mesure</h1><div class="sub">Depuis ton analyse morpho · Femme · Esthétique · Intermédiaire · 4 séances/sem</div></div>
+      <span class="prem">Premium</span>
+    </div>
+
+    <div class="body">
+
+      <!-- POURQUOI -->
+      <div class="why">
+        <h3>Construit à partir de ton analyse</h3>
+        <div class="row"><div class="k">Tes leviers</div><div class="v">SDT <b>conventionnel</b> favorable · squat <b>appui large</b> (bassin large) · développé couché <b>longue amplitude</b> → variantes choisies en conséquence.</div></div>
+        <div class="row"><div class="k">À rattraper</div><div class="v"><b>Épaules</b> et <b>dos</b> en retard, <b>sangle abdominale</b> à renforcer → <b>plus de volume</b> sur ces groupes.</div></div>
+        <div class="row"><div class="k">Sécurité</div><div class="v">Dos sensible signalé → <b>pas de good morning lourd</b>, SDT en <b>roumain dos neutre</b>, gainage anti-extension.</div></div>
+        <div class="row"><div class="k">Charges</div><div class="v">Les <b>% 1RM / RPE</b> ci-dessous sont <b>indicatifs</b> : ils s'affinent automatiquement avec tes <b>vraies perfs</b>.</div></div>
+      </div>
+
+      <!-- SEMAINE -->
+      <div class="sec">Ta semaine</div>
+      <div class="week">
+        <div class="day"><div class="n">Séance 1</div><div class="t">Haut A</div><div class="f">Épaules + dos (priorité)</div></div>
+        <div class="day"><div class="n">Séance 2</div><div class="t">Bas A</div><div class="f">Chaîne postérieure + fessiers</div></div>
+        <div class="day"><div class="n">Séance 3</div><div class="t">Haut B</div><div class="f">Volume dos/épaules + pecs</div></div>
+        <div class="day"><div class="n">Séance 4</div><div class="t">Bas B</div><div class="f">Quadris + gainage</div></div>
+      </div>
+
+      <!-- SEANCE 1 détaillée -->
+      <div class="sec">Séance 1 — Haut A</div>
+      <div class="card">
+        <div class="hd"><span class="b">1</span><span class="t">Haut du corps — épaules & dos</span><span class="s">~55 min</span></div>
+        <div class="ex"><div class="nm"><div class="name">Développé épaules haltères</div><div class="tags"><span class="tag ret">À rattraper</span><span class="tag lev">Levier</span></div></div><div class="set"><div class="sr">4 × 10-12</div><div class="ld">RPE 8</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Élévations latérales</div><div class="tags"><span class="tag ret">À rattraper</span></div></div><div class="set"><div class="sr">4 × 12-15</div><div class="ld">RPE 9</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Tirage vertical (ou tractions assistées)</div><div class="tags"><span class="tag ret">À rattraper</span></div></div><div class="set"><div class="sr">4 × 8-12</div><div class="ld">RPE 8</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Rowing haltère un bras</div><div class="tags"><span class="tag ret">À rattraper</span></div></div><div class="set"><div class="sr">3 × 10-12</div><div class="ld">RPE 8</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Développé couché haltères, prise modérée</div><div class="tags"><span class="tag lev">Levier : bras longs</span></div></div><div class="set"><div class="sr">3 × 8-10</div><div class="ld">RPE 8</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Face pull</div><div class="tags"><span class="tag base">Base posture</span></div></div><div class="set"><div class="sr">3 × 15</div><div class="ld">RPE 9</div></div></div>
+      </div>
+
+      <!-- SEANCE 2 détaillée -->
+      <div class="sec">Séance 2 — Bas A</div>
+      <div class="card">
+        <div class="hd"><span class="b">2</span><span class="t">Bas du corps — chaîne postérieure</span><span class="s">~55 min</span></div>
+        <div class="ex"><div class="nm"><div class="name">Hip thrust</div><div class="tags"><span class="tag base">Base fessiers</span><span class="tag gf">Sécurité dos</span></div></div><div class="set"><div class="sr">4 × 8-12</div><div class="ld">RPE 8</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Soulevé de terre roumain (dos neutre)</div><div class="tags"><span class="tag ret">À rattraper : ischios</span><span class="tag gf">Sécurité dos</span></div></div><div class="set"><div class="sr">3 × 8-10</div><div class="ld">RPE 7</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Squat stance large, pointes ouvertes</div><div class="tags"><span class="tag lev">Levier : appui large</span></div></div><div class="set"><div class="sr">3 × 8-10</div><div class="ld">RPE 8</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Presse à cuisses</div><div class="tags"><span class="tag base">Base</span></div></div><div class="set"><div class="sr">3 × 12</div><div class="ld">RPE 9</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Mollets debout</div><div class="tags"><span class="tag nu">À nuancer : tibias</span></div></div><div class="set"><div class="sr">4 × 15</div><div class="ld">RPE 9</div></div></div>
+        <div class="ex"><div class="nm"><div class="name">Gainage anti-extension (planche + dead bug)</div><div class="tags"><span class="tag ret">À rattraper : sangle</span><span class="tag gf">Sécurité dos</span></div></div><div class="set"><div class="sr">3 × 40 s</div><div class="ld">—</div></div></div>
+      </div>
+
+      <div class="note"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span><b>Point de départ, pas une vérité figée</b> : le programme s'ajuste à chaque séance avec tes charges/RPE réels. Les choix « Levier » et « À nuancer » sont des avis biomécaniques ; les « Sécurité » priment toujours.</span></div>
+
+      <div class="legend">
+        <span><i style="background:var(--good)"></i>Levier (ta biomécanique)</span>
+        <span><i style="background:var(--accent2)"></i>À rattraper (groupe en retard)</span>
+        <span><i style="background:var(--warn)"></i>Sécurité (antécédent)</span>
+        <span><i style="background:var(--subtle)"></i>À nuancer</span>
+      </div>
+
+      <div class="cta">
+        <button class="edit">Ouvrir dans l'éditeur</button>
+        <button class="go">Démarrer la séance 1</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
