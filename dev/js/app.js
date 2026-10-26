@@ -8373,7 +8373,13 @@ async function cdLierExerciceParNom(rowIndex, seanceId, exerciceNom) {
 }
 
 // Ajout d'un item au programme : on choisit d'abord Muscu ou Cardio (programme hybride).
+// « + Ajouter » d'une séance (éditeur athlète ET coach) → page de choix plein écran
+// (muscu + cardio sur la même page). L'ancien tiroir Muscu/Cardio est conservé
+// ci-dessous (cdAjouterExerciceTiroir) mais n'est plus appelé.
 function cdAjouterExercice(seanceId) {
+  ouvrirPickerExos(seanceId, function () { try { cdProgOpen[seanceId] = true; } catch (e) {} chargerProgrammeCoach(); });
+}
+function cdAjouterExerciceTiroir(seanceId) {
   var ov = document.getElementById('cd-add-chooser');
   if (!ov) { ov = document.createElement('div'); ov.id = 'cd-add-chooser'; ov.style.cssText = 'position:fixed;inset:0;background:rgba(3,6,14,.55);z-index:1400;display:flex;align-items:flex-end;justify-content:center'; document.body.appendChild(ov); }
   var sid = String(seanceId).replace(/'/g, "\\'");
@@ -8481,7 +8487,237 @@ async function _cdAddCardio(seanceId) {
   chargerProgrammeCoach();
 }
 
+/* ═══════════ PAGE DE CHOIX DES EXERCICES (plein écran, muscu + cardio) ═══════════
+ * Maquette validée : mockups/novalyz-je-gere-programme.html (mobile + bureau).
+ * Groupes = _EXO_GROUPES (Pecs · Dos · Épaules · Bras · Jambes · Abdos) + Cardio
+ * (_CARDIO_CATALOG, prog:true). Multi-sélection → saveProgrammeLigne (mêmes valeurs
+ * par défaut que l'ancien tiroir : 3 × 8–12, 90 s ; cardio = minutes). Mobile :
+ * groupes en chips + récap en pied. Bureau (≥ 992 px) : 3 colonnes. */
+var _XP_GRP_ORDER = ['pecs', 'dos', 'epaules', 'bras', 'jambes', 'core'];
+var _XP_RANK = { jambes: 1, pecs: 1, dos: 1, epaules: 3, bras: 4, core: 6 };   // gros muscles d'abord (cf. _G2_MUSRANK)
+var _xp = { sid: null, grp: 'pecs', q: '', sel: {}, cardio: {}, order: [], onDone: null };
+function _xpGrpLabel(k) { if (k === 'cardio') return 'Cardio'; if (k === 'core') return 'Abdos'; if (k === 'autres') return 'Autres'; var m = _exoGrpMeta(k); return m ? m.label : k; }
+function _xpCardioList() { return (_CARDIO_CATALOG || []).filter(function (a) { return a.prog; }); }
+async function ouvrirPickerExos(seanceId, onDone) {
+  if (exercicesData.length === 0) { try { await chargerExercices(); } catch (e) {} }
+  if (exercicesData.length === 0) { showToast('Catalogue indisponible, réessaie'); return; }
+  _xp = { sid: String(seanceId), grp: 'pecs', q: '', sel: {}, cardio: {}, order: [], onDone: onDone || null };
+  var ov = document.getElementById('xp-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'xp-overlay'; ov.className = 'xp-ov'; document.body.appendChild(ov); }
+  var esc = escapeHtml;
+  ov.innerHTML = '<div class="xp-page">'
+    + '<div class="xp-hd"><button class="xp-back" onclick="fermerPickerExos()" aria-label="Retour">←</button>'
+    +   '<div class="xp-ti"><div class="a">Ajouter à ' + esc(_xp.sid) + '</div><div class="b">Coche plusieurs exercices puis ajoute</div></div>'
+    +   '<input id="xp-q" class="xp-q" type="text" placeholder="Rechercher un exercice ou une activité…" oninput="_xpFilter(this.value)" autocomplete="off"></div>'
+    + '<div class="xp-grid"><nav id="xp-nav" class="xp-nav"></nav><div id="xp-list" class="xp-list"></div>'
+    +   '<aside class="xp-side"><div class="xp-lab">Ta sélection</div><div id="xp-selbox" class="xp-selbox"></div>'
+    +   '<div class="xp-note">Ajoutés en 3 × 8–12, 90 s de repos — modifiables ensuite.</div>'
+    +   '<div id="xp-foot" class="xp-foot"></div></aside></div></div>';
+  ov.style.display = 'flex';
+  try { document.body.classList.add('xp-open'); } catch (e) {}
+  _xpRender();
+}
+function fermerPickerExos() { var ov = document.getElementById('xp-overlay'); if (ov) ov.style.display = 'none'; try { document.body.classList.remove('xp-open'); } catch (e) {} }
+function _xpFilter(q) { _xp.q = String(q || ''); _xpRender(); }
+function _xpSetGrp(k) { _xp.grp = k; _xpRender(); var l = document.getElementById('xp-list'); if (l) l.scrollTop = 0; }
+function _xpKeyOrder(k, on) { var i = _xp.order.indexOf(k); if (on && i < 0) _xp.order.push(k); if (!on && i >= 0) _xp.order.splice(i, 1); }
+function _xpToggle(nom, on) { if (on) _xp.sel[nom] = true; else delete _xp.sel[nom]; _xpKeyOrder('m|' + nom, on); _xpRender(); }
+function _xpToggleCardio(key, on) { if (on) _xp.cardio[key] = _xp.cardio[key] || 20; else delete _xp.cardio[key]; _xpKeyOrder('c|' + key, on); _xpRender(); }
+function _xpCardioMin(key, d) { if (!_xp.cardio[key]) return; _xp.cardio[key] = Math.max(5, Math.min(180, _xp.cardio[key] + d)); _xpRender(); }
+function _xpCount(k) {
+  if (k === 'cardio') return Object.keys(_xp.cardio).length;
+  return Object.keys(_xp.sel).filter(function (nom) { var e = exercicesData.find(function (x) { return x.exercice === nom; }); return (e && (_exoGrpOf(e.muscle) || 'autres')) === k; }).length;
+}
+function _xpRender() {
+  var esc = escapeHtml, attr = function (s) { return esc(String(s)).replace(/"/g, '&quot;'); };
+  var q = _normTxt(_xp.q);
+  // Groupes présents dans le catalogue (+ « Autres » si un muscle n'est rangé nulle part).
+  var byGrp = {};
+  exercicesData.forEach(function (e) { if (!e || !e.exercice) return; var g = _exoGrpOf(e.muscle) || 'autres'; (byGrp[g] = byGrp[g] || []).push(e); });
+  var grps = _XP_GRP_ORDER.filter(function (k) { return byGrp[k]; }); if (byGrp.autres) grps.push('autres'); grps.push('cardio');
+  var nav = document.getElementById('xp-nav');
+  if (nav) nav.innerHTML = '<div class="xp-lab xp-desk">Groupes</div>' + grps.map(function (k) {
+    var n = _xpCount(k);
+    return '<button class="xp-g' + (!q && _xp.grp === k ? ' on' : '') + '" onclick="_xpSetGrp(\'' + k + '\')">' + esc(_xpGrpLabel(k)) + (n ? '<b>' + n + '</b>' : '') + '</button>';
+  }).join('');
+  // Liste : groupe courant, ou tous les groupes filtrés par la recherche.
+  var showGrps = q ? grps : [_xp.grp];
+  var html = '';
+  showGrps.forEach(function (k) {
+    if (k === 'cardio') {
+      var acts = _xpCardioList().filter(function (a) { return !q || _normTxt(a.label).indexOf(q) >= 0 || 'cardio'.indexOf(q) >= 0; });
+      if (!acts.length) return;
+      html += '<div class="xp-grp">Cardio · cible en minutes</div><div class="xp-items">' + acts.map(function (a) {
+        var on = !!_xp.cardio[a.key];
+        return '<div class="xp-it' + (on ? ' on' : '') + '"><span class="xp-ck" onclick="_xpToggleCardio(\'' + a.key + '\',' + (!on) + ')"></span>'
+          + '<span class="xp-ic" style="color:' + a.color + ';background:' + a.color + '1a"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (a.svg || '') + '</svg></span>'
+          + '<span class="xp-n" onclick="_xpToggleCardio(\'' + a.key + '\',' + (!on) + ')">' + esc(a.label) + '</span>'
+          + (on ? '<span class="xp-min"><button onclick="_xpCardioMin(\'' + a.key + '\',-5)">−</button>' + _xp.cardio[a.key] + ' min<button onclick="_xpCardioMin(\'' + a.key + '\',5)">+</button></span>' : '')
+          + '</div>';
+      }).join('') + '</div>';
+      return;
+    }
+    var exos = (byGrp[k] || []).filter(function (e) { return !q || _normTxt(e.exercice).indexOf(q) >= 0 || _normTxt(e.muscle || '').indexOf(q) >= 0; });
+    if (!exos.length) return;
+    // Sous-titres par muscle du catalogue (ex. Jambes → Quadriceps, Ischio, Fessier…).
+    var sub = {};
+    exos.forEach(function (e) { var m = _musCap(String(e.muscle || '').trim()) || 'Autres'; (sub[m] = sub[m] || []).push(e.exercice); });
+    var muscles = Object.keys(sub).sort(function (a, b) { return a.localeCompare(b, 'fr'); });
+    if (q) html += '<div class="xp-grp xp-grp-top">' + esc(_xpGrpLabel(k)) + '</div>';
+    muscles.forEach(function (m) {
+      html += '<div class="xp-grp">' + esc(m) + '</div><div class="xp-items">' + sub[m].sort(function (a, b) { return a.localeCompare(b, 'fr'); }).map(function (nom) {
+        var on = !!_xp.sel[nom];
+        return '<div class="xp-it' + (on ? ' on' : '') + '" data-nom="' + attr(nom) + '" onclick="_xpToggle(this.getAttribute(\'data-nom\'),' + (!on) + ')"><span class="xp-ck"></span><span class="xp-n">' + esc(String(nom).trim()) + '</span></div>';
+      }).join('') + '</div>';
+    });
+  });
+  var list = document.getElementById('xp-list');
+  if (list) list.innerHTML = html || '<div class="xp-empty">Aucun exercice trouvé.</div>';
+  // Sélection (bureau : colonne de droite ; mobile : résumé en pied).
+  var items = _xp.order.map(function (k) {
+    if (k.indexOf('c|') === 0) { var key = k.slice(2), a = _xpCardioList().find(function (x) { return x.key === key; }); return { k: k, t: (a ? a.label : key) + ' · ' + _xp.cardio[key] + ' min', cardio: 1 }; }
+    return { k: k, t: k.slice(2) };
+  });
+  var box = document.getElementById('xp-selbox');
+  if (box) box.innerHTML = items.length ? items.map(function (it) {
+    var fn = it.cardio ? '_xpToggleCardio(\'' + it.k.slice(2) + '\',false)' : '_xpToggle(this.parentNode.getAttribute(\'data-nom\'),false)';
+    return '<div class="xp-sx" data-nom="' + attr(it.k.slice(2)) + '"><b>' + esc(it.t) + '</b><span onclick="' + fn + '">✕</span></div>';
+  }).join('') : '<div class="xp-empty" style="padding:8px 0">Rien de sélectionné pour l\'instant.</div>';
+  var n = items.length, nm = Object.keys(_xp.sel).length, nc = Object.keys(_xp.cardio).length;
+  var resume = n ? ('<b>' + n + ' sélectionné' + (n > 1 ? 's' : '') + ' :</b> ' + esc(items.map(function (i) { return i.t; }).join(' · '))) : 'Coche des exercices pour les ajouter à ' + esc(_xp.sid) + '.';
+  var foot = document.getElementById('xp-foot');
+  if (foot) foot.innerHTML = '<div class="xp-res">' + resume + '</div>'
+    + '<button class="xp-add" ' + (n ? '' : 'disabled') + ' onclick="_xpConfirm()">' + (n ? 'Ajouter (' + n + ')' + (nm && nc ? '' : '') : 'Ajouter') + '</button>';
+}
+async function _xpConfirm() {
+  var noms = Object.keys(_xp.sel), cards = Object.keys(_xp.cardio);
+  if (!noms.length && !cards.length) return;
+  var btn = document.querySelector('#xp-foot .xp-add'); if (btn) { btn.disabled = true; btn.textContent = 'Ajout…'; }
+  // Muscu : gros muscles d'abord dans le lot ajouté (puis ordre de sélection).
+  var grpOf = function (nom) { var e = exercicesData.find(function (x) { return x.exercice === nom; }); return e ? (_exoGrpOf(e.muscle) || 'autres') : 'autres'; };
+  noms.sort(function (a, b) { return ((_XP_RANK[grpOf(a)] || 9) - (_XP_RANK[grpOf(b)] || 9)) || (_xp.order.indexOf('m|' + a) - _xp.order.indexOf('m|' + b)); });
+  var post = function (body) { return fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); };
+  for (var i = 0; i < noms.length; i++) {
+    try { await post({ action: 'saveProgrammeLigne', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), seance_id: _xp.sid, exercice: noms[i], series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: '', type: 'muscu' }); } catch (e) {}
+  }
+  for (var j = 0; j < cards.length; j++) {
+    var a = _xpCardioList().find(function (x) { return x.key === cards[j]; });
+    try { await post({ action: 'saveProgrammeLigne', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), seance_id: _xp.sid, exercice: a ? a.label : cards[j], series_prevues: null, reps_mini: null, reps_max: null, repos_sec: null, groupe_id: '', type: 'cardio', cardio_cible: _xp.cardio[cards[j]], cardio_unite: 'min' }); } catch (e) {}
+  }
+  var total = noms.length + cards.length;
+  fermerPickerExos();
+  try { showToast(total + ' ajouté' + (total > 1 ? 's' : '') + ' à ' + _xp.sid); } catch (e) {}
+  if (typeof _xp.onDone === 'function') { try { _xp.onDone(); } catch (e) {} }
+}
+
+/* ═══════════ « CONSTRUIS TON PROGRAMME » (chemin « Je gère ») ═══════════
+ * Page entière : nommer ses séances (chips, plus de boîte système) → « + Ajouter
+ * des exercices » ouvre la page de choix. Modèles prêts à l'emploi PAR NOMBRE DE
+ * JOURS (2 → 6), générés par le moteur du générateur v2 (_genProgramme2 /
+ * _g2GenDays) — pas de second moteur. Une séance n'existe en base que si elle a
+ * au moins une ligne : les séances vides restent locales jusqu'au 1er ajout. */
+var _jg = { seances: [], lignes: [], view: 'seances', jours: 3, autre: false };
+var _JG_MODELES = {
+  2: [['fb', 'Full Body', 'Tout le corps à chaque séance.'], ['ul', 'Haut / Bas', 'Une séance haut du corps, une séance bas du corps.']],
+  3: [['fb', 'Full Body', 'Tout le corps à chaque séance.'], ['ppl', 'Push / Pull / Legs', 'Pousser · tirer · jambes.']],
+  4: [['ul', 'Haut / Bas', 'Haut et bas alternés, 2 fois chacun.'], ['ppl', 'Push / Pull / Legs + Haut', 'PPL + une séance de rappel haut du corps.'], ['fb', 'Full Body', 'Tout le corps à chaque séance.']],
+  5: [['ppl', 'PPL + Haut / Bas', 'Push / Pull / Legs puis rappel haut et bas.'], ['split', 'Split — 1 muscle / jour', 'Un groupe par séance.']],
+  6: [['ppl', 'Push / Pull / Legs × 2', 'Chaque séance 2 fois par semaine.'], ['ul', 'Haut / Bas × 3', 'Haut et bas alternés, 3 fois chacun.'], ['split', 'Split + points faibles', '5 jours split + 1 séance points faibles.']]
+};
+function _jgNiveau() { var n = (typeof getNiveauExperience === 'function' && athlete) ? getNiveauExperience(athlete.annees_pratique) : 'intermediaire'; return n === 'expert' ? 'avance' : n; }
+async function ouvrirConstruireProgramme() {
+  if (typeof athlete === 'undefined' || !athlete) return;
+  try { progCtx = { el: 'prog-editor-content', athleteId: athlete.athlete_id, athleteNom: athlete.nom || '', readonly: false }; } catch (e) { return; }
+  _jg = { seances: [], lignes: [], view: 'seances', jours: 3, autre: false };
+  var ov = document.getElementById('jg-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'jg-overlay'; ov.className = 'jg-ov'; document.body.appendChild(ov); }
+  ov.style.display = 'flex';
+  try { document.body.classList.add('jg-open'); } catch (e) {}
+  ov.innerHTML = '<div class="jg-page"><div class="loader">Chargement…</div></div>';
+  if (exercicesData.length === 0) { try { await chargerExercices(); } catch (e) {} }
+  await _jgCharger();
+}
+async function _jgCharger() {
+  try {
+    var res = await fetch(SCRIPT_URL + '?action=getCoachProgramme&athlete_id=' + encodeURIComponent(_progAthleteId()));
+    var data = await res.json();
+    _jg.lignes = data.lignes || [];
+  } catch (e) { _jg.lignes = _jg.lignes || []; }
+  _jg.lignes.forEach(function (l) { if (_jg.seances.indexOf(String(l.seance_id)) < 0) _jg.seances.push(String(l.seance_id)); });
+  _jgRender();
+}
+function fermerConstruireProgramme() {
+  var ov = document.getElementById('jg-overlay'); if (ov) ov.style.display = 'none';
+  try { document.body.classList.remove('jg-open'); } catch (e) {}
+  if (typeof chargerAppData === 'function') chargerAppData();
+  _onbTourMaybe(500);
+}
+function _jgAddSeance(nom) {
+  nom = String(nom || '').trim(); if (!nom) return;
+  var base = nom, k = 2; while (_jg.seances.indexOf(nom) >= 0) { nom = base + ' ' + k; k++; }
+  _jg.seances.push(nom); _jg.autre = false; _jgRender();
+}
+function _jgAutre() { _jg.autre = true; _jgRender(); setTimeout(function () { var i = document.getElementById('jg-autre-in'); if (i) i.focus(); }, 30); }
+function _jgRetirer(nom) { _jg.seances = _jg.seances.filter(function (s) { return s !== nom; }); _jgRender(); }
+function _jgAjouterExos(nom) { ouvrirPickerExos(nom, function () { _jgCharger(); }); }
+function _jgVue(v) { _jg.view = v; _jgRender(); }
+function _jgJours(n) { _jg.jours = n; _jgRender(); }
+async function _jgAppliquerModele(org) {
+  var n = _jg.jours;
+  if (_jg.lignes.length && !confirm('Remplacer ton programme actuel par ce modèle ? (l\'ancien sera supprimé)')) return;
+  var lignes = _g2Resolve(_genProgramme2('masse', org, n, 60, _jgNiveau()));
+  if (!lignes.length) { showToast('Modèle indisponible'); return; }
+  try {
+    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'genererProgramme', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), remplacer: true, lignes: lignes }) });
+    showToast('Modèle appliqué — tu peux l\'ajuster');
+  } catch (e) { showToast('Erreur réseau'); return; }
+  _jg.seances = []; _jg.view = 'seances';
+  await _jgCharger();
+}
+function _jgRender() {
+  var ov = document.getElementById('jg-overlay'); if (!ov) return;
+  // JS d'abord (\ et '), HTML ensuite : l'attribut décodé redonne une chaîne JS valide.
+  var esc = escapeHtml, js = function (s) { return esc(String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); };
+  if (_jg.view === 'modeles') {
+    var opts = (_JG_MODELES[_jg.jours] || []).map(function (m) {
+      var days = _g2GenDays(m[0], _jg.jours).map(function (d) { return d.nm; });
+      return '<button class="jg-mod" onclick="_jgAppliquerModele(\'' + m[0] + '\')"><span class="a">' + esc(m[1]) + '</span><span class="b">' + esc(m[2]) + '</span><span class="c">' + esc(days.join(' · ')) + '</span></button>';
+    }).join('');
+    ov.innerHTML = '<div class="jg-page"><div class="xp-hd"><button class="xp-back" onclick="_jgVue(\'seances\')" aria-label="Retour">←</button><div class="xp-ti"><div class="a">Modèles prêts à l\'emploi</div><div class="b">Choisis ton nombre de jours d\'entraînement</div></div></div>'
+      + '<div class="jg-body"><div class="xp-lab">Jours par semaine</div><div class="jg-chips">'
+      + [2, 3, 4, 5, 6].map(function (n) { return '<button class="jg-chip' + (_jg.jours === n ? ' on' : '') + '" onclick="_jgJours(' + n + ')">' + n + ' jours</button>'; }).join('')
+      + '</div><div class="xp-lab">Modèles · ' + _jg.jours + ' jours</div><div class="jg-mods">' + opts + '</div>'
+      + '<div class="xp-note">Le modèle remplit tes séances avec des exercices du catalogue (gros muscles d\'abord). Tu peux ensuite tout modifier.</div></div></div>';
+    return;
+  }
+  var bySid = {};
+  _jg.lignes.forEach(function (l) { (bySid[l.seance_id] = bySid[l.seance_id] || []).push(l); });
+  var cards = _jg.seances.map(function (s) {
+    var L = bySid[s] || [], nm = L.filter(function (l) { return l.type !== 'cardio'; }).length, nc = L.length - nm;
+    var cnt = L.length ? (nm + ' exo' + (nm > 1 ? 's' : '') + (nc ? ' · ' + nc + ' cardio' : '')) : 'vide';
+    var rows = L.map(function (l) {
+      var right = l.type === 'cardio' ? ((l.cardio_cible || '') + ' ' + (l.cardio_unite || 'min')) : ((l.series_prevues || '') + ' × ' + (l.reps_mini || '') + (l.reps_max && l.reps_max !== l.reps_mini ? '–' + l.reps_max : ''));
+      return '<div class="jg-x"><b>' + esc(String(l.exercice || '').trim()) + '</b><span>' + esc(right) + '</span></div>';
+    }).join('');
+    return '<div class="jg-sess"><div class="jg-sh"><div class="jg-sn">' + esc(s) + '</div><div class="jg-sc">' + cnt + (L.length ? '' : ' <button class="jg-del" onclick="_jgRetirer(\'' + js(s) + '\')" aria-label="Retirer">✕</button>') + '</div></div>'
+      + (rows ? '<div class="jg-rows">' + rows + '</div>' : '')
+      + '<button class="jg-addx" onclick="_jgAjouterExos(\'' + js(s) + '\')">+ Ajouter des exercices</button></div>';
+  }).join('');
+  var chips = ['Push', 'Pull', 'Jambes', 'Haut du corps', 'Bas du corps', 'Full body'].map(function (n) { return '<button class="jg-chip" onclick="_jgAddSeance(\'' + js(n) + '\')">' + esc(n) + '</button>'; }).join('')
+    + (_jg.autre ? '<span class="jg-autre"><input id="jg-autre-in" type="text" placeholder="Nom de la séance" onkeydown="if(event.key===\'Enter\')_jgAddSeance(this.value)"><button onclick="_jgAddSeance(document.getElementById(\'jg-autre-in\').value)">OK</button></span>'
+                 : '<button class="jg-chip add" onclick="_jgAutre()">+ Autre nom…</button>');
+  ov.innerHTML = '<div class="jg-page"><div class="xp-hd"><button class="xp-back" onclick="fermerConstruireProgramme()" aria-label="Fermer">←</button><div class="xp-ti"><div class="a">Construis ton programme</div><div class="b">Crée tes séances puis ajoute tes exercices</div></div></div>'
+    + '<div class="jg-body"><div class="xp-lab">Ajoute une séance</div><div class="jg-chips">' + chips + '</div>'
+    + '<div class="xp-lab">Tes séances (' + _jg.seances.length + ')</div>'
+    + (cards ? '<div class="jg-grid">' + cards + '</div>' : '<div class="xp-empty">Ajoute ta première séance avec les boutons ci-dessus.</div>')
+    + '<button class="jg-link" onclick="_jgVue(\'modeles\')">Voir les modèles prêts à l\'emploi (2 à 6 jours)</button></div>'
+    + '<div class="jg-foot"><button class="xp-add" onclick="fermerConstruireProgramme()">Terminer mon programme</button></div></div>';
+}
+
 async function cdAjouterSeance() {
+  // Athlète : page « Construis ton programme » (plus de boîte système).
+  if (typeof coach === 'undefined' || !coach || !coach.coach_id) { if (typeof athlete !== 'undefined' && athlete) { try { var _peo = document.getElementById('prog-editor-overlay'); if (_peo) _peo.style.display = 'none'; document.body.classList.remove('prog-editor-open'); } catch (e) {} return ouvrirConstruireProgramme(); } }
   const nom = prompt('Nom de la nouvelle séance (ex: Push, Pull, Jambes...)');
   if (!nom) return;
   cdProgOpen[nom] = true;   // ouvrir la nouvelle séance après rechargement (voir le +Ajouter)
@@ -10667,7 +10903,7 @@ function _norm(s) { return String(s || '').toLowerCase().normalize('NFD').replac
 var _EXO_GROUPES = [
   { k: 'pecs', label: 'Pecs', col: '#1A5FFF', kw: ['pector', 'pec'] },
   { k: 'dos', label: 'Dos', col: '#7C5CFF', kw: ['dos', 'dorsal', 'trapez', 'lombaire', 'rhombo'] },
-  { k: 'jambes', label: 'Jambes', col: '#00A854', kw: ['jambe', 'quadri', 'ischio', 'fessier', 'mollet', 'cuisse', 'adducteur', 'abducteur'] },
+  { k: 'jambes', label: 'Jambes', col: '#00A854', kw: ['jambe', 'quadri', 'ischio', 'fessier', 'mollet', 'molet', 'cuisse', 'adducteur', 'abducteur'] },
   { k: 'epaules', label: 'Épaules', col: '#E07800', kw: ['epaule', 'delto'] },
   { k: 'bras', label: 'Bras', col: '#EC4899', kw: ['biceps', 'triceps', 'bras'] },
   { k: 'core', label: 'Core', col: '#0EA5A3', kw: ['abdo', 'gainage', 'core', 'oblique', 'sangle'] }
@@ -17296,7 +17532,7 @@ function _onbBack() { if (_onbI > 0) { _onbI--; _onbRender(); } }
 function _onbChoix(c) {
   _savePref('onboarding_vu', 1);
   if (c === 'novalyz') { _onbPendingTour = true; fermerOnboarding(); ouvrirGenProgramme(); }
-  else if (c === 'mine') { _onbPendingTour = true; _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme '); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
+  else if (c === 'mine') { _onbPendingTour = true; _savePref('prog_auto_off', 1); fermerOnboarding(); ouvrirConstruireProgramme(); }
   else if (c === 'coach') { _onbSteps = ['coachinfo']; _onbI = 0; _onbRender(); }
 }
 function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); setTimeout(function () { nvTourAthlete(); }, 450); }
