@@ -5153,8 +5153,8 @@ function recoMorphoExercices(seg: any, q: any): any[] {
   let longArms = false, shortArms = false
   if (envergure && taille) { const ape = envergure - taille; if (ape >= 3) longArms = true; else if (ape <= -3) shortArms = true }
   else if (bras && taille) { const r = bras / taille; if (r >= 0.455) longArms = true; else if (r <= 0.40) shortArms = true }
-  if (longArms) out.push({ t: 'Bras longs', d: 'Avantage au soulevé de terre (course courte) ; amplitude plus longue au développé couché.', bons: ['Soulevé de terre', 'Développé couché prise modérée', 'Écarté (pecs)', 'Rowing'], eviter: ['Développé couché prise très large'], src: 'mesure' })
-  else if (shortArms) out.push({ t: 'Bras courts', d: 'Développé couché favorisé ; au soulevé de terre la course est un peu plus longue (un départ surélevé peut aider).', bons: ['Développé couché', 'Dips', 'Rack pull / SDT surélevé'], eviter: [], src: 'mesure' })
+  if (longArms) out.push({ t: 'Bras longs', d: "À l'aise sur les tirages/tractions (allonge) ; amplitude plus longue au développé couché.", bons: ['Tractions', 'Rowing', 'Développé couché prise modérée'], eviter: ['Développé couché prise très large'], src: 'mesure' })
+  else if (shortArms) out.push({ t: 'Bras courts', d: 'Développé couché favorisé ; tirages sur une course un peu plus longue.', bons: ['Développé couché', 'Dips'], eviter: [], src: 'mesure' })
 
   // 3) Épaules vs hanches
   if (epaules && hanches) {
@@ -5163,14 +5163,52 @@ function recoMorphoExercices(seg: any, q: any): any[] {
     else if (r <= 1.15) out.push({ t: 'Bassin large vs épaules', d: 'Élargir les épaules équilibre la silhouette ; au squat, un stance un peu plus large peut être plus naturel.', bons: ['Développé épaules', 'Élévations latérales', 'Tirage'], eviter: [], src: 'mesure' })
   }
 
-  // 4) Garde-fous — antécédents / état (sécurité, sans avis médical)
+  // 4) Style de soulevé de terre (tronc + fémur + bras) — solide.
+  if (femur && tronc) {
+    const r = femur / tronc
+    if (r >= 0.82) out.push({ t: 'Soulevé de terre : plutôt sumo / trap-bar', d: 'Fémurs longs : le conventionnel penche beaucoup le dos. Le sumo ou la trap-bar réduisent le bras de levier lombaire.', bons: ['Soulevé de terre sumo', 'Trap-bar deadlift', 'Hip thrust'], eviter: ['Conventionnel lourd dos très penché'], src: 'mesure' })
+    else if (longArms) out.push({ t: 'Soulevé de terre : conventionnel favorable', d: 'Bras longs + tronc proportionné : course courte, le conventionnel te convient.', bons: ['Soulevé de terre conventionnel', 'Rack pull'], eviter: [], src: 'mesure' })
+    else out.push({ t: 'Soulevé de terre : conventionnel ou trap-bar', d: 'Pas de contrainte forte : choisis selon le confort lombaire.', bons: ['Soulevé de terre conventionnel', 'Trap-bar deadlift'], eviter: [], src: 'mesure' })
+  }
+
+  // 5) Appui de squat (largeur) — hanches vs épaules — solide.
+  if (hanches && epaules) {
+    const r = hanches / epaules
+    if (r >= 1.1) out.push({ t: 'Squat : appui large, pointes ouvertes', d: 'Hanches plus larges que les épaules : un stance large et des pointes de pied ouvertes libèrent la hanche.', bons: ['Squat stance large', 'Box squat', 'Sumo squat'], eviter: ['Stance très serré, pieds droits'], src: 'mesure' })
+    else if (r <= 0.9) out.push({ t: 'Squat : appui plus serré possible', d: 'Bassin étroit : un stance modéré, pieds peu ouverts, peut suffire.', bons: ['Squat stance modéré', 'Front squat'], eviter: [], src: 'mesure' })
+  }
+
+  // 6) Développé couché (amplitude) — humérus — solide.
+  if (humerus && taille) {
+    if (humerus / taille >= 0.21) out.push({ t: 'Développé couché : longue amplitude', d: 'Humérus long : grande course, point faible en bas. Travaille la portion basse et le volume pectoral.', bons: ['Floor press / board press', 'Écarté (volume pec)', 'Développé prise modérée'], eviter: ['Prise très large à froid'], src: 'mesure' })
+  }
+
+  // 7) PISTE (à nuancer) — Tibia / cheville / mollet.
+  if (femur && tibia) {
+    const r = femur / tibia
+    if (r >= 1.15) out.push({ t: 'Tibias courts (vs fémurs)', d: 'Avis indicatif, à nuancer : buste un peu plus penché au squat → talons surélevés souvent utiles. Dépend aussi de ta mobilité de cheville.', bons: ['Talons surélevés au squat', 'Mobilité cheville', 'Mollets debout'], eviter: [], src: 'piste' })
+    else if (r <= 0.95) out.push({ t: 'Tibias longs (vs fémurs)', d: 'Avis indicatif, à nuancer : squat plus vertical possible ; pense aux mollets. À ajuster selon ton ressenti.', bons: ['Squat barre haute', 'Mollets assis + debout'], eviter: [], src: 'piste' })
+  }
+
+  // 8) PISTE (à nuancer) — Avant-bras : curls & tirage.
+  if (avant && humerus) {
+    const r = avant / humerus
+    if (r >= 0.75) out.push({ t: 'Avant-bras longs', d: 'Avis indicatif, à nuancer : au biceps, le curl pupitre / incliné donne une meilleure tension ; au rowing, une prise un peu plus large. À tester.', bons: ['Curl pupitre', 'Curl incliné', 'Rowing prise large'], eviter: [], src: 'piste' })
+    else if (r <= 0.6) out.push({ t: 'Avant-bras courts', d: 'Avis indicatif, à nuancer : bon levier au curl debout ; le tirage reste confortable.', bons: ['Curl barre debout', 'Tirage classique'], eviter: [], src: 'piste' })
+  }
+
+  // 9) Garde-fous — antécédents / état (sécurité, sans avis médical)
   const ant: string[] = Array.isArray(q?.antecedents) ? q.antecedents.map((x: any) => String(x)) : []
   const femmeFlags: string[] = Array.isArray(q?.femme) ? q.femme.map((x: any) => String(x)) : []
   const has = (k: string) => ant.indexOf(k) >= 0
-  if (has('hernie') || has('blessure')) out.push({ t: 'Garde-fou — dos sensible', d: 'On écarte la flexion lombaire chargée ; variantes avec appui / dos neutre.', bons: ['Hip thrust', 'Presse à cuisses', 'Squat gobelet', 'Tirage poitrine appuyé'], eviter: ['Soulevé de terre lourd dos rond', 'Good morning'], src: 'antecedent' })
-  if (has('epaule')) out.push({ t: 'Garde-fou — épaule sensible', d: "On protège l'articulation : amplitude maîtrisée, prise neutre.", bons: ['Développé haltères prise neutre', 'Face pull', 'Élévations légères'], eviter: ['Développé nuque', 'Dips profonds', 'Développé très large'], src: 'antecedent' })
-  if (has('cardiaque') || has('hta')) out.push({ t: 'Garde-fou — cœur / tension', d: "Éviter l'hyperpression (blocage respiratoire) : respire, séries modérées. Avis médical recommandé.", bons: ['Séries 8–15 reps', 'Récupération suffisante'], eviter: ['Charges maximales en apnée (Valsalva)', 'Isométries longues maximales'], src: 'antecedent' })
-  if (has('prothese')) out.push({ t: 'Garde-fou — arthrose / prothèse', d: 'Travail sans douleur, amplitudes maîtrisées.', bons: ['Machines guidées', 'Amplitudes confortables'], eviter: ['Chocs / sauts', 'Amplitudes extrêmes douloureuses'], src: 'antecedent' })
+  if (has('hernie') || has('disque') || has('sciatique')) out.push({ t: 'Garde-fou — dos / colonne', d: 'On écarte la flexion lombaire chargée et l’hyperpression ; variantes appui et dos neutre. Avis médical si douleur.', bons: ['Hip thrust', 'Presse à cuisses', 'Squat gobelet', 'Tirage poitrine appuyé', 'Gainage anti-extension'], eviter: ['Soulevé de terre lourd dos rond', 'Good morning', 'Squat très lourd à froid'], src: 'antecedent' })
+  if (has('epaule') || has('tendinite')) out.push({ t: 'Garde-fou — épaule / tendons', d: 'Amplitude maîtrisée, prise neutre, pas de charge max sur l’articulation douloureuse ; excentrique léger et progressif.', bons: ['Développé haltères prise neutre', 'Face pull', 'Élévations légères', 'Excentrique léger'], eviter: ['Développé nuque', 'Dips profonds', 'Développé très large', 'Charges max en douleur'], src: 'antecedent' })
+  if (has('genou')) out.push({ t: 'Garde-fou — genou', d: 'Amplitudes sans douleur, pas de choc ; renforce quadriceps et ischios en contrôle.', bons: ['Presse amplitude confortable', 'Leg curl / extension légers', 'Vélo'], eviter: ['Fentes profondes lourdes', 'Sauts / pliométrie', 'Squat complet douloureux'], src: 'antecedent' })
+  if (has('poignet')) out.push({ t: 'Garde-fou — poignet', d: 'Poignet neutre (pas cassé en arrière) ; sangles pour soulager la prise.', bons: ['Prise neutre / marteau', 'Sangles de tirage', 'Machines'], eviter: ['Poignet en hyperextension chargé', 'Développé poignet cassé'], src: 'antecedent' })
+  if (has('cheville')) out.push({ t: 'Garde-fou — cheville', d: 'Travail de proprioception, pas d’instabilité en charge.', bons: ['Renfo mollets contrôlé', 'Proprioception / équilibre', 'Presse'], eviter: ['Sauts / réception instable', 'Charges lourdes en déséquilibre'], src: 'antecedent' })
+  if (has('cardiaque') || has('hta') || has('asthme')) out.push({ t: 'Garde-fou — cœur / tension / respiration', d: 'Éviter l’hyperpression (blocage respiratoire) : respire, séries modérées, récup suffisante. Avis médical recommandé.', bons: ['Séries 8–15 reps', 'Récupération suffisante', 'Cardio progressif'], eviter: ['Charges maximales en apnée (Valsalva)', 'Isométries longues maximales'], src: 'antecedent' })
+  if (has('prothese')) out.push({ t: 'Garde-fou — arthrose / prothèse', d: 'Travail sans douleur, amplitudes maîtrisées, machines guidées.', bons: ['Machines guidées', 'Amplitudes confortables'], eviter: ['Chocs / sauts', 'Amplitudes extrêmes douloureuses'], src: 'antecedent' })
+  if (has('chirurgie') || has('blessure')) out.push({ t: 'Garde-fou — zone en récupération', d: 'Reprise progressive sur la zone concernée, sans douleur ; suis les consignes du pro qui te suit.', bons: ['Charges légères progressives', 'Amplitude indolore', 'Renforcement contrôlé'], eviter: ['Charges lourdes sur la zone', 'Mouvements douloureux'], src: 'antecedent' })
   if (femmeFlags.indexOf('grossesse') >= 0 || femmeFlags.indexOf('postpartum') >= 0) out.push({ t: 'Garde-fou — grossesse / post-partum', d: 'Priorité sécurité : avis médical / sage-femme requis (rien de médical ici).', bons: ['Renforcement doux', 'Plancher pelvien', 'Travail debout'], eviter: ['Décubitus dorsal prolongé', 'Hyperpression abdominale', 'Charges maximales'], src: 'antecedent' })
 
   return out
@@ -5214,7 +5252,7 @@ async function handleAnalyseMorpho(body: any): Promise<Response> {
   const segTxt = segParts.join(' · ')
   const sexe = String((q as any).sexe || '')
   const sexeTxt = sexe === 'F' ? 'une femme' : sexe === 'H' ? 'un homme' : ''
-  const ANT_LBL: Record<string, string> = { hernie: 'hernie discale', scoliose: 'scoliose', epaule: 'épaule sensible', prothese: 'prothèse/arthrose', cardiaque: 'problème cardiaque', hta: 'hypertension', chirurgie: 'chirurgie récente', blessure: 'blessure en cours' }
+  const ANT_LBL: Record<string, string> = { hernie: 'hernie discale', disque: 'disque pincé / discopathie', sciatique: 'sciatique / lombalgie', scoliose: 'scoliose', epaule: 'épaule sensible', tendinite: 'tendinite', genou: 'genou douloureux', poignet: 'poignet / canal carpien', cheville: 'cheville instable', prothese: 'prothèse/arthrose', cardiaque: 'problème cardiaque', hta: 'hypertension', asthme: 'asthme', chirurgie: 'chirurgie récente', blessure: 'blessure en cours' }
   const FEM_LBL: Record<string, string> = { grossesse: 'grossesse en cours', postpartum: 'post-partum récent', diastasis: 'diastasis' }
   const antList = Array.isArray((q as any).antecedents) ? (q as any).antecedents.map((x: any) => ANT_LBL[String(x)] || String(x)) : []
   const femList = Array.isArray((q as any).femme) ? (q as any).femme.map((x: any) => FEM_LBL[String(x)] || String(x)) : []
