@@ -79,7 +79,7 @@ try {
     sommeilFaible: 2, sommeilBon: 4,
     energieFaible: 2, energieBonne: 4,
     fatigueElevee: 4, fatigueFaible: 2,
-    douleurElevee: 3,
+    douleurElevee: 4,   // = CORE_SEUILS.douleur.forte (Forte ≥ 4/5, validé porteur oct. 2026)
     ressentiDur: 2, ressentiFacile: 4,
 
     // ACWR
@@ -939,7 +939,7 @@ function _ckFraicheurHeader(m, dash){
   var frL, frC, frSub;
   if (tsbPct >= 5) { frL = 'Frais'; frC = '#00c96e'; frSub = 'Reposé / affûté'; }
   else if (tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; frSub = 'Charge proche de l\'habitude'; }
-  else { frL = 'Fatigue'; frC = '#f5a623'; frSub = 'Charge récente élevée'; }
+  else { var _cr2 = m.charge_ressenti || null; frL = 'Charge en hausse'; frC = (_cr2 && _cr2.degrade) ? '#f5a623' : 'var(--text)'; frSub = (_cr2 && _cr2.degrade) ? 'et récupération en baisse' : ((_cr2 && _cr2.evaluable) ? 'ressenti stable : encaissé' : 'au-dessus de l\'habitude'); }
   var ctl = (cf.ctl != null) ? String(cf.ctl) : '—', atl = (cf.atl != null) ? String(cf.atl) : '—';
   var fiabTag = (cf.fiable === true) ? '' : ' · indicatif';
   return '<div style="display:flex;align-items:center;gap:12px;">'
@@ -15531,8 +15531,20 @@ function renderChargeFatigueJour(data) {
   if (tsbPct == null) { fr = '—'; frc = 'var(--tj-subtle)'; frTxt = 'pas encore assez de données'; }
   else if (tsbPct >= 5) { fr = 'Frais'; frc = 'var(--tj-good)'; frTxt = 'tu es reposé, bon moment pour pousser'; }
   else if (tsbPct >= -12) { fr = 'Équilibré'; frc = 'var(--tj-text)'; frTxt = 'ta charge récente est proche de ton habitude'; }
-  else { fr = 'Fatigue'; frc = 'var(--tj-warn)'; frTxt = 'tu as plus chargé que d\'habitude ces jours-ci, soigne la récup'; }
-  var ch = ratio > 1.15 ? 'élevée' : ratio < 0.85 ? 'en baisse' : 'régulière';
+  else {
+    // Règle « charge + ressenti » (oct. 2026) : la charge seule n'est PAS de la fatigue.
+    // On ne parle de récupération moins bonne QUE si le ressenti le confirme (moteur.charge_ressenti).
+    var _cr = m.charge_ressenti || null;
+    fr = 'Charge en hausse';
+    if (_cr && _cr.degrade) { frc = 'var(--tj-warn)'; frTxt = 'tu as plus chargé que d\'habitude et tu récupères moins bien : allège une séance'; }
+    else if (_cr && _cr.evaluable) { frc = 'var(--tj-text)'; frTxt = 'tu as plus chargé que d\'habitude et tu encaisses bien'; }
+    else { frc = 'var(--tj-text)'; frTxt = 'tu as plus chargé que d\'habitude ces jours-ci — renseigne ton état du jour pour qu\'on vérifie ta récupération'; }
+  }
+  var _crDeg = !!(m.charge_ressenti && m.charge_ressenti.degrade);
+  var ch = ratio > 1.15 ? 'en hausse' : ratio < 0.85 ? 'en baisse' : 'régulière';
+  // Accord : « récupération excellente / bonne / moyenne / faible ».
+  var _recFem = { 'Excellent': 'excellente', 'Bon': 'bonne', 'Moyen': 'moyenne', 'Faible': 'faible' };
+  var recTxt = m.recup ? (_recFem[m.recup] || String(m.recup).toLowerCase()) : '';
 
   // --- « Ce que Novalyz lit » : fatigue · récup · charge (bullets) ---
   var bullets = [];
@@ -15548,9 +15560,9 @@ function renderChargeFatigueJour(data) {
         rd = parts.length ? ' (' + parts.join(', ') + ')' : '';
       }
     } catch (e) {}
-    bullets.push({ c: rc, t: '<b>Récupération ' + String(m.recup).toLowerCase() + '</b>' + rd + '.' });
+    bullets.push({ c: rc, t: '<b>Récupération ' + recTxt + '</b>' + rd + '.' });
   }
-  if (hasCf) bullets.push({ c: ratio > 1.15 ? 'var(--tj-warn)' : 'var(--tj-subtle)', t: 'Charge des 7 derniers jours <b>' + ch + '</b> par rapport à ton habitude.' });
+  if (hasCf) bullets.push({ c: (ratio > 1.15 && _crDeg) ? 'var(--tj-warn)' : 'var(--tj-subtle)', t: 'Charge des 7 derniers jours <b>' + ch + '</b> par rapport à ton habitude.' });
   var bulletsHtml = bullets.map(function (b) {
     return '<div style="display:flex;gap:9px;align-items:flex-start;margin:0 0 8px"><span style="width:7px;height:7px;border-radius:999px;background:' + b.c + ';margin-top:6px;flex:none"></span><span style="font-size:13px;color:var(--tj-text);line-height:1.45">' + b.t + '</span></div>';
   }).join('');
@@ -15599,22 +15611,25 @@ function renderChargeFatigueJour(data) {
         if (be0.sommeil != null && !isNaN(Number(be0.sommeil))) sp.push('Sommeil ' + String(WQ_ANSWERS.sommeil[Number(be0.sommeil)] || '').toLowerCase());
         if (be0.fatigue != null && !isNaN(Number(be0.fatigue))) sp.push('fatigue ' + String(WQ_ANSWERS.fatigue[Number(be0.fatigue)] || '').toLowerCase());
       }
-      if (hasRecup) sp.push('récup ' + String(m.recup).toLowerCase());
-      // Charge élevée mais récup bonne (verdict Prêt) : on l'affiche dans la sous-ligne
-      // pour que le bandeau vert soit transparent (le repère « Fatigue » dessous s'explique).
-      if (hasCf && tsbPct != null && tsbPct < -12) sp.push('charge récente élevée');
+      if (hasRecup) sp.push('récupération ' + recTxt);
+      // La charge ne fait JAMAIS le verdict : on ne la mentionne que sur un bandeau vert
+      // (repère informatif), jamais comme si elle expliquait « Reste vigilant ».
+      if (niv0 === 'Prêt' && hasCf && tsbPct != null && tsbPct < -12) sp.push('charge en hausse');
     } catch (e) {}
     var _escS = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+    // Règle 6bis : la CAUSE réelle du verdict (moteur.causes) en premier, en gras.
+    var _causes = (niv0 !== 'Prêt' && Array.isArray(m.causes)) ? m.causes : [];
+    var causeHtml = _causes.length ? '<div style="font-size:12.5px;font-weight:700;color:var(--tj-text);margin-top:2px">Pourquoi : ' + _escS(_causes.join(' · ')) + '</div>' : '';
     verdictHtml = '<div style="display:flex;gap:10px;align-items:center;background:' + vb[1] + ';border:1px solid ' + vb[2] + ';border-radius:12px;padding:10px 13px;margin:0 0 12px">'
       + '<span style="width:9px;height:9px;border-radius:999px;background:' + vb[0] + ';flex:none"></span>'
       + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:' + vb[0] + '">' + vb[3] + '</div>'
-      + (sp.length ? '<div style="font-size:11.5px;color:var(--tj-muted);margin-top:1px">' + _escS(sp.join(' · ')) + '</div>' : '') + '</div></div>';
+      + causeHtml + (sp.length ? '<div style="font-size:11.5px;color:var(--tj-muted);margin-top:1px">' + _escS(sp.join(' · ')) + '</div>' : '') + '</div></div>';
   }
 
   var subTxt = hasCf ? 'Ton état du jour : récup · charge · fatigue' : 'Ton état du jour';
   var fraicheurWidget = hasCf ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
-    +   '<div style="text-align:center;flex:none;min-width:56px"><div style="font-size:18px;font-weight:800;color:' + frc + ';line-height:1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
-    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> = es-tu <b>reposé</b> ? On compare ta charge <b>habituelle</b> à celle de <b>ces derniers jours</b> : en avoir fait plus récemment = plus fatigué. Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
+    +   '<div style="text-align:center;flex:none;min-width:56px;max-width:96px"><div style="font-size:' + (fr.length > 10 ? '14px' : '18px') + ';font-weight:800;color:' + frc + ';line-height:1.1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
+    +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> : on compare ta charge <b>habituelle</b> à celle de <b>ces derniers jours</b>. Plus de charge récente ne veut pas dire fatigue : c\'est ton <b>ressenti</b> (sommeil, fatigue, RPE) qui le confirme. Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
     + '</div>') : '';
 
   el.style.display = '';
