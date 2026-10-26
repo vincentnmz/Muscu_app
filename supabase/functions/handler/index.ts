@@ -1128,6 +1128,7 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
   const nom = (params.get('prenom') || params.get('nom') || login)?.trim()
   const ddn = params.get('ddn') || null
   const taille = params.get('taille') || null
+  const poids = params.get('poids') || null
   const annees = params.get('annees') || '0'
   const sport = params.get('sport') || 'muscu'
   const email = (params.get('email') || '').trim()
@@ -1146,7 +1147,7 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
 
   const hash = await hashSalted(pwd, login)
   const newId = await nextAthleteId()
-  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, annees: Number(annees) || 0, email: email || null }).select().single()
+  const { data, error } = await sb().from('athletes').insert({ id: newId, login, nom, password_hash: hash, sport, ddn, taille, poids: (poids != null && poids !== '') ? (Number(poids) || null) : null, annees: Number(annees) || 0, email: email || null }).select().single()
   if (error) return jsonResp({ erreur: error.message, message: error.message })
   return jsonResp({ success: true, athlete: {
     athlete_id: data.id,
@@ -5709,7 +5710,7 @@ Deno.serve(async (req: Request) => {
       const action = body.action
       switch (action) {
         case 'login':                    return handleLogin(new URLSearchParams({ login: body.login, password: body.password }))
-        case 'register':                 return handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', annees: String(body.annees || '0'), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '' }))
+        case 'register':                 return handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: String(body.annees || '0'), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '' }))
         case 'registerCoach':            return handleRegisterCoach(body)
         case 'seedDemoFoot':             return handleSeedDemoFoot(body)
         case 'clearDemoFoot':            return handleClearDemoFoot(body)

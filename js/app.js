@@ -1806,6 +1806,7 @@ async function seConnecter() {
 async function sInscrire() {
   const prenom = document.getElementById('reg-prenom').value.trim();
   const taille = document.getElementById('reg-taille').value.trim();
+  const poids = (document.getElementById('reg-poids') ? document.getElementById('reg-poids').value : '').trim();
   const login = document.getElementById('reg-login').value.trim();
   const sportSel = document.getElementById('reg-sport');
   const sport = sportSel ? sportSel.value : 'muscu';
@@ -1817,7 +1818,7 @@ async function sInscrire() {
   const code = (document.getElementById('reg-code') ? document.getElementById('reg-code').value : '').trim();
   const errEl = document.getElementById('reg-error');
   errEl.textContent = '';
-  if (!prenom || !login || !ddn || !taille || !email) { errEl.textContent = 'Remplis tous les champs (email inclus).'; return; }
+  if (!prenom || !login || !ddn || !taille || !poids || !email) { errEl.textContent = 'Remplis tous les champs (email inclus).'; return; }
   if (sport === 'muscu' && annees === '') { errEl.textContent = 'Indique tes années de pratique.'; return; }
   if (login.length !== 4 || isNaN(login)) { errEl.textContent = 'Le login doit être 4 chiffres.'; return; }
   if (!password || password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum.'; return; }
@@ -1829,7 +1830,7 @@ async function sInscrire() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, annees, password, sport, email, code })
+      body: JSON.stringify({ action: 'register', login, prenom, ddn, taille, poids, annees, password, sport, email, code })
     });
     const data = await res.json();
     if (data.success) {
@@ -16706,6 +16707,8 @@ function fermerEditeurProgramme() {
   }
   // Le programme a pu changer → recharger pour rafraîchir le hub et le sélecteur.
   if (typeof chargerAppData === 'function') chargerAppData();
+  // Fin du parcours d'onboarding (chemin Novalyz / Je gère) → lancer le tour guidé.
+  _onbTourMaybe(500);
 }
 
 // ═══════════ ONBOARDING : Novalyz propose un programme de départ ═══════════
@@ -16809,6 +16812,11 @@ var _G2_BLOCKS = {
     { lab: 'Gainage', type: 'iso', rmin: 0, rmax: 0, exos: ['Crunch à la poulie', 'Relevé de jambe', 'Roulette'] } ] }
 };
 var _G2_DAYSMAP = { 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6] };
+// Priorité musculaire d'exécution : on commence TOUJOURS par les gros groupes
+// (polyarticulaires lourds) avant les petits. Évite qu'une séance démarre par les
+// bras. Appliqué au rendu final de chaque séance (indépendant de l'ordre d'écriture
+// des blocs). quad/pecs/dos = gros ; ischios/fessiers ; épaules ; bras ; mollets ; abdos.
+var _G2_MUSRANK = { quad: 1, pecs: 1, dos: 1, ischios: 2, fessiers: 2, epaules: 3, triceps: 4, biceps: 4, mollets: 5, abdos: 6 };
 var _G2_JLOGIC = { fb: [2, 3, 4], ul: [2, 4, 6], ppl: [3, 4, 5, 6], split: [5, 6], custom: [2, 3, 4, 5, 6] };
 var _G2_CAP = { 45: 5, 60: 6, 75: 8, 90: 9 };
 
@@ -16858,7 +16866,9 @@ function _g2Build(day, cap) {
   var ordered = [];
   for (var p = 0; p < maxN; p++) { byBlock.forEach(function (a) { if (a[p]) ordered.push(a[p]); }); }
   var keep = ordered.slice(0, cap);
-  keep.sort(function (a, b) { return a.bi - b.bi || a.pk - b.pk; });
+  // Ordre final : gros muscles d'abord (rang), puis ordre d'écriture du bloc (bi),
+  // puis l'angle (pk). Garantit « pec/dos avant bras » quelle que soit la séance.
+  keep.sort(function (a, b) { return (_G2_MUSRANK[a.bk] || 9) - (_G2_MUSRANK[b.bk] || 9) || a.bi - b.bi || a.pk - b.pk; });
   return keep;
 }
 function _g2Reps(objectif, niveau, sl) {
@@ -16871,6 +16881,8 @@ function _g2Sets(niveau) { return niveau === 'avance' ? 4 : 3; }
 // Hypertrophie / organisation → lignes genererProgramme
 function _genProgramme2(objectif, organisation, jours, temps, niveau) {
   var days = _g2GenDays(organisation, jours), cap = _G2_CAP[temps] || 7, sets = _g2Sets(niveau), lignes = [];
+  // Maintien = volume allégé (une série de moins, un exercice de moins par séance).
+  if (objectif === 'maintien') { sets = Math.max(2, sets - 1); cap = Math.max(3, cap - 1); }
   days.forEach(function (day) {
     var ex = _g2Build(day, cap);
     var hasBi = ex.some(function (x) { return x.bk === 'biceps'; }), hasTri = ex.some(function (x) { return x.bk === 'triceps'; });
@@ -16921,7 +16933,7 @@ function _genProgrammeForce(jours) {
 
 // ── Modal onboarding (3 étapes) ──
 // État du générateur v2 (athlète) — 2 parcours : débutant (galerie) / interméd.-avancé (configurateur).
-var _genState = { niv: 'intermediaire', obj: 'hypertrophie', org: 'ul', jours: 4, temps: 60, preset: 0 };
+var _genState = { niv: 'intermediaire', obj: 'hypertrophie', but: 'masse', org: 'ul', jours: 4, temps: 60, preset: 0 };
 var _GEN_NIV = [['debutant', 'Débutant', '0-3 ans de pratique'], ['intermediaire', 'Intermédiaire', '4-9 ans'], ['avance', 'Avancé', '10 ans et +']];
 var _GEN_JOPT = [[2, '2 jours', 'Full body'], [3, '3 jours', 'Push / Pull / Legs'], [4, '4 jours', 'Haut / Bas'], [5, '5 jours', 'PPL + Haut / Bas']];
 // Cible du générateur : l'athlète connecté (session athlète) OU l'athlète de la fiche
@@ -16940,20 +16952,29 @@ function ouvrirGenProgramme() {
   // notion) — reste modifiable à l'étape 1.
   var _objDef = null; try { var _oi = _objInfo(_gc.objectif); if (_oi) _objDef = _oi.gen; } catch (e) {}
   if (_objDef !== 'force' && _objDef !== 'hypertrophie') _objDef = 'hypertrophie';
-  _genState = { niv: 'intermediaire', obj: _objDef, org: 'ul', jours: 4, temps: 60, preset: 0 };
+  // But (objectif utilisateur) par défaut, déduit de l'objectif du profil.
+  var _butDef = 'masse';
+  try { var _ol = String(_gc.objectif || '').toLowerCase();
+    if (_objDef === 'force' || _ol.indexOf('force') >= 0) _butDef = 'force';
+    else if (_ol.indexOf('sèche') >= 0 || _ol.indexOf('seche') >= 0 || _ol.indexOf('sec') >= 0) _butDef = 'seche';
+    else if (_ol.indexOf('maintien') >= 0 || _ol.indexOf('entretien') >= 0 || _ol.indexOf('mainte') >= 0) _butDef = 'maintien';
+    else _butDef = 'masse';
+  } catch (e) {}
+  _genState = { niv: 'intermediaire', obj: (_butDef === 'force' ? 'force' : 'hypertrophie'), but: _butDef, org: 'ul', jours: 4, temps: 60, preset: 0 };
   var ov = document.getElementById('gen-prog-overlay');
   if (!ov) {
     ov = document.createElement('div');
     ov.id = 'gen-prog-overlay';
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(7,11,20,.55);z-index:1000;display:flex;align-items:flex-end;justify-content:center;';
-    ov.onclick = function (e) { if (e.target === ov) fermerGenProgramme(); };
-    ov.innerHTML = '<div id="gen-prog-sheet" style="background:var(--surface);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto;box-shadow:0 -8px 30px rgba(7,11,20,.25)"></div>';
+    // Plein écran (pas une demi-page) : panneau pleine hauteur, scroll interne,
+    // centré en largeur sur desktop. Fermeture par le × de l'en-tête (_genRender).
+    ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:stretch;';
+    ov.innerHTML = '<div id="gen-prog-sheet" style="background:var(--bg);width:100%;max-width:640px;margin:0 auto;height:100%;box-sizing:border-box;padding:calc(16px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) 18px;overflow:auto;"></div>';
     document.body.appendChild(ov);
   }
   ov.style.display = 'flex';
   if (exercicesData.length === 0 && typeof chargerExercices === 'function') { chargerExercices().then(_genRender); } else { _genRender(); }
 }
-function fermerGenProgramme() { var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; }
+function fermerGenProgramme() { var ov = document.getElementById('gen-prog-overlay'); if (ov) ov.style.display = 'none'; if (_genOpeningEditor) { _genOpeningEditor = false; } else { _onbTourMaybe(); } }
 // « Je gère mon programme moi-même » → coupe la proposition auto à la connexion.
 // (Reste toujours accessible via le bouton « Novalyz me propose un programme ».)
 function _genRefuse() { _savePref('prog_auto_off', 1); fermerGenProgramme(); try { showToast('OK, tu gères ton programme. Tu pourras le générer depuis Entraînement quand tu veux.'); } catch (e) {} }
@@ -17006,6 +17027,11 @@ var _G2_ORGS = [['fb', 'Full Body'], ['ul', 'Upper / Lower'], ['ppl', 'PPL'], ['
 function _g2Set(k, v) {
   _genState[k] = v;
   if (k === 'org') { var jl = _G2_JLOGIC[v] || [2, 3, 4, 5, 6]; if (jl.indexOf(_genState.jours) < 0) _genState.jours = jl[0]; }
+  // Objectif utilisateur (but) → moteur : 'force' bascule sur le squelette force,
+  // les autres (masse/sèche/maintien) tournent sur le moteur hypertrophie
+  // (volume ajusté pour maintien dans _genProgramme2). On garde `obj` synchronisé
+  // pour les tests existants qui s'appuient dessus (st.obj === 'force').
+  if (k === 'but') { _genState.obj = (v === 'force') ? 'force' : 'hypertrophie'; }
   _genRender();
 }
 function _g2Chip(onclick, on, label, dis) {
@@ -17026,9 +17052,9 @@ function _g2Resolve(lignes) {
 }
 function _g2Lignes() {
   var st = _genState, lignes;
-  if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('hypertrophie', p.org, p.jours, 75, 'debutant'); }
-  else if (st.obj === 'force') { lignes = _genProgrammeForce(st.jours); }
-  else { lignes = _genProgramme2('hypertrophie', st.org, st.jours, st.temps, st.niv); }
+  if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('masse', p.org, p.jours, 75, 'debutant'); }
+  else if (st.but === 'force') { lignes = _genProgrammeForce(st.jours); }
+  else { lignes = _genProgramme2(st.but || 'masse', st.org, st.jours, st.temps, st.niv); }
   return _g2Resolve(lignes);
 }
 // Variantes d'un exercice = les AUTRES exos de son slot (même angle/muscle) dans les blocs
@@ -17148,8 +17174,13 @@ function _genRender() {
     body += L('Choisis ton programme')
       + _G2_PRESETS.map(function (p, i) { return _genCard('_g2Set(\'preset\',' + i + ')', st.preset === i, p.nm + ' · ' + p.badge, p.desc); }).join('');
   } else {
-    body += L('Objectif') + row([['hypertrophie', 'Hypertrophie'], ['force', 'Force']].map(function (o) { return _g2Chip('_g2Set(\'obj\',\'' + o[0] + '\')', st.obj === o[0], o[1]); }).join(''));
-    if (st.obj === 'force') {
+    var BUTS = [['masse', 'Prise de masse'], ['seche', 'Sèche'], ['maintien', 'Maintien'], ['force', 'Force']];
+    body += L('Ton objectif') + row(BUTS.map(function (b) { return _g2Chip('_g2Set(\'but\',\'' + b[0] + '\')', st.but === b[0], b[1]); }).join(''));
+    // Note honnête : à l'entraînement, prise de masse et sèche se travaillent pareil
+    // (c'est la nutrition qui diffère) ; le maintien allège le volume.
+    var _butNote = { masse: 'Volume complet, 8–12 reps : on construit du muscle.', seche: 'Même entraînement qu\'en prise de masse (on préserve le muscle) — c\'est la nutrition qui fait la sèche.', maintien: 'Volume allégé : juste de quoi entretenir tes acquis.', force: 'Charges lourdes, peu de reps : squelette powerlifting modifiable.' }[st.but];
+    if (_butNote) body += '<div style="font-size:11.5px;color:var(--text-subtle);margin:8px 2px 2px;line-height:1.45">' + _butNote + '</div>';
+    if (st.but === 'force') {
       body += L('Jours / semaine') + row([2, 3, 4, 5, 6].map(function (j) { return _g2Chip('_g2Set(\'jours\',' + j + ')', st.jours === j, j + ' j'); }).join(''))
         + '<div style="font-size:11.5px;color:var(--text-subtle);margin:8px 2px 2px">Powerlifting — squelette modifiable : change les exos (menus), ＋ ajoute, ✕ retire. Les jours Rappel / Renfo sont optionnels. Charges au % du 1RM (estimé par l\'app).</div>'
         + _g2ForceSkel(st.jours).map(_g2ForceDayHtml).join('')
@@ -17177,7 +17208,7 @@ function _genRender() {
 }
 async function _genGenerer() {
   var _gc = _genCtx(); if (!_gc) { showToast('Athlète introuvable'); return; }
-  var lignes = (_genState.niv !== 'debutant' && _genState.obj === 'force') ? _g2Resolve(_g2ForceLignesFromDOM()) : _g2Lignes();
+  var lignes = (_genState.niv !== 'debutant' && _genState.but === 'force') ? _g2Resolve(_g2ForceLignesFromDOM()) : _g2Lignes();
   if (!lignes.length) { showToast('Impossible de générer (ajoute au moins un exercice)'); return; }
   // Programme existant → demander avant d'écraser (coach : le programme chargé de la fiche).
   var existant = _gc.coach ? (typeof cdProgrammeLignes !== 'undefined' && cdProgrammeLignes && cdProgrammeLignes.length > 0)
@@ -17190,6 +17221,7 @@ async function _genGenerer() {
     var data = await res.json();
     if (data && (data.ok || data.inserees)) {
       showToast('Programme créé (' + (data.inserees || lignes.length) + ' exercices)');
+      if (!_gc.coach) _genOpeningEditor = true;   // l'éditeur va s'ouvrir → le tour démarrera à sa fermeture, pas là
       fermerGenProgramme();
       if (_gc.coach) {
         // Recharge le programme de l'athlète dans le Builder coach (déjà ouvert).
@@ -17207,6 +17239,12 @@ async function _genGenerer() {
 // Drapeaux (indicateurs 'pref') : onboarding_vu (intro vue 1×) · prog_auto_off
 // (l'athlète gère son programme → on ne le propose plus). Branche selon coach_id.
 var _onbChecked = false, _onbI = 0, _onbSteps = [];
+// Après l'intro, le tour guidé (nvTourAthlete) doit démarrer MÊME quand l'athlète
+// passe par le générateur ou l'éditeur (chemins « Novalyz » / « Je gère »), pas
+// seulement par le chemin « coach ». On arme ce drapeau au choix et on lance le
+// tour une fois le générateur/éditeur refermé.
+var _onbPendingTour = false, _genOpeningEditor = false;
+function _onbTourMaybe(delay) { if (!_onbPendingTour) return; _onbPendingTour = false; setTimeout(function () { try { nvTourAthlete(); } catch (e) {} }, delay || 450); }
 function _savePref(cle, val) {
   try { if (dernierAppData) dernierAppData[cle] = !!val; } catch (e) {}
   try { return fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'savePref', athlete_id: athlete.athlete_id, cle: cle, valeur: val ? 1 : 0 }) }); } catch (e) {}
@@ -17248,8 +17286,8 @@ function _onbNext() { if (_onbI < _onbSteps.length - 1) { _onbI++; _onbRender();
 function _onbBack() { if (_onbI > 0) { _onbI--; _onbRender(); } }
 function _onbChoix(c) {
   _savePref('onboarding_vu', 1);
-  if (c === 'novalyz') { fermerOnboarding(); ouvrirGenProgramme(); }
-  else if (c === 'mine') { _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme '); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
+  if (c === 'novalyz') { _onbPendingTour = true; fermerOnboarding(); ouvrirGenProgramme(); }
+  else if (c === 'mine') { _onbPendingTour = true; _savePref('prog_auto_off', 1); fermerOnboarding(); showToast('Tu gères ton programme '); if (typeof ouvrirEditeurProgramme === 'function') ouvrirEditeurProgramme(); }
   else if (c === 'coach') { _onbSteps = ['coachinfo']; _onbI = 0; _onbRender(); }
 }
 function _onbFini() { _savePref('onboarding_vu', 1); fermerOnboarding(); setTimeout(function () { nvTourAthlete(); }, 450); }
@@ -17268,8 +17306,8 @@ function _onbContent(step) {
   // profil
   var card = function (c, emoji, t, s) { return '<button onclick="_onbChoix(\'' + c + '\')" style="text-align:left;display:flex;gap:12px;align-items:center;width:100%;padding:15px;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;margin-bottom:10px;cursor:pointer"><span style="font-size:24px;flex:none">' + emoji + '</span><div style="flex:1"><div style="font-weight:800;font-size:15px">' + t + '</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">' + s + '</div></div><span style="color:var(--accent);font-size:20px">›</span></button>'; };
   return { html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 6px;text-align:center">Comment veux-tu être suivi ?</h1><div style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:16px">Tu pourras changer d\'avis plus tard.</div>'
-    + card('novalyz', '', 'Novalyz me construit un programme', 'Réponds à 3 questions, j\'assemble un programme de départ adapté.')
-    + card('mine', '', 'Je gère mon programme moi-même', 'Tu crées tes séances. On ne te proposera plus de programme.')
+    + card('novalyz', '', 'Novalyz me construit un programme', 'Réponds à 3 questions, Novalyz assemble un programme de départ adapté.')
+    + card('mine', '', 'Je gère mon programme moi-même', 'Tu crées (ou importes) tes propres séances. Novalyz ne te proposera plus de plan.')
     + card('coach', '🤝', 'J\'ai un coach', 'C\'est ton coach qui te fait ton programme.')
     + '</div>' };
 }
@@ -17937,6 +17975,19 @@ function _enSetMode(m) {
   // de course/vélo/fractionné pour l'instant). À réactiver quand le cardio en aura.
   var gen = document.getElementById('en-gen'); if (gen) gen.style.display = (m === 'muscu') ? '' : 'none';
   var creer = document.getElementById('en-creer'); if (creer) creer.style.display = (m === 'muscu') ? '' : 'none';
+  // Emphase selon qu'un programme existe déjà : si OUI → « Modifier » en avant et
+  // « Régénérer » en secondaire (sinon on re-générait sans le vouloir) ; si NON →
+  // « Novalyz propose » en avant (nouvel athlète).
+  try {
+    if (m === 'muscu' && gen && creer) {
+      var _hasProg = !!(typeof dernierAppData !== 'undefined' && dernierAppData && Array.isArray(dernierAppData.programme) && dernierAppData.programme.length);
+      var gl = document.getElementById('en-gen-lbl'), cl = document.getElementById('en-creer-lbl');
+      var strong = function (b) { b.style.borderColor = 'var(--accent)'; b.style.color = 'var(--accent)'; b.style.background = 'var(--accent-a08)'; b.style.fontWeight = '800'; };
+      var soft = function (b) { b.style.borderColor = ''; b.style.color = ''; b.style.background = ''; b.style.fontWeight = ''; };
+      if (_hasProg) { strong(creer); soft(gen); if (cl) cl.textContent = 'Modifier mon programme'; if (gl) gl.textContent = 'Régénérer avec Novalyz'; }
+      else { strong(gen); soft(creer); if (gl) gl.textContent = 'Novalyz me propose un programme'; if (cl) cl.textContent = 'Créer / modifier mon programme'; }
+    }
+  } catch (e) {}
   if (m === 'hyrox') { try { renderHyroxHome(); } catch (e) {} }
   // Le bloc « dernières séances / sorties » suit le mode (muscu vs cardio ; masqué en hyrox).
   try { renderEnSuivi(typeof dernierAppData !== 'undefined' ? dernierAppData : null); } catch (e) {}
@@ -22029,6 +22080,7 @@ async function ouvrirImportMontre() {
     if (!av || !av.available) { _hcStatus('Health Connect indisponible sur ce téléphone.', 'var(--bad)'); return; }
     try { var p = await H.requestHealthPermissions({ permissions: _HC_PERMS }); _hcDiag.push('permissions → ' + JSON.stringify(p && p.permissions)); }
     catch (e) { _hcDiag.push('requestPermissions ERREUR : ' + errStr(e)); }
+    _hcMarkConnected();   // ce compte a volontairement lié la montre → autorisé à lire/synchroniser les pas natifs
     var now = new Date();
     var start365 = new Date(now.getTime() - 365 * 24 * 3600 * 1000);   // large fenêtre : on ne rate rien
     var end1 = new Date(now.getTime() + 24 * 3600 * 1000);             // +1 j (fuseaux / séance du jour)
@@ -22169,6 +22221,21 @@ function _hcRenderList(ws, steps) {
 // 'ds' = dashboard (thème .tj) · 'etds' = écran État (thème global). Chaque
 // instance a son propre état (gran/offset/buckets) → indépendantes.
 var _hcWarmed = false;   // client Health Connect lié pour cette session ?
+
+// LIAISON MONTRE ↔ COMPTE (isolation des pas entre comptes sur un même appareil).
+// Health Connect renvoie les données de l'APPAREIL (donc du propriétaire du
+// téléphone), pas d'un compte. Sans garde, un 2e compte connecté sur le même
+// téléphone voyait ET synchronisait vers le serveur les pas du 1er → fuite de
+// données d'un athlète chez un autre (constaté : les pas de Vincent dans un
+// compte neuf, puis répercutés sur le web). RÈGLE : on ne lit/synchronise les
+// pas natifs QUE pour un compte ayant EXPLICITEMENT connecté la montre
+// (bouton « Connecter ma montre »). Flag par athlète, stocké localement.
+function _hcConnected(a) {
+  try { var id = (a && a.athlete_id) || (typeof athlete !== 'undefined' && athlete && athlete.athlete_id); if (!id) return false; return localStorage.getItem('nvz_hc_connected_' + id) === '1'; } catch (e) { return false; }
+}
+function _hcMarkConnected() {
+  try { if (typeof athlete !== 'undefined' && athlete && athlete.athlete_id) localStorage.setItem('nvz_hc_connected_' + athlete.athlete_id, '1'); } catch (e) {}
+}
 var _DS_THEME = {
   ds:   { acc: 'var(--tj-accent)', accS: 'var(--tj-accent-strong)', s2: 'var(--tj-surface2)', bd: 'var(--tj-border)', sf: 'var(--tj-surface)', tx: 'var(--tj-text)', mu: 'var(--tj-muted)', su: 'var(--tj-subtle)', gd: 'var(--tj-good)' },
   etds: { acc: 'var(--accent)',    accS: 'var(--accent-strong)',    s2: 'var(--surface2)',    bd: 'var(--border)',    sf: 'var(--surface)',    tx: 'var(--text)',    mu: 'var(--text-muted)', su: 'var(--text-subtle)', gd: 'var(--good)' }
@@ -22248,7 +22315,10 @@ async function renderDashSteps(attempt) {
   var native = (typeof _estAppNative === 'function' && _estAppNative());
   // WEB (navigateur) : pas de Health Connect → on affiche les pas historisés
   // côté serveur (sante_historique) plutôt que de masquer le bloc.
-  if (!native) { _renderPasWeb('dash-steps', 'dspas'); return; }
+  // NATIF mais montre NON liée à CE compte : on n'interroge pas Health Connect
+  // (ce sont les pas de l'appareil, pas du compte) → on retombe sur l'historique
+  // serveur PROPRE à ce compte (vide pour un compte neuf → bloc masqué).
+  if (!native || !_hcConnected(athlete)) { _renderPasWeb('dash-steps', 'dspas'); return; }
   var H = _hcPlugin();
   // Au démarrage À FROID, le plugin natif Health Connect (Capacitor.Plugins) et
   // la façade NovalyzPlatform peuvent ne pas être encore prêts au moment où le
@@ -22308,6 +22378,17 @@ async function renderEtatMontre(attempt) {
     return;
   }
   if (!H) { if (attempt < 8) setTimeout(function () { renderEtatMontre(attempt + 1); }, 600); else hide(); return; }
+  // Montre NON liée à CE compte : on n'interroge PAS Health Connect (données de
+  // l'appareil ≠ du compte → isolation). On montre l'invite à connecter.
+  if (!_hcConnected(athlete)) {
+    if (mini) mini.style.display = 'none';
+    el.style.display = ''; el.style.padding = '14px 15px';
+    el.innerHTML = '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:5px;">Connecte ta montre</div>'
+      + '<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:11px;">Lie ta montre à Health Connect pour voir tes pas, ton sommeil et ta FC au repos sur ton compte.</div>'
+      + '<button onclick="ouvrirImportMontre()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Connecter ma montre</button>';
+    if (sec) sec.style.display = 'none';
+    return;
+  }
   if (!_hcWarmed) {
     try { var avh = await H.isHealthAvailable(); if (avh && avh.available) { _hcWarmed = true; try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e2) {} } } catch (e) {}
   }
@@ -22569,6 +22650,7 @@ async function _etFillRestingHr(H, now) {
 var _santeSyncing = false;
 async function _syncSanteMontre(H) {
   if (!H || typeof athlete === 'undefined' || !athlete || _santeSyncing) return;
+  if (!_hcConnected(athlete)) return;   // seul un compte ayant lié la montre pousse ses pas au serveur (isolation entre comptes)
   var k = 'nvz_sante_sync3_' + athlete.athlete_id;   // v3 = throttle court (≈ à chaque ouverture)
   // Avant : 1×/6 h → les pas du jour n'arrivaient sur le serveur (donc sur le web)
   // qu'avec un gros décalage. Maintenant 15 min : à chaque ouverture/retour au
