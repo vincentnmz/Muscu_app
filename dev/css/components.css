@@ -962,3 +962,9 @@ i[class^="nv-ic-"],i[class*=" nv-ic-"]{display:inline-block;width:1em;height:1em
 .pc-opt.on b { color:var(--accent); }
 .pc-opt:disabled { opacity:.45; cursor:default; }
 .pc-ref { font-size:11px; color:var(--text-muted); margin-top:8px; }
+/* Bouton « remonter en haut » (global) */
+#btn-top { position:fixed; right:20px; bottom:calc(150px + env(safe-area-inset-bottom,0px)); z-index:1130; width:44px; height:44px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--accent); box-shadow:0 6px 18px rgba(13,20,36,.16); display:grid; place-items:center; cursor:pointer; opacity:0; pointer-events:none; transform:translateY(8px); transition:opacity .2s, transform .2s; }
+#btn-top.on { opacity:1; pointer-events:auto; transform:none; }
+#btn-top svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+body.onb-open #btn-top, body.xp-open #btn-top, body.jg-open #btn-top, body.gen-open #btn-top { display:none; }
+@media (min-width:992px) { #btn-top { bottom:28px; right:28px; } }

@@ -9617,6 +9617,13 @@ function ouvrirCoach() {
   if (typeof switchTab === 'function') switchTab('conseils');
 }
 
+// Bouton « remonter en haut » : visible dès qu'on a défilé de plus d'un écran.
+(function () {
+  var t = null;
+  function maj() { t = null; var b = document.getElementById('btn-top'); if (!b) return; b.classList.toggle('on', (window.scrollY || document.documentElement.scrollTop || 0) > Math.max(500, window.innerHeight * 0.9)); }
+  try { window.addEventListener('scroll', function () { if (!t) t = setTimeout(maj, 80); }, { passive: true }); } catch (e) {}
+})();
+
 // Bulle « Demande à Novalyz » UNIQUE : visible seulement pour l'athlète SOLO (sans
 // coach), jamais sur la conversation / l'analyse morpho / la saisie plein écran.
 // L'athlète AVEC coach passe par l'onglet Coach (pas de bulle flottante).
