@@ -3718,15 +3718,28 @@ async function handleSupprimerCompte(body: any): Promise<Response> {
     sb().from('native_push_tokens').delete().eq('athlete_id', String(athleteId)),
     sb().from('password_reset_tokens').delete().eq('athlete_id', String(athleteId)),
     sb().from('google_health_tokens').delete().eq('athlete_id', String(athleteId)),
-  ])
-  // Médias coach (photos/vidéos) stockés dans le bucket privé coach-media,
-  // rangés sous le préfixe <athlete_id>/ — on liste puis on supprime.
-  try {
-    const { data: files } = await sb().storage.from('coach-media').list(String(athleteId))
-    if (files && files.length) {
-      await sb().storage.from('coach-media').remove(files.map((f: any) => `${athleteId}/${f.name}`))
-    }
-  } catch (_) { /* best-effort : pas de média ou bucket absent */ }
+    // Tables oubliées jusqu'au 28/10/2026 (audit avant test fermé Play Store) :
+    sb().from('notes').delete().eq('athlete_id', athleteId),
+    sb().from('objectifs').delete().eq('athlete_id', athleteId),
+    sb().from('activites').delete().eq('athlete_id', athleteId),
+    sb().from('planning').delete().eq('athlete_id', athleteId),
+    sb().from('pauses').delete().eq('athlete_id', athleteId),
+    sb().from('push_subscriptions').delete().eq('athlete_id', athleteId),
+    sb().from('alertes_historique').delete().eq('athlete_id', athleteId),
+  ].map((q: any) => Promise.resolve(q).catch(() => null)))
+  // Fichiers privés rangés sous le préfixe <athlete_id>/ : médias coach (photos/vidéos
+  // de la conversation) ET photos de suivi corporel (face/profil/dos). On liste puis
+  // on supprime, par lots (list() est paginé).
+  for (const bucket of ['coach-media', 'suivi-photos']) {
+    try {
+      for (let guard = 0; guard < 50; guard++) {
+        const { data: files } = await sb().storage.from(bucket).list(String(athleteId), { limit: 1000 })
+        if (!files || !files.length) break
+        await sb().storage.from(bucket).remove(files.map((f: any) => `${athleteId}/${f.name}`))
+        if (files.length < 1000) break
+      }
+    } catch (_) { /* best-effort : pas de fichier ou bucket absent */ }
+  }
   await sb().from('athletes').delete().eq('id', athleteId)
   return jsonResp({ success: true })
 }
@@ -4975,6 +4988,15 @@ async function handleDeleteCoach(body: any): Promise<Response> {
   const { coach_id } = body
   if (!coach_id) return jsonResp({ success: false, error: 'coach_id manquant' })
   await sb().from('athletes').update({ coach_id: null }).eq('coach_id', coach_id)
+  // Données propres au coach (exigence Play Store, 28/10/2026) : alertes « traitées »,
+  // jetons de notification (stockés sous COACH_PUSH_PREFIX + id). Les MESSAGES restent
+  // (ils appartiennent aussi à la conversation de l'athlète) mais le nom est anonymisé.
+  await Promise.all([
+    sb().from('alertes_traitees').delete().eq('coach_id', coach_id),
+    sb().from('native_push_tokens').delete().eq('athlete_id', COACH_PUSH_PREFIX + String(coach_id)),
+    sb().from('push_subscriptions').delete().eq('athlete_id', COACH_PUSH_PREFIX + String(coach_id)),
+    sb().from('commentaires').update({ coach_nom: 'Coach (compte supprimé)', auteur_nom: 'Coach (compte supprimé)' }).eq('coach_id', coach_id).eq('auteur', 'coach'),
+  ].map((q: any) => Promise.resolve(q).catch(() => null)))
   const { error } = await sb().from('coachs').delete().eq('coach_id', coach_id)
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true })
