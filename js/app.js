@@ -10279,6 +10279,7 @@ async function sInscrireCoach() {
       coach = data.coach;
       localStorage.setItem('muscu_coach', JSON.stringify(coach));
       localStorage.removeItem('muscu_coach_vue');
+      _coachVientDeSinscrire = true;   // nouveau coach → visite guidée automatique (1 fois)
       ouvrirEspaceCoach();
     } else { errEl.textContent = data.error || data.message || 'Cet identifiant coach est déjà utilisé.'; }
   } catch(e) { errEl.textContent = 'Erreur. Réessaie.'; }
@@ -17853,13 +17854,13 @@ function _maybeOnboarding() {
   if (typeof coach !== 'undefined' && coach && coach.coach_id) return;   // session coach → pas d'onboarding athlète
   var ov = document.getElementById('onb-overlay');
   if (ov && ov.style.display === 'flex') return;
-  var hasCoach = !!(athlete && athlete.coach_id);
-  var hasProg = Array.isArray(dernierAppData.programme) && dernierAppData.programme.length > 0;
+  // Intro + visite guidée = UNIQUEMENT pour un compte qui ne les a jamais vues
+  // (drapeau serveur onboarding_vu, donc valable sur tous les appareils). Après,
+  // plus rien ne se relance à la reconnexion : l'athlète les revoit lui-même via
+  // Réglages ▸ « Revoir la visite ». (Avant : la visite reposait sur un drapeau
+  // localStorage → réapparaissait après réinstallation de l'APK / changement d'appareil,
+  // et le générateur se reproposait à chaque connexion sans programme.)
   if (!dernierAppData.onboarding_vu) { ouvrirOnboarding(); return; }
-  // Intro déjà vue : reproposer un programme si pertinent (pas de coach, pas coupé, aucun programme).
-  if (!hasProg && !hasCoach && !dernierAppData.prog_auto_off) { ouvrirGenProgramme(); return; }
-  // Sinon : visite guidée contextuelle (une fois, drapeau localStorage).
-  nvTourAthlete();
 }
 function ouvrirOnboarding() {
   if (!athlete) return;
@@ -18559,7 +18560,11 @@ function _nvIsDesktop() { try { return window.matchMedia('(min-width:992px)').ma
 function nvTourAthlete(force) { if (!force && _tourSeen('tour_ath_vu')) return; nvGuideStart(_guideAthleteCards(), 'tour_ath_vu', 'ath'); }
 function nvTourCoach(force) { if (!force && _tourSeen('tour_coach_vu')) return; nvGuideStart(_guideCoachCards(), 'tour_coach_vu', 'coach'); }
 var _coachTourTried = false;
+// Visite coach automatique UNIQUEMENT juste après l'inscription du coach (sinon :
+// Réglages ▸ « Revoir la visite guidée »). Pas de drapeau local qui se perd.
+var _coachVientDeSinscrire = false;
 function _maybeCoachTour() {
+  if (!_coachVientDeSinscrire) return;
   if (_coachTourTried || _tourSeen('tour_coach_vu')) return;
   if (!document.body.classList.contains('coach-active')) return;
   if (document.body.classList.contains('athlete-selected')) return;
