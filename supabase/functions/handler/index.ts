@@ -1694,8 +1694,16 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   // État du jour dégradé (récup faible OU disponibilité Vigilance/À surveiller) :
   // la reco progression doit alors S'ALIGNER avec le verdict (pas de « augmente »).
   const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
-  // Audit #1 : 7 jours GLISSANTS (la semaine calendaire donnait « 1/4 » un lundi).
-  const seancesCur = regularite ? (regularite.seances_j7 != null ? regularite.seances_j7 : (regularite.seances_semaine != null ? regularite.seances_semaine : null)) : null
+  // Régularité selon le RÉGLAGE de l'athlète (Réglages ▸ semaine d'entraînement) :
+  //  • calendaire (défaut) : séances du lundi → aujourd'hui, jugées au PRORATA des jours
+  //    écoulés (un lundi à 0/4 n'est pas « sous l'objectif » — audit #1) ;
+  //  • glissant : séances des 7 derniers jours.
+  const semGliss = !!(extras && extras.semaineType === 'glissant')
+  const jourSem = Math.min(7, Math.max(1, Number(extras && extras.jourSemaine) || 7))
+  const seancesCur = regularite ? (semGliss
+    ? (regularite.seances_j7 != null ? regularite.seances_j7 : null)
+    : (regularite.seances_semaine != null ? regularite.seances_semaine : null)) : null
+  const periodeReg = semGliss ? 'sur les 7 derniers jours' : 'cette semaine'
   const seancesPrev = regularite ? (regularite.seances_prevues || null) : null
 
   const constats: any[] = []
@@ -1734,10 +1742,15 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   } else if (etatVigilance) {
     constats.push({ ton: 'attention', texte: `Ton état du jour appelle à la vigilance (récupération / fatigue) — à prendre en compte avant d'intensifier.` })
   }
-  const regFaible = !!(seancesPrev && seancesCur != null && seancesCur < seancesPrev * 0.6)
-  if (regFaible) constats.push({ ton: 'attention', texte: `Régularité sous ton objectif (${seancesCur}/${seancesPrev} séances sur les 7 derniers jours).` })
+  // Seuil « sous l'objectif » : 60 % de l'objectif, proratisé aux jours écoulés en calendaire.
+  const seuilReg = seancesPrev ? (semGliss ? seancesPrev * 0.6 : Math.floor(seancesPrev * 0.6 * jourSem / 7)) : 0
+  const regFaible = !!(seancesPrev && seancesCur != null && seancesCur < seuilReg)
+  if (regFaible) constats.push({ ton: 'attention', texte: `Régularité sous ton objectif (${seancesCur}/${seancesPrev} séances ${periodeReg}).` })
   else if (seancesPrev && seancesCur != null && seancesCur >= seancesPrev && !constats.some(c => c.ton === 'attention')) {
-    constats.push({ ton: 'positif', texte: `Régularité au rendez-vous (${seancesCur}/${seancesPrev} séances sur les 7 derniers jours).` })
+    constats.push({ ton: 'positif', texte: `Régularité au rendez-vous (${seancesCur}/${seancesPrev} séances ${periodeReg}).` })
+  } else if (seancesPrev && seancesCur != null && !semGliss && seancesCur < seancesPrev) {
+    // Semaine en cours, dans les temps : on donne le compte, sans juger.
+    constats.push({ ton: 'neutre', texte: `Régularité : ${seancesCur}/${seancesPrev} séances cette semaine.` })
   }
 
   const aBaisse = tonEvol != null && tonEvol <= -8
@@ -2451,7 +2464,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       prev = d
     }
   }
-  const synthExtras = { reposMoy, reposN: _repVals.length, pausePrevJours }
+  const _semType = (() => { const r = (prefRows || []).find((x: any) => x.cle === 'semaine_type'); return (r && r.valeur === 'glissant') ? 'glissant' : 'calendaire' })()
+  const _jourSem = Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(lundi.getUTCFullYear(), lundi.getUTCMonth(), lundi.getUTCDate())) / 86400000) + 1
+  const synthExtras = { reposMoy, reposN: _repVals.length, pausePrevJours, semaineType: _semType, jourSemaine: _jourSem }
 
   return jsonResp({
     moteur,

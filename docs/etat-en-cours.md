@@ -40,6 +40,10 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
     - repos de référence = repos réellement pris la dernière fois (sinon programme) ;
     - bornes de repos : polyarticulaires 2-5 min, le reste 1-3 min (`_estPoly`).
     - `getLastPerf` renvoie `prev_series` / `prev_date`. Test `surcharge-serie` réécrit (30 cas).
+  - Onboarding : intro + visite seulement à l'inscription (drapeau serveur `onboarding_vu`), plus rien à la reconnexion ; visite coach auto seulement après inscription coach.
+  - Tablette 992-1279 px (option A) : menu 200 px, rail 290 px, centre élargi (layout.css, fin de fichier).
+  - Régularité de la lecture Analyses : suit le réglage semaine (calendaire = lundi → aujourd'hui, prorata ; glissant = 7 j) — test regularite-semaine.
+  - Fraîcheur : libellé unique `_frEtat` (« Charge en hausse », orange seulement si ressenti dégradé) dans les rails Accueil / Analyses et la carte Forme (il restait « Fatigue »).
   - Seuils de niveau UNIFIÉS (validés) : débutant 0-3 · intermédiaire 4-7 · avancé 8-10 · expert 11+ ; cibles de volume : avancé et expert partagent les cibles hautes dès 8 ans (test niveau-experience).
 
 ### Lot 28 oct. (2) — prêt pour le TEST FERMÉ Play Store (sur `dev`, SW v443) — **index.ts à REDÉPLOYER**
