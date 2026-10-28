@@ -1,0 +1,121 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Logo animé + intégration — maquette</title>
+<style>
+:root{--bg:#eef2fa;--surface:#fff;--surface2:#f3f6fd;--border:#dde4f3;--text:#0d1424;--muted:#5f6b85;--subtle:#8b96b0;--accent:#1a5fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:22px 16px 60px}
+h1{font-size:20px;text-align:center;margin:0 0 4px}.lead{font-size:13px;color:var(--muted);text-align:center;max-width:860px;margin:0 auto 22px}
+h2{font-size:15px;margin:28px auto 12px;max-width:1100px}
+.row{display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:18px;width:330px;text-align:center;box-shadow:0 10px 30px rgba(13,20,36,.07)}
+.box b{display:block;margin:12px 0 4px;font-size:14px}.box p{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+.ic{width:110px;height:120px;overflow:visible}
+.ic .b,.ic .d,.ic .hx{transform-box:fill-box}
+.ic .b{transform-origin:50% 100%}.ic .d{transform-origin:50% 50%}.ic .l{stroke-dasharray:70;stroke-dashoffset:70}
+/* A — ton scénario */
+.A .b{animation:barA 3.6s infinite both}.A .d{animation:dotA 3.6s infinite both}.A .l{animation:lineA 3.6s infinite both}
+.A .b1{animation-name:bA1}.A .b2{animation-name:bA2}.A .b3{animation-name:bA3}.A .b4{animation-name:bA4}
+.A .d1{animation-name:dA1}.A .d2{animation-name:dA2}.A .d3{animation-name:dA3}.A .d4{animation-name:dA4}
+.A .l1{animation-name:lA1}.A .l2{animation-name:lA2}.A .l3{animation-name:lA3}
+@keyframes bA1{0%{transform:scaleY(0)}9%,92%{transform:scaleY(1)}100%{transform:scaleY(0)}}
+@keyframes bA2{0%,14%{transform:scaleY(0)}23%,92%{transform:scaleY(1)}100%{transform:scaleY(0)}}
+@keyframes bA3{0%,28%{transform:scaleY(0)}37%,92%{transform:scaleY(1)}100%{transform:scaleY(0)}}
+@keyframes bA4{0%,42%{transform:scaleY(0)}51%,92%{transform:scaleY(1)}100%{transform:scaleY(0)}}
+@keyframes dA1{0%,9%{transform:translateY(-40px) scale(0);opacity:0}14%,92%{transform:none;opacity:1}100%{opacity:0}}
+@keyframes dA2{0%,23%{transform:translateY(-40px) scale(0);opacity:0}28%,92%{transform:none;opacity:1}100%{opacity:0}}
+@keyframes dA3{0%,37%{transform:translateY(-40px) scale(0);opacity:0}42%,92%{transform:none;opacity:1}100%{opacity:0}}
+@keyframes dA4{0%,51%{transform:translateY(-40px) scale(0);opacity:0}56%,92%{transform:none;opacity:1}100%{opacity:0}}
+@keyframes lA1{0%,58%{stroke-dashoffset:70}66%,92%{stroke-dashoffset:0}100%{stroke-dashoffset:70}}
+@keyframes lA2{0%,66%{stroke-dashoffset:70}72%,92%{stroke-dashoffset:0}100%{stroke-dashoffset:70}}
+@keyframes lA3{0%,72%{stroke-dashoffset:70}80%,92%{stroke-dashoffset:0}100%{stroke-dashoffset:70}}
+/* B — la courbe d'abord (tracé de performance), puis les barres « répondent » */
+.B .hx{animation:hxB 3.6s infinite both}
+.B .l1{animation:lB1 3.6s infinite both}.B .l2{animation:lB2 3.6s infinite both}.B .l3{animation:lB3 3.6s infinite both}
+.B .d{animation:dB 3.6s infinite both}.B .d2{animation-delay:.25s}.B .d3{animation-delay:.5s}.B .d4{animation-delay:.75s}
+.B .b{animation:bB 3.6s infinite both}.B .b2{animation-delay:.08s}.B .b3{animation-delay:.16s}.B .b4{animation-delay:.24s}
+@keyframes hxB{0%{opacity:0;transform:scale(.9)}12%,92%{opacity:1;transform:none}100%{opacity:0}}
+@keyframes lB1{0%,12%{stroke-dashoffset:70}22%,92%{stroke-dashoffset:0}100%{stroke-dashoffset:70}}
+@keyframes lB2{0%,22%{stroke-dashoffset:70}30%,92%{stroke-dashoffset:0}100%{stroke-dashoffset:70}}
+@keyframes lB3{0%,30%{stroke-dashoffset:70}40%,92%{stroke-dashoffset:0}100%{stroke-dashoffset:70}}
+@keyframes dB{0%,12%{transform:scale(0)}18%{transform:scale(1.6)}22%,92%{transform:scale(1)}100%{transform:scale(0)}}
+@keyframes bB{0%,44%{transform:scaleY(0)}54%{transform:scaleY(1.12)}60%,92%{transform:scaleY(1)}100%{transform:scaleY(0)}}
+/* C — battement continu (attente de durée inconnue) */
+.C .b{animation:bC 1.2s infinite ease-in-out alternate}.C .b2{animation-delay:.15s}.C .b3{animation-delay:.3s}.C .b4{animation-delay:.45s}
+.C .l{stroke-dashoffset:0}.C .d{animation:dC 1.2s infinite ease-in-out alternate}.C .d2{animation-delay:.15s}.C .d3{animation-delay:.3s}.C .d4{animation-delay:.45s}
+@keyframes bC{0%{transform:scaleY(.35)}100%{transform:scaleY(1)}}
+@keyframes dC{0%{transform:scale(.6);opacity:.5}100%{transform:scale(1.25);opacity:1}}
+/* intégration */
+.si{width:30px;height:33px}.wl{width:230px;height:auto}.wm{height:15px;width:auto}
+.phone{width:340px;background:var(--surface);border:1px solid var(--border);border-radius:28px;overflow:hidden;box-shadow:0 14px 40px rgba(13,20,36,.10)}
+.lg{padding:40px 24px 26px;text-align:center}.lg .tag{font-size:12px;color:var(--muted);margin-top:10px}
+.in{border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:12px;text-align:left;color:var(--subtle);font-size:13px}
+.btn{background:var(--accent);color:#fff;border-radius:12px;padding:13px;font-weight:800;margin-top:14px}
+.desk{width:640px;height:330px;background:var(--surface);border:1px solid var(--border);border-radius:16px;display:flex;overflow:hidden;box-shadow:0 14px 40px rgba(13,20,36,.10)}
+.side{width:200px;border-right:1px solid var(--border);padding:20px 14px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 6px 18px}.it{padding:10px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--text)}.it.on{background:rgba(26,95,255,.12);color:var(--accent);font-weight:800}
+.main{flex:1;background:var(--bg);padding:20px}.ph{background:var(--surface);border:1px solid var(--border);border-radius:14px;height:80px;margin-bottom:12px}
+.cap{font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin:0 4px 8px}
+.q{max-width:900px;margin:26px auto 0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;font-size:13.5px}.q li{margin-bottom:6px}
+</style></head><body>
+<h1>Logo animé (loader) + intégration du logo — proposition</h1>
+<p class="lead">Les animations tournent en boucle ci-dessous (SVG + CSS, pas d'image lourde). Couleurs = version bleu & noir (fond clair) ; la version fond sombre suivra tes nouveaux fichiers. Rien n'est codé dans l'app.</p>
+<h2>1. Loader animé — 3 propositions</h2>
+<div class="row">
+<div class="box"><svg class="ic A" viewBox="0 0 271 296" fill="none"><path class="hx" d="M18.1521 66.4863H0.125908L0.229618 229.321H18.1521V66.4863Z" fill="#1A5FFF"/><path class="hx" d="M127.126 19.0728L127.126 0.394741L0.125887 66.4863L9.08714 80.6647L127.126 19.0728Z" fill="#1A5FFF"/><path class="hx" d="M126.126 276.734L126.126 295.412L0.125908 229.055L9.08715 214.953L126.126 276.734Z" fill="#1A5FFF"/><rect class="hx" x="252.203" y="66.4863" width="17.9225" height="162.834" fill="#070B14"/><path class="hx" d="M143.126 19.0728L143.126 0.394732L270.126 66.4863L261.268 80.6647L143.126 19.0728Z" fill="#070B14"/><path class="hx" d="M144.126 276.734L144.087 295.412L270.229 229.055L261.268 214.953L144.126 276.734Z" fill="#070B14"/><path class="l l1" d="M77 175L115 129" stroke="#1A5FFF" stroke-width="5"/><path class="l l2" d="M115 129L155 137" stroke="#070B14" stroke-width="5"/><path class="l l3" d="M155 137L194 89" stroke="#070B14" stroke-width="5"/><path class="b b1" d="M88.1259 199.627V261.539V264.761L66.1259 257.371V199.627H88.1259Z" fill="#1A5FFF"/><path class="b b2" d="M126.126 169.934V286.166V292.539L104.126 278.343V169.934H126.126Z" fill="#1A5FFF"/><path class="b b3" d="M165.626 162.412L166.126 269.569L144.126 278.412V162.412H165.626Z" fill="#070B14"/><path class="b b4" d="M205.126 120.412V243.639V250.053L183.126 261.412V120.412H205.126Z" fill="#070B14"/><circle class="d d1" cx="77.1" cy="175.4" r="8" fill="#1A5FFF"/><circle class="d d2" cx="115.1" cy="129.4" r="8" fill="#1A5FFF"/><circle class="d d3" cx="155.1" cy="137.4" r="8" fill="#070B14"/><circle class="d d4" cx="194.1" cy="89.4" r="8" fill="#070B14"/></svg><b>A · Ton scénario</b><p>Barre 1 monte → son point tombe dessus, barre 2 → point, barre 3 → point, barre 4 → point ; puis les traits relient les points. ~3,6 s, en boucle.</p></div>
+<div class="box"><svg class="ic B" viewBox="0 0 271 296" fill="none"><path class="hx" d="M18.1521 66.4863H0.125908L0.229618 229.321H18.1521V66.4863Z" fill="#1A5FFF"/><path class="hx" d="M127.126 19.0728L127.126 0.394741L0.125887 66.4863L9.08714 80.6647L127.126 19.0728Z" fill="#1A5FFF"/><path class="hx" d="M126.126 276.734L126.126 295.412L0.125908 229.055L9.08715 214.953L126.126 276.734Z" fill="#1A5FFF"/><rect class="hx" x="252.203" y="66.4863" width="17.9225" height="162.834" fill="#070B14"/><path class="hx" d="M143.126 19.0728L143.126 0.394732L270.126 66.4863L261.268 80.6647L143.126 19.0728Z" fill="#070B14"/><path class="hx" d="M144.126 276.734L144.087 295.412L270.229 229.055L261.268 214.953L144.126 276.734Z" fill="#070B14"/><path class="l l1" d="M77 175L115 129" stroke="#1A5FFF" stroke-width="5"/><path class="l l2" d="M115 129L155 137" stroke="#070B14" stroke-width="5"/><path class="l l3" d="M155 137L194 89" stroke="#070B14" stroke-width="5"/><path class="b b1" d="M88.1259 199.627V261.539V264.761L66.1259 257.371V199.627H88.1259Z" fill="#1A5FFF"/><path class="b b2" d="M126.126 169.934V286.166V292.539L104.126 278.343V169.934H126.126Z" fill="#1A5FFF"/><path class="b b3" d="M165.626 162.412L166.126 269.569L144.126 278.412V162.412H165.626Z" fill="#070B14"/><path class="b b4" d="M205.126 120.412V243.639V250.053L183.126 261.412V120.412H205.126Z" fill="#070B14"/><circle class="d d1" cx="77.1" cy="175.4" r="8" fill="#1A5FFF"/><circle class="d d2" cx="115.1" cy="129.4" r="8" fill="#1A5FFF"/><circle class="d d3" cx="155.1" cy="137.4" r="8" fill="#070B14"/><circle class="d d4" cx="194.1" cy="89.4" r="8" fill="#070B14"/></svg><b>B · La courbe d'abord</b><p>L'hexagone apparaît, la courbe de progression se trace point par point (comme un graphe de perf), puis les 4 barres « répondent » en montant ensemble avec un petit rebond.</p></div>
+<div class="box"><svg class="ic C" viewBox="0 0 271 296" fill="none"><path class="hx" d="M18.1521 66.4863H0.125908L0.229618 229.321H18.1521V66.4863Z" fill="#1A5FFF"/><path class="hx" d="M127.126 19.0728L127.126 0.394741L0.125887 66.4863L9.08714 80.6647L127.126 19.0728Z" fill="#1A5FFF"/><path class="hx" d="M126.126 276.734L126.126 295.412L0.125908 229.055L9.08715 214.953L126.126 276.734Z" fill="#1A5FFF"/><rect class="hx" x="252.203" y="66.4863" width="17.9225" height="162.834" fill="#070B14"/><path class="hx" d="M143.126 19.0728L143.126 0.394732L270.126 66.4863L261.268 80.6647L143.126 19.0728Z" fill="#070B14"/><path class="hx" d="M144.126 276.734L144.087 295.412L270.229 229.055L261.268 214.953L144.126 276.734Z" fill="#070B14"/><path class="l l1" d="M77 175L115 129" stroke="#1A5FFF" stroke-width="5"/><path class="l l2" d="M115 129L155 137" stroke="#070B14" stroke-width="5"/><path class="l l3" d="M155 137L194 89" stroke="#070B14" stroke-width="5"/><path class="b b1" d="M88.1259 199.627V261.539V264.761L66.1259 257.371V199.627H88.1259Z" fill="#1A5FFF"/><path class="b b2" d="M126.126 169.934V286.166V292.539L104.126 278.343V169.934H126.126Z" fill="#1A5FFF"/><path class="b b3" d="M165.626 162.412L166.126 269.569L144.126 278.412V162.412H165.626Z" fill="#070B14"/><path class="b b4" d="M205.126 120.412V243.639V250.053L183.126 261.412V120.412H205.126Z" fill="#070B14"/><circle class="d d1" cx="77.1" cy="175.4" r="8" fill="#1A5FFF"/><circle class="d d2" cx="115.1" cy="129.4" r="8" fill="#1A5FFF"/><circle class="d d3" cx="155.1" cy="137.4" r="8" fill="#070B14"/><circle class="d d4" cx="194.1" cy="89.4" r="8" fill="#070B14"/></svg><b>C · Battement continu</b><p>Logo complet, les barres respirent comme un égaliseur et les points pulsent. Idéal pour une attente de durée inconnue (chargement serveur).</p></div>
+</div>
+<h2>2. Intégration</h2>
+<div class="row">
+<div><div class="cap">Écran de connexion (téléphone)</div><div class="phone"><div class="lg"><svg class="wl" viewBox="0 0 735 133" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M191.568 73.121L191.793 121.365L181.888 125.346V73.121H191.568Z" fill="#1A5FFF"/>
+<path d="M209.351 54.2118V109.691V112.578L199.447 117.693V54.2118H209.351Z" fill="#1A5FFF"/>
+<rect x="230.547" y="29.9333" width="8.06903" height="73.311" fill="#1A5FFF"/>
+<path d="M181.438 8.58692L181.438 0.177714L238.616 29.9334L234.628 36.3167L181.438 8.58692Z" fill="#1A5FFF"/>
+<path d="M181.888 124.591L181.871 133L238.662 103.125L234.628 96.7758L181.888 124.591Z" fill="#1A5FFF"/>
+<path d="M173.784 76.5074V128.837V131.706L163.879 125.315V76.5074H173.784Z" fill="#070B14"/>
+<path d="M156.676 89.8759V117.749V119.2L146.771 115.873V89.8759H156.676Z" fill="#070B14"/>
+<path d="M125.172 29.9333H117.057L117.103 103.244H125.172V29.9333Z" fill="#070B14"/>
+<path d="M174.234 8.58692L174.234 0.177718L117.057 29.9334L121.091 36.3167L174.234 8.58692Z" fill="#070B14"/>
+<path d="M173.784 124.591L173.784 133L117.057 103.125L121.091 96.7757L173.784 124.591Z" fill="#070B14"/>
+<path d="M154.825 78.9738C154.825 80.6868 153.437 82.0755 151.723 82.0755C150.01 82.0755 148.622 80.6868 148.622 78.9738C148.622 77.2607 150.01 75.872 151.723 75.872C153.437 75.872 154.825 77.2607 154.825 78.9738Z" fill="#070B14" stroke="#070B14"/>
+<path d="M171.934 58.2637C171.934 59.9768 170.545 61.3655 168.832 61.3655C167.119 61.3655 165.73 59.9768 165.73 58.2637C165.73 56.5507 167.119 55.162 168.832 55.162C170.545 55.162 171.934 56.5507 171.934 58.2637Z" fill="#070B14" stroke="#070B14"/>
+<path d="M189.942 61.8655C189.942 63.5785 188.554 64.9672 186.841 64.9672C185.127 64.9672 183.739 63.5785 183.739 61.8655C183.739 60.1524 185.127 58.7637 186.841 58.7637C188.554 58.7637 189.942 60.1524 189.942 61.8655Z" fill="#070B14" stroke="#070B14"/>
+<path d="M207.501 40.255C207.501 41.9681 206.112 43.3568 204.399 43.3568C202.686 43.3568 201.297 41.9681 201.297 40.255C201.297 38.542 202.686 37.1533 204.399 37.1533C206.112 37.1533 207.501 38.542 207.501 40.255Z" fill="#070B14" stroke="#070B14"/>
+<path d="M205.155 40.9099L187.596 61.1698" stroke-width="2" stroke="#070B14"/>
+<path d="M185.749 61.4964L169.541 58.3449" stroke-width="2" stroke="#070B14"/>
+<path d="M169.136 58.9199L151.127 79.63" stroke-width="2" stroke="#070B14"/>
+<path d="M658.819 31H734.703V34.113L679.913 92.7071H734.703V103H656.865V99.9372L711.655 41.2929H658.819V31Z" fill="#1A5FFF"/>
+<path d="M563.436 31L590.67 64.6402L617.97 31H633.514L597.397 74.431V103H584.008V74.431L547.892 31H563.436Z" fill="#1A5FFF"/>
+<path d="M489.02 31V92.7071H536.216V103H475.892V31H489.02Z" fill="#1A5FFF"/>
+<path d="M452.302 103H438.95L430.679 86.4307H430.571L425.431 76.1377H425.534L409.643 44.4062L396.261 70.9082L396.09 70.9014L388.343 86.8271L380.271 103H366.919L402.935 31H416.286L452.302 103Z" fill="#070B14"/>
+<path d="M300.139 103L263.784 31H278.247L307.568 90.2469L336.954 31H351.351L314.996 103H300.139Z" fill="#070B14"/>
+<path d="M13.7991 103H0V31H13.7991L71.8225 86.8326V31H85.6216V103H71.8225L13.7991 47.1674V103Z" fill="#070B14"/>
+</svg>
+<div class="tag">Ton analyste d'entraînement</div><div class="in">Identifiant (4 chiffres)</div><div class="in">Mot de passe</div><div class="btn">Se connecter</div></div></div></div>
+<div><div class="cap">Ordi / tablette — colonne de gauche</div><div class="desk"><div class="side"><div class="brand"><svg class="si" viewBox="0 0 271 296" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M165.626 162.412L166.126 269.569L144.126 278.412V162.412H165.626Z" fill="black"/>
+<path d="M205.126 120.412V243.639V250.053L183.126 261.412V120.412H205.126Z" fill="black"/>
+<rect x="252.203" y="66.4863" width="17.9225" height="162.834" fill="#070B14"/>
+<path d="M143.126 19.0728L143.126 0.394732L270.126 66.4863L261.268 80.6647L143.126 19.0728Z" fill="#070B14"/>
+<path d="M144.126 276.734L144.087 295.412L270.229 229.055L261.268 214.953L144.126 276.734Z" fill="#070B14"/>
+<path d="M126.126 169.934V286.166V292.539L104.126 278.343V169.934H126.126Z" fill="#1A5FFF"/>
+<path d="M88.1259 199.627V261.539V264.761L66.1259 257.371V199.627H88.1259Z" fill="#1A5FFF"/>
+<path d="M18.1521 66.4863H0.125908L0.229618 229.321H18.1521V66.4863Z" fill="#1A5FFF"/>
+<path d="M127.126 19.0728L127.126 0.394741L0.125887 66.4863L9.08714 80.6647L127.126 19.0728Z" fill="#1A5FFF"/>
+<path d="M126.126 276.734L126.126 295.412L0.125908 229.055L9.08715 214.953L126.126 276.734Z" fill="#1A5FFF"/>
+<path d="M84.6259 175.412C84.6259 179.554 81.268 182.912 77.1259 182.912C72.9837 182.912 69.6259 179.554 69.6259 175.412C69.6259 171.27 72.9837 167.912 77.1259 167.912C81.268 167.912 84.6259 171.27 84.6259 175.412Z" fill="#1A5FFF" stroke="#1A5FFF"/>
+<path d="M122.626 129.412C122.626 133.554 119.268 136.912 115.126 136.912C110.984 136.912 107.626 133.554 107.626 129.412C107.626 125.27 110.984 121.912 115.126 121.912C119.268 121.912 122.626 125.27 122.626 129.412Z" fill="#1A5FFF" stroke="#1A5FFF"/>
+<path d="M162.626 137.412C162.626 141.554 159.268 144.912 155.126 144.912C150.984 144.912 147.626 141.554 147.626 137.412C147.626 133.27 150.984 129.912 155.126 129.912C159.268 129.912 162.626 133.27 162.626 137.412Z" fill="#1A5FFF" stroke="#1A5FFF"/>
+<path d="M201.626 89.4121C201.626 93.5542 198.268 96.9121 194.126 96.9121C189.984 96.9121 186.626 93.5542 186.626 89.4121C186.626 85.27 189.984 81.9121 194.126 81.9121C198.268 81.9121 201.626 85.27 201.626 89.4121Z" fill="#1A5FFF" stroke="#1A5FFF"/>
+<path d="M195.637 90.722L156.637 135.722" stroke-width="4" stroke="#1A5FFF"/>
+<path d="M152.744 136.375L116.744 129.375" stroke-width="4" stroke="#1A5FFF"/>
+<path d="M115.635 130.724L75.6351 176.724" stroke-width="4" stroke="#1A5FFF"/>
+</svg>
+<svg class="wm" viewBox="0 0 698 72" fill="none"><path d="M618.819 0H694.703V3.11297L639.913 61.7071H694.703V72H616.865V68.9372L671.655 10.2929H618.819V0Z" fill="#1A5FFF"/><path d="M523.436 0L550.67 33.6402L577.97 0H593.514L557.397 43.431V72H544.008V43.431L507.892 0H523.436Z" fill="#1A5FFF"/><path d="M449.02 0V61.7071H496.216V72H435.892V0H449.02Z" fill="#1A5FFF"/><path d="M412.302 72H398.95L390.679 55.4307H390.571L385.431 45.1377H385.534L369.643 13.4062L356.261 39.9082L356.09 39.9014L348.343 55.8271L340.27 72H326.919L362.935 0H376.286L412.302 72Z" fill="#070B14"/><path d="M260.139 72L223.784 0H238.247L267.568 59.2469L296.954 0H311.351L274.996 72H260.139Z" fill="#070B14"/><path d="M200.432 61.7071C200.432 63.113 200.086 64.4519 199.394 65.7238C198.701 66.9623 197.749 68.0502 196.537 68.9874C195.326 69.9247 193.897 70.6611 192.253 71.1966C190.652 71.7322 188.942 72 187.124 72H133.957C132.139 72 130.408 71.7322 128.763 71.1966C127.162 70.6611 125.756 69.9247 124.544 68.9874C123.332 68.0502 122.38 66.9623 121.687 65.7238C120.995 64.4519 120.649 63.113 120.649 61.7071V10.2929C120.649 8.88703 120.995 7.56485 121.687 6.32636C122.38 5.05439 123.332 3.96653 124.544 3.06276C125.756 2.12552 127.162 1.38912 128.763 0.853556C130.408 0.284519 132.139 0 133.957 0H187.124C188.942 0 190.652 0.284519 192.253 0.853556C193.897 1.38912 195.326 2.12552 196.537 3.06276C197.749 3.96653 198.701 5.05439 199.394 6.32636C200.086 7.56485 200.432 8.88703 200.432 10.2929V61.7071ZM135.957 10.2929C134.852 10.2929 133.957 11.1883 133.957 12.2929V59.7071C133.957 60.8117 134.852 61.7071 135.957 61.7071H185.124C186.229 61.7071 187.124 60.8117 187.124 59.7071V12.2929C187.124 11.1883 186.229 10.2929 185.124 10.2929H135.957Z" fill="#070B14"/><path d="M13.7991 72H0V0H13.7991L71.8225 55.8326V0H85.6216V72H71.8225L13.7991 16.1674V72Z" fill="#070B14"/></svg></div><div class="it on">Aujourd'hui</div><div class="it">Entraînement</div><div class="it">Analyses</div><div class="it">Forme</div><div class="it">Coach</div></div><div class="main"><div class="ph"></div><div class="ph"></div><div class="ph"></div></div></div></div>
+</div>
+<div class="q"><b>À décider avant de coder</b><ol>
+<li><b>Loader</b> : A, B ou C (ou un mélange : A au démarrage de l'app, C pendant les chargements) ? Où l'utiliser : écran de démarrage, chargement des données, envoi d'une séance ?</li>
+<li><b>Connexion</b> : « N[logo]VALYZ » en haut, à la place du titre actuel. On ajoute la phrase « ANALYZE · PLAN · PERFORM » dessous, ou pas ?</li>
+<li><b>Colonne de gauche</b> : icône + mot « NOVALYZ » dessiné comme ton logo (lettres N-O-V-A en noir, L-Y-Z en bleu), à la place du carré « N » + « Novalyz ». OK ?</li>
+<li><b>Mode sombre</b> : j'attends tes fichiers aux bonnes couleurs pour les fonds sombres.</li>
+</ol></div>
+</body></html>
