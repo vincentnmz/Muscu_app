@@ -1763,14 +1763,15 @@
                 </div>
               </div>
 
-              <div class="saisie-lbl" style="margin-top:14px">RPE (intensité)</div>
+              <div class="saisie-lbl" style="margin-top:14px">RPE — effort ressenti</div>
               <div class="chip-row" id="rpe-chips">
-                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'6')">6</button>
-                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'7')">7</button>
-                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'8')">8</button>
-                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'9')">9</button>
-                <button type="button" class="saisie-chip" onclick="pickChip('rpe',this,'10')">10</button>
+                <button type="button" class="saisie-chip" data-v="6" onclick="pickChip('rpe',this,'6')">6<small>facile<br>4+ en réserve</small></button>
+                <button type="button" class="saisie-chip" data-v="7" onclick="pickChip('rpe',this,'7')">7<small>3 reps<br>en réserve</small></button>
+                <button type="button" class="saisie-chip" data-v="8" onclick="pickChip('rpe',this,'8')">8<small>2 reps<br>en réserve</small></button>
+                <button type="button" class="saisie-chip" data-v="9" onclick="pickChip('rpe',this,'9')">9<small>1 rep<br>en réserve</small></button>
+                <button type="button" class="saisie-chip" data-v="10" onclick="pickChip('rpe',this,'10')">10<small>à l'échec</small></button>
               </div>
+              <div class="rpe-exp" id="rpe-exp"></div>
               <input type="hidden" id="sel-rpe" value="">
 
               <div class="saisie-lbl" style="margin-top:14px">Repos <span style="font-size:10px;color:var(--text-subtle);font-weight:600">— fais défiler</span></div>
