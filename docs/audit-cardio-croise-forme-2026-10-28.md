@@ -6,7 +6,10 @@
 > (Playwright, 1280 px). Chaque phrase affichée a été confrontée aux données brutes et au code.
 > « Vérifié » = constaté sur le code ET sur les données.
 >
-> **Statut : rapport seulement — aucun correctif appliqué (en attente de validation du porteur).**
+> **Statut (28/10) : les 9 correctifs sont APPLIQUÉS** (validés par le porteur), vérifiés par rejeu sur les données réelles
+> (Cardio : reco « Reprends progressivement », « Aucune sortie sur cette période · dernière sortie le 03/10 (Marche) »,
+> repères « 2 sorties · 3,5 km sur 4 sem. » ; Croisé : Forme **95/100** ; Forme : stress/courbatures « Aucun / Aucune »,
+> titre « Dernier bien-être ») + test `tests/audit-cardio-croise.test.js`. ⚠️ #3 et #9 actifs en prod après redéploiement d'`index.ts`.
 
 ## Défauts trouvés
 

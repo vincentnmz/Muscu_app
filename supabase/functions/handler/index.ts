@@ -1904,12 +1904,17 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   if (etatVigilance && (chargeJump || n28 > 0)) reco = { texte: `Ton état du jour appelle à la vigilance : garde un cardio facile aujourd'hui et priorise la récupération.`, priorite: 'moyenne' }
   else if (chargeJump) reco = { texte: `Fais monter ta charge cardio plus graduellement (≈ +10 % par semaine max) pour limiter le risque de surmenage.`, priorite: 'moyenne' }
   else if (n28 === 0) reco = { texte: `Reprends 1 à 2 sorties cardio par semaine pour bâtir ta base d'endurance.`, priorite: 'info' }
+  // Audit 28/10 #3 : après une forte baisse, pas de « continue sur ce rythme ».
+  else if (chEvol != null && chEvol <= -40) reco = { texte: `Reprends progressivement : 1 à 2 sorties faciles par semaine pour reconstruire ta base d'endurance.`, priorite: 'info' }
   else reco = { texte: `Continue sur ce rythme et varie les intensités (facile / modéré) pour progresser sans t'épuiser.`, priorite: 'info' }
 
   const confiance = (n28 + n56 >= 4) ? 'bonne' : (n28 > 0 ? 'moyenne' : 'faible')
   return { objectif: null, constats: constats.slice(0, 3), reco, confiance }
 }
 
+// NB (audit 28/10 #9) : synthèse sur 4 SEMAINES fixes. L'écran athlète Croisé ne
+// l'affiche PAS (il recalcule sur la période choisie, front `_maCroise…`) ; elle reste
+// disponible pour d'autres usages (IA, coach) — ne pas la présenter comme « cette semaine ».
 // « Lecture Novalyz » (croisé) : équilibre muscu/cardio (28j) + récupération vs
 // charge globale. Déterministe ; s'aligne sur l'état du jour.
 function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Date): any {
@@ -1931,7 +1936,7 @@ function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Dat
   if (mPct >= 85) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % musculation (${mPct} %). Un peu de cardio renforcerait ta base d'endurance.` })
   else if (mPct <= 15) constats.push({ ton: 'neutre', texte: `Ta charge est quasi 100 % cardio (${100 - mPct} %). La musculation entretient force et masse.` })
   else constats.push({ ton: 'positif', texte: `Bon équilibre muscu / cardio (${mPct} % / ${100 - mPct} %).` })
-  if (recup === 'Excellent' || recup === 'Bon') constats.push({ ton: 'positif', texte: `Ta récupération est ${String(recup).toLowerCase()} — tu encaisses bien ta charge actuelle.` })
+  if (recup === 'Excellent' || recup === 'Bon') constats.push({ ton: 'positif', texte: `Ta récupération est ${recup === 'Excellent' ? 'excellente' : 'bonne'} — tu encaisses bien ta charge actuelle.` })
   else if (recup === 'Faible') constats.push({ ton: 'attention', texte: `Ta récupération est basse — allège ta charge globale (muscu + cardio) le temps qu'elle remonte.` })
 
   let reco: any
