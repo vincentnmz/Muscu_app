@@ -848,3 +848,25 @@ body.prog-editor-open{ overflow:hidden; }
   body.coach-active #prog-editor-overlay.prog-inline .pb-canvas,
   body.coach-active #prog-editor-overlay.prog-inline .pb-insp{ overflow:visible !important; min-height:0; height:auto; }
 }
+
+/* ============================================================
+ * TABLETTE / PETIT ÉCRAN (992-1279 px) — option A validée le 28/10/2026 :
+ * le CONTENU CENTRAL doit être la colonne la plus large. Menu latéral réduit
+ * (248 → 200 px, libellés conservés) + rail droit réduit (340/360 → 290 px)
+ * + marges intérieures plus serrées. ≥ 1280 px : inchangé. Espace coach : inchangé.
+ * ============================================================ */
+@media (min-width:992px) and (max-width:1279px){
+  body.has-bottom-nav #app-side{ width:200px; padding:20px 12px; }
+  body.has-bottom-nav #main-container{ margin-left:200px; padding:22px 22px 40px; }
+  body.has-bottom-nav #tab-objectif.tab-content,
+  body.has-bottom-nav #tab-conseils.tab-content,
+  body.has-bottom-nav #tab-blessures.tab-content,
+  body.has-bottom-nav #tab-nutrition.tab-content,
+  body.has-bottom-nav #tab-suivi.tab-content,
+  body.has-bottom-nav #tab-morpho.tab-content{ left:200px; }
+  body.has-bottom-nav .hx-overlay{ left:200px !important; }
+  body.has-bottom-nav #tab-accueil .tj{ grid-template-columns:minmax(0,1fr) 290px !important; }
+  body.has-bottom-nav #tab-seance .en-cols,
+  body.has-bottom-nav #tab-historique .ma-cols2,
+  body.has-bottom-nav #tab-etat .et-wrap{ grid-template-columns:minmax(0,1fr) 290px !important; }
+}

@@ -12903,6 +12903,17 @@ function _maMultiLineRich(lines, dates, unit) {
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible;font-family:inherit">' + grid + ylab + paths + xlab + '</svg>';
 }
 // Tuile compacte pour les rails Analyses (bureau). v = valeur, u = unité.
+// Libellé UNIQUE de la fraîcheur (TSB %) — même règle partout (lecture, rails, Forme) :
+// charge au-dessus de l'habitude = « Charge en hausse », orange SEULEMENT si le ressenti
+// se dégrade (règle charge + ressenti validée le 26/10). Jamais « Fatigue » sur la charge seule.
+function _frEtat(tsbPct, m) {
+  var cr = (m && m.charge_ressenti) || null, deg = !!(cr && cr.degrade), ev = !!(cr && cr.evaluable);
+  if (tsbPct >= 5) return { l: 'Frais', c: 'var(--good)', bg: 'var(--good-a)', d: 'Tu es reposé — bon moment pour pousser.' };
+  if (tsbPct >= -12) return { l: 'Équilibré', c: null, bg: 'var(--surface2)', d: 'Ta charge récente est proche de ton habitude.' };
+  return { l: 'Charge en hausse', c: deg ? 'var(--warn)' : null, bg: deg ? 'var(--warn-a)' : 'var(--surface2)',
+    d: deg ? 'Tu as plus chargé que d\'habitude et ton ressenti baisse — soigne la récup.'
+      : (ev ? 'Tu as plus chargé que d\'habitude et tu encaisses bien (ressenti stable).' : 'Tu as plus chargé que d\'habitude (ressenti non renseigné pour confirmer).') };
+}
 function _maRailTile(k, v, u, dotCol) {
   return '<div class="rail-tile"><div class="k">' + (dotCol ? '<span class="dot" style="background:' + dotCol + '"></span>' : '') + k + '</div><div class="v"' + (String(v).length > 7 ? ' style="font-size:14px"' : '') + '>' + v + (u ? '<small> ' + u + '</small>' : '') + '</div></div>';
 }
@@ -12916,8 +12927,7 @@ function _maMoteurTiles(data) {
   // Fraîcheur (fitness-fatigue) remplace l'ancienne tuile ACWR. Jamais rouge.
   var cf = m.charge_fatigue || null;
   if (cf && cf.tsbPct != null) {
-    var frL = cf.tsbPct >= 5 ? 'Frais' : cf.tsbPct >= -12 ? 'Équilibré' : 'Fatigue';
-    var frC = cf.tsbPct >= 5 ? 'var(--good)' : cf.tsbPct >= -12 ? null : 'var(--warn)';
+    var _fe = _frEtat(cf.tsbPct, m), frL = _fe.l, frC = _fe.c;
     tiles.push(_maRailTile('Fraîcheur', _maE(frL), '', frC));
   }
   if (!tiles.length) return '';
@@ -14928,9 +14938,7 @@ function renderTjFormeRail(data) {
   var cf = m.charge_fatigue || null;
   if (cf && cf.tsbPct != null) {
     var frL, frC;
-    if (cf.tsbPct >= 5) { frL = 'Frais'; frC = 'var(--good)'; }
-    else if (cf.tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; }
-    else { frL = 'Fatigue'; frC = 'var(--warn)'; }
+    var _fe2 = _frEtat(cf.tsbPct, m); frL = _fe2.l; frC = _fe2.c || 'var(--text)';
     tiles.push('<div class="rail-tile"><div class="k">Fraîcheur</div><div class="v" style="font-size:14px;color:' + frC + '">' + frL + '</div></div>');
   }
   try {
@@ -16482,13 +16490,12 @@ function renderEtat(data) {
           + '<span class="et-big" style="color:var(--text-muted)">—</span>'
           + '<span class="et-muted"><b>Pas encore calculable.</b><br>' + esc(noteF) + '</span></div>'
           + '<div style="margin-top:11px;padding:11px 12px;background:var(--surface2);border-radius:11px;font-size:11.5px;color:var(--text-muted);line-height:1.5">'
-          + '<b style="color:var(--text)">C\'est quoi la fraîcheur ?</b> En clair : es-tu <b>reposé</b> ? Novalyz compare ce que tu encaisses <b>d\'habitude</b> (~6 semaines) à ta charge des <b>derniers jours</b>. Tu as fait plus que d\'habitude récemment → <b>fatigué</b> ; moins → <b>reposé</b>. Méthode reconnue (modèle fitness-fatigue).'
+          + '<b style="color:var(--text)">C\'est quoi la fraîcheur ?</b> En clair : es-tu <b>reposé</b> ? Novalyz compare ce que tu encaisses <b>d\'habitude</b> (~6 semaines) à ta charge des <b>derniers jours</b>. Tu as fait plus que d\'habitude récemment → <b>charge en hausse</b> (c\'est ton <b>ressenti</b> qui dit si c\'est de la fatigue) ; moins → <b>reposé</b>. Méthode reconnue (modèle fitness-fatigue).'
           + '</div>' + acwrLine;
       } else {
         var frL, frC, frBg, frD;
-        if (tsbPct >= 5) { frL = 'Frais'; frC = 'var(--good)'; frBg = 'var(--good-a)'; frD = 'Tu es reposé — bon moment pour pousser.'; }
-        else if (tsbPct >= -12) { frL = 'Équilibré'; frC = 'var(--text)'; frBg = 'var(--surface2)'; frD = 'Ta charge récente est proche de ton habitude.'; }
-        else { frL = 'Fatigue'; frC = 'var(--warn)'; frBg = 'var(--warn-a)'; frD = 'Tu as plus chargé que d\'habitude — soigne la récup.'; }
+        var _fe3 = _frEtat(tsbPct, (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.moteur) || null);
+        frL = _fe3.l; frC = _fe3.c || 'var(--text)'; frBg = _fe3.bg; frD = _fe3.d;
         var fiabF = (cfe.fiable === true) ? '' : '<span style="color:var(--text-subtle);font-weight:600;font-size:10px"> · indicatif</span>';
         var srcF = (cfe.source === 'srpe') ? '<span style="color:var(--text-subtle);font-weight:600;font-size:10px"> · sRPE</span>' : '';
         fiabF = fiabF + srcF;
