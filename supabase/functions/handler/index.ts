@@ -29,7 +29,7 @@ function getNiveauExperience(annees: number): string {
   const a = Number(annees) || 0
   if (a <= 3) return 'debutant'
   if (a <= 7) return 'intermediaire'
-  if (a <= 12) return 'avance'
+  if (a <= 10) return 'avance'   // seuils validés 28/10 : 0-3 · 4-7 · 8-10 · 11+
   return 'expert'
 }
 function getStrategieFromAnnees(annees: number): string {
@@ -4181,7 +4181,8 @@ function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: a
   // Volume musculaire en SÉRIES vs cible (identique au bloc Résumé muscu de l'app).
   // Cibles séries/muscle/semaine par niveau (années de pratique) — mêmes seuils que
   // _maVolTargets() côté front : débutant 8/12, intermédiaire 10/16, avancé 12/20.
-  const _tgt = annees > 9 ? { min: 12, opt: 20, label: 'avancé' }
+  const _tgt = annees >= 8 ?   // mêmes seuils que getNiveauExperience (avancé 8+, expert partage)
+    { min: 12, opt: 20, label: 'avancé' }
     : annees >= 4 ? { min: 10, opt: 16, label: 'intermédiaire' }
     : { min: 8, opt: 12, label: 'débutant' }
   const volMuscu = Object.keys(serMus)

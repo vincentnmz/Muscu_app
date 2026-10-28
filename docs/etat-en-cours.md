@@ -32,7 +32,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
     - nom de la séance retiré pendant la saisie (« Exercice X / N », en-tête « Séance en cours ») ;
     - Programme vs réalisé factuel (✓ ≈ ↔ –) ; variante = exercice hors programme du même muscle.
   - `getLastPerf` renvoie aussi le `repos` de chaque série (test derniere-fois-repos).
-  - Écart à trancher : seuils de niveau (profil : avancé dès 8 ans ; cibles de volume Analyses : avancé > 9 ans).
+  - Seuils de niveau UNIFIÉS (validés) : débutant 0-3 · intermédiaire 4-7 · avancé 8-10 · expert 11+ ; cibles de volume : avancé et expert partagent les cibles hautes dès 8 ans (test niveau-experience).
 
 ### Lot 28 oct. (2) — prêt pour le TEST FERMÉ Play Store (sur `dev`, SW v443) — **index.ts à REDÉPLOYER**
 - Google Play configuré par l'utilisateur ; reste à recruter **12 testeurs × 14 jours** (viser 14-15). Morpho IA et foot : APRÈS le test (coût / validation muscu).
