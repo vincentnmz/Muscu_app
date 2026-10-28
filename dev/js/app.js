@@ -12956,12 +12956,15 @@ function _chargeInterneCardio(s) {
 }
 function _maCardioRail(data) {
   var hist = (data && data.cardio && data.cardio.history) || []; if (!hist.length) return '';
-  var cut30 = _maCutISO(30), cut7 = _maCutISO(7), n30 = 0, km30 = 0, ua7 = 0;
+  // Audit 28/10 #5 : même fenêtre (4 semaines) et même filtre (micro-sorties < 5 min
+  // et < 0,3 km ignorées) que la Lecture cardio du backend → mêmes chiffres partout.
+  var cut30 = _maCutISO(28), cut7 = _maCutISO(7), n30 = 0, km30 = 0, ua7 = 0;
   hist.forEach(function (s) {
-    if ((s.date || '') >= cut30) { n30++; if (+s.distance) km30 += +s.distance; }
+    var micro = (Number(s.duree) || 0) < 5 && (Number(s.distance) || 0) < 0.3;
+    if (!micro && (s.date || '') >= cut30) { n30++; if (+s.distance) km30 += +s.distance; }
     if ((s.date || '') >= cut7) ua7 += _chargeInterneCardio(s);
   });
-  var tiles = [_maRailTile('Sorties 30 j', n30, ''), _maRailTile('Distance 30 j', Math.round(km30 * 10) / 10, 'km'), _maRailTile('Charge 7 j', Math.round(ua7), 'UA')];
+  var tiles = [_maRailTile('Sorties 4 sem.', n30, ''), _maRailTile('Distance 4 sem.', Math.round(km30 * 10) / 10, 'km'), _maRailTile('Charge 7 j', Math.round(ua7), 'UA')];
   return '<div class="rail-hd">Mes repères cardio</div><div class="rail-snap-grid">' + tiles.join('') + '</div>';
 }
 // Bloc « Demande à Novalyz » pour le rail des panneaux Analyses (généré en JS).
@@ -14216,13 +14219,21 @@ function _maHyroxList(data, limit) {
   }).join('');
   return _maSec('Mes Hyrox', 'touche pour analyser') + rows;
 }
+// « Dernière sortie le 03/10 (Marche). » — audit 28/10 #4 : période vide ≠ pas de cardio.
+function _maDerniereSortie(hist) {
+  var last = (hist || []).reduce(function (a, s) { return (!a || (s.date || '') > (a.date || '')) ? s : a; }, null);
+  if (!last || !last.date) return 'Élargis la période ci-dessus pour voir tes sorties.';
+  var p = String(last.date).slice(0, 10).split('-');
+  var lb = ''; try { var a = (_CARDIO_CATALOG || []).find(function (x) { return x.key === last.type_cardio; }); lb = a ? a.label : String(last.type_cardio || ''); } catch (e) {}
+  return 'Dernière sortie le ' + p[2] + '/' + p[1] + (lb ? ' (' + _maE(lb) + ')' : '') + ' — élargis la période ci-dessus pour la voir.';
+}
 function _maCardioResume(data) {
   var hist = (data.cardio && data.cardio.history) || [];
   var _w = _maWin();
   var by = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO);
   var types = Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; });
   var total = types.reduce(function (s, t) { return s + by[t].n; }, 0);
-  var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _w.plabel : 'Pas encore de cardio') + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' enregistrée' + (total > 1 ? 's' : '') + '. Continue pour bâtir ta base d\'endurance.') : 'Enregistre une séance cardio pour voir tes analyses ici.') + '</div></div></div>';
+  var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _w.plabel : (hist.length ? 'Aucune sortie sur cette période' : 'Pas encore de cardio')) + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' enregistrée' + (total > 1 ? 's' : '') + '. Continue pour bâtir ta base d\'endurance.') : (hist.length ? _maDerniereSortie(hist) : 'Enregistre une séance cardio pour voir tes analyses ici.')) + '</div></div></div>';
   var listHtml = types.length ? ('<div class="ma-card">' + types.map(function (t) {
     var m = _maCM(t), o = by[t];
     return '<div class="ma-sport"><span class="ma-spic" style="background:' + m[1] + '">' + _maSvg(m[2], 17) + '</span><div class="ma-spmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + o.n + ' sortie' + (o.n > 1 ? 's' : '') + ' · ' + _maHMS(o.duree) + (o.rn ? ' · RPE ' + (Math.round(o.rpe / o.rn * 10) / 10) : '') + '</div></div><div class="ma-spval"><div class="v">' + (Math.round(o.dist * 10) / 10) + ' km</div><div class="u">' + (o.vn ? (Math.round(o.vit / o.vn * 10) / 10) + ' km/h' : '') + '</div></div></div>';
@@ -14285,7 +14296,9 @@ function _maCardioParSport(data) {
     + (hasData ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + String(lastPS).replace('.', ',') + ' <span style="font-size:9.5px;color:var(--text-subtle);font-family:var(--font,inherit)">' + curM[2] + '/' + _bNoun + '</span></span>' : '') + '</div>';
   var chartBody = hasData
     ? (_maWeeklySvg(wk, curM[2], m[1], 'rgba(157,95,211,.12)', wk.length, tdPS.dates) + _maCap('Touche « ' + curM[1] + ' ▾ » pour changer la donnée · chaque point = 1 ' + _bNoun + ' (suit la période choisie).'))
-    : '<div style="padding:20px 6px;text-align:center;color:var(--text-subtle);font-size:12.5px;line-height:1.5">Pas de donnée « ' + curM[1] + ' » pour ' + _maE(m[0]) + '.<br>Choisis une autre donnée ci-dessus.</div>';
+    : (!sesss.some(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; })
+      ? '<div style="padding:20px 6px;text-align:center;color:var(--text-subtle);font-size:12.5px;line-height:1.5">Aucune sortie ' + _maE(m[0]) + ' sur cette période.<br>Élargis la période ci-dessus.</div>'
+      : '<div style="padding:20px 6px;text-align:center;color:var(--text-subtle);font-size:12.5px;line-height:1.5">Pas de donnée « ' + curM[1] + ' » pour ' + _maE(m[0]) + ' sur cette période.<br>Choisis une autre donnée ci-dessus.</div>');
   var chart = '<div class="ma-chart">' + chartHead + metricMenu + chartBody + '</div>';
   var lastArr = sesss.filter(function (s) { return (s.date || '') >= _w.startISO && (s.date || '') < _w.endISO; }); if (!lastArr.length) lastArr = sesss.slice(0, 6);
   var last = lastArr.slice(0, 6).map(function (s, i) {
@@ -14375,8 +14388,11 @@ function _maCroise(data) {
   var chD = {}; hist.forEach(function (s) { var _ua = _chargeInterneCardio(s); if (_ua > 0) chD[s.date] = (chD[s.date] || 0) + _ua; });
   var cardioW = _maTrendData(chD, 'sum').pts;
   var totalW = muscuW.map(function (v, i) { return Math.round(v + (cardioW[i] || 0)); });
-  var beD = {}; ((data.bien_etre) || []).forEach(function (b) { var d = _maFRtoDate(b.date); if (!d) return; var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); beD[iso] = (Number(b.sommeil) || 0) + (Number(b.energie) || 0) + (6 - (Number(b.fatigue) || 3)); });
-  var beW = _maTrendData(beD, 'avg').pts.map(function (v) { return Math.round(v / 15 * 100); });
+  var beD = {}; ((data.bien_etre) || []).forEach(function (b) { var d = _maFRtoDate(b.date); if (!d) return; var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); var ps = [wqPositif({ invert: false }, b.sommeil), wqPositif({ invert: false }, b.energie), wqPositif({ invert: true }, b.fatigue), wqPositif({ invert: true }, b.stress), wqPositif({ invert: true }, b.courbatures)].filter(function (x) { return x != null; }); if (ps.length) beD[iso] = ps.reduce(function (a, c) { return a + c; }, 0) / ps.length * 20; });
+  // Forme /100 = moyenne des signaux RÉELLEMENT saisis (1-5, 5 = positif) × 20. Avant :
+  // (sommeil + énergie + (6 − fatigue)) / 15 → l'énergie n'étant plus demandée, plafond
+  // à 67/100 même en pleine forme (audit 28/10 #2).
+  var beW = _maTrendData(beD, 'avg').pts.map(function (v) { return Math.round(v); });
   // Tendances charge/forme (1re vs 2e moitié) → verdict analytique.
   var _half = function (arr) { var n = arr.length, a = arr.slice(0, Math.floor(n / 2)), b = arr.slice(Math.floor(n / 2)); var avg = function (x) { var f = x.filter(function (v) { return v > 0; }); return f.length ? f.reduce(function (p, q) { return p + q; }, 0) / f.length : 0; }; return { o: avg(a), r: avg(b) }; };
   var chH = _half(totalW), foH = _half(beW);
@@ -14442,7 +14458,7 @@ function _maCroise(data) {
       }
       if (mot.recup) L2 += rc2(mot.recup === 'Faible' ? 'var(--bad)' : (mot.recup === 'Moyen' ? 'var(--warn)' : 'var(--good)'), 'Récupération : <b>' + _maE(mot.recup) + '</b>' + ((mot.disponibilite && mot.disponibilite.niveau) ? (' · disponibilité ' + _maE(mot.disponibilite.niveau)) : '') + '.');
       if (trendOk && chUp && foDown) L2 += rc2('var(--warn)', 'Ta <b>charge globale monte</b> alors que ta <b>forme baisse</b> → surveille la fatigue.');
-      var reco2 = (cardioUA === 0) ? 'Ajoute 1 à 2 séances de cardio par semaine pour équilibrer et soutenir ta récupération.'
+      var reco2 = (cardioUA === 0) ? 'Ajoute 1 à 2 séances de cardio par semaine pour ta base d\'endurance, sans alourdir ta charge totale.'
         : (trendOk && chUp && foDown) ? 'Allège une des deux filières cette semaine pour rééquilibrer charge et récupération.'
           : (mPct > 75) ? 'Intègre 1 à 2 créneaux cardio pour ta base d\'endurance, sans alourdir la charge totale.'
             : (cPct > 75) ? 'Ajoute du renforcement musculaire pour l\'équilibre force / endurance.'
@@ -16543,7 +16559,7 @@ function renderEtat(data) {
       beArr.forEach(function (b) {
         if (!b || !b.date) return;
         var t = byDate[b.date] || (byDate[b.date] = {});
-        ['sommeil', 'energie', 'motivation', 'fatigue', 'douleur', 'ressenti'].forEach(function (k) {
+        ['sommeil', 'energie', 'motivation', 'fatigue', 'stress', 'courbatures', 'douleur', 'ressenti'].forEach(function (k) {
           if ((t[k] == null || t[k] === '') && b[k] != null && b[k] !== '') t[k] = b[k];
         });
       });
@@ -16585,7 +16601,7 @@ function renderEtat(data) {
         var _d0 = _beAll[0].date; be0 = {};
         _beAll.forEach(function (b) {
           if (!b || b.date !== _d0) return;
-          ['sommeil', 'energie', 'fatigue', 'motivation', 'douleur', 'ressenti', 'zone', 'note', 'seance_id'].forEach(function (k) {
+          ['sommeil', 'energie', 'fatigue', 'stress', 'courbatures', 'motivation', 'douleur', 'ressenti', 'zone', 'note', 'seance_id'].forEach(function (k) {
             if ((be0[k] == null || be0[k] === '') && b[k] != null && b[k] !== '') be0[k] = b[k];
           });
         });
@@ -16660,6 +16676,11 @@ function renderEtat(data) {
         var _beM = _beDisp.match(/^(\d{4})-(\d{2})-(\d{2})/); if (_beM) _beDisp = _beM[3] + '/' + _beM[2] + '/' + _beM[1];
         var dateHtml = _beDisp ? '<div style="padding:9px 12px;border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-muted)">Dernier relevé · <b style="color:var(--text)">' + esc(_beDisp) + '</b></div>' : '';
         elW2.innerHTML = dateHtml + fiabHtml + rowsHtml + zone;
+        // Audit 28/10 #8 : « du jour » seulement si le relevé est bien d'aujourd'hui.
+        try {
+          var _t0 = new Date(), _todayFR = String(_t0.getDate()).padStart(2, '0') + '/' + String(_t0.getMonth() + 1).padStart(2, '0') + '/' + _t0.getFullYear();
+          var _ttl = document.getElementById('et-wb-titre'); if (_ttl) _ttl.textContent = (_beDisp === _todayFR) ? 'Bien-être du jour' : 'Dernier bien-être';
+        } catch (e) {}
       }
     }
   } catch (e) {}
