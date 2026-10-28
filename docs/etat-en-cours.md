@@ -96,6 +96,10 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - **Aperçu coach v3** (`renderCoachCoupDoeil`, charge·reps·RPE réels, état+récup, Lecture Novalyz pour le coach). Nutrition (import MFP), morpho/mensurations coach, récompenses v2, etc.
 
 ## À faire (priorité)
+- **Audits à faire (demandés 28/10)** — même méthode que l'audit Cardio/Croisé (`docs/audit-cardio-croise-forme-2026-10-28.md`) : vrai `index.ts` rejoué sur une copie des données réelles + vrai front rendu, chaque phrase confrontée au code et aux données.
+  - **Écran Forme complet** : l'écran principal a été vu le 28/10 (anneau, fraîcheur, bien-être, douleur, poids) mais PAS les sous-pages : nutrition, objectifs, blessures, montre / pas, et les historiques.
+  - **Hyrox** : jamais audité — saisie, calculs, analyses et affichages, recherche de bugs.
+  - Reste aussi non couvert : graphiques Cardio ▸ Tendances, Croisé en Mois/Année.
 - **Plus tard — nom de domaine perso** à la place de `vincentnmz.github.io/Muscu_app/(dev/)` : fichier `CNAME` + enregistrements DNS chez le registrar + HTTPS GitHub Pages ; repasser les URLs en dur d'`index.ts` (`APP_BASE_URL` des liens « mot de passe oublié », `MAIL_LOGO_URL`, `ROUE_BASE`) — variables d'env Supabase → aucun code à redéployer si on les règle là ; vérifier SW/PWA (les comptes connectés devront se reconnecter : stockage lié à l'adresse).
 - **Plus tard (identité visuelle)** : logo animé aussi pendant envoi de séance, réponse IA, export PDF, génération de programme ; dégradé + hexagones dans l'espace coach.
 1. **(Utilisateur)** Redéployer `index.ts` + poser `ANTHROPIC_API_KEY` (voir section ⚠️).
