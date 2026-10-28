@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Surcharge progressive — maquette</title>
+<style>
+  :root{
+    --bg:#eef2fa; --surface:#ffffff; --surface2:#f3f6fd; --border:#dde4f3;
+    --text:#0d1424; --muted:#5f6b85; --subtle:#8b96b0;
+    --accent:#1a5fff; --accent-a:rgba(26,95,255,.10); --good:#00a854; --good-a:rgba(0,168,84,.10); --warn:#e07800; --warn-a:rgba(224,120,0,.10);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;padding:22px 16px 60px}
+  h1{font-size:20px;margin:0 0 4px;text-align:center}
+  .lead{font-size:13px;color:var(--muted);text-align:center;max-width:820px;margin:0 auto 22px}
+  .row{display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
+  .col{width:340px}
+  .cap{font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin:0 4px 8px}
+  .cap span{color:var(--muted);text-transform:none;letter-spacing:0;font-weight:600}
+  .phone{background:var(--surface);border:1px solid var(--border);border-radius:30px;overflow:hidden;box-shadow:0 14px 40px rgba(13,20,36,.10)}
+  .hd{display:flex;align-items:center;gap:10px;padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+  .back{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);display:grid;place-items:center;font-size:17px;color:var(--muted)}
+  .ti{font-weight:800;font-size:16px}
+  .body{padding:14px 14px 18px}
+  .card{border:1px solid var(--border);border-radius:16px;padding:13px;margin-bottom:12px;background:var(--surface)}
+  .card.acc{border-color:var(--accent)}
+  .lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--subtle);margin:2px 0 8px}
+  .exo{font-size:18px;font-weight:900;color:var(--accent);margin:0}
+  .meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .choice{border:1.5px solid var(--warn);background:var(--warn-a);border-radius:13px;padding:11px 12px;margin:12px 0}
+  .choice p{margin:0 0 9px;font-size:12.5px}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .opt{border:1.5px solid var(--border);background:var(--surface);border-radius:11px;padding:8px 8px;font-size:12px;text-align:center}
+  .opt b{display:block;font-size:13px}
+  .opt.on{border-color:var(--accent);background:var(--accent-a)}
+  .opt.on b{color:var(--accent)}
+  table{width:100%;border-collapse:separate;border-spacing:0 5px;font-size:12px}
+  th{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--subtle);font-weight:800;text-align:left;padding:0 5px}
+  td{background:var(--surface2);padding:7px 5px;vertical-align:top}
+  td:first-child{border-radius:10px 0 0 10px;font-weight:900;width:30px;text-align:center}
+  td:last-child{border-radius:0 10px 10px 0}
+  td small{display:block;font-size:10px;color:var(--muted)}
+  .tgt{color:var(--accent);font-weight:800}
+  .pend{color:var(--subtle)}
+  .note{font-size:11.5px;color:var(--muted);margin-top:4px}
+  .repos{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:13px;padding:10px 13px}
+  .repos b{font-size:17px;color:var(--accent)}
+  .tag{font-size:10.5px;font-weight:800;border-radius:999px;padding:3px 8px}
+  .t-g{background:var(--good-a);color:var(--good)} .t-w{background:var(--warn-a);color:var(--warn)}
+  .msg{font-size:12px;background:var(--accent-a);border-radius:10px;padding:8px 10px;margin-top:8px}
+  .box{max-width:900px;margin:26px auto 0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;font-size:13.5px}
+  .box h2{font-size:15px;margin:0 0 10px}
+  .rules{width:100%;border-collapse:collapse;font-size:12.5px}
+  .rules th,.rules td{border-bottom:1px solid var(--border);padding:8px 6px;text-align:left;background:none;border-radius:0;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--text);width:auto}
+  .rules th{font-weight:800;color:var(--muted)}
+  .rules td:first-child{font-weight:800;text-align:left}
+  .q li{margin-bottom:6px}
+</style>
+</head>
+<body>
+<h1>Surcharge progressive par niveau — proposition</h1>
+<p class="lead">Exemple : athlète <b>avancé</b>, Leg curl allongé, fourchette 8-12, petit pas du catalogue 2,5 kg. Les deux dernières fois : 3 séries à 35 kg × 12, RPE 8, repos 2 min. Rien n'est codé.</p>
+
+<div class="row">
+  <div class="col">
+    <div class="cap">① La charge peut monter <span>— choix du jour</span></div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div class="ti">Séance en cours</div></div>
+      <div class="body">
+        <div class="card acc">
+          <p class="exo">Leg curl allongé</p>
+          <div class="meta">Ischio · 3 séries · 8-12 reps</div>
+          <div class="choice">
+            <p><b>12 reps sur toutes tes séries, 2 séances de suite.</b> Comment veux-tu progresser aujourd'hui ?</p>
+            <div class="opts">
+              <div class="opt"><b>Monter la charge</b>37,5 kg × 8</div>
+              <div class="opt"><b>Réduire le repos</b>2 min → 1 min 30</div>
+            </div>
+          </div>
+          <table>
+            <tr><th></th><th>Mar. 20/10</th><th>Cible</th><th>Aujourd'hui</th></tr>
+            <tr><td>S1</td><td>35×12<small>RPE 8 · 2 min</small></td><td class="tgt" style="opacity:.55">37,5×8</td><td class="pend">à faire</td></tr>
+            <tr><td>S2</td><td>35×12<small>RPE 8 · 2 min</small></td><td class="tgt" style="opacity:.55">37,5×8</td><td class="pend">à faire</td></tr>
+            <tr><td>S3</td><td>35×12<small>RPE 8 · 2 min</small></td><td class="tgt" style="opacity:.55">37,5×8</td><td class="pend">à faire</td></tr>
+          </table>
+          <div class="note">Tant que tu n'as pas choisi, la cible affichée (en clair) est celle de « Monter la charge ».</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap">② Choix « Monter la charge »</div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div class="ti">Séance en cours</div></div>
+      <div class="body">
+        <div class="card acc">
+          <p class="exo">Leg curl allongé</p>
+          <div class="meta">Ischio · 3 séries · 8-12 reps</div>
+          <div class="choice" style="border-color:var(--border);background:var(--surface2)">
+            <div class="opts">
+              <div class="opt on"><b>Monter la charge</b>37,5 kg × 8</div>
+              <div class="opt"><b>Réduire le repos</b>2 min → 1 min 30</div>
+            </div>
+          </div>
+          <table>
+            <tr><th></th><th>Mar. 20/10</th><th>Cible</th><th>Aujourd'hui</th></tr>
+            <tr><td>S1</td><td>35×12<small>RPE 8 · 2 min</small></td><td class="tgt">37,5×8</td><td class="tgt">en cours</td></tr>
+            <tr><td>S2</td><td>35×12<small>RPE 8 · 2 min</small></td><td class="tgt">37,5×8</td><td class="pend">à faire</td></tr>
+            <tr><td>S3</td><td>35×12<small>RPE 8 · 2 min</small></td><td class="tgt">37,5×8</td><td class="pend">à faire</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <div class="lbl">Repos après la série</div>
+          <div class="repos"><b>2 min</b><span class="tag t-g">comme la dernière fois</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap">③ Choix « Réduire le repos »</div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div class="ti">Séance en cours</div></div>
+      <div class="body">
+        <div class="card acc">
+          <p class="exo">Leg curl allongé</p>
+          <div class="meta">Ischio · 3 séries · 8-12 reps</div>
+          <div class="choice" style="border-color:var(--border);background:var(--surface2)">
+            <div class="opts">
+              <div class="opt"><b>Monter la charge</b>37,5 kg × 8</div>
+              <div class="opt on"><b>Réduire le repos</b>2 min → 1 min 30</div>
+            </div>
+          </div>
+          <table>
+            <tr><th></th><th>Mar. 20/10</th><th>Cible</th><th>Aujourd'hui</th></tr>
+            <tr><td>S1</td><td>35×12<small>RPE 8 · 2 min</small></td><td class="tgt">35×12<small>repos 1 min 30</small></td><td class="tgt">en cours</td></tr>
+            <tr><td>S2</td><td>35×12<small>RPE 8 · 2 min</small></td><td class="tgt">35×12<small>repos 1 min 30</small></td><td class="pend">à faire</td></tr>
+            <tr><td>S3</td><td>35×12<small>RPE 8 · 2 min</small></td><td class="tgt">35×12<small>repos 1 min 30</small></td><td class="pend">à faire</td></tr>
+          </table>
+          <div class="msg">Même charge, mêmes reps, <b>30 s de repos en moins</b>. Minimum pour cet exercice : 1 min.</div>
+        </div>
+        <div class="card">
+          <div class="lbl">Repos après la série</div>
+          <div class="repos"><b>1 min 30</b><span class="tag t-w">repos réduit</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="box">
+  <h2>La règle (une seule, pour le tableau, la cible et le message)</h2>
+  <table class="rules">
+    <tr><th>Niveau</th><th>La charge monte quand…</th><th>De combien</th><th>Option « repos »</th></tr>
+    <tr><td>Débutant (0-3 ans)</td><td>toutes les séries prévues au haut de la fourchette, 1 fois, RPE ≤ 8</td><td>petit pas du catalogue</td><td>non</td></tr>
+    <tr><td>Intermédiaire (4-7)</td><td>toutes les séries au haut de la fourchette 2 séances de suite (ou 1 fois avec RPE ≤ 7)</td><td>petit pas</td><td>non</td></tr>
+    <tr><td>Avancé (8-10) / Expert (11+)</td><td>idem intermédiaire</td><td>petit pas</td><td><b>oui</b> : choix du jour charge / repos −30 s</td></tr>
+  </table>
+  <ul class="q" style="margin-top:12px">
+    <li>Sinon : <b>+1 rep</b> sur les séries encore sous le haut de la fourchette.</li>
+    <li>RPE ≥ 9 la dernière fois : cible = même charge, mêmes reps (« consolide »).</li>
+    <li>Si l'RPE n'a pas été saisi, on ne bloque pas sur lui (on ne l'invente pas).</li>
+    <li>Repos de référence = le repos le plus fréquent de la dernière fois sur cet exercice, sinon celui du programme.</li>
+    <li>Repos minimum : <b>2 min</b> sur les polyarticulaires lourds, <b>1 min</b> sur le reste. Minimum atteint → l'option repos est grisée (« repos minimum atteint »).</li>
+  </ul>
+  <h2 style="margin-top:14px">Exercices à 2 min minimum (à valider)</h2>
+  <p style="margin:0;font-size:12.5px;color:var(--muted)">Squat, Hack squat, Belt squat, Pendulum, Squat gobelet · Presses (inclinée, horizontale, circulaire, unilatérale, sumo) · Soulevé de terre, RDL barre, RDL haltère · Hip thrust, Hip thrust machine · Fentes (bulgare, courte, longue) · Tous les développés (couché, incliné, décliné, militaire — barre, haltères, machine, Smith, Hammer) · Dips · Traction · Rowing barre, Rowing machine, Rowing bucheron, Rowing banc · T-bar row (toutes prises) · Tirages verticaux et horizontaux à 2 mains.<br>Tout le reste (poulies, machines d'isolation, curls, extensions, élévations, écartés, mollets, abdos) : 1 min minimum.</p>
+</div>
+</body>
+</html>
