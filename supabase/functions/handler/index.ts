@@ -2548,7 +2548,8 @@ async function handleGetLastPerf(params: URLSearchParams): Promise<Response> {
     const date = normDate(r.date)
     const exo = String(r.exercice || '')
     const rpeN = (r.rpe == null || r.rpe === '') ? null : Number(r.rpe)
-    const s = { serie: r.serie, charge: Number(r.charge) || 0, reps: Number(r.reps) || 0, rpe: (rpeN != null && !isNaN(rpeN)) ? rpeN : null }
+    const reposN = Number(r.repos)
+    const s = { serie: r.serie, charge: Number(r.charge) || 0, reps: Number(r.reps) || 0, rpe: (rpeN != null && !isNaN(rpeN)) ? rpeN : null, repos: reposN > 0 ? reposN : null }
     if (!toutesSeances[exo]) toutesSeances[exo] = {}
     ;(toutesSeances[exo][date] ||= []).push(s)
   }

@@ -26,7 +26,12 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
     - le niveau est calculé dès l'inscription (avant : « intermédiaire » jusqu'à la reconnexion) ;
     - l'enregistrement du profil ne double plus les années écoulées (on stocke la base = effective − écoulées).
   - Droits par ligne (`ROW_OWNED` + `_checkLignes`) : commentaire, programme, planning, objectif, blessure, contexte, photo de suivi → propriétaire vérifié (test session-auth).
-  - Maquette `mockups/novalyz-saisie-series.html` (tableau S1-S3, légende RPE, nom de séance retiré, programme vs réalisé factuel) → **en attente de validation**.
+  - Saisie des séries (maquette `mockups/novalyz-saisie-series.html` VALIDÉE puis codée) :
+    - tableau S1… = dernière fois (dernière date de l'exercice, toute séance ; charge×reps + « RPE n » + repos) · cible · aujourd'hui ;
+    - légende RPE sous chaque bouton (10 = « à l'échec ») + phrase d'explication ;
+    - nom de la séance retiré pendant la saisie (« Exercice X / N », en-tête « Séance en cours ») ;
+    - Programme vs réalisé factuel (✓ ≈ ↔ –) ; variante = exercice hors programme du même muscle.
+  - `getLastPerf` renvoie aussi le `repos` de chaque série (test derniere-fois-repos).
   - Écart à trancher : seuils de niveau (profil : avancé dès 8 ans ; cibles de volume Analyses : avancé > 9 ans).
 
 ### Lot 28 oct. (2) — prêt pour le TEST FERMÉ Play Store (sur `dev`, SW v443) — **index.ts à REDÉPLOYER**

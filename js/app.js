@@ -10653,7 +10653,6 @@ function majProgressionSeance() {
   if (!seanceId) { el.style.display = 'none'; return; }
   el.style.display = 'block';
   const estLibre = seanceId === 'Libre' || programmeSeance.length === 0;
-  document.getElementById('seance-progress-titre').textContent = estLibre ? 'Séance libre' : seanceId;
   const titreListe = document.getElementById('titre-liste-seance');
   if (titreListe) titreListe.textContent = estLibre ? 'Séance libre' : 'Programme · ' + seanceId;
 
@@ -10679,9 +10678,21 @@ function majProgressionSeance() {
   const totalSeries = seance.reduce((a, e) => a + e.series.length, 0);
 
   document.getElementById('seance-progress-series').textContent = totalSeries;
+  try { var _spl = document.getElementById('seance-progress-series').nextSibling; if (_spl && _spl.nodeType === 3) _spl.textContent = totalSeries > 1 ? ' séries' : ' série'; } catch (e) {}
   const fini = totalExos > 0 && faits >= totalExos;
+  // Pendant la saisie d'un exercice : PAS le nom de la séance (déjà connu, prend de la
+  // place) → « Exercice 3 / 6 ». Sur la liste : le nom reste dans l'en-tête de page.
+  const enSaisie = _enSaisieExo();
+  if (enSaisie) {
+    const ordreExos = programmeSeance.map(p => p.exercice).concat(exosLibres.map(e => e.exerciceNom));
+    const pos = ordreExos.indexOf(exoEnCours.exerciceNom) + 1;
+    document.getElementById('seance-progress-titre').textContent = pos > 0 ? `Exercice ${pos} / ${totalExos}` : 'Exercice en cours';
+  } else {
+    document.getElementById('seance-progress-titre').textContent = estLibre ? 'Séance libre' : 'Ta séance';
+  }
   document.getElementById('seance-progress-detail').textContent =
-    `${faits} / ${totalExos} exercice${totalExos > 1 ? 's' : ''}${fini ? '  Tout est fait !' : ''}`;
+    `${faits} / ${totalExos} exercice${totalExos > 1 ? 's' : ''} fait${totalExos > 1 ? 's' : ''}${fini ? ' · tout est fait !' : ''}`;
+  try { _majSeancePageTitre(); } catch (e) {}
   const pct = totalExos > 0 ? Math.round(faits / totalExos * 100) : 0;
   document.getElementById('seance-progress-bar').style.width = pct + '%';
 }
@@ -11000,6 +11011,7 @@ function retourListeSeance() {
   document.getElementById('card-exo-actuel').style.display = 'none';
   document.getElementById('card-liste-seance').style.display = 'block';
   afficherListeSeance();
+  try { majProgressionSeance(); } catch (e) {}
   setTimeout(() => { const c = document.getElementById('card-liste-seance'); if (c) scrollVersTitre(c); }, 50);
 }
 
@@ -11202,21 +11214,31 @@ function pickChip(grp, el, val) {
   if (el) el.classList.add('on');
   const h = document.getElementById(grp === 'rpe' ? 'sel-rpe' : 'sel-repos');
   if (h) h.value = val;
+  if (grp === 'rpe') _majRpeExp(val);
+}
+// Phrase qui explique l'RPE choisi (échelle RPE en reps en réserve).
+var _RPE_EXP = { 6: 'tu aurais pu faire encore 4 répétitions propres ou plus (effort facile).', 7: 'tu aurais pu faire encore 3 répétitions propres.', 8: 'tu aurais pu faire encore 2 répétitions propres.', 9: 'tu aurais pu faire encore 1 répétition propre.', 10: 'à l\'échec — impossible de faire une répétition de plus.' };
+function _majRpeExp(val) {
+  var e = document.getElementById('rpe-exp'); if (!e) return;
+  var t = _RPE_EXP[Number(val)];
+  e.innerHTML = t ? '<b>RPE ' + Number(val) + '</b> : ' + t : '';
 }
 function setChipByVal(grp, val) {
   if (grp === 'repos') { _reposWheelSet(val); return; }   // repos = molette désormais
   let found = false;
   document.querySelectorAll('#' + grp + '-chips .saisie-chip').forEach(c => {
-    const on = String(c.textContent).replace('s', '') === String(val);
+    const on = String(c.getAttribute('data-v') != null ? c.getAttribute('data-v') : String(c.textContent).replace('s', '')) === String(val);
     c.classList.toggle('on', on);
     if (on) found = true;
   });
   const h = document.getElementById(grp === 'rpe' ? 'sel-rpe' : 'sel-repos');
   if (h) h.value = found ? String(val) : (grp === 'rpe' ? '' : '120');
+  if (grp === 'rpe') _majRpeExp(found ? val : '');
 }
 function resetRpeChip() {
   document.querySelectorAll('#rpe-chips .saisie-chip').forEach(c => c.classList.remove('on'));
   const h = document.getElementById('sel-rpe'); if (h) h.value = '';
+  _majRpeExp('');
 }
 function repeterDerniereSerie() {
   if (!exoEnCours || !exoEnCours.series.length) { showToast('Aucune série à répéter'); return; }
@@ -11309,7 +11331,7 @@ function majSeriesActuel() {
     <div class="serie-item">
       <span class="serie-num">S${s.serie}</span>
       <div class="serie-data">${s.charge}kg × ${s.reps} reps
-        <div class="serie-sub">RPE ${s.rpe} · ${s.repos}s · Vol ${s.volume}</div>
+        <div class="serie-sub">RPE ${s.rpe}${_reposTxt(s.repos) ? ' · ' + _reposTxt(s.repos) : ''} · Vol ${s.volume}</div>
       </div>
       <button class="btn-sm" onclick="dupliquerSerie(${i})" title="Dupliquer" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:6px 9px;margin-right:4px">⧉</button>
       <button class="btn-sm btn-danger-sm" onclick="supprimerSerie(${i})">✕</button>
@@ -11364,47 +11386,78 @@ function _cibleSerieSurcharge(ref, rmax, rmin, inc) {
   return { charge: ch, reps: rp + 1, up: 'reps' };
 }
 
+// Repos lisible : 90 → « 1 min 30 », 45 → « 45 s », 120 → « 2 min ».
+function _reposTxt(sec) {
+  var n = Math.round(Number(sec) || 0); if (n <= 0) return '';
+  var m = Math.floor(n / 60), r = n % 60;
+  return m ? (m + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '')) : (r + ' s');
+}
+function _numOk(v) { return v != null && v !== '' && !isNaN(Number(v)); }
+// Tableau des séries de l'exercice en cours : une ligne par série (S1, S2…),
+// colonnes « dernière fois » (date réelle de la dernière fois que CET exercice a été
+// fait, quelle que soit la séance : charge×reps + RPE + repos), « cible » (surcharge
+// progressive calculée depuis cette série) et « aujourd'hui » (série saisie ou à faire).
+// Tout vient des données (getLastPerf + programme + saisie) — rien d'inventé (6bis).
 function majPlanSeries() {
   var el = document.getElementById('plan-series-actuel'); if (!el) return;
-  var pProg = exoEnCours ? programmeSeance.find(function (p) { return p.exercice === exoEnCours.exerciceNom; }) : null;
-  if (!pProg) { el.innerHTML = ''; return; }
-  // Cibles PAR SÉRIE dérivées du schéma (fixe/double/top-set+back-off/pyramidal).
-  var plan = _derivePlanSeries(pProg, _est1RM(exoEnCours.exerciceNom));
-  var ps = plan.series; if (!ps.length) { el.innerHTML = ''; return; }
-  var done = exoEnCours ? exoEnCours.series.length : 0;
-  // Historique PAR SÉRIE de la dernière séance de cet exo → « dernière fois → cible ».
+  if (!exoEnCours) { el.innerHTML = ''; return; }
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
+  var pProg = programmeSeance.find(function (p) { return p.exercice === exoEnCours.exerciceNom; }) || null;
+  var plan = pProg ? _derivePlanSeries(pProg, _est1RM(exoEnCours.exerciceNom)) : { series: [], note: '' };
+  var ps = plan.series || [];
+  var faites = exoEnCours.series || [], done = faites.length;
   var perfHist = (typeof getPerf === 'function') ? getPerf(exoEnCours.exerciceNom) : null;
-  var lastSeries = (perfHist && Array.isArray(perfHist.series)) ? perfHist.series : null;
-  var rmaxP = (pProg.reps_max != null && pProg.reps_max !== '') ? Number(pProg.reps_max) : null;
-  var rminP = (pProg.reps_mini != null && pProg.reps_mini !== '') ? Number(pProg.reps_mini) : null;
+  var lastSeries = (perfHist && Array.isArray(perfHist.series) && perfHist.series.length) ? perfHist.series : null;
+  var n = Math.max(ps.length, done, pProg ? 0 : (lastSeries ? lastSeries.length : 0));
+  // Rien à montrer (hors programme, jamais fait, rien saisi) → pas de tableau.
+  if (!n || (!pProg && !lastSeries && !done)) { el.innerHTML = ''; _majPerfLignes(false); return; }
+  var rmaxP = pProg && _numOk(pProg.reps_max) ? Number(pProg.reps_max) : null;
+  var rminP = pProg && _numOk(pProg.reps_mini) ? Number(pProg.reps_mini) : null;
   var incP = _incrementExo(exoEnCours.exerciceNom);
-  var anyHist = false, anyRpe = false;
-  var chips = ps.map(function (s, i) {
-    var k = i + 1;
-    var st = (k <= done) ? 'done' : (k === done + 1 ? 'cur' : 'todo');
-    var mark = (st === 'done') ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : '';
-    var inner, ref = lastSeries ? _refSerie(lastSeries, k) : null;
-    if (ref && (Number(ref.charge) > 0 || Number(ref.reps) > 0)) {
-      anyHist = true;
-      var cib = _cibleSerieSurcharge(ref, rmaxP, rminP, incP);
-      // RPE de la dernière fois (si saisi) : montre l'évolution de l'effort, pas seulement kg×reps.
-      var rpeRef = (ref.rpe != null && ref.rpe !== '' && !isNaN(Number(ref.rpe))) ? Number(ref.rpe) : null;
-      if (rpeRef != null) anyRpe = true;
-      inner = '<small>' + ref.charge + '×' + ref.reps + (rpeRef != null ? ' <span class="plan-rpe">@' + rpeRef + '</span>' : '') + ' <span style="color:var(--text-subtle)">→</span> <b style="color:var(--accent)">' + cib.charge + '×' + cib.reps + '</b></small>';
-    } else {
-      var load = _planLoadTxt(s);
-      var detail = [s.reps + ' reps', load, (s.rpe != null ? 'RPE ' + s.rpe : ''), (s.tag || '')].filter(Boolean).join(' · ');
-      inner = '<small>' + escapeHtml(detail) + '</small>';
-    }
-    return '<span class="plan-chip ' + st + (s.tag === 'lourde' ? ' top' : '') + '">' + mark + 'S' + k + ' ' + inner + '</span>';
-  }).join('');
-  var reposTxt = (pProg.repos_sec != null && pProg.repos_sec !== '') ? (pProg.repos_sec + 's repos') : '';
-  var dRef = (perfHist && perfHist.date) ? String(perfHist.date).slice(0, 10).split('-') : null;
-  var dRefTxt = (dRef && dRef.length === 3) ? ' du ' + dRef[2] + '/' + dRef[1] : '';
-  var sub = [(anyHist ? ('dernière fois' + dRefTxt + (anyRpe ? ' (@ RPE)' : '') + ' → cible') : ''), plan.note, reposTxt].filter(Boolean).join(' · ');
-  el.innerHTML = '<div class="plan-hd">Séries prévues · ' + done + '/' + ps.length + '</div>'
-    + '<div class="plan-chips">' + chips + '</div>'
-    + (sub ? '<div class="plan-sub">' + escapeHtml(sub) + '</div>' : '');
+  var dRef = (lastSeries && perfHist.date) ? String(perfHist.date).slice(0, 10) : '';
+  var dRefTxt = '';
+  if (dRef) { var dd = new Date(dRef + 'T00:00:00'); dRefTxt = isNaN(dd.getTime()) ? dRef : (['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'][dd.getDay()] + ' ' + String(dd.getDate()).padStart(2, '0') + '/' + String(dd.getMonth() + 1).padStart(2, '0')); }
+  var sousLigne = function (rpe, repos) {
+    var b = []; if (_numOk(rpe) && Number(rpe) > 0) b.push('RPE ' + Number(rpe)); var rt = _reposTxt(repos); if (rt) b.push(rt);
+    return b.length ? '<small>' + esc(b.join(' · ')) + '</small>' : '';
+  };
+  var rows = '';
+  for (var i = 0; i < n; i++) {
+    var k = i + 1, st = (k <= done) ? 'done' : (k === done + 1 ? 'cur' : 'todo');
+    var ref = lastSeries ? _refSerie(lastSeries, k) : null;
+    var hasRef = ref && (Number(ref.charge) > 0 || Number(ref.reps) > 0);
+    var cDer = hasRef ? ('<b>' + ref.charge + '×' + ref.reps + '</b>' + sousLigne(ref.rpe, ref.repos)) : '<span class="ps-muted">—</span>';
+    var cCib;
+    if (hasRef) { var cib = _cibleSerieSurcharge(ref, rmaxP, rminP, incP); cCib = '<b>' + cib.charge + '×' + cib.reps + '</b>'; }
+    else if (ps[i]) { var sp = ps[i], load = _planLoadTxt(sp); cCib = '<b>' + esc(sp.reps + ' reps') + '</b>' + ((load || sp.rpe != null) ? '<small>' + esc([load, (sp.rpe != null ? 'RPE ' + sp.rpe : '')].filter(Boolean).join(' · ')) + '</small>' : ''); }
+    else cCib = '<span class="ps-muted">—</span>';
+    var cAuj;
+    if (st === 'done') { var f = faites[i]; cAuj = '<b>✓ ' + f.charge + '×' + f.reps + '</b>' + sousLigne(f.rpe, f.repos); }
+    else if (st === 'cur') cAuj = '<b>en cours</b>';
+    else cAuj = '<span class="ps-muted">à faire</span>';
+    rows += '<tr class="ps-' + st + (ps[i] && ps[i].tag === 'lourde' ? ' ps-top' : '') + '"><td class="ps-k">S' + k + '</td><td>' + cDer + '</td><td class="ps-cib">' + cCib + '</td><td class="ps-auj">' + cAuj + '</td></tr>';
+  }
+  // Résumé de la dernière fois (séries, repos, RPE moyen) — seulement ce qui a été saisi.
+  var resume = '';
+  if (lastSeries) {
+    var rp = lastSeries.map(function (x) { return Number(x.rpe); }).filter(function (x) { return x > 0; });
+    var rs = lastSeries.map(function (x) { return Number(x.repos); }).filter(function (x) { return x > 0; });
+    var bits = [lastSeries.length + ' série' + (lastSeries.length > 1 ? 's' : '')];
+    if (rs.length) { var rmin = Math.min.apply(null, rs), rmax = Math.max.apply(null, rs); bits.push('repos ' + (rmin === rmax ? _reposTxt(rmin) : _reposTxt(rmin) + ' à ' + _reposTxt(rmax))); }
+    if (rp.length) bits.push('RPE moyen ' + String(Math.round(rp.reduce(function (a, b) { return a + b; }, 0) / rp.length * 10) / 10).replace('.', ','));
+    resume = 'Dernière fois (' + dRefTxt.toLowerCase() + ') : ' + bits.join(', ') + '.';
+  }
+  var prevu = (pProg && _numOk(pProg.repos_sec) && Number(pProg.repos_sec) > 0) ? ('Repos prévu : ' + _reposTxt(pProg.repos_sec)) : '';
+  var sub = [resume, plan.note, prevu].filter(Boolean);
+  el.innerHTML = '<div class="plan-hd">Tes séries' + (ps.length ? ' · ' + Math.min(done, ps.length) + '/' + ps.length + ' prévues' : '') + '</div>'
+    + '<table class="ps-tab"><thead><tr><th></th><th>' + (dRefTxt ? esc(dRefTxt) : 'Dernière fois') + '</th><th>Cible</th><th>Aujourd\'hui</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + (sub.length ? '<div class="ps-note">' + sub.map(esc).join('<br>') + '</div>' : '');
+  _majPerfLignes(!!lastSeries);
+}
+// Le tableau montre déjà « dernière fois » et la cible : on masque les 2 lignes
+// texte du dessus (doublon) quand l'historique est présent.
+function _majPerfLignes(tableAvecHisto) {
+  ['exo-actuel-perf', 'exo-actuel-cible'].forEach(function (id) { var e = document.getElementById(id); if (e) e.style.display = tableAvecHisto ? 'none' : ''; });
 }
 
 function supprimerSerie(index) {
@@ -12026,33 +12079,65 @@ function afficherRecap() {
   window.scrollTo(0,0);
 }
 
+// Programme vs réalisé — version FACTUELLE (pas de « bon / mauvais ») : pour chaque
+// exercice prévu, l'écart constaté (séries faites / prévues, séries sous le bas de la
+// fourchette de reps). Un exercice prévu non fait + un exercice hors programme du MÊME
+// muscle fait dans la séance = « variante faite » (remplacement), pas « non fait ».
+function _pvrNormMuscle(m) { return String(m || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase(); }
+function _pvrMuscleProg(nom) {
+  try { var e = (exercicesData || []).find(function (x) { return x.exercice === nom; }); return e ? e.muscle : ''; } catch (_) { return ''; }
+}
+function _pvrDetail(p, ser) {
+  var n = ser.length, prev = Number(p.series_prevues) || 0;
+  var bits = [n + ' série' + (n > 1 ? 's' : '') + (prev ? ' / ' + prev + ' prévue' + (prev > 1 ? 's' : '') : '')];
+  var mini = Number(p.reps_mini) || 0, maxi = Number(p.reps_max) || 0;
+  var sous = mini ? ser.filter(function (x) { return (Number(x.reps) || 0) < mini; }) : [];
+  if (mini) {
+    if (!sous.length) bits.push('reps dans la fourchette' + (maxi ? ' (' + mini + '-' + maxi + ')' : ''));
+    else {
+      var lst = sous.map(function (x) { return x.reps; });
+      var txt = lst.length > 1 ? lst.slice(0, -1).join(', ') + ' et ' + lst[lst.length - 1] : String(lst[0]);
+      bits.push(sous.length === n ? ('toutes sous ' + mini + ' reps (' + ser.map(function (x) { return x.reps; }).join(', ') + ')')
+        : (sous.length + ' série' + (sous.length > 1 ? 's' : '') + ' sous ' + mini + ' reps (' + txt + ')'));
+    }
+  }
+  return { txt: bits.join(' · '), conforme: n >= prev && !sous.length };
+}
 async function afficherProgrammeVsRealise(seanceType) {
   if (!seanceType || programmeSeance.length === 0) return;
   document.getElementById('recap-programme-block').style.display = 'block';
   const el = document.getElementById('recap-programme-content');
-  el.innerHTML = programmeSeance.map(p => {
-    const exoRealise = seance.find(e => e.exerciceNom === p.exercice);
-    const seriesFaites = exoRealise ? exoRealise.series.length : 0;
-    const repsMoy = exoRealise && seriesFaites > 0
-      ? Math.round(exoRealise.series.reduce((a,s)=>a+s.reps,0)/seriesFaites) : 0;
-    const seriesOk = seriesFaites >= p.series_prevues;
-    const repsOk = repsMoy >= p.reps_mini;
-    const nonFait = seriesFaites === 0;
-    let statut, couleur;
-    if (nonFait) { statut = 'Non fait'; couleur = 'var(--text-muted)'; }
-    else if (seriesOk && repsOk) { statut = 'Objectif atteint'; couleur = 'var(--success)'; }
-    else { statut = 'Insuffisant'; couleur = 'var(--danger)'; }
-    var cibleTxt = _cibleTxt(p, true);
-    var vcHtml = _cibleVerdictHtml(_cibleVerdict(p, exoRealise ? exoRealise.series : []));
-    return `
-      <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:6px;border-left:3px solid ${couleur}">
-        <div style="font-size:13px;font-weight:700">${p.exercice}</div>
-        <div style="font-size:12px;color:var(--text-muted)">Prévu: ${p.series_prevues} séries · ${p.reps_mini}-${p.reps_max} reps${cibleTxt ? ' · ' + cibleTxt : ''}</div>
-        <div style="font-size:12px">Réalisé: <strong>${seriesFaites} séries · ~${repsMoy} reps</strong></div>
-        <div style="font-size:12px;color:${couleur};font-weight:700">${statut}</div>
-        ${vcHtml}
+  const esc = (typeof escapeHtml === 'function') ? escapeHtml : (x => String(x == null ? '' : x));
+  const faits = seance.filter(e => e.series && e.series.length > 0);
+  const horsProg = faits.filter(e => !programmeSeance.some(p => p.exercice === e.exerciceNom));
+  const utilises = new Set();
+  const ICO = { ok: ['✓', 'var(--good)', 'var(--good-a,rgba(0,168,84,.12))'], near: ['≈', 'var(--warn)', 'var(--warn-a,rgba(224,120,0,.12))'],
+    sw: ['↔', 'var(--accent)', 'var(--accent-a08,rgba(26,95,255,.08))'], no: ['–', 'var(--text-subtle)', 'var(--surface2)'] };
+  const ligne = (k, titre, detail, extra) => `
+      <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--border)">
+        <div style="width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-weight:900;font-size:13px;flex:none;color:${ICO[k][1]};background:${ICO[k][2]}">${ICO[k][0]}</div>
+        <div style="min-width:0"><div style="font-size:13.5px;font-weight:800">${titre}</div><div style="font-size:12px;color:var(--text-muted)">${detail}</div>${extra || ''}</div>
       </div>`;
+  let html = programmeSeance.map(p => {
+    const exo = faits.find(e => e.exerciceNom === p.exercice);
+    if (exo) {
+      const d = _pvrDetail(p, exo.series);
+      return ligne(d.conforme ? 'ok' : 'near', esc(p.exercice), esc(d.txt), _cibleVerdictHtml(_cibleVerdict(p, exo.series)));
+    }
+    // Non fait tel quel : une variante du même muscle faite hors programme ?
+    const mp = _pvrNormMuscle(_pvrMuscleProg(p.exercice));
+    const vari = mp ? horsProg.find(e => !utilises.has(e.exerciceNom) && _pvrNormMuscle(e.muscle) === mp) : null;
+    if (vari) {
+      utilises.add(vari.exerciceNom);
+      const d = _pvrDetail(p, vari.series);
+      return ligne('sw', esc(p.exercice), 'remplacé par <b>' + esc(vari.exerciceNom) + '</b> · ' + esc(d.txt));
+    }
+    return ligne('no', esc(p.exercice), 'non fait');
   }).join('');
+  const enPlus = horsProg.filter(e => !utilises.has(e.exerciceNom));
+  if (enPlus.length) html += ligne('sw', 'En plus du programme', esc(enPlus.map(e => e.exerciceNom + ' (' + e.series.length + ' série' + (e.series.length > 1 ? 's' : '') + ')').join(', ')));
+  el.innerHTML = '<div style="margin-top:-10px">' + html + '</div>'
+    + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">✓ conforme · ≈ proche du prévu · ↔ variante faite · – non fait</div>';
 }
 
 async function nouvelleSeance() {
@@ -17012,9 +17097,14 @@ function fermerSeancePage() {
   var _c = document.getElementById('seance-page-chrono'); if (_c) _c.textContent = '';
   try { if (typeof skipTimer === 'function') skipTimer(); } catch (e) {}   // coupe le chrono de repos
 }
+function _enSaisieExo() {
+  var c = document.getElementById('card-exo-actuel');
+  return !!(c && c.style.display !== 'none' && typeof exoEnCours !== 'undefined' && exoEnCours);
+}
 function _majSeancePageTitre() {
   var el = document.getElementById('seance-page-title'); if (!el) return;
   try {
+    if (_enSaisieExo()) { el.textContent = 'Séance en cours'; return; }
     if ((typeof _modeSeance !== 'undefined' ? _modeSeance : 'muscu') === 'cardio') { el.textContent = 'Séance cardio'; return; }
     var sel = document.getElementById('sel-seance-id'); var v = sel && sel.value;
     el.textContent = (v && v !== '') ? (v === 'Libre' ? 'Séance libre' : v) : 'Nouvelle séance';
