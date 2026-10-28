@@ -899,7 +899,15 @@ function renderCockpitEtat(m){
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">'
       + _ckMini('Récupération', m.recup || '—', _ckColRecup(m.recup))
       + _ckMini('Risque blessure', m.risque_blessure || '—', _ckColNiv3(m.risque_blessure))
-      + _ckMini('Surcharge', m.surcharge || '—', _ckColNiv3(m.surcharge))
+      // Audit #3 : « Charge » (pas « Surcharge ») et jamais orange sur la charge seule —
+      // orange uniquement si le ressenti confirme (moteur.charge_ressenti.degrade).
+      + (function () {
+          var cr = m.charge_ressenti || null, cf = m.charge_fatigue || null;
+          var haut = !!(cf && cf.tsbPct != null && cf.tsbPct < -12);
+          if (!cr || !cf) return _ckMini('Charge', m.surcharge || '—', _ckColNiv3(m.surcharge));
+          var v = !haut ? 'Habituelle' : (cr.degrade ? 'Élevée' : (cr.evaluable ? 'En hausse · encaissée' : 'En hausse'));
+          return _ckMini('Charge', v, (haut && cr.degrade) ? _ckColNiv3('Élevé') : 'var(--text)');
+        })()
     +'</div>'
     + recoHtml
   +'</div>';

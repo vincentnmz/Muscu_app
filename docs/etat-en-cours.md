@@ -19,6 +19,10 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## Fait récemment
 
+### Lot 28 oct. — douleur + audit moteur (sur `dev`, SW v442) — **index.ts à REDÉPLOYER**
+- **Douleur** (validé) : 2 Légère = point d'attention · 3 Modérée = Vigilance · 4 Forte = rouge ; suit la **dernière saisie** (redescend). `moteur.causes` = cause du verdict affichée (« Pourquoi : … »). `moteur.charge_ressenti` → carte « Charge en hausse · tu encaisses bien » (plus « Fatigue » sur la charge seule).
+- **Audit moteur** (`docs/audit-moteur-2026-10-26.md`, rejeu du vrai backend sur données réelles) — 9 correctifs appliqués : régularité 7 j glissants · noms de muscles canoniques (`normMuscle` + base nettoyée) · risque/« Charge » sans la charge seule · courbatures = dernière saisie · muscle en retard avec travail indirect 0,5 · « +X % » neutralisé après une pause ≥ 10 j (et plus de « tu construis ») · récence des alertes legacy · **alertes coach = moteur central** (`getCoachAthletes` appelle `handleGetAppData` par athlète muscu) · micro-séances cardio ignorées. Tests `douleur-derniere-saisie` + `audit-moteur`.
+
 ### Lot 26 oct. (soir) — branche `claude/pensive-ritchie-5p62gt` (pas encore sur `dev`)
 - **Méthode réaffirmée par l'utilisateur** : TOUJOURS expliquer, poser les questions, maquette si besoin, **décider avant de coder** ; écrire en **français**.
 - **Séries prévues** (validé) : réf « dernière fois » = dernière fois que l'EXO a été fait, toutes séances confondues (avant : même `seance_id` → split A/B / séance Libre comparés à une vieille séance). `getLastPerf` renvoie aussi le **RPE** par série ; les cases affichent `7.5×10 @8 → 7.5×11` + date de réf. **index.ts à redéployer.**

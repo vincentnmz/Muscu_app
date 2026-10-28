@@ -6,7 +6,9 @@
 > données brutes et au code. « Vérifié » = constaté sur le code ET sur les données ; « code » = défaut
 > établi par lecture du code, pas encore observé sur un compte réel.
 >
-> **Aucun correctif de cet audit n'est appliqué** : décisions à prendre avec le porteur.
+> **Statut (28/10) : les 9 correctifs sont APPLIQUÉS** (validés par le porteur), vérifiés par rejeu sur les données
+> réelles + test `tests/audit-moteur.test.js`. Base nettoyée : 8 lignes `exercices` + 4 lignes `performances`.
+> ⚠️ Actifs en prod seulement après redéploiement d'`index.ts`.
 
 ## Déjà corrigé aujourd'hui (rappel)
 - Alerte charge sans ressenti dégradé → supprimée (règle charge + ressenti).

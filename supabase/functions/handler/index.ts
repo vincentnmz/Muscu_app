@@ -589,6 +589,23 @@ function calculerFitnessFatigue(chargeParJour: Record<string, number>, now: Date
   }
 }
 
+// ── Noms de muscles (audit 26/10 #2) ─────────────────────────────────────────
+// Le catalogue et l'historique contenaient des variantes (« Moletts », « fessier »,
+// « Triceps␣ ») qui ne correspondaient jamais aux objectifs de volume (« Mollets »…) →
+// séries jamais comptées. Clé canonique : sans espaces parasites, casse/alias unifiés.
+const _MUSCLE_ALIAS: Record<string, string> = {
+  moletts: 'Mollets', mollet: 'Mollets', mollets: 'Mollets', fessier: 'Fessier', fessiers: 'Fessier',
+  ischio: 'Ischio', ischios: 'Ischio', epaule: 'Epaule', epaules: 'Epaule', abdominaux: 'Abdominaux', abdos: 'Abdominaux',
+  triceps: 'Triceps', biceps: 'Biceps', dos: 'Dos', pectoraux: 'Pectoraux', quadriceps: 'Quadriceps',
+  adducteur: 'Adducteur', adducteurs: 'Adducteur', trapeze: 'Trapèze', trapezes: 'Trapèze',
+}
+function normMuscle(m: unknown): string {
+  const raw = String(m ?? '').trim()
+  if (!raw) return ''
+  const key = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ')
+  return _MUSCLE_ALIAS[key] || (raw.charAt(0).toUpperCase() + raw.slice(1))
+}
+
 // ── Règle « charge + ressenti » (entrées du moteur, oct. 2026) ─────────────────
 // Charge SOUTENUE : fraîcheur (TSB%) < -12 sur au moins 3 des 5 derniers jours
 // (un pic d'un jour — reprise après une pause, grosse séance — ne compte pas).
@@ -720,6 +737,8 @@ function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: numbe
     const entries = (Object.values(progressionParExo[exo]) as any[]).sort((a, b) => a.date.localeCompare(b.date))
     if (entries.length < seuil) continue
     const derniersN = entries.slice(-seuil)
+    // Audit #7 : stagnation seulement sur des séances RÉCENTES (dernière ≤ 21 j, fenêtre ≤ 90 j).
+    if (derniersN[derniersN.length - 1].date < fmtYMD(minus(now, 21)) || derniersN[0].date < fmtYMD(minus(now, 90))) continue
     let meilleurAvant: any = null, progresse = false
     for (const en of derniersN) {
       if (meilleurAvant && (en.charge > meilleurAvant.charge || (en.charge === meilleurAvant.charge && en.reps > meilleurAvant.reps))) progresse = true
@@ -733,6 +752,7 @@ function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: numbe
     const sessions = (Object.values(rpeParExo[exo]) as any[]).sort((a, b) => a.date.localeCompare(b.date))
     if (sessions.length < 4) continue
     const last4 = sessions.slice(-4)
+    if (last4[3].date < fmtYMD(minus(now, 14))) continue   // Audit #7 : exo plus pratiqué → pas d'alerte
     const rpeAvant = (last4[0].rpe + last4[1].rpe) / 2
     const rpeApres = (last4[2].rpe + last4[3].rpe) / 2
     const chgAvant = (last4[0].charge + last4[1].charge) / 2
@@ -1648,7 +1668,9 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   const nPrev = cmp.seances ? (cmp.seances.j28_prec != null ? cmp.seances.j28_prec : cmp.seances.precedent) : null
   // Une évolution % n'est fiable que si la période précédente est une VRAIE base
   // (≥ 3 séances) — sinon un mois quasi vide produit des % aberrants (+2400 %…).
-  const baseFiable = typeof nPrev === 'number' && nPrev >= 3
+  // Audit #6 : une PAUSE (≥ 10 j sans séance) dans la période précédente gonfle la hausse.
+  const pausePrev = (extras && extras.pausePrevJours) || 0
+  const baseFiable = typeof nPrev === 'number' && nPrev >= 3 && pausePrev < 10
   const tonEvol = (tonEvolRaw != null && baseFiable) ? tonEvolRaw : null
   const recup = (moteur && moteur.recup) || null
   const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
@@ -1662,13 +1684,14 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   // État du jour dégradé (récup faible OU disponibilité Vigilance/À surveiller) :
   // la reco progression doit alors S'ALIGNER avec le verdict (pas de « augmente »).
   const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
-  const seancesCur = regularite ? (regularite.seances_semaine != null ? regularite.seances_semaine : (regularite.seances_j7 != null ? regularite.seances_j7 : null)) : null
+  // Audit #1 : 7 jours GLISSANTS (la semaine calendaire donnait « 1/4 » un lundi).
+  const seancesCur = regularite ? (regularite.seances_j7 != null ? regularite.seances_j7 : (regularite.seances_semaine != null ? regularite.seances_semaine : null)) : null
   const seancesPrev = regularite ? (regularite.seances_prevues || null) : null
 
   const constats: any[] = []
   if (tonEvol != null) {
     if (tonEvol >= 5 && (rpeDiff == null || rpeDiff <= 0.5)) {
-      constats.push({ ton: 'positif', texte: `Ton volume progresse (+${tonEvol}% sur 4 semaines) sans hausse marquée de l'effort perçu — progression cohérente${recomp ? ' avec ta recomposition (tu construis à poids stable)' : (prise ? ' avec ta prise de masse' : (seche ? ' malgré la sèche, bon signe' : (maintien ? ' — au-delà de ce qu\'un simple maintien demande' : '')))}.` })
+      constats.push({ ton: 'positif', texte: `Ton volume progresse (+${tonEvol}% sur 4 semaines) sans hausse marquée de l'effort perçu — progression cohérente${recomp ? ' avec ta recomposition' : (prise ? ' avec ta prise de masse' : (seche ? ' malgré la sèche, bon signe' : (maintien ? ' — au-delà de ce qu\'un simple maintien demande' : '')))}.` })
     } else if (tonEvol <= -8) {
       if (enDeload) constats.push({ ton: 'neutre', texte: `Volume réduit (${tonEvol}% sur 4 semaines) — normal pendant ton déload, tu récupères.` })
       else if (enReprise) constats.push({ ton: 'neutre', texte: `Volume plus bas (${tonEvol}% sur 4 semaines) — cohérent avec ta reprise, remonte progressivement.` })
@@ -1678,7 +1701,9 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     }
   } else if (tonEvolRaw != null) {
     // Une évolution existe mais la base est trop courte pour l'affirmer honnêtement.
-    constats.push({ ton: 'neutre', texte: `Pas encore assez de recul pour juger l'évolution de ton volume (période précédente trop courte).` })
+    constats.push({ ton: 'neutre', texte: pausePrev >= 10
+      ? `Volume ${tonEvolRaw >= 0 ? 'en hausse' : 'en baisse'} sur 4 semaines, mais la période de comparaison inclut une pause de ${pausePrev} jours : l'évolution n'est pas représentative.`
+      : `Pas encore assez de recul pour juger l'évolution de ton volume (période précédente trop courte).` })
   }
   // Respect du programme (exécution vs cible charge %1RM / RPE), si des cibles existent.
   if (execCible && execCible.nEval > 0) {
@@ -1700,9 +1725,9 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
     constats.push({ ton: 'attention', texte: `Ton état du jour appelle à la vigilance (récupération / fatigue) — à prendre en compte avant d'intensifier.` })
   }
   const regFaible = !!(seancesPrev && seancesCur != null && seancesCur < seancesPrev * 0.6)
-  if (regFaible) constats.push({ ton: 'attention', texte: `Régularité sous ton objectif (${seancesCur}/${seancesPrev} séances).` })
+  if (regFaible) constats.push({ ton: 'attention', texte: `Régularité sous ton objectif (${seancesCur}/${seancesPrev} séances sur les 7 derniers jours).` })
   else if (seancesPrev && seancesCur != null && seancesCur >= seancesPrev && !constats.some(c => c.ton === 'attention')) {
-    constats.push({ ton: 'positif', texte: `Régularité au rendez-vous (${seancesCur}/${seancesPrev} séances).` })
+    constats.push({ ton: 'positif', texte: `Régularité au rendez-vous (${seancesCur}/${seancesPrev} séances sur les 7 derniers jours).` })
   }
 
   const aBaisse = tonEvol != null && tonEvol <= -8
@@ -1812,6 +1837,8 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   const fcPts: any[] = []
   for (const s of hist) {
     const d = String(s.date || '')
+    // Audit #9 : une « sortie » < 5 min ET < 0,3 km (tests, imports parasites) ne compte pas.
+    if ((Number(s.duree) || 0) < 5 && (Number(s.distance) || 0) < 0.3) continue
     const ua = chargeInterneCardio(s)
     if (d >= c28) { n28++; ch28 += ua; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy), rpe: Number(s.rpe) || 0 }) }
     else if (d >= c56) { n56++; ch56 += ua }
@@ -1974,6 +2001,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: recompRows },
     { data: mensuRows },
     { data: suiviPhotoRows },
+    { data: exoCatRows },
   ] = await Promise.all([
     sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -1994,6 +2022,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('indicateurs').select('cle,valeur,date').eq('athlete_id', athleteId).eq('seance_id', 'recompense'),
     sb().from('indicateurs').select('date,cle,valeur,unite').eq('athlete_id', athleteId).eq('seance_id', 'mensuration').order('date', { ascending: false }),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'suivi_photo').order('date', { ascending: false }),
+    sb().from('exercices').select('exercice,muscle_secondaire'),
   ])
 
   // Agenda daté : fenêtre courte pour l'athlète (aujourd'hui → +14 j) → séances
@@ -2005,7 +2034,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     .eq('athlete_id', athleteId).gte('date', _planFrom).lte('date', _planTo)
     .order('date', { ascending: true })
 
-  const perfs = perfsAll || []
+  // Audit #2 : muscle canonique (sinon « Moletts » ≠ « Mollets » → séries jamais comptées).
+  const perfs = (perfsAll || []).map((r: any) => ({ ...r, muscle: normMuscle(r.muscle) }))
+  for (const v of (volObtiRows || [])) (v as any).muscle = normMuscle((v as any).muscle)
   const sport = athData?.sport || 'muscu'
   // pause active = aujourd'hui dans [debut, fin] (comme Code.gs athleteEnPause)
   const pauseRow = pauseRows?.[0]
@@ -2058,8 +2089,15 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // muscle en retard = sur 4 SEMAINES, plus grand retard, faites < min×4 (comme Code.gs computeMuscleRetard)
   const c28mr = fmtYMD(minus(now, 28))
   const seriesParMuscle4: Record<string, number> = {}
+  // Audit #5 : le muscle SECONDAIRE de l'exercice compte 0,5 série (squat → fessiers…),
+  // comme l'onglet Analyses — sinon « Fessier 0 série » alors qu'il est travaillé.
+  const _secByExo: Record<string, string> = {}
+  for (const e of (exoCatRows || [])) { const k = String((e as any).exercice || '').trim().toLowerCase(); const ms = normMuscle((e as any).muscle_secondaire); if (k && ms) _secByExo[k] = ms }
   for (const r of perfs) {
-    if (normDate(r.date) >= c28mr && r.muscle) seriesParMuscle4[r.muscle] = (seriesParMuscle4[r.muscle] || 0) + 1
+    if (normDate(r.date) < c28mr) continue
+    if (r.muscle) seriesParMuscle4[r.muscle] = (seriesParMuscle4[r.muscle] || 0) + 1
+    const sec = _secByExo[String(r.exercice || '').trim().toLowerCase()]
+    if (sec && sec !== r.muscle) seriesParMuscle4[sec] = (seriesParMuscle4[sec] || 0) + 0.5
   }
   let muscleRetard: string | null = null
   let muscleRetardObj: any = null
@@ -2390,7 +2428,18 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const _repVals: number[] = []
   for (const r of perfs) { const d = normDate(r.date); if (!d || d < _repCut) continue; const rp = Number(r.repos) || 0; if (rp > 0) _repVals.push(rp) }
   const reposMoy = _repVals.length ? Math.round(_repVals.reduce((a, b) => a + b, 0) / _repVals.length) : null
-  const synthExtras = { reposMoy, reposN: _repVals.length }
+  // Audit #6 : plus longue pause (jours sans séance) qui touche la période de comparaison (J-56 → J-28).
+  let pausePrevJours = 0
+  {
+    const c56p = fmtYMD(minus(now, 56)), c28p = fmtYMD(minus(now, 28))
+    const ds = [...new Set(perfs.map((r: any) => normDate(r.date)).filter((d: any) => d && d >= c56p))].sort() as string[]
+    let prev = c56p
+    for (const d of ds) {
+      if (prev < c28p) { const g = (_joursDepuis(prev, new Date(d + 'T12:00:00Z')) ?? 0) - 1; if (g > pausePrevJours) pausePrevJours = g }
+      prev = d
+    }
+  }
+  const synthExtras = { reposMoy, reposN: _repVals.length, pausePrevJours }
 
   return jsonResp({
     moteur,
@@ -2520,8 +2569,8 @@ async function handleGetExercices(): Promise<Response> {
   const exercices = (data || []).filter(r => r.exercice_id).map(r => ({
     exercice_id: r.exercice_id,
     exercice: r.exercice,
-    muscle: r.muscle,
-    muscle_secondaire: r.muscle_secondaire || '',
+    muscle: normMuscle(r.muscle),
+    muscle_secondaire: normMuscle(r.muscle_secondaire),
     increment_kg: r.increment_kg || '2.5 / 5kg',
   }))
   return jsonResp({ exercices })
@@ -2559,13 +2608,27 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
     sb().from('bien_etre').select('*').in('athlete_id', athleteIds).order('date', { ascending: false }),
   ])
 
+  // Audit #8 : le coach voit les MÊMES alertes que l'athlète (moteur central → alertes_centre),
+  // pas celles de l'ancien calculerAlertes. Repli sur l'ancien calcul si l'appel échoue (foot inclus).
+  const centreByAth: Record<string, any[] | null> = {}
+  await Promise.all(athletes.map(async (ath: any) => {
+    if ((ath.sport || 'muscu') !== 'muscu') return
+    try {
+      const r = await handleGetAppData(new URLSearchParams({ athlete_id: String(ath.id) }))
+      const d: any = await r.json()
+      if (Array.isArray(d && d.alertes_centre)) centreByAth[String(ath.id)] = d.alertes_centre.map((x: any) => ({
+        type: x.type, severite: x.severity, message: (x.evidence && x.evidence !== x.title) ? (x.title + ' — ' + x.evidence) : x.title,
+      }))
+    } catch (_) { /* repli ancien calcul */ }
+  }))
+
   const result = athletes.map(ath => {
     const perfs = (perfsAll || []).filter(r => r.athlete_id === ath.id)
     const pauses = (pauseAll || []).filter(r => r.athlete_id === ath.id)
     const enPause = pauses.length > 0 && pauses[0].valeur !== 'fin'
     const dates = [...new Set(perfs.map(r => normDate(r.date)))].sort()
     const anneesA = anneesEffectives(ath.annees, ath.created_at, now)   // N2 : ancienneté effective (évolue dans le temps)
-    const alertes = calculerAlertes(perfs, ath.id, anneesA, enPause)
+    const alertes = centreByAth[String(ath.id)] || calculerAlertes(perfs, ath.id, anneesA, enPause)
     const lastBE = (beAll || []).find(r => r.athlete_id === ath.id)
     const sportA = ath.sport || 'muscu'
     const strategieA = ath.strategie || (sportA === 'muscu' ? getStrategieFromAnnees(anneesA) : '')
@@ -2707,6 +2770,7 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
   // le MAX des 7 jours : une douleur passée (« Aucune » le lendemain) ne maintient
   // plus l'athlète en Vigilance / rouge pendant une semaine (validé porteur oct. 2026).
   let dLastDate: string | null = null, dLast: number | null = null, dZone: string | null = null
+  let cLastDate: string | null = null, cLast: number | null = null
   for (const r of rows || []) {
     const dIso = normDate(r.date); if (!dIso || dIso < cut) continue
     if (r.douleur != null && r.douleur !== '') {
@@ -2717,7 +2781,12 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
     if (r.fatigue_musculaire != null && r.fatigue_musculaire !== '') fat.push(Number(r.fatigue_musculaire))
     if (r.sommeil != null && r.sommeil !== '') som.push(Number(r.sommeil))
     if (r.stress != null && r.stress !== '') str.push(Number(r.stress))
-    if (r.courbatures != null && r.courbatures !== '') courb.push(Number(r.courbatures))
+    if (r.courbatures != null && r.courbatures !== '') {
+      const cv = Number(r.courbatures); courb.push(cv)
+      // Audit #4 : comme la douleur, on suit la DERNIÈRE saisie (pas le pire des 7 jours).
+      if (!isNaN(cv) && (cLastDate == null || dIso > cLastDate)) { cLastDate = dIso; cLast = cv }
+      else if (!isNaN(cv) && dIso === cLastDate && cv > (cLast as number)) cLast = cv
+    }
   }
   const mx = (a: number[]) => a.length ? Math.max(...a) : null
   const mn = (a: number[]) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null
@@ -2725,7 +2794,7 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
   // récente, utilisée par le VERDICT athlète (readiness) pour qu'un seul jour
   // fatigué ne plombe pas la semaine. Ajout non cassant.
   // Hooper : on ajoute stress (moyenne récente) et courbatures/DOMS (MAX, prévention).
-  return { douleur: dLast, douleurZone: dZone, douleurDate: dLastDate, fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), stress: mn(str), courbatures: mx(courb), wellnessN: Math.max(doul.length, fat.length, som.length, str.length, courb.length) }
+  return { douleur: dLast, douleurZone: dZone, douleurDate: dLastDate, fatigue: mx(fat), fatigueMoy: mn(fat), sommeil: mn(som), stress: mn(str), courbatures: cLast, wellnessN: Math.max(doul.length, fat.length, som.length, str.length, courb.length) }
 }
 
 interface EtatInput {
@@ -2837,7 +2906,9 @@ function evaluerEtatAthlete(s: EtatInput): any {
   if (sommeilBas) alertes.push({ type: 'sommeil', severite: 'moyenne', message: `Sommeil dégradé (${Math.round((som as number) * 10) / 10}/5)` })
 
   // --- Risque blessure (cumul de points) ---
-  const rbPts = surchargeN + (douleurForte ? 2 : douleurGene ? 1 : 0) + (fatigueHaute ? 1 : 0) + (courb >= CORE_SEUILS.courbatures.haut ? 1 : 0)
+  // Audit #3 : sous la règle « charge + ressenti », la charge seule ne fait pas de risque.
+  const surchargeRisque = (regleRessenti && !(s.chargeSoutenue === true && s.ressentiDegrade === true)) ? 0 : surchargeN
+  const rbPts = surchargeRisque + (douleurForte ? 2 : douleurGene ? 1 : 0) + (fatigueHaute ? 1 : 0) + (courb >= CORE_SEUILS.courbatures.haut ? 1 : 0)
   let risqueBlessureN = rbPts >= 3 ? 2 : rbPts >= 1 ? 1 : 0
   if (eff.risqueDelta) risqueBlessureN = clampNiv(risqueBlessureN + eff.risqueDelta)
 
