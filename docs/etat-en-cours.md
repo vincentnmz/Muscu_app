@@ -96,6 +96,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - **Aperçu coach v3** (`renderCoachCoupDoeil`, charge·reps·RPE réels, état+récup, Lecture Novalyz pour le coach). Nutrition (import MFP), morpho/mensurations coach, récompenses v2, etc.
 
 ## À faire (priorité)
+- **Plus tard (identité visuelle)** : logo animé aussi pendant envoi de séance, réponse IA, export PDF, génération de programme ; dégradé + hexagones dans l'espace coach.
 1. **(Utilisateur)** Redéployer `index.ts` + poser `ANTHROPIC_API_KEY` (voir section ⚠️).
 2. **Programme sur-mesure depuis l'analyse morpho** (parqué — discuter d'abord avec l'utilisateur ce qu'il veut dire dessus).
 3. **N11 morpho IA** (`backlog-app.md`) : finaliser une fois la clé API posée + tester sur de vraies photos/segments.
