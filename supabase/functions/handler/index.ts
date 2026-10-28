@@ -5910,6 +5910,91 @@ async function handleUpdateCardio(body: any): Promise<Response> {
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
+// ═══════════════════ SESSIONS (jeton signé) — 28/10/2026 ═══════════════════
+// Avant : AUCUNE session — l'app envoyait l'id de l'athlète et le serveur le croyait
+// (n'importe qui pouvait lire une fiche en devinant un id). Désormais : à la connexion
+// / inscription, le serveur remet un jeton signé HMAC-SHA256 (clé dérivée de PEPPER,
+// déjà en env Supabase), valable 30 jours ; l'app le renvoie à chaque appel (`_t`).
+// Le mot de passe (hashSalted/verifyPwd) n'est PAS modifié.
+// Droits : un athlète n'accède qu'à SES données (et à son propre coach pour la
+// messagerie) ; un coach n'accède qu'à SES athlètes.
+// Déploiement en 2 temps : AUTH_ENFORCE absent → mode OBSERVATION (on journalise les
+// appels non conformes, rien n'est refusé) ; AUTH_ENFORCE=1 → refus 401.
+const SESSION_TTL_S = 30 * 24 * 3600
+const ATHLETE_COACH_ACTIONS = new Set(['saveCommentaire', 'envoyerMediaCoach', 'mediaUploadUrl', 'getCommentaires', 'marquerCommentairesLus'])
+const AUTH_PUBLIC = new Set(['ping', 'login', 'register', 'loginCoach', 'registerCoach', 'requestPasswordReset', 'resetPassword', 'exercices', 'cronPushAlertes', 'cronResumes', 'cronResumesAuto'])
+let _sessKeyCache: CryptoKey | null = null
+function _b64u(bytes: Uint8Array): string { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }
+function _b64uStr(str: string): string { return _b64u(new TextEncoder().encode(str)) }
+function _unb64uStr(s: string): string { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)); return new TextDecoder().decode(Uint8Array.from(b, c => c.charCodeAt(0))) }
+async function _sessKey(): Promise<CryptoKey | null> {
+  const pepper = Deno.env.get('PEPPER'); if (!pepper) return null
+  if (!_sessKeyCache) _sessKeyCache = await crypto.subtle.importKey('raw', new TextEncoder().encode(pepper + '|novalyz-session-v1'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify'])
+  return _sessKeyCache
+}
+async function signSession(role: 'a' | 'c', id: string, nowS?: number): Promise<string | null> {
+  const key = await _sessKey(); if (!key) return null
+  const exp = Math.floor(nowS != null ? nowS : Date.now() / 1000) + SESSION_TTL_S
+  const payload = `v1.${role}.${_b64uStr(String(id))}.${exp}`
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload)))
+  return payload + '.' + _b64u(sig)
+}
+async function verifySession(tok: string, nowS?: number): Promise<{ role: 'a' | 'c'; id: string } | null> {
+  try {
+    const key = await _sessKey(); if (!key || !tok) return null
+    const parts = String(tok).split('.'); if (parts.length !== 5 || parts[0] !== 'v1' || (parts[1] !== 'a' && parts[1] !== 'c')) return null
+    const payload = parts.slice(0, 4).join('.')
+    const sigB = Uint8Array.from(atob(parts[4].replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((parts[4].length + 3) % 4)), c => c.charCodeAt(0))
+    const ok = await crypto.subtle.verify('HMAC', key, sigB, new TextEncoder().encode(payload)); if (!ok) return null
+    if (Number(parts[3]) < Math.floor(nowS != null ? nowS : Date.now() / 1000)) return null
+    return { role: parts[1] as 'a' | 'c', id: _unb64uStr(parts[2]) }
+  } catch (_) { return null }
+}
+// Vérifie qu'un appel a le droit de toucher les ids qu'il vise.
+async function authCheck(action: string, params: URLSearchParams, body: any): Promise<{ ok: boolean; reason?: string }> {
+  if (AUTH_PUBLIC.has(action)) return { ok: true }
+  const tok = params.get('_t') || (body && body._t) || ''
+  const sess = tok ? await verifySession(String(tok)) : null
+  if (!sess) return { ok: false, reason: tok ? 'jeton invalide ou expiré' : 'jeton absent' }
+  const aid = String(params.get('athlete_id') || (body && (body.athlete_id || (body.data && body.data.athlete_id))) || '')
+  const cid = String(params.get('coach_id') || (body && body.coach_id) || '')
+  if (sess.role === 'a') {
+    if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
+    if (cid) {
+      // Un athlète ne cite un coach_id QUE pour écrire / envoyer un média à SON coach
+      // (sinon il pourrait lister tous les athlètes de son coach via une route coach).
+      if (!ATHLETE_COACH_ACTIONS.has(action)) return { ok: false, reason: 'athlète ' + sess.id + ' → route coach (' + action + ')' }
+      const { data } = await sb().from('athletes').select('coach_id').eq('id', sess.id).single()
+      if (!data || String(data.coach_id || '') !== cid) return { ok: false, reason: 'athlète ' + sess.id + ' → coach ' + cid }
+    }
+    return { ok: true }
+  }
+  if (cid && cid !== sess.id) return { ok: false, reason: 'coach ' + sess.id + ' → coach ' + cid }
+  if (aid) {
+    const { data } = await sb().from('athletes').select('coach_id').eq('id', aid).single()
+    if (!data || String(data.coach_id || '') !== sess.id) return { ok: false, reason: 'coach ' + sess.id + ' → athlète ' + aid + ' (non lié)' }
+  }
+  return { ok: true }
+}
+// Ajoute le jeton à une réponse de connexion / inscription réussie.
+async function withSession(resp: Response, role: 'a' | 'c'): Promise<Response> {
+  try {
+    const d: any = await resp.clone().json()
+    const id = d && d.success ? (role === 'a' ? (d.athlete && d.athlete.athlete_id) : (d.coach && d.coach.coach_id)) : null
+    if (id == null) return resp
+    const token = await signSession(role, String(id))
+    if (!token) return resp
+    return jsonResp({ ...d, token }, resp.status)
+  } catch (_) { return resp }
+}
+async function _authGate(action: string, params: URLSearchParams, body: any): Promise<Response | null> {
+  const r = await authCheck(String(action || ''), params, body)
+  if (r.ok) return null
+  const enforce = Deno.env.get('AUTH_ENFORCE') === '1' && !!Deno.env.get('PEPPER')
+  console.warn('[auth' + (enforce ? '' : ':observation') + '] ' + action + ' — ' + r.reason)
+  return enforce ? jsonResp({ erreur: 'Session expirée — reconnecte-toi.', auth: true }, 401) : null
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
 
@@ -5922,16 +6007,17 @@ Deno.serve(async (req: Request) => {
   try {
     if (req.method === 'GET') {
       const action = params.get('action')
+      const _deny = await _authGate(String(action || ''), params, null); if (_deny) return _deny
       switch (action) {
         case 'ping':                  return jsonResp({ ok: true })
-        case 'login':                 return handleLogin(params)
-        case 'register':              return handleRegister(params)
+        case 'login':                 return withSession(await handleLogin(params), 'a')
+        case 'register':              return withSession(await handleRegister(params), 'a')
         case 'getAppData':            return handleGetAppData(params)
         case 'getLastPerf':           return handleGetLastPerf(params)
         case 'getPoids':              return handleGetPoids(params)
         case 'getActivites':          return handleGetActivites(params)
         case 'exercices':             return handleGetExercices()
-        case 'loginCoach':            return handleLoginCoach(params)
+        case 'loginCoach':            return withSession(await handleLoginCoach(params), 'c')
         case 'getCoachAthletes':      return handleGetCoachAthletes(params)
         case 'getCommentaires':       return handleGetCommentaires(params)
         case 'getCoachProgramme':     return handleGetCoachProgramme(params)
@@ -5949,10 +6035,11 @@ Deno.serve(async (req: Request) => {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}))
       const action = body.action
+      const _deny = await _authGate(String(action || ''), params, body); if (_deny) return _deny
       switch (action) {
-        case 'login':                    return handleLogin(new URLSearchParams({ login: body.login, password: body.password }))
-        case 'register':                 return handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: String(body.annees || '0'), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '' }))
-        case 'registerCoach':            return handleRegisterCoach(body)
+        case 'login':                    return withSession(await handleLogin(new URLSearchParams({ login: body.login, password: body.password })), 'a')
+        case 'register':                 return withSession(await handleRegister(new URLSearchParams({ login: body.login, password: body.password, nom: body.nom || '', prenom: body.prenom || '', ddn: body.ddn || '', taille: body.taille || '', poids: body.poids || '', annees: String(body.annees || '0'), sport: body.sport || 'muscu', email: body.email || '', code: body.code || '' })), 'a')
+        case 'registerCoach':            return withSession(await handleRegisterCoach(body), 'c')
         case 'seedDemoFoot':             return handleSeedDemoFoot(body)
         case 'clearDemoFoot':            return handleClearDemoFoot(body)
         case 'supprimerCompte':          return handleSupprimerCompte(body)
@@ -5973,7 +6060,7 @@ Deno.serve(async (req: Request) => {
         case 'resetPassword':            return handleResetPassword(body)
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
-        case 'loginCoach':               return handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password }))
+        case 'loginCoach':               return withSession(await handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password })), 'c')
         case 'saveSeance':               return handleSaveSeance(body.data)
         case 'deleteSeance':             return handleDeleteSeance(body)
         case 'updateSeance':             return handleUpdateSeance(body)

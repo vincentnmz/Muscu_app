@@ -19,6 +19,11 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## Fait récemment
 
+### Lot 28 oct. (2) — prêt pour le TEST FERMÉ Play Store (sur `dev`, SW v443) — **index.ts à REDÉPLOYER**
+- Google Play configuré par l'utilisateur ; reste à recruter **12 testeurs × 14 jours** (viser 14-15). Morpho IA et foot : APRÈS le test (coût / validation muscu).
+- **Suppression de compte complète** (exigence Play) : athlète +7 tables + photos `suivi-photos` ; coach : alertes traitées, jetons push, nom anonymisé. Test `suppression-compte-complete`.
+- **Sessions (jeton signé HMAC, clé dérivée de PEPPER, 30 j)** : `signSession`/`verifySession`/`authCheck`/`withSession`/`_authGate` dans index.ts ; jeton renvoyé par login/register/loginCoach/registerCoach ; front = enveloppe UNIQUE de `window.fetch` (ajoute `_t`, mémorise `nvz_tok`, 401 `auth` → reconnexion). Droits : athlète = ses données (+ messagerie avec SON coach : `ATHLETE_COACH_ACTIONS`) ; coach = ses athlètes. **Mode OBSERVATION par défaut** (journalise `[auth:observation]` dans les logs Supabase) → **passer `AUTH_ENFORCE=1`** (secret Supabase) quand plus aucun appel non conforme n'apparaît. Test `session-auth` (31 vérifs).
+
 ### Lot 28 oct. — douleur + audit moteur (sur `dev`, SW v442) — **index.ts à REDÉPLOYER**
 - **Douleur** (validé) : 2 Légère = point d'attention · 3 Modérée = Vigilance · 4 Forte = rouge ; suit la **dernière saisie** (redescend). `moteur.causes` = cause du verdict affichée (« Pourquoi : … »). `moteur.charge_ressenti` → carte « Charge en hausse · tu encaisses bien » (plus « Fatigue » sur la charge seule).
 - **Audit moteur** (`docs/audit-moteur-2026-10-26.md`, rejeu du vrai backend sur données réelles) — 9 correctifs appliqués : régularité 7 j glissants · noms de muscles canoniques (`normMuscle` + base nettoyée) · risque/« Charge » sans la charge seule · courbatures = dernière saisie · muscle en retard avec travail indirect 0,5 · « +X % » neutralisé après une pause ≥ 10 j (et plus de « tu construis ») · récence des alertes legacy · **alertes coach = moteur central** (`getCoachAthletes` appelle `handleGetAppData` par athlète muscu) · micro-séances cardio ignorées. Tests `douleur-derniere-saisie` + `audit-moteur`.
