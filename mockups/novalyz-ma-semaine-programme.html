@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ma semaine — maquette</title>
+<style>
+  :root{
+    --bg:#eef2fa; --surface:#ffffff; --surface2:#f3f6fd; --border:#dde4f3;
+    --text:#0d1424; --muted:#5f6b85; --subtle:#8b96b0;
+    --accent:#1a5fff; --accent-a:rgba(26,95,255,.10); --good:#00a854;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;padding:22px 16px 60px}
+  h1{font-size:20px;margin:0 0 4px;text-align:center}
+  .lead{font-size:13px;color:var(--muted);text-align:center;max-width:820px;margin:0 auto 22px}
+  .row{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
+  .col{width:340px}
+  .cap{font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin:0 4px 8px}
+  .cap span{color:var(--muted);text-transform:none;letter-spacing:0;font-weight:600}
+  .phone{background:var(--surface);border:1px solid var(--border);border-radius:30px;overflow:hidden;box-shadow:0 14px 40px rgba(13,20,36,.10)}
+  .hd{display:flex;align-items:center;gap:12px;padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+  .back{width:36px;height:36px;border-radius:11px;border:1px solid var(--border);background:var(--surface2);display:grid;place-items:center;font-size:17px;color:var(--muted);flex:none}
+  .ti{font-weight:800;font-size:17px;letter-spacing:.01em}
+  .sub{font-size:11.5px;color:var(--muted)}
+  .body{padding:14px 16px 18px}
+  .lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);margin:12px 2px 8px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{border:1.5px solid var(--border);background:var(--surface);border-radius:11px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--muted)}
+  .chip.on{border-color:var(--accent);background:var(--accent-a);color:var(--accent)}
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .seg .chip{text-align:center;padding:9px 6px;line-height:1.25}
+  .seg .chip small{display:block;font-size:10.5px;font-weight:600;color:var(--subtle);margin-top:1px}
+  .seg .chip.on small{color:var(--accent);opacity:.8}
+  .hint{font-size:11.5px;color:var(--muted);margin:7px 2px 0}
+  .new{position:relative;border:2px dashed var(--accent);border-radius:14px;padding:4px 10px 10px;margin:4px -4px 0;background:rgba(26,95,255,.03)}
+  .new .tag{position:absolute;top:-10px;right:10px;background:var(--accent);color:#fff;font-size:9.5px;font-weight:800;letter-spacing:.06em;border-radius:999px;padding:2px 8px}
+  .prev{background:var(--surface2);border-radius:14px;padding:12px;margin-top:14px;font-size:12px;color:var(--muted)}
+  .prev b{color:var(--accent)}
+  .card{border:1px solid var(--border);border-radius:16px;padding:12px 14px;margin-top:10px}
+  .card .t{font-weight:800;font-size:15px}
+  .card .r{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border)}
+  .card .r:first-of-type{border-top:none}
+  .btn{width:100%;border:none;border-radius:13px;background:var(--accent);color:#fff;font-weight:800;font-size:14.5px;padding:13px;margin-top:14px}
+  .muted{opacity:.45}
+  .q{max-width:820px;margin:26px auto 0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;font-size:13.5px}
+  .q h2{font-size:15px;margin:0 0 8px}
+  .q li{margin-bottom:6px}
+</style>
+</head>
+<body>
+<h1>« Ma semaine » à la création / modification du programme — proposition</h1>
+<p class="lead">Un seul réglage (celui des Réglages ▸ Préférences) proposé aussi là où on construit son programme. Le changer à un endroit le change partout : régularité, volume « cette semaine », lectures Analyses. Rien n'est codé.</p>
+
+<div class="row">
+  <div class="col">
+    <div class="cap">① Novalyz te propose <span>— générateur</span></div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div><div class="ti">Novalyz te propose</div><div class="sub">Réponds à quelques questions, Novalyz assemble ton programme</div></div></div>
+      <div class="body">
+        <div class="lbl muted">Niveau · Objectif · Organisation</div>
+        <div class="chips muted"><span class="chip on">Intermédiaire</span><span class="chip on">Prise de masse</span><span class="chip on">Upper / Lower</span></div>
+        <div class="lbl">Jours / semaine</div>
+        <div class="chips"><span class="chip">2 j</span><span class="chip">3 j</span><span class="chip on">4 j</span><span class="chip">5 j</span><span class="chip">6 j</span></div>
+        <div class="new"><span class="tag">NOUVEAU</span>
+          <div class="lbl">Ma semaine</div>
+          <div class="seg">
+            <span class="chip on">Lundi → dimanche<small>repart à 0 le lundi</small></span>
+            <span class="chip">7 derniers jours<small>glissant</small></span>
+          </div>
+          <div class="hint">Pour compter tes 4 séances : « 2/4 cette semaine » le mercredi.</div>
+        </div>
+        <div class="lbl">Temps par séance</div>
+        <div class="chips"><span class="chip">45 min</span><span class="chip on">60 min</span><span class="chip">75 min</span></div>
+        <div class="prev">APERÇU · 4 SÉANCES<br><b>Haut A</b> · lundi · <b>Bas A</b> · mardi · <b>Haut B</b> · jeudi · <b>Bas B</b> · vendredi</div>
+        <button class="btn">Créer mon programme</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap">② Construis ton programme <span>— « je gère » / modifier</span></div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div><div class="ti">Construis ton programme</div><div class="sub">Crée tes séances puis ajoute tes exercices</div></div></div>
+      <div class="body">
+        <div class="new"><span class="tag">NOUVEAU</span>
+          <div class="lbl">Ma semaine</div>
+          <div class="seg">
+            <span class="chip on">Lundi → dimanche<small>repart à 0 le lundi</small></span>
+            <span class="chip">7 derniers jours<small>glissant</small></span>
+          </div>
+          <div class="hint">Comment compter tes séances de la semaine (régularité, volume, analyses).</div>
+        </div>
+        <div class="lbl">Ajoute une séance</div>
+        <div class="chips"><span class="chip">Push</span><span class="chip">Pull</span><span class="chip">Jambes</span><span class="chip">+ Autre nom…</span></div>
+        <div class="lbl">Tes séances (4)</div>
+        <div class="card"><div class="t">pec epaule</div><div class="r"><span>Développé décliné à la Smith</span><span>3 × 8–12</span></div><div class="r"><span>Écarté machine</span><span>3 × 8–12</span></div></div>
+        <button class="btn">Terminer mon programme</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap">③ Réglages ▸ Préférences <span>— inchangé, synchronisé</span></div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div><div class="ti">Réglages</div><div class="sub">Préférences</div></div></div>
+      <div class="body">
+        <div class="lbl">Semaine d'entraînement</div>
+        <div class="hint" style="margin:0 2px 10px">Comment compter « cette semaine » (volume, séances, analyses).</div>
+        <div class="seg">
+          <span class="chip on">Lundi → dimanche<small>reset le lundi</small></span>
+          <span class="chip">7 derniers jours<small>glissant</small></span>
+        </div>
+        <div class="hint" style="margin-top:14px">↔ Même réglage que dans le générateur et « Construis ton programme » : le changer ici le change là-bas, et inversement.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="q">
+  <h2>À décider avant de coder</h2>
+  <ol>
+    <li><b>Emplacements</b> : générateur (sous « Jours / semaine ») + en haut de « Construis ton programme ». Côté <b>coach</b> (quand il crée le programme d'un athlète) : on l'ajoute aussi, ou on laisse ce choix à l'athlète ?</li>
+    <li><b>Valeur par défaut</b> pour un nouveau compte : « Lundi → dimanche » (comme aujourd'hui). OK ?</li>
+    <li><b>Desktop / tablette</b> : même bloc, placé en haut de la colonne de réglages du générateur et dans le panneau de droite de « Construis ton programme ». OK ?</li>
+  </ol>
+</div>
+</body>
+</html>
