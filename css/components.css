@@ -978,3 +978,8 @@ body.onb-open #btn-top, body.xp-open #btn-top, body.jg-open #btn-top, body.gen-o
 .sem-seg button.on { border-color:var(--accent); background:var(--accent-a08,rgba(26,95,255,.08)); color:var(--accent); }
 .sem-seg button.on small { color:var(--accent); opacity:.8; }
 .sem-hint { font-size:11.5px; color:var(--text-subtle); margin:7px 2px 0; line-height:1.45; }
+/* 28/10 : boutons de rôle sans pictogramme (texte centré) */
+.nv-role { justify-content:center; text-align:center; }
+.nv-role .tx { align-items:center; }
+/* Bandeau mobile : logo Novalyz à la place de l'haltère, à côté du nom de l'écran */
+#app-header .hdr-logo { width:22px; height:24px; vertical-align:-5px; margin-right:9px; color:var(--text); }
