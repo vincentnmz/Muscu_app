@@ -10983,16 +10983,7 @@ function selectionnerExoLibre(exerciceNom) {
     document.getElementById('inp-charge').value = perf.last_charge;
     document.getElementById('inp-reps').value = perf.max_reps;
 
-    // Suggestion surcharge pour exercice hors programme
-    const exoDataHP = exercicesData.find(e => e.exercice === exo.exerciceNom);
-    const incrementHP = parseFloat(String(exoDataHP ? exoDataHP.increment_kg : '2.5').replace(',','.').split('/')[0].trim()) || 2.5;
-    const stratHP = athlete ? athlete.strategie_progression : 'Progression linéaire';
-    // Pseudo-programme : on considère les reps actuelles comme cible
-    const pseudoProg = { reps_max: perf.max_reps, reps_mini: Math.max(1, perf.max_reps - 2) };
-    const dernRpeHP = exoEnCours.series.length > 0 ? exoEnCours.series[exoEnCours.series.length - 1].rpe : null;
-    const suggHP = calculerSurcharge(stratHP, perf, pseudoProg, perf.last_charge, incrementHP, dernRpeHP);
-    document.getElementById('exo-actuel-suggestion').innerHTML = suggHP
-      ? `<div class="prog-suggestion" style="margin-top:6px">${suggHP}</div>` : '';
+    // (suggestion de surcharge : règle unique par niveau, rendue par majPlanSeries)
   } else {
     document.getElementById('exo-actuel-perf').innerHTML = '<span style="color:var(--text-muted)">Premier essai</span>';
     document.getElementById('inp-charge').value = '';
@@ -11337,24 +11328,6 @@ function majSeriesActuel() {
       <button class="btn-sm btn-danger-sm" onclick="supprimerSerie(${i})">✕</button>
     </div>
   `).join('');
-  // Recalcule la suggestion RPE après chaque série saisie
-  if (exoEnCours && exoEnCours.series.length > 0) {
-    const dernSerie = exoEnCours.series[exoEnCours.series.length - 1];
-    const perf = getPerf(exoEnCours.exerciceNom);
-    if (perf) {
-      const strat = athlete ? athlete.strategie_progression : 'Progression linéaire';
-      const exoData = exercicesData ? exercicesData.find(e => e.exercice === exoEnCours.exerciceNom) : null;
-      const incr = exoData ? (parseFloat(String(exoData.increment_kg).replace(',','.').split('/')[0].trim()) || 2.5) : 2.5;
-      const progEl = exoEnCours._progData;
-      const pseudo = progEl
-        ? { reps_max: progEl.reps_max, reps_mini: progEl.reps_mini }
-        : { reps_max: perf.max_reps, reps_mini: Math.max(1, perf.max_reps - 2) };
-      const best = perf.prev_charge !== null ? Math.max(perf.last_charge, perf.prev_charge || 0) : perf.last_charge;
-      const sugg = calculerSurcharge(strat, perf, pseudo, best, incr, dernSerie.rpe);
-      const suggEl = document.getElementById('exo-actuel-suggestion');
-      if (suggEl) suggEl.innerHTML = sugg ? `<div class="prog-suggestion" style="margin-top:6px">${sugg}</div>` : '';
-    }
-  }
   majProgressionSeance();
   majPlanSeries();   // #4 : rafraîchit la checklist des séries prévues (coche l'avancement)
 }
@@ -11364,26 +11337,102 @@ function majSeriesActuel() {
 // de séries sont prévues et leur objectif (reps + charge/RPE + repos), coché au fur
 // et à mesure. Tout vient de la ligne de programme (rien d'inventé — règle 6bis).
 // Exo hors programme (pas de pProg) → rien affiché.
-// Incrément de charge conseillé pour un exercice (depuis le catalogue `increment_kg`).
-function _incrementExo(exoNom) {
-  try {
-    var e = exercicesData && exercicesData.find(function (x) { return x.exercice === exoNom; });
-    if (e && e.increment_kg) { var nums = String(e.increment_kg).match(/[0-9]+(\.[0-9]+)?/g); if (nums && nums.length) return Math.max.apply(null, nums.map(Number)); }
-  } catch (_) {}
-  return 2.5;
-}
 // Retrouve, dans les séries de la dernière séance, celle qui correspond à la série k.
 function _refSerie(series, k) {
   if (!Array.isArray(series)) return null;
   var byNum = series.find(function (s) { return Number(s.serie) === k; });
   return byNum || series[k - 1] || null;
 }
-// Cible de surcharge PAR SÉRIE (double progression) : +reps tant qu'on n'a pas atteint le
-// haut de la fourchette, puis +incrément de charge et retour en bas de fourchette.
-function _cibleSerieSurcharge(ref, rmax, rmin, inc) {
-  var ch = Number(ref.charge) || 0, rp = Number(ref.reps) || 0;
-  if (rmax && rp >= rmax) return { charge: Math.round((ch + inc) * 4) / 4, reps: (rmin || rp), up: 'charge' };
-  return { charge: ch, reps: rp + 1, up: 'reps' };
+// ===== SURCHARGE PROGRESSIVE PAR NIVEAU — règle UNIQUE (validée le 28/10/2026) =====
+// Pilote à la fois le tableau (colonne Cible), la cible pré-remplie et le message.
+//  • Débutant (0-3 ans) : la charge monte quand TOUTES les séries prévues sont au haut
+//    de la fourchette, 1 fois, RPE ≤ 8.
+//  • Intermédiaire / avancé / expert : toutes les séries au haut de la fourchette
+//    2 séances de suite (ou 1 fois avec RPE ≤ 7).
+//  • Pas de charge = PETIT pas du catalogue (premier nombre de increment_kg).
+//  • Sinon +1 rep sur les séries encore sous le haut de la fourchette.
+//  • RPE ≥ 9 la dernière fois → « consolide » (même charge, mêmes reps).
+//  • Avancé / expert, quand la charge peut monter : choix du jour (charge · charge +30 s
+//    de repos · +1 rep avec +30 s de repos · repos −30 s), bornes de repos par exercice.
+// RPE non saisi = on ne bloque pas dessus (pas de valeur inventée).
+var _POLY_KW = ['squat', 'pendulum', 'presse', 'soulev', 'rdl', 'hip thrust', 'fente', 'developpe', 'dips', 'traction', 'rowing', 't-bar', 'tirage'];
+var _POLY_EXCL = ['mollet', ' uni', 'trapeze'];
+function _estPoly(nom) {
+  var n = ' ' + String(nom || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  if (_POLY_EXCL.some(function (k) { return n.indexOf(k) !== -1; })) return false;
+  return _POLY_KW.some(function (k) { return n.indexOf(k) !== -1; });
+}
+// Bornes de repos : polyarticulaires 2 min → 5 min, le reste 1 min → 3 min.
+function _reposBornes(nom) { return _estPoly(nom) ? { min: 120, max: 300 } : { min: 60, max: 180 }; }
+// Petit pas du catalogue (« 2.5 / 5 kg » → 2,5). 0 si non renseigné (poids du corps).
+function _petitPas(exoNom) {
+  try {
+    var e = exercicesData && exercicesData.find(function (x) { return x.exercice === exoNom; });
+    var nums = e && e.increment_kg ? String(e.increment_kg).replace(/,/g, '.').match(/[0-9]+(\.[0-9]+)?/g) : null;
+    if (nums && nums.length) return Math.min.apply(null, nums.map(Number));
+  } catch (_) {}
+  return 0;
+}
+// Repos de référence = le plus fréquent de la dernière fois (réellement pris), sinon le programme.
+function _reposRef(series, reposProg) {
+  var cnt = {}, best = null;
+  (series || []).forEach(function (x) { var r = Number(x.repos); if (r > 0) { cnt[r] = (cnt[r] || 0) + 1; if (best == null || cnt[r] > cnt[best] || (cnt[r] === cnt[best] && r > best)) best = r; } });
+  if (best != null) return best;
+  var p = Number(reposProg); return p > 0 ? p : null;
+}
+function _r025(x) { return Math.round(x * 4) / 4; }
+// ctx : { niveau, last:[séries], prev:[séries]|null, rmin, rmax, nPrevues, pas, reposRef, bornes }
+// → { mode: 'premier'|'reps'|'charge'|'choix'|'consolide', rpe, options?, cible(k, choix) }
+function _progDecision(ctx) {
+  var last = (ctx.last || []).filter(function (x) { return Number(x.charge) > 0 || Number(x.reps) > 0; });
+  if (!last.length) return { mode: 'premier', cible: function () { return null; } };
+  var rpes = last.map(function (x) { return Number(x.rpe); }).filter(function (x) { return x > 0; });
+  var rpe = rpes.length ? Math.max.apply(null, rpes) : null;
+  var rmax = ctx.rmax, rmin = ctx.rmin || rmax;
+  var n = ctx.nPrevues || last.length;
+  var auHaut = function (ser) {
+    if (!rmax || !ser || ser.length < n) return false;
+    var tri = ser.slice().sort(function (a, b) { return (Number(a.serie) || 0) - (Number(b.serie) || 0); }).slice(0, n);
+    return tri.every(function (x) { return (Number(x.reps) || 0) >= rmax; });
+  };
+  var ref = function (k) { return _refSerie(last, k) || last[last.length - 1]; };
+  var chargeable = ctx.pas > 0 && last.some(function (x) { return Number(x.charge) > 0; });
+  var mode;
+  if (rpe != null && rpe >= 9) mode = 'consolide';
+  else if (!chargeable || !auHaut(last)) mode = 'reps';
+  else if (ctx.niveau === 'debutant') mode = (rpe == null || rpe <= 8) ? 'charge' : 'reps';
+  else mode = (auHaut(ctx.prev) || (rpe != null && rpe <= 7)) ? 'charge' : 'reps';
+  var avance = ctx.niveau === 'avance' || ctx.niveau === 'expert';
+  if (mode === 'charge' && avance) mode = 'choix';
+  var R = ctx.reposRef, B = ctx.bornes || { min: 60, max: 180 };
+  var options = null;
+  if (mode === 'choix') {
+    var plus = (R != null && R + 30 <= B.max) ? R + 30 : null, moins = (R != null && R - 30 >= B.min) ? R - 30 : null;
+    options = [
+      { id: 'charge', titre: 'Monter la charge', repos: R, ok: true },
+      { id: 'charge30', titre: 'Charge + 30 s de repos', repos: plus, ok: plus != null, raison: R == null ? 'repos inconnu' : 'repos maximum atteint' },
+      { id: 'rep30', titre: '+1 rep, +30 s de repos', repos: plus, ok: plus != null, raison: R == null ? 'repos inconnu' : 'repos maximum atteint' },
+      { id: 'repos', titre: 'Réduire le repos', repos: moins, ok: moins != null, raison: R == null ? 'repos inconnu' : 'repos minimum atteint' },
+    ];
+  }
+  var cible = function (k, choix) {
+    var r = ref(k), ch = Number(r.charge) || 0, rp = Number(r.reps) || 0;
+    var c = choix || 'charge';
+    if (mode === 'consolide') return { charge: ch, reps: rp, repos: R };
+    if (mode === 'charge' || (mode === 'choix' && (c === 'charge' || c === 'charge30')))
+      return { charge: _r025(ch + ctx.pas), reps: rmin || rp, repos: (mode === 'choix' && c === 'charge30') ? options[1].repos : R, up: 'charge' };
+    if (mode === 'choix' && c === 'rep30') return { charge: ch, reps: rp + 1, repos: options[2].repos, up: 'reps' };
+    if (mode === 'choix' && c === 'repos') return { charge: ch, reps: rp, repos: options[3].repos, up: 'repos' };
+    // +1 rep tant qu'on est sous le haut de la fourchette (poids du corps / hors programme : +1 rep)
+    if (!rmax || rp < rmax || !chargeable) return { charge: ch, reps: rp + 1, repos: R, up: 'reps' };
+    return { charge: ch, reps: rp, repos: R };
+  };
+  return { mode: mode, rpe: rpe, options: options, cible: cible, reposRef: R };
+}
+function _progChoisir(id) {
+  if (!exoEnCours) return;
+  exoEnCours._progChoix = id; exoEnCours._prefillK = null; exoEnCours._reposInit = false;
+  majPlanSeries();
 }
 
 // Repos lisible : 90 → « 1 min 30 », 45 → « 45 s », 120 → « 2 min ».
@@ -11392,6 +11441,7 @@ function _reposTxt(sec) {
   var m = Math.floor(n / 60), r = n % 60;
   return m ? (m + ' min' + (r ? ' ' + String(r).padStart(2, '0') : '')) : (r + ' s');
 }
+function _kgTxt(x) { return String(x).replace('.', ','); }
 function _numOk(v) { return v != null && v !== '' && !isNaN(Number(v)); }
 // Tableau des séries de l'exercice en cours : une ligne par série (S1, S2…),
 // colonnes « dernière fois » (date réelle de la dernière fois que CET exercice a été
@@ -11413,7 +11463,13 @@ function majPlanSeries() {
   if (!n || (!pProg && !lastSeries && !done)) { el.innerHTML = ''; _majPerfLignes(false); return; }
   var rmaxP = pProg && _numOk(pProg.reps_max) ? Number(pProg.reps_max) : null;
   var rminP = pProg && _numOk(pProg.reps_mini) ? Number(pProg.reps_mini) : null;
-  var incP = _incrementExo(exoEnCours.exerciceNom);
+  var _niv = 'debutant'; try { _niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
+  var prevSeries = (perfHist && Array.isArray(perfHist.prev_series)) ? perfHist.prev_series : null;
+  var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP,
+    nPrevues: pProg && _numOk(pProg.series_prevues) ? Number(pProg.series_prevues) : 0, pas: _petitPas(exoEnCours.exerciceNom),
+    reposRef: _reposRef(lastSeries, pProg ? pProg.repos_sec : null), bornes: _reposBornes(exoEnCours.exerciceNom) });
+  var choix = exoEnCours._progChoix || 'charge';
+  if (dec.options && !dec.options.some(function (o) { return o.id === choix && o.ok; })) choix = 'charge';
   var dRef = (lastSeries && perfHist.date) ? String(perfHist.date).slice(0, 10) : '';
   var dRefTxt = '';
   if (dRef) { var dd = new Date(dRef + 'T00:00:00'); dRefTxt = isNaN(dd.getTime()) ? dRef : (['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'][dd.getDay()] + ' ' + String(dd.getDate()).padStart(2, '0') + '/' + String(dd.getMonth() + 1).padStart(2, '0')); }
@@ -11426,13 +11482,18 @@ function majPlanSeries() {
     var k = i + 1, st = (k <= done) ? 'done' : (k === done + 1 ? 'cur' : 'todo');
     var ref = lastSeries ? _refSerie(lastSeries, k) : null;
     var hasRef = ref && (Number(ref.charge) > 0 || Number(ref.reps) > 0);
-    var cDer = hasRef ? ('<b>' + ref.charge + '×' + ref.reps + '</b>' + sousLigne(ref.rpe, ref.repos)) : '<span class="ps-muted">—</span>';
+    var cDer = hasRef ? ('<b>' + _kgTxt(ref.charge) + '×' + ref.reps + '</b>' + sousLigne(ref.rpe, ref.repos)) : '<span class="ps-muted">—</span>';
     var cCib;
-    if (hasRef) { var cib = _cibleSerieSurcharge(ref, rmaxP, rminP, incP); cCib = '<b>' + cib.charge + '×' + cib.reps + '</b>'; }
+    if (hasRef) {
+      var cib = dec.cible(k, choix);
+      var pale = (dec.mode === 'choix' && !exoEnCours._progChoix) ? ' style="opacity:.55"' : '';
+      var repTag = (cib && cib.repos != null && cib.repos !== dec.reposRef) ? '<small>repos ' + esc(_reposTxt(cib.repos)) + '</small>' : '';
+      cCib = cib ? ('<b' + pale + '>' + _kgTxt(cib.charge) + '×' + cib.reps + '</b>' + repTag) : '<span class="ps-muted">—</span>';
+    }
     else if (ps[i]) { var sp = ps[i], load = _planLoadTxt(sp); cCib = '<b>' + esc(sp.reps + ' reps') + '</b>' + ((load || sp.rpe != null) ? '<small>' + esc([load, (sp.rpe != null ? 'RPE ' + sp.rpe : '')].filter(Boolean).join(' · ')) + '</small>' : ''); }
     else cCib = '<span class="ps-muted">—</span>';
     var cAuj;
-    if (st === 'done') { var f = faites[i]; cAuj = '<b>✓ ' + f.charge + '×' + f.reps + '</b>' + sousLigne(f.rpe, f.repos); }
+    if (st === 'done') { var f = faites[i]; cAuj = '<b>✓ ' + _kgTxt(f.charge) + '×' + f.reps + '</b>' + sousLigne(f.rpe, f.repos); }
     else if (st === 'cur') cAuj = '<b>en cours</b>';
     else cAuj = '<span class="ps-muted">à faire</span>';
     rows += '<tr class="ps-' + st + (ps[i] && ps[i].tag === 'lourde' ? ' ps-top' : '') + '"><td class="ps-k">S' + k + '</td><td>' + cDer + '</td><td class="ps-cib">' + cCib + '</td><td class="ps-auj">' + cAuj + '</td></tr>';
@@ -11447,9 +11508,43 @@ function majPlanSeries() {
     if (rp.length) bits.push('RPE moyen ' + String(Math.round(rp.reduce(function (a, b) { return a + b; }, 0) / rp.length * 10) / 10).replace('.', ','));
     resume = 'Dernière fois (' + dRefTxt.toLowerCase() + ') : ' + bits.join(', ') + '.';
   }
-  var prevu = (pProg && _numOk(pProg.repos_sec) && Number(pProg.repos_sec) > 0) ? ('Repos prévu : ' + _reposTxt(pProg.repos_sec)) : '';
+  var prevu = (pProg && _numOk(pProg.repos_sec) && Number(pProg.repos_sec) > 0) ? ('Repos prévu au programme : ' + _reposTxt(pProg.repos_sec)) : '';
   var sub = [resume, plan.note, prevu].filter(Boolean);
-  el.innerHTML = '<div class="plan-hd">Tes séries' + (ps.length ? ' · ' + Math.min(done, ps.length) + '/' + ps.length + ' prévues' : '') + '</div>'
+  // Message de la règle (factuel, tracé sur les données) + choix du jour (avancé / expert).
+  var pas = _petitPas(exoEnCours.exerciceNom), msg = '', choixHtml = '';
+  if (dec.mode === 'consolide') msg = 'RPE ' + dec.rpe + ' la dernière fois : consolide cette charge (mêmes charge et reps).';
+  else if (dec.mode === 'charge') msg = 'Haut de la fourchette atteint sur toutes tes séries : +' + String(pas).replace('.', ',') + ' kg, repars à ' + rminP + ' reps.';
+  else if (dec.mode === 'choix') {
+    var R0 = dec.reposRef;
+    choixHtml = '<div class="pc-box' + (exoEnCours._progChoix ? ' pc-done' : '') + '">'
+      + (exoEnCours._progChoix ? '' : '<p><b>' + rmaxP + ' reps sur toutes tes séries' + (prevSeries ? ', 2 séances de suite' : '') + '.</b> Comment veux-tu progresser aujourd\'hui ?</p>')
+      + '<div class="pc-opts">' + dec.options.map(function (o) {
+        var c1 = dec.cible(1, o.id);
+        var det = o.id === 'charge' ? (_kgTxt(c1.charge) + ' kg × ' + c1.reps)
+          : o.id === 'charge30' ? (_kgTxt(c1.charge) + ' kg · repos ' + _reposTxt(o.repos))
+          : o.id === 'rep30' ? (c1.reps + ' reps · repos ' + _reposTxt(o.repos))
+          : ('même perf · repos ' + _reposTxt(o.repos));
+        if (!o.ok) det = o.raison;
+        return '<button type="button" class="pc-opt' + (o.id === choix && exoEnCours._progChoix ? ' on' : '') + '"' + (o.ok ? ' onclick="_progChoisir(\'' + o.id + '\')"' : ' disabled') + '><b>' + esc(o.titre) + '</b>' + esc(det) + '</button>';
+      }).join('') + '</div>'
+      + (R0 != null ? '<div class="pc-ref">Repos de référence : ' + esc(_reposTxt(R0)) + ' (dernière fois). Bornes : ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).min)) + ' à ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).max)) + '.</div>' : '')
+      + '</div>';
+  }
+  var sg = document.getElementById('exo-actuel-suggestion');
+  if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + '</div>' : '';
+  // Pré-remplissage de la série en cours + molette de repos = cible de la règle (une fois par série).
+  var kCur = done + 1, cCur = (lastSeries && _refSerie(lastSeries, kCur)) ? dec.cible(kCur, choix) : null;
+  if (cCur && exoEnCours._prefillK !== kCur) {
+    exoEnCours._prefillK = kCur;
+    var ic = document.getElementById('inp-charge'), ir = document.getElementById('inp-reps');
+    if (ic) ic.value = cCur.charge; if (ir) ir.value = cCur.reps;
+  }
+  if (!exoEnCours._reposInit) {
+    var rv = (cCur && cCur.repos != null) ? cCur.repos : dec.reposRef;
+    if (rv != null) { try { _reposWheelSet(rv); } catch (e) {} }
+    exoEnCours._reposInit = true;
+  }
+  el.innerHTML = choixHtml + '<div class="plan-hd">Tes séries' + (ps.length ? ' · ' + Math.min(done, ps.length) + '/' + ps.length + ' prévues' : '') + '</div>'
     + '<table class="ps-tab"><thead><tr><th></th><th>' + (dRefTxt ? esc(dRefTxt) : 'Dernière fois') + '</th><th>Cible</th><th>Aujourd\'hui</th></tr></thead><tbody>' + rows + '</tbody></table>'
     + (sub.length ? '<div class="ps-note">' + sub.map(esc).join('<br>') + '</div>' : '');
   _majPerfLignes(!!lastSeries);
@@ -15628,17 +15723,8 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
     document.getElementById('inp-reps').value = repsMini;
   }
 
-  if (perf) {
-    const stratProg = athlete ? athlete.strategie_progression : 'Progression linéaire';
-    const pseudoProgP = { reps_max: repsMax, reps_mini: repsMini };
-    const bestChargeP = perf.prev_charge !== null ? Math.max(perf.last_charge, perf.prev_charge) : perf.last_charge;
-    const dernRpeProg = exoEnCours && exoEnCours.series.length > 0 ? exoEnCours.series[exoEnCours.series.length - 1].rpe : null;
-    const suggProg = calculerSurcharge(stratProg, perf, pseudoProgP, bestChargeP, increment2, dernRpeProg);
-    document.getElementById('exo-actuel-suggestion').innerHTML = suggProg
-      ? `<div class="prog-suggestion" style="margin-top:6px">${suggProg}</div>` : '';
-  } else {
-    document.getElementById('exo-actuel-suggestion').innerHTML = '';
-  }
+  // (suggestion de surcharge : règle unique par niveau, rendue par majPlanSeries)
+  document.getElementById('exo-actuel-suggestion').innerHTML = '';
   majSeriesActuel();
   setTimeout(() => { const c = document.getElementById('card-exo-actuel'); if (c) scrollVersTitre(c); }, 50);
   showToast('' + exerciceNom + ' sélectionné');
@@ -19283,53 +19369,6 @@ function playBeep() {
 }
 
 // ==================== SURCHARGE PROGRESSIVE ====================
-function calculerSurcharge(strategie, perf, programme, bestCharge, increment, lastRpe) {
-  if (!perf || !programme) return null;
-
-  const repsMax = programme.reps_max;
-  const repsMini = programme.reps_mini;
-  const lastReps = perf.max_reps;
-  const prevReps = perf.prev_max_reps;
-  const prev2Reps = perf.prev2_max_reps !== undefined ? perf.prev2_max_reps : null;
-  const nouvelleCharge = Math.round((bestCharge + increment) * 4) / 4;
-
-  // Auto-régulation RPE : si RPE ≥ 9, bloquer la surcharge (trop proche de l'échec)
-  const rpe = lastRpe != null ? Number(lastRpe) : null;
-  const rpeBloque = rpe !== null && rpe >= 9;
-  const rpeFacile  = rpe !== null && rpe <= 7;
-
-  if (rpeBloque) {
-    return `<svg class="ico"><use href="#i-alert"/></svg><span style="color:var(--warn)">RPE ${rpe} — Consolide cette charge avant de progresser</span>`;
-  }
-
-  if (strategie === 'Progression linéaire') {
-    if (lastReps >= repsMax) {
-      const msg = rpeFacile
-        ? `<svg class="ico"><use href="#i-dumbbell"/></svg>Débutant — RPE ${rpe} (facile) · Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg)`
-        : `<svg class="ico"><use href="#i-dumbbell"/></svg>Débutant — Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg) → repart à ${repsMini} reps`;
-      return msg;
-    }
-
-  } else if (strategie === 'Double progression') {
-    const deuxFoisAuMax = lastReps >= repsMax && prevReps !== null && prevReps >= repsMax;
-    const troisFoisAuMax = deuxFoisAuMax && prev2Reps !== null && prev2Reps >= repsMax;
-
-    if (troisFoisAuMax) {
-      return `<svg class="ico"><use href="#i-dumbbell"/></svg>Intermédiaire — 3x au max ! Surcharge : <strong>${nouvelleCharge}kg</strong> (+${increment}kg) → repart à ${repsMini} reps`;
-    } else if (deuxFoisAuMax) {
-      return `<svg class="ico"><use href="#i-trending"/></svg>Intermédiaire — 2x au max → <strong>+1 rep</strong> la prochaine fois (${lastReps + 1} reps)`;
-    }
-
-  } else if (strategie === 'Progression avancée') {
-    const auMax = lastReps >= repsMax && prevReps !== null && prevReps >= repsMax;
-    if (auMax) {
-      return `<svg class="ico"><use href="#i-dumbbell"/></svg>Expérimenté — Choix : <strong>+1 rep</strong> (${lastReps + 1} reps) ou <strong>-30s repos</strong>`;
-    }
-  }
-
-  return null;
-}
-
 // ==================== DRAWER ====================
 let drawerData = [];
 

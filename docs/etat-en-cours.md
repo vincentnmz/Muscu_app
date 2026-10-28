@@ -32,6 +32,14 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
     - nom de la séance retiré pendant la saisie (« Exercice X / N », en-tête « Séance en cours ») ;
     - Programme vs réalisé factuel (✓ ≈ ↔ –) ; variante = exercice hors programme du même muscle.
   - `getLastPerf` renvoie aussi le `repos` de chaque série (test derniere-fois-repos).
+  - **Surcharge progressive par niveau** (maquette `mockups/novalyz-surcharge-niveaux.html` validée) — règle UNIQUE `_progDecision` (tableau + cible pré-remplie + message), remplace `calculerSurcharge` / `_cibleSerieSurcharge` :
+    - débutant : toutes les séries prévues au haut de la fourchette 1 fois, RPE ≤ 8 → charge ;
+    - intermédiaire, avancé, expert : 2 séances de suite (ou 1 fois avec RPE ≤ 7) ;
+    - petit pas du catalogue ; sinon +1 rep ; RPE ≥ 9 → consolide ;
+    - avancé / expert : choix du jour (charge · charge +30 s · +1 rep +30 s · repos −30 s), non mémorisé ;
+    - repos de référence = repos réellement pris la dernière fois (sinon programme) ;
+    - bornes de repos : polyarticulaires 2-5 min, le reste 1-3 min (`_estPoly`).
+    - `getLastPerf` renvoie `prev_series` / `prev_date`. Test `surcharge-serie` réécrit (30 cas).
   - Seuils de niveau UNIFIÉS (validés) : débutant 0-3 · intermédiaire 4-7 · avancé 8-10 · expert 11+ ; cibles de volume : avancé et expert partagent les cibles hautes dès 8 ans (test niveau-experience).
 
 ### Lot 28 oct. (2) — prêt pour le TEST FERMÉ Play Store (sur `dev`, SW v443) — **index.ts à REDÉPLOYER**

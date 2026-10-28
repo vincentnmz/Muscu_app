@@ -33,6 +33,7 @@ const eq = (c, n, g) => { if (c) ok++; else { ko++; fails.push(n); console.error
   eq(o && o.series[0].repos === 90 && o.series[1].repos === 120, 'repos de chaque série renvoyé', o && o.series);
   eq(o && o.series[2].repos === null && o.series[2].rpe === null, 'repos / RPE non saisis → null (pas inventé)', o && o.series[2]);
   eq(o && o.series[0].rpe === 9, 'RPE renvoyé', o && o.series[0]);
+  eq(o && String(o.prev_date).slice(0, 10) === '2026-10-13' && o.prev_series.length === 1 && o.prev_series[0].reps === 10, 'avant-dernière fois : détail des séries (surcharge 2 séances de suite)', o && o.prev_series);
   console.log('-'.repeat(70));
   console.log('dernière fois (repos) : ' + ok + ' OK / ' + ko + ' KO');
   if (ko) { console.log('Échecs : ' + fails.join(' | ')); process.exit(1); }

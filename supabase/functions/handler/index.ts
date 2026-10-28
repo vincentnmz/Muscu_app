@@ -2566,7 +2566,13 @@ async function handleGetLastPerf(params: URLSearchParams): Promise<Response> {
     const series = byDate[last].slice().sort((a: any, b: any) => (Number(a.serie) || 0) - (Number(b.serie) || 0))
     const rl = getRef(series)
     const o: any = { date: last, series, max_reps: rl.reps, last_charge: rl.charge, prev_max_reps: null, prev_charge: null, prev2_max_reps: null, prev2_charge: null }
-    if (prev) { const r = getRef(byDate[prev]); o.prev_max_reps = r.reps; o.prev_charge = r.charge }
+    if (prev) {
+      const r = getRef(byDate[prev]); o.prev_max_reps = r.reps; o.prev_charge = r.charge
+      // Détail de l'avant-dernière fois : la surcharge par niveau vérifie « toutes les séries
+      // au haut de la fourchette, 2 séances de suite » (pas seulement la meilleure série).
+      o.prev_date = prev
+      o.prev_series = byDate[prev].slice().sort((a: any, b: any) => (Number(a.serie) || 0) - (Number(b.serie) || 0))
+    }
     if (prev2) { const r = getRef(byDate[prev2]); o.prev2_max_reps = r.reps; o.prev2_charge = r.charge }
     return o
   }
