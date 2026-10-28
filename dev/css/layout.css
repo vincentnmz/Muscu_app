@@ -870,3 +870,18 @@ body.prog-editor-open{ overflow:hidden; }
   body.has-bottom-nav #tab-historique .ma-cols2,
   body.has-bottom-nav #tab-etat .et-wrap{ grid-template-columns:minmax(0,1fr) 290px !important; }
 }
+
+/* ===== Nouveau logo (28/10) ===== */
+/* Connexion : « N[icône]VALYZ » + ANALYZE · PLAN · PERFORM. Les parties sombres
+   suivent la couleur du texte (currentColor) → lisibles si un thème sombre arrive. */
+.nv-login-hero .nv-hero-logo { display:block; color:var(--text); }
+.nv-brand-logo { display:block; width:260px; max-width:78%; height:auto; margin:0 auto; }
+/* Écran de connexion : le logo EST l'en-tête → le bandeau (vide à ce stade : titre
+   « Novalyz » + boutons masqués) est retiré pour ne pas laisser une barre blanche. */
+body:has(#view-login.active) #app-header { display:none; }
+/* Colonne de gauche (ordi / tablette) : icône + mot NOVALYZ */
+.as-brand { color:var(--text); }
+.as-brand .as-ic { width:32px; height:35px; flex:none; }
+.as-brand .as-wm { height:15px; width:auto; max-width:140px; }
+/* Bandeau retiré à la connexion → le logo garde la marge de la barre d'état (Android / iPhone). */
+body:has(#view-login.active) .nv-login-hero { padding-top:calc(34px + env(safe-area-inset-top, 0px)); }
