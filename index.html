@@ -1285,26 +1285,9 @@
           <button class="tj-other" onclick="switchTab('seance')"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Voir mon entraînement</button>
         </div>
 
-        <!-- Séances prévues par le coach (agenda daté, lecture seule) — renderTjPlanning(). -->
-        <div class="tj-card tj-reveal" id="tj-planning" style="padding:14px 16px;box-shadow:var(--tj-sh);display:none"></div>
-
         <!-- P5 : séparateur visuel « Le détail » — bascule du cockpit décision
              (état/reco/action/alerte au-dessus) vers la consultation. Mobile only. -->
         <div class="tj-sep" id="tj-sep">Le détail</div>
-
-        <!-- Régularité : roue des séances faites/prévues. Descendue sous le cockpit
-             (consultation, pas décision immédiate). Les ids tj-ring* sont conservés
-             → renderAujourdhui continue de la remplir/animer. -->
-        <div class="tj-card tj-reg tj-reveal">
-          <div class="tj-ring" id="tj-ring">
-            <svg viewBox="0 0 74 74">
-              <circle class="tj-ring-bg" cx="37" cy="37" r="32"></circle>
-              <circle class="tj-ring-fg" id="tj-ring-fg" cx="37" cy="37" r="32" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></circle>
-            </svg>
-            <div class="tj-ring-txt"><span class="tj-ring-n" id="tj-ring-n">0/0</span><span class="tj-ring-l">séances</span></div>
-          </div>
-          <div class="tj-reg-main"><div class="t">Régularité</div><div class="d" id="tj-reg-d">Tes séances de la semaine</div></div>
-        </div>
 
         <!-- Activité du jour (pas montre) — rempli par renderDashSteps(), masqué si pas
              de données. Placé dans la colonne CENTRALE en desktop (rail allégé).
@@ -1376,6 +1359,26 @@
              disponibilité / récup / ACWR / sommeil montre — rempli par
              renderTjFormeRail() depuis le moteur. Masqué si aucune donnée. -->
         <div class="tj-card tj-reveal rail-only" id="tj-forme-rail" style="display:none;padding:14px 16px;"></div>
+
+        <!-- 28/10 : séances prévues + régularité déplacées dans le RAIL (tablette/ordi),
+             avant « Demande à Novalyz ». Mobile : ordre inchangé grâce aux `order`
+             de #tj-css (les wrappers .tj-main/.tj-rail y sont en display:contents). -->
+        <!-- Séances prévues par le coach (agenda daté, lecture seule) — renderTjPlanning(). -->
+        <div class="tj-card tj-reveal" id="tj-planning" style="padding:14px 16px;box-shadow:var(--tj-sh);display:none"></div>
+
+        <!-- Régularité : roue des séances faites/prévues. Descendue sous le cockpit
+             (consultation, pas décision immédiate). Les ids tj-ring* sont conservés
+             → renderAujourdhui continue de la remplir/animer. -->
+        <div class="tj-card tj-reg tj-reveal">
+          <div class="tj-ring" id="tj-ring">
+            <svg viewBox="0 0 74 74">
+              <circle class="tj-ring-bg" cx="37" cy="37" r="32"></circle>
+              <circle class="tj-ring-fg" id="tj-ring-fg" cx="37" cy="37" r="32" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></circle>
+            </svg>
+            <div class="tj-ring-txt"><span class="tj-ring-n" id="tj-ring-n">0/0</span><span class="tj-ring-l">séances</span></div>
+          </div>
+          <div class="tj-reg-main"><div class="t">Régularité</div><div class="d" id="tj-reg-d">Tes séances de la semaine</div></div>
+        </div>
 
         <!-- Bloc « Demande à Novalyz » — rail DESKTOP (remplace la bulle flottante
              en bureau). Masqué en mobile (desktop-only, voir .nvz-ask dans
@@ -3293,6 +3296,9 @@
        Pilotée par _majFabNovalyz() : visible seulement pour l'athlète SOLO (sans
        coach), masquée sur l'écran conversation, l'analyse morpho et pendant la
        saisie plein écran d'une séance. L'athlète AVEC coach passe par l'onglet Coach. -->
+  <!-- Bouton « remonter en haut » : apparaît dès qu'on a défilé (> 1 écran). Mobile :
+       au-dessus de la bulle Novalyz ; tablette/ordi : en bas à droite. -->
+  <button type="button" id="btn-top" aria-label="Remonter en haut" onclick="window.scrollTo({top:0,behavior:'smooth'})"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
   <div id="fab-novalyz" style="display:none;position:fixed;right:15px;bottom:calc(80px + env(safe-area-inset-bottom,0px));align-items:center;gap:9px;z-index:1140;">
     <span style="background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh,0 6px 20px rgba(7,11,20,.08));border-radius:999px;padding:7px 12px;font-size:11.5px;font-weight:700;color:var(--text);">Demande à Novalyz</span>
     <button onclick="ouvrirNovalyzIA()" title="Demande à Novalyz" style="width:56px;height:56px;border-radius:999px;background:var(--accent);color:#fff;border:none;box-shadow:0 8px 22px rgba(26,95,255,.42);display:grid;place-items:center;cursor:pointer;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M12 7.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor" stroke="none"/></svg></button>
