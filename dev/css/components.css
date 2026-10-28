@@ -968,3 +968,13 @@ i[class^="nv-ic-"],i[class*=" nv-ic-"]{display:inline-block;width:1em;height:1em
 #btn-top svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
 body.onb-open #btn-top, body.xp-open #btn-top, body.jg-open #btn-top, body.gen-open #btn-top { display:none; }
 @media (min-width:992px) { #btn-top { bottom:28px; right:28px; } }
+/* « Ma semaine » (générateur / Construis ton programme / éditeur) — style des chips g2 */
+.sem-box { margin:14px 0 4px; }
+.pb-card .sem-box { margin:0; }
+.sem-lab { font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--text-subtle); margin:0 2px 7px; }
+.sem-seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.sem-seg button { border:1.5px solid var(--border); background:var(--surface); border-radius:11px; padding:9px 6px; font:inherit; font-size:13px; font-weight:700; color:var(--text-muted); cursor:pointer; line-height:1.25; text-align:center; }
+.sem-seg button small { display:block; font-size:10.5px; font-weight:600; color:var(--text-subtle); margin-top:1px; }
+.sem-seg button.on { border-color:var(--accent); background:var(--accent-a08,rgba(26,95,255,.08)); color:var(--accent); }
+.sem-seg button.on small { color:var(--accent); opacity:.8; }
+.sem-hint { font-size:11.5px; color:var(--text-subtle); margin:7px 2px 0; line-height:1.45; }

@@ -8089,7 +8089,7 @@ function renderProgrammeCoach() {
       + '<div class="prog-seg"><button class="' + (_progView === 'semaine' ? 'on' : '') + '" onclick="progSetView(\'semaine\')">Vue semaine</button><button class="' + (_progView === 'liste' ? 'on' : '') + '" onclick="progSetView(\'liste\')">Liste</button></div>'
       + '<button class="prog-btn-ia" onclick="ouvrirGenProgramme()">✦ Novalyz propose</button>'
       + '</div>';
-    elE.innerHTML = head
+    elE.innerHTML = head + _semBlockHtml()
       + '<div class="prog-tabs">' + tabs + '</div>'
       + '<div class="prog-cols' + (_progView === 'liste' ? ' liste' : '') + '">' + cols
       +   '<button class="prog-addday" onclick="cdAjouterSeance()"><svg class="ico" style="width:18px;height:18px"><use href="#i-plus"/></svg> Ajouter une séance</button>'
@@ -8175,6 +8175,7 @@ function renderProgrammeCoach() {
     var _agCoach = (typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id);
     var insp = '<div class="pb-insp">'
       + (_agCoach ? '<div class="pb-card" id="cd-prog-agenda-root" style="padding:14px"></div>' : '')
+      + '<div class="pb-card" style="padding:12px 14px">' + _semBlockHtml() + '</div>'
       + '<div class="pb-card pb-iacard"><h4>✦ Novalyz</h4><p>Construis ou rééquilibre ton programme à partir de ton objectif, tes jours et ton niveau.</p><button class="pb-iabtn" onclick="ouvrirGenProgramme()">Me proposer un plan</button></div>'
       + '<div class="pb-card"><div class="pb-card-t">Volume de la séance</div><div class="pb-voltot">' + tot + ' séries</div><div class="pb-volwrap">' + (volRows || '<span style="color:var(--text-subtle);font-size:12px">—</span>') + '</div></div>'
       + '</div>';
@@ -8842,7 +8843,7 @@ function _jgRender() {
     + (_jg.autre ? '<span class="jg-autre"><input id="jg-autre-in" type="text" placeholder="Nom de la séance" onkeydown="if(event.key===\'Enter\')_jgAddSeance(this.value)"><button onclick="_jgAddSeance(document.getElementById(\'jg-autre-in\').value)">OK</button></span>'
                  : '<button class="jg-chip add" onclick="_jgAutre()">+ Autre nom…</button>');
   ov.innerHTML = '<div class="jg-page"><div class="xp-hd"><button class="xp-back" onclick="fermerConstruireProgramme()" aria-label="Fermer">←</button><div class="xp-ti"><div class="a">Construis ton programme</div><div class="b">Crée tes séances puis ajoute tes exercices</div></div></div>'
-    + '<div class="jg-body"><div class="xp-lab">Ajoute une séance</div><div class="jg-chips">' + chips + '</div>'
+    + '<div class="jg-body">' + _semBlockHtml() + '<div class="xp-lab">Ajoute une séance</div><div class="jg-chips">' + chips + '</div>'
     + '<div class="xp-lab">Tes séances (' + _jg.seances.length + ')</div>'
     + (cards ? '<div class="jg-grid">' + cards + '</div>' : '<div class="xp-empty">Ajoute ta première séance avec les boutons ci-dessus.</div>')
     + '</div>'
@@ -12731,6 +12732,33 @@ async function setSemaineType(v) {
   try { if (typeof renderAujourdhui === 'function' && dernierAppData) renderAujourdhui(dernierAppData); } catch (e) {}
   try { if (typeof showToast === 'function') showToast('Préférence enregistrée'); } catch (e) {}
   try { if (athlete) await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSemaineType', athlete_id: athlete.athlete_id, valeur: v }) }); } catch (e) {}
+}
+// « Ma semaine » dans le générateur / « Construis ton programme » / éditeur (28/10) :
+// MÊME réglage que Réglages ▸ Préférences (pref `semaine_type`). Côté coach (fiche
+// athlète ouverte) il s'applique à l'ATHLÈTE affiché, pas au coach.
+function _semCtx() {
+  var isCoach = (typeof coach !== 'undefined' && coach && coach.coach_id && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.athlete_id);
+  if (isCoach) return { coach: true, aid: coachAthleteCourant.athlete_id, data: (typeof coachAthleteData !== 'undefined' ? coachAthleteData : null) };
+  return { coach: false, aid: (athlete && athlete.athlete_id) || null, data: (typeof dernierAppData !== 'undefined' ? dernierAppData : null) };
+}
+function _semVal() { var c = _semCtx(); return (c.data && c.data.semaine_type === 'glissant') ? 'glissant' : 'calendaire'; }
+function _semBlockHtml() {
+  var v = _semVal(), c = _semCtx();
+  var hint = c.coach ? 'Comment compter les séances de la semaine de l\'athlète (régularité, volume, analyses).'
+    : 'Comment compter tes séances de la semaine (régularité, volume, analyses). Même réglage que dans Réglages.';
+  var b = function (val, t, sub) { return '<button type="button" data-v="' + val + '" class="' + (v === val ? 'on' : '') + '" onclick="_semSet(\'' + val + '\')">' + t + '<small>' + sub + '</small></button>'; };
+  return '<div class="sem-box"><div class="sem-lab">Ma semaine</div><div class="sem-seg">'
+    + b('calendaire', 'Lundi → dimanche', 'repart à 0 le lundi') + b('glissant', '7 derniers jours', 'glissant')
+    + '</div><div class="sem-hint">' + hint + '</div></div>';
+}
+async function _semSet(v) {
+  v = (v === 'glissant') ? 'glissant' : 'calendaire';
+  document.querySelectorAll('.sem-seg button').forEach(function (bt) { bt.classList.toggle('on', bt.getAttribute('data-v') === v); });
+  var c = _semCtx();
+  if (!c.coach) { await setSemaineType(v); return; }   // athlète : même chemin que Réglages (UI + écrans + backend)
+  try { if (c.data) c.data.semaine_type = v; } catch (e) {}
+  try { showToast('Semaine de l\'athlète enregistrée'); } catch (e) {}
+  try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSemaineType', athlete_id: c.aid, valeur: v }) }); } catch (e) {}
 }
 // Réglage « semaine d'entraînement » : calendaire (lundi→dim., reset lundi) ou glissante (7 j).
 function _maSemaineType() { try { return (dernierAppData && dernierAppData.semaine_type === 'glissant') ? 'glissant' : 'calendaire'; } catch (e) { return 'calendaire'; } }
@@ -17805,7 +17833,8 @@ function _genRender() {
   var body = L('Niveau') + row(NIV.map(function (n) { return _g2Chip('_g2Set(\'niv\',\'' + n[0] + '\')', st.niv === n[0], n[1]); }).join(''));
   if (st.niv === 'debutant') {
     body += L('Choisis ton programme')
-      + _G2_PRESETS.map(function (p, i) { return _genCard('_g2Set(\'preset\',' + i + ')', st.preset === i, p.nm + ' · ' + p.badge, p.desc); }).join('');
+      + _G2_PRESETS.map(function (p, i) { return _genCard('_g2Set(\'preset\',' + i + ')', st.preset === i, p.nm + ' · ' + p.badge, p.desc); }).join('')
+      + _semBlockHtml();
   } else {
     var BUTS = [['masse', 'Prise de masse'], ['seche', 'Sèche'], ['maintien', 'Maintien'], ['force', 'Force']];
     body += L('Ton objectif') + row(BUTS.map(function (b) { return _g2Chip('_g2Set(\'but\',\'' + b[0] + '\')', st.but === b[0], b[1]); }).join(''));
@@ -17815,6 +17844,7 @@ function _genRender() {
     if (_butNote) body += '<div style="font-size:11.5px;color:var(--text-subtle);margin:8px 2px 2px;line-height:1.45">' + _butNote + '</div>';
     if (st.but === 'force') {
       body += L('Jours / semaine') + row([2, 3, 4, 5, 6].map(function (j) { return _g2Chip('_g2Set(\'jours\',' + j + ')', st.jours === j, j + ' j'); }).join(''))
+        + _semBlockHtml()
         + '<div style="font-size:11.5px;color:var(--text-subtle);margin:8px 2px 2px">Powerlifting — squelette modifiable : change les exos (menus), ＋ ajoute, ✕ retire. Les jours Rappel / Renfo sont optionnels. Charges au % du 1RM (estimé par l\'app).</div>'
         + _g2ForceSkel(st.jours).map(_g2ForceDayHtml).join('')
         + '<button onclick="_genGenerer()" style="width:100%;margin-top:16px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
@@ -17827,6 +17857,7 @@ function _genRender() {
       var jl = _G2_JLOGIC[st.org] || [2, 3, 4, 5, 6];
       body += L('Organisation') + row(_G2_ORGS.map(function (o) { return _g2Chip('_g2Set(\'org\',\'' + o[0] + '\')', st.org === o[0], o[1]); }).join(''))
         + L('Jours / semaine') + row([2, 3, 4, 5, 6].map(function (j) { return _g2Chip('_g2Set(\'jours\',' + j + ')', st.jours === j, j + ' j', jl.indexOf(j) < 0); }).join(''))
+        + _semBlockHtml()
         + L('Temps par séance') + row([45, 60, 75, 90].map(function (t) { return _g2Chip('_g2Set(\'temps\',' + t + ')', st.temps === t, t + ' min'); }).join(''));
     }
   }
