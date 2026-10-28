@@ -12761,7 +12761,8 @@ async function _semSet(v) {
   try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSemaineType', athlete_id: c.aid, valeur: v }) }); } catch (e) {}
 }
 // Réglage « semaine d'entraînement » : calendaire (lundi→dim., reset lundi) ou glissante (7 j).
-function _maSemaineType() { try { return (dernierAppData && dernierAppData.semaine_type === 'glissant') ? 'glissant' : 'calendaire'; } catch (e) { return 'calendaire'; } }
+// Côté coach (fiche athlète ouverte) : réglage de l'ATHLÈTE affiché (coachAthleteData), pas de la session.
+function _maSemaineType() { try { return _semVal(); } catch (e) { return 'calendaire'; } }
 // Séances « faites » pour l'anneau d'objectif, selon la préférence de semaine
 // d'entraînement (Réglages) : glissant = 7 derniers jours ; calendaire = depuis
 // lundi (remise à zéro chaque lundi). Source unique → comptage cohérent partout.
