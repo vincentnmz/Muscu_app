@@ -1727,7 +1727,7 @@ function getNiveauExperience(annees) {
   const a = Number(annees) || 0;
   if (a <= 3) return 'debutant';
   if (a <= 7) return 'intermediaire';
-  if (a <= 12) return 'avance';
+  if (a <= 10) return 'avance';   // seuils validés 28/10 : 0-3 · 4-7 · 8-10 · 11+
   return 'expert';
 }
 let indexExoProgramme = 0;
@@ -12969,8 +12969,9 @@ function _maCap(t) { return '<div style="font-size:11px;color:var(--text-subtle)
 function _maVolTargets() {
   // Années de pratique = champ `annees_pratique` (source unique dans toute l'app).
   var yrs = 0; try { yrs = Number(typeof athlete !== 'undefined' && athlete && athlete.annees_pratique) || 0; } catch (e) {}
-  // Cibles de volume par niveau (séries/muscle/semaine) : débutant 0-3, intermédiaire 4-9, avancé >9.
-  var T = (yrs > 9) ? { min: 12, opt: 20, label: 'avancé' }
+  // Cibles de volume par niveau (séries/muscle/semaine) : MÊMES seuils que getNiveauExperience —
+  // débutant 0-3, intermédiaire 4-7, avancé 8+ (avancé 8-10 et expert 11+ partagent les cibles hautes).
+  var T = (yrs >= 8) ? { min: 12, opt: 20, label: 'avancé' }
     : (yrs >= 4) ? { min: 10, opt: 16, label: 'intermédiaire' }
     : { min: 8, opt: 12, label: 'débutant' };
   T.yrs = yrs; return T;
@@ -17440,7 +17441,7 @@ function _genProgrammeForce(jours) {
 // ── Modal onboarding (3 étapes) ──
 // État du générateur v2 (athlète) — 2 parcours : débutant (galerie) / interméd.-avancé (configurateur).
 var _genState = { niv: 'intermediaire', obj: 'hypertrophie', but: 'masse', org: 'ul', jours: 4, temps: 60, preset: 0 };
-var _GEN_NIV = [['debutant', 'Débutant', '0-3 ans de pratique'], ['intermediaire', 'Intermédiaire', '4-9 ans'], ['avance', 'Avancé', '10 ans et +']];
+var _GEN_NIV = [['debutant', 'Débutant', '0-3 ans de pratique'], ['intermediaire', 'Intermédiaire', '4-7 ans'], ['avance', 'Avancé', '8 ans et +']];
 var _GEN_JOPT = [[2, '2 jours', 'Full body'], [3, '3 jours', 'Push / Pull / Legs'], [4, '4 jours', 'Haut / Bas'], [5, '5 jours', 'PPL + Haut / Bas']];
 // Cible du générateur : l'athlète connecté (session athlète) OU l'athlète de la fiche
 // ouverte (session coach). coach=true → on recharge le Builder coach après création.
