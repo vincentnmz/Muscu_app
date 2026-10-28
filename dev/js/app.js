@@ -813,6 +813,46 @@ try {
  * ========================================================================== */
 const SCRIPT_URL = "https://jhbrvgguybynzeceeceu.supabase.co/functions/v1/smooth-service";
 
+/* ═══════════ SESSION (jeton signé, 28/10/2026) ═══════════
+ * UN SEUL point d'entrée pour tous les appels au serveur (pas de modification des
+ * ~120 fetch) : on ajoute le jeton `_t` à l'URL, on mémorise celui que renvoient
+ * login / register / loginCoach / registerCoach, et si le serveur répond « session
+ * expirée » (401 auth) on renvoie vers l'écran de connexion. Paramètre d'URL (et non
+ * en-tête) : pas de pré-requête CORS, même mécanisme qu'avant. */
+var _NVZ_TOK_KEY = 'nvz_tok';
+function _nvzTok() { try { return localStorage.getItem(_NVZ_TOK_KEY); } catch (e) { return null; } }
+function _nvzTokClear() { try { localStorage.removeItem(_NVZ_TOK_KEY); } catch (e) {} }
+var _nvzExpireDone = false;
+function _nvzSessionExpiree() {
+  if (_nvzExpireDone) return; _nvzExpireDone = true;
+  try { localStorage.removeItem('muscu_athlete'); localStorage.removeItem('muscu_coach'); } catch (e) {}
+  _nvzTokClear();
+  try { showToast('Session expirée — reconnecte-toi.'); } catch (e) {}
+  setTimeout(function () { try { location.reload(); } catch (e) {} }, 1200);
+}
+(function () {
+  if (typeof window === 'undefined' || typeof window.fetch !== 'function' || window.__nvzFetchWrapped) return;
+  window.__nvzFetchWrapped = true;
+  var _f = window.fetch.bind(window);
+  var AUTH = { login: 1, register: 1, loginCoach: 1, registerCoach: 1 };
+  window.fetch = function (input, init) {
+    var url = (typeof input === 'string') ? input : '';
+    if (!url || url.indexOf(SCRIPT_URL) !== 0) return _f(input, init);
+    var action = null;
+    try { var m = url.match(/[?&]action=([^&]+)/); if (m) action = decodeURIComponent(m[1]); } catch (e) {}
+    try { if (!action && init && typeof init.body === 'string') action = (JSON.parse(init.body) || {}).action || null; } catch (e) {}
+    var tok = _nvzTok();
+    if (tok && !AUTH[action]) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_t=' + encodeURIComponent(tok);
+    return _f(url, init).then(function (r) {
+      // Connexion / inscription : on attend d'avoir rangé le jeton AVANT de rendre la
+      // réponse (sinon le 1er appel qui suit partirait sans jeton).
+      if (AUTH[action]) return r.clone().json().then(function (d) { if (d && d.token) { try { localStorage.setItem(_NVZ_TOK_KEY, d.token); } catch (e) {} } return r; }, function () { return r; });
+      if (r.status === 401) r.clone().json().then(function (d) { if (d && d.auth) _nvzSessionExpiree(); }, function () {});
+      return r;
+    });
+  };
+})();
+
 /* =============================================================================
  * COCKPIT_ON — flag de la refonte Dashboard (Phase 5A). PRÉSENTATION uniquement.
  *   true  = rendu du cockpit (renderCockpit) + masquage des anciennes cartes (DÉFAUT).
@@ -1924,6 +1964,7 @@ async function supprimerMonCompte() {
     const data = await res.json();
     if (data.success) {
       localStorage.removeItem('muscu_athlete');
+      _nvzTokClear();
       showToast('Compte supprimé.');
       setTimeout(() => location.reload(), 1200);
     } else {
@@ -1949,6 +1990,7 @@ function seDeconnecter() {
   _fermerOverlaysEtContexte();
   athlete = null;
   localStorage.removeItem('muscu_athlete');
+  _nvzTokClear();
   document.getElementById('view-login').classList.add('active');
   document.getElementById('view-app').classList.remove('active');
   document.getElementById('tabs-bar').style.display = 'none';
@@ -2111,7 +2153,7 @@ async function supprimerCompteCoach() {
       showToast('Compte supprimé.');
       setTimeout(() => {
         coach = null;
-        localStorage.removeItem('muscu_coach');
+        localStorage.removeItem('muscu_coach'); _nvzTokClear();
         localStorage.removeItem('muscu_coach_vue');
         document.body.classList.remove('coach-active');
         showView('view-landing');
@@ -2130,6 +2172,7 @@ function seDeconnecterCoach() {
   coach = null;
   localStorage.removeItem('muscu_coach');
   localStorage.removeItem('muscu_coach_vue');
+  _nvzTokClear();
   document.body.classList.remove('coach-active');
   document.body.classList.remove('athlete-selected');
   document.getElementById('view-coach').classList.remove('active');
