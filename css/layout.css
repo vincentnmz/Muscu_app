@@ -885,3 +885,107 @@ body:has(#view-login.active) #app-header { display:none; }
 .as-brand .as-wm { height:15px; width:auto; max-width:140px; }
 /* Bandeau retiré à la connexion → le logo garde la marge de la barre d'état (Android / iPhone). */
 body:has(#view-login.active) .nv-login-hero { padding-top:calc(34px + env(safe-area-inset-top, 0px)); }
+
+/* ===== Identité visuelle (28/10) : dégradé blanc → bleu + grands hexagones ===== */
+/* Maquette validée : mockups/novalyz-login-degrade.html. Même dégradé et mêmes
+   hexagones (trait 5 px, sans chevauchement) au login, dans la colonne de gauche
+   (ordi / tablette) et en fond d'écran (mobile). */
+:root { --nv-grad:linear-gradient(180deg,#ffffff 0%,#ffffff 34%,#eaf0ff 52%,#7aa3ff 74%,#1A5FFF 100%); }
+.nv-hex { position:absolute; left:0; bottom:0; width:100%; height:58%; opacity:.36; pointer-events:none; }
+
+/* Fond d'écran : calque fixe derrière le contenu (z-index:-1 → sous les cartes,
+   sans créer de contexte d'empilement qui gênerait les modales). */
+#nv-bg { display:none; position:fixed; inset:0; z-index:-1; background:var(--nv-grad); pointer-events:none; }
+body:has(#view-login.active) #nv-bg { display:block; }
+@media (max-width:991.98px) { body.has-bottom-nav #nv-bg { display:block; } }
+
+/* Colonne de gauche (ordi / tablette) */
+@media (min-width:992px) {
+  body.has-bottom-nav #app-side { background:var(--nv-grad); overflow-x:hidden; }
+  #app-side > * { position:relative; z-index:1; }
+  #app-side > .nv-hex { position:absolute; z-index:0; height:55%; }
+  #app-side .as-foot { border-top-color:rgba(255,255,255,.35); }
+  #app-side .as-foot .as-item { color:#fff; }
+  #app-side .as-foot .as-item:hover { background:rgba(255,255,255,.14); color:#fff; }
+}
+
+/* ---- Connexion ---- */
+#view-login .nv-login-hex { display:none; }
+.nv-hero-logo { color:#070B14; }
+.nv-hero-logo .nvl-ic { display:block; width:84px; height:92px; margin:0 auto 10px; color:#070B14; }
+.nv-hero-logo .nv-brand-logo { width:210px; max-width:70%; color:#070B14; }
+.nv-login-hero { padding-bottom:30px; }
+/* Le formulaire devient une carte claire posée sur le dégradé */
+.nv-login-body { position:relative; background:rgba(255,255,255,.92); border:1px solid rgba(255,255,255,.7); border-radius:22px;
+  padding:14px; margin:0 2px 32px; box-shadow:0 22px 50px rgba(10,40,120,.25); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.nv-login-body .card { background:transparent; border:none; box-shadow:none; padding:0; margin-bottom:0; }
+.nv-login-body .btn-accent { background:linear-gradient(135deg,#1a5fff,#0a46d6); box-shadow:0 10px 26px rgba(26,95,255,.35); }
+.nv-role.on { background:#fff; box-shadow:0 4px 14px rgba(26,95,255,.15); }
+
+/* Ordi / tablette : panneau marque à gauche (dégradé + hexagones), formulaire à droite */
+@media (min-width:900px) {
+  body:has(#view-login.active) { background:#f7f9fe; }
+  body:has(#view-login.active) #nv-bg { display:none; }
+  body:has(#view-login.active) #main-container { max-width:none; width:100%; padding:0; margin:0; }
+  #view-login.active { display:grid; grid-template-columns:46% 1fr; max-width:none; min-height:100vh; }
+  #view-login .nv-login-hero { position:sticky; top:0; height:100vh; overflow:hidden; background:var(--nv-grad);
+    padding:14vh 24px 0 !important; }
+  #view-login .nv-login-hex { display:block; }
+  .nv-hero-logo { position:relative; }
+  .nv-hero-logo .nvl-ic { width:120px; height:130px; margin-bottom:14px; }
+  .nv-hero-logo .nv-brand-logo { width:280px; }
+  #view-login .nv-login-body { align-self:center; width:calc(100% - 64px); max-width:400px; margin:40px auto; }
+}
+
+/* ---- Écran de démarrage ---- */
+#nv-splash { position:fixed; inset:0; z-index:10000; background:var(--nv-grad); display:flex; align-items:center; justify-content:center;
+  transition:opacity .35s ease, visibility .35s; }
+#nv-splash.off { opacity:0; visibility:hidden; pointer-events:none; }
+#nv-splash .nv-splash-in { position:relative; text-align:center; margin-top:-12vh; }
+#nv-splash .nvl-ic { display:block; width:96px; height:105px; margin:0 auto 14px; color:#070B14; }
+#nv-splash .nv-brand-logo { width:220px; color:#070B14; }
+
+/* ---- Loader : petit logo animé devant « Chargement… » ---- */
+.loader .nvl-ic { display:block; width:34px; height:37px; margin:0 auto 8px; color:var(--text); }
+
+/* ---- Logo animé : A2 (barres puis points puis traits) / B2 (courbe puis barres),
+   tiré au hasard. L'hexagone reste fixe. ---- */
+.nvl-ic { overflow:visible; }
+.nvl-ic .nvl-b, .nvl-ic .nvl-d { transform-box:fill-box; }
+.nvl-ic .nvl-b { transform-origin:50% 100%; }
+.nvl-ic .nvl-d { transform-origin:50% 50%; }
+.nvl-ic .nvl-l { stroke-dasharray:70; stroke-dashoffset:70; }
+.nvl-ic.nvl-X .nvl-l { stroke-dashoffset:0; }
+.nvl-A2 .nvl-b,.nvl-A2 .nvl-d,.nvl-A2 .nvl-l{animation-duration:4s;animation-iteration-count:infinite;animation-fill-mode:both}
+.nvl-A2 .nvl-b1{animation-name:nvl-a2b1}.nvl-A2 .nvl-b2{animation-name:nvl-a2b2}.nvl-A2 .nvl-b3{animation-name:nvl-a2b3}.nvl-A2 .nvl-b4{animation-name:nvl-a2b4}
+.nvl-A2 .nvl-d1{animation-name:nvl-a2d1}.nvl-A2 .nvl-d2{animation-name:nvl-a2d2}.nvl-A2 .nvl-d3{animation-name:nvl-a2d3}.nvl-A2 .nvl-d4{animation-name:nvl-a2d4}
+.nvl-A2 .nvl-l1{animation-name:nvl-a2l1}.nvl-A2 .nvl-l2{animation-name:nvl-a2l2}.nvl-A2 .nvl-l3{animation-name:nvl-a2l3}
+@keyframes nvl-a2b1{0%,2%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}14%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b2{0%,20%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}29%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b3{0%,33%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}40%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b4{0%,43%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}49%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2d1{0%,12%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}17%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}20%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}23%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d2{0%,27%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}32%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}35%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}38%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d3{0%,38%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}43%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}46%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}49%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d4{0%,48%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}53%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}56%{transform:translateY(-14px);animation-timing-function:ease-in}59%{transform:none}74%{transform:scale(1)}78%{transform:scale(1.7)}82%,86%{transform:scale(1)}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2l1{0%,60%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}65%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-a2l2{0%,65%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}69%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-a2l3{0%,69%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}74%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+.nvl-B2 .nvl-b,.nvl-B2 .nvl-d,.nvl-B2 .nvl-l{animation-duration:4s;animation-iteration-count:infinite;animation-fill-mode:both}
+.nvl-B2 .nvl-l1{animation-name:nvl-b2l1}.nvl-B2 .nvl-l2{animation-name:nvl-b2l2}.nvl-B2 .nvl-l3{animation-name:nvl-b2l3}
+.nvl-B2 .nvl-d1{animation-name:nvl-b2d1}.nvl-B2 .nvl-d2{animation-name:nvl-b2d2}.nvl-B2 .nvl-d3{animation-name:nvl-b2d3}.nvl-B2 .nvl-d4{animation-name:nvl-b2d4}
+.nvl-B2 .nvl-b1{animation-name:nvl-b2b1}.nvl-B2 .nvl-b2{animation-name:nvl-b2b2}.nvl-B2 .nvl-b3{animation-name:nvl-b2b3}.nvl-B2 .nvl-b4{animation-name:nvl-b2b4}
+@keyframes nvl-b2d1{0%,4%{transform:scale(0)}7%{transform:scale(1.8)}10%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l1{0%,8%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}20%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d2{0%,19%{transform:scale(0)}22%{transform:scale(1.8)}25%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l2{0%,22%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}29%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d3{0%,28%{transform:scale(0)}31%{transform:scale(1.8)}34%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l3{0%,31%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}36%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d4{0%,35%{transform:scale(0)}38%{transform:scale(1.8)}41%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2b1{0%,44%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}54%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b2{0%,48%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}57%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b3{0%,52%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}60%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b4{0%,56%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}63%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@media (prefers-reduced-motion:reduce) {
+  .nvl-ic .nvl-b, .nvl-ic .nvl-d, .nvl-ic .nvl-l { animation:none !important; transform:none !important; opacity:1 !important; stroke-dashoffset:0 !important; }
+}

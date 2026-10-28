@@ -18,6 +18,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 2. **Clé `ANTHROPIC_API_KEY`** en variable d'env Supabase → sinon morpho IA + chat IA inactifs (le moteur déterministe, lui, marche sans clé). Cf. `docs/activer-ia.md`.
 
 ## Fait récemment
+- **Identité visuelle (28/10, maquette `mockups/novalyz-login-degrade.html` validée)** : login refait (dégradé blanc → bleu, grands hexagones blancs trait 5 px / opacité 36 % sans chevauchement, logo animé ; ordi/tablette ≥ 900 px = panneau marque à gauche + formulaire à droite) ; même dégradé + hexagones dans la colonne de gauche (≥ 992 px) et en fond d'écran mobile (`#nv-bg`) ; écran de démarrage `#nv-splash` (logo animé A2/B2 au hasard, 1,4 s min, retiré au 1er affichage des données, 12 s max) ; petit logo animé devant chaque « Chargement… » (`_nvlLoaders`, MutationObserver). Boutons de rôle sans icône ; logo à côté du nom d'écran sur mobile. CSS : fin de `css/layout.css`. Espace coach : pas encore de dégradé (non demandé).
 
 - **28 oct. (3)** — ⚠️ `index.ts` à redéployer.
   - Séance proposée : l'accueil et l'onglet Entraînement prenaient toujours la 1re séance du programme → ils prennent `dashboard.prochaine_seance`. Le backend part de la séance la plus récente de la semaine.

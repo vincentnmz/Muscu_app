@@ -1806,6 +1806,7 @@ window.addEventListener('load', async () => {
     try {
       coach = JSON.parse(savedCoach);
       await ouvrirEspaceCoach();
+      _nvSplashHide();
       return;
     } catch(e) { localStorage.removeItem('muscu_coach'); }
   }
@@ -1816,6 +1817,9 @@ window.addEventListener('load', async () => {
       await ouvrirApp();
     } catch(e) { localStorage.removeItem('muscu_athlete'); }
   }
+  // Pas de session (écran de connexion) → on retire tout de suite l'écran de
+  // démarrage ; sinon il part au 1er affichage des données, au plus tard 6 s après.
+  if (!athlete) _nvSplashHide(); else setTimeout(_nvSplashHide, 6000);
 });
 
 // ==================== AUTH ==================== [NOYAU]
@@ -18865,6 +18869,7 @@ function renderEnSuivi(data) {
 function _appliquerAppData(data) {
   // Stocker les données globalement
   dernierAppData = data;
+  _nvSplashHide();
   // Onboarding 1re connexion (une fois par session, après le 1er chargement).
   _safe('onboarding', function () { if (!_onbChecked) { _onbChecked = true; setTimeout(_maybeOnboarding, 500); } });
   // Import nutrition auto depuis Health Connect (natif) — en silence, après le rendu.
@@ -19298,6 +19303,58 @@ async function nvFetchJSON(url, opts) {
 function _showLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'block'; }
 function _hideLoader() { var el = document.getElementById('nv-loader-bar'); if (el) el.style.display = 'none'; }
 
+// ---- Logo animé (A2 / B2 tiré au hasard, une fois par ouverture) ----
+// Maquette validée : mockups/novalyz-logo-anim-v2.html. Le même tirage sert à
+// l'écran de démarrage, au login et aux « Chargement… ».
+var _NVL_ANIM = Math.random() < 0.5 ? 'nvl-A2' : 'nvl-B2';
+function _nvlAnimer(root) {
+  try {
+    (root || document).querySelectorAll('svg.nvl-ic.nvl-X').forEach(function (s) {
+      s.classList.remove('nvl-X'); s.classList.add(_NVL_ANIM);
+    });
+  } catch (e) {}
+}
+// Écran de démarrage : affiché ~1,4 s minimum (le temps de voir le logo se
+// construire), retiré dès que l'app est prête, et au plus tard par sécurité.
+var _nvSplashT0 = Date.now();
+function _nvSplashHide() {
+  var el = document.getElementById('nv-splash');
+  if (!el || el.classList.contains('off')) return;
+  var reste = 1400 - (Date.now() - _nvSplashT0);
+  setTimeout(function () { el.classList.add('off'); setTimeout(function () { try { el.remove(); } catch (e) {} }, 500); }, Math.max(0, reste));
+}
+setTimeout(_nvSplashHide, 12000);
+// « Chargement… » : on ajoute le petit logo animé au-dessus du texte, partout
+// où un .loader apparaît (HTML d'origine ou injecté plus tard).
+var _NVL_SVG = null;
+function _nvlLoaders(root) {
+  try {
+    if (_NVL_SVG === null) {
+      var src = document.querySelector('#view-login svg.nvl-ic');
+      _NVL_SVG = src ? src.outerHTML.replace(/nvl-(A2|B2)/, 'nvl-X') : '';
+    }
+    if (!_NVL_SVG) return;
+    var list = [];
+    if (root && root.classList && root.classList.contains('loader')) list.push(root);
+    if (root && root.querySelectorAll) root.querySelectorAll('.loader').forEach(function (l) { list.push(l); });
+    list.forEach(function (l) {
+      if (l.querySelector('svg.nvl-ic')) return;
+      l.insertAdjacentHTML('afterbegin', _NVL_SVG);
+      _nvlAnimer(l);
+    });
+  } catch (e) {}
+}
+_nvlAnimer();
+_nvlLoaders(document.body);
+try {
+  new MutationObserver(function (muts) {
+    for (var i = 0; i < muts.length; i++) {
+      var add = muts[i].addedNodes;
+      for (var j = 0; j < add.length; j++) if (add[j].nodeType === 1) _nvlLoaders(add[j]);
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+} catch (e) {}
+
 async function chargerAppData() {
   if (!athlete) return;
   _showLoader();
@@ -19353,6 +19410,7 @@ async function chargerAppData() {
     console.error('chargerAppData error:', e);
   } finally {
     _hideLoader();
+    _nvSplashHide();
   }
 }
 
