@@ -2501,7 +2501,11 @@ async function enregistrerProfil() {
       if (prenom) athlete.nom = prenom;
       if (taille !== '') athlete.taille = Number(taille);
       if (poids !== '') athlete.poids = Number(poids);
-      if (annees !== '') athlete.annees_pratique = Number(annees);
+      if (annees !== '') {
+        athlete.annees_pratique = Number(annees);
+        // Niveau (cibles de volume) recalculé tout de suite, comme au login — sauf stratégie choisie à la main.
+        try { if (!athlete.strategie || /Progression/.test(athlete.strategie)) { var _nv = getNiveauExperience(Number(annees)); athlete.strategie_progression = _nv === 'debutant' ? 'Progression linéaire' : _nv === 'intermediaire' ? 'Double progression' : 'Progression avancée'; } } catch (e) {}
+      }
       try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
       // Poids modifié → on l'enregistre AUSSI comme pesée du jour (source unique =
       // poids_historique), pour que graphe / nutrition / profil restent cohérents.
@@ -11186,8 +11190,12 @@ function _reposWheelHighlight() {
 function _reposWheelSet(val) {
   var w = document.getElementById('repos-wheel'); if (!w) return;
   var idx = _reposIdxNear(val); w.scrollTop = idx * _REPOS_IH;
-  var h = document.getElementById('sel-repos'); if (h) h.value = String(_REPOS_VALS[idx]);
+  var h = document.getElementById('sel-repos');
   _reposWheelHighlight();
+  // Molette encore masquée (scrollTop ignoré → lu à 0) : la VALEUR reste celle demandée,
+  // et on recale la molette dès qu'elle est affichée.
+  if (h) h.value = String(_REPOS_VALS[idx]);
+  if (w.scrollTop !== idx * _REPOS_IH) setTimeout(function () { if (!w.offsetParent) return; w.scrollTop = idx * _REPOS_IH; if (w.scrollTop === idx * _REPOS_IH) _reposWheelHighlight(); }, 60);
 }
 function pickChip(grp, el, val) {
   document.querySelectorAll('#' + grp + '-chips .saisie-chip').forEach(c => c.classList.remove('on'));
@@ -15505,6 +15513,9 @@ function selectionnerExoDepuisProgramme(exerciceNom, repsMini, repsMax) {
   // Mettre à jour l'affichage
   document.getElementById('exo-actuel-nom').textContent = exerciceNom;
   const pProg = programmeSeance.find(p => p.exercice === exerciceNom);
+  // Repos de la molette = repos prévu au programme pour CET exercice (sinon la molette
+  // gardait la dernière valeur, 2 min par défaut, quel que soit le programme).
+  if (pProg && pProg.repos_sec != null && pProg.repos_sec !== '' && Number(pProg.repos_sec) > 0 && !exoEnCours.series.length) { try { _reposWheelSet(Number(pProg.repos_sec)); } catch (e) {} }
   const partenairesActuel = pProg && pProg.groupe_id ? programmeSeance.filter(o => o !== pProg && o.groupe_id === pProg.groupe_id).map(o => o.exercice) : [];
   var _cibleProg = _cibleTxt(pProg, true);
   document.getElementById('exo-actuel-detail').innerHTML = `${muscle} · ${repsMini}-${repsMax} reps${partenairesActuel.length > 0 ? ` <span style="color:${couleurGroupe(pProg.groupe_id)}">· Superset, alterne avec ${partenairesActuel.join(', ')}</span>` : ''}${_cibleProg ? `<br><span style="color:var(--accent);font-weight:700">Cible programme : ${_cibleProg}</span>` : ''}`;
@@ -15876,7 +15887,7 @@ function renderAujourdhui(data) {
   // --- Séances prévues par le coach (agenda daté, lecture seule) ---
   try { renderTjPlanning(data); } catch (e) {}
 
-  // --- Séance du jour : 1re séance du programme (pas de planification par jour) ---
+  // --- Séance du jour : prochaine séance du programme (backend dashboard.prochaine_seance) ---
   try {
     var prog = (data && data.programme) || [];
     var seances = [];
@@ -15886,7 +15897,8 @@ function renderAujourdhui(data) {
     var elFoc = document.getElementById('tj-seance-focus');
     var elFocT = document.getElementById('tj-seance-focus-txt');
     if (seances.length) {
-      var s1 = seances[0];
+      var _pn = data && data.dashboard && data.dashboard.prochaine_seance;
+      var s1 = (_pn && seances.indexOf(String(_pn)) !== -1) ? String(_pn) : seances[0];
       var exos = prog.filter(function (p) { return p.seance_id === s1; });
       if (elNom) elNom.textContent = s1;
       if (elMeta) elMeta.textContent = exos.length + ' exercice' + (exos.length > 1 ? 's' : '') + (seances.length > 1 ? ' · ' + seances.length + ' séances au programme' : '');
@@ -18423,13 +18435,20 @@ function _enSetMode(m) {
   // Le bloc « dernières séances / sorties » suit le mode (muscu vs cardio ; masqué en hyrox).
   try { renderEnSuivi(typeof dernierAppData !== 'undefined' ? dernierAppData : null); } catch (e) {}
 }
+// Séance proposée = la « prochaine séance » calculée par le backend (suite du programme
+// après la dernière faite cette semaine) ; à défaut, la 1re du programme.
+function _seanceProposee(order) {
+  var n = (typeof dernierAppData !== 'undefined' && dernierAppData && dernierAppData.dashboard) ? dernierAppData.dashboard.prochaine_seance : null;
+  if (n && order.indexOf(String(n)) !== -1) return String(n);
+  return order.length ? order[0] : null;
+}
 function _enSelectSeance(sid) { _enSelSeance = sid; _enRenderSelMuscu(); }
 function _enSelectActivite(t) { _enSelActivite = t; _enRenderSelCardio(); }
 function _enRenderSelMuscu() {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
   var sl = document.getElementById('en-slist'); if (!sl) return;
   if (!_enOrder.length) { sl.innerHTML = '<div class="en-muted">Aucune séance au programme. Utilise « Créer / modifier mon programme ».</div>'; return; }
-  if (!_enSelSeance || (_enSelSeance !== 'Libre' && _enOrder.indexOf(_enSelSeance) === -1)) _enSelSeance = _enOrder.length ? _enOrder[0] : 'Libre';
+  if (!_enSelSeance || (_enSelSeance !== 'Libre' && _enOrder.indexOf(_enSelSeance) === -1)) _enSelSeance = _seanceProposee(_enOrder) || 'Libre';
   var svgD = '<svg viewBox="0 0 24 24"><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>';
   // Réalisé cette semaine (n'importe quel jour) → statut ✓/○ directement sur la carte.
   var cut = _maCut('semaine'), doneByType = {};

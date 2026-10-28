@@ -19,7 +19,11 @@ function load(env) {
   const store = { athletes: [
     { id: 'A1', login: '1111', nom: 'Un', coach_id: 'C1', sport: 'muscu' },
     { id: 'A2', login: '2222', nom: 'Deux', coach_id: 'C2', sport: 'muscu' },
-  ], coachs: [{ coach_id: 'C1', login: 'c1' }, { coach_id: 'C2', login: 'c2' }] };
+  ], coachs: [{ coach_id: 'C1', login: 'c1' }, { coach_id: 'C2', login: 'c2' }],
+    commentaires: [{ comment_id: 11, athlete_id: 'A1', coach_id: 'C1' }, { comment_id: 22, athlete_id: 'A2', coach_id: 'C2' }],
+    programme: [{ id: 101, athlete_id: 'A1' }, { id: 202, athlete_id: 'A2' }],
+    blessures: [{ id: 'b1', athlete_id: 'A1' }, { id: 'b2', athlete_id: 'A2' }],
+    planning: [{ id: 7, athlete_id: 'A2' }] };
   const client = makeEngine(store);
   let handler = null;
   let js = stripTypeScriptTypes(fs.readFileSync(path.join(ROOT, 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
@@ -82,7 +86,22 @@ const post = (h, body, q) => h(new Request(U + (q ? '?' + q : ''), { method: 'PO
     eq(await chk('getCoachAthletes', { coach_id: 'C1', _t: tC1 }), 'coach C1 → sa liste');
     eq(!(await chk('getCoachAthletes', { coach_id: 'C2', _t: tC1 })), 'coach C1 → liste de C2 refusée');
     eq(!(await chk('getCoachAthletes', { coach_id: 'C1', _t: tA1 })), 'athlète A1 → liste des athlètes de SON coach refusée');
-    eq(await chk('envoyerMediaCoach', { _t: tA1 }, { athlete_id: 'A1', coach_id: 'C1' }), 'athlète A1 → média à son coach C1'); }
+    eq(await chk('envoyerMediaCoach', { _t: tA1 }, { athlete_id: 'A1', coach_id: 'C1' }), 'athlète A1 → média à son coach C1');
+    // Droits PAR LIGNE (id seul dans la requête)
+    eq(await chk('supprimerCommentaire', { _t: tA1 }, { id: 11 }), 'A1 supprime SON commentaire');
+    eq(!(await chk('supprimerCommentaire', { _t: tA1 }, { id: 22 })), 'A1 → commentaire de A2 refusé');
+    eq(await chk('supprimerCommentaire', { _t: tC1 }, { id: 11 }), 'coach C1 → commentaire de son athlète');
+    eq(!(await chk('marquerCommentairesLus', { _t: tA1 }, { ids: [11, 22] })), 'marquer lus : un id étranger dans le lot → refusé');
+    eq(await chk('supprimerProgrammeLigne', { _t: tA1 }, { row_index: 101 }), 'A1 supprime SA ligne de programme');
+    eq(!(await chk('supprimerProgrammeLigne', { _t: tA1 }, { row_index: 202 })), 'A1 → ligne de programme de A2 refusée');
+    eq(!(await chk('supprimerProgrammeLigne', { _t: tC1 }, { row_index: 202 })), 'coach C1 → ligne d\'un athlète non lié refusée');
+    eq(!(await chk('saveProgrammeLigne', { _t: tA1 }, { athlete_id: 'A1', row_index: 202, exercice: 'x' })), 'modifier la ligne de A2 en se déclarant A1 → refusé');
+    eq(await chk('saveProgrammeLigne', { _t: tA1 }, { athlete_id: 'A1', exercice: 'x' }), 'nouvelle ligne (pas d\'id) → OK');
+    eq(!(await chk('deleteBlessure', { _t: tC1 }, { id: 'b2' })), 'coach C1 → blessure d\'un athlète non lié refusée');
+    eq(await chk('deleteBlessure', { _t: tC1 }, { id: 'b1' }), 'coach C1 → blessure de son athlète');
+    eq(!(await chk('unplanPlanning', { _t: tC1 }, { id: 7 })), 'coach C1 → planning de A2 refusé');
+    eq(await chk('supprimerSuiviPhoto', { _t: tA1 }, { athlete_id: 'A1', path: 'A1/face.jpg' }), 'A1 supprime SA photo');
+    eq(!(await chk('supprimerSuiviPhoto', { _t: tA1 }, { athlete_id: 'A1', path: 'A2/face.jpg' })), 'A1 → photo de A2 (chemin) refusée'); }
 
   // ── 3. Parcours réel par l'aiguillage ──
   { const { handler, warns } = load({ PEPPER: 'pep' });   // mode observation

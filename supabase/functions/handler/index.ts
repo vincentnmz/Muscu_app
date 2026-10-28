@@ -1241,9 +1241,11 @@ async function handleRegister(params: URLSearchParams): Promise<Response> {
     nom: data.nom,
     sport: data.sport || 'muscu',
     coach_id: null,
-    strategie: '',
+    // Niveau dérivé des années saisies DÈS l'inscription (comme au login) — sinon les
+    // cibles de volume restaient « intermédiaire » par défaut jusqu'à la reconnexion.
+    strategie: sport === 'muscu' ? getStrategieFromAnnees(Number(annees) || 0) : '',
     objectif: '',
-    strategie_progression: '',
+    strategie_progression: sport === 'muscu' ? getStrategieFromAnnees(Number(annees) || 0) : '',
     annees_pratique: Number(annees) || 0,
     email: email || '',
   }})
@@ -1291,8 +1293,16 @@ async function handleSaveProfil(body: any): Promise<Response> {
   if (body.nom != null && String(body.nom).trim()) patch.nom = String(body.nom).trim()
   if (body.taille != null && body.taille !== '') patch.taille = Number(body.taille) || null
   if (body.poids != null && body.poids !== '') patch.poids = Number(body.poids) || null
-  if (body.annees != null && body.annees !== '') patch.annees = Number(body.annees) || 0
   if (body.ddn != null && String(body.ddn).trim()) patch.ddn = String(body.ddn).trim()
+  if (body.annees != null && body.annees !== '') {
+    // Le profil affiche l'ancienneté EFFECTIVE (saisie + années écoulées depuis la création,
+    // cf. anneesEffectives). On stocke donc la BASE = effective − écoulées ; sinon chaque
+    // enregistrement du profil rajoutait les années écoulées une 2e fois.
+    const { data: aRow } = await sb().from('athletes').select('created_at').eq('id', athlete_id).single()
+    const eff = Number(body.annees) || 0
+    const ecoulees = anneesEffectives(0, aRow?.created_at, new Date())
+    patch.annees = Math.max(0, eff - ecoulees)
+  }
   if (!Object.keys(patch).length) return jsonResp({ success: false, error: 'Rien à enregistrer' })
   const { error } = await sb().from('athletes').update(patch).eq('id', athlete_id)
   if (error) return jsonResp({ success: false, error: error.message })
@@ -2074,13 +2084,15 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   // prochaine séance = prochaine séance non faite du programme cette semaine (comme Code.gs getProchaineSeance)
   const prochaineSeance = (() => {
     const faitesSemaine = new Set<string>()
-    for (const r of perfs) if (normDate(r.date) >= lundiStr) faitesSemaine.add(String(r.seance_id).toLowerCase())
+    let derniereFaite = '', derniereDate = ''   // séance la plus RÉCENTE de la semaine (pas la plus loin dans l'ordre)
+    for (const r of perfs) { const d = normDate(r.date); if (d >= lundiStr) { const sid = String(r.seance_id).toLowerCase(); faitesSemaine.add(sid); if (d >= derniereDate) { derniereDate = d; derniereFaite = sid } } }
     const ordre: string[] = []
     const vues = new Set<string>()
     for (const r of (progRows || [])) { const sid = String(r.seance_id); if (!vues.has(sid)) { ordre.push(sid); vues.add(sid) } }
     if (ordre.length === 0) return null
     let lastDone = -1
-    for (let k = ordre.length - 1; k >= 0; k--) { if (faitesSemaine.has(ordre[k].toLowerCase())) { lastDone = k; break } }
+    lastDone = ordre.findIndex(o => o.toLowerCase() === derniereFaite)
+    if (lastDone === -1) for (let k = ordre.length - 1; k >= 0; k--) { if (faitesSemaine.has(ordre[k].toLowerCase())) { lastDone = k; break } }
     if (lastDone === -1) return ordre[0]
     for (let k = 1; k <= ordre.length; k++) { const idx = (lastDone + k) % ordre.length; if (!faitesSemaine.has(ordre[idx].toLowerCase())) return ordre[idx] }
     return null
@@ -5951,6 +5963,48 @@ async function verifySession(tok: string, nowS?: number): Promise<{ role: 'a' | 
   } catch (_) { return null }
 }
 // Vérifie qu'un appel a le droit de toucher les ids qu'il vise.
+// Droits PAR LIGNE : actions qui visent une ligne par son identifiant (sans athlete_id
+// fiable dans la requête). On relit le(s) propriétaire(s) de la ligne en base ; la
+// session doit être cet athlète, ou son coach. (Sinon un jeton valide suffisait à
+// supprimer le commentaire / la blessure / la ligne de programme… de n'importe qui.)
+const ROW_OWNED: Record<string, { table: string; col: string; ids: (b: any) => any[] }> = {
+  supprimerCommentaire:   { table: 'commentaires', col: 'comment_id', ids: b => [b.id] },
+  marquerCommentairesLus: { table: 'commentaires', col: 'comment_id', ids: b => Array.isArray(b.ids) ? b.ids : [] },
+  supprimerProgrammeLigne:{ table: 'programme',    col: 'id', ids: b => [b.row_index] },
+  saveProgrammeLigne:     { table: 'programme',    col: 'id', ids: b => b.row_index ? [b.row_index] : [] },
+  movePlanning:           { table: 'planning',     col: 'id', ids: b => [b.id] },
+  unplanPlanning:         { table: 'planning',     col: 'id', ids: b => [b.id] },
+  deleteObjectifJoueur:   { table: 'objectifs',    col: 'id', ids: b => [b.id] },
+  saveObjectifJoueur:     { table: 'objectifs',    col: 'id', ids: b => b.id ? [b.id] : [] },
+  deleteBlessure:         { table: 'blessures',    col: 'id', ids: b => [b.id] },
+  saveBlessure:           { table: 'blessures',    col: 'id', ids: b => b.id ? [b.id] : [] },
+  cloreContexte:          { table: 'contexte_athlete', col: 'id', ids: b => b.id ? [b.id] : [] },
+}
+async function _sessionPeutAthlete(sess: { role: string; id: string }, aid: string): Promise<boolean> {
+  if (sess.role === 'a') return aid === sess.id
+  const { data } = await sb().from('athletes').select('coach_id').eq('id', aid).single()
+  return !!data && String(data.coach_id || '') === sess.id
+}
+async function _checkLignes(action: string, body: any, sess: { role: string; id: string }): Promise<string | null> {
+  // Photo de suivi : le chemin du fichier commence par l'id de l'athlète propriétaire.
+  if (action === 'supprimerSuiviPhoto') {
+    const p = String((body && body.path) || ''), owner = p.split('/')[0]
+    if (!owner || !(await _sessionPeutAthlete(sess, owner))) return 'photo ' + p + ' (non autorisée)'
+    return null
+  }
+  const def = ROW_OWNED[action]
+  if (!def || !body) return null
+  const ids = def.ids(body).filter((x: any) => x != null && x !== '')
+  if (!ids.length) return null
+  const sel = def.table === 'commentaires' ? 'athlete_id,coach_id' : 'athlete_id'
+  const { data } = await sb().from(def.table).select(sel).in(def.col, ids)
+  for (const r of (data || []) as any[]) {
+    // Commentaire : le coach destinataire y a droit aussi (même si l'athlète a changé de coach).
+    if (def.table === 'commentaires' && sess.role === 'c' && String(r.coach_id || '') === sess.id) continue
+    if (!(await _sessionPeutAthlete(sess, String(r.athlete_id || '')))) return def.table + ' de ' + r.athlete_id + ' (non autorisée)'
+  }
+  return null
+}
 async function authCheck(action: string, params: URLSearchParams, body: any): Promise<{ ok: boolean; reason?: string }> {
   if (AUTH_PUBLIC.has(action)) return { ok: true }
   const tok = params.get('_t') || (body && body._t) || ''
@@ -5967,14 +6021,16 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
       const { data } = await sb().from('athletes').select('coach_id').eq('id', sess.id).single()
       if (!data || String(data.coach_id || '') !== cid) return { ok: false, reason: 'athlète ' + sess.id + ' → coach ' + cid }
     }
-    return { ok: true }
+    const lr = await _checkLignes(action, body, sess)
+    return lr ? { ok: false, reason: 'athlète ' + sess.id + ' → ' + lr } : { ok: true }
   }
   if (cid && cid !== sess.id) return { ok: false, reason: 'coach ' + sess.id + ' → coach ' + cid }
   if (aid) {
     const { data } = await sb().from('athletes').select('coach_id').eq('id', aid).single()
     if (!data || String(data.coach_id || '') !== sess.id) return { ok: false, reason: 'coach ' + sess.id + ' → athlète ' + aid + ' (non lié)' }
   }
-  return { ok: true }
+  const lr = await _checkLignes(action, body, sess)
+  return lr ? { ok: false, reason: 'coach ' + sess.id + ' → ' + lr } : { ok: true }
 }
 // Ajoute le jeton à une réponse de connexion / inscription réussie.
 async function withSession(resp: Response, role: 'a' | 'c'): Promise<Response> {

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saisie des séries — maquette</title>
+<style>
+  :root{
+    --bg:#eef2fa; --surface:#ffffff; --surface2:#f3f6fd; --border:#dde4f3;
+    --text:#0d1424; --muted:#5f6b85; --subtle:#8b96b0;
+    --accent:#1a5fff; --accent-a:rgba(26,95,255,.10); --good:#00a854; --good-a:rgba(0,168,84,.10); --warn:#e07800; --warn-a:rgba(224,120,0,.10);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;padding:22px 16px 60px}
+  h1{font-size:20px;margin:0 0 4px;text-align:center}
+  .lead{font-size:13px;color:var(--muted);text-align:center;max-width:760px;margin:0 auto 22px}
+  .row{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
+  .col{width:350px}
+  .cap{font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin:0 4px 8px}
+  .cap span{color:var(--muted);text-transform:none;letter-spacing:0;font-weight:600}
+  .phone{background:var(--surface);border:1px solid var(--border);border-radius:30px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 14px 40px rgba(13,20,36,.10)}
+  .hd{display:flex;align-items:center;gap:10px;padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+  .back{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);display:grid;place-items:center;font-size:17px;color:var(--muted);flex:none}
+  .ti{font-weight:800;font-size:16px}
+  .sub{font-size:11.5px;color:var(--muted)}
+  .chrono{margin-left:auto;background:var(--accent-a);color:var(--accent);font-weight:800;font-size:13px;border-radius:999px;padding:5px 11px}
+  .prog{height:4px;background:var(--surface2)}
+  .prog i{display:block;height:100%;width:33%;background:var(--accent)}
+  .body{padding:14px 16px 18px}
+  .card{border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px;background:var(--surface)}
+  .card.acc{border-color:var(--accent)}
+  .lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--subtle);margin:2px 0 8px}
+  .exo{font-size:19px;font-weight:900;color:var(--accent);margin:0}
+  .meta{font-size:12px;color:var(--muted);margin-top:2px}
+  table{width:100%;border-collapse:separate;border-spacing:0 5px;font-size:12.5px}
+  th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--subtle);font-weight:800;text-align:left;padding:0 6px}
+  td{background:var(--surface2);padding:8px 6px}
+  td:first-child{border-radius:10px 0 0 10px;font-weight:900;width:34px;text-align:center}
+  td:last-child{border-radius:0 10px 10px 0}
+  tr.done td{background:var(--good-a)}
+  tr.cur td{background:var(--accent-a);box-shadow:inset 0 1.5px 0 var(--accent),inset 0 -1.5px 0 var(--accent)}
+  tr.cur td:first-child{box-shadow:inset 1.5px 1.5px 0 var(--accent),inset 0 -1.5px 0 var(--accent)}
+  tr.cur td:last-child{box-shadow:inset -1.5px 1.5px 0 var(--accent),inset 0 -1.5px 0 var(--accent)}
+  .rpe{color:var(--subtle);font-size:11px}
+  .tgt{color:var(--accent);font-weight:800}
+  .ok{color:var(--good);font-weight:800}
+  .todo{color:var(--subtle)}
+  .note{font-size:11.5px;color:var(--muted);margin-top:4px}
+  .inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .stp{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:13px;padding:11px 14px;font-size:20px;font-weight:800}
+  .stp b{color:var(--accent);font-size:22px}
+  .rpes{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .rp{border:1px solid var(--border);background:var(--surface2);border-radius:11px;text-align:center;padding:7px 2px}
+  .rp b{display:block;font-size:15px}
+  .rp small{display:block;font-size:9.5px;color:var(--muted);line-height:1.2}
+  .rp.on{border-color:var(--accent);background:var(--accent-a)}
+  .rp.on b{color:var(--accent)}
+  .rpe-exp{font-size:12px;background:var(--accent-a);color:var(--text);border-radius:10px;padding:8px 10px;margin:8px 0 12px}
+  .repos{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:13px;padding:10px 14px}
+  .repos b{font-size:17px;color:var(--accent)}
+  .tag{font-size:10.5px;font-weight:800;background:var(--good-a);color:var(--good);border-radius:999px;padding:3px 8px}
+  .btn{width:100%;border:none;border-radius:13px;background:var(--accent);color:#fff;font-weight:800;font-size:14.5px;padding:13px;margin-top:12px}
+  .ex{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--border)}
+  .ex:first-of-type{border-top:none}
+  .ico{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-weight:900;font-size:13px;flex:none}
+  .i-ok{background:var(--good-a);color:var(--good)} .i-near{background:var(--warn-a);color:var(--warn)} .i-sw{background:var(--accent-a);color:var(--accent)} .i-no{background:var(--surface2);color:var(--subtle)}
+  .exn{font-weight:800;font-size:13.5px}
+  .exd{font-size:12px;color:var(--muted)}
+  .q{max-width:760px;margin:26px auto 0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;font-size:13.5px}
+  .q h2{font-size:15px;margin:0 0 8px}
+  .q li{margin-bottom:6px}
+</style>
+</head>
+<body>
+<h1>Saisie des séries — proposition</h1>
+<p class="lead">Données d'exemple tirées de ta séance « dos jambes » du 27/10. Rien n'est codé : on valide d'abord.</p>
+
+<div class="row">
+  <!-- ÉCRAN 1 : SAISIE -->
+  <div class="col">
+    <div class="cap">① Saisie d'un exercice <span>— en cours de S2</span></div>
+    <div class="phone">
+      <div class="hd">
+        <div class="back">←</div>
+        <div><div class="ti">Exercice 3 / 6</div><div class="sub">1 exercice terminé · 4 séries</div></div>
+        <div class="chrono">24:10</div>
+      </div>
+      <div class="prog"><i></i></div>
+      <div class="body">
+        <div class="card acc">
+          <p class="exo">Leg curl allongé</p>
+          <div class="meta">Ischio · 3 séries · 8-12 reps · repos 1 min 30</div>
+
+          <div class="lbl" style="margin-top:12px">Tes séries</div>
+          <table>
+            <tr><th></th><th>Mar. 20/10</th><th>Cible</th><th>Aujourd'hui</th></tr>
+            <tr class="done"><td>S1</td><td>35×8 <span class="rpe">@8</span></td><td class="tgt">35×9</td><td class="ok">✓ 35×9 <span class="rpe">@8</span></td></tr>
+            <tr class="cur"><td>S2</td><td>35×8 <span class="rpe">@8</span></td><td class="tgt">35×9</td><td class="tgt">en cours</td></tr>
+            <tr><td>S3</td><td>35×8 <span class="rpe">@9</span></td><td class="tgt">35×9</td><td class="todo">à faire</td></tr>
+          </table>
+          <div class="note">Dernière fois : 3 séries, repos 1 min 30, RPE moyen 8,3.</div>
+        </div>
+
+        <div class="card">
+          <div class="lbl">Série 2</div>
+          <div class="inputs">
+            <div><div class="lbl">Charge (kg)</div><div class="stp"><b>−</b>35<b>+</b></div></div>
+            <div><div class="lbl">Reps</div><div class="stp"><b>−</b>9<b>+</b></div></div>
+          </div>
+          <div class="lbl">RPE — effort ressenti</div>
+          <div class="rpes">
+            <div class="rp"><b>6</b><small>facile<br>4+ en réserve</small></div>
+            <div class="rp"><b>7</b><small>3 reps<br>en réserve</small></div>
+            <div class="rp on"><b>8</b><small>2 reps<br>en réserve</small></div>
+            <div class="rp"><b>9</b><small>1 rep<br>en réserve</small></div>
+            <div class="rp"><b>10</b><small>à fond<br>0 en réserve</small></div>
+          </div>
+          <div class="rpe-exp"><b>RPE 8</b> : tu aurais pu faire encore 2 répétitions propres.</div>
+          <div class="lbl">Repos après la série</div>
+          <div class="repos"><b>1 min 30</b><span class="tag">du programme</span></div>
+          <button class="btn">+ Valider la série 2</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÉCRAN 2 : FIN DE SÉANCE -->
+  <div class="col">
+    <div class="cap">② Fin de séance <span>— « Programme vs réalisé »</span></div>
+    <div class="phone">
+      <div class="hd"><div class="back">←</div><div><div class="ti">Bilan de séance</div><div class="sub">mar. 27/10 · 6 exercices</div></div></div>
+      <div class="body">
+        <div class="card">
+          <div class="lbl">Programme vs réalisé</div>
+          <div class="ex"><div class="ico i-ok">✓</div><div><div class="exn">Leg curl allongé</div><div class="exd">4 séries / 3 prévues · reps dans la fourchette (8-12)</div></div></div>
+          <div class="ex"><div class="ico i-near">≈</div><div><div class="exn">Leg extension</div><div class="exd">2 séries / 3 prévues · reps dans la fourchette</div></div></div>
+          <div class="ex"><div class="ico i-near">≈</div><div><div class="exn">Pendulum</div><div class="exd">4 séries / 3 · 2 séries sous 8 reps (6 et 6)</div></div></div>
+          <div class="ex"><div class="ico i-sw">↔</div><div><div class="exn">T-bar row</div><div class="exd">remplacé par <b>T-bar row prise basse</b> · 3 séries / 3</div></div></div>
+          <div class="ex"><div class="ico i-sw">↔</div><div><div class="exn">Tirage vertical uni à la poulie</div><div class="exd">remplacé par <b>Tirage vertical prise serrée</b> · 3 / 3</div></div></div>
+          <div class="ex"><div class="ico i-near">≈</div><div><div class="exn">Traction</div><div class="exd">4 séries / 3 · toutes sous 8 reps (7, 7, 7, 6)</div></div></div>
+          <div class="note" style="margin-top:10px">✓ conforme · ≈ proche du prévu · ↔ variante faite · – non fait. Pas de « bon / mauvais » : juste l'écart, factuel.</div>
+        </div>
+        <div class="card" style="background:var(--surface2)">
+          <div class="lbl">Aujourd'hui (pour comparaison)</div>
+          <div class="exd">Leg extension → « Insuffisant » en rouge<br>Pendulum → « Insuffisant »<br>T-bar row → « Non fait » (alors que tu as fait la variante)<br>Tirage vertical → « Non fait »<br>Traction → « Insuffisant »</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="q">
+  <h2>À décider avant de coder</h2>
+  <ol>
+    <li><b>Nom de la séance</b> : je l'enlève de l'en-tête et du bandeau de progression pendant la saisie (remplacé par « Exercice 3 / 6 »). Il reste visible sur la liste des exercices. OK ?</li>
+    <li><b>Tableau S1/S2/S3</b> (dernière fois · cible · aujourd'hui) à la place des petites pastilles. OK, ou tu préfères des cases plus grandes sans tableau ?</li>
+    <li><b>Dernière fois</b> = la dernière fois que tu as fait <i>cet exercice</i> (quelle que soit la séance), ou strictement la même séance du programme ?</li>
+    <li><b>Légende RPE</b> sous chaque bouton + phrase d'explication de l'RPE choisi. OK ?</li>
+    <li><b>Programme vs réalisé</b> : garder en version factuelle (écran ②), ou le retirer complètement ?</li>
+  </ol>
+</div>
+</body>
+</html>

@@ -19,6 +19,16 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## Fait récemment
 
+- **28 oct. (3)** — ⚠️ `index.ts` à redéployer.
+  - Séance proposée : l'accueil et l'onglet Entraînement prenaient toujours la 1re séance du programme → ils prennent `dashboard.prochaine_seance`. Le backend part de la séance la plus récente de la semaine.
+  - Repos : la molette prend le repos du programme de l'exercice (avant : la dernière valeur, 2 min par défaut).
+  - Années d'expérience :
+    - le niveau est calculé dès l'inscription (avant : « intermédiaire » jusqu'à la reconnexion) ;
+    - l'enregistrement du profil ne double plus les années écoulées (on stocke la base = effective − écoulées).
+  - Droits par ligne (`ROW_OWNED` + `_checkLignes`) : commentaire, programme, planning, objectif, blessure, contexte, photo de suivi → propriétaire vérifié (test session-auth).
+  - Maquette `mockups/novalyz-saisie-series.html` (tableau S1-S3, légende RPE, nom de séance retiré, programme vs réalisé factuel) → **en attente de validation**.
+  - Écart à trancher : seuils de niveau (profil : avancé dès 8 ans ; cibles de volume Analyses : avancé > 9 ans).
+
 ### Lot 28 oct. (2) — prêt pour le TEST FERMÉ Play Store (sur `dev`, SW v443) — **index.ts à REDÉPLOYER**
 - Google Play configuré par l'utilisateur ; reste à recruter **12 testeurs × 14 jours** (viser 14-15). Morpho IA et foot : APRÈS le test (coût / validation muscu).
 - **Suppression de compte complète** (exigence Play) : athlète +7 tables + photos `suivi-photos` ; coach : alertes traitées, jetons push, nom anonymisé. Test `suppression-compte-complete`.
