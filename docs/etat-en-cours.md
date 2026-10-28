@@ -96,6 +96,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - **Aperçu coach v3** (`renderCoachCoupDoeil`, charge·reps·RPE réels, état+récup, Lecture Novalyz pour le coach). Nutrition (import MFP), morpho/mensurations coach, récompenses v2, etc.
 
 ## À faire (priorité)
+- **Plus tard — nom de domaine perso** à la place de `vincentnmz.github.io/Muscu_app/(dev/)` : fichier `CNAME` + enregistrements DNS chez le registrar + HTTPS GitHub Pages ; repasser les URLs en dur d'`index.ts` (`APP_BASE_URL` des liens « mot de passe oublié », `MAIL_LOGO_URL`, `ROUE_BASE`) — variables d'env Supabase → aucun code à redéployer si on les règle là ; vérifier SW/PWA (les comptes connectés devront se reconnecter : stockage lié à l'adresse).
 - **Plus tard (identité visuelle)** : logo animé aussi pendant envoi de séance, réponse IA, export PDF, génération de programme ; dégradé + hexagones dans l'espace coach.
 1. **(Utilisateur)** Redéployer `index.ts` + poser `ANTHROPIC_API_KEY` (voir section ⚠️).
 2. **Programme sur-mesure depuis l'analyse morpho** (parqué — discuter d'abord avec l'utilisateur ce qu'il veut dire dessus).
