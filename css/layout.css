@@ -989,3 +989,18 @@ body:has(#view-login.active) #nv-bg { display:block; }
 @media (prefers-reduced-motion:reduce) {
   .nvl-ic .nvl-b, .nvl-ic .nvl-d, .nvl-ic .nvl-l { animation:none !important; transform:none !important; opacity:1 !important; stroke-dashoffset:0 !important; }
 }
+
+/* Fond d'écran mobile (retours 29/10) : les conteneurs d'écran ne doivent pas
+   repeindre un fond uni par-dessus le dégradé, et les textes posés directement
+   sur le fond (titres de section, aides) reçoivent une étiquette claire pour
+   rester lisibles quand ils défilent sur la partie bleue. */
+@media (max-width:991.98px) {
+  body.has-bottom-nav .dash,
+  body.has-bottom-nav #tab-conseils { background:transparent; }
+  body.has-bottom-nav :is(#tab-accueil .tj-sep, #tab-seance .en-sec, #tab-historique .ma-sec, #tab-etat .et-sec, .nv-loose) {
+    background:rgba(255,255,255,.9); border-radius:10px; padding:5px 10px; box-shadow:0 1px 3px rgba(13,20,36,.06); }
+  body.has-bottom-nav #tab-accueil .tj-sep::after { display:none; }
+  body.has-bottom-nav #tab-seance .en-add { background:rgba(255,255,255,.92); }
+  body.has-bottom-nav #tab-conseils .cv-chip { background:rgba(255,255,255,.94); }
+  body.has-bottom-nav #tab-seance h2.st { display:inline-flex; background:rgba(255,255,255,.9); border-radius:10px; padding:4px 10px; }
+}

@@ -12611,7 +12611,7 @@ function _maPeriodHtml() {
     + '</div></div>';
 }
 // Petite légende sous le sélecteur en Tendances/Résumé pour situer ce qui bouge.
-function _maPeriodHint(txt) { return '<div style="font-size:10.5px;color:var(--text-subtle);margin:-4px 2px 10px;line-height:1.4">' + txt + '</div>'; }
+function _maPeriodHint(txt) { return '<div class="nv-loose" style="font-size:10.5px;color:var(--text-subtle);margin:-4px 2px 10px;line-height:1.4">' + txt + '</div>'; }
 // Buckets de tendance selon la granularité : S→7 jours · M→semaines du mois · A→12 mois.
 // Retourne { pts:[valeurs], dates:[ISO de début de bucket] } sur la fenêtre courante.
 function _maTrendData(dict, agg) {
