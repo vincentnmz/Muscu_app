@@ -87,7 +87,7 @@ check('dégressif réel (80×2, 70×5, 60×8) : S1/S2 −1 pas, S3 dans la fourc
 // --- Catégories d'exercice → fourchette ---
 const CM = { 'Développé incliné à la Smith': 'gros', 'Curl': 'petit' };
 check('catégorie gros + programme par défaut 8-12 → 6-8', JSON.stringify([S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmin, S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmax]) === '[6,8]');
-check('catégorie petit → 12-15', S._exoFourchette('Curl', 8, 12, CM).rmin === 12 && S._exoFourchette('Curl', 8, 12, CM).rmax === 15);
+check('catégorie petit → 12-25', S._exoFourchette('Curl', 8, 12, CM).rmin === 12 && S._exoFourchette('Curl', 8, 12, CM).rmax === 25);
 check('programme ≠ 8-12 → le programme prime', S._exoFourchette('Développé incliné à la Smith', 5, 5, CM).rmin === 5 && S._exoFourchette('Développé incliné à la Smith', 5, 5, CM).src === 'prog');
 check('non classé → programme', S._exoFourchette('Leg curl', 8, 12, CM).rmin === 8 && S._exoFourchette('Leg curl', 8, 12, CM).cat === '');
 

@@ -5244,7 +5244,7 @@ async function handleSavePref(body: any): Promise<Response> {
 }
 
 // Catégorie de chaque exercice choisie par l'athlète (ou son coach) : gros (6-8 reps),
-// moyen (8-12), petit (12-15). Sert aux fourchettes de reps de la lecture et des
+// moyen (8-12), petit (12-25). Sert aux fourchettes de reps de la lecture et des
 // cibles de saisie. Stockée en JSON dans UNE ligne pref (seance_id='pref',
 // cle='exo_categories'), remplacée à chaque enregistrement. Idempotent.
 const EXO_CATS = ['gros', 'moyen', 'petit']
