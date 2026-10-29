@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture Novalyz v2 — maquette</title>
+<style>
+  :root{
+    --bg:#eef2fa; --surface:#ffffff; --surface2:#f3f6fd; --border:#dde4f3;
+    --text:#0d1424; --muted:#5f6b85; --subtle:#8b96b0;
+    --accent:#1a5fff; --accent-a:rgba(26,95,255,.10); --good:#00a854; --warn:#e08a00; --bad:#dc3545;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;padding:22px 16px 60px}
+  h1{font-size:20px;margin:0 0 4px;text-align:center}
+  .lead{font-size:13px;color:var(--muted);text-align:center;max-width:900px;margin:0 auto 22px}
+  .row{display:flex;flex-wrap:wrap;gap:22px;justify-content:center;align-items:flex-start}
+  .col{width:360px}
+  .cap{font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin:0 4px 8px}
+  .cap span{color:var(--muted);text-transform:none;letter-spacing:0;font-weight:600}
+  .phone{background:var(--bg);border:1px solid var(--border);border-radius:30px;overflow:hidden;box-shadow:0 14px 40px rgba(13,20,36,.10);padding:14px 12px 18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px 15px;margin-bottom:10px}
+  .lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);margin:0 0 6px}
+  .verdict{display:flex;gap:10px;align-items:center;background:#e9f8f0;border:1px solid #bfe9d2;border-radius:14px;padding:10px 12px;margin:4px 0 10px}
+  .verdict .dot{width:10px;height:10px;border-radius:50%;background:var(--good);flex:none}
+  .verdict b{color:var(--good);font-size:15px}
+  .verdict small{display:block;color:var(--muted);font-size:11.5px}
+  .li{display:flex;gap:9px;align-items:flex-start;font-size:13px;padding:6px 0;border-top:1px solid var(--border)}
+  .li:first-of-type{border-top:none}
+  .ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:11px;font-weight:900;flex:none;margin-top:1px}
+  .g{background:rgba(0,168,84,.12);color:var(--good)} .w{background:rgba(224,138,0,.14);color:var(--warn)} .r{background:rgba(220,53,69,.12);color:var(--bad)} .b{background:var(--accent-a);color:var(--accent)}
+  .src{display:block;font-size:10.5px;color:var(--subtle);margin-top:1px}
+  .tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .tbl td{padding:7px 0;border-top:1px solid var(--border);vertical-align:top}
+  .tbl tr:first-child td{border-top:none}
+  .tbl .ex{font-weight:700}
+  .tbl .last{color:var(--muted);white-space:nowrap;text-align:right;padding-left:6px}
+  .tbl .go{font-weight:800;white-space:nowrap;text-align:right;padding-left:8px}
+  .up{color:var(--good)} .keep{color:var(--muted)} .down{color:var(--bad)}
+  .why{display:block;font-size:10.5px;color:var(--subtle);font-weight:600}
+  .reco{background:var(--accent-a);border:1px solid rgba(26,95,255,.22);border-radius:14px;padding:11px 12px;font-size:13px}
+  .reco .lbl{color:var(--accent);margin-bottom:4px}
+  .reco ol{margin:4px 0 0;padding-left:18px}
+  .reco li{margin-bottom:4px}
+  .new{position:relative;outline:2px dashed var(--accent);outline-offset:3px}
+  .tag{position:absolute;top:-9px;right:12px;background:var(--accent);color:#fff;font-size:9.5px;font-weight:800;letter-spacing:.06em;border-radius:999px;padding:2px 8px}
+  .bar{height:7px;border-radius:999px;background:var(--surface2);overflow:hidden;margin-top:3px}
+  .bar i{display:block;height:100%;border-radius:999px}
+  .mrow{display:grid;grid-template-columns:78px 1fr 64px;gap:8px;align-items:center;font-size:12px;padding:4px 0}
+  .mrow .v{text-align:right;color:var(--muted);font-weight:700}
+  .note{font-size:11px;color:var(--subtle);margin-top:6px}
+  .q{max-width:900px;margin:26px auto 0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;font-size:13.5px}
+  .q h2{font-size:15px;margin:0 0 8px}
+  .q li{margin-bottom:7px}
+  .avant{max-width:900px;margin:0 auto 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 18px;font-size:13px}
+  .avant h2{font-size:14px;margin:0 0 6px}
+  .avant li{margin-bottom:4px}
+</style>
+</head>
+<body>
+<h1>Lecture Novalyz v2 — Aujourd'hui + Analyses (proposition)</h1>
+<p class="lead">Exemple rempli avec <b>tes vraies données</b> au 29/10 (séances jusqu'au 27/10). Un seul classement des exercices (records / progresse / stagne / recule / hors fourchette), calculé sur les <b>charges, reps et RPE réels</b>, sert aux deux écrans et à la vue coach. Rien n'est codé ; les chiffres sont ceux de ta base, les phrases exactes seront produites par le moteur.</p>
+
+<div class="avant">
+  <h2>Aujourd'hui, ce qui ne va pas (constaté sur tes écrans)</h2>
+  <ul>
+    <li><b>Aujourd'hui</b> : « charge en hausse » est dit <b>4 fois</b> (3 puces + bloc Fraîcheur), et rien ne parle de <b>la séance du jour</b>.</li>
+    <li><b>Analyses</b> : « Force +11 % » = moyenne d'un <b>1RM estimé</b> (formule), alors que la vue coach a déjà abandonné ce calcul (« 1RM Epley hasardeux ») pour les charges/reps réelles → <b>2 lectures différentes</b> du même athlète.</li>
+    <li>Reco générique (« continue et enregistre régulièrement… ») alors que tes données (100 % RPE, 11 séances) permettent des recos <b>nommées</b>.</li>
+    <li>Non dit à l'athlète aujourd'hui : <b>Développé incliné Smith à 80 kg × 2 (RPE 10)</b>, sous ta fourchette 8-12 depuis 3 séances (détecté par aucune règle) ; <b>Leg curl 35 kg × 8 depuis 4 séances</b> (vu seulement côté coach) ; Traction entre 6 et 7 reps sur 4 séances à RPE 9-10.</li>
+  </ul>
+</div>
+
+<div class="row">
+  <!-- ═══ AUJOURD'HUI ═══ -->
+  <div class="col">
+    <div class="cap">① Aujourd'hui <span>— lecture du jour</span></div>
+    <div class="phone">
+      <div class="card">
+        <div class="lbl">Lecture Novalyz · aujourd'hui</div>
+        <div class="verdict"><span class="dot"></span><div><b>Prêt à performer</b><small>Récup excellente · sommeil bon · charge 7 j en hausse, bien encaissée</small></div></div>
+        <div style="font-size:11.5px;color:var(--muted)">Une seule ligne d'état (fini les 4 répétitions de « charge en hausse »). Le détail Fraîcheur reste derrière le « ? ».</div>
+      </div>
+
+      <div class="card new"><span class="tag">NOUVEAU</span>
+        <div class="lbl">Ta séance du jour · pec epaule 2</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Ce que Novalyz vise, exercice par exercice (même calcul que l'écran de saisie)</div>
+        <table class="tbl">
+          <tr><td class="ex">Arrière épaule poulie<span class="why">RPE 8, pas encore en haut (12)</span></td><td class="last">7,5 × 10</td><td class="go up">7,5 × 11</td></tr>
+          <tr><td class="ex">Élévation frontale poulie<span class="why">+1 rep à chaque séance</span></td><td class="last">7,5 × 8</td><td class="go up">7,5 × 9</td></tr>
+          <tr><td class="ex">Élévation latérale uni<span class="why">RPE 9 → on consolide</span></td><td class="last">7,5 × 10</td><td class="go keep">7,5 × 10</td></tr>
+          <tr><td class="ex">Développé incliné Smith<span class="why">2 reps à RPE 10, sous ta fourchette 8-12</span></td><td class="last">80 × 2</td><td class="go down">72,5 × 8</td></tr>
+          <tr><td class="ex">Développé machine<span class="why">RPE 9 → on consolide (record la dernière fois)</span></td><td class="last">90 × 6</td><td class="go keep">90 × 6</td></tr>
+          <tr><td class="ex">Écarté machine<span class="why">RPE 9 → on consolide</span></td><td class="last">30 × 8</td><td class="go keep">30 × 8</td></tr>
+        </table>
+        <div class="note">Dernière fois = ta meilleure série de la dernière séance de l'exercice.</div>
+      </div>
+
+      <div class="card new"><span class="tag">NOUVEAU</span>
+        <div class="lbl">Depuis ta dernière séance · dos jambe (27/10)</div>
+        <div class="li"><span class="ic g">★</span><div><b>Records</b> : Pendulum 60 kg × 8, Tirage vertical serré 70 kg × 8</div></div>
+        <div class="li"><span class="ic w">⏸</span><div><b>Leg curl</b> bloqué à 35 kg × 8 depuis 4 séances</div></div>
+      </div>
+
+      <div class="reco">
+        <div class="lbl">Reco du jour</div>
+        Tu es en forme : <b>redescends le Développé incliné Smith à 72,5 kg</b> pour refaire 8 reps propres, et pousse les élévations (+1 rep).
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ANALYSES ═══ -->
+  <div class="col">
+    <div class="cap">② Analyses › Muscu <span>— lecture 4 semaines</span></div>
+    <div class="phone">
+      <div class="card">
+        <div class="lbl">Lecture Novalyz · 4 dernières semaines</div>
+        <div class="verdict"><span class="dot"></span><div><b>Sur la bonne voie</b><small>14 exos en progrès (dont 7 records) · 1 bloqué · 1 hors fourchette</small></div></div>
+
+        <div class="li"><span class="ic g">★</span><div><b>Records (≤ 10 j)</b> : Pendulum 60 × 8 · Tirage horizontal serré 80 × 6 · Tirage vertical serré 70 × 8 <span style="color:var(--subtle)">+4</span><span class="src">charge (ou reps à charge égale) battue</span></div></div>
+        <div class="li"><span class="ic g">▲</span><div><b>Progresse</b> : Développé machine 80 → 90 kg · Curl incliné 8 → 10 reps · Arrière épaule 9 → 10 reps <span style="color:var(--subtle)">+4</span><span class="src">vs la séance précédente de l'exercice</span></div></div>
+        <div class="li new" style="outline-offset:1px"><span class="ic r">!</span><div><b>Hors fourchette</b> : Développé incliné Smith 60 × 8 → 70 × 5 → 80 × 3 → <b>80 × 2</b> (RPE 10)<span class="src">charge montée plus vite que les reps · cible 8-12</span></div></div>
+        <div class="li"><span class="ic w">⏸</span><div><b>Bloqué</b> : Leg curl 35 × 8 depuis 4 séances<span class="src">même charge, reps qui ne montent plus</span></div></div>
+        <div class="li"><span class="ic b">◑</span><div><b>Volume</b> : Biceps, Triceps, Quadriceps et Ischio sous leur minimum cette semaine<span class="src">séries / semaine vs cibles du moteur</span></div></div>
+      </div>
+
+      <div class="card new"><span class="tag">NOUVEAU</span>
+        <div class="lbl">Volume par muscle · séries cette semaine (2/4 séances faites)</div>
+        <div class="mrow"><span>Dos</span><div class="bar"><i style="width:62%;background:var(--good)"></i></div><span class="v">10 / 10-16</span></div>
+        <div class="mrow"><span>Pectoraux</span><div class="bar"><i style="width:64%;background:var(--good)"></i></div><span class="v">9 / 8-14</span></div>
+        <div class="mrow"><span>Épaules</span><div class="bar"><i style="width:64%;background:var(--good)"></i></div><span class="v">9 / 8-14</span></div>
+        <div class="mrow"><span>Quadriceps</span><div class="bar"><i style="width:43%;background:var(--warn)"></i></div><span class="v">6 / 8-14</span></div>
+        <div class="mrow"><span>Ischio</span><div class="bar"><i style="width:33%;background:var(--warn)"></i></div><span class="v">4 / 6-12</span></div>
+        <div class="mrow"><span>Biceps</span><div class="bar"><i style="width:0%;background:var(--warn)"></i></div><span class="v">0 / 8-14</span></div>
+        <div class="mrow"><span>Triceps</span><div class="bar"><i style="width:0%;background:var(--warn)"></i></div><span class="v">0 / 6-12</span></div>
+        <div class="note">Chiffres réels du moteur (cibles min-optimum déjà calculées). En cours de semaine, le manque est normal : la lecture tiendra compte des séances qui restent (ex. « dos jambe 2 » vendredi).</div>
+      </div>
+
+      <div class="reco">
+        <div class="lbl">Reco entraînement · par priorité</div>
+        <ol>
+          <li><b>Développé incliné Smith</b> : redescends à 72,5 kg (−10 %) et remonte par les reps (8 → 12) avant de recharger.</li>
+          <li><b>Leg curl</b> : débloque avec +30 s de repos ou +1 rep / séance (tu es avancé : choix proposé à la saisie).</li>
+          <li><b>Bras</b> : 0 série de biceps et de triceps cette semaine — vérifie qu'ils sont dans « dos jambe 2 » de vendredi, sinon ajoute 2-3 séries.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="q">
+  <h2>À décider avant de coder</h2>
+  <ol>
+    <li><b>Un seul moteur de lecture</b> (records / progresse / bloqué / recule / <b>hors fourchette</b>) sur charges + reps + RPE réels, partagé athlète ↔ coach, et on <b>retire le « 1RM estimé moyen »</b> de la lecture athlète. OK ?</li>
+    <li><b>Aujourd'hui · « Ta séance du jour »</b> : tableau des cibles par exercice (dernière fois → aujourd'hui), même calcul que la saisie. Toutes les lignes, ou seulement les exos qui changent (↑ / ↓) ?</li>
+    <li><b>Nouveau cas « hors fourchette »</b> : quand tu es sous ton minimum de reps à RPE ≥ 9 (ex. 80 × 2), Novalyz propose de <b>redescendre la charge</b> (aujourd'hui il dit « consolide » = garder 80 kg). Règle proposée : charge −10 % arrondie au petit pas. OK ?</li>
+    <li><b>Volume par muscle</b> : on affiche les cibles min-optimum que le moteur calcule déjà. En cours de semaine, on compare au <b>prorata</b> des séances faites (comme la régularité), pour ne pas crier « 0 biceps » un mercredi. OK ?</li>
+    <li><b>Reco</b> : jusqu'à 3 recos nommées et classées (au lieu d'1 phrase générique). OK ?</li>
+    <li><b>« Progresse » à revoir</b> : la règle actuelle (vue coach) compte comme progrès une charge en hausse même si les reps s'effondrent (Belt squat 120 × 10 → 200 × 5, à 3 mois d'écart). Proposé : progrès seulement si les reps restent dans la fourchette, sinon « charge montée, reps en baisse ». OK ?</li>
+    <li><b>Temps de repos</b> : tu les saisis, mais ils ne remontent pas dans l'historique utilisé par la lecture. On les ajoute (pour dire « repos trop courts sur X ») ?</li>
+  </ol>
+</div>
+</body>
+</html>
