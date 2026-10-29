@@ -7693,7 +7693,14 @@ function _derivePlanSeries(l, rm) {
   if (!l) return { series: [], note: '' };
   var schema = l.schema || 'fixe';
   var n = Number(l.series_prevues) || 0;
-  var repsTxt = _repsRange(l.reps_mini, l.reps_max);
+  // Fourchette effective : celle de la CATÉGORIE de l'exercice (gros / moyen / petit)
+  // si le programme garde le 8-12 par défaut (décision 29/10), sinon celle du programme.
+  var rMin = l.reps_mini, rMax = l.reps_max, fCat = null;
+  try {
+    var _f = _exoFourchette(l.exercice, (l.reps_mini !== '' && l.reps_mini != null) ? Number(l.reps_mini) : null, (l.reps_max !== '' && l.reps_max != null) ? Number(l.reps_max) : null);
+    if (_f && _f.src === 'cat') { rMin = _f.rmin; rMax = _f.rmax; fCat = _f.cat; }
+  } catch (e) {}
+  var repsTxt = _repsRange(rMin, rMax);
   var kgOf = function (pct) { return (rm && pct != null) ? Math.round(rm * pct / 100 / 2.5) * 2.5 : null; };
   var out = [];
   if (schema === 'pyramidal' && Array.isArray(l.series_json) && l.series_json.length) {
@@ -7706,14 +7713,15 @@ function _derivePlanSeries(l, rm) {
     var bo = (l.backoff_pct != null && l.backoff_pct !== '') ? Number(l.backoff_pct) : 10;
     var topPct = l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null;
     var boPct = topPct != null ? Math.round(topPct * (1 - bo / 100)) : null;
-    out.push({ serie: 1, reps: (l.reps_mini != null && l.reps_mini !== '' ? String(l.reps_mini) : repsTxt), pct: topPct, kg: kgOf(topPct), rpe: (l.rpe_cible != null ? Number(l.rpe_cible) : null), tag: 'lourde' });
-    for (var k = 2; k <= n; k++) out.push({ serie: k, reps: (l.reps_max != null && l.reps_max !== '' ? String(l.reps_max) : repsTxt), pct: boPct, kg: kgOf(boPct), rpe: null, tag: 'back-off' });
+    out.push({ serie: 1, reps: (rMin != null && rMin !== '' ? String(rMin) : repsTxt), pct: topPct, kg: kgOf(topPct), rpe: (l.rpe_cible != null ? Number(l.rpe_cible) : null), tag: 'lourde' });
+    for (var k = 2; k <= n; k++) out.push({ serie: k, reps: (rMax != null && rMax !== '' ? String(rMax) : repsTxt), pct: boPct, kg: kgOf(boPct), rpe: null, tag: 'back-off' });
     return { series: out, note: 'Top-set + back-off : 1 série lourde, puis −' + bo + '% en volume.' };
   }
   // fixe / double : même cible pour toutes les séries
   var pctF = l.charge_pct_1rm != null ? Number(l.charge_pct_1rm) : null;
   for (var j = 1; j <= n; j++) out.push({ serie: j, reps: repsTxt, pct: pctF, kg: kgOf(pctF), rpe: (l.rpe_cible != null ? Number(l.rpe_cible) : null), tag: '' });
-  return { series: out, note: schema === 'double' ? 'Double progression : monte d\'abord les reps, puis la charge.' : '' };
+  var noteCat = fCat ? ('Fourchette de la catégorie ' + (_EXO_CAT_LBL[fCat] || fCat) + '.') : '';
+  return { series: out, note: [schema === 'double' ? 'Double progression : monte d\'abord les reps, puis la charge.' : '', noteCat].filter(Boolean).join(' ') };
 }
 // Libellé court d'une charge dérivée (kg si 1RM connu, sinon % 1RM).
 function _planLoadTxt(s) { return s.kg != null ? (s.kg + ' kg') : (s.pct != null ? (s.pct + ' %') : ''); }
@@ -11464,6 +11472,8 @@ async function _exoCatSet(nom, val) {
   if (!aid) return;
   var m = _exoCatMap(aid), k = String(nom || '').trim();
   if (val) m[k] = val; else delete m[k];
+  // Affichage à jour tout de suite (schéma de séries « 6–8 reps »…), sans attendre le serveur.
+  try { if (typeof renderProgrammeCoach === 'function') renderProgrammeCoach(); } catch (e) {}
   try {
     var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveExoCategories', athlete_id: aid, categories: m }) });
     var j = await r.json().catch(function () { return {}; });
