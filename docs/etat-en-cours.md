@@ -14,7 +14,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - **`index.ts` = déploiement MANUEL** (coller tout le fichier dans la fonction Supabase `smooth-service` → Deploy). Supabase `project_id = jhbrvgguybynzeceeceu`.
 
 ## ⚠️ ACTIONS UTILISATEUR EN ATTENTE (bloquent des features déjà codées)
-1. **REDÉPLOYER `index.ts`** sur Supabase. Sans ça : (a) le **poids à l'inscription** n'est pas enregistré (le front l'envoie, l'ancien backend l'ignore) ; (b) l'**analyse morpho v2** (questionnaire + segments + reco exos + export mail) ne tourne pas.
+1. ~~Redéployer `index.ts`~~ **FAIT** (vérifié 29/10 : version 197 en ligne = repo, 6 248 lignes, inclut lecture v2 / catégories / droits par ligne).
 2. **Clé `ANTHROPIC_API_KEY`** en variable d'env Supabase → sinon morpho IA + chat IA inactifs (le moteur déterministe, lui, marche sans clé). Cf. `docs/activer-ia.md`.
 
 ## Fait récemment
@@ -114,7 +114,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - ~~**Lecture Novalyz plus utile (demandé 29/10)**~~ FAIT (v2, voir « Fait récemment ») : écrans Aujourd'hui + Analyses — exploiter mieux les données d'entraînement (séries, charges, RPE, repos, programme vs réalisé, progression par exercice) pour une lecture plus cohérente entre les deux écrans, plus précise et plus aidante. D'abord état des lieux + maquette, puis code (moteur = source de vérité, règle 6bis).
 - **Plus tard — nom de domaine perso** à la place de `vincentnmz.github.io/Muscu_app/(dev/)` : fichier `CNAME` + enregistrements DNS chez le registrar + HTTPS GitHub Pages ; repasser les URLs en dur d'`index.ts` (`APP_BASE_URL` des liens « mot de passe oublié », `MAIL_LOGO_URL`, `ROUE_BASE`) — variables d'env Supabase → aucun code à redéployer si on les règle là ; vérifier SW/PWA (les comptes connectés devront se reconnecter : stockage lié à l'adresse).
 - **Plus tard (identité visuelle)** : logo animé aussi pendant envoi de séance, réponse IA, export PDF, génération de programme ; dégradé + hexagones dans l'espace coach.
-1. **(Utilisateur)** Redéployer `index.ts` + poser `ANTHROPIC_API_KEY` (voir section ⚠️).
+1. **(Utilisateur)** Poser `ANTHROPIC_API_KEY` si pas déjà fait (voir section ⚠️) ; `index.ts` déjà redéployé (29/10).
 2. **Programme sur-mesure depuis l'analyse morpho** (parqué — discuter d'abord avec l'utilisateur ce qu'il veut dire dessus).
 3. **N11 morpho IA** (`backlog-app.md`) : finaliser une fois la clé API posée + tester sur de vraies photos/segments.
 4. Backlog restant (`backlog-app.md`) : maquette d'abord pour tout gros feature.
