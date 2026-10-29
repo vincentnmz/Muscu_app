@@ -17989,11 +17989,14 @@ function _onbContent(step) {
       + '</div></div>' };
   }
   // profil
-  var card = function (c, emoji, t, s) { return '<button onclick="_onbChoix(\'' + c + '\')" style="text-align:left;display:flex;gap:12px;align-items:center;width:100%;padding:15px;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;margin-bottom:10px;cursor:pointer"><span style="font-size:24px;flex:none">' + emoji + '</span><div style="flex:1"><div style="font-weight:800;font-size:15px">' + t + '</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">' + s + '</div></div><span style="color:var(--accent);font-size:20px">›</span></button>'; };
+  var card = function (c, emoji, t, s) { return '<button onclick="_onbChoix(\'' + c + '\')" style="text-align:left;display:flex;gap:12px;align-items:center;width:100%;padding:15px;border:1.5px solid var(--border);background:var(--surface);border-radius:15px;margin-bottom:10px;cursor:pointer;font-family:inherit;color:var(--text)"><span style="font-size:24px;flex:none">' + emoji + '</span><div style="flex:1"><div style="font-weight:800;font-size:15px">' + t + '</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">' + s + '</div></div><span style="color:var(--accent);font-size:20px">›</span></button>'; };
   return { html: '<div style="margin:auto 0;width:100%"><h1 style="font-size:22px;margin:0 0 6px;text-align:center">Comment veux-tu être suivi ?</h1><div style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:16px">Tu pourras changer d\'avis plus tard.</div>'
     + card('novalyz', '', 'Novalyz me construit un programme', 'Réponds à 3 questions, Novalyz assemble un programme de départ adapté.')
     + card('mine', '', 'Je gère mon programme moi-même', 'Tu crées (ou importes) tes propres séances. Novalyz ne te proposera plus de plan.')
     + card('coach', '🤝', 'J\'ai un coach', 'C\'est ton coach qui te fait ton programme.')
+    // Annonce (non cliquable) : le programme selon la morphologie arrive après le test
+    // fermé (décision 29/10) → on le montre sans laisser croire qu'il existe déjà.
+    + '<div aria-disabled="true" style="text-align:left;display:flex;gap:12px;align-items:center;width:100%;padding:15px;border:1.5px dashed var(--border);background:var(--surface2);border-radius:15px;margin-bottom:10px;opacity:.75;cursor:default"><span style="font-size:24px;flex:none"></span><div style="flex:1"><div style="font-weight:800;font-size:15px">Programme selon ta morphologie</div><div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">Analyse morpho par photos + programme personnalisé.</div></div><span style="flex:none;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-a12,rgba(26,95,255,.12));border-radius:999px;padding:4px 9px">Bientôt</span></div>'
     + '</div>' };
 }
 function _onbRender() {
@@ -22885,10 +22888,15 @@ function _hcRenderList(ws, steps) {
   var html = '';
 
   // Carte connexion.
-  var brand = (ws && ws.length) ? _hcCleanSrc(ws[0]) : '';
+  // Health Connect n'indique PAS quelle montre est appairée : chaque séance porte
+  // l'appareil qui l'a enregistrée. Avant, on affichait celui de la dernière séance
+  // comme « la » montre connectée → ancien modèle affiché si la dernière séance
+  // datait d'avant le changement de montre. On l'écrit donc comme ce qu'il est.
+  var w0 = (ws && ws.length) ? ws[0] : null, src0 = w0 ? _hcCleanSrc(w0) : '';
+  var lastTxt = w0 ? 'Dernière séance lue : ' + new Date(w0.startDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + (src0 ? ' · ' + src0 : '') : '';
   html += '<div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.04));border:1px solid rgba(16,185,129,.28);border-radius:16px;padding:13px 14px;margin-bottom:4px;">'
     + '<div style="width:38px;height:38px;border-radius:50%;background:rgba(16,185,129,.16);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;">✓</div>'
-    + '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;">Connecté</div><div style="font-size:11.5px;color:var(--text-muted);">' + (brand ? escapeHtml(brand) + ' · via Health Connect' : 'Health Connect') + '</div></div>'
+    + '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;">Connecté · via Health Connect</div>' + (lastTxt ? '<div style="font-size:11.5px;color:var(--text-muted);">' + escapeHtml(lastTxt) + '</div>' : '') + '</div>'
     + '</div>';
 
   // À importer.
@@ -23376,6 +23384,8 @@ async function _syncSanteMontre(H) {
     // même fenêtre pour tout : ainsi saveSante (supprime-puis-réinsère par date)
     // ne touche QUE les 45 derniers jours et n'efface aucun pas plus ancien déjà
     // historisé.
+    // Dates des nuits / FC repos en date LOCALE (_ymdLocal), comme les pas : en UTC,
+    // une mesure prise entre minuit et 1-2 h (heure de Paris) tombait sur la veille.
     // IMPORTANT : bornes alignées sur MINUIT LOCAL (comme le graphe _actRange).
     // Avant : now - 45 j à l'heure courante → Health Connect créait des tranches
     // « jour » décalées (ex. 8h→8h) qui mélangeaient deux jours → total faux (mardi
@@ -23385,8 +23395,8 @@ async function _syncSanteMontre(H) {
     var byDate = {};
     var ensure = function (d) { return byDate[d] || (byDate[d] = { date: d }); };
     try { var a = await H.queryAggregated({ startDate: start.toISOString(), endDate: end.toISOString(), dataType: 'steps', bucket: 'day' }); ((a && a.aggregatedData) || []).forEach(function (x) { var v = Math.round(x.value || 0); if (v > 0) ensure(_ymdLocal(new Date(x.startDate))).pas = v; }); } catch (e) {}
-    try { var s = await H.querySleep({ startDate: start.toISOString(), endDate: end.toISOString() }); ((s && s.sessions) || []).forEach(function (w) { var d = new Date(w.endDate).toISOString().slice(0, 10); var m = Math.round(w.durationMin || 0); var c = ensure(d); if (m > 0 && !(c.sommeil_min >= m)) c.sommeil_min = m; }); } catch (e) {}
-    try { var r = await H.queryRestingHeartRate({ startDate: start.toISOString(), endDate: end.toISOString() }); ((r && r.records) || []).forEach(function (x) { ensure(new Date(x.timestamp).toISOString().slice(0, 10)).fc_repos = Math.round(x.bpm || 0); }); } catch (e) {}
+    try { var s = await H.querySleep({ startDate: start.toISOString(), endDate: end.toISOString() }); ((s && s.sessions) || []).forEach(function (w) { var d = _ymdLocal(new Date(w.endDate)); var m = Math.round(w.durationMin || 0); var c = ensure(d); if (m > 0 && !(c.sommeil_min >= m)) c.sommeil_min = m; }); } catch (e) {}
+    try { var r = await H.queryRestingHeartRate({ startDate: start.toISOString(), endDate: end.toISOString() }); ((r && r.records) || []).forEach(function (x) { ensure(_ymdLocal(new Date(x.timestamp))).fc_repos = Math.round(x.bpm || 0); }); } catch (e) {}
     var entries = Object.keys(byDate).map(function (d) { return byDate[d]; }).filter(function (e) { return e.sommeil_min != null || e.fc_repos != null || e.pas != null; });
     if (entries.length) {
       await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSante', athlete_id: athlete.athlete_id, entries: entries }) });
@@ -23678,7 +23688,7 @@ async function _nutFromHC() {
 // silence, 1×/jour. NE PAS écraser une saisie manuelle du jour : si une entrée
 // existe sans avoir été écrite par l'auto-import, on s'abstient. Idempotent :
 // ne re-poste pas si les valeurs n'ont pas changé.
-var _nutAutoImportRan = false;   // anti-boucle : au plus UNE tentative d'auto-import par exécution de l'app
+var _nutAutoImportRan = 0;   // anti-boucle : horodatage de la dernière tentative (≥ 30 min entre deux)
 async function _nutAutoImportHC() {
   try {
     // ANTI-BOUCLE (natif) : requestHealthPermissions peut ouvrir l'écran Health Connect →
@@ -23686,7 +23696,11 @@ async function _nutAutoImportHC() {
     // _appliquerAppData → _nutAutoImportHC. Sans ce verrou, on redemandait la permission à
     // l'infini (symptôme : « serveur en démarrage » qui ne se stabilise jamais, côté athlète).
     // On ne tente donc l'auto-import qu'UNE FOIS par exécution, et au plus une fois par jour.
-    if (_nutAutoImportRan) return;
+    // Relance possible à chaque ouverture (≥ 30 min d'écart) : avant, UNE seule lecture
+    // par jour → ouvrir l'app le matin (repas pas encore saisis dans MyFitnessPal)
+    // bloquait l'import de toute la journée. La DEMANDE DE PERMISSION, elle, reste
+    // limitée à 1×/jour (c'est elle qui provoquait la boucle 'resume').
+    if (_nutAutoImportRan && Date.now() - _nutAutoImportRan < 30 * 60 * 1000) return;
     if (typeof athlete === 'undefined' || !athlete) return;
     var H = (typeof _hcPlugin === 'function') ? _hcPlugin() : null;
     if (!H) return;                                   // web/PWA : pas de Health Connect
@@ -23699,10 +23713,11 @@ async function _nutAutoImportHC() {
     if (existing && autoDate !== today) return;
     // Throttle quotidien : une seule demande de permission + requête par jour et par appareil.
     var hcTry = null; try { hcTry = localStorage.getItem('nvz_nut_hc_try_' + aid); } catch (e) {}
-    if (hcTry === today) return;
-    _nutAutoImportRan = true;                         // marquer AVANT la demande → coupe la boucle 'resume'
-    try { localStorage.setItem('nvz_nut_hc_try_' + aid, today); } catch (e) {}
-    try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
+    _nutAutoImportRan = Date.now();                   // marquer AVANT la demande → coupe la boucle 'resume'
+    if (hcTry !== today) {
+      try { localStorage.setItem('nvz_nut_hc_try_' + aid, today); } catch (e) {}
+      try { await H.requestHealthPermissions({ permissions: _HC_PERMS }); } catch (e) {}
+    }
     // Fenêtre large (hier → demain) puis filtrage sur la date LOCALE = aujourd'hui,
     // pour éviter qu'un décalage de fuseau fasse entrer des repas d'un autre jour.
     var d0 = new Date(); d0.setHours(0, 0, 0, 0);

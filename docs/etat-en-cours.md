@@ -18,6 +18,8 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 2. **Clé `ANTHROPIC_API_KEY`** en variable d'env Supabase → sinon morpho IA + chat IA inactifs (le moteur déterministe, lui, marche sans clé). Cf. `docs/activer-ia.md`.
 
 ## Fait récemment
+- **Montre / nutrition (29/10)** : (1) sommeil + FC repos historisés en date LOCALE (avant : date UTC → une mesure entre minuit et 1-2 h tombait sur la veille) ; (2) écran import : « Connecté · via Health Connect » + « Dernière séance lue : date · appareil » (avant : l'appareil de la dernière séance présenté comme LA montre → ancien modèle affiché ; Health Connect ne donne pas la montre appairée) ; (3) import nutrition auto : relu à chaque ouverture (≥ 30 min) au lieu d'1×/jour, permission toujours 1×/jour. Trous du 24 et 26/10 en base = nuits sans montre (confirmé par Vincent). À vérifier sur téléphone : nutrition MyFitnessPal → Health Connect (aucune ligne 'health_connect' en base à ce jour).
+- **Avant-onboarding (29/10)** : 4ᵉ carte « Programme selon ta morphologie — Bientôt » (non cliquable) ; cartes en police de l'app.
 - **Identité visuelle (28/10, maquette `mockups/novalyz-login-degrade.html` validée)** : login refait (dégradé blanc → bleu, grands hexagones blancs trait 5 px / opacité 36 % sans chevauchement, logo animé ; ordi/tablette ≥ 900 px = panneau marque à gauche + formulaire à droite) ; même dégradé + hexagones dans la colonne de gauche (≥ 992 px) et en fond d'écran mobile (`#nv-bg`) ; écran de démarrage `#nv-splash` (logo animé A2/B2 au hasard, 1,4 s min, retiré au 1er affichage des données, 12 s max) ; petit logo animé devant chaque « Chargement… » (`_nvlLoaders`, MutationObserver). Boutons de rôle sans icône ; logo à côté du nom d'écran sur mobile. CSS : fin de `css/layout.css`. Espace coach : pas encore de dégradé (non demandé).
 
 - **28 oct. (3)** — ⚠️ `index.ts` à redéployer.
@@ -98,6 +100,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 ## À faire (priorité)
 - **Audits à faire (demandés 28/10)** — même méthode que l'audit Cardio/Croisé (`docs/audit-cardio-croise-forme-2026-10-28.md`) : vrai `index.ts` rejoué sur une copie des données réelles + vrai front rendu, chaque phrase confrontée au code et aux données.
   - **Écran Forme complet** : l'écran principal a été vu le 28/10 (anneau, fraîcheur, bien-être, douleur, poids) mais PAS les sous-pages : nutrition, objectifs, blessures, montre / pas, et les historiques.
+  - **Montre / écran import** (demandé 29/10) : 1ʳᵉ passe faite (3 correctifs ci-dessus) ; reste à vérifier sur téléphone (import séances, doublons, nutrition MFP).
   - **Hyrox** : jamais audité — saisie, calculs, analyses et affichages, recherche de bugs.
   - Reste aussi non couvert : graphiques Cardio ▸ Tendances, Croisé en Mois/Année.
   - **Cardio : fonctionnement par sport** (demandé 29/10) — chaque sport (course, vélo, marche, natation, rameur…) : champs saisis, calculs (allure, vitesse, charge), analyses et affichages.
