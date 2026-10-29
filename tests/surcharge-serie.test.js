@@ -16,8 +16,8 @@ function extractFn(name) {
 }
 const sandbox = { exercicesData: [{ exercice: 'Leg curl', increment_kg: '2.5 / 5 kg' }, { exercice: 'Curl haltère', increment_kg: '2 kg' }, { exercice: 'Pompe', increment_kg: null }] };
 vm.createContext(sandbox);
-const FN = ['_refSerie', '_r025', '_progDecision', '_estPoly', '_reposBornes', '_reposRef', '_petitPas'];
-vm.runInContext("var _POLY_KW = ['squat', 'pendulum', 'presse', 'soulev', 'rdl', 'hip thrust', 'fente', 'developpe', 'dips', 'traction', 'rowing', 't-bar', 'tirage']; var _POLY_EXCL = ['mollet', ' uni', 'trapeze'];\n"
+const FN = ['_refSerie', '_r025', '_progDecision', '_estPoly', '_reposBornes', '_reposRef', '_petitPas', '_exoCat', '_exoFourchette'];
+vm.runInContext((SRC.match(/var _EXO_CAT_R = \{[^}]*\};/) || [''])[0] + "\nvar _POLY_KW = ['squat', 'pendulum', 'presse', 'soulev', 'rdl', 'hip thrust', 'fente', 'developpe', 'dips', 'traction', 'rowing', 't-bar', 'tirage']; var _POLY_EXCL = ['mollet', ' uni', 'trapeze'];\n"
   + FN.map(extractFn).join('\n') + '\n' + FN.map(f => 'this.' + f + '=' + f + ';').join(''), sandbox);
 const S = sandbox;
 // garde-fou : les listes du test = celles du code
@@ -72,6 +72,24 @@ check('poids du corps : jamais de charge → +1 rep', d.mode === 'reps' && d.cib
 d = D({ niveau: 'debutant', last: ser([[20, 10]], 8, 90), rmin: null, rmax: null, nPrevues: 0 });
 check('hors programme (pas de fourchette) → +1 rep', d.mode === 'reps' && d.cible(1).reps === 11);
 check('jamais fait → premier essai', D({ niveau: 'debutant', last: [] }).mode === 'premier');
+
+// --- Sous la fourchette (décision 29/10) : majorité des séries < rmin à RPE ≥ 9 → −1 petit pas, indicatif ---
+d = D({ niveau: 'avance', last: ser([[80, 2], [80, 2], [80, 1]], 10, 120), prev: ser([[80, 3], [80, 3], [80, 2]], 10), rmin: 6, rmax: 8 });
+check('sous la fourchette à RPE 10 → −1 petit pas, retour au bas de fourchette', d.mode === 'sous' && d.cible(1).charge === 77.5 && d.cible(1).reps === 6);
+d = D({ niveau: 'avance', last: ser([[80, 8], [80, 7], [80, 5]], 9, 120), rmin: 6, rmax: 8 });
+check('1 série sur 3 sous le min → pas « sous » (consolide)', d.mode === 'consolide');
+d = D({ niveau: 'avance', last: ser([[80, 4], [80, 4], [80, 4]], 8, 120), rmin: 6, rmax: 8 });
+check('sous le min mais RPE 8 → pas de baisse (+1 rep)', d.mode === 'reps');
+d = D({ niveau: 'avance', last: ser([[0, 4], [0, 4], [0, 4]], 10, 120), rmin: 6, rmax: 8, pas: 0 });
+check('poids du corps sous le min → jamais de baisse de charge', d.mode === 'consolide');
+d = D({ niveau: 'avance', last: [{ serie: 1, charge: 80, reps: 2, rpe: 10 }, { serie: 2, charge: 70, reps: 5, rpe: 10 }, { serie: 3, charge: 60, reps: 8, rpe: 9 }], rmin: 8, rmax: 12 });
+check('dégressif réel (80×2, 70×5, 60×8) : S1/S2 −1 pas, S3 dans la fourchette inchangée', d.mode === 'sous' && d.cible(1).charge === 77.5 && d.cible(2).charge === 67.5 && d.cible(3).charge === 60 && d.cible(3).reps === 8);
+// --- Catégories d'exercice → fourchette ---
+const CM = { 'Développé incliné à la Smith': 'gros', 'Curl': 'petit' };
+check('catégorie gros + programme par défaut 8-12 → 6-8', JSON.stringify([S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmin, S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmax]) === '[6,8]');
+check('catégorie petit → 12-15', S._exoFourchette('Curl', 8, 12, CM).rmin === 12 && S._exoFourchette('Curl', 8, 12, CM).rmax === 15);
+check('programme ≠ 8-12 → le programme prime', S._exoFourchette('Développé incliné à la Smith', 5, 5, CM).rmin === 5 && S._exoFourchette('Développé incliné à la Smith', 5, 5, CM).src === 'prog');
+check('non classé → programme', S._exoFourchette('Leg curl', 8, 12, CM).rmin === 8 && S._exoFourchette('Leg curl', 8, 12, CM).cat === '');
 
 // --- Utilitaires ---
 check('petit pas : « 2.5 / 5 kg » → 2,5', S._petitPas('Leg curl') === 2.5);

@@ -983,3 +983,5 @@ body.onb-open #btn-top, body.xp-open #btn-top, body.jg-open #btn-top, body.gen-o
 .nv-role .tx { align-items:center; }
 /* Bandeau mobile : logo Novalyz à la place de l'haltère, à côté du nom de l'écran */
 #app-header .hdr-logo { width:22px; height:24px; vertical-align:-5px; margin-right:9px; color:var(--text); }
+/* Éditeur de programme : choix de la catégorie d'exercice (gros / moyen / petit) */
+.pb-fld.pb-cat select{ min-width:148px; text-align:left; }

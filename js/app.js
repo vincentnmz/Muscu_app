@@ -5443,6 +5443,62 @@ function _cdAvgRpe(series) {
   var xs = series.map(function (s) { return Number(s && s.rpe); }).filter(function (x) { return !isNaN(x) && x > 0; });
   return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null;
 }
+// ═══ CLASSEMENT PARTAGÉ DES EXERCICES (décision 29/10) ═══
+// UNE seule lecture des exercices pour l'athlète (Aujourd'hui, Analyses) et le coach,
+// calculée sur les CHARGES · REPS · RPE réels de progression_par_exo (plus de 1RM
+// estimé). Catégories exclusives, par priorité :
+//  sous      : dernière séance (≤ 21 j) avec la majorité des séries sous le minimum de
+//              la fourchette (catégorie / programme) à RPE ≥ 9 → proposition indicative.
+//  records   : charge (ou reps à charge égale) battue lors d'une séance ≤ 10 j.
+//  progresse : ≤ 14 j, charge en hausse, ou reps en hausse à charge égale, vs la séance
+//              précédente (perdre des reps en montant la charge reste un progrès).
+//  recule    : charge ET reps en baisse vs la précédente (et pas déjà reparti).
+//  bloque    : 3 séances à la même charge, reps qui ne montent plus.
+// Exos non touchés depuis 21 j : ignorés. Rien n'est inventé : chaque entrée porte
+// les chiffres réels qui la justifient.
+function _lectureExos(data, nowT) {
+  var hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {};
+  var lignes = (data && Array.isArray(data.programme)) ? data.programme : [];
+  var cats = (data && data.exo_categories) || {};
+  nowT = nowT || Date.now();
+  var pd = function (x) { try { return parseChatDate(x); } catch (_) { return 0; } };
+  var num = function (x) { var n = Number(x); return isNaN(n) ? 0 : n; };
+  var days = function (t) { return (nowT - t) / 864e5; };
+  var R = { records: [], progresse: [], recule: [], bloque: [], sous: [] };
+  Object.keys(prog).forEach(function (exo) {
+    var pts = prog[exo] || []; if (!pts.length) return;
+    var dt0 = pd(pts[0].date); if (!dt0) return;
+    var c0 = num(pts[0].charge), r0 = num(pts[0].reps), dj = days(dt0);
+    if (dj > 21) return;
+    var pl = null; for (var i = 0; i < lignes.length; i++) { if (lignes[i] && String(lignes[i].exercice || '').trim() === String(exo).trim() && lignes[i].type !== 'cardio') { pl = lignes[i]; break; } }
+    var f = _exoFourchette(exo, pl && pl.reps_mini != null && pl.reps_mini !== '' ? Number(pl.reps_mini) : null, pl && pl.reps_max != null && pl.reps_max !== '' ? Number(pl.reps_max) : null, cats);
+    var ser = Array.isArray(pts[0].series) ? pts[0].series.filter(function (x) { return num(x.reps) > 0; }) : [];
+    var rpes = ser.map(function (x) { return num(x.rpe); }).filter(function (x) { return x > 0; });
+    var rpeMax = rpes.length ? Math.max.apply(null, rpes) : null;
+    if (f.rmin && ser.length && rpeMax != null && rpeMax >= 9 && c0 > 0) {
+      var nSous = ser.filter(function (x) { return num(x.reps) < f.rmin; }).length;
+      if (nSous * 2 > ser.length) { R.sous.push({ exo: exo, c: c0, r: r0, rpe: rpeMax, rmin: f.rmin, rmax: f.rmax, pas: _petitPas(exo), hist: pts.slice(0, 4).reverse().map(function (p) { return { c: num(p.charge), r: num(p.reps) }; }) }); return; }
+    }
+    if (dj <= 10 && pts.length >= 2) {
+      var bestC = 0, repsAtBest = 0;
+      for (var k = 1; k < pts.length; k++) { var cc = num(pts[k].charge), rr = num(pts[k].reps); if (cc > bestC) { bestC = cc; repsAtBest = rr; } else if (cc === bestC && rr > repsAtBest) repsAtBest = rr; }
+      if (c0 > 0 && (c0 > bestC || (c0 === bestC && r0 > repsAtBest))) { R.records.push({ exo: exo, c: c0, r: r0, date: pts[0].date }); return; }
+    }
+    if (pts.length < 2) return;
+    var c1 = num(pts[1].charge), r1 = num(pts[1].reps);
+    if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { R.progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
+    if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { R.recule.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
+    if (pts.length >= 3) {
+      var c2 = num(pts[2].charge), r2 = num(pts[2].reps);
+      if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
+        var n = 3; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps)) n++;
+        var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
+        R.bloque.push({ exo: exo, c: c0, r: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
+      }
+    }
+  });
+  return R;
+}
 function renderCoachCoupDoeil(data) {
   var el = document.getElementById('cd-coupdoeil'); if (!el) return;
   try {
@@ -5455,36 +5511,10 @@ function renderCoachCoupDoeil(data) {
     // ═══ ENTRAÎNEMENT — basé sur CHARGE · REPS · RPE réels (plus de 1RM Epley hasardeux) ═══
     // Chaque exo est classé en Records / Progresse / Recule / Stagne à partir des points
     // de progression_par_exo (charge = top set du jour, reps à cette charge, series[].rpe).
-    var records = [], progresse = [], recule = [], stagne = [];
-    Object.keys(prog).forEach(function (exo) {
-      var pts = prog[exo] || []; if (!pts.length) return;
-      var dt0 = pd(pts[0].date); if (!dt0) return;
-      var c0 = num(pts[0].charge), r0 = num(pts[0].reps);
-      // RECORD : charge (ou reps à charge égale) battu lors d'une séance récente (≤10 j).
-      // Il faut une base de comparaison (≥2 points) ; un record exclut tout autre verdict.
-      if (days(dt0) <= 10 && pts.length >= 2) {
-        var bestC = 0, repsAtBest = 0;
-        for (var i = 1; i < pts.length; i++) { var cc = num(pts[i].charge), rr = num(pts[i].reps); if (cc > bestC) { bestC = cc; repsAtBest = rr; } else if (cc === bestC && rr > repsAtBest) { repsAtBest = rr; } }
-        if (c0 > 0 && (c0 > bestC || (c0 === bestC && r0 > repsAtBest))) { records.push({ exo: exo, c: c0, r: r0 }); return; }
-      }
-      if (pts.length < 2 || days(dt0) > 21) return;   // exo pas touché récemment → on n'en parle pas
-      var c1 = num(pts[1].charge), r1 = num(pts[1].reps);
-      // PROGRESSE (≤14 j) : charge en hausse, ou reps en hausse à charge égale.
-      if (days(dt0) <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
-      // RECULE : charge ET reps en baisse vs la séance précédente (et pas déjà reparti à la hausse).
-      if (c0 < c1 && r0 < r1) {
-        var reparti = false; if (pts.length >= 3 && c0 > num(pts[2].charge)) reparti = true;
-        if (!reparti) { recule.push(exo); return; }
-      }
-      // STAGNE : ≥3 séances même charge, reps non croissantes, et RPE qui monte (= plus dur).
-      if (pts.length >= 3) {
-        var c2 = num(pts[2].charge), r2 = num(pts[2].reps);
-        if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
-          var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
-          stagne.push({ exo: exo, c: c0, r: r0, n: pts.length, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
-        }
-      }
-    });
+    // Classement partagé avec l'athlète (_lectureExos) : même lecture des deux côtés.
+    var LX = _lectureExos(data, nowT);
+    var records = LX.records, progresse = LX.progresse, stagne = LX.bloque, sousF = LX.sous;
+    var recule = LX.recule.map(function (x) { return x.exo; });
     // EFFORT : RPE moyen sur 7 j (toutes séries) + tendance vs les 7 j précédents.
     var rpeNow = [], rpePrev = [];
     Object.keys(prog).forEach(function (exo) {
@@ -5519,6 +5549,7 @@ function renderCoachCoupDoeil(data) {
       var st = stagne[0];
       entr += _cdCoupRow('var(--warn)', '⏸', '<b>Stagne</b> — ' + esc(st.exo) + ' : ' + _cdFmtKg(st.c) + ' kg × ' + st.r + ' depuis ' + st.n + ' séances' + (st.rpeUp ? ', <b>RPE en hausse</b>' : '') + sub(st.rpeUp ? 'pareil mais plus dur → à débloquer' : 'plateau à débloquer'));
     }
+    if (sousF.length) { var sf = sousF[0]; entr += _cdCoupRow('var(--bad)', '!', '<b>Sous la fourchette</b> — ' + esc(sf.exo) + ' : ' + _cdFmtKg(sf.c) + ' kg × ' + sf.r + ' à RPE ' + sf.rpe + sub('vise ' + sf.rmin + '-' + sf.rmax + ' reps') + (sousF.length > 1 ? ' <span class="cdcp-sub">+' + (sousF.length - 1) + '</span>' : '')); }
     if (recule.length) entr += _cdCoupRow('var(--bad)', '▼', '<b>Recule</b> — ' + esc(recule.slice(0, 3).join(', ')) + ' : charge <i>et</i> reps en baisse' + sub('perf réelle en baisse'));
     if (rpeMoy != null) {
       var rpeTxt = (Math.round(rpeMoy * 10) / 10).toString().replace('.', ',');
@@ -7949,6 +7980,10 @@ function renderProgrammeCoach() {
       ${champNum(l.reps_max, '12', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,this.value,null,null)`, 'Reps max')}
       ${champNum(l.repos_sec || '', '90', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,this.value,null)`, 'Repos (s)')}
     </div>
+    <div style="margin-top:8px">
+      <label style="font-size:9px;color:var(--text-muted);margin-bottom:3px;display:block;text-transform:none;letter-spacing:0">Catégorie (fixe la fourchette de reps)</label>
+      ${_exoCatSelectHtml(l.exercice).replace('<select class=""', '<select style="font-size:13px;padding:9px 8px;width:100%;margin-bottom:0"')}
+    </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       ${champNum(l.charge_pct_1rm != null ? l.charge_pct_1rm : '', '75', `cdSauverLigne(${l.row_index},'${seanceId}',null,null,null,null,null,null,this.value,null)`, '% du 1RM')}
       <div style="flex:1;min-width:64px">
@@ -8123,6 +8158,7 @@ function renderProgrammeCoach() {
         +   '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
         +   '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
         +   '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
+        +   '<div class="pb-fld pb-cat"><span class="pb-l">Catégorie</span>' + _exoCatSelectHtml(l.exercice, 'pb-in') + '</div>'
         + '</div>'
         + _schemaControlsHtml(l, sid)
         + '</div>';
@@ -8789,7 +8825,8 @@ function _jgPanelRender() {
         : '<div class="jg-hint">Ajoute un autre exercice à cette séance pour créer un superset.</div>');
     body = (mus ? '<div class="jg-mus">' + esc(mus) + ' · ' + esc(sid) + '</div>' : '')
       + '<div class="jg-fgrid">' + num('Séries', 'series_prevues', l.series_prevues, '3') + num('Reps mini', 'reps_mini', l.reps_mini, '8') + num('Reps maxi', 'reps_max', l.reps_max, '12')
-      + num('Repos (s)', 'repos_sec', l.repos_sec, '90') + num('% du 1RM', 'charge_pct_1rm', l.charge_pct_1rm, '75') + rpeSel + '</div>'
+      + num('Repos (s)', 'repos_sec', l.repos_sec, '90') + num('% du 1RM', 'charge_pct_1rm', l.charge_pct_1rm, '75') + rpeSel
+      + '<label class="jg-f jg-f-wide"><span>Catégorie (fixe la fourchette de reps)</span>' + _exoCatSelectHtml(l.exercice) + '</label></div>'
       + _schemaControlsHtml(l, sid) + ss;
   }
   p.innerHTML = '<div class="jg-panel">'
@@ -11396,6 +11433,45 @@ function _reposRef(series, reposProg) {
 function _r025(x) { return Math.round(x * 4) / 4; }
 // ctx : { niveau, last:[séries], prev:[séries]|null, rmin, rmax, nPrevues, pas, reposRef, bornes }
 // → { mode: 'premier'|'reps'|'charge'|'choix'|'consolide', rpe, options?, cible(k, choix) }
+// ── Catégorie d'exercice (choisie par l'athlète ou son coach dans le programme) ──
+// gros = 6-8 reps · moyen = 8-12 · petit = 12-15 (borne haute 15 = valeur par défaut
+// à valider). La catégorie fixe la fourchette SAUF si le programme en a une autre que
+// le 8-12 par défaut (choix explicite) ; exercice non classé → fourchette du programme.
+var _EXO_CAT_R = { gros: [6, 8], moyen: [8, 12], petit: [12, 15] };
+var _EXO_CAT_LBL = { gros: 'Gros (6-8)', moyen: 'Moyen (8-12)', petit: 'Petit (12-15)' };
+function _exoCatMap(aid) {
+  try {
+    if (typeof coachAthleteData !== 'undefined' && coachAthleteData && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && aid != null && String(aid) === String(coachAthleteCourant.athlete_id)) return coachAthleteData.exo_categories || (coachAthleteData.exo_categories = {});
+    if (typeof dernierAppData !== 'undefined' && dernierAppData) return dernierAppData.exo_categories || (dernierAppData.exo_categories = {});
+  } catch (e) {}
+  return {};
+}
+function _exoCat(nom, map) { var m = map || _exoCatMap(); var k = String(nom || '').trim(); return m[k] || m[nom] || ''; }
+function _exoFourchette(nom, rmin, rmax, map) {
+  var c = _exoCat(nom, map), r = _EXO_CAT_R[c];
+  var progDefaut = (rmin == null && rmax == null) || (Number(rmin) === 8 && Number(rmax) === 12);
+  if (r && progDefaut) return { rmin: r[0], rmax: r[1], src: 'cat', cat: c };
+  return { rmin: rmin, rmax: rmax, src: 'prog', cat: c };
+}
+function _exoCatSelectHtml(nom, cls) {
+  var c = _exoCat(nom, _exoCatMap(typeof _progAthleteId === 'function' ? _progAthleteId() : null));
+  var n = String(nom || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return '<select class="' + (cls || '') + '" onchange="_exoCatSet(\'' + n + '\',this.value)"><option value=""' + (c ? '' : ' selected') + '>— Non classé</option>'
+    + ['gros', 'moyen', 'petit'].map(function (k) { return '<option value="' + k + '"' + (c === k ? ' selected' : '') + '>' + _EXO_CAT_LBL[k] + '</option>'; }).join('') + '</select>';
+}
+async function _exoCatSet(nom, val) {
+  var aid = (typeof _progAthleteId === 'function') ? _progAthleteId() : (athlete && athlete.athlete_id);
+  if (!aid) return;
+  var m = _exoCatMap(aid), k = String(nom || '').trim();
+  if (val) m[k] = val; else delete m[k];
+  try {
+    var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveExoCategories', athlete_id: aid, categories: m }) });
+    var j = await r.json().catch(function () { return {}; });
+    if (j && j.success) showToast(val ? (k + ' : ' + _EXO_CAT_LBL[val]) : (k + ' : non classé'), 'var(--good)');
+    else showToast('Catégorie non enregistrée — réessaie', 'var(--warn)');
+  } catch (e) { showToast('Catégorie non enregistrée — réessaie', 'var(--warn)'); }
+}
+
 function _progDecision(ctx) {
   var last = (ctx.last || []).filter(function (x) { return Number(x.charge) > 0 || Number(x.reps) > 0; });
   if (!last.length) return { mode: 'premier', cible: function () { return null; } };
@@ -11411,7 +11487,12 @@ function _progDecision(ctx) {
   var ref = function (k) { return _refSerie(last, k) || last[last.length - 1]; };
   var chargeable = ctx.pas > 0 && last.some(function (x) { return Number(x.charge) > 0; });
   var mode;
-  if (rpe != null && rpe >= 9) mode = 'consolide';
+  // SOUS LA FOURCHETTE : la majorité des séries sous le minimum de reps à RPE ≥ 9 →
+  // proposition INDICATIVE d'un petit pas en dessous (décision 29/10). Sinon (RPE ≥ 9
+  // dans la fourchette) on consolide comme avant.
+  var sousN = rmin ? last.filter(function (x) { return (Number(x.reps) || 0) > 0 && Number(x.reps) < rmin; }).length : 0;
+  if (rpe != null && rpe >= 9 && chargeable && sousN * 2 > last.length) mode = 'sous';
+  else if (rpe != null && rpe >= 9) mode = 'consolide';
   else if (!chargeable || !auHaut(last)) mode = 'reps';
   else if (ctx.niveau === 'debutant') mode = (rpe == null || rpe <= 8) ? 'charge' : 'reps';
   else mode = (auHaut(ctx.prev) || (rpe != null && rpe <= 7)) ? 'charge' : 'reps';
@@ -11432,6 +11513,9 @@ function _progDecision(ctx) {
     var r = ref(k), ch = Number(r.charge) || 0, rp = Number(r.reps) || 0;
     var c = choix || 'charge';
     if (mode === 'consolide') return { charge: ch, reps: rp, repos: R };
+    // Seules les séries SOUS le minimum descendent d'un petit pas (dégressif : la
+    // série déjà dans la fourchette reste telle quelle).
+    if (mode === 'sous') return (rp > 0 && rp < rmin) ? { charge: Math.max(0, _r025(ch - ctx.pas)), reps: rmin, repos: R, up: 'baisse' } : { charge: ch, reps: rp, repos: R };
     if (mode === 'charge' || (mode === 'choix' && (c === 'charge' || c === 'charge30')))
       return { charge: _r025(ch + ctx.pas), reps: rmin || rp, repos: (mode === 'choix' && c === 'charge30') ? options[1].repos : R, up: 'charge' };
     if (mode === 'choix' && c === 'rep30') return { charge: ch, reps: rp + 1, repos: options[2].repos, up: 'reps' };
@@ -11476,6 +11560,7 @@ function majPlanSeries() {
   if (!n || (!pProg && !lastSeries && !done)) { el.innerHTML = ''; _majPerfLignes(false); return; }
   var rmaxP = pProg && _numOk(pProg.reps_max) ? Number(pProg.reps_max) : null;
   var rminP = pProg && _numOk(pProg.reps_mini) ? Number(pProg.reps_mini) : null;
+  var _fch = _exoFourchette(exoEnCours.exerciceNom, rminP, rmaxP); rminP = _fch.rmin; rmaxP = _fch.rmax;
   var _niv = 'debutant'; try { _niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
   var prevSeries = (perfHist && Array.isArray(perfHist.prev_series)) ? perfHist.prev_series : null;
   var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP,
@@ -11526,6 +11611,7 @@ function majPlanSeries() {
   // Message de la règle (factuel, tracé sur les données) + choix du jour (avancé / expert).
   var pas = _petitPas(exoEnCours.exerciceNom), msg = '', choixHtml = '';
   if (dec.mode === 'consolide') msg = 'RPE ' + dec.rpe + ' la dernière fois : consolide cette charge (mêmes charge et reps).';
+  else if (dec.mode === 'sous') msg = 'Indicatif : la dernière fois tu étais sous ta fourchette (' + rminP + '-' + rmaxP + ' reps) à RPE ' + dec.rpe + ' — un petit pas en dessous (−' + String(pas).replace('.', ',') + ' kg) pour revenir à ' + rminP + ' reps. À toi de choisir.';
   else if (dec.mode === 'charge') msg = 'Haut de la fourchette atteint sur toutes tes séries : +' + String(pas).replace('.', ',') + ' kg, repars à ' + rminP + ' reps.';
   else if (dec.mode === 'choix') {
     var R0 = dec.reposRef;
@@ -13498,11 +13584,55 @@ function _maForceChart(data) {
 function ouvrirInfoLectureAnalyses() {
   var txt = 'Cette lecture porte sur ton ENTRAÎNEMENT (volume, force, régularité) sur tes 4 dernières semaines, '
     + 'indépendamment du filtre de période en dessous. « Ce que Novalyz lit » = les constats déterministes tirés de tes séances '
-    + '(volume par muscle vs cible, force estimée 1RM, exécution). La « fiabilité » dit à quel point ces constats reposent sur assez de données '
-    + '(plus tu renseignes RPE, bien-être et cibles, plus elle monte). La « progression » compare ta force estimée (1RM Epley) à la période précédente. '
+    + '(volume, régularité) et le classement de tes exercices sur tes charges, reps et RPE réels : records, progrès, exercices bloqués, séries sous ta fourchette de reps. '
+    + 'Les propositions de charge sont indicatives : c\'est toi qui décides. La « fiabilité » dit à quel point ces constats reposent sur assez de données '
+    + '(plus tu renseignes RPE, bien-être et cibles, plus elle monte). '
     + 'Pour ton état du jour (récup, charge, fatigue), vois le bloc « Lecture Novalyz » de l\'écran Aujourd\'hui.';
   try { if (typeof ouvrirInfoGenerique === 'function') return ouvrirInfoGenerique('Lecture Novalyz · Analyses', txt); } catch (e) {}
   try { alert(txt); } catch (e) {}
+}
+// Volume par muscle CETTE SEMAINE vs cibles du moteur (volume_obti), comparé au
+// PRORATA des séances faites (décision 29/10 : pas de « 0 biceps » un mercredi).
+// Seuls les muscles présents dans le programme sont listés. Tracé aux données.
+function _lxVolume(data) {
+  var obti = Array.isArray(data && data.volume_obti) ? data.volume_obti : [];
+  var reg = (data && data.dashboard && data.dashboard.regularite) || {};
+  var faites = 0; try { faites = Number(_seancesFaites(reg)) || 0; } catch (e) {}
+  var prevues = Number(reg.seances_prevues) || 0;
+  var prorata = prevues > 0 ? Math.min(1, faites / prevues) : 1;
+  var progMus = {};
+  (Array.isArray(data && data.programme) ? data.programme : []).forEach(function (l) {
+    if (!l || l.type === 'cardio') return;
+    var e = (typeof exercicesData !== 'undefined' && exercicesData) ? exercicesData.find(function (x) { return x.exercice === l.exercice; }) : null;
+    if (e && e.muscle) progMus[_musKey(e.muscle)] = 1;
+  });
+  var filtre = Object.keys(progMus).length > 0;
+  var rows = obti.filter(function (o) { return o && o.muscle && (!filtre || progMus[_musKey(o.muscle)]); }).map(function (o) {
+    var fait = Number(o.series_semaine) || 0, mn = Number(o.series_min) || 0, opt = Number(o.series_opt) || 0;
+    var attendu = Math.round(mn * prorata * 10) / 10;
+    return { muscle: o.muscle, fait: fait, min: mn, opt: opt, attendu: attendu, retard: mn > 0 && fait < attendu };
+  });
+  return { rows: rows, faites: faites, prevues: prevues, prorata: prorata };
+}
+// Jusqu'à 3 recos NOMMÉES, par priorité : sous la fourchette → bloqué → volume en retard.
+// Les propositions de charge sont INDICATIVES (décision 29/10).
+function _lxRecos(L, V, niveau) {
+  var out = [], kg = function (x) { return _cdFmtKg(x); };
+  L.sous.slice(0, 2).forEach(function (x) {
+    out.push('<b>' + _maE(x.exo) + '</b> : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe + ', sous ta fourchette (' + x.rmin + '-' + x.rmax + '). Indicatif : '
+      + (x.pas > 0 ? 'un petit pas en dessous (' + kg(x.c - x.pas) + ' kg)' : 'allège un peu la charge') + ' pour revenir à ' + x.rmin + ' reps.');
+  });
+  if (L.bloque.length && out.length < 3) {
+    var b = L.bloque[0], av = niveau === 'avance' || niveau === 'expert';
+    out.push('<b>' + _maE(b.exo) + '</b> : ' + kg(b.c) + ' kg × ' + b.r + ' depuis ' + b.n + ' séances. '
+      + (av ? 'Change un levier : +1 rep, ou ±30 s de repos (choix proposé à la saisie).' : 'Vise +1 rep par séance avant de monter la charge.'));
+  }
+  var ret = V.rows.filter(function (r) { return r.retard; });
+  if (ret.length && out.length < 3) {
+    var noms = ret.slice(0, 3).map(function (r) { return _maE(r.muscle) + ' ' + r.fait + '/' + r.min; }).join(', ');
+    out.push('<b>Volume</b> : ' + noms + ' séries cette semaine (' + V.faites + '/' + V.prevues + ' séances faites) — à compléter sur les séances qui restent.');
+  }
+  return out.slice(0, 3);
 }
 function _maLectureNovalyzBloc(data) {
   var mot = data.moteur || {};
@@ -13510,13 +13640,26 @@ function _maLectureNovalyzBloc(data) {
   // Constats = synthèse muscu enrichie (volume → force → cible → reste).
   var s = data && data.analyse_synthese && data.analyse_synthese.muscu;
   var constats = (s && s.constats) ? s.constats.slice() : [];
-  try { var ex = _maLectureExtras(data); if (ex.length) constats = constats.slice(0, 1).concat(ex, constats.slice(1)); } catch (e) {}
   var f = _maFiabilite(data);
-  var pr = _maProgRegData(data);
+  // Classement partagé (charges · reps · RPE réels) — remplace le « 1RM estimé moyen ».
+  var L = { records: [], progresse: [], recule: [], bloque: [], sous: [] };
+  try { L = _lectureExos(data); } catch (e) {}
+  var V = { rows: [], faites: 0, prevues: 0, prorata: 1 };
+  try { V = _lxVolume(data); } catch (e) {}
+  var kg = function (x) { return _cdFmtKg(x); }, plus = function (arr, n) { return arr.length > n ? ' <span style="color:var(--text-subtle)">+' + (arr.length - n) + '</span>' : ''; };
+  var cls = [];
+  if (L.records.length) cls.push({ ic: '★', col: '#00A854', html: '<b>Records</b> : ' + L.records.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c) + ' × ' + x.r; }).join(' · ') + plus(L.records, 3), src: 'charge (ou reps à charge égale) battue · 10 derniers jours' });
+  if (L.progresse.length) cls.push({ ic: '▲', col: '#00A854', html: '<b>Progresse</b> : ' + L.progresse.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + (x.c0 !== x.c1 ? kg(x.c1) + ' → ' + kg(x.c0) + ' kg' : x.r1 + ' → ' + x.r0 + ' reps'); }).join(' · ') + plus(L.progresse, 3), src: 'vs la séance précédente de l\'exercice' });
+  L.sous.slice(0, 3).forEach(function (x) { cls.push({ ic: '!', col: '#DC3545', html: '<b>Sous ta fourchette</b> : ' + _maE(x.exo) + ' ' + x.hist.map(function (h) { return kg(h.c) + ' × ' + h.r; }).join(' → ') + ' (RPE ' + x.rpe + ')', src: 'cible ' + x.rmin + '-' + x.rmax + ' reps · majorité des séries en dessous' }); });
+  if (L.bloque.length) cls.push({ ic: '⏸', col: '#E07800', html: '<b>Bloqué</b> : ' + L.bloque.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c) + ' × ' + x.r + ' depuis ' + x.n + ' séances'; }).join(' · '), src: 'même charge, reps qui ne montent plus' });
+  if (L.recule.length) cls.push({ ic: '▼', col: '#E07800', html: '<b>Recule</b> : ' + L.recule.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c1) + ' × ' + x.r1 + ' → ' + kg(x.c0) + ' × ' + x.r0; }).join(' · '), src: 'charge et reps en baisse' });
+  var nProg = L.records.length + L.progresse.length;
+  var niveauXp = 'debutant'; try { niveauXp = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
+  var recos = []; try { recos = _lxRecos(L, V, niveauXp); } catch (e) {}
   var reco = '';
-  try { reco = s ? (_novaPickReco(s, true) || (s.reco && s.reco.texte) || '') : ''; } catch (e) {}
+  if (!recos.length) { try { reco = s ? (_novaPickReco(s, true) || (s.reco && s.reco.texte) || '') : ''; } catch (e) {} }
   // Rien à montrer (nouvel athlète sans aucune donnée) → on masque le bloc.
-  if (!constats.length && !pr.nPair && f.pct <= 0) return '';
+  if (!constats.length && !cls.length && f.pct <= 0) return '';
 
   var TON = { positif: '#00A854', neutre: 'var(--text-subtle)', attention: '#E07800' };
   // ── Verdict d'entraînement (jamais rouge ici : état-du-jour rouge → Aujourd'hui) ──
@@ -13525,12 +13668,17 @@ function _maLectureNovalyzBloc(data) {
   var vb = VB[niv] || ['var(--accent)', 'Ta lecture d\'entraînement'];
   var verdict = '<div style="display:flex;gap:10px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-left:3px solid ' + vb[0] + ';border-radius:12px;padding:10px 13px">'
     + '<span style="width:26px;height:26px;border-radius:999px;background:' + vb[0] + ';color:#fff;display:grid;place-items:center;flex:none">' + _maSvg('<path d="M20 6 9 17l-5-5"/>', 15) + '</span>'
-    + '<div style="font-size:14px;font-weight:800;color:var(--text)">' + vb[1] + '</div></div>';
+    + '<div><div style="font-size:14px;font-weight:800;color:var(--text)">' + vb[1] + '</div>'
+    + ((nProg || L.bloque.length || L.sous.length) ? '<div style="font-size:11.5px;color:var(--text-muted)">' + [nProg ? nProg + ' exo' + (nProg > 1 ? 's' : '') + ' en progrès' + (L.records.length ? ' (dont ' + L.records.length + ' record' + (L.records.length > 1 ? 's' : '') + ')' : '') : '', L.bloque.length ? L.bloque.length + ' bloqué' + (L.bloque.length > 1 ? 's' : '') : '', L.sous.length ? L.sous.length + ' sous la fourchette' : ''].filter(Boolean).join(' · ') + '</div>' : '')
+    + '</div></div>';
 
-  // ── Ce que Novalyz lit : constats (volume / force / cible) ──
-  var litHtml = constats.length ? ('<div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:8px">Ce que Novalyz lit</div>'
+  // ── Ce que Novalyz lit : constats (volume / régularité) + classement des exercices ──
+  var litHtml = (constats.length || cls.length) ? ('<div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:8px">Ce que Novalyz lit</div>'
     + constats.map(function (c) {
       return '<div style="display:flex;gap:9px;align-items:flex-start;margin:0 0 8px"><span style="width:7px;height:7px;border-radius:999px;background:' + (TON[c.ton] || 'var(--text-subtle)') + ';margin-top:6px;flex:none"></span><span style="font-size:13px;color:var(--text);line-height:1.45">' + _maE(c.texte) + '</span></div>';
+    }).join('')
+    + cls.map(function (c) {
+      return '<div style="display:flex;gap:9px;align-items:flex-start;margin:0 0 8px"><span style="width:20px;height:20px;border-radius:6px;background:' + c.col + '1f;color:' + c.col + ';display:grid;place-items:center;font-size:11px;font-weight:900;flex:none">' + c.ic + '</span><span style="font-size:12.5px;line-height:1.45;color:var(--text)">' + c.html + '<span style="display:block;font-size:10.5px;color:var(--text-subtle)">' + _maE(c.src) + '</span></span></div>';
     }).join('') + '</div>') : '';
 
   // ── Fiabilité (anneau compact + mini-liste) — sous-box ──
@@ -13550,26 +13698,23 @@ function _maLectureNovalyzBloc(data) {
     + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Fiabilité des données · ' + f.pct + '/100</div>'
     + '<div style="display:flex;gap:13px;align-items:center">' + ring + '<div style="flex:1;min-width:0">' + flist + '</div></div>' + ftip + '</div>';
 
-  // ── Progression / régression (force e1RM) — sous-box ──
-  var progBox;
-  if (pr.nPair) {
-    var colc = function (titre, color, arr, signe) {
-      var items = arr.length ? arr.map(function (x) { return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-top:1px solid var(--border)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(x.exo) + '</span><b style="color:' + color + ';flex:none;margin-left:8px">' + signe + Math.abs(x.pct) + '%</b></div>'; }).join('')
-        : '<div style="font-size:11.5px;color:var(--text-subtle);padding:3px 0">—</div>';
-      return '<div style="flex:1;min-width:0;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 11px"><div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:' + color + ';margin-bottom:4px">' + titre + '</div>' + items + '</div>';
-    };
-    var forceLine = pr.forcePct != null ? ('<div style="font-size:12.5px;margin-bottom:9px;color:var(--text)">Force estimée (1RM) : <b style="color:' + (pr.forcePct >= 0 ? '#00A854' : '#E07800') + '">' + (pr.forcePct >= 0 ? '+' : '') + pr.forcePct + '%</b> vs période précédente</div>') : '';
+  // ── Volume par muscle · cette semaine vs cibles du moteur, au prorata ──
+  var progBox = '';
+  if (V.rows.length) {
+    var vr = V.rows.map(function (r) {
+      var C = r.retard ? '#E07800' : '#00A854', w = r.opt ? Math.min(100, Math.round(r.fait / r.opt * 100)) : 0;
+      return '<div style="display:grid;grid-template-columns:84px 1fr 62px;gap:8px;align-items:center;font-size:12px;padding:3px 0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _maE(r.muscle) + '</span>'
+        + '<div style="height:7px;border-radius:999px;background:var(--surface);overflow:hidden"><i style="display:block;height:100%;width:' + w + '%;background:' + C + ';border-radius:999px"></i></div>'
+        + '<span style="text-align:right;color:var(--text-muted);font-weight:700">' + r.fait + ' / ' + r.min + '-' + r.opt + '</span></div>';
+    }).join('');
     progBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
-      + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:9px">Progression · régression</div>'
-      + forceLine + '<div style="display:flex;gap:9px">' + colc('▲ En progrès', '#00A854', pr.prog, '+') + colc('▼ À relancer', '#E07800', pr.reg, '−') + '</div></div>';
-  } else {
-    progBox = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px">'
-      + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:6px">Progression · régression</div>'
-      + '<div style="font-size:12px;color:var(--text-subtle)">Au moins 2 périodes avec les mêmes exercices pour comparer la force.</div></div>';
+      + '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700;margin-bottom:8px">Volume par muscle · séries cette semaine' + (V.prevues ? ' (' + V.faites + '/' + V.prevues + ' séances)' : '') + '</div>'
+      + vr + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px;line-height:1.45">Cibles min-optimum du moteur. En cours de semaine, un muscle n\'est signalé (orange) que s\'il est sous le minimum au prorata des séances déjà faites.</div></div>';
   }
 
   // ── Reco d'entraînement ──
-  var recoHtml = reco ? ('<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco entraînement</div><div style="font-size:13px;color:var(--text);line-height:1.45">' + _maE(reco) + '</div></div>') : '';
+  var recoHtml = recos.length ? ('<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:5px">Reco entraînement · par priorité</div><ol style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.5;color:var(--text)">' + recos.map(function (r) { return '<li style="margin-bottom:4px">' + r + '</li>'; }).join('') + '</ol></div>')
+    : reco ? ('<div style="background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco entraînement</div><div style="font-size:13px;color:var(--text);line-height:1.45">' + _maE(reco) + '</div></div>') : '';
 
   return '<div class="ma-card" style="display:flex;flex-direction:column;gap:12px;padding:14px 15px;margin:6px 0 16px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center">'
@@ -15812,6 +15957,81 @@ function _safe(label, fn) {
 // Lit moteur.charge_fatigue (CTL/ATL/TSB, tsbPct, ratio). SECONDAIRE : n'alerte
 // jamais en rouge, vocabulaire grand public (« fraîcheur », « charge récente »),
 // avec le « ? » pédagogique. Caché si pas de données.
+// ── « Ta séance du jour » : cible de chaque exercice (décision 29/10, tous les exos) ──
+// MÊME règle que l'écran de saisie (_progDecision + fourchette par catégorie), appliquée
+// à la meilleure série (S1) de la dernière fois que l'exercice a été fait. Indicatif.
+// Séance du jour = prochaine séance du programme (backend dashboard.prochaine_seance).
+function _tjSeanceDuJour(data) {
+  var prog = (data && data.programme) || [], seances = [];
+  prog.forEach(function (p) { if (p && p.seance_id && seances.indexOf(p.seance_id) === -1) seances.push(p.seance_id); });
+  if (!seances.length) return null;
+  var _pn = data && data.dashboard && data.dashboard.prochaine_seance;
+  var s1 = (_pn && seances.indexOf(String(_pn)) !== -1) ? String(_pn) : seances[0];
+  return { nom: s1, exos: prog.filter(function (p) { return p.seance_id === s1; }), nSeances: seances.length };
+}
+function _tjCibles(data, exos) {
+  var prog = (data && data.historique && data.historique.progression_par_exo) || {};
+  var cats = (data && data.exo_categories) || {};
+  var niv = 'debutant'; try { niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
+  return (exos || []).filter(function (p) { return p && p.type !== 'cardio' && p.exercice; }).map(function (p) {
+    var nom = String(p.exercice), pts = prog[nom] || prog[nom.trim()] || [];
+    var last = pts[0] && Array.isArray(pts[0].series) ? pts[0].series : null;
+    var prev = pts[1] && Array.isArray(pts[1].series) ? pts[1].series : null;
+    var f = _exoFourchette(nom, _numOk(p.reps_mini) ? Number(p.reps_mini) : null, _numOk(p.reps_max) ? Number(p.reps_max) : null, cats);
+    if (!last || !last.length) return { exo: nom, mode: 'premier', f: f };
+    var pas = _petitPas(nom);
+    var dec = _progDecision({ niveau: niv, last: last, prev: prev, rmin: f.rmin, rmax: f.rmax, nPrevues: _numOk(p.series_prevues) ? Number(p.series_prevues) : 0, pas: pas, reposRef: _reposRef(last, p.repos_sec), bornes: _reposBornes(nom) });
+    // Série de référence = la plus LOURDE (puis le plus de reps) : la 1re est souvent une
+    // série de mise en route plus légère (ex. 5 kg × 20 avant 7,5 kg × 10).
+    var kRef = 0; last.forEach(function (x, i) { var b = last[kRef]; if ((Number(x.charge) || 0) > (Number(b.charge) || 0) || ((Number(x.charge) || 0) === (Number(b.charge) || 0) && (Number(x.reps) || 0) > (Number(b.reps) || 0))) kRef = i; });
+    var ref = last[kRef], kNum = Number(ref.serie) || (kRef + 1), cib = dec.cible(kNum, 'charge');
+    return { exo: nom, mode: dec.mode, rpe: dec.rpe, f: f, pas: pas, last: { c: Number(ref.charge) || 0, r: Number(ref.reps) || 0 }, cib: cib };
+  });
+}
+function _tjCiblesHtml(rows) {
+  if (!rows.length) return '';
+  var esc = escapeHtml, kg = function (x) { return _cdFmtKg(x); };
+  var why = function (x) {
+    if (x.mode === 'premier') return '1re fois : trouve ta charge de travail';
+    if (x.mode === 'sous') return 'sous ta fourchette ' + x.f.rmin + '-' + x.f.rmax + ' (RPE ' + x.rpe + ') · indicatif';
+    if (x.mode === 'consolide') return 'RPE ' + x.rpe + ' la dernière fois → on consolide';
+    if (x.mode === 'charge') return 'haut de fourchette atteint → +' + kg(x.pas) + ' kg';
+    if (x.mode === 'choix') return 'haut atteint → charge ou autre levier, au choix à la saisie';
+    return x.f.rmax ? ('+1 rep (haut de fourchette : ' + x.f.rmax + ')') : '+1 rep';
+  };
+  var tr = rows.map(function (x) {
+    var lastTxt = x.last ? kg(x.last.c) + ' × ' + x.last.r : '—';
+    var goTxt = x.cib ? kg(x.cib.charge) + ' × ' + x.cib.reps : '—';
+    var col = !x.cib ? 'var(--tj-subtle)' : (x.cib.up === 'baisse' ? '#DC3545' : (x.cib.up ? 'var(--tj-good)' : 'var(--tj-muted)'));
+    return '<tr><td style="padding:7px 0;border-top:1px solid var(--tj-border);vertical-align:top"><div style="font-size:12.5px;font-weight:700;color:var(--tj-text)">' + esc(x.exo.trim()) + '</div><div style="font-size:10.5px;color:var(--tj-subtle)">' + esc(why(x)) + '</div></td>'
+      + '<td style="padding:7px 0 7px 6px;border-top:1px solid var(--tj-border);text-align:right;white-space:nowrap;font-size:12px;color:var(--tj-muted);vertical-align:top">' + lastTxt + '</td>'
+      + '<td style="padding:7px 0 7px 10px;border-top:1px solid var(--tj-border);text-align:right;white-space:nowrap;font-size:12.5px;font-weight:800;color:' + col + ';vertical-align:top">' + goTxt + '</td></tr>';
+  }).join('');
+  return '<div style="margin:10px 0 12px;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:10px 12px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px"><span>Ce que Novalyz vise</span><span style="letter-spacing:0;text-transform:none;font-weight:600">dernière fois → aujourd\'hui</span></div>'
+    + '<table style="width:100%;border-collapse:collapse"><tbody>' + tr + '</tbody></table>'
+    + '<div style="font-size:10.5px;color:var(--tj-subtle);margin-top:6px;line-height:1.4">Sur ta série la plus lourde (même calcul que l\'écran de saisie). Propositions indicatives : c\'est toi qui décides.</div></div>';
+}
+// « Depuis ta dernière séance » : records / bloqués / sous la fourchette parmi les
+// exercices de la DERNIÈRE séance faite (date la plus récente de progression_par_exo).
+function _tjDepuisDerniere(data, L) {
+  var prog = (data && data.historique && data.historique.progression_par_exo) || {};
+  var lastT = 0, lastD = '', lastS = '';
+  Object.keys(prog).forEach(function (k) { var p0 = prog[k] && prog[k][0]; if (!p0) return; var t = parseChatDate(p0.date); if (t > lastT) { lastT = t; lastD = p0.date; lastS = p0.seance || ''; } });
+  if (!lastT) return '';
+  var dans = function (exo) { var p0 = prog[exo] && prog[exo][0]; return p0 && p0.date === lastD; };
+  var kg = function (x) { return _cdFmtKg(x); }, esc = escapeHtml, rows = [];
+  var rec = L.records.filter(function (x) { return dans(x.exo); }), pro = L.progresse.filter(function (x) { return dans(x.exo); });
+  var blo = L.bloque.filter(function (x) { return dans(x.exo); }), sou = L.sous.filter(function (x) { return dans(x.exo); });
+  var row = function (col, ic, html) { return '<div style="display:flex;gap:9px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--tj-border)"><span style="width:20px;height:20px;border-radius:6px;background:' + col + '1f;color:' + col + ';display:grid;place-items:center;font-size:11px;font-weight:900;flex:none">' + ic + '</span><span style="font-size:12.5px;color:var(--tj-text);line-height:1.45">' + html + '</span></div>'; };
+  if (rec.length) rows.push(row('#00A854', '★', '<b>Record' + (rec.length > 1 ? 's' : '') + '</b> : ' + rec.map(function (x) { return esc(x.exo.trim()) + ' ' + kg(x.c) + ' kg × ' + x.r; }).join(', ')));
+  if (pro.length) rows.push(row('#00A854', '▲', '<b>En progrès</b> : ' + pro.map(function (x) { return esc(x.exo.trim()); }).join(', ')));
+  sou.forEach(function (x) { rows.push(row('#DC3545', '!', '<b>' + esc(x.exo.trim()) + '</b> sous ta fourchette : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe)); });
+  blo.forEach(function (x) { rows.push(row('#E07800', '⏸', '<b>' + esc(x.exo.trim()) + '</b> bloqué à ' + kg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances')); });
+  if (!rows.length) return '';
+  var dd = new Date(lastT), dtx = String(dd.getDate()).padStart(2, '0') + '/' + String(dd.getMonth() + 1).padStart(2, '0');
+  return '<div style="margin:0 0 12px"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px">Depuis ta dernière séance · ' + esc(lastS) + ' (' + dtx + ')</div>' + rows.join('') + '</div>';
+}
 function renderChargeFatigueJour(data) {
   var el = document.getElementById('tj-chargefatigue'); if (!el) return;
   var m = (data && data.moteur) || {};
@@ -15862,6 +16082,9 @@ function renderChargeFatigueJour(data) {
     bullets.push({ c: rc, t: '<b>Récupération ' + recTxt + '</b>' + rd + '.' });
   }
   if (hasCf) bullets.push({ c: (ratio > 1.15 && _crDeg) ? 'var(--tj-warn)' : 'var(--tj-subtle)', t: 'Charge des 7 derniers jours <b>' + ch + '</b> par rapport à ton habitude.' });
+  // Décision 29/10 : avec un verdict, récupération et charge y sont déjà résumées →
+  // on ne garde en puce que ce qui ALERTE (charge mal encaissée), pas de répétition.
+  if (niv0) bullets = bullets.filter(function (b) { return b.c === 'var(--tj-warn)'; });
   var bulletsHtml = bullets.map(function (b) {
     return '<div style="display:flex;gap:9px;align-items:flex-start;margin:0 0 8px"><span style="width:7px;height:7px;border-radius:999px;background:' + b.c + ';margin-top:6px;flex:none"></span><span style="font-size:13px;color:var(--tj-text);line-height:1.45">' + b.t + '</span></div>';
   }).join('');
@@ -15895,7 +16118,22 @@ function renderChargeFatigueJour(data) {
   // un repère secondaire peu fiable, pas le motif à mettre en avant (modèle
   // fitness-fatigue = référence). L'action (ex. « réduire le volume 48 h ») reste.
   var reco = m.reco ? String(m.reco).replace(/\s*\(\s*ACWR[^)]*\)/gi, '').replace(/\s{2,}/g, ' ').trim() : '';
-  var recoHtml = reco ? ('<div style="margin-top:12px;background:rgba(26,95,255,.08);border:1px solid rgba(26,95,255,.18);border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--tj-accent,#4d82ff);margin-bottom:2px">Reco du jour</div><div style="font-size:13px;color:var(--tj-text);line-height:1.45">' + (typeof escapeHtml === 'function' ? escapeHtml(reco) : reco) + '</div></div>') : '';
+  // Lien état ↔ séance du jour (décision 29/10) : on ne pousse que si l'état est « Prêt » ;
+  // une baisse indicative (sous la fourchette) est toujours signalée. Propositions indicatives.
+  var recoSeance = '';
+  try {
+    var _sj = _tjSeanceDuJour(data);
+    if (_sj) {
+      var _rows = _tjCibles(data, _sj.exos), _e2 = escapeHtml;
+      var _sous = _rows.filter(function (x) { return x.mode === 'sous'; });
+      var _up = _rows.filter(function (x) { return x.cib && (x.cib.up === 'charge' || x.cib.up === 'reps'); });
+      var bits = [];
+      if (niv0 === 'Prêt' && _up.length) bits.push(_up.length + ' exercice' + (_up.length > 1 ? 's' : '') + ' à pousser (charge ou +1 rep)');
+      if (_sous.length) bits.push(_sous.map(function (x) { return '<b>' + _e2(x.exo.trim()) + '</b>'; }).join(', ') + ' : un petit pas en dessous pour revenir dans ta fourchette (indicatif)');
+      if (bits.length) recoSeance = 'Séance du jour (' + _e2(_sj.nom) + ') : ' + bits.join(' · ') + '.';
+    }
+  } catch (e) {}
+  var recoHtml = (reco || recoSeance) ? ('<div style="margin-top:12px;background:rgba(26,95,255,.08);border:1px solid rgba(26,95,255,.18);border-radius:12px;padding:11px 13px"><div style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--tj-accent,#4d82ff);margin-bottom:2px">Reco du jour</div><div style="font-size:13px;color:var(--tj-text);line-height:1.45">' + (reco ? (typeof escapeHtml === 'function' ? escapeHtml(reco) : reco) : '') + (recoSeance ? '<div style="' + (reco ? 'margin-top:6px;' : '') + 'font-size:12.5px;color:var(--tj-text);line-height:1.45">' + recoSeance + '</div>' : '') + '</div></div>') : '';
 
   // --- Verdict d'état du jour (ex-bandeau « Reste vigilant ») INTÉGRÉ au bloc ---
   var verdictHtml = '';
@@ -15913,7 +16151,7 @@ function renderChargeFatigueJour(data) {
       if (hasRecup) sp.push('récupération ' + recTxt);
       // La charge ne fait JAMAIS le verdict : on ne la mentionne que sur un bandeau vert
       // (repère informatif), jamais comme si elle expliquait « Reste vigilant ».
-      if (niv0 === 'Prêt' && hasCf && tsbPct != null && tsbPct < -12) sp.push('charge en hausse');
+      if (niv0 === 'Prêt' && hasCf && tsbPct != null && tsbPct < -12) sp.push((m.charge_ressenti && m.charge_ressenti.evaluable && !m.charge_ressenti.degrade) ? 'charge 7 j en hausse, bien encaissée' : 'charge en hausse');
     } catch (e) {}
     var _escS = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x == null ? '' : x); };
     // Règle 6bis : la CAUSE réelle du verdict (moteur.causes) en premier, en gras.
@@ -15926,7 +16164,9 @@ function renderChargeFatigueJour(data) {
   }
 
   var subTxt = hasCf ? 'Ton état du jour : récup · charge · fatigue' : 'Ton état du jour';
-  var fraicheurWidget = hasCf ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
+  var depuisHtml = '';
+  try { depuisHtml = _tjDepuisDerniere(data, _lectureExos(data)); } catch (e) {}
+  var fraicheurWidget = (hasCf && !niv0) ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
     +   '<div style="text-align:center;flex:none;min-width:56px;max-width:96px"><div style="font-size:' + (fr.length > 10 ? '14px' : '18px') + ';font-weight:800;color:' + frc + ';line-height:1.1">' + fr + '</div><div style="font-size:9px;color:var(--tj-subtle);text-transform:uppercase;letter-spacing:.04em;margin-top:3px">Fraîcheur</div></div>'
     +   '<div style="flex:1;min-width:0;font-size:11.5px;color:var(--tj-subtle);line-height:1.5"><b style="color:var(--tj-muted)">Fraîcheur</b> : on compare ta charge <b>habituelle</b> à celle de <b>ces derniers jours</b>. Plus de charge récente ne veut pas dire fatigue : c\'est ton <b>ressenti</b> (sommeil, fatigue, RPE) qui le confirme. Repère <b>secondaire</b> : jamais d\'alerte rouge.</div>'
     + '</div>') : '';
@@ -15941,6 +16181,7 @@ function renderChargeFatigueJour(data) {
     + verdictHtml
     + vigHtml
     + bulletsHtml
+    + depuisHtml
     + fraicheurWidget
     + recoHtml;
 }
@@ -16142,10 +16383,13 @@ function renderAujourdhui(data) {
       var noms = exos.map(function (p) { return p.exercice; }).filter(Boolean).slice(0, 3);
       if (elFoc && elFocT && noms.length) { elFocT.innerHTML = 'Au programme : <b>' + esc(noms.join(' · ')) + '</b>'; elFoc.style.display = ''; }
       else if (elFoc) elFoc.style.display = 'none';
+      var elCib = document.getElementById('tj-seance-cibles');
+      if (elCib) { var _ch = ''; try { _ch = _tjCiblesHtml(_tjCibles(data, exos)); } catch (e) {} elCib.innerHTML = _ch; elCib.style.display = _ch ? '' : 'none'; if (_ch && elFoc) elFoc.style.display = 'none'; }
     } else {
       if (elNom) elNom.textContent = 'Séance libre';
       if (elMeta) elMeta.textContent = 'Choisis tes exercices au démarrage';
       if (elFoc) elFoc.style.display = 'none';
+      var elCib0 = document.getElementById('tj-seance-cibles'); if (elCib0) elCib0.style.display = 'none';
     }
   } catch (e) {}
 

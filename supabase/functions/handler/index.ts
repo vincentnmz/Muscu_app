@@ -911,7 +911,9 @@ function buildProgressionParExo(perfs: any[]): Record<string, any[]> {
     // #4 Surcharge PAR SÉRIE : on conserve chaque série du jour (n° + charge/reps/rpe)
     // pour tracer l'évolution des séries 2/3/4, pas seulement de la meilleure. Le n°
     // de série vient de la colonne `serie` ; à défaut, l'ordre d'insertion (1-indexé).
-    cur.series.push({ serie: Number(r.serie) || (cur.series.length + 1), charge, reps, rpe: Number(r.rpe) || null })
+    // + repos réel de la série (secondes) : la lecture (Aujourd'hui / Analyses) et les
+    // cibles de saisie s'appuient sur le repos de la dernière fois (décision 29/10).
+    cur.series.push({ serie: Number(r.serie) || (cur.series.length + 1), charge, reps, rpe: Number(r.rpe) || null, repos: Number(r.repos) > 0 ? Number(r.repos) : null })
   }
   const out: Record<string, any[]> = {}
   for (const exo of Object.keys(byExo)) {
@@ -2526,6 +2528,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Onboarding : intro vue une fois + proposition auto de programme coupée par l'athlète.
     onboarding_vu: (prefRows || []).some((x: any) => x.cle === 'onboarding_vu' && x.valeur === '1'),
     prog_auto_off: (prefRows || []).some((x: any) => x.cle === 'prog_auto_off' && x.valeur === '1'),
+    exo_categories: (() => { const r = (prefRows || []).find((x: any) => x.cle === 'exo_categories'); if (!r) return {}; try { const o = JSON.parse(String(r.valeur || '{}')); return (o && typeof o === 'object') ? o : {} } catch (_) { return {} } })(),
     // Récompenses : solde de points (gagnés − dépensés) + récompenses déjà réclamées.
     // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
     // fenêtre 30 j glissante qui faisait disparaître les points). Dépenses = somme des
@@ -5240,6 +5243,32 @@ async function handleSavePref(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
+// Catégorie de chaque exercice choisie par l'athlète (ou son coach) : gros (6-8 reps),
+// moyen (8-12), petit (12-15). Sert aux fourchettes de reps de la lecture et des
+// cibles de saisie. Stockée en JSON dans UNE ligne pref (seance_id='pref',
+// cle='exo_categories'), remplacée à chaque enregistrement. Idempotent.
+const EXO_CATS = ['gros', 'moyen', 'petit']
+async function handleSaveExoCategories(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  const src = (body.categories && typeof body.categories === 'object') ? body.categories : null
+  if (!athlete_id || !src) return jsonResp({ success: false, error: 'Paramètres invalides' })
+  const out: Record<string, string> = {}
+  for (const k of Object.keys(src).slice(0, 400)) {
+    const nom = String(k).trim().slice(0, 120), v = String(src[k] || '')
+    if (nom && EXO_CATS.includes(v)) out[nom] = v
+  }
+  const valeur = JSON.stringify(out)
+  const { data: existing } = await sb().from('indicateurs').select('date').eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'exo_categories').limit(1)
+  if (existing?.length) {
+    const { error } = await sb().from('indicateurs').update({ valeur }).eq('athlete_id', athlete_id).eq('seance_id', 'pref').eq('cle', 'exo_categories')
+    if (error) return jsonResp({ success: false, error: error.message })
+  } else {
+    const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(new Date()), seance_id: 'pref', cle: 'exo_categories', valeur, unite: '', source: 'app' })
+    if (error) return jsonResp({ success: false, error: error.message })
+  }
+  return jsonResp({ success: true, categories: out })
+}
+
 // Historique santé montre (Health Connect) : le FRONT pousse un lot de jours
 // {date, sommeil_min?, fc_repos?, pas?}. Stockage 1 ligne/métrique sous
 // seance_id 'sante_<YYYYMMDD>'. Idempotent : on efface les lignes santé des dates
@@ -6185,6 +6214,7 @@ Deno.serve(async (req: Request) => {
         case 'marquerAlerteLue':         return handleMarquerAlerteLue(body)
         case 'saveSemaineType':          return handleSaveSemaineType(body)
         case 'savePref':                 return handleSavePref(body)
+        case 'saveExoCategories':        return handleSaveExoCategories(body)
         case 'claimRecompense':          return handleClaimRecompense(body)
         case 'saveSante':                return handleSaveSante(body)
         case 'saveNutrition':            return handleSaveNutrition(body)
