@@ -21634,7 +21634,21 @@ var _HYROX_W = {
 };
 var _HYROX_DIV = [['mo', '♂ Open'], ['wo', '♀ Open'], ['mp', '♂ Pro'], ['wp', '♀ Pro']];
 var _hyroxMode = 'course', _hyroxDiv = 'mo';
-function _hyroxParse(str) { str = String(str == null ? '' : str).trim(); if (!str) return 0; if (str.indexOf(':') >= 0) { var p = str.split(':'); return (parseInt(p[0]) || 0) * 60 + (parseInt(p[1]) || 0); } return Math.round(parseFloat(str) || 0); }
+// Temps saisi → secondes. Le clavier numérique du téléphone (inputmode numeric)
+// n'a souvent PAS de « : » : on accepte donc « 4:30 », « 4.30 », « 4,30 », « 4 30 »
+// et « 430 » (chiffres seuls ≥ 3 → les 2 derniers = secondes). 1-2 chiffres seuls =
+// minutes (« 5 » → 5:00). « 1:02:30 » = h:mm:ss. Avant : « 430 » valait 430 s (7:10)
+// et « 4.30 » valait 4 s.
+function _hyroxParse(str) {
+  str = String(str == null ? '' : str).trim(); if (!str) return 0;
+  var p = str.split(/[:.,\s]+/).filter(function (x) { return x !== ''; });
+  if (p.length >= 3) return (parseInt(p[0]) || 0) * 3600 + (parseInt(p[1]) || 0) * 60 + (parseInt(p[2]) || 0);
+  if (p.length === 2) return (parseInt(p[0]) || 0) * 60 + (parseInt(p[1]) || 0);
+  if (!/^\d+$/.test(p[0] || '')) return 0;
+  var n = p[0];
+  if (n.length >= 3) return (parseInt(n.slice(0, -2)) || 0) * 60 + (parseInt(n.slice(-2)) || 0);
+  return (parseInt(n) || 0) * 60;
+}
 function _hyroxFmt(sec) { sec = Math.max(0, Math.round(Number(sec) || 0)); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); }
 function _hyroxRecalcTotal() {
   var tot = 0, runTot = 0, stTot = 0, n = 0;
@@ -21662,7 +21676,7 @@ function _hyroxFormHtml() {
     + '<div style="display:flex;gap:8px;margin-bottom:10px">' + chip('hx-mode-course', _hyroxMode === 'course', '_hyroxSetMode(\'course\')', 'Course / simulation') + chip('hx-mode-entrainement', _hyroxMode === 'entrainement', '_hyroxSetMode(\'entrainement\')', 'Entraînement') + '</div>'
     + '<div class="saisie-lbl">Division <span style="font-size:10px;color:var(--text-subtle);font-weight:600">— pré-remplit les poids (modifiables)</span></div>'
     + '<div style="display:flex;gap:6px;margin:6px 0 10px">' + _HYROX_DIV.map(function (x) { return chip('hx-div-' + x[0], _hyroxDiv === x[0], '_hyroxSetDiv(\'' + x[0] + '\')', x[1]); }).join('') + '</div>'
-    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Temps par segment (m:ss). En entraînement, laisse vide ce que tu n\'as pas fait.</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Temps par segment : m:ss, ou les chiffres seuls (430 = 4:30). En entraînement, laisse vide ce que tu n\'as pas fait.</div>'
     + '<div class="card" style="padding:4px 14px">' + rows + '</div>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--accent-a08,rgba(26,95,255,.08))">'
     + '<div><div style="font-size:11px;color:var(--text-muted);font-weight:700">TEMPS TOTAL</div><div id="hx-split" style="font-size:10.5px;color:var(--text-subtle)">16 segments · m:ss</div></div>'
@@ -21802,7 +21816,7 @@ function _hxSpark(pts, cur) {
     + '<path d="' + d + '" fill="none" stroke="#CA9A04" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
     + '<circle cx="' + cp[0].toFixed(1) + '" cy="' + cp[1].toFixed(1) + '" r="4" fill="#CA9A04"/></svg>';
 }
-function _hxAnalyseHtml(s, prev, all, idx) {
+function _hxAnalyseHtml(s, prev, all, idx, allHx) {
   var segs = _hxSegmentsOf(s), total = _hxTotalOf(s);
   var runs = segs.filter(function (x) { return x.run; }), stations = segs.filter(function (x) { return !x.run; });
   var runSec = runs.reduce(function (a, x) { return a + x.sec; }, 0);
@@ -21831,15 +21845,30 @@ function _hxAnalyseHtml(s, prev, all, idx) {
       + '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-subtle);margin-top:5px"><span>' + runs.length + ' run · ' + _hyroxFmt(Math.round(runSec / runs.length)) + ' moy.</span><span>' + stations.length + ' ateliers · ' + _hyroxFmt(Math.round(staSec / stations.length)) + ' moy.</span></div>'
       + '</div>';
   }
-  // Point faible : atelier le plus lent (si ≥ 2 ateliers)
+  // Point faible. Chaque atelier a une durée différente PAR NATURE (un SkiErg de
+  // 1000 m ne se compare pas à 100 Wall Balls) : on ne désigne donc un point faible
+  // que par rapport à TA PROPRE moyenne sur chaque atelier (Hyrox antérieures, toutes
+  // formes confondues, 5 dernières max). Sans historique : simple fait « le plus long ».
   var slow = '';
-  if (stations.length >= 2) {
-    var worst = stations.reduce(function (a, b) { return b.sec > a.sec ? b : a; });
-    var avg = staSec / stations.length, pct = Math.round((worst.sec / avg - 1) * 100);
-    slow = '<div class="cx-sec" style="margin-top:18px">Point faible</div>'
+  var before = (allHx || all).filter(function (x) { return x !== s && String(x.date || '') <= String(s.date || ''); });
+  var cand = stations.map(function (x) {
+    var hist = before.map(function (h) { return Number(h['hyrox_' + x.k]); }).filter(function (v) { return v > 0; }).slice(-5);
+    if (hist.length < 2) return null;
+    var avg = hist.reduce(function (a, v) { return a + v; }, 0) / hist.length;
+    return { x: x, avg: avg, n: hist.length, pct: Math.round((x.sec / avg - 1) * 100) };
+  }).filter(function (c) { return c && c.pct >= 5; });
+  if (cand.length) {
+    var w = cand.reduce(function (a, b) { return b.pct > a.pct ? b : a; });
+    slow = '<div class="cx-sec" style="margin-top:18px">Point faible du jour</div>'
       + '<div style="display:flex;align-items:center;gap:12px;background:rgba(220,53,69,.06);border:1px solid rgba(220,53,69,.25);border-radius:14px;padding:13px 14px">'
       + '<div style="width:40px;height:40px;border-radius:12px;background:#DC3545;color:#fff;display:grid;place-items:center;flex:none;font-size:20px;font-weight:800">!</div>'
-      + '<div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#DC3545">Atelier le plus lent</div><div style="font-size:15px;font-weight:800">' + worst.t + ' — ' + _hyroxFmt(worst.sec) + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:1px">' + (pct > 0 ? '+' + pct + ' % vs la moyenne de tes ateliers · ' : '') + 'à travailler en priorité (mode « Par atelier »).</div></div></div>';
+      + '<div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#DC3545">Plus gros recul vs ta moyenne</div><div style="font-size:15px;font-weight:800">' + w.x.t + ' — ' + _hyroxFmt(w.x.sec) + '</div><div style="font-size:11.5px;color:var(--text-muted);margin-top:1px">+' + w.pct + ' % vs ta moyenne sur cet atelier (' + _hyroxFmt(Math.round(w.avg)) + ', ' + w.n + ' Hyrox précédentes) · à cibler (mode « Par atelier »).</div></div></div>';
+  } else if (stations.length >= 2) {
+    var longest = stations.reduce(function (a, b) { return b.sec > a.sec ? b : a; });
+    slow = '<div class="cx-sec" style="margin-top:18px">Atelier le plus long</div>'
+      + '<div class="card" style="padding:13px 15px"><div style="font-size:15px;font-weight:800">' + longest.t + ' — ' + _hyroxFmt(longest.sec) + '</div>'
+      + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;line-height:1.45">Chaque atelier a une durée différente par nature : ce n\'est pas forcément un point faible. '
+      + (before.length ? 'Aucun atelier n\'est en recul de 5 % ou plus vs ta moyenne.' : 'Avec 2 Hyrox de plus, Novalyz comparera chaque atelier à ta propre moyenne.') + '</div></div>';
   }
   // Tous les splits
   var worstSeg = segs.length ? segs.reduce(function (a, b) { return b.sec > a.sec ? b : a; }) : null;
@@ -21849,7 +21878,7 @@ function _hxAnalyseHtml(s, prev, all, idx) {
       : '<span style="width:24px;height:24px;border-radius:7px;background:rgba(255,188,19,.16);color:#CA9A04;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none">' + (i + 1) + '</span>';
     var barCol = isW ? '#DC3545' : (x.run ? '#9D5FD3' : '#FFBC13');
     return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:' + (i ? '1px solid var(--border)' : 'none') + '">' + ic
-      + '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">' + x.t + (isW ? '<span style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#DC3545;background:rgba(220,53,69,.12);border-radius:5px;padding:2px 5px;margin-left:5px">le + lent</span>' : '') + '</div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">' + x.t + (isW ? '<span style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#DC3545;background:rgba(220,53,69,.12);border-radius:5px;padding:2px 5px;margin-left:5px">le + long</span>' : '') + '</div>'
       + '<div style="height:5px;border-radius:999px;background:var(--surface2);margin-top:4px;overflow:hidden"><i style="display:block;height:100%;border-radius:999px;width:' + Math.round(x.sec / mx * 100) + '%;background:' + barCol + '"></i></div></div>'
       + '<span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;flex:none' + (isW ? ';color:#DC3545' : '') + '">' + _hyroxFmt(x.sec) + '</span></div>';
   }).join('');
@@ -21885,14 +21914,21 @@ function _hxAnalyseHtml(s, prev, all, idx) {
   return '<div style="max-width:460px;margin:0 auto">' + header + hero + cv + slow + splits + prog + byAt + '</div>';
 }
 function fermerHyroxAnalyse() { var ov = document.getElementById('hyrox-analyse-overlay'); if (ov) ov.style.display = 'none'; }
+// Signature d'une Hyrox = ensemble des segments chronométrés. On ne compare
+// (vs précédente, courbe de progression) que des Hyrox de MÊME signature : avant,
+// un entraînement de 3 ateliers était comparé à un circuit complet (« ▼ −50:00 »).
+function _hxSig(s) { return _hxSegmentsOf(s).map(function (x) { return x.k; }).sort().join(','); }
 function ouvrirHyroxDetail(sid) {
-  var all = _hxAllHistory();
-  var idx = -1; for (var i = 0; i < all.length; i++) { if (String(all[i].seance_id) === String(sid)) { idx = i; break; } }
-  if (idx < 0) { try { showToast('Hyrox introuvable'); } catch (e) {} return; }
+  var all0 = _hxAllHistory();
+  var cur = null; for (var i0 = 0; i0 < all0.length; i0++) { if (String(all0[i0].seance_id) === String(sid)) { cur = all0[i0]; break; } }
+  if (!cur) { try { showToast('Hyrox introuvable'); } catch (e) {} return; }
+  var sig = _hxSig(cur);
+  var all = all0.filter(function (x) { return _hxSig(x) === sig; });
+  var idx = all.indexOf(cur);
   var ov = document.getElementById('hyrox-analyse-overlay');
   if (!ov) { ov = document.createElement('div'); ov.id = 'hyrox-analyse-overlay'; ov.className = 'hx-overlay'; ov.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:1200;overflow:auto;padding:0 16px 46px;'; document.body.appendChild(ov); }
   ov.style.display = 'block'; ov.scrollTop = 0;
-  ov.innerHTML = _hxAnalyseHtml(all[idx], idx > 0 ? all[idx - 1] : null, all, idx);
+  ov.innerHTML = _hxAnalyseHtml(all[idx], idx > 0 ? all[idx - 1] : null, all, idx, all0);
 }
 // Chrono live : un temps total en continu + split par segment (« Segment suivant »).
 var _hxTimer = null, _hxT0 = 0, _hxSegT0 = 0, _hxIdx = 0, _hxSplits = [], _hxPaused = false, _hxPausedAt = 0, _hxPauseAcc = 0, _hxWeights = null;
