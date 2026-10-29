@@ -11434,11 +11434,11 @@ function _r025(x) { return Math.round(x * 4) / 4; }
 // ctx : { niveau, last:[séries], prev:[séries]|null, rmin, rmax, nPrevues, pas, reposRef, bornes }
 // → { mode: 'premier'|'reps'|'charge'|'choix'|'consolide', rpe, options?, cible(k, choix) }
 // ── Catégorie d'exercice (choisie par l'athlète ou son coach dans le programme) ──
-// gros = 6-8 reps · moyen = 8-12 · petit = 12-15 (borne haute 15 = valeur par défaut
-// à valider). La catégorie fixe la fourchette SAUF si le programme en a une autre que
+// gros = 6-8 reps · moyen = 8-12 · petit = 12-25 (validé 29/10
+// ). La catégorie fixe la fourchette SAUF si le programme en a une autre que
 // le 8-12 par défaut (choix explicite) ; exercice non classé → fourchette du programme.
-var _EXO_CAT_R = { gros: [6, 8], moyen: [8, 12], petit: [12, 15] };
-var _EXO_CAT_LBL = { gros: 'Gros (6-8)', moyen: 'Moyen (8-12)', petit: 'Petit (12-15)' };
+var _EXO_CAT_R = { gros: [6, 8], moyen: [8, 12], petit: [12, 25] };
+var _EXO_CAT_LBL = { gros: 'Gros (6-8)', moyen: 'Moyen (8-12)', petit: 'Petit (12-25)' };
 function _exoCatMap(aid) {
   try {
     if (typeof coachAthleteData !== 'undefined' && coachAthleteData && typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && aid != null && String(aid) === String(coachAthleteCourant.athlete_id)) return coachAthleteData.exo_categories || (coachAthleteData.exo_categories = {});
