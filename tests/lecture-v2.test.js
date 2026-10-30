@@ -110,6 +110,11 @@ check('Ischio 2 < 3 attendues → en retard', vr('Ischio').retard === true);
 check('Biceps 0 < 4 attendues → en retard', vr('Biceps').retard === true);
 check('muscle absent du programme (Mollets) → non listé', !vr('Mollets'));
 
+// ---------- Par exercice (audit 30/10) : une seule cible, même classement ----------
+const PE = extractFrom(SRC, '_maProgExo');
+check('Par exercice : cible = _tjCibles (même calcul que la saisie), plus _chargeAViser', /_tjCibles\(data/.test(PE) && !/_chargeAViser\(/.test(PE));
+check('Par exercice : statut = _lectureExos (même classement que la lecture)', /_lectureExos\(data/.test(PE));
+check('Par exercice : écart Charge + reps montre aussi les reps', /' rep' \+/.test(PE));
 console.log('-'.repeat(70));
 console.log('lecture v2 : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) { console.log('Échecs : ' + fails.join(' | ')); process.exit(1); }
