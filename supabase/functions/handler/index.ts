@@ -2468,6 +2468,12 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
 
   // Calculés une fois : détail des séances + respect du programme (exécution vs cible).
   const seancesDetailArr = buildSeancesDetail(perfs)
+  // « Saisie par ton coach » (présentiel) : marqueur posé par saveSeance (indicateurs cle 'saisi_par').
+  try {
+    const { data: spRows } = await sb().from('indicateurs').select('date,seance_id').eq('athlete_id', athleteId).eq('cle', 'saisi_par')
+    const sp = new Set((spRows || []).map((r: any) => normDate(r.date) + '|' + String(r.seance_id ?? '')))
+    for (const sd of seancesDetailArr as any[]) if (sp.has(sd.date + '|' + sd.seance_id)) sd.saisi_par_coach = true
+  } catch (_) {}
   const execCibleMuscu = buildRespectProgramme(programme, seancesDetailArr, perfs)
   // Temps de repos entre séries (levier B) : moyenne des repos RÉELLEMENT loggés (>0)
   // sur 28 j. Fait factuel vérifié → alimente un levier « mot de Novalyz » conditionnel.
@@ -3925,7 +3931,7 @@ async function handleSaveTest(body: any): Promise<Response> {
   return jsonResp({ success: true })
 }
 
-async function handleSaveSeance(data: any[]): Promise<Response> {
+async function handleSaveSeance(data: any[], saisiParCoach?: any): Promise<Response> {
   if (!data?.length) return jsonResp({ erreur: 'Données manquantes' })
 
   // data = array of arrays: [date, semaine, seance_id, nom, athlete_id, exercice, muscle, exercice_id, serie, charge, reps, rpe, repos, volume]
@@ -3974,7 +3980,21 @@ async function handleSaveSeance(data: any[]): Promise<Response> {
     indicRows.push({ date: e.date, athlete_id: e.athlete_id, seance_id: e.seance_id, source: 'muscu', cle: 'tonnage_exo', valeur: String(Math.round(e.tonnage)), unite: 'kg' })
   }
 
+  // Saisie en présentiel PAR LE COACH (décision 30/10) : la séance compte dès que le coach
+  // valide ; on garde la trace « saisie par ton coach » (affichée côté athlète).
+  const coachSaisie = String(saisiParCoach || '').trim()
+  if (coachSaisie) {
+    for (const [sid, s] of Object.entries(seanceMap) as [string, any][]) {
+      indicRows.push({ date: s.date, athlete_id: s.athlete_id, seance_id: sid, source: 'coach', cle: 'saisi_par', valeur: 'coach:' + coachSaisie, unite: '' })
+    }
+  }
+
   if (indicRows.length) await sb().from('indicateurs').insert(indicRows)
+  if (coachSaisie) {
+    const aid = String(rows[0]?.athlete_id || '')
+    const sids = Object.keys(seanceMap).join(', ')
+    if (aid) await notifyAthlete(aid, { title: 'Ton coach a enregistré ta séance', body: (sids ? sids + ' · ' : '') + 'tu peux ajouter ton ressenti dans l\'app.', tag: 'novalyz-saisie-coach', target: 'accueil' }).catch(() => {})
+  }
   return jsonResp({ ok: true })
 }
 
@@ -6238,6 +6258,13 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
   if (!sess) return { ok: false, reason: tok ? 'jeton invalide ou expiré' : 'jeton absent' }
   const aid = String(params.get('athlete_id') || (body && (body.athlete_id || (body.data && body.data.athlete_id))) || '')
   const cid = String(params.get('coach_id') || (body && body.coach_id) || '')
+  // saveSeance : data = lignes [date, semaine, seance_id, nom, athlete_id, …] → athlete_id en [4].
+  // Avant, aucune vérification (le tableau n'a pas de champ athlete_id). Coach : seulement ses athlètes.
+  if (action === 'saveSeance' && body && Array.isArray(body.data)) {
+    if (body.saisi_par_coach != null && body.saisi_par_coach !== '' && (sess.role !== 'c' || String(body.saisi_par_coach) !== sess.id)) return { ok: false, reason: 'saisi_par_coach ≠ session' }
+    const ids = [...new Set(body.data.map((r: any) => String(Array.isArray(r) ? r[4] : '')))]
+    for (const id of ids) if (!id || !(await _sessionPeutAthlete(sess, id))) return { ok: false, reason: (sess.role === 'c' ? 'coach ' : 'athlète ') + sess.id + ' → séance de ' + id }
+  }
   if (sess.role === 'a') {
     if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
     if (cid) {
@@ -6345,7 +6372,7 @@ Deno.serve(async (req: Request) => {
         case 'saveSportCoach':           return handleSaveSportCoach(body)
         case 'saveTest':                 return handleSaveTest(body)
         case 'loginCoach':               return withSession(await handleLoginCoach(new URLSearchParams({ login: body.login, password: body.password })), 'c')
-        case 'saveSeance':               return handleSaveSeance(body.data)
+        case 'saveSeance':               return handleSaveSeance(body.data, body.saisi_par_coach)
         case 'deleteSeance':             return handleDeleteSeance(body)
         case 'updateSeance':             return handleUpdateSeance(body)
         case 'saveCommentaire':          return handleSaveCommentaire(body)

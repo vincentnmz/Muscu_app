@@ -49,7 +49,7 @@ const S = {
   _maSemaineType: function () { return 'calendaire'; },
 };
 vm.createContext(S);
-const FFN = ['parseChatDate', '_exoCat', '_exoFourchette', '_petitPas', '_cdAvgRpe', '_lectureExos', '_normTxt', '_musKey', '_seancesFaites', '_lxVolume'];
+const FFN = ['parseChatDate', '_exoCat', '_exoFourchette', '_petitPas', '_cdAvgRpe', '_progSecondaire', '_lectureExos', '_normTxt', '_musKey', '_seancesFaites', '_lxVolume'];
 vm.runInContext((SRC.match(/var _EXO_CAT_R = \{[^}]*\};/) || [''])[0] + '\n' + FFN.map(n => extractFrom(SRC, n)).join('\n') + '\n' + FFN.map(n => `this.${n}=${n};`).join(''), S);
 
 const ser = (arr, rpe) => arr.map((x, i) => ({ serie: i + 1, charge: x[0], reps: x[1], rpe: Array.isArray(rpe) ? rpe[i] : rpe }));
@@ -63,7 +63,10 @@ const DATA = {
   exo_categories: {},
   historique: { progression_par_exo: {
     'Développé incliné à la Smith': [pt('22/10/2026', [[80, 2], [70, 5], [60, 8]], [10, 10, 9]), pt('15/10/2026', [[80, 3], [70, 6], [60, 8]], [10, 9, 9]), pt('05/10/2026', [[70, 5]], 9), pt('14/09/2026', [[60, 8]], 8)],
-    'Leg curl allongé': [pt('27/10/2026', [[35, 8], [35, 8]], 8), pt('16/10/2026', [[35, 8]], 9), pt('13/10/2026', [[35, 8]], 9), pt('06/10/2026', [[35, 8]], 8)],
+    'Leg curl allongé': [pt('27/10/2026', [[35, 8], [35, 8]], 8), pt('16/10/2026', [[35, 8], [35, 8]], 8), pt('13/10/2026', [[35, 8], [35, 8]], 8), pt('06/10/2026', [[35, 8], [35, 8]], 8)],
+    // Retour porteur 30/10 : tractions 7·6·6·6 → 7·7·7·6 → 7·7·7 à RPE 8 = progrès (pas « bloqué »).
+    'Traction': [pt('28/10/2026', [[0, 7], [0, 7], [0, 7]], 8), pt('25/10/2026', [[0, 7], [0, 7], [0, 7], [0, 6]], 9), pt('21/10/2026', [[0, 7], [0, 6], [0, 6], [0, 6]], 9)],
+    'Tirage trapèze': [pt('28/10/2026', [[50, 7], [50, 7], [50, 7]], 8), pt('25/10/2026', [[50, 7], [50, 6]], 8)],
     'Pendulum': [pt('27/10/2026', [[60, 8]], 9), pt('13/10/2026', [[40, 10]], 8), pt('06/10/2026', [[40, 8]], 9)],
     'Belt squat': [pt('16/10/2026', [[200, 5]], 8), pt('30/06/2026', [[120, 10]], 8)],
     'Vieil exo': [pt('01/08/2026', [[50, 8]], 8), pt('20/07/2026', [[45, 8]], 8)],
@@ -76,6 +79,8 @@ check('Smith (80×2, 70×5 à RPE 10) → sous la fourchette', names('sous').inc
 check('Smith : historique chiffré du plus ancien au plus récent', JSON.stringify(L.sous[0].hist.map(h => h.c + 'x' + h.r)) === JSON.stringify(['60x8', '70x5', '80x3', '80x2']));
 check('Smith : petit pas du catalogue (2,5 kg)', L.sous[0].pas === 2.5);
 check('Leg curl 35×8 × 4 séances → bloqué (n = 4)', names('bloque').includes('Leg curl allongé') && L.bloque[0].n === 4);
+check('Traction même top 7 reps mais RPE 9 → 8 → progresse (pas bloqué)', names('progresse').includes('Traction') && !names('bloque').includes('Traction') && /RPE 8/.test(L.progresse.filter(x => x.exo === 'Traction')[0].why));
+check('Même top, plus de séries au niveau max (3 vs 1 à 50×7) → progresse', names('progresse').includes('Tirage trapèze') && /3 séries à 7 reps \(avant 1\)/.test(L.progresse.filter(x => x.exo === 'Tirage trapèze')[0].why));
 check('Pendulum 60 kg le 27/10 → record', names('records').includes('Pendulum'));
 check('Belt squat 120×10 → 200×5 → progresse (charge ↑ reps ↓ = progrès)', names('progresse').includes('Belt squat'));
 check('exo non fait depuis > 21 j → ignoré', !Object.keys(L).some(k => names(k).includes('Vieil exo')));
