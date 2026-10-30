@@ -115,6 +115,7 @@ const PE = extractFrom(SRC, '_maProgExo');
 check('Par exercice : cible = _tjCibles (même calcul que la saisie), plus _chargeAViser', /_tjCibles\(data/.test(PE) && !/_chargeAViser\(/.test(PE));
 check('Par exercice : statut = _lectureExos (même classement que la lecture)', /_lectureExos\(data/.test(PE));
 check('Par exercice : écart Charge + reps montre aussi les reps', /' rep' \+/.test(PE));
+check('Bloqué : leviers indicatifs (repos +30 s, plus tôt dans la séance, persister RPE 8-9) partout', /repos un peu plus long \(\+30 s\)/.test(SRC) && /_LEVIERS_BLOCAGE\)/.test(extractFrom(SRC, '_lxRecos')) && /_blocageInfo\(data, sel\)/.test(PE) && /_blocageInfo\(dernierAppData, exoEnCours/.test(SRC));
 console.log('-'.repeat(70));
 console.log('lecture v2 : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) { console.log('Échecs : ' + fails.join(' | ')); process.exit(1); }

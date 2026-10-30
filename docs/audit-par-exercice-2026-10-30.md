@@ -14,9 +14,9 @@
 | 5 | Faible | Leg curl 35 × 8 → 35 × 8 : « **▲ +0** » en vert. | **Corrigé** : « = identique », en gris. |
 | 6 | Faible | Mobile : l'onglet « Volume (toutes séries) » **chevauchait** « Par série ». | **Corrigé** : retour à la ligne. |
 
-## À décider
-- **Leg curl bloqué (4 séances à 35 × 8, RPE 9)** : la reco des Analyses dit « vise +1 rep par séance », mais « Ce que Novalyz vise » dit « RPE 9 → on consolide 35 × 8 ». Le calcul de la cible ne tient pas compte du blocage. Proposition : quand un exercice est **bloqué depuis 3 séances ou plus**, la cible propose un **autre levier** au lieu de « consolider » : +1 rep, ou une série en plus, ou un petit pas en dessous pour repartir. Lequel préfères-tu ?
-- Période par défaut **Semaine** : la plupart des exercices n'y ont qu'**1 point** (« — 1 séance »). Proposition : passer « Par exercice » sur **Mois** par défaut.
+## Décisions (30/10)
+- **Exercice bloqué** (même classement que la lecture) → leviers **à titre indicatif** : repos un peu plus long (+30 s), le placer plus tôt dans la séance pour être plus frais, ou persister en visant la bonne intensité (RPE 8-9 sur toutes les séries). Affiché **partout** : écran de saisie, Aujourd'hui (« Ce que Novalyz vise »), reco des Analyses, Par exercice.
+- **Période Mois par défaut** : correction de mon audit. Le code met **déjà** « Évolution » sur Mois par défaut (`_maDefaultGran('detail') = 'M'`). Mon outil de test passait directement à la vue sans changer d'onglet : la « Semaine » venait de là, ce n'était pas un bug. Seul cas : si tu changes la période à la main sur un autre onglet, elle est gardée.
 
 ## Vérifié juste
 - Points du graphe = série la plus lourde du jour (Smith 70×5, 80×3, 80×2, 80×1 ; Pendulum 40×8, 40×10, 60×8).
