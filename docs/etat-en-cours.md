@@ -2,22 +2,32 @@
 
 > **But** : qu'une nouvelle conversation reparte sans rien perdre (objectif + niveau), sans dépendre d'un prompt collé.
 > Lu en 2ᵉ après `CLAUDE.md`. Compléments : [`cahier-des-charges.md`](./cahier-des-charges.md) (**CDC interne/technique consolidé**) · [`suivi-points.md`](./suivi-points.md) · [`generateur-v2.md`](./generateur-v2.md) · [`backlog-app.md`](./backlog-app.md) · [`roadmap-produit.md`](./roadmap-produit.md) · [`roadmap-beta.md`](./roadmap-beta.md) · [`vision-produit.md`](./vision-produit.md) (boussole produit).
-> Dernière mise à jour : **26 oct. 2026**.
+> Dernière mise à jour : **30 oct. 2026 (soir)**.
 
 ## Boussole (ne pas dériver)
 Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comment progresser (données + ressenti)**. Moteur déterministe = **source de vérité** ; l'IA est une *couche langage* branchée dessus, elle n'invente aucun chiffre. Segmentation **muscu B2C grand public / autres sports B2B pro** sur **un seul moteur**. Détails figés : `docs/vision-produit.md`, `docs/roadmap-produit.md`.
 
 ## Où en est le travail (flux + déploiement)
-- Branche de travail : `claude/novalyz-player-profile-mockups-g4bock`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`. Promotion `dev → main` (prod) quand l'utilisateur valide.
-- **SW = `novalyz-shell-v434`** (bumper `sw.js` à CHAQUE modif de `js/app.js` / `index.html` / `css`).
-- Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**46 suites vertes** à maintenir). Pour une UI : **rendre un screenshot Playwright et le relire** avant de livrer (règle CLAUDE.md).
+- Branche de travail : `claude/pensive-ritchie-5p62gt`. On pousse **aussi sur `dev`** (fast-forward) après chaque lot → préprod `https://vincentnmz.github.io/Muscu_app/dev/`. Promotion `dev → main` (prod) quand l'utilisateur valide.
+- **SW = `novalyz-shell-v476`** (bumper `sw.js` à CHAQUE modif de `js/app.js` / `index.html` / `css`).
+- Vérifs avant push : `node --check js/app.js` + `node scripts/run-tests.mjs` (**60 suites vertes** à maintenir). Pour une UI : **rendre un screenshot Playwright et le relire** avant de livrer (règle CLAUDE.md).
 - **`index.ts` = déploiement MANUEL** (coller tout le fichier dans la fonction Supabase `smooth-service` → Deploy). Supabase `project_id = jhbrvgguybynzeceeceu`.
 
 ## ⚠️ ACTIONS UTILISATEUR EN ATTENTE (bloquent des features déjà codées)
+0. **Redéployer `index.ts`** (version du 30/10 soir : saisie coach, boutique IA, points v2, liaison option A). Dernière version vérifiée en ligne : v200 (liaison).
+0bis. **Activer `AUTH_ENFORCE=1`** (Supabase) : les logs du 30/10 montrent le contrôle des jetons en **observation** — les protections (liaison, droits saveSeance) ne bloquent pas encore. Vérifier les logs d'abord.
 1. ~~Redéployer `index.ts`~~ **FAIT** (vérifié 29/10 : version 197 en ligne = repo, 6 248 lignes, inclut lecture v2 / catégories / droits par ligne).
 2. **Clé `ANTHROPIC_API_KEY`** en variable d'env Supabase → sinon morpho IA + chat IA inactifs (le moteur déterministe, lui, marche sans clé). Cf. `docs/activer-ia.md`.
 
 ## Fait récemment
+- **30/10 (après-midi/soir)** — sur `dev` (SW v476), `index.ts` modifié :
+  - **Liaison coach ↔ athlète (option A)** : le coach envoie une DEMANDE (login), l'athlète accepte/refuse (fenêtre + Réglages ▸ Mon coach + notif) ; refus si déjà suivi par un autre coach ; « Quitter mon coach » ; coach à jour côté athlète via `getAppData.coach_lie`. Audit `docs/audit-lier-athlete-2026-10-30.md`, test `tests/lier-athlete.test.js`.
+  - **Points v2** (calculés serveur `calculerPoints`) : séance 10 · RPE complet 5 · ressenti 3/j · séance complète 5 · record (charge battue, 3/sem.) 20 · objectif semaine 30. Une ligne sur Aujourd'hui + page « Mes points ». Badges débloqués par les points. Boutique : +5 questions IA (150 pts, actif seulement avec la clé IA) + partenaires « Bientôt ». Doc `docs/points-v2-2026-10-30.md`, test `tests/points-v2.test.js`.
+  - **Audit Par exercice** (`docs/audit-par-exercice-2026-10-30.md`) : une seule cible (« Ce que Novalyz vise », même calcul que la saisie), statut de l'exercice, écart charge + reps. **Exercice bloqué** → leviers indicatifs (repos +30 s, plus tôt dans la séance, persister à RPE 8-9) partout.
+  - **Progrès à meilleure série égale** (`_progSecondaire`) : plus de séries au top ou même niveau à RPE plus bas = progrès (tractions 7·7·7 à RPE 8). Appliqué au classement partagé + vue « Par séance ».
+  - **Aujourd'hui** : séance du jour **faite** (« ✓ Faite aujourd'hui ») / **semaine complète** au lieu de reproposer la 1re séance du programme.
+  - **Saisie de séance par le coach (présentiel)** : bouton violet sur la fiche → écran de saisie de l'athlète en mode coach ; validation directe, marquée « saisie par ton coach » (+ notif athlète) ; bilan laissé à l'athlète ; `saveSeance` vérifie les droits par ligne. Test `tests/saisie-coach.test.js`.
+  - Lecture rechargée aussi après synchro montre, mode vacances, catégorie d'exercice. Zone de douleur « NaN » masquée partout.
 - **30/10** : sexe dans Réglages ▸ Profil (renvoyé au login → nutrition juste) ; éditeur de programme : séries/reps/repos mis à jour tout de suite ; lectures rechargées après chaque séance muscu (et après synchro hors-ligne) ; audit Tendances (3 correctifs). ⚠️ `index.ts` modifié → redéployer.
 - **Lecture Novalyz v2 (29/10, maquette `mockups/novalyz-lecture-v2.html` validée)** — ⚠️ `index.ts` modifié → **redéployer** :
   - **Classement partagé** `_lectureExos` (records / progresse / bloqué / recule / **sous la fourchette**) sur charges · reps · RPE réels, utilisé par Aujourd'hui, Analyses ET la vue coach (`renderCoachCoupDoeil`). Le « 1RM estimé moyen » est retiré de la lecture athlète. Charge ↑ reps ↓ = progrès (décision).
@@ -106,6 +116,13 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - **Aperçu coach v3** (`renderCoachCoupDoeil`, charge·reps·RPE réels, état+récup, Lecture Novalyz pour le coach). Nutrition (import MFP), morpho/mensurations coach, récompenses v2, etc.
 
 ## À faire (priorité)
+- **EN STOCK (30/10, à reprendre plus tard — demandé de garder)** :
+  - Tonnage « ▼ 65 % » sur dos jambe 2 du 30/10 : vérifier la base de comparaison (séance précédente plus complète ?).
+  - Tractions 30/10 : 3 séries en base, l'utilisateur dit 4 → vérifier la saisie (oubli ou perte).
+  - **Page Import de la montre** : à revoir (ergonomie / contenu) — maquette d'abord.
+  - Vérifs **sur téléphone** : montre (import séances, doublons, nutrition MFP) ; Hyrox (chrono live, mode « Par atelier », libellés). Les audits code + données sont FAITS (29/10).
+  - Audit **Cardio par sport** (dont « Vélo 10h39 · 0,9 km ») ; Cardio ▸ Tendances ; Croisé en Mois / Année.
+  - Promotion `dev → main` + AAB test fermé Play Store quand le lot est validé ; mail récap 1er nov.
 - **À décider (30/10)** : (1) Tendances › remplacer « Tendance de force » (1RM moyen) par « Exercices en progrès » (`docs/audit-tendances-2026-10-30.md`) ; (2) récompenses utiles + (3) saisie de séance par le coach en présentiel — maquette `mockups/novalyz-recompenses-coach-saisie.html` (5 questions en bas).
 - **Audits à faire (demandés 28/10)** — même méthode que l'audit Cardio/Croisé (`docs/audit-cardio-croise-forme-2026-10-28.md`) : vrai `index.ts` rejoué sur une copie des données réelles + vrai front rendu, chaque phrase confrontée au code et aux données.
   - **Sous-pages Forme** : audit fait le 29-30/10 (`docs/audit-forme-sous-pages-2026-10-29.md`) — 5 correctifs APPLIQUÉS le 30/10.
