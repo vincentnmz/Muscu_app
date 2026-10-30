@@ -2502,6 +2502,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   return jsonResp({
     moteur,
     coach_lie: coachLie,
+    coach_demande: await (async () => { const r = (prefRows || []).find((x: any) => x.cle === COACH_DEMANDE_CLE); if (!r || coachLie) return null; const { data: c } = await sb().from('coachs').select('coach_id,nom').eq('coach_id', String(r.valeur)).single(); return c ? { coach_id: String((c as any).coach_id), nom: String((c as any).nom || '').trim() || 'Un coach' } : null })(),
     global: enrichedGlobal,
     recent: { ...recentData, derniere_seance: derniereSeanceObj },
     comparison: comparisonData,
@@ -2811,9 +2812,23 @@ async function handleLierAthlete(params: URLSearchParams): Promise<Response> {
       return jsonResp({ success: false, deja_autre: true, error: 'Cet athlète est déjà suivi par un autre coach. Il doit d\'abord quitter son coach (Réglages ▸ Compte ▸ Mon coach).' })
     }
     if (cur === String(coachId)) return jsonResp({ success: true, deja: true, athlete_id: ath.id, nom: ath.nom })
-    const { error } = await sb().from('athletes').update({ coach_id: coachId }).eq('id', ath.id)
-    if (error) return jsonResp({ success: false, error: error.message })
-    return jsonResp({ success: true, athlete_id: ath.id, nom: ath.nom })
+    // Option A (décision 30/10) : plus de liaison directe. Le coach envoie une DEMANDE,
+    // l'athlète l'accepte ou la refuse dans son app (repondreDemandeCoach). Stockée en pref
+    // (indicateurs, seance_id 'pref', cle 'coach_demande', valeur = coach_id) : une seule
+    // demande en attente par athlète, la plus récente remplace l'autre (le nom est affiché).
+    const { data: ex } = await sb().from('indicateurs').select('valeur').eq('athlete_id', ath.id).eq('seance_id', 'pref').eq('cle', COACH_DEMANDE_CLE).limit(1)
+    if (ex && ex.length) {
+      if (String(ex[0].valeur) === String(coachId)) return jsonResp({ success: true, demande: true, deja_demande: true, athlete_id: ath.id, nom: ath.nom })
+      const { error } = await sb().from('indicateurs').update({ valeur: String(coachId), date: fmtYMD(new Date()) }).eq('athlete_id', ath.id).eq('seance_id', 'pref').eq('cle', COACH_DEMANDE_CLE)
+      if (error) return jsonResp({ success: false, error: error.message })
+    } else {
+      const { error } = await sb().from('indicateurs').insert({ athlete_id: ath.id, date: fmtYMD(new Date()), seance_id: 'pref', cle: COACH_DEMANDE_CLE, valeur: String(coachId), unite: '', source: 'app' })
+      if (error) return jsonResp({ success: false, error: error.message })
+    }
+    const { data: cRow } = await sb().from('coachs').select('nom').eq('coach_id', coachId).single()
+    const cNom = String((cRow as any)?.nom || '').trim() || 'Un coach'
+    await notifyAthlete(String(ath.id), { title: cNom + ' veut te suivre', body: 'Ouvre Novalyz pour accepter ou refuser.', tag: 'novalyz-coach-demande', target: 'accueil' }).catch(() => {})
+    return jsonResp({ success: true, demande: true, athlete_id: ath.id, nom: ath.nom })
   }
   if (loginAth) {
     if (!/^\d{4}$/.test(loginAth)) return jsonResp({ success: false, error: 'Le login doit faire 4 chiffres.' })
@@ -2827,6 +2842,29 @@ async function handleLierAthlete(params: URLSearchParams): Promise<Response> {
     return lier(ath)
   }
   return jsonResp({ success: false, error: 'Paramètres manquants' })
+}
+
+const COACH_DEMANDE_CLE = 'coach_demande'
+
+// L'athlète répond à la demande de suivi d'un coach (option A, 30/10).
+// Accepter : coach_id = coach de la demande. Dans tous les cas la demande est effacée.
+async function handleRepondreDemandeCoach(body: any): Promise<Response> {
+  const athleteId = String(body.athlete_id || '')
+  if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const { data: dem } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').eq('cle', COACH_DEMANDE_CLE).limit(1)
+  const coachId = dem && dem.length ? String(dem[0].valeur || '') : ''
+  if (!coachId) return jsonResp({ success: false, error: 'Aucune demande en attente.' })
+  // Le coach qui a fait la demande doit être celui que l'athlète a vu (anti-remplacement entre-temps).
+  if (body.coach_id_vu != null && String(body.coach_id_vu) !== coachId) return jsonResp({ success: false, error: 'La demande a changé : rouvre l\'app.' })
+  await sb().from('indicateurs').delete().eq('athlete_id', athleteId).eq('seance_id', 'pref').eq('cle', COACH_DEMANDE_CLE)
+  if (!body.accepter) return jsonResp({ success: true, accepte: false })
+  const { data: cRow } = await sb().from('coachs').select('coach_id,nom').eq('coach_id', coachId).single()
+  if (!cRow) return jsonResp({ success: false, error: 'Ce coach n\'existe plus.' })
+  const { error } = await sb().from('athletes').update({ coach_id: coachId }).eq('id', athleteId)
+  if (error) return jsonResp({ success: false, error: error.message })
+  const { data: aRow } = await sb().from('athletes').select('nom').eq('id', athleteId).single()
+  await notifyCoach(coachId, { title: String((aRow as any)?.nom || 'Ton athlète') + ' a accepté ton suivi', body: 'Il apparaît maintenant dans ton équipe.', tag: 'novalyz-coach-demande', target: 'coach' }).catch(() => {})
+  return jsonResp({ success: true, accepte: true, coach: { coach_id: coachId, nom: String((cRow as any).nom || '') } })
 }
 
 // L'athlète quitte son coach (ou le coach retire son athlète) : coach_id → null.
@@ -6206,6 +6244,7 @@ Deno.serve(async (req: Request) => {
         case 'supprimerCompte':          return handleSupprimerCompte(body)
         case 'coachCreerAthlete':        return handleCoachCreerAthlete(body)
         case 'detacherCoach':            return handleDetacherCoach(body)
+        case 'repondreDemandeCoach':     return handleRepondreDemandeCoach(body)
         case 'coachResetAthlete':        return handleCoachResetAthlete(body)
         case 'saveEmail':                return handleSaveEmail(body)
         case 'changePassword':           return handleChangePassword(body)

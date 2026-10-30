@@ -8,7 +8,7 @@
 
 | # | Gravité | Défaut | Statut |
 |---|---|---|---|
-| 1 | **Critique (sécurité)** | **Un coach pouvait « prendre » n'importe quel athlète** avec son seul login à 4 chiffres, **y compris l'athlète d'un autre coach**, sans prévenir personne. Le `coach_id` était écrasé en silence. Or l'inscription coach est ouverte à tous, et un coach lié peut ensuite **tout lire** et **réinitialiser le mot de passe** de l'athlète (`coachResetAthlete`). | **Partiellement corrigé** : un athlète déjà suivi par un autre coach est désormais **refusé**. Il doit d'abord quitter son coach. **Reste ouvert** : un athlète **sans coach** peut toujours être lié par n'importe quel coach qui tape son login (10 000 possibilités) → **décision ci-dessous**. |
+| 1 | **Critique (sécurité)** | **Un coach pouvait « prendre » n'importe quel athlète** avec son seul login à 4 chiffres, **y compris l'athlète d'un autre coach**, sans prévenir personne. Le `coach_id` était écrasé en silence. Or l'inscription coach est ouverte à tous, et un coach lié peut ensuite **tout lire** et **réinitialiser le mot de passe** de l'athlète (`coachResetAthlete`). | **Corrigé (option A, validée le 30/10)** : un athlète déjà suivi par un autre coach est **refusé** (il doit d'abord quitter son coach). Un athlète **sans coach** reçoit une **demande** (« X veut te suivre — Accepter / Refuser », fenêtre à l'ouverture + Réglages ▸ Mon coach + notification). Rien n'est lié tant qu'il n'a pas accepté. |
 | 2 | **Élevée** | **Côté athlète, le lien n'apparaissait pas** tant qu'il ne se déconnectait pas. `coach_id` n'était lu **qu'à la connexion**. Cas normal : l'athlète se connecte, donne son login, le coach le lie → l'athlète reste « Pas encore de coach ? » (et l'inverse après un départ). | **Corrigé** : `getAppData` renvoie `coach_lie` (id + nom du coach), le front se met à jour à chaque chargement. |
 | 3 | Moyenne | **Aucun moyen de quitter son coach** (ni pour l'athlète, ni pour le coach pour un seul athlète). Seule la suppression du compte coach détachait. | **Corrigé** : Réglages ▸ Mon compte ▸ **Mon coach** (« Tu es suivi par X » + « Quitter mon coach », avec confirmation). Nouvelle action `detacherCoach`. |
 | 4 | Faible | Coach : aucun retour après une liaison réussie (la fenêtre se fermait sans rien dire). Aucun contrôle « 4 chiffres ». Message « Athlète introuvable » ambigu. Relier un athlète déjà dans l'équipe donnait un succès muet. | **Corrigé** : contrôle 4 chiffres (front + serveur), toast « X est rattaché à ton équipe » / « X est déjà dans ton équipe », message « Aucun athlète avec ce login ». |
@@ -25,10 +25,10 @@
 - **`coachResetAthlete`** : refuse un athlète qui n'est pas lié à ce coach.
 - **Droits** (`authCheck`) : un coach ne peut pas agir au nom d'un autre coach ; un athlète ne peut pas appeler `lierAthlete` (route coach).
 
-## Décision à prendre pour fermer #1
-Aujourd'hui le login à 4 chiffres sert **à la fois** d'identifiant de connexion **et** de clé pour se faire lier.
-Deux options :
-- **A · Demande à accepter** : le coach saisit le login → l'athlète voit « Karim veut te suivre — Accepter / Refuser ». Le plus sûr, un écran de plus.
-- **B · Code de liaison** : l'athlète voit dans Réglages un code à 6 caractères (renouvelable) et le donne à son coach avec son login. Pas d'écran d'acceptation, mais un code de plus à transmettre.
-
-Recommandation : **A** (c'est le standard, et l'athlète voit qui le suit).
+## Décision prise pour #1 : option A (30/10)
+- Coach : « + Inviter » ▸ Lier ▸ login → **demande envoyée** (toast « il doit l'accepter dans son app »). Relancer = « déjà envoyée ».
+- Athlète : fenêtre « X veut te suivre » à l'ouverture (Accepter / Refuser / Plus tard), aussi dans Réglages ▸ Mon coach. Notification push si activée.
+- Accepter → lié, le coach reçoit « X a accepté ton suivi ». Refuser → demande effacée.
+- Stockage : `indicateurs` (pref `coach_demande` = coach_id), une demande en attente par athlète (la plus récente remplace). L'athlète accepte celle qu'il a **vue** (`coach_id_vu`), pas une autre arrivée entre-temps.
+- « Créer » un athlète (le coach crée le compte) reste direct.
+- Test : `tests/lier-athlete.test.js` (16 cas).
