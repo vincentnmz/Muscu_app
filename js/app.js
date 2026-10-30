@@ -65,6 +65,8 @@ try {
 } catch (e) {}
 
 (function (global) {
+  // Zone de douleur lisible (« NaN » = ancienne saisie perdue → rien). Autonome : le moteur est testé seul.
+  function _zdEng(z) { var t = String(z == null ? '' : z).trim(); return (!t || t === 'NaN' || t === 'null' || t === 'undefined') ? '' : t; }
   'use strict';
 
   var VERSION = '1.0.0';
@@ -332,9 +334,9 @@ try {
         var s = f.signaux;
         if (!tous(s.douleurElevee, s.volumeEleve)) return null;
         var v = f.valeurs || {};
-        var zone = _zoneDouleur(v.zone) ? (' (' + _zoneDouleur(v.zone) + ')') : '';
+        var zone = _zdEng(v.zone) ? (' (' + _zdEng(v.zone) + ')') : '';
         var ev = [];
-        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (_zoneDouleur(v.zone) ? ' (' + _zoneDouleur(v.zone) + ')' : ''));
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (_zdEng(v.zone) ? ' (' + _zdEng(v.zone) + ')' : ''));
         if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
           titre: 'Surcharge locale probable',
@@ -492,7 +494,7 @@ try {
         var v = f.valeurs || {};
         var zone = v.zone ? (' · zone : ' + v.zone) : '';
         var ev = [];
-        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (_zoneDouleur(v.zone) ? ' (' + _zoneDouleur(v.zone) + ')' : ''));
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (_zdEng(v.zone) ? ' (' + _zdEng(v.zone) + ')' : ''));
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Douleur signalée',
           description: 'Une douleur significative a été déclarée' + zone + '.',
