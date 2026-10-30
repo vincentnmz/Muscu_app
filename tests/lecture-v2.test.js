@@ -80,7 +80,7 @@ check('Smith : historique chiffré du plus ancien au plus récent', JSON.stringi
 check('Smith : petit pas du catalogue (2,5 kg)', L.sous[0].pas === 2.5);
 check('Leg curl 35×8 × 4 séances → bloqué (n = 4)', names('bloque').includes('Leg curl allongé') && L.bloque[0].n === 4);
 check('Traction même top 7 reps mais RPE 9 → 8 → progresse (pas bloqué)', names('progresse').includes('Traction') && !names('bloque').includes('Traction') && /RPE 8/.test(L.progresse.filter(x => x.exo === 'Traction')[0].why));
-check('Même top, plus de séries au niveau max (3 vs 1 à 50×7) → progresse', names('progresse').includes('Tirage trapèze') && /3 séries à 7 reps \(avant 1\)/.test(L.progresse.filter(x => x.exo === 'Tirage trapèze')[0].why));
+check('Même top, plus de séries au niveau max (3 vs 1 à 50×7) → progresse', names('progresse').includes('Tirage trapèze') && /3 séries à 7 reps au lieu de 1/.test(L.progresse.filter(x => x.exo === 'Tirage trapèze')[0].why));
 check('Pendulum 60 kg le 27/10 → record', names('records').includes('Pendulum'));
 check('Belt squat 120×10 → 200×5 → progresse (charge ↑ reps ↓ = progrès)', names('progresse').includes('Belt squat'));
 check('exo non fait depuis > 21 j → ignoré', !Object.keys(L).some(k => names(k).includes('Vieil exo')));

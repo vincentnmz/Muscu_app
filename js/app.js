@@ -5520,10 +5520,10 @@ function _progSecondaire(pA, pB) {
   var top = function (p) { return (Array.isArray(p.series) ? p.series : []).filter(function (x) { return num(x.charge) === c && num(x.reps) >= r; }); };
   var tA = top(pA), tB = top(pB);
   if (!tA.length || !tB.length) return null;
-  if (tA.length > tB.length) return tA.length + ' séries à ' + r + ' reps (avant ' + tB.length + ')';
+  if (tA.length > tB.length) return tA.length + ' séries à ' + r + ' reps au lieu de ' + tB.length;
   var rpe = function (t) { var v = t.map(function (x) { return num(x.rpe); }).filter(function (x) { return x > 0; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
   var rA = rpe(tA), rB = rpe(tB);
-  if (tA.length >= Math.min(tB.length, 2) && rA != null && rB != null && rA <= rB - 0.5) return 'même niveau à RPE ' + String(Math.round(rA * 10) / 10).replace('.', ',') + ' (avant ' + String(Math.round(rB * 10) / 10).replace('.', ',') + ')';
+  if (tA.length >= Math.min(tB.length, 2) && rA != null && rB != null && rA <= rB - 0.5) return 'même niveau à RPE ' + String(Math.round(rA * 10) / 10).replace('.', ',') + ' au lieu de ' + String(Math.round(rB * 10) / 10).replace('.', ',');
   return null;
 }
 function _lectureExos(data, nowT) {
