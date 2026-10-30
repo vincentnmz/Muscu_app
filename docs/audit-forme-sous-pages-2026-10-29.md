@@ -7,6 +7,8 @@
 > venaient ont été re-vérifiés avec ton vrai profil : « Entretien » et « complète taille + date de naissance »
 > étaient des artefacts de test, **pas** des bugs.
 
+> **Statut (30/10) : les 5 correctifs sont APPLIQUÉS** (D = « calcul homme » affiché). Test `tests/audit-forme.test.js`.
+
 ## Défauts trouvés
 
 | # | Gravité | Où | Défaut | Preuve | Correctif proposé |

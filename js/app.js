@@ -5580,7 +5580,7 @@ function renderCoachCoupDoeil(data) {
       if (be.fatigue != null) etat += _cdCoupRow(colv(be.fatigue), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + trd('fatigue', true));
     }
     if (sig.stress != null) { var stv = Number(sig.stress); etat += _cdCoupRow(stv >= 3.5 ? 'var(--warn)' : 'var(--good)', '●', '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé'))); }
-    if (be && be.zone_douloureuse) etat += _cdCoupRow('var(--warn)', '●', '<b>Douleur</b> ' + esc(String(be.zone_douloureuse).toLowerCase()));
+    if (be && _zoneDouleur(be.zone_douloureuse)) etat += _cdCoupRow('var(--warn)', '●', '<b>Douleur</b> ' + esc(_zoneDouleur(be.zone_douloureuse).toLowerCase()));
     else if (be) etat += _cdCoupRow('var(--good)', '●', '<b>Douleur</b> aucune');
     if (pasAvg != null) { var pc = pasAvg >= 8000 ? 'var(--good)' : (pasAvg >= 5000 ? 'var(--text-subtle)' : 'var(--warn)'); var pl = pasAvg >= 8000 ? 'actif' : (pasAvg >= 5000 ? 'modéré' : 'faible, plutôt sédentaire'); etat += _cdCoupRow(pc, '●', '<b>Pas</b> ' + pasAvg.toLocaleString('fr-FR') + '/j · ' + pl + ' <span style="color:var(--text-subtle)">(montre, 7 j)</span>'); }
     // CARDIO — toujours affiché : si aucun historique, on le DIT (« manque de cardio »).
@@ -9523,7 +9523,12 @@ var _blForm = null;   // null = liste ; objet = formulaire (nouvelle/édition)
 var _BL_INT = { 2: ['Légère', '#8FBF3F'], 3: ['Modérée', '#E07800'], 4: ['Forte', '#DC3545'], 5: ['Très forte', '#B91C1C'] };
 var _BL_STATUT = { en_cours: ['En cours', '#DC3545'], retour_progressif: ['Retour progressif', '#E07800'], gueri: ['Guéri', '#00A854'] };
 var _BL_MON = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'aoû', 'sep', 'oct', 'nov', 'déc'];
-function _blTs(fr) { var d = _maFRtoDate(fr); return d ? d.getTime() : 0; }
+// Date d'une douleur / blessure : « 29/10/2026 » OU « 2026-10-29 » (les bilans arrivent en ISO ;
+// avant, la date affichait « — » et le tri ne marchait pas — audit Forme 29/10 #3).
+function _blDate(s) { var d = _maFRtoDate(s); if (d) return d; var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+function _blTs(fr) { var d = _blDate(fr); return d ? d.getTime() : 0; }
+// Zone de douleur lisible : les anciennes lignes « NaN » (bug de saisie corrigé le 30/10) = zone perdue.
+function _zoneDouleur(z) { var t = String(z == null ? '' : z).trim(); if (!t || t === 'NaN' || t === 'null' || t === 'undefined') return ''; return t; }
 function _blToISO(fr) { var d = _maFRtoDate(fr); if (!d) return ''; return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function renderBlessures(data) {
   var el = document.getElementById('bl-body'); if (!el) return;
@@ -9541,12 +9546,12 @@ function renderBlessures(data) {
 
   var dou = [];
   ['muscu', 'cardio'].forEach(function (t) {
-    ((data && data.analyses && data.analyses['douleurs_' + t]) || []).forEach(function (x) { if (x && Number(x.valeur) >= 2) dou.push({ date: x.date, val: Number(x.valeur), zone: x.zone || '', type: t }); });
+    ((data && data.analyses && data.analyses['douleurs_' + t]) || []).forEach(function (x) { if (x && Number(x.valeur) >= 2) dou.push({ date: x.date, val: Number(x.valeur), zone: _zoneDouleur(x.zone), type: t }); });
   });
   dou.sort(function (a, b) { return _blTs(b.date) - _blTs(a.date); });
   dou = dou.slice(0, 40);
   var douHtml = dou.length ? ('<div class="bl-card">' + dou.map(function (x) {
-    var d = _maFRtoDate(x.date), dd = d ? String(d.getDate()).padStart(2, '0') : '—', mm = d ? _BL_MON[d.getMonth()] : '';
+    var d = _blDate(x.date), dd = d ? String(d.getDate()).padStart(2, '0') : '—', mm = d ? _BL_MON[d.getMonth()] : '';
     var it = _BL_INT[x.val] || ['Signalée', '#E07800'];
     return '<div class="bl-drow"><div class="bl-ddate"><div class="dd">' + dd + '</div><div class="mm">' + mm + '</div></div><div class="bl-dmain"><div class="a">' + (x.zone ? _maE(x.zone) : 'Zone non précisée') + '</div><div class="b">' + (x.type === 'cardio' ? 'Cardio' : 'Muscu') + '</div></div><span class="bl-int" style="background:' + it[1] + '">' + it[0] + '</span></div>';
   }).join('') + '</div>') : '<div class="bl-empty">Aucune douleur signalée. Les douleurs de tes bilans de séance apparaîtront ici.</div>';
@@ -11845,7 +11850,7 @@ function ouvrirBilanSeance(type, seanceId, date) {
 // Construit le payload du bilan (ressenti + douleur + zone).
 function _bilanPayload(type, seanceId, dateSeance) {
   var zoneText = document.getElementById('wq-zone-text') ? document.getElementById('wq-zone-text').value.trim() : '';
-  var zone = zoneText || (wellnessState.zone != null ? String(wellnessState.zone) : '');
+  var zone = zoneText || ((wellnessState.zone != null && String(wellnessState.zone) !== 'NaN') ? String(wellnessState.zone) : '');
   return {
     action: 'saveBilanSeance', athlete_id: athlete.athlete_id, type: type,
     seance_id: seanceId || null, date: dateSeance,
@@ -11921,7 +11926,9 @@ function selectWQ(question, btn) {
   const container = document.getElementById('wq-' + question);
   container.querySelectorAll('.wq-chip').forEach(c => c.classList.remove('selected'));
   btn.classList.add('selected');
-  wellnessState[question] = Number(btn.dataset.val); // toujours numérique en BDD
+  // Réponses chiffrées → nombre ; la ZONE de douleur est un texte (« epaule »…) : la
+  // convertir en nombre l'enregistrait « NaN » et la zone était perdue (audit Forme 29/10 #1).
+  wellnessState[question] = (question === 'zone') ? String(btn.dataset.val || '') : Number(btn.dataset.val);
   if (question === 'douleur') {
     const hasPain = btn.dataset.val !== WELLNESS_NO_PAIN_VAL;
     document.getElementById('wq-zone-block').style.display = hasPain ? 'block' : 'none';
@@ -12534,10 +12541,6 @@ function _objSeancesInc(d) {
   v = Math.max(1, Math.min(7, v));
   el.setAttribute('data-val', v); el.textContent = v;
 }
-// Cible de séances/sem actuelle (explicite si réglée, sinon dérivée du programme).
-function _objSeancesCible() {
-  try { var r = dernierAppData && dernierAppData.dashboard && dernierAppData.dashboard.regularite; var v = r && r.seances_prevues; return (v != null && v > 0) ? Number(v) : 4; } catch (e) { return 4; }
-}
 // Met à jour l'affichage (ligne de la carte + valeur du stepper) depuis la cible.
 function _objMajSeancesUI() {
   var cible = _objSeancesCible();
@@ -13074,7 +13077,12 @@ function _maMoteurTiles(data) {
 // Charge interne d'une sortie cardio (sRPE de Foster, UA). RPE manquant (import
 // montre : durée + FC sans RPE ressenti) estimé via la FC moyenne, sinon RPE 5.
 // Miroir du backend chargeInterneCardio (#5 : l'importé pèse au lieu d'être exclu).
+// La MARCHE (quotidienne, souvent importée de la montre) est une activité, pas un
+// entraînement : elle ne compte pas dans la charge (décision 30/10 — elle faisait 82 %
+// de la charge cardio annuelle). Elle reste visible dans les sorties et les pas.
+function _estMarche(s) { return /^marche/i.test(String((s && s.type_cardio) || '')); }
 function _chargeInterneCardio(s) {
+  if (_estMarche(s)) return 0;
   var duree = Number(s && s.duree) || 0; if (duree <= 0) return 0;
   var rpe = Number(s && s.rpe) || 0;
   if (rpe <= 0) {
@@ -13133,7 +13141,7 @@ var _MA_INFO = {
   efficience: { t: 'Efficience cardio', d: 'À effort comparable, une fréquence cardiaque moyenne plus basse indique une meilleure condition aérobie.', fiab: 'Novalyz ne l\'affirme que si ton effort (RPE) est resté similaire — sinon une FC plus basse peut simplement venir de sorties plus faciles.' },
   charge_cardio: { t: 'Charge cardio (interne)', d: 'La charge interne d\'une sortie = RPE × durée (en minutes), additionnée par semaine en UA (unités arbitraires). Elle mesure ce que la séance t\'a coûté, pas seulement la distance parcourue.', fiab: 'Méthode reconnue (session-RPE, Foster 2001) : simple et fiable pour suivre l\'évolution de ta charge. Une hausse trop rapide d\'une semaine à l\'autre invite à la prudence.' },
   charge_globale: { t: 'Charge globale (muscu + cardio)', d: 'Additionne ta charge muscu et ta charge cardio sur une même échelle (UA) pour voir ta charge totale par semaine. La muscu (tonnage) est convertie via un ratio approché pour la rendre comparable au cardio (RPE × durée).', fiab: 'La partie cardio (session-RPE) est bien établie ; la mise à la même échelle que la muscu repose sur une conversion approximative. Lis la tendance (monte / descend), pas le chiffre exact.' },
-  equilibre_mc: { t: 'Répartition muscu / cardio', d: 'La part de ta charge totale qui vient de la muscu vs du cardio, sur la période. Utile pour voir si tu équilibres les deux selon ton objectif.', fiab: 'Repère indicatif : la muscu est ramenée à la même échelle que le cardio via une conversion approximative — regarde la tendance, pas le pourcentage au point près.' },
+  equilibre_mc: { t: 'Répartition muscu / cardio', d: 'La part de ta charge totale qui vient de la muscu vs du cardio, sur la période. Utile pour voir si tu équilibres les deux selon ton objectif.', fiab: 'Muscu et cardio sont comptés dans la même unité : effort (RPE) × durée. La durée d\'une séance muscu est ESTIMÉE (tes temps de repos saisis + ~40 s par série) quand le chrono n\'est pas enregistré. La marche n\'est pas comptée (c\'est une activité, pas un entraînement). Regarde la tendance plus que le pourcentage au point près.' },
   forme: { t: 'Indice de forme', d: 'Un indice sur 100 qui résume ta readiness : sommeil + fatigue + stress + courbatures (indice de Hooper), ramené sur 100 (100 = parfaitement récupéré). À croiser avec ta charge.', fiab: 'Basé sur l\'indice de Hooper-Mackinnon (readiness), reconnu en prépa physique. Déclaratif : il vaut surtout par sa tendance — si la forme chute quand la charge monte, c\'est un signal pour lever le pied.' }
 };
 function _maInfoOpen(k) {
@@ -14421,16 +14429,21 @@ function _maCardioResume(data) {
   var by = _maCardioAgg(hist, _w.days, _w.startISO, _w.endISO);
   var types = Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; });
   var total = types.reduce(function (s, t) { return s + by[t].n; }, 0);
-  var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _w.plabel : (hist.length ? 'Aucune sortie sur cette période' : 'Pas encore de cardio')) + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' enregistrée' + (total > 1 ? 's' : '') + '. Continue pour bâtir ta base d\'endurance.') : (hist.length ? _maDerniereSortie(hist) : 'Enregistre une séance cardio pour voir tes analyses ici.')) + '</div></div></div>';
+  var verdict = '<div class="ma-verdict cx"><span class="ma-vic">' + _maSvg('<path d="M5 12h14M13 6l6 6-6 6"/>', 14) + '</span><div><div class="vh">' + (total ? 'Ton cardio ' + _w.plabel : (hist.length ? 'Aucune sortie sur cette période' : 'Pas encore de cardio')) + '</div><div class="vd">' + (total ? (total + ' sortie' + (total > 1 ? 's' : '') + ' ' + _w.plabel + (function () { var km = types.reduce(function (a, t) { return a + (by[t].dist || 0); }, 0); return km > 0 ? ' · ' + String(Math.round(km * 10) / 10).replace('.', ',') + ' km' : ''; })() + '.') : (hist.length ? _maDerniereSortie(hist) : 'Enregistre une séance cardio pour voir tes analyses ici.')) + '</div></div></div>';
   var listHtml = types.length ? ('<div class="ma-card">' + types.map(function (t) {
     var m = _maCM(t), o = by[t];
     return '<div class="ma-sport"><span class="ma-spic" style="background:' + m[1] + '">' + _maSvg(m[2], 17) + '</span><div class="ma-spmain"><div class="a">' + _maE(m[0]) + '</div><div class="b">' + o.n + ' sortie' + (o.n > 1 ? 's' : '') + ' · ' + _maHMS(o.duree) + (o.rn ? ' · RPE ' + (Math.round(o.rpe / o.rn * 10) / 10) : '') + '</div></div><div class="ma-spval"><div class="v">' + (Math.round(o.dist * 10) / 10) + ' km</div><div class="u">' + (o.vn ? (Math.round(o.vit / o.vn * 10) / 10) + ' km/h' : '') + '</div></div></div>';
   }).join('') + '</div>') : _maEmpty('Aucune sortie sur la période.');
   // Pas quotidiens sur la période choisie (max 30 barres) + axe daté.
-  var pas = (data.pas_quotidiens || []).filter(function (x) { return (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; }).slice().sort(function (a, b) { return (a.date < b.date) ? -1 : 1; });
-  if (pas.length > 30) pas = pas.slice(pas.length - 30);
+  // Pas : la MONTRE (sante_historique, Health Connect) prime sur l'ancienne source
+  // (pas_quotidiens, arrêtée au 08/09) — audit 29/10 #4.
+  var _pasMap = {};
+  (data.pas_quotidiens || []).forEach(function (x) { if (x && x.date && Number(x.pas) > 0) _pasMap[x.date] = { date: x.date, pas: Number(x.pas) }; });
+  (data.sante_historique || []).forEach(function (x) { if (x && x.date && Number(x.pas) > 0) _pasMap[x.date] = { date: x.date, pas: Number(x.pas) }; });
+  var pas = Object.keys(_pasMap).map(function (k) { return _pasMap[k]; }).filter(function (x) { return (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; }).slice().sort(function (a, b) { return (a.date < b.date) ? -1 : 1; });
+  var _pasCoupe = pas.length > 30; if (_pasCoupe) pas = pas.slice(pas.length - 30);
   var pasMax = Math.max.apply(null, pas.map(function (y) { return y.pas || 1; }).concat([1]));
-  var pasHtml = pas.length ? ('<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / jour</span><span style="font-size:11px;font-weight:700;color:#9D5FD3">Ø ' + Math.round(pas.reduce(function (s, x) { return s + (x.pas || 0); }, 0) / pas.length).toLocaleString('fr-FR') + '</span></div><div class="ma-bars2">' + pas.map(function (x) { return '<span style="height:' + Math.round((x.pas || 0) / pasMax * 100) + '%;background:#9D5FD3"></span>'; }).join('') + '</div><div class="ma-axis"><span>' + _maShortDate(pas[0].date) + '</span><span>' + _maShortDate(pas[pas.length - 1].date) + '</span></div></div>') : '';
+  var pasHtml = pas.length ? ('<div class="ma-barc"><div class="ma-ctop"><span class="ma-chip">Pas / jour' + (_pasCoupe ? ' · 30 derniers jours relevés' : '') + '</span><span style="font-size:11px;font-weight:700;color:#9D5FD3">Ø ' + Math.round(pas.reduce(function (s, x) { return s + (x.pas || 0); }, 0) / pas.length).toLocaleString('fr-FR') + '</span></div><div class="ma-bars2">' + pas.map(function (x) { return '<span style="height:' + Math.round((x.pas || 0) / pasMax * 100) + '%;background:#9D5FD3"></span>'; }).join('') + '</div><div class="ma-axis"><span>' + _maShortDate(pas[0].date) + '</span><span>' + _maShortDate(pas[pas.length - 1].date) + '</span></div></div>') : '';
   // Charge cardio hebdo (UA = RPE × durée), nb de semaines piloté par la période.
   var chDict = {}; hist.forEach(function (s) { var _ua = _chargeInterneCardio(s); if (_ua > 0) chDict[s.date] = (chDict[s.date] || 0) + _ua; });
   var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
@@ -14538,6 +14551,33 @@ function _maCardioHistorique(data) {
   }).join('');
   _maSet('ma-cardio-historique', '<div class="ma-cols2"><div class="ma-colmain">' + ('<div class="ma-card">' + rows + '</div>' + _maMoreBtn('cardio', n, all.length)) + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }
+// Charge MUSCU par jour dans la MÊME unité que le cardio (RPE × minutes, méthode sRPE —
+// décision 30/10 ; avant : tonnage ÷ 50, incomparable). RPE = moyenne des séries du jour
+// (sinon RPE du bilan, sinon 7). Durée = chrono du bilan s'il existe, sinon ESTIMÉE :
+// somme des repos réels saisis (à défaut repos du programme, sinon 90 s) + 40 s par série.
+function _muscuUAJours(data) {
+  var h = (data && data.historique) || {}, dm = h.daily_muscu || {}, prog = h.progression_par_exo || {};
+  var progRepos = {}; ((data && data.programme) || []).forEach(function (l) { if (l && l.exercice && Number(l.repos_sec) > 0) progRepos[String(l.exercice).trim()] = Number(l.repos_sec); });
+  var iso = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  var rec = {};
+  Object.keys(prog).forEach(function (exo) {
+    (prog[exo] || []).forEach(function (p) {
+      var d = _blDate(p.date); if (!d) return; var k = iso(d), o = rec[k] || (rec[k] = { sec: 0, n: 0 });
+      (Array.isArray(p.series) ? p.series : []).forEach(function (x) { o.n++; o.sec += (Number(x.repos) > 0 ? Number(x.repos) : (progRepos[String(exo).trim()] || 90)) + 40; });
+    });
+  });
+  var an = (data && data.analyses) || {}, bR = {}, bD = {};
+  (an.rpe_muscu || []).forEach(function (x) { if (x && x.date) bR[x.date] = Number(x.valeur) || 0; });
+  (an.duree_muscu || []).forEach(function (x) { if (x && x.date) bD[x.date] = Number(x.valeur) || 0; });
+  var out = {};
+  Object.keys(dm).forEach(function (k) {
+    var j = dm[k] || {}, n = Number(j.series) || 0; if (!n) return;
+    var rpe = (Number(j.rpe_n) > 0) ? Number(j.rpe_sum) / Number(j.rpe_n) : (bR[k] || 7);
+    var min = bD[k] > 0 ? bD[k] : (rec[k] && rec[k].n ? (rec[k].sec / 60) * (n / rec[k].n) : n * 130 / 60);
+    out[k] = Math.round(rpe * min);
+  });
+  return out;
+}
 function _maCroise(data) {
   var _w = _maWin();
   var r = _maMuscuAgg((data.historique && data.historique.daily_muscu), _w.startISO, _w.endISO);
@@ -14545,7 +14585,8 @@ function _maCroise(data) {
   // Charge cardio (UA = RPE × durée), Hyrox comptabilisé À PART (3e catégorie).
   var hist = (data.cardio && data.cardio.history) || [], cardioUA = 0, hyroxUA = 0;
   hist.forEach(function (s) { if ((s.date || '') < _w.startISO || (s.date || '') >= _w.endISO) return; var ua = _chargeInterneCardio(s); if (ua <= 0) return; if ((s.type_cardio || '') === 'hyrox') hyroxUA += ua; else cardioUA += ua; });
-  var muscuUA = Math.round(muscuT / 50);  // proxy simple pour rendre les charges comparables
+  var _muJ = _muscuUAJours(data), muscuUA = 0;
+  Object.keys(_muJ).forEach(function (k) { if (k >= _w.startISO && k < _w.endISO) muscuUA += _muJ[k]; });
   var tot = muscuUA + cardioUA + hyroxUA;
   var mPct = tot ? Math.round(muscuUA / tot * 100) : 0;
   var hPct = tot ? Math.round(hyroxUA / tot * 100) : 0;
@@ -14572,7 +14613,7 @@ function _maCroise(data) {
   // ── Séries hebdo : charge combinée (muscu+cardio) + forme (bien-être /100) ──
   var _bNoun = _maGran === 'S' ? 'jour' : _maGran === 'M' ? 'semaine' : 'mois';
   var vpj = (data.historique && data.historique.volume_par_jour) || {};
-  var tdM = _maTrendData(vpj, 'sum'), muscuW = tdM.pts.map(function (v) { return Math.round(v / 50); });
+  var tdM = _maTrendData(_muJ, 'sum'), muscuW = tdM.pts.map(function (v) { return Math.round(v); });
   var chD = {}; hist.forEach(function (s) { var _ua = _chargeInterneCardio(s); if (_ua > 0) chD[s.date] = (chD[s.date] || 0) + _ua; });
   var cardioW = _maTrendData(chD, 'sum').pts;
   var totalW = muscuW.map(function (v, i) { return Math.round(v + (cardioW[i] || 0)); });
@@ -14592,7 +14633,14 @@ function _maCroise(data) {
   var nCharge = totalW.filter(function (v) { return v > 0; }).length;
   var nForme = beW.filter(function (v) { return v > 0; }).length;
   var trendOk = _w.days >= 28 && nCharge >= 4 && nForme >= 3;
-  var nWeeks = Math.max(1, Math.round(_w.days / 7));
+  // Semaines RÉELLEMENT couvertes par des données (audit 29/10 #6) et VRAIS relevés de
+  // bien-être sur la période (#5 : avant, on comptait des tranches jours/semaines/mois).
+  var _first = null;
+  Object.keys(_muJ).concat(hist.map(function (s) { return s.date || ''; })).forEach(function (k) { if (k && (!_first || k < _first)) _first = k; });
+  var _deb = (_first && _first > _w.startISO) ? _first : _w.startISO;
+  var _finD = new Date(); var _fin = _w.endISO < _ymdLocal(_finD) ? _w.endISO : _ymdLocal(_finD);
+  var nWeeks = Math.max(1, Math.round((new Date(_fin + 'T00:00:00') - new Date(_deb + 'T00:00:00')) / (7 * 864e5)));
+  var nReleves = ((data.bien_etre) || []).filter(function (b) { var d = _blDate(b.date); if (!d) return false; var k = _ymdLocal(d); return k >= _w.startISO && k < _w.endISO; }).length;
   // GARDE-FOU #2 : mention de fiabilité (nb de semaines + remplissage bien-être).
   var fiab = (trendOk && muscuUA > 0 && cardioUA > 0) ? { t: 'bonne', c: 'var(--good)' }
     : ((_w.days >= 28 || (muscuUA > 0 && cardioUA > 0)) ? { t: 'moyenne', c: 'var(--warn)' } : { t: 'faible', c: 'var(--bad)' });
@@ -14623,7 +14671,7 @@ function _maCroise(data) {
         : (mPct > 75 ? 'Profil déséquilibré, presque tout en muscu : intègre 1 à 2 créneaux cardio (base d\'endurance + meilleure récup globale) sans alourdir la charge totale.'
           : (cPct > 75 ? 'Profil déséquilibré, presque tout en cardio : ajoute du renforcement pour l\'équilibre force / endurance, en gardant la charge totale sous contrôle.'
             : 'Bon équilibre muscu / cardio et charge globale soutenable — maintiens le mix ; ajuste seulement si la forme décroche quand la charge monte.'));
-      var fiabLine = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Fiabilité de l\'analyse : <b style="color:' + fiab.c + '">' + fiab.t + '</b> · ' + nWeeks + ' sem. de données · bien-être ' + nForme + ' relevé' + (nForme > 1 ? 's' : '') + '.</div>';
+      var fiabLine = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Fiabilité de l\'analyse : <b style="color:' + fiab.c + '">' + fiab.t + '</b> · ' + nWeeks + ' sem. de données · bien-être ' + nReleves + ' relevé' + (nReleves > 1 ? 's' : '') + '.</div>';
       synthese = '<div class="ma-card" style="border-left:3px solid var(--accent);padding:14px 16px">' + L + fiabLine
         + '<div style="margin-top:10px;background:var(--accent-a10,rgba(26,95,255,.10));border:1px solid var(--border);border-radius:12px;padding:13px 16px"><div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:4px">Reco · pour le coach</div><div style="font-size:13px;font-weight:600;line-height:1.45">' + reco + '</div></div></div>';
     }
@@ -14638,7 +14686,11 @@ function _maCroise(data) {
     } else {
       var L2 = '';
       if (cardioUA === 0) {
-        L2 += rc2('var(--warn)', 'Sur <b>' + _w.plabel + '</b>, tu n\'as fait que de la <b>musculation</b> — aucun cardio enregistré sur la période.');
+        // La marche n'entre pas dans la charge (décision 30/10) : si la période n'a que des
+        // marches, on le dit au lieu d'affirmer « aucun cardio enregistré ».
+        var _nMarche = hist.filter(function (x) { return _estMarche(x) && (x.date || '') >= _w.startISO && (x.date || '') < _w.endISO; }).length;
+        L2 += rc2('var(--warn)', 'Sur <b>' + _w.plabel + '</b>, ta charge d\'entraînement vient uniquement de la <b>musculation</b> — '
+          + (_nMarche ? (_nMarche + ' marche' + (_nMarche > 1 ? 's' : '') + ', comptée' + (_nMarche > 1 ? 's' : '') + ' comme activité et non comme entraînement.') : 'aucun cardio enregistré sur la période.'));
       } else {
         var eq2 = (Math.abs(mPct - 50) <= 15) ? ('Charge équilibrée : <b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')
           : (mPct > 65 ? ('Charge surtout <b>muscu (' + mPct + '%)</b>, peu de cardio') : (cPct > 65 ? ('Charge surtout <b>cardio (' + cPct + '%)</b>, peu de muscu') : ('<b>' + mPct + '% muscu · ' + cPct + '% cardio</b>')));
@@ -14651,7 +14703,7 @@ function _maCroise(data) {
           : (mPct > 75) ? 'Intègre 1 à 2 créneaux cardio pour ta base d\'endurance, sans alourdir la charge totale.'
             : (cPct > 75) ? 'Ajoute du renforcement musculaire pour l\'équilibre force / endurance.'
               : 'Bon équilibre muscu / cardio — maintiens ce mix et ajuste si ta forme décroche quand la charge monte.';
-      var fiab2 = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Fiabilité : <b style="color:' + fiab.c + '">' + fiab.t + '</b> · ' + nWeeks + ' sem. · bien-être ' + nForme + ' relevé' + (nForme > 1 ? 's' : '') + '.</div>';
+      var fiab2 = '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:6px">Fiabilité : <b style="color:' + fiab.c + '">' + fiab.t + '</b> · ' + nWeeks + ' sem. · bien-être ' + nReleves + ' relevé' + (nReleves > 1 ? 's' : '') + '.</div>';
       var recoHtml2 = '<div style="margin-top:8px;background:var(--accent-a08,rgba(26,95,255,.08));border:1px solid var(--accent-a15,rgba(26,95,255,.15));border-radius:12px;padding:11px 13px"><div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Reco</div><div style="font-size:13px;line-height:1.45">' + reco2 + '</div></div>';
       synthese = '<div class="ma-sec" style="margin-top:6px">Lecture Novalyz<span class="r" style="text-transform:none;letter-spacing:0;font-weight:600;color:var(--text-subtle)">' + _w.plabel + '</span></div>'
         + '<div class="ma-card" style="padding:14px 15px;margin:8px 0 16px">' + L2 + fiab2 + recoHtml2 + '</div>';
@@ -14675,7 +14727,7 @@ function _maCroise(data) {
   } else {
     chBig = chPct == null ? '—' : (chPct > 8 ? '↑ en hausse' : (chPct < -8 ? '↓ en baisse' : '→ stable'));
     chCol = chPct == null ? 'var(--text-subtle)' : (chPct > 15 ? 'var(--warn)' : 'var(--text)');
-    chSub = chPct == null ? 'muscu + cardio' : ((chPct >= 0 ? '+' : '') + chPct + '% sur ' + nWeeks + ' sem.');
+    chSub = chPct == null ? 'muscu + cardio' : ((chPct >= 0 ? '+' : '') + chPct + '% · 2ᵉ moitié vs 1ʳᵉ moitié de la période');
     foBig = foPct == null ? '—' : (foPct > 5 ? '↑ en hausse' : (foPct < -5 ? '↓ en baisse' : '→ stable'));
     foCol = foPct == null ? 'var(--text-subtle)' : (foPct < -8 ? 'var(--bad)' : (foPct > 5 ? 'var(--good)' : 'var(--text)'));
     foSub = (lastForme != null ? (lastForme + '/100 · récup') : 'bien-être');
@@ -16570,11 +16622,15 @@ function _renderTrophees(streak, rec30, totalS, hasRecords) {
 // dans data.dashboard.regularite.seances_prevues). Fini le « 4 séances » codé en
 // dur, absurde pour quelqu'un qui en fait 1/sem. L'athlète peut viser +1, ou
 // choisir cardio / pas. Choix stocké en local (par appareil + semaine ISO).
+// Cible de séances/semaine (regularite.seances_prevues). UNE seule fonction : une 2ᵉ copie
+// sans paramètre l'écrasait et l'écran Objectif affichait 3 au lieu de 4 (audit Forme #2).
 function _objSeancesCible(data) {
+  if (!data) data = (typeof dernierAppData !== 'undefined') ? dernierAppData : null;
   var reg = (data && data.dashboard && data.dashboard.regularite) || {};
   var n = Number(reg.seances_prevues) || 0;
-  if (!n && reg.seances_semaine != null) n = Number(reg.seances_semaine) || 0;
-  return (n >= 1) ? n : 3;   // défaut raisonnable si l'objectif n'est pas renseigné
+  // Sans objectif réglé : nombre de séances du programme (et non les séances FAITES).
+  if (!n) { var ss = {}; ((data && data.programme) || []).forEach(function (p) { if (p && p.seance_id && p.type !== 'cardio') ss[p.seance_id] = 1; }); n = Object.keys(ss).length; }
+  return (n >= 1) ? Math.min(7, n) : 3;   // défaut raisonnable si rien n'est renseigné
 }
 function _objOptions(data) {
   var native = (typeof _estAppNative === 'function' && _estAppNative());
@@ -20313,8 +20369,11 @@ function dessinerGraphPoids(pesees, periode, ids) {
   }).reverse(); // ordre chronologique
 
   if (filtered.length === 0) {
-    document.getElementById(ids.svg).innerHTML = '<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">Aucune donnée sur cette période</text>';
-    document.getElementById(ids.actuel).textContent = '—';
+    // Période vide : on rappelle la DERNIÈRE pesée connue plutôt qu'un « — » muet (audit Forme #5).
+    var _last = pesees && pesees.length ? pesees[0] : null;
+    var _lastTxt = _last ? ('Aucune pesée sur cette période · dernière : ' + String(_last.poids).replace('.', ',') + ' kg le ' + String(_last.date).slice(0, 5)) : 'Aucune donnée sur cette période';
+    document.getElementById(ids.svg).innerHTML = '<text x="160" y="50" text-anchor="middle" font-size="12" fill="var(--text-muted)">' + _lastTxt + '</text>';
+    document.getElementById(ids.actuel).textContent = _last ? String(_last.poids).replace('.', ',') : '—';
     document.getElementById(ids.evol).innerHTML = '';
     return;
   }
@@ -23778,7 +23837,7 @@ function _nutObjectifsFor(A, data, actF) {
     var restK = kcal - prot * 4 - lip * 9;
     gluc = restK > 0 ? Math.round(restK / 4) : 0;
   }
-  return { prot: prot, kcal: kcal, gluc: gluc, lip: lip, goal: goal, label: label, pf: pf, poids: poids };
+  return { prot: prot, kcal: kcal, gluc: gluc, lip: lip, goal: goal, label: label, pf: pf, poids: poids, sexeInconnu: (sexe !== 'F' && sexe !== 'H' && sexe !== 'M') };
 }
 function _nutTodayEntry() {
   var today = _ymdLocal(new Date());
@@ -23873,7 +23932,7 @@ function renderNutrition() {
   } else {
     var adj = obj.goal === 'seche' ? 'déficit −15 %' : obj.goal === 'masse' ? 'surplus +10 %' : obj.goal === 'recomp' ? 'recomposition, léger déficit −10 %' : 'maintien';
     var note = 'Objectif indicatif — protéines ' + obj.pf + ' g/kg';
-    note += obj.kcal != null ? ' · calories Mifflin-St Jeor (' + adj + ') ; lipides ~27 % des kcal, glucides = le reste.' : ' · calories/glucides/lipides : complète taille + date de naissance dans Réglages.';
+    note += obj.kcal != null ? ' · calories Mifflin-St Jeor (' + adj + ') ; lipides ~27 % des kcal, glucides = le reste.' + (obj.sexeInconnu ? ' Calcul homme : sexe non renseigné dans ton profil.' : '') : ' · calories/glucides/lipides : complète taille + date de naissance dans Réglages.';
     var actId = _nutActId();
     var actPills = _NUT_ACT.map(function (a) { var on = a.id === actId; return '<button type="button" onclick="_nutSetAct(\'' + a.id + '\')" style="border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a10)' : 'var(--surface2)') + ';color:' + (on ? 'var(--accent)' : 'var(--text-muted)') + ';border-radius:999px;padding:6px 10px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;">' + a.label + '</button>'; }).join('');
     var actRow = '<div style="margin-top:14px;"><div class="nut-lab" style="margin-bottom:6px;">Niveau d\'activité</div><div style="display:flex;gap:6px;flex-wrap:wrap;">' + actPills + '</div></div>';

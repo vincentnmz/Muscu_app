@@ -5,6 +5,8 @@
 > en Semaine, Mois et Année. Chaque phrase a été confrontée au code et aux données.
 > « Vérifié » = constaté sur le code ET sur les données.
 
+> **Statut (30/10) : APPLIQUÉS** — #1 charge muscu = RPE × durée estimée (repos réels + 40 s/série) ; #2 marche HORS charge (front + `index.ts`), la baisse d'activité se mesure en minutes (marche comprise) ; #3-#7 corrigés ; + historique bien-être renvoyé jusqu'à 400 relevés (avant 30). #8 → audit Cardio par sport. ⚠️ `index.ts` modifié → redéployer.
+
 ## Défauts trouvés
 
 | # | Gravité | Où | Défaut | Preuve | Correctif proposé |

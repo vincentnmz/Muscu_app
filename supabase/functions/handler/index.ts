@@ -1841,6 +1841,9 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
 // prudent) ; sinon RPE modéré (5). => une activité importée pèse dans la charge au
 // lieu de compter 0 (correctif #5 : elle entre bien dans le croisé muscu/cardio).
 function chargeInterneCardio(s: any): number {
+  // La MARCHE (quotidienne, importée de la montre) est une activité, pas un entraînement :
+  // hors charge (décision 30/10 ; elle faisait 82 % de la charge cardio annuelle). Même règle que le front.
+  if (/^marche/i.test(String((s && s.type_cardio) || ''))) return 0
   const duree = Number(s && s.duree) || 0
   if (duree <= 0) return 0
   let rpe = Number(s && s.rpe) || 0
@@ -1858,19 +1861,22 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
     return { constats: [{ ton: 'neutre', texte: `Pas encore de cardio enregistré.` }], reco: { texte: `Ajoute une sortie cardio pour suivre ton endurance.`, priorite: 'info' }, confiance: 'faible' }
   }
   const c28 = fmtYMD(minus(now, 28)), c56 = fmtYMD(minus(now, 56))
-  let n28 = 0, n56 = 0, ch28 = 0, ch56 = 0, dist28 = 0
+  let n28 = 0, n56 = 0, ch28 = 0, ch56 = 0, dist28 = 0, mn28 = 0, mn56 = 0
   const fcPts: any[] = []
   for (const s of hist) {
     const d = String(s.date || '')
     // Audit #9 : une « sortie » < 5 min ET < 0,3 km (tests, imports parasites) ne compte pas.
     if ((Number(s.duree) || 0) < 5 && (Number(s.distance) || 0) < 0.3) continue
     const ua = chargeInterneCardio(s)
-    if (d >= c28) { n28++; ch28 += ua; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy), rpe: Number(s.rpe) || 0 }) }
-    else if (d >= c56) { n56++; ch56 += ua }
+    if (d >= c28) { n28++; ch28 += ua; mn28 += Number(s.duree) || 0; dist28 += Number(s.distance) || 0; if (Number(s.fc_moy)) fcPts.push({ d: d, fc: Number(s.fc_moy), rpe: Number(s.rpe) || 0 }) }
+    else if (d >= c56) { n56++; ch56 += ua; mn56 += Number(s.duree) || 0 }
   }
   // FIABILITÉ : n'évaluer l'évolution de charge que si la période précédente a une
   // vraie base (≥ 2 sorties) — sinon 1 sortie isolée produit un % aberrant.
   const chEvol = (ch56 > 0 && n56 >= 2) ? Math.round((ch28 - ch56) / ch56 * 100) : null
+  // Baisse d'ACTIVITÉ = minutes de sorties, marche comprise (la marche est hors CHARGE
+  // depuis le 30/10 mais reste de l'activité : sa baisse doit toujours se voir).
+  const actEvol = (mn56 > 0 && n56 >= 2) ? Math.round((mn28 - mn56) / mn56 * 100) : null
   const recup = (moteur && moteur.recup) || null
   const dispo = (moteur && moteur.disponibilite && moteur.disponibilite.niveau) || null
   const etatVigilance = recup === 'Faible' || dispo === 'À surveiller' || dispo === 'Vigilance'
@@ -1881,8 +1887,8 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   } else {
     constats.push({ ton: n28 >= 4 ? 'positif' : 'neutre', texte: `${n28} sortie${n28 > 1 ? 's' : ''} cardio ces 4 semaines${dist28 ? ` (${Math.round(dist28 * 10) / 10} km au total)` : ''}.` })
     if (chEvol != null && chEvol >= 50) constats.push({ ton: 'attention', texte: `Ta charge cardio a fortement augmenté (+${chEvol}% sur 4 semaines) — hausse rapide.` })
-    else if (chEvol != null && chEvol <= -50) constats.push({ ton: 'attention', texte: `Forte baisse de ton activité cardio (${chEvol}% sur 4 semaines) — si l'endurance est un objectif, reprends progressivement.` })
-    else if (chEvol != null && chEvol <= -40) constats.push({ ton: 'neutre', texte: `Ta charge cardio a baissé (${chEvol}% sur 4 semaines).` })
+    else if (actEvol != null && actEvol <= -50) constats.push({ ton: 'attention', texte: `Forte baisse de ton activité cardio (${actEvol}% de temps sur 4 semaines) — si l'endurance est un objectif, reprends progressivement.` })
+    else if (actEvol != null && actEvol <= -40) constats.push({ ton: 'neutre', texte: `Ton activité cardio a baissé (${actEvol}% de temps sur 4 semaines).` })
     // Efficience : FC moyenne 1re vs 2de moitié — MAIS seulement « à effort comparable »,
     // càd si le RPE moyen des deux moitiés est proche (sinon une FC plus basse peut venir
     // de sorties plus faciles, pas d'un gain d'endurance). On ne l'affirme donc que si
@@ -1907,7 +1913,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   else if (chargeJump) reco = { texte: `Fais monter ta charge cardio plus graduellement (≈ +10 % par semaine max) pour limiter le risque de surmenage.`, priorite: 'moyenne' }
   else if (n28 === 0) reco = { texte: `Reprends 1 à 2 sorties cardio par semaine pour bâtir ta base d'endurance.`, priorite: 'info' }
   // Audit 28/10 #3 : après une forte baisse, pas de « continue sur ce rythme ».
-  else if (chEvol != null && chEvol <= -40) reco = { texte: `Reprends progressivement : 1 à 2 sorties faciles par semaine pour reconstruire ta base d'endurance.`, priorite: 'info' }
+  else if (actEvol != null && actEvol <= -40) reco = { texte: `Reprends progressivement : 1 à 2 sorties faciles par semaine pour reconstruire ta base d'endurance.`, priorite: 'info' }
   else reco = { texte: `Continue sur ce rythme et varie les intensités (facile / modéré) pour progresser sans t'épuiser.`, priorite: 'info' }
 
   const confiance = (n28 + n56 >= 4) ? 'bonne' : (n28 > 0 ? 'moyenne' : 'faible')
@@ -2037,7 +2043,9 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('athletes').select('*').eq('id', athleteId).single(),
     sb().from('programme').select('*').eq('athlete_id', athleteId).order('groupe_id').order('id'),
     sb().from('poids_historique').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(30),
-    sb().from('bien_etre').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(30),
+    // 400 (et non 30) : Croisé / Forme lisent l'historique sur Mois / Année ; à 30, l'année ne
+    // voyait qu'août-octobre et comptait « 30 relevés » au lieu de 34 (audit 29/10).
+    sb().from('bien_etre').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(400),
     sb().from('volume_obti').select('*'),
     sb().from('contexte_athlete').select('*').eq('athlete_id', athleteId).order('date_debut', { ascending: false }),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).eq('cle', 'pause').order('date', { ascending: false }).limit(1),
