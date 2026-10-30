@@ -1199,6 +1199,7 @@ async function handleLogin(params: URLSearchParams): Promise<Response> {
     poids,
     taille: (ath.taille != null && ath.taille !== '') ? Number(ath.taille) : null,
     ddn: ath.ddn ? fmtFR(ath.ddn) : '',
+    sexe: (ath.sexe === 'H' || ath.sexe === 'F') ? ath.sexe : '',
     email: ath.email || '',
     recap_freq: ath.recap_freq || 'off',
   }})
@@ -1296,6 +1297,8 @@ async function handleSaveProfil(body: any): Promise<Response> {
   if (body.taille != null && body.taille !== '') patch.taille = Number(body.taille) || null
   if (body.poids != null && body.poids !== '') patch.poids = Number(body.poids) || null
   if (body.ddn != null && String(body.ddn).trim()) patch.ddn = String(body.ddn).trim()
+  // Sexe (H / F) : sert au calcul des calories (Mifflin-St Jeor) et à l'analyse morpho.
+  if (body.sexe === 'H' || body.sexe === 'F') patch.sexe = body.sexe
   if (body.annees != null && body.annees !== '') {
     // Le profil affiche l'ancienneté EFFECTIVE (saisie + années écoulées depuis la création,
     // cf. anneesEffectives). On stocke donc la BASE = effective − écoulées ; sinon chaque
