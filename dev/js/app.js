@@ -332,9 +332,9 @@ try {
         var s = f.signaux;
         if (!tous(s.douleurElevee, s.volumeEleve)) return null;
         var v = f.valeurs || {};
-        var zone = v.zone ? (' (' + v.zone + ')') : '';
+        var zone = _zoneDouleur(v.zone) ? (' (' + _zoneDouleur(v.zone) + ')') : '';
         var ev = [];
-        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (v.zone ? ' (' + v.zone + ')' : ''));
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (_zoneDouleur(v.zone) ? ' (' + _zoneDouleur(v.zone) + ')' : ''));
         if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
         return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
           titre: 'Surcharge locale probable',
@@ -492,7 +492,7 @@ try {
         var v = f.valeurs || {};
         var zone = v.zone ? (' · zone : ' + v.zone) : '';
         var ev = [];
-        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (v.zone ? ' (' + v.zone + ')' : ''));
+        if (v.douleur != null) ev.push('douleur ' + v.douleur + '/5' + (_zoneDouleur(v.zone) ? ' (' + _zoneDouleur(v.zone) + ')' : ''));
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Douleur signalée',
           description: 'Une douleur significative a été déclarée' + zone + '.',
@@ -4668,7 +4668,7 @@ async function renderCoachSynthese(athletes) {
     if (!isNaN(s)) { somSum += s; somN++; } if (!isNaN(f)) { fatSum += f; fatN++; }
     let txt = null, sev = 'warn';
     if (!isNaN(f) && f >= 4) { txt = 'Fatigue ' + String(WQ_ANSWERS.fatigue[f] || '').toLowerCase(); sev = 'bad'; }
-    else if (!isNaN(dl) && dl >= 3) { txt = 'Douleur' + (be.zone ? ' ' + be.zone : ''); sev = dl >= 4 ? 'bad' : 'warn'; }
+    else if (!isNaN(dl) && dl >= 3) { txt = 'Douleur' + (_zoneDouleur(be.zone) ? ' ' + _zoneDouleur(be.zone) : ''); sev = dl >= 4 ? 'bad' : 'warn'; }
     else if (!isNaN(s) && s <= 2) { txt = 'Sommeil ' + String(WQ_ANSWERS.sommeil[s] || '').toLowerCase(); sev = 'warn'; }
     if (txt) bienBas.push({ nom: e.a.nom, txt, sev });
   });
@@ -5784,7 +5784,7 @@ function renderCoachHeroEtat(data) {
       const raw = (dernier[cd.key] == null || dernier[cd.key] === '' || isNaN(Number(dernier[cd.key]))) ? null : Number(dernier[cd.key]);
       if (raw == null) return '';
       let txt = (WQ_ANSWERS[cd.key] ? WQ_ANSWERS[cd.key][raw] : raw);
-      if (cd.key === 'douleur' && raw >= 2 && dernier.zone) txt += ' (' + dernier.zone + ')';
+      if (cd.key === 'douleur' && raw >= 2 && _zoneDouleur(dernier.zone)) txt += ' (' + _zoneDouleur(dernier.zone) + ')';
       const dim = WQ_DIMS.find(d => d.key === cd.key);
       const pos = wqPositif(dim, raw);
       const alerte = pos != null && pos < 3;  // point faible → petit point d'alerte
@@ -14364,7 +14364,7 @@ function _maProgSea(data) {
   });
   // Occurrences par exercice (1 par séance) triées chrono → « la fois précédente ».
   var occ = {};
-  sd.forEach(function (s) { (s.exercices || []).forEach(function (e) { var b = _maBestSet(e); if (!b) return; (occ[e.nom] = occ[e.nom] || []).push({ date: s.date, charge: b.charge, reps: b.reps, e1: b.charge * (1 + b.reps / 30) }); }); });
+  sd.forEach(function (s) { (s.exercices || []).forEach(function (e) { var b = _maBestSet(e); if (!b) return; (occ[e.nom] = occ[e.nom] || []).push({ date: s.date, charge: b.charge, reps: b.reps, e1: b.charge * (1 + b.reps / 30), series: e.series || [] }); }); });
   Object.keys(occ).forEach(function (k) { occ[k].sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); });
   function prevOcc(nom, date) { var arr = occ[nom] || [], p = null; for (var i = 0; i < arr.length; i++) { if (arr[i].date < date) p = arr[i]; else break; } return p; }
   function prevTonSameType(sid, date) { var p = null; sd.forEach(function (s) { if ((s.seance_id || 'Séance') === sid && (s.date || '') < date) { if (!p || s.date > p.date) p = s; } }); return p ? (p.tonnage || 0) : null; }
@@ -14384,7 +14384,7 @@ function _maProgSea(data) {
     if (!libre) { var pt = prevTonSameType(sid, s.date); if (pt && pt > 0) { var pct = Math.round(((s.tonnage || 0) - pt) / pt * 100); badge = '<span style="font-size:10px;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap;flex:none;color:' + (pct >= 0 ? 'var(--good)' : 'var(--danger)') + ';background:' + (pct >= 0 ? 'var(--good-a,rgba(0,168,84,.12))' : 'var(--bad-a,rgba(220,53,69,.12))') + '">tonnage ' + (pct >= 0 ? '▲ +' : '▼ ') + Math.abs(pct) + '%</span>'; } }
     var exos = (s.exercices || []).map(function (e) {
       var cur = _maBestSet(e); if (!cur) return '';
-      var pv = prevOcc(e.nom, s.date);
+      var pv = prevOcc(e.nom, s.date), _whyE = null;
       var ini = ((e.nom || '?').replace(/[^A-Za-zÀ-ÿ ]/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase()) || '?';
       var deltaMain, deltaSub, col, up, dn;
       if (!pv) { deltaMain = '1re fois'; deltaSub = 'nouveau'; col = 'var(--text-muted)'; }
@@ -14393,11 +14393,16 @@ function _maProgSea(data) {
         // qu'un « +5 kg » ne soit jamais affiché comme une régression.
         if (cur.charge !== pv.charge) { up = cur.charge > pv.charge; dn = cur.charge < pv.charge; deltaMain = (up ? '▲ +' : '▼ ') + String(Math.round(Math.abs(cur.charge - pv.charge) * 10) / 10).replace('.', ',') + ' kg'; }
         else if (cur.reps !== pv.reps) { up = cur.reps > pv.reps; dn = cur.reps < pv.reps; deltaMain = (up ? '▲ +' : '▼ ') + Math.abs(cur.reps - pv.reps) + ' rep' + (Math.abs(cur.reps - pv.reps) > 1 ? 's' : ''); }
-        else { up = false; dn = false; deltaMain = '= stable'; }
+        else {
+          // Même meilleure série : plus de séries au top ou RPE plus bas = progrès (même règle que la lecture).
+          var _w2 = _progSecondaire({ charge: cur.charge, reps: cur.reps, series: e.series || [] }, pv);
+          if (_w2) { up = true; dn = false; deltaMain = /^\d/.test(_w2) ? '▲ + séries' : '▲ RPE ↓'; _whyE = _w2; }
+          else { up = false; dn = false; deltaMain = '= stable'; }
+        }
         col = up ? 'var(--good)' : dn ? 'var(--danger)' : 'var(--text-muted)';
         deltaSub = up ? 'progression' : dn ? 'régression' : 'maintien';
       }
-      var prevTxt = pv ? ' · <span style="color:var(--text-subtle)">avant ' + String(pv.charge).replace('.', ',') + ' kg × ' + pv.reps + '</span>' : '';
+      var prevTxt = pv ? ' · <span style="color:var(--text-subtle)">avant ' + String(pv.charge).replace('.', ',') + ' kg × ' + pv.reps + '</span>' + (_whyE ? '<br><span style="color:var(--good)">' + esc(_whyE) + '</span>' : '') : '';
       return '<div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--border)">'
         + '<span style="width:30px;height:30px;border-radius:9px;background:var(--accent-a14,rgba(26,95,255,.14));color:var(--accent);display:grid;place-items:center;flex:none;font-size:12px;font-weight:800">' + ini + '</span>'
         + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">' + esc(e.nom) + '</div>'
@@ -14409,7 +14414,7 @@ function _maProgSea(data) {
     return '<div class="ma-card" id="ma-sea-' + idx + '" data-open="' + (open ? '1' : '0') + '" style="padding:0;overflow:hidden;margin-bottom:10px">'
       + '<div onclick="_maSeaToggle(' + idx + ')" style="display:flex;align-items:center;gap:11px;padding:13px 14px;cursor:pointer">'
       + '<div style="width:42px;flex:none;text-align:center;background:var(--surface2);border-radius:10px;padding:5px 0"><div style="font-size:15px;font-weight:800;line-height:1">' + day + '</div><div style="font-size:8px;text-transform:uppercase;color:var(--text-subtle);margin-top:1px">' + mon + '</div></div>'
-      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + esc(sid) + '</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px">' + ton + ' t · ~' + dur + ' min · ' + nSeries + ' séries' + (rv != null ? ' · RPE ' + rv + '/10' : '') + '</div></div>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800">' + esc(sid) + (s.saisi_par_coach ? '<br><span style="display:inline-block;white-space:nowrap;font-size:10px;font-weight:800;color:#6D4BFF;background:rgba(109,75,255,.12);border-radius:6px;padding:2px 6px;margin-top:3px">saisie par ton coach</span>' : '') + '</div><div style="font-size:11px;color:var(--text-subtle);margin-top:1px">' + ton + ' t · ~' + dur + ' min · ' + nSeries + ' séries' + (rv != null ? ' · RPE ' + rv + '/10' : '') + '</div></div>'
       + badge
       + '<span id="ma-sea-ch-' + idx + '" style="color:var(--text-subtle);transition:transform .2s;flex:none' + (open ? ';transform:rotate(180deg)' : '') + '">' + _maSvg('<path d="M6 9l6 6 6-6"/>', 16) + '</span>'
       + '</div>'
@@ -16704,7 +16709,8 @@ function renderAujourdhui(data) {
         if (_d.tonnage_t) _bits.push(String(_d.tonnage_t).replace('.', ',') + ' t');
         if (_d.rpe_moyen) _bits.push('RPE ' + String(_d.rpe_moyen).replace('.', ','));
         if (elNom) elNom.textContent = (_E.nom || 'Séance') + ' ✓';
-        if (elMeta) elMeta.textContent = 'Faite aujourd\'hui' + (_bits.length ? ' · ' + _bits.join(' · ') : '');
+        var _parCoach = ((data.seances_detail || [])[0] || {}).saisi_par_coach;
+        if (elMeta) elMeta.textContent = (_parCoach ? 'Saisie par ton coach aujourd\'hui' : 'Faite aujourd\'hui') + (_bits.length ? ' · ' + _bits.join(' · ') : '');
         if (elFoc && elFocT) { elFocT.innerHTML = _E.next ? ('Prochaine : <b>' + esc(_E.next) + '</b>') : ('Semaine complète (' + _nS + ' séance' + (_nS > 1 ? 's' : '') + ') : récupère bien'); elFoc.style.display = ''; }
         _ctaTxt('Voir mes analyses', "switchTab('historique')");
       } else {
@@ -21138,7 +21144,7 @@ function renderEtatDuJour(data, ids) {
     sommeil:  'sommeil dégradé',
     energie:  'énergie basse',
     fatigue:  'fatigue musculaire marquée',
-    douleur:  'douleur présente' + (dernier.zone ? ' (' + dernier.zone + ')' : ''),
+    douleur:  'douleur présente' + (_zoneDouleur(dernier.zone) ? ' (' + _zoneDouleur(dernier.zone) + ')' : ''),
     ressenti: 'dernière séance ressentie difficile'
   };
   let synthese;
