@@ -2559,12 +2559,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
     // fenêtre 30 j glissante qui faisait disparaître les points). Dépenses = somme des
     // claims (seance_id='recompense', valeur = coût). Source unique front↔back.
-    recompenses: (() => {
-      const gagnes = (globalData.total_seances || 0) * 10 + recordsTotal * 50
-      const claims = (recompRows || []).map((r: any) => ({ id: String(r.cle), cout: Number(r.valeur) || 0, date: r.date ? fmtFR(r.date) : '' }))
-      const depenses = claims.reduce((s: number, c: any) => s + c.cout, 0)
-      return { gagnes, depenses, solde: gagnes - depenses, claims }
-    })(),
+    recompenses: calculerPoints(perfsAll || [], beRows || [], progRows || [], Number(seancesPrevues) || 0, recompRows || [], now),
     pas_quotidiens,
     sante_historique,
     nutri_historique,
@@ -5269,13 +5264,88 @@ async function handleSetPauseAthlete(body: any): Promise<Response> {
 // que ce qui est nécessaire à la VALIDATION d'un achat (coût + type). Les collabs
 // seront ajoutées ici comme nouvelles entrées (type:'collab', + code à servir plus tard).
 const RECOMPENSES_CATALOGUE: Record<string, { cout: number; type: string; dispo?: boolean }> = {
-  badge_pionnier:    { cout: 50,  type: 'badge' },
-  badge_assidu:      { cout: 150, type: 'badge' },
-  skin_gold:         { cout: 300, type: 'skin' },
-  badge_machine:     { cout: 600, type: 'badge' },
+  // Points v2 (30/10) : badges et thème ne s'achètent plus, ils se DÉBLOQUENT avec les
+  // points gagnés (COLLECTION_PALIERS). Gardés ici pour reconnaître les anciens achats.
+  badge_pionnier:    { cout: 50,  type: 'badge', dispo: false },
+  badge_assidu:      { cout: 150, type: 'badge', dispo: false },
+  skin_gold:         { cout: 300, type: 'skin',  dispo: false },
+  badge_machine:     { cout: 600, type: 'badge', dispo: false },
   // Collabs — teasers, pas encore achetables (aucun partenaire branché).
   collab_partenaire: { cout: 800,  type: 'collab', dispo: false },
   collab_programme:  { cout: 1000, type: 'collab', dispo: false },
+}
+
+// ===========================================================================
+// POINTS v2 (décision 30/10) — on gagne des points sur les gestes qui rendent
+// les analyses fiables, calculés à partir des VRAIES données (rien n'est stocké,
+// tout est recalculable). Barème calibré « pas trop facile » sur les données
+// réelles (≈ 85 pts/sem. en moyenne, ≈ 170 pour une semaine parfaite à 4 séances).
+// ===========================================================================
+const POINTS_BAREME = { seance: 10, rpe: 5, questionnaire: 3, complete: 5, record: 20, recordMaxSem: 3, objectif: 30 }
+// Collection : débloquée automatiquement par les points GAGNÉS (plus achetée).
+const COLLECTION_PALIERS: { id: string; seuil: number }[] = [
+  { id: 'badge_pionnier', seuil: 50 }, { id: 'badge_assidu', seuil: 300 }, { id: 'skin_gold', seuil: 600 }, { id: 'badge_machine', seuil: 1200 },
+]
+function _lundiYMD(ymd: string): string {
+  const d = new Date(ymd + 'T00:00:00Z'); const dow = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() - dow); return d.toISOString().slice(0, 10)
+}
+function calculerPoints(perfs: any[], beRows: any[], progRows: any[], objectifSem: number, claims: any[], now: Date): any {
+  const B = POINTS_BAREME
+  // Séance = un jour d'entraînement (même définition que computeGlobal).
+  const parJour: Record<string, any[]> = {}
+  for (const r of perfs || []) { const d = normDate(r.date); if (d) (parJour[d] = parJour[d] || []).push(r) }
+  const prevues: Record<string, number> = {}
+  for (const l of progRows || []) { if (l && l.type !== 'cardio' && l.seance_id) prevues[String(l.seance_id)] = (prevues[String(l.seance_id)] || 0) + (Number(l.series_prevues) || 0) }
+  const ev: { date: string; k: string; pts: number; detail: string }[] = []
+  const best: Record<string, number> = {}
+  const recSem: Record<string, number> = {}
+  const seancesSem: Record<string, number> = {}
+  for (const d of Object.keys(parJour).sort()) {
+    const rows = parJour[d]
+    const sem = _lundiYMD(d)
+    seancesSem[sem] = (seancesSem[sem] || 0) + 1
+    const cnt: Record<string, number> = {}; rows.forEach(r => { const k = String(r.seance_id || ''); cnt[k] = (cnt[k] || 0) + 1 })
+    const sid = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || ''
+    ev.push({ date: d, k: 'seance', pts: B.seance, detail: sid })
+    if (rows.every(r => r.rpe != null && String(r.rpe).trim() !== '' && Number(r.rpe) > 0)) ev.push({ date: d, k: 'rpe', pts: B.rpe, detail: sid })
+    if (prevues[sid] && rows.filter(r => String(r.seance_id || '') === sid).length >= prevues[sid]) ev.push({ date: d, k: 'complete', pts: B.complete, detail: sid })
+    // Record = charge max battue sur un exercice déjà fait (1er passage ≠ record). 3 max / semaine.
+    const maxJour: Record<string, number> = {}
+    rows.forEach(r => { const e = String(r.exercice || ''); const c = Number(r.charge) || 0; if (e && c > (maxJour[e] || 0)) maxJour[e] = c })
+    for (const e of Object.keys(maxJour)) {
+      const c = maxJour[e]
+      if (best[e] != null && c > best[e] && (recSem[sem] || 0) < B.recordMaxSem) { recSem[sem] = (recSem[sem] || 0) + 1; ev.push({ date: d, k: 'record', pts: B.record, detail: e + ' ' + String(c).replace('.', ',') + ' kg' }) }
+      best[e] = Math.max(best[e] ?? 0, c)
+    }
+  }
+  // Questionnaire : 1 par jour (bilan de séance ou questionnaire du jour).
+  const jours = new Set<string>(); for (const r of beRows || []) { const d = normDate(r.date); if (d) jours.add(d) }
+  for (const d of jours) ev.push({ date: d, k: 'questionnaire', pts: B.questionnaire, detail: '' })
+  // Objectif de la semaine atteint (séances ≥ objectif). Semaine en cours comptée dès qu'il est atteint.
+  const obj = Math.max(1, Math.round(Number(objectifSem) || 0))
+  if (Number(objectifSem) > 0) for (const sem of Object.keys(seancesSem)) if (seancesSem[sem] >= obj) ev.push({ date: sem, k: 'objectif', pts: B.objectif, detail: obj + ' séances' })
+  const gagnes = ev.reduce((a, e) => a + e.pts, 0)
+  // Dépenses : seulement la boutique. Les anciens badges / thème achetés restent acquis
+  // (collection) mais ne sont plus déduits du solde (ils sont désormais gratuits).
+  const cl = (claims || []).map((r: any) => ({ id: String(r.cle), cout: Number(r.valeur) || 0, date: r.date ? fmtFR(r.date) : '' }))
+  const depenses = cl.filter(c => RECOMPENSES_CATALOGUE[c.id] && RECOMPENSES_CATALOGUE[c.id].type === 'boutique').reduce((a, c) => a + c.cout, 0)
+  const lundi = _lundiYMD(fmtYMD(now))
+  const semEv = ev.filter(e => e.date >= lundi)
+  const sum = (k: string) => semEv.filter(e => e.k === k)
+  const lignes = [
+    { k: 'seance', n: sum('seance').length, pts: sum('seance').reduce((a, e) => a + e.pts, 0) },
+    { k: 'rpe', n: sum('rpe').length, pts: sum('rpe').reduce((a, e) => a + e.pts, 0) },
+    { k: 'questionnaire', n: sum('questionnaire').length, pts: sum('questionnaire').reduce((a, e) => a + e.pts, 0) },
+    { k: 'complete', n: sum('complete').length, pts: sum('complete').reduce((a, e) => a + e.pts, 0) },
+    { k: 'record', n: sum('record').length, pts: sum('record').reduce((a, e) => a + e.pts, 0), details: sum('record').map(e => e.detail) },
+    { k: 'objectif', n: sum('objectif').length, pts: sum('objectif').reduce((a, e) => a + e.pts, 0), fait: seancesSem[lundi] || 0, cible: Number(objectifSem) > 0 ? obj : null },
+  ]
+  const owned = new Set(cl.map(c => c.id))
+  const collection = COLLECTION_PALIERS.map(p => ({ id: p.id, seuil: p.seuil, debloque: gagnes >= p.seuil || owned.has(p.id) }))
+  const il30 = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10)
+  const records30 = ev.filter(e => e.k === 'record' && e.date >= il30).length
+  return { gagnes, depenses, solde: gagnes - depenses, claims: cl, bareme: B, records_30j: records30, semaine: { lundi, total: semEv.reduce((a, e) => a + e.pts, 0), lignes }, collection, version: 2 }
 }
 
 // Réclamer / acheter une récompense : vérifie le solde (gagnés − dépensés) côté
@@ -5289,20 +5359,13 @@ async function handleClaimRecompense(body: any): Promise<Response> {
   if (!item) return jsonResp({ success: false, error: 'Récompense inconnue' })
   if (item.dispo === false) return jsonResp({ success: false, error: 'Bientôt disponible' })
 
-  const [{ data: perfs }, { data: claims }] = await Promise.all([
-    sb().from('performances').select('date,exercice,charge,reps').eq('athlete_id', athlete_id),
-    sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athlete_id).eq('seance_id', 'recompense'),
-  ])
+  const { data: claims } = await sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athlete_id).eq('seance_id', 'recompense')
   if ((claims || []).some((c: any) => String(c.cle) === reward_id)) return jsonResp({ success: false, error: 'Déjà débloquée' })
 
   const now = new Date()
-  const g = computeGlobal(perfs || [])
-  // Records À VIE (permanents) — DOIT matcher le calcul de getAppData (records_total)
-  // sinon le solde validé ici diffèrerait du solde affiché → faux « solde insuffisant ».
-  const recordsTotal = Object.keys(g.records || {}).length
-  const gagnes = (g.total_seances || 0) * 10 + recordsTotal * 50
-  const depenses = (claims || []).reduce((s: number, c: any) => s + (Number(c.valeur) || 0), 0)
-  const solde = gagnes - depenses
+  // Solde = EXACTEMENT celui affiché (même calcul que getAppData → calculerPoints).
+  let solde = 0
+  try { const d: any = await (await handleGetAppData(new URLSearchParams({ athlete_id }))).json(); solde = Number(d?.recompenses?.solde) || 0 } catch (_) {}
   if (solde < item.cout) return jsonResp({ success: false, error: 'Solde insuffisant', solde })
 
   const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(now), seance_id: 'recompense', cle: reward_id, valeur: String(item.cout), unite: 'pts', source: 'app' })
