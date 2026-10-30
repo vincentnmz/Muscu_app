@@ -5276,6 +5276,51 @@ function coachNiveauKey(annees) {
   return 'experimente'; // avance + expert
 }
 
+// ═══ Saisie de séance PAR LE COACH, en présentiel (décision 30/10) ═══
+// Le coach ouvre l'écran de saisie de l'athlète (mêmes cibles, calculées sur SON historique),
+// demande le RPE à l'athlète, et valide : la séance compte directement (pas de validation
+// athlète), marquée « saisie par ton coach ». On emprunte temporairement le contexte athlète
+// (athlete / dernierAppData) SANS appeler _appliquerAppData : pas d'import Health Connect, pas de
+// questionnaire, pas d'onboarding déclenchés sur le téléphone du coach au nom de l'athlète.
+var _saisieCoach = null;
+async function coachSaisirSeance() {
+  var a = (typeof coachAthleteCourant !== 'undefined') ? coachAthleteCourant : null;
+  if (!a || !coach || _saisieCoach) return;
+  if (typeof seance !== 'undefined' && seance && seance.length) { showToast('Une séance est déjà en cours sur cet appareil.'); return; }
+  var data = (typeof coachAthleteData !== 'undefined' && coachAthleteData && coachAthleteData.programme) ? coachAthleteData : null;
+  try { if (!data) data = await nvFetchJSON(SCRIPT_URL + '?action=getAppData&athlete_id=' + encodeURIComponent(a.athlete_id)); } catch (e) { data = null; }
+  if (!data || data.erreur) { showToast('Impossible de charger ses données.'); return; }
+  _saisieCoach = { a: a, prevAthlete: athlete, prevData: dernierAppData, prevProg: progressionData,
+    bodyCls: ['coach-active', 'cd-nav', 'athlete-selected'].filter(function (c) { return document.body.classList.contains(c); }) };
+  athlete = { athlete_id: String(a.athlete_id), nom: a.nom, annees_pratique: a.annees_pratique, sport: a.sport || 'muscu', login: a.login };
+  dernierAppData = data;
+  progressionData = (data.historique && data.historique.progression_par_exo) || {};
+  _saisieCoach.bodyCls.forEach(function (c) { document.body.classList.remove(c); });
+  document.body.classList.add('saisie-coach');
+  document.getElementById('view-coach-detail').classList.remove('active');
+  document.getElementById('view-app').classList.add('active');
+  var bar = document.getElementById('saisie-coach-bar');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'saisie-coach-bar'; document.body.appendChild(bar); }
+  bar.innerHTML = '<div><b>Saisie pour ' + escapeHtml(a.nom || 'ton athlète') + '</b><span>Présentiel · demande-lui son RPE à chaque série</span></div><button onclick="coachQuitterSaisie()">Quitter</button>';
+  try { peuplerSeancesProgramme(); } catch (e) {}
+  switchTab('seance');
+}
+function coachQuitterSaisie(apresEnvoi) {
+  if (!_saisieCoach) return;
+  if (!apresEnvoi && typeof seance !== 'undefined' && seance && seance.length && !_seanceEnvoyee) {
+    if (!confirm('Quitter sans enregistrer ? Les séries saisies pour ' + (_saisieCoach.a.nom || 'ton athlète') + ' seront perdues.')) return;
+  }
+  try { arreterChronoEtReinitSeance(); } catch (e) {}
+  try { _effacerBrouillon(); } catch (e) {}
+  var S = _saisieCoach; _saisieCoach = null;
+  athlete = S.prevAthlete; dernierAppData = S.prevData; progressionData = S.prevProg;
+  document.body.classList.remove('saisie-coach');
+  S.bodyCls.forEach(function (c) { document.body.classList.add(c); });
+  var bar = document.getElementById('saisie-coach-bar'); if (bar) bar.remove();
+  document.getElementById('view-app').classList.remove('active');
+  try { ouvrirDetailAthleteCoach(S.a); } catch (e) { document.getElementById('view-coach-detail').classList.add('active'); }
+}
+
 async function ouvrirDetailAthleteCoach(a, initialTab) {
   try { fermerMessagerie2(); } catch (e) {}  // rend la carte conversation à la fiche
   try { _maCoachDetach(); } catch (e) {}   // état analyses propre avant de charger un autre athlète
@@ -5465,6 +5510,22 @@ function _cdAvgRpe(series) {
 //  bloque    : 3 séances à la même charge, reps qui ne montent plus.
 // Exos non touchés depuis 21 j : ignorés. Rien n'est inventé : chaque entrée porte
 // les chiffres réels qui la justifient.
+// Progrès « à meilleure série égale » (retour porteur 30/10, tractions 7·6·6·6 → 7·7·7·6 → 7·7·7 à RPE 8) :
+// la meilleure série ne bouge pas, mais il y a PLUS de séries à ce niveau, ou le MÊME niveau à un RPE plus bas.
+// pA = séance la plus récente, pB = la précédente (points de progression_par_exo). Renvoie un libellé ou null.
+function _progSecondaire(pA, pB) {
+  var num = function (x) { var n = Number(x); return isNaN(n) ? 0 : n; };
+  var c = num(pA.charge), r = num(pA.reps);
+  if (c !== num(pB.charge) || r !== num(pB.reps)) return null;
+  var top = function (p) { return (Array.isArray(p.series) ? p.series : []).filter(function (x) { return num(x.charge) === c && num(x.reps) >= r; }); };
+  var tA = top(pA), tB = top(pB);
+  if (!tA.length || !tB.length) return null;
+  if (tA.length > tB.length) return tA.length + ' séries à ' + r + ' reps (avant ' + tB.length + ')';
+  var rpe = function (t) { var v = t.map(function (x) { return num(x.rpe); }).filter(function (x) { return x > 0; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null; };
+  var rA = rpe(tA), rB = rpe(tB);
+  if (tA.length >= Math.min(tB.length, 2) && rA != null && rB != null && rA <= rB - 0.5) return 'même niveau à RPE ' + String(Math.round(rA * 10) / 10).replace('.', ',') + ' (avant ' + String(Math.round(rB * 10) / 10).replace('.', ',') + ')';
+  return null;
+}
 function _lectureExos(data, nowT) {
   var hist = (data && data.historique) || {}, prog = hist.progression_par_exo || {};
   var lignes = (data && Array.isArray(data.programme)) ? data.programme : [];
@@ -5496,11 +5557,15 @@ function _lectureExos(data, nowT) {
     if (pts.length < 2) return;
     var c1 = num(pts[1].charge), r1 = num(pts[1].reps);
     if (dj <= 14 && (c0 > c1 || (c0 === c1 && r0 > r1))) { R.progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
+    var _p2 = (dj <= 14) ? _progSecondaire(pts[0], pts[1]) : null;
+    if (_p2) { R.progresse.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1, why: _p2 }); return; }
     if (c0 < c1 && r0 < r1 && !(pts.length >= 3 && c0 > num(pts[2].charge))) { R.recule.push({ exo: exo, c0: c0, c1: c1, r0: r0, r1: r1 }); return; }
     if (pts.length >= 3) {
       var c2 = num(pts[2].charge), r2 = num(pts[2].reps);
       if (c0 === c1 && c1 === c2 && r0 <= r1 && r1 <= r2) {
-        var n = 3; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps)) n++;
+        // Bloqué seulement si AUCUN progrès secondaire (plus de séries au top / RPE plus bas) dans la chaîne.
+        if (_progSecondaire(pts[1], pts[2])) return;
+        var n = 3; while (n < pts.length && num(pts[n].charge) === c0 && num(pts[n].reps) >= num(pts[n - 1].reps) && !_progSecondaire(pts[n - 1], pts[n])) n++;
         var rp0 = _cdAvgRpe(pts[0].series), rp1 = _cdAvgRpe(pts[1].series);
         R.bloque.push({ exo: exo, c: c0, r: r0, n: n, rpeUp: (rp0 != null && rp1 != null && rp0 > rp1 + 0.3) });
       }
@@ -5551,7 +5616,7 @@ function renderCoachCoupDoeil(data) {
       entr += _cdCoupRow('var(--good)', '★', '<b>Records</b> — ' + rtx + sub('charge/reps battus'));
     }
     if (progresse.length) {
-      var ptx = progresse.slice(0, 3).map(function (x) { return (x.c0 > x.c1) ? (esc(x.exo) + ' ' + _cdFmtKg(x.c1) + '→<b>' + _cdFmtKg(x.c0) + ' kg</b>') : (esc(x.exo) + ' ' + x.r1 + '→<b>' + x.r0 + ' reps</b>'); }).join(', ');
+      var ptx = progresse.slice(0, 3).map(function (x) { return x.why ? (esc(x.exo) + ' <b>' + esc(x.why) + '</b>') : (x.c0 > x.c1) ? (esc(x.exo) + ' ' + _cdFmtKg(x.c1) + '→<b>' + _cdFmtKg(x.c0) + ' kg</b>') : (esc(x.exo) + ' ' + x.r1 + '→<b>' + x.r0 + ' reps</b>'); }).join(', ');
       entr += _cdCoupRow('var(--good)', '▲', '<b>Progresse</b> — ' + ptx + sub('charge ou reps en hausse'));
     }
     if (stagne.length) {
@@ -10627,6 +10692,7 @@ var _brouillonRestaure = false;
 var _seanceEnvoyee = false;
 
 function _brouillonKey() {
+  if (_saisieCoach) return null;   // saisie coach : pas de brouillon sur le téléphone du coach
   return athlete ? 'muscu_brouillon_' + athlete.athlete_id : null;
 }
 
@@ -12062,6 +12128,7 @@ async function _envoyerSeance() {
 
   // La séance n'est JAMAIS perdue : en cas d'échec/incertitude → file d'attente + resync auto.
   function _miseEnFile(msg, couleur) {
+    if (_saisieCoach) { _validationEnCours = false; showToast('Envoi impossible pour le moment : réessaie (la séance n\'est pas perdue tant que tu ne quittes pas).', '#f59f00'); var b0 = document.getElementById('btn-valider'); if (b0) { b0.style.display = 'block'; b0.disabled = false; b0.textContent = 'Valider la séance'; } return; }
     enregistrerSeanceOffline(lignes, null);
     afficherRecap();
     showToast(msg, couleur || '#f59f00');
@@ -12073,11 +12140,18 @@ async function _envoyerSeance() {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'saveSeance', data: lignes })
+      body: JSON.stringify(_saisieCoach ? { action: 'saveSeance', data: lignes, saisi_par_coach: String(coach && coach.coach_id || '') } : { action: 'saveSeance', data: lignes })
     });
     let j = null;
     try { j = await res.json(); } catch (_) { j = null; }
     const ok = res.ok && j && !j.erreur && !j.error;
+    if (ok && _saisieCoach) {
+      _seanceEnvoyee = true;
+      showToast('Séance de ' + (_saisieCoach.a.nom || 'ton athlète') + ' enregistrée');
+      try { _validationEnCours = false; } catch (e) {}
+      coachQuitterSaisie(true);
+      return;
+    }
     if (ok) {
       afficherRecap();
       showToast('Séance enregistrée !');
@@ -12265,7 +12339,8 @@ function _confirmerFinSeance() {
   ov.innerHTML =
     '<div style="width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 32px;box-shadow:0 -8px 30px rgba(7,11,20,.18);">'
     + '<div style="width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px;"></div>'
-    + '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px;">Terminer la séance ?</div>'
+    + '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px;">' + (_saisieCoach ? 'Valider la séance de ' + escapeHtml(_saisieCoach.a.nom || 'ton athlète') + ' ?' : 'Terminer la séance ?') + '</div>'
+    + (_saisieCoach ? '<div style="font-size:12px;color:var(--text-muted);margin:-8px 0 14px;line-height:1.4">Elle compte tout de suite dans son suivi, marquée « saisie par ton coach ».</div>' : '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;">'
       + '<div style="background:var(--surface2);border-radius:10px;padding:10px 4px;text-align:center;">'
         + '<div style="font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;">' + totalExos + '</div>'
@@ -12295,6 +12370,9 @@ function _annulerFinSeance() {
 function _validerFinSeance() {
   var ov = document.getElementById('_confirm-fin-seance');
   if (ov) ov.remove();
+  // Saisie coach : la séance compte dès que le coach valide. Le bilan (ressenti, douleur)
+  // reste à l'athlète, dans son app — le coach ne le remplit pas à sa place.
+  if (_saisieCoach) { _validationEnCours = true; _bloquerBoutonsValidation(); _envoyerSeance(); return; }
   // Après validation → bilan de séance (ressenti + douleurs + note).
   ouvrirBilanSeance('muscu');
 }
@@ -13784,7 +13862,7 @@ function _maLectureNovalyzBloc(data) {
   var kg = function (x) { return _cdFmtKg(x); }, plus = function (arr, n) { return arr.length > n ? ' <span style="color:var(--text-subtle)">+' + (arr.length - n) + '</span>' : ''; };
   var cls = [];
   if (L.records.length) cls.push({ ic: '★', col: '#00A854', html: '<b>Records</b> : ' + L.records.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c) + ' × ' + x.r; }).join(' · ') + plus(L.records, 3), src: 'charge (ou reps à charge égale) battue · 10 derniers jours' });
-  if (L.progresse.length) cls.push({ ic: '▲', col: '#00A854', html: '<b>Progresse</b> : ' + L.progresse.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + (x.c0 !== x.c1 ? kg(x.c1) + ' → ' + kg(x.c0) + ' kg' : x.r1 + ' → ' + x.r0 + ' reps'); }).join(' · ') + plus(L.progresse, 3), src: 'vs la séance précédente de l\'exercice' });
+  if (L.progresse.length) cls.push({ ic: '▲', col: '#00A854', html: '<b>Progresse</b> : ' + L.progresse.slice(0, 3).map(function (x) { return _maE(x.exo) + ' ' + (x.why ? _maE(x.why) : x.c0 !== x.c1 ? kg(x.c1) + ' → ' + kg(x.c0) + ' kg' : x.r1 + ' → ' + x.r0 + ' reps'); }).join(' · ') + plus(L.progresse, 3), src: 'vs la séance précédente de l\'exercice' });
   L.sous.slice(0, 3).forEach(function (x) { cls.push({ ic: '!', col: '#DC3545', html: '<b>Sous ta fourchette</b> : ' + _maE(x.exo) + ' ' + x.hist.map(function (h) { return kg(h.c) + ' × ' + h.r; }).join(' → ') + ' (RPE ' + x.rpe + ')', src: 'cible ' + x.rmin + '-' + x.rmax + ' reps · majorité des séries en dessous' }); });
   if (L.bloque.length) cls.push({ ic: '⏸', col: '#E07800', html: '<b>Bloqué</b> : ' + L.bloque.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c) + ' × ' + x.r + ' depuis ' + x.n + ' séances'; }).join(' · '), src: 'même charge, reps qui ne montent plus' });
   if (L.recule.length) cls.push({ ic: '▼', col: '#E07800', html: '<b>Recule</b> : ' + L.recule.slice(0, 2).map(function (x) { return _maE(x.exo) + ' ' + kg(x.c1) + ' × ' + x.r1 + ' → ' + kg(x.c0) + ' × ' + x.r0; }).join(' · '), src: 'charge et reps en baisse' });
@@ -14164,7 +14242,7 @@ function _maProgExo(data) {
   try {
     var _L = _lectureExos(data, Date.now()), _st = null;
     [['records', '#00A854', '★', function (x) { return '<b>Record</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' le ' + _maE(x.date); }],
-     ['progresse', '#00A854', '▲', function (x) { return '<b>En progrès</b> : ' + _cdFmtKg(x.c1) + ' × ' + x.r1 + ' → ' + _cdFmtKg(x.c0) + ' × ' + x.r0; }],
+     ['progresse', '#00A854', '▲', function (x) { return '<b>En progrès</b> : ' + (x.why ? _maE(x.why) : _cdFmtKg(x.c1) + ' × ' + x.r1 + ' → ' + _cdFmtKg(x.c0) + ' × ' + x.r0); }],
      ['sous', '#DC3545', '!', function (x) { return '<b>Sous ta fourchette ' + x.rmin + '-' + x.rmax + '</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe; }],
      ['bloque', '#E07800', '⏸', function (x) { return '<b>Bloqué</b> à ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances'; }],
      ['recule', '#DC3545', '▼', function (x) { return '<b>En recul</b> par rapport à la fois d\'avant'; }]].some(function (k) {
@@ -16179,13 +16257,27 @@ function _safe(label, fn) {
 // MÊME règle que l'écran de saisie (_progDecision + fourchette par catégorie), appliquée
 // à la meilleure série (S1) de la dernière fois que l'exercice a été fait. Indicatif.
 // Séance du jour = prochaine séance du programme (backend dashboard.prochaine_seance).
-function _tjSeanceDuJour(data) {
+// État de la séance du jour (bug 30/10) : quand la séance du jour était FAITE ou que toute
+// la semaine était faite, prochaine_seance = null et l'écran retombait sur la 1re séance du
+// programme (« pec epaule »), présentée comme à faire, avec cibles et reco → ça ressemblait
+// à la séance de la veille. Désormais : 'faite' (aujourd'hui) / 'semaine_ok' / 'a_faire'.
+function _tjEtatSeance(data) {
   var prog = (data && data.programme) || [], seances = [];
   prog.forEach(function (p) { if (p && p.seance_id && seances.indexOf(p.seance_id) === -1) seances.push(p.seance_id); });
-  if (!seances.length) return null;
-  var _pn = data && data.dashboard && data.dashboard.prochaine_seance;
-  var s1 = (_pn && seances.indexOf(String(_pn)) !== -1) ? String(_pn) : seances[0];
-  return { nom: s1, exos: prog.filter(function (p) { return p.seance_id === s1; }), nSeances: seances.length };
+  if (!seances.length) return { etat: 'libre', seances: seances };
+  var dash = (data && data.dashboard) || {};
+  var _pn = dash.prochaine_seance, pn = (_pn && seances.indexOf(String(_pn)) !== -1) ? String(_pn) : null;
+  var d = dash.derniere_seance || null, t = new Date();
+  var todayFR = String(t.getDate()).padStart(2, '0') + '/' + String(t.getMonth() + 1).padStart(2, '0') + '/' + t.getFullYear();
+  if (d && d.date === todayFR) return { etat: 'faite', nom: String(d.seance_id || ''), d: d, next: pn, seances: seances };
+  if (!pn) return { etat: 'semaine_ok', next: seances[0], seances: seances };
+  return { etat: 'a_faire', nom: pn, seances: seances };
+}
+function _tjSeanceDuJour(data) {
+  var E = _tjEtatSeance(data);
+  if (E.etat !== 'a_faire') return null;
+  var prog = (data && data.programme) || [];
+  return { nom: E.nom, exos: prog.filter(function (p) { return p.seance_id === E.nom; }), nSeances: E.seances.length };
 }
 function _tjCibles(data, exos) {
   var prog = (data && data.historique && data.historique.progression_par_exo) || {};
@@ -16245,7 +16337,7 @@ function _tjDepuisDerniere(data, L) {
   var blo = L.bloque.filter(function (x) { return dans(x.exo); }), sou = L.sous.filter(function (x) { return dans(x.exo); });
   var row = function (col, ic, html) { return '<div style="display:flex;gap:9px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--tj-border)"><span style="width:20px;height:20px;border-radius:6px;background:' + col + '1f;color:' + col + ';display:grid;place-items:center;font-size:11px;font-weight:900;flex:none">' + ic + '</span><span style="font-size:12.5px;color:var(--tj-text);line-height:1.45">' + html + '</span></div>'; };
   if (rec.length) rows.push(row('#00A854', '★', '<b>Record' + (rec.length > 1 ? 's' : '') + '</b> : ' + rec.map(function (x) { return esc(x.exo.trim()) + ' ' + kg(x.c) + ' kg × ' + x.r; }).join(', ')));
-  if (pro.length) rows.push(row('#00A854', '▲', '<b>En progrès</b> : ' + pro.map(function (x) { return esc(x.exo.trim()); }).join(', ')));
+  if (pro.length) rows.push(row('#00A854', '▲', '<b>En progrès</b> : ' + pro.map(function (x) { return esc(x.exo.trim()) + (x.why ? ' (' + esc(x.why) + ')' : ''); }).join(', ')));
   sou.forEach(function (x) { rows.push(row('#DC3545', '!', '<b>' + esc(x.exo.trim()) + '</b> sous ta fourchette : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe)); });
   blo.forEach(function (x) { rows.push(row('#E07800', '⏸', '<b>' + esc(x.exo.trim()) + '</b> bloqué à ' + kg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances')); });
   if (!rows.length) return '';
@@ -16594,9 +16686,34 @@ function renderAujourdhui(data) {
     var elMeta = document.getElementById('tj-seance-meta');
     var elFoc = document.getElementById('tj-seance-focus');
     var elFocT = document.getElementById('tj-seance-focus-txt');
-    if (seances.length) {
-      var _pn = data && data.dashboard && data.dashboard.prochaine_seance;
-      var s1 = (_pn && seances.indexOf(String(_pn)) !== -1) ? String(_pn) : seances[0];
+    var _E = _tjEtatSeance(data);
+    var _card = document.querySelector('#tab-accueil .tj-seance');
+    var _lbl = _card && _card.querySelector('.tj-label'), _cta = _card && _card.querySelector('.tj-cta');
+    var _ctaTxt = function (t, fn) { if (!_cta) return; _cta.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z"/></svg>' + t; _cta.setAttribute('onclick', fn); };
+    if (_lbl) _lbl.textContent = 'Séance du jour';
+    _ctaTxt('Commencer ma séance', "switchTab('seance')");
+    var _elCibX = document.getElementById('tj-seance-cibles');
+    if (_E.etat === 'faite' || _E.etat === 'semaine_ok') {
+      if (_elCibX) _elCibX.style.display = 'none';
+      var _nS = Number((data.dashboard && data.dashboard.regularite && data.dashboard.regularite.seances_semaine) || 0);
+      if (_E.etat === 'faite') {
+        var _d = _E.d, _bits = [];
+        if (_d.nb_series) _bits.push(_d.nb_series + ' séries');
+        if (_d.tonnage_t) _bits.push(String(_d.tonnage_t).replace('.', ',') + ' t');
+        if (_d.rpe_moyen) _bits.push('RPE ' + String(_d.rpe_moyen).replace('.', ','));
+        if (elNom) elNom.textContent = (_E.nom || 'Séance') + ' ✓';
+        if (elMeta) elMeta.textContent = 'Faite aujourd\'hui' + (_bits.length ? ' · ' + _bits.join(' · ') : '');
+        if (elFoc && elFocT) { elFocT.innerHTML = _E.next ? ('Prochaine : <b>' + esc(_E.next) + '</b>') : ('Semaine complète (' + _nS + ' séance' + (_nS > 1 ? 's' : '') + ') : récupère bien'); elFoc.style.display = ''; }
+        _ctaTxt('Voir mes analyses', "switchTab('historique')");
+      } else {
+        if (_lbl) _lbl.textContent = 'Cette semaine';
+        if (elNom) elNom.textContent = 'Semaine complète ✓';
+        if (elMeta) elMeta.textContent = _nS + ' séance' + (_nS > 1 ? 's' : '') + ' faite' + (_nS > 1 ? 's' : '') + ' : repos, ou une séance en plus si tu veux';
+        if (elFoc && elFocT) { elFocT.innerHTML = 'Prochaine séance du programme : <b>' + esc(_E.next) + '</b>'; elFoc.style.display = ''; }
+        _ctaTxt('Faire une séance quand même', "switchTab('seance')");
+      }
+    } else if (seances.length) {
+      var s1 = _E.nom;
       var exos = prog.filter(function (p) { return p.seance_id === s1; });
       if (elNom) elNom.textContent = s1;
       if (elMeta) elMeta.textContent = exos.length + ' exercice' + (exos.length > 1 ? 's' : '') + (seances.length > 1 ? ' · ' + seances.length + ' séances au programme' : '');

@@ -735,6 +735,8 @@
       <!-- N13 — « Coup d'œil » : le coach comprend en 5 s (entraînement : progresse /
            recule / points forts / où ça pêche · état : sommeil, fatigue, stress, douleur,
            récup). Rempli par renderCoachCoupDoeil. En tête, avant le reste. -->
+      <!-- Saisie de séance en présentiel par le coach (30/10) -->
+      <button class="cd-saisie-btn" onclick="coachSaisirSeance()" style="display:none" data-wip="saisie-coach">▶ Saisir sa séance <span>présentiel</span></button>
       <div id="cd-coupdoeil"></div>
       <!-- Bloc IA coach (desktop) : pose des questions sur CE client ; l'IA est
            nourrie des données de l'athlète (action chatIA). Caché en mobile. -->
@@ -1280,6 +1282,16 @@
       #tab-accueil .tj-bwrap{order:8;}
       #tab-accueil #dash-steps{order:9;}
       #tab-accueil .tj-rew{order:10;}
+      /* Saisie de séance par le coach (présentiel) */
+      .cd-saisie-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 12px;padding:13px;border:none;border-radius:14px;background:#6D4BFF;color:#fff;font:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(109,75,255,.28);}
+      .cd-saisie-btn span{font-size:11px;font-weight:700;opacity:.85;background:rgba(255,255,255,.18);border-radius:999px;padding:2px 8px;}
+      #saisie-coach-bar{position:fixed;left:0;right:0;top:0;z-index:2500;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;background:#6D4BFF;color:#fff;box-shadow:0 4px 14px rgba(109,75,255,.3);}
+      #saisie-coach-bar>div{flex:1;min-width:0;}
+      #saisie-coach-bar b{display:block;font-size:14px;}
+      #saisie-coach-bar span{font-size:11.5px;opacity:.9;}
+      #saisie-coach-bar button{border:1px solid rgba(255,255,255,.55);background:transparent;color:#fff;border-radius:10px;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;}
+      body.saisie-coach #tabs-bar,body.saisie-coach #app-side,body.saisie-coach .nv-fab,body.saisie-coach #fab-novalyz{display:none !important;}
+      body.saisie-coach #view-app{padding-top:58px;}
       /* Points v2 — ligne Aujourd'hui + page « Mes points » */
       #tab-accueil .tj-pts-line{order:10;cursor:pointer;padding:13px 15px;}
       .tj-pts-line .pl-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;}
