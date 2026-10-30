@@ -11742,6 +11742,7 @@ function majPlanSeries() {
       + (R0 != null ? '<div class="pc-ref">Repos de référence : ' + esc(_reposTxt(R0)) + ' (dernière fois). Bornes : ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).min)) + ' à ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).max)) + '.</div>' : '')
       + '</div>';
   }
+  if (dec.mode !== 'sous') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _LEVIERS_BLOCAGE; }
   var sg = document.getElementById('exo-actuel-suggestion');
   if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + '</div>' : '';
   // Pré-remplissage de la série en cours + molette de repos = cible de la règle (une fois par série).
@@ -13744,6 +13745,12 @@ function _lxVolume(data) {
 }
 // Jusqu'à 3 recos NOMMÉES, par priorité : sous la fourchette → bloqué → volume en retard.
 // Les propositions de charge sont INDICATIVES (décision 29/10).
+// Exercice BLOQUÉ (classement partagé _lectureExos) → leviers indicatifs (décision 30/10) :
+// repos un peu plus long, le placer plus tôt dans la séance, ou persister à la bonne intensité.
+function _blocageInfo(data, exo) {
+  try { var L = _lectureExos(data || dernierAppData, Date.now()); return (L.bloque || []).filter(function (x) { return x.exo === exo; })[0] || null; } catch (e) { return null; }
+}
+var _LEVIERS_BLOCAGE = 'à titre indicatif : un repos un peu plus long (+30 s), le placer plus tôt dans ta séance pour être plus frais, ou persister en visant la bonne intensité (RPE 8-9 sur toutes tes séries).';
 function _lxRecos(L, V, niveau) {
   var out = [], kg = function (x) { return _cdFmtKg(x); };
   L.sous.slice(0, 2).forEach(function (x) {
@@ -13753,7 +13760,7 @@ function _lxRecos(L, V, niveau) {
   if (L.bloque.length && out.length < 3) {
     var b = L.bloque[0], av = niveau === 'avance' || niveau === 'expert';
     out.push('<b>' + _maE(b.exo) + '</b> : ' + kg(b.c) + ' kg × ' + b.r + ' depuis ' + b.n + ' séances. '
-      + (av ? 'Change un levier : +1 rep, ou ±30 s de repos (choix proposé à la saisie).' : 'Vise +1 rep par séance avant de monter la charge.'));
+      + 'Pour débloquer, ' + _LEVIERS_BLOCAGE);
   }
   var ret = V.rows.filter(function (r) { return r.retard; });
   if (ret.length && out.length < 3) {
@@ -14187,6 +14194,7 @@ function _maProgExo(data) {
           + '<div style="font-size:13px;font-weight:800">Ce que Novalyz vise la prochaine fois</div>'
           + (_tc.cib ? '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px"><span style="font-size:12px;color:var(--text-muted)">' + _cdFmtKg(_tc.last.c) + ' × ' + _tc.last.r + ' →</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:19px;color:' + (_tc.cib.up === 'baisse' ? '#DC3545' : 'var(--accent)') + '">' + _cdFmtKg(_tc.cib.charge) + ' kg × ' + _tc.cib.reps + '</span></div>' : '')
           + '<div style="font-size:12px;color:var(--text);margin-top:6px;line-height:1.45">' + _maE(_why) + '</div>'
+          + (function () { var b = _blocageInfo(data, sel); return b ? '<div style="font-size:12px;color:#B45F00;margin-top:6px;line-height:1.45"><b>Bloqué depuis ' + b.n + ' séances</b> — ' + _maE(_LEVIERS_BLOCAGE) + '</div>' : ''; })()
           + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:5px">Sur ta série la plus lourde, même calcul que l\'écran de saisie. C\'est toi qui décides.</div></div>';
       }
     }
@@ -16195,7 +16203,8 @@ function _tjCibles(data, exos) {
     // série de mise en route plus légère (ex. 5 kg × 20 avant 7,5 kg × 10).
     var kRef = 0; last.forEach(function (x, i) { var b = last[kRef]; if ((Number(x.charge) || 0) > (Number(b.charge) || 0) || ((Number(x.charge) || 0) === (Number(b.charge) || 0) && (Number(x.reps) || 0) > (Number(b.reps) || 0))) kRef = i; });
     var ref = last[kRef], kNum = Number(ref.serie) || (kRef + 1), cib = dec.cible(kNum, 'charge');
-    return { exo: nom, mode: dec.mode, rpe: dec.rpe, f: f, pas: pas, last: { c: Number(ref.charge) || 0, r: Number(ref.reps) || 0 }, cib: cib };
+    var _bq = (dec.mode !== 'sous') ? _blocageInfo(data, nom) : null;
+    return { exo: nom, mode: dec.mode, rpe: dec.rpe, f: f, pas: pas, last: { c: Number(ref.charge) || 0, r: Number(ref.reps) || 0 }, cib: cib, bloqueN: _bq ? _bq.n : 0 };
   });
 }
 function _tjCiblesHtml(rows) {
@@ -16203,6 +16212,7 @@ function _tjCiblesHtml(rows) {
   var esc = escapeHtml, kg = function (x) { return _cdFmtKg(x); };
   var why = function (x) {
     if (x.mode === 'premier') return '1re fois : trouve ta charge de travail';
+    if (x.bloqueN) return 'bloqué depuis ' + x.bloqueN + ' séances : repos +30 s, plus tôt dans la séance, ou persiste à RPE 8-9 · indicatif';
     if (x.mode === 'sous') return 'sous ta fourchette ' + x.f.rmin + '-' + x.f.rmax + ' (RPE ' + x.rpe + ') · indicatif';
     if (x.mode === 'consolide') return 'RPE ' + x.rpe + ' la dernière fois → on consolide';
     if (x.mode === 'charge') return 'haut de fourchette atteint → +' + kg(x.pas) + ' kg';
