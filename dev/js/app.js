@@ -16576,7 +16576,9 @@ function renderAujourdhui(data) {
     var g = (data && data.global) || {};
     var dashb = (data && data.dashboard) || {};
     var totalS = Number(g.total_seances || 0);
-    var rec30 = Number(g.records_30j || 0);   // gardé pour l'étiquette « Records 30 j » (trophée)
+    // Trophée « Records 30 j » : même définition que les points (charge battue, 1er passage exclu).
+    // Avant : records_30j de computeGlobal comptait aussi les 1ers passages (20 « records » pour 2 réels).
+    var rec30 = Number((data && data.recompenses && data.recompenses.records_30j != null) ? data.recompenses.records_30j : (g.records_30j || 0));
     // Économie de points : SOURCE UNIQUE = data.recompenses (gagné / dépensé / solde).
     // Le SOLDE (gagné − dépensé) est le seul chiffre « dispo » affiché (ici + boutique).
     // Records comptés À VIE (records_total) → points permanents. Fallback front sur
@@ -16607,7 +16609,7 @@ function renderAujourdhui(data) {
       if (!best || t > best.t) best = { exo: exo, charge: r.charge, t: t };
     });
     var elNa = document.getElementById('tj-newpr-a'), elNb = document.getElementById('tj-newpr-b');
-    if (best && best.charge != null) { if (elNa) elNa.textContent = 'Ton meilleur record'; if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg'; }
+    if (best && best.charge != null) { if (elNa) elNa.textContent = 'Ton dernier record'; if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg'; }
     else { if (elNa) elNa.textContent = 'Records'; if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records'; }
 
     // Collection de trophées (débloqués depuis les vraies données).
@@ -16616,6 +16618,9 @@ function renderAujourdhui(data) {
     _renderObjectif(data);
     // Boutique récompenses (points dépensables).
     _renderBoutique(data);
+    // Points v2 : ligne unique sur Aujourd'hui + page « Mes points ».
+    _renderLignePoints(data);
+    _renderMesPoints(data);
 
     // Cibles pour l'animation au reveal (scroll).
     var rewCard = document.querySelector('#tab-accueil .tj-rew');
@@ -16760,10 +16765,9 @@ function _objOptions(data) {
 function _objKey() { return 'nvz_obj_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
 function _objWonKey() { return 'nvz_objwon_' + ((athlete && athlete.athlete_id) || 'x') + '_' + _isoWeek(new Date()); }
 function _objChosen(data) {
-  var id = null; try { id = localStorage.getItem(_objKey()); } catch (e) {}
-  var opts = _objOptions(data);
-  for (var i = 0; i < opts.length; i++) if (opts[i].id === id) return opts[i];
-  return opts[0];
+  // Points v2 : l'objectif de la semaine = TON objectif de séances (celui qui rapporte les
+  // points). Le choix local (+1 séance, cardio, pas) donnait 2 objectifs différents → retiré.
+  return _objOptions(data)[0];
 }
 function nvzToggleObjPicker() { var p = document.getElementById('tj-obj-pick'); if (p) p.classList.toggle('on'); }
 function nvzPickObj(id) { try { localStorage.setItem(_objKey(), id); } catch (e) {} try { nvzToggleObjPicker(); } catch (e) {} try { _renderObjectif(dernierAppData); } catch (e) {} }
@@ -16817,6 +16821,75 @@ function _renderObjectif(data) {
       .catch(function () { apply(0); });
   } else { apply(0); }
 }
+// ═══ Points v2 (30/10) : ligne Aujourd'hui + page « Mes points » ═══
+// Source unique = data.recompenses (calculerPoints côté serveur). Le front n'invente
+// aucun point : il affiche ce que le serveur a compté sur les vraies données.
+var _PTS_LBL = {
+  seance: function (n) { return n + ' séance' + (n > 1 ? 's' : '') + ' faite' + (n > 1 ? 's' : ''); },
+  rpe: function (n) { return 'RPE noté sur toutes les séries (' + n + ' séance' + (n > 1 ? 's' : '') + ')'; },
+  questionnaire: function (n) { return n + ' jour' + (n > 1 ? 's' : '') + ' avec ton ressenti noté'; },
+  complete: function (n) { return n + ' séance' + (n > 1 ? 's' : '') + ' complète' + (n > 1 ? 's' : '') + ' (toutes les séries prévues)'; },
+  record: function (n) { return n + ' record' + (n > 1 ? 's' : '') + ' de charge'; }
+};
+function _ptsObjectif(rec, data) {
+  var L = (rec && rec.semaine && rec.semaine.lignes) || [], o = null;
+  for (var i = 0; i < L.length; i++) if (L[i].k === 'objectif') o = L[i];
+  var cible = (o && o.cible) || _objSeancesCible(data);
+  var reg = (data && data.dashboard && data.dashboard.regularite) || {};
+  var fait = (o && o.fait != null) ? o.fait : Number(reg.seances_semaine || 0);
+  return { fait: fait, cible: cible, pts: o ? o.pts : 0 };
+}
+function _renderLignePoints(data) {
+  var rec = (data && data.recompenses) || {};
+  var ob = _ptsObjectif(rec, data);
+  var fmt = function (n) { return Number(n || 0).toLocaleString('fr-FR'); };
+  var t = document.getElementById('tj-pl-t'); if (t) t.textContent = 'Objectif semaine ' + ob.fait + '/' + ob.cible + (ob.fait >= ob.cible ? ' ✓' : '');
+  var sem = rec.semaine ? rec.semaine.total : null;
+  var sb = document.getElementById('tj-pl-s'); if (sb) sb.textContent = fmt(rec.solde) + ' pts' + (sem != null ? ' · ' + (sem > 0 ? '+' : '') + fmt(sem) + ' cette semaine' : '');
+  var bar = document.getElementById('tj-pl-bar'); if (bar) bar.style.width = Math.max(0, Math.min(100, Math.round(ob.fait / Math.max(1, ob.cible) * 100))) + '%';
+}
+function _renderMesPoints(data) {
+  var rec = (data && data.recompenses) || {};
+  var fmt = function (n) { return Number(n || 0).toLocaleString('fr-FR'); };
+  var B = rec.bareme || { seance: 10, rpe: 5, questionnaire: 3, complete: 5, record: 20, recordMaxSem: 3, objectif: 30 };
+  var el = document.getElementById('mp-semaine');
+  if (el) {
+    var L = (rec.semaine && rec.semaine.lignes) || [];
+    var rows = '';
+    L.forEach(function (l) {
+      if (l.k === 'objectif') return;
+      if (!l.n) return;
+      var lbl = _PTS_LBL[l.k] ? _PTS_LBL[l.k](l.n) : l.k;
+      if (l.k === 'record' && l.details && l.details.length) lbl += ' : ' + escapeHtml(l.details.join(', '));
+      rows += '<div class="mp-r"><span class="ok">✓ ' + lbl + '</span><b class="p">+' + fmt(l.pts) + '</b></div>';
+    });
+    var ob = _ptsObjectif(rec, data);
+    rows += ob.fait >= ob.cible
+      ? '<div class="mp-r"><span class="ok">✓ Objectif ' + ob.cible + ' séances atteint</span><b class="p">+' + fmt(ob.pts || B.objectif) + '</b></div>'
+      : '<div class="mp-r"><span class="todo">○ Objectif ' + ob.fait + '/' + ob.cible + ' séances (encore ' + (ob.cible - ob.fait) + ')</span><b class="p" style="color:var(--tj-subtle)">+' + B.objectif + '</b></div>';
+    if (!rec.semaine) rows = '<div class="mp-r"><span class="todo">Le détail de la semaine arrive avec la mise à jour du serveur.</span></div>';
+    el.innerHTML = '<div class="mp-lbl">Cette semaine' + (rec.semaine ? ' · ' + fmt(rec.semaine.total) + ' pts' : '') + '</div>' + rows
+      + '<div class="mp-note">Solde : <b>' + fmt(rec.solde) + ' pts</b> (gagnés ' + fmt(rec.gagnes) + ' · dépensés ' + fmt(rec.depenses) + '). Chacun de ces gestes rend aussi tes analyses plus fiables.</div>';
+  }
+  var eb = document.getElementById('mp-bareme');
+  if (eb) eb.innerHTML = '<div class="mp-lbl">Comment je gagne des points</div>'
+    + '<div class="mp-r"><span>Séance faite</span><b class="p">+' + B.seance + '</b></div>'
+    + '<div class="mp-r"><span>RPE noté sur toutes les séries</span><b class="p">+' + B.rpe + '</b></div>'
+    + '<div class="mp-r"><span>Ressenti noté (1 fois par jour)</span><b class="p">+' + B.questionnaire + '</b></div>'
+    + '<div class="mp-r"><span>Séance complète (toutes les séries prévues)</span><b class="p">+' + B.complete + '</b></div>'
+    + '<div class="mp-r"><span>Record : charge battue sur un exercice (' + B.recordMaxSem + ' max / semaine)</span><b class="p">+' + B.record + '</b></div>'
+    + '<div class="mp-r"><span>Objectif de séances de la semaine atteint</span><b class="p">+' + B.objectif + '</b></div>'
+    + '<div class="mp-note">Calculé sur tes vraies séances et ressentis, depuis ton inscription. Le 1er passage sur un exercice n\'est pas un record.</div>';
+}
+function ouvrirMesPoints() {
+  var ov = document.getElementById('mp-ov'); if (!ov) return;
+  try { if (dernierAppData) _renderMesPoints(dernierAppData); } catch (e) {}
+  ov.classList.add('on');
+  try { document.body.classList.add('mp-open'); } catch (e) {}
+  var card = ov.querySelector('.tj-rew'); if (card) { card.classList.add('in'); try { _revealRewards(card); } catch (e) {} }
+}
+function fermerMesPoints() { var ov = document.getElementById('mp-ov'); if (ov) ov.classList.remove('on'); try { document.body.classList.remove('mp-open'); } catch (e) {} }
+
 // ═══ Boutique récompenses (points dépensables) ═══
 // Catalogue d'AFFICHAGE (les coûts font foi côté serveur via RECOMPENSES_CATALOGUE
 // dans index.ts). Les collabs seront ajoutées ici (type 'collab') + côté serveur.
@@ -16826,42 +16899,56 @@ function _renderObjectif(data) {
 // qu'un partenaire réel n'est pas branché (refus côté serveur aussi).
 var _RECOMPENSES = [
   { id: 'badge_pionnier', titre: 'Badge Pionnier', desc: 'Le badge de tes débuts.', cout: 50, icon: '' },
-  { id: 'badge_assidu', titre: 'Badge Assidu', desc: 'Pour ta régularité.', cout: 150, icon: '' },
-  { id: 'skin_gold', titre: 'Thème Doré', desc: 'Une touche dorée sur ton app.', cout: 300, icon: '' },
-  { id: 'badge_machine', titre: 'Badge Machine', desc: 'Le badge des gros volumes.', cout: 600, icon: '🏆' },
+  { id: 'badge_assidu', titre: 'Badge Assidu', desc: 'Pour ta régularité.', cout: 300, icon: '' },
+  // Le thème doré n'a jamais été appliqué à l'app (audit 30/10) : on le dit.
+  { id: 'skin_gold', titre: 'Badge Doré', desc: 'Badge doré (le thème doré de l\'app : bientôt).', cout: 600, icon: '' },
+  { id: 'badge_machine', titre: 'Badge Machine', desc: 'Le badge des gros volumes.', cout: 1200, icon: '🏆' },
+  { id: 'ia_plus5', titre: '+5 questions à Novalyz IA', desc: 'Au-delà de tes 2 questions par jour.', cout: 150, icon: '💬', boutique: true },
   { id: 'collab_partenaire', titre: 'Réduction partenaire', desc: 'Un bon plan chez un partenaire Novalyz.', cout: 800, icon: '🤝', collab: true },
   { id: 'collab_programme', titre: 'Programme coach partenaire', desc: 'Un programme signé par un coach partenaire.', cout: 1000, icon: '', collab: true }
 ];
 function _renderBoutique(data) {
   var cont = document.getElementById('tj-boutique'); if (!cont) return;
   var rec = (data && data.recompenses) || { solde: 0, claims: [] };
+  var fmt = function (n) { return Number(n || 0).toLocaleString('fr-FR'); };
+  // Points v2 : badges et thème se DÉBLOQUENT avec les points gagnés (plus achetés).
+  var col = {}; (rec.collection || []).forEach(function (c) { col[c.id] = c; });
   var owned = {}; (rec.claims || []).forEach(function (c) { owned[c.id] = true; });
-  var solde = Number(rec.solde) || 0;
-  var cards = _RECOMPENSES.map(function (r) {
-    var has = !!owned[r.id];
-    var right;
-    if (r.collab) {
-      right = '<span class="bq-soon">Bientôt</span>';
-    } else if (has) {
-      right = '<span class="bq-owned">Obtenu ✓</span>';
+  var gagnes = Number(rec.gagnes) || 0, solde = Number(rec.solde) || 0;
+  var card = function (r, sub, right, cls) { return '<div class="bq-card' + (cls || '') + '"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + sub + '</span></div>' + right + '</div>'; };
+  var shop = '', badges = '';
+  _RECOMPENSES.forEach(function (r) {
+    if (r.boutique) {
+      // +5 questions IA : achetable seulement si l'IA est activée côté serveur.
+      var credits = Number(rec.ia_credits) || 0;
+      var sub = r.desc + (credits ? ' <b>' + credits + ' question' + (credits > 1 ? 's' : '') + ' en réserve</b>' : '');
+      var right;
+      if (rec.ia_active === false) right = '<span class="bq-soon">Bientôt</span>', sub = 'Dès que Novalyz IA sera activée.';
+      else if (rec.ia_active == null) right = '<span class="bq-soon">Bientôt</span>';
+      else right = '<button class="bq-buy' + (solde >= r.cout ? '' : ' off') + '"' + (solde >= r.cout ? ' onclick="nvzAcheterRecompense(\'' + r.id + '\')"' : ' disabled') + '>' + r.cout + ' pts</button>';
+      shop += card(r, sub, right, '');
+    } else if (r.collab) {
+      shop += card(r, r.desc, '<span class="bq-soon">Bientôt</span>', ' collab');
     } else {
-      var canBuy = solde >= r.cout;
-      right = '<button class="bq-buy' + (canBuy ? '' : ' off') + '"' + (canBuy ? (' onclick="nvzAcheterRecompense(\'' + r.id + '\')"') : ' disabled') + '>' + r.cout + ' pts</button>';
+      var c = col[r.id], seuil = c ? c.seuil : r.cout, has = c ? !!c.debloque : !!owned[r.id];
+      badges += card(r, has ? r.desc : 'Se débloque à ' + fmt(seuil) + ' pts gagnés.', has ? '<span class="bq-owned">Débloqué ✓</span>' : '<span class="bq-soon">' + fmt(Math.max(0, seuil - gagnes)) + ' pts</span>', has ? ' has' : '');
     }
-    return '<div class="bq-card' + (has ? ' has' : '') + (r.collab ? ' collab' : '') + '"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + r.desc + '</span></div>' + right + '</div>';
-  }).join('');
-  cont.innerHTML = '<div class="bq-h">Boutique <span class="bq-solde">' + solde.toLocaleString('fr-FR') + ' pts dispo</span></div>' + cards;
+  });
+  cont.innerHTML = '<div class="bq-h">Boutique <span class="bq-solde">' + fmt(solde) + ' pts dispo</span></div>' + shop
+    + '<div class="bq-h" style="margin-top:14px">Badges <span class="bq-solde">débloqués avec tes points gagnés</span></div>' + badges;
 }
 function nvzAcheterRecompense(id) {
   var r = null; for (var i = 0; i < _RECOMPENSES.length; i++) if (_RECOMPENSES[i].id === id) r = _RECOMPENSES[i];
   if (!r || !athlete || !athlete.athlete_id) return;
+  if (!confirm('Échanger ' + r.cout + ' points contre « ' + r.titre + ' » ?')) return;
   fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'claimRecompense', athlete_id: athlete.athlete_id, reward_id: id }) })
     .then(function (x) { return x.json(); })
     .then(function (res) {
       if (res && res.success) {
-        try { if (dernierAppData && dernierAppData.recompenses) { dernierAppData.recompenses.claims.push({ id: id, cout: r.cout, date: '' }); dernierAppData.recompenses.depenses += r.cout; dernierAppData.recompenses.solde = res.solde; } } catch (e) {}
-        try { _renderBoutique(dernierAppData); } catch (e) {}
-        try { nvzShowGift(r.titre); } catch (e) {}
+        try { if (dernierAppData && dernierAppData.recompenses) { if (id !== 'ia_plus5') dernierAppData.recompenses.claims.push({ id: id, cout: r.cout, date: '' }); else dernierAppData.recompenses.ia_credits = (Number(dernierAppData.recompenses.ia_credits) || 0) + 5; dernierAppData.recompenses.depenses += r.cout; dernierAppData.recompenses.solde = res.solde; } } catch (e) {}
+        try { _renderBoutique(dernierAppData); _renderLignePoints(dernierAppData); _renderMesPoints(dernierAppData); } catch (e) {}
+        try { var _tp = document.getElementById('tj-prog'); if (_tp) _tp.textContent = Number(dernierAppData.recompenses.solde || 0).toLocaleString('fr-FR'); } catch (e) {}
+        try { showToast(id === 'ia_plus5' ? '+5 questions ajoutées à ta réserve' : (r.titre + ' obtenu')); } catch (e) {}
       } else {
         try { showToast((res && res.error) || 'Achat impossible'); } catch (e) {}
       }

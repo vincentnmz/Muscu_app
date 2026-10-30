@@ -1280,6 +1280,27 @@
       #tab-accueil .tj-bwrap{order:8;}
       #tab-accueil #dash-steps{order:9;}
       #tab-accueil .tj-rew{order:10;}
+      /* Points v2 — ligne Aujourd'hui + page « Mes points » */
+      #tab-accueil .tj-pts-line{order:10;cursor:pointer;padding:13px 15px;}
+      .tj-pts-line .pl-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;}
+      .tj-pts-line .pl-t{font-size:13.5px;font-weight:800;color:var(--tj-text);}
+      .tj-pts-line .pl-s{font-size:11.5px;color:var(--tj-muted);margin-top:2px;}
+      .tj-pts-line .pl-go{font-size:12.5px;font-weight:800;color:var(--tj-accent);white-space:nowrap;}
+      .mp-ov{position:fixed;inset:0;z-index:3000;background:var(--tj-bg);display:none;flex-direction:column;}
+      .mp-ov.on{display:flex;}
+      .mp-head{display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 10px;border-bottom:1px solid var(--tj-border);background:var(--tj-surface);}
+      .mp-x{width:36px;height:36px;border-radius:10px;border:1px solid var(--tj-border);background:var(--tj-surface);color:var(--tj-text);font-size:22px;line-height:1;cursor:pointer;}
+      .mp-h{font-family:var(--tj-head);font-size:17px;}
+      .mp-body{flex:1;overflow-y:auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:12px;max-width:640px;width:100%;margin:0 auto;box-sizing:border-box;}
+      .mp-card{padding:14px 15px;}
+      .mp-body>*{flex-shrink:0;}
+      #tab-accueil .mp-body .tj-rew{order:-1;}
+      .mp-lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--tj-subtle);margin:0 0 8px;}
+      .mp-r{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px;padding:7px 0;border-top:1px solid var(--tj-border);}
+      .mp-r:first-of-type{border-top:none;}
+      .mp-r .ok{color:var(--tj-good,#00a854);} .mp-r .todo{color:var(--tj-subtle);}
+      .mp-r b.p{color:var(--tj-accent);white-space:nowrap;}
+      .mp-note{font-size:11px;color:var(--tj-subtle);margin-top:8px;line-height:1.45;}
       @media (min-width:992px){
         #tab-accueil .tj{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start;padding:4px 0 40px;}
         /* Vraies colonnes flex ; en desktop l'ordre suit le flux DOM de chaque colonne. */
@@ -1324,7 +1345,7 @@
           </div>
           <!-- Meilleur badge débloqué (trophée) — rempli/animé par renderAujourdhui().
                Masqué tant qu'aucun trophée n'est débloqué. -->
-          <div class="tj-badge" id="tj-badge" style="display:none" title="" onclick="switchTab('accueil');var r=document.querySelector('#tab-accueil .tj-rew');if(r)r.scrollIntoView({behavior:'smooth',block:'center'});"></div>
+          <div class="tj-badge" id="tj-badge" style="display:none" title="" onclick="switchTab('accueil');ouvrirMesPoints();"></div>
         </div>
 
         <div class="tj-banner" id="tj-banner">
@@ -1368,7 +1389,16 @@
 
         <!-- Récompenses : déplacé dans la colonne CENTRALE (desktop) pour combler le
              centre ; order:8 → reste en dernier sur mobile (inchangé). -->
-        <div class="tj-card tj-rew tj-reveal">
+        <!-- Points v2 (30/10) : UNE ligne sur Aujourd'hui ; le détail est dans « Mes points ». -->
+        <div class="tj-card tj-reveal tj-pts-line" id="tj-pts-line" onclick="ouvrirMesPoints()" role="button">
+          <div class="pl-row"><div class="pl-tx"><div class="pl-t" id="tj-pl-t">Objectif semaine</div><div class="pl-s" id="tj-pl-s">—</div></div><span class="pl-go">Voir ›</span></div>
+          <div class="tj-mbar"><span id="tj-pl-bar" style="width:0%"></span></div>
+        </div>
+        <div class="mp-ov" id="mp-ov">
+          <div class="mp-head"><button class="mp-x" onclick="fermerMesPoints()" aria-label="Fermer">‹</button><div class="mp-h">Mes points</div></div>
+          <div class="mp-body">
+            <div class="tj-card mp-card" id="mp-semaine"></div>
+        <div class="tj-card tj-rew">
           <div class="rew-hero">
             <div class="rew-glow"></div>
             <div class="rew-row">
@@ -1385,7 +1415,7 @@
           </div>
           <div class="rew-body">
             <div class="rew-goal">
-              <div class="gh"><span class="k">Objectif de la semaine</span><span class="chg" onclick="nvzToggleObjPicker()">Changer</span></div>
+              <div class="gh"><span class="k">Objectif de la semaine</span></div>
               <div class="cur">
                 <span class="em" id="tj-obj-em"></span>
                 <div class="t"><b id="tj-obj-txt">Choisis ton objectif</b><div class="sub2" id="tj-obj-sub">—</div></div>
@@ -1403,6 +1433,9 @@
               <span class="medal"><svg width="19" height="19" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5"/></svg></span>
               <div><div class="a" id="tj-newpr-a">Records</div><div class="b" id="tj-newpr-b">—</div></div>
             </div>
+          </div>
+        </div>
+            <div class="tj-card mp-card" id="mp-bareme"></div>
           </div>
         </div>
         </div><!-- /tj-main -->
