@@ -13139,6 +13139,7 @@ function _maInfoBtn(k) { return '<button onclick="_maInfoOpen(\'' + k + '\')" ti
 // Contenu sourcé (voir docs/bases-scientifiques.md). t = titre, d = définition + calcul,
 // fiab = niveau de fiabilité / limite (le point crédibilité pour un usage public).
 var _MA_INFO = {
+  progres: { t: 'Exercices en progrès', d: 'Pour chaque exercice fait sur la période, Novalyz compare ta meilleure série à celle de la fois précédente du même exercice : plus de charge, ou plus de reps à la même charge = progrès. La courbe compte ces progrès par séance, semaine ou mois.', fiab: 'Basé sur tes charges et reps réelles (pas de formule de 1RM). Monter en charge en perdant des reps compte comme un progrès. Un exercice fait une seule fois n\'a pas encore de comparaison.' },
   tonnage: { t: 'Tonnage', d: 'Le tonnage = charge × répétitions, additionné sur toutes tes séries. C\'est une mesure du volume de travail soulevé, que Novalyz somme par séance et par semaine pour suivre ta charge globale.', fiab: 'Fiable comme suivi de charge, mais ce n\'est pas une mesure d\'intensité : un gros tonnage peut venir de beaucoup de répétitions légères.' },
   volume: { t: 'Volume (séries par semaine)', d: 'Le volume utile pour prendre du muscle se compte surtout en nombre de séries par groupe musculaire et par semaine. Novalyz compare tes séries/sem à une cible adaptée à ton niveau.', fiab: 'Bien étayé : les méta-analyses montrent une relation dose-réponse (~10 séries/sem par muscle comme repère, davantage selon le niveau).' },
   balance: { t: 'Balance musculaire', d: 'L\'équilibre de volume entre groupes opposés (poussée/tirage, avant/arrière de cuisse…). Novalyz somme tes séries par groupe et affiche le ratio.', fiab: 'Un repère (~50/50), pas une règle stricte. Un déséquilibre marqué et durable est associé à plus de points faibles et de risque de blessure.' },
@@ -13344,16 +13345,7 @@ function _novaPickReco(s, allowAllConf) {
 // volume — déterministes, mêmes fenêtres que la Lecture (4 sem.). Tracés aux données.
 function _maLectureExtras(data) {
   var constats = [];
-  try {
-    var d = _maProgRegData(data);
-    if (d.nPair && d.forcePct != null) {
-      var fp = d.forcePct, ton = fp >= 3 ? 'positif' : fp <= -3 ? 'attention' : 'neutre';
-      var mot = fp >= 3 ? 'en hausse' : fp <= -3 ? 'en baisse' : 'stable';
-      var det = '';
-      if (d.prog.length || d.reg.length) det = ' — ' + (d.prog.length ? d.prog.length + ' exo' + (d.prog.length > 1 ? 's' : '') + ' en progrès' : '') + (d.prog.length && d.reg.length ? ', ' : '') + (d.reg.length ? d.reg.length + ' en recul' : '');
-      constats.push({ ton: ton, texte: 'Force ' + mot + ' : 1RM estimé moyen ' + (fp >= 0 ? '+' : '') + fp + ' %' + det + '.' });
-    }
-  } catch (e) {}
+  // (Constat « Force : 1RM estimé moyen » retiré le 30/10 — remplacé par le classement réel.)
   try {
     var rw = _maRecent4wISO(), daily = (data.historique && data.historique.daily_muscu) || {};
     var spm = (_maMuscuAgg(daily, rw.startISO, rw.endISO).series_par_muscle) || {};
@@ -13587,20 +13579,37 @@ function _maIntensiteBloc(data) {
 
 // TENDANCE de force e1RM : moyenne du 1RM estimé par séance sur la période.
 // Même rendu que les autres courbes (_maChartBlock → _maLineRich) pour l'homogénéité.
-function _maForceChart(data) {
-  var w = _maWin();
-  var sd = (data.seances_detail || []).filter(function (s) { return (s.date || '') >= w.startISO && (s.date || '') < w.endISO; })
-    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
-  var pts = [], dts = [];
-  sd.forEach(function (s) {
-    var es = [];
-    (s.exercices || []).forEach(function (e) { var b = _maBestSet(e); if (b && b.charge > 0 && b.reps > 0) es.push(b.charge * (1 + b.reps / 30)); });
-    if (es.length) { pts.push(Math.round(es.reduce(function (a, b) { return a + b; }, 0) / es.length)); dts.push(s.date); }
+// « Exercices en progrès » (décision 30/10) : remplace l'ancien « indice de force »
+// (1RM estimé MOYEN de la séance — il bougeait selon la séance du jour, pas selon la force).
+// Pour chaque exercice fait : progrès = charge en hausse, ou reps en hausse à charge égale,
+// vs la FOIS PRÉCÉDENTE de ce même exercice (même règle que la lecture). Par période :
+// nb d'exercices en progrès sur nb d'exercices faits. Courbe qui monte = vrai progrès.
+function _maProgresData(data) {
+  var prog = (data && data.historique && data.historique.progression_par_exo) || {};
+  var iso = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  var up = {}, faits = {};
+  Object.keys(prog).forEach(function (exo) {
+    var pts = prog[exo] || [];
+    for (var i = 0; i < pts.length; i++) {
+      var d = _blDate(pts[i].date); if (!d) continue; var k = iso(d);
+      faits[k] = (faits[k] || 0) + 1;
+      var q = pts[i + 1]; if (!q) continue;
+      var c0 = Number(pts[i].charge) || 0, r0 = Number(pts[i].reps) || 0, c1 = Number(q.charge) || 0, r1 = Number(q.reps) || 0;
+      if (c0 > c1 || (c0 === c1 && r0 > r1)) up[k] = (up[k] || 0) + 1;
+    }
   });
-  if (pts.length < 2) return _maSec('Tendance de force', null, 'force') + _maEmpty('La courbe de force apparaît dès 2 séances sur la période.');
-  return _maSec('Tendance de force', w.plabel + ' · indice (1RM estimé moyen)', 'force')
-    + _maChartBlock('Indice de force', pts, 'kg', '#9D5FD3', 'rgba(157,95,211,.14)', _maShortDate(dts[0]),
-      'INDICE GLOBAL de force = moyenne du 1RM estimé (Epley) sur TOUS les exercices de la séance (ex. squat + curl…). Ce n\'est pas le 1RM d\'un exercice précis — pour ça, vois « Par exercice ». Ce qui compte : la courbe monte = tu gagnes en force.', dts);
+  return { up: up, faits: faits };
+}
+function _maForceChart(data) {
+  var w = _maWin(), P = _maProgresData(data);
+  var tdF = _maTrendData(P.faits, 'sum'), tdU = _maTrendData(P.up, 'sum');
+  var pts = [], dts = [], nUp = 0, nF = 0;
+  tdF.pts.forEach(function (f, i) { if (f > 0) { pts.push(Math.round(tdU.pts[i] || 0)); dts.push(tdF.dates[i]); nUp += (tdU.pts[i] || 0); nF += f; } });
+  if (pts.length < 2) return _maSec('Exercices en progrès', null, 'progres') + _maEmpty('La courbe apparaît dès 2 séances sur la période.');
+  var bNoun = _maGran === 'S' ? 'séance' : (_maGran === 'M' ? 'semaine' : 'mois');
+  return _maSec('Exercices en progrès', 'par ' + bNoun + ' · ' + w.plabel, 'progres')
+    + _maChartBlock('En progrès', pts, 'exos', '#00A854', 'rgba(0,168,84,.12)', _maShortDate(dts[0]),
+      'Sur la période : ' + Math.round(nUp) + ' progrès sur ' + Math.round(nF) + ' exercices faits. Un exercice « progresse » quand sa meilleure série bat la fois précédente (plus de charge, ou plus de reps à charge égale). Le détail exercice par exercice : « Par exercice ».', dts);
 }
 
 // ════════ BLOC UNIQUE « Lecture Novalyz · Analyses » (entraînement) ════════
