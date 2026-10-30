@@ -2486,6 +2486,7 @@ function prefillProfilReglages() {
   set('prof-poids', poidsCourant != null ? poidsCourant : athlete.poids);
   set('prof-annees', athlete.annees_pratique);
   var d = document.getElementById('prof-ddn'); if (d) d.value = _ddnVersISO(athlete.ddn);
+  set('prof-sexe', (athlete.sexe === 'H' || athlete.sexe === 'F') ? athlete.sexe : '');
   var v = document.getElementById('app-version-ath'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
 }
 
@@ -2494,16 +2495,17 @@ async function enregistrerProfil() {
   var msg = document.getElementById('prof-msg');
   var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
   var val = function (id) { var el = document.getElementById(id); return el ? String(el.value).trim() : ''; };
-  var prenom = val('prof-prenom'), taille = val('prof-taille'), poids = val('prof-poids'), annees = val('prof-annees'), ddn = val('prof-ddn');
+  var prenom = val('prof-prenom'), taille = val('prof-taille'), poids = val('prof-poids'), annees = val('prof-annees'), ddn = val('prof-ddn'), sexe = val('prof-sexe');
   try {
     var res = await fetch(SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'saveProfil', athlete_id: athlete.athlete_id, nom: prenom, taille: taille, poids: poids, annees: annees, ddn: ddn }),
+      body: JSON.stringify({ action: 'saveProfil', athlete_id: athlete.athlete_id, nom: prenom, taille: taille, poids: poids, annees: annees, ddn: ddn, sexe: sexe }),
     });
     var data = await res.json();
     if (data && data.success) {
       if (prenom) athlete.nom = prenom;
       if (taille !== '') athlete.taille = Number(taille);
+      if (sexe === 'H' || sexe === 'F') athlete.sexe = sexe;
       if (poids !== '') athlete.poids = Number(poids);
       if (annees !== '') {
         athlete.annees_pratique = Number(annees);
@@ -8448,6 +8450,9 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
   if (rpeCible !== undefined && rpeCible !== null) { ligne.rpe_cible = (rpeCible === '' ? null : Number(rpeCible)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); }
   if (groupeId !== null) { ligne.groupe_id = groupeId.trim().toUpperCase(); renderProgrammeCoach(); }
   else if (exercice !== null) { cdExoOpen[rowIndex] = true; renderProgrammeCoach(); } // MAJ live du nom/muscle affiché
+  // Séries / reps / repos : l'écran (schéma S1…Sn, « Volume de la séance ») se met à jour
+  // TOUT DE SUITE — avant, il restait à l'ancienne valeur jusqu'au rechargement (bug 30/10).
+  else if (series !== null || repsMini !== null || repsMax !== null || reposSec !== null) { cdExoOpen[rowIndex] = true; renderProgrammeCoach(); }
   return _cdPersistLigne(ligne);
 }
 
@@ -8795,6 +8800,8 @@ function _jgFermerPanel() { _jgEditRow = null; var p = document.getElementById('
 function _jgSet(row, field, val) {
   var l = _jg.lignes.find(function (x) { return x.row_index === row; }); if (!l) return;
   l[field] = (val === '' || val == null) ? null : Number(val);
+  // Liste à jour tout de suite (« 4 × 8–12 ») sans attendre le serveur — bug signalé 30/10.
+  try { _jgRender(); } catch (e) {}
   _cdPersistLigne(l);
 }
 async function _jgSupprimer(row) {
@@ -11982,6 +11989,9 @@ async function _envoyerSeance() {
     if (ok) {
       afficherRecap();
       showToast('Séance enregistrée !');
+      // Lectures / recos à jour TOUT DE SUITE (Aujourd'hui, Analyses, Forme) : avant, seul un
+      // passage par Aujourd'hui rechargeait — Analyses montrait l'ancienne lecture (30/10).
+      try { if (typeof chargerAppData === 'function') chargerAppData(); } catch (e) {}
     } else {
       // Le serveur a répondu mais a refusé l'écriture → on met en file plutôt que de perdre.
       _miseEnFile('Enregistrement refusé côté serveur — mis en file, resync auto', '#f59f00');
@@ -12121,7 +12131,7 @@ async function flushSeancesOffline() {
     }
     _ecrireQueueOffline(restantes);
     const envoyees = q.length - restantes.length;
-    if (envoyees > 0) showToast(`${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`);
+    if (envoyees > 0) { showToast(`${envoyees} séance${envoyees > 1 ? 's' : ''} synchronisée${envoyees > 1 ? 's' : ''} !`); try { if (typeof athlete !== 'undefined' && athlete && typeof chargerAppData === 'function') chargerAppData(); } catch (e) {} }
     else if (restantes.length > 0 && (Date.now() - _lastPendingToast > 30000)) {
       // Rien n'est passé alors qu'il y a des séances en attente (serveur injoignable) :
       // on prévient (throttlé) plutôt que de laisser l'athlète dans le flou.
@@ -23932,7 +23942,7 @@ function renderNutrition() {
   } else {
     var adj = obj.goal === 'seche' ? 'déficit −15 %' : obj.goal === 'masse' ? 'surplus +10 %' : obj.goal === 'recomp' ? 'recomposition, léger déficit −10 %' : 'maintien';
     var note = 'Objectif indicatif — protéines ' + obj.pf + ' g/kg';
-    note += obj.kcal != null ? ' · calories Mifflin-St Jeor (' + adj + ') ; lipides ~27 % des kcal, glucides = le reste.' + (obj.sexeInconnu ? ' Calcul homme : sexe non renseigné dans ton profil.' : '') : ' · calories/glucides/lipides : complète taille + date de naissance dans Réglages.';
+    note += obj.kcal != null ? ' · calories Mifflin-St Jeor (' + adj + ') ; lipides ~27 % des kcal, glucides = le reste.' + (obj.sexeInconnu ? ' Calcul homme : sexe non renseigné — ajoute-le dans Réglages ▸ Profil.' : '') : ' · calories/glucides/lipides : complète taille + date de naissance dans Réglages.';
     var actId = _nutActId();
     var actPills = _NUT_ACT.map(function (a) { var on = a.id === actId; return '<button type="button" onclick="_nutSetAct(\'' + a.id + '\')" style="border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent-a10)' : 'var(--surface2)') + ';color:' + (on ? 'var(--accent)' : 'var(--text-muted)') + ';border-radius:999px;padding:6px 10px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;">' + a.label + '</button>'; }).join('');
     var actRow = '<div style="margin-top:14px;"><div class="nut-lab" style="margin-bottom:6px;">Niveau d\'activité</div><div style="display:flex;gap:6px;flex-wrap:wrap;">' + actPills + '</div></div>';

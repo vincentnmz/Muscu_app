@@ -1987,6 +1987,12 @@
             <div style="flex:1;"><label>Années de pratique</label><input type="number" id="prof-annees" placeholder="3" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;"></div>
             <div style="flex:1;"><label>Date de naissance</label><input type="date" id="prof-ddn" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;"></div>
           </div>
+          <div style="margin-top:8px;">
+            <label>Sexe <span style="font-weight:500;color:var(--text-subtle);text-transform:none;letter-spacing:0">— pour le calcul des calories</span></label>
+            <select id="prof-sexe" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+              <option value="">Non renseigné</option><option value="H">Homme</option><option value="F">Femme</option>
+            </select>
+          </div>
           <button onclick="enregistrerProfil()" style="width:100%;margin-top:10px;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Enregistrer mon profil</button>
           <div id="prof-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
         </div>
