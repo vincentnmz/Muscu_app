@@ -2559,7 +2559,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Gagnés = total_seances×10 + records_total×50 (PERMANENT : records à vie, plus la
     // fenêtre 30 j glissante qui faisait disparaître les points). Dépenses = somme des
     // claims (seance_id='recompense', valeur = coût). Source unique front↔back.
-    recompenses: calculerPoints(perfsAll || [], beRows || [], progRows || [], Number(seancesPrevues) || 0, recompRows || [], now),
+    recompenses: { ...calculerPoints(perfsAll || [], beRows || [], progRows || [], Number(seancesPrevues) || 0, recompRows || [], now), ia_active: !!Deno.env.get('ANTHROPIC_API_KEY'), ia_credits: await _iaCreditsRestants(athleteId) },
     pas_quotidiens,
     sante_historique,
     nutri_historique,
@@ -5263,13 +5263,16 @@ async function handleSetPauseAthlete(body: any): Promise<Response> {
 // Le front a le catalogue d'affichage (titres/descriptions/icônes) ; ici on ne garde
 // que ce qui est nécessaire à la VALIDATION d'un achat (coût + type). Les collabs
 // seront ajoutées ici comme nouvelles entrées (type:'collab', + code à servir plus tard).
-const RECOMPENSES_CATALOGUE: Record<string, { cout: number; type: string; dispo?: boolean }> = {
+const RECOMPENSES_CATALOGUE: Record<string, { cout: number; type: string; dispo?: boolean; repetable?: boolean }> = {
   // Points v2 (30/10) : badges et thème ne s'achètent plus, ils se DÉBLOQUENT avec les
   // points gagnés (COLLECTION_PALIERS). Gardés ici pour reconnaître les anciens achats.
   badge_pionnier:    { cout: 50,  type: 'badge', dispo: false },
   badge_assidu:      { cout: 150, type: 'badge', dispo: false },
   skin_gold:         { cout: 300, type: 'skin',  dispo: false },
   badge_machine:     { cout: 600, type: 'badge', dispo: false },
+  // Boutique (décision 30/10) : +5 questions à Novalyz IA, achetable plusieurs fois.
+  // Refusé tant que l'IA n'est pas activée côté serveur (clé absente).
+  ia_plus5:          { cout: 150, type: 'boutique', repetable: true },
   // Collabs — teasers, pas encore achetables (aucun partenaire branché).
   collab_partenaire: { cout: 800,  type: 'collab', dispo: false },
   collab_programme:  { cout: 1000, type: 'collab', dispo: false },
@@ -5286,6 +5289,17 @@ const POINTS_BAREME = { seance: 10, rpe: 5, questionnaire: 3, complete: 5, recor
 const COLLECTION_PALIERS: { id: string; seuil: number }[] = [
   { id: 'badge_pionnier', seuil: 50 }, { id: 'badge_assidu', seuil: 300 }, { id: 'skin_gold', seuil: 600 }, { id: 'badge_machine', seuil: 1200 },
 ]
+// Achat répétable : stocké sous « <id>_<horodatage> » → id du catalogue.
+function _rewBase(id: string): string { return String(id || '').replace(/_\d{10,}$/, '') }
+// Crédits de questions IA achetés (5 par achat) − déjà utilisés (1 ligne 'ia_bonus' par question).
+async function _iaCreditsRestants(athlete_id: string): Promise<number> {
+  const [{ data: cl }, { data: us }] = await Promise.all([
+    sb().from('indicateurs').select('cle').eq('athlete_id', athlete_id).eq('seance_id', 'recompense'),
+    sb().from('indicateurs').select('cle').eq('athlete_id', athlete_id).eq('seance_id', 'ia_bonus'),
+  ])
+  const achats = (cl || []).filter((r: any) => _rewBase(String(r.cle)) === 'ia_plus5').length
+  return Math.max(0, achats * 5 - (us || []).length)
+}
 function _lundiYMD(ymd: string): string {
   const d = new Date(ymd + 'T00:00:00Z'); const dow = (d.getUTCDay() + 6) % 7
   d.setUTCDate(d.getUTCDate() - dow); return d.toISOString().slice(0, 10)
@@ -5329,7 +5343,7 @@ function calculerPoints(perfs: any[], beRows: any[], progRows: any[], objectifSe
   // Dépenses : seulement la boutique. Les anciens badges / thème achetés restent acquis
   // (collection) mais ne sont plus déduits du solde (ils sont désormais gratuits).
   const cl = (claims || []).map((r: any) => ({ id: String(r.cle), cout: Number(r.valeur) || 0, date: r.date ? fmtFR(r.date) : '' }))
-  const depenses = cl.filter(c => RECOMPENSES_CATALOGUE[c.id] && RECOMPENSES_CATALOGUE[c.id].type === 'boutique').reduce((a, c) => a + c.cout, 0)
+  const depenses = cl.filter(c => { const it = RECOMPENSES_CATALOGUE[_rewBase(c.id)]; return !!it && it.type === 'boutique' }).reduce((a, c) => a + c.cout, 0)
   const lundi = _lundiYMD(fmtYMD(now))
   const semEv = ev.filter(e => e.date >= lundi)
   const sum = (k: string) => semEv.filter(e => e.k === k)
@@ -5360,7 +5374,8 @@ async function handleClaimRecompense(body: any): Promise<Response> {
   if (item.dispo === false) return jsonResp({ success: false, error: 'Bientôt disponible' })
 
   const { data: claims } = await sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athlete_id).eq('seance_id', 'recompense')
-  if ((claims || []).some((c: any) => String(c.cle) === reward_id)) return jsonResp({ success: false, error: 'Déjà débloquée' })
+  if (!item.repetable && (claims || []).some((c: any) => String(c.cle) === reward_id)) return jsonResp({ success: false, error: 'Déjà débloquée' })
+  if (reward_id === 'ia_plus5' && !Deno.env.get('ANTHROPIC_API_KEY')) return jsonResp({ success: false, error: 'Novalyz IA n\'est pas encore activée : rien n\'a été débité.' })
 
   const now = new Date()
   // Solde = EXACTEMENT celui affiché (même calcul que getAppData → calculerPoints).
@@ -5368,7 +5383,7 @@ async function handleClaimRecompense(body: any): Promise<Response> {
   try { const d: any = await (await handleGetAppData(new URLSearchParams({ athlete_id }))).json(); solde = Number(d?.recompenses?.solde) || 0 } catch (_) {}
   if (solde < item.cout) return jsonResp({ success: false, error: 'Solde insuffisant', solde })
 
-  const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(now), seance_id: 'recompense', cle: reward_id, valeur: String(item.cout), unite: 'pts', source: 'app' })
+  const { error } = await sb().from('indicateurs').insert({ athlete_id, date: fmtYMD(now), seance_id: 'recompense', cle: item.repetable ? reward_id + '_' + Date.now() : reward_id, valeur: String(item.cout), unite: 'pts', source: 'app' })
   if (error) return jsonResp({ success: false, error: error.message })
   return jsonResp({ success: true, reward_id, cout: item.cout, type: item.type, solde: solde - item.cout })
 }
@@ -5534,8 +5549,12 @@ async function handleChatIA(body: any): Promise<Response> {
     const { data: q } = await sb().from('indicateurs').select('valeur').eq('athlete_id', athlete_id).eq('seance_id', 'ia_quota').eq('cle', jour).limit(1)
     used = q?.length ? (Number(q[0].valeur) || 0) : 0
   } catch (_) {}
+  // Au-delà du quota du jour : questions achetées avec les points (Mes points ▸ boutique).
+  let bonus = false
   if (used >= IA_QUOTA_JOUR) {
-    return jsonResp({ success: true, limited: true, reply: `Tu as atteint ta limite du jour (${IA_QUOTA_JOUR} échanges avec le coach IA). La version premium (bientôt) débloquera plus d'échanges. En attendant, jette un œil à l'onglet Analyses.` })
+    const credits = await _iaCreditsRestants(athlete_id)
+    if (credits <= 0) return jsonResp({ success: true, limited: true, reply: `Tu as atteint ta limite du jour (${IA_QUOTA_JOUR} échanges avec Novalyz IA). Tu peux échanger 150 points contre 5 questions de plus (Aujourd'hui ▸ Mes points), ou revenir demain. En attendant, jette un œil à l'onglet Analyses.` })
+    bonus = true
   }
 
   // Grounding : données réelles (moteur = source de vérité).
@@ -5575,6 +5594,7 @@ ${ctxTxt}`
   if (!reply) reply = "Je n'ai pas de réponse claire là-dessus — reformule ta question ?"
 
   try {
+    if (bonus) await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'ia_bonus', cle: String(Date.now()), valeur: '1', unite: '', source: 'ia' })
     if (used > 0) await sb().from('indicateurs').update({ valeur: String(used + 1) }).eq('athlete_id', athlete_id).eq('seance_id', 'ia_quota').eq('cle', jour)
     else await sb().from('indicateurs').insert({ athlete_id, date: jour, seance_id: 'ia_quota', cle: jour, valeur: '1', unite: '', source: 'ia' })
   } catch (_) {}

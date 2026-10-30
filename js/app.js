@@ -16609,7 +16609,7 @@ function renderAujourdhui(data) {
       if (!best || t > best.t) best = { exo: exo, charge: r.charge, t: t };
     });
     var elNa = document.getElementById('tj-newpr-a'), elNb = document.getElementById('tj-newpr-b');
-    if (best && best.charge != null) { if (elNa) elNa.textContent = 'Ton meilleur record'; if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg'; }
+    if (best && best.charge != null) { if (elNa) elNa.textContent = 'Ton dernier record'; if (elNb) elNb.textContent = best.exo + ' · ' + String(best.charge).replace('.', ',') + ' kg'; }
     else { if (elNa) elNa.textContent = 'Records'; if (elNb) elNb.textContent = 'Enregistre des séances pour débloquer tes records'; }
 
     // Collection de trophées (débloqués depuis les vraies données).
@@ -16903,38 +16903,52 @@ var _RECOMPENSES = [
   // Le thème doré n'a jamais été appliqué à l'app (audit 30/10) : on le dit.
   { id: 'skin_gold', titre: 'Badge Doré', desc: 'Badge doré (le thème doré de l\'app : bientôt).', cout: 600, icon: '' },
   { id: 'badge_machine', titre: 'Badge Machine', desc: 'Le badge des gros volumes.', cout: 1200, icon: '🏆' },
+  { id: 'ia_plus5', titre: '+5 questions à Novalyz IA', desc: 'Au-delà de tes 2 questions par jour.', cout: 150, icon: '💬', boutique: true },
   { id: 'collab_partenaire', titre: 'Réduction partenaire', desc: 'Un bon plan chez un partenaire Novalyz.', cout: 800, icon: '🤝', collab: true },
   { id: 'collab_programme', titre: 'Programme coach partenaire', desc: 'Un programme signé par un coach partenaire.', cout: 1000, icon: '', collab: true }
 ];
 function _renderBoutique(data) {
   var cont = document.getElementById('tj-boutique'); if (!cont) return;
   var rec = (data && data.recompenses) || { solde: 0, claims: [] };
+  var fmt = function (n) { return Number(n || 0).toLocaleString('fr-FR'); };
   // Points v2 : badges et thème se DÉBLOQUENT avec les points gagnés (plus achetés).
   var col = {}; (rec.collection || []).forEach(function (c) { col[c.id] = c; });
   var owned = {}; (rec.claims || []).forEach(function (c) { owned[c.id] = true; });
-  var gagnes = Number(rec.gagnes) || 0;
-  var cards = _RECOMPENSES.map(function (r) {
-    var right;
-    if (r.collab) right = '<span class="bq-soon">Bientôt</span>';
-    else {
+  var gagnes = Number(rec.gagnes) || 0, solde = Number(rec.solde) || 0;
+  var card = function (r, sub, right, cls) { return '<div class="bq-card' + (cls || '') + '"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + sub + '</span></div>' + right + '</div>'; };
+  var shop = '', badges = '';
+  _RECOMPENSES.forEach(function (r) {
+    if (r.boutique) {
+      // +5 questions IA : achetable seulement si l'IA est activée côté serveur.
+      var credits = Number(rec.ia_credits) || 0;
+      var sub = r.desc + (credits ? ' <b>' + credits + ' question' + (credits > 1 ? 's' : '') + ' en réserve</b>' : '');
+      var right;
+      if (rec.ia_active === false) right = '<span class="bq-soon">Bientôt</span>', sub = 'Dès que Novalyz IA sera activée.';
+      else if (rec.ia_active == null) right = '<span class="bq-soon">Bientôt</span>';
+      else right = '<button class="bq-buy' + (solde >= r.cout ? '' : ' off') + '"' + (solde >= r.cout ? ' onclick="nvzAcheterRecompense(\'' + r.id + '\')"' : ' disabled') + '>' + r.cout + ' pts</button>';
+      shop += card(r, sub, right, '');
+    } else if (r.collab) {
+      shop += card(r, r.desc, '<span class="bq-soon">Bientôt</span>', ' collab');
+    } else {
       var c = col[r.id], seuil = c ? c.seuil : r.cout, has = c ? !!c.debloque : !!owned[r.id];
-      right = has ? '<span class="bq-owned">Débloqué ✓</span>' : '<span class="bq-soon">' + Math.max(0, seuil - gagnes).toLocaleString('fr-FR') + ' pts</span>';
-      return '<div class="bq-card' + (has ? ' has' : '') + '"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + (has ? r.desc : 'Se débloque à ' + seuil.toLocaleString('fr-FR') + ' pts gagnés.') + '</span></div>' + right + '</div>';
+      badges += card(r, has ? r.desc : 'Se débloque à ' + fmt(seuil) + ' pts gagnés.', has ? '<span class="bq-owned">Débloqué ✓</span>' : '<span class="bq-soon">' + fmt(Math.max(0, seuil - gagnes)) + ' pts</span>', has ? ' has' : '');
     }
-    return '<div class="bq-card collab"><span class="bq-ic">' + r.icon + '</span><div class="bq-tx"><b>' + r.titre + '</b><span>' + r.desc + '</span></div>' + right + '</div>';
-  }).join('');
-  cont.innerHTML = '<div class="bq-h">Badges <span class="bq-solde">débloqués avec tes points gagnés</span></div>' + cards;
+  });
+  cont.innerHTML = '<div class="bq-h">Boutique <span class="bq-solde">' + fmt(solde) + ' pts dispo</span></div>' + shop
+    + '<div class="bq-h" style="margin-top:14px">Badges <span class="bq-solde">débloqués avec tes points gagnés</span></div>' + badges;
 }
 function nvzAcheterRecompense(id) {
   var r = null; for (var i = 0; i < _RECOMPENSES.length; i++) if (_RECOMPENSES[i].id === id) r = _RECOMPENSES[i];
   if (!r || !athlete || !athlete.athlete_id) return;
+  if (!confirm('Échanger ' + r.cout + ' points contre « ' + r.titre + ' » ?')) return;
   fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'claimRecompense', athlete_id: athlete.athlete_id, reward_id: id }) })
     .then(function (x) { return x.json(); })
     .then(function (res) {
       if (res && res.success) {
-        try { if (dernierAppData && dernierAppData.recompenses) { dernierAppData.recompenses.claims.push({ id: id, cout: r.cout, date: '' }); dernierAppData.recompenses.depenses += r.cout; dernierAppData.recompenses.solde = res.solde; } } catch (e) {}
-        try { _renderBoutique(dernierAppData); } catch (e) {}
-        try { nvzShowGift(r.titre); } catch (e) {}
+        try { if (dernierAppData && dernierAppData.recompenses) { if (id !== 'ia_plus5') dernierAppData.recompenses.claims.push({ id: id, cout: r.cout, date: '' }); else dernierAppData.recompenses.ia_credits = (Number(dernierAppData.recompenses.ia_credits) || 0) + 5; dernierAppData.recompenses.depenses += r.cout; dernierAppData.recompenses.solde = res.solde; } } catch (e) {}
+        try { _renderBoutique(dernierAppData); _renderLignePoints(dernierAppData); _renderMesPoints(dernierAppData); } catch (e) {}
+        try { var _tp = document.getElementById('tj-prog'); if (_tp) _tp.textContent = Number(dernierAppData.recompenses.solde || 0).toLocaleString('fr-FR'); } catch (e) {}
+        try { showToast(id === 'ia_plus5' ? '+5 questions ajoutées à ta réserve' : (r.titre + ' obtenu')); } catch (e) {}
       } else {
         try { showToast((res && res.error) || 'Achat impossible'); } catch (e) {}
       }

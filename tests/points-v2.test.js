@@ -19,7 +19,7 @@ function extractFrom(SRC, name) {
 const TS = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'handler', 'index.ts'), 'utf8');
 const consts = ['POINTS_BAREME', 'COLLECTION_PALIERS', 'RECOMPENSES_CATALOGUE'].map(n => { const i = TS.indexOf('const ' + n); let d = 0, j = TS.indexOf('=', i); for (; j < TS.length; j++) { const c = TS[j]; if (c === '{' || c === '[') d++; else if (c === '}' || c === ']') { d--; if (d === 0) { j++; break; } } } return TS.slice(i, j); }).join('\n');
 const C = {}; vm.createContext(C);
-vm.runInContext(stripTypeScriptTypes(consts + '\n' + ['parseFR', 'normDate', 'fmtFR', 'fmtYMD', '_lundiYMD', 'calculerPoints'].map(n => extractFrom(TS, n)).join('\n')) + '\nthis.calculerPoints=calculerPoints;', C);
+vm.runInContext(stripTypeScriptTypes(consts + '\n' + ['parseFR', 'normDate', 'fmtFR', 'fmtYMD', '_rewBase', '_lundiYMD', 'calculerPoints'].map(n => extractFrom(TS, n)).join('\n')) + '\nthis.calculerPoints=calculerPoints;', C);
 
 const p = (date, exo, charge, rpe, sid) => ({ date, exercice: exo, charge, reps: 8, rpe, seance_id: sid || 'A' });
 const prog = [{ seance_id: 'A', exercice: 'Squat', series_prevues: 2 }, { seance_id: 'A', exercice: 'Curl', series_prevues: 1 }];
@@ -53,6 +53,8 @@ R = C.calculerPoints(perfs, be, prog, 2, [{ cle: 'skin_gold', valeur: '300' }, {
 eq(R.depenses === 0 && R.solde === R.gagnes, 'anciens achats badges/thème → plus déduits');
 eq(R.collection.find(c => c.id === 'skin_gold').debloque === true, 'ancien achat → reste débloqué');
 eq(R.collection.find(c => c.id === 'badge_machine').debloque === false, 'badge Machine : 1 200 pts gagnés requis');
+R = C.calculerPoints(perfs, be, prog, 2, [{ cle: 'ia_plus5_1793370000000', valeur: '150' }, { cle: 'ia_plus5_1793370099999', valeur: '150' }], now);
+eq(R.depenses === 300 && R.solde === R.gagnes - 300, 'achats +5 questions IA (répétables) → déduits du solde');
 eq(typeof R.records_30j === 'number', 'records_30j (même définition) renvoyé');
 console.log('points v2 : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) process.exit(1);
