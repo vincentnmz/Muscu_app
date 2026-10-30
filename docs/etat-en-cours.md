@@ -106,7 +106,8 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 
 ## À faire (priorité)
 - **Audits à faire (demandés 28/10)** — même méthode que l'audit Cardio/Croisé (`docs/audit-cardio-croise-forme-2026-10-28.md`) : vrai `index.ts` rejoué sur une copie des données réelles + vrai front rendu, chaque phrase confrontée au code et aux données.
-  - **Écran Forme complet** : l'écran principal a été vu le 28/10 (anneau, fraîcheur, bien-être, douleur, poids) mais PAS les sous-pages : nutrition, objectifs, blessures, montre / pas, et les historiques.
+  - **Sous-pages Forme** : audit fait le 29-30/10 (`docs/audit-forme-sous-pages-2026-10-29.md`, 5 défauts dont 2 élevés) — corrections à valider.
+  - **Lecture Cardio + Croisé** : audit fait le 29/10 (`docs/audit-lecture-cardio-croise-2026-10-29.md`, 8 constats dont 2 élevés à trancher : unité muscu vs cardio, marche comptée comme entraînement).
   - **Montre / écran import** (demandé 29/10) : 1ʳᵉ passe faite (3 correctifs ci-dessus) ; reste à vérifier sur téléphone (import séances, doublons, nutrition MFP).
   - **Hyrox** : audit fait le 29/10 (`docs/audit-hyrox-2026-10-29.md`, 3 défauts corrigés) ; reste chrono live + mode « Par atelier » sur téléphone, libellés à harmoniser.
   - Reste aussi non couvert : graphiques Cardio ▸ Tendances, Croisé en Mois/Année.
