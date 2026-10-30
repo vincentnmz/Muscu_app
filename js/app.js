@@ -11647,6 +11647,8 @@ async function _exoCatSet(nom, val) {
     var r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveExoCategories', athlete_id: aid, categories: m }) });
     var j = await r.json().catch(function () { return {}; });
     if (j && j.success) showToast(val ? (k + ' : ' + _EXO_CAT_LBL[val]) : (k + ' : non classé'), 'var(--good)');
+    // Côté athlète : la catégorie change la fourchette → lecture / cibles à jour tout de suite.
+    if (j && j.success && typeof athlete !== 'undefined' && athlete && String(aid) === String(athlete.athlete_id) && !_saisieCoach) { try { chargerAppData(); } catch (e) {} }
     else showToast('Catégorie non enregistrée — réessaie', 'var(--warn)');
   } catch (e) { showToast('Catégorie non enregistrée — réessaie', 'var(--warn)'); }
 }
@@ -21517,6 +21519,7 @@ async function enregistrerPause() {
     if (dernierAppData) dernierAppData.pause = { debut: debut, fin: fin };
     majUiPause();
     showToast('Mode vacances activé');
+    try { chargerAppData(); } catch (e) {}   // la pause change la lecture (pas de « baisse » pendant les vacances)
   } catch (e) { showToast('Erreur', '#ff4444'); }
 }
 async function annulerPause() {
@@ -21527,6 +21530,7 @@ async function annulerPause() {
     if (dernierAppData) dernierAppData.pause = null;
     majUiPause();
     showToast('Pause annulée');
+    try { chargerAppData(); } catch (e) {}
   } catch (e) { showToast('Erreur', '#ff4444'); }
 }
 
@@ -24077,6 +24081,7 @@ async function _etFillRestingHr(H, now) {
 // Historisation serveur (sommeil / FC repos / pas) : lit ~60 j de Health Connect
 // et pousse un lot vers l'action backend saveSante. Throttlé à 1×/6 h par athlète
 // (localStorage). Permet les tendances + la vue coach (données non stockées avant).
+var _santeReloaded = false;
 var _santeSyncing = false;
 async function _syncSanteMontre(H) {
   if (!H || typeof athlete === 'undefined' || !athlete || _santeSyncing) return;
@@ -24113,6 +24118,9 @@ async function _syncSanteMontre(H) {
     if (entries.length) {
       await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSante', athlete_id: athlete.athlete_id, entries: entries }) });
       try { localStorage.setItem(k, String(Date.now())); } catch (e) {}
+      // Sommeil / FC repos de la montre → état du jour et lecture à jour tout de suite
+      // (avant : visibles seulement au prochain chargement). Une fois par session (anti-boucle).
+      if (!_santeReloaded) { _santeReloaded = true; try { if (typeof chargerAppData === 'function') setTimeout(chargerAppData, 300); } catch (e) {} }
     }
   } catch (e) {} finally { _santeSyncing = false; }
 }
