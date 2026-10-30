@@ -2490,8 +2490,18 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const _jourSem = Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(lundi.getUTCFullYear(), lundi.getUTCMonth(), lundi.getUTCDate())) / 86400000) + 1
   const synthExtras = { reposMoy, reposN: _repVals.length, pausePrevJours, semaineType: _semType, jourSemaine: _jourSem }
 
+  // Coach actuel (audit liaison 30/10) : le front ne lisait coach_id qu'à la connexion →
+  // un athlète lié (ou détaché) après s'être connecté restait « sans coach » jusqu'à la reconnexion.
+  const _coachIdLie = String(athData?.coach_id ?? '').trim()
+  let coachLie: { coach_id: string; nom: string } | null = null
+  if (_coachIdLie && _coachIdLie !== 'null' && _coachIdLie !== '0') {
+    const { data: cRow } = await sb().from('coachs').select('coach_id,nom').eq('coach_id', _coachIdLie).single()
+    coachLie = { coach_id: _coachIdLie, nom: String((cRow as any)?.nom || '').trim() }
+  }
+
   return jsonResp({
     moteur,
+    coach_lie: coachLie,
     global: enrichedGlobal,
     recent: { ...recentData, derniere_seance: derniereSeanceObj },
     comparison: comparisonData,
@@ -2789,21 +2799,44 @@ async function handleGetBilanPDF(params: URLSearchParams): Promise<Response> {
 async function handleLierAthlete(params: URLSearchParams): Promise<Response> {
   const coachId = params.get('coach_id')
   const athleteId = params.get('athlete_id')
-  const loginAth = params.get('login_athlete') || params.get('cle')
+  const loginAth = String(params.get('login_athlete') || params.get('cle') || '').trim()
   if (!coachId) return jsonResp({ success: false, error: 'coach_id manquant' })
-  if (loginAth) {
-    const { data: ath } = await sb().from('athletes').select('*').eq('login', loginAth).single()
-    if (!ath) return jsonResp({ success: false, error: 'Athlète introuvable' })
+  // Audit 30/10 : avant, la liaison ÉCRASAIT sans rien dire le coach_id existant (un coach
+  // pouvait « prendre » l'athlète d'un autre coach avec son seul login à 4 chiffres).
+  // Désormais : un athlète déjà suivi par un AUTRE coach est refusé ; il doit d'abord
+  // quitter son coach (Réglages ▸ Mon coach, action detacherCoach).
+  const lier = async (ath: any): Promise<Response> => {
+    const cur = String(ath.coach_id ?? '').trim()
+    if (cur && cur !== 'null' && cur !== '0' && cur !== String(coachId)) {
+      return jsonResp({ success: false, deja_autre: true, error: 'Cet athlète est déjà suivi par un autre coach. Il doit d\'abord quitter son coach (Réglages ▸ Compte ▸ Mon coach).' })
+    }
+    if (cur === String(coachId)) return jsonResp({ success: true, deja: true, athlete_id: ath.id, nom: ath.nom })
     const { error } = await sb().from('athletes').update({ coach_id: coachId }).eq('id', ath.id)
     if (error) return jsonResp({ success: false, error: error.message })
     return jsonResp({ success: true, athlete_id: ath.id, nom: ath.nom })
   }
+  if (loginAth) {
+    if (!/^\d{4}$/.test(loginAth)) return jsonResp({ success: false, error: 'Le login doit faire 4 chiffres.' })
+    const { data: ath } = await sb().from('athletes').select('id,nom,coach_id').eq('login', loginAth).single()
+    if (!ath) return jsonResp({ success: false, error: 'Aucun athlète avec ce login.' })
+    return lier(ath)
+  }
   if (athleteId) {
-    const { error } = await sb().from('athletes').update({ coach_id: coachId }).eq('id', athleteId)
-    if (error) return jsonResp({ success: false, error: error.message })
-    return jsonResp({ success: true })
+    const { data: ath } = await sb().from('athletes').select('id,nom,coach_id').eq('id', athleteId).single()
+    if (!ath) return jsonResp({ success: false, error: 'Athlète introuvable' })
+    return lier(ath)
   }
   return jsonResp({ success: false, error: 'Paramètres manquants' })
+}
+
+// L'athlète quitte son coach (ou le coach retire son athlète) : coach_id → null.
+// Droits : authCheck vérifie athlete_id = soi (athlète) ou athlète lié (coach).
+async function handleDetacherCoach(body: any): Promise<Response> {
+  const athleteId = String(body.athlete_id || '')
+  if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const { error } = await sb().from('athletes').update({ coach_id: null }).eq('id', athleteId)
+  if (error) return jsonResp({ success: false, error: error.message })
+  return jsonResp({ success: true })
 }
 
 // =============================================================================
@@ -6172,6 +6205,7 @@ Deno.serve(async (req: Request) => {
         case 'clearDemoFoot':            return handleClearDemoFoot(body)
         case 'supprimerCompte':          return handleSupprimerCompte(body)
         case 'coachCreerAthlete':        return handleCoachCreerAthlete(body)
+        case 'detacherCoach':            return handleDetacherCoach(body)
         case 'coachResetAthlete':        return handleCoachResetAthlete(body)
         case 'saveEmail':                return handleSaveEmail(body)
         case 'changePassword':           return handleChangePassword(body)

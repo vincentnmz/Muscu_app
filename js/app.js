@@ -2487,6 +2487,7 @@ function prefillProfilReglages() {
   set('prof-annees', athlete.annees_pratique);
   var d = document.getElementById('prof-ddn'); if (d) d.value = _ddnVersISO(athlete.ddn);
   set('prof-sexe', (athlete.sexe === 'H' || athlete.sexe === 'F') ? athlete.sexe : '');
+  try { _renderMonCoach(); } catch (e) {}
   var v = document.getElementById('app-version-ath'); if (v) v.textContent = 'Novalyz ' + APP_VERSION + ' · ' + _buildIdAffiche();
 }
 
@@ -2899,6 +2900,7 @@ async function lierAthlete() {
   const errEl = document.getElementById('lier-error');
   errEl.textContent = '';
   if (!loginAth) { errEl.textContent = 'Entre le login de l\'athlète.'; return; }
+  if (!/^\d{4}$/.test(loginAth)) { errEl.textContent = 'Le login doit faire 4 chiffres.'; return; }
   errEl.textContent = 'Liaison en cours...';
   try {
     const res = await fetch(`${SCRIPT_URL}?action=lierAthlete&login_athlete=${encodeURIComponent(loginAth)}&coach_id=${encodeURIComponent(coach.coach_id)}`);
@@ -2906,6 +2908,8 @@ async function lierAthlete() {
     if (data.success) {
       fermerModalLierAthlete();
       await chargerAthletesCoach();
+      var nomL = String(data.nom || '').trim() || 'L\'athlète';
+      showToast(data.deja ? (nomL + ' est déjà dans ton équipe') : (nomL + ' est rattaché à ton équipe'));
     } else {
       errEl.textContent = data.error || 'Athlète introuvable.';
     }
@@ -9629,6 +9633,7 @@ var _cvIaBusy = false;  // anti double-envoi pendant que l'IA répond
 // Nom d'affichage du coach : déduit du dernier message côté coach (jamais le nom
 // de l'athlète lui-même), sinon générique « Ton coach ».
 function _cvCoachNom() {
+  try { var cn = athlete && String(athlete.coach_nom || '').trim(); if (cn) return cn; } catch (e) {}
   var mine = String((typeof athlete !== 'undefined' && athlete && (athlete.prenom || athlete.nom)) || '').trim().toLowerCase();
   var m = (messagesCoach || []).filter(function (c) { return c.auteur !== 'athlete'; });
   var nom = '';
@@ -9669,6 +9674,48 @@ function ouvrirConversations() { _cvView = 'list'; if (typeof switchTab === 'fun
 // Onglet « Coach » (adaptatif) : athlète SOLO → fil IA direct ; athlète AVEC coach
 // humain → hub (liste : messagerie coach + IA en complément, coach en avant).
 // L'athlète a-t-il un coach humain lié ? (détermine bulle flottante vs onglet Coach)
+// Coach actuel renvoyé par getAppData (audit liaison 30/10) : sans ça, coach_id n'était lu
+// qu'à la connexion → un athlète lié après s'être connecté restait « sans coach ».
+function _syncCoachLie(data) {
+  if (!data || !('coach_lie' in data) || typeof athlete === 'undefined' || !athlete) return;
+  var c = data.coach_lie;
+  var nid = c ? String(c.coach_id) : null, nnom = c ? String(c.nom || '') : '';
+  if (String(athlete.coach_id == null ? '' : athlete.coach_id) === String(nid == null ? '' : nid) && String(athlete.coach_nom || '') === nnom) { _renderMonCoach(); return; }
+  athlete.coach_id = nid; athlete.coach_nom = nnom;
+  try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+  _renderMonCoach();
+  try { if (typeof cvRenderThreads === 'function') cvRenderThreads(); } catch (e) {}
+}
+function _renderMonCoach() {
+  var el = document.getElementById('rg-mon-coach'); if (!el || typeof athlete === 'undefined' || !athlete) return;
+  var login = escapeHtml(String(athlete.login || ''));
+  if (_athleteAUnCoach()) {
+    var nom = escapeHtml(String(athlete.coach_nom || '').trim() || 'ton coach');
+    el.innerHTML = '<div style="font-size:14px">Tu es suivi par <b>' + nom + '</b>.</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4">Ton coach voit tes séances, tes analyses et ton ressenti, et peut modifier ton programme.</div>'
+      + '<button onclick="quitterMonCoach()" style="width:100%;margin-top:10px;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Quitter mon coach</button>';
+  } else {
+    el.innerHTML = '<div style="font-size:14px">Pas de coach pour l\'instant.</div>'
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4">Pour qu\'un coach te suive, donne-lui ton login' + (login ? ' <b style="color:var(--accent);letter-spacing:.08em">' + login + '</b>' : '') + ' : il te lie depuis son espace (« + Inviter » ▸ Lier).</div>';
+  }
+}
+async function quitterMonCoach() {
+  if (!athlete || !_athleteAUnCoach()) return;
+  var nom = String(athlete.coach_nom || '').trim() || 'ton coach';
+  if (!confirm('Quitter ' + nom + ' ? Il ne verra plus tes séances ni tes analyses. Ton programme et ton historique restent dans ton compte.')) return;
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'detacherCoach', athlete_id: athlete.athlete_id }) });
+    var d = await res.json();
+    if (d && d.success) {
+      athlete.coach_id = null; athlete.coach_nom = '';
+      try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+      _renderMonCoach();
+      try { cvRenderThreads(); } catch (e) {}
+      showToast('Tu ne suis plus ' + nom);
+    } else showToast((d && d.error) || 'Impossible pour le moment.');
+  } catch (e) { showToast('Erreur de connexion.'); }
+}
+
 function _athleteAUnCoach() {
   try { var c = athlete && athlete.coach_id; return !!(c && String(c).trim() && String(c) !== 'null' && String(c) !== '0'); }
   catch (e) { return false; }
@@ -18319,7 +18366,7 @@ function _onbContent(step) {
       + '<div style="margin-top:18px;padding:14px;background:var(--surface2);border-radius:14px;text-align:center"><div style="font-size:12px;color:var(--text-muted)">Donne ton login à ton coach :</div>' + loginBox + '</div>'
       + '<div style="margin-top:14px;text-align:left">'
       + pt('1', 'Envoie ce login à ton coach', 'Par message, en salle… c\'est tout ce dont il a besoin.')
-      + pt('2', 'Il te lie depuis son espace', 'Bouton « Lier un athlète » → il saisit ton login.')
+      + pt('2', 'Il te lie depuis son espace', 'Bouton « + Inviter » ▸ Lier → il saisit ton login.')
       + pt('3', 'Ton programme arrive ici', 'Dès qu\'il te l\'a assigné, tu le retrouves dans Entraînement.')
       + '</div></div>' };
   }
@@ -19208,6 +19255,7 @@ function _appliquerAppData(data) {
   // Stocker les données globalement
   dernierAppData = data;
   _nvSplashHide();
+  _safe('coach-lie', function () { _syncCoachLie(data); });
   // Onboarding 1re connexion (une fois par session, après le 1er chargement).
   _safe('onboarding', function () { if (!_onbChecked) { _onbChecked = true; setTimeout(_maybeOnboarding, 500); } });
   // Import nutrition auto depuis Health Connect (natif) — en silence, après le rendu.
