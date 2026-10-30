@@ -14067,8 +14067,21 @@ function _maProgExo(data) {
     return (p.charge || 0);   // cr → la ligne suit la charge (étiquette = charge × reps)
   });
   var last = series[series.length - 1] || 0, first = series[0] || 0, delta = Math.round((last - first) * 10) / 10;
-  var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + (delta >= 0 ? '#00A854' : '#DC3545') + '">' + (delta >= 0 ? '▲ +' : '▼ ') + Math.abs(delta) + '</span>';
-  var dstat = (np < 2) ? '—' : ((delta >= 0 ? '+' : '') + delta + ' ' + (isCR ? 'kg' : met[2]));
+  // Audit Par exercice (30/10) : en « Charge + reps », l'écart ne regardait que la charge →
+  // Smith 70×5 → 80×1 affichait « ▲ +10 » en vert alors que les reps s'effondraient.
+  // On montre charge ET reps ; vert seulement si rien ne baisse, rouge si rien ne monte.
+  var dTxt, dCol;
+  if (isCR && np >= 2) {
+    var dc = Math.round(((pts[np - 1].charge || 0) - (pts[0].charge || 0)) * 10) / 10, dr = (pts[np - 1].reps || 0) - (pts[0].reps || 0);
+    var parts = []; if (dc) parts.push((dc > 0 ? '+' : '−') + String(Math.abs(dc)).replace('.', ',') + ' kg'); if (dr) parts.push((dr > 0 ? '+' : '−') + Math.abs(dr) + ' rep' + (Math.abs(dr) > 1 ? 's' : ''));
+    dTxt = parts.length ? parts.join(' · ') : '= identique';
+    dCol = (!dc && !dr) ? 'var(--text-subtle)' : (dc >= 0 && dr >= 0) ? '#00A854' : (dc <= 0 && dr <= 0) ? '#DC3545' : 'var(--text-muted)';
+  } else if (np >= 2) {
+    dTxt = delta === 0 ? '= 0' : ((delta > 0 ? '+' : '−') + String(Math.abs(delta)).replace('.', ',') + ' ' + met[2]);
+    dCol = delta === 0 ? 'var(--text-subtle)' : (delta > 0 ? '#00A854' : '#DC3545');
+  }
+  var dspan = (np < 2) ? '<span style="font-size:9.5px;color:var(--text-subtle)">— 1 séance</span>' : '<span style="font-size:9.5px;color:' + dCol + '">' + dTxt + '</span>';
+  var dstat = (np < 2) ? '—' : dTxt;
   var chartBody, legend = '', _srvLines = null;
   if (isSrv) {
     // #4 — une courbe de charge par série (S1, S2, S3…) : on voit si la surcharge
@@ -14139,27 +14152,46 @@ function _maProgExo(data) {
   // Charge à viser (P4) — athlète uniquement (1RM estimé = le sien) : cible du
   // programme + progression adaptée au niveau. Masqué en vue coach.
   var aimBox = '';
+  // Statut de l'exercice = MÊME classement que la lecture Novalyz (Aujourd'hui / Analyses).
+  var statBox = '';
+  try {
+    var _L = _lectureExos(data, Date.now()), _st = null;
+    [['records', '#00A854', '★', function (x) { return '<b>Record</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' le ' + _maE(x.date); }],
+     ['progresse', '#00A854', '▲', function (x) { return '<b>En progrès</b> : ' + _cdFmtKg(x.c1) + ' × ' + x.r1 + ' → ' + _cdFmtKg(x.c0) + ' × ' + x.r0; }],
+     ['sous', '#DC3545', '!', function (x) { return '<b>Sous ta fourchette ' + x.rmin + '-' + x.rmax + '</b> : ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe; }],
+     ['bloque', '#E07800', '⏸', function (x) { return '<b>Bloqué</b> à ' + _cdFmtKg(x.c) + ' kg × ' + x.r + ' depuis ' + x.n + ' séances'; }],
+     ['recule', '#DC3545', '▼', function (x) { return '<b>En recul</b> par rapport à la fois d\'avant'; }]].some(function (k) {
+      var it = (_L[k[0]] || []).filter(function (x) { return x.exo === sel; })[0];
+      if (it) _st = { col: k[1], ic: k[2], html: k[3](it) };
+      return !!it;
+    });
+    if (_st) statBox = '<div style="display:flex;gap:9px;align-items:center;margin:8px 0 2px;padding:9px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)"><span style="width:22px;height:22px;border-radius:7px;background:' + _st.col + ';color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none">' + _st.ic + '</span><span style="font-size:12.5px;line-height:1.4">' + _st.html + '</span></div>';
+  } catch (e) {}
   try {
     var _coachView = (typeof _maCoach !== 'undefined' && _maCoach);
     if (!_coachView && typeof athlete !== 'undefined' && athlete) {
-      var _pl = (data.programme || []).filter(function (l) { return l && l.exercice === sel; })[0];
-      var _ca = _chargeAViser(_pl);
-      if (_ca) {
-        var rangeTxt = (_ca.rmin && _ca.rmax) ? (_ca.rmin + '-' + _ca.rmax) : (_ca.rmax || _ca.rmin || '');
-        var rpeTxt = (_ca.rpe != null) ? ('RPE ' + _ca.rpe + ' · ' + _rirLong(_ca.rpe)) : '';
+      // « Ce que Novalyz vise » : MÊME calcul que l'écran de saisie et Aujourd'hui (_progDecision).
+      // Avant : « Charge à viser » (_chargeAViser, % de 1RM) donnait un 2ᵉ conseil, générique
+      // (« monte les reps vers 12 ») même à 80×1 RPE 10, et disait « 1RM pas encore fiable »
+      // à côté d'un « 1RM estimé 83 kg ».
+      var _pl0 = (data.programme || []).filter(function (l) { return l && l.exercice === sel && l.type !== 'cardio'; })[0] || { exercice: sel };
+      var _tc = _tjCibles(data, [_pl0])[0];
+      if (_tc) {
+        var _why = _tc.mode === 'premier' ? '1re fois : trouve ta charge de travail'
+          : _tc.mode === 'sous' ? 'Sous ta fourchette ' + _tc.f.rmin + '-' + _tc.f.rmax + ' (RPE ' + _tc.rpe + ') : proposition indicative.'
+          : _tc.mode === 'consolide' ? 'RPE ' + _tc.rpe + ' la dernière fois → on consolide.'
+          : _tc.mode === 'charge' ? 'Haut de fourchette atteint → +' + _cdFmtKg(_tc.pas) + ' kg.'
+          : _tc.mode === 'choix' ? 'Haut atteint → charge ou autre levier, au choix à la saisie.'
+          : (_tc.f.rmax ? '+1 rep (haut de fourchette : ' + _tc.f.rmax + ').' : '+1 rep.');
         aimBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;margin-top:10px">'
-          + '<div style="font-size:13px;font-weight:800">Charge à viser</div>'
-          + '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px">'
-          + (_ca.kg != null ? '<span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:20px;color:var(--accent)">' + _ca.kg + ' kg</span>' : '<span style="font-size:12.5px;color:var(--text-muted)">cible en % (1RM pas encore fiable)</span>')
-          + (rangeTxt ? '<span style="font-size:13px;font-weight:800">× ' + rangeTxt + '</span>' : '')
-          + (rpeTxt ? '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;text-align:right">' + rpeTxt + '</span>' : '')
-          + '</div>'
-          + '<div style="font-size:12px;color:var(--text);margin-top:8px;line-height:1.45">' + _maE(_ca.prog) + '</div>'
-          + '<div style="font-size:10px;color:var(--text-subtle);margin-top:6px;text-transform:uppercase;letter-spacing:.03em">Stratégie : ' + _maE(_ca.strat) + '</div></div>';
+          + '<div style="font-size:13px;font-weight:800">Ce que Novalyz vise la prochaine fois</div>'
+          + (_tc.cib ? '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px"><span style="font-size:12px;color:var(--text-muted)">' + _cdFmtKg(_tc.last.c) + ' × ' + _tc.last.r + ' →</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:19px;color:' + (_tc.cib.up === 'baisse' ? '#DC3545' : 'var(--accent)') + '">' + _cdFmtKg(_tc.cib.charge) + ' kg × ' + _tc.cib.reps + '</span></div>' : '')
+          + '<div style="font-size:12px;color:var(--text);margin-top:6px;line-height:1.45">' + _maE(_why) + '</div>'
+          + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:5px">Sur ta série la plus lourde, même calcul que l\'écran de saisie. C\'est toi qui décides.</div></div>';
       }
     }
   } catch (e) {}
-  return pick + seg + chart + explBox + stagBox + aimBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
+  return pick + statBox + seg + chart + explBox + stagBox + aimBox + stats + _maSec('Dernières séances') + '<div class="ma-card">' + recentHead + recent + '</div>';
 }
 
 // Normalisation de texte (minuscule, sans accents) et clé muscle (tolère le pluriel).
