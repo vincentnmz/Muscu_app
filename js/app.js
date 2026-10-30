@@ -12746,7 +12746,7 @@ function _maTrendData(dict, agg) {
 }
 // Tendance cardio d'une métrique (somme ou moyenne) sur les mêmes buckets.
 function _maSportTrend(sesss, metric) {
-  var avgM = { vitesse_moy: 1, fc_moy: 1 }, byDate = {};
+  var avgM = { vitesse_moy: 1, fc_moy: 1, rpe: 1 }, byDate = {};
   (sesss || []).forEach(function (s) { if (+s[metric]) (byDate[s.date] = byDate[s.date] || []).push(+s[metric]); });
   var dict = {};
   Object.keys(byDate).forEach(function (k) { var a = byDate[k]; dict[k] = avgM[metric] ? (a.reduce(function (x, y) { return x + y; }, 0) / a.length) : a.reduce(function (x, y) { return x + y; }, 0); });
@@ -14335,13 +14335,13 @@ function _maMuscuTendances(data) {
   if (hasW) {
     var tonLbl = _maGran === 'S' ? 'jours d\'entraînement' : 'par ' + bNoun;
     main += _maSec('Tonnage soulevé', tonLbl + ' · ' + _maPLabel(), 'tonnage')
-      + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg soulevés au total ce jour, ex. 5,8 t = 5 800 kg). Seuls les jours d\'entraînement sont tracés. La courbe qui monte = plus de volume soulevé.', wtD);
+      + _maChartBlock('Tonnage', wtF, 't', '#1A5FFF', 'rgba(26,95,255,.12)', _maShortDate(wtD[0]), 'Tonnage = charge × reps additionné sur la séance (t = tonnes : 1 t = 1000 kg, ex. 5,8 t = 5 800 kg). ' + (_maGran === 'S' ? 'Chaque point = un jour d\'entraînement.' : (_maGran === 'M' ? 'Chaque point = le total d\'une semaine.' : 'Chaque point = le total d\'un mois.')) + ' La courbe qui monte = plus de volume soulevé.', wtD);
   } else { main += _maEmpty('Pas assez d\'historique sur cette période pour une tendance.'); }
   // ── Vraies analyses (ajouts) : force e1RM dans la colonne principale ;
   // fréquence/muscle + répartition d'intensité déplacées dans le rail droit. ──
   main += _maForceChart(data);
   var cmp = data.comparison || {}, rows = '';
-  try { var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents</span><span class="v" style="color:' + (t.evol_pct >= 0 ? '#00A854' : '#DC3545') + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>'; } catch (e) {}
+  try { var t = cmp.j28_vs_j28prec && cmp.j28_vs_j28prec.tonnage; if (t && t.evol_pct != null) { var _sm = (data.analyse_synthese && data.analyse_synthese.muscu) || {}, _nf = _sm.volume_fiable === false; rows += '<div class="ma-trow"><span>Tonnage 28j vs 28j précédents' + (_nf ? '<small style="display:block;font-size:10.5px;color:var(--text-subtle);font-weight:500">non représentatif : ' + _maE(_sm.volume_raison || 'base de comparaison faible') + '</small>' : '') + '</span><span class="v" style="color:' + (_nf ? 'var(--text-subtle)' : (t.evol_pct >= 0 ? '#00A854' : '#DC3545')) + '">' + (t.evol_pct >= 0 ? '▲ +' : '▼ ') + t.evol_pct + '%</span></div>'; } } catch (e) {}
   var reg = (data.dashboard && data.dashboard.regularite) || {};
   if (reg.seances_semaine != null) rows += '<div class="ma-trow"><span>Régularité (séances/sem.)</span><span class="v">' + reg.seances_semaine + '</span></div>';
   var mr = (data.global && data.global.mean_rpe); if (mr) rows += '<div class="ma-trow"><span>RPE moyen (global)</span><span class="v">' + String(mr).replace('.', ',') + '</span></div>';
@@ -14542,7 +14542,13 @@ function _maCardioTendances(data) {
   var tdFc = _maSportTrend(hist.filter(function (s) { return +s.fc_moy; }), 'fc_moy');
   var fcW = tdFc.pts;
   var fcFirst = fcW.find(function (x) { return x; }) || 0, fcLast = 0; for (var _fi = fcW.length - 1; _fi >= 0; _fi--) { if (fcW[_fi]) { fcLast = fcW[_fi]; break; } }
-  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / ' + _bNoun + ' · ' + _w.plabel, 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (fcLast <= fcFirst ? '#00A854' : '#DC3545') + '">bpm ' + (fcLast <= fcFirst ? '▼ mieux' : '▲') + '</span></span></div>' + _maWeeklySvg(fcW.map(function (v) { return v || fcFirst; }), 'bpm', '#9D5FD3', 'rgba(157,95,211,.12)', fcW.length, tdFc.dates) + _maCap('Chaque point = 1 ' + _bNoun + '. À lire à effort comparable (RPE proche).') + '</div>') : '';
+  // Verdict « mieux / moins bien » seulement avec ≥ 2 points ET un effort comparable (RPE
+  // moyen à ±1) — avant : « ▼ mieux » affiché avec UN seul point (audit Tendances 30/10).
+  var _fcPts = fcW.filter(function (v) { return v > 0; }).length;
+  var _rpeT = _maSportTrend(hist.filter(function (s) { return +s.fc_moy && +s.rpe; }), 'rpe').pts.filter(function (v) { return v > 0; });
+  var _effComp = _rpeT.length >= 2 && Math.abs(_rpeT[_rpeT.length - 1] - _rpeT[0]) <= 1;
+  var _fcVerdict = (_fcPts >= 2 && _effComp) ? (fcLast <= fcFirst ? 'mieux' : 'moins bien') : '';
+  var eff = fcW.some(function (v) { return v > 0; }) ? (_maSec('Efficience', 'FC moyenne / ' + _bNoun + ' · ' + _w.plabel, 'efficience') + '<div class="ma-chart"><div class="ma-ctop"><span class="ma-chip">FC moyenne (bpm)</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:15px;color:#9D5FD3">' + Math.round(fcLast) + ' <span style="font-size:9.5px;font-family:var(--font,inherit);color:' + (_fcVerdict === 'mieux' ? '#00A854' : (_fcVerdict ? '#DC3545' : 'var(--text-subtle)')) + '">bpm ' + (_fcVerdict === 'mieux' ? '▼ mieux' : (_fcVerdict ? '▲' : (_fcPts < 2 ? '· 1 point, pas de tendance' : '· effort non comparable'))) + '</span></span></div>' + _maWeeklySvg(fcW.map(function (v) { return v || fcFirst; }), 'bpm', '#9D5FD3', 'rgba(157,95,211,.12)', fcW.length, tdFc.dates) + _maCap('Chaque point = 1 ' + _bNoun + '. À lire à effort comparable (RPE proche).') + '</div>') : '';
   var _ctMain = _maPeriodHtml() + _maPeriodHint('Le graphique suit la période choisie.') + _maSec('Volume par sport', _w.plabel + ' · km') + vol + _maCap('Répartition de tes km par sport sur la période.') + eff;
   _maSet('ma-cardio-tendances', '<div class="ma-cols2"><div class="ma-colmain">' + _ctMain + '</div><div class="ma-colrail">' + _maCardioRail(data) + _maNovaAsk() + '</div></div>');
 }

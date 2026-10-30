@@ -1833,7 +1833,11 @@ function buildSyntheseMuscu(objectif: string, comparison: any, moteur: any, regu
   if (nCur == null || nCur < 2) confiance = 'faible'
   else if (!baseFiable) confiance = 'moyenne'
   else confiance = (nCur >= 6) ? 'bonne' : 'moyenne'
-  return { objectif: objectif || null, constats: constats.slice(0, 3), reco, reco_pool, confiance }
+  // volume_fiable : la comparaison de tonnage 28 j vs 28 j est-elle représentative ? (l'onglet
+  // Tendances l'affiche aussi — il doit porter la même réserve que la lecture, audit 30/10).
+  const volume_fiable = tonEvol != null
+  const volume_raison = (!volume_fiable && tonEvolRaw != null) ? (pausePrev >= 10 ? `pause de ${pausePrev} jours dans la période précédente` : 'période précédente trop courte') : null
+  return { objectif: objectif || null, constats: constats.slice(0, 3), reco, reco_pool, confiance, volume_fiable, volume_raison }
 }
 
 // « Lecture Novalyz » (cardio) : régularité + charge cardio (RPE×durée) 28j vs 28j
