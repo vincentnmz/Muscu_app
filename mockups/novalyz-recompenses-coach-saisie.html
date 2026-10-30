@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Récompenses utiles + saisie coach — maquette</title>
+<style>
+  :root{ --bg:#eef2fa; --surface:#fff; --surface2:#f3f6fd; --border:#dde4f3; --text:#0d1424; --muted:#5f6b85; --subtle:#8b96b0; --accent:#1a5fff; --accent-a:rgba(26,95,255,.10); --good:#00a854; --warn:#e08a00; --violet:#6D4BFF; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;padding:22px 16px 60px}
+  h1{font-size:20px;margin:0 0 4px;text-align:center}
+  h2{font-size:16px;margin:30px auto 6px;max-width:1150px}
+  .lead{font-size:13px;color:var(--muted);text-align:center;max-width:900px;margin:0 auto 18px}
+  .sub{font-size:13px;color:var(--muted);max-width:1150px;margin:0 auto 14px}
+  .row{display:flex;flex-wrap:wrap;gap:22px;justify-content:center;align-items:flex-start}
+  .col{width:340px}
+  .cap{font-size:12px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin:0 4px 8px}
+  .cap span{color:var(--muted);text-transform:none;letter-spacing:0;font-weight:600}
+  .phone{background:var(--bg);border:1px solid var(--border);border-radius:30px;overflow:hidden;box-shadow:0 14px 40px rgba(13,20,36,.10);padding:14px 12px 18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px 15px;margin-bottom:10px}
+  .lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);margin:0 0 8px}
+  .row2{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 0;border-top:1px solid var(--border)}
+  .row2:first-of-type{border-top:none}
+  .pts{font-weight:800;color:var(--accent);white-space:nowrap}
+  .done{color:var(--good)} .todo{color:var(--subtle)}
+  .big{font-size:26px;font-weight:900}
+  .bar{height:8px;border-radius:999px;background:var(--surface2);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+  .shop{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:13px;margin-top:8px}
+  .shop .ic{width:34px;height:34px;border-radius:10px;background:var(--accent-a);display:grid;place-items:center;font-size:16px;flex:none}
+  .shop b{font-size:13px}.shop small{display:block;font-size:11px;color:var(--muted)}
+  .shop .c{margin-left:auto;font-size:12px;font-weight:800;color:#fff;background:var(--accent);border-radius:999px;padding:6px 11px;white-space:nowrap}
+  .new{position:relative;outline:2px dashed var(--accent);outline-offset:3px}
+  .tag{position:absolute;top:-9px;right:12px;background:var(--accent);color:#fff;font-size:9.5px;font-weight:800;letter-spacing:.06em;border-radius:999px;padding:2px 8px}
+  .coachbar{background:var(--violet);color:#fff;border-radius:14px;padding:10px 12px;font-size:12.5px;margin-bottom:10px}
+  .coachbar b{display:block;font-size:13.5px}
+  .tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .tbl td{padding:7px 4px;border-top:1px solid var(--border);text-align:center}
+  .tbl tr:first-child td{border-top:none;font-size:10.5px;color:var(--subtle);font-weight:800}
+  .in{display:inline-block;min-width:44px;border:1.5px solid var(--border);border-radius:9px;padding:5px 6px;font-weight:800;background:var(--surface2)}
+  .in.v{border-color:var(--violet);color:var(--violet);background:#f3efff}
+  .btn{width:100%;border:none;border-radius:13px;background:var(--violet);color:#fff;font-weight:800;font-size:14px;padding:12px;margin-top:10px}
+  .note{font-size:11px;color:var(--subtle);margin-top:6px}
+  .q{max-width:1150px;margin:26px auto 0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;font-size:13.5px}
+  .q h3{font-size:15px;margin:0 0 8px}.q li{margin-bottom:7px}
+</style>
+</head>
+<body>
+<h1>Récompenses utiles + saisie de séance par le coach — propositions</h1>
+<p class="lead">Rien n'est codé. Chiffres d'exemple tirés de tes données (11 séances, 7 records, solde 2 310 pts).</p>
+
+<h2>① Récompenses : des points qui récompensent ce qui fait progresser, dépensés sur des choses utiles</h2>
+<p class="sub">Aujourd'hui : 10 pts par séance + 50 par record, dépensés en badges et en thème. Proposition : on gagne des points sur les gestes qui <b>rendent tes analyses fiables</b> (boussole ②) et on les dépense en <b>fonctions utiles</b>.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">A · Gagner <span>— cette semaine</span></div>
+    <div class="phone">
+      <div class="card new"><span class="tag">NOUVEAU</span>
+        <div class="lbl">Tes points cette semaine · 85 pts</div>
+        <div class="row2"><span class="done">✓ 3 séances faites</span><span class="pts">+30</span></div>
+        <div class="row2"><span class="done">✓ RPE saisi sur toutes les séries</span><span class="pts">+15</span></div>
+        <div class="row2"><span class="done">✓ 3 questionnaires du jour</span><span class="pts">+15</span></div>
+        <div class="row2"><span class="done">✓ Séance complète vs programme (pec epaule 2)</span><span class="pts">+10</span></div>
+        <div class="row2"><span class="done">★ Record : Pendulum 60 kg × 8</span><span class="pts">+50</span></div>
+        <div class="row2"><span class="todo">○ Objectif 4/4 séances (encore 1)</span><span class="pts" style="color:var(--subtle)">+40</span></div>
+        <div class="note">Chaque geste ici améliore aussi ta <b>fiabilité des données</b> (84/100) — les deux montent ensemble.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">B · Dépenser <span>— boutique utile</span></div>
+    <div class="phone">
+      <div class="card new"><span class="tag">NOUVEAU</span>
+        <div class="lbl">Boutique · solde 2 310 pts</div>
+        <div class="shop"><span class="ic">💬</span><div><b>+5 questions à Novalyz IA</b><small>Au-delà de tes 2 par jour</small></div><span class="c">100</span></div>
+        <div class="shop"><span class="ic">📄</span><div><b>Bilan PDF du mois</b><small>À envoyer à ton coach / médecin</small></div><span class="c">150</span></div>
+        <div class="shop"><span class="ic">🧍</span><div><b>Analyse morpho supplémentaire</b><small>Nouvelle photo, nouveaux points forts/faibles</small></div><span class="c">300</span></div>
+        <div class="shop"><span class="ic">🗓</span><div><b>Semaine de décharge générée</b><small>Ton programme allégé −40 % pour récupérer</small></div><span class="c">200</span></div>
+        <div class="note">Badges et thème doré restent, mais passent en « collection » (pas en boutique).</div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">C · Où l'afficher <span>— moins de place</span></div>
+    <div class="phone">
+      <div class="card new"><span class="tag">NOUVEAU</span>
+        <div class="lbl">Aujourd'hui · une seule ligne</div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:800">Objectif semaine 3/4</div><div style="font-size:11.5px;color:var(--muted)">2 310 pts · 85 cette semaine</div></div><span class="pts">Voir ›</span></div>
+        <div class="bar"><i style="width:75%"></i></div>
+      </div>
+      <div class="note" style="padding:0 6px">Le grand bloc actuel (niveau, collection, boutique) part dans une page « Mes points » ouverte par « Voir ». Aujourd'hui reste centré sur la séance et la lecture.</div>
+    </div>
+  </div>
+</div>
+
+<h2>② Le coach saisit la séance de son athlète en présentiel</h2>
+<p class="sub">Depuis la fiche de l'athlète : « Saisir sa séance ». Même écran que l'athlète (cibles calculées sur <b>son</b> historique), en violet coach. La séance est enregistrée au nom de l'athlète, marquée « saisie par ton coach ».</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">1 · Fiche athlète <span>— coach</span></div>
+    <div class="phone">
+      <div class="card"><div style="font-weight:800;font-size:15px">Vincent</div><div style="font-size:12px;color:var(--muted)">Séance du jour : dos jambe 2 · vendredi</div>
+        <button class="btn new" style="position:relative">▶ Saisir sa séance (présentiel)<span class="tag">NOUVEAU</span></button>
+        <div class="note">Choix de la séance de son programme, ou « séance libre ».</div></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">2 · Saisie <span>— au bord du plateau</span></div>
+    <div class="phone">
+      <div class="coachbar"><b>Saisie pour Vincent</b>dos jambe 2 · exercice 2/5 — Tirage horizontal prise large</div>
+      <div class="card">
+        <table class="tbl">
+          <tr><td>Série</td><td>Dernière fois</td><td>Cible</td><td>Fait</td></tr>
+          <tr><td>S1</td><td>80 × 6</td><td>80 × 7</td><td><span class="in v">80 × 7</span></td></tr>
+          <tr><td>S2</td><td>80 × 6</td><td>80 × 7</td><td><span class="in v">80 × 6</span></td></tr>
+          <tr><td>S3</td><td>70 × 8</td><td>70 × 9</td><td><span class="in">—</span></td></tr>
+        </table>
+        <div class="note">RPE : le coach le demande à l'athlète (« sur 10, combien ? ») ou l'estime. Chrono de repos identique.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">3 · Côté athlète <span>— après la séance</span></div>
+    <div class="phone">
+      <div class="card"><div class="lbl">Séance enregistrée</div><div style="font-size:13px"><b>dos jambe 2</b> · saisie par <b style="color:var(--violet)">ton coach</b> · 30/10</div>
+        <div class="note">L'athlète remplit seulement son <b>bilan</b> (ressenti, douleur) s'il le souhaite. Tout le reste (lecture, records, recos) se met à jour comme d'habitude.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="q">
+  <h3>À décider avant de coder</h3>
+  <ol>
+    <li><b>Récompenses A · gagner</b> : points sur séance (10), RPE complet (5), questionnaire du jour (5), séance complète vs programme (10), record (50), objectif semaine atteint (40). OK, ou d'autres gestes ?</li>
+    <li><b>Récompenses B · dépenser</b> : lesquelles garder parmi +5 questions IA, bilan PDF, analyse morpho, semaine de décharge ? (les prix sont indicatifs)</li>
+    <li><b>Récompenses C</b> : réduire à une ligne sur Aujourd'hui + page « Mes points » ?</li>
+    <li><b>Saisie coach</b> : le RPE — demandé à l'athlète, estimé par le coach, ou laissé vide (l'athlète le complète ensuite) ?</li>
+    <li><b>Saisie coach</b> : l'athlète doit-il <b>valider</b> la séance saisie par son coach, ou elle compte directement ?</li>
+  </ol>
+</div>
+</body>
+</html>

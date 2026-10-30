@@ -18,6 +18,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 2. **Clé `ANTHROPIC_API_KEY`** en variable d'env Supabase → sinon morpho IA + chat IA inactifs (le moteur déterministe, lui, marche sans clé). Cf. `docs/activer-ia.md`.
 
 ## Fait récemment
+- **30/10** : sexe dans Réglages ▸ Profil (renvoyé au login → nutrition juste) ; éditeur de programme : séries/reps/repos mis à jour tout de suite ; lectures rechargées après chaque séance muscu (et après synchro hors-ligne) ; audit Tendances (3 correctifs). ⚠️ `index.ts` modifié → redéployer.
 - **Lecture Novalyz v2 (29/10, maquette `mockups/novalyz-lecture-v2.html` validée)** — ⚠️ `index.ts` modifié → **redéployer** :
   - **Classement partagé** `_lectureExos` (records / progresse / bloqué / recule / **sous la fourchette**) sur charges · reps · RPE réels, utilisé par Aujourd'hui, Analyses ET la vue coach (`renderCoachCoupDoeil`). Le « 1RM estimé moyen » est retiré de la lecture athlète. Charge ↑ reps ↓ = progrès (décision).
   - **Catégories d'exercice** choisies à la main dans les 3 éditeurs de programme : gros 6-8 · moyen 8-12 · petit 12-25 (validé). La catégorie fixe la fourchette sauf si le programme ≠ 8-12. Stockage pref `exo_categories` (action `saveExoCategories`, renvoyée par getAppData).
@@ -105,6 +106,7 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - **Aperçu coach v3** (`renderCoachCoupDoeil`, charge·reps·RPE réels, état+récup, Lecture Novalyz pour le coach). Nutrition (import MFP), morpho/mensurations coach, récompenses v2, etc.
 
 ## À faire (priorité)
+- **À décider (30/10)** : (1) Tendances › remplacer « Tendance de force » (1RM moyen) par « Exercices en progrès » (`docs/audit-tendances-2026-10-30.md`) ; (2) récompenses utiles + (3) saisie de séance par le coach en présentiel — maquette `mockups/novalyz-recompenses-coach-saisie.html` (5 questions en bas).
 - **Audits à faire (demandés 28/10)** — même méthode que l'audit Cardio/Croisé (`docs/audit-cardio-croise-forme-2026-10-28.md`) : vrai `index.ts` rejoué sur une copie des données réelles + vrai front rendu, chaque phrase confrontée au code et aux données.
   - **Sous-pages Forme** : audit fait le 29-30/10 (`docs/audit-forme-sous-pages-2026-10-29.md`) — 5 correctifs APPLIQUÉS le 30/10.
   - **Lecture Cardio + Croisé** : audit fait le 29/10 (`docs/audit-lecture-cardio-croise-2026-10-29.md`, corrigé le 30/10 : charge muscu en RPE × durée estimée, marche hors charge ; ⚠️ index.ts à redéployer).
