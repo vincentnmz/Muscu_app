@@ -2909,7 +2909,10 @@ async function lierAthlete() {
       fermerModalLierAthlete();
       await chargerAthletesCoach();
       var nomL = String(data.nom || '').trim() || 'L\'athlète';
-      showToast(data.deja ? (nomL + ' est déjà dans ton équipe') : (nomL + ' est rattaché à ton équipe'));
+      showToast(data.deja ? (nomL + ' est déjà dans ton équipe')
+        : data.deja_demande ? ('Demande déjà envoyée à ' + nomL + ' — en attente de sa réponse')
+        : data.demande ? ('Demande envoyée à ' + nomL + ' : il doit l\'accepter dans son app')
+        : (nomL + ' est rattaché à ton équipe'));
     } else {
       errEl.textContent = data.error || 'Athlète introuvable.';
     }
@@ -9678,6 +9681,8 @@ function ouvrirConversations() { _cvView = 'list'; if (typeof switchTab === 'fun
 // qu'à la connexion → un athlète lié après s'être connecté restait « sans coach ».
 function _syncCoachLie(data) {
   if (!data || !('coach_lie' in data) || typeof athlete === 'undefined' || !athlete) return;
+  _coachDemande = data.coach_demande || null;
+  if (_coachDemande && !_coachDemandeVue) { _coachDemandeVue = true; setTimeout(_ouvrirDemandeCoach, 900); }
   var c = data.coach_lie;
   var nid = c ? String(c.coach_id) : null, nnom = c ? String(c.nom || '') : '';
   if (String(athlete.coach_id == null ? '' : athlete.coach_id) === String(nid == null ? '' : nid) && String(athlete.coach_nom || '') === nnom) { _renderMonCoach(); return; }
@@ -9686,18 +9691,57 @@ function _syncCoachLie(data) {
   _renderMonCoach();
   try { if (typeof cvRenderThreads === 'function') cvRenderThreads(); } catch (e) {}
 }
+var _coachDemande = null, _coachDemandeVue = false;
 function _renderMonCoach() {
   var el = document.getElementById('rg-mon-coach'); if (!el || typeof athlete === 'undefined' || !athlete) return;
   var login = escapeHtml(String(athlete.login || ''));
-  if (_athleteAUnCoach()) {
+  if (_coachDemande && !_athleteAUnCoach()) {
+    el.innerHTML = '<div style="font-size:14px"><b>' + escapeHtml(_coachDemande.nom) + '</b> veut te suivre.</div>' + _DEMANDE_COACH_TXT
+      + '<div style="display:flex;gap:8px;margin-top:10px"><button onclick="repondreDemandeCoach(false)" style="flex:1;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">Refuser</button>'
+      + '<button onclick="repondreDemandeCoach(true)" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">Accepter</button></div>';
+  } else if (_athleteAUnCoach()) {
     var nom = escapeHtml(String(athlete.coach_nom || '').trim() || 'ton coach');
     el.innerHTML = '<div style="font-size:14px">Tu es suivi par <b>' + nom + '</b>.</div>'
       + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4">Ton coach voit tes séances, tes analyses et ton ressenti, et peut modifier ton programme.</div>'
       + '<button onclick="quitterMonCoach()" style="width:100%;margin-top:10px;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Quitter mon coach</button>';
   } else {
     el.innerHTML = '<div style="font-size:14px">Pas de coach pour l\'instant.</div>'
-      + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4">Pour qu\'un coach te suive, donne-lui ton login' + (login ? ' <b style="color:var(--accent);letter-spacing:.08em">' + login + '</b>' : '') + ' : il te lie depuis son espace (« + Inviter » ▸ Lier).</div>';
+      + '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4">Pour qu\'un coach te suive, donne-lui ton login' + (login ? ' <b style="color:var(--accent);letter-spacing:.08em">' + login + '</b>' : '') + ' : il t\'envoie une demande depuis son espace, et tu l\'acceptes ici.</div>';
   }
+}
+var _DEMANDE_COACH_TXT = '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.45">S\'il te suit, il verra tes séances, tes analyses et ton ressenti, et pourra modifier ton programme. Tu pourras arrêter quand tu veux (Réglages ▸ Mon coach).</div>';
+// Fenêtre « X veut te suivre » (option A, 30/10) : ouverte une fois par chargement.
+function _ouvrirDemandeCoach() {
+  if (!_coachDemande || _athleteAUnCoach() || document.getElementById('dm-coach-ov')) return;
+  var ov = document.createElement('div'); ov.id = 'dm-coach-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:1200;background:rgba(3,6,14,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = '<div class="card" style="width:100%;max-width:360px;padding:20px;text-align:center">'
+    + '<div style="font-size:40px;margin-bottom:6px">🤝</div>'
+    + '<div style="font-size:18px;font-weight:800;margin-bottom:4px">' + escapeHtml(_coachDemande.nom) + ' veut te suivre</div>'
+    + '<div style="font-size:12px;color:var(--text-muted)">Coach sur Novalyz</div>' + _DEMANDE_COACH_TXT.replace('margin-top:6px', 'margin-top:12px;text-align:left')
+    + '<div style="display:flex;gap:8px;margin-top:16px"><button onclick="repondreDemandeCoach(false)" style="flex:1;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">Refuser</button>'
+    + '<button onclick="repondreDemandeCoach(true)" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:12px;padding:12px;font-size:14px;font-weight:800;cursor:pointer">Accepter</button></div>'
+    + '<button onclick="var o=document.getElementById(\'dm-coach-ov\');if(o)o.remove()" style="margin-top:10px;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer">Plus tard</button></div>';
+  document.body.appendChild(ov);
+}
+async function repondreDemandeCoach(accepter) {
+  if (!athlete || !_coachDemande) return;
+  var dem = _coachDemande;
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'repondreDemandeCoach', athlete_id: athlete.athlete_id, accepter: !!accepter, coach_id_vu: dem.coach_id }) });
+    var d = await res.json();
+    var ov = document.getElementById('dm-coach-ov'); if (ov) ov.remove();
+    if (d && d.success) {
+      _coachDemande = null;
+      if (d.accepte && d.coach) {
+        athlete.coach_id = String(d.coach.coach_id); athlete.coach_nom = String(d.coach.nom || dem.nom || '');
+        try { localStorage.setItem('muscu_athlete', JSON.stringify(athlete)); } catch (e) {}
+        showToast(athlete.coach_nom + ' te suit maintenant');
+      } else showToast('Demande refusée');
+      _renderMonCoach();
+      try { cvRenderThreads(); } catch (e) {}
+    } else showToast((d && d.error) || 'Impossible pour le moment.');
+  } catch (e) { showToast('Erreur de connexion.'); }
 }
 async function quitterMonCoach() {
   if (!athlete || !_athleteAUnCoach()) return;
@@ -18362,11 +18406,11 @@ function _onbContent(step) {
       ? '<div style="font-family:var(--font-heading,\'Michroma\',sans-serif);font-size:28px;letter-spacing:.12em;color:var(--accent);margin:4px 0 2px">' + esc(login) + '</div>'
       : '<div style="font-size:13px;font-weight:700;margin:4px 0 2px">Ton identifiant à 4 chiffres (celui avec lequel tu te connectes)</div>';
     return { primary: 'J\'ai compris', onPrimary: '_onbFini()', html: '<div style="margin:auto 0">'
-      + big('🤝', 'Relie-toi à ton coach', 'C\'est ton coach qui construit ton programme et suit tes analyses. Pour qu\'il te voie, il doit te lier à son compte.')
+      + big('🤝', 'Relie-toi à ton coach', 'C\'est ton coach qui construit ton programme et suit tes analyses. Pour qu\'il te voie, il t\'envoie une demande que tu acceptes.')
       + '<div style="margin-top:18px;padding:14px;background:var(--surface2);border-radius:14px;text-align:center"><div style="font-size:12px;color:var(--text-muted)">Donne ton login à ton coach :</div>' + loginBox + '</div>'
       + '<div style="margin-top:14px;text-align:left">'
       + pt('1', 'Envoie ce login à ton coach', 'Par message, en salle… c\'est tout ce dont il a besoin.')
-      + pt('2', 'Il te lie depuis son espace', 'Bouton « + Inviter » ▸ Lier → il saisit ton login.')
+      + pt('2', 'Il t\'envoie une demande', 'Depuis son espace (« + Inviter » ▸ Lier), avec ton login. Tu l\'acceptes dans ton app.')
       + pt('3', 'Ton programme arrive ici', 'Dès qu\'il te l\'a assigné, tu le retrouves dans Entraînement.')
       + '</div></div>' };
   }
