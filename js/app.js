@@ -11862,7 +11862,7 @@ function majPlanSeries() {
       + (R0 != null ? '<div class="pc-ref">Repos de référence : ' + esc(_reposTxt(R0)) + ' (dernière fois). Bornes : ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).min)) + ' à ' + esc(_reposTxt(_reposBornes(exoEnCours.exerciceNom).max)) + '.</div>' : '')
       + '</div>';
   }
-  if (dec.mode !== 'sous') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _LEVIERS_BLOCAGE; }
+  if (dec.mode !== 'sous') { var _bqS = _blocageInfo(dernierAppData, exoEnCours.exerciceNom); if (_bqS) msg = (msg ? msg + ' ' : '') + 'Bloqué depuis ' + _bqS.n + ' séances — ' + _leviersBlocage(dernierAppData, exoEnCours.exerciceNom); }
   var sg = document.getElementById('exo-actuel-suggestion');
   if (sg) sg.innerHTML = msg ? '<div class="prog-suggestion" style="margin-top:6px">' + esc(msg) + '</div>' : '';
   // Pré-remplissage de la série en cours + molette de repos = cible de la règle (une fois par série).
@@ -13894,12 +13894,42 @@ function _blocageInfo(data, exo) {
   try { var L = _lectureExos(data || dernierAppData, Date.now()); return (L.bloque || []).filter(function (x) { return x.exo === exo; })[0] || null; } catch (e) { return null; }
 }
 var _LEVIERS_BLOCAGE = 'à titre indicatif : un repos un peu plus long (+30 s), le placer plus tôt dans ta séance pour être plus frais, ou persister en visant la bonne intensité (RPE 8-9 sur toutes tes séries).';
+// Repos RÉEL (audit 31/10, ajout 1) : moyenne des repos saisis à la dernière séance de l'exo
+// (100 % des séries ont un repos en base). Cible indicative par catégorie : lourd / moyen
+// 2-3 min, léger 1-2 min — Schoenfeld et al. 2016 (J Strength Cond Res 30(7):1805-1812 :
+// 3 min > 1 min pour force et hypertrophie chez des pratiquants entraînés). Non classé → pas
+// de cible, on part du repos réel (+30 s).
+function _fmtRepos(sec) { sec = Math.round(sec / 15) * 15; if (sec < 60) return sec + ' s'; var m = Math.floor(sec / 60), r = sec % 60; return m + ' min' + (r ? ' ' + (r < 10 ? '0' : '') + r : ''); }
+function _reposExo(data, exo) {
+  try {
+    var pts = ((data && data.historique && data.historique.progression_par_exo) || {})[exo] || [];
+    var ser = (pts[0] && Array.isArray(pts[0].series)) ? pts[0].series : [];
+    var v = ser.map(function (x) { return Number(x && x.repos); }).filter(function (n) { return !isNaN(n) && n > 0; });
+    return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null;
+  } catch (e) { return null; }
+}
+// Renvoie le levier « repos » rédigé avec le repos réel, ou '' si le repos est déjà dans la cible.
+function _levierRepos(data, exo) {
+  var r = _reposExo(data, exo);
+  if (r == null) return 'un repos un peu plus long (+30 s)';
+  var cat = ''; try { cat = _exoCat(exo, (data && data.exo_categories) || {}); } catch (e) {}
+  var cible = (cat === 'gros' || cat === 'moyen') ? [120, '2 à 3 min'] : (cat === 'petit') ? [60, '1 à 2 min'] : null;
+  if (cible && r >= cible[0]) return '';
+  if (r >= 180) return '';   // déjà ≥ 3 min : au-delà, aucun bénéfice démontré → pas de levier repos
+  if (cible) return 'un repos plus long (tu prends ' + _fmtRepos(r) + ' ; sur ce type d\'exercice, ' + cible[1] + ' aident à garder tes reps)';
+  return 'un repos un peu plus long (tu prends ' + _fmtRepos(r) + ', essaie ' + _fmtRepos(Math.min(180, r + 30)) + ')';
+}
+function _leviersBlocage(data, exo) {
+  var rep = _levierRepos(data, exo);
+  return 'à titre indicatif : ' + (rep ? rep + ', ' : '') + 'le placer plus tôt dans ta séance pour être plus frais, ou persister en visant la bonne intensité (RPE 8-9 sur toutes tes séries).';
+}
 // 3 recos VARIÉES (décision 31/10 « options + mélange ») : avant, 2-3 recos « baisse la charge »
 // d'affilée. Désormais, par ordre : 1 « sous la fourchette » (avec 3 options au choix),
 // 1 « à pousser » (record / progrès → même cible que la saisie), 1 bloqué, puis volume / régularité.
-var _OPTIONS_SOUS = function (x, kg) {
+var _OPTIONS_SOUS = function (x, kg, data) {
+  var rep = _levierRepos(data || dernierAppData, x.exo);
   return 'au choix, à titre indicatif : ' + (x.pas > 0 ? 'un petit pas en dessous (' + kg(x.c - x.pas) + ' kg) pour revenir à ' + x.rmin + ' reps' : 'alléger un peu pour revenir à ' + x.rmin + ' reps')
-    + ', ou garder ' + kg(x.c) + ' kg et viser +1 rep, ou prendre 30 s de repos en plus.';
+    + (rep ? ', garder ' + kg(x.c) + ' kg et viser +1 rep, ou ' + rep + '.' : ', ou garder ' + kg(x.c) + ' kg et viser +1 rep.');
 };
 function _lxRecos(L, V, niveau, data) {
   var out = [], kg = function (x) { return _cdFmtKg(x); };
@@ -13907,7 +13937,7 @@ function _lxRecos(L, V, niveau, data) {
   var sous = L.sous.slice().sort(function (a, b) { return (b.rpe - a.rpe) || (a.r - b.r); });
   if (sous.length) {
     var x = sous[0];
-    out.push('<b>' + _maE(x.exo) + '</b> : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe + ', sous ta fourchette (' + x.rmin + '-' + x.rmax + '). ' + _OPTIONS_SOUS(x, kg).charAt(0).toUpperCase() + _OPTIONS_SOUS(x, kg).slice(1)
+    out.push('<b>' + _maE(x.exo) + '</b> : ' + kg(x.c) + ' kg × ' + x.r + ' à RPE ' + x.rpe + ', sous ta fourchette (' + x.rmin + '-' + x.rmax + '). ' + _OPTIONS_SOUS(x, kg, data).charAt(0).toUpperCase() + _OPTIONS_SOUS(x, kg, data).slice(1)
       + (sous.length > 1 ? ' <span style="color:var(--text-subtle)">(+' + (sous.length - 1) + ' autre' + (sous.length > 2 ? 's' : '') + ' sous la fourchette)</span>' : ''));
   }
   // 2) À pousser : un exercice en record / en progrès → la cible de la prochaine fois (même calcul que la saisie).
@@ -13926,7 +13956,7 @@ function _lxRecos(L, V, niveau, data) {
   // 3) Bloqué : leviers (décision 30/10).
   if (L.bloque.length && out.length < 3) {
     var b = L.bloque[0];
-    out.push('<b>' + _maE(b.exo) + '</b> : ' + kg(b.c) + ' kg × ' + b.r + ' depuis ' + b.n + ' séances. Pour débloquer, ' + _LEVIERS_BLOCAGE);
+    out.push('<b>' + _maE(b.exo) + '</b> : ' + kg(b.c) + ' kg × ' + b.r + ' depuis ' + b.n + ' séances. Pour débloquer, ' + _leviersBlocage(data, b.exo));
   }
   // 4) Volume en retard, sinon régularité.
   var ret = V.rows.filter(function (r) { return r.retard; });
@@ -13937,7 +13967,7 @@ function _lxRecos(L, V, niveau, data) {
     out.push('<b>Régularité</b> : ' + V.faites + '/' + V.prevues + ' séances cette semaine — encore ' + (V.prevues - V.faites) + ' pour tenir ton objectif.');
   }
   // 5) Encore de la place : 2ᵉ exercice sous la fourchette (toujours avec options).
-  if (out.length < 3 && sous.length > 1) { var y = sous[1]; out.push('<b>' + _maE(y.exo) + '</b> : ' + kg(y.c) + ' kg × ' + y.r + ' à RPE ' + y.rpe + ' — ' + _OPTIONS_SOUS(y, kg)); }
+  if (out.length < 3 && sous.length > 1) { var y = sous[1]; out.push('<b>' + _maE(y.exo) + '</b> : ' + kg(y.c) + ' kg × ' + y.r + ' à RPE ' + y.rpe + ' — ' + _OPTIONS_SOUS(y, kg, data)); }
   return out.slice(0, 3);
 }
 function _maLectureNovalyzBloc(data) {
@@ -14388,7 +14418,7 @@ function _maProgExo(data) {
           + '<div style="font-size:13px;font-weight:800">Ce que Novalyz vise la prochaine fois</div>'
           + (_tc.cib ? '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px"><span style="font-size:12px;color:var(--text-muted)">' + _cdFmtKg(_tc.last.c) + ' × ' + _tc.last.r + ' →</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:19px;color:' + (_tc.cib.up === 'baisse' ? '#DC3545' : 'var(--accent)') + '">' + _cdFmtKg(_tc.cib.charge) + ' kg × ' + _tc.cib.reps + '</span></div>' : '')
           + '<div style="font-size:12px;color:var(--text);margin-top:6px;line-height:1.45">' + _maE(_why) + '</div>'
-          + (function () { var b = _blocageInfo(data, sel); return b ? '<div style="font-size:12px;color:#B45F00;margin-top:6px;line-height:1.45"><b>Bloqué depuis ' + b.n + ' séances</b> — ' + _maE(_LEVIERS_BLOCAGE) + '</div>' : ''; })()
+          + (function () { var b = _blocageInfo(data, sel); return b ? '<div style="font-size:12px;color:#B45F00;margin-top:6px;line-height:1.45"><b>Bloqué depuis ' + b.n + ' séances</b> — ' + _maE(_leviersBlocage(data, sel)) + '</div>' : ''; })()
           + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:5px">Sur ta série la plus lourde, même calcul que l\'écran de saisie. C\'est toi qui décides.</div></div>';
       }
     }

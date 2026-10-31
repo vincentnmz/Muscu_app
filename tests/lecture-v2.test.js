@@ -49,7 +49,7 @@ const S = {
   _maSemaineType: function () { return 'calendaire'; },
 };
 vm.createContext(S);
-const FFN = ['parseChatDate', '_exoCat', '_exoFourchette', '_petitPas', '_cdAvgRpe', '_progSecondaire', '_lectureExos', '_normTxt', '_musKey', '_seancesFaites', '_lxVolume'];
+const FFN = ['parseChatDate', '_exoCat', '_exoFourchette', '_petitPas', '_cdAvgRpe', '_progSecondaire', '_lectureExos', '_normTxt', '_musKey', '_seancesFaites', '_lxVolume', '_fmtRepos', '_reposExo', '_levierRepos', '_leviersBlocage'];
 vm.runInContext((SRC.match(/var _EXO_CAT_R = \{[^}]*\};/) || [''])[0] + '\n' + FFN.map(n => extractFrom(SRC, n)).join('\n') + '\n' + FFN.map(n => `this.${n}=${n};`).join(''), S);
 
 const ser = (arr, rpe) => arr.map((x, i) => ({ serie: i + 1, charge: x[0], reps: x[1], rpe: Array.isArray(rpe) ? rpe[i] : rpe }));
@@ -120,7 +120,15 @@ const PE = extractFrom(SRC, '_maProgExo');
 check('Par exercice : cible = _tjCibles (même calcul que la saisie), plus _chargeAViser', /_tjCibles\(data/.test(PE) && !/_chargeAViser\(/.test(PE));
 check('Par exercice : statut = _lectureExos (même classement que la lecture)', /_lectureExos\(data/.test(PE));
 check('Par exercice : écart Charge + reps montre aussi les reps', /' rep' \+/.test(PE));
-check('Bloqué : leviers indicatifs (repos +30 s, plus tôt dans la séance, persister RPE 8-9) partout', /repos un peu plus long \(\+30 s\)/.test(SRC) && /_LEVIERS_BLOCAGE\)/.test(extractFrom(SRC, '_lxRecos')) && /_blocageInfo\(data, sel\)/.test(PE) && /_blocageInfo\(dernierAppData, exoEnCours/.test(SRC));
+check('Bloqué : leviers indicatifs (repos +30 s, plus tôt dans la séance, persister RPE 8-9) partout', /repos un peu plus long \(\+30 s\)/.test(SRC) && /_leviersBlocage\(data, b\.exo\)/.test(extractFrom(SRC, '_lxRecos')) && /_blocageInfo\(data, sel\)/.test(PE) && /_blocageInfo\(dernierAppData, exoEnCours/.test(SRC));
+// Ajout 1 (31/10) : levier « repos » rédigé avec le repos RÉEL de la dernière séance.
+{ const mk = (rep, cat) => ({ historique: { progression_par_exo: { Dev: [{ series: [{ repos: rep }, { repos: rep }] }] } }, exo_categories: cat ? { Dev: cat } : {} });
+  check('Repos réel 90 s sur un exo moyen → « tu prends 1 min 30 ; 2 à 3 min »', /tu prends 1 min 30 ; sur ce type d'exercice, 2 à 3 min/.test(S._levierRepos(mk(90, 'moyen'), 'Dev')));
+  check('Repos déjà 3 min sur un exo moyen → pas de levier repos', S._levierRepos(mk(180, 'moyen'), 'Dev') === '' && !/repos/.test(S._leviersBlocage(mk(180, 'moyen'), 'Dev')));
+  check('Exo léger à 45 s → cible 1 à 2 min', /tu prends 45 s ; sur ce type d'exercice, 1 à 2 min/.test(S._levierRepos(mk(45, 'petit'), 'Dev')));
+  check('Exo non classé → repos réel + 30 s', /tu prends 1 min 30, essaie 2 min/.test(S._levierRepos(mk(90, ''), 'Dev')));
+  check('Non classé à 3 min → plus de « essaie 3 min 30 »', S._levierRepos(mk(180, ''), 'Dev') === '');
+  check('Pas de repos saisi → +30 s générique', S._levierRepos({ historique: { progression_par_exo: {} } }, 'Dev') === 'un repos un peu plus long (+30 s)'); }
 console.log('-'.repeat(70));
 console.log('lecture v2 : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) { console.log('Échecs : ' + fails.join(' | ')); process.exit(1); }
