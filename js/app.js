@@ -12020,6 +12020,15 @@ function ouvrirBilanSeance(type, seanceId, date) {
   _wqOpen();
 }
 
+// Durée réelle de la séance (min) pour le sRPE. Audit 31/10 : le bilan est construit AVANT
+// afficherRecap() (qui fige _seanceDureeMin) → la durée partait toujours vide (0 durée en base
+// pour 5 RPE de séance). On la calcule ici depuis le chrono. Au-delà de 4 h (appli restée
+// ouverte, brouillon repris le lendemain), la mesure n'est pas fiable → non envoyée.
+function _seanceDureeMesuree() {
+  var m = _seanceDureeMin;
+  try { if (!(m > 0) && _seanceChronoT0) m = Math.max(1, Math.round((Date.now() - _seanceChronoT0) / 60000)); } catch (e) {}
+  return (m > 0 && m <= 240) ? m : null;
+}
 // Construit le payload du bilan (ressenti + douleur + zone).
 function _bilanPayload(type, seanceId, dateSeance) {
   var zoneText = document.getElementById('wq-zone-text') ? document.getElementById('wq-zone-text').value.trim() : '';
@@ -12028,7 +12037,7 @@ function _bilanPayload(type, seanceId, dateSeance) {
     action: 'saveBilanSeance', athlete_id: athlete.athlete_id, type: type,
     seance_id: seanceId || null, date: dateSeance,
     // Durée mesurée par le chrono de séance (muscu) → charge interne sRPE = RPE × durée.
-    rpe: wellnessState.rpe, duree: (type === 'muscu' && _seanceDureeMin > 0) ? _seanceDureeMin : null,
+    rpe: wellnessState.rpe, duree: (type === 'muscu') ? _seanceDureeMesuree() : null,
     douleur: wellnessState.douleur, zone: zone
   };
 }

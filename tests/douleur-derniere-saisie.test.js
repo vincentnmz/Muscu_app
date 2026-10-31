@@ -57,6 +57,11 @@ const etat = (rows) => {
 { const e = etat([{ date: '2026-10-28', douleur: '1' }]);
   eq(Array.isArray(e.causes) && e.causes.length === 0, 'Prêt → causes vides', e.causes); }
 
+// Audit 31/10 (données réelles) : zone stockée « NaN » → aucune zone (plus de « (nan) » dans l'alerte).
+{ const e = etat([{ date: '2026-10-28', douleur: '2', zone_douloureuse: 'NaN' }]);
+  const a = e.alertes.find(x => x.type === 'douleur');
+  eq(a && a.message === 'Gêne légère signalée', 'zone « NaN » → « Gêne légère signalée » sans (nan)', a && a.message); }
+
 console.log('-'.repeat(70));
 console.log('douleur dernière saisie : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) { console.log('Échecs : ' + fails.join(' | ')); process.exit(1); }

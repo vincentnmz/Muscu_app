@@ -2894,6 +2894,12 @@ async function handleDetacherCoach(body: any): Promise<Response> {
 //   douleur = MAX récent · fatigue = MAX récent · sommeil = MOYENNE récente.
 // (max pour la douleur/fatigue = orienté prévention ; moyenne sommeil = §16, une
 //  seule mauvaise nuit ne doit pas suffire.)
+// Zone de douleur lisible : les anciennes saisies perdues sont stockées « NaN » → aucune zone
+// (sinon l'alerte affichait « Gêne légère signalée (nan) », vu sur données réelles le 31/10).
+function _zoneOk(z: any): string | null {
+  const t = String(z == null ? '' : z).trim()
+  return (!t || /^(nan|null|undefined)$/i.test(t)) ? null : t
+}
 function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; douleurZone: string|null; douleurDate: string|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number } {
   const cut = fmtYMD(minus(now, days))
   const doul: number[] = [], fat: number[] = [], som: number[] = [], str: number[] = [], courb: number[] = []
@@ -2906,8 +2912,8 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
     const dIso = normDate(r.date); if (!dIso || dIso < cut) continue
     if (r.douleur != null && r.douleur !== '') {
       const v = Number(r.douleur); doul.push(v)
-      if (!isNaN(v) && (dLastDate == null || dIso > dLastDate)) { dLastDate = dIso; dLast = v; dZone = r.zone_douloureuse ? String(r.zone_douloureuse) : null }
-      else if (!isNaN(v) && dIso === dLastDate && v > (dLast as number)) { dLast = v; dZone = r.zone_douloureuse ? String(r.zone_douloureuse) : dZone }
+      if (!isNaN(v) && (dLastDate == null || dIso > dLastDate)) { dLastDate = dIso; dLast = v; dZone = _zoneOk(r.zone_douloureuse) }
+      else if (!isNaN(v) && dIso === dLastDate && v > (dLast as number)) { dLast = v; dZone = _zoneOk(r.zone_douloureuse) || dZone }
     }
     if (r.fatigue_musculaire != null && r.fatigue_musculaire !== '') fat.push(Number(r.fatigue_musculaire))
     if (r.sommeil != null && r.sommeil !== '') som.push(Number(r.sommeil))
