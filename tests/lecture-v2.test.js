@@ -89,14 +89,14 @@ check('un exercice n\'apparaît que dans une catégorie', (() => { const all = [
 // Catégorie « gros » (6-8) : 60×8 et 70×5 → toujours « sous » (2 séries sur 3 < 6) ; T-bar 60×6 en gros → dans la fourchette.
 DATA.exo_categories = { 'Développé incliné à la Smith': 'gros' };
 L = S._lectureExos(DATA, NOW);
-check('Smith classé « gros » (6-8) : reste sous la fourchette (80×2, 70×5)', names('sous').includes('Développé incliné à la Smith') && L.sous[0].rmin === 6 && L.sous[0].rmax === 8);
+check('Smith classé lourd/moyen (6-12) : reste sous la fourchette (80×2, 70×5)', names('sous').includes('Développé incliné à la Smith') && L.sous[0].rmin === 6 && L.sous[0].rmax === 12);
 DATA.historique.progression_par_exo['T-bar row'] = [pt('13/10/2026', [[60, 6], [60, 6], [60, 6]], 9), pt('02/10/2026', [[50, 8]], 8)];
 DATA.programme.push({ seance_id: 'dos', exercice: 'T-bar row', reps_mini: 8, reps_max: 12, series_prevues: 3 });
 L = S._lectureExos(DATA, NOW);
 check('T-bar row 60×6 RPE 9, non classé (8-12) → sous', names('sous').includes('T-bar row'));
 DATA.exo_categories['T-bar row'] = 'gros';
 L = S._lectureExos(DATA, NOW);
-check('T-bar row classé « gros » (6-8) → plus sous la fourchette', !names('sous').includes('T-bar row'));
+check('T-bar row classé lourd/moyen (6-12) → plus sous la fourchette', !names('sous').includes('T-bar row'));
 
 // ---------- Volume au prorata ----------
 const V = S._lxVolume({

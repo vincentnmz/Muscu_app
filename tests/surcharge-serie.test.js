@@ -86,8 +86,9 @@ d = D({ niveau: 'avance', last: [{ serie: 1, charge: 80, reps: 2, rpe: 10 }, { s
 check('dégressif réel (80×2, 70×5, 60×8) : S1/S2 −1 pas, S3 dans la fourchette inchangée', d.mode === 'sous' && d.cible(1).charge === 77.5 && d.cible(2).charge === 67.5 && d.cible(3).charge === 60 && d.cible(3).reps === 8);
 // --- Catégories d'exercice → fourchette ---
 const CM = { 'Développé incliné à la Smith': 'gros', 'Curl': 'petit' };
-check('catégorie gros + programme par défaut 8-12 → 6-8', JSON.stringify([S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmin, S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmax]) === '[6,8]');
-check('catégorie petit → 12-25', S._exoFourchette('Curl', 8, 12, CM).rmin === 12 && S._exoFourchette('Curl', 8, 12, CM).rmax === 25);
+check('catégorie gros (= lourd/moyen) + programme par défaut 8-12 → 6-12', JSON.stringify([S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmin, S._exoFourchette('Développé incliné à la Smith', 8, 12, CM).rmax]) === '[6,12]');
+check('catégorie léger (petit) → 8-20', S._exoFourchette('Curl', 8, 12, CM).rmin === 8 && S._exoFourchette('Curl', 8, 12, CM).rmax === 20);
+check('catégorie moyen → 6-12 (décision 31/10)', S._exoFourchette('Curl', 8, 12, { Curl: 'moyen' }).rmin === 6 && S._exoFourchette('Curl', 8, 12, { Curl: 'moyen' }).rmax === 12);
 check('programme ≠ 8-12 → le programme prime', S._exoFourchette('Développé incliné à la Smith', 5, 5, CM).rmin === 5 && S._exoFourchette('Développé incliné à la Smith', 5, 5, CM).src === 'prog');
 check('non classé → programme', S._exoFourchette('Leg curl', 8, 12, CM).rmin === 8 && S._exoFourchette('Leg curl', 8, 12, CM).cat === '');
 
