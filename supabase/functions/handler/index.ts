@@ -635,7 +635,11 @@ function sousChargeSoutenue(chargeParJour: Record<string, number>, now: Date): b
 //  (2) RPE en hausse (≥ +1 pt) à charge ÉGALE ou plus basse (≤ +2,5 %) sur ≥ 2
 //      exercices, dernière séance de l'exo ≤ 10 j.
 // `evaluable` = on dispose d'assez de bien-être pour affirmer « tu encaisses bien ».
-function ressentiConcordant(beRows: any[], perfs: any[], now: Date): { degrade: boolean; evaluable: boolean; rpeExos: string[] } {
+//  (3) [31/10, seuil A validé porteur] FC de repos de la montre : moyenne des 3 derniers jours
+//      (≥ 2 mesures) ≥ ta normale + 5 bpm (normale = 4 semaines avant, ≥ 14 mesures). Signe
+//      d'appoint (Buchheit 2014 : la FC complète le questionnaire, pas seule) : il ne compte que
+//      dans cette règle, donc seulement si la charge est élevée en même temps.
+function ressentiConcordant(beRows: any[], perfs: any[], now: Date, fcRows: any[] = []): { degrade: boolean; evaluable: boolean; rpeExos: string[]; rpeDetails: any[]; rpeEvalues: number; fc: any; raisons: string[] } {
   const c7 = fmtYMD(minus(now, 6)), c35 = fmtYMD(minus(now, 34))
   const rows = (beRows || []).map((r: any) => ({ d: normDate(r.date), fat: (r.fatigue_musculaire == null || r.fatigue_musculaire === '') ? null : Number(r.fatigue_musculaire), som: (r.sommeil == null || r.sommeil === '') ? null : Number(r.sommeil) }))
     .filter((r: any) => r.d && r.d >= c35).sort((a: any, b: any) => b.d.localeCompare(a.d))
@@ -657,7 +661,8 @@ function ressentiConcordant(beRows: any[], perfs: any[], now: Date): { degrade: 
     const exo = String(r.exercice || ''); const m = (parExo[exo] ||= {})
     if (!m[d] || ch > m[d].charge) m[d] = { charge: ch, rpe }
   }
-  const c10 = fmtYMD(minus(now, 10)), rpeExos: string[] = []
+  const c10 = fmtYMD(minus(now, 10)), rpeExos: string[] = [], rpeDetails: any[] = []
+  let rpeEvalues = 0
   for (const exo of Object.keys(parExo)) {
     const ds = Object.keys(parExo[exo]).sort()
     if (ds.length < 4 || ds[ds.length - 1] < c10) continue
@@ -665,10 +670,26 @@ function ressentiConcordant(beRows: any[], perfs: any[], now: Date): { degrade: 
     const rpeAv = (l[0].rpe + l[1].rpe) / 2, rpeAp = (l[2].rpe + l[3].rpe) / 2
     const chAv = (l[0].charge + l[1].charge) / 2, chAp = (l[2].charge + l[3].charge) / 2
     const chPct = chAv > 0 ? (chAp - chAv) / chAv * 100 : 0
-    if (rpeAp - rpeAv >= 1 && chPct <= 2.5) rpeExos.push(exo)
+    rpeEvalues++
+    if (rpeAp - rpeAv >= 1 && chPct <= 2.5) { rpeExos.push(exo); rpeDetails.push({ exo, charge: Math.round(chAp * 10) / 10, rpeAvant: rpeAv, rpeApres: rpeAp }) }
   }
   const rpeDeg = rpeExos.length >= 2
-  return { degrade: fatDeg || somDeg || rpeDeg, evaluable: F.ok || S.ok, rpeExos }
+  // (3) FC de repos (montre).
+  const c3 = fmtYMD(minus(now, 2)), c30 = fmtYMD(minus(now, 30))
+  const fcRec: number[] = [], fcBase: number[] = []
+  for (const r of fcRows || []) {
+    const d = normDate(r.date); const v = Number(r.fc_repos)
+    if (!d || !(v > 0)) continue
+    if (d >= c3 && d <= fmtYMD(now)) fcRec.push(v)
+    else if (d >= c30 && d < c3) fcBase.push(v)
+  }
+  const fcOk = fcRec.length >= 2 && fcBase.length >= 14
+  const fcR = moy(fcRec), fcB = moy(fcBase)
+  const fcDeg = fcOk && (fcR as number) - (fcB as number) >= 5
+  const fc = { evaluable: fcOk, recente: fcR != null ? Math.round(fcR * 10) / 10 : null, normale: fcB != null ? Math.round(fcB * 10) / 10 : null, mesures: fcRec.length, mesuresBase: fcBase.length, degrade: fcDeg }
+  const raisons: string[] = []
+  if (fatDeg) raisons.push('fatigue'); if (somDeg) raisons.push('sommeil'); if (rpeDeg) raisons.push('rpe'); if (fcDeg) raisons.push('fc_repos')
+  return { degrade: fatDeg || somDeg || rpeDeg || fcDeg, evaluable: F.ok || S.ok, rpeExos, rpeDetails, rpeEvalues, fc, raisons }
 }
 
 // ── Alertes ───────────────────────────────────────────────────────────────────
@@ -2440,7 +2461,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     // Règle « charge + ressenti » : mêmes données de charge que la fraîcheur affichée.
     const chargeSrcM = useSRPE ? srpeParJour : chSportA.chargeParJour
     const joursHautsM = chargeSoutenueJours(chargeSrcM, now)
-    const ressM = ressentiConcordant(beRows || [], perfs, now)
+    const ressM = ressentiConcordant(beRows || [], perfs, now, sante_historique)
     const etatM = evaluerEtatAthlete({
       chargeSoutenue: ffFiable && joursHautsM >= 3,
       ressentiDegrade: ressM.degrade, ressentiEvaluable: ressM.evaluable,
@@ -2459,7 +2480,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       recScore: etatM.recScore, recup: etatM.recup, reco: etatM.reco, confiance: etatM.confiance, alertes: etatM.alertes,
       causes: etatM.causes,   // ce qui produit Vigilance/rouge (affiché sous le verdict)
       // Règle « charge + ressenti » exposée à l'app : la carte Fraîcheur ne dit plus « Fatigue » sur la charge seule.
-      charge_ressenti: { soutenue: ffFiable && joursHautsM >= 3, jours_hauts: joursHautsM, degrade: ressM.degrade, evaluable: ressM.evaluable, rpe_exos: ressM.rpeExos },
+      charge_ressenti: { soutenue: ffFiable && joursHautsM >= 3, jours_hauts: joursHautsM, degrade: ressM.degrade, evaluable: ressM.evaluable, rpe_exos: ressM.rpeExos, rpe_details: ressM.rpeDetails, rpe_evalues: ressM.rpeEvalues, fc_repos: ressM.fc, raisons: ressM.raisons },
       signaux: etatM.signaux,   // readiness Hooper agrégé (sommeil/stress/courbatures…) → leviers ciblés tracés
       acwr_fiable: etatM.acwr_fiable, acwr_categorie: etatM.acwr_categorie, contexte_tag: etatM.contexte_tag,
       charge_fatigue: { ctl: ffA.ctl, atl: ffA.atl, tsb: ffA.tsb, tsbPct: ffA.tsbPct, ratio: ffA.ratio, fiable: ffFiable, source: useSRPE ? 'srpe' : 'tonnage' },

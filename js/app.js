@@ -5680,6 +5680,13 @@ function renderCoachCoupDoeil(data) {
       var effSub = rpeMoy >= 8.5 ? 'intensité très élevée → surveiller la fatigue' : (rpeMoy >= 7.5 ? 'intensité soutenue' : (rpeMoy >= 6 ? 'intensité modérée' : 'intensité légère'));
       entr += _cdCoupRow('var(--accent2)', '🔥', '<b>Effort</b> — RPE moyen <b>' + rpeTxt + '</b> /7 j' + trd2 + sub(effSub));
     }
+    // Point 4 (31/10) : effort à charge égale (backend : RPE des 2 dernières séances vs les 2 d'avant,
+    // charge égale ou plus basse ; ≥ 4 séances de l'exo, dernière ≤ 10 j). Rien d'affiché sans exo comparable.
+    try {
+      var _cr = m.charge_ressenti || {}, _rd = Array.isArray(_cr.rpe_details) ? _cr.rpe_details : [];
+      if (_rd.length) entr += _cdCoupRow('var(--warn)', '⚠', '<b>Effort en hausse à charge égale</b> — ' + _rd.slice(0, 3).map(function (x) { return esc(x.exo) + ' ' + _cdFmtKg(x.charge) + ' kg : RPE ' + _fmt1(x.rpeAvant) + ' → <b>' + _fmt1(x.rpeApres) + '</b>'; }).join(' · ') + sub('signe de fatigue avant que les reps baissent'));
+      else if (_cr.rpe_evalues > 0) entr += _cdCoupRow('var(--good)', '✓', '<b>Effort à charge égale</b> — stable' + sub(_cr.rpe_evalues + ' exercice' + (_cr.rpe_evalues > 1 ? 's' : '') + ' comparé' + (_cr.rpe_evalues > 1 ? 's' : '') + ' sur leurs 4 dernières séances'));
+    } catch (e) {}
     if (total7 > 0 && faits.length) entr += _cdCoupRow('var(--good)', '✓', '<b>Travaillé (7 j)</b> — ' + esc(faits.join(', ')));
     if (total7 > 0 && absent.length && absent.length < 5) entr += _cdCoupRow('var(--warn)', '⚠', '<b>Non travaillé (7 j)</b> — ' + esc(absent.join(', ')));
     if (!entr) entr = '<div class="cdcp-empty">Pas encore assez de séances pour analyser l\'entraînement.</div>';
@@ -5698,13 +5705,22 @@ function renderCoachCoupDoeil(data) {
     var etat = '';
     if (recup) etat += _cdCoupRow((recup === 'Faible' || recup === 'Moyen') ? 'var(--warn)' : 'var(--good)', '●', '<b>Récupération</b> ' + esc(String(recup).toLowerCase()));
     if (be) {
-      if (be.sommeil != null) etat += _cdCoupRow(colv(be.sommeil), '●', '<b>Sommeil</b> ' + esc(lab('sommeil', be.sommeil) || '—') + trd('sommeil', false));
+      // Point 2 (31/10) : « dans sa normale » (5 semaines) remplace la tendance vs 3 saisies quand on a assez de recul.
+      var _nm = {}; try { _beNormale(data).forEach(function (r) { _nm[r.key] = r; }); } catch (e) {}
+      var _nmTx = function (k, inv) { var r = _nm[k]; if (!r || r.etat === 'nd') return trd(k, inv); return ' · <b style="color:' + (r.etat === 'ok' ? 'var(--good)' : 'var(--warn)') + '">' + (r.etat === 'ok' ? 'dans sa normale' : (r.etat === 'bas' ? 'sous sa normale' : 'au-dessus de sa normale')) + '</b> (' + _fmt1(r.base) + ')'; };
+      if (be.sommeil != null) etat += _cdCoupRow(colv(be.sommeil), '●', '<b>Sommeil</b> ' + esc(lab('sommeil', be.sommeil) || '—') + _nmTx('sommeil', false));
       if (be.energie != null) etat += _cdCoupRow(colv(be.energie), '●', '<b>Énergie</b> ' + esc(lab('energie', be.energie) || '—') + trd('energie', false));
-      if (be.fatigue != null) etat += _cdCoupRow(colv(be.fatigue), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + trd('fatigue', true));
+      if (be.fatigue != null) etat += _cdCoupRow(colv(6 - Number(be.fatigue)), '●', '<b>Fatigue musc.</b> ' + esc(lab('fatigue', be.fatigue) || '—') + _nmTx('fatigue', true));
     }
     if (sig.stress != null) { var stv = Number(sig.stress); etat += _cdCoupRow(stv >= 3.5 ? 'var(--warn)' : 'var(--good)', '●', '<b>Stress</b> ' + (stv >= 3.5 ? 'élevé' : (stv >= 2.5 ? 'modéré' : 'maîtrisé'))); }
     if (be && _zoneDouleur(be.zone_douloureuse)) etat += _cdCoupRow('var(--warn)', '●', '<b>Douleur</b> ' + esc(_zoneDouleur(be.zone_douloureuse).toLowerCase()));
     else if (be) etat += _cdCoupRow('var(--good)', '●', '<b>Douleur</b> aucune');
+    // Point 5 (31/10) : montre — sommeil réel 7 j et FC de repos vs sa normale (rien sans montre).
+    try {
+      var _mo = _montreNormale(data);
+      if (_mo && _mo.sommeil) etat += _cdCoupRow('var(--good)', '●', '<b>Sommeil (montre)</b> ' + _fmtHmin(_mo.sommeil.moy) + ' / nuit <span class="cdcp-sub">(7 j, ' + _mo.sommeil.n + ' nuit' + (_mo.sommeil.n > 1 ? 's' : '') + ')</span>' + (_mo.sommeil.base != null ? ' · normale ' + _fmtHmin(_mo.sommeil.base) : ''));
+      if (_mo && _mo.fc) { var _f = _mo.fc; etat += _cdCoupRow(_f.degrade ? 'var(--warn)' : 'var(--good)', '●', '<b>FC repos (montre)</b> ' + _fmt1(_f.recente) + ' bpm' + (_f.evaluable ? ' · ' + (_f.degrade ? '<b>au-dessus de sa normale</b>' : 'normale') + ' ' + _fmt1(_f.normale) : ' <span class="cdcp-sub">(' + ((_f.mesuresBase || 0) < 14 ? 'normale après 14 mesures' : 'normale ' + _fmt1(_f.normale) + ' · comparaison dès 2 mesures sur 3 j') + ')</span>')); }
+    } catch (e) {}
     if (pasAvg != null) { var pc = pasAvg >= 8000 ? 'var(--good)' : (pasAvg >= 5000 ? 'var(--text-subtle)' : 'var(--warn)'); var pl = pasAvg >= 8000 ? 'actif' : (pasAvg >= 5000 ? 'modéré' : 'faible, plutôt sédentaire'); etat += _cdCoupRow(pc, '●', '<b>Pas</b> ' + pasAvg.toLocaleString('fr-FR') + '/j · ' + pl + ' <span style="color:var(--text-subtle)">(montre, 7 j)</span>'); }
     // CARDIO — toujours affiché : si aucun historique, on le DIT (« manque de cardio »).
     var cardio = (data && data.cardio) || {}, ch = Array.isArray(cardio.history) ? cardio.history : [];
@@ -16522,6 +16538,89 @@ function _tjDepuisDerniere(data, L) {
   var dd = new Date(lastT), dtx = String(dd.getDate()).padStart(2, '0') + '/' + String(dd.getMonth() + 1).padStart(2, '0');
   return '<div style="margin:0 0 12px"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle);font-weight:700;margin-bottom:4px">Depuis ta dernière séance · ' + esc(lastS) + ' (' + dtx + ')</div>' + rows.join('') + '</div>';
 }
+// ═══ « Ta normale » (points 2 et 5, maquette validée 31/10) ═══
+// Bien-être : moyenne des 3 dernières saisies (≤ 7 j) vs ta normale = saisies des 5 semaines
+// précédentes (hors ces 3), ≥ 7 valeurs — même définition que la règle « charge + ressenti »
+// du backend. Écart retenu : ±1 point sur /5 (orange seulement au-delà). Sans assez de
+// saisies, on le DIT (« ta normale arrive après 7 saisies »), on n'invente pas de moyenne.
+function _dYmd(x) {
+  var t = String(x == null ? '' : x), m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]).getTime();
+  m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : null;
+}
+function _fmt1(v) { return String(Math.round(v * 10) / 10).replace('.', ','); }
+function _beNormale(data, nowT) {
+  nowT = nowT || Date.now();
+  var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0); t0 = t0.getTime();
+  var rows = ((data && data.bien_etre) || []).map(function (b) { return { b: b, t: _dYmd(b && b.date) }; })
+    .filter(function (x) { return x.t != null && x.t <= t0 && t0 - x.t <= 34 * 864e5; }).sort(function (a, b) { return b.t - a.t; });
+  var DIMS = [['sommeil', 'Sommeil', false], ['fatigue', 'Fatigue musculaire', true], ['stress', 'Stress', true], ['courbatures', 'Courbatures', true]];
+  return DIMS.map(function (d) {
+    var k = d[0], val = function (x) { var n = Number(x.b[k]); return (x.b[k] == null || x.b[k] === '' || isNaN(n)) ? null : n; };
+    var rec = rows.filter(function (x) { return t0 - x.t <= 6 * 864e5 && val(x) != null; }).slice(0, 3);
+    if (!rec.length) return null;
+    var recT = rec.map(function (x) { return x.t; });
+    var base = rows.filter(function (x) { return recT.indexOf(x.t) < 0 && val(x) != null; });
+    var moy = function (a) { return a.reduce(function (s, x) { return s + val(x); }, 0) / a.length; };
+    var r = { key: k, label: d[1], inv: d[2], n: rec.length, rec: moy(rec), nBase: base.length, base: base.length >= 7 ? moy(base) : null };
+    r.etat = r.base == null ? 'nd' : (d[2] ? (r.rec - r.base >= 1 ? 'haut' : 'ok') : (r.base - r.rec >= 1 ? 'bas' : 'ok'));
+    return r;
+  }).filter(Boolean);
+}
+// Texte d'une ligne « normale » (athlète : « ta », coach : « sa »).
+function _beNormaleTxt(r, poss) {
+  poss = poss || 'ta';
+  if (r.etat === 'nd') return '<span style="color:var(--tj-subtle,var(--text-subtle))">' + poss + ' normale arrive après 7 saisies (' + r.nBase + ' pour l\'instant)</span>';
+  var lib = r.etat === 'ok' ? 'dans ' + poss + ' normale' : (r.etat === 'bas' ? 'sous ' + poss + ' normale' : 'au-dessus de ' + poss + ' normale');
+  var col = r.etat === 'ok' ? '#00A854' : '#E07800';
+  return (r.n > 1 ? r.n + ' dernières saisies ' : 'dernière saisie ') + _fmt1(r.rec) + ' · <b style="color:' + col + '">' + lib + '</b> (' + _fmt1(r.base) + ')';
+}
+// Montre (point 5) : sommeil réel 7 j vs les 4 semaines d'avant ; FC de repos = objet du
+// backend (moyenne 3 j vs normale, seuil +5 bpm validé). Rien si aucune montre connectée.
+function _montreNormale(data, nowT) {
+  nowT = nowT || Date.now();
+  var t0 = new Date(nowT); t0.setHours(0, 0, 0, 0); t0 = t0.getTime();
+  var sh = ((data && data.sante_historique) || []).map(function (x) { return { t: _dYmd(x && x.date), s: Number(x && x.sommeil_min) }; }).filter(function (x) { return x.t != null && x.s > 0 && x.t <= t0; });
+  var r7 = sh.filter(function (x) { return t0 - x.t <= 6 * 864e5; }), rB = sh.filter(function (x) { return t0 - x.t > 6 * 864e5 && t0 - x.t <= 34 * 864e5; });
+  var moy = function (a) { return a.reduce(function (s, x) { return s + x.s; }, 0) / a.length; };
+  var out = {};
+  if (r7.length) out.sommeil = { moy: moy(r7), n: r7.length, base: rB.length >= 7 ? moy(rB) : null, nBase: rB.length };
+  var fc = data && data.moteur && data.moteur.charge_ressenti && data.moteur.charge_ressenti.fc_repos;
+  if (fc && fc.recente != null) out.fc = fc;
+  return (out.sommeil || out.fc) ? out : null;
+}
+// Bloc partagé athlète / coach : lignes « normale » + bloc Montre (si connectée).
+function _normaleBloc(data, poss) {
+  var rows = _beNormale(data), mo = _montreNormale(data);
+  if (!rows.length && !mo) return '';
+  var be0 = (data && data.bien_etre && data.bien_etre[0]) || {};
+  var C = { ok: '#00A854', bas: '#E07800', haut: '#E07800', nd: '#9AA3B5' };
+  var line = function (col, head, sub) {
+    return '<div style="display:grid;grid-template-columns:10px 1fr;gap:8px;align-items:start;padding:4px 0"><span style="width:8px;height:8px;border-radius:99px;background:' + col + ';margin-top:6px"></span>'
+      + '<div style="font-size:13px;line-height:1.4;color:var(--tj-text,var(--text))">' + head + (sub ? '<div style="font-size:11.5px;color:var(--tj-muted,var(--text-muted))">' + sub + '</div>' : '') + '</div></div>';
+  };
+  var h = rows.map(function (r) {
+    var v = Number(be0[r.key]), ans = (!isNaN(v) && WQ_ANSWERS[r.key] && WQ_ANSWERS[r.key][v]) ? String(WQ_ANSWERS[r.key][v]).toLowerCase() + ' (' + v + '/5)' : '';
+    return line(C[r.etat], '<b>' + r.label + '</b>' + (ans ? ' ' + ans : ''), _beNormaleTxt(r, poss));
+  }).join('');
+  if (mo) {
+    var mh = '';
+    if (mo.sommeil) {
+      var so = mo.sommeil, sub = so.base != null ? poss + ' normale ' + _fmtHmin(so.base) + ' (' + so.nBase + ' nuits)' : '';
+      mh += line('#00A854', '<b>Sommeil réel</b> ' + _fmtHmin(so.moy) + ' / nuit <span style="color:var(--tj-subtle,var(--text-subtle))">(7 j, ' + so.n + ' nuit' + (so.n > 1 ? 's' : '') + ')</span>', sub);
+    }
+    if (mo.fc) {
+      var f = mo.fc, fcol = f.degrade ? '#E07800' : (f.evaluable ? '#00A854' : '#9AA3B5');
+      var fsub = f.evaluable ? ('<b style="color:' + fcol + '">' + (f.degrade ? 'au-dessus de ' + poss + ' normale' : 'dans ' + poss + ' normale') + '</b> (' + _fmt1(f.normale) + ' bpm sur 4 sem.)')
+        : '<span style="color:var(--tj-subtle,var(--text-subtle))">' + ((f.mesuresBase || 0) < 14 ? poss + ' normale arrive après 14 mesures (' + (f.mesuresBase || 0) + ' pour l\'instant)'
+          : 'normale ' + _fmt1(f.normale) + ' bpm · comparaison dès 2 mesures sur 3 jours (' + (f.mesures || 0) + ' pour l\'instant)') + '</span>';
+      mh += line(fcol, '<b>FC au repos</b> ' + _fmt1(f.recente) + ' bpm' + (f.mesures > 1 ? ' <span style="color:var(--tj-subtle,var(--text-subtle))">(moy. ' + f.mesures + ' j)</span>' : ''), fsub);
+    }
+    h += '<div style="margin-top:6px;padding:7px 9px;background:var(--tj-surface2,var(--surface2));border-radius:10px"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tj-subtle,var(--text-subtle));font-weight:800;margin-bottom:2px">Montre</div>' + mh + '</div>';
+  }
+  return '<div style="margin:0 0 12px">' + h + '<div style="font-size:10.5px;color:var(--tj-subtle,var(--text-subtle));margin-top:4px;line-height:1.4">« ' + (poss === 'ta' ? 'Ta' : 'Sa') + ' normale » = moyenne des 5 semaines précédentes. Orange seulement à ±1 point (FC : +5 bpm).</div></div>';
+}
+function _fmtHmin(m) { m = Math.round(m); return Math.floor(m / 60) + ' h ' + ((m % 60) < 10 ? '0' : '') + (m % 60); }
 function renderChargeFatigueJour(data) {
   var el = document.getElementById('tj-chargefatigue'); if (!el) return;
   var m = (data && data.moteur) || {};
@@ -16654,6 +16753,8 @@ function renderChargeFatigueJour(data) {
   }
 
   var subTxt = hasCf ? 'Ton état du jour : récup · charge · fatigue' : 'Ton état du jour';
+  var normaleHtml = '';
+  try { normaleHtml = _normaleBloc(data, 'ta'); } catch (e) {}
   var depuisHtml = '';
   try { depuisHtml = _tjDepuisDerniere(data, _lectureExos(data)); } catch (e) {}
   var fraicheurWidget = (hasCf && !niv0) ? ('<div style="display:flex;gap:13px;align-items:center;background:var(--tj-surface2);border:1px solid var(--tj-border);border-radius:12px;padding:11px 13px;margin-top:4px">'
@@ -16669,6 +16770,7 @@ function renderChargeFatigueJour(data) {
     + '</div>'
     + '<div style="font-size:11.5px;color:var(--tj-muted);margin-bottom:11px">' + subTxt + '</div>'
     + verdictHtml
+    + normaleHtml
     + vigHtml
     + bulletsHtml
     + depuisHtml

@@ -91,3 +91,11 @@ Méthode : recalcul en Python, **sans réutiliser le code du moteur**, à partir
 | Records | ✅ (le moteur compte aussi les records au poids du corps, ex. Pompe 6 reps : choix voulu) |
 
 **Défaut trouvé et corrigé — fenêtres « N jours » = N+1 jours.** Le backend filtrait `date ≥ aujourd'hui − 7` : la fenêtre « 7 j » couvrait **8 jours** (2 fois le même jour de la semaine), et la comparaison « 7 j vs 7 j précédents » opposait 8 jours à 7. Cas réel au 30/10 : « 5 séances sur 7 j » (jeudi 23 et jeudi 30) au lieu de 4. Ce chiffre alimente aussi « volume élevé » (≥ 5 séances), l'adhérence et le tonnage 7 j. Corrigé partout (23 fenêtres : 7 / 14 / 28 / 35 / 56 j, fenêtres de période) → **aujourd'hui + les N−1 jours précédents**, fenêtres précédentes symétriques. L'ACWR et Banister utilisaient déjà 7 jours exacts (inchangés).
+
+## 8. Réalisé (31/10, maquette `mockups/novalyz-bienetre-normale.html` validée, seuil A)
+
+- **Point 2** — bien-être « par rapport à ta normale » : Aujourd'hui (bloc Lecture Novalyz) + fiche coach. Normale = 5 semaines précédentes, ≥ 7 saisies (sinon « ta normale arrive après 7 saisies »), orange à ±1 point. Test `normale-bienetre`.
+- **Point 3** — FC de repos (montre) ajoutée à la règle « charge + ressenti » : moyenne des 3 derniers jours (≥ 2 mesures) ≥ normale + 5 bpm (normale ≥ 14 mesures sur 4 semaines). Ne compte que si la charge est élevée en même temps. Tests dans `regle-charge-ressenti`.
+- **Point 4** — fiche coach : « Effort à charge égale » (stable / en hausse avec les RPE avant → après et la charge). Sur tes données : stable, 18 exercices comparés.
+- **Point 5** — sommeil réel de la montre (7 j vs 4 semaines d'avant) côté athlète et coach. Rien sans montre.
+- Corrigé au passage : point orange sur « Fatigue musc. aucune » (fiche coach, la fatigue basse était colorée comme une mauvaise note).

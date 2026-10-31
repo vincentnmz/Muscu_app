@@ -87,6 +87,24 @@ const types = (o) => o.alertes.map(a => a.type);
 { const o = evaluerEtatAthlete(Object.assign({}, base));
   eq(types(o).includes('charge'), 'champs non fournis → règle historique (alerte charge)', types(o)); }
 
+// --- FC de repos (montre), seuil A validé 31/10 : 3 derniers jours ≥ normale + 5 bpm ---
+{ const fc = (rec, base, nBase = 20, nRec = 3) => { const a = []; for (let d = 0; d < nRec; d++) a.push({ date: fmtYMD(minus(NOW, d)), fc_repos: rec });
+    for (let d = 3; d < 3 + nBase; d++) a.push({ date: fmtYMD(minus(NOW, d)), fc_repos: base }); return a; };
+  let r = ressentiConcordant([], [], NOW, fc(66, 60));
+  eq(r.degrade === true && r.raisons.includes('fc_repos') && r.fc.recente === 66 && r.fc.normale === 60, 'FC +6 bpm sur 3 j → signe concordant (fc_repos)', r.fc);
+  r = ressentiConcordant([], [], NOW, fc(64, 60));
+  eq(r.degrade === false && r.fc.evaluable === true, 'FC +4 bpm → rien', r.fc);
+  r = ressentiConcordant([], [], NOW, fc(70, 60, 10));
+  eq(r.degrade === false && r.fc.evaluable === false, 'normale sur < 14 mesures → FC non utilisée', r.fc);
+  r = ressentiConcordant([], [], NOW, fc(70, 60, 20, 1));
+  eq(r.degrade === false && r.fc.evaluable === false, '1 seule mesure récente → FC non utilisée', r.fc);
+  r = ressentiConcordant([], [], NOW, []);
+  eq(r.degrade === false && r.fc.evaluable === false && r.fc.recente === null, 'sans montre → rien, aucune valeur inventée', r.fc); }
+// --- RPE à charge égale : détails exposés au coach ---
+{ const perfs = []; ['Dev', 'Tir'].forEach(e => [[18, 80, 8], [15, 80, 8], [8, 80, 9], [3, 80, 9]].forEach(([d, c, rpe]) => perfs.push({ date: fmtYMD(minus(NOW, d)), exercice: e, charge: c, rpe })));
+  const r = ressentiConcordant([], perfs, NOW);
+  eq(r.rpeEvalues === 2 && r.rpeDetails.length === 2 && r.rpeDetails[0].rpeAvant === 8 && r.rpeDetails[0].rpeApres === 9 && r.rpeDetails[0].charge === 80, 'détails RPE 8 → 9 à 80 kg, 2 exos comparés', r.rpeDetails); }
+
 console.log('-'.repeat(70));
 console.log('règle charge + ressenti : ' + ok + ' OK / ' + ko + ' KO');
 if (ko) { console.log('Échecs : ' + fails.join(' | ')); process.exit(1); }
