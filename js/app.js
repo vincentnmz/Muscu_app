@@ -20121,15 +20121,28 @@ function _nvcGrille() {
   svg.innerHTML = '<defs>' + _NVC_CLIPS + _NVC_SYMS + '</defs>' + out;
   var gs = svg.querySelectorAll('g.c'); _NVC.cells.forEach(function (c, i) { c.el = gs[i]; });
 }
+// Couleurs du fond qui suivent le pointeur : variables CSS lues par #nv-aurora (parallaxe + lueur).
+function _nvcAurora(x, y) {
+  var a = document.getElementById('nv-aurora'), v = document.getElementById('view-login');
+  if (!a || !v || !v.classList.contains('active')) return;
+  try { if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
+  var W = innerWidth || 1, H = innerHeight || 1;
+  a.style.setProperty('--px', ((x / W) * 2 - 1).toFixed(3));
+  a.style.setProperty('--py', ((y / H) * 2 - 1).toFixed(3));
+  a.style.setProperty('--mx', Math.round(x) + 'px');
+  a.style.setProperty('--my', Math.round(y) + 'px');
+  a.classList.add('suit'); clearTimeout(_nvcAurora.t);
+  _nvcAurora.t = setTimeout(function () { a.classList.remove('suit'); }, 2500);
+}
 function _nvComb() {
   var login = document.getElementById('view-login');
   var reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
   if (!_NVC.inited) {
     _NVC.inited = true;
-    addEventListener('pointermove', function (e) { var s = document.getElementById('nv-comb'); if (!s) return; var r = s.getBoundingClientRect(); _NVC.mx = e.clientX - r.left; _NVC.my = e.clientY - r.top; _NVC.act = performance.now(); }, { passive: true });
+    addEventListener('pointermove', function (e) { var s = document.getElementById('nv-comb'); if (!s) return; var r = s.getBoundingClientRect(); _NVC.mx = e.clientX - r.left; _NVC.my = e.clientY - r.top; _NVC.act = performance.now(); _nvcAurora(e.clientX, e.clientY); }, { passive: true });
     // Doigt (31/10) : sur téléphone, pointermove est coupé dès que le geste devient un défilement ;
     // on suit donc aussi touchstart / touchmove pour que les sports apparaissent sous le doigt.
-    var _nvcTouch = function (e) { var s = document.getElementById('nv-comb'), t = e.touches && e.touches[0]; if (!s || !t) return; var r = s.getBoundingClientRect(); _NVC.mx = t.clientX - r.left; _NVC.my = t.clientY - r.top; _NVC.act = performance.now(); _NVC.touch = true; };
+    var _nvcTouch = function (e) { var s = document.getElementById('nv-comb'), t = e.touches && e.touches[0]; if (!s || !t) return; var r = s.getBoundingClientRect(); _NVC.mx = t.clientX - r.left; _NVC.my = t.clientY - r.top; _NVC.act = performance.now(); _NVC.touch = true; _nvcAurora(t.clientX, t.clientY); };
     addEventListener('touchstart', _nvcTouch, { passive: true });
     addEventListener('touchmove', _nvcTouch, { passive: true });
     addEventListener('resize', function () { _NVC.w = 0; });
