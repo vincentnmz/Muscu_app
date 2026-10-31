@@ -954,10 +954,10 @@ body:has(#view-login.active) #nv-bg { display:none !important; }
 @keyframes nva1 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(18vmax,14vmax); } }
 @keyframes nva2 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(-16vmax,12vmax); } }
 @keyframes nva3 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(12vmax,-18vmax); } }
-#view-login .nv-hero-logo, #view-login .nv-hero-logo .nvl-ic, #view-login .nv-hero-logo .nv-brand-logo { color:#ffffff; }
-#view-login .nv-hero-logo [fill="#1A5FFF"] { fill:#9cc0ff; }
-#view-login .nv-hero-logo [stroke="#1A5FFF"] { stroke:#9cc0ff; }
-#view-login .nv-hero-logo [fill="#D9D9D9"] { fill:rgba(255,255,255,.55); }
+/* Logo d'origine (noir + bleu #1A5FFF) posé dans le bloc blanc du formulaire, pour qu'il ressorte (31/10). */
+#view-login .nv-login-body > .nv-hero-logo { text-align:center; margin:4px 0 18px; }
+#view-login .nv-login-body > .nv-hero-logo .nvl-ic { width:64px; height:70px; margin:0 auto 8px; }
+#view-login .nv-login-body > .nv-hero-logo .nv-brand-logo { width:200px; max-width:80%; }
 @media (prefers-reduced-motion:reduce) { #nv-aurora i { animation:none; } }
 /* Dans l'app : le dégradé reste, avec un nid d'abeille discret à la place des grands hexagones. */
 #nv-bg .nv-hex, #app-side > .nv-hex { display:none; }
@@ -987,10 +987,7 @@ body:has(#view-login.active) #nv-bg { display:none !important; }
   radial-gradient(60vmax 60vmax at 35% 105%, rgba(124,58,237,.55), transparent 70%);
   background-size:56px 97px, 100% 100%, 100% 100%, 100% 100%; }
 #nv-splash > .nv-hex { display:none; }
-#nv-splash .nvl-ic, #nv-splash .nv-brand-logo { color:#ffffff; }
-#nv-splash [fill="#1A5FFF"] { fill:#9cc0ff; }
-#nv-splash [stroke="#1A5FFF"] { stroke:#9cc0ff; }
-#nv-splash [fill="#D9D9D9"] { fill:rgba(255,255,255,.55); }
+#nv-splash .nv-splash-in { background:rgba(255,255,255,.94); border-radius:22px; padding:26px 30px 20px; box-shadow:0 18px 50px rgba(5,20,80,.35); }
 
 /* ---- Loader : petit logo animé devant « Chargement… » ---- */
 .loader .nvl-ic { display:block; width:34px; height:37px; margin:0 auto 8px; color:var(--text); }
