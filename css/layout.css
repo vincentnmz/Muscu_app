@@ -937,6 +937,21 @@ body:has(#view-login.active) #nv-bg { display:block; }
   #view-login .nv-login-body { align-self:center; width:calc(100% - 64px); max-width:400px; margin:40px auto; }
 }
 
+/* ---- Login : nid d'abeille où des sports apparaissent puis s'effacent (validé 31/10) ----
+   Couleurs d'origine : dégradé blanc → bleu inchangé. Traits bleus sur la partie claire,
+   blancs sur la partie bleue ; apparitions éparses, lentes, semi-transparentes. */
+#nv-comb { position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+.nv-login-hero > .nv-hero-logo, .nv-login-body { position:relative; z-index:1; }
+#nv-comb .c .h { fill:none; stroke-width:1.1; transition:stroke-opacity 1.8s ease, fill-opacity 1.8s ease; stroke-opacity:.1; fill-opacity:0; }
+#nv-comb .c use { opacity:0; stroke-dasharray:1; stroke-dashoffset:1; transition:opacity 1.8s ease, stroke-dashoffset 2.8s ease; }
+#nv-comb .c.on .h { stroke-opacity:.3; fill-opacity:.04; }
+#nv-comb .c.on use { opacity:.5; stroke-dashoffset:0; }
+#nv-comb .c.b { color:#1A5FFF; } #nv-comb .c.b.on use { opacity:.38; }
+#nv-comb .c.w { color:#ffffff; }
+#nv-comb .c .h { stroke:currentColor; fill:currentColor; }
+@media (min-width:992px) { #nv-comb { position:absolute; } }
+@media (prefers-reduced-motion:reduce) { #nv-comb .c .h, #nv-comb .c use { transition:none; } }
+
 /* ---- Écran de démarrage ---- */
 #nv-splash { position:fixed; inset:0; z-index:10000; background:var(--nv-grad); display:flex; align-items:center; justify-content:center;
   transition:opacity .35s ease, visibility .35s; }

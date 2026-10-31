@@ -2192,6 +2192,7 @@ function seDeconnecterCoach() {
 }
 
 async function ouvrirEspaceCoach() {
+  try { if (coach) localStorage.setItem('nv_last_sport', String(coach.sport || 'muscu')); } catch (e) {}
   arreterChronoEtReinitSeance();
   coachBandeauTab = 'aujourdhui';   // le bandeau démarre toujours sur « Aujourd'hui »
   document.body.classList.add('coach-active');
@@ -10357,6 +10358,7 @@ function _setSportIco(useElId, sport) {
 
 // ==================== APP (athlète) ==================== [MIXTE]
 async function ouvrirApp() {
+  try { if (athlete) localStorage.setItem('nv_last_sport', String(athlete.sport || 'muscu')); } catch (e) {}
   document.getElementById('view-login').classList.remove('active');
   _promptNotifNatif();          // app native : proposer les notifs au 1er lancement (comme les autres apps)
   _installNativeResumeListener(); // app native : rafraîchir au retour au premier plan
@@ -20085,6 +20087,65 @@ function _nvlAnimer(root) {
     });
   } catch (e) {}
 }
+// ── Login : nid d'abeille animé (maquette mockups/novalyz-login-nid-abeille.html, validée 31/10) ──
+// Chaque alvéole contient un sport (dessins maison en traits). Quelques-unes s'allument au hasard,
+// ou près du pointeur quand il bouge, se dessinent lentement puis s'effacent. Le sport du dernier
+// compte connecté sur cet appareil (nv_last_sport) occupe une alvéole sur deux. Tourne seulement
+// quand l'écran de connexion est affiché ; rien d'animé si « réduire les animations ».
+var _NVC_SYMS = '<symbol id="nvs-muscu" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="46.5" width="88" height="7" rx="3.5" pathLength="1"></rect><rect x="14" y="28" width="9" height="44" rx="3" pathLength="1"></rect><rect x="23" y="33" width="7" height="34" rx="3" pathLength="1"></rect><rect x="30" y="44" width="4" height="12" rx="1.5" pathLength="1"></rect><rect x="77" y="28" width="9" height="44" rx="3" pathLength="1"></rect><rect x="70" y="33" width="7" height="34" rx="3" pathLength="1"></rect><rect x="66" y="44" width="4" height="12" rx="1.5" pathLength="1"></rect></g></symbol><symbol id="nvs-foot" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="44" pathLength="1"></circle><g clip-path="url(#nvcB)"><path d="M50.0 35.0L50.0 16.5" pathLength="1"></path><polygon points="50.0,17.0 38.6,8.7 42.9,-4.7 57.1,-4.7 61.4,8.7" pathLength="1"></polygon><path d="M59.0 14.1Q68.2 24.9 81.4 30.4" pathLength="1"></path><path d="M64.3 45.4L81.9 39.6" pathLength="1"></path><polygon points="81.4,39.8 85.7,26.4 99.9,26.4 104.2,39.8 92.8,48.1" pathLength="1"></polygon><path d="M86.9 47.4Q79.5 59.6 78.3 73.8" pathLength="1"></path><path d="M58.8 62.1L69.7 77.1" pathLength="1"></path><polygon points="69.4,76.7 83.5,76.7 87.9,90.1 76.5,98.4 65.0,90.1" pathLength="1"></polygon><path d="M63.9 84.3Q50.0 81.0 36.1 84.3" pathLength="1"></path><path d="M41.2 62.1L30.3 77.1" pathLength="1"></path><polygon points="30.6,76.7 35.0,90.1 23.5,98.4 12.1,90.1 16.5,76.7" pathLength="1"></polygon><path d="M21.7 73.8Q20.5 59.6 13.1 47.4" pathLength="1"></path><path d="M35.7 45.4L18.1 39.6" pathLength="1"></path><polygon points="18.6,39.8 7.2,48.1 -4.2,39.8 0.1,26.4 14.3,26.4" pathLength="1"></polygon><path d="M18.6 30.4Q31.8 24.9 41.0 14.1" pathLength="1"></path></g><polygon points="50.0,35.0 64.3,45.4 58.8,62.1 41.2,62.1 35.7,45.4" pathLength="1"></polygon><circle cx="50" cy="50" r="44" pathLength="1"></circle></g></symbol><symbol id="nvs-combat" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 30 C30 14 46 10 60 12 C76 14 82 26 80 42 L78 62 C77 70 70 74 62 74 L40 74 C33 74 28 69 28 62 Z" pathLength="1"></path><path d="M28 50 C18 50 14 40 22 34 C26 31 30 32 32 36" pathLength="1"></path><rect x="32" y="72" width="34" height="20" rx="5" pathLength="1"></rect><rect x="32" y="80" width="34" height="4" pathLength="1"></rect></g></symbol><symbol id="nvs-basket" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="44" pathLength="1"></circle><g stroke-linecap="round" clip-path="url(#nvcB)"><path d="M50 6 C46 30 46 70 50 94" pathLength="1"></path><path d="M6 50 C30 46 70 46 94 50" pathLength="1"></path><path d="M18 17 C33 33 33 67 18 83" pathLength="1"></path><path d="M82 17 C67 33 67 67 82 83" pathLength="1"></path></g><circle cx="50" cy="50" r="44" pathLength="1"></circle></g></symbol><symbol id="nvs-tennis" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="40" pathLength="1"></circle><g stroke-linecap="round" clip-path="url(#nvcT)"><path d="M14 20 C34 36 34 64 14 80" pathLength="1"></path><path d="M86 20 C66 36 66 64 86 80" pathLength="1"></path></g><circle cx="50" cy="50" r="40" pathLength="1"></circle></g></symbol><symbol id="nvs-rugby" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(-32 50 50)"><ellipse cx="50" cy="50" rx="46" ry="27" pathLength="1"></ellipse><path d="M8 50 Q50 38 92 50" pathLength="1"></path><path d="M28 44 Q50 39 72 44" pathLength="1"></path><rect x="30.8" y="40" width="2.6" height="8" rx="1.2" transform="rotate(0)" pathLength="1"></rect><rect x="36.2" y="40" width="2.6" height="8" rx="1.2" transform="rotate(0)" pathLength="1"></rect><rect x="41.6" y="40" width="2.6" height="8" rx="1.2" transform="rotate(0)" pathLength="1"></rect><rect x="47.0" y="40" width="2.6" height="8" rx="1.2" transform="rotate(0)" pathLength="1"></rect><rect x="52.4" y="40" width="2.6" height="8" rx="1.2" transform="rotate(0)" pathLength="1"></rect><rect x="57.8" y="40" width="2.6" height="8" rx="1.2" transform="rotate(0)" pathLength="1"></rect><rect x="63.2" y="40" width="2.6" height="8" rx="1.2" transform="rotate(0)" pathLength="1"></rect><ellipse cx="50" cy="50" rx="46" ry="27" pathLength="1"></ellipse></g></g></symbol><symbol id="nvs-natation" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 50 C2 40 12 36 12 50" pathLength="1"></path><path d="M94 50 C98 40 88 36 88 50" pathLength="1"></path><ellipse cx="30" cy="52" rx="19" ry="14" pathLength="1"></ellipse><ellipse cx="30" cy="52" rx="15" ry="10" pathLength="1"></ellipse><ellipse cx="70" cy="52" rx="19" ry="14" pathLength="1"></ellipse><ellipse cx="70" cy="52" rx="15" ry="10" pathLength="1"></ellipse><path d="M47 50 Q50 46 53 50" pathLength="1"></path></g></symbol><symbol id="nvs-hand" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="44" pathLength="1"></circle><g clip-path="url(#nvcB)"><path d="M50.0 31.0 Q63.0 42.5 66.5 59.5 Q50.0 65.0 33.5 59.5 Q37.0 42.5 50.0 31.0Z" pathLength="1"></path><path d="M50.0 31.0 Q56.2 20.7 69.4 8.3" pathLength="1"></path><path d="M76.4 12.3 Q65.9 41.5 96.0 51.6" pathLength="1"></path><path d="M66.5 59.5 Q72.3 70.1 76.4 87.7" pathLength="1"></path><path d="M69.4 91.7 Q49.4 68.0 25.6 89.0" pathLength="1"></path><path d="M33.5 59.5 Q21.5 59.3 4.2 54.0" pathLength="1"></path><path d="M4.2 46.0 Q34.7 40.5 28.4 9.4" pathLength="1"></path></g><circle cx="50" cy="50" r="44" pathLength="1"></circle></g></symbol><symbol id="nvs-athletisme" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="44" y="6" width="12" height="9" rx="2" pathLength="1"></rect><rect x="70" y="16" width="8" height="8" rx="2" transform="rotate(40 74 20)" pathLength="1"></rect><circle cx="50" cy="56" r="38" pathLength="1"></circle><circle cx="50" cy="56" r="31" pathLength="1"></circle><g><path d="M50.0 29.0L50.0 35.0" pathLength="1"></path><path d="M63.5 32.6L62.0 35.2" pathLength="1"></path><path d="M73.4 42.5L70.8 44.0" pathLength="1"></path><path d="M77.0 56.0L71.0 56.0" pathLength="1"></path><path d="M73.4 69.5L70.8 68.0" pathLength="1"></path><path d="M63.5 79.4L62.0 76.8" pathLength="1"></path><path d="M50.0 83.0L50.0 77.0" pathLength="1"></path><path d="M36.5 79.4L38.0 76.8" pathLength="1"></path><path d="M26.6 69.5L29.2 68.0" pathLength="1"></path><path d="M23.0 56.0L29.0 56.0" pathLength="1"></path><path d="M26.6 42.5L29.2 44.0" pathLength="1"></path><path d="M36.5 32.6L38.0 35.2" pathLength="1"></path></g><path d="M50 56 L50 33" stroke-linecap="round" pathLength="1"></path><path d="M50 56 L64 62" stroke-linecap="round" pathLength="1"></path><circle cx="50" cy="56" r="3" pathLength="1"></circle></g></symbol><symbol id="nvs-volley" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="44" pathLength="1"></circle><g clip-path="url(#nvcB)"><g transform="rotate(0 50 50)"><path d="M50 50 C50 32 42 18 26 10" pathLength="1"></path><path d="M58 47 C59 30 52 16 40 7" pathLength="1"></path></g><g transform="rotate(120 50 50)"><path d="M50 50 C50 32 42 18 26 10" pathLength="1"></path><path d="M58 47 C59 30 52 16 40 7" pathLength="1"></path></g><g transform="rotate(240 50 50)"><path d="M50 50 C50 32 42 18 26 10" pathLength="1"></path><path d="M58 47 C59 30 52 16 40 7" pathLength="1"></path></g></g><circle cx="50" cy="50" r="44" pathLength="1"></circle></g></symbol><symbol id="nvs-hockey" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 44 L12 60 A38 12 0 0 0 88 60 L88 44" pathLength="1"></path><ellipse cx="50" cy="44" rx="38" ry="12" pathLength="1"></ellipse></g></symbol><symbol id="nvs-kettlebell" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M34 38 C30 14 70 14 66 38" stroke-linecap="round" pathLength="1"></path><path d="M50 34 C74 34 86 52 82 70 C79 84 66 90 50 90 C34 90 21 84 18 70 C14 52 26 34 50 34Z" pathLength="1"></path><rect x="36" y="80" width="28" height="6" rx="3" pathLength="1"></rect><text x="50" y="68" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="13">16</text></g></symbol>';
+var _NVC_CLIPS = '<clipPath id="nvcB"><circle cx="50" cy="50" r="44"/></clipPath><clipPath id="nvcT"><circle cx="50" cy="50" r="40"/></clipPath>';
+var _NVC = { cells: [], inited: false, mx: -999, my: -999, act: 0, tick: 0, amb: 0, raf: 0, w: 0, h: 0 };
+function _nvcSuite() {
+  var all = ['muscu', 'foot', 'combat', 'basket', 'tennis', 'rugby', 'natation', 'hand', 'athletisme', 'volley', 'hockey', 'kettlebell'];
+  var sp = ''; try { sp = localStorage.getItem('nv_last_sport') || ''; } catch (e) {}
+  if (all.indexOf(sp) < 0) return all;
+  var r = []; all.filter(function (k) { return k !== sp; }).forEach(function (k) { r.push(sp, k); }); return r;
+}
+function _nvcGrille() {
+  var svg = document.getElementById('nv-comb'); if (!svg) return;
+  var r0 = svg.getBoundingClientRect(), W = Math.round(r0.width), H = Math.round(r0.height); if (!W || !H) return;
+  _NVC.w = W; _NVC.h = H;
+  var R = W < 600 ? 34 : 44, w = Math.sqrt(3) * R, hh = 1.5 * R, keys = _nvcSuite(), out = '', n = 0;
+  _NVC.cells = [];
+  for (var row = -1; row * hh < H + R; row++) {
+    for (var col = -1; col * w < W + w; col++) {
+      var cx = col * w + (row % 2 ? w / 2 : 0), cy = row * hh, pts = [];
+      for (var i = 0; i < 6; i++) { var a = (60 * i - 90) * Math.PI / 180; pts.push((cx + R * Math.cos(a)).toFixed(1) + ',' + (cy + R * Math.sin(a)).toFixed(1)); }
+      var k = keys[(n * 7 + row * 3 + 1200) % keys.length], sz = R * 1.08;
+      // Partie claire du dégradé (haut) → traits bleus ; partie bleue (bas) → traits blancs.
+      out += '<g class="c ' + (cy / H < .6 ? 'b' : 'w') + '"><polygon class="h" points="' + pts.join(' ') + '"/><use href="#nvs-' + k + '" x="' + (cx - sz / 2).toFixed(1) + '" y="' + (cy - sz / 2).toFixed(1) + '" width="' + sz.toFixed(1) + '" height="' + sz.toFixed(1) + '"/></g>';
+      _NVC.cells.push({ x: cx, y: cy, on: false, until: 0 }); n++;
+    }
+  }
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.innerHTML = '<defs>' + _NVC_CLIPS + _NVC_SYMS + '</defs>' + out;
+  var gs = svg.querySelectorAll('g.c'); _NVC.cells.forEach(function (c, i) { c.el = gs[i]; });
+}
+function _nvComb() {
+  var login = document.getElementById('view-login');
+  var reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  if (!_NVC.inited) {
+    _NVC.inited = true;
+    addEventListener('pointermove', function (e) { var s = document.getElementById('nv-comb'); if (!s) return; var r = s.getBoundingClientRect(); _NVC.mx = e.clientX - r.left; _NVC.my = e.clientY - r.top; _NVC.act = performance.now(); }, { passive: true });
+    addEventListener('resize', function () { _NVC.w = 0; });
+  }
+  (function frame(t) {
+    if (!login || !login.classList.contains('active') || document.hidden) { _NVC.raf = setTimeout(function () { frame(performance.now()); }, 800); return; }
+    var s = document.getElementById('nv-comb'), rr = s && s.getBoundingClientRect();
+    if (s && (!_NVC.cells.length || Math.round(rr.width) !== _NVC.w || Math.round(rr.height) !== _NVC.h)) _nvcGrille();
+    if (t - _NVC.tick > 140 && _NVC.cells.length) {
+      _NVC.tick = t;
+      var R1 = _NVC.w < 600 ? 120 : 170, bouge = (t - _NVC.act) < 400;
+      _NVC.cells.forEach(function (c) {
+        if (!c.on && bouge && Math.hypot(c.x - _NVC.mx, c.y - _NVC.my) < R1 && Math.random() < .045) { c.on = true; c.until = t + 2600 + Math.random() * 1600; c.el.classList.add('on'); }
+        if (c.on && t > c.until) { c.on = false; c.el.classList.remove('on'); }
+      });
+      if (!reduce && t > _NVC.amb) { var c2 = _NVC.cells[Math.floor(Math.random() * _NVC.cells.length)]; if (c2 && !c2.on) { c2.on = true; c2.until = t + 3500 + Math.random() * 2500; c2.el.classList.add('on'); } _NVC.amb = t + 700 + Math.random() * 800; }
+    }
+    _NVC.raf = requestAnimationFrame(frame);
+  })(performance.now());
+}
+try { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _nvComb); else _nvComb(); } catch (e) {}
 // Écran de démarrage : affiché ~1,4 s minimum (le temps de voir le logo se
 // construire), retiré dès que l'app est prête, et au plus tard par sécurité.
 var _nvSplashT0 = Date.now();
