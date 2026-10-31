@@ -155,9 +155,45 @@ try {
    * Tant qu'un module remplit ces clés, les 13 REGLES fonctionnent sans
    * modification. C'est toute la mécanique de l'architecture multisport.
    * ------------------------------------------------------------------------- */
+  // Bien-être RÉCENT (audit 31/10, F1) : avant, le moteur ne lisait que le DERNIER jour.
+  // Désormais : moyenne des saisies des 3 derniers jours (max 3) pour sommeil / énergie /
+  // fatigue / stress / courbatures — un seul mauvais matin ne fait plus une analyse — et
+  // douleur + zone = DERNIÈRE saisie (comme le verdict du backend). Sans dates exploitables
+  // (anciens formats, tests) → dernière saisie seule, comportement d'origine.
+  function _dateBe(x) {
+    var t = String(x == null ? '' : x), m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3]).getTime();
+    m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : null;
+  }
+  function _beRecent(arr) {
+    var rows = (arr || []).filter(function (b) { return b && typeof b === 'object'; });
+    if (!rows.length) return {};
+    var dated = rows.map(function (b) { return { b: b, t: _dateBe(b.date) }; }).filter(function (x) { return x.t != null; });
+    if (dated.length < 2) return rows[0];
+    dated.sort(function (a, b) { return b.t - a.t; });
+    var t0 = dated[0].t, win = dated.filter(function (x) { return t0 - x.t <= 2 * 864e5; }).slice(0, 3);
+    var out = {}; for (var k in dated[0].b) { if (Object.prototype.hasOwnProperty.call(dated[0].b, k)) out[k] = dated[0].b[k]; }
+    ['sommeil', 'energie', 'fatigue', 'stress', 'courbatures'].forEach(function (k) {
+      var v = win.map(function (x) { return num(x.b[k]); }).filter(function (n) { return n != null; });
+      out[k] = v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length * 10) / 10 : null;
+    });
+    out._jours = win.length;
+    return out;
+  }
+  // Classement partagé des exercices (records + progresse vs recule), si l'app l'expose.
+  // Absent (moteur testé seul) → null → les règles de progression restent muettes.
+  function _progExos(data) {
+    try {
+      var h = data && data.historique;
+      if (!h || !h.progression_par_exo || typeof global._lectureExos !== 'function') return null;
+      var L = global._lectureExos(data);
+      return { up: L.records.length + L.progresse.length, down: L.recule.length };
+    } catch (e) { return null; }
+  }
   function normaliser(data) {
     data = data || {};
-    var be     = Array.isArray(data.bien_etre) ? (data.bien_etre[0] || {}) : (data.bienEtre || {});
+    var be     = Array.isArray(data.bien_etre) ? _beRecent(data.bien_etre) : (data.bienEtre || {});
     var dash   = data.dashboard  || {};
     var recent = data.recent     || {};
     var comp   = data.comparison || {};
@@ -174,6 +210,7 @@ try {
     r.fatigue  = num(premier(function(){return be.fatigue;},  function(){return data.fatigue;}));
     r.douleur  = num(premier(function(){return be.douleur;},  function(){return data.douleur;}));
     r.ressenti = num(premier(function(){return be.ressenti;}, function(){return data.ressenti;}));
+    r.stress   = num(premier(function(){return be.stress;},   function(){return data.stress;}));
     r.zone     = premier(function(){return be.zone;}, function(){return data.zoneDouleur;});
 
     // --- Charge / récupération ---
@@ -197,10 +234,10 @@ try {
       function(){return dash.tonnage && dash.tonnage.evol_pct;},
       function(){return comp.j7_vs_j7prec && comp.j7_vs_j7prec.tonnage && comp.j7_vs_j7prec.tonnage.evol_pct;}
     ));
-    r.charge28EvolPct = num(premier(
-      function(){return comp.j28_vs_j28prec && comp.j28_vs_j28prec.charge && comp.j28_vs_j28prec.charge.evol_pct;},
-      function(){return data.forceEvolPct;}
-    ));
+    // F2 (audit 31/10) : `comparison.j28_vs_j28prec.charge` est en réalité le TONNAGE (volume), pas la
+    // force → on ne le lit plus comme « force ». Force = valeur fournie explicitement, sinon le
+    // classement des exercices (recule vs progresse) via forceBaisse/forceHausse ci-dessous.
+    r.charge28EvolPct = num(premier(function(){return data.forceEvolPct;}));
     r.volumeSemaine = premier(
       function(){return hist.volume_semaine;},
       function(){return data.volumeParMuscle;}
@@ -211,8 +248,9 @@ try {
     );
 
     // --- Progression ---
-    r.progUp   = num(premier(function(){return prog.en_progression;}, function(){return data.progressionUp;}));
-    r.progDown = num(premier(function(){return prog.en_baisse;},      function(){return data.progressionDown;}));
+    var _px = (prog.en_progression == null && data.progressionUp == null) ? _progExos(data) : null;
+    r.progUp   = num(premier(function(){return prog.en_progression;}, function(){return data.progressionUp;}, function(){return _px && _px.up;}));
+    r.progDown = num(premier(function(){return prog.en_baisse;},      function(){return data.progressionDown;}, function(){return _px && _px.down;}));
 
     // --- Régularité ---
     var reg = dash.regularite || data.regularite || {};
@@ -241,6 +279,7 @@ try {
     s.douleurElevee  = sig(r.douleur,  function(v){return v >= SEUILS.douleurElevee;});
     s.douleurAbsente = sig(r.douleur,  function(v){return v <= 1;});
     s.ressentiDur    = sig(r.ressenti, function(v){return v <= SEUILS.ressentiDur;});
+    s.stressEleve    = sig(r.stress,   function(v){return v >= 4;});   // Hooper : 4 = Élevé
 
     // ACWR — désactivé pour l'instant (peu fiable en muscu ; à réactiver pour un module Hyrox).
     // On neutralise les signaux pour qu'aucune règle ACWR ne se déclenche.
@@ -316,14 +355,17 @@ try {
       id: 'fatigue_generale', categorie: 'récupération',
       evaluer: function (f) {
         var s = f.signaux, v = f.valeurs || {};
-        if (!tous(s.sommeilFaible, s.energieFaible, s.fatigueElevee)) return null;
+        // F1 (audit 31/10) : « énergie » n'est plus demandée (questionnaire Hooper) → le 3ᵉ signal
+        // est l'énergie basse (anciennes saisies) OU le stress élevé (Hooper).
+        if (!tous(s.sommeilFaible, s.fatigueElevee) || !(s.energieFaible === true || s.stressEleve === true)) return null;
         var ev = [];
         if (v.sommeil != null) ev.push('sommeil ' + v.sommeil + '/5');
-        if (v.energie != null) ev.push('énergie ' + v.energie + '/5');
+        if (s.energieFaible === true) ev.push('énergie ' + v.energie + '/5');
+        if (s.stressEleve === true) ev.push('stress ' + v.stress + '/5');
         if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         return analyse({ priorite: 'important', niveau: 'eleve', categorie: this.categorie,
           titre: 'Fatigue générale probable',
-          description: 'Sommeil faible, énergie basse et fatigue musculaire élevée simultanément.',
+          description: 'Sommeil faible, fatigue musculaire élevée et ' + (s.energieFaible === true ? 'énergie basse' : 'stress élevé') + ' en même temps.',
           evidence: ev.join(' · '),
           recommandation: 'Allège la séance du jour (volume/intensité) et priorise le sommeil ; reprends les charges lourdes une fois récupéré.' });
       }
@@ -353,6 +395,7 @@ try {
         var v = f.valeurs || {}, ev = [];
         if (v.seances7j != null) ev.push(v.seances7j + ' séance' + (v.seances7j > 1 ? 's' : '') + '/7 j');
         if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
+        if (v.progUp != null && v.progDown != null) ev.push('exercices : ' + v.progUp + ' en progrès, ' + v.progDown + ' en recul');
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Sous-entraînement probable',
           description: 'La progression baisse alors que le volume est faible : le stimulus est probablement insuffisant.',
@@ -368,6 +411,7 @@ try {
         var ev = [];
         if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
         if (v.tonnageEvolPct != null) ev.push('volume ' + (v.tonnageEvolPct > 0 ? '+' : '') + v.tonnageEvolPct + '%');
+        if (v.progUp != null && v.progDown != null) ev.push('exercices : ' + v.progUp + ' en progrès, ' + v.progDown + ' en recul');
         return analyse({ priorite: 'critique', niveau: 'eleve', categorie: this.categorie,
           titre: 'Surmenage probable',
           description: 'Volume élevé + fatigue élevée + progression qui baisse : signes d\'accumulation.',
@@ -383,9 +427,10 @@ try {
         var v = f.valeurs || {}, ev = [];
         if (v.poidsEvol != null) ev.push('poids ' + (v.poidsEvol > 0 ? '+' : '') + v.poidsEvol + ' kg');
         if (v.charge28EvolPct != null) ev.push('force ' + (v.charge28EvolPct > 0 ? '+' : '') + v.charge28EvolPct + '%');
+        else if (v.progDown != null) ev.push('exercices : ' + v.progDown + ' en recul, ' + v.progUp + ' en progrès');
         return analyse({ priorite: 'important', niveau: 'moyen', categorie: this.categorie,
           titre: 'Déficit énergétique probable',
-          description: 'Le poids diminue et la force baisse en parallèle.',
+          description: v.charge28EvolPct != null ? 'Le poids diminue et la force baisse en parallèle.' : 'Le poids diminue et plus d\'exercices reculent qu\'ils ne progressent.',
           evidence: ev.join(' · '),
           recommandation: 'Vérifie tes apports caloriques et protéiques (risque de déficit).' });
       }
@@ -430,6 +475,7 @@ try {
         var v = f.valeurs || {}, ev = [];
         if (v.sommeil != null) ev.push('sommeil ' + v.sommeil + '/5');
         if (v.fatigue != null) ev.push('fatigue ' + v.fatigue + '/5');
+        if (v.progUp != null && v.progDown != null) ev.push('exercices : ' + v.progUp + ' en progrès, ' + v.progDown + ' en recul');
         return analyse({ priorite: 'succes', niveau: 'moyen', categorie: this.categorie,
           titre: 'Bonne adaptation à l\'entraînement',
           description: 'Progression en hausse, bon sommeil et fatigue faible : tu encaisses bien la charge actuelle.',
@@ -443,7 +489,7 @@ try {
         var s = f.signaux;
         if (!tous(s.regulariteExcellente, s.progressionExcellente)) return null;
         var v = f.valeurs || {}, ev = [];
-        if (v.seances7j != null && v.seancesPrevues) ev.push('séances ' + v.seances7j + '/' + v.seancesPrevues);
+        if (v.seances7j != null && v.seancesPrevues) ev.push(v.seances7j + ' séance' + (v.seances7j > 1 ? 's' : '') + ' sur 7 j (objectif ' + v.seancesPrevues + '/sem.)');
         return analyse({ priorite: 'succes', niveau: 'eleve', categorie: this.categorie,
           titre: 'Très bonne adhérence au programme',
           description: 'Régularité et progression excellentes.',
@@ -508,7 +554,7 @@ try {
         var s = f.signaux;
         if (s.regulariteFaible !== true) return null;
         var v = f.valeurs || {}, ev = [];
-        if (v.seances7j != null && v.seancesPrevues) ev.push('séances ' + v.seances7j + '/' + v.seancesPrevues);
+        if (v.seances7j != null && v.seancesPrevues) ev.push(v.seances7j + ' séance' + (v.seances7j > 1 ? 's' : '') + ' sur 7 j (objectif ' + v.seancesPrevues + '/sem.)');
         return analyse({ priorite: 'info', niveau: 'moyen', categorie: this.categorie,
           titre: 'Régularité insuffisante',
           description: 'Le nombre de séances est en dessous de l\'objectif.',
