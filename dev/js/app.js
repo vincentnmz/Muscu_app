@@ -20112,8 +20112,8 @@ function _nvcGrille() {
       var cx = col * w + (row % 2 ? w / 2 : 0), cy = row * hh, pts = [];
       for (var i = 0; i < 6; i++) { var a = (60 * i - 90) * Math.PI / 180; pts.push((cx + R * Math.cos(a)).toFixed(1) + ',' + (cy + R * Math.sin(a)).toFixed(1)); }
       var k = keys[(n * 7 + row * 3 + 1200) % keys.length], sz = R * 1.08;
-      // Partie claire du dégradé (haut) → traits bleus ; partie bleue (bas) → traits blancs.
-      out += '<g class="c ' + (cy / H < .6 ? 'b' : 'w') + '"><polygon class="h" points="' + pts.join(' ') + '"/><use href="#nvs-' + k + '" x="' + (cx - sz / 2).toFixed(1) + '" y="' + (cy - sz / 2).toFixed(1) + '" width="' + sz.toFixed(1) + '" height="' + sz.toFixed(1) + '"/></g>';
+      // Fond bleu animé (31/10) : traits blancs partout.
+      out += '<g class="c w"><polygon class="h" points="' + pts.join(' ') + '"/><use href="#nvs-' + k + '" x="' + (cx - sz / 2).toFixed(1) + '" y="' + (cy - sz / 2).toFixed(1) + '" width="' + sz.toFixed(1) + '" height="' + sz.toFixed(1) + '"/></g>';
       _NVC.cells.push({ x: cx, y: cy, on: false, until: 0 }); n++;
     }
   }
