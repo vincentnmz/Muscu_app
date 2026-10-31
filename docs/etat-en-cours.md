@@ -116,6 +116,10 @@ Novalyz aide à **① comment s'entraîner · ② si c'est bien fait · ③ comm
 - **Aperçu coach v3** (`renderCoachCoupDoeil`, charge·reps·RPE réels, état+récup, Lecture Novalyz pour le coach). Nutrition (import MFP), morpho/mensurations coach, récompenses v2, etc.
 
 ## À faire (priorité)
+- **FAIT 31/10 (dev, APK Dev `dcaedda`, index.ts v205+ redéployé)** :
+  - Connexion : fond bleu animé + nid d'abeille (sports qui apparaissent, aussi au doigt), couleurs qui suivent le pointeur, logo d'origine dans le bloc blanc ; écran de chargement bleu + logo sur carte blanche ; dans l'app : dégradé + nid d'abeille (fond mobile, colonne gauche ≥ 992 px).
+  - Audit analyse entraînement + bien-être (`docs/audit-analyse-entrainement-bienetre-2026-10-31.md`) : durée de séance enfin envoyée (sRPE), « (nan) » douleur, moteur front « Analyse Novalyz » rebranché (F1/F2), repos réel dans les recos, **fenêtres « 7 j » = 8 jours corrigées partout** (contre-vérification indépendante des calculs), normale bien-être, montre (sommeil, FC repos +5 bpm), effort à charge égale (coach).
+  - Reste : splash **natif Android** (croix Capacitor sur fond blanc avant le chargement) à remplacer ; vérifier la saisie « Développé incliné Smith 80 kg × 1 » ; classer les exercices (lourd/moyen/léger) pour les cibles de repos.
 - **EN STOCK (30/10, à reprendre plus tard — demandé de garder)** :
   - Tonnage « ▼ 65 % » sur dos jambe 2 du 30/10 : vérifier la base de comparaison (séance précédente plus complète ?).
   - Tractions 30/10 : 3 séries en base, l'utilisateur dit 4 → vérifier la saisie (oubli ou perte).
