@@ -947,10 +947,10 @@ body:has(#view-login.active) #nv-bg { display:none !important; }
 #view-login .nv-login-hex { display:none !important; }
 #nv-aurora { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; background:#0b2a8a; }
 #nv-aurora i { position:absolute; width:70vmax; height:70vmax; border-radius:50%; filter:blur(70px); opacity:.75; mix-blend-mode:screen; }
-#nv-aurora .a1 { background:#1A5FFF; left:-20vmax; top:-20vmax; animation:nva1 22s ease-in-out infinite; }
-#nv-aurora .a2 { background:#22d3ee; right:-25vmax; top:10vmax; animation:nva2 28s ease-in-out infinite; }
-#nv-aurora .a3 { background:#7c3aed; left:10vmax; bottom:-30vmax; animation:nva3 32s ease-in-out infinite; }
-#nv-aurora .a4 { background:#ffffff; right:10vmax; top:-30vmax; opacity:.3; animation:nva2 36s ease-in-out infinite reverse; }
+#nv-aurora .a1 { background:#1A5FFF; left:-20vmax; top:-20vmax; animation:nva1 12s ease-in-out infinite; }
+#nv-aurora .a2 { background:#22d3ee; right:-25vmax; top:10vmax; animation:nva2 15s ease-in-out infinite; }
+#nv-aurora .a3 { background:#7c3aed; left:10vmax; bottom:-30vmax; animation:nva3 17s ease-in-out infinite; }
+#nv-aurora .a4 { background:#ffffff; right:10vmax; top:-30vmax; opacity:.3; animation:nva2 19s ease-in-out infinite reverse; }
 @keyframes nva1 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(18vmax,14vmax); } }
 @keyframes nva2 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(-16vmax,12vmax); } }
 @keyframes nva3 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(12vmax,-18vmax); } }

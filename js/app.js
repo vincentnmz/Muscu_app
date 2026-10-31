@@ -20127,6 +20127,11 @@ function _nvComb() {
   if (!_NVC.inited) {
     _NVC.inited = true;
     addEventListener('pointermove', function (e) { var s = document.getElementById('nv-comb'); if (!s) return; var r = s.getBoundingClientRect(); _NVC.mx = e.clientX - r.left; _NVC.my = e.clientY - r.top; _NVC.act = performance.now(); }, { passive: true });
+    // Doigt (31/10) : sur téléphone, pointermove est coupé dès que le geste devient un défilement ;
+    // on suit donc aussi touchstart / touchmove pour que les sports apparaissent sous le doigt.
+    var _nvcTouch = function (e) { var s = document.getElementById('nv-comb'), t = e.touches && e.touches[0]; if (!s || !t) return; var r = s.getBoundingClientRect(); _NVC.mx = t.clientX - r.left; _NVC.my = t.clientY - r.top; _NVC.act = performance.now(); _NVC.touch = true; };
+    addEventListener('touchstart', _nvcTouch, { passive: true });
+    addEventListener('touchmove', _nvcTouch, { passive: true });
     addEventListener('resize', function () { _NVC.w = 0; });
   }
   (function frame(t) {
@@ -20135,9 +20140,9 @@ function _nvComb() {
     if (s && (!_NVC.cells.length || Math.round(rr.width) !== _NVC.w || Math.round(rr.height) !== _NVC.h)) _nvcGrille();
     if (t - _NVC.tick > 140 && _NVC.cells.length) {
       _NVC.tick = t;
-      var R1 = _NVC.w < 600 ? 120 : 170, bouge = (t - _NVC.act) < 400;
+      var R1 = _NVC.w < 600 ? 120 : 170, bouge = (t - _NVC.act) < (_NVC.touch ? 900 : 400), pr = _NVC.touch ? .12 : .045;
       _NVC.cells.forEach(function (c) {
-        if (!c.on && bouge && Math.hypot(c.x - _NVC.mx, c.y - _NVC.my) < R1 && Math.random() < .045) { c.on = true; c.until = t + 2600 + Math.random() * 1600; c.el.classList.add('on'); }
+        if (!c.on && bouge && Math.hypot(c.x - _NVC.mx, c.y - _NVC.my) < R1 && Math.random() < pr) { c.on = true; c.until = t + 2600 + Math.random() * 1600; c.el.classList.add('on'); }
         if (c.on && t > c.until) { c.on = false; c.el.classList.remove('on'); }
       });
       if (!reduce && t > _NVC.amb) { var c2 = _NVC.cells[Math.floor(Math.random() * _NVC.cells.length)]; if (c2 && !c2.on) { c2.on = true; c2.until = t + 3500 + Math.random() * 2500; c2.el.classList.add('on'); } _NVC.amb = t + 700 + Math.random() * 800; }
