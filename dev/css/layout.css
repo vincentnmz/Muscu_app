@@ -951,6 +951,16 @@ body:has(#view-login.active) #nv-bg { display:none !important; }
 #nv-aurora .a2 { background:#22d3ee; right:-25vmax; top:10vmax; animation:nva2 15s ease-in-out infinite; }
 #nv-aurora .a3 { background:#7c3aed; left:10vmax; bottom:-30vmax; animation:nva3 17s ease-in-out infinite; }
 #nv-aurora .a4 { background:#ffffff; right:10vmax; top:-30vmax; opacity:.3; animation:nva2 19s ease-in-out infinite reverse; }
+/* Les couleurs suivent la souris / le doigt (31/10) : halos décalés en parallaxe + une lueur sous le pointeur.
+   « translate » s'ajoute au « transform » de l'animation sans l'écraser. */
+#nv-aurora i { transition:translate 1.4s cubic-bezier(.2,.7,.2,1); }
+#nv-aurora .a1 { translate:calc(var(--px,0) * 9vmax) calc(var(--py,0) * 9vmax); }
+#nv-aurora .a2 { translate:calc(var(--px,0) * -7vmax) calc(var(--py,0) * 6vmax); }
+#nv-aurora .a3 { translate:calc(var(--px,0) * 6vmax) calc(var(--py,0) * -8vmax); }
+#nv-aurora .a4 { translate:calc(var(--px,0) * -5vmax) calc(var(--py,0) * -5vmax); }
+#nv-aurora .a5 { width:46vmax; height:46vmax; left:0; top:0; background:#5ab0ff; opacity:0; filter:blur(60px);
+  translate:calc(var(--mx,50vw) - 23vmax) calc(var(--my,50vh) - 23vmax); transition:translate .9s cubic-bezier(.2,.7,.2,1), opacity 1.2s ease; }
+#nv-aurora.suit .a5 { opacity:.55; }
 @keyframes nva1 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(18vmax,14vmax); } }
 @keyframes nva2 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(-16vmax,12vmax); } }
 @keyframes nva3 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(12vmax,-18vmax); } }
