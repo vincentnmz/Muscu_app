@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login · nid d'abeille révélé — maquette</title>
+<style>
+  :root{ --accent:#1A5FFF; --muted:#5f6b85; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{background:#0b2a8a;min-height:100vh;overflow:hidden;color:#fff}
+  .sky{position:fixed;inset:0;overflow:hidden;z-index:0}
+  .blob{position:absolute;width:70vmax;height:70vmax;border-radius:50%;filter:blur(70px);opacity:.75;mix-blend-mode:screen;will-change:transform}
+  .b1{background:#1A5FFF;left:-20vmax;top:-20vmax}.b2{background:#22d3ee;right:-25vmax;top:10vmax}
+  .b3{background:#7c3aed;left:10vmax;bottom:-30vmax}.b4{background:#ffffff;right:10vmax;top:-30vmax;opacity:.3}
+  .sheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.10) 50%,transparent 65%);background-size:250% 100%;animation:sheen 8s ease-in-out infinite}
+  @keyframes sheen{0%{background-position:150% 0}100%{background-position:-50% 0}}
+  /* Nid d'abeille : chaque alvéole contient un sport, révélé près de la souris / de la lueur */
+  #comb{position:absolute;inset:0;width:100%;height:100%}
+  .cell .hc{fill:none;stroke:rgba(255,255,255,.14);stroke-width:1.2;transition:stroke .5s,fill .5s}
+  .cell.on .hc{stroke:rgba(255,255,255,.55);fill:rgba(255,255,255,.06)}
+  .cell use{color:#fff;opacity:0;stroke-dasharray:1;stroke-dashoffset:1;transition:opacity .6s ease,stroke-dashoffset 1.1s ease}
+  .cell.on use{opacity:.95;stroke-dashoffset:0}
+  .cell.on use{filter:drop-shadow(0 0 4px rgba(156,192,255,.9))}
+  /* Logo Novalyz animé (inchangé), en blanc sur le fond */
+  .login{position:relative;z-index:5;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;pointer-events:none}
+  .login>*{pointer-events:auto}
+  .lg{width:96px;height:105px;margin:0 auto 12px}
+  .lg svg{width:100%;height:100%;color:#fff}
+  .lg svg [fill="#1A5FFF"]{fill:#9cc0ff}
+  .lg svg [stroke="#1A5FFF"]{stroke:#9cc0ff}
+  .brand{font-size:30px;letter-spacing:.32em;font-weight:900;margin-bottom:6px}
+  .brand b{color:#d6e4ff}
+  .tag{font-size:13px;color:rgba(255,255,255,.8);margin-bottom:22px}
+  .card{width:100%;max-width:380px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-radius:20px;padding:20px;box-shadow:0 20px 50px rgba(3,10,40,.35)}
+  .card label{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.85);margin:10px 0 6px}
+  .card input{width:100%;border:1px solid transparent;background:rgba(255,255,255,.92);border-radius:11px;padding:12px;font:inherit;font-size:15px}
+  .card button{width:100%;margin-top:16px;border:none;border-radius:13px;background:#fff;color:var(--accent);font:inherit;font-weight:800;font-size:15px;padding:13px}
+  .sports{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:96vw;background:rgba(255,255,255,.94);border-radius:14px;padding:4px;box-shadow:0 6px 18px rgba(13,20,36,.15)}
+  .sports button{border:none;background:transparent;font:inherit;font-size:12px;font-weight:800;color:var(--muted);padding:6px 10px;border-radius:999px;cursor:pointer}
+  .sports button.on{background:#0d1424;color:#fff}
+
+/* ---- Logo animé : A2 (barres puis points puis traits) / B2 (courbe puis barres),
+   tiré au hasard. L'hexagone reste fixe. ---- */
+.nvl-ic { overflow:visible; }
+.nvl-ic .nvl-b, .nvl-ic .nvl-d { transform-box:fill-box; }
+.nvl-ic .nvl-b { transform-origin:50% 100%; }
+.nvl-ic .nvl-d { transform-origin:50% 50%; }
+.nvl-ic .nvl-l { stroke-dasharray:70; stroke-dashoffset:70; }
+.nvl-ic.nvl-X .nvl-l { stroke-dashoffset:0; }
+.nvl-A2 .nvl-b,.nvl-A2 .nvl-d,.nvl-A2 .nvl-l{animation-duration:4s;animation-iteration-count:infinite;animation-fill-mode:both}
+.nvl-A2 .nvl-b1{animation-name:nvl-a2b1}.nvl-A2 .nvl-b2{animation-name:nvl-a2b2}.nvl-A2 .nvl-b3{animation-name:nvl-a2b3}.nvl-A2 .nvl-b4{animation-name:nvl-a2b4}
+.nvl-A2 .nvl-d1{animation-name:nvl-a2d1}.nvl-A2 .nvl-d2{animation-name:nvl-a2d2}.nvl-A2 .nvl-d3{animation-name:nvl-a2d3}.nvl-A2 .nvl-d4{animation-name:nvl-a2d4}
+.nvl-A2 .nvl-l1{animation-name:nvl-a2l1}.nvl-A2 .nvl-l2{animation-name:nvl-a2l2}.nvl-A2 .nvl-l3{animation-name:nvl-a2l3}
+@keyframes nvl-a2b1{0%,2%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}14%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b2{0%,20%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}29%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b3{0%,33%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}40%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b4{0%,43%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}49%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2d1{0%,12%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}17%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}20%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}23%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d2{0%,27%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}32%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}35%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}38%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d3{0%,38%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}43%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}46%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}49%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d4{0%,48%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}53%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}56%{transform:translateY(-14px);animation-timing-function:ease-in}59%{transform:none}74%{transform:scale(1)}78%{transform:scale(1.7)}82%,86%{transform:scale(1)}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2l1{0%,60%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}65%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-a2l2{0%,65%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}69%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-a2l3{0%,69%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}74%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+.nvl-B2 .nvl-b,.nvl-B2 .nvl-d,.nvl-B2 .nvl-l{animation-duration:4s;animation-iteration-count:infinite;animation-fill-mode:both}
+.nvl-B2 .nvl-l1{animation-name:nvl-b2l1}.nvl-B2 .nvl-l2{animation-name:nvl-b2l2}.nvl-B2 .nvl-l3{animation-name:nvl-b2l3}
+.nvl-B2 .nvl-d1{animation-name:nvl-b2d1}.nvl-B2 .nvl-d2{animation-name:nvl-b2d2}.nvl-B2 .nvl-d3{animation-name:nvl-b2d3}.nvl-B2 .nvl-d4{animation-name:nvl-b2d4}
+.nvl-B2 .nvl-b1{animation-name:nvl-b2b1}.nvl-B2 .nvl-b2{animation-name:nvl-b2b2}.nvl-B2 .nvl-b3{animation-name:nvl-b2b3}.nvl-B2 .nvl-b4{animation-name:nvl-b2b4}
+@keyframes nvl-b2d1{0%,4%{transform:scale(0)}7%{transform:scale(1.8)}10%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l1{0%,8%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}20%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d2{0%,19%{transform:scale(0)}22%{transform:scale(1.8)}25%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l2{0%,22%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}29%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d3{0%,28%{transform:scale(0)}31%{transform:scale(1.8)}34%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l3{0%,31%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}36%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d4{0%,35%{transform:scale(0)}38%{transform:scale(1.8)}41%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2b1{0%,44%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}54%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b2{0%,48%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}57%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b3{0%,52%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}60%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b4{0%,56%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}63%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@media (prefers-reduced-motion:reduce) {
+  .nvl-ic .nvl-b, .nvl-ic .nvl-d, .nvl-ic .nvl-l { animation:none !important; transform:none !important; opacity:1 !important; stroke-dashoffset:0 !important; }
+}
+
+
+  @media (prefers-reduced-motion:reduce){.sheen{animation:none}}
+  @media (prefers-reduced-motion:reduce){.sheen{animation:none}.cell use,.cell .hc{transition:none}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <radialGradient id="gFoot" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#ffffff"/><stop offset=".65" stop-color="#eef0f4"/><stop offset="1" stop-color="#b9bfca"/></radialGradient>
+    <radialGradient id="gPenta" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#3a3f4b"/><stop offset="1" stop-color="#0c0e13"/></radialGradient>
+    <radialGradient id="gBasket" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#ffb066"/><stop offset=".55" stop-color="#ef7d2c"/><stop offset="1" stop-color="#a94812"/></radialGradient>
+    <radialGradient id="gRugby" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#c98454"/><stop offset=".6" stop-color="#9a5226"/><stop offset="1" stop-color="#5e2c10"/></radialGradient>
+    <radialGradient id="gTennis" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#f4ff8a"/><stop offset=".6" stop-color="#d4e83a"/><stop offset="1" stop-color="#93a512"/></radialGradient>
+    <radialGradient id="gWhite" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#eef1f6"/><stop offset="1" stop-color="#bcc3cf"/></radialGradient>
+    <radialGradient id="gShade" cx="36%" cy="30%" r="75%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></radialGradient>
+    <linearGradient id="gBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef1f5"/><stop offset=".5" stop-color="#a7afba"/><stop offset="1" stop-color="#6b737e"/></linearGradient>
+    <linearGradient id="gPlate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4a4f5a"/><stop offset=".5" stop-color="#1f2229"/><stop offset="1" stop-color="#0b0c10"/></linearGradient>
+    <linearGradient id="gPlate2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6c7380"/><stop offset="1" stop-color="#2a2e36"/></linearGradient>
+    <radialGradient id="gKb" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#5a606b"/><stop offset=".6" stop-color="#23262d"/><stop offset="1" stop-color="#0b0c10"/></radialGradient>
+    <radialGradient id="gGolf" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#eef0f3"/><stop offset="1" stop-color="#b7bdc7"/></radialGradient>
+    <linearGradient id="gPuck" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3f47"/><stop offset="1" stop-color="#090a0d"/></linearGradient>
+    <radialGradient id="gVerre" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#7fd3ff"/><stop offset="1" stop-color="#1a3fa8"/></radialGradient>
+    <radialGradient id="gGant" cx="38%" cy="28%" r="80%"><stop offset="0" stop-color="#ff6b6b"/><stop offset=".55" stop-color="#d6262f"/><stop offset="1" stop-color="#7a0f15"/></radialGradient>
+    <filter id="monoB" x="-10%" y="-10%" width="120%" height="120%"><feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -0.3 -0.6 -0.1 1 0" result="dk"/><feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="dil"/><feComposite in="dil" in2="SourceAlpha" operator="out" result="ring"/><feMerge result="m"><feMergeNode in="dk"/><feMergeNode in="ring"/></feMerge><feFlood flood-color="#1A5FFF"/><feComposite in2="m" operator="in"/></filter>
+    <filter id="monoW" x="-10%" y="-10%" width="120%" height="120%"><feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -0.3 -0.6 -0.1 1 0" result="dk"/><feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="dil"/><feComposite in="dil" in2="SourceAlpha" operator="out" result="ring"/><feMerge result="m"><feMergeNode in="dk"/><feMergeNode in="ring"/></feMerge><feFlood flood-color="#ffffff"/><feComposite in2="m" operator="in"/></filter>
+    <clipPath id="cBall"><circle cx="50" cy="50" r="44"/></clipPath>
+    <clipPath id="cTen"><circle cx="50" cy="50" r="40"/></clipPath>
+  </defs>
+</svg>
+<svg width="0" height="0" style="position:absolute"><defs id="syms"></defs></svg>
+<div class="sports" id="sports"></div>
+<div class="sky" id="sky"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div><div class="sheen"></div><svg id="comb"></svg></div>
+<div class="login">
+  <div class="lg"><svg class="nvl-ic nvl-A2" aria-hidden="true" viewBox="0 0 271 296" fill="none"><path class="nvl-hx" d="M18.1521 66.4863H0.125908L0.229618 229.321H18.1521V66.4863Z" fill="#1A5FFF"/><path class="nvl-hx" d="M127.126 19.0728L127.126 0.394741L0.125887 66.4863L9.08714 80.6647L127.126 19.0728Z" fill="#1A5FFF"/><path class="nvl-hx" d="M126.126 276.734L126.126 295.412L0.125908 229.055L9.08715 214.953L126.126 276.734Z" fill="#1A5FFF"/><rect class="nvl-hx" x="252.203" y="66.4863" width="17.9225" height="162.834" fill="currentColor"/><path class="nvl-hx" d="M143.126 19.0728L143.126 0.394732L270.126 66.4863L261.268 80.6647L143.126 19.0728Z" fill="currentColor"/><path class="nvl-hx" d="M144.126 276.734L144.087 295.412L270.229 229.055L261.268 214.953L144.126 276.734Z" fill="currentColor"/><path class="nvl-l nvl-l1" d="M77 175L115 129" stroke="#1A5FFF" stroke-width="5"/><path class="nvl-l nvl-l2" d="M115 129L155 137" stroke="currentColor" stroke-width="5"/><path class="nvl-l nvl-l3" d="M155 137L194 89" stroke="currentColor" stroke-width="5"/><path class="nvl-b nvl-b1" d="M88.1259 199.627V261.539V264.761L66.1259 257.371V199.627H88.1259Z" fill="#1A5FFF"/><path class="nvl-b nvl-b2" d="M126.126 169.934V286.166V292.539L104.126 278.343V169.934H126.126Z" fill="#1A5FFF"/><path class="nvl-b nvl-b3" d="M165.626 162.412L166.126 269.569L144.126 278.412V162.412H165.626Z" fill="currentColor"/><path class="nvl-b nvl-b4" d="M205.126 120.412V243.639V250.053L183.126 261.412V120.412H205.126Z" fill="currentColor"/><circle class="nvl-d nvl-d1" cx="77.1" cy="175.4" r="8" fill="#1A5FFF"/><circle class="nvl-d nvl-d2" cx="115.1" cy="129.4" r="8" fill="#1A5FFF"/><circle class="nvl-d nvl-d3" cx="155.1" cy="137.4" r="8" fill="currentColor"/><circle class="nvl-d nvl-d4" cx="194.1" cy="89.4" r="8" fill="currentColor"/></svg></div>
+  <div class="brand">NOVA<b>LYZ</b></div>
+  <div class="tag" id="tag">Analyse · décide · progresse</div>
+  <div class="card">
+    <label>Identifiant</label><input placeholder="1234">
+    <label>Mot de passe</label><input type="password" placeholder="••••••">
+    <button>Se connecter</button>
+  </div>
+</div>
+<script>
+// Pentagone régulier (centre cx,cy, rayon r, rotation en degrés).
+function penta(cx, cy, r, rot) { var p = []; for (var i = 0; i < 5; i++) { var a = (rot - 90 + i * 72) * Math.PI / 180; p.push((cx + r * Math.cos(a)).toFixed(1) + ',' + (cy + r * Math.sin(a)).toFixed(1)); } return p.join(' '); }
+function ptAt(cx, cy, r, deg) { var a = (deg - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; }
+var GLOSS = '<ellipse cx="36" cy="30" rx="15" ry="9" fill="#fff" opacity=".45" transform="rotate(-28 36 30)"/>';
+function foot() {
+  var s = '<circle cx="50" cy="50" r="44" fill="url(#gFoot)"/><g clip-path="url(#cBall)">';
+  // Coutures : du pentagone central vers les pentagones extérieurs (motif ballon « 32 panneaux »)
+  for (var i = 0; i < 5; i++) {
+    // Couture radiale depuis chaque sommet du pentagone central, puis fourche vers les pentagones voisins (hexagones).
+    var v = ptAt(50, 50, 13, i * 72), o = ptAt(50, 50, 27, i * 72), a1 = ptAt(50, 50, 33, i * 72 + 21), a2 = ptAt(50, 50, 33, i * 72 - 21);
+    var f = function (q) { return q[0].toFixed(1) + ' ' + q[1].toFixed(1); };
+    s += '<path d="M' + f(v) + 'L' + f(o) + 'M' + f(o) + 'L' + f(a1) + 'M' + f(o) + 'L' + f(a2) + '" fill="none" stroke="#a3a9b4" stroke-width="1.1"/>';
+    var c = ptAt(50, 50, 41, i * 72 + 36);
+    s += '<polygon points="' + penta(c[0], c[1], 12.5, i * 72 + 36 + 180) + '" fill="url(#gPenta)"/>';
+  }
+  s += '<polygon points="' + penta(50, 50, 13, 0) + '" fill="url(#gPenta)"/>';
+  return s + '</g><circle cx="50" cy="50" r="44" fill="url(#gShade)"/>' + GLOSS + '<circle cx="50" cy="50" r="44" fill="none" stroke="#7d8592" stroke-width="1"/>';
+}
+function basket() {
+  return '<circle cx="50" cy="50" r="44" fill="url(#gBasket)"/>'
+    + '<g fill="none" stroke="#1b1410" stroke-width="2.6" stroke-linecap="round" clip-path="url(#cBall)">'
+    + '<path d="M50 6 C46 30 46 70 50 94"/><path d="M6 50 C30 46 70 46 94 50"/>'
+    + '<path d="M18 17 C33 33 33 67 18 83"/><path d="M82 17 C67 33 67 67 82 83"/></g>'
+    + '<circle cx="50" cy="50" r="44" fill="url(#gShade)"/>' + GLOSS + '<circle cx="50" cy="50" r="44" fill="none" stroke="#7a3410" stroke-width="1"/>';
+}
+function rugby() {
+  var laces = ''; for (var i = -3; i <= 3; i++) laces += '<rect x="' + (47 + i * 5.4).toFixed(1) + '" y="40" width="2.6" height="8" rx="1.2" fill="#fbfaf6" transform="rotate(0)"/>';
+  return '<g transform="rotate(-32 50 50)"><ellipse cx="50" cy="50" rx="46" ry="27" fill="url(#gRugby)"/>'
+    + '<path d="M8 50 Q50 38 92 50" fill="none" stroke="#3d1a07" stroke-width="1.6" opacity=".7"/>'
+    + '<path d="M28 44 Q50 39 72 44" fill="none" stroke="#fbfaf6" stroke-width="2"/>' + laces
+    + '<ellipse cx="50" cy="50" rx="46" ry="27" fill="url(#gShade)"/>'
+    + '<ellipse cx="36" cy="40" rx="16" ry="5.5" fill="#fff" opacity=".35"/>'
+    + '<ellipse cx="50" cy="50" rx="46" ry="27" fill="none" stroke="#4a2008" stroke-width="1"/></g>';
+}
+function tennis() {
+  return '<circle cx="50" cy="50" r="40" fill="url(#gTennis)"/>'
+    + '<g fill="none" stroke="#fdfdf2" stroke-width="4.2" stroke-linecap="round" clip-path="url(#cTen)"><path d="M14 20 C34 36 34 64 14 80"/><path d="M86 20 C66 36 66 64 86 80"/></g>'
+    + '<circle cx="50" cy="50" r="40" fill="url(#gShade)"/><ellipse cx="38" cy="32" rx="13" ry="8" fill="#fff" opacity=".4" transform="rotate(-28 38 32)"/>'
+    + '<circle cx="50" cy="50" r="40" fill="none" stroke="#8a9a10" stroke-width="1"/>';
+}
+function volley() {
+  // Volley : 3 coutures courbes qui partent du centre (motif en « Y » tournant) + une couture parallèle
+  // dans chaque panneau — le dessin classique du ballon de volley.
+  var seam = '<path d="M50 50 C50 32 42 18 26 10"/><path d="M58 47 C59 30 52 16 40 7"/>';
+  var g = '';
+  [0, 120, 240].forEach(function (r) { g += '<g transform="rotate(' + r + ' 50 50)">' + seam + '</g>'; });
+  return '<circle cx="50" cy="50" r="44" fill="url(#gWhite)"/><g clip-path="url(#cBall)" fill="none" stroke="#1e50d6" stroke-width="2.2">' + g + '</g>'
+    + '<circle cx="50" cy="50" r="44" fill="url(#gShade)"/>' + GLOSS + '<circle cx="50" cy="50" r="44" fill="none" stroke="#8a93a3" stroke-width="1"/>';
+}
+function hand() {
+  // Handball : panneau central en triangle bombé, 3 coutures vers le bord et 3 arcs qui ferment les panneaux.
+  var f = function (q) { return q[0].toFixed(1) + ' ' + q[1].toFixed(1); }, v = [], d, sp = '';
+  for (var k = 0; k < 3; k++) v.push(ptAt(50, 50, 19, k * 120));
+  d = 'M' + f(v[0]);
+  for (k = 0; k < 3; k++) d += ' Q' + f(ptAt(50, 50, 15, k * 120 + 60)) + ' ' + f(v[(k + 1) % 3]);
+  for (k = 0; k < 3; k++) {
+    sp += '<path d="M' + f(v[k]) + ' Q' + f(ptAt(50, 50, 30, k * 120 + 12)) + ' ' + f(ptAt(50, 50, 46, k * 120 + 25)) + '"/>';
+    sp += '<path d="M' + f(ptAt(50, 50, 46, k * 120 + 35)) + ' Q' + f(ptAt(50, 50, 18, k * 120 + 62)) + ' ' + f(ptAt(50, 50, 46, k * 120 + 92)) + '"/>';
+  }
+  return '<circle cx="50" cy="50" r="44" fill="url(#gWhite)"/><g clip-path="url(#cBall)" fill="none" stroke="#1e50d6" stroke-width="2.2"><path d="' + d + 'Z" fill="#d6262f" fill-opacity=".85"/>' + sp + '</g>'
+    + '<circle cx="50" cy="50" r="44" fill="url(#gShade)"/>' + GLOSS + '<circle cx="50" cy="50" r="44" fill="none" stroke="#8a93a3" stroke-width="1"/>';
+}
+function haltere() {
+  var plate = function (x, w, h, g) { return '<rect x="' + x + '" y="' + (50 - h / 2) + '" width="' + w + '" height="' + h + '" rx="3" fill="url(#' + g + ')" stroke="#05060a" stroke-width=".8"/><rect x="' + (x + 1) + '" y="' + (50 - h / 2 + 2) + '" width="' + (w - 2) + '" height="3" rx="1.5" fill="#fff" opacity=".18"/>'; };
+  return '<rect x="6" y="46.5" width="88" height="7" rx="3.5" fill="url(#gBar)" stroke="#5c636e" stroke-width=".6"/>'
+    + plate(14, 9, 44, 'gPlate') + plate(23, 7, 34, 'gPlate2') + '<rect x="30" y="44" width="4" height="12" rx="1.5" fill="#c9ced6" stroke="#6b737e" stroke-width=".6"/>'
+    + plate(77, 9, 44, 'gPlate') + plate(70, 7, 34, 'gPlate2') + '<rect x="66" y="44" width="4" height="12" rx="1.5" fill="#c9ced6" stroke="#6b737e" stroke-width=".6"/>'
+    + '<rect x="36" y="47.4" width="28" height="1.6" fill="#fff" opacity=".55"/>';
+}
+function kettlebell() {
+  return '<path d="M34 38 C30 14 70 14 66 38" fill="none" stroke="url(#gKb)" stroke-width="9" stroke-linecap="round"/>'
+    + '<path d="M50 34 C74 34 86 52 82 70 C79 84 66 90 50 90 C34 90 21 84 18 70 C14 52 26 34 50 34Z" fill="url(#gKb)"/>'
+    + '<rect x="36" y="80" width="28" height="6" rx="3" fill="#0b0c10"/>'
+    + '<ellipse cx="38" cy="50" rx="10" ry="6" fill="#fff" opacity=".22" transform="rotate(-30 38 50)"/>'
+    + '<text x="50" y="68" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="13" fill="#c9ced6" opacity=".85">16</text>';
+}
+function badminton() {
+  var feathers = ''; for (var i = -3; i <= 3; i++) feathers += '<path d="M50 62 L' + (50 + i * 9) + ' 14" stroke="#c9ced6" stroke-width="1.1"/>';
+  return '<path d="M50 62 L22 14 Q50 4 78 14 Z" fill="#fbfbf8" stroke="#aab1bc" stroke-width="1"/>' + feathers
+    + '<path d="M30 32 Q50 26 70 32" fill="none" stroke="#c43b3b" stroke-width="2"/>'
+    + '<path d="M36 46 Q50 42 64 46" fill="none" stroke="#c43b3b" stroke-width="2"/>'
+    + '<path d="M40 62 Q50 58 60 62 L60 70 Q60 84 50 86 Q40 84 40 70 Z" fill="url(#gGolf)" stroke="#9aa1ad" stroke-width="1"/>'
+    + '<rect x="40" y="60" width="20" height="5" rx="2" fill="#1e50d6"/>';
+}
+function baseball() {
+  var st = ''; for (var i = 0; i < 9; i++) { var t = i / 8; var y = 18 + t * 64; st += '<path d="M' + (26 + Math.sin(t * Math.PI) * 9).toFixed(1) + ' ' + y.toFixed(1) + 'l4 -2" stroke="#c4262e" stroke-width="1.6"/><path d="M' + (74 - Math.sin(t * Math.PI) * 9).toFixed(1) + ' ' + y.toFixed(1) + 'l-4 -2" stroke="#c4262e" stroke-width="1.6"/>'; }
+  return '<circle cx="50" cy="50" r="40" fill="url(#gGolf)"/><g clip-path="url(#cTen)" fill="none">'
+    + '<path d="M22 16 C36 34 36 66 22 84" stroke="#c4262e" stroke-width="1.4"/><path d="M78 16 C64 34 64 66 78 84" stroke="#c4262e" stroke-width="1.4"/>' + st + '</g>'
+    + '<circle cx="50" cy="50" r="40" fill="url(#gShade)"/><ellipse cx="38" cy="32" rx="13" ry="8" fill="#fff" opacity=".5" transform="rotate(-28 38 32)"/><circle cx="50" cy="50" r="40" fill="none" stroke="#9aa1ad" stroke-width="1"/>';
+}
+function golf() {
+  var d = ''; for (var y = 22; y <= 80; y += 9) for (var x = 22; x <= 80; x += 9) { var dx = x + ((y / 9) % 2 ? 4.5 : 0); if ((dx - 50) * (dx - 50) + (y - 50) * (y - 50) < 30 * 30) d += '<circle cx="' + dx + '" cy="' + y + '" r="2.1" fill="#c4cad3" opacity=".7"/>'; }
+  return '<circle cx="50" cy="50" r="34" fill="url(#gGolf)"/>' + d
+    + '<circle cx="50" cy="50" r="34" fill="url(#gShade)"/><ellipse cx="40" cy="36" rx="10" ry="6" fill="#fff" opacity=".6" transform="rotate(-28 40 36)"/><circle cx="50" cy="50" r="34" fill="none" stroke="#9aa1ad" stroke-width="1"/>';
+}
+function hockey() {
+  // Palet seul : dessus elliptique + tranche (côtés et arrondi du bas), sans hachures.
+  return '<path d="M12 44 L12 60 A38 12 0 0 0 88 60 L88 44" fill="url(#gPuck)"/>'
+    + '<ellipse cx="50" cy="44" rx="38" ry="12" fill="#2b2f37"/>'
+    + '<ellipse cx="38" cy="41" rx="12" ry="3" fill="#fff" opacity=".18"/>';
+}
+// Équipements manquants (sports de l'app) : athlétisme, natation, combat.
+function chrono() {
+  // Athlétisme : silhouette pleine d'un sprinteur en position de départ (buste presque horizontal), dessin maison (une seule forme continue + tête),
+  // traits de vitesse derrière. En mode « traits blancs », on voit le contour du corps.
+  return '<path d="M36.3 49.7 L25.4 62.2 L11.9 73.3 L9.0 81.0 L9.0 82.2 L9.7 83.1 L11.1 83.6 L12.5 83.0 L16.2 76.9 L30.6 69.5 L43.7 61.5 L46.0 61.2 L52.4 63.4 L52.9 63.9 L53.1 64.4 L52.9 65.4 L48.0 71.2 L47.7 72.7 L48.2 74.0 L49.1 74.9 L56.0 78.9 L56.9 79.2 L57.7 79.1 L58.9 78.1 L59.1 76.5 L58.6 75.5 L56.2 73.5 L56.0 72.9 L56.1 72.1 L65.2 65.5 L66.1 64.4 L66.7 62.9 L66.7 61.1 L66.1 59.5 L65.2 58.5 L62.3 56.0 L62.2 55.1 L62.7 54.4 L68.5 52.0 L69.4 52.0 L70.0 52.6 L72.4 57.6 L73.4 58.5 L74.8 58.9 L87.0 58.4 L91.9 56.6 L92.5 56.0 L92.8 55.2 L92.4 53.9 L91.4 53.2 L86.5 53.6 L78.6 52.5 L77.8 52.2 L77.5 51.6 L76.3 46.6 L77.2 44.7 L79.9 43.4 L81.1 42.2 L81.4 41.2 L81.5 40.2 L80.8 38.4 L80.0 37.6 L79.0 37.1 L76.1 37.0 L73.6 34.5 L71.2 33.2 L68.9 32.6 L65.7 32.8 L65.0 32.6 L58.0 23.4 L45.8 9.3 L44.7 8.7 L43.7 8.9 L43.0 9.4 L42.7 10.3 L42.9 11.3 L45.4 16.2 L52.7 27.3 L57.3 35.4 L57.4 36.3 L56.7 37.2 L39.4 46.0 L37.5 47.7 L36.3 49.7Z" fill="#1b1f2a"/>'
+    + '<path d="M88.6 38.5 L88.6 38.2 L88.6 37.9 L88.5 37.5 L88.5 37.2 L88.4 36.9 L88.3 36.6 L88.2 36.3 L88.1 36.0 L88.0 35.7 L87.8 35.4 L87.7 35.1 L87.5 34.8 L87.3 34.6 L87.1 34.3 L86.9 34.1 L86.7 33.8 L86.4 33.6 L86.2 33.4 L85.9 33.2 L85.7 33.0 L85.4 32.8 L85.1 32.7 L84.8 32.5 L84.5 32.4 L84.2 32.3 L83.9 32.2 L83.6 32.1 L83.3 32.0 L83.0 32.0 L82.6 31.9 L82.3 31.9 L82.0 31.9 L81.7 31.9 L81.4 31.9 L81.0 32.0 L80.7 32.0 L80.4 32.1 L80.1 32.2 L79.8 32.3 L79.5 32.4 L79.2 32.5 L78.9 32.7 L78.6 32.8 L78.3 33.0 L78.1 33.2 L77.8 33.4 L77.6 33.6 L77.3 33.8 L77.1 34.1 L76.9 34.3 L76.7 34.6 L76.5 34.8 L76.3 35.1 L76.2 35.4 L76.0 35.7 L75.9 36.0 L75.8 36.3 L75.7 36.6 L75.6 36.9 L75.5 37.2 L75.5 37.5 L75.4 37.9 L75.4 38.2 L75.4 38.5 L75.4 38.8 L75.4 39.1 L75.5 39.5 L75.5 39.8 L75.6 40.1 L75.7 40.4 L75.8 40.7 L75.9 41.0 L76.0 41.3 L76.2 41.6 L76.3 41.9 L76.5 42.2 L76.7 42.4 L76.9 42.7 L77.1 42.9 L77.3 43.2 L77.6 43.4 L77.8 43.6 L78.1 43.8 L78.3 44.0 L78.6 44.2 L78.9 44.3 L79.2 44.5 L79.5 44.6 L79.8 44.7 L80.1 44.8 L80.4 44.9 L80.7 45.0 L81.0 45.0 L81.4 45.1 L81.7 45.1 L82.0 45.1 L82.3 45.1 L82.6 45.1 L83.0 45.0 L83.3 45.0 L83.6 44.9 L83.9 44.8 L84.2 44.7 L84.5 44.6 L84.8 44.5 L85.1 44.3 L85.4 44.2 L85.7 44.0 L85.9 43.8 L86.2 43.6 L86.4 43.4 L86.7 43.2 L86.9 42.9 L87.1 42.7 L87.3 42.4 L87.5 42.2 L87.7 41.9 L87.8 41.6 L88.0 41.3 L88.1 41.0 L88.2 40.7 L88.3 40.4 L88.4 40.1 L88.5 39.8 L88.5 39.5 L88.6 39.1 L88.6 38.8 L88.6 38.5Z" fill="#1b1f2a"/>'
+    + '<g stroke="#9aa1ad" stroke-width="2.4" stroke-linecap="round"><path d="M4 44h12"/><path d="M2 56h14"/><path d="M6 68h9"/></g>';
+}
+function lunettes() {
+  var verre = function (cx) { return '<ellipse cx="' + cx + '" cy="52" rx="19" ry="14" fill="#11183a" stroke="#1e50d6" stroke-width="5"/><ellipse cx="' + cx + '" cy="52" rx="15" ry="10" fill="url(#gVerre)"/><ellipse cx="' + (cx - 6) + '" cy="47" rx="6" ry="3" fill="#fff" opacity=".55"/>'; };
+  return '<path d="M6 50 C2 40 12 36 12 50" fill="none" stroke="#1b1f2a" stroke-width="5"/><path d="M94 50 C98 40 88 36 88 50" fill="none" stroke="#1b1f2a" stroke-width="5"/>'
+    + verre(30) + verre(70) + '<path d="M47 50 Q50 46 53 50" fill="none" stroke="#1e50d6" stroke-width="4"/>';
+}
+function gant() {
+  return '<path d="M30 30 C30 14 46 10 60 12 C76 14 82 26 80 42 L78 62 C77 70 70 74 62 74 L40 74 C33 74 28 69 28 62 Z" fill="url(#gGant)"/>'
+    + '<path d="M28 50 C18 50 14 40 22 34 C26 31 30 32 32 36" fill="url(#gGant)"/>'
+    + '<rect x="32" y="72" width="34" height="20" rx="5" fill="#f4f5f7" stroke="#c9ced6"/><rect x="32" y="80" width="34" height="4" fill="#d6262f"/>'
+    + '<path d="M42 30 C46 26 58 26 64 30" fill="none" stroke="#7a0f15" stroke-width="2" opacity=".5"/>'
+    + '<ellipse cx="46" cy="24" rx="12" ry="5" fill="#fff" opacity=".35" transform="rotate(-12 46 24)"/>';
+}
+
+var ICONS = { muscu: haltere(), foot: foot(), combat: gant(), basket: basket(), tennis: tennis(), rugby: rugby(), natation: lunettes(), hand: hand(), athletisme: chrono(), volley: volley(), hockey: hockey(), kettlebell: kettlebell() };
+var ORDRE = Object.keys(ICONS);
+var SPORTS = [['mix', 'Mélange'], ['muscu', 'Muscu'], ['foot', 'Foot'], ['basket', 'Basket'], ['hand', 'Hand'], ['rugby', 'Rugby'], ['tennis', 'Tennis'], ['hockey', 'Hockey'], ['athletisme', 'Athlé'], ['natation', 'Natation'], ['combat', 'Combat']];
+var SPORT = 'mix', reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function traits(k) {
+  var t = document.createElement('div'); t.innerHTML = '<svg>' + ICONS[k] + '</svg>';
+  t.querySelectorAll('*').forEach(function (el) {
+    var f = el.getAttribute('fill') || '', op = parseFloat(el.getAttribute('opacity') || '1');
+    if (/gShade/.test(f) || (op < .7 && el.tagName !== 'g')) el.remove();
+  });
+  return t.firstChild.innerHTML;
+}
+
+// Symbole « traits » d'un sport : on enlève couleurs et remplissages, tout en currentColor,
+// chaque forme en pathLength=1 → l'effet « se dessine » se pilote par stroke-dashoffset (hérité).
+function symbole(k) {
+  var t = document.createElement('div'); t.innerHTML = '<svg>' + traits(k) + '</svg>';
+  t.querySelectorAll('*').forEach(function (el) {
+    ['fill', 'stroke', 'stroke-width', 'opacity', 'fill-opacity', 'clip-path', 'filter'].forEach(function (a) { el.removeAttribute(a); });
+    if (/^(path|circle|ellipse|rect|polygon|polyline|line)$/.test(el.tagName)) el.setAttribute('pathLength', 1);
+  });
+  return '<symbol id="s-' + k + '" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">' + t.firstChild.innerHTML + '</g></symbol>';
+}
+document.getElementById('syms').innerHTML = Object.keys(ICONS).map(symbole).join('');
+
+var CELLS = [];
+function grille() {
+  var W = innerWidth, H = innerHeight, R = W < 600 ? 34 : 44;            // rayon d'une alvéole
+  var w = Math.sqrt(3) * R, h = 1.5 * R, svg = document.getElementById('comb'), out = '', keys = suite(), n = 0;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  CELLS = [];
+  for (var row = -1; row * h < H + R; row++) {
+    for (var col = -1; col * w < W + w; col++) {
+      var cx = col * w + (row % 2 ? w / 2 : 0), cy = row * h, pts = [];
+      for (var i = 0; i < 6; i++) { var a = (60 * i - 90) * Math.PI / 180; pts.push((cx + R * Math.cos(a)).toFixed(1) + ',' + (cy + R * Math.sin(a)).toFixed(1)); }
+      var k = keys[(n * 7 + row * 3) % keys.length], s = R * 1.08;
+      out += '<g class="cell" id="c' + n + '"><polygon class="hc" points="' + pts.join(' ') + '"/><use href="#s-' + k + '" x="' + (cx - s / 2).toFixed(1) + '" y="' + (cy - s / 2).toFixed(1) + '" width="' + s.toFixed(1) + '" height="' + s.toFixed(1) + '"/></g>';
+      CELLS.push({ x: cx, y: cy, on: false }); n++;
+    }
+  }
+  svg.innerHTML = out;
+  CELLS.forEach(function (c, i) { c.el = document.getElementById('c' + i); });
+}
+// Suite des sports dans la grille : le sport de la personne domine (1 alvéole sur 2), sinon tous.
+function suite() { var all = Object.keys(ICONS); if (SPORT === 'mix') return all; var o = all.filter(function (k) { return k !== SPORT; }); var r = []; o.forEach(function (k) { r.push(SPORT, k); }); return r; }
+
+// Deux « lumières » : le pointeur (souris / doigt / inclinaison) et une lueur qui se promène seule,
+// pour que les sports apparaissent même sans interaction (téléphone posé).
+var tx = -999, ty = -999, mx = -999, my = -999, active = 0;
+addEventListener('pointermove', function (e) { tx = e.clientX; ty = e.clientY; active = performance.now(); });
+addEventListener('pointerdown', function (e) { tx = e.clientX; ty = e.clientY; active = performance.now(); });
+addEventListener('deviceorientation', function (e) { if (e.gamma != null && performance.now() - active > 1500) { tx = innerWidth * (.5 + Math.max(-1, Math.min(1, e.gamma / 35)) / 2); ty = innerHeight * (.5 + Math.max(-1, Math.min(1, (e.beta - 45) / 35)) / 2); } });
+var B = document.querySelectorAll('.blob'), t0 = performance.now();
+(function frame(t) {
+  var W = innerWidth, H = innerHeight, k = (t - t0) / 1000;
+  if (mx < -900 && tx > -900) { mx = tx; my = ty; }
+  mx += (tx - mx) * .12; my += (ty - my) * .12;
+  // lueur autonome (trajectoire de Lissajous lente)
+  var wx = W * (.5 + .42 * Math.sin(k * .23)), wy = H * (.5 + .42 * Math.sin(k * .17 + 1.3));
+  var dx = (mx > -900 ? mx / W : .5) - .5, dy = (my > -900 ? my / H : .5) - .5;
+  var amp = [[60, 40], [-50, 35], [40, -55], [-30, -30]];
+  B.forEach(function (b, i) { var w = reduce ? 0 : Math.sin(k * (.15 + i * .04) + i) * 10; b.style.transform = 'translate(' + (dx * amp[i][0] + w) + 'vmax,' + (dy * amp[i][1] + w * .7) + 'vmax)'; });
+  var R1 = W < 600 ? 95 : 150, R2 = W < 600 ? 70 : 110;
+  CELLS.forEach(function (c) {
+    var on = (Math.hypot(c.x - mx, c.y - my) < R1) || (!reduce && Math.hypot(c.x - wx, c.y - wy) < R2);
+    if (on !== c.on) { c.on = on; c.el.classList.toggle('on', on); }
+  });
+  requestAnimationFrame(frame);
+})(t0);
+
+var SPORTS = [['mix', 'Mélange'], ['muscu', 'Muscu'], ['foot', 'Foot'], ['basket', 'Basket'], ['hand', 'Hand'], ['rugby', 'Rugby'], ['tennis', 'Tennis'], ['hockey', 'Hockey'], ['athletisme', 'Athlé'], ['natation', 'Natation'], ['combat', 'Combat']];
+function render() {
+  document.getElementById('sports').innerHTML = SPORTS.map(function (s) { return '<button data-s="' + s[0] + '" class="' + (s[0] === SPORT ? 'on' : '') + '">' + s[1] + '</button>'; }).join('');
+  document.getElementById('tag').textContent = SPORT === 'mix' ? 'Analyse · décide · progresse' : 'Le sport du dernier compte connecté sur cet appareil';
+  grille();
+}
+document.getElementById('sports').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { SPORT = b.dataset.s; render(); } });
+addEventListener('resize', grille);
+var h = (location.hash || '').replace('#', ''); if (h) SPORT = h;
+render();
+</script>
+</body>
+</html>
