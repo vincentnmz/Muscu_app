@@ -20145,7 +20145,7 @@ function _nvComb() {
         if (!c.on && bouge && Math.hypot(c.x - _NVC.mx, c.y - _NVC.my) < R1 && Math.random() < pr) { c.on = true; c.until = t + 2600 + Math.random() * 1600; c.el.classList.add('on'); }
         if (c.on && t > c.until) { c.on = false; c.el.classList.remove('on'); }
       });
-      if (!reduce && t > _NVC.amb) { var c2 = _NVC.cells[Math.floor(Math.random() * _NVC.cells.length)]; if (c2 && !c2.on) { c2.on = true; c2.until = t + 3500 + Math.random() * 2500; c2.el.classList.add('on'); } _NVC.amb = t + 700 + Math.random() * 800; }
+      if (!reduce && t > _NVC.amb) { var c2 = _NVC.cells[Math.floor(Math.random() * _NVC.cells.length)]; if (c2 && !c2.on) { c2.on = true; c2.until = t + 3500 + Math.random() * 2500; c2.el.classList.add('on'); } _NVC.amb = t + 450 + Math.random() * 550; }
     }
     _NVC.raf = requestAnimationFrame(frame);
   })(performance.now());
