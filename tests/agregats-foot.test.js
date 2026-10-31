@@ -38,20 +38,21 @@ const eq = (n, got, exp) => check(n, got === exp, JSON.stringify(exp), JSON.stri
 
 const NOW = new Date('2026-08-20T12:00:00Z');   // j7 = 2026-08-13 · j28 = 2026-07-23
 
-// ── chargeFenetresFoot — fenêtres 7 j / 28 j (condition réelle : dIso ≥ now-7/28) ──
-// J-7 (2026-08-13) = j7 exactement → INCLUS dans les 7 j (condition >=).
+// ── chargeFenetresFoot — fenêtres 7 j / 28 j = aujourd'hui + les 6 / 27 jours d'avant ──
+// Audit 31/10 : avant, « 7 j » couvrait 8 jours (J-7 inclus) → 2 fois le même jour de la semaine.
+// J-6 (2026-08-14) = 1er jour des 7 j → INCLUS ; J-7 (2026-08-13) → EXCLU.
 const rowsCharge = [
   { cle: 'charge_interne', date: '2026-08-19', valeur: '100' }, // J-1 : 7j + 28j
   { cle: 'charge_interne', date: '2026-08-17', valeur: '200' }, // J-3 : 7j + 28j
-  { cle: 'charge_interne', date: '2026-08-13', valeur: '300' }, // J-7 = j7 : INCLUS 7j
-  { cle: 'charge_interne', date: '2026-08-12', valeur: '400' }, // J-8 : hors 7j, dans 28j
+  { cle: 'charge_interne', date: '2026-08-14', valeur: '300' }, // J-6 : INCLUS 7j
+  { cle: 'charge_interne', date: '2026-08-13', valeur: '400' }, // J-7 : hors 7j, dans 28j
   { cle: 'charge_interne', date: '2026-08-05', valeur: '500' }, // J-15 : hors 7j, dans 28j
   { cle: 'sommeil', date: '2026-08-19', valeur: '999' },        // non-charge → ignoré
 ];
 const chF = chargeFenetresFoot(rowsCharge, NOW);
-eq('charge7 = 600 (J-1+J-3+J-7, J-7 inclus)', chF.charge7, 600);
+eq('charge7 = 600 (J-1+J-3+J-6)', chF.charge7, 600);
 eq('charge28 = 1500 (toutes les charges ≥ now-28)', chF.charge28, 1500);
-eq('J-8 exclu des 7 j (charge7 ne contient pas 400)', chF.charge7, 600);
+eq('J-7 exclu des 7 j (charge7 ne contient pas 400)', chF.charge7, 600);
 eq('chargeParJour = 3 jours (7 j)', Object.keys(chF.chargeParJour).length, 3);
 eq('chargeParJour28 = 5 jours (28 j, val>0)', Object.keys(chF.chargeParJour28).length, 5);
 eq('premiereCharge = 2026-08-05 (plus ancienne)', chF.premiereCharge, '2026-08-05');
@@ -168,7 +169,7 @@ eq('renfo exclu → liste 3', S5renfo.liste.length, 3);
 // chargeParJour28 (val>0) avec les MÊMES fenêtres. On reproduit ce calcul et on
 // prouve qu'il donne le même résultat que chargeFenetresFoot (source de l'ACWR).
 function accueilCharge(rows, now) {
-  const j7 = fmtYMD(minus(now, 7)), j28 = fmtYMD(minus(now, 28));
+  const j7 = fmtYMD(minus(now, 6)), j28 = fmtYMD(minus(now, 27));
   let charge7 = 0, charge28 = 0; const chargeParJour28 = {};
   for (const row of rows) {
     const dIso = normDate(row.date); if (!dIso) continue;

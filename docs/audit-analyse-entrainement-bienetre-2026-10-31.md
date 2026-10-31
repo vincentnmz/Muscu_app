@@ -75,3 +75,19 @@ Classés par utilité / fiabilité. Chaque ajout affiche ses chiffres réels et 
 - Valider **F1 + F2** (rebrancher le moteur front pour que l'« Analyse Novalyz » du coach redevienne utile).
 - Valider les ajouts **1 à 5** et l'ordre de réalisation, ainsi que les seuils marqués « à valider » (repos 2 min / 1 min, écart de FC repos).
 - B1 et B2 sont corrigés (front + `index.ts` → **redéploiement Supabase nécessaire** pour B2).
+
+## 7. Contre-vérification indépendante des calculs (31/10, demande porteur)
+
+Méthode : recalcul en Python, **sans réutiliser le code du moteur**, à partir des tables brutes (`db_v5.json`), comparé à la sortie réelle du backend (`handleGetAppData`).
+
+| Calcul | Résultat |
+|---|---|
+| Séances / séries / tonnage / RPE moyen sur 7 j et 28 j, totaux | ✅ identiques |
+| Semaine calendaire (séances, volume par muscle) | ✅ identiques |
+| Série de semaines | ✅ identique |
+| ACWR (7 j / (28 j ÷ 4)) | ✅ identique (1,23) |
+| Banister (CTL / ATL / TSB %) | ✅ identiques |
+| Score de récupération (Hooper) / sommeil moyen | ✅ identiques |
+| Records | ✅ (le moteur compte aussi les records au poids du corps, ex. Pompe 6 reps : choix voulu) |
+
+**Défaut trouvé et corrigé — fenêtres « N jours » = N+1 jours.** Le backend filtrait `date ≥ aujourd'hui − 7` : la fenêtre « 7 j » couvrait **8 jours** (2 fois le même jour de la semaine), et la comparaison « 7 j vs 7 j précédents » opposait 8 jours à 7. Cas réel au 30/10 : « 5 séances sur 7 j » (jeudi 23 et jeudi 30) au lieu de 4. Ce chiffre alimente aussi « volume élevé » (≥ 5 séances), l'adhérence et le tonnage 7 j. Corrigé partout (23 fenêtres : 7 / 14 / 28 / 35 / 56 j, fenêtres de période) → **aujourd'hui + les N−1 jours précédents**, fenêtres précédentes symétriques. L'ACWR et Banister utilisaient déjà 7 jours exacts (inchangés).

@@ -224,7 +224,7 @@ function computeRecent(perfs: any[], now: Date): any {
   const KEY_MAP: Record<string, string> = { ACUTE: 'j7', MID: 'j14', CHRONIC: 'j28', LONG: 'j56', M3: 'j90', M6: 'j180', M9: 'j270', Y: 'j365' }
   const result: Record<string, any> = {}
   for (const [key, days] of Object.entries(RECENT_WINDOWS)) {
-    const cutoff = fmtYMD(minus(now, days))
+    const cutoff = fmtYMD(minus(now, days - 1))
     const filtered = perfs.filter(r => normDate(r.date) >= cutoff)
     // séances = nombre de JOURS d'entraînement distincts (comme Code.gs finalizeWindow: w.dates.size)
     const datesSet = new Set(filtered.map(r => normDate(r.date)))
@@ -289,10 +289,10 @@ function computeRecent(perfs: any[], now: Date): any {
 }
 
 function computeComparison(perfs: any[], now: Date): any {
-  const c7  = fmtYMD(minus(now, 7))
-  const c14 = fmtYMD(minus(now, 14))
-  const c28 = fmtYMD(minus(now, 28))
-  const c56 = fmtYMD(minus(now, 56))
+  const c7  = fmtYMD(minus(now, 6))
+  const c14 = fmtYMD(minus(now, 13))
+  const c28 = fmtYMD(minus(now, 27))
+  const c56 = fmtYMD(minus(now, 55))
 
   const calcWindow = (rows: any[]) => {
     const tonnage = rows.reduce((s, r) => s + (Number(r.charge) || 0) * (Number(r.reps) || 0), 0)
@@ -636,7 +636,7 @@ function sousChargeSoutenue(chargeParJour: Record<string, number>, now: Date): b
 //      exercices, dernière séance de l'exo ≤ 10 j.
 // `evaluable` = on dispose d'assez de bien-être pour affirmer « tu encaisses bien ».
 function ressentiConcordant(beRows: any[], perfs: any[], now: Date): { degrade: boolean; evaluable: boolean; rpeExos: string[] } {
-  const c7 = fmtYMD(minus(now, 7)), c35 = fmtYMD(minus(now, 35))
+  const c7 = fmtYMD(minus(now, 6)), c35 = fmtYMD(minus(now, 34))
   const rows = (beRows || []).map((r: any) => ({ d: normDate(r.date), fat: (r.fatigue_musculaire == null || r.fatigue_musculaire === '') ? null : Number(r.fatigue_musculaire), som: (r.sommeil == null || r.sommeil === '') ? null : Number(r.sommeil) }))
     .filter((r: any) => r.d && r.d >= c35).sort((a: any, b: any) => b.d.localeCompare(a.d))
   const moy = (a: number[]) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null
@@ -677,7 +677,7 @@ function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: numbe
   const alertes: any[] = []
   if (!perfs.length) return alertes
   const now = new Date()
-  const sept = fmtYMD(minus(now, 7))
+  const sept = fmtYMD(minus(now, 6))
   const troisSem = fmtYMD(minus(now, 21))
 
   const datesRecentes: Record<string, boolean> = {}
@@ -770,7 +770,7 @@ function calculerAlertes(perfs: any[], _athleteId: string, anneesPratique: numbe
 
 // ── Cardio helper ─────────────────────────────────────────────────────────────
 function _aggCardioWindow(sessions: any[], now: Date, days: number): any {
-  const cutoff = fmtYMD(minus(now, days))
+  const cutoff = fmtYMD(minus(now, days - 1))
   const ws = sessions.filter((s: any) => normDate(s.date) >= cutoff)
   let distance = 0, duree = 0, calories = 0, pas = 0
   const par_type: Record<string, number> = {}
@@ -1011,7 +1011,7 @@ function buildSeancesDetail(perfs: any[]): any[] {
 // chaîne ACWR) ; premiereCharge = plus ancienne date de charge ; chargeParSem/
 // semLundi (semaine ISO, pour la charge hebdo).
 function chargeFenetresFoot(rows: any[], now: Date) {
-  const j7 = fmtYMD(minus(now, 7)), j28 = fmtYMD(minus(now, 28))
+  const j7 = fmtYMD(minus(now, 6)), j28 = fmtYMD(minus(now, 27))
   const chargeParJour: Record<string, number> = {}, chargeParJour28: Record<string, number> = {}
   const chargeParSem: Record<string, number> = {}, semLundi: Record<string, string> = {}
   let charge7 = 0, charge28 = 0
@@ -1869,7 +1869,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
   if (!hist.length) {
     return { constats: [{ ton: 'neutre', texte: `Pas encore de cardio enregistré.` }], reco: { texte: `Ajoute une sortie cardio pour suivre ton endurance.`, priorite: 'info' }, confiance: 'faible' }
   }
-  const c28 = fmtYMD(minus(now, 28)), c56 = fmtYMD(minus(now, 56))
+  const c28 = fmtYMD(minus(now, 27)), c56 = fmtYMD(minus(now, 55))
   let n28 = 0, n56 = 0, ch28 = 0, ch56 = 0, dist28 = 0, mn28 = 0, mn56 = 0
   const fcPts: any[] = []
   for (const s of hist) {
@@ -1935,7 +1935,7 @@ function buildSyntheseCardio(cardio: any, moteur: any, now: Date): any {
 // « Lecture Novalyz » (croisé) : équilibre muscu/cardio (28j) + récupération vs
 // charge globale. Déterministe ; s'aligne sur l'état du jour.
 function buildSyntheseCroise(comparison: any, cardio: any, moteur: any, now: Date): any {
-  const c28 = fmtYMD(minus(now, 28))
+  const c28 = fmtYMD(minus(now, 27))
   let cardioUA = 0
   const hist = (cardio && cardio.history) || []
   for (const s of hist) { if (String(s.date || '') >= c28) cardioUA += chargeInterneCardio(s) }
@@ -2110,7 +2110,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const acwrCalcA = calculerACWR(chSportA.chargeParJour, now)
   const acwr = sport === 'muscu' ? acwrCalcA.ratio : null
 
-  const c7 = fmtYMD(minus(now, 7))
+  const c7 = fmtYMD(minus(now, 6))
   // (tonnage 7 j : plus de recalcul local — SOURCE UNIQUE = computeRecent.j7, voir tonnageObj)
 
   const lundiStr = fmtYMD(lundi)
@@ -2136,7 +2136,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   })()
 
   // muscle en retard = sur 4 SEMAINES, plus grand retard, faites < min×4 (comme Code.gs computeMuscleRetard)
-  const c28mr = fmtYMD(minus(now, 28))
+  const c28mr = fmtYMD(minus(now, 27))
   const seriesParMuscle4: Record<string, number> = {}
   // Audit #5 : le muscle SECONDAIRE de l'exercice compte 0,5 série (squat → fessiers…),
   // comme l'onglet Analyses — sinon « Fessier 0 série » alors qu'il est travaillé.
@@ -2479,14 +2479,14 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
   const execCibleMuscu = buildRespectProgramme(programme, seancesDetailArr, perfs)
   // Temps de repos entre séries (levier B) : moyenne des repos RÉELLEMENT loggés (>0)
   // sur 28 j. Fait factuel vérifié → alimente un levier « mot de Novalyz » conditionnel.
-  const _repCut = fmtYMD(minus(now, 28))
+  const _repCut = fmtYMD(minus(now, 27))
   const _repVals: number[] = []
   for (const r of perfs) { const d = normDate(r.date); if (!d || d < _repCut) continue; const rp = Number(r.repos) || 0; if (rp > 0) _repVals.push(rp) }
   const reposMoy = _repVals.length ? Math.round(_repVals.reduce((a, b) => a + b, 0) / _repVals.length) : null
   // Audit #6 : plus longue pause (jours sans séance) qui touche la période de comparaison (J-56 → J-28).
   let pausePrevJours = 0
   {
-    const c56p = fmtYMD(minus(now, 56)), c28p = fmtYMD(minus(now, 28))
+    const c56p = fmtYMD(minus(now, 55)), c28p = fmtYMD(minus(now, 27))
     const ds = [...new Set(perfs.map((r: any) => normDate(r.date)).filter((d: any) => d && d >= c56p))].sort() as string[]
     let prev = c56p
     for (const d of ds) {
@@ -2671,7 +2671,7 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
 
   const athleteIds = athletes.map(a => a.id)
   const now = new Date()
-  const c28 = fmtYMD(minus(now, 28))
+  const c28 = fmtYMD(minus(now, 27))
 
   const [{ data: perfsAll }, { data: pauseAll }, { data: beAll }] = await Promise.all([
     sb().from('performances').select('*').in('athlete_id', athleteIds).gte('date', c28),
@@ -2898,7 +2898,7 @@ function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; 
   // Zone lisible : anciennes saisies perdues stockées « NaN » → aucune zone (sinon l'alerte
   // affichait « Gêne légère signalée (nan) », vu sur données réelles le 31/10).
   const _zoneOk = (z: any): string | null => { const t = String(z == null ? '' : z).trim(); return (!t || /^(nan|null|undefined)$/i.test(t)) ? null : t }
-  const cut = fmtYMD(minus(now, days))
+  const cut = fmtYMD(minus(now, days - 1))
   const doul: number[] = [], fat: number[] = [], som: number[] = [], str: number[] = [], courb: number[] = []
   // DOULEUR = DERNIÈRE saisie (jour le plus récent ; pire valeur de ce jour-là), plus
   // le MAX des 7 jours : une douleur passée (« Aucune » le lendemain) ne maintient
@@ -3166,8 +3166,8 @@ async function handleGetSuiviEquipe(params: URLSearchParams): Promise<Response> 
   if (!coachId) return jsonResp({ joueurs: [], equipe: {}, error: 'coach_id manquant' })
   try {
     const now = new Date()
-    const j7 = fmtYMD(minus(now, 7))
-    const j28 = fmtYMD(minus(now, 28))
+    const j7 = fmtYMD(minus(now, 6))
+    const j28 = fmtYMD(minus(now, 27))
 
     const [{ data: aths }, { data: indAll }, { data: beAll }, { data: injAll }, { data: testAll }, { data: ctxAll }] = await Promise.all([
       sb().from('athletes').select('*').eq('coach_id', coachId),
@@ -3331,9 +3331,9 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
   if (!athleteId) return jsonResp({ error: 'athlete_id manquant' })
   try {
     const now = new Date()
-    const j7 = fmtYMD(minus(now, 7))
-    const j14 = fmtYMD(minus(now, 14))
-    const j28 = fmtYMD(minus(now, 28))
+    const j7 = fmtYMD(minus(now, 6))
+    const j14 = fmtYMD(minus(now, 13))
+    const j28 = fmtYMD(minus(now, 27))
 
     const [{ data: ath }, { data: indAll }, { data: beAll }, { data: injAll }, { data: objAll }, { data: ctxAll }, { data: perfAll }] = await Promise.all([
       sb().from('athletes').select('*').eq('id', athleteId).single(),
@@ -4289,7 +4289,7 @@ function _fmtDuree(min: number): string {
 function _bilanAthlete(perfs: any[], programme: any[], bienEtre: any[], sante: any[], now: Date, periode: string, annees = 0): any {
   const days = periode === '3mois' ? 90 : periode === 'mois' ? 28 : 7
   const weeks = days / 7
-  const cut = fmtYMD(minus(now, days))
+  const cut = fmtYMD(minus(now, days - 1))
   const cutPrev = fmtYMD(minus(now, days * 2))
   const inWin = (perfs || []).filter(r => normDate(r.date) >= cut)
   const inPrev = (perfs || []).filter(r => { const dd = normDate(r.date); return dd >= cutPrev && dd < cut })
