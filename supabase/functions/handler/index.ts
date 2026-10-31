@@ -2894,13 +2894,10 @@ async function handleDetacherCoach(body: any): Promise<Response> {
 //   douleur = MAX récent · fatigue = MAX récent · sommeil = MOYENNE récente.
 // (max pour la douleur/fatigue = orienté prévention ; moyenne sommeil = §16, une
 //  seule mauvaise nuit ne doit pas suffire.)
-// Zone de douleur lisible : les anciennes saisies perdues sont stockées « NaN » → aucune zone
-// (sinon l'alerte affichait « Gêne légère signalée (nan) », vu sur données réelles le 31/10).
-function _zoneOk(z: any): string | null {
-  const t = String(z == null ? '' : z).trim()
-  return (!t || /^(nan|null|undefined)$/i.test(t)) ? null : t
-}
 function _aggSignaux(rows: any[], now: Date, days = 7): { douleur: number|null; douleurZone: string|null; douleurDate: string|null; fatigue: number|null; fatigueMoy: number|null; sommeil: number|null; stress: number|null; courbatures: number|null; wellnessN: number } {
+  // Zone lisible : anciennes saisies perdues stockées « NaN » → aucune zone (sinon l'alerte
+  // affichait « Gêne légère signalée (nan) », vu sur données réelles le 31/10).
+  const _zoneOk = (z: any): string | null => { const t = String(z == null ? '' : z).trim(); return (!t || /^(nan|null|undefined)$/i.test(t)) ? null : t }
   const cut = fmtYMD(minus(now, days))
   const doul: number[] = [], fat: number[] = [], som: number[] = [], str: number[] = [], courb: number[] = []
   // DOULEUR = DERNIÈRE saisie (jour le plus récent ; pire valeur de ce jour-là), plus
