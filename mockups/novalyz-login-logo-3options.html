@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login · logo Novalyz + objets — 3 options</title>
+<style>
+  :root{ --accent:#1A5FFF; --muted:#5f6b85; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{background:#0b2a8a;min-height:100vh;overflow:hidden;color:#fff}
+  /* ── Fond aurore qui suit la souris / l'inclinaison ── */
+  .sky{position:fixed;inset:0;overflow:hidden;z-index:0}
+  .blob{position:absolute;width:70vmax;height:70vmax;border-radius:50%;filter:blur(70px);opacity:.75;mix-blend-mode:screen;will-change:transform}
+  .b1{background:#1A5FFF;left:-20vmax;top:-20vmax}
+  .b2{background:#22d3ee;right:-25vmax;top:10vmax}
+  .b3{background:#7c3aed;left:10vmax;bottom:-30vmax}
+  .b4{background:#ffffff;right:10vmax;top:-30vmax;opacity:.32}
+  .hex{position:absolute;inset:-120px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='white' stroke-opacity='.16' stroke-width='1.4'/%3E%3C/svg%3E");background-size:56px 97px;will-change:transform;-webkit-mask-image:radial-gradient(circle at var(--mx,50%) var(--my,50%),#000 0,#000 18%,rgba(0,0,0,.35) 45%,transparent 80%);mask-image:radial-gradient(circle at var(--mx,50%) var(--my,50%),#000 0,#000 18%,rgba(0,0,0,.35) 45%,transparent 80%)}
+  .spot{position:absolute;width:520px;height:520px;margin:-260px 0 0 -260px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 60%);pointer-events:none;will-change:transform}
+  .sheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.10) 50%,transparent 65%);background-size:250% 100%;animation:sheen 8s ease-in-out infinite}
+  @keyframes sheen{0%{background-position:150% 0}100%{background-position:-50% 0}}
+  /* ── Emblème : hexagone de verre + objet qui se transforme ── */
+  .login{position:relative;z-index:5;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px}
+  .emb{position:relative;width:168px;height:184px;margin-bottom:14px;transition:transform .2s ease-out}
+  .emb svg.frame{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .hexfill{fill:rgba(255,255,255,.12);stroke:rgba(255,255,255,.55);stroke-width:1.6}
+  .hexglow{fill:none;stroke:#fff;stroke-width:2.4;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 6px #9cc0ff)}
+  .hexglow.run{animation:trace 1.6s ease-in-out}
+  @keyframes trace{0%{stroke-dashoffset:1;opacity:1}70%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+  .icon{position:absolute;left:24px;top:32px;width:120px;height:120px}
+  .icon svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  /* Traits blancs (demande 31/10) : aucun remplissage, aucune couleur. */
+  .real{filter:url(#warp) drop-shadow(0 0 6px rgba(156,192,255,.75))}
+  .real *,.line *{fill:none !important;stroke:#fff !important;stroke-width:1.6 !important;stroke-linecap:round;stroke-linejoin:round}
+  .real text,.line text{stroke-width:.8 !important}
+  .line *{stroke-dasharray:1;stroke-dashoffset:1}
+  .line{filter:drop-shadow(0 0 5px rgba(156,192,255,.9))}
+  .brand{font-size:30px;letter-spacing:.32em;font-weight:900;margin-bottom:6px}
+  .brand b{color:#d6e4ff}
+  .tag{font-size:13px;color:rgba(255,255,255,.8);margin-bottom:22px}
+  .card{width:100%;max-width:380px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-radius:20px;padding:20px;box-shadow:0 20px 50px rgba(3,10,40,.35)}
+  .card label{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.85);margin:10px 0 6px}
+  .card input{width:100%;border:1px solid transparent;background:rgba(255,255,255,.92);border-radius:11px;padding:12px;font:inherit;font-size:15px}
+  .card button{width:100%;margin-top:16px;border:none;border-radius:13px;background:#fff;color:var(--accent);font:inherit;font-weight:800;font-size:15px;padding:13px}
+  .sports{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:96vw;background:rgba(255,255,255,.94);border-radius:14px;padding:4px;box-shadow:0 6px 18px rgba(13,20,36,.15)}
+  .sports button{border:none;background:transparent;font:inherit;font-size:12px;font-weight:800;color:var(--muted);padding:6px 10px;border-radius:999px;cursor:pointer}
+  .sports button.on{background:#0d1424;color:#fff}
+  @media (prefers-reduced-motion:reduce){.sheen{animation:none}}
+
+/* ---- Logo animé : A2 (barres puis points puis traits) / B2 (courbe puis barres),
+   tiré au hasard. L'hexagone reste fixe. ---- */
+.nvl-ic { overflow:visible; }
+.nvl-ic .nvl-b, .nvl-ic .nvl-d { transform-box:fill-box; }
+.nvl-ic .nvl-b { transform-origin:50% 100%; }
+.nvl-ic .nvl-d { transform-origin:50% 50%; }
+.nvl-ic .nvl-l { stroke-dasharray:70; stroke-dashoffset:70; }
+.nvl-ic.nvl-X .nvl-l { stroke-dashoffset:0; }
+.nvl-A2 .nvl-b,.nvl-A2 .nvl-d,.nvl-A2 .nvl-l{animation-duration:4s;animation-iteration-count:infinite;animation-fill-mode:both}
+.nvl-A2 .nvl-b1{animation-name:nvl-a2b1}.nvl-A2 .nvl-b2{animation-name:nvl-a2b2}.nvl-A2 .nvl-b3{animation-name:nvl-a2b3}.nvl-A2 .nvl-b4{animation-name:nvl-a2b4}
+.nvl-A2 .nvl-d1{animation-name:nvl-a2d1}.nvl-A2 .nvl-d2{animation-name:nvl-a2d2}.nvl-A2 .nvl-d3{animation-name:nvl-a2d3}.nvl-A2 .nvl-d4{animation-name:nvl-a2d4}
+.nvl-A2 .nvl-l1{animation-name:nvl-a2l1}.nvl-A2 .nvl-l2{animation-name:nvl-a2l2}.nvl-A2 .nvl-l3{animation-name:nvl-a2l3}
+@keyframes nvl-a2b1{0%,2%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}14%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b2{0%,20%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}29%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b3{0%,33%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}40%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2b4{0%,43%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}49%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-a2d1{0%,12%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}17%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}20%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}23%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d2{0%,27%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}32%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}35%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}38%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d3{0%,38%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}43%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}46%{transform:translateY(-14px) scale(.95,1.05);animation-timing-function:ease-in}49%,86%{transform:none;opacity:1}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2d4{0%,48%{transform:translateY(-70px) scale(.6);opacity:0;animation-timing-function:cubic-bezier(.55,0,1,.45)}53%{transform:translateY(0) scale(1.25,.75);opacity:1;animation-timing-function:ease-out}56%{transform:translateY(-14px);animation-timing-function:ease-in}59%{transform:none}74%{transform:scale(1)}78%{transform:scale(1.7)}82%,86%{transform:scale(1)}96%,100%{transform:scale(0);opacity:0}}
+@keyframes nvl-a2l1{0%,60%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}65%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-a2l2{0%,65%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}69%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-a2l3{0%,69%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}74%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+.nvl-B2 .nvl-b,.nvl-B2 .nvl-d,.nvl-B2 .nvl-l{animation-duration:4s;animation-iteration-count:infinite;animation-fill-mode:both}
+.nvl-B2 .nvl-l1{animation-name:nvl-b2l1}.nvl-B2 .nvl-l2{animation-name:nvl-b2l2}.nvl-B2 .nvl-l3{animation-name:nvl-b2l3}
+.nvl-B2 .nvl-d1{animation-name:nvl-b2d1}.nvl-B2 .nvl-d2{animation-name:nvl-b2d2}.nvl-B2 .nvl-d3{animation-name:nvl-b2d3}.nvl-B2 .nvl-d4{animation-name:nvl-b2d4}
+.nvl-B2 .nvl-b1{animation-name:nvl-b2b1}.nvl-B2 .nvl-b2{animation-name:nvl-b2b2}.nvl-B2 .nvl-b3{animation-name:nvl-b2b3}.nvl-B2 .nvl-b4{animation-name:nvl-b2b4}
+@keyframes nvl-b2d1{0%,4%{transform:scale(0)}7%{transform:scale(1.8)}10%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l1{0%,8%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}20%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d2{0%,19%{transform:scale(0)}22%{transform:scale(1.8)}25%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l2{0%,22%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}29%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d3{0%,28%{transform:scale(0)}31%{transform:scale(1.8)}34%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2l3{0%,31%{stroke-dashoffset:70;animation-timing-function:cubic-bezier(.7,0,.3,1)}36%,86%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:70}}
+@keyframes nvl-b2d4{0%,35%{transform:scale(0)}38%{transform:scale(1.8)}41%,86%{transform:scale(1)}96%,100%{transform:scale(0)}}
+@keyframes nvl-b2b1{0%,44%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}54%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b2{0%,48%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}57%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b3{0%,52%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}60%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@keyframes nvl-b2b4{0%,56%{transform:scaleY(0);animation-timing-function:cubic-bezier(.34,1.56,.64,1)}63%,86%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.75,0)}96%,100%{transform:scaleY(0)}}
+@media (prefers-reduced-motion:reduce) {
+  .nvl-ic .nvl-b, .nvl-ic .nvl-d, .nvl-ic .nvl-l { animation:none !important; transform:none !important; opacity:1 !important; stroke-dashoffset:0 !important; }
+}
+
+
+  /* Logo Novalyz en blanc sur l'aurore (moitié droite blanche, gauche bleu clair) */
+  .lg svg{color:#fff}
+  .lg svg [fill="#1A5FFF"]{fill:#9cc0ff}
+  .lg svg [stroke="#1A5FFF"]{stroke:#9cc0ff}
+  .opts{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:4px;background:rgba(255,255,255,.94);border-radius:999px;padding:4px;box-shadow:0 6px 18px rgba(13,20,36,.15)}
+  .opts button{border:none;background:transparent;font:inherit;font-size:12.5px;font-weight:800;color:var(--muted);padding:7px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+  .opts button.on{background:var(--accent);color:#fff}
+  /* Option 1 : l'intérieur du logo se transforme (l'hexagone Novalyz reste). */
+  .o1 .emb{width:150px;height:164px}
+  .o1 .emb svg.frame{display:none}
+  .o1 .lg{position:absolute;inset:0}
+  .o1 .lg svg{width:100%;height:100%}
+  .o1 .icon{left:39px;top:46px;width:72px;height:72px}
+  .o1 .lgtop{display:none}
+  /* Option 2 : logo en haut, grand hexagone discret derrière la carte. */
+  .o2 .emb{position:fixed;left:50%;top:50%;width:520px;height:570px;margin:-250px 0 0 -260px;opacity:.22;z-index:0;pointer-events:none}
+  .o2 .emb .icon{left:74px;top:99px;width:372px;height:372px}
+  .o2 .emb .lg{display:none}
+  .o2 .lgtop,.o3 .lgtop{display:block;margin:0 auto 12px;width:96px;height:105px}
+  .o2 .lgtop svg,.o3 .lgtop svg{width:100%;height:100%}
+  /* Option 3 : logo en haut, petit hexagone « badge » à côté du nom. */
+  .o3 .emb{position:absolute;width:46px;height:50px;margin:0}
+  .o3 .emb .icon{left:7px;top:9px;width:32px;height:32px}
+  .o3 .emb .lg{display:none}
+  .o3 .brandrow{display:flex;align-items:center;gap:12px}
+  .o3 .brandrow .brand{margin:0}
+  .o3 .slot{position:relative;width:46px;height:50px}
+  .o1 .slot,.o2 .slot{display:none}
+  .o3 .real *,.o3 .line *{stroke-width:2.6 !important}
+
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <radialGradient id="gFoot" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#ffffff"/><stop offset=".65" stop-color="#eef0f4"/><stop offset="1" stop-color="#b9bfca"/></radialGradient>
+    <radialGradient id="gPenta" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#3a3f4b"/><stop offset="1" stop-color="#0c0e13"/></radialGradient>
+    <radialGradient id="gBasket" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#ffb066"/><stop offset=".55" stop-color="#ef7d2c"/><stop offset="1" stop-color="#a94812"/></radialGradient>
+    <radialGradient id="gRugby" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#c98454"/><stop offset=".6" stop-color="#9a5226"/><stop offset="1" stop-color="#5e2c10"/></radialGradient>
+    <radialGradient id="gTennis" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#f4ff8a"/><stop offset=".6" stop-color="#d4e83a"/><stop offset="1" stop-color="#93a512"/></radialGradient>
+    <radialGradient id="gWhite" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#eef1f6"/><stop offset="1" stop-color="#bcc3cf"/></radialGradient>
+    <radialGradient id="gShade" cx="36%" cy="30%" r="75%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></radialGradient>
+    <linearGradient id="gBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef1f5"/><stop offset=".5" stop-color="#a7afba"/><stop offset="1" stop-color="#6b737e"/></linearGradient>
+    <linearGradient id="gPlate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4a4f5a"/><stop offset=".5" stop-color="#1f2229"/><stop offset="1" stop-color="#0b0c10"/></linearGradient>
+    <linearGradient id="gPlate2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6c7380"/><stop offset="1" stop-color="#2a2e36"/></linearGradient>
+    <radialGradient id="gKb" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#5a606b"/><stop offset=".6" stop-color="#23262d"/><stop offset="1" stop-color="#0b0c10"/></radialGradient>
+    <radialGradient id="gGolf" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#eef0f3"/><stop offset="1" stop-color="#b7bdc7"/></radialGradient>
+    <linearGradient id="gPuck" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3f47"/><stop offset="1" stop-color="#090a0d"/></linearGradient>
+    <radialGradient id="gVerre" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#7fd3ff"/><stop offset="1" stop-color="#1a3fa8"/></radialGradient>
+    <radialGradient id="gGant" cx="38%" cy="28%" r="80%"><stop offset="0" stop-color="#ff6b6b"/><stop offset=".55" stop-color="#d6262f"/><stop offset="1" stop-color="#7a0f15"/></radialGradient>
+    <filter id="monoB" x="-10%" y="-10%" width="120%" height="120%"><feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -0.3 -0.6 -0.1 1 0" result="dk"/><feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="dil"/><feComposite in="dil" in2="SourceAlpha" operator="out" result="ring"/><feMerge result="m"><feMergeNode in="dk"/><feMergeNode in="ring"/></feMerge><feFlood flood-color="#1A5FFF"/><feComposite in2="m" operator="in"/></filter>
+    <filter id="monoW" x="-10%" y="-10%" width="120%" height="120%"><feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -0.3 -0.6 -0.1 1 0" result="dk"/><feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="dil"/><feComposite in="dil" in2="SourceAlpha" operator="out" result="ring"/><feMerge result="m"><feMergeNode in="dk"/><feMergeNode in="ring"/></feMerge><feFlood flood-color="#ffffff"/><feComposite in2="m" operator="in"/></filter>
+    <filter id="warp" x="-30%" y="-30%" width="160%" height="160%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3" result="n"/><feDisplacementMap id="warpMap" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G"/></filter>
+    <clipPath id="cBall"><circle cx="50" cy="50" r="44"/></clipPath>
+    <clipPath id="cTen"><circle cx="50" cy="50" r="40"/></clipPath>
+  </defs>
+</svg>
+<div class="sports" id="sports"></div>
+<div class="opts" id="opts"><button data-o="1" class="on">1 · Le logo se transforme</button><button data-o="2">2 · Objets en fond</button><button data-o="3">3 · Badge</button></div>
+<div class="sky" id="sky"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div><div class="hex" id="hex"></div><div class="spot" id="spot"></div><div class="sheen"></div></div>
+<div class="login">
+  <div class="lgtop lg"><svg class="nvl-ic nvl-A2" aria-hidden="true" viewBox="0 0 271 296" fill="none"><path class="nvl-hx" d="M18.1521 66.4863H0.125908L0.229618 229.321H18.1521V66.4863Z" fill="#1A5FFF"/><path class="nvl-hx" d="M127.126 19.0728L127.126 0.394741L0.125887 66.4863L9.08714 80.6647L127.126 19.0728Z" fill="#1A5FFF"/><path class="nvl-hx" d="M126.126 276.734L126.126 295.412L0.125908 229.055L9.08715 214.953L126.126 276.734Z" fill="#1A5FFF"/><rect class="nvl-hx" x="252.203" y="66.4863" width="17.9225" height="162.834" fill="currentColor"/><path class="nvl-hx" d="M143.126 19.0728L143.126 0.394732L270.126 66.4863L261.268 80.6647L143.126 19.0728Z" fill="currentColor"/><path class="nvl-hx" d="M144.126 276.734L144.087 295.412L270.229 229.055L261.268 214.953L144.126 276.734Z" fill="currentColor"/><path class="nvl-l nvl-l1" d="M77 175L115 129" stroke="#1A5FFF" stroke-width="5"/><path class="nvl-l nvl-l2" d="M115 129L155 137" stroke="currentColor" stroke-width="5"/><path class="nvl-l nvl-l3" d="M155 137L194 89" stroke="currentColor" stroke-width="5"/><path class="nvl-b nvl-b1" d="M88.1259 199.627V261.539V264.761L66.1259 257.371V199.627H88.1259Z" fill="#1A5FFF"/><path class="nvl-b nvl-b2" d="M126.126 169.934V286.166V292.539L104.126 278.343V169.934H126.126Z" fill="#1A5FFF"/><path class="nvl-b nvl-b3" d="M165.626 162.412L166.126 269.569L144.126 278.412V162.412H165.626Z" fill="currentColor"/><path class="nvl-b nvl-b4" d="M205.126 120.412V243.639V250.053L183.126 261.412V120.412H205.126Z" fill="currentColor"/><circle class="nvl-d nvl-d1" cx="77.1" cy="175.4" r="8" fill="#1A5FFF"/><circle class="nvl-d nvl-d2" cx="115.1" cy="129.4" r="8" fill="#1A5FFF"/><circle class="nvl-d nvl-d3" cx="155.1" cy="137.4" r="8" fill="currentColor"/><circle class="nvl-d nvl-d4" cx="194.1" cy="89.4" r="8" fill="currentColor"/></svg></div>
+  <div class="emb" id="emb">
+    <div class="lg" id="lgIn"><svg class="nvl-ic nvl-A2" aria-hidden="true" viewBox="0 0 271 296" fill="none"><path class="nvl-hx" d="M18.1521 66.4863H0.125908L0.229618 229.321H18.1521V66.4863Z" fill="#1A5FFF"/><path class="nvl-hx" d="M127.126 19.0728L127.126 0.394741L0.125887 66.4863L9.08714 80.6647L127.126 19.0728Z" fill="#1A5FFF"/><path class="nvl-hx" d="M126.126 276.734L126.126 295.412L0.125908 229.055L9.08715 214.953L126.126 276.734Z" fill="#1A5FFF"/><rect class="nvl-hx" x="252.203" y="66.4863" width="17.9225" height="162.834" fill="currentColor"/><path class="nvl-hx" d="M143.126 19.0728L143.126 0.394732L270.126 66.4863L261.268 80.6647L143.126 19.0728Z" fill="currentColor"/><path class="nvl-hx" d="M144.126 276.734L144.087 295.412L270.229 229.055L261.268 214.953L144.126 276.734Z" fill="currentColor"/><path class="nvl-l nvl-l1" d="M77 175L115 129" stroke="#1A5FFF" stroke-width="5"/><path class="nvl-l nvl-l2" d="M115 129L155 137" stroke="currentColor" stroke-width="5"/><path class="nvl-l nvl-l3" d="M155 137L194 89" stroke="currentColor" stroke-width="5"/><path class="nvl-b nvl-b1" d="M88.1259 199.627V261.539V264.761L66.1259 257.371V199.627H88.1259Z" fill="#1A5FFF"/><path class="nvl-b nvl-b2" d="M126.126 169.934V286.166V292.539L104.126 278.343V169.934H126.126Z" fill="#1A5FFF"/><path class="nvl-b nvl-b3" d="M165.626 162.412L166.126 269.569L144.126 278.412V162.412H165.626Z" fill="currentColor"/><path class="nvl-b nvl-b4" d="M205.126 120.412V243.639V250.053L183.126 261.412V120.412H205.126Z" fill="currentColor"/><circle class="nvl-d nvl-d1" cx="77.1" cy="175.4" r="8" fill="#1A5FFF"/><circle class="nvl-d nvl-d2" cx="115.1" cy="129.4" r="8" fill="#1A5FFF"/><circle class="nvl-d nvl-d3" cx="155.1" cy="137.4" r="8" fill="currentColor"/><circle class="nvl-d nvl-d4" cx="194.1" cy="89.4" r="8" fill="currentColor"/></svg></div>
+    <svg class="frame" viewBox="0 0 168 184"><polygon class="hexfill" points="84,4 160,48 160,136 84,180 8,136 8,48"/><polygon class="hexglow" id="hexglow" pathLength="1" points="84,4 160,48 160,136 84,180 8,136 8,48"/></svg>
+    <div class="icon"><svg class="real" id="real" viewBox="0 0 100 100"></svg><svg class="line" id="line" viewBox="0 0 100 100"></svg></div>
+  </div>
+  <div class="brandrow"><div class="brand">NOVA<b>LYZ</b></div><div class="slot" id="slot"></div></div>
+  <div class="tag" id="tag">Analyse · décide · progresse</div>
+  <div class="card">
+    <label>Identifiant</label><input placeholder="1234">
+    <label>Mot de passe</label><input type="password" placeholder="••••••">
+    <button>Se connecter</button>
+  </div>
+</div>
+<script>
+// Pentagone régulier (centre cx,cy, rayon r, rotation en degrés).
+function penta(cx, cy, r, rot) { var p = []; for (var i = 0; i < 5; i++) { var a = (rot - 90 + i * 72) * Math.PI / 180; p.push((cx + r * Math.cos(a)).toFixed(1) + ',' + (cy + r * Math.sin(a)).toFixed(1)); } return p.join(' '); }
+function ptAt(cx, cy, r, deg) { var a = (deg - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; }
+var GLOSS = '<ellipse cx="36" cy="30" rx="15" ry="9" fill="#fff" opacity=".45" transform="rotate(-28 36 30)"/>';
+function foot() {
+  var s = '<circle cx="50" cy="50" r="44" fill="url(#gFoot)"/><g clip-path="url(#cBall)">';
+  // Coutures : du pentagone central vers les pentagones extérieurs (motif ballon « 32 panneaux »)
+  for (var i = 0; i < 5; i++) {
+    // Couture radiale depuis chaque sommet du pentagone central, puis fourche vers les pentagones voisins (hexagones).
+    var v = ptAt(50, 50, 13, i * 72), o = ptAt(50, 50, 27, i * 72), a1 = ptAt(50, 50, 33, i * 72 + 21), a2 = ptAt(50, 50, 33, i * 72 - 21);
+    var f = function (q) { return q[0].toFixed(1) + ' ' + q[1].toFixed(1); };
+    s += '<path d="M' + f(v) + 'L' + f(o) + 'M' + f(o) + 'L' + f(a1) + 'M' + f(o) + 'L' + f(a2) + '" fill="none" stroke="#a3a9b4" stroke-width="1.1"/>';
+    var c = ptAt(50, 50, 41, i * 72 + 36);
+    s += '<polygon points="' + penta(c[0], c[1], 12.5, i * 72 + 36 + 180) + '" fill="url(#gPenta)"/>';
+  }
+  s += '<polygon points="' + penta(50, 50, 13, 0) + '" fill="url(#gPenta)"/>';
+  return s + '</g><circle cx="50" cy="50" r="44" fill="url(#gShade)"/>' + GLOSS + '<circle cx="50" cy="50" r="44" fill="none" stroke="#7d8592" stroke-width="1"/>';
+}
+function basket() {
+  return '<circle cx="50" cy="50" r="44" fill="url(#gBasket)"/>'
+    + '<g fill="none" stroke="#1b1410" stroke-width="2.6" stroke-linecap="round" clip-path="url(#cBall)">'
+    + '<path d="M50 6 C46 30 46 70 50 94"/><path d="M6 50 C30 46 70 46 94 50"/>'
+    + '<path d="M18 17 C33 33 33 67 18 83"/><path d="M82 17 C67 33 67 67 82 83"/></g>'
+    + '<circle cx="50" cy="50" r="44" fill="url(#gShade)"/>' + GLOSS + '<circle cx="50" cy="50" r="44" fill="none" stroke="#7a3410" stroke-width="1"/>';
+}
+function rugby() {
+  var laces = ''; for (var i = -3; i <= 3; i++) laces += '<rect x="' + (47 + i * 5.4).toFixed(1) + '" y="40" width="2.6" height="8" rx="1.2" fill="#fbfaf6" transform="rotate(0)"/>';
+  return '<g transform="rotate(-32 50 50)"><ellipse cx="50" cy="50" rx="46" ry="27" fill="url(#gRugby)"/>'
+    + '<path d="M8 50 Q50 38 92 50" fill="none" stroke="#3d1a07" stroke-width="1.6" opacity=".7"/>'
+    + '<path d="M28 44 Q50 39 72 44" fill="none" stroke="#fbfaf6" stroke-width="2"/>' + laces
+    + '<ellipse cx="50" cy="50" rx="46" ry="27" fill="url(#gShade)"/>'
+    + '<ellipse cx="36" cy="40" rx="16" ry="5.5" fill="#fff" opacity=".35"/>'
+    + '<ellipse cx="50" cy="50" rx="46" ry="27" fill="none" stroke="#4a2008" stroke-width="1"/></g>';
+}
+function tennis() {
+  return '<circle cx="50" cy="50" r="40" fill="url(#gTennis)"/>'
+    + '<g fill="none" stroke="#fdfdf2" stroke-width="4.2" stroke-linecap="round" clip-path="url(#cTen)"><path d="M14 20 C34 36 34 64 14 80"/><path d="M86 20 C66 36 66 64 86 80"/></g>'
+    + '<circle cx="50" cy="50" r="40" fill="url(#gShade)"/><ellipse cx="38" cy="32" rx="13" ry="8" fill="#fff" opacity=".4" transform="rotate(-28 38 32)"/>'
+    + '<circle cx="50" cy="50" r="40" fill="none" stroke="#8a9a10" stroke-width="1"/>';
+}
+function volley() {
+  // Volley : 3 coutures courbes qui partent du centre (motif en « Y » tournant) + une couture parallèle
+  // dans chaque panneau — le dessin classique du ballon de volley.
+  var seam = '<path d="M50 50 C50 32 42 18 26 10"/><path d="M58 47 C59 30 52 16 40 7"/>';
+  var g = '';
+  [0, 120, 240].forEach(function (r) { g += '<g transform="rotate(' + r + ' 50 50)">' + seam + '</g>'; });
+  return '<circle cx="50" cy="50" r="44" fill="url(#gWhite)"/><g clip-path="url(#cBall)" fill="none" stroke="#1e50d6" stroke-width="2.2">' + g + '</g>'
+    + '<circle cx="50" cy="50" r="44" fill="url(#gShade)"/>' + GLOSS + '<circle cx="50" cy="50" r="44" fill="none" stroke="#8a93a3" stroke-width="1"/>';
+}
+function hand() {
+  // Handball : panneau central en triangle bombé, 3 coutures vers le bord et 3 arcs qui ferment les panneaux.
+  var f = function (q) { return q[0].toFixed(1) + ' ' + q[1].toFixed(1); }, v = [], d, sp = '';
+  for (var k = 0; k < 3; k++) v.push(ptAt(50, 50, 19, k * 120));
+  d = 'M' + f(v[0]);
+  for (k = 0; k < 3; k++) d += ' Q' + f(ptAt(50, 50, 15, k * 120 + 60)) + ' ' + f(v[(k + 1) % 3]);
+  for (k = 0; k < 3; k++) {
+    sp += '<path d="M' + f(v[k]) + ' Q' + f(ptAt(50, 50, 30, k * 120 + 12)) + ' ' + f(ptAt(50, 50, 46, k * 120 + 25)) + '"/>';
+    sp += '<path d="M' + f(ptAt(50, 50, 46, k * 120 + 35)) + ' Q' + f(ptAt(50, 50, 18, k * 120 + 62)) + ' ' + f(ptAt(50, 50, 46, k * 120 + 92)) + '"/>';
+  }
+  return '<circle cx="50" cy="50" r="44" fill="url(#gWhite)"/><g clip-path="url(#cBall)" fill="none" stroke="#1e50d6" stroke-width="2.2"><path d="' + d + 'Z" fill="#d6262f" fill-opacity=".85"/>' + sp + '</g>'
+    + '<circle cx="50" cy="50" r="44" fill="url(#gShade)"/>' + GLOSS + '<circle cx="50" cy="50" r="44" fill="none" stroke="#8a93a3" stroke-width="1"/>';
+}
+function haltere() {
+  var plate = function (x, w, h, g) { return '<rect x="' + x + '" y="' + (50 - h / 2) + '" width="' + w + '" height="' + h + '" rx="3" fill="url(#' + g + ')" stroke="#05060a" stroke-width=".8"/><rect x="' + (x + 1) + '" y="' + (50 - h / 2 + 2) + '" width="' + (w - 2) + '" height="3" rx="1.5" fill="#fff" opacity=".18"/>'; };
+  return '<rect x="6" y="46.5" width="88" height="7" rx="3.5" fill="url(#gBar)" stroke="#5c636e" stroke-width=".6"/>'
+    + plate(14, 9, 44, 'gPlate') + plate(23, 7, 34, 'gPlate2') + '<rect x="30" y="44" width="4" height="12" rx="1.5" fill="#c9ced6" stroke="#6b737e" stroke-width=".6"/>'
+    + plate(77, 9, 44, 'gPlate') + plate(70, 7, 34, 'gPlate2') + '<rect x="66" y="44" width="4" height="12" rx="1.5" fill="#c9ced6" stroke="#6b737e" stroke-width=".6"/>'
+    + '<rect x="36" y="47.4" width="28" height="1.6" fill="#fff" opacity=".55"/>';
+}
+function kettlebell() {
+  return '<path d="M34 38 C30 14 70 14 66 38" fill="none" stroke="url(#gKb)" stroke-width="9" stroke-linecap="round"/>'
+    + '<path d="M50 34 C74 34 86 52 82 70 C79 84 66 90 50 90 C34 90 21 84 18 70 C14 52 26 34 50 34Z" fill="url(#gKb)"/>'
+    + '<rect x="36" y="80" width="28" height="6" rx="3" fill="#0b0c10"/>'
+    + '<ellipse cx="38" cy="50" rx="10" ry="6" fill="#fff" opacity=".22" transform="rotate(-30 38 50)"/>'
+    + '<text x="50" y="68" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="13" fill="#c9ced6" opacity=".85">16</text>';
+}
+function badminton() {
+  var feathers = ''; for (var i = -3; i <= 3; i++) feathers += '<path d="M50 62 L' + (50 + i * 9) + ' 14" stroke="#c9ced6" stroke-width="1.1"/>';
+  return '<path d="M50 62 L22 14 Q50 4 78 14 Z" fill="#fbfbf8" stroke="#aab1bc" stroke-width="1"/>' + feathers
+    + '<path d="M30 32 Q50 26 70 32" fill="none" stroke="#c43b3b" stroke-width="2"/>'
+    + '<path d="M36 46 Q50 42 64 46" fill="none" stroke="#c43b3b" stroke-width="2"/>'
+    + '<path d="M40 62 Q50 58 60 62 L60 70 Q60 84 50 86 Q40 84 40 70 Z" fill="url(#gGolf)" stroke="#9aa1ad" stroke-width="1"/>'
+    + '<rect x="40" y="60" width="20" height="5" rx="2" fill="#1e50d6"/>';
+}
+function baseball() {
+  var st = ''; for (var i = 0; i < 9; i++) { var t = i / 8; var y = 18 + t * 64; st += '<path d="M' + (26 + Math.sin(t * Math.PI) * 9).toFixed(1) + ' ' + y.toFixed(1) + 'l4 -2" stroke="#c4262e" stroke-width="1.6"/><path d="M' + (74 - Math.sin(t * Math.PI) * 9).toFixed(1) + ' ' + y.toFixed(1) + 'l-4 -2" stroke="#c4262e" stroke-width="1.6"/>'; }
+  return '<circle cx="50" cy="50" r="40" fill="url(#gGolf)"/><g clip-path="url(#cTen)" fill="none">'
+    + '<path d="M22 16 C36 34 36 66 22 84" stroke="#c4262e" stroke-width="1.4"/><path d="M78 16 C64 34 64 66 78 84" stroke="#c4262e" stroke-width="1.4"/>' + st + '</g>'
+    + '<circle cx="50" cy="50" r="40" fill="url(#gShade)"/><ellipse cx="38" cy="32" rx="13" ry="8" fill="#fff" opacity=".5" transform="rotate(-28 38 32)"/><circle cx="50" cy="50" r="40" fill="none" stroke="#9aa1ad" stroke-width="1"/>';
+}
+function golf() {
+  var d = ''; for (var y = 22; y <= 80; y += 9) for (var x = 22; x <= 80; x += 9) { var dx = x + ((y / 9) % 2 ? 4.5 : 0); if ((dx - 50) * (dx - 50) + (y - 50) * (y - 50) < 30 * 30) d += '<circle cx="' + dx + '" cy="' + y + '" r="2.1" fill="#c4cad3" opacity=".7"/>'; }
+  return '<circle cx="50" cy="50" r="34" fill="url(#gGolf)"/>' + d
+    + '<circle cx="50" cy="50" r="34" fill="url(#gShade)"/><ellipse cx="40" cy="36" rx="10" ry="6" fill="#fff" opacity=".6" transform="rotate(-28 40 36)"/><circle cx="50" cy="50" r="34" fill="none" stroke="#9aa1ad" stroke-width="1"/>';
+}
+function hockey() {
+  // Palet seul : dessus elliptique + tranche (côtés et arrondi du bas), sans hachures.
+  return '<path d="M12 44 L12 60 A38 12 0 0 0 88 60 L88 44" fill="url(#gPuck)"/>'
+    + '<ellipse cx="50" cy="44" rx="38" ry="12" fill="#2b2f37"/>'
+    + '<ellipse cx="38" cy="41" rx="12" ry="3" fill="#fff" opacity=".18"/>';
+}
+// Équipements manquants (sports de l'app) : athlétisme, natation, combat.
+function chrono() {
+  // Athlétisme : silhouette pleine d'un sprinteur en position de départ (buste presque horizontal), dessin maison (une seule forme continue + tête),
+  // traits de vitesse derrière. En mode « traits blancs », on voit le contour du corps.
+  return '<path d="M36.3 49.7 L25.4 62.2 L11.9 73.3 L9.0 81.0 L9.0 82.2 L9.7 83.1 L11.1 83.6 L12.5 83.0 L16.2 76.9 L30.6 69.5 L43.7 61.5 L46.0 61.2 L52.4 63.4 L52.9 63.9 L53.1 64.4 L52.9 65.4 L48.0 71.2 L47.7 72.7 L48.2 74.0 L49.1 74.9 L56.0 78.9 L56.9 79.2 L57.7 79.1 L58.9 78.1 L59.1 76.5 L58.6 75.5 L56.2 73.5 L56.0 72.9 L56.1 72.1 L65.2 65.5 L66.1 64.4 L66.7 62.9 L66.7 61.1 L66.1 59.5 L65.2 58.5 L62.3 56.0 L62.2 55.1 L62.7 54.4 L68.5 52.0 L69.4 52.0 L70.0 52.6 L72.4 57.6 L73.4 58.5 L74.8 58.9 L87.0 58.4 L91.9 56.6 L92.5 56.0 L92.8 55.2 L92.4 53.9 L91.4 53.2 L86.5 53.6 L78.6 52.5 L77.8 52.2 L77.5 51.6 L76.3 46.6 L77.2 44.7 L79.9 43.4 L81.1 42.2 L81.4 41.2 L81.5 40.2 L80.8 38.4 L80.0 37.6 L79.0 37.1 L76.1 37.0 L73.6 34.5 L71.2 33.2 L68.9 32.6 L65.7 32.8 L65.0 32.6 L58.0 23.4 L45.8 9.3 L44.7 8.7 L43.7 8.9 L43.0 9.4 L42.7 10.3 L42.9 11.3 L45.4 16.2 L52.7 27.3 L57.3 35.4 L57.4 36.3 L56.7 37.2 L39.4 46.0 L37.5 47.7 L36.3 49.7Z" fill="#1b1f2a"/>'
+    + '<path d="M88.6 38.5 L88.6 38.2 L88.6 37.9 L88.5 37.5 L88.5 37.2 L88.4 36.9 L88.3 36.6 L88.2 36.3 L88.1 36.0 L88.0 35.7 L87.8 35.4 L87.7 35.1 L87.5 34.8 L87.3 34.6 L87.1 34.3 L86.9 34.1 L86.7 33.8 L86.4 33.6 L86.2 33.4 L85.9 33.2 L85.7 33.0 L85.4 32.8 L85.1 32.7 L84.8 32.5 L84.5 32.4 L84.2 32.3 L83.9 32.2 L83.6 32.1 L83.3 32.0 L83.0 32.0 L82.6 31.9 L82.3 31.9 L82.0 31.9 L81.7 31.9 L81.4 31.9 L81.0 32.0 L80.7 32.0 L80.4 32.1 L80.1 32.2 L79.8 32.3 L79.5 32.4 L79.2 32.5 L78.9 32.7 L78.6 32.8 L78.3 33.0 L78.1 33.2 L77.8 33.4 L77.6 33.6 L77.3 33.8 L77.1 34.1 L76.9 34.3 L76.7 34.6 L76.5 34.8 L76.3 35.1 L76.2 35.4 L76.0 35.7 L75.9 36.0 L75.8 36.3 L75.7 36.6 L75.6 36.9 L75.5 37.2 L75.5 37.5 L75.4 37.9 L75.4 38.2 L75.4 38.5 L75.4 38.8 L75.4 39.1 L75.5 39.5 L75.5 39.8 L75.6 40.1 L75.7 40.4 L75.8 40.7 L75.9 41.0 L76.0 41.3 L76.2 41.6 L76.3 41.9 L76.5 42.2 L76.7 42.4 L76.9 42.7 L77.1 42.9 L77.3 43.2 L77.6 43.4 L77.8 43.6 L78.1 43.8 L78.3 44.0 L78.6 44.2 L78.9 44.3 L79.2 44.5 L79.5 44.6 L79.8 44.7 L80.1 44.8 L80.4 44.9 L80.7 45.0 L81.0 45.0 L81.4 45.1 L81.7 45.1 L82.0 45.1 L82.3 45.1 L82.6 45.1 L83.0 45.0 L83.3 45.0 L83.6 44.9 L83.9 44.8 L84.2 44.7 L84.5 44.6 L84.8 44.5 L85.1 44.3 L85.4 44.2 L85.7 44.0 L85.9 43.8 L86.2 43.6 L86.4 43.4 L86.7 43.2 L86.9 42.9 L87.1 42.7 L87.3 42.4 L87.5 42.2 L87.7 41.9 L87.8 41.6 L88.0 41.3 L88.1 41.0 L88.2 40.7 L88.3 40.4 L88.4 40.1 L88.5 39.8 L88.5 39.5 L88.6 39.1 L88.6 38.8 L88.6 38.5Z" fill="#1b1f2a"/>'
+    + '<g stroke="#9aa1ad" stroke-width="2.4" stroke-linecap="round"><path d="M4 44h12"/><path d="M2 56h14"/><path d="M6 68h9"/></g>';
+}
+function lunettes() {
+  var verre = function (cx) { return '<ellipse cx="' + cx + '" cy="52" rx="19" ry="14" fill="#11183a" stroke="#1e50d6" stroke-width="5"/><ellipse cx="' + cx + '" cy="52" rx="15" ry="10" fill="url(#gVerre)"/><ellipse cx="' + (cx - 6) + '" cy="47" rx="6" ry="3" fill="#fff" opacity=".55"/>'; };
+  return '<path d="M6 50 C2 40 12 36 12 50" fill="none" stroke="#1b1f2a" stroke-width="5"/><path d="M94 50 C98 40 88 36 88 50" fill="none" stroke="#1b1f2a" stroke-width="5"/>'
+    + verre(30) + verre(70) + '<path d="M47 50 Q50 46 53 50" fill="none" stroke="#1e50d6" stroke-width="4"/>';
+}
+function gant() {
+  return '<path d="M30 30 C30 14 46 10 60 12 C76 14 82 26 80 42 L78 62 C77 70 70 74 62 74 L40 74 C33 74 28 69 28 62 Z" fill="url(#gGant)"/>'
+    + '<path d="M28 50 C18 50 14 40 22 34 C26 31 30 32 32 36" fill="url(#gGant)"/>'
+    + '<rect x="32" y="72" width="34" height="20" rx="5" fill="#f4f5f7" stroke="#c9ced6"/><rect x="32" y="80" width="34" height="4" fill="#d6262f"/>'
+    + '<path d="M42 30 C46 26 58 26 64 30" fill="none" stroke="#7a0f15" stroke-width="2" opacity=".5"/>'
+    + '<ellipse cx="46" cy="24" rx="12" ry="5" fill="#fff" opacity=".35" transform="rotate(-12 46 24)"/>';
+}
+var ICONS = { muscu: haltere(), kettlebell: kettlebell(), foot: foot(), basket: basket(), rugby: rugby(), tennis: tennis(), hand: hand(), volley: volley(), hockey: hockey(), athletisme: chrono(), natation: lunettes(), combat: gant(), badminton: badminton(), baseball: baseball(), golf: golf() };
+
+var ICONS = { muscu: haltere(), foot: foot(), combat: gant(), basket: basket(), tennis: tennis(), rugby: rugby(), natation: lunettes(), hand: hand(), athletisme: chrono(), volley: volley(), hockey: hockey(), kettlebell: kettlebell() };
+var ORDRE = ['muscu', 'foot', 'combat', 'basket', 'tennis', 'rugby', 'natation', 'hand', 'athletisme', 'volley', 'hockey', 'kettlebell'];
+var SPORTS = [['mix', 'Mélange'], ['muscu', 'Muscu'], ['foot', 'Foot'], ['basket', 'Basket'], ['hand', 'Hand'], ['rugby', 'Rugby'], ['tennis', 'Tennis'], ['hockey', 'Hockey'], ['athletisme', 'Athlé'], ['natation', 'Natation'], ['combat', 'Combat']];
+var SPORT = 'mix', idx = 0, reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+var real = document.getElementById('real'), line = document.getElementById('line'), warp = document.getElementById('warpMap'), glow = document.getElementById('hexglow');
+
+// Séquence : le sport de la personne en premier et plus souvent, sinon tous les sports.
+function suite() { if (SPORT === 'mix') return ORDRE; var o = ORDRE.filter(function (k) { return k !== SPORT; }); return [SPORT, o[0], SPORT, o[1], SPORT, o[2]]; }
+function anim(ms, f) { return new Promise(function (ok) { var t0 = performance.now(); (function step(t) { var p = Math.min(1, (t - t0) / ms); f(p); if (p < 1) requestAnimationFrame(step); else ok(); })(t0); }); }
+var ease = function (p) { return p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; };
+// Version « traits » d'un dessin : on retire les effets de volume (ombre, reflets) qui
+// donneraient des contours parasites, on ne garde que les formes et les coutures.
+function traits(k) {
+  var t = document.createElement('div'); t.innerHTML = '<svg>' + ICONS[k] + '</svg>';
+  t.querySelectorAll('*').forEach(function (el) {
+    var f = el.getAttribute('fill') || '', op = parseFloat(el.getAttribute('opacity') || '1');
+    if (/gShade/.test(f) || (op < .7 && el.tagName !== 'g')) el.remove();
+  });
+  return t.firstChild.innerHTML;
+}
+function setLine(k) { line.innerHTML = traits(k); line.querySelectorAll('path,circle,ellipse,rect,polygon,polyline,line').forEach(function (el) { el.setAttribute('pathLength', 1); el.style.strokeDashoffset = 1; }); }
+function drawLine(p) { line.querySelectorAll('[pathLength]').forEach(function (el) { el.style.strokeDashoffset = (1 - p).toFixed(3); }); }
+// Transition : l'objet se déforme et se dissout, le contour du suivant se dessine, puis le suivant prend matière.
+async function vers(k) {
+  setLine(k); glow.classList.remove('run'); void glow.getBoundingClientRect(); glow.classList.add('run');
+  await anim(650, function (p) { var e = ease(p); warp.setAttribute('scale', (e * 38).toFixed(1)); real.style.opacity = (1 - e).toFixed(2); real.style.transform = 'scale(' + (1 - e * .12) + ')'; drawLine(e); line.style.opacity = 1; });
+  real.innerHTML = traits(k);
+  await anim(750, function (p) { var e = ease(p); warp.setAttribute('scale', ((1 - e) * 38).toFixed(1)); real.style.opacity = e.toFixed(2); real.style.transform = 'scale(' + (.88 + e * .12) + ')'; line.style.opacity = (1 - e).toFixed(2); });
+}
+var run = 0, OPT = '1';
+function pause(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+var LG = document.getElementById('lgIn');
+// Intérieur du logo (barres, points, courbe) : apparaît / disparaît, l'hexagone reste.
+function logoOn(on) {
+  var inner = LG.querySelectorAll('.nvl-b,.nvl-d,.nvl-l'), svg = LG.querySelector('svg');
+  if (on) { svg.classList.remove('nvl-A2', 'nvl-B2'); void svg.getBoundingClientRect(); svg.classList.add(Math.random() < .5 ? 'nvl-A2' : 'nvl-B2'); }
+  return anim(on ? 300 : 450, function (p) { inner.forEach(function (el) { el.style.opacity = on ? p : 1 - p; }); });
+}
+async function sortie() { await anim(550, function (p) { var e = ease(p); warp.setAttribute('scale', (e * 38).toFixed(1)); real.style.opacity = (1 - e).toFixed(2); }); real.innerHTML = ''; warp.setAttribute('scale', 0); real.style.opacity = 1; }
+async function boucle() {
+  var me = ++run, s = suite(); idx = 0; line.innerHTML = ''; warp.setAttribute('scale', 0); real.style.opacity = 1; real.innerHTML = OPT === '1' ? '' : traits(s[0]); LG.querySelectorAll('.nvl-b,.nvl-d,.nvl-l').forEach(function (el) { el.style.opacity = OPT === '1' ? 1 : 0; });
+  if (reduce) return;
+  while (me === run) {
+    if (OPT === '1') {
+      // Logo (son animation complète) → objet → logo → objet suivant… La marque ouvre et ferme chaque cycle.
+      await logoOn(true); await pause(4300); if (me !== run) return;
+      await logoOn(false); await vers(s[idx]); await pause(2300); if (me !== run) return;
+      await sortie(); idx = (idx + 1) % s.length;
+    } else { await pause(2200); if (me !== run) return; idx = (idx + 1) % s.length; await vers(s[idx]); }
+  }
+}
+// Interaction : les nappes de couleur, la trame d'hexagones et l'emblème suivent la souris (ou l'inclinaison du téléphone).
+var tx = .5, ty = .5, cx = .5, cy = .5;
+function cible(x, y) { tx = x; ty = y; }
+addEventListener('pointermove', function (e) { cible(e.clientX / innerWidth, e.clientY / innerHeight); });
+addEventListener('deviceorientation', function (e) { if (e.gamma != null) cible(.5 + Math.max(-1, Math.min(1, e.gamma / 35)) / 2, .5 + Math.max(-1, Math.min(1, (e.beta - 45) / 35)) / 2); });
+var B = document.querySelectorAll('.blob'), HX = document.getElementById('hex'), SP = document.getElementById('spot'), EMB = document.getElementById('emb'), SKY = document.getElementById('sky'), t0 = performance.now();
+(function frame(t) {
+  cx += (tx - cx) * .06; cy += (ty - cy) * .06;
+  var dx = cx - .5, dy = cy - .5, k = (t - t0) / 1000;
+  var amp = [[60, 40], [-50, 35], [40, -55], [-30, -30]];
+  B.forEach(function (b, i) { var w = reduce ? 0 : Math.sin(k * (.12 + i * .03) + i) * 6; b.style.transform = 'translate(' + (dx * amp[i][0] + w) + 'vmax,' + (dy * amp[i][1] + w * .7) + 'vmax)'; });
+  HX.style.transform = 'translate(' + (-dx * 40) + 'px,' + (-dy * 40) + 'px)';
+  SKY.style.setProperty('--mx', (cx * 100).toFixed(1) + '%'); SKY.style.setProperty('--my', (cy * 100).toFixed(1) + '%');
+  SP.style.transform = 'translate(' + (cx * innerWidth) + 'px,' + (cy * innerHeight) + 'px)';
+  if (OPT !== '1') EMB.style.transform = ''; else EMB.style.transform = 'perspective(600px) rotateY(' + (dx * 22).toFixed(1) + 'deg) rotateX(' + (-dy * 22).toFixed(1) + 'deg)';
+  requestAnimationFrame(frame);
+})(t0);
+function placer() {
+  document.body.classList.remove('o1', 'o2', 'o3'); document.body.classList.add('o' + OPT);
+  var emb = document.getElementById('emb'), login = document.querySelector('.login');
+  if (OPT === '3') document.getElementById('slot').appendChild(emb);
+  else login.insertBefore(emb, login.querySelector('.brandrow'));
+  document.querySelectorAll('#opts button').forEach(function (b) { b.classList.toggle('on', b.dataset.o === OPT); });
+}
+document.getElementById('opts').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { OPT = b.dataset.o; placer(); boucle(); } });
+function render() {
+  document.getElementById('sports').innerHTML = SPORTS.map(function (s) { return '<button data-s="' + s[0] + '" class="' + (s[0] === SPORT ? 'on' : '') + '">' + s[1] + '</button>'; }).join('');
+  document.getElementById('tag').textContent = SPORT === 'mix' ? 'Analyse · décide · progresse' : 'Le sport du dernier compte connecté sur cet appareil';
+  boucle();
+}
+document.getElementById('sports').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { SPORT = b.dataset.s; render(); } });
+var h = (location.hash || '').replace('#', '').split('-'); if (/^[123]$/.test(h[0])) OPT = h[0]; if (h[1]) SPORT = h[1];
+placer(); render();
+</script>
+</body>
+</html>
