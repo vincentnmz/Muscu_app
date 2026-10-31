@@ -131,12 +131,12 @@ function tennis() {
     + '<circle cx="50" cy="50" r="40" fill="none" stroke="#8a9a10" stroke-width="1"/>';
 }
 function volley() {
-  // Volley : 3 bandes doubles qui se croisent (panneaux du ballon), à 120° les unes des autres.
-  var b = '';
-  [0, 120, 240].forEach(function (r) {
-    b += '<g transform="rotate(' + r + ' 50 50)"><path d="M4 36 Q50 54 96 36" fill="#f3c321" fill-opacity=".85"/><path d="M4 36 Q50 54 96 36"/><path d="M4 48 Q50 66 96 48"/></g>';
-  });
-  return '<circle cx="50" cy="50" r="44" fill="url(#gWhite)"/><g clip-path="url(#cBall)" fill="none" stroke="#1e50d6" stroke-width="2.2">' + b + '</g>'
+  // Volley : 3 coutures courbes qui partent du centre (motif en « Y » tournant) + une couture parallèle
+  // dans chaque panneau — le dessin classique du ballon de volley.
+  var seam = '<path d="M50 50 C50 32 42 18 26 10"/><path d="M58 47 C59 30 52 16 40 7"/>';
+  var g = '';
+  [0, 120, 240].forEach(function (r) { g += '<g transform="rotate(' + r + ' 50 50)">' + seam + '</g>'; });
+  return '<circle cx="50" cy="50" r="44" fill="url(#gWhite)"/><g clip-path="url(#cBall)" fill="none" stroke="#1e50d6" stroke-width="2.2">' + g + '</g>'
     + '<circle cx="50" cy="50" r="44" fill="url(#gShade)"/>' + GLOSS + '<circle cx="50" cy="50" r="44" fill="none" stroke="#8a93a3" stroke-width="1"/>';
 }
 function hand() {
@@ -186,18 +186,22 @@ function golf() {
     + '<circle cx="50" cy="50" r="34" fill="url(#gShade)"/><ellipse cx="40" cy="36" rx="10" ry="6" fill="#fff" opacity=".6" transform="rotate(-28 40 36)"/><circle cx="50" cy="50" r="34" fill="none" stroke="#9aa1ad" stroke-width="1"/>';
 }
 function hockey() {
-  return '<ellipse cx="50" cy="60" rx="38" ry="12" fill="#07080a"/><rect x="12" y="44" width="76" height="16" fill="url(#gPuck)"/>'
-    + '<ellipse cx="50" cy="44" rx="38" ry="12" fill="#2b2f37"/><ellipse cx="50" cy="44" rx="30" ry="8.5" fill="none" stroke="#454a54" stroke-width="1"/>'
-    + '<g stroke="#4a4f59" stroke-width="1">' + [18, 26, 34, 42, 50, 58, 66, 74, 82].map(function (x) { return '<path d="M' + x + ' 47v12"/>'; }).join('') + '</g>'
+  // Palet seul : dessus elliptique + tranche (côtés et arrondi du bas), sans hachures.
+  return '<path d="M12 44 L12 60 A38 12 0 0 0 88 60 L88 44" fill="url(#gPuck)"/>'
+    + '<ellipse cx="50" cy="44" rx="38" ry="12" fill="#2b2f37"/>'
     + '<ellipse cx="38" cy="41" rx="12" ry="3" fill="#fff" opacity=".18"/>';
 }
 // Équipements manquants (sports de l'app) : athlétisme, natation, combat.
 function chrono() {
-  return '<rect x="44" y="6" width="12" height="9" rx="2" fill="#9aa1ad"/><rect x="70" y="16" width="8" height="8" rx="2" fill="#9aa1ad" transform="rotate(40 74 20)"/>'
-    + '<circle cx="50" cy="56" r="38" fill="url(#gPlate2)"/><circle cx="50" cy="56" r="31" fill="url(#gGolf)"/>'
-    + '<g stroke="#2b3240" stroke-width="2">' + [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(function (a) { var p1 = ptAt(50, 56, 27, a), p2 = ptAt(50, 56, a % 90 ? 24 : 21, a); return '<path d="M' + p1[0].toFixed(1) + ' ' + p1[1].toFixed(1) + 'L' + p2[0].toFixed(1) + ' ' + p2[1].toFixed(1) + '"/>'; }).join('') + '</g>'
-    + '<path d="M50 56 L50 33" stroke="#d6262f" stroke-width="2.6" stroke-linecap="round"/><path d="M50 56 L64 62" stroke="#2b3240" stroke-width="2.6" stroke-linecap="round"/><circle cx="50" cy="56" r="3" fill="#2b3240"/>'
-    + '<ellipse cx="38" cy="40" rx="11" ry="6" fill="#fff" opacity=".45" transform="rotate(-28 38 40)"/>';
+  // Athlétisme : sprinteur en pleine foulée (pictogramme), avec traits de vitesse.
+  return '<g fill="none" stroke="#1b1f2a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path d="M60 30 L48 54"/>'                       // buste penché
+    + '<path d="M58 34 L70 44 L80 36"/>'                // bras avant
+    + '<path d="M56 33 L42 36 L34 46"/>'                // bras arrière
+    + '<path d="M48 54 L64 62 L60 80"/>'                // jambe avant (genou haut)
+    + '<path d="M48 54 L38 70 L20 76"/>'                // jambe arrière (poussée)
+    + '</g><circle cx="65" cy="20" r="7.5" fill="#1b1f2a"/>'
+    + '<g stroke="#9aa1ad" stroke-width="2.4" stroke-linecap="round"><path d="M10 36h14"/><path d="M6 48h16"/><path d="M12 60h10"/></g>';
 }
 function lunettes() {
   var verre = function (cx) { return '<ellipse cx="' + cx + '" cy="52" rx="19" ry="14" fill="#11183a" stroke="#1e50d6" stroke-width="5"/><ellipse cx="' + cx + '" cy="52" rx="15" ry="10" fill="url(#gVerre)"/><ellipse cx="' + (cx - 6) + '" cy="47" rx="6" ry="3" fill="#fff" opacity=".55"/>'; };
