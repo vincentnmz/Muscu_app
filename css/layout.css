@@ -940,8 +940,29 @@ body:has(#view-login.active) #nv-bg { display:block; }
    Couleurs d'origine : dégradé blanc → bleu inchangé. Traits bleus sur la partie claire,
    blancs sur la partie bleue ; apparitions éparses, lentes, semi-transparentes. */
 #nv-comb { position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
-/* Sur la connexion, le nid d'abeille remplace les grands hexagones décoratifs (demande 31/10). */
-body:has(#view-login.active) #nv-bg .nv-hex, #view-login .nv-login-hex { display:none !important; }
+/* Connexion (31/10) : fond BLEU ANIMÉ sur toute la page (maquette validée), nid d'abeille en traits blancs,
+   logo Novalyz en blanc / bleu clair pour rester lisible sur le bleu. */
+body:has(#view-login.active) { background:#0b2a8a; }
+body:has(#view-login.active) #nv-bg { display:none !important; }
+#view-login .nv-login-hex { display:none !important; }
+#nv-aurora { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; background:#0b2a8a; }
+#nv-aurora i { position:absolute; width:70vmax; height:70vmax; border-radius:50%; filter:blur(70px); opacity:.75; mix-blend-mode:screen; }
+#nv-aurora .a1 { background:#1A5FFF; left:-20vmax; top:-20vmax; animation:nva1 22s ease-in-out infinite; }
+#nv-aurora .a2 { background:#22d3ee; right:-25vmax; top:10vmax; animation:nva2 28s ease-in-out infinite; }
+#nv-aurora .a3 { background:#7c3aed; left:10vmax; bottom:-30vmax; animation:nva3 32s ease-in-out infinite; }
+#nv-aurora .a4 { background:#ffffff; right:10vmax; top:-30vmax; opacity:.3; animation:nva2 36s ease-in-out infinite reverse; }
+@keyframes nva1 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(18vmax,14vmax); } }
+@keyframes nva2 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(-16vmax,12vmax); } }
+@keyframes nva3 { 0%,100% { transform:translate(0,0); } 50% { transform:translate(12vmax,-18vmax); } }
+#view-login .nv-hero-logo, #view-login .nv-hero-logo .nvl-ic, #view-login .nv-hero-logo .nv-brand-logo { color:#ffffff; }
+#view-login .nv-hero-logo [fill="#1A5FFF"] { fill:#9cc0ff; }
+#view-login .nv-hero-logo [stroke="#1A5FFF"] { stroke:#9cc0ff; }
+#view-login .nv-hero-logo [fill="#D9D9D9"] { fill:rgba(255,255,255,.55); }
+@media (prefers-reduced-motion:reduce) { #nv-aurora i { animation:none; } }
+/* Dans l'app : le dégradé reste, avec un nid d'abeille discret à la place des grands hexagones. */
+#nv-bg .nv-hex, #app-side > .nv-hex { display:none; }
+#nv-bg, body.has-bottom-nav #app-side { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%231A5FFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E"), var(--nv-grad); background-size:56px 97px, 100% 100%; }
+@media (min-width:992px) { #app-side { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%231A5FFF' stroke-opacity='.10' stroke-width='1.2'/%3E%3C/svg%3E"), var(--nv-grad); background-size:56px 97px, 100% 100%; } }
 .nv-login-hero > .nv-hero-logo, .nv-login-body { position:relative; z-index:1; }
 #nv-comb .c .h { fill:none; stroke-width:1.1; transition:stroke-opacity 1.8s ease, fill-opacity 1.8s ease; stroke-opacity:.1; fill-opacity:0; }
 #nv-comb .c use { opacity:0; stroke-dasharray:1; stroke-dashoffset:1; transition:opacity 1.8s ease, stroke-dashoffset 2.8s ease; }
