@@ -922,25 +922,26 @@ body:has(#view-login.active) #nv-bg { display:block; }
 .nv-login-body .btn-accent { background:linear-gradient(135deg,#1a5fff,#0a46d6); box-shadow:0 10px 26px rgba(26,95,255,.35); }
 .nv-role.on { background:#fff; box-shadow:0 4px 14px rgba(26,95,255,.15); }
 
-/* Ordi / tablette : panneau marque à gauche (dégradé + hexagones), formulaire à droite */
+/* Ordi / tablette (31/10) : login PLEIN ÉCRAN comme la maquette validée — dégradé et nid d'abeille
+   sur tout l'écran, logo + nom puis la carte de connexion au centre (plus de panneau en 2 colonnes). */
 @media (min-width:900px) {
-  body:has(#view-login.active) { background:#f7f9fe; }
-  body:has(#view-login.active) #nv-bg { display:none; }
+  body:has(#view-login.active) #nv-bg { display:block; }
   body:has(#view-login.active) #main-container { max-width:none; width:100%; padding:0; margin:0; }
-  #view-login.active { display:grid; grid-template-columns:46% 1fr; max-width:none; min-height:100vh; }
-  #view-login .nv-login-hero { position:sticky; top:0; height:100vh; overflow:hidden; background:var(--nv-grad);
-    padding:14vh 24px 0 !important; }
-  #view-login .nv-login-hex { display:block; }
+  #view-login.active { display:flex; flex-direction:column; align-items:center; justify-content:center; max-width:none; min-height:100vh; padding:6vh 24px; box-sizing:border-box; }
+  #view-login .nv-login-hero { background:none; padding:0 0 22px !important; }
+  #view-login .nv-login-hex { display:none; }
   .nv-hero-logo { position:relative; }
-  .nv-hero-logo .nvl-ic { width:120px; height:130px; margin-bottom:14px; }
+  .nv-hero-logo .nvl-ic { width:110px; height:120px; margin-bottom:14px; }
   .nv-hero-logo .nv-brand-logo { width:280px; }
-  #view-login .nv-login-body { align-self:center; width:calc(100% - 64px); max-width:400px; margin:40px auto; }
+  #view-login .nv-login-body { width:100%; max-width:420px; margin:0 auto; }
 }
 
 /* ---- Login : nid d'abeille où des sports apparaissent puis s'effacent (validé 31/10) ----
    Couleurs d'origine : dégradé blanc → bleu inchangé. Traits bleus sur la partie claire,
    blancs sur la partie bleue ; apparitions éparses, lentes, semi-transparentes. */
 #nv-comb { position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+/* Sur la connexion, le nid d'abeille remplace les grands hexagones décoratifs (demande 31/10). */
+body:has(#view-login.active) #nv-bg .nv-hex, #view-login .nv-login-hex { display:none !important; }
 .nv-login-hero > .nv-hero-logo, .nv-login-body { position:relative; z-index:1; }
 #nv-comb .c .h { fill:none; stroke-width:1.1; transition:stroke-opacity 1.8s ease, fill-opacity 1.8s ease; stroke-opacity:.1; fill-opacity:0; }
 #nv-comb .c use { opacity:0; stroke-dasharray:1; stroke-dashoffset:1; transition:opacity 1.8s ease, stroke-dashoffset 2.8s ease; }
@@ -949,7 +950,6 @@ body:has(#view-login.active) #nv-bg { display:block; }
 #nv-comb .c.b { color:#1A5FFF; } #nv-comb .c.b.on use { opacity:.38; }
 #nv-comb .c.w { color:#ffffff; }
 #nv-comb .c .h { stroke:currentColor; fill:currentColor; }
-@media (min-width:992px) { #nv-comb { position:absolute; } }
 @media (prefers-reduced-motion:reduce) { #nv-comb .c .h, #nv-comb .c use { transition:none; } }
 
 /* ---- Écran de démarrage ---- */
