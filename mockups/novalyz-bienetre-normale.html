@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Novalyz — maquette « ta normale » (points 2 à 5)</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--accent:#1A5FFF;--good:#00A854;--warn:#E07800;--text:#0E1726;--muted:#5B6578;--subtle:#8A93A6;--border:#E3E8F2;--s2:#F4F6FB}
+*{box-sizing:border-box}body{margin:0;font-family:Quicksand,system-ui,sans-serif;color:var(--text);background:linear-gradient(160deg,#eef3ff,#dfe8ff);padding:22px}
+h1{font-size:20px;margin:0 0 4px}.intro{font-size:13px;color:var(--muted);margin:0 0 18px;max-width:1100px;line-height:1.5}
+.row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.ph{width:360px;background:#fff;border-radius:26px;box-shadow:0 14px 40px rgba(20,40,110,.14);padding:16px 14px 18px}
+.tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent);border-radius:999px;padding:4px 10px;margin-bottom:10px}
+.tag.c{background:#7c3aed}.tag.nm{background:#5B6578;color:#fff}
+.card{border:1px solid var(--border);border-radius:14px;padding:12px 13px;margin-bottom:12px}
+.ct{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);font-weight:800;margin-bottom:8px}
+.l{display:grid;grid-template-columns:12px 1fr;gap:8px;align-items:start;font-size:13px;padding:5px 0;line-height:1.4}
+.d{width:8px;height:8px;border-radius:99px;margin-top:6px}
+.n{font-size:11.5px;color:var(--muted)}.nb{color:var(--good);font-weight:700}.nw{color:var(--warn);font-weight:700}.ns{color:var(--subtle)}
+.new{outline:2px dashed #1A5FFF66;outline-offset:3px;border-radius:8px}
+.lg{font-size:11px;color:var(--subtle);margin-top:6px;line-height:1.45}
+.ex{background:#FFF7EC;border:1px solid #F5D9B5;border-radius:10px;padding:8px 10px;font-size:12px;margin-top:8px;line-height:1.45}
+.ex b{color:#B45F00}
+.side{max-width:380px;background:#fff;border-radius:18px;padding:16px;box-shadow:0 10px 30px rgba(20,40,110,.1);font-size:13px;line-height:1.55}
+.side h3{margin:0 0 6px;font-size:15px}.opt{border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin:6px 0}
+.legend{font-size:12px;color:var(--muted);margin:0 0 14px}.legend span{outline:2px dashed #1A5FFF66;outline-offset:2px;border-radius:4px;padding:0 4px}
+</style></head><body>
+<h1>Maquette — bien-être « par rapport à ta normale », montre et effort à charge égale</h1>
+<p class="intro">Toutes les valeurs viennent de tes vraies données (copie de la base au 30/10). Les cadres en pointillés bleus sont les <b>ajouts</b> ; le reste existe déjà. Aucune ligne n'apparaît sans assez de données : sinon on le dit.</p>
+<p class="legend"><span>pointillés</span> = nouveau</p>
+<div class="row">
+
+<!-- A. ATHLÈTE AVEC MONTRE -->
+<div class="ph"><div class="tag">Athlète · Aujourd'hui (avec montre)</div>
+ <div class="card"><div class="ct">État du jour · Prêt</div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Sommeil</b> bon (4/5)<div class="n new">3 derniers jours 4,0 · <span class="nb">dans ta normale</span> (3,9 sur 4 sem.)</div></div></div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Fatigue musculaire</b> aucune (1/5)<div class="n new">1,0 · <span class="nb">dans ta normale</span> (1,1)</div></div></div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Stress</b> aucun (1/5)<div class="n new"><span class="ns">ta normale arrive après 7 saisies (3 pour l'instant)</span></div></div></div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Courbatures</b> légères (2/5)<div class="n new"><span class="ns">ta normale arrive après 7 saisies (3 pour l'instant)</span></div></div></div>
+  <div class="new" style="margin-top:8px;padding:8px 9px;background:var(--s2);border-radius:10px">
+   <div class="ct" style="margin-bottom:4px">Montre</div>
+   <div class="l" style="padding:2px 0"><span class="d" style="background:var(--good)"></span><div><b>Sommeil réel</b> 8 h 06 / nuit (7 j, 3 nuits)<div class="n">ta normale 7 h 44 (22 nuits)</div></div></div>
+   <div class="l" style="padding:2px 0"><span class="d" style="background:var(--good)"></span><div><b>FC au repos</b> 59 bpm<div class="n"><span class="nb">dans ta normale</span> (61,6 bpm sur 4 sem.)</div></div></div>
+  </div>
+  <div class="lg new">« Ta normale » = ta moyenne des 4 dernières semaines (hors 3 derniers jours). Écart retenu : ±1 point sur /5.</div>
+ </div>
+</div>
+
+<!-- B. COACH -->
+<div class="ph"><div class="tag c">Coach · fiche athlète › Coup d'œil</div>
+ <div class="card"><div class="ct">Entraînement</div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Progresse</b> — 16 exercices (dont 9 records)</div></div>
+  <div class="l new"><span class="d" style="background:var(--good)"></span><div><b>Effort à charge égale</b> — stable sur tous les exercices<div class="n">RPE comparé sur les 4 dernières séances de chaque exercice</div></div></div>
+  <div class="ex new"><b>Exemple (illustratif, pas tes données)</b> — si le RPE monte d'au moins 1 point à charge égale ou plus basse sur 2 exercices :<br>⚠ <b>Effort en hausse à charge égale</b> — Développé couché 80 kg : RPE 8 → 9 · Tirage 70 kg : RPE 7,5 → 8,5 <span class="ns">(signe de fatigue avant que les reps baissent)</span></div>
+ </div>
+ <div class="card"><div class="ct">État &amp; récup</div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Sommeil</b> bon · <span class="new nb" style="padding:0 3px">dans sa normale (3,9)</span></div></div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Fatigue musc.</b> aucune · <span class="new nb" style="padding:0 3px">dans sa normale (1,1)</span></div></div>
+  <div class="l new"><span class="d" style="background:var(--good)"></span><div><b>Sommeil (montre)</b> 8 h 06 / nuit <span class="ns">(7 j)</span> · normale 7 h 44</div></div>
+  <div class="l new"><span class="d" style="background:var(--good)"></span><div><b>FC repos (montre)</b> 59 bpm · normale 61,6</div></div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Douleur</b> légère <span class="ns">(point d'attention)</span></div></div>
+ </div>
+</div>
+
+<!-- C. SANS MONTRE -->
+<div class="ph"><div class="tag nm">Athlète sans montre</div>
+ <div class="card"><div class="ct">État du jour · Prêt</div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Sommeil</b> bon (4/5)<div class="n">3 derniers jours 4,0 · <span class="nb">dans ta normale</span> (3,9)</div></div></div>
+  <div class="l"><span class="d" style="background:var(--good)"></span><div><b>Fatigue musculaire</b> aucune (1/5)<div class="n">1,0 · <span class="nb">dans ta normale</span> (1,1)</div></div></div>
+  <div class="lg">Pas de bloc « Montre » : il n'apparaît que si une montre est connectée. Rien n'est affiché à zéro, rien n'est pénalisé — le verdict repose sur le questionnaire du matin et tes séances.</div>
+ </div>
+ <div class="card"><div class="ct">Exemple (illustratif) · hors normale</div>
+  <div class="l"><span class="d" style="background:var(--warn)"></span><div><b>Sommeil</b> moyen (3/5)<div class="n">3 derniers jours 2,7 · <span class="nw">sous ta normale</span> (3,9)</div></div></div>
+  <div class="lg">Affiché en orange seulement si l'écart est d'au moins 1 point sur 3 jours — la même règle que celle du verdict « charge + ressenti » qui tourne déjà.</div>
+ </div>
+</div>
+
+<!-- POINT 3 : décision -->
+<div class="side"><h3>Point 3 — la FC de repos dans le verdict</h3>
+ <p style="margin:0 0 6px">Elle ne fait <b>jamais</b> passer en Vigilance seule. Elle s'ajoute comme <b>signe de récupération dégradée</b> dans la règle « charge + ressenti » (aux côtés de la fatigue, du sommeil et du RPE), et le coach la voit en cause.</p>
+ <p style="margin:0 0 6px">Tes données : moyenne 61,6 bpm, écart habituel ±3,4 bpm (55 jours, de 56 à 71). Il faut fixer à partir de quel écart on parle de « FC élevée » — c'est un <b>seuil Novalyz</b>, l'étude de référence n'en donne pas pour une montre :</p>
+ <div class="opt"><b>A — +5 bpm</b> sur la moyenne des 3 derniers jours (≈ 1,5 × ton écart habituel). <i>Recommandé</i> : atteint <b>2 jours sur 30</b> évaluables chez toi (29 et 30/09, pendant une coupure sans séance ni questionnaire). Comme la FC ne compte que si ta charge est élevée en même temps, ces 2 jours n'auraient déclenché <b>aucune</b> alerte.</div>
+ <div class="opt"><b>B — +7 bpm</b> : jamais atteint chez toi (0 jour sur 30) — très prudent, ne réagit qu'à un écart marqué.</div>
+ <div class="opt"><b>C — relatif à chacun</b> : +1,5 × l'écart habituel de la personne (s'adapte aux montres plus bruitées).</div>
+ <p class="lg" style="margin-top:8px">Conditions : ≥ 14 jours de FC de repos dans les 4 dernières semaines, sinon rien. Source : Buchheit 2014 (Front. Physiol.) — la FC aide en complément du questionnaire et du carnet, pas seule.</p>
+</div>
+</div>
+</body></html>
