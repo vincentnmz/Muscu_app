@@ -198,7 +198,10 @@ eq('tonnage 7 j en tonnes (source dashboard) = 1.5', rec.j7.tonnage, 1.5);
 // computeStreak — semaines ISO consécutives depuis « now »
 // =============================================================================
 eq('streak 3 semaines consécutives (20, 13, 06 août)', computeStreak(['2026-08-20', '2026-08-13', '2026-08-06'], NOW), 3);
-eq('streak = 0 si la semaine courante manque (rupture immédiate)', computeStreak(['2026-08-13', '2026-08-06'], NOW), 0);
+// Audit régularité 31/10 : la semaine EN COURS encore vide ne casse pas la série (comme la heatmap
+// d'Aujourd'hui et Tendances) — avant, un lundi matin remettait la série à 0.
+eq('semaine courante encore vide → série des semaines précédentes conservée', computeStreak(['2026-08-13', '2026-08-06'], NOW), 2);
+eq('semaine courante ET précédente vides → série rompue', computeStreak(['2026-08-06', '2026-07-30'], NOW), 0);
 eq('streak 1 (uniquement la semaine courante)', computeStreak(['2026-08-20'], NOW), 1);
 eq('streak 0 si aucune date', computeStreak([], NOW), 0);
 

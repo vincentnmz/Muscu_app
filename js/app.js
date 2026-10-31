@@ -4569,7 +4569,7 @@ async function renderCoachSynthese(athletes) {
     }
     let c4v = _dash, c4l = 'Progr.';
     if (m && m.progLabel && m.progLabel !== 'N/A') { c4v = `<div class="v" style="color:${m.progColor}">${m.progLabel}</div>`; c4l = 'Progr.'; }
-    else if (streak != null && streak > 0) { c4v = `<div class="v" style="color:var(--warn)">${streak}</div>`; c4l = 'Série'; }
+    else if (streak != null && streak > 0) { c4v = `<div class="v" style="color:var(--warn)">${streak}</div>`; c4l = 'Sem. actives'; }
     const chip = enPause
       ? `<span class="cae-chip" style="background:rgba(99,179,237,.14);color:#63b3ed;">Vacances</span>`
       : `<span class="cae-chip" style="background:${s.color}1a;color:${s.color};">${s.label}</span>`;
@@ -14589,7 +14589,7 @@ function _maRegulariteBloc(data) {
   var sub = (obj > 0 ? 'objectif ' + obj + '/sem' : 'objectif non défini') + ' · 12 semaines';
   var tile = function (v, l, c) { return '<div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:9px 8px;text-align:center"><b style="display:block;font-size:18px;font-weight:900;line-height:1' + (c ? ';color:' + c : '') + '">' + v + '</b><span style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.03em;font-weight:800;margin-top:3px;display:block">' + l + '</span></div>'; };
   var stats = '<div style="display:flex;gap:8px;margin-top:12px">'
-    + tile('🔥 ' + streak, 'série (sem.)', streak > 0 ? 'var(--warn)' : 'var(--text-subtle)')
+    + tile('🔥 ' + streak, 'série à l\'objectif', streak > 0 ? 'var(--warn)' : 'var(--text-subtle)')
     + tile(atObj + '/' + WEEKS, 'sem. à l\'objectif', 'var(--good)')
     + tile(String(moy).replace('.', ','), 'séances/sem. moy.', '')
     + '</div>';
@@ -16982,7 +16982,8 @@ function _renderTrophees(streak, rec30, totalS, hasRecords) {
   var grid = document.getElementById('tj-tro-grid'); if (!grid) return;
   var items = [], unlocked = 0, total = 0;
   var add = function (ok, html) { total++; if (ok) unlocked++; items.push(html); };
-  add(streak >= 1, _tro('c1', _TRO_SVG.flame, streak + ' sem.', 'Série', streak < 1));
+  // « Semaines actives » = semaines d'affilée avec ≥ 1 séance (≠ « série à l'objectif » de Tendances) — audit 31/10.
+  add(streak >= 1, _tro('c1', _TRO_SVG.flame, streak + ' sem.', 'Sem. actives', streak < 1));
   add(hasRecords, _tro('c2', _TRO_SVG.medal, rec30, 'Records 30j', !hasRecords));
   add(totalS >= 1, _tro('c3', _TRO_SVG.bars, totalS, 'Séances', totalS < 1));
   add(streak >= 1 || totalS >= 3, _tro('c4', _TRO_SVG.check, '1re', 'Semaine', !(streak >= 1 || totalS >= 3)));

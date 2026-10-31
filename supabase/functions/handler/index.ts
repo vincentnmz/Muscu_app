@@ -395,6 +395,8 @@ function computeStreak(dates: string[], now: Date): number {
   if (!dates.length) return 0
   const weeks = new Set(dates.map(d => { const dt = parseFR(d) || new Date(d + 'T00:00:00Z'); return isoWeek(dt) }))
   let streak = 0, w = isoWeek(now)
+  // Semaine en cours encore vide (ex. lundi matin) : elle ne casse pas la série (audit régularité 31/10).
+  if (!weeks.has(w)) w = prevIsoWeek(w)
   for (let i = 0; i < 52; i++) {
     if (weeks.has(w)) { streak++; w = prevIsoWeek(w) } else break
   }

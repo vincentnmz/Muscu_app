@@ -30,3 +30,9 @@
 Remplacer « Tendance de force » par **« Exercices en progrès »** : chaque semaine, le nombre d'exercices en
 records ou en progrès, calculé avec le même classement que la lecture v2 (charges et reps réelles, pas de formule).
 Une courbe qui monte veut alors vraiment dire que tu progresses. Le détail de chaque exercice reste dans « Par exercice ».
+
+## Régularité — re-vérif 31/10 (3 blocs : Aujourd'hui, Tendances, Résumé)
+Données au 30/10 (séance « dos jambe 2 » incluse), objectif 4 séances/semaine.
+- **Vérifié juste** : barres des 12 semaines `3 · 2 · 0 · 1 · 1 · 4 · 0 · 2 · 2 · 4 · 2 · 4` (= base, semaines ISO 33 → 44) ; « 3/12 sem. à l'objectif » (sem. 38, 42, 44) ; moyenne 2,1 séances/sem. (25/12) ; anneau Aujourd'hui « 4/4 » ; Résumé « Régularité au rendez-vous (4/4) ».
+- **Écart 1 — deux « séries » différentes sous le même nom** : Mes points / fiche coach « 5 sem. · Série » (semaines d'affilée avec ≥ 1 séance) vs Tendances « 1 · série (sem.) » (semaines d'affilée à l'objectif). **Corrigé** : libellés « Sem. actives » et « série à l'objectif ».
+- **Écart 2 — la série « semaines actives » tombait à 0 chaque lundi** tant qu'aucune séance n'était faite (le serveur exigeait une séance dans la semaine en cours), alors que la heatmap et Tendances ne cassent pas la série pour la semaine en cours. **Corrigé** dans `computeStreak` (`index.ts`, à redéployer) + test.
