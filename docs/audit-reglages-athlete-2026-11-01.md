@@ -32,4 +32,4 @@ Supabase (PostgREST) renvoie **au plus 1 000 lignes par requête par défaut, sa
 - **R2** Suppression du compte : session coach refusée ; ressaisie du mot de passe vérifiée par le serveur (`verifyPwd` existant, hachage inchangé) — sans / mauvais mot de passe : rien n'est supprimé (testé).
 - **R3 (a)** « Télécharger mes données » (web : JSON + CSV) ; app Android : **« Recevoir mes données par e-mail »** (JSON complet + CSV des séances en pièces jointes, hash jamais exporté, message clair sans e-mail) — format des pièces jointes vérifié dans la doc Resend. Tables exportées complétées (notes, planning, pauses, activités).
 - **R4** Texte des notifications complet. **R5** « Nom affiché — vu par ton coach ». **R6** Onglets « Compte · Options · Appareils · Données · Infos » sur une ligne (vérifié à 360, 390, 420 px).
-- Tests : `lecture-complete` (4), `export-email` (7), `suppression-compte-complete` (+2), 68 suites vertes.
+- Tests : `lecture-complete` (4), `export-email` (7), `suppression-compte-complete` (+2), 67 suites vertes.
