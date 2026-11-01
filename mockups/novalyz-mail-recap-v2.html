@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Novalyz — maquette mail récap v2</title>
+<style>
+body{margin:0;background:#e9eef8;font-family:Arial,sans-serif;padding:24px;color:#e9eef8}
+.wrap{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.mail{width:600px;background:#0b0f18;border-radius:18px;padding:22px 0 18px}
+.in{margin:0 18px;background:#121a2a;border:1px solid #243049;border-radius:16px;padding:20px 18px}
+h1{font-size:20px;margin:0}.sub{color:#8b96b0;font-size:13px;margin:4px 0 16px}
+h3{font-size:15px;margin:20px 0 9px}h3 span{font-weight:400;font-size:12px;color:#6f7b96}
+.card{background:#0f1522;border:1px solid #243049;border-radius:12px;padding:12px 13px}
+.row{display:flex;gap:8px}.row>.card{flex:1;text-align:center}
+.big{font-size:20px;font-weight:800}.u{font-size:12px;color:#8b96b0;font-weight:600}.lab{font-size:11px;color:#8b96b0;margin-top:4px}
+.vs{font-size:10.5px;color:#6f7b96;margin-top:3px}
+.ring{width:96px;height:96px;margin:0 auto}
+.wk{display:flex;gap:6px;align-items:flex-end;height:70px;margin-top:6px}.wk div{flex:1;text-align:center;font-size:10.5px;color:#8b96b0}
+.wk i{display:block;border-radius:6px 6px 3px 3px;margin:0 auto 4px;width:70%}
+.li{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #1c2740}
+.li b{font-weight:700}.g{color:#37d39a}.o{color:#fab219}.r{color:#ff6b6b}.m{color:#8b96b0}
+.bar{height:12px;background:#0f1522;border-radius:7px;margin:4px 0 9px;overflow:hidden;position:relative}.bar i{display:block;height:100%;border-radius:7px}
+.bal{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:4px 0 11px}
+.note{font-size:11px;color:#6f7b96;line-height:1.5;margin-top:6px}
+.reco{background:#13213f;border:1px solid #27407a;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5}
+.reco div{padding:4px 0}
+.side{width:440px;background:#fff;color:#0e1726;border-radius:16px;padding:18px 20px;font-size:13px;line-height:1.55}
+.side h2{font-size:16px;margin:0 0 8px}.side li{margin:0 0 6px}.side .k{color:#1A5FFF;font-weight:700}
+.chg{outline:2px dashed #4d82ff88;outline-offset:3px;border-radius:10px}
+</style></head><body>
+<div class="wrap">
+<div class="mail">
+ <div style="text-align:center;font-size:22px;font-weight:800;letter-spacing:.2em;margin:4px 0 16px">NOVALYZ</div>
+ <div class="in">
+  <h1>Bonjour Vincent</h1>
+  <div class="sub chg">Ton bilan d'<b>octobre</b> · du 1er au 31 octobre</div>
+
+  <h3>Ta régularité <span>objectif 4 séances / semaine</span></h3>
+  <div class="row">
+   <div class="card"><svg class="ring" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="#1c2740" stroke-width="4"/><circle cx="21" cy="21" r="15.9" fill="none" stroke="#4d82ff" stroke-width="4" stroke-dasharray="78 100" stroke-dashoffset="25" stroke-linecap="round" transform="rotate(-90 21 21)"/><text x="21" y="24" text-anchor="middle" font-size="9" font-weight="800" fill="#e9eef8">78%</text></svg>
+    <div class="lab"><b style="color:#e9eef8;font-size:13px">14 séances</b> / 18 prévues</div><div class="vs chg">septembre : 6</div></div>
+   <div class="card chg" style="text-align:left"><div class="lab" style="margin:0 0 2px">Séances par semaine</div>
+    <div class="wk">
+     <div><i style="height:20px;background:#4d82ff66"></i>1–4*</div><div><i style="height:20px;background:#fab219"></i>5–11</div><div><i style="height:40px;background:#37d39a"></i>12–18</div><div><i style="height:20px;background:#fab219"></i>19–25</div><div><i style="height:40px;background:#37d39a"></i>26–31</div>
+    </div><div class="note" style="margin-top:4px">2 semaines à l'objectif sur 4 complètes · *semaine incomplète (4 jours)</div></div>
+  </div>
+
+  <h3>Ton entraînement <span>octobre</span></h3>
+  <div class="row">
+   <div class="card"><div class="big">69 140<span class="u"> kg</span></div><div class="lab">Tonnage</div><div class="vs chg">sept. 29 158</div></div>
+   <div class="card"><div class="big">264</div><div class="lab">Séries</div></div>
+   <div class="card"><div class="big">2 276</div><div class="lab">Reps</div></div>
+   <div class="card"><div class="big">8,4</div><div class="lab">RPE moyen</div></div>
+  </div>
+
+  <h3 class="chg">Tes exercices <span>même lecture que dans l'app · au 31/10</span></h3>
+  <div class="card">
+   <div class="li"><span>★ Records battus en octobre</span><b class="g">16</b></div>
+   <div class="li"><span>▲ En progrès</span><b class="g">9</b></div>
+   <div class="li"><span>! Sous ta fourchette</span><b class="o">1</b></div>
+   <div class="li" style="border:0"><span>▼ En recul · ⏸ bloqués</span><b class="m">0</b></div>
+  </div>
+  <h3 class="chg">Tes vrais records <span>charge jamais atteinte avant · octobre</span></h3>
+  <div class="card">
+   <div class="li"><span>Belt squat</span><b class="g">200 kg × 5 <span class="m" style="font-weight:400">16/10</span></b></div>
+   <div class="li"><span>Développé incliné à la Smith</span><b class="g">80 kg × 3 <span class="m" style="font-weight:400">15/10</span></b></div>
+   <div class="li"><span>Tirage horizontal prise large</span><b class="g">80 kg × 7 <span class="m" style="font-weight:400">30/10</span></b></div>
+   <div class="li" style="border:0"><span>Tirage horizontal prise serrée</span><b class="g">80 kg × 6 <span class="m" style="font-weight:400">23/10</span></b></div>
+   <div class="note">+ 12 autres records ce mois-ci.</div>
+  </div>
+
+  <h3 class="chg">Volume par muscle <span>séries / semaine en moyenne · cibles de l'app</span></h3>
+  <div class="card">
+   <div class="li" style="border:0;padding:0"><span>Dos</span><b class="g">16 · cible 10–16</b></div><div class="bar"><i style="width:100%;background:#37d39a"></i></div>
+   <div class="li" style="border:0;padding:0"><span>Pectoraux</span><b class="g">14,5 · cible 8–14</b></div><div class="bar"><i style="width:100%;background:#37d39a"></i></div>
+   <div class="li" style="border:0;padding:0"><span>Épaules</span><b class="g">14,5 · cible 8–14</b></div><div class="bar"><i style="width:100%;background:#37d39a"></i></div>
+   <div class="li" style="border:0;padding:0"><span>Biceps</span><b class="g">9,5 · cible 8–14</b></div><div class="bar"><i style="width:68%;background:#37d39a"></i></div>
+   <div class="li" style="border:0;padding:0"><span>Triceps</span><b class="g">8,4 · cible 6–12</b></div><div class="bar"><i style="width:70%;background:#37d39a"></i></div>
+   <div class="li" style="border:0;padding:0"><span>Quadriceps</span><b class="r">5 · min. 8</b></div><div class="bar"><i style="width:36%;background:#ff6b6b"></i></div>
+   <div class="li" style="border:0;padding:0"><span>Ischios</span><b class="r">3,8 · min. 6</b></div><div class="bar"><i style="width:32%;background:#ff6b6b"></i></div>
+   <div class="li" style="border:0;padding:0"><span>Fessiers</span><b class="r">1,4 · min. 8</b></div><div class="bar"><i style="width:10%;background:#ff6b6b"></i></div>
+   <div class="note">Pas dans ton programme ce mois-ci : mollets, abdominaux. · Secondaires comptés 0,5 série (comme dans l'app).</div>
+  </div>
+
+  <h3 class="chg">Balance musculaire <span>en séries · octobre</span></h3>
+  <div class="card">
+   <div class="li" style="border:0;padding:0"><span>Pectoraux <b>47%</b></span><span><b>53%</b> Dos</span></div><div class="bal"><i style="width:47%;background:#1A5FFF"></i><i style="width:53%;background:#9D5FD3"></i></div>
+   <div class="li" style="border:0;padding:0"><span>Quadriceps <b>56%</b></span><span><b>44%</b> Ischios</span></div><div class="bal"><i style="width:56%;background:#1A5FFF"></i><i style="width:44%;background:#9D5FD3"></i></div>
+   <div class="li" style="border:0;padding:0"><span>Biceps <b>53%</b></span><span><b>47%</b> Triceps</span></div><div class="bal"><i style="width:53%;background:#1A5FFF"></i><i style="width:47%;background:#9D5FD3"></i></div>
+   <div class="note">Équilibré entre 40 et 60 %. Ici tout est équilibré ; c'est le volume jambes total qui est bas (voir au-dessus).</div>
+  </div>
+
+  <h3>Ta forme <span>moyenne d'octobre · vs ta normale (juillet → septembre)</span></h3>
+  <div class="row">
+   <div class="card"><div class="big">7 h 43</div><div class="lab">Sommeil (montre)</div><div class="vs chg">normale 5 h 48</div></div>
+   <div class="card"><div class="big">61</div><div class="lab">FC repos (bpm)</div><div class="vs chg">normale 65</div></div>
+   <div class="card"><div class="big">6 012</div><div class="lab">Pas / jour</div><div class="vs chg">normale 9 492</div></div>
+  </div>
+  <div class="row chg" style="margin-top:8px">
+   <div class="card"><div class="big">3,9<span class="u">/5</span></div><div class="lab">Sommeil ressenti</div><div class="vs g">dans ta normale (3,8)</div></div>
+   <div class="card"><div class="big">1,1<span class="u">/5</span></div><div class="lab">Fatigue musculaire</div><div class="vs g">dans ta normale (1,3)</div></div>
+   <div class="card"><div class="big">1,2<span class="u">/5</span></div><div class="lab">Stress</div><div class="vs m">normale dès 7 saisies</div></div>
+  </div>
+
+  <h3 class="chg">Cardio <span>octobre</span></h3>
+  <div class="card" style="font-size:13px">2 marches · 1 h 02 · dernière sortie le 03/10.</div>
+
+  <h3 class="chg">Ce que Novalyz retient pour novembre</h3>
+  <div class="reco">
+   <div>1. <b>Jambes sous le minimum</b> : quadriceps 5 séries/sem. (min. 8), ischios 3,8 (min. 6), fessiers 1,4 (min. 8). Pour atteindre le minimum, il manque environ 3 séries/sem. aux quadriceps, 2 aux ischios et 7 aux fessiers.</div>
+   <div>2. <b>Développé incliné à la Smith</b> : à 80 kg tu es passé de 3 à 2 puis 1 rep (RPE 10). Au choix : alléger un peu pour revenir à 6 reps, ou garder 80 kg et viser +1 rep.</div>
+   <div>3. <b>Cardio</b> : aucune sortie depuis le 03/10. 1 à 2 sorties par semaine pour ta base d'endurance.</div>
+  </div>
+
+  <p style="margin:18px 0 0;color:#8b96b0;font-size:12px" class="chg">Ouvre Novalyz pour le détail de ton mois.</p>
+ </div>
+</div>
+
+<div class="side">
+ <h2>Ce qui change par rapport au mail reçu ce matin</h2>
+ <ol>
+  <li><span class="k">Le vrai mois</span> : 1er → 31 octobre (avant : 28 derniers jours, 5 oct → 1er nov).</li>
+  <li><span class="k">Régularité</span> : séances par semaine + semaines à l'objectif (nouveau) et comparaison avec septembre.</li>
+  <li><span class="k">Exercices</span> : même lecture que l'app (records / progresse / sous la fourchette / recule / bloqué) au lieu du « 1RM estimé ».</li>
+  <li><span class="k">Vrais records</span> : seulement les charges jamais atteintes avant (avant : les charges les plus lourdes du mois, ex. « Développé machine 90 × 7 » qui n'en était pas un).</li>
+  <li><span class="k">Volume</span> : moyenne par semaine avec les cibles de l'app, secondaires comptés 0,5, muscles à 0 listés (avant : 16 séries/sem pour tous les muscles → Pecs et Dos faussement « sous-optimal »).</li>
+  <li><span class="k">Balance</span> en séries (avant : en kilos soulevés, pas comparable entre machines).</li>
+  <li><span class="k">Forme</span> : comparée à ta normale ; stress ajouté ; « énergie » retirée (plus demandée).</li>
+  <li><span class="k">Cardio</span> et <span class="k">3 recos</span> du mois (mêmes règles que l'app, chiffres réels).</li>
+  <li>Format français (69 140 kg, 8,4), « ta mois » corrigé.</li>
+ </ol>
+ <p style="color:#5B6578;font-size:12px">Toutes les valeurs = tes données réelles d'octobre (14 séances, vérifié contre la base). L'anneau reste une image PNG comme aujourd'hui (s'affiche bien chez toi). Pour le récap <b>hebdo</b> : même structure sur la semaine lun → dim écoulée.</p>
+</div>
+</div>
+</body></html>
