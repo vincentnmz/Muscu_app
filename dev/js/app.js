@@ -7743,7 +7743,7 @@ function coachIaSend() {
   var hist = _coachIaMsgs.filter(function (m) { return !m.typing; }).map(function (m) { return { role: m.role === 'me' ? 'user' : 'assistant', content: m.t }; });
   while (hist.length && hist[0].role !== 'user') hist.shift();
   var done = function (txt) { _coachIaMsgs = _coachIaMsgs.filter(function (m) { return !m.typing; }); _coachIaMsgs.push({ role: 'ia', t: txt }); _coachIaRender(); _coachIaBusy = false; };
-  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chatIA', athlete_id: a.athlete_id, messages: hist }) })
+  fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'chatIA', athlete_id: a.athlete_id, coach_id: (typeof coach !== 'undefined' && coach ? coach.coach_id : ''), mode: 'coach', messages: hist }) })
     .then(function (r) { return r.json().catch(function () { return {}; }); })
     .then(function (j) { done((j && j.reply) ? j.reply : "Désolé, je n'ai pas pu répondre. Réessaie dans un instant."); })
     .catch(function () { done("Connexion impossible pour le moment. Réessaie dans un moment."); });
@@ -9789,6 +9789,18 @@ function afficherOngletConseils() {
   else if (_cvView === 'ia') cvOpenIA();
   else cvShowList();
 }
+// Audit IA I6 (01/11) : IA pas encore activée côté serveur → tout reste visible mais marqué
+// « Bientôt » (on sait que ça arrive), sans champ ni suggestion qui mèneraient à une impasse.
+function _majIaBientot(data) {
+  var rec = data && data.recompenses, bientot = !!(rec && rec.ia_active === false);
+  try { document.body.classList.toggle('ia-bientot', bientot); } catch (e) {}
+  document.querySelectorAll('.nvz-ask-sb').forEach(function (el) { if (!el.dataset.orig) el.dataset.orig = el.textContent; el.textContent = bientot ? 'Bientôt disponible — ton coach IA, branché sur tes données' : el.dataset.orig; });
+  var fab = document.querySelector('#fab-novalyz span'); if (fab) { if (!fab.dataset.orig) fab.dataset.orig = fab.textContent; fab.textContent = bientot ? 'Novalyz IA · bientôt' : fab.dataset.orig; }
+  var who = document.querySelector('#cv-ia-view .cv-who .b'); if (who) { if (!who.dataset.orig) who.dataset.orig = who.innerHTML; who.innerHTML = bientot ? '<i></i>bientôt disponible' : who.dataset.orig; }
+  var intro = document.getElementById('cv-ia-intro');
+  if (intro) intro.innerHTML = bientot ? '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 13px;font-size:12.5px;color:var(--text-muted);line-height:1.45"><b style="color:var(--text)">Novalyz IA arrive bientôt.</b> Elle répondra à tes questions à partir de tes vraies données (séances, forme, progression). En attendant, tout est dans Aujourd\'hui et Analyses.</div>' : '';
+  var inp = document.getElementById('cv-ia-input'); if (inp) { inp.disabled = bientot; inp.placeholder = bientot ? 'Bientôt disponible' : 'Pose ta question à Novalyz…'; }
+}
 // Entrée directe sur le fil Novalyz IA (boutons « Demande à Novalyz »).
 function ouvrirNovalyzIA() { _cvView = 'ia'; if (typeof switchTab === 'function') switchTab('conseils'); }
 // Bloc « Demande à Novalyz » (rail bureau) : on écrit dans le champ puis on ouvre
@@ -10000,9 +10012,10 @@ function cvRenderSugg() {
   try { row.scrollLeft = 0; } catch (e) {}
 }
 function cvOpenIA() {
-  if (!_cvIaMsgs.length) {
+  var _bientot = document.body.classList.contains('ia-bientot');
+  if (!_cvIaMsgs.length && !_bientot) {
     var prenom = (typeof athlete !== 'undefined' && athlete && (athlete.prenom || athlete.nom)) || '';
-    _cvIaMsgs.push({ role: 'ia', t: 'Salut' + (prenom ? ' ' + prenom : '') + '. Je vois ton suivi — séances, charges, ressenti. Pose-moi une question sur ta progression.' });
+    _cvIaMsgs.push({ role: 'ia', t: 'Salut' + (prenom ? ' ' + String(prenom).trim().split(/\s+/)[0] : '') + '. Je lis ton suivi — séances, progression, questionnaire de forme. Pose-moi une question.' });
   }
   cvRenderIa();
   cvRenderSugg();
@@ -10017,20 +10030,22 @@ function _cvRenderIntro() {
   var m = d.moteur || {}, dash = d.dashboard || {};
   var chip = function (inner) { return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:700;color:var(--text);box-shadow:var(--shadow-sm);">' + inner + '</span>'; };
   var chips = [];
-  if (m.disponibilite && m.disponibilite.niveau) {
-    var niv = m.disponibilite.niveau;
-    var col = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : 'var(--danger)');
-    chips.push(chip('<i style="width:7px;height:7px;border-radius:50%;background:' + col + ';"></i>' + escapeHtml(niv)));
+  // Audit IA (01/11) : mêmes infos que l'app — état AFFICHÉ, pas d'ACWR, données datées.
+  var niv = _nivAffiche(d);
+  if (niv) {
+    var col = niv === 'Prêt' ? 'var(--good)' : (niv === 'Vigilance' ? 'var(--warn)' : niv === 'Non renseigné' ? 'var(--text-subtle)' : 'var(--danger)');
+    chips.push(chip('<i style="width:7px;height:7px;border-radius:50%;background:' + col + ';"></i>' + escapeHtml(niv === 'Non renseigné' ? 'État non renseigné' : niv)));
   }
-  if (dash.acwr != null && m.acwr_fiable !== false) chips.push(chip('ACWR <small style="color:var(--text-subtle);font-weight:600;">' + escapeHtml(String(dash.acwr)) + '</small>'));
-  try { var sh = (d.sante_historique || [])[0]; if (sh && sh.sommeil_min != null) { var hh = Math.floor(sh.sommeil_min / 60), mn = Math.round(sh.sommeil_min % 60); chips.push(chip('Sommeil <small style="color:var(--text-subtle);font-weight:600;">' + hh + ' h' + (mn ? ' ' + (mn < 10 ? '0' + mn : mn) : '') + '</small>')); } } catch (e) {}
-  try { var p = (d.poids || [])[0]; if (p && p.poids != null) chips.push(chip('<small style="color:var(--text-subtle);font-weight:600;">' + escapeHtml(String(p.poids)) + ' kg</small>')); } catch (e) {}
+  try { var sh = (d.sante_historique || []).filter(function (x) { return x && Number(x.sommeil_min) >= 180; })[0]; if (sh && sh.sommeil_min != null) { var hh = Math.floor(sh.sommeil_min / 60), mn = Math.round(sh.sommeil_min % 60); chips.push(chip('Nuit du ' + escapeHtml(_dateCourte(sh.date)) + ' <small style="color:var(--text-subtle);font-weight:600;">' + hh + ' h' + (mn ? ' ' + (mn < 10 ? '0' + mn : mn) : '') + '</small>')); } } catch (e) {}
+  try { var p = (d.poids || [])[0]; if (p && p.poids != null) chips.push(chip('<small style="color:var(--text-subtle);font-weight:600;">' + escapeHtml(String(p.poids).replace('.', ',')) + ' kg · ' + escapeHtml(_dateCourte(p.date)) + '</small>')); } catch (e) {}
   var chipsHtml = chips.length ? ('<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:0 2px 7px;">Ce que je vois de toi</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;">' + chips.join('') + '</div>') : '';
   var morpho = '<button onclick="ouvrirMorpho()" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px;border-radius:15px;background:linear-gradient(135deg,rgba(26,95,255,.08),rgba(124,92,255,.10));border:1px solid rgba(124,92,255,.22);cursor:pointer;font:inherit;color:var(--text);margin-bottom:4px;">'
     + '<span style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#1A5FFF,#7C5CFF);display:grid;place-items:center;color:#fff;flex:none;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>'
     + '<span style="flex:1;min-width:0;"><span style="display:block;font-weight:800;font-size:13px;">Analyse morpho par photo</span><span style="display:block;font-size:11px;color:var(--text-muted);margin-top:2px;">Face + dos → tes groupes en avance / en retard</span></span>'
     + '<span style="color:var(--accent);flex:none;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>'
     + '</button>';
+  // I6 : IA pas encore activée → bandeau « bientôt » (la morpho aussi passe par l'IA).
+  if (document.body.classList.contains('ia-bientot')) { el.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 13px;font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px"><b style="color:var(--text)">Novalyz IA arrive bientôt.</b> Elle répondra à tes questions à partir de tes vraies données (séances, forme, progression), et analysera ta morphologie par photo. En attendant, tout est dans Aujourd\'hui et Analyses.</div>' + chipsHtml; return; }
   el.innerHTML = chipsHtml + morpho;
 }
 function cvRenderIa() {
@@ -10278,11 +10293,13 @@ function _morphoRender(d) {
         ? '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(224,120,0,.16);color:var(--warn)">Antécédent</span>'
         : (e.src === 'piste')
         ? '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(139,150,176,.18);color:var(--text-subtle)">À nuancer</span>'
-        : '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(0,168,84,.14);color:var(--good)">Mesuré</span>';
+        : '<span style="font-size:8.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;background:rgba(0,168,84,.14);color:var(--good)">Mesuré · repère indicatif</span>';
       return '<div style="padding:9px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><div style="font-size:12.5px;font-weight:700">' + esc(e.t) + badge + '</div>' + (e.d ? '<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">' + esc(e.d) + '</div>' : '') + (chips ? '<div style="margin-top:4px">' + chips + '</div>' : '') + '</div>';
     }).join('');
     out += '<div style="background:linear-gradient(135deg,rgba(26,95,255,.08),rgba(124,92,255,.10));border:1px solid rgba(124,92,255,.3);border-radius:16px;padding:13px 14px;margin-bottom:11px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:2px">Exercices selon tes leviers</div><div style="font-size:10.5px;color:var(--text-subtle);margin-bottom:4px">Déduits de tes segments (règles biomécaniques) + antécédents — aucune valeur inventée.</div>' + lev + '</div>';
   }
+  // Audit IA I7 (01/11) : les seuils de leviers (ex. fémur/tronc ≥ 0,82) ne sont pas issus d'une étude → dit clairement.
+  if (d.exercices && d.exercices.some(function (e) { return e.src === 'mesure'; })) out += '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.5;margin:0 2px 8px">« Mesuré » : calculé à partir de tes longueurs de segments, avec des <b>seuils repères indicatifs</b> (pratique de la musculation), non validés par une étude scientifique.</div>';
   out += '<div style="font-size:10.5px;color:var(--text-subtle);line-height:1.5;text-align:center;margin-top:4px">Basé sur des principes reconnus (biomécanique, correctif postural, pratique de la muscu). Indicatif, non médical.</div>';
   return out || '<div style="font-size:12px;color:var(--text-muted);padding:8px">Analyse vide — réessaie.</div>';
 }
@@ -20109,6 +20126,7 @@ function _appliquerAppData(data) {
 
     // Accueil « Aujourd'hui » (refonte maquette) — prénom, date, régularité.
     _safe('aujourdhui', () => renderAujourdhui(data));
+    _safe('ia-bientot', () => _majIaBientot(data));   // I6 : IA pas encore activée → « bientôt »
     _safe('etat', () => renderEtat(data));
     _safe('cardio-tab', () => renderCardio(data));
     _safe('entrainement', () => renderEntrainement(data));
