@@ -50,9 +50,27 @@ d = D({ niveau: 'intermediaire', last: top, prev: top });
 check('intermédiaire : 2 séances de suite → charge', d.mode === 'charge' && d.cible(2).charge === 37.5);
 d = D({ niveau: 'intermediaire', last: ser([[35, 12], [35, 12], [35, 12]], 7, 120), prev: null });
 check('intermédiaire : 1 fois avec RPE ≤ 7 → charge', d.mode === 'charge');
-// --- Consolide ---
+// --- Règle validée le 01/11 : série par série, RPE 9 n'est plus un blocage (intermédiaire et +) ---
 d = D({ niveau: 'intermediaire', last: ser([[35, 12], [35, 12], [35, 12]], 9, 120), prev: top });
-check('RPE ≥ 9 → consolide (mêmes charge et reps)', d.mode === 'consolide' && d.cible(1).charge === 35 && d.cible(1).reps === 12);
+check('intermédiaire : haut de fourchette 2 séances de suite, RPE 9 → charge (RPE 9 ne bloque plus)', d.mode === 'charge' && d.cible(1).charge === 37.5);
+d = D({ niveau: 'intermediaire', last: ser([[35, 12], [35, 12], [35, 12]], 10, 120), prev: top });
+check('intermédiaire : haut atteint mais à l\'échec (RPE 10) → pas de charge, tout gardé (consolide)', d.mode === 'consolide' && d.cible(1).charge === 35 && d.cible(1).reps === 12);
+d = D({ niveau: 'intermediaire', last: [{ serie: 1, charge: 90, reps: 7, rpe: 9 }, { serie: 2, charge: 90, reps: 6, rpe: 10 }, { serie: 3, charge: 75, reps: 10, rpe: 8 }], prev: null, rmin: 6, rmax: 12 });
+check('série par série (cas réel Développé machine) : RPE 9 → +1 rep, RPE 10 gardée, RPE 8 → +1 rep',
+  d.mode === 'reps' && d.cible(1).reps === 8 && d.cible(2).reps === 6 && d.cible(2).tenue === true && d.cible(3).reps === 11 && d.nTenues === 1);
+d = D({ niveau: 'debutant', last: [{ serie: 1, charge: 30, reps: 10, rpe: 9 }, { serie: 2, charge: 30, reps: 9, rpe: 8 }], prev: null });
+check('débutant : seuil 8 → la série à RPE 9 est gardée, celle à RPE 8 vise +1 rep', d.mode === 'reps' && d.cible(1).reps === 10 && d.cible(2).reps === 10);
+d = D({ niveau: 'debutant', last: ser([[35, 12], [35, 12], [35, 12]], 9, 120), prev: null });
+check('débutant : haut atteint à RPE 9 → pas de charge (RPE ≤ 8 exigé), consolide', d.mode === 'consolide');
+// --- Garde-fous récupération ---
+d = D({ niveau: 'intermediaire', last: ser([[60, 8], [60, 7], [60, 6]], 10, 120), prev: ser([[60, 8], [60, 7], [60, 7]], 10), rmin: 6, rmax: 12 });
+check('échec (RPE 10) 2 séances de suite → mode « echec », tout gardé', d.mode === 'echec' && d.cible(1).reps === 8 && d.cible(3).reps === 6);
+d = D({ niveau: 'intermediaire', last: ser([[60, 8], [60, 7], [60, 6]], 10, 120), prev: ser([[60, 8], [60, 7], [60, 7]], 9), rmin: 6, rmax: 12 });
+check('échec une seule fois → pas « echec » (séries gardées une à une)', d.mode === 'consolide');
+d = D({ niveau: 'intermediaire', last: ser([[35, 10], [35, 10], [35, 9]], 8, 120), vigilance: true, vigilanceTxt: 'sommeil dégradé' });
+check('jour en Vigilance → aucune progression, mêmes charges et reps', d.mode === 'vigilance' && d.cible(1).reps === 10 && d.cible(3).reps === 9 && d.vigilanceTxt === 'sommeil dégradé');
+d = D({ niveau: 'intermediaire', last: ser([[80, 4], [80, 4], [80, 4]], 10, 120), vigilance: true, rmin: 6, rmax: 12 });
+check('« sous la fourchette » reste prioritaire même en Vigilance (proposition de baisse)', d.mode === 'sous');
 // --- Avancé / expert : choix ---
 d = D({ niveau: 'avance', last: top, prev: top });
 check('avancé : charge possible → choix du jour (4 options)', d.mode === 'choix' && d.options.length === 4);
@@ -77,7 +95,7 @@ check('jamais fait → premier essai', D({ niveau: 'debutant', last: [] }).mode 
 d = D({ niveau: 'avance', last: ser([[80, 2], [80, 2], [80, 1]], 10, 120), prev: ser([[80, 3], [80, 3], [80, 2]], 10), rmin: 6, rmax: 8 });
 check('sous la fourchette à RPE 10 → −1 petit pas, retour au bas de fourchette', d.mode === 'sous' && d.cible(1).charge === 77.5 && d.cible(1).reps === 6);
 d = D({ niveau: 'avance', last: ser([[80, 8], [80, 7], [80, 5]], 9, 120), rmin: 6, rmax: 8 });
-check('1 série sur 3 sous le min → pas « sous » (consolide)', d.mode === 'consolide');
+check('1 série sur 3 sous le min → pas « sous » (+1 rep série par série, RPE 9)', d.mode === 'reps');
 d = D({ niveau: 'avance', last: ser([[80, 4], [80, 4], [80, 4]], 8, 120), rmin: 6, rmax: 8 });
 check('sous le min mais RPE 8 → pas de baisse (+1 rep)', d.mode === 'reps');
 d = D({ niveau: 'avance', last: ser([[0, 4], [0, 4], [0, 4]], 10, 120), rmin: 6, rmax: 8, pas: 0 });

@@ -27,3 +27,18 @@ Sur tes vraies séances : **12 exercices sur 16 en « consolide »**, 1 « sous 
 Pourquoi B : RPE 9 = 1 rep en réserve, c'est la zone visée (RPE 8-9) — pas un signal d'arrêt. RPE 10 (échec) = au-delà de la cible → on consolide cette série. Le passage à la charge supérieure reste inchangé (toutes les séries au haut de la fourchette, 1 ou 2 séances selon le niveau) ; « sous la fourchette » reste prioritaire.
 
 🟠 À décider par le porteur. Aucun changement appliqué.
+
+## Décision et réalisation (01/11, validé porteur)
+
+Règle par niveau + garde-fous récupération (sources : ACSM 2009 — +2 à 10 % quand 1-2 reps au-dessus de l'objectif 2 séances de suite ; Morán-Navarro 2017 — l'échec rallonge la récupération neuromusculaire ; Refalo 2023 — la proximité de l'échec n'a pas d'effet linéaire).
+
+| Niveau | +1 rep (série par série) | Charge | 
+|---|---|---|
+| Débutant (0-3 ans) | série à RPE ≤ 8 ; au-dessus, la série est gardée | toutes au haut de la fourchette, 1 séance, RPE ≤ 8 |
+| Intermédiaire (4-7), avancé (8-10), expert (11+) | série à RPE ≤ 9 ; RPE 10 (échec) gardée | toutes au haut 2 séances de suite (ou 1 fois à RPE ≤ 7), jamais si RPE 10 ; avancé/expert : choix du jour |
+
+Garde-fous : échec 2 séances de suite sur l'exercice → tout gardé, « vise RPE 9 » ; jour en Vigilance (verdict du moteur) → aucune progression ; « sous la fourchette » prioritaire. Phrase d'explication unique (`_progWhy`) pour la saisie, Aujourd'hui et Par exercice.
+
+Résultat sur les 16 exercices réels : **15 progressent (+1 rep série par série), 1 « sous la fourchette »** (Développé incliné Smith, 2 séances à l'échec) — avant : 12 bloqués. Tests : `surcharge-serie` 48 cas (10 nouveaux sur les seuils de chaque niveau et les garde-fous).
+
+Seuils « RPE ≤ 8 débutant » et « échec 2 séances de suite » = choix Novalyz cohérents avec ces sources (aucune ne les donne tels quels).
