@@ -893,7 +893,7 @@ function mapStravaActivite(a: any): any {
 }
 
 async function buildCardioAll(athleteId: string): Promise<any> {
-  const { data: rows } = await sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'cardio_%').order('date', { ascending: false })
+  const { data: rows } = await _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'cardio_%').order('date', { ascending: false }).order('id'))
   if (!rows?.length) return { windows: { 7: { sessions: 0, par_type: {} }, 30: { sessions: 0, par_type: {} }, 90: { sessions: 0, par_type: {} }, 180: { sessions: 0, par_type: {} } }, history: [] }
 
   const now = new Date()
@@ -1420,12 +1420,30 @@ async function handleSaveClubCoach(body: any): Promise<Response> {
 
 // ── Export RGPD (portabilité des données) ─────────────────────────────────────
 // Tables personnelles d'un athlète, clé = athlete_id (jamais password_hash).
-const _EXPORT_TABLES = ['performances', 'indicateurs', 'bien_etre', 'tests', 'objectifs', 'objectif', 'blessures', 'poids_historique', 'commentaires', 'contexte_athlete', 'programme']
+// ── Lecture COMPLÈTE paginée (audit 01/11) ─────────────────────────────────────
+// PostgREST (Supabase) plafonne une requête à 1 000 lignes PAR DÉFAUT, SANS erreur : le
+// résultat est simplement coupé. Un athlète avec 2 808 lignes de séances n'en voyait que
+// 1 000 (records, historique, tendances faux). On lit donc par pages de 1 000 jusqu'au bout.
+// build() doit renvoyer une NOUVELLE requête à chaque appel, avec un tri stable (… .order('id')).
+async function _toutLire(build: () => any, pas = 1000): Promise<{ data: any[]; error: any }> {
+  const out: any[] = []
+  for (let i = 0; i < 500; i++) {
+    const b = build()
+    if (!b || typeof b.range !== 'function') { const r = await b; return { data: (r && r.data) || [], error: (r && r.error) || null } }
+    const { data, error } = await b.range(i * pas, i * pas + pas - 1)
+    if (error) return { data: out, error }
+    out.push(...(data || []))
+    if (!data || data.length < pas) break
+  }
+  return { data: out, error: null }
+}
+
+const _EXPORT_TABLES = ['performances', 'indicateurs', 'bien_etre', 'tests', 'objectifs', 'objectif', 'blessures', 'poids_historique', 'commentaires', 'contexte_athlete', 'programme', 'notes', 'planning', 'pauses', 'activites']
 
 async function _collecterDonneesAthlete(id: string): Promise<Record<string, any>> {
   const bloc: Record<string, any> = {}
   for (const t of _EXPORT_TABLES) {
-    try { const { data } = await sb().from(t).select('*').eq('athlete_id', id); bloc[t] = data || [] }
+    try { const { data } = await _toutLire(() => sb().from(t).select('*').eq('athlete_id', id).order('id')); bloc[t] = data || [] }
     catch (_) { bloc[t] = [] }
   }
   return bloc
@@ -1440,6 +1458,28 @@ async function handleExportAthlete(body: any): Promise<Response> {
   const profil: any = { ...prof }; delete profil.password_hash
   const bloc = await _collecterDonneesAthlete(athlete_id)
   return jsonResp({ success: true, data: { export: 'novalyz', type: 'athlete', date: new Date().toISOString(), athlete_id, profil, ...bloc } })
+}
+
+// Audit Réglages R3 (01/11, option a) : l'athlète reçoit SES données par e-mail (JSON complet +
+// CSV des séances en pièces jointes) — sur l'app Android, le téléchargement direct n'est pas fiable.
+async function handleExportAthleteEmail(body: any): Promise<Response> {
+  const athlete_id = String(body.athlete_id || '')
+  if (!athlete_id) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  const { data: prof } = await sb().from('athletes').select('*').eq('id', athlete_id).single()
+  if (!prof) return jsonResp({ success: false, error: 'Athlète introuvable' })
+  const email = String((prof as any).email || '').trim()
+  if (!email || !_emailValide(email)) return jsonResp({ success: false, error: 'Ajoute d\'abord ton e-mail (Réglages ▸ Mon compte).' })
+  const profil: any = { ...prof }; delete profil.password_hash
+  const bloc: any = await _collecterDonneesAthlete(athlete_id)
+  const stamp = fmtYMD(new Date())
+  const json = JSON.stringify({ export: 'novalyz', type: 'athlete', date: new Date().toISOString(), athlete_id, profil, ...bloc }, null, 2)
+  const att = [{ filename: 'novalyz-mes-donnees-' + stamp + '.json', content: _b64Utf8(json) }]
+  const csv = _csvRows(bloc && bloc.performances || [])
+  if (csv) att.push({ filename: 'novalyz-seances-' + stamp + '.csv', content: _b64Utf8(csv) })
+  const prenom = String((prof as any).nom || '').trim().split(/\s+/)[0] || ''
+  const html = _emailShell('Tes données Novalyz', 'Export du ' + fmtFR(stamp), `<p style="font-size:14px;line-height:1.5;margin:0 0 10px">Bonjour ${_escHtml(prenom)},</p><p style="font-size:14px;line-height:1.5;margin:0">Tu trouveras en pièces jointes toutes tes données : le fichier <b>JSON</b> (profil, séances, bien-être, cardio, poids, programme…) et un <b>CSV</b> de tes séances, lisible dans un tableur.</p>`)
+  const ok = await _envoyerEmail(email, 'Novalyz — tes données', html, att)
+  return jsonResp(ok ? { success: true, email } : { success: false, error: 'Envoi impossible pour le moment. Réessaie plus tard.' })
 }
 
 // Export des données de TOUS les athlètes d'un coach (JSON).
@@ -1469,7 +1509,7 @@ async function handleBilanClient(body: any): Promise<Response> {
   if (!aRow || String(aRow.coach_id) !== coach_id) return jsonResp({ success: false, error: 'Athlète introuvable' })
   const now = new Date()
   const [{ data: perfs }, { data: prog }, { data: be }, { data: sante }] = await Promise.all([
-    sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,seance_id').eq('athlete_id', athlete_id),
+    _toutLire(() => sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,seance_id').eq('athlete_id', athlete_id).order('id')),
     sb().from('programme').select('seance_id,series_prevues').eq('athlete_id', athlete_id),
     sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
@@ -1494,7 +1534,7 @@ async function handleEnvoyerBilanMail(body: any): Promise<Response> {
   if (!email) return jsonResp({ success: false, error: "Cet athlète n'a pas renseigné d'e-mail." })
   const now = new Date()
   const [{ data: perfs }, { data: prog }, { data: be }, { data: sante }] = await Promise.all([
-    sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,seance_id').eq('athlete_id', athlete_id),
+    _toutLire(() => sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,seance_id').eq('athlete_id', athlete_id).order('id')),
     sb().from('programme').select('seance_id,series_prevues').eq('athlete_id', athlete_id),
     sb().from('bien_etre').select('date,sommeil,energie,fatigue_musculaire').eq('athlete_id', athlete_id),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athlete_id).like('seance_id', 'sante_%'),
@@ -1569,7 +1609,7 @@ function _mailHeader(): string {
     <div style="font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:800;letter-spacing:.1em;color:#eaf0fa;margin-top:10px">NOVALYZ</div>
   </div>`
 }
-async function _envoyerEmail(to: string, subject: string, html: string): Promise<boolean> {
+async function _envoyerEmail(to: string, subject: string, html: string, attachments?: { filename: string; content: string }[]): Promise<boolean> {
   const key = Deno.env.get('RESEND_API_KEY')
   if (!key) { console.error('email: RESEND_API_KEY absente'); return false }
   const dest = String(to || '').trim()
@@ -1579,11 +1619,22 @@ async function _envoyerEmail(to: string, subject: string, html: string): Promise
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: [dest], subject, html }),
+      body: JSON.stringify(attachments && attachments.length ? { from, to: [dest], subject, html, attachments } : { from, to: [dest], subject, html }),
     })
     if (!r.ok) { console.error('email: envoi refusé (HTTP ' + r.status + ')'); return false }
     return true
   } catch (_) { console.error('email: erreur réseau envoi'); return false }
+}
+// UTF-8 → base64 (pièces jointes Resend : champ « content » en base64).
+function _b64Utf8(txt: string): string {
+  const bytes = new TextEncoder().encode(txt); let bin = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(bin)
+}
+function _csvRows(rows: any[]): string {
+  if (!rows || !rows.length) return ''
+  const cols = Object.keys(rows[0]), esc = (v: any) => { const t = v == null ? '' : String(v); return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t }
+  return [cols.join(',')].concat(rows.map((r: any) => cols.map((c) => esc(r[c])).join(','))).join('\n')
 }
 
 async function _envoyerEmailReset(email: string, rawToken: string): Promise<boolean> {
@@ -2105,7 +2156,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     { data: suiviPhotoRows },
     { data: exoCatRows },
   ] = await Promise.all([
-    sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
+    _toutLire(() => sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).order('id')),
     sb().from('athletes').select('*').eq('id', athleteId).single(),
     sb().from('programme').select('*').eq('athlete_id', athleteId).order('groupe_id').order('id'),
     sb().from('poids_historique').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(30),
@@ -2115,14 +2166,14 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
     sb().from('volume_obti').select('*'),
     sb().from('contexte_athlete').select('*').eq('athlete_id', athleteId).order('date_debut', { ascending: false }),
     sb().from('indicateurs').select('*').eq('athlete_id', athleteId).eq('cle', 'pause').order('date', { ascending: false }).limit(1),
-    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'cardio_%').order('date', { ascending: false }),
+    _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'cardio_%').order('date', { ascending: false }).order('id')),
     sb().from('objectif').select('*').eq('athlete_id', athleteId).limit(1),
-    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'pasjour_%').order('date', { ascending: false }),
+    _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'pasjour_%').order('date', { ascending: false }).order('id')),
     sb().from('blessures').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
     sb().from('indicateurs').select('cle').eq('athlete_id', athleteId).eq('seance_id', 'alerte_lue'),
     sb().from('indicateurs').select('cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'pref').order('date', { ascending: false }),
-    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'sante_%').order('date', { ascending: false }),
-    sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'nutri_%').order('date', { ascending: false }),
+    _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'sante_%').order('date', { ascending: false }).order('id')),
+    _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).like('seance_id', 'nutri_%').order('date', { ascending: false }).order('id')),
     sb().from('indicateurs').select('cle,valeur,date').eq('athlete_id', athleteId).eq('seance_id', 'recompense'),
     sb().from('indicateurs').select('date,cle,valeur,unite').eq('athlete_id', athleteId).eq('seance_id', 'mensuration').order('date', { ascending: false }),
     sb().from('indicateurs').select('date,cle,valeur').eq('athlete_id', athleteId).eq('seance_id', 'suivi_photo').order('date', { ascending: false }),
@@ -2477,7 +2528,10 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       for (const sid of Object.keys(dt)) if (!/^marche/i.test(typ[sid] || '')) _cardioActif[sid] = dt[sid] }
     const _joursActifs = new Set<string>([...perfs.map(r => normDate(r.date)), ...Object.values(_cardioActif)].filter(Boolean) as string[])
     const seances7M = [..._joursActifs].filter(d => d >= c7).length
-    const derniereActivite = [..._joursActifs].sort().pop() || null
+    // Retour de vacances : l'absence se compte à partir de la FIN de la pause (R1, 01/11).
+    const _pauseFin = (pauseRow && pauseRow.valeur && pauseRow.valeur !== 'fin' && pauseRow.unite) ? normDate(pauseRow.unite) : null
+    let derniereActivite = [..._joursActifs].sort().pop() || null
+    if (_pauseFin && _pauseFin <= fmtYMD(now) && (!derniereActivite || _pauseFin > derniereActivite)) derniereActivite = _pauseFin
     const histoM = _joursDepuis(premiereP, now)
     // Modèle fitness-fatigue (Banister) sur la charge muscu (tonnage) — calculé AVANT
     // le verdict car il est désormais le SIGNAL DE CHARGE PRIMAIRE (ACWR = secondaire).
@@ -2519,6 +2573,7 @@ async function handleGetAppData(params: URLSearchParams): Promise<Response> {
       douleur: sigM.douleur, douleurZone: sigM.douleurZone, douleurDate: sigM.douleurDate, fatigue: (sigM.fatigueMoy != null ? sigM.fatigueMoy : sigM.fatigue), sommeil: sigM.sommeil, stress: sigM.stress, courbatures: sigM.courbatures,
       injStatut: null, ctxEtat: ctxEtatM,
       q: { jours: histoM != null ? histoM : (perfs.length ? 7 : 0), wellnessN: sigM.wellnessN, hasCharge: perfs.length > 0 },
+      enPause: enPause || (!!_pauseFin && _pauseFin <= fmtYMD(now) && _pauseFin >= fmtYMD(minus(now, 6))),   // + 7 j de reprise après la pause
     })
     moteur = {
       disponibilite: etatM.disponibilite, surcharge: etatM.surcharge, risque_blessure: etatM.risque_blessure,
@@ -2656,7 +2711,7 @@ async function handleGetLastPerf(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')
   if (!athleteId) return jsonResp({ perfs: {} })
 
-  const { data: rows } = await sb().from('performances').select('*').eq('athlete_id', athleteId)
+  const { data: rows } = await _toutLire(() => sb().from('performances').select('*').eq('athlete_id', athleteId).order('id'))
   // Regroupement par exercice → par date, TOUTES séances confondues : la référence
   // « dernière fois » = la DERNIÈRE fois où l'exercice a été fait, quelle que soit la
   // séance (avant : priorité à la même seance_id → avec un split A/B ou une séance
@@ -2741,9 +2796,9 @@ async function handleGetCoachAthletes(params: URLSearchParams): Promise<Response
   const c28 = fmtYMD(minus(now, 27))
 
   const [{ data: perfsAll }, { data: pauseAll }, { data: beAll }] = await Promise.all([
-    sb().from('performances').select('*').in('athlete_id', athleteIds).gte('date', c28),
+    _toutLire(() => sb().from('performances').select('*').in('athlete_id', athleteIds).gte('date', c28).order('id')),
     sb().from('indicateurs').select('*').in('athlete_id', athleteIds).eq('cle', 'pause').order('date', { ascending: false }),
-    sb().from('bien_etre').select('*').in('athlete_id', athleteIds).order('date', { ascending: false }),
+    _toutLire(() => sb().from('bien_etre').select('*').in('athlete_id', athleteIds).order('date', { ascending: false }).order('id')),
   ])
 
   // Audit #8 : le coach voit les MÊMES alertes que l'athlète (moteur central → alertes_centre),
@@ -2817,7 +2872,7 @@ async function handleGetCoachProgramme(params: URLSearchParams): Promise<Respons
 async function handleGetSeancesDetail(params: URLSearchParams): Promise<Response> {
   const athleteId = params.get('athlete_id')
   if (!athleteId) return jsonResp({ error: 'athlete_id manquant' })
-  const { data } = await sb().from('performances').select('*').eq('athlete_id', athleteId)
+  const { data } = await _toutLire(() => sb().from('performances').select('*').eq('athlete_id', athleteId).order('id'))
   // groupé par DATE (JJ/MM/AAAA) → exos → series (comme Code.gs getSeancesDetail)
   const parDate: Record<string, { date: string; seance_id: string; _parExo: Record<string, any[]>; _ordreExo: string[]; _meta: Record<string, any> }> = {}
   const ordreDate: string[] = []
@@ -2858,7 +2913,7 @@ async function handleGetBilanPDF(params: URLSearchParams): Promise<Response> {
   if (!athleteId) return jsonResp({ erreur: 'athlete_id manquant' })
   const [{ data: ath }, { data: perfs }, { data: poidsRows }, { data: beRows }, { data: tests }] = await Promise.all([
     sb().from('athletes').select('*').eq('id', athleteId).single(),
-    sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
+    _toutLire(() => sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).order('id')),
     sb().from('poids_historique').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(12),
     sb().from('bien_etre').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(12),
     sb().from('tests').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
@@ -3017,6 +3072,7 @@ interface EtatInput {
   blessureGrave?: boolean       // blessure active modérée/grave (muscu : table blessures)
   ctxEtat: string
   q: { jours: number; wellnessN: number; hasCharge: boolean }
+  enPause?: boolean            // mode vacances actif (Réglages) → pas d'absence / sous-charge
   // RÈGLE « CHARGE + RESSENTI » (oct. 2026, validée porteur). Si ces champs sont
   // FOURNIS (muscu), une alerte de charge exige une charge SOUTENUE (TSB% < -12 sur
   // ≥ 3 des 5 derniers jours) ET un signal ressenti concordant (fatigue/sommeil
@@ -3037,7 +3093,8 @@ function evaluerEtatAthlete(s: EtatInput): any {
   const ctx = s.ctxEtat || 'saison_normale'
   // Effets de contexte centralisés (Phase 3C) — pilotés par CORE_CONTEXTES.
   const eff = effetsContexte(ctx)
-  const reposPrevu = eff.reposPrevu
+  // Mode vacances (Réglages, audit R1 01/11) = repos prévu : pas d'alerte d'absence ni de volume trop bas.
+  const reposPrevu = eff.reposPrevu || s.enPause === true
 
   // --- Garde-fou ACWR (décision retour-vacances) : si l'historique de charge est
   // insuffisant (reprise, < 28 j de chronique réelle), l'ACWR est NON INTERPRÉTABLE.
@@ -3406,14 +3463,14 @@ async function handleGetSuiviJoueur(params: URLSearchParams): Promise<Response> 
 
     const [{ data: ath }, { data: indAll }, { data: beAll }, { data: injAll }, { data: objAll }, { data: ctxAll }, { data: perfAll }] = await Promise.all([
       sb().from('athletes').select('*').eq('id', athleteId).single(),
-      sb().from('indicateurs').select('*').eq('athlete_id', athleteId),
+      _toutLire(() => sb().from('indicateurs').select('*').eq('athlete_id', athleteId).order('id')),
       sb().from('bien_etre').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).limit(60),
       sb().from('blessures').select('*').eq('athlete_id', athleteId),
       sb().from('objectifs').select('*').eq('athlete_id', athleteId),
       sb().from('contexte_athlete').select('*').eq('athlete_id', athleteId).order('date_debut', { ascending: false }),
       // Séances de renfo réalisées (exécution guidée côté joueur) — affichage seul,
       // ne compte pas dans l'ACWR foot (pas de charge_interne).
-      sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }),
+      _toutLire(() => sb().from('performances').select('*').eq('athlete_id', athleteId).order('date', { ascending: false }).order('id')),
     ])
 
     const nom = ath?.nom || ''
@@ -3905,6 +3962,14 @@ async function handleRegisterCoach(body: any): Promise<Response> {
 async function handleSupprimerCompte(body: any): Promise<Response> {
   const athleteId = body.athlete_id
   if (!athleteId) return jsonResp({ success: false, error: 'athlete_id manquant' })
+  // Audit Réglages R2 (01/11) : preuve que c'est bien l'athlète — ressaisie de SON mot de passe
+  // (vérifié avec verifyPwd existant, hachage inchangé). La session coach est refusée dans authCheck.
+  const mdp = String(body.mdp || '')
+  if (!mdp) return jsonResp({ success: false, error: 'Mot de passe requis pour supprimer le compte.' })
+  const { data: athPwd } = await sb().from('athletes').select('login,password_hash').eq('id', athleteId).single()
+  if (!athPwd) return jsonResp({ success: false, error: 'Compte introuvable' })
+  const { ok: mdpOk } = await verifyPwd(mdp, (athPwd as any).password_hash || '', (athPwd as any).login)
+  if (!mdpOk) return jsonResp({ success: false, error: 'Mot de passe incorrect.' })
   // Suppression COMPLÈTE des données personnelles (RGPD + exigence Play Store).
   // Chaque .delete() est tolérant : une table vide n'est pas une erreur.
   await Promise.all([
@@ -5078,7 +5143,7 @@ async function handleCronResumes(body: any): Promise<Response> {
         // Mail récap v2 (01/11) : mêmes données que l'app (getAppData) + séries brutes
         // (records, volume) + catalogue (muscle secondaire). Voir _bilanRecapV2.
         const [{ data: perfs }, { data: exos }, appRes] = await Promise.all([
-          sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,serie,seance_id').eq('athlete_id', aid),
+          _toutLire(() => sb().from('performances').select('date,exercice,muscle,charge,reps,rpe,serie,seance_id').eq('athlete_id', aid).order('id')),
           sb().from('exercices').select('exercice,muscle,muscle_secondaire'),
           handleGetAppData(new URLSearchParams({ athlete_id: aid })),
         ])
@@ -6679,6 +6744,8 @@ async function authCheck(action: string, params: URLSearchParams, body: any): Pr
     const ids = [...new Set(body.data.map((r: any) => String(Array.isArray(r) ? r[4] : '')))]
     for (const id of ids) if (!id || !(await _sessionPeutAthlete(sess, id))) return { ok: false, reason: (sess.role === 'c' ? 'coach ' : 'athlète ') + sess.id + ' → séance de ' + id }
   }
+  // Supprimer un compte athlète : uniquement l'athlète lui-même (jamais son coach) — R2, 01/11.
+  if (action === 'supprimerCompte' && sess.role !== 'a') return { ok: false, reason: 'coach ' + sess.id + ' → suppression du compte de ' + aid }
   if (sess.role === 'a') {
     if (aid && aid !== sess.id) return { ok: false, reason: 'athlète ' + sess.id + ' → données de ' + aid }
     if (cid) {
@@ -6777,6 +6844,7 @@ Deno.serve(async (req: Request) => {
         case 'changePasswordCoach':      return handleChangePasswordCoach(body)
         case 'saveClubCoach':            return handleSaveClubCoach(body)
         case 'exportAthlete':            return handleExportAthlete(body)
+        case 'exportAthleteEmail':       return handleExportAthleteEmail(body)
         case 'exportEquipe':             return handleExportEquipe(body)
         case 'bilanClient':              return handleBilanClient(body)
         case 'envoyerBilanMail':         return handleEnvoyerBilanMail(body)

@@ -2003,15 +2003,39 @@ function debugCoachCopier() {
   navigator.clipboard.writeText(out.textContent).then(() => alert('JSON copié !')).catch(() => alert('Copie manuelle nécessaire'));
 }
 
+// R3 (01/11, option a) : web → téléchargement ; app Android → fichiers envoyés par e-mail
+// (le téléchargement direct n'est pas fiable dans l'app).
+async function exporterMesDonneesUI() {
+  if (!athlete || !athlete.athlete_id) return;
+  var natif = false; try { natif = _estAppNative(); } catch (e) {}
+  if (!natif) return exporterMesDonnees('json');
+  var msg = document.getElementById('export-ath-msg');
+  var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.color = c || 'var(--danger)'; } };
+  setMsg('⏳ Préparation et envoi…', 'var(--text-muted)');
+  try {
+    var res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'exportAthleteEmail', athlete_id: athlete.athlete_id }) });
+    var d = await res.json();
+    if (d && d.success) setMsg('Envoyé à ' + d.email + ' (JSON complet + CSV de tes séances).', 'var(--good)');
+    else setMsg((d && d.error) || 'Envoi impossible.');
+  } catch (e) { setMsg('Erreur réseau. Réessaie.'); }
+}
+function majUiExport() {
+  var natif = false; try { natif = _estAppNative(); } catch (e) {}
+  var b = document.getElementById('export-ath-btn'), c = document.getElementById('export-ath-csv');
+  if (b) b.textContent = natif ? 'Recevoir mes données par e-mail' : 'Télécharger mes données (JSON)';
+  if (c) c.style.display = natif ? 'none' : '';
+}
 async function supprimerMonCompte() {
   if (!athlete || !athlete.athlete_id) return;
+  // R2 (01/11) : ressaisie du mot de passe (vérifiée par le serveur).
+  var _mdpEl = document.getElementById('del-mdp'), mdp = _mdpEl ? _mdpEl.value : '';
+  if (!mdp) { showToast('Entre ton mot de passe pour confirmer', 'var(--danger)'); try { _mdpEl.focus(); } catch (e) {} return; }
   if (!confirm('Supprimer définitivement ton compte et TOUTES tes données ? Cette action est irréversible.')) return;
-  if (!confirm('Dernière confirmation : es-tu vraiment sûr ?')) return;
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'supprimerCompte', athlete_id: athlete.athlete_id })
+      body: JSON.stringify({ action: 'supprimerCompte', athlete_id: athlete.athlete_id, mdp: mdp })
     });
     const data = await res.json();
     if (data.success) {
@@ -2512,6 +2536,7 @@ function _buildIdAffiche() { return (BUILD_ID.indexOf('__BUILD') === 0) ? 'dev' 
 function switchReglagesTab(tab) {
   document.querySelectorAll('#tab-reglages .sub-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.rg === tab); });
   document.querySelectorAll('#tab-reglages .rg-panel').forEach(function (p) { p.style.display = (p.dataset.rg === tab) ? 'block' : 'none'; });
+  if (tab === 'data') { try { majUiExport(); } catch (e) {} }
 }
 
 // ddn : l'objet athlète l'a en FR (jj/mm/aaaa) ; un <input type=date> veut aaaa-mm-jj.

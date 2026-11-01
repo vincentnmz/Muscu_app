@@ -2018,11 +2018,11 @@
 
       <!-- Sous-onglets Réglages -->
       <div class="sub-tabs" style="margin-bottom:14px;">
-        <button class="sub-tab active" data-rg="compte" onclick="switchReglagesTab('compte')"><span>Mon compte</span></button>
-        <button class="sub-tab" data-rg="pref" onclick="switchReglagesTab('pref')"><span>Préférences</span></button>
+        <button class="sub-tab active" data-rg="compte" onclick="switchReglagesTab('compte')"><span>Compte</span></button>
+        <button class="sub-tab" data-rg="pref" onclick="switchReglagesTab('pref')"><span>Options</span></button>
         <button class="sub-tab" data-rg="appareils" onclick="switchReglagesTab('appareils')"><span>Appareils</span></button>
         <button class="sub-tab" data-rg="data" onclick="switchReglagesTab('data')"><span>Données</span></button>
-        <button class="sub-tab" data-rg="apropos" onclick="switchReglagesTab('apropos')"><span>À propos</span></button>
+        <button class="sub-tab" data-rg="apropos" onclick="switchReglagesTab('apropos')"><span>Infos</span></button>
       </div>
 
       <!-- ===== PANEL : MON COMPTE ===== -->
@@ -2030,8 +2030,8 @@
         <!-- Profil -->
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Profil</h2></div>
         <div class="card">
-          <label>Prénom</label>
-          <input type="text" id="prof-prenom" placeholder="Ton prénom" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
+          <label>Nom affiché <span style="color:var(--text-muted);font-weight:600;text-transform:none;letter-spacing:0;">— vu par ton coach</span></label>
+          <input type="text" id="prof-prenom" placeholder="Ton nom" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;">
           <div style="display:flex;gap:8px;margin-top:8px;">
             <div style="flex:1;"><label>Taille (cm)</label><input type="number" id="prof-taille" placeholder="175" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;"></div>
             <div style="flex:1;"><label>Poids (kg)</label><input type="number" id="prof-poids" placeholder="70" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;"></div>
@@ -2118,7 +2118,7 @@
         <!-- Notifications push -->
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-bell"/></svg>Notifications</h2></div>
         <div class="card" id="push-card">
-          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Reçois une notification sur ton téléphone quand ton coach t'envoie un message.</div>
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Reçois une notification sur ton téléphone : message de ton coach, séance saisie par ton coach, et alertes importantes (absence, douleur, volume trop bas).</div>
           <div id="push-statut" style="display:none;font-size:13px;font-weight:700;margin-bottom:12px;"></div>
           <div style="display:flex;gap:8px;">
             <button id="push-btn-on" onclick="activerNotifications()" style="flex:1;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Activer les notifications</button>
@@ -2132,7 +2132,7 @@
         <!-- Mode vacances / pause -->
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-calendar"/></svg>Mode vacances</h2></div>
         <div class="card">
-          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Pendant tes vacances, on n'envoie plus d'alerte d'absence à ton coach. Tu peux quand même enregistrer des séances normalement.</div>
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:12px;">Pendant tes vacances (et 7 jours après pour reprendre), plus d'alerte d'absence ni de « volume trop bas », ni pour toi ni pour ton coach. Tu peux quand même enregistrer des séances normalement.</div>
           <div id="pause-statut" style="display:none;font-size:13px;font-weight:700;color:var(--good);margin-bottom:12px;"></div>
           <div style="display:flex;gap:8px;">
             <div style="flex:1;"><label style="font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:700;display:block;margin-bottom:4px;">Début</label><input type="date" id="pause-debut" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:9px;"></div>
@@ -2178,10 +2178,17 @@
       <div class="rg-panel" data-rg="data" style="display:none;">
         <div class="v2-sec"><h2 class="st"><svg class="ico"><use href="#i-user"/></svg>Mes données</h2></div>
         <div class="card">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px;">Récupère une copie de toutes tes données (profil, séances, bien-être, cardio, poids, programme…).</div>
+          <button id="export-ath-btn" onclick="exporterMesDonneesUI()" style="width:100%;background:var(--accent);border:none;color:var(--on-accent);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Télécharger mes données</button>
+          <button id="export-ath-csv" onclick="exporterMesDonnees('csv')" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">Mes séances en CSV (tableur)</button>
+          <div id="export-ath-msg" style="font-size:12px;margin-top:8px;line-height:1.4;"></div>
+          <div style="height:1px;background:var(--border);margin:12px 0;"></div>
           <a href="#" onclick="ouvrirConfidentialite(event)" style="display:block;font-size:13px;color:var(--accent);font-weight:600;">Politique de confidentialité &amp; mes droits</a>
         </div>
         <div class="v2-sec"><h2 class="st" style="color:var(--danger);"><svg class="ico"><use href="#i-alert"/></svg>Zone dangereuse</h2></div>
         <div class="card" style="border-color:color-mix(in srgb,var(--danger) 30%,var(--border));">
+          <label style="font-size:11px;">Ton mot de passe (pour confirmer)</label>
+          <input type="password" id="del-mdp" placeholder="Mot de passe" autocomplete="current-password" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;box-sizing:border-box;margin:4px 0 10px;">
           <button onclick="supprimerMonCompte()" style="width:100%;background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">Supprimer mon compte et mes données</button>
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.4;">Action irréversible : toutes tes données (séances, poids, notes) seront effacées.</div>
         </div>

@@ -22,3 +22,14 @@ Légende : ✅ vérifié · ❌ défaut (vérifié contre code + données) · �
 | **R4** | Notifications : le texte dit seulement « quand ton coach t'envoie un message » ; il y a aussi les alertes (absence, douleur, volume) et la séance saisie par le coach. | Texte complet. |
 | **R5** | Le champ s'appelle « Prénom » mais contient le **nom complet** (il est enregistré dans le nom affiché au coach). | Libellé « Nom affiché ». |
 | **R6** | Onglets : « À propos » est coupé à droite sur téléphone (visible seulement en faisant défiler la rangée). | Onglets qui tiennent sur la largeur (libellés courts ou 2 lignes). |
+
+## Constat supplémentaire (trouvé pendant R3) — ❌ critique : lectures plafonnées à 1 000 lignes
+Supabase (PostgREST) renvoie **au plus 1 000 lignes par requête par défaut, sans erreur** (doc Supabase `select`). Aucune lecture du backend n'était paginée. Base réelle : **John = 2 808 lignes de séances** → seules les 1 000 plus récentes étaient lues (records, historique, tendances, vue coach faux) ; toi = 877 lignes (plafond atteint dans quelques semaines) ; tes indicateurs = 1 421 (l'export aurait été tronqué).
+**Corrigé** : `_toutLire()` lit par pages de 1 000 (tri stable `…, id`) — séances, cardio, santé, nutrition, pas, indicateurs, bien-être de l'équipe, export. Test `lecture-complete` : base simulée plafonnée à 1 000 + 2 500 séries → **l'ancien code comptait 100 séances au lieu de 250** (historique commençant en nov. 2025 au lieu de janv.) ; le nouveau lit tout.
+
+## Réalisé (01/11, validé porteur : tout, R3 option a)
+- **R1** Mode vacances lu par le moteur : pas d'absence ni de « volume trop bas » pendant la pause **et 7 jours après** (reprise) ; l'absence se compte ensuite depuis la fin de la pause. Vérifié sur le vrai backend (pause 01→15/11) : 09/11 et 18/11 aucune alerte, 23/11 absence (8 j après la fin).
+- **R2** Suppression du compte : session coach refusée ; ressaisie du mot de passe vérifiée par le serveur (`verifyPwd` existant, hachage inchangé) — sans / mauvais mot de passe : rien n'est supprimé (testé).
+- **R3 (a)** « Télécharger mes données » (web : JSON + CSV) ; app Android : **« Recevoir mes données par e-mail »** (JSON complet + CSV des séances en pièces jointes, hash jamais exporté, message clair sans e-mail) — format des pièces jointes vérifié dans la doc Resend. Tables exportées complétées (notes, planning, pauses, activités).
+- **R4** Texte des notifications complet. **R5** « Nom affiché — vu par ton coach ». **R6** Onglets « Compte · Options · Appareils · Données · Infos » sur une ligne (vérifié à 360, 390, 420 px).
+- Tests : `lecture-complete` (4), `export-email` (7), `suppression-compte-complete` (+2), 68 suites vertes.

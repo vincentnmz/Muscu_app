@@ -19,7 +19,7 @@ const ROOT = path.join(__dirname, '..');
 // ── Base Supabase en mémoire (moteur de requêtes minimal) ────────────────────
 function makeEngine(store) {
   function q(table) {
-    const filters = []; let ord = null, lim = null, single = false, op = null, payload = null;
+    const filters = []; let ords = [], lim = null, rng = null, single = false, op = null, payload = null;
     const base = () => (store[table] || (store[table] = []));
     const matches = (r) => filters.every(f => f(r));
     const self = {
@@ -37,15 +37,18 @@ function makeEngine(store) {
       gt(c, v) { filters.push(r => String(r[c]) > String(v)); return self; },
       lt(c, v) { filters.push(r => String(r[c]) < String(v)); return self; },
       like(c, p) { const re = new RegExp('^' + String(p).replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*') + '$'); filters.push(r => re.test(String(r[c] ?? ''))); return self; },
-      order(c, o) { ord = { c, asc: !(o && o.ascending === false) }; return self; },
-      limit(n) { lim = n; return self; }, range() { return self; },
+      order(c, o) { ords.push({ c, asc: !(o && o.ascending === false) }); return self; },
+      limit(n) { lim = n; return self; }, range(a, b) { rng = [a, b]; return self; },
       single() { single = true; return self; }, maybeSingle() { single = true; return self; },
       then(res, rej) { try { res(resolve()); } catch (e) { rej ? rej(e) : res({ data: null, error: { message: String(e) } }); } },
     };
     function filtered() {
       let rows = base().filter(matches);
-      if (ord) rows = rows.slice().sort((a, b) => { const x = a[ord.c], y = b[ord.c]; if (x < y) return ord.asc ? -1 : 1; if (x > y) return ord.asc ? 1 : -1; return 0; });
+      if (ords.length) rows = rows.slice().sort((a, b) => { for (const o of ords) { const x = a[o.c], y = b[o.c]; if (x < y) return o.asc ? -1 : 1; if (x > y) return o.asc ? 1 : -1; } return 0; });
+      if (rng) rows = rows.slice(rng[0], rng[1] + 1);
       if (lim != null) rows = rows.slice(0, lim);
+      // Plafond PostgREST simulé (Supabase : 1 000 lignes max par requête, sans erreur).
+      if (store.__maxRows) rows = rows.slice(0, store.__maxRows);
       return rows;
     }
     function resolve() {

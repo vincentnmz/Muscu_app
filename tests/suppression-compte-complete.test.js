@@ -29,7 +29,7 @@ client.storage = { from: (b) => ({
 }) };
 
 let js = stripTypeScriptTypes(fs.readFileSync(path.join(ROOT, 'supabase', 'functions', 'handler', 'index.ts'), 'utf8'));
-js = js.split('\n').filter(l => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { handleSupprimerCompte };';
+js = js.split('\n').filter(l => !/^import\s/.test(l)).join('\n') + '\n;this.__api = { handleSupprimerCompte, hashSalted };';
 const sb = { createClient: () => client, webpush: { setVapidDetails() {}, sendNotification: async () => {} }, Deno: { env: { get: () => 'x' }, serve: () => {} },
   Response, Request, URLSearchParams, TextEncoder, TextDecoder, crypto, console, setTimeout, clearTimeout, fetch: async () => ({}) };
 vm.createContext(sb); vm.runInContext(js, sb);
@@ -38,7 +38,13 @@ let ok = 0, ko = 0; const fails = [];
 const eq = (c, n, g) => { if (c) ok++; else { ko++; fails.push(n); console.error('  ✗ ' + n + (g !== undefined ? ' (got ' + JSON.stringify(g) + ')' : '')); } };
 
 (async () => {
-  await sb.__api.handleSupprimerCompte({ athlete_id: 'A1' });
+  // Audit Réglages R2 (01/11) : mot de passe de l'athlète obligatoire.
+  store.athletes[0].password_hash = await sb.__api.hashSalted('secret-A1', '1111');
+  let r0 = await (await sb.__api.handleSupprimerCompte({ athlete_id: 'A1' })).json();
+  eq(r0.success === false && store.performances.some(x => x.athlete_id === 'A1'), 'sans mot de passe : rien n\'est supprimé', r0);
+  r0 = await (await sb.__api.handleSupprimerCompte({ athlete_id: 'A1', mdp: 'faux' })).json();
+  eq(r0.success === false && /incorrect/.test(r0.error) && store.athletes.some(a => a.id === 'A1'), 'mauvais mot de passe : rien n\'est supprimé', r0);
+  await sb.__api.handleSupprimerCompte({ athlete_id: 'A1', mdp: 'secret-A1' });
   for (const t of TABLES) {
     eq(!(store[t] || []).some(r => String(r.athlete_id) === 'A1'), t + ' : plus aucune ligne de A1', store[t]);
     eq((store[t] || []).some(r => String(r.athlete_id) === 'A2'), t + ' : A2 intact');

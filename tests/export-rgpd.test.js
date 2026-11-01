@@ -23,6 +23,7 @@ function makeEngine(store) {
       from(t) { return q(t); }, select() { return self; },
       update() { return self; }, insert() { return self; }, delete() { return self; },
       eq(c, v) { filters.push(r => String(r[c]) === String(v)); return self; },
+      order() { return self; }, range() { return self; },
       single() { single = true; return self; }, maybeSingle() { single = true; return self; },
       then(res) { const rows = base().filter(matches); res(single ? { data: rows[0] || null, error: null } : { data: rows, error: null }); },
     };
