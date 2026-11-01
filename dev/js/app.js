@@ -8039,7 +8039,7 @@ function _modeleLignes(org, n) {
     : ((typeof coachAthleteCourant !== 'undefined' && coachAthleteCourant && coachAthleteCourant.annees_pratique != null) ? coachAthleteCourant.annees_pratique : null);
   var niv = (ann != null && typeof getNiveauExperience === 'function') ? getNiveauExperience(ann) : 'intermediaire';
   if (niv === 'expert') niv = 'avance';
-  return _g2Resolve(_genProgramme2('masse', org, n, 60, niv));
+  return _g2Resolve(_genProgramme2('masse', org, n, 60, niv, _g2VolCtx()));
 }
 async function _psModele(org) {
   if (exercicesData.length === 0 && typeof chargerExercices === 'function') { try { await chargerExercices(); } catch (e) {} }
@@ -8051,43 +8051,6 @@ async function _psModele(org) {
       body: JSON.stringify({ action: 'genererProgramme', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), remplacer: true, lignes: lignes }) });
     _progTab = 0;
     showToast('Modèle appliqué — tu peux l\'ajuster');
-    chargerProgrammeCoach();
-  } catch (e) { showToast('Erreur réseau'); }
-}
-
-// Applique un modèle prêt à l'emploi : construit des lignes à partir du catalogue
-// réel (mêmes groupes/choix que le générateur) puis écrase via genererProgramme.
-async function _progModele(key) {
-  if (exercicesData.length === 0 && typeof chargerExercices === 'function') { try { await chargerExercices(); } catch (e) {} }
-  if (exercicesData.length === 0) { showToast('Catalogue indisponible, réessaie'); return; }
-  var defs = {
-    fullbody3: { jours: [1, 3, 5], split: [
-      ['Full body A', ['quad', 'pecs', 'dos', 'epaule', 'ischio', 'abdos']],
-      ['Full body B', ['fessier', 'dos', 'pecs', 'epaule', 'biceps', 'triceps']],
-      ['Full body C', ['quad', 'ischio', 'pecs', 'dos', 'epaule', 'mollet']]
-    ] },
-    ppl: { jours: (typeof _GEN_JOURS !== 'undefined' ? _GEN_JOURS[3] : [1, 3, 5]), split: (typeof _GEN_SPLITS !== 'undefined' ? _GEN_SPLITS[3] : null) },
-    upperlower: { jours: (typeof _GEN_JOURS !== 'undefined' ? _GEN_JOURS[4] : [1, 2, 4, 5]), split: (typeof _GEN_SPLITS !== 'undefined' ? _GEN_SPLITS[4] : null) }
-  };
-  var m = defs[key]; if (!m || !m.split) { showToast('Modèle indisponible'); return; }
-  var o = (typeof _GEN_OBJ !== 'undefined' && _GEN_OBJ.hypertrophie) ? _GEN_OBJ.hypertrophie : { s: 4, rmin: 8, rmax: 12, pct: 72, rpe: 8, repos: 90 };
-  var lignes = [];
-  m.split.forEach(function (sc, si) {
-    var sid = sc[0], used = {}, jour = m.jours[si];
-    sc[1].forEach(function (gk) {
-      var g = (typeof _GEN_G !== 'undefined') ? _GEN_G[gk] : null; if (!g) return;
-      var ex = _genPick(exercicesData, g, used); if (!ex) return; used[ex.exercice] = 1;
-      lignes.push({ seance_id: sid, exercice: ex.exercice, series_prevues: o.s, reps_mini: o.rmin, reps_max: o.rmax, repos_sec: o.repos, groupe_id: '', jour: jour, charge_pct_1rm: o.pct, rpe_cible: o.rpe });
-    });
-  });
-  if (!lignes.length) { showToast('Catalogue indisponible, réessaie'); return; }
-  var existant = Array.isArray(cdProgrammeLignes) && cdProgrammeLignes.length > 0;
-  if (existant && !confirm('Remplacer le programme actuel par ce modèle ? (l\'ancien sera supprimé)')) return;
-  try {
-    await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'genererProgramme', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), remplacer: true, lignes: lignes }) });
-    _progTab = 0;
-    showToast('Modèle appliqué');
     chargerProgrammeCoach();
   } catch (e) { showToast('Erreur réseau'); }
 }
@@ -8214,6 +8177,10 @@ function renderProgrammeCoach() {
       var mus = muscleDe(l.exercice);
       var gcol = _progMuscleCol(mus);
       var reps = (l.reps_mini && l.reps_max) ? (String(l.reps_mini) === String(l.reps_max) ? String(l.reps_mini) : (l.reps_mini + '–' + l.reps_max)) : (l.reps_mini || l.reps_max || '–');
+      // P5 (01/11) : fourchette RÉELLEMENT utilisée (catégorie quand le programme est resté à 8-12).
+      var _fx = null, repsLbl = 'Reps';
+      try { _fx = _exoFourchette(l.exercice, _numOk(l.reps_mini) ? Number(l.reps_mini) : null, _numOk(l.reps_max) ? Number(l.reps_max) : null, _exoCatMap(_progAthleteId())); } catch (e) {}
+      if (_fx && _fx.src === 'cat' && _fx.rmin && _fx.rmax) { reps = _fx.rmin + '–' + _fx.rmax; repsLbl = 'Reps · ' + (_fx.cat === 'petit' ? 'léger' : 'lourd/moyen'); }
       var charge = (l.charge_pct_1rm != null && l.charge_pct_1rm !== '') ? (l.charge_pct_1rm + '%') : '–';
       var repos = (l.repos_sec != null && l.repos_sec !== '') ? (l.repos_sec + 's') : '–';
       return '<div class="prog-exc" draggable="true" ondragstart="progDragStart(event,' + l.row_index + ')" style="border-left:4px solid ' + gcol + '">'
@@ -8222,7 +8189,7 @@ function renderProgrammeCoach() {
         +   '<div class="prog-exc-nm" onclick="cdToggleExo(' + l.row_index + ')"><div class="a">' + l.exercice + '</div>' + (mus ? '<span class="prog-exc-tag" style="color:' + gcol + ';background:' + gcol + '1f">' + mus + '</span>' : '') + '</div>'
         +   '<span class="prog-exc-pen" onclick="cdToggleExo(' + l.row_index + ')"><i class=nv-ic-pencil></i></span>'
         + '</div>'
-        + '<div class="prog-sets">' + statBox(l.series_prevues || '–', 'Séries', 'ser') + statBox(reps, 'Reps', 'rep') + statBox(charge, 'Charge', 'chg') + statBox(repos, 'Repos', 'rst') + '</div>'
+        + '<div class="prog-sets">' + statBox(l.series_prevues || '–', 'Séries', 'ser') + statBox(reps, repsLbl, 'rep') + statBox(charge, 'Charge', 'chg') + statBox(repos, 'Repos', 'rst') + '</div>'
         + blocEditE(l, seanceId, null, selLier(l, seanceId, [l.exercice]) + moveSel(l, seanceId))
         + '</div>';
     };
@@ -8301,7 +8268,7 @@ function renderProgrammeCoach() {
         + '<button class="pb-del" onclick="cdSupprimerLigne(' + ri + ')" title="Supprimer">✕</button>'
         + '<div class="pb-flds">'
         +   '<div class="pb-fld pb-series"><span class="pb-l">Séries</span>' + bNum(l.series_prevues, '3', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,this.value,null,null,null,null)') + '</div>'
-        +   '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div></div>'
+        +   '<div class="pb-fld pb-reps"><span class="pb-l">Reps</span><div class="pb-reps-in">' + bNum(l.reps_mini, 'min', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,this.value,null,null,null)') + '<i>–</i>' + bNum(l.reps_max, 'max', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,this.value,null,null)') + '</div>' + _pbFchNote(l) + '</div>'
         +   '<div class="pb-fld"><span class="pb-l">% 1RM</span>' + bNum(l.charge_pct_1rm, '—', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,this.value,null)') + '</div>'
         +   '<div class="pb-fld pb-rpe"><span class="pb-l">RPE (effort)</span><select class="pb-in" onchange="cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,null,null,null,this.value)">' + _rpeOptions(l.rpe_cible) + '</select></div>'
         +   '<div class="pb-fld"><span class="pb-l">Repos</span>' + bNum(l.repos_sec, '90', 'cdSauverLigne(' + ri + ',\'' + sj + '\',null,null,null,null,this.value,null)') + '</div>'
@@ -8578,10 +8545,12 @@ function cdSauverLigne(rowIndex, seanceId, exercice, series, repsMini, repsMax, 
   const ligne = cdProgrammeLignes.find(l => l.row_index === rowIndex);
   if (!ligne) return;
   if (exercice !== null) ligne.exercice = exercice;
-  if (series !== null) ligne.series_prevues = Number(series);
-  if (repsMini !== null) ligne.reps_mini = Number(repsMini);
-  if (repsMax !== null) ligne.reps_max = Number(repsMax);
-  if (reposSec !== null) ligne.repos_sec = Number(reposSec);
+  // P6 (01/11) : valeurs contrôlées (vide refusé, bornes, fourchette remise dans l'ordre).
+  var _chk = [['series_prevues', series], ['reps_mini', repsMini], ['reps_max', repsMax], ['repos_sec', reposSec]], _msg = '', _refus = false;
+  _chk.forEach(function (c) { if (c[1] === null || c[1] === undefined) return; var r = _progValide(c[0], c[1]); if (!r.ok) { _refus = true; _msg = r.msg; return; } ligne[c[0]] = r.v; if (r.msg) _msg = r.msg; });
+  if ((repsMini !== null || repsMax !== null) && _progOrdreReps(ligne)) _msg = 'Fourchette remise dans l\'ordre : ' + ligne.reps_mini + '–' + ligne.reps_max;
+  if (_msg) { try { showToast(_msg); } catch (e) {} cdExoOpen[rowIndex] = true; renderProgrammeCoach(); }
+  if (_refus && exercice === null && groupeId === null && (chargePct === undefined || chargePct === null) && (rpeCible === undefined || rpeCible === null)) return;
   // Cibles (phase 2) : % du 1RM + RPE cible. '' → efface (null).
   if (chargePct !== undefined && chargePct !== null) { ligne.charge_pct_1rm = (chargePct === '' ? null : Number(chargePct)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); }
   if (rpeCible !== undefined && rpeCible !== null) { ligne.rpe_cible = (rpeCible === '' ? null : Number(rpeCible)); cdExoOpen[rowIndex] = true; renderProgrammeCoach(); }
@@ -8642,7 +8611,7 @@ async function cdLierExerciceParNom(rowIndex, seanceId, exerciceNom) {
       action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
       athlete_nom: _progAthleteNom(), seance_id: seanceId, exercice: exerciceNom,
       series_prevues: ligne.series_prevues || 3, reps_mini: ligne.reps_mini || 8,
-      reps_max: ligne.reps_max || 12, repos_sec: ligne.repos_sec || 90, groupe_id: groupeId
+      reps_max: ligne.reps_max || 12, repos_sec: _reposDefaut(exerciceNom), groupe_id: groupeId
     };
     await fetch(SCRIPT_URL, { method: 'POST', headers: {'Content-Type': 'text/plain'}, body: JSON.stringify(body) });
     await chargerProgrammeCoach();
@@ -8742,7 +8711,7 @@ async function _cdPickConfirm() {
     var body = {
       action: 'saveProgrammeLigne', athlete_id: _progAthleteId(),
       athlete_nom: _progAthleteNom(), seance_id: sid, exercice: noms[i],
-      series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: '', type: 'muscu'
+      series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: _reposDefaut(noms[i]), groupe_id: '', type: 'muscu'
     };
     try { await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); } catch (e) {}
   }
@@ -8875,7 +8844,7 @@ async function _xpConfirm() {
   noms.sort(function (a, b) { return ((_XP_RANK[grpOf(a)] || 9) - (_XP_RANK[grpOf(b)] || 9)) || (_xp.order.indexOf('m|' + a) - _xp.order.indexOf('m|' + b)); });
   var post = function (body) { return fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }); };
   for (var i = 0; i < noms.length; i++) {
-    try { await post({ action: 'saveProgrammeLigne', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), seance_id: _xp.sid, exercice: noms[i], series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: 90, groupe_id: '', type: 'muscu' }); } catch (e) {}
+    try { await post({ action: 'saveProgrammeLigne', athlete_id: _progAthleteId(), athlete_nom: _progAthleteNom(), seance_id: _xp.sid, exercice: noms[i], series_prevues: 3, reps_mini: 8, reps_max: 12, repos_sec: _reposDefaut(noms[i]), groupe_id: '', type: 'muscu' }); } catch (e) {}
   }
   for (var j = 0; j < cards.length; j++) {
     var a = _xpCardioList().find(function (x) { return x.key === cards[j]; });
@@ -8936,7 +8905,11 @@ function _jgEditer(row) { _jgEditRow = row; _jgPanelRender(); }
 function _jgFermerPanel() { _jgEditRow = null; var p = document.getElementById('jg-panel'); if (p) p.style.display = 'none'; _jgRender(); }
 function _jgSet(row, field, val) {
   var l = _jg.lignes.find(function (x) { return x.row_index === row; }); if (!l) return;
-  l[field] = (val === '' || val == null) ? null : Number(val);
+  var _vd = _progValide(field, val);
+  if (!_vd.ok) { try { showToast(_vd.msg); } catch (e) {} try { _jgPanelRender(); } catch (e) {} return; }
+  l[field] = _vd.v;
+  var _inv = (field === 'reps_mini' || field === 'reps_max') && _progOrdreReps(l);
+  if (_vd.msg || _inv) { try { showToast(_inv ? 'Fourchette remise dans l\'ordre : ' + l.reps_mini + '–' + l.reps_max : _vd.msg); } catch (e) {} try { _jgPanelRender(); } catch (e) {} }
   // Liste à jour tout de suite (« 4 × 8–12 ») sans attendre le serveur — bug signalé 30/10.
   try { _jgRender(); } catch (e) {}
   _cdPersistLigne(l);
@@ -11652,6 +11625,33 @@ function _refSerie(series, k) {
 // RPE non saisi = on ne bloque pas dessus (pas de valeur inventée).
 var _POLY_KW = ['squat', 'pendulum', 'presse', 'soulev', 'rdl', 'hip thrust', 'fente', 'developpe', 'dips', 'traction', 'rowing', 't-bar', 'tirage'];
 var _POLY_EXCL = ['mollet', ' uni', 'trapeze'];
+// P6 (01/11) : contrôle des valeurs saisies dans l'éditeur (les deux éditeurs).
+// Retourne { ok:false } si la valeur est refusée (champ obligatoire vidé), sinon { ok:true, v, msg }.
+var _PROG_BORNES = { series_prevues: [1, 10, true], reps_mini: [1, 50, true], reps_max: [1, 50, true], repos_sec: [0, 600, false], charge_pct_1rm: [1, 100, false], cardio_cible: [1, 1000, false] };
+function _progValide(field, val) {
+  var B = _PROG_BORNES[field]; if (!B) return { ok: true, v: (val === '' || val == null) ? null : Number(val) };
+  if (val === '' || val == null || isNaN(Number(val))) return B[2] ? { ok: false, msg: 'Valeur obligatoire : non enregistrée' } : { ok: true, v: null };
+  var n = Number(val); if (field !== 'charge_pct_1rm' && field !== 'cardio_cible') n = Math.round(n);
+  if (n < B[0]) return { ok: true, v: B[0], msg: 'Minimum ' + B[0] };
+  if (n > B[1]) return { ok: true, v: B[1], msg: 'Maximum ' + B[1] };
+  return { ok: true, v: n };
+}
+// Fourchette inversée (12–8) → remise dans l'ordre.
+function _progOrdreReps(l) {
+  if (_numOk(l.reps_mini) && _numOk(l.reps_max) && Number(l.reps_mini) > Number(l.reps_max)) { var t = l.reps_mini; l.reps_mini = l.reps_max; l.reps_max = t; return true; }
+  return false;
+}
+// P5 (01/11) : sous les champs reps, dire quelle fourchette Novalyz utilise vraiment.
+function _pbFchNote(l) {
+  try {
+    var f = _exoFourchette(l.exercice, _numOk(l.reps_mini) ? Number(l.reps_mini) : null, _numOk(l.reps_max) ? Number(l.reps_max) : null, _exoCatMap(_progAthleteId()));
+    if (f && f.src === 'cat') return '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:3px;line-height:1.35">Novalyz vise ' + f.rmin + '–' + f.rmax + ' (exercice ' + (f.cat === 'petit' ? 'léger' : 'lourd / moyen') + ') tant que tu laisses 8–12 ici.</div>';
+  } catch (e) {}
+  return '';
+}
+// Repos par défaut d'un exercice ajouté au programme (audit Programme P4, 01/11) : 3 min
+// polyarticulaire, 90 s isolation — comme le générateur et les bornes de la règle de repos.
+function _reposDefaut(nom) { try { return _estPoly(nom) ? 180 : 90; } catch (e) { return 90; } }
 function _estPoly(nom) {
   var n = ' ' + String(nom || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   if (_POLY_EXCL.some(function (k) { return n.indexOf(k) !== -1; })) return false;
@@ -18486,57 +18486,8 @@ function fermerEditeurProgramme() {
 // Génération DÉTERMINISTE (objectif + jours + niveau) en piochant de VRAIS
 // exercices du catalogue. Le résultat est un point de départ, entièrement
 // modifiable ensuite dans l'éditeur. Cf. docs/vision-produit.md (niveau 1).
-var _GEN_OBJ = {
-  hypertrophie: { label: 'Hypertrophie', hint: 'Prise de muscle', s: 4, rmin: 8, rmax: 12, pct: 72, rpe: 8, repos: 90 },
-  force:        { label: 'Force',        hint: 'Charges lourdes', s: 5, rmin: 3, rmax: 5,  pct: 85, rpe: 8, repos: 180 },
-  tonification: { label: 'Tonification', hint: 'Endurance musculaire', s: 3, rmin: 15, rmax: 20, pct: 55, rpe: 7, repos: 60 },
-  remise:       { label: 'Remise en forme', hint: 'Reprise en douceur', s: 3, rmin: 10, rmax: 12, pct: 60, rpe: 7, repos: 90 }
-};
-var _GEN_G = {
-  pecs:    { key: ['pector'],        prefer: ['developpe couche barre', 'developpe couche', 'developpe machine'] },
-  dos:     { key: ['dos', 'dorsa'],  prefer: ['traction', 'tirage vertical prise large', 'rowing barre'] },
-  quad:    { key: ['quadri'],        prefer: ['squat', 'presse inclinee', 'hack squat'] },
-  ischio:  { key: ['ischio'],        prefer: ['rdl barre', 'rdl', 'leg curl'] },
-  fessier: { key: ['fessier'],       prefer: ['hip thrust', 'fente bulgare', 'fente longue'] },
-  epaule:  { key: ['epaule'],        prefer: ['developpe militaire', 'elevation laterale'] },
-  biceps:  { key: ['biceps'],        prefer: ['curl barre', 'curl halter'] },
-  triceps: { key: ['triceps'],       prefer: ['extension poulie barre', 'extension'] },
-  mollet:  { key: ['molet', 'mollet'], prefer: ['mollets debout', 'mollets assis'] },
-  abdos:   { key: ['abdo'],          prefer: ['crunch', 'releve de jambe'] }
-};
-var _GEN_SPLITS = {
-  2: [['Full body A', ['quad', 'pecs', 'dos', 'epaule', 'ischio', 'abdos']], ['Full body B', ['fessier', 'pecs', 'dos', 'epaule', 'biceps', 'triceps']]],
-  3: [['Push', ['pecs', 'epaule', 'triceps']], ['Pull', ['dos', 'biceps', 'abdos']], ['Legs', ['quad', 'ischio', 'fessier', 'mollet']]],
-  4: [['Haut A', ['pecs', 'dos', 'epaule', 'biceps', 'triceps']], ['Bas A', ['quad', 'ischio', 'fessier', 'mollet']], ['Haut B', ['dos', 'pecs', 'epaule', 'triceps', 'biceps']], ['Bas B', ['fessier', 'quad', 'ischio', 'abdos']]],
-  5: [['Push', ['pecs', 'epaule', 'triceps']], ['Pull', ['dos', 'biceps']], ['Legs', ['quad', 'ischio', 'fessier', 'mollet']], ['Haut', ['pecs', 'dos', 'epaule']], ['Bas', ['quad', 'fessier', 'ischio', 'abdos']]]
-};
-var _GEN_JOURS = { 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
+// (Ancien générateur v1 — _GEN_OBJ/_GEN_G/_GEN_SPLITS/_genPick/_genProgramme/_progModele — retiré le 01/11 : plus appelé.)
 function _genNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
-function _genPick(cat, g, used) {
-  var pool = cat.filter(function (e) { var m = _genNorm(e.muscle); return g.key.some(function (k) { return m.indexOf(k) >= 0; }); });
-  if (!pool.length) return null;
-  for (var i = 0; i < g.prefer.length; i++) { var pk = g.prefer[i]; var hit = pool.find(function (e) { return _genNorm(e.exercice).indexOf(pk) >= 0 && !used[e.exercice]; }); if (hit) return hit; }
-  var f = pool.find(function (e) { return !used[e.exercice]; });
-  return f || pool[0];
-}
-function _genProgramme(objectif, jours, niveau, cat) {
-  var o = _GEN_OBJ[objectif] || _GEN_OBJ.hypertrophie;
-  var sets = Math.max(2, o.s + (niveau === 'debutant' ? -1 : 0));
-  var split = _GEN_SPLITS[jours] || _GEN_SPLITS[3];
-  var jarr = _GEN_JOURS[jours] || _GEN_JOURS[3];
-  var maxExos = niveau === 'debutant' ? 4 : (niveau === 'avance' ? 99 : 6);
-  var lignes = [];
-  split.forEach(function (sc, si) {
-    var sid = sc[0], groups = sc[1].slice(0, maxExos), used = {}, jour = jarr[si];
-    groups.forEach(function (gk) {
-      var g = _GEN_G[gk]; if (!g) return;
-      var ex = _genPick(cat, g, used); if (!ex) return;
-      used[ex.exercice] = 1;
-      lignes.push({ seance_id: sid, exercice: ex.exercice, series_prevues: sets, reps_mini: o.rmin, reps_max: o.rmax, repos_sec: o.repos, groupe_id: '', jour: jour, charge_pct_1rm: o.pct, rpe_cible: o.rpe });
-    });
-  });
-  return lignes;
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * GÉNÉRATEUR v2 — blocs muscle + organisations (MOTEUR, fonctions pures)
@@ -18580,7 +18531,7 @@ var _G2_BLOCKS = {
   mollets: { mus: 'Mollets', slots: [
     { lab: 'Extensions', type: 'iso', rmin: 12, rmax: 20, exos: ['Les extensions mollets debout', 'Les extensions mollets assis', 'Les extensions mollets à la presse'] } ] },
   abdos:   { mus: 'Abdos', slots: [
-    { lab: 'Gainage', type: 'iso', rmin: 0, rmax: 0, exos: ['Crunch à la poulie', 'Relevé de jambe', 'Roulette'] } ] }
+    { lab: 'Gainage', type: 'iso', rmin: 10, rmax: 15, exos: ['Crunch à la poulie', 'Relevé de jambe', 'Roulette'] } ] }
 };
 var _G2_DAYSMAP = { 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6] };
 // Priorité musculaire d'exécution : on commence TOUJOURS par les gros groupes
@@ -18599,7 +18550,8 @@ function _g2GenDays(org, jours) {
       b: [['quad', 1], ['pecs', 1], ['dos', 1], ['epaules', 1], ['biceps', 1], ['triceps', 1], ['ischios', 1], ['mollets', 1], ['abdos', 1]] }; });
   }
   if (org === 'ul') {
-    return J.map(function (dn, k) { var up = k % 2 === 0, tag = (Math.floor(k / 2) % 2 === 0) ? 'A' : 'B', off = Math.floor(k / 2);
+    // Audit Programme P1 (01/11) : 6 jours → Haut/Bas A, B, C (avant : A, B puis A → séances fusionnées).
+    return J.map(function (dn, k) { var up = k % 2 === 0, tag = ['A', 'B', 'C'][Math.floor(k / 2) % 3], off = Math.floor(k / 2);
       return up ? { nm: 'Haut ' + tag, d: dn, ss: 1, off: off, b: [['pecs', 2], ['dos', 2], ['epaules', 2], ['biceps', 2], ['triceps', 1]] }
                 : { nm: 'Bas ' + tag, d: dn, off: off, b: [['quad', 3], ['ischios', 2], ['fessiers', 1], ['mollets', 1], ['abdos', 1]] }; });
   }
@@ -18629,14 +18581,21 @@ function _g2GenDays(org, jours) {
   return out;
 }
 // coupe round-robin par priorité : 1 exo/muscle d'abord, puis 2e angle ; le TEMPS fixe le nb gardé
-function _g2Build(day, cap) {
+function _g2Cands(day) {
   var byBlock = [];
   day.b.forEach(function (pair, bi) { var bk = pair[0], L = _G2_BLOCKS[bk].slots.length, n = Math.min(pair[1], L), off = day.off || 0;
     var arr = []; for (var i = 0; i < n; i++) arr.push({ bk: bk, si: (i + off) % L, bi: bi, pk: i }); byBlock.push(arr); });
   var maxN = 0; byBlock.forEach(function (a) { if (a.length > maxN) maxN = a.length; });
   var ordered = [];
   for (var p = 0; p < maxN; p++) { byBlock.forEach(function (a) { if (a[p]) ordered.push(a[p]); }); }
-  var keep = ordered.slice(0, cap);
+  return ordered;
+}
+function _g2Trie(keep) {
+  keep.sort(function (a, b) { return (_G2_MUSRANK[a.bk] || 9) - (_G2_MUSRANK[b.bk] || 9) || a.bi - b.bi || a.pk - b.pk; });
+  return keep;
+}
+function _g2Build(day, cap) {
+  var keep = _g2Cands(day).slice(0, cap);
   // Ordre final : gros muscles d'abord (rang), puis ordre d'écriture du bloc (bi),
   // puis l'angle (pk). Garantit « pec/dos avant bras » quelle que soit la séance.
   keep.sort(function (a, b) { return (_G2_MUSRANK[a.bk] || 9) - (_G2_MUSRANK[b.bk] || 9) || a.bi - b.bi || a.pk - b.pk; });
@@ -18649,20 +18608,95 @@ function _g2Reps(objectif, niveau, sl) {
 }
 function _g2Sets(niveau) { return niveau === 'avance' ? 4 : 3; }
 
-// Hypertrophie / organisation → lignes genererProgramme
-function _genProgramme2(objectif, organisation, jours, temps, niveau) {
+// ── Audit Programme P3 (01/11, option a) : répartition selon le DÉFICIT de volume ──
+// Mêmes cibles et même comptage que les Analyses (muscle principal 1 série, secondaire 0,5 ;
+// cibles volume_obti par muscle, sinon cibles par niveau). 1) un exercice par muscle et par
+// séance (comme avant) ; 2) les places restantes (durée choisie) vont au muscle le plus loin de
+// son minimum sur la SEMAINE ; 3) une fois tous les minimums atteints, on complète sans dépasser
+// le maximum récupérable (1,5 × l'optimum, seuil « Au-delà » des Analyses).
+var _G2_MUSALIAS = { moletts: 'Mollets', mollet: 'Mollets', mollets: 'Mollets', fessier: 'Fessier', fessiers: 'Fessier', epaule: 'Epaule', epaules: 'Epaule',
+  ischio: 'Ischio', ischios: 'Ischio', abdos: 'Abdominaux', abdominaux: 'Abdominaux', trapeze: 'Trapèze', trapezes: 'Trapèze', pectoraux: 'Pectoraux', dos: 'Dos',
+  biceps: 'Biceps', triceps: 'Triceps', quadriceps: 'Quadriceps', adducteur: 'Adducteur', adducteurs: 'Adducteur' };
+function _g2Mus(m) { var r = String(m == null ? '' : m).trim(); if (!r) return ''; var k = r.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' '); return _G2_MUSALIAS[k] || (r.charAt(0).toUpperCase() + r.slice(1)); }
+function _g2NormNom(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
+// Muscles (principal, secondaire) d'un candidat : 1er exercice du slot présent au catalogue.
+function _g2MusCand(x, cat) {
+  var sl = _G2_BLOCKS[x.bk].slots[x.si], idx = {};
+  (cat || []).forEach(function (e) { idx[_g2NormNom(e.exercice)] = e; });
+  for (var i = 0; i < sl.exos.length; i++) { var e = idx[_g2NormNom(sl.exos[i])]; if (e) return [_g2Mus(e.muscle), _g2Mus(e.muscle_secondaire)]; }
+  return [_g2Mus(_G2_BLOCKS[x.bk].mus), ''];
+}
+// Volume hebdo par muscle d'une liste de lignes (pour l'aperçu du générateur).
+function _g2VolLignes(lignes, cat) {
+  var idx = {}, V = {}; (cat || []).forEach(function (e) { idx[_g2NormNom(e.exercice)] = e; });
+  (lignes || []).forEach(function (l) {
+    var e = idx[_g2NormNom(l.exercice)]; if (!e) return; var n = Number(l.series_prevues) || 0, m = _g2Mus(e.muscle), s2 = _g2Mus(e.muscle_secondaire);
+    if (m) V[m] = (V[m] || 0) + n; if (s2 && s2 !== m) V[s2] = (V[s2] || 0) + n / 2;
+  });
+  return V;
+}
+function _g2Allouer(days, cap, sets, vol) {
+  var T = vol.targets || {}, cat = vol.cat || [], W = {};
+  var cible = function (m) { return T[m] || T._defaut || null; };
+  // Budget en SÉRIES par séance = durée choisie (nb d'exercices × séries) ; ajouter un exercice
+  // coûte « sets » séries, une série de plus sur un exercice en coûte 1 (max +1 par exercice).
+  var plan = days.map(function (d) {
+    var decl = _g2Cands(d), ext = decl.slice(), seen = {};
+    decl.forEach(function (x) { seen[x.bk + '|' + x.si] = 1; });
+    // Pool étendu (déficit seulement) : tous les angles des muscles DÉJÀ présents dans la séance.
+    d.b.forEach(function (pair, bi) { var L = _G2_BLOCKS[pair[0]].slots.length; for (var si = 0; si < L; si++) if (!seen[pair[0] + '|' + si]) { seen[pair[0] + '|' + si] = 1; ext.push({ bk: pair[0], si: si, bi: bi, pk: 9 + si }); } });
+    return { decl: decl, ext: ext, keep: [], budget: cap * sets };
+  });
+  var mus = function (x) { return x.mus || (x.mus = _g2MusCand(x, cat)); };
+  var addW = function (mm, n) { if (mm[0]) W[mm[0]] = (W[mm[0]] || 0) + n; if (mm[1] && mm[1] !== mm[0]) W[mm[1]] = (W[mm[1]] || 0) + n / 2; };
+  var add = function (P, x) { x.sets = sets; P.keep.push(x); P.budget -= sets; addW(mus(x), sets); };
+  var deficit = function (m) { var c = cible(m); return c ? (c.min - (W[m] || 0)) / c.min : -1; };
+  var sousMax = function (mm, n) { var c0 = cible(mm[0]), c1 = mm[1] ? cible(mm[1]) : null;
+    return (!c0 || (W[mm[0]] || 0) + n <= c0.opt * 1.5) && (!c1 || (W[mm[1]] || 0) + n / 2 <= c1.opt * 1.5); };
+  // 1) un exercice par muscle et par séance (comme avant)
+  plan.forEach(function (P) { P.decl.filter(function (x) { return x.pk === 0; }).forEach(function (x) { if (P.budget >= sets) add(P, x); }); });
+  for (var guard = 0; guard < 400; guard++) {
+    // 2a) muscle le plus en retard : un exercice de plus (pool étendu)
+    var best = null, bestD = 1e-9;
+    plan.forEach(function (P) {
+      if (P.budget < sets) return;
+      P.ext.forEach(function (x) { if (P.keep.indexOf(x) >= 0) return; var d = deficit(mus(x)[0]); if (d > bestD && sousMax(mus(x), sets)) { bestD = d; best = { P: P, x: x }; } });
+    });
+    if (best) { add(best.P, best.x); continue; }
+    // 2b) plus de place pour un exercice : +1 série sur un exercice du muscle en retard
+    var bb = null; bestD = 1e-9;
+    plan.forEach(function (P) {
+      if (P.budget < 1) return;
+      P.keep.forEach(function (x) { if (x.sets > sets) return; var d = deficit(mus(x)[0]); if (d > bestD && sousMax(mus(x), 1)) { bestD = d; bb = { P: P, x: x }; } });
+    });
+    if (bb) { bb.x.sets++; bb.P.budget -= 1; addW(mus(bb.x), 1); continue; }
+    // 3) minimums atteints (ou impossibles) : compléter dans l'ordre d'origine sans dépasser le maximum
+    var f = null;
+    plan.forEach(function (P) {
+      if (f || P.budget < sets) return;
+      for (var ci = 0; ci < P.decl.length; ci++) { var x = P.decl[ci]; if (P.keep.indexOf(x) < 0 && sousMax(mus(x), sets)) { f = { P: P, x: x }; break; } }
+    });
+    if (!f) break;
+    add(f.P, f.x);
+  }
+  return plan.map(function (P) { return _g2Trie(P.keep); });
+}
+// Hypertrophie / organisation → lignes genererProgramme.
+// vol (facultatif) = { targets: { Muscle: {min, opt}, _defaut: {min, opt} }, cat: catalogue } → répartition P3.
+function _genProgramme2(objectif, organisation, jours, temps, niveau, vol) {
   var days = _g2GenDays(organisation, jours), cap = _G2_CAP[temps] || 7, sets = _g2Sets(niveau), lignes = [];
   // Maintien = volume allégé (une série de moins, un exercice de moins par séance).
   if (objectif === 'maintien') { sets = Math.max(2, sets - 1); cap = Math.max(3, cap - 1); }
-  days.forEach(function (day) {
-    var ex = _g2Build(day, cap);
+  var alloc = (vol && vol.cat && vol.cat.length) ? _g2Allouer(days, cap, sets, vol) : null;
+  days.forEach(function (day, di) {
+    var ex = alloc ? alloc[di] : _g2Build(day, cap);
     var hasBi = ex.some(function (x) { return x.bk === 'biceps'; }), hasTri = ex.some(function (x) { return x.bk === 'triceps'; });
     var pairSS = day.ss && hasBi && hasTri;
     ex.forEach(function (x) {
       var B = _G2_BLOCKS[x.bk], sl = B.slots[x.si], rr = _g2Reps(objectif, niveau, sl);
       var isSS = pairSS && (x.bk === 'biceps' || x.bk === 'triceps');
       lignes.push({ seance_id: day.nm, jour: day.d, exercice: sl.exos[0],
-        series_prevues: sets, reps_mini: rr[0], reps_max: rr[1],
+        series_prevues: (alloc && x.sets) ? x.sets : sets, reps_mini: rr[0], reps_max: rr[1],
         repos_sec: isSS ? 90 : (sl.type === 'poly' ? 180 : 90),
         groupe_id: isSS ? ('ss' + day.d) : '',
         charge_pct_1rm: (objectif === 'force' ? 80 : null), rpe_cible: 9,
@@ -18827,11 +18861,20 @@ function _g2Resolve(lignes) {
   });
   return lignes;
 }
+// Cibles de volume de l'athlète ciblé (mêmes que les Analyses : volume_obti par muscle, sinon par niveau).
+function _g2VolCtx() {
+  var d = null;
+  try { d = (typeof athlete !== 'undefined' && athlete && athlete.athlete_id) ? dernierAppData : ((typeof coachAthleteData !== 'undefined') ? coachAthleteData : null); } catch (e) {}
+  var T = {};
+  ((d && d.volume_obti) || []).forEach(function (o) { var m = _g2Mus(o.muscle), mn = Number(o.series_min), op = Number(o.series_opt); if (m && mn > 0) T[m] = { min: mn, opt: op > 0 ? op : mn }; });
+  try { var dt = _maVolTargets(); if (dt && dt.min) T._defaut = { min: dt.min, opt: dt.opt || dt.min }; } catch (e) {}
+  return { targets: T, cat: exercicesData || [] };
+}
 function _g2Lignes() {
-  var st = _genState, lignes;
-  if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('masse', p.org, p.jours, 75, 'debutant'); }
+  var st = _genState, lignes, vol = _g2VolCtx();
+  if (st.niv === 'debutant') { var p = _G2_PRESETS[st.preset] || _G2_PRESETS[0]; lignes = _genProgramme2('masse', p.org, p.jours, 75, 'debutant', vol); }
   else if (st.but === 'force') { lignes = _genProgrammeForce(st.jours); }
-  else { lignes = _genProgramme2(st.but || 'masse', st.org, st.jours, st.temps, st.niv); }
+  else { lignes = _genProgramme2(st.but || 'masse', st.org, st.jours, st.temps, st.niv, vol); }
   return _g2Resolve(lignes);
 }
 // Variantes d'un exercice = les AUTRES exos de son slot (même angle/muscle) dans les blocs
@@ -18978,8 +19021,21 @@ function _genRender() {
   var lignes = _g2Lignes();
   var parSeance = {}; lignes.forEach(function (l) { (parSeance[l.seance_id] = parSeance[l.seance_id] || []).push(l); });
   var apercu = Object.keys(parSeance).map(function (sid) { var jr = parSeance[sid][0].jour; return '<div style="margin-bottom:8px"><div style="font-weight:800;font-size:13px;color:var(--accent)">' + esc(sid) + (jr ? ' <span style="font-weight:600;color:var(--text-subtle)">· ' + _PROG_JOURS_LONG[jr - 1] + '</span>' : '') + '</div><div style="font-size:12px;color:var(--text-muted)">' + parSeance[sid].map(function (l) { return esc(l.exercice); }).join(', ') + '</div></div>'; }).join('');
+  // P3 (01/11) : volume par muscle du programme proposé vs cibles (comme les Analyses) — on DIT ce qui reste sous le minimum.
+  var volHtml = '';
+  try {
+    var _vc = _g2VolCtx(), _V = _g2VolLignes(lignes, _vc.cat), _T = _vc.targets, _mus = Object.keys(_T).filter(function (k) { return k !== '_defaut'; });
+    if (!_mus.length) _mus = Object.keys(_V);
+    var _fmtS = function (n) { return String(Math.round(n * 10) / 10).replace('.', ','); };
+    var _sous = [];
+    var _rows = _mus.map(function (m) { var c = _T[m] || _T._defaut, v = _V[m] || 0; if (!c) return ''; var col = v < c.min ? '#DC3545' : (v > c.opt * 1.5 ? '#9D5FD3' : (v < c.opt ? '#E07800' : '#00A854')); if (v < c.min) _sous.push(m + ' ' + _fmtS(v) + '/' + c.min);
+      return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin:0 8px 4px 0"><i style="width:7px;height:7px;border-radius:9px;background:' + col + '"></i>' + esc(m) + ' ' + _fmtS(v) + '</span>'; }).join('');
+    volHtml = '<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--border)"><div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:6px">Séries par semaine et par muscle</div>' + _rows
+      + '<div style="font-size:11.5px;line-height:1.45;margin-top:4px;color:' + (_sous.length ? '#DC3545' : '#00A854') + '">' + (_sous.length ? 'Sous ton minimum : ' + esc(_sous.join(', ')) + '. Pour l\'atteindre : plus de temps par séance ou un jour de plus.' : 'Tous les muscles atteignent ton minimum de séries.') + '</div>'
+      + '<div style="font-size:10.5px;color:var(--text-subtle);margin-top:3px">Même calcul que tes Analyses (muscle secondaire = ½ série).</div></div>';
+  } catch (e) {}
   // Bureau : options à gauche, aperçu + bouton à droite (colonne collante). Mobile : empilé.
-  var side = '<div style="padding:14px;background:var(--surface2);border-radius:14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:8px">Aperçu · ' + Object.keys(parSeance).length + ' séances · ' + lignes.length + ' exercices</div>' + (apercu || '<div style="font-size:12px;color:var(--text-subtle)">Choisis tes options ci-dessus.</div>') + '</div>'
+  var side = '<div style="padding:14px;background:var(--surface2);border-radius:14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text-subtle);margin-bottom:8px">Aperçu · ' + Object.keys(parSeance).length + ' séances · ' + lignes.length + ' exercices</div>' + (apercu || '<div style="font-size:12px;color:var(--text-subtle)">Choisis tes options ci-dessus.</div>') + volHtml + '</div>'
     + '<button onclick="_genGenerer()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(26,95,255,.3)">Créer mon programme</button>'
     + '<div style="font-size:11px;color:var(--text-subtle);text-align:center;margin-top:8px">Tu pourras tout modifier ensuite dans l\'éditeur.</div>'
     + '<button onclick="_genRefuse()" style="width:100%;margin-top:4px;background:none;border:none;color:var(--text-subtle);font-size:12px;text-decoration:underline;cursor:pointer;padding:8px">Je gère mon programme moi-même</button>';
