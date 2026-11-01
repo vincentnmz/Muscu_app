@@ -11740,11 +11740,28 @@ function _progDecision(ctx) {
   // proposition INDICATIVE d'un petit pas en dessous (décision 29/10). Sinon (RPE ≥ 9
   // dans la fourchette) on consolide comme avant.
   var sousN = rmin ? last.filter(function (x) { return (Number(x.reps) || 0) > 0 && Number(x.reps) < rmin; }).length : 0;
+  // RÈGLE VALIDÉE LE 01/11 (audit saisie, docs/audit-saisie-seance-2026-11-01.md) — remplace
+  // « 1 série à RPE ≥ 9 → tout consolide » (12 exercices sur 16 bloqués sur données réelles) :
+  //  • SÉRIE PAR SÉRIE : +1 rep si la série était à RPE ≤ seuil (débutant 8, sinon 9) ; au-dessus
+  //    (RPE 10 = échec ; débutant dès 9) la série garde charge et reps.
+  //  • Charge : toutes les séries au haut de la fourchette — débutant 1 séance à RPE ≤ 8 ;
+  //    intermédiaire et + : 2 séances de suite (ACSM 2009) ou 1 fois à RPE ≤ 7 ; jamais si la
+  //    dernière fois était à l'échec (RPE 10).
+  //  • Garde-fous récupération (Morán-Navarro 2017 : l'échec rallonge la récupération) :
+  //    échec 2 séances de suite sur l'exercice → on garde tout, viser RPE 9 ;
+  //    jour en Vigilance (verdict du moteur) → aucune progression ce jour-là.
+  //  • « Sous la fourchette » reste prioritaire.
+  var seuil = ctx.niveau === 'debutant' ? 8 : 9;
+  var prevR = (ctx.prev || []).map(function (x) { return Number(x.rpe); }).filter(function (x) { return x > 0; });
+  var echec2 = rpe != null && rpe >= 10 && prevR.length && Math.max.apply(null, prevR) >= 10;
+  var tousTenus = last.every(function (x) { var v = Number(x.rpe); return v > seuil; });
   if (rpe != null && rpe >= 9 && chargeable && sousN * 2 > last.length) mode = 'sous';
-  else if (rpe != null && rpe >= 9) mode = 'consolide';
-  else if (!chargeable || !auHaut(last)) mode = 'reps';
-  else if (ctx.niveau === 'debutant') mode = (rpe == null || rpe <= 8) ? 'charge' : 'reps';
-  else mode = (auHaut(ctx.prev) || (rpe != null && rpe <= 7)) ? 'charge' : 'reps';
+  else if (ctx.vigilance) mode = 'vigilance';
+  else if (echec2) mode = 'echec';
+  else if (chargeable && auHaut(last) && (rpe == null || rpe <= (ctx.niveau === 'debutant' ? 8 : 9))
+    && (ctx.niveau === 'debutant' || auHaut(ctx.prev) || (rpe != null && rpe <= 7))) mode = 'charge';
+  else if (tousTenus) mode = 'consolide';
+  else mode = 'reps';
   var avance = ctx.niveau === 'avance' || ctx.niveau === 'expert';
   if (mode === 'charge' && avance) mode = 'choix';
   var R = ctx.reposRef, B = ctx.bornes || { min: 60, max: 180 };
@@ -11761,7 +11778,7 @@ function _progDecision(ctx) {
   var cible = function (k, choix) {
     var r = ref(k), ch = Number(r.charge) || 0, rp = Number(r.reps) || 0;
     var c = choix || 'charge';
-    if (mode === 'consolide') return { charge: ch, reps: rp, repos: R };
+    if (mode === 'consolide' || mode === 'vigilance' || mode === 'echec') return { charge: ch, reps: rp, repos: R };
     // Seules les séries SOUS le minimum descendent d'un petit pas (dégressif : la
     // série déjà dans la fourchette reste telle quelle).
     if (mode === 'sous') return (rp > 0 && rp < rmin) ? { charge: Math.max(0, _r025(ch - ctx.pas)), reps: rmin, repos: R, up: 'baisse' } : { charge: ch, reps: rp, repos: R };
@@ -11769,11 +11786,35 @@ function _progDecision(ctx) {
       return { charge: _r025(ch + ctx.pas), reps: rmin || rp, repos: (mode === 'choix' && c === 'charge30') ? options[1].repos : R, up: 'charge' };
     if (mode === 'choix' && c === 'rep30') return { charge: ch, reps: rp + 1, repos: options[2].repos, up: 'reps' };
     if (mode === 'choix' && c === 'repos') return { charge: ch, reps: rp, repos: options[3].repos, up: 'repos' };
+    // Série à RPE > seuil (échec ; débutant dès 9) : on la garde telle quelle (01/11).
+    if (Number(r.rpe) > seuil) return { charge: ch, reps: rp, repos: R, tenue: true };
     // +1 rep tant qu'on est sous le haut de la fourchette (poids du corps / hors programme : +1 rep)
     if (!rmax || rp < rmax || !chargeable) return { charge: ch, reps: rp + 1, repos: R, up: 'reps' };
     return { charge: ch, reps: rp, repos: R };
   };
-  return { mode: mode, rpe: rpe, options: options, cible: cible, reposRef: R };
+  var nTenues = (mode === 'reps') ? last.filter(function (x) { return Number(x.rpe) > seuil; }).length : 0;
+  return { mode: mode, rpe: rpe, options: options, cible: cible, reposRef: R, seuil: seuil, nTenues: nTenues, vigilanceTxt: ctx.vigilanceTxt || '' };
+}
+// Phrase d'explication du mode (UNE source pour la saisie, Aujourd'hui et Par exercice).
+function _progWhy(d, f, pas) {
+  var kg = function (x) { return String(x).replace('.', ','); };
+  if (!d || d.mode === 'premier') return '1re fois : trouve ta charge de travail';
+  if (d.mode === 'sous') return 'sous ta fourchette ' + f.rmin + '-' + f.rmax + ' (RPE ' + d.rpe + ') · indicatif';
+  if (d.mode === 'vigilance') return 'jour de vigilance' + (d.vigilanceTxt ? ' (' + d.vigilanceTxt + ')' : '') + ' : pas de progression aujourd\'hui, mêmes charges que la dernière fois';
+  if (d.mode === 'echec') return 'échec (RPE 10) 2 séances de suite : garde ta charge et vise RPE 9 (1 rep en réserve)';
+  if (d.mode === 'consolide') return 'RPE ' + d.rpe + ' sur toutes tes séries la dernière fois : garde charge et reps (vise ' + (d.seuil === 8 ? '2 reps' : '1 rep') + ' en réserve)';
+  if (d.mode === 'charge') return 'haut de fourchette atteint → +' + kg(pas) + ' kg';
+  if (d.mode === 'choix') return 'haut atteint → charge ou autre levier, au choix à la saisie';
+  var base = f.rmax ? '+1 rep (haut de fourchette : ' + f.rmax + ')' : '+1 rep';
+  return d.nTenues ? base + ' · ' + d.nTenues + ' série' + (d.nTenues > 1 ? 's' : '') + ' à RPE ' + (d.seuil === 8 ? '9-10' : '10') + ' gardée' + (d.nTenues > 1 ? 's' : '') + ' telle' + (d.nTenues > 1 ? 's' : '') : base;
+}
+// Jour en Vigilance (verdict du moteur) → pas de progression proposée ce jour-là (01/11).
+function _vigilanceDuJour(data) {
+  try {
+    var m = (data && data.moteur) || {}, niv = m.disponibilite && m.disponibilite.niveau;
+    if (niv !== 'Vigilance' && niv !== 'À surveiller') return { on: false, txt: '' };
+    return { on: true, txt: (Array.isArray(m.causes) ? m.causes.slice(0, 2).join(', ') : '').toLowerCase() };
+  } catch (e) { return { on: false, txt: '' }; }
 }
 function _progChoisir(id) {
   if (!exoEnCours) return;
@@ -11812,7 +11853,8 @@ function majPlanSeries() {
   var _fch = _exoFourchette(exoEnCours.exerciceNom, rminP, rmaxP); rminP = _fch.rmin; rmaxP = _fch.rmax;
   var _niv = 'debutant'; try { _niv = getNiveauExperience(athlete && athlete.annees_pratique); } catch (e) {}
   var prevSeries = (perfHist && Array.isArray(perfHist.prev_series)) ? perfHist.prev_series : null;
-  var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP,
+  var _vg = (typeof _saisieCoach !== 'undefined' && _saisieCoach) ? { on: false, txt: '' } : _vigilanceDuJour(dernierAppData);
+  var dec = _progDecision({ niveau: _niv, last: lastSeries, prev: prevSeries, rmin: rminP, rmax: rmaxP, vigilance: _vg.on, vigilanceTxt: _vg.txt,
     nPrevues: pProg && _numOk(pProg.series_prevues) ? Number(pProg.series_prevues) : 0, pas: _petitPas(exoEnCours.exerciceNom),
     reposRef: _reposRef(lastSeries, pProg ? pProg.repos_sec : null), bornes: _reposBornes(exoEnCours.exerciceNom) });
   var choix = exoEnCours._progChoix || 'charge';
@@ -11859,7 +11901,7 @@ function majPlanSeries() {
   var sub = [resume, plan.note, prevu].filter(Boolean);
   // Message de la règle (factuel, tracé sur les données) + choix du jour (avancé / expert).
   var pas = _petitPas(exoEnCours.exerciceNom), msg = '', choixHtml = '';
-  if (dec.mode === 'consolide') msg = 'RPE ' + dec.rpe + ' la dernière fois : consolide cette charge (mêmes charge et reps).';
+  if (dec.mode === 'consolide' || dec.mode === 'vigilance' || dec.mode === 'echec' || (dec.mode === 'reps' && dec.nTenues)) { var _w = _progWhy(dec, { rmin: rminP, rmax: rmaxP }, _petitPas(exoEnCours.exerciceNom)); msg = _w.charAt(0).toUpperCase() + _w.slice(1) + '.'; }
   else if (dec.mode === 'sous') msg = 'Indicatif : la dernière fois tu étais sous ta fourchette (' + rminP + '-' + rmaxP + ' reps) à RPE ' + dec.rpe + '. Au choix : un petit pas en dessous (−' + String(pas).replace('.', ',') + ' kg, déjà pré-rempli) pour revenir à ' + rminP + ' reps, ou garder la charge et viser +1 rep, ou prendre 30 s de repos en plus. À toi de choisir.';
   else if (dec.mode === 'charge') msg = 'Haut de la fourchette atteint sur toutes tes séries : +' + String(pas).replace('.', ',') + ' kg, repars à ' + rminP + ' reps.';
   else if (dec.mode === 'choix') {
@@ -14427,12 +14469,7 @@ function _maProgExo(data) {
       var _pl0 = (data.programme || []).filter(function (l) { return l && l.exercice === sel && l.type !== 'cardio'; })[0] || { exercice: sel };
       var _tc = _tjCibles(data, [_pl0])[0];
       if (_tc) {
-        var _why = _tc.mode === 'premier' ? '1re fois : trouve ta charge de travail'
-          : _tc.mode === 'sous' ? 'Sous ta fourchette ' + _tc.f.rmin + '-' + _tc.f.rmax + ' (RPE ' + _tc.rpe + ') : proposition indicative.'
-          : _tc.mode === 'consolide' ? 'RPE ' + _tc.rpe + ' la dernière fois → on consolide.'
-          : _tc.mode === 'charge' ? 'Haut de fourchette atteint → +' + _cdFmtKg(_tc.pas) + ' kg.'
-          : _tc.mode === 'choix' ? 'Haut atteint → charge ou autre levier, au choix à la saisie.'
-          : (_tc.f.rmax ? '+1 rep (haut de fourchette : ' + _tc.f.rmax + ').' : '+1 rep.');
+        var _why = _tc.mode === 'premier' ? '1re fois : trouve ta charge de travail' : ((_tc.why || '').charAt(0).toUpperCase() + (_tc.why || '').slice(1) + '.');
         aimBox = '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;margin-top:10px">'
           + '<div style="font-size:13px;font-weight:800">Ce que Novalyz vise la prochaine fois</div>'
           + (_tc.cib ? '<div style="display:flex;align-items:baseline;gap:8px;margin-top:7px"><span style="font-size:12px;color:var(--text-muted)">' + _cdFmtKg(_tc.last.c) + ' × ' + _tc.last.r + ' →</span><span style="font-family:var(--head,\'Michroma\',sans-serif);font-size:19px;color:' + (_tc.cib.up === 'baisse' ? '#DC3545' : 'var(--accent)') + '">' + _cdFmtKg(_tc.cib.charge) + ' kg × ' + _tc.cib.reps + '</span></div>' : '')
@@ -16517,13 +16554,14 @@ function _tjCibles(data, exos) {
     var f = _exoFourchette(nom, _numOk(p.reps_mini) ? Number(p.reps_mini) : null, _numOk(p.reps_max) ? Number(p.reps_max) : null, cats);
     if (!last || !last.length) return { exo: nom, mode: 'premier', f: f };
     var pas = _petitPas(nom);
-    var dec = _progDecision({ niveau: niv, last: last, prev: prev, rmin: f.rmin, rmax: f.rmax, nPrevues: _numOk(p.series_prevues) ? Number(p.series_prevues) : 0, pas: pas, reposRef: _reposRef(last, p.repos_sec), bornes: _reposBornes(nom) });
+    var _vg = _vigilanceDuJour(data);
+    var dec = _progDecision({ niveau: niv, last: last, prev: prev, rmin: f.rmin, rmax: f.rmax, vigilance: _vg.on, vigilanceTxt: _vg.txt, nPrevues: _numOk(p.series_prevues) ? Number(p.series_prevues) : 0, pas: pas, reposRef: _reposRef(last, p.repos_sec), bornes: _reposBornes(nom) });
     // Série de référence = la plus LOURDE (puis le plus de reps) : la 1re est souvent une
     // série de mise en route plus légère (ex. 5 kg × 20 avant 7,5 kg × 10).
     var kRef = 0; last.forEach(function (x, i) { var b = last[kRef]; if ((Number(x.charge) || 0) > (Number(b.charge) || 0) || ((Number(x.charge) || 0) === (Number(b.charge) || 0) && (Number(x.reps) || 0) > (Number(b.reps) || 0))) kRef = i; });
     var ref = last[kRef], kNum = Number(ref.serie) || (kRef + 1), cib = dec.cible(kNum, 'charge');
     var _bq = (dec.mode !== 'sous') ? _blocageInfo(data, nom) : null;
-    return { exo: nom, mode: dec.mode, rpe: dec.rpe, f: f, pas: pas, last: { c: Number(ref.charge) || 0, r: Number(ref.reps) || 0 }, cib: cib, bloqueN: _bq ? _bq.n : 0 };
+    return { exo: nom, mode: dec.mode, rpe: dec.rpe, f: f, pas: pas, last: { c: Number(ref.charge) || 0, r: Number(ref.reps) || 0 }, cib: cib, bloqueN: _bq ? _bq.n : 0, why: _progWhy(dec, f, pas) };
   });
 }
 function _tjCiblesHtml(rows) {
@@ -16532,11 +16570,7 @@ function _tjCiblesHtml(rows) {
   var why = function (x) {
     if (x.mode === 'premier') return '1re fois : trouve ta charge de travail';
     if (x.bloqueN) return 'bloqué depuis ' + x.bloqueN + ' séances : repos +30 s, plus tôt dans la séance, ou persiste à RPE 8-9 · indicatif';
-    if (x.mode === 'sous') return 'sous ta fourchette ' + x.f.rmin + '-' + x.f.rmax + ' (RPE ' + x.rpe + ') · indicatif';
-    if (x.mode === 'consolide') return 'RPE ' + x.rpe + ' la dernière fois → on consolide';
-    if (x.mode === 'charge') return 'haut de fourchette atteint → +' + kg(x.pas) + ' kg';
-    if (x.mode === 'choix') return 'haut atteint → charge ou autre levier, au choix à la saisie';
-    return x.f.rmax ? ('+1 rep (haut de fourchette : ' + x.f.rmax + ')') : '+1 rep';
+    return x.why || '';
   };
   var tr = rows.map(function (x) {
     var lastTxt = x.last ? kg(x.last.c) + ' × ' + x.last.r : '—';
